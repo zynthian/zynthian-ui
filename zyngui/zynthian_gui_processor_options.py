@@ -159,8 +159,8 @@ class zynthian_gui_processor_options(zynthian_gui_selector, zynthian_gui_save_pr
 
 	def set_select_path(self):
 		if self.processor:
-			self.select_path.set("{} > Unit Options".format(self.processor.get_basepath()))
+			self.select_path.set("{} > Processor Options".format(self.processor.get_basepath()))
 		else:
-			self.select_path.set("Unit Options")
+			self.select_path.set("Processor Options")
 
 #------------------------------------------------------------------------------

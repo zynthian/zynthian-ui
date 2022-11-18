@@ -98,7 +98,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def hide(self):
-		self.zyngui.exit_midi_learn()
+		self.zyngui.state_manager.exit_midi_learn()
 		super().hide()
 		#if self.shown:
 		#	for zc in self.zgui_controllers: zc.hide()
@@ -364,7 +364,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.show()
 			return True
 		# If in MIDI-learn mode, back to instrument control
-		elif self.zyngui.midi_learn_mode or self.zyngui.midi_learn_zctrl:
+		elif self.zyngui.midi_learn_mode or self.zyngui.state_manager.midi_learn_zctrl:
 			self.zyngui.exit_midi_learn()
 			return True
 		else:
@@ -415,7 +415,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		elif swi == 2:
 			if t == 'S':
 				if self.mode == 'control':
-					self.zyngui.toggle_midi_learn()
+					self.toggle_midi_learn()
 				return True
 			elif t == 'B':
 				if self.midi_learning:
@@ -523,8 +523,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if self.zyngui.midi_learn_mode:
 			self.zyngui.exit_midi_learn()
 			if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
-				self.zyngui.screens['zs3_learn'].index = 0
-				self.zyngui.show_screen("zs3_learn")
+				self.zyngui.state_manager.set_midi_learn_mode(2)
+			else:
+				self.zyngui.exit_midi_learn()
 		else:
 			self.zyngui.enter_midi_learn()
 
@@ -532,7 +533,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def midi_learn_zctrl(self, i):
 		if self.shown and self.zyngui.midi_learn_mode:
 			logging.debug("MIDI-learn ZController {}".format(i))
-			self.zyngui.midi_learn_mode = False
+			self.zyngui.state_manager.midi_learn_mode = False
 			self.midi_learn(i)
 
 

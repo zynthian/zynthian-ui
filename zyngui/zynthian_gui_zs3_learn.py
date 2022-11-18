@@ -5,7 +5,7 @@
 #
 # Zynthian GUI ZS3 learn screen
 #
-# Copyright (C) 2018 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2018-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 #
@@ -23,7 +23,6 @@
 #
 #******************************************************************************
 
-import sys
 import tkinter
 import logging
 
@@ -55,24 +54,24 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 
 
 	def show(self):
-		self.zyngui.enter_midi_learn()
+		self.zyngui.state_manager.enter_midi_learn()
 		super().show()
 
 
 	def hide(self):
 		if self.shown:
-			self.zyngui.exit_midi_learn()
+			self.zyngui.state_manager.exit_midi_learn()
 			super().hide()
 
 
 	def fill_list(self):
-		self.list_data=[]
+		self.list_data = []
 		self.list_data.append(('SAVE_ZS3', None, "Save as new ZS3"))
 
 		#Add list of programs
-		if len(self.zyngui.screens['layer'].learned_zs3)>0:
+		if len(self.zyngui.state_manager.learned_zs3)>0:
 			self.list_data.append((None, None, "> SAVED ZS3s"))
-		for i, state in enumerate(self.zyngui.screens['layer'].learned_zs3):
+		for i, state in enumerate(self.zyngui.state_manager.learned_zs3):
 			if state['midi_learn_prognum'] is not None:
 				if zynthian_gui_config.midi_single_active_channel:
 					title = "{} -> PR#{}".format(state['zs3_title'], state['midi_learn_prognum'])
@@ -81,7 +80,7 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 			else:
 				title = state['zs3_title']
 			self.list_data.append((i, state, title))
-			if self.index == 0 and i == self.zyngui.screens['layer'].get_last_zs3_index():
+			if self.index == 0 and i == self.zyngui.state_manager.get_last_zs3_index():
 				self.index = i + 2 # Skip "Save" and separator 
 
 		super().fill_list()
@@ -92,18 +91,18 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 		zs3_index = self.list_data[self.index][0]
 		if isinstance(zs3_index, int):
 			if t  == 'S':
-				self.zyngui.exit_midi_learn()
-				self.zyngui.screens['layer'].restore_zs3(zs3_index)
+				self.zyngui.state_manager.exit_midi_learn()
+				self.zyngui.state_manager.restore_zs3(zs3_index)
 				self.zyngui.close_screen()
 			elif t == 'B':
-				self.zyngui.exit_midi_learn()
+				self.zyngui.state_manager.exit_midi_learn()
 				self.zyngui.screens['zs3_options'].config(zs3_index)
 				self.zyngui.show_screen('zs3_options')
 				return True
 		elif isinstance(zs3_index, str):
 			if zs3_index == "SAVE_ZS3":
-				self.zyngui.exit_midi_learn()
-				self.zyngui.screens['layer'].save_zs3()
+				self.zyngui.state_manager.exit_midi_learn()
+				self.zyngui.state_manager.save_zs3()
 				self.zyngui.close_screen()
 				return True
 
@@ -116,7 +115,7 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 
 
 	def back_action(self):
-		self.zyngui.exit_midi_learn()
+		self.zyngui.state_manager.exit_midi_learn()
 		return False
 
 

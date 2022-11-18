@@ -114,7 +114,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		if self.chain.get_processor_count("MIDI Tool") + self.chain.get_processor_count("Audio Effect") == 0:
 			self.list_data.append((self.remove_chain, None, "Remove Chain"))
 		else:
-			self.list_data.append((self.remove_all, None, "Remove..."))
+			self.list_data.append((self.remove_cb, None, "Remove..."))
 
 		super().fill_list()
 
@@ -124,27 +124,31 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		res = []
 		indent = 0
 		# Build MIDI chain
-		for processor in self.chain.get_processors("MIDI Tool"):
-			name = processor.engine.get_name(self.chain)
-			res.append((self.processor_options, processor, "  " * indent + "├─ " + name))
+		for slot in range(self.chain.get_slot_count("MIDI Tool")):
+			procs = self.chain.get_processors("MIDI Tool")
+			num_procs = len(procs)
+			for index, processor in enumerate(procs):
+				name = processor.engine.get_name(self.chain)
+				if index == num_procs - 1:
+					res.append((self.processor_options, processor, "  " * indent + "╰─ " + name))
+				else:
+					res.append((self.processor_options, processor, "  " * indent + "├─ " + name))
 			indent += 1
-		if self.chain.get_processor_count("MIDI Tool"):
-			last_entry = list(res.pop())
-			last_entry[2] = last_entry[2].replace('├', '╰')
-			res.append(tuple(last_entry))
 		# Add synth processor
 		if self.chain.synth_processor:
 			res.append((self.processor_options, self.chain.synth_processor, "  " * indent + "╰━ " + self.chain.synth_processor.engine.get_name(self.chain)))
 			indent += 1
 		# Build audio effects chain
-		for processor in self.chain.get_processors("Audio Effect"):
-			name = processor.engine.get_name(self.chain)
-			res.append((self.processor_options, processor, "  " * indent + "┣━ " + name))
+		for slot in range(self.chain.get_slot_count("Audio Effect")):
+			procs = self.chain.get_processors("Audio Effect", slot)
+			num_procs = len(procs)
+			for index, processor in enumerate(procs):
+				name = processor.engine.get_name(self.chain)
+				if index == num_procs - 1:
+					res.append((self.processor_options, processor, "  " * indent + "┗━ " + name))
+				else:
+					res.append((self.processor_options, processor, "  " * indent + "┣━ " + name))
 			indent += 1
-		if self.chain.get_processor_count("Audio Effect"):
-			last_entry = list(res.pop())
-			last_entry[2] = last_entry[2].replace('┣', '┗')
-			res.append(tuple(last_entry))
 		return res
 
 
@@ -194,7 +198,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 
 	def processor_options(self, subchain, t='S'):
-		self.zyngui.screens['processor_options'].setup(self.chain, subchain)
+		self.zyngui.screens['processor_options'].setup(self.chain_id, subchain)
 		self.zyngui.show_screen("processor_options")
 
 
@@ -280,13 +284,13 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 	# Remove submenu
 
-	def remove_all(self):
+	def remove_cb(self):
 		options = OrderedDict()
-		if self.midifx_chains:
+		if self.chain.get_processor_count("MIDI Tool"):
 			options['Remove All MIDI-FXs'] = "midifx"
-		if self.audiofx_chains:
+		if self.chain.get_processor_count("Audio Effect"):
 			options['Remove All Audio-FXs'] = "audiofx"
-		if self.chain.midi_chan != 256:
+		if self.chain_id != "main":
 			options['Remove Chain'] = "chain"
 		self.zyngui.screens['option'].config("Remove...", options, self.remove_all_cb)
 		self.zyngui.show_screen('option')
@@ -306,7 +310,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 
 	def chain_remove_confirmed(self, params=None):
-		self.zyngui.screens['chain'].remove_root_chain(self.chain_index)
+		self.zyngui.chain_manager.remove_chain(self.chain_id)
 		self.zyngui.show_screen_reset('audio_mixer')
 
 
@@ -317,20 +321,14 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 
 	def remove_all_audiofx(self):
-		self.zyngui.show_confirm("Do you really want to remove all audio effects from this chain?", self.audiofx_reset_confirmed)
+		self.zyngui.show_confirm("Do you really want to remove all audio effects from this chain?", self.remove_all_procs_cb, "Audio Effect")
 
 
-	def audiofx_reset_confirmed(self, params=None):
-		# Remove all chains
-		for sl in self.audiofx_chains:
-			i = self.zyngui.screens['chain'].chains.index(sl)
-			self.zyngui.screens['chain'].remove_chain(i)
-
-		if self.chain in self.zyngui.screens['chain'].root_chains:
-			self.build_view()
-			self.show()
-		else:
-			self.zyngui.close_screen()
+	def remove_all_procs_cb(self, type=None):
+		for processor in self.chain.get_processors(type):
+			self.zyngui.chain_manager.remove_processor(self.chain_id, processor)
+		self.build_view()
+		self.show()
 
 
 	# MIDI-Chain management
@@ -340,20 +338,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 
 	def remove_all_midifx(self):
-		self.zyngui.show_confirm("Do you really want to remove all MIDI effects from this chain?", self.midifx_reset_confirmed)
-
-
-	def midifx_reset_confirmed(self, params=None):
-		# Remove all chains
-		for sl in self.midifx_chains:
-			i = self.zyngui.screens['chain'].chains.index(sl)
-			self.zyngui.screens['chain'].remove_chain(i)
-
-		if self.chain in self.zyngui.screens['chain'].root_chains:
-			self.build_view()
-			self.show()
-		else:
-			self.zyngui.close_screen()
+		self.zyngui.show_confirm("Do you really want to remove all MIDI effects from this chain?", self.remove_all_procs_cb, "MIDI Tool")
 
 
 	# Select Path

@@ -161,9 +161,9 @@ class zynthian_engine(zynthian_basic_engine):
 	# Initialization
 	# ---------------------------------------------------------------------------
 
-	def __init__(self, chain_manager=None):
+	def __init__(self, state_manager=None):
 		super().__init__()
-		self.chain_manager = chain_manager
+		self.state_manager = state_manager
 
 		self.custom_gui_fpath = None
 

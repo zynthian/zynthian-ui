@@ -41,7 +41,7 @@ from threading  import Thread, Lock
 
 # Zynthian specific modules
 import zynconf
-import zynautoconnect
+import zynautoconnect #TODO: Move autoconnect functions to state_manager
 
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynaudioplayer import zynaudioplayer
@@ -205,9 +205,8 @@ class zynthian_gui:
 		self.exit_wait_count = 0
 
 		self.zynmidi = None
-		self.midi_filter_script = None;
+		self.midi_filter_script = None
 		self.midi_learn_mode = False
-		self.midi_learn_zctrl = None
 
 		self.status_info = {}
 		self.status_counter = 0
@@ -393,7 +392,7 @@ class zynthian_gui:
 				self.wsleds.setPixelColor(12, self.wscolor_light)
 
 			# Light ALT button => MIDI LEARN!
-			if self.midi_learn_zctrl or self.current_screen=="zs3_learn":
+			if self.state_manager.midi_learn_zctrl or self.current_screen=="zs3_learn":
 				self.wsleds.setPixelColor(13, self.wscolor_yellow)
 			elif self.midi_learn_mode:
 				self.wsleds.setPixelColor(13, self.wscolor_active)
@@ -629,9 +628,6 @@ class zynthian_gui:
 		self.screens['pattern_editor'] = zynthian_gui_patterneditor()
 		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
 		
-		# Init Auto-connector
-		zynautoconnect.start(self.chain_manager)
-
 		# Initialize OSC
 		self.osc_init()
 
@@ -704,7 +700,7 @@ class zynthian_gui:
 			#TODO: Handle alsa mixer chain
 			if self.state_manager.amixer_chain:
 				self.state_manager.amixer_chain.refresh_controllers()
-				self.set_current_processor("alsa_mixer", save=True, populate_screens=False)
+				self.set_current_processor(self.state_manager.alsa_processor)
 			else:
 				return
 
@@ -926,11 +922,8 @@ class zynthian_gui:
 			pass
 
 	def chain_control(self, chain_id=None, processor=None):
-		if chain_id is not None: #TODO: Validate this logic
-			if chain_id in self.chain_manager.chains:
-				self._current_processor = None
-			elif self.current_processor != processor:
-				self._current_processor = self.current_processor
+		if chain_id is None:
+			chain_id = self.chain_manager.active_chain
 
 		self.set_current_processor(processor)
 
@@ -1006,25 +999,32 @@ class zynthian_gui:
 			self.show_screen("preset")
 
 
-	def set_current_processor(self, processor, save=False, populate_screens=True):
-		if processor is not None:
-			if self.current_processor != processor:
-				if save and not self.is_shown_alsa_mixer():
-					self._current_processor = self.current_processor
-				self.current_processor = processor
-			if populate_screens:
-				pass
-				#TODO: self.screens['layer'].refresh_index()
-			#TODO: Ensure mixer refreshes from active channel self.screens['audio_mixer'].select_chain_by_processor(processor, set_current_processor=False)
-			self.set_active_channel()
-		else:
-			self.current_processor = None
-
-
 	def restore_current_processor(self):
 		if self._current_processor:
 			self.set_current_processor(self._current_processor)
-			self._current_processor = None
+
+
+	def set_current_processor(self, processor):
+		"""Set current processor - store previous if setting to alsa
+		
+		processor - Processor object (None to select first processor in active chain)
+		"""
+
+		if processor is None:
+			processors = self.chain_manager.get_processors(self.chain_manager.active_chain)
+			if processors:
+				self.current_processor = processors[0]
+			else:
+				self.current_processor = None
+		else:
+			if self.current_processor != processor:
+				if processor == self.state_manager.alsa_processor and self.current_processor !=  self.state_manager.alsa_processor:
+					self._current_processor = self.current_processor
+					self.current_processor = self.state_manager.alsa_processor
+				else:
+					self.current_processor = processor
+					self._current_processor = None
+			self.set_active_channel()
 
 
 	#If "MIDI Single Active Channel" mode is enabled, set MIDI Active Channel to chain's one
@@ -1034,7 +1034,7 @@ class zynthian_gui:
 
 		if self.current_processor:
 			# Don't change anything for MIXER
-			if self.current_processor.engine.nickname == 'MX':
+			if self.current_processor == self.state_manager.alsa_processor:
 				return
 			current_chain_chan = self.current_processor.get_midi_chan()
 			if zynthian_gui_config.midi_single_active_channel and current_chain_chan is not None:
@@ -1112,44 +1112,23 @@ class zynthian_gui:
 	# MIDI learning
 	#------------------------------------------------------------------
 
-	def enter_midi_learn(self):
-		if not self.midi_learn_mode:
-			logging.debug("ENTER LEARN")
-			self.midi_learn_mode = True
-			self.midi_learn_zctrl = None
-			lib_zyncore.set_midi_learning_mode(1)
+	def set_midi_learn_mode(self, mode):
+		self.midi_learn_mode = mode
+		if mode == 1:
 			try:
-				logging.debug("ENTER LEARN => {}".format(self.current_screen))
 				self.screens[self.current_screen].enter_midi_learn()
 			except Exception as e:
 				logging.debug(e)
 				pass
-
-
-	def exit_midi_learn(self):
-		if self.midi_learn_mode or self.midi_learn_zctrl:
-			self.midi_learn_mode = False
-			self.midi_learn_zctrl = None
-			lib_zyncore.set_midi_learning_mode(0)
+		elif mode == 0:
 			try:
 				self.screens[self.current_screen].exit_midi_learn()
-			except:
+			except Exception as e:
+				logging.debug(e)
 				pass
-
-
-	def toggle_midi_learn(self):
-		try:
-			self.screens[self.current_screen].toggle_midi_learn()
-		except:
-			if self.midi_learn_mode:
-				self.exit_midi_learn()
-			else:
-				self.enter_midi_learn()
-
-
-	def init_midi_learn_zctrl(self, zctrl):
-		self.midi_learn_zctrl = zctrl
-		lib_zyncore.set_midi_learning_mode(1)
+		elif mode == 2:
+			self.screens['zs3_learn'].index = 0
+			self.show_screen("zs3_learn")
 
 
 	def refresh_midi_learn_zctrl(self):
@@ -1488,13 +1467,13 @@ class zynthian_gui:
 				self.screens['control'].midi_learn_zctrl(params[0])
 
 		elif cuia == "ENTER_MIDI_LEARN":
-			self.enter_midi_learn()
+			self.state_manager.enter_midi_learn()
 
 		elif cuia == "EXIT_MIDI_LEARN":
-			self.exit_midi_learn()
+			self.state_manager.exit_midi_learn()
 
 		elif cuia == "TOGGLE_MIDI_LEARN":
-			self.toggle_midi_learn()
+			self.state_manager.toggle_midi_learn()
 
 		elif cuia == "ACTION_MIDI_UNLEARN":
 			try:
@@ -1504,8 +1483,8 @@ class zynthian_gui:
 
 		elif cuia == "MIDI_UNLEARN_CONTROL":
 			# Unlearn from currently selected (learning) control
-			if self.midi_learn_zctrl:
-				self.midi_learn_zctrl.midi_unlearn()
+			if self.state_manager.midi_learn_zctrl:
+				self.state_manager.midi_learn_zctrl.midi_unlearn()
 
 		elif cuia == "MIDI_UNLEARN_MIXER":
 			# Unlearn all mixer controls
@@ -1575,12 +1554,12 @@ class zynthian_gui:
 	def cuia_bank_preset(self, params=None):
 		if params:
 			try:
-				self.set_current_processor(params, True)
+				self.set_current_processor(params)
 			except:
 				logging.error("Can't set chain passed as CUIA parameter!")
 		elif self.current_screen == 'control':
 			try:
-				self.set_current_processor(self.screens['control'].screen_layer, True)
+				self.set_current_processor(self.screens['control'].screen_layer)
 			except:
 				logging.warning("Can't set control screen chain! ")
 
@@ -1803,7 +1782,7 @@ class zynthian_gui:
 			self.back_screen()
 
 		elif i == 2:
-			self.toggle_midi_learn()
+			self.state_manager.toggle_midi_learn()
 
 		elif i == 3:
 			self.screens[self.current_screen].switch_select('S')
@@ -2004,8 +1983,8 @@ class zynthian_gui:
 							self.all_sounds_off()
 						elif ccnum == 123:
 							self.all_notes_off()
-						if self.midi_learn_zctrl:
-							self.midi_learn_zctrl.cb_midi_learn(chan, ccnum)
+						if self.state_manager.midi_learn_zctrl:
+							self.state_manager.midi_learn_zctrl.cb_midi_learn(chan, ccnum)
 							self.show_current_screen()
 						else:
 							self.state_manager.zynmixer.midi_control_change(chan, ccnum, ccval)
@@ -2052,8 +2031,8 @@ class zynthian_gui:
 					#logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan,ccnum,ccval))
 					if ccnum < 120:
 						# If MIDI learn pending ...
-						if self.midi_learn_zctrl:
-							self.midi_learn_zctrl.cb_midi_learn(chan, ccnum)
+						if self.state_manager.midi_learn_zctrl:
+							self.state_manager.midi_learn_zctrl.cb_midi_learn(chan, ccnum)
 							self.show_current_screen()
 						# Try chains's zctrls
 						else:
@@ -2178,6 +2157,8 @@ class zynthian_gui:
 			self.refresh_status()
 			if self.wsleds:
 				self.update_wsleds()
+			if self.midi_learn_mode != self.state_manager.midi_learn_mode:
+				self.set_midi_learn_mode(self.state_manager.midi_learn_mode)
 			sleep(0.2)
 		if self.wsleds:
 			self.end_wsleds()
@@ -2454,18 +2435,6 @@ class zynthian_gui:
 	def zynautoconnect_release_lock(self):
 		#Release Mutex Lock
 		zynautoconnect.release_lock()
-
-
-	#------------------------------------------------------------------
-	# Jackd Info
-	#------------------------------------------------------------------
-
-	def get_jackd_samplerate(self):
-		return zynautoconnect.get_jackd_samplerate()
-
-
-	def get_jackd_blocksize(self):
-		return zynautoconnect.get_jackd_blocksize()
 
 
 	#------------------------------------------------------------------

@@ -51,19 +51,25 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data = []
 
+		#TODO: Show chain name
 		mod_running = False
+		if self.chain_id == "main":
+			port_names = ["system"] #TODO: Get list of available system outputs
+		else:
+			port_names = ["mixer"]
+		jack_input_ports = list(zynautoconnect.get_audio_input_ports(True).keys())
 		for chain_id, chain in self.zyngui.chain_manager.chains.items():
 			if isinstance(chain, zynthian_engine_modui):
 				mod_running = True
-				break
+			if chain_id == self.chain_id:
+				continue
+			for processor in chain.get_processors():
+				jackname = processor.get_jackname()
+				if jackname in jack_input_ports:
+					port_names.append(jackname)
 
-		port_names = list(zynautoconnect.get_audio_input_ports(True).keys())
-		if self.chain_id == "main":
-			port_names = ["system"] + port_names
-		else:
-			port_names = ["mixer"] + port_names
 		if mod_running:
-			port_names += ["mod-ui"]
+			port_names.append("mod-ui")
 
 		for k in port_names:
 			try:
@@ -86,7 +92,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 				pass
 			"""
 
-			if k in self.chain.get_audio_out():
+			if k in self.chain.audio_out:
 				self.list_data.append((k, k, "[x] " + title))
 			else:
 				self.list_data.append((k, k, "[  ] " + title))

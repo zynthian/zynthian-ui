@@ -43,8 +43,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# Initialization
 	# ---------------------------------------------------------------------------
 
-	def __init__(self, zyngui=None, jackname=None):
-		super().__init__(zyngui)
+	def __init__(self, state_manager, jackname=None):
+		super().__init__(state_manager)
 		self.name = "AudioPlayer"
 		self.nickname = "AP"
 		self.type = "MIDI Synth"
@@ -53,7 +53,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		if jackname:
 			self.jackname = jackname
 		else:
-			self.jackname = self.get_next_jackname("audioplayer")
+			self.jackname = self.state_manager.chain_manager.get_next_jackname("audioplayer")
 
 		self.file_exts = []
 		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"

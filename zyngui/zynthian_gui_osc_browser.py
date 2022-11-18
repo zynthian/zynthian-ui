@@ -59,10 +59,10 @@ class zynthian_gui_osc_browser(zynthian_gui_selector):
 	def get_osc_paths(self, path=''):
 		self.list_data=[]
 		if path=='root':
-			self.osc_path="/part"+str(zyngui.curlayer.get_midi_chan())+"/"
+			self.osc_path="/part"+str(self.zyngui.current_processor.get_midi_chan())+"/"
 		else:
 			self.osc_path=self.osc_path+path
-		liblo.send(zyngui.osc_target, "/path-search",self.osc_path,"")
+		liblo.send(self.zyngui.osc_target, "/path-search",self.osc_path,"")
 		logging.debug("OSC /path-search "+self.osc_path)
 
 	def select_action(self, i):
@@ -76,16 +76,16 @@ class zynthian_gui_osc_browser(zynthian_gui_selector):
 			parts=self.osc_path.split('/')
 			if len(parts)>1:
 				title=parts[-2]+" "+title
-			zyngui.screens['control'].zcontrollers_config[2]=(title[:-2],self.osc_path+path,64,127) #TODO
-			liblo.send(zyngui.osc_target, self.osc_path+path)
-			zyngui.show_screen('control')
+			self.zyngui.screens['control'].zcontrollers_config[2]=(title[:-2],self.osc_path+path,64,127) #TODO
+			liblo.send(self.zyngui.osc_target, self.osc_path+path)
+			self.zyngui.show_screen('control')
 		elif tnode=='bool':
 			#TODO: Toogle the value!!
-			liblo.send(zyngui.osc_target, self.osc_path+path,True)
-			zyngui.show_screen('control')
+			liblo.send(self.zyngui.osc_target, self.osc_path+path,True)
+			self.zyngui.show_screen('control')
 
 	def set_select_path(self):
-		self.select_path.set(zyngui.zyngine.get_presetpath())
+		self.select_path.set(self.zyngui.zyngine.get_presetpath())
 
 
 #-------------------------------------------------------------------------------

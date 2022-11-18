@@ -493,7 +493,7 @@ class zynthian_controller:
 				logging.error(e)
 
 			# Call GUI method
-			self.engine.zyngui.init_midi_learn_zctrl(self)
+			self.engine.state_manager.init_midi_learn_zctrl(self)
 
 
 	def midi_unlearn(self):
@@ -509,7 +509,7 @@ class zynthian_controller:
 
 			if unlearned:
 				# Call GUI method & Return success
-				self.engine.zyngui.refresh_midi_learn_zctrl()
+				self.engine.state_manager.refresh_midi_learn_zctrl() #TODO: Update UI
 				return True
 			else:
 				return False
@@ -553,7 +553,7 @@ class zynthian_controller:
 
 			if learned:
 				# Call GUI method & Return success
-				self.engine.zyngui.exit_midi_learn()
+				self.engine.state_manager.exit_midi_learn()
 				return True
 			else:
 				return False
@@ -563,7 +563,7 @@ class zynthian_controller:
 
 	def _cb_midi_learn(self, chan, cc):
 		if self._set_midi_learn(chan, cc):
-			self.engine.zyngui.exit_midi_learn()
+			self.engine.state_manager.chain_manager.exit_midi_learn()
 			return True
 
 

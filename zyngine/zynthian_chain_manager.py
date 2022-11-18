@@ -43,14 +43,18 @@ class zynthian_chain_manager():
 
     single_layer_engines = ["BF", "MD", "PT", "PD", "AE", "CS", "SL"]
 
-    def __init__(self):
+    def __init__(self, state_manager):
         """ Create an instance of a chain manager
 
         Manages chains of audio and MIDI processors.
         Each chain consists of zero or more slots.
         Each slot may contain one or more processors.
+
+        state_manager - State manager object
         """
 
+        logging.warning("Creating chain manager")
+        self.state_manager = state_manager
         self.chains = {}  # Map of chain objects indexed by chain id
         self.zyngine_counter = 0 # Appended to engine names for uniqueness
         self.zyngines = OrderedDict()  # List of instantiated engines
@@ -68,8 +72,6 @@ class zynthian_chain_manager():
         self.engine_info = OrderedDict([
             ["SL", ("SooperLooper", "SooperLooper",
                 "Audio Effect", None, zynthian_engine_sooperlooper, True)],
-            ["AI", ("AudioInput", "Audio Input",
-                "Audio Effect", None, zynthian_engine_audio_in, False)],
             ["MX", ("Mixer", "ALSA Mixer",
                 "MIXER", None, zynthian_engine_alsa_mixer, True)],
             ["ZY", ("ZynAddSubFX", "ZynAddSubFX - Synthesizer",
@@ -465,12 +467,11 @@ class zynthian_chain_manager():
     # Engine Management
     # ------------------------------------------------------------------------
 
-    def start_engine(self, processor, engine, jackname=None):
+    def start_engine(self, processor, engine):
         """Starts or reuse an existing engine
 
         processor - processor owning engine
         engine - Engine nickname (short code)
-        jackname - Prefered jackname
         Returns - engine object
         """
 
@@ -480,12 +481,12 @@ class zynthian_chain_manager():
             if engine[0:3] == "JV/":
                 engine = "JV/{}".format(self.zyngine_counter)
                 self.zyngines[engine] = zynthian_engine_class(
-                    info[0], info[2], self, False, jackname)
-            elif engine in ["SF", "AI"]:
+                    info[0], info[2], self, False)
+            elif engine in ["SF"]:
                 engine = "{}/{}".format(engine, self.zyngine_counter)
-                self.zyngines[engine] = zynthian_engine_class(jackname)
-            else:
                 self.zyngines[engine] = zynthian_engine_class()
+            else:
+                self.zyngines[engine] = zynthian_engine_class(self.state_manager)
 
         processor.set_engine(self.zyngines[engine])
         self.zyngine_counter += 1
@@ -595,16 +596,16 @@ class zynthian_chain_manager():
 
         if zynthian_gui_config.midi_bank_change and ccnum==0:
             for chain in self.midi_chan_2_chain[chan]:
-                for processor in chain.get_processors:
+                for processor in chain.get_processors():
                     processor.midi_bank_msb(ccval)
         elif zynthian_gui_config.midi_bank_change and ccnum==32:
             for chain in self.midi_chan_2_chain[chan]:
-                for processor in chain.get_processors:
+                for processor in chain.get_processors():
                     processor.midi_bank_lsb(ccval)
         else:
             for chain in self.midi_chan_2_chain[chan]:
-                for processor in chain.get_processors:
-                  chain.midi_control_change(chan, ccnum, ccval)
+                for processor in chain.get_processors():
+                  processor.midi_control_change(chan, ccnum, ccval)
             #TODO: self.amixer_layer.midi_control_change(chan, ccnum, ccval)
 
 

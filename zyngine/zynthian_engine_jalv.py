@@ -158,8 +158,8 @@ class zynthian_engine_jalv(zynthian_engine):
 	# Initialization
 	#----------------------------------------------------------------------------
 
-	def __init__(self, plugin_name, plugin_type, chain_manager, dryrun=False, jackname=None):
-		super().__init__(chain_manager)
+	def __init__(self, plugin_name, plugin_type, state_manager, dryrun=False, jackname=None):
+		super().__init__(state_manager)
 
 		self.type = plugin_type
 		self.name = "Jalv/" + plugin_name
@@ -190,7 +190,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			if jackname:
 				self.jackname = jackname
 			else:
-				self.jackname = self.chain_manager.get_next_jackname(self.plugin_name)
+				self.jackname = self.state_manager.chain_manager.get_next_jackname(self.plugin_name)
 
 			logging.debug("CREATING JALV ENGINE => {}".format(self.jackname))
 

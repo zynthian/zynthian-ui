@@ -23,7 +23,6 @@
 #
 # *****************************************************************************
 
-import collections
 import logging
 from collections import OrderedDict
 
@@ -122,6 +121,8 @@ class zynthian_chain:
     def rebuild_audio_graph(self):
         """Build dictionary of lists of destinations mapped by destination"""
 
+        #TODO: This is called too frequently
+        #TODO: Handle side-chaining - maybe manually curate list of sidechain destinations
         try:
             zynautoconnect.acquire_lock()
         except:
@@ -135,7 +136,7 @@ class zynthian_chain:
                 if i == 0:
                     # First slot fed from synth or chain input
                     if self.synth_processor:
-                        sources = self.synth_processor.get_jackname()
+                        sources = [self.synth_processor.get_jackname()]
                     elif self.audio_thru:
                         sources = self.audio_in
                     self.audio_routes[processor.get_jackname()] = sources
@@ -143,19 +144,26 @@ class zynthian_chain:
                     for prev_proc in self.audio_slots[i - 1]:
                         sources.append(prev_proc.get_jackname())
                     self.audio_routes[processor.get_jackname()] = sources
-        mixer_source = []
-        if self.audio_slots:
-            for source in self.audio_slots[-1]:
-                mixer_source.append(source.get_jackname())
-        elif self.synth_processor:
-            mixer_source.append([self.synth_processor.get_jackname()])
-        elif self.audio_thru:
-            mixer_source = self.audio_in
+
         if self.mixer_chan is not None:
-            self.audio_routes["zynmixer:input_{:02d}".format(self.mixer_chan + 1)] = mixer_source
+            mixer_source = []
+            if self.audio_slots:
+                # Routing from last audio processor
+                for source in self.audio_slots[-1]:
+                    mixer_source.append(source.get_jackname())
+            elif self.synth_processor:
+                # Routing from synth processor
+                mixer_source.append(self.synth_processor.get_jackname())
+            elif self.audio_thru:
+                # Routing from capture ports
+                mixer_source = self.audio_in
+            for output in self.get_audio_out():
+                self.audio_routes[output] = mixer_source
+            if "mixer" not in self.audio_out:
+                self.audio_routes["zynmixer:input_{:02d}".format(self.mixer_chan + 1)] = []
 
         try:
-            zynautoconnect.release_lock()
+                zynautoconnect.release_lock()
         except:
             pass # May be before zynautoconnect started
 
@@ -186,7 +194,7 @@ class zynthian_chain:
                     sources.append(prev_proc.get_jackname())
             else:
                 sources = self.midi_in
-            self.midi_routes[self.synth_processor.get_jackname()] = sources
+            self.midi_routes[self.synth_processor.engine.jackname] = sources
         elif len(self.midi_slots) == 0 and self.audio_thru:
             for output in self.midi_out:
                 self.midi_routes[output] = self.midi_in
@@ -204,12 +212,10 @@ class zynthian_chain:
     def get_audio_out(self):
         """Get list of audio playback ports"""
 
-        return self.audio_out
         audio_out = []
         for output in self.audio_out:
             if output == "mixer":
-                audio_out.append("zynmixer:in_{}a".format(self.chain.mixer_chan))
-                audio_out.append("zynmixer:in_{}b".format(self.chain.mixer_chan))
+                audio_out.append("zynmixer:input_{:02d}".format(self.mixer_chan + 1))
             else:
                 audio_out.append(output)
         return audio_out
@@ -218,12 +224,11 @@ class zynthian_chain:
     def toggle_audio_out(self, jackname):
         """Toggle processor audio output"""
 
-        audio_out = self.get_audio_out()
-        if jackname not in audio_out:
-            audio_out.append(jackname)
+        if jackname not in self.audio_out:
+            self.audio_out.append(jackname)
         else:
             try:
-                audio_out.remove(jackname)
+                self.audio_out.remove(jackname)
             except:
                 pass
         logging.debug("Toggling Audio Output: {}".format(jackname))

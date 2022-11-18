@@ -128,8 +128,8 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	# Initialization
 	#----------------------------------------------------------------------------
 
-	def __init__(self, zyngui=None):
-		super().__init__(zyngui)
+	def __init__(self, state_manager=None):
+		super().__init__(state_manager)
 		self.name = "ZynAddSubFX"
 		self.nickname = "ZY"
 		self.jackname = "zynaddsubfx"
@@ -139,13 +139,13 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		self.osc_target_port = 6693
 
 		try:
-			self.sr = int(self.zyngui.get_jackd_samplerate())
+			self.sr = int(self.state_manager.get_jackd_samplerate())
 		except Exception as e:
 			logging.error(e)
 			self.sr = 44100
 
 		try:
-			self.bs = int(self.zyngui.get_jackd_blocksize())
+			self.bs = int(self.state_manager.get_jackd_blocksize())
 		except Exception as e:
 			logging.error(e)
 			self.bs = 256

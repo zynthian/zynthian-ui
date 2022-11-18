@@ -59,6 +59,7 @@ class zynthian_processor:
         self.engine = None
         self.name = type_info[0]
         self.midi_chan = None
+        self.jackname = None
 
         self.bank_list = []
         self.bank_index = 0
@@ -97,6 +98,8 @@ class zynthian_processor:
     def get_jackname(self):
         """ Get the jackname for the processor's engine"""
 
+        if self.jackname:
+            return self.jackname
         if self.engine:
             return self.engine.jackname
         return ''

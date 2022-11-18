@@ -253,7 +253,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def get_new_filename(self):
 		try:
-			parts = self.zyngui.curlayer.get_presetpath().split('#',2)
+			parts = self.zyngui.current_processor.get_presetpath().split('#',2)
 			file_name = parts[1].replace("/",";").replace(">",";").replace(" ; ",";")
 		except:
 			file_name = "jack_capture"

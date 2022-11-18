@@ -839,8 +839,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		for chan in range(self.zynmixer.get_max_channels()):
 			self.zynmixer.enable_dpm(chan, True)
 		self.refresh_visible_strips()
-		if self.selected_chain:
-			self.select_chain_by_index(self.selected_chain.mixer_chan)
+		try:
+			self.selected_chain_index = int(self.zyngui.chain_manager.active_chain)
+		except:
+			self.selected_chain_index = self.number_chains
+		self.select_chain_by_index(self.selected_chain_index)
 		self.setup_zynpots()
 
 
@@ -892,7 +895,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to select chain by index
 	#	chain_index: Index of chain to select (0..quantity of chains)
-	def select_chain_by_index(self, chain_index, set_curchain=True):
+	def select_chain_by_index(self, chain_index):
 		if chain_index is None:
 			return
 		if chain_index < 0 :
@@ -915,8 +918,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.highlight_selected_chain()
 
-		if set_curchain and self.selected_chain:
-			self.zyngui.chain_manager.set_active_chain_by_object(self.selected_chain) #TODO: Lose this re-entrant loop
+		if self.selected_chain:
+			self.zyngui.chain_manager.set_active_chain_by_object(self.selected_chain)
 
 
 	# Function refresh and populate visible mixer strips
@@ -953,7 +956,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, type='S'):
 		if type == "S" and not self.midi_learning:
-			self.zyngui.chain_control(self.selected_chain)
+			self.zyngui.chain_control()
 		elif type == "B":
 			# Chain Options
 			self.zyngui.chain_manager.set_active_chain_by_object(self.selected_chain)
@@ -964,7 +967,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle BACK action
 	def back_action(self):
 		if self.midi_learning:
-			self.zyngui.exit_midi_learn()
+			self.zyngui.state_manager.exit_midi_learn()
 			return True
 
 
@@ -1137,7 +1140,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			zctrl.midi_unlearn()
 		else:
 			self.midi_unlearn_all()
-		self.zyngui.exit_midi_learn()
+		self.zyngui.state_manager.exit_midi_learn()
 
 
 #--------------------------------------------------------------------------

@@ -27,10 +27,12 @@ import base64
 import logging
 
 # Zynthian specific modules
+import zynautoconnect
 from zyngine.zynthian_chain_manager import *
 from zyngui.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngine import zynthian_engine_audio_mixer
 from zynlibs.zynseq import zynseq
+from zyncoder.zyncore import lib_zyncore
 
 
 # ----------------------------------------------------------------------------
@@ -45,7 +47,8 @@ class zynthian_state_manager():
         Manages full Zynthian state, i.e. snapshot
         """
 
-        self.chain_manager = zynthian_chain_manager()
+        logging.warning("Creating state manager")
+        self.chain_manager = zynthian_chain_manager(self)
         self.last_snapshot_fpath = None
         self.last_snapshot_count = 0 # Increments each time a snapshot is loaded - modules may use to update if required
         self.reset_zs3()
@@ -56,20 +59,27 @@ class zynthian_state_manager():
         self.zynmixer = zynthian_engine_audio_mixer.zynmixer()
         self.zynseq = zynseq.zynseq()
 
-    def reset(self):
-        self.last_snapshot_fpath = None
-        self.chain_manager.reset_clone()
-        self.chain_manager.reset_note_range()
-        self.chain_manager.remove_all_layers(True)
-        self.reset_midi_profile()
+        self.midi_learn_zctrl = None
+        self.midi_learn_mode = 0 # 0:Disabled, 1:MIDI Learn, 2:ZS3 Learn
+        self.learned_zs3 = []
+        self.last_zs3_index = 0
 
+        # Init Auto-connector
+        zynautoconnect.start(self.chain_manager)
+
+    def reset(self):
+        zynautoconnect.stop()
+        self.last_snapshot_fpath = None
+        #TODO: self.chain_manager.reset_clone()
+        #TODO: self.chain_manager.reset_note_range()
+        self.chain_manager.remove_all_chains(True)
+        self.reset_midi_profile()
 
     def create_amixer_chain(self):
         self.amixer_chain  = zynthian_chain()
         self.chain_manager.add_processor("amixer", 'MX')
-        processor = zynthian_processor.zynthian_processor(self.chain_manager.engine_info["MX"])
-        self.amixer_chain.insert_processor(processor)
-
+        self.alsa_processor = zynthian_processor.zynthian_processor(self.chain_manager.engine_info["MX"])
+        self.amixer_chain.insert_processor(self.alsa_processor)
 
     #----------------------------------------------------------------------------
     # Snapshot Save & Load
@@ -470,13 +480,10 @@ class zynthian_state_manager():
             else:
                 if 'engine_jackname' in lss:
                     jackname = lss['engine_jackname']
-                elif lss['engine_nick'] == "AI":
-                    # There must be only one AI per audio mixer input
-                    jackname = "audioin-{:02d}".format(lss['midi_chan'])
                 else:
                     jackname = None
                 engine = self.zyngui.screens['engine'].start_engine(lss['engine_nick'], jackname)
-                self.layers.append(zynthian_layer(engine, lss['midi_chan'], self.zyngui))
+                #TODO: self.layers.append(zynthian_layer(engine, lss['midi_chan'], self.zyngui))
 
         # Finally, stop all unused engines
         self.zyngui.screens['engine'].stop_unused_engines()
@@ -666,3 +673,73 @@ class zynthian_state_manager():
                 state['layers'][j] = None
             except:
                 pass
+
+    #------------------------------------------------------------------
+    # Jackd Info
+    #------------------------------------------------------------------
+
+    def get_jackd_samplerate(self):
+        """Get the samplerate that jackd is running"""
+        return zynautoconnect.get_jackd_samplerate()
+
+
+    def get_jackd_blocksize(self):
+        """Get the block size used by jackd"""
+        return zynautoconnect.get_jackd_blocksize()
+
+    #------------------------------------------------------------------
+    # MIDI learning
+    #------------------------------------------------------------------
+
+    def init_midi_learn_zctrl(self, zctrl):
+        """Initialise a zcontroller midi learn
+        
+        zctrl - zcontroller object
+        """
+        
+        self.midi_learn_zctrl = zctrl
+        lib_zyncore.set_midi_learning_mode(1)
+    
+    def enter_midi_learn(self):
+        """Enter MIDI learn mode"""
+
+        if not self.midi_learn_mode:
+            logging.debug("ENTER LEARN")
+            self.midi_learn_mode = 1
+            self.midi_learn_zctrl = None
+            lib_zyncore.set_midi_learning_mode(1)
+
+
+    def exit_midi_learn(self):
+        """Exit MIDI learn mode"""
+
+        if self.midi_learn_mode or self.midi_learn_zctrl:
+            self.midi_learn_mode = 0
+            self.midi_learn_zctrl = None
+            lib_zyncore.set_midi_learning_mode(0)
+
+    def toggle_midi_learn(self):
+        """Toggle MIDI learn mode"""
+
+        if self.midi_learn_mode:
+            if zynthian_gui_config.midi_prog_change_zs3:
+                self.midi_learn_mode = 2
+                self.midi_learn_zctrl = None
+            else:
+                self.exit_midi_learn()
+        else:
+            self.enter_midi_learn()
+
+    #------------------------------------------------------------------
+    # Autoconnect access
+    #------------------------------------------------------------------
+
+    def zynautoconnect_audio(self):
+        """Trigger audio graph connections"""
+
+        zynautoconnect.audio_autoconnect(True)
+
+    def zynautoconnect_midi(self):
+        """Trigger midi graph connections"""
+
+        zynautoconnect.midi_autoconnect(True)
