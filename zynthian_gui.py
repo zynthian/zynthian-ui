@@ -23,7 +23,6 @@
 #
 #******************************************************************************
 
-import os
 import sys
 import copy
 import liblo
@@ -35,21 +34,17 @@ import rpi_ws281x
 from time import sleep
 from pathlib import Path
 from time import monotonic
-from glob import glob
 from datetime import datetime
 from threading  import Thread, Lock
 
 # Zynthian specific modules
 import zynconf
-import zynautoconnect #TODO: Move autoconnect functions to state_manager
-
+from zyngine import zynthian_state_manager
+from zyngine import zyngine_config 
 from zyncoder.zyncore import lib_zyncore
-from zynlibs.zynaudioplayer import zynaudioplayer
 from zynlibs.zynseq import *
 
 from zyngine import zynthian_zcmidi
-from zyngine import zynthian_midi_filter
-from zyngine import zynthian_state_manager
 from zyngine.zynthian_chain import *
 
 from zyngui import zynthian_gui_config
@@ -205,14 +200,9 @@ class zynthian_gui:
 		self.exit_wait_count = 0
 
 		self.zynmidi = None
-		self.midi_filter_script = None
 		self.midi_learn_mode = False
 
-		self.status_info = {}
 		self.status_counter = 0
-
-		self.zynautoconnect_audio_flag = False
-		self.zynautoconnect_midi_flag = False
 
 		self.audio_player = None
 
@@ -271,11 +261,11 @@ class zynthian_gui:
 	# ---------------------------------------------------------------------------
 
 	def init_wsleds(self):
-		if zynthian_gui_config.wiring_layout == "Z2_V1":
+		if zyngine_config.wiring_layout == "Z2_V1":
 			# LEDS with PWM1 (pin 13, channel 1)
 			pin = 13
 			chan = 1
-		elif zynthian_gui_config.wiring_layout in ("Z2_V2", "Z2_V3"):
+		elif zyngine_config.wiring_layout in ("Z2_V2", "Z2_V3"):
 			# LEDS with SPI0 (pin 10, channel 0)
 			pin = 10
 			chan = 0
@@ -400,7 +390,7 @@ class zynthian_gui:
 				self.wsleds.setPixelColor(13, self.wscolor_light)
 
 			# REC/PLAY Audio buttons:
-			if 'audio_recorder' in self.status_info:
+			if 'audio_recorder' in self.state_manager.status_info:
 				self.wsleds.setPixelColor(14, self.wscolor_red)
 			else:
 				self.wsleds.setPixelColor(14, self.wscolor_light)
@@ -415,19 +405,19 @@ class zynthian_gui:
 					self.wsleds.setPixelColor(15, self.wscolor_red)
 				elif pb_status == zynseq.SEQ_STOPPED:
 					self.wsleds.setPixelColor(15, self.wscolor_light)
-			elif 'audio_player' in self.status_info:
+			elif 'audio_player' in self.state_manager.status_info:
 				self.wsleds.setPixelColor(15, self.wscolor_active)
 			else:
 				self.wsleds.setPixelColor(15, self.wscolor_light)
 
 			# REC/PLAY MIDI buttons:
-			if self.status_info['midi_recorder']:
-				if "REC" in self.status_info['midi_recorder']:
+			if self.state_manager.status_info['midi_recorder']:
+				if "REC" in self.state_manager.status_info['midi_recorder']:
 					self.wsleds.setPixelColor(16, self.wscolor_red)
 				else:
 					self.wsleds.setPixelColor(16, self.wscolor_light)
 
-				if "PLAY" in self.status_info['midi_recorder']:
+				if "PLAY" in self.state_manager.status_info['midi_recorder']:
 					self.wsleds.setPixelColor(17, self.wscolor_active)
 				else:
 					self.wsleds.setPixelColor(17, self.wscolor_light)
@@ -463,49 +453,7 @@ class zynthian_gui:
 			logging.error(e)
 
 		self.wsleds_blink_count += 1
-		
 
-	# ---------------------------------------------------------------------------
-	# MIDI Router Init & Config
-	# ---------------------------------------------------------------------------
-
-	def init_midi(self):
-		try:
-			#Set Global Tuning
-			self.fine_tuning_freq = zynthian_gui_config.midi_fine_tuning
-			lib_zyncore.set_midi_filter_tuning_freq(ctypes.c_double(self.fine_tuning_freq))
-			#Set MIDI Master Channel
-			lib_zyncore.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
-			#Set MIDI CC automode
-			lib_zyncore.set_midi_filter_cc_automode(zynthian_gui_config.midi_cc_automode)
-			#Set MIDI System Messages flag
-			lib_zyncore.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
-			#Setup MIDI filter rules
-			if self.midi_filter_script:
-				self.midi_filter_script.clean()
-			self.midi_filter_script = zynthian_midi_filter.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
-
-		except Exception as e:
-			logging.error("ERROR initializing MIDI : {}".format(e))
-
-
-	def init_midi_services(self):
-		#Start/Stop MIDI aux. services
-		self.screens['admin'].default_rtpmidi()
-		self.screens['admin'].default_qmidinet()
-		self.screens['admin'].default_touchosc()
-		self.screens['admin'].default_aubionotes()
-
-
-	def reload_midi_config(self):
-		zynconf.load_config()
-		midi_profile_fpath=zynconf.get_midi_config_fpath()
-		if midi_profile_fpath:
-			zynconf.load_config(True,midi_profile_fpath)
-			zynthian_gui_config.set_midi_config()
-			self.init_midi()
-			self.init_midi_services()
-			self.zynautoconnect()
 
 	# ---------------------------------------------------------------------------
 	# OSC Management
@@ -549,7 +497,7 @@ class zynthian_gui:
 			#Execute action
 			self.callable_ui_action(parts[2].upper(), args)
 			#Run autoconnect if needed
-			self.zynautoconnect_do()
+			self.state_manager.zynautoconnect_do()
 		elif part1 in ("MIXER", "DAWOSC"):
 			part2 = parts[2].upper()
 			if part2 in ("HEARTBEAT", "SETUP"):
@@ -635,7 +583,7 @@ class zynthian_gui:
 		snapshot_loaded = False
 		# Try to load "last_state" snapshot ...
 		#TODO: Move this to later (after display shown) and give indication of progress to avoid apparent hang during startup
-		if zynthian_gui_config.restore_last_state:
+		if zyngine_config.restore_last_state:
 			snapshot_loaded = self.screens['snapshot'].load_last_state_snapshot()
 		# Try to load "default" snapshot ...
 		if not snapshot_loaded:
@@ -647,9 +595,9 @@ class zynthian_gui:
 		# or set empty state & show main menu
 		else:
 			# Init MIDI Subsystem => MIDI Profile
-			self.init_midi()
-			self.init_midi_services()
-			self.zynautoconnect()
+			self.state_manager.init_midi()
+			self.state_manager.init_midi_services()
+			self.state_manager.zynautoconnect()
 			# Show initial screen
 			self.show_screen('main')
 
@@ -660,7 +608,7 @@ class zynthian_gui:
 		self.start_status_thread()
 
 		# Run autoconnect if needed
-		self.zynautoconnect_do()
+		self.state_manager.zynautoconnect_do()
 
 		# Initialize MPE Zones
 		#self.init_mpe_zones(0, 2)
@@ -668,7 +616,6 @@ class zynthian_gui:
 
 	def stop(self):
 		logging.info("STOPPING ZYNTHIAN-UI ...")
-		zynautoconnect.stop()
 		self.state_manager.reset()
 		self.screens['midi_recorder'].stop_playing() # Need to stop timing thread
 		#self.zyntransport.stop()
@@ -1037,7 +984,7 @@ class zynthian_gui:
 			if self.current_processor == self.state_manager.alsa_processor:
 				return
 			current_chain_chan = self.current_processor.get_midi_chan()
-			if zynthian_gui_config.midi_single_active_channel and current_chain_chan is not None:
+			if zyngine_config.midi_single_active_channel and current_chain_chan is not None:
 				if current_chain_chan >= 16:
 					return
 				active_chan = current_chain_chan
@@ -1062,7 +1009,7 @@ class zynthian_gui:
 
 
 	def is_single_active_channel(self):
-		return zynthian_gui_config.midi_single_active_channel
+		return zyngine_config.midi_single_active_channel
 
 
 	def clean_all(self):
@@ -1072,40 +1019,9 @@ class zynthian_gui:
 		self.state_manager.reset()
 		self.state_manager.zynmixer.reset_state()
 		self.state_manager.zynseq.load("")
+		self.state_manager_zynautoconnect.start(self.chain_manager)
 		self.show_screen_reset('main')
 		self.state_manager.zynmixer.set_mute(256, 0)
-
-
-	def start_audio_player(self):
-		filename = self.state_manager.audio_recorder.filename
-		if not filename or not os.path.exists(filename):
-			if os.path.ismount(self.state_manager.audio_recorder.capture_dir_usb):
-				path = self.state_manager.audio_recorder.capture_dir_usb
-			else:
-				path = self.state_manager.audio_recorder.capture_dir_sdc
-			files = glob('{}/*.wav'.format(path))
-			if files:
-				filename = max(files, key=os.path.getctime)
-			else:
-				return
-
-		if not self.audio_player:
-			try:
-				self.chain_manager.add_chain('aux')
-				self.audio_player = self.chain_manager.add_processor("aux", "AP", CHAIN_MODE_PARALLEL)
-				zynautoconnect.audio_connect_aux(self.audio_player.jackname)
-			except Exception as e:
-				self.stop_audio_player()
-				return
-		self.audio_player.engine.set_preset(self.audio_player, [filename])
-		self.audio_player.engine.player.set_position(16, 0.0)
-		self.audio_player.engine.player.start_playback(16)
-		self.status_info['audio_player'] = 'PLAY'
-
-
-	def stop_audio_player(self):
-		if self.audio_player:
-			self.audio_player.engine.player.stop_playback(16)
 
 
 	#------------------------------------------------------------------
@@ -1582,7 +1498,7 @@ class zynthian_gui:
 
 
 	def custom_switch_ui_action(self, i, t):
-		action_config = zynthian_gui_config.custom_switch_ui_actions[i]
+		action_config = zyngine_config.custom_switch_ui_actions[i]
 		if t in action_config:
 			cuia = action_config[t]
 			if cuia and cuia!="NONE":
@@ -1608,9 +1524,9 @@ class zynthian_gui:
 	# Init Standard Zynswitches
 	def zynswitches_init(self):
 		if not lib_zyncore: return
-		logging.info("INIT {} ZYNSWITCHES ...".format(zynthian_gui_config.num_zynswitches))
+		logging.info("INIT {} ZYNSWITCHES ...".format(zyngine_config.num_zynswitches))
 		ts=datetime.now()
-		self.dtsw = [ts] * (zynthian_gui_config.num_zynswitches + 4)
+		self.dtsw = [ts] * (zyngine_config.num_zynswitches + 4)
 
 
 	# Initialize custom switches, analog I/O, TOF sensors, etc.
@@ -1619,7 +1535,7 @@ class zynthian_gui:
 		logging.info("CUSTOM I/O SETUP...")
 
 		# Configure Custom Switches
-		for i, event in enumerate(zynthian_gui_config.custom_switch_midi_events):
+		for i, event in enumerate(zyngine_config.custom_switch_midi_events):
 			if event is not None:
 				swi = 4 + i
 				if event['chan'] is not None:
@@ -1635,7 +1551,7 @@ class zynthian_gui:
 					logging.info("MIDI ZYNSWITCH {}: DISABLED!".format(swi))
 
 		# Configure Zynaptik Analog Inputs (CV-IN)
-		for i, event in enumerate(zynthian_gui_config.zynaptik_ad_midi_events):
+		for i, event in enumerate(zyngine_config.zynaptik_ad_midi_events):
 			if event is not None:
 				if event['chan'] is not None:
 					midi_chan = event['chan']
@@ -1650,7 +1566,7 @@ class zynthian_gui:
 					logging.info("ZYNAPTIK CV-IN {}: DISABLED!".format(i))
 
 		# Configure Zynaptik Analog Outputs (CV-OUT)
-		for i, event in enumerate(zynthian_gui_config.zynaptik_da_midi_events):
+		for i, event in enumerate(zyngine_config.zynaptik_da_midi_events):
 			if event is not None:
 				if event['chan'] is not None:
 					midi_chan = event['chan']
@@ -1665,7 +1581,7 @@ class zynthian_gui:
 					logging.info("ZYNAPTIK CV-OUT {}: DISABLED!".format(i))
 
 		# Configure Zyntof Inputs (Distance Sensor)
-		for i, event in enumerate(zynthian_gui_config.zyntof_midi_events):
+		for i, event in enumerate(zyngine_config.zyntof_midi_events):
 			if event is not None:
 				if event['chan'] is not None:
 					midi_chan = event['chan']
@@ -1683,15 +1599,15 @@ class zynthian_gui:
 	def zynswitches(self):
 		if not lib_zyncore: return
 		i = 0
-		while i<=zynthian_gui_config.last_zynswitch_index:
-			dtus = lib_zyncore.get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
+		while i <= zyngine_config.last_zynswitch_index:
+			dtus = lib_zyncore.get_zynswitch(i, zyngine_config.zynswitch_long_us)
 			if dtus < 0:
 				pass
 			elif dtus == 0:
 				self.zynswitch_push(i)
-			elif dtus>zynthian_gui_config.zynswitch_long_us:
+			elif dtus>zyngine_config.zynswitch_long_us:
 				self.zynswitch_long(i)
-			elif dtus>zynthian_gui_config.zynswitch_bold_us:
+			elif dtus>zyngine_config.zynswitch_bold_us:
 				# Double switches must be bold!!! => by now ...
 				if not self.zynswitch_double(i):
 					self.zynswitch_bold(i)
@@ -1908,9 +1824,9 @@ class zynthian_gui:
 				#logging.info("MIDI_UI MESSAGE: {}".format(hex(ev)))
 
 				if (ev & 0xFF0000) == 0xF80000:
-					self.status_info['midi_clock'] = True
+					self.state_manager.status_info['midi_clock'] = True
 				else:
-					self.status_info['midi'] = True
+					self.state_manager.status_info['midi'] = True
 
 				evtype = (ev & 0xF00000) >> 20
 				chan = (ev & 0x0F0000) >> 16
@@ -1918,7 +1834,7 @@ class zynthian_gui:
 				#logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))
 
 				# System Messages
-				if zynthian_gui_config.midi_sys_enabled and evtype == 0xF:
+				if zyngine_config.midi_sys_enabled and evtype == 0xF:
 					# Song Position Pointer...
 					if chan == 0x1:
 						timecode = (ev & 0xFF) >> 8;
@@ -1950,20 +1866,20 @@ class zynthian_gui:
 						pass
 
 				# Master MIDI Channel ...
-				elif chan == zynthian_gui_config.master_midi_channel:
+				elif chan == zyngine_config.master_midi_channel:
 					logging.info("MASTER MIDI MESSAGE: %s" % hex(ev))
 					self.start_loading()
 					# Webconf configured messages for Snapshot Control ...
-					if ev == zynthian_gui_config.master_midi_program_change_up:
+					if ev == zyngine_config.master_midi_program_change_up:
 						logging.debug("PROGRAM CHANGE UP!")
 						self.screens['snapshot'].midi_program_change_up()
-					elif ev == zynthian_gui_config.master_midi_program_change_down:
+					elif ev == zyngine_config.master_midi_program_change_down:
 						logging.debug("PROGRAM CHANGE DOWN!")
 						self.screens['snapshot'].midi_program_change_down()
-					elif ev == zynthian_gui_config.master_midi_bank_change_up:
+					elif ev == zyngine_config.master_midi_bank_change_up:
 						logging.debug("BANK CHANGE UP!")
 						self.screens['snapshot'].midi_bank_change_up()
-					elif ev == zynthian_gui_config.master_midi_bank_change_down:
+					elif ev == zyngine_config.master_midi_bank_change_down:
 						logging.debug("BANK CHANGE DOWN!")
 						self.screens['snapshot'].midi_bank_change_down()
 					# Program Change => Snapshot Load
@@ -1975,7 +1891,7 @@ class zynthian_gui:
 					elif evtype == 0xB:
 						ccnum = (ev & 0x7F00) >> 8
 						ccval = (ev & 0x007F)
-						if ccnum == zynthian_gui_config.master_midi_bank_change_ccnum:
+						if ccnum == zyngine_config.master_midi_bank_change_ccnum:
 							bnk = (ev & 0x7F)
 							logging.debug("BANK CHANGE %d" % bnk)
 							self.screens['snapshot'].midi_bank_change(bnk)
@@ -2010,7 +1926,7 @@ class zynthian_gui:
 							self.close_screen()
 					# Set Preset or ZS3 (sub-snapshot), depending of config option
 					else:
-						if zynthian_gui_config.midi_prog_change_zs3:
+						if zyngine_config.midi_prog_change_zs3:
 							res = self.screens['layer'].set_midi_prog_zs3(chan, pgm) #TODO
 						else:
 							res = self.screens['layer'].set_midi_prog_preset(chan, pgm) # TODO
@@ -2048,7 +1964,7 @@ class zynthian_gui:
 				elif evtype == 0x9:
 					self.screens['midi_chan'].midi_chan_activity(chan)
 					#Preload preset (note-on)
-					if self.current_screen == 'preset' and zynthian_gui_config.preset_preload_noteon and chan == self.current_processor.get_midi_chan():
+					if self.current_screen == 'preset' and zyngine_config.preset_preload_noteon and chan == self.current_processor.get_midi_chan():
 						self.start_loading()
 						self.screens['preset'].preselect_action()
 						self.stop_loading()
@@ -2087,7 +2003,7 @@ class zynthian_gui:
 			self.osc_receive()
 
 			# Run autoconnect if pending
-			self.zynautoconnect_do()
+			self.state_manager.zynautoconnect_do()
 
 			# Refresh GUI controllers every 4 cycles
 			if j > 4:
@@ -2168,21 +2084,21 @@ class zynthian_gui:
 		try:
 			if zynthian_gui_config.show_cpu_status:
 				# Get CPU Load
-				#self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
-				self.status_info['cpu_load'] = zynautoconnect.get_jackd_cpu_load()
+				#self.state_manager.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
+				self.state_manager.status_info['cpu_load'] = self.status_counter.zynautoconnect.get_jackd_cpu_load()
 			else:
 				# Get audio peak level
-				self.status_info['peakA'] = self.state_manager.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 0)
-				self.status_info['peakB'] = self.state_manager.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 1)
-				self.status_info['holdA'] = self.state_manager.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 0)
-				self.status_info['holdB'] = self.state_manager.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 1)
+				self.state_manager.status_info['peakA'] = self.state_manager.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 0)
+				self.state_manager.status_info['peakB'] = self.state_manager.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 1)
+				self.state_manager.status_info['holdA'] = self.state_manager.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 0)
+				self.state_manager.status_info['holdB'] = self.state_manager.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 1)
 
 			# Get SOC sensors (once each 5 refreshes)
 			if self.status_counter>5:
 				self.status_counter = 0
 
-				self.status_info['overtemp'] = False
-				self.status_info['undervoltage'] = False
+				self.state_manager.status_info['overtemp'] = False
+				self.state_manager.status_info['undervoltage'] = False
 
 				if self.hwmon_thermal_file and self.hwmon_undervolt_file:
 					try:
@@ -2190,7 +2106,7 @@ class zynthian_gui:
 						res = int(self.hwmon_thermal_file.read())/1000
 						#logging.debug("CPU Temperature => {}".format(res))
 						if res > self.overtemp_warning:
-							self.status_info['overtemp'] = True
+							self.state_manager.status_info['overtemp'] = True
 					except Exception as e:
 						logging.error(e)
 
@@ -2198,7 +2114,7 @@ class zynthian_gui:
 						self.hwmon_undervolt_file.seek(0)
 						res = self.hwmon_undervolt_file.read()
 						if res == "1":
-							self.status_info['undervoltage'] = True
+							self.state_manager.status_info['undervoltage'] = True
 					except Exception as e:
 						logging.error(e)
 
@@ -2207,41 +2123,41 @@ class zynthian_gui:
 						self.get_throttled_file.seek(0)
 						thr = int('0x%s' % self.get_throttled_file.read(), 16)
 						if thr & 0x1:
-							self.status_info['undervoltage'] = True
+							self.state_manager.status_info['undervoltage'] = True
 						elif thr & (0x4 | 0x2):
-							self.status_info['overtemp'] = True
+							self.state_manager.status_info['overtemp'] = True
 					except Exception as e:
 						logging.error(e)
 
 				else:
-					self.status_info['overtemp'] = True
-					self.status_info['undervoltage'] = True
+					self.state_manager.status_info['overtemp'] = True
+					self.state_manager.status_info['undervoltage'] = True
 
 			else:
 				self.status_counter += 1
 
 			# Get Recorder Status
 			try:
-				self.status_info['midi_recorder'] = self.screens['midi_recorder'].get_status()
+				self.state_manager.status_info['midi_recorder'] = self.screens['midi_recorder'].get_status()
 			except Exception as e:
 				logging.error(e)
 			
 			# Remove Player
 			if self.audio_player and self.audio_player.engine and not self.audio_player.engine.player.get_playback_state(16):
 				self.chain_manager.remove_processor("aux", self.audio_player)
-				if 'audio_player' in self.status_info:
-					self.status_info.pop('audio_player')
+				if 'audio_player' in self.state_manager.status_info:
+					self.state_manager.status_info.pop('audio_player')
 
 			# Refresh On-Screen Status
 			try:
-				self.screens[self.current_screen].refresh_status(self.status_info)
+				self.screens[self.current_screen].refresh_status(self.state_manager.status_info)
 			except AttributeError:
 				pass
 
-			# Clean some status_info
-			self.status_info['xrun'] = False
-			self.status_info['midi'] = False
-			self.status_info['midi_clock'] = False
+			# Clean some state_manager.status_info
+			self.state_manager.status_info['xrun'] = False
+			self.state_manager.status_info['midi'] = False
+			self.state_manager.status_info['midi_clock'] = False
 
 		except Exception as e:
 			logging.exception(e)
@@ -2276,7 +2192,7 @@ class zynthian_gui:
 			timeout = 10
 			if self.exit_wait_count == 0:
 				logging.info("EXITING ZYNTHIAN-UI...")
-			if self.exit_wait_count < timeout and (self.control_thread.is_alive() or self.status_thread.is_alive() or self.loading_thread.is_alive() or zynautoconnect.is_running()):
+			if self.exit_wait_count < timeout and (self.control_thread.is_alive() or self.status_thread.is_alive() or self.loading_thread.is_alive() or self.state_manager.zynautoconnect.is_running()):
 				self.exit_wait_count += 1
 			else:
 				if self.exit_wait_count == timeout:
@@ -2287,7 +2203,7 @@ class zynthian_gui:
 						logging.error("Status thread failed to terminate")
 					if self.loading_thread.is_alive():
 						logging.error("Loading thread failed to terminate")
-					if zynautoconnect.is_running():
+					if self.state_manager.zynautoconnect.is_running():
 						logging.error("Auto-connect thread failed to terminate")
 				zynthian_gui_config.top.quit()
 				return
@@ -2384,58 +2300,6 @@ class zynthian_gui:
 			lib_zyncore.ctrlfb_send_ccontrol_change(0xF, 0x06, upper_n_chans)
 
 
-	#------------------------------------------------------------------
-	# Autoconnect
-	#------------------------------------------------------------------
-
-
-	def zynautoconnect(self, force=False):
-		if force:
-			self.zynautoconnect_midi_flag = False
-			zynautoconnect.midi_autoconnect(True)
-			self.zynautoconnect_audio_flag = False
-			zynautoconnect.audio_autoconnect(True)
-		else:
-			self.zynautoconnect_midi_flag = True
-			self.zynautoconnect_audio_flag = True
-
-
-	def zynautoconnect_midi(self, force=False):
-		if force:
-			self.zynautoconnect_midi_flag = False
-			zynautoconnect.midi_autoconnect(True)
-		else:
-			self.zynautoconnect_midi_flag = True
-
-
-	def zynautoconnect_audio(self, force=False):
-		if force:
-			self.zynautoconnect_audio_flag = False
-			zynautoconnect.audio_autoconnect(True)
-		else:
-			self.zynautoconnect_audio_flag = True
-
-
-	def zynautoconnect_do(self):
-		if self.exit_flag:
-			return
-		if self.zynautoconnect_midi_flag:
-			self.zynautoconnect_midi_flag = False
-			zynautoconnect.midi_autoconnect(True)
-		if self.zynautoconnect_audio_flag:
-			self.zynautoconnect_audio_flag = False
-			zynautoconnect.audio_autoconnect(True)
-
-
-	def zynautoconnect_acquire_lock(self):
-		#Get Mutex Lock
-		zynautoconnect.acquire_lock()
-
-
-	def zynautoconnect_release_lock(self):
-		#Release Mutex Lock
-		zynautoconnect.release_lock()
-
 
 	#------------------------------------------------------------------
 	# Zynthian Config Info
@@ -2492,7 +2356,7 @@ def flushflush():
 	zynthian_gui_config.top.after(200, flushflush)
 
 
-if zynthian_gui_config.wiring_layout=="EMULATOR":
+if zyngine_config.wiring_layout=="EMULATOR":
 	top_xid = zynthian_gui_config.top.winfo_id()
 	print("Zynthian GUI XID: " + str(top_xid))
 	if len(sys.argv) > 1:

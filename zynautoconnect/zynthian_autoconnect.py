@@ -30,8 +30,8 @@ from threading  import Thread, Lock
 from collections import OrderedDict
 
 # Zynthian specific modules
-from zyncoder.zyncore import get_lib_zyncore
-from zyngui import zynthian_gui_config
+from zyncoder.zyncore import lib_zyncore
+from zyngine import zyngine_config
 
 #-------------------------------------------------------------------------------
 # Configure logging
@@ -53,9 +53,9 @@ refresh_time = 2
 jclient = None
 thread = None
 exit_flag = False
+state_manager = None
 chain_manager = None
 
-lib_zyncore = get_lib_zyncore()
 
 last_hw_str = None
 max_num_devs = 16
@@ -156,7 +156,7 @@ def midi_autoconnect(force=False):
 		hw_in = []
 
 	#Add Aubio MIDI out port ...
-	if zynthian_gui_config.midi_aubionotes_enabled:
+	if zyngine_config.midi_aubionotes_enabled:
 		aubio_out = jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
 		try:
 			hw_out.append(aubio_out[0])
@@ -246,7 +246,7 @@ def midi_autoconnect(force=False):
 	for hwp in hw_in:
 		try:
 			port_alias_id = get_port_alias_id(hwp)
-			if port_alias_id in zynthian_gui_config.enabled_midi_out_ports:
+			if port_alias_id in zyngine_config.enabled_midi_out_ports:
 				enabled_hw_ports[port_alias_id] = hwp
 				routed_in["MIDI-OUT"].append(hwp)
 		except:
@@ -259,7 +259,7 @@ def midi_autoconnect(force=False):
 		zmip = jclient.get_ports(nwp, is_input=True, is_physical=False, is_midi=True)
 		try:
 			port_alias_id = get_port_alias_id(zmip[0])
-			if port_alias_id in zynthian_gui_config.enabled_midi_out_ports:
+			if port_alias_id in zyngine_config.enabled_midi_out_ports:
 				enabled_nw_ports[port_alias_id] = zmip[0]
 				routed_in["NET-OUT"].append(zmip[0])
 		except:
@@ -276,7 +276,7 @@ def midi_autoconnect(force=False):
 		#logger.debug("Connecting MIDI Input {} => {}".format(hw,zmr_in['main_in']))
 		try:
 			#If the device is marked as disabled, disconnect from all dev ports
-			if port_alias_id in zynthian_gui_config.disabled_midi_in_ports:
+			if port_alias_id in zyngine_config.disabled_midi_in_ports:
 				for i in range(16):
 					jclient.disconnect(hw,zmr_in['dev{}_in'.format(i)])
 			 #else ...
@@ -300,21 +300,21 @@ def midi_autoconnect(force=False):
 	#logger.debug("Connecting RTP-MIDI & QMidiNet to ZynMidiRouter:net_in ...")
 
 	#Connect RTP-MIDI output to ZynMidiRouter:net_in
-	if zynthian_gui_config.midi_rtpmidi_enabled:
+	if zyngine_config.midi_rtpmidi_enabled:
 		try:
 			jclient.connect("jackrtpmidid:rtpmidi_out", zmr_in['net_in'])
 		except:
 			pass
 
 	#Connect QMidiNet output to ZynMidiRouter:net_in
-	if zynthian_gui_config.midi_network_enabled:
+	if zyngine_config.midi_network_enabled:
 		try:
 			jclient.connect("QmidiNet:out_1", zmr_in['net_in'])
 		except:
 			pass
 
 	#Connect TouchOSC output to ZynMidiRouter:net_in
-	if zynthian_gui_config.midi_touchosc_enabled:
+	if zyngine_config.midi_touchosc_enabled:
 		try:
 			jclient.connect("RtMidiOut Client:TouchOSC Bridge", zmr_in['net_in'])
 		except:
@@ -355,7 +355,7 @@ def midi_autoconnect(force=False):
 			lib_zyncore.zmop_chain_set_flag_droppc(processor.midi_chan, int(processor.engine.options['drop_pc']))
 
 	# When "Send All MIDI to Output" is enabled, zynseq & zynsmf are routed thru ZynMidiRouter:midi_out
-	if zynthian_gui_config.midi_filter_output:
+	if zyngine_config.midi_filter_output:
 
 		# ... enabled Hardware MIDI Output Ports
 		for paid, hwport in enabled_hw_ports.items():
@@ -443,7 +443,7 @@ def midi_autoconnect(force=False):
 	#Connect ZynMidiRouter:ctrl_out to enabled MIDI-FB ports (MIDI-Controller FeedBack)
 	for hw in hw_in:
 		try:
-			if get_port_alias_id(hw) in zynthian_gui_config.enabled_midi_fb_ports:
+			if get_port_alias_id(hw) in zyngine_config.enabled_midi_fb_ports:
 				jclient.connect(zmr_out['ctrl_out'], hw)
 			else:
 				jclient.disconnect(zmr_out['ctrl_out'], hw)
@@ -550,7 +550,7 @@ def audio_autoconnect(force=False):
 	#Get System Capture ports => jack output ports!!
 	capture_ports = get_audio_capture_ports()
 	capture_ports += jclient.get_ports('zynmixer:send')
-	if zynthian_gui_config.midi_aubionotes_enabled:
+	if zyngine_config.midi_aubionotes_enabled:
 		#Get Aubio Input ports...
 		aubio_in = jclient.get_ports("aubio", is_input=True, is_audio=True)
 		if len(aubio_in) > 0:
@@ -672,11 +672,12 @@ def release_lock():
 	lock.release()
 
 
-def start(cm):
-	global refresh_time, exit_flag, jclient, thread, lock, chain_manager
+def start(sm):
+	global refresh_time, exit_flag, jclient, thread, lock, chain_manager, state_manager
 	refresh_time = 2
 	exit_flag = False
-	chain_manager = cm
+	state_manager = sm
+	chain_manager = sm.chain_manager
 
 	try:
 		jclient = jack.Client("Zynthian_autoconnect")
@@ -711,7 +712,7 @@ def is_running():
 
 def cb_jack_xrun(delayed_usecs: float):
 	logger.warning("Jack Audio XRUN! => delayed {}us".format(delayed_usecs))
-	zynthian_gui_config.zyngui.status_info['xrun'] = True
+	state_manager.status_info['xrun'] = True
 
 
 def get_jackd_cpu_load():

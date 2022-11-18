@@ -21,6 +21,7 @@ __all__ = [
 	#"zynthian_engine_csound",
 	#"zynthian_engine_transport"
 ]
+#from zyngine.zyngine_config import *
 #from zyngine.zynthian_midi import *
 from zyngine.zynthian_zcmidi import *
 from zyngine.zynthian_midi_filter import *

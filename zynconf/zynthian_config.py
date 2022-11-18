@@ -24,7 +24,6 @@
 
 import os
 import re
-import sys
 import socket
 import psutil
 import logging
@@ -149,7 +148,7 @@ CustomUiAction = [
 	"ZYNPAD",
 	"ZCTRL_TOUCH",
 	"LEARN"
-];
+]
 
 #-------------------------------------------------------------------------------
 # Global variables

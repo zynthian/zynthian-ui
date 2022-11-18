@@ -29,6 +29,7 @@ from datetime import datetime
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config
+from zyngine import zyngine_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
@@ -65,12 +66,12 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 		self.list_data=[]
 		if self.mode=='ADD' or self.mode=='SET':
 			for i in self.zyngui.chain_manager.get_free_midi_chans():
-				if i == zynthian_gui_config.master_midi_channel:
+				if i == zyngine_config.master_midi_channel:
 					continue
 				self.list_data.append((str(i + 1), i, "MIDI CH#" + str(i + 1)))
 		elif self.mode=='CLONE':
 			for i in self.chan_list:
-				if i in (self.midi_chan, zynthian_gui_config.master_midi_channel):
+				if i in (self.midi_chan, zyngine_config.master_midi_channel):
 					continue
 				elif lib_zyncore.get_midi_filter_clone(self.midi_chan, i):
 					cc_to_clone = lib_zyncore.get_midi_filter_clone_cc(self.midi_chan, i).nonzero()[0]
@@ -147,7 +148,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 
 
 	def midi_chan_activity(self, chan):
-		if self.shown and self.mode!='CLONE' and not zynthian_gui_config.midi_single_active_channel and not self.zyngui.zynseq.libseq.transportGetPlayStatus():
+		if self.shown and self.mode!='CLONE' and not zyngine_config.midi_single_active_channel and not self.zyngui.zynseq.libseq.transportGetPlayStatus():
 			i = self.get_midi_chan_index(chan)
 			if i is not None and i!=self.index:
 				dts = (datetime.now()-self.last_index_change_ts).total_seconds()

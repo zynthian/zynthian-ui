@@ -30,6 +30,7 @@ from datetime import datetime
 # Zynthian specific modules
 from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
+from zyngine import zyngine_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
 
@@ -199,7 +200,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.zselector.show()
 		else:
 			zselector_ctrl = zynthian_controller(None ,self.selector_caption, self.selector_caption, { 'value_max':len(self.list_data), 'value':self.index })
-			self.zselector = zynthian_gui_controller(zynthian_gui_config.select_ctrl, self.main_frame, zselector_ctrl, zs_hidden, selcounter=True)
+			self.zselector = zynthian_gui_controller(zyngine_config.select_ctrl, self.main_frame, zselector_ctrl, zs_hidden, selcounter=True)
 		if not self.zselector_hidden:
 			self.zselector.grid(row=zynthian_gui_config.layout['ctrl_pos'][3][0], column=zynthian_gui_config.layout['ctrl_pos'][3][1], sticky="news")
 
