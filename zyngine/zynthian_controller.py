@@ -27,7 +27,7 @@ import liblo
 import logging
 
 # Zynthian specific modules
-from zyncoder.zyncore import lib_zyncore
+from zyncoder.zyncore import get_lib_zyncore
 from zyngui import zynthian_gui_config
 
 class zynthian_controller:
@@ -360,7 +360,7 @@ class zynthian_controller:
 							#logging.debug("Sending OSC Controller '{}', {} => {}".format(self.symbol, self.osc_path, self.get_ctrl_osc_val()))
 
 						elif self.midi_cc:
-							lib_zyncore.ui_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
+							get_lib_zyncore().ui_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
 							logging.debug("Sending MIDI Controller '{}', CH{}#CC{}={}".format(self.symbol, self.midi_chan, self.midi_cc, mval))
 
 					except Exception as e:
@@ -369,10 +369,10 @@ class zynthian_controller:
 			# Send feedback to MIDI controllers
 			try:
 				if self.midi_learn_cc:
-					lib_zyncore.ctrlfb_send_ccontrol_change(self.midi_learn_chan, self.midi_learn_cc, mval)
+					get_lib_zyncore().ctrlfb_send_ccontrol_change(self.midi_learn_chan, self.midi_learn_cc, mval)
 					#logging.debug("Sending learned MIDI controller feedback '{}' => CH{}, CC{}, Val={}".format(self.symbol, self.midi_learn_chan, self.midi_learn_cc, mval))
 				elif self.midi_cc:
-					lib_zyncore.ctrlfb_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
+					get_lib_zyncore().ctrlfb_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
 					#logging.debug("Sending MIDI Controller feedback '{}' => CH{}, CC{}, Val={}".format(self.symbol, self.midi_chan, self.midi_cc, mval))
 
 			except Exception as e:

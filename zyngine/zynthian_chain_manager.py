@@ -64,7 +64,7 @@ class zynthian_chain_manager():
             self.midi_chan_2_chain.append(set())
 
         self.update_engine_info()
-        self.add_chain("main", enable_audio_thru=True)
+        self.add_chain("main", 256, enable_audio_thru=True)
 
     def update_engine_info(self):
         """Update dictionary of available engines"""
@@ -332,36 +332,34 @@ class zynthian_chain_manager():
                 break
         return self.active_chain
 
-    def next_chain(self):
+    def next_chain(self, nudge=1):
         """Select the next chain as active
 
+        nudge - Quantity of chains to step (may be negative, default: 1)
         Returns - Index of selected chain
         """
 
         chain_keys = sorted(self.chains)
         try:
-            index = chain_keys.index(self.active_chain) + 1
+            index = chain_keys.index(self.active_chain) + nudge
         except:
             index = 0
 
-        if len(chain_keys) > index:
-            self.select_chain(chain_keys[index])
+        if index >= len(chain_keys):
+            self.active_chain = chain_keys[-1]
+        elif index <= 0:
+            self.active_chain = chain_keys[0]
+        else:
+            self.active_chain = chain_keys[index]
         return self.active_chain
 
-    def previous_chain(self):
+    def previous_chain(self, nudge=1):
         """Select the previous chain as active
+
+        nudge - Quantity of chains to step (may be negative, default: 1)
         Returns - Index of selected chain
         """
-
-        chain_keys = sorted(self.chains)
-        try:
-            index = chain_keys.index(self.active_chain) - 1
-        except:
-            index = 0
-
-        if len(chain_keys) > index and index >= 0:
-            self.select_chain(chain_keys[index])
-        return self.active_chain
+        return self.next_chain(-nudge)
 
     def get_active_chain(self):
         """Get the active chain object or None if no active chain"""
@@ -481,10 +479,10 @@ class zynthian_chain_manager():
             if engine[0:3] == "JV/":
                 engine = "JV/{}".format(self.zyngine_counter)
                 self.zyngines[engine] = zynthian_engine_class(
-                    info[0], info[2], self, False)
+                    info[0], info[2], self.state_manager, False)
             elif engine in ["SF"]:
                 engine = "{}/{}".format(engine, self.zyngine_counter)
-                self.zyngines[engine] = zynthian_engine_class()
+                self.zyngines[engine] = zynthian_engine_class(self.state_manager)
             else:
                 self.zyngines[engine] = zynthian_engine_class(self.state_manager)
 

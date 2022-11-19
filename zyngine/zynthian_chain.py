@@ -69,7 +69,7 @@ class zynthian_chain:
         self.mixer_chan = midi_chan # Mixer channel to connect audio output
         self.midi_thru = enable_midi_thru # True to pass MIDI if chain empty
         self.audio_thru = enable_audio_thru # True to pass audio if chain empty
-        # self.status = "" # Arbiatry status text TODO: Move to UI
+        self.status = "" # Arbitary status text
         self.reset()
 
     def reset(self, types=[]):

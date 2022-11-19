@@ -40,7 +40,7 @@ from threading  import Thread, Lock
 # Zynthian specific modules
 import zynconf
 from zyngine import zynthian_state_manager
-from zyncoder.zyncore import lib_zyncore
+from zyncoder.zyncore import get_lib_zyncore
 from zynlibs.zynseq import *
 
 from zyngine import zynthian_zcmidi
@@ -185,8 +185,6 @@ class zynthian_gui:
 		
 		self.current_processor = None
 		self._current_processor = None
-
-		self.dtsw = []
 
 		self.loading = 0
 		self.loading_thread = None
@@ -979,14 +977,14 @@ class zynthian_gui:
 				if current_chain_chan >= 16:
 					return
 				active_chan = current_chain_chan
-				cur_active_chan = lib_zyncore.get_midi_active_chan()
+				cur_active_chan = get_lib_zyncore().get_midi_active_chan()
 				if cur_active_chan == active_chan:
 					return
 				logging.debug("ACTIVE CHAN: {} => {}".format(cur_active_chan, active_chan))
 				#if cur_active_chan >= 0:
 				#	self.all_notes_off_chan(cur_active_chan)
 
-		lib_zyncore.set_midi_active_chan(active_chan)
+		get_lib_zyncore().set_midi_active_chan(active_chan)
 		self.state_manager.zynswitches_midi_setup(current_chain_chan)
 
 
@@ -1509,10 +1507,10 @@ class zynthian_gui:
 
 
 	def zynswitches(self):
-		if not lib_zyncore: return
+		if not get_lib_zyncore(): return
 		i = 0
 		while i <= zynthian_gui_config.last_zynswitch_index:
-			dtus = lib_zyncore.get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
+			dtus = get_lib_zyncore().get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
 			if dtus < 0:
 				pass
 			elif dtus == 0:
@@ -1636,10 +1634,10 @@ class zynthian_gui:
 
 
 	def zynswitch_double(self, i):
-		self.dtsw[i] = datetime.now()
+		self.state_manager.dtsw[i] = datetime.now()
 		for j in range(4):
 			if j == i: continue
-			if abs((self.dtsw[i] - self.dtsw[j]).total_seconds()) < 0.3:
+			if abs((self.state_manager.dtsw[i] - self.state_manager.dtsw[j]).total_seconds()) < 0.3:
 				self.start_loading()
 				dswstr = str(i) + '+' + str(j)
 				logging.debug('Double Switch ' + dswstr)
@@ -1729,8 +1727,8 @@ class zynthian_gui:
 
 	def zynmidi_read(self):
 		try:
-			while lib_zyncore:
-				ev = lib_zyncore.read_zynmidi()
+			while get_lib_zyncore():
+				ev = get_lib_zyncore().read_zynmidi()
 				if ev == 0: break
 
 				#logging.info("MIDI_UI MESSAGE: {}".format(hex(ev)))
@@ -2159,33 +2157,33 @@ class zynthian_gui:
 	def all_sounds_off(self):
 		logging.info("All Sounds Off!")
 		for chan in range(16):
-			lib_zyncore.ui_send_ccontrol_change(chan, 120, 0)
+			get_lib_zyncore().ui_send_ccontrol_change(chan, 120, 0)
 
 
 	def all_notes_off(self):
 		logging.info("All Notes Off!")
 		for chan in range(16):
-			lib_zyncore.ui_send_ccontrol_change(chan, 123, 0)
+			get_lib_zyncore().ui_send_ccontrol_change(chan, 123, 0)
 
 
 	def raw_all_notes_off(self):
 		logging.info("Raw All Notes Off!")
-		lib_zyncore.ui_send_all_notes_off()
+		get_lib_zyncore().ui_send_all_notes_off()
 
 
 	def all_sounds_off_chan(self, chan):
 		logging.info("All Sounds Off for channel {}!".format(chan))
-		lib_zyncore.ui_send_ccontrol_change(chan, 120, 0)
+		get_lib_zyncore().ui_send_ccontrol_change(chan, 120, 0)
 
 
 	def all_notes_off_chan(self, chan):
 		logging.info("All Notes Off for channel {}!".format(chan))
-		lib_zyncore.ui_send_ccontrol_change(chan, 123, 0)
+		get_lib_zyncore().ui_send_ccontrol_change(chan, 123, 0)
 
 
 	def raw_all_notes_off_chan(self, chan):
 		logging.info("Raw All Notes Off for channel {}!".format(chan))
-		lib_zyncore.ui_send_all_notes_off_chan(chan)
+		get_lib_zyncore().ui_send_all_notes_off_chan(chan)
 
 
 	#------------------------------------------------------------------
@@ -2197,19 +2195,19 @@ class zynthian_gui:
 		if not isinstance(lower_n_chans, int) or lower_n_chans < 0 or lower_n_chans > 0xF:
 			logging.error("Can't initialize MPE Lower Zone. Incorrect num of channels ({})".format(lower_n_chans))
 		else:
-			lib_zyncore.ctrlfb_send_ccontrol_change(0x0, 0x79, 0x0)
-			lib_zyncore.ctrlfb_send_ccontrol_change(0x0, 0x64, 0x6)
-			lib_zyncore.ctrlfb_send_ccontrol_change(0x0, 0x65, 0x0)
-			lib_zyncore.ctrlfb_send_ccontrol_change(0x0, 0x06, lower_n_chans)
+			get_lib_zyncore().ctrlfb_send_ccontrol_change(0x0, 0x79, 0x0)
+			get_lib_zyncore().ctrlfb_send_ccontrol_change(0x0, 0x64, 0x6)
+			get_lib_zyncore().ctrlfb_send_ccontrol_change(0x0, 0x65, 0x0)
+			get_lib_zyncore().ctrlfb_send_ccontrol_change(0x0, 0x06, lower_n_chans)
 
 		# Configure Upper Zone
 		if not isinstance(upper_n_chans, int) or upper_n_chans < 0 or upper_n_chans > 0xF:
 			logging.error("Can't initialize MPE Upper Zone. Incorrect num of channels ({})".format(upper_n_chans))
 		else:
-			lib_zyncore.ctrlfb_send_ccontrol_change(0xF, 0x79, 0x0)
-			lib_zyncore.ctrlfb_send_ccontrol_change(0xF, 0x64, 0x6)
-			lib_zyncore.ctrlfb_send_ccontrol_change(0xF, 0x65, 0x0)
-			lib_zyncore.ctrlfb_send_ccontrol_change(0xF, 0x06, upper_n_chans)
+			get_lib_zyncore().ctrlfb_send_ccontrol_change(0xF, 0x79, 0x0)
+			get_lib_zyncore().ctrlfb_send_ccontrol_change(0xF, 0x64, 0x6)
+			get_lib_zyncore().ctrlfb_send_ccontrol_change(0xF, 0x65, 0x0)
+			get_lib_zyncore().ctrlfb_send_ccontrol_change(0xF, 0x06, upper_n_chans)
 
 
 
@@ -2255,7 +2253,7 @@ def zynpot_cb(i, dval):
 		logging.exception(err)
 
 
-lib_zyncore.setup_zynpot_cb(zynpot_cb)
+get_lib_zyncore().setup_zynpot_cb(zynpot_cb)
 
 
 #------------------------------------------------------------------------------

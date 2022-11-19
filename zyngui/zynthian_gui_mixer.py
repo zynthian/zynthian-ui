@@ -25,14 +25,13 @@
 #******************************************************************************
 
 import os
-import copy
 import tkinter
 import logging
 
 # Zynthian specific modules
 from . import zynthian_gui_base
 from . import zynthian_gui_config
-from zyncoder.zyncore import lib_zyncore
+from zyncoder.zyncore import get_lib_zyncore
 
 #------------------------------------------------------------------------------
 # Zynthian Mixer Strip Class
@@ -236,7 +235,7 @@ class zynthian_gui_mixer_strip():
 
 
 	def refresh_status(self):
-		if self.parent.zyngui.audio_recorder.is_armed(self.chain.mixer_chan):
+		if self.parent.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan):
 			self.parent.main_canvas.itemconfig(self.status_indicator, text="{}\uf111".format(self.chain.status), fill=self.high_color)
 		else:
 			self.parent.main_canvas.itemconfig(self.status_indicator, text=self.chain.status, fill="#009000")
@@ -614,7 +613,8 @@ class zynthian_gui_mixer_strip():
 			self.enable_midi_learn('level')
 		self.fader_drag_start = event
 		if self.chain:
-			self.parent.select_chain_by_object(self.chain)
+			self.parent.zyngui.chain_manager.set_active_chain_by_object(self.chain)
+			self.parent.highlight_selected_chain()
 
 
 	# Function to handle fader drag
@@ -749,11 +749,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.zynmixer.set_ctrl_update_cb(self.ctrl_change_cb)
 		self.MAIN_MIXBUS_STRIP_INDEX = self.zynmixer.get_max_channels()
 		self.chan2strip = [None] * (self.MAIN_MIXBUS_STRIP_INDEX + 1)
+		self.highlighted_strip = None
 
 		self.pending_refresh_queue = set() # List of (strip,control) requiring gui refresh (control=None for whole strip refresh)
 		self.midi_learning = False
 
-		self.number_chains = 0 # Quantity of chains
 		visible_chains = zynthian_gui_config.visible_mixer_strips # Maximum quantity of mixer strips to display (Defines strip width. Main always displayed.)
 		if visible_chains < 1:
 			# Automatic sizing if not defined in config
@@ -778,8 +778,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		# Arrays of GUI elements for mixer strips - Chains + Main
 		self.visible_mixer_strips = [None] * visible_chains # List of mixer strip objects indexed by horizontal position on screen
-		self.selected_chain_index = 0
-		self.highlighted_strip = None
+		#TODO: Lose this: self.selected_chain_index = 0
+		#TODO: Lose this: self.highlighted_strip = None
 		self.mixer_strip_offset = 0 # Index of first mixer strip displayed on far left
 		self.selected_chain = None
 
@@ -836,14 +836,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle showing display
 	def build_view(self):
 		self.set_title()
+		#TODO: Check user setting to enable DPM
 		for chan in range(self.zynmixer.get_max_channels()):
 			self.zynmixer.enable_dpm(chan, True)
 		self.refresh_visible_strips()
-		try:
-			self.selected_chain_index = int(self.zyngui.chain_manager.active_chain)
-		except:
-			self.selected_chain_index = self.number_chains
-		self.select_chain_by_index(self.selected_chain_index)
+		self.show_active_chain()
 		self.setup_zynpots()
 
 
@@ -879,71 +876,80 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to highlight the selected chain's strip
 	def highlight_selected_chain(self):
-		if self.selected_chain_index is None:
-			return
-		if self.selected_chain_index >= self.number_chains:
+		strip = None
+		if self.zyngui.chain_manager.active_chain == "main":
 			strip = self.main_mixbus_strip
-		elif self.selected_chain_index - self.mixer_strip_offset < 0 or self.selected_chain_index - self.mixer_strip_offset >= len(self.visible_mixer_strips):
-			return
 		else:
-			strip = self.visible_mixer_strips[self.selected_chain_index - self.mixer_strip_offset]
+			chain = self.zyngui.chain_manager.get_chain(self.zyngui.chain_manager.active_chain)
+			for s in self.visible_mixer_strips:
+				if s.chain == chain:
+					strip = s
+					break
 		if self.highlighted_strip and self.highlighted_strip != strip:
 			self.highlighted_strip.set_highlight(False)
 		self.highlighted_strip = strip
+		if strip is None:
+			return
 		self.highlighted_strip.set_highlight(True)
 
 
-	# Function to select chain by index
-	#	chain_index: Index of chain to select (0..quantity of chains)
-	def select_chain_by_index(self, chain_index):
-		if chain_index is None:
-			return
-		if chain_index < 0 :
-			chain_index = 0
-		if chain_index > self.number_chains:
-			chain_index = self.number_chains
-		self.selected_chain_index = chain_index
-
-		if self.selected_chain_index < self.mixer_strip_offset:
-			self.mixer_strip_offset = chain_index
-			self.refresh_visible_strips()
-		elif self.selected_chain_index >= self.mixer_strip_offset + len(self.visible_mixer_strips) and self.selected_chain_index != self.number_chains:
-			self.mixer_strip_offset = self.selected_chain_index - len(self.visible_mixer_strips) + 1
-			self.refresh_visible_strips()
-
-		if self.selected_chain_index < self.number_chains:
-			self.selected_chain = self.zyngui.chain_manager.get_chain(str(self.selected_chain_index))
-		else:
-			self.selected_chain = self.zyngui.chain_manager.get_chain("main")
-
+	def show_active_chain(self):
+		try:
+			id = int(self.zyngui.chain_manager.active_chain)
+			lower = self.visible_mixer_strips[0]
+			if lower and lower.chain.mixer_chan > id:
+				# Need to refresh visible strips
+				self.first_visible_chain = id
+				self.refresh_visible_strips()
+			else:
+				upper = None
+				for s in self.visible_mixer_strips:
+					if s:
+						upper = s
+					else:
+						break
+				if upper and upper.chain.mixer_chan <= id:
+					self.first_visible_chain = id #TODO: Get right offset
+					self.refresh_visible_strips()
+		except:
+			pass
 		self.highlight_selected_chain()
-
-		if self.selected_chain:
-			self.zyngui.chain_manager.set_active_chain_by_object(self.selected_chain)
 
 
 	# Function refresh and populate visible mixer strips
 	def refresh_visible_strips(self):
-		for index in range(len(self.chan2strip)):
-			self.chan2strip[index] = None
+		"""Update the structures describing the visible strips
+		
+		visible_mixer_strips is an array of UI strips
+		Set strip.chain to None to hide strip
+		"""
 
-		self.number_chains = self.zyngui.chain_manager.get_chain_count() - 1
-		self.main_mixbus_strip.set_chain(self.zyngui.chain_manager.get_chain("main"))
-		for offset in range(len(self.visible_mixer_strips)):
-			index = self.mixer_strip_offset + offset
-			if index >= self.number_chains:
-				self.visible_mixer_strips[offset].set_chain(None)
-				self.visible_mixer_strips[offset].zctrls = None
+		offset = 0
+		for midi_chan in range(16):
+			chain_id = str(midi_chan)
+			chain = self.zyngui.chain_manager.get_chain(chain_id)
+			if chain:
+				self.chan2strip[midi_chan] = self.visible_mixer_strips[offset]
+				if offset < len(self.visible_mixer_strips):
+					self.visible_mixer_strips[offset].set_chain(chain)
+					self.visible_mixer_strips[offset].zctrls = self.zynmixer.zctrls[midi_chan]
+					self.visible_mixer_strips[offset].draw_control()
+					offset += 1
 			else:
-				self.visible_mixer_strips[offset].set_chain(self.zyngui.chain_manager.get_chain(str(index)))
-				if self.zyngui.chain_manager.get_chain(str(index)):
-					mixer_chan = self.zyngui.chain_manager.get_chain(str(index)).mixer_chan
-					self.chan2strip[mixer_chan] = self.visible_mixer_strips[offset]
-					self.visible_mixer_strips[offset].zctrls = self.zynmixer.zctrls[mixer_chan]
-				else:
-					self.visible_mixer_strips[offset].zctrls = None
-					
+				self.chan2strip[midi_chan] = None
+
+		for i in range(offset, len(self.visible_mixer_strips)):
+			self.visible_mixer_strips[i].set_chain(None)
+			self.visible_mixer_strips[i].zctrls = None
+			self.visible_mixer_strips[i].zctrls = self.zynmixer.zctrls[midi_chan]
+			self.visible_mixer_strips[i].draw_control()
+
+		self.visible_mixer_strips[offset].set_chain(chain)
+		self.chan2strip[midi_chan] = self.visible_mixer_strips[offset]
+		self.visible_mixer_strips[offset].zctrls = self.zynmixer.zctrls[midi_chan]
+
 		self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX] = self.main_mixbus_strip
+		self.main_mixbus_strip.set_chain(self.zyngui.chain_manager.get_chain("main"))
 		self.main_mixbus_strip.draw_control()
 		self.highlight_selected_chain()
 
@@ -956,7 +962,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, type='S'):
 		if type == "S" and not self.midi_learning:
-			self.zyngui.chain_control()
+			self.zyngui.state_manager.chain_control()
 		elif type == "B":
 			# Chain Options
 			self.zyngui.chain_manager.set_active_chain_by_object(self.selected_chain)
@@ -1004,10 +1010,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 	def setup_zynpots(self):
-		lib_zyncore.setup_behaviour_zynpot(0, 0)
-		lib_zyncore.setup_behaviour_zynpot(1, 0)
-		lib_zyncore.setup_behaviour_zynpot(2, 0)
-		lib_zyncore.setup_behaviour_zynpot(3, 1)
+		get_lib_zyncore().setup_behaviour_zynpot(0, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(1, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(2, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(3, 1)
 
 
 	# Function to handle zynpot CB
@@ -1031,21 +1037,21 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		# SELECT encoder moves chain selection
 		elif i == 3:
-			#TODO: Rationalise chain selection
-			if self.selected_chain_index is None:
-				self.select_chain_by_index(0)
-			else:
-				self.select_chain_by_index(self.selected_chain_index + dval)
+			self.zyngui.chain_manager.next_chain(dval)
+			self.highlight_selected_chain()
+
 
 
 	# Function to handle CUIA ARROW_LEFT
 	def arrow_left(self):
-		self.select_chain_by_index(self.selected_chain_index - 1)
+		self.zyngui.chain_manager.previous_chain()
+		self.highlight_selected_chain()
 
 
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
-		self.select_chain_by_index(self.selected_chain_index + 1)
+		self.zyngui.chain_manager.next_chain()
+		self.highlight_selected_chain()
 
 
 	# Function to handle CUIA ARROW_UP
@@ -1082,7 +1088,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return
 			self.mixer_strip_offset -= 1
 		elif event.num == 4:
-			if self.mixer_strip_offset +  len(self.visible_mixer_strips) >= self.number_chains:
+			if self.mixer_strip_offset +  len(self.visible_mixer_strips) >= self.zyngui.chain_manager.get_chain_count() - 1:
 				return
 			self.mixer_strip_offset += 1
 		self.refresh_visible_strips()
@@ -1129,8 +1135,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 	def midi_unlearn_action(self):
-		if self.zyngui.midi_learn_zctrl:
-			self.zyngui.show_confirm("Do you want to clear MIDI-learn for '{}' control?".format(self.zyngui.midi_learn_zctrl.name), self.midi_unlearn, self.zyngui.midi_learn_zctrl)
+		if self.zyngui.state_manager.midi_learn_zctrl:
+			self.zyngui.show_confirm("Do you want to clear MIDI-learn for '{}' control?".format(self.zyngui.midi_learn_zctrl.name), self.midi_unlearn, self.zyngui.state_manager.midi_learn_zctrl)
 		else:
 			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL mixer controls?", self.midi_unlearn)
 

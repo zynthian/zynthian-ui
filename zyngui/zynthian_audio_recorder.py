@@ -61,7 +61,7 @@ class zynthian_audio_recorder():
 		else:
 			path = self.capture_dir_sdc
 		try:
-			self.zyngui.get_snapshot_name() #TODO: Implement get_snapshot_name()
+			self.zyngui.status_manager.get_snapshot_name() #TODO: Implement get_snapshot_name()
 		except:
 			filename = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 		filename = filename.replace("/",";").replace(">",";").replace(" ; ",";")
@@ -124,7 +124,7 @@ class zynthian_audio_recorder():
 			self.proc = None
 			return False
 
-		self.zyngui.status_info['audio_recorder'] = "REC"
+		self.zyngui.status_manager.status_info['audio_recorder'] = "REC"
 		return True
 
 
@@ -137,8 +137,8 @@ class zynthian_audio_recorder():
 			except Exception as e:
 				logging.error("ERROR STOPPING AUDIO RECORD: %s" % e)
 				return False
-			if 'audio_recorder' in self.zyngui.status_info:
-				self.zyngui.status_info.pop('audio_recorder')
+			if 'audio_recorder' in self.zyngui.status_manager.status_info:
+				self.zyngui.status_manager.status_info.pop('audio_recorder')
 			os.sync()
 			return True
 

@@ -27,7 +27,7 @@ import tkinter
 import logging
 
 # Zynthian specific modules
-from zyncoder.zyncore import lib_zyncore
+from zyncoder.zyncore import get_lib_zyncore
 from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
@@ -104,10 +104,10 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 	def config(self, chan):
 		self.chan = chan
-		self.note_low = lib_zyncore.get_midi_filter_note_low(chan)
-		self.note_high = lib_zyncore.get_midi_filter_note_high(chan)
-		self.octave_trans = lib_zyncore.get_midi_filter_octave_trans(chan)
-		self.halftone_trans = lib_zyncore.get_midi_filter_halftone_trans(chan)
+		self.note_low = get_lib_zyncore().get_midi_filter_note_low(chan)
+		self.note_high = get_lib_zyncore().get_midi_filter_note_high(chan)
+		self.octave_trans = get_lib_zyncore().get_midi_filter_octave_trans(chan)
+		self.halftone_trans = get_lib_zyncore().get_midi_filter_halftone_trans(chan)
 		self.set_select_path()
 
 
@@ -325,13 +325,13 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 	def send_controller_value(self, zctrl):
 		if self.shown:
 			# Send ALL-OFF to avoid stuck notes => This doesn't work with all engines!!
-			# We could use "lib_zyncore.ui_send_all_notes_off_chan(chan)", but it's no so nice
-			lib_zyncore.ui_send_ccontrol_change(self.chan, 120, 0)
+			# We could use "get_lib_zyncore().ui_send_all_notes_off_chan(chan)", but it's no so nice
+			get_lib_zyncore().ui_send_ccontrol_change(self.chan, 120, 0)
 			if zctrl == self.nlow_zctrl:
 				self.note_low = zctrl.value #TODO: Try to loose these variables
 				if zctrl.value > self.nhigh_zctrl.value:
 					self.nlow_zctrl.set_value(self.nhigh_zctrl.value - 1)
-				lib_zyncore.set_midi_filter_note_low(self.chan, zctrl.value)
+				get_lib_zyncore().set_midi_filter_note_low(self.chan, zctrl.value)
 				logging.debug("SETTING FILTER NOTE_LOW: {}".format(zctrl.value))
 				self.replot = True
 
@@ -339,19 +339,19 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 				self.note_high = zctrl.value #TODO: Try to loose these variables
 				if zctrl.value < self.nlow_zctrl.value:
 					self.nhigh_zctrl.set_value(self.nlow_zctrl.value + 1)
-				lib_zyncore.set_midi_filter_note_high(self.chan, zctrl.value)
+				get_lib_zyncore().set_midi_filter_note_high(self.chan, zctrl.value)
 				logging.debug("SETTING FILTER NOTE_HIGH: {}".format(zctrl.value))
 				self.replot = True
 
 			if zctrl == self.octave_zctrl:
 				self.octave_trans = zctrl.value #TODO: Try to loose these variables
-				lib_zyncore.set_midi_filter_octave_trans(self.chan, zctrl.value)
+				get_lib_zyncore().set_midi_filter_octave_trans(self.chan, zctrl.value)
 				logging.debug("SETTING FILTER OCTAVE TRANS.: {}".format(zctrl.value))
 				self.replot = True
 
 			if zctrl == self.halftone_zctrl:
 				self.halftone_trans = zctrl.value #TODO: Try to loose these variables
-				lib_zyncore.set_midi_filter_halftone_trans(self.chan, zctrl.value)
+				get_lib_zyncore().set_midi_filter_halftone_trans(self.chan, zctrl.value)
 				logging.debug("SETTING FILTER HALFTONE TRANS.: {}".format(zctrl.value))
 				self.replot = True
 

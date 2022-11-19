@@ -30,7 +30,7 @@ import tkinter.font as tkFont
 from threading import Timer
 
 # Zynthian specific modules
-from zyncoder.zyncore import lib_zyncore
+from zyncoder.zyncore import get_lib_zyncore
 from zyngui import zynthian_gui_config
 
 #------------------------------------------------------------------------------
@@ -273,16 +273,16 @@ class zynthian_gui_keyboard():
 
 	# Function to register encoders
 	def setup_zynpots(self):
-		if lib_zyncore:
-			lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SELECT, 1)
-			lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_BACK, 1)
+		if get_lib_zyncore():
+			get_lib_zyncore().setup_behaviour_zynpot(zynthian_gui_config.ENC_SELECT, 1)
+			get_lib_zyncore().setup_behaviour_zynpot(zynthian_gui_config.ENC_BACK, 1)
 
 
 	# Function to handle zynpots events
 	def zynpot_cb(self, i, dval):
 		if not self.shown:
 			return
-		if lib_zyncore:
+		if get_lib_zyncore():
 			if i == zynthian_gui_config.ENC_SELECT:
 				self.cursor_hmove(dval)
 			elif i == zynthian_gui_config.ENC_BACK:

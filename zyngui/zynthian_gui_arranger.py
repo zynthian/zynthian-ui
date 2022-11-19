@@ -37,7 +37,7 @@ import os
 from zyngui import zynthian_gui_config
 from zynlibs.zynsmf import zynsmf
 from . import zynthian_gui_base
-from zyncoder.zyncore import lib_zyncore
+from zyncoder.zyncore import get_lib_zyncore
 from zyngine import zynthian_engine
 from zynlibs.zynseq import zynseq
 
@@ -174,10 +174,10 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to set values of encoders
 	def setup_zynpots(self):
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_LAYER, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_BACK, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SNAPSHOT, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SELECT, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(zynthian_gui_config.ENC_LAYER, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(zynthian_gui_config.ENC_BACK, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(zynthian_gui_config.ENC_SNAPSHOT, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(zynthian_gui_config.ENC_SELECT, 0)
 
 
 	# Function to add menus

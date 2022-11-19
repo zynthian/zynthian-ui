@@ -37,7 +37,7 @@ from collections import OrderedDict
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_patterneditor import EDIT_MODE_NONE
 from . import zynthian_gui_base
-from zyncoder.zyncore import lib_zyncore
+from zyncoder.zyncore import get_lib_zyncore
 from zynlibs.zynseq import zynseq
 
 SELECT_BORDER	= zynthian_gui_config.color_on
@@ -114,10 +114,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	#Function to set values of encoders
 	def setup_zynpots(self):
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_LAYER, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_BACK, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SNAPSHOT, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SELECT, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(zynthian_gui_config.ENC_LAYER, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(zynthian_gui_config.ENC_BACK, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(zynthian_gui_config.ENC_SNAPSHOT, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(zynthian_gui_config.ENC_SELECT, 0)
 
 
 	# Function to show GUI

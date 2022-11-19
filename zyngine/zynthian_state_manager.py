@@ -39,6 +39,7 @@ from zyngine import zynthian_gui_config
 from zynlibs.zynseq import zynseq
 from zyncoder.zyncore import *
 from zyngine import zynthian_midi_filter
+from zyncoder.zyncore import get_lib_zyncore
 
 # ----------------------------------------------------------------------------
 # Zynthian State Manager Class
@@ -72,6 +73,7 @@ class zynthian_state_manager():
         self.status_info = {}
 
         # Initialize MIDI & Switches
+        self.dtsw = []
         try:
             self.zynmidi = zynthian_zcmidi()
             self.zynswitches_init()
@@ -125,18 +127,18 @@ class zynthian_state_manager():
             state['clone'].append([])
             for j in range(0,16):
                 clone_info = {
-                    'enabled': lib_zyncore.get_midi_filter_clone(i,j),
-                    'cc': list(map(int,lib_zyncore.get_midi_filter_clone_cc(i,j).nonzero()[0]))
+                    'enabled': get_lib_zyncore().get_midi_filter_clone(i,j),
+                    'cc': list(map(int,get_lib_zyncore().get_midi_filter_clone_cc(i,j).nonzero()[0]))
                 }
                 state['clone'][i].append(clone_info)
 
         # Note-range info
         for i in range(0,16):
             info = {
-                'note_low': lib_zyncore.get_midi_filter_note_low(i),
-                'note_high': lib_zyncore.get_midi_filter_note_high(i),
-                'octave_trans': lib_zyncore.get_midi_filter_octave_trans(i),
-                'halftone_trans': lib_zyncore.get_midi_filter_halftone_trans(i)
+                'note_low': get_lib_zyncore().get_midi_filter_note_low(i),
+                'note_high': get_lib_zyncore().get_midi_filter_note_high(i),
+                'octave_trans': get_lib_zyncore().get_midi_filter_octave_trans(i),
+                'halftone_trans': get_lib_zyncore().get_midi_filter_halftone_trans(i)
             }
             state['note_range'].append(info)
 
@@ -172,7 +174,7 @@ class zynthian_state_manager():
         self.root_layers = self.get_fxchain_roots()
 
         # Autoconnect MIDI
-        self.zyngui.zynautoconnect_midi(True)
+        self.zynautoconnect_midi(True)
 
         # Set extended config and load bank list => when loading snapshots, not zs3!
         if 'extended_config' in state:
@@ -244,7 +246,7 @@ class zynthian_state_manager():
         self.chain_manager.set_active_chain_by_id(str(state['index']))
 
         # Autoconnect Audio
-        self.zyngui.zynautoconnect_audio(True)
+        self.zynautoconnect_audio(True)
 
         # Restore Learned ZS3s (SubSnapShots)
         if 'learned_zs3' in state:
@@ -372,7 +374,7 @@ class zynthian_state_manager():
             self.chain_manager.set_active_chain_by_id(str(state['index']))
 
         # Autoconnect Audio => Not Needed!! It's called after action
-        #self.zyngui.zynautoconnect_audio(True)
+        #self.zynautoconnect_audio(True)
 
 
     def save_snapshot(self, fpath):
@@ -542,7 +544,7 @@ class zynthian_state_manager():
 
 
     def reset_midi_profile(self):
-        self.zyngui.reload_midi_config()
+        self.reload_midi_config()
 
 
     def set_select_path(self):
@@ -716,7 +718,7 @@ class zynthian_state_manager():
         """
         
         self.midi_learn_zctrl = zctrl
-        lib_zyncore.set_midi_learning_mode(1)
+        get_lib_zyncore().set_midi_learning_mode(1)
     
     def enter_midi_learn(self):
         """Enter MIDI learn mode"""
@@ -725,7 +727,7 @@ class zynthian_state_manager():
             logging.debug("ENTER LEARN")
             self.midi_learn_mode = 1
             self.midi_learn_zctrl = None
-            lib_zyncore.set_midi_learning_mode(1)
+            get_lib_zyncore().set_midi_learning_mode(1)
 
 
     def exit_midi_learn(self):
@@ -734,7 +736,7 @@ class zynthian_state_manager():
         if self.midi_learn_mode or self.midi_learn_zctrl:
             self.midi_learn_mode = 0
             self.midi_learn_zctrl = None
-            lib_zyncore.set_midi_learning_mode(0)
+            get_lib_zyncore().set_midi_learning_mode(0)
 
     def toggle_midi_learn(self):
         """Toggle MIDI learn mode"""
@@ -819,13 +821,13 @@ class zynthian_state_manager():
         try:
             #Set Global Tuning
             self.fine_tuning_freq = zynthian_gui_config.midi_fine_tuning
-            lib_zyncore.set_midi_filter_tuning_freq(ctypes.c_double(self.fine_tuning_freq))
+            get_lib_zyncore().set_midi_filter_tuning_freq(ctypes.c_double(self.fine_tuning_freq))
             #Set MIDI Master Channel
-            lib_zyncore.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
+            get_lib_zyncore().set_midi_master_chan(zynthian_gui_config.master_midi_channel)
             #Set MIDI CC automode
-            lib_zyncore.set_midi_filter_cc_automode(zynthian_gui_config.midi_cc_automode)
+            get_lib_zyncore().set_midi_filter_cc_automode(zynthian_gui_config.midi_cc_automode)
             #Set MIDI System Messages flag
-            lib_zyncore.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
+            get_lib_zyncore().set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
             #Setup MIDI filter rules
             if self.midi_filter_script:
                 self.midi_filter_script.clean()
@@ -978,7 +980,7 @@ class zynthian_state_manager():
                 })
             # Call autoconnect after a little time
             sleep(0.5)
-            self.zyngui.zynautoconnect_midi()
+            self.zynautoconnect_midi()
         except Exception as e:
             logging.error(e)
 
@@ -1014,7 +1016,7 @@ class zynthian_state_manager():
                 })
             # Call autoconnect after a little time
             sleep(0.5)
-            self.zyngui.zynautoconnect()
+            self.zynautoconnect()
         except Exception as e:
             logging.error(e)
 
@@ -1045,7 +1047,7 @@ class zynthian_state_manager():
 
     # Init Standard Zynswitches
     def zynswitches_init(self):
-        if not lib_zyncore: return
+        if not get_lib_zyncore(): return
         logging.info("INIT {} ZYNSWITCHES ...".format(zynthian_gui_config.num_zynswitches))
         ts=datetime.now()
         self.dtsw = [ts] * (zynthian_gui_config.num_zynswitches + 4)
@@ -1053,7 +1055,7 @@ class zynthian_state_manager():
 
     # Initialize custom switches, analog I/O, TOF sensors, etc.
     def zynswitches_midi_setup(self, current_chain_chan=None):
-        if not lib_zyncore: return
+        if not get_lib_zyncore(): return
         logging.info("CUSTOM I/O SETUP...")
 
         # Configure Custom Switches
@@ -1066,10 +1068,10 @@ class zynthian_state_manager():
                     midi_chan = current_chain_chan
 
                 if midi_chan is not None:
-                    lib_zyncore.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'], event['val'])
+                    get_lib_zyncore().setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'], event['val'])
                     logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}, {}".format(swi, event['type'], midi_chan, event['num'], event['val']))
                 else:
-                    lib_zyncore.setup_zynswitch_midi(swi, 0, 0, 0, 0)
+                    get_lib_zyncore().setup_zynswitch_midi(swi, 0, 0, 0, 0)
                     logging.info("MIDI ZYNSWITCH {}: DISABLED!".format(swi))
 
         # Configure Zynaptik Analog Inputs (CV-IN)
@@ -1081,10 +1083,10 @@ class zynthian_state_manager():
                     midi_chan = current_chain_chan
 
                 if midi_chan is not None:
-                    lib_zyncore.setup_zynaptik_cvin(i, event['type'], midi_chan, event['num'])
+                    get_lib_zyncore().setup_zynaptik_cvin(i, event['type'], midi_chan, event['num'])
                     logging.info("ZYNAPTIK CV-IN {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
                 else:
-                    lib_zyncore.disable_zynaptik_cvin(i)
+                    get_lib_zyncore().disable_zynaptik_cvin(i)
                     logging.info("ZYNAPTIK CV-IN {}: DISABLED!".format(i))
 
         # Configure Zynaptik Analog Outputs (CV-OUT)
@@ -1096,10 +1098,10 @@ class zynthian_state_manager():
                     midi_chan = current_chain_chan
 
                 if midi_chan is not None:
-                    lib_zyncore.setup_zynaptik_cvout(i, event['type'], midi_chan, event['num'])
+                    get_lib_zyncore().setup_zynaptik_cvout(i, event['type'], midi_chan, event['num'])
                     logging.info("ZYNAPTIK CV-OUT {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
                 else:
-                    lib_zyncore.disable_zynaptik_cvout(i)
+                    get_lib_zyncore().disable_zynaptik_cvout(i)
                     logging.info("ZYNAPTIK CV-OUT {}: DISABLED!".format(i))
 
         # Configure Zyntof Inputs (Distance Sensor)
@@ -1111,10 +1113,10 @@ class zynthian_state_manager():
                     midi_chan = current_chain_chan
 
                 if midi_chan is not None:
-                    lib_zyncore.setup_zyntof(i, event['type'], midi_chan, event['num'])
+                    get_lib_zyncore().setup_zyntof(i, event['type'], midi_chan, event['num'])
                     logging.info("ZYNTOF {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
                 else:
-                    lib_zyncore.disable_zyntof(i)
+                    get_lib_zyncore().disable_zyntof(i)
                     logging.info("ZYNTOF {}: DISABLED!".format(i))
 
 

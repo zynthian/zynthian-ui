@@ -30,7 +30,7 @@ from time import sleep
 import os
 
 # Zynthian specific modules
-from zyncoder.zyncore import lib_zyncore
+from zyncoder.zyncore import get_lib_zyncore
 
 
 class zynthian_processor:
@@ -606,7 +606,7 @@ class zynthian_processor:
 
         for k, zctrl in self.controllers_dict.items():
             if zctrl.midi_cc:
-                lib_zyncore.ui_send_ccontrol_change(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value))
+                get_lib_zyncore().ui_send_ccontrol_change(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value))
                 logging.debug("Sending MIDI CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value), k))
         self.send_ctrlfb_midi_cc()
 
@@ -619,10 +619,10 @@ class zynthian_processor:
 
         for k, zctrl in self.controllers_dict.items():
             if zctrl.midi_learn_cc:
-                lib_zyncore.ctrlfb_send_ccontrol_change(zctrl.midi_learn_chan, zctrl.midi_learn_cc, int(zctrl.value))
+                get_lib_zyncore().ctrlfb_send_ccontrol_change(zctrl.midi_learn_chan, zctrl.midi_learn_cc, int(zctrl.value))
                 logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_learn_chan, zctrl.midi_learn_cc, int(zctrl.value), k))
             elif zctrl.midi_cc:
-                lib_zyncore.ctrlfb_send_ccontrol_change(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value))
+                get_lib_zyncore().ctrlfb_send_ccontrol_change(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value))
                 logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value), k))
 
 
@@ -782,7 +782,7 @@ class zynthian_processor:
         #Set legacy Note Range (BW compatibility)
         if self.midi_chan is not None and self.midi_chan >= 0 and 'note_range' in state:
             nr = state['note_range']
-            lib_zyncore.set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
+            get_lib_zyncore().set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
 
 
     def wait_stop_loading(self):

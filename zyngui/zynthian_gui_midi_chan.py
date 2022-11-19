@@ -27,7 +27,7 @@ import logging
 from datetime import datetime
 
 # Zynthian specific modules
-from zyncoder.zyncore import lib_zyncore
+from zyncoder.zyncore import get_lib_zyncore
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
@@ -72,8 +72,8 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 			for i in self.chan_list:
 				if i in (self.midi_chan, zynthian_gui_config.master_midi_channel):
 					continue
-				elif lib_zyncore.get_midi_filter_clone(self.midi_chan, i):
-					cc_to_clone = lib_zyncore.get_midi_filter_clone_cc(self.midi_chan, i).nonzero()[0]
+				elif get_lib_zyncore().get_midi_filter_clone(self.midi_chan, i):
+					cc_to_clone = get_lib_zyncore().get_midi_filter_clone_cc(self.midi_chan, i).nonzero()[0]
 					self.list_data.append((str(i+1),i,"[x] CH#{}, CC {}".format(i+1, ' '.join(map(str, cc_to_clone)))))
 					logging.debug("CC TO CLONE: {}".format(cc_to_clone))
 				else:
@@ -129,10 +129,10 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 
 			if selchan!=self.midi_chan:
 				if t=='S':
-					if lib_zyncore.get_midi_filter_clone(self.midi_chan, selchan):
-						lib_zyncore.set_midi_filter_clone(self.midi_chan, selchan, 0)
+					if get_lib_zyncore().get_midi_filter_clone(self.midi_chan, selchan):
+						get_lib_zyncore().set_midi_filter_clone(self.midi_chan, selchan, 0)
 					else:
-						lib_zyncore.set_midi_filter_clone(self.midi_chan, selchan, 1)
+						get_lib_zyncore().set_midi_filter_clone(self.midi_chan, selchan, 1)
 						
 					self.update_list()
 					logging.info("CLONE MIDI CHANNEL {} => {}".format(self.midi_chan, selchan))
