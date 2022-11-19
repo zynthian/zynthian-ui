@@ -51,12 +51,12 @@ class zynthian_engine_sfizz(zynthian_engine):
 		['sustain', 64, 'off', ['off', 'on']],
 		['sostenuto', 66, 'off', ['off', 'on']],
 		['legato', 68, 'off', ['off', 'on']],
+		['breath', 2, 127],
 
 		['portamento on/off', 65, 'off', ['off', 'on']],
 		['portamento time-coarse', 5, 0],
 		['portamento time-fine', 37, 0],
 
-		['breath', 2, 127],
 		# ['expr. pedal', 4, 127],
 		['filter cutoff', 74, 64],
 		['filter resonance', 71, 64],
@@ -67,7 +67,7 @@ class zynthian_engine_sfizz(zynthian_engine):
 	# Controller Screens
 	_ctrl_screens = [
 		['main', ['volume', 'pan', 'modulation wheel', 'expression']],
-		['pedals', ['legato', 'sostenuto', 'sustain']],
+		['pedals', ['legato', 'breath', 'sostenuto', 'sustain']],
 		['portamento', ['portamento on/off', 'portamento time-coarse', 'portamento time-fine']],
 		['envelope/filter', ['env. attack', 'env. release', 'filter cutoff', 'filter resonance']]
 	]
