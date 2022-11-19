@@ -27,13 +27,9 @@ import re
 import glob
 import logging
 import shutil
-from time import sleep
-from os.path import isfile, isdir
 from subprocess import check_output
-from collections import OrderedDict
 
 from . import zynthian_engine
-from . import zynthian_controller
 
 #------------------------------------------------------------------------------
 # Sfizz Engine Class
@@ -48,8 +44,6 @@ class zynthian_engine_sfizz(zynthian_engine):
 	# SFZ Default MIDI Controllers (modulators)
 	_ctrls = [
 		['modulation wheel', 1, 0],
-		#['breath', 2, 127],
-		#['expr. pedal', 4, 127],
 		['volume', 7, 96],
 		['pan', 10, 64],
 		['expression', 11, 127],
@@ -60,14 +54,22 @@ class zynthian_engine_sfizz(zynthian_engine):
 
 		['portamento on/off', 65, 'off', ['off', 'on']],
 		['portamento time-coarse', 5, 0],
-		['portamento time-fine', 37, 0]
+		['portamento time-fine', 37, 0],
+
+		['breath', 2, 127],
+		# ['expr. pedal', 4, 127],
+		['filter cutoff', 74, 64],
+		['filter resonance', 71, 64],
+		['env. attack', 72, 64],
+		['env. release', 73, 64]
 	]
 
 	# Controller Screens
 	_ctrl_screens = [
 		['main', ['volume', 'pan', 'modulation wheel', 'expression']],
 		['pedals', ['legato', 'sostenuto', 'sustain']],
-		['portamento', ['portamento on/off', 'portamento time-coarse', 'portamento time-fine']]
+		['portamento', ['portamento on/off', 'portamento time-coarse', 'portamento time-fine']],
+		['envelope/filter', ['env. attack', 'env. release', 'filter cutoff', 'filter resonance']]
 	]
 
 	# ---------------------------------------------------------------------------
