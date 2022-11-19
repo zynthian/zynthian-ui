@@ -419,7 +419,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 
 	def set_bank(self, layer, bank):
-		#TODO: self.zyngui.zynmidi.set_midi_bank_msb(layer.get_midi_chan(), bank[1])
+		self.state_manager.zynmidi.set_midi_bank_msb(layer.get_midi_chan(), bank[1])
 		return True
 
 
@@ -433,11 +433,10 @@ class zynthian_engine(zynthian_basic_engine):
 
 	def set_preset(self, layer, preset, preload=False):
 		return True
-		#TODO: lose zyngui
 		if isinstance(preset[1], int):
-			self.zyngui.zynmidi.set_midi_prg(layer.get_midi_chan(), preset[1])
+			self.state_manager.zynmidi.set_midi_prg(layer.get_midi_chan(), preset[1])
 		else:
-			self.zyngui.zynmidi.set_midi_preset(layer.get_midi_chan(), preset[1][0], preset[1][1], preset[1][2])
+			self.state_manager.zynmidi.set_midi_preset(layer.get_midi_chan(), preset[1][0], preset[1][1], preset[1][2])
 		return True
 
 

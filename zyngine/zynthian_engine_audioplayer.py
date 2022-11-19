@@ -200,7 +200,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			transport = 'playing'
 		else:
 			transport = 'stopped'
-		if self.zyngui.audio_recorder.get_status():
+		if self.state_manager.audio_recorder.get_status():
 			record = 'recording'
 		else:
 			record = 'stopped'
@@ -283,7 +283,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	def control_cb(self, handle, id, value):
 		if handle == 16:
 			if id == 1 and value == 0:
-				self.zyngui.stop_audio_player()
+				self.state_manager.stop_audio_player()
 			return
 		try:
 			for layer in self.layers:
@@ -336,9 +336,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.player.set_track_b(handle, zctrl.value)
 		elif zctrl.symbol == "record":
 			if zctrl.value:
-				self.zyngui.audio_recorder.start_recording()
+				self.state_manager.audio_recorder.start_recording()
 			else:
-				self.zyngui.audio_recorder.stop_recording()
+				self.state_manager.audio_recorder.stop_recording()
 		elif zctrl.symbol == "loop start":
 			self.player.set_loop_start(handle, zctrl.value)
 		elif zctrl.symbol == "loop end":

@@ -67,8 +67,8 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 	# Initialization
 	#----------------------------------------------------------------------------
 
-	def __init__(self, zyngui=None):
-		super().__init__(zyngui)
+	def __init__(self, state_manager=None):
+		super().__init__(state_manager)
 
 		self.type = "Mixer"
 		self.name = "Audio Levels"
@@ -178,7 +178,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 			pass
 
 		# Add RBPi headphones if enabled and available... 
-		if self.allow_rbpi_headphones() and self.zyngui and self.zyngui.get_zynthian_config("rbpi_headphones"):
+		if self.allow_rbpi_headphones() and self.state_manager and self.state_manager.get_zynthian_config("rbpi_headphones"):
 			try:
 				zctrls_headphones = self.get_mixer_zctrls(self.rbpi_device_name, ["Headphone","PCM"])
 				if "Headphone" in zctrls_headphones:
@@ -372,7 +372,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 					else:
 						amixer_command = "amixer -M -c {} set '{}' '{}'".format(self.device_name, zctrl.graph_path[0], zctrl.get_value2label())
 				else:
-					if zctrl.symbol=="Headphone" and self.allow_rbpi_headphones() and self.zyngui and self.zyngui.get_zynthian_config("rbpi_headphones"):
+					if zctrl.symbol=="Headphone" and self.allow_rbpi_headphones() and self.state_manager and self.state_manager.get_zynthian_config("rbpi_headphones"):
 						devname = self.rbpi_device_name
 					else:
 						devname = self.device_name

@@ -178,8 +178,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# Initialization
 	#----------------------------------------------------------------------------
 
-	def __init__(self, zyngui=None):
-		super().__init__(zyngui)
+	def __init__(self, state_manager=None):
+		super().__init__(state_manager)
 		self.name = "setBfree"
 		self.nickname = "BF"
 		self.jackname = "setBfree"
@@ -215,7 +215,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		# Generate on-the-fly config
 		with open(self.config_tpl_fpath, 'r') as cfg_tpl_file:
 			cfg_data = cfg_tpl_file.read()
-			cfg_data = cfg_data.replace('#OSC.TUNING#', str(int(self.zyngui.fine_tuning_freq)))
+			cfg_data = cfg_data.replace('#OSC.TUNING#', str(int(self.state_manager.fine_tuning_freq)))
 			cfg_data = cfg_data.replace('#MIDI.UPPER.CHANNEL#', str(1 + midi_chans[0]))
 			cfg_data = cfg_data.replace('#MIDI.LOWER.CHANNEL#', str(1 + midi_chans[1]))
 			cfg_data = cfg_data.replace('#MIDI.PEDALS.CHANNEL#', str(1 + midi_chans[2]))
@@ -309,9 +309,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 				i += 1
 				if len(self.layers)==i:
 					try:
-						ch = self.zyngui.screens['layer'].get_next_free_midi_chan(ch)
+						ch = self.state_manager.screens['layer'].get_next_free_midi_chan(ch)
 						logging.info("Lower Manual Layer in chan {}".format(ch))
-						self.zyngui.screens['layer'].add_layer_midich(ch, False)
+						self.state_manager.screens['layer'].add_layer_midich(ch, False)
 						self.layers[i].bank_name = "Lower"
 						self.layers[i].load_bank_list()
 						self.layers[i].set_bank(0)
@@ -329,9 +329,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 				if len(self.layers)==i:
 					try:
 						# Adding Pedal Layer
-						ch = self.zyngui.screens['layer'].get_next_free_midi_chan(ch)
+						ch = self.state_manager.screens['layer'].get_next_free_midi_chan(ch)
 						logging.info("Pedal Layer in chan {}".format(ch))
-						self.zyngui.screens['layer'].add_layer_midich(ch, False)
+						self.state_manager.screens['layer'].add_layer_midich(ch, False)
 						self.layers[i].bank_name = "Pedals"
 						self.layers[i].load_bank_list()
 						self.layers[i].set_bank(0)
@@ -348,15 +348,15 @@ class zynthian_engine_setbfree(zynthian_engine):
 			logging.debug("STARTING SETBFREE!!")
 			self.generate_config_file(self.midi_chans)
 			self.start()
-			self.zyngui.zynautoconnect_midi(True)
-			self.zyngui.zynautoconnect_audio()
+			self.state_manager.zynautoconnect_midi(True)
+			self.state_manager.zynautoconnect_audio()
 
 			midi_prog = self.manuals_config[4][2]
 			if midi_prog and isinstance(midi_prog, int):
 				logging.debug("Loading manuals configuration program: {}".format(midi_prog))
-				self.zyngui.zynmidi.set_midi_prg(self.midi_chans[0], midi_prog)
+				self.state_manager.zynmidi.set_midi_prg(self.midi_chans[0], midi_prog)
 
-			#self.zyngui.screens['layer'].fill_list()
+			#self.state_manager.screens['layer'].fill_list()
 
 			return True
 
@@ -414,8 +414,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 				zctrl.set_value(v, True)
 
 				#Refresh GUI controller in screen when needed ...
-				if self.zyngui.current_screen=='control':
-					self.zyngui.screens['control'].set_controller_value(zctrl)
+				if self.state_manager.current_screen=='control':
+					self.state_manager.screens['control'].set_controller_value(zctrl)
 
 			except Exception as e:
 				logging.debug("Can't update controller '{}' => {}".format(zcsymbol,e))
@@ -428,8 +428,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 				#logging.debug("MIDI CC {} -> '{}' = {}".format(zctrl.midi_cc, zctrl.name, val))
 
 				#Refresh GUI controller in screen when needed ...
-				if self.zyngui.current_screen=='control':
-					self.zyngui.screens['control'].set_controller_value(zctrl)
+				if self.state_manager.current_screen=='control':
+					self.state_manager.screens['control'].set_controller_value(zctrl)
 
 		except Exception as e:
 			logging.debug(e)

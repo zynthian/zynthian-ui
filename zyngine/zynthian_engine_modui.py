@@ -62,8 +62,8 @@ class zynthian_engine_modui(zynthian_engine):
 	# Initialization
 	# ---------------------------------------------------------------------------
 
-	def __init__(self, zyngui=None):
-		super().__init__(zyngui)
+	def __init__(self, state_manager=None):
+		super().__init__(state_manager)
 
 		self.type = "Special"
 		self.name = "MOD-UI"
@@ -119,11 +119,11 @@ class zynthian_engine_modui(zynthian_engine):
 
 
 	def refresh(self):
-		if self.zyngui.current_screen=='bank':
+		if self.state_manager.current_screen=='bank':
 			if self.preset_name:
-				self.zyngui.show_screen('control')
+				self.state_manager.show_screen('control')
 			else:
-				self.zyngui.show_screen('preset')
+				self.state_manager.show_screen('preset')
 
 
 	# ---------------------------------------------------------------------------
@@ -731,7 +731,7 @@ class zynthian_engine_modui(zynthian_engine):
 		try:
 			i=self.plugin_info[pgraph]['presets_dict'][uri]
 			self.layers[0].set_preset(i, False)
-			self.zyngui.screens['control'].set_select_path()
+			self.state_manager.screens['control'].set_select_path()
 
 		except Exception as e:
 			logging.error("Preset Not Found: {}/{} => {}".format(pgraph, uri, e))
@@ -745,7 +745,7 @@ class zynthian_engine_modui(zynthian_engine):
 			preset_entries = list(self.pedal_presets.values())
 			i = preset_entries.index(preset_entry)
 			self.layers[0].set_preset(i, False)
-			self.zyngui.screens['control'].set_select_path()
+			self.state_manager.screens['control'].set_select_path()
 
 		except Exception as e:
 			logging.error("Preset Not Found: {}".format(preset))

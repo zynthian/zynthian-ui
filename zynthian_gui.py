@@ -40,7 +40,6 @@ from threading  import Thread, Lock
 # Zynthian specific modules
 import zynconf
 from zyngine import zynthian_state_manager
-from zyngine import zyngine_config 
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import *
 
@@ -230,14 +229,6 @@ class zynthian_gui:
 		self.osc_clients = {}
 		self.osc_heartbeat_timeout = 120 # Heartbeat timeout period
 
-		# Initialize MIDI & Switches
-		try:
-			self.zynmidi = zynthian_zcmidi()
-			self.zynswitches_init()
-			self.zynswitches_midi_setup()
-		except Exception as e:
-			logging.error("ERROR initializing MIDI & Switches: {}".format(e))
-
 		# Initialize SOC sensors monitoring
 		try:
 			self.hwmon_thermal_file = open('/sys/class/hwmon/hwmon0/temp1_input')
@@ -261,11 +252,11 @@ class zynthian_gui:
 	# ---------------------------------------------------------------------------
 
 	def init_wsleds(self):
-		if zyngine_config.wiring_layout == "Z2_V1":
+		if zynthian_gui_config.wiring_layout == "Z2_V1":
 			# LEDS with PWM1 (pin 13, channel 1)
 			pin = 13
 			chan = 1
-		elif zyngine_config.wiring_layout in ("Z2_V2", "Z2_V3"):
+		elif zynthian_gui_config.wiring_layout in ("Z2_V2", "Z2_V3"):
 			# LEDS with SPI0 (pin 10, channel 0)
 			pin = 10
 			chan = 0
@@ -583,7 +574,7 @@ class zynthian_gui:
 		snapshot_loaded = False
 		# Try to load "last_state" snapshot ...
 		#TODO: Move this to later (after display shown) and give indication of progress to avoid apparent hang during startup
-		if zyngine_config.restore_last_state:
+		if zynthian_gui_config.restore_last_state:
 			snapshot_loaded = self.screens['snapshot'].load_last_state_snapshot()
 		# Try to load "default" snapshot ...
 		if not snapshot_loaded:
@@ -984,7 +975,7 @@ class zynthian_gui:
 			if self.current_processor == self.state_manager.alsa_processor:
 				return
 			current_chain_chan = self.current_processor.get_midi_chan()
-			if zyngine_config.midi_single_active_channel and current_chain_chan is not None:
+			if zynthian_gui_config.midi_single_active_channel and current_chain_chan is not None:
 				if current_chain_chan >= 16:
 					return
 				active_chan = current_chain_chan
@@ -996,7 +987,7 @@ class zynthian_gui:
 				#	self.all_notes_off_chan(cur_active_chan)
 
 		lib_zyncore.set_midi_active_chan(active_chan)
-		self.zynswitches_midi_setup(current_chain_chan)
+		self.state_manager.zynswitches_midi_setup(current_chain_chan)
 
 
 	def get_current_processor_wait(self):
@@ -1009,7 +1000,7 @@ class zynthian_gui:
 
 
 	def is_single_active_channel(self):
-		return zyngine_config.midi_single_active_channel
+		return zynthian_gui_config.midi_single_active_channel
 
 
 	def clean_all(self):
@@ -1498,7 +1489,7 @@ class zynthian_gui:
 
 
 	def custom_switch_ui_action(self, i, t):
-		action_config = zyngine_config.custom_switch_ui_actions[i]
+		action_config = zynthian_gui_config.custom_switch_ui_actions[i]
 		if t in action_config:
 			cuia = action_config[t]
 			if cuia and cuia!="NONE":
@@ -1517,97 +1508,18 @@ class zynthian_gui:
 				self.callable_ui_action(cmd, params)
 
 
-	# -------------------------------------------------------------------
-	# Switches
-	# -------------------------------------------------------------------
-
-	# Init Standard Zynswitches
-	def zynswitches_init(self):
-		if not lib_zyncore: return
-		logging.info("INIT {} ZYNSWITCHES ...".format(zyngine_config.num_zynswitches))
-		ts=datetime.now()
-		self.dtsw = [ts] * (zyngine_config.num_zynswitches + 4)
-
-
-	# Initialize custom switches, analog I/O, TOF sensors, etc.
-	def zynswitches_midi_setup(self, current_chain_chan=None):
-		if not lib_zyncore: return
-		logging.info("CUSTOM I/O SETUP...")
-
-		# Configure Custom Switches
-		for i, event in enumerate(zyngine_config.custom_switch_midi_events):
-			if event is not None:
-				swi = 4 + i
-				if event['chan'] is not None:
-					midi_chan = event['chan']
-				else:
-					midi_chan = current_chain_chan
-
-				if midi_chan is not None:
-					lib_zyncore.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'], event['val'])
-					logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}, {}".format(swi, event['type'], midi_chan, event['num'], event['val']))
-				else:
-					lib_zyncore.setup_zynswitch_midi(swi, 0, 0, 0, 0)
-					logging.info("MIDI ZYNSWITCH {}: DISABLED!".format(swi))
-
-		# Configure Zynaptik Analog Inputs (CV-IN)
-		for i, event in enumerate(zyngine_config.zynaptik_ad_midi_events):
-			if event is not None:
-				if event['chan'] is not None:
-					midi_chan = event['chan']
-				else:
-					midi_chan = current_chain_chan
-
-				if midi_chan is not None:
-					lib_zyncore.setup_zynaptik_cvin(i, event['type'], midi_chan, event['num'])
-					logging.info("ZYNAPTIK CV-IN {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
-				else:
-					lib_zyncore.disable_zynaptik_cvin(i)
-					logging.info("ZYNAPTIK CV-IN {}: DISABLED!".format(i))
-
-		# Configure Zynaptik Analog Outputs (CV-OUT)
-		for i, event in enumerate(zyngine_config.zynaptik_da_midi_events):
-			if event is not None:
-				if event['chan'] is not None:
-					midi_chan = event['chan']
-				else:
-					midi_chan = current_chain_chan
-
-				if midi_chan is not None:
-					lib_zyncore.setup_zynaptik_cvout(i, event['type'], midi_chan, event['num'])
-					logging.info("ZYNAPTIK CV-OUT {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
-				else:
-					lib_zyncore.disable_zynaptik_cvout(i)
-					logging.info("ZYNAPTIK CV-OUT {}: DISABLED!".format(i))
-
-		# Configure Zyntof Inputs (Distance Sensor)
-		for i, event in enumerate(zyngine_config.zyntof_midi_events):
-			if event is not None:
-				if event['chan'] is not None:
-					midi_chan = event['chan']
-				else:
-					midi_chan = current_chain_chan
-
-				if midi_chan is not None:
-					lib_zyncore.setup_zyntof(i, event['type'], midi_chan, event['num'])
-					logging.info("ZYNTOF {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
-				else:
-					lib_zyncore.disable_zyntof(i)
-					logging.info("ZYNTOF {}: DISABLED!".format(i))
-
-
 	def zynswitches(self):
 		if not lib_zyncore: return
 		i = 0
-		while i <= zyngine_config.last_zynswitch_index:
-			dtus = lib_zyncore.get_zynswitch(i, zyngine_config.zynswitch_long_us)
+		while i <= zynthian_gui_config.last_zynswitch_index:
+			dtus = lib_zyncore.get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
 			if dtus < 0:
 				pass
 			elif dtus == 0:
 				self.zynswitch_push(i)
-			elif dtus>zyngine_config.zynswitch_long_us:
+			elif dtus>zynthian_gui_config.zynswitch_long_us:
 				self.zynswitch_long(i)
-			elif dtus>zyngine_config.zynswitch_bold_us:
+			elif dtus>zynthian_gui_config.zynswitch_bold_us:
 				# Double switches must be bold!!! => by now ...
 				if not self.zynswitch_double(i):
 					self.zynswitch_bold(i)
@@ -1834,7 +1746,7 @@ class zynthian_gui:
 				#logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))
 
 				# System Messages
-				if zyngine_config.midi_sys_enabled and evtype == 0xF:
+				if zynthian_gui_config.midi_sys_enabled and evtype == 0xF:
 					# Song Position Pointer...
 					if chan == 0x1:
 						timecode = (ev & 0xFF) >> 8;
@@ -1866,20 +1778,20 @@ class zynthian_gui:
 						pass
 
 				# Master MIDI Channel ...
-				elif chan == zyngine_config.master_midi_channel:
+				elif chan == zynthian_gui_config.master_midi_channel:
 					logging.info("MASTER MIDI MESSAGE: %s" % hex(ev))
 					self.start_loading()
 					# Webconf configured messages for Snapshot Control ...
-					if ev == zyngine_config.master_midi_program_change_up:
+					if ev == zynthian_gui_config.master_midi_program_change_up:
 						logging.debug("PROGRAM CHANGE UP!")
 						self.screens['snapshot'].midi_program_change_up()
-					elif ev == zyngine_config.master_midi_program_change_down:
+					elif ev == zynthian_gui_config.master_midi_program_change_down:
 						logging.debug("PROGRAM CHANGE DOWN!")
 						self.screens['snapshot'].midi_program_change_down()
-					elif ev == zyngine_config.master_midi_bank_change_up:
+					elif ev == zynthian_gui_config.master_midi_bank_change_up:
 						logging.debug("BANK CHANGE UP!")
 						self.screens['snapshot'].midi_bank_change_up()
-					elif ev == zyngine_config.master_midi_bank_change_down:
+					elif ev == zynthian_gui_config.master_midi_bank_change_down:
 						logging.debug("BANK CHANGE DOWN!")
 						self.screens['snapshot'].midi_bank_change_down()
 					# Program Change => Snapshot Load
@@ -1891,7 +1803,7 @@ class zynthian_gui:
 					elif evtype == 0xB:
 						ccnum = (ev & 0x7F00) >> 8
 						ccval = (ev & 0x007F)
-						if ccnum == zyngine_config.master_midi_bank_change_ccnum:
+						if ccnum == zynthian_gui_config.master_midi_bank_change_ccnum:
 							bnk = (ev & 0x7F)
 							logging.debug("BANK CHANGE %d" % bnk)
 							self.screens['snapshot'].midi_bank_change(bnk)
@@ -1926,7 +1838,7 @@ class zynthian_gui:
 							self.close_screen()
 					# Set Preset or ZS3 (sub-snapshot), depending of config option
 					else:
-						if zyngine_config.midi_prog_change_zs3:
+						if zynthian_gui_config.midi_prog_change_zs3:
 							res = self.screens['layer'].set_midi_prog_zs3(chan, pgm) #TODO
 						else:
 							res = self.screens['layer'].set_midi_prog_preset(chan, pgm) # TODO
@@ -1964,7 +1876,7 @@ class zynthian_gui:
 				elif evtype == 0x9:
 					self.screens['midi_chan'].midi_chan_activity(chan)
 					#Preload preset (note-on)
-					if self.current_screen == 'preset' and zyngine_config.preset_preload_noteon and chan == self.current_processor.get_midi_chan():
+					if self.current_screen == 'preset' and zynthian_gui_config.preset_preload_noteon and chan == self.current_processor.get_midi_chan():
 						self.start_loading()
 						self.screens['preset'].preselect_action()
 						self.stop_loading()
@@ -2356,7 +2268,7 @@ def flushflush():
 	zynthian_gui_config.top.after(200, flushflush)
 
 
-if zyngine_config.wiring_layout=="EMULATOR":
+if zynthian_gui_config.wiring_layout=="EMULATOR":
 	top_xid = zynthian_gui_config.top.winfo_id()
 	print("Zynthian GUI XID: " + str(top_xid))
 	if len(sys.argv) > 1:

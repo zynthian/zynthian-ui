@@ -157,8 +157,8 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	# Initialization
 	# ---------------------------------------------------------------------------
 
-	def __init__(self, zyngui=None):
-		super().__init__(zyngui)
+	def __init__(self, state_manager=None):
+		super().__init__(state_manager)
 		self.name = "SooperLooper"
 		self.nickname = "SL"
 		self.jackname = "sooperlooper"

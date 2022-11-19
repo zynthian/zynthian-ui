@@ -25,6 +25,7 @@
 
 import base64
 import ctypes
+from datetime import datetime
 from glob import glob
 import logging
 
@@ -34,7 +35,7 @@ import zynautoconnect
 from zyngine.zynthian_chain_manager import *
 from zyngui.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngine import zynthian_engine_audio_mixer
-from zyngine import zyngine_config
+from zyngine import zynthian_gui_config
 from zynlibs.zynseq import zynseq
 from zyncoder.zyncore import *
 from zyngine import zynthian_midi_filter
@@ -70,6 +71,14 @@ class zynthian_state_manager():
         self.last_zs3_index = 0
         self.status_info = {}
 
+        # Initialize MIDI & Switches
+        try:
+            self.zynmidi = zynthian_zcmidi()
+            self.zynswitches_init()
+            self.zynswitches_midi_setup()
+        except Exception as e:
+            logging.error("ERROR initializing MIDI & Switches: {}".format(e))
+            self.zynmidi = None
 
         # Init Auto-connector
         self.zynautoconnect_audio_flag = False
@@ -108,7 +117,7 @@ class zynthian_state_manager():
         state['chains'] = self.chain_manager.get_state()
 
         # Add ALSA-Mixer setting as a layer
-        if zyngine_config.snapshot_mixer_settings and self.amixer_chain:
+        if zynthian_gui_config.snapshot_mixer_settings and self.amixer_chain:
             state['chains'].append(self.amixer_chain.get_state())
 
         # Clone info
@@ -306,7 +315,7 @@ class zynthian_state_manager():
         for i, lss in enumerate(state['layers']):
             l2r = False
             if lss:
-                if zyngine_config.midi_single_active_channel:
+                if zynthian_gui_config.midi_single_active_channel:
                     if restore_midi_chan is not None and lss['midi_chan'] == restore_midi_chan:
                         l2r = True
                 else:
@@ -483,7 +492,7 @@ class zynthian_state_manager():
         #Create new layers, starting engines when needed
         for i, lss in enumerate(snapshot['layers']):
             if lss['engine_nick'] == "MX":
-                if zyngine_config.snapshot_mixer_settings:
+                if zynthian_gui_config.snapshot_mixer_settings:
                     snapshot['amixer_chain'] = lss
                 del snapshot['layers'][i]
             else:
@@ -525,7 +534,7 @@ class zynthian_state_manager():
         if mps is not None:
             for key in mps:
                 os.environ["ZYNTHIAN_MIDI_" + key] = mps[key]
-            zyngine_config.set_midi_config()
+            zynthian_gui_config.set_midi_config()
             self.init_midi()
             self.init_midi_services()
             self.zynautoconnect()
@@ -545,7 +554,7 @@ class zynthian_state_manager():
     #----------------------------------------------------------------------------
 
     def set_midi_prog_zs3(self, midich, prognum):
-        if zyngine_config.midi_single_active_channel:
+        if zynthian_gui_config.midi_single_active_channel:
             i = self.get_zs3_index_by_prognum(prognum)
         else:
             i = self.get_zs3_index_by_midich_prognum(midich, prognum)
@@ -560,7 +569,7 @@ class zynthian_state_manager():
     def save_midi_prog_zs3(self, midich, prognum):
         # Look for a matching zs3 
         if midich is not None and prognum is not None:
-            if zyngine_config.midi_single_active_channel:
+            if zynthian_gui_config.midi_single_active_channel:
                 i = self.get_zs3_index_by_prognum(prognum)
             else:
                 i = self.get_zs3_index_by_midich_prognum(midich, prognum)
@@ -731,7 +740,7 @@ class zynthian_state_manager():
         """Toggle MIDI learn mode"""
 
         if self.midi_learn_mode:
-            if zyngine_config.midi_prog_change_zs3:
+            if zynthian_gui_config.midi_prog_change_zs3:
                 self.midi_learn_mode = 2
                 self.midi_learn_zctrl = None
             else:
@@ -809,18 +818,18 @@ class zynthian_state_manager():
     def init_midi(self):
         try:
             #Set Global Tuning
-            self.fine_tuning_freq = zyngine_config.midi_fine_tuning
+            self.fine_tuning_freq = zynthian_gui_config.midi_fine_tuning
             lib_zyncore.set_midi_filter_tuning_freq(ctypes.c_double(self.fine_tuning_freq))
             #Set MIDI Master Channel
-            lib_zyncore.set_midi_master_chan(zyngine_config.master_midi_channel)
+            lib_zyncore.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
             #Set MIDI CC automode
-            lib_zyncore.set_midi_filter_cc_automode(zyngine_config.midi_cc_automode)
+            lib_zyncore.set_midi_filter_cc_automode(zynthian_gui_config.midi_cc_automode)
             #Set MIDI System Messages flag
-            lib_zyncore.set_midi_filter_system_events(zyngine_config.midi_sys_enabled)
+            lib_zyncore.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
             #Setup MIDI filter rules
             if self.midi_filter_script:
                 self.midi_filter_script.clean()
-            self.midi_filter_script = zynthian_midi_filter.MidiFilterScript(zyngine_config.midi_filter_rules)
+            self.midi_filter_script = zynthian_midi_filter.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
 
         except Exception as e:
             logging.error("ERROR initializing MIDI : {}".format(e))
@@ -831,7 +840,7 @@ class zynthian_state_manager():
         midi_profile_fpath=zynconf.get_midi_config_fpath()
         if midi_profile_fpath:
             zynconf.load_config(True,midi_profile_fpath)
-            zyngine_config.set_midi_config()
+            zynthian_gui_config.set_midi_config()
             self.init_midi()
             self.init_midi_services()
             self.zynautoconnect()
@@ -883,7 +892,7 @@ class zynthian_state_manager():
 
     #Start/Stop RTP-MIDI depending on configuration
     def default_rtpmidi(self):
-        if zyngine_config.midi_rtpmidi_enabled:
+        if zynthian_gui_config.midi_rtpmidi_enabled:
             self.start_rtpmidi(False)
         else:
             self.stop_rtpmidi(False)
@@ -892,11 +901,11 @@ class zynthian_state_manager():
         logging.info("STARTING RTP-MIDI")
         try:
             check_output("systemctl start jackrtpmidid", shell=True)
-            zyngine_config.midi_rtpmidi_enabled = 1
+            zynthian_gui_config.midi_rtpmidi_enabled = 1
             # Update MIDI profile
             if save_config:
                 zynconf.update_midi_profile({ 
-                    "ZYNTHIAN_MIDI_RTPMIDI_ENABLED": str(zyngine_config.midi_rtpmidi_enabled)
+                    "ZYNTHIAN_MIDI_RTPMIDI_ENABLED": str(zynthian_gui_config.midi_rtpmidi_enabled)
                 })
             # Call autoconnect after a little time
             sleep(0.5)
@@ -909,11 +918,11 @@ class zynthian_state_manager():
         logging.info("STOPPING RTP-MIDI")
         try:
             check_output("systemctl stop jackrtpmidid", shell=True)
-            zyngine_config.midi_rtpmidi_enabled = 0
+            zynthian_gui_config.midi_rtpmidi_enabled = 0
             # Update MIDI profile
             if save_config:
                 zynconf.update_midi_profile({ 
-                    "ZYNTHIAN_MIDI_RTPMIDI_ENABLED": str(zyngine_config.midi_rtpmidi_enabled)
+                    "ZYNTHIAN_MIDI_RTPMIDI_ENABLED": str(zynthian_gui_config.midi_rtpmidi_enabled)
                 })
 
         except Exception as e:
@@ -923,11 +932,11 @@ class zynthian_state_manager():
         logging.info("STARTING QMIDINET")
         try:
             check_output("systemctl start qmidinet", shell=True)
-            zyngine_config.midi_network_enabled = 1
+            zynthian_gui_config.midi_network_enabled = 1
             # Update MIDI profile
             if save_config:
                 zynconf.update_midi_profile({ 
-                    "ZYNTHIAN_MIDI_NETWORK_ENABLED": str(zyngine_config.midi_network_enabled)
+                    "ZYNTHIAN_MIDI_NETWORK_ENABLED": str(zynthian_gui_config.midi_network_enabled)
                 })
             # Call autoconnect after a little time
             sleep(0.5)
@@ -940,18 +949,18 @@ class zynthian_state_manager():
         logging.info("STOPPING QMIDINET")
         try:
             check_output("systemctl stop qmidinet", shell=True)
-            zyngine_config.midi_network_enabled = 0
+            zynthian_gui_config.midi_network_enabled = 0
             # Update MIDI profile
             if save_config:
                 zynconf.update_midi_profile({ 
-                    "ZYNTHIAN_MIDI_NETWORK_ENABLED": str(zyngine_config.midi_network_enabled)
+                    "ZYNTHIAN_MIDI_NETWORK_ENABLED": str(zynthian_gui_config.midi_network_enabled)
                 })
         except Exception as e:
             logging.error(e)
 
     #Start/Stop QMidiNet depending on configuration
     def default_qmidinet(self):
-        if zyngine_config.midi_network_enabled:
+        if zynthian_gui_config.midi_network_enabled:
             self.start_qmidinet(False)
         else:
             self.stop_qmidinet(False)
@@ -961,11 +970,11 @@ class zynthian_state_manager():
         logging.info("STARTING touchosc2midi")
         try:
             check_output("systemctl start touchosc2midi", shell=True)
-            zyngine_config.midi_touchosc_enabled = 1
+            zynthian_gui_config.midi_touchosc_enabled = 1
             # Update MIDI profile
             if save_config:
                 zynconf.update_midi_profile({ 
-                    "ZYNTHIAN_MIDI_TOUCHOSC_ENABLED": str(zyngine_config.midi_touchosc_enabled)
+                    "ZYNTHIAN_MIDI_TOUCHOSC_ENABLED": str(zynthian_gui_config.midi_touchosc_enabled)
                 })
             # Call autoconnect after a little time
             sleep(0.5)
@@ -977,18 +986,18 @@ class zynthian_state_manager():
         logging.info("STOPPING touchosc2midi")
         try:
             check_output("systemctl stop touchosc2midi", shell=True)
-            zyngine_config.midi_touchosc_enabled = 0
+            zynthian_gui_config.midi_touchosc_enabled = 0
             # Update MIDI profile
             if save_config:
                 zynconf.update_midi_profile({ 
-                    "ZYNTHIAN_MIDI_TOUCHOSC_ENABLED": str(zyngine_config.midi_touchosc_enabled)
+                    "ZYNTHIAN_MIDI_TOUCHOSC_ENABLED": str(zynthian_gui_config.midi_touchosc_enabled)
                 })
         except Exception as e:
             logging.error(e)
 
     #Start/Stop TouchOSC depending on configuration
     def default_touchosc(self):
-        if zyngine_config.midi_touchosc_enabled:
+        if zynthian_gui_config.midi_touchosc_enabled:
             self.start_touchosc2midi(False)
         else:
             self.stop_touchosc2midi(False)
@@ -997,11 +1006,11 @@ class zynthian_state_manager():
         logging.info("STARTING aubionotes")
         try:
             check_output("systemctl start aubionotes", shell=True)
-            zyngine_config.midi_aubionotes_enabled = 1
+            zynthian_gui_config.midi_aubionotes_enabled = 1
             # Update MIDI profile
             if save_config:
                 zynconf.update_midi_profile({ 
-                    "ZYNTHIAN_MIDI_AUBIONOTES_ENABLED": str(zyngine_config.midi_aubionotes_enabled)
+                    "ZYNTHIAN_MIDI_AUBIONOTES_ENABLED": str(zynthian_gui_config.midi_aubionotes_enabled)
                 })
             # Call autoconnect after a little time
             sleep(0.5)
@@ -1013,19 +1022,101 @@ class zynthian_state_manager():
         logging.info("STOPPING aubionotes")
         try:
             check_output("systemctl stop aubionotes", shell=True)
-            zyngine_config.midi_aubionotes_enabled = 0
+            zynthian_gui_config.midi_aubionotes_enabled = 0
             # Update MIDI profile
             if save_config:
                 zynconf.update_midi_profile({ 
-                    "ZYNTHIAN_MIDI_AUBIONOTES_ENABLED": str(zyngine_config.midi_aubionotes_enabled)
+                    "ZYNTHIAN_MIDI_AUBIONOTES_ENABLED": str(zynthian_gui_config.midi_aubionotes_enabled)
                 })
         except Exception as e:
             logging.error(e)
 
     #Start/Stop AubioNotes depending on configuration
     def default_aubionotes(self):
-        if zyngine_config.midi_aubionotes_enabled:
+        if zynthian_gui_config.midi_aubionotes_enabled:
             self.start_aubionotes(False)
         else:
             self.stop_aubionotes(False)
+
+
+    # -------------------------------------------------------------------
+    # Switches
+    # -------------------------------------------------------------------
+
+    # Init Standard Zynswitches
+    def zynswitches_init(self):
+        if not lib_zyncore: return
+        logging.info("INIT {} ZYNSWITCHES ...".format(zynthian_gui_config.num_zynswitches))
+        ts=datetime.now()
+        self.dtsw = [ts] * (zynthian_gui_config.num_zynswitches + 4)
+
+
+    # Initialize custom switches, analog I/O, TOF sensors, etc.
+    def zynswitches_midi_setup(self, current_chain_chan=None):
+        if not lib_zyncore: return
+        logging.info("CUSTOM I/O SETUP...")
+
+        # Configure Custom Switches
+        for i, event in enumerate(zynthian_gui_config.custom_switch_midi_events):
+            if event is not None:
+                swi = 4 + i
+                if event['chan'] is not None:
+                    midi_chan = event['chan']
+                else:
+                    midi_chan = current_chain_chan
+
+                if midi_chan is not None:
+                    lib_zyncore.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'], event['val'])
+                    logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}, {}".format(swi, event['type'], midi_chan, event['num'], event['val']))
+                else:
+                    lib_zyncore.setup_zynswitch_midi(swi, 0, 0, 0, 0)
+                    logging.info("MIDI ZYNSWITCH {}: DISABLED!".format(swi))
+
+        # Configure Zynaptik Analog Inputs (CV-IN)
+        for i, event in enumerate(zynthian_gui_config.zynaptik_ad_midi_events):
+            if event is not None:
+                if event['chan'] is not None:
+                    midi_chan = event['chan']
+                else:
+                    midi_chan = current_chain_chan
+
+                if midi_chan is not None:
+                    lib_zyncore.setup_zynaptik_cvin(i, event['type'], midi_chan, event['num'])
+                    logging.info("ZYNAPTIK CV-IN {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+                else:
+                    lib_zyncore.disable_zynaptik_cvin(i)
+                    logging.info("ZYNAPTIK CV-IN {}: DISABLED!".format(i))
+
+        # Configure Zynaptik Analog Outputs (CV-OUT)
+        for i, event in enumerate(zynthian_gui_config.zynaptik_da_midi_events):
+            if event is not None:
+                if event['chan'] is not None:
+                    midi_chan = event['chan']
+                else:
+                    midi_chan = current_chain_chan
+
+                if midi_chan is not None:
+                    lib_zyncore.setup_zynaptik_cvout(i, event['type'], midi_chan, event['num'])
+                    logging.info("ZYNAPTIK CV-OUT {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+                else:
+                    lib_zyncore.disable_zynaptik_cvout(i)
+                    logging.info("ZYNAPTIK CV-OUT {}: DISABLED!".format(i))
+
+        # Configure Zyntof Inputs (Distance Sensor)
+        for i, event in enumerate(zynthian_gui_config.zyntof_midi_events):
+            if event is not None:
+                if event['chan'] is not None:
+                    midi_chan = event['chan']
+                else:
+                    midi_chan = current_chain_chan
+
+                if midi_chan is not None:
+                    lib_zyncore.setup_zyntof(i, event['type'], midi_chan, event['num'])
+                    logging.info("ZYNTOF {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+                else:
+                    lib_zyncore.disable_zyntof(i)
+                    logging.info("ZYNTOF {}: DISABLED!".format(i))
+
+
+
 

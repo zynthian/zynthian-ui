@@ -81,8 +81,8 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# Initialization
 	# ---------------------------------------------------------------------------
 
-	def __init__(self, zyngui=None):
-		super().__init__(zyngui)
+	def __init__(self, state_manager=None):
+		super().__init__(state_manager)
 		self.name = "FluidSynth"
 		self.nickname = "FS"
 		self.jackname = "fluidsynth"

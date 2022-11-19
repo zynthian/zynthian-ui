@@ -91,8 +91,8 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	# Initialization
 	# ---------------------------------------------------------------------------
 
-	def __init__(self, zyngui=None):
-		super().__init__(zyngui)
+	def __init__(self, state_manager=None):
+		super().__init__(state_manager)
 		self.name = "LinuxSampler"
 		self.nickname = "LS"
 		self.jackname = "LinuxSampler"
@@ -392,7 +392,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 					layer.ls_chan_info['audio_output']=i
 
 					layer.jackname = "{}:CH{}_".format(self.jackname, i)
-					self.zyngui.zynautoconnect_audio()
+					self.state_manager.zynautoconnect_audio()
 
 				except zyngine_lscp_error as err:
 					logging.error(err)
