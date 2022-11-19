@@ -54,21 +54,28 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	# LS Hardcoded MIDI Controllers
-	_ctrls=[
-		['volume',7,96],
-		['pan',10,64],
-		['sustain',64,'off',['off','on']],
-		['sostenuto',66,'off',['off','on']],
-		['legato on/off',68,'off',['off','on']],
-		['portamento on/off',65,'off',['off','on']],
-		['portamento time-coarse',5,0],
-		['portamento time-fine',37,0]
+	_ctrls = [
+		['modulation wheel', 1, 0],
+		#['breath', 2, 127],
+		#['expr. pedal', 4, 127],
+		['volume', 7, 96],
+		['pan', 10, 64],
+		['expression', 11, 127],
+
+		['sustain', 64, 'off', ['off', 'on']],
+		['sostenuto', 66, 'off', ['off', 'on']],
+		['legato', 68, 'off', ['off', 'on']],
+
+		['portamento on/off', 65, 'off', ['off', 'on']],
+		['portamento time-coarse', 5, 0],
+		['portamento time-fine', 37, 0]
 	]
 
 	# Controller Screens
-	_ctrl_screens=[
-		['main',['volume','pan','sostenuto','sustain']],
-		['portamento',['legato on/off','portamento on/off','portamento time-coarse','portamento time-fine']]
+	_ctrl_screens = [
+		['main', ['volume', 'pan', 'modulation wheel', 'expression']],
+		['pedals', ['legato', 'sostenuto', 'sustain']],
+		['portamento', ['portamento on/off', 'portamento time-coarse', 'portamento time-fine']]
 	]
 
 	# ---------------------------------------------------------------------------
