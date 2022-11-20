@@ -58,13 +58,13 @@ class zynthian_chain_manager():
         self.chains = {}  # Map of chain objects indexed by chain id
         self.zyngine_counter = 0 # Appended to engine names for uniqueness
         self.zyngines = OrderedDict()  # List of instantiated engines
-        self.active_chain = None # Active chain id
+        self.active_chain_id = None # Active chain id
         self.midi_chan_2_chain = []  # Chains mapped by MIDI channel
         for i in range(16):
             self.midi_chan_2_chain.append(set())
 
         self.update_engine_info()
-        self.add_chain("main", 256, enable_audio_thru=True)
+        self.add_chain(256, enable_audio_thru=True)
 
     def update_engine_info(self):
         """Update dictionary of available engines"""
@@ -113,17 +113,23 @@ class zynthian_chain_manager():
     # Chain Management
     # ------------------------------------------------------------------------
 
-    def add_chain(self, chain_id, midi_chan=None,
+    def add_chain(self, midi_chan=None,
         enable_midi_thru=False, enable_audio_thru=False):
         """Add a chain
 
-        chain_id - Chain id
-        midi_chan - Optional MIDI channel associated with chain (may be None)
+        midi_chan - MIDI channel associated with chain
         enable_midi_thru - True to enable MIDI thru for empty chain (Default: False)
         enable_audio_thru - True to enable audio thru for empty chain (Default: False)
         Returns - Chain object or None if chain could not be created
+        #TODO: Rationalise chain id (currently: "00".."15", "aux", "main")
         """
 
+        if midi_chan < 16:
+            chain_id = "{:02d}".format(midi_chan)
+        elif midi_chan == 17:
+            chain_id = "aux"
+        else:
+            chain_id = "main"
         if chain_id in self.chains:
             return self.chains[chain_id]
         chain = zynthian_chain(midi_chan, enable_midi_thru, enable_audio_thru)
@@ -131,7 +137,7 @@ class zynthian_chain_manager():
             self.chains[chain_id] = chain
         if midi_chan is not None and midi_chan < 16:
             self.midi_chan_2_chain[midi_chan].add(chain)
-        self.active_chain = chain_id
+        self.active_chain_id = chain_id
         try:
             zynautoconnect.autoconnect(True)
         except:
@@ -159,6 +165,8 @@ class zynthian_chain_manager():
         if stop_engines:
             self.stop_unused_engines()
         if chain_id != "main":
+            if self.active_chain_id == chain_id:
+                self.next_chain()
             self.chains.pop(chain_id)
             del chain
         return True
@@ -315,9 +323,9 @@ class zynthian_chain_manager():
         """
 
         if chain_id in self.chains:
-            self.active_chain = chain_id
+            self.active_chain_id = chain_id
             # TODO: Select in lower-level module
-        return self.active_chain
+        return self.active_chain_id
 
     def set_active_chain_by_object(self, chain_object):
         """Select the active chain
@@ -330,7 +338,7 @@ class zynthian_chain_manager():
             if self.chains[id] == chain_object:
                 self.set_active_chain_by_id(id)
                 break
-        return self.active_chain
+        return self.active_chain_id
 
     def next_chain(self, nudge=1):
         """Select the next chain as active
@@ -341,17 +349,17 @@ class zynthian_chain_manager():
 
         chain_keys = sorted(self.chains)
         try:
-            index = chain_keys.index(self.active_chain) + nudge
+            index = chain_keys.index(self.active_chain_id) + nudge
         except:
             index = 0
 
         if index >= len(chain_keys):
-            self.active_chain = chain_keys[-1]
+            self.active_chain_id = chain_keys[-1]
         elif index <= 0:
-            self.active_chain = chain_keys[0]
+            self.active_chain_id = chain_keys[0]
         else:
-            self.active_chain = chain_keys[index]
-        return self.active_chain
+            self.active_chain_id = chain_keys[index]
+        return self.active_chain_id
 
     def previous_chain(self, nudge=1):
         """Select the previous chain as active
@@ -363,8 +371,8 @@ class zynthian_chain_manager():
 
     def get_active_chain(self):
         """Get the active chain object or None if no active chain"""
-        if self.active_chain in self.chains:
-            return self.chains[self.active_chain]
+        if self.active_chain_id in self.chains:
+            return self.chains[self.active_chain_id]
         return None
 
     # ------------------------------------------------------------------------
@@ -577,7 +585,7 @@ class zynthian_chain_manager():
 
     def restore_presets(self):
         """Restore presets in active chain"""
-        for processor in self.get_processors(self.active_chain):
+        for processor in self.get_processors(self.active_chain_id):
             processor.restore_preset()
 
 	#----------------------------------------------------------------------------

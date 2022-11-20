@@ -328,8 +328,8 @@ class zynthian_gui:
 			else:
 				self.wsleds.setPixelColor(7, self.wscolor_off)
 			# => Light active layer
-			if self.chain_manager.active_chain is not None:
-				if self.chain_manager.active_chain == "main":
+			if self.chain_manager.active_chain_id is not None:
+				if self.chain_manager.active_chain_id == "main":
 					if self.current_screen == "control":
 						self.wsleds.setPixelColor(7, self.wscolor_active)
 					else:
@@ -809,8 +809,11 @@ class zynthian_gui:
 		if "midi_chan" in self.add_chain_status:
 			# We know the MIDI channel so create a new chain and processor
 			chain_id = str(self.add_chain_status["midi_chan"])
+			if "midi_thru" not in  self.add_chain_status:
+				self.add_chain_status["midi_thru"] = False
+			if "audio_thru" not in  self.add_chain_status:
+				self.add_chain_status["audio_thru"] = False
 			self.chain_manager.add_chain(
-				chain_id,
 				self.add_chain_status["midi_chan"],
 				self.add_chain_status["midi_thru"],
 				self.add_chain_status["audio_thru"])
@@ -825,7 +828,7 @@ class zynthian_gui:
 				#TODO: Handle Aeolus same as other engines
 				for midi_chan in range(4):
 					chain_id = str(midi_chan)
-					self.chain_manager.add_chain(chain_id, midi_chan)
+					self.chain_manager.add_chain(midi_chan)
 					self.chain_manager.add_processor(chain_id, "AE")
 				self.add_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
 				self.chain_control("0")
@@ -859,7 +862,7 @@ class zynthian_gui:
 
 	def chain_control(self, chain_id=None, processor=None):
 		if chain_id is None:
-			chain_id = self.chain_manager.active_chain
+			chain_id = self.chain_manager.active_chain_id
 
 		self.set_current_processor(processor)
 
@@ -885,13 +888,8 @@ class zynthian_gui:
 					if custom_screen_name in self.screens:
 						control_screen_name = custom_screen_name
 
-			#***TODO***
-			# If Empty Audio Input chain => Add Audio-FX
-			if self.chain_manager.get_processor_count(self.current_processor) and self.chain_manager.get_chain(chain_id).is_audio():
-				self.show_screen_reset('audio_mixer')
-				#TODO: Show audio engine view
 			# If a preset is selected => control screen
-			elif self.current_processor.get_preset_name():
+			if self.current_processor.get_preset_name():
 				self.show_screen_reset(control_screen_name)
 			# If not => bank/preset selector screen
 			else:
@@ -907,7 +905,10 @@ class zynthian_gui:
 						if len(zyngui.current_processor.preset_list):
 							self.current_processor.set_preset(0)
 						self.show_screen_reset(control_screen_name)
-		
+		else:
+			chain = self.chain_manager.get_chain(chain_id)
+			if chain and chain.is_audio():
+				self.add_chain({"chain_id":chain_id, "type":"Audio Effect"})
 
 	def show_control(self):
 		self.restore_current_processor()
@@ -947,7 +948,7 @@ class zynthian_gui:
 		"""
 
 		if processor is None:
-			processors = self.chain_manager.get_processors(self.chain_manager.active_chain)
+			processors = self.chain_manager.get_processors(self.chain_manager.active_chain_id)
 			if processors:
 				self.current_processor = processors[0]
 			else:

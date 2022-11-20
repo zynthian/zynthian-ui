@@ -243,7 +243,7 @@ class zynthian_state_manager():
             self.amixer_chain.restore_state_2(state['amixer_chain'])
 
         # Set active layer
-        self.chain_manager.set_active_chain_by_id(str(state['index']))
+        self.chain_manager.set_active_chain_by_id("{:2d}".format(state['index']))
 
         # Autoconnect Audio
         self.zynautoconnect_audio(True)
@@ -371,7 +371,7 @@ class zynthian_state_manager():
         if index is not None and index!=self.index:
             logging.info("Setting current_chain to {}".format(index))
             self.index = index
-            self.chain_manager.set_active_chain_by_id(str(state['index']))
+            self.chain_manager.set_active_chain_by_id("{:2d}".format(state['index']))
 
         # Autoconnect Audio => Not Needed!! It's called after action
         #self.zynautoconnect_audio(True)
@@ -873,7 +873,7 @@ class zynthian_state_manager():
 
         if not self.audio_player:
             try:
-                self.chain_manager.add_chain('aux') #TODO: Prob don't want chain
+                self.chain_manager.add_chain(17) #TODO: Prob don't want chain
                 self.audio_player = self.chain_manager.add_processor("aux", "AP", CHAIN_MODE_PARALLEL)
                 zynautoconnect.audio_connect_aux(self.audio_player.jackname)
             except Exception as e:

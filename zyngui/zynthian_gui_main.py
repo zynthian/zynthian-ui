@@ -78,9 +78,8 @@ class zynthian_gui_main(zynthian_gui_selector):
 	def new_audiofx_layer(self, t='S'):
 		try:
 			midi_chan = self.zyngui.chain_manager.get_free_midi_chans()[0]
-			chain_id = str(midi_chan)
-			if self.zyngui.chain_manager.add_chain(chain_id, midi_chan, enable_audio_thru = True):
-				self.zyngui.add_chain({"type": "Audio Effect", "audio_thru": True, "chain_id": chain_id})
+			if self.zyngui.chain_manager.add_chain(midi_chan, enable_audio_thru = True):
+				self.zyngui.add_chain({"type": "Audio Effect", "audio_thru": True, "chain_id": "{:02d}".format(midi_chan)})
 		except Exception as e:
 			logging.error(e)
 		#self.zyngui.add_chain({"type": "Audio Effect", "midi_thru": False, "audio_thru": True})

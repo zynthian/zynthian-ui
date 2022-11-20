@@ -70,13 +70,13 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 
 	def arrow_right(self):
-		active = self.zyngui.chain_manager.active_chain
+		active = self.zyngui.chain_manager.active_chain_id
 		if active != self.zyngui.chain_manager.next_chain():
 			self.zyngui.chain_control()
 
 
 	def arrow_left(self):
-		active = self.zyngui.chain_manager.active_chain
+		active = self.zyngui.chain_manager.active_chain_id
 		if active != self.zyngui.chain_manager.previous_chain():
 			self.zyngui.chain_control()
 

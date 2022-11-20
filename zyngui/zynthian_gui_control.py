@@ -125,7 +125,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if self.zyngui.current_processor.engine.nickname=="MX":
 			self.processors = [self.zyngui.current_processor]
 		else:
-			self.processors = self.zyngui.chain_manager.get_processors(self.zyngui.chain_manager.active_chain)
+			self.processors = self.zyngui.chain_manager.get_processors(self.zyngui.chain_manager.active_chain_id)
 
 		i = 0
 		for processor in self.processors:
@@ -434,7 +434,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.click_listbox()
 		elif t == 'B':
 			if not self.zyngui.is_shown_alsa_mixer():
-				self.zyngui.screens['chain_options'].setup(self.zyngui.chain_manager.active_chain)
+				self.zyngui.screens['chain_options'].setup(self.zyngui.chain_manager.active_chain_id)
 				self.zyngui.show_screen('chain_options')
 		return True
 
