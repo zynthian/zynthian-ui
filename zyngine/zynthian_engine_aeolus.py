@@ -195,6 +195,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 		self.tuning_temp = None
 		self.reset()
+		self.start()
 
 
 
@@ -310,7 +311,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 		if not self.tuning_temp:
 			for title, i in self.tuning_temp_dict.items():
 				res.append((title, i, title))
-			self.state_manager.screens['bank'].index = self.current_tuning_temp-1
+			#TODO: self.state_manager.screens['bank'].index = self.current_tuning_temp-1
 		else:
 			i=-1
 			for gc in self.presets_data['group_config']:

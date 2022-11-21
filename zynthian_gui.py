@@ -798,7 +798,7 @@ class zynthian_gui:
 
 
 	def add_chain(self, status={}):
-		"""Manage the stages of adding a chain
+		"""Manage the stages of adding or changing a processor or chain
 		
 		status - Dictionary of status (Default: continue adding with current)
 		"""
@@ -808,7 +808,7 @@ class zynthian_gui:
 
 		if "midi_chan" in self.add_chain_status:
 			# We know the MIDI channel so create a new chain and processor
-			chain_id = str(self.add_chain_status["midi_chan"])
+			chain_id = "{:02d}".format(self.add_chain_status["midi_chan"])
 			if "midi_thru" not in  self.add_chain_status:
 				self.add_chain_status["midi_thru"] = False
 			if "audio_thru" not in  self.add_chain_status:
@@ -827,11 +827,11 @@ class zynthian_gui:
 			if self.add_chain_status["engine"] == 'AE':
 				#TODO: Handle Aeolus same as other engines
 				for midi_chan in range(4):
-					chain_id = str(midi_chan)
+					chain_id = "{:02d}".format(midi_chan)
 					self.chain_manager.add_chain(midi_chan)
 					self.chain_manager.add_processor(chain_id, "AE")
 				self.add_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
-				self.chain_control("0")
+				self.chain_control("00")
 				return
 			if "chain_id" in self.add_chain_status:
 				# Modifying an existing chain
@@ -1838,9 +1838,9 @@ class zynthian_gui:
 					# Set Preset or ZS3 (sub-snapshot), depending of config option
 					else:
 						if zynthian_gui_config.midi_prog_change_zs3:
-							res = self.screens['layer'].set_midi_prog_zs3(chan, pgm) #TODO
+							res = self.state_manager.set_midi_prog_zs3(chan, pgm)
 						else:
-							res = self.screens['layer'].set_midi_prog_preset(chan, pgm) # TODO
+							res = self.chain_manager.set_midi_prog_preset(chan, pgm)
 						if res:
 							if self.current_screen == 'audio_mixer':
 								self.screens['audio_mixer'].refresh_visible_strips()

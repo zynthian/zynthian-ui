@@ -570,18 +570,18 @@ class zynthian_chain_manager():
         Returns - True on success
         """
 
-        #TODO: Cleare chains and create as required
-        # Restore layer state, step 0 => bank list
-        for i, lss in enumerate(state):
-            self.chains[i].restore_state_0(lss)
+        # Clean all chains but don't stop unused engines
+        self.remove_all_chains(False)
 
-        # Restore layer state, step 1 => Restore Bank & Preset Status
-        for i, lss in enumerate(state):
-            self.chains[i].restore_state_1(lss)
+        # Reusing Jalv engine instances raise problems (audio routing & jack names, etc..),
+        # so we stop Jalv engines!
+        self.stop_unused_jalv_engines()
 
-        # Restore layer state, step 2 => Restore Controllers Status
-        for i, lss in enumerate(state):
-            self.chains[i].restore_state_2(lss)
+        for chain_state in state['chains'].values():
+            chain = self.add_chain(chain_state['midi_chan'], chain_state['enable_midi_thru'], chain_state['enable_audio_thru'])
+            if chain:
+                chain.set_state(chain_state)
+
 
     def restore_presets(self):
         """Restore presets in active chain"""
