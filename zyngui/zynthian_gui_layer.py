@@ -97,9 +97,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		except:
 			self.index = 0
 			try:
-				self.zyngui.set_curlayer(self.root_layers[0])
+				self.zyngui.set_curlayer(self.root_layers[0], populate_screens=False)
 			except:
-				self.zyngui.set_curlayer(None)
+				self.zyngui.set_curlayer(None, populate_screens=False)
 
 
 	def select_action(self, i, t='S'):
