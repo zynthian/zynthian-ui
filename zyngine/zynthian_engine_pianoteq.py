@@ -454,21 +454,53 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# Preset Managament
 	# ----------------------------------------------------------------------------
 
+	def get_display_name(self, preset_name, bank_name):
+		"""Remove bank name from front of preset display name
+
+		Attributes
+		----------
+		preset_name : str
+			Name of preset
+		bank_name : str
+			String to remove from front of display name
+		"""
+
+		if preset_name.startswith(bank_name):
+			display_name = preset_name[len(bank_name):]
+		elif preset_name.startswith("NY Steinway D ") or preset_name.startswith("HB Steinway D "):
+			display_name = preset_name[14:]
+		elif preset_name.startswith("D. Schoffstoss "):
+			display_name = preset_name[15:]
+		elif preset_name.startswith("Electra "):
+			display_name = preset_name[7:]
+		else:
+			display_name = preset_name
+		if display_name.startswith(" - "):
+			display_name = display_name[3:]
+		if display_name:
+			return display_name.strip()
+		else:
+			return preset_name
+
+
 	def get_preset_list(self, bank):
 		# [uri/uid, pt bank, display name,zyn bank (pt instr)]
 		presets = []
 		result = self.get_presets(bank[0])
 		user_presets = False
+		stub = bank[0].split(" (")[0]
+		if stub.startswith("Grand "):
+			stub = stub[6:]
 		for preset in result:
 			if preset[1]:
-				presets.append([preset[0], preset[1] , preset[0], bank[0]])
+				presets.append([preset[0], preset[1], self.get_display_name(preset[0], stub), bank[0]])
 				user_presets = True
 		if user_presets:
 			presets.insert(0, [None, None, 'User Presets', ''])
 			presets.append([None, None, 'Factory Presets', ''])
 		for preset in result:
 			if not preset[1]:
-				presets.append([preset[0], preset[1] , preset[0], bank[0]])
+				presets.append([preset[0], preset[1] , self.get_display_name(preset[0], stub), bank[0]])
 		return presets
 
 
