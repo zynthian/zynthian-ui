@@ -25,10 +25,11 @@
 
 import logging
 from collections import OrderedDict
+from ctypes import c_ubyte
 
 # Zynthian specific modules
 import zynautoconnect
-from zyngine import zynthian_processor
+from zyncoder.zyncore import get_lib_zyncore
 
 CHAIN_MODE_SERIES = 0
 CHAIN_MODE_PARALLEL = 1
@@ -52,9 +53,9 @@ class zynthian_chain:
         An empty chain with MIDI input configured is pass-through.
         Pass-through disabled by default.
 
-        midi_chan - Optional MIDI channel for chain input / control
-        enable_midi_thru - True to enable MIDI thru for empty chain
-        enable_audio_thru - True to enable audio thru for empty chain
+        midi_chan : Optional MIDI channel for chain input / control
+        enable_midi_thru : True to enable MIDI thru for empty chain
+        enable_audio_thru : True to enable audio thru for empty chain
         """
 
         # Each slot contains a list of parallel processors
@@ -72,23 +73,29 @@ class zynthian_chain:
         self.status = "" # Arbitary status text
         self.reset()
 
-    def reset(self, types=[]):
+    def reset(self):
         """ Resets chain, removing all processors
         
-        types - list of processor types for pass-through
+        types : list of processor types for pass-through
+        stop_engines : True to stop unused engines
         Does not change midi/audio thru
         """
 
         if self.midi_chan is not None and self.midi_chan < 16:
             self.midi_in = ["ZynMidiRouter:ch{}_out".format(self.midi_chan)]
+            get_lib_zyncore().reset_midi_filter_note_range(self.midi_chan)
         else:
             self.midi_in = []
         self.midi_out = ["MIDI-OUT", "NET-OUT"]
         self.audio_in = ["system"]
+        if self.mixer_chan and self.mixer_chan > 15:
+            # main mixbus chain
+            self.audio_in = ["zynmixer:send"]
+            self.audio_out = ["zynmixer:return"]
+            self.audio_thru = True
         self.audio_out = ["mixer"]
         self.remove_all_processors()
         self.reset_clone()
-        self.reset_note_range()
         self.rebuild_graph()
 
     # ----------------------------------------------------------------------------
@@ -98,7 +105,7 @@ class zynthian_chain:
     def set_midi_chan(self, midi_chan):
         """Set chain (and its processors) MIDI channel
         
-        midi_chan - MIDI channel 0..15 or None
+        midi_chan : MIDI channel 0..15 or None
         """
         self.midi_chan = midi_chan
         for processor in self.get_processors():
@@ -111,8 +118,11 @@ class zynthian_chain:
             return self.get_processors("Audio Effect")[0].engine.name
         elif self.get_slot_count("MIDI Tool"):
             return self.get_processors("MIDI Tool")[0].engine.name
-        else:
-            return ""
+        elif self.audio_thru:
+            label = "\n".join(self.get_audio_in()).replace("system:capture_", "Audio input ")
+            if label != "zynmixer:send":
+                return label
+        return ""
 
     # ----------------------------------------------------------------------------
     # Routing Graph
@@ -195,7 +205,7 @@ class zynthian_chain:
             else:
                 sources = self.midi_in
             self.midi_routes[self.synth_processor.engine.jackname] = sources
-        elif len(self.midi_slots) == 0 and self.audio_thru:
+        elif len(self.midi_slots) == 0 and self.midi_thru:
             for output in self.midi_out:
                 self.midi_routes[output] = self.midi_in
 
@@ -215,7 +225,10 @@ class zynthian_chain:
         audio_out = []
         for output in self.audio_out:
             if output == "mixer":
-                audio_out.append("zynmixer:input_{:02d}".format(self.mixer_chan + 1))
+                if self.mixer_chan < 16:
+                    audio_out.append("zynmixer:input_{:02d}".format(self.mixer_chan + 1))
+                else:
+                    audio_out.append("zynmixer:return")
             else:
                 audio_out.append(output)
         return audio_out
@@ -267,10 +280,10 @@ class zynthian_chain:
         self.rebuild_audio_graph()
         zynautoconnect.audio_autoconnect(True)
 
-    def toggle_midi_out(self, jackname):
-        if isinstance(jackname, zynthian_processor):
-            jackname=jackname.engine.jackname
+    def get_midi_out(self):
+        return self.midi_out
 
+    def toggle_midi_out(self, jackname):
         if jackname not in self.midi_out:
             self.midi_out.append(jackname)
         else:
@@ -303,8 +316,8 @@ class zynthian_chain:
     def get_slot_count(self, type=None):
         """Get quantity of slots in chain
 
-        type - processor type ['MIDI Tool'|'Audio Effect', etc.] (Default: None=whole chain)
-        Returns - Quantity of slots in chain (section)
+        type : processor type ['MIDI Tool'|'Audio Effect', etc.] (Default: None=whole chain)
+        Returns : Quantity of slots in chain (section)
         """
 
         slots = 0
@@ -322,9 +335,9 @@ class zynthian_chain:
     def get_processor_count(self, type=None, slot=None):
         """Get quantity of processors in chain (slot)
 
-        type - processor type to filter results (Default: whole chain)
-        slot - Index of slot or None for whole chain (Default: whole chain)
-        Returns - Quantity of processors in (sub)chain or slot
+        type : processor type to filter results (Default: whole chain)
+        slot : Index of slot or None for whole chain (Default: whole chain)
+        Returns : Quantity of processors in (sub)chain or slot
         """
 
         processors = 0
@@ -349,15 +362,15 @@ class zynthian_chain:
     def get_processors(self, type=None, slot=None):
         """Get list of processor objects in chain
 
-        type - processor type to filter result (Default: All processors)
-        slot - Index of slot or None for whole chain
-        Returns - List of processor objects
+        type : processor type to filter result (Default: All processors)
+        slot : Index of slot or None for whole chain
+        Returns : List of processor objects
         """
 
         processors = []
         if type is None:
-            for slot in self.midi_slots:
-                processors += slot
+            for j in self.midi_slots:
+                processors += j
             if self.synth_processor:
                 processors.append(self.synth_processor)
             for j in self.audio_slots:
@@ -389,10 +402,10 @@ class zynthian_chain:
     def insert_processor(self, processor, chain_mode=CHAIN_MODE_SERIES, slot=None):
         """Insert a processor in the chain
 
-        processor - processor object to insert
-        chain_mode - CHAIN_MODE_SERIES|CHAIN_MODE_PARALLEL
-        slot - Position (slot) to insert (Default: End of chain)
-        Returns - True if processor added to chain
+        processor : processor object to insert
+        chain_mode : CHAIN_MODE_SERIES|CHAIN_MODE_PARALLEL
+        slot : Position (slot) to insert (Default: End of chain)
+        Returns : True if processor added to chain
         """
 
         if processor.type in self.slot_map: # Common code for audio and midi fx
@@ -418,9 +431,9 @@ class zynthian_chain:
     def replace_processor(self, old_processor, new_processor):
         """Replace a processor within a chain
 
-        old_processor - processor object to replace
-        new_processor - processor object to add to chain
-        Returns - True if processor was replaced
+        old_processor : processor object to replace
+        new_processor : processor object to add to chain
+        Returns : True if processor was replaced
         """
 
         if new_processor.type == "MIDI Tool":
@@ -454,8 +467,9 @@ class zynthian_chain:
     def remove_processor(self, processor):
         """Remove a processor from chain
 
-        processor - processor object to remove
-        Returns - True on success
+        processor : processor object to remove
+        stop_engine: True to stop the processor's worker engine
+        Returns : True on success
         """
 
         slot = self.get_slot(processor)
@@ -473,7 +487,6 @@ class zynthian_chain:
                 self.slot_map[processor.type].pop(slot)
 
         if processor.engine:
-            processor.engine.stop()
             # TODO: Refactor engine to replace layer with processor
             processor.engine.del_layer(processor)
 
@@ -484,7 +497,10 @@ class zynthian_chain:
         return True
 
     def remove_all_processors(self):
-        """Remove all processors from chain"""
+        """Remove all processors from chain
+        
+        stop_engines : True to stop the processors' worker engines
+        """
 
         for processor in self.get_processors():
             self.remove_processor(processor)
@@ -493,8 +509,8 @@ class zynthian_chain:
     def move_processor(self, processor, slot):
         """Move processor to different slot
 
-        processor - Processor object
-        slot - Index of slot to move process to
+        processor : Processor object
+        slot : Index of slot to move process to
         Fails if slot does not exist
         """
 
@@ -515,9 +531,9 @@ class zynthian_chain:
     def swap_processors(self, processor1, processor2):
         """Swap two processors in chain
 
-        processor1 - First processor object to swap
-        processor2 - Second processor object to swap
-        Returns - True on success
+        processor1 : First processor object to swap
+        processor2 : Second processor object to swap
+        Returns : True on success
         """
 
         if processor1.type != processor2.type or processor1.type not in self.slot_map:
@@ -554,17 +570,6 @@ class zynthian_chain:
                 return 0
         return None
 
-    def reset_clone(self):
-        """Reset chain's MIDI clone configuration to default"""
-        # TODO: Implement
-        pass
-
-    def reset_note_range(self):
-        """Reset chain's note range configuration to default"""
-        # TODO: Implement
-        pass
-
-
     # ------------------------------------------------------------------------
     # State Management
     # ------------------------------------------------------------------------
@@ -591,8 +596,115 @@ class zynthian_chain:
             "midi_thru": self.midi_thru,
             "audio_in": self.audio_in,
             "audio_out": self.audio_out,
-            "audio_thru": self. audio_thru,
+            "audio_thru": self.audio_thru,
             "slots": slots_states
         }
+        if self.midi_thru:
+            state["midi_thru"] = True
+        if self.audio_thru:
+            state["audio_thru"] = True
+
+        note_range = self.get_note_range_state(self.midi_chan)
+        if note_range:
+            state["note_range"] = note_range
+
+        clone = self.get_clone_state()
+        if clone:
+            state["midi_clone"] = clone
+
         return state
 
+    def set_state(self, state):
+        """Configure chain from model state dictionary
+
+        state : Chain state
+        """
+
+        if 'midi_chan' in state:
+            self.set_midi_chan(state['midi_chan'])
+        if "midi_in" in state:
+            self.midi_in = state["midi_in"]
+        if "midi_out" in state:
+            self.midi_out = state["midi_out"]
+        if "midi_thru" in state:
+            self.midi_thru = state["midi_thru"]
+        if "audio_in" in state:
+            self.audio_in = state["audio_in"]
+        if "audio_out" in state:
+            self.audio_out = state["audio_out"]
+        if "audio_thru" in state:
+            self.audio_thru = state["audio_thru"]
+        if isinstance(self.midi_chan, int) and self.midi_chan < 16:
+            try:
+                get_lib_zyncore().set_midi_filter_note_range(self.midi_chan, state['note_range']['note_low'], state['note_range']['note_high'], state['note_range']['octave_trans'], state['note_range']['halftone_trans'])
+            except:
+                logging.debug("Failed to set note range, e.g. chain has no MIDI channel")
+            try:
+                for dst_chan in range(len(state["clone_midi"])):
+                    if isinstance(state["clone_midi"][dst_chan], dict):
+                        get_lib_zyncore().set_midi_filter_clone(self.midi_chan, dst_chan, state["clone_midi"][dst_chan]['enabled'])
+                        self.set_clone_cc(dst_chan, state["clone_midi"][dst_chan]['cc'])
+                    else:
+                        get_lib_zyncore().set_midi_filter_clone(self.midi, dst_chan, state["clone_midi"][dst_chan])
+                        get_lib_zyncore().reset_midi_filter_clone_cc(self.midi, dst_chan)
+            except:
+                logging.debug("Failed to set note range, e.g. chain has no MIDI channel")
+
+    #----------------------------------------------------------------------------
+    # Clone, Note Range & Transpose
+    #----------------------------------------------------------------------------
+
+    def get_note_range_state(self, midi_chan):
+        """Get note range
+        
+        midi_chan : MIDI channel to filter
+        Returns : Note range state model dictionary
+        """
+
+        if midi_chan > 15:
+            return None
+        note_range = {
+            'note_low': get_lib_zyncore().get_midi_filter_note_low(midi_chan),
+            'note_high': get_lib_zyncore().get_midi_filter_note_high(midi_chan),
+            'octave_trans': get_lib_zyncore().get_midi_filter_octave_trans(midi_chan),
+            'halftone_trans': get_lib_zyncore().get_midi_filter_halftone_trans(midi_chan)
+        }
+        return note_range
+
+    def get_clone_state(self):
+        """Get MIDI clone state as list of dictionaries"""
+
+        state = []
+        for dst_chan in range(0, 16):
+            clone_info = {
+                'enabled': get_lib_zyncore().get_midi_filter_clone(self.midi_chan, dst_chan),
+                'cc': list(map(int,get_lib_zyncore().get_midi_filter_clone_cc(self.midi_chan, dst_chan).nonzero()[0]))
+            }
+            state.append(clone_info)
+        return state
+
+    def set_clone_cc(self, chan_from, chan_to, cc):
+        """Set MIDI clone
+        
+        chan_from : MIDI channel to clone from
+        chan_to : MIDI channel to clone to
+        cc : MIDI CC number to clone
+        """
+
+        cc_array = (c_ubyte * 128)()
+        if len(cc) == 128:
+            for cc_num in range(0, 128):
+                cc_array[cc_num] = cc[cc_num]
+        else:
+            for cc_num in range(0, 128):
+                if cc_num in cc:
+                    cc_array[cc_num] = 1
+                else:
+                    cc_array[cc_num] = 0
+        get_lib_zyncore().set_midi_filter_clone_cc(chan_from, chan_to, cc_array)
+
+    def reset_clone(self):
+        """Clear MIDI clone configuration"""
+
+        if isinstance(self.midi_chan, int) and self.midi_chan < 16:
+            get_lib_zyncore().reset_midi_filter_clone(self.midi_chan)

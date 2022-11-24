@@ -636,7 +636,7 @@ class zynthian_gui:
 			#TODO: Handle alsa mixer chain
 			if self.state_manager.amixer_chain:
 				self.state_manager.amixer_chain.refresh_controllers()
-				self.set_current_processor(self.state_manager.alsa_processor)
+				self.set_current_processor(self.state_manager.alsa_mixer_processor)
 			else:
 				return
 
@@ -955,9 +955,9 @@ class zynthian_gui:
 				self.current_processor = None
 		else:
 			if self.current_processor != processor:
-				if processor == self.state_manager.alsa_processor and self.current_processor !=  self.state_manager.alsa_processor:
+				if processor == self.state_manager.alsa_mixer_processor and self.current_processor !=  self.state_manager.alsa_mixer_processor:
 					self._current_processor = self.current_processor
-					self.current_processor = self.state_manager.alsa_processor
+					self.current_processor = self.state_manager.alsa_mixer_processor
 				else:
 					self.current_processor = processor
 					self._current_processor = None
@@ -971,7 +971,7 @@ class zynthian_gui:
 
 		if self.current_processor:
 			# Don't change anything for MIXER
-			if self.current_processor == self.state_manager.alsa_processor:
+			if self.current_processor == self.state_manager.alsa_mixer_processor:
 				return
 			current_chain_chan = self.current_processor.get_midi_chan()
 			if zynthian_gui_config.midi_single_active_channel and current_chain_chan is not None:
@@ -1007,9 +1007,6 @@ class zynthian_gui:
 		if self.chain_manager.get_chain_count() > 0:
 			self.screens['snapshot'].save_last_state_snapshot()
 		self.state_manager.reset()
-		self.state_manager.zynmixer.reset_state()
-		self.state_manager.zynseq.load("")
-		self.state_manager_zynautoconnect.start(self.chain_manager)
 		self.show_screen_reset('main')
 		self.state_manager.zynmixer.set_mute(256, 0)
 

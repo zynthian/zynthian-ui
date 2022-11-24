@@ -28,7 +28,7 @@ from time import sleep
 
 # Zynthian specific modules
 from zyngine import *
-from zyngine.zynthian_processor import *
+from zyngine.zynthian_processor import zynthian_processor
 from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_engine_jalv import *
 from zyngine.zynthian_chain import *
@@ -50,7 +50,7 @@ class zynthian_chain_manager():
         Each chain consists of zero or more slots.
         Each slot may contain one or more processors.
 
-        state_manager - State manager object
+        state_manager : State manager object
         """
 
         logging.warning("Creating chain manager")
@@ -59,9 +59,7 @@ class zynthian_chain_manager():
         self.zyngine_counter = 0 # Appended to engine names for uniqueness
         self.zyngines = OrderedDict()  # List of instantiated engines
         self.active_chain_id = None # Active chain id
-        self.midi_chan_2_chain = []  # Chains mapped by MIDI channel
-        for i in range(16):
-            self.midi_chan_2_chain.append(set())
+        self.midi_chan_2_chain = [None] * 16  # Chains mapped by MIDI channel
 
         self.update_engine_info()
         self.add_chain(256, enable_audio_thru=True)
@@ -72,8 +70,6 @@ class zynthian_chain_manager():
         self.engine_info = OrderedDict([
             ["SL", ("SooperLooper", "SooperLooper",
                 "Audio Effect", None, zynthian_engine_sooperlooper, True)],
-            ["MX", ("Mixer", "ALSA Mixer",
-                "MIXER", None, zynthian_engine_alsa_mixer, True)],
             ["ZY", ("ZynAddSubFX", "ZynAddSubFX - Synthesizer",
                 "MIDI Synth", None, zynthian_engine_zynaddsubfx, True)],
             ["FS", ("FluidSynth", "FluidSynth - SF2 Player",
@@ -117,26 +113,35 @@ class zynthian_chain_manager():
         enable_midi_thru=False, enable_audio_thru=False):
         """Add a chain
 
-        midi_chan - MIDI channel associated with chain
-        enable_midi_thru - True to enable MIDI thru for empty chain (Default: False)
-        enable_audio_thru - True to enable audio thru for empty chain (Default: False)
-        Returns - Chain object or None if chain could not be created
+        midi_chan : MIDI channel associated with chain
+        enable_midi_thru : True to enable MIDI thru for empty chain (Default: False)
+        enable_audio_thru : True to enable audio thru for empty chain (Default: False)
+        Returns : Chain object or None if chain could not be created
         #TODO: Rationalise chain id (currently: "00".."15", "aux", "main")
         """
 
-        if midi_chan < 16:
-            chain_id = "{:02d}".format(midi_chan)
-        elif midi_chan == 17:
-            chain_id = "aux"
+        if isinstance(midi_chan, int):
+            if midi_chan < 16:
+                chain_id = "{:02d}".format(midi_chan)
+            elif midi_chan == 17:
+                chain_id = "aux"
+            else:
+                chain_id = "main"
         else:
             chain_id = "main"
+        if chain_id == "main":
+            enable_midi_thru = False
+            enable_audio_thru = True
         if chain_id in self.chains:
+            self.chains[chain_id].midi_thru = enable_midi_thru
+            self.chains[chain_id].audio_thru = enable_audio_thru
             return self.chains[chain_id]
         chain = zynthian_chain(midi_chan, enable_midi_thru, enable_audio_thru)
         if chain:
             self.chains[chain_id] = chain
+
         if midi_chan is not None and midi_chan < 16:
-            self.midi_chan_2_chain[midi_chan].add(chain)
+            self.midi_chan_2_chain[midi_chan] = chain
         self.active_chain_id = chain_id
         try:
             zynautoconnect.autoconnect(True)
@@ -147,9 +152,9 @@ class zynthian_chain_manager():
     def remove_chain(self, chain_id, stop_engines=True):
         """Removes a chain or resets "main" chain
 
-        chain_id - ID of chain to remove
-        stop_engines - True to stop unused engines
-        Returns - True on success
+        chain_id : ID of chain to remove
+        stop_engines : True to stop unused engines
+        Returns : True on success
         """
 
         if chain_id not in self.chains:
@@ -157,10 +162,7 @@ class zynthian_chain_manager():
         chain = self.chains[chain_id]
         midi_chan = chain.midi_chan
         if midi_chan is not None and midi_chan < 16:
-            try:
-                self.midi_chan_2_chain[midi_chan].remove(chain)
-            except:
-                pass
+            self.midi_chan_2_chain[midi_chan] = None
         chain.reset()
         if stop_engines:
             self.stop_unused_engines()
@@ -169,13 +171,15 @@ class zynthian_chain_manager():
                 self.next_chain()
             self.chains.pop(chain_id)
             del chain
+        zynautoconnect.autoconnect(True)
         return True
 
     def remove_all_chains(self, stop_engines=True):
         """Remove all chains
 
-        stop_engines - True to stop orphaned engines
-        Returns - True if all chains removed
+        stop_engines : True to stop orphaned engines
+        Returns : True if all chains removed
+        Note: Chain "main" is retained but reset
         """
 
         success = True
@@ -209,8 +213,8 @@ class zynthian_chain_manager():
     def set_chain_audio_inputs(self, chain_id, inputs):
         """Set chain's audio inputs
         
-        chain_id - Chain id
-        inputs - List of jack sources or aliases (None to reset)
+        chain_id : Chain id
+        inputs : List of jack sources or aliases (None to reset)
         """
         if chain_id in self.chains:
             if inputs:
@@ -229,8 +233,8 @@ class zynthian_chain_manager():
     def set_chain_audio_outputs(self, chain_id, outputs):
         """Set chain's audio outputs
         
-        chain_id - Chain id
-        outputs - List of jack destinations or aliases (None to reset)
+        chain_id : Chain id
+        outputs : List of jack destinations or aliases (None to reset)
         """
         if chain_id in self.chains:
             if outputs:
@@ -242,7 +246,7 @@ class zynthian_chain_manager():
     def enable_chain_audio_thru(self, chain_id, enable=True):
         """Enable/disable audio pass-through
         
-        enable - True to pass chain's audio input to output when chain is empty 
+        enable : True to pass chain's audio input to output when chain is empty 
         """
         if chain_id in self.chains and self.chains[chain_id].audio_thru != enable:
             self.chains[chain_id].audio_thru = enable
@@ -265,8 +269,8 @@ class zynthian_chain_manager():
     def set_chain_midi_inputs(self, chain_id, inputs):
         """Set chain's MIDI inputs
         
-        chain_id - Chain id
-        inputs - List of jack sources or aliases (None to reset)
+        chain_id : Chain id
+        inputs : List of jack sources or aliases (None to reset)
         """
         if chain_id in self.chains:
             if inputs:
@@ -285,8 +289,8 @@ class zynthian_chain_manager():
     def set_chain_midi_outputs(self, chain_id, outputs):
         """Set chain's MIDI outputs
         
-        chain_id - Chain id
-        outputs - List of jack destinations or aliases (None to reset)
+        chain_id : Chain id
+        outputs : List of jack destinations or aliases (None to reset)
         """
         if chain_id in self.chains:
             if outputs:
@@ -298,7 +302,7 @@ class zynthian_chain_manager():
     def enable_chain_midi_thru(self, chain_id, enable=True):
         """Enable/disable MIDI pass-through
         
-        enable - True to pass chain's MIDI input to output when chain is empty 
+        enable : True to pass chain's MIDI input to output when chain is empty 
         """
         if chain_id in self.chains and self.chains[chain_id].midi_thru != enable:
             self.chains[chain_id].midi_thru = enable
@@ -312,26 +316,32 @@ class zynthian_chain_manager():
         return{}
 
     # ------------------------------------------------------------------------
-    # Active Chain Management
+    # 
+    # Chain Management
     # ------------------------------------------------------------------------
 
     def set_active_chain_by_id(self, chain_id):
         """Select the active chain
 
-        chain_id - ID of chain
-        Returns - ID of active chain
+        chain_id : ID of chain
+        Returns : ID of active chain
         """
 
-        if chain_id in self.chains:
+        try:
+            chain = self.chains[chain_id]
             self.active_chain_id = chain_id
-            # TODO: Select in lower-level module
+            midi_chan = chain.midi_chan
+            if isinstance(midi_chan, int) and midi_chan < 16:
+                get_lib_zyncore().set_midi_active_chan(midi_chan)
+        except:
+            pass
         return self.active_chain_id
 
     def set_active_chain_by_object(self, chain_object):
         """Select the active chain
         
-        chain_object - Chain object
-        Returns - ID of active chain
+        chain_object : Chain object
+        Returns : ID of active chain
         """
 
         for id in self.chains:
@@ -343,8 +353,8 @@ class zynthian_chain_manager():
     def next_chain(self, nudge=1):
         """Select the next chain as active
 
-        nudge - Quantity of chains to step (may be negative, default: 1)
-        Returns - Index of selected chain
+        nudge : Quantity of chains to step (may be negative, default: 1)
+        Returns : Index of selected chain
         """
 
         chain_keys = sorted(self.chains)
@@ -354,22 +364,23 @@ class zynthian_chain_manager():
             index = 0
 
         if index >= len(chain_keys):
-            self.active_chain_id = chain_keys[-1]
+            chain_id = chain_keys[-1]
         elif index <= 0:
-            self.active_chain_id = chain_keys[0]
+            chain_id = chain_keys[0]
         else:
-            self.active_chain_id = chain_keys[index]
-        return self.active_chain_id
+            chain_id = chain_keys[index]
+        return self.set_active_chain_by_id(chain_id)
 
     def previous_chain(self, nudge=1):
         """Select the previous chain as active
 
-        nudge - Quantity of chains to step (may be negative, default: 1)
-        Returns - Index of selected chain
+        nudge : Quantity of chains to step (may be negative, default: 1)
+        Returns : Index of selected chain
         """
         return self.next_chain(-nudge)
 
     def get_active_chain(self):
+
         """Get the active chain object or None if no active chain"""
         if self.active_chain_id in self.chains:
             return self.chains[self.active_chain_id]
@@ -382,16 +393,16 @@ class zynthian_chain_manager():
     def add_processor(self, chain_id, type, mode=CHAIN_MODE_SERIES, slot=None):
         """Add a processor to a chain
 
-        chain - Chain ID
-        type - Engine type
-        mode - Chain mode [CHAIN_MODE_SERIES|CHAIN_MODE_PARALLEL]
-        slot - Slot (position) within chain (0..last slot, Default: last slot)
-        Returns - processor object or None on failure
+        chain : Chain ID
+        type : Engine type
+        mode : Chain mode [CHAIN_MODE_SERIES|CHAIN_MODE_PARALLEL]
+        slot : Slot (position) within chain (0..last slot, Default: last slot)
+        Returns : processor object or None on failure
         """
 
         if chain_id not in self.chains or type not in self.engine_info:
             return None
-        processor = zynthian_processor.zynthian_processor(self.engine_info[type])
+        processor = zynthian_processor(self.engine_info[type])
         chain = self.chains[chain_id]
         if chain.insert_processor(processor, mode, slot):
             engine = self.start_engine(processor, type)
@@ -406,10 +417,10 @@ class zynthian_chain_manager():
     def remove_processor(self, chain_id, processor, stop_engine=True):
         """Remove a processor from a chain
 
-        chain - Chain id
-        processor - Instance of processor
-        stop_engine - True to stop unused engine
-        Returns - True on success
+        chain : Chain id
+        processor : Instance of processor
+        stop_engine : True to stop unused engine
+        Returns : True on success
         """
 
         if chain_id not in self.chains:
@@ -423,9 +434,9 @@ class zynthian_chain_manager():
     def get_slot_count(self, chain_id, type=None):
         """Get the quantity of slots in a chain
         
-        id - Chain id
-        type - Processor type to filter result (Default: all types)
-        Returns - Quantity of slots in chain or subchain
+        id : Chain id
+        type : Processor type to filter result (Default: all types)
+        Returns : Quantity of slots in chain or subchain
         """
 
         if chain_id not in self.chains:
@@ -435,10 +446,10 @@ class zynthian_chain_manager():
     def get_processor_count(self, chain_id=None, type=None, slot=None):
         """Get the quantity of processors in a slot
         
-        chain_id - Chain id (Default: all processors)
-        type - Processor type to filter result (Default: all types)
-        slot - Index of slot or None for whole chain (Default: whole chain)
-        Returns - Quantity of processors in (sub)chain or slot
+        chain_id : Chain id (Default: all processors)
+        type : Processor type to filter result (Default: all types)
+        slot : Index of slot or None for whole chain (Default: whole chain)
+        Returns : Quantity of processors in (sub)chain or slot
         """
 
         if chain_id is None:
@@ -454,10 +465,10 @@ class zynthian_chain_manager():
     def get_processors(self, chain_id=None, type=None, slot=None):
         """Get a list of processors in (sub)chain (slot)
 
-        chain_id - Chain id (Default: all processors)
-        type - Processor type to filter result (Default: all types)
-        slot - Index of slot or None for whole chain (Default: whole chain)
-        Returns - List of processor objects
+        chain_id : Chain id (Default: all processors)
+        type : Processor type to filter result (Default: all types)
+        slot : Index of slot or None for whole chain (Default: whole chain)
+        Returns : List of processor objects
         """
 
         if chain_id is None:
@@ -476,9 +487,9 @@ class zynthian_chain_manager():
     def start_engine(self, processor, engine):
         """Starts or reuse an existing engine
 
-        processor - processor owning engine
-        engine - Engine nickname (short code)
-        Returns - engine object
+        processor : processor owning engine
+        engine : Engine nickname (short code)
+        Returns : engine object
         """
 
         if engine in self.engine_info and engine not in self.zyngines:
@@ -510,7 +521,7 @@ class zynthian_chain_manager():
     def stop_unused_jalv_engines(self):
         """Stop JALV engines that are not used by any processors"""
         for engine in list(self.zyngines.keys()):
-            if len(self.zyngines[engine].layers) == 0 and engine[0:3] in ("JV/", "AP/"):
+            if len(self.zyngines[engine].layers) == 0 and engine[0:3] in ("JV/"):
                 self.zyngines[engine].stop()
                 del self.zyngines[engine]
 
@@ -530,7 +541,7 @@ class zynthian_chain_manager():
     def get_next_jackname(self, jackname, sanitize=True):
         """Get the next available jackname
         
-        jackname - stub of jackname
+        jackname : stub of jackname
         """
 
         try:
@@ -559,15 +570,18 @@ class zynthian_chain_manager():
         """Get dictionary of chain slot states indexed by chain id"""
 
         state = {}
-        for chain in self.chains:
-            state[chain] = self.chains[chain].get_state()
+        for chain_id, chain in self.chains.items():
+            state[chain_id] = chain.get_state()
+        extended_state = self.get_zyngines_state()
+        if extended_state:
+            state["zyngine"] = extended_state
         return state
 
     def set_state(self, state):
         """Create chains from state
 
-        state - List of chain states
-        Returns - True on success
+        state : List of chain states
+        Returns : True on success
         """
 
         # Clean all chains but don't stop unused engines
@@ -577,11 +591,30 @@ class zynthian_chain_manager():
         # so we stop Jalv engines!
         self.stop_unused_jalv_engines()
 
-        for chain_state in state['chains'].values():
-            chain = self.add_chain(chain_state['midi_chan'], chain_state['enable_midi_thru'], chain_state['enable_audio_thru'])
+        for chain_id, chain_state in state.items():
+            midi_chan = None
+            midi_thru = False
+            audio_thru = False
+            if 'midi_chan' in chain_state:
+                midi_chan = chain_state['midi_chan']
+                del chain_state['midi_chan']
+            if 'midi_thru' in chain_state:
+                midi_thru = chain_state['midi_thru']
+                del chain_state['midi_thru']
+            if 'audio_thru' in chain_state:
+                audio_thru = chain_state['audio_thru']
+                del chain_state['audio_thru']
+            chain = self.add_chain(midi_chan, midi_thru, audio_thru)
             if chain:
                 chain.set_state(chain_state)
 
+            if "slots" in chain_state:
+                for slot_index, slot_state in enumerate(chain_state["slots"]):
+                    for proc_state in slot_state:
+                        processor = self.add_processor(chain_id, proc_state["engine_nick"], CHAIN_MODE_PARALLEL, slot_index)
+                        processor.set_state(proc_state)
+        if "zyngine" in state:
+            self.set_zyngines_state(state['zyngine'])
 
     def restore_presets(self):
         """Restore presets in active chain"""
@@ -595,32 +628,32 @@ class zynthian_chain_manager():
     def midi_control_change(self, chan, ccnum, ccval):
         """Send MIDI CC message to relevant chain
         
-        chan - MIDI channel
-        ccnum - CC number
-        ccval - CC value
+        chan : MIDI channel
+        ccnum : CC number
+        ccval : CC value
         """
 
+        chain = self.midi_chan_2_chain[chan]
+        if not chain:
+            return
         if zynthian_gui_config.midi_bank_change and ccnum==0:
-            for chain in self.midi_chan_2_chain[chan]:
-                for processor in chain.get_processors():
-                    processor.midi_bank_msb(ccval)
+            for processor in chain.get_processors():
+                processor.midi_bank_msb(ccval)
         elif zynthian_gui_config.midi_bank_change and ccnum==32:
-            for chain in self.midi_chan_2_chain[chan]:
-                for processor in chain.get_processors():
-                    processor.midi_bank_lsb(ccval)
+            for processor in chain.get_processors():
+                processor.midi_bank_lsb(ccval)
         else:
-            for chain in self.midi_chan_2_chain[chan]:
-                for processor in chain.get_processors():
-                  processor.midi_control_change(chan, ccnum, ccval)
-            #TODO: self.amixer_layer.midi_control_change(chan, ccnum, ccval)
+            for processor in chain.get_processors():
+                processor.midi_control_change(chan, ccnum, ccval)
+            self.state_manager.alsa_mixer_processor.midi_control_change(chan, ccnum, ccval)
 
 
     def set_midi_prog_preset(self, midich, prognum):
         """Send MIDI PC message to relevant chain
         
-        chan - MIDI channel
-        ccnum - CC number
-        prognum - PC value
+        chan : MIDI channel
+        ccnum : CC number
+        prognum : PC value
         """
         changed = False
         for chain in self.chains.values():
@@ -650,7 +683,7 @@ class zynthian_chain_manager():
     def get_next_free_midi_chan(self, chan):
         """Get next unused MIDI channel
         
-        chan - MIDI channel to search from
+        chan : MIDI channel to search from
         """
 
         free_chans = self.get_free_midi_chans()
@@ -658,3 +691,27 @@ class zynthian_chain_manager():
             if i in free_chans:
                 return i
         raise Exception("No available free MIDI channels!")
+
+    # ---------------------------------------------------------------------------
+    # Extended Config
+    # ---------------------------------------------------------------------------
+
+    def get_zyngines_state(self):
+        """Get state model for engines extended configuration as a dictionary"""
+
+        #TODO: Although this relates to zyngine it may be advantageous to move to processor state
+        state = {}
+        for zyngine in self.zyngines.values():
+            state[zyngine.nickname] = zyngine.get_extended_config()
+        return state
+
+    def set_zyngines_state(self, state):
+        """Set engines extended configuration from state
+
+        state : Extended configuration state dictionary
+        """
+
+        for zyngine in self.zyngines.values():
+            if zyngine.nickname in state:
+                zyngine.set_extended_config(state[zyngine.nickname])
+

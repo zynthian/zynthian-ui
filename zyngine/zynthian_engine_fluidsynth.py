@@ -43,28 +43,36 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
 
-	# Standard MIDI Controllers
-	_ctrls=[
-		['volume',7,96],
-		['modulation',1,0],
-		['pan',10,64],
-		['expression',11,127],
-		['sustain',64,'off',['off','on']],
-		['sostenuto',66,'off',['off','on']],
-#		['reverb',91,64],
-#		['chorus',93,2],
-		['portamento on/off',65,'off',['off','on']],
-		['portamento time-coarse',5,0],
-		['portamento time-fine',37,0],
-		['portamento control',84,0],
-		['legato on/off',68,'off',['off','on']]
+	# SFZ Default MIDI Controllers (modulators)
+	_ctrls = [
+		['modulation wheel', 1, 0],
+		['volume', 7, 96],
+		['pan', 10, 64],
+		['expression', 11, 127],
+
+		['sustain', 64, 'off', ['off', 'on']],
+		['sostenuto', 66, 'off', ['off', 'on']],
+		['legato', 68, 'off', ['off', 'on']],
+		['breath', 2, 127],
+
+		['portamento on/off', 65, 'off', ['off', 'on']],
+		['portamento time-coarse', 5, 0],
+		['portamento time-fine', 37, 0],
+		['portamento control', 84, 0],
+
+		# ['expr. pedal', 4, 127],
+		['filter cutoff', 74, 64],
+		['filter resonance', 71, 64],
+		['env. attack', 72, 64],
+		['env. release', 73, 64]
 	]
 
 	# Controller Screens
-	default_ctrl_screens=[
-		['main',['volume','pan','expression','modulation']],
-		['portamento',['legato on/off','portamento on/off','portamento time-coarse','portamento time-fine']],
-		['sustain',['sostenuto','sustain']],
+	default_ctrl_screens = [
+		['main', ['volume', 'pan', 'modulation wheel', 'expression']],
+		['pedals', ['legato', 'breath', 'sostenuto', 'sustain']],
+		['portamento', ['portamento on/off', 'portamento control', 'portamento time-coarse', 'portamento time-fine']],
+		['envelope/filter', ['env. attack', 'env. release', 'filter cutoff', 'filter resonance']]
 	]
 
 	# ---------------------------------------------------------------------------

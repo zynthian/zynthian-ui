@@ -69,7 +69,6 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.sequence_tracks = [] # Array of [Sequence,Track] that are visible within bank
 		self.sequence = 0 # Index of selected sequence
 		self.track = 0 # Index of selected track
-		self.layers = [None] * 16 # Root layer indexed by MIDI channel
 		self.last_snapshot_count = 0
 
 		self.vertical_zoom = self.zynseq.libseq.getVerticalZoom() # Quantity of rows (tracks) displayed in grid
@@ -239,11 +238,10 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'MIDI channel':
 			labels = []
 			for chan in range(16):
-				for layer in self.zyngui.screens['layer'].layers:
-					if layer.midi_chan == chan:
-						labels.append('{} ({})'.format(chan + 1, layer.preset_name))
-						break
-				if len(labels) <= chan:
+				try:
+					chain = self.zyngui.chain_manager.midi_chan_2_chain[chan]
+					labels.append('{} ({})'.format(chan + 1, chain.synth_processor.get_preset_name()))
+				except:
 					labels.append('{}'.format(chan + 1))
 			self.enable_param_editor(self, 'midi_chan', 'MIDI channel', {'labels':labels, 'value_default':self.zynseq.libseq.getChannel(self.zynseq.bank, self.sequence, self.track), 'value':self.zynseq.libseq.getChannel(self.zynseq.bank, self.sequence, self.track)})
 		elif params == 'Play mode':
@@ -279,6 +277,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			self.zynseq.set_beats_per_bar(zctrl.value)
 		elif zctrl.symbol == 'midi_chan':
 			self.zynseq.set_midi_channel(self.zynseq.bank, self.sequence, self.track, zctrl.value)
+			self.draw_sequence_label(self.selected_cell[1]- self.row_offset)
 		elif zctrl.symbol == 'playmode':
 			self.zynseq.set_play_mode(self.zynseq.bank, self.sequence, zctrl.value)
 		elif zctrl.symbol == 'vzoom':
@@ -482,21 +481,10 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to show GUI
 	def build_view(self):
-		if self.last_snapshot_count < self.zyngui.screens['layer'].last_snapshot_count:
-			self.update_sequence_tracks()
-			self.last_snapshot_count = self.zyngui.screens['layer'].last_snapshot_count
-
 		self.setup_zynpots()
 		if not self.param_editor_zctrl:
 			self.set_title("Bank %d" % (self.zynseq.bank))
-
-			# Update list of layers
-			#TODO: Probably need to change this for chainification???
-			for chan in range(16):
-				for layer in self.zyngui.screens['layer'].layers:
-					if layer.midi_chan == chan:
-						self.layers[chan] = layer
-						break
+		self.redraw_pending = 3
 		self.select_position()
 
 
@@ -762,9 +750,9 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		fill = zynthian_gui_config.PAD_COLOUR_STOPPED[group % 16]
 		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
 		channel = self.zynseq.libseq.getChannel(self.zynseq.bank, sequence, track)
-		if channel < 16 and self.layers[channel]:
-			track_name = self.layers[channel].preset_name
-		else:
+		try:
+			track_name = self.zyngui.chain_manager.midi_chan_2_chain[channel].synth_processor.get_preset_name()
+		except:
 			track_name = ""
 
 		self.sequence_title_canvas.create_rectangle(0, self.row_height * row + 1, 

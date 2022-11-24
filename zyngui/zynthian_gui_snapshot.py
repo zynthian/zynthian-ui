@@ -197,7 +197,8 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.list_data.append((self.base_dir,i,".."))
 			i += 1
 
-		if len(self.zyngui.state_manager.layers)>0:
+		if self.zyngui.chain_manager.get_chain_count() > 1 or self.zyngui.chain_manager.get_processor_count() > 0:
+			#TODO: Add better validation of populated state, e.g. sequences
 			self.list_data.append(("SAVE", i, "Save as new snapshot"))
 		if self.bankless_mode:
 			if isfile(self.default_snapshot_fpath):
@@ -293,13 +294,16 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			return
 
 		if option == "Load":
-			self.zyngui.state_manager.load_snapshot(fpath)
+			state = self.zyngui.state_manager.load_snapshot(fpath)
+			if state and "zyngui" in state:
+				if self.load_zyngui(state["zyngui"]):
+					return
 			self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 		elif option == "Load Chains":
-			self.zyngui.state_manager.load_snapshot_layers(fpath)
+			self.zyngui.state_manager.load_snapshot(fpath, load_sequences=False)
 			self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 		elif option == "Load Sequences":
-			self.zyngui.state_manager.load_snapshot_sequences(fpath)
+			self.zyngui.state_manager.load_snapshot(fpath, load_chains=False)
 			self.zyngui.show_screen('stepseq', hmode=self.zyngui.SCREEN_HMODE_RESET)
 		elif option == "Save":
 			self.zyngui.show_confirm("Do you really want to overwrite %s with current configuration" % (fname), self.save_snapshot, fpath)
@@ -533,5 +537,19 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			title = title + ": " + self.bank_dir
 		self.select_path.set(title)
 
+
+	def load_zyngui(self, state):
+		"""Load zyngui configuration from snapshot state
+		
+		state : zyngui state dictionary
+		Returns : True if screen navigation performed
+		TODO: Parse zyngui configuration from snapshot
+		"""
+
+		try:
+			self.zyngui.show_screen(state["current_screen"], self.zyngui.SCREEN_HMODE_RESET)
+		except:
+			return None
+		
 
 #------------------------------------------------------------------------------

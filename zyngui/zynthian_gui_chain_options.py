@@ -50,54 +50,36 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 	def fill_list(self):
 		self.list_data = []
-
-		# Add root chain options
-		if self.chain_id == "main":
-			eng_options = {
-				'audio_capture': False,
-				'indelible': True,
-				'audio_rec': True,
-				'audio_route': True,
-				'midi_learn': True
-			}
-		if self.chain.synth_processor:
-			eng_options = self.chain.synth_processor.engine.get_options()
-		else:
-			eng_options = {}
-
-		#TODO Disable midi learn for some chains???
 	
-		if self.chain.midi_chan is not None:
-			if 'note_range' in eng_options and eng_options['note_range']:
-				self.list_data.append((self.chain_note_range, None, "Note Range & Transpose"))
+		if self.chain.is_midi():
+			self.list_data.append((self.chain_note_range, None, "Note Range & Transpose"))
+			self.list_data.append((self.chain_clone, None, "Clone MIDI to..."))
 
-			if 'clone' in eng_options and eng_options['clone']:
-				self.list_data.append((self.chain_clone, None, "Clone MIDI to..."))
-
-		if self.chain.mixer_chan is not None:
+		if self.chain.is_audio():
 			self.list_data.append((self.audio_options, None, "Audio Options..."))
 
-		if 'audio_capture' in eng_options and eng_options['audio_capture'] or self.chain.audio_thru:
+		if self.chain.audio_thru and self.chain_id != "main":
 			self.list_data.append((self.chain_audio_capture, None, "Audio Capture..."))
 
-		if 'audio_route' in eng_options and eng_options['audio_route'] or self.chain.is_audio:
+		if self.chain.is_audio() and self.chain_id != "main":
+			#TODO: Add mixer output audio routing
 			self.list_data.append((self.chain_audio_routing, None, "Audio Output..."))
 
-		if 'audio_rec' in eng_options:
-			if self.zyngui.audio_recorder.get_status():
+		if self.chain_id == "main":
+			if self.zyngui.state_manager.audio_recorder.get_status():
 				self.list_data.append((self.toggle_recording, None, "■ Stop Audio Recording"))
 			else:
 				self.list_data.append((self.toggle_recording, None, "⬤ Start Audio Recording"))
 
-		if 'midi_learn' in eng_options:
+		if self.chain.get_processor_count():
+			#TODO Disable midi learn for some chains???
 			self.list_data.append((self.midi_learn, None, "MIDI Learn"))
 
-		if 'midi_route' in eng_options and eng_options['midi_route']:
+		if self.chain.midi_thru:
 			self.list_data.append((self.chain_midi_routing, None, "MIDI Routing"))
 
-		if 'midi_chan' in eng_options and eng_options['midi_chan']:
+		if self.chain.is_midi():
 			self.list_data.append((self.chain_midi_chan, None, "MIDI Channel"))
-
 
 		self.list_data.append((None, None, "> Chain"))
 
@@ -111,10 +93,13 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			# Add Audio-FX options
 			self.list_data.append((self.audiofx_add, None, "Add Audio-FX"))
 
-		if self.chain.get_processor_count("MIDI Tool") + self.chain.get_processor_count("Audio Effect") == 0:
-			self.list_data.append((self.remove_chain, None, "Remove Chain"))
-		else:
-			self.list_data.append((self.remove_cb, None, "Remove..."))
+		if self.chain_id != "main":
+			if self.chain.get_processor_count("MIDI Tool") + self.chain.get_processor_count("Audio Effect") == 0:
+				self.list_data.append((self.remove_chain, None, "Remove Chain"))
+			else:
+				self.list_data.append((self.remove_cb, None, "Remove..."))
+		elif self.chain.get_processor_count("Audio Effect") > 1:
+			self.list_data.append((self.remove_all_audiofx, None, "Remove all Audio-FX"))
 
 		super().fill_list()
 
@@ -125,7 +110,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		indent = 0
 		# Build MIDI chain
 		for slot in range(self.chain.get_slot_count("MIDI Tool")):
-			procs = self.chain.get_processors("MIDI Tool")
+			procs = self.chain.get_processors("MIDI Tool", slot)
 			num_procs = len(procs)
 			for index, processor in enumerate(procs):
 				name = processor.engine.get_name(self.chain)
@@ -240,7 +225,6 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 
 	def chain_midi_routing(self):
-		self.zyngui.screens['midi_out'].set_chain(self.chain)
 		self.zyngui.show_screen('midi_out')
 
 
@@ -286,7 +270,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 	def remove_cb(self):
 		options = OrderedDict()
-		if self.chain.get_processor_count("MIDI Tool"):
+		if self.chain.synth_processor and self.chain.get_processor_count("MIDI Tool"):
 			options['Remove All MIDI-FXs'] = "midifx"
 		if self.chain.get_processor_count("Audio Effect"):
 			options['Remove All Audio-FXs'] = "audiofx"
@@ -334,7 +318,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 	# MIDI-Chain management
 
 	def midifx_add(self):
-		self.zyngui.screens['chain'].add_midichain_chain(self.chain.midi_chan)
+		self.zyngui.add_chain({"type":"MIDI Tool", "chain_id":self.chain_id})
 
 
 	def remove_all_midifx(self):

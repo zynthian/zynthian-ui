@@ -151,7 +151,7 @@ def midi_autoconnect(force=False):
 		hw_out = []
 
 	#Get Physical MIDI output ports ...
-	hw_in=jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
+	hw_in = jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
 	if len(hw_in) == 0:
 		hw_in = []
 
@@ -200,6 +200,7 @@ def midi_autoconnect(force=False):
 						src = source_ports[0]
 						dst = dest_ports[0]
 						if dst.name in dest_routes and src in dest_routes[dst.name]:
+							# Already routed
 							dest_routes[dst.name].remove(src)
 						else:
 							jclient.connect(src, dst)
@@ -214,6 +215,42 @@ def midi_autoconnect(force=False):
 					except Exception as e:
 						logging.warning("Failed to disconnect MIDI %s from %s - %s", src, dst, e)
 
+		# Chain outputs
+		chain = chain_manager.get_chain(chain_id)
+		if not chain:
+			continue
+		if chain.midi_slots and chain.midi_thru:
+			dests = []
+			for out in chain.midi_out:
+				if out == "MIDI-OUT":
+					dests += jclient.get_ports(is_midi=True, is_input=True, is_physical=True)
+				elif out == "NET-OUT":
+					for nwp in ("QmidiNet:in_1", "jackrtpmidid:rtpmidi_in", "RtMidiIn Client:TouchOSC Bridge"):
+						dests += jclient.get_ports(nwp, is_midi=True, is_input=True)
+				elif out in chain_manager.chains:
+					for processor in chain_manager.get_processors(out, "MIDI Tool", 0):
+						try:
+							dests += jclient.get_ports(processor.get_jackname(), is_midi=True, is_input=True)
+						except:
+							pass
+				else:
+					dests += jclient.get_ports(out, is_midi=True, is_input=True)
+			for processor in chain.midi_slots[-1]:
+				src_port = jclient.get_ports(processor.get_jackname(), is_midi=True, is_output=True)[0]
+				cur_dests = jclient.get_all_connections(src_port)
+				#TODO: This only uses first port
+				for dst in dests:
+					if dst not in cur_dests:
+						try:
+							jclient.connect(src_port, dst)
+						except:
+							pass
+				for dst in cur_dests:
+					if dst not in dests:
+						try:
+							jclient.disconnect(src_port, dst)
+						except:
+							pass
 
 	#TODO Feedback ports
 
@@ -495,13 +532,15 @@ def audio_autoconnect(force=False):
 	# Chain audio routing
 	for chain_id in chain_manager.chains:
 		routes = chain_manager.get_chain_audio_routing(chain_id)
+		if "zynmixer:return" in routes and "zynmixer:send" in routes["zynmixer:return"]:
+			routes["zynmixer:return"].remove("zynmixer:send")
 		for dest in routes:
 			dest_ports = jclient.get_ports(dest, is_input=True, is_audio=True)
 			dest_count = len(dest_ports)
 			dest_routes = {}
 			for port in dest_ports:
 				dest_routes[port.name] = jclient.get_all_connections(port)
-		
+
 			for source in routes[dest]:
 				source_ports = jclient.get_ports(source, is_output=True, is_audio=True)
 				source_count = len(source_ports)
@@ -524,7 +563,13 @@ def audio_autoconnect(force=False):
 						jclient.disconnect(src, dst)
 					except Exception as e:
 						logging.warning("Failed to disconnect audio %s from %s - %s", src, dst, e)
-		
+
+	# Clear unused mixer inputs
+	for chan in range(16):
+		if chain_manager.midi_chan_2_chain[chan] is None:
+			for dst in jclient.get_ports("zynmixer:input_{:02d}".format(chan + 1)):
+				for src in jclient.get_all_connections(dst):
+					jclient.disconnect(src, dst)
 
 	# Connect metronome to aux
 	try:

@@ -49,23 +49,6 @@ class zynthian_gui_midi_cc(zynthian_gui_selector):
 		self.cc = lib_zyncore.get_midi_filter_clone_cc(chan_from, chan_to).tolist()
 
 
-	@staticmethod
-	def set_clone_cc(chan_from, chan_to, cc):
-		cc_array = (c_ubyte*128)()
-
-		if len(cc)==128:
-			for i in range(0, 128):
-				cc_array[i] = cc[i]
-		else:
-			for i in range(0, 128):
-				if i in cc:
-					cc_array[i] = 1
-				else:
-					cc_array[i] = 0
-
-		lib_zyncore.set_midi_filter_clone_cc(chan_from, chan_to, cc_array)
-
-
 	def fill_list(self):
 		self.list_data=[]
 		for i, ccnum in enumerate(self.cc):
@@ -84,7 +67,7 @@ class zynthian_gui_midi_cc(zynthian_gui_selector):
 		else:
 			self.cc[cc_num] = 1
 			
-		self.set_clone_cc(self.chan_from, self.chan_to, self.cc)
+		self.zyngui.state_manager.set_clone_cc(self.chan_from, self.chan_to, self.cc)
 		
 		self.config(self.chan_from, self.chan_to)
 		self.update_list()

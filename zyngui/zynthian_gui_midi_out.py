@@ -23,8 +23,6 @@
 # 
 #******************************************************************************
 
-import sys
-import tkinter
 import logging
 from collections import OrderedDict
 
@@ -44,27 +42,22 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 		super().__init__('MIDI Out', True)
 
 
-	def set_layer(self, layer):
-		try:
-			self.end_layer = self.zyngui.screens['layer'].get_midichain_ends(layer)[0]
-		except:
-			self.end_layer = None
-
-
 	def fill_list(self):
 		self.list_data = []
+		chain_manager = zynthian_gui_config.zyngui.chain_manager
+		active_chain = chain_manager.get_active_chain()
 
-		if self.end_layer:
+		if active_chain:
 			midi_outs = OrderedDict([
 				["MIDI-OUT", "Hardware MIDI Out"],
 				["NET-OUT", "Network MIDI Out" ]
 			])
-			for layer in zynthian_gui_config.zyngui.screens['layer'].get_midichain_roots():
-				if layer.midi_chan!=self.end_layer.midi_chan:
-					midi_outs[layer.get_midi_jackname()] = layer.get_presetpath()
-				
+			for chain_id, chain in chain_manager.chains.items():
+				if chain.is_midi() and chain != active_chain:
+					midi_outs[chain_id] = "Chain {}".format(chain_id)
+
 			for jn, title in midi_outs.items():
-				if jn in self.end_layer.get_midi_out():
+				if jn in active_chain.midi_out:
 					self.list_data.append((jn, jn, "[x] " + title))
 				else:
 					self.list_data.append((jn, jn, "[  ] " + title))
@@ -87,8 +80,11 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		self.end_layer.toggle_midi_out(self.list_data[i][1])
-		self.fill_list()
+		try:
+			zynthian_gui_config.zyngui.chain_manager.get_active_chain().toggle_midi_out(self.list_data[i][1])
+			self.fill_list()
+		except Exception as e:
+			logging.error(e)
 
 
 	def set_select_path(self):

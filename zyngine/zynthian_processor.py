@@ -52,7 +52,7 @@ class zynthian_processor:
 
         A processor represents a block within a chain.
         It provides access to a worker engine
-        type_info - List of type info [short name, name, type, None, engine class, Bool]
+        type_info : List of type info [short name, name, type, None, engine class, Bool]
         """
 
         self.type = type_info[2]
@@ -80,8 +80,8 @@ class zynthian_processor:
         self.preload_name = None
         self.preload_info = None
 
-        self.controllers_dict = None
-        self.ctrl_screens_dict = None
+        self.controllers_dict = {}
+        self.ctrl_screens_dict = {}
         self.current_screen_index = -1
         self.refresh_flag = False
 
@@ -328,8 +328,8 @@ class zynthian_processor:
                 set_engine_needed = True
                 logging.info("Preset selected: %s (%d)" % (preset_name, preset_index))
 
-            last_preset_index = self.preset_index
-            last_preset_name = self.preset_name
+            last_preset_index = self.preset_index #TODO: Not used
+            last_preset_name = self.preset_name #TODO: Not used
             self.preset_index = preset_index
             self.preset_name = preset_name
             self.preset_info = preset_info
@@ -684,94 +684,46 @@ class zynthian_processor:
     # ---------------------------------------------------------------------------
 
     def get_state(self):
-        """Get dictionary describing processor state"""
+        """Get dictionary describing processor r"""
 
         state = {
-            'engine_name': self.engine.name,
+            'engine_name': self.engine.name, #TODO: Not needed?
             'engine_nick': self.engine.nickname,
-            'engine_jackname': self.engine.jackname,
-            'midi_chan': self.midi_chan,
-            'bank_index': self.bank_index,
-            'bank_name': self.bank_name,
+            'engine_jackname': self.engine.jackname,  #TODO: Not needed?
+            'midi_chan': self.midi_chan,  #TODO: Not needed?
+            'bank_index': self.bank_index, #TODO: Not needed?
+            'bank_name': self.bank_name, #TODO: Not needed?
             'bank_info': self.bank_info,
-            'preset_index': self.preset_index,
-            'preset_name': self.preset_name,
+            'preset_index': self.preset_index, #TODO: Not needed?
+            'preset_name': self.preset_name, #TODO: Not needed?
             'preset_info': self.preset_info,
-            'show_fav_presets': self.show_fav_presets,
+            'show_fav_presets': self.show_fav_presets, #TODO: GUI
             'controllers_dict': {},
-            'current_screen_index': self.current_screen_index,
+            'current_screen_index': self.current_screen_index #TODO: GUI
         }
-
-        for k in self.controllers_dict:
-            state['controllers_dict'][k] = self.controllers_dict[k].get_state()
-
+        # Get controller values
+        for symbol in self.controllers_dict:
+            state['controllers_dict'][symbol] = self.controllers_dict[symbol].get_state()
         return state
 
+    def set_state(self, state):
+        """Configure processor from state model dictionary
 
-    def restore_state_0(self, state):
-        """Load bank list from state"""
+        state - Processor state
+        """
 
-        try:
-            self.bank_name = state['bank_name']	#tweak for working with setbfree extended config!! => TODO improve it!!
-            self.load_bank_list()
-            self.bank_name = None
-        except Exception as e:
-            logging.warning("Error loading bank list on layer {}: {}".format(self.get_basepath(), e))
-
-
-    def restore_state_1(self, state):
-        """Set preset from state"""
-        self.wait_stop_loading()
-
-        if 'show_fav_presets' in state:
-            self.set_show_fav_presets(state['show_fav_presets'])
-
-        # Set bank and load preset_list
-        try:
-            if self.set_bank_by_name(state['bank_name']):
-                self.wait_stop_loading()
-                self.load_preset_list()
-        except Exception as e:
-            logging.warning("Invalid Bank on layer {}: {}".format(self.get_basepath(), e))
-
-        #  and set preset
-        try:
-            self.preset_loaded = self.set_preset_by_name(state['preset_name'], True, False)
-            self.wait_stop_loading()
-        except Exception as e:
-            logging.warning("Invalid Preset on layer {}: {}".format(self.get_basepath(), e))
-
-        # Refresh controller config
-        if self.refresh_flag:
-            self.refresh_flag = False
-            self.refresh_controllers()
-
-        # Set active controller page
-        if 'current_screen_index' in state:
-            self.current_screen_index = state['current_screen_index']
-
-        self.restore_state_legacy(state)
-
-
-    def restore_state_2(self, state):
-        """Restore controller values from state"""
-
-        # WARNING => This is really UGLY!
-        # For non-LV2 engines, bank and preset can affect what controllers do.
-        # In case of LV2, just restoring the controllers ought to be enough, which is nice
-        # since it saves the delay between setting a preset and updating controllers.
-        if self.preset_loaded and not self.engine.nickname.startswith('JV'):
-            sleep(0.2)
-
-        self.wait_stop_loading()
-
-        #Set controller values
-        for k in state['controllers_dict']:
+        self.load_bank_list()
+        if state["bank_info"]:
+            self.set_bank_by_id(state["bank_info"][0])
+        self.load_preset_list()
+        if state["preset_info"]:
+            self.set_preset_by_id(state["preset_info"][0])
+        # Set controller values
+        for symbol in state['controllers_dict']:
             try:
-                self.controllers_dict[k].restore_state(state['controllers_dict'][k])
+                self.controllers_dict[symbol].restore_state(state['controllers_dict'][symbol])
             except Exception as e:
                 logging.warning("Invalid Controller on layer {}: {}".format(self.get_basepath(), e))
-
 
     def restore_state_legacy(self, state):
         """Restore legacy states from state
@@ -800,6 +752,7 @@ class zynthian_processor:
     def get_path(self):
         """Get path (breadcrumb) string"""
 
+        #TODO: UI
         if self.preset_name:
             bank_name = self.get_preset_bank_name()
             if not bank_name:
@@ -812,6 +765,7 @@ class zynthian_processor:
 
     def get_basepath(self):
         """Get base path string"""
+        #TODO: UI
 
         path = self.engine.get_path(self)
         if self.midi_chan is not None:
@@ -825,6 +779,7 @@ class zynthian_processor:
     def get_bankpath(self):
         """Get bank path string"""
 
+        #TODO: UI
         path = self.get_basepath()
         if self.bank_name and self.bank_name!="None":
             path += " > " + self.bank_name
@@ -834,6 +789,7 @@ class zynthian_processor:
     def get_presetpath(self):
         """Get preset path string"""
 
+        #TODO: UI
         path = self.get_basepath()
 
         subpath = None

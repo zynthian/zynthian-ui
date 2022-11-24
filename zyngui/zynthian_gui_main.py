@@ -86,7 +86,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 
 	def new_midifx_layer(self, t='S'):
-		self.zyngui.add_chain({"type": "MIDI Rool", "midi_thru": True, "audio_thru": False})
+		self.zyngui.add_chain({"type": "MIDI Tool", "midi_thru": True, "audio_thru": False})
 
 
 	def new_generator_layer(self, t='S'):
