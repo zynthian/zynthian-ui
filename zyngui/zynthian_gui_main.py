@@ -60,7 +60,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.list_data.append((None,0,"> SYSTEM"))
 		self.list_data.append((self.alsa_mixer,0,"Audio Levels"))
 		self.list_data.append((self.admin,0,"Admin"))
-		if self.zyngui.control_test_enabled:
+		if zynthian_gui_config.control_test_enabled:
 			self.list_data.append((self.control_test,0,"Control Test"))
 		self.list_data.append((self.all_notes_off,0,"PANIC! All Notes Off"))
 
