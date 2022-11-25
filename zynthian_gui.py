@@ -80,6 +80,7 @@ from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
 from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
 from zyngui.zynthian_gui_mixer import zynthian_gui_mixer
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
+from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
 
 MIXER_MAIN_CHANNEL = 256 #TODO This constant should go somewhere else
 
@@ -435,6 +436,11 @@ class zynthian_gui:
 			else:
 				self.wsleds.setPixelColor(24, self.wscolor_light)
 
+			try:
+				self.screens[self.current_screen].update_wsleds()
+			except:
+				pass
+
 			# Refresh LEDs
 			self.wsleds.show()
 
@@ -564,31 +570,35 @@ class zynthian_gui:
 		self.screens['arranger'] = zynthian_gui_arranger()
 		self.screens['pattern_editor'] = zynthian_gui_patterneditor()
 		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
+		self.screens['control_test'] = zynthian_gui_control_test()
 		
 		# Initialize OSC
 		self.osc_init()
 
-		# Initial snapshot...
+		# Control Test enabled ...
+		init_screen = "main"
 		snapshot_loaded = False
-		# Try to load "last_state" snapshot ...
-		#TODO: Move this to later (after display shown) and give indication of progress to avoid apparent hang during startup
-		if zynthian_gui_config.restore_last_state:
-			snapshot_loaded = self.screens['snapshot'].load_last_state_snapshot()
-		# Try to load "default" snapshot ...
-		if not snapshot_loaded:
-			snapshot_loaded = self.screens['snapshot'].load_default_snapshot()
+		if zynthian_gui_config.control_test_enabled:
+			init_screen = "control_test"
+		else:
+			# TODO: Move this to later (after display shown) and give indication of progress to avoid apparent hang during startup
+			# Try to load "last_state" snapshot ...
+			if zynthian_gui_config.restore_last_state:
+				snapshot_loaded = self.screens['snapshot'].load_last_state_snapshot()
+			# Try to load "default" snapshot ...
+			if not snapshot_loaded:
+				snapshot_loaded = self.screens['snapshot'].load_default_snapshot()
 
-		# Show mixer
 		if snapshot_loaded:
-			self.show_screen('audio_mixer')
-		# or set empty state & show main menu
+			init_screen = "audio_mixer"
 		else:
 			# Init MIDI Subsystem => MIDI Profile
 			self.state_manager.init_midi()
 			self.state_manager.init_midi_services()
 			self.state_manager.zynautoconnect()
-			# Show initial screen
-			self.show_screen('main')
+
+		# Show initial screen
+		self.show_screen(init_screen)
 
 		# Start polling threads
 		self.start_polling()
@@ -1619,6 +1629,13 @@ class zynthian_gui:
 
 
 	def zynswitch_push(self, i):
+
+		try:
+			if self.screens[self.current_screen].switch(i, 'P'):
+				return
+		except AttributeError as e:
+			pass
+
 		# Standard 4 ZynSwitches
 		if i >= 0 and i <= 3:
 			pass

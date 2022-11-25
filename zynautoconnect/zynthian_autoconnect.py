@@ -211,7 +211,7 @@ def midi_autoconnect(force=False):
 			for dst in dest_routes:
 				for src in dest_routes[dst]:
 					try:
-						jclient.disconnect(src, dst)
+						jclient.disconnect(src, dst) #TODO: Disconnecting chain output - should be done later
 					except Exception as e:
 						logging.warning("Failed to disconnect MIDI %s from %s - %s", src, dst, e)
 
@@ -245,12 +245,13 @@ def midi_autoconnect(force=False):
 							jclient.connect(src_port, dst)
 						except:
 							pass
+					else:
+						cur_dests.remove(dst)
 				for dst in cur_dests:
-					if dst not in dests:
-						try:
-							jclient.disconnect(src_port, dst)
-						except:
-							pass
+					try:
+						jclient.disconnect(src_port, dst)
+					except:
+						pass
 
 	#TODO Feedback ports
 

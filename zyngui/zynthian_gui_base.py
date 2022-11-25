@@ -221,9 +221,8 @@ class zynthian_gui_base(tkinter.Frame):
 	# Function called when frame resized
 	def on_size(self, event):
 		self.update_layout()
-		return
-		self.width = self.main_frame.winfo_width()
-		self.height = self.main_frame.winfo_height()
+		#self.width = self.main_frame.winfo_width()
+		#self.height = self.main_frame.winfo_height()
 
 
 	# Function to revert title after toast

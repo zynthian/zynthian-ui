@@ -60,6 +60,8 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.list_data.append((None,0,"> SYSTEM"))
 		self.list_data.append((self.alsa_mixer,0,"Audio Levels"))
 		self.list_data.append((self.admin,0,"Admin"))
+		if zynthian_gui_config.control_test_enabled:
+			self.list_data.append((self.control_test,0,"Control Test"))
 		self.list_data.append((self.all_notes_off,0,"PANIC! All Notes Off"))
 
 		super().fill_list()
@@ -134,6 +136,11 @@ class zynthian_gui_main(zynthian_gui_selector):
 	def admin(self, t='S'):
 		logging.info("Admin")
 		self.zyngui.show_screen_reset("admin")
+
+
+	def control_test(self, t='S'):
+		logging.info("Control Test")
+		self.zyngui.show_screen_reset("control_test")
 
 
 	def all_notes_off(self, t='S'):
