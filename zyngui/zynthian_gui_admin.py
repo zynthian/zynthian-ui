@@ -130,6 +130,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.start_wifi,0,"[  ] Wi-Fi"))
 			self.list_data.append((self.start_wifi_hotspot,0,"[  ] Wi-Fi Hotspot"))
 
+		if zynconf.is_bluetooth_active():
+			self.list_data.append((self.stop_bluetooth,0,"[x] Bluetooth"))
+		else:
+			self.list_data.append((self.start_bluetooth,0,"[  ] Bluetooth"))
+
 		if zynconf.is_service_active("vncserver0"):
 			self.list_data.append((self.stop_vncserver,0,"[x] VNC Server"))
 		else:
@@ -676,6 +681,35 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		self.fill_list()
 
+#------------------------------------------------------------------------------
+# BLUETOOTH FEATURES
+#------------------------------------------------------------------------------
+
+	def start_bluetooth(self):
+		if not zynconf.start_bluetooth():
+			self.zyngui.show_info("STARTING BLUETOOTH ERROR\n")
+			self.zyngui.add_info("Can't start BLUETOOTH!","WARNING")
+			self.zyngui.hide_info_timer(2000)
+		else:
+			sleep(0.5)
+			self.zyngui.zynautoconnect_audio()
+
+		self.fill_list()
+
+	def stop_bluetooth(self):
+		if not zynconf.stop_bluetooth():
+			self.zyngui.show_info("STOPPING BLUETOOTH ERROR\n")
+			self.zyngui.add_info("Can't stop BLUETOOTH!","WARNING")
+			self.zyngui.hide_info_timer(2000)
+		else:
+			sleep(0.5)
+			self.zyngui.zynautoconnect_audio()
+
+		self.fill_list()
+
+#------------------------------------------------------------------------------
+# NETWORK FEATURES
+#------------------------------------------------------------------------------
 
 	def start_vncserver(self, save_config=True):
 		# Start VNC for Zynthian-UI

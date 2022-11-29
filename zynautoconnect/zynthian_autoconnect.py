@@ -821,7 +821,8 @@ def get_audio_input_ports(exclude_system_playback=False):
 
 
 def get_audio_capture_ports():
-	return jclient.get_ports("system", is_output=True, is_audio=True, is_physical=True)
+	ports = jclient.get_ports("bt", is_output=True, is_audio=True, is_physical=True)
+	return ports + jclient.get_ports("system", is_output=True, is_audio=True, is_physical=True)
 
 
 def get_audio_playback_ports():

@@ -489,6 +489,29 @@ def get_current_wifi_mode():
 
 
 #-------------------------------------------------------------------------------
+# Bluetooth Config related functions
+#-------------------------------------------------------------------------------
+
+
+def is_bluetooth_active():
+	is_bluealsa_active = (check_output("systemctl show -p ActiveState --value bluealsa", shell=True).decode().strip() == 'active')
+	is_bluealsa_aplay_active = (check_output("systemctl show -p ActiveState --value bluealsa-aplay", shell=True).decode().strip() == 'active')
+	is_bt_a2j_active = (check_output("systemctl show -p ActiveState --value bt-a2j", shell=True).decode().strip() == 'active')
+	return is_bluealsa_active & is_bluealsa_aplay_active & is_bt_a2j_active
+
+def start_bluetooth():
+	logging.info("STARTING BLUETOOTH")
+	check_output(sys_dir + "/sbin/set_bluetooth.sh on", shell=True)
+	save_config({"ZYNTHIAN_BLUETOOTH_MODE": 'on'})
+	return True
+
+def stop_bluetooth():
+	logging.info("STOPPING BLUETOOTH")
+	check_output(sys_dir + "/sbin/set_bluetooth.sh off", shell=True)
+	save_config({"ZYNTHIAN_BLUETOOTH_MODE": 'off'})
+	return True
+
+#-------------------------------------------------------------------------------
 # Utility functions
 #-------------------------------------------------------------------------------
 
