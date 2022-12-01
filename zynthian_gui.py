@@ -187,6 +187,11 @@ class zynthian_gui:
 
 	def __init__(self):
 		self.test_mode = False
+
+		self.power_save_mode = False
+		self.last_event_flag = False
+		self.last_event_ts = monotonic()
+
 		self.screens = {}
 		self.screen_history = []
 		self.current_screen = None
@@ -294,6 +299,7 @@ class zynthian_gui:
 		self.wscolor_red = rpi_ws281x.Color(120,0,0)
 		self.wscolor_green = rpi_ws281x.Color(0,255,0)
 		self.wscolor_yellow = rpi_ws281x.Color(160,160,0)
+		self.wscolor_low = rpi_ws281x.Color(0, 100, 0)
 
 		# Light all LEDs
 		for i in range(0, self.wsleds_num):
@@ -306,6 +312,10 @@ class zynthian_gui:
 
 
 	def end_wsleds(self):
+		self.off_wsleds()
+
+
+	def off_wsleds(self):
 		# Light-off all LEDs
 		for i in range(0, self.wsleds_num):
 			self.wsleds.setPixelColor(i, self.wscolor_off)
@@ -316,10 +326,25 @@ class zynthian_gui:
 		if self.wsleds_blink:
 			self.wsleds.setPixelColor(i, color)
 		else:
-			self.wsleds.setPixelColor(i, self.wscolor_light)
+			self.wsleds.setPixelColor(i, self.wscolor_off)
+			#self.wsleds.setPixelColor(i, self.wscolor_light)
 
 
 	def update_wsleds(self):
+		# Power Save Mode
+		if self.power_save_mode:
+			if self.wsleds_blink_count % 16 > 14:
+				self.wsleds_blink = True
+			else:
+				self.wsleds_blink = False
+			for i in range(0, self.wsleds_num):
+				self.wsleds.setPixelColor(i, self.wscolor_off)
+			self.wsled_blink(0, self.wscolor_low)
+			self.wsleds.show()
+			self.wsleds_blink_count += 1
+			return
+
+		# Normal mode
 		if self.wsleds_blink_count % 4 > 1:
 			self.wsleds_blink = True
 		else:
@@ -1610,7 +1635,7 @@ class zynthian_gui:
 	def zynswitches_init(self):
 		if not lib_zyncore: return
 		logging.info("INIT {} ZYNSWITCHES ...".format(zynthian_gui_config.num_zynswitches))
-		ts=datetime.now()
+		ts = datetime.now()
 		self.dtsw = [ts] * (zynthian_gui_config.num_zynswitches + 4)
 
 
@@ -1684,19 +1709,19 @@ class zynthian_gui:
 	def zynswitches(self):
 		if not lib_zyncore: return
 		i = 0
-		while i<=zynthian_gui_config.last_zynswitch_index:
+		while i <= zynthian_gui_config.last_zynswitch_index:
 			dtus = lib_zyncore.get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
 			if dtus < 0:
 				pass
 			elif dtus == 0:
 				self.zynswitch_push(i)
-			elif dtus>zynthian_gui_config.zynswitch_long_us:
+			elif dtus > zynthian_gui_config.zynswitch_long_us:
 				self.zynswitch_long(i)
-			elif dtus>zynthian_gui_config.zynswitch_bold_us:
+			elif dtus > zynthian_gui_config.zynswitch_bold_us:
 				# Double switches must be bold!!! => by now ...
 				if not self.zynswitch_double(i):
 					self.zynswitch_bold(i)
-			elif dtus>0:
+			elif dtus > 0:
 				#print("Switch "+str(i)+" dtus="+str(dtus))
 				self.zynswitch_short(i)
 			i += 1
@@ -1796,6 +1821,7 @@ class zynthian_gui:
 
 
 	def zynswitch_push(self, i):
+		self.last_event_flag = True
 
 		try:
 			if self.screens[self.current_screen].switch(i, 'P'):
@@ -1919,6 +1945,7 @@ class zynthian_gui:
 					self.status_info['midi_clock'] = True
 				else:
 					self.status_info['midi'] = True
+					self.last_event_flag = True
 
 				evtype = (ev & 0xF00000) >> 20
 				chan = (ev & 0x0F0000) >> 16
@@ -2093,6 +2120,14 @@ class zynthian_gui:
 			self.zynswitch_read()
 			self.zynmidi_read()
 			self.osc_receive()
+
+			# Power Save Mode
+			if self.last_event_flag:
+				self.last_event_ts = monotonic()
+				self.last_event_flag = False
+				self.power_save_mode = False
+			elif not self.power_save_mode and (monotonic() - self.last_event_ts) > zynthian_gui_config.power_save_secs:
+				self.power_save_mode = True
 
 			# Run autoconnect if pending
 			self.zynautoconnect_do()
@@ -2489,6 +2524,7 @@ def zynpot_cb(i, dval):
 	#logging.debug("Zynpot {} Callback => {}".format(i, dval))
 	try:
 		zyngui.screens[zyngui.current_screen].zynpot_cb(i, dval)
+		zyngui.last_event_flag = True
 
 	except Exception as err:
 		pass # Some screens don't use controllers
