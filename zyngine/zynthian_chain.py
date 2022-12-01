@@ -129,7 +129,7 @@ class zynthian_chain:
     # ----------------------------------------------------------------------------
 
     def rebuild_audio_graph(self):
-        """Build dictionary of lists of destinations mapped by destination"""
+        """Build dictionary of lists of sources mapped by destination"""
 
         #TODO: This is called too frequently
         #TODO: Handle side-chaining - maybe manually curate list of sidechain destinations
@@ -178,7 +178,7 @@ class zynthian_chain:
             pass # May be before zynautoconnect started
 
     def rebuild_midi_graph(self):
-        """Build dictionary of lists of destinations mapped by source"""
+        """Build dictionary of lists of sources mapped by destination"""
 
         try:
             zynautoconnect.acquire_lock()

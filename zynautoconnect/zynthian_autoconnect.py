@@ -145,17 +145,17 @@ def midi_autoconnect(force=False):
 	#  - inputs are outputs for jack
 	#------------------------------------
 
-	#Get Physical MIDI input ports ...
+	# List of physical MIDI source ports
 	hw_out = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
 	if len(hw_out) == 0:
 		hw_out = []
 
-	#Get Physical MIDI output ports ...
+	# List of physical MIDI destination ports
 	hw_in = jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
 	if len(hw_in) == 0:
 		hw_in = []
 
-	#Add Aubio MIDI out port ...
+	# Treat Aubio as physical MIDI destination port
 	if zynthian_gui_config.midi_aubionotes_enabled:
 		aubio_out = jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
 		try:
@@ -163,70 +163,70 @@ def midi_autoconnect(force=False):
 		except:
 			pass
 
+	# List of MIDI over IP destination ports
+	nw_out = []
+	for port_name in ("QmidiNet:in_1", "jackrtpmidid:rtpmidi_in", "RtMidiIn Client:TouchOSC Bridge"):
+		nw_out += jclient.get_ports(port_name, is_midi=True, is_input=True)
+
 	#logger.debug("Input Device Ports: {}".format(hw_out))
 	#logger.debug("Output Device Ports: {}".format(hw_in))
 
-	#Calculate device list fingerprint (HW & virtual)
+	# Calculate hardware device fingerprint
 	hw_str = ""
 	for hw in hw_out:
 		hw_str += hw.name + "\n"
 	for hw in hw_in:
 		hw_str += hw.name + "\n"
 
-	#Check for new devices (HW and virtual)...
+	# Only autoroute if forced or physica devices have changed
 	if not force and hw_str == last_hw_str:
-		#Release Mutex Lock
-		release_lock()
+		release_lock() # Release Mutex Lock
 		#logger.info("ZynAutoConnect: MIDI Shortened ...")
 		return
 	else:
 		last_hw_str = hw_str
 
-	# Chain MIDI routing
-	for chain_id in chain_manager.chains:
+	# MIDI routing within chains - connects all MIDI ports within each chain
+	# Also connects chain inputs and outputs
+	#TODO: Handle processors with multiple MIDI ports
+	for chain_id, chain in chain_manager.chains.items():
 		routes = chain_manager.get_chain_midi_routing(chain_id)
-		for dest in routes:
-			dest_ports = jclient.get_ports(dest, is_input=True, is_midi=True)
-			dest_count = len(dest_ports)
-			dest_routes = {}
-			for port in dest_ports:
-				dest_routes[port.name] = jclient.get_all_connections(port)
+		for dst_name in routes:
+			dst_ports = jclient.get_ports(dst_name, is_input=True, is_midi=True)
+			cur_dests = {} # List of currently routed source ports, indexed by destination port name
+			for port in dst_ports:
+				cur_dests[port.name] = jclient.get_all_connections(port)
 		
-			for source in routes[dest]:
-				source_ports = jclient.get_ports(source, is_output=True, is_midi=True)
-				source_count = len(source_ports)
-				if source_count and dest_count:
-					try:
-						src = source_ports[0]
-						dst = dest_ports[0]
-						if dst.name in dest_routes and src in dest_routes[dst.name]:
-							# Already routed
-							dest_routes[dst.name].remove(src)
-						else:
-							jclient.connect(src, dst)
-					except Exception as e:
-						logging.warning("Failed to connect audio %s to %s - %s", src, dst, e)
+			for src_name in routes[dst_name]:
+				src_ports = jclient.get_ports(src_name, is_output=True, is_midi=True)
+				try:
+					src = src_ports[0]
+					dst = dst_ports[0]
+					if dst.name in cur_dests and src in cur_dests[dst.name]:
+						# Already routed
+						cur_dests[dst.name].remove(src)
+					else:
+						jclient.connect(src, dst)
+				except Exception as e:
+					pass
 		
 			# Disconnect unused routes
-			for dst in dest_routes:
-				for src in dest_routes[dst]:
+			for dst in cur_dests:
+				for src in cur_dests[dst]:
 					try:
 						jclient.disconnect(src, dst) #TODO: Disconnecting chain output - should be done later
 					except Exception as e:
 						logging.warning("Failed to disconnect MIDI %s from %s - %s", src, dst, e)
 
-		# Chain outputs
-		chain = chain_manager.get_chain(chain_id)
-		if not chain:
-			continue
+		# Chain outputs - connects each chain's end MIDI outputs to configured destinations
+		#TODO: This should be conslidate in chain routing because chain already does this
 		if chain.midi_slots and chain.midi_thru:
 			dests = []
 			for out in chain.midi_out:
 				if out == "MIDI-OUT":
-					dests += jclient.get_ports(is_midi=True, is_input=True, is_physical=True)
+					dests += hw_out
 				elif out == "NET-OUT":
-					for nwp in ("QmidiNet:in_1", "jackrtpmidid:rtpmidi_in", "RtMidiIn Client:TouchOSC Bridge"):
-						dests += jclient.get_ports(nwp, is_midi=True, is_input=True)
+					dests += nw_out
 				elif out in chain_manager.chains:
 					for processor in chain_manager.get_processors(out, "MIDI Tool", 0):
 						try:
@@ -250,6 +250,22 @@ def midi_autoconnect(force=False):
 				for dst in cur_dests:
 					try:
 						jclient.disconnect(src_port, dst)
+					except:
+						pass
+
+	# Disconnect unexpected inter-chain connections
+	for chain_id, chain in chain_manager.chains.items():
+		unexpected_chains = []
+		for id in chain_manager.chains:
+			if id not in chain.midi_out:
+				unexpected_chains.append(id)
+		for id in unexpected_chains:
+			for dst_proc in chain_manager.get_processors(id, "MIDI Tool", 0):
+				for src_proc in chain.get_processors("MIDI Tool", chain.get_slot_count("MIDI Tool") - 1):
+					try:
+						src_port = jclient.get_ports(src_proc.get_jackname(), is_midi=True, is_output=True)[0]
+						dst_port = jclient.get_ports(dst_proc.get_jackname(), is_midi=True, is_input=True)[0]
+						jclient.disconnect(src_port, dst_port)
 					except:
 						pass
 
@@ -536,30 +552,30 @@ def audio_autoconnect(force=False):
 		if "zynmixer:return" in routes and "zynmixer:send" in routes["zynmixer:return"]:
 			routes["zynmixer:return"].remove("zynmixer:send")
 		for dest in routes:
-			dest_ports = jclient.get_ports(dest, is_input=True, is_audio=True)
-			dest_count = len(dest_ports)
-			dest_routes = {}
-			for port in dest_ports:
-				dest_routes[port.name] = jclient.get_all_connections(port)
+			dst_ports = jclient.get_ports(dest, is_input=True, is_audio=True)
+			dest_count = len(dst_ports)
+			cur_dests = {}
+			for port in dst_ports:
+				cur_dests[port.name] = jclient.get_all_connections(port)
 
-			for source in routes[dest]:
-				source_ports = jclient.get_ports(source, is_output=True, is_audio=True)
-				source_count = len(source_ports)
+			for src_name in routes[dest]:
+				src_ports = jclient.get_ports(src_name, is_output=True, is_audio=True)
+				source_count = len(src_ports)
 				if source_count and dest_count:
 					for i in range(max(source_count, dest_count)):
 						try:
-							src = source_ports[min(i, source_count - 1)]
-							dst = dest_ports[min(i, dest_count - 1)]
-							if dst.name in dest_routes and src in dest_routes[dst.name]:
-								dest_routes[dst.name].remove(src)
+							src = src_ports[min(i, source_count - 1)]
+							dst = dst_ports[min(i, dest_count - 1)]
+							if dst.name in cur_dests and src in cur_dests[dst.name]:
+								cur_dests[dst.name].remove(src)
 							else:
 								jclient.connect(src, dst)
 						except Exception as e:
 							logging.warning("Failed to connect audio %s to %s - %s", src, dst, e)
 		
 			# Disconnect unused routes
-			for dst in dest_routes:
-				for src in dest_routes[dst]:
+			for dst in cur_dests:
+				for src in cur_dests[dst]:
 					try:
 						jclient.disconnect(src, dst)
 					except Exception as e:

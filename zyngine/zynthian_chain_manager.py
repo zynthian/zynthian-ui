@@ -386,6 +386,47 @@ class zynthian_chain_manager():
             return self.chains[self.active_chain_id]
         return None
 
+    def will_route_howl(self, src_id, dst_id, node_list=None):
+        """Checks if adding a connection will cause a howl-round loop
+        
+        src_id : Chain ID of the source chain
+        dst_id : Chain ID of the destination chain
+        node_list : Do not use - internal function parameter
+        Returns : True if adding the route will cause howl-round feedback loop
+        """
+
+        if dst_id:
+            # dst_id is only supplied on first call (not rentrant cycles)
+            if dst_id not in self.chains:
+                return False
+            node_list = [src_id, dst_id] # Init node list on first call
+        if src_id not in self.chains:
+            return False
+        if src_id in node_list:
+            return True
+        for chain_id in self.chains[src_id].midi_out:
+            node_list.append(chain_id)
+            if self.will_route_howl(chain_id, None, node_list):
+                return True
+        return False
+
+        if dst_id not in self.chains:
+            return False
+        if src_id:
+            # src_id only provided on first call (not re-entrant cycles)
+            if src_id not in self.chains:
+                return False
+            node_list = [src_id] # Init node_list on first call
+        if dst_id in node_list:
+            return True
+        node_list.append(dst_id)
+        for chain_id in self.chains[dst_id].midi_out:
+            if chain_id in self.chains:
+                if self.will_route_howl(None, chain_id, node_list):
+                    return True
+                node_list.append(chain_id)
+        return False
+
     # ------------------------------------------------------------------------
     # Processor Management
     # ------------------------------------------------------------------------

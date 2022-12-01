@@ -27,7 +27,6 @@ import logging
 from collections import OrderedDict
 
 # Zynthian specific modules
-import zynautoconnect
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
@@ -53,14 +52,14 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 				["NET-OUT", "Network MIDI Out" ]
 			])
 			for chain_id, chain in chain_manager.chains.items():
-				if chain.is_midi() and chain != active_chain:
-					midi_outs[chain_id] = "Chain {}".format(chain_id)
+				if chain.is_midi() and chain != active_chain and not chain_manager.will_route_howl(active_chain, chain_id):
+					midi_outs[chain_id] = f"Chain {chain_id}"
 
-			for jn, title in midi_outs.items():
-				if jn in active_chain.midi_out:
-					self.list_data.append((jn, jn, "[x] " + title))
+			for dst_node, title in midi_outs.items():
+				if dst_node in active_chain.midi_out:
+					self.list_data.append((dst_node, dst_node, f"[x] {title}"))
 				else:
-					self.list_data.append((jn, jn, "[  ] " + title))
+					self.list_data.append((dst_node, dst_node, f"[  ] {title}"))
 
 		super().fill_list()
 

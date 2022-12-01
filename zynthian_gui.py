@@ -43,7 +43,6 @@ from zyngine import zynthian_state_manager
 from zyncoder.zyncore import get_lib_zyncore
 from zynlibs.zynseq import *
 
-from zyngine import zynthian_zcmidi
 from zyngine.zynthian_chain import *
 
 from zyngui import zynthian_gui_config
