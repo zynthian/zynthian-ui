@@ -395,21 +395,6 @@ class zynthian_chain_manager():
         Returns : True if adding the route will cause howl-round feedback loop
         """
 
-        if dst_id:
-            # dst_id is only supplied on first call (not rentrant cycles)
-            if dst_id not in self.chains:
-                return False
-            node_list = [src_id, dst_id] # Init node list on first call
-        if src_id not in self.chains:
-            return False
-        if src_id in node_list:
-            return True
-        for chain_id in self.chains[src_id].midi_out:
-            node_list.append(chain_id)
-            if self.will_route_howl(chain_id, None, node_list):
-                return True
-        return False
-
         if dst_id not in self.chains:
             return False
         if src_id:

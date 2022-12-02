@@ -147,13 +147,15 @@ def midi_autoconnect(force=False):
 
 	# List of physical MIDI source ports
 	hw_out = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
-	if len(hw_out) == 0:
-		hw_out = []
 
 	# List of physical MIDI destination ports
 	hw_in = jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
-	if len(hw_in) == 0:
-		hw_in = []
+	# Remove a2j MIDI through (which would cause howl-round)
+	try:
+		a2j_thru = jclient.get_ports("a2j:Midi Through", is_input=True, is_physical=True, is_midi=True)[0]
+		hw_in.pop(hw_in.index(a2j_thru))
+	except:
+		pass
 
 	# Treat Aubio as physical MIDI destination port
 	if zynthian_gui_config.midi_aubionotes_enabled:
@@ -167,6 +169,10 @@ def midi_autoconnect(force=False):
 	nw_out = []
 	for port_name in ("QmidiNet:in_1", "jackrtpmidid:rtpmidi_in", "RtMidiIn Client:TouchOSC Bridge"):
 		nw_out += jclient.get_ports(port_name, is_midi=True, is_input=True)
+
+	nw_in = []
+	for port_name in ("QmidiNet:out_1", "jackrtpmidid:rtpmidi_out", "RtMidiIn Client:TouchOSC Bridge"):
+		nw_out += jclient.get_ports(port_name, is_midi=True, is_output=True)
 
 	#logger.debug("Input Device Ports: {}".format(hw_out))
 	#logger.debug("Output Device Ports: {}".format(hw_in))
@@ -224,9 +230,9 @@ def midi_autoconnect(force=False):
 			dests = []
 			for out in chain.midi_out:
 				if out == "MIDI-OUT":
-					dests += hw_out
+					dests += hw_in
 				elif out == "NET-OUT":
-					dests += nw_out
+					dests += nw_in
 				elif out in chain_manager.chains:
 					for processor in chain_manager.get_processors(out, "MIDI Tool", 0):
 						try:
@@ -253,7 +259,7 @@ def midi_autoconnect(force=False):
 					except:
 						pass
 
-	# Disconnect unexpected inter-chain connections
+	# Disconnect unexpected inter-chain connections and connect inputs
 	for chain_id, chain in chain_manager.chains.items():
 		unexpected_chains = []
 		for id in chain_manager.chains:
@@ -261,13 +267,23 @@ def midi_autoconnect(force=False):
 				unexpected_chains.append(id)
 		for id in unexpected_chains:
 			for dst_proc in chain_manager.get_processors(id, "MIDI Tool", 0):
-				for src_proc in chain.get_processors("MIDI Tool", chain.get_slot_count("MIDI Tool") - 1):
-					try:
-						src_port = jclient.get_ports(src_proc.get_jackname(), is_midi=True, is_output=True)[0]
-						dst_port = jclient.get_ports(dst_proc.get_jackname(), is_midi=True, is_input=True)[0]
-						jclient.disconnect(src_port, dst_port)
-					except:
-						pass
+				count = chain.get_slot_count("MIDI Tool")
+				if count:
+					for src_proc in chain.get_processors("MIDI Tool", count - 1):
+						try:
+							src_port = jclient.get_ports(src_proc.get_jackname(), is_midi=True, is_output=True)[0]
+							dst_port = jclient.get_ports(dst_proc.get_jackname(), is_midi=True, is_input=True)[0]
+							jclient.disconnect(src_port, dst_port)
+						except:
+							pass
+		src_port = "ZynMidiRouter:ch{}_out".format(chain.midi_chan)
+		if chain.is_midi():
+			try:
+				for dst_proc in chain.get_processors(slot=0):
+					dst_port = jclient.get_ports(dst_proc.get_jackname(), is_midi=True, is_input=True)[0]
+					jclient.connect(src_port, dst_port)
+			except:
+				pass 
 
 	#TODO Feedback ports
 

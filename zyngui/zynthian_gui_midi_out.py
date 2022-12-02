@@ -52,8 +52,11 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 				["NET-OUT", "Network MIDI Out" ]
 			])
 			for chain_id, chain in chain_manager.chains.items():
-				if chain.is_midi() and chain != active_chain and not chain_manager.will_route_howl(active_chain, chain_id):
-					midi_outs[chain_id] = f"Chain {chain_id}"
+				if chain.is_midi() and chain != active_chain:
+					if chain_manager.will_route_howl(chain_manager.active_chain_id, chain_id):
+						midi_outs[chain_id] = f"∞Chain {chain_id}"
+					else:
+						midi_outs[chain_id] = f"Chain {chain_id}"
 
 			for dst_node, title in midi_outs.items():
 				if dst_node in active_chain.midi_out:

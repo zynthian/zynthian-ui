@@ -187,6 +187,8 @@ class zynthian_chain:
  
         self.midi_routes = {}
         for i, slot in enumerate(self.midi_slots):
+            if i == 0:
+                continue # Chain inputs are handled by autoconnect
             for processor in slot:
                 sources = []
                 if i == 0:
@@ -342,14 +344,14 @@ class zynthian_chain:
 
         processors = 0
         if type is None:
-            if slot is None:
+            if slot is None or slot < 0:
                 for j in self.midi_slots + self.audio_slots:
                     processors += len(j)
                 if self.synth_processor:
                     processors += 1
         else:
             if type in self.slot_map:
-                if slot is None:
+                if slot is None or slot < 0:
                     for j in self.slot_map[type]:
                         processors += len(j)
                 else:
@@ -369,20 +371,26 @@ class zynthian_chain:
 
         processors = []
         if type is None:
-            for j in self.midi_slots:
-                processors += j
+            if slot is None:
+                for j in self.midi_slots:
+                    processors += j
+                if self.synth_processor:
+                    processors.append(self.synth_processor)
+                for j in self.audio_slots:
+                    processors += j
+                return processors
+            if slot < len(self.midi_slots):
+                return self.midi_slots[slot]
+            slot -= len(self.midi_slots)
+            if slot == 0:
+                return [self.synth_processor]
             if self.synth_processor:
-                processors.append(self.synth_processor)
-            for j in self.audio_slots:
-                processors += j
-            if slot is not None:
-                if len(processors) > slot:
-                    return processors[slot]
-                else:
-                    return []
+                slot -= 1
+            if slot < len(self.audio_slots):
+                return self.audio_slots[slot]
         else:
             if type in self.slot_map:
-                if slot is None:
+                if slot is None or slot < 0:
                     for j in self.slot_map[type]:
                         processors += j
                 else:
@@ -412,7 +420,7 @@ class zynthian_chain:
             if len(self.slot_map[processor.type]) == 0:
                 self.slot_map[processor.type].append([processor])
             else:
-                if slot is None or slot > len(self.slot_map[processor.type]):
+                if slot is None or slot < 0 or slot > len(self.slot_map[processor.type]):
                     slot = len(self.slot_map[processor.type])
                 if chain_mode == CHAIN_MODE_SERIES:
                     self.slot_map[processor.type].insert(slot, [processor])
