@@ -38,6 +38,7 @@ from time import monotonic
 from glob import glob
 from datetime import datetime
 from threading  import Thread, Lock
+from subprocess import check_output
 
 # Zynthian specific modules
 import zynconf
@@ -2125,9 +2126,9 @@ class zynthian_gui:
 			if self.last_event_flag:
 				self.last_event_ts = monotonic()
 				self.last_event_flag = False
-				self.power_save_mode = False
+				self.set_power_save_mode(False)
 			elif not self.power_save_mode and (monotonic() - self.last_event_ts) > zynthian_gui_config.power_save_secs:
-				self.power_save_mode = True
+				self.set_power_save_mode(True)
 
 			# Run autoconnect if pending
 			self.zynautoconnect_do()
@@ -2148,6 +2149,13 @@ class zynthian_gui:
 			sleep(0.01)
 		self.osc_end()
 
+
+	def set_power_save_mode(self, psm=True):
+		self.power_save_mode = psm
+		if psm:
+			check_output("xset dpms force off", shell=True)
+		else:
+			check_output("xset dpms force on", shell=True)
 
 	#------------------------------------------------------------------
 	# "Busy" Animated Icon Thread
