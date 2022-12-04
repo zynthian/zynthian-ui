@@ -500,7 +500,7 @@ class zynthian_controller:
 		# Unlearn only if there is a working engine and something to unlearn ...
 		if self.engine and self.midi_learn_chan is not None and self.midi_learn_cc is not None:
 			logging.info("MIDI Unlearn: %s" % self.symbol)
-			unlearned=False
+			unlearned = False
 
 			try:
 				unlearned = self.engine.midi_unlearn(self)
@@ -509,7 +509,7 @@ class zynthian_controller:
 
 			if unlearned:
 				# Call GUI method & Return success
-				self.engine.state_manager.refresh_midi_learn_zctrl() #TODO: Update UI
+				#self.zyngui.refresh_midi_learn_zctrl() #TODO: Update UI
 				return True
 			else:
 				return False

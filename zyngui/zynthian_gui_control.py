@@ -205,6 +205,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.screen_info = self.list_data[self.index]
 			self.screen_title = self.screen_info[2]
 			self.screen_layer = self.screen_info[3]
+			self.zyngui.chain_manager.get_active_chain().current_processor = self.screen_layer
 
 			# Show the widget for the current processor
 			if self.mode == 'control':
@@ -418,7 +419,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 					self.toggle_midi_learn()
 				return True
 			elif t == 'B':
-				if self.midi_learning:
+				if self.midi_learning or self.zyngui.state_manager.midi_learn_zctrl:
 					self.midi_unlearn_action()
 					return True
 
@@ -533,7 +534,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def midi_learn_zctrl(self, i):
 		if self.shown and self.zyngui.midi_learn_mode:
 			logging.debug("MIDI-learn ZController {}".format(i))
-			self.zyngui.state_manager.midi_learn_mode = False
+			self.zyngui.state_manager.midi_learn_mode = 0
 			self.midi_learn(i)
 
 
@@ -547,14 +548,14 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def midi_unlearn(self, zctrl=None):
 		if zctrl:
 			zctrl.midi_unlearn()
-		elif self.zyngui.get_current_processor():
-			self.zyngui.screens['layer'].midi_unlearn()
+		else:
+			self.zyngui.state_manager.clean_midi_learn(self.zyngui.get_current_processor())
 		self.zyngui.exit_midi_learn()
 
 
 	def midi_unlearn_action(self):
-		if self.zyngui.midi_learn_zctrl:
-			self.zyngui.show_confirm("Do you want to clean MIDI-learn for '{}' control?".format(self.zyngui.midi_learn_zctrl.name), self.midi_unlearn, self.zyngui.midi_learn_zctrl)
+		if self.zyngui.state_manager.midi_learn_zctrl:
+			self.zyngui.show_confirm("Do you want to clean MIDI-learn for '{}' control?".format(self.zyngui.state_manager.midi_learn_zctrl.name), self.midi_unlearn, self.zyngui.state_manager.midi_learn_zctrl)
 		elif self.zyngui.get_current_processor() and self.zyngui.get_current_processor().engine:
 			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in {} on MIDI channel {}?".format(self.zyngui.get_current_processor().engine.name, self.zyngui.get_current_processor().midi_chan + 1), self.midi_unlearn)
 		self.exit_midi_learn()

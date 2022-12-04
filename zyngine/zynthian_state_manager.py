@@ -41,6 +41,7 @@ from zynlibs.zynseq import zynseq
 from zyncoder.zyncore import *
 from zyngine import zynthian_midi_filter
 from zyncoder.zyncore import get_lib_zyncore
+from zyngine import zynthian_controller
 
 # ----------------------------------------------------------------------------
 # Zynthian State Manager Class
@@ -634,7 +635,6 @@ class zynthian_state_manager:
             self.midi_learn_zctrl = None
             get_lib_zyncore().set_midi_learning_mode(1)
 
-
     def exit_midi_learn(self):
         """Exit MIDI learn mode"""
 
@@ -654,6 +654,22 @@ class zynthian_state_manager:
                 self.exit_midi_learn()
         else:
             self.enter_midi_learn()
+
+    def clean_midi_learn(self, obj=None):
+        """Clean MIDI learn from controls
+        
+        obj : Object to clean [chain_id, processor, zctrl] (Default: active chain)
+        """
+
+        if obj == None:
+            obj = self.chain_manager.active_obj
+        if isinstance(obj, str):
+            for processor in self.chain_manager.get_processors(obj):
+                processor.midi_unlearn()
+        elif isinstance(obj, zynthian_processor):
+            obj.midi_unlearn()
+        elif isinstance(obj, zynthian_controller):
+            obj.midi_unlearn()
 
     #------------------------------------------------------------------
     # Autoconnect

@@ -196,7 +196,7 @@ class zynthian_gui:
 		self.exit_wait_count = 0
 
 		self.zynmidi = None
-		self.midi_learn_mode = False
+		self.midi_learn_mode = 0
 
 		self.status_counter = 0
 
@@ -317,8 +317,15 @@ class zynthian_gui:
 			# Active Chain
 			# => Light non-empty chains
 			for i in range(6):
-				if str(i) in self.chain_manager.chains:
-					self.wsleds.setPixelColor(1 + i, self.wscolor_light)
+				chain_name = "{:02d}".format(i)
+				if chain_name in self.chain_manager.chains:
+					if chain_name == self.chain_manager.active_chain_id:
+						if self.current_screen == "control":
+							self.wsleds.setPixelColor(1 + i, self.wscolor_active)
+						else:
+							self.wsled_blink(1 + i, self.wscolor_active)
+					else:
+						self.wsleds.setPixelColor(1 + i, self.wscolor_light)
 				else:
 					self.wsleds.setPixelColor(1 + i, self.wscolor_off)
 			# => Light FX layer if not empty
@@ -333,12 +340,7 @@ class zynthian_gui:
 						self.wsleds.setPixelColor(7, self.wscolor_active)
 					else:
 						self.wsled_blink(7, self.wscolor_active)
-				elif int(i) < 6:
-					if self.current_screen == "control":
-						self.wsleds.setPixelColor(1 + i, self.wscolor_active)
-					else:
-						self.wsled_blink(1 + i, self.wscolor_active)
-
+	
 			# Stepseq screen:
 			if self.current_screen=="zynpad":
 				self.wsleds.setPixelColor(8, self.wscolor_active)
@@ -865,6 +867,8 @@ class zynthian_gui:
 	def chain_control(self, chain_id=None, processor=None):
 		if chain_id is None:
 			chain_id = self.chain_manager.active_chain_id
+		else:
+			self.chain_manager.set_active_chain_by_id(chain_id)
 
 		if self.get_current_processor():
 			control_screen_name = 'control'
@@ -995,6 +999,28 @@ class zynthian_gui:
 		self.screens['control'].set_select_path()
 
 
+	#------------------------------------------------------------------
+	# MIDI learning
+	#------------------------------------------------------------------
+
+	def enter_midi_learn(self):
+		self.state_manager.enter_midi_learn()
+		try:
+			logging.debug("ENTER LEARN => {}".format(self.current_screen))
+			self.screens[self.current_screen].enter_midi_learn()
+		except Exception as e:
+			logging.debug(e)
+			pass
+
+
+	def exit_midi_learn(self):
+		self.state_manager.exit_midi_learn()
+		try:
+			self.screens[self.current_screen].exit_midi_learn()
+		except:
+			pass
+
+
 	# -------------------------------------------------------------------
 	# Callable UI Actions
 	# -------------------------------------------------------------------
@@ -1064,13 +1090,13 @@ class zynthian_gui:
 			self.start_audio_player()
 			
 		elif cuia == "STOP_AUDIO_PLAY":
-			self.stop_audio_player()
+			self.state_manager.stop_audio_player()
 
 		elif cuia == "TOGGLE_AUDIO_PLAY":
 			if self.current_screen == "pattern_editor":
 				self.screens["pattern_editor"].toggle_playback()
 			elif self.audio_player and self.audio_player.engine.player.get_playback_state(16):
-				self.stop_audio_player()
+				self.state_manager.stop_audio_player()
 			else:
 				self.start_audio_player()
 
@@ -1394,8 +1420,10 @@ class zynthian_gui:
 
 	def cuia_chain_control(self, params=None):
 		if params:
-			#TODO: Select processor
-			self.chain_control()
+			try:
+				self.chain_control("{:02}".format(params[0] - 1))
+			except:
+				self.chain_control(params[0])
 		else:
 			self.chain_control()
 
@@ -1403,8 +1431,12 @@ class zynthian_gui:
 	def cuia_chain_options(self, params):
 		try:
 			if params:
-				self.chain_manager.set_active_chain_by_id(params)
-			self.screens['chain_options'].reset()
+				try:
+					self.chain_manager.set_active_chain_by_id("{:02}".format(params[0] - 1))
+					self.screens['chain_options'].setup("{:02}".format(params[0] - 1))
+				except:
+					self.chain_manager.set_active_chain_by_id(params[0])
+					self.screens['chain_options'].setup(params[0])
 			self.toggle_screen('chain_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 		except Exception as e:
 			logging.warning("Can't show options for layer ({})! => {}".format(params,e))
@@ -1440,7 +1472,7 @@ class zynthian_gui:
 			if cuia and cuia!="NONE":
 				parts = cuia.split(" ", 2)
 				cmd = parts[0]
-				if len(parts)>1:
+				if len(parts) > 1:
 					params = []
 					for i,p in enumerate(parts[1].split(",")):
 						try:
@@ -1623,7 +1655,11 @@ class zynthian_gui:
 
 
 	def midi_unlearn_options_cb(self, option, param):
-		self.screens['control'].midi_unlearn(param)
+		if param:
+			self.screens['control'].midi_unlearn(param)
+		else:
+			self.show_confirm("Do you want to clean MIDI-learn for ALL controls in {} on MIDI channel {}?".format(self.get_current_processor().engine.name, self.get_current_processor().midi_chan + 1), self.screens['control'].midi_unlearn)
+
 
 
 	#------------------------------------------------------------------
