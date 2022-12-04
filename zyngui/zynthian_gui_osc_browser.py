@@ -59,7 +59,7 @@ class zynthian_gui_osc_browser(zynthian_gui_selector):
 	def get_osc_paths(self, path=''):
 		self.list_data=[]
 		if path=='root':
-			self.osc_path="/part"+str(self.zyngui.current_processor.get_midi_chan())+"/"
+			self.osc_path="/part"+str(self.zyngui.get_current_processor().get_midi_chan())+"/"
 		else:
 			self.osc_path=self.osc_path+path
 		liblo.send(self.zyngui.osc_target, "/path-search",self.osc_path,"")

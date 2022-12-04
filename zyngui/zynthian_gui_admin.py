@@ -393,7 +393,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			"ZYNTHIAN_MIDI_SINGLE_ACTIVE_CHANNEL": str(int(zynthian_gui_config.midi_single_active_channel))
 		})
 
-		self.zyngui.set_active_channel()
 		sleep(0.5)
 		self.fill_list()
 

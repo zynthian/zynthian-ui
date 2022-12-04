@@ -142,11 +142,13 @@ class zynthian_chain_manager():
 
         if midi_chan is not None and midi_chan < 16:
             self.midi_chan_2_chain[midi_chan] = chain
-        self.active_chain_id = chain_id
         try:
             zynautoconnect.autoconnect(True)
         except:
             pass # May be before zynautoconnect started
+        if enable_audio_thru:
+            chain.midi_chan = None #TODO: Validate this is okay
+        self.set_active_chain_by_id(chain_id)
         return chain
 
     def remove_chain(self, chain_id, stop_engines=True):
@@ -472,7 +474,7 @@ class zynthian_chain_manager():
     def get_processor_count(self, chain_id=None, type=None, slot=None):
         """Get the quantity of processors in a slot
         
-        chain_id : Chain id (Default: all processors)
+        chain_id : Chain id (Default: all processors in all chains)
         type : Processor type to filter result (Default: all types)
         slot : Index of slot or None for whole chain (Default: whole chain)
         Returns : Quantity of processors in (sub)chain or slot
@@ -696,11 +698,15 @@ class zynthian_chain_manager():
         return changed
 
     def get_free_midi_chans(self):
-        """Get list of unused MIDI channels"""
+        """Get list of unused mixer and MIDI channels
+        
+        TODO: Support separate midi/mixer channel
+        """
 
         free_chans = list(range(16))
         for chain in self.chains:
             try:
+                free_chans.remove(self.chains[chain].mixer_chan)
                 free_chans.remove(self.chains[chain].midi_chan)
             except:
                 pass
@@ -714,6 +720,9 @@ class zynthian_chain_manager():
 
         free_chans = self.get_free_midi_chans()
         for i in range(chan, 16):
+            if i in free_chans:
+                return i
+        for i in range(chan):
             if i in free_chans:
                 return i
         raise Exception("No available free MIDI channels!")

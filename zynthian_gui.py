@@ -184,7 +184,6 @@ class zynthian_gui:
 		self.screen_timer_id = None
 		
 		self.current_processor = None
-		self._current_processor = None
 
 		self.loading = 0
 		self.loading_thread = None
@@ -631,23 +630,17 @@ class zynthian_gui:
 
 	def show_screen(self, screen=None, hmode=SCREEN_HMODE_ADD):
 		self.cancel_screen_timer()
-
+		self.current_processor = None
+		
 		if screen is None:
 			if self.current_screen:
 				screen = self.current_screen
 			else:
 				screen = "audio_mixer"
 
-		if screen == "control":
-			self.restore_current_processor()
-
 		elif screen == "alsa_mixer":
-			#TODO: Handle alsa mixer chain
-			if self.state_manager.amixer_chain:
-				self.state_manager.amixer_chain.refresh_controllers()
-				self.set_current_processor(self.state_manager.alsa_mixer_processor)
-			else:
-				return
+			self.state_manager.alsa_mixer_processor.refresh_controllers()
+			self.current_processor = self.state_manager.alsa_mixer_processor
 
 		if screen not in ("bank", "preset", "option"):
 			self.chain_manager.restore_presets()
@@ -737,8 +730,8 @@ class zynthian_gui:
 
 	def refresh_screen(self):
 		screen = self.current_screen
-		if screen=='preset' and len(self.current_processor.preset_list) <= 1:
-			screen='control'
+		if screen == 'preset' and len(self.get_current_processor().preset_list) <= 1:
+			screen = 'control'
 		self.show_screen(screen)
 
 
@@ -873,13 +866,11 @@ class zynthian_gui:
 		if chain_id is None:
 			chain_id = self.chain_manager.active_chain_id
 
-		self.set_current_processor(processor)
-
-		if self.current_processor:
+		if self.get_current_processor():
 			control_screen_name = 'control'
 
 			# Check for a custom GUI (widget)
-			module_path = self.current_processor.engine.custom_gui_fpath
+			module_path = self.get_current_processor().engine.custom_gui_fpath
 			if module_path:
 				module_name = Path(module_path).stem
 				if module_name.startswith("zynthian_gui_"):
@@ -898,21 +889,21 @@ class zynthian_gui:
 						control_screen_name = custom_screen_name
 
 			# If a preset is selected => control screen
-			if self.current_processor.get_preset_name():
+			if self.get_current_processor().get_preset_name():
 				self.show_screen_reset(control_screen_name)
 			# If not => bank/preset selector screen
 			else:
-				self.current_processor.load_bank_list()
-				if len(self.current_processor.bank_list) > 1:
+				self.get_current_processor().load_bank_list()
+				if len(self.get_current_processor().bank_list) > 1:
 					self.show_screen_reset('bank')
 				else:
-					self.current_processor.set_bank(0)
-					self.current_processor.load_preset_list()
-					if len(zyngui.current_processor.preset_list) > 1:
+					self.get_current_processor().set_bank(0)
+					self.get_current_processor().load_preset_list()
+					if len(self.get_current_processor().preset_list) > 1:
 						self.show_screen_reset('preset')
 					else:
-						if len(zyngui.current_processor.preset_list):
-							self.current_processor.set_preset(0)
+						if len(self.get_current_processor().preset_list):
+							self.get_current_processor().set_preset(0)
 						self.show_screen_reset(control_screen_name)
 		else:
 			chain = self.chain_manager.get_chain(chain_id)
@@ -920,7 +911,6 @@ class zynthian_gui:
 				self.add_chain({"chain_id":chain_id, "type":"Audio Effect"})
 
 	def show_control(self):
-		self.restore_current_processor()
 		self.chain_control()
 
 
@@ -934,75 +924,32 @@ class zynthian_gui:
 
 
 	def toggle_favorites(self):
-		if self.current_processor:
-			self.current_processor.toggle_show_fav_presets()
+		if self.get_current_processor():
+			self.get_current_processor().toggle_show_fav_presets()
 			self.show_screen("preset")
 
 
 	def show_favorites(self):
-		if self.current_processor:
-			self.current_processor.set_show_fav_presets(True)
+		if self.get_current_processor():
+			self.get_current_processor().set_show_fav_presets(True)
 			self.show_screen("preset")
 
 
-	def restore_current_processor(self):
-		if self._current_processor:
-			self.set_current_processor(self._current_processor)
-
-
-	def set_current_processor(self, processor):
-		"""Set current processor - store previous if setting to alsa
-		
-		processor - Processor object (None to select first processor in active chain)
-		"""
-
-		if processor is None:
-			processors = self.chain_manager.get_processors(self.chain_manager.active_chain_id)
-			if processors:
-				self.current_processor = processors[0]
-			else:
-				self.current_processor = None
-		else:
-			if self.current_processor != processor:
-				if processor == self.state_manager.alsa_mixer_processor and self.current_processor !=  self.state_manager.alsa_mixer_processor:
-					self._current_processor = self.current_processor
-					self.current_processor = self.state_manager.alsa_mixer_processor
-				else:
-					self.current_processor = processor
-					self._current_processor = None
-			self.set_active_channel()
-
-
-	#If "MIDI Single Active Channel" mode is enabled, set MIDI Active Channel to chain's one
-	def set_active_channel(self):
-		current_chain_chan = None
-		active_chan = -1
-
+	def get_current_processor(self):
+		"""Get the currently selected processor object"""
 		if self.current_processor:
-			# Don't change anything for MIXER
-			if self.current_processor == self.state_manager.alsa_mixer_processor:
-				return
-			current_chain_chan = self.current_processor.get_midi_chan()
-			if zynthian_gui_config.midi_single_active_channel and current_chain_chan is not None:
-				if current_chain_chan >= 16:
-					return
-				active_chan = current_chain_chan
-				cur_active_chan = get_lib_zyncore().get_midi_active_chan()
-				if cur_active_chan == active_chan:
-					return
-				logging.debug("ACTIVE CHAN: {} => {}".format(cur_active_chan, active_chan))
-				#if cur_active_chan >= 0:
-				#	self.all_notes_off_chan(cur_active_chan)
-
-		get_lib_zyncore().set_midi_active_chan(active_chan)
-		self.state_manager.zynswitches_midi_setup(current_chain_chan)
+			return self.current_processor
+		try:
+			return self.chain_manager.get_active_chain().current_processor
+		except:
+			return None
 
 
 	def get_current_processor_wait(self):
 		#Try until processor is ready
 		for j in range(100):
-			if self.current_processor:
-				return self.current_processor
+			if self.get_current_processor():
+				return self.get_current_processor()
 			else:
 				sleep(0.1)
 
@@ -1466,31 +1413,24 @@ class zynthian_gui:
 	def cuia_bank_preset(self, params=None):
 		if params:
 			try:
-				self.set_current_processor(params)
+				self.current_processor = params #TODO: This doesn't do enough
 			except:
 				logging.error("Can't set chain passed as CUIA parameter!")
-		elif self.current_screen == 'control':
-			try:
-				self.set_current_processor(self.screens['control'].screen_layer)
-			except:
-				logging.warning("Can't set control screen chain! ")
 
 		if self.current_screen == 'preset':
-			if len(self.current_processor.bank_list) > 1:
+			if len(self.get_current_processor().bank_list) > 1:
 				self.replace_screen('bank')
 			else:
 				self.close_screen()
 		elif self.current_screen == 'bank':
 			#self.replace_screen('preset')
 			self.close_screen()
-		elif self.current_processor:
-			if len(self.current_processor.preset_list) > 0 and self.current_processor.preset_list[0][0] != '':
-				self.screens['preset'].index = self.current_processor.get_preset_index()
+		elif self.get_current_processor():
+			if len(self.get_current_processor().preset_list) > 0 and self.get_current_processor().preset_list[0][0] != '':
+				self.screens['preset'].index = self.get_current_processor().get_preset_index()
 				self.show_screen('preset', hmode=zynthian_gui.SCREEN_HMODE_ADD)
-			elif len(self.current_processor.bank_list) > 0 and self.current_processor.bank_list[0][0] != '':
+			elif len(self.get_current_processor().bank_list) > 0 and self.get_current_processor().bank_list[0][0] != '':
 				self.show_screen('bank', hmode=zynthian_gui.SCREEN_HMODE_ADD)
-			else:
-				self.restore_current_processor()
 
 
 	def custom_switch_ui_action(self, i, t):
@@ -1579,7 +1519,6 @@ class zynthian_gui:
 				self.screens[self.current_screen].disable_param_editor()
 			except:
 				pass
-			self.restore_current_processor()
 			self.show_screen_reset('audio_mixer')
 
 		elif i == 2:
@@ -1860,7 +1799,7 @@ class zynthian_gui:
 							elif self.current_screen == 'control':
 								self.screens['control'].build_view()
 
-						#if self.current_processor and chan == self.current_processor.get_midi_chan():
+						#if self.get_current_processor() and chan == self.get_current_processor().get_midi_chan():
 						#	self.show_screen('control')
 
 				# Control Change ...
@@ -1888,7 +1827,7 @@ class zynthian_gui:
 				elif evtype == 0x9:
 					self.screens['midi_chan'].midi_chan_activity(chan)
 					#Preload preset (note-on)
-					if self.current_screen == 'preset' and zynthian_gui_config.preset_preload_noteon and chan == self.current_processor.get_midi_chan():
+					if self.current_screen == 'preset' and zynthian_gui_config.preset_preload_noteon and chan == self.get_current_processor().get_midi_chan():
 						self.start_loading()
 						self.screens['preset'].preselect_action()
 						self.stop_loading()
@@ -2132,9 +2071,9 @@ class zynthian_gui:
 				zynthian_gui_config.top.quit()
 				return
 		# Refresh Current Chain
-		elif self.current_processor and not self.loading:
+		elif self.get_current_processor() and not self.loading:
 			try:
-				#TODO: self.current_processor.refresh()
+				#TODO: self.get_current_processor().refresh()
 				pass
 			except Exception as e:
 				self.reset_loading()
@@ -2236,7 +2175,7 @@ class zynthian_gui:
 	def allow_rbpi_headphones(self):
 		try:
 			#TODO: Add alsa mixer
-			self.state_manager.amixer_chain.engine.allow_rbpi_headphones()
+			self.state_manager.alsa_mixer_processor.engine.allow_rbpi_headphones()
 		except:
 			pass
 

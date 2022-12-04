@@ -191,10 +191,15 @@ def midi_autoconnect(force=False):
 		return
 	else:
 		last_hw_str = hw_str
+	
+	# MIDI router chain outputs
+	ch_out = jclient.get_ports("ZynMidiRouter:ch.*_out", is_midi=True, is_output=True)
 
 	# MIDI routing within chains - connects all MIDI ports within each chain
-	# Also connects chain inputs and outputs
+	# Also connects chain outputs
 	#TODO: Handle processors with multiple MIDI ports
+
+	# Chain internal routes
 	for chain_id, chain in chain_manager.chains.items():
 		routes = chain_manager.get_chain_midi_routing(chain_id)
 		for dst_name in routes:
@@ -224,8 +229,7 @@ def midi_autoconnect(force=False):
 					except Exception as e:
 						logging.warning("Failed to disconnect MIDI %s from %s - %s", src, dst, e)
 
-		# Chain outputs - connects each chain's end MIDI outputs to configured destinations
-		#TODO: This should be conslidate in chain routing because chain already does this
+		# Connect each chain's MIDI outputs to configured destinations
 		if chain.midi_slots and chain.midi_thru:
 			dests = []
 			for out in chain.midi_out:
@@ -244,7 +248,6 @@ def midi_autoconnect(force=False):
 			for processor in chain.midi_slots[-1]:
 				src_port = jclient.get_ports(processor.get_jackname(), is_midi=True, is_output=True)[0]
 				cur_dests = jclient.get_all_connections(src_port)
-				#TODO: This only uses first port
 				for dst in dests:
 					if dst not in cur_dests:
 						try:
@@ -276,14 +279,21 @@ def midi_autoconnect(force=False):
 							jclient.disconnect(src_port, dst_port)
 						except:
 							pass
-		src_port = "ZynMidiRouter:ch{}_out".format(chain.midi_chan)
 		if chain.is_midi():
-			try:
-				for dst_proc in chain.get_processors(slot=0):
-					dst_port = jclient.get_ports(dst_proc.get_jackname(), is_midi=True, is_input=True)[0]
-					jclient.connect(src_port, dst_port)
-			except:
-				pass 
+			src_ports = jclient.get_ports(f"ZynMidiRouter:ch{chain.midi_chan}_out", is_midi=True, is_output=True)
+			for dst_proc in chain.get_processors(slot=0):
+				dst_port = jclient.get_ports(dst_proc.get_jackname(), is_midi=True, is_input=True)[0]
+				cur_srcs = jclient.get_all_connections(dst_port)
+				try:
+					jclient.connect(src_ports[0], dst_port)
+				except:
+					pass
+				for src in cur_srcs:
+					try:
+						if src_ports[0] != src and src in ch_out:
+							jclient.disconnect(src, dst_port)
+					except:
+						pass
 
 	#TODO Feedback ports
 

@@ -113,16 +113,9 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 			self.zyngui.add_chain()
 
 		elif self.mode=='SET':
-			root_layer = self.zyngui.screens['layer_options'].layer
-			processors = self.zyngui.chain_manager.get_processors()
-			root_layer.set_midi_chan(selchan)
-			for layer in processors:
-				layer.set_midi_chan(selchan)
-				logging.info("LAYER {} -> MIDI CHANNEL = {}".format(layer.get_path(), selchan))
-
-			self.zyngui.zynautoconnect_midi()
+			self.zyngui.chain_manager.get_active_chain().set_midi_chan(selchan)
+			self.zyngui.state_manager.zynautoconnect_midi()
 			self.zyngui.screens['audio_mixer'].refresh_visible_strips()
-			self.zyngui.set_active_channel()
 			self.zyngui.close_screen()
 
 		elif self.mode=='CLONE':

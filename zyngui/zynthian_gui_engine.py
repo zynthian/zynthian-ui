@@ -108,6 +108,19 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				self.zyngui.add_chain_status["parallel"] = False
 			self.zyngui.add_chain()
 
+
+	def arrow_right(self):
+		if "chain_id" in self.zyngui.add_chain_status:
+			self.zyngui.chain_manager.next_chain()
+			self.zyngui.chain_control()
+
+
+	def arrow_left(self):
+		if "chain_id" in self.zyngui.add_chain_status:
+			self.zyngui.chain_manager.previous_chain()
+			self.zyngui.chain_control()
+		
+
 	def cb_add_parallel(self, option, value):
 		self.zyngui.add_chain_status['parallel'] = value
 		self.zyngui.add_chain()

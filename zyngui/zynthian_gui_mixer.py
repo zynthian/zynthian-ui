@@ -413,7 +413,7 @@ class zynthian_gui_mixer_strip():
 				self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text(), state=tkinter.NORMAL)
 			else:
 				if isinstance(self.chain.mixer_chan, int):
-					strip_txt = str(self.chain.midi_chan + 1)
+					strip_txt = str(self.chain.mixer_chan + 1)
 				else:
 					strip_txt = "X"
 				self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=strip_txt)
@@ -922,26 +922,26 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		offset = 0
 		active_strip = None
-		for midi_chan in range(16):
+		for mixer_chan in range(16):
 			strip = None
-			chain_id = "{:02d}".format(midi_chan) #TODO: +1
+			chain_id = "{:02d}".format(mixer_chan) #TODO: +1
 			chain = self.zyngui.chain_manager.get_chain(chain_id)
 			if chain:
 				if offset >= self.mixer_strip_offset and offset < self.mixer_strip_offset + len(self.visible_mixer_strips):
 					strip_index = offset - self.mixer_strip_offset
 					strip = self.visible_mixer_strips[strip_index]
 					self.visible_mixer_strips[strip_index].set_chain(chain)
-					self.visible_mixer_strips[strip_index].zctrls = self.zynmixer.zctrls[midi_chan]
+					self.visible_mixer_strips[strip_index].zctrls = self.zynmixer.zctrls[mixer_chan]
 					self.visible_mixer_strips[strip_index].draw_control()
 					if chain_id == self.zyngui.chain_manager.active_chain_id:
 						active_strip = strip
 				offset += 1
-			self.chan2strip[midi_chan] = strip
+			self.chan2strip[mixer_chan] = strip
 
 		for strip_index in range(offset - self.mixer_strip_offset, len(self.visible_mixer_strips)):
 			self.visible_mixer_strips[strip_index].set_chain(None)
 			self.visible_mixer_strips[strip_index].zctrls = None
-			self.visible_mixer_strips[strip_index].zctrls = self.zynmixer.zctrls[midi_chan]
+			self.visible_mixer_strips[strip_index].zctrls = self.zynmixer.zctrls[mixer_chan]
 			self.visible_mixer_strips[strip_index].draw_control()
 
 		self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX] = self.main_mixbus_strip

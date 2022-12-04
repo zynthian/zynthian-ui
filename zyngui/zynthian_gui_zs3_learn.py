@@ -108,8 +108,8 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		if self.zyngui.current_processor:
-			self.select_path.set(self.zyngui.current_processor.get_basepath() + "/PROG MIDI-Learn")
+		if self.zyngui.get_current_processor():
+			self.select_path.set(self.zyngui.get_current_processor().get_basepath() + "/PROG MIDI-Learn")
 		else:
 			self.select_path.set("PROG MIDI-Learn")
 

@@ -83,7 +83,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 		self.list_data.append((None, None, "> Chain"))
 
-		if self.chain.synth_processor or self.chain.midi_thru:
+		if self.chain.synth_slot or self.chain.midi_thru:
 			# Add MIDI-FX options
 			self.list_data.append((self.midifx_add, None, "Add MIDI-FX"))
 
@@ -120,8 +120,8 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 					res.append((self.processor_options, processor, "  " * indent + "├─ " + name))
 			indent += 1
 		# Add synth processor
-		if self.chain.synth_processor:
-			res.append((self.processor_options, self.chain.synth_processor, "  " * indent + "╰━ " + self.chain.synth_processor.engine.get_name(self.chain)))
+		for proc in self.chain.synth_slot:
+			res.append((self.processor_options, proc, "  " * indent + "╰━ " + proc.engine.get_name(self.chain)))
 			indent += 1
 		# Build audio effects chain
 		for slot in range(self.chain.get_slot_count("Audio Effect")):
@@ -270,7 +270,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 	def remove_cb(self):
 		options = OrderedDict()
-		if self.chain.synth_processor and self.chain.get_processor_count("MIDI Tool"):
+		if self.chain.synth_slot and self.chain.get_processor_count("MIDI Tool"):
 			options['Remove All MIDI-FXs'] = "midifx"
 		if self.chain.get_processor_count("Audio Effect"):
 			options['Remove All Audio-FXs'] = "audiofx"
