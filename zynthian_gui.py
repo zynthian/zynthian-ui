@@ -2153,9 +2153,9 @@ class zynthian_gui:
 	def set_power_save_mode(self, psm=True):
 		self.power_save_mode = psm
 		if psm:
-			check_output("xset dpms force off", shell=True)
+			check_output("cpufreq-set -g powersave; xset dpms force off", shell=True)
 		else:
-			check_output("xset dpms force on", shell=True)
+			check_output("cpufreq-set -g performance; xset dpms force on", shell=True)
 
 	#------------------------------------------------------------------
 	# "Busy" Animated Icon Thread
