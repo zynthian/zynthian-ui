@@ -1936,9 +1936,10 @@ class zynthian_gui:
 
 	def zynmidi_read(self):
 		try:
-			while lib_zyncore:
+			while True:
 				ev = lib_zyncore.read_zynmidi()
-				if ev == 0: break
+				if ev == 0:
+					break
 
 				#logging.info("MIDI_UI MESSAGE: {}".format(hex(ev)))
 
@@ -2142,7 +2143,8 @@ class zynthian_gui:
 					if self.last_event_flag:
 						self.last_event_ts = monotonic()
 						self.last_event_flag = False
-						self.set_power_save_mode(False)
+						if self.power_save_mode:
+							self.set_power_save_mode(False)
 					elif not self.power_save_mode and (monotonic() - self.last_event_ts) > zynthian_gui_config.power_save_secs:
 						self.set_power_save_mode(True)
 			else:
