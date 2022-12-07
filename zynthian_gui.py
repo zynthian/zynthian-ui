@@ -2122,40 +2122,48 @@ class zynthian_gui:
 			self.zynmidi_read()
 			self.osc_receive()
 
-			# Power Save Mode
-			if self.last_event_flag:
-				self.last_event_ts = monotonic()
-				self.last_event_flag = False
-				self.set_power_save_mode(False)
-			elif not self.power_save_mode and (monotonic() - self.last_event_ts) > zynthian_gui_config.power_save_secs:
-				self.set_power_save_mode(True)
-
 			# Run autoconnect if pending
 			self.zynautoconnect_do()
 
-			# Refresh GUI controllers every 4 cycles
+			# Every 4 cycles ...
 			if j > 4:
 				j = 0
+
+				# Refresh GUI Controllers
 				try:
 					self.screens[self.current_screen].plot_zctrls()
 				except AttributeError:
 					pass
 				except Exception as e:
 					logging.error(e)
+
+				# Power Save Mode
+				zynthian_gui_config.power_save_secs = 10
+				if zynthian_gui_config.power_save_secs > 0:
+					if self.last_event_flag:
+						self.last_event_ts = monotonic()
+						self.last_event_flag = False
+						self.set_power_save_mode(False)
+					elif not self.power_save_mode and (monotonic() - self.last_event_ts) > zynthian_gui_config.power_save_secs:
+						self.set_power_save_mode(True)
 			else:
 				j += 1
 
 			# Wait a little bit ...
 			sleep(0.01)
+
+		# End Thread task
 		self.osc_end()
 
 
 	def set_power_save_mode(self, psm=True):
 		self.power_save_mode = psm
 		if psm:
-			check_output("cpufreq-set -g powersave; xset dpms force off", shell=True)
+			logging.info("Power Save Mode: ON")
+			check_output("powersave_control.sh on", shell=True)
 		else:
-			check_output("cpufreq-set -g performance; xset dpms force on", shell=True)
+			logging.info("Power Save Mode: OFF")
+			check_output("powersave_control.sh off", shell=True)
 
 	#------------------------------------------------------------------
 	# "Busy" Animated Icon Thread
