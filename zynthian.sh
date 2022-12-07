@@ -50,8 +50,6 @@ function screensaver_off() {
 	xset s off
 	# Disable DPMS (Energy Star) features.
 	xset -dpms
-	# Don't blank the video device
-	xset s noblank
 }
 
 
