@@ -28,16 +28,14 @@ import os
 import re
 import shutil
 import logging
-from os.path import isfile
-from xml.etree import ElementTree
 import requests
-from  subprocess import Popen, DEVNULL, PIPE, check_output
 from time import sleep
+from xml.etree import ElementTree
 from collections import OrderedDict
+from subprocess import Popen, DEVNULL, PIPE, check_output
 
 from . import zynthian_engine
 from . import zynthian_controller
-
 
 # ------------------------------------------------------------------------------
 # Pianoteq module helper functions
@@ -150,7 +148,7 @@ def create_pianoteq_config():
 			try:
 				shutil.copy("{}/Pianoteq{}{}.prefs".format(PIANOTEQ_CONFIG_DIR, info['version'][0], info['version'][1]), PIANOTEQ_CONFIG_FILE)
 			except:
-				shutil.copy(os.environ.get('ZYNTHIAN_DATA_DIR',"/zynthian/zynthian-data") + "/pianoteq6/Pianoteq6.prefs", PIANOTEQ_CONFIG_FILE)
+				shutil.copy(os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data") + "/pianoteq6/Pianoteq6.prefs", PIANOTEQ_CONFIG_FILE)
 
 
 def fix_pianoteq_config(samplerate):
@@ -240,7 +238,7 @@ PIANOTEQ_MY_PRESETS_DIR = PIANOTEQ_DATA_DIR + '/Presets'
 PIANOTEQ_CONFIG_FILE = PIANOTEQ_CONFIG_DIR + '/Pianoteq.prefs'
 
 # ------------------------------------------------------------------------------
-# Piantoteq Engine Class
+# Pianoteq Engine Class
 # ------------------------------------------------------------------------------
 
 class zynthian_engine_pianoteq(zynthian_engine):
@@ -264,13 +262,14 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.preset = ['','','','']
 		self.params = {}
 
+		create_pianoteq_config()
+
 		self.command = '{} --prefs {}'.format(PIANOTEQ_BINARY, PIANOTEQ_CONFIG_FILE)
 		if self.info['api']:
-			self.command = PIANOTEQ_BINARY + " --serve 9001"
+			self.command +=  " --serve 9001"
 		if not self.config_remote_display():
 			self.command += " --headless"
 
-		create_pianoteq_config()
 		self.start()
 
 
