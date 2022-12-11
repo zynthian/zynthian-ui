@@ -57,8 +57,8 @@ class zynmixer(zynthian_engine):
 				'balance': zynthian_controller(self, 'balance', None, {'midi_chan':i,'is_integer':False,'value_min':-1.0,'value_max':1.0,'value_default':0.0,'value':self.get_balance(i),'graph_path':'balance_{}'.format(i)}),
 				'mute': zynthian_controller(self, 'mute', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_mute(i),'graph_path':'mute_{}'.format(i)}),
 				'solo': zynthian_controller(self, 'solo', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_solo(i),'graph_path':'solo_{}'.format(i)}),
-				'mono': zynthian_controller(self, 'mono', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':,'value':self.get_mono(i),'graph_path':'mono_{}'.format(i)}),
-				'phase': zynthian_controller(self, 'phase', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':,'value':self.get_phase(i),'graph_path':'phase_{}'.format(i)})
+				'mono': zynthian_controller(self, 'mono', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_mono(i),'graph_path':'mono_{}'.format(i)}),
+				'phase': zynthian_controller(self, 'phase', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_phase(i),'graph_path':'phase_{}'.format(i)})
 			}
 			self.zctrls.append(dict)
 		
