@@ -411,7 +411,7 @@ class zynthian_chain:
 
         processor : processor object to insert
         chain_mode : CHAIN_MODE_SERIES|CHAIN_MODE_PARALLEL
-        slot : Position (slot) to insert (Default: End of chain)
+        slot : Position (slot) to insert within subchain (Default: End of chain)
         Returns : True if processor added to chain
         """
 
@@ -579,6 +579,15 @@ class zynthian_chain:
                 return 0
         return None
 
+    def get_engines(self):
+        """Get list of engine objects used by processors"""
+        engines = [None]
+        for processor in self.processors.values():
+            if processor.engine not in engines:
+                engines.append(processor.engine)
+        engines.pop(None)
+        return engines
+
     # ------------------------------------------------------------------------
     # State Management
     # ------------------------------------------------------------------------
@@ -590,12 +599,10 @@ class zynthian_chain:
         """
 
         slots_states = []
-        for proc in self.synth_slot:
-            slots_states.append([proc.get_state()])
-        for slot in self.midi_slots + self.audio_slots:
-            slot_state = []
+        for slot in self.midi_slots + [self.synth_slot] + self.audio_slots:
+            slot_state = {}
             for processor in slot:
-                slot_state.append(processor.get_state())
+                slot_state[processor.id] = processor.get_state()
             slots_states.append(slot_state)
 
         state = {

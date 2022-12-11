@@ -47,7 +47,7 @@ class zynthian_processor:
     # Initialization
     # ------------------------------------------------------------------------
 
-    def __init__(self, type_info):
+    def __init__(self, type_info, id):
         """ Create an instance of a processor
 
         A processor represents a block within a chain.
@@ -55,6 +55,7 @@ class zynthian_processor:
         type_info : List of type info [short name, name, type, None, engine class, Bool]
         """
 
+        self.id = id
         self.type = type_info[2]
         self.engine = None
         self.name = type_info[0]
@@ -106,12 +107,14 @@ class zynthian_processor:
 
     def set_engine(self, engine):
         """Set engine that this processor uses"""
+        
         self.engine = engine
         self.engine.add_layer(self) # TODO: Refactor engine to replace layer with processor
         self.refresh_controllers() #TODO: What is this?
 
     def get_name(self):
         """Get name of processor"""
+
         if self.engine:
             return self.engine.get_name(self)
 
@@ -684,18 +687,11 @@ class zynthian_processor:
     # ---------------------------------------------------------------------------
 
     def get_state(self):
-        """Get dictionary describing processor r"""
+        """Get dictionary describing processor"""
 
         state = {
-            'engine_name': self.engine.name, #TODO: Not needed?
-            'engine_nick': self.engine.nickname,
-            'engine_jackname': self.engine.jackname,  #TODO: Not needed?
-            'midi_chan': self.midi_chan,  #TODO: Not needed?
-            'bank_index': self.bank_index, #TODO: Not needed?
-            'bank_name': self.bank_name, #TODO: Not needed?
+            'processor_type': self.engine.nickname,
             'bank_info': self.bank_info,
-            'preset_index': self.preset_index, #TODO: Not needed?
-            'preset_name': self.preset_name, #TODO: Not needed?
             'preset_info': self.preset_info,
             'show_fav_presets': self.show_fav_presets, #TODO: GUI
             'controllers_dict': {},

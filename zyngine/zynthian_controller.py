@@ -445,17 +445,29 @@ class zynthian_controller:
 		return self.value
 
 
+	def reset_value(self):
+		"""Reset value to default"""
+		self.set_value(self.value_default)
+
 	#--------------------------------------------------------------------------
 	# State management functions
 	#--------------------------------------------------------------------------
 
-	def get_state(self):
+	def get_state(self, full=True):
+		"""Get controller state as dictionary
+
+		full : True to get state of all parameters or false for off-default values
+		"""
+
 		state = {}
 		
 		# Value
-		if math.isnan(self.value):
-			state['value'] = None
-		else:
+		if full:
+			if math.isnan(self.value):
+				state['value'] = None
+			else:
+				state['value'] = self.value
+		elif self.value != self.value_default:
 			state['value'] = self.value
 
 		# MIDI learning info

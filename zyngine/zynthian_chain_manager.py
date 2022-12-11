@@ -58,6 +58,8 @@ class zynthian_chain_manager():
         self.chains = {}  # Map of chain objects indexed by chain id
         self.zyngine_counter = 0 # Appended to engine names for uniqueness
         self.zyngines = OrderedDict()  # List of instantiated engines
+        self.processors = {} # Dictionary of processor objects indexed by UID
+        self.next_processor_id = 1 # Next available processor UID
         self.active_chain_id = None # Active chain id
         self.midi_chan_2_chain = [None] * 16  # Chains mapped by MIDI channel
 
@@ -165,6 +167,8 @@ class zynthian_chain_manager():
         midi_chan = chain.midi_chan
         if midi_chan is not None and midi_chan < 16:
             self.midi_chan_2_chain[midi_chan] = None
+        for processor in chain.get_processors():
+            self.processors.pop(processor.id)
         chain.reset()
         if stop_engines:
             self.stop_unused_engines()
@@ -424,22 +428,23 @@ class zynthian_chain_manager():
         chain : Chain ID
         type : Engine type
         mode : Chain mode [CHAIN_MODE_SERIES|CHAIN_MODE_PARALLEL]
-        slot : Slot (position) within chain (0..last slot, Default: last slot)
+        slot : Slot (position) within subchain (0..last slot, Default: last slot)
         Returns : processor object or None on failure
         """
 
         if chain_id not in self.chains or type not in self.engine_info:
             return None
-        processor = zynthian_processor(self.engine_info[type])
+        processor = zynthian_processor(self.engine_info[type], self.next_processor_id)
         chain = self.chains[chain_id]
         if chain.insert_processor(processor, mode, slot):
             engine = self.start_engine(processor, type)
             if engine:
                 chain.generate_jackname_dict()
                 chain.rebuild_graph()
+                self.processors[self.next_processor_id] = processor
+                self.next_processor_id += 1
                 zynautoconnect.autoconnect(True)
                 return processor
-        del chain_id
         return None
 
     def remove_processor(self, chain_id, processor, stop_engine=True):
@@ -453,9 +458,19 @@ class zynthian_chain_manager():
 
         if chain_id not in self.chains:
             return False
+        id = None
+        for i, p in self.processors.items():
+            if processor == p:
+                id = i
+                break
         success = self.chains[chain_id].remove_processor(processor)
-        if success and stop_engine:
-            self.stop_unused_engines()
+        if success:
+            try:
+                self.processors.pop(id)
+            except:
+                pass
+            if stop_engine:
+                self.stop_unused_engines()
         zynautoconnect.autoconnect(True)
         return success
 
@@ -600,9 +615,19 @@ class zynthian_chain_manager():
         state = {}
         for chain_id, chain in self.chains.items():
             state[chain_id] = chain.get_state()
-        extended_state = self.get_zyngines_state()
-        if extended_state:
-            state["zyngine"] = extended_state
+        return state
+
+    def get_zs3_processor_state(self):
+        """Get dictionary of ZS3 processors indexed by processor id"""
+
+        state = {}
+        for id, processor in self.processors.items():
+            state[id] = {
+                "bank_info": processor.bank_info,
+                "preset_info": processor.preset_info,
+                "controllers": processor.controllers_dict
+            }
+        #TODO: Remove superfluous parameters
         return state
 
     def set_state(self, state):
@@ -637,9 +662,12 @@ class zynthian_chain_manager():
                 chain.set_state(chain_state)
 
             if "slots" in chain_state:
-                for slot_index, slot_state in enumerate(chain_state["slots"]):
-                    for proc_state in slot_state:
-                        processor = self.add_processor(chain_id, proc_state["engine_nick"], CHAIN_MODE_PARALLEL, slot_index)
+                for slot_state in chain_state["slots"]:
+                    for index, proc_state in enumerate(slot_state):
+                        if index:
+                            processor = self.add_processor(chain_id, proc_state["engine_nick"], CHAIN_MODE_PARALLEL)
+                        else:
+                            processor = self.add_processor(chain_id, proc_state["engine_nick"], CHAIN_MODE_SERIES)
                         processor.set_state(proc_state)
         if "zyngine" in state:
             self.set_zyngines_state(state['zyngine'])

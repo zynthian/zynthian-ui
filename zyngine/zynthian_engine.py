@@ -72,7 +72,7 @@ class zynthian_basic_engine:
 
 
 	# ---------------------------------------------------------------------------
-	# Subproccess Management & IPC
+	# Subprocess Management & IPC
 	# ---------------------------------------------------------------------------
 
 	def start(self):

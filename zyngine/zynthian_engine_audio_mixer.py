@@ -53,12 +53,12 @@ class zynmixer(zynthian_engine):
 		self.zctrls = []
 		for i in range(self.get_max_channels() + 1):
 			dict = {
-				'level': zynthian_controller(self, 'level', None, {'midi_chan':i,'is_integer':False,'value_max':1.0,'value':self.get_level(i),'graph_path':'level_{}'.format(i)}),
-				'balance': zynthian_controller(self, 'balance', None, {'midi_chan':i,'is_integer':False,'value_min':-1.0,'value_max':1.0,'value':self.get_balance(i),'graph_path':'balance_{}'.format(i)}),
-				'mute': zynthian_controller(self, 'mute', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value':self.get_mute(i),'graph_path':'mute_{}'.format(i)}),
-				'solo': zynthian_controller(self, 'solo', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value':self.get_solo(i),'graph_path':'solo_{}'.format(i)}),
-				'mono': zynthian_controller(self, 'mono', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value':self.get_mono(i),'graph_path':'mono_{}'.format(i)}),
-				'phase': zynthian_controller(self, 'phase', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value':self.get_phase(i),'graph_path':'phase_{}'.format(i)})
+				'level': zynthian_controller(self, 'level', None, {'midi_chan':i,'is_integer':False,'value_max':1.0,'value_default':0.7,'value':self.get_level(i),'graph_path':'level_{}'.format(i)}),
+				'balance': zynthian_controller(self, 'balance', None, {'midi_chan':i,'is_integer':False,'value_min':-1.0,'value_max':1.0,'value_default':0.0,'value':self.get_balance(i),'graph_path':'balance_{}'.format(i)}),
+				'mute': zynthian_controller(self, 'mute', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_mute(i),'graph_path':'mute_{}'.format(i)}),
+				'solo': zynthian_controller(self, 'solo', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_solo(i),'graph_path':'solo_{}'.format(i)}),
+				'mono': zynthian_controller(self, 'mono', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':,'value':self.get_mono(i),'graph_path':'mono_{}'.format(i)}),
+				'phase': zynthian_controller(self, 'phase', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':,'value':self.get_phase(i),'graph_path':'phase_{}'.format(i)})
 			}
 			self.zctrls.append(dict)
 		
@@ -337,23 +337,19 @@ class zynmixer(zynthian_engine):
 	# State management (for snapshots)
 	#--------------------------------------------------------------------------
 
-	#	Function to reset parameters of a channel to default
-	#	channel: Index of channel
-	#	update: True to send state to controllers
-	def reset(self, channel, update=True):
+	def reset(self, channel):
+		"""Reset mixer channel to default values"""
+
 		if not isinstance(channel, int):
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
 			channel = self.MAX_NUM_CHANNELS
-		if self.lib_zynmixer:
-			self.lib_zynmixer.reset(channel)
-		if update:
-			self.zctrls[channel]['level'].set_value(self.lib_zynmixer.getLevel(channel), False)
-			self.zctrls[channel]['balance'].set_value(self.lib_zynmixer.getBalance(channel), False)
-			self.zctrls[channel]['mute'].set_value(self.lib_zynmixer.getMute(channel), False)
-			self.zctrls[channel]['mono'].set_value(self.lib_zynmixer.getMono(channel), False)
-			self.zctrls[channel]['solo'].set_value(self.lib_zynmixer.getSolo(channel), False)
-			self.zctrls[channel]['phase'].set_value(self.lib_zynmixer.getPhase(channel), False)
+		self.zctrls[channel]['level'].reset_value()
+		self.zctrls[channel]['balance'].reset_value()
+		self.zctrls[channel]['mute'].reset_value()
+		self.zctrls[channel]['mono'].reset_value()
+		self.zctrls[channel]['solo'].reset_value()
+		self.zctrls[channel]['phase'].reset_value()
 			#for symbol in self.zctrls[channel]:
 			#	self.zctrls[channel][symbol].midi_unlearn()
 
@@ -363,9 +359,13 @@ class zynmixer(zynthian_engine):
 		for channel in range(self.get_max_channels() + 1):
 			self.reset(channel)
 
-	# Get full mixer state
-	# Returns: List of mixer channels containing dictionary of each state value
-	def get_state(self):
+
+	def get_state(self, full=True):
+		"""Get mixer state as list of controller state dictionaries
+		
+		full : True to get state of all parameters or false for off-default values
+		Returns : List of dictionaries describing parameter states
+		"""
 		state = {}
 		for chan in range(self.get_max_channels() + 1):
 			if chan < self.get_max_channels():
@@ -375,12 +375,15 @@ class zynmixer(zynthian_engine):
 			state[key] = {}
 			for symbol in self.zctrls[chan]:
 				zctrl = self.zctrls[chan][symbol]
-				state[key][zctrl.symbol] = zctrl.get_state()
+				state[key][zctrl.symbol] = zctrl.get_state(full)
 		return state
 
-	# Set full mixer state
-	# state: List of mixer channels containing dictionary of each state value
-	def set_state(self, state):
+	def set_state(self, state, full=True):
+		"""Set mixer state
+		
+		state : List of mixer channels containing dictionary of each state value
+		full : True to reset parameters omitted from state
+		"""
 		for chan in range(self.get_max_channels() + 1):
 			if chan < self.get_max_channels():
 				key = 'chan_{:02d}'.format(chan)
@@ -388,7 +391,10 @@ class zynmixer(zynthian_engine):
 				key = 'main'
 			if key in state:
 				for symbol in self.zctrls[chan]:
-					self.zctrls[chan][symbol].restore_state(state[key][symbol])
+					if key in state and symbol in state[key]:
+						self.zctrls[chan][symbol].restore_state(state[key][symbol])
+					elif full:
+						self.zctrls[chan][symbol].reset_value()
 
 
 	def send_update(self, chan, ctrl, value):

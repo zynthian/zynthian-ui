@@ -73,8 +73,8 @@ class zynthian_state_manager:
         self.midi_filter_script = None
         self.midi_learn_zctrl = None
         self.midi_learn_mode = 0 # 0:Disabled, 1:MIDI Learn, 2:ZS3 Learn
-        self.learned_zs3 = []
-        self.last_zs3_index = 0
+        self.zs3 = {} # Dictionary or zs3 configs indexed by "ch/pc"
+        self.last_zs3 = 0
         self.status_info = {}
 
         # Initialize MIDI & Switches
@@ -109,15 +109,21 @@ class zynthian_state_manager:
     def get_state(self):
         """Get a dictionary describing the full state model"""
 
+        self.save_zs3("zs3-0", "Last state")
+        self.clean_zs3()
         state = {
             'format_version': SNAPSHOT_FORMAT_VERSION,
-            'active_chain': self.chain_manager.active_chain_id,
-            'chains': self.chain_manager.get_state(),
-            'alsa_mixer': {},
-            'mixer': self.zynmixer.get_state(), #TODO: Should this be in chain?
+            'last_snapshot_fpath': self.last_snapshot_fpath, #TODO: Why is this required?
             'midi_profile_state': self.get_midi_profile_state(),
-            'learned_zs3': self.learned_zs3
+            'chains': self.chain_manager.get_state(),
+            'zs3': self.zs3
         }
+
+        state["engine_config"] = {}
+        for engine in self.chain_manager.get_engines():
+            for id, info in self.chain_manager.engine_info.items():
+                if isinstance(engine, info[4]):
+                    state["engine_config"][engine][id] = engine.get_extended_config()
 
         # Add ALSA-Mixer setting
         if zynthian_gui_config.snapshot_mixer_settings and self.alsa_mixer_processor:
@@ -137,6 +143,43 @@ class zynthian_state_manager:
         state['zynseq_riff_b64'] = b64_data.decode('utf-8')
 
         return state
+
+    def save_snapshot(self, fpath, extra_data=None):
+        """Save current state model to file
+
+        fpath : Full filename and path
+        extra_data : Dictionary to add to snapshot, e.g. UI specific config
+        Returns : True on success
+        """
+
+        try:
+            # Get state
+            state = self.get_state()
+            if isinstance(extra_data, dict):
+                state = {**state, **extra_data}
+
+            # JSON Encode
+            json = JSONEncoder().encode(state)
+            logging.info("Saving snapshot %s => \n%s", fpath, json)
+
+        except Exception as e:
+            logging.error("Can't generate snapshot: %s" %e)
+            return False
+
+        try:
+            with open(fpath,"w") as fh:
+                logging.info("Saving snapshot %s => \n%s" % (fpath, json))
+                fh.write(json)
+                fh.flush()
+                os.fsync(fh.fileno())
+
+        except Exception as e:
+            logging.error("Can't save snapshot file '%s': %s" % (fpath, e))
+            return False
+
+        self.last_snapshot_fpath = fpath
+        return True
+
 
     def load_snapshot(self, fpath, load_chains=True, load_sequences=True):
         """Loads a snapshot from file
@@ -342,44 +385,6 @@ class zynthian_state_manager:
         # Autoconnect Audio => Not Needed!! It's called after action
         #self.zynautoconnect_audio(True)
 
-
-    def save_snapshot(self, fpath, extra_data=None):
-        """Save current state model to file
-        
-        fpath : Full filename and path
-        extra_data : Dictionary to add to snapshot, e.g. UI specific config
-        Returns : True on success
-        """
-
-        try:
-            # Get state
-            state = self.get_state()
-            if isinstance(extra_data, dict):
-                state = {**state, **extra_data}
-
-            # JSON Encode
-            json = JSONEncoder().encode(state)
-            logging.info("Saving snapshot %s => \n%s", fpath, json)
-
-        except Exception as e:
-            logging.error("Can't generate snapshot: %s" %e)
-            return False
-
-        try:
-            with open(fpath,"w") as fh:
-                logging.info("Saving snapshot %s => \n%s" % (fpath, json))
-                fh.write(json)
-                fh.flush()
-                os.fsync(fh.fileno())
-
-        except Exception as e:
-            logging.error("Can't save snapshot '%s': %s" % (fpath, e))
-            return False
-
-        self.last_snapshot_fpath = fpath
-        return True
-
-
     def convert_legacy_snapshot(self, snapshot):
         """Convert legacy (<2022-11-22) snapshot to current format"""
 
@@ -427,17 +432,15 @@ class zynthian_state_manager:
         prog_num : MIDI program change number
         """
         
-        if zynthian_gui_config.midi_single_active_channel:
-            zs3_index = self.get_zs3_index_by_prognum(prog_num)
-        else:
-            zs3_index = self.get_zs3_index_by_midich_prognum(midi_chan, prog_num)
-
-        if zs3_index is not None:
-            return self.restore_zs3(zs3_index)
-        else:
-            logging.debug("Can't find a ZS3 for CH#{}, PRG#{}".format(midi_chan, prog_num))
+        try:
+            if zynthian_gui_config.midi_single_active_channel:
+                zs3_index = f"{get_lib_zyncore().get_midi_active_chan()}/{prog_num}"
+            else:
+                zs3_index = f"{midi_chan}/{prog_num}"
+            return self.restore_zs3(self.zs3[zs3_index])
+        except:
+            logging.debug(f"Can't find a ZS3 for CH#{midi_chan}, PRG#{prog_num}")
             return False
-
  
     def save_midi_prog_zs3(self, midi_chan, prog_num):
         """Store current state as ZS3
@@ -446,33 +449,23 @@ class zynthian_state_manager:
         prog_num : MIDI Program Change number
         """
 
-        # Look for a matching zs3 
-        if midi_chan is not None and prog_num is not None:
-            if zynthian_gui_config.midi_single_active_channel:
-                zs3_index = self.get_zs3_index_by_prognum(prog_num)
-            else:
-                zs3_index = self.get_zs3_index_by_midich_prognum(midi_chan, prog_num)
-        else:
-            zs3_index = None
+        id = f"{midi_chan}/{prog_num}"
+        next_id = 1
+        for zs3 in self.zs3.values():
+            if zs3["title"].startswith("New ZS3-"):
+                try:
+                    id = int (zs3["title"][8:])
+                    if id > next_id:
+                        next_id = id + 1
+                except:
+                    pass
         
-        # Get state and add MIDI-learn info
-        state = self.get_state()
-        state['zs3_title'] = "New ZS3"
-        state['midi_learn_chan'] = midi_chan
-        state['midi_learn_prognum'] = prog_num
-
-        # Save in ZS3 list, overwriting if already used
-        if zs3_index is None or zs3_index < 0 or zs3_index >= len(self.learned_zs3):
-            self.learned_zs3.append(state)
-            zs3_index = len(self.learned_zs3) - 1
-        else:
-            self.learned_zs3[zs3_index] = state
-
-        self.last_zs3_index = zs3_index
-        logging.info("Saved ZS3#{} => CH#{}:PRG#{}".format(zs3_index, midi_chan, prog_num))
-
-        return zs3_index
-
+        if id not in self.zs3:
+            self.zs3[id] = {'title': f"New ZS3-{next_id}"}
+        zs3[id]['active_chain'] = self.chain_manager.active_chain
+        zs3[id]['processors'] = self.chain_manager.get_zs3_state()
+        zs3[id]['mixer'] = self.zynmixer.get_state()
+        self.last_zs3 = id
 
     def get_zs3_index_by_midich_prognum(self, midi_chan, prog_num):
         """Get index of a ZS3 from MIDI channel and program change number
@@ -502,9 +495,9 @@ class zynthian_state_manager:
                 pass
 
 
-    def get_last_zs3_index(self):
+    def get_last_zs3(self):
         """Get the index of the last ZS3 added"""
-        return self.last_zs3_index
+        return self.last_zs3
 
 
     def get_zs3_title(self, zs3_index):
@@ -531,7 +524,7 @@ class zynthian_state_manager:
             if zs3_index is not None and zs3_index >= 0 and zs3_index < len(self.learned_zs3):
                 logging.info("Restoring ZS3#{}...".format(zs3_index))
                 self.restore_state_zs3(self.learned_zs3[zs3_index])
-                self.last_zs3_index = zs3_index
+                self.last_zs3 = zs3_index
                 return True
             else:
                 logging.debug("Can't find ZS3#{}".format(zs3_index))
@@ -541,64 +534,70 @@ class zynthian_state_manager:
         return False
 
 
-    def save_zs3(self, zs3_index=None):
+    def save_zs3(self, zs3_id, title):
         """Store current state as ZS3
         
-        zs3_index : Index of ZS3 to add or overwrite
-        Returns : Index of ZS3
+        zs3_id : ID of zs3 to save / overwrite
+        title : ZS3 title
         """
 
-        # Get state and add MIDI-learn info
-        state = self.get_state()
-
-        # Save in ZS3 list, overwriting if already used
-        if zs3_index is None or zs3_index < 0 or zs3_index >= len(self.learned_zs3):
-            state['zs3_title'] = "New ZS3"
-            state['midi_learn_chan'] = None
-            state['midi_learn_prognum'] = None
-            self.learned_zs3.append(state)
-            zs3_index = len(self.learned_zs3) - 1
-        else:
-            state['zs3_title'] = self.learned_zs3[zs3_index]['zs3_title']
-            state['midi_learn_chan'] = self.learned_zs3[zs3_index]['midi_learn_chan']
-            state['midi_learn_prognum'] = self.learned_zs3[zs3_index]['midi_learn_prognum']
-            self.learned_zs3[zs3_index] = state
-
-        logging.info("Saved ZS3#{}".format(zs3_index))
-        self.last_zs3_index = zs3_index
-        return zs3_index
-
+        # Initialise zs3
+        self.zs3[zs3_id] = {
+            "title": title,
+            "active_chain": self.chain_manager.active_chain_id,
+            "processors": {}
+        }
+        # Add processors
+        for id, processor in self.chain_manager.processors.items():
+            self.zs3[zs3_id]["processors"][id] = {
+                "bank_info": processor.bank_info,
+                "preset_info": processor.preset_info,
+                "controllers": {}
+            }
+            # Add controllers that differ to their default (preset) values
+            for symbol, zctrl in processor.controller_dict.items():
+                ctrl_state = {}
+                if zctrl.value != zctrl.value_default:
+                    ctrl_state["value"] = zctrl.value
+                if zctrl.midi_learn_chan:
+                    ctrl_state["midi_learn_chan"] = zctrl.midi_learn_chan
+                if zctrl.midi_learn_cc:
+                    ctrl_state["midi_learn_cc"] = zctrl.midi_learn_cc
+                if ctrl_state:
+                    self.zs3[zs3_id]["processors"][id]["controllers"][symbol] = ctrl_state
+        # Add mixer state
+        self.zs3[zs3_id]["mixer"] = self.zynmixer.get_state(False)
 
     def delete_zs3(self, zs3_index):
         """Remove a ZS3
         
         zs3_index : Index of ZS3 to remove
         """
-        del(self.learned_zs3[zs3_index])
-        if self.last_zs3_index == zs3_index:
-            self.last_zs3_index = None
-
+        try:
+            del(self.zs3[zs3_index])
+            if self.last_zs3 == zs3_index:
+                self.last_zs3 = None
+        except:
+            logging.info("Tried to remove non-existant ZS3")
 
     def reset_zs3(self):
         """Remove all ZS3"""
 
         # ZS3 list (subsnapshots)
-        self.learned_zs3 = []
+        self.zs3 = {}
         # Last selected ZS3 subsnapshot
-        self.last_zs3_index = None
+        self.last_zs3 = None
 
 
-    def clean_layer_state_from_zs3(self, chain_id):
-        """Remove chain from all ZS3
+    def clean_zs3(self):
+        """Remove non-existant processors from ZS3 state"""
         
-        chain_id : ID of chain to remove
-        """
-        
-        for state in self.learned_zs3:
-            try:
-                state['chain'][chain_id] = None
-            except:
-                pass
+        for state in self.zs3:
+            if state["active_chain"] not in self.chain_manager.chains:
+                state["active_chain"] = self.chain_manager.active_chain_id
+            for processor_id in list(state["processors"]):
+                if processor_id not in self.chain_manager.processors:
+                    del state["process"][processor_id]
 
     #------------------------------------------------------------------
     # Jackd Info
