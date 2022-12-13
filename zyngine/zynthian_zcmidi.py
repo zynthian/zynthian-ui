@@ -45,7 +45,7 @@ class zynthian_zcmidi:
 
 
 	def set_midi_bank_msb(self, chan, msb):
-		if chan > len(self.bank_msb_selected):
+		if not isinstance(chan, int) or chan > len(self.bank_msb_selected):
 			return
 		logging.debug("Set MIDI CH " + str(chan) + ", Bank MSB: " + str(msb))
 		self.bank_msb_selected[chan] = msb
@@ -53,13 +53,13 @@ class zynthian_zcmidi:
 
 
 	def get_midi_bank_msb(self, chan):
-		if chan > len(self.bank_msb_selected):
+		if not isinstance(chan, int) or chan > len(self.bank_msb_selected):
 			return 0
 		return self.bank_msb_selected[chan]
 
 
 	def set_midi_bank_lsb(self, chan, lsb):
-		if chan > len(self.bank_msb_selected):
+		if not isinstance(chan, int) or chan > len(self.bank_msb_selected):
 			return
 		logging.debug("Set MIDI CH " + str(chan) + ", Bank LSB: " + str(lsb))
 		self.bank_lsb_selected[chan]=lsb
@@ -67,13 +67,13 @@ class zynthian_zcmidi:
 
 
 	def get_midi_bank_lsb(self, chan):
-		if chan > len(self.bank_msb_selected):
+		if not isinstance(chan, int) or chan > len(self.bank_msb_selected):
 			return 0
 		return self.bank_lsb_selected[chan]
 
 
 	def set_midi_prg(self, chan, prg):
-		if chan > len(self.bank_msb_selected):
+		if not isinstance(chan, int) or chan > len(self.bank_msb_selected):
 			return
 		logging.debug("Set MIDI CH " + str(chan) + ", Program: " + str(prg))
 		self.prg_selected[chan] = prg
@@ -81,13 +81,13 @@ class zynthian_zcmidi:
 
 
 	def get_midi_prg(self, chan):
-		if chan > len(self.bank_msb_selected):
+		if not isinstance(chan, int) or chan > len(self.bank_msb_selected):
 			return 0
 		return self.prg_selected[chan]
 
 
 	def set_midi_preset(self, chan, msb, lsb, prg):
-		if chan > len(self.bank_msb_selected):
+		if not isinstance(chan, int) or chan > len(self.bank_msb_selected):
 			return
 		logging.debug("Set MIDI CH " + str(chan) + ", Bank MSB: " + str(msb) + ", Bank LSB: " + str(lsb) + ", Program: " + str(prg))
 		self.bank_msb_selected[chan] = msb
@@ -99,8 +99,9 @@ class zynthian_zcmidi:
 
 
 	def get_midi_preset(self, chan):
-		if chan > len(self.bank_msb_selected):
-			return [self.bank_msb_selected[chan], self.bank_lsb_selected[chan], self.prg_selected[chan]]
+		if not isinstance(chan, int) or chan > len(self.bank_msb_selected):
+			return []
+		return [self.bank_msb_selected[chan], self.bank_lsb_selected[chan], self.prg_selected[chan]]
 
 
 	def note_on(self, chan, note, vel):

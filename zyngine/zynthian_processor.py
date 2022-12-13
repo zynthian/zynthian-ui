@@ -47,16 +47,19 @@ class zynthian_processor:
     # Initialization
     # ------------------------------------------------------------------------
 
-    def __init__(self, type_info, id=None):
+    def __init__(self, type, type_info, id=None):
         """ Create an instance of a processor
 
         A processor represents a block within a chain.
         It provides access to a worker engine
+        type : Short-code processor type
         type_info : List of type info [short name, name, type, None, engine class, Bool]
         id : UID for processor (Default: None)
         """
 
+        self.type_code = type
         self.id = id
+        self.type_info = type_info
         self.type = type_info[2]
         self.engine = None
         self.name = type_info[0]
@@ -387,7 +390,7 @@ class zynthian_processor:
         """
 
         for i in range(len(self.preset_list)):
-            if preset_id==self.preset_list[i][0]:
+            if preset_id == self.preset_list[i][0]:
                 return self.set_preset(i, set_engine, force_set_engine)
         return False
 
@@ -695,12 +698,12 @@ class zynthian_processor:
             'bank_info': self.bank_info,
             'preset_info': self.preset_info,
             'show_fav_presets': self.show_fav_presets, #TODO: GUI
-            'controllers_dict': {},
+            'controllers': {},
             'current_screen_index': self.current_screen_index #TODO: GUI
         }
         # Get controller values
         for symbol in self.controllers_dict:
-            state['controllers_dict'][symbol] = self.controllers_dict[symbol].get_state()
+            state['controllers'][symbol] = self.controllers_dict[symbol].get_state()
         return state
 
     def set_state(self, state):
@@ -716,9 +719,9 @@ class zynthian_processor:
         if state["preset_info"]:
             self.set_preset_by_id(state["preset_info"][0])
         # Set controller values
-        for symbol in state['controllers_dict']:
+        for symbol in state['controllers']:
             try:
-                self.controllers_dict[symbol].restore_state(state['controllers_dict'][symbol])
+                self.controllers_dict[symbol].set_state(state['controllers'][symbol])
             except Exception as e:
                 logging.warning("Invalid Controller on layer {}: {}".format(self.get_basepath(), e))
 

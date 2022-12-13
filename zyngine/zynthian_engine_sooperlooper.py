@@ -386,7 +386,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	def get_controllers_dict(self, layer):
 		if not self.zctrls:
 			midi_chan = layer.midi_chan
-			if midi_chan < 0 or midi_chan > 15:
+			if midi_chan is None or midi_chan < 0 or midi_chan > 15:
 				midi_chan = zynthian_gui_config.master_midi_channel
 			if midi_chan < 0 or midi_chan > 15:
 				midi_chan = None

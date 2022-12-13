@@ -47,7 +47,7 @@ from zyngine import zynthian_controller
 # Zynthian State Manager Class
 # ----------------------------------------------------------------------------
 
-SNAPSHOT_FORMAT_VERSION = 1
+SNAPSHOT_schema_version = 1
 
 class zynthian_state_manager:
 
@@ -63,7 +63,7 @@ class zynthian_state_manager:
         self.last_snapshot_count = 0 # Increments each time a snapshot is loaded - modules may use to update if required
         self.reset_zs3()
         
-        self.alsa_mixer_processor = zynthian_processor(("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_alsa_mixer, True))
+        self.alsa_mixer_processor = zynthian_processor("MX", ("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_alsa_mixer, True))
         self.alsa_mixer_processor.engine = zynthian_engine_alsa_mixer()
         self.alsa_mixer_processor.refresh_controllers()
         self.audio_recorder = zynthian_audio_recorder()
@@ -112,7 +112,7 @@ class zynthian_state_manager:
         self.save_zs3("zs3-0", "Last state")
         self.clean_zs3()
         state = {
-            'format_version': SNAPSHOT_FORMAT_VERSION,
+            'schema_version': SNAPSHOT_schema_version,
             'last_snapshot_fpath': self.last_snapshot_fpath, #TODO: Why is this required?
             'midi_profile_state': self.get_midi_profile_state(),
             'chains': self.chain_manager.get_state(),
@@ -120,10 +120,10 @@ class zynthian_state_manager:
         }
 
         state["engine_config"] = {}
-        for engine in self.chain_manager.get_engines():
-            for id, info in self.chain_manager.engine_info.items():
-                if isinstance(engine, info[4]):
-                    state["engine_config"][engine][id] = engine.get_extended_config()
+        for id, engine in self.chain_manager.zyngines.items():
+            engine_state = engine.get_extended_config()
+            if engine_state:
+                state["engine_config"][id] = engine_state
 
         # Add ALSA-Mixer setting
         if zynthian_gui_config.snapshot_mixer_settings and self.alsa_mixer_processor:
@@ -206,43 +206,40 @@ class zynthian_state_manager:
             if load_chains:
                 # Mute output to avoid unwanted noises
                 self.zynmixer.set_mute(256, True)
-                if 'chains' in state:
+                if "chains" in state:
                     self.chain_manager.set_state(state['chains'])
                 self.chain_manager.stop_unused_engines()
-                if 'active_chain' in state:
-                    self.chain_manager.set_active_chain_by_id('active_chain')
 
-            if load_sequences and 'zynseq_riff_b64' in state:
-                b64_bytes = state['zynseq_riff_b64'].encode('utf-8')
+            for id, engine_state in state["engine_config"].items():
+                try:
+                    self.chain_manager.zyngines[id].set_extended_config(engine_state)
+                except Exception as e:
+                    logging.info("Failed to set extended engine state for %s: %s", id, e)
+
+            self.zs3 = state["zs3"]
+            self.load_zs3("zs3-0")
+
+            if load_sequences and "zynseq_riff_b64" in state:
+                b64_bytes = state["zynseq_riff_b64"].encode("utf-8")
                 binary_riff_data = base64.decodebytes(b64_bytes)
                 self.zynseq.restore_riff_data(binary_riff_data)
 
             if load_chains and load_sequences:
-                if 'alsa_mixer' in state:
-                    self.alsa_mixer_processor.set_state(state['alsa_mixer'])
-                self.zynmixer.reset_state()
-                if 'mixer' in state:
-                    self.zynmixer.set_state(state['mixer'])
-                if 'audio_recorder_armed' in state:
+                if "alsa_mixer" in state:
+                    self.alsa_mixer_processor.set_state(state["alsa_mixer"])
+                if "audio_recorder_armed" in state:
                     for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
-                        if midi_chan in  state['audio_recorder_armed']:
+                        if midi_chan in  state["audio_recorder_armed"]:
                             self.audio_recorder.arm(midi_chan)
                         else:
                             self.audio_recorder.unarm(midi_chan)
 
                 # Restore MIDI profile state
-                if 'midi_profile_state' in state:
-                    self.set_midi_profile_state(state['midi_profile_state'])
-
-                if 'learned_zs3' in state:
-                    self.learned_zs3 = state['learned_zs3']
-                else:
-                    #TODO: Move to legacy state handler
-                    self.reset_zs3()
-                    self.import_legacy_zs3s(state)
+                if "midi_profile_state" in state:
+                    self.set_midi_profile_state(state["midi_profile_state"])
 
             if fpath == self.last_snapshot_fpath and "last_state_fpath" in state:
-                self.last_snapshot_fpath = state['last_snapshot_fpath']
+                self.last_snapshot_fpath = state["last_snapshot_fpath"]
             else:
                 self.last_snapshot_fpath = fpath
 
@@ -389,7 +386,7 @@ class zynthian_state_manager:
         """Convert legacy (<2022-11-22) snapshot to current format"""
 
         #TODO: Implement legacy snapshot support
-
+        return
         state = snapshot
 
         if "index" in snapshot:
@@ -408,17 +405,20 @@ class zynthian_state_manager:
             self.reset_note_range()
             self.set_transpose(state['transpose'])
 
-        state['format_version'] = SNAPSHOT_FORMAT_VERSION
+        state['schema_version'] = SNAPSHOT_schema_version
         return snapshot
 
     def fix_snapshot(self, snapshot):
         """Apply fixes to snapshot based on format version"""
-        if "format_version" not in snapshot:
+
+        #TODO: Implement fixes to previous versions
+        return snapshot
+        if "schema_version" not in snapshot:
             state = self.convert_legacy_snapshot(snapshot)
         else:
             state = snapshot
-        if state["format_version"] < SNAPSHOT_FORMAT_VERSION:
-            pass
+            if state["schema_version"] < SNAPSHOT_schema_version:
+                pass
         return state
 
     #----------------------------------------------------------------------------
@@ -515,23 +515,29 @@ class zynthian_state_manager:
             self.learned_zs3[i]['zs3_title'] = title
 
 
-    def restore_zs3(self, zs3_index):
+    def load_zs3(self, zs3_id):
         """Restore a ZS3
         
-        zs3_index : Index of ZS3 to restore"""
+        zs3_id : ID of ZS3 to restore
+        Returns : True on success
+        """
 
-        try:
-            if zs3_index is not None and zs3_index >= 0 and zs3_index < len(self.learned_zs3):
-                logging.info("Restoring ZS3#{}...".format(zs3_index))
-                self.restore_state_zs3(self.learned_zs3[zs3_index])
-                self.last_zs3 = zs3_index
-                return True
-            else:
-                logging.debug("Can't find ZS3#{}".format(zs3_index))
-        except Exception as e:
-            logging.error("Can't restore ZS3 state => %s", e)
+        if zs3_id not in self.zs3:
+            logging.info("Attepmted to load non-existant ZS3")
+            return False
+        
+        zs3_state = self.zs3[zs3_id]
+        if "active_chain" in zs3_state:
+            self.chain_manager.set_active_chain_by_id(zs3_state["active_chain"])
+        for proc_id, proc_state in zs3_state["processors"].items():
+            try:
+                processor = self.chain_manager.processors[int(proc_id)]
+                processor.set_state(proc_state)
+            except:
+                pass
+        self.zynmixer.set_state(zs3_state["mixer"])
 
-        return False
+        return True
 
 
     def save_zs3(self, zs3_id, title):
@@ -555,7 +561,7 @@ class zynthian_state_manager:
                 "controllers": {}
             }
             # Add controllers that differ to their default (preset) values
-            for symbol, zctrl in processor.controller_dict.items():
+            for symbol, zctrl in processor.controllers_dict.items():
                 ctrl_state = {}
                 if zctrl.value != zctrl.value_default:
                     ctrl_state["value"] = zctrl.value
@@ -593,11 +599,11 @@ class zynthian_state_manager:
         """Remove non-existant processors from ZS3 state"""
         
         for state in self.zs3:
-            if state["active_chain"] not in self.chain_manager.chains:
-                state["active_chain"] = self.chain_manager.active_chain_id
-            for processor_id in list(state["processors"]):
+            if self.zs3[state]["active_chain"] not in self.chain_manager.chains:
+                self.zs3[state]["active_chain"] = self.chain_manager.active_chain_id
+            for processor_id in list(self.zs3[state]["processors"]):
                 if processor_id not in self.chain_manager.processors:
-                    del state["process"][processor_id]
+                    del self.zs3[state]["process"][processor_id]
 
     #------------------------------------------------------------------
     # Jackd Info
@@ -799,7 +805,7 @@ class zynthian_state_manager:
 
         if not self.audio_player:
             try:
-                self.audio_player = zynthian_processor("AP")
+                self.audio_player = zynthian_processor("AP", self.chain_manager.engine_info["AP"])
                 self.audio_player.start_engine()
                 zynautoconnect.audio_connect_aux(self.audio_player.engine.jackname)
             except Exception as e:

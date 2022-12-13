@@ -197,7 +197,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.list_data.append((self.base_dir,i,".."))
 			i += 1
 
-		if self.zyngui.chain_manager.get_chain_count() > 1 or self.zyngui.chain_manager.get_processor_count() > 0:
+		if self.zyngui.chain_manager.get_chain_count() or self.zyngui.chain_manager.get_processor_count() > 0:
 			#TODO: Add better validation of populated state, e.g. sequences
 			self.list_data.append(("SAVE", i, "Save as new snapshot"))
 		if self.bankless_mode:

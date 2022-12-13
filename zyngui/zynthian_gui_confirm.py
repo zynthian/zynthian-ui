@@ -135,4 +135,6 @@ class zynthian_gui_confirm():
 		self.zyngui.zynswitch_defered('S',1)
 
 
+	def zynpot_cb(self, enc, dval):
+		pass # TODO: Derive gui_confirm from gui_base
 #-------------------------------------------------------------------------------

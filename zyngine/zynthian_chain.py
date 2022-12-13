@@ -61,11 +61,7 @@ class zynthian_chain:
         # Each slot contains a list of parallel processors
         self.midi_slots = []  # Midi subchain (list of lists of processors)
         self.audio_slots = []  # Audio subchain (list of lists of processors)
-        self.synth_slot = [] # Synth/generator/special slot
-        # Helper map of chain type to chain slots
-        self.slot_map = {"MIDI Tool": self.midi_slots,
-                         "Audio Effect": self.audio_slots}
-        self.processors_by_jackname = OrderedDict() # Processors mapped by jackname
+        self.synth_slots = [] # Synth/generator/special slots (should be single slot)
         self.midi_chan = midi_chan  # Chain's MIDI channel - may be None for purly audio chain
         self.mixer_chan = midi_chan # Mixer channel to connect audio output
         self.midi_thru = enable_midi_thru # True to pass MIDI if chain empty
@@ -89,15 +85,28 @@ class zynthian_chain:
             self.midi_in = []
         self.midi_out = ["MIDI-OUT", "NET-OUT"]
         self.audio_in = ["system"]
+        self.audio_out = ["mixer"]
         if self.mixer_chan and self.mixer_chan > 15:
             # main mixbus chain
             self.audio_in = ["zynmixer:send"]
             self.audio_out = ["zynmixer:return"]
             self.audio_thru = True
-        self.audio_out = ["mixer"]
         self.remove_all_processors()
         self.reset_clone()
         self.rebuild_graph()
+
+    def get_slots_by_type(self, type):
+        """Get the list of slots
+        
+        type : Processor tye
+        Returns : Slot list object
+        """
+        if type == "MIDI Tool":
+            return self.midi_slots
+        elif type == "Audio Effect":
+            return self.audio_slots
+        else:
+            return self.synth_slots
 
     # ----------------------------------------------------------------------------
     # Chain Management
@@ -116,8 +125,8 @@ class zynthian_chain:
             processor.set_midi_chan(midi_chan)
 
     def get_title(self):
-        if self.synth_slot:
-            return "{}\n{}".format(self.synth_slot[0].engine.name, self.synth_slot[0].get_preset_name())
+        if self.synth_slots:
+            return "{}\n{}".format(self.synth_slots[0][0].engine.name, self.synth_slots[0][0].get_preset_name())
         elif self.get_slot_count("Audio Effect"):
             return self.get_processors("Audio Effect")[0].engine.name
         elif self.get_slot_count("MIDI Tool"):
@@ -149,8 +158,8 @@ class zynthian_chain:
                 sources = []
                 if i == 0:
                     # First slot fed from synth or chain input
-                    if self.synth_slot:
-                        for proc in self.synth_slot:
+                    if self.synth_slots:
+                        for proc in self.synth_slots[-1]:
                             sources.append(proc.get_jackname())
                     elif self.audio_thru:
                         sources = self.audio_in
@@ -166,9 +175,9 @@ class zynthian_chain:
                 # Routing from last audio processor
                 for source in self.audio_slots[-1]:
                     mixer_source.append(source.get_jackname())
-            elif self.synth_slot:
+            elif self.synth_slots:
                 # Routing from synth processor
-                for proc in self.synth_slot:
+                for proc in self.synth_slots[0]:
                     mixer_source.append(proc.get_jackname())
             elif self.audio_thru:
                 # Routing from capture ports
@@ -201,12 +210,12 @@ class zynthian_chain:
                     sources.append(prev_proc.get_jackname())
                 self.midi_routes[processor.get_jackname()] = sources
 
-        if self.synth_slot:
+        if self.synth_slots:
             sources = []
             if len(self.midi_slots):
                 for prev_proc in self.midi_slots[i - 1]:
                     sources.append(prev_proc.get_jackname())
-                for proc in self.synth_slot:
+                for proc in self.synth_slots[0]:
                     self.midi_routes[proc.engine.jackname] = sources
         elif len(self.midi_slots) == 0 and self.midi_thru:
             for output in self.midi_out:
@@ -297,24 +306,15 @@ class zynthian_chain:
 
     def is_audio(self):
         """Returns True if chain is processes audio"""
-        return self.audio_thru or len(self.audio_slots) > 0 or len(self.synth_slot) > 0
+        return self.audio_thru or len(self.audio_slots) > 0 or len(self.synth_slots) > 0
 
     def is_midi(self):
         """Returns True if chain processes MIDI"""
-        return self.midi_thru or self.midi_slots or self.synth_slot
+        return self.midi_thru or self.midi_slots or self.synth_slots
 
     # ---------------------------------------------------------------------------
     # Processor management
     # ---------------------------------------------------------------------------
-
-    def generate_jackname_dict(self):
-        self.processors_by_jackname = OrderedDict()
-        for proc in self.synth_slot:
-            self.processors_by_jackname[proc.get_jackname(
-            )] = proc
-        for slot in self.midi_slots + self.audio_slots:
-            for processor in slot:
-                self.processors_by_jackname[processor.get_jackname()] = processor
 
     def get_slot_count(self, type=None):
         """Get quantity of slots in chain
@@ -323,16 +323,14 @@ class zynthian_chain:
         Returns : Quantity of slots in chain (section)
         """
 
-        slots = 0
         if type is None:
-            slots = len(self.midi_slots) + len(self.audio_slots)
-            if self.synth_slot:
-                slots += 1
-        elif type in self.slot_map:
-            slots = len(self.slot_map[type])
+            return len(self.midi_slots) + len(self.audio_slots) + len(self.synth_slots)
+        elif type == "MIDI Tool":
+            return len(self.midi_slots)
+        elif type == "Audio Effect":
+            return len(self.audio_slots)
         else:
-            if self.synth_slot:
-                slots = 1
+            return len(self.synth_slots)
         return slots
 
     def get_processor_count(self, type=None, slot=None):
@@ -343,23 +341,21 @@ class zynthian_chain:
         Returns : Quantity of processors in (sub)chain or slot
         """
 
-        processors = 0
+        count = 0
         if type is None:
             if slot is None or slot < 0:
-                for j in self.midi_slots + self.audio_slots:
-                    processors += len(j)
-                processors += len(self.synth_slot)
+                for j in self.midi_slots +self.synth_slots + self.audio_slots:
+                    count += len(j)
         else:
-            if type in self.slot_map:
-                if slot is None or slot < 0:
-                    for j in self.slot_map[type]:
-                        processors += len(j)
-                else:
-                    if slot < len(self.slot_map[type]):
-                        processors = len(self.slot_map[type][slot])
-            elif slot == 0:
-                processors = len(self.synth_slot)
-        return processors
+            slots = self.get_slots_by_type(type)
+
+            if slot is None or slot < 0:
+                for j in slots:
+                    count += len(j)
+            else:
+                if slot < slots:
+                    count = len(slots[slot])
+        return count
 
     def get_processors(self, type=None, slot=None):
         """Get list of processor objects in chain
@@ -372,39 +368,26 @@ class zynthian_chain:
         processors = []
         if type is None:
             if slot is None:
-                for j in self.midi_slots:
-                    processors += j
-                processors += self.synth_slot
-                for j in self.audio_slots:
+                for j in self.midi_slots + self.synth_slots + self.audio_slots:
                     processors += j
                 return processors
             if slot < len(self.midi_slots):
                 return self.midi_slots[slot]
             slot -= len(self.midi_slots)
-            if slot == 0:
-                return self.synth_slot
-            if self.synth_slot:
-                slot -= 1
+            if slot < len(self.synth_slots):
+                return self.synth_slots[slot]
+            slot -= len(self.synth_slots)
             if slot < len(self.audio_slots):
                 return self.audio_slots[slot]
         else:
-            if type in self.slot_map:
-                if slot is None or slot < 0:
-                    for j in self.slot_map[type]:
-                        processors += j
-                else:
-                    if slot < len(self.slot_map[type]):
-                        processors = self.slot_map[type][slot]
-            elif slot == 0 and self.synth_slot:
-                processors += self.synth_slot
+            slots = self.get_slots_by_type(type) 
+            if slot is None or slot < 0:
+                for j in slots:
+                    processors += j
+            else:
+                if slot < len(slots):
+                    processors = slots[slot]
         return processors
-
-    def get_processor_by_jackname(self, jackname):
-        """Get processor object from its jackname"""
-
-        if jackname in self.processors_by_jackname:
-            return self.processors_by_jackname[jackname]
-        return None
 
     def insert_processor(self, processor, chain_mode=CHAIN_MODE_SERIES, slot=None):
         """Insert a processor in the chain
@@ -415,18 +398,16 @@ class zynthian_chain:
         Returns : True if processor added to chain
         """
 
-        if processor.type in self.slot_map: # Common code for audio and midi fx
-            if len(self.slot_map[processor.type]) == 0:
-                self.slot_map[processor.type].append([processor])
-            else:
-                if slot is None or slot < 0 or slot > len(self.slot_map[processor.type]):
-                    slot = len(self.slot_map[processor.type])
-                if chain_mode == CHAIN_MODE_SERIES:
-                    self.slot_map[processor.type].insert(slot, [processor])
-                else:
-                    self.slot_map[processor.type][slot - 1].append(processor)
+        slots = self.get_slots_by_type(processor.type)
+        if len(slots) == 0:
+            slots.append([processor])
         else:
-            self.synth_slot.append(processor)
+            if slot is None or slot < 0 or slot > len(slots):
+                slot = len(slots)
+            if chain_mode == CHAIN_MODE_SERIES:
+                slots.insert(slot, [processor])
+            else:
+                slots[slot - 1].append(processor)
 
         processor.set_midi_chan(self.midi_chan)
         self.current_processor = processor
@@ -440,36 +421,19 @@ class zynthian_chain:
         Returns : True if processor was replaced
         """
 
-        if new_processor.type == "MIDI Tool":
-            for i, slot in enumerate(self.midi_slots):
-                for j, processor in enumerate(slot):
-                    if processor == old_processor:
-                        self.midi_slots[i][j] = new_processor
-                        break
-            return False
-        elif new_processor.type == "Audio Effect":
-            for i, slot in enumerate(self.audio_slots):
-                for j, processor in enumerate(slot):
-                    if processor == old_processor:
-                        self.audio_slots[i][j] = new_processor
-                        break
-            return False
-        else:
-            for j, processor in enumerate(self.synth_slot):
+        slots = self.get_slots_by_type(old_processor.type)
+        for i, slot in enumerate(slots):
+            for j, processor in enumerate(slot):
                 if processor == old_processor:
-                    self.synth_slot[j] = new_processor
-                    break
-
-        # Remove old processor
-        self.remove(old_processor)
-
-        self.generate_jackname_dict()
-        self.rebuild_graph()
-        new_processor.set_midi_chan(self.midi_chan)
-        zynautoconnect.autoconnect(True)
-        if self.current_processor == old_processor:
-            self.current_processor = new_processor
-        return True
+                    self.slots[i][j] = new_processor
+                    self.remove(old_processor)
+                    self.rebuild_graph()
+                    new_processor.set_midi_chan(self.midi_chan)
+                    zynautoconnect.autoconnect(True)
+                    if self.current_processor == old_processor:
+                        self.current_processor = new_processor
+                    return True
+        return False
 
     def remove_processor(self, processor):
         """Remove a processor from chain
@@ -486,21 +450,27 @@ class zynthian_chain:
 
         logging.debug("Removing processor {}".format(processor.get_jackname()))
 
-        try:
-            self.synth_slot.pop(self.synth_slot.index(processor))
-        except:
-            self.slot_map[processor.type][slot].remove(processor)
-            if len(self.slot_map[processor.type][slot]) == 0:
-                self.slot_map[processor.type].pop(slot)
+        slots = self.get_slots_by_type(processor.type)
+        slots[slot].remove(processor)
+        if len(slots[slot]) == 0:
+            slots.pop(slot)
 
         if processor.engine:
             # TODO: Refactor engine to replace layer with processor
             processor.engine.del_layer(processor)
 
-        self.generate_jackname_dict()
         self.rebuild_graph()
         if processor == self.current_processor:
-            self.current_processor = None
+            if slots:
+                self.current_processor = slots[0][0]
+            elif self.synth_slots:
+                self.current_processor = self.synth_slots[0][0]
+            elif self.audio_slots:
+                self.current_processor = self.audio_slots[0][0]
+            elif self.midi_slots:
+                self.current_processor = self.midi_slots[0][0]
+            else:
+                self.current_processor = None
         del processor
 
         return True
@@ -525,7 +495,7 @@ class zynthian_chain:
 
         try:
             zynautoconnect.acquire_lock()
-            slots = self.slot_map[processor.type]
+            slots = self.get_slots_by_type(processor.type)
             if slot < len(slots):
                 cur_slot = self.get_slot(processor)
                 if cur_slot != slot:
@@ -545,12 +515,13 @@ class zynthian_chain:
         Returns : True on success
         """
 
-        if processor1.type != processor2.type or processor1.type not in self.slot_map:
+        if processor1.type != processor2.type or processor1.type:
             logging.error("Can only swap MIDI or AudioFX processors of same type")
             return False
         slot1 = slot2 = None
         par1 = par2 = None
-        for s, slot in enumerate(self.slot_map[processor1.type]):
+        slots = self.get_slots_by_type(processor1.type)
+        for s, slot in enumerate(slots):
             for u, processor in enumerate(slot):
                 if processor1 == processor:
                     slot1 = s
@@ -562,31 +533,20 @@ class zynthian_chain:
         if par1 == None or par2 == None or slot1 == None or slot2 == None:
             logging.error("processor not found")
             return False
-        self.slot_map[processor1.type][slot1][par1] = processor2
-        self.slot_map[processor1.type][slot2][par2] = processor1
+        slots[slot1][par1] = processor2
+        slots[slot2][par2] = processor1
         self.rebuild_graph()
         return True
 
     def get_slot(self, processor):
         """Returns the slot which contains processor or None if processor is not in chain"""
-        if processor.type in self.slot_map:
-            for i, slot in enumerate(self.slot_map[processor.type]):
-                for u in slot:
-                    if processor == u:
-                        return i
-        else:
-            if processor in self.synth_slot:
-                return 0
-        return None
 
-    def get_engines(self):
-        """Get list of engine objects used by processors"""
-        engines = [None]
-        for processor in self.processors.values():
-            if processor.engine not in engines:
-                engines.append(processor.engine)
-        engines.pop(None)
-        return engines
+        slots = self.get_slots_by_type(processor.type)
+        for i, slot in enumerate(slots):
+            for u in slot:
+                if processor == u:
+                    return i
+        return None
 
     # ------------------------------------------------------------------------
     # State Management
@@ -599,13 +559,15 @@ class zynthian_chain:
         """
 
         slots_states = []
-        for slot in self.midi_slots + [self.synth_slot] + self.audio_slots:
+        for slot in self.midi_slots + self.synth_slots + self.audio_slots:
             slot_state = {}
             for processor in slot:
-                slot_state[processor.id] = processor.get_state()
-            slots_states.append(slot_state)
+                slot_state[processor.id] = processor.type_code
+            if slot_state:
+                slots_states.append(slot_state)
 
         state = {
+            "mixer_chan": self.mixer_chan,
             "midi_chan": self.midi_chan,
             "midi_in": self.midi_in,
             "midi_out": self.midi_out,
@@ -620,13 +582,12 @@ class zynthian_chain:
         if self.audio_thru:
             state["audio_thru"] = True
 
-        note_range = self.get_note_range_state(self.midi_chan)
-        if note_range:
-            state["note_range"] = note_range
-
-        clone = self.get_clone_state()
-        if clone:
-            state["midi_clone"] = clone
+        if self.midi_chan is not None:
+            state['note_low'] = get_lib_zyncore().get_midi_filter_note_low(self.midi_chan)
+            state['note_high'] = get_lib_zyncore().get_midi_filter_note_high(self.midi_chan)
+            state['octave_trans'] = get_lib_zyncore().get_midi_filter_octave_trans(self.midi_chan)
+            state['halftone_trans'] = get_lib_zyncore().get_midi_filter_halftone_trans(self.midi_chan)
+            state["midi_clone"] = self.get_clone_state()
 
         return state
 
@@ -636,6 +597,8 @@ class zynthian_chain:
         state : Chain state
         """
 
+        if 'mixer_chan' in state:
+            self.mixer_chan = state["mixer_chan"]
         if 'midi_chan' in state:
             self.set_midi_chan(state['midi_chan'])
         if "midi_in" in state:
@@ -665,6 +628,7 @@ class zynthian_chain:
                         get_lib_zyncore().reset_midi_filter_clone_cc(self.midi, dst_chan)
             except:
                 logging.debug("Failed to set note range, e.g. chain has no MIDI channel")
+        self.rebuild_graph()
 
     #----------------------------------------------------------------------------
     # Clone, Note Range & Transpose

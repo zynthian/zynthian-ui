@@ -573,8 +573,11 @@ def audio_autoconnect(force=False):
 		pass
 
 	# Chain audio routing
-	for chain_id in chain_manager.chains:
+	used_mixer_chans = []
+	for chain_id, chain in chain_manager.chains.items():
 		routes = chain_manager.get_chain_audio_routing(chain_id)
+		if chain.mixer_chan is not None:
+			used_mixer_chans.append(chain.mixer_chan) #TODO: Check if actually requested to be routed
 		if "zynmixer:return" in routes and "zynmixer:send" in routes["zynmixer:return"]:
 			routes["zynmixer:return"].remove("zynmixer:send")
 		for dest in routes:
@@ -609,8 +612,8 @@ def audio_autoconnect(force=False):
 
 	# Clear unused mixer inputs
 	for chan in range(16):
-		if chain_manager.midi_chan_2_chain[chan] is None:
-			for dst in jclient.get_ports("zynmixer:input_{:02d}".format(chan + 1)):
+		if chan not in used_mixer_chans:
+			for dst in jclient.get_ports(f"zynmixer:input_{chan + 1:02d}"):
 				for src in jclient.get_all_connections(dst):
 					jclient.disconnect(src, dst)
 
@@ -690,7 +693,7 @@ def get_layer_audio_out_ports(layer):
 			if layer.midi_chan >= 17:
 				aout_ports += ["zynmixer:return_a", "zynmixer:return_b"]
 			else:
-				aout_ports += ["zynmixer:input_{:02d}a".format(layer.midi_chan + 1), "zynmixer:input_{:02d}b".format(layer.midi_chan + 1)]
+				aout_ports += [f"zynmixer:input_{layer.midi_chan + 1:02d}a", f"zynmixer:input_{layer.midi_chan + 1:02d}b"]
 		elif p == "mod-ui":
 			aout_ports += ["zynmixer:input_moduia", "zynmixer:input_moduib"]
 		else:

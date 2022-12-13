@@ -2,7 +2,7 @@ from json import JSONDecoder
 from zyngine import zynthian_state_manager
 import logging
 
-SNAPSHOT_FORMAT_VERSION = 1
+SNAPSHOT_SCHEMA_VERSION = 1
 
 class zynthian_legacy_snapshot:
 
@@ -23,7 +23,7 @@ class zynthian_legacy_snapshot:
             return None
 
         state = {
-            'format_version': SNAPSHOT_FORMAT_VERSION,
+            'schema_version': SNAPSHOT_SCHEMA_VERSION,
             'active_chain': None,
             'chains': self.chain_manager.get_state(),
             'alsa_mixer': {},

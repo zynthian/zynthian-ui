@@ -791,8 +791,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.main_canvas.grid(row=0, sticky='nsew')
 
 		# Create mixer strip UI objects
-		for chain in range(len(self.visible_mixer_strips)):
-			self.visible_mixer_strips[chain] = zynthian_gui_mixer_strip(self, 1 + self.fader_width * chain, 0, self.fader_width - 1, self.height, None)
+		for strip in range(len(self.visible_mixer_strips)):
+			self.visible_mixer_strips[strip] = zynthian_gui_mixer_strip(self, 1 + self.fader_width * strip, 0, self.fader_width - 1, self.height, None)
 
 		self.main_mixbus_strip = zynthian_gui_mixer_strip(self, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height, None)
 		self.main_mixbus_strip.zctrls = self.zynmixer.zctrls[self.zynmixer.get_max_channels()]
@@ -924,7 +924,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		active_strip = None
 		for mixer_chan in range(16):
 			strip = None
-			chain_id = "{:02d}".format(mixer_chan) #TODO: +1
+			chain_id = "{:02d}".format(mixer_chan + 1)
 			chain = self.zyngui.chain_manager.get_chain(chain_id)
 			if chain:
 				if offset >= self.mixer_strip_offset and offset < self.mixer_strip_offset + len(self.visible_mixer_strips):

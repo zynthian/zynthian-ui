@@ -53,7 +53,7 @@ class zynmixer(zynthian_engine):
 		self.zctrls = []
 		for i in range(self.get_max_channels() + 1):
 			dict = {
-				'level': zynthian_controller(self, 'level', None, {'midi_chan':i,'is_integer':False,'value_max':1.0,'value_default':0.7,'value':self.get_level(i),'graph_path':'level_{}'.format(i)}),
+				'level': zynthian_controller(self, 'level', None, {'midi_chan':i,'is_integer':False,'value_max':1.0,'value_default':0.8,'value':self.get_level(i),'graph_path':'level_{}'.format(i)}),
 				'balance': zynthian_controller(self, 'balance', None, {'midi_chan':i,'is_integer':False,'value_min':-1.0,'value_max':1.0,'value_default':0.0,'value':self.get_balance(i),'graph_path':'balance_{}'.format(i)}),
 				'mute': zynthian_controller(self, 'mute', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_mute(i),'graph_path':'mute_{}'.format(i)}),
 				'solo': zynthian_controller(self, 'solo', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_solo(i),'graph_path':'solo_{}'.format(i)}),
@@ -375,7 +375,9 @@ class zynmixer(zynthian_engine):
 			state[key] = {}
 			for symbol in self.zctrls[chan]:
 				zctrl = self.zctrls[chan][symbol]
-				state[key][zctrl.symbol] = zctrl.get_state(full)
+				ctrl_state = zctrl.get_state(full)
+				if ctrl_state:
+					state[key][zctrl.symbol] = ctrl_state
 		return state
 
 	def set_state(self, state, full=True):
@@ -392,7 +394,7 @@ class zynmixer(zynthian_engine):
 			if key in state:
 				for symbol in self.zctrls[chan]:
 					if key in state and symbol in state[key]:
-						self.zctrls[chan][symbol].restore_state(state[key][symbol])
+						self.zctrls[chan][symbol].set_state(state[key][symbol])
 					elif full:
 						self.zctrls[chan][symbol].reset_value()
 

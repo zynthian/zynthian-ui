@@ -317,7 +317,7 @@ class zynthian_gui:
 			# Active Chain
 			# => Light non-empty chains
 			for i in range(6):
-				chain_name = "{:02d}".format(i)
+				chain_name = "{:02d}".format(1 + i)
 				if chain_name in self.chain_manager.chains:
 					if chain_name == self.chain_manager.active_chain_id:
 						if self.current_screen == "control":
@@ -812,12 +812,13 @@ class zynthian_gui:
 
 		if "midi_chan" in self.add_chain_status:
 			# We know the MIDI channel so create a new chain and processor
-			chain_id = "{:02d}".format(self.add_chain_status["midi_chan"])
+			chain_id = f"{self.add_chain_status['midi_chan'] + 1:02d}"
 			if "midi_thru" not in  self.add_chain_status:
 				self.add_chain_status["midi_thru"] = False
 			if "audio_thru" not in  self.add_chain_status:
 				self.add_chain_status["audio_thru"] = False
 			self.chain_manager.add_chain(
+				chain_id,
 				self.add_chain_status["midi_chan"],
 				self.add_chain_status["midi_thru"],
 				self.add_chain_status["audio_thru"])
@@ -831,8 +832,8 @@ class zynthian_gui:
 			if self.add_chain_status["engine"] == 'AE':
 				#TODO: Handle Aeolus same as other engines
 				for midi_chan in range(4):
-					chain_id = "{:02d}".format(midi_chan)
-					self.chain_manager.add_chain(midi_chan)
+					chain_id = f"{midi_chan + 1:02d}"
+					self.chain_manager.add_chain(chain_id, midi_chan)
 					self.chain_manager.add_processor(chain_id, "AE")
 				self.add_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
 				self.chain_control("00")
@@ -1421,7 +1422,7 @@ class zynthian_gui:
 	def cuia_chain_control(self, params=None):
 		if params:
 			try:
-				self.chain_control("{:02}".format(params[0] - 1))
+				self.chain_control("{:02}".format(params[0]))
 			except:
 				self.chain_control(params[0])
 		else:
@@ -1432,8 +1433,8 @@ class zynthian_gui:
 		try:
 			if params:
 				try:
-					self.chain_manager.set_active_chain_by_id("{:02}".format(params[0] - 1))
-					self.screens['chain_options'].setup("{:02}".format(params[0] - 1))
+					self.chain_manager.set_active_chain_by_id("{:02}".format(params[0]))
+					self.screens['chain_options'].setup("{:02}".format(params[0]))
 				except:
 					self.chain_manager.set_active_chain_by_id(params[0])
 					self.screens['chain_options'].setup(params[0])

@@ -478,13 +478,19 @@ class zynthian_controller:
 		return state
 
 
-	def restore_state(self, state):
+	def set_state(self, state):
+		"""Set controller state from dictionary or value from basic data type
+		
+		state : State as dictionary or value
+		"""
+
 		#logging.debug("Restoring Controller '{}' State => {}".format(self.symbol, state['value']))
 		if isinstance(state, dict):
-			self.set_value(state['value'], True)
+			if "value" in state:
+				self.set_value(state["value"], True)
 			# Restore MIDI-learn
-			if 'midi_learn_chan' in state and 'midi_learn_cc' in state:
-				self.set_midi_learn(int(state['midi_learn_chan']), int(state['midi_learn_cc']))
+			if "midi_learn_chan" in state and "midi_learn_cc" in state:
+				self.set_midi_learn(int(state["midi_learn_chan"]), int(state["midi_learn_cc"]))
 		else:
 			self.set_value(state, True)
 
