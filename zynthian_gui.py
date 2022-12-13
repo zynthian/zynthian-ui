@@ -36,6 +36,7 @@ from pathlib import Path
 from time import monotonic
 from datetime import datetime
 from threading  import Thread, Lock
+from subprocess import check_output
 
 # Zynthian specific modules
 import zynconf
@@ -178,6 +179,11 @@ class zynthian_gui:
 
 	def __init__(self):
 		self.test_mode = False
+
+		self.power_save_mode = False
+		self.last_event_flag = False
+		self.last_event_ts = monotonic()
+
 		self.screens = {}
 		self.screen_history = []
 		self.current_screen = None
@@ -272,6 +278,7 @@ class zynthian_gui:
 		self.wscolor_red = rpi_ws281x.Color(120,0,0)
 		self.wscolor_green = rpi_ws281x.Color(0,255,0)
 		self.wscolor_yellow = rpi_ws281x.Color(160,160,0)
+		self.wscolor_low = rpi_ws281x.Color(0, 100, 0)
 
 		# Light all LEDs
 		for i in range(0, self.wsleds_num):
@@ -284,6 +291,10 @@ class zynthian_gui:
 
 
 	def end_wsleds(self):
+		self.off_wsleds()
+
+
+	def off_wsleds(self):
 		# Light-off all LEDs
 		for i in range(0, self.wsleds_num):
 			self.wsleds.setPixelColor(i, self.wscolor_off)
@@ -294,10 +305,25 @@ class zynthian_gui:
 		if self.wsleds_blink:
 			self.wsleds.setPixelColor(i, color)
 		else:
-			self.wsleds.setPixelColor(i, self.wscolor_light)
+			self.wsleds.setPixelColor(i, self.wscolor_off)
+			#self.wsleds.setPixelColor(i, self.wscolor_light)
 
 
 	def update_wsleds(self):
+		# Power Save Mode
+		if self.power_save_mode:
+			if self.wsleds_blink_count % 16 > 14:
+				self.wsleds_blink = True
+			else:
+				self.wsleds_blink = False
+			for i in range(0, self.wsleds_num):
+				self.wsleds.setPixelColor(i, self.wscolor_off)
+			self.wsled_blink(0, self.wscolor_low)
+			self.wsleds.show()
+			self.wsleds_blink_count += 1
+			return
+
+		# Normal mode
 		if self.wsleds_blink_count % 4 > 1:
 			self.wsleds_blink = True
 		else:
@@ -1486,6 +1512,85 @@ class zynthian_gui:
 				self.callable_ui_action(cmd, params)
 
 
+	# -------------------------------------------------------------------
+	# Switches
+	# -------------------------------------------------------------------
+
+	# Init Standard Zynswitches
+	def zynswitches_init(self):
+		if not lib_zyncore: return
+		logging.info("INIT {} ZYNSWITCHES ...".format(zynthian_gui_config.num_zynswitches))
+		ts = datetime.now()
+		self.dtsw = [ts] * (zynthian_gui_config.num_zynswitches + 4)
+
+
+	# Initialize custom switches, analog I/O, TOF sensors, etc.
+	def zynswitches_midi_setup(self, curlayer_chan=None):
+		if not lib_zyncore: return
+		logging.info("CUSTOM I/O SETUP...")
+
+		# Configure Custom Switches
+		for i, event in enumerate(zynthian_gui_config.custom_switch_midi_events):
+			if event is not None:
+				swi = 4 + i
+				if event['chan'] is not None:
+					midi_chan = event['chan']
+				else:
+					midi_chan = curlayer_chan
+
+				if midi_chan is not None:
+					lib_zyncore.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'], event['val'])
+					logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}, {}".format(swi, event['type'], midi_chan, event['num'], event['val']))
+				else:
+					lib_zyncore.setup_zynswitch_midi(swi, 0, 0, 0, 0)
+					logging.info("MIDI ZYNSWITCH {}: DISABLED!".format(swi))
+
+		# Configure Zynaptik Analog Inputs (CV-IN)
+		for i, event in enumerate(zynthian_gui_config.zynaptik_ad_midi_events):
+			if event is not None:
+				if event['chan'] is not None:
+					midi_chan = event['chan']
+				else:
+					midi_chan = curlayer_chan
+
+				if midi_chan is not None:
+					lib_zyncore.setup_zynaptik_cvin(i, event['type'], midi_chan, event['num'])
+					logging.info("ZYNAPTIK CV-IN {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+				else:
+					lib_zyncore.disable_zynaptik_cvin(i)
+					logging.info("ZYNAPTIK CV-IN {}: DISABLED!".format(i))
+
+		# Configure Zynaptik Analog Outputs (CV-OUT)
+		for i, event in enumerate(zynthian_gui_config.zynaptik_da_midi_events):
+			if event is not None:
+				if event['chan'] is not None:
+					midi_chan = event['chan']
+				else:
+					midi_chan = curlayer_chan
+
+				if midi_chan is not None:
+					lib_zyncore.setup_zynaptik_cvout(i, event['type'], midi_chan, event['num'])
+					logging.info("ZYNAPTIK CV-OUT {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+				else:
+					lib_zyncore.disable_zynaptik_cvout(i)
+					logging.info("ZYNAPTIK CV-OUT {}: DISABLED!".format(i))
+
+		# Configure Zyntof Inputs (Distance Sensor)
+		for i, event in enumerate(zynthian_gui_config.zyntof_midi_events):
+			if event is not None:
+				if event['chan'] is not None:
+					midi_chan = event['chan']
+				else:
+					midi_chan = curlayer_chan
+
+				if midi_chan is not None:
+					lib_zyncore.setup_zyntof(i, event['type'], midi_chan, event['num'])
+					logging.info("ZYNTOF {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+				else:
+					lib_zyncore.disable_zyntof(i)
+					logging.info("ZYNTOF {}: DISABLED!".format(i))
+
+
 	def zynswitches(self):
 		if not get_lib_zyncore(): return
 		i = 0
@@ -1495,13 +1600,13 @@ class zynthian_gui:
 				pass
 			elif dtus == 0:
 				self.zynswitch_push(i)
-			elif dtus>zynthian_gui_config.zynswitch_long_us:
+			elif dtus > zynthian_gui_config.zynswitch_long_us:
 				self.zynswitch_long(i)
-			elif dtus>zynthian_gui_config.zynswitch_bold_us:
+			elif dtus > zynthian_gui_config.zynswitch_bold_us:
 				# Double switches must be bold!!! => by now ...
 				if not self.zynswitch_double(i):
 					self.zynswitch_bold(i)
-			elif dtus>0:
+			elif dtus > 0:
 				#print("Switch "+str(i)+" dtus="+str(dtus))
 				self.zynswitch_short(i)
 			i += 1
@@ -1600,6 +1705,7 @@ class zynthian_gui:
 
 
 	def zynswitch_push(self, i):
+		self.last_event_flag = True
 
 		try:
 			if self.screens[self.current_screen].switch(i, 'P'):
@@ -1719,7 +1825,8 @@ class zynthian_gui:
 		try:
 			while get_lib_zyncore():
 				ev = get_lib_zyncore().read_zynmidi()
-				if ev == 0: break
+				if ev == 0:
+					break
 
 				#logging.info("MIDI_UI MESSAGE: {}".format(hex(ev)))
 
@@ -1727,6 +1834,7 @@ class zynthian_gui:
 					self.state_manager.status_info['midi_clock'] = True
 				else:
 					self.state_manager.status_info['midi'] = True
+					self.last_event_flag = True
 
 				evtype = (ev & 0xF00000) >> 20
 				chan = (ev & 0x0F0000) >> 16
@@ -1905,22 +2013,45 @@ class zynthian_gui:
 			# Run autoconnect if pending
 			self.state_manager.zynautoconnect_do()
 
-			# Refresh GUI controllers every 4 cycles
+			# Every 4 cycles ...
 			if j > 4:
 				j = 0
+
+				# Refresh GUI Controllers
 				try:
 					self.screens[self.current_screen].plot_zctrls()
 				except AttributeError:
 					pass
 				except Exception as e:
 					logging.error(e)
+
+				# Power Save Mode
+				if zynthian_gui_config.power_save_secs > 0:
+					if self.last_event_flag:
+						self.last_event_ts = monotonic()
+						self.last_event_flag = False
+						if self.power_save_mode:
+							self.set_power_save_mode(False)
+					elif not self.power_save_mode and (monotonic() - self.last_event_ts) > zynthian_gui_config.power_save_secs:
+						self.set_power_save_mode(True)
 			else:
 				j += 1
 
 			# Wait a little bit ...
 			sleep(0.01)
+
+		# End Thread task
 		self.osc_end()
 
+
+	def set_power_save_mode(self, psm=True):
+		self.power_save_mode = psm
+		if psm:
+			logging.info("Power Save Mode: ON")
+			check_output("powersave_control.sh on", shell=True)
+		else:
+			logging.info("Power Save Mode: OFF")
+			check_output("powersave_control.sh off", shell=True)
 
 	#------------------------------------------------------------------
 	# "Busy" Animated Icon Thread
@@ -2237,6 +2368,7 @@ def zynpot_cb(i, dval):
 	#logging.debug("Zynpot {} Callback => {}".format(i, dval))
 	try:
 		zyngui.screens[zyngui.current_screen].zynpot_cb(i, dval)
+		zyngui.last_event_flag = True
 
 	except Exception as err:
 		pass # Some screens don't use controllers

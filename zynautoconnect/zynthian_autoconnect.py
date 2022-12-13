@@ -280,20 +280,26 @@ def midi_autoconnect(force=False):
 						except:
 							pass
 		if chain.is_midi():
-			src_ports = jclient.get_ports(f"ZynMidiRouter:ch{chain.midi_chan}_out", is_midi=True, is_output=True)
-			for dst_proc in chain.get_processors(slot=0):
-				dst_port = jclient.get_ports(dst_proc.get_jackname(), is_midi=True, is_input=True)[0]
-				cur_srcs = jclient.get_all_connections(dst_port)
-				try:
-					jclient.connect(src_ports[0], dst_port)
-				except:
-					pass
-				for src in cur_srcs:
+			#TODO: What an excess of try/except!!!
+			try:
+				src_port = jclient.get_ports(f"ZynMidiRouter:ch{chain.midi_chan}_out", is_midi=True, is_output=True)[0]
+				for dst_proc in chain.get_processors(slot=0):
 					try:
-						if src_ports[0] != src and src in ch_out:
-							jclient.disconnect(src, dst_port)
+						dst_port = jclient.get_ports(dst_proc.get_jackname(), is_midi=True, is_input=True)[0]
+						jclient.connect(src_port, dst_port)
+					except:
+						continue
+					try:
+						for src in jclient.get_all_connections(dst_port):
+							try:
+								if src_port != src and src in ch_out:
+									jclient.disconnect(src, dst_port)
+							except:
+								pass
 					except:
 						pass
+			except:
+				pass
 
 	#TODO Feedback ports
 

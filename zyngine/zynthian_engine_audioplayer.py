@@ -101,11 +101,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.player = zynaudioplayer.zynaudioplayer(self.jackname)
 		self.jackname = self.player.get_jack_client_name()
 		self.player.set_control_cb(self.control_cb)
-		self.file_exts = self.player.get_supported_codecs()
-		exts_upper = []
-		for ext in self.file_exts:
-			exts_upper.append(ext.upper())
-		self.file_exts += exts_upper
+		self.file_exts = self.get_file_exts()
 
 
 	def stop(self):
@@ -172,6 +168,16 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# Preset Management
 	# ---------------------------------------------------------------------------
+
+	def get_file_exts(self):
+		file_exts = self.player.get_supported_codecs()
+		logging.info("Supported Codecs: {}".format(file_exts))
+		exts_upper = []
+		for ext in file_exts:
+			exts_upper.append(ext.upper())
+		file_exts += exts_upper
+		return file_exts
+
 
 	def get_preset_list(self, bank):
 		presets = []

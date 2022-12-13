@@ -31,16 +31,12 @@
 #------------------------------------------------------------------------------
 
 function load_config_env() {
-	if [ -d "$ZYNTHIAN_CONFIG_DIR" ]; then
-		source "$ZYNTHIAN_CONFIG_DIR/zynthian_envars.sh"
-	else
-		source "$ZYNTHIAN_SYS_DIR/scripts/zynthian_envars.sh"
-	fi
+	source "$ZYNTHIAN_SYS_DIR/scripts/zynthian_envars_extended.sh"
 
-	if [ ! -z "$ZYNTHIAN_SCRIPT_MIDI_PROFILE" ]; then
-		source "$ZYNTHIAN_SCRIPT_MIDI_PROFILE"
-	else
+	if [ -z "$ZYNTHIAN_SCRIPT_MIDI_PROFILE" ]; then
 		source "$ZYNTHIAN_MY_DATA_DIR/midi-profiles/default.sh"
+	else
+		source "$ZYNTHIAN_SCRIPT_MIDI_PROFILE"
 	fi
 
 	if [ -f "$ZYNTHIAN_CONFIG_DIR/zynthian_custom_config.sh" ]; then
@@ -48,31 +44,12 @@ function load_config_env() {
 	fi
 }
 
-function backlight_on() {
-	# Turn On Display Backlight
-	#echo 0 > /sys/class/backlight/soc:backlight/bl_power
-	#echo 0 > /sys/class/backlight/fb_ili9486/bl_power
-	if [ -f /sys/class/backlight/*/bl_power ]; then
-		echo 0 > /sys/class/backlight/*/bl_power
-	fi
-}
-
-function backlight_off() {
-	# Turn Off Display Backlight
-	#echo 1 > /sys/class/backlight/soc:backlight/bl_power
-	#echo 1 > /sys/class/backlight/fb_ili9486/bl_power
-	if [ -f /sys/class/backlight/*/bl_power ]; then
-		echo 1 > /sys/class/backlight/*/bl_power
-	fi
-}
 
 function screensaver_off() {
 	# Don't activate screensaver
 	xset s off
 	# Disable DPMS (Energy Star) features.
 	xset -dpms
-	# Don't blank the video device
-	xset s noblank
 }
 
 
@@ -142,8 +119,7 @@ function splash_zynthian_error_exit_ip() {
         splash_zynthian_message "$zynthian_message" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"
 }
 
-
-backlight_on
+powersave_control.sh off
 screensaver_off
 
 #------------------------------------------------------------------------------
@@ -205,6 +181,7 @@ while true; do
 			#splash_zynthian_message "Powering Off..."
 			xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
 			poweroff
+			backlight_control.sh off
 			break
 		;;
 		100)
@@ -216,7 +193,7 @@ while true; do
 		101)
 			xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
 			#splash_zynthian_message "Exiting..."
-			backlight_off
+			backlight_control.sh off
 			break
 		;;
 		102)
