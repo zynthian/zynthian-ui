@@ -1075,7 +1075,7 @@ class zynthian_gui:
 			self.screens['admin'].exit_to_console()
 
 		elif cuia == "RELOAD_MIDI_CONFIG":
-			self.reload_midi_config()
+			self.state_manager.reload_midi_config()
 
 		elif cuia == "RELOAD_KEY_BINDING":
 			zynthian_gui_keybinding.getInstance().load()
@@ -1515,81 +1515,6 @@ class zynthian_gui:
 	# -------------------------------------------------------------------
 	# Switches
 	# -------------------------------------------------------------------
-
-	# Init Standard Zynswitches
-	def zynswitches_init(self):
-		if not lib_zyncore: return
-		logging.info("INIT {} ZYNSWITCHES ...".format(zynthian_gui_config.num_zynswitches))
-		ts = datetime.now()
-		self.dtsw = [ts] * (zynthian_gui_config.num_zynswitches + 4)
-
-
-	# Initialize custom switches, analog I/O, TOF sensors, etc.
-	def zynswitches_midi_setup(self, curlayer_chan=None):
-		if not lib_zyncore: return
-		logging.info("CUSTOM I/O SETUP...")
-
-		# Configure Custom Switches
-		for i, event in enumerate(zynthian_gui_config.custom_switch_midi_events):
-			if event is not None:
-				swi = 4 + i
-				if event['chan'] is not None:
-					midi_chan = event['chan']
-				else:
-					midi_chan = curlayer_chan
-
-				if midi_chan is not None:
-					lib_zyncore.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'], event['val'])
-					logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}, {}".format(swi, event['type'], midi_chan, event['num'], event['val']))
-				else:
-					lib_zyncore.setup_zynswitch_midi(swi, 0, 0, 0, 0)
-					logging.info("MIDI ZYNSWITCH {}: DISABLED!".format(swi))
-
-		# Configure Zynaptik Analog Inputs (CV-IN)
-		for i, event in enumerate(zynthian_gui_config.zynaptik_ad_midi_events):
-			if event is not None:
-				if event['chan'] is not None:
-					midi_chan = event['chan']
-				else:
-					midi_chan = curlayer_chan
-
-				if midi_chan is not None:
-					lib_zyncore.setup_zynaptik_cvin(i, event['type'], midi_chan, event['num'])
-					logging.info("ZYNAPTIK CV-IN {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
-				else:
-					lib_zyncore.disable_zynaptik_cvin(i)
-					logging.info("ZYNAPTIK CV-IN {}: DISABLED!".format(i))
-
-		# Configure Zynaptik Analog Outputs (CV-OUT)
-		for i, event in enumerate(zynthian_gui_config.zynaptik_da_midi_events):
-			if event is not None:
-				if event['chan'] is not None:
-					midi_chan = event['chan']
-				else:
-					midi_chan = curlayer_chan
-
-				if midi_chan is not None:
-					lib_zyncore.setup_zynaptik_cvout(i, event['type'], midi_chan, event['num'])
-					logging.info("ZYNAPTIK CV-OUT {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
-				else:
-					lib_zyncore.disable_zynaptik_cvout(i)
-					logging.info("ZYNAPTIK CV-OUT {}: DISABLED!".format(i))
-
-		# Configure Zyntof Inputs (Distance Sensor)
-		for i, event in enumerate(zynthian_gui_config.zyntof_midi_events):
-			if event is not None:
-				if event['chan'] is not None:
-					midi_chan = event['chan']
-				else:
-					midi_chan = curlayer_chan
-
-				if midi_chan is not None:
-					lib_zyncore.setup_zyntof(i, event['type'], midi_chan, event['num'])
-					logging.info("ZYNTOF {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
-				else:
-					lib_zyncore.disable_zyntof(i)
-					logging.info("ZYNTOF {}: DISABLED!".format(i))
-
 
 	def zynswitches(self):
 		if not get_lib_zyncore(): return

@@ -310,7 +310,7 @@ class zynthian_chain:
 
     def is_midi(self):
         """Returns True if chain processes MIDI"""
-        return self.midi_thru or self.midi_slots or self.synth_slots
+        return self.midi_thru or len(self.midi_slots) + len(self.synth_slots) > 0
 
     # ---------------------------------------------------------------------------
     # Processor management
@@ -494,7 +494,6 @@ class zynthian_chain:
         """
 
         try:
-            zynautoconnect.acquire_lock()
             slots = self.get_slots_by_type(processor.type)
             if slot < len(slots):
                 cur_slot = self.get_slot(processor)
@@ -505,7 +504,6 @@ class zynthian_chain:
                     zynautoconnect.autoconnect(True)
         except:
             logging.error("Failed to move processor")
-        zynautoconnect.release_lock()
 
     def swap_processors(self, processor1, processor2):
         """Swap two processors in chain

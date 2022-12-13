@@ -100,10 +100,15 @@ class zynthian_processor:
         # Clear refresh flag
         self.refresh_flag=False
 
-    def get_jackname(self):
-        """ Get the jackname for the processor's engine"""
+    def get_jackname(self, engine=False):
+        """ Get the jackname for the processor's engine
+        
+        engine : True to get engine's raw jackname
+        Returns : jackname as string
+        
+        """
 
-        if self.jackname:
+        if not engine and self.jackname:
             return self.jackname
         if self.engine:
             return self.engine.jackname
@@ -719,9 +724,9 @@ class zynthian_processor:
         if state["preset_info"]:
             self.set_preset_by_id(state["preset_info"][0])
         # Set controller values
-        for symbol in state['controllers']:
+        for symbol, ctrl_state in state['controllers'].items():
             try:
-                self.controllers_dict[symbol].set_state(state['controllers'][symbol])
+                self.controllers_dict[symbol].set_state(ctrl_state)
             except Exception as e:
                 logging.warning("Invalid Controller on layer {}: {}".format(self.get_basepath(), e))
 

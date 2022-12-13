@@ -730,15 +730,6 @@ class zynthian_state_manager:
                 zynautoconnect.audio_autoconnect(True)
 
 
-    def zynautoconnect_acquire_lock(self):
-        """Request and wait for mutex lock"""
-        zynautoconnect.acquire_lock()
-
-
-    def zynautoconnect_release_lock(self):
-        """Release mutex lock"""
-        zynautoconnect.release_lock()
-
     # ---------------------------------------------------------------------------
     # MIDI Router Init & Config
     # ---------------------------------------------------------------------------
