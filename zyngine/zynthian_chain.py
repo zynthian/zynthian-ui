@@ -93,7 +93,6 @@ class zynthian_chain:
             self.audio_thru = True
         self.remove_all_processors()
         self.reset_clone()
-        self.rebuild_graph()
 
     def get_slots_by_type(self, type):
         """Get the list of slots
@@ -125,16 +124,19 @@ class zynthian_chain:
             processor.set_midi_chan(midi_chan)
 
     def get_title(self):
-        if self.synth_slots:
-            return "{}\n{}".format(self.synth_slots[0][0].engine.name, self.synth_slots[0][0].get_preset_name())
-        elif self.get_slot_count("Audio Effect"):
-            return self.get_processors("Audio Effect")[0].engine.name
-        elif self.get_slot_count("MIDI Tool"):
-            return self.get_processors("MIDI Tool")[0].engine.name
-        elif self.audio_thru:
-            label = "\n".join(self.get_audio_in()).replace("system:capture_", "Audio input ")
-            if label != "zynmixer:send":
-                return label
+        try:
+            if self.synth_slots:
+                return "{}\n{}".format(self.synth_slots[0][0].engine.name, self.synth_slots[0][0].get_preset_name())
+            elif self.get_slot_count("Audio Effect"):
+                return self.get_processors("Audio Effect")[0].engine.name
+            elif self.get_slot_count("MIDI Tool"):
+                return self.get_processors("MIDI Tool")[0].engine.name
+            elif self.audio_thru:
+                label = "\n".join(self.get_audio_in()).replace("system:capture_", "Audio input ")
+                if label != "zynmixer:send":
+                    return label
+        except:
+            pass
         return ""
 
     # ----------------------------------------------------------------------------
@@ -162,7 +164,7 @@ class zynthian_chain:
                         for proc in self.synth_slots[-1]:
                             sources.append(proc.get_jackname())
                     elif self.audio_thru:
-                        sources = self.audio_in
+                        sources = self.audio_in.copy()
                     self.audio_routes[processor.get_jackname()] = sources
                 else:
                     for prev_proc in self.audio_slots[i - 1]:
@@ -181,7 +183,7 @@ class zynthian_chain:
                     mixer_source.append(proc.get_jackname())
             elif self.audio_thru:
                 # Routing from capture ports
-                mixer_source = self.audio_in
+                mixer_source = self.audio_in.copy()
             for output in self.get_audio_out():
                 self.audio_routes[output] = mixer_source
             if "mixer" not in self.audio_out:
@@ -213,7 +215,7 @@ class zynthian_chain:
         if self.synth_slots:
             sources = []
             if len(self.midi_slots):
-                for prev_proc in self.midi_slots[i - 1]:
+                for prev_proc in self.midi_slots[-1]:
                     sources.append(prev_proc.get_jackname())
                 for proc in self.synth_slots[0]:
                     self.midi_routes[proc.engine.jackname] = sources

@@ -827,7 +827,7 @@ class zynthian_gui:
 		self.show_screen('touchscreen_calibration')
 
 
-	def add_chain(self, status={}):
+	def add_chain(self, status={}): #TODO: Rename - this is called for various chain manipulation purposes
 		"""Manage the stages of adding or changing a processor or chain
 		
 		status - Dictionary of status (Default: continue adding with current)

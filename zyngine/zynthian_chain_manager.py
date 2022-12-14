@@ -59,7 +59,6 @@ class zynthian_chain_manager():
         self.zyngine_counter = 0 # Appended to engine names for uniqueness
         self.zyngines = OrderedDict()  # List of instantiated engines
         self.processors = {} # Dictionary of processor objects indexed by UID
-        self.next_processor_id = 1 # Next available processor UID
         self.active_chain_id = None # Active chain id
         self.midi_chan_2_chain = [None] * 16  # Chains mapped by MIDI channel
 
@@ -190,7 +189,6 @@ class zynthian_chain_manager():
         success = True
         for chain in list(self.chains.keys()):
             success &= self.remove_chain(chain, stop_engines)
-        self.next_processor_id = 1
         return success
 
     def get_chain_count(self):
@@ -422,6 +420,19 @@ class zynthian_chain_manager():
     # Processor Management
     # ------------------------------------------------------------------------
 
+    def get_available_processor_id(self):
+        """Get the next available processor ID"""
+
+        proc_ids = list(self.processors)
+        if proc_ids:
+            proc_ids.sort()
+            for x,y in enumerate(proc_ids):
+                if proc_ids[x-1] + 1 < y:
+                    return proc_ids[x-1]+1
+            return proc_ids[-1] + 1
+        else:
+            return 1
+
     def add_processor(self, chain_id, type, mode=CHAIN_MODE_SERIES, slot=None, proc_id=None):
         """Add a processor to a chain
 
@@ -437,10 +448,8 @@ class zynthian_chain_manager():
             or proc_id is not None and proc_id in self.processors):
             return None
         if proc_id is None:
-            proc_id = self.next_processor_id
-        if proc_id >= self.next_processor_id:
-            self.next_processor_id = proc_id + 1
-        if proc_id in self.processors:
+            proc_id = self.get_available_processor_id() #TODO: Derive next available processor id from self.processors
+        elif proc_id in self.processors:
             return None           
         processor = zynthian_processor(type, self.engine_info[type], proc_id)
         chain = self.chains[chain_id]
@@ -478,12 +487,6 @@ class zynthian_chain_manager():
             if stop_engine:
                 self.stop_unused_engines()
         zynautoconnect.autoconnect(True)
-        proc_ids = list(self.processors)
-        if proc_ids:
-            proc_ids.sort()
-            self.next_processor_id = proc_ids[-1] + 1
-        else:
-            self.next_processor_id = 1
         return success
 
     def get_slot_count(self, chain_id, type=None):

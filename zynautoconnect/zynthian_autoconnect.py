@@ -178,12 +178,11 @@ def midi_autoconnect(force=False):
 		pass
 
 	# Treat Aubio as physical MIDI destination port
-	if zynthian_gui_config.midi_aubionotes_enabled:
-		aubio_out = jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
-		try:
-			hw_src_ports.append(aubio_out[0])
-		except:
-			pass
+	aubio_out = jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
+	try:
+		hw_src_ports.append(aubio_out[0])
+	except:
+		pass
 
 	# List of MIDI over IP destination ports
 	nw_dst_ports = []
@@ -210,35 +209,27 @@ def midi_autoconnect(force=False):
 		except:
 			pass
 
-
-
-	#logger.debug("Input Device Ports: {}".format(hw_src_ports))
-	#logger.debug("Output Device Ports: {}".format(hw_dst_ports))
-
-	# Calculate hardware device fingerprint
-	hw_str = ""
-	for hw in hw_src_ports:
-		hw_str += hw.name + "\n"
-	for hw in hw_dst_ports:
-		hw_str += hw.name + "\n"
-
-	# Only autoroute if forced or physica devices have changed
-	if not force and hw_str == last_hw_str:
-		release_lock() # Release Mutex Lock
-		#logger.info("ZynAutoConnect: MIDI Shortened ...")
-		return
-	else:
-		last_hw_str = hw_str
+	if not force:
+		# Check if physical (hardware) interfaces have changed, e.g. USB plug
+		hw_str = "" # Hardware device fingerprint
+		for hw in hw_src_ports:
+			hw_str += hw.name + "\n"
+		for hw in hw_dst_ports:
+			hw_str += hw.name + "\n"
+		if hw_str == last_hw_str:
+			release_lock() # Release Mutex Lock
+			return
+		else:
+			last_hw_str = hw_str
 	
-	# MIDI router chain outputs
-	ch_out = jclient.get_ports("ZynMidiRouter:ch.*_out", is_midi=True, is_output=True)
-
 	# Chain MIDI routing
 	#TODO: Handle processors with multiple MIDI ports
 
 	# Create graph of required chain routes as sets of sources indexed by destination
 	required_routes = {}
-	for dst in jclient.get_ports(is_input=True, is_midi=True):
+
+	all_midi_dst = jclient.get_ports(is_input=True, is_midi=True)
+	for dst in all_midi_dst:
 		required_routes[dst.name] = set()
 
 	for chain_id, chain in chain_manager.chains.items():
@@ -277,7 +268,6 @@ def midi_autoconnect(force=False):
 
 		# Add MIDI router outputs
 		if chain.is_midi():
-			#TODO: What an excess of try/except!!!
 			src_ports = jclient.get_ports(f"ZynMidiRouter:ch{chain.midi_chan}_out", is_midi=True, is_output=True)
 			if src_ports:
 				for dst_proc in chain.get_processors(slot=0):
@@ -292,7 +282,7 @@ def midi_autoconnect(force=False):
 	# Add MIDI Input Devices
 	for src in enabled_hw_src_ports:
 		devnum = None
-		port_alias_id = get_port_alias_id(src)
+		port_alias_id = get_port_alias_id(src) #TODO: Why use port alias?
 		try:
 			#if the device is already registered, takes the number
 			if port_alias_id in devices_in:
@@ -341,54 +331,19 @@ def midi_autoconnect(force=False):
 		required_routes["ZynMidiRouter:ctrl_in"].add(efbp)
 	"""
 
-	#logger.debug("Connecting ZynMidiRouter to engines ...")
-
-	# Set "Drop Program Change" flag for each MIDI chan
-	for processor in chain_manager.get_processors():
-		if processor.midi_chan is not None and processor.midi_chan < 16:
-			lib_zyncore.zmop_chain_set_flag_droppc(processor.midi_chan, int(processor.engine.options['drop_pc']))
-
-	# When "Send All MIDI to Output" is enabled, zynseq & zynsmf are routed thru ZynMidiRouter:midi_out
 	if zynthian_gui_config.midi_filter_output:
-		# ...enabled Hardware MIDI Output Ports
+		# Add MIDI OUT
 		for port in enabled_hw_dst_ports:
 			# Connect ZynMidiRouter:midi_out to...
 			required_routes[port.name].add("ZynMidiRouter:midi_out")
-			# Disconnect zynseq (stepseq) output from ...
-			try:
-				required_routes[port.name].remove("zynseq:output")
-			except:
-				pass
-			#Disconnect zynsmf output from ...
-			try:
-				required_routes[port.name].remove("zynsmf:midi_out")
-			except:
-				pass
-
 		# ...enabled Network MIDI Output Ports
 		for port in enabled_nw_dst_ports:
 			# Connect ZynMidiRouter:net_out to...
 			required_routes[port.name].add("ZynMidiRouter:net_out")
-			# Disconnect zynseq (stepseq) output from ...
-			try:
-				required_routes[port.name].remove("zynseq:output")
-			except:
-				pass
-			#Disconnect zynsmf output from ...
-			try:
-				required_routes[port.name].remove("zynsmf:midi_out")
-			except:
-				pass
-
 	# When "Send All MIDI to Output" is disabled, zynseq & zynsmf are routed directly
 	else:
-		# ...enabled Hardware MIDI Output Ports
+		# When midi_out is disabled need to route zynseq & zynsmf directly (not via ZynMidiRouter)
 		for port in enabled_hw_dst_ports:
-			# Disconnect ZynMidiRouter:midi_out from...
-			try:
-				required_routes[port.name].remove("ZynMidiRouter:midi_out")
-			except:
-				pass
 			# Connect zynseq (stepseq) output to...
 			required_routes[port.name].add("zynseq:output")
 			# Connect zynsmf output to...
@@ -396,11 +351,6 @@ def midi_autoconnect(force=False):
 
 		# ...enabled Network MIDI Output Ports
 		for port in enabled_nw_dst_ports:
-			# Disconnect ZynMidiRouter:net_out from...
-			try:
-				required_routes[port.name].remove("ZynMidiRouter:net_out")
-			except:
-				pass
 			# Connect zynseq (stepseq) output to ...
 			required_routes[port.name].add("zynseq:output")
 			# Connect zynsmf output to ...
@@ -413,11 +363,95 @@ def midi_autoconnect(force=False):
 	for port in hw_dst_ports:
 		if get_port_alias_id(port) in zynthian_gui_config.enabled_midi_fb_ports:
 			required_routes[port.name].add("ZynMidiRouter:ctrl_out")
-		else:
-			try:
-				required_routes[port.name].remove("ZynMidiRouter:ctrl_out")
-			except:
-				pass
+
+	# Remove mod-ui routes
+	for dst in required_routes.keys():
+		if dst.startswith("effect_"):
+			required_routes.pop(dst)
+
+	# Connect and disconnect routes
+	for dst, sources in required_routes.items():
+		try:
+			current_routes = jclient.get_all_connections(dst)
+			for src in current_routes:
+				if src.name in sources:
+					continue
+				jclient.disconnect(src.name, dst)
+			for src in sources:
+				try:
+					jclient.connect(src, dst)
+				except:
+					pass
+		except:
+			pass
+
+	#Release Mutex Lock
+	release_lock()
+
+def audio_autoconnect(force=False):
+	if not force:
+		return
+
+	#Get Mutex Lock
+	acquire_lock()
+
+	# Get System Playback Ports
+	system_playback_ports = jclient.get_ports("system:playback", is_input=True, is_audio=True, is_physical=True)
+
+	# Create graph of required chain routes as sets of sources indexed by destination
+	required_routes = {}
+
+	all_audio_dst = jclient.get_ports(is_input=True, is_audio=True)
+	for dst in all_audio_dst:
+		required_routes[dst.name] = set()
+
+	# Chain audio routing
+	for chain_id, chain in chain_manager.chains.items():
+		routes = chain_manager.get_chain_audio_routing(chain_id)
+		if "zynmixer:return" in routes and "zynmixer:send" in routes["zynmixer:return"]:
+			routes["zynmixer:return"].remove("zynmixer:send")
+		for dest in routes:
+			dst_ports = jclient.get_ports(dest, is_input=True, is_audio=True)
+			dest_count = len(dst_ports)
+
+			for src_name in routes[dest]:
+				src_ports = jclient.get_ports(src_name, is_output=True, is_audio=True)
+				source_count = len(src_ports)
+				if source_count and dest_count:
+					for i in range(max(source_count, dest_count)):
+						src = src_ports[min(i, source_count - 1)]
+						dst = dst_ports[min(i, dest_count - 1)]
+						required_routes[dst.name].add(src.name)
+
+	# Connect metronome to aux
+	required_routes["zynmixer:input_17a"].add("zynseq:metronome")
+	required_routes["zynmixer:input_17b"].add("zynseq:metronome")
+
+	# Connect mixer to the System Output
+	try:
+		#TODO: Support configurable output routing
+		required_routes[system_playback_ports[0].name].add("zynmixer:output_a")
+		required_routes[system_playback_ports[1].name].add("zynmixer:output_b")
+	except:
+		pass
+
+	#Get System Capture ports => jack output ports!!
+	capture_ports = get_audio_capture_ports()
+	capture_ports += jclient.get_ports('zynmixer:send')
+	if zynthian_gui_config.midi_aubionotes_enabled:
+		#Get Aubio Input ports...
+		aubio_in = jclient.get_ports("aubio", is_input=True, is_audio=True)
+		if len(aubio_in) > 0:
+			nip = len(aubio_in)
+			#Connect System Capture to Aubio ports
+			j = 0
+			for scp in capture_ports:
+				required_routes[aubio_in[j % nip]].add(scp)
+
+	# Remove mod-ui routes
+	for dst in required_routes.keys():
+		if dst.startswith("effect_"):
+			required_routes.pop(dst)
 
 	# Connect and disconnect routes
 	for dst, sources in required_routes.items():
@@ -432,122 +466,11 @@ def midi_autoconnect(force=False):
 			except:
 				pass
 
-	#Release Mutex Lock
-	release_lock()
-
-
-def audio_autoconnect(force=False):
-	if not force:
-		#logger.debug("ZynAutoConnect: Audio Escaped ...")
-		return
-
-	#Get Mutex Lock
-	#logger.info("Acquiring lock ...")
-	acquire_lock()
-	#logger.info("Lock acquired!!")
-
-	#Get Audio Input Ports (ports receiving audio => inputs => you write on it!!)
-	input_ports = get_audio_input_ports(True)
-
-	# Get System Playback Ports
-	system_playback_ports = jclient.get_ports("system:playback", is_input=True, is_audio=True, is_physical=True)
-
-	#Get Zynmixer Playback Ports
-	zynmixer_playback_ports = jclient.get_ports("zynmixer", is_input=True, is_audio=True, is_physical=False)
-	
-	#Get Zynmixer Playback Ports
-	playback_ports = zynmixer_playback_ports + system_playback_ports
-
-	# Disconnect mod-ui from System Output
-	mon_out = jclient.get_ports("mod-monitor", is_output=True, is_audio=True)
-	try:
-		jclient.disconnect(mon_out[0], 'system:playback_1')
-		jclient.disconnect(mon_out[1], 'system:playback_2')
-	except:
-		pass
-
-	# Chain audio routing
-	used_mixer_chans = []
-	for chain_id, chain in chain_manager.chains.items():
-		routes = chain_manager.get_chain_audio_routing(chain_id)
-		if chain.mixer_chan is not None:
-			used_mixer_chans.append(chain.mixer_chan) #TODO: Check if actually requested to be routed
-		if "zynmixer:return" in routes and "zynmixer:send" in routes["zynmixer:return"]:
-			routes["zynmixer:return"].remove("zynmixer:send")
-		for dest in routes:
-			dst_ports = jclient.get_ports(dest, is_input=True, is_audio=True)
-			dest_count = len(dst_ports)
-			cur_dests = {}
-			for port in dst_ports:
-				cur_dests[port.name] = jclient.get_all_connections(port)
-
-			for src_name in routes[dest]:
-				src_ports = jclient.get_ports(src_name, is_output=True, is_audio=True)
-				source_count = len(src_ports)
-				if source_count and dest_count:
-					for i in range(max(source_count, dest_count)):
-						try:
-							src = src_ports[min(i, source_count - 1)]
-							dst = dst_ports[min(i, dest_count - 1)]
-							if dst.name in cur_dests and src in cur_dests[dst.name]:
-								cur_dests[dst.name].remove(src)
-							else:
-								jclient.connect(src, dst)
-						except Exception as e:
-							logging.warning("Failed to connect audio %s to %s - %s", src, dst, e)
-		
-			# Disconnect unused routes
-			for dst in cur_dests:
-				for src in cur_dests[dst]:
-					try:
-						jclient.disconnect(src, dst)
-					except Exception as e:
-						logging.warning("Failed to disconnect audio %s from %s - %s", src, dst, e)
-
-	# Clear unused mixer inputs
-	for chan in range(16):
-		if chan not in used_mixer_chans:
-			for dst in jclient.get_ports(f"zynmixer:input_{chan + 1:02d}"):
-				for src in jclient.get_all_connections(dst):
-					jclient.disconnect(src, dst)
-
-	# Connect metronome to aux
-	try:
-		jclient.connect("zynseq:metronome", "zynmixer:input_17a")
-		jclient.connect("zynseq:metronome", "zynmixer:input_17b")
-	except:
-		pass
-
-	# Connect mixer to the System Output
-	try:
-		#TODO: Support configurable output routing
-		jclient.connect("zynmixer:output_a", system_playback_ports[0])
-		jclient.connect("zynmixer:output_b", system_playback_ports[1])
-	except:
-		pass
-
 	# Replicate System Output connections to Headphones
 	hp_ports = jclient.get_ports("Headphones:playback", is_input=True, is_audio=True)
-	if len(hp_ports)>=2:
+	if len(hp_ports) >= 2:
 		replicate_connections_to(system_playback_ports[0], hp_ports[0])
 		replicate_connections_to(system_playback_ports[1], hp_ports[1])
-
-	#Get System Capture ports => jack output ports!!
-	capture_ports = get_audio_capture_ports()
-	capture_ports += jclient.get_ports('zynmixer:send')
-	if zynthian_gui_config.midi_aubionotes_enabled:
-		#Get Aubio Input ports...
-		aubio_in = jclient.get_ports("aubio", is_input=True, is_audio=True)
-		if len(aubio_in) > 0:
-			nip = len(aubio_in)
-			#Connect System Capture to Aubio ports
-			j = 0
-			for scp in capture_ports:
-				try:
-					jclient.connect(scp, aubio_in[j % nip])
-				except:
-					pass
-				j += 1
 
 	#Release Mutex Lock
 	release_lock()
