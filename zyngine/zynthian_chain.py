@@ -391,11 +391,11 @@ class zynthian_chain:
                     processors = slots[slot]
         return processors
 
-    def insert_processor(self, processor, chain_mode=CHAIN_MODE_SERIES, slot=None):
+    def insert_processor(self, processor, parallel=False, slot=None):
         """Insert a processor in the chain
 
         processor : processor object to insert
-        chain_mode : CHAIN_MODE_SERIES|CHAIN_MODE_PARALLEL
+        parallel : True to add in parallel (same slot) else create new slot (Default: series)
         slot : Position (slot) to insert within subchain (Default: End of chain)
         Returns : True if processor added to chain
         """
@@ -405,11 +405,11 @@ class zynthian_chain:
             slots.append([processor])
         else:
             if slot is None or slot < 0 or slot > len(slots):
-                slot = len(slots)
-            if chain_mode == CHAIN_MODE_SERIES:
-                slots.insert(slot, [processor])
+                slot = len(slots) - 1
+            if parallel:
+                slots[slot].append(processor)
             else:
-                slots[slot - 1].append(processor)
+                slots.insert(slot + 1, [processor])
 
         processor.set_midi_chan(self.midi_chan)
         self.current_processor = processor

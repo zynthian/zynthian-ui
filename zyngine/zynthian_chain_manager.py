@@ -433,12 +433,12 @@ class zynthian_chain_manager():
         else:
             return 1
 
-    def add_processor(self, chain_id, type, mode=CHAIN_MODE_SERIES, slot=None, proc_id=None):
+    def add_processor(self, chain_id, type, parallel=False, slot=None, proc_id=None):
         """Add a processor to a chain
 
         chain : Chain ID
         type : Engine type
-        mode : Chain mode [CHAIN_MODE_SERIES|CHAIN_MODE_PARALLEL]
+        parallel : True to add in parallel (same slot) else create new slot (Default: series)
         slot : Slot (position) within subchain (0..last slot, Default: last slot)
         proc_id : Processor UID (Default: Use next available ID)
         Returns : processor object or None on failure
@@ -453,7 +453,7 @@ class zynthian_chain_manager():
             return None           
         processor = zynthian_processor(type, self.engine_info[type], proc_id)
         chain = self.chains[chain_id]
-        if chain.insert_processor(processor, mode, slot):
+        if chain.insert_processor(processor, parallel, slot):
             engine = self.start_engine(processor, type)
             if engine:
                 chain.rebuild_graph()
