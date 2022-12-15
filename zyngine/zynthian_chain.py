@@ -497,13 +497,18 @@ class zynthian_chain:
 
         try:
             slots = self.get_slots_by_type(processor.type)
-            if slot < len(slots):
-                cur_slot = self.get_slot(processor)
-                if cur_slot != slot:
-                    slots[cur_slot].pop(processor)
-                    slots[slot].append(processor)
-                    self.rebuild_graph()
-                    zynautoconnect.autoconnect(True)
+            if slot < 0:
+                slots.insert(0, [])
+                slot = 0
+            elif slot >= len(slots):
+                slots.append([])
+            cur_slot = self.get_slot(processor)
+            slots[cur_slot].remove(processor)
+            slots[slot].append(processor)
+            while [] in slots:
+                slots.remove([])
+            self.rebuild_graph()
+            zynautoconnect.autoconnect(True)
         except:
             logging.error("Failed to move processor")
 

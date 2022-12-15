@@ -132,22 +132,27 @@ class zynthian_gui_processor_options(zynthian_gui_selector, zynthian_gui_save_pr
 
 	def can_move_upchain(self):
 		slot = self.chain.get_slot(self.processor)
+		if slot == 0:
+			slots = self.chain.get_slots_by_type(self.processor.type)
+			return len(slots[0]) > 1
 		return (slot is not None and slot > 0)
-		self.zyngui.close_screen()
 
 
 	def move_upchain(self):
-		self.chain.move(self.processor, self.chain.get_slot(self.processor) - 1)
+		self.chain.move_processor(self.processor, self.chain.get_slot(self.processor) - 1)
 		self.zyngui.close_screen()
 
 
 	def can_move_downchain(self):
 		slot = self.chain.get_slot(self.processor)
+		slots = self.chain.get_slots_by_type(self.processor.type)
+		if slot >= len(slots) - 1:
+			return len(slots[0]) > 1
 		return (slot is not None and slot + 1 < self.chain.get_slot_count(self.processor.type))
 
 
 	def move_downchain(self):
-		self.chain.move(self.processor, self.chain.get_slot(self.processor) + 1)
+		self.chain.move_processor(self.processor, self.chain.get_slot(self.processor) + 1)
 		self.zyngui.close_screen()
 
 
