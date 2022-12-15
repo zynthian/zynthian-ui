@@ -87,7 +87,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	lscp_port = 6688
-	lscp_v1_6_supported=False
 
 	bank_dirs = [
 		('ExSFZ', zynthian_engine.ex_data_dir + "/soundfonts/sfz"),
@@ -116,7 +115,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 		self.start()
 		self.lscp_connect()
-		self.lscp_get_version()
 		self.reset()
 
 
@@ -145,19 +143,8 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		return self.sock
 
 
-	def lscp_get_version(self):
-		sv_info = self.lscp_send_multi("GET SERVER INFO")
-		if 'PROTOCOL_VERSION' in sv_info:
-			match = re.match(r"(?P<major>\d+)\.(?P<minor>\d+).*", sv_info['PROTOCOL_VERSION'])
-			if match:
-				version_major = int(match['major'])
-				version_minor = int(match['minor'])
-				if version_major > 1 or (version_major == 1 and version_minor >= 6):
-					self.lscp_v1_6_supported = True
-
-
 	def lscp_send(self, command):
-		command = command+"\r\n"
+		command = command + "\r\n"
 		try:
 			self.sock.send(command.encode())
 		except Exception as err:
@@ -167,7 +154,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	def lscp_get_result_index(self, result):
 		parts = result.split('[')
 		if len(parts)>1:
-			parts=parts[1].split(']')
+			parts = parts[1].split(']')
 			return int(parts[0])
 
 
@@ -232,10 +219,10 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	def add_layer(self, layer):
 		self.layers.append(layer)
 		layer.jackname = None
-		layer.ls_chan_info=None
+		layer.ls_chan_info = None
 		self.ls_set_channel(layer)
 		self.set_midi_chan(layer)
-		layer.refresh_flag=True
+		layer.refresh_flag = True
 
 
 	def del_layer(self, layer):
@@ -249,9 +236,9 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	def set_midi_chan(self, layer):
 		if layer.ls_chan_info:
-			ls_chan_id=layer.ls_chan_info['chan_id']
+			ls_chan_id = layer.ls_chan_info['chan_id']
 			try:
-				self.lscp_send_single("SET CHANNEL MIDI_INPUT_CHANNEL {} {}".format(ls_chan_id, layer.get_midi_chan()))
+				self.lscp_send_single(f"SET CHANNEL MIDI_INPUT_CHANNEL {ls_chan_id} {layer.get_midi_chan()}")
 			except zyngine_lscp_error as err:
 				logging.error(err)
 			except zyngine_lscp_warning as warn:
@@ -275,26 +262,26 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	@staticmethod
 	def _get_preset_list(bank):
 		logging.info("Getting Preset List for %s" % bank[2])
-		i=0
-		preset_list=[]
-		preset_dpath=bank[0]
+		i = 0
+		preset_list = []
+		preset_dpath = bank[0]
 		if os.path.isdir(preset_dpath):
 			exclude_sfz = re.compile(r"[MOPRSTV][1-9]?l?\.sfz")
-			cmd="find '"+preset_dpath+"' -maxdepth 3 -type f -name '*.sfz'"
-			output=check_output(cmd, shell=True).decode('utf8')
-			cmd="find '"+preset_dpath+"' -maxdepth 2 -type f -name '*.gig'"
-			output=output+"\n"+check_output(cmd, shell=True).decode('utf8')
-			lines=output.split('\n')
+			cmd = "find '" + preset_dpath + "' -maxdepth 3 -type f -name '*.sfz'"
+			output = check_output(cmd, shell=True).decode('utf8')
+			cmd = "find '" + preset_dpath + "' -maxdepth 2 -type f -name '*.gig'"
+			output = output + "\n" + check_output(cmd, shell=True).decode('utf8')
+			lines = output.split('\n')
 			for f in lines:
 				if f:
-					filehead,filetail=os.path.split(f)
+					filehead, filetail = os.path.split(f)
 					if not exclude_sfz.fullmatch(filetail):
-						filename,filext=os.path.splitext(f)
-						filename = filename[len(preset_dpath)+1:]
-						title=filename.replace('_', ' ')
-						engine=filext[1:].lower()
-						preset_list.append([f,i,title,engine,"{}{}".format(filename,filext)])
-						i=i+1
+						filename, filext = os.path.splitext(f)
+						filename = filename[len(preset_dpath) + 1:]
+						title = filename.replace('_', ' ')
+						engine = filext[1:].lower()
+						preset_list.append([f, i, title, engine, f"{filename}{filext}"])
+						i += 1
 		return preset_list
 
 
@@ -312,7 +299,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	def cmp_presets(self, preset1, preset2):
 		try:
-			if preset1[0]==preset2[0] and preset1[3]==preset2[3]:
+			if preset1[0] == preset2[0] and preset1[3] == preset2[3]:
 				return True
 			else:
 				return False
@@ -334,10 +321,10 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			self.lscp_send_single("RESET")
 
 			# Config Audio JACK Device 0
-			self.ls_audio_device_id=self.lscp_send_single("CREATE AUDIO_OUTPUT_DEVICE JACK ACTIVE='true' CHANNELS='16' NAME='{}'".format(self.jackname))
-			for i in range(8):
-				self.lscp_send_single("SET AUDIO_OUTPUT_CHANNEL_PARAMETER {} {} NAME='CH{}_1'".format(self.ls_audio_device_id, i*2, i))
-				self.lscp_send_single("SET AUDIO_OUTPUT_CHANNEL_PARAMETER {} {} NAME='CH{}_2'".format(self.ls_audio_device_id, i*2+1, i))
+			self.ls_audio_device_id = self.lscp_send_single(f"CREATE AUDIO_OUTPUT_DEVICE JACK ACTIVE='true' CHANNELS='32' NAME='{self.jackname}'")
+			for i in range(16):
+				self.lscp_send_single(f"SET AUDIO_OUTPUT_CHANNEL_PARAMETER {self.ls_audio_device_id} {i * 2} NAME='out{i}_l'")
+				self.lscp_send_single(f"SET AUDIO_OUTPUT_CHANNEL_PARAMETER {self.ls_audio_device_id} {i * 2 + 1} NAME='out{i}_r'")
 
 			#self.lscp_send_single("SET AUDIO_OUTPUT_CHANNEL_PARAMETER %s 0 JACK_BINDINGS='system:playback_1'" % self.ls_audio_device_id)
 			#self.lscp_send_single("SET AUDIO_OUTPUT_CHANNEL_PARAMETER %s 1 JACK_BINDINGS='system:playback_2'" % self.ls_audio_device_id)
@@ -345,7 +332,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			#self.lscp_send_single("SET AUDIO_OUTPUT_CHANNEL_PARAMETER %s 1 IS_MIX_CHANNEL='false'" % self.ls_audio_device_id)
 
 			# Config MIDI JACK Device 1
-			self.ls_midi_device_id=self.lscp_send_single("CREATE MIDI_INPUT_DEVICE JACK ACTIVE='true' NAME='LinuxSampler' PORTS='1'")
+			self.ls_midi_device_id = self.lscp_send_single(f"CREATE MIDI_INPUT_DEVICE JACK ACTIVE='true' NAME='{self.jackname}' PORTS='1'")
 			#self.lscp_send_single("SET MIDI_INPUT_PORT_PARAMETER %s 0 JACK_BINDINGS=''" % self.ls_midi_device_id)
 			#self.lscp_send_single("SET MIDI_INPUT_PORT_PARAMETER %s 0 NAME='midi_in_0'" % self.ls_midi_device_id)
 
@@ -360,50 +347,40 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	def ls_set_channel(self, layer):
 		# Adding new channel
-		ls_chan_id=self.lscp_send_single("ADD CHANNEL")
-		if ls_chan_id>=0:
+		ls_chan_id = self.lscp_send_single("ADD CHANNEL")
+		if ls_chan_id >= 0:
 			try:
-				self.lscp_send_single("SET CHANNEL AUDIO_OUTPUT_DEVICE {} {}".format(ls_chan_id, self.ls_audio_device_id))
+				self.lscp_send_single(f"SET CHANNEL AUDIO_OUTPUT_DEVICE {ls_chan_id} {self.ls_audio_device_id}")
 				#self.lscp_send_single("SET CHANNEL VOLUME %d 1" % ls_chan_id)
 
 				# Configure MIDI input
-				if self.lscp_v1_6_supported:
-					self.lscp_send_single("ADD CHANNEL MIDI_INPUT {} {} 0".format(ls_chan_id, self.ls_midi_device_id))
-				else:
-					self.lscp_send_single("SET CHANNEL MIDI_INPUT_DEVICE {} {}".format(ls_chan_id, self.ls_midi_device_id))
-					self.lscp_send_single("SET CHANNEL MIDI_INPUT_PORT {} {}".format(ls_chan_id, 0))
+				self.lscp_send_single(f"ADD CHANNEL MIDI_INPUT {ls_chan_id} {self.ls_midi_device_id} 0")
 
 			except zyngine_lscp_error as err:
 				logging.error(err)
 			except zyngine_lscp_warning as warn:
 				logging.warning(warn)
 
+			audio_out = self.ls_get_free_output_channel()
 			#Save chan info in layer
-			layer.ls_chan_info={
+			layer.ls_chan_info = {
 				'chan_id': ls_chan_id,
 				'ls_engine': None,
-				'audio_output': None
+				'audio_output': audio_out
 			}
+			layer.jackname = f"LinuxSampler:out{audio_out}_"
 
 
 	def ls_set_preset(self, layer, ls_engine, fpath):
-		res=False
+		res = False
 		if layer.ls_chan_info:
-			ls_chan_id=layer.ls_chan_info['chan_id']
+			ls_chan_id = layer.ls_chan_info['chan_id']
 
 			# Load engine and set output channels if needed
-			if ls_engine!=layer.ls_chan_info['ls_engine']:
+			if ls_engine != layer.ls_chan_info['ls_engine']:
 				try:
-					self.lscp_send_single("LOAD ENGINE {} {}".format(ls_engine, ls_chan_id))
-					layer.ls_chan_info['ls_engine']=ls_engine
-
-					i = self.ls_get_free_output_channel()
-					self.lscp_send_single("SET CHANNEL AUDIO_OUTPUT_CHANNEL {} 0 {}".format(ls_chan_id, i*2))
-					self.lscp_send_single("SET CHANNEL AUDIO_OUTPUT_CHANNEL {} 1 {}".format(ls_chan_id, i*2+1))
-					layer.ls_chan_info['audio_output']=i
-
-					layer.jackname = "{}:CH{}_".format(self.jackname, i)
-					self.state_manager.zynautoconnect_audio()
+					self.lscp_send_single(f"LOAD ENGINE {ls_engine} {ls_chan_id}")
+					layer.ls_chan_info['ls_engine'] = ls_engine
 
 				except zyngine_lscp_error as err:
 					logging.error(err)
@@ -413,28 +390,31 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			# Load instument
 			try:
 				self.sock.settimeout(10)
-				self.lscp_send_single("LOAD INSTRUMENT '{}' 0 {}".format(fpath, ls_chan_id))
-				res=True
+				self.lscp_send_single(f"LOAD INSTRUMENT '{fpath}' 0 {ls_chan_id}")
+				res = True
 			except zyngine_lscp_error as err:
 				logging.error(err)
 			except zyngine_lscp_warning as warn:
-				res=True
+				res = True
 				logging.warning(warn)
 
 			self.sock.settimeout(1)
+
+			audio_output = layer.ls_chan_info['audio_output']
+			self.lscp_send_single(f"SET CHANNEL AUDIO_OUTPUT_CHANNEL {ls_chan_id} 0 {audio_output * 2}")
+			self.lscp_send_single(f"SET CHANNEL AUDIO_OUTPUT_CHANNEL {ls_chan_id} 1 {audio_output * 2 + 1}")
 
 		return res
 
 
 	def ls_unset_channel(self, layer):
 		if layer.ls_chan_info:
-			chan_id=layer.ls_chan_info['chan_id']
+			chan_id = layer.ls_chan_info['chan_id']
 			try:
-				self.lscp_send_single("RESET CHANNEL {}".format(chan_id))
+				self.lscp_send_single(f"RESET CHANNEL {chan_id}")
 				# Remove sampler channel
-				if self.lscp_v1_6_supported:
-					self.lscp_send_single("REMOVE CHANNEL MIDI_INPUT {}".format(chan_id))
-					self.lscp_send_single("REMOVE CHANNEL {}".format(chan_id))
+				self.lscp_send_single(f"REMOVE CHANNEL MIDI_INPUT {chan_id}")
+				self.lscp_send_single(f"REMOVE CHANNEL {chan_id}")
 			except zyngine_lscp_error as err:
 				logging.error(err)
 			except zyngine_lscp_warning as warn:
@@ -446,11 +426,10 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	def ls_get_free_output_channel(self):
 		for i in range(16):
-			busy=False
+			busy = False
 			for layer in self.layers:
-				if layer.ls_chan_info and i==layer.ls_chan_info['audio_output']:
-					busy=True
-
+				if layer.ls_chan_info and i == layer.ls_chan_info['audio_output']:
+					busy = True
 			if not busy:
 				return i
 
@@ -464,7 +443,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			('SFZ', zynthian_engine.my_data_dir + "/soundfonts/sfz"),
 			('GIG', zynthian_engine.my_data_dir + "/soundfonts/gig")
 		]
-		banks=[]
+		banks = []
 		for b in cls.get_dirlist(cls.bank_dirs, False):
 			banks.append({
 				'text': b[2],
@@ -478,7 +457,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_presets(cls, bank):
-		presets=[]
+		presets = []
 		for p in cls._get_preset_list(bank['raw']):
 			head, tail = os.path.split(p[2])
 			presets.append({
@@ -533,7 +512,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	@classmethod
 	def zynapi_download(cls, fullpath):
 		fname, ext = os.path.splitext(fullpath)
-		if ext and ext[0]=='.':
+		if ext and ext[0] == '.':
 			head, tail = os.path.split(fullpath)
 			return head
 		else:
@@ -557,7 +536,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 						shallower_sfz_file = f
 				head, tail = os.path.split(shallower_sfz_file)
 				# Move SFZ stuff to the top level
-				if head and head!=dpath:
+				if head and head != dpath:
 					for f in glob.glob(head + "/*"):
 						shutil.move(f, dpath)
 					shutil.rmtree(head)
@@ -570,7 +549,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			else:
 				raise Exception("Destiny is not a SFZ bank!")
 
-		elif ext.lower()=='.gig':
+		elif ext.lower() == '.gig':
 
 			# Move directory to destiny bank
 			if "/gig/" in bank_path:
