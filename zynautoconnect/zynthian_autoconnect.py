@@ -577,7 +577,10 @@ def release_lock():
 	#if log_level==logging.DEBUG:
 	#	calframe = inspect.getouterframes(inspect.currentframe(), 2)
 	#	logger.debug("Lock released from '{}'".format(calframe[1][3]))
-	lock.release()
+	try:
+		lock.release()
+	except:
+		logging.warning("Attempted to release unlocked mutex")
 
 
 def start(sm):
