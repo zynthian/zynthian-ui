@@ -154,27 +154,36 @@ class zynthian_chain_manager():
 
         if chain_id not in self.chains:
             return False
+        chains_to_remove = [chain_id] # List of associated chains that shold be removed simultaneously
         chain = self.chains[chain_id]
-        midi_chan = chain.midi_chan
-        if chain.mixer_chan is not None:
-            self.state_manager.zynmixer.set_mute(chain.mixer_chan, True, True)
-        if isinstance(midi_chan, int) and midi_chan < 16:
-            self.midi_chan_2_chain[midi_chan] = None
-        for processor in chain.get_processors():
-            try:
-                self.processors.pop(processor.id)
-            except Exception as e:
-                logging.warning("Failed to remove processor %s from chain %s: %s", processor.id, chain_id, e)
-        chain.reset()
-        if stop_engines:
-            self.stop_unused_engines()
-        if chain.mixer_chan is not None:
-            self.state_manager.zynmixer.reset(chain.mixer_chan)
-        if chain_id != "main":
-            if self.active_chain_id == chain_id:
-                self.next_chain()
-            self.chains.pop(chain_id)
-            del chain
+        if chain.synth_slots and chain.synth_slots[0][0].type_code in ["BF", "AE"]:
+            #TODO: We remove all setBfree and Aeolus chains but maybe we should allow chain manipulation
+            for id, ch in self.chains.items():
+                if ch != chain and ch.synth_slots and ch.synth_slots[0][0].type_code == chain.synth_slots[0][0].type_code:
+                    chains_to_remove.append(id)
+
+        for chain_id in chains_to_remove:
+            chain = self.chains[chain_id]
+            midi_chan = chain.midi_chan
+            if chain.mixer_chan is not None:
+                self.state_manager.zynmixer.set_mute(chain.mixer_chan, True, True)
+            if isinstance(midi_chan, int) and midi_chan < 16:
+                self.midi_chan_2_chain[midi_chan] = None
+            for processor in chain.get_processors():
+                try:
+                    self.processors.pop(processor.id)
+                except Exception as e:
+                    logging.warning("Failed to remove processor %s from chain %s: %s", processor.id, chain_id, e)
+            chain.reset()
+            if stop_engines:
+                self.stop_unused_engines()
+            if chain.mixer_chan is not None:
+                self.state_manager.zynmixer.reset(chain.mixer_chan)
+            if chain_id != "main":
+                if self.active_chain_id == chain_id:
+                    self.next_chain()
+                self.chains.pop(chain_id)
+                del chain
         self.state_manager.autoconnect(True)
         return True
 
