@@ -148,10 +148,7 @@ class zynthian_chain:
 
         #TODO: This is called too frequently
         #TODO: Handle side-chaining - maybe manually curate list of sidechain destinations
-        try:
-            zynautoconnect.acquire_lock()
-        except:
-            pass # May be before zynautoconnect started
+        zynautoconnect.acquire_lock()
 
         self.audio_routes = {}
         # Add effects chain routes
@@ -189,18 +186,12 @@ class zynthian_chain:
             if "mixer" not in self.audio_out:
                 self.audio_routes["zynmixer:input_{:02d}".format(self.mixer_chan + 1)] = []
 
-        try:
-                zynautoconnect.release_lock()
-        except:
-            pass # May be before zynautoconnect started
+        zynautoconnect.release_lock()
 
     def rebuild_midi_graph(self):
         """Build dictionary of lists of sources mapped by destination"""
 
-        try:
-            zynautoconnect.acquire_lock()
-        except:
-            pass # May be before zynautoconnect started
+        zynautoconnect.acquire_lock()
  
         self.midi_routes = {}
         for i, slot in enumerate(self.midi_slots):
@@ -223,10 +214,7 @@ class zynthian_chain:
             for output in self.midi_out:
                 self.midi_routes[output] = self.midi_in
 
-        try:
-            zynautoconnect.release_lock()
-        except:
-            pass # May be before zynautoconnect started
+        zynautoconnect.release_lock()
 
     def rebuild_graph(self):
         """Build dictionary of lists of destinations mapped by source"""

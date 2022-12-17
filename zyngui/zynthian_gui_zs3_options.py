@@ -34,13 +34,15 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 class zynthian_gui_zs3_options(zynthian_gui_selector):
 
+	#TODO: Replace with options screen
+
 	def __init__(self):
-		self.zs3_index = None
+		self.zs3_id = None
 		super().__init__('Option', True)
 
 
 	def config(self, i):
-		self.zs3_index = i
+		self.zs3_id = i
 
 
 	def fill_list(self):
@@ -56,30 +58,34 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 	def select_action(self, i, t='S'):
 		self.index = i
 		if self.list_data[i][0]:
-			self.last_action=self.list_data[i][0]
+			self.last_action = self.list_data[i][0]
 			self.last_action()
 
 
 	def zs3_rename(self):
-		title = self.zyngui.screens['layer'].get_zs3_title(self.zs3_index)
+		title = self.zyngui.state_manager.get_zs3_title(self.zs3_id)
 		self.zyngui.show_keyboard(self.zs3_rename_cb, title)
 
 
 	def zs3_rename_cb(self, title):
-		logging.info("Renaming ZS3#{}".format(self.zs3_index))
-		self.zyngui.screens['layer'].set_zs3_title(self.zs3_index, title)
+		logging.info("Renaming ZS3#{}".format(self.zs3_id))
+		self.zyngui.state_manager.set_zs3_title(self.zs3_id, title)
 		self.zyngui.close_screen()
 
 
 	def zs3_update(self):
-		logging.info("Updating ZS3#{}".format(self.zs3_index))
-		self.zyngui.screens['layer'].save_zs3(self.zs3_index)
+		logging.info("Updating ZS3#{}".format(self.zs3_id))
+		self.zyngui.state_manager.save_zs3(self.zs3_id)
 		self.zyngui.close_screen()
 
 
 	def zs3_delete(self):
-		logging.info("Deleting ZS3#{}".format(self.zs3_index))
-		self.zyngui.screens['layer'].delete_zs3(self.zs3_index)
+		self.zyngui.show_confirm(f"Do you really want to delete ZS3: {self.zs3_id}?", self.do_delete)
+
+
+	def do_delete(self, params):
+		logging.info("Deleting ZS3#{}".format(self.zs3_id))
+		self.zyngui.state_manager.delete_zs3(self.zs3_id)
 		self.zyngui.close_screen()
 
 

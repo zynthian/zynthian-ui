@@ -206,8 +206,6 @@ class zynthian_gui:
 
 		self.status_counter = 0
 
-		self.audio_player = None
-
 		self.state_manager = zynthian_state_manager.zynthian_state_manager()
 		self.chain_manager = self.state_manager.chain_manager
 		self.add_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
@@ -518,7 +516,7 @@ class zynthian_gui:
 			#Execute action
 			self.callable_ui_action(parts[2].upper(), args)
 			#Run autoconnect if needed
-			self.state_manager.zynautoconnect_do()
+			self.state_manager.autoconnect()
 		elif part1 in ("MIXER", "DAWOSC"):
 			part2 = parts[2].upper()
 			if part2 in ("HEARTBEAT", "SETUP"):
@@ -621,7 +619,6 @@ class zynthian_gui:
 			# Init MIDI Subsystem => MIDI Profile
 			self.state_manager.init_midi()
 			self.state_manager.init_midi_services()
-			self.state_manager.zynautoconnect()
 
 		# Show initial screen
 		self.show_screen(init_screen)
@@ -631,9 +628,6 @@ class zynthian_gui:
 		self.start_loading_thread()
 		self.start_control_thread()
 		self.start_status_thread()
-
-		# Run autoconnect if needed
-		self.state_manager.zynautoconnect_do()
 
 		# Initialize MPE Zones
 		#self.init_mpe_zones(0, 2)
@@ -1114,7 +1108,7 @@ class zynthian_gui:
 			self.refresh_signal("AUDIO_RECORD")
 
 		elif cuia == "START_AUDIO_PLAY":
-			self.start_audio_player()
+			self.state_manager.start_audio_player()
 			
 		elif cuia == "STOP_AUDIO_PLAY":
 			self.state_manager.stop_audio_player()
@@ -1122,10 +1116,8 @@ class zynthian_gui:
 		elif cuia == "TOGGLE_AUDIO_PLAY":
 			if self.current_screen == "pattern_editor":
 				self.screens["pattern_editor"].toggle_playback()
-			elif self.audio_player and self.audio_player.engine.player.get_playback_state(16):
-				self.state_manager.stop_audio_player()
 			else:
-				self.start_audio_player()
+				self.state_manager.toggle_audio_player()
 
 		elif cuia == "START_MIDI_RECORD":
 			self.screens['midi_recorder'].start_recording()
@@ -1854,9 +1846,9 @@ class zynthian_gui:
 
 					# SubSnapShot (ZS3) MIDI learn ...
 					if self.midi_learn_mode and self.current_screen == 'zs3_learn':
-						if self.screens['layer'].save_midi_prog_zs3(chan, pgm) is not None: #TODO
-							self.exit_midi_learn()
-							self.close_screen()
+						self.state_manager.save_zs3(f"{chan}/{pgm}")
+						self.exit_midi_learn()
+						self.close_screen()
 					# Set Preset or ZS3 (sub-snapshot), depending of config option
 					else:
 						if zynthian_gui_config.midi_prog_change_zs3:
@@ -1934,9 +1926,6 @@ class zynthian_gui:
 			self.zynswitch_read()
 			self.zynmidi_read()
 			self.osc_receive()
-
-			# Run autoconnect if pending
-			self.state_manager.zynautoconnect_do()
 
 			# Every 4 cycles ...
 			if j > 4:
@@ -2098,12 +2087,6 @@ class zynthian_gui:
 			except Exception as e:
 				logging.error(e)
 			
-			# Remove Player
-			if self.audio_player and self.audio_player.engine and not self.audio_player.engine.player.get_playback_state(16):
-				self.chain_manager.remove_processor("aux", self.audio_player)
-				if 'audio_player' in self.state_manager.status_info:
-					self.state_manager.status_info.pop('audio_player')
-
 			# Refresh On-Screen Status
 			try:
 				self.screens[self.current_screen].refresh_status(self.state_manager.status_info)

@@ -141,11 +141,7 @@ class zynthian_chain_manager():
         if enable_audio_thru:
             chain.midi_chan = None #TODO: Validate this is okay
         self.set_active_chain_by_id(chain_id)
-        try:
-            #TODO: Can we reduce calls to autoconnect?
-            zynautoconnect.autoconnect(True)
-        except:
-            pass # May be before zynautoconnect started
+        self.state_manager.autoconnect(True)
         return chain
 
     def remove_chain(self, chain_id, stop_engines=True):
@@ -160,6 +156,8 @@ class zynthian_chain_manager():
             return False
         chain = self.chains[chain_id]
         midi_chan = chain.midi_chan
+        if chain.mixer_chan is not None:
+            self.state_manager.zynmixer.set_mute(chain.mixer_chan, True, True)
         if isinstance(midi_chan, int) and midi_chan < 16:
             self.midi_chan_2_chain[midi_chan] = None
         for processor in chain.get_processors():
@@ -170,12 +168,14 @@ class zynthian_chain_manager():
         chain.reset()
         if stop_engines:
             self.stop_unused_engines()
+        if chain.mixer_chan is not None:
+            self.state_manager.zynmixer.reset(chain.mixer_chan)
         if chain_id != "main":
             if self.active_chain_id == chain_id:
                 self.next_chain()
             self.chains.pop(chain_id)
             del chain
-        zynautoconnect.autoconnect(True)
+        self.state_manager.autoconnect(True)
         return True
 
     def remove_all_chains(self, stop_engines=True):
@@ -337,6 +337,12 @@ class zynthian_chain_manager():
             midi_chan = chain.midi_chan
             if isinstance(midi_chan, int) and midi_chan < 16:
                 get_lib_zyncore().set_midi_active_chan(midi_chan)
+            else:
+                # Find a MIDI chain
+                for chain in self.chains.values():
+                    if chain.is_midi():
+                        get_lib_zyncore().set_midi_active_chan(chain.midi_chan)
+                        break
         except:
             pass
         return self.active_chain_id
@@ -450,7 +456,7 @@ class zynthian_chain_manager():
         if proc_id is None:
             proc_id = self.get_available_processor_id() #TODO: Derive next available processor id from self.processors
         elif proc_id in self.processors:
-            return None           
+            return None
         processor = zynthian_processor(type, self.engine_info[type], proc_id)
         chain = self.chains[chain_id]
         if chain.insert_processor(processor, parallel, slot):
@@ -458,7 +464,7 @@ class zynthian_chain_manager():
             if engine:
                 chain.rebuild_graph()
                 self.processors[proc_id] = processor
-                zynautoconnect.autoconnect(True)
+                self.state_manager.autoconnect(True)
                 return processor
         return None
 
@@ -486,7 +492,7 @@ class zynthian_chain_manager():
                 pass
             if stop_engine:
                 self.stop_unused_engines()
-        zynautoconnect.autoconnect(True)
+        self.state_manager.autoconnect(True)
         return success
 
     def get_slot_count(self, chain_id, type=None):
@@ -739,6 +745,24 @@ class zynthian_chain_manager():
             except Exception as e:
                 logging.error("Can't set preset for CH#{}:PC#{} => {}".format(midich, prognum, e))
         return changed
+
+    def set_midi_chan(self, chain_id, midi_chan):
+        """Set chain MIDI channel
+
+        chain_id : Chain ID
+        midi_chan : MIDI channel
+        """
+
+        if chain_id not in self.chains or midi_chan not in self.get_free_midi_chans():
+            return
+        chain = self.chains[chain_id]
+        chain.set_midi_chan(midi_chan)
+        try:
+            index = self.midi_chan_2_chain.index(chain)
+            self.midi_chan_2_chain[index] = None
+        except:
+            pass
+        self.midi_chan_2_chain[midi_chan] = chain
 
     def get_free_midi_chans(self):
         """Get list of unused mixer and MIDI channels

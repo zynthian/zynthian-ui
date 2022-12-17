@@ -28,6 +28,7 @@ import ctypes
 from datetime import datetime
 from glob import glob
 import logging
+from threading  import Thread
 
 # Zynthian specific modules
 import zynconf
@@ -59,7 +60,6 @@ class zynthian_state_manager:
 
         logging.warning("Creating state manager")
         self.chain_manager = zynthian_chain_manager(self)
-        self.last_snapshot_fpath = ""
         self.last_snapshot_count = 0 # Increments each time a snapshot is loaded - modules may use to update if required
         self.reset_zs3()
         
@@ -69,12 +69,12 @@ class zynthian_state_manager:
         self.audio_recorder = zynthian_audio_recorder()
         self.zynmixer = zynthian_engine_audio_mixer.zynmixer()
         self.zynseq = zynseq.zynseq()
+        self.audio_player = None
 
         self.midi_filter_script = None
         self.midi_learn_zctrl = None
         self.midi_learn_mode = 0 # 0:Disabled, 1:MIDI Learn, 2:ZS3 Learn
         self.zs3 = {} # Dictionary or zs3 configs indexed by "ch/pc"
-        self.last_zs3 = 0
         self.status_info = {}
 
         # Initialize MIDI & Switches
@@ -87,10 +87,9 @@ class zynthian_state_manager:
             logging.error("ERROR initializing MIDI & Switches: {}".format(e))
             self.zynmidi = None
 
-        # Init Auto-connector
-        self.zynautoconnect_audio_flag = False
-        self.zynautoconnect_midi_flag = False
-        zynautoconnect.start(self)
+        self.exit_flag = False
+        self.start_thread()
+        self.reset()
 
     def reset(self):
         zynautoconnect.stop()
@@ -98,9 +97,25 @@ class zynthian_state_manager:
         self.zynseq.load("")
         self.chain_manager.remove_all_chains(True)
         self.zynmixer.reset_state()
-        self.zynseq.load("")
         self.reload_midi_config()
         zynautoconnect.start(self)
+        self.autoconnect(True)
+
+
+    #------------------------------------------------------------------
+    # Background task thread
+    #------------------------------------------------------------------
+
+    def start_thread(self):
+        self.thread = Thread(target=self.thread_task, args=())
+        self.thread.name = "Status Manager MIDI"
+        self.thread.daemon = True # thread dies with the program
+        self.thread.start()
+
+    def thread_task(self):
+        while not self.exit_flag:
+            pass
+            sleep(0.2)
 
     #----------------------------------------------------------------------------
     # Snapshot Save & Load
@@ -218,6 +233,7 @@ class zynthian_state_manager:
 
             self.zs3 = state["zs3"]
             self.load_zs3("zs3-0")
+            self.autoconnect(True) # Autoconnect engines that start after preset loaded
 
             if load_sequences and "zynseq_riff_b64" in state:
                 b64_bytes = state["zynseq_riff_b64"].encode("utf-8")
@@ -248,7 +264,7 @@ class zynthian_state_manager:
             logging.exception("Invalid snapshot: %s" % e)
             return None
 
-        self.zynautoconnect(True)
+        self.autoconnect()
 
         # Restore mute state
         self.zynmixer.set_mute(255, mute)
@@ -305,83 +321,6 @@ class zynthian_state_manager:
                     #logging.debug("ADDED LEGACY ZS3 #{} => {}".format(zs3_index, zs3_new))
                     zs3_index += 1
 
-
-    def restore_state_zs3(self, state):
-        #TODO
-
-        # Get restored active layer index
-        if state['index']<len(self.root_layers):
-            index = state['index']
-            restore_midi_chan = self.root_layers[index].midi_chan
-        else:
-            index = None
-            restore_midi_chan = None
-
-        logging.debug("RESTORING ZS3 STATE (index={}) => {}".format(index, state))
-
-        # Calculate the layers to restore, depending of mode OMNI/MULTI, etc
-        layer2restore = []
-        for i, lss in enumerate(state['layers']):
-            l2r = False
-            if lss:
-                if zynthian_gui_config.midi_single_active_channel:
-                    if restore_midi_chan is not None and lss['midi_chan'] == restore_midi_chan:
-                        l2r = True
-                else:
-                    l2r = True
-            layer2restore.append(l2r)
-
-        # Restore layer state, step 1 => Restore Bank & Preset Status
-        for i, lss in enumerate(state['layers']):
-            if layer2restore[i]:
-                self.layers[i].restore_state_1(lss)
-
-        # Restore layer state, step 2 => Restore Controllers Status
-        for i, lss in enumerate(state['layers']):
-            if layer2restore[i]:
-                self.layers[i].restore_state_2(lss)
-
-        # Set Audio Capture
-        if 'audio_capture' in state:
-            self.set_audio_capture(state['audio_capture'])
-
-        # Audio Recorder Armed
-        if 'audio_recorder_armed' in state:
-            for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
-                if midi_chan in state['audio_recorder_armed']:
-                    self.audio_recorder.arm(midi_chan)
-                else:
-                    self.audio_recorder.unarm(midi_chan)
-
-        # Set Clone
-        if 'clone' in state:
-            self.set_clone(state['clone'])
-
-        # Note-range & Tranpose
-        if 'note_range' in state:
-            self.set_note_range(state['note_range'])
-        # BW compat.
-        elif 'transpose' in state:
-            self.reset_note_range()
-            self.set_transpose(state['transpose'])
-
-        # Mixer
-        if 'mixer' in state:
-            self.zynmixer.set_state(state['mixer'])
-
-        # Restore ALSA-Mixer settings
-        if self.alsa_mixer_processor and 'alsa_mixer' in state:
-            self.alsa_mixer_processor.set_state(state['alsa_mixer'])
-
-        # Set active layer
-        if index is not None and index!=self.index:
-            logging.info("Setting current_chain to {}".format(index))
-            self.index = index
-            self.chain_manager.set_active_chain_by_id("{:2d}".format(state['index']))
-
-        # Autoconnect Audio => Not Needed!! It's called after action
-        #self.zynautoconnect_audio(True)
-
     def convert_legacy_snapshot(self, snapshot):
         """Convert legacy (<2022-11-22) snapshot to current format"""
 
@@ -434,85 +373,28 @@ class zynthian_state_manager:
         
         try:
             if zynthian_gui_config.midi_single_active_channel:
-                zs3_index = f"{get_lib_zyncore().get_midi_active_chan()}/{prog_num}"
+                zs3_id = f"{get_lib_zyncore().get_midi_active_chan()}/{prog_num}"
             else:
-                zs3_index = f"{midi_chan}/{prog_num}"
-            return self.restore_zs3(self.zs3[zs3_index])
+                zs3_id = f"{midi_chan}/{prog_num}"
+            return self.load_zs3(zs3_id)
         except:
             logging.debug(f"Can't find a ZS3 for CH#{midi_chan}, PRG#{prog_num}")
             return False
  
-    def save_midi_prog_zs3(self, midi_chan, prog_num):
-        """Store current state as ZS3
-        
-        midi_chan : MIDI channel associated with ZS3
-        prog_num : MIDI Program Change number
-        """
-
-        id = f"{midi_chan}/{prog_num}"
-        next_id = 1
-        for zs3 in self.zs3.values():
-            if zs3["title"].startswith("New ZS3-"):
-                try:
-                    id = int (zs3["title"][8:])
-                    if id > next_id:
-                        next_id = id + 1
-                except:
-                    pass
-        
-        if id not in self.zs3:
-            self.zs3[id] = {'title': f"New ZS3-{next_id}"}
-        zs3[id]['active_chain'] = self.chain_manager.active_chain
-        zs3[id]['processors'] = self.chain_manager.get_zs3_state()
-        zs3[id]['mixer'] = self.zynmixer.get_state()
-        self.last_zs3 = id
-
-    def get_zs3_index_by_midich_prognum(self, midi_chan, prog_num):
-        """Get index of a ZS3 from MIDI channel and program change number
-        
-        midi_chan : MIDI Channel
-        prog_num : Program Change number
-        """
-        
-        for zs3_index, zs3 in enumerate(self.learned_zs3):
-            try:
-                if zs3['midi_learn_chan'] == midi_chan and zs3['midi_learn_prognum'] == prog_num:
-                    return zs3_index
-            except:
-                pass
-
-
-    def get_zs3_index_by_prognum(self, prog_num):
-        """Get index of a ZS3 from ist MIDI program number
-
-        prog_num : MIDI Program Change number
-        """
-        for i, zs3 in enumerate(self.learned_zs3):
-            try:
-                if zs3['midi_learn_prognum'] == prog_num:
-                    return i
-            except:
-                pass
-
-
-    def get_last_zs3(self):
-        """Get the index of the last ZS3 added"""
-        return self.last_zs3
-
-
     def get_zs3_title(self, zs3_index):
         """Get ZS3 title
         
         zs3_index : Index of ZS3
         Returns : Title as string
         """
-        if zs3_index is not None and zs3_index >= 0 and zs3_index < len(self.learned_zs3):
-            return self.learned_zs3[zs3_index]['zs3_title']
+        if zs3_index in self.zs3:
+            return self.zs3[zs3_index]["title"]
+        return zs3_index
 
 
-    def set_zs3_title(self, i, title):
-        if i is not None and i >= 0 and i < len(self.learned_zs3):
-            self.learned_zs3[i]['zs3_title'] = title
+    def set_zs3_title(self, zs3_index, title):
+        if zs3_index in self.zs3:
+            self.zs3[zs3_index]["title"] = title
 
 
     def load_zs3(self, zs3_id):
@@ -540,12 +422,32 @@ class zynthian_state_manager:
         return True
 
 
-    def save_zs3(self, zs3_id, title):
+    def save_zs3(self, zs3_id=None, title=None):
         """Store current state as ZS3
         
-        zs3_id : ID of zs3 to save / overwrite
-        title : ZS3 title
+        zs3_id : ID of zs3 to save / overwrite (Default: Create new id)
+        title : ZS3 title (Default: Create new title)
         """
+
+        used_ids = []
+        for id in self.zs3:
+            if id.startswith("zs3-"):
+                try:
+                    used_ids.append(int(id.split('-')[1]))
+                except:
+                    pass
+        used_ids.sort()
+        for offset, index in enumerate(used_ids):
+            if offset and index - 1 != used_ids[offset] - 1:
+                break
+
+        if zs3_id is None:
+            zs3_id = f"zs3-{index + 1}"
+
+        if title is None:
+            title = f"New ZS3 {index + 1}"
+        if zs3_id in self.zs3:
+            title = self.zs3[zs3_id]['title']
 
         # Initialise zs3
         self.zs3[zs3_id] = {
@@ -581,8 +483,6 @@ class zynthian_state_manager:
         """
         try:
             del(self.zs3[zs3_index])
-            if self.last_zs3 == zs3_index:
-                self.last_zs3 = None
         except:
             logging.info("Tried to remove non-existant ZS3")
 
@@ -592,8 +492,6 @@ class zynthian_state_manager:
         # ZS3 list (subsnapshots)
         self.zs3 = {}
         # Last selected ZS3 subsnapshot
-        self.last_zs3 = None
-
 
     def clean_zs3(self):
         """Remove non-existant processors from ZS3 state"""
@@ -611,11 +509,13 @@ class zynthian_state_manager:
 
     def get_jackd_samplerate(self):
         """Get the samplerate that jackd is running"""
+
         return zynautoconnect.get_jackd_samplerate()
 
 
     def get_jackd_blocksize(self):
         """Get the block size used by jackd"""
+
         return zynautoconnect.get_jackd_blocksize()
 
     #------------------------------------------------------------------
@@ -680,55 +580,33 @@ class zynthian_state_manager:
     # Autoconnect
     #------------------------------------------------------------------
 
-    def zynautoconnect(self, force=False):
+    def autoconnect(self, force=False):
         """Trigger jack graph connections
         
-        force : True to force connections
+        force : True to force immediate connection (Default: connect on next 2s cycle)
         """
-        if force:
-            self.zynautoconnect_midi_flag = False
-            zynautoconnect.midi_autoconnect(True)
-            self.zynautoconnect_audio_flag = False
-            zynautoconnect.audio_autoconnect(True)
-        else:
-            self.zynautoconnect_midi_flag = True
-            self.zynautoconnect_audio_flag = True
+        self.autoconnect_midi(force)
+        self.autoconnect_audio(force)
 
-
-    def zynautoconnect_midi(self, force=False):
+    def autoconnect_midi(self, force=False):
         """Trigger jack MIDI graph connections
         
-        force : True to force connections
+        force : True to force immediate connection (Default: connect on next 2s cycle)
         """
         if force:
-            self.zynautoconnect_midi_flag = False
-            zynautoconnect.midi_autoconnect(True)
+            zynautoconnect.midi_autoconnect()
         else:
-            self.zynautoconnect_midi_flag = True
+            zynautoconnect.deferred_midi_connect = True
 
-
-    def zynautoconnect_audio(self, force=False):
+    def autoconnect_audio(self, force=False):
         """Trigger jack audio graph connections
         
-        force : True to force connections
+        force : True to force immediate connection (Default: connect on next 2s cycle)
         """
         if force:
-            self.zynautoconnect_audio_flag = False
-            zynautoconnect.audio_autoconnect(True)
+            zynautoconnect.audio_autoconnect()
         else:
-            self.zynautoconnect_audio_flag = True
-
-
-    def zynautoconnect_do(self):
-        """Trigger pending jack graph connections"""
-        if zynautoconnect.is_running():
-            if self.zynautoconnect_midi_flag:
-                self.zynautoconnect_midi_flag = False
-                zynautoconnect.midi_autoconnect(True)
-            if self.zynautoconnect_audio_flag:
-                self.zynautoconnect_audio_flag = False
-                zynautoconnect.audio_autoconnect(True)
-
+            zynautoconnect.deferred_audio_connect = True
 
     # ---------------------------------------------------------------------------
     # MIDI Router Init & Config
@@ -765,7 +643,7 @@ class zynthian_state_manager:
             zynthian_gui_config.set_midi_config()
             self.init_midi()
             self.init_midi_services()
-            self.zynautoconnect()
+            self.autoconnect()
 
     def init_midi_services(self):
         """Start/Stop MIDI aux. services"""
@@ -782,12 +660,12 @@ class zynthian_state_manager:
     def start_audio_player(self):
         """Start playback of global audio player"""
 
-        filename = self.state_manager.audio_recorder.filename
+        filename = self.audio_recorder.filename
         if not filename or not os.path.exists(filename):
-            if os.path.ismount(self.state_manager.audio_recorder.capture_dir_usb):
-                path = self.state_manager.audio_recorder.capture_dir_usb
+            if os.path.ismount(self.audio_recorder.capture_dir_usb):
+                path = self.audio_recorder.capture_dir_usb
             else:
-                path = self.state_manager.audio_recorder.capture_dir_sdc
+                path = self.audio_recorder.capture_dir_sdc
             files = glob('{}/*.wav'.format(path))
             if files:
                 filename = max(files, key=os.path.getctime)
@@ -797,10 +675,12 @@ class zynthian_state_manager:
         if not self.audio_player:
             try:
                 self.audio_player = zynthian_processor("AP", self.chain_manager.engine_info["AP"])
-                self.audio_player.start_engine()
-                zynautoconnect.audio_connect_aux(self.audio_player.engine.jackname)
+                self.audio_player.midi_chan = 16
+                self.chain_manager.start_engine(self.audio_player, "AP")
+                self.autoconnect_audio(True)
             except Exception as e:
                 self.stop_audio_player()
+                self.autoconnect_audio()
                 return
         self.audio_player.engine.set_preset(self.audio_player, [filename])
         self.audio_player.engine.player.set_position(16, 0.0)
@@ -812,7 +692,20 @@ class zynthian_state_manager:
 
         if self.audio_player:
             self.audio_player.engine.player.stop_playback(16)
-            self.status_info['audio_player'] = ''
+            self.audio_player.engine.del_layer(self.audio_player)
+            self.audio_player = None
+            try:
+                self.status_info.pop('audio_player')
+            except:
+                pass
+
+    def toggle_audio_player(self):
+        """Toggle playback of global audio player"""
+
+        if self.audio_player:
+            self.stop_audio_player()
+        else:
+            self.start_audio_player()
 
     # ---------------------------------------------------------------------------
     # Services
@@ -837,7 +730,7 @@ class zynthian_state_manager:
                 })
             # Call autoconnect after a little time
             sleep(0.5)
-            self.zynautoconnect_midi()
+            self.autoconnect_midi()
         except Exception as e:
             logging.error(e)
 
@@ -868,7 +761,7 @@ class zynthian_state_manager:
                 })
             # Call autoconnect after a little time
             sleep(0.5)
-            self.zynautoconnect_midi()
+            self.autoconnect_midi()
         except Exception as e:
             logging.error(e)
 
@@ -906,7 +799,7 @@ class zynthian_state_manager:
                 })
             # Call autoconnect after a little time
             sleep(0.5)
-            self.zynautoconnect_midi()
+            self.autoconnect_midi()
         except Exception as e:
             logging.error(e)
 
@@ -942,7 +835,7 @@ class zynthian_state_manager:
                 })
             # Call autoconnect after a little time
             sleep(0.5)
-            self.zynautoconnect()
+            self.autoconnect()
         except Exception as e:
             logging.error(e)
 
@@ -1076,7 +969,7 @@ class zynthian_state_manager:
             zynthian_gui_config.set_midi_config()
             self.init_midi()
             self.init_midi_services()
-            self.zynautoconnect()
+            self.autoconnect()
             return True
 
     def reset_midi_profile(self):

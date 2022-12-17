@@ -49,21 +49,29 @@ logger.setLevel(log_level)
 # Define some Constants and Global Variables
 #-------------------------------------------------------------------------------
 
-refresh_time = 2
-jclient = None
-thread = None
-exit_flag = False
-state_manager = None
-chain_manager = None
+refresh_time = 2 # Period (in seconds) to check for changed MIDI ports
+jclient = None # JACK client
+thread = None # Thread to check for changed MIDI ports
+exit_flag = False # True to exit thread
+state_manager = None # State Manager object
+chain_manager = None # Chain Manager object
+xruns = 0 # Quantity of xruns since startup or last reset
+deferred_midi_connect = False # True to perform MIDI connect on next port check cycle
+deferred_audio_connect = False # True to perform audio connect on next port check cycle
 
-
-last_hw_str = None
-max_num_devs = 16
-devices_in = [None for i in range(max_num_devs)]
+last_hw_str = None # Fingerprint of MIDI ports used to check for change of ports
+max_num_devs = 16 # Maximum quantity of hardware inputs
+devices_in = [None for i in range(max_num_devs)] # List of hardware inputs
 
 #------------------------------------------------------------------------------
 
 def get_port_alias_id(midi_port):
+	"""Get port alias for a MIDI port
+	
+	midi_port : Jack MIDI port
+	#TODO: Can we lose this?
+	"""
+
 	try:
 		alias_id = '_'.join(midi_port.aliases[0].split('-')[5:])
 	except:
@@ -73,6 +81,7 @@ def get_port_alias_id(midi_port):
 
 #Dirty hack for having MIDI working with PureData & CSound: #TODO => Improve it!!
 def get_fixed_midi_port_name(port_name):
+	#TODO: Check if this is required
 	if port_name == "pure_data":
 		port_name = "Pure Data"
 
@@ -84,58 +93,37 @@ def get_fixed_midi_port_name(port_name):
 
 	return port_name
 
-
-def get_all_connections_by_name(name):
-	try:
-		return jclient.get_all_connections(jclient.get_port_by_name(name))
-	except:
-		return []
-
-
-# Connects the output port (port_from) to a list of input ports (ports_to), 
-# disconnecting the output port from any other input port.
-def connect_only(port_from, ports_to):
-	# Get jack ports from strings if needed
-	if isinstance(port_from, str):
-		port_from = jclient.get_port_by_name(port_from)
-	for i, pt in enumerate(ports_to):
-		if isinstance(pt, str):
-			ports_to[i] = jclient.get_port_by_name(pt)
-	# Connect/disconnect
-	for port_to in ports_to:
-		already_connected = False
-		for p in jclient.get_all_connections(port_from):
-			if p==port_to:
-				already_connected = True
-			elif p not in ports_to:
-				jclient.disconnect(port_from, p)
-		if not already_connected:
-			jclient.connect(port_from, port_to)
-
-
-def replicate_connections_to(port1, port2):
-	if isinstance(port1, str):
-		port1 = jclient.get_port_by_name(port1)
-	if isinstance(port2, str):
-		port2 = jclient.get_port_by_name(port2)
-	con1 = jclient.get_all_connections(port1)
-	con2 = jclient.get_all_connections(port2)
-	for p in con1:
-		if p not in con2:
-			jclient.connect(p, port2)
-		else:
-			con2.remove(p)
-	for p in con2:
-			jclient.disconnect(p, port2)
-
-
 #------------------------------------------------------------------------------
 
-def midi_autoconnect(force=False):
-	global last_hw_str
+def check_for_changed_midi_ports():
+	"""Check if physical (hardware) interfaces have changed, e.g. USB plug"""
+
+	global last_hw_str, deferred_midi_connect, deferred_audio_connect
+	hw_str = "" # Hardware device fingerprint
+	hw_src_ports = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
+	for hw in hw_src_ports:
+		hw_str += hw.name + "\n"
+	hw_dst_ports = jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
+	for hw in hw_dst_ports:
+		hw_str += hw.name + "\n"
+	if hw_str != last_hw_str:
+		last_hw_str = hw_str
+		deferred_midi_connect = True
+	if deferred_midi_connect:
+		midi_autoconnect()
+	if deferred_audio_connect:
+		audio_autoconnect()
+
+
+def midi_autoconnect():
+	"""Connect all expected MIDI routes"""
 
 	#Get Mutex Lock 
-	acquire_lock()
+	if not acquire_lock():
+		return
+	
+	global deferred_midi_connect
+	deferred_midi_connect = False
 
 	#logger.info("ZynAutoConnect: MIDI ...")
 
@@ -208,19 +196,6 @@ def midi_autoconnect(force=False):
 				enabled_nw_src_ports.append(ports[0])
 		except:
 			pass
-
-	if not force:
-		# Check if physical (hardware) interfaces have changed, e.g. USB plug
-		hw_str = "" # Hardware device fingerprint
-		for hw in hw_src_ports:
-			hw_str += hw.name + "\n"
-		for hw in hw_dst_ports:
-			hw_str += hw.name + "\n"
-		if hw_str == last_hw_str:
-			release_lock() # Release Mutex Lock
-			return
-		else:
-			last_hw_str = hw_str
 	
 	# Chain MIDI routing
 	#TODO: Handle processors with multiple MIDI ports
@@ -388,13 +363,15 @@ def midi_autoconnect(force=False):
 	#Release Mutex Lock
 	release_lock()
 
-def audio_autoconnect(force=False):
-	if not force:
-		return
+def audio_autoconnect():
 
 	#Get Mutex Lock
-	acquire_lock()
+	if not acquire_lock():
+		return
 
+	global deferred_audio_connect
+	deferred_audio_connect = False
+	
 	# Get System Playback Ports
 	system_playback_ports = jclient.get_ports("system:playback", is_input=True, is_audio=True, is_physical=True)
 
@@ -427,6 +404,12 @@ def audio_autoconnect(force=False):
 	required_routes["zynmixer:input_17a"].add("zynseq:metronome")
 	required_routes["zynmixer:input_17b"].add("zynseq:metronome")
 
+	# Connect global audio player to aux
+	if state_manager.audio_player:
+		ports = jclient.get_ports(state_manager.audio_player.jackname, is_output=True, is_audio=True)
+		required_routes["zynmixer:input_17a"].add(ports[0].name)
+		required_routes["zynmixer:input_17b"].add(ports[1].name)
+
 	# Connect mixer to the System Output
 	try:
 		#TODO: Support configurable output routing
@@ -453,6 +436,13 @@ def audio_autoconnect(force=False):
 		if dst.startswith("effect_"):
 			required_routes.pop(dst)
 
+	# Replicate main output to headphones
+	hp_ports = jclient.get_ports("Headphones:playback", is_input=True, is_audio=True)
+	if len(hp_ports) >= 2:
+		required_routes[hp_ports[0]] = required_routes[system_playback_ports[0].name]
+		required_routes[hp_ports[1]] = required_routes[system_playback_ports[1].name]
+
+
 	# Connect and disconnect routes
 	for dst, sources in required_routes.items():
 		current_routes = jclient.get_all_connections(dst)
@@ -466,59 +456,16 @@ def audio_autoconnect(force=False):
 			except:
 				pass
 
-	# Replicate System Output connections to Headphones
-	hp_ports = jclient.get_ports("Headphones:playback", is_input=True, is_audio=True)
-	if len(hp_ports) >= 2:
-		replicate_connections_to(system_playback_ports[0], hp_ports[0])
-		replicate_connections_to(system_playback_ports[1], hp_ports[1])
-
 	#Release Mutex Lock
 	release_lock()
 
 
-def audio_connect_aux(source_name):
-	ports = jclient.get_ports(source_name, is_output=True, is_audio=True)
-	if ports:
-		try:
-			if len(ports) > 1:
-				jclient.connect(ports[0], "zynmixer:input_17a")
-				jclient.connect(ports[1], "zynmixer:input_17b")
-			else:
-				jclient.connect(ports[0], "zynmixer:input_17a")
-				jclient.connect(ports[0], "zynmixer:input_17b")
-		except Exception as e:
-			logging.error("Can't connect {} to audio aux ports".format(source_name), e)
-
-
-def audio_disconnect_sysout():
-	sysout_ports=jclient.get_ports("system", is_input=True, is_audio=True)
-	for sop in sysout_ports:
-		conports = jclient.get_all_connections(sop)
-		for cp in conports:
-			try:
-				jclient.disconnect(cp, sop)
-			except:
-				pass
-
-
-def get_layer_audio_out_ports(layer):
-	aout_ports = []
-	for p in layer.get_audio_out():
-		if p == "system":
-			aout_ports += ["system:playback_1", "system:playback_2"]
-		elif p == "mixer":
-			if layer.midi_chan >= 17:
-				aout_ports += ["zynmixer:return_a", "zynmixer:return_b"]
-			else:
-				aout_ports += [f"zynmixer:input_{layer.midi_chan + 1:02d}a", f"zynmixer:input_{layer.midi_chan + 1:02d}b"]
-		elif p == "mod-ui":
-			aout_ports += ["zynmixer:input_moduia", "zynmixer:input_moduib"]
-		else:
-			aout_ports.append(p)
-	return list(dict.fromkeys(aout_ports).keys()) 
-
-
 def get_audio_input_ports(exclude_system_playback=False):
+	"""Get list of audio destinations acceptable to be routed to
+
+	exclude_system_playback : True to exclude playback destinations
+	TODO : Used for side-chaining but could be done better
+	"""
 	res = OrderedDict()
 	try:
 		for aip in jclient.get_ports(is_input=True, is_audio=True, is_physical=False):
@@ -542,38 +489,48 @@ def get_audio_input_ports(exclude_system_playback=False):
 
 
 def get_audio_capture_ports():
+	"""Get list of hardware audio inputs"""
+
 	return jclient.get_ports("system", is_output=True, is_audio=True, is_physical=True)
 
 
-def get_audio_playback_ports():
-	ports = jclient.get_ports("zynmixer", is_input=True, is_audio=True, is_physical=False)
-	return ports + jclient.get_ports("system", is_input=True, is_audio=True, is_physical=True)
+def autoconnect():
+	"""Connect expected routes and disconnect unexpected routes"""
+	midi_autoconnect()
+	audio_autoconnect()
 
 
-def autoconnect(force=False):
-	midi_autoconnect(force)
-	audio_autoconnect(force)
+def port_change_check():
+	"""Thread to check for changed MIDI ports"""
 
-
-def autoconnect_thread():
 	while not exit_flag:
 		try:
-			autoconnect()
+			check_for_changed_midi_ports()
 		except Exception as err:
 			logger.error("ZynAutoConnect ERROR: {}".format(err))
 		sleep(refresh_time)
 
 
 def acquire_lock():
+	"""Acquire mutex lock
+	
+	Returns : True on success or False if lock not available
+	"""
+
 	#if log_level==logging.DEBUG:
 	#	calframe = inspect.getouterframes(inspect.currentframe(), 2)
 	#	logger.debug("Waiting for lock, requested from '{}'...".format(format(calframe[1][3])))
-	lock.acquire()
+	try:
+		lock.acquire()
+	except:
+		return False
 	#logger.debug("... lock acquired!!")
-
+	return True
 
 
 def release_lock():
+	"""Release mutex lock"""
+
 	#if log_level==logging.DEBUG:
 	#	calframe = inspect.getouterframes(inspect.currentframe(), 2)
 	#	logger.debug("Lock released from '{}'".format(calframe[1][3]))
@@ -584,7 +541,14 @@ def release_lock():
 
 
 def start(sm):
+	"""Initialise autoconnect and start MIDI port checker
+	
+	sm : State manager object
+	"""
+
 	global refresh_time, exit_flag, jclient, thread, lock, chain_manager, state_manager
+	if jclient:
+		return # Already started
 	refresh_time = 2
 	exit_flag = False
 	state_manager = sm
@@ -600,41 +564,64 @@ def start(sm):
 	# Create Lock object (Mutex) to avoid concurrence problems
 	lock = Lock()
 
-	# Start Autoconnect Thread
-	thread = Thread(target=autoconnect_thread, args=())
+	# Start port change checking thread
+	thread = Thread(target=port_change_check, args=())
 	thread.daemon = True # thread dies with the program
-	thread.name = "autoconnect"
+	thread.name = "MIDI port change"
 	thread.start()
 
 
 def stop():
-	global exit_flag
+	"""Reset state and stop MIDI port checker"""
+
+	global exit_flag, jclient, thread, lock
 	exit_flag = True
-	acquire_lock()
-	audio_disconnect_sysout()
-	release_lock()
-	jclient.deactivate()
+	thread = None
+	if acquire_lock():
+		release_lock()
+		lock = None
+	if jclient:
+		jclient.deactivate()
+		jclient = None
 
 
 def is_running():
+	"""Check if port checker thread is running
+	
+	Returns : True if running"""
+
 	global thread
-	return thread.is_alive()
+	if thread:
+		return thread.is_alive()
+	return False
 
 
 def cb_jack_xrun(delayed_usecs: float):
-	logger.warning("Jack Audio XRUN! => delayed {}us".format(delayed_usecs))
+	"""Jack xrun callback
+	delayed_usecs : Period of delay caused by last jack xrun
+	"""
+
+	global xruns
+	xruns += 1
+	logger.warning(f"Jack Audio XRUN! =>count: {xruns}, delay: {delayed_usecs}us")
 	state_manager.status_info['xrun'] = True
 
 
 def get_jackd_cpu_load():
+	"""Get the JACK CPU load"""
+
 	return jclient.cpu_load()
 
 
 def get_jackd_samplerate():
+	"""Get JACK samplerate"""
+
 	return jclient.samplerate
 
 
 def get_jackd_blocksize():
+	"""Get JACK block size"""
+
 	return jclient.blocksize
 
 

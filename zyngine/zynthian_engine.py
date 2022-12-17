@@ -432,7 +432,6 @@ class zynthian_engine(zynthian_basic_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
-		return True
 		if isinstance(preset[1], int):
 			self.state_manager.zynmidi.set_midi_prg(layer.get_midi_chan(), preset[1])
 		else:

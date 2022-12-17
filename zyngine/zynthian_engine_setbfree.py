@@ -24,7 +24,7 @@
 
 import re
 import logging
-import pexpect
+from zyngine.zynthian_processor import zynthian_processor
 
 from . import zynthian_engine
 
@@ -204,13 +204,22 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.reset()
 
 
-	def generate_config_file(self, midi_chans):
+	def generate_config_file(self, chans):
+		midi_chans = chans.copy()
 		# Get user's config
 		try:
 			with open(self.config_my_fpath, 'r') as my_cfg_file:
 				my_cfg_data=my_cfg_file.read()
 		except:
 			my_cfg_data=""
+		
+		# Dummy MIDI channel to use for disabled manual
+		for disabled_midi_chan in range(16):
+			if disabled_midi_chan not in midi_chans:
+				break
+		for i in range(len(midi_chans)):
+			if midi_chans[i] is None:
+				midi_chans[i] = disabled_midi_chan
 
 		# Generate on-the-fly config
 		with open(self.config_tpl_fpath, 'r') as cfg_tpl_file:
@@ -230,7 +239,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 	def get_name(self, layer):
 		res = self.name
-		chan_name = self.get_chan_name(layer.get_midi_chan())
+		chan_name = self.get_chan_name(layer.midi_chan)
 		if chan_name:
 			res = res + '/' + chan_name
 		return res
@@ -249,6 +258,23 @@ class zynthian_engine_setbfree(zynthian_engine):
 			pass
 			#path += "/" + self.tonewheel_model
 		return path
+
+	def del_layer(self, layer):
+		try:
+			if layer.bank_name == "Lower":
+				self.midi_chans[1] = None
+				self.manuals_config[4][0] = False
+			elif layer.bank_name == "Pedals":
+				self.midi_chans[2] = None
+				self.manuals_config[4][1] = False
+			elif layer.bank_name == "Upper":
+				self.layers = [] #TODO: Need to remove chains
+				return
+			self.chan_names.pop(str(layer.midi_chan))
+		except:
+			pass
+		self.layers.remove(layer)
+		layer.jackname = None
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
@@ -292,8 +318,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 			self.tonewheel_model = bank[0]
 
 		if not self.proc:
+			chain_manager = self.state_manager.chain_manager
 			ch = self.layers[0].get_midi_chan()
-			self.midi_chans = [ch, 15, 15]
+			self.midi_chans = [ch, None, None]
 			self.chan_names = {
 				str(ch): 'Upper'
 			}
@@ -307,16 +334,25 @@ class zynthian_engine_setbfree(zynthian_engine):
 			# Extra layers
 			if self.manuals_config[4][0]:
 				i += 1
-				if len(self.layers)==i:
+				if len(self.layers) == i:
 					try:
-						ch = self.state_manager.screens['layer'].get_next_free_midi_chan(ch)
-						logging.info("Lower Manual Layer in chan {}".format(ch))
-						self.state_manager.screens['layer'].add_layer_midich(ch, False)
-						self.layers[i].bank_name = "Lower"
-						self.layers[i].load_bank_list()
-						self.layers[i].set_bank(0)
+						ch = chain_manager.get_next_free_midi_chan(ch)
 						self.midi_chans[1] = ch
 						self.chan_names[str(ch)] = "Lower"
+						logging.info("Lower Manual Layer in chan {}".format(ch))
+						chain_id = f"{ch + 1:02d}"
+						chain = chain_manager.add_chain(chain_id, ch)
+						proc_id = chain_manager.get_available_processor_id()
+						processor = zynthian_processor("BF", chain_manager.engine_info["BF"], proc_id)
+						chain.insert_processor(processor)
+						chain_manager.processors[proc_id] = processor
+						self.layers.append(processor)
+						self.layers[i].bank_name = "Lower"
+						self.layers[i].engine = self
+						self.layers[i].load_bank_list()
+						self.layers[i].set_bank(0)
+						self.layers[i].refresh_controllers()
+						chain.audio_out = []
 					except Exception as e:
 						logging.error("Lower Manual Layer can't be added! => {}".format(e))
 				else:
@@ -329,14 +365,23 @@ class zynthian_engine_setbfree(zynthian_engine):
 				if len(self.layers)==i:
 					try:
 						# Adding Pedal Layer
-						ch = self.state_manager.screens['layer'].get_next_free_midi_chan(ch)
-						logging.info("Pedal Layer in chan {}".format(ch))
-						self.state_manager.screens['layer'].add_layer_midich(ch, False)
-						self.layers[i].bank_name = "Pedals"
-						self.layers[i].load_bank_list()
-						self.layers[i].set_bank(0)
+						ch = chain_manager.get_next_free_midi_chan(ch)
 						self.midi_chans[2] = ch
 						self.chan_names[str(ch)] = "Pedals"
+						logging.info("Pedal Layer in chan {}".format(ch))
+						chain_id = f"{ch + 1:02d}"
+						chain = chain_manager.add_chain(chain_id, ch)
+						proc_id = chain_manager.get_available_processor_id()
+						processor = zynthian_processor("BF", chain_manager.engine_info["BF"], proc_id)
+						chain.insert_processor(processor)
+						chain_manager.processors[proc_id] = processor
+						self.layers.append(processor)
+						self.layers[i].bank_name = "Pedals"
+						self.layers[i].engine = self
+						self.layers[i].load_bank_list()
+						self.layers[i].set_bank(0)
+						self.layers[i].refresh_controllers()
+						chain.audio_out = []
 					except Exception as e:
 						logging.error("Pedal Layer can't be added! => {}".format(e))
 				else:
@@ -355,8 +400,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 			if midi_prog and isinstance(midi_prog, int):
 				logging.debug("Loading manuals configuration program: {}".format(midi_prog))
 				self.state_manager.zynmidi.set_midi_prg(self.midi_chans[0], midi_prog)
-
-			#self.state_manager.screens['layer'].fill_list()
+			chain_manager.set_active_chain_by_id(f"{self.midi_chans[0] + 1:02d}")
 
 			return True
 
@@ -414,8 +458,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 				zctrl.set_value(v, True)
 
 				#Refresh GUI controller in screen when needed ...
-				if self.state_manager.current_screen=='control':
-					self.state_manager.screens['control'].set_controller_value(zctrl)
+				#if self.state_manager.current_screen=='control':
+				#TODO:	self.state_manager.screens['control'].set_controller_value(zctrl)
 
 			except Exception as e:
 				logging.debug("Can't update controller '{}' => {}".format(zcsymbol,e))
@@ -435,10 +479,10 @@ class zynthian_engine_setbfree(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_bank_dir(self, layer):
-		bank_dir=self.base_dir+"/pgm-banks"
-		chan_name=self.get_chan_name(layer.get_midi_chan())
+		bank_dir = self.base_dir+"/pgm-banks"
+		chan_name = self.get_chan_name(layer.get_midi_chan())
 		if chan_name:
-			bank_dir=bank_dir+'/'+chan_name
+			bank_dir = bank_dir + '/' + chan_name
 		return bank_dir
 
 

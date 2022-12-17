@@ -219,8 +219,6 @@ class zynthian_processor:
                 set_engine_needed = False
                 logging.info("Bank already selected: %s (%d)" % (self.bank_name, i))
 
-            last_bank_index = self.bank_index
-            last_bank_name = self.bank_name
             self.bank_index = i
             self.bank_name = bank_name
             self.bank_info = copy.deepcopy(self.bank_list[i])
@@ -230,6 +228,20 @@ class zynthian_processor:
 
         return False
 
+
+    def set_bank_by_info(self, bank_info, set_engine=True):
+        try:
+            self.bank_name = bank_info[2]
+            self.bank_id = bank_info[0]
+            self.bank_info = copy.deepcopy(bank_info)
+            for i in range(len(self.bank_list)):
+                if self.bank_name == self.bank_list[i][2]:
+                    self.bank_index = i
+                    break
+        except:
+            pass
+        if set_engine:
+            return self.engine.set_bank(self, self.bank_info)
 
     def set_bank_by_name(self, bank_name, set_engine=True):
         """Set processor's engine bank by name
@@ -321,12 +333,12 @@ class zynthian_processor:
 
             # Remove favorite marker char
             if preset_name[0]=='❤':
-                preset_name=preset_name[1:]
+                preset_name = preset_name[1:]
 
             # Check if preset is in favorites pseudo-bank and set real bank if needed
             if preset_id in self.engine.preset_favs:
                 bank_name = self.engine.preset_favs[preset_id][0][2]
-                if bank_name!=self.bank_name:
+                if bank_name != self.bank_name:
                     self.set_bank_by_name(bank_name)
 
             # Check if force set engine
@@ -720,10 +732,16 @@ class zynthian_processor:
         state - Processor state
         """
 
-        self.load_bank_list()
+        try:
+            self.load_bank_list()
+        except:
+            pass
         if state["bank_info"]:
-            self.set_bank_by_id(state["bank_info"][0])
-        self.load_preset_list()
+            self.set_bank_by_info(state["bank_info"])
+        try:
+            self.load_preset_list()
+        except:
+            pass
         if state["preset_info"]:
             self.set_preset_by_id(state["preset_info"][0])
         # Set controller values
