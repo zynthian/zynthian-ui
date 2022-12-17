@@ -127,8 +127,8 @@ class zynthian_engine_puredata(zynthian_engine):
 		self.start()
 		self.refresh_all()
 		sleep(0.5)
-		self.state_manager.zynautoconnect_midi(True)
-		self.state_manager.zynautoconnect_audio(False)
+		self.state_manager.autoconnect_midi(True)
+		self.state_manager.autoconnect_audio(False)
 		layer.send_ctrl_midi_cc()
 		return True
 

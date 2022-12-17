@@ -332,8 +332,8 @@ class zynthian_engine_aeolus(zynthian_engine):
 		if self.fix_config() or not self.proc:
 			self.stop()
 			self.start()
-			self.state_manager.zynautoconnect_midi(True)
-			self.state_manager.zynautoconnect_audio()
+			self.state_manager.autoconnect_midi(True)
+			self.state_manager.autoconnect_audio()
 			self.layers[0].load_bank_list()
 			self.layers[0].reset_bank()
 			

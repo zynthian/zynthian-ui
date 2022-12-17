@@ -261,15 +261,14 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 	def del_layer(self, layer):
 		try:
-			if layer.bank_name == "Lower":
+			if layer.bank_name == "Upper":
+				self.midi_chans[0] = None
+			elif layer.bank_name == "Lower":
 				self.midi_chans[1] = None
 				self.manuals_config[4][0] = False
 			elif layer.bank_name == "Pedals":
 				self.midi_chans[2] = None
 				self.manuals_config[4][1] = False
-			elif layer.bank_name == "Upper":
-				self.layers = [] #TODO: Need to remove chains
-				return
 			self.chan_names.pop(str(layer.midi_chan))
 		except:
 			pass
@@ -393,8 +392,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 			logging.debug("STARTING SETBFREE!!")
 			self.generate_config_file(self.midi_chans)
 			self.start()
-			self.state_manager.zynautoconnect_midi(True)
-			self.state_manager.zynautoconnect_audio()
+			self.state_manager.autoconnect_midi(True)
+			self.state_manager.autoconnect_audio()
 
 			midi_prog = self.manuals_config[4][2]
 			if midi_prog and isinstance(midi_prog, int):

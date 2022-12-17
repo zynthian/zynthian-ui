@@ -88,7 +88,7 @@ class zynthian_state_manager:
             self.zynmidi = None
 
         self.exit_flag = False
-        self.start_thread()
+        #TODO: We may need this in future... self.start_thread()
         self.reset()
 
     def reset(self):
@@ -101,18 +101,21 @@ class zynthian_state_manager:
         zynautoconnect.start(self)
         self.autoconnect(True)
 
-
     #------------------------------------------------------------------
     # Background task thread
     #------------------------------------------------------------------
 
     def start_thread(self):
+        """Start a thread to run background tasks"""
+
         self.thread = Thread(target=self.thread_task, args=())
         self.thread.name = "Status Manager MIDI"
         self.thread.daemon = True # thread dies with the program
         self.thread.start()
 
     def thread_task(self):
+        """Perform background tasks"""
+
         while not self.exit_flag:
             pass
             sleep(0.2)

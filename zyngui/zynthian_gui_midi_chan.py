@@ -114,7 +114,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 
 		elif self.mode=='SET':
 			self.zyngui.chain_manager.set_midi_chan(self.zyngui.chain_manager.active_chain_id, selchan)
-			self.zyngui.state_manager.zynautoconnect_midi()
+			self.zyngui.state_manager.autoconnect_midi()
 			self.zyngui.screens['audio_mixer'].refresh_visible_strips()
 			self.zyngui.close_screen()
 

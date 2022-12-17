@@ -14,7 +14,4 @@ class zyn_headless:
         self.state_manager.init_midi_services()
         self.state_manager.zynautoconnect()
 
-	    # Run autoconnect if needed
-        self.state_manager.zynautoconnect_do()
-
 zh = zyn_headless()
