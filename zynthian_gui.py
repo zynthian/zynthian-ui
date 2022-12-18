@@ -853,6 +853,9 @@ class zynthian_gui:
 				for midi_chan in range(4):
 					chain_id = self.chain_manager.add_chain(None, midi_chan)
 					self.chain_manager.add_processor(chain_id, "AE")
+					if midi_chan:
+						chain = self.chain_manager.get_chain(chain_id)
+						chain.set_mixer_chan(None)
 				self.add_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
 				self.chain_control("00")
 				return
