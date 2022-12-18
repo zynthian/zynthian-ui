@@ -259,8 +259,6 @@ def midi_autoconnect():
 						dst = dst_ports[0]
 						required_routes[dst.name].add(src.name)
 
-	#TODO Feedback ports
-
 	# Add MIDI Input Devices
 	for src in enabled_hw_src_ports:
 		devnum = None
@@ -307,11 +305,14 @@ def midi_autoconnect():
 	except:
 		pass
 
-	#Connect Engine's Controller-FeedBack to ZynMidiRouter:ctrl_in
-	"""TODO
-	for efbp in engines_fb:
-		required_routes["ZynMidiRouter:ctrl_in"].add(efbp)
-	"""
+	# Add MIDI synth engine's controller-feedback to ZynMidiRouter:ctrl_in
+	for processor in chain_manager.processors.values():
+		if processor.type == "MIDI Synth":
+			try:
+				ports = jclient.get_ports(processor.get_jackname(True), is_midi=True, is_output=True)
+				required_routes["ZynMidiRouter:ctrl_in"].add(ports[0].name)
+			except:
+				pass
 
 	if zynthian_gui_config.midi_filter_output:
 		# Add MIDI OUT
