@@ -114,14 +114,19 @@ class zynthian_chain_manager():
         enable_midi_thru=False, enable_audio_thru=False):
         """Add a chain
 
-        chain_id: UID of chain
+        chain_id: UID of chain (None to get next available)
         midi_chan : MIDI channel associated with chain
         enable_midi_thru : True to enable MIDI thru for empty chain (Default: False)
         enable_audio_thru : True to enable audio thru for empty chain (Default: False)
-        Returns : Chain object or None if chain could not be created
-        #TODO: Rationalise chain id (currently: "00".."15", "aux", "main")
+        Returns : Chain ID or None if chain could not be created
         """
 
+        if chain_id is None:
+            # Create new unique chain ID
+            id = 0
+            while f"{id:02}" in self.chains:
+                id += 1
+            chain_id = f"{id:02}"
         if chain_id == "main":
             enable_midi_thru = False
             enable_audio_thru = True
@@ -129,8 +134,6 @@ class zynthian_chain_manager():
             self.chains[chain_id].midi_thru = enable_midi_thru
             self.chains[chain_id].audio_thru = enable_audio_thru
             return self.chains[chain_id]
-        if chain_id in self.chains:
-            chain = self.chains[chain_id]
         else:
             chain = zynthian_chain(midi_chan, enable_midi_thru, enable_audio_thru)
             if chain:
@@ -140,9 +143,10 @@ class zynthian_chain_manager():
             self.midi_chan_2_chain[midi_chan] = chain
         if enable_audio_thru:
             chain.midi_chan = None #TODO: Validate this is okay
+            chain.set_mixer_chan(self.get_next_free_mixer_chan())
         self.set_active_chain_by_id(chain_id)
         self.state_manager.autoconnect(True)
-        return chain
+        return chain_id
 
     def remove_chain(self, chain_id, stop_engines=True):
         """Removes a chain or resets "main" chain
@@ -211,6 +215,36 @@ class zynthian_chain_manager():
         if chain_id in self.chains:
             return self.chains[chain_id]
         return None
+
+    def get_chain_id_by_processor(self, processor):
+        """Get ID of chain that contains processor
+        
+        processor : Processor object
+        Returns : Chain ID or None if not found
+        """
+
+        for chain_id in self.chains:
+            for proc in self.get_processors(chain_id):
+                if processor == proc:
+                    return chain_id
+
+    def get_chain_ids_ordered(self, include_main=False):
+        """Get list of chain IDs in mixer & midi channel order
+        
+        include_main : True to include "main" (Default: False)
+        """
+
+        chains = {}
+        for chain_id, chain in self.chains.items():
+            if chain_id != "main":
+                chains[f"{chain.midi_chan} {chain.mixer_chan}"] = chain_id
+        sorted_keys = sorted(chains)
+        ret_val = []
+        for key in sorted_keys:
+            ret_val.append(chains[key])
+        if include_main:
+            ret_val.append("main")
+        return ret_val
 
     # ------------------------------------------------------------------------
     # Chain Input/Output and Routing Management
@@ -343,10 +377,15 @@ class zynthian_chain_manager():
         try:
             chain = self.chains[chain_id]
             self.active_chain_id = chain_id
+            # Update active MIDI channel
             midi_chan = chain.midi_chan
             if isinstance(midi_chan, int) and midi_chan < 16:
                 get_lib_zyncore().set_midi_active_chan(midi_chan)
             else:
+                # Check if currently selected channel is valid
+                midi_chan = get_lib_zyncore().get_midi_active_chan()
+                if midi_chan >= 0 and midi_chan < 16 and self.midi_chan_2_chain[midi_chan]:
+                    return
                 # Find a MIDI chain
                 for chain in self.chains.values():
                     if chain.is_midi():
@@ -376,7 +415,7 @@ class zynthian_chain_manager():
         Returns : Index of selected chain
         """
 
-        chain_keys = sorted(self.chains)
+        chain_keys = self.get_chain_ids_ordered(True)
         try:
             index = chain_keys.index(self.active_chain_id) + nudge
         except:
@@ -469,6 +508,9 @@ class zynthian_chain_manager():
         processor = zynthian_processor(type, self.engine_info[type], proc_id)
         chain = self.chains[chain_id]
         if chain.insert_processor(processor, parallel, slot):
+            if chain.mixer_chan is None and processor.type != "MIDI Tool":
+                chain.mixer_chan = self.get_next_free_mixer_chan()
+
             engine = self.start_engine(processor, type)
             if engine:
                 chain.rebuild_graph()
@@ -687,7 +729,8 @@ class zynthian_chain_manager():
             if 'audio_thru' in chain_state:
                 audio_thru = chain_state['audio_thru']
                 del chain_state['audio_thru']
-            chain = self.add_chain(chain_id, midi_chan, midi_thru, audio_thru)
+            self.add_chain(chain_id, midi_chan, midi_thru, audio_thru)
+            chain = self.get_chain(chain_id)
             if chain:
                 chain.set_state(chain_state)
 
@@ -773,25 +816,47 @@ class zynthian_chain_manager():
             pass
         self.midi_chan_2_chain[midi_chan] = chain
 
-    def get_free_midi_chans(self):
-        """Get list of unused mixer and MIDI channels
-        
-        TODO: Support separate midi/mixer channel
-        """
+    def get_free_mixer_chans(self):
+        """Get list of unused mixer channels"""
 
         free_chans = list(range(16))
         for chain in self.chains:
             try:
                 free_chans.remove(self.chains[chain].mixer_chan)
+            except:
+                pass
+        return free_chans
+
+    def get_next_free_mixer_chan(self, chan=0):
+        """Get next unused mixer channel
+        
+        chan : mixer channel to search from (Default: 0)
+        """
+
+        free_chans = self.get_free_mixer_chans()
+        for i in range(chan, 16):
+            if i in free_chans:
+                return i
+        for i in range(chan):
+            if i in free_chans:
+                return i
+        raise Exception("No available free mixer channels!")
+
+    def get_free_midi_chans(self):
+        """Get list of unused MIDI channels"""
+
+        free_chans = list(range(16))
+        for chain in self.chains:
+            try:
                 free_chans.remove(self.chains[chain].midi_chan)
             except:
                 pass
         return free_chans
 
-    def get_next_free_midi_chan(self, chan):
+    def get_next_free_midi_chan(self, chan=0):
         """Get next unused MIDI channel
         
-        chan : MIDI channel to search from
+        chan : MIDI channel to search from (Default: 0)
         """
 
         free_chans = self.get_free_midi_chans()

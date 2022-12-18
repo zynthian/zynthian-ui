@@ -340,10 +340,10 @@ class zynthian_gui:
 
 			# Active Chain
 			# => Light non-empty chains
+			chain_ids = self.chain_manager.get_chain_ids_ordered()
 			for i in range(6):
-				chain_name = "{:02d}".format(1 + i)
-				if chain_name in self.chain_manager.chains:
-					if chain_name == self.chain_manager.active_chain_id:
+				if i < len(chain_ids):
+					if chain_ids[i] == self.chain_manager.active_chain_id:
 						if self.current_screen == "control":
 							self.wsleds.setPixelColor(1 + i, self.wscolor_active)
 						else:
@@ -353,7 +353,7 @@ class zynthian_gui:
 				else:
 					self.wsleds.setPixelColor(1 + i, self.wscolor_off)
 			# => Light FX layer if not empty
-			if "main" in self.chain_manager.chains:
+			if self.chain_manager.get_processor_count("main"):
 				self.wsleds.setPixelColor(7, self.wscolor_light)
 			else:
 				self.wsleds.setPixelColor(7, self.wscolor_off)
@@ -832,13 +832,12 @@ class zynthian_gui:
 
 		if "midi_chan" in self.add_chain_status:
 			# We know the MIDI channel so create a new chain and processor
-			chain_id = f"{self.add_chain_status['midi_chan'] + 1:02d}"
 			if "midi_thru" not in  self.add_chain_status:
 				self.add_chain_status["midi_thru"] = False
 			if "audio_thru" not in  self.add_chain_status:
 				self.add_chain_status["audio_thru"] = False
-			self.chain_manager.add_chain(
-				chain_id,
+			chain_id = self.chain_manager.add_chain(
+				None,
 				self.add_chain_status["midi_chan"],
 				self.add_chain_status["midi_thru"],
 				self.add_chain_status["audio_thru"])
@@ -852,8 +851,7 @@ class zynthian_gui:
 			if self.add_chain_status["engine"] == 'AE':
 				#TODO: Handle Aeolus same as other engines
 				for midi_chan in range(4):
-					chain_id = f"{midi_chan + 1:02d}"
-					self.chain_manager.add_chain(chain_id, midi_chan)
+					chain_id = self.chain_manager.add_chain(None, midi_chan)
 					self.chain_manager.add_processor(chain_id, "AE")
 				self.add_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
 				self.chain_control("00")
@@ -1438,27 +1436,41 @@ class zynthian_gui:
 
 
 	def cuia_chain_control(self, params=None):
-		if params:
+		chain_id = None
+		try:
+			# Select chain by index
+			index = params[0]
+			if index == 0:
+				chain_id = "main"
+			else:
+				chain_id = self.chain_manager.get_chain_ids_ordered()[params[0] - 1]
+		except:
 			try:
-				self.chain_control("{:02}".format(params[0]))
+				# Select chain by ID
+				chain_id = params[0]
 			except:
-				self.chain_control(params[0])
-		else:
-			self.chain_control()
+				pass
+		self.chain_control(chain_id)
 
 
 	def cuia_chain_options(self, params):
+		chain_id = None
 		try:
-			if params:
-				try:
-					self.chain_manager.set_active_chain_by_id("{:02}".format(params[0]))
-					self.screens['chain_options'].setup("{:02}".format(params[0]))
-				except:
-					self.chain_manager.set_active_chain_by_id(params[0])
-					self.screens['chain_options'].setup(params[0])
+			# Select chain by index
+			index = params[0]
+			if index == 0:
+				chain_id = "main"
+			else:
+				chain_id = self.chain_manager.get_chain_ids_ordered()[params[0] - 1]
+		except:
+			try:
+				# Select chain by ID
+				chain_id = params[0]
+			except:
+				pass
+		if chain_id is not None:
+			self.screens['chain_options'].setup(chain_id)
 			self.toggle_screen('chain_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
-		except Exception as e:
-			logging.warning("Can't show options for layer ({})! => {}".format(params,e))
 
 
 	def cuia_bank_preset(self, params=None):

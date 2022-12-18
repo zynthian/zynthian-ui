@@ -63,7 +63,7 @@ class zynthian_chain:
         self.audio_slots = []  # Audio subchain (list of lists of processors)
         self.synth_slots = [] # Synth/generator/special slots (should be single slot)
         self.midi_chan = midi_chan  # Chain's MIDI channel - may be None for purly audio chain
-        self.mixer_chan = midi_chan # Mixer channel to connect audio output
+        self.mixer_chan = None
         self.midi_thru = enable_midi_thru # True to pass MIDI if chain empty
         self.audio_thru = enable_audio_thru # True to pass audio if chain empty
         self.status = "" # Arbitary status text
@@ -72,7 +72,7 @@ class zynthian_chain:
 
     def reset(self):
         """ Resets chain, removing all processors
-        
+
         types : list of processor types for pass-through
         stop_engines : True to stop unused engines
         Does not change midi/audio thru
@@ -96,7 +96,7 @@ class zynthian_chain:
 
     def get_slots_by_type(self, type):
         """Get the list of slots
-        
+
         type : Processor tye
         Returns : Slot list object
         """
@@ -111,17 +111,26 @@ class zynthian_chain:
     # Chain Management
     # ----------------------------------------------------------------------------
 
-    def set_midi_chan(self, midi_chan):
+    def set_mixer_chan(self, chan):
+        """Set chain mixer channel
+
+        chan : Mixer channel 0..15 or None
+        """
+
+        self.mixer_chan = chan
+        self.rebuild_audio_graph()
+
+    def set_midi_chan(self, chan):
         """Set chain (and its processors) MIDI channel
-        
-        midi_chan : MIDI channel 0..15 or None
+
+        chan : MIDI channel 0..15 or None
         """
 
         if self.midi_chan == get_lib_zyncore().get_midi_active_chan():
-            get_lib_zyncore().set_midi_active_chan(midi_chan)
-        self.midi_chan = midi_chan
+            get_lib_zyncore().set_midi_active_chan(chan)
+        self.midi_chan = chan
         for processor in self.get_processors():
-            processor.set_midi_chan(midi_chan)
+            processor.set_midi_chan(chan)
 
     def get_title(self):
         try:
@@ -218,6 +227,7 @@ class zynthian_chain:
 
     def rebuild_graph(self):
         """Build dictionary of lists of destinations mapped by source"""
+
         self.rebuild_midi_graph()
         self.rebuild_audio_graph()
 
@@ -265,6 +275,7 @@ class zynthian_chain:
 
     def toggle_audio_in(self, jackname):
         """Toggle processor audio in"""
+
         audio_in = self.get_audio_in()
         if jackname not in audio_in:
             audio_in.append(jackname)
@@ -296,10 +307,12 @@ class zynthian_chain:
 
     def is_audio(self):
         """Returns True if chain is processes audio"""
-        return self.audio_thru or len(self.audio_slots) > 0 or len(self.synth_slots) > 0
+
+        return self.mixer_chan is not None# or self.audio_thru or len(self.audio_slots) > 0 or len(self.synth_slots) > 0
 
     def is_midi(self):
         """Returns True if chain processes MIDI"""
+
         return self.midi_thru or len(self.midi_slots) + len(self.synth_slots) > 0
 
     # ---------------------------------------------------------------------------
@@ -467,7 +480,7 @@ class zynthian_chain:
 
     def remove_all_processors(self):
         """Remove all processors from chain
-        
+
         stop_engines : True to stop the processors' worker engines
         """
 
@@ -547,7 +560,7 @@ class zynthian_chain:
 
     def get_state(self):
         """List of slot states
-        
+
         Each list entry is a list of processor states
         """
 
@@ -629,7 +642,7 @@ class zynthian_chain:
 
     def get_note_range_state(self, midi_chan):
         """Get note range
-        
+
         midi_chan : MIDI channel to filter
         Returns : Note range state model dictionary
         """
@@ -658,7 +671,7 @@ class zynthian_chain:
 
     def set_clone_cc(self, chan_from, chan_to, cc):
         """Set MIDI clone
-        
+
         chan_from : MIDI channel to clone from
         chan_to : MIDI channel to clone to
         cc : MIDI CC number to clone

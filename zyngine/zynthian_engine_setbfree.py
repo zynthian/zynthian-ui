@@ -39,13 +39,10 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	bank_manuals_list = [
-		['Upper', 0, 'Upper', '_', [False, False, 59]],
-		['Lower + Upper', 1, 'Lower + Upper', '_', [True, False, 59]],
-		['Pedals + Upper', 2, 'Pedals + Upper', '_', [False, True, 59]],
-		['Pedals + Lower + Upper', 3, 'Pedals + Lower + Upper', '_', [True, True, 59]],
-		['Split: Lower + Upper', 4, 'Split Lower + Upper', '_', [True, False, 56]],
-		['Split: Pedals + Upper', 5, 'Split Pedals + Upper', '_', [False, True, 58]],
-		['Split: Pedals + Lower + Upper', 6, 'Split Pedals + Lower + Upper', '_', [True, True, 57]]
+		['Upper', 0, 'Upper', '_', [False, False]],
+		['Upper + Lower', 1, 'Upper + Lower', '_', [True, False]],
+		['Upper + Pedals', 2, 'Upper + Pedals', '_', [False, True]],
+		['Upper + Lower + Pedals', 3, 'Upper + Lower + Pedals', '_', [True, True]]
 	]
 
 
@@ -213,8 +210,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 		except:
 			my_cfg_data=""
 		
-		# Dummy MIDI channel to use for disabled manual
-		for disabled_midi_chan in range(16):
+		# Dummy MIDI channel to use for disabled manuals
+		for disabled_midi_chan in range(15, -1, -1):
 			if disabled_midi_chan not in midi_chans:
 				break
 		for i in range(len(midi_chans)):
@@ -323,70 +320,43 @@ class zynthian_engine_setbfree(zynthian_engine):
 			self.chan_names = {
 				str(ch): 'Upper'
 			}
-
-			logging.info("Upper Layer in chan {}".format(ch))
+			logging.info("Upper Layer in chan %d", ch)
 			i = 0
 			self.layers[i].bank_name = "Upper"
 			self.layers[i].load_bank_list()
 			self.layers[i].set_bank(0)
 
 			# Extra layers
-			if self.manuals_config[4][0]:
-				i += 1
-				if len(self.layers) == i:
-					try:
-						ch = chain_manager.get_next_free_midi_chan(ch)
-						self.midi_chans[1] = ch
-						self.chan_names[str(ch)] = "Lower"
-						logging.info("Lower Manual Layer in chan {}".format(ch))
-						chain_id = f"{ch + 1:02d}"
-						chain = chain_manager.add_chain(chain_id, ch)
-						proc_id = chain_manager.get_available_processor_id()
-						processor = zynthian_processor("BF", chain_manager.engine_info["BF"], proc_id)
-						chain.insert_processor(processor)
-						chain_manager.processors[proc_id] = processor
-						self.layers.append(processor)
-						self.layers[i].bank_name = "Lower"
-						self.layers[i].engine = self
-						self.layers[i].load_bank_list()
-						self.layers[i].set_bank(0)
-						self.layers[i].refresh_controllers()
-						chain.audio_out = []
-					except Exception as e:
-						logging.error("Lower Manual Layer can't be added! => {}".format(e))
-				else:
-					ch = self.layers[i].get_midi_chan()
-					self.midi_chans[1] = ch
-					self.chan_names[str(ch)] = "Lower"
-
-			if self.manuals_config[4][1]:
-				i += 1
-				if len(self.layers)==i:
-					try:
-						# Adding Pedal Layer
-						ch = chain_manager.get_next_free_midi_chan(ch)
-						self.midi_chans[2] = ch
-						self.chan_names[str(ch)] = "Pedals"
-						logging.info("Pedal Layer in chan {}".format(ch))
-						chain_id = f"{ch + 1:02d}"
-						chain = chain_manager.add_chain(chain_id, ch)
-						proc_id = chain_manager.get_available_processor_id()
-						processor = zynthian_processor("BF", chain_manager.engine_info["BF"], proc_id)
-						chain.insert_processor(processor)
-						chain_manager.processors[proc_id] = processor
-						self.layers.append(processor)
-						self.layers[i].bank_name = "Pedals"
-						self.layers[i].engine = self
-						self.layers[i].load_bank_list()
-						self.layers[i].set_bank(0)
-						self.layers[i].refresh_controllers()
-						chain.audio_out = []
-					except Exception as e:
-						logging.error("Pedal Layer can't be added! => {}".format(e))
-				else:
-					ch = self.layers[i].get_midi_chan()
-					self.midi_chans[2] = ch
-					self.chan_names[str(ch)] = "Pedals"
+			for j in range(2):
+				manual = ["Lower", "Pedals"][j]
+				if self.manuals_config[4][j]:
+					i += 1
+					if len(self.layers) == i:
+						try:
+							ch = chain_manager.get_next_free_midi_chan(ch)
+							self.midi_chans[j + 1] = ch
+							self.chan_names[str(ch)] = manual
+							logging.info("%s Manual Layer in chan %s", manual, ch)
+							chain_id = chain_manager.add_chain(None, ch)
+							chain = chain_manager.get_chain(chain_id)
+							proc_id = chain_manager.get_available_processor_id()
+							processor = zynthian_processor("BF", chain_manager.engine_info["BF"], proc_id)
+							chain.insert_processor(processor)
+							chain_manager.processors[proc_id] = processor
+							self.layers.append(processor)
+							self.layers[i].bank_name = manual
+							self.layers[i].engine = self
+							self.layers[i].load_bank_list()
+							self.layers[i].set_bank(0)
+							self.layers[i].refresh_controllers()
+							chain.audio_out = []
+							chain.mixer_chan = None
+						except Exception as e:
+							logging.error("%s Manual Layer can't be added! => %s", manual, e)
+					else:
+						ch = self.layers[i].get_midi_chan()
+						self.midi_chans[j + 1] = ch
+						self.chan_names[str(ch)] = manual
 
 			# Start engine
 			logging.debug("STARTING SETBFREE!!")
@@ -395,14 +365,10 @@ class zynthian_engine_setbfree(zynthian_engine):
 			self.state_manager.autoconnect_midi(True)
 			self.state_manager.autoconnect_audio()
 
-			midi_prog = self.manuals_config[4][2]
-			if midi_prog and isinstance(midi_prog, int):
-				logging.debug("Loading manuals configuration program: {}".format(midi_prog))
-				self.state_manager.zynmidi.set_midi_prg(self.midi_chans[0], midi_prog)
-			chain_manager.set_active_chain_by_id(f"{self.midi_chans[0] + 1:02d}")
+			# Select first chain so that preset selection is on "Upper" manual
+			chain_manager.set_active_chain_by_id(chain_manager.get_chain_id_by_processor(self.layers[0]))
 
 			return True
-
 
 
 	#----------------------------------------------------------------------------
