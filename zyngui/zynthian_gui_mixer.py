@@ -757,7 +757,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		visible_chains = zynthian_gui_config.visible_mixer_strips # Maximum quantity of mixer strips to display (Defines strip width. Main always displayed.)
 		if visible_chains < 1:
 			# Automatic sizing if not defined in config
-			if self.width <= 400: visible_chains = 4
+			if self.width <= 400: visible_chains = 6
 			elif self.width <= 600: visible_chains = 8
 			elif self.width <= 800: visible_chains = 10
 			elif self.width <= 1024: visible_chains = 12
