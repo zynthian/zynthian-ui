@@ -596,20 +596,22 @@ class zynthian_state_manager:
         
         force : True to force immediate connection (Default: connect on next 2s cycle)
         """
+
         if force:
             zynautoconnect.midi_autoconnect()
         else:
-            zynautoconnect.deferred_midi_connect = True
+            zynautoconnect.request_deferred_midi_connect()
 
     def autoconnect_audio(self, force=False):
         """Trigger jack audio graph connections
         
         force : True to force immediate connection (Default: connect on next 2s cycle)
         """
+
         if force:
             zynautoconnect.audio_autoconnect()
         else:
-            zynautoconnect.deferred_audio_connect = True
+            zynautoconnect.request_deferred_audio_connect()
 
     # ---------------------------------------------------------------------------
     # MIDI Router Init & Config

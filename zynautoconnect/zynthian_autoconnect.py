@@ -114,6 +114,13 @@ def check_for_changed_midi_ports():
 	if deferred_audio_connect:
 		audio_autoconnect()
 
+def request_deferred_audio_connect():
+	global deferred_audio_connect
+	deferred_audio_connect = True
+
+def request_deferred_midi_connect():
+	global deferred_midi_connect
+	deferred_midi_connect = True
 
 def midi_autoconnect():
 	"""Connect all expected MIDI routes"""
@@ -383,7 +390,7 @@ def audio_autoconnect():
 		required_routes[dst.name] = set()
 
 	# Chain audio routing
-	for chain_id, chain in chain_manager.chains.items():
+	for chain_id in chain_manager.chains:
 		routes = chain_manager.get_chain_audio_routing(chain_id)
 		if "zynmixer:return" in routes and "zynmixer:send" in routes["zynmixer:return"]:
 			routes["zynmixer:return"].remove("zynmixer:send")

@@ -856,8 +856,11 @@ class zynthian_gui:
 					if midi_chan:
 						chain = self.chain_manager.get_chain(chain_id)
 						chain.set_mixer_chan(None)
+					else:
+						base_chain = chain_id
+				self.state_manager.autoconnect_audio()
 				self.add_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
-				self.chain_control("00")
+				self.chain_control(base_chain)
 				return
 			if "chain_id" in self.add_chain_status:
 				# Modifying an existing chain

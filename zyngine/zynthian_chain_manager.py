@@ -63,7 +63,7 @@ class zynthian_chain_manager():
         self.midi_chan_2_chain = [None] * 16  # Chains mapped by MIDI channel
 
         self.update_engine_info()
-        self.add_chain("main", 256, enable_audio_thru=True) #TODO: Lose midi_chan=256?
+        self.add_chain("main", enable_audio_thru=True)
 
     def update_engine_info(self):
         """Update dictionary of available engines"""
@@ -139,11 +139,12 @@ class zynthian_chain_manager():
             if chain:
                 self.chains[chain_id] = chain
 
-        if isinstance(midi_chan, int) and midi_chan < 16:
-            self.midi_chan_2_chain[midi_chan] = chain
+        self.set_midi_chan(chain_id, midi_chan)
         if enable_audio_thru:
-            chain.midi_chan = None #TODO: Validate this is okay
-            chain.set_mixer_chan(self.get_next_free_mixer_chan())
+            if chain_id == "main":
+                chain.set_mixer_chan(256)
+            else:
+                chain.set_mixer_chan(self.get_next_free_mixer_chan())
         self.set_active_chain_by_id(chain_id)
         self.state_manager.autoconnect(True)
         return chain_id
@@ -510,7 +511,6 @@ class zynthian_chain_manager():
         if chain.insert_processor(processor, parallel, slot):
             if chain.mixer_chan is None and processor.type != "MIDI Tool":
                 chain.mixer_chan = self.get_next_free_mixer_chan()
-
             engine = self.start_engine(processor, type)
             if engine:
                 chain.rebuild_graph()

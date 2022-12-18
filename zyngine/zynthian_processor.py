@@ -797,7 +797,7 @@ class zynthian_processor:
         if self.midi_chan is not None:
             if self.midi_chan < 16:
                 path = "{}#{}".format(self.midi_chan+1, path)
-            elif self.midi_chan == 256:
+            elif self.midi_chan == 256: #TODO: This is not valid
                 path = "Main#{}".format(path)
         return path
 

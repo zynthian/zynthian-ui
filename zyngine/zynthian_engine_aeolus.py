@@ -177,7 +177,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 		self.options['midi_chan'] = False
 		self.options['replace'] = False
-		self.options['drop_pc'] = True
+		self.options['drop_pc'] = True #TODO: This does not seem to be working
 		self.options['layer_audio_out']=False
 
 		if self.config_remote_display():
@@ -377,7 +377,8 @@ class zynthian_engine_aeolus(zynthian_engine):
 						ctrl[2]='on'
 					else:
 						ctrl[2]='off'
-			self.refresh_all()
+			for layer in self.layers:
+				layer.refresh_controllers() #TODO: Should this be done in a background thread?
 
 			#Change Preset for all Layers
 			for l in self.layers:

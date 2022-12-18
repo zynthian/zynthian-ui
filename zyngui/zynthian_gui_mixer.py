@@ -739,8 +739,6 @@ class zynthian_gui_mixer_strip():
 
 class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
-	MAIN_MIXBUS_MIDI_CHANNEL = 256
-
 	def __init__(self):	
 		
 		super().__init__()
