@@ -139,10 +139,10 @@ class zynthian_controller:
 					self.value_max = n - 1
 				value_range = self.value_max - self.value_min
 				if n == 1:
-					self.ticks = [self.value_max]
+					self.ticks.append(self.value_min)
 				elif self.is_integer:
 					for i in range(n):
-						self.ticks.append(self.value_min + round(i * value_range / (n - 1)))
+						self.ticks.append(self.value_min + int(i * value_range / (n - 1)))
 				else:
 					for i in range(n):
 						self.ticks.append(self.value_min + i * value_range / (n - 1))

@@ -78,6 +78,7 @@ class zynthian_layer:
 		self.bank_info = None
 		self.bank_msb = 0
 		self.bank_msb_info = [[0,0], [0,0], [0,0]] # system, user, external => [offset, n]
+		self.auto_save_bank = False # True to skip bank selection when saving preset
 
 		self.show_fav_presets = False
 		self.preset_list = []
@@ -159,6 +160,8 @@ class zynthian_layer:
 		i = 0
 		self.bank_msb_info = [[0,0], [0,0], [0,0]] # system, user, external => [offset, n]
 		for bank in self.bank_list:
+			if bank[0] is None:
+				continue
 			if bank[0].startswith(self.ex_data_dir):
 				self.bank_msb_info[0][0] += 1
 				self.bank_msb_info[1][0] += 1

@@ -2283,7 +2283,7 @@ class zynthian_gui:
 				self.status_info['midi_recorder'] = self.screens['midi_recorder'].get_status()
 			except Exception as e:
 				logging.error(e)
-			
+
 			# Remove Player
 			if self.audio_player and self.audio_player.engine and not self.audio_player.engine.player.get_playback_state(16):
 					self.audio_player.engine.del_layer(self.audio_player)
