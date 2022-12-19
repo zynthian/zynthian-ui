@@ -539,7 +539,7 @@ class zynthian_processor:
     def refresh_controllers(self):
         """Refresh processor controllers configuration"""
 
-        self.init_controllers()
+        self.init_controllers() #TODO: Update existing controllers
         self.init_ctrl_screens()
 
 
@@ -558,7 +558,7 @@ class zynthian_processor:
         #Build control screens ...
         self.ctrl_screens_dict = OrderedDict()
         for cscr in self.engine._ctrl_screens:
-            self.ctrl_screens_dict[cscr[0]]=self.build_ctrl_screen(cscr[1])
+            self.ctrl_screens_dict[cscr[0]] = self.build_ctrl_screen(cscr[1])
 
         #Set active the first screen
         if len(self.ctrl_screens_dict) > 0:
@@ -799,7 +799,7 @@ class zynthian_processor:
         path = self.engine.get_path(self)
         if self.midi_chan is not None:
             if self.midi_chan < 16:
-                path = "{}#{}".format(self.midi_chan+1, path)
+                path = "{}#{}".format(self.midi_chan + 1, path)
             elif self.midi_chan == 256: #TODO: This is not valid
                 path = "Main#{}".format(path)
         return path
@@ -810,7 +810,7 @@ class zynthian_processor:
 
         #TODO: UI
         path = self.get_basepath()
-        if self.bank_name and self.bank_name!="None":
+        if self.bank_name and self.bank_name != "None":
             path += " > " + self.bank_name
         return path
 

@@ -667,7 +667,7 @@ class zynthian_gui_base(tkinter.Frame):
 
 
 	def cb_select_path(self, *args):
-		self.select_path_width=self.select_path_font.measure(self.select_path.get())
+		self.select_path_width = self.select_path_font.measure(self.select_path.get())
 		self.select_path_offset = 0
 		self.select_path_dir = 2
 		self.label_select_path.place(x=0, y=self.title_y)

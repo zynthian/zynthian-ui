@@ -42,7 +42,7 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 class zynthian_gui_engine(zynthian_gui_selector):
 
-	check_channels_engines = ["AE"]
+	check_channels_engines = []#"AE"]
 
 	def __init__(self):
 		self.reset_index = True
@@ -65,10 +65,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 			# Add engines on this category...
 			for eng, info in infos.items():
-				# For some engines, check if needed channels are free ...
-				if eng not in self.check_channels_engines or all(chan in self.zyngui.chain_manager.get_free_midi_chans() for chan in info[4].get_needed_channels()):
-					i = len(self.list_data)
-					self.list_data.append((eng, i, info[1], info[0]))
+				i = len(self.list_data)
+				self.list_data.append((eng, i, info[1], info[0]))
 					
 		# Display help if no engines are enabled ...
 		if len(self.list_data)==0:

@@ -23,7 +23,6 @@
 #******************************************************************************
 
 import os
-import glob
 import copy
 import shutil
 import struct
@@ -31,7 +30,7 @@ import logging
 from collections import OrderedDict
 
 from . import zynthian_engine
-from . import zynthian_controller
+from zyngine.zynthian_processor import zynthian_processor
 
 #------------------------------------------------------------------------------
 # Aeolus Engine Class
@@ -155,9 +154,11 @@ class zynthian_engine_aeolus(zynthian_engine):
 	# Config variables
 	#----------------------------------------------------------------------------
 
+	#TODO: Do not use system default files
 	waves_dpath = "/usr/share/aeolus/stops/waves"
 	config_fpath = "/usr/share/aeolus/stops/Aeolus/definition"
 	presets_fpath = "/root/.aeolus-presets"
+	presets_fpath_stub = "/zynthian/zynthian-data/aeolus/aeolus-presets-"
 	#presets_fpath = "/usr/share/aeolus/stops/Aeolus/presets"
 
 	n_banks = 32
@@ -178,7 +179,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.options['midi_chan'] = False
 		self.options['replace'] = False
 		self.options['drop_pc'] = True #TODO: This does not seem to be working
-		self.options['layer_audio_out']=False
+		self.options['layer_audio_out'] = False
 
 		if self.config_remote_display():
 			self.proc_start_sleep = 3
@@ -190,13 +191,8 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 		self.get_current_config()
 
-		self.presets_data = self.read_presets_file()
-		self.generate_ctrl_list()
-
 		self.tuning_temp = None
 		self.reset()
-		self.start()
-
 
 
 	def start(self):
@@ -234,9 +230,9 @@ class zynthian_engine_aeolus(zynthian_engine):
 		# Generate tuning line
 		tuning_line = "/tuning {:.1f} {:d}\n".format(self.state_manager.fine_tuning_freq, self.tuning_temp)
 		# Get current config ...
-		for i,line in enumerate(self.config_lines):
+		for i, line in enumerate(self.config_lines):
 			if line.startswith("/tuning"):
-				if line!=tuning_line:
+				if line != tuning_line:
 					self.config_lines[i] = tuning_line
 					regenerate = True
 				break
@@ -268,7 +264,32 @@ class zynthian_engine_aeolus(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def add_layer(self, layer):
-		super().add_layer(layer)
+		if len(self.layers) == 0:
+			# First manual so copy preset config and star your engines
+			shutil.copyfile(f"{self.presets_fpath_stub}{layer.midi_chan}", self.presets_fpath) #Write binary files 
+			self.presets_data = self.read_presets_file()
+			self.generate_ctrl_list()
+			super().add_layer(layer)
+			chain_manager = self.state_manager.chain_manager
+			midi_chan = self.layers[0].get_midi_chan()
+			free_midi_chans = chain_manager.get_free_midi_chans()
+			for i in range(1, 4):
+				if midi_chan + i not in free_midi_chans:
+					break # Only add manuals on consecutive MIDI channels
+				chain_id = chain_manager.add_chain(None, midi_chan + i)
+				chain = chain_manager.get_chain(chain_id)
+				proc_id = chain_manager.get_available_processor_id()
+				processor = zynthian_processor("AE", chain_manager.engine_info["AE"], proc_id)
+				chain.insert_processor(processor)
+				chain_manager.processors[proc_id] = processor
+				self.layers.append(processor)
+				self.layers[i].engine = self
+				self.layers[i].refresh_controllers()
+				chain.audio_out = []
+				chain.mixer_chan = None
+
+			# Select first chain so that preset selection is on "Upper" manual
+			chain_manager.set_active_chain_by_id(chain_manager.get_chain_id_by_processor(self.layers[0]))
 
 
 	def del_layer(self, layer):
@@ -289,14 +310,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
-	@classmethod
-	def get_needed_channels(cls):
-		chans = []
-		for manual in cls.instrument:
-			chans.append(manual['chan'])
-		return chans
-
-
 	def get_chan_name(self, chan):
 		for group in self.instrument:
 			if group['chan']==chan:
@@ -307,24 +320,25 @@ class zynthian_engine_aeolus(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_bank_list(self, layer=None):
-		res=[]
+		res = []
 		if not self.tuning_temp:
 			for title, i in self.tuning_temp_dict.items():
 				res.append((title, i, title))
-			#TODO: self.state_manager.screens['bank'].index = self.current_tuning_temp-1
+			#TODO: Select current setting in GUI: self.state_manager.screens['bank'].index = self.current_tuning_temp-1
 		else:
-			i=-1
+			i =- 1
 			for gc in self.presets_data['group_config']:
-				if gc['bank']>i:
-					i=gc['bank']
-					title="Bank {0:02d}".format(i+1)
-					res.append((title,i,title))
+				if gc['bank'] > i:
+					i = gc['bank']
+					title = "Bank {0:02d}".format(i + 1)
+					res.append((title, i, title))
 		return res
 
 
 	def set_bank(self, layer, bank):
 		if not self.tuning_temp:
 			self.tuning_temp = bank[1]
+			self.name = f"Aeolus {bank[0]}"
 			res = False
 		else:
 			res = True
@@ -338,15 +352,15 @@ class zynthian_engine_aeolus(zynthian_engine):
 			self.layers[0].reset_bank()
 			
 			if not res:
-				return False
+				return None
 
 		self.state_manager.zynmidi.set_midi_bank_lsb(layer.get_midi_chan(), bank[1])
 		#Change Bank for all Layers
 		for l in self.layers:
-			if l!=layer:
-				l.bank_index=layer.bank_index
-				l.bank_name=layer.bank_name
-				l.bank_info=copy.deepcopy(layer.bank_info)
+			if l != layer:
+				l.bank_index = layer.bank_index
+				l.bank_name = layer.bank_name
+				l.bank_info = copy.deepcopy(layer.bank_info)
 		return True
 
 	#----------------------------------------------------------------------------
@@ -354,14 +368,14 @@ class zynthian_engine_aeolus(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
-		res=[]
-		i=-1
+		res = []
+		i = -1
 		#for i in range(self.n_presets):
 		for gc in self.presets_data['group_config']:
-			if gc['preset']>i and gc['bank']==bank[1]:
-				i=gc['preset']
-				title="Preset {0:02d}".format(i+1)
-				res.append([str(bank[1]) + '/' + title,[0,bank[1],i],title,gc['gconf']])
+			if gc['preset'] > i and gc['bank'] == bank[1]:
+				i = gc['preset']
+				title = "Preset {0:02d}".format(i + 1)
+				res.append([str(bank[1]) + '/' + title,[0, bank[1], i], title, gc['gconf']])
 		return res
 
 
@@ -374,22 +388,26 @@ class zynthian_engine_aeolus(zynthian_engine):
 			for ig, gc in enumerate(preset[3]):
 				for ic, ctrl in enumerate(self.instrument[ig]['ctrls']):
 					if (gc >> ic) & 1:
-						ctrl[2]='on'
+						ctrl[2] = 'on'
 					else:
-						ctrl[2]='off'
+						ctrl[2] = 'off'
 			for layer in self.layers:
+				#TODO: This is recreating controllers each time which seems wrong!
 				layer.refresh_controllers() #TODO: Should this be done in a background thread?
+
+			layer.preset_name = preset[2]
+			layer.preset_info = copy.deepcopy(preset)
 
 			#Change Preset for all Layers
 			for l in self.layers:
-				if l!=layer:
-					l.preset_index=layer.preset_index
-					l.preset_name=layer.preset_name
-					l.preset_info=copy.deepcopy(layer.preset_info)
-					l.preset_bank_index=l.bank_index
-					l.preload_index=l.preset_index
-					l.preload_name=l.preset_name
-					l.preload_info=l.preset_info
+				if l != layer:
+					l.preset_index = layer.preset_index
+					l.preset_name = layer.preset_name
+					l.preset_info = copy.deepcopy(layer.preset_info)
+					l.preset_bank_index = l.bank_index
+					l.preload_index = l.preset_index
+					l.preload_name = l.preset_name
+					l.preload_info = l.preset_info
 
 		return True
 
@@ -400,11 +418,11 @@ class zynthian_engine_aeolus(zynthian_engine):
 	@classmethod
 	def generate_ctrl_list(cls):
 		#Generate ctrl list for each group in instrument
-		n=0
+		n = 0
 		for ig, group in enumerate(cls.instrument):
 			#Generate _ctrls list
-			i=0
-			cls.instrument[ig]['ctrls']=[]
+			i = 0
+			cls.instrument[ig]['ctrls'] = []
 			#self.instrument[ig]['ctrls']=copy.deepcopy(self.common_ctrls)
 			for ctrl_name in group['buttons']:
 				cc_num=cls.ctrl_cc_num_start+n
@@ -413,33 +431,33 @@ class zynthian_engine_aeolus(zynthian_engine):
 				n+=1
 		
 			#Generate _ctrl_screens list
-			cls.instrument[ig]['ctrl_screens']=[]
-			ctrl_set=[]
-			i=0
+			cls.instrument[ig]['ctrl_screens'] = []
+			ctrl_set = []
+			i = 0
 			for ctrl in cls.instrument[ig]['ctrls']:
 				ctrl_set.append(ctrl[0])
-				if len(ctrl_set)==4:
-					cls.instrument[ig]['ctrl_screens'].append(["{} ({})".format(group['name'],i),ctrl_set])
-					ctrl_set=[]
-					i+=1
-			if len(ctrl_set)>0:
-				cls.instrument[ig]['ctrl_screens'].append(["{} ({})".format(group['name'],i),ctrl_set])
+				if len(ctrl_set) == 4:
+					cls.instrument[ig]['ctrl_screens'].append(["{} ({})".format(group['name'], i), ctrl_set])
+					ctrl_set = []
+					i += 1
+			if len(ctrl_set) > 0:
+				cls.instrument[ig]['ctrl_screens'].append(["{} ({})".format(group['name'], i), ctrl_set])
 
 
 	def get_controllers_dict(self, layer):
 		#Find ctrl list for layer's group
 		for group in self.instrument:
-			if group['chan']==layer.midi_chan:
-				self._ctrls=group['ctrls']
-				self._ctrl_screens=group['ctrl_screens']
+			if group['chan'] == layer.midi_chan:
+				self._ctrls = group['ctrls']
+				self._ctrl_screens = group['ctrl_screens']
 				return super().get_controllers_dict(layer)
 
 		return OrderedDict()
 
 
-
 	def send_controller_value(self, zctrl):
 		self.midi_zctrl_change(zctrl, int(zctrl.get_value()))
+
 
 	#----------------------------------------------------------------------------
 	# MIDI CC processing
@@ -447,25 +465,25 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 	def midi_zctrl_change(self, zctrl, val):
 		try:
-			if isinstance(zctrl.graph_path,list):
-				if isinstance(val,int):
-					if val>=64:
-						val="on"
+			if isinstance(zctrl.graph_path, list):
+				if isinstance(val, int):
+					if val >= 64:
+						val = "on"
 					else:
-						val="off"
+						val = "off"
 
-					if val!=zctrl.get_value2label():
+					if val != zctrl.get_value2label():
 						zctrl.set_value(val)
 	
-				if val=="on":
-					mm="10"
+				if val == "on":
+					mm = "10"
 				else:
-					mm="01"
+					mm = "01"
 
-				v1="01{0}0{1:03b}".format(mm,zctrl.graph_path[0])
-				v2="000{0:05b}".format(zctrl.graph_path[1])
-				self.state_manager.zynmidi.set_midi_control(zctrl.midi_chan,self.stop_cc_num,int(v1,2))
-				self.state_manager.zynmidi.set_midi_control(zctrl.midi_chan,self.stop_cc_num,int(v2,2))
+				v1 = "01{0}0{1:03b}".format(mm,zctrl.graph_path[0])
+				v2 = "000{0:05b}".format(zctrl.graph_path[1])
+				self.state_manager.zynmidi.set_midi_control(zctrl.midi_chan,self.stop_cc_num,int(v1, 2))
+				self.state_manager.zynmidi.set_midi_control(zctrl.midi_chan,self.stop_cc_num,int(v2, 2))
 
 				#logging.debug("Aeolus Stop ({}) => mm={}, group={}, button={})".format(val,mm,zctrl.graph_path[0],zctrl.graph_path[1]))
 
@@ -482,47 +500,47 @@ class zynthian_engine_aeolus(zynthian_engine):
 		with open(cls.presets_fpath, mode='rb') as file:
 			data = file.read()
 
-			pos=0
-			header=struct.unpack("6sbHHHH", data[pos:16])
+			pos = 0
+			header = struct.unpack("6sbHHHH", data[pos:16])
 			#logging.debug(header)
-			pos+=16
-			if header[0].decode('ASCII')!="PRESET":
+			pos += 16
+			if header[0].decode('ASCII') != "PRESET":
 				logging.error("FORMAT => Bad Header")
 
-			n_groups=header[5]
-			if n_groups!=len(cls.instrument):
+			n_groups = header[5]
+			if n_groups != len(cls.instrument):
 				logging.error("Number of groups ({}) doesn't fit with engine's configuration ({}) !".format(n_groups,len(cls.instrument)))
 
-			chan_config=[]
+			chan_config = []
 			for num in range(8):
 				chan_config.append([])
 				for group in range(16):
-					res=struct.unpack("H", data[pos:pos+2])
-					pos+=2
+					res = struct.unpack("H", data[pos:pos + 2])
+					pos += 2
 					chan_config[num].append(res[0])
 					logging.debug("CHAN CONFIG (NUM {0}, GROUP {1} => {2:b}".format(num,group,res[0]))
 
-			for i,group in enumerate(cls.instrument):
-				group['chan'] = chan_config[0][i] & 0xF;
+			for i, group in enumerate(cls.instrument):
+				group['chan'] = chan_config[0][i] & 0xF
 
 			group_config=[]
 			try:
 				while True:
-					res=struct.unpack("BBBB", data[pos:pos+4])
-					pos+=4
-					if res[0]>=cls.n_banks:
-						logging.error("FORMAT => Bank index ({}>={})".format(res[0],cls.n_banks))
+					res = struct.unpack("BBBB", data[pos:pos+4])
+					pos += 4
+					if res[0] >= cls.n_banks:
+						logging.error("FORMAT => Bank index ({}>={})".format(res[0], cls.n_banks))
 						return
-					if res[1]>=cls.n_presets:
-						logging.error("FORMAT => Preset index ({}>={})".format(res[1],cls.n_presets))
+					if res[1] >= cls.n_presets:
+						logging.error("FORMAT => Preset index ({}>={})".format(res[1], cls.n_presets))
 						return
-					logging.debug("BANK {}, PRESET {} =>".format(res[0],res[1]))
-					gconf=[]
+					logging.debug("BANK {}, PRESET {} =>".format(res[0], res[1]))
+					gconf = []
 					for group in range(n_groups):
-						gc=struct.unpack("I", data[pos:pos+4])
-						pos+=4
+						gc = struct.unpack("I", data[pos:pos + 4])
+						pos += 4
 						gconf.append(gc[0])
-						logging.debug("GROUP CONFIG {0} => {1:b}".format(group,gc[0]))
+						logging.debug("GROUP CONFIG {0} => {1:b}".format(group, gc[0]))
 
 					group_config.append({
 						'bank': res[0],

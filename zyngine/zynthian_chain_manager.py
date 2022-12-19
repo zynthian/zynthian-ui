@@ -180,19 +180,19 @@ class zynthian_chain_manager():
                 try:
                     self.processors.pop(processor.id)
                 except Exception as e:
-                    logging.warning("Failed to remove processor %s from chain %s: %s", processor.id, chain_id, e)
+                    pass
             chain.reset()
-            if stop_engines:
-                self.stop_unused_engines()
             if chain.mixer_chan is not None:
                 self.state_manager.zynmixer.reset(chain.mixer_chan)
             if chain_id != "main":
-                if self.active_chain_id == chain_id:
-                    self.next_chain()
                 self.chains.pop(chain_id)
                 del chain
-            self.update_chain_ids_ordered()
+        if stop_engines:
+            self.stop_unused_engines()
+        self.update_chain_ids_ordered()
         self.state_manager.autoconnect(True)
+        if self.active_chain_id not in self.chains:
+            self.next_chain()
         return True
 
     def remove_all_chains(self, stop_engines=True):

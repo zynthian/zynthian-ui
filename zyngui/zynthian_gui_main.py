@@ -43,10 +43,16 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.list_data=[]
 
 		# Main Views
-		self.list_data.append((self.new_synth_layer,0,"New Synth Chain"))
-		self.list_data.append((self.new_audiofx_layer,0,"New Audio Chain"))
-		self.list_data.append((self.new_midifx_layer,0,"New MIDI Chain"))
-		self.list_data.append((self.new_generator_layer,0,"New Generator Chain"))
+		midi_chans = len(self.zyngui.chain_manager.get_free_midi_chans())
+		mixer_chans = len(self.zyngui.chain_manager.get_free_mixer_chans())
+		if midi_chans and mixer_chans:
+			self.list_data.append((self.new_synth_layer,0,"New Synth Chain"))
+		if mixer_chans:
+			self.list_data.append((self.new_audiofx_layer,0,"New Audio Chain"))
+		if midi_chans:
+			self.list_data.append((self.new_midifx_layer,0,"New MIDI Chain"))
+		if mixer_chans:
+			self.list_data.append((self.new_generator_layer,0,"New Generator Chain"))
 		self.list_data.append((self.new_special_layer,0,"New Special Chain"))
 		self.list_data.append((self.snapshots,0,"Snapshots"))
 		self.list_data.append((self.clean_all,0,"Clean All"))
