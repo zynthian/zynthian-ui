@@ -55,10 +55,10 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 		# Sort category headings, but headings starting with "Zynthian" are shown first
 
-		for cat, infos in sorted(self.zyngui.chain_manager.filtered_engines_by_cat(self.zyngui.add_chain_status["type"]).items(), key = lambda kv:"!" if kv[0] is None else kv[0]):
+		for cat, infos in sorted(self.zyngui.chain_manager.filtered_engines_by_cat(self.zyngui.modify_chain_status["type"]).items(), key = lambda kv:"!" if kv[0] is None else kv[0]):
 			# Add category header...
 			if cat:
-				if self.zyngui.add_chain_status["type"] == "MIDI Synth":
+				if self.zyngui.modify_chain_status["type"] == "MIDI Synth":
 					self.list_data.append((None,len(self.list_data),"> LV2 {}".format(cat)))
 				else:
 					self.list_data.append((None,len(self.list_data),"> {}".format(cat)))
@@ -90,40 +90,40 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 	def select_action(self, i, t='S'):
 		if i is not None and self.list_data[i][0]:
-			self.zyngui.add_chain_status["engine"] = self.list_data[i][0]
-			if "chain_id" in self.zyngui.add_chain_status:
+			self.zyngui.modify_chain_status["engine"] = self.list_data[i][0]
+			if "chain_id" in self.zyngui.modify_chain_status:
 				# Modifying existing chain
-				if "processor" in self.zyngui.add_chain_status:
+				if "processor" in self.zyngui.modify_chain_status:
 					# Replacing processor
 					pass
-				elif self.zyngui.chain_manager.get_slot_count(self.zyngui.add_chain_status["chain_id"], self.zyngui.add_chain_status["type"]):
+				elif self.zyngui.chain_manager.get_slot_count(self.zyngui.modify_chain_status["chain_id"], self.zyngui.modify_chain_status["type"]):
 					# Adding to slot with existing processor - choose parallel/series
 					self.zyngui.screens['option'].config("Chain Mode", {"Series": False, "Parallel": True}, self.cb_add_parallel)
 					self.zyngui.show_screen('option')
 					return
 				else:
-					self.zyngui.add_chain_status["parallel"] = False
+					self.zyngui.modify_chain_status["parallel"] = False
 			else:
 				# Adding engine to new chain
-				self.zyngui.add_chain_status["parallel"] = False
-			self.zyngui.add_chain()
+				self.zyngui.modify_chain_status["parallel"] = False
+			self.zyngui.modify_chain()
 
 
 	def arrow_right(self):
-		if "chain_id" in self.zyngui.add_chain_status:
+		if "chain_id" in self.zyngui.modify_chain_status:
 			self.zyngui.chain_manager.next_chain()
 			self.zyngui.chain_control()
 
 
 	def arrow_left(self):
-		if "chain_id" in self.zyngui.add_chain_status:
+		if "chain_id" in self.zyngui.modify_chain_status:
 			self.zyngui.chain_manager.previous_chain()
 			self.zyngui.chain_control()
 		
 
 	def cb_add_parallel(self, option, value):
-		self.zyngui.add_chain_status['parallel'] = value
-		self.zyngui.add_chain()
+		self.zyngui.modify_chain_status['parallel'] = value
+		self.zyngui.modify_chain()
 
 
 	def switch(self, swi, t='S'):
@@ -136,8 +136,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def set_select_path(self):
 		path = ""
 		try:
-			path = self.zyngui.add_chain_status["type"]
-			path = "{}#{}".format(self.zyngui.add_chain_status["chain_id"], path)
+			path = self.zyngui.modify_chain_status["type"]
+			path = "{}#{}".format(self.zyngui.modify_chain_status["chain_id"], path)
 		except:
 			pass
 		self.select_path.set(path)

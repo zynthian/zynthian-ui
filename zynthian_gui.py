@@ -208,7 +208,7 @@ class zynthian_gui:
 
 		self.state_manager = zynthian_state_manager.zynthian_state_manager()
 		self.chain_manager = self.state_manager.chain_manager
-		self.add_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
+		self.modify_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
 
 		# Create Lock object to avoid concurrence problems
 		self.lock = Lock()
@@ -340,7 +340,7 @@ class zynthian_gui:
 
 			# Active Chain
 			# => Light non-empty chains
-			chain_ids = self.chain_manager.get_chain_ids_ordered()
+			chain_ids = self.chain_manager.chain_ids_ordered
 			for i in range(6):
 				if i < len(chain_ids):
 					if chain_ids[i] == self.chain_manager.active_chain_id:
@@ -821,34 +821,34 @@ class zynthian_gui:
 		self.show_screen('touchscreen_calibration')
 
 
-	def add_chain(self, status={}): #TODO: Rename - this is called for various chain manipulation purposes
+	def modify_chain(self, status={}): #TODO: Rename - this is called for various chain manipulation purposes
 		"""Manage the stages of adding or changing a processor or chain
 		
-		status - Dictionary of status (Default: continue adding with current)
+		status - Dictionary of status (Default: continue with current status)
 		"""
 
 		if status:
-			self.add_chain_status = status
+			self.modify_chain_status = status
 
-		if "midi_chan" in self.add_chain_status:
+		if "midi_chan" in self.modify_chain_status:
 			# We know the MIDI channel so create a new chain and processor
-			if "midi_thru" not in  self.add_chain_status:
-				self.add_chain_status["midi_thru"] = False
-			if "audio_thru" not in  self.add_chain_status:
-				self.add_chain_status["audio_thru"] = False
+			if "midi_thru" not in  self.modify_chain_status:
+				self.modify_chain_status["midi_thru"] = False
+			if "audio_thru" not in  self.modify_chain_status:
+				self.modify_chain_status["audio_thru"] = False
 			chain_id = self.chain_manager.add_chain(
 				None,
-				self.add_chain_status["midi_chan"],
-				self.add_chain_status["midi_thru"],
-				self.add_chain_status["audio_thru"])
+				self.modify_chain_status["midi_chan"],
+				self.modify_chain_status["midi_thru"],
+				self.modify_chain_status["audio_thru"])
 			processor = self.chain_manager.add_processor(
 				chain_id,
-				self.add_chain_status["engine"]
+				self.modify_chain_status["engine"]
 			)
-			self.add_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
+			self.modify_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
 			self.chain_control(chain_id, processor)
-		elif "engine" in self.add_chain_status:
-			if self.add_chain_status["engine"] == 'AE':
+		elif "engine" in self.modify_chain_status:
+			if self.modify_chain_status["engine"] == 'AE':
 				#TODO: Handle Aeolus same as other engines
 				for midi_chan in range(4):
 					chain_id = self.chain_manager.add_chain(None, midi_chan)
@@ -859,30 +859,30 @@ class zynthian_gui:
 					else:
 						base_chain = chain_id
 				self.state_manager.autoconnect_audio()
-				self.add_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
+				self.modify_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
 				self.chain_control(base_chain)
 				return
-			if "chain_id" in self.add_chain_status:
+			if "chain_id" in self.modify_chain_status:
 				# Modifying an existing chain
-				if "processor" in self.add_chain_status:
+				if "processor" in self.modify_chain_status:
 					# Replacing processor in existing chain
-					chain = self.chain_manager.get_chain(self.add_chain_status["chain_id"])
-					old_processor = self.add_chain_status["processor"]
+					chain = self.chain_manager.get_chain(self.modify_chain_status["chain_id"])
+					old_processor = self.modify_chain_status["processor"]
 					if chain and old_processor:
 						slot = chain.get_slot(old_processor)
-						processor = self.chain_manager.add_processor(self.add_chain_status["chain_id"], self.add_chain_status["engine"], True, slot)
+						processor = self.chain_manager.add_processor(self.modify_chain_status["chain_id"], self.modify_chain_status["engine"], True, slot)
 						if processor:
-							self.chain_manager.remove_processor(self.add_chain_status["chain_id"], old_processor)
-							self.chain_control(self.add_chain_status["chain_id"], processor)
-				elif "parallel" in self.add_chain_status:
+							self.chain_manager.remove_processor(self.modify_chain_status["chain_id"], old_processor)
+							self.chain_control(self.modify_chain_status["chain_id"], processor)
+				elif "parallel" in self.modify_chain_status:
 					# Adding processor to existing chain
-					processor = self.chain_manager.add_processor(self.add_chain_status["chain_id"], self.add_chain_status["engine"], self.add_chain_status["parallel"])
-					self.chain_control(self.add_chain_status["chain_id"], processor)
+					processor = self.chain_manager.add_processor(self.modify_chain_status["chain_id"], self.modify_chain_status["engine"], self.modify_chain_status["parallel"])
+					self.chain_control(self.modify_chain_status["chain_id"], processor)
 				return
 			# Adding a new chain so select its MIDI channel
 			self.screens["midi_chan"].set_mode("ADD")
 			self.show_screen("midi_chan")
-		elif "type" in self.add_chain_status:
+		elif "type" in self.modify_chain_status:
 			# We know the type so select the engine
 			self.show_screen("engine")
 		else:
@@ -937,7 +937,7 @@ class zynthian_gui:
 		else:
 			chain = self.chain_manager.get_chain(chain_id)
 			if chain and chain.is_audio():
-				self.add_chain({"chain_id":chain_id, "type":"Audio Effect"})
+				self.modify_chain({"chain_id":chain_id, "type":"Audio Effect"})
 
 	def show_control(self):
 		self.chain_control()
@@ -1449,7 +1449,7 @@ class zynthian_gui:
 			if index == 0:
 				chain_id = "main"
 			else:
-				chain_id = self.chain_manager.get_chain_ids_ordered()[params[0] - 1]
+				chain_id = self.chain_manager.chain_ids_ordered[params[0] - 1]
 		except:
 			try:
 				# Select chain by ID
@@ -1467,7 +1467,7 @@ class zynthian_gui:
 			if index == 0:
 				chain_id = "main"
 			else:
-				chain_id = self.chain_manager.get_chain_ids_ordered()[params[0] - 1]
+				chain_id = self.chain_manager.chain_ids_ordered[params[0] - 1]
 		except:
 			try:
 				# Select chain by ID

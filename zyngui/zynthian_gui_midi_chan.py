@@ -109,8 +109,8 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 		self.midi_chan_sel = selchan
 
 		if self.mode=='ADD':
-			self.zyngui.add_chain_status["midi_chan"] = selchan
-			self.zyngui.add_chain()
+			self.zyngui.modify_chain_status["midi_chan"] = selchan
+			self.zyngui.modify_chain()
 
 		elif self.mode=='SET':
 			self.zyngui.chain_manager.set_midi_chan(self.zyngui.chain_manager.active_chain_id, selchan)

@@ -74,27 +74,27 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 
 	def new_synth_layer(self, t='S'):
-		self.zyngui.add_chain({"type": "MIDI Synth", "midi_thru": False, "audio_thru": False})
+		self.zyngui.modify_chain({"type": "MIDI Synth", "midi_thru": False, "audio_thru": False})
 
 
 	def new_audiofx_layer(self, t='S'):
 		try:
 			chain_id = self.zyngui.chain_manager.add_chain(None, enable_audio_thru = True)
-			self.zyngui.add_chain({"type": "Audio Effect", "audio_thru": True, "chain_id": chain_id})
+			self.zyngui.modify_chain({"type": "Audio Effect", "audio_thru": True, "chain_id": chain_id})
 		except Exception as e:
 			logging.error(e)
 
 
 	def new_midifx_layer(self, t='S'):
-		self.zyngui.add_chain({"type": "MIDI Tool", "midi_thru": True, "audio_thru": False})
+		self.zyngui.modify_chain({"type": "MIDI Tool", "midi_thru": True, "audio_thru": False})
 
 
 	def new_generator_layer(self, t='S'):
-		self.zyngui.add_chain({"type": "Audio Generator", "midi_thru": False, "audio_thru": False})
+		self.zyngui.modify_chain({"type": "Audio Generator", "midi_thru": False, "audio_thru": False})
 
 
 	def new_special_layer(self, t='S'):
-		self.zyngui.add_chain({"type": "Special", "midi_thru": False, "audio_thru": False})
+		self.zyngui.modify_chain({"type": "Special", "midi_thru": False, "audio_thru": False})
 
 
 	def snapshots(self, t='S'):

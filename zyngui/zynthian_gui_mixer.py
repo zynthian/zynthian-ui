@@ -918,10 +918,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		Returns - Active strip object
 		"""
 
-		chain_ids = self.zyngui.chain_manager.get_chain_ids_ordered()
 		active_strip = None
 		strip_index = 0
-		for chain_id in chain_ids[self.mixer_strip_offset:self.mixer_strip_offset + len(self.visible_mixer_strips)]:
+		for chain_id in self.zyngui.chain_manager.chain_ids_ordered[self.mixer_strip_offset:self.mixer_strip_offset + len(self.visible_mixer_strips)]:
 			chain = self.zyngui.chain_manager.get_chain(chain_id)
 			strip = self.visible_mixer_strips[strip_index]
 			strip.set_chain(chain)

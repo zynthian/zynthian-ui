@@ -302,7 +302,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 	# FX-Chain management
 
 	def audiofx_add(self):
-		self.zyngui.add_chain({"type":"Audio Effect", "chain_id":self.chain_id})
+		self.zyngui.modify_chain({"type":"Audio Effect", "chain_id":self.chain_id})
 
 
 	def remove_all_audiofx(self):
@@ -319,7 +319,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 	# MIDI-Chain management
 
 	def midifx_add(self):
-		self.zyngui.add_chain({"type":"MIDI Tool", "chain_id":self.chain_id})
+		self.zyngui.modify_chain({"type":"MIDI Tool", "chain_id":self.chain_id})
 
 
 	def remove_all_midifx(self):

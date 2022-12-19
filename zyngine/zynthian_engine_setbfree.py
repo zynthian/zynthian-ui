@@ -181,10 +181,10 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.nickname = "BF"
 		self.jackname = "setBfree"
 
-		self.options['midi_chan']=False
+		self.options['midi_chan'] = False
 		self.options['replace'] = False
-		self.options['drop_pc']=True
-		self.options['layer_audio_out']=False
+		self.options['drop_pc'] = True
+		self.options['layer_audio_out'] = False
 
 		self.manuals_config = None
 		self.tonewheel_model = None
@@ -288,7 +288,14 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 	def get_bank_list(self, layer):
 		if not self.manuals_config:
-			return self.bank_manuals_list
+			free_chans = len(self.state_manager.chain_manager.get_free_midi_chans())
+			if free_chans > 1:
+				return self.bank_manuals_list
+			elif free_chans > 0:
+				return self.bank_manuals_list[:3]
+			else:
+				self.manuals_config = self.bank_manuals_list[0]
+				return self.bank_twmodels_list
 		elif not self.tonewheel_model:
 			return self.bank_twmodels_list
 		else:

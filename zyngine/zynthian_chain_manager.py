@@ -56,6 +56,7 @@ class zynthian_chain_manager():
         logging.warning("Creating chain manager")
         self.state_manager = state_manager
         self.chains = {}  # Map of chain objects indexed by chain id
+        self.chain_ids_ordered = [] # List of chain IDs in order (excluding "main")
         self.zyngine_counter = 0 # Appended to engine names for uniqueness
         self.zyngines = OrderedDict()  # List of instantiated engines
         self.processors = {} # Dictionary of processor objects indexed by UID
@@ -146,6 +147,7 @@ class zynthian_chain_manager():
             else:
                 chain.set_mixer_chan(self.get_next_free_mixer_chan())
         self.set_active_chain_by_id(chain_id)
+        self.update_chain_ids_ordered()
         self.state_manager.autoconnect(True)
         return chain_id
 
@@ -189,6 +191,7 @@ class zynthian_chain_manager():
                     self.next_chain()
                 self.chains.pop(chain_id)
                 del chain
+            self.update_chain_ids_ordered()
         self.state_manager.autoconnect(True)
         return True
 
@@ -229,23 +232,26 @@ class zynthian_chain_manager():
                 if processor == proc:
                     return chain_id
 
-    def get_chain_ids_ordered(self, include_main=False):
-        """Get list of chain IDs in mixer & midi channel order
-        
-        include_main : True to include "main" (Default: False)
-        """
+    def update_chain_ids_ordered(self):
+        """Update list of chain IDs in mixer & midi channel order (excluding "main")"""
 
         chains = {}
         for chain_id, chain in self.chains.items():
             if chain_id != "main":
-                chains[f"{chain.midi_chan} {chain.mixer_chan}"] = chain_id
+                try:
+                    midi_chan = f"{chain.midi_chan:02d}"
+                except:
+                    midi_chan = "X"
+                try:
+                    mixer_chan = f"{chain.mixer_chan:02d}"
+                except:
+                    mixer_chan = "X"
+                chains[f"{midi_chan} {mixer_chan}"] = chain_id
         sorted_keys = sorted(chains)
-        ret_val = []
+        self.chain_ids_ordered = []
         for key in sorted_keys:
-            ret_val.append(chains[key])
-        if include_main:
-            ret_val.append("main")
-        return ret_val
+            self.chain_ids_ordered.append(chains[key])
+        return self.chain_ids_ordered
 
     # ------------------------------------------------------------------------
     # Chain Input/Output and Routing Management
@@ -416,7 +422,7 @@ class zynthian_chain_manager():
         Returns : Index of selected chain
         """
 
-        chain_keys = self.get_chain_ids_ordered(True)
+        chain_keys = self.chain_ids_ordered + ["main"]
         try:
             index = chain_keys.index(self.active_chain_id) + nudge
         except:

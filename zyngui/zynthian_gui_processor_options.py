@@ -157,7 +157,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector, zynthian_gui_save_pr
 
 
 	def replace(self):
-		self.zyngui.add_chain({"chain_id":self.chain_id, "processor":self.processor, "type":self.processor.type })
+		self.zyngui.modify_chain({"chain_id":self.chain_id, "processor":self.processor, "type":self.processor.type })
 
 
 	# Select Path

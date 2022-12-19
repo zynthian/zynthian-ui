@@ -98,7 +98,7 @@ class zynthian_processor:
         # Delete layer from engine
         self.engine.del_layer(self) #TODO: Is this done elsewhere?
         # Clear refresh flag
-        self.refresh_flag=False
+        self.refresh_flag = False #TODO: GUI
 
     def get_jackname(self, engine=False):
         """ Get the jackname for the processor's engine
@@ -119,6 +119,9 @@ class zynthian_processor:
         
         self.engine = engine
         self.engine.add_layer(self) # TODO: Refactor engine to replace layer with processor
+        if self.midi_chan is not None and self.midi_chan < 16:
+            engine.set_midi_chan(self)
+            get_lib_zyncore().zmop_chain_set_flag_droppc(self.midi_chan, int(self.engine.options['drop_pc']))
         self.refresh_controllers() #TODO: What is this?
 
     def get_name(self):
