@@ -602,7 +602,10 @@ class zynthian_layer:
 
 		#  and set preset
 		try:
-			self.preset_loaded = self.set_preset_by_name(state['preset_name'], True, False)
+			if(state['preset_info']):
+				self.preset_loaded = self.set_preset_by_id(state['preset_info'][0], True, False)
+			else:
+				self.preset_loaded = self.set_preset_by_name(state['preset_name'], True, False)
 			self.wait_stop_loading()
 		except Exception as e:
 			logging.warning("Invalid Preset on layer {}: {}".format(self.get_basepath(), e))
