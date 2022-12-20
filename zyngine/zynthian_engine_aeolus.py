@@ -265,18 +265,13 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 	def add_layer(self, layer):
 		if len(self.layers) == 0:
-			# First manual so copy preset config and star your engines
-			shutil.copyfile(f"{self.presets_fpath_stub}{layer.midi_chan}", self.presets_fpath) #Write binary files 
-			self.presets_data = self.read_presets_file()
-			self.generate_ctrl_list()
 			super().add_layer(layer)
 			chain_manager = self.state_manager.chain_manager
-			midi_chan = self.layers[0].get_midi_chan()
-			free_midi_chans = chain_manager.get_free_midi_chans()
 			for i in range(1, 4):
-				if midi_chan + i not in free_midi_chans:
-					break # Only add manuals on consecutive MIDI channels
-				chain_id = chain_manager.add_chain(None, midi_chan + i)
+				midi_chan = chain_manager.get_next_free_midi_chan(self.layers[0].midi_chan)
+				if midi_chan is None:
+					break
+				chain_id = chain_manager.add_chain(None, midi_chan)
 				chain = chain_manager.get_chain(chain_id)
 				proc_id = chain_manager.get_available_processor_id()
 				processor = zynthian_processor("AE", chain_manager.engine_info["AE"], proc_id)
@@ -284,12 +279,28 @@ class zynthian_engine_aeolus(zynthian_engine):
 				chain_manager.processors[proc_id] = processor
 				self.layers.append(processor)
 				self.layers[i].engine = self
-				self.layers[i].refresh_controllers()
 				chain.audio_out = []
 				chain.mixer_chan = None
 
-			# Select first chain so that preset selection is on "Upper" manual
-			chain_manager.set_active_chain_by_id(chain_manager.get_chain_id_by_processor(self.layers[0]))
+		# Update preset config with used MIDI channels
+		manual_order = [2,1,0,3]
+		with open(self.presets_fpath, mode='rb+') as file:
+			file.seek(16)
+			for chan in range(16):
+				val = 0
+				for i, layer in enumerate(self.layers):
+					if layer.midi_chan == chan:
+						val = 0x5000 + manual_order[i]
+						break
+				file.write(struct.pack("H", val))
+		# Load preset file and generate controllers
+		self.presets_data = self.read_presets_file()
+		self.generate_ctrl_list()
+		for i in range(4):
+			self.layers[i].refresh_controllers()
+
+		# Select first chain so that preset selection is on "Upper" manual
+		chain_manager.set_active_chain_by_id(chain_manager.get_chain_id_by_processor(self.layers[0]))
 
 
 	def del_layer(self, layer):
