@@ -739,20 +739,21 @@ class zynthian_processor:
             self.load_bank_list()
         except:
             pass
-        if state["bank_info"]:
+        if "bank_info" in state and state["bank_info"]:
             self.set_bank_by_info(state["bank_info"])
         try:
             self.load_preset_list()
         except:
             pass
-        if state["preset_info"]:
+        if "preset_info" in state and state["preset_info"]:
             self.set_preset_by_id(state["preset_info"][0])
         # Set controller values
-        for symbol, ctrl_state in state['controllers'].items():
-            try:
-                self.controllers_dict[symbol].set_state(ctrl_state)
-            except Exception as e:
-                logging.warning("Invalid Controller on layer {}: {}".format(self.get_basepath(), e))
+        if "controllers" in state:
+            for symbol, ctrl_state in state["controllers"].items():
+                try:
+                    self.controllers_dict[symbol].set_state(ctrl_state)
+                except Exception as e:
+                    logging.warning("Invalid Controller on layer {}: {}".format(self.get_basepath(), e))
 
     def restore_state_legacy(self, state):
         """Restore legacy states from state

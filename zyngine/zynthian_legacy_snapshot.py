@@ -119,7 +119,7 @@ class zynthian_legacy_snapshot:
                     "midi_processors": [], # Temporary list of processors in chain - used to build slots
                     "synth_processors": [], # Temporary list of processors in chain - used to build slots
                     "audio_processors": [], # Temporary list of processors in chain - used to build slots
-                    #"mixer_chan": midi_chan,
+                    "mixer_chan": midi_chan,
                     "midi_chan": midi_chan,
                     "midi_in": ["MIDI IN"],
                     "midi_out": ["MIDI OUT"],
@@ -272,6 +272,7 @@ class zynthian_legacy_snapshot:
 
             if chain["midi_processors"] and not chain["synth_processors"] and not chain["audio_processors"]:
                 chain["midi_thru"] = True
+                chain["mixer_chan"] = None
                 audio_out = []
             if not chain["midi_processors"] and not chain["synth_processors"]:
                 chain["audio_thru"] = True
@@ -303,6 +304,20 @@ class zynthian_legacy_snapshot:
             pass
 
         state["chains"] = chains
+
+        # ZS3
+        try:
+            state["zs3"]["zs3-0"]["mixer"] = snapshot["mixer"]
+        except:
+            pass
+
+        for proc in processors.values():
+            state["zs3"]["zs3-0"]["processors"][proc["id"]] = {
+                "bank_info": proc["bank_info"],
+                "preset_info": proc["preset_info"],
+                "controllers": proc["controllers"]
+            }
+
         return state
 
     def build_jackname(self, type, midi_chan):
