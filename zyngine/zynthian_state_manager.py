@@ -43,6 +43,7 @@ from zyncoder.zyncore import *
 from zyngine import zynthian_midi_filter
 from zyncoder.zyncore import get_lib_zyncore
 from zyngine import zynthian_controller
+from zyngine import zynthian_legacy_snapshot
 
 # ----------------------------------------------------------------------------
 # Zynthian State Manager Class
@@ -209,7 +210,7 @@ class zynthian_state_manager:
         """
 
         try:
-            with open(fpath,"r") as fh:
+            with open(fpath, "r") as fh:
                 json = fh.read()
                 logging.info("Loading snapshot %s => \n%s" % (fpath, json))
         except Exception as e:
@@ -324,39 +325,12 @@ class zynthian_state_manager:
                     #logging.debug("ADDED LEGACY ZS3 #{} => {}".format(zs3_index, zs3_new))
                     zs3_index += 1
 
-    def convert_legacy_snapshot(self, snapshot):
-        """Convert legacy (<2022-11-22) snapshot to current format"""
-
-        #TODO: Implement legacy snapshot support
-        return
-        state = snapshot
-
-        if "index" in snapshot:
-            state['active_chain'] = "{:02d}".format(snapshot["index"])
-        
-        if "layers" in snapshot:
-            for layer in snapshot["layers"]:
-                midi_chan = layer["midi_chan"]
-                engine = layer["engine_nick"]
-                if midi_chan == 256:
-                    chain_id = "main"
-                else:
-                    chain_id = "{:02d}".format(midi_chan)
-
-        if 'transpose' in state:
-            self.reset_note_range()
-            self.set_transpose(state['transpose'])
-
-        state['schema_version'] = SNAPSHOT_schema_version
-        return snapshot
-
     def fix_snapshot(self, snapshot):
         """Apply fixes to snapshot based on format version"""
 
-        #TODO: Implement fixes to previous versions
-        return snapshot
         if "schema_version" not in snapshot:
-            state = self.convert_legacy_snapshot(snapshot)
+            converter = zynthian_legacy_snapshot.zynthian_legacy_snapshot()
+            state = converter.convert_state(snapshot, self.chain_manager.engine_info)
         else:
             state = snapshot
             if state["schema_version"] < SNAPSHOT_schema_version:

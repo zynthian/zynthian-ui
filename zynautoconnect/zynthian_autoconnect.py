@@ -283,11 +283,17 @@ def midi_autoconnect():
 
 	#Connect RTP-MIDI output to ZynMidiRouter:net_in
 	if zynthian_gui_config.midi_rtpmidi_enabled:
-		required_routes["ZynMidiRouter:net_in"].add("jackrtpmidid:rtpmidi_out")
+		try:
+			required_routes["ZynMidiRouter:net_in"].add("jackrtpmidid:rtpmidi_out")
+		except:
+			pass
 
 	#Connect QMidiNet output to ZynMidiRouter:net_in
 	if zynthian_gui_config.midi_network_enabled:
-		required_routes["ZynMidiRouter:net_in"].add("QmidiNet:out_1")
+		try:
+			required_routes["ZynMidiRouter:net_in"].add("QmidiNet:out_1")
+		except:
+			pass
 
 	#Connect TouchOSC output to ZynMidiRouter:net_in
 	if zynthian_gui_config.midi_touchosc_enabled:

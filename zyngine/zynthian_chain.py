@@ -62,7 +62,7 @@ class zynthian_chain:
         self.midi_slots = []  # Midi subchain (list of lists of processors)
         self.audio_slots = []  # Audio subchain (list of lists of processors)
         self.synth_slots = [] # Synth/generator/special slots (should be single slot)
-        self.midi_chan = midi_chan  # Chain's MIDI channel - may be None for purly audio chain
+        self.midi_chan = midi_chan  # Chain's MIDI channel - may be None for purely audio chain
         self.mixer_chan = None
         self.midi_thru = enable_midi_thru # True to pass MIDI if chain empty
         self.audio_thru = enable_audio_thru # True to pass audio if chain empty
@@ -626,11 +626,11 @@ class zynthian_chain:
             self.audio_thru = state["audio_thru"]
         if isinstance(self.midi_chan, int) and self.midi_chan < 16:
             try:
-                get_lib_zyncore().set_midi_filter_note_range(self.midi_chan, state['note_range']['note_low'], state['note_range']['note_high'], state['note_range']['octave_trans'], state['note_range']['halftone_trans'])
+                get_lib_zyncore().set_midi_filter_note_range(self.midi_chan, state["note_range_low"], state["note_range_high"], state["transpose"])
             except:
                 logging.debug("Failed to set note range, e.g. chain has no MIDI channel")
             try:
-                for dst_chan in range(len(state["clone_midi"])):
+                for dst_chan in range(len(state["midi_clone"])):
                     if isinstance(state["clone_midi"][dst_chan], dict):
                         get_lib_zyncore().set_midi_filter_clone(self.midi_chan, dst_chan, state["clone_midi"][dst_chan]['enabled'])
                         self.set_clone_cc(dst_chan, state["clone_midi"][dst_chan]['cc'])
