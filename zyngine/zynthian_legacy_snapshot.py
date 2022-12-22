@@ -100,19 +100,13 @@ class zynthian_legacy_snapshot:
                 except:
                     pass
                 continue
-            elif l["engine_name"].startswith("Jalv/"):
-                type = "JV"
-                name= l["engine_name"][5:]
-            else:
-                type = l["engine_nick"]
-                name = l["engine_name"]
 
             try:
                 info = engine_info[l['engine_nick']]
             except:
                 info = []
             midi_chan = l["midi_chan"]
-            jackname = self.build_jackname(name, midi_chan)
+            jackname = self.build_jackname(l["engine_name"], midi_chan)
             chain_id = f"{midi_chan:02d}"
             if chain_id not in chains:
                 chains[chain_id] = {
@@ -149,7 +143,6 @@ class zynthian_legacy_snapshot:
                 chains[chain_id]["synth_processors"].append(jackname)
             processors[jackname] = {
                 "id": proc_id,
-                "type": type,
                 "info": info,
                 "nick": l["engine_nick"],
                 "midi_chan": midi_chan,
@@ -234,7 +227,7 @@ class zynthian_legacy_snapshot:
             if chain["synth_processors"]:
                 chain["slots"].insert(0, chain["synth_processors"])
                 if not chain["audio_processors"]:
-                    audio_out = snapshot["audio_routing"][proc]
+                    audio_out = snapshot["audio_routing"][chain["synth_processors"][0]]
 
             # Add MIDI slots
             proc_count = len(chain["midi_processors"])
@@ -318,43 +311,80 @@ class zynthian_legacy_snapshot:
                 "controllers": proc["controllers"]
             }
 
+        next_id = 1
+        for zs3 in snapshot["learned_zs3"]:
+            if "midi_learn_chan" in zs3:
+                midi_chan = zs3["midi_learn_chan"]
+            else:
+                midi_chan = None
+            if "midi_learn_prognum" in zs3:
+                midi_pgm = zs3["midi_learn_prognum"]
+            else:
+                midi_pgm = None
+            if midi_chan is None or midi_pgm is None:
+                zs3_id = f"zs3-{next_id}"
+                next_id += 1
+            else:
+                zs3_id = f"{midi_chan}/{midi_pgm}"
+            
+            state["zs3"][zs3_id] = {
+                "title": zs3["zs3_title"],
+                "active_chain": zs3["index"],
+                "processors": {},
+                "mixer": zs3["mixer"]
+            }
+            for layer in zs3["layers"]:
+                jackname = self.build_jackname(layer["engine_name"], layer["midi_chan"])
+                if jackname in processors:
+                    proc = processors[jackname]
+                    state["zs3"][zs3_id]["processors"][proc["id"]] = {
+                        "bank_info": layer["bank_info"],
+                        "preset_info": layer["preset_info"],
+                        "controllers": layer["controllers_dict"]
+                    }
+
         return state
 
-    def build_jackname(self, type, midi_chan):
-        """Build the legacy jackname for the engine type
+    def build_jackname(self, engine_name, midi_chan):
+        """Build the legacy jackname for the engine name
         
-        type : Engine type
+        engine_name : Engine type name
         midi_chan : Engine MIDI channel
         Returns : Jackname as string
         """
 
-        if type == "LinuxSampler":
-            if type not in self.jackname_counters:
-                self.jackname_counters[type] = 0
-            jackname = f"LinuxSampler:CH{self.jackname_counters[type]}_"
-            self.jackname_counters[type] += 1
-        elif type in ["setBfree", "Pianoteq"]:
-            jackname = type
-        elif type == "Audio Input":
+        if engine_name.startswith("Jalv/"):
+            name = engine_name[5:]
+        else:
+            name = engine_name
+
+        if name == "LinuxSampler":
+            if name not in self.jackname_counters:
+                self.jackname_counters[name] = 0
+            jackname = f"LinuxSampler:CH{self.jackname_counters[name]}_"
+            self.jackname_counters[name] += 1
+        elif name in ["setBfree", "Pianoteq"]:
+            jackname = name
+        elif name == "Audio Input":
             jackname = f"audioin-{midi_chan:02d}"
-        elif type == "ZynAddSubFX":
-            if type not in self.jackname_counters:
-                self.jackname_counters[type] = 0
-            jackname = f"zynaddsubfx:part{self.jackname_counters[type]}/"
-            self.jackname_counters[type] += 1
-        elif type == "FluidSynth":
-            if type not in self.jackname_counters:
-                self.jackname_counters[type] = 0
-            jackname = f"fluidsynth:(l|r)_{self.jackname_counters[type]:02d}"
-            self.jackname_counters[type] += 1
-        elif type == "Aeolus":
+        elif name == "ZynAddSubFX":
+            if name not in self.jackname_counters:
+                self.jackname_counters[name] = 0
+            jackname = f"zynaddsubfx:part{self.jackname_counters[name]}/"
+            self.jackname_counters[name] += 1
+        elif name == "FluidSynth":
+            if name not in self.jackname_counters:
+                self.jackname_counters[name] = 0
+            jackname = f"fluidsynth:(l|r)_{self.jackname_counters[name]:02d}"
+            self.jackname_counters[name] += 1
+        elif name == "Aeolus":
             jackname = "aeolus"
         else:
-            if type in ["Sfizz"]:
-                type = type.lower()
-            if type not in self.jackname_counters:
-                self.jackname_counters[type] = 0
-            jackname = f"{type.replace(' ', '_')}-{self.jackname_counters[type]:02d}"
-            self.jackname_counters[type] += 1
+            if name in ["Sfizz"]:
+                name = name.lower()
+            if name not in self.jackname_counters:
+                self.jackname_counters[name] = 0
+            jackname = f"{name.replace(' ', '_')}-{self.jackname_counters[name]:02d}"
+            self.jackname_counters[name] += 1
 
         return jackname
