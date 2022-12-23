@@ -388,6 +388,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			logging.info("Single Channel Mode ON")
 			zynthian_gui_config.midi_single_active_channel=True
 
+		self.zyngui.chain_manager.set_active_chain_by_id()
+
 		# Update MIDI profile
 		zynconf.update_midi_profile({ 
 			"ZYNTHIAN_MIDI_SINGLE_ACTIVE_CHANNEL": str(int(zynthian_gui_config.midi_single_active_channel))

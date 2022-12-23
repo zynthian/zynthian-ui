@@ -374,30 +374,35 @@ class zynthian_chain_manager():
     # Chain Management
     # ------------------------------------------------------------------------
 
-    def set_active_chain_by_id(self, chain_id):
+    def set_active_chain_by_id(self, chain_id=None):
         """Select the active chain
 
-        chain_id : ID of chain
+        chain_id : ID of chain (Default: Reassert current active channel)
         Returns : ID of active chain
         """
 
+        if chain_id == None:
+            chain_id = self.active_chain_id
         try:
             chain = self.chains[chain_id]
             self.active_chain_id = chain_id
             # Update active MIDI channel
-            midi_chan = chain.midi_chan
-            if isinstance(midi_chan, int) and midi_chan < 16:
-                get_lib_zyncore().set_midi_active_chan(midi_chan)
+            if zynthian_gui_config.midi_single_active_channel:
+                midi_chan = chain.midi_chan
+                if isinstance(midi_chan, int) and midi_chan < 16:
+                    get_lib_zyncore().set_midi_active_chan(midi_chan)
+                else:
+                    # Check if currently selected channel is valid
+                    midi_chan = get_lib_zyncore().get_midi_active_chan()
+                    if midi_chan >= 0 and midi_chan < 16 and self.midi_chan_2_chain[midi_chan]:
+                        return
+                    # Find a MIDI chain
+                    for chain in self.chains.values():
+                        if chain.is_midi():
+                            get_lib_zyncore().set_midi_active_chan(chain.midi_chan)
+                            break
             else:
-                # Check if currently selected channel is valid
-                midi_chan = get_lib_zyncore().get_midi_active_chan()
-                if midi_chan >= 0 and midi_chan < 16 and self.midi_chan_2_chain[midi_chan]:
-                    return
-                # Find a MIDI chain
-                for chain in self.chains.values():
-                    if chain.is_midi():
-                        get_lib_zyncore().set_midi_active_chan(chain.midi_chan)
-                        break
+                get_lib_zyncore().set_midi_active_chan(-1)
         except:
             pass
         return self.active_chain_id
@@ -791,15 +796,15 @@ class zynthian_chain_manager():
         prognum : PC value
         """
         changed = False
-        for chain in self.chains.values():
+        for processor in self.processors.values():
             try:
-                mch = chain.midi_chan
+                mch = processor.midi_chan
                 if mch is None or mch == midich:
                     # TODO This is really DIRTY!!
                     # Fluidsynth engine => ignore Program Change on channel 10
-                    if chain.engine.nickname == "FS" and mch == 9:
+                    if processor.engine.nickname == "FS" and mch == 9:
                         continue
-                    changed |= chain.set_preset(prognum, True)
+                    changed |= processor.set_preset(prognum, True)
             except Exception as e:
                 logging.error("Can't set preset for CH#{}:PC#{} => {}".format(midich, prognum, e))
         return changed
@@ -811,16 +816,18 @@ class zynthian_chain_manager():
         midi_chan : MIDI channel
         """
 
-        if chain_id not in self.chains or midi_chan not in self.get_free_midi_chans():
+        if chain_id not in self.chains:
             return
         chain = self.chains[chain_id]
-        chain.set_midi_chan(midi_chan)
         try:
-            index = self.midi_chan_2_chain.index(chain)
-            self.midi_chan_2_chain[index] = None
+            self.midi_chan_2_chain[chain.midi_chan] = None
         except:
             pass
-        self.midi_chan_2_chain[midi_chan] = chain
+        try:
+            self.midi_chan_2_chain[midi_chan] = chain
+        except:
+            pass
+        chain.set_midi_chan(midi_chan)
 
     def get_free_mixer_chans(self):
         """Get list of unused mixer channels"""
