@@ -172,6 +172,15 @@ class zynthian_gui_keybinding:
 			elif rkey == '0^return': return('SWITCH_SELECT')
 			elif rkey == '1^return': return(['SWITCH_SELECT', 'B'])
 			elif rkey == '0^escape': return('BACK')
+			else:
+				#Default 0..9: send program change
+				try:
+					if keysym.startswith("kp_"):
+						keysym = keysym[3:]
+					val = int(keysym)
+					return(["PROGRAM_CHANGE", val])
+				except:
+					pass
 			logging.debug("Key not configured")
 
 
