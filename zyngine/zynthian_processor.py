@@ -631,7 +631,7 @@ class zynthian_processor:
     def send_ctrl_midi_cc(self):
         """Send MIDI CC for all controllers
         
-        TODO: When is this required?
+        TODO: When is this required? Fluidsynth calls this during set_preset
         """
 
         for k, zctrl in self.controllers_dict.items():

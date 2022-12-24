@@ -406,25 +406,39 @@ class zynthian_state_manager:
         title : ZS3 title (Default: Create new title)
         """
 
+        # Get next id and name
         used_ids = []
+        used_titles = []
         for id in self.zs3:
             if id.startswith("zs3-"):
                 try:
                     used_ids.append(int(id.split('-')[1]))
                 except:
                     pass
+            if self.zs3[id]["title"].startswith("New ZS3 "):
+                try:
+                    used_titles.append(int(self.zs3[id]["title"][8:]))
+                except:
+                    pass
         used_ids.sort()
-        for offset, index in enumerate(used_ids):
-            if offset and index - 1 != used_ids[offset] - 1:
-                break
+        used_titles.sort()
 
         if zs3_id is None:
+            index = 0
+            for offset, index in enumerate(used_ids):
+                if offset and index - 1 != used_ids[offset] - 1:
+                    break
             zs3_id = f"zs3-{index + 1}"
 
-        if title is None:
-            title = f"New ZS3 {index + 1}"
         if zs3_id in self.zs3:
             title = self.zs3[zs3_id]['title']
+
+        if title is None:
+            index = 0
+            for offset, index in enumerate(used_titles):
+                if offset and index - 1 != used_titles[offset] - 1:
+                    break
+            title = f"New ZS3 {index + 1}"
 
         # Initialise zs3
         self.zs3[zs3_id] = {

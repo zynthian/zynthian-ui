@@ -44,7 +44,7 @@ class zynthian_controller:
 		self.group_name = None
 
 		self.value = 0 # Absolute value of the control
-		self.value_default = 0 # Default value to use when reset control
+		self.value_default = None # Default value to use when reset control
 		self.value_min = None # Minimum value of control range
 		self.value_mid = None # Mid-point value of control range (used for toggle controls)
 		self.value_max = None # Maximum value of control range
