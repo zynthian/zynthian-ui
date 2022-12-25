@@ -323,6 +323,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 	def set_bank(self, layer, bank):
 		if not self.tuning_temp:
+			self.name = (f"Aeolus {bank[0]}")
 			self.tuning_temp = bank[1]
 			res = False
 		else:

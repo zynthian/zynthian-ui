@@ -933,7 +933,7 @@ class zynthian_layer:
 
 		subpath = None
 		bank_name = self.get_preset_bank_name()
-		if bank_name and bank_name!="None":
+		if bank_name and bank_name != "None" and not path.endswith(bank_name):
 			subpath = bank_name
 			if self.preset_name:
 				subpath += "/" + self.preset_name
