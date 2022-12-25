@@ -449,6 +449,10 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		return banks
 
 
+	def set_bank(self, layer, bank):
+		self.name = (f"Pianoteq {bank[0]}")
+		return True
+
 	# ----------------------------------------------------------------------------
 	# Preset Managament
 	# ----------------------------------------------------------------------------
