@@ -92,14 +92,13 @@ class zynthian_chain_manager():
             ['MD', ("MOD-UI", "MOD-UI - Plugin Host",
                 "Special", None, zynthian_engine_modui, True)]
         ])
-        if check_pianoteq_binary():
-            pianoteq_title = "Pianoteq {}.{} {}{}".format(
-                PIANOTEQ_VERSION[0],
-                PIANOTEQ_VERSION[1],
-                PIANOTEQ_PRODUCT,
-                " (Demo)" if PIANOTEQ_TRIAL else "")
-            self.engine_info['PT'] = (PIANOTEQ_NAME, pianoteq_title,
-                "MIDI Synth", None, zynthian_engine_pianoteq, True)
+
+        pt_info = get_pianoteq_binary_info()
+        if pt_info:
+            if pt_info['api']:
+                self.engine_info['PT'] = ('Pianoteq', pt_info['name'], "MIDI Synth", None, zynthian_engine_pianoteq, True)
+            else:
+                self.engine_info['PT'] = ('Pianoteq', pt_info['name'], "MIDI Synth", None, zynthian_engine_pianoteq6, True)
 
         for plugin_name, plugin_info in get_jalv_plugins().items():
             engine = 'JV/{}'.format(plugin_name)

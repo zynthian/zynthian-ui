@@ -31,6 +31,7 @@ from collections import OrderedDict
 # Zynthian specific modules
 from zyngine import *
 from zyngine.zynthian_engine_pianoteq import *
+from zyngine.zynthian_engine_pianoteq6 import *
 from zyngine.zynthian_engine_jalv import *
 from zyngine.zynthian_engine_sooperlooper import zynthian_engine_sooperlooper
 from zyngui import zynthian_gui_config

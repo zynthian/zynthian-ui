@@ -29,6 +29,7 @@ from datetime import datetime
 from glob import glob
 import logging
 from threading  import Thread
+from json import JSONEncoder, JSONDecoder
 
 # Zynthian specific modules
 import zynconf

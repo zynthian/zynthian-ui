@@ -11,6 +11,7 @@ __all__ = [
 	"zynthian_engine_setbfree",
 	"zynthian_engine_modui",
 	"zynthian_engine_pianoteq",
+	"zynthian_engine_pianoteq6",
 	"zynthian_engine_puredata",
 	"zynthian_engine_aeolus",
 	"zynthian_engine_jalv",
@@ -34,6 +35,7 @@ from zyngine.zynthian_engine_fluidsynth import *
 from zyngine.zynthian_engine_setbfree import *
 from zyngine.zynthian_engine_modui import *
 from zyngine.zynthian_engine_pianoteq import *
+from zyngine.zynthian_engine_pianoteq6 import *
 from zyngine.zynthian_engine_puredata import *
 from zyngine.zynthian_engine_aeolus import *
 from zyngine.zynthian_engine_jalv import *

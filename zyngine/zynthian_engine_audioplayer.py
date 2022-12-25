@@ -111,6 +111,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		except Exception as e:
 			logging.error("Failed to close audio player: %s", e)
 
+
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
@@ -121,7 +122,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.layers.append(layer)
 			layer.jackname = self.jackname
 			layer.jackname = "{}:out_{:02d}(a|b)".format(self.jackname, handle + 1)
-		
 
 
 	def del_layer(self, layer):
