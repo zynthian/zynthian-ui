@@ -596,8 +596,7 @@ class zynthian_chain:
         if self.midi_chan is not None:
             state['note_low'] = get_lib_zyncore().get_midi_filter_note_low(self.midi_chan)
             state['note_high'] = get_lib_zyncore().get_midi_filter_note_high(self.midi_chan)
-            state['octave_trans'] = get_lib_zyncore().get_midi_filter_octave_trans(self.midi_chan)
-            state['halftone_trans'] = get_lib_zyncore().get_midi_filter_halftone_trans(self.midi_chan)
+            state['transpose'] = get_lib_zyncore().get_midi_filter_transpose(self.midi_chan)
             state["midi_clone"] = self.get_clone_state()
 
         return state
@@ -657,8 +656,7 @@ class zynthian_chain:
         note_range = {
             'note_low': get_lib_zyncore().get_midi_filter_note_low(midi_chan),
             'note_high': get_lib_zyncore().get_midi_filter_note_high(midi_chan),
-            'octave_trans': get_lib_zyncore().get_midi_filter_octave_trans(midi_chan),
-            'halftone_trans': get_lib_zyncore().get_midi_filter_halftone_trans(midi_chan)
+            'transpose': get_lib_zyncore().get_midi_filter_transpose(midi_chan),
         }
         return note_range
 
@@ -668,10 +666,11 @@ class zynthian_chain:
         state = []
         for dst_chan in range(0, 16):
             clone_info = {
-                'enabled': get_lib_zyncore().get_midi_filter_clone(self.midi_chan, dst_chan),
-                'cc': list(map(int,get_lib_zyncore().get_midi_filter_clone_cc(self.midi_chan, dst_chan).nonzero()[0]))
+                "enabled": get_lib_zyncore().get_midi_filter_clone(self.midi_chan, dst_chan),
+                "cc": list(map(int,get_lib_zyncore().get_midi_filter_clone_cc(self.midi_chan, dst_chan).nonzero()[0]))
             }
-            state.append(clone_info)
+            if clone_info["enabled"] or clone_info["cc"] != [1, 2, 64, 65, 66, 67, 68]:
+                state.append(clone_info)
         return state
 
     def set_clone_cc(self, chan_from, chan_to, cc):

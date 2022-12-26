@@ -308,6 +308,7 @@ class zynthian_state_manager:
                             lstate['current_screen_index'] = lstate['active_screen_index']
                             del lstate['active_screen_index']
                         if 'note_range' in lstate:
+                            #TODO: Move to ZS3
                             if lstate['note_range']:
                                 note_range[midi_chan] = lstate['note_range']
                             del lstate['note_range']
@@ -378,6 +379,28 @@ class zynthian_state_manager:
             return False
 
         zs3_state = self.zs3[zs3_id]
+        if "chains" in zs3_state:
+            for chain_id, chain_state in zs3_state["chains"].items():
+                chain = self.chain_manager.get_chain(chain_id)
+                if not chain:
+                    continue
+                if "note_low" in chain_state:
+                    get_lib_zyncore().set_midi_filter_note_low(chain.midi_chan, chain_state["note_low"])
+                else:
+                    get_lib_zyncore().set_midi_filter_note_low(chain.midi_chan, 0)
+                if "note_high" in chain_state:
+                    get_lib_zyncore().set_midi_filter_note_high(chain.midi_chan, chain_state["note_high"])
+                else:
+                    get_lib_zyncore().set_midi_filter_note_high(chain.midi_chan, 127)
+                if "transpose" in chain_state:
+                    get_lib_zyncore().set_midi_filter_transpose(chain.midi_chan, chain_state["transpose"])
+                else:
+                    get_lib_zyncore().set_midi_filter_transpose(chain.midi_chan, 0)
+                for chan in range(16):
+                    try:
+                        get_lib_zyncore().set_midi_filter_clone(chain.midi_chan, chan, chain_state["midi_clone"][chan])
+                    except:
+                        get_lib_zyncore().set_midi_filter_clone(chain.midi_chan, chan, -1)
         for proc_id, proc_state in zs3_state["processors"].items():
             try:
                 processor = self.chain_manager.processors[int(proc_id)]
@@ -388,7 +411,8 @@ class zynthian_state_manager:
                 pass
         if not zynthian_gui_config.midi_single_active_channel and "active_chain" in zs3_state:
             self.chain_manager.set_active_chain_by_id(zs3_state["active_chain"])
-
+        if "mixer" in zs3_state:
+            self.zynmixer.set_state(zs3_state["mixer"])
         return True
 
 
@@ -437,8 +461,26 @@ class zynthian_state_manager:
         self.zs3[zs3_id] = {
             "title": title,
             "active_chain": self.chain_manager.active_chain_id,
+            "chains": {},
             "processors": {}
         }
+        for chain_id, chain in self.chain_manager.chains.items():
+            note_low = get_lib_zyncore().get_midi_filter_note_low(chain.midi_chan)
+            note_high = get_lib_zyncore().get_midi_filter_note_high(chain.midi_chan)
+            transpose = get_lib_zyncore().get_midi_filter_transpose(chain.midi_chan)
+            midi_clone = chain.get_clone_state()
+            if note_low or note_high != 127 or transpose or midi_clone:
+                self.zs3[zs3_id]["chains"][chain_id] = {}
+                chain_state = self.zs3[zs3_id]["chains"][chain_id]
+                if note_low:
+                    chain_state["note_low"] = note_low
+                if note_high != 127:
+                    chain_state["note_high"] = note_high
+                if transpose:
+                    chain_state["transpose"] = transpose
+                if note_low:
+                    chain_state["midi_clone"] = midi_clone
+
         # Add processors
         for id, processor in self.chain_manager.processors.items():
             self.zs3[zs3_id]["processors"][id] = {

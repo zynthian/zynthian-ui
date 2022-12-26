@@ -106,8 +106,8 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		self.chan = chan
 		self.note_low = get_lib_zyncore().get_midi_filter_note_low(chan)
 		self.note_high = get_lib_zyncore().get_midi_filter_note_high(chan)
-		self.octave_trans = get_lib_zyncore().get_midi_filter_octave_trans(chan)
-		self.halftone_trans = get_lib_zyncore().get_midi_filter_halftone_trans(chan)
+		self.octave_trans = int(get_lib_zyncore().get_midi_filter_transpose(chan) / 12)
+		self.halftone_trans = get_lib_zyncore().get_midi_filter_transpose(chan) % 12
 		self.set_select_path()
 
 
@@ -345,13 +345,13 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 			if zctrl == self.octave_zctrl:
 				self.octave_trans = zctrl.value #TODO: Try to loose these variables
-				get_lib_zyncore().set_midi_filter_octave_trans(self.chan, zctrl.value)
+				get_lib_zyncore().set_midi_filter_transpose(self.chan, zctrl.value * 12 + self.halftone_zctrl.value)
 				logging.debug("SETTING FILTER OCTAVE TRANS.: {}".format(zctrl.value))
 				self.replot = True
 
 			if zctrl == self.halftone_zctrl:
 				self.halftone_trans = zctrl.value #TODO: Try to loose these variables
-				get_lib_zyncore().set_midi_filter_halftone_trans(self.chan, zctrl.value)
+				get_lib_zyncore().set_midi_filter_transpose(self.chan, zctrl.value + self.octave_trans.value * 12)
 				logging.debug("SETTING FILTER HALFTONE TRANS.: {}".format(zctrl.value))
 				self.replot = True
 

@@ -205,10 +205,6 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		self.zyngui.show_screen('midi_key_range')
 
 
-	def chain_transpose(self):
-		self.zyngui.show_screen('transpose')
-
-
 	def midi_learn(self):
 		options = OrderedDict()
 		options['Enter MIDI-learn'] = "enter"
