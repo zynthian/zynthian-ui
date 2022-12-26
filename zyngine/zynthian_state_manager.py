@@ -348,16 +348,7 @@ class zynthian_state_manager:
         midi_chan : MIDI channel
         prog_num : MIDI program change number
         """
-        
-        try:
-            if zynthian_gui_config.midi_single_active_channel:
-                zs3_id = f"{get_lib_zyncore().get_midi_active_chan()}/{prog_num}"
-            else:
-                zs3_id = f"{midi_chan}/{prog_num}"
-            return self.load_zs3(zs3_id)
-        except:
-            logging.debug(f"Can't find a ZS3 for CH#{midi_chan}, PRG#{prog_num}")
-            return False
+        return self.load_zs3(str(prog_num))
  
     def get_zs3_title(self, zs3_index):
         """Get ZS3 title
@@ -385,24 +376,25 @@ class zynthian_state_manager:
         if zs3_id not in self.zs3:
             logging.info("Attepmted to load non-existant ZS3")
             return False
-        
+
         zs3_state = self.zs3[zs3_id]
-        if "active_chain" in zs3_state:
-            self.chain_manager.set_active_chain_by_id(zs3_state["active_chain"])
         for proc_id, proc_state in zs3_state["processors"].items():
             try:
                 processor = self.chain_manager.processors[int(proc_id)]
+                if zynthian_gui_config.midi_single_active_channel and self.chain_manager.get_chain_id_by_processor(processor) != self.chain_manager.active_chain_id:
+                    continue
                 processor.set_state(proc_state)
             except:
                 pass
-        self.zynmixer.set_state(zs3_state["mixer"])
+        if not zynthian_gui_config.midi_single_active_channel and "active_chain" in zs3_state:
+            self.chain_manager.set_active_chain_by_id(zs3_state["active_chain"])
 
         return True
 
 
     def save_zs3(self, zs3_id=None, title=None):
         """Store current state as ZS3
-        
+
         zs3_id : ID of zs3 to save / overwrite (Default: Create new id)
         title : ZS3 title (Default: Create new title)
         """

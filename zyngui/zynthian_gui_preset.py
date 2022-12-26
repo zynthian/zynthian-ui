@@ -182,10 +182,11 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		if self.zyngui.get_current_processor():
-			if self.zyngui.get_current_processor().show_fav_presets:
-				self.select_path.set(self.zyngui.get_current_processor().get_basepath() + " > Favorites")
+		processor = self.zyngui.get_current_processor()
+		if processor:
+			if processor.show_fav_presets:
+				self.select_path.set(processor.get_basepath() + " > Favorites")
 			else:
-				self.select_path.set(self.zyngui.get_current_processor().get_bankpath())
+				self.select_path.set(processor.get_bankpath())
 
 #------------------------------------------------------------------------------

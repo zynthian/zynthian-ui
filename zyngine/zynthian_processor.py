@@ -811,7 +811,7 @@ class zynthian_processor:
 
         #TODO: UI
         path = self.get_basepath()
-        if self.bank_name and self.bank_name != "None":
+        if self.bank_name and self.bank_name != "None" and not path.endswith(self.bank_name):
             path += " > " + self.bank_name
         return path
 
@@ -824,7 +824,7 @@ class zynthian_processor:
 
         subpath = None
         bank_name = self.get_preset_bank_name()
-        if bank_name and bank_name!="None":
+        if bank_name and bank_name!="None" and not path.endswith(bank_name):
             subpath = bank_name
             if self.preset_name:
                 subpath += "/" + self.preset_name

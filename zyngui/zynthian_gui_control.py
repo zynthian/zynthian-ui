@@ -522,9 +522,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def toggle_midi_learn(self):
 		if self.zyngui.midi_learn_mode:
-			self.zyngui.exit_midi_learn()
 			if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
-				self.zyngui.state_manager.set_midi_learn_mode(2)
+				self.zyngui.set_midi_learn_mode(2)
 			else:
 				self.zyngui.exit_midi_learn()
 		else:
@@ -596,19 +595,12 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		if self.zyngui.get_current_processor():
-			path_layer = None
-			if self.zyngui.get_current_processor().engine.nickname == "AI":
-				try:
-					path_layer = self.zyngui.screens['layer'].get_fxchain_downstream(self.zyngui.get_current_processor())[0]
-				except:
-					pass
-			if not path_layer:
-				path_layer = self.zyngui.get_current_processor()
+		processor = self.zyngui.get_current_processor()
+		if processor:
 			if self.mode == 'control' and self.zyngui.midi_learn_mode:
-				self.select_path.set(path_layer.get_basepath() + "/CTRL MIDI-Learn")
+				self.select_path.set(processor.get_basepath() + "/CTRL MIDI-Learn")
 			else:
-				self.select_path.set(path_layer.get_presetpath())
+				self.select_path.set(processor.get_presetpath())
 
 
 #------------------------------------------------------------------------------
