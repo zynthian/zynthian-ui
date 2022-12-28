@@ -92,7 +92,8 @@ class zynthian_chain:
             self.audio_out = ["zynmixer:return"]
             self.audio_thru = True
         self.remove_all_processors()
-        self.reset_clone()
+        if isinstance(self.midi_chan, int) and self.midi_chan < 16:
+            get_lib_zyncore().reset_midi_filter_clone(self.midi_chan)
 
     def get_slots_by_type(self, type):
         """Get the list of slots
@@ -596,8 +597,8 @@ class zynthian_chain:
         if self.midi_chan is not None:
             state['note_low'] = get_lib_zyncore().get_midi_filter_note_low(self.midi_chan)
             state['note_high'] = get_lib_zyncore().get_midi_filter_note_high(self.midi_chan)
-            state['transpose'] = get_lib_zyncore().get_midi_filter_transpose(self.midi_chan)
-            state["midi_clone"] = self.get_clone_state()
+            state['transpose_octave'] = get_lib_zyncore().get_midi_filter_transpose_octave(self.midi_chan)
+            state['transpose_semitone'] = get_lib_zyncore().get_midi_filter_transpose_semitone(self.midi_chan)
 
         return state
 
@@ -623,78 +624,4 @@ class zynthian_chain:
             self.audio_out = state["audio_out"]
         if "audio_thru" in state:
             self.audio_thru = state["audio_thru"]
-        if isinstance(self.midi_chan, int) and self.midi_chan < 16:
-            try:
-                get_lib_zyncore().set_midi_filter_note_range(self.midi_chan, state["note_range_low"], state["note_range_high"], state["transpose"])
-            except:
-                logging.debug("Failed to set note range, e.g. chain has no MIDI channel")
-            try:
-                for dst_chan in range(len(state["midi_clone"])):
-                    if isinstance(state["clone_midi"][dst_chan], dict):
-                        get_lib_zyncore().set_midi_filter_clone(self.midi_chan, dst_chan, state["clone_midi"][dst_chan]['enabled'])
-                        self.set_clone_cc(dst_chan, state["clone_midi"][dst_chan]['cc'])
-                    else:
-                        get_lib_zyncore().set_midi_filter_clone(self.midi, dst_chan, state["clone_midi"][dst_chan])
-                        get_lib_zyncore().reset_midi_filter_clone_cc(self.midi, dst_chan)
-            except:
-                logging.debug("Failed to set note range, e.g. chain has no MIDI channel")
         self.rebuild_graph()
-
-    #----------------------------------------------------------------------------
-    # Clone, Note Range & Transpose
-    #----------------------------------------------------------------------------
-
-    def get_note_range_state(self, midi_chan):
-        """Get note range
-
-        midi_chan : MIDI channel to filter
-        Returns : Note range state model dictionary
-        """
-
-        if midi_chan > 15:
-            return None
-        note_range = {
-            'note_low': get_lib_zyncore().get_midi_filter_note_low(midi_chan),
-            'note_high': get_lib_zyncore().get_midi_filter_note_high(midi_chan),
-            'transpose': get_lib_zyncore().get_midi_filter_transpose(midi_chan),
-        }
-        return note_range
-
-    def get_clone_state(self):
-        """Get MIDI clone state as list of dictionaries"""
-
-        state = []
-        for dst_chan in range(0, 16):
-            clone_info = {
-                "enabled": get_lib_zyncore().get_midi_filter_clone(self.midi_chan, dst_chan),
-                "cc": list(map(int,get_lib_zyncore().get_midi_filter_clone_cc(self.midi_chan, dst_chan).nonzero()[0]))
-            }
-            if clone_info["enabled"] or clone_info["cc"] != [1, 2, 64, 65, 66, 67, 68]:
-                state.append(clone_info)
-        return state
-
-    def set_clone_cc(self, chan_from, chan_to, cc):
-        """Set MIDI clone
-
-        chan_from : MIDI channel to clone from
-        chan_to : MIDI channel to clone to
-        cc : MIDI CC number to clone
-        """
-
-        cc_array = (c_ubyte * 128)()
-        if len(cc) == 128:
-            for cc_num in range(0, 128):
-                cc_array[cc_num] = cc[cc_num]
-        else:
-            for cc_num in range(0, 128):
-                if cc_num in cc:
-                    cc_array[cc_num] = 1
-                else:
-                    cc_array[cc_num] = 0
-        get_lib_zyncore().set_midi_filter_clone_cc(chan_from, chan_to, cc_array)
-
-    def reset_clone(self):
-        """Clear MIDI clone configuration"""
-
-        if isinstance(self.midi_chan, int) and self.midi_chan < 16:
-            get_lib_zyncore().reset_midi_filter_clone(self.midi_chan)

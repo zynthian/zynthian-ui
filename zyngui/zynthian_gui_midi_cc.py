@@ -60,7 +60,7 @@ class zynthian_gui_midi_cc(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		cc_num=self.list_data[i][1]
+		cc_num = self.list_data[i][1]
 
 		if self.cc[cc_num]:
 			self.cc[cc_num] = 0

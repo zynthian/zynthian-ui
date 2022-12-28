@@ -43,8 +43,9 @@ class zynthian_legacy_snapshot:
             "zs3": {
                 "zs3-0": {
                     "title": "Last state",
-                    "processors": {
-                    },
+                    "chains": {},
+                    "midi_clone": {},
+                    "processors": {},
                     "mixer": {}
                 },
             },
@@ -87,7 +88,10 @@ class zynthian_legacy_snapshot:
         except:
             pass
 
-        #TODO: Add zs3
+        note_range_state = []
+        if "note_range" in snapshot:
+            if len(snapshot["note_range"]) == 16:
+                note_range_state = snapshot["note_range"]
 
         # Get processors
         processors = {}
@@ -122,12 +126,16 @@ class zynthian_legacy_snapshot:
                     "audio_out": ["mixer"],
                     "audio_thru": False,
                     "current_processor": 0,
-                    "note_range_low": 0,
-                    "note_range_high": 127,
-                    "transpose": 0,
-                    "midi_clone": {},
                     "slots": []
                 }
+                if midi_chan < 16:
+                    state["zs3"]["zs3-0"]["chains"][chain_id] = {
+                        "note_range_low": note_range_state[midi_chan]["note_low"],
+                        "note_range_high": note_range_state[midi_chan]["note_high"],
+                        "transpose_octave": note_range_state[midi_chan]["octave_trans"],
+                        "transpose_semitone": note_range_state[midi_chan]["halftone_trans"]
+                    }
+
             if not chains[chain_id]["audio_in"]:
                 try:
                     chains[chain_id]["audio_in"] = snapshot["audio_capture"][jackname]
@@ -158,32 +166,10 @@ class zynthian_legacy_snapshot:
             if "active_screen_index" in l and l["active_screen_index"] >= 0:
                 ["zyngui"]["processors"][proc_id]["active_screen_index"] = l["active_screen_index"]
 
-            #TODO: Handle ZS3: "zs3_list":[128 * things]
-
             proc_id += 1
 
-        note_range_state = []
-        if "note_range" in snapshot:
-            if len(snapshot["note_range"]) == 16:
-                note_range_state = snapshot["note_range"]
-
-        clone_state = []
         if "clone" in snapshot and len(snapshot["clone"]) == 16:
-            clone_state = snapshot["clone"]
-
-        for proc in {**snapshot["audio_routing"], **snapshot["midi_routing"]}:
-            midi_chan = processors[proc]["midi_chan"]
-            if isinstance(midi_chan, int):
-                if midi_chan < 16:
-                    chain_id = f"{midi_chan:02d}"
-                    if chain_id not in chains:
-                        logging.error("Can't find %s in chains", chain_id)
-                    if note_range_state:
-                        chains[chain_id]["note_range_low"] = note_range_state[midi_chan]["note_low"]
-                        chains[chain_id]["note_range_high"] = note_range_state[midi_chan]["note_high"]
-                        chains[chain_id]["transpose"] = note_range_state[midi_chan]["octave_trans"] * 12 + note_range_state[midi_chan]["halftone_trans"]
-                    if clone_state:
-                        chains[chain_id]["midi_clone"] = clone_state[midi_chan]
+            state["zs3"]["zs3-0"]["midi_clone"] = self.get_midi_clone(snapshot["clone"])
 
         for chain in chains.values():
             audio_out = []
@@ -388,3 +374,11 @@ class zynthian_legacy_snapshot:
             self.jackname_counters[name] += 1
 
         return jackname
+
+    def get_midi_clone(self, clone):
+        clone_state = {}
+        for src_chan in range(16):
+            clone_state[src_chan] = {}
+            for dst_chan in range(16):
+                clone_state[src_chan][dst_chan] = clone[src_chan][dst_chan]
+        return clone_state

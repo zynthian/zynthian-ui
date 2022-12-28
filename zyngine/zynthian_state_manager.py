@@ -139,11 +139,13 @@ class zynthian_state_manager:
             'zs3': self.zs3
         }
 
-        state["engine_config"] = {}
+        engine_states = {}
         for id, engine in self.chain_manager.zyngines.items():
             engine_state = engine.get_extended_config()
             if engine_state:
-                state["engine_config"][id] = engine_state
+                engine_states[id] = engine_state
+        if engine_states:
+            state["engine_config"] = engine_states
 
         # Add ALSA-Mixer setting
         if zynthian_gui_config.snapshot_mixer_settings and self.alsa_mixer_processor:
@@ -177,22 +179,13 @@ class zynthian_state_manager:
             state = self.get_state()
             if isinstance(extra_data, dict):
                 state = {**state, **extra_data}
-
             # JSON Encode
             json = JSONEncoder().encode(state)
-            logging.info("Saving snapshot %s => \n%s", fpath, json)
-
-        except Exception as e:
-            logging.error("Can't generate snapshot: %s" %e)
-            return False
-
-        try:
             with open(fpath,"w") as fh:
                 logging.info("Saving snapshot %s => \n%s" % (fpath, json))
                 fh.write(json)
                 fh.flush()
                 os.fsync(fh.fileno())
-
         except Exception as e:
             logging.error("Can't save snapshot file '%s': %s" % (fpath, e))
             return False
@@ -230,15 +223,15 @@ class zynthian_state_manager:
                     self.chain_manager.set_state(state['chains'])
                 self.chain_manager.stop_unused_engines()
 
-            for id, engine_state in state["engine_config"].items():
-                try:
-                    self.chain_manager.zyngines[id].set_extended_config(engine_state)
-                except Exception as e:
-                    logging.info("Failed to set extended engine state for %s: %s", id, e)
+            if "engine_config" in state:
+                for id, engine_state in state["engine_config"].items():
+                    try:
+                        self.chain_manager.zyngines[id].set_extended_config(engine_state)
+                    except Exception as e:
+                        logging.info("Failed to set extended engine state for %s: %s", id, e)
 
             self.zs3 = state["zs3"]
             self.load_zs3("zs3-0")
-            self.autoconnect(True) # Autoconnect engines that start after preset loaded
 
             if load_sequences and "zynseq_riff_b64" in state:
                 b64_bytes = state["zynseq_riff_b64"].encode("utf-8")
@@ -269,7 +262,7 @@ class zynthian_state_manager:
             logging.exception("Invalid snapshot: %s" % e)
             return None
 
-        self.autoconnect()
+        self.autoconnect(True)
 
         # Restore mute state
         self.zynmixer.set_mute(255, mute)
@@ -392,29 +385,42 @@ class zynthian_state_manager:
                     get_lib_zyncore().set_midi_filter_note_high(chain.midi_chan, chain_state["note_high"])
                 else:
                     get_lib_zyncore().set_midi_filter_note_high(chain.midi_chan, 127)
-                if "transpose" in chain_state:
-                    get_lib_zyncore().set_midi_filter_transpose(chain.midi_chan, chain_state["transpose"])
+                if "transpose_octave" in chain_state:
+                    get_lib_zyncore().set_midi_filter_transpose_octave(chain.midi_chan, chain_state["transpose_octave"])
                 else:
-                    get_lib_zyncore().set_midi_filter_transpose(chain.midi_chan, 0)
-                for chan in range(16):
+                    get_lib_zyncore().set_midi_filter_transpose_octave(chain.midi_chan, 0)
+                if "transpose_semitone" in chain_state:
+                    get_lib_zyncore().set_midi_filter_transpose_semitone(chain.midi_chan, chain_state["transpose_semitone"])
+                else:
+                    get_lib_zyncore().set_midi_filter_transpose_semitone(chain.midi_chan, 0)
+
+        if "midi_clone" in zs3_state:
+            for src_chan in range(16):
+                for dst_chan in range(16):
                     try:
-                        get_lib_zyncore().set_midi_filter_clone(chain.midi_chan, chan, chain_state["midi_clone"][chan])
+                        self.enable_clone(src_chan, dst_chan, zs3_state["midi_clone"][str(src_chan)][str(dst_chan)]["enabled"])
+                        self.set_clone_cc(src_chan, dst_chan, zs3_state["midi_clone"][str(src_chan)][str(dst_chan)]["cc"])
                     except:
-                        get_lib_zyncore().set_midi_filter_clone(chain.midi_chan, chan, -1)
-        for proc_id, proc_state in zs3_state["processors"].items():
-            try:
-                processor = self.chain_manager.processors[int(proc_id)]
-                if zynthian_gui_config.midi_single_active_channel and self.chain_manager.get_chain_id_by_processor(processor) != self.chain_manager.active_chain_id:
-                    continue
-                processor.set_state(proc_state)
-            except:
-                pass
+                        self.enable_clone(src_chan, dst_chan, False)
+                        get_lib_zyncore().reset_midi_filter_clone_cc(src_chan, dst_chan)
+
+        if "processors" in zs3_state:
+            for proc_id, proc_state in zs3_state["processors"].items():
+                try:
+                    processor = self.chain_manager.processors[int(proc_id)]
+                    if zs3_id != "zs3-0" and zynthian_gui_config.midi_single_active_channel and self.chain_manager.get_chain_id_by_processor(processor) != self.chain_manager.active_chain_id:
+                        continue
+                    processor.set_state(proc_state)
+                except:
+                    pass
+
         if not zynthian_gui_config.midi_single_active_channel and "active_chain" in zs3_state:
             self.chain_manager.set_active_chain_by_id(zs3_state["active_chain"])
+
         if "mixer" in zs3_state:
             self.zynmixer.set_state(zs3_state["mixer"])
-        return True
 
+        return True
 
     def save_zs3(self, zs3_id=None, title=None):
         """Store current state as ZS3
@@ -460,30 +466,38 @@ class zynthian_state_manager:
         # Initialise zs3
         self.zs3[zs3_id] = {
             "title": title,
-            "active_chain": self.chain_manager.active_chain_id,
-            "chains": {},
-            "processors": {}
+            "active_chain": self.chain_manager.active_chain_id
         }
+        chain_states = {}
         for chain_id, chain in self.chain_manager.chains.items():
-            note_low = get_lib_zyncore().get_midi_filter_note_low(chain.midi_chan)
-            note_high = get_lib_zyncore().get_midi_filter_note_high(chain.midi_chan)
-            transpose = get_lib_zyncore().get_midi_filter_transpose(chain.midi_chan)
-            midi_clone = chain.get_clone_state()
-            if note_low or note_high != 127 or transpose or midi_clone:
-                self.zs3[zs3_id]["chains"][chain_id] = {}
-                chain_state = self.zs3[zs3_id]["chains"][chain_id]
+            if isinstance(chain.midi_chan, int) and chain.midi_chan < 16:
+                chain_state = {}
+                #TODO: This is MIDI channel related, not chain specific
+                note_low = get_lib_zyncore().get_midi_filter_note_low(chain.midi_chan)
                 if note_low:
                     chain_state["note_low"] = note_low
+                note_high = get_lib_zyncore().get_midi_filter_note_high(chain.midi_chan)
                 if note_high != 127:
                     chain_state["note_high"] = note_high
-                if transpose:
-                    chain_state["transpose"] = transpose
-                if note_low:
-                    chain_state["midi_clone"] = midi_clone
+                transpose_octave = get_lib_zyncore().get_midi_filter_transpose_octave(chain.midi_chan)
+                if transpose_octave:
+                    chain_state["transpose_octave"] = transpose_octave
+                transpose_semitone = get_lib_zyncore().get_midi_filter_transpose_semitone(chain.midi_chan)
+                if transpose_semitone:
+                    chain_state["transpose_semitone"] = transpose_semitone
+                if chain_state:
+                    chain_states[chain_id] = chain_state
+        if chain_states:
+            self.zs3[zs3_id]["chains"] = chain_states
+
+        clone_state = self.get_clone_state()
+        if clone_state:
+            self.zs3[zs3_id]["midi_clone"] = clone_state
 
         # Add processors
+        processor_states = {}
         for id, processor in self.chain_manager.processors.items():
-            self.zs3[zs3_id]["processors"][id] = {
+            processor_state = {
                 "bank_info": processor.bank_info,
                 "preset_info": processor.preset_info,
                 "controllers": {}
@@ -498,9 +512,15 @@ class zynthian_state_manager:
                 if zctrl.midi_learn_cc:
                     ctrl_state["midi_learn_cc"] = zctrl.midi_learn_cc
                 if ctrl_state:
-                    self.zs3[zs3_id]["processors"][id]["controllers"][symbol] = ctrl_state
+                    processor_state["controllers"][symbol] = ctrl_state
+            processor_states[id] = processor_state
+        if processor_states:
+            self.zs3[zs3_id]["processors"] = processor_states
+
         # Add mixer state
-        self.zs3[zs3_id]["mixer"] = self.zynmixer.get_state(False)
+        mixer_state = self.zynmixer.get_state(False)
+        if mixer_state:
+            self.zs3[zs3_id]["mixer"] = mixer_state
 
     def delete_zs3(self, zs3_index):
         """Remove a ZS3
@@ -525,9 +545,10 @@ class zynthian_state_manager:
         for state in self.zs3:
             if self.zs3[state]["active_chain"] not in self.chain_manager.chains:
                 self.zs3[state]["active_chain"] = self.chain_manager.active_chain_id
-            for processor_id in list(self.zs3[state]["processors"]):
-                if processor_id not in self.chain_manager.processors:
-                    del self.zs3[state]["process"][processor_id]
+            if "processors" in self.zs3:
+                for processor_id in list(self.zs3[state]["processors"]):
+                    if processor_id not in self.chain_manager.processors:
+                        del self.zs3[state]["process"][processor_id]
 
     #------------------------------------------------------------------
     # Jackd Info
@@ -734,6 +755,61 @@ class zynthian_state_manager:
             self.stop_audio_player()
         else:
             self.start_audio_player()
+
+    #----------------------------------------------------------------------------
+    # Clone, Note Range & Transpose
+    #----------------------------------------------------------------------------
+
+    def get_clone_state(self):
+        """Get MIDI clone state as list of dictionaries"""
+
+        state = {}
+        for src_chan in range(0,16):
+            for dst_chan in range(0, 16):
+                clone_info = {
+                    "enabled": get_lib_zyncore().get_midi_filter_clone(src_chan, dst_chan),
+                    "cc": list(map(int,get_lib_zyncore().get_midi_filter_clone_cc(src_chan, dst_chan).nonzero()[0]))
+                }
+                if clone_info["enabled"] or clone_info["cc"] != [1, 2, 64, 65, 66, 67, 68]:
+                    if src_chan not in state:
+                        state[src_chan] = {}
+                    state[src_chan][dst_chan] = clone_info
+        return state
+
+    def enable_clone(self, src_chan, dst_chan, enable=True):
+        """Enable/disbale MIDI clone for a source and destination
+
+        src_chan : MIDI channel cloned from
+        dst_chan : MIDI channe cloned to
+        enable : True to enable or False to disable [Default: enable]
+        """
+
+        if src_chan < 0 or src_chan > 15 or dst_chan < 0 or dst_chan > 15:
+            return
+        if src_chan == dst_chan:
+            get_lib_zyncore().set_midi_filter_clone(src_chan, dst_chan, 0)
+        else:
+            get_lib_zyncore().set_midi_filter_clone(src_chan, dst_chan, enable)
+
+    def set_clone_cc(self, src_chan, dst_chan, cc):
+        """Set MIDI clone
+
+        src_chan : MIDI channel to clone from
+        dst_chan : MIDI channel to clone to
+        cc : List of MIDI CC numbers to clone or list of 128 flags, 1=CC enabled
+        """
+
+        cc_array = (c_ubyte * 128)()
+        if len(cc) == 128:
+            for cc_num in range(0, 128):
+                cc_array[cc_num] = cc[cc_num]
+        else:
+            for cc_num in range(0, 128):
+                if cc_num in cc:
+                    cc_array[cc_num] = 1
+                else:
+                    cc_array[cc_num] = 0
+        get_lib_zyncore().set_midi_filter_clone_cc(src_chan, dst_chan, cc_array)
 
     # ---------------------------------------------------------------------------
     # Services
@@ -965,16 +1041,6 @@ class zynthian_state_manager:
                 else:
                     get_lib_zyncore().disable_zyntof(i)
                     logging.info("ZYNTOF {}: DISABLED!".format(i))
-
-    def set_transpose(self, state):
-        """Set transpose from state
-
-        state : Transpose state model as dictionary
-        TODO: Lose this function to legacy snapshot handler
-        """
-
-        for midi_chan in range(0, 16):
-            lib_zyncore.set_midi_filter_halftone_trans(midi_chan, state[midi_chan])
 
     def get_midi_profile_state(self):
         """Get MIDI profile state as an ordered dictionary"""

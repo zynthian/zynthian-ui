@@ -2163,7 +2163,7 @@ class zynthian_gui:
 					if self.loading_thread.is_alive():
 						logging.error("Loading thread failed to terminate")
 					if self.state_manager.zynautoconnect.is_running():
-						logging.error("Auto-connect thread failed to terminate")
+						logging.error("MIDI port change thread failed to terminate")
 				zynthian_gui_config.top.quit()
 				return
 		# Refresh Current Chain

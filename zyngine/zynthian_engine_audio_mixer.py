@@ -372,12 +372,14 @@ class zynmixer(zynthian_engine):
 				key = 'chan_{:02d}'.format(chan)
 			else:
 				key = 'main'
-			state[key] = {}
+			chan_state = {}
 			for symbol in self.zctrls[chan]:
 				zctrl = self.zctrls[chan][symbol]
 				ctrl_state = zctrl.get_state(full)
 				if ctrl_state:
-					state[key][zctrl.symbol] = ctrl_state
+					chan_state[zctrl.symbol] = ctrl_state
+			if chan_state:
+				state[key] = chan_state
 		return state
 
 	def set_state(self, state, full=True):

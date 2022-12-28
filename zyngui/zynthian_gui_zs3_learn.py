@@ -71,6 +71,8 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 		if len(self.zyngui.state_manager.zs3) > 0:
 			self.list_data.append((None, None, "> SAVED ZS3s"))
 		for id, state in self.zyngui.state_manager.zs3.items():
+			if id == "zs3-0":
+				continue
 			if id.startswith("zs3"):
 				title = state['title']
 			else:
