@@ -518,15 +518,16 @@ class zynthian_chain_manager():
             return None
         processor = zynthian_processor(type, self.engine_info[type], proc_id)
         chain = self.chains[chain_id]
+        self.processors[proc_id] = processor # Add proc early to allow engines to add more as required, e.g. Aeolus
         if chain.insert_processor(processor, parallel, slot):
             if chain.mixer_chan is None and processor.type != "MIDI Tool":
                 chain.mixer_chan = self.get_next_free_mixer_chan()
             engine = self.start_engine(processor, type)
             if engine:
                 chain.rebuild_graph()
-                self.processors[proc_id] = processor
                 self.state_manager.autoconnect(True)
                 return processor
+        del self.processors[proc_id] # Failed so remove processor from list
         return None
 
     def remove_processor(self, chain_id, processor, stop_engine=True):

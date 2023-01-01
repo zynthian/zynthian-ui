@@ -89,6 +89,7 @@ class zynthian_processor:
         self.ctrl_screens_dict = {}
         self.current_screen_index = -1
         self.refresh_flag = False
+        self.auto_save_bank = False
 
     def reset(self):
         """ Reset processor to inital state, removing engine, etc."""
@@ -196,9 +197,10 @@ class zynthian_processor:
 
     def reset_bank(self):
         """Reset bank to default (empty)"""
-        self.bank_index=0
-        self.bank_name=None
-        self.bank_info=None
+
+        self.bank_index = 0
+        self.bank_name = None
+        self.bank_info = None
 
 
     def set_bank(self, i, set_engine=True):
