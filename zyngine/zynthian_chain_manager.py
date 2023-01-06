@@ -520,7 +520,7 @@ class zynthian_chain_manager():
         chain = self.chains[chain_id]
         self.processors[proc_id] = processor # Add proc early to allow engines to add more as required, e.g. Aeolus
         if chain.insert_processor(processor, parallel, slot):
-            if chain.mixer_chan is None and processor.type != "MIDI Tool":
+            if chain.mixer_chan is None and processor.type != "MIDI Tool": #TODO: Fails to detect MIDI only chains in snapshots
                 chain.mixer_chan = self.get_next_free_mixer_chan()
             engine = self.start_engine(processor, type)
             if engine:

@@ -719,12 +719,12 @@ class zynthian_processor:
         """Get dictionary describing processor"""
 
         state = {
-            'processor_type': self.engine.nickname,
-            'bank_info': self.bank_info,
-            'preset_info': self.preset_info,
-            'show_fav_presets': self.show_fav_presets, #TODO: GUI
-            'controllers': {},
-            'current_screen_index': self.current_screen_index #TODO: GUI
+            "processor_type": self.engine.nickname,
+            "bank_info": self.bank_info,
+            "preset_info": self.preset_info,
+            "show_fav_presets": self.show_fav_presets, #TODO: GUI
+            "controllers": {},
+            "current_screen_index": self.current_screen_index #TODO: GUI
         }
         # Get controller values
         for symbol in self.controllers_dict:
@@ -747,6 +747,7 @@ class zynthian_processor:
             self.load_preset_list()
         except:
             pass
+
         if "preset_info" in state and state["preset_info"]:
             self.set_preset_by_id(state["preset_info"][0])
         # Set controller values

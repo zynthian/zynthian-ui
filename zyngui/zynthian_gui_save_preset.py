@@ -42,8 +42,11 @@ class zynthian_gui_save_preset():
 				self.save_preset_select_name_cb()
 				return
 			options = {}
-			options["***New bank***"] = "NEW_BANK"
-			index = self.layer.get_bank_index() + 1
+			index = self.layer.get_bank_index()
+			if hasattr(self.processor.engine, "new_bank"):
+				#TODO: Implement new_bank in engine
+				options["***New bank***"] = "NEW_BANK"
+				index += 1
 			for bank in self.layer.bank_list:
 				if bank[0]=="*FAVS*":
 					index -= 1

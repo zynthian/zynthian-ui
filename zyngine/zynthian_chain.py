@@ -24,8 +24,6 @@
 # *****************************************************************************
 
 import logging
-from collections import OrderedDict
-from ctypes import c_ubyte
 
 # Zynthian specific modules
 import zynautoconnect
@@ -68,6 +66,7 @@ class zynthian_chain:
         self.audio_thru = enable_audio_thru # True to pass audio if chain empty
         self.status = "" # Arbitary status text
         self.current_processor = None # Selected processor object
+        self.title = None # User defined title for chain
         self.reset()
 
     def reset(self):
@@ -138,10 +137,25 @@ class zynthian_chain:
         for processor in self.get_processors():
             processor.set_midi_chan(chan)
 
+    def set_title(self, title):
+        """ Set user defined title
+        
+        title : Chain title (None to use processor title
+        """
+
+        self.title = title
+
     def get_title(self):
+        """Get chain title
+        
+        Returns : User defined chain title or processor title if not set
+        """
+
         try:
-            if self.synth_slots:
-                return "{}\n{}".format(self.synth_slots[0][0].engine.name, self.synth_slots[0][0].get_preset_name())
+            if self.title:
+                return self.title
+            elif self.synth_slots:
+                return f"{self.synth_slots[0][0].get_name()}\n{self.synth_slots[0][0].get_preset_name()}"
             elif self.get_slot_count("Audio Effect"):
                 return self.get_processors("Audio Effect")[0].engine.name
             elif self.get_slot_count("MIDI Tool"):

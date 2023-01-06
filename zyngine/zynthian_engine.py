@@ -108,8 +108,6 @@ class zynthian_basic_engine:
 		if self.proc:
 			try:
 				logging.info("Stopping Engine " + self.name)
-				self.proc.terminate()
-				sleep(0.2)
 				self.proc.terminate(True)
 				self.proc = None
 			except Exception as err:
@@ -311,6 +309,7 @@ class zynthian_engine(zynthian_basic_engine):
 		super().stop()
 		self.osc_end()
 
+
 	# ---------------------------------------------------------------------------
 	# Generating list from different sources
 	# ---------------------------------------------------------------------------
@@ -390,6 +389,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 	def get_path(self, layer):
 		return self.name
+	
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management

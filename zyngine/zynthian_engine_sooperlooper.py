@@ -27,10 +27,9 @@ import logging
 
 from zyngui import zynthian_gui_config
 from . import zynthian_engine
-import liblo
 import os
 from glob import glob
-from  subprocess import Popen,DEVNULL
+from subprocess import Popen, DEVNULL
 from time import sleep
 
 from . import zynthian_controller
