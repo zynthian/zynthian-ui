@@ -360,8 +360,6 @@ class zynthian_processor:
                 set_engine_needed = True
                 logging.info("Preset selected: %s (%d)" % (preset_name, preset_index))
 
-            last_preset_index = self.preset_index #TODO: Not used
-            last_preset_name = self.preset_name #TODO: Not used
             self.preset_index = preset_index
             self.preset_name = preset_name
             self.preset_info = preset_info

@@ -51,7 +51,8 @@ class zynthian_gui_save_preset():
 				if bank[0]=="*FAVS*":
 					index -= 1
 				else:
-					options[bank[2]] = bank
+					if bank[1] is not None:
+						options[bank[2]] = bank
 			self.zyngui.screens['option'].config("Select bank...", options, self.save_preset_select_bank_cb)
 			self.zyngui.show_screen('option')
 			self.zyngui.screens['option'].select(index)

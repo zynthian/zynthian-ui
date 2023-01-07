@@ -123,7 +123,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			try:
 				self.zyngui.get_current_processor().engine.rename_preset(self.zyngui.get_current_processor().bank_info, preset, new_name)
 				self.zyngui.close_screen()
-				if preset[0]==self.zyngui.get_current_processor().preset_info[0]:
+				if preset[0] == self.zyngui.get_current_processor().preset_info[0]:
 					self.zyngui.get_current_processor().set_preset_by_id(preset[0])
 			except Exception as e:
 				logging.error("Failed to rename preset => {}".format(e))

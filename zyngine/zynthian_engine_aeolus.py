@@ -90,9 +90,8 @@ class zynthian_engine_aeolus(zynthian_engine):
 		['Trem Amp', 13, 64],
 	]
 
-	instrument = [
-		{
-			"name": "Manual I",
+	instrument = {
+		"Manual I": {
 			"ctrls":  [
 				['Principal 8', 14, 'off', 'off|on', [2, 0]],
 				['Principal 4', 15, 'off', 'off|on', [2, 1]],
@@ -120,8 +119,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 				['Manual I (5)', ['Sustain']]
 			]
 		},
-		{
-			"name": "Manual II",
+		"Manual II": {
 			"ctrls":  [
 				['Rohrflöte 8', 30, 'off', 'off|on', [1, 0]],
 				['Harmonic Flute 4', 31, 'off', 'off|on', [1, 1]],
@@ -145,8 +143,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 				['Manual II (4)', ['Swell', 'Trem Freq', 'Trem Amp', 'Sustain']]
 			]
 		},
-		{
-			"name": "Manual III",
+		"Manual III": {
 			"ctrls":  [
 				['Principal 8', 43, 'off', 'off|on', [0, 0]],
 				['Gemshorn 8', 44, 'off', 'off|on', [0, 1]],
@@ -169,8 +166,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 				['Manual III (4)', ['Swell', 'Trem Freq', 'Trem Amp', 'Sustain']]
 			]
 		},
-		{
-			"name": "Pedals",
+		"Pedals": {
 			"ctrls":  [
 				['Subbass 16', 55, 'off', 'off|on', [3, 0]],
 				['Principal 16', 56, 'off', 'off|on', [3, 1]],
@@ -197,7 +193,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 				['Pedals (4)', ['Sustain']]
 			]
 		}
-	]
+	}
 
 	_ctrls=[]
 	_ctrl_screens=[]
@@ -361,7 +357,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def add_layer(self, layer):
-		layer.aeolus_chan = 0
+		layer.division = "Manual I"
 		super().add_layer(layer)
 
 
@@ -385,8 +381,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 				res.append((title, value, title))
 			#TODO: Select current setting in GUI: self.state_manager.screens['bank'].index = self.current_temperament-1
 		else:
-			keyboard = self.instrument[layer.aeolus_chan]["name"]
-			res = [("General", 0, "General"), (keyboard, 1, keyboard)]
+			res = [("General", 0, "General"), (layer.division, None, f"Local {layer.division}")]
 			layer.bank_list = res
 		return res
 
@@ -425,7 +420,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 						processor.engine = self
 						chain.audio_out = []
 						chain.mixer_chan = None
-						processor.aeolus_chan = i
+						processor.division = list(self.instrument)[i]
 						processor.load_bank_list()
 
 			for layer in self.layers:
@@ -457,34 +452,33 @@ class zynthian_engine_aeolus(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_preset_list(self, bank_info):
-		#TODO: Support "General Pistions" (presets for all divisions) and and "Local Pistions" (presets for one division)
 		res = []
-		for index, preset in enumerate(self.presets[bank_info[0]]):
-			res.append([f"{bank_info[0]}/{preset['name']}", bank_info[0], preset['name'], index])
+		for index, preset_name in enumerate(self.presets):
+			res.append([f"{bank_info[0]}/{preset_name}", bank_info[0], preset_name, index])
 		return res
 
 
 	def set_preset(self, layer, preset_info, preload=False):
-		preset = self.presets[preset_info[1]][preset_info[3]]
+		preset = self.presets[preset_info[2]]
 
 		#Update Controller Values
 		for l in self.layers:
 			if preset_info[1] == "General" or l == layer:
 				for zctrl in l.controllers_dict.values():
 					try:
-						value = preset[str(l.aeolus_chan)][zctrl.symbol]
+						value = preset[l.division][zctrl.symbol]
 						zctrl.set_value(value, True)
 					except:
 						pass
 
-			if not preload:
-				l.preset_name = preset_info[2]
-				l.preset_info = copy.deepcopy(preset_info)
-				l.preset_index = preset_info[3]
-				l.preset_bank_index = l.bank_index
-			l.preload_index = l.preset_index
-			l.preload_name = l.preset_name
-			l.preload_info = l.preset_info
+				if not preload:
+					l.preset_name = preset_info[2]
+					l.preset_info = copy.deepcopy(preset_info)
+					l.preset_index = preset_info[3]
+					l.preset_bank_index = l.bank_index
+				l.preload_index = l.preset_index
+				l.preload_name = l.preset_name
+				l.preload_info = l.preset_info
 
 		return True
 
@@ -500,44 +494,46 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 	def save_preset(self, bank_info, preset_name):
 		bank = bank_info[0]
-		state = {"name": preset_name}
+		state = {}
 		for layer in self.layers:
-			if bank == "General" or bank == self.instrument[layer.aeolus_chan]["name"]:
-				state[layer.aeolus_chan] = {}
+			if bank == "General" or bank == self.instrument[layer.division]:
+				state[layer.division] = {}
 				for symbol in layer.controllers_dict:
-					state[layer.aeolus_chan][symbol] = layer.controllers_dict[symbol].value
-		index = self.get_preset_index(bank_info[1], preset_name)
-		if index is None:
-			index = len(self.presets[bank])
-			self.presets[bank].append(state)
-		else:
-			self.presets[bank][index] = state
+					state[layer.division][symbol] = layer.controllers_dict[symbol].value
+		self.presets[preset_name] = state
 		self.save_all_presets()
-		#self.osc_server.send(self.osc_target, "/store_preset", ("i", bank), ("i", index))
-		#self.osc_server.send(self.osc_target, "/save")
 		return f"{bank}/{preset_name}"
 
 
 	def delete_preset(self, bank_info, preset_info):
 		try:
-			del self.presets[bank_info[1]][preset_info[3]]
+			self.presets.pop(preset_info[2])
 		except:
 			return
 		self.save_all_presets()
-		return len(self.presets[bank_info][1])
+		return len(self.presets)
+
+
+	def rename_preset(self, bank_info, preset_info, new_name):
+		try:
+			self.presets[new_name] = self.presets.pop(preset_info[2])
+		except:
+			pass
+
 
 	def preset_exists(self, bank_info, preset_name):
 		if self.get_preset_index(bank_info[1], preset_name) is None:
 			return False
 		return True
 
+
 	def is_preset_user(self, preset_info):
 		return True
 
 	def get_preset_index(self, bank, preset_name):
 		try:
-			for index, preset in enumerate(self.presets[bank]):
-				if preset['name'] == preset_name:
+			for index, preset in enumerate(self.presets):
+				if preset == preset_name:
 					return index
 		except:
 			pass
@@ -550,8 +546,8 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 
 	def get_controllers_dict(self, layer):
-		self._ctrls = self.instrument[layer.aeolus_chan]['ctrls']
-		self._ctrl_screens = self.instrument[layer.aeolus_chan]['ctrl_screens']
+		self._ctrls = self.instrument[layer.division]['ctrls']
+		self._ctrl_screens = self.instrument[layer.division]['ctrl_screens']
 		return super().get_controllers_dict(layer)
 
 
@@ -595,10 +591,10 @@ class zynthian_engine_aeolus(zynthian_engine):
 		xconfig = { 
 			"keyboard": self.keyboard_config,
 			"temperament": self.temperament,
-			"processors": []
+			"divisions": []
 		}
 		for layer in self.layers:
-			xconfig["processors"].append(layer.aeolus_chan)
+			xconfig["divisions"].append(layer.division)
 		return xconfig
 
 
@@ -623,15 +619,18 @@ class zynthian_engine_aeolus(zynthian_engine):
 		for i, layer in enumerate(self.layers):
 			chain = chain_manager.get_chain(chain_manager.get_chain_id_by_processor(layer))
 			try:
-				chain.aeolus_chan = xconfig["processors"][i]
+				layer.division = xconfig["divisions"][i]
 			except:
-				chain.aeolus_chan = i
+				layer.division = list(self.instrument)[i]
 			if i:
 				chain.mixer_chan = None
 		
 
 	def get_name(self, layer):
-		return f"{self.name} {self.instrument[layer.aeolus_chan]['name']}"
+		try:
+			return f"{self.name} {layer.division}"
+		except:
+			return self.name
 
 
 	#----------------------------------------------------------------------------

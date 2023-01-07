@@ -88,13 +88,13 @@ class zynthian_gui_bank(zynthian_gui_selector):
 
 
 	def arrow_right(self):
-		if self.zyngui.screens['layer'].get_num_root_layers() > 1:
-			self.zyngui.screens['layer'].next(True)
+		self.zyngui.chain_manager.next_chain()
+		self.build_view()
 
 
 	def arrow_left(self):
-		if self.zyngui.screens['layer'].get_num_root_layers() > 1:
-			self.zyngui.screens['layer'].prev(True)
+		self.zyngui.chain_manager.previous_chain()
+		self.build_view()
 
 
 	def topbar_bold_touch_action(self):
