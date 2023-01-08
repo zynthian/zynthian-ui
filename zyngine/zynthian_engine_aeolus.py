@@ -22,7 +22,7 @@
 #
 #******************************************************************************
 
-import os
+from os.path import exists as file_exists
 import copy
 import logging
 import json
@@ -203,11 +203,10 @@ class zynthian_engine_aeolus(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	#TODO: Do not use system default files in /usr/share
-	waves_dpath = "/usr/share/aeolus/stops/waves"
+	#TODO: Use paths from global config
 	config_fpath = "/usr/share/aeolus/stops/Aeolus/definition"
-	presets_fpath = "/root/.aeolus-presets"
-	presets_fpath_stub = "/zynthian/zynthian-data/aeolus/aeolus-presets-"
-	#presets_fpath = "/usr/share/aeolus/stops/Aeolus/presets"
+	user_presets_fpath = "/zynthian/zynthian-my-data/presets/aeolus.json"
+	default_presets_fpath = "/zynthian/zynthian-data/presets/aeolus.json"
 
 	stop_cc_num = 98
 
@@ -223,15 +222,12 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.jackname = "aeolus"
 		self.osc_target_port = 9000
 
-		self.options['midi_chan'] = False
 		self.options['replace'] = False
 		self.options['drop_pc'] = True #TODO: This does not seem to be working
-		self.options['layer_audio_out'] = False #TODO: What???
 		self.ready = True
 
 		self.keyboard_config = None
 		self.temperament = None
-		self.reset() #TODO: Is this required?
 		self.load_presets()
 
 
@@ -254,6 +250,31 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 
 	def start(self):
+		chain_manager = self.state_manager.chain_manager
+		if len(self.layers) <= 1:
+			# Add extra layers
+			for i in range(1, len(self.instrument)):
+				if self.keyboard_config & 1 << i:
+					midi_chan = chain_manager.get_next_free_midi_chan(self.layers[0].midi_chan)
+					if midi_chan is None:
+						break
+					chain_id = chain_manager.add_chain(None, midi_chan)
+					chain = chain_manager.get_chain(chain_id)
+					proc_id = chain_manager.get_available_processor_id()
+					processor = zynthian_processor("AE", chain_manager.engine_info["AE"], proc_id)
+					chain.insert_processor(processor)
+					chain_manager.processors[proc_id] = processor
+					self.layers.append(processor)
+					processor.engine = self
+					chain.audio_out = []
+					chain.mixer_chan = None
+					processor.division = list(self.instrument)[i]
+					processor.refresh_controllers()
+					processor.bank_info = ("General", 0, "General")
+
+			# Select first chain so that preset selection is on "Grand manual"
+			chain_manager.set_active_chain_by_id(chain_manager.get_chain_id_by_processor(self.layers[0]))
+
 		self.osc_init()
 		self.get_current_config()
 		self.ready = False
@@ -265,10 +286,11 @@ class zynthian_engine_aeolus(zynthian_engine):
 			self.command += " -t"
 		#self.proc = Popen(self.command, stdout=DEVNULL, stderr=DEVNULL, env=self.command_env)
 		self.proc = pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env, cwd=self.command_cwd)
-		self.wait_for_ready() #TODO: Avoid waiting twice (startup and tuning)
+		self.wait_for_ready()
 		self.set_tuning()
-		self.set_midi_chans()
-
+		self.set_midi_chan()
+		self.state_manager.autoconnect_midi(True)
+		self.state_manager.autoconnect_audio()
 
 	def stop(self):
 		if self.proc:
@@ -319,9 +341,38 @@ class zynthian_engine_aeolus(zynthian_engine):
 		return True
 
 
-	def set_midi_chans(self):
-		"""Update the MIDI channels that aeolus listens to"""
+	def get_path(self, layer):
+		path = self.name
+		if self.keyboard_config is None:
+			path += "/Divisions"
+		elif self.temperament is None:
+			path += "/Temperament"
+		else:
+			path = f"{self.get_name(layer)}/{self.temperament_names[self.temperament]}"
+		return path
 
+
+	# ---------------------------------------------------------------------------
+	# Layer Management
+	# ---------------------------------------------------------------------------
+
+	def add_layer(self, layer):
+		layer.division = "Manual I"
+		super().add_layer(layer)
+
+
+	# ---------------------------------------------------------------------------
+	# MIDI Channel Management
+	# ---------------------------------------------------------------------------
+
+	def set_midi_chan(self, layer=None):
+		"""Update the MIDI channels that aeolus listens to
+
+		layer : Processor (not used - always updates all)
+		"""
+
+		if self.osc_server is None:
+			return
 		keyboard_order = [2,1,0,3] # Order of manuals/pedals in aeolus native config
 		midi_config = []
 		for chan in range(16):
@@ -341,26 +392,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 		# Don't save - we configure MIDI for this session only
 
 
-	def get_path(self, layer):
-		path = self.name
-		if self.keyboard_config is None:
-			path += "/Keyboards" #TODO: Should this be "/Divisions"?
-		elif self.temperament is None:
-			path += "/Temperament"
-		else:
-			path = f"{self.get_name(layer)}/{self.temperament_names[self.temperament]}"
-		return path
-
-
-	# ---------------------------------------------------------------------------
-	# Layer Management
-	# ---------------------------------------------------------------------------
-
-	def add_layer(self, layer):
-		layer.division = "Manual I"
-		super().add_layer(layer)
-
-
 	#----------------------------------------------------------------------------
 	# Bank Managament
 	#----------------------------------------------------------------------------
@@ -372,7 +403,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 		Before engine is fully configured, returns setup lists: keyboard layouts, temperaments
 		"""
 
-		res = [] #TODO: Called twice twice during init
+		res = []
 		if self.keyboard_config is None:
 			for i, title in self.keyboard_config_names.items():
 				res.append((title, i, title))
@@ -380,9 +411,10 @@ class zynthian_engine_aeolus(zynthian_engine):
 			for value, title in self.temperament_names.items():
 				res.append((title, value, title))
 			#TODO: Select current setting in GUI: self.state_manager.screens['bank'].index = self.current_temperament-1
+		elif layer.preset_info is None:
+			res = [("General", 0, "General")]
 		else:
 			res = [("General", 0, "General"), (layer.division, None, f"Local {layer.division}")]
-			layer.bank_list = res
 		return res
 
 
@@ -390,61 +422,23 @@ class zynthian_engine_aeolus(zynthian_engine):
 		"""Select a bank
 		
 		layer : Instance of engine (processor)
-		bank_info : Bank info structure
+		bank_info : Bank info structure [uri, index, name]
+        Returns - True if bank selected, None if more bank selection steps required or False on failure
 		Before engine configured accepts keyboard layout or temperament
 		"""
+
 		if self.keyboard_config is None:
 			self.keyboard_config = bank_info[1]
 			return None
 		elif self.temperament is None:
 			self.temperament = bank_info[1]
-			self.layers[0].load_bank_list()
-			return None
 
 		if not self.proc:
-			chain_manager = self.state_manager.chain_manager
-			if len(self.layers) <= 1:
-				# Add extra layers
-				for i in range(1, 4):
-					if self.keyboard_config & 1 << i:
-						midi_chan = chain_manager.get_next_free_midi_chan(self.layers[0].midi_chan)
-						if midi_chan is None:
-							break
-						chain_id = chain_manager.add_chain(None, midi_chan)
-						chain = chain_manager.get_chain(chain_id)
-						proc_id = chain_manager.get_available_processor_id()
-						processor = zynthian_processor("AE", chain_manager.engine_info["AE"], proc_id)
-						chain.insert_processor(processor)
-						chain_manager.processors[proc_id] = processor
-						self.layers.append(processor)
-						processor.engine = self
-						chain.audio_out = []
-						chain.mixer_chan = None
-						processor.division = list(self.instrument)[i]
-						processor.load_bank_list()
-
-			for layer in self.layers:
-				layer.refresh_controllers()
-
-			# Select first chain so that preset selection is on "Upper" manual
-			chain_manager.set_active_chain_by_id(chain_manager.get_chain_id_by_processor(self.layers[0]))
-
 			self.start()
-			self.state_manager.autoconnect_midi(True)
-			self.state_manager.autoconnect_audio(True) #TODO: What's so urgent???
-			self.layers[0].load_bank_list()
-			self.layers[0].reset_bank()
-
+			return None
 
 		self.state_manager.zynmidi.set_midi_bank_lsb(layer.get_midi_chan(), bank_info[1])
-		self.layers[0].load_bank_list()
 
-		#Change Bank for all Layers
-		for l in self.layers:
-			if l != layer:
-				l.bank_index = layer.bank_index
-				l.bank_name = layer.bank_name
-				l.bank_info = copy.deepcopy(bank_info)
 		return True
 
 	#----------------------------------------------------------------------------
@@ -454,7 +448,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 	def get_preset_list(self, bank_info):
 		res = []
 		for index, preset_name in enumerate(self.presets):
-			res.append([f"{bank_info[0]}/{preset_name}", bank_info[0], preset_name, index])
+			res.append([preset_name, bank_info[0], preset_name, index])
 		return res
 
 
@@ -483,26 +477,19 @@ class zynthian_engine_aeolus(zynthian_engine):
 		return True
 
 	def save_all_presets(self):
-		try:
-			#TODO: Use config dir
-			os.mkdir("/zynthian/zynthian-my-data/presets/aeolus")
-		except:
-			pass
-		with open("/zynthian/zynthian-my-data/presets/aeolus/presets", "w") as file:
+		with open(f"{self.user_presets_fpath}", "w") as file:
 			json.dump(self.presets, file)
 
 
 	def save_preset(self, bank_info, preset_name):
-		bank = bank_info[0]
 		state = {}
 		for layer in self.layers:
-			if bank == "General" or bank == self.instrument[layer.division]:
-				state[layer.division] = {}
-				for symbol in layer.controllers_dict:
-					state[layer.division][symbol] = layer.controllers_dict[symbol].value
+			state[layer.division] = {}
+			for symbol in layer.controllers_dict:
+				state[layer.division][symbol] = layer.controllers_dict[symbol].value
 		self.presets[preset_name] = state
 		self.save_all_presets()
-		return f"{bank}/{preset_name}"
+		return preset_name
 
 
 	def delete_preset(self, bank_info, preset_info):
@@ -517,27 +504,18 @@ class zynthian_engine_aeolus(zynthian_engine):
 	def rename_preset(self, bank_info, preset_info, new_name):
 		try:
 			self.presets[new_name] = self.presets.pop(preset_info[2])
+			self.save_all_presets()
 		except:
 			pass
 
 
 	def preset_exists(self, bank_info, preset_name):
-		if self.get_preset_index(bank_info[1], preset_name) is None:
-			return False
-		return True
+		return preset_name in self.presets
 
 
 	def is_preset_user(self, preset_info):
+		#TODO: Do we want some factory defaults?
 		return True
-
-	def get_preset_index(self, bank, preset_name):
-		try:
-			for index, preset in enumerate(self.presets):
-				if preset == preset_name:
-					return index
-		except:
-			pass
-		return None
 			
 
 	#----------------------------------------------------------------------------
@@ -572,8 +550,12 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 	def load_presets(self):
 		# Get user presets
+		if file_exists(self.user_presets_fpath):
+			filename = self.user_presets_fpath
+		else:
+			filename = self.default_presets_fpath
 		try:
-			with open("/zynthian/zynthian-my-data/presets/aeolus/presets", "r") as file:
+			with open(filename, "r") as file:
 				self.presets = json.load(file)
 		except:
 			self.presets = {}
@@ -608,7 +590,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 			self.temperament = xconfig['temperament']
 		elif "tuning_temp" in xconfig:
 			# Legacy config
-			self.temperament = xconfig['tuning_temp']
+			self.temperament = xconfig['tuning_temp'] #TODO: Retune if necessary
 		if "keyboard" in xconfig:
 			self.keyboard_config = xconfig['keyboard']
 		else:
@@ -624,6 +606,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 				layer.division = list(self.instrument)[i]
 			if i:
 				chain.mixer_chan = None
+		self.set_tuning()
 		
 
 	def get_name(self, layer):

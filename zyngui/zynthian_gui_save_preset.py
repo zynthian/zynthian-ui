@@ -37,8 +37,8 @@ class zynthian_gui_save_preset():
 		if self.layer:
 			self.save_preset_create_bank_name = None
 			self.save_preset_bank_info = None
-			self.layer.load_bank_list()
-			if not self.layer.bank_list or not self.layer.bank_list[0][0] or self.layer.auto_save_bank:
+			bank_list = self.layer.get_bank_list()
+			if not bank_list or not bank_list[0][0] or self.layer.auto_save_bank:
 				self.save_preset_select_name_cb()
 				return
 			options = {}
@@ -47,15 +47,18 @@ class zynthian_gui_save_preset():
 				#TODO: Implement new_bank in engine
 				options["***New bank***"] = "NEW_BANK"
 				index += 1
-			for bank in self.layer.bank_list:
+			for bank in bank_list:
 				if bank[0]=="*FAVS*":
 					index -= 1
 				else:
 					if bank[1] is not None:
 						options[bank[2]] = bank
-			self.zyngui.screens['option'].config("Select bank...", options, self.save_preset_select_bank_cb)
-			self.zyngui.show_screen('option')
-			self.zyngui.screens['option'].select(index)
+			if len(options) > 1:
+				self.zyngui.screens['option'].config("Select bank...", options, self.save_preset_select_bank_cb)
+				self.zyngui.show_screen('option')
+				self.zyngui.screens['option'].select(index)
+			else:
+				self.save_preset_select_name_cb()
 
 
 	def save_preset_select_bank_cb(self, bank_name, bank_info):
@@ -100,7 +103,6 @@ class zynthian_gui_save_preset():
 				if self.save_preset_create_bank_name:
 					self.layer.engine.create_user_bank(self.save_preset_create_bank_name)
 					logging.info("Created new bank '{}' => {}".format(self.save_preset_create_bank_name, self.save_preset_bank_info[0]))
-					self.layer.load_bank_list()
 				if self.save_preset_bank_info:
 					self.layer.set_bank_by_id(self.save_preset_bank_info[0])
 				self.layer.load_preset_list()

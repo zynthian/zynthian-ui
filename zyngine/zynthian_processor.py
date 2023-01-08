@@ -138,7 +138,7 @@ class zynthian_processor:
     def set_midi_chan(self, midi_chan):
         """Set processor (and its engines) MIDI channel
         
-        midi_chan - MIDI channel 0..15 or None
+        midi_chan : MIDI channel 0..15 or None
         """
 
         self.midi_chan = midi_chan
@@ -163,10 +163,12 @@ class zynthian_processor:
     # Bank Management
     # ---------------------------------------------------------------------------
 
-    def load_bank_list(self):
-        """Load bank list for processor"""
-
-        self.bank_list = self.engine.get_bank_list(self)
+    def get_bank_list(self):
+        #TODO: Ensure this is efficient
+        bank_list = self.engine.get_bank_list(self)
+        if self.bank_list == bank_list:
+            return self.bank_list
+        self.bank_list = bank_list
 
         # Calculate info for bank_msb
         i = 0
@@ -193,6 +195,7 @@ class zynthian_processor:
 
         logging.debug("BANK LIST => \n%s" % str(self.bank_list))
         logging.debug("BANK MSB INFO => \n{}".format(self.bank_msb_info))
+        return self.bank_list
 
 
     def reset_bank(self):
@@ -203,30 +206,30 @@ class zynthian_processor:
         self.bank_info = None
 
 
-    def set_bank(self, i, set_engine=True):
+    def set_bank(self, bank_index, set_engine=True):
         """Set processor's engine bank by index
 
-        i - Index of the bank to select
-        set_engine - True to set engine's bank
-        Returns - True if bank selected, None if more bank selection steps required or False on failure
+        bank_index : Index of the bank to select
+        set_engine : True to set engine's bank
+        Returns : True if bank selected, None if more bank selection steps required or False on failure
         """
 
-        if i < len(self.bank_list):
-            bank_name = self.bank_list[i][2]
+        if bank_index < len(self.bank_list):
+            bank_name = self.bank_list[bank_index][2]
 
             if bank_name is None:
                 return False
 
-            if i != self.bank_index or self.bank_name != bank_name:
+            if bank_index != self.bank_index or self.bank_name != bank_name:
                 set_engine_needed = True
-                logging.info("Bank selected: %s (%d)" % (self.bank_name, i))
+                logging.info("Bank selected: %s (%d)" % (self.bank_name, bank_index))
             else:
                 set_engine_needed = False
-                logging.info("Bank already selected: %s (%d)" % (self.bank_name, i))
+                logging.info("Bank already selected: %s (%d)" % (self.bank_name, bank_index))
 
-            self.bank_index = i
+            self.bank_index = bank_index
             self.bank_name = bank_name
-            self.bank_info = copy.deepcopy(self.bank_list[i])
+            self.bank_info = copy.deepcopy(self.bank_list[bank_index])
 
             if set_engine and set_engine_needed:
                 return self.engine.set_bank(self, self.bank_info)
@@ -251,9 +254,9 @@ class zynthian_processor:
     def set_bank_by_name(self, bank_name, set_engine=True):
         """Set processor's engine bank by name
         
-        bank_name - Name of bank to select
-        set_engine - True to set engine's bank
-        Returns - True on success
+        bank_name:- Name of bank to select
+        set_engine : True to set engine's bank
+        Returns : True on success
         #TODO Optimize search!!
         """
         
@@ -267,9 +270,9 @@ class zynthian_processor:
     def set_bank_by_id(self, bank_id, set_engine=True):
         """Set processor's engine bank by id
 
-        bank_id - ID of the bank to select
-        set_engine - True to set engine's bank
-        Returns - True if bank selected, None if more bank selection steps required or False on failure
+        bank_id : ID of the bank to select
+        set_engine : True to set engine's bank
+        Returns : True if bank selected, None if more bank selection steps required or False on failure
         """
 
         for i in range(len(self.bank_list)):
@@ -322,10 +325,10 @@ class zynthian_processor:
     def set_preset(self, preset_index, set_engine=True, force_set_engine=True):
         """Set the processor's engine preset
         
-        preset_index - Index of preset
-        set_engine - True to set the engine preset???
-        force_set_engine - True to force engine set???
-        Returns - True on success
+        preset_index : Index of preset
+        set_engine : True to set the engine preset???
+        force_set_engine : True to force engine set???
+        Returns : True on success
         """
         
         if preset_index < len(self.preset_list):
@@ -384,9 +387,9 @@ class zynthian_processor:
     def set_preset_by_name(self, preset_name, set_engine=True, force_set_engine=True):
         """Set processor's engine preset by name
         
-        preset_name - Name of preset to select
-        set_engine - True to set engine's preset???
-        force_set_engine - True to force setting engine's preset???
+        preset_name : Name of preset to select
+        set_engine : True to set engine's preset???
+        force_set_engine : True to force setting engine's preset???
         TODO:Optimize search!!
         """
         for i in range(len(self.preset_list)):
@@ -406,9 +409,9 @@ class zynthian_processor:
     def set_preset_by_id(self, preset_id, set_engine=True, force_set_engine=True):
         """Set processor's engine preset by ID
         
-        preset_id - ID of preset to select
-        set_engine - True to set engine's preset???
-        force_set_engine - True to force setting engine's preset???
+        preset_id : ID of preset to select
+        set_engine : True to set engine's preset???
+        force_set_engine : True to force setting engine's preset???
         TODO: Optimize search!!
         """
 
@@ -421,7 +424,7 @@ class zynthian_processor:
     def preload_preset(self, preset_index):
         """Preload processor's engine preset by index
         
-        preset_index - Index of preset
+        preset_index : Index of preset
         Preloading request engine to temporarily load a preset
         """
         # Avoid preload on engines that take excessive time to load presets
@@ -479,7 +482,7 @@ class zynthian_processor:
     def toggle_preset_fav(self, preset):
         """Toggle preset's favourite state
         
-        preset - Preset info (list)
+        preset : Preset info (list)
         """
         
         self.engine.toggle_preset_fav(self, preset)
@@ -490,7 +493,7 @@ class zynthian_processor:
     def remove_preset_fav(self, preset):
         """Remove preset from favourites
 
-        preset - Preset info (list)
+        preset : Preset info (list)
         """
 
         self.engine.remove_preset_fav(preset)
@@ -507,7 +510,7 @@ class zynthian_processor:
     def set_show_fav_presets(self, flag=True):
         """Set/reset flag indicating whether to show preset favourites
         
-        flag - True to enable show favourites
+        flag : True to enable show favourites
         TODO: Should this be in UI?
         """
         
@@ -572,7 +575,7 @@ class zynthian_processor:
         """Get processor controller screens
         
         TODO: This should be in UI
-        Returns - Dictionary of controller screen structures
+        Returns : Dictionary of controller screen structures
         """
         
         return self.ctrl_screens_dict
@@ -581,8 +584,8 @@ class zynthian_processor:
     def get_ctrl_screen(self, key):
         """Get processor controller screen
 
-        key - Screen key
-        Returns - Controller screen structure
+        key : Screen key
+        Returns : Controller screen structure
         TODO: This should be in UI
         """
 
@@ -595,7 +598,7 @@ class zynthian_processor:
     def get_current_screen_index(self):
         """Get index of last selected controller screen
         
-        Returns - Index of screen
+        Returns : Index of screen
         TODO: This should be in UI
         """
         
@@ -605,7 +608,7 @@ class zynthian_processor:
     def set_current_screen_index(self, screen_index):
         """Set index of last selected controller screen
         
-        screen_index - Index of screen
+        screen_index : Index of screen
         TODO: This should be in UI
         """
         self.current_screen_index = screen_index
@@ -614,7 +617,7 @@ class zynthian_processor:
     def build_ctrl_screen(self, ctrl_keys):
         """Build array of zynthian_controllers from list of keys
 
-        ctrl_keys - List of controller keys (symbols)
+        ctrl_keys : List of controller keys (symbols)
         TODO: This should be in UI
         """
 
@@ -670,9 +673,9 @@ class zynthian_processor:
     def midi_control_change(self, chan, ccnum, ccval):
         """Handle MIDI CC message
         
-        chan - MIDI channel
-        ccnum - CC number
-        ccval - CC value
+        chan : MIDI channel
+        ccnum : CC number
+        ccval : CC value
         """
         
         if self.engine:
@@ -686,7 +689,7 @@ class zynthian_processor:
     def midi_bank_msb(self, bank_msb):
         """Handle MIDI bank MSB message
         
-        bank_msb - Bank MSB
+        bank_msb : Bank MSB
         """
         logging.debug("Received Bank MSB for CH#{}: {}".format(self.midi_chan, bank_msb))
         if bank_msb >= 0 and bank_msb <= 2:
@@ -696,7 +699,7 @@ class zynthian_processor:
     def midi_bank_lsb(self, bank_lsb):
         """Handle MIDI bank MSB message
         
-        bank_lsb - Bank LSB
+        bank_lsb : Bank LSB
         """
         info = self.bank_msb_info[self.bank_msb]
         logging.debug("Received Bank LSB for CH#{}: {} => {}".format(self.midi_chan, bank_lsb, info))
@@ -732,11 +735,11 @@ class zynthian_processor:
     def set_state(self, state):
         """Configure processor from state model dictionary
 
-        state - Processor state
+        state : Processor state
         """
 
         try:
-            self.load_bank_list()
+            self.get_bank_list()
         except:
             pass
         if "bank_info" in state and state["bank_info"]:

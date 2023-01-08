@@ -120,11 +120,13 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		preset = self.list_data[self.index]
 		new_name = new_name.strip()
 		if new_name != preset[2]:
+			processor = self.zyngui.get_current_processor()
 			try:
-				self.zyngui.get_current_processor().engine.rename_preset(self.zyngui.get_current_processor().bank_info, preset, new_name)
+				#TODO: Confirm rename if overwriting existing preset or duplicate name
+				processor.engine.rename_preset(processor.bank_info, preset, new_name)
 				self.zyngui.close_screen()
-				if preset[0] == self.zyngui.get_current_processor().preset_info[0]:
-					self.zyngui.get_current_processor().set_preset_by_id(preset[0])
+				if preset[0] == processor.preset_info[0]:
+					processor.set_preset_by_name(new_name)
 			except Exception as e:
 				logging.error("Failed to rename preset => {}".format(e))
 
@@ -155,7 +157,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 				return True
 		elif swi == 1:
 			if t == 'S':
-				if len(self.zyngui.get_current_processor().bank_list) > 1:
+				if len(self.zyngui.get_current_processor().get_bank_list()) > 1:
 					self.zyngui.replace_screen('bank')
 					return True
 		elif swi == 2:

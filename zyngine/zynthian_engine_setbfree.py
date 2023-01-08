@@ -184,8 +184,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.options['midi_chan'] = False
 		self.options['replace'] = False
 		self.options['drop_pc'] = True
-		self.options['layer_audio_out'] = False
-
+		
 		self.manuals_config = None
 		self.tonewheel_model = None
 		self.show_favs_bank = False
@@ -313,7 +312,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 	def set_bank(self, layer, bank):
 		if not self.manuals_config:
 			self.manuals_config = bank
-			self.layers[0].load_bank_list()
 			self.layers[0].reset_bank()
 			return None
 
@@ -330,8 +328,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 			logging.info("Upper Layer in chan %d", ch)
 			i = 0
 			self.layers[i].bank_name = "Upper"
-			self.layers[i].load_bank_list()
-			self.layers[i].set_bank(0)
+			self.layers[i].get_bank_list()
+			self.layers[i].set_bank(0, False)
 
 			# Extra layers
 			for j in range(2):
@@ -353,8 +351,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 							self.layers.append(processor)
 							self.layers[i].bank_name = manual
 							self.layers[i].engine = self
-							self.layers[i].load_bank_list()
-							self.layers[i].set_bank(0)
+							self.layers[i].get_bank_list()
+							self.layers[i].set_bank(0, False)
 							self.layers[i].refresh_controllers()
 							chain.audio_out = []
 							chain.mixer_chan = None

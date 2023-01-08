@@ -45,14 +45,19 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		if not self.zyngui.get_current_processor():
 			logging.error("Can't fill bank list for None layer!")
 			return
-		self.zyngui.get_current_processor().load_bank_list()
-		self.list_data = self.zyngui.get_current_processor().bank_list
+		self.list_data = self.zyngui.get_current_processor().get_bank_list()
 		super().fill_list()
 
 
 	def build_view(self):
-		if self.zyngui.get_current_processor():
-			self.index = self.zyngui.get_current_processor().get_bank_index()
+		processor = self.zyngui.get_current_processor()
+		if processor:
+			bank_list = processor.get_bank_list()
+			if len(bank_list) < 2:
+				# Only one option so select and move on...
+				self.select_action(0)
+				return
+			self.index = processor.get_bank_index()
 			if self.zyngui.get_current_processor().get_show_fav_presets():
 				if len(self.zyngui.get_current_processor().get_preset_favs()) > 0:
 					self.index = 0
@@ -73,16 +78,18 @@ class zynthian_gui_bank(zynthian_gui_selector):
 			self.zyngui.get_current_processor().set_show_fav_presets(True)
 		else:
 			if self.zyngui.get_current_processor().set_bank(i) is None:
+				# More setup stages to progess
 				self.build_view()
 				return
 			self.zyngui.get_current_processor().set_show_fav_presets(False)
 
+		# If only one bank, show to preset list
 		if len(self.list_data) <= 1:
 			self.zyngui.replace_screen('preset')
 		else:
 			self.zyngui.show_screen('preset')
 
-		# If bank is empty (no presets), jump to instrument control
+		# If bank is empty (no presets), show instrument control
 		if len(self.zyngui.get_current_processor().preset_list) == 0 or self.zyngui.get_current_processor().preset_list[0][0] == "":
 			self.zyngui.screens['preset'].select_action(0)
 

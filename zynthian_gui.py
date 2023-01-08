@@ -908,8 +908,7 @@ class zynthian_gui:
 				self.show_screen_reset(control_screen_name)
 			# If not => bank/preset selector screen
 			else:
-				self.get_current_processor().load_bank_list()
-				if len(self.get_current_processor().bank_list) > 1:
+				if len(self.get_current_processor().get_bank_list()) > 1:
 					self.show_screen_reset('bank')
 				else:
 					self.get_current_processor().set_bank(0)
@@ -1489,7 +1488,7 @@ class zynthian_gui:
 				logging.error("Can't set chain passed as CUIA parameter!")
 
 		if self.current_screen == 'preset':
-			if len(self.get_current_processor().bank_list) > 1:
+			if len(self.get_current_processor().get_bank_list()) > 1:
 				self.replace_screen('bank')
 			else:
 				self.close_screen()
@@ -1500,7 +1499,7 @@ class zynthian_gui:
 			if len(self.get_current_processor().preset_list) > 0 and self.get_current_processor().preset_list[0][0] != '':
 				self.screens['preset'].index = self.get_current_processor().get_preset_index()
 				self.show_screen('preset', hmode=zynthian_gui.SCREEN_HMODE_ADD)
-			elif len(self.get_current_processor().bank_list) > 0 and self.get_current_processor().bank_list[0][0] != '':
+			elif len(self.get_current_processor().get_bank_list()) > 0 and self.get_current_processor().get_bank_list()[0][0] != '':
 				self.show_screen('bank', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 

@@ -497,12 +497,12 @@ class zynthian_engine_modui(zynthian_engine):
 		if bdirname != 'default.pedalboard':
 			#Find bundle_path in bank list ...
 			layer = self.layers[0]
-			layer.load_bank_list()
-			for i in range(len(layer.bank_list)):
-				#logging.debug("BUNDLE PATH SEARCH => %s <=> %s" % (layer.bank_list[i][0].split('/')[-1], bdirname))
-				if layer.bank_list[i][0].split('/')[-1] == bdirname:
+			bank_list = layer.get_bank_list() #TODO: Can we call self.get_bank_list?
+			for i in range(len(bank_list)):
+				#logging.debug("BUNDLE PATH SEARCH => %s <=> %s" % (bank_list[i][0].split('/')[-1], bdirname))
+				if bank_list[i][0].split('/')[-1] == bdirname:
 					bank_index = i
-					bank_name = layer.bank_list[i][2]
+					bank_name = bank_list[i][2]
 					#Set Bank in GUI, layer and engine without reloading the bundle
 					logging.info('Bank Selected from Bundlepath: ' + bank_name + ' (' + str(i)+')')
 					layer.set_bank(i, False)

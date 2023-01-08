@@ -50,7 +50,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector, zynthian_gui_save_pr
 	def fill_list(self):
 		self.list_data = []
 
-		if len(self.processor.bank_list) > 1 or len(self.processor.preset_list) > 0 and self.processor.preset_list[0][0] != '':
+		if len(self.processor.get_bank_list()) > 1 or len(self.processor.preset_list) > 0 and self.processor.preset_list[0][0] != '':
 			self.list_data.append((self.preset_list, None, "Preset List"))
 
 		if hasattr(self.processor.engine, "save_preset"):

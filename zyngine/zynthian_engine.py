@@ -182,7 +182,6 @@ class zynthian_engine(zynthian_basic_engine):
 			'midi_chan': True,
 			'replace': True,
 			'drop_pc': False,
-			'layer_audio_out': True
 		}
 
 		self.osc_proto = liblo.UDP
@@ -207,7 +206,6 @@ class zynthian_engine(zynthian_basic_engine):
 	def reset(self):
 		#Reset Vars
 		self.loading = 0
-		self.loading_snapshot = False
 		#TODO: OSC, IPC, ...
 
 
