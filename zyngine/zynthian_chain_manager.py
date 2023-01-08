@@ -828,6 +828,7 @@ class zynthian_chain_manager():
         except:
             pass
         chain.set_midi_chan(midi_chan)
+        self.update_chain_ids_ordered()
 
     def get_free_mixer_chans(self):
         """Get list of unused mixer channels"""

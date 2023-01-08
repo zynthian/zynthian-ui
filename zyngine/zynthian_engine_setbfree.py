@@ -200,6 +200,67 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.reset()
 
 
+	def start(self):
+		chain_manager = self.state_manager.chain_manager
+		midi_chan = self.layers[0].get_midi_chan()
+		self.midi_chans = [midi_chan, None, None]
+		self.chan_names = {
+			str(midi_chan): 'Upper'
+		}
+		logging.info("Upper Layer in chan %d", midi_chan)
+		i = 0
+		self.layers[i].bank_name = "Upper"
+		self.layers[i].get_bank_list()
+		self.layers[i].set_bank(0, False)
+
+		# Extra layers
+		for j in range(2):
+			manual = ["Lower", "Pedals"][j]
+			if self.manuals_config[4][j]:
+				i += 1
+				if len(self.layers) == i:
+					try:
+						midi_chan = chain_manager.get_next_free_midi_chan(midi_chan)
+						if midi_chan is None:
+							break
+						self.midi_chans[j + 1] = midi_chan
+						self.chan_names[str(midi_chan)] = manual
+						logging.info("%s Manual Layer in chan %s", manual, midi_chan)
+						chain_id = chain_manager.add_chain(None, midi_chan)
+						chain = chain_manager.get_chain(chain_id)
+						proc_id = chain_manager.get_available_processor_id()
+						processor = zynthian_processor("BF", chain_manager.engine_info["BF"], proc_id)
+						chain.insert_processor(processor)
+						chain_manager.processors[proc_id] = processor
+						self.layers.append(processor)
+						self.layers[i].bank_name = manual
+						self.layers[i].engine = self
+						self.layers[i].get_bank_list()
+						self.layers[i].set_bank(0, False)
+						self.layers[i].refresh_controllers()
+						chain.audio_out = []
+						chain.mixer_chan = None
+					except Exception as e:
+						logging.error("%s Manual Layer can't be added! => %s", manual, e)
+				else:
+					midi_chan = self.layers[i].get_midi_chan()
+					self.midi_chans[j + 1] = midi_chan
+					self.chan_names[str(midi_chan)] = manual
+
+		# Start engine
+		logging.debug("STARTING SETBFREE!!")
+		self.generate_config_file(self.midi_chans)
+		super().start()
+		self.state_manager.autoconnect_midi(True)
+		self.state_manager.autoconnect_audio()
+		for layer in self.layers:
+			layer.load_preset_list()
+			layer.set_preset(0)
+
+		# Select first chain so that preset selection is on "Upper" manual
+		chain_manager.set_active_chain_by_id(chain_manager.get_chain_id_by_processor(self.layers[0]))
+
+
 	def generate_config_file(self, chans):
 		midi_chans = chans.copy()
 		# Get user's config
@@ -319,61 +380,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 			self.tonewheel_model = bank[0]
 
 		if not self.proc:
-			chain_manager = self.state_manager.chain_manager
-			ch = self.layers[0].get_midi_chan()
-			self.midi_chans = [ch, None, None]
-			self.chan_names = {
-				str(ch): 'Upper'
-			}
-			logging.info("Upper Layer in chan %d", ch)
-			i = 0
-			self.layers[i].bank_name = "Upper"
-			self.layers[i].get_bank_list()
-			self.layers[i].set_bank(0, False)
-
-			# Extra layers
-			for j in range(2):
-				manual = ["Lower", "Pedals"][j]
-				if self.manuals_config[4][j]:
-					i += 1
-					if len(self.layers) == i:
-						try:
-							ch = chain_manager.get_next_free_midi_chan(ch)
-							self.midi_chans[j + 1] = ch
-							self.chan_names[str(ch)] = manual
-							logging.info("%s Manual Layer in chan %s", manual, ch)
-							chain_id = chain_manager.add_chain(None, ch)
-							chain = chain_manager.get_chain(chain_id)
-							proc_id = chain_manager.get_available_processor_id()
-							processor = zynthian_processor("BF", chain_manager.engine_info["BF"], proc_id)
-							chain.insert_processor(processor)
-							chain_manager.processors[proc_id] = processor
-							self.layers.append(processor)
-							self.layers[i].bank_name = manual
-							self.layers[i].engine = self
-							self.layers[i].get_bank_list()
-							self.layers[i].set_bank(0, False)
-							self.layers[i].refresh_controllers()
-							chain.audio_out = []
-							chain.mixer_chan = None
-						except Exception as e:
-							logging.error("%s Manual Layer can't be added! => %s", manual, e)
-					else:
-						ch = self.layers[i].get_midi_chan()
-						self.midi_chans[j + 1] = ch
-						self.chan_names[str(ch)] = manual
-
-			# Start engine
-			logging.debug("STARTING SETBFREE!!")
-			self.generate_config_file(self.midi_chans)
 			self.start()
-			self.state_manager.autoconnect_midi(True)
-			self.state_manager.autoconnect_audio()
 
-			# Select first chain so that preset selection is on "Upper" manual
-			chain_manager.set_active_chain_by_id(chain_manager.get_chain_id_by_processor(self.layers[0]))
-
-			return True
+		return True
 
 
 	#----------------------------------------------------------------------------
@@ -533,6 +542,11 @@ class zynthian_engine_setbfree(zynthian_engine):
 		try:
 			self.manuals_config = xconfig['manuals_config']
 			self.tonewheel_model = xconfig['tonewheel_model']
+			chain_manager = self.state_manager.chain_manager
+			for i, layer in enumerate(self.layers):
+				if i:
+					chain_manager.get_chain(chain_manager.get_chain_id_by_processor(layer)).mixer_chan = None
+
 		except Exception as e:
 			logging.error("Can't setup extended config => {}".format(e))
 
