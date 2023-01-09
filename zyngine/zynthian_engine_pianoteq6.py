@@ -234,7 +234,7 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 			sr = 44100
 		fix_pianoteq_config(sr)
 		super().start()
-	
+
 
 	# ---------------------------------------------------------------------------
 	# Layer Management
@@ -253,6 +253,7 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 
 
 	def set_bank(self, layer, bank):
+		self.name = (f"Pianoteq {bank[0]}")
 		return True
 
 

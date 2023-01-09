@@ -1514,6 +1514,22 @@ class zynthian_gui:
 			except Exception as e:
 				logging.error(e)
 
+		#----------------------------------------------------------------
+		# MIDI CUIAs
+		#----------------------------------------------------------------
+
+		elif cuia == "PROGRAM_CHANGE":
+			if not lib_zyncore:
+				return
+			if len(params):
+				pgm = params[0]
+				if len(params) > 1:
+					chan = params[1]
+				else:
+					chan = lib_zyncore.get_midi_active_chan()
+				if chan >= 0 and chan < 16 and pgm >= 0 and pgm < 128:
+					lib_zyncore.write_zynmidi_program_change(chan, pgm)
+
 		# Common methods to control views derived from zynthian_gui_base
 		elif isinstance(self.screens[self.current_screen], zynthian_gui_base):
 			if cuia == "SHOW_TOPBAR":
