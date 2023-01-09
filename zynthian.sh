@@ -45,14 +45,6 @@ function load_config_env() {
 }
 
 
-function screensaver_off() {
-	# Don't activate screensaver
-	xset s off
-	# Disable DPMS (Energy Star) features.
-	xset -dpms
-}
-
-
 function raw_splash_zynthian() {
 	if [ -c $FRAMEBUFFER ]; then
 		cat $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.raw > $FRAMEBUFFER
@@ -120,7 +112,6 @@ function splash_zynthian_error_exit_ip() {
 }
 
 powersave_control.sh off
-screensaver_off
 
 #------------------------------------------------------------------------------
 # Test splash screen generator
