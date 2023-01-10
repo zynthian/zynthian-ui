@@ -90,109 +90,108 @@ class zynthian_engine_aeolus(zynthian_engine):
 		['Trem Amp', 13, 64],
 	]
 
-	instrument = {
-		"Manual I": {
-			"ctrls":  [
-				['Principal 8', 14, 'off', 'off|on', [2, 0]],
-				['Principal 4', 15, 'off', 'off|on', [2, 1]],
-				['Octave 2', 16, 'off', 'off|on', [2, 2]],
-				['Octave 1', 17, 'off', 'off|on', [2, 3]],
-				['Quint 5 1/3', 18, 'off', 'off|on', [2, 4]],
-				['Quint 2 2/3', 19, 'off', 'off|on', [2, 5]],
-				['Tibia 8', 20, 'off', 'off|on', [2, 6]],
-				['Celesta 8', 21, 'off', 'off|on', [2, 7]],
-				['Flöte 8', 22, 'off', 'off|on', [2, 8]],
-				['Flöte 4', 23, 'off', 'off|on', [2, 9]],
-				['Flöte 2', 24, 'off', 'off|on', [2, 10]],
-				['Cymbel VI', 25, 'off', 'off|on', [2, 11]],
-				['Mixtur', 26, 'off', 'off|on', [2, 12]],
-				['Trumpet', 27, 'off', 'off|on', [2, 13]],
-				['I+II', 28, 'off', 'off|on', [2, 14]],
-				['I+III', 29, 'off', 'off|on', [2, 15]],
-				['Sustain', 64, "off", "off|on"]
-			],
-			"ctrl_screens" : [
-				['Manual I (1)', ['Principal 8', 'Principal 4', 'Octave 2', 'Octave 1']],
-				['Manual I (2)', ['Quint 5 1/3', 'Quint 2 2/3', 'Tibia 8', 'Celesta 8']],
-				['Manual I (3)', ['Flöte 8', 'Flöte 4', 'Flöte 2', 'Cymbel VI']],
-				['Manual I (4)', ['Mixtur', 'Trumpet', 'I+II', 'I+III']],
-				['Manual I (5)', ['Sustain']]
-			]
-		},
-		"Manual II": {
-			"ctrls":  [
-				['Rohrflöte 8', 30, 'off', 'off|on', [1, 0]],
-				['Harmonic Flute 4', 31, 'off', 'off|on', [1, 1]],
-				['Flauto Dolce 4', 32, 'off', 'off|on', [1, 2]],
-				['Nasard 2 2/3', 33, 'off', 'off|on', [1, 3]],
-				['Ottavina 2', 34, 'off', 'off|on', [1, 4]],
-				['Tertia 1 3/5', 35, 'off', 'off|on', [1, 5]],
-				['Sesqui-altera', 36, 'off', 'off|on', [1, 6]],
-				['Septime', 37, 'off', 'off|on', [1, 7]],
-				['None', 38, 'off', 'off|on', [1, 8]],
-				['Krumhorn', 39, 'off', 'off|on', [1, 9]],
-				['Melodia', 40, 'off', 'off|on', [1, 10]],
-				['Tremulant', 41, 'off', 'off|on', [1, 11]],
-				['II+III', 42, 'off', 'off|on', [1, 12]],
-				['Sustain', 64, "off", "off|on"]
-			] + swell_ctrls,
-			"ctrl_screens" : [
-				['Manual II (1)', ['Rohrflöte 8', 'Harmonic Flute 4', 'Flauto Dolce 4', 'Nasard 2 2/3']],
-				['Manual II (2)', ['Ottavina 2', 'Tertia 1 3/5', 'Sesqui-altera', 'Septime']],
-				['Manual II (3)', ['Krumhorn', 'Melodia', 'Tremulant', 'II+III']],
-				['Manual II (4)', ['Swell', 'Trem Freq', 'Trem Amp', 'Sustain']]
-			]
-		},
-		"Manual III": {
-			"ctrls":  [
-				['Principal 8', 43, 'off', 'off|on', [0, 0]],
-				['Gemshorn 8', 44, 'off', 'off|on', [0, 1]],
-				['Quinta-dena 8', 45, 'off', 'off|on', [0, 2]],
-				['Suabile 8', 46, 'off', 'off|on', [0, 3]],
-				['Rohrflöte 4', 47, 'off', 'off|on', [0, 4]],
-				['Dulzflöte 4', 48, 'off', 'off|on', [0, 5]],
-				['Quintflöte 2 2/3', 49, 'off', 'off|on', [0, 6]],
-				['Super-octave 2', 50, 'off', 'off|on', [0, 7]],
-				['Sifflet 1', 51, 'off', 'off|on', [0, 8]],
-				['Cymbel VI', 52, 'off', 'off|on', [0, 9]],
-				['Oboe', 53, 'off', 'off|on', [0, 10]],
-				['Tremulant', 54, 'off', 'off|on', [0, 11]],
-				['Sustain', 64, "off", "off|on"]
-			] + swell_ctrls,
-			"ctrl_screens" : [
-				['Manual III (1)', ['Principal 8', 'Gemshorn 8', 'Quinta-dena 8', 'Suabile 8']],
-				['Manual III (2)', ['Rohrflöte 4', 'Dulzflöte 4', 'Quintflöte 2 2/3', 'Super-octave 2']],
-				['Manual III (3)', ['Sifflet 1', 'Cymbel VI', 'Oboe', 'Tremulant']],
-				['Manual III (4)', ['Swell', 'Trem Freq', 'Trem Amp', 'Sustain']]
-			]
-		},
-		"Pedals": {
-			"ctrls":  [
-				['Subbass 16', 55, 'off', 'off|on', [3, 0]],
-				['Principal 16', 56, 'off', 'off|on', [3, 1]],
-				['Principal 8', 57, 'off', 'off|on', [3, 2]],
-				['Principal 4', 58, 'off', 'off|on', [3, 3]],
-				['Octave 2', 59, 'off', 'off|on', [3, 4]],
-				['Octave 1', 60, 'off', 'off|on', [3, 5]],
-				['Quint 5 1/3', 61, 'off', 'off|on', [3, 6]],
-				['Quint 2 2/3', 62, 'off', 'off|on', [3, 7]],
-				['Mixtur', 63, 'off', 'off|on', [3, 8]],
-				['Fagott 16', 64, 'off', 'off|on', [3, 9]],
-				['Trombone 16', 65, 'off', 'off|on', [3, 10]],
-				['Bombarde 32', 66, 'off', 'off|on', [3, 11]],
-				['Trumpet', 67, 'off', 'off|on', [3, 12]],
-				['P+I', 68, 'off', 'off|on', [3, 13]],
-				['P+II', 69, 'off', 'off|on', [3, 14]],
-				['P+III', 70, 'off', 'off|on', [3, 15]],
-				['Sustain', 64, "off", "off|on"]
-			],
-			"ctrl_screens" : [
-				['Pedals (1)', ['Subbass 16', 'Principal 16', 'Principal 8', 'Principal 4']],
-				['Pedals (2)', ['Octave 2', 'Octave 1', 'Quint 5 1/3', 'Quint 2 2/3']],
-				['Pedals (3)', ['Trumpet', 'P+I', 'P+II', 'P+III']],
-				['Pedals (4)', ['Sustain']]
-			]
-		}
+	instrument = OrderedDict()
+	instrument["Manual I"] = {
+		"ctrls":  [
+			['Principal 8', 14, 'off', 'off|on', [2, 0]],
+			['Principal 4', 15, 'off', 'off|on', [2, 1]],
+			['Octave 2', 16, 'off', 'off|on', [2, 2]],
+			['Octave 1', 17, 'off', 'off|on', [2, 3]],
+			['Quint 5 1/3', 18, 'off', 'off|on', [2, 4]],
+			['Quint 2 2/3', 19, 'off', 'off|on', [2, 5]],
+			['Tibia 8', 20, 'off', 'off|on', [2, 6]],
+			['Celesta 8', 21, 'off', 'off|on', [2, 7]],
+			['Flöte 8', 22, 'off', 'off|on', [2, 8]],
+			['Flöte 4', 23, 'off', 'off|on', [2, 9]],
+			['Flöte 2', 24, 'off', 'off|on', [2, 10]],
+			['Cymbel VI', 25, 'off', 'off|on', [2, 11]],
+			['Mixtur', 26, 'off', 'off|on', [2, 12]],
+			['Trumpet', 27, 'off', 'off|on', [2, 13]],
+			['I+II', 28, 'off', 'off|on', [2, 14]],
+			['I+III', 29, 'off', 'off|on', [2, 15]],
+			['Sustain', 64, "off", "off|on"]
+		],
+		"ctrl_screens" : [
+			['Manual I (1)', ['Principal 8', 'Principal 4', 'Octave 2', 'Octave 1']],
+			['Manual I (2)', ['Quint 5 1/3', 'Quint 2 2/3', 'Tibia 8', 'Celesta 8']],
+			['Manual I (3)', ['Flöte 8', 'Flöte 4', 'Flöte 2', 'Cymbel VI']],
+			['Manual I (4)', ['Mixtur', 'Trumpet', 'I+II', 'I+III']],
+			['Manual I (5)', ['Sustain']]
+		]
+	}
+	instrument["Manual II"] = {
+		"ctrls":  [
+			['Rohrflöte 8', 30, 'off', 'off|on', [1, 0]],
+			['Harmonic Flute 4', 31, 'off', 'off|on', [1, 1]],
+			['Flauto Dolce 4', 32, 'off', 'off|on', [1, 2]],
+			['Nasard 2 2/3', 33, 'off', 'off|on', [1, 3]],
+			['Ottavina 2', 34, 'off', 'off|on', [1, 4]],
+			['Tertia 1 3/5', 35, 'off', 'off|on', [1, 5]],
+			['Sesqui-altera', 36, 'off', 'off|on', [1, 6]],
+			['Septime', 37, 'off', 'off|on', [1, 7]],
+			['None', 38, 'off', 'off|on', [1, 8]],
+			['Krumhorn', 39, 'off', 'off|on', [1, 9]],
+			['Melodia', 40, 'off', 'off|on', [1, 10]],
+			['Tremulant', 41, 'off', 'off|on', [1, 11]],
+			['II+III', 42, 'off', 'off|on', [1, 12]],
+			['Sustain', 64, "off", "off|on"]
+		] + swell_ctrls,
+		"ctrl_screens" : [
+			['Manual II (1)', ['Rohrflöte 8', 'Harmonic Flute 4', 'Flauto Dolce 4', 'Nasard 2 2/3']],
+			['Manual II (2)', ['Ottavina 2', 'Tertia 1 3/5', 'Sesqui-altera', 'Septime']],
+			['Manual II (3)', ['Krumhorn', 'Melodia', 'Tremulant', 'II+III']],
+			['Manual II (4)', ['Swell', 'Trem Freq', 'Trem Amp', 'Sustain']]
+		]
+	}
+	instrument["Manual III"] = {
+		"ctrls":  [
+			['Principal 8', 43, 'off', 'off|on', [0, 0]],
+			['Gemshorn 8', 44, 'off', 'off|on', [0, 1]],
+			['Quinta-dena 8', 45, 'off', 'off|on', [0, 2]],
+			['Suabile 8', 46, 'off', 'off|on', [0, 3]],
+			['Rohrflöte 4', 47, 'off', 'off|on', [0, 4]],
+			['Dulzflöte 4', 48, 'off', 'off|on', [0, 5]],
+			['Quintflöte 2 2/3', 49, 'off', 'off|on', [0, 6]],
+			['Super-octave 2', 50, 'off', 'off|on', [0, 7]],
+			['Sifflet 1', 51, 'off', 'off|on', [0, 8]],
+			['Cymbel VI', 52, 'off', 'off|on', [0, 9]],
+			['Oboe', 53, 'off', 'off|on', [0, 10]],
+			['Tremulant', 54, 'off', 'off|on', [0, 11]],
+			['Sustain', 64, "off", "off|on"]
+		] + swell_ctrls,
+		"ctrl_screens" : [
+			['Manual III (1)', ['Principal 8', 'Gemshorn 8', 'Quinta-dena 8', 'Suabile 8']],
+			['Manual III (2)', ['Rohrflöte 4', 'Dulzflöte 4', 'Quintflöte 2 2/3', 'Super-octave 2']],
+			['Manual III (3)', ['Sifflet 1', 'Cymbel VI', 'Oboe', 'Tremulant']],
+			['Manual III (4)', ['Swell', 'Trem Freq', 'Trem Amp', 'Sustain']]
+		]
+	}
+	instrument["Pedals"] = {
+		"ctrls":  [
+			['Subbass 16', 55, 'off', 'off|on', [3, 0]],
+			['Principal 16', 56, 'off', 'off|on', [3, 1]],
+			['Principal 8', 57, 'off', 'off|on', [3, 2]],
+			['Principal 4', 58, 'off', 'off|on', [3, 3]],
+			['Octave 2', 59, 'off', 'off|on', [3, 4]],
+			['Octave 1', 60, 'off', 'off|on', [3, 5]],
+			['Quint 5 1/3', 61, 'off', 'off|on', [3, 6]],
+			['Quint 2 2/3', 62, 'off', 'off|on', [3, 7]],
+			['Mixtur', 63, 'off', 'off|on', [3, 8]],
+			['Fagott 16', 64, 'off', 'off|on', [3, 9]],
+			['Trombone 16', 65, 'off', 'off|on', [3, 10]],
+			['Bombarde 32', 66, 'off', 'off|on', [3, 11]],
+			['Trumpet', 67, 'off', 'off|on', [3, 12]],
+			['P+I', 68, 'off', 'off|on', [3, 13]],
+			['P+II', 69, 'off', 'off|on', [3, 14]],
+			['P+III', 70, 'off', 'off|on', [3, 15]],
+			['Sustain', 64, "off", "off|on"]
+		],
+		"ctrl_screens" : [
+			['Pedals (1)', ['Subbass 16', 'Principal 16', 'Principal 8', 'Principal 4']],
+			['Pedals (2)', ['Octave 2', 'Octave 1', 'Quint 5 1/3', 'Quint 2 2/3']],
+			['Pedals (3)', ['Trumpet', 'P+I', 'P+II', 'P+III']],
+			['Pedals (4)', ['Sustain']]
+		]
 	}
 
 	_ctrls=[]
@@ -228,6 +227,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 		self.keyboard_config = None
 		self.temperament = None
+		self.get_current_config()
 		self.load_presets()
 
 
@@ -253,8 +253,8 @@ class zynthian_engine_aeolus(zynthian_engine):
 		chain_manager = self.state_manager.chain_manager
 		if len(self.layers) <= 1:
 			# Add extra layers
-			for i in range(1, len(self.instrument)):
-				if self.keyboard_config & 1 << i:
+			for layer_index in range(len(self.layers), len(self.instrument)):
+				if self.keyboard_config & 1 << layer_index:
 					midi_chan = chain_manager.get_next_free_midi_chan(self.layers[0].midi_chan)
 					if midi_chan is None:
 						break
@@ -264,13 +264,11 @@ class zynthian_engine_aeolus(zynthian_engine):
 					processor = zynthian_processor("AE", chain_manager.engine_info["AE"], proc_id)
 					chain.insert_processor(processor)
 					chain_manager.processors[proc_id] = processor
-					self.layers.append(processor)
 					processor.engine = self
-					chain.audio_out = []
-					chain.mixer_chan = None
-					processor.division = list(self.instrument)[i]
-					processor.refresh_controllers()
-					processor.bank_info = ("General", 0, "General")
+					if layer_index:
+						chain.audio_out = []
+						chain.mixer_chan = None
+					self.add_layer(processor)
 
 			# Select first chain so that preset selection is on "Grand manual"
 			chain_manager.set_active_chain_by_id(chain_manager.get_chain_id_by_processor(self.layers[0]))
@@ -357,8 +355,16 @@ class zynthian_engine_aeolus(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def add_layer(self, layer):
-		layer.division = "Manual I"
+		chain_manager = self.state_manager.chain_manager
+		layer_index = len(self.layers)
+		try:
+			layer.division = list(self.instrument)[layer_index]
+		except:
+			return
 		super().add_layer(layer)
+		layer.engine = self
+		layer.refresh_controllers()
+		layer.bank_info = ("General", 0, "General")
 
 
 	# ---------------------------------------------------------------------------
@@ -404,17 +410,23 @@ class zynthian_engine_aeolus(zynthian_engine):
 		"""
 
 		res = []
+		current_sel = 0
 		if self.keyboard_config is None:
 			for i, title in self.keyboard_config_names.items():
 				res.append((title, i, title))
 		elif self.temperament is None:
+			i = 0
 			for value, title in self.temperament_names.items():
 				res.append((title, value, title))
-			#TODO: Select current setting in GUI: self.state_manager.screens['bank'].index = self.current_temperament-1
+				if value == self.current_temperament:
+					current_sel = i
+				i += 1
 		elif layer.preset_info is None:
 			res = [("General", 0, "General")]
 		else:
 			res = [("General", 0, "General"), (layer.division, None, f"Local {layer.division}")]
+		if res:
+			layer.bank_info = res[current_sel]
 		return res
 
 

@@ -288,7 +288,11 @@ class zynthian_processor:
 
     def get_bank_index(self):
         """Get current bank index"""
-        return self.bank_index
+
+        for index, bank_info in enumerate(self.bank_list):
+            if self.bank_info and self.bank_info == bank_info:
+                return index
+        return self.bank_index #TODO: can we lose or optimise this?
 
 
     # ---------------------------------------------------------------------------
