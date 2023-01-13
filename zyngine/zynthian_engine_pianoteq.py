@@ -489,7 +489,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	def get_preset_list(self, bank):
 		# [uri/uid, pt bank, display name,zyn bank (pt instr)]
 		presets = []
-		result = self.get_presets(bank[0])
+		result = self.get_presets(bank[2])
 		user_presets = False
 		stub = bank[0].split(" (")[0]
 		if stub.startswith("Grand "):

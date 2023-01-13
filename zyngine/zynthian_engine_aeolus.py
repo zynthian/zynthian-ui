@@ -227,6 +227,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 		self.keyboard_config = None
 		self.temperament = None
+		self.restart_flag = False
 		self.get_current_config()
 		self.load_presets()
 
@@ -302,6 +303,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 			except Exception as err:
 				logging.error("Can't stop engine {} => {}".format(self.name, err))
 		self.osc_end()
+		self.restart_flag = False
 
 
 	def get_current_config(self):
@@ -445,6 +447,8 @@ class zynthian_engine_aeolus(zynthian_engine):
 		elif self.temperament is None:
 			self.temperament = bank_info[1]
 
+		if self.restart_flag:
+			self.stop()
 		if not self.proc:
 			self.start()
 			return None
@@ -561,6 +565,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 	#--------------------------------------------------------------------------
 
 	def load_presets(self):
+		#TODO: Ensure legacy presets are available
 		# Get user presets
 		if file_exists(self.user_presets_fpath):
 			filename = self.user_presets_fpath
@@ -582,38 +587,43 @@ class zynthian_engine_aeolus(zynthian_engine):
 		Returns : Configuration as dictionary
 		"""
 
-		xconfig = { 
+		engine_state = { 
 			"keyboard": self.keyboard_config,
 			"temperament": self.temperament,
 			"divisions": []
 		}
 		for layer in self.layers:
-			xconfig["divisions"].append(layer.division)
-		return xconfig
+			engine_state["divisions"].append(layer.division)
+		return engine_state
 
 
-	def set_extended_config(self, xconfig):
+	def set_extended_config(self, engine_state):
 		"""Set engine specific configuration
 		
-		xconfig : Configuration as dictionary
+		engine_state : Configuration as dictionary
 		"""
-		
-		if "temperament" in xconfig:
-			self.temperament = xconfig['temperament']
-		elif "tuning_temp" in xconfig:
+
+		if "temperament" in engine_state:
+			self.temperament = engine_state['temperament']
+		elif "tuning_temp" in engine_state:
 			# Legacy config
-			self.temperament = xconfig['tuning_temp'] #TODO: Retune if necessary
-		if "keyboard" in xconfig:
-			self.keyboard_config = xconfig['keyboard']
+			self.temperament = engine_state['tuning_temp'] #TODO: Retune if necessary
+		current_keyboard = self.keyboard_config
+		if "keyboard" in engine_state:
+			self.keyboard_config = engine_state['keyboard']
 		else:
 			# Legacy default is 4 keyboards
+			if self.keyboard_config != 15:
+				self.restart_flag = True
 			self.keyboard_config = 15
+		if current_keyboard != self.keyboard_config:
+			self.restart_flag = True
 
 		chain_manager = self.state_manager.chain_manager
 		for i, layer in enumerate(self.layers):
 			chain = chain_manager.get_chain(chain_manager.get_chain_id_by_processor(layer))
 			try:
-				layer.division = xconfig["divisions"][i]
+				layer.division = engine_state["divisions"][i]
 			except:
 				layer.division = list(self.instrument)[i]
 			if i:

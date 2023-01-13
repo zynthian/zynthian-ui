@@ -35,6 +35,8 @@ class zynthian_legacy_snapshot:
         """
 
         self.jackname_counters = {}
+        self.aeolus_count = 0
+        self.setBfree_count = 0
 
         state = {
             "schema_version": SNAPSHOT_SCHEMA_VERSION,
@@ -110,25 +112,26 @@ class zynthian_legacy_snapshot:
             except:
                 info = []
             midi_chan = l["midi_chan"]
-            jackname = self.build_jackname(l["engine_name"], midi_chan)
-            chain_id = f"{midi_chan:02d}"
+            chain_id = f"{midi_chan + 1:02d}"
             if chain_id not in chains:
                 chains[chain_id] = {
                     "midi_processors": [], # Temporary list of processors in chain - used to build slots
                     "synth_processors": [], # Temporary list of processors in chain - used to build slots
                     "audio_processors": [], # Temporary list of processors in chain - used to build slots
                     "mixer_chan": midi_chan,
-                    "midi_chan": midi_chan,
+                    "midi_chan": None,
                     "midi_in": ["MIDI IN"],
                     "midi_out": ["MIDI OUT"],
                     "midi_thru": False,
                     "audio_in": [],
-                    "audio_out": ["mixer"],
+                    "audio_out": [],
                     "audio_thru": False,
                     "current_processor": 0,
                     "slots": []
                 }
                 if midi_chan < 16:
+                    chains[chain_id]["midi_chan"] = midi_chan
+                    chains[chain_id]["audio_out"] = ["mixer"]
                     state["zs3"]["zs3-0"]["chains"][chain_id] = {
                         "note_range_low": note_range_state[midi_chan]["note_low"],
                         "note_range_high": note_range_state[midi_chan]["note_high"],
@@ -136,37 +139,42 @@ class zynthian_legacy_snapshot:
                         "transpose_semitone": note_range_state[midi_chan]["halftone_trans"]
                     }
 
+            jackname = self.build_jackname(l["engine_name"], midi_chan)
             if not chains[chain_id]["audio_in"]:
                 try:
                     chains[chain_id]["audio_in"] = snapshot["audio_capture"][jackname]
                 except:
                     pass
-            if not info:
-                pass
-            elif info[2] == "Audio Effect":
-                chains[chain_id]["audio_processors"].append(jackname)
-            elif info[2] == "MIDI Tool":
-                chains[chain_id]["midi_processors"].append(jackname)
-            else:
-                chains[chain_id]["synth_processors"].append(jackname)
-            processors[jackname] = {
-                "id": proc_id,
-                "info": info,
-                "nick": l["engine_nick"],
-                "midi_chan": midi_chan,
-                "bank_info": l["bank_info"],
-                "preset_info": l["preset_info"],
-                "controllers": l["controllers_dict"],
-            }
+            if info and not jackname.startswith("audioin"):
+                if info[2] == "Audio Effect":
+                    chains[chain_id]["audio_processors"].append(jackname)
+                elif info[2] == "MIDI Tool":
+                    chains[chain_id]["midi_processors"].append(jackname)
+                else:
+                    chains[chain_id]["synth_processors"].append(jackname)
+                if jackname.startswith("aeolus"):
+                    l["bank_info"] = ("General", 0, "General")
+                    l["preset_info"][0] = l["preset_info"][2]
+                processors[jackname] = {
+                    "id": proc_id,
+                    "info": info,
+                    "nick": l["engine_nick"],
+                    "midi_chan": midi_chan,
+                    "bank_info": l["bank_info"],
+                    "preset_info": l["preset_info"],
+                    "controllers": l["controllers_dict"],
+                }
+                if not l["preset_info"]:
+                    processors[jackname]["preset_info"] = l["preset_index"]
 
-            # Add zyngui specific stuff (should maybe be in GUI code?)
-            state["zyngui"]["processors"][proc_id] = {}
-            if "show_fav_presets" in l:
-                state["zyngui"]["processors"][proc_id]["show_fav_presets"] = l["show_fav_presets"]
-            if "active_screen_index" in l and l["active_screen_index"] >= 0:
-                ["zyngui"]["processors"][proc_id]["active_screen_index"] = l["active_screen_index"]
+                # Add zyngui specific stuff (should maybe be in GUI code?)
+                state["zyngui"]["processors"][proc_id] = {}
+                if "show_fav_presets" in l:
+                    state["zyngui"]["processors"][proc_id]["show_fav_presets"] = l["show_fav_presets"]
+                if "active_screen_index" in l and l["active_screen_index"] >= 0:
+                    ["zyngui"]["processors"][proc_id]["active_screen_index"] = l["active_screen_index"]
 
-            proc_id += 1
+                proc_id += 1
 
         if "clone" in snapshot and len(snapshot["clone"]) == 16:
             state["zs3"]["zs3-0"]["midi_clone"] = self.get_midi_clone(snapshot["clone"])
@@ -213,7 +221,10 @@ class zynthian_legacy_snapshot:
             if chain["synth_processors"]:
                 chain["slots"].insert(0, chain["synth_processors"])
                 if not chain["audio_processors"]:
-                    audio_out = snapshot["audio_routing"][chain["synth_processors"][0]]
+                    try:
+                        audio_out = snapshot["audio_routing"][chain["synth_processors"][0]]
+                    except:
+                        pass # MIDI only chains for synth engines should be ignored
 
             # Add MIDI slots
             proc_count = len(chain["midi_processors"])
@@ -256,7 +267,7 @@ class zynthian_legacy_snapshot:
             if not chain["midi_processors"] and not chain["synth_processors"]:
                 chain["audio_thru"] = True
                 chain["midi_chan"] = None
-                if not audio_out:
+                if not audio_out and chain["mixer_chan"] != 256:
                     audio_out = ["mixer"]
             chain["audio_out"] = audio_out
             chain["midi_out"] = midi_out
@@ -276,7 +287,7 @@ class zynthian_legacy_snapshot:
 
         # Fix main chain
         try:
-            chains["main"] = chains.pop("256")
+            chains["main"] = chains.pop("257")
             chains["main"]["midi_chan"] = None
             #chains["main"]["mixer_chan"] = None
         except:
@@ -322,6 +333,9 @@ class zynthian_legacy_snapshot:
             for layer in zs3["layers"]:
                 jackname = self.build_jackname(layer["engine_name"], layer["midi_chan"])
                 if jackname in processors:
+                    if jackname.startswith("aeolus"):
+                        layer["bank_info"] = ("General", 0, "General")
+                        layer["preset_info"][0] = layer["preset_info"][2]
                     proc = processors[jackname]
                     state["zs3"][zs3_id]["processors"][proc["id"]] = {
                         "bank_info": layer["bank_info"],
@@ -349,8 +363,6 @@ class zynthian_legacy_snapshot:
                 self.jackname_counters[name] = 0
             jackname = f"LinuxSampler:CH{self.jackname_counters[name]}_"
             self.jackname_counters[name] += 1
-        elif name in ["setBfree", "Pianoteq"]:
-            jackname = name
         elif name == "Audio Input":
             jackname = f"audioin-{midi_chan:02d}"
         elif name == "ZynAddSubFX":
@@ -364,7 +376,19 @@ class zynthian_legacy_snapshot:
             jackname = f"fluidsynth:(l|r)_{self.jackname_counters[name]:02d}"
             self.jackname_counters[name] += 1
         elif name == "Aeolus":
-            jackname = "aeolus"
+            if self.aeolus_count:
+                jackname = f"aeolus{self.aeolus_count}"
+            else:
+                jackname = "aeolus"
+            self.aeolus_count += 1
+        elif name == "setBfree":
+            if self.setBfree_count:
+                jackname = f"setBfree{self.setBfree_count}"
+            else:
+                jackname = "setBfree"
+            self.setBfree_count += 1
+        elif name.startswith("Pianoteq"):
+            jackname = "Pianoteq"
         else:
             if name in ["Sfizz"]:
                 name = name.lower()

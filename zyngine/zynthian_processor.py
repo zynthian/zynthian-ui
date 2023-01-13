@@ -335,57 +335,57 @@ class zynthian_processor:
         Returns : True on success
         """
         
-        if preset_index < len(self.preset_list):
-            preset_id = str(self.preset_list[preset_index][0])
-            preset_name = self.preset_list[preset_index][2]
-            preset_info = copy.deepcopy(self.preset_list[preset_index])
+        if not isinstance(preset_index, int) or preset_index >= len(self.preset_list):
+            return False
+        preset_id = str(self.preset_list[preset_index][0])
+        preset_name = self.preset_list[preset_index][2]
+        preset_info = copy.deepcopy(self.preset_list[preset_index])
 
-            if not preset_name:
+        if not preset_name:
+            return False
+
+        # Remove favorite marker char
+        if preset_name[0]=='❤':
+            preset_name = preset_name[1:]
+
+        # Check if preset is in favorites pseudo-bank and set real bank if needed
+        if preset_id in self.engine.preset_favs:
+            bank_name = self.engine.preset_favs[preset_id][0][2]
+            if bank_name != self.bank_name:
+                self.set_bank_by_name(bank_name)
+
+        # Check if force set engine
+        if force_set_engine:
+            set_engine_needed = True
+        # Check if preset is already loaded
+        elif self.engine.cmp_presets(preset_info, self.preset_info):
+            set_engine_needed = False
+            logging.info("Preset already selected: %s (%d)" % (preset_name, preset_index))
+            # Check if some other preset is preloaded
+            if self.preload_info and not self.engine.cmp_presets(self.preload_info,self.preset_info):
+                set_engine_needed = True
+        else:
+            set_engine_needed = True
+            logging.info("Preset selected: %s (%d)" % (preset_name, preset_index))
+
+        self.preset_index = preset_index
+        self.preset_name = preset_name
+        self.preset_info = preset_info
+        self.preset_bank_index = self.bank_index
+
+        # Clean preload info
+        self.preload_index = None
+        self.preload_name = None
+        self.preload_info = None
+
+        if set_engine:
+            if set_engine_needed:
+                #self.load_ctrl_config()
+                return self.engine.set_preset(self, self.preset_info)
+            else:
                 return False
 
-            # Remove favorite marker char
-            if preset_name[0]=='❤':
-                preset_name = preset_name[1:]
-
-            # Check if preset is in favorites pseudo-bank and set real bank if needed
-            if preset_id in self.engine.preset_favs:
-                bank_name = self.engine.preset_favs[preset_id][0][2]
-                if bank_name != self.bank_name:
-                    self.set_bank_by_name(bank_name)
-
-            # Check if force set engine
-            if force_set_engine:
-                set_engine_needed = True
-            # Check if preset is already loaded
-            elif self.engine.cmp_presets(preset_info, self.preset_info):
-                set_engine_needed = False
-                logging.info("Preset already selected: %s (%d)" % (preset_name, preset_index))
-                # Check if some other preset is preloaded
-                if self.preload_info and not self.engine.cmp_presets(self.preload_info,self.preset_info):
-                    set_engine_needed = True
-            else:
-                set_engine_needed = True
-                logging.info("Preset selected: %s (%d)" % (preset_name, preset_index))
-
-            self.preset_index = preset_index
-            self.preset_name = preset_name
-            self.preset_info = preset_info
-            self.preset_bank_index = self.bank_index
-
-            # Clean preload info
-            self.preload_index = None
-            self.preload_name = None
-            self.preload_info = None
-
-            if set_engine:
-                if set_engine_needed:
-                    #self.load_ctrl_config()
-                    return self.engine.set_preset(self, self.preset_info)
-                else:
-                    return False
-
-            return True
-        return False
+        return True
 
 
     def set_preset_by_name(self, preset_name, set_engine=True, force_set_engine=True):
@@ -753,8 +753,12 @@ class zynthian_processor:
         except:
             pass
 
-        if "preset_info" in state and state["preset_info"]:
-            self.set_preset_by_id(state["preset_info"][0])
+        if "preset_info" in state:
+            try:
+                self.set_preset_by_id(state["preset_info"][0])
+            except:
+                # Legacy snapshots without preset_info
+                self.set_preset(state["preset_info"])
         # Set controller values
         if "controllers" in state:
             for symbol, ctrl_state in state["controllers"].items():

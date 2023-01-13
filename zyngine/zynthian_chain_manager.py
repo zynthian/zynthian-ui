@@ -123,7 +123,7 @@ class zynthian_chain_manager():
 
         if chain_id is None:
             # Create new unique chain ID
-            id = 0
+            id = 1
             while f"{id:02}" in self.chains:
                 id += 1
             chain_id = f"{id:02}"

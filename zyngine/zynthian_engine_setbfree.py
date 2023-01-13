@@ -531,17 +531,17 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def get_extended_config(self):
-		xconfig = { 
+		engine_state = { 
 			'manuals_config': self.manuals_config,
 			'tonewheel_model': self.tonewheel_model
 		}
-		return xconfig
+		return engine_state
 
 
-	def set_extended_config(self, xconfig):
+	def set_extended_config(self, engine_state):
 		try:
-			self.manuals_config = xconfig['manuals_config']
-			self.tonewheel_model = xconfig['tonewheel_model']
+			self.manuals_config = engine_state['manuals_config']
+			self.tonewheel_model = engine_state['tonewheel_model']
 			chain_manager = self.state_manager.chain_manager
 			for i, layer in enumerate(self.layers):
 				if i:

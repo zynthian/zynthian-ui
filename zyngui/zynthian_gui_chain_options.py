@@ -326,7 +326,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 	def set_select_path(self):
 		try:
-			self.select_path.set("{} > Chain Options".format(self.chain_id))
+			self.select_path.set(f"Chain '{self.chain_id}' Options")
 		except:
 			self.select_path.set("Chain Options")
 
