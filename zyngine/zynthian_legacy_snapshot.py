@@ -330,6 +330,9 @@ class zynthian_legacy_snapshot:
                 "processors": {},
                 "mixer": zs3["mixer"]
             }
+            self.jackname_counters = {}
+            self.aeolus_count = 0
+            self.setBfree_count = 0
             for layer in zs3["layers"]:
                 jackname = self.build_jackname(layer["engine_name"], layer["midi_chan"])
                 if jackname in processors:
