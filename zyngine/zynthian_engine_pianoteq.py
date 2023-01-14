@@ -508,6 +508,11 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 		if PIANOTEQ_VERSION[0] > 7 or (PIANOTEQ_VERSION[0] == 7 and PIANOTEQ_VERSION[1] >= 3):
 			self.bank_list = self.bank_list_v7_3 + self.bank_list
+		
+		if PIANOTEQ_VERSION[0] > 7:
+			for i, row in enumerate(self.bank_list):
+				if row[0] == "Bluethner":
+					self.bank_list[i] = ('Blüthner', 5, 'Blüthner', 'Blüthner:A')
 
 		self.bank_list = sorted(self.bank_list, key=lambda x: x[2])
 		if not PIANOTEQ_TRIAL:
