@@ -773,19 +773,24 @@ class zynthian_chain_manager():
         ccval : CC value
         """
 
+        self.state_manager.alsa_mixer_processor.midi_control_change(chan, ccnum, ccval)
         chain = self.midi_chan_2_chain[chan]
-        if not chain:
-            return
-        if zynthian_gui_config.midi_bank_change and ccnum==0:
-            for processor in chain.get_processors():
-                processor.midi_bank_msb(ccval)
-        elif zynthian_gui_config.midi_bank_change and ccnum==32:
-            for processor in chain.get_processors():
-                processor.midi_bank_lsb(ccval)
-        else:
-            for processor in chain.get_processors():
-                processor.midi_control_change(chan, ccnum, ccval)
-            self.state_manager.alsa_mixer_processor.midi_control_change(chan, ccnum, ccval)
+        if chain:
+            if zynthian_gui_config.midi_bank_change and ccnum == 0:
+                for processor in chain.get_processors():
+                    processor.midi_bank_msb(ccval)
+                    return
+            elif zynthian_gui_config.midi_bank_change and ccnum == 32:
+                for processor in chain.get_processors():
+                    processor.midi_bank_lsb(ccval)
+                    return
+            elif zynthian_gui_config.midi_single_active_channel:
+                for processor in chain.get_processors():
+                    processor.midi_control_change(chan, ccnum, ccval)
+                return
+        for engine in self.zyngines.values():
+            # Send to engines directly (rather than processors) because all need to be hit (optimisation)
+            engine.midi_control_change(chan, ccnum, ccval)
 
 
     def set_midi_prog_preset(self, midich, prognum):

@@ -50,7 +50,7 @@ from zyngine import zynthian_legacy_snapshot
 # Zynthian State Manager Class
 # ----------------------------------------------------------------------------
 
-SNAPSHOT_schema_version = 1
+SNAPSHOT_SCHEMA_VERSION = 1
 
 class zynthian_state_manager:
 
@@ -74,7 +74,7 @@ class zynthian_state_manager:
         self.audio_player = None
 
         self.midi_filter_script = None
-        self.midi_learn_zctrl = None
+        self.midi_learn_zctrl = None # zctrl object currently listening for MIDI learn
         self.midi_learn_mode = 0 # 0:Disabled, 1:MIDI Learn, 2:ZS3 Learn
         self.zs3 = {} # Dictionary or zs3 configs indexed by "ch/pc"
         self.status_info = {}
@@ -132,7 +132,7 @@ class zynthian_state_manager:
         self.save_zs3("zs3-0", "Last state")
         self.clean_zs3()
         state = {
-            'schema_version': SNAPSHOT_schema_version,
+            'schema_version': SNAPSHOT_SCHEMA_VERSION,
             'last_snapshot_fpath': self.last_snapshot_fpath, #TODO: Why is this required?
             'midi_profile_state': self.get_midi_profile_state(),
             'chains': self.chain_manager.get_state(),
@@ -328,7 +328,7 @@ class zynthian_state_manager:
             state = converter.convert_state(snapshot, self.chain_manager.engine_info)
         else:
             state = snapshot
-            if state["schema_version"] < SNAPSHOT_schema_version:
+            if state["schema_version"] < SNAPSHOT_SCHEMA_VERSION:
                 pass
         return state
 
