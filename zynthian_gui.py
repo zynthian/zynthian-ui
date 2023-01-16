@@ -1519,12 +1519,10 @@ class zynthian_gui:
 		#----------------------------------------------------------------
 
 		elif cuia == "PROGRAM_CHANGE":
-			if not lib_zyncore:
-				return
 			if len(params):
-				pgm = params[0]
+				pgm = int(params[0])
 				if len(params) > 1:
-					chan = params[1]
+					chan = int(params[1])
 				else:
 					chan = lib_zyncore.get_midi_active_chan()
 				if chan >= 0 and chan < 16 and pgm >= 0 and pgm < 128:
