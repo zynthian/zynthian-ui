@@ -163,7 +163,6 @@ class zynthian_gui_keybinding:
 			keysym = keysym.lower()
 			rkey = "{}^{}".format(modifier, keysym)
 			return self.rmap[rkey]
-
 		except:
 			if rkey == '0^down': return('ARROW_DOWN')
 			elif rkey == '0^up': return('ARROW_UP')
@@ -193,6 +192,9 @@ class zynthian_gui_keybinding:
 		self.rmap = {}
 		for action, m in self.config['map'].items():
 			keysyms = m['keysym'].lower().split(',')
+			parts = action.split(' ')
+			if len(parts)>1:
+				action = parts
 			for ks in keysyms:
 				rkey = "{}^{}".format(m['modifier'], ks.strip())
 				self.rmap[rkey] = action
