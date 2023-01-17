@@ -172,7 +172,7 @@ class zynthian_legacy_snapshot:
                 if "show_fav_presets" in l:
                     state["zyngui"]["processors"][proc_id]["show_fav_presets"] = l["show_fav_presets"]
                 if "active_screen_index" in l and l["active_screen_index"] >= 0:
-                    ["zyngui"]["processors"][proc_id]["active_screen_index"] = l["active_screen_index"]
+                    state["zyngui"]["processors"][proc_id]["active_screen_index"] = l["active_screen_index"]
 
                 proc_id += 1
 
@@ -309,42 +309,47 @@ class zynthian_legacy_snapshot:
             }
 
         next_id = 1
-        for zs3 in snapshot["learned_zs3"]:
-            if "midi_learn_chan" in zs3:
-                midi_chan = zs3["midi_learn_chan"]
-            else:
-                midi_chan = None
-            if "midi_learn_prognum" in zs3:
-                midi_pgm = zs3["midi_learn_prognum"]
-            else:
-                midi_pgm = None
-            if midi_chan is None or midi_pgm is None:
-                zs3_id = f"zs3-{next_id}"
-                next_id += 1
-            else:
-                zs3_id = f"{midi_chan}/{midi_pgm}"
-            
-            state["zs3"][zs3_id] = {
-                "title": zs3["zs3_title"],
-                "active_chain": zs3["index"],
-                "processors": {},
-                "mixer": zs3["mixer"]
-            }
-            self.jackname_counters = {}
-            self.aeolus_count = 0
-            self.setBfree_count = 0
-            for layer in zs3["layers"]:
-                jackname = self.build_jackname(layer["engine_name"], layer["midi_chan"])
-                if jackname in processors:
-                    if jackname.startswith("aeolus"):
-                        layer["bank_info"] = ("General", 0, "General")
-                        layer["preset_info"][0] = layer["preset_info"][2]
-                    proc = processors[jackname]
-                    state["zs3"][zs3_id]["processors"][proc["id"]] = {
-                        "bank_info": layer["bank_info"],
-                        "preset_info": layer["preset_info"],
-                        "controllers": layer["controllers_dict"]
-                    }
+        if "learned_zs3" in snapshot:
+            for zs3 in snapshot["learned_zs3"]:
+                if "midi_learn_chan" in zs3:
+                    midi_chan = zs3["midi_learn_chan"]
+                else:
+                    midi_chan = None
+                if "midi_learn_prognum" in zs3:
+                    midi_pgm = zs3["midi_learn_prognum"]
+                else:
+                    midi_pgm = None
+                if midi_chan is None or midi_pgm is None:
+                    zs3_id = f"zs3-{next_id}"
+                    next_id += 1
+                else:
+                    zs3_id = f"{midi_chan}/{midi_pgm}"
+                
+                state["zs3"][zs3_id] = {
+                    "title": zs3["zs3_title"],
+                    "active_chain": zs3["index"],
+                    "processors": {},
+                    "mixer": zs3["mixer"]
+                }
+                self.jackname_counters = {}
+                self.aeolus_count = 0
+                self.setBfree_count = 0
+                for layer in zs3["layers"]:
+                    jackname = self.build_jackname(layer["engine_name"], layer["midi_chan"])
+                    if jackname in processors:
+                        if jackname.startswith("aeolus"):
+                            layer["bank_info"] = ("General", 0, "General")
+                            layer["preset_info"][0] = layer["preset_info"][2]
+                        proc = processors[jackname]
+                        state["zs3"][zs3_id]["processors"][proc["id"]] = {
+                            "bank_info": layer["bank_info"],
+                            "preset_info": layer["preset_info"],
+                            "controllers": layer["controllers_dict"]
+                        }
+
+        # Remove unrequired audio routing
+        if "main" in state["chains"] and state["chains"]["main"]["audio_in"] == ['zynmixer:send_a', 'zynmixer:send_b']:
+            state["chains"]["main"]["audio_in"] = []
 
         return state
 

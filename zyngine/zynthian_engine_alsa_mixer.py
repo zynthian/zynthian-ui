@@ -197,12 +197,12 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 				logging.error("Can't configure headphones volume control: {}".format(e))
 
 		# Sort zctrls to match the configured mixer control list
-		if ctrl_list and len(ctrl_list)>0:
+		if ctrl_list and len(ctrl_list) > 0:
 			sorted_zctrls = OrderedDict()
 			for ctrl_name in ctrl_list:
 				try:
 					for k, zctrl in zctrls.items():
-						if zctrl.name==ctrl_name:
+						if zctrl.name == ctrl_name:
 							sorted_zctrls[k] = zctrl
 							self.keep_midi_learn(zctrl)
 				except:

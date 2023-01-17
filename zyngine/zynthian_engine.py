@@ -196,7 +196,6 @@ class zynthian_engine(zynthian_basic_engine):
 		self.show_favs_bank = True
 
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
-		self.learned_zctrls = {}
 
 
 	def __del__(self):
@@ -652,14 +651,11 @@ class zynthian_engine(zynthian_basic_engine):
 
 
 	def midi_unlearn(self, zctrl):
-		if zctrl.get_path() in self.learned_zctrls:
-			#logging.info("Unlearning '{}' ...".format(zctrl.symbol))
-			try:
-				self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = None
-				del self.learned_zctrls[zctrl.get_path()]
-				return zctrl._unset_midi_learn()
-			except Exception as e:
-				logging.warning("Can't unlearn => {}".format(e))
+		try:
+			self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = None
+			return zctrl._unset_midi_learn()
+		except Exception as e:
+			logging.warning("Can't unlearn => {}".format(e))
 
 
 	def set_midi_learn(self, zctrl ,chan, cc):
@@ -675,7 +671,6 @@ class zynthian_engine(zynthian_basic_engine):
 				pass
 
 			# Add midi learning info
-			self.learned_zctrls[zctrl.get_path()] = zctrl
 			self.learned_cc[chan][cc] = zctrl
 			return zctrl._set_midi_learn(chan, cc)
 		except Exception as e:
@@ -683,6 +678,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 
 	def keep_midi_learn(self, zctrl):
+		return #TODO???
 		try:
 			zpath = zctrl.get_path()
 			old_zctrl = self.learned_zctrls[zpath]
@@ -697,6 +693,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 	def refresh_midi_learn(self):
 		logging.info("Refresh MIDI-learn ...")
+		return #TODO: Why???
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 		for zctrl in self.learned_zctrls.values():
 			self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = zctrl
@@ -704,7 +701,6 @@ class zynthian_engine(zynthian_basic_engine):
 
 	def reset_midi_learn(self):
 		logging.info("Reset MIDI-learn ...")
-		self.learned_zctrls = {}
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 
 
