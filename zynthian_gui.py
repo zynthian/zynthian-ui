@@ -2137,9 +2137,6 @@ class zynthian_gui:
 			self.zynmidi_read()
 			self.osc_receive()
 
-			# Run autoconnect if pending
-			self.zynautoconnect_do()
-
 			# Every 4 cycles ...
 			if j > 4:
 				j = 0

@@ -51,7 +51,6 @@ logger.setLevel(log_level)
 # Define some Constants and Global Variables
 #-------------------------------------------------------------------------------
 
-refresh_time = 2
 jclient = None
 thread = None
 exit_flag = False
@@ -61,6 +60,10 @@ lib_zyncore = get_lib_zyncore()
 last_hw_str = None
 max_num_devs = 16
 devices_in = [None for i in range(max_num_devs)]
+
+refresh_time = 0.1
+mididev_refresh_time = 2
+mididev_refresh_time_count = 0
 
 #------------------------------------------------------------------------------
 
@@ -133,6 +136,7 @@ def replicate_connections_to(port1, port2):
 #------------------------------------------------------------------------------
 
 def midi_autoconnect(force=False):
+	global mididev_refresh_time_count
 	global last_hw_str
 
 	#Get Mutex Lock 
@@ -176,6 +180,7 @@ def midi_autoconnect(force=False):
 
 	#Check for new devices (HW and virtual)...
 	if not force and hw_str == last_hw_str:
+		mididev_refresh_time_count = 0
 		#Release Mutex Lock
 		release_lock()
 		#logger.info("ZynAutoConnect: MIDI Shortened ...")
@@ -535,13 +540,12 @@ def midi_autoconnect(force=False):
 		except:
 			pass
 
-
+	mididev_refresh_time_count = 0
 	#Release Mutex Lock
 	release_lock()
 
 
 def audio_autoconnect(force=False):
-
 	if not force:
 		#logger.debug("ZynAutoConnect: Audio Escaped ...")
 		return
@@ -831,12 +835,19 @@ def autoconnect(force=False):
 
 
 def autoconnect_thread():
+	global refresh_time, mididev_refresh_time, mididev_refresh_time_count
 	while not exit_flag:
 		try:
-			autoconnect()
+			# Run full autoconnect if pending (MIDI, audio or both)
+			zynthian_gui_config.zyngui.zynautoconnect_do()
+			# Run partial autoconnect for detecting new MIDI ports
+			if mididev_refresh_time_count > mididev_refresh_time:
+				midi_autoconnect(False)
 		except Exception as err:
 			logger.error("ZynAutoConnect ERROR: {}".format(err))
+
 		sleep(refresh_time)
+		mididev_refresh_time_count += refresh_time
 
 
 def acquire_lock():
@@ -855,10 +866,10 @@ def release_lock():
 	lock.release()
 
 
-def start(rt=2):
+def start(rt=0.1):
 	global refresh_time, exit_flag, jclient, thread, lock
-	refresh_time=rt
-	exit_flag=False
+	refresh_time = rt
+	exit_flag = False
 
 	try:
 		jclient=jack.Client("Zynthian_autoconnect")
@@ -868,10 +879,10 @@ def start(rt=2):
 		logger.error("ZynAutoConnect ERROR: Can't connect with Jack Audio Server ({})".format(e))
 
 	# Create Lock object (Mutex) to avoid concurrence problems
-	lock=Lock()
+	lock = Lock()
 
 	# Start Autoconnect Thread
-	thread=Thread(target=autoconnect_thread, args=())
+	thread = Thread(target=autoconnect_thread, args=())
 	thread.daemon = True # thread dies with the program
 	thread.name = "autoconnect"
 	thread.start()
@@ -879,7 +890,7 @@ def start(rt=2):
 
 def stop():
 	global exit_flag
-	exit_flag=True
+	exit_flag = True
 	acquire_lock()
 	audio_disconnect_sysout()
 	release_lock()
