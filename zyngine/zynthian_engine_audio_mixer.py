@@ -382,23 +382,29 @@ class zynmixer(zynthian_engine):
 				state[key] = chan_state
 		return state
 
+
 	def set_state(self, state, full=True):
 		"""Set mixer state
 		
 		state : List of mixer channels containing dictionary of each state value
 		full : True to reset parameters omitted from state
 		"""
-		for chan in range(self.get_max_channels() + 1):
+
+		for chan, zctrls in enumerate(self.zctrls):
 			if chan < self.get_max_channels():
 				key = 'chan_{:02d}'.format(chan)
 			else:
 				key = 'main'
-			if key in state:
-				for symbol in self.zctrls[chan]:
-					if key in state and symbol in state[key]:
-						self.zctrls[chan][symbol].set_state(state[key][symbol])
-					elif full:
-						self.zctrls[chan][symbol].reset_value()
+			for symbol, zctrl in zctrls.items():
+				try:
+					ctrl_state = state[key][symbol]
+					if "value" in ctrl_state:
+						zctrl.set_value(ctrl_state["value"], True)
+					if "midi_learn_chan" in ctrl_state and "midi_learn_cc" in ctrl_state:
+						self.set_midi_learn(zctrl, int(ctrl_state["midi_learn_chan"]), int(ctrl_state["midi_learn_cc"]))
+				except:
+					if full:
+						zctrl.reset_value()
 
 
 	def send_update(self, chan, ctrl, value):

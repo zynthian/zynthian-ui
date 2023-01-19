@@ -393,7 +393,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				zctrl = zynthian_controller(self, ctrl[0], ctrl[1], ctrl[2])
 				self.zctrls[zctrl.symbol] = zctrl
 				if midi_chan is not None and len(ctrl) > 3:
-					zctrl.set_midi_learn(midi_chan, ctrl[3])
+					zctrl._set_midi_learn(midi_chan, ctrl[3])
 		return self.zctrls
 
 

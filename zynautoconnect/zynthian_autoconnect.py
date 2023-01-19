@@ -49,7 +49,6 @@ logger.setLevel(log_level)
 # Define some Constants and Global Variables
 #-------------------------------------------------------------------------------
 
-refresh_time = 2 # Period (in seconds) to check for changed MIDI ports
 jclient = None # JACK client
 thread = None # Thread to check for changed MIDI ports
 exit_flag = False # True to exit thread
@@ -58,6 +57,8 @@ chain_manager = None # Chain Manager object
 xruns = 0 # Quantity of xruns since startup or last reset
 deferred_midi_connect = False # True to perform MIDI connect on next port check cycle
 deferred_audio_connect = False # True to perform audio connect on next port check cycle
+fast_midi_connect = False # True to perform MIDI connect within 0.1s
+fast_audio_connect = False # True to perform audio connect within 0.1s
 
 last_hw_str = None # Fingerprint of MIDI ports used to check for change of ports
 max_num_devs = 16 # Maximum quantity of hardware inputs
@@ -95,32 +96,29 @@ def get_fixed_midi_port_name(port_name):
 
 #------------------------------------------------------------------------------
 
-def check_for_changed_midi_ports():
-	"""Check if physical (hardware) interfaces have changed, e.g. USB plug"""
+def request_audio_connect(fast = False):
+	"""Request audio connection graph refresh
 
-	global last_hw_str, deferred_midi_connect, deferred_audio_connect
-	hw_str = "" # Hardware device fingerprint
-	hw_src_ports = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
-	for hw in hw_src_ports:
-		hw_str += hw.name + "\n"
-	hw_dst_ports = jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
-	for hw in hw_dst_ports:
-		hw_str += hw.name + "\n"
-	if hw_str != last_hw_str:
-		last_hw_str = hw_str
+	fast : True for fast update (default=False to trigger on next 2s cycle
+	"""
+
+	global deferred_audio_connect, fast_audio_connect
+	if fast:
+		fast_audio_connect = True
+	else:
+		deferred_audio_connect = True
+
+def request_midi_connect(fast = False):
+	"""Request MIDI connection graph refresh
+
+	fast : True for fast update (default=False to trigger on next 2s cycle
+	"""
+
+	global deferred_midi_connect, fast_midi_connect
+	if fast:
+		fast_midi_connect = True
+	else:
 		deferred_midi_connect = True
-	if deferred_midi_connect:
-		midi_autoconnect()
-	if deferred_audio_connect:
-		audio_autoconnect()
-
-def request_deferred_audio_connect():
-	global deferred_audio_connect
-	deferred_audio_connect = True
-
-def request_deferred_midi_connect():
-	global deferred_midi_connect
-	deferred_midi_connect = True
 
 def midi_autoconnect():
 	"""Connect all expected MIDI routes"""
@@ -515,15 +513,42 @@ def autoconnect():
 
 
 def port_change_check():
-	"""Thread to check for changed MIDI ports"""
+	"""Thread to run autoconnect and to check if physical (hardware) interfaces have changed, e.g. USB plug"""
+
+	global last_hw_str, deferred_midi_connect, deferred_audio_connect, fast_midi_connect, fast_audio_connect
+
+	deferred_midi_timeout = 0
+	deferred_audio_timeout = 0
 
 	while not exit_flag:
 		try:
-			check_for_changed_midi_ports()
+			if deferred_midi_timeout > 2:
+				deferred_midi_timeout = 0
+				hw_str = "" # Hardware device fingerprint
+				hw_src_ports = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
+				for hw in hw_src_ports:
+					hw_str += hw.name + "\n"
+				hw_dst_ports = jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
+				for hw in hw_dst_ports:
+					hw_str += hw.name + "\n"
+				if hw_str != last_hw_str:
+					last_hw_str = hw_str
+					deferred_midi_connect = True
+				if deferred_midi_connect:
+					midi_autoconnect()
+					fast_midi_connect = False
+			if fast_midi_connect:
+				deferred_midi_timeout = 0
+				midi_autoconnect()
+			if fast_audio_connect or deferred_audio_connect and deferred_audio_timeout > 2:
+				deferred_audio_timeout = 0
+				audio_autoconnect()
+
 		except Exception as err:
 			logger.error("ZynAutoConnect ERROR: {}".format(err))
-		sleep(refresh_time)
-
+		deferred_midi_timeout += 0.1
+		deferred_audio_timeout += 0.1
+		sleep(0.1)
 
 def acquire_lock():
 	"""Acquire mutex lock

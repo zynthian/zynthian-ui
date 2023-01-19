@@ -201,7 +201,7 @@ class zynthian_controller:
 		else:
 			self.midi_cc = cc
 			if cc is not None and chan is not None and self.midi_learn_cc is None:
-				self.set_midi_learn(chan, cc)
+				self._set_midi_learn(chan, cc)
 
 		self.value = val
 		self.is_toggle = False
@@ -461,6 +461,7 @@ class zynthian_controller:
 		full : True to get state of all parameters or false for off-default values
 		"""
 
+		#TODO: Move this to processor (used by processor and audio mixer)
 		state = {}
 		
 		# Value
@@ -474,27 +475,11 @@ class zynthian_controller:
 
 		# MIDI learning info
 		if self.midi_learn_chan is not None and self.midi_learn_cc is not None:
+			#TODO: This should be done in engine
 			state['midi_learn_chan'] = self.midi_learn_chan
 			state['midi_learn_cc'] = self.midi_learn_cc
 
 		return state
-
-
-	def set_state(self, state):
-		"""Set controller state from dictionary or value from basic data type
-		
-		state : State as dictionary or value
-		"""
-
-		#logging.debug("Restoring Controller '{}' State => {}".format(self.symbol, state['value']))
-		if isinstance(state, dict):
-			if "value" in state:
-				self.set_value(state["value"], True)
-			# Restore MIDI-learn
-			if "midi_learn_chan" in state and "midi_learn_cc" in state:
-				self.set_midi_learn(int(state["midi_learn_chan"]), int(state["midi_learn_cc"]))
-		else:
-			self.set_value(state, True)
 
 
 	#--------------------------------------------------------------------------
@@ -514,37 +499,6 @@ class zynthian_controller:
 
 			# Call GUI method
 			self.engine.state_manager.init_midi_learn_zctrl(self)
-
-
-	def midi_unlearn(self):
-		# Unlearn only if there is a working engine and something to unlearn ...
-		if self.engine and self.midi_learn_chan is not None and self.midi_learn_cc is not None:
-			logging.info("MIDI Unlearn: %s" % self.symbol)
-			unlearned = False
-
-			try:
-				unlearned = self.engine.midi_unlearn(self)
-			except Exception as e:
-				logging.error(e)
-
-			if unlearned:
-				# Call GUI method & Return success
-				#self.zyngui.refresh_midi_learn_zctrl() #TODO: Update UI
-				return True
-			else:
-				return False
-
-		# If not engine or nothing to unlearn, return success
-		return True
-
-
-	def set_midi_learn(self, chan, cc):
-		# Learn only if there is a working engine ...
-		if self.engine:
-			try:
-				return self.engine.set_midi_learn(self, chan, cc)
-			except Exception as e:
-				logging.error(e)
 
 
 	def _set_midi_learn(self, chan, cc):

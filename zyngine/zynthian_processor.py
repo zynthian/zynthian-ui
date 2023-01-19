@@ -763,9 +763,13 @@ class zynthian_processor:
         if "controllers" in state:
             for symbol, ctrl_state in state["controllers"].items():
                 try:
-                    self.controllers_dict[symbol].set_state(ctrl_state)
+                    zctrl = self.controllers_dict[symbol]
+                    if "value" in ctrl_state:
+                        zctrl.set_value(ctrl_state["value"], True)
+                    if "midi_learn_chan" in ctrl_state and "midi_learn_cc" in ctrl_state:
+                        self.engine.set_midi_learn(zctrl, int(ctrl_state["midi_learn_chan"]), int(ctrl_state["midi_learn_cc"]))
                 except Exception as e:
-                    logging.warning("Invalid Controller on layer {}: {}".format(self.get_basepath(), e))
+                    logging.warning("Invalid Controller for processor {}: {}".format(self.get_basepath(), e))
 
     def restore_state_legacy(self, state):
         """Restore legacy states from state

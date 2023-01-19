@@ -507,9 +507,9 @@ class zynthian_state_manager:
                 ctrl_state = {}
                 if zctrl.value != zctrl.value_default:
                     ctrl_state["value"] = zctrl.value
-                if zctrl.midi_learn_chan:
+                if zctrl.midi_learn_chan is not None:
                     ctrl_state["midi_learn_chan"] = zctrl.midi_learn_chan
-                if zctrl.midi_learn_cc:
+                if zctrl.midi_learn_cc is not None:
                     ctrl_state["midi_learn_cc"] = zctrl.midi_learn_cc
                 if ctrl_state:
                     processor_state["controllers"][symbol] = ctrl_state
@@ -627,35 +627,30 @@ class zynthian_state_manager:
     # Autoconnect
     #------------------------------------------------------------------
 
-    def autoconnect(self, force=False):
+    def autoconnect(self, fast=False):
         """Trigger jack graph connections
         
-        force : True to force immediate connection (Default: connect on next 2s cycle)
+        fast : True to force immediate connection (Default: connect on next 2s cycle)
         """
-        self.autoconnect_midi(force)
-        self.autoconnect_audio(force)
+        self.autoconnect_midi(fast)
+        self.autoconnect_audio(fast)
 
-    def autoconnect_midi(self, force=False):
+    #TODO: Can modules access zynautoconnect.request_midi_connect directyl?
+    def autoconnect_midi(self, fast=False):
         """Trigger jack MIDI graph connections
         
-        force : True to force immediate connection (Default: connect on next 2s cycle)
+        fast : True for immediate connection (Default: connect on next 2s cycle)
         """
 
-        if force:
-            zynautoconnect.midi_autoconnect()
-        else:
-            zynautoconnect.request_deferred_midi_connect()
+        zynautoconnect.request_midi_connect(fast)
 
-    def autoconnect_audio(self, force=False):
+    def autoconnect_audio(self, fast=False):
         """Trigger jack audio graph connections
         
-        force : True to force immediate connection (Default: connect on next 2s cycle)
+        fast : True to force immediate connection (Default: connect on next 2s cycle)
         """
 
-        if force:
-            zynautoconnect.audio_autoconnect()
-        else:
-            zynautoconnect.request_deferred_audio_connect()
+        zynautoconnect.request_audio_connect(fast)
 
     # ---------------------------------------------------------------------------
     # MIDI Router Init & Config

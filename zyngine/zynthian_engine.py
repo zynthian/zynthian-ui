@@ -24,7 +24,6 @@
 
 #import sys
 import os
-import re
 import json
 import liblo
 import logging
@@ -658,13 +657,8 @@ class zynthian_engine(zynthian_basic_engine):
 			logging.warning("Can't unlearn => {}".format(e))
 
 
-	def set_midi_learn(self, zctrl ,chan, cc):
+	def set_midi_learn(self, zctrl, chan, cc):
 		try:
-			# Clean implied CC bindings if any ...
-			try:
-				self.learned_cc[chan][cc].midi_unlearn()
-			except:
-				pass
 			try:
 				self.midi_unlearn(zctrl)
 			except:

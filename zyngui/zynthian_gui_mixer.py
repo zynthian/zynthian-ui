@@ -621,7 +621,7 @@ class zynthian_gui_mixer_strip():
 	# Function to handle fader drag
 	#	event: Mouse event
 	def on_fader_motion(self, event):
-		if self.zctrls:
+		if self.zctrls and self.fader_drag_start:
 			self.set_volume(self.zctrls['level'].value + (self.fader_drag_start.y - event.y) / self.fader_height)
 			self.fader_drag_start = event
 			self.draw_fader()
