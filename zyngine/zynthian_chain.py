@@ -67,6 +67,8 @@ class zynthian_chain:
         self.status = "" # Arbitary status text
         self.current_processor = None # Selected processor object
         self.title = None # User defined title for chain
+        self.midi_routes = {} # Map of MIDI routes indexed by jackname
+        self.audio_routes = {} # Map of audio routes indexed by jackname
         self.reset()
 
     def reset(self):
@@ -177,7 +179,8 @@ class zynthian_chain:
 
         #TODO: This is called too frequently
         #TODO: Handle side-chaining - maybe manually curate list of sidechain destinations
-        zynautoconnect.acquire_lock()
+        if not zynautoconnect.acquire_lock():
+            return
 
         self.audio_routes = {}
         # Add effects chain routes
@@ -220,7 +223,8 @@ class zynthian_chain:
     def rebuild_midi_graph(self):
         """Build dictionary of lists of sources mapped by destination"""
 
-        zynautoconnect.acquire_lock()
+        if not zynautoconnect.acquire_lock():
+            return
  
         self.midi_routes = {}
         for i, slot in enumerate(self.midi_slots):

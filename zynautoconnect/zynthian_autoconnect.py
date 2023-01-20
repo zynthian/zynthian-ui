@@ -545,7 +545,8 @@ def port_change_check():
 				audio_autoconnect()
 
 		except Exception as err:
-			logger.error("ZynAutoConnect ERROR: {}".format(err))
+			if jclient:
+				logger.error("ZynAutoConnect ERROR: {}".format(err))
 		deferred_midi_timeout += 0.1
 		deferred_audio_timeout += 0.1
 		sleep(0.1)
