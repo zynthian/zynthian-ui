@@ -1871,6 +1871,11 @@ class zynthian_gui:
 						if zynthian_gui_config.midi_prog_change_zs3:
 							res = self.state_manager.set_midi_prog_zs3(chan, pgm)
 						else:
+							if zynthian_gui_config.midi_single_active_channel:
+								try:
+									chan = self.chain_manager.get_active_chain().midi_chan
+								except:
+									return
 							res = self.chain_manager.set_midi_prog_preset(chan, pgm)
 						if res:
 							if self.current_screen == 'audio_mixer':
@@ -2036,6 +2041,7 @@ class zynthian_gui:
 			if self.wsleds:
 				self.update_wsleds()
 			if self.midi_learn_mode != self.state_manager.midi_learn_mode:
+				#TODO: Avoid polling for local/master midi learn mode
 				self.set_midi_learn_mode(self.state_manager.midi_learn_mode)
 			sleep(0.2)
 		if self.wsleds:
@@ -2160,7 +2166,7 @@ class zynthian_gui:
 					if self.loading_thread.is_alive():
 						logging.error("Loading thread failed to terminate")
 					if self.state_manager.zynautoconnect.is_running():
-						logging.error("MIDI port change thread failed to terminate")
+						logging.error("Autoconnect thread failed to terminate")
 				zynthian_gui_config.top.quit()
 				return
 		# Refresh Current Chain

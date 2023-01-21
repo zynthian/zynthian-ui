@@ -77,10 +77,7 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 				title = state['title']
 			else:
 				chan, prog = id.split('/')
-				if zynthian_gui_config.midi_single_active_channel:
-					title = f"{state['title']} -> PR#{prog}"
-				else:
-					title = f"{state['title']} -> CH#{chan}:PR#{prog}"
+				title = f"{state['title']} -> CH#{chan}:PR#{prog}"
 			self.list_data.append((id, state, title))
 
 		super().fill_list()

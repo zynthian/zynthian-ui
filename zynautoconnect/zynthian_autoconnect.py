@@ -127,9 +127,6 @@ def midi_autoconnect():
 	if not acquire_lock():
 		return
 	
-	global deferred_midi_connect
-	deferred_midi_connect = False
-
 	#logger.info("ZynAutoConnect: MIDI ...")
 
 	#------------------------------------
@@ -380,9 +377,6 @@ def audio_autoconnect():
 	#Get Mutex Lock
 	if not acquire_lock():
 		return
-
-	global deferred_audio_connect
-	deferred_audio_connect = False
 	
 	# Get System Playback Ports
 	system_playback_ports = jclient.get_ports("system:playback", is_input=True, is_audio=True, is_physical=True)
@@ -512,18 +506,20 @@ def autoconnect():
 	audio_autoconnect()
 
 
-def port_change_check():
-	"""Thread to run autoconnect and to check if physical (hardware) interfaces have changed, e.g. USB plug"""
+def auto_connect_thread():
+	"""Thread to run autoconnect, checking if physical (hardware) interfaces have changed, e.g. USB plug"""
 
 	global last_hw_str, deferred_midi_connect, deferred_audio_connect, fast_midi_connect, fast_audio_connect
 
-	deferred_midi_timeout = 0
-	deferred_audio_timeout = 0
+	deferred_timeout = 2 # Period to run deferred connect (in seconds)
+	deferred_inc = 0.1 # Delay between loop cycles (in seconds)
+	deferred_count = 0
 
 	while not exit_flag:
 		try:
-			if deferred_midi_timeout > 2:
-				deferred_midi_timeout = 0
+			if deferred_count > deferred_timeout:
+				deferred_count = 0
+
 				hw_str = "" # Hardware device fingerprint
 				hw_src_ports = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
 				for hw in hw_src_ports:
@@ -533,23 +529,30 @@ def port_change_check():
 					hw_str += hw.name + "\n"
 				if hw_str != last_hw_str:
 					last_hw_str = hw_str
-					deferred_midi_connect = True
+					fast_midi_connect = True
+
 				if deferred_midi_connect:
-					midi_autoconnect()
-					fast_midi_connect = False
+					fast_midi_connect = True
+
+				if deferred_audio_connect:
+					fast_audio_connect = True
+
 			if fast_midi_connect:
-				deferred_midi_timeout = 0
 				midi_autoconnect()
-			if fast_audio_connect or deferred_audio_connect and deferred_audio_timeout > 2:
-				deferred_audio_timeout = 0
+				fast_midi_connect = False
+				deferred_midi_connect = False
+
+			if fast_audio_connect:
 				audio_autoconnect()
+				fast_audio_connect = False
+				deferred_audio_connect = False
 
 		except Exception as err:
-			if jclient:
-				logger.error("ZynAutoConnect ERROR: {}".format(err))
-		deferred_midi_timeout += 0.1
-		deferred_audio_timeout += 0.1
-		sleep(0.1)
+			logger.error("ZynAutoConnect ERROR: {}".format(err))
+
+		sleep(deferred_inc)
+		deferred_count += deferred_inc
+
 
 def acquire_lock():
 	"""Acquire mutex lock
@@ -605,28 +608,32 @@ def start(sm):
 	lock = Lock()
 
 	# Start port change checking thread
-	thread = Thread(target=port_change_check, args=())
+	thread = Thread(target=auto_connect_thread, args=())
 	thread.daemon = True # thread dies with the program
-	thread.name = "MIDI port change"
+	thread.name = "Autoconnect"
 	thread.start()
 
 
 def stop():
-	"""Reset state and stop MIDI port checker"""
+	"""Reset state and stop autoconnect thread"""
 
 	global exit_flag, jclient, thread, lock
 	exit_flag = True
-	thread = None
+	if thread:
+		thread.join()
+		thread = None
+
 	if acquire_lock():
 		release_lock()
 		lock = None
+
 	if jclient:
 		jclient.deactivate()
 		jclient = None
 
 
 def is_running():
-	"""Check if port checker thread is running
+	"""Check if autoconnect thread is running
 	
 	Returns : True if running"""
 
@@ -638,6 +645,7 @@ def is_running():
 
 def cb_jack_xrun(delayed_usecs: float):
 	"""Jack xrun callback
+
 	delayed_usecs : Period of delay caused by last jack xrun
 	"""
 

@@ -800,6 +800,7 @@ class zynthian_chain_manager():
         ccnum : CC number
         prognum : PC value
         """
+
         changed = False
         for processor in self.processors.values():
             try:

@@ -342,7 +342,8 @@ class zynthian_state_manager:
         midi_chan : MIDI channel
         prog_num : MIDI program change number
         """
-        return self.load_zs3(str(prog_num))
+
+        return self.load_zs3(f"{midi_chan}/{prog_num}")
  
     def get_zs3_title(self, zs3_index):
         """Get ZS3 title
@@ -372,8 +373,11 @@ class zynthian_state_manager:
             return False
 
         zs3_state = self.zs3[zs3_id]
+        active_only = zs3_id != "zs3-0" and zynthian_gui_config.midi_single_active_channel == 1
         if "chains" in zs3_state:
             for chain_id, chain_state in zs3_state["chains"].items():
+                if active_only and chain_id != self.chain_manager.active_chain_id:
+                    continue
                 chain = self.chain_manager.get_chain(chain_id)
                 if not chain:
                     continue
@@ -394,8 +398,11 @@ class zynthian_state_manager:
                 else:
                     get_lib_zyncore().set_midi_filter_transpose_semitone(chain.midi_chan, 0)
 
+        active_chain = self.chain_manager.get_active_chain()
         if "midi_clone" in zs3_state:
             for src_chan in range(16):
+                if active_only and active_chain and active_chain.midi_chan != src_chan:
+                    continue #TODO: This may fail
                 for dst_chan in range(16):
                     try:
                         self.enable_clone(src_chan, dst_chan, zs3_state["midi_clone"][str(src_chan)][str(dst_chan)]["enabled"])
@@ -408,13 +415,13 @@ class zynthian_state_manager:
             for proc_id, proc_state in zs3_state["processors"].items():
                 try:
                     processor = self.chain_manager.processors[int(proc_id)]
-                    if zs3_id != "zs3-0" and zynthian_gui_config.midi_single_active_channel and self.chain_manager.get_chain_id_by_processor(processor) != self.chain_manager.active_chain_id:
+                    if active_only and self.chain_manager.get_chain_id_by_processor(processor) != self.chain_manager.active_chain_id:
                         continue
                     processor.set_state(proc_state)
                 except:
                     pass
 
-        if not zynthian_gui_config.midi_single_active_channel and "active_chain" in zs3_state:
+        if not active_only and "active_chain" in zs3_state:
             self.chain_manager.set_active_chain_by_id(zs3_state["active_chain"])
 
         if "mixer" in zs3_state:
