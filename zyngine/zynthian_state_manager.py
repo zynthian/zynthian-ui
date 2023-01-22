@@ -445,7 +445,7 @@ class zynthian_state_manager:
                     used_ids.append(int(id.split('-')[1]))
                 except:
                     pass
-            if self.zs3[id]["title"].startswith("New ZS3 "):
+            if self.zs3[id]["title"].startswith("ZS3 "):
                 try:
                     used_titles.append(int(self.zs3[id]["title"][8:]))
                 except:
@@ -468,7 +468,7 @@ class zynthian_state_manager:
             for offset, index in enumerate(used_titles):
                 if offset and index - 1 != used_titles[offset] - 1:
                     break
-            title = f"New ZS3 {index + 1}"
+            title = f"ZS3 {index + 1}"
 
         # Initialise zs3
         self.zs3[zs3_id] = {

@@ -802,7 +802,7 @@ class zynthian_chain_manager():
         """
 
         changed = False
-        for processor in self.processors.values():
+        for processor in self.get_processors(type="MIDI Synth"):
             try:
                 mch = processor.midi_chan
                 if mch is None or mch == midich:
