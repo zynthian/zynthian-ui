@@ -1832,6 +1832,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		# Load MIDI profile from saved state
 		if mps is not None:
 			for key in mps:
+				# Drop Master Channel config, as it's global
+				if key.startswith("MASTER_"):
+					continue
 				os.environ["ZYNTHIAN_MIDI_" + key] = mps[key]
 			zynthian_gui_config.set_midi_config()
 			self.zyngui.init_midi()
