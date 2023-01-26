@@ -44,12 +44,11 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		self.bank_dir = None
 		self.last_bank_dir = None
 		self.bankless_mode = False
-		self.index_offset = 0
-		self.midi_banks = {}
-		self.midi_programs = {}
+		self.midi_banks = None
+		self.midi_programs = None
 
-		super().__init__('Bank', True)
 		self.check_bankless_mode()
+		super().__init__('Snapshot Bank', True)
 
 
 	def get_snapshot_fpath(self,f):
@@ -128,13 +127,6 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		return self.get_next_name()
 
 
-	def change_index_offset(self, i):
-		self.index = self.index - self.index_offset + i
-		self.index_offset = i
-		if self.index < 0:
-			self.index = 0
-
-
 	def check_bankless_mode(self):
 		banks = [ d for d in os.listdir(self.base_dir) if os.path.isdir(os.path.join(self.base_dir, d)) ]
 		n_banks = len(banks)
@@ -171,8 +163,6 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		self.list_data.append(("NEW_BANK", i, "New Bank"))
 		i = i + 1
 
-		self.change_index_offset(i)
-
 		for f in sorted(os.listdir(self.base_dir)):
 			dpath = join(self.base_dir, f)
 			if isdir(dpath):
@@ -194,11 +184,11 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 		i = 0
 		if not self.bankless_mode:
-			self.list_data.append((self.base_dir,i,".."))
+			self.list_data.append((self.base_dir, i, ".."))
 			i += 1
-
 		if len(self.zyngui.screens['layer'].layers)>0:
 			self.list_data.append(("SAVE", i, "Save as new snapshot"))
+			i += 1
 		if self.bankless_mode:
 			if isfile(self.default_snapshot_fpath):
 				self.list_data.append((self.default_snapshot_fpath, i, "Default"))
@@ -207,19 +197,17 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 				self.list_data.append((self.last_state_snapshot_fpath, i, "Last State"))
 				i += 1
 
-		self.change_index_offset(i)
-
 		head, bname = os.path.split(self.bank_dir)
-		for f in sorted(os.listdir(join(self.base_dir,self.bank_dir))):
-			fpath=self.get_snapshot_fpath(f)
-			if isfile(fpath) and f[-4:].lower()=='.zss':
-				title = f[:-4].replace(';','>',1).replace(';','/')
+		for f in sorted(os.listdir(join(self.base_dir, self.bank_dir))):
+			fpath = self.get_snapshot_fpath(f)
+			if isfile(fpath) and f[-4:].lower() == '.zss':
+				title = f[:-4].replace(';', '>', 1).replace(';', '/')
 				self.list_data.append((fpath, i, title))
 				try:
-					bn=self.get_midi_number(bname)
-					pn=self.get_midi_number(title)
+					bn = self.get_midi_number(bname)
+					pn = self.get_midi_number(title)
 					self.midi_programs[str(pn)] = i
-					logging.debug("Snapshot '{}' => MIDI bank {}, program {}".format(title, bn, pn))
+					logging.debug("Snapshot '{}' ({}) => MIDI bank {}, program {}".format(title, i, bn, pn))
 				except:
 					logging.warning("Snapshot '{}' don't have a MIDI program number".format(title))
 				i += 1
@@ -229,7 +217,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		self.check_bankless_mode()
 
 		if self.bank_dir is None:
-			self.selector_caption = 'Bank'
+			self.selector_caption = 'Snapshot Bank'
 			self.load_bank_list()
 		else:
 			self.selector_caption = 'Snapshot'
@@ -414,7 +402,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def save_snapshot(self, path):
 		self.zyngui.screens['layer'].save_snapshot(path)
-		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
+		#self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 
 
 	def save_default_snapshot(self):
@@ -459,19 +447,21 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 
 	def midi_bank_change(self, bn):
-		#Get bank list
-		self.last_bank_dir = self.bank_dir
-		self.bank_dir = None
-		self.fill_list()
+		if self.bankless_mode:
+			return False
 		#Load bank dir
 		bn = str(bn)
+		self.load_bank_list()
 		if bn in self.midi_banks:
-			self.bank_dir = self.list_data[self.midi_banks[bn]][2]
-			logging.debug("Snapshot Bank Change %s: %s" % (bn, self.bank_dir))
-			self.build_view()
+			self.last_bank_dir = self.bank_dir
+			index = self.midi_banks[bn]
+			self.bank_dir = self.list_data[index][2]
+			logging.debug("Snapshot Bank Change {} => {}, {}".format(pn, index, self.bank_dir))
+			self.zyngui.show_screen("snapshot")
 			return True
 		else:
-			self.bank_dir = self.last_bank_dir
+			if self.bank_dir is not None:
+				self.load_snapshot_list()
 			return False
 
 
@@ -492,19 +482,23 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 
 	def midi_program_change(self, pn):
-		#If no bank selected, default to first bank
+		# Load snapshot list if needed
 		if self.bank_dir is None:
-			self.fill_list()
-			self.last_bank_dir = self.bank_dir
+			self.load_bank_list()
 			self.bank_dir = self.list_data[0][2]
-			self.fill_list()
-		#Load snapshot
+			self.load_snapshot_list()
+		elif self.midi_programs is None:
+			self.load_snapshot_list()
+		# Load snapshot
 		pn = str(pn)
 		if pn in self.midi_programs:
-			fpath = self.list_data[self.midi_programs[pn]][0]
-			logging.debug("Snapshot Program Change %s: %s" % (pn, fpath))
-#TODO: Show screen?			self.zyngui.show_screen("snapshot")
+			index = self.midi_programs[pn]
+			fpath = self.list_data[index][0]
+			logging.debug("Snapshot Program Change {} => {}, {}".format(pn, index, fpath))
+			self.zyngui.show_screen("snapshot")
+			self.select(index)
 			self.zyngui.screens['layer'].load_snapshot(fpath)
+			self.zyngui.show_screen_reset("audio_mixer")
 			return True
 		else:
 			return False
