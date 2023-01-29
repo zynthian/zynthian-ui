@@ -403,7 +403,7 @@ class zynthian_engine_modui(zynthian_engine):
 				elif command == "preset":
 					self.preset_cb(args[1],args[2])
 
-				elif command == "pedal_preset":
+				elif command == "pedal_snapshot":
 					self.pedal_preset_cb(args[1])
 
 				elif command == "param_set":
