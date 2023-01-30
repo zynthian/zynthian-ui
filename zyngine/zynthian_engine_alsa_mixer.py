@@ -75,13 +75,14 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 		self.nickname = "MX"
 
 		self.audio_out = []
-		self.options= {
+		self.options = {
 			'clone': False,
 			'note_range': False,
 			'audio_route': False,
 			'midi_chan': False,
 			'replace': False,
-			'drop_pc': False
+			'drop_pc': False,
+			'drop_cc': True
 		}
 
 		self.zctrls = None

@@ -184,6 +184,7 @@ class zynthian_engine(zynthian_basic_engine):
 			'midi_chan': True,
 			'replace': True,
 			'drop_pc': False,
+			'drop_cc': True,
 			'layer_audio_out': True
 		}
 

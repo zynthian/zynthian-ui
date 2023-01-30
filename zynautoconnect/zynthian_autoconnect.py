@@ -432,13 +432,14 @@ def midi_autoconnect(force=False):
 				except:
 					pass
 
-	# Set MIDI THRU ...
+	# Set zyncore's routing flags
+	# => Set MIDI THRU
 	lib_zyncore.set_midi_thru(zynthian_gui_config.midi_filter_output)
-
-	# Set "Drop Program Change" flag for each MIDI chan
+	# => For each chain: Drop Program Change, Drop CC
 	for layer in zynguilayer.root_layers:
 		if layer.midi_chan is not None and layer.midi_chan < 16:
 			lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, int(layer.engine.options['drop_pc']))
+			lib_zyncore.zmop_chain_set_flag_dropcc(layer.midi_chan, int(layer.engine.options['drop_cc']))
 
 	# Connect MIDI OUT to enabled Hardware Output Ports
 	for paid, hwport in enabled_hw_ports.items():
