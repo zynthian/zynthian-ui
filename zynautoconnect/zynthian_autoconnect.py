@@ -316,7 +316,8 @@ def midi_autoconnect():
 				pass
 
 
-	# Set MIDI THRU ...
+	# Set zyncore's routing flags
+	# => Set MIDI THRU
 	lib_zyncore.set_midi_thru(zynthian_gui_config.midi_filter_output)
 
 	# Add MIDI OUT
