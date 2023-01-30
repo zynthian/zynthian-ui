@@ -432,90 +432,28 @@ def midi_autoconnect(force=False):
 				except:
 					pass
 
+	# Set MIDI THRU ...
+	lib_zyncore.set_midi_thru(zynthian_gui_config.midi_filter_output)
+
 	# Set "Drop Program Change" flag for each MIDI chan
 	for layer in zynguilayer.root_layers:
 		if layer.midi_chan is not None and layer.midi_chan < 16:
 			lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, int(layer.engine.options['drop_pc']))
 
-	# When "Send All MIDI to Output" is enabled, zynseq & zynsmf are routed thru ZynMidiRouter:midi_out
-	if zynthian_gui_config.midi_filter_output:
+	# Connect MIDI OUT to enabled Hardware Output Ports
+	for paid, hwport in enabled_hw_ports.items():
+		try:
+			jclient.connect(zmr_out['midi_out'], hwport)
+		except:
+			pass
 
-		# ... enabled Hardware MIDI Output Ports
-		for paid, hwport in enabled_hw_ports.items():
-			# Connect ZynMidiRouter:midi_out to ...
-			try:
-				jclient.connect(zmr_out['midi_out'], hwport)
-			except:
-				pass
-			# Disconnect zynseq (stepseq) output from ...
-			try:
-				jclient.disconnect("zynseq:output", hwport)
-			except:
-				pass
-			#Disconnect zynsmf output from ...
-			try:
-				jclient.disconnect("zynsmf:midi_out", hwport)
-			except:
-				pass
-
-		# ... enabled Network MIDI Output Ports
-		for paid, nwport in enabled_nw_ports.items():
-			# Connect ZynMidiRouter:net_out to ...
-			try:
-				jclient.connect(zmr_out['net_out'], nwport)
-			except:
-				pass
-			# Disconnect zynseq (stepseq) output from ...
-			try:
-				jclient.disconnect("zynseq:output", nwport)
-			except:
-				pass
-			#Disconnect zynsmf output from ...
-			try:
-				jclient.disconnect("zynsmf:midi_out", nwport)
-			except:
-				pass
-
-	# When "Send All MIDI to Output" is disabled, zynseq & zynsmf are routed directly
-	else:
-
-		# ... enabled Hardware MIDI Output Ports
-		for paid, hwport in enabled_hw_ports.items():
-			# Disconnect ZynMidiRouter:midi_out from ...
-			try:
-				jclient.disconnect(zmr_out['midi_out'], hwport)
-			except:
-				pass
-			# Connect zynseq (stepseq) output to ...
-			try:
-				jclient.connect("zynseq:output", hwport)
-			except:
-				pass
-			# Connect zynsmf output to ...
-			try:
-				jclient.connect("zynsmf:midi_out", hwport)
-			except:
-				pass
-
-		# ... enabled Network MIDI Output Ports
-		for paid, nwport in enabled_nw_ports.items():
-			# Disconnect ZynMidiRouter:net_out from ...
-			try:
-				jclient.disconnect(zmr_out['net_out'], nwport)
-			except:
-				pass
-			# Connect zynseq (stepseq) output to ...
-			try:
-				jclient.connect("zynseq:output", nwport)
-			except:
-				pass
-			# Connect zynsmf output to ...
-			try:
-				jclient.connect("zynsmf:midi_out", nwport)
-			except:
-				pass
-
-
+	# Connect MIDI NET to enabled Hardware Output Ports
+	for paid, nwport in enabled_nw_ports.items():
+		# Connect ZynMidiRouter:net_out to ...
+		try:
+			jclient.connect(zmr_out['net_out'], nwport)
+		except:
+			pass
 
 	#Connect ZynMidiRouter:step_out to ZynthStep input
 	try:
