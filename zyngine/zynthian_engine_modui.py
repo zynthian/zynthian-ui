@@ -738,9 +738,8 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def preset_cb(self, pgraph, uri):
 		try:
-			i=self.plugin_info[pgraph]['presets_dict'][uri]
-			self.layers[0].set_preset(i, False)
-			self.state_manager.screens['control'].set_select_path()
+			self.layers[0].set_preset_by_id(uri, False)
+			self.zyngui.screens['control'].set_select_path()
 
 		except Exception as e:
 			logging.error("Preset Not Found: {}/{} => {}".format(pgraph, uri, e))
@@ -750,11 +749,9 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def pedal_preset_cb(self, preset):
 		try:
-			preset_entry = self.pedal_presets[preset]
-			preset_entries = list(self.pedal_presets.values())
-			i = preset_entries.index(preset_entry)
-			self.layers[0].set_preset(i, False)
-			self.state_manager.screens['control'].set_select_path()
+			pid = self.pedal_presets[preset][0]
+			self.layers[0].set_preset_by_id(pid, False)
+			self.zyngui.screens['control'].set_select_path()
 
 		except Exception as e:
 			logging.error("Preset Not Found: {}".format(preset))
