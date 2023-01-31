@@ -513,11 +513,13 @@ class zynthian_gui:
 		parts = path.split("/", 2)
 		part1 = parts[1].upper()
 		if parts[0] == "" and part1 == "CUIA":
+			self.set_event_flag()
 			#Execute action
 			self.callable_ui_action(parts[2].upper(), args)
 			#Run autoconnect if needed
 			self.state_manager.autoconnect()
 		elif part1 in ("MIXER", "DAWOSC"):
+			self.set_event_flag()
 			part2 = parts[2].upper()
 			if part2 in ("HEARTBEAT", "SETUP"):
 				if src.hostname not in self.osc_clients:
@@ -1639,7 +1641,7 @@ class zynthian_gui:
 
 
 	def zynswitch_push(self, i):
-		self.last_event_flag = True
+		self.set_event_flag()
 
 		try:
 			if self.screens[self.current_screen].switch(i, 'P'):
@@ -1990,6 +1992,15 @@ class zynthian_gui:
 		else:
 			logging.info("Power Save Mode: OFF")
 			check_output("powersave_control.sh off", shell=True)
+
+
+	def set_event_flag(self):
+		self.last_event_flag = True
+
+
+	def reset_event_flag(self):
+		self.last_event_flag = False
+
 
 	#------------------------------------------------------------------
 	# "Busy" Animated Icon Thread
