@@ -412,7 +412,7 @@ class zynthian_engine_modui(zynthian_engine):
 				elif command == "preset":
 					self.preset_cb(args[1],args[2])
 
-				elif command == "pedal_preset":
+				elif command == "pedal_snapshot":
 					self.pedal_preset_cb(args[1])
 
 				elif command == "param_set":
@@ -738,8 +738,7 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def preset_cb(self, pgraph, uri):
 		try:
-			i=self.plugin_info[pgraph]['presets_dict'][uri]
-			self.layers[0].set_preset(i, False)
+			self.layers[0].set_preset_by_id(uri, False)
 			self.zyngui.screens['control'].set_select_path()
 
 		except Exception as e:
@@ -750,10 +749,8 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def pedal_preset_cb(self, preset):
 		try:
-			preset_entry = self.pedal_presets[preset]
-			preset_entries = list(self.pedal_presets.values())
-			i = preset_entries.index(preset_entry)
-			self.layers[0].set_preset(i, False)
+			pid = self.pedal_presets[preset][0]
+			self.layers[0].set_preset_by_id(pid, False)
 			self.zyngui.screens['control'].set_select_path()
 
 		except Exception as e:
