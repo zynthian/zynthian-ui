@@ -815,7 +815,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if self.zyngui.screens['snapshot'].bankless_mode:
 				ssname = os.path.basename(fparts[0])
 			else:
-				ssname = fparts[0].replace(self.zyngui.screens['snapshot'].base_dir + "/","")
+				ssname = fparts[0].rsplit("/", 1)[-1]
 			title +=  ": " + ssname.replace("last_state", "Last State")
 
 		super().set_title(title, fg, bg, timeout)

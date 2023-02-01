@@ -30,6 +30,7 @@ from glob import glob
 import logging
 from threading  import Thread
 from json import JSONEncoder, JSONDecoder
+from os.path import basename, isdir
 
 # Zynthian specific modules
 import zynconf
@@ -78,6 +79,9 @@ class zynthian_state_manager:
         self.midi_learn_mode = 0 # 0:Disabled, 1:MIDI Learn, 2:ZS3 Learn
         self.zs3 = {} # Dictionary or zs3 configs indexed by "ch/pc"
         self.status_info = {}
+        self.snapshot_bank = None # Name of snapshot bank (without path)
+        self.snapshot_program = 0
+        self.snapshot_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/snapshots"
 
         # Initialize MIDI & Switches
         self.dtsw = []
@@ -268,7 +272,40 @@ class zynthian_state_manager:
         self.zynmixer.set_mute(255, mute)
 
         self.last_snapshot_count += 1
+        try:
+            self.snapshot_program = int(basename(fpath[:3]))
+        except:
+            pass
         return state
+
+    def set_snapshot_midi_bank(self, bank):
+        """Set the current snapshot bank
+
+        bank: Snapshot bank (0..127)
+        """
+
+        for bank in glob(f"{self.snapshot_dir}/{bank:03d}*"):
+            if isdir(bank):
+                self.snapshot_bank = basename(bank)
+                return
+
+    def load_snapshot_by_prog(self, program, bank=None):
+        """Loads a snapshot from its MIDI program and bank
+
+        program : MIDI program number
+        bank : MIDI bank number (Default: Use last selected bank)
+        Returns : True on success
+        """
+
+        if bank is None:
+            bank = self.snapshot_bank
+        if bank is None:
+            return # Don't load snapshot if invalid bank selected
+        files = glob(f"{self.snapshot_dir}/{bank}/{program:03d}-*.zss")
+        if files:
+            self.load_snapshot(files[0])
+            return True
+        return False
 
     def import_legacy_zs3s(self, state):
         """Load ZS3 state from legacy snapshot format state
@@ -690,7 +727,7 @@ class zynthian_state_manager:
         zynconf.load_config()
         midi_profile_fpath=zynconf.get_midi_config_fpath()
         if midi_profile_fpath:
-            zynconf.load_config(True,midi_profile_fpath)
+            zynconf.load_config(True, midi_profile_fpath)
             zynthian_gui_config.set_midi_config()
             self.init_midi()
             self.init_midi_services()

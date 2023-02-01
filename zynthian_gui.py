@@ -1814,21 +1814,23 @@ class zynthian_gui:
 					# Webconf configured messages for Snapshot Control ...
 					if ev == zynthian_gui_config.master_midi_program_change_up:
 						logging.debug("PROGRAM CHANGE UP!")
-						self.screens['snapshot'].midi_program_change_up()
+						self.state_manager.load_snapshot_by_prog(self.state_manager.snapshot_program + 1)
 					elif ev == zynthian_gui_config.master_midi_program_change_down:
 						logging.debug("PROGRAM CHANGE DOWN!")
-						self.screens['snapshot'].midi_program_change_down()
+						self.state_manager.load_snapshot_by_prog(self.state_manager.snapshot_program - 1)
 					elif ev == zynthian_gui_config.master_midi_bank_change_up:
 						logging.debug("BANK CHANGE UP!")
-						self.screens['snapshot'].midi_bank_change_up()
+						self.state_manager.set_snapshot_midi_bank(self.state_manager.snapshot_bank + 1)
 					elif ev == zynthian_gui_config.master_midi_bank_change_down:
 						logging.debug("BANK CHANGE DOWN!")
-						self.screens['snapshot'].midi_bank_change_down()
+						self.state_manager.set_snapshot_midi_bank(self.state_manager.snapshot_bank - 1)
 					# Program Change => Snapshot Load
 					elif evtype == 0xC:
 						pgm = ((ev & 0x7F00) >> 8)
 						logging.debug("PROGRAM CHANGE %d" % pgm)
-						self.screens['snapshot'].midi_program_change(pgm)
+						self.replace_screen("main") #TODO: Use dedicated loading screen
+						self.state_manager.load_snapshot_by_prog(pgm)
+						self.replace_screen("audio_mixer")
 					# Control Change ...
 					elif evtype == 0xB:
 						ccnum = (ev & 0x7F00) >> 8
@@ -1836,7 +1838,7 @@ class zynthian_gui:
 						if ccnum == zynthian_gui_config.master_midi_bank_change_ccnum:
 							bnk = (ev & 0x7F)
 							logging.debug("BANK CHANGE %d" % bnk)
-							self.screens['snapshot'].midi_bank_change(bnk)
+							self.state_manager.set_snapshot_midi_bank(bnk)
 						elif ccnum == 120:
 							self.all_sounds_off()
 						elif ccnum == 123:

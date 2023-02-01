@@ -162,11 +162,13 @@ class zynthian_chain_manager():
             return False
         chains_to_remove = [chain_id] # List of associated chains that shold be removed simultaneously
         chain = self.chains[chain_id]
-        if chain.synth_slots and chain.synth_slots[0][0].type_code in ["BF", "AE"]:
-            #TODO: We remove all setBfree and Aeolus chains but maybe we should allow chain manipulation
-            for id, ch in self.chains.items():
-                if ch != chain and ch.synth_slots and ch.synth_slots[0][0].type_code == chain.synth_slots[0][0].type_code:
-                    chains_to_remove.append(id)
+        if chain.synth_slots:
+            get_lib_zyncore().ui_send_ccontrol_change(chain.midi_chan, 120, 0)
+            if chain.synth_slots[0][0].type_code in ["BF", "AE"]:
+                #TODO: We remove all setBfree and Aeolus chains but maybe we should allow chain manipulation
+                for id, ch in self.chains.items():
+                    if ch != chain and ch.synth_slots and ch.synth_slots[0][0].type_code == chain.synth_slots[0][0].type_code:
+                        chains_to_remove.append(id)
 
         for chain_id in chains_to_remove:
             chain = self.chains[chain_id]
@@ -181,9 +183,9 @@ class zynthian_chain_manager():
                 except Exception as e:
                     pass
             chain.reset()
-            if chain.mixer_chan is not None:
-                self.state_manager.zynmixer.reset(chain.mixer_chan)
             if chain_id != "main":
+                if chain.mixer_chan is not None:
+                    self.state_manager.zynmixer.reset(chain.mixer_chan)
                 self.chains.pop(chain_id)
                 del chain
         if stop_engines:

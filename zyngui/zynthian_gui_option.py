@@ -51,10 +51,10 @@ class zynthian_gui_option(zynthian_gui_selector):
 
 
 	def fill_list(self):
-		i=0
+		i = 0
 		self.list_data=[]
 		for k,v in self.options.items():
-			self.list_data.append((v,i,k))
+			self.list_data.append((v, i, k))
 			i += 1
 		super().fill_list()
 
