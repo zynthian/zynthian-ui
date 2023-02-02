@@ -192,6 +192,7 @@ class zynthian_gui:
 		self.power_save_mode = False
 		self.last_event_flag = False
 		self.last_event_ts = monotonic()
+		self.ignore_next_touch_release = False
 
 		self.screens = {}
 		self.screen_history = []
@@ -214,7 +215,7 @@ class zynthian_gui:
 		self.exit_wait_count = 0
 
 		self.zynmidi = None
-		self.midi_filter_script = None;
+		self.midi_filter_script = None
 		self.midi_learn_mode = False
 		self.midi_learn_zctrl = None
 
@@ -1974,12 +1975,12 @@ class zynthian_gui:
 				if zynthian_gui_config.midi_sys_enabled and evtype == 0xF:
 					# Song Position Pointer...
 					if chan == 0x1:
-						timecode = (ev & 0xFF) >> 8;
+						timecode = (ev & 0xFF) >> 8
 					elif chan == 0x2:
-						pos = ev & 0xFFFF;
+						pos = ev & 0xFFFF
 					# Song Select...
 					elif chan == 0x3:
-						song_number = (ev & 0xFF) >> 8;
+						song_number = (ev & 0xFF) >> 8
 					# Timeclock
 					elif chan == 0x8:
 						pass
@@ -2152,6 +2153,7 @@ class zynthian_gui:
 					logging.error(e)
 
 				# Power Save Mode
+				zynthian_gui_config.power_save_secs = 10
 				if zynthian_gui_config.power_save_secs > 0:
 					if self.last_event_flag:
 						self.last_event_ts = monotonic()
@@ -2186,6 +2188,24 @@ class zynthian_gui:
 
 	def reset_event_flag(self):
 		self.last_event_flag = False
+
+
+	def cb_touch(self, event):
+		#logging.debug("CB EVENT TOUCH!!!")
+		if self.power_save_mode:
+			self.set_event_flag()
+			self.ignore_next_touch_release = True
+			return "break"
+		self.set_event_flag()
+
+
+	def cb_touch_release(self, event):
+		#logging.debug("CB EVENT TOUCH RELEASE!!!")
+		self.set_event_flag()
+		if self.ignore_next_touch_release:
+			#logging.debug("IGNORING EVENT TOUCH RELEASE!!!")
+			self.ignore_next_touch_release = False
+			return "break"
 
 
 	#------------------------------------------------------------------
@@ -2610,7 +2630,8 @@ def exit_handler(signo, stack_frame):
 		exit_code = 102
 	elif signo == signal.SIGTERM:
 		exit_code = 101
-
+	else:
+		exit_code = 0
 	zyngui.exit(exit_code)
 
 
@@ -2654,6 +2675,7 @@ def cb_keybinding(event):
 
 	action = zynthian_gui_keybinding.getInstance().get_key_action(keysym, event.state)
 	if action != None:
+		zyngui.set_event_flag()
 		if isinstance(action, list) and len(action) > 1:
 			zyngui.callable_ui_action(action[0], [action[1]])
 		else:
@@ -2662,6 +2684,12 @@ def cb_keybinding(event):
 
 zynthian_gui_config.top.bind("<Key>", cb_keybinding)
 
+#------------------------------------------------------------------------------
+# Mouse/Touch Bindings
+#------------------------------------------------------------------------------
+
+zynthian_gui_config.top.bind("<Button-1>", zyngui.cb_touch)
+zynthian_gui_config.top.bind("<ButtonRelease-1>", zyngui.cb_touch_release)
 
 #------------------------------------------------------------------------------
 # TKinter Main Loop
