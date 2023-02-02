@@ -40,7 +40,7 @@ from zyngui.zynthian_gui_controller import zynthian_gui_controller
 class zynthian_gui_selector(zynthian_gui_base):
 
 	# Scale for listbox swipe action after-roll
-	swipe_roll_scale = [1,0,1,1,1,1,4,4,4,4,4,4,4,4,4,4] #1,0,1,0,1,0,1,0,
+	swipe_roll_scale = [1, 0, 1, 1, 2, 2, 2, 4, 4, 4, 4, 4] #1, 0, 1, 0, 1, 0, 1, 0,
 
 
 	def __init__(self, selcap='Select', wide=False, loading_anim=True):
@@ -205,11 +205,21 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 
 	def plot_zctrls(self):
+		self.swipe_update()
 		if self.zselector_hidden:
 			return
 		if self.zselector.zctrl.is_dirty:
 			self.zselector.calculate_plot_values()
 		self.zselector.plot_value()
+
+
+	def swipe_nudge(self, dts):
+		self.swipe_speed = int(len(self.swipe_roll_scale) - ((dts - 0.02) / 0.06) * len(self.swipe_roll_scale))
+		self.swipe_speed = min(self.swipe_speed, len(self.swipe_roll_scale) - 1)
+		self.swipe_speed = max(self.swipe_speed, 0)
+
+
+	def swipe_update(self):
 		if self.swipe_speed > 0:
 			self.swipe_speed -= 1
 			self.listbox.yview_scroll(self.swipe_dir * self.swipe_roll_scale[self.swipe_speed], tkinter.UNITS)
@@ -351,6 +361,9 @@ class zynthian_gui_selector(zynthian_gui_base):
 	#--------------------------------------------------------------------------
 
 	def cb_listbox_push(self,event):
+		if self.zyngui.cb_touch(event):
+			return "break"
+
 		self.listbox_push_ts = datetime.now() # Timestamp of initial touch
 		#logging.debug("LISTBOX PUSH => %s" % (self.listbox_push_ts))
 		self.listbox_y0 = event.y # Touch y-coord of initial touch
@@ -360,18 +373,18 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 
 	def cb_listbox_release(self, event):
+		if self.zyngui.cb_touch_release(event):
+			return "break"
+
 		now = datetime.now()
 		dts = (now - self.listbox_push_ts).total_seconds()
 		rdts = (now - self.last_release).total_seconds()
 		self.last_release = now
 		if self.swiping:
-			self.swipe_speed = int(len(self.swipe_roll_scale) - ((dts - 0.02) / 0.06) * len(self.swipe_roll_scale))
-			self.swipe_speed = min(self.swipe_speed, len(self.swipe_roll_scale) - 1)
-			self.swipe_speed = max(self.swipe_speed, 0)
+			self.swipe_nudge(dts)
 		else:
 			if rdts < 0.03:
 				return # Debounce
-			#logging.debug("LISTBOX RELEASE => %s" % dts)
 			cursel = self.listbox.nearest(event.y)
 			if self.index != cursel:
 				self.select(cursel)

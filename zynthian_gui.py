@@ -192,6 +192,7 @@ class zynthian_gui:
 		self.power_save_mode = False
 		self.last_event_flag = False
 		self.last_event_ts = monotonic()
+		self.ignore_next_touch_release = False
 
 		self.screens = {}
 		self.screen_history = []
@@ -2138,6 +2139,7 @@ class zynthian_gui:
 					logging.error(e)
 
 				# Power Save Mode
+				zynthian_gui_config.power_save_secs = 10
 				if zynthian_gui_config.power_save_secs > 0:
 					if self.last_event_flag:
 						self.last_event_ts = monotonic()
@@ -2172,6 +2174,24 @@ class zynthian_gui:
 
 	def reset_event_flag(self):
 		self.last_event_flag = False
+
+
+	def cb_touch(self, event):
+		#logging.debug("CB EVENT TOUCH!!!")
+		if self.power_save_mode:
+			self.set_event_flag()
+			self.ignore_next_touch_release = True
+			return "break"
+		self.set_event_flag()
+
+
+	def cb_touch_release(self, event):
+		#logging.debug("CB EVENT TOUCH RELEASE!!!")
+		self.set_event_flag()
+		if self.ignore_next_touch_release:
+			#logging.debug("IGNORING EVENT TOUCH RELEASE!!!")
+			self.ignore_next_touch_release = False
+			return "break"
 
 
 	#------------------------------------------------------------------
@@ -2640,6 +2660,7 @@ def cb_keybinding(event):
 
 	action = zynthian_gui_keybinding.getInstance().get_key_action(keysym, event.state)
 	if action != None:
+		zyngui.set_event_flag()
 		if isinstance(action, list) and len(action) > 1:
 			zyngui.callable_ui_action(action[0], [action[1]])
 		else:
@@ -2648,6 +2669,12 @@ def cb_keybinding(event):
 
 zynthian_gui_config.top.bind("<Key>", cb_keybinding)
 
+#------------------------------------------------------------------------------
+# Mouse/Touch Bindings
+#------------------------------------------------------------------------------
+
+zynthian_gui_config.top.bind("<Button-1>", zyngui.cb_touch)
+zynthian_gui_config.top.bind("<ButtonRelease-1>", zyngui.cb_touch_release)
 
 #------------------------------------------------------------------------------
 # TKinter Main Loop

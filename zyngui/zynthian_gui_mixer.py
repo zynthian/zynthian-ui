@@ -624,9 +624,14 @@ class zynthian_gui_mixer_strip():
 	# Function to handle fader press
 	#	event: Mouse event
 	def on_fader_press(self, event):
+		self.fader_drag_start = event
+
+		if zynthian_gui_config.zyngui.cb_touch(event):
+			return "break"
+
 		if self.midi_learning is True:
 			self.enable_midi_learn('level')
-		self.fader_drag_start = event
+
 		self.parent.select_chain_by_layer(self.layer)
 
 
@@ -681,14 +686,18 @@ class zynthian_gui_mixer_strip():
 	# Function to handle mixer strip press
 	#	event: Mouse event
 	def on_strip_press(self, event):
-		if self.zctrls is None:
-			return
 		self.strip_drag_start = event
 		self.dragging = False
+
+		if zynthian_gui_config.zyngui.cb_touch(event):
+			return "break"
 
 
 	# Function to handle legend strip release
 	def on_strip_release(self, event):
+		if zynthian_gui_config.zyngui.cb_touch_release(event):
+			return "break"
+
 		if self.dragging:
 			self.dragging = False
 		elif self.midi_learning:
