@@ -494,6 +494,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if self.mode == 'select':
 			super().plot_zctrls()
 		elif self.zgui_controllers:
+			self.swipe_update()
 			for zgui_ctrl in self.zgui_controllers:
 				if zgui_ctrl.zctrl and zgui_ctrl.zctrl.is_dirty or force:
 					zgui_ctrl.calculate_plot_values()
@@ -569,18 +570,31 @@ class zynthian_gui_control(zynthian_gui_selector):
 			logging.debug("XY-Controller Mode ...")
 			self.zyngui.show_control_xy(self.x_zctrl, self.y_zctrl)
 		else:
-			super().cb_listbox_push(event)
-			self.select_listbox(self.get_cursel(), False)
-			self.click_listbox()
+			return super().cb_listbox_push(event)
 
 
 	def cb_listbox_release(self, event):
+		if self.zyngui.cb_touch_release(event):
+			return "break"
+
 		if self.xyselect_mode:
 			return
 		else:
-			self.select_listbox(self.get_cursel(), False)
-			self.click_listbox()
-		return "break"
+			now = datetime.now()
+			dts = (now - self.listbox_push_ts).total_seconds()
+			rdts = (now - self.last_release).total_seconds()
+			self.last_release = now
+			if self.swiping:
+				self.swipe_nudge(dts)
+			else:
+				if rdts < 0.03:
+					return  # Debounce
+				cursel = self.listbox.nearest(event.y)
+				if self.index != cursel:
+					self.select(cursel)
+				self.select_listbox(self.get_cursel(), False)
+				self.click_listbox()
+				return "break"
 
 
 	def cb_listbox_motion(self, event):
