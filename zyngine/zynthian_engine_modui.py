@@ -85,6 +85,10 @@ class zynthian_engine_modui(zynthian_engine):
 		self.start()
 
 
+	def __del__(self):
+		pass
+
+
 	def reset(self):
 		super().reset()
 		self.graph = {}
