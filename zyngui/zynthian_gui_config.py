@@ -515,7 +515,7 @@ if "zynthian_gui.py" in sys.argv[0]:
 
 		# Controllers position and size
 		# pos(row,col)
-		if wiring_layout.startswith("Z2"):
+		if wiring_layout.startswith("Z2") or wiring_layout.startswith("V5"):
 			layout = {
 				'name': 'Z2',
 				'columns': 2,
@@ -543,7 +543,6 @@ if "zynthian_gui.py" in sys.argv[0]:
 				'list_pos': (0,1),
 				'ctrl_orientation': 'vertical'
 			}
-
 
 		# Adjust Root Window Geometry
 		top.geometry(str(display_width)+'x'+str(display_height))
