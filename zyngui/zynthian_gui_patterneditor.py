@@ -230,6 +230,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			options['[X] Metronome'] = 'Metronome'
 		else:
 			options['[  ] Metronome'] = 'Metronome'
+		options['Stutter count'] = 'Stutter count'
+		options['Stutter duration'] = 'Stutter duration'
 		options['Metronome volume ({})'.format(int(100 * self.zyngui.zynseq.libseq.getMetronomeVolume()))] = 'Metronome volume'
 		options['Beats in pattern ({})'.format(self.zyngui.zynseq.libseq.getBeatsInPattern())] = 'Beats in pattern'
 		options['Steps per beat ({})'.format(self.zyngui.zynseq.libseq.getStepsPerBeat())] = 'Steps per beat'
@@ -262,11 +264,19 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.close_screen()
 
 
+	def get_note_from_row(self, row):
+		return self.keymap[row]["note"]
+
+
 	def menu_cb(self, option, params):
 		if params == 'Tempo':
 			self.enable_param_editor(self, 'tempo', 'Tempo', {'value_min':10, 'value_max':420, 'value_default':120, 'is_integer':False, 'nudge_factor':0.1, 'value':self.zyngui.zynseq.libseq.getTempo()})
 		elif params == 'Beats per bar':
 			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsPerBar()})
+		elif params == 'Stutter count':
+			self.enable_param_editor(self, 'stutter_count', 'Stutter Count', {'value_min':0, 'value_max':12, 'value_default':0, 'value':self.zyngui.zynseq.libseq.getStutterCount(self.selected_cell[0], self.get_note_from_row(self.selected_cell[1]))})
+		elif params == 'Stutter duration':
+			self.enable_param_editor(self, 'stutter_dur', 'Stutter Duration', {'value_min':1, 'value_max':96, 'value_default':0, 'value':self.zyngui.zynseq.libseq.getStutterDur(self.selected_cell[0], self.get_note_from_row(self.selected_cell[1]))})
 		elif params == 'Metronome':
 			self.zyngui.zynseq.libseq.enableMetronome(not self.zyngui.zynseq.libseq.isMetronomeEnabled())
 		elif params == 'Metronome volume':
@@ -308,10 +318,14 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol == 'tempo':
 			self.zyngui.zynseq.libseq.setTempo(zctrl.value)
-		if zctrl.symbol == 'metro_vol':
+		elif zctrl.symbol == 'metro_vol':
 			self.zyngui.zynseq.libseq.setMetronomeVolume(zctrl.value / 100.0)
-		if zctrl.symbol == 'bpb':
+		elif zctrl.symbol == 'bpb':
 			self.zyngui.zynseq.libseq.setBeatsPerBar(zctrl.value)
+		elif zctrl.symbol == 'stutter_count':
+			self.zyngui.zynseq.libseq.setStutterCount(self.selected_cell[0], self.get_note_from_row(self.selected_cell[1]), zctrl.value)
+		elif zctrl.symbol == 'stutter_dur':
+			self.zyngui.zynseq.libseq.setStutterDur(self.selected_cell[0], self.get_note_from_row(self.selected_cell[1]), zctrl.value)
 		elif zctrl.symbol == 'copy':
 			self.load_pattern(zctrl.value)
 		elif zctrl.symbol == 'transpose':

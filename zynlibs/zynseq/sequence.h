@@ -61,9 +61,9 @@ class Sequence
         bool removeTrack(size_t track);
 
         /** @brief  Get quantity of tracks in sequence
-        *   @retval size_t  Quantity of tracks
+        *   @retval uint32_t Quantity of tracks
         */
-        size_t getTracks();
+        uint32_t getTracks();
 
         /** @brief  Clear all tracks from sequence
         */
