@@ -1098,6 +1098,9 @@ class zynthian_state_manager:
 
         if state is not None:
             for key in state:
+                if key.startswith("MASTER_"):
+                    # Drop Master Channel config, as it's global
+                    continue
                 os.environ["ZYNTHIAN_MIDI_" + key] = state[key]
             zynthian_gui_config.set_midi_config()
             self.init_midi()
