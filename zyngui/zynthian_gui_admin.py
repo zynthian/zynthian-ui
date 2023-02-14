@@ -86,6 +86,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.toggle_bank_change,0,"[  ] MIDI Bank Change"))
 
+		if zynthian_gui_config.transport_clock_source:
+			self.list_data.append((self.toggle_clock_source,0,"Clock Source: INTERNAL"))
+		else:
+			self.list_data.append((self.toggle_clock_source,0,"Clock Source: MIDI"))
+
 		if zynthian_gui_config.preset_preload_noteon:
 			self.list_data.append((self.toggle_preset_preload_noteon,0,"[x] Preset Preload"))
 		else:
@@ -425,6 +430,20 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		# Save config
 		zynconf.update_midi_profile({ 
 			"ZYNTHIAN_MIDI_BANK_CHANGE": str(int(zynthian_gui_config.midi_bank_change))
+		})
+
+		self.fill_list()
+
+
+	def toggle_clock_source(self):
+		if zynthian_gui_config.transport_clock_source:
+			zynthian_gui_config.transport_clock_source = 0
+		else:
+			zynthian_gui_config.transport_clock_source = 1
+
+		# Save config
+		zynconf.update_midi_profile({
+			"ZYNTHIAN_TRANSPORT_CLOCK_SOURCE": str(int(zynthian_gui_config.transport_clock_source))
 		})
 
 		self.fill_list()

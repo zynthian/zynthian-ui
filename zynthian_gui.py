@@ -521,7 +521,7 @@ class zynthian_gui:
 			if self.midi_filter_script:
 				self.midi_filter_script.clean()
 			self.midi_filter_script = zynthian_midi_filter.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
-			self.zynseq.setClockSource(zynthian_gui_config.transport_clock_source)
+			self.zynseq.libseq.setClockSource(zynthian_gui_config.transport_clock_source)
 
 		except Exception as e:
 			logging.error("ERROR initializing MIDI : {}".format(e))
