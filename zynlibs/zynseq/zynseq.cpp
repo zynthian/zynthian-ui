@@ -74,12 +74,11 @@ char g_sName[16]; // Buffer to hold sequence name so that it can be sent back fo
 bool g_bMutex = false; // Mutex lock for access to g_mSchedule
 
 // Tranpsort variables apply to next period
-uint32_t g_nPulsePerQuarterNote = 24; //!@todo Increase resolution - maybe use ticks per beat
 uint32_t g_nBeatsPerBar = 4;
 float g_fBeatType = 4.0;
 double g_dTicksPerBeat = 1920.0;
 double g_dTempo = 120.0;
-double g_dTicksPerClock = g_dTicksPerBeat / g_nPulsePerQuarterNote;
+double g_dTicksPerClock = g_dTicksPerBeat / PPQN;
 bool g_bTimebaseChanged = false; // True to trigger recalculation of timebase parameters
 Timebase* g_pTimebase = NULL; // Pointer to the timebase object for selected song
 TimebaseEvent* g_pNextTimebaseEvent = NULL; // Pointer to the next timebase event or NULL if no more events in this song
@@ -88,9 +87,10 @@ uint32_t g_nBeat = 1; // Current beat within bar
 uint32_t g_nTick = 0; // Current tick within bar
 double g_dBarStartTick = 0; // Quantity of ticks from start of song to start of current bar
 jack_nframes_t g_nTransportStartFrame = 0; // Quantity of frames from JACK epoch to transport start
-double g_dFramesToNextClock = 0.0; // Frames until next clock pulse
-double g_dFramesPerClock = 60 * g_nSampleRate / (g_dTempo *  g_dTicksPerBeat) * g_dTicksPerClock; //!@todo Change to integer will have 0.1% jitter at 1920 ppqn and much better jitter (0.01%) at current 24ppqn
+double g_dFramesToNextClock = 99999.0; // Frames until next clock pulse
+double g_dFramesPerClock = 60 * g_nSampleRate / (g_dTempo *  g_dTicksPerBeat) * g_dTicksPerClock; //!@todo Change to integer will have 0.1% jitter at 1920 PPQN and much better jitter (0.01%) at current 24PPQN
 uint8_t g_nClock = 0; // Quantity of MIDI clocks since start of beat
+uint8_t g_nClockSource = TRANSPORT_CLOCK_INTERNAL; // Source of clock that progresses playback
 
 size_t g_nMetronomePtr = -1; // Position within metronome click wav data
 float g_fMetronomeLevel = 1.0; // Factor to scale metronome level (volume)
@@ -316,7 +316,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
 int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 {
     static jack_position_t transportPosition; // JACK transport position structure populated each cycle and checked for transport progress
-    static uint8_t nClock = g_nPulsePerQuarterNote; // Clock pulse count 0..g_nPulsePerQuarterNote - 1
+    static uint8_t nClock = PPQN; // Clock pulse count 0..PPQN - 1
     static uint32_t nTicksPerPulse;
     static double dTicksPerFrame;
     static double dBeatsPerMinute; // Store so that we can check for change and do less maths
@@ -343,9 +343,9 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     {
         if(jack_midi_event_get(&midiEvent, pInputBuffer, i))
             continue;
-        /*  Not using MIDI transport control or clock
         switch(midiEvent.buffer[0])
         {
+            /*
             case MIDI_STOP:
                 DPRINTF("StepJackClient MIDI STOP\n");
                 break;
@@ -355,10 +355,13 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             case MIDI_CONTINUE:
                 DPRINTF("StepJackClient MIDI CONTINUE\n");
                 break;
+            */
             case MIDI_CLOCK:
                 DPRINTF("StepJackClient MIDI CLOCK\n");
-                // Ignore MIDI clock - let Jack timebase master handle it
+                if(g_nClockSource == TRANSPORT_CLOCK_MIDI)
+                    g_dFramesToNextClock = i;
                 break;
+            /*
             case MIDI_POSITION:
             {
                 //!@todo Should we let Jack timebase master manage MIDI position changes?
@@ -369,10 +372,10 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             case MIDI_SONG:
                 DPRINTF("StepJackClient Select song %d\n", midiEvent.buffer[1]);
                 break;
+            */
             default:
                 break;
         }
-        */
 
         // Handle MIDI Note On events to trigger seqeuences
         if((midiEvent.buffer[0] == g_nTriggerStatusByte) && midiEvent.buffer[2])
@@ -459,7 +462,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             // Pass clock time and schedule to pattern manager so it can populate with events. Pass sync pulse so that it can synchronise its sequences, e.g. start zynpad sequences
             g_nPlayingSequences = g_seqMan.clock(nNow + g_dFramesToNextClock, &g_mSchedule, bSync, g_dFramesPerClock); //!@todo Optimise to reduce rate calling clock especialy if we increase the clock rate from 24 to 96 or above. Maybe return the time until next check
             // Advance clock
-            if(++g_nClock >= g_nPulsePerQuarterNote)
+            if(++g_nClock >= PPQN)
             {
                 g_nClock = 0;
                 if(++g_nBeat > g_nBeatsPerBar)
@@ -470,9 +473,13 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 }
                 DPRINTF("Beat %u of %u\n", g_nBeat, g_nBeatsPerBar);
             }
-            g_dFramesToNextClock += g_dFramesPerClock;
+            if(g_nClockSource)
+                g_dFramesToNextClock = 999999.0;
+            else
+                g_dFramesToNextClock += g_dFramesPerClock;
         }
-        g_dFramesToNextClock -= nFrames;
+        if(g_nClockSource == TRANSPORT_CLOCK_INTERNAL)
+            g_dFramesToNextClock -= nFrames;
         //g_nTick = g_dTicksPerBeat - nRemainingFrames / getFramesPerTick(g_dTempo);
 
         if(g_nPlayingSequences == 0)
@@ -1694,7 +1701,7 @@ void setSequencesInBank(uint8_t bank, uint8_t sequences)
     g_pSequence = g_seqMan.getSequence(0, 0);
 }
 
-size_t getSequencesInBank(uint32_t bank)
+uint32_t getSequencesInBank(uint32_t bank)
 {
     return g_seqMan.getSequencesInBank(bank);
 }
@@ -1834,7 +1841,7 @@ void updateSequenceInfo()
 
 // ** Track management **
 
-size_t getPatternsInTrack(uint8_t bank, uint8_t sequence, uint32_t track)
+uint32_t getPatternsInTrack(uint8_t bank, uint8_t sequence, uint32_t track)
 {
     Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
     if(!pTrack)
@@ -1917,9 +1924,9 @@ jack_nframes_t transportGetLocation(uint32_t bar, uint32_t beat, uint32_t tick)
         for(size_t nIndex = 0; nIndex < g_pTimebase->getEventQuant(); ++nIndex)
         {
             TimebaseEvent* pEvent = g_pTimebase->getEvent(nIndex);
-            if(pEvent->bar > bar || pEvent->bar == bar && pEvent->clock > (g_dTicksPerBeat * beat + tick) / g_dTicksPerBeat / g_nPulsePerQuarterNote)
+            if(pEvent->bar > bar || pEvent->bar == bar && pEvent->clock > (g_dTicksPerBeat * beat + tick) / g_dTicksPerBeat / PPQN)
                 break; // Ignore events later than new position
-            nTicksToEvent = pEvent->bar * nTicksPerBar + pEvent->clock * g_dTicksPerBeat / g_nPulsePerQuarterNote;
+            nTicksToEvent = pEvent->bar * nTicksPerBar + pEvent->clock * g_dTicksPerBeat / PPQN;
             uint32_t nTicksInBlock = nTicksToEvent - nTicksToPrev;
             dFrames += dFramesPerTick * nTicksInBlock;
             nTicksToPrev = nTicksToEvent;
@@ -1957,7 +1964,8 @@ void transportStart(const char* client)
     jack_position_t pos;
     if(jack_transport_query(g_pJackClient, &pos) == JackTransportStopped)
     {
-        g_dFramesToNextClock = 0.0;
+        if(g_nClockSource == TRANSPORT_CLOCK_INTERNAL)
+            g_dFramesToNextClock = 0.0;
         jack_transport_start(g_pJackClient);
     }
 }
@@ -2040,4 +2048,20 @@ void setMetronomeVolume(float level)
 float getMetronomeVolume()
 {
     return g_fMetronomeLevel;
+}
+
+/** @brief Get clock source
+*   @retval uint8_t Clock source [0:Internal 1:MIDI]
+*/
+uint8_t getClockSource()
+{
+    return g_nClockSource;
+}
+
+/** @brief Set clock source
+*   @source uint8_t Clock source [0:Internal 1:MIDI]
+*/
+void setClockSource(uint8_t source)
+{
+    g_nClockSource = source;
 }

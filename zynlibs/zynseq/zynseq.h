@@ -57,6 +57,11 @@ extern "C"
 {
 #endif
 
+enum TRANSPORT_CLOCK
+{
+    TRANSPORT_CLOCK_INTERNAL = 0,
+    TRANSPORT_CLOCK_MIDI = 1
+};
 
 // ** Library management functions **
 
@@ -545,7 +550,7 @@ void togglePlayState(uint8_t bank, uint8_t sequence);
 *   @param  bank Index of bank
 *   @param  sequence Index of sequence
 */
-size_t getTracksInSequence(uint8_t bank, uint8_t sequence);
+uint32_t getTracksInSequence(uint8_t bank, uint8_t sequence);
 
 /** @brief  Stops all sequences
 */
@@ -842,7 +847,16 @@ void setMetronomeVolume(float level);
 */
 float getMetronomeVolume();
 
+/** @brief Get clock source
+*   @retval uint8_t Clock source [0:Internal 1:MIDI]
+*/
+uint8_t getClockSource();
+
+/** @brief Set clock source
+*   @source uint8_t Clock source [0:Internal 1:MIDI]
+*/
+void setClockSource(uint8_t source);
+
 #ifdef __cplusplus
 }
 #endif
-

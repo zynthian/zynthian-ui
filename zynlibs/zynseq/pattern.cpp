@@ -180,20 +180,20 @@ uint32_t Pattern::getSteps()
 
 uint32_t Pattern::getLength()
 {
-    return m_nBeats * 24;
+    return m_nBeats * PPQN;
 }
 
 uint32_t Pattern::getClocksPerStep()
 {
-    if(m_nStepsPerBeat > 24 || m_nStepsPerBeat == 0)
+    if(m_nStepsPerBeat > PPQN || m_nStepsPerBeat == 0)
         return 1;
-    return 24 / m_nStepsPerBeat;
+    return PPQN / m_nStepsPerBeat;
 }
 
 bool Pattern::setStepsPerBeat(uint32_t value)
 {
     float fScale = 1.0;
-    if(m_nStepsPerBeat == 0 || m_nStepsPerBeat > 24)
+    if(m_nStepsPerBeat == 0 || m_nStepsPerBeat > PPQN)
         m_nStepsPerBeat = 4;
     else
         float fScale = float(value) / m_nStepsPerBeat;
