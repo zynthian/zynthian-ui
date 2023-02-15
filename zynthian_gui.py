@@ -31,7 +31,6 @@ import ctypes
 import signal
 import logging
 import importlib
-import rpi_ws281x
 from time import sleep
 from pathlib import Path
 from time import monotonic
@@ -274,233 +273,21 @@ class zynthian_gui:
 
 
 	# ---------------------------------------------------------------------------
-	# WS281X LEDs
+	# WSLeds Init
 	# ---------------------------------------------------------------------------
 
 	def init_wsleds(self):
-		if zynthian_gui_config.wiring_layout == "Z2_V1":
-			# LEDS with PWM1 (pin 13, channel 1)
-			pin = 13
-			chan = 1
-		elif zynthian_gui_config.wiring_layout in ("Z2_V2", "Z2_V3"):
-			# LEDS with SPI0 (pin 10, channel 0)
-			pin = 10
-			chan = 0
+		if zynthian_gui_config.wiring_layout.startswith("Z2"):
+			from zyngui.zynthian_wsleds_z2 import zynthian_wsleds_z2
+			self.wsleds = zynthian_wsleds_z2(self)
+			self.wsleds.start()
+		elif zynthian_gui_config.wiring_layout.startswith("V5"):
+			from zyngui.zynthian_wsleds_v5 import zynthian_wsleds_v5
+			self.wsleds = zynthian_wsleds_v5(self)
+			self.wsleds.start()
 		else:
 			self.wsleds = None
-			return 0
 
-		self.wsleds_num = 25
-		self.wsleds=rpi_ws281x.PixelStrip(self.wsleds_num, pin, dma=10, channel=chan, strip_type=rpi_ws281x.ws.WS2811_STRIP_GRB)
-		self.wsleds.begin()
-
-		self.wscolor_off = rpi_ws281x.Color(0,0,0)
-		self.wscolor_light = rpi_ws281x.Color(0,0,255)
-		self.wscolor_active = rpi_ws281x.Color(0,255,0)
-		self.wscolor_admin = rpi_ws281x.Color(120,0,0)
-		self.wscolor_red = rpi_ws281x.Color(120,0,0)
-		self.wscolor_green = rpi_ws281x.Color(0,255,0)
-		self.wscolor_yellow = rpi_ws281x.Color(160,160,0)
-		self.wscolor_low = rpi_ws281x.Color(0, 100, 0)
-
-		# Light all LEDs
-		for i in range(0, self.wsleds_num):
-			self.wsleds.setPixelColor(i, self.wscolor_light)
-		self.wsleds.show()
-
-		self.wsleds_blink_count = 0
-
-		return self.wsleds_num
-
-
-	def end_wsleds(self):
-		self.off_wsleds()
-
-
-	def off_wsleds(self):
-		# Light-off all LEDs
-		for i in range(0, self.wsleds_num):
-			self.wsleds.setPixelColor(i, self.wscolor_off)
-		self.wsleds.show()
-
-
-	def wsled_blink(self, i, color):
-		if self.wsleds_blink:
-			self.wsleds.setPixelColor(i, color)
-		else:
-			self.wsleds.setPixelColor(i, self.wscolor_off)
-			#self.wsleds.setPixelColor(i, self.wscolor_light)
-
-
-	def update_wsleds(self):
-		# Power Save Mode
-		if self.power_save_mode:
-			if self.wsleds_blink_count % 16 > 14:
-				self.wsleds_blink = True
-			else:
-				self.wsleds_blink = False
-			for i in range(0, self.wsleds_num):
-				self.wsleds.setPixelColor(i, self.wscolor_off)
-			self.wsled_blink(0, self.wscolor_low)
-			self.wsleds.show()
-			self.wsleds_blink_count += 1
-			return
-
-		# Normal mode
-		if self.wsleds_blink_count % 4 > 1:
-			self.wsleds_blink = True
-		else:
-			self.wsleds_blink = False
-
-		try:
-			# Menu
-			if self.current_screen=="main":
-				self.wsleds.setPixelColor(0, self.wscolor_active)
-			elif self.current_screen=="stepseq" and self.screens['stepseq'].is_shown_menu():
-				self.wsleds.setPixelColor(0, self.wscolor_active)
-			elif self.current_screen=="admin":
-				self.wsleds.setPixelColor(0, self.wscolor_admin)
-			else:
-				self.wsleds.setPixelColor(0, self.wscolor_light)
-
-			# Active Layer
-			# => Light non-empty layers
-			n = self.screens['layer'].get_num_root_layers()
-			main_fxchain = self.screens['layer'].get_main_fxchain_root_layer()
-			if main_fxchain:
-				n -= 1
-			for i in range(6):
-				if i<n:
-					self.wsleds.setPixelColor(1+i, self.wscolor_light)
-				else:
-					self.wsleds.setPixelColor(1+i, self.wscolor_off)
-			# => Light FX layer if not empty
-			if main_fxchain:
-				self.wsleds.setPixelColor(7, self.wscolor_light)
-			else:
-				self.wsleds.setPixelColor(7, self.wscolor_off)
-			# => Light active layer
-			i = self.screens['layer'].get_root_layer_index()
-			if i is not None:
-				if main_fxchain and i == n:
-					if self.current_screen == "control":
-						self.wsleds.setPixelColor(7, self.wscolor_active)
-					else:
-						self.wsled_blink(7, self.wscolor_active)
-				elif i<6:
-					if self.current_screen == "control":
-						self.wsleds.setPixelColor(1+i, self.wscolor_active)
-					else:
-						self.wsled_blink(1+i, self.wscolor_active)
-
-			# Stepseq screen:
-			if self.current_screen=="zynpad":
-				self.wsleds.setPixelColor(8, self.wscolor_active)
-			else:
-				self.wsleds.setPixelColor(8, self.wscolor_light)
-
-			# Pattern Editor screen:
-			if self.current_screen=="pattern_editor":
-				self.wsleds.setPixelColor(9, self.wscolor_active)
-			else:
-				self.wsleds.setPixelColor(9, self.wscolor_light)
-
-			# MIDI Recorder screen:
-			if self.current_screen=="midi_recorder":
-				self.wsleds.setPixelColor(10, self.wscolor_active)
-			else:
-				self.wsleds.setPixelColor(10, self.wscolor_light)
-
-			# Snapshot screen:
-			if self.current_screen=="snapshot":
-				self.wsleds.setPixelColor(11, self.wscolor_active)
-			else:
-				self.wsleds.setPixelColor(11, self.wscolor_light)
-
-			# Presets screen:
-			if self.current_screen in ("preset", "bank"):
-				self.wsleds.setPixelColor(12, self.wscolor_active)
-			else:
-				self.wsleds.setPixelColor(12, self.wscolor_light)
-
-			# Light ALT button => MIDI LEARN!
-			if self.midi_learn_zctrl or self.current_screen=="zs3_learn":
-				self.wsleds.setPixelColor(13, self.wscolor_yellow)
-			elif self.midi_learn_mode:
-				self.wsleds.setPixelColor(13, self.wscolor_active)
-			else:
-				self.wsleds.setPixelColor(13, self.wscolor_light)
-
-			# REC/PLAY Audio buttons:
-			if 'audio_recorder' in self.status_info:
-				self.wsleds.setPixelColor(14, self.wscolor_red)
-			else:
-				self.wsleds.setPixelColor(14, self.wscolor_light)
-
-			if self.current_screen == "pattern_editor":
-				pb_status = self.screens['pattern_editor'].get_playback_status()
-				if pb_status == zynseq.SEQ_PLAYING:
-					self.wsleds.setPixelColor(15, self.wscolor_green)
-				elif pb_status in (zynseq.SEQ_STARTING, zynseq.SEQ_RESTARTING):
-					self.wsleds.setPixelColor(15, self.wscolor_yellow)
-				elif pb_status in (zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC):
-					self.wsleds.setPixelColor(15, self.wscolor_red)
-				elif pb_status == zynseq.SEQ_STOPPED:
-					self.wsleds.setPixelColor(15, self.wscolor_light)
-			elif 'audio_player' in self.status_info:
-				self.wsleds.setPixelColor(15, self.wscolor_active)
-			else:
-				self.wsleds.setPixelColor(15, self.wscolor_light)
-
-			# REC/PLAY MIDI buttons:
-			if self.status_info['midi_recorder']:
-				if "REC" in self.status_info['midi_recorder']:
-					self.wsleds.setPixelColor(16, self.wscolor_red)
-				else:
-					self.wsleds.setPixelColor(16, self.wscolor_light)
-
-				if "PLAY" in self.status_info['midi_recorder']:
-					self.wsleds.setPixelColor(17, self.wscolor_active)
-				else:
-					self.wsleds.setPixelColor(17, self.wscolor_light)
-			else:
-				self.wsleds.setPixelColor(16, self.wscolor_light)
-				self.wsleds.setPixelColor(17, self.wscolor_light)
-
-			# Back/No button
-			self.wsleds.setPixelColor(18, self.wscolor_red)
-
-			# Up button
-			self.wsleds.setPixelColor(19, self.wscolor_light)
-
-			# Select/Yes button
-			self.wsleds.setPixelColor(20, self.wscolor_green)
-
-			# Left, Bottom, Right button
-			for i in range(3):
-				self.wsleds.setPixelColor(21 + i, self.wscolor_light)
-
-			# Audio Mixer/Levels screen
-			if self.current_screen == "audio_mixer":
-				self.wsleds.setPixelColor(24, self.wscolor_active)
-			elif self.current_screen == "alsa_mixer":
-				self.wsleds.setPixelColor(24, self.wscolor_admin)
-			else:
-				self.wsleds.setPixelColor(24, self.wscolor_light)
-
-			try:
-				self.screens[self.current_screen].update_wsleds()
-			except:
-				pass
-
-			# Refresh LEDs
-			self.wsleds.show()
-
-		except Exception as e:
-			logging.error(e)
-
-		self.wsleds_blink_count += 1
-		
 
 	# ---------------------------------------------------------------------------
 	# MIDI Router Init & Config
@@ -2258,10 +2045,10 @@ class zynthian_gui:
 		while not self.exit_flag:
 			self.refresh_status()
 			if self.wsleds:
-				self.update_wsleds()
+				self.wsleds.update()
 			sleep(0.2)
 		if self.wsleds:
-			self.end_wsleds()
+			self.wsleds.end()
 
 
 	def refresh_status(self):
