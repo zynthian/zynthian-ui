@@ -2064,4 +2064,5 @@ uint8_t getClockSource()
 void setClockSource(uint8_t source)
 {
     g_nClockSource = source;
+    g_dFramesToNextClock = 0.0;
 }
