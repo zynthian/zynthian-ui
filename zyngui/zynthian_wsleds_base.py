@@ -44,6 +44,7 @@ class zynthian_wsleds_base:
 		self.num_leds = 0
 		self.blink_count = 0
 		self.blink_state = False
+		self.pulse_step = 0
 		# Predefined colors
 		self.wscolor_off = rpi_ws281x.Color(0, 0, 0)
 		self.wscolor_light = rpi_ws281x.Color(0, 0, 255)
@@ -98,16 +99,29 @@ class zynthian_wsleds_base:
 			self.wsleds.setPixelColor(i, self.wscolor_off)
 
 
+	def pulse(self, i):
+		if self.blink_state:
+			color = rpi_ws281x.Color(0, self.pulse_step * 24, 0)
+			self.pulse_step += 1
+		elif self.pulse_step > 0:
+			color = rpi_ws281x.Color(0, self.pulse_step * 24, 0)
+			self.pulse_step -= 1
+		else:
+			color = self.wscolor_off
+			self.pulse_step = 0
+
+		self.wsleds.setPixelColor(i, color)
+
 	def update(self):
 		# Power Save Mode
 		if self.zyngui.power_save_mode:
-			if self.blink_count % 16 > 14:
+			if self.blink_count % 16 > 11:
 				self.blink_state = True
 			else:
 				self.blink_state = False
 			for i in range(0, self.num_leds):
 				self.wsleds.setPixelColor(i, self.wscolor_off)
-			self.blink(0, self.wscolor_low)
+			self.pulse(0)
 
 		# Normal mode
 		else:
