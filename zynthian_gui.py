@@ -30,7 +30,6 @@ import ctypes
 import signal
 import logging
 import importlib
-import rpi_ws281x
 from time import sleep
 from pathlib import Path
 from time import monotonic
@@ -250,22 +249,22 @@ class zynthian_gui:
 
 
 	# ---------------------------------------------------------------------------
-	# WS281X LEDs
+	# WSLeds Init
 	# ---------------------------------------------------------------------------
 
 	def init_wsleds(self):
-		if zynthian_gui_config.wiring_layout == "Z2_V1":
-			# LEDS with PWM1 (pin 13, channel 1)
-			pin = 13
-			chan = 1
-		elif zynthian_gui_config.wiring_layout in ("Z2_V2", "Z2_V3"):
-			# LEDS with SPI0 (pin 10, channel 0)
-			pin = 10
-			chan = 0
+		if zynthian_gui_config.wiring_layout.startswith("Z2"):
+			from zyngui.zynthian_wsleds_z2 import zynthian_wsleds_z2
+			self.wsleds = zynthian_wsleds_z2(self)
+			self.wsleds.start()
+		elif zynthian_gui_config.wiring_layout.startswith("V5"):
+			from zyngui.zynthian_wsleds_v5 import zynthian_wsleds_v5
+			self.wsleds = zynthian_wsleds_v5(self)
+			self.wsleds.start()
 		else:
 			self.wsleds = None
-			return 0
 
+<<<<<<< HEAD
 		self.wsleds_num = 25
 		self.wsleds=rpi_ws281x.PixelStrip(self.wsleds_num, pin, dma=10, channel=chan, strip_type=rpi_ws281x.ws.WS2811_STRIP_GRB)
 		self.wsleds.begin()
@@ -473,6 +472,32 @@ class zynthian_gui:
 			logging.error(e)
 
 		self.wsleds_blink_count += 1
+=======
+
+	# ---------------------------------------------------------------------------
+	# MIDI Router Init & Config
+	# ---------------------------------------------------------------------------
+
+	def init_midi(self):
+		try:
+			#Set Global Tuning
+			self.fine_tuning_freq = zynthian_gui_config.midi_fine_tuning
+			lib_zyncore.set_midi_filter_tuning_freq(ctypes.c_double(self.fine_tuning_freq))
+			#Set MIDI Master Channel
+			lib_zyncore.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
+			#Set MIDI CC automode
+			lib_zyncore.set_midi_filter_cc_automode(zynthian_gui_config.midi_cc_automode)
+			#Set MIDI System Messages flag
+			lib_zyncore.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
+			#Setup MIDI filter rules
+			if self.midi_filter_script:
+				self.midi_filter_script.clean()
+			self.midi_filter_script = zynthian_midi_filter.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
+
+		except Exception as e:
+			logging.error("ERROR initializing MIDI : {}".format(e))
+
+>>>>>>> d1b51b9f... Move wsleds code to specific classes, allowing to have different LED layouts depending on hardware config.
 
 
 	# ---------------------------------------------------------------------------
@@ -2071,13 +2096,10 @@ class zynthian_gui:
 		while not self.exit_flag:
 			self.refresh_status()
 			if self.wsleds:
-				self.update_wsleds()
-			if self.midi_learn_mode != self.state_manager.midi_learn_mode:
-				#TODO: Avoid polling for local/master midi learn mode
-				self.set_midi_learn_mode(self.state_manager.midi_learn_mode)
+				self.wsleds.update()
 			sleep(0.2)
 		if self.wsleds:
-			self.end_wsleds()
+			self.wsleds.end()
 
 
 	def refresh_status(self):
