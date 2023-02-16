@@ -91,6 +91,7 @@ double g_dFramesToNextClock = 99999.0; // Frames until next clock pulse
 double g_dFramesPerClock = 60 * g_nSampleRate / (g_dTempo *  g_dTicksPerBeat) * g_dTicksPerClock; //!@todo Change to integer will have 0.1% jitter at 1920 PPQN and much better jitter (0.01%) at current 24PPQN
 uint8_t g_nClock = 0; // Quantity of MIDI clocks since start of beat
 uint8_t g_nClockSource = TRANSPORT_CLOCK_INTERNAL; // Source of clock that progresses playback
+jack_nframes_t g_nFramesSinceLastBeat = 0; // Quantity of frames since last beat
 
 size_t g_nMetronomePtr = -1; // Position within metronome click wav data
 float g_fMetronomeLevel = 1.0; // Factor to scale metronome level (volume)
@@ -323,6 +324,8 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     static double dBeatsPerBar; // Store so that we can check for change and do less maths
     static jack_nframes_t nFramerate; // Store so that we can check for change and do less maths
     static uint32_t nFramesPerPulse;
+    static jack_nframes_t nLastBeatFrame = 0; // Frames since jack epoch of last quarter note
+    static uint8_t nClocksSinceLastBeat = 0;
 
     // Get output buffer that will be processed in this process cycle
     void* pOutputBuffer = jack_port_get_buffer(g_pOutputPort, nFrames);
@@ -357,9 +360,19 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 break;
             */
             case MIDI_CLOCK:
-                DPRINTF("StepJackClient MIDI CLOCK\n");
+                //DPRINTF("StepJackClient MIDI CLOCK\n");
                 if(g_nClockSource == TRANSPORT_CLOCK_MIDI)
-                    g_dFramesToNextClock = i;
+                {
+                    g_dFramesToNextClock = midiEvent.time;
+                    if(++nClocksSinceLastBeat > 24)
+                    {
+                        // Update tempo on each beat
+                        if(nLastBeatFrame)
+                            setTempo(60.0 * (double)g_nSampleRate / ((nNow + midiEvent.time - nLastBeatFrame)));
+                        nLastBeatFrame = nNow + midiEvent.time;
+                        nClocksSinceLastBeat = 0;
+                    }
+                }
                 break;
             /*
             case MIDI_POSITION:
@@ -2050,17 +2063,11 @@ float getMetronomeVolume()
     return g_fMetronomeLevel;
 }
 
-/** @brief Get clock source
-*   @retval uint8_t Clock source [0:Internal 1:MIDI]
-*/
 uint8_t getClockSource()
 {
     return g_nClockSource;
 }
 
-/** @brief Set clock source
-*   @source uint8_t Clock source [0:Internal 1:MIDI]
-*/
 void setClockSource(uint8_t source)
 {
     g_nClockSource = source;

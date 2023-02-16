@@ -853,7 +853,7 @@ float getMetronomeVolume();
 uint8_t getClockSource();
 
 /** @brief Set clock source
-*   @source uint8_t Clock source [0:Internal 1:MIDI]
+*   @param source uint8_t Clock source [0:Internal 1:MIDI]
 */
 void setClockSource(uint8_t source);
 
