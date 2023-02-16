@@ -857,6 +857,11 @@ uint8_t getClockSource();
 */
 void setClockSource(uint8_t source);
 
+/** @brief  Get quantity of frames in each clock cycle
+*   @retval double Quantity of frames
+*/
+double getFramesPerClock(double dTempo);
+
 #ifdef __cplusplus
 }
 #endif
