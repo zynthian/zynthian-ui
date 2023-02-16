@@ -224,7 +224,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def show_menu(self):
 		self.disable_param_editor()
 		options = OrderedDict()
-		options['Tempo ({:0.1f})'.format(self.zyngui.zynseq.libseq.getTempo())] = 'Tempo'
+		if zynthian_gui_config.transport_clock_source == 0:
+			options['Tempo ({:0.1f})'.format(self.zyngui.zynseq.libseq.getTempo())] = 'Tempo'
 		options['Beats per bar ({})'.format(self.zyngui.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
 		if self.zyngui.zynseq.libseq.isMetronomeEnabled():
 			options['[X] Metronome'] = 'Metronome'
@@ -1134,7 +1135,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					self.zyngui.zynseq.libseq.changeDurationAll(-0.1)
 				self.set_title("ALL DURATION", None, None, 2)
 				self.redraw_pending = 3
-			else:
+			elif zynthian_gui_config.transport_clock_source == 0:
+				self.zyngui.zynseq.update_tempo()
 				self.zyngui.zynseq.nudge_tempo(dval)
 				self.set_title("Tempo: {:.1f}".format(self.zyngui.zynseq.get_tempo()), None, None, 2)
 

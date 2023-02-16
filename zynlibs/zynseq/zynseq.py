@@ -114,14 +114,14 @@ class zynseq(zynthian_engine):
 		self.libseq = None
 
 
-	#	Function to add an view to send events to
+	#	Function to add a view to send events to
 	#	cb: Callback function
 	def add_event_cb(self, cb):
 		if cb not in self.event_cb_list:
 			self.event_cb_list.append(cb)
 
 
-	#	Function to remove an view to send events to
+	#	Function to remove a view to send events to
 	#	cb: Callback function
 	def remove_event_cb(self, cb):
 		if cb in self.event_cb_list:
@@ -276,6 +276,10 @@ class zynseq(zynthian_engine):
 	
 	def get_tempo(self):
 		return self.libseq.getTempo()
+
+
+	def update_tempo(self):
+		self.set_tempo(self.get_tempo)
 
 	
 	def nudge_tempo(self, offset):
