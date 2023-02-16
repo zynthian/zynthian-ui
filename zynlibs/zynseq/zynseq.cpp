@@ -2013,7 +2013,10 @@ void setTempo(double tempo)
     if(tempo > 0.0 && tempo < 500.0)
     {
         g_dTempo = tempo;
-        g_dFramesPerClock = getFramesPerClock(g_dTempo);
+        if(transportGetPlayStatus() != JackTransportRolling)
+            transportLocate(0); // Cludge to update transport tempo when transport not running
+        else
+            g_dFramesPerClock = getFramesPerClock(g_dTempo);
     }
 }
 
