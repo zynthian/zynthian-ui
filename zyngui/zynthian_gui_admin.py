@@ -66,106 +66,111 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data=[]
 
-		if self.zyngui.allow_rbpi_headphones():
-			if zynthian_gui_config.rbpi_headphones:
-				self.list_data.append((self.stop_rbpi_headphones,0,"[x] RBPi Headphones"))
-			else:
-				self.list_data.append((self.start_rbpi_headphones,0,"[  ] RBPi Headphones"))
+		self.list_data.append((None, 0, "> MIDI"))
 
 		if zynthian_gui_config.midi_single_active_channel:
-			self.list_data.append((self.toggle_single_channel,0,"->  Stage Mode (Omni-On)"))
+			self.list_data.append((self.toggle_single_channel, 0, "Mode: Omni-On (Stage)"))
 		else:
-			self.list_data.append((self.toggle_single_channel,0,"=>  Multi-timbral Mode"))
+			self.list_data.append((self.toggle_single_channel, 0, "Mode: Multi-timbral"))
 
 		if zynthian_gui_config.midi_prog_change_zs3:
-			self.list_data.append((self.toggle_prog_change_zs3,0,"[x] Program Change ZS3"))
+			self.list_data.append((self.toggle_prog_change_zs3, 0, "[x] Program Change ZS3"))
 		else:
-			self.list_data.append((self.toggle_prog_change_zs3,0,"[  ] Program Change ZS3"))
-
-		if zynthian_gui_config.midi_bank_change:
-			self.list_data.append((self.toggle_bank_change,0,"[x] MIDI Bank Change"))
-		else:
-			self.list_data.append((self.toggle_bank_change,0,"[  ] MIDI Bank Change"))
+			self.list_data.append((self.toggle_prog_change_zs3, 0, "[  ] Program Change ZS3"))
+			if zynthian_gui_config.midi_bank_change:
+				self.list_data.append((self.toggle_bank_change, 0, "[x] MIDI Bank Change"))
+			else:
+				self.list_data.append((self.toggle_bank_change, 0, "[  ] MIDI Bank Change"))
 
 		if zynthian_gui_config.preset_preload_noteon:
-			self.list_data.append((self.toggle_preset_preload_noteon,0,"[x] Preset Preload"))
+			self.list_data.append((self.toggle_preset_preload_noteon, 0, "[x] Preset Preload"))
 		else:
-			self.list_data.append((self.toggle_preset_preload_noteon,0,"[  ] Preset Preload"))
-
-		if zynthian_gui_config.enable_dpm:
-			self.list_data.append((self.toggle_dpm,0,"[x] Mixer Peak Meters"))
-		else:
-			self.list_data.append((self.toggle_dpm,0,"[  ] Mixer Peak Meters"))
-
-		if zynthian_gui_config.snapshot_mixer_settings:
-			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[x] Audio Levels on Snapshots"))
-		else:
-			self.list_data.append((self.toggle_snapshot_mixer_settings,0,"[  ] Audio Levels on Snapshots"))
+			self.list_data.append((self.toggle_preset_preload_noteon, 0, "[  ] Preset Preload"))
 
 		if zynthian_gui_config.midi_filter_output:
-			self.list_data.append((self.toggle_midi_filter_output,0,"[x] Bridge MIDI Input to Output"))
+			self.list_data.append((self.toggle_midi_filter_output, 0, "[x] Bridge MIDI Input to Output"))
 		else:
-			self.list_data.append((self.toggle_midi_filter_output,0,"[  ] Bridge MIDI Input to Output"))
+			self.list_data.append((self.toggle_midi_filter_output, 0, "[  ] Bridge MIDI Input to Output"))
 
 		if zynthian_gui_config.midi_sys_enabled:
-			self.list_data.append((self.toggle_midi_sys,0,"[x] MIDI System Messages"))
+			self.list_data.append((self.toggle_midi_sys, 0, "[x] MIDI System Messages"))
 		else:
-			self.list_data.append((self.toggle_midi_sys,0,"[  ] MIDI System Messages"))
+			self.list_data.append((self.toggle_midi_sys, 0, "[  ] MIDI System Messages"))
+
+		self.list_data.append((self.midi_profile, 0, "MIDI Profile"))
+
+		self.list_data.append((None, 0, "> AUDIO"))
+
+		if self.zyngui.allow_rbpi_headphones():
+			if zynthian_gui_config.rbpi_headphones:
+				self.list_data.append((self.stop_rbpi_headphones, 0, "[x] RBPi Headphones"))
+			else:
+				self.list_data.append((self.start_rbpi_headphones, 0, "[  ] RBPi Headphones"))
+
+		if zynthian_gui_config.snapshot_mixer_settings:
+			self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "[x] Audio Levels on Snapshots"))
+		else:
+			self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "[  ] Audio Levels on Snapshots"))
+
+		if zynthian_gui_config.enable_dpm:
+			self.list_data.append((self.toggle_dpm, 0, "[x] Mixer Peak Meters"))
+		else:
+			self.list_data.append((self.toggle_dpm, 0, "[  ] Mixer Peak Meters"))
 
 		if zynconf.is_service_active("aubionotes"):
-			self.list_data.append((self.stop_aubionotes,0,"[x] AubioNotes (Audio2MIDI)"))
+			self.list_data.append((self.stop_aubionotes, 0, "[x] AubioNotes (Audio2MIDI)"))
 		else:
-			self.list_data.append((self.start_aubionotes,0,"[  ] AubioNotes (Audio2MIDI)"))
-
-		self.list_data.append((self.midi_profile,0,"MIDI Profile"))
+			self.list_data.append((self.start_aubionotes, 0, "[  ] AubioNotes (Audio2MIDI)"))
 
 		self.list_data.append((None,0,"> NETWORK"))
-		self.list_data.append((self.network_info,0,"Network Info"))
+
+		self.list_data.append((self.network_info, 0, "Network Info"))
 
 		if zynconf.is_wifi_active():
 			if zynconf.is_service_active("hostapd"):
-				self.list_data.append((self.stop_wifi,0,"[x] Wi-Fi Hotspot"))
+				self.list_data.append((self.stop_wifi, 0, "[x] Wi-Fi Hotspot"))
 			else:
-				self.list_data.append((self.stop_wifi,0,"[x] Wi-Fi"))
+				self.list_data.append((self.stop_wifi, 0, "[x] Wi-Fi"))
 		else:
-			self.list_data.append((self.start_wifi,0,"[  ] Wi-Fi"))
-			self.list_data.append((self.start_wifi_hotspot,0,"[  ] Wi-Fi Hotspot"))
+			self.list_data.append((self.start_wifi, 0, "[  ] Wi-Fi"))
+			self.list_data.append((self.start_wifi_hotspot, 0, "[  ] Wi-Fi Hotspot"))
 
 		if zynconf.is_service_active("vncserver0"):
-			self.list_data.append((self.stop_vncserver,0,"[x] VNC Server"))
+			self.list_data.append((self.stop_vncserver, 0, "[x] VNC Server"))
 		else:
-			self.list_data.append((self.start_vncserver,0,"[  ] VNC Server"))
+			self.list_data.append((self.start_vncserver, 0, "[  ] VNC Server"))
 
 		if zynconf.is_service_active("jackrtpmidid"):
-			self.list_data.append((self.stop_rtpmidi,0,"[x] RTP-MIDI"))
+			self.list_data.append((self.stop_rtpmidi, 0, "[x] RTP-MIDI"))
 		else:
-			self.list_data.append((self.start_rtpmidi,0,"[  ] RTP-MIDI"))
+			self.list_data.append((self.start_rtpmidi, 0, "[  ] RTP-MIDI"))
 
 		if zynconf.is_service_active("qmidinet"):
-			self.list_data.append((self.stop_qmidinet,0,"[x] QmidiNet (IP Multicast)"))
+			self.list_data.append((self.stop_qmidinet, 0, "[x] QmidiNet (IP Multicast)"))
 		else:
-			self.list_data.append((self.start_qmidinet,0,"[  ] QmidiNet (IP Multicast)"))
+			self.list_data.append((self.start_qmidinet, 0, "[  ] QmidiNet (IP Multicast)"))
 
 		if zynconf.is_service_active("touchosc2midi"):
-			self.list_data.append((self.stop_touchosc2midi,0,"[x] TouchOSC MIDI Bridge"))
+			self.list_data.append((self.stop_touchosc2midi, 0, "[x] TouchOSC MIDI Bridge"))
 		else:
-			self.list_data.append((self.start_touchosc2midi,0,"[  ] TouchOSC MIDI Bridge"))
+			self.list_data.append((self.start_touchosc2midi, 0, "[  ] TouchOSC MIDI Bridge"))
 
 		self.list_data.append((None,0,"> TEST"))
-		self.list_data.append((self.test_audio,0,"Test Audio"))
-		self.list_data.append((self.test_midi,0,"Test MIDI"))
-		self.list_data.append((None,0,"> SYSTEM"))
-		self.list_data.append((self.zyngui.calibrate_touchscreen,0,"Calibrate Touchscreen"))
+		self.list_data.append((self.test_audio, 0, "Test Audio"))
+		self.list_data.append((self.test_midi, 0, "Test MIDI"))
+
+		self.list_data.append((None, 0, "> SYSTEM"))
+		self.list_data.append((self.zyngui.calibrate_touchscreen, 0, "Calibrate Touchscreen"))
 		if self.is_update_available():
-			self.list_data.append((self.update_software,0,"Update Software"))
+			self.list_data.append((self.update_software, 0, "Update Software"))
 		else:
-			self.list_data.append((self.check_for_updates,0,"Check for software updates"))
-		#self.list_data.append((self.update_system,0,"Update Operating System"))
-		#self.list_data.append((None,0,"> POWER"))
-		#self.list_data.append((self.restart_gui,0,"Restart UI"))
-		#self.list_data.append((self.exit_to_console,0,"Exit to Console"))
-		self.list_data.append((self.reboot,0,"Reboot"))
-		self.list_data.append((self.power_off,0,"Power Off"))
+			self.list_data.append((self.check_for_updates, 0, "Check for software updates"))
+		#self.list_data.append((self.update_system, 0, "Update Operating System"))
+		#self.list_data.append((None, 0, "> POWER"))
+		#self.list_data.append((self.restart_gui, 0, "Restart UI"))
+		#self.list_data.append((self.exit_to_console, 0, "Exit to Console"))
+		self.list_data.append((self.reboot, 0, "Reboot"))
+		self.list_data.append((self.power_off, 0, "Power Off"))
 		super().fill_list()
 
 
