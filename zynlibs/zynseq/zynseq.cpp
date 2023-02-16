@@ -364,7 +364,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 if(g_nClockSource == TRANSPORT_CLOCK_MIDI)
                 {
                     g_dFramesToNextClock = midiEvent.time;
-                    if(++nClocksSinceLastBeat > 24)
+                    if(++nClocksSinceLastBeat > 23)
                     {
                         // Update tempo on each beat
                         if(nLastBeatFrame)
