@@ -88,7 +88,7 @@ uint32_t g_nTick = 0; // Current tick within bar
 double g_dBarStartTick = 0; // Quantity of ticks from start of song to start of current bar
 jack_nframes_t g_nTransportStartFrame = 0; // Quantity of frames from JACK epoch to transport start
 double g_dFramesToNextClock = 99999.0; // Frames until next clock pulse
-double g_dFramesPerClock = 60 * g_nSampleRate / (g_dTempo *  g_dTicksPerBeat) * g_dTicksPerClock; //!@todo Change to integer will have 0.1% jitter at 1920 PPQN and much better jitter (0.01%) at current 24PPQN
+double g_dFramesPerClock = getFramesPerClock(g_dTempo); //!@todo Change to integer will have 0.1% jitter at 1920 PPQN and much better jitter (0.01%) at current 24PPQN
 uint8_t g_nClock = 0; // Quantity of MIDI clocks since start of beat
 uint8_t g_nClockSource = TRANSPORT_CLOCK_INTERNAL; // Source of clock that progresses playback
 jack_nframes_t g_nFramesSinceLastBeat = 0; // Quantity of frames since last beat
@@ -2013,7 +2013,7 @@ void setTempo(double tempo)
     if(tempo > 0.0 && tempo < 500.0)
     {
         g_dTempo = tempo;
-        g_dFramesPerClock = getFramesPerClock(tempo);
+        g_dFramesPerClock = getFramesPerClock(g_dTempo);
     }
 }
 
