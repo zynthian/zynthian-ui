@@ -189,8 +189,9 @@ class zynthian_engine_aeolus(zynthian_engine):
 		"ctrl_screens" : [
 			['Pedals (1)', ['Subbass 16', 'Principal 16', 'Principal 8', 'Principal 4']],
 			['Pedals (2)', ['Octave 2', 'Octave 1', 'Quint 5 1/3', 'Quint 2 2/3']],
-			['Pedals (3)', ['Trumpet', 'P+I', 'P+II', 'P+III']],
-			['Pedals (4)', ['Sustain']]
+			['Pedals (3)', ['Mixtur', 'Fagott 16', 'Trombone 16', 'Bombarde 32']],
+			['Pedals (4)', ['Trumpet', 'P+I', 'P+II', 'P+III']],
+			['Pedals (5)', ['Sustain']]
 		]
 	}
 
@@ -466,6 +467,16 @@ class zynthian_engine_aeolus(zynthian_engine):
 		for index, preset_name in enumerate(self.presets):
 			res.append([preset_name, bank_info[0], preset_name, index])
 		return res
+
+
+	def all_stops_off(self, layer=None):
+		if layer == None:
+			layers = self.layers
+		else:
+			layers = [layer]
+		for l in layers:
+			for zctrl in l.controllers_dict.values():
+				zctrl.set_value(0, True)
 
 
 	def set_preset(self, layer, preset_info, preload=False):

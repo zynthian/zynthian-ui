@@ -80,20 +80,6 @@ def get_port_alias_id(midi_port):
 	return alias_id
 
 
-#Dirty hack for having MIDI working with PureData & CSound: #TODO => Improve it!!
-def get_fixed_midi_port_name(port_name):
-	#TODO: Check if this is required
-	if port_name == "pure_data":
-		port_name = "Pure Data"
-
-	elif port_name == "csound6":
-		port_name = "Csound"
-
-	elif port_name == "mod-monitor":
-		port_name = "mod-host"
-
-	return port_name
-
 #------------------------------------------------------------------------------
 
 def request_audio_connect(fast = False):
@@ -103,10 +89,14 @@ def request_audio_connect(fast = False):
 	"""
 
 	global deferred_audio_connect, fast_audio_connect
+	acquire_lock()
 	if fast:
 		fast_audio_connect = True
 	else:
 		deferred_audio_connect = True
+	release_lock()
+	if fast:
+		sleep(0.1) # Allow thread to run (GIL issue)
 
 def request_midi_connect(fast = False):
 	"""Request MIDI connection graph refresh
@@ -115,10 +105,14 @@ def request_midi_connect(fast = False):
 	"""
 
 	global deferred_midi_connect, fast_midi_connect
+	acquire_lock()
 	if fast:
 		fast_midi_connect = True
 	else:
 		deferred_midi_connect = True
+	release_lock()
+	if fast:
+		sleep(0.1) # Allow thread to run (GIL issue)
 
 def midi_autoconnect():
 	"""Connect all expected MIDI routes"""
@@ -521,20 +515,28 @@ def auto_connect_thread():
 					fast_midi_connect = True
 
 				if deferred_midi_connect:
+					acquire_lock()
 					fast_midi_connect = True
+					release_lock()
 
 				if deferred_audio_connect:
+					acquire_lock()
 					fast_audio_connect = True
+					release_lock()
 
 			if fast_midi_connect:
 				midi_autoconnect()
+				acquire_lock()
 				fast_midi_connect = False
 				deferred_midi_connect = False
+				release_lock()
 
 			if fast_audio_connect:
 				audio_autoconnect()
+				acquire_lock()
 				fast_audio_connect = False
 				deferred_audio_connect = False
+				release_lock()
 
 		except Exception as err:
 			logger.error("ZynAutoConnect ERROR: {}".format(err))

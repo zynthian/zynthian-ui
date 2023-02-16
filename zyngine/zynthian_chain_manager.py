@@ -88,7 +88,6 @@ class zynthian_chain_manager():
                 "Special", None, zynthian_engine_audioplayer, True)],
             ['PD', ("PureData", "PureData - Visual Programming",
                 "Special", None, zynthian_engine_puredata, True)],
-            #['CS', ("CSound", "CSound Audio Language", "Special", None, zynthian_engine_csound, False)],
             ['MD', ("MOD-UI", "MOD-UI - Plugin Host",
                 "Special", None, zynthian_engine_modui, True)]
         ])

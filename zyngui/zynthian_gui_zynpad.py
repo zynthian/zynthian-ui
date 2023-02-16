@@ -388,12 +388,11 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'MIDI channel':
 			labels = []
 			for chan in range(16):
-				for layer in self.zyngui.screens['layer'].layers:
-					if layer.midi_chan == chan:
-						labels.append('{} ({})'.format(chan + 1, layer.preset_name))
-						break
-				if len(labels) <= chan:
-					labels.append('{}'.format(chan + 1))
+				chain = self.zyngui.chain_manager.midi_chan_2_chain[chan]
+				try:
+					labels.append(f"{chan + 1} {chain.get_processors('Synth', 0)[0].get_preset_name()}")
+				except:
+					labels.append(f"{chan + 1}")
 			self.enable_param_editor(self, 'midi_chan', 'MIDI channel', {'labels':labels, 'value_default':self.zynseq.libseq.getChannel(self.zynseq.bank, self.selected_pad, 0), 'value':self.zynseq.libseq.getChannel(self.zynseq.bank, self.selected_pad, 0)})
 		elif params == 'Trigger channel':
 			self.enable_param_editor(self, 'trigger_chan', 'Trigger channel', {'labels':INPUT_CHANNEL_LABELS, 'value':self.get_trigger_channel()})
