@@ -279,9 +279,9 @@ class zynseq(zynthian_engine):
 
 
 	def update_tempo(self):
-		self.set_tempo(self.get_tempo)
+		self.set_tempo(self.libseq.getTempo())
 
-	
+
 	def nudge_tempo(self, offset):
 		self.zctrl_tempo.nudge(offset)
 
