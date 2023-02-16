@@ -1056,7 +1056,25 @@ class zynthian_gui:
 			self.zynseq.set_tempo(params[0])
 		except (AttributeError, TypeError) as err:
 			pass
-	
+
+	def cuia_tempo_up(self, params):
+		if params:
+			try:
+				self.zynseq.set_tempo(self.zynseq.get_tempo() + params[0])
+			except (AttributeError, TypeError) as err:
+				pass
+		else:
+			self.zynseq.set_tempo(self.zynseq.get_tempo() + 1)
+
+	def cuia_tempo_down(self, params):
+		if params:
+			try:
+				self.zynseq.set_tempo(self.zynseq.get_tempo() - params[0])
+			except (AttributeError, TypeError) as err:
+				pass
+		else:
+			self.zynseq.set_tempo(self.zynseq.get_tempo() - 1)
+
 	def cuia_tap_tempo(self, params):
 		now = monotonic()
 		tap_dur = now - self.last_tap
