@@ -4,7 +4,7 @@
  *
  * Library providing step sequencer as a Jack connected device
  *
- * Copyright (C) 2020-2022 Brian Walton <brian@riban.co.uk>
+ * Copyright (C) 2020-2023 Brian Walton <brian@riban.co.uk>
  *
  * ******************************************************************
  *
@@ -40,6 +40,12 @@
 #define FILE_VERSION 7
 
 #define DPRINTF(fmt, args...) if(g_bDebug) fprintf(stderr, fmt, ## args)
+
+struct ev_start {
+    uint32_t start;
+    uint8_t velocity;
+};
+static struct ev_start startEvents[128];
 
 SequenceManager g_seqMan; // Instance of sequence manager
 uint32_t g_nPattern = 0; // Index of currently selected pattern
@@ -342,6 +348,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     void* pInputBuffer = jack_port_get_buffer(g_pInputPort, nFrames);
     jack_midi_event_t midiEvent;
     jack_nframes_t nCount = jack_midi_get_event_count(pInputBuffer);
+    Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
     for(jack_nframes_t i = 0; i < nCount; i++)
     {
         if(jack_midi_event_get(&midiEvent, pInputBuffer, i))
@@ -409,9 +416,10 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         }
 
         // Handle MIDI events for programming patterns from MIDI input
-        if(g_bInputEnabled && g_pSequence && g_seqMan.getPattern(g_nPattern) && g_nInputChannel == (midiEvent.buffer[0] & 0x0F))
+        if(g_bInputEnabled && g_pSequence && pPattern && g_nInputChannel == (midiEvent.buffer[0] & 0x0F))
         {
-            uint32_t nStep = g_pSequence->getPlayPosition() / getClocksPerStep();
+            uint32_t nStep = getPatternPlayhead();
+            uint8_t nPlayState = transportGetPlayStatus();
             bool bAdvance = false;
             if(((midiEvent.buffer[0] & 0xF0) == 0xB0) && midiEvent.buffer[1] == 64)
             {
@@ -427,22 +435,46 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             else if(((midiEvent.buffer[0] & 0xF0) == 0x90) && midiEvent.buffer[2])
             {
                 // Note on event
-                setPatternModified(g_seqMan.getPattern(g_nPattern), true);
-                uint32_t nDuration = getNoteDuration(nStep, midiEvent.buffer[1]);
-                if(g_bSustain)
-                    g_seqMan.getPattern(g_nPattern)->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], nDuration + 1);
+                if(nPlayState)
+                {
+                    startEvents[midiEvent.buffer[1]].start = nStep;
+                    startEvents[midiEvent.buffer[1]].velocity = midiEvent.buffer[2];
+                }
                 else
                 {
-                    bAdvance = true;
-                    if(nDuration)
-                        g_seqMan.getPattern(g_nPattern)->removeNote(nStep, midiEvent.buffer[1]);
-                    else if(midiEvent.buffer[1] != g_nInputRest)
-                        g_seqMan.getPattern(g_nPattern)->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], 1);
+                    setPatternModified(pPattern, true);
+                    uint32_t nDuration = getNoteDuration(nStep, midiEvent.buffer[1]);
+                    if(g_bSustain)
+                        pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], nDuration + 1);
+                    else
+                    {
+                        bAdvance = true;
+                        if(nDuration)
+                            pPattern->removeNote(nStep, midiEvent.buffer[1]);
+                        else if(midiEvent.buffer[1] != g_nInputRest)
+                            pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], 1);
+                    }
                 }
             }
-            if(bAdvance && transportGetPlayStatus() != JackTransportRolling)
+            else if(((midiEvent.buffer[0] & 0xF0) == 0x90) && midiEvent.buffer[2] == 0 || (midiEvent.buffer[0] & 0xF0) == 0x80)
             {
-                if(++nStep >= g_seqMan.getPattern(g_nPattern)->getSteps())
+                // Note off event
+                if(nPlayState)
+                {
+                    if(startEvents[midiEvent.buffer[1]].start != -1)
+                    {
+                        double dDur = double(g_pSequence->getPlayPosition()) - startEvents[midiEvent.buffer[1]].start * getClocksPerStep();
+                        if(dDur < 1.0)
+                            dDur = pPattern->getLength() + dDur;
+                        pPattern->addNote(startEvents[midiEvent.buffer[1]].start, midiEvent.buffer[1], startEvents[midiEvent.buffer[1]].velocity, dDur / getClocksPerStep());
+                        startEvents[midiEvent.buffer[1]].start = -1;
+                        setPatternModified(pPattern, true);
+                    }
+                }
+            }
+            if(bAdvance && nPlayState != JackTransportRolling)
+            {
+                if(++nStep >= pPattern->getSteps())
                     nStep = 0;
                 g_pSequence->setPlayPosition(nStep * getClocksPerStep());
                 //printf("libzynseq advancing to step %d\n", nStep);
@@ -917,6 +949,7 @@ bool load(const char* filename)
     //printf("Ver: %d Loaded %lu patterns, %lu sequences, %lu banks from file %s\n", nVersion, m_mPatterns.size(), m_mSequences.size(), m_mBanks.size(), filename);
     g_bDirty = false;
     g_pSequence = g_seqMan.getSequence(0, 0);
+    selectPattern(1);
     return true;
 }
 
@@ -1262,6 +1295,7 @@ void selectPattern(uint32_t pattern)
 {
     g_nPattern = pattern;
     setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    addPattern(0, 0, 0, 0, g_nPattern, true);
 }
 
 uint32_t getPatternIndex()
@@ -1649,6 +1683,15 @@ void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state)
             state = STOPPED;
     }
     g_seqMan.setSequencePlayState(bank, sequence, state);
+    if(sequence == 0)
+    {
+        while(g_bMutex)
+            std::this_thread::sleep_for(std::chrono::microseconds(10));
+        g_bMutex = true;
+        for(uint8_t i = 0; i < 128; ++i)
+            startEvents[i].start = -1;
+        g_bMutex = false;
+    }
 }
 
 void togglePlayState(uint8_t bank, uint8_t sequence)

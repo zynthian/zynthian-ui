@@ -1010,11 +1010,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	#   index: Pattern index
 	def load_pattern(self, index):
 		steps = self.zyngui.zynseq.libseq.getSteps()
-		self.zyngui.zynseq.libseq.clearSequence(self.bank, self.sequence)
 		self.zyngui.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
 		self.pattern = index
 		self.zyngui.zynseq.libseq.selectPattern(index)
-		self.zyngui.zynseq.libseq.addPattern(self.bank, self.sequence, 0, 0, index)
 		if self.selected_cell[0] >= self.zyngui.zynseq.libseq.getSteps():
 			self.selected_cell[0] = int(self.zyngui.zynseq.libseq.getSteps()) - 1
 		self.keymap_offset = self.zyngui.zynseq.libseq.getRefNote()
