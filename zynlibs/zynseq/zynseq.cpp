@@ -419,7 +419,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         if(g_bInputEnabled && g_pSequence && pPattern && g_nInputChannel == (midiEvent.buffer[0] & 0x0F))
         {
             uint32_t nStep = getPatternPlayhead();
-            uint8_t nPlayState = transportGetPlayStatus();
+            uint8_t nPlayState = getPlayState(0, 0);
             bool bAdvance = false;
             if(((midiEvent.buffer[0] & 0xF0) == 0xB0) && midiEvent.buffer[1] == 64)
             {
