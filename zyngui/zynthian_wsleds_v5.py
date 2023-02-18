@@ -31,7 +31,7 @@ from zynlibs.zynseq import zynseq
 # ---------------------------------------------------------------------------
 # Zynthian WSLeds class for Z2
 # ---------------------------------------------------------------------------
-class zynthian_wsleds_z2(zynthian_wsleds_base):
+class zynthian_wsleds_v5(zynthian_wsleds_base):
 	
 	def __init__(self, zyngui):
 		super().__init__(zyngui)
