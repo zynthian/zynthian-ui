@@ -722,7 +722,7 @@ class zynthian_gui_mixer_strip():
 	def on_strip_motion(self, event):
 		if self.strip_drag_start:
 			delta = event.x - self.strip_drag_start.x
-			if delta < -self.width and self.parent.mixer_strip_offset + len(self.parent.visible_mixer_strips) < self.parent.number_layers:
+			if delta < -self.width and self.parent.mixer_strip_offset + len(self.parent.visible_mixer_strips) < self.parent.number_chains:
 				# Dragged more than one strip width to left
 				self.parent.mixer_strip_offset += 1
 				self.parent.refresh_visible_strips()
@@ -778,7 +778,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.pending_refresh_queue = set() # List of (strip,control) requiring gui refresh (control=None for whole strip refresh)
 		self.midi_learning = False
 
-		self.number_chains = 0 # Quantity of layers
+		self.number_chains = 0 # Quantity of chains
 		visible_chains = zynthian_gui_config.visible_mixer_strips # Maximum quantity of mixer strips to display (Defines strip width. Main always displayed.)
 		if visible_chains < 1:
 			# Automatic sizing if not defined in config
