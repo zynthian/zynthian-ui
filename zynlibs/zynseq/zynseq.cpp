@@ -1454,6 +1454,23 @@ void changeDurationAll(float value)
     g_bDirty = true;
 }
 
+void changeStutterCountAll(int value)
+{
+    if(!g_seqMan.getPattern(g_nPattern))
+        return;
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    g_seqMan.getPattern(g_nPattern)->changeStutterCountAll(value);
+    g_bDirty = true;
+}
+
+void changeStutterDurAll(int value)
+{
+    if(!g_seqMan.getPattern(g_nPattern))
+        return;
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    g_seqMan.getPattern(g_nPattern)->changeStutterDurAll(value);
+    g_bDirty = true;
+}
 
 void clear()
 {

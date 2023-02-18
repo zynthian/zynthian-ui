@@ -159,6 +159,8 @@ uint8_t Pattern::getStutterCount(uint32_t step, uint8_t note)
 
 void Pattern::setStutterCount(uint32_t step, uint8_t note, uint8_t count)
 {
+    if(count > MAX_STUTTER_COUNT)
+        return;
     for(StepEvent* ev : m_vEvents)
     {
         if(ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note)
@@ -180,6 +182,8 @@ uint8_t Pattern::getStutterDur(uint32_t step, uint8_t note)
 
 void Pattern::setStutterDur(uint32_t step, uint8_t note, uint8_t dur)
 {
+    if(dur > MAX_STUTTER_DUR)
+        return;
     for(StepEvent* ev : m_vEvents)
         if(ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note)
         {
@@ -396,6 +400,36 @@ void Pattern::changeDurationAll(float value)
         if(duration < 0.1) //!@todo How short should we allow duration change?
             duration = 0.1;
         ev->setDuration(duration);
+    }
+}
+
+void Pattern::changeStutterCountAll(int value)
+{
+    for(StepEvent* ev : m_vEvents)
+    {
+        if(ev->getCommand() != MIDI_NOTE_ON)
+            continue;
+        int count = ev->getStutterCount() + value;
+        if(count < 0)
+            count = 0;
+        if(count > 255)
+            count = 255;
+        ev->setStutterCount(count);
+    }
+}
+
+void Pattern::changeStutterDurAll(int value)
+{
+    for(StepEvent* ev : m_vEvents)
+    {
+        if(ev->getCommand() != MIDI_NOTE_ON)
+            continue;
+        int dur = ev->getStutterDur() + value;
+        if(dur < 1)
+            dur = 1;
+        if(dur > 255)
+            dur = 255;
+        ev->setStutterDur(dur);
     }
 }
 

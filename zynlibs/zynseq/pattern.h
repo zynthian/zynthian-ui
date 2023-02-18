@@ -4,6 +4,9 @@
 #include <vector>
 #include <memory>
 
+#define MAX_STUTTER_COUNT 32
+#define MAX_STUTTER_DUR 96
+
 /** StepEvent class provides an individual step event .
 *   The event may be part of a song, pattern or sequence. Events do not have MIDI channel which is applied by the function to play the event, e.g. pattern player assigned to specific channel. Events have the concept of position which is an offset from some epoch measured in steps. The epoch depends on the function using the event, e.g. pattern player may use start of pattern as epoch (position = 0). There is a starting and end value to allow interpolation of MIDI events between the start and end positions.
 */
@@ -309,6 +312,16 @@ class Pattern
         *   @param  value Offset to adjust +/-100.0 or whatever
         */
         void changeDurationAll(float value);
+
+        /** @brief  Change stutter count of all notes in patterm
+        *   @param  value Offset to adjust +/-100 or whatever
+        */
+        void changeStutterCountAll(int value);
+
+        /** @brief  Change stutter dur of all notes in patterm
+        *   @param  value Offset to adjust +/-100 or whatever
+        */
+        void changeStutterDurAll(int value);
 
         /** @brief  Clear all events from pattern
         */

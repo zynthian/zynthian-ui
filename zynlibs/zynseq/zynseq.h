@@ -382,6 +382,16 @@ void changeVelocityAll(int value);
 */
 void changeDurationAll(float value);
 
+/** @brief  Change stutter count of all notes in patterm
+*   @param  value Offset to adjust +/-100 or whatever
+*/
+void changeStutterCountAll(int value);
+
+/** @brief  Change stutter duration of all notes in patterm
+*   @param  value Offset to adjust +/-100 or whatever
+*/
+void changeStutterDurAll(int value);
+
 /** @brief  Clears events from selected pattern
 *   @note   Does not change other parameters such as pattern length
 */

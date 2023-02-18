@@ -62,6 +62,11 @@ CONFIG_ROOT         = "/zynthian/zynthian-data/zynseq"
 EDIT_MODE_NONE		= 0 # Edit mode disabled
 EDIT_MODE_SINGLE	= 1 # Edit mode enabled for selected note
 EDIT_MODE_ALL		= 2 # Edit mode enabled for all notes
+EDIT_PARAM_DUR		= 0 # Edit note duration
+EDIT_PARAM_VEL		= 1 # Edit note velocity
+EDIT_PARAM_STUT_CNT	= 2 # Edit note stutter count
+EDIT_PARAM_STUT_DUR	= 3 # Edit note stutter duration
+EDIT_PARAM_LAST		= 3 # Index of last parameter
 
 # List of permissible steps per beat
 STEPS_PER_BEAT = [1,2,3,4,6,8,12,24]
@@ -81,6 +86,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		os.makedirs(CONFIG_ROOT, exist_ok=True) #TODO: Do we want/need these dirs?
 
 		self.edit_mode = EDIT_MODE_NONE # Enable encoders to adjust duration and velocity
+		self.edit_param = EDIT_PARAM_DUR # Parameter to adjust in parameter edit mode
 		self.zoom = 16 # Quantity of rows (notes) displayed in grid
 		self.duration = 1.0 # Current note entry duration
 		self.velocity = 100 # Current note entry velocity
@@ -205,8 +211,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.edit_mode = mode
 		if mode == EDIT_MODE_SINGLE:
 			self.set_title("Note Parameters", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
+			self.set_edit_title()
 		elif mode == EDIT_MODE_ALL:
 			self.set_title("Note Parameters ALL", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
+			self.set_edit_title()
 		else:
 			self.set_title("Pattern {}".format(self.pattern), zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
 
@@ -230,8 +238,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			options['[X] Metronome'] = 'Metronome'
 		else:
 			options['[  ] Metronome'] = 'Metronome'
-		options['Stutter count'] = 'Stutter count'
-		options['Stutter duration'] = 'Stutter duration'
 		options['Metronome volume ({})'.format(int(100 * self.zyngui.zynseq.libseq.getMetronomeVolume()))] = 'Metronome volume'
 		options['Beats in pattern ({})'.format(self.zyngui.zynseq.libseq.getBeatsInPattern())] = 'Beats in pattern'
 		options['Steps per beat ({})'.format(self.zyngui.zynseq.libseq.getStepsPerBeat())] = 'Steps per beat'
@@ -273,10 +279,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.enable_param_editor(self, 'tempo', 'Tempo', {'value_min':10, 'value_max':420, 'value_default':120, 'is_integer':False, 'nudge_factor':0.1, 'value':self.zyngui.zynseq.libseq.getTempo()})
 		elif params == 'Beats per bar':
 			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsPerBar()})
-		elif params == 'Stutter count':
-			self.enable_param_editor(self, 'stutter_count', 'Stutter Count', {'value_min':0, 'value_max':12, 'value_default':0, 'value':self.zyngui.zynseq.libseq.getStutterCount(self.selected_cell[0], self.get_note_from_row(self.selected_cell[1]))})
-		elif params == 'Stutter duration':
-			self.enable_param_editor(self, 'stutter_dur', 'Stutter Duration', {'value_min':1, 'value_max':96, 'value_default':0, 'value':self.zyngui.zynseq.libseq.getStutterDur(self.selected_cell[0], self.get_note_from_row(self.selected_cell[1]))})
 		elif params == 'Metronome':
 			self.zyngui.zynseq.libseq.enableMetronome(not self.zyngui.zynseq.libseq.isMetronomeEnabled())
 		elif params == 'Metronome volume':
@@ -322,10 +324,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.zynseq.libseq.setMetronomeVolume(zctrl.value / 100.0)
 		elif zctrl.symbol == 'bpb':
 			self.zyngui.zynseq.libseq.setBeatsPerBar(zctrl.value)
-		elif zctrl.symbol == 'stutter_count':
-			self.zyngui.zynseq.libseq.setStutterCount(self.selected_cell[0], self.get_note_from_row(self.selected_cell[1]), zctrl.value)
-		elif zctrl.symbol == 'stutter_dur':
-			self.zyngui.zynseq.libseq.setStutterDur(self.selected_cell[0], self.get_note_from_row(self.selected_cell[1]), zctrl.value)
 		elif zctrl.symbol == 'copy':
 			self.load_pattern(zctrl.value)
 		elif zctrl.symbol == 'transpose':
@@ -1073,84 +1071,134 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.rows_pending.put_nowait(note)
 
 
+	def set_edit_title(self):
+		step = self.selected_cell[0]
+		note = self.get_note_from_row(self.selected_cell[1])
+		if self.edit_mode == EDIT_MODE_ALL:
+			if self.edit_param == EDIT_PARAM_DUR:
+				self.set_title("Duration ALL")
+			elif self.edit_param == EDIT_PARAM_VEL:
+				self.set_title("Velocity ALL")
+			elif self.edit_param == EDIT_PARAM_STUT_CNT:
+				self.set_title("Stutter count ALL")
+			elif self.edit_param == EDIT_PARAM_STUT_DUR:
+				self.set_title("Stutter duration ALL")
+			return
+		if self.edit_param == EDIT_PARAM_DUR:
+			self.set_title(f"Duration: {self.duration:0.1f} steps")
+		elif self.edit_param == EDIT_PARAM_VEL:
+			self.set_title(f"Velocity: {self.velocity}")
+		elif self.edit_param == EDIT_PARAM_STUT_CNT:
+			self.set_title(f"Stutter count: {self.zyngui.zynseq.libseq.getStutterCount(step, note)}")
+		elif self.edit_param == EDIT_PARAM_STUT_DUR:
+			self.set_title(f"Stutter duration: {self.zyngui.zynseq.libseq.getStutterDur(step, note)}")
+
+
 	# Function to handle zynpots value change
 	#   i: Zynpot index [0..n]
 	#   dval: Current value of zyncoder
 	def zynpot_cb(self, i, dval):
 		if super().zynpot_cb(i, dval):
 			return
-		if i == zynthian_gui_config.ENC_BACK:
+
+		if i == zynthian_gui_config.ENC_LAYER:
 			if self.edit_mode == EDIT_MODE_SINGLE:
-				self.velocity = self.velocity + dval
-				if self.velocity > 127:
-					self.velocity = 127
-					return
-				if self.velocity < 1:
-					self.velocity = 1
-					return
-				self.velocity_canvas.coords("velocityIndicator", 0, 0, self.piano_roll_width * self.velocity / 127, PLAYHEAD_HEIGHT)
-				note = self.keymap[self.selected_cell[1]]["note"]
-				if self.zyngui.zynseq.libseq.getNoteDuration(self.selected_cell[0], note):
-					self.zyngui.zynseq.libseq.setNoteVelocity(self.selected_cell[0], note, self.velocity)
-					self.draw_cell(self.selected_cell[0], self.selected_cell[1])
-				self.set_title("Velocity: %d" % (self.velocity), None, None, 2)
+				step = self.selected_cell[0]
+				note = self.get_note_from_row(self.selected_cell[1])
+				if self.edit_param == EDIT_PARAM_DUR:
+					if dval > 0:
+						duration = (int(self.duration * 10) + 10) / 10
+					elif dval < 0:
+						duration = (int(self.duration * 10) - 10) / 10
+					if duration > self.zyngui.zynseq.libseq.getSteps() or duration < 0.1:
+						return
+					self.duration = duration
+					if self.zyngui.zynseq.libseq.getNoteDuration(self.selected_cell[0], note):
+						self.add_event(step, note)
+					else:
+						self.select_cell()
+				elif self.edit_param == EDIT_PARAM_VEL:
+					self.velocity = self.velocity + dval
+					if self.velocity > 127:
+						self.velocity = 127
+						return
+					if self.velocity < 1:
+						self.velocity = 1
+						return
+					self.velocity_canvas.coords("velocityIndicator", 0, 0, self.piano_roll_width * self.velocity / 127, PLAYHEAD_HEIGHT)
+					if self.zyngui.zynseq.libseq.getNoteDuration(step, note):
+						self.zyngui.zynseq.libseq.setNoteVelocity(step, note, self.velocity)
+						self.draw_cell(step, note - self.keymap_offset)
+				elif self.edit_param == EDIT_PARAM_STUT_CNT:
+					val = self.zyngui.zynseq.libseq.getStutterCount(step, note) + dval
+					if val < 0:
+						val = 0
+					self.zyngui.zynseq.libseq.setStutterCount(step, note, val)
+					self.draw_cell(step, note - self.keymap_offset)
+				elif self.edit_param == EDIT_PARAM_STUT_DUR:
+					val = self.zyngui.zynseq.libseq.getStutterDur(step, note) + dval
+					if val < 1:
+						val = 1
+					self.zyngui.zynseq.libseq.setStutterDur(step, note, val)
+					self.draw_cell(step, note - self.keymap_offset)
+				self.set_edit_title()
 			elif self.edit_mode == EDIT_MODE_ALL:
-				self.zyngui.zynseq.libseq.changeVelocityAll(dval)
-				self.set_title("ALL Velocity", None, None, 2)
-				self.redraw_pending = 3
+				if self.edit_param == EDIT_PARAM_DUR:
+					if dval > 0:
+						self.zyngui.zynseq.libseq.changeDurationAll(1)
+					if dval < 0:
+						self.zyngui.zynseq.libseq.changeDurationAll(-1)
+					self.redraw_pending = 3
+				elif self.edit_param == EDIT_PARAM_VEL:
+					self.zyngui.zynseq.libseq.changeVelocityAll(dval)
+					self.redraw_pending = 3
+				elif self.edit_param == EDIT_PARAM_STUT_CNT:
+					self.zyngui.zynseq.libseq.changeStutterCountAll(dval)
+					self.redraw_pending = 3
+				elif self.edit_param == EDIT_PARAM_STUT_DUR:
+					self.zyngui.zynseq.libseq.changeStutterDurAll(dval)
+					self.redraw_pending = 3
+
+		elif i == zynthian_gui_config.ENC_BACK:
+			if self.edit_mode == EDIT_MODE_SINGLE:
+				if self.edit_param == EDIT_PARAM_DUR:
+					if dval > 0:
+						duration = (int(self.duration * 10) + 1) / 10
+					elif dval < 0:
+						duration = (int(self.duration * 10) - 1) / 10
+					if duration > self.zyngui.zynseq.libseq.getSteps() or duration < 0.1:
+						return
+					self.duration = duration
+					note = self.keymap[self.selected_cell[1]]["note"]
+					if self.zyngui.zynseq.libseq.getNoteDuration(self.selected_cell[0], note):
+						self.add_event(self.selected_cell[0], self.selected_cell[1])
+					else:
+						self.select_cell()
+					self.set_edit_title()
+			elif self.edit_mode == EDIT_MODE_ALL:
+				if self.edit_param == EDIT_PARAM_DUR:
+					if dval > 0:
+						self.zyngui.zynseq.libseq.changeDurationAll(0.1)
+					if dval < 0:
+						self.zyngui.zynseq.libseq.changeDurationAll(-0.1)
+					self.redraw_pending = 3
 			else:
 				self.select_cell(None, self.selected_cell[1] - dval)
 
 		elif i == zynthian_gui_config.ENC_SELECT:
-			if self.edit_mode == EDIT_MODE_SINGLE:
-				if dval > 0:
-					duration = (int(self.duration * 10) + 10) / 10
-				elif dval < 0:
-					duration = (int(self.duration * 10) - 10) / 10
-				if duration > self.zyngui.zynseq.libseq.getSteps() or duration < 0.1:
-					return
-				self.duration = duration
-				note = self.keymap[self.selected_cell[1]]["note"]
-				if self.zyngui.zynseq.libseq.getNoteDuration(self.selected_cell[0], note):
-					self.add_event(self.selected_cell[0], self.selected_cell[1])
-				else:
-					self.select_cell()
-				self.set_title("Duration: %0.1f steps" % (self.duration), None, None, 2)
-			elif self.edit_mode == EDIT_MODE_ALL:
-				if dval > 0:
-					self.zyngui.zynseq.libseq.changeDurationAll(1)
-				if dval < 0:
-					self.zyngui.zynseq.libseq.changeDurationAll(-1)
-				self.set_title("ALL DURATION", None, None, 2)
-				self.redraw_pending = 3
+			if self.edit_mode == EDIT_MODE_SINGLE or self.edit_mode == EDIT_MODE_ALL:
+				self.edit_param += dval
+				if self.edit_param < 0:
+					self.edit_param = 0
+				if self.edit_param > EDIT_PARAM_LAST:
+					self.edit_param = EDIT_PARAM_LAST
+				self.set_edit_title()
 			else:
 				self.select_cell(self.selected_cell[0] + dval, None)
 
 		elif i == zynthian_gui_config.ENC_SNAPSHOT:
-			if self.edit_mode == EDIT_MODE_SINGLE:
-				if dval > 0:
-					duration = (int(self.duration * 10) + 1) / 10
-				elif dval < 0:
-					duration = (int(self.duration * 10) - 1) / 10
-				if duration > self.zyngui.zynseq.libseq.getSteps() or duration < 0.1:
-					return
-				self.duration = duration
-				note = self.keymap[self.selected_cell[1]]["note"]
-				if self.zyngui.zynseq.libseq.getNoteDuration(self.selected_cell[0], note):
-					self.add_event(self.selected_cell[0], self.selected_cell[1])
-				else:
-					self.select_cell()
-				self.set_title("Duration: %0.1f steps" % (self.duration), None, None, 2)
-			elif self.edit_mode == EDIT_MODE_ALL:
-				if dval > 0:
-					self.zyngui.zynseq.libseq.changeDurationAll(0.1)
-				if dval < 0:
-					self.zyngui.zynseq.libseq.changeDurationAll(-0.1)
-				self.set_title("ALL DURATION", None, None, 2)
-				self.redraw_pending = 3
-			else:
-				self.zyngui.zynseq.nudge_tempo(dval)
-				self.set_title("Tempo: {:.1f}".format(self.zyngui.zynseq.get_tempo()), None, None, 2)
+			self.zyngui.zynseq.nudge_tempo(dval)
+			self.set_title("Tempo: {:.1f}".format(self.zyngui.zynseq.get_tempo()), None, None, 2)
 
 
 	# Function to handle SELECT button press
