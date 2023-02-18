@@ -807,8 +807,28 @@ void setTempo(double tempo);
 */
 double getTempo();
 
-/** @breif  Set beats per bar
-*   @uint32_t beats Beats per bar
+/** @brief  Set the swing division
+*   @param  div Division [0..24]
+*/
+void setSwingDiv(uint8_t div);
+
+/** @brief  Get the swing division
+*   @retval uint8_t Division [0..24]
+*/
+uint8_t getSwingDiv();
+
+/** @brief  Set the swing ratio
+*   @param  ratio Ratio percentage [+/-100]
+*/
+void setSwingRatio(int8_t div);
+
+/** @brief  Get the swing division
+*   @retval int8_t Division [+/-100]
+*/
+int8_t getSwingRatio();
+
+/** @brief  Set beats per bar
+*   @retval uint32_t beats Beats per bar
 */
 void setBeatsPerBar(uint32_t beats);
 

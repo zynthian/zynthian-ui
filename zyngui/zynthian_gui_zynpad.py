@@ -332,6 +332,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		options['Bank ({})'.format(self.zyngui.zynseq.bank)] = 'Bank'
 		options['Tempo ({:0.1f})'.format(self.zyngui.zynseq.libseq.getTempo())] = 'Tempo'
 		options['Beats per bar ({})'.format(self.zyngui.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
+		options[f'Swing division (1/{24/self.zyngui.zynseq.libseq.getSwingDiv():0.0f})'] = 'Swing division'
+		options['Swing ratio ({}%)'.format(self.zyngui.zynseq.libseq.getSwingRatio())] = 'Swing ratio'
 		if self.zyngui.zynseq.libseq.isMetronomeEnabled():
 			options['[X] Metronome'] = 'Metronome'
 		else:
@@ -378,6 +380,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.enable_param_editor(self, 'tempo', 'Tempo', {'value_min':10, 'value_max':420, 'value_default':120, 'is_integer':False, 'nudge_factor':0.1, 'value':self.zyngui.zynseq.libseq.getTempo()})
 		if params == 'Beats per bar':
 			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsPerBar()})
+		if params == 'Swing division':
+			self.enable_param_editor(self, 'swing_div', 'Swing division', {'labels':['1','1/2','1/4','1/8'], 'ticks':[24,12,6,3], 'value_default':6, 'value':self.zyngui.zynseq.libseq.getSwingDiv()})
+		if params == 'Swing ratio':
+			self.enable_param_editor(self, 'swing_ratio', 'Swing ratio', {'value_min':-100, 'value_max':100, 'value_default':0, 'value':self.zyngui.zynseq.libseq.getSwingRatio()})
 		elif params == 'Metronome':
 			self.zyngui.zynseq.libseq.enableMetronome(not self.zyngui.zynseq.libseq.isMetronomeEnabled())
 		elif params == 'Metronome volume':
@@ -425,6 +431,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.zynseq.libseq.setMetronomeVolume(zctrl.value / 100.0)
 		elif zctrl.symbol == 'bpb':
 			self.zyngui.zynseq.libseq.setBeatsPerBar(zctrl.value)
+		elif zctrl.symbol == 'swing_div':
+			self.zyngui.zynseq.libseq.setSwingDiv(zctrl.value)
+		elif zctrl.symbol == 'swing_ratio':
+			self.zyngui.zynseq.libseq.setSwingRatio(zctrl.value)
 		elif zctrl.symbol == 'playmode':
 			self.set_play_mode(zctrl.value)
 		elif zctrl.symbol == 'midi_chan':

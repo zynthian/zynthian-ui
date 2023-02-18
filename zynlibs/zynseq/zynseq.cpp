@@ -91,6 +91,9 @@ jack_nframes_t g_nTransportStartFrame = 0; // Quantity of frames from JACK epoch
 double g_dFramesToNextClock = 0.0; // Frames until next clock pulse
 double g_dFramesPerClock = 60 * g_nSampleRate / (g_dTempo *  g_dTicksPerBeat) * g_dTicksPerClock; //!@todo Change to integer will have 0.1% jitter at 1920 ppqn and much better jitter (0.01%) at current 24ppqn
 uint8_t g_nClock = 0; // Quantity of MIDI clocks since start of beat
+int8_t g_nSwingDiv = 6; // Quantity of MIDI clocks at which to swing
+int8_t g_nSwingRatio = 0; // Percentage to swing
+int32_t g_nSwingSamples = 0; // Quantity of samples to swing
 
 size_t g_nMetronomePtr = -1; // Position within metronome click wav data
 float g_fMetronomeLevel = 1.0; // Factor to scale metronome level (volume)
@@ -106,6 +109,18 @@ void enableDebug(bool bEnable)
 {
     fprintf(stderr, "libseq setting debug mode %s\n", bEnable?"on":"off");
     g_bDebug = bEnable;
+}
+
+void get_mutex()
+{
+    while(g_bMutex)
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
+    g_bMutex = true;
+}
+
+void release_mutex()
+{
+    g_bMutex = false;
 }
 
 // Convert tempo to frames per tick
@@ -277,6 +292,7 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
         g_nTransportStartFrame = jack_frame_time(g_pJackClient) - pPosition->frame; //!@todo This isn't setting to transport start position
         pPosition->valid = JackPositionBBT;
         g_dFramesPerClock = getFramesPerClock(g_dTempo);
+        g_nSwingSamples = g_dFramesPerClock * g_nSwingRatio / 100;
         g_bTimebaseChanged = false;
         DPRINTF("New position: Jack frame: %u Frame: %u Bar: %u Beat: %u Tick: %u Clock: %u\n", g_nTransportStartFrame, pPosition->frame, pPosition->bar, pPosition->beat, pPosition->tick, g_nClock);
         //!@todo Check impact of timebase discontinuity
@@ -317,12 +333,11 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 {
     static jack_position_t transportPosition; // JACK transport position structure populated each cycle and checked for transport progress
     static uint8_t nClock = g_nPulsePerQuarterNote; // Clock pulse count 0..g_nPulsePerQuarterNote - 1
-    static uint32_t nTicksPerPulse;
-    static double dTicksPerFrame;
     static double dBeatsPerMinute; // Store so that we can check for change and do less maths
     static double dBeatsPerBar; // Store so that we can check for change and do less maths
     static jack_nframes_t nFramerate; // Store so that we can check for change and do less maths
-    static uint32_t nFramesPerPulse;
+    static uint32_t nSwingCount; // Pulses until next swing toggle
+    static bool bSwingPhase; // True if in second half of swing phase
 
     // Get output buffer that will be processed in this process cycle
     void* pOutputBuffer = jack_port_get_buffer(g_pOutputPort, nFrames);
@@ -436,9 +451,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 
     // Send MIDI output aligned with first sample of frame resulting in similar latency to audio
     //!@todo Interpolate events across frame, e.g. CC variations
-    while(g_bMutex)
-        std::this_thread::sleep_for(std::chrono::microseconds(10));
-    g_bMutex = true;
+    get_mutex();
 
     // Iterate through clocks in this period, adding any events and handling any timebase changes
     if(nState == JackTransportRolling)
@@ -462,6 +475,8 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             if(++g_nClock >= g_nPulsePerQuarterNote)
             {
                 g_nClock = 0;
+                bSwingPhase = false;
+                nSwingCount = 0;
                 if(++g_nBeat > g_nBeatsPerBar)
                 {
                     g_nBeat = 1;
@@ -470,7 +485,15 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 }
                 DPRINTF("Beat %u of %u\n", g_nBeat, g_nBeatsPerBar);
             }
-            g_dFramesToNextClock += g_dFramesPerClock;
+            if(++nSwingCount >= g_nSwingDiv)
+            {
+                bSwingPhase = !bSwingPhase;
+                nSwingCount = 0;
+            }
+            if(bSwingPhase)
+                g_dFramesToNextClock += g_dFramesPerClock - g_nSwingSamples;
+            else
+                g_dFramesToNextClock += g_dFramesPerClock + g_nSwingSamples;
         }
         g_dFramesToNextClock -= nFrames;
         //g_nTick = g_dTicksPerBeat - nRemainingFrames / getFramesPerTick(g_dTempo);
@@ -517,7 +540,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 nTime = nNextTime; // Ensure we send events in order - this may bump events slightly later than scheduled (by individual frames (samples) so not much)
             if(nTime >= nFrames)
             {
-                g_bMutex = false;
+                release_mutex();
                 return 0; // Must have bumped beyond end of this frame time so must wait until next frame - earlier events were processed and pointer nulled so will not trigger in next period
             }
             nNextTime = nTime + 1;
@@ -549,7 +572,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         }
         g_mSchedule.erase(g_mSchedule.begin(), it);
     }
-    g_bMutex = false;
+    release_mutex();
     return 0;
 }
 
@@ -560,6 +583,7 @@ int onJackSampleRateChange(jack_nframes_t nFrames, void *pArgs)
         return 0;
     g_nSampleRate = nFrames;
     g_dFramesPerClock = getFramesPerClock(g_dTempo);
+    g_nSwingSamples = g_dFramesPerClock * g_nSwingRatio / 100;
     return 0;
 }
 
@@ -638,6 +662,7 @@ void init(char* name) {
 
     g_nSampleRate = jack_get_sample_rate(g_pJackClient);
     g_dFramesPerClock = getFramesPerClock(g_dTempo);
+    g_nSwingSamples = g_dFramesPerClock * g_nSwingRatio / 100;
 
     // Register JACK callbacks
     jack_set_process_callback(g_pJackClient, onJackProcess, 0);
@@ -1073,13 +1098,11 @@ void sendMidiMsg(MIDI_MESSAGE* pMsg)
 {
     // Find first available time slot
     uint32_t time = jack_frames_since_cycle_start(g_pJackClient);
-    while(g_bMutex)
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    g_bMutex = true;
+    get_mutex();
     while(g_mSchedule.find(time) != g_mSchedule.end())
         ++time;
     g_mSchedule[time] = pMsg;
-    g_bMutex = false;
+    release_mutex();
 }
 
 // Schedule a note off event after 'duration' ms
@@ -1686,11 +1709,9 @@ void clearSequence(uint8_t bank, uint8_t sequence)
 
 void setSequencesInBank(uint8_t bank, uint8_t sequences)
 {
-    while(g_bMutex)
-        std::this_thread::sleep_for(std::chrono::microseconds(10));
-    g_bMutex = true;
+    get_mutex();
     g_seqMan.setSequencesInBank(bank, sequences);
-    g_bMutex = false;
+    release_mutex();
     g_pSequence = g_seqMan.getSequence(0, 0);
 }
 
@@ -1991,14 +2012,45 @@ void setTempo(double tempo)
 {
     if(tempo > 0.0 && tempo < 500.0)
     {
+        get_mutex();
         g_dTempo = tempo;
         g_dFramesPerClock = getFramesPerClock(tempo);
+        g_nSwingSamples = g_dFramesPerClock * g_nSwingRatio / 100;
+        release_mutex();
     }
 }
 
 double getTempo()
 {
     return g_dTempo;
+}
+
+void setSwingDiv(uint8_t div)
+{
+    get_mutex();
+    if(div <= 24)
+        g_nSwingDiv = div;
+    release_mutex();
+}
+
+uint8_t getSwingDiv()
+{
+    return g_nSwingDiv;
+}
+
+void setSwingRatio(int8_t div)
+{
+    if(div < -100 || div > 100)
+        return;
+    g_nSwingRatio = div;
+    get_mutex();
+    g_nSwingSamples = g_dFramesPerClock * g_nSwingRatio / 100;
+    release_mutex();
+}
+
+int8_t getSwingRatio()
+{
+    return g_nSwingRatio;
 }
 
 void setBeatsPerBar(uint32_t beats)
