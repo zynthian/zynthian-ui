@@ -1249,6 +1249,51 @@ uint32_t getPatternIndex()
     return g_nPattern;
 }
 
+const char* getPatternName(uint32_t pattern)
+{
+    return g_seqMan.getPattern(pattern)->getName().c_str();
+}
+
+void setPatternName(uint32_t pattern, const char* name)
+{
+    g_seqMan.getPattern(pattern)->setName(std::string(name));
+}
+
+uint32_t getPatternCount(const char* group)
+{
+    return g_seqMan.getPatternCount(group);
+}
+
+uint32_t getPatternGroupCount()
+{
+    return g_seqMan.getPatternGroupCount();
+}
+
+void addPatternGroup(const char* name)
+{
+    g_seqMan.addPatternGroup(name);
+}
+
+void setPatternGroupName(const char* group, const char* name)
+{
+    g_seqMan.setPatternGroupName(group, name);
+}
+
+bool addPatternToGroup(uint32_t pattern, const char* group)
+{
+    return g_seqMan.addPatternToGroup(pattern, group);
+}
+
+void removePatternFromGroup(uint32_t pattern, const char* group)
+{
+    g_seqMan.removePatternFromGroup(pattern, group);
+}
+
+const char* getPatternsInGroup(const char* group)
+{
+    return g_seqMan.getPatternsInGroup(group).c_str();
+}
+
 uint32_t getSteps()
 {
     if(g_seqMan.getPattern(g_nPattern))

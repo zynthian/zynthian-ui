@@ -89,6 +89,16 @@ class Pattern
         */
         ~Pattern();
 
+        /** @brief  Set pattern name
+        *   @param  name Pattern name
+        */
+        void setName(std::string name);
+
+        /** @brief  Get pattern name
+        *   @retval  std::string Pattern name
+        */
+        std::string getName();
+
         /** @brief  Add step event to pattern
         *   @param  position Quantity of steps from start of pattern
         *   @param  command MIDI command
@@ -301,6 +311,7 @@ class Pattern
         void deleteEvent(uint32_t position, uint8_t command, uint8_t value1);
 
         std::vector<StepEvent> m_vEvents; // Vector of pattern events
+        std::string m_sName; // Pattern name
         uint32_t m_nBeats = 4; // Quantity of beats in pattern
         uint32_t m_nStepsPerBeat = 6; // Steps per beat
         uint8_t m_nScale = 0; // Index of scale

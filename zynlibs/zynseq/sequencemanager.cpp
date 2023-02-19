@@ -81,6 +81,76 @@ bool SequenceManager::checkBlock(FILE* pFile, uint32_t nActualSize,  uint32_t nE
     return false;
 }
 
+uint32_t SequenceManager::getPatternCount(const char* group)
+{
+    return m_mPatterns.size();
+}
+
+uint32_t SequenceManager::getPatternGroupCount()
+{
+    return m_mPatternGroups.size();
+}
+
+void SequenceManager::addPatternGroup(const char* name)
+{
+    m_mPatternGroups[std::string(name)];
+}
+
+void SequenceManager::setPatternGroupName(const char* group, const char* name)
+{
+    std::string sGroup(group);
+    std::string sName(name);
+    if(sGroup == sName)
+        return; // Same name so do nothing
+    if(m_mPatternGroups.find(sGroup) == m_mPatternGroups.end())
+        return; // Group does not exist
+    if(m_mPatternGroups.find(sName) != m_mPatternGroups.end())
+        return; // Group with new name alreadly exist
+
+    for(auto it = m_mPatternGroups[sGroup].begin(); it!= m_mPatternGroups[sGroup].end(); ++it)
+        m_mPatternGroups[sName].push_back(*it);
+    m_mPatternGroups.erase(sGroup);
+}
+
+bool SequenceManager::addPatternToGroup(uint32_t pattern, const char* group)
+{
+    std::string sGroup(group);
+    if(m_mPatternGroups.find(sGroup) == m_mPatternGroups.end())
+        return false;
+    if(m_mPatterns.find(pattern) == m_mPatterns.end())
+        return false;
+
+    removePatternFromGroup(pattern, group);
+    m_mPatternGroups[sGroup].push_back(pattern);
+    return true;
+}
+
+void SequenceManager::removePatternFromGroup(uint32_t pattern, const char* group)
+{
+    std::string sGroup(group);
+    if(m_mPatternGroups.find(sGroup) == m_mPatternGroups.end())
+        return;
+    for(auto it = m_mPatternGroups[sGroup].begin(); it != m_mPatternGroups[sGroup].end();)
+        if(*it == pattern)
+            it = m_mPatternGroups[sGroup].erase(it);
+        else
+            ++it;
+}
+
+std::string SequenceManager::getPatternsInGroup(const char* group)
+{
+    std::string sPatterns;
+    std::string sGroup(group);
+    if(m_mPatternGroups.find(sGroup) != m_mPatternGroups.end())
+        for(auto it = m_mPatternGroups[sGroup].begin(); it != m_mPatternGroups[sGroup].end(); ++it)
+        {
+            if(sPatterns.length())
+                sPatterns += ",";
+            sPatterns += std::to_string(*it);
+        }
+    return sPatterns;
+}
+
 Pattern* SequenceManager::getPattern(uint32_t index)
 {
     m_mPatterns[index]; // Ensure pattern exists and won't move in memory before accessing by pointer

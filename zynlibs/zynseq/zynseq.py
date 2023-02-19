@@ -5,7 +5,7 @@
 #
 # A Python wrapper for zynseq library
 #
-# Copyright (C) 2021-2022 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2021-2023 Brian Walton <brian@riban.co.uk>
 #
 #********************************************************************
 #
@@ -89,6 +89,14 @@ class zynseq(zynthian_engine):
 			self.libseq.setTempo.argtypes = [ctypes.c_double]
 			self.libseq.setMetronomeVolume.argtypes = [ctypes.c_float]
 			self.libseq.getMetronomeVolume.restype = ctypes.c_float
+			self.libseq.getPatternName.restype = ctypes.c_char_p
+			self.libseq.setPatternName.argtypes = [ctypes.c_uint32, ctypes.c_char_p]
+			self.libseq.getPatternsInGroup.restype = ctypes.c_char_p
+			self.libseq.addPatternGroup.argtypes = [ctypes.c_char_p]
+			self.libseq.addPatternToGroup.argtypes = [ctypes.c_uint32, ctypes.c_char_p]
+			self.libseq.removePatternFromGroup.argtypes = [ctypes.c_uint32, ctypes.c_char_p]
+			self.libseq.setPatternGroupName.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+
 			self.libseq.init(bytes("zynseq", "utf-8"))
 		except Exception as e:
 			self.libseq=None
@@ -326,6 +334,34 @@ class zynseq(zynthian_engine):
 		if self.libseq.addPattern(bank, sequence, track, time, pattern, force):
 			self.send_event(SEQ_EVENT_SEQUENCE)
 			return True
+
+
+	def set_pattern_name(self, sequence, name):
+		self.libseq.setPatternName(sequence, bytes(name, "utf-8"))
+
+
+	def get_pattern_name(self, sequence):
+		return self.libseq.getPatternName(sequence).decode("utf-8")
+
+
+	def get_patterns_in_group(self, group):
+		return self.libseq.getPatternsInGroup(bytes(group, "utf-8")).decode("utf-8")
+
+
+	def add_pattern_group(self, group):
+		self.libseq.addPatternGroup(bytes(group, "utf-8"))
+
+
+	def add_pattern_to_group(self, pattern, group):
+		self.libseq.addPatternToGroup(pattern, bytes(group, "utf-8"))
+
+
+	def remove_pattern_from_group(self, pattern, group):
+		self.libseq.removePatternFromGroup(pattern, bytes(group, "utf-8"))
+
+
+	def rename_pattern_group(self, group, name):
+		self.libseq.setPatternGroupName(bytes(group, "utf-8"), bytes(name, "utf-8"))
 
 
 	def enable_midi_learn(self, bank, sequence):

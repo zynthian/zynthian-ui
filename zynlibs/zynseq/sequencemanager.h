@@ -19,6 +19,47 @@ class SequenceManager
         */
         void init();
 
+        /** @brief  Get quantity of available patterns
+        *   @param  group Group name  to filter results (default: all groups)
+        *   @retval uint32_t Quantity of available patterns
+        */
+        uint32_t getPatternCount(const char* group);
+
+        /** @brief  Get quantity of pattern groups
+        *   @retval uint32_t Quantity of pattern groups
+        */
+        uint32_t getPatternGroupCount();
+
+        /** @brief  Add pattern group
+        *   @param  name Group name
+        */
+        void addPatternGroup(const char* name);
+
+        /** @brief  Rename pattern group
+        *   @param  group Pattern group name
+        *   @param  const char* name New name
+        */
+        void setPatternGroupName(const char* group, const char* name);
+
+        /** @brief  Add pattern to group
+        *   @param  pattern Pattern index
+        *   @param  group Group name
+        *   @retval bool True on success (if pattern exists)
+        */
+        bool addPatternToGroup(uint32_t pattern, const char* group);
+
+        /** @brief  Remove pattern from group
+        *   @param  pattern Pattern index
+        *   @param  group Group name
+        */
+        void removePatternFromGroup(uint32_t pattern, const char* group);
+
+        /** @brief  Get patterns in group
+        *   @param  group Group name
+        *   @retval string Comma separated list of pattern indices
+        */
+        std::string getPatternsInGroup(const char* group);
+
         /** @brief  Get pointer to a pattern
         *   @param  index Index of pattern to retrieve
         *   @retval Pattern* Pointer to pattern
@@ -233,6 +274,7 @@ class SequenceManager
 
         // Note: Maps are used for patterns and sequences to allow addition and removal of sequences whilst maintaining consistent access to remaining instances
         std::map<uint32_t, Pattern> m_mPatterns; // Map of patterns indexed by pattern number
+        std::map<std::string, std::vector<uint32_t>> m_mPatternGroups; // Map of pattern groups indexed by group name (groups are vectors of pattern indicies)
         std::vector<std::pair<uint32_t,uint32_t>> m_vPlayingSequences; //Vector of <bank,sequence> pairs for currently playing seqeunces (used to optimise play control)
         std::map<uint8_t, uint16_t> m_mTriggers; // Map of bank<<8|sequence indexed by MIDI note triggers
         std::map<uint32_t, std::vector<Sequence*>> m_mBanks; // Map of banks: vectors of pointers to sequences indexed by bank

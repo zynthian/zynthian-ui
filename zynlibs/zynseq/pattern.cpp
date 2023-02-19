@@ -14,6 +14,16 @@ Pattern::~Pattern()
 {
 }
 
+void Pattern::setName(std::string name)
+{
+    m_sName = name;
+}
+
+std::string Pattern::getName()
+{
+    return m_sName;
+}
+
 StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1, uint8_t value2, float duration)
 {
     //Delete overlapping events

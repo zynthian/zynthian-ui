@@ -328,6 +328,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def show_menu(self):
 		self.disable_param_editor()
 		options = OrderedDict()
+		options['Track editor'] = 'Track editor'
 		options['Arranger'] = 'Arranger'
 		options['Bank ({})'.format(self.zyngui.zynseq.bank)] = 'Bank'
 		options['Tempo ({:0.1f})'.format(self.zyngui.zynseq.libseq.getTempo())] = 'Tempo'
@@ -370,6 +371,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 
 	def menu_cb(self, option, params):
+		if params == 'Track editor':
+			self.zyngui.show_screen('track_editor')
 		if params == 'Arranger':
 			self.zyngui.show_screen('arranger')
 		elif params == 'Bank':

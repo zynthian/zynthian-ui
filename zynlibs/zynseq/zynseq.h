@@ -240,6 +240,60 @@ void selectPattern(uint32_t pattern);
 */
 uint32_t getPatternIndex();
 
+/** @brief  Get pattern name
+*   @param  pattern Pattern index
+*   @retval const char* Name of pattern (NULL if pattern does not exists)
+*/
+const char* getPatternName(uint32_t pattern);
+
+/** @brief  Set pattern name
+*   @param  index Pattern index
+*   @param  const char* Pattern name
+*/
+void setPatternName(uint32_t index, const char* name);
+
+/** @brief  Get quantity of available patterns
+*   @param  group Group name to filter results (default: all groups)
+*   @retval uint32_t Quantity of available patterns
+*/
+uint32_t getPatternCount(const char* group=NULL);
+
+/** @brief  Get quantity of pattern groups
+*   @retval uint32_t Quantity of pattern groups
+*/
+uint32_t getPatternGroupCount();
+
+/** @brief  Add pattern group
+*   @param  name Group name
+*   @note   Next pattern group index is assigned
+*/
+void addPatternGroup(const char* name);
+
+/** @brief  Rename pattern group
+*   @param  group Pattern group name
+*   @param  name New name
+*/
+void setPatternGroupName(const char* group, const char* name);
+
+/** @brief  Add pattern to group
+*   @param  pattern Pattern index
+*   @param  group Group name
+*   @retval bool True on success (if pattern and group exists)
+*/
+bool addPatternToGroup(uint32_t pattern, const char* group);
+
+/** @brief  Remove pattern from group
+*   @param  pattern Pattern index
+*   @param  group Group name
+*/
+void removePatternFromGroup(uint32_t pattern, const char* group);
+
+/** @brief  Get patterns in group
+*   @param  group Group name
+*   @retval const char* Comma separated list of pattern indices
+*/
+const char* getPatternsInGroup(const char* group);
+
 /** @brief  Get quantity of steps in selected pattern
 *   @retval uint32_t Quantity of steps
 */

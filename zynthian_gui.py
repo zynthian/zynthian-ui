@@ -84,6 +84,7 @@ from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_zynpad import zynthian_gui_zynpad
+from zyngui.zynthian_gui_track_editor import zynthian_gui_track_editor
 from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
 from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
 from zyngui.zynthian_gui_mixer import zynthian_gui_mixer
@@ -453,6 +454,7 @@ class zynthian_gui:
 		self.screens['alsa_mixer'] = self.screens['control']
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
 		self.screens['zynpad'] = zynthian_gui_zynpad()
+		self.screens['track_editor'] = zynthian_gui_track_editor()
 		self.screens['arranger'] = zynthian_gui_arranger()
 		self.screens['pattern_editor'] = zynthian_gui_patterneditor()
 		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
@@ -1248,10 +1250,13 @@ class zynthian_gui:
 
 	def cuia_screen_pattern_editor(self, params):
 		success = False
-		if self.current_screen in ["arranger", "zynpad"]:
+		if self.current_screen in ["track_editor", "arranger", "zynpad"]:
 			success = self.screens[self.current_screen].show_pattern_editor()
 		if not success:
 			self.toggle_screen("pattern_editor")
+
+	def cuia_screen_track_editor(self, params):
+		self.toggle_screen("track_editor")
 
 	def cuia_screen_arranger(self, params):
 		self.toggle_screen("arranger")
