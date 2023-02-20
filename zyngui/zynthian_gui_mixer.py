@@ -46,8 +46,7 @@ class zynthian_gui_mixer_strip():
 	#	y: Vertical coordinate of top of fader
 	#	width: Width of fader
 	#	height: Height of fader
-	#	chain: Chain object associated with strip (None to disable strip)
-	def __init__(self, parent, x, y, width, height, chain):
+	def __init__(self, parent, x, y, width, height):
 		self.parent = parent
 		self.zynmixer = parent.zynmixer
 		self.zctrls = None
@@ -56,12 +55,12 @@ class zynthian_gui_mixer_strip():
 		self.width = width
 		self.height = height
 		self.hidden = False
-		self.chain = chain
+		self.chain_id = None
+		self.chain = None
 		self.midi_learning = False # False: Not learning, True: Preselection, gui_control: Learning
 		self.MAIN_MIXBUS_STRIP_INDEX = self.zynmixer.get_max_channels()
 
-		if not chain:
-			self.hidden = True
+		self.hidden = True
 
 		self.button_height = int(self.height * 0.07)
 		self.legend_height = int(self.height * 0.08)
@@ -408,7 +407,7 @@ class zynthian_gui_mixer_strip():
 
 		if control == None:
 			self.parent.main_canvas.itemconfig(self.legend, text="")
-			if self.chain == self.parent.zyngui.chain_manager.get_chain("main"):
+			if self.chain_id == "main":
 				self.parent.main_canvas.itemconfig(self.legend_strip_txt, text="Main")
 				self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text(), state=tkinter.NORMAL)
 			else:
@@ -481,9 +480,10 @@ class zynthian_gui_mixer_strip():
 
 	# Function to set chain associated with mixer strip
 	#	chain: Chain object
-	def set_chain(self, chain):
-		self.chain = chain
-		if chain is None:
+	def set_chain(self, chain_id):
+		self.chain_id = chain_id
+		self.chain = self.parent.zyngui.chain_manager.get_chain(chain_id)
+		if self.chain is None:
 			self.hide()
 		else:
 			self.show()
@@ -688,10 +688,10 @@ class zynthian_gui_mixer_strip():
 				delta = event.time - self.strip_drag_start.time
 				self.strip_drag_start = None
 				if delta > 400:
-					zynthian_gui_config.zyngui.screens['chain_options'].reset()
+					zynthian_gui_config.zyngui.screens['chain_options'].setup(self.chain_id)
 					zynthian_gui_config.zyngui.show_screen('chain_options')
 				else:
-					zynthian_gui_config.zyngui.chain_control(self.chain)
+					zynthian_gui_config.zyngui.chain_control(self.chain_id)
 
 
 	# Function to handle legend strip drag
@@ -791,9 +791,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		# Create mixer strip UI objects
 		for strip in range(len(self.visible_mixer_strips)):
-			self.visible_mixer_strips[strip] = zynthian_gui_mixer_strip(self, 1 + self.fader_width * strip, 0, self.fader_width - 1, self.height, None)
+			self.visible_mixer_strips[strip] = zynthian_gui_mixer_strip(self, 1 + self.fader_width * strip, 0, self.fader_width - 1, self.height)
 
-		self.main_mixbus_strip = zynthian_gui_mixer_strip(self, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height, None)
+		self.main_mixbus_strip = zynthian_gui_mixer_strip(self, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height)
+		self.main_mixbus_strip.set_chain("main")
 		self.main_mixbus_strip.zctrls = self.zynmixer.zctrls[self.zynmixer.get_max_channels()]
 
 		for chan in range(self.zynmixer.get_max_channels()):
@@ -922,14 +923,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		active_strip = None
 		strip_index = 0
 		for chain_id in self.zyngui.chain_manager.chain_ids_ordered[self.mixer_strip_offset:self.mixer_strip_offset + len(self.visible_mixer_strips)]:
-			chain = self.zyngui.chain_manager.get_chain(chain_id)
 			strip = self.visible_mixer_strips[strip_index]
-			strip.set_chain(chain)
-			if chain.mixer_chan is not None and chain.mixer_chan < len(self.zynmixer.zctrls):
-				strip.zctrls = self.zynmixer.zctrls[chain.mixer_chan]
+			strip.set_chain(chain_id)
+			if strip.chain.mixer_chan is not None and strip.chain.mixer_chan < len(self.zynmixer.zctrls):
+				strip.zctrls = self.zynmixer.zctrls[strip.chain.mixer_chan]
 			strip.draw_control()
-			if chain.midi_chan is not None and chain.midi_chan < len(self.chan2strip):
-				self.chan2strip[chain.midi_chan] = strip
+			if strip.chain.midi_chan is not None and strip.chain.midi_chan < len(self.chan2strip):
+				self.chan2strip[strip.chain.midi_chan] = strip
 			if chain_id == self.zyngui.chain_manager.active_chain_id:
 				active_strip = strip
 			strip_index += 1
@@ -940,7 +940,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			strip.draw_control()
 
 		self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX] = self.main_mixbus_strip
-		self.main_mixbus_strip.set_chain(self.zyngui.chain_manager.get_chain("main"))
 		self.main_mixbus_strip.draw_control()
 		return active_strip
 
