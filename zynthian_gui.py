@@ -942,7 +942,7 @@ class zynthian_gui:
 			cuia_func = getattr(self, "cuia_" + cuia.lower())
 			cuia_func(params)
 		except AttributeError:
-			logging.error("Unknown CUIA '{}'".format(cuia))
+			logging.error("Unknown or failed CUIA '{}'".format(cuia))
 
 	# System actions CUIA
 	def cuia_test_mode(self, params):

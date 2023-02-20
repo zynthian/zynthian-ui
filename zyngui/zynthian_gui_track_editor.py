@@ -49,7 +49,7 @@ class zynthian_gui_track_editor(zynthian_gui_base.zynthian_gui_base):
 			highlightthickness=0,
 			relief='flat',
 			#bg=zynthian_gui_config.color_panel_bg,
-			bg='yellow',
+			bg='orange',
 			fg=zynthian_gui_config.color_panel_tx,
 			selectbackground=zynthian_gui_config.color_ctrl_bg_on,
 			selectforeground=zynthian_gui_config.color_ctrl_tx,
@@ -83,30 +83,63 @@ class zynthian_gui_track_editor(zynthian_gui_base.zynthian_gui_base):
 		self.pattern_groups_listbox.grid(row=1, column=1, sticky="news")
 
 
+		self.selected_group = ""
+		self.selected_pattern = 1
+		self.sequence = 0
+		self.track = 0
 		self.set_title("Track Editor")
 
 
 	def build_view(self):
-		self.fill_list()
-		self.set_selector()
-		self.set_select_path()
+		self.fill_avail_patterns_list()
+		self.fill_groups_list()
+		self.fill_track_patterns_list()
 
 
-	def fill_patterns_list(self):
+	def get_pattern_name(self, pattern):
+		pattern_name = self.zyngui.zynseq.get_pattern_name(pattern)
+		if pattern_name:
+			return f"{pattern} {pattern_name}"
+		else:
+			return f"Pattern {pattern}"
+
+
+	def fill_avail_patterns_list(self):
 		self.avail_patterns_listbox.delete(0, tkinter.END)
-		
-		if not self.list_data:
-			self.list_data=[]
-		for i, item in enumerate(self.list_data):
-			self.listbox.insert(tkinter.END, item[2])
-			if item[0] is None:
-				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_panel_hl,'fg':zynthian_gui_config.color_tx_off})
-			last_param = item[len(item) - 1]
-			if isinstance(last_param, dict) and 'format' in last_param:
-				self.listbox.itemconfig(i, last_param['format'])
+		self.pattern_list = []
+		patterns_in_group = self.zyngui.zynseq.get_patterns_in_group(self.selected_group)
+		if patterns_in_group:
+			for i in patterns_in_group.split(","):
+				index = int(i)
+				value = (index, self.get_pattern_name(index))
+				self.pattern_list.append(value)
+				self.avail_patterns_listbox.insert(tkinter.END, f'{value[1]}')
 
-		self.select()
-		self.last_index_change_ts = datetime.min
+
+	def fill_track_patterns_list(self):
+		self.track_patterns_listbox.delete(0, tkinter.END)
+		self.track_pattern_list = []
+		patterns_in_track = self.zyngui.zynseq.get_patterns_in_track(self.zyngui.zynseq.bank, self.sequence, self.track)
+		if patterns_in_track:
+			dur = 0
+			for pair in patterns_in_track.split(","):
+				pos, pattern = pair.split(":")
+				pos = int(pos)
+				pattern = int(pattern)
+				if dur < pos:
+					self.track_pattern_list.append((pos, -1))
+					self.track_patterns_listbox.insert(tkinter.END, f"SPACER ({pos - dur})")
+				self.track_pattern_list.append((pos, pattern))
+				self.track_patterns_listbox.insert(tkinter.END, f"{self.get_pattern_name(pattern)}")
+				dur = pos + self.zyngui.zynseq.libseq.getPatternDuration(pattern)
+
+
+	def fill_groups_list(self):
+		self.pattern_groups_listbox.delete(0, tkinter.END)
+		self.pattern_groups_listbox.insert(tkinter.END, "ALL PATTERNS")
+		for group in self.zyngui.zynseq.get_pattern_groups().split(','):
+			self.pattern_groups_listbox.insert(tkinter.END, f'{group}')
+
 
 	def show_pattern_editor(self):
 		pass #TODO: Implement show_pattern_editor

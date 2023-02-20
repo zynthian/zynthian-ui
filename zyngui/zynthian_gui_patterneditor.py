@@ -194,9 +194,18 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.copy_source = self.pattern
 		self.setup_zynpots()
 		if not self.param_editor_zctrl:
-			self.set_title("Pattern {}".format(self.pattern))
+			self.reset_title()
 		self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynseq.SEQ_LOOP)
 		self.zyngui.zynseq.libseq.enableMidiInput(True)
+
+
+	# Function to show pattern name / number in title
+	def reset_title(self):
+		name = self.zyngui.zynseq.get_pattern_name(self.pattern)
+		if name:
+			self.set_title(f"{self.pattern} {name}", zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
+		else:
+			self.set_title(f"Pattern {self.pattern}", zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
 
 
 	# Function to enable note duration/velocity direct edit mode
@@ -208,7 +217,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		elif mode == EDIT_MODE_ALL:
 			self.set_title("Note Parameters ALL", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
 		else:
-			self.set_title("Pattern {}".format(self.pattern), zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
+			self.reset_title()
 
 
 	# Function to hide GUI
@@ -232,6 +241,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			options['[  ] Metronome'] = 'Metronome'
 		options['Metronome volume ({})'.format(int(100 * self.zyngui.zynseq.libseq.getMetronomeVolume()))] = 'Metronome volume'
 		options['Beats in pattern ({})'.format(self.zyngui.zynseq.libseq.getBeatsInPattern())] = 'Beats in pattern'
+		options['Rename pattern'] = "Rename pattern"
 		options['Steps per beat ({})'.format(self.zyngui.zynseq.libseq.getStepsPerBeat())] = 'Steps per beat'
 		options['Copy pattern'] = 'Copy pattern'
 		options['Clear pattern'] = 'Clear pattern'
@@ -273,6 +283,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.enable_param_editor(self, 'metro_vol', 'Metro volume', {'value_min':0, 'value_max':100, 'value_default':100, 'value':int(100*self.zyngui.zynseq.libseq.getMetronomeVolume())})
 		elif params == 'Beats in pattern':
 			self.enable_param_editor(self, 'bip', 'Beats in pattern', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsInPattern()}, self.assert_beats_in_pattern)
+		elif params == "Rename pattern":
+			self.zyngui.show_keyboard(self.rename_pattern, self.zyngui.zynseq.get_pattern_name(self.pattern))
 		elif params == 'Steps per beat':
 			self.enable_param_editor(self, 'spb', 'Steps per beat', {'ticks':STEPS_PER_BEAT, 'value_default':3, 'value':self.zyngui.zynseq.libseq.getStepsPerBeat()}, self.assert_steps_per_beat)
 		elif params == 'Copy pattern':
@@ -367,6 +379,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.zyngui.zynseq.libseq.setTonic(tonic)
 		self.reload_keymap = True
 		self.redraw_pending = 3
+
+
+	def rename_pattern(self, name):
+		self.zyngui.zynseq.set_pattern_name(self.pattern, name)
+		self.reset_title()
 
 
 	# Function to export pattern to SMF
@@ -1029,7 +1046,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.draw_grid()
 		self.select_cell(0, int(self.keymap_offset + self.zoom / 2))
 		self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
-		self.set_title("Pattern {}".format(self.pattern))
+		self.reset_title()
 
 
 	# Function to refresh status

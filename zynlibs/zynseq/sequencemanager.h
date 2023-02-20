@@ -19,46 +19,45 @@ class SequenceManager
         */
         void init();
 
-        /** @brief  Get quantity of available patterns
-        *   @param  group Group name  to filter results (default: all groups)
-        *   @retval uint32_t Quantity of available patterns
+        /** @brief  Get comma separated list of pattern group names
+        *   @retval std::string List of pattern groups
         */
-        uint32_t getPatternCount(const char* group);
-
-        /** @brief  Get quantity of pattern groups
-        *   @retval uint32_t Quantity of pattern groups
-        */
-        uint32_t getPatternGroupCount();
+        std::string getPatternGroups();
 
         /** @brief  Add pattern group
-        *   @param  name Group name
+        *   @param  group Group name
         */
-        void addPatternGroup(const char* name);
+        void addPatternGroup(std::string group);
+
+        /** @brief  Remove pattern group
+        *   @param  group Group name
+        */
+        void removePatternGroup(std::string group);
 
         /** @brief  Rename pattern group
         *   @param  group Pattern group name
-        *   @param  const char* name New name
+        *   @param  std::string name New name
         */
-        void setPatternGroupName(const char* group, const char* name);
+        void setPatternGroupName(std::string group, std::string name);
 
         /** @brief  Add pattern to group
         *   @param  pattern Pattern index
         *   @param  group Group name
         *   @retval bool True on success (if pattern exists)
         */
-        bool addPatternToGroup(uint32_t pattern, const char* group);
+        bool addPatternToGroup(uint32_t pattern, std::string group);
 
         /** @brief  Remove pattern from group
         *   @param  pattern Pattern index
         *   @param  group Group name
         */
-        void removePatternFromGroup(uint32_t pattern, const char* group);
+        void removePatternFromGroup(uint32_t pattern, std::string group);
 
         /** @brief  Get patterns in group
         *   @param  group Group name
         *   @retval string Comma separated list of pattern indices
         */
-        std::string getPatternsInGroup(const char* group);
+        std::string getPatternsInGroup(std::string group);
 
         /** @brief  Get pointer to a pattern
         *   @param  index Index of pattern to retrieve

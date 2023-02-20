@@ -81,68 +81,79 @@ bool SequenceManager::checkBlock(FILE* pFile, uint32_t nActualSize,  uint32_t nE
     return false;
 }
 
-uint32_t SequenceManager::getPatternCount(const char* group)
+std::string SequenceManager::getPatternGroups()
 {
-    return m_mPatterns.size();
+    std::string sGroups;
+    for(auto it = m_mPatternGroups.begin(); it != m_mPatternGroups.end(); ++it)
+    {
+        if(sGroups.length())
+            sGroups += ",";
+            sGroups += it->first;
+    }
+    return sGroups;
 }
 
-uint32_t SequenceManager::getPatternGroupCount()
+void SequenceManager::addPatternGroup(std::string group)
 {
-    return m_mPatternGroups.size();
+    m_mPatternGroups[group];
 }
 
-void SequenceManager::addPatternGroup(const char* name)
+void SequenceManager::removePatternGroup(std::string group)
 {
-    m_mPatternGroups[std::string(name)];
+    m_mPatternGroups.erase(group);
 }
 
-void SequenceManager::setPatternGroupName(const char* group, const char* name)
+void SequenceManager::setPatternGroupName(std::string group, std::string name)
 {
-    std::string sGroup(group);
-    std::string sName(name);
-    if(sGroup == sName)
+    if(group == name)
         return; // Same name so do nothing
-    if(m_mPatternGroups.find(sGroup) == m_mPatternGroups.end())
+    if(m_mPatternGroups.find(group) == m_mPatternGroups.end())
         return; // Group does not exist
-    if(m_mPatternGroups.find(sName) != m_mPatternGroups.end())
+    if(m_mPatternGroups.find(name) != m_mPatternGroups.end())
         return; // Group with new name alreadly exist
 
-    for(auto it = m_mPatternGroups[sGroup].begin(); it!= m_mPatternGroups[sGroup].end(); ++it)
-        m_mPatternGroups[sName].push_back(*it);
-    m_mPatternGroups.erase(sGroup);
+    for(auto it = m_mPatternGroups[group].begin(); it!= m_mPatternGroups[group].end(); ++it)
+        m_mPatternGroups[name].push_back(*it);
+    m_mPatternGroups.erase(group);
 }
 
-bool SequenceManager::addPatternToGroup(uint32_t pattern, const char* group)
+bool SequenceManager::addPatternToGroup(uint32_t pattern, std::string group)
 {
-    std::string sGroup(group);
-    if(m_mPatternGroups.find(sGroup) == m_mPatternGroups.end())
+    if(m_mPatternGroups.find(group) == m_mPatternGroups.end())
         return false;
     if(m_mPatterns.find(pattern) == m_mPatterns.end())
         return false;
 
     removePatternFromGroup(pattern, group);
-    m_mPatternGroups[sGroup].push_back(pattern);
+    m_mPatternGroups[group].push_back(pattern);
     return true;
 }
 
-void SequenceManager::removePatternFromGroup(uint32_t pattern, const char* group)
+void SequenceManager::removePatternFromGroup(uint32_t pattern, std::string group)
 {
-    std::string sGroup(group);
-    if(m_mPatternGroups.find(sGroup) == m_mPatternGroups.end())
+    if(m_mPatternGroups.find(group) == m_mPatternGroups.end())
         return;
-    for(auto it = m_mPatternGroups[sGroup].begin(); it != m_mPatternGroups[sGroup].end();)
+    for(auto it = m_mPatternGroups[group].begin(); it != m_mPatternGroups[group].end();)
         if(*it == pattern)
-            it = m_mPatternGroups[sGroup].erase(it);
+            it = m_mPatternGroups[group].erase(it);
         else
             ++it;
 }
 
-std::string SequenceManager::getPatternsInGroup(const char* group)
+std::string SequenceManager::getPatternsInGroup(std::string group)
 {
     std::string sPatterns;
-    std::string sGroup(group);
-    if(m_mPatternGroups.find(sGroup) != m_mPatternGroups.end())
-        for(auto it = m_mPatternGroups[sGroup].begin(); it != m_mPatternGroups[sGroup].end(); ++it)
+    if(group == "")
+    {
+        for(auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
+        {
+            if(sPatterns.length())
+                sPatterns += ",";
+            sPatterns += std::to_string(it->first);
+        }
+    }
+    else if(m_mPatternGroups.find(group) != m_mPatternGroups.end())
+        for(auto it = m_mPatternGroups[group].begin(); it != m_mPatternGroups[group].end(); ++it)
         {
             if(sPatterns.length())
                 sPatterns += ",";

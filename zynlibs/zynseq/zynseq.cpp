@@ -69,7 +69,6 @@ uint16_t g_nVerticalZoom = 8; // Quantity of sequences to show in arranger view
 uint16_t g_nHorizontalZoom = 16; // Quantity of beats to show in arranger view
 uint16_t g_nTriggerLearning = 0; // 2 word bank|sequence that is waiting for MIDI to learn trigger (0 if not learning)
 void* g_pMidiLearnObj = NULL; // Object hosting midi learn function
-char g_sName[16]; // Buffer to hold sequence name so that it can be sent back for Python to parse
 
 bool g_bMutex = false; // Mutex lock for access to g_mSchedule
 
@@ -98,6 +97,8 @@ bool g_bMetronome = false; // True to enable metronome
 struct metro_wav_t g_metro_pip;
 struct metro_wav_t g_metro_peep;
 struct metro_wav_t * g_pMetro = &g_metro_pip; // Pointer to the current metronome sound (pip/peep)
+
+std::string g_sTemp;
 
 // ** Internal (non-public) functions  (not delcared in header so need to be in correct order in source file) **
 
@@ -791,6 +792,16 @@ bool load(const char* filename)
                 nBlockSize -= 2;
             }
             nBlockSize -= 12;
+            if(nVersion >=8)
+            {
+                char sName[17];
+                memset(sName, '\0', 17);
+                for(size_t nIndex = 0; nIndex < 16; ++nIndex)
+                    sName[nIndex] = fileRead8(pFile);
+                sName[16] = '\0';
+                nBlockSize -= 16;
+                pPattern->setName(sName);
+            }
             //printf("Pattern:%u Beats:%u StepsPerBeat:%u Scale:%u Tonic:%u\n", nPattern, pPattern->getBeatsInPattern(), pPattern->getStepsPerBeat(), pPattern->getScale(), pPattern->getTonic());
             while(nBlockSize)
             {
@@ -943,6 +954,9 @@ void save(const char* filename)
             nPos += fileWrite8(pPattern->getTonic(), pFile);
             nPos += fileWrite8(pPattern->getRefNote(), pFile);
             nPos += fileWrite8('\0', pFile);
+            std::string sName = pPattern->getName();
+            for(size_t nIndex = 0; nIndex < sName.size(); ++nIndex)
+                nPos += fileWrite8(sName[nIndex], pFile);
             uint32_t nEvent = 0;
             while(StepEvent* pEvent = pPattern->getEventAt(nEvent++))
             {
@@ -1251,7 +1265,8 @@ uint32_t getPatternIndex()
 
 const char* getPatternName(uint32_t pattern)
 {
-    return g_seqMan.getPattern(pattern)->getName().c_str();
+    g_sTemp = g_seqMan.getPattern(pattern)->getName();
+    return g_sTemp.c_str();
 }
 
 void setPatternName(uint32_t pattern, const char* name)
@@ -1259,39 +1274,47 @@ void setPatternName(uint32_t pattern, const char* name)
     g_seqMan.getPattern(pattern)->setName(std::string(name));
 }
 
-uint32_t getPatternCount(const char* group)
+uint32_t getPatternDuration(uint32_t pattern)
 {
-    return g_seqMan.getPatternCount(group);
+    return g_seqMan.getPattern(pattern)->getLength();
 }
 
-uint32_t getPatternGroupCount()
+
+const char* getPatternGroups()
 {
-    return g_seqMan.getPatternGroupCount();
+    g_sTemp = g_seqMan.getPatternGroups();
+    return g_sTemp.c_str();
 }
 
-void addPatternGroup(const char* name)
+void addPatternGroup(const char* group)
 {
-    g_seqMan.addPatternGroup(name);
+    g_seqMan.addPatternGroup(std::string(group));
 }
 
-void setPatternGroupName(const char* group, const char* name)
+void removePatternGroup(const char* group)
 {
-    g_seqMan.setPatternGroupName(group, name);
+    g_seqMan.removePatternGroup(std::string(group));
+}
+
+void renamePatternGroup(const char* group, const char* name)
+{
+    g_seqMan.setPatternGroupName(std::string(group), std::string(name));
 }
 
 bool addPatternToGroup(uint32_t pattern, const char* group)
 {
-    return g_seqMan.addPatternToGroup(pattern, group);
+    return g_seqMan.addPatternToGroup(pattern, std::string(group));
 }
 
 void removePatternFromGroup(uint32_t pattern, const char* group)
 {
-    g_seqMan.removePatternFromGroup(pattern, group);
+    g_seqMan.removePatternFromGroup(pattern, std::string(group));
 }
 
 const char* getPatternsInGroup(const char* group)
 {
-    return g_seqMan.getPatternsInGroup(group).c_str();
+    g_sTemp = g_seqMan.getPatternsInGroup(std::string(group));
+    return g_sTemp.c_str();
 }
 
 uint32_t getSteps()
@@ -1849,8 +1872,8 @@ void setSequenceName(uint8_t bank, uint8_t sequence, const char* name)
 
 const char* getSequenceName(uint8_t bank, uint8_t sequence)
 {
-    strcpy(g_sName, g_seqMan.getSequence(bank, sequence)->getName().c_str());
-    return g_sName;
+    g_sTemp = g_seqMan.getSequence(bank, sequence)->getName();
+    return g_sTemp.c_str();
 }
 
 bool moveSequence(uint8_t bank, uint8_t sequence, uint8_t position)
@@ -1879,12 +1902,24 @@ void updateSequenceInfo()
 
 // ** Track management **
 
-size_t getPatternsInTrack(uint8_t bank, uint8_t sequence, uint32_t track)
+const char* getPatternsInTrack(uint8_t bank, uint8_t sequence, uint32_t track)
 {
+    g_sTemp = "";
     Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
-    if(!pTrack)
-        return 0;
-    return pTrack->getPatterns();
+    if(pTrack)
+    {
+        uint32_t nPos = 0;
+        for(uint16_t nPattern = 0; nPattern < pTrack->getPatterns(); ++nPattern)
+        {
+            nPos = pTrack->getPatternPositionByIndex(nPattern);
+            Pattern* pPattern = pTrack->getPatternByIndex(nPattern);
+            uint32_t nPatternId = g_seqMan.getPatternIndex(pPattern);
+            if(g_sTemp.length())
+                g_sTemp += ",";
+            g_sTemp += std::to_string(nPos) + ":" + std::to_string(nPatternId);
+        }
+    }
+    return g_sTemp.c_str();
 }
 
 void setChannel(uint8_t bank, uint8_t sequence, uint32_t track, uint8_t channel)

@@ -455,18 +455,25 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.zyngui.zynseq.set_play_mode(self.zyngui.zynseq.bank, self.selected_pad, mode)
 
 
-	# Function to show the editor (pattern or arranger based on sequence content)
+	# Function to show the editor (pattern, track or arranger based on sequence content)
 	def show_pattern_editor(self):
 		tracks_in_sequence = self.zyngui.zynseq.libseq.getTracksInSequence(self.zyngui.zynseq.bank, self.selected_pad)
-		patterns_in_track = self.zyngui.zynseq.libseq.getPatternsInTrack(self.zyngui.zynseq.bank, self.selected_pad, 0)
-		pattern = self.zyngui.zynseq.libseq.getPattern(self.zyngui.zynseq.bank, self.selected_pad, 0, 0)
-		if tracks_in_sequence != 1 or patterns_in_track !=1 or pattern == -1:
+		if tracks_in_sequence != 1:
+			# Show arranger
 			self.zyngui.screens["arranger"].sequence = self.selected_pad
 			self.zyngui.toggle_screen("arranger")
 			return True
-		self.zyngui.screens['pattern_editor'].channel = self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.selected_pad, 0)
-		self.zyngui.screens['pattern_editor'].load_pattern(pattern)
-		self.zyngui.show_screen("pattern_editor")
+		patterns_in_track = self.zyngui.zynseq.get_patterns_in_track(self.zyngui.zynseq.bank, self.selected_pad, 0)
+		if patterns_in_track and len(patterns_in_track.split(',')) == 1:
+			# Show pattern editor
+			pattern = self.zyngui.zynseq.libseq.getPattern(self.zyngui.zynseq.bank, self.selected_pad, 0, 0)
+			self.zyngui.screens['pattern_editor'].channel = self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.selected_pad, 0)
+			self.zyngui.screens['pattern_editor'].load_pattern(pattern)
+			self.zyngui.show_screen("pattern_editor")
+			return True
+		# Show track editor
+		self.zyngui.screens["track_editor"].sequence = self.selected_pad
+		self.zyngui.toggle_screen("track_editor")
 		return True
 
 

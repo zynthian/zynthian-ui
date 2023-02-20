@@ -202,13 +202,13 @@ void enableMidiInput(bool enable);
 */
 uint32_t createPattern();
 
-/** @brief  Get quantity of patterns in a track
+/** @brief  Get comma separated list of patterns in a track
 *   @param  bank Index of bank
 *   @param  sequence Index of sequence
 *   @param  track Index of track
-*   @retval uint32_t quantity of patterns in track
+*   @retval const char* CSV list of patterns in track
 */
-uint32_t getPatternsInTrack(uint8_t bank, uint8_t sequence, uint32_t track);
+const char* getPatternsInTrack(uint8_t bank, uint8_t sequence, uint32_t track);
 
 /** @brief  Get index of pattern within a track
 *   @param  bank Index of bank
@@ -247,33 +247,38 @@ uint32_t getPatternIndex();
 const char* getPatternName(uint32_t pattern);
 
 /** @brief  Set pattern name
-*   @param  index Pattern index
+*   @param  pattern Pattern index
 *   @param  const char* Pattern name
 */
-void setPatternName(uint32_t index, const char* name);
+void setPatternName(uint32_t pattern, const char* name);
 
-/** @brief  Get quantity of available patterns
-*   @param  group Group name to filter results (default: all groups)
-*   @retval uint32_t Quantity of available patterns
+/** @brief  Get duration of pattern
+*   @param  pattern Pattern index
+*   @retval uint32_t Duration of pattern in clock cycles
 */
-uint32_t getPatternCount(const char* group=NULL);
+uint32_t getPatternDuration(uint32_t pattern);
 
-/** @brief  Get quantity of pattern groups
-*   @retval uint32_t Quantity of pattern groups
+/** @brief  Get comma separated list of pattern group names
+*   @retval const char* CSV list of pattern groups
 */
-uint32_t getPatternGroupCount();
+const char* getPatternGroups();
 
 /** @brief  Add pattern group
-*   @param  name Group name
+*   @param  group Group name
 *   @note   Next pattern group index is assigned
 */
-void addPatternGroup(const char* name);
+void addPatternGroup(const char* group);
+
+/** @brief  Remove pattern group
+*   @param  group Group name
+*/
+void removePatternGroup(const char* group);
 
 /** @brief  Rename pattern group
 *   @param  group Pattern group name
 *   @param  name New name
 */
-void setPatternGroupName(const char* group, const char* name);
+void renamePatternGroup(const char* group, const char* name);
 
 /** @brief  Add pattern to group
 *   @param  pattern Pattern index
