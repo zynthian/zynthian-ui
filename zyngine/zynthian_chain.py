@@ -337,7 +337,7 @@ class zynthian_chain:
     def is_midi(self):
         """Returns True if chain processes MIDI"""
 
-        return self.midi_thru or len(self.midi_slots) + len(self.synth_slots) > 0
+        return self.midi_thru or len(self.midi_slots) or self.midi_chan is not None
 
     # ---------------------------------------------------------------------------
     # Processor management

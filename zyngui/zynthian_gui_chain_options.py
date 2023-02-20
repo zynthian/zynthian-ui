@@ -83,7 +83,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 		self.list_data.append((None, None, "> Chain"))
 
-		if self.chain.synth_slots or self.chain.midi_thru:
+		if self.chain.is_midi():
 			# Add MIDI-FX options
 			self.list_data.append((self.midifx_add, None, "Add MIDI-FX"))
 
