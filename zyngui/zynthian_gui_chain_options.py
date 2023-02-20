@@ -51,10 +51,6 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data = []
 	
-		if self.chain.is_midi():
-			self.list_data.append((self.chain_note_range, None, "Note Range & Transpose"))
-			self.list_data.append((self.chain_clone, None, "Clone MIDI to..."))
-
 		if self.chain.is_audio():
 			self.list_data.append((self.audio_options, None, "Audio Options..."))
 
@@ -70,6 +66,10 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 				self.list_data.append((self.toggle_recording, None, "■ Stop Audio Recording"))
 			else:
 				self.list_data.append((self.toggle_recording, None, "⬤ Start Audio Recording"))
+
+		if self.chain.is_midi():
+			self.list_data.append((self.chain_note_range, None, "Note Range & Transpose"))
+			self.list_data.append((self.chain_clone, None, "Clone MIDI to..."))
 
 		if self.chain.get_processor_count():
 			#TODO Disable midi learn for some chains???

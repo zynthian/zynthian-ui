@@ -393,17 +393,17 @@ def audio_autoconnect():
 		routes = chain_manager.get_chain_audio_routing(chain_id)
 		if "zynmixer:return" in routes and "zynmixer:send" in routes["zynmixer:return"]:
 			routes["zynmixer:return"].remove("zynmixer:send")
-		for dest in routes:
-			dst_ports = jclient.get_ports(dest, is_input=True, is_audio=True)
-			dest_count = len(dst_ports)
+		for dst in routes:
+			dst_ports = jclient.get_ports(dst, is_input=True, is_audio=True)
+			dst_count = len(dst_ports)
 
-			for src_name in routes[dest]:
+			for src_name in routes[dst]:
 				src_ports = jclient.get_ports(src_name, is_output=True, is_audio=True)
 				source_count = len(src_ports)
-				if source_count and dest_count:
-					for i in range(max(source_count, dest_count)):
+				if source_count and dst_count:
+					for i in range(max(source_count, dst_count)):
 						src = src_ports[min(i, source_count - 1)]
-						dst = dst_ports[min(i, dest_count - 1)]
+						dst = dst_ports[min(i, dst_count - 1)]
 						required_routes[dst.name].add(src.name)
 
 	# Connect metronome to aux

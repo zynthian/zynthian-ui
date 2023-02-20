@@ -112,7 +112,7 @@ class zynthian_processor:
         if not engine and self.jackname:
             return self.jackname
         if self.engine:
-            return self.engine.jackname
+            return self.engine.get_jackname()
         return ''
 
     def set_engine(self, engine):

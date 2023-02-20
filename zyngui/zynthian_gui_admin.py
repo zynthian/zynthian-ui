@@ -34,6 +34,7 @@ from subprocess import check_output, Popen, PIPE, STDOUT
 
 # Zynthian specific modules
 import zynconf
+import zynautoconnect
 from zyncoder.zyncore import get_lib_zyncore
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
@@ -291,7 +292,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				})
 			# Call autoconnect after a little time
 			sleep(0.5)
-			self.zyngui.zynautoconnect_audio()
+			zynautoconnect.request_audio_connect(True)
 
 		except Exception as e:
 			logging.error(e)
@@ -359,7 +360,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			"ZYNTHIAN_MIDI_FILTER_OUTPUT": str(int(zynthian_gui_config.midi_filter_output))
 		})
 
-		self.zyngui.zynautoconnect_midi()
+		zynautoconnect.request_midi_connect(True)
 		self.fill_list()
 
 
@@ -644,7 +645,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		#self.killable_start_command(["mpg123 {}/audio/test.mp3".format(self.data_dir)])
 		self.killable_start_command(["mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -ao jack {}/audio/test.mp3".format(self.data_dir)])
 		sleep(0.5)
-		self.zyngui.zynautoconnect_audio()
+		zynautoconnect.request_audio_connect(True)
 
 
 	def test_midi(self):

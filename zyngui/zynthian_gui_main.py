@@ -101,7 +101,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 
 	def new_special_layer(self, t='S'):
-		self.zyngui.modify_chain({"type": "Special", "midi_thru": False, "audio_thru": False})
+		self.zyngui.modify_chain({"type": "Special", "midi_thru": True, "audio_thru": True})
 
 
 	def snapshots(self, t='S'):

@@ -207,6 +207,10 @@ class zynthian_engine(zynthian_basic_engine):
 		#TODO: OSC, IPC, ...
 
 
+	def get_jackname(self):
+		return self.jackname
+
+
 	def config_remote_display(self):
 		if 'ZYNTHIAN_X11_SSH' in os.environ and 'SSH_CLIENT' in os.environ and 'DISPLAY' in os.environ:
 			return True

@@ -25,7 +25,6 @@
 import os
 import shutil
 import logging
-import subprocess
 import oyaml as yaml
 from time import sleep
 from collections import OrderedDict
@@ -91,6 +90,11 @@ class zynthian_engine_csound(zynthian_engine):
 			self.base_command="csound --nodisplays -+rtaudio=jack -+rtmidi=alsaseq -M14 -o dac"
 
 		self.reset()
+
+
+	def get_jackname(self):
+		return "Csound"
+
 
 	# ---------------------------------------------------------------------------
 	# Layer Management

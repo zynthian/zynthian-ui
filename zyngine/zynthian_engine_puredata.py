@@ -92,6 +92,11 @@ class zynthian_engine_puredata(zynthian_engine):
 
 		self.reset()
 
+
+	def get_jackname(self):
+		return "Pure Data"
+
+
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------

@@ -105,6 +105,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			else:
 				# Adding engine to new chain
 				self.zyngui.modify_chain_status["parallel"] = False
+				if self.zyngui.modify_chain_status["engine"] == "AP":
+					self.zyngui.modify_chain_status["audio_thru"] = False #TODO: Better done with engine flag
 			self.zyngui.modify_chain()
 
 

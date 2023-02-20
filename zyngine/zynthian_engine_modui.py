@@ -92,6 +92,9 @@ class zynthian_engine_modui(zynthian_engine):
 		self.pedal_preset_noun = 'snapshot'
 
 
+	def get_jackname(self):
+		return "mod-host"
+
 	def start(self):
 		self.ws_bundle_loaded = False
 		if not self.is_service_active("mod-ui"):
