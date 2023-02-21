@@ -94,7 +94,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			self.list_data.append((self.audiofx_add, None, "Add Audio-FX"))
 
 		if self.chain_id != "main":
-			if self.chain.get_processor_count("MIDI Tool") + self.chain.get_processor_count("Audio Effect") == 0:
+			if self.chain.get_processor_count("Synth") * self.chain.get_processor_count("MIDI Tool") + self.chain.get_processor_count("Audio Effect") == 0:
 				self.list_data.append((self.remove_chain, None, "Remove Chain"))
 			else:
 				self.list_data.append((self.remove_cb, None, "Remove..."))
