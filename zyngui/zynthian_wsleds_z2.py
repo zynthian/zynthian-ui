@@ -61,35 +61,32 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 		else:
 			self.wsleds.setPixelColor(0, self.wscolor_light)
 
-		# Active Layer
-		# => Light non-empty layers
-		n = self.zyngui.screens['layer'].get_num_root_layers()
-		main_fxchain = self.zyngui.screens['layer'].get_main_fxchain_root_layer()
-		if main_fxchain:
-			n -= 1
+		# Active Chain
+		# => Light non-empty chains
+		chain_ids = self.zyngui.chain_manager.chain_ids_ordered
 		for i in range(6):
-			if i < n:
-				self.wsleds.setPixelColor(1 + i, self.wscolor_light)
+			if i < len(chain_ids):
+				if chain_ids[i] == self.zyngui.chain_manager.active_chain_id:
+					if self.zyngui.current_screen == "control":
+						self.wsleds.setPixelColor(1 + i, self.wscolor_active)
+					else:
+						self.blink(1 + i, self.wscolor_active)
+				else:
+					self.wsleds.setPixelColor(1 + i, self.wscolor_light)
 			else:
 				self.wsleds.setPixelColor(1 + i, self.wscolor_off)
-		# => Light FX layer if not empty
-		if main_fxchain:
+		# => Light active chain
+		if self.zyngui.chain_manager.get_processor_count("main"):
 			self.wsleds.setPixelColor(7, self.wscolor_light)
 		else:
 			self.wsleds.setPixelColor(7, self.wscolor_off)
-		# => Light active layer
-		i = self.zyngui.screens['layer'].get_root_layer_index()
-		if i is not None:
-			if main_fxchain and i == n:
-				if curscreen == "control":
+		# => Light active chain
+		if self.zyngui.chain_manager.active_chain_id is not None:
+			if self.zyngui.chain_manager.active_chain_id == "main":
+				if self.zyngui.current_screen == "control":
 					self.wsleds.setPixelColor(7, self.wscolor_active)
 				else:
 					self.blink(7, self.wscolor_active)
-			elif i < 6:
-				if curscreen == "control":
-					self.wsleds.setPixelColor(1 + i, self.wscolor_active)
-				else:
-					self.blink(1 + i, self.wscolor_active)
 
 		# Stepseq screen:
 		if curscreen == "zynpad":
@@ -122,7 +119,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 			self.wsleds.setPixelColor(12, self.wscolor_light)
 
 		# Light ALT button => MIDI LEARN!
-		if self.zyngui.midi_learn_zctrl or curscreen == "zs3_learn":
+		if self.zyngui.state_manager.midi_learn_zctrl or curscreen == "zs3_learn":
 			self.wsleds.setPixelColor(13, self.wscolor_yellow)
 		elif self.zyngui.midi_learn_mode:
 			self.wsleds.setPixelColor(13, self.wscolor_active)
@@ -130,7 +127,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 			self.wsleds.setPixelColor(13, self.wscolor_light)
 
 		# REC/PLAY Audio buttons:
-		if 'audio_recorder' in self.zyngui.status_info:
+		if 'audio_recorder' in self.zyngui.state_manager.status_info:
 			self.wsleds.setPixelColor(14, self.wscolor_red)
 		else:
 			self.wsleds.setPixelColor(14, self.wscolor_light)
@@ -145,19 +142,19 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 				self.wsleds.setPixelColor(15, self.wscolor_red)
 			elif pb_status == zynseq.SEQ_STOPPED:
 				self.wsleds.setPixelColor(15, self.wscolor_light)
-		elif 'audio_player' in self.zyngui.status_info:
+		elif 'audio_player' in self.zyngui.state_manager.status_info:
 			self.wsleds.setPixelColor(15, self.wscolor_active)
 		else:
 			self.wsleds.setPixelColor(15, self.wscolor_light)
 
 		# REC/PLAY MIDI buttons:
-		if self.zyngui.status_info['midi_recorder']:
-			if "REC" in self.zyngui.status_info['midi_recorder']:
+		if self.zyngui.state_manager.status_info['midi_recorder']:
+			if "REC" in self.zyngui.state_manager.status_info['midi_recorder']:
 				self.wsleds.setPixelColor(16, self.wscolor_red)
 			else:
 				self.wsleds.setPixelColor(16, self.wscolor_light)
 
-			if "PLAY" in self.zyngui.status_info['midi_recorder']:
+			if "PLAY" in self.zyngui.state_manager.status_info['midi_recorder']:
 				self.wsleds.setPixelColor(17, self.wscolor_active)
 			else:
 				self.wsleds.setPixelColor(17, self.wscolor_light)

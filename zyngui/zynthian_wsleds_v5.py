@@ -77,7 +77,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 			self.wsleds.setPixelColor(12, self.wscolor_light)
 
 		# Light ALT button => MIDI LEARN!
-		if self.zyngui.midi_learn_zctrl or curscreen == "zs3_learn":
+		if self.zyngui.state_manager.midi_learn_zctrl or curscreen == "zs3_learn":
 			self.wsleds.setPixelColor(13, self.wscolor_yellow)
 		elif self.zyngui.midi_learn_mode:
 			self.wsleds.setPixelColor(13, self.wscolor_active)
@@ -91,7 +91,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 			self.wsleds.setPixelColor(10, self.wscolor_light)
 
 		# REC/PLAY Audio buttons:
-		if 'audio_recorder' in self.zyngui.status_info:
+		if 'audio_recorder' in self.zyngui.state_manager.status_info:
 			self.wsleds.setPixelColor(14, self.wscolor_red)
 		else:
 			self.wsleds.setPixelColor(14, self.wscolor_light)
@@ -106,19 +106,19 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 				self.wsleds.setPixelColor(15, self.wscolor_red)
 			elif pb_status == zynseq.SEQ_STOPPED:
 				self.wsleds.setPixelColor(15, self.wscolor_light)
-		elif 'audio_player' in self.zyngui.status_info:
+		elif 'audio_player' in self.zyngui.state_manager.status_info:
 			self.wsleds.setPixelColor(15, self.wscolor_active)
 		else:
 			self.wsleds.setPixelColor(15, self.wscolor_light)
 
 		# REC/PLAY MIDI buttons:
-		if self.zyngui.status_info['midi_recorder']:
-			if "REC" in self.zyngui.status_info['midi_recorder']:
+		if self.zyngui.state_manager.status_info['midi_recorder']:
+			if "REC" in self.zyngui.state_manager.status_info['midi_recorder']:
 				self.wsleds.setPixelColor(16, self.wscolor_red)
 			else:
 				self.wsleds.setPixelColor(16, self.wscolor_light)
 
-			if "PLAY" in self.zyngui.status_info['midi_recorder']:
+			if "PLAY" in self.zyngui.state_manager.status_info['midi_recorder']:
 				self.wsleds.setPixelColor(17, self.wscolor_active)
 			else:
 				self.wsleds.setPixelColor(17, self.wscolor_light)
