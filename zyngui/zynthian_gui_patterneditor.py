@@ -341,7 +341,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			else:
 				self.zynseq.libseq.setInputRest(zctrl.value - 1)
 		elif zctrl.symbol == 'in_chan':
-			self.zynseq.libseq.setInputChannel(zctrl.value - 1)
+			self.zynseq.libseq.setInputChannel(zctrl.value)
 
 
 	# Function to transpose pattern
