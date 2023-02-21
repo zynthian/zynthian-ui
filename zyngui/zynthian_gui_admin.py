@@ -334,10 +334,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def toggle_snapshot_mixer_settings(self):
 		if zynthian_gui_config.snapshot_mixer_settings:
 			logging.info("Mixer Settings on Snapshots OFF")
-			zynthian_gui_config.snapshot_mixer_settings=False
+			zynthian_gui_config.snapshot_mixer_settings = False
 		else:
 			logging.info("Mixer Settings on Snapshots ON")
-			zynthian_gui_config.snapshot_mixer_settings=True
+			zynthian_gui_config.snapshot_mixer_settings = True
 
 		# Update Config
 		zynconf.save_config({ 
@@ -350,10 +350,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def toggle_midi_filter_output(self):
 		if zynthian_gui_config.midi_filter_output:
 			logging.info("MIDI Filter Output OFF")
-			zynthian_gui_config.midi_filter_output=False
+			zynthian_gui_config.midi_filter_output = False
 		else:
 			logging.info("MIDI Filter Output ON")
-			zynthian_gui_config.midi_filter_output=True
+			zynthian_gui_config.midi_filter_output = True
 
 		# Update MIDI profile
 		zynconf.update_midi_profile({ 
@@ -367,10 +367,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def toggle_midi_sys(self):
 		if zynthian_gui_config.midi_sys_enabled:
 			logging.info("MIDI System Messages OFF")
-			zynthian_gui_config.midi_sys_enabled=False
+			zynthian_gui_config.midi_sys_enabled = False
 		else:
 			logging.info("MIDI System Messages ON")
-			zynthian_gui_config.midi_sys_enabled=True
+			zynthian_gui_config.midi_sys_enabled = True
 
 		# Update MIDI profile
 		zynconf.update_midi_profile({ 
@@ -384,10 +384,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def toggle_single_channel(self):
 		if zynthian_gui_config.midi_single_active_channel:
 			logging.info("Single Channel Mode OFF")
-			zynthian_gui_config.midi_single_active_channel=False
+			zynthian_gui_config.midi_single_active_channel = False
 		else:
 			logging.info("Single Channel Mode ON")
-			zynthian_gui_config.midi_single_active_channel=True
+			zynthian_gui_config.midi_single_active_channel = True
 
 		self.zyngui.chain_manager.set_active_chain_by_id()
 
@@ -403,10 +403,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def toggle_prog_change_zs3(self):
 		if zynthian_gui_config.midi_prog_change_zs3:
 			logging.info("ZS3 Program Change OFF")
-			zynthian_gui_config.midi_prog_change_zs3=False
+			zynthian_gui_config.midi_prog_change_zs3 = False
 		else:
 			logging.info("ZS3 Program Change ON")
-			zynthian_gui_config.midi_prog_change_zs3=True
+			zynthian_gui_config.midi_prog_change_zs3 = True
 
 		# Save config
 		zynconf.update_midi_profile({ 
@@ -419,10 +419,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def toggle_bank_change(self):
 		if zynthian_gui_config.midi_bank_change:
 			logging.info("MIDI Bank Change OFF")
-			zynthian_gui_config.midi_bank_change=False
+			zynthian_gui_config.midi_bank_change = False
 		else:
 			logging.info("MIDI Bank Change ON")
-			zynthian_gui_config.midi_bank_change=True
+			zynthian_gui_config.midi_bank_change = True
 
 		# Save config
 		zynconf.update_midi_profile({ 
@@ -435,10 +435,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def toggle_preset_preload_noteon(self):
 		if zynthian_gui_config.preset_preload_noteon:
 			logging.info("Preset Preload OFF")
-			zynthian_gui_config.preset_preload_noteon=False
+			zynthian_gui_config.preset_preload_noteon = False
 		else:
 			logging.info("Preset Preload ON")
-			zynthian_gui_config.preset_preload_noteon=True
+			zynthian_gui_config.preset_preload_noteon = True
 
 		# Save config
 		zynconf.update_midi_profile({ 

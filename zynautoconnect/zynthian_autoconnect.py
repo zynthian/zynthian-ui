@@ -315,30 +315,18 @@ def midi_autoconnect():
 			except:
 				pass
 
-	if zynthian_gui_config.midi_filter_output:
-		# Add MIDI OUT
-		for port in enabled_hw_dst_ports:
-			# Connect ZynMidiRouter:midi_out to...
-			required_routes[port.name].add("ZynMidiRouter:midi_out")
-		# ...enabled Network MIDI Output Ports
-		for port in enabled_nw_dst_ports:
-			# Connect ZynMidiRouter:net_out to...
-			required_routes[port.name].add("ZynMidiRouter:net_out")
-	# When "Send All MIDI to Output" is disabled, zynseq & zynsmf are routed directly
-	else:
-		# When midi_out is disabled need to route zynseq & zynsmf directly (not via ZynMidiRouter)
-		for port in enabled_hw_dst_ports:
-			# Connect zynseq (stepseq) output to...
-			required_routes[port.name].add("zynseq:output")
-			# Connect zynsmf output to...
-			required_routes[port.name].add("zynsmf:midi_out")
 
-		# ...enabled Network MIDI Output Ports
-		for port in enabled_nw_dst_ports:
-			# Connect zynseq (stepseq) output to ...
-			required_routes[port.name].add("zynseq:output")
-			# Connect zynsmf output to ...
-			required_routes[port.name].add("zynsmf:midi_out")
+	# Set MIDI THRU ...
+	lib_zyncore.set_midi_thru(zynthian_gui_config.midi_filter_output)
+
+	# Add MIDI OUT
+	for port in enabled_hw_dst_ports:
+		# Connect ZynMidiRouter:midi_out to...
+		required_routes[port.name].add("ZynMidiRouter:midi_out")
+	# Add network MIDI Output Ports
+	for port in enabled_nw_dst_ports:
+		# Connect ZynMidiRouter:net_out to...
+		required_routes[port.name].add("ZynMidiRouter:net_out")
 
 	#Connect ZynMidiRouter:step_out to ZynthStep input
 	required_routes["zynseq:input"].add("ZynMidiRouter:step_out")
