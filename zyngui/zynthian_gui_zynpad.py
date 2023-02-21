@@ -331,7 +331,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		options = OrderedDict()
 		options['Arranger'] = 'Arranger'
 		options['Bank ({})'.format(self.zynseq.bank)] = 'Bank'
-		options['Tempo ({:0.1f})'.format(self.zynseq.libseq.getTempo())] = 'Tempo'
+		if zynthian_gui_config.transport_clock_source == 0:
+			options['Tempo ({:0.1f})'.format(self.zynseq.libseq.getTempo())] = 'Tempo'
 		options['Beats per bar ({})'.format(self.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
 		if self.zynseq.libseq.isMetronomeEnabled():
 			options['[X] Metronome'] = 'Metronome'
@@ -509,7 +510,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				return
 			self.selected_pad = pad
 			self.update_selection_cursor()
-		elif encoder == zynthian_gui_config.ENC_SNAPSHOT:
+		elif encoder == zynthian_gui_config.ENC_SNAPSHOT and zynthian_gui_config.transport_clock_source == 0:
+			self.zynseq.update_tempo()
 			self.zynseq.nudge_tempo(dval)
 			self.set_title("Tempo: {:.1f}".format(self.zynseq.get_tempo()), None, None, 2)
 		elif encoder == zynthian_gui_config.ENC_LAYER:

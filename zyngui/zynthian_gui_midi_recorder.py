@@ -99,7 +99,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def build_view(self):
 		super().build_view()
-		if libsmf.getPlayState():
+		if zynthian_gui_config.transport_clock_source == 0 and libsmf.getPlayState():
 			self.show_playing_bpm()
 
 
@@ -323,7 +323,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.zyngui.state_manager.zynseq.transport_start("zynsmf")
 #			self.zyngui.state_manager.zynseq.libseq.transportLocate(0)
 			self.current_playback_fpath=fpath
-			self.show_playing_bpm()
+			if zynthian_gui_config.transport_clock_source == 0:
+				self.show_playing_bpm()
 			self.smf_timer = Timer(interval = 1, function=self.check_playback)
 			self.smf_timer.start()
 		except Exception as e:
@@ -390,6 +391,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 				column = zynthian_gui_config.layout['ctrl_pos'][bmp_ctrl_index][1],
 				sticky = 'news'
 			)
+		self.zyngui.zynseq.update_tempo()
 
 
 	def hide_playing_bpm(self):

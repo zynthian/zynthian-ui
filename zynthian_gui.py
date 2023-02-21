@@ -427,6 +427,8 @@ class zynthian_gui:
 			if not snapshot_loaded:
 				snapshot_loaded = self.screens['snapshot'].load_default_snapshot()
 
+		self.last_tap = 0
+
 		if snapshot_loaded:
 			init_screen = "audio_mixer"
 		else:
@@ -968,6 +970,31 @@ class zynthian_gui:
 		except (AttributeError, TypeError) as err:
 			pass
 
+	def cuia_tempo_up(self, params):
+		if params:
+			try:
+				self.zynseq.set_tempo(self.zynseq.get_tempo() + params[0])
+			except (AttributeError, TypeError) as err:
+				pass
+		else:
+			self.zynseq.set_tempo(self.zynseq.get_tempo() + 1)
+
+	def cuia_tempo_down(self, params):
+		if params:
+			try:
+				self.zynseq.set_tempo(self.zynseq.get_tempo() - params[0])
+			except (AttributeError, TypeError) as err:
+				pass
+		else:
+			self.zynseq.set_tempo(self.zynseq.get_tempo() - 1)
+
+	def cuia_tap_tempo(self, params):
+		now = monotonic()
+		tap_dur = now - self.last_tap
+		if tap_dur > 0.14285 and tap_dur <= 3:
+			self.zynseq.set_tempo(60 / tap_dur)
+		self.last_tap = now
+
 	# Basic UI-Control CUIAs
 	# 4 x Arrows
 	def cuia_arrow_up(self, params):
@@ -1339,6 +1366,103 @@ class zynthian_gui:
 		except (AttributeError, TypeError) as err:
 			pass
 
+	def cuia_preset(self, params):
+		self.cuia_bank_preset(params)
+
+	def cuia_preset_fav(self, params):
+		self.show_favorites()
+
+	def cuia_zctrl_touch(self, params):
+		if params:
+			self.screens['control'].midi_learn_zctrl(params[0])
+
+	def cuia_enter_midi_learn(self, params):
+		self.enter_midi_learn()
+
+	def cuia_exit_midi_learn(self, params):
+		self.exit_midi_learn()
+
+	def cuia_toggle_midi_learn(self, params):
+		self.toggle_midi_learn()
+
+	def cuia_action_midi_unlearn(self, params):
+		try:
+			self.screens[self.current_screen].midi_unlearn_action()
+		except (AttributeError, TypeError) as err:
+			pass
+
+	# Unlearn from currently selected (learning) control
+	def cuia_midi_unlearn_control(self, params):
+		if self.midi_learn_zctrl:
+			self.midi_learn_zctrl.midi_unlearn()
+
+	# Unlearn all mixer controls
+	def cuia_midi_unlearn_mixer(self, params):
+		try:
+			self.screens['audio_mixer'].midi_unlearn_all()
+		except (AttributeError, TypeError) as err:
+			logging.error(err)
+
+	def cuia_midi_unlearn_node(self, params):
+		try:
+			self.screens['control'].screen_layer.midi_unlearn()
+		except (AttributeError, TypeError) as err:
+			logging.error(err)
+
+	def cuia_midi_unlearn_chain(self, params):
+		try:
+			self.screens['layer'].midi_unlearn()
+		except (AttributeError, TypeError) as err:
+			logging.error(err)
+
+	# MIDI CUIAs
+	def cuia_program_change(self, params):
+		if len(params) > 0:
+			pgm = int(params[0])
+			if len(params) > 1:
+				chan = int(params[1])
+			else:
+				chan = get_lib_zyncore().get_midi_active_chan()
+			if chan >= 0 and chan < 16 and pgm >= 0 and pgm < 128:
+				get_lib_zyncore().write_zynmidi_program_change(chan, pgm)
+
+	# Common methods to control views derived from zynthian_gui_base
+	def cuia_show_topbar(self, params):
+		try:
+			self.screens[self.current_screen].show_topbar(True)
+		except (AttributeError, TypeError) as err:
+			pass
+
+	def cuia_hide_topbar(self, params):
+		try:
+			self.screens[self.current_screen].show_topbar(False)
+		except (AttributeError, TypeError) as err:
+			pass
+
+	def cuia_show_buttonbar(self, params):
+		try:
+			self.screens[self.current_screen].show_buttonbar(True)
+		except (AttributeError, TypeError) as err:
+			pass
+
+	def cuia_hide_buttonbar(self, params):
+		try:
+			self.screens[self.current_screen].show_buttonbar(False)
+		except (AttributeError, TypeError) as err:
+			pass
+
+	def cuia_show_sidebar(self, params):
+		try:
+			self.screens[self.current_screen].show_sidebar(True)
+		except (AttributeError, TypeError) as err:
+			pass
+
+	def cuia_hide_sidebar(self, params):
+		try:
+			self.screens[self.current_screen].show_sidebar(False)
+		except (AttributeError, TypeError) as err:
+			pass
+
 	def refresh_signal(self, sname):
 		try:
 			self.screens[self.current_screen].refresh_signal(sname)
@@ -1606,31 +1730,17 @@ class zynthian_gui:
 					break
 
 				#logging.info("MIDI_UI MESSAGE: {}".format(hex(ev)))
-
-				if (ev & 0xFF0000) == 0xF80000:
-					self.state_manager.status_info['midi_clock'] = True
-				else:
-					self.state_manager.status_info['midi'] = True
-					self.last_event_flag = True
-
 				evtype = (ev & 0xF00000) >> 20
 				chan = (ev & 0x0F0000) >> 16
 				#logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))
 
-				# System Messages
-				if zynthian_gui_config.midi_sys_enabled and evtype == 0xF:
-					# Song Position Pointer...
-					if chan == 0x1:
-						timecode = (ev & 0xFF) >> 8;
-					elif chan == 0x2:
-						pos = ev & 0xFFFF;
-					# Song Select...
-					elif chan == 0x3:
-						song_number = (ev & 0xFF) >> 8;
-					# Timeclock
-					elif chan == 0x8:
-						pass
-					# MIDI tick
+				# System Messages (Common & RT)
+				if evtype == 0xF:
+					# Clock
+					if chan == 0x8:
+						self.state_manager.status_info['midi_clock'] = True
+						continue
+					# Tick
 					elif chan == 0x9:
 						continue
 					# Active Sense
@@ -1691,6 +1801,7 @@ class zynthian_gui:
 					# Stop logo animation
 					self.stop_loading()
 
+
 				# Control Change ...
 				elif evtype == 0xB:
 					self.screens['midi_chan'].midi_chan_activity(chan)
@@ -1702,10 +1813,10 @@ class zynthian_gui:
 						if self.state_manager.midi_learn_zctrl:
 							self.state_manager.midi_learn_zctrl.cb_midi_learn(chan, ccnum)
 							self.show_current_screen()
-						# Try layer's zctrls
+						# Try chains's zctrls
 						else:
-							self.screens['layer'].midi_control_change(chan, ccnum, ccval)
-							self.zynmixer.midi_control_change(chan, ccnum, ccval)
+							self.chain_manager.midi_control_change(chan, ccnum, ccval)
+							self.state_manager.zynmixer.midi_control_change(chan, ccnum, ccval)
 					# Special CCs >= Channel Mode
 					elif ccnum == 120:
 						self.all_sounds_off_chan(chan)
@@ -1741,27 +1852,6 @@ class zynthian_gui:
 
 						#if self.get_current_processor() and chan == self.get_current_processor().get_midi_chan():
 						#	self.show_screen('control')
-
-				# Control Change ...
-				elif evtype == 0xB:
-					self.screens['midi_chan'].midi_chan_activity(chan)
-					ccnum = (ev & 0x7F00) >> 8
-					ccval = (ev & 0x007F)
-					#logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan,ccnum,ccval))
-					if ccnum < 120:
-						# If MIDI learn pending ...
-						if self.state_manager.midi_learn_zctrl:
-							self.state_manager.midi_learn_zctrl.cb_midi_learn(chan, ccnum)
-							self.show_current_screen()
-						# Try chains's zctrls
-						else:
-							self.chain_manager.midi_control_change(chan, ccnum, ccval)
-							self.state_manager.zynmixer.midi_control_change(chan, ccnum, ccval)
-					# Special CCs >= Channel Mode
-					elif ccnum == 120:
-						self.all_sounds_off_chan(chan)
-					elif ccnum == 123:
-						self.all_notes_off_chan(chan)
 
 				# Note-On ...
 				elif evtype == 0x9:
@@ -2225,7 +2315,8 @@ def exit_handler(signo, stack_frame):
 		exit_code = 102
 	elif signo == signal.SIGTERM:
 		exit_code = 101
-
+	else:
+		exit_code = 0
 	zyngui.exit(exit_code)
 
 

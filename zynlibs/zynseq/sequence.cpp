@@ -44,7 +44,7 @@ bool Sequence::removeTrack(size_t track)
     return true;
 }
 
-size_t Sequence::getTracks()
+uint32_t Sequence::getTracks()
 {
     return m_vTracks.size();
 }
