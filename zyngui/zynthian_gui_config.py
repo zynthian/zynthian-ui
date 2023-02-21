@@ -268,6 +268,7 @@ def set_midi_config():
 	global master_midi_bank_change_up, master_midi_bank_change_down
 	global master_midi_bank_change_down_ccnum, master_midi_bank_base
 	global disabled_midi_in_ports, enabled_midi_out_ports, enabled_midi_fb_ports
+	global transport_clock_source
 
 	# MIDI options
 	midi_fine_tuning=float(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING',440.0))
@@ -282,6 +283,7 @@ def set_midi_config():
 	midi_rtpmidi_enabled=int(os.environ.get('ZYNTHIAN_MIDI_RTPMIDI_ENABLED',0))
 	midi_touchosc_enabled=int(os.environ.get('ZYNTHIAN_MIDI_TOUCHOSC_ENABLED',0))
 	midi_aubionotes_enabled=int(os.environ.get('ZYNTHIAN_MIDI_AUBIONOTES_ENABLED',0))
+	transport_clock_source=int(os.environ.get('ZYNTHIAN_TRANSPORT_CLOCK_SOURCE',0))
 
 	# Filter Rules
 	midi_filter_rules=os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES',"")

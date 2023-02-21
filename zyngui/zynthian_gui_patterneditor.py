@@ -34,8 +34,6 @@ from xml.dom import minidom
 from datetime import datetime
 from math import ceil
 from collections import OrderedDict
-from threading import Timer
-from PIL import Image, ImageTk
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -232,7 +230,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def show_menu(self):
 		self.disable_param_editor()
 		options = OrderedDict()
-		options['Tempo ({:0.1f})'.format(self.zyngui.zynseq.libseq.getTempo())] = 'Tempo'
+		if zynthian_gui_config.transport_clock_source == 0:
+			options['Tempo ({:0.1f})'.format(self.zyngui.zynseq.libseq.getTempo())] = 'Tempo'
 		options['Beats per bar ({})'.format(self.zyngui.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
 		if self.zyngui.zynseq.libseq.isMetronomeEnabled():
 			options['[X] Metronome'] = 'Metronome'
@@ -1021,11 +1020,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	#   index: Pattern index
 	def load_pattern(self, index):
 		steps = self.zyngui.zynseq.libseq.getSteps()
-		self.zyngui.zynseq.libseq.clearSequence(self.bank, self.sequence)
 		self.zyngui.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
 		self.pattern = index
 		self.zyngui.zynseq.libseq.selectPattern(index)
-		self.zyngui.zynseq.libseq.addPattern(self.bank, self.sequence, 0, 0, index)
 		if self.selected_cell[0] >= self.zyngui.zynseq.libseq.getSteps():
 			self.selected_cell[0] = int(self.zyngui.zynseq.libseq.getSteps()) - 1
 		self.keymap_offset = self.zyngui.zynseq.libseq.getRefNote()
@@ -1197,9 +1194,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				self.select_cell(self.selected_cell[0] + dval, None)
 
 		elif i == zynthian_gui_config.ENC_SNAPSHOT:
-			self.zyngui.zynseq.nudge_tempo(dval)
-			self.set_title("Tempo: {:.1f}".format(self.zyngui.zynseq.get_tempo()), None, None, 2)
-
+			if zynthian_gui_config.transport_clock_source == 0:
+				self.zyngui.zynseq.update_tempo()
+				self.zyngui.zynseq.nudge_tempo(dval)
+				self.set_title("Tempo: {:.1f}".format(self.zyngui.zynseq.get_tempo()), None, None, 2)
 
 	# Function to handle SELECT button press
 	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
