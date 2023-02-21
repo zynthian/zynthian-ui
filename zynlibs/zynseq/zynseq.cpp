@@ -37,7 +37,7 @@
 
 #include "metronome.h" // metronome wav data
 
-#define FILE_VERSION 7
+#define FILE_VERSION 8
 
 #define DPRINTF(fmt, args...) if(g_bDebug) fprintf(stderr, fmt, ## args)
 
@@ -803,11 +803,19 @@ bool load(const char* filename)
                 uint8_t nValue2start = fileRead8(pFile);
                 uint8_t nValue1end = fileRead8(pFile);
                 uint8_t nValue2end = fileRead8(pFile);
-                fileRead8(pFile); // Padding
                 StepEvent* pEvent = pPattern->addEvent(nStep, nCommand, nValue1start, nValue2start, fDuration);
                 pEvent->setValue1end(nValue1end);
                 pEvent->setValue2end(nValue2end);
                 nBlockSize -= 14;
+                if(nVersion > 7)
+                {
+                    uint8_t nStutterCount = fileRead8(pFile);
+                    uint8_t nStutterDur = fileRead8(pFile);
+                    pEvent->setStutterCount(nStutterCount);
+                    pEvent->setStutterDur(nStutterDur);
+                    nBlockSize -= 2;
+                }
+                fileRead8(pFile); // Padding
                 //printf(" Step:%u Duration:%u Command:%02X, Value1:%u..%u, Value2:%u..%u\n", nTime, nDuration, nCommand, nValue1start, nValue2end, nValue2start, nValue2end);
             }
         }
@@ -957,6 +965,8 @@ void save(const char* filename)
                 nPos += fileWrite8(pEvent->getValue2start(), pFile);
                 nPos += fileWrite8(pEvent->getValue1end(), pFile);
                 nPos += fileWrite8(pEvent->getValue2end(), pFile);
+                nPos += fileWrite8(pEvent->getStutterCount(), pFile);
+                nPos += fileWrite8(pEvent->getStutterDur(), pFile);
                 nPos += fileWrite8('\0', pFile); // Pad to even block (could do at end but simplest here)
             }
             nBlockSize = nPos - nStartOfBlock;
@@ -1349,6 +1359,38 @@ void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity)
     g_bDirty = true;
 }
 
+uint8_t getStutterCount(uint32_t step, uint8_t note)
+{
+    if(!g_seqMan.getPattern(g_nPattern))
+        return 0;
+    return g_seqMan.getPattern(g_nPattern)->getStutterCount(step, note);
+}
+
+void setStutterCount(uint32_t step, uint8_t note, uint8_t count)
+{
+    if(!g_seqMan.getPattern(g_nPattern))
+        return;
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    g_seqMan.getPattern(g_nPattern)->setStutterCount(step, note, count);
+    g_bDirty = true;
+}
+
+uint8_t getStutterDur(uint32_t step, uint8_t note)
+{
+    if(g_seqMan.getPattern(g_nPattern))
+        return g_seqMan.getPattern(g_nPattern)->getStutterDur(step, note);
+    return 0;
+}
+
+void setStutterDur(uint32_t step, uint8_t note, uint8_t dur)
+{
+    if(!g_seqMan.getPattern(g_nPattern))
+        return;
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    g_seqMan.getPattern(g_nPattern)->setStutterDur(step, note, dur);
+    g_bDirty = true;
+}
+
 float getNoteDuration(uint32_t step, uint8_t note)
 {
     if(g_seqMan.getPattern(g_nPattern))
@@ -1412,6 +1454,23 @@ void changeDurationAll(float value)
     g_bDirty = true;
 }
 
+void changeStutterCountAll(int value)
+{
+    if(!g_seqMan.getPattern(g_nPattern))
+        return;
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    g_seqMan.getPattern(g_nPattern)->changeStutterCountAll(value);
+    g_bDirty = true;
+}
+
+void changeStutterDurAll(int value)
+{
+    if(!g_seqMan.getPattern(g_nPattern))
+        return;
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    g_seqMan.getPattern(g_nPattern)->changeStutterDurAll(value);
+    g_bDirty = true;
+}
 
 void clear()
 {
@@ -1694,7 +1753,7 @@ void setSequencesInBank(uint8_t bank, uint8_t sequences)
     g_pSequence = g_seqMan.getSequence(0, 0);
 }
 
-size_t getSequencesInBank(uint32_t bank)
+uint32_t getSequencesInBank(uint32_t bank)
 {
     return g_seqMan.getSequencesInBank(bank);
 }
@@ -1834,7 +1893,7 @@ void updateSequenceInfo()
 
 // ** Track management **
 
-size_t getPatternsInTrack(uint8_t bank, uint8_t sequence, uint32_t track)
+uint32_t getPatternsInTrack(uint8_t bank, uint8_t sequence, uint32_t track)
 {
     Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
     if(!pTrack)
