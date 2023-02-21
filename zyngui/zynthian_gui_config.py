@@ -498,7 +498,7 @@ if "zynthian_gui.py" in sys.argv[0]:
 				display_height = 240
 
 		# Global font size
-		font_size = int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',None))
+		font_size = int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE', None))
 		if not font_size:
 			font_size = int(display_width / 40)
 
@@ -521,13 +521,14 @@ if "zynthian_gui.py" in sys.argv[0]:
 				'columns': 2,
 				'rows': 4,
 				'ctrl_pos': [
-					(0,1),
-					(1,1),
-					(2,1),
-					(3,1)
+					(0, 1),
+					(1, 1),
+					(2, 1),
+					(3, 1)
 				],
-				'list_pos': (0,0),
-				'ctrl_orientation': 'horizontal'
+				'list_pos': (0, 0),
+				'ctrl_orientation': 'horizontal',
+				'ctrl_order': (0, 1, 2, 3)
 			}
 		else:
 			layout = {
@@ -535,13 +536,14 @@ if "zynthian_gui.py" in sys.argv[0]:
 				'columns': 3,
 				'rows': 2,
 				'ctrl_pos': [
-					(0,0),
-					(1,0),
-					(0,2),
-					(1,2)
+					(0, 0),
+					(1, 0),
+					(0, 2),
+					(1, 2)
 				],
-				'list_pos': (0,1),
-				'ctrl_orientation': 'vertical'
+				'list_pos': (0, 1),
+				'ctrl_orientation': 'vertical',
+				'ctrl_order': (0, 2, 1, 3)
 			}
 
 		# Adjust Root Window Geometry
@@ -550,7 +552,7 @@ if "zynthian_gui.py" in sys.argv[0]:
 		top.minsize(display_width, display_height)
 
 		# Disable cursor for real Zynthian Boxes
-		if wiring_layout!="EMULATOR" and wiring_layout!="DUMMIES" and not force_enable_cursor:
+		if wiring_layout != "EMULATOR" and wiring_layout != "DUMMIES" and not force_enable_cursor:
 			top.config(cursor="none")
 		else:
 			top.config(cursor="cross")
