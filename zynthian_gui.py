@@ -951,48 +951,48 @@ class zynthian_gui:
 
 	def cuia_start_step_seq(self, params):
 		#TODO Implement this correctly or remove CUIA
-		#self.zynseq.start_transport()
+		#self.state_manager.zynseq.start_transport()
 		pass
 
 	def cuia_stop_step_seq(self, params):
 		#TODO Implement this correctly or remove CUIA
-		#self.zynseq.stop_transport()
+		#self.state_manager.zynseq.stop_transport()
 		pass
 
 	def cuia_toggle_step_seq(self, params):
 		#TODO Implement this correctly or remove CUIA
-		#self.zynseq.toggle_transport()
+		#self.state_manager.zynseq.toggle_transport()
 		pass
 
 	def cuia_tempo(self, params):
 		try:
-			self.zynseq.set_tempo(params[0])
+			self.state_manager.zynseq.set_tempo(params[0])
 		except (AttributeError, TypeError) as err:
 			pass
 
 	def cuia_tempo_up(self, params):
 		if params:
 			try:
-				self.zynseq.set_tempo(self.zynseq.get_tempo() + params[0])
+				self.state_manager.zynseq.set_tempo(self.state_manager.zynseq.get_tempo() + params[0])
 			except (AttributeError, TypeError) as err:
 				pass
 		else:
-			self.zynseq.set_tempo(self.zynseq.get_tempo() + 1)
+			self.state_manager.zynseq.set_tempo(self.state_manager.zynseq.get_tempo() + 1)
 
 	def cuia_tempo_down(self, params):
 		if params:
 			try:
-				self.zynseq.set_tempo(self.zynseq.get_tempo() - params[0])
+				self.state_manager.zynseq.set_tempo(self.state_manager.zynseq.get_tempo() - params[0])
 			except (AttributeError, TypeError) as err:
 				pass
 		else:
-			self.zynseq.set_tempo(self.zynseq.get_tempo() - 1)
+			self.state_manager.zynseq.set_tempo(self.state_manager.zynseq.get_tempo() - 1)
 
 	def cuia_tap_tempo(self, params):
 		now = monotonic()
 		tap_dur = now - self.last_tap
 		if tap_dur > 0.14285 and tap_dur <= 3:
-			self.zynseq.set_tempo(60 / tap_dur)
+			self.state_manager.zynseq.set_tempo(60 / tap_dur)
 		self.last_tap = now
 
 	# Basic UI-Control CUIAs
