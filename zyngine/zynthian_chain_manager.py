@@ -33,7 +33,7 @@ from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_engine_jalv import *
 from zyngine.zynthian_chain import *
 from zyngui import zynthian_gui_config #TODO: Factor out UI
-
+import zynautoconnect
 
 # ----------------------------------------------------------------------------
 # Zynthian Chain Manager Class
@@ -146,7 +146,8 @@ class zynthian_chain_manager():
                 chain.set_mixer_chan(self.get_next_free_mixer_chan())
         self.set_active_chain_by_id(chain_id)
         self.update_chain_ids_ordered()
-        self.state_manager.autoconnect(True)
+        zynautoconnect.request_audio_connect(True)
+        zynautoconnect.request_midi_connect(True)
         return chain_id
 
     def remove_chain(self, chain_id, stop_engines=True):
@@ -190,7 +191,8 @@ class zynthian_chain_manager():
         if stop_engines:
             self.stop_unused_engines()
         self.update_chain_ids_ordered()
-        self.state_manager.autoconnect(True)
+        zynautoconnect.request_audio_connect(True)
+        zynautoconnect.request_midi_connect(True)
         if self.active_chain_id not in self.chains:
             self.next_chain()
         return True
@@ -526,7 +528,8 @@ class zynthian_chain_manager():
             engine = self.start_engine(processor, type)
             if engine:
                 chain.rebuild_graph()
-                self.state_manager.autoconnect(True)
+                zynautoconnect.request_audio_connect(True)
+                zynautoconnect.request_midi_connect(True)
                 return processor
         del self.processors[proc_id] # Failed so remove processor from list
         return None
@@ -555,7 +558,8 @@ class zynthian_chain_manager():
                 pass
             if stop_engine:
                 self.stop_unused_engines()
-        self.state_manager.autoconnect(True)
+        zynautoconnect.request_audio_connect(True)
+        zynautoconnect.request_midi_connect(True)
         return success
 
     def get_slot_count(self, chain_id, type=None):

@@ -301,8 +301,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 					"ZYNTHIAN_RBPI_HEADPHONES": str(zynthian_gui_config.rbpi_headphones)
 				})
 			# Call autoconnect after a little time
-			sleep(0.5)
-			zynautoconnect.request_audio_connect(True)
+			zynautoconnect.request_audio_connect()
 
 		except Exception as e:
 			logging.error(e)
@@ -370,7 +369,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			"ZYNTHIAN_MIDI_FILTER_OUTPUT": str(int(zynthian_gui_config.midi_filter_output))
 		})
 
-		zynautoconnect.request_midi_connect(True)
+		zynautoconnect.request_midi_connect()
 		self.fill_list()
 
 
@@ -669,8 +668,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.zyngui.show_info("TEST AUDIO")
 		#self.killable_start_command(["mpg123 {}/audio/test.mp3".format(self.data_dir)])
 		self.killable_start_command(["mplayer -nogui -noconsolecontrols -nolirc -nojoystick -really-quiet -ao jack {}/audio/test.mp3".format(self.data_dir)])
-		sleep(0.5)
-		zynautoconnect.request_audio_connect(True)
+		zynautoconnect.request_audio_connect()
 
 
 	def test_midi(self):

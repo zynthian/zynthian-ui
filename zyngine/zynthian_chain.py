@@ -290,7 +290,7 @@ class zynthian_chain:
         logging.debug("Toggling Audio Output: {}".format(jackname))
 
         self.rebuild_audio_graph()
-        zynautoconnect.request_audio_connect(True)
+        zynautoconnect.request_audio_connect()
 
     def get_audio_in(self):
         """Get list of audio capture ports"""
@@ -322,7 +322,7 @@ class zynthian_chain:
         logging.debug("Toggling Audio Capture: {}".format(jackname))
 
         self.rebuild_audio_graph()
-        zynautoconnect.request_audio_connect(True)
+        zynautoconnect.request_audio_connect()
 
     def get_midi_out(self):
         return self.midi_out
@@ -334,7 +334,7 @@ class zynthian_chain:
             self.midi_out.remove(jackname)
 
         self.rebuild_midi_graph()
-        zynautoconnect.request_midi_connect(True)
+        zynautoconnect.request_midi_connect()
 
     def is_audio(self):
         """Returns True if chain is processes audio"""
@@ -463,8 +463,8 @@ class zynthian_chain:
                     self.remove(old_processor)
                     self.rebuild_graph()
                     new_processor.set_midi_chan(self.midi_chan)
-                    zynautoconnect.request_audio_connect(True)
-                    zynautoconnect.request_midi_connect(True)
+                    zynautoconnect.request_audio_connect()
+                    zynautoconnect.request_midi_connect()
                     if self.current_processor == old_processor:
                         self.current_processor = new_processor
                     return True
@@ -541,8 +541,8 @@ class zynthian_chain:
             while [] in slots:
                 slots.remove([])
             self.rebuild_graph()
-            zynautoconnect.request_audio_connect(True)
-            zynautoconnect.request_midi_connect(True)
+            zynautoconnect.request_audio_connect()
+            zynautoconnect.request_midi_connect()
         except:
             logging.error("Failed to move processor")
 

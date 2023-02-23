@@ -33,6 +33,8 @@ from os.path import isfile,isdir,join
 
 from . import zynthian_engine
 from . import zynthian_controller
+import zynautoconnect
+
 
 #------------------------------------------------------------------------------
 # Puredata Engine Class
@@ -132,8 +134,8 @@ class zynthian_engine_puredata(zynthian_engine):
 		self.start()
 		self.refresh_all()
 		sleep(0.5)
-		self.state_manager.autoconnect_midi(True)
-		self.state_manager.autoconnect_audio(False)
+		zynautoconnect.request_midi_connect(True)
+		zynautoconnect.request_audio_connect()
 		layer.send_ctrl_midi_cc()
 		return True
 

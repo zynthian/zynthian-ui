@@ -105,7 +105,8 @@ class zynthian_state_manager:
         self.zynmixer.reset_state()
         self.reload_midi_config()
         zynautoconnect.start(self)
-        self.autoconnect(True)
+        zynautoconnect.request_midi_connect(True)
+        zynautoconnect.request_audio_connect(True)
 
     #------------------------------------------------------------------
     # Background task thread
@@ -266,7 +267,8 @@ class zynthian_state_manager:
             logging.exception("Invalid snapshot: %s" % e)
             return None
 
-        self.autoconnect(True)
+        zynautoconnect.request_midi_connect()
+        zynautoconnect.request_audio_connect()
 
         # Restore mute state
         self.zynmixer.set_mute(255, mute)
@@ -667,35 +669,6 @@ class zynthian_state_manager:
         elif isinstance(obj, zynthian_controller):
             obj.midi_unlearn()
 
-    #------------------------------------------------------------------
-    # Autoconnect
-    #------------------------------------------------------------------
-
-    def autoconnect(self, fast=False):
-        """Trigger jack graph connections
-        
-        fast : True to force immediate connection (Default: connect on next 2s cycle)
-        """
-        self.autoconnect_midi(fast)
-        self.autoconnect_audio(fast)
-
-    #TODO: Can modules access zynautoconnect.request_midi_connect directyl?
-    def autoconnect_midi(self, fast=False):
-        """Trigger jack MIDI graph connections
-        
-        fast : True for immediate connection (Default: connect on next 2s cycle)
-        """
-
-        zynautoconnect.request_midi_connect(fast)
-
-    def autoconnect_audio(self, fast=False):
-        """Trigger jack audio graph connections
-        
-        fast : True to force immediate connection (Default: connect on next 2s cycle)
-        """
-
-        zynautoconnect.request_audio_connect(fast)
-
     # ---------------------------------------------------------------------------
     # MIDI Router Init & Config
     # ---------------------------------------------------------------------------
@@ -731,7 +704,7 @@ class zynthian_state_manager:
             zynthian_gui_config.set_midi_config()
             self.init_midi()
             self.init_midi_services()
-            self.autoconnect()
+            zynautoconnect.request_midi_connect()
 
     def init_midi_services(self):
         """Start/Stop MIDI aux. services"""
@@ -765,10 +738,10 @@ class zynthian_state_manager:
                 self.audio_player = zynthian_processor("AP", self.chain_manager.engine_info["AP"])
                 self.audio_player.midi_chan = 16
                 self.chain_manager.start_engine(self.audio_player, "AP")
-                self.autoconnect_audio(True)
+                zynautoconnect.request_audio_connect(True)
             except Exception as e:
                 self.stop_audio_player()
-                self.autoconnect_audio()
+                zynautoconnect.request_midi_connect()
                 return
         self.audio_player.engine.set_preset(self.audio_player, [filename])
         self.audio_player.engine.player.set_position(16, 0.0)
@@ -872,8 +845,7 @@ class zynthian_state_manager:
                     "ZYNTHIAN_MIDI_RTPMIDI_ENABLED": str(zynthian_gui_config.midi_rtpmidi_enabled)
                 })
             # Call autoconnect after a little time
-            sleep(0.5)
-            self.autoconnect_midi()
+            zynautoconnect.request_midi_connect()
         except Exception as e:
             logging.error(e)
 
@@ -903,8 +875,7 @@ class zynthian_state_manager:
                     "ZYNTHIAN_MIDI_NETWORK_ENABLED": str(zynthian_gui_config.midi_network_enabled)
                 })
             # Call autoconnect after a little time
-            sleep(0.5)
-            self.autoconnect_midi()
+            zynautoconnect.request_midi_connect()
         except Exception as e:
             logging.error(e)
 
@@ -941,8 +912,7 @@ class zynthian_state_manager:
                     "ZYNTHIAN_MIDI_TOUCHOSC_ENABLED": str(zynthian_gui_config.midi_touchosc_enabled)
                 })
             # Call autoconnect after a little time
-            sleep(0.5)
-            self.autoconnect_midi()
+            zynautoconnect.request_midi_connect()
         except Exception as e:
             logging.error(e)
 
@@ -977,8 +947,8 @@ class zynthian_state_manager:
                     "ZYNTHIAN_MIDI_AUBIONOTES_ENABLED": str(zynthian_gui_config.midi_aubionotes_enabled)
                 })
             # Call autoconnect after a little time
-            sleep(0.5)
-            self.autoconnect()
+            zynautoconnect.request_midi_connect()
+            zynautoconnect.request_audio_connect()
         except Exception as e:
             logging.error(e)
 
@@ -1105,7 +1075,7 @@ class zynthian_state_manager:
             zynthian_gui_config.set_midi_config()
             self.init_midi()
             self.init_midi_services()
-            self.autoconnect()
+            zynautoconnect.request_midi_connect()
             return True
 
     def reset_midi_profile(self):

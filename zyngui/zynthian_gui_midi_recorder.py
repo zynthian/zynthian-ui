@@ -391,7 +391,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 				column = zynthian_gui_config.layout['ctrl_pos'][bmp_ctrl_index][1],
 				sticky = 'news'
 			)
-		self.zyngui.zynseq.update_tempo()
+		self.zyngui.state_manager.zynseq.update_tempo()
 
 
 	def hide_playing_bpm(self):

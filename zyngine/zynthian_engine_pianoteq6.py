@@ -36,6 +36,7 @@ from os.path import isfile, join
 from json import JSONEncoder, JSONDecoder
 
 from zyngine.zynthian_engine_pianoteq import *
+import zynautoconnect
 
 # ------------------------------------------------------------------------------
 # Pianoteq module helper functions
@@ -469,8 +470,8 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 			self.command += " --preset \"{}\"".format(preset[0])
 			self.stop()
 			self.start()
-			self.state_manager.autoconnect_midi(True)
-			self.state_manager.autoconnect_audio(False)
+			zynautoconnect.request_midi_connect(True)
+			zynautoconnect.request_audio_connect()
 
 		layer.send_ctrl_midi_cc()
 		return True

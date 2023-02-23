@@ -57,8 +57,6 @@ chain_manager = None # Chain Manager object
 xruns = 0 # Quantity of xruns since startup or last reset
 deferred_midi_connect = False # True to perform MIDI connect on next port check cycle
 deferred_audio_connect = False # True to perform audio connect on next port check cycle
-fast_midi_connect = False # True to perform MIDI connect within 0.1s
-fast_audio_connect = False # True to perform audio connect within 0.1s
 
 last_hw_str = None # Fingerprint of MIDI ports used to check for change of ports
 max_num_devs = 16 # Maximum quantity of hardware inputs
@@ -88,15 +86,11 @@ def request_audio_connect(fast = False):
 	fast : True for fast update (default=False to trigger on next 2s cycle
 	"""
 
-	global deferred_audio_connect, fast_audio_connect
-	acquire_lock()
+	global deferred_audio_connect
 	if fast:
-		fast_audio_connect = True
+		audio_autoconnect()
 	else:
 		deferred_audio_connect = True
-	release_lock()
-	if fast:
-		sleep(0.1) # Allow thread to run (GIL issue)
 
 def request_midi_connect(fast = False):
 	"""Request MIDI connection graph refresh
@@ -104,15 +98,11 @@ def request_midi_connect(fast = False):
 	fast : True for fast update (default=False to trigger on next 2s cycle
 	"""
 
-	global deferred_midi_connect, fast_midi_connect
-	acquire_lock()
+	global deferred_midi_connect
 	if fast:
-		fast_midi_connect = True
+		midi_autoconnect()
 	else:
 		deferred_midi_connect = True
-	release_lock()
-	if fast:
-		sleep(0.1) # Allow thread to run (GIL issue)
 
 def midi_autoconnect():
 	"""Connect all expected MIDI routes"""
@@ -492,11 +482,13 @@ def autoconnect():
 def auto_connect_thread():
 	"""Thread to run autoconnect, checking if physical (hardware) interfaces have changed, e.g. USB plug"""
 
-	global last_hw_str, deferred_midi_connect, deferred_audio_connect, fast_midi_connect, fast_audio_connect
+	global last_hw_str, deferred_midi_connect, deferred_audio_connect, fast_midi_connect
 
 	deferred_timeout = 2 # Period to run deferred connect (in seconds)
 	deferred_inc = 0.1 # Delay between loop cycles (in seconds)
 	deferred_count = 0
+	do_audio = False
+	do_midi = False
 
 	while not exit_flag:
 		try:
@@ -512,31 +504,23 @@ def auto_connect_thread():
 					hw_str += hw.name + "\n"
 				if hw_str != last_hw_str:
 					last_hw_str = hw_str
-					fast_midi_connect = True
+					do_midi = True
 
 				if deferred_midi_connect:
-					acquire_lock()
 					fast_midi_connect = True
-					release_lock()
 
 				if deferred_audio_connect:
-					acquire_lock()
-					fast_audio_connect = True
-					release_lock()
+					do_audio = True
 
-			if fast_midi_connect:
+			if do_midi:
 				midi_autoconnect()
-				acquire_lock()
-				fast_midi_connect = False
+				do_midi = False
 				deferred_midi_connect = False
-				release_lock()
 
-			if fast_audio_connect:
+			if do_audio:
 				audio_autoconnect()
-				acquire_lock()
-				fast_audio_connect = False
+				do_audio = False
 				deferred_audio_connect = False
-				release_lock()
 
 		except Exception as err:
 			logger.error("ZynAutoConnect ERROR: {}".format(err))

@@ -33,6 +33,8 @@ from time import sleep
 
 from . import zynthian_engine
 from zyngine.zynthian_processor import zynthian_processor
+import zynautoconnect
+
 
 #------------------------------------------------------------------------------
 # Aeolus Engine Class
@@ -289,8 +291,8 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.wait_for_ready()
 		self.set_tuning()
 		self.set_midi_chan()
-		self.state_manager.autoconnect_midi(True)
-		self.state_manager.autoconnect_audio()
+		zynautoconnect.request_midi_connect(True)
+		zynautoconnect.request_audio_connect()
 
 	def stop(self):
 		if self.proc:
