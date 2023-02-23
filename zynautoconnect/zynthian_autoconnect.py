@@ -322,7 +322,7 @@ def midi_autoconnect():
 			required_routes[port.name].add("ZynMidiRouter:ctrl_out")
 
 	# Remove mod-ui routes
-	for dst in required_routes.keys():
+	for dst in list(required_routes.keys()):
 		if dst.startswith("effect_"):
 			required_routes.pop(dst)
 
@@ -411,7 +411,7 @@ def audio_autoconnect():
 				required_routes[aubio_in[j % nip]].add(scp)
 
 	# Remove mod-ui routes
-	for dst in required_routes.keys():
+	for dst in list(required_routes.keys()):
 		if dst.startswith("effect_"):
 			required_routes.pop(dst)
 
