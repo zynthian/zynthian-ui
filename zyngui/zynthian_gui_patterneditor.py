@@ -68,7 +68,7 @@ EDIT_PARAM_LAST		= 3 # Index of last parameter
 
 # List of permissible steps per beat
 STEPS_PER_BEAT = [1,2,3,4,6,8,12,24]
-INPUT_CHANNEL_LABELS = ['OFF','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16']
+INPUT_CHANNEL_LABELS = ['OFF','ANY','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16']
 NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]
 
 # Class implements step sequencer pattern editor
@@ -201,7 +201,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if not self.param_editor_zctrl:
 			self.set_title("Pattern {}".format(self.pattern))
 		self.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynseq.SEQ_LOOP)
-		self.zynseq.libseq.enableMidiInput(True)
 
 
 	# Function to enable note duration/velocity direct edit mode
@@ -222,7 +221,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def hide(self):
 		super().hide()
 		self.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STOPPED)
-		self.zynseq.libseq.enableMidiInput(False)
 		self.enable_edit(EDIT_MODE_NONE)
 		self.zynseq.libseq.setRefNote(self.keymap_offset)
 
@@ -254,10 +252,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		else:
 			options['Rest note (None)'] = 'Rest note'
 		#options['Add program change'] = 'Add program change'
-		channel = self.get_input_channel()
-		if channel == 0:
-			channel = 'OFF'
-		options['Input channel ({})'.format(channel)] = 'Input channel'
+		if self.zynseq.libseq.isMidiRecord():
+			options['[X] Record MIDI'] = 'midi_record'
+		else:
+			options['[  ] Record MIDI'] = 'midi_record'
 		options['Export to SMF'] = 'Export to SMF'
 		self.zyngui.screens['option'].config("Pattern Editor Menu", options, self.menu_cb)
 		self.zyngui.show_screen('option')
@@ -311,8 +309,18 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.enable_param_editor(self, 'rest', 'Rest', options)
 		elif params == 'Add program change':
 			self.enable_param_editor(self, 'prog_change', 'Program', {'value_max':128, 'value':self.get_program_change()}, self.add_program_change)
-		elif params == 'Input channel':
-			self.enable_param_editor(self, 'in_chan', 'Input Chan', {'labels':INPUT_CHANNEL_LABELS, 'value': self.get_input_channel()})
+		elif params == 'midi_record':
+			midi_record = not self.zynseq.libseq.isMidiRecord()
+			self.zynseq.libseq.enableMidiRecord(midi_record)
+			if midi_record:
+				try:
+					self.zyngui.chain_manager.set_active_chain_by_object(
+						self.zyngui.chain_manager.midi_chan_2_chain[
+							self.channel
+						]
+					)
+				except:
+					pass
 		elif params == 'Export to SMF':
 			self.export_smf()
 
@@ -341,7 +349,12 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			else:
 				self.zynseq.libseq.setInputRest(zctrl.value - 1)
 		elif zctrl.symbol == 'in_chan':
-			self.zynseq.libseq.setInputChannel(zctrl.value - 1)
+			if zctrl == 0:
+				self.zynseq.libseq.setInputChannel(0xFF)
+			if zctrl == 1:
+				self.zynseq.libseq.setInputChannel(16)
+			else:
+				self.zynseq.libseq.setInputChannel(zctrl.value - 1)
 
 
 	# Function to transpose pattern
@@ -469,7 +482,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			# Search for a map
 			path = None
 			try:
-				path = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(self.channel).get_presetpath()
+				path = self.zyngui.chain_manager.midi_chan_2_chain(self.channel).get_presetpath()
 			except:
 				logging.info("MIDI channel {} seems empty.".format(self.channel))
 
@@ -1006,15 +1019,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to add program change at start of pattern
 	def add_program_change(self, value):
 		self.zynseq.libseq.addProgramChange(0, value)
-
-
-	# Function to get MIDI channel listening
-	# returns: MIDI channel ((1..16) or 0 for none
-	def get_input_channel(self):
-		channel = self.zynseq.libseq.getInputChannel() + 1
-		if channel > 16:
-			channel = 0
-		return channel
 
 
 	# Function to load new pattern

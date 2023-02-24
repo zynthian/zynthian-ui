@@ -197,10 +197,15 @@ void setTriggerNote(uint8_t bank, uint8_t sequence, uint8_t note);
 // ** Pattern management functions - pattern events are quantized to steps **
 //!@todo Current implementation selects a pattern then operates on it. API may be simpler to comprehend if patterns were acted on directly by passing the pattern index, e.g. clearPattern(index)
 
-/** @brief  Enable MIDI input to add notes to current pattern
+/** @brief  Enable record from MIDI input to add notes to current pattern
 *   @param  enable True to enable MIDI input
 */
-void enableMidiInput(bool enable);
+void enableMidiRecord(bool enable);
+
+/** @brief  Get MIDI record enable state
+*   @retval bool True if MIDI record enabled
+*/
+bool isMidiRecord();
 
 /** @brief  Create a new pattern
 *   @retval uint32_t Index of new pattern
@@ -407,17 +412,6 @@ void clear();
 *   @param  destination Index of pattern to which to copy
 */
 void copyPattern(uint32_t source, uint32_t destination);
-
-/** @brief  Set MIDI input channel
-*   @param  channel MIDI channel [0..16]
-*   @note   >16 to disable MIDI input
-*/
-void setInputChannel(uint8_t channel);
-
-/** @brief  Get MIDI input channel
-*   @retval uint8_t MIDI channel [0..15, 0xFF if disabled]
-*/
-uint8_t getInputChannel();
 
 /** @brief  Set note used as rest when using MIDI input for pattern editing
 *   @param  note MIDI note number [0..127]

@@ -678,6 +678,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		if pattern > 0:
 			self.zyngui.screens['pattern_editor'].channel = channel
 			self.zyngui.screens['pattern_editor'].load_pattern(pattern)
+			self.zynseq.libseq.enableMidiRecord(False)
 			self.zyngui.show_screen("pattern_editor")
 			return True
 

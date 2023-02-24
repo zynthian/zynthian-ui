@@ -241,7 +241,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 					self.grid_canvas.tag_bind("trigger_%d"%(pad), '<Button-1>', self.on_pad_press)
 					self.grid_canvas.tag_bind("trigger_%d"%(pad), '<ButtonRelease-1>', self.on_pad_release)
 				self.refresh_pad(pad, True)
-			self.update_selection_cursor()
+			self.select_pad()
 		except Exception as e:
 			logging.warning(e)
 
@@ -283,24 +283,11 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 					self.grid_canvas.itemconfig("state:%d"%pad, image=self.state_icon[state])
 
 
-	# Function to move selection cursor
-	def update_selection_cursor(self):
-		if self.selected_pad >= self.zynseq.libseq.getSequencesInBank(self.zynseq.bank):
-			self.selected_pad = self.zynseq.libseq.getSequencesInBank(self.zynseq.bank) - 1
-		col = int(self.selected_pad / self.columns)
-		row = self.selected_pad % self.columns
-		self.grid_canvas.coords(self.selection,
-				1 + col * self.column_width, 1 + row * self.row_height,
-				(1 + col) * self.column_width - self.select_thickness, (1 + row) * self.row_height - self.select_thickness)
-		self.grid_canvas.tag_raise(self.selection)
-
-
 	# Function to handle pad press
 	def on_pad_press(self, event):
 		tags = self.grid_canvas.gettags(self.grid_canvas.find_withtag(tkinter.CURRENT))
 		pad = int(tags[0].split(':')[1])
-		self.selected_pad = pad
-		self.update_selection_cursor()
+		self.select(pad)
 		if self.param_editor_zctrl:
 			self.disable_param_editor()
 		self.grid_timer = Timer(1.4, self.on_grid_timer)
@@ -464,6 +451,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			return True
 		self.zyngui.screens['pattern_editor'].channel = self.zynseq.libseq.getChannel(self.zynseq.bank, self.selected_pad, 0)
 		self.zyngui.screens['pattern_editor'].load_pattern(pattern)
+		self.zynseq.libseq.enableMidiRecord(False)
 		self.zyngui.show_screen("pattern_editor")
 		return True
 
@@ -478,6 +466,21 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.bank = self.zynseq.bank
 			for pad in range(0, self.columns**2):
 				self.refresh_pad(pad, force)
+
+
+	# Function to select a pad
+	#	pad: Index of pad to select (Default: refresh existing selection)
+	def select_pad(self, pad=None):
+		if pad is not None:
+			self.selected_pad = pad
+		if self.selected_pad >= self.zynseq.libseq.getSequencesInBank(self.zynseq.bank):
+			self.selected_pad = self.zynseq.libseq.getSequencesInBank(self.zynseq.bank) - 1
+		col = int(self.selected_pad / self.columns)
+		row = self.selected_pad % self.columns
+		self.grid_canvas.coords(self.selection,
+			1 + col * self.column_width, 1 + row * self.row_height,
+			(1 + col) * self.column_width - self.select_thickness, (1 + row) * self.row_height - self.select_thickness)
+		self.grid_canvas.tag_raise(self.selection)
 
 
 	# Function to handle zynpots value change
@@ -501,15 +504,13 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				pad = row + self.columns * col
 			if row < 0 or row >= self.columns or col >= self.columns:
 				return
-			self.selected_pad = pad
-			self.update_selection_cursor()
+			self.select_pad(pad)
 		elif encoder == zynthian_gui_config.ENC_BACK:
 			# SELECT encoder adjusts vertical pad selection
 			pad = self.selected_pad + dval
 			if pad < 0 or pad >= self.zynseq.libseq.getSequencesInBank(self.zynseq.bank):
 				return
-			self.selected_pad = pad
-			self.update_selection_cursor()
+			self.select_pad(pad)
 		elif encoder == zynthian_gui_config.ENC_SNAPSHOT and zynthian_gui_config.transport_clock_source == 0:
 			self.zynseq.update_tempo()
 			self.zynseq.nudge_tempo(dval)
