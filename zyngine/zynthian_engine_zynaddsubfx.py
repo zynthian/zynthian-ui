@@ -241,7 +241,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	def set_preset(self, layer, preset, preload=False):
 		if self.osc_server is None:
 			return
-		self.start_loading()
+		self.state_manager.start_busy("zynaddsubfx")
 		if preset[3]=='xiz':
 			self.enable_part(layer)
 			self.osc_server.send(self.osc_target, "/load-part",layer.part_i,preset[0])
@@ -258,10 +258,10 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 			logging.debug("OSC => /load_xlz %s" % preset[0])
 		self.osc_server.send(self.osc_target, "/volume")
 		i=0
-		while self.loading: 
+		while self.state_manager.is_busy(): 
 			sleep(0.1)
 			if i > 100:
-				self.stop_loading()
+				self.state_manager.end_busy("zynaddsubfx")
 				break
 			else:
 				i = i + 1
@@ -324,7 +324,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		try:
 			#logging.debug("Rx OSC => {} {}".format(path, args))
 			if path == '/volume':
-				self.stop_loading()
+				self.state_manager.end_busy("zynaddsubfx")
 		except Exception as e:
 			logging.warning(e)
 

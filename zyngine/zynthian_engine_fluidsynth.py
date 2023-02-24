@@ -32,6 +32,7 @@ from collections import OrderedDict
 from subprocess import check_output
 from . import zynthian_engine
 from . import zynthian_controller
+import zynautoconnect
 
 #------------------------------------------------------------------------------
 # FluidSynth Engine Class
@@ -378,7 +379,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 				layer.part_i = i
 				#layer.jackname = "{}:((l|r)_{:02d}|fx_(l|r)_({:02d}|{:02d}))".format(self.jackname,i,i*2,i*2+1)
 				layer.jackname = "{}:(l|r)_{:02d}".format(self.jackname,i)
-				self.state_manager.autoconnect_audio()
+				zynautoconnect.request_audio_connect()
 				logging.debug("Add part {} => {}".format(i, layer.jackname))
 			except Exception as e:
 				logging.error("Can't add part! => {}".format(e))

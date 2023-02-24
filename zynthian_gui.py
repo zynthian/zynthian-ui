@@ -42,6 +42,7 @@ import zynconf
 from zyngine import zynthian_state_manager
 from zyncoder.zyncore import get_lib_zyncore
 from zynlibs.zynseq import *
+import zynautoconnect
 
 from zyngine.zynthian_chain import *
 
@@ -191,7 +192,6 @@ class zynthian_gui:
 		
 		self.current_processor = None
 
-		self.loading = 0
 		self.loading_thread = None
 		self.control_thread = None
 		self.status_thread = None
@@ -330,7 +330,8 @@ class zynthian_gui:
 			# Execute action
 			self.callable_ui_action(parts[2].upper(), args)
 			#Run autoconnect if needed
-			self.state_manager.autoconnect()
+			zynautoconnect.request_audio_connect()
+			zynautoconnect.request_midi_connect()
 		elif part1 in ("MIXER", "DAWOSC"):
 			self.set_event_flag()
 			part2 = parts[2].upper()
@@ -1515,7 +1516,7 @@ class zynthian_gui:
 
 	def zynswitch_long(self, i):
 		logging.debug('Looooooooong Switch '+str(i))
-		self.start_loading()
+		self.state_manager.start_busy("zyngui")
 
 		# Standard 4 ZynSwitches
 		if i == 0:
@@ -1534,17 +1535,17 @@ class zynthian_gui:
 		elif i >= 4:
 			self.custom_switch_ui_action(i-4, "L")
 
-		self.stop_loading()
+		self.state_manager.end_busy("zyngui")
 
 
 	def zynswitch_bold(self, i):
 		logging.debug('Bold Switch '+str(i))
 
-		self.start_loading()
+		self.state_manager.start_busy("zyngui")
 
 		try:
 			if self.screens[self.current_screen].switch(i, 'B'):
-				self.stop_loading()
+				self.state_manager.end_busy("zyngui")
 				return
 		except AttributeError as e:
 			pass
@@ -1570,17 +1571,17 @@ class zynthian_gui:
 		elif i >= 4:
 			self.custom_switch_ui_action(i-4, "B")
 
-		self.stop_loading()
+		self.state_manager.end_busy("zyngui")
 
 
 	def zynswitch_short(self, i):
 		logging.debug('Short Switch '+str(i))
 
-		self.start_loading()
+		self.state_manager.start_busy("zyngui")
 
 		try:
 			if self.screens[self.current_screen].switch(i, 'S'):
-				self.stop_loading()
+				self.state_manager.end_busy("zyngui")
 				return
 		except AttributeError as e:
 			pass
@@ -1602,7 +1603,7 @@ class zynthian_gui:
 		elif i >= 4:
 			self.custom_switch_ui_action(i-4, "S")
 
-		self.stop_loading()
+		self.state_manager.end_busy("zyngui")
 
 
 	def zynswitch_push(self, i):
@@ -1621,9 +1622,9 @@ class zynthian_gui:
 		# Custom ZynSwitches
 		elif i >= 4:
 			logging.debug('Push Switch ' + str(i))
-			self.start_loading()
+			self.state_manager.start_busy("zyngui")
 			self.custom_switch_ui_action(i-4, "P")
-			self.stop_loading()
+			self.state_manager.end_busy("zyngui")
 
 
 	def zynswitch_double(self, i):
@@ -1631,13 +1632,13 @@ class zynthian_gui:
 		for j in range(4):
 			if j == i: continue
 			if abs((self.state_manager.dtsw[i] - self.state_manager.dtsw[j]).total_seconds()) < 0.3:
-				self.start_loading()
+				self.state_manager.start_busy("zyngui")
 				dswstr = str(i) + '+' + str(j)
 				logging.debug('Double Switch ' + dswstr)
 				#self.show_control_xy(i, j)
 				self.show_screen('control')
 				self.screens['control'].set_xyselect_mode(i, j)
-				self.stop_loading()
+				self.state_manager.end_busy("zyngui")
 				return True
 
 
@@ -1704,7 +1705,7 @@ class zynthian_gui:
 	#------------------------------------------------------------------
 
 	def zynswitch_read(self):
-		if self.loading:
+		if self.state_manager.is_busy():
 			return
 
 		#Read Zynswitches
@@ -1715,7 +1716,7 @@ class zynthian_gui:
 		except Exception as err:
 			logging.exception(err)
 
-		self.reset_loading()
+		self.state_manager.end_busy("zyngui")
 
 
 	#------------------------------------------------------------------
@@ -1753,7 +1754,7 @@ class zynthian_gui:
 				# Master MIDI Channel ...
 				elif chan == zynthian_gui_config.master_midi_channel:
 					logging.info("MASTER MIDI MESSAGE: %s" % hex(ev))
-					self.start_loading()
+					self.state_manager.start_busy("zyngui")
 					# Webconf configured messages for Snapshot Control ...
 					if ev == zynthian_gui_config.master_midi_program_change_up:
 						logging.debug("PROGRAM CHANGE UP!")
@@ -1799,7 +1800,7 @@ class zynthian_gui:
 							self.callable_ui_action(self.note2cuia[note], [vel])
 
 					# Stop logo animation
-					self.stop_loading()
+					self.state_manager.end_busy("zyngui")
 
 
 				# Control Change ...
@@ -1858,9 +1859,9 @@ class zynthian_gui:
 					self.screens['midi_chan'].midi_chan_activity(chan)
 					#Preload preset (note-on)
 					if self.current_screen == 'preset' and zynthian_gui_config.preset_preload_noteon and chan == self.get_current_processor().get_midi_chan():
-						self.start_loading()
+						self.state_manager.start_busy("zyngui")
 						self.screens['preset'].preselect_action()
-						self.stop_loading()
+						self.state_manager.end_busy("zyngui")
 					#Note Range Learn
 					elif self.current_screen == 'midi_key_range' and self.midi_learn_mode:
 						self.screens['midi_key_range'].learn_note_range((ev & 0x7F00) >> 8)
@@ -1871,7 +1872,7 @@ class zynthian_gui:
 				self.last_event_flag = True
 
 		except Exception as err:
-			self.reset_loading()
+			self.state_manager.end_busy("zyngui")
 			logging.exception(err)
 
 
@@ -1966,26 +1967,10 @@ class zynthian_gui:
 	#------------------------------------------------------------------
 
 	def start_loading_thread(self):
-		self.loading_thread=Thread(target=self.loading_refresh, args=())
+		self.loading_thread = Thread(target=self.loading_refresh, args=())
 		self.loading_thread.name = "loading"
 		self.loading_thread.daemon = True # thread dies with the program
 		self.loading_thread.start()
-
-
-	def start_loading(self):
-		self.loading = self.loading + 1
-		if self.loading < 1: self.loading = 1
-		#logging.debug("START LOADING %d" % self.loading)
-
-
-	def stop_loading(self):
-		self.loading = self.loading - 1
-		if self.loading < 0: self.loading = 0
-		#logging.debug("STOP LOADING %d" % self.loading)
-
-
-	def reset_loading(self):
-		self.loading = 0
 
 
 	def loading_refresh(self):
@@ -2022,7 +2007,7 @@ class zynthian_gui:
 			if zynthian_gui_config.show_cpu_status:
 				# Get CPU Load
 				#self.state_manager.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
-				self.state_manager.status_info['cpu_load'] = self.status_counter.zynautoconnect.get_jackd_cpu_load()
+				self.state_manager.status_info['cpu_load'] = zynautoconnect.get_jackd_cpu_load()
 			else:
 				# Get audio peak level
 				self.state_manager.status_info['peakA'] = self.state_manager.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 0)
@@ -2031,7 +2016,7 @@ class zynthian_gui:
 				self.state_manager.status_info['holdB'] = self.state_manager.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 1)
 
 			# Get SOC sensors (once each 5 refreshes)
-			if self.status_counter>5:
+			if self.status_counter >5:
 				self.status_counter = 0
 
 				self.state_manager.status_info['overtemp'] = False
@@ -2123,7 +2108,7 @@ class zynthian_gui:
 			timeout = 10
 			if self.exit_wait_count == 0:
 				logging.info("EXITING ZYNTHIAN-UI...")
-			if self.exit_wait_count < timeout and (self.control_thread.is_alive() or self.status_thread.is_alive() or self.loading_thread.is_alive() or self.state_manager.zynautoconnect.is_running()):
+			if self.exit_wait_count < timeout and (self.control_thread.is_alive() or self.status_thread.is_alive() or self.loading_thread.is_alive() or zynautoconnect.is_alive()) or self.state_manager.thread.is_running():
 				self.exit_wait_count += 1
 			else:
 				if self.exit_wait_count == timeout:
@@ -2134,17 +2119,19 @@ class zynthian_gui:
 						logging.error("Status thread failed to terminate")
 					if self.loading_thread.is_alive():
 						logging.error("Loading thread failed to terminate")
-					if self.state_manager.zynautoconnect.is_running():
+					if zynautoconnect.is_running():
 						logging.error("Autoconnect thread failed to terminate")
+					if self.state_manager.thread.is_running():
+						logging.error("State manager thread failed to terminate")
 				zynthian_gui_config.top.quit()
 				return
 		# Refresh Current Chain
-		elif self.get_current_processor() and not self.loading:
+		elif self.get_current_processor() and not self.state_manager.is_busy():
 			try:
 				#TODO: self.get_current_processor().refresh()
 				pass
 			except Exception as e:
-				self.reset_loading()
+				self.state_manager.end_busy("zyngui")
 				logging.exception(e)
 
 		# Poll

@@ -287,7 +287,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def on_pad_press(self, event):
 		tags = self.grid_canvas.gettags(self.grid_canvas.find_withtag(tkinter.CURRENT))
 		pad = int(tags[0].split(':')[1])
-		self.select(pad)
+		self.select_pad(pad)
 		if self.param_editor_zctrl:
 			self.disable_param_editor()
 		self.grid_timer = Timer(1.4, self.on_grid_timer)

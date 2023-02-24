@@ -423,12 +423,12 @@ class zynthian_engine_modui(zynthian_engine):
 
 				elif command == "loading_start":
 					logging.info("LOADING START")
-					self.start_loading()
+					self.state_manager.start_busy("mod-ui")
 
 				elif command == "loading_end":
 					logging.info("LOADING END")
 					self.graph_autoconnect_midi_input()
-					self.stop_loading()
+					self.state_manager.end_busy("mod-ui")
 					self.ws_bundle_loaded = True
 
 				elif command == "bundlepath":
@@ -437,13 +437,13 @@ class zynthian_engine_modui(zynthian_engine):
 
 				elif command == "stop":
 					logging.error("Restarting MOD services ...")
-					self.start_loading()
+					self.state_manager.start_busy("mod-ui")
 					self.stop()
 					self.start()
-					self.stop_loading()
+					self.state_manager.end_busy("mod-ui")
 
 			except websocket._exceptions.WebSocketConnectionClosedException:
-				self.start_loading()
+				self.state_manager.start_busy("mod-ui")
 
 				if self.is_service_active("mod-ui"):
 					try:
@@ -463,16 +463,16 @@ class zynthian_engine_modui(zynthian_engine):
 				else:
 					logging.error("Connection Closed & MOD-UI stopped. Finishing...")
 					self.ws_thread=None
-					self.stop_loading()				
+					self.state_manager.end_busy("mod-ui")				
 					return
 
-				self.stop_loading()				
+				self.state_manager.end_busy("mod-ui")				
 
 			except Exception as e:
 				logging.error("task_websocket() => %s (%s)" % (e,type(e)))
-				self.start_loading()
+				self.state_manager.start_busy("mod-ui")
 				sleep(1)
-				self.stop_loading()
+				self.state_manager.end_busy("mod-ui")
 
 
 	def api_get_request(self, path, data=None, json=None):
@@ -529,7 +529,7 @@ class zynthian_engine_modui(zynthian_engine):
 
 
 	def add_plugin_cb(self, pgraph, puri, posx, posy):
-		self.start_loading()
+		self.state_manager.start_busy("mod-ui")
 		pinfo = self.api_get_request("/effect/get", data={'uri': puri})
 		if pinfo:
 			self.plugin_zctrls[pgraph] = {}
@@ -654,11 +654,11 @@ class zynthian_engine_modui(zynthian_engine):
 			self.plugin_info[pgraph] = pinfo
 			#Set Refresh
 			self.refresh_all()
-			self.stop_loading()
+			self.state_manager.end_busy("mod-ui")
 
 
 	def remove_plugin_cb(self, pgraph):
-		self.start_loading()
+		self.state_manager.start_busy("mod-ui")
 		if pgraph in self.graph:
 			del self.graph[pgraph]
 		if pgraph in self.plugin_zctrls:
@@ -667,7 +667,7 @@ class zynthian_engine_modui(zynthian_engine):
 			del self.plugin_info[pgraph]
 		#Set Refresh
 		self.refresh_all()
-		self.stop_loading()
+		self.state_manager.end_busy("mod-ui")
 
 
 	def graph_connect_cb(self, src, dest):

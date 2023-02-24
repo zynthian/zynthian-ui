@@ -62,6 +62,7 @@ class zynthian_state_manager:
         """
 
         logging.warning("Creating state manager")
+        self.busy = set(["zynthian_state_manager"]) # Set of clients indicating they are busy doing something (may be used by UI to show progress)
         self.chain_manager = zynthian_chain_manager(self)
         self.last_snapshot_count = 0 # Increments each time a snapshot is loaded - modules may use to update if required
         self.reset_zs3()
@@ -96,6 +97,8 @@ class zynthian_state_manager:
         self.exit_flag = False
         #TODO: We may need this in future... self.start_thread()
         self.reset()
+        self.end_busy("zynthian_state_manager")
+        self.start_thread()
 
     def reset(self):
         zynautoconnect.stop()
@@ -107,6 +110,30 @@ class zynthian_state_manager:
         zynautoconnect.start(self)
         zynautoconnect.request_midi_connect(True)
         zynautoconnect.request_audio_connect(True)
+
+    def start_busy(self, id):
+        """Add client to list of busy clients
+        id : Client id
+        """
+
+        self.busy.add(id)
+
+    def end_busy(self, id):
+        """Remove client from list of busy clients
+        id : Client id
+        """
+
+        try:
+            self.busy.remove(id)
+        except:
+            pass
+
+    def is_busy(self):
+        """Check if any clients are busy
+        Returns : True if any clients are busy
+        """
+
+        return len(self.busy) > 0
 
     #------------------------------------------------------------------
     # Background task thread
@@ -123,8 +150,15 @@ class zynthian_state_manager:
     def thread_task(self):
         """Perform background tasks"""
 
+        busy_timeout = 0
+        busy_warn_time = 100
         while not self.exit_flag:
-            pass
+            if self.is_busy():
+                busy_timeout += 1            
+            else:
+                busy_timeout = 0
+            if busy_timeout == busy_warn_time:
+                logging.warning("Clients have been busy for longer than %ds: %s", busy_warn_time / 5, self.busy)
             sleep(0.2)
 
     #----------------------------------------------------------------------------
@@ -263,7 +297,6 @@ class zynthian_state_manager:
                 self.last_snapshot_fpath = fpath
 
         except Exception as e:
-            #TODO: self.zyngui.reset_loading()
             logging.exception("Invalid snapshot: %s" % e)
             return None
 

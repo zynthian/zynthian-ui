@@ -169,7 +169,6 @@ class zynthian_engine(zynthian_basic_engine):
 		self.nickname = ""
 		self.jackname = ""
 
-		self.loading = 0
 		self.layers = []
 
 		self.options = {
@@ -203,8 +202,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 
 	def reset(self):
-		#Reset Vars
-		self.loading = 0
+		pass
 		#TODO: OSC, IPC, ...
 
 
@@ -221,27 +219,6 @@ class zynthian_engine(zynthian_basic_engine):
 			self.command_env['DISPLAY'] = ':1'
 			return True
 
-
-	# ---------------------------------------------------------------------------
-	# Loading GUI signalization
-	# ---------------------------------------------------------------------------
-
-	def start_loading(self):
-		self.loading = self.loading + 1
-		if self.loading < 1: self.loading = 1
-		#TODO: if self.zyngui:
-			#TODO: self.zyngui.start_loading()
-
-	def stop_loading(self):
-		self.loading = self.loading - 1
-		if self.loading<0: self.loading = 0
-		#TODO: if self.zyngui:
-			#TODO: self.zyngui.stop_loading()
-
-	def reset_loading(self):
-		self.loading = 0
-		#TODO: if self.zyngui:
-			#TODO: self.zyngui.stop_loading()
 
 	# ---------------------------------------------------------------------------
 	# Refresh Management

@@ -190,7 +190,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def execute_commands(self):
-		self.zyngui.start_loading()
+		
+		self.zyngui.state_manager.start_busy("gui_admin")
 		
 		error_counter=0
 		for cmd in self.commands:
@@ -225,7 +226,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.commands=None
 		self.zyngui.add_info("\n\n")
 		self.zyngui.hide_info_timer(5000)
-		self.zyngui.stop_loading()
+		self.zyngui.state_manager.end_busy("gui_admin")
 
 
 	def start_command(self,cmds):
@@ -239,7 +240,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def killable_execute_commands(self):
-		#self.zyngui.start_loading()
+		#self.zyngui.state_manager.start_busy("gui_admin")
 		for cmd in self.commands:
 			logging.info("Executing Command: %s" % cmd)
 			self.zyngui.add_info("EXECUTING:\n","EMPHASIS")
@@ -264,7 +265,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		self.commands=None
 		self.zyngui.hide_info_timer(5000)
-		#self.zyngui.stop_loading()
+		#self.zyngui.state_manager.end_busy("gui_admin")
 
 
 	def killable_start_command(self,cmds):
@@ -527,7 +528,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.zyngui.add_info(" {} => {}\n".format(k,v[0]),v[1])
 
 		self.zyngui.hide_info_timer(5000)
-		self.zyngui.stop_loading()
+		self.zyngui.state_manager.end_busy("gui_admin")
 
 
 	def start_wifi(self):
@@ -560,7 +561,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def start_vncserver(self, save_config=True):
 		# Start VNC for Zynthian-UI
 		if not zynconf.is_service_active("vncserver0"):
-			self.zyngui.start_loading()
+			self.zyngui.state_manager.start_busy("gui_admin")
 
 			try:
 				logging.info("STARTING VNC-UI SERVICE")
@@ -569,11 +570,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			except Exception as e:
 				logging.error(e)
 
-			self.zyngui.stop_loading()
+			self.zyngui.state_manager.end_busy("gui_admin")
 
 		# Start VNC for Engine's native GUIs
 		if not zynconf.is_service_active("vncserver1"):
-			self.zyngui.start_loading()
+			self.zyngui.state_manager.start_busy("gui_admin")
 
 			# Save state and stop engines
 			if self.zyngui.chain_manager.get_chain_count() > 0:
@@ -593,7 +594,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			if restore_state:
 				self.zyngui.screens['snapshot'].load_last_state_snapshot()
 
-			self.zyngui.stop_loading()
+			self.zyngui.state_manager.end_busy("gui_admin")
 
 		# Update Config
 		if save_config:
@@ -607,7 +608,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def stop_vncserver(self, save_config=True):
 		# Stop VNC for Zynthian-UI
 		if zynconf.is_service_active("vncserver0"):
-			self.zyngui.start_loading()
+			self.zyngui.state_manager.start_busy("gui_admin")
 
 			try:
 				logging.info("STOPPING VNC-UI SERVICE")
@@ -616,11 +617,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			except Exception as e:
 				logging.error(e)
 
-			self.zyngui.stop_loading()
+			self.zyngui.state_manager.end_busy("gui_admin")
 
 		# Start VNC for Engine's native GUIs
 		if zynconf.is_service_active("vncserver1"):
-			self.zyngui.start_loading()
+			self.zyngui.state_manager.start_busy("gui_admin")
 
 			# Save state and stop engines
 			if len(self.zyngui.screens['layer'].layers)>0:
@@ -640,7 +641,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			if restore_state:
 				self.zyngui.screens['snapshot'].load_last_state_snapshot()
 				
-			self.zyngui.stop_loading()
+			self.zyngui.state_manager.end_busy("gui_admin")
 
 		# Update Config
 		if save_config:

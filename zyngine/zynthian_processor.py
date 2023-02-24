@@ -783,14 +783,6 @@ class zynthian_processor:
             get_lib_zyncore().set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
 
 
-    def wait_stop_loading(self):
-        """Wait until engine has finished loading or timed out"""
-
-        while self.engine.loading > 0:
-            logging.debug("WAITING FOR STOP LOADING ({}) ... => {}".format(self.engine.name, self.engine.loading))
-            sleep(0.1)
-
-
     # ---------------------------------------------------------------------------
     # Path/Breadcrumb Strings
     # ---------------------------------------------------------------------------
