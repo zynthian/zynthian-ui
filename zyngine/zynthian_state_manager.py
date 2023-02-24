@@ -309,55 +309,6 @@ class zynthian_state_manager:
             return True
         return False
 
-    def import_legacy_zs3s(self, state):
-        """Load ZS3 state from legacy snapshot format state
-        
-        state : Dictionary containing state model
-        TODO: Move to legacy snapshot handler
-        """
-        
-        zs3_index = 0
-        for midi_chan in range(0, 16):
-            for prog_num in range(0, 128):
-                lstates = [None] * len(state['layers'])
-                note_range = [None] * 16
-                root_layer_index = None
-                for li, lss in enumerate(state['layers']):
-                    if 'zs3_list' in lss and midi_chan == lss['midi_chan']:
-                        lstate = lss['zs3_list'][prog_num]
-                        if not lstate:
-                            continue
-                        try:
-                            root_layer_index = self.root_layers.index(self.layers[li])
-                        except:
-                            pass
-                        lstate['engine_name'] = lss['engine_name']
-                        lstate['engine_nick'] = lss['engine_nick']
-                        lstate['engine_jackname'] = self.layers[li].engine.jackname
-                        lstate['midi_chan'] = midi_chan
-                        lstate['show_fav_presets'] = lss['show_fav_presets']
-                        if 'active_screen_index' in lstate:
-                            lstate['current_screen_index'] = lstate['active_screen_index']
-                            del lstate['active_screen_index']
-                        if 'note_range' in lstate:
-                            #TODO: Move to ZS3
-                            if lstate['note_range']:
-                                note_range[midi_chan] = lstate['note_range']
-                            del lstate['note_range']
-                        lstates[li] = lstate
-
-                if root_layer_index is not None:
-                    zs3_new = {
-                        'index': root_layer_index,
-                        'layers': lstates,
-                        'note_range': note_range,
-                        'zs3_title': "Legacy ZS3 #{}".format(zs3_index + 1),
-                        'midi_learn_chan': midi_chan,
-                        'midi_learn_prognum': prog_num
-                    }
-                    self.learned_zs3.append(zs3_new)
-                    #logging.debug("ADDED LEGACY ZS3 #{} => {}".format(zs3_index, zs3_new))
-                    zs3_index += 1
 
     def fix_snapshot(self, snapshot):
         """Apply fixes to snapshot based on format version"""

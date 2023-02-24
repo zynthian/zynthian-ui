@@ -126,7 +126,8 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 
 	def check_bankless_mode(self):
-		bank_dirs = glob(f"{self.zyngui.state_manager.snapshot_dir}/[0-9][0-9][0-9]*")
+		bank_dirs = [dir for dir in os.listdir(self.zyngui.state_manager.snapshot_dir) if os.path.isdir(join(self.zyngui.state_manager.snapshot_dir, dir))]
+
 		n_banks = len(bank_dirs)
 
 		# If no banks, create the first one and choose it.
@@ -137,6 +138,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		# If only one bank, choose it.
 		elif n_banks == 1:
 			self.bankless_mode = True
+			self.zyngui.state_manager.snapshot_bank = bank_dirs[0]
 
 		# If more than 1, multibank mode
 		else:
