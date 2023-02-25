@@ -98,18 +98,37 @@ class zynthian_state_manager:
         #TODO: We may need this in future... self.start_thread()
         self.reset()
         self.end_busy("zynthian_state_manager")
-        self.start_thread()
+        self.thread = Thread(target=self.thread_task, args=())
+        self.thread.name = "Status Manager MIDI"
+        self.thread.daemon = True # thread dies with the program
 
     def reset(self):
+        """Reset state manager to clean initial start-up state"""
+
+        self.stop()
+        sleep(0.2)
+        self.start()
+
+    def stop(self):
+        """Stop state manager"""
+
+        self.exit_flag = True
         zynautoconnect.stop()
         self.last_snapshot_fpath = ""
         self.zynseq.load("")
         self.chain_manager.remove_all_chains(True)
+
+    def start(self):
+        """Start state manager"""
+
         self.zynmixer.reset_state()
         self.reload_midi_config()
         zynautoconnect.start(self)
         zynautoconnect.request_midi_connect(True)
         zynautoconnect.request_audio_connect(True)
+        self.exit_flag = True
+        #self.thread.start()
+
 
     def start_busy(self, id):
         """Add client to list of busy clients
@@ -139,26 +158,10 @@ class zynthian_state_manager:
     # Background task thread
     #------------------------------------------------------------------
 
-    def start_thread(self):
-        """Start a thread to run background tasks"""
-
-        self.thread = Thread(target=self.thread_task, args=())
-        self.thread.name = "Status Manager MIDI"
-        self.thread.daemon = True # thread dies with the program
-        self.thread.start()
-
     def thread_task(self):
         """Perform background tasks"""
 
-        busy_timeout = 0
-        busy_warn_time = 100
         while not self.exit_flag:
-            if self.is_busy():
-                busy_timeout += 1            
-            else:
-                busy_timeout = 0
-            if busy_timeout == busy_warn_time:
-                logging.warning("Clients have been busy for longer than %ds: %s", busy_warn_time / 5, self.busy)
             sleep(0.2)
 
     #----------------------------------------------------------------------------

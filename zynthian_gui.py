@@ -452,7 +452,7 @@ class zynthian_gui:
 
 	def stop(self):
 		logging.info("STOPPING ZYNTHIAN-UI ...")
-		self.state_manager.reset()
+		self.state_manager.stop()
 		self.screens['midi_recorder'].stop_playing() # Need to stop timing thread
 		#self.zyntransport.stop()
 
@@ -1974,11 +1974,19 @@ class zynthian_gui:
 
 
 	def loading_refresh(self):
+		busy_timeout = 0
+		busy_warn_time = 200
 		while not self.exit_flag:
 			try:
 				self.screens[self.current_screen].refresh_loading()
 			except Exception as err:
 				logging.error("zynthian_gui.loading_refresh() => %s" % err)
+			if self.state_manager.is_busy():
+				busy_timeout += 1
+			else:
+				busy_timeout = 0
+			if busy_timeout == busy_warn_time:
+				logging.warning("Clients have been busy for longer than %ds: %s", busy_warn_time / 10, self.state_manager.busy)
 			sleep(0.1)
 
 	#------------------------------------------------------------------
@@ -2094,7 +2102,7 @@ class zynthian_gui:
 	#------------------------------------------------------------------
 
 	def start_polling(self):
-		self.zyngine_refresh()
+		self.poll()
 		self.osc_timeout()
 
 
@@ -2102,40 +2110,30 @@ class zynthian_gui:
 		zynthian_gui_config.top.after(msec, func)
 
 
-	def zyngine_refresh(self):
+	def poll(self):
 		# Capture exit event and finish
 		if self.exit_flag:
 			timeout = 10
 			if self.exit_wait_count == 0:
 				logging.info("EXITING ZYNTHIAN-UI...")
-			if self.exit_wait_count < timeout and (self.control_thread.is_alive() or self.status_thread.is_alive() or self.loading_thread.is_alive() or zynautoconnect.is_alive()) or self.state_manager.thread.is_running():
+			if self.exit_wait_count < timeout and (self.control_thread.is_alive() or self.status_thread.is_alive() or self.loading_thread.is_alive() or zynautoconnect.is_running() or self.state_manager.thread.is_alive()):
 				self.exit_wait_count += 1
 			else:
-				if self.exit_wait_count == timeout:
-					# Exceeded wait time for threads to stop
-					if self.control_thread.is_alive():
-						logging.error("Control thread failed to terminate")
-					if self.status_thread.is_alive():
-						logging.error("Status thread failed to terminate")
-					if self.loading_thread.is_alive():
-						logging.error("Loading thread failed to terminate")
-					if zynautoconnect.is_running():
-						logging.error("Autoconnect thread failed to terminate")
-					if self.state_manager.thread.is_running():
-						logging.error("State manager thread failed to terminate")
+				if self.control_thread.is_alive():
+					logging.error("Control thread failed to terminate")
+				if self.status_thread.is_alive():
+					logging.error("Status thread failed to terminate")
+				if self.loading_thread.is_alive():
+					logging.error("Loading thread failed to terminate")
+				if zynautoconnect.is_running():
+					logging.error("Autoconnect thread failed to terminate")
+				if self.state_manager.thread.is_alive():
+					logging.error("State manager thread failed to terminate")
 				zynthian_gui_config.top.quit()
 				return
-		# Refresh Current Chain
-		elif self.get_current_processor() and not self.state_manager.is_busy():
-			try:
-				#TODO: self.get_current_processor().refresh()
-				pass
-			except Exception as e:
-				self.state_manager.end_busy("zyngui")
-				logging.exception(e)
 
 		# Poll
-		zynthian_gui_config.top.after(160, self.zyngine_refresh)
+		zynthian_gui_config.top.after(160, self.poll)
 
 
 	def osc_timeout(self):
@@ -2377,6 +2375,6 @@ zynthian_gui_config.top.mainloop()
 #------------------------------------------------------------------------------
 
 logging.info("Exit with code {} ...\n\n".format(zyngui.exit_code))
-exit(zyngui.exit_code)
+sys.exit(zyngui.exit_code)
 
 #------------------------------------------------------------------------------
