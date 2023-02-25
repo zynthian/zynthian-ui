@@ -330,7 +330,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		options = OrderedDict()
 		options['Arranger'] = 'Arranger'
 		options['Bank ({})'.format(self.zyngui.zynseq.bank)] = 'Bank'
-		options['Tempo ({:0.1f})'.format(self.zyngui.zynseq.libseq.getTempo())] = 'Tempo'
+		if zynthian_gui_config.transport_clock_source == 0:
+			options['Tempo ({:0.1f})'.format(self.zyngui.zynseq.libseq.getTempo())] = 'Tempo'
 		options['Beats per bar ({})'.format(self.zyngui.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
 		options[f'Swing division (1/{24/self.zyngui.zynseq.libseq.getSwingDiv():0.0f})'] = 'Swing division'
 		options['Swing ratio ({}%)'.format(self.zyngui.zynseq.libseq.getSwingRatio())] = 'Swing ratio'
@@ -383,7 +384,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if params == 'Swing division':
 			self.enable_param_editor(self, 'swing_div', 'Swing division', {'labels':['1','1/2','1/4','1/8'], 'ticks':[24,12,6,3], 'value_default':6, 'value':self.zyngui.zynseq.libseq.getSwingDiv()})
 		if params == 'Swing ratio':
-			self.enable_param_editor(self, 'swing_ratio', 'Swing ratio', {'value_min':-100, 'value_max':100, 'value_default':0, 'value':self.zyngui.zynseq.libseq.getSwingRatio()})
+			self.enable_param_editor(self, 'swing_ratio', 'Swing ratio', {'value_min':-0, 'value_max':100, 'value_default':0, 'value':self.zyngui.zynseq.libseq.getSwingRatio()})
 		elif params == 'Metronome':
 			self.zyngui.zynseq.libseq.enableMetronome(not self.zyngui.zynseq.libseq.isMetronomeEnabled())
 		elif params == 'Metronome volume':
@@ -519,7 +520,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				return
 			self.selected_pad = pad
 			self.update_selection_cursor()
-		elif encoder == zynthian_gui_config.ENC_SNAPSHOT:
+		elif encoder == zynthian_gui_config.ENC_SNAPSHOT and zynthian_gui_config.transport_clock_source == 0:
+			self.zyngui.zynseq.update_tempo()
 			self.zyngui.zynseq.nudge_tempo(dval)
 			self.set_title("Tempo: {:.1f}".format(self.zyngui.zynseq.get_tempo()), None, None, 2)
 		elif encoder == zynthian_gui_config.ENC_LAYER:

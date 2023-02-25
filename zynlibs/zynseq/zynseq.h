@@ -57,6 +57,11 @@ extern "C"
 {
 #endif
 
+enum TRANSPORT_CLOCK
+{
+    TRANSPORT_CLOCK_INTERNAL = 0,
+    TRANSPORT_CLOCK_MIDI = 1
+};
 
 // ** Library management functions **
 
@@ -314,6 +319,34 @@ uint8_t getNoteVelocity(uint32_t step, uint8_t note);
 */
 void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity);
 
+/** @brief  Get stutter count of note in selected pattern
+*   @param  step Index of step at which note resides
+*   @param  note MIDI note number
+*   @retval uint8_t Stutter count
+*/
+uint8_t getStutterCount(uint32_t step, uint8_t note);
+
+/** @brief  Set stutter count of note in selected pattern
+*   @param  step Index of step at which note resides
+*   @param  note MIDI note number
+*   @param  count Stutter count
+*/
+void setStutterCount(uint32_t step, uint8_t note, uint8_t count);
+
+/** @brief  Get stutter duration of note in selected pattern
+*   @param  step Index of step at which note resides
+*   @param  note MIDI note number
+*   @retval uint8_t Stutter duration in clock cycles
+*/
+uint8_t getStutterDur(uint32_t step, uint8_t note);
+
+/** @brief  Set stutter duration of note in selected pattern
+*   @param  step Index of step at which note resides
+*   @param  note MIDI note number
+*   @param  dur Stutter duration in clock cycles
+*/
+void setStutterDur(uint32_t step, uint8_t note, uint8_t dur);
+
 /** @brief  Get duration of note in selected pattern
 *   @param  position Index of step at which note starts
 *   @note   note MIDI note number
@@ -353,6 +386,16 @@ void changeVelocityAll(int value);
 *   @param  value Offset to adjust +/-100.0 or whatever
 */
 void changeDurationAll(float value);
+
+/** @brief  Change stutter count of all notes in patterm
+*   @param  value Offset to adjust +/-100 or whatever
+*/
+void changeStutterCountAll(int value);
+
+/** @brief  Change stutter duration of all notes in patterm
+*   @param  value Offset to adjust +/-100 or whatever
+*/
+void changeStutterDurAll(int value);
 
 /** @brief  Clears events from selected pattern
 *   @note   Does not change other parameters such as pattern length
@@ -544,8 +587,9 @@ void togglePlayState(uint8_t bank, uint8_t sequence);
 /** @brief  Get quantity of tracks in a sequence
 *   @param  bank Index of bank
 *   @param  sequence Index of sequence
+*   @retval uint32_t Quantity of tracks in sequence
 */
-size_t getTracksInSequence(uint8_t bank, uint8_t sequence);
+uint32_t getTracksInSequence(uint8_t bank, uint8_t sequence);
 
 /** @brief  Stops all sequences
 */
@@ -820,9 +864,9 @@ uint8_t getSwingDiv();
 /** @brief  Set the swing ratio
 *   @param  ratio Ratio percentage [+/-100]
 */
-void setSwingRatio(int8_t div);
+void setSwingRatio(int8_t ratio);
 
-/** @brief  Get the swing division
+/** @brief  Get the swing ratio
 *   @retval int8_t Division [+/-100]
 */
 int8_t getSwingRatio();
@@ -862,7 +906,21 @@ void setMetronomeVolume(float level);
 */
 float getMetronomeVolume();
 
+/** @brief Get clock source
+*   @retval uint8_t Clock source [0:Internal 1:MIDI]
+*/
+uint8_t getClockSource();
+
+/** @brief Set clock source
+*   @param source uint8_t Clock source [0:Internal 1:MIDI]
+*/
+void setClockSource(uint8_t source);
+
+/** @brief  Get quantity of frames in each clock cycle
+*   @retval double Quantity of frames
+*/
+double getFramesPerClock(double dTempo);
+
 #ifdef __cplusplus
 }
 #endif
-

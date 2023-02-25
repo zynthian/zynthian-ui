@@ -31,9 +31,8 @@ import ctypes
 import signal
 import logging
 import importlib
-from time import sleep
 from pathlib import Path
-from time import monotonic
+from time import sleep, monotonic
 from glob import glob
 from datetime import datetime
 from threading  import Thread, Lock
@@ -306,6 +305,7 @@ class zynthian_gui:
 			if self.midi_filter_script:
 				self.midi_filter_script.clean()
 			self.midi_filter_script = zynthian_midi_filter.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
+			self.zynseq.libseq.setClockSource(zynthian_gui_config.transport_clock_source)
 
 		except Exception as e:
 			logging.error("ERROR initializing MIDI : {}".format(e))
@@ -482,6 +482,8 @@ class zynthian_gui:
 			# Try to load "default" snapshot ...
 			if not snapshot_loaded:
 				snapshot_loaded = self.screens['snapshot'].load_default_snapshot()
+
+		self.last_tap = 0
 
 		if snapshot_loaded:
 			init_screen = "audio_mixer"
@@ -1054,6 +1056,31 @@ class zynthian_gui:
 			self.zynseq.set_tempo(params[0])
 		except (AttributeError, TypeError) as err:
 			pass
+
+	def cuia_tempo_up(self, params):
+		if params:
+			try:
+				self.zynseq.set_tempo(self.zynseq.get_tempo() + params[0])
+			except (AttributeError, TypeError) as err:
+				pass
+		else:
+			self.zynseq.set_tempo(self.zynseq.get_tempo() + 1)
+
+	def cuia_tempo_down(self, params):
+		if params:
+			try:
+				self.zynseq.set_tempo(self.zynseq.get_tempo() - params[0])
+			except (AttributeError, TypeError) as err:
+				pass
+		else:
+			self.zynseq.set_tempo(self.zynseq.get_tempo() - 1)
+
+	def cuia_tap_tempo(self, params):
+		now = monotonic()
+		tap_dur = now - self.last_tap
+		if tap_dur > 0.14285 and tap_dur <= 3:
+			self.zynseq.set_tempo(60 / tap_dur)
+		self.last_tap = now
 
 	# Basic UI-Control CUIAs
 	# 4 x Arrows
