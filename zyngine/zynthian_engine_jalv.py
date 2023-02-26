@@ -261,36 +261,36 @@ class zynthian_engine_jalv(zynthian_engine):
 
 
 	# ---------------------------------------------------------------------------
-	# Layer Management
+	# Processor Management
 	# ---------------------------------------------------------------------------
 
-	def add_layer(self, layer):
-		super().add_layer(layer)
-		self.set_midi_chan(layer)
+	def add_processor(self, processor):
+		super().add_processor(processor)
+		self.set_midi_chan(processor)
 
 
-	def get_name(self, layer):
+	def get_name(self, processor):
 		return self.plugin_name
 
 
-	def get_path(self, layer):
+	def get_path(self, processor):
 		return self.plugin_name
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
-	def set_midi_chan(self, layer):
+	def set_midi_chan(self, processor):
 		if self.plugin_name=="Triceratops":
-			self.lv2_zctrl_dict["midi_channel"].set_value(layer.midi_chan+1.5)
+			self.lv2_zctrl_dict["midi_channel"].set_value(processor.midi_chan+1.5)
 		elif self.plugin_name.startswith("SO-"):
-			self.lv2_zctrl_dict["channel"].set_value(layer.midi_chan)
+			self.lv2_zctrl_dict["channel"].set_value(processor.midi_chan)
 
 	#----------------------------------------------------------------------------
 	# Bank Managament
 	#----------------------------------------------------------------------------
 
-	def get_bank_list(self, layer=None):
+	def get_bank_list(self, processor=None):
 		bank_list = []
 		for bank_label, info in self.preset_info.items():
 			bank_list.append((str(info['bank_url']), None, bank_label, None))
@@ -299,7 +299,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		return bank_list
 
 
-	def set_bank(self, layer, bank):
+	def set_bank(self, processor, bank):
 		return True
 
 
@@ -361,7 +361,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				for preset in list(self.preset_info[bank[2]]['presets']):
 					self.delete_preset(bank, preset['url'])
 				self.remove_user_bank(bank)
-				#TODO: self.zyngui.curlayer.load_preset_list()
+				#TODO: self.zyngui.curprocessor.load_preset_list()
 			except Exception as e:
 				logging.error(e)
 
@@ -382,7 +382,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		return preset_list
 
 
-	def set_preset(self, layer, preset, preload=False):
+	def set_preset(self, processor, preset, preload=False):
 		if not preset[0]:
 			return
 		output = self.proc_cmd("preset {}".format(preset[0]))
@@ -631,9 +631,9 @@ class zynthian_engine_jalv(zynthian_engine):
 		return self.lv2_monitors_dict
 
 
-	def get_controllers_dict(self, layer):
+	def get_controllers_dict(self, processor):
 		# Get plugin static controllers
-		zctrls = super().get_controllers_dict(layer)
+		zctrls = super().get_controllers_dict(processor)
 		# Add plugin native controllers
 		zctrls.update(self.lv2_zctrl_dict)
 		return zctrls

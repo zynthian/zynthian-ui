@@ -43,7 +43,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
     
 	def fill_list(self):
 		if not self.zyngui.get_current_processor():
-			logging.error("Can't fill bank list for None layer!")
+			logging.error("Can't fill bank list for None processor!")
 			return
 		self.list_data = self.zyngui.get_current_processor().get_bank_list()
 		super().fill_list()

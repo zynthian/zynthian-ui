@@ -176,35 +176,35 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 
 	# ---------------------------------------------------------------------------
-	# Layer Management
+	# Processor Management
 	# ---------------------------------------------------------------------------
 
-	def add_layer(self, layer):
-		self.layers.append(layer)
-		layer.part_i = self.get_free_parts()[0]
-		layer.jackname = "{}:part{}/".format(self.jackname, layer.part_i)
-		logging.debug("ADD LAYER => Part {} ({})".format(layer.part_i, self.jackname))
+	def add_processor(self, processor):
+		self.processors.append(processor)
+		processor.part_i = self.get_free_parts()[0]
+		processor.jackname = "{}:part{}/".format(self.jackname, processor.part_i)
+		logging.debug("ADD processor => Part {} ({})".format(processor.part_i, self.jackname))
 
 
-	def del_layer(self, layer):
-		super().del_layer(layer)
-		self.disable_part(layer.part_i)
-		layer.part_i = None
-		layer.jackname = None
+	def del_processor(self, processor):
+		super().del_processor(processor)
+		self.disable_part(processor.part_i)
+		processor.part_i = None
+		processor.jackname = None
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
-	def set_midi_chan(self, layer):
-		if self.osc_server and layer.part_i is not None:
-			self.osc_server.send(self.osc_target, "/part%d/Prcvchn" % layer.part_i, layer.get_midi_chan())
+	def set_midi_chan(self, processor):
+		if self.osc_server and processor.part_i is not None:
+			self.osc_server.send(self.osc_target, "/part%d/Prcvchn" % processor.part_i, processor.get_midi_chan())
 
 	#----------------------------------------------------------------------------
 	# Bank Managament
 	#----------------------------------------------------------------------------
 
-	def get_bank_list(self, layer=None):
+	def get_bank_list(self, processor=None):
 		return self.get_dirlist(self.bank_dirs)
 
 	#----------------------------------------------------------------------------
@@ -238,16 +238,16 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		return self._get_preset_list(bank)
 
 
-	def set_preset(self, layer, preset, preload=False):
+	def set_preset(self, processor, preset, preload=False):
 		if self.osc_server is None:
 			return
 		self.state_manager.start_busy("zynaddsubfx")
 		if preset[3]=='xiz':
-			self.enable_part(layer)
-			self.osc_server.send(self.osc_target, "/load-part",layer.part_i,preset[0])
-			#logging.debug("OSC => /load-part %s, %s" % (layer.part_i,preset[0]))
+			self.enable_part(processor)
+			self.osc_server.send(self.osc_target, "/load-part",processor.part_i,preset[0])
+			#logging.debug("OSC => /load-part %s, %s" % (processor.part_i,preset[0]))
 		elif preset[3]=='xmz':
-			self.enable_part(layer)
+			self.enable_part(processor)
 			self.osc_server.send(self.osc_target, "/load_xmz",preset[0])
 			logging.debug("OSC => /load_xmz %s" % preset[0])
 		elif preset[3]=='xsz':
@@ -265,7 +265,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				break
 			else:
 				i = i + 1
-		layer.send_ctrl_midi_cc()
+		processor.send_ctrl_midi_cc()
 		return True
 
 
@@ -284,19 +284,19 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	def get_free_parts(self):
 		free_parts=list(range(0,16))
-		for layer in self.layers:
+		for processor in self.processors:
 			try:
-				free_parts.remove(layer.part_i)
+				free_parts.remove(processor.part_i)
 			except:
 				pass
 		logging.debug("FREE PARTS => %s" % free_parts)
 		return free_parts
 
 
-	def enable_part(self, layer):
-		if self.osc_server and layer.part_i is not None:
-			self.osc_server.send(self.osc_target, "/part%d/Penabled" % layer.part_i, True)
-			self.osc_server.send(self.osc_target, "/part%d/Prcvchn" % layer.part_i, layer.get_midi_chan())
+	def enable_part(self, processor):
+		if self.osc_server and processor.part_i is not None:
+			self.osc_server.send(self.osc_target, "/part%d/Penabled" % processor.part_i, True)
+			self.osc_server.send(self.osc_target, "/part%d/Prcvchn" % processor.part_i, processor.get_midi_chan())
 
 
 	def disable_part(self, i):
@@ -304,9 +304,9 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 			self.osc_server.send(self.osc_target, "/part%d/Penabled" % i, False)
 
 
-	def enable_layer_parts(self):
-		for layer in self.layers:
-			self.enable_part(layer)
+	def enable_processor_parts(self):
+		for processor in self.processors:
+			self.enable_part(processor)
 		for i in self.get_free_parts():
 			self.disable_part(i)
 

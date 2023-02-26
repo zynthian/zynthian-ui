@@ -77,7 +77,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 			self.wsleds.setPixelColor(12, self.wscolor_light)
 
 		# Light ALT button => MIDI LEARN!
-		if self.zyngui.state_manager.midi_learn_zctrl or curscreen == "zs3_learn":
+		if self.zyngui.state_manager.midi_learn_param or curscreen == "zs3_learn":
 			self.wsleds.setPixelColor(13, self.wscolor_yellow)
 		elif self.zyngui.midi_learn_mode:
 			self.wsleds.setPixelColor(13, self.wscolor_active)

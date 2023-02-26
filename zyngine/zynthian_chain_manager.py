@@ -41,7 +41,7 @@ import zynautoconnect
 
 class zynthian_chain_manager():
 
-    single_layer_engines = ["BF", "MD", "PT", "PD", "AE", "CS", "SL"]
+    single_processor_engines = ["BF", "MD", "PT", "PD", "AE", "CS", "SL"]
 
     def __init__(self, state_manager):
         """ Create an instance of a chain manager
@@ -62,6 +62,7 @@ class zynthian_chain_manager():
         self.processors = {} # Dictionary of processor objects indexed by UID
         self.active_chain_id = None # Active chain id
         self.midi_chan_2_chain = [None] * 16  # Chains mapped by MIDI channel
+        self.midi_learn_map = {} # Map of lists of [proc, param_symbol] mapped by 16-bit chan<<8|cc
 
         self.update_engine_info()
         self.add_chain("main", enable_audio_thru=True)
@@ -371,9 +372,34 @@ class zynthian_chain_manager():
             return self.chains[chain_id].midi_routes
         return{}
 
+    def will_route_howl(self, src_id, dst_id, node_list=None):
+        """Checks if adding a connection will cause a howl-round loop
+        
+        src_id : Chain ID of the source chain
+        dst_id : Chain ID of the destination chain
+        node_list : Do not use - internal function parameter
+        Returns : True if adding the route will cause howl-round feedback loop
+        """
+
+        if dst_id not in self.chains:
+            return False
+        if src_id:
+            # src_id only provided on first call (not re-entrant cycles)
+            if src_id not in self.chains:
+                return False
+            node_list = [src_id] # Init node_list on first call
+        if dst_id in node_list:
+            return True
+        node_list.append(dst_id)
+        for chain_id in self.chains[dst_id].midi_out:
+            if chain_id in self.chains:
+                if self.will_route_howl(None, chain_id, node_list):
+                    return True
+                node_list.append(chain_id)
+        return False
+
     # ------------------------------------------------------------------------
-    # 
-    # Chain Management
+    # Chain Selection
     # ------------------------------------------------------------------------
 
     def set_active_chain_by_id(self, chain_id=None):
@@ -457,32 +483,6 @@ class zynthian_chain_manager():
         if self.active_chain_id in self.chains:
             return self.chains[self.active_chain_id]
         return None
-
-    def will_route_howl(self, src_id, dst_id, node_list=None):
-        """Checks if adding a connection will cause a howl-round loop
-        
-        src_id : Chain ID of the source chain
-        dst_id : Chain ID of the destination chain
-        node_list : Do not use - internal function parameter
-        Returns : True if adding the route will cause howl-round feedback loop
-        """
-
-        if dst_id not in self.chains:
-            return False
-        if src_id:
-            # src_id only provided on first call (not re-entrant cycles)
-            if src_id not in self.chains:
-                return False
-            node_list = [src_id] # Init node_list on first call
-        if dst_id in node_list:
-            return True
-        node_list.append(dst_id)
-        for chain_id in self.chains[dst_id].midi_out:
-            if chain_id in self.chains:
-                if self.will_route_howl(None, chain_id, node_list):
-                    return True
-                node_list.append(chain_id)
-        return False
 
     # ------------------------------------------------------------------------
     # Processor Management
@@ -593,6 +593,18 @@ class zynthian_chain_manager():
         return self.chains[chain_id].get_processor_count(type, slot)
 
 
+    def get_processor_id(self, processor):
+        """Get processor uid from processor object
+        
+        processor : Processor object
+        Returns : Processor UID or None if not found
+        """
+
+        for uid, proc in self.processors.items():
+            if proc == processor:
+                return uid
+        return None
+
     def get_processors(self, chain_id=None, type=None, slot=None):
         """Get a list of processors in (sub)chain (slot)
 
@@ -644,7 +656,7 @@ class zynthian_chain_manager():
         """Stop engines that are not used by any processors"""
 
         for engine in list(self.zyngines.keys()):
-            if not self.zyngines[engine].layers:
+            if not self.zyngines[engine].processors:
                 logging.debug("Stopping Unused Engine '{}' ...".format(engine))
                 self.zyngines[engine].stop()
                 del self.zyngines[engine]
@@ -652,7 +664,7 @@ class zynthian_chain_manager():
     def stop_unused_jalv_engines(self):
         """Stop JALV engines that are not used by any processors"""
         for engine in list(self.zyngines.keys()):
-            if len(self.zyngines[engine].layers) == 0 and engine[0:3] in ("JV/"):
+            if len(self.zyngines[engine].processors) == 0 and engine[0:3] in ("JV/"):
                 self.zyngines[engine].stop()
                 del self.zyngines[engine]
 
@@ -663,7 +675,7 @@ class zynthian_chain_manager():
             eng_type = info[2]
             cat = info[3]
             enabled = info[5]
-            if enabled and (eng_type == type or type is None) and (eng not in self.single_layer_engines or eng not in self.zyngines):
+            if enabled and (eng_type == type or type is None) and (eng not in self.single_processor_engines or eng not in self.zyngines):
                 if cat not in result:
                     result[cat] = OrderedDict()
                 result[cat][eng] = info
@@ -767,8 +779,94 @@ class zynthian_chain_manager():
             processor.restore_preset()
 
 	#----------------------------------------------------------------------------
-	# MIDI CC & Program Change (when ZS3 is disabled!)
+	# MIDI CC
 	#----------------------------------------------------------------------------
+
+    def _add_midi_learn(self, id, proc, param):
+        """Adds a midi learn configuration
+
+        id : 16-bit id of midi_chan<<8|midi_cc
+        proc : Processor object
+        param : Parameter symbol
+        """
+
+        self.remove_midi_learn(proc, param)
+        if id in self.midi_learn_map:
+            if [proc, param] not in self.midi_learn_map[id]:
+                self.midi_learn_map[id].append([proc, param])
+        else:
+            self.midi_learn_map[id] = [[proc, param]]
+        self.state_manager.exit_midi_learn()
+
+    def add_midi_learn(self, midi_chan, midi_cc, proc, param):
+        """Adds a midi learn configuration
+
+        midi_chan : MIDI channel of CC message
+        midi_cc : CC number of CC message
+        proc : Processor object
+        param : Parameter symbol
+        """
+
+        self._add_midi_learn(midi_chan << 8 | midi_cc, proc, param)
+
+    def remove_midi_learn(self, proc, param):
+        """Remove a midi learn configuration
+        
+        proc : Processor object
+        param : Parameter symbol
+        """
+
+        params = self.get_midi_learn_from_param(proc, param)
+        if params:
+            del self.midi_learn_map[params[0] << 8 | params[1]]
+
+    def _get_midi_learn(self, id, chain_id=None):
+        """Get list of parameters mapped
+
+        id : 16-bit id of midi_chan<<8|midi_cc
+        chain_id : Optional filter by chain_id
+        Returns : List of [processr, parameter] or None if chan,cc not mapped
+        """
+
+        try:
+            ml =  self.midi_learn_map[id]
+            if chain_id is None:
+                return ml
+            ret = []
+            chain_procs = self.get_processors(chain_id)
+            for val in ml:
+                if val[0] in chain_procs:
+                    ret.append(val)
+            return ret
+            
+        except:
+            pass
+        return None
+
+    def get_midi_learn(self, midi_chan, midi_cc, chain_id=None):
+        """Get list of parameters mapped
+
+        midi_chan : MIDI channel of CC message
+        midi_cc : CC number of CC message
+        chain_id : Optional filter by chain_id
+        Returns : List of [processr, parameter]
+        """
+
+        return self._get_midi_learn(midi_chan << 8 | midi_cc, chain_id)
+
+    def get_midi_learn_from_param(self, proc, param_symbol):
+        """Get MIDI channel and CC controlling processor parameter
+
+        proc : Processor object
+        param_symbol : Parameter symbol
+        Returns : [midi_channel, cc] or None if not mapped or not found
+        """
+        for item in self.midi_learn_map.items():
+            for params in item[1]:
+                if proc == params[0] and param_symbol == params[1]:
+                    return [(item[0] & 0xff00) >> 8, item[0] & 0xff]
+        return None
+
 
     def midi_control_change(self, chan, ccnum, ccval):
         """Send MIDI CC message to relevant chain
@@ -789,14 +887,50 @@ class zynthian_chain_manager():
                 for processor in chain.get_processors():
                     processor.midi_bank_lsb(ccval)
                     return
-            elif zynthian_gui_config.midi_single_active_channel:
-                for processor in chain.get_processors():
-                    processor.midi_control_change(chan, ccnum, ccval)
-                return
-        for engine in self.zyngines.values():
-            # Send to engines directly (rather than processors) because all need to be hit (optimisation)
-            engine.midi_control_change(chan, ccnum, ccval)
 
+        if zynthian_gui_config.midi_single_active_channel:
+            chain = self.active_chain_id
+        else:
+            chain = None
+        for param_map in self.get_midi_learn(chan, ccnum, chain):
+            try:
+                zctrl = param_map[0].controllers_dict[param_map[1]]
+                zctrl.midi_control_change(ccval)
+            except:
+                pass
+
+    def set_midi_learn_state(self, state):
+        """Set MIDI learn state (e.g. from ZS3)
+        
+        state : MIDI learn state as dictionary
+        """
+
+        self.midi_learn_map ={}
+        for id, param_list in state:
+            try:
+                params = []
+                for param in param_list:
+                    params.append([self.processors[int(param[0]), param[1]]])
+                self.midi_learn_map[int(id)] = params
+            except:
+                logging.warning("Failed to parse MIDI learn parameter")
+
+    def get_midi_learn_state(self, state):
+        """Get MIDI learn state as dictionary
+        
+        Returns : MIDI learn state as dictionary
+        """
+
+        ret_val = {}
+        for id, param_list in self.midi_learn_map.items():
+            ret_val[id] = []
+            for param in param_list:
+                ret_val[id].append([self.get_processor_id(param[0]), param[1]])
+        return ret_val
+
+	#----------------------------------------------------------------------------
+	# MIDI Program Change (when ZS3 is disabled!)
+	#----------------------------------------------------------------------------
 
     def set_midi_prog_preset(self, midich, prognum):
         """Send MIDI PC message to relevant chain

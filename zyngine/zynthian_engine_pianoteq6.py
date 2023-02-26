@@ -238,7 +238,7 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 
 
 	# ---------------------------------------------------------------------------
-	# Layer Management
+	# Processor Management
 	# ---------------------------------------------------------------------------
 
 	# ---------------------------------------------------------------------------
@@ -249,11 +249,11 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 	# Bank Managament
 	# ----------------------------------------------------------------------------
 
-	def get_bank_list(self, layer=None):
+	def get_bank_list(self, processor=None):
 		return self.bank_list
 
 
-	def set_bank(self, layer, bank):
+	def set_bank(self, processor, bank):
 		self.name = (f"Pianoteq {bank[0]}")
 		return True
 
@@ -455,16 +455,16 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 		return res
 
 
-	def set_preset(self, layer, preset, preload=False):
+	def set_preset(self, processor, preset, preload=False):
 		mm = "Zynthian-{}".format(preset[3])
 		if mm == self.midimapping:
-			super().set_preset(layer, preset, preload)
+			super().set_preset(processor, preset, preload)
 			self.preset = preset[0]
 			time.sleep(1)
 		else:
 			self.midimapping = mm
 			self.preset = preset[0]
-			# self.command = self.base_command + " --midi-channel {}".format(layer.get_midi_chan()+1)
+			# self.command = self.base_command + " --midi-channel {}".format(processor.get_midi_chan()+1)
 			self.command = self.base_command + " --midi-channel all"
 			self.command += " --midimapping \"{}\"".format(self.midimapping)
 			self.command += " --preset \"{}\"".format(preset[0])
@@ -473,7 +473,7 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 			zynautoconnect.request_midi_connect(True)
 			zynautoconnect.request_audio_connect()
 
-		layer.send_ctrl_midi_cc()
+		processor.send_ctrl_midi_cc()
 		return True
 
 

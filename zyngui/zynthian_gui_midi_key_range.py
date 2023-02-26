@@ -380,7 +380,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 	def set_select_path(self):
 		try:
-			self.select_path.set("{} > Note Range & Transpose...".format(self.zyngui.screens['layer_options'].layer.get_basepath()))
+			self.select_path.set("{} > Note Range & Transpose...".format(self.zyngui.screens['processor_options'].processor.get_basepath()))
 		except:
 			self.select_path.set("Note Range & Transpose...")
 

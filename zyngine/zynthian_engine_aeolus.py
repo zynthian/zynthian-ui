@@ -255,11 +255,11 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 	def start(self):
 		chain_manager = self.state_manager.chain_manager
-		if len(self.layers) <= 1:
-			# Add extra layers
-			for layer_index in range(len(self.layers), len(self.instrument)):
-				if self.keyboard_config & 1 << layer_index:
-					midi_chan = chain_manager.get_next_free_midi_chan(self.layers[0].midi_chan)
+		if len(self.processors) <= 1:
+			# Add extra processors
+			for processor_index in range(len(self.processors), len(self.instrument)):
+				if self.keyboard_config & 1 << processor_index:
+					midi_chan = chain_manager.get_next_free_midi_chan(self.processors[0].midi_chan)
 					if midi_chan is None:
 						break
 					chain_id = chain_manager.add_chain(None, midi_chan)
@@ -269,13 +269,13 @@ class zynthian_engine_aeolus(zynthian_engine):
 					chain.insert_processor(processor)
 					chain_manager.processors[proc_id] = processor
 					processor.engine = self
-					if layer_index:
+					if processor_index:
 						chain.audio_out = []
 						chain.mixer_chan = None
-					self.add_layer(processor)
+					self.add_processor(processor)
 
 			# Select first chain so that preset selection is on "Grand manual"
-			chain_manager.set_active_chain_by_id(chain_manager.get_chain_id_by_processor(self.layers[0]))
+			chain_manager.set_active_chain_by_id(chain_manager.get_chain_id_by_processor(self.processors[0]))
 
 		self.osc_init()
 		self.get_current_config()
@@ -344,42 +344,42 @@ class zynthian_engine_aeolus(zynthian_engine):
 		return True
 
 
-	def get_path(self, layer):
+	def get_path(self, processor):
 		path = self.name
 		if self.keyboard_config is None:
 			path += "/Divisions"
 		elif self.temperament is None:
 			path += "/Temperament"
 		else:
-			path = f"{self.get_name(layer)}/{self.temperament_names[self.temperament]}"
+			path = f"{self.get_name(processor)}/{self.temperament_names[self.temperament]}"
 		return path
 
 
 	# ---------------------------------------------------------------------------
-	# Layer Management
+	# Processor Management
 	# ---------------------------------------------------------------------------
 
-	def add_layer(self, layer):
+	def add_processor(self, processor):
 		chain_manager = self.state_manager.chain_manager
-		layer_index = len(self.layers)
+		processor_index = len(self.processors)
 		try:
-			layer.division = list(self.instrument)[layer_index]
+			processor.division = list(self.instrument)[processor_index]
 		except:
 			return
-		super().add_layer(layer)
-		layer.engine = self
-		layer.refresh_controllers()
-		layer.bank_info = ("General", 0, "General")
+		super().add_processor(processor)
+		processor.engine = self
+		processor.refresh_controllers()
+		processor.bank_info = ("General", 0, "General")
 
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
-	def set_midi_chan(self, layer=None):
+	def set_midi_chan(self, processor=None):
 		"""Update the MIDI channels that aeolus listens to
 
-		layer : Processor (not used - always updates all)
+		processor : Processor (not used - always updates all)
 		"""
 
 		if self.osc_server is None:
@@ -388,8 +388,8 @@ class zynthian_engine_aeolus(zynthian_engine):
 		midi_config = []
 		for chan in range(16):
 			val = 0
-			for i, layer in enumerate(self.layers):
-				if layer.midi_chan == chan:
+			for i, processor in enumerate(self.processors):
+				if processor.midi_chan == chan:
 					keyboard = keyboard_order[i]
 					val = 0x5000 | keyboard
 					if keyboard < 2:
@@ -407,7 +407,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 	# Bank Managament
 	#----------------------------------------------------------------------------
 
-	def get_bank_list(self, layer=None):
+	def get_bank_list(self, processor=None):
 		"""Get list of bank_info structures
 		
 		bank_info is list: [bank uri, bank index, bank title]
@@ -426,19 +426,19 @@ class zynthian_engine_aeolus(zynthian_engine):
 				if value == self.current_temperament:
 					current_sel = i
 				i += 1
-		elif layer.preset_info is None:
+		elif processor.preset_info is None:
 			res = [("General", 0, "General")]
 		else:
-			res = [("General", 0, "General"), (layer.division, None, f"Local {layer.division}")]
+			res = [("General", 0, "General"), (processor.division, None, f"Local {processor.division}")]
 		if res:
-			layer.bank_info = res[current_sel]
+			processor.bank_info = res[current_sel]
 		return res
 
 
-	def set_bank(self, layer, bank_info):
+	def set_bank(self, processor, bank_info):
 		"""Select a bank
 		
-		layer : Instance of engine (processor)
+		processor : Instance of engine (processor)
 		bank_info : Bank info structure [uri, index, name]
         Returns - True if bank selected, None if more bank selection steps required or False on failure
 		Before engine configured accepts keyboard layout or temperament
@@ -456,7 +456,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 			self.start()
 			return None
 
-		self.state_manager.zynmidi.set_midi_bank_lsb(layer.get_midi_chan(), bank_info[1])
+		self.state_manager.zynmidi.set_midi_bank_lsb(processor.get_midi_chan(), bank_info[1])
 
 		return True
 
@@ -471,22 +471,22 @@ class zynthian_engine_aeolus(zynthian_engine):
 		return res
 
 
-	def all_stops_off(self, layer=None):
-		if layer == None:
-			layers = self.layers
+	def all_stops_off(self, processor=None):
+		if processor == None:
+			processors = self.processors
 		else:
-			layers = [layer]
-		for l in layers:
+			processors = [processor]
+		for l in processors:
 			for zctrl in l.controllers_dict.values():
 				zctrl.set_value(0, True)
 
 
-	def set_preset(self, layer, preset_info, preload=False):
+	def set_preset(self, processor, preset_info, preload=False):
 		preset = self.presets[preset_info[2]]
 
 		#Update Controller Values
-		for l in self.layers:
-			if preset_info[1] == "General" or l == layer:
+		for l in self.processors:
+			if preset_info[1] == "General" or l == processor:
 				for zctrl in l.controllers_dict.values():
 					try:
 						value = preset[l.division][zctrl.symbol]
@@ -512,10 +512,10 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 	def save_preset(self, bank_info, preset_name):
 		state = {}
-		for layer in self.layers:
-			state[layer.division] = {}
-			for symbol in layer.controllers_dict:
-				state[layer.division][symbol] = layer.controllers_dict[symbol].value
+		for processor in self.processors:
+			state[processor.division] = {}
+			for symbol in processor.controllers_dict:
+				state[processor.division][symbol] = processor.controllers_dict[symbol].value
 		self.presets[preset_name] = state
 		self.save_all_presets()
 		return preset_name
@@ -552,10 +552,10 @@ class zynthian_engine_aeolus(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 
-	def get_controllers_dict(self, layer):
-		self._ctrls = self.instrument[layer.division]['ctrls']
-		self._ctrl_screens = self.instrument[layer.division]['ctrl_screens']
-		return super().get_controllers_dict(layer)
+	def get_controllers_dict(self, processor):
+		self._ctrls = self.instrument[processor.division]['ctrls']
+		self._ctrl_screens = self.instrument[processor.division]['ctrl_screens']
+		return super().get_controllers_dict(processor)
 
 
 	def send_controller_value(self, zctrl):
@@ -605,8 +605,8 @@ class zynthian_engine_aeolus(zynthian_engine):
 			"temperament": self.temperament,
 			"divisions": []
 		}
-		for layer in self.layers:
-			engine_state["divisions"].append(layer.division)
+		for processor in self.processors:
+			engine_state["divisions"].append(processor.division)
 		return engine_state
 
 
@@ -633,20 +633,20 @@ class zynthian_engine_aeolus(zynthian_engine):
 			self.restart_flag = True
 
 		chain_manager = self.state_manager.chain_manager
-		for i, layer in enumerate(self.layers):
-			chain = chain_manager.get_chain(chain_manager.get_chain_id_by_processor(layer))
+		for i, processor in enumerate(self.processors):
+			chain = chain_manager.get_chain(chain_manager.get_chain_id_by_processor(processor))
 			try:
-				layer.division = engine_state["divisions"][i]
+				processor.division = engine_state["divisions"][i]
 			except:
-				layer.division = list(self.instrument)[i]
+				processor.division = list(self.instrument)[i]
 			if i:
 				chain.mixer_chan = None
 		self.set_tuning()
 		
 
-	def get_name(self, layer):
+	def get_name(self, processor):
 		try:
-			return f"{self.name} {layer.division}"
+			return f"{self.name} {processor.division}"
 		except:
 			return self.name
 

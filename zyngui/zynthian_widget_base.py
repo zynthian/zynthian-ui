@@ -45,7 +45,7 @@ class zynthian_widget_base(tkinter.Frame):
 		self.wide = self.zyngui_control.wide
 		self.shown = False
 
-		self.layer = None
+		self.processor = None
 		self.widget_canvas = None
 		self.monitors = None
 		self.bind('<Configure>', self.on_size)
@@ -72,12 +72,12 @@ class zynthian_widget_base(tkinter.Frame):
 			self.refresh_gui()
 
 
-	def set_layer(self, layer):
-		self.layer = layer
+	def set_processor(self, processor):
+		self.processor = processor
 
 
 	def get_monitors(self):
-		self.monitors = self.layer.engine.get_monitors_dict()
+		self.monitors = self.processor.engine.get_monitors_dict()
 
 
 	def refresh_gui(self):

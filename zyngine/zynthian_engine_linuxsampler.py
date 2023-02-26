@@ -213,32 +213,32 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		return result
 
 	# ---------------------------------------------------------------------------
-	# Layer Management
+	# Processor Management
 	# ---------------------------------------------------------------------------
 
-	def add_layer(self, layer):
-		self.layers.append(layer)
-		layer.jackname = None
-		layer.ls_chan_info = None
-		self.ls_set_channel(layer)
-		self.set_midi_chan(layer)
-		layer.refresh_flag = True
+	def add_processor(self, processor):
+		self.processors.append(processor)
+		processor.jackname = None
+		processor.ls_chan_info = None
+		self.ls_set_channel(processor)
+		self.set_midi_chan(processor)
+		processor.refresh_flag = True
 
 
-	def del_layer(self, layer):
-		super().del_layer(layer)
-		self.ls_unset_channel(layer)
+	def del_processor(self, processor):
+		super().del_processor(processor)
+		self.ls_unset_channel(processor)
 
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
-	def set_midi_chan(self, layer):
-		if layer.ls_chan_info:
-			ls_chan_id = layer.ls_chan_info['chan_id']
+	def set_midi_chan(self, processor):
+		if processor.ls_chan_info:
+			ls_chan_id = processor.ls_chan_info['chan_id']
 			try:
-				self.lscp_send_single(f"SET CHANNEL MIDI_INPUT_CHANNEL {ls_chan_id} {layer.get_midi_chan()}")
+				self.lscp_send_single(f"SET CHANNEL MIDI_INPUT_CHANNEL {ls_chan_id} {processor.get_midi_chan()}")
 			except zyngine_lscp_error as err:
 				logging.error(err)
 			except zyngine_lscp_warning as warn:
@@ -248,11 +248,11 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
-	def get_bank_list(self, layer=None):
+	def get_bank_list(self, processor=None):
 		return self.get_dirlist(self.bank_dirs)
 
 
-	def set_bank(self, layer, bank):
+	def set_bank(self, processor, bank):
 		return True
 
 	# ---------------------------------------------------------------------------
@@ -289,9 +289,9 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		return self._get_preset_list(bank)
 
 
-	def set_preset(self, layer, preset, preload=False):
-		if self.ls_set_preset(layer, preset[3], preset[0]):
-			layer.send_ctrl_midi_cc()
+	def set_preset(self, processor, preset, preload=False):
+		if self.ls_set_preset(processor, preset[3], preset[0]):
+			processor.send_ctrl_midi_cc()
 			return True
 		else:
 			return False
@@ -345,7 +345,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			logging.warning(warn)
 
 
-	def ls_set_channel(self, layer):
+	def ls_set_channel(self, processor):
 		# Adding new channel
 		ls_chan_id = self.lscp_send_single("ADD CHANNEL")
 		if ls_chan_id >= 0:
@@ -362,25 +362,25 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 				logging.warning(warn)
 
 			audio_out = self.ls_get_free_output_channel()
-			#Save chan info in layer
-			layer.ls_chan_info = {
+			#Save chan info in processor
+			processor.ls_chan_info = {
 				'chan_id': ls_chan_id,
 				'ls_engine': None,
 				'audio_output': audio_out
 			}
-			layer.jackname = f"LinuxSampler:out{audio_out}_"
+			processor.jackname = f"LinuxSampler:out{audio_out}_"
 
 
-	def ls_set_preset(self, layer, ls_engine, fpath):
+	def ls_set_preset(self, processor, ls_engine, fpath):
 		res = False
-		if layer.ls_chan_info:
-			ls_chan_id = layer.ls_chan_info['chan_id']
+		if processor.ls_chan_info:
+			ls_chan_id = processor.ls_chan_info['chan_id']
 
 			# Load engine and set output channels if needed
-			if ls_engine != layer.ls_chan_info['ls_engine']:
+			if ls_engine != processor.ls_chan_info['ls_engine']:
 				try:
 					self.lscp_send_single(f"LOAD ENGINE {ls_engine} {ls_chan_id}")
-					layer.ls_chan_info['ls_engine'] = ls_engine
+					processor.ls_chan_info['ls_engine'] = ls_engine
 
 				except zyngine_lscp_error as err:
 					logging.error(err)
@@ -400,16 +400,16 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 			self.sock.settimeout(1)
 
-			audio_output = layer.ls_chan_info['audio_output']
+			audio_output = processor.ls_chan_info['audio_output']
 			self.lscp_send_single(f"SET CHANNEL AUDIO_OUTPUT_CHANNEL {ls_chan_id} 0 {audio_output * 2}")
 			self.lscp_send_single(f"SET CHANNEL AUDIO_OUTPUT_CHANNEL {ls_chan_id} 1 {audio_output * 2 + 1}")
 
 		return res
 
 
-	def ls_unset_channel(self, layer):
-		if layer.ls_chan_info:
-			chan_id = layer.ls_chan_info['chan_id']
+	def ls_unset_channel(self, processor):
+		if processor.ls_chan_info:
+			chan_id = processor.ls_chan_info['chan_id']
 			try:
 				self.lscp_send_single(f"RESET CHANNEL {chan_id}")
 				# Remove sampler channel
@@ -420,15 +420,15 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			except zyngine_lscp_warning as warn:
 				logging.warning(warn)
 
-			layer.ls_chan_info = None
-			layer.jackname = None
+			processor.ls_chan_info = None
+			processor.jackname = None
 
 
 	def ls_get_free_output_channel(self):
 		for i in range(16):
 			busy = False
-			for layer in self.layers:
-				if layer.ls_chan_info and i == layer.ls_chan_info['audio_output']:
+			for processor in self.processors:
+				if processor.ls_chan_info and i == processor.ls_chan_info['audio_output']:
 					busy = True
 			if not busy:
 				return i

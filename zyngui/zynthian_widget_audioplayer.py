@@ -145,7 +145,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 
 	def get_monitors(self):
-		self.monitors = self.layer.engine.get_monitors_dict(self.layer.midi_chan)
+		self.monitors = self.processor.engine.get_monitors_dict(self.processor.midi_chan)
 
 
 	def refresh_gui(self):
@@ -242,9 +242,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 	def cb_canvas_wheel(self, event):
 		try:
 			if event.num == 5 or event.delta == -120:
-				self.layer.controllers_dict['position'].nudge(-1)
+				self.processor.controllers_dict['position'].nudge(-1)
 			if event.num == 4 or event.delta == 120:
-				self.layer.controllers_dict['position'].nudge(1)
+				self.processor.controllers_dict['position'].nudge(1)
 		except Exception as e:
 			logging.debug("Failed to change value")
 

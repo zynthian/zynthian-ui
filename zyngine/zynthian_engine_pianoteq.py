@@ -417,13 +417,13 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 
 	# ---------------------------------------------------------------------------
-	# Layer Management
+	# Processor Management
 	# ---------------------------------------------------------------------------
 
-	def add_layer(self, layer):
-		super().add_layer(layer)
-		self.generate_ctrl_screens(self.get_controllers_dict(layer)) #TODO: This takes too long and appends to end of existing list
-		layer.auto_save_bank = True
+	def add_processor(self, processor):
+		super().add_processor(processor)
+		self.generate_ctrl_screens(self.get_controllers_dict(processor)) #TODO: This takes too long and appends to end of existing list
+		processor.auto_save_bank = True
 
 
 	# ---------------------------------------------------------------------------
@@ -434,7 +434,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# Bank Managament
 	# ----------------------------------------------------------------------------
 
-	def get_bank_list(self, layer=None):
+	def get_bank_list(self, processor=None):
 		banks = [] # List of bank info: [uri/uid,?,name,?]
 		instruments = self.get_instruments()
 		for instrument in instruments:
@@ -448,7 +448,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		return banks
 
 
-	def set_bank(self, layer, bank):
+	def set_bank(self, processor, bank):
 		self.name = (f"Pianoteq {bank[0]}")
 		return True
 
@@ -506,7 +506,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		return presets
 
 
-	def set_preset(self, layer, preset, preload=False):
+	def set_preset(self, processor, preset, preload=False):
 		if self.load_preset(preset[0], preset[1]):
 			self.preset = preset
 			if preset[3] in ['CP-80', 'Vintage Tines MKI', 'Vintage Tines MKII', 'Vintage Reeds W1', 'Clavinet D6', 'Pianet N', 'Pianet T', 'Electra-Piano']:
@@ -576,7 +576,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	# Get zynthian controllers dictionary:
-	def get_controllers_dict(self, layer):
+	def get_controllers_dict(self, processor):
 		init = False
 		if self._ctrls is None:
 			self._ctrls = OrderedDict()
@@ -613,7 +613,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				# Default MIDI CC mapping
 				default_cc = {'Sustain Pedal': 64, 'Sostenuto Pedal': 66, 'Soft Pedal': 67, 'Harmonic Pedal': 69}
 				if param in default_cc:
-					zctrl._set_midi_learn(layer.midi_chan, default_cc[param])
+					zctrl._set_midi_learn(processor.midi_chan, default_cc[param])
 			else:
 				self._ctrls[param].set_options(options)
 		return self._ctrls

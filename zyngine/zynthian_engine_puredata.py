@@ -100,7 +100,7 @@ class zynthian_engine_puredata(zynthian_engine):
 
 
 	# ---------------------------------------------------------------------------
-	# Layer Management
+	# Processor Management
 	# ---------------------------------------------------------------------------
 
 	# ---------------------------------------------------------------------------
@@ -111,11 +111,11 @@ class zynthian_engine_puredata(zynthian_engine):
 	# Bank Managament
 	#----------------------------------------------------------------------------
 
-	def get_bank_list(self, layer=None):
+	def get_bank_list(self, processor=None):
 		return self.get_dirlist(self.bank_dirs)
 
 
-	def set_bank(self, layer, bank):
+	def set_bank(self, processor, bank):
 		return True
 
 	#----------------------------------------------------------------------------
@@ -126,7 +126,7 @@ class zynthian_engine_puredata(zynthian_engine):
 		return self.get_dirlist(bank[0])
 
 
-	def set_preset(self, layer, preset, preload=False):
+	def set_preset(self, processor, preset, preload=False):
 		self.load_preset_config(preset)
 		self.command=self.base_command+ " " + self.get_preset_filepath(preset)
 		self.preset=preset[0]
@@ -136,7 +136,7 @@ class zynthian_engine_puredata(zynthian_engine):
 		sleep(0.5)
 		zynautoconnect.request_midi_connect(True)
 		zynautoconnect.request_audio_connect()
-		layer.send_ctrl_midi_cc()
+		processor.send_ctrl_midi_cc()
 		return True
 
 
@@ -184,7 +184,7 @@ class zynthian_engine_puredata(zynthian_engine):
 	# Controllers Managament
 	#----------------------------------------------------------------------------
 
-	def get_controllers_dict(self, layer):
+	def get_controllers_dict(self, processor):
 		zctrls = OrderedDict()
 		self._ctrl_screens = []
 		if self.preset_config:
@@ -207,7 +207,7 @@ class zynthian_engine_puredata(zynthian_engine):
 								if isinstance(options,int):
 									options = { 'midi_cc': options }
 								if 'midi_chan' not in options:
-									options['midi_chan'] = layer.midi_chan
+									options['midi_chan'] = processor.midi_chan
 								midi_cc = options['midi_cc']
 								logging.debug("CTRL %s: %s" % (midi_cc, name))
 								title = str.replace(name, '_', ' ')
@@ -226,7 +226,7 @@ class zynthian_engine_puredata(zynthian_engine):
 						logging.error(err)
 				
 		if len(zctrls)==0:
-			zctrls = super().get_controllers_dict(layer)
+			zctrls = super().get_controllers_dict(processor)
 
 		return zctrls
 

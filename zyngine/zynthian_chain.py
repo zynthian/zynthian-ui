@@ -491,8 +491,7 @@ class zynthian_chain:
             slots.pop(slot)
 
         if processor.engine:
-            # TODO: Refactor engine to replace layer with processor
-            processor.engine.del_layer(processor)
+            processor.engine.del_processor(processor)
 
         self.rebuild_graph()
         if processor == self.current_processor:

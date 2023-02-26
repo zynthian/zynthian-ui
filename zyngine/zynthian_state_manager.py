@@ -76,7 +76,7 @@ class zynthian_state_manager:
         self.audio_player = None
 
         self.midi_filter_script = None
-        self.midi_learn_zctrl = None # zctrl object currently listening for MIDI learn
+        self.midi_learn_param = None # [proc,param_symbol] controller currently listening for MIDI learn 
         self.midi_learn_mode = 0 # 0:Disabled, 1:MIDI Learn, 2:ZS3 Learn
         self.zs3 = {} # Dictionary or zs3 configs indexed by "ch/pc"
         self.status_info = {}
@@ -453,6 +453,9 @@ class zynthian_state_manager:
         if "mixer" in zs3_state:
             self.zynmixer.set_state(zs3_state["mixer"])
 
+        if "midi_learn" in zs3_state:
+            self.chain_manager.set_midi_learn_state(zs3_state["midi_learn"])
+
         return True
 
     def save_zs3(self, zs3_id=None, title=None):
@@ -540,10 +543,6 @@ class zynthian_state_manager:
                 ctrl_state = {}
                 if zctrl.value != zctrl.value_default:
                     ctrl_state["value"] = zctrl.value
-                if zctrl.midi_learn_chan is not None:
-                    ctrl_state["midi_learn_chan"] = zctrl.midi_learn_chan
-                if zctrl.midi_learn_cc is not None:
-                    ctrl_state["midi_learn_cc"] = zctrl.midi_learn_cc
                 if ctrl_state:
                     processor_state["controllers"][symbol] = ctrl_state
             processor_states[id] = processor_state
@@ -554,6 +553,11 @@ class zynthian_state_manager:
         mixer_state = self.zynmixer.get_state(False)
         if mixer_state:
             self.zs3[zs3_id]["mixer"] = mixer_state
+
+        # Add MIDI learn state
+        midi_learn_state = self.chain_manager.get_midi_learn_state()
+        if midi_learn_state:
+            self.zs3[zs3_id]["midi_learn"] = midi_learn_state
 
     def delete_zs3(self, zs3_index):
         """Remove a ZS3
@@ -602,13 +606,14 @@ class zynthian_state_manager:
     # MIDI learning
     #------------------------------------------------------------------
 
-    def init_midi_learn_zctrl(self, zctrl):
+    def init_midi_learn(self, proc, param):
         """Initialise a zcontroller midi learn
         
-        zctrl : zcontroller object
+        proc : Processor object
+        param : Parameter symbol
         """
         
-        self.midi_learn_zctrl = zctrl
+        self.midi_learn_param = [proc, param]
         get_lib_zyncore().set_midi_learning_mode(1)
     
     def enter_midi_learn(self):
@@ -617,15 +622,15 @@ class zynthian_state_manager:
         if not self.midi_learn_mode:
             logging.debug("ENTER LEARN")
             self.midi_learn_mode = 1
-            self.midi_learn_zctrl = None
+            self.midi_learn_param = None
             get_lib_zyncore().set_midi_learning_mode(1)
 
     def exit_midi_learn(self):
         """Exit MIDI learn mode"""
 
-        if self.midi_learn_mode or self.midi_learn_zctrl:
+        if self.midi_learn_mode or self.midi_learn_param:
             self.midi_learn_mode = 0
-            self.midi_learn_zctrl = None
+            self.midi_learn_param = None
             get_lib_zyncore().set_midi_learning_mode(0)
 
     def toggle_midi_learn(self):
@@ -634,7 +639,7 @@ class zynthian_state_manager:
         if self.midi_learn_mode:
             if zynthian_gui_config.midi_prog_change_zs3:
                 self.midi_learn_mode = 2
-                self.midi_learn_zctrl = None
+                self.midi_learn_param = None
             else:
                 self.exit_midi_learn()
         else:
@@ -646,6 +651,7 @@ class zynthian_state_manager:
         obj : Object to clean [chain_id, processor, zctrl] (Default: active chain)
         """
 
+        #TODO: convert to use midi_learn_param
         if obj == None:
             obj = self.chain_manager.active_obj
         if isinstance(obj, str):
@@ -655,6 +661,13 @@ class zynthian_state_manager:
             obj.midi_unlearn()
         elif isinstance(obj, zynthian_controller):
             obj.midi_unlearn()
+
+
+    def get_midi_learn_zctrl(self):
+        try:
+            return self.midi_learn_param[0].controllers_dict[self.midi_learn_param[1]]
+        except:
+            return None
 
     # ---------------------------------------------------------------------------
     # MIDI Router Init & Config
@@ -740,7 +753,7 @@ class zynthian_state_manager:
 
         if self.audio_player:
             self.audio_player.engine.player.stop_playback(16)
-            self.audio_player.engine.del_layer(self.audio_player)
+            self.audio_player.engine.del_processor(self.audio_player)
             self.audio_player = None
             try:
                 self.status_info.pop('audio_player')

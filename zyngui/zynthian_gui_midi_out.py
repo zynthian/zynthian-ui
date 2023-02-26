@@ -37,7 +37,7 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 class zynthian_gui_midi_out(zynthian_gui_selector):
 
 	def __init__(self):
-		self.end_layer = None
+		self.end_processor = None
 		super().__init__('MIDI Out', True)
 
 

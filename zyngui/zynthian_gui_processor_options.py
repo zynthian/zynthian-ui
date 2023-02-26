@@ -119,7 +119,6 @@ class zynthian_gui_processor_options(zynthian_gui_selector, zynthian_gui_save_pr
 
 
 	def save_preset(self):
-		self.layer = self.processor
 		super().save_preset()
 
 

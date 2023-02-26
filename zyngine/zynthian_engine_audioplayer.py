@@ -113,20 +113,20 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 
 	# ---------------------------------------------------------------------------
-	# Layer Management
+	# Processor Management
 	# ---------------------------------------------------------------------------
 
-	def add_layer(self, layer):
-		handle = layer.midi_chan if layer.midi_chan < 16 else 16
+	def add_processor(self, processor):
+		handle = processor.midi_chan if processor.midi_chan < 16 else 16
 		if self.player.add_player(handle):
-			self.layers.append(layer)
-			layer.jackname = self.jackname
-			layer.jackname = "{}:out_{:02d}(a|b)".format(self.jackname, handle + 1)
+			self.processors.append(processor)
+			processor.jackname = self.jackname
+			processor.jackname = "{}:out_{:02d}(a|b)".format(self.jackname, handle + 1)
 
 
-	def del_layer(self, layer):
-		self.player.remove_player(layer.midi_chan if layer.midi_chan < 16 else 16)
-		super().del_layer(layer)
+	def del_processor(self, processor):
+		self.player.remove_player(processor.midi_chan if processor.midi_chan < 16 else 16)
+		super().del_processor(processor)
 
 
 	# ---------------------------------------------------------------------------
@@ -138,7 +138,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
-	def get_bank_list(self, layer=None):
+	def get_bank_list(self, processor=None):
 		banks = [[self.my_data_dir + "/capture", None, "Internal", None]]
 		try:
 			walk = next(os.walk(self.my_data_dir + "/capture"))
@@ -190,8 +190,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		return presets
 
 
-	def set_preset(self, layer, preset, preload=False):
-		handle = layer.midi_chan if layer.midi_chan < 16 else 16
+	def set_preset(self, processor, preset, preload=False):
+		handle = processor.midi_chan if processor.midi_chan < 16 else 16
 		if self.player.get_filename(handle) == preset[0] and self.player.get_file_duration(preset[0]) == self.player.get_duration(handle):
 			return
 
@@ -245,7 +245,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['loop start',None,0.0,dur],
 			['loop end',None,dur,dur]
 		]
-		layer.refresh_controllers()
+		processor.refresh_controllers()
 		self.player.set_track_a(handle, default_a)
 		self.player.set_track_b(handle, default_b)
 		self.monitors_dict[handle]['filename'] = self.player.get_filename(handle)
@@ -292,15 +292,15 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				self.state_manager.stop_audio_player()
 			return
 		try:
-			for layer in self.layers:
-				if layer.midi_chan == handle:
-					ctrl_dict = layer.controllers_dict
+			for processor in self.processors:
+				if processor.midi_chan == handle:
+					ctrl_dict = processor.controllers_dict
 					if id == 1:
 						ctrl_dict['transport'].set_value(int(value) * 64, False)
 						if value:
-							layer.status = "\uf04b"
+							processor.status = "\uf04b"
 						else:
-							layer.status = ""
+							processor.status = ""
 					elif id == 2:
 						ctrl_dict['position'].set_value(value, False)
 						self.monitors_dict[handle]['pos'] = value

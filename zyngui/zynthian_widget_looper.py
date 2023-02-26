@@ -55,8 +55,8 @@ class zynthian_widget_looper(zynthian_widget_base.zynthian_widget_base):
 		super().__init__(parent)
 
 
-	def set_layer(self, layer):
-		super().set_layer(layer)
+	def set_processor(self, processor):
+		super().set_processor(processor)
 		self.create_gui()
 
 

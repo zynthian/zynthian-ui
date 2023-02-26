@@ -624,7 +624,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.zyngui.state_manager.start_busy("gui_admin")
 
 			# Save state and stop engines
-			if len(self.zyngui.screens['layer'].layers)>0:
+			if len(self.zyngui.screens['processor'].processors)>0:
 				self.zyngui.screens['snapshot'].save_last_state_snapshot()
 				restore_state = True
 			else:

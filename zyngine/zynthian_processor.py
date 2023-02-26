@@ -85,7 +85,7 @@ class zynthian_processor:
         self.preload_name = None
         self.preload_info = None
 
-        self.controllers_dict = {}
+        self.controllers_dict = {} # Map of zctrls indexed by symbol
         self.ctrl_screens_dict = {}
         self.current_screen_index = -1
         self.refresh_flag = False
@@ -96,8 +96,8 @@ class zynthian_processor:
 
         # MIDI-unlearn all controllers
         self.midi_unlearn()
-        # Delete layer from engine
-        self.engine.del_layer(self) #TODO: Is this done elsewhere?
+        # Delete processor from engine
+        self.engine.del_processor(self) #TODO: Is this done elsewhere?
         # Clear refresh flag
         self.refresh_flag = False #TODO: GUI
 
@@ -119,7 +119,7 @@ class zynthian_processor:
         """Set engine that this processor uses"""
         
         self.engine = engine
-        self.engine.add_layer(self) # TODO: Refactor engine to replace layer with processor
+        self.engine.add_processor(self) # TODO: Refactor engine to replace processor with processor
         if self.midi_chan is not None and self.midi_chan < 16:
             engine.set_midi_chan(self)
             get_lib_zyncore().zmop_chain_set_flag_droppc(self.midi_chan, int(self.engine.options['drop_pc']))
@@ -651,16 +651,13 @@ class zynthian_processor:
     def send_ctrlfb_midi_cc(self):
         """Send MIDI CC for all feeback controllers
         
-        TODO: When is this required?
+        TODO: When is this required? Called by send_ctrl_midi_cc. Fluidsynth calls this during set_preset
         """
 
         for k, zctrl in self.controllers_dict.items():
-            if zctrl.midi_learn_cc:
-                get_lib_zyncore().ctrlfb_send_ccontrol_change(zctrl.midi_learn_chan, zctrl.midi_learn_cc, int(zctrl.value))
-                logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_learn_chan, zctrl.midi_learn_cc, int(zctrl.value), k))
-            elif zctrl.midi_cc:
-                get_lib_zyncore().ctrlfb_send_ccontrol_change(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value))
-                logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value), k))
+            if zctrl.midi_feedback:
+                get_lib_zyncore().ctrlfb_send_ccontrol_change(zctrl.midi_feedback[0], zctrl.midi_feedback[1], int(zctrl.value))
+                logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_feedback[0], zctrl.midi_feedback[1], int(zctrl.value), k))
 
 
     def midi_unlearn(self, unused=None):

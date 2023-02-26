@@ -27,11 +27,9 @@ import logging
 import importlib
 from time import sleep
 from pathlib import Path
-from string import Template
 from datetime import datetime
 
 # Zynthian specific modules
-from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
@@ -47,7 +45,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		self.screen_info = None
 		self.screen_title = None
-		self.screen_layer = None
+		self.screen_processor = None #TODO: Refactor
 
 		self.widgets = {}
 		self.ctrl_screens = {}
@@ -119,7 +117,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.list_data = []
 
 		if not self.zyngui.get_current_processor():
-			logging.error("Can't fill control screen list for None layer!")
+			logging.error("Can't fill control screen list for None processor!")
 			return
 
 		if self.zyngui.get_current_processor().engine.nickname=="MX":
@@ -155,8 +153,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if self.mode=='select': super().set_selector(zs_hiden)
 
 
-	def show_widget(self, layer):
-		module_path = layer.engine.custom_gui_fpath
+	def show_widget(self, processor):
+		module_path = processor.engine.custom_gui_fpath
 		if module_path:
 			module_name = Path(module_path).stem
 			if module_name.startswith("zynthian_widget_"):
@@ -172,7 +170,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 						logging.error("Can't load custom widget {} => {}".format(widget_name, e))
 
 				if widget_name in self.widgets:
-					self.widgets[widget_name].set_layer(layer)
+					self.widgets[widget_name].set_processor(processor)
 				else:
 					widget_name = None
 
@@ -204,16 +202,16 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if 0 <= self.index < len(self.list_data):
 			self.screen_info = self.list_data[self.index]
 			self.screen_title = self.screen_info[2]
-			self.screen_layer = self.screen_info[3]
-			self.zyngui.chain_manager.get_active_chain().current_processor = self.screen_layer
+			self.screen_processor = self.screen_info[3]
+			self.zyngui.chain_manager.get_active_chain().current_processor = self.screen_processor
 
 			# Show the widget for the current processor
 			if self.mode == 'control':
-				self.show_widget(self.screen_layer)
+				self.show_widget(self.screen_processor)
 
 			# Get controllers for the current screen
 			self.zyngui.get_current_processor().set_current_screen_index(self.index)
-			self.zcontrollers = self.screen_layer.get_ctrl_screen(self.screen_title)
+			self.zcontrollers = self.screen_processor.get_ctrl_screen(self.screen_title)
 
 		else:
 			self.zcontrollers = []
@@ -365,7 +363,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.show()
 			return True
 		# If in MIDI-learn mode, back to instrument control
-		elif self.zyngui.midi_learn_mode or self.zyngui.state_manager.midi_learn_zctrl:
+		elif self.zyngui.midi_learn_mode or self.zyngui.state_manager.midi_learn_param:
 			self.zyngui.exit_midi_learn()
 			return True
 		else:
@@ -419,7 +417,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 					self.toggle_midi_learn()
 				return True
 			elif t == 'B':
-				if self.midi_learning or self.zyngui.state_manager.midi_learn_zctrl:
+				if self.midi_learning or self.zyngui.state_manager.midi_learn_param:
 					self.midi_unlearn_action()
 					return True
 
@@ -540,22 +538,22 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def midi_learn(self, i):
 		if self.mode == 'control' and self.zgui_controllers[i].zctrl:
-			self.zgui_controllers[i].zctrl.init_midi_learn()
+			self.zyngui.state_manager.init_midi_learn(self.zgui_controllers[i].zctrl.processor, self.zgui_controllers[i].zctrl.symbol)
 			self.refresh_midi_bind()
 			self.set_select_path()
 
 
-	def midi_unlearn(self, zctrl=None):
-		if zctrl:
-			zctrl.midi_unlearn()
+	def midi_unlearn(self, param=None):
+		if param:
+			self.zyngui.chain_manager.midi_unlearn(param)
 		else:
 			self.zyngui.state_manager.clean_midi_learn(self.zyngui.get_current_processor())
 		self.zyngui.exit_midi_learn()
 
 
 	def midi_unlearn_action(self):
-		if self.zyngui.state_manager.midi_learn_zctrl:
-			self.zyngui.show_confirm("Do you want to clean MIDI-learn for '{}' control?".format(self.zyngui.state_manager.midi_learn_zctrl.name), self.midi_unlearn, self.zyngui.state_manager.midi_learn_zctrl)
+		if self.zyngui.state_manager.midi_learn_param:
+			self.zyngui.show_confirm("Do you want to clean MIDI-learn for '{}' control?".format(self.zyngui.state_manager.midi_learn_param[1]), self.midi_unlearn, self.zyngui.state_manager.midi_learn_param)
 		elif self.zyngui.get_current_processor() and self.zyngui.get_current_processor().engine:
 			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in {} on MIDI channel {}?".format(self.zyngui.get_current_processor().engine.name, self.zyngui.get_current_processor().midi_chan + 1), self.midi_unlearn)
 		self.exit_midi_learn()

@@ -128,19 +128,19 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			super().stop()
 
 	# ---------------------------------------------------------------------------
-	# Layer Management
+	# Processor Management
 	# ---------------------------------------------------------------------------
 
-	def add_layer(self, layer):
-		self.layers.append(layer)
-		layer.jackname = None
-		layer.part_i = None
-		self.setup_router(layer)
+	def add_processor(self, processor):
+		self.processors.append(processor)
+		processor.jackname = None
+		processor.part_i = None
+		self.setup_router(processor)
 
 
-	def del_layer(self, layer):
-		super().del_layer(layer)
-		if layer.part_i is not None:
+	def del_processor(self, processor):
+		super().del_processor(processor)
+		if processor.part_i is not None:
 			self.set_all_midi_routes()
 		self.unload_unused_soundfonts()
 
@@ -148,20 +148,20 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
-	def set_midi_chan(self, layer):
-		self.setup_router(layer)
+	def set_midi_chan(self, processor):
+		self.setup_router(processor)
 
 	# ---------------------------------------------------------------------------
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
-	def get_bank_list(self, layer=None):
+	def get_bank_list(self, processor=None):
 		return self.get_filelist(self.soundfont_dirs,"sf2") + self.get_filelist(self.soundfont_dirs,"sf3")
 
 
-	def set_bank(self, layer, bank):
+	def set_bank(self, processor, bank):
 		if self.load_bank(bank[0]):
-			layer.refresh_controllers()
+			processor.refresh_controllers()
 			return True
 		else:
 			return False
@@ -221,20 +221,20 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		return preset_list
 
 
-	def set_preset(self, layer, preset, preload=False):
+	def set_preset(self, processor, preset, preload=False):
 		try:
 			sfi = self.soundfont_index[preset[3]]
 		except:
-			if layer.set_bank_by_id(preset[3]):
+			if processor.set_bank_by_id(preset[3]):
 				sfi = self.soundfont_index[preset[3]]
 			else:
 				return False
 
 		midi_bank=preset[1][0]+preset[1][1]*128
 		midi_prg=preset[1][2]
-		logging.debug("Set Preset => Layer: {}, SoundFont: {}, Bank: {}, Program: {}".format(layer.part_i, sfi, midi_bank, midi_prg))
-		self.proc_cmd("select {} {} {} {}".format(layer.part_i, sfi, midi_bank, midi_prg))
-		layer.send_ctrl_midi_cc()
+		logging.debug("Set Preset => Processor: {}, SoundFont: {}, Bank: {}, Program: {}".format(processor.part_i, sfi, midi_bank, midi_prg))
+		self.proc_cmd("select {} {} {} {}".format(processor.part_i, sfi, midi_bank, midi_prg))
+		processor.send_ctrl_midi_cc()
 		return True
 
 
@@ -252,12 +252,12 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# Controllers Management
 	#----------------------------------------------------------------------------
 
-	def get_controllers_dict(self, layer):
-		zctrls = super().get_controllers_dict(layer)
+	def get_controllers_dict(self, processor):
+		zctrls = super().get_controllers_dict(processor)
 		self._ctrl_screens = copy.copy(self.default_ctrl_screens)
 
 		try:
-			sf = layer.bank_info[0]
+			sf = processor.bank_info[0]
 			ctrl_items = self.bank_config[sf]['midi_controllers'].items()
 		except:
 			ctrl_items = None
@@ -266,30 +266,30 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			logging.debug("Generating extra controllers config ...")
 			try:
 				c=1
-				ctrl_set=[]
+				ctrl_set = []
 				zctrls_extra = OrderedDict()
 				for name, options in ctrl_items:
 					try:
-						if isinstance(options,int):
-							options={ 'midi_cc': options }
+						if isinstance(options, int):
+							options = { 'midi_cc': options }
 						if 'midi_chan' not in options:
-							options['midi_chan']=layer.midi_chan
+							options['midi_chan'] = processor.midi_chan
 						midi_cc=options['midi_cc']
 						logging.debug("CTRL %s: %s" % (midi_cc, name))
-						title=str.replace(name, '_', ' ')
-						zctrls_extra[name]=zynthian_controller(self,name,title,options)
+						title = str.replace(name, '_', ' ')
+						zctrls_extra[name] = zynthian_controller(self,name,title,options)
 						ctrl_set.append(name)
-						if len(ctrl_set)>=4:
+						if len(ctrl_set) >= 4:
 							logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
 							self._ctrl_screens.append(['Extended#'+str(c),ctrl_set])
-							ctrl_set=[]
-							c=c+1
+							ctrl_set = []
+							c = c + 1
 					except Exception as err:
 						logging.error("Generating extra controller screens: %s" % err)
 
-				if len(ctrl_set)>=1:
+				if len(ctrl_set) >= 1:
 					logging.debug("ADDING EXTRA CONTROLLER SCREEN #"+str(c))
-					self._ctrl_screens.append(['Extended#'+str(c),ctrl_set])
+					self._ctrl_screens.append(['Extended#' + str(c), ctrl_set])
 
 				zctrls.update(zctrls_extra)
 
@@ -305,9 +305,9 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	def get_free_parts(self):
 		free_parts = list(range(0,16))
-		for layer in self.layers:
+		for processor in self.processors:
 			try:
-				free_parts.remove(layer.part_i)
+				free_parts.remove(processor.part_i)
 			except:
 				pass
 		return free_parts
@@ -317,10 +317,10 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		if sf not in self.soundfont_index:
 			logging.info("Loading SoundFont '{}' ...".format(sf))
 			# Send command to FluidSynth
-			output=self.proc_cmd("load \"{}\"".format(sf))
+			output = self.proc_cmd("load \"{}\"".format(sf))
 			# Parse ouput ...
-			sfi=None
-			cre=re.compile(r"loaded SoundFont has ID (\d+)")
+			sfi = None
+			cre = re.compile(r"loaded SoundFont has ID (\d+)")
 			for line in output.split("\n"):
 				#logging.debug(" => {}".format(line))
 				res=cre.match(line)
@@ -330,7 +330,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			if sfi is not None:
 				logging.info("Loaded SoundFont '{}' => {}".format(sf,sfi))
 				# Insert ID in soundfont_index dictionary
-				self.soundfont_index[sf]=sfi
+				self.soundfont_index[sf] = sfi
 				# Return soundfont ID
 				return sfi
 			else:
@@ -342,14 +342,14 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	def unload_unused_soundfonts(self):
 		#Make a copy of soundfont index and remove used soundfonts
-		sf_unload=copy.copy(self.soundfont_index)
-		for layer in self.layers:
-			bi=layer.bank_info
+		sf_unload = copy.copy(self.soundfont_index)
+		for processor in self.processors:
+			bi=processor.bank_info
 			if bi is not None:
 				if bi[2] and bi[0] in sf_unload:
 					#print("Skip "+bi[0]+"("+str(sf_unload[bi[0]])+")")
 					del sf_unload[bi[0]]
-			pi=layer.preset_info
+			pi=processor.preset_info
 			if pi is not None:
 				if pi[2] and pi[3] in sf_unload:
 					#print("Skip "+pi[0]+"("+str(sf_unload[pi[3]])+")")
@@ -361,36 +361,36 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			del self.soundfont_index[sf]
 
 
-	# Set presets for all layers to restore soundfont assign (select) after load/unload soundfonts 
+	# Set presets for all processors to restore soundfont assign (select) after load/unload soundfonts 
 	def set_all_presets(self):
-		for layer in self.layers:
-			if layer.preset_info:
-				self.set_preset(layer, layer.preset_info)
+		for processor in self.processors:
+			if processor.preset_info:
+				self.set_preset(processor, processor.preset_info)
 
 
-	def setup_router(self, layer):
-		if layer.part_i is not None:
-			# Clear and recreate all routes if the routes for this layer were set already
+	def setup_router(self, processor):
+		if processor.part_i is not None:
+			# Clear and recreate all routes if the routes for this processor were set already
 			self.set_all_midi_routes()
 		else:
-			# No need to clear routes if there is the only layer to add
+			# No need to clear routes if there is the only processor to add
 			try:
 				i = self.get_free_parts()[0]
-				layer.part_i = i
-				#layer.jackname = "{}:((l|r)_{:02d}|fx_(l|r)_({:02d}|{:02d}))".format(self.jackname,i,i*2,i*2+1)
-				layer.jackname = "{}:(l|r)_{:02d}".format(self.jackname,i)
+				processor.part_i = i
+				#processor.jackname = "{}:((l|r)_{:02d}|fx_(l|r)_({:02d}|{:02d}))".format(self.jackname,i,i*2,i*2+1)
+				processor.jackname = "{}:(l|r)_{:02d}".format(self.jackname,i)
 				zynautoconnect.request_audio_connect()
-				logging.debug("Add part {} => {}".format(i, layer.jackname))
+				logging.debug("Add part {} => {}".format(i, processor.jackname))
 			except Exception as e:
 				logging.error("Can't add part! => {}".format(e))
 
-			self.set_layer_midi_routes(layer)
+			self.set_processor_midi_routes(processor)
 
 
-	def set_layer_midi_routes(self, layer):
-		if layer.part_i is not None:
-			midich = layer.get_midi_chan()
-			router_chan_cmd = "router_chan {0} {0} 0 {1}".format(midich, layer.part_i)
+	def set_processor_midi_routes(self, processor):
+		if processor.part_i is not None:
+			midich = processor.get_midi_chan()
+			router_chan_cmd = "router_chan {0} {0} 0 {1}".format(midich, processor.part_i)
 			self.proc_cmd("router_begin note")
 			self.proc_cmd(router_chan_cmd)
 			self.proc_cmd("router_end")
@@ -407,8 +407,8 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	def set_all_midi_routes(self):
 		self.clear_midi_routes()
-		for layer in self.layers:
-			self.set_layer_midi_routes(layer)
+		for processor in self.processors:
+			self.set_processor_midi_routes(processor)
 
 
 	def clear_midi_routes(self):

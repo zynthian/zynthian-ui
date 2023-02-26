@@ -288,7 +288,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 
 	# ---------------------------------------------------------------------------
-	# Layer Management
+	# Processor Management
 	# ---------------------------------------------------------------------------
 
 
@@ -302,7 +302,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	# No bank support for sooperlooper
-	def get_bank_list(self, layer=None):
+	def get_bank_list(self, processor=None):
 		return [("", None, "", None)]
 
 
@@ -316,7 +316,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		return presets
 
 
-	def set_preset(self, layer, preset, preload=False):
+	def set_preset(self, processor, preset, preload=False):
 		if self.osc_server is None:
 			return
 		self.osc_server.send(self.osc_target, '/load_session', ('s', preset[0]),  ('s', self.osc_server_url), ('s', '/error'))
@@ -382,9 +382,9 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	# Controllers Management
 	#----------------------------------------------------------------------------
 
-	def get_controllers_dict(self, layer):
+	def get_controllers_dict(self, processor):
 		if not self.zctrls:
-			midi_chan = layer.midi_chan
+			midi_chan = processor.midi_chan
 			if midi_chan is None or midi_chan < 0 or midi_chan > 15:
 				midi_chan = zynthian_gui_config.master_midi_channel
 			if midi_chan < 0 or midi_chan > 15:
@@ -562,7 +562,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 					self.zctrls[self.SL_STATES[state]['symbol']].set_value(1, False)
 				else:
 					self.zctrls[self.SL_STATES[state]['symbol']].set_value(0, False)
-		#self.layers[0].status = self.SL_STATES[self.state]['icon']
+		#self.processors[0].status = self.SL_STATES[self.state]['icon']
 
 
 	def select_loop(self, loop, send=False):

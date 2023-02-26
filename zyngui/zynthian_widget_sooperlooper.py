@@ -272,9 +272,9 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			slider.bind("<B1-Motion>", self.on_slider_motion)
 
 
-	def set_layer(self, layer):
-		super().set_layer(layer)
-		self.osc_url = 'osc.udp://localhost:{}'.format(self.layer.engine.SL_PORT)
+	def set_processor(self, processor):
+		super().set_processor(processor)
+		self.osc_url = 'osc.udp://localhost:{}'.format(self.processor.engine.SL_PORT)
 
 
 	def on_size(self, event):
@@ -331,7 +331,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		if btn in ['undo', 'redo']:
 			liblo.send(self.osc_url, '/sl/-3/hit', ('s', btn))
 		else:
-			zctrl = self.layer.controllers_dict[btn]
+			zctrl = self.processor.controllers_dict[btn]
 			zctrl.set_value(not zctrl.value)
 
 
@@ -339,9 +339,9 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		try:
 			symbol = self.symbol_map[event.widget]
 			if event.num == 5 or event.delta == -120:
-				self.layer.controllers_dict[symbol].nudge(-1)
+				self.processor.controllers_dict[symbol].nudge(-1)
 			if event.num == 4 or event.delta == 120:
-				self.layer.controllers_dict[symbol].nudge(1)
+				self.processor.controllers_dict[symbol].nudge(1)
 		except Exception as e:
 			logging.warning(e)
 
@@ -358,7 +358,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		if self.slider_press_event:
 			try:
 				symbol = self.symbol_map[event.widget]
-				zctrl = self.layer.controllers_dict[symbol]
+				zctrl = self.processor.controllers_dict[symbol]
 				zctrl.set_value(zctrl.value + (event.x - self.slider_press_event.x) / event.widget.winfo_width())
 				self.slider_press_event = event
 			except Exception as e:
@@ -523,7 +523,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
 			# Check of request to remove a loop
 			if 'loop_del' in self.monitors:
-				self.layer.engine.monitors_dict.pop('loop_del')
+				self.processor.engine.monitors_dict.pop('loop_del')
 				self.zyngui.show_confirm("Remove loop {}?".format(self.selected_loop + 1), self.remove_loop)
 				#TODO: This probably removes selected loop rather than last loop which might be expected behaviour
 

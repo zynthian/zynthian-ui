@@ -137,38 +137,38 @@ class zynthian_engine_modui(zynthian_engine):
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
-	def set_midi_chan(self, layer):
+	def set_midi_chan(self, processor):
 		for ch in range(0, 16):
-			if ch == layer.midi_chan:
+			if ch == processor.midi_chan:
 				lib_zyncore.zmop_set_midi_chan(ZMOP_MOD_INDEX, ch, ch)
 			else:
 				lib_zyncore.zmop_set_midi_chan(ZMOP_MOD_INDEX, ch, -1)
 
 
 	# ---------------------------------------------------------------------------
-	# Layer Management
+	# Processor Management
 	# ---------------------------------------------------------------------------
 
-	def add_layer(self, layer):
-		super().add_layer(layer)
-		self.set_midi_chan(layer)
+	def add_processor(self, processor):
+		super().add_processor(processor)
+		self.set_midi_chan(processor)
 		if not self.ws_thread:
 			self.start_websocket()
 
 
-	def del_layer(self, layer):
+	def del_processor(self, processor):
 		self.graph_reset()
-		super().del_layer(layer)
+		super().del_processor(processor)
 
 	#----------------------------------------------------------------------------
 	# Bank Managament
 	#----------------------------------------------------------------------------
 
-	def get_bank_list(self, layer=None):
+	def get_bank_list(self, processor=None):
 		return self.get_dirlist(self.bank_dirs)
 
 
-	def set_bank(self, layer, bank):
+	def set_bank(self, processor, bank):
 		self.load_bundle(bank[0])
 		return True
 
@@ -229,7 +229,7 @@ class zynthian_engine_modui(zynthian_engine):
 		return preset_list
 
 
-	def set_preset(self, layer, preset, preload=False):
+	def set_preset(self, processor, preset, preload=False):
 		if preset[3]:
 			self.load_effect_preset(preset[3], preset[0])
 		else:
@@ -265,13 +265,13 @@ class zynthian_engine_modui(zynthian_engine):
 			return False
 
 
-	def get_preset_favs(self, layer):
+	def get_preset_favs(self, processor):
 		if self.preset_favs is None:
 			self.load_preset_favs()
 
 		result = OrderedDict()
 		for k,v in self.preset_favs.items():
-			if v[1][0] in [p[0] for p in layer.preset_list]:
+			if v[1][0] in [p[0] for p in processor.preset_list]:
 				result[k] = v
 
 		return result
@@ -280,7 +280,7 @@ class zynthian_engine_modui(zynthian_engine):
 	# Controllers Managament
 	#----------------------------------------------------------------------------
 
-	def get_controllers_dict(self, layer):
+	def get_controllers_dict(self, processor):
 		zctrls = OrderedDict()
 		self._ctrl_screens = []
 		try:
@@ -455,7 +455,7 @@ class zynthian_engine_modui(zynthian_engine):
 							logging.error("Re-connection failed. Restarting MOD services ...")
 							self.stop()
 							self.start()
-							self.set_bank(self.layers[0],self.layers[0].bank_info)
+							self.set_bank(self.processors[0],self.processors[0].bank_info)
 							error_counter = 0
 						else:
 							error_counter += 1
@@ -505,16 +505,16 @@ class zynthian_engine_modui(zynthian_engine):
 		bdirname = bpath.split('/')[-1]
 		if bdirname != 'default.pedalboard':
 			#Find bundle_path in bank list ...
-			layer = self.layers[0]
-			bank_list = layer.get_bank_list() #TODO: Can we call self.get_bank_list?
+			processor = self.processors[0]
+			bank_list = processor.get_bank_list() #TODO: Can we call self.get_bank_list?
 			for i in range(len(bank_list)):
 				#logging.debug("BUNDLE PATH SEARCH => %s <=> %s" % (bank_list[i][0].split('/')[-1], bdirname))
 				if bank_list[i][0].split('/')[-1] == bdirname:
 					bank_index = i
 					bank_name = bank_list[i][2]
-					#Set Bank in GUI, layer and engine without reloading the bundle
+					#Set Bank in GUI, processor and engine without reloading the bundle
 					logging.info('Bank Selected from Bundlepath: ' + bank_name + ' (' + str(i)+')')
-					layer.set_bank(i, False)
+					processor.set_bank(i, False)
 					break
 
 
@@ -738,7 +738,7 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def preset_cb(self, pgraph, uri):
 		try:
-			self.layers[0].set_preset_by_id(uri, False)
+			self.processors[0].set_preset_by_id(uri, False)
 			#TODO: Update UI self.zyngui.screens['control'].set_select_path()
 
 		except Exception as e:
@@ -750,7 +750,7 @@ class zynthian_engine_modui(zynthian_engine):
 	def pedal_preset_cb(self, preset):
 		try:
 			pid = self.pedal_presets[preset][0]
-			self.layers[0].set_preset_by_id(pid, False)
+			self.processors[0].set_preset_by_id(pid, False)
 			#TODO: Update UI self.zyngui.screens['control'].set_select_path()
 
 		except Exception as e:

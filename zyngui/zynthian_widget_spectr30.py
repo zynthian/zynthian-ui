@@ -83,7 +83,7 @@ class zynthian_widget_spectr30(zynthian_widget_base.zynthian_widget_base):
 
 	def refresh_gui(self):
 		try:
-			scale = (12.0 + self.layer.controllers_dict['UIgain'].value) / 12.0
+			scale = (12.0 + self.processor.controllers_dict['UIgain'].value) / 12.0
 		except:
 			scale = 1.0
 

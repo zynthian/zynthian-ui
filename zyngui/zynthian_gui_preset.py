@@ -43,7 +43,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def fill_list(self):
 		if not self.zyngui.get_current_processor():
-			logging.error("Can't fill preset list for None layer!")
+			logging.error("Can't fill preset list for None processor!")
 			return
 
 		self.zyngui.get_current_processor().load_preset_list()

@@ -202,48 +202,48 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 	def start(self):
 		chain_manager = self.state_manager.chain_manager
-		midi_chan = self.layers[0].get_midi_chan()
+		midi_chan = self.processors[0].get_midi_chan()
 		self.midi_chans = [midi_chan, None, None]
 		self.chan_names = {
 			str(midi_chan): 'Upper'
 		}
-		logging.info("Upper Layer in chan %d", midi_chan)
+		logging.info("Upper processor in chan %d", midi_chan)
 		i = 0
-		self.layers[i].bank_name = "Upper"
-		self.layers[i].get_bank_list()
-		self.layers[i].set_bank(0, False)
+		self.processors[i].bank_name = "Upper"
+		self.processors[i].get_bank_list()
+		self.processors[i].set_bank(0, False)
 
-		# Extra layers
+		# Extra processors
 		for j in range(2):
 			manual = ["Lower", "Pedals"][j]
 			if self.manuals_config[4][j]:
 				i += 1
-				if len(self.layers) == i:
+				if len(self.processors) == i:
 					try:
 						midi_chan = chain_manager.get_next_free_midi_chan(midi_chan)
 						if midi_chan is None:
 							break
 						self.midi_chans[j + 1] = midi_chan
 						self.chan_names[str(midi_chan)] = manual
-						logging.info("%s Manual Layer in chan %s", manual, midi_chan)
+						logging.info("%s Manual processor in chan %s", manual, midi_chan)
 						chain_id = chain_manager.add_chain(None, midi_chan)
 						chain = chain_manager.get_chain(chain_id)
 						proc_id = chain_manager.get_available_processor_id()
 						processor = zynthian_processor("BF", chain_manager.engine_info["BF"], proc_id)
 						chain.insert_processor(processor)
 						chain_manager.processors[proc_id] = processor
-						self.layers.append(processor)
-						self.layers[i].bank_name = manual
-						self.layers[i].engine = self
-						self.layers[i].get_bank_list()
-						self.layers[i].set_bank(0, False)
-						self.layers[i].refresh_controllers()
+						self.processors.append(processor)
+						self.processors[i].bank_name = manual
+						self.processors[i].engine = self
+						self.processors[i].get_bank_list()
+						self.processors[i].set_bank(0, False)
+						self.processors[i].refresh_controllers()
 						chain.audio_out = []
 						chain.mixer_chan = None
 					except Exception as e:
-						logging.error("%s Manual Layer can't be added! => %s", manual, e)
+						logging.error("%s Manual processor can't be added! => %s", manual, e)
 				else:
-					midi_chan = self.layers[i].get_midi_chan()
+					midi_chan = self.processors[i].get_midi_chan()
 					self.midi_chans[j + 1] = midi_chan
 					self.chan_names[str(midi_chan)] = manual
 
@@ -253,12 +253,12 @@ class zynthian_engine_setbfree(zynthian_engine):
 		super().start()
 		self.state_manager.autoconnect_midi(True)
 		self.state_manager.autoconnect_audio()
-		for layer in self.layers:
-			layer.load_preset_list()
-			layer.set_preset(0)
+		for processor in self.processors:
+			processor.load_preset_list()
+			processor.set_preset(0)
 
 		# Select first chain so that preset selection is on "Upper" manual
-		chain_manager.set_active_chain_by_id(chain_manager.get_chain_id_by_processor(self.layers[0]))
+		chain_manager.set_active_chain_by_id(chain_manager.get_chain_id_by_processor(self.processors[0]))
 
 
 	def generate_config_file(self, chans):
@@ -291,46 +291,46 @@ class zynthian_engine_setbfree(zynthian_engine):
 				cfg_file.write(cfg_data)
 
 	# ---------------------------------------------------------------------------
-	# Layer Management
+	# Processor Management
 	# ---------------------------------------------------------------------------
 
-	def get_name(self, layer):
+	def get_name(self, processor):
 		res = self.name
-		chan_name = self.get_chan_name(layer.midi_chan)
+		chan_name = self.get_chan_name(processor.midi_chan)
 		if chan_name:
 			res = res + '/' + chan_name
 		return res
 
 
-	def get_path(self, layer):
+	def get_path(self, processor):
 		path = self.name
 		if not self.manuals_config:
 			path += "/Manuals"
 		elif not self.tonewheel_model:
 			path += "/Tonewheel"
 		else:
-			#chan_name = self.get_chan_name(layer.get_midi_chan())
+			#chan_name = self.get_chan_name(processor.get_midi_chan())
 			#if chan_name:
 			#	path = path + '/' + chan_name
 			pass
 			#path += "/" + self.tonewheel_model
 		return path
 
-	def del_layer(self, layer):
+	def del_processor(self, processor):
 		try:
-			if layer.bank_name == "Upper":
+			if processor.bank_name == "Upper":
 				self.midi_chans[0] = None
-			elif layer.bank_name == "Lower":
+			elif processor.bank_name == "Lower":
 				self.midi_chans[1] = None
 				self.manuals_config[4][0] = False
-			elif layer.bank_name == "Pedals":
+			elif processor.bank_name == "Pedals":
 				self.midi_chans[2] = None
 				self.manuals_config[4][1] = False
-			self.chan_names.pop(str(layer.midi_chan))
+			self.chan_names.pop(str(processor.midi_chan))
 		except:
 			pass
-		self.layers.remove(layer)
-		layer.jackname = None
+		self.processors.remove(processor)
+		processor.jackname = None
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
@@ -346,7 +346,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# Bank Managament
 	#----------------------------------------------------------------------------
 
-	def get_bank_list(self, layer):
+	def get_bank_list(self, processor):
 		if not self.manuals_config:
 			free_chans = len(self.state_manager.chain_manager.get_free_midi_chans())
 			if free_chans > 1:
@@ -360,20 +360,20 @@ class zynthian_engine_setbfree(zynthian_engine):
 			return self.bank_twmodels_list
 		else:
 			#self.show_favs_bank = True
-			if layer.bank_name == "Upper":
+			if processor.bank_name == "Upper":
 				return [[self.base_dir + "/pgm-banks/upper/most_popular.pgm",0, "Upper", "_"]]
-			elif layer.bank_name == "Lower":
+			elif processor.bank_name == "Lower":
 				return [[self.base_dir + "/pgm-banks/lower/lower_voices.pgm",0, "Lower", "_"]]
-			elif layer.bank_name == "Pedals":
+			elif processor.bank_name == "Pedals":
 				return [[self.base_dir + "/pgm-banks/pedals/pedals.pgm",0, "Pedals", "_"]]
 
-		#return self.get_filelist(self.get_bank_dir(layer),"pgm")
+		#return self.get_filelist(self.get_bank_dir(processor),"pgm")
 
 
-	def set_bank(self, layer, bank):
+	def set_bank(self, processor, bank):
 		if not self.manuals_config:
 			self.manuals_config = bank
-			self.layers[0].reset_bank()
+			self.processors[0].reset_bank()
 			return None
 
 		elif not self.tonewheel_model:
@@ -394,9 +394,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 		return self.load_program_list(bank[0])
 
 
-	def set_preset(self, layer, preset, preload=False):
-		if super().set_preset(layer,preset):
-			self.update_controller_values(layer, preset)
+	def set_preset(self, processor, preset, preload=False):
+		if super().set_preset(processor,preset):
+			self.update_controller_values(processor, preset)
 			return True
 		else:
 			return False
@@ -416,7 +416,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# Controller Managament
 	#----------------------------------------------------------------------------
 
-	def update_controller_values(self, layer, preset):
+	def update_controller_values(self, processor, preset):
 		#Get values from preset params and set them into controllers
 		for param, v in preset[3].items():
 			try:
@@ -426,7 +426,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 				continue
 
 			try:
-				zctrl=layer.controllers_dict[zcsymbol]
+				zctrl=processor.controllers_dict[zcsymbol]
 
 				if zctrl.symbol=='rotary speed':
 					if v=='tremolo': v='fast'
@@ -457,9 +457,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# Specific functionality
 	#----------------------------------------------------------------------------
 
-	def get_bank_dir(self, layer):
+	def get_bank_dir(self, processor):
 		bank_dir = self.base_dir+"/pgm-banks"
-		chan_name = self.get_chan_name(layer.get_midi_chan())
+		chan_name = self.get_chan_name(processor.get_midi_chan())
 		if chan_name:
 			bank_dir = bank_dir + '/' + chan_name
 		return bank_dir
@@ -543,9 +543,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 			self.manuals_config = engine_state['manuals_config']
 			self.tonewheel_model = engine_state['tonewheel_model']
 			chain_manager = self.state_manager.chain_manager
-			for i, layer in enumerate(self.layers):
+			for i, processor in enumerate(self.processors):
 				if i:
-					chain_manager.get_chain(chain_manager.get_chain_id_by_processor(layer)).mixer_chan = None
+					chain_manager.get_chain(chain_manager.get_chain_id_by_processor(processor)).mixer_chan = None
 
 		except Exception as e:
 			logging.error("Can't setup extended config => {}".format(e))

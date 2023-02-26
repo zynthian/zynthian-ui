@@ -56,7 +56,7 @@ class zynthian_basic_engine:
 
 	def __init__(self, name=None, command=None, prompt=None, cwd=None):
 		self.name = name
-		self.layer_cb = None
+		self.processor_cb = None
 
 		self.proc = None
 		self.proc_timeout = 20
@@ -169,7 +169,7 @@ class zynthian_engine(zynthian_basic_engine):
 		self.nickname = ""
 		self.jackname = ""
 
-		self.layers = []
+		self.processors = []
 
 		self.options = {
 			'clone': True,
@@ -193,8 +193,6 @@ class zynthian_engine(zynthian_basic_engine):
 		self.preset_favs = None
 		self.preset_favs_fpath = None
 		self.show_favs_bank = True
-
-		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 
 
 	def __del__(self):
@@ -225,8 +223,8 @@ class zynthian_engine(zynthian_basic_engine):
 	# ---------------------------------------------------------------------------
 
 	def refresh_all(self, refresh=True):
-		for layer in self.layers:
-			layer.refresh_flag = refresh
+		for processor in self.processors:
+			processor.refresh_flag = refresh
 
 
 	def refresh(self):
@@ -343,29 +341,29 @@ class zynthian_engine(zynthian_basic_engine):
 		return res
 
 	# ---------------------------------------------------------------------------
-	# Layer Management
+	# Processor Management
 	# ---------------------------------------------------------------------------
 
-	def add_layer(self, layer):
-		self.layers.append(layer)
-		layer.jackname = self.jackname #TODO: Should we set chain jackname to processor jackname?
+	def add_processor(self, processor):
+		self.processors.append(processor)
+		processor.jackname = self.jackname #TODO: Should we set chain jackname to processor jackname?
 
 
-	def del_layer(self, layer):
-		self.layers.remove(layer)
-		layer.jackname = None
+	def del_processor(self, processor):
+		self.processors.remove(processor)
+		processor.jackname = None
 
 
-	def del_all_layers(self):
-		for layer in self.layers:
-			self.del_layer(layer)
+	def del_all_processors(self):
+		for processor in self.processors:
+			self.del_processor(processor)
 
 
-	def get_name(self, layer):
+	def get_name(self, processor):
 		return self.name
 
 
-	def get_path(self, layer):
+	def get_path(self, processor):
 		return self.name
 	
 
@@ -373,17 +371,17 @@ class zynthian_engine(zynthian_basic_engine):
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
-	def set_midi_chan(self, layer):
+	def set_midi_chan(self, processor):
 		pass
 
 
 	def get_active_midi_channels(self):
 		chans = []
-		for layer in self.layers:
-			if layer.midi_chan is None:
+		for processor in self.processors:
+			if processor.midi_chan is None:
 				return None
-			elif layer.midi_chan >= 0 and layer.midi_chan <= 15:
-				chans.append(layer.midi_chan)
+			elif processor.midi_chan >= 0 and processor.midi_chan <= 15:
+				chans.append(processor.midi_chan)
 		return chans
 
 
@@ -392,13 +390,13 @@ class zynthian_engine(zynthian_basic_engine):
 	# ---------------------------------------------------------------------------
 
 
-	def get_bank_list(self, layer=None):
+	def get_bank_list(self, processor=None):
 		logging.info('Getting Bank List for %s: NOT IMPLEMENTED!' % self.name)
 		return []
 
 
-	def set_bank(self, layer, bank):
-		self.state_manager.zynmidi.set_midi_bank_msb(layer.get_midi_chan(), bank[1])
+	def set_bank(self, processor, bank):
+		self.state_manager.zynmidi.set_midi_bank_msb(processor.get_midi_chan(), bank[1])
 		return True
 
 
@@ -410,11 +408,11 @@ class zynthian_engine(zynthian_basic_engine):
 		logging.info('Getting Preset List for %s: NOT IMPLEMENTED!', self.name)
 
 
-	def set_preset(self, layer, preset, preload=False):
+	def set_preset(self, processor, preset, preload=False):
 		if isinstance(preset[1], int):
-			self.state_manager.zynmidi.set_midi_prg(layer.get_midi_chan(), preset[1])
+			self.state_manager.zynmidi.set_midi_prg(processor.get_midi_chan(), preset[1])
 		else:
-			self.state_manager.zynmidi.set_midi_preset(layer.get_midi_chan(), preset[1][0], preset[1][1], preset[1][2])
+			self.state_manager.zynmidi.set_midi_preset(processor.get_midi_chan(), preset[1][0], preset[1][1], preset[1][2])
 		return True
 
 
@@ -445,7 +443,7 @@ class zynthian_engine(zynthian_basic_engine):
 	# Preset Favorites Management
 	# ---------------------------------------------------------------------------
 
-	def toggle_preset_fav(self, layer, preset):
+	def toggle_preset_fav(self, processor, preset):
 		if self.preset_favs is None:
 			self.load_preset_favs()
 
@@ -453,7 +451,7 @@ class zynthian_engine(zynthian_basic_engine):
 			del self.preset_favs[str(preset[0])]
 			fav_status = False
 		except:
-			self.preset_favs[str(preset[0])] = [layer.bank_info, preset]
+			self.preset_favs[str(preset[0])] = [processor.bank_info, preset]
 			fav_status = True
 
 		try:
@@ -476,7 +474,7 @@ class zynthian_engine(zynthian_basic_engine):
 			pass # Don't care if preset not in favs
 
 
-	def get_preset_favs(self, layer):
+	def get_preset_favs(self, processor):
 		if self.preset_favs is None:
 			self.load_preset_favs()
 
@@ -516,7 +514,7 @@ class zynthian_engine(zynthian_basic_engine):
 	# ---------------------------------------------------------------------------
 
 	def set_ctrl_update_cb(self, cb):
-		self.layer_cb = cb
+		self.processor_cb = cb
 
 
 	# Get zynthian controllers dictionary:
@@ -527,7 +525,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 		if self._ctrls is not None:
 			for ctrl in self._ctrls:
-				options = {}
+				options = {"processor": processor}
 
 				#OSC control =>
 				if isinstance(ctrl[1], str):
@@ -567,6 +565,10 @@ class zynthian_engine(zynthian_basic_engine):
 					zctrl.set_options(options)
 
 				zctrls[zctrl.symbol] = zctrl
+
+				if zctrl.midi_chan is not None and zctrl.midi_cc is not None:
+					self.state_manager.chain_manager.add_midi_learn(zctrl.midi_chan, zctrl.midi_cc, processor, zctrl.symbol)
+
 		return zctrls
 
 
@@ -621,84 +623,6 @@ class zynthian_engine(zynthian_basic_engine):
 
 	def send_controller_value(self, zctrl):
 		raise Exception("NOT IMPLEMENTED!")
-
-
-	#----------------------------------------------------------------------------
-	# MIDI learning
-	#----------------------------------------------------------------------------
-
-	def init_midi_learn(self, zctrl):
-		logging.info("Learning '{}' ({}) ...".format(zctrl.symbol, zctrl.get_path()))
-
-
-	def midi_unlearn(self, zctrl):
-		try:
-			self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = None
-			return zctrl._unset_midi_learn()
-		except Exception as e:
-			logging.warning("Can't unlearn => {}".format(e))
-
-
-	def set_midi_learn(self, zctrl, chan, cc):
-		try:
-			try:
-				self.midi_unlearn(zctrl)
-			except:
-				pass
-
-			# Add midi learning info
-			self.learned_cc[chan][cc] = zctrl
-			return zctrl._set_midi_learn(chan, cc)
-		except Exception as e:
-			logging.error("Can't learn {} ({}) for CH{}#CC{} => {}".format(zctrl.symbol, zctrl.get_path(), chan, cc, e))
-
-
-	def keep_midi_learn(self, zctrl):
-		return #TODO???
-		try:
-			zpath = zctrl.get_path()
-			old_zctrl = self.learned_zctrls[zpath]
-			chan = old_zctrl.midi_learn_chan
-			cc = old_zctrl.midi_learn_cc
-			self.learned_zctrls[zpath] = zctrl
-			self.learned_cc[chan][cc] = zctrl
-			return zctrl._set_midi_learn(chan, cc)
-		except:
-			pass
-
-
-	def refresh_midi_learn(self):
-		logging.info("Refresh MIDI-learn ...")
-		return #TODO: Why???
-		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
-		for zctrl in self.learned_zctrls.values():
-			self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = zctrl
-
-
-	def reset_midi_learn(self):
-		logging.info("Reset MIDI-learn ...")
-		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
-
-
-	def cb_midi_learn(self, zctrl, chan, cc):
-		return self.set_midi_learn(zctrl, chan, cc)
-
-
-	#----------------------------------------------------------------------------
-	# MIDI CC processing
-	#----------------------------------------------------------------------------
-
-	def midi_control_change(self, chan, ccnum, val):
-		if self.learned_cc[chan][ccnum]:
-			self.learned_cc[chan][ccnum].midi_control_change(val)
-
-
-	def midi_zctrl_change(self, zctrl, val):
-		if val != zctrl.get_ctrl_midi_val():
-			try:
-				zctrl.midi_control_change(val)
-			except Exception as e:
-				logging.debug(e)
 
 
 	# ---------------------------------------------------------------------------

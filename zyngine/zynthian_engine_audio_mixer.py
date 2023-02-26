@@ -66,8 +66,8 @@ class zynmixer(zynthian_engine):
 		self.MAX_NUM_CHANNELS = self.lib_zynmixer.getMaxChannels()
 
 
-	def get_controllers_dict(self, layer):
-		return self.zctrls[layer.midi_chan]
+	def get_controllers_dict(self, processor):
+		return self.zctrls[processor.midi_chan]
 
 
 	def send_controller_value(self, zctrl):
@@ -408,8 +408,8 @@ class zynmixer(zynthian_engine):
 
 
 	def send_update(self, chan, ctrl, value):
-		if self.layer_cb:
-			self.layer_cb(chan, ctrl, value)
+		if self.processor_cb:
+			self.processor_cb(chan, ctrl, value)
 			
 	#--------------------------------------------------------------------------
 	# MIDI Learn

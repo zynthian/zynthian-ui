@@ -42,6 +42,7 @@ class zynthian_controller:
 
 		self.group_symbol = None
 		self.group_name = None
+		self.processor = None
 
 		self.value = 0 # Absolute value of the control
 		self.value_default = None # Default value to use when reset control
@@ -62,13 +63,11 @@ class zynthian_controller:
 
 		# Parameters to send values if dedciated engine send method not available
 		self.midi_chan = None # MIDI channel to send CC messages from control
-		self.midi_cc = None
+		self.midi_cc = None # MIDI CC number to send CC messages from control
+		self.midi_feedback = None # [chan,cc] for MIDI control feedback
 		self.osc_port = None # OSC destination port
 		self.osc_path = None # OSC path to send value to
 		self.graph_path = None # Complex map of control to engine parameter
-
-		self.midi_learn_chan = None # MIDI channel to send MIDI learn value
-		self.midi_learn_cc = None # MIDI CC to send MIDI learn value
 
 		self.label2value = None # Dictionary for fast conversion from discrete label to value
 		self.value2label = None # Dictionary for fast conversion from discrete value to label
@@ -78,6 +77,8 @@ class zynthian_controller:
 
 
 	def set_options(self, options):
+		if 'processor' in options:
+			self.processor = options['processor']
 		if 'symbol' in options:
 			self.symbol = options['symbol']
 		if 'name' in options:
@@ -191,6 +192,8 @@ class zynthian_controller:
 			else:
 				self.nudge_factor = 1
 
+		if self.midi_feedback is None and self.midi_chan is not None and self.midi_cc is not None:
+			self.midi_feedback = [self.midi_chan, self.midi_cc]
 
 	def setup_controller(self, chan, cc, val, maxval=127):
 		self.midi_chan = chan
@@ -200,8 +203,6 @@ class zynthian_controller:
 			self.osc_path = cc
 		else:
 			self.midi_cc = cc
-			if cc is not None and chan is not None and self.midi_learn_cc is None:
-				self._set_midi_learn(chan, cc)
 
 		self.value = val
 		self.is_toggle = False
@@ -246,13 +247,6 @@ class zynthian_controller:
 
 	def set_midi_chan(self, chan):
 		self.midi_chan = chan
-		if zynthian_gui_config.midi_single_active_channel:
-			if self.midi_learn_cc:
-				self.midi_learn_chan = chan
-		else:
-			if self.midi_cc is not None:
-				if self.midi_learn_cc == self.midi_cc:
-					self.midi_learn_chan = chan
 
 
 	#TODO: I think get_ctrl_array is an unused function
@@ -347,7 +341,7 @@ class zynthian_controller:
 			return
 
 		if self.engine:
-			if self.midi_learn_cc or self.midi_cc:
+			if self.midi_cc:
 				mval = self.get_ctrl_midi_val()
 
 			if send:
@@ -368,17 +362,16 @@ class zynthian_controller:
 					except Exception as e:
 						logging.warning("Can't send controller '{}' => {}".format(self.symbol, e))
 
+
+		if self.midi_feedback:
 			# Send feedback to MIDI controllers
+			#TODO: Set midi_feeback to MIDI learn
 			try:
-				if self.midi_learn_cc:
-					get_lib_zyncore().ctrlfb_send_ccontrol_change(self.midi_learn_chan, self.midi_learn_cc, mval)
-					#logging.debug("Sending learned MIDI controller feedback '{}' => CH{}, CC{}, Val={}".format(self.symbol, self.midi_learn_chan, self.midi_learn_cc, mval))
-				elif self.midi_cc:
-					get_lib_zyncore().ctrlfb_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
-					#logging.debug("Sending MIDI Controller feedback '{}' => CH{}, CC{}, Val={}".format(self.symbol, self.midi_chan, self.midi_cc, mval))
+				get_lib_zyncore().ctrlfb_send_ccontrol_change(self.midi_feedback[0], self.midi_feedback[1], mval)
+				#logging.debug("Sending learned MIDI controller feedback '{}' => CH{}, CC{}, Val={}".format(self.symbol, self.midi_learn_chan, self.midi_learn_cc, mval))
 
 			except Exception as e:
-				logging.warning("Can't send controller feedback '{}' => Val={}".format(self.symbol,e))
+				logging.warning("Can't send controller feedback '{}' => Val={}".format(self.symbol, e))
 			
 		self.is_dirty = True
 
@@ -473,72 +466,7 @@ class zynthian_controller:
 		elif self.value != self.value_default:
 			state['value'] = self.value
 
-		# MIDI learning info
-		if self.midi_learn_chan is not None and self.midi_learn_cc is not None:
-			#TODO: This should be done in engine
-			state['midi_learn_chan'] = self.midi_learn_chan
-			state['midi_learn_cc'] = self.midi_learn_cc
-
 		return state
-
-
-	#--------------------------------------------------------------------------
-	# MIDI Learning (Generic Methods)
-	#--------------------------------------------------------------------------
-
-
-	def init_midi_learn(self):
-		# Learn only if there is a working engine ...
-		if self.engine:
-			logging.info("Init MIDI-learn: %s" % self.symbol)
-
-			try:
-				self.engine.init_midi_learn(self)
-			except Exception as e:
-				logging.error(e)
-
-			# Call GUI method
-			self.engine.state_manager.init_midi_learn_zctrl(self)
-
-
-	def _set_midi_learn(self, chan, cc):
-		#logging.info("MIDI-CC SET '{}' => {}, {}".format(self.symbol, chan, cc))
-		self.midi_learn_chan = chan
-		self.midi_learn_cc = cc
-		return True
-
-
-	def _unset_midi_learn(self):
-		#logging.info("MIDI-CC UNSET '{}' => {}, {}".format(self.symbol, self.midi_learn_chan, self.midi_learn_cc))
-		self.midi_learn_chan = None
-		self.midi_learn_cc = None
-		return True
-
-
-	def cb_midi_learn(self, chan, cc):
-		# Learn only if there is a working engine ...
-		if self.engine:
-			learned=False
-
-			try:
-				learned = self.engine.cb_midi_learn(self, chan, cc)
-			except Exception as e:
-				return False
-
-			if learned:
-				# Call GUI method & Return success
-				self.engine.state_manager.exit_midi_learn()
-				return True
-			else:
-				return False
-
-		return True
-
-
-	def _cb_midi_learn(self, chan, cc):
-		if self._set_midi_learn(chan, cc):
-			self.engine.state_manager.chain_manager.exit_midi_learn()
-			return True
 
 
 	#----------------------------------------------------------------------------

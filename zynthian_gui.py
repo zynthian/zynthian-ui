@@ -1270,15 +1270,9 @@ class zynthian_gui:
 			elif len(self.get_current_processor().get_bank_list()) > 0 and self.get_current_processor().get_bank_list()[0][0] != '':
 				self.show_screen('bank', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
-	def cuia_preset(self, params):
-		self.cuia_bank_preset(params)
-
-	def cuia_preset_fav(self, params):
-		self.show_favorites()
-
 	def cuia_zctrl_touch(self, params):
 		if params:
-			self.screens['control'].midi_learn_zctrl(params[0])
+			self.screens['control'].midi_learn_zctrl(params[0]) #TODO: Convert to use midi_learn_param
 
 	def cuia_enter_midi_learn(self, params):
 		self.enter_midi_learn()
@@ -1287,7 +1281,7 @@ class zynthian_gui:
 		self.exit_midi_learn()
 
 	def cuia_toggle_midi_learn(self, params):
-		self.toggle_midi_learn()
+		self.state_manager.toggle_midi_learn()
 
 	def cuia_action_midi_unlearn(self, params):
 		try:
@@ -1297,8 +1291,9 @@ class zynthian_gui:
 
 	# Unlearn from currently selected (learning) control
 	def cuia_midi_unlearn_control(self, params):
-		if self.state_manager.midi_learn_zctrl:
-			self.state_manager.midi_learn_zctrl.midi_unlearn()
+		#TODO: Convert to use midi_learn_param
+		if self.state_manager.midi_learn_param:
+			self.chain_manager.remove_midi_learn(self.state_manager.midi_learn_param[0], self.state_manager.midi_learn_param[1])
 
 	# Unlearn all mixer controls
 	def cuia_midi_unlearn_mixer(self, params):
@@ -1309,13 +1304,14 @@ class zynthian_gui:
 
 	def cuia_midi_unlearn_node(self, params):
 		try:
-			self.screens['control'].screen_layer.midi_unlearn()
+			self.screens['control'].screen_processor.midi_unlearn()
 		except (AttributeError, TypeError) as err:
 			logging.error(err)
 
 	def cuia_midi_unlearn_chain(self, params):
 		try:
-			self.screens['layer'].midi_unlearn()
+			#TODO: What does this do?
+			self.chain_manager.midi_unlearn()
 		except (AttributeError, TypeError) as err:
 			logging.error(err)
 
@@ -1372,97 +1368,6 @@ class zynthian_gui:
 
 	def cuia_preset_fav(self, params):
 		self.show_favorites()
-
-	def cuia_zctrl_touch(self, params):
-		if params:
-			self.screens['control'].midi_learn_zctrl(params[0])
-
-	def cuia_enter_midi_learn(self, params):
-		self.enter_midi_learn()
-
-	def cuia_exit_midi_learn(self, params):
-		self.exit_midi_learn()
-
-	def cuia_toggle_midi_learn(self, params):
-		self.toggle_midi_learn()
-
-	def cuia_action_midi_unlearn(self, params):
-		try:
-			self.screens[self.current_screen].midi_unlearn_action()
-		except (AttributeError, TypeError) as err:
-			pass
-
-	# Unlearn from currently selected (learning) control
-	def cuia_midi_unlearn_control(self, params):
-		if self.midi_learn_zctrl:
-			self.midi_learn_zctrl.midi_unlearn()
-
-	# Unlearn all mixer controls
-	def cuia_midi_unlearn_mixer(self, params):
-		try:
-			self.screens['audio_mixer'].midi_unlearn_all()
-		except (AttributeError, TypeError) as err:
-			logging.error(err)
-
-	def cuia_midi_unlearn_node(self, params):
-		try:
-			self.screens['control'].screen_layer.midi_unlearn()
-		except (AttributeError, TypeError) as err:
-			logging.error(err)
-
-	def cuia_midi_unlearn_chain(self, params):
-		try:
-			self.screens['layer'].midi_unlearn()
-		except (AttributeError, TypeError) as err:
-			logging.error(err)
-
-	# MIDI CUIAs
-	def cuia_program_change(self, params):
-		if len(params) > 0:
-			pgm = int(params[0])
-			if len(params) > 1:
-				chan = int(params[1])
-			else:
-				chan = get_lib_zyncore().get_midi_active_chan()
-			if chan >= 0 and chan < 16 and pgm >= 0 and pgm < 128:
-				get_lib_zyncore().write_zynmidi_program_change(chan, pgm)
-
-	# Common methods to control views derived from zynthian_gui_base
-	def cuia_show_topbar(self, params):
-		try:
-			self.screens[self.current_screen].show_topbar(True)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_hide_topbar(self, params):
-		try:
-			self.screens[self.current_screen].show_topbar(False)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_show_buttonbar(self, params):
-		try:
-			self.screens[self.current_screen].show_buttonbar(True)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_hide_buttonbar(self, params):
-		try:
-			self.screens[self.current_screen].show_buttonbar(False)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_show_sidebar(self, params):
-		try:
-			self.screens[self.current_screen].show_sidebar(True)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_hide_sidebar(self, params):
-		try:
-			self.screens[self.current_screen].show_sidebar(False)
-		except (AttributeError, TypeError) as err:
-			pass
 
 	def refresh_signal(self, sname):
 		try:
@@ -1526,7 +1431,7 @@ class zynthian_gui:
 			self.show_screen_reset("admin")
 
 		elif i == 2:
-			self.callable_ui_action("ALL_OFF")
+			self.callable_ui_action("all_sounds_off")
 
 		elif i == 3:
 			self.screens['admin'].power_off()
@@ -1787,9 +1692,10 @@ class zynthian_gui:
 							self.all_sounds_off()
 						elif ccnum == 123:
 							self.all_notes_off()
-						if self.state_manager.midi_learn_zctrl:
-							self.state_manager.midi_learn_zctrl.cb_midi_learn(chan, ccnum)
-							self.show_current_screen()
+
+						if self.state_manager.midi_learn_param:
+							#TODO: Handle midi learn of controls not assigned to processors
+							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_param[0], self.state_manager.midi_learn_param[1])
 						else:
 							self.state_manager.zynmixer.midi_control_change(chan, ccnum, ccval)
 					# Note-on => CUIA
@@ -1811,10 +1717,12 @@ class zynthian_gui:
 					#logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan,ccnum,ccval))
 					if ccnum < 120:
 						# If MIDI learn pending ...
-						if self.state_manager.midi_learn_zctrl:
-							self.state_manager.midi_learn_zctrl.cb_midi_learn(chan, ccnum)
+						if self.state_manager.midi_learn_param:
+							#TODO: Handle midi learn of controls not assigned to processors
+							#TODO: Could optimise by sending ev & 0x7f00 to addt_midi_learn()
+							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_param[0], self.state_manager.midi_learn_param[1])
 							self.show_current_screen()
-						# Try chains's zctrls
+						# Try processor parameter
 						else:
 							self.chain_manager.midi_control_change(chan, ccnum, ccval)
 							self.state_manager.zynmixer.midi_control_change(chan, ccnum, ccval)

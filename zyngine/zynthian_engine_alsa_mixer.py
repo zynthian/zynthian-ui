@@ -97,14 +97,14 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
 
 	# ---------------------------------------------------------------------------
-	# Layer Management
+	# Processor Management
 	# ---------------------------------------------------------------------------
 
-	def add_layer(self, layer):
-		super().add_layer(layer)
+	def add_processor(self, processor):
+		super().add_processor(processor)
 
 
-	def get_path(self, layer):
+	def get_path(self, processor):
 		return self.name
 
 	# ---------------------------------------------------------------------------
@@ -115,11 +115,11 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 	# Bank Managament
 	#----------------------------------------------------------------------------
 
-	def get_bank_list(self, layer=None):
+	def get_bank_list(self, processor=None):
 		return [("", None, "", None)]
 
 
-	def set_bank(self, layer, bank):
+	def set_bank(self, processor, bank):
 		return True
 
 	#----------------------------------------------------------------------------
@@ -130,7 +130,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 		return [("", None, "", None)]
 
 
-	def set_preset(self, layer, preset, preload=False):
+	def set_preset(self, processor, preset, preload=False):
 		return True
 
 
@@ -149,7 +149,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 			return False
 
 
-	def get_controllers_dict(self, layer, ctrl_list=None):
+	def get_controllers_dict(self, processor, ctrl_list=None):
 		if ctrl_list=="*":
 			ctrl_list = None
 		elif ctrl_list is None:

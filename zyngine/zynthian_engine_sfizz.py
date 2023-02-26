@@ -120,11 +120,11 @@ class zynthian_engine_sfizz(zynthian_engine):
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
-	def get_bank_list(self, layer=None):
+	def get_bank_list(self, processor=None):
 		return self.get_dirlist(self.bank_dirs)
 
 
-	def set_bank(self, layer, bank):
+	def set_bank(self, processor, bank):
 		return True
 
 	# ---------------------------------------------------------------------------
@@ -159,11 +159,11 @@ class zynthian_engine_sfizz(zynthian_engine):
 		return self._get_preset_list(bank)
 
 
-	def set_preset(self, layer, preset, preload=False):
+	def set_preset(self, processor, preset, preload=False):
 		try:
 			self.sfzpath = preset[0]
 			return "Instrument loaded" in self.proc_cmd("load_instrument \"{}\"".format(self.sfzpath))
-			#layer.send_ctrl_midi_cc()
+			#processor.send_ctrl_midi_cc()
 		except:
 			return False
 
