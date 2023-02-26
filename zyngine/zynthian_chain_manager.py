@@ -892,12 +892,12 @@ class zynthian_chain_manager():
             chain = self.active_chain_id
         else:
             chain = None
-        for param_map in self.get_midi_learn(chan, ccnum, chain):
-            try:
+        try:
+            for param_map in self.get_midi_learn(chan, ccnum, chain):
                 zctrl = param_map[0].controllers_dict[param_map[1]]
                 zctrl.midi_control_change(ccval)
-            except:
-                pass
+        except:
+            pass
 
     def set_midi_learn_state(self, state):
         """Set MIDI learn state (e.g. from ZS3)

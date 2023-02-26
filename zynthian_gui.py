@@ -846,6 +846,18 @@ class zynthian_gui:
 		except:
 			pass
 
+
+	def toggle_midi_learn(self):
+		self.state_manager.toggle_midi_learn()
+		try:
+			if self.state_manager.midi_learn_mode:
+				self.screens[self.current_screen].enter_midi_learn()
+			else:
+				self.screens[self.current_screen].exit_midi_learn()
+		except:
+			pass
+
+
 	# -------------------------------------------------------------------
 	# Callable UI Actions
 	# -------------------------------------------------------------------
@@ -1281,7 +1293,7 @@ class zynthian_gui:
 		self.exit_midi_learn()
 
 	def cuia_toggle_midi_learn(self, params):
-		self.state_manager.toggle_midi_learn()
+		self.toggle_midi_learn()
 
 	def cuia_action_midi_unlearn(self, params):
 		try:
@@ -1499,7 +1511,7 @@ class zynthian_gui:
 			self.back_screen()
 
 		elif i == 2:
-			self.state_manager.toggle_midi_learn()
+			self.toggle_midi_learn()
 
 		elif i == 3:
 			self.screens[self.current_screen].switch_select('S')
