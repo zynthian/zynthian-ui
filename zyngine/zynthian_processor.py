@@ -4,7 +4,7 @@
 #
 # zynthian processor
 #
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #						  Brian Walton <riban@zynthian.org>
 #
 #*****************************************************************************
@@ -141,16 +141,20 @@ class zynthian_processor:
         midi_chan : MIDI channel 0..15 or None
         """
 
-        self.midi_chan = midi_chan
         if self.engine:
             self.engine.set_midi_chan(self)
             for zctrl in self.controllers_dict.values():
+                if zctrl.midi_chan == self.midi_chan:
+                    ml = self.engine.state_manager.chain_manager.get_midi_learn(self.midi_chan, zctrl.midi_cc)
+                    if ml and [zctrl.processor, zctrl.symbol] in ml:
+                        # This was (probably) auto-midi-learned
+                        self.engine.state_manager.chain_manager.add_midi_learn(midi_chan, zctrl.midi_cc, zctrl.processor, zctrl.symbol)
                 zctrl.set_midi_chan(midi_chan)
-            self.engine.refresh_midi_learn()
             self.send_ctrlfb_midi_cc()
             # Set "Drop Program Change" flag for each MIDI chan
             if midi_chan is not None and midi_chan < 16:
                 get_lib_zyncore().zmop_chain_set_flag_droppc(midi_chan, int(self.engine.options['drop_pc']))
+        self.midi_chan = midi_chan
 
     def get_midi_chan(self):
         """Get MIDI channel (0..15 or None)
@@ -660,13 +664,6 @@ class zynthian_processor:
                 logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_feedback[0], zctrl.midi_feedback[1], int(zctrl.value), k))
 
 
-    def midi_unlearn(self, unused=None):
-        """Clear all mapping of MIDI CC to controllers"""
-
-        for k, zctrl in self.controllers_dict.items():
-            zctrl.midi_unlearn()
-
-
     #----------------------------------------------------------------------------
     # MIDI processing
     #----------------------------------------------------------------------------
@@ -763,8 +760,6 @@ class zynthian_processor:
                     zctrl = self.controllers_dict[symbol]
                     if "value" in ctrl_state:
                         zctrl.set_value(ctrl_state["value"], True)
-                    if "midi_learn_chan" in ctrl_state and "midi_learn_cc" in ctrl_state:
-                        self.engine.set_midi_learn(zctrl, int(ctrl_state["midi_learn_chan"]), int(ctrl_state["midi_learn_cc"]))
                 except Exception as e:
                     logging.warning("Invalid Controller for processor {}: {}".format(self.get_basepath(), e))
 

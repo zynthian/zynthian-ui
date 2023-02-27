@@ -520,7 +520,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def toggle_midi_learn(self):
-		if self.zyngui.midi_learn_mode:
+		if self.zyngui.state_manager.midi_learn_mode:
 			if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
 				self.zyngui.set_midi_learn_mode(2)
 			else:
@@ -547,7 +547,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if param:
 			self.zyngui.chain_manager.midi_unlearn(param)
 		else:
-			self.zyngui.state_manager.clean_midi_learn(self.zyngui.get_current_processor())
+			self.zyngui.chain_manager.clean_midi_learn(self.zyngui.get_current_processor())
 		self.zyngui.exit_midi_learn()
 
 

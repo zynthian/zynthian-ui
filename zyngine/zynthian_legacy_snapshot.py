@@ -49,7 +49,8 @@ class zynthian_legacy_snapshot:
                     "chains": {},
                     "midi_clone": {},
                     "processors": {},
-                    "mixer": {}
+                    "mixer": {},
+                    "midi_learn": {}
                 },
             },
             "engine_config": {},
@@ -302,12 +303,22 @@ class zynthian_legacy_snapshot:
         except:
             pass
 
+        ml = {}
         for proc in processors.values():
             state["zs3"]["zs3-0"]["processors"][proc["id"]] = {
                 "bank_info": proc["bank_info"],
                 "preset_info": proc["preset_info"],
                 "controllers": proc["controllers"]
             }
+            for symbol, ctrl in proc["controllers"].items():
+                try:
+                    id = int(ctrl["midi_learn_chan"] << 8 | int(ctrl["midi_learn_cc"]))
+                    if id not in ml:
+                        ml[id] = []
+                    ml[id].append([proc["id"], symbol])
+                except:
+                    pass
+        state["zs3"]["zs3-0"]["midi_learn_cc"] = ml
 
         next_id = 1
         if "learned_zs3" in snapshot:
@@ -335,6 +346,7 @@ class zynthian_legacy_snapshot:
                 self.jackname_counters = {}
                 self.aeolus_count = 0
                 self.setBfree_count = 0
+                ml = {}
                 for layer in zs3["layers"]:
                     jackname = self.build_jackname(layer["engine_name"], layer["midi_chan"])
                     if jackname in processors:
@@ -347,6 +359,15 @@ class zynthian_legacy_snapshot:
                             "preset_info": layer["preset_info"],
                             "controllers": layer["controllers_dict"]
                         }
+                        for symbol, ctrl in layer["controllers_dict"].items():
+                            try:
+                                id = int(ctrl["midi_learn_chan"] << 8 | int(ctrl["midi_learn_cc"]))
+                                if id not in ml:
+                                    ml[id] = []
+                                ml[id].append([proc["id"], symbol])
+                            except:
+                                pass
+                state["zs3"][zs3_id]["midi_learn_cc"] = ml
 
         # Remove unrequired audio routing
         if "main" in state["chains"] and state["chains"]["main"]["audio_in"] == ['zynmixer:send_a', 'zynmixer:send_b']:

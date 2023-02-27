@@ -424,7 +424,10 @@ class zynthian_gui_controller(tkinter.Canvas):
 			elif self.zctrl == self.zyngui.state_manager.get_midi_learn_zctrl():
 				self.plot_midi_bind("??",zynthian_gui_config.color_ml)
 			elif midi_learn_params:
-				self.plot_midi_bind(f"{midi_learn_params[0] + 1}#{midi_learn_params[1]}")
+				if zynthian_gui_config.midi_single_active_channel:
+					self.plot_midi_bind(f"{midi_learn_params[0] + 1}#{midi_learn_params[1]}")
+				else:
+					self.plot_midi_bind(f"{midi_learn_params[1]}")
 			else:
 				self.erase_midi_bind()
 				return False

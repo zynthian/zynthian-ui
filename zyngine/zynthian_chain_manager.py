@@ -818,7 +818,12 @@ class zynthian_chain_manager():
 
         params = self.get_midi_learn_from_param(proc, param)
         if params:
-            del self.midi_learn_map[params[0] << 8 | params[1]]
+            for i, p in enumerate(self.midi_learn_map[params[0] << 8 | params[1]]):
+                if p == [proc, param]:
+                    del self.midi_learn_map[params[0] << 8 | params[1]][i]
+                    if not self.midi_learn_map[params[0] << 8 | params[1]]:
+                        del self.midi_learn_map[params[0] << 8 | params[1]]
+                    return
 
     def _get_midi_learn(self, id, chain_id=None):
         """Get list of parameters mapped
@@ -829,14 +834,20 @@ class zynthian_chain_manager():
         """
 
         try:
-            ml =  self.midi_learn_map[id]
-            if chain_id is None:
-                return ml
             ret = []
-            chain_procs = self.get_processors(chain_id)
-            for val in ml:
-                if val[0] in chain_procs:
-                    ret.append(val)
+            if chain_id is not None:
+                chain_procs = self.get_processors(chain_id)
+                id = id & 0xff
+                for chan in range(16):
+                    try:
+                        ml = self.midi_learn_map[chan << 8 | id]
+                        for val in ml:
+                            if val[0] in chain_procs:
+                                ret.append(val)
+                    except:
+                        pass
+            else:
+                ret =  self.midi_learn_map[id]
             return ret
             
         except:
@@ -905,7 +916,7 @@ class zynthian_chain_manager():
         state : MIDI learn state as dictionary
         """
 
-        self.midi_learn_map ={}
+        self.midi_learn_map = {}
         for id, param_list in state.items():
             try:
                 params = []
@@ -927,6 +938,29 @@ class zynthian_chain_manager():
             for param in param_list:
                 ret_val[id].append([self.get_processor_id(param[0]), param[1]])
         return ret_val
+
+    def clean_midi_learn(self, obj):
+        """Clean MIDI learn from controls
+        
+        obj : Object to clean [chain_id, processor, zctrl] (Default: active chain)
+        """
+
+        if obj == None:
+            obj = self.active_chain_id
+        if obj == None:
+            return
+
+        if isinstance(obj, zynthian_controller):
+            self.remove_midi_learn(obj.processor, obj.symbol)
+        
+        elif isinstance(obj, zynthian_processor):
+            for symbol in obj.controllers_dict:
+                self.remove_midi_learn(obj, symbol)
+                
+        elif isinstance(obj, str):
+            for proc in self.get_processors(obj):
+                for symbol in proc.controlers_dict:
+                    self.remove_midi_learn(proc, symbol)
 
 	#----------------------------------------------------------------------------
 	# MIDI Program Change (when ZS3 is disabled!)

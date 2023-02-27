@@ -218,7 +218,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			self.zyngui.close_screen()
 			self.zyngui.state_manager.enter_midi_learn()
 		elif params == 'clean':
-			self.zyngui.show_confirm(f"Do you want to clean MIDI-learn for ALL controls in ALL engines within chain {self.chain_id}?", self.zyngui.state_manager.clean_midi_learn, self.chain_id)
+			self.zyngui.show_confirm(f"Do you want to clean MIDI-learn for ALL controls in ALL engines within chain {self.chain_id}?", self.zyngui.chain_manager.clean_midi_learn, self.chain_id)
 
 
 	def chain_midi_routing(self):

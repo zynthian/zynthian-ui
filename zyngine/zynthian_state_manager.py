@@ -453,8 +453,8 @@ class zynthian_state_manager:
         if "mixer" in zs3_state:
             self.zynmixer.set_state(zs3_state["mixer"])
 
-        if "midi_learn" in zs3_state:
-            self.chain_manager.set_midi_learn_state(zs3_state["midi_learn"])
+        if "midi_learn_cc" in zs3_state:
+            self.chain_manager.set_midi_learn_state(zs3_state["midi_learn_cc"])
 
         return True
 
@@ -557,7 +557,7 @@ class zynthian_state_manager:
         # Add MIDI learn state
         midi_learn_state = self.chain_manager.get_midi_learn_state()
         if midi_learn_state:
-            self.zs3[zs3_id]["midi_learn"] = midi_learn_state
+            self.zs3[zs3_id]["midi_learn_cc"] = midi_learn_state
 
     def delete_zs3(self, zs3_index):
         """Remove a ZS3
@@ -644,24 +644,6 @@ class zynthian_state_manager:
                 self.exit_midi_learn()
         else:
             self.enter_midi_learn()
-
-    def clean_midi_learn(self, obj=None):
-        """Clean MIDI learn from controls
-        
-        obj : Object to clean [chain_id, processor, zctrl] (Default: active chain)
-        """
-
-        #TODO: convert to use midi_learn_param
-        if obj == None:
-            obj = self.chain_manager.active_obj
-        if isinstance(obj, str):
-            for processor in self.chain_manager.get_processors(obj):
-                processor.midi_unlearn()
-        elif isinstance(obj, zynthian_processor):
-            obj.midi_unlearn()
-        elif isinstance(obj, zynthian_controller):
-            obj.midi_unlearn()
-
 
     def get_midi_learn_zctrl(self):
         try:
