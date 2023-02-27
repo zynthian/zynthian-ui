@@ -179,6 +179,8 @@ class zynthian_chain_manager():
             if isinstance(midi_chan, int) and midi_chan < 16:
                 self.midi_chan_2_chain[midi_chan] = None
             for processor in chain.get_processors():
+                for param in processor.controllers_dict:
+                    self.remove_midi_learn(processor, param)
                 try:
                     self.processors.pop(processor.id)
                 except Exception as e:

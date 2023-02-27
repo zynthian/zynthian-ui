@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+    # -*- coding: utf-8 -*-
 # ****************************************************************************
 # ZYNTHIAN PROJECT: Zynthian State Manager (zynthian_state_manager)
 #
@@ -117,6 +117,7 @@ class zynthian_state_manager:
         self.last_snapshot_fpath = ""
         self.zynseq.load("")
         self.chain_manager.remove_all_chains(True)
+        self.reset_zs3()
 
     def start(self):
         """Start state manager"""
