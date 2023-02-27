@@ -547,6 +547,10 @@ class zynthian_chain_manager():
 
         if chain_id not in self.chains:
             return False
+
+        for param in processor.controllers_dict:
+            self.remove_midi_learn(processor, param)
+
         id = None
         for i, p in self.processors.items():
             if processor == p:
