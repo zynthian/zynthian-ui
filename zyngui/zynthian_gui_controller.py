@@ -66,6 +66,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.selector_counter = selcounter
 		self.refresh_plot_value = False
 		self.title = ""
+		self.preselection = None
 
 		self.pixels_per_div = 1
 		self.touch_accel = 300
@@ -411,7 +412,8 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.itemconfig(self.midi_bind, text="")
 
 
-	def set_midi_bind(self):
+	def set_midi_bind(self, preselection = None):
+		self.preselection = preselection
 		if self.hidden:
 			return
 		if self.zctrl:
@@ -419,10 +421,10 @@ class zynthian_gui_controller(tkinter.Canvas):
 			if self.selector_counter:
 				#self.erase_midi_bind()
 				self.plot_midi_bind("/{}".format(self.zctrl.value_range))
-			elif self.zyngui.state_manager.midi_learn_mode:
-				self.plot_midi_bind("??",zynthian_gui_config.color_hl)
 			elif self.zctrl == self.zyngui.state_manager.get_midi_learn_zctrl():
 				self.plot_midi_bind("??",zynthian_gui_config.color_ml)
+			elif preselection is not None:
+				self.plot_midi_bind("??",zynthian_gui_config.color_hl)
 			elif midi_learn_params:
 				if zynthian_gui_config.midi_single_active_channel:
 					self.plot_midi_bind(f"{midi_learn_params[0] + 1}#{midi_learn_params[1]}")
@@ -566,6 +568,15 @@ class zynthian_gui_controller(tkinter.Canvas):
 
 	def zynpot_cb(self, dval):
 		if self.zctrl:
+			return self.nudge(dval)
+		else:
+			return False
+
+
+	def nudge(self, dval):
+		if self.preselection is not None:
+			self.zyngui.screens["control"].zctrl_touch(self.preselection)
+		if self.zctrl:
 			return self.zctrl.nudge(dval)
 		else:
 			return False
@@ -620,9 +631,9 @@ class zynthian_gui_controller(tkinter.Canvas):
 					# Y-axis drag active
 					if abs(dy) >= self.pixels_per_div:
 						if self.zctrl.range_reversed:
-							self.zctrl.nudge(-dy // self.pixels_per_div)
+							self.nudge(-dy // self.pixels_per_div)
 						else:
-							self.zctrl.nudge(dy // self.pixels_per_div)
+							self.nudge(dy // self.pixels_per_div)
 						self.canvas_motion_y0 = event.y + dy % self.pixels_per_div
 
 				elif self.active_motion_axis == -1:
@@ -633,8 +644,8 @@ class zynthian_gui_controller(tkinter.Canvas):
 	def cb_canvas_wheel(self,event):
 		if self.zctrl:
 			if event.num == 5 or event.delta == -120:
-				self.zctrl.nudge(-1)
+				self.nudge(-1)
 			if event.num == 4 or event.delta == 120:
-				self.zctrl.nudge(1)
+				self.nudge(1)
 
 #------------------------------------------------------------------------------

@@ -53,13 +53,13 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 
 
 	def show(self):
-		self.zyngui.state_manager.enter_midi_learn()
+		self.zyngui.state_manager.enable_learn_pc()
 		super().show()
 
 
 	def hide(self):
 		if self.shown:
-			self.zyngui.state_manager.exit_midi_learn()
+			self.zyngui.state_manager.disable_learn_pc()
 			super().hide()
 
 
@@ -86,17 +86,17 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 	def select_action(self, i, t='S'):
 		zs3_index = self.list_data[i][0]
 		if zs3_index == "SAVE_ZS3":
-			self.zyngui.state_manager.exit_midi_learn()
+			self.zyngui.state_manager.disable_learn_pc()
 			self.zyngui.state_manager.save_zs3()
 			self.zyngui.close_screen()
 			return True
 		else:
 			if t  == 'S':
-				self.zyngui.state_manager.exit_midi_learn()
+				self.zyngui.state_manager.disable_learn_pc()
 				self.zyngui.state_manager.load_zs3(zs3_index)
 				self.zyngui.close_screen()
 			elif t == 'B':
-				self.zyngui.state_manager.exit_midi_learn()
+				self.zyngui.state_manager.disable_learn_pc()
 				self.zyngui.screens['zs3_options'].config(zs3_index)
 				self.zyngui.show_screen('zs3_options')
 				return True
@@ -110,7 +110,7 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 
 
 	def back_action(self):
-		self.zyngui.state_manager.exit_midi_learn()
+		self.zyngui.state_manager.disable_learn_pc()
 		return False
 
 

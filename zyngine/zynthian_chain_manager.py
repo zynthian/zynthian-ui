@@ -802,7 +802,7 @@ class zynthian_chain_manager():
                 self.midi_learn_map[id].append([proc, param])
         else:
             self.midi_learn_map[id] = [[proc, param]]
-        self.state_manager.exit_midi_learn()
+        self.state_manager.disable_learn_cc()
 
     def add_midi_learn(self, midi_chan, midi_cc, proc, param):
         """Adds a midi learn configuration
@@ -965,7 +965,7 @@ class zynthian_chain_manager():
                 
         elif isinstance(obj, str):
             for proc in self.get_processors(obj):
-                for symbol in proc.controlers_dict:
+                for symbol in proc.controllers_dict:
                     self.remove_midi_learn(proc, symbol)
 
 	#----------------------------------------------------------------------------

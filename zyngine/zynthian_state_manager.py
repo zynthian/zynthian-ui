@@ -76,8 +76,8 @@ class zynthian_state_manager:
         self.audio_player = None
 
         self.midi_filter_script = None
-        self.midi_learn_param = None # [proc,param_symbol] controller currently listening for MIDI learn 
-        self.midi_learn_mode = 0 # 0:Disabled, 1:MIDI Learn, 2:ZS3 Learn
+        self.midi_learn_cc = None # Controller currently listening for MIDI learn [proc,param_symbol] or None
+        self.midi_learn_pc = None # ZS3 name listening for MIDI learn "" for new zs3 or None
         self.zs3 = {} # Dictionary or zs3 configs indexed by "ch/pc"
         self.status_info = {}
         self.snapshot_bank = None # Name of snapshot bank (without path)
@@ -607,50 +607,46 @@ class zynthian_state_manager:
     # MIDI learning
     #------------------------------------------------------------------
 
-    def init_midi_learn(self, proc, param):
-        """Initialise a zcontroller midi learn
-        
+    def enable_learn_cc(self, proc, param):
+        """Enable MIDI CC learning
+    
         proc : Processor object
         param : Parameter symbol
         """
-        
-        self.midi_learn_param = [proc, param]
+
+        self.disable_learn_pc()
+        self.midi_learn_cc = [proc, param]
         get_lib_zyncore().set_midi_learning_mode(1)
-    
-    def enter_midi_learn(self):
-        """Enter MIDI learn mode"""
 
-        if not self.midi_learn_mode:
-            logging.debug("ENTER LEARN")
-            self.midi_learn_mode = 1
-            self.midi_learn_param = None
-            get_lib_zyncore().set_midi_learning_mode(1)
+    def disable_learn_cc(self):
+        """Disables MIDI CC learning"""
 
-    def exit_midi_learn(self):
-        """Exit MIDI learn mode"""
+        self.midi_learn_cc = None
+        get_lib_zyncore().set_midi_learning_mode(0)
 
-        if self.midi_learn_mode or self.midi_learn_param:
-            self.midi_learn_mode = 0
-            self.midi_learn_param = None
-            get_lib_zyncore().set_midi_learning_mode(0)
 
-    def toggle_midi_learn(self):
-        """Toggle MIDI learn mode"""
+    def toggle_learn_cc(self):
+        """Toggle MIDI CC learning"""
 
-        if self.midi_learn_mode:
-            if zynthian_gui_config.midi_prog_change_zs3:
-                self.midi_learn_mode = 2
-                self.midi_learn_param = None
-            else:
-                self.exit_midi_learn()
+        if self.midi_learn_cc:
+            self.disable_learn_cc()
         else:
-            self.enter_midi_learn()
+            self.enable_learn_cc()
 
     def get_midi_learn_zctrl(self):
         try:
-            return self.midi_learn_param[0].controllers_dict[self.midi_learn_param[1]]
+            return self.midi_learn_cc[0].controllers_dict[self.midi_learn_cc[1]]
         except:
             return None
+
+    def enable_learn_pc(self, zs3_name=""):
+        self.disable_learn_cc()
+        self.midi_learn_pc = zs3_name
+        get_lib_zyncore().set_midi_learning_mode(1)
+
+    def disable_learn_pc(self):
+        self.midi_learn_pc = None
+        get_lib_zyncore().set_midi_learning_mode(0)
 
     # ---------------------------------------------------------------------------
     # MIDI Router Init & Config

@@ -635,6 +635,8 @@ class zynthian_engine_jalv(zynthian_engine):
 		# Get plugin static controllers
 		zctrls = super().get_controllers_dict(processor)
 		# Add plugin native controllers
+		for zctrl in self.lv2_zctrl_dict.values():
+			zctrl.set_options({"processor": processor})
 		zctrls.update(self.lv2_zctrl_dict)
 		return zctrls
 

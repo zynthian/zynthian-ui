@@ -39,13 +39,15 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 	def __init__(self):
 		super().__init__('Option', True)
 		self.setup(None)
+		self.processor = None
 
 
-	def setup(self, chain_id=None):
+	def setup(self, chain_id=None, proc=None):
 		self.index = 0
 		if chain_id is not None:
 			self.chain_id = chain_id
 		self.chain = self.zyngui.chain_manager.get_chain(chain_id)
+		self.processor = proc
 
 
 	def fill_list(self):
@@ -207,18 +209,22 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 	def midi_learn(self):
 		options = OrderedDict()
-		options['Enter MIDI-learn'] = "enter"
-		options['Clean MIDI-learn'] = "clean"
+		options['Enable MIDI-learn'] = "enable_midi_learn"
+		if self.processor:
+			options[f'Clear {self.processor.name} MIDI-learn'] = "clean_proc"
+		options['Clear chain MIDI-learn'] = "clean_chain"
 		self.zyngui.screens['option'].config("MIDI-learn", options, self.midi_learn_menu_cb)
 		self.zyngui.show_screen('option')
 
 
 	def midi_learn_menu_cb(self, options, params):
-		if params == 'enter':
+		if params == 'enable_midi_learn':
 			self.zyngui.close_screen()
-			self.zyngui.state_manager.enter_midi_learn()
-		elif params == 'clean':
-			self.zyngui.show_confirm(f"Do you want to clean MIDI-learn for ALL controls in ALL engines within chain {self.chain_id}?", self.zyngui.chain_manager.clean_midi_learn, self.chain_id)
+			self.zyngui.toggle_midi_learn()
+		elif params == 'clean_proc':
+			self.zyngui.show_confirm(f"Do you want to clean MIDI-learn for ALL controls in processor {self.processor.name}?", self.zyngui.chain_manager.clean_midi_learn, self.processor)
+		elif params == 'clean_chain':
+			self.zyngui.show_confirm(f"Do you want to clean MIDI-learn for ALL controls in ALL processors within chain {self.chain_id}?", self.zyngui.chain_manager.clean_midi_learn, self.chain_id)
 
 
 	def chain_midi_routing(self):

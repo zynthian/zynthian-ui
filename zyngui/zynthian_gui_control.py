@@ -96,11 +96,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def hide(self):
-		self.zyngui.state_manager.exit_midi_learn()
+		self.exit_midi_learn()
 		super().hide()
-		#if self.shown:
-		#	for zc in self.zgui_controllers: zc.hide()
-		#	if self.zselector: self.zselector.hide()
 
 
 	def show_sidebar(self, show):
@@ -363,8 +360,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.show()
 			return True
 		# If in MIDI-learn mode, back to instrument control
-		elif self.zyngui.midi_learn_mode or self.zyngui.state_manager.midi_learn_param:
-			self.zyngui.exit_midi_learn()
+		elif self.midi_learning:
+			self.exit_midi_learn()
 			return True
 		else:
 			return False
@@ -381,11 +378,13 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def arrow_right(self):
+		self.exit_midi_learn()
 		self.zyngui.chain_manager.next_chain()
 		self.zyngui.chain_control()
 
 
 	def arrow_left(self):
+		self.exit_midi_learn()
 		self.zyngui.chain_manager.previous_chain()
 		self.zyngui.chain_control()
 
@@ -414,10 +413,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 		elif swi == 2:
 			if t == 'S':
 				if self.mode == 'control':
-					self.toggle_midi_learn()
-				return True
+					return False
 			elif t == 'B':
-				if self.midi_learning or self.zyngui.state_manager.midi_learn_param:
+				if self.midi_learning and self.zyngui.state_manager.midi_learn_cc:
 					self.midi_unlearn_action()
 					return True
 
@@ -433,7 +431,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				self.click_listbox()
 		elif t == 'B':
 			if not self.zyngui.is_shown_alsa_mixer():
-				self.zyngui.screens['chain_options'].setup(self.zyngui.chain_manager.active_chain_id)
+				self.zyngui.screens['chain_options'].setup(self.zyngui.chain_manager.active_chain_id, self.screen_processor)
 				self.zyngui.show_screen('chain_options')
 		return True
 
@@ -448,7 +446,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def zynpot_cb(self, i, dval):
 		if self.mode == 'control' and self.zcontrollers:
 			if self.zgui_controllers[i].zynpot_cb(dval):
-				self.midi_learn_zctrl(i)
+				self.zctrl_touch(i)
 				if self.xyselect_mode:
 					self.zynpot_read_xyselect(i)
 		elif self.mode == 'select':
@@ -483,9 +481,12 @@ class zynthian_gui_control(zynthian_gui_selector):
 		return self.zgui_controllers[i]
 
 
-	def refresh_midi_bind(self):
-		for zgui_controller in self.zgui_controllers:
-			zgui_controller.set_midi_bind()
+	def refresh_midi_bind(self, preselect=False):
+		for i, zgui_controller in enumerate(self.zgui_controllers):
+			if preselect:
+				zgui_controller.set_midi_bind(i)
+			else:
+				zgui_controller.set_midi_bind()
 
 
 	def plot_zctrls(self, force=False):
@@ -508,52 +509,54 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def enter_midi_learn(self):
 		self.midi_learning = True
 		self.set_buttonbar_label(0, "CANCEL")
-		self.refresh_midi_bind()
+		self.refresh_midi_bind(True)
 		self.set_select_path()
 
 
 	def exit_midi_learn(self):
 		self.midi_learning = False
+		self.zyngui.state_manager.disable_learn_cc()
 		self.refresh_midi_bind()
 		self.set_select_path()
 		self.set_buttonbar_label(0, "PRESETS\n[mixer]")
 
 
 	def toggle_midi_learn(self):
-		if self.zyngui.state_manager.midi_learn_mode:
-			if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
-				self.zyngui.set_midi_learn_mode(2)
-			else:
-				self.zyngui.exit_midi_learn()
+		if self.zyngui.state_manager.midi_learn_cc:
+			# TODO: Handle alsa mixer
+			#if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
+			self.exit_midi_learn()
+		elif self.midi_learning:
+			self.midi_learning = False
+			self.zyngui.show_screen("zs3_learn")
 		else:
-			self.zyngui.enter_midi_learn()
+			self.enter_midi_learn()
 
 
-	def midi_learn_zctrl(self, i):
-		if self.shown and self.zyngui.state_manager.midi_learn_mode:
-			logging.debug("MIDI-learn ZController {}".format(i))
-			self.zyngui.state_manager.midi_learn_mode = 0
+	def zctrl_touch(self, i):
+		if self.midi_learning:
 			self.midi_learn(i)
 
 
 	def midi_learn(self, i):
 		if self.mode == 'control' and self.zgui_controllers[i].zctrl:
-			self.zyngui.state_manager.init_midi_learn(self.zgui_controllers[i].zctrl.processor, self.zgui_controllers[i].zctrl.symbol)
+			self.zyngui.state_manager.enable_learn_cc(self.zgui_controllers[i].zctrl.processor, self.zgui_controllers[i].zctrl.symbol)
+			self.enter_midi_learn()
 			self.refresh_midi_bind()
 			self.set_select_path()
 
 
 	def midi_unlearn(self, param=None):
 		if param:
-			self.zyngui.chain_manager.midi_unlearn(param)
+			self.zyngui.chain_manager.clean_midi_learn(param)
 		else:
 			self.zyngui.chain_manager.clean_midi_learn(self.zyngui.get_current_processor())
-		self.zyngui.exit_midi_learn()
+		self.exit_midi_learn()
 
 
 	def midi_unlearn_action(self):
-		if self.zyngui.state_manager.midi_learn_param:
-			self.zyngui.show_confirm("Do you want to clean MIDI-learn for '{}' control?".format(self.zyngui.state_manager.midi_learn_param[1]), self.midi_unlearn, self.zyngui.state_manager.midi_learn_param)
+		if self.zyngui.state_manager.midi_learn_cc:
+			self.zyngui.show_confirm("Do you want to clean MIDI-learn for '{}' control?".format(self.zyngui.state_manager.midi_learn_cc[1]), self.midi_unlearn, self.zyngui.state_manager.midi_learn_cc)
 		elif self.zyngui.get_current_processor() and self.zyngui.get_current_processor().engine:
 			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in {} on MIDI channel {}?".format(self.zyngui.get_current_processor().engine.name, self.zyngui.get_current_processor().midi_chan + 1), self.midi_unlearn)
 		self.exit_midi_learn()
@@ -609,7 +612,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def set_select_path(self):
 		processor = self.zyngui.get_current_processor()
 		if processor:
-			if self.mode == 'control' and self.zyngui.midi_learn_mode:
+			if self.mode == 'control' and self.midi_learning:
 				self.select_path.set(processor.get_basepath() + "/CTRL MIDI-Learn")
 			else:
 				self.select_path.set(processor.get_presetpath())

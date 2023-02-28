@@ -801,59 +801,9 @@ class zynthian_gui:
 	# MIDI learning
 	# ------------------------------------------------------------------
 
-	def set_midi_learn_mode(self, mode):
-		self.midi_learn_mode = mode
-		if mode == 1:
-			try:
-				self.screens[self.current_screen].enter_midi_learn()
-			except Exception as e:
-				logging.debug(e)
-				pass
-		elif mode == 0:
-			try:
-				self.screens[self.current_screen].exit_midi_learn()
-			except Exception as e:
-				logging.debug(e)
-				pass
-		elif mode == 2:
-			self.screens['zs3_learn'].index = 0
-			self.show_screen("zs3_learn")
-
-
-	def refresh_midi_learn_zctrl(self):
-		self.screens['control'].refresh_midi_bind()
-		self.screens['control'].set_select_path()
-
-
-	#------------------------------------------------------------------
-	# MIDI learning
-	#------------------------------------------------------------------
-
-	def enter_midi_learn(self):
-		self.state_manager.enter_midi_learn()
-		try:
-			logging.debug("ENTER LEARN => {}".format(self.current_screen))
-			self.screens[self.current_screen].enter_midi_learn()
-		except Exception as e:
-			logging.debug(e)
-			pass
-
-
-	def exit_midi_learn(self):
-		self.state_manager.exit_midi_learn()
-		try:
-			self.screens[self.current_screen].exit_midi_learn()
-		except:
-			pass
-
-
 	def toggle_midi_learn(self):
-		self.state_manager.toggle_midi_learn()
 		try:
-			if self.state_manager.midi_learn_mode:
-				self.screens[self.current_screen].enter_midi_learn()
-			else:
-				self.screens[self.current_screen].exit_midi_learn()
+			self.screens[self.current_screen].toggle_midi_learn()
 		except:
 			pass
 
@@ -1283,14 +1233,26 @@ class zynthian_gui:
 				self.show_screen('bank', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 	def cuia_zctrl_touch(self, params):
+		try:
+			self.screens[self.current_screen].zctrl_touch(params[0])
+		except:
+			pass
+
+	def cuia_enable_midi_learn_cc(self, params):
+		if len(params) == 2:
+			self.state_manager.enable_learn_cc(params[0], params[1])
+
+	def cuia_disable_midi_learn_cc(self, params):
+		self.state_manager.disable_learn_cc()
+
+	def cuia_enable_midi_learn_pc(self, params):
 		if params:
-			self.screens['control'].midi_learn_zctrl(params[0]) #TODO: Convert to use midi_learn_param
+			self.state_manager.enable_learn_pc(params[0])
+		else:
+			self.state_manager.enable_learn_pc("")
 
-	def cuia_enter_midi_learn(self, params):
-		self.enter_midi_learn()
-
-	def cuia_exit_midi_learn(self, params):
-		self.exit_midi_learn()
+	def cuia_disable_midi_learn_pc(self, params):
+		self.state_manager.disable_learn_pc()
 
 	def cuia_toggle_midi_learn(self, params):
 		self.toggle_midi_learn()
@@ -1301,12 +1263,6 @@ class zynthian_gui:
 		except (AttributeError, TypeError) as err:
 			pass
 
-	# Unlearn from currently selected (learning) control
-	def cuia_midi_unlearn_control(self, params):
-		#TODO: Convert to use midi_learn_param
-		if self.state_manager.midi_learn_param:
-			self.chain_manager.remove_midi_learn(self.state_manager.midi_learn_param[0], self.state_manager.midi_learn_param[1])
-
 	# Unlearn all mixer controls
 	def cuia_midi_unlearn_mixer(self, params):
 		try:
@@ -1315,17 +1271,14 @@ class zynthian_gui:
 			logging.error(err)
 
 	def cuia_midi_unlearn_node(self, params):
-		try:
-			self.screens['control'].screen_processor.midi_unlearn()
-		except (AttributeError, TypeError) as err:
-			logging.error(err)
+		if params:
+			self.chain_manager.remove_midi_learn([params[0], params[1]])
 
 	def cuia_midi_unlearn_chain(self, params):
-		try:
-			#TODO: What does this do?
-			self.chain_manager.midi_unlearn()
-		except (AttributeError, TypeError) as err:
-			logging.error(err)
+		if params:
+			self.chain_manager.clean_midi_learn(params[0])
+		else:
+			self.chain_manager.clean_midi_learn(self.chain_manager.active_chain_id)
 
 	# MIDI CUIAs
 	def cuia_program_change(self, params):
@@ -1705,9 +1658,8 @@ class zynthian_gui:
 						elif ccnum == 123:
 							self.all_notes_off()
 
-						if self.state_manager.midi_learn_param:
-							#TODO: Handle midi learn of controls not assigned to processors
-							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_param[0], self.state_manager.midi_learn_param[1])
+						if self.state_manager.midi_learn_cc:
+							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_cc[0], self.state_manager.midi_learn_cc[1])
 						else:
 							self.state_manager.zynmixer.midi_control_change(chan, ccnum, ccval)
 					# Note-on => CUIA
@@ -1729,10 +1681,10 @@ class zynthian_gui:
 					#logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan,ccnum,ccval))
 					if ccnum < 120:
 						# If MIDI learn pending ...
-						if self.state_manager.midi_learn_param:
-							#TODO: Handle midi learn of controls not assigned to processors
+						if self.state_manager.midi_learn_cc:
 							#TODO: Could optimise by sending ev & 0x7f00 to addt_midi_learn()
-							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_param[0], self.state_manager.midi_learn_param[1])
+							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_cc[0], self.state_manager.midi_learn_cc[1])
+							self.screens['control'].exit_midi_learn()
 							self.show_current_screen()
 						# Try processor parameter
 						else:
@@ -1750,10 +1702,10 @@ class zynthian_gui:
 					logging.info("MIDI PROGRAM CHANGE: CH#{}, PRG#{}".format(chan,pgm))
 
 					# SubSnapShot (ZS3) MIDI learn ...
-					if self.midi_learn_mode and self.current_screen == 'zs3_learn':
+					if self.state_manager.midi_learn_pc:
+						self.state_manager.save_zs3(f"{chan}/{pgm} {self.state_manager.midi_learn_pc}")
+					elif self.state_manager.midi_learn_pc == "":
 						self.state_manager.save_zs3(f"{chan}/{pgm}")
-						self.exit_midi_learn()
-						self.close_screen()
 					# Set Preset or ZS3 (sub-snapshot), depending of config option
 					else:
 						if zynthian_gui_config.midi_prog_change_zs3:
@@ -1771,8 +1723,9 @@ class zynthian_gui:
 							elif self.current_screen == 'control':
 								self.screens['control'].build_view()
 
-						#if self.get_current_processor() and chan == self.get_current_processor().get_midi_chan():
-						#	self.show_screen('control')
+					if self.current_screen == 'zs3_learn':
+						self.state_manager.disable_learn_pc()
+						self.close_screen()
 
 				# Note-On ...
 				elif evtype == 0x9:

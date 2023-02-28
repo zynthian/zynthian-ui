@@ -92,6 +92,7 @@ class zynthian_chain:
             self.audio_in = ["zynmixer:send"]
             self.audio_out = ["zynmixer:return"]
             self.audio_thru = True
+        self.current_processor = None
         self.remove_all_processors()
         if isinstance(self.midi_chan, int) and self.midi_chan < 16:
             get_lib_zyncore().reset_midi_filter_clone(self.midi_chan)

@@ -123,8 +123,8 @@ class zynthian_gui_processor_options(zynthian_gui_selector, zynthian_gui_save_pr
 
 
 	def midi_clean(self):
-		if self.processor and self.processor.engine:
-			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in {} on MIDI channel {}?".format(self.processor.engine.name, self.processor.midi_chan + 1), self.processor.midi_unlearn)
+		if self.processor:
+			self.zyngui.show_confirm(f"Do you want to clean MIDI-learn for ALL controls in {self.processor.name} on MIDI channel {self.processor.midi_chan + 1}?", self.zyngui.chain_manager.clean_midi_learn, self.processor)
 
 
 	# FX-Chain management
