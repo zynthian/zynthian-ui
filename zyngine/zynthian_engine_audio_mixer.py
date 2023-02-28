@@ -51,8 +51,9 @@ class zynmixer(zynthian_engine):
 			print('Cannot init zynmixer library: %s' % str(e))
 
 		self.zctrls = []
+		self.learned_cc = [dict() for x in range(16)]
 		for i in range(self.get_max_channels() + 1):
-			dict = {
+			strip_dict = {
 				'level': zynthian_controller(self, 'level', None, {'midi_chan':i,'is_integer':False,'value_max':1.0,'value_default':0.8,'value':self.get_level(i),'graph_path':'level_{}'.format(i)}),
 				'balance': zynthian_controller(self, 'balance', None, {'midi_chan':i,'is_integer':False,'value_min':-1.0,'value_max':1.0,'value_default':0.0,'value':self.get_balance(i),'graph_path':'balance_{}'.format(i)}),
 				'mute': zynthian_controller(self, 'mute', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_mute(i),'graph_path':'mute_{}'.format(i)}),
@@ -60,14 +61,22 @@ class zynmixer(zynthian_engine):
 				'mono': zynthian_controller(self, 'mono', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_mono(i),'graph_path':'mono_{}'.format(i)}),
 				'phase': zynthian_controller(self, 'phase', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_phase(i),'graph_path':'phase_{}'.format(i)})
 			}
-			self.zctrls.append(dict)
-		
-		self.midi_learning = False
+			self.zctrls.append(strip_dict)
+
+		self.midi_learn_zctrl = None
+		self.midi_learn_cb = None
 		self.MAX_NUM_CHANNELS = self.lib_zynmixer.getMaxChannels()
 
 
 	def get_controllers_dict(self, processor):
 		return self.zctrls[processor.midi_chan]
+
+
+	def get_learned_cc(self, zctrl):
+		for chan in range(16):
+			for cc in self.learned_cc[chan]:
+				if zctrl == self.learned_cc[chan][cc]:
+					return [chan, cc]
 
 
 	def send_controller_value(self, zctrl):
@@ -96,9 +105,9 @@ class zynmixer(zynthian_engine):
 	#	Function to set fader level for a channel
 	#	channel: Index of channel
 	#	level: Fader value (0..+1)	
-#	level: Fader value (0..+1)
+	#	level: Fader value (0..+1)
 	#	level: Fader value (0..+1)	
-#	level: Fader value (0..+1)
+	#	level: Fader value (0..+1)
 	#	level: Fader value (0..+1)	
 	def set_level(self, channel, level, update=True):
 		if channel >= self.MAX_NUM_CHANNELS:
@@ -416,7 +425,10 @@ class zynmixer(zynthian_engine):
 	#--------------------------------------------------------------------------
 
 	def midi_control_change(self, chan, ccnum, val):
-		if zynthian_gui_config.midi_single_active_channel:
+		if self.midi_learn_zctrl:
+			self.learned_cc[chan][ccnum] = self.midi_learn_zctrl
+			self.disable_midi_learn()
+		elif zynthian_gui_config.midi_single_active_channel:
 			for ch in range(16):
 				try:
 					self.learned_cc[ch][ccnum].midi_control_change(val)
@@ -430,13 +442,28 @@ class zynmixer(zynthian_engine):
 
 
 	def midi_unlearn_chan(self, chan):
-		for symbol in self.zctrls[chan]:
-			self.zctrls[chan][symbol].midi_unlearn()
+		for zctrl in self.zctrls[chan].values:
+			self.midi_unlearn(zctrl)
 
 
-	def exit_midi_learn(self, zctl):
-		pass
-		#TODO: Implement??
+	def midi_unlearn(self, zctrl):
+		for chan in self.learned_cc:
+			for cc in self.learned_cc[chan]:
+				if self.learned_cc[chan][cc] == zctrl:
+					self.learned_cc[chan].pop(cc)
 
+
+	def enable_midi_learn(self, zctrl):
+		self.midi_learn_zctrl = zctrl
+
+
+	def disable_midi_learn(self):
+		self.midi_learn_zctrl = None
+		if self.midi_learn_cb:
+			self.midi_learn_cb()
+
+
+	def set_midi_learn_cb(self, cb):
+		self.midi_learn_cb = cb
 
 #-------------------------------------------------------------------------------

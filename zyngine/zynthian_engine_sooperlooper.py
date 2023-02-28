@@ -391,9 +391,10 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				midi_chan = None
 			for ctrl in self._ctrls:
 				zctrl = zynthian_controller(self, ctrl[0], ctrl[1], ctrl[2])
+				zctrl.set_options({"processor": processor})
 				self.zctrls[zctrl.symbol] = zctrl
 				if midi_chan is not None and len(ctrl) > 3:
-					zctrl._set_midi_learn(midi_chan, ctrl[3])
+					self.state_manager.chain_manager.add_midi_learn(midi_chan, ctrl[3], processor, zctrl.symbol)
 		return self.zctrls
 
 

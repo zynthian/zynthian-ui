@@ -788,21 +788,6 @@ class zynthian_chain_manager():
 	# MIDI CC
 	#----------------------------------------------------------------------------
 
-    def _add_midi_learn(self, id, proc, param):
-        """Adds a midi learn configuration
-
-        id : 16-bit id of midi_chan<<8|midi_cc
-        proc : Processor object
-        param : Parameter symbol
-        """
-
-        self.remove_midi_learn(proc, param)
-        if id in self.midi_learn_map:
-            if [proc, param] not in self.midi_learn_map[id]:
-                self.midi_learn_map[id].append([proc, param])
-        else:
-            self.midi_learn_map[id] = [[proc, param]]
-        self.state_manager.disable_learn_cc()
 
     def add_midi_learn(self, midi_chan, midi_cc, proc, param):
         """Adds a midi learn configuration
@@ -813,7 +798,18 @@ class zynthian_chain_manager():
         param : Parameter symbol
         """
 
-        self._add_midi_learn(midi_chan << 8 | midi_cc, proc, param)
+        id = midi_chan << 8 | midi_cc
+        self.remove_midi_learn(proc, param)
+        if id in self.midi_learn_map:
+            if [proc, param] not in self.midi_learn_map[id]:
+                self.midi_learn_map[id].append([proc, param])
+        else:
+            self.midi_learn_map[id] = [[proc, param]]
+        if proc.type_code == "MD":
+            # Add native MIDI learn
+            proc.engine.set_midi_learn(proc.controllers_dict[param], midi_chan, midi_cc)
+        #TODO: Do we have to disable learn_cc here or should we rely on parent app to do that?
+        self.state_manager.disable_learn_cc()
 
     def remove_midi_learn(self, proc, param):
         """Remove a midi learn configuration
@@ -829,16 +825,21 @@ class zynthian_chain_manager():
                     del self.midi_learn_map[params[0] << 8 | params[1]][i]
                     if not self.midi_learn_map[params[0] << 8 | params[1]]:
                         del self.midi_learn_map[params[0] << 8 | params[1]]
+                    if proc.type_code == "MD":
+                        # Remove native MIDI learn
+                        proc.engine.midi_unlearn(proc.controllers_dict[param])
                     return
 
-    def _get_midi_learn(self, id, chain_id=None):
+    def get_midi_learn(self, midi_chan, midi_cc, chain_id=None):
         """Get list of parameters mapped
 
-        id : 16-bit id of midi_chan<<8|midi_cc
+        midi_chan : MIDI channel of CC message
+        midi_cc : CC number of CC message
         chain_id : Optional filter by chain_id
-        Returns : List of [processr, parameter] or None if chan,cc not mapped
+        Returns : List of [processr, parameter]
         """
 
+        id = midi_chan << 8 | midi_cc
         try:
             ret = []
             if chain_id is not None:
@@ -860,16 +861,6 @@ class zynthian_chain_manager():
             pass
         return None
 
-    def get_midi_learn(self, midi_chan, midi_cc, chain_id=None):
-        """Get list of parameters mapped
-
-        midi_chan : MIDI channel of CC message
-        midi_cc : CC number of CC message
-        chain_id : Optional filter by chain_id
-        Returns : List of [processr, parameter]
-        """
-
-        return self._get_midi_learn(midi_chan << 8 | midi_cc, chain_id)
 
     def get_midi_learn_from_param(self, proc, param_symbol):
         """Get MIDI channel and CC controlling processor parameter

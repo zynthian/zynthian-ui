@@ -227,10 +227,11 @@ class zynthian_gui_mixer_strip():
 
 
 	def get_ctrl_learn_text(self, ctrl):
-		if self.zctrls[ctrl].midi_learn_cc:
-			return '{}#{}'.format(self.zctrls[ctrl].midi_learn_chan + 1, self.zctrls[ctrl].midi_learn_cc)
-		else:
-			return '??'
+		try:
+			param = self.zynmixer.get_learned_cc(self.zctrls[ctrl])
+			return f"{param[0] + 1}#{param[1]}"
+		except:
+			return "??"
 
 
 	def refresh_status(self):
@@ -738,7 +739,7 @@ class zynthian_gui_mixer_strip():
 	def enable_midi_learn(self, mode):
 		self.midi_learning = mode
 		if mode in ['level', 'balance', 'mute', 'solo']:
-			self.zctrls[mode].init_midi_learn()
+			self.zynmixer.enable_midi_learn(self.zctrls[mode])
 			self.parent.update_learning(self, mode)
 		self.parent.pending_refresh_queue.add((self, None))
 
@@ -755,6 +756,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.zynmixer = self.zyngui.state_manager.zynmixer
 		self.zynmixer.set_ctrl_update_cb(self.ctrl_change_cb)
+		self.zynmixer.set_midi_learn_cb(self.exit_midi_learn)
 		self.MAIN_MIXBUS_STRIP_INDEX = self.zynmixer.get_max_channels()
 		self.chan2strip = [None] * (self.MAIN_MIXBUS_STRIP_INDEX + 1)
 		self.highlighted_strip = None # highligted mixer strip object
@@ -971,7 +973,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle BACK action
 	def back_action(self):
 		if self.midi_learning:
-			self.zyngui.state_manager.exit_midi_learn()
+			self.exit_midi_learn()
 			return True
 
 
@@ -1102,12 +1104,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	#--------------------------------------------------------------------------
 
 	# Pre-select all controls in a chain to allow selection of actual control to MIDI learn
-	def enter_midi_learn(self):
+	def toggle_midi_learn(self):
+		self.midi_learning = not self.midi_learning
 		for strip in self.visible_mixer_strips:
 			if strip.chain:
-				strip.enable_midi_learn(True)
-		self.main_mixbus_strip.enable_midi_learn(True)
-		self.midi_learning = True
+				strip.enable_midi_learn(self.midi_learning)
+		self.main_mixbus_strip.enable_midi_learn(self.midi_learning)
 
 
 	# Respond to a strip being configured to midi learn

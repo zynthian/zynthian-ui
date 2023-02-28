@@ -763,6 +763,7 @@ class zynthian_engine_modui(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def init_midi_learn(self, zctrl):
+		#TODO: This isn't used!
 		logging.info("Learning '{}' ...".format(zctrl.graph_path))
 		res = self.api_post_request("/effect/parameter/address/"+zctrl.graph_path, json=self.get_parameter_address_data(zctrl, "/midi-learn"))
 
@@ -771,11 +772,9 @@ class zynthian_engine_modui(zynthian_engine):
 		logging.info("Unlearning '{}' ...".format(zctrl.graph_path))
 		try:
 			pad = self.get_parameter_address_data(zctrl,"null")
-			if self.api_post_request("/effect/parameter/address/"+zctrl.graph_path, json=pad):
-				return zctrl._unset_midi_learn()
+			return self.api_post_request("/effect/parameter/address/"+zctrl.graph_path, json=pad)
 		except Exception as e:
 			logging.warning("Can't unlearn => {}".format(e))
-
 
 
 	def set_midi_learn(self, zctrl, chan, cc):
@@ -784,8 +783,7 @@ class zynthian_engine_modui(zynthian_engine):
 				logging.info("Set MIDI map '{}' => {}, {}".format(zctrl.graph_path, chan, cc))
 				uri = "/midi-custom_Ch.{}_CC#{}".format(chan+1, cc)
 				pad = self.get_parameter_address_data(zctrl, uri)
-				if self.api_post_request("/effect/parameter/address/"+zctrl.graph_path, json=pad):
-					return zctrl._set_midi_learn(chan, cc)
+				return self.api_post_request("/effect/parameter/address/"+zctrl.graph_path, json=pad)
 		except Exception as e:
 				logging.warning("Can't learn => {}".format(e))
 

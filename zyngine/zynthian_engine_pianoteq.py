@@ -386,12 +386,12 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 
 	#   Get a list of parameters for the loaded preset
-	#   returns: dictionary of all parameters indexed by parameter id: {name, value} or None on failure
+	#   returns: dictionary of all parameters indexed by parameter id: {name, value}
 	def get_params(self):
 		params = {}
 		result = self.rpc('getParameters')
 		if result is None or 'result' not in result:
-			return None
+			return {}
 		for param in result['result']:
 			params[param['id']] = {'name': param['name'], 'value': param['normalized_value']}
 		return params
@@ -585,6 +585,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		params = self.get_params()
 		for param in params:
 			options = {
+				'processor': processor,
 				'value': 0,
 				'value_min': 0.0,
 				'value_max': 1.0,
@@ -613,7 +614,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				# Default MIDI CC mapping
 				default_cc = {'Sustain Pedal': 64, 'Sostenuto Pedal': 66, 'Soft Pedal': 67, 'Harmonic Pedal': 69}
 				if param in default_cc:
-					zctrl._set_midi_learn(processor.midi_chan, default_cc[param])
+					self.state_manager.chain_manager.add_midi_learn(processor.midi_chan, default_cc[param], processor, zctrl.symbol)
+
 			else:
 				self._ctrls[param].set_options(options)
 		return self._ctrls
