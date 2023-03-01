@@ -441,16 +441,21 @@ class zynmixer(zynthian_engine):
 				pass
 
 
+	def midi_unlearn(self, zctrl):
+		for chan, learned in enumerate(self.learned_cc):
+			for cc, ctrl in learned.items():
+				if ctrl == zctrl:
+					self.learned_cc[chan].pop(cc)
+					return
+
+
 	def midi_unlearn_chan(self, chan):
 		for zctrl in self.zctrls[chan].values:
 			self.midi_unlearn(zctrl)
 
 
-	def midi_unlearn(self, zctrl):
-		for chan in self.learned_cc:
-			for cc in self.learned_cc[chan]:
-				if self.learned_cc[chan][cc] == zctrl:
-					self.learned_cc[chan].pop(cc)
+	def midi_unlearn_all(self):
+		self.learned_cc = [dict() for x in range(16)]
 
 
 	def enable_midi_learn(self, zctrl):

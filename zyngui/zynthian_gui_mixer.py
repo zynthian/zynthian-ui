@@ -141,7 +141,7 @@ class zynthian_gui_mixer_strip():
 		self.fader_bg = self.parent.main_canvas.create_rectangle(x, self.fader_top, x + self.width, self.fader_bottom, fill=self.fader_bg_color, width=0)
 		self.parent.main_canvas.itemconfig(self.fader_bg, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg)))
 		self.fader = self.parent.main_canvas.create_rectangle(x, self.fader_top, x + self.width, self.fader_bottom, fill=self.fader_color, width=0, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
-		self.fader_text = self.parent.main_canvas.create_text(int(fader_centre), int(self.fader_top + self.fader_height / 2), text="??", font=self.font_learn, state=tkinter.HIDDEN)
+		self.fader_text = self.parent.main_canvas.create_text(int(fader_centre), int(self.fader_top + self.fader_height / 2), text="??", font=self.font_learn, angle=90, state=tkinter.HIDDEN)
 		self.legend = self.parent.main_canvas.create_text(x, self.fader_bottom - 2, fill=self.legend_txt_color, text="", tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg)), angle=90, anchor="nw", font=self.font_fader)
 
 		# DPM
@@ -303,7 +303,7 @@ class zynthian_gui_mixer_strip():
 			rcolor = self.fader_bg_color
 			txcolor = zynthian_gui_config.color_hl
 			txstate = tkinter.NORMAL
-			text = self.get_ctrl_learn_text('balance')
+			text = f"<-> {self.get_ctrl_learn_text('balance')}"
 
 		elif self.midi_learning == 'balance':
 			lcolor = self.left_color_learn
@@ -335,8 +335,12 @@ class zynthian_gui_mixer_strip():
 			self.parent.main_canvas.itemconfig(self.fader_text, fill=zynthian_gui_config.color_hl, text=text, state=tkinter.NORMAL)
 			self.parent.main_canvas.itemconfig(self.legend, state=tkinter.HIDDEN)
 		elif self.midi_learning == 'level':
-			self.parent.main_canvas.itemconfig(self.fader_text, state=tkinter.HIDDEN)
-			self.parent.main_canvas.itemconfig(self.legend, state=tkinter.NORMAL, fill=zynthian_gui_config.color_ml)
+			if self.get_legend_text():
+				self.parent.main_canvas.itemconfig(self.fader_text, state=tkinter.HIDDEN)
+				self.parent.main_canvas.itemconfig(self.legend, state=tkinter.NORMAL, fill=zynthian_gui_config.color_ml)
+			else:
+				self.parent.main_canvas.itemconfig(self.fader_text, state=tkinter.NORMAL, text="Learing...", fill=zynthian_gui_config.color_ml)
+				self.parent.main_canvas.itemconfig(self.legend, state=tkinter.HIDDEN)
 		else:
 			self.parent.main_canvas.itemconfig(self.fader_text, state=tkinter.HIDDEN)
 			self.parent.main_canvas.itemconfig(self.legend, state=tkinter.NORMAL, fill=self.legend_txt_color)
@@ -355,9 +359,7 @@ class zynthian_gui_mixer_strip():
 			bgcolor = self.button_bgcol
 			txcolor = zynthian_gui_config.color_hl
 			font = self.font_learn
-			text = self.get_ctrl_learn_text('solo')
-			if text == '??':
-				text = "S {}".format(text)
+			text = f"S {self.get_ctrl_learn_text('solo')}"
 		elif self.midi_learning == 'solo':
 			txcolor = zynthian_gui_config.color_ml
 
@@ -379,9 +381,7 @@ class zynthian_gui_mixer_strip():
 			bgcolor = self.button_bgcol
 			txcolor = zynthian_gui_config.color_hl
 			font = self.font_learn
-			text = self.get_ctrl_learn_text('mute')
-			if text == '??':
-				text = "\uf32f {}".format(text)
+			text = f"\uf32f {self.get_ctrl_learn_text('mute')}"
 		elif self.midi_learning == 'mute':
 			txcolor = zynthian_gui_config.color_ml
 
@@ -939,8 +939,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if strip.chain.mixer_chan is not None and strip.chain.mixer_chan < len(self.zynmixer.zctrls):
 				strip.zctrls = self.zynmixer.zctrls[strip.chain.mixer_chan]
 			strip.draw_control()
-			if strip.chain.midi_chan is not None and strip.chain.midi_chan < len(self.chan2strip):
-				self.chan2strip[strip.chain.midi_chan] = strip
+			if strip.chain.mixer_chan is not None and strip.chain.mixer_chan < len(self.chan2strip):
+				self.chan2strip[strip.chain.mixer_chan] = strip
 			if chain_id == self.zyngui.chain_manager.active_chain_id:
 				active_strip = strip
 			strip_index += 1
@@ -1097,6 +1097,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def ctrl_change_cb(self, chan, ctrl, value):
 		if chan is not None:
 			self.pending_refresh_queue.add((self.chan2strip[chan], ctrl))
+			self.pending_refresh_queue.add((self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX], "solo"))
 
 
 	#--------------------------------------------------------------------------
@@ -1128,25 +1129,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.midi_learning = False
 
 
-	def midi_unlearn_all(self):
-		for ctrls in self.zynmixer.zctrls:
-			for key in ctrls:
-				ctrls[key].midi_unlearn()
-
-
 	def midi_unlearn_action(self):
-		if self.zyngui.state_manager.midi_learn_zctrl:
-			self.zyngui.show_confirm("Do you want to clear MIDI-learn for '{}' control?".format(self.zyngui.midi_learn_zctrl.name), self.midi_unlearn, self.zyngui.state_manager.midi_learn_zctrl)
+		if self.zynmixer.midi_learn_zctrl:
+			self.zyngui.show_confirm(f"Do you want to clear MIDI-learn for '{self.zynmixer.midi_learn_zctrl.name}' control?", self.zynmixer.midi_unlearn, self.zynmixer.midi_learn_zctrl)
 		else:
-			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL mixer controls?", self.midi_unlearn)
-
-
-	def midi_unlearn(self, zctrl=None):
-		if zctrl:
-			zctrl.midi_unlearn()
-		else:
-			self.midi_unlearn_all()
-		self.zyngui.state_manager.exit_midi_learn()
+			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL mixer controls?", self.zynmixer.midi_unlearn_all)
 
 
 #--------------------------------------------------------------------------
