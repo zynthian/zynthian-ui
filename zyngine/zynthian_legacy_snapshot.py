@@ -369,6 +369,34 @@ class zynthian_legacy_snapshot:
                                 pass
                 state["zs3"][zs3_id]["midi_learn_cc"] = ml
 
+        # Fix ZS3 mixer MIDI learn
+        for zs3 in state["zs3"].values():
+            if "mixer" in zs3:
+                zs3["mixer"]["midi_learn"] = {}
+                for strip, config in zs3["mixer"].items():
+                    if strip == "main":
+                        strip_id = 17 #TODO: Get actual main mixer strip index
+                    else:
+                        try:
+                            strip_id = int(strip.split('_')[1])
+                        except:
+                            continue
+                    for symbol, params in config.items():
+                        if 'midi_learn_chan' in params:
+                            chan = params.pop('midi_learn_chan')
+                        else:
+                            chan = None
+                        if 'midi_learn_cc' in params:
+                            cc = params.pop('midi_learn_cc')
+                        else:
+                            cc = None
+                        if cc is not None and chan is not None:
+                            zs3["mixer"]["midi_learn"][f"{chan},{cc}"] = [strip_id, symbol]
+                        try:
+                            config[symbol] = config[symbol]["value"]
+                        except:
+                            pass
+
         # Remove unrequired audio routing
         if "main" in state["chains"] and state["chains"]["main"]["audio_in"] == ['zynmixer:send_a', 'zynmixer:send_b']:
             state["chains"]["main"]["audio_in"] = []

@@ -50,16 +50,16 @@ class zynmixer(zynthian_engine):
 			self.lib_zynmixer = None
 			print('Cannot init zynmixer library: %s' % str(e))
 
-		self.zctrls = []
-		self.learned_cc = [dict() for x in range(16)]
+		self.zctrls = [] # List of {symbol:zctrl,...} indexed by mixer strip index
+		self.learned_cc = [dict() for x in range(16)] # List of learned {cc:zctrl} indexed by learned MIDI channel
 		for i in range(self.get_max_channels() + 1):
 			strip_dict = {
-				'level': zynthian_controller(self, 'level', None, {'midi_chan':i,'is_integer':False,'value_max':1.0,'value_default':0.8,'value':self.get_level(i),'graph_path':'level_{}'.format(i)}),
-				'balance': zynthian_controller(self, 'balance', None, {'midi_chan':i,'is_integer':False,'value_min':-1.0,'value_max':1.0,'value_default':0.0,'value':self.get_balance(i),'graph_path':'balance_{}'.format(i)}),
-				'mute': zynthian_controller(self, 'mute', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_mute(i),'graph_path':'mute_{}'.format(i)}),
-				'solo': zynthian_controller(self, 'solo', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_solo(i),'graph_path':'solo_{}'.format(i)}),
-				'mono': zynthian_controller(self, 'mono', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_mono(i),'graph_path':'mono_{}'.format(i)}),
-				'phase': zynthian_controller(self, 'phase', None, {'midi_chan':i,'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_phase(i),'graph_path':'phase_{}'.format(i)})
+				'level': zynthian_controller(self, 'level', None, {'is_integer':False,'value_max':1.0,'value_default':0.8,'value':self.get_level(i),'graph_path':[i, 'level']}),
+				'balance': zynthian_controller(self, 'balance', None, {'is_integer':False,'value_min':-1.0,'value_max':1.0,'value_default':0.0,'value':self.get_balance(i),'graph_path':[i, 'balance']}),
+				'mute': zynthian_controller(self, 'mute', None, {'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_mute(i),'graph_path':[i, 'mute']}),
+				'solo': zynthian_controller(self, 'solo', None, {'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_solo(i),'graph_path':[i, 'solo']}),
+				'mono': zynthian_controller(self, 'mono', None, {'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_mono(i),'graph_path':[i, 'mono']}),
+				'phase': zynthian_controller(self, 'phase', None, {'is_toggle':True,'value_max':1,'value_default':0,'value':self.get_phase(i),'graph_path':[i, 'phase']})
 			}
 			self.zctrls.append(strip_dict)
 
@@ -69,7 +69,7 @@ class zynmixer(zynthian_engine):
 
 
 	def get_controllers_dict(self, processor):
-		return self.zctrls[processor.midi_chan]
+		return self.zctrls[processor.mixer_chan]
 
 
 	def get_learned_cc(self, zctrl):
@@ -81,7 +81,7 @@ class zynmixer(zynthian_engine):
 
 	def send_controller_value(self, zctrl):
 		try:
-			getattr(self, 'set_{}'.format(zctrl.symbol))(zctrl.midi_chan, zctrl.value, False)
+			getattr(self, f'set_{zctrl.symbol}')(zctrl.graph_path[0], zctrl.value, False)
 		except Exception as e:
 			logging.warning(e)
 
@@ -346,21 +346,24 @@ class zynmixer(zynthian_engine):
 	# State management (for snapshots)
 	#--------------------------------------------------------------------------
 
-	def reset(self, channel):
-		"""Reset mixer channel to default values"""
+	def reset(self, strip):
+		"""Reset mixer strip to default values
+		
+		strip : Index of mixer strip
+		"""
 
-		if not isinstance(channel, int):
+		if not isinstance(strip, int):
 			return
-		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
-		self.zctrls[channel]['level'].reset_value()
-		self.zctrls[channel]['balance'].reset_value()
-		self.zctrls[channel]['mute'].reset_value()
-		self.zctrls[channel]['mono'].reset_value()
-		self.zctrls[channel]['solo'].reset_value()
-		self.zctrls[channel]['phase'].reset_value()
-			#for symbol in self.zctrls[channel]:
-			#	self.zctrls[channel][symbol].midi_unlearn()
+		if strip >= self.MAX_NUM_CHANNELS:
+			strip = self.MAX_NUM_CHANNELS
+		self.zctrls[strip]['level'].reset_value()
+		self.zctrls[strip]['balance'].reset_value()
+		self.zctrls[strip]['mute'].reset_value()
+		self.zctrls[strip]['mono'].reset_value()
+		self.zctrls[strip]['solo'].reset_value()
+		self.zctrls[strip]['phase'].reset_value()
+			#for symbol in self.zctrls[strip]:
+			#	self.zctrls[strip][symbol].midi_unlearn()
 
 
 	# Reset mixer to default state
@@ -384,11 +387,14 @@ class zynmixer(zynthian_engine):
 			chan_state = {}
 			for symbol in self.zctrls[chan]:
 				zctrl = self.zctrls[chan][symbol]
-				ctrl_state = zctrl.get_state(full)
-				if ctrl_state:
-					chan_state[zctrl.symbol] = ctrl_state
+				if zctrl.value != zctrl.value_default:
+					chan_state[zctrl.symbol] = zctrl.value
 			if chan_state:
 				state[key] = chan_state
+			state["midi_learn"] = {}
+			for chan in range(16):
+				for cc, zctrl in self.learned_cc[chan].items():
+					state["midi_learn"][f"{chan},{cc}"] = zctrl.graph_path
 		return state
 
 
@@ -406,14 +412,19 @@ class zynmixer(zynthian_engine):
 				key = 'main'
 			for symbol, zctrl in zctrls.items():
 				try:
-					ctrl_state = state[key][symbol]
-					if "value" in ctrl_state:
-						zctrl.set_value(ctrl_state["value"], True)
-					if "midi_learn_chan" in ctrl_state and "midi_learn_cc" in ctrl_state:
-						self.set_midi_learn(zctrl, int(ctrl_state["midi_learn_chan"]), int(ctrl_state["midi_learn_cc"]))
+					zctrl.set_value(state[key][symbol], True)
 				except:
 					if full:
 						zctrl.reset_value()
+		if "midi_learn" in state:
+			#state["midi_learn"][f"{chan},{cc}"] = zctrl.graph_path
+			self.midi_unlearn_all()
+			for ml, graph_path in state["midi_learn"].items():
+				try:
+					chan, cc = ml.split(',')
+					self.learned_cc[int(chan)][int(cc)] = self.zctrls[graph_path[0]][graph_path[1]]
+				except:
+					logging.warning("Failed to parse mixer midi learn parameter")
 
 
 	def send_update(self, chan, ctrl, value):
@@ -454,7 +465,7 @@ class zynmixer(zynthian_engine):
 			self.midi_unlearn(zctrl)
 
 
-	def midi_unlearn_all(self):
+	def midi_unlearn_all(self, not_used=None):
 		self.learned_cc = [dict() for x in range(16)]
 
 

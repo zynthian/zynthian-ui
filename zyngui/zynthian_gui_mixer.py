@@ -838,7 +838,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if not self.zyngui.osc_clients:
 			for chan in range(self.zynmixer.get_max_channels()):
 				self.zynmixer.enable_dpm(chan, False)
-		self.exit_midi_learn()
+		self.zynmixer.disable_midi_learn()
 		super().hide()
 
 
@@ -973,7 +973,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle BACK action
 	def back_action(self):
 		if self.midi_learning:
-			self.exit_midi_learn()
+			self.zynmixer.disable_midi_learn()
 			return True
 
 
@@ -1130,6 +1130,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 	def midi_unlearn_action(self):
+		self.zynmixer.disable_midi_learn()
 		if self.zynmixer.midi_learn_zctrl:
 			self.zyngui.show_confirm(f"Do you want to clear MIDI-learn for '{self.zynmixer.midi_learn_zctrl.name}' control?", self.zynmixer.midi_unlearn, self.zynmixer.midi_learn_zctrl)
 		else:
