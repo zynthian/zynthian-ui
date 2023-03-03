@@ -663,7 +663,7 @@ class zynthian_gui_base(tkinter.Frame):
 
 		action = zynthian_gui_keybinding.getInstance().get_key_action(keysym, event.state)
 		if action != None:
-			self.zyngui.callable_ui_action(action)
+			self.zyngui.callable_ui_action_params(action)
 
 
 	def cb_select_path(self, *args):
