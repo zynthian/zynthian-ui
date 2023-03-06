@@ -4,7 +4,7 @@
 # 
 # zynthian_engine implementation for setBfree Hammond Emulator
 # 
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -27,6 +27,7 @@ import logging
 from zyngine.zynthian_processor import zynthian_processor
 
 from . import zynthian_engine
+import zynautoconnect
 
 #------------------------------------------------------------------------------
 # setBfree Engine Class
@@ -251,8 +252,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 		logging.debug("STARTING SETBFREE!!")
 		self.generate_config_file(self.midi_chans)
 		super().start()
-		self.state_manager.autoconnect_midi(True)
-		self.state_manager.autoconnect_audio()
+		zynautoconnect.request_midi_connect(True)
+		zynautoconnect.request_audio_connect()
 		for processor in self.processors:
 			processor.load_preset_list()
 			processor.set_preset(0)

@@ -1,6 +1,7 @@
 from zyncoder.zyncore import lib_zyncore_init
 from zyngui import zynthian_gui_config
 from zyngine import zynthian_state_manager
+import autoconnect
 
 import logging
 from time import sleep
@@ -32,7 +33,7 @@ class zyn_headless:
 
         self.state_manager.init_midi()
         self.state_manager.init_midi_services()
-        self.state_manager.autoconnect()
+        autoconnect.autoconnect()
 
         while True:
             sleep(1)
