@@ -4,7 +4,7 @@
 #
 # zynthian state manager
 #
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 # ****************************************************************************
@@ -732,7 +732,7 @@ class zynthian_state_manager:
 
         if self.audio_player:
             self.audio_player.engine.player.stop_playback(16)
-            self.audio_player.engine.del_processor(self.audio_player)
+            self.audio_player.engine.remove_processor(self.audio_player)
             self.audio_player = None
             try:
                 self.status_info.pop('audio_player')

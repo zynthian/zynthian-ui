@@ -316,7 +316,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 			#path += "/" + self.tonewheel_model
 		return path
 
-	def del_processor(self, processor):
+
+	def remove_processor(self, processor):
 		try:
 			if processor.bank_name == "Upper":
 				self.midi_chans[0] = None
@@ -329,8 +330,8 @@ class zynthian_engine_setbfree(zynthian_engine):
 			self.chan_names.pop(str(processor.midi_chan))
 		except:
 			pass
-		self.processors.remove(processor)
-		processor.jackname = None
+		super().remove_processor(processor)
+
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management

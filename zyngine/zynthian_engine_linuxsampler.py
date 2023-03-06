@@ -4,7 +4,7 @@
 # 
 # zynthian_engine implementation for Linux Sampler
 # 
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -225,9 +225,9 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		processor.refresh_flag = True
 
 
-	def del_processor(self, processor):
-		super().del_processor(processor)
-		self.ls_unset_channel(processor)
+	def remove_processor(self, processor):
+		#self.ls_unset_channel(processor)
+		super().remove_processor(processor)
 
 
 	# ---------------------------------------------------------------------------

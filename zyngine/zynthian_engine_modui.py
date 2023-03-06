@@ -156,9 +156,9 @@ class zynthian_engine_modui(zynthian_engine):
 			self.start_websocket()
 
 
-	def del_processor(self, processor):
+	def remove_processor(self, processor):
 		self.graph_reset()
-		super().del_processor(processor)
+		super().remove_processor(processor)
 
 	#----------------------------------------------------------------------------
 	# Bank Managament

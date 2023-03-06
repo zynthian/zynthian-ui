@@ -4,7 +4,7 @@
 # 
 # zynthian_engine implementation for ZynAddSubFX Synthesizer
 # 
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -186,11 +186,10 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		logging.debug("ADD processor => Part {} ({})".format(processor.part_i, self.jackname))
 
 
-	def del_processor(self, processor):
-		super().del_processor(processor)
+	def remove_processor(self, processor):
 		self.disable_part(processor.part_i)
 		processor.part_i = None
-		processor.jackname = None
+		super().remove_processor(processor)
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management

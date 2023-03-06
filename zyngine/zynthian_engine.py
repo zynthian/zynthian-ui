@@ -4,7 +4,7 @@
 # 
 # zynthian_engine is the base class for the Zynthian Synth Engine
 # 
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -349,14 +349,9 @@ class zynthian_engine(zynthian_basic_engine):
 		processor.jackname = self.jackname #TODO: Should we set chain jackname to processor jackname?
 
 
-	def del_processor(self, processor):
+	def remove_processor(self, processor):
 		self.processors.remove(processor)
 		processor.jackname = None
-
-
-	def del_all_processors(self):
-		for processor in self.processors:
-			self.del_processor(processor)
 
 
 	def get_name(self, processor):

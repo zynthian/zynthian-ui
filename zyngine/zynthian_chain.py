@@ -4,7 +4,7 @@
 #
 # zynthian chain
 #
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 # *****************************************************************************
@@ -475,7 +475,6 @@ class zynthian_chain:
         """Remove a processor from chain
 
         processor : processor object to remove
-        stop_engine: True to stop the processor's worker engine
         Returns : True on success
         """
 
@@ -492,7 +491,7 @@ class zynthian_chain:
             slots.pop(slot)
 
         if processor.engine:
-            processor.engine.del_processor(processor)
+            processor.engine.remove_processor(processor)
 
         self.rebuild_graph()
         if processor == self.current_processor:
@@ -518,7 +517,6 @@ class zynthian_chain:
 
         for processor in self.get_processors():
             self.remove_processor(processor)
-        self.rebuild_graph()
 
     def move_processor(self, processor, slot):
         """Move processor to different slot

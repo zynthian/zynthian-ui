@@ -4,7 +4,7 @@
 # 
 # zynthian_engine implementation for FluidSynth Sampler
 # 
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -124,6 +124,9 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		try:
 			self.proc.sendline("quit")
 			self.proc.expect("\ncheers!")
+			# We have asked nicely but sometimes fluidsynth needs more encouragement...
+			self.proc.terminate(True)
+			self.proc = None
 		except:
 			super().stop()
 
@@ -138,8 +141,8 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		self.setup_router(processor)
 
 
-	def del_processor(self, processor):
-		super().del_processor(processor)
+	def remove_processor(self, processor):
+		super().remove_processor(processor)
 		if processor.part_i is not None:
 			self.set_all_midi_routes()
 		self.unload_unused_soundfonts()

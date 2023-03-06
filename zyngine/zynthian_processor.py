@@ -97,7 +97,7 @@ class zynthian_processor:
         # MIDI-unlearn all controllers
         self.midi_unlearn()
         # Delete processor from engine
-        self.engine.del_processor(self) #TODO: Is this done elsewhere?
+        self.engine.remove_processor(self) #TODO: Is this done elsewhere?
         # Clear refresh flag
         self.refresh_flag = False #TODO: GUI
 

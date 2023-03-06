@@ -124,9 +124,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			processor.jackname = "{}:out_{:02d}(a|b)".format(self.jackname, handle + 1)
 
 
-	def del_processor(self, processor):
+	def remove_processor(self, processor):
 		self.player.remove_player(processor.midi_chan if processor.midi_chan < 16 else 16)
-		super().del_processor(processor)
+		super().remove_processor(processor)
 
 
 	# ---------------------------------------------------------------------------
