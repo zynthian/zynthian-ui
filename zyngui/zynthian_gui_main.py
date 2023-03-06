@@ -53,7 +53,8 @@ class zynthian_gui_main(zynthian_gui_selector):
 			self.list_data.append((self.new_midifx_processor,0,"New MIDI Chain"))
 		if mixer_chans:
 			self.list_data.append((self.new_generator_processor,0,"New Generator Chain"))
-		self.list_data.append((self.new_special_processor,0,"New Special Chain"))
+		if midi_chans and mixer_chans:
+			self.list_data.append((self.new_special_processor,0,"New Special Chain"))
 		self.list_data.append((self.snapshots,0,"Snapshots"))
 		self.list_data.append((self.clean_all,0,"Clean All"))
 

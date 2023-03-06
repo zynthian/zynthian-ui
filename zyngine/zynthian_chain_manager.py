@@ -1036,9 +1036,13 @@ class zynthian_chain_manager():
         """Get list of unused MIDI channels"""
 
         free_chans = list(range(16))
-        for chain in self.chains:
+        try:
+            free_chans.remove(zynthian_gui_config.master_midi_channel)
+        except:
+            pass
+        for chain_id in self.chains:
             try:
-                free_chans.remove(self.chains[chain].midi_chan)
+                free_chans.remove(self.chains[chain_id].midi_chan)
             except:
                 pass
         return free_chans
