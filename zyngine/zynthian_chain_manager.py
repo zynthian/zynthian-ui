@@ -175,6 +175,7 @@ class zynthian_chain_manager():
             chain = self.chains[chain_id]
             midi_chan = chain.midi_chan
             if chain.mixer_chan is not None:
+                mute = self.state_manager.zynmixer.get_mute(chain.mixer_chan)
                 self.state_manager.zynmixer.set_mute(chain.mixer_chan, True, True)
             if isinstance(midi_chan, int) and midi_chan < 16:
                 self.midi_chan_2_chain[midi_chan] = None
@@ -190,7 +191,11 @@ class zynthian_chain_manager():
                 if chain.mixer_chan is not None:
                     self.state_manager.zynmixer.reset(chain.mixer_chan)
                 self.chains.pop(chain_id)
+                self.state_manager.zynmixer.set_mute(chain.mixer_chan, False, True)
                 del chain
+            else:
+                self.state_manager.zynmixer.set_mute(chain.mixer_chan, mute, True)
+
         if stop_engines:
             self.stop_unused_engines()
         self.update_chain_ids_ordered()
