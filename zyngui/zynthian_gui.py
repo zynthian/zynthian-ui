@@ -740,15 +740,15 @@ class zynthian_gui:
 			# If not => bank/preset selector screen
 			else:
 				self.curlayer.load_bank_list()
-				if len(zyngui.curlayer.bank_list) > 1:
+				if len(self.curlayer.bank_list) > 1:
 					self.show_screen_reset('bank')
 				else:
 					self.curlayer.set_bank(0)
 					self.curlayer.load_preset_list()
-					if len(zyngui.curlayer.preset_list) > 1:
+					if len(self.curlayer.preset_list) > 1:
 						self.show_screen_reset('preset')
 					else:
-						if len(zyngui.curlayer.preset_list):
+						if len(self.curlayer.preset_list):
 							self.curlayer.set_preset(0)
 						self.show_screen_reset(control_screen_name)
 		
