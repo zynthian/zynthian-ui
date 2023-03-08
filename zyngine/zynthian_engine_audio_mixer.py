@@ -5,7 +5,7 @@
 #
 # A Python wrapper for zynmixer library
 #
-# Copyright (C) 2019-2022 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2019-2023 Brian Walton <riban@zynthian.org>
 #
 #********************************************************************
 #

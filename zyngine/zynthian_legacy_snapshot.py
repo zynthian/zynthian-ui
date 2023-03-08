@@ -1,5 +1,5 @@
 from json import JSONDecoder
-from zyngine import zynthian_state_manager
+from zyngine.zynthian_chain_manager import zynthian_chain_manager
 import logging
 
 SNAPSHOT_SCHEMA_VERSION = 1
@@ -7,13 +7,12 @@ SNAPSHOT_SCHEMA_VERSION = 1
 class zynthian_legacy_snapshot:
 
     def __init__(self):
-        pass
+        self.engine_info = zynthian_chain_manager.get_engine_info()
 
     def convert_file(self, fpath):
         """Converts legacy snapshot to current version
         
         fpath : Snapshot filename including path
-        engine_info : Engine info from chain manager
         Returns : Dictionary representing zynthian state model
         """
 
@@ -27,13 +26,15 @@ class zynthian_legacy_snapshot:
         
         return self.convert_state(snapshot)
 
-    def convert_state(self, snapshot, engine_info):
+    def convert_state(self, snapshot):
         """Converts a legacy snapshot to current version
         
         snapshot : Legacy snapshot as dictionary
         Returns : Current state model as dictionary
         """
 
+        if "schema_version" in snapshot:
+            return snapshot
         snapshot = self.convert_old_legacy(snapshot)
         self.jackname_counters = {}
         self.aeolus_count = 0
@@ -110,7 +111,7 @@ class zynthian_legacy_snapshot:
                 continue
 
             try:
-                info = engine_info[l['engine_nick']]
+                info = self.engine_info[l['engine_nick']]
             except:
                 info = []
             midi_chan = l["midi_chan"]

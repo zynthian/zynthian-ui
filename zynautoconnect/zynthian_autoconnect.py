@@ -482,7 +482,7 @@ def autoconnect():
 def auto_connect_thread():
 	"""Thread to run autoconnect, checking if physical (hardware) interfaces have changed, e.g. USB plug"""
 
-	global last_hw_str, deferred_midi_connect, deferred_audio_connect, fast_midi_connect
+	global last_hw_str, deferred_midi_connect, deferred_audio_connect
 
 	deferred_timeout = 2 # Period to run deferred connect (in seconds)
 	deferred_inc = 0.1 # Delay between loop cycles (in seconds)
@@ -507,7 +507,7 @@ def auto_connect_thread():
 					do_midi = True
 
 				if deferred_midi_connect:
-					fast_midi_connect = True
+					do_midi = True
 
 				if deferred_audio_connect:
 					do_audio = True

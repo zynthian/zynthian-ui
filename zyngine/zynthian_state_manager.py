@@ -308,7 +308,7 @@ class zynthian_state_manager:
         zynautoconnect.request_audio_connect()
 
         # Restore mute state
-        self.zynmixer.set_mute(255, mute)
+        self.zynmixer.set_mute(256, mute)
 
         self.last_snapshot_count += 1
         try:
@@ -352,7 +352,7 @@ class zynthian_state_manager:
 
         if "schema_version" not in snapshot:
             converter = zynthian_legacy_snapshot.zynthian_legacy_snapshot()
-            state = converter.convert_state(snapshot, self.chain_manager.engine_info)
+            state = converter.convert_state(snapshot)
         else:
             state = snapshot
             if state["schema_version"] < SNAPSHOT_SCHEMA_VERSION:

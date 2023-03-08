@@ -64,13 +64,15 @@ class zynthian_chain_manager():
         self.midi_chan_2_chain = [None] * 16  # Chains mapped by MIDI channel
         self.midi_learn_map = {} # Map of lists of [proc, param_symbol] mapped by 16-bit chan<<8|cc
 
-        self.update_engine_info()
+        self.engine_info = self.get_engine_info()
         self.add_chain("main", enable_audio_thru=True)
 
-    def update_engine_info(self):
+
+    @classmethod
+    def get_engine_info(cls):
         """Update dictionary of available engines"""
 
-        self.engine_info = OrderedDict([
+        engine_info = OrderedDict([
             ["SL", ("SooperLooper", "SooperLooper",
                 "Audio Effect", None, zynthian_engine_sooperlooper, True)],
             ["ZY", ("ZynAddSubFX", "ZynAddSubFX - Synthesizer",
@@ -96,15 +98,16 @@ class zynthian_chain_manager():
         pt_info = get_pianoteq_binary_info()
         if pt_info:
             if pt_info['api']:
-                self.engine_info['PT'] = ('Pianoteq', pt_info['name'], "MIDI Synth", None, zynthian_engine_pianoteq, True)
+                engine_info['PT'] = ('Pianoteq', pt_info['name'], "MIDI Synth", None, zynthian_engine_pianoteq, True)
             else:
-                self.engine_info['PT'] = ('Pianoteq', pt_info['name'], "MIDI Synth", None, zynthian_engine_pianoteq6, True)
+                engine_info['PT'] = ('Pianoteq', pt_info['name'], "MIDI Synth", None, zynthian_engine_pianoteq6, True)
 
         for plugin_name, plugin_info in get_jalv_plugins().items():
             engine = 'JV/{}'.format(plugin_name)
-            self.engine_info[engine] = ( plugin_name, plugin_name,
+            engine_info[engine] = ( plugin_name, plugin_name,
                 plugin_info['TYPE'], plugin_info.get('CLASS', None),
                 zynthian_engine_jalv, plugin_info['ENABLED'])
+        return engine_info
 
     # ------------------------------------------------------------------------
     # Chain Management

@@ -51,7 +51,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 
 	def fill_list(self):
-		self.zyngui.chain_manager.update_engine_info()
+		self.zyngui.chain_manager.get_engine_info() # Update the available engines
 		self.list_data=[]
 
 		# Sort category headings, but headings starting with "Zynthian" are shown first
