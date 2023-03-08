@@ -139,7 +139,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 	def all_notes_off(self, t='S'):
 		logging.info("All Notes Off")
-		self.zyngui.callable_ui_action("ALL_OFF")
+		self.zyngui.callable_ui_action("ALL_SOUNDS_OFF")
 
 
 	def set_select_path(self):
