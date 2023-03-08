@@ -163,7 +163,7 @@ while true; do
 
 	# Start Zynthian GUI & Synth Engine
 	cd $ZYNTHIAN_UI_DIR
-	./zynthian_gui.py
+	./zynthian_main.py
 	status=$?
 
 	# Proccess output status

@@ -268,7 +268,7 @@ def set_midi_config():
 	global master_midi_bank_change_up, master_midi_bank_change_down
 	global master_midi_bank_change_down_ccnum, master_midi_bank_base
 	global disabled_midi_in_ports, enabled_midi_out_ports, enabled_midi_fb_ports
-	global transport_clock_source
+	global transport_clock_source, master_midi_note_cuia
 
 	# MIDI options
 	midi_fine_tuning=float(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING',440.0))
@@ -342,6 +342,21 @@ def set_midi_config():
 	logging.debug("MMC Bank Change DOWN: {}".format(master_midi_bank_change_down))
 	logging.debug("MMC Program Change UP: {}".format(master_midi_program_change_up))
 	logging.debug("MMC Program Change DOWN: {}".format(master_midi_program_change_down))
+
+	# Master Note CUIA
+	mmncuia_envar = os.environ.get('ZYNTHIAN_MIDI_MASTER_NOTE_CUIA', None)
+	if mmncuia_envar is None:
+		master_midi_note_cuia = zynconf.NoteCuiaDefault
+	else:
+		master_midi_note_cuia = {}
+		for cuianote in mmncuia_envar.split('\n'):
+			try:
+				parts = cuianote.split(':')
+				note = parts[0].strip()
+				cuia = parts[1].strip()
+				master_midi_note_cuia[note] = cuia
+			except Exception as e:
+				logging.warning("Bad Master MIDI Note CUIA config {} => {}".format(cuianote, e))
 
 
 #------------------------------------------------------------------------------
@@ -469,7 +484,7 @@ PAD_COLOUR_STOPPED = [
 # X11 Related Stuff
 #------------------------------------------------------------------------------
 
-if "zynthian_gui.py" in sys.argv[0]:
+if "zynthian_main.py" in sys.argv[0]:
 	import tkinter
 	from PIL import Image, ImageTk
 

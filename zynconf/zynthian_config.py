@@ -4,7 +4,7 @@
 #
 # Zynthian Config library and tools
 #
-# Copyright (C) 2015-2017 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #********************************************************************
 #
@@ -62,93 +62,87 @@ ZynSensorActionType = [
 	"MIDI_CHAN_PRESS"
 ]
 
-CustomUiAction = [
-	"NONE",
-	"POWER_OFF",
-	"REBOOT",
-	"RESTART_UI",
-	"EXIT_UI",
+NoteCuiaDefault = {
+	"0": "POWER_OFF",
+	"1": "REBOOT",
+	"2": "RESTART_UI",
+	"3": "RELOAD_MIDI_CONFIG",
+	"4": "RELOAD_KEY_BINDING",
+	"5": "LAST_STATE_ACTION",
+	"6": "EXIT_UI",
 
-	"LAST_STATE_ACTION",
-	"RELOAD_MIDI_CONFIG",
-	"RELOAD_KEY_BINDING",
+	"10": "ALL_NOTES_OFF",
+	"11": "ALL_SOUNDS_OFF",
+	"12": "ALL_OFF",
 
-	"ALL_NOTES_OFF",
-	"ALL_SOUNDS_OFF",
-	"ALL_OFF",
+	"23": "TOGGLE_AUDIO_RECORD",
+	"24": "START_AUDIO_RECORD",
+	"25": "STOP_AUDIO_RECORD",
+	"26": "TOGGLE_AUDIO_PLAY",
+	"27": "START_AUDIO_PLAY",
+	"28": "STOP_AUDIO_PLAY",
 
-	"START_AUDIO_RECORD",
-	"STOP_AUDIO_RECORD",
-	"TOGGLE_AUDIO_RECORD",
-	"START_AUDIO_PLAY",
-	"STOP_AUDIO_PLAY",
-	"TOGGLE_AUDIO_PLAY",
+	"35": "TOGGLE_MIDI_RECORD",
+	"36": "START_MIDI_RECORD",
+	"37": "STOP_MIDI_RECORD",
+	"38": "TOGGLE_MIDI_PLAY",
+	"39": "START_MIDI_PLAY",
+	"40": "STOP_MIDI_PLAY",
 
-	"START_MIDI_RECORD",
-	"STOP_MIDI_RECORD",
-	"TOGGLE_MIDI_RECORD",
-	"START_MIDI_PLAY",
-	"STOP_MIDI_PLAY",
-	"TOGGLE_MIDI_PLAY",
+	"41": "ARROW_UP",
+	"42": "ARROW_DOWN",
+	"43": "ARROW_RIGHT",
+	"44": "ARROW_LEFT",
 
-	"START_STEP_SEQ",
-	"PAUSE_STEP_SEQ",
-	"STOP_STEP_SEQ",
-	"TOGGLE_STEP_SEQ",
+	"45": "ZYNPOT_UP",
+	"46": "ZYNPOT_DOWN",
 
-	"ARROW_UP",
-	"ARROW_DOWN",
-	"ARROW_RIGHT",
-	"ARROW_LEFT",
+	"48": "BACK",
+	"49": "NEXT",
+	"50": "PREV",
+	"51": "SELECT",
 
-	"ZYNPOT_UP",
-	"ZYNPOT_DOWN",
+	"52": "SELECT_UP",
+	"53": "SELECT_DOWN",
+	"54": "BACK_UP",
+	"55": "BACK_DOWN",
+	"56": "LAYER_UP",
+	"57": "LAYER_DOWN",
+	"58": "LEARN_UP",
+	"59": "LEARN_DOWN",
 
-	"BACK",
-	"SELECT",
-	
-	"LAYER_UP",
-	"LAYER_DOWN",
-	"BACK_UP",
-	"BACK_DOWN",
-	"LEARN_UP",
-	"LEARN_DOWN",
-	"SELECT_UP",
-	"SELECT_DOWN",
+	"64": "SWITCH_BACK_SHORT",
+	"63": "SWITCH_BACK_BOLD",
+	"62": "SWITCH_BACK_LONG",
+	"65": "SWITCH_SELECT_SHORT",
+	"66": "SWITCH_SELECT_BOLD",
+	"67": "SWITCH_SELECT_LONG",
+	"60": "SWITCH_LAYER_SHORT",
+	"61": "SWITCH_LAYER_BOLD",
+	"68": "SWITCH_LAYER_LONG",
+	"71": "SWITCH_SNAPSHOT_SHORT",
+	"72": "SWITCH_SNAPSHOT_BOLD",
+	"73": "SWITCH_SNAPSHOT_LONG",
 
-	"SWITCH_LAYER_SHORT",
-	"SWITCH_LAYER_BOLD",
-	"SWITCH_LAYER_LONG",
-	"SWITCH_BACK_SHORT",
-	"SWITCH_BACK_BOLD",
-	"SWITCH_BACK_LONG",
-	"SWITCH_LEARN_SHORT",
-	"SWITCH_LEARN_BOLD",
-	"SWITCH_LEARN_LONG",
-	"SWITCH_SELECT_SHORT",
-	"SWITCH_SELECT_BOLD",
-	"SWITCH_SELECT_LONG",
+	"80": "SCREEN_MAIN",
+	"81": "SCREEN_ADMIN",
+	"82": "SCREEN_AUDIO_MIXER",
+	"83": "SCREEN_SNAPSHOT",
 
-	"SCREEN_MAIN",
-	"SCREEN_ADMIN",
-	"SCREEN_AUDIO_MIXER",
-	"SCREEN_SNAPSHOT",
-	"SCREEN_AUDIO_RECORDER",
-	"SCREEN_MIDI_RECORDER",
-	"SCREEN_ALSA_MIXER",
-	"SCREEN_STEPSEQ",
-	"SCREEN_BANK",
-	"SCREEN_PRESET",
+	"85": "SCREEN_MIDI_RECORDER",
+	"86": "SCREEN_ALSA_MIXER",
+	"87": "SCREEN_STEPSEQ",
+	"88": "SCREEN_BANK",
+	"89": "SCREEN_PRESET",
+	"90": "SCREEN_CALIBRATE",
 
-	"LAYER_CONTROL",
-	"LAYER_OPTIONS",
-	"MENU",
-	"PRESETS",
-	"PRESET_FAVS",
-	"ZYNPAD",
-	"ZCTRL_TOUCH",
-	"LEARN"
-]
+	"100": "LAYER_CONTROL",
+	"101": "LAYER_OPTIONS",
+	"102": "MENU",
+	"103": "PRESET",
+	"104": "FAVS",
+	"105": "ZYNPAD"
+}
 
 #-------------------------------------------------------------------------------
 # Global variables
@@ -532,4 +526,3 @@ def get_jackd_options():
 	return jackd_options
 
 #------------------------------------------------------------------------------
-

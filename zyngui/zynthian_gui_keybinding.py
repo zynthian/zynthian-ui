@@ -159,26 +159,32 @@ class zynthian_gui_keybinding:
 		"""
 	
 		logging.debug("Get keybinding function name for keysym: {}, modifier: {}".format(keysym, modifier))
+		keysym = keysym.lower()
+		rkey = "{}^{}".format(modifier, keysym)
 		try:
-			keysym = keysym.lower()
-			rkey = "{}^{}".format(modifier, keysym)
 			return self.rmap[rkey]
-
 		except:
-			if rkey == '0^down': return('ARROW_DOWN')
-			elif rkey == '0^up': return('ARROW_UP')
-			elif rkey == '0^left': return('ARROW_LEFT')
-			elif rkey == '0^right': return('ARROW_RIGHT')
-			elif rkey == '0^return': return('SWITCH_SELECT')
-			elif rkey == '1^return': return(['SWITCH_SELECT', 'B'])
-			elif rkey == '0^escape': return('BACK')
+			if rkey == '0^down':
+				return 'ARROW_DOWN'
+			elif rkey == '0^up':
+				return 'ARROW_UP'
+			elif rkey == '0^left':
+				return 'ARROW_LEFT'
+			elif rkey == '0^right':
+				return 'ARROW_RIGHT'
+			elif rkey == '0^return':
+				return 'SWITCH_SELECT'
+			elif rkey == '1^return':
+				return 'SWITCH_SELECT B'
+			elif rkey == '0^escape':
+				return 'BACK'
 			else:
 				#Default 0..9: send program change
 				try:
 					if keysym.startswith("kp_"):
 						keysym = keysym[3:]
 					val = int(keysym)
-					return(["PROGRAM_CHANGE", val])
+					return "PROGRAM_CHANGE {}".format(val)
 				except:
 					pass
 			logging.debug("Key not configured")
@@ -189,13 +195,9 @@ class zynthian_gui_keybinding:
 		Generate reverse keymap for fast event lookup.
 		
 		"""
-
 		self.rmap = {}
 		for action, m in self.config['map'].items():
 			keysyms = m['keysym'].lower().split(',')
-			parts = action.split(' ')
-			if len(parts) > 1:
-				action = parts
 			for ks in keysyms:
 				rkey = "{}^{}".format(m['modifier'], ks.strip())
 				self.rmap[rkey] = action

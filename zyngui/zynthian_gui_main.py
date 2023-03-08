@@ -97,8 +97,8 @@ class zynthian_gui_main(zynthian_gui_selector):
 
 
 	def new_generator_processor(self, t='S'):
-		chain_id = self.zyngui.chain_manager.add_chain(None, enable_audio_thru = False)
-		self.zyngui.modify_chain({"type": "Audio Generator", "midi_thru": False, "audio_thru": False, "chain_id": chain_id})
+		#chain_id = self.zyngui.chain_manager.add_chain(None, enable_audio_thru = False)
+		self.zyngui.modify_chain({"type": "Audio Generator", "midi_thru": False, "audio_thru": False})
 
 
 	def new_special_processor(self, t='S'):

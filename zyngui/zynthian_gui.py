@@ -3,7 +3,7 @@
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
-# Main Class and Program for Zynthian GUI
+# Main Class for Zynthian GUI
 #
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
@@ -48,7 +48,6 @@ from zyngine.zynthian_chain import *
 
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_keyboard
-from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_info import zynthian_gui_info
 from zyngui.zynthian_gui_splash import zynthian_gui_splash
 from zyngui.zynthian_gui_option import zynthian_gui_option
@@ -95,88 +94,6 @@ class zynthian_gui:
 	SCREEN_HMODE_REPLACE = 2
 	SCREEN_HMODE_RESET = 3
 
-	note2cuia = {
-		"0": "POWER_OFF",
-		"1": "REBOOT",
-		"2": "RESTART_UI",
-		"3": "RELOAD_MIDI_CONFIG",
-		"4": "RELOAD_KEY_BINDING",
-		"5": "LAST_STATE_ACTION",
-		"6": "EXIT_UI",
-
-		"10": "ALL_NOTES_OFF",
-		"11": "ALL_SOUNDS_OFF",
-		"12": "ALL_OFF",
-
-		"23": "TOGGLE_AUDIO_RECORD",
-		"24": "START_AUDIO_RECORD",
-		"25": "STOP_AUDIO_RECORD",
-		"26": "TOGGLE_AUDIO_PLAY",
-		"27": "START_AUDIO_PLAY",
-		"28": "STOP_AUDIO_PLAY",
-
-		"35": "TOGGLE_MIDI_RECORD",
-		"36": "START_MIDI_RECORD",
-		"37": "STOP_MIDI_RECORD",
-		"38": "TOGGLE_MIDI_PLAY",
-		"39": "START_MIDI_PLAY",
-		"40": "STOP_MIDI_PLAY",
-
-		"41": "ARROW_UP",
-		"42": "ARROW_DOWN",
-		"43": "ARROW_RIGHT",
-		"44": "ARROW_LEFT",
-
-		"45": "ZYNPOT_UP",
-		"46": "ZYNPOT_DOWN",
-
-		"48": "BACK",
-		"49": "NEXT",
-		"50": "PREV",
-		"51": "SELECT",
-		
-		"52": "SELECT_UP",
-		"53": "SELECT_DOWN",
-		"54": "BACK_UP",
-		"55": "BACK_DOWN",
-		"56": "LAYER_UP",
-		"57": "LAYER_DOWN",
-		"58": "LEARN_UP",
-		"59": "LEARN_DOWN",
-
-		"64": "SWITCH_BACK_SHORT",
-		"63": "SWITCH_BACK_BOLD",
-		"62": "SWITCH_BACK_LONG",
-		"65": "SWITCH_SELECT_SHORT",
-		"66": "SWITCH_SELECT_BOLD",
-		"67": "SWITCH_SELECT_LONG",
-		"60": "SWITCH_LAYER_SHORT",
-		"61": "SWITCH_LAYER_BOLD",
-		"68": "SWITCH_LAYER_LONG",
-		"71": "SWITCH_SNAPSHOT_SHORT",
-		"72": "SWITCH_SNAPSHOT_BOLD",
-		"73": "SWITCH_SNAPSHOT_LONG",
-
-		"80": "SCREEN_MAIN",
-		"81": "SCREEN_ADMIN",
-		"82": "SCREEN_AUDIO_MIXER",
-		"83": "SCREEN_SNAPSHOT",
-
-		"85": "SCREEN_MIDI_RECORDER",
-		"86": "SCREEN_ALSA_MIXER",
-		"87": "SCREEN_STEPSEQ",
-		"88": "SCREEN_BANK",
-		"89": "SCREEN_PRESET",
-		"90": "SCREEN_CALIBRATE",
-
-		"100": "LAYER_CONTROL",
-		"101": "CHAIN_OPTIONS",
-		"102": "MENU",
-		"103": "PRESET",
-		"104": "FAVS",
-		"105": "ZYNPAD"
-	}
-
 	def __init__(self):
 		self.test_mode = False
 
@@ -219,9 +136,6 @@ class zynthian_gui:
 		# Load keyboard binding map
 		zynthian_gui_keybinding.getInstance().load()
 
-		# Get Jackd Options
-		self.jackd_options = zynconf.get_jackd_options()
-
 		# OSC config values
 		self.osc_proto = liblo.UDP
 		self.osc_server_port = 1370
@@ -262,6 +176,88 @@ class zynthian_gui:
 			self.wsleds.start()
 		else:
 			self.wsleds = None
+
+	# ---------------------------------------------------------------------------
+	# Wiring Layout Init & Config
+	# ---------------------------------------------------------------------------
+
+	def reload_wiring_layout(self):
+		try:
+			zynconf.load_config()
+			zynthian_gui_config.config_custom_switches()
+			zynthian_gui_config.config_zynaptik()
+			zynthian_gui_config.config_zyntof()
+			self.wiring_midi_setup()
+		except Exception as e:
+			logging.error("ERROR configuring wiring: {}".format(e))
+
+
+	# Initialize custom switches, analog I/O, TOF sensors, etc.
+	def wiring_midi_setup(self, curlayer_chan=None):
+		logging.info("CUSTOM I/O SETUP...")
+
+		# Configure Custom Switches
+		for i, event in enumerate(zynthian_gui_config.custom_switch_midi_events):
+			if event is not None:
+				swi = 4 + i
+				if event['chan'] is not None:
+					midi_chan = event['chan']
+				else:
+					midi_chan = curlayer_chan
+
+				if midi_chan is not None:
+					lib_zyncore.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'], event['val'])
+					logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}, {}".format(swi, event['type'], midi_chan, event['num'], event['val']))
+				else:
+					lib_zyncore.setup_zynswitch_midi(swi, 0, 0, 0, 0)
+					logging.info("MIDI ZYNSWITCH {}: DISABLED!".format(swi))
+
+		# Configure Zynaptik Analog Inputs (CV-IN)
+		for i, event in enumerate(zynthian_gui_config.zynaptik_ad_midi_events):
+			if event is not None:
+				if event['chan'] is not None:
+					midi_chan = event['chan']
+				else:
+					midi_chan = curlayer_chan
+
+				if midi_chan is not None:
+					lib_zyncore.setup_zynaptik_cvin(i, event['type'], midi_chan, event['num'])
+					logging.info("ZYNAPTIK CV-IN {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+				else:
+					lib_zyncore.disable_zynaptik_cvin(i)
+					logging.info("ZYNAPTIK CV-IN {}: DISABLED!".format(i))
+
+		# Configure Zynaptik Analog Outputs (CV-OUT)
+		for i, event in enumerate(zynthian_gui_config.zynaptik_da_midi_events):
+			if event is not None:
+				if event['chan'] is not None:
+					midi_chan = event['chan']
+				else:
+					midi_chan = curlayer_chan
+
+				if midi_chan is not None:
+					lib_zyncore.setup_zynaptik_cvout(i, event['type'], midi_chan, event['num'])
+					logging.info("ZYNAPTIK CV-OUT {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+				else:
+					lib_zyncore.disable_zynaptik_cvout(i)
+					logging.info("ZYNAPTIK CV-OUT {}: DISABLED!".format(i))
+
+		# Configure Zyntof Inputs (Distance Sensor)
+		for i, event in enumerate(zynthian_gui_config.zyntof_midi_events):
+			if event is not None:
+				if event['chan'] is not None:
+					midi_chan = event['chan']
+				else:
+					midi_chan = curlayer_chan
+
+				if midi_chan is not None:
+					lib_zyncore.setup_zyntof(i, event['type'], midi_chan, event['num'])
+					logging.info("ZYNTOF {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+				else:
+					lib_zyncore.disable_zyntof(i)
+					logging.info("ZYNTOF {}: DISABLED!".format(i))
+
+
 
 	# ---------------------------------------------------------------------------
 	# MIDI Router Init & Config
@@ -820,6 +816,27 @@ class zynthian_gui:
 		except AttributeError:
 			logging.error("Unknown CUIA '{}'".format(cuia))
 
+	def callable_ui_action_params(self, cuia):
+		parts = cuia.split(" ", 2)
+		cmd = parts[0]
+		if len(parts) > 1:
+			params = []
+			for i, p in enumerate(parts[1].split(",")):
+				try:
+					params.append(int(p))
+				except:
+					params.append(p.strip())
+		else:
+			params = None
+
+		self.callable_ui_action(cmd, params)
+
+
+	@classmethod
+	def get_cuia_list(cls):
+		return [method[5:].upper() for method in dir(cls) if method.startswith('cuia_') is True]
+
+
 	# System actions CUIA
 	def cuia_test_mode(self, params):
 		self.test_mode = params
@@ -836,6 +853,9 @@ class zynthian_gui:
 
 	def cuia_exit_ui(self, params):
 		self.screens['admin'].exit_to_console()
+
+	def cuia_reload_wiring_layout(self, params):
+		self.reload_wiring_layout()
 
 	def cuia_reload_midi_config(self, params):
 		self.state_manager.reload_midi_config()
@@ -1232,11 +1252,15 @@ class zynthian_gui:
 			elif len(self.get_current_processor().get_bank_list()) > 0 and self.get_current_processor().get_bank_list()[0][0] != '':
 				self.show_screen('bank', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
+	def cuia_preset(self, params):
+		self.cuia_bank_preset(params)
+
+	def cuia_preset_fav(self, params):
+		self.show_favorites()
+
 	def cuia_zctrl_touch(self, params):
-		try:
+		if params:
 			self.screens[self.current_screen].zctrl_touch(params[0])
-		except:
-			pass
 
 	def cuia_enable_midi_learn_cc(self, params):
 		if len(params) == 2:
@@ -1262,6 +1286,11 @@ class zynthian_gui:
 			self.screens[self.current_screen].midi_unlearn_action()
 		except (AttributeError, TypeError) as err:
 			pass
+
+	# Unlearn from currently selected (learning) control
+	def cuia_midi_unlearn_control(self, params):
+		#TODO: Implement cuia_midi_unlearn_control
+		pass
 
 	# Unlearn all mixer controls
 	def cuia_midi_unlearn_mixer(self, params):
@@ -1328,12 +1357,6 @@ class zynthian_gui:
 		except (AttributeError, TypeError) as err:
 			pass
 
-	def cuia_preset(self, params):
-		self.cuia_bank_preset(params)
-
-	def cuia_preset_fav(self, params):
-		self.show_favorites()
-
 	def refresh_signal(self, sname):
 		try:
 			self.screens[self.current_screen].refresh_signal(sname)
@@ -1345,19 +1368,7 @@ class zynthian_gui:
 		if t in action_config:
 			cuia = action_config[t]
 			if cuia and cuia!="NONE":
-				parts = cuia.split(" ", 2)
-				cmd = parts[0]
-				if len(parts) > 1:
-					params = []
-					for i,p in enumerate(parts[1].split(",")):
-						try:
-							params.append(int(p))
-						except:
-							params.append(p.strip())
-				else:
-					params = None
-
-				self.callable_ui_action(cmd, params)
+				self.callable_ui_action_params(cuia)
 
 	# -------------------------------------------------------------------
 	# Switches
@@ -2105,149 +2116,5 @@ class zynthian_gui:
 		except:
 			pass
 
-
-#******************************************************************************
-#------------------------------------------------------------------------------
-# Start Zynthian!
-#------------------------------------------------------------------------------
-#******************************************************************************
-
-logging.info("STARTING ZYNTHIAN-UI ...")
-zynthian_gui_config.zyngui = zyngui = zynthian_gui()
-zyngui.start()
-
-
-#------------------------------------------------------------------------------
-# Zynlib Callbacks
-#------------------------------------------------------------------------------
-
-@ctypes.CFUNCTYPE(None, ctypes.c_ubyte, ctypes.c_int)
-def zynpot_cb(i, dval):
-	#logging.debug("Zynpot {} Callback => {}".format(i, dval))
-	try:
-		zyngui.screens[zyngui.current_screen].zynpot_cb(i, dval)
-		zyngui.last_event_flag = True
-
-	except Exception as err:
-		pass # Some screens don't use controllers
-		logging.exception(err)
-
-
-get_lib_zyncore().setup_zynpot_cb(zynpot_cb)
-
-
-#------------------------------------------------------------------------------
-# Reparent Top Window using GTK XEmbed protocol features
-#------------------------------------------------------------------------------
-
-def flushflush():
-	for i in range(1000):
-		print("FLUSHFLUSHFLUSHFLUSHFLUSHFLUSHFLUSH")
-	zynthian_gui_config.top.after(200, flushflush)
-
-
-if zynthian_gui_config.wiring_layout=="EMULATOR":
-	top_xid = zynthian_gui_config.top.winfo_id()
-	print("Zynthian GUI XID: " + str(top_xid))
-	if len(sys.argv) > 1:
-		parent_xid = int(sys.argv[1])
-		print("Parent XID: " + str(parent_xid))
-		zynthian_gui_config.top.geometry('-10000-10000')
-		zynthian_gui_config.top.overrideredirect(True)
-		zynthian_gui_config.top.wm_withdraw()
-		flushflush()
-		zynthian_gui_config.top.after(1000, zynthian_gui_config.top.wm_deiconify)
-
-
-#------------------------------------------------------------------------------
-# Signal Catching
-#------------------------------------------------------------------------------
-
-def exit_handler(signo, stack_frame):
-	logging.info("Catch Exit Signal ({}) ...".format(signo))
-	if signo == signal.SIGHUP:
-		exit_code = 0
-	elif signo == signal.SIGINT:
-		exit_code = 100
-	elif signo == signal.SIGQUIT:
-		exit_code = 102
-	elif signo == signal.SIGTERM:
-		exit_code = 101
-	else:
-		exit_code = 0
-	zyngui.exit(exit_code)
-
-
-signal.signal(signal.SIGHUP, exit_handler)
-signal.signal(signal.SIGINT, exit_handler)
-signal.signal(signal.SIGQUIT, exit_handler)
-signal.signal(signal.SIGTERM, exit_handler)
-
-
-def delete_window():
-	exit_code = 101
-	zyngui.exit(exit_code)
-
-
-zynthian_gui_config.top.protocol("WM_DELETE_WINDOW", delete_window)
-
-
-#------------------------------------------------------------------------------
-# Key Bindings
-#------------------------------------------------------------------------------
-
-#Function to handle computer keyboard key press
-#	event: Key event
-def cb_keybinding(event):
-	logging.debug("Key press {} {}".format(event.keycode, event.keysym))
-	zynthian_gui_config.top.focus_set() # Must remove focus from listbox to avoid interference with physical keyboard
-
-	if not zynthian_gui_keybinding.getInstance().isEnabled():
-		logging.debug("Key binding is disabled - ignoring key press")
-		return
-
-	# Ignore TAB key (for now) to avoid confusing widget focus change
-	if event.keysym == "Tab":
-		return
-
-	# Space is not recognised as keysym so need to convert keycode
-	if event.keycode == 65:
-		keysym = "Space"
-	else:
-		keysym = event.keysym
-
-	action = zynthian_gui_keybinding.getInstance().get_key_action(keysym, event.state)
-	if action != None:
-		zyngui.set_event_flag()
-		if isinstance(action, list) and len(action) > 1:
-			zyngui.callable_ui_action(action[0], [action[1]])
-		else:
-			zyngui.callable_ui_action(action)
-
-
-zynthian_gui_config.top.bind("<Key>", cb_keybinding)
-
-#------------------------------------------------------------------------------
-# Mouse/Touch Bindings
-#------------------------------------------------------------------------------
-
-zynthian_gui_config.top.bind("<Button-1>", zyngui.cb_touch)
-zynthian_gui_config.top.bind("<ButtonRelease-1>", zyngui.cb_touch_release)
-
-#------------------------------------------------------------------------------
-# TKinter Main Loop
-#------------------------------------------------------------------------------
-
-#import cProfile
-#cProfile.run('zynthian_gui_config.top.mainloop()')
-
-zynthian_gui_config.top.mainloop()
-
-#------------------------------------------------------------------------------
-# Exit
-#------------------------------------------------------------------------------
-
-logging.info("Exit with code {} ...\n\n".format(zyngui.exit_code))
-sys.exit(zyngui.exit_code)
 
 #------------------------------------------------------------------------------
