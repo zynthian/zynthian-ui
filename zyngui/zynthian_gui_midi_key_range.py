@@ -219,7 +219,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			text='not learning',
 			width=1)
 		self.learn_text.grid(row=0, column=1, sticky='nsew')
-		self.learn_text.bind("<ButtonRelease-1>", lambda e: self.zyngui.state_manager.toggle_midi_learn())
+		self.learn_text.bind("<ButtonRelease-1>", lambda e: self.zyngui.cuia_toggle_midi_learn())
 
 
 	def update_text(self):
@@ -286,7 +286,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 	def hide(self):
 		if self.shown:
 			super().hide()
-			self.zyngui.state_manager.exit_midi_learn()
+			self.zyngui.cuia_disable_midi_learn()
 
 
 	def zynpot_cb(self, i, dval):
@@ -306,7 +306,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 	# Function to back event
 	def back_action(self):
 		if self.learn_mode:
-			self.zyngui.state_manager.exit_midi_learn()
+			self.zyngui.cuia_disable_midi_learn()
 			return True
 
 
@@ -370,7 +370,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			else:
 				self.nlow_zctrl.set_value(self.learn_mode)
 				self.nhigh_zctrl.set_value(num)
-			self.zyngui.state_manager.exit_midi_learn()
+			self.zyngui.cuia_disable_midi_learn()
 		self.update_piano()
 
 

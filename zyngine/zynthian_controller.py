@@ -368,7 +368,6 @@ class zynthian_controller:
 			#TODO: Set midi_feeback to MIDI learn
 			try:
 				get_lib_zyncore().ctrlfb_send_ccontrol_change(self.midi_feedback[0], self.midi_feedback[1], mval)
-				#logging.debug("Sending learned MIDI controller feedback '{}' => CH{}, CC{}, Val={}".format(self.symbol, self.midi_learn_chan, self.midi_learn_cc, mval))
 
 			except Exception as e:
 				logging.warning("Can't send controller feedback '{}' => Val={}".format(self.symbol, e))

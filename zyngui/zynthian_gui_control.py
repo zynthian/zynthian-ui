@@ -531,6 +531,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.zyngui.show_screen("zs3_learn")
 		else:
 			self.enter_midi_learn()
+			return True
+		return False
 
 
 	def zctrl_touch(self, i):

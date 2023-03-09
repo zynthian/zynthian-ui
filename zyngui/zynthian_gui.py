@@ -119,7 +119,6 @@ class zynthian_gui:
 		self.exit_wait_count = 0
 
 		self.zynmidi = None
-		self.midi_learn_mode = 0
 
 		self.status_counter = 0
 
@@ -793,16 +792,6 @@ class zynthian_gui:
 		self.show_screen_reset('main')
 		self.state_manager.zynmixer.set_mute(256, 0)
 
-	# ------------------------------------------------------------------
-	# MIDI learning
-	# ------------------------------------------------------------------
-
-	def toggle_midi_learn(self):
-		try:
-			self.screens[self.current_screen].toggle_midi_learn()
-		except:
-			pass
-
 
 	# -------------------------------------------------------------------
 	# Callable UI Actions
@@ -1278,8 +1267,23 @@ class zynthian_gui:
 	def cuia_disable_midi_learn_pc(self, params):
 		self.state_manager.disable_learn_pc()
 
-	def cuia_toggle_midi_learn(self, params):
-		self.toggle_midi_learn()
+	def cuia_enable_midi_learn(self, params=None):
+		self.state_manager.set_midi_learn(True)
+		self.screens[self.current_screen].enter_midi_learn()
+
+	def cuia_disable_midi_learn(self, params=None):
+		self.state_manager.set_midi_learn(False)
+		self.screens[self.current_screen].exit_midi_learn()
+
+	def cuia_toggle_midi_learn(self, params=None):
+		try:
+			state = self.screens[self.current_screen].toggle_midi_learn()
+			self.stat_manager.set_midi_learn(state)
+		except:
+			if self.state_manager.midi_learn_state:
+				self.cuia_disable_midi_learn(params)
+			else:
+				self.cuia_enable_midi_learn(params)
 
 	def cuia_action_midi_unlearn(self, params):
 		try:
@@ -1465,7 +1469,7 @@ class zynthian_gui:
 			self.back_screen()
 
 		elif i == 2:
-			self.toggle_midi_learn()
+			self.cuia_toggle_midi_learn()
 
 		elif i == 3:
 			self.screens[self.current_screen].switch_select('S')
@@ -1510,7 +1514,7 @@ class zynthian_gui:
 	def zynswitch_X(self, i):
 		logging.debug('X Switch %d' % i)
 		if self.current_screen == 'control' and self.screens['control'].mode == 'control':
-			self.screens['control'].midi_learn(i)
+			self.screens['control'].midi_learn(i) #TODO: Check zynswitch_X/Y learn
 
 
 	def zynswitch_Y(self,i):
@@ -1723,7 +1727,7 @@ class zynthian_gui:
 					if self.current_screen == 'preset' and zynthian_gui_config.preset_preload_noteon and chan == self.get_current_processor().get_midi_chan():
 						self.screens['preset'].preselect_action()
 					#Note Range Learn
-					elif self.current_screen == 'midi_key_range' and self.midi_learn_mode:
+					elif self.current_screen == 'midi_key_range' and self.state_manager.midi_learn_state:
 						self.screens['midi_key_range'].learn_note_range((ev & 0x7F00) >> 8)
 					elif self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
 						self.screens['pattern_editor'].midi_note((ev & 0x7F00) >> 8)

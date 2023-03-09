@@ -205,7 +205,6 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 					for k, zctrl in zctrls.items():
 						if zctrl.name == ctrl_name:
 							sorted_zctrls[k] = zctrl
-							self.keep_midi_learn(zctrl)
 				except:
 					pass
 		else:

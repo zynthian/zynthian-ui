@@ -1111,6 +1111,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if strip.chain:
 				strip.enable_midi_learn(self.midi_learning)
 		self.main_mixbus_strip.enable_midi_learn(self.midi_learning)
+		return self.midi_learning
 
 
 	# Respond to a strip being configured to midi learn

@@ -95,6 +95,7 @@ class zynthian_state_manager:
             self.zynmidi = None
 
         self.exit_flag = False
+        self.set_midi_learn(False)
         #TODO: We may need this in future... self.start_thread()
         self.reset()
         self.end_busy("zynthian_state_manager")
@@ -677,6 +678,13 @@ class zynthian_state_manager:
     # MIDI learning
     #------------------------------------------------------------------
 
+    def set_midi_learn(self, state):
+        """Enable / disable MIDI learn in MIDI router
+        state : True to enable MIDI learn
+        """
+        get_lib_zyncore().set_midi_learning_mode(state)
+        self.midi_learn_state = state
+
     def enable_learn_cc(self, proc, param):
         """Enable MIDI CC learning
     
@@ -686,14 +694,13 @@ class zynthian_state_manager:
 
         self.disable_learn_pc()
         self.midi_learn_cc = [proc, param]
-        get_lib_zyncore().set_midi_learning_mode(1)
+        self.set_midi_learn(True)
 
     def disable_learn_cc(self):
         """Disables MIDI CC learning"""
 
         self.midi_learn_cc = None
-        get_lib_zyncore().set_midi_learning_mode(0)
-
+        self.set_midi_learn(False)
 
     def toggle_learn_cc(self):
         """Toggle MIDI CC learning"""
@@ -712,11 +719,11 @@ class zynthian_state_manager:
     def enable_learn_pc(self, zs3_name=""):
         self.disable_learn_cc()
         self.midi_learn_pc = zs3_name
-        get_lib_zyncore().set_midi_learning_mode(1)
+        self.set_midi_learn(True)
 
     def disable_learn_pc(self):
         self.midi_learn_pc = None
-        get_lib_zyncore().set_midi_learning_mode(0)
+        self.set_midi_learn(False)
 
     # ---------------------------------------------------------------------------
     # MIDI Router Init & Config
