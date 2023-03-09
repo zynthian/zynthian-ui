@@ -430,6 +430,20 @@ class zynthian_state_manager:
                     get_lib_zyncore().set_midi_filter_transpose_semitone(chain.midi_chan, chain_state["transpose_semitone"])
                 else:
                     get_lib_zyncore().set_midi_filter_transpose_semitone(chain.midi_chan, 0)
+                #TODO: Use default values
+                if "midi_in" in chain_state:
+                    chain.midi_in = chain_state["midi_in"]
+                if "midi_out" in chain_state:
+                    chain.midi_out = chain_state["midi_out"]
+                if "midi_thru" in chain_state:
+                    chain.midi_thru = chain_state["midi_thru"]
+                if "audio_in" in chain_state:
+                    chain.audio_in = chain_state["audio_in"]
+                if "audio_out" in chain_state:
+                    chain.audio_out = chain_state["audio_out"]
+                if "audio_thru" in chain_state:
+                    chain.audio_thru = chain_state["audio_thru"]
+                chain.rebuild_graph()
 
         active_chain = self.chain_manager.get_active_chain()
         if "midi_clone" in zs3_state:
@@ -513,8 +527,8 @@ class zynthian_state_manager:
         }
         chain_states = {}
         for chain_id, chain in self.chain_manager.chains.items():
+            chain_state = {}
             if isinstance(chain.midi_chan, int) and chain.midi_chan < 16:
-                chain_state = {}
                 #TODO: This is MIDI channel related, not chain specific
                 note_low = get_lib_zyncore().get_midi_filter_note_low(chain.midi_chan)
                 if note_low:
@@ -528,8 +542,21 @@ class zynthian_state_manager:
                 transpose_semitone = get_lib_zyncore().get_midi_filter_transpose_semitone(chain.midi_chan)
                 if transpose_semitone:
                     chain_state["transpose_semitone"] = transpose_semitone
-                if chain_state:
-                    chain_states[chain_id] = chain_state
+                #TODO: Use default values
+                if chain.midi_in:
+                    chain_state["midi_in"] = chain.midi_in
+                if chain.midi_out:
+                    chain_state["midi_out"] = chain.midi_out
+                if chain.midi_thru:
+                    chain_state["midi_thru"] = chain.midi_thru
+            if chain.audio_in:
+                chain_state["audio_in"] = chain.audio_in
+            if chain.audio_out:
+                chain_state["audio_out"] = chain.audio_out
+            if chain.audio_thru:
+                chain_state["audio_thru"] = chain.audio_thru
+            if chain_state:
+                chain_states[chain_id] = chain_state
         if chain_states:
             self.zs3[zs3_id]["chains"] = chain_states
 

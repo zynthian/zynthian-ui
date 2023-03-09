@@ -51,7 +51,7 @@ class zynthian_legacy_snapshot:
                     "midi_clone": {},
                     "processors": {},
                     "mixer": {},
-                    "midi_learn": {}
+                    "midi_learn_cc": {}
                 },
             },
             "engine_config": {},
@@ -123,31 +123,29 @@ class zynthian_legacy_snapshot:
                     "audio_processors": [], # Temporary list of processors in chain - used to build slots
                     "mixer_chan": midi_chan,
                     "midi_chan": None,
+                    "current_processor": 0,
+                    "slots": []
+                }
+                state["zs3"]["zs3-0"]["chains"][chain_id] = {
+                    "audio_out": ["mixer"],
                     "midi_in": ["MIDI IN"],
                     "midi_out": ["MIDI OUT"],
                     "midi_thru": False,
                     "audio_in": [],
-                    "audio_out": [],
-                    "audio_thru": False,
-                    "current_processor": 0,
-                    "slots": []
+                    "audio_thru": False
                 }
                 if midi_chan < 16:
                     chains[chain_id]["midi_chan"] = midi_chan
-                    chains[chain_id]["audio_out"] = ["mixer"]
-                    state["zs3"]["zs3-0"]["chains"][chain_id] = {
-                        "note_range_low": note_range_state[midi_chan]["note_low"],
-                        "note_range_high": note_range_state[midi_chan]["note_high"],
-                        "transpose_octave": note_range_state[midi_chan]["octave_trans"],
-                        "transpose_semitone": note_range_state[midi_chan]["halftone_trans"]
-                    }
+                    state["zs3"]["zs3-0"]["chains"][chain_id]["note_low"] = note_range_state[midi_chan]["note_low"]
+                    state["zs3"]["zs3-0"]["chains"][chain_id]["note_high"] = note_range_state[midi_chan]["note_high"]
+                    state["zs3"]["zs3-0"]["chains"][chain_id]["transpose_octave"] = note_range_state[midi_chan]["octave_trans"]
+                    state["zs3"]["zs3-0"]["chains"][chain_id]["halftone_trans"] = note_range_state[midi_chan]["halftone_trans"]
 
             jackname = self.build_jackname(l["engine_name"], midi_chan)
-            if not chains[chain_id]["audio_in"]:
-                try:
-                    chains[chain_id]["audio_in"] = snapshot["audio_capture"][jackname]
-                except:
-                    pass
+            try:
+                state["zs3"]["zs3-0"]["chains"][chain_id]["audio_in"] = snapshot["audio_capture"][jackname]
+            except:
+                pass
             if info and not jackname.startswith("audioin"):
                 if info[2] == "Audio Effect":
                     chains[chain_id]["audio_processors"].append(jackname)
@@ -167,6 +165,8 @@ class zynthian_legacy_snapshot:
                     "preset_info": l["preset_info"],
                     "controllers": l["controllers_dict"],
                 }
+                if not l["bank_info"]:
+                    processors[jackname]["bank_info"] = ["None", None, "None", None]
                 if not l["preset_info"]:
                     processors[jackname]["preset_info"] = l["preset_index"]
 
@@ -264,16 +264,16 @@ class zynthian_legacy_snapshot:
                         chain["slots"].insert(0, slot)
 
             if chain["midi_processors"] and not chain["synth_processors"] and not chain["audio_processors"]:
-                chain["midi_thru"] = True
+                state["zs3"]["zs3-0"]["chains"][chain_id]["midi_thru"] = True
                 chain["mixer_chan"] = None
                 audio_out = []
             if not chain["midi_processors"] and not chain["synth_processors"]:
-                chain["audio_thru"] = True
+                state["zs3"]["zs3-0"]["chains"][chain_id]["audio_thru"] = True
                 chain["midi_chan"] = None
                 if not audio_out and chain["mixer_chan"] != 256:
                     audio_out = ["mixer"]
-            chain["audio_out"] = audio_out
-            chain["midi_out"] = midi_out
+            state["zs3"]["zs3-0"]["chains"][chain_id]["audio_out"] = audio_out
+            state["zs3"]["zs3-0"]["chains"][chain_id]["midi_out"] = midi_out
 
             fixed_slots = []
             for slot in chain["slots"]:
@@ -399,8 +399,11 @@ class zynthian_legacy_snapshot:
                             pass
 
         # Remove unrequired audio routing
-        if "main" in state["chains"] and state["chains"]["main"]["audio_in"] == ['zynmixer:send_a', 'zynmixer:send_b']:
-            state["chains"]["main"]["audio_in"] = []
+        for id,zs3 in state["zs3"].items():
+            if "257" in zs3["chains"]:
+                zs3["chains"]["main"] = zs3["chains"].pop("257")
+                if zs3["chains"]["main"]["audio_in"] == ['zynmixer:send_a', 'zynmixer:send_b']:
+                    state[id]["chains"]["main"]["audio_in"] = []
 
         return state
 

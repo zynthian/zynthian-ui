@@ -606,24 +606,12 @@ class zynthian_chain:
         state = {
             "mixer_chan": self.mixer_chan,
             "midi_chan": self.midi_chan,
-            "midi_in": self.midi_in,
-            "midi_out": self.midi_out,
-            "midi_thru": self.midi_thru,
-            "audio_in": self.audio_in,
-            "audio_out": self.audio_out,
-            "audio_thru": self.audio_thru,
             "slots": slots_states
         }
         if self.midi_thru:
             state["midi_thru"] = True
         if self.audio_thru:
             state["audio_thru"] = True
-
-        if self.midi_chan is not None:
-            state['note_low'] = get_lib_zyncore().get_midi_filter_note_low(self.midi_chan)
-            state['note_high'] = get_lib_zyncore().get_midi_filter_note_high(self.midi_chan)
-            state['transpose_octave'] = get_lib_zyncore().get_midi_filter_transpose_octave(self.midi_chan)
-            state['transpose_semitone'] = get_lib_zyncore().get_midi_filter_transpose_semitone(self.midi_chan)
 
         return state
 
@@ -636,17 +624,4 @@ class zynthian_chain:
         if 'mixer_chan' in state:
             self.mixer_chan = state["mixer_chan"]
         if 'midi_chan' in state:
-            self.set_midi_chan(state['midi_chan'])
-        if "midi_in" in state:
-            self.midi_in = state["midi_in"]
-        if "midi_out" in state:
-            self.midi_out = state["midi_out"]
-        if "midi_thru" in state:
-            self.midi_thru = state["midi_thru"]
-        if "audio_in" in state:
-            self.audio_in = state["audio_in"]
-        if "audio_out" in state:
-            self.audio_out = state["audio_out"]
-        if "audio_thru" in state:
-            self.audio_thru = state["audio_thru"]
-        self.rebuild_graph()
+            self.midi_chan = state["midi_chan"]
