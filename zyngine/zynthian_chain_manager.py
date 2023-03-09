@@ -167,7 +167,6 @@ class zynthian_chain_manager():
         chains_to_remove = [chain_id] # List of associated chains that shold be removed simultaneously
         chain = self.chains[chain_id]
         if chain.synth_slots:
-            get_lib_zyncore().ui_send_ccontrol_change(chain.midi_chan, 120, 0)
             if chain.synth_slots[0][0].type_code in ["BF", "AE"]:
                 #TODO: We remove all setBfree and Aeolus chains but maybe we should allow chain manipulation
                 for id, ch in self.chains.items():
@@ -176,12 +175,12 @@ class zynthian_chain_manager():
 
         for chain_id in chains_to_remove:
             chain = self.chains[chain_id]
-            midi_chan = chain.midi_chan
+            if isinstance(chain.midi_chan, int) and chain.midi_chan < 16:
+                get_lib_zyncore().ui_send_ccontrol_change(chain.midi_chan, 120, 0)
+                self.midi_chan_2_chain[chain.midi_chan] = None
             if chain.mixer_chan is not None:
                 mute = self.state_manager.zynmixer.get_mute(chain.mixer_chan)
                 self.state_manager.zynmixer.set_mute(chain.mixer_chan, True, True)
-            if isinstance(midi_chan, int) and midi_chan < 16:
-                self.midi_chan_2_chain[midi_chan] = None
             for processor in chain.get_processors():
                 for param in processor.controllers_dict:
                     self.remove_midi_learn(processor, param)

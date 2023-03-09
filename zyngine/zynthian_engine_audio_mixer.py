@@ -110,6 +110,8 @@ class zynmixer(zynthian_engine):
 	#	level: Fader value (0..+1)
 	#	level: Fader value (0..+1)	
 	def set_level(self, channel, level, update=True):
+		if channel is None:
+			return
 		if channel >= self.MAX_NUM_CHANNELS:
 			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
@@ -123,6 +125,8 @@ class zynmixer(zynthian_engine):
 	#	channel: Index of channel
 	#	balance: Balance value (-1..+1)
 	def set_balance(self, channel, balance, update=True):
+		if channel is None:
+			return
 		if channel >= self.MAX_NUM_CHANNELS:
 			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
@@ -154,7 +158,9 @@ class zynmixer(zynthian_engine):
 	#	channel: Index of channel
 	#	mute: Mute state (True to mute)
 	def	set_mute(self, channel, mute, update=False):
-		if channel is not None and channel >= self.MAX_NUM_CHANNELS:
+		if channel is None:
+			return
+		if channel >= self.MAX_NUM_CHANNELS:
 			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
 			self.lib_zynmixer.setMute(channel, mute)
@@ -186,6 +192,8 @@ class zynmixer(zynthian_engine):
 	#	channel: Index of channel
 	#	phase: Phase reversal state (True to reverse)
 	def	set_phase(self, channel, phase, update=True):
+		if channel is None:
+			return
 		if channel >= self.MAX_NUM_CHANNELS:
 			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
@@ -220,6 +228,8 @@ class zynmixer(zynthian_engine):
 	#	channel: Index of channel
 	#	solo: Solo state (True to solo)
 	def	set_solo(self, channel, solo, update=True):
+		if channel is None:
+			return
 		if channel >= self.MAX_NUM_CHANNELS:
 			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
@@ -242,6 +252,8 @@ class zynmixer(zynthian_engine):
 	#	Function to toggle mute of a channel
 	#	channel: Index of channel
 	def toggle_solo(self, channel, update=True):
+		if channel is None:
+			return
 		if channel >= self.MAX_NUM_CHANNELS:
 			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
@@ -257,6 +269,8 @@ class zynmixer(zynthian_engine):
 	#	channel: Index of channel
 	#	mono: Mono state (True to solo)
 	def	set_mono(self, channel, mono, update=True):
+		if channel is None:
+			return
 		if channel >= self.MAX_NUM_CHANNELS:
 			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
@@ -279,6 +293,8 @@ class zynmixer(zynthian_engine):
 	#	Function to toggle mono of a channel
 	#	channel: Index of channel
 	def toggle_mono(self, channel, update=True):
+		if channel is None:
+			return
 		if channel >= self.MAX_NUM_CHANNELS:
 			channel = self.MAX_NUM_CHANNELS
 		if self.lib_zynmixer:
@@ -314,6 +330,8 @@ class zynmixer(zynthian_engine):
 	#	leg: 0 for A-leg (left), 1 for B-leg (right)
 	#	returns: Peak programme hold level
 	def get_dpm_hold(self, channel, leg):
+		if channel is None:
+			return
 		if self.lib_zynmixer:
 			return self.lib_zynmixer.getDpmHold(channel, leg)
 		return -200.0
@@ -322,10 +340,12 @@ class zynmixer(zynthian_engine):
 	#	Function to enable or disable digital peak meters
 	#	chan: Mixer channel (256 for main mix bus)
 	#	enable: True to enable
-	def enable_dpm(self, chan, enable):
+	def enable_dpm(self, channel, enable):
+		if channel is None:
+			return
 		if self.lib_zynmixer is None:
 			return
-		self.lib_zynmixer.enableDpm(chan, int(enable))
+		self.lib_zynmixer.enableDpm(channel, int(enable))
 
 
 	#	Function to add OSC client registration
@@ -427,9 +447,9 @@ class zynmixer(zynthian_engine):
 					logging.warning("Failed to parse mixer midi learn parameter")
 
 
-	def send_update(self, chan, ctrl, value):
+	def send_update(self, channel, ctrl, value):
 		if self.processor_cb:
-			self.processor_cb(chan, ctrl, value)
+			self.processor_cb(channel, ctrl, value)
 			
 	#--------------------------------------------------------------------------
 	# MIDI Learn

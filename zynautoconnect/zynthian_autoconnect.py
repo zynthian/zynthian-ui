@@ -61,6 +61,8 @@ deferred_audio_connect = False # True to perform audio connect on next port chec
 last_hw_str = None # Fingerprint of MIDI ports used to check for change of ports
 max_num_devs = 16 # Maximum quantity of hardware inputs
 devices_in = [None for i in range(max_num_devs)] # List of hardware inputs
+zyn_routed_audio = {} # Map of lists of audio sources routed by zynautoconnect, indexed by destination
+zyn_routed_midi = {} # Map of lists of MIDI sources routed by zynautoconnect, indexed by destination
 
 #------------------------------------------------------------------------------
 
@@ -112,6 +114,7 @@ def midi_autoconnect():
 		return
 	
 	#logger.info("ZynAutoConnect: MIDI ...")
+	global zyn_routed_midi
 
 	#------------------------------------
 	# Get Input/Output MIDI Ports: 
@@ -328,19 +331,26 @@ def midi_autoconnect():
 
 	# Connect and disconnect routes
 	for dst, sources in required_routes.items():
-		try:
-			current_routes = jclient.get_all_connections(dst)
-			for src in current_routes:
-				if src.name in sources:
-					continue
-				jclient.disconnect(src.name, dst)
-			for src in sources:
+		if dst not in zyn_routed_midi:
+			zyn_routed_midi[dst] = sources
+		else:
+			zyn_routed_midi[dst] = zyn_routed_midi[dst].union(sources)
+		current_routes = jclient.get_all_connections(dst)
+		for src in current_routes:
+			if src.name in sources:
+				continue
+			if src.name in zyn_routed_midi[dst]:
 				try:
-					jclient.connect(src, dst)
+					jclient.disconnect(src.name, dst)
 				except:
 					pass
-		except:
-			pass
+				zyn_routed_midi[dst].remove(src.name)
+		for src in sources:
+			try:
+				jclient.connect(src, dst)
+				zyn_routed_midi[dst].append(src.name)
+			except:
+				pass
 
 	#Release Mutex Lock
 	release_lock()
@@ -424,14 +434,24 @@ def audio_autoconnect():
 
 	# Connect and disconnect routes
 	for dst, sources in required_routes.items():
+		if dst not in zyn_routed_audio:
+			zyn_routed_audio[dst] = sources
+		else:
+			zyn_routed_audio[dst] = zyn_routed_audio[dst].union(sources)
 		current_routes = jclient.get_all_connections(dst)
 		for src in current_routes:
 			if src.name in sources:
 				continue
-			jclient.disconnect(src.name, dst)
+			if src.name in zyn_routed_audio[dst]:
+				try:
+					jclient.disconnect(src.name, dst)
+				except:
+					pass
+				zyn_routed_audio[dst].remove(src.name)
 		for src in sources:
 			try:
 				jclient.connect(src, dst)
+				zyn_routed_audio[dst].append(src.name)
 			except:
 				pass
 
