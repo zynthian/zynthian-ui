@@ -443,7 +443,7 @@ class zynthian_gui:
 		self.start_status_thread()
 
 		# Initialize MPE Zones
-		#self.init_mpe_zones(0, 2)
+		#self.state_manager.init_mpe_zones(0, 2)
 
 
 	def stop(self):
@@ -868,15 +868,15 @@ class zynthian_gui:
 
 	# Panic Actions
 	def cuia_all_notes_off(self, params):
-		self.all_notes_off()
+		self.state_manager.all_notes_off()
 		sleep(0.1)
-		self.raw_all_notes_off()
+		self.state_manager.raw_all_notes_off()
 
 	def cuia_all_sounds_off(self, params):
-		self.all_notes_off()
-		self.all_sounds_off()
+		self.state_manager.all_notes_off()
+		self.state_manager.all_sounds_off()
 		sleep(0.1)
-		self.raw_all_notes_off()
+		self.state_manager.raw_all_notes_off()
 
 	def cuia_clean_all(self, params):
 		if params == ['CONFIRM']:
@@ -1397,7 +1397,6 @@ class zynthian_gui:
 
 	def zynswitch_long(self, i):
 		logging.debug('Looooooooong Switch '+str(i))
-		self.state_manager.start_busy("zyngui")
 
 		# Standard 4 ZynSwitches
 		if i == 0:
@@ -1416,17 +1415,13 @@ class zynthian_gui:
 		elif i >= 4:
 			self.custom_switch_ui_action(i-4, "L")
 
-		self.state_manager.end_busy("zyngui")
 
 
 	def zynswitch_bold(self, i):
 		logging.debug('Bold Switch '+str(i))
 
-		self.state_manager.start_busy("zyngui")
-
 		try:
 			if self.screens[self.current_screen].switch(i, 'B'):
-				self.state_manager.end_busy("zyngui")
 				return
 		except AttributeError as e:
 			pass
@@ -1452,17 +1447,12 @@ class zynthian_gui:
 		elif i >= 4:
 			self.custom_switch_ui_action(i-4, "B")
 
-		self.state_manager.end_busy("zyngui")
-
 
 	def zynswitch_short(self, i):
 		logging.debug('Short Switch '+str(i))
 
-		self.state_manager.start_busy("zyngui")
-
 		try:
 			if self.screens[self.current_screen].switch(i, 'S'):
-				self.state_manager.end_busy("zyngui")
 				return
 		except AttributeError as e:
 			pass
@@ -1484,8 +1474,6 @@ class zynthian_gui:
 		elif i >= 4:
 			self.custom_switch_ui_action(i-4, "S")
 
-		self.state_manager.end_busy("zyngui")
-
 
 	def zynswitch_push(self, i):
 		self.set_event_flag()
@@ -1503,9 +1491,7 @@ class zynthian_gui:
 		# Custom ZynSwitches
 		elif i >= 4:
 			logging.debug('Push Switch ' + str(i))
-			self.state_manager.start_busy("zyngui")
 			self.custom_switch_ui_action(i-4, "P")
-			self.state_manager.end_busy("zyngui")
 
 
 	def zynswitch_double(self, i):
@@ -1513,13 +1499,11 @@ class zynthian_gui:
 		for j in range(4):
 			if j == i: continue
 			if abs((self.state_manager.dtsw[i] - self.state_manager.dtsw[j]).total_seconds()) < 0.3:
-				self.state_manager.start_busy("zyngui")
 				dswstr = str(i) + '+' + str(j)
 				logging.debug('Double Switch ' + dswstr)
 				#self.show_control_xy(i, j)
 				self.show_screen('control')
 				self.screens['control'].set_xyselect_mode(i, j)
-				self.state_manager.end_busy("zyngui")
 				return True
 
 
@@ -1586,8 +1570,8 @@ class zynthian_gui:
 	#------------------------------------------------------------------
 
 	def zynswitch_read(self):
-		if self.state_manager.is_busy():
-			return
+		#if self.state_manager.is_busy():
+		#	return
 
 		#Read Zynswitches
 		try:
@@ -1596,8 +1580,6 @@ class zynthian_gui:
 
 		except Exception as err:
 			logging.exception(err)
-
-		self.state_manager.end_busy("zyngui")
 
 
 	#------------------------------------------------------------------
@@ -1635,7 +1617,6 @@ class zynthian_gui:
 				# Master MIDI Channel ...
 				elif chan == zynthian_gui_config.master_midi_channel:
 					logging.info("MASTER MIDI MESSAGE: %s" % hex(ev))
-					self.state_manager.start_busy("zyngui")
 					# Webconf configured messages for Snapshot Control ...
 					if ev == zynthian_gui_config.master_midi_program_change_up:
 						logging.debug("PROGRAM CHANGE UP!")
@@ -1665,9 +1646,9 @@ class zynthian_gui:
 							logging.debug("BANK CHANGE %d" % bnk)
 							self.state_manager.set_snapshot_midi_bank(bnk)
 						elif ccnum == 120:
-							self.all_sounds_off()
+							self.state_manager.all_sounds_off()
 						elif ccnum == 123:
-							self.all_notes_off()
+							self.state_manager.all_notes_off()
 
 						if self.state_manager.midi_learn_cc:
 							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_cc[0], self.state_manager.midi_learn_cc[1])
@@ -1679,9 +1660,6 @@ class zynthian_gui:
 						vel = (ev & 0x007F)
 						if vel != 0 and note in self.note2cuia:
 							self.callable_ui_action(self.note2cuia[note], [vel])
-
-					# Stop logo animation
-					self.state_manager.end_busy("zyngui")
 
 
 				# Control Change ...
@@ -1703,9 +1681,9 @@ class zynthian_gui:
 							self.state_manager.zynmixer.midi_control_change(chan, ccnum, ccval)
 					# Special CCs >= Channel Mode
 					elif ccnum == 120:
-						self.all_sounds_off_chan(chan)
+						self.state_manager.all_sounds_off_chan(chan)
 					elif ccnum == 123:
-						self.all_notes_off_chan(chan)
+						self.state_manager.all_notes_off_chan(chan)
 
 				# Program Change ...
 				elif evtype == 0xC:
@@ -1743,9 +1721,7 @@ class zynthian_gui:
 					self.screens['midi_chan'].midi_chan_activity(chan)
 					#Preload preset (note-on)
 					if self.current_screen == 'preset' and zynthian_gui_config.preset_preload_noteon and chan == self.get_current_processor().get_midi_chan():
-						self.state_manager.start_busy("zyngui")
 						self.screens['preset'].preselect_action()
-						self.state_manager.end_busy("zyngui")
 					#Note Range Learn
 					elif self.current_screen == 'midi_key_range' and self.midi_learn_mode:
 						self.screens['midi_key_range'].learn_note_range((ev & 0x7F00) >> 8)
@@ -1756,7 +1732,6 @@ class zynthian_gui:
 				self.last_event_flag = True
 
 		except Exception as err:
-			self.state_manager.end_busy("zyngui")
 			logging.exception(err)
 
 
@@ -2037,68 +2012,6 @@ class zynthian_gui:
 
 			# Poll
 			zynthian_gui_config.top.after(self.osc_heartbeat_timeout * 1000, self.osc_timeout)
-
-
-	#------------------------------------------------------------------
-	# All Notes/Sounds Off => PANIC!
-	#------------------------------------------------------------------
-
-
-	def all_sounds_off(self):
-		logging.info("All Sounds Off!")
-		for chan in range(16):
-			get_lib_zyncore().ui_send_ccontrol_change(chan, 120, 0)
-
-
-	def all_notes_off(self):
-		logging.info("All Notes Off!")
-		for chan in range(16):
-			get_lib_zyncore().ui_send_ccontrol_change(chan, 123, 0)
-
-
-	def raw_all_notes_off(self):
-		logging.info("Raw All Notes Off!")
-		get_lib_zyncore().ui_send_all_notes_off()
-
-
-	def all_sounds_off_chan(self, chan):
-		logging.info("All Sounds Off for channel {}!".format(chan))
-		get_lib_zyncore().ui_send_ccontrol_change(chan, 120, 0)
-
-
-	def all_notes_off_chan(self, chan):
-		logging.info("All Notes Off for channel {}!".format(chan))
-		get_lib_zyncore().ui_send_ccontrol_change(chan, 123, 0)
-
-
-	def raw_all_notes_off_chan(self, chan):
-		logging.info("Raw All Notes Off for channel {}!".format(chan))
-		get_lib_zyncore().ui_send_all_notes_off_chan(chan)
-
-
-	#------------------------------------------------------------------
-	# MPE initialization
-	#------------------------------------------------------------------
-
-	def init_mpe_zones(self, lower_n_chans, upper_n_chans):
-		# Configure Lower Zone
-		if not isinstance(lower_n_chans, int) or lower_n_chans < 0 or lower_n_chans > 0xF:
-			logging.error("Can't initialize MPE Lower Zone. Incorrect num of channels ({})".format(lower_n_chans))
-		else:
-			get_lib_zyncore().ctrlfb_send_ccontrol_change(0x0, 0x79, 0x0)
-			get_lib_zyncore().ctrlfb_send_ccontrol_change(0x0, 0x64, 0x6)
-			get_lib_zyncore().ctrlfb_send_ccontrol_change(0x0, 0x65, 0x0)
-			get_lib_zyncore().ctrlfb_send_ccontrol_change(0x0, 0x06, lower_n_chans)
-
-		# Configure Upper Zone
-		if not isinstance(upper_n_chans, int) or upper_n_chans < 0 or upper_n_chans > 0xF:
-			logging.error("Can't initialize MPE Upper Zone. Incorrect num of channels ({})".format(upper_n_chans))
-		else:
-			get_lib_zyncore().ctrlfb_send_ccontrol_change(0xF, 0x79, 0x0)
-			get_lib_zyncore().ctrlfb_send_ccontrol_change(0xF, 0x64, 0x6)
-			get_lib_zyncore().ctrlfb_send_ccontrol_change(0xF, 0x65, 0x0)
-			get_lib_zyncore().ctrlfb_send_ccontrol_change(0xF, 0x06, upper_n_chans)
-
 
 
 	#------------------------------------------------------------------

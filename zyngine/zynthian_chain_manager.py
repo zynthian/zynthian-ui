@@ -124,6 +124,7 @@ class zynthian_chain_manager():
         Returns : Chain ID or None if chain could not be created
         """
 
+        self.state_manager.start_busy("add_chain")
         if chain_id is None:
             # Create new unique chain ID
             id = 1
@@ -136,6 +137,7 @@ class zynthian_chain_manager():
         if chain_id in self.chains:
             self.chains[chain_id].midi_thru = enable_midi_thru
             self.chains[chain_id].audio_thru = enable_audio_thru
+            self.state_manager.end_busy("add_chain")
             return self.chains[chain_id]
         else:
             chain = zynthian_chain(midi_chan, enable_midi_thru, enable_audio_thru)
@@ -152,6 +154,7 @@ class zynthian_chain_manager():
         self.update_chain_ids_ordered()
         zynautoconnect.request_audio_connect(True)
         zynautoconnect.request_midi_connect(True)
+        self.state_manager.end_busy("add_chain")
         return chain_id
 
     def remove_chain(self, chain_id, stop_engines=True):
@@ -164,6 +167,7 @@ class zynthian_chain_manager():
 
         if chain_id not in self.chains:
             return False
+        self.state_manager.start_busy("remove_chain")
         chains_to_remove = [chain_id] # List of associated chains that shold be removed simultaneously
         chain = self.chains[chain_id]
         if chain.synth_slots:
@@ -205,6 +209,7 @@ class zynthian_chain_manager():
         zynautoconnect.request_midi_connect(True)
         if self.active_chain_id not in self.chains:
             self.next_chain()
+        self.state_manager.end_busy("remove_chain")
         return True
 
     def remove_all_chains(self, stop_engines=True):
@@ -528,6 +533,7 @@ class zynthian_chain_manager():
             proc_id = self.get_available_processor_id() #TODO: Derive next available processor id from self.processors
         elif proc_id in self.processors:
             return None
+        self.state_manager.start_busy("add_processor")
         processor = zynthian_processor(type, self.engine_info[type], proc_id)
         chain = self.chains[chain_id]
         self.processors[proc_id] = processor # Add proc early to allow engines to add more as required, e.g. Aeolus
@@ -539,8 +545,10 @@ class zynthian_chain_manager():
                 chain.rebuild_graph()
                 zynautoconnect.request_audio_connect(True)
                 zynautoconnect.request_midi_connect(True)
+                self.state_manager.end_busy("add_processor")
                 return processor
         del self.processors[proc_id] # Failed so remove processor from list
+        self.state_manager.end_busy("add_processor")
         return None
 
     def remove_processor(self, chain_id, processor, stop_engine=True):
@@ -555,6 +563,7 @@ class zynthian_chain_manager():
         if chain_id not in self.chains:
             return False
 
+        self.state_manager.start_busy("remove_processor")
         for param in processor.controllers_dict:
             self.remove_midi_learn(processor, param)
 
@@ -573,6 +582,7 @@ class zynthian_chain_manager():
                 self.stop_unused_engines()
         zynautoconnect.request_audio_connect(True)
         zynautoconnect.request_midi_connect(True)
+        self.state_manager.end_busy("remove_processor")
         return success
 
     def get_slot_count(self, chain_id, type=None):
@@ -750,6 +760,8 @@ class zynthian_chain_manager():
         Returns : True on success
         """
 
+        self.state_manager.start_busy("set_chain_state")
+
         # Clean all chains but don't stop unused engines
         self.remove_all_chains(False)
 
@@ -784,6 +796,7 @@ class zynthian_chain_manager():
                             self.add_processor(chain_id, slot_state[proc_id], CHAIN_MODE_PARALLEL, proc_id=int(proc_id))
                         else:
                             self.add_processor(chain_id, slot_state[proc_id], CHAIN_MODE_SERIES, proc_id=int(proc_id))
+        self.state_manager.end_busy("set_chain_state")
 
     def restore_presets(self):
         """Restore presets in active chain"""

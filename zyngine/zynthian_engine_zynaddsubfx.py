@@ -257,7 +257,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 			logging.debug("OSC => /load_xlz %s" % preset[0])
 		self.osc_server.send(self.osc_target, "/volume")
 		i=0
-		while self.state_manager.is_busy(): 
+		while self.state_manager.is_busy("zynaddsubfx"):
 			sleep(0.1)
 			if i > 100:
 				self.state_manager.end_busy("zynaddsubfx")

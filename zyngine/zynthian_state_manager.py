@@ -137,6 +137,7 @@ class zynthian_state_manager:
         """
 
         self.busy.add(id)
+        logging.debug(f"Start busy for {id}. Current busy clients: {self.busy}")
 
     def end_busy(self, id):
         """Remove client from list of busy clients
@@ -147,12 +148,16 @@ class zynthian_state_manager:
             self.busy.remove(id)
         except:
             pass
+        logging.debug(f"End busy for {id}: {self.busy}")
 
-    def is_busy(self):
-        """Check if any clients are busy
+    def is_busy(self, client=None):
+        """Check if clients are busy
+        client : Name of client to check (Default: all clients)
         Returns : True if any clients are busy
         """
 
+        if client:
+            return client in self.busy
         return len(self.busy) > 0
 
     #------------------------------------------------------------------
@@ -602,6 +607,71 @@ class zynthian_state_manager:
         """Get the block size used by jackd"""
 
         return zynautoconnect.get_jackd_blocksize()
+
+    #------------------------------------------------------------------
+    # All Notes/Sounds Off => PANIC!
+    #------------------------------------------------------------------
+
+
+    def all_sounds_off(self):
+        logging.info("All Sounds Off!")
+        self.start_busy("all_sounds_off")
+        for chan in range(16):
+            get_lib_zyncore().ui_send_ccontrol_change(chan, 120, 0)
+        self.end_busy("all_sounds_off")
+
+
+    def all_notes_off(self):
+        logging.info("All Notes Off!")
+        self.start_busy("all_notes_off")
+        for chan in range(16):
+            get_lib_zyncore().ui_send_ccontrol_change(chan, 123, 0)
+        self.end_busy("all_notes_off")
+
+
+    def raw_all_notes_off(self):
+        logging.info("Raw All Notes Off!")
+        get_lib_zyncore().ui_send_all_notes_off()
+
+
+    def all_sounds_off_chan(self, chan):
+        logging.info("All Sounds Off for channel {}!".format(chan))
+        get_lib_zyncore().ui_send_ccontrol_change(chan, 120, 0)
+
+
+    def all_notes_off_chan(self, chan):
+        logging.info("All Notes Off for channel {}!".format(chan))
+        get_lib_zyncore().ui_send_ccontrol_change(chan, 123, 0)
+
+
+    def raw_all_notes_off_chan(self, chan):
+        logging.info("Raw All Notes Off for channel {}!".format(chan))
+        get_lib_zyncore().ui_send_all_notes_off_chan(chan)
+
+
+    #------------------------------------------------------------------
+    # MPE initialization
+    #------------------------------------------------------------------
+
+    def init_mpe_zones(self, lower_n_chans, upper_n_chans):
+        # Configure Lower Zone
+        if not isinstance(lower_n_chans, int) or lower_n_chans < 0 or lower_n_chans > 0xF:
+            logging.error("Can't initialize MPE Lower Zone. Incorrect num of channels ({})".format(lower_n_chans))
+        else:
+            get_lib_zyncore().ctrlfb_send_ccontrol_change(0x0, 0x79, 0x0)
+            get_lib_zyncore().ctrlfb_send_ccontrol_change(0x0, 0x64, 0x6)
+            get_lib_zyncore().ctrlfb_send_ccontrol_change(0x0, 0x65, 0x0)
+            get_lib_zyncore().ctrlfb_send_ccontrol_change(0x0, 0x06, lower_n_chans)
+
+        # Configure Upper Zone
+        if not isinstance(upper_n_chans, int) or upper_n_chans < 0 or upper_n_chans > 0xF:
+            logging.error("Can't initialize MPE Upper Zone. Incorrect num of channels ({})".format(upper_n_chans))
+        else:
+            get_lib_zyncore().ctrlfb_send_ccontrol_change(0xF, 0x79, 0x0)
+            get_lib_zyncore().ctrlfb_send_ccontrol_change(0xF, 0x64, 0x6)
+            get_lib_zyncore().ctrlfb_send_ccontrol_change(0xF, 0x65, 0x0)
+            get_lib_zyncore().ctrlfb_send_ccontrol_change(0xF, 0x06, upper_n_chans)
+
 
     #------------------------------------------------------------------
     # MIDI learning

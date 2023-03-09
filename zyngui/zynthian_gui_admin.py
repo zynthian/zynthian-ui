@@ -284,7 +284,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			os.kill(self.child_pid, signal.SIGTERM)
 			self.child_pid=None
 			if self.last_action==self.test_midi:
-				self.zyngui.all_sounds_off()
+				self.state_manager.all_sounds_off()
 
 	#------------------------------------------------------------------------------
 	# CONFIG OPTIONS
