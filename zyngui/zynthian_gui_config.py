@@ -349,14 +349,14 @@ def set_midi_config():
 		master_midi_note_cuia = zynconf.NoteCuiaDefault
 	else:
 		master_midi_note_cuia = {}
-		for cuianote in mmncuia_envar.split('\n'):
+		for cuianote in mmncuia_envar.split('\\n'):
 			try:
 				parts = cuianote.split(':')
 				note = parts[0].strip()
 				cuia = parts[1].strip()
 				master_midi_note_cuia[note] = cuia
 			except Exception as e:
-				logging.warning("Bad Master MIDI Note CUIA config {} => {}".format(cuianote, e))
+				logging.warning("Bad MIDI Master Note CUIA config {} => {}".format(cuianote, e))
 
 
 #------------------------------------------------------------------------------

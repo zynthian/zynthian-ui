@@ -205,10 +205,10 @@ class zynthian_gui:
 					midi_chan = curlayer_chan
 
 				if midi_chan is not None:
-					lib_zyncore.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'], event['val'])
+					get_lib_zyncore().setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'], event['val'])
 					logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}, {}".format(swi, event['type'], midi_chan, event['num'], event['val']))
 				else:
-					lib_zyncore.setup_zynswitch_midi(swi, 0, 0, 0, 0)
+					get_lib_zyncore().setup_zynswitch_midi(swi, 0, 0, 0, 0)
 					logging.info("MIDI ZYNSWITCH {}: DISABLED!".format(swi))
 
 		# Configure Zynaptik Analog Inputs (CV-IN)
@@ -220,10 +220,10 @@ class zynthian_gui:
 					midi_chan = curlayer_chan
 
 				if midi_chan is not None:
-					lib_zyncore.setup_zynaptik_cvin(i, event['type'], midi_chan, event['num'])
+					get_lib_zyncore().setup_zynaptik_cvin(i, event['type'], midi_chan, event['num'])
 					logging.info("ZYNAPTIK CV-IN {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
 				else:
-					lib_zyncore.disable_zynaptik_cvin(i)
+					get_lib_zyncore().disable_zynaptik_cvin(i)
 					logging.info("ZYNAPTIK CV-IN {}: DISABLED!".format(i))
 
 		# Configure Zynaptik Analog Outputs (CV-OUT)
@@ -235,10 +235,10 @@ class zynthian_gui:
 					midi_chan = curlayer_chan
 
 				if midi_chan is not None:
-					lib_zyncore.setup_zynaptik_cvout(i, event['type'], midi_chan, event['num'])
+					get_lib_zyncore().setup_zynaptik_cvout(i, event['type'], midi_chan, event['num'])
 					logging.info("ZYNAPTIK CV-OUT {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
 				else:
-					lib_zyncore.disable_zynaptik_cvout(i)
+					get_lib_zyncore().disable_zynaptik_cvout(i)
 					logging.info("ZYNAPTIK CV-OUT {}: DISABLED!".format(i))
 
 		# Configure Zyntof Inputs (Distance Sensor)
@@ -250,10 +250,10 @@ class zynthian_gui:
 					midi_chan = curlayer_chan
 
 				if midi_chan is not None:
-					lib_zyncore.setup_zyntof(i, event['type'], midi_chan, event['num'])
+					get_lib_zyncore().setup_zyntof(i, event['type'], midi_chan, event['num'])
 					logging.info("ZYNTOF {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
 				else:
-					lib_zyncore.disable_zyntof(i)
+					get_lib_zyncore().disable_zyntof(i)
 					logging.info("ZYNTOF {}: DISABLED!".format(i))
 
 
@@ -797,34 +797,35 @@ class zynthian_gui:
 	# Callable UI Actions
 	# -------------------------------------------------------------------
 
+	@classmethod
+	def get_cuia_list(cls):
+		return [method[5:].upper() for method in dir(cls) if method.startswith('cuia_') is True]
+
 	def callable_ui_action(self, cuia, params=None):
 		logging.debug("CUIA '{}' => {}".format(cuia, params))
 		try:
 			cuia_func = getattr(self, "cuia_" + cuia.lower())
 			cuia_func(params)
 		except AttributeError:
-			logging.error("Unknown CUIA '{}'".format(cuia))
+			logging.error("Unknown of faulty CUIA '{}'".format(cuia))
 
-	def callable_ui_action_params(self, cuia):
-		parts = cuia.split(" ", 2)
-		cmd = parts[0]
+	def parse_cuia_params(self, params_str):
+		params = []
+		for i, p in enumerate(params_str.split(",")):
+			try:
+				params.append(int(p))
+			except:
+				params.append(p.strip())
+		return params
+
+	def callable_ui_action_params(self, cuia_str):
+		parts = cuia_str.split(" ", 2)
+		cuia = parts[0]
 		if len(parts) > 1:
-			params = []
-			for i, p in enumerate(parts[1].split(",")):
-				try:
-					params.append(int(p))
-				except:
-					params.append(p.strip())
+			params = self.parse_cuia_params(parts[1])
 		else:
 			params = None
-
-		self.callable_ui_action(cmd, params)
-
-
-	@classmethod
-	def get_cuia_list(cls):
-		return [method[5:].upper() for method in dir(cls) if method.startswith('cuia_') is True]
-
+		self.callable_ui_action(cuia, params)
 
 	# System actions CUIA
 	def cuia_test_mode(self, params):
@@ -967,6 +968,48 @@ class zynthian_gui:
 			self.state_manager.zynseq.set_tempo(60 / tap_dur)
 		self.last_tap = now
 
+	# Zynpot & Zynswitch emulation CUIAs (low level)
+	def cuia_zynpot(self, params):
+		try:
+			i = params[0]
+			d = params[1]
+		except Exception as e:
+			logging.error("Need 2 parameters: index, delta")
+
+		try:
+			self.get_current_screen_obj().zynpot_cb(i, d)
+		except Exception as e:
+			logging.error(e)
+
+	def cuia_zynswitch(self, params):
+		try:
+			i = params[0]
+			t = params[1]
+		except Exception as err:
+			logging.error("Need 2 parameters: index, action_type")
+			return
+
+		if t == 'P':
+			self.zynswitch_cuia_ts[i] = datetime.now()
+			self.zynswitch_timing(i, 0)
+		elif t == 'R':
+			if self.zynswitch_cuia_ts[i]:
+				dtus = int(1000000 * (datetime.now() - self.zynswitch_cuia_ts[i]).total_seconds())
+				self.zynswitch_cuia_ts[i] = None
+				self.zynswitch_timing(i, dtus)
+		elif t == 'S':
+			self.zynswitch_cuia_ts[i] = None
+			self.zynswitch_short(i)
+		elif t == 'B':
+			self.zynswitch_cuia_ts[i] = None
+			self.zynswitch_bold(i)
+		elif t == 'L':
+			self.zynswitch_cuia_ts[i] = None
+			self.zynswitch_long(i)
+		else:
+			self.zynswitch_cuia_ts[i] = None
+			logging.warning("Unknown Action Type: {}".format(t))
+
 	# Basic UI-Control CUIAs
 	# 4 x Arrows
 	def cuia_arrow_up(self, params):
@@ -1013,127 +1056,12 @@ class zynthian_gui:
 		except (AttributeError, TypeError) as err:
 			pass
 
-	# Select switch action (optional press duration parameter: 'S', 'B', 'L')
-	def cuia_switch_select(self, params):
-		try:
-			if params:
-				self.get_current_screen_obj().switch_select(params[0])
-			else:
-				self.get_current_screen_obj().switch_select()
-		except (AttributeError, TypeError) as err:
-			pass
-
-	# Rotary Control => it receives the zynpot number as parameter
-	def cuia_zynpot_up(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(params[0], +1)
-		except (AttributeError, TypeError) as err:
-			logging.exception(err)
-
-	def cuia_zynpot_down(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(params[0], -1)
-		except (AttributeError, TypeError) as err:
-			logging.exception(err)
-
-	# Legacy "4 x rotaries" CUIAs
-	def cuia_select_up(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_select_down(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_back_up(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_back_down(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_layer_up(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_LAYER, 1)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_layer_down(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_LAYER, -1)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_snapshot_up(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_SNAPSHOT, 1)
-		except (AttributeError, TypeError) as err:
-			pass
-	def cuia_learn_up(self, params):
-		self.cuia_snapshot_up(params)
-
-	def cuia_snapshot_down(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_SNAPSHOT, -1)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_learn_down(self, params):
-		self.cuia_snapshot_down(params)
-
-	# Legacy "4 x switches" CUIAs (4 * 3 = 12 CUIAS!)
-	def cuia_switch_layer_short(self, params):
-		self.zynswitch_short(0)
-
-	def cuia_switch_layer_bold(self, params):
-		self.zynswitch_bold(0)
-
-	def cuia_switch_layer_long(self, params):
-		self.zynswitch_long(0)
-
-	def cuia_switch_back_short(self, params):
-		self.zynswitch_short(1)
-
-	def cuia_switch_back_bold(self, params):
-		self.zynswitch_bold(1)
-
-	def cuia_switch_back_long(self, params):
-		self.zynswitch_long(1)
-
-	def cuia_switch_snapshot_short(self, params):
-		self.zynswitch_short(2)
-
-	def cuia_switch_snapshot_bold(self, params):
-		self.zynswitch_bold(2)
-
-	def cuia_switch_snapshot_long(self, params):
-		self.zynswitch_long(2)
-
-	def cuia_switch_select_short(self, params):
-		self.zynswitch_short(3)
-
-	def cuia_switch_select_bold(self, params):
-		self.zynswitch_bold(3)
-
-	def cuia_switch_select_long(self, params):
-		self.zynswitch_long(3)
-
 	# Screen/Mode management CUIAs
-	#TODO: Toggle not necessarily desired action. Should we add set-screen options?
-	def cuia_toggle_view(self, params):
+	def cuia_toggle_screen(self, params):
 		if params:
 			self.toggle_screen(params[0])
 
-	def cuia_show_view(self, params):
+	def cuia_show_screen(self, params):
 		if params:
 			self.show_screen_reset(params[0])
 
@@ -1383,21 +1311,41 @@ class zynthian_gui:
 		i = 0
 		while i <= zynthian_gui_config.last_zynswitch_index:
 			dtus = get_lib_zyncore().get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
-			if dtus < 0:
-				pass
-			elif dtus == 0:
-				self.zynswitch_push(i)
-			elif dtus > zynthian_gui_config.zynswitch_long_us:
-				self.zynswitch_long(i)
-			elif dtus > zynthian_gui_config.zynswitch_bold_us:
-				# Double switches must be bold!!! => by now ...
-				if not self.zynswitch_double(i):
-					self.zynswitch_bold(i)
-			elif dtus > 0:
-				#print("Switch "+str(i)+" dtus="+str(dtus))
-				self.zynswitch_short(i)
+			self.zynswitch_timing(i, dtus)
 			i += 1
 
+	def zynswitch_timing(self, i, dtus):
+		if dtus < 0:
+			pass
+		elif dtus == 0:
+			self.zynswitch_push(i)
+		elif dtus > zynthian_gui_config.zynswitch_long_us:
+			self.zynswitch_long(i)
+		elif dtus > zynthian_gui_config.zynswitch_bold_us:
+			# Double switches must be bold
+			if not self.zynswitch_double(i):
+				self.zynswitch_bold(i)
+		elif dtus > 0:
+			self.zynswitch_short(i)
+
+
+	def zynswitch_push(self, i):
+		self.set_event_flag()
+
+		try:
+			if self.screens[self.current_screen].switch(i, 'P'):
+				return
+		except AttributeError as e:
+			pass
+
+		# Standard 4 ZynSwitches
+		if i >= 0 and i <= 3:
+			pass
+
+		# Custom ZynSwitches
+		elif i >= 4:
+			logging.debug('Push Switch ' + str(i))
+			self.custom_switch_ui_action(i-4, "P")
 
 	def zynswitch_long(self, i):
 		logging.debug('Looooooooong Switch '+str(i))
@@ -1477,25 +1425,6 @@ class zynthian_gui:
 		# Custom ZynSwitches
 		elif i >= 4:
 			self.custom_switch_ui_action(i-4, "S")
-
-
-	def zynswitch_push(self, i):
-		self.set_event_flag()
-
-		try:
-			if self.screens[self.current_screen].switch(i, 'P'):
-				return
-		except AttributeError as e:
-			pass
-
-		# Standard 4 ZynSwitches
-		if i >= 0 and i <= 3:
-			pass
-
-		# Custom ZynSwitches
-		elif i >= 4:
-			logging.debug('Push Switch ' + str(i))
-			self.custom_switch_ui_action(i-4, "P")
 
 
 	def zynswitch_double(self, i):
@@ -1658,12 +1587,29 @@ class zynthian_gui:
 							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_cc[0], self.state_manager.midi_learn_cc[1])
 						else:
 							self.state_manager.zynmixer.midi_control_change(chan, ccnum, ccval)
-					# Note-on => CUIA
-					elif evtype == 0x9:
+					# Note-on/off => CUIA
+					elif evtype == 0x8 or evtype == 0x9:
 						note = str((ev & 0x7F00) >> 8)
 						vel = (ev & 0x007F)
-						if vel != 0 and note in self.note2cuia:
-							self.callable_ui_action(self.note2cuia[note], [vel])
+						if note in zynthian_gui_config.master_midi_note_cuia:
+							cuia_str = zynthian_gui_config.master_midi_note_cuia[note]
+							parts = cuia_str.split(" ", 2)
+							cuia = parts[0].lower()
+							if len(parts) > 1:
+								params = self.parse_cuia_params(parts[1])
+							else:
+								params = None
+
+							# Emulate Zynswitch Push/Release with Note On/Off
+							if cuia == "zynswitch" and len(params) == 1:
+								if evtype == 0x8 or vel == 0:
+									params.append('R')
+								else:
+									params.append('P')
+								self.cuia_zynswitch(params)
+							# Or normal CUIA
+							elif evtype == 0x9 and vel > 0:
+								self.callable_ui_action(cuia, params)
 
 
 				# Control Change ...

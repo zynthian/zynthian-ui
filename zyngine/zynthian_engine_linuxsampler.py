@@ -129,6 +129,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	def lscp_connect(self):
 		logging.info("Connecting with LinuxSampler Server...")
+		self.state_manager.start_busy("lscp")
 		self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.sock.setblocking(False)
 		self.sock.settimeout(1)
@@ -166,7 +167,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			line = self.sock.recv(4096)
 		except Exception as err:
 			logging.error("FAILED lscp_send_single(%s): %s" % (command,err))
-			self.stop_loading()
+			self.state_manager.end_busy("lscp")
 			return None
 		line = line.decode()
 		#logging.debug("LSCP RECEIVE => %s" % line)
@@ -175,11 +176,11 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			return result
 		elif line[0:3] == "ERR":
 			parts = line.split(':')
-			self.stop_loading()
+			self.state_manager.end_busy("lscp")
 			raise zyngine_lscp_error("{} ({} {})".format(parts[2], parts[0], parts[1]))
 		elif line[0:3] == "WRN":
 			parts = line.split(':')
-			self.stop_loading()
+			self.state_manager.end_busy("lscp")
 			raise zyngine_lscp_warning("{} ({} {})".format(parts[2], parts[0], parts[1]))
 
 
@@ -191,7 +192,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			result = self.sock.recv(4096)
 		except Exception as err:
 			logging.error("FAILED lscp_send_multi(%s): %s" % (command,err))
-			self.stop_loading()
+			self.state_manager.end_busy("lscp")
 			return None
 		lines = result.decode().split("\r\n")
 		result = OrderedDict()
@@ -201,11 +202,11 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 				result = self.lscp_get_result_index(line)
 			elif line[0:3] == "ERR":
 				parts = line.split(':')
-				self.stop_loading()
+				self.state_manager.end_busy("lscp")
 				raise zyngine_lscp_error("{} ({} {})".format(parts[2], parts[0], parts[1]))
 			elif line[0:3] == "WRN":
 				parts = line.split(':')
-				self.stop_loading()
+				self.state_manager.end_busy("lscp")
 				raise zyngine_lscp_warning("{} ({} {})".format(parts[2], parts[0], parts[1]))
 			elif len(line) > 3:
 				parts = line.split(':')
