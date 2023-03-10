@@ -123,6 +123,7 @@ class zynthian_gui:
 		self.status_thread = None
 		self.zynread_wait_flag = False
 		self.zynswitch_defered_event = None
+		self.zynswitch_cuia_ts = []
 		self.exit_flag = False
 		self.exit_code = 0
 		self.exit_wait_count = 0
@@ -932,6 +933,10 @@ class zynthian_gui:
 	# Callable UI Actions
 	# -------------------------------------------------------------------
 
+	@classmethod
+	def get_cuia_list(cls):
+		return [method[5:].upper() for method in dir(cls) if method.startswith('cuia_') is True]
+
 	def callable_ui_action(self, cuia, params=None):
 		logging.debug("CUIA '{}' => {}".format(cuia, params))
 		try:
@@ -940,27 +945,23 @@ class zynthian_gui:
 		except AttributeError:
 			logging.error("Unknown CUIA '{}'".format(cuia))
 
+	def parse_cuia_params(self, params_str):
+		params = []
+		for i, p in enumerate(params_str.split(",")):
+			try:
+				params.append(int(p))
+			except:
+				params.append(p.strip())
+		return params
 
-	def callable_ui_action_params(self, cuia):
-		parts = cuia.split(" ", 2)
-		cmd = parts[0]
+	def callable_ui_action_params(self, cuia_str):
+		parts = cuia_str.split(" ", 2)
+		cuia = parts[0]
 		if len(parts) > 1:
-			params = []
-			for i, p in enumerate(parts[1].split(",")):
-				try:
-					params.append(int(p))
-				except:
-					params.append(p.strip())
+			params = self.parse_cuia_params(parts[1])
 		else:
 			params = None
-
-		self.callable_ui_action(cmd, params)
-
-
-	@classmethod
-	def get_cuia_list(cls):
-		return [method[5:].upper() for method in dir(cls) if method.startswith('cuia_') is True]
-
+		self.callable_ui_action(cuia, params)
 
 	# System actions CUIA
 	def cuia_test_mode(self, params):
@@ -1103,6 +1104,48 @@ class zynthian_gui:
 			self.zynseq.set_tempo(60 / tap_dur)
 		self.last_tap = now
 
+	# Zynpot & Zynswitch emulation CUIAs (low level)
+	def cuia_zynpot(self, params):
+		try:
+			i = params[0]
+			d = params[1]
+		except Exception as e:
+			logging.error("Need 2 parameters: index, delta")
+
+		try:
+			self.get_current_screen_obj().zynpot_cb(i, d)
+		except Exception as e:
+			logging.error(e)
+
+	def cuia_zynswitch(self, params):
+		try:
+			i = params[0]
+			t = params[1]
+		except Exception as err:
+			logging.error("Need 2 parameters: index, action_type")
+			return
+
+		if t == 'P':
+			self.zynswitch_cuia_ts[i] = datetime.now()
+			self.zynswitch_timing(i, 0)
+		elif t == 'R':
+			if self.zynswitch_cuia_ts[i]:
+				dtus = int(1000000 * (datetime.now() - self.zynswitch_cuia_ts[i]).total_seconds())
+				self.zynswitch_cuia_ts[i] = None
+				self.zynswitch_timing(i, dtus)
+		elif t == 'S':
+			self.zynswitch_cuia_ts[i] = None
+			self.zynswitch_short(i)
+		elif t == 'B':
+			self.zynswitch_cuia_ts[i] = None
+			self.zynswitch_bold(i)
+		elif t == 'L':
+			self.zynswitch_cuia_ts[i] = None
+			self.zynswitch_long(i)
+		else:
+			self.zynswitch_cuia_ts[i] = None
+			logging.warning("Unknown Action Type: {}".format(t))
+
 	# Basic UI-Control CUIAs
 	# 4 x Arrows
 	def cuia_arrow_up(self, params):
@@ -1149,127 +1192,12 @@ class zynthian_gui:
 		except (AttributeError, TypeError) as err:
 			pass
 
-	# Select switch action (optional press duration parameter: 'S', 'B', 'L')
-	def cuia_switch_select(self, params):
-		try:
-			if params:
-				self.get_current_screen_obj().switch_select(params[0])
-			else:
-				self.get_current_screen_obj().switch_select()
-		except (AttributeError, TypeError) as err:
-			pass
-
-	# Rotary Control => it receives the zynpot number as parameter
-	def cuia_zynpot_up(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(params[0], +1)
-		except (AttributeError, TypeError) as err:
-			logging.exception(err)
-
-	def cuia_zynpot_down(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(params[0], -1)
-		except (AttributeError, TypeError) as err:
-			logging.exception(err)
-
-	# Legacy "4 x rotaries" CUIAs
-	def cuia_select_up(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_select_down(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_back_up(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_back_down(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_layer_up(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_LAYER, 1)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_layer_down(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_LAYER, -1)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_snapshot_up(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_SNAPSHOT, 1)
-		except (AttributeError, TypeError) as err:
-			pass
-	def cuia_learn_up(self, params):
-		self.cuia_snapshot_up(params)
-
-	def cuia_snapshot_down(self, params):
-		try:
-			self.get_current_screen_obj().zynpot_cb(zynthian_gui_config.ENC_SNAPSHOT, -1)
-		except (AttributeError, TypeError) as err:
-			pass
-
-	def cuia_learn_down(self, params):
-		self.cuia_snapshot_down(params)
-
-	# Legacy "4 x switches" CUIAs (4 * 3 = 12 CUIAS!)
-	def cuia_switch_layer_short(self, params):
-		self.zynswitch_short(0)
-
-	def cuia_switch_layer_bold(self, params):
-		self.zynswitch_bold(0)
-
-	def cuia_switch_layer_long(self, params):
-		self.zynswitch_long(0)
-
-	def cuia_switch_back_short(self, params):
-		self.zynswitch_short(1)
-
-	def cuia_switch_back_bold(self, params):
-		self.zynswitch_bold(1)
-
-	def cuia_switch_back_long(self, params):
-		self.zynswitch_long(1)
-
-	def cuia_switch_snapshot_short(self, params):
-		self.zynswitch_short(2)
-
-	def cuia_switch_snapshot_bold(self, params):
-		self.zynswitch_bold(2)
-
-	def cuia_switch_snapshot_long(self, params):
-		self.zynswitch_long(2)
-
-	def cuia_switch_select_short(self, params):
-		self.zynswitch_short(3)
-
-	def cuia_switch_select_bold(self, params):
-		self.zynswitch_bold(3)
-
-	def cuia_switch_select_long(self, params):
-		self.zynswitch_long(3)
-
 	# Screen/Mode management CUIAs
-	#TODO: Toggle not necessarily desired action. Should we add set-screen options?
-	def cuia_toggle_view(self, params):
+	def cuia_toggle_screen(self, params):
 		if params:
 			self.toggle_screen(params[0])
 
-	def cuia_show_view(self, params):
+	def cuia_show_screen(self, params):
 		if params:
 			self.show_screen_reset(params[0])
 
@@ -1509,28 +1437,50 @@ class zynthian_gui:
 	# Init Standard Zynswitches
 	def zynswitches_init(self):
 		logging.info("INIT {} ZYNSWITCHES ...".format(zynthian_gui_config.num_zynswitches))
-		ts = datetime.now()
-		self.dtsw = [ts] * (zynthian_gui_config.num_zynswitches + 4)
-
+		self.dtsw = [datetime.now()] * (zynthian_gui_config.num_zynswitches + 4)
+		self.zynswitch_cuia_ts = [None] * (zynthian_gui_config.num_zynswitches + 4)
 
 	def zynswitches(self):
 		i = 0
 		while i <= zynthian_gui_config.last_zynswitch_index:
 			dtus = lib_zyncore.get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
-			if dtus < 0:
-				pass
-			elif dtus == 0:
-				self.zynswitch_push(i)
-			elif dtus > zynthian_gui_config.zynswitch_long_us:
-				self.zynswitch_long(i)
-			elif dtus > zynthian_gui_config.zynswitch_bold_us:
-				# Double switches must be bold!!! => by now ...
-				if not self.zynswitch_double(i):
-					self.zynswitch_bold(i)
-			elif dtus > 0:
-				#print("Switch "+str(i)+" dtus="+str(dtus))
-				self.zynswitch_short(i)
+			self.zynswitch_timing(i, dtus)
 			i += 1
+
+	def zynswitch_timing(self, i, dtus):
+		if dtus < 0:
+			pass
+		elif dtus == 0:
+			self.zynswitch_push(i)
+		elif dtus > zynthian_gui_config.zynswitch_long_us:
+			self.zynswitch_long(i)
+		elif dtus > zynthian_gui_config.zynswitch_bold_us:
+			# Double switches must be bold
+			if not self.zynswitch_double(i):
+				self.zynswitch_bold(i)
+		elif dtus > 0:
+			self.zynswitch_short(i)
+
+
+	def zynswitch_push(self, i):
+		self.set_event_flag()
+
+		try:
+			if self.screens[self.current_screen].switch(i, 'P'):
+				return
+		except AttributeError as e:
+			pass
+
+		# Standard 4 ZynSwitches
+		if i >= 0 and i <= 3:
+			pass
+
+		# Custom ZynSwitches
+		elif i >= 4:
+			logging.debug('Push Switch ' + str(i))
+			self.start_loading()
+			self.custom_switch_ui_action(i-4, "P")
+			self.stop_loading()
 
 
 	def zynswitch_long(self, i):
@@ -1624,27 +1574,6 @@ class zynthian_gui:
 			self.custom_switch_ui_action(i-4, "S")
 
 		self.stop_loading()
-
-
-	def zynswitch_push(self, i):
-		self.set_event_flag()
-
-		try:
-			if self.screens[self.current_screen].switch(i, 'P'):
-				return
-		except AttributeError as e:
-			pass
-
-		# Standard 4 ZynSwitches
-		if i >= 0 and i <= 3:
-			pass
-
-		# Custom ZynSwitches
-		elif i >= 4:
-			logging.debug('Push Switch ' + str(i))
-			self.start_loading()
-			self.custom_switch_ui_action(i-4, "P")
-			self.stop_loading()
 
 
 	def zynswitch_double(self, i):
@@ -1806,12 +1735,29 @@ class zynthian_gui:
 							self.show_current_screen()
 						else:
 							self.zynmixer.midi_control_change(chan, ccnum, ccval)
-					# Note-on => CUIA
-					elif evtype == 0x9:
+					# Note-on/off => CUIA
+					elif evtype == 0x8 or evtype == 0x9:
 						note = str((ev & 0x7F00) >> 8)
 						vel = (ev & 0x007F)
-						if vel != 0 and note in zynthian_gui_config.master_midi_note_cuia:
-							self.callable_ui_action_params(zynthian_gui_config.master_midi_note_cuia[note])
+						if note in zynthian_gui_config.master_midi_note_cuia:
+							cuia_str = zynthian_gui_config.master_midi_note_cuia[note]
+							parts = cuia_str.split(" ", 2)
+							cuia = parts[0].lower()
+							if len(parts) > 1:
+								params = self.parse_cuia_params(parts[1])
+							else:
+								params = None
+
+							# Emulate Zynswitch Push/Release with Note On/Off
+							if cuia == "zynswitch" and len(params) == 1:
+								if evtype == 0x8 or vel == 0:
+									params.append('R')
+								else:
+									params.append('P')
+								self.cuia_zynswitch(params)
+							# Or normal CUIA
+							elif evtype == 0x9 and vel > 0:
+								self.callable_ui_action(cuia, params)
 
 					# Stop logo animation
 					self.stop_loading()
