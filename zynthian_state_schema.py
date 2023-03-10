@@ -109,7 +109,7 @@
                     "midi_in": ["MIDI IN"], # List of chain jack MIDI input sources (may include aliases)
                     "midi_out": ["MIDI OUT"], # List of chain jack MIDI output destinations (may include aliases)
                     "midi_thru": False, # True to allow MIDI pass-through when MIDI chain empty
-                    "audio_in": ["system"], # List of audio capture port names, zynmixer:send or "system" for all physical inputs
+                    "audio_in": [0,1], # List of index of physical inputs
                     "audio_out": ["mixer"], # List of processor id, "mixer", "system" chain is routed to
                     "audio_thru": False, # True to allow audio pass-through when audio chain empty
                     "note_low": 0, # Lowest MIDI note chain responds to

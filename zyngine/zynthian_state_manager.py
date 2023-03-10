@@ -493,37 +493,25 @@ class zynthian_state_manager:
 
         # Get next id and name
         used_ids = []
-        used_titles = []
         for id in self.zs3:
             if id.startswith("zs3-"):
                 try:
                     used_ids.append(int(id.split('-')[1]))
                 except:
                     pass
-            if self.zs3[id]["title"].startswith("ZS3 "):
-                try:
-                    used_titles.append(int(self.zs3[id]["title"][8:]))
-                except:
-                    pass
         used_ids.sort()
-        used_titles.sort()
 
         if zs3_id is None:
-            index = 0
-            for offset, index in enumerate(used_ids):
-                if offset and index - 1 != used_ids[offset] - 1:
+            # Get next free zs3 id
+            for index in range(1, len(used_ids) + 1):
+                if index not in used_ids:
+                    zs3_id = f"zs3-{index}"
                     break
-            zs3_id = f"zs3-{index + 1}"
 
         if zs3_id in self.zs3:
             title = self.zs3[zs3_id]['title']
-
-        if title is None:
-            index = 0
-            for offset, index in enumerate(used_titles):
-                if offset and index - 1 != used_titles[offset] - 1:
-                    break
-            title = f"ZS3 {index + 1}"
+        else:
+            title = zs3_id.upper()
 
         # Initialise zs3
         self.zs3[zs3_id] = {
@@ -547,23 +535,20 @@ class zynthian_state_manager:
                 transpose_semitone = get_lib_zyncore().get_midi_filter_transpose_semitone(chain.midi_chan)
                 if transpose_semitone:
                     chain_state["transpose_semitone"] = transpose_semitone
-                #TODO: Use default values
                 if chain.midi_in:
-                    chain_state["midi_in"] = chain.midi_in
-                if chain.midi_out:
-                    chain_state["midi_out"] = chain.midi_out
+                    chain_state["midi_in"] = chain.midi_in.copy()
+                if chain.midi_out != ["MIDI-OUT", "NET-OUT"]:
+                    chain_state["midi_out"] = chain.midi_out.copy()
                 if chain.midi_thru:
                     chain_state["midi_thru"] = chain.midi_thru
-            if chain.audio_in:
-                chain_state["audio_in"] = chain.audio_in
-            if chain.audio_out:
-                chain_state["audio_out"] = []
-                for out in chain.audio_out:
-                    proc_id = self.chain_manager.get_processor_id(out)
-                    if proc_id is None:
-                        chain_state["audio_out"].append(out)
-                    else:
-                        chain_state["audio_out"].append(proc_id)                      
+            chain_state["audio_in"] = chain.audio_in.copy()
+            chain_state["audio_out"] = []
+            for out in chain.audio_out:
+                proc_id = self.chain_manager.get_processor_id(out)
+                if proc_id is None:
+                    chain_state["audio_out"].append(out)
+                else:
+                    chain_state["audio_out"].append(proc_id)                      
             if chain.audio_thru:
                 chain_state["audio_thru"] = chain.audio_thru
             if chain_state:

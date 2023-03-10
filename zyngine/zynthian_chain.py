@@ -85,7 +85,7 @@ class zynthian_chain:
         else:
             self.midi_in = []
         self.midi_out = ["MIDI-OUT", "NET-OUT"]
-        self.audio_in = ["system"]
+        self.audio_in = [1,2]
         self.audio_out = ["mixer"]
         if self.mixer_chan and self.mixer_chan > 15:
             # main mixbus chain
@@ -164,9 +164,12 @@ class zynthian_chain:
             elif self.get_slot_count("MIDI Tool"):
                 return self.get_processors("MIDI Tool")[0].engine.name
             elif self.audio_thru:
-                label = "\n".join(self.get_audio_in()).replace("system:capture_", "Audio input ")
-                if label != "zynmixer:send":
-                    return label
+                if self.audio_in == ["zynmixer:send"]:
+                    return ""
+                label = ""
+                for input in self.audio_in:
+                    label += f"Audio input {input}\n"
+                return label
         except:
             pass
         return ""
@@ -194,7 +197,7 @@ class zynthian_chain:
                         for proc in self.synth_slots[-1]:
                             sources.append(proc.get_jackname())
                     elif self.audio_thru:
-                        sources = self.audio_in.copy()
+                        sources = self.get_input_pairs()
                     self.audio_routes[processor.get_jackname()] = sources
                 else:
                     for prev_proc in self.audio_slots[i - 1]:
@@ -205,7 +208,7 @@ class zynthian_chain:
         if self.synth_slots and self.synth_slots[0]:
             processor = self.synth_slots[0][0]
             if processor.type == "Special":
-                sources = self.audio_in.copy()
+                sources = self.get_input_pairs()
                 self.audio_routes[processor.get_jackname()] = sources
 
         if self.mixer_chan is not None:
@@ -220,7 +223,7 @@ class zynthian_chain:
                     mixer_source.append(proc.get_jackname())
             elif self.audio_thru:
                 # Routing from capture ports
-                mixer_source = self.audio_in.copy()
+                mixer_source = self.get_input_pairs()
             for output in self.get_audio_out():
                 try:
                     self.audio_routes[output.get_jackname()] = mixer_source
@@ -230,6 +233,25 @@ class zynthian_chain:
                 self.audio_routes["zynmixer:input_{:02d}".format(self.mixer_chan + 1)] = []
 
         zynautoconnect.release_lock()
+
+    def get_input_pairs(self):
+        """Get jack regexp for pairs of system:capture ports
+        
+        Returns : List of regexps
+        """
+        
+        if self.audio_in == ["zynmixer:send"]:
+            return self.audio_in.copy()
+        sources = []
+        for i in range(0, len(self.audio_in), 2):
+            a = self.audio_in[i]
+            if i < len(self.audio_in) - 1:
+                b = self.audio_in[i + 1]
+                sources.append(f"system:capture_({a}|{b})$")
+            else:
+                sources.append(f"system:capture_({a})$")
+        return sources
+
 
     def rebuild_midi_graph(self):
         """Build dictionary of lists of sources mapped by destination"""
@@ -299,34 +321,16 @@ class zynthian_chain:
         self.rebuild_audio_graph()
         zynautoconnect.request_audio_connect()
 
-    def get_audio_in(self):
-        """Get list of audio capture ports"""
+    def toggle_audio_in(self, input):
+        """Toggle processor audio in
+        
+        input : Index of audio input
+        """
 
-        audio_in = []
-        for input in self.audio_in:
-            if input == "system":
-                audio_in.append("system:capture_1")
-                audio_in.append("system:capture_2")
-            else:
-                audio_in.append(input)
-        return audio_in
-
-    def toggle_audio_in(self, jackname):
-        """Toggle processor audio in"""
-
-        audio_in = self.get_audio_in()
-        if jackname not in audio_in:
-            audio_in.append(jackname)
+        if input in self.audio_in:
+            self.audio_in.remove(input)
         else:
-            try:
-                audio_in.remove(jackname)
-            except:
-                pass
-        if len(audio_in) == 2 and "system:capture_1" in audio_in and "system:capture_2" in audio_in:
-            self.audio_in = ["system"]
-        else:
-            self.audio_in = audio_in
-        logging.debug("Toggling Audio Capture: {}".format(jackname))
+            self.audio_in.append(input)
 
         self.rebuild_audio_graph()
         zynautoconnect.request_audio_connect()

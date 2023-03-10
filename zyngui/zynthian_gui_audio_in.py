@@ -48,10 +48,10 @@ class zynthian_gui_audio_in(zynthian_gui_selector):
 		self.list_data = []
 
 		for i, scp in enumerate(zynautoconnect.get_audio_capture_ports()):
-			if scp.name in self.chain.get_audio_in():
-				self.list_data.append((i, scp.name, f"[x] Audio input {i + 1}"))
+			if i + 1 in self.chain.audio_in:
+				self.list_data.append((i + 1, scp.name, f"[x] Audio input {i + 1}"))
 			else:
-				self.list_data.append((i, scp.name, f"[  ] Audio input {i + 1}"))
+				self.list_data.append((i + 1, scp.name, f"[  ] Audio input {i + 1}"))
 
 		super().fill_list()
 
@@ -61,7 +61,7 @@ class zynthian_gui_audio_in(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		self.chain.toggle_audio_in(self.list_data[i][1])
+		self.chain.toggle_audio_in(self.list_data[i][0])
 		self.fill_list()
 
 

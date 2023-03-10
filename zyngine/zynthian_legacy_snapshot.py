@@ -143,7 +143,9 @@ class zynthian_legacy_snapshot:
 
             jackname = self.build_jackname(l["engine_name"], midi_chan)
             try:
-                state["zs3"]["zs3-0"]["chains"][chain_id]["audio_in"] = snapshot["audio_capture"][jackname]
+                for input in snapshot["audio_capture"][jackname]:
+                    if input.startswith("system:capture_"):
+                        state["zs3"]["zs3-0"]["chains"][chain_id]["audio_in"].append(int(input.split("_")[1]))
             except:
                 pass
             if info and not jackname.startswith("audioin"):
@@ -426,6 +428,7 @@ class zynthian_legacy_snapshot:
                     if mout and "mixer" not in chain["audio_out"]:
                         chain["audio_out"].append("mixer")
                     #TODO: Handle multiple outputs... Identify single common processor chain to move to main chain.
+
 
                 if "257" in zs3["chains"]:
                     zs3["chains"]["main"] = zs3["chains"].pop("257")
