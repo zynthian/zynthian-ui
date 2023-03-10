@@ -54,9 +54,9 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 		#TODO: Show chain name
 		mod_running = False
 		if self.chain_id == "main":
-			port_names = ["system"] #TODO: Get list of available system outputs
+			port_names = [["system", "system"]] #TODO: Get list of available system outputs
 		else:
-			port_names = ["mixer"]
+			port_names = [["mixer", "mixer"]]
 		jack_input_ports = list(zynautoconnect.get_audio_input_ports(True).keys())
 		for chain_id, chain in self.zyngui.chain_manager.chains.items():
 			if isinstance(chain, zynthian_engine_modui):
@@ -66,36 +66,17 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 			for processor in chain.get_processors():
 				jackname = processor.get_jackname()
 				if jackname in jack_input_ports:
-					port_names.append(jackname)
+					#TODO: Check for howl-round
+					port_names.append([f"{chain_id}/{processor.id}: {processor.get_basepath()}", processor])
 
 		if mod_running:
-			port_names.append("mod-ui")
+			port_names.append([self.chain_id, None, "mod-ui"]) #TODO: Should this now be handled by chain input
 
-		for k in port_names:
-			try:
-				title = self.chain.get_processor_by_jackname(k).get_basepath()
-			except:
-				title = k
-
-			logging.debug("AUDIO OUTPUT PORT {} => {}".format(k,title))
-			"""
-			try:
-				chan = title.split('#')[0]
-				if chan == "Main":
-					continue
-				else:
-					ch = int(chan)-1
-					if ch==self.end_chain.midi_chan or ch>15:
-						continue
-			except Exception as e:
-				#logging.debug("Can't get chain's midi chan => {}".format(e))
-				pass
-			"""
-
-			if k in self.chain.audio_out:
-				self.list_data.append((k, k, "[x] " + title))
+		for title,processor in port_names:
+			if processor in self.chain.audio_out:
+				self.list_data.append((processor, processor, "[x] " + title))
 			else:
-				self.list_data.append((k, k, "[  ] " + title))
+				self.list_data.append((processor, processor, "[  ] " + title))
 
 		if zynthian_gui_config.multichannel_recorder:
 			if self.zyngui.state_manager.audio_recorder.get_status():
@@ -121,7 +102,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 		if self.list_data[i][0] == 'record':
 			self.zyngui.state_manager.audio_recorder.toggle_arm(self.chain.midi_chan)
 		else:
-			self.chain.toggle_audio_out(self.list_data[i][1])
+			self.chain.toggle_audio_out(self.list_data[i][0])
 		self.fill_list()
 
 

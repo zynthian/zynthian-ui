@@ -139,7 +139,7 @@ class zynthian_legacy_snapshot:
                     state["zs3"]["zs3-0"]["chains"][chain_id]["note_low"] = note_range_state[midi_chan]["note_low"]
                     state["zs3"]["zs3-0"]["chains"][chain_id]["note_high"] = note_range_state[midi_chan]["note_high"]
                     state["zs3"]["zs3-0"]["chains"][chain_id]["transpose_octave"] = note_range_state[midi_chan]["octave_trans"]
-                    state["zs3"]["zs3-0"]["chains"][chain_id]["halftone_trans"] = note_range_state[midi_chan]["halftone_trans"]
+                    state["zs3"]["zs3-0"]["chains"][chain_id]["transpose_semitone"] = note_range_state[midi_chan]["halftone_trans"]
 
             jackname = self.build_jackname(l["engine_name"], midi_chan)
             try:
@@ -182,7 +182,14 @@ class zynthian_legacy_snapshot:
         if "clone" in snapshot and len(snapshot["clone"]) == 16:
             state["zs3"]["zs3-0"]["midi_clone"] = self.get_midi_clone(snapshot["clone"])
 
-        for chain in chains.values():
+        # Create map of audio only chanels for 'sidechaining'
+        audio_only_chains = {}
+        for chain_id, chain in chains.items():
+            if len(chain["midi_processors"]) + len(chain["synth_processors"]) > 0 or len(chain["audio_processors"]) == 0:
+                continue
+            audio_only_chains[chain_id] = None
+
+        for chain_id, chain in chains.items():
             audio_out = []
             midi_out = []
             # Add audio slots
@@ -283,6 +290,9 @@ class zynthian_legacy_snapshot:
                 if fixed_slot:
                     fixed_slots.append(fixed_slot)
             chain["slots"] = fixed_slots
+
+            if chain_id in audio_only_chains:
+                audio_only_chains[chain_id] = chain['audio_processors'][0] 
 
             chain.pop("midi_processors")
             chain.pop("synth_processors")
@@ -398,12 +408,29 @@ class zynthian_legacy_snapshot:
                         except:
                             pass
 
-        # Remove unrequired audio routing
-        for id,zs3 in state["zs3"].items():
-            if "257" in zs3["chains"]:
-                zs3["chains"]["main"] = zs3["chains"].pop("257")
-                if zs3["chains"]["main"]["audio_in"] == ['zynmixer:send_a', 'zynmixer:send_b']:
-                    state[id]["chains"]["main"]["audio_in"] = []
+        # Fix audio routing
+        for id, zs3 in state["zs3"].items():
+            if "chains" in zs3:
+                for chain_id, chain in zs3["chains"].items():
+                    mout = False
+                    out = []
+                    for aout in chain["audio_out"]:
+                        try:
+                            out.append(processors[aout]['id'])
+                        except:
+                            if not aout.startswith("system:playback_"): 
+                                out.append(aout)
+                            else:
+                                mout = True
+                    chain["audio_out"] = out.copy()
+                    if mout and "mixer" not in chain["audio_out"]:
+                        chain["audio_out"].append("mixer")
+                    #TODO: Handle multiple outputs... Identify single common processor chain to move to main chain.
+
+                if "257" in zs3["chains"]:
+                    zs3["chains"]["main"] = zs3["chains"].pop("257")
+                    if zs3["chains"]["main"]["audio_in"] == ['zynmixer:send_a', 'zynmixer:send_b']:
+                        zs3["chains"]["main"]["audio_in"] = []
 
         return state
 

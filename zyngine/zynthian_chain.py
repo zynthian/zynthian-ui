@@ -222,7 +222,10 @@ class zynthian_chain:
                 # Routing from capture ports
                 mixer_source = self.audio_in.copy()
             for output in self.get_audio_out():
-                self.audio_routes[output] = mixer_source
+                try:
+                    self.audio_routes[output.get_jackname()] = mixer_source
+                except:
+                    self.audio_routes[output] = mixer_source
             if "mixer" not in self.audio_out:
                 self.audio_routes["zynmixer:input_{:02d}".format(self.mixer_chan + 1)] = []
 
@@ -278,17 +281,20 @@ class zynthian_chain:
         return audio_out
 
 
-    def toggle_audio_out(self, jackname):
-        """Toggle processor audio output"""
+    def toggle_audio_out(self, processor):
+        """Toggle processor audio output
 
-        if jackname not in self.audio_out:
-            self.audio_out.append(jackname)
+        processor : Porcessor ID or "mixer" or "system"
+        """
+
+        if processor not in self.audio_out:
+            self.audio_out.append(processor)
         else:
             try:
-                self.audio_out.remove(jackname)
+                self.audio_out.remove(processor)
             except:
                 pass
-        logging.debug("Toggling Audio Output: {}".format(jackname))
+        logging.debug(f"Toggling Audio Output: {processor}")
 
         self.rebuild_audio_graph()
         zynautoconnect.request_audio_connect()

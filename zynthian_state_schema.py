@@ -109,8 +109,8 @@
                     "midi_in": ["MIDI IN"], # List of chain jack MIDI input sources (may include aliases)
                     "midi_out": ["MIDI OUT"], # List of chain jack MIDI output destinations (may include aliases)
                     "midi_thru": False, # True to allow MIDI pass-through when MIDI chain empty
-                    "audio_in": ["SYSTEM"], # List of chain jack audio input sources (may include aliases)
-                    "audio_out": ["MIXER"], # List of chain jack audio output destinations (may include aliases)
+                    "audio_in": ["system"], # List of audio capture port names, zynmixer:send or "system" for all physical inputs
+                    "audio_out": ["mixer"], # List of processor id, "mixer", "system" chain is routed to
                     "audio_thru": False, # True to allow audio pass-through when audio chain empty
                     "note_low": 0, # Lowest MIDI note chain responds to
                     "note_high": 127, # Higheset MIDI note chain responds to
@@ -118,7 +118,7 @@
                     "transpose_semitone": 0, # Semitones to transpose chain MIDI
                 },
                 #... Other chains
-            }
+            },
             "midi_clone": { # Dictionary MIDI clone configs mapped by source channel
                 "0": { # Indexed by MIDI channel to clone from (0..15)
                     "1": { # Index of MIDI channel to clone to (0..15) 
@@ -128,6 +128,7 @@
                 },
                 #... Other MIDI channels
             },
+        },
         "1/2": {}, # ZS3 for channel 1, program change 2
         "zs3-1": {}, # Manually saved ZS3 without assigned program change
         #... Other ZS3

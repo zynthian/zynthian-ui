@@ -440,7 +440,12 @@ class zynthian_state_manager:
                 if "audio_in" in chain_state:
                     chain.audio_in = chain_state["audio_in"]
                 if "audio_out" in chain_state:
-                    chain.audio_out = chain_state["audio_out"]
+                    chain.audio_out = []
+                    for out in chain_state["audio_out"]:
+                        if out in self.chain_manager.processors:
+                            chain.audio_out.append(self.chain_manager.processors[out])
+                        else:
+                            chain.audio_out.append(out)
                 if "audio_thru" in chain_state:
                     chain.audio_thru = chain_state["audio_thru"]
                 chain.rebuild_graph()
@@ -552,7 +557,13 @@ class zynthian_state_manager:
             if chain.audio_in:
                 chain_state["audio_in"] = chain.audio_in
             if chain.audio_out:
-                chain_state["audio_out"] = chain.audio_out
+                chain_state["audio_out"] = []
+                for out in chain.audio_out:
+                    proc_id = self.chain_manager.get_processor_id(out)
+                    if proc_id is None:
+                        chain_state["audio_out"].append(out)
+                    else:
+                        chain_state["audio_out"].append(proc_id)                      
             if chain.audio_thru:
                 chain_state["audio_thru"] = chain.audio_thru
             if chain_state:
