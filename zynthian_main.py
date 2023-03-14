@@ -153,6 +153,14 @@ def XXX_cb_keybinding(event):
 
 
 def cb_keybinding(event, keypress=True):
+	if not zynthian_gui_keybinding.getInstance().isEnabled():
+		logging.debug("Key binding is disabled - ignoring key press")
+		return
+
+	# TODO Is this needed?
+	# Must remove focus from listbox to avoid interference with physical keyboard
+	#zynthian_gui_config.top.focus_set()
+
 	# Space is not recognised as keysym so need to convert keycode
 	if event.keycode == 65:
 		keysym = "space"
@@ -182,8 +190,8 @@ def cb_keybinding(event, keypress=True):
 			zyngui.cuia_zynswitch(params)
 		# Or normal CUIA
 		elif keypress:
+			zyngui.set_event_flag()
 			zyngui.callable_ui_action(cuia, params)
-
 
 def cb_keypress(event):
 	logging.debug("Key Press {} {}".format(event.keycode, event.keysym))
