@@ -158,6 +158,7 @@ fi
 
 splash_zynthian
 load_config_env
+xset r off
 
 while true; do
 

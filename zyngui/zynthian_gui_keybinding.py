@@ -52,56 +52,62 @@ class zynthian_gui_keybinding:
 		'alt': 8
 	}
 
-	default_config = {
-		"enabled": True,
-		"map": {
-			"ALL_NOTES_OFF": { "modifier": 0, "keysym": "Space" },
-			"ALL_SOUNDS_OFF": { "modifier": 1, "keysym": "Space" },
-			"ALL_OFF": { "modifier": 4, "keysym": "Space" },
+	default_map = {
+		"space 0": "ALL_NOTES_OFF",
+		"space 1": "ALL_SOUNDS_OFF",
 
-			"RESTART_UI": { "modifier": 1, "keysym": "Home" },
-			"REBOOT": { "modifier": 4, "keysym": "Home" },
-			"POWER_OFF": { "modifier" : 4, "keysym" : "End" },
-			"RELOAD_MIDI_CONFIG": { "modifier": 4, "keysym": "Insert" },
+		"home 1": "RESTART_UI",
+		"home 4": "REBOOT",
+		"end 4": "POWER_OFF",
+		"insert 4": "RELOAD_MIDI_CONFIG",
 
-			"SWITCH_SELECT_SHORT": { "modifier": 0, "keysym": "l" },
-			"SWITCH_SELECT_BOLD": { "modifier": 1, "keysym": "l" },
-			"SWITCH_SELECT_LONG": { "modifier": 4, "keysym": "l" },
-			"SWITCH_BACK_SHORT": { "modifier": 0, "keysym": "k, BackSpace, Escape" },
-			"SWITCH_BACK_BOLD": { "modifier": 1, "keysym": "k, BackSpace, Escape" },
-			"SWITCH_BACK_LONG": { "modifier": 4, "keysym": "k, BackSpace, Escape" },
-			"SWITCH_LAYER_SHORT": { "modifier": 0, "keysym": "i" },
-			"SWITCH_LAYER_BOLD": { "modifier": 1, "keysym": "i" },
-			"SWITCH_LAYER_LONG": { "modifier": 4, "keysym": "i" },
-			"SWITCH_SNAPSHOT_SHORT": { "modifier": 0, "keysym": "o" },
-			"SWITCH_SNAPSHOT_BOLD": { "modifier": 1, "keysym": "o" },
-			"SWITCH_SNAPSHOT_LONG": { "modifier": 4, "keysym": "o" },
+		"i": "ZYNSWITCH 0",
+		"k": "ZYNSWITCH 1",
+		"backspace": "ZYNSWITCH 1",
+		"escape": "ZYNSWITCH 1",
+		"o": "ZYNSWITCH 2",
+		"l": "ZYNSWITCH 3",
+		"return": "ZYNSWITCH 3",
 
-			"SELECT_UP": { "modifier": 0, "keysym": "Period" },
-			"SELECT_DOWN": { "modifier": 0, "keysym": "Comma" },
-			"BACK_UP": { "modifier": 4, "keysym": "Period" },
-			"BACK_DOWN": { "modifier": 4, "keysym": "Comma" },
-			"LAYER_UP": { "modifier": 5, "keysym": "Greater" },
-			"LAYER_DOWN": { "modifier": 5, "keysym": "Less" },
-			"SNAPSHOT_UP": { "modifier": 1, "keysym": "Greater" },
-			"SNAPSHOT_DOWN": { "modifier": 1, "keysym": "Less" },
+		"period 4": "ZYNPOT 1,1",
+		"comma 4": "ZYNPOT 1,-1",
+		"period 0": "ZYNPOT 3,1",
+		"comma 0": "ZYNPOT 3,-1",
+		"greater 5": "ZYNPOT 0,1",
+		"less 5": "ZYNPOT 0,-1",
+		"greater 1": "ZYNPOT 2,1",
+		"less 1": "ZYNPOT 2,-1",
 
-			"START_AUDIO_RECORD": { "modifier": 0, "keysym": "a" },
-			"STOP_AUDIO_RECORD": { "modifier": 1, "keysym": "a" },
-			"TOGGLE_AUDIO_RECORD": { "modifier": 8, "keysym": "a" },
-			"START_AUDIO_PLAY": { "modifier": 4, "keysym": "a" },
-			"STOP_AUDIO_PLAY": { "modifier": 5, "keysym": "a" },
-			"TOGGLE_AUDIO_PLAY": { "modifier": 12, "keysym": "a" },
+		"a 0": "START_AUDIO_RECORD",
+		"a 1": "STOP_AUDIO_RECORD",
+		"a 8": "TOGGLE_AUDIO_RECORD",
+		"a 4": "START_AUDIO_PLAY",
+		"a 5": "STOP_AUDIO_PLAY",
+		"a 12": "TOGGLE_AUDIO_PLAY",
 
-			"START_MIDI_RECORD": { "modifier": 0, "keysym": "m" },
-			"STOP_MIDI_RECORD": { "modifier": 1, "keysym": "m" },
-			"TOGGLE_MIDI_RECORD": { "modifier": 8, "keysym": "m" },
-			"START_MIDI_PLAY": { "modifier": 4, "keysym": "m" },
-			"STOP_MIDI_PLAY": { "modifier": 5, "keysym": "m" },
-			"TOGGLE_MIDI_PLAY": { "modifier": 12, "keysym": "m" }
-		}
+		"m 0": "START_MIDI_RECORD",
+		"m 1": "STOP_MIDI_RECORD",
+		"m 8": "TOGGLE_MIDI_RECORD",
+		"m 4": "START_MIDI_PLAY",
+		"m 5": "STOP_MIDI_PLAY",
+		"m 12": "TOGGLE_MIDI_PLAY",
+
+		"down 0": "ARROW_DOWN",
+		"up 0": "ARROW_UP",
+		"right 0": "ARROW_RIGHT",
+		"left 0": "ARROW_LEFT",
+
+		"1": "PROGRAM_CHANGE 1",
+		"2": "PROGRAM_CHANGE 2",
+		"3": "PROGRAM_CHANGE 3",
+		"4": "PROGRAM_CHANGE 4",
+		"5": "PROGRAM_CHANGE 5",
+		"6": "PROGRAM_CHANGE 6",
+		"7": "PROGRAM_CHANGE 7",
+		"8": "PROGRAM_CHANGE 8",
+		"9": "PROGRAM_CHANGE 9",
+		"0": "PROGRAM_CHANGE 0"
 	}
-
 
 	__instance = None
 	
@@ -159,48 +165,13 @@ class zynthian_gui_keybinding:
 		"""
 	
 		logging.debug("Get keybinding function name for keysym: {}, modifier: {}".format(keysym, modifier))
-		keysym = keysym.lower()
-		rkey = "{}^{}".format(modifier, keysym)
 		try:
-			return self.rmap[rkey]
+			return self.map["{} {}".format(keysym, modifier)]
 		except:
-			if rkey == '0^down':
-				return 'ARROW_DOWN'
-			elif rkey == '0^up':
-				return 'ARROW_UP'
-			elif rkey == '0^left':
-				return 'ARROW_LEFT'
-			elif rkey == '0^right':
-				return 'ARROW_RIGHT'
-			elif rkey == '0^return':
-				return 'SWITCH_SELECT'
-			elif rkey == '1^return':
-				return 'SWITCH_SELECT B'
-			elif rkey == '0^escape':
-				return 'BACK'
-			else:
-				#Default 0..9: send program change
-				try:
-					if keysym.startswith("kp_"):
-						keysym = keysym[3:]
-					val = int(keysym)
-					return "PROGRAM_CHANGE {}".format(val)
-				except:
-					pass
-			logging.debug("Key not configured")
-
-
-	def parse_map(self):
-		"""
-		Generate reverse keymap for fast event lookup.
-		
-		"""
-		self.rmap = {}
-		for action, m in self.config['map'].items():
-			keysyms = m['keysym'].lower().split(',')
-			for ks in keysyms:
-				rkey = "{}^{}".format(m['modifier'], ks.strip())
-				self.rmap[rkey] = action
+			try:
+				return self.map[keysym]
+			except:
+				logging.debug("Key not configured")
 
 
 	def load(self, config="keybinding"):
@@ -210,7 +181,7 @@ class zynthian_gui_keybinding:
 		Parameters
 		----------
 		config : str,optional
-			Name of configuration to load - the file <config>.yaml will be loaded from the Zynthian config directory
+			Name of configuration to load - the file <config>.yaml will be loaded from the zynthian config directory
 			Default: 'keybinding'
 		
 		Returns
@@ -220,16 +191,14 @@ class zynthian_gui_keybinding:
 		"""
 
 		logging.info("Loading key binding from {}.yaml".format(config))
-		config_dir = environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
+		config_dir = environ.get('ZYNTHIAN_CONFIG_DIR', "/zynthian/config")
 		config_fpath = config_dir + "/" + config + ".yaml"
 		try:
 			with open(config_fpath, "r") as fh:
 				yml = fh.read()
-				logging.debug("Loading keyboard binding config file '{}' =>\n{}".format(config_fpath,yml))
-				self.config = yaml.load(yml, Loader=yaml.SafeLoader)
-				self.parse_map()
+				logging.debug("Loading keyboard binding config file '{}' =>\n{}".format(config_fpath, yml))
+				self.map = yaml.load(yml, Loader=yaml.SafeLoader)
 				return True
-
 		except Exception as e:
 			logging.debug("Loading default keyboard bindings.")
 			self.reset_config()
@@ -253,11 +222,11 @@ class zynthian_gui_keybinding:
 		"""
 		
 		logging.info("Saving key binding to %s.yaml", config)
-		config_dir = environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
+		config_dir = environ.get('ZYNTHIAN_CONFIG_DIR', "/zynthian/config")
 		config_fpath = config_dir + "/" + config + ".yaml"
 		try:
-			with open(config_fpath,"w") as fh:
-				yaml.dump(self.config, fh)
+			with open(config_fpath, "w") as fh:
+				yaml.dump(self.map, fh)
 				logging.info("Saving keyboard binding config file {}".format(config_fpath))
 				return True
 
@@ -266,38 +235,33 @@ class zynthian_gui_keybinding:
 			return False
 
 
-	def reset_modifiers(self):
-		"""
-		Clears all modifier settings (use before setting modifiers from webconf)
-		"""
-		
-		logging.info("Clearing key binding modifiers")
-		for action,kb in self.config['map'].items():
-			kb['modifier'] = 0
-
-
 	def reset_config(self):
 		"""
 		Reset keyboard binding to default values
 		"""
 
-		self.config = copy.copy(self.default_config)
-		self.parse_map()
+		self.map = copy.copy(self.default_map)
+		self.enable()
 
 
-	def set_binding_keysym(self, action, keysym):
-		self.config['map'][action]['keysym'] = keysym
+	def bind_key(self, keysym, modifier, cuia):
+		"""
+		Bind key/action pair
 
+		Parameters
+		----------
+		keysym : str
+			Keyboard symbol
+		modifier: int
+			Numeric key modifier. It can be OR-composed.
+		cuia: str
+			Callable UI action, including parameters
+		"""
 
-	def add_binding_modifier(self, action, mod):
-		if isinstance(mod, str):
-			try:
-				mod = self.modifiers[mod]
-			except:
-				return
-
-		self.config['map'][action]['modifier'] |= mod
-
+		if modifier is None:
+			map[keysym] = cuia
+		else:
+			map["{} {}".format(keysym, modifier)] = cuia
 
 	def enable(self, enabled=True):
 		"""
@@ -309,7 +273,7 @@ class zynthian_gui_keybinding:
 			True to enable, false to disable - default: True
 		"""
 		
-		self.config["enabled"] = enabled
+		self.enabled = enabled
 
 
 	def isEnabled(self):
@@ -321,6 +285,6 @@ class zynthian_gui_keybinding:
 		bool True if enabled
 		"""
 
-		return self.config["enabled"]
+		return self.enabled
 
 #------------------------------------------------------------------------------

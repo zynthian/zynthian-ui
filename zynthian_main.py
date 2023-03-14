@@ -126,21 +126,21 @@ zynthian_gui_config.top.protocol("WM_DELETE_WINDOW", delete_window)
 
 #Function to handle computer keyboard key press
 #	event: Key event
-def cb_keybinding(event):
+def XXX_cb_keybinding(event):
 	logging.debug("Key press {} {}".format(event.keycode, event.keysym))
-	zynthian_gui_config.top.focus_set() # Must remove focus from listbox to avoid interference with physical keyboard
+	zynthian_gui_config.top.focus_set()		# Must remove focus from listbox to avoid interference with physical keyboard
 
 	if not zynthian_gui_keybinding.getInstance().isEnabled():
 		logging.debug("Key binding is disabled - ignoring key press")
 		return
 
 	# Ignore TAB key (for now) to avoid confusing widget focus change
-	if event.keysym == "Tab":
+	if event.keysym == "tab":
 		return
 
 	# Space is not recognised as keysym so need to convert keycode
 	if event.keycode == 65:
-		keysym = "Space"
+		keysym = "space"
 	else:
 		keysym = event.keysym
 
@@ -149,8 +149,53 @@ def cb_keybinding(event):
 		zyngui.set_event_flag()
 		zyngui.callable_ui_action_params(action)
 
+#zynthian_gui_config.top.bind("<Key>", cb_keybinding)
 
-zynthian_gui_config.top.bind("<Key>", cb_keybinding)
+
+def cb_keybinding(event, keypress=True):
+	# Space is not recognised as keysym so need to convert keycode
+	if event.keycode == 65:
+		keysym = "space"
+	else:
+		keysym = event.keysym.lower()
+
+	# Ignore TAB key (for now) to avoid confusing widget focus change
+	if keysym == "tab":
+		return
+
+	cuia_str = zynthian_gui_keybinding.getInstance().get_key_action(keysym, event.state)
+	if cuia_str != None:
+		zyngui.set_event_flag()
+		parts = cuia_str.split(" ", 2)
+		cuia = parts[0].lower()
+		if len(parts) > 1:
+			params = zyngui.parse_cuia_params(parts[1])
+		else:
+			params = None
+
+		# Emulate Zynswitch Push/Release with KeyPress/KeyRelease
+		if cuia == "zynswitch" and len(params) == 1:
+			if keypress:
+				params.append('P')
+			else:
+				params.append('R')
+			zyngui.cuia_zynswitch(params)
+		# Or normal CUIA
+		elif keypress:
+			zyngui.callable_ui_action(cuia, params)
+
+
+def cb_keypress(event):
+	logging.debug("Key Press {} {}".format(event.keycode, event.keysym))
+	cb_keybinding(event, True)
+
+def cb_keyrelease(event):
+	logging.debug("Key Release {} {}".format(event.keycode, event.keysym))
+	cb_keybinding(event, False)
+
+zynthian_gui_config.top.bind("<KeyPress>", cb_keypress)
+zynthian_gui_config.top.bind("<KeyRelease>", cb_keyrelease)
+
 
 #------------------------------------------------------------------------------
 # Mouse/Touch Bindings
