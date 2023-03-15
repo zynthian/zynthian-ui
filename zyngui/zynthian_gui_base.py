@@ -645,30 +645,8 @@ class zynthian_gui_base(tkinter.Frame):
 
 
 	#--------------------------------------------------------------------------
-	# Keyboard & Mouse/Touch Callbacks
+	# Mouse/Touch Callbacks
 	#--------------------------------------------------------------------------
-
-	def cb_keybinding(self, event):
-		logging.debug("Key press {} {}".format(event.keycode, event.keysym))
-
-		if not zynthian_gui_keybinding.getInstance().isEnabled():
-			logging.debug("Key binding is disabled - ignoring key press")
-			return
-
-		# Ignore TAB key (for now) to avoid confusing widget focus change
-		if event.keysym == "Tab":
-			return
-
-		# Space is not recognised as keysym so need to convert keycode
-		if event.keycode == 65:
-			keysym = "Space"
-		else:
-			keysym = event.keysym
-
-		action = zynthian_gui_keybinding.getInstance().get_key_action(keysym, event.state)
-		if action != None:
-			self.zyngui.callable_ui_action_params(action)
-
 
 	def cb_select_path(self, *args):
 		self.select_path_width = self.select_path_font.measure(self.select_path.get())

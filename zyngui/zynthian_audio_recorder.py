@@ -30,7 +30,6 @@ from subprocess import Popen
 from datetime import datetime
 
 # Zynthian specific modules
-from zyngui import zynthian_gui_config
 
 #------------------------------------------------------------------------------
 # Zynthian Audio Recorder Class
@@ -39,12 +38,12 @@ from zyngui import zynthian_gui_config
 class zynthian_audio_recorder():
 
 
-	def __init__(self):
+	def __init__(self, state_manager):
 		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
 		self.capture_dir_usb = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
 		self.rec_proc = None
 		self.armed = set() # List of chains armed to record
-		self.zyngui = zynthian_gui_config.zyngui
+		self.state_manager = state_manager
 		self.filename = None
 
 
@@ -61,7 +60,7 @@ class zynthian_audio_recorder():
 		else:
 			path = self.capture_dir_sdc
 		try:
-			self.zyngui.status_manager.get_snapshot_name() #TODO: Implement get_snapshot_name()
+			filename = os.path.basename(self.state_manager.last_snapshot_fpath[:-4])
 		except:
 			filename = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 		filename = filename.replace("/",";").replace(">",";").replace(" ; ",";")
@@ -124,7 +123,7 @@ class zynthian_audio_recorder():
 			self.proc = None
 			return False
 
-		self.zyngui.status_manager.status_info['audio_recorder'] = "REC"
+		self.state_manager.status_info['audio_recorder'] = "REC"
 		return True
 
 
@@ -137,8 +136,8 @@ class zynthian_audio_recorder():
 			except Exception as e:
 				logging.error("ERROR STOPPING AUDIO RECORD: %s" % e)
 				return False
-			if 'audio_recorder' in self.zyngui.status_manager.status_info:
-				self.zyngui.status_manager.status_info.pop('audio_recorder')
+			if 'audio_recorder' in self.state_manager.status_info:
+				self.state_manager.status_info.pop('audio_recorder')
 			os.sync()
 			return True
 

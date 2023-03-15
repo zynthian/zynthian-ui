@@ -36,6 +36,7 @@ from time import monotonic
 from datetime import datetime
 from threading  import Thread, Lock
 from subprocess import check_output
+import os
 
 # Zynthian specific modules
 import zynconf
@@ -318,18 +319,18 @@ class zynthian_gui:
 	def osc_cb_all(self, path, args, types, src):
 		logging.info("OSC MESSAGE '{}' from '{}'".format(path, src.url))
 
-		parts = path.split("/", 2)
-		part1 = parts[1].upper()
-		if parts[0] == "" and part1 == "CUIA":
+		parts = path.upper().split("/", 2)
+		#TODO: message may have fewer parts than expected
+		if parts[0] == "" and parts[1] == "CUIA":
 			self.set_event_flag()
 			# Execute action
-			self.callable_ui_action(parts[2].upper(), args)
+			self.callable_ui_action(parts[2], args)
 			#Run autoconnect if needed
 			zynautoconnect.request_audio_connect()
 			zynautoconnect.request_midi_connect()
-		elif part1 in ("MIXER", "DAWOSC"):
+		elif parts[1] in ("MIXER", "DAWOSC"):
 			self.set_event_flag()
-			part2 = parts[2].upper()
+			part2 = parts[2]
 			if part2 in ("HEARTBEAT", "SETUP"):
 				if src.hostname not in self.osc_clients:
 					try:
@@ -358,7 +359,7 @@ class zynthian_gui:
 				elif part2[:4] == "MONO":
 					self.state_manager.zynmixer.set_mono(int(part2[4:]), int(args[0]))
 		else:
-			logging.warning("Not supported OSC call '{}'".format(path))
+			logging.warning(f"Not supported OSC call '{path}'")
 
 		#for a, t in zip(args, types):
 		#	logging.debug("argument of type '%s': %s" % (t, a))
@@ -875,30 +876,29 @@ class zynthian_gui:
 
 	# Audio & MIDI Recording/Playback actions
 	def cuia_start_audio_record(self, params):
-		self.audio_recorder.start_recording()
+		self.state_manager.audio_recorder.start_recording()
 		self.refresh_signal("AUDIO_RECORD")
 
 	def cuia_stop_audio_record(self, params):
-		self.audio_recorder.stop_recording()
+		self.state_manager.audio_recorder.stop_recording()
 		self.refresh_signal("AUDIO_RECORD")
 
 	def cuia_toggle_audio_record(self, params):
-		self.audio_recorder.toggle_recording()
+		self.state_manager.audio_recorder.toggle_recording()
 		self.refresh_signal("AUDIO_RECORD")
 
 	def cuia_start_audio_play(self, params):
-		self.start_audio_player()
+		self.state_manager.start_audio_player()
 
 	def cuia_stop_audio_play(self, params):
-		self.stop_audio_player()
+		self.state_manager.stop_audio_player()
 
 	def cuia_toggle_audio_play(self, params):
+		#TODO: This logic should not be here
 		if self.current_screen == "pattern_editor":
 			self.screens["pattern_editor"].toggle_playback()
-		elif self.audio_player and self.audio_player.engine.player.get_playback_state(16):
-			self.stop_audio_player()
 		else:
-			self.start_audio_player()
+			self.state_manager.toggle_audio_player()
 
 	def cuia_start_midi_record(self, params):
 		self.screens['midi_recorder'].start_recording()
@@ -990,24 +990,24 @@ class zynthian_gui:
 			return
 
 		if t == 'P':
-			self.zynswitch_cuia_ts[i] = datetime.now()
+			self.state_manager.zynswitch_cuia_ts[i] = datetime.now()
 			self.zynswitch_timing(i, 0)
 		elif t == 'R':
-			if self.zynswitch_cuia_ts[i]:
-				dtus = int(1000000 * (datetime.now() - self.zynswitch_cuia_ts[i]).total_seconds())
-				self.zynswitch_cuia_ts[i] = None
+			if self.state_manager.zynswitch_cuia_ts[i]:
+				dtus = int(1000000 * (datetime.now() - self.state_manager.zynswitch_cuia_ts[i]).total_seconds())
+				self.state_manager.zynswitch_cuia_ts[i] = None
 				self.zynswitch_timing(i, dtus)
 		elif t == 'S':
-			self.zynswitch_cuia_ts[i] = None
+			self.state_manager.zynswitch_cuia_ts[i] = None
 			self.zynswitch_short(i)
 		elif t == 'B':
-			self.zynswitch_cuia_ts[i] = None
+			self.state_manager.zynswitch_cuia_ts[i] = None
 			self.zynswitch_bold(i)
 		elif t == 'L':
-			self.zynswitch_cuia_ts[i] = None
+			self.state_manager.zynswitch_cuia_ts[i] = None
 			self.zynswitch_long(i)
 		else:
-			self.zynswitch_cuia_ts[i] = None
+			self.state_manager.zynswitch_cuia_ts[i] = None
 			logging.warning("Unknown Action Type: {}".format(t))
 
 	# Basic UI-Control CUIAs

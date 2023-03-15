@@ -70,7 +70,7 @@ class zynthian_state_manager:
         self.alsa_mixer_processor = zynthian_processor("MX", ("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_alsa_mixer, True))
         self.alsa_mixer_processor.engine = zynthian_engine_alsa_mixer()
         self.alsa_mixer_processor.refresh_controllers()
-        self.audio_recorder = zynthian_audio_recorder()
+        self.audio_recorder = zynthian_audio_recorder(self)
         self.zynmixer = zynthian_engine_audio_mixer.zynmixer()
         self.zynseq = zynseq.zynseq()
         self.audio_player = None
@@ -1057,6 +1057,7 @@ class zynthian_state_manager:
     # -------------------------------------------------------------------
 
     # Init Standard Zynswitches
+    #TODO: This should be in UI code
     def zynswitches_init(self):
         if not get_lib_zyncore(): return
         logging.info("INIT {} ZYNSWITCHES ...".format(zynthian_gui_config.num_zynswitches))
