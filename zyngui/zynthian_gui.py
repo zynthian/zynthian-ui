@@ -1254,7 +1254,7 @@ class zynthian_gui:
 				elif i < 0 and main_fxchain:
 					self.layer_control(main_fxchain)
 			except Exception as e:
-				logging.warning("Can't change to layer {}! => {}".format(params[0],e))
+				logging.warning("Can't change to layer {}! => {}".format(params[0], e))
 		else:
 			self.layer_control()
 
