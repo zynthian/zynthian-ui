@@ -1106,11 +1106,15 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Pre-select all controls in a chain to allow selection of actual control to MIDI learn
 	def toggle_midi_learn(self):
-		self.midi_learning = not self.midi_learning
-		for strip in self.visible_mixer_strips:
-			if strip.chain:
-				strip.enable_midi_learn(self.midi_learning)
-		self.main_mixbus_strip.enable_midi_learn(self.midi_learning)
+		if self.midi_learning:
+			self.exit_midi_learn()
+			self.zyngui.show_screen("zs3_learn")
+		else:
+			self.midi_learning = True
+			for strip in self.visible_mixer_strips:
+				if strip.chain:
+					strip.enable_midi_learn(self.midi_learning)
+			self.main_mixbus_strip.enable_midi_learn(self.midi_learning)
 		return self.midi_learning
 
 

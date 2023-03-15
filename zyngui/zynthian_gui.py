@@ -1206,7 +1206,7 @@ class zynthian_gui:
 	def cuia_toggle_midi_learn(self, params=None):
 		try:
 			state = self.screens[self.current_screen].toggle_midi_learn()
-			self.stat_manager.set_midi_learn(state)
+			self.state_manager.set_midi_learn(state)
 		except:
 			if self.state_manager.midi_learn_state:
 				self.cuia_disable_midi_learn(params)
