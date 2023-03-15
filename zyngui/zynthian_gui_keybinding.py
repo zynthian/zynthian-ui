@@ -29,6 +29,7 @@ import oyaml as yaml
 import logging
 import copy
 
+
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 
@@ -250,22 +251,23 @@ class zynthian_gui_keybinding:
 		self.enable()
 
 
-	def bind_key(self, keysym, modifier, cuia):
+	def bind_key(self, keycode, modifier, cuia):
 		"""
 		Bind key/action pair
 		Parameters
 		----------
-		keysym : str
-			Keyboard symbol
-		modifier: int
-			Numeric key modifier. It can be OR-composed.
+		keycode : int
+			Keyboard code
+		modifier: int or None
+			Bitwise OR of key modifier flags or None to ignore modifiers
 		cuia: str
 			Callable UI action, including parameters
 		"""
 
 		if modifier is None:
-			modifier = 0
-		map["{} {}".format(keysym, modifier)] = cuia
+			self.map[f"{keycode}"] = cuia
+		else:
+			self.map[f"{keycode} {modifier}"] = cuia
 
 
 	def enable(self, enabled=True):

@@ -23,21 +23,19 @@
 #
 #******************************************************************************
 
-import os
 import sys
 import signal
 import ctypes
 import logging
+from tkinter import EventType
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
-from zyngine import zynthian_state_manager
 from zyngine.zynthian_chain import *
 from zyncoder.zyncore import get_lib_zyncore
 from zyngui.zynthian_gui import zynthian_gui
 from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 from zynlibs.zynseq import *
-import zynautoconnect
 
 #******************************************************************************
 #------------------------------------------------------------------------------
@@ -154,13 +152,13 @@ def cb_keybinding(event):
 
 		# Emulate Zynswitch Push/Release with KeyPress/KeyRelease
 		if cuia == "zynswitch" and len(params) == 1:
-			if event.type=="2":
+			if event.type == EventType.KeyPress:
 				params.append('P')
 			else:
 				params.append('R')
 			zyngui.cuia_zynswitch(params)
 		# Or normal CUIA
-		elif event.type=="2":
+		elif event.type == EventType.KeyPress:
 			zyngui.set_event_flag()
 			zyngui.callable_ui_action(cuia, params)
 
