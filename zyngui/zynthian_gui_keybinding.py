@@ -5,7 +5,7 @@
 # 
 # Zynthian Keyboard Binding Class
 # 
-# Copyright (C) 2019-2022 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2019-2023 Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 # 
@@ -28,7 +28,7 @@ from sys import stderr
 import oyaml as yaml
 import logging
 import copy
-import liblo
+
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -49,65 +49,69 @@ class zynthian_gui_keybinding:
 		'shift': 1,
 		'caps': 2,
 		'ctrl': 4,
-		'alt': 8
+		'alt': 8,
+		'num': 16,
+		'super': 64,
+		'altgr': 128
 	}
 
 	default_map = {
-		"space 0": "ALL_NOTES_OFF",
-		"space 1": "ALL_SOUNDS_OFF",
+		"65 0": "ALL_NOTES_OFF",
+		"65 1": "ALL_SOUNDS_OFF",
 
-		"home 1": "RESTART_UI",
-		"home 4": "REBOOT",
-		"end 4": "POWER_OFF",
-		"insert 4": "RELOAD_MIDI_CONFIG",
+		"110 1": "RESTART_UI",
+		"110 4": "REBOOT",
+		"115 4": "POWER_OFF",
+		"118 4": "RELOAD_MIDI_CONFIG",
 
-		"i": "ZYNSWITCH 0",
-		"k": "ZYNSWITCH 1",
-		"backspace": "ZYNSWITCH 1",
-		"escape": "ZYNSWITCH 1",
-		"o": "ZYNSWITCH 2",
-		"l": "ZYNSWITCH 3",
-		"return": "ZYNSWITCH 3",
+		"31 0": "ZYNSWITCH 0",
+		"45 0": "ZYNSWITCH 1",
+		"22 0": "ZYNSWITCH 1",
+		"9 0": "ZYNSWITCH 1",
+		"32 0": "ZYNSWITCH 2",
+		"46 0": "ZYNSWITCH 3",
+		"36 0": "ZYNSWITCH 3",
 
-		"period 4": "ZYNPOT 1,1",
-		"comma 4": "ZYNPOT 1,-1",
-		"period 0": "ZYNPOT 3,1",
-		"comma 0": "ZYNPOT 3,-1",
-		"greater 5": "ZYNPOT 0,1",
-		"less 5": "ZYNPOT 0,-1",
-		"greater 1": "ZYNPOT 2,1",
-		"less 1": "ZYNPOT 2,-1",
+		"60 4": "ZYNPOT 1,1",
+		"59 4": "ZYNPOT 1,-1",
+		"60 0": "ZYNPOT 3,1",
+		"59 0": "ZYNPOT 3,-1",
+		"60 5": "ZYNPOT 0,1",
+		"59 5": "ZYNPOT 0,-1",
+		"60 1": "ZYNPOT 2,1",
+		"59 1": "ZYNPOT 2,-1",
 
-		"a 0": "START_AUDIO_RECORD",
-		"a 1": "STOP_AUDIO_RECORD",
-		"a 8": "TOGGLE_AUDIO_RECORD",
-		"a 4": "START_AUDIO_PLAY",
-		"a 5": "STOP_AUDIO_PLAY",
-		"a 12": "TOGGLE_AUDIO_PLAY",
+		"38 0": "START_AUDIO_RECORD",
+		"38 1": "STOP_AUDIO_RECORD",
+		"38 8": "TOGGLE_AUDIO_RECORD",
+		"38 4": "START_AUDIO_PLAY",
+		"38 5": "STOP_AUDIO_PLAY",
+		"38 12": "TOGGLE_AUDIO_PLAY",
 
-		"m 0": "START_MIDI_RECORD",
-		"m 1": "STOP_MIDI_RECORD",
-		"m 8": "TOGGLE_MIDI_RECORD",
-		"m 4": "START_MIDI_PLAY",
-		"m 5": "STOP_MIDI_PLAY",
-		"m 12": "TOGGLE_MIDI_PLAY",
+		"58 0": "START_MIDI_RECORD",
+		"58 1": "STOP_MIDI_RECORD",
+		"58 8": "TOGGLE_MIDI_RECORD",
+		"58 4": "START_MIDI_PLAY",
+		"58 5": "STOP_MIDI_PLAY",
+		"58 12": "TOGGLE_MIDI_PLAY",
 
-		"down 0": "ARROW_DOWN",
-		"up 0": "ARROW_UP",
-		"right 0": "ARROW_RIGHT",
-		"left 0": "ARROW_LEFT",
+		"116": "ARROW_DOWN",
+		"111": "ARROW_UP",
+		"114": "ARROW_RIGHT",
+		"113": "ARROW_LEFT",
 
-		"1": "PROGRAM_CHANGE 1",
-		"2": "PROGRAM_CHANGE 2",
-		"3": "PROGRAM_CHANGE 3",
-		"4": "PROGRAM_CHANGE 4",
-		"5": "PROGRAM_CHANGE 5",
-		"6": "PROGRAM_CHANGE 6",
-		"7": "PROGRAM_CHANGE 7",
-		"8": "PROGRAM_CHANGE 8",
-		"9": "PROGRAM_CHANGE 9",
-		"0": "PROGRAM_CHANGE 0"
+		"10": "PROGRAM_CHANGE 1",
+		"11": "PROGRAM_CHANGE 2",
+		"12": "PROGRAM_CHANGE 3",
+		"13": "PROGRAM_CHANGE 4",
+		"14": "PROGRAM_CHANGE 5",
+		"15": "PROGRAM_CHANGE 6",
+		"16": "PROGRAM_CHANGE 7",
+		"17": "PROGRAM_CHANGE 8",
+		"18": "PROGRAM_CHANGE 9",
+		"19": "PROGRAM_CHANGE 0"
 	}
+
 
 	__instance = None
 	
@@ -146,16 +150,17 @@ class zynthian_gui_keybinding:
 		self.reset_config()
 
 
-	def get_key_action(self, keysym, modifier):
+	def get_key_action(self, keycode, modifier):
 		"""
 		Get the name of the function bound to the key combination passed
 		
 		Parameters
 		----------
-		keysym : str
-			Keyboard symbol to lookup
-		modifier : int
-			Keyboard modifier to lookup [0: none, 1: shift, 2: capslock, 4: ctrl, 8: alt]
+		keycode : int
+			Keyboard code to lookup
+		modifier : int or None
+			Keyboard modifier to lookup [0: none, 1: shift, 2: capslock, 4: ctrl, 8: alt, 16: numlock, 64: super, 128: altgr]
+			None to match any modifer (other configurations with modifiers will be captured first)
 
 		Returns
 		-------
@@ -164,12 +169,14 @@ class zynthian_gui_keybinding:
 			<None> if no match found		
 		"""
 	
-		logging.debug("Get keybinding function name for keysym: {}, modifier: {}".format(keysym, modifier))
+		logging.debug(f"Get keybinding function name for keycode: {keycode}, modifier: {modifier}")
 		try:
-			return self.map["{} {}".format(keysym, modifier)]
+			# Check for defined modifier
+			return self.map[f"{keycode} {modifier}"]
 		except:
 			try:
-				return self.map[keysym]
+				# Check for "any" modifier
+				return self.map[keycode]
 			except:
 				logging.debug("Key not configured")
 
@@ -244,24 +251,24 @@ class zynthian_gui_keybinding:
 		self.enable()
 
 
-	def bind_key(self, keysym, modifier, cuia):
+	def bind_key(self, keycode, modifier, cuia):
 		"""
 		Bind key/action pair
-
 		Parameters
 		----------
-		keysym : str
-			Keyboard symbol
-		modifier: int
-			Numeric key modifier. It can be OR-composed.
+		keycode : int
+			Keyboard code
+		modifier: int or None
+			Bitwise OR of key modifier flags or None to ignore modifiers
 		cuia: str
 			Callable UI action, including parameters
 		"""
 
 		if modifier is None:
-			map[keysym] = cuia
+			self.map[f"{keycode}"] = cuia
 		else:
-			map["{} {}".format(keysym, modifier)] = cuia
+			self.map[f"{keycode} {modifier}"] = cuia
+
 
 	def enable(self, enabled=True):
 		"""

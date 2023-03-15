@@ -23,11 +23,11 @@
 #
 #******************************************************************************
 
-import os
 import sys
 import signal
 import ctypes
 import logging
+from tkinter import EventType
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -124,54 +124,21 @@ zynthian_gui_config.top.protocol("WM_DELETE_WINDOW", delete_window)
 # Key Bindings
 #------------------------------------------------------------------------------
 
-#Function to handle computer keyboard key press
-#	event: Key event
-def XXX_cb_keybinding(event):
-	logging.debug("Key press {} {}".format(event.keycode, event.keysym))
-	zynthian_gui_config.top.focus_set()		# Must remove focus from listbox to avoid interference with physical keyboard
+"""Handle key press/release event
 
+event : key event
+keypress : True if press, False if release
+"""
+def cb_keybinding(event):
 	if not zynthian_gui_keybinding.getInstance().isEnabled():
 		logging.debug("Key binding is disabled - ignoring key press")
 		return
 
-	# Ignore TAB key (for now) to avoid confusing widget focus change
-	if event.keysym == "tab":
-		return
+	# Avoid TAB confusing widget focus change
+	if event.keycode == 23:
+		zynthian_gui_config.top.focus_set()
 
-	# Space is not recognised as keysym so need to convert keycode
-	if event.keycode == 65:
-		keysym = "space"
-	else:
-		keysym = event.keysym
-
-	action = zynthian_gui_keybinding.getInstance().get_key_action(keysym, event.state)
-	if action != None:
-		zyngui.set_event_flag()
-		zyngui.callable_ui_action_params(action)
-
-#zynthian_gui_config.top.bind("<Key>", cb_keybinding)
-
-
-def cb_keybinding(event, keypress=True):
-	if not zynthian_gui_keybinding.getInstance().isEnabled():
-		logging.debug("Key binding is disabled - ignoring key press")
-		return
-
-	# TODO Is this needed?
-	# Must remove focus from listbox to avoid interference with physical keyboard
-	#zynthian_gui_config.top.focus_set()
-
-	# Space is not recognised as keysym so need to convert keycode
-	if event.keycode == 65:
-		keysym = "space"
-	else:
-		keysym = event.keysym.lower()
-
-	# Ignore TAB key (for now) to avoid confusing widget focus change
-	if keysym == "tab":
-		return
-
-	cuia_str = zynthian_gui_keybinding.getInstance().get_key_action(keysym, event.state)
+	cuia_str = zynthian_gui_keybinding.getInstance().get_key_action(event.keycode, event.state)
 	if cuia_str != None:
 		zyngui.set_event_flag()
 		parts = cuia_str.split(" ", 2)
@@ -183,26 +150,19 @@ def cb_keybinding(event, keypress=True):
 
 		# Emulate Zynswitch Push/Release with KeyPress/KeyRelease
 		if cuia == "zynswitch" and len(params) == 1:
-			if keypress:
+			if event.type == EventType.KeyPress:
 				params.append('P')
 			else:
 				params.append('R')
 			zyngui.cuia_zynswitch(params)
 		# Or normal CUIA
-		elif keypress:
+		elif event.type == EventType.KeyPress:
 			zyngui.set_event_flag()
 			zyngui.callable_ui_action(cuia, params)
 
-def cb_keypress(event):
-	logging.debug("Key Press {} {}".format(event.keycode, event.keysym))
-	cb_keybinding(event, True)
 
-def cb_keyrelease(event):
-	logging.debug("Key Release {} {}".format(event.keycode, event.keysym))
-	cb_keybinding(event, False)
-
-zynthian_gui_config.top.bind("<KeyPress>", cb_keypress)
-zynthian_gui_config.top.bind("<KeyRelease>", cb_keyrelease)
+zynthian_gui_config.top.bind("<KeyPress>", cb_keybinding)
+zynthian_gui_config.top.bind("<KeyRelease>", cb_keybinding)
 
 
 #------------------------------------------------------------------------------
