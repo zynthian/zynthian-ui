@@ -415,22 +415,23 @@ class zynthian_state_manager:
                 chain = self.chain_manager.get_chain(chain_id)
                 if not chain:
                     continue
-                if "note_low" in chain_state:
-                    get_lib_zyncore().set_midi_filter_note_low(chain.midi_chan, chain_state["note_low"])
-                else:
-                    get_lib_zyncore().set_midi_filter_note_low(chain.midi_chan, 0)
-                if "note_high" in chain_state:
-                    get_lib_zyncore().set_midi_filter_note_high(chain.midi_chan, chain_state["note_high"])
-                else:
-                    get_lib_zyncore().set_midi_filter_note_high(chain.midi_chan, 127)
-                if "transpose_octave" in chain_state:
-                    get_lib_zyncore().set_midi_filter_transpose_octave(chain.midi_chan, chain_state["transpose_octave"])
-                else:
-                    get_lib_zyncore().set_midi_filter_transpose_octave(chain.midi_chan, 0)
-                if "transpose_semitone" in chain_state:
-                    get_lib_zyncore().set_midi_filter_transpose_semitone(chain.midi_chan, chain_state["transpose_semitone"])
-                else:
-                    get_lib_zyncore().set_midi_filter_transpose_semitone(chain.midi_chan, 0)
+                if chain.midi_chan is not None:
+                    if "note_low" in chain_state:
+                        get_lib_zyncore().set_midi_filter_note_low(chain.midi_chan, chain_state["note_low"])
+                    else:
+                        get_lib_zyncore().set_midi_filter_note_low(chain.midi_chan, 0)
+                    if "note_high" in chain_state:
+                        get_lib_zyncore().set_midi_filter_note_high(chain.midi_chan, chain_state["note_high"])
+                    else:
+                        get_lib_zyncore().set_midi_filter_note_high(chain.midi_chan, 127)
+                    if "transpose_octave" in chain_state:
+                        get_lib_zyncore().set_midi_filter_transpose_octave(chain.midi_chan, chain_state["transpose_octave"])
+                    else:
+                        get_lib_zyncore().set_midi_filter_transpose_octave(chain.midi_chan, 0)
+                    if "transpose_semitone" in chain_state:
+                        get_lib_zyncore().set_midi_filter_transpose_semitone(chain.midi_chan, chain_state["transpose_semitone"])
+                    else:
+                        get_lib_zyncore().set_midi_filter_transpose_semitone(chain.midi_chan, 0)
                 if "midi_in" in chain_state:
                     chain.midi_in = chain_state["midi_in"]
                 if "midi_out" in chain_state:
