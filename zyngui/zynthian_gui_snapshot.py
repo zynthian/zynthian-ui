@@ -325,6 +325,8 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 		if option == "Load":
 			state = self.zyngui.state_manager.load_snapshot(fpath)
+			if state is None:
+				self.zyngui.clean_all()
 			if state and "zyngui" in state:
 				if self.load_zyngui(state["zyngui"]):
 					return

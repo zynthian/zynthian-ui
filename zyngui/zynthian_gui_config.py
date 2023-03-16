@@ -108,30 +108,30 @@ def config_custom_switches():
 		custom_type = os.environ.get(root_varname, "")
 
 		if custom_type == "UI_ACTION_PUSH":
-			cuias['P'] = os.environ.get(root_varname + "__UI_PUSH", "")
+			cuias['P'] = os.environ.get(root_varname + "__UI_PUSH", "").strip()
 			cuias['S'] = ""
 			cuias['B'] = ""
 			cuias['L'] = ""
 		elif custom_type == "UI_ACTION" or custom_type == "UI_ACTION_RELEASE":
 			cuias['P'] = ""
-			cuias['S'] = os.environ.get(root_varname + "__UI_SHORT", "")
-			cuias['B'] = os.environ.get(root_varname + "__UI_BOLD", "")
-			cuias['L'] = os.environ.get(root_varname + "__UI_LONG", "")
+			cuias['S'] = os.environ.get(root_varname + "__UI_SHORT", "").strip()
+			cuias['B'] = os.environ.get(root_varname + "__UI_BOLD", "").strip()
+			cuias['L'] = os.environ.get(root_varname + "__UI_LONG", "").strip()
 		elif custom_type != "":
 			evtype = None
-			if custom_type=="MIDI_CC":
+			if custom_type == "MIDI_CC":
 				evtype = 0xB
-			elif custom_type=="MIDI_NOTE":
+			elif custom_type == "MIDI_NOTE":
 				evtype = 0x9
-			elif custom_type=="MIDI_PROG_CHANGE":
+			elif custom_type == "MIDI_PROG_CHANGE":
 				evtype = 0xC
-			elif custom_type=="CVGATE_IN":
+			elif custom_type == "CVGATE_IN":
 				evtype = -4
-			elif custom_type=="CVGATE_OUT":
+			elif custom_type == "CVGATE_OUT":
 				evtype = -5
-			elif custom_type=="GATE_OUT":
+			elif custom_type == "GATE_OUT":
 				evtype = -6
-			elif custom_type=="MIDI_CC_SWITCH":
+			elif custom_type == "MIDI_CC_SWITCH":
 				evtype = -7
 
 			if evtype:

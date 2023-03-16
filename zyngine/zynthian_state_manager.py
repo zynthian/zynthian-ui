@@ -119,6 +119,7 @@ class zynthian_state_manager:
         self.zynseq.load("")
         self.chain_manager.remove_all_chains(True)
         self.reset_zs3()
+        self.busy.clear()
 
     def start(self):
         """Start state manager"""
@@ -182,7 +183,7 @@ class zynthian_state_manager:
         self.clean_zs3()
         state = {
             'schema_version': SNAPSHOT_SCHEMA_VERSION,
-            'last_snapshot_fpath': self.last_snapshot_fpath, #TODO: Why is this required?
+            'last_snapshot_fpath': self.last_snapshot_fpath,
             'midi_profile_state': self.get_midi_profile_state(),
             'chains': self.chain_manager.get_state(),
             'zs3': self.zs3
@@ -430,7 +431,6 @@ class zynthian_state_manager:
                     get_lib_zyncore().set_midi_filter_transpose_semitone(chain.midi_chan, chain_state["transpose_semitone"])
                 else:
                     get_lib_zyncore().set_midi_filter_transpose_semitone(chain.midi_chan, 0)
-                #TODO: Use default values
                 if "midi_in" in chain_state:
                     chain.midi_in = chain_state["midi_in"]
                 if "midi_out" in chain_state:

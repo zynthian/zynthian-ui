@@ -206,7 +206,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 	#TODO: Do not use system default files in /usr/share
 	#TODO: Use paths from global config
-	config_fpath = "/usr/share/aeolus/stops/Aeolus/definition"
+	stops_fpath = "/zynthian/zynthian-data/aeolus/stops"
 	user_presets_fpath = "/zynthian/zynthian-my-data/presets/aeolus.json"
 	default_presets_fpath = "/zynthian/zynthian-data/presets/aeolus.json"
 
@@ -280,7 +280,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.osc_init()
 		self.get_current_config()
 		self.ready = False
-		self.command = f"aeolus -o {self.osc_target_port} -O localhost:{self.osc_server_port}"
+		self.command = f"aeolus -o {self.osc_target_port} -O localhost:{self.osc_server_port} -S {self.stops_fpath}"
 
 		#self.command = ["aeolus", f"-o {self.osc_target_port}", f"-O localhost:{self.osc_server_port}"]
 		if not self.config_remote_display():
@@ -311,7 +311,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 	def get_current_config(self):
 		# Get current config ...
-		with open(self.config_fpath, 'r') as cfg_file:
+		with open(f"{self.stops_fpath}/Aeolus/definition", 'r') as cfg_file:
 			config_lines = cfg_file.readlines()
 		for line in config_lines:
 			if line.startswith("/tuning"):

@@ -935,13 +935,13 @@ class zynthian_chain_manager():
 
         self.midi_learn_map = {}
         for id, param_list in state.items():
-            try:
-                params = []
-                for param in param_list:
+            params = []
+            for param in param_list:
+                try:
                     params.append([self.processors[int(param[0])], param[1]])
-                self.midi_learn_map[int(id)] = params
-            except:
-                logging.warning("Failed to parse MIDI learn parameter")
+                except:
+                    logging.warning(f"Failed to add MIDI learn for parameters {param}")
+            self.midi_learn_map[int(id)] = params
 
     def get_midi_learn_state(self):
         """Get MIDI learn state as dictionary

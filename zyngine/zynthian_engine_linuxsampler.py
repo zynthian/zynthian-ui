@@ -129,7 +129,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	def lscp_connect(self):
 		logging.info("Connecting with LinuxSampler Server...")
-		self.state_manager.start_busy("lscp")
+		self.state_manager.start_busy("linux_sampler")
 		self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.sock.setblocking(False)
 		self.sock.settimeout(1)
@@ -167,20 +167,21 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			line = self.sock.recv(4096)
 		except Exception as err:
 			logging.error("FAILED lscp_send_single(%s): %s" % (command,err))
-			self.state_manager.end_busy("lscp")
+			self.state_manager.end_busy("linux_sampler")
 			return None
 		line = line.decode()
 		#logging.debug("LSCP RECEIVE => %s" % line)
 		if line[0:2] == "OK":
 			result = self.lscp_get_result_index(line)
+			self.state_manager.end_busy("linux_sampler")
 			return result
 		elif line[0:3] == "ERR":
 			parts = line.split(':')
-			self.state_manager.end_busy("lscp")
+			self.state_manager.end_busy("linux_sampler")
 			raise zyngine_lscp_error("{} ({} {})".format(parts[2], parts[0], parts[1]))
 		elif line[0:3] == "WRN":
 			parts = line.split(':')
-			self.state_manager.end_busy("lscp")
+			self.state_manager.end_busy("linux_sampler")
 			raise zyngine_lscp_warning("{} ({} {})".format(parts[2], parts[0], parts[1]))
 
 
@@ -192,7 +193,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			result = self.sock.recv(4096)
 		except Exception as err:
 			logging.error("FAILED lscp_send_multi(%s): %s" % (command,err))
-			self.state_manager.end_busy("lscp")
+			self.state_manager.end_busy("linux_sampler")
 			return None
 		lines = result.decode().split("\r\n")
 		result = OrderedDict()
@@ -202,15 +203,14 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 				result = self.lscp_get_result_index(line)
 			elif line[0:3] == "ERR":
 				parts = line.split(':')
-				self.state_manager.end_busy("lscp")
 				raise zyngine_lscp_error("{} ({} {})".format(parts[2], parts[0], parts[1]))
 			elif line[0:3] == "WRN":
 				parts = line.split(':')
-				self.state_manager.end_busy("lscp")
 				raise zyngine_lscp_warning("{} ({} {})".format(parts[2], parts[0], parts[1]))
 			elif len(line) > 3:
 				parts = line.split(':')
 				result[parts[0]] = parts[1]
+		self.state_manager.end_busy("linux_sampler")
 		return result
 
 	# ---------------------------------------------------------------------------

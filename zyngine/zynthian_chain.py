@@ -294,7 +294,7 @@ class zynthian_chain:
         audio_out = []
         for output in self.audio_out:
             if output == "mixer":
-                if self.mixer_chan < 16:
+                if self.mixer_chan < 17:
                     audio_out.append("zynmixer:input_{:02d}".format(self.mixer_chan + 1))
                 else:
                     audio_out.append("zynmixer:return")

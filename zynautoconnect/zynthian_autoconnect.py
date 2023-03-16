@@ -374,8 +374,8 @@ def audio_autoconnect():
 	# Chain audio routing
 	for chain_id in chain_manager.chains:
 		routes = chain_manager.get_chain_audio_routing(chain_id)
-		if "zynmixer:return" in routes and "zynmixer:send" in routes["zynmixer:return"]:
-			routes["zynmixer:return"].remove("zynmixer:send")
+		#if "zynmixer:return" in routes and "zynmixer:send" in routes["zynmixer:return"]:
+		#	routes["zynmixer:return"].remove("zynmixer:send")
 		for dst in routes:
 			dst_ports = jclient.get_ports(dst, is_input=True, is_audio=True)
 			dst_count = len(dst_ports)

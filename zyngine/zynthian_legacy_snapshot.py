@@ -191,6 +191,8 @@ class zynthian_legacy_snapshot:
                 continue
             audio_only_chains[chain_id] = None
 
+        aeolus_done = False
+        setBfree_done = False
         for chain_id, chain in chains.items():
             audio_out = []
             midi_out = []
@@ -234,7 +236,15 @@ class zynthian_legacy_snapshot:
                 chain["slots"].insert(0, chain["synth_processors"])
                 if not chain["audio_processors"]:
                     try:
-                        audio_out = snapshot["audio_routing"][chain["synth_processors"][0]]
+                        proc_name = chain["synth_processors"][0]
+                        if (proc_name == "aeolus" and aeolus_done) or (proc_name == "setBfree" and setBfree_done):
+                            chain["mixer_chan"] = None
+                        else:
+                            audio_out = snapshot["audio_routing"][chain["synth_processors"][0]]
+                            if proc_name == "aeolus":
+                                aeolus_done = True
+                            if proc_name == "setBfree":
+                                setBfree_done = True
                     except:
                         pass # MIDI only chains for synth engines should be ignored
 
@@ -413,6 +423,8 @@ class zynthian_legacy_snapshot:
         # Fix audio routing
         for id, zs3 in state["zs3"].items():
             if "chains" in zs3:
+                if "257" in zs3["chains"]:
+                    zs3["chains"]["main"] = zs3["chains"].pop("257")
                 for chain_id, chain in zs3["chains"].items():
                     mout = False
                     out = []
@@ -427,13 +439,13 @@ class zynthian_legacy_snapshot:
                     chain["audio_out"] = out.copy()
                     if mout and "mixer" not in chain["audio_out"]:
                         chain["audio_out"].append("mixer")
+                    if chain_id == "main":
+                        if state["chains"]["main"]["slots"]:
+                            chain["audio_in"] = ["zynmixer:send"]
+                        else:
+                            chain["audio_in"] = []
+
                     #TODO: Handle multiple outputs... Identify single common processor chain to move to main chain.
-
-
-                if "257" in zs3["chains"]:
-                    zs3["chains"]["main"] = zs3["chains"].pop("257")
-                    if zs3["chains"]["main"]["audio_in"] == ['zynmixer:send_a', 'zynmixer:send_b']:
-                        zs3["chains"]["main"]["audio_in"] = []
 
         return state
 
@@ -481,6 +493,8 @@ class zynthian_legacy_snapshot:
             self.setBfree_count += 1
         elif name.startswith("Pianoteq"):
             jackname = "Pianoteq"
+        elif name == "SooperLooper":
+            jackname = "sooperlooper"
         else:
             if name in ["Sfizz"]:
                 name = name.lower()
