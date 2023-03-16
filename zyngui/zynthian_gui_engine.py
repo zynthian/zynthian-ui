@@ -70,7 +70,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				self.list_data.append((eng, i, info[1], info[0]))
 					
 		# Display help if no engines are enabled ...
-		if len(self.list_data)==0:
+		if len(self.list_data) == 0:
 			self.list_data.append((None,len(self.list_data),"Enable LV2-plugins on webconf".format(os.uname().nodename)))
 
 		if self.reset_index:
