@@ -23,11 +23,9 @@
 #
 #******************************************************************************
 
-import sys
 import copy
 import liblo
 import ctypes
-import signal
 import logging
 import importlib
 from time import sleep
@@ -36,7 +34,7 @@ from time import monotonic
 from datetime import datetime
 from threading  import Thread, Lock
 from subprocess import check_output
-import os
+from queue import SimpleQueue, Empty
 
 # Zynthian specific modules
 import zynconf
@@ -113,8 +111,9 @@ class zynthian_gui:
 		self.loading_thread = None
 		self.control_thread = None
 		self.status_thread = None
+		self.cuia_thread = None
+		self.cuia_queue = SimpleQueue()
 		self.zynread_wait_flag = False
-		self.zynswitch_defered_event = None
 		self.exit_flag = False
 		self.exit_code = 0
 		self.exit_wait_count = 0
@@ -134,7 +133,7 @@ class zynthian_gui:
 		self.init_wsleds()
 
 		# Load keyboard binding map
-		zynthian_gui_keybinding.getInstance().load()
+		zynthian_gui_keybinding.load()
 
 		# OSC config values
 		self.osc_proto = liblo.UDP
@@ -324,7 +323,7 @@ class zynthian_gui:
 		if parts[0] == "" and parts[1] == "CUIA":
 			self.set_event_flag()
 			# Execute action
-			self.callable_ui_action(parts[2], args)
+			self.cuia_queue.put_nowait([parts[2], args])
 			#Run autoconnect if needed
 			zynautoconnect.request_audio_connect()
 			zynautoconnect.request_midi_connect()
@@ -441,6 +440,7 @@ class zynthian_gui:
 		self.start_loading_thread()
 		self.start_control_thread()
 		self.start_status_thread()
+		self.start_cuia_thread()
 
 		# Initialize MPE Zones
 		#self.state_manager.init_mpe_zones(0, 2)
@@ -802,32 +802,6 @@ class zynthian_gui:
 	def get_cuia_list(cls):
 		return [method[5:].upper() for method in dir(cls) if method.startswith('cuia_') is True]
 
-	def callable_ui_action(self, cuia, params=None):
-		logging.debug("CUIA '{}' => {}".format(cuia, params))
-		try:
-			cuia_func = getattr(self, "cuia_" + cuia.lower())
-			cuia_func(params)
-		except AttributeError:
-			logging.error("Unknown of faulty CUIA '{}'".format(cuia))
-
-	def parse_cuia_params(self, params_str):
-		params = []
-		for i, p in enumerate(params_str.split(",")):
-			try:
-				params.append(int(p))
-			except:
-				params.append(p.strip())
-		return params
-
-	def callable_ui_action_params(self, cuia_str):
-		parts = cuia_str.split(" ", 2)
-		cuia = parts[0]
-		if len(parts) > 1:
-			params = self.parse_cuia_params(parts[1])
-		else:
-			params = None
-		self.callable_ui_action(cuia, params)
-
 	# System actions CUIA
 	def cuia_test_mode(self, params):
 		self.test_mode = params
@@ -852,7 +826,7 @@ class zynthian_gui:
 		self.state_manager.reload_midi_config()
 
 	def cuia_reload_key_binding(self, params):
-		zynthian_gui_keybinding.getInstance().load()
+		zynthian_gui_keybinding.load()
 
 	def cuia_last_state_action(self, params):
 		self.screens['admin'].last_state_action()
@@ -973,42 +947,23 @@ class zynthian_gui:
 		try:
 			i = params[0]
 			d = params[1]
-		except Exception as e:
-			logging.error("Need 2 parameters: index, delta")
-
-		try:
 			self.get_current_screen_obj().zynpot_cb(i, d)
+		except IndexError:
+			logging.error("zynpot requires 2 parameters: index, delta, not {params}")
+			return
 		except Exception as e:
 			logging.error(e)
 
 	def cuia_zynswitch(self, params):
 		try:
 			i = params[0]
-			t = params[1]
-		except Exception as err:
-			logging.error("Need 2 parameters: index, action_type")
+			d = params[1]
+			self.cuia_queue.put_nowait(f"zynswitch i d")
+		except IndexError:
+			logging.error("zynswitch requires 2 parameters: index, delta, not {params}")
 			return
-
-		if t == 'P':
-			self.state_manager.zynswitch_cuia_ts[i] = datetime.now()
-			self.zynswitch_timing(i, 0)
-		elif t == 'R':
-			if self.state_manager.zynswitch_cuia_ts[i]:
-				dtus = int(1000000 * (datetime.now() - self.state_manager.zynswitch_cuia_ts[i]).total_seconds())
-				self.state_manager.zynswitch_cuia_ts[i] = None
-				self.zynswitch_timing(i, dtus)
-		elif t == 'S':
-			self.state_manager.zynswitch_cuia_ts[i] = None
-			self.zynswitch_short(i)
-		elif t == 'B':
-			self.state_manager.zynswitch_cuia_ts[i] = None
-			self.zynswitch_bold(i)
-		elif t == 'L':
-			self.state_manager.zynswitch_cuia_ts[i] = None
-			self.zynswitch_long(i)
-		else:
-			self.state_manager.zynswitch_cuia_ts[i] = None
-			logging.warning("Unknown Action Type: {}".format(t))
+		except Exception as e:
+			logging.error(e)
 
 	# Basic UI-Control CUIAs
 	# 4 x Arrows
@@ -1299,34 +1254,41 @@ class zynthian_gui:
 		action_config = zynthian_gui_config.custom_switch_ui_actions[i]
 		if t in action_config:
 			cuia = action_config[t]
-			if cuia and cuia!="NONE":
-				self.callable_ui_action_params(cuia)
+			if cuia and cuia != "NONE":
+				self.cuia_queue.put_nowait(cuia)
+				return True
 
 	# -------------------------------------------------------------------
 	# Switches
 	# -------------------------------------------------------------------
 
 	def zynswitches(self):
+		"""Process physical switch triggers"""
+
 		if not get_lib_zyncore(): return
 		i = 0
 		while i <= zynthian_gui_config.last_zynswitch_index:
+			# dtus is 0 of switched pressed, dur of last press or -1 if already processed
 			dtus = get_lib_zyncore().get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
-			self.zynswitch_timing(i, dtus)
+			if dtus >= 0:
+				self.cuia_queue.put_nowait(f"zynswitch {i} {self.zynswitch_timing(dtus)}")
 			i += 1
 
-	def zynswitch_timing(self, i, dtus):
-		if dtus < 0:
-			pass
-		elif dtus == 0:
-			self.zynswitch_push(i)
+	def zynswitch_timing(self, dtus):
+		"""Get action based on switch held time
+		
+		dtus : Duration switch has been pressed
+		Return : Letter indicating the action to take
+		#TODO: Does not support Release which means that press and hold expires when Long press is reached
+		"""
+		if dtus == 0:
+			return "P"
 		elif dtus > zynthian_gui_config.zynswitch_long_us:
-			self.zynswitch_long(i)
+			return "L"
 		elif dtus > zynthian_gui_config.zynswitch_bold_us:
-			# Double switches must be bold
-			if not self.zynswitch_double(i):
-				self.zynswitch_bold(i)
+			return "B"
 		elif dtus > 0:
-			self.zynswitch_short(i)
+			return "S"
 
 
 	def zynswitch_push(self, i):
@@ -1345,7 +1307,8 @@ class zynthian_gui:
 		# Custom ZynSwitches
 		elif i >= 4:
 			logging.debug('Push Switch ' + str(i))
-			self.custom_switch_ui_action(i-4, "P")
+			return self.custom_switch_ui_action(i-4, "P")
+
 
 	def zynswitch_long(self, i):
 		logging.debug('Looooooooong Switch '+str(i))
@@ -1365,8 +1328,7 @@ class zynthian_gui:
 
 		# Custom ZynSwitches
 		elif i >= 4:
-			self.custom_switch_ui_action(i-4, "L")
-
+			return self.custom_switch_ui_action(i-4, "L")
 
 
 	def zynswitch_bold(self, i):
@@ -1397,7 +1359,7 @@ class zynthian_gui:
 
 		# Custom ZynSwitches
 		elif i >= 4:
-			self.custom_switch_ui_action(i-4, "B")
+			return self.custom_switch_ui_action(i-4, "B")
 
 
 	def zynswitch_short(self, i):
@@ -1417,14 +1379,14 @@ class zynthian_gui:
 			self.back_screen()
 
 		elif i == 2:
-			self.cuia_toggle_midi_learn()
+			self.cuia_queue.put_nowait("cuia_toggle_midi_learn")
 
 		elif i == 3:
 			self.screens[self.current_screen].switch_select('S')
 
 		# Custom ZynSwitches
 		elif i >= 4:
-			self.custom_switch_ui_action(i-4, "S")
+			return self.custom_switch_ui_action(i-4, "S")
 
 
 	def zynswitch_double(self, i):
@@ -1470,32 +1432,11 @@ class zynthian_gui:
 
 
 	#------------------------------------------------------------------
-	# Switch Defered Events
+	# Defered Switch Events
 	#------------------------------------------------------------------
 
-
 	def zynswitch_defered(self, t, i):
-		self.zynswitch_defered_event = (t, i)
-
-
-	def zynswitch_defered_exec(self):
-		if self.zynswitch_defered_event is not None:
-			#Copy event and clean variable
-			event = copy.deepcopy(self.zynswitch_defered_event)
-			self.zynswitch_defered_event=None
-			#Process event
-			if event[0] == 'P':
-				self.zynswitch_push(event[1])
-			elif event[0] == 'S':
-				self.zynswitch_short(event[1])
-			elif event[0] == 'B':
-				self.zynswitch_bold(event[1])
-			elif event[0] == 'L':
-				self.zynswitch_long(event[1])
-			elif event[0] == 'X':
-				self.zynswitch_X(event[1])
-			elif event[0] == 'Y':
-				self.zynswitch_Y(event[1])
+		self.cuia_queue.put_nowait(["zynswitch", [i, t]])
 
 
 	#------------------------------------------------------------------
@@ -1503,14 +1444,13 @@ class zynthian_gui:
 	#------------------------------------------------------------------
 
 	def zynswitch_read(self):
+		#TODO: Block control when busy but avoid ui lock-up
 		#if self.state_manager.is_busy():
 		#	return
 
 		#Read Zynswitches
 		try:
-			self.zynswitch_defered_exec()
 			self.zynswitches()
-
 		except Exception as err:
 			logging.exception(err)
 
@@ -1606,10 +1546,10 @@ class zynthian_gui:
 									params.append('R')
 								else:
 									params.append('P')
-								self.cuia_zynswitch(params)
+								self.cuia_queue.put_nowait(cuia, params)
 							# Or normal CUIA
 							elif evtype == 0x9 and vel > 0:
-								self.callable_ui_action(cuia, params)
+								self.cuia_queue.put_nowait([cuia, params])
 
 
 				# Control Change ...
@@ -1897,6 +1837,107 @@ class zynthian_gui:
 
 
 	#------------------------------------------------------------------
+	# CUIA Thread
+	#------------------------------------------------------------------
+
+	def start_cuia_thread(self):
+		self.cuia_thread = Thread(target=self.cuia_thread_task, args=())
+		self.cuia_thread.name = "cuia"
+		self.cuia_thread.daemon = True # thread dies with the program
+		self.cuia_thread.start()
+
+
+	def cuia_thread_task(self):
+		"""Thread task to handle CUIA events
+		
+		Events are passed via cuia_queue and may be a space separated list:'cuia, param, param...' or list: [cuia, [params]]
+		"""
+
+		zynswitch_cuia_ts = [None] * (zynthian_gui_config.num_zynswitches + 4)
+		REPEAT_DELAY = 3 # Quantity of repeat intervals to delay before triggering auto repeat
+		REPEAT_INTERVAL = 0.15 # Auto repeat interval in seconds
+
+		while not self.exit_flag:
+			try:
+				event = self.cuia_queue.get(True, REPEAT_INTERVAL)
+				params = None
+				if isinstance(event, str):
+					if event == "__EXIT__":
+						break
+					# comma seperated cuia, params...
+					parts = event.split(' ')
+					cuia = parts.pop(0).lower()
+					if parts:
+						params = []
+						for p in parts:
+							try:
+								params.append(int(p))
+							except:
+								params.append(p.strip())
+				else:
+					# list [cuia, [params]]
+					cuia = event[0].lower()
+					if len(event) > 1:
+						params = event[1]
+
+				if cuia == "zynswitch":
+					# zynswitch has parameters: [switch, action] where action is P(ressed), R(eleased), S(hort), B(old), L(ong), X or Y
+					try:
+						i = params[0]
+						t = params[1]
+						if t == 'R':
+							val = zynswitch_cuia_ts[i]
+							zynswitch_cuia_ts[i] = None
+							if val > 0:
+								dtus = int(1000000 * (monotonic() - val))
+								t = self.zynswitch_timing(dtus)
+						if t == 'P':
+							if self.zynswitch_push(i):
+								zynswitch_cuia_ts[i] = -REPEAT_DELAY
+							else:
+								zynswitch_cuia_ts[i] = monotonic()
+						elif t == 'S':
+							zynswitch_cuia_ts[i] = None
+							self.zynswitch_short(i)
+						elif t == 'B':
+							zynswitch_cuia_ts[i] = None
+							# Double switches must be bold
+							if not self.zynswitch_double(i):
+								self.zynswitch_bold(i)
+						elif t == 'L':
+							zynswitch_cuia_ts[i] = None
+							self.zynswitch_long(i)
+						elif t == 'X':
+							self.zynswitch_X(i)
+						elif t == 'Y':
+							self.zynswitch_Y(i)
+						else:
+							zynswitch_cuia_ts[i] = None
+							logging.warning("Unknown Action Type: {}".format(t))
+					except Exception as err:
+						logging.error(f"CUIA zynswitch needs 2 parameters: index, action_type, not {params}")
+
+				else:
+					try:
+						cuia_func = getattr(self, "cuia_" + cuia)
+						cuia_func(params)
+					except AttributeError:
+						logging.error("Unknown of faulty CUIA '{}'".format(cuia))
+
+				self.set_event_flag()
+
+			except Empty:
+				for i, ts in enumerate(zynswitch_cuia_ts):
+					if ts is None:
+						continue
+					if ts < 0:
+						zynswitch_cuia_ts[i] += 1
+					if ts == 0:
+						self.zynswitch_push(i)
+			except:
+				pass
+
+	#------------------------------------------------------------------
 	# Thread ending on Exit
 	#------------------------------------------------------------------
 
@@ -1904,6 +1945,7 @@ class zynthian_gui:
 		self.stop()
 		self.exit_code = code
 		self.exit_flag = True
+		self.cuia_queue.put_nowait("__EXIT__")
 
 
 	#------------------------------------------------------------------
@@ -1925,7 +1967,7 @@ class zynthian_gui:
 			timeout = 10
 			if self.exit_wait_count == 0:
 				logging.info("EXITING ZYNTHIAN-UI...")
-			if self.exit_wait_count < timeout and (self.control_thread.is_alive() or self.status_thread.is_alive() or self.loading_thread.is_alive() or zynautoconnect.is_running() or self.state_manager.thread.is_alive()):
+			if self.exit_wait_count < timeout and (self.control_thread.is_alive() or self.status_thread.is_alive() or self.loading_thread.is_alive() or zynautoconnect.is_running() or self.state_manager.thread.is_alive() or self.cuia_thread.is_alive()):
 				self.exit_wait_count += 1
 			else:
 				if self.control_thread.is_alive():
@@ -1938,6 +1980,8 @@ class zynthian_gui:
 					logging.error("Autoconnect thread failed to terminate")
 				if self.state_manager.thread.is_alive():
 					logging.error("State manager thread failed to terminate")
+				if self.cuia_thread.is_alive():
+					logging.error("CUIA thread failed to terminate")
 				zynthian_gui_config.top.quit()
 				return
 

@@ -32,7 +32,6 @@ from tkinter import font as tkFont
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 from zyngine import zynthian_controller
-from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
 
 #------------------------------------------------------------------------------
 # Zynthian Base GUI Class: Status Bar + Basic layout & events

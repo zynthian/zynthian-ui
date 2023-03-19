@@ -132,35 +132,22 @@ event : key event
 keypress : True if press, False if release
 """
 def cb_keybinding(event):
-	if not zynthian_gui_keybinding.getInstance().isEnabled():
-		logging.debug("Key binding is disabled - ignoring key press")
-		return
-
 	# Avoid TAB confusing widget focus change
 	if event.keycode == 23:
 		zynthian_gui_config.top.focus_set()
 
-	cuia_str = zynthian_gui_keybinding.getInstance().get_key_action(event.keycode, event.state)
-	if cuia_str != None:
-		zyngui.set_event_flag()
-		parts = cuia_str.split(" ", 2)
-		cuia = parts[0].lower()
-		if len(parts) > 1:
-			params = zyngui.parse_cuia_params(parts[1])
-		else:
-			params = None
-
+	cuia = zynthian_gui_keybinding.get_key_action(event.keycode, event.state)
+	if cuia is not None:
 		# Emulate Zynswitch Push/Release with KeyPress/KeyRelease
-		if cuia == "zynswitch" and len(params) == 1:
+		if cuia.lower().startswith("zynswitch"):
 			if event.type == EventType.KeyPress:
-				params.append('P')
+				cuia += " P"
 			else:
-				params.append('R')
-			zyngui.cuia_zynswitch(params)
+				cuia += " R"
+			zyngui.cuia_queue.put_nowait(cuia)
 		# Or normal CUIA
 		elif event.type == EventType.KeyPress:
-			zyngui.set_event_flag()
-			zyngui.callable_ui_action(cuia, params)
+			zyngui.cuia_queue.put_nowait(cuia)
 
 
 zynthian_gui_config.top.bind("<KeyPress>", cb_keybinding)

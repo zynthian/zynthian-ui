@@ -1063,7 +1063,6 @@ class zynthian_state_manager:
         if not get_lib_zyncore(): return
         logging.info("INIT {} ZYNSWITCHES ...".format(zynthian_gui_config.num_zynswitches))
         self.dtsw = [datetime.now()] * (zynthian_gui_config.num_zynswitches + 4)
-        self.zynswitch_cuia_ts = [None] * (zynthian_gui_config.num_zynswitches + 4)
 
     # Initialize custom switches, analog I/O, TOF sensors, etc.
     def zynswitches_midi_setup(self, current_chain_chan=None):
