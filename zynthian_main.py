@@ -130,18 +130,14 @@ event : key event
 keypress : True if press, False if release
 """
 def cb_keybinding(event):
-	if not zynthian_gui_keybinding.getInstance().isEnabled():
-		logging.debug("Key binding is disabled - ignoring key press")
-		return
-
 	# Avoid TAB confusing widget focus change
 	if event.keycode == 23:
 		zynthian_gui_config.top.focus_set()
 
-	cuia_str = zynthian_gui_keybinding.getInstance().get_key_action(event.keycode, event.state)
+	cuia_str = zynthian_gui_keybinding.get_key_action(event.keycode, event.state)
 	if cuia_str != None:
 		zyngui.set_event_flag()
-		parts = cuia_str.split(" ", 2)
+		parts = cuia_str.split(" ", 1)
 		cuia = parts[0].lower()
 		if len(parts) > 1:
 			params = zyngui.parse_cuia_params(parts[1])

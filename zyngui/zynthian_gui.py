@@ -148,7 +148,7 @@ class zynthian_gui:
 		self.init_wsleds()
 
 		# Load keyboard binding map
-		zynthian_gui_keybinding.getInstance().load()
+		zynthian_gui_keybinding.load()
 
 		# Get Jackd Options
 		self.jackd_options = zynconf.get_jackd_options()
@@ -947,7 +947,7 @@ class zynthian_gui:
 
 	def parse_cuia_params(self, params_str):
 		params = []
-		for i, p in enumerate(params_str.split(",")):
+		for i, p in enumerate(params_str.split(" ")):
 			try:
 				params.append(int(p))
 			except:
@@ -987,7 +987,7 @@ class zynthian_gui:
 		self.reload_midi_config()
 
 	def cuia_reload_key_binding(self, params):
-		zynthian_gui_keybinding.getInstance().load()
+		zynthian_gui_keybinding.load()
 
 	def cuia_last_state_action(self, params):
 		self.screens['admin'].last_state_action()

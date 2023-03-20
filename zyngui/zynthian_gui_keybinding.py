@@ -23,27 +23,20 @@
 # 
 #******************************************************************************
 
-from os import environ
-from sys import stderr
-import oyaml as yaml
+import json
 import logging
-import copy
-
+from subprocess import run, PIPE
+from os import environ
 
 # Zynthian specific modules
-from zyngui import zynthian_gui_config
+#from zyngui import zynthian_gui_config
 
 #------------------------------------------------------------------------------
 # Zynthian Keyboard Binding Class
 #------------------------------------------------------------------------------
 
 class zynthian_gui_keybinding:
-	"""
-	Provides interface to key binding
-	
-	Note: This class is a singleton and should not be instantiated directly (which will raise an exception).
-	Use getInstance() to get the instance of the singleton and access functions and methods from that instance.
-	"""
+	"""Provides interface to key binding"""
 
 	modifiers = {
 		'shift': 1,
@@ -51,6 +44,7 @@ class zynthian_gui_keybinding:
 		'ctrl': 4,
 		'alt': 8,
 		'num': 16,
+		'shift_r': 32,
 		'super': 64,
 		'altgr': 128
 	}
@@ -64,22 +58,22 @@ class zynthian_gui_keybinding:
 		"115 4": "POWER_OFF",
 		"118 4": "RELOAD_MIDI_CONFIG",
 
-		"31 0": "ZYNSWITCH 0",
-		"45 0": "ZYNSWITCH 1",
-		"22 0": "ZYNSWITCH 1",
-		"9 0": "ZYNSWITCH 1",
-		"32 0": "ZYNSWITCH 2",
-		"46 0": "ZYNSWITCH 3",
-		"36 0": "ZYNSWITCH 3",
+		"31": "ZYNSWITCH 0",
+		"45": "ZYNSWITCH 1",
+		"22": "ZYNSWITCH 1",
+		"9": "ZYNSWITCH 1",
+		"32": "ZYNSWITCH 2",
+		"46": "ZYNSWITCH 3",
+		"36": "ZYNSWITCH 3",
 
-		"60 4": "ZYNPOT 1,1",
-		"59 4": "ZYNPOT 1,-1",
-		"60 0": "ZYNPOT 3,1",
-		"59 0": "ZYNPOT 3,-1",
-		"60 5": "ZYNPOT 0,1",
-		"59 5": "ZYNPOT 0,-1",
-		"60 1": "ZYNPOT 2,1",
-		"59 1": "ZYNPOT 2,-1",
+		"60 4": "ZYNPOT 1 1",
+		"59 4": "ZYNPOT 1 -1",
+		"60 0": "ZYNPOT 3 1",
+		"59 0": "ZYNPOT 3 -1",
+		"60 5": "ZYNPOT 0 1",
+		"59 5": "ZYNPOT 0 -1",
+		"60 1": "ZYNPOT 2 1",
+		"59 1": "ZYNPOT 2 -1",
 
 		"38 0": "START_AUDIO_RECORD",
 		"38 1": "STOP_AUDIO_RECORD",
@@ -100,6 +94,12 @@ class zynthian_gui_keybinding:
 		"114": "ARROW_RIGHT",
 		"113": "ARROW_LEFT",
 
+		"88": "ARROW_DOWN",
+		"80": "ARROW_UP",
+		"85": "ARROW_RIGHT",
+		"83": "ARROW_LEFT",
+		"104": "ZYNSWITCH 3",
+
 		"10": "PROGRAM_CHANGE 1",
 		"11": "PROGRAM_CHANGE 2",
 		"12": "PROGRAM_CHANGE 3",
@@ -112,128 +112,65 @@ class zynthian_gui_keybinding:
 		"19": "PROGRAM_CHANGE 0"
 	}
 
+	map = default_map.copy()
 
-	__instance = None
-	
-	@staticmethod
-	def getInstance():
-		"""
-		Access the singleton
-		
-		Returns
-		-------
-		zynthian_gui_keybinding
-			The singleton object which should be used for all access
-		"""
+	@classmethod
+	def get_key_action(cls, keycode, modifier):
+		"""Get the name of the function bound to a key combination
 
-		if zynthian_gui_keybinding.__instance == None:
-			zynthian_gui_keybinding()
-
-		return zynthian_gui_keybinding.__instance
-
-
-	def __init__(self):
-		"""
-		Do not initiate this class directly. Use getInstance() to access the singleton object.
-		
-		Raises
-		------
-		Exception
-			If object already instantiated.
-		"""
-		
-		if zynthian_gui_keybinding.__instance == None:
-			zynthian_gui_keybinding.__instance = self
-		else:
-			raise Exception("Use getInstance() to get the singleton object.")
-
-		self.reset_config()
-
-
-	def get_key_action(self, keycode, modifier):
-		"""
-		Get the name of the function bound to the key combination passed
-		
-		Parameters
-		----------
-		keycode : int
-			Keyboard code to lookup
-		modifier : int or None
-			Keyboard modifier to lookup [0: none, 1: shift, 2: capslock, 4: ctrl, 8: alt, 16: numlock, 64: super, 128: altgr]
+		keycode : Keyboard code
+		modifier : Bitwise flags of keyboard modifiers [0: none, 1: shift, 2: capslock, 4: ctrl, 8: alt, 16: numlock, 64: super, 128: altgr]
 			None to match any modifer (other configurations with modifiers will be captured first)
 
-		Returns
-		-------
-		str
-			Name of the function mapped to the key binding
-			<None> if no match found		
+		Returns : Space separated list of cuia and parameters mapped to the keybinding or None if no match found		
 		"""
 	
 		logging.debug(f"Get keybinding function name for keycode: {keycode}, modifier: {modifier}")
 		try:
 			# Check for defined modifier
-			return self.map[f"{keycode} {modifier}"]
+			if keycode not in [63,77,79,80,81,82,83,84,85,86,87,88,89,90,91,104,106]:
+				modifier &= 239
+			return zynthian_gui_keybinding.map[f"{keycode} {modifier}"]
 		except:
 			try:
 				# Check for "any" modifier
-				return self.map[keycode]
+				return zynthian_gui_keybinding.map[f"{keycode}"]
 			except:
 				logging.debug("Key not configured")
 
-
-	def load(self, config="keybinding"):
-		"""
-		Load key binding map from file
-		
-		Parameters
-		----------
-		config : str,optional
-			Name of configuration to load - the file <config>.yaml will be loaded from the zynthian config directory
+	@classmethod
+	def load(cls, config="keybinding"):
+		"""Load key binding map from file
+		config : Name of configuration to load - the file <config>.json will be loaded from the zynthian config directory
 			Default: 'keybinding'
-		
-		Returns
-		-------
-		bool
-			True on success		
+		Returns : True on success
 		"""
 
-		logging.info("Loading key binding from {}.yaml".format(config))
-		config_dir = environ.get('ZYNTHIAN_CONFIG_DIR', "/zynthian/config")
-		config_fpath = config_dir + "/" + config + ".yaml"
+		config_fpath = f"{environ.get('ZYNTHIAN_CONFIG_DIR', '/zynthian/config')}/{config}.json"
 		try:
 			with open(config_fpath, "r") as fh:
-				yml = fh.read()
-				logging.debug("Loading keyboard binding config file '{}' =>\n{}".format(config_fpath, yml))
-				self.map = yaml.load(yml, Loader=yaml.SafeLoader)
+				j = fh.read()
+				zynthian_gui_keybinding.map =  json.loads(j)
 				return True
 		except Exception as e:
-			logging.debug("Loading default keyboard bindings.")
-			self.reset_config()
+			zynthian_gui_keybinding.map = zynthian_gui_keybinding.default_map.copy()
 			return False
 
 
-	def save(self, config="keybinding"):
+	@classmethod
+	def save(cls, config="keybinding"):
 		"""
 		Save key binding map to file
 		
-		Parameters
-		----------
-		config : str,optional
-			Name of configuration to save - the file <config>.yaml will be saved to the Zynthian config directory
+		config : Name of configuration to save - the file <config>.json will be saved to the Zynthian config directory
 			Default: 'keybinding'
-		
-		Returns
-		-------
-		bool
-			True on success
+		Returns : True on success
 		"""
 		
-		logging.info("Saving key binding to %s.yaml", config)
-		config_dir = environ.get('ZYNTHIAN_CONFIG_DIR', "/zynthian/config")
-		config_fpath = config_dir + "/" + config + ".yaml"
+		config_fpath = f"{environ.get('ZYNTHIAN_CONFIG_DIR', '/zynthian/config')}/{config}.json"
 		try:
 			with open(config_fpath, "w") as fh:
-				yaml.dump(self.map, fh)
+				fh.write(json.dumps(zynthian_gui_keybinding.map))
 				logging.info("Saving keyboard binding config file {}".format(config_fpath))
 				return True
 
@@ -242,56 +179,79 @@ class zynthian_gui_keybinding:
 			return False
 
 
-	def reset_config(self):
-		"""
-		Reset keyboard binding to default values
-		"""
+	@classmethod
+	def reset_config(cls):
+		"""Reset keyboard binding to default values"""
 
-		self.map = copy.copy(self.default_map)
-		self.enable()
+		zynthian_gui_keybinding.map = zynthian_gui_keybinding.default_map.copy()
 
 
-	def bind_key(self, keycode, modifier, cuia):
-		"""
-		Bind key/action pair
-		Parameters
-		----------
-		keycode : int
-			Keyboard code
-		modifier: int or None
-			Bitwise OR of key modifier flags or None to ignore modifiers
-		cuia: str
-			Callable UI action, including parameters
-		"""
-
-		if modifier is None:
-			self.map[f"{keycode}"] = cuia
-		else:
-			self.map[f"{keycode} {modifier}"] = cuia
-
-
-	def enable(self, enabled=True):
-		"""
-		Enable or disable keyboard binding
-
-		Parameters
-		----------
-		enabled : bool,optional
-			True to enable, false to disable - default: True
-		"""
+	@classmethod
+	def add_binding(cls, keycode, modifier, cuia):
+		"""Bind key/action pair
 		
-		self.enabled = enabled
-
-
-	def isEnabled(self):
-		"""
-		Is keyboard binding enabled?
-
-		Returns
-		-------
-		bool True if enabled
+		keycode : Keyboard code
+		modifier: Bitwise modifier flags or None to ignore modifiers
+		cuia: Callable UI action, including parameters or None to clear binding
 		"""
 
-		return self.enabled
+		zynthian_gui_keybinding.remove_binding(keycode, modifier)
+		try:
+			if modifier is None:
+				zynthian_gui_keybinding.map[f"{keycode}"] = cuia
+			else:
+				zynthian_gui_keybinding.map[f"{keycode} {modifier}"] = cuia
+		except:
+			pass
+
+	@classmethod
+	def remove_binding(cls, key):
+		"""Removes a keybinding
+
+		key : Keyboard code and modifier separated by space
+		"""
+
+		try:
+			del zynthian_gui_keybinding.map[key]
+		except:
+			pass
+
+	@classmethod
+	def get_keymap(cls):
+		"""Get the currently loaded keyboard translation table
+		
+		Returns : Dictionary of key names mapped by keycode
+		"""
+
+		keymap = {}
+		result = run(["xmodmap", "-pke", "-display", ":0"], stdout=PIPE)
+		raw_map = result.stdout.decode("utf-8").split("\n")
+		for line in raw_map:
+			if line.startswith("keycode"):
+				parts = line.split()
+				try:
+					keymap[int(parts[1])] = parts[3]
+				except:
+					pass
+		return keymap
+
+	@classmethod
+	def get_reverse_keymap(cls):
+		"""Get the currently loaded keyboard translation table
+		
+		Returns : Dictionary of keycodes mapped by key name
+		"""
+
+		keymap = {}
+		result = run(["xmodmap", "-pke", "-display", ":0"], stdout=PIPE)
+		raw_map = result.stdout.decode("utf-8").split("\n")
+		for line in raw_map:
+			if line.startswith("keycode"):
+				parts = line.split()
+				try:
+					keymap[int(parts[3])] = parts[1]
+				except:
+					pass
+		return keymap
 
 #------------------------------------------------------------------------------
