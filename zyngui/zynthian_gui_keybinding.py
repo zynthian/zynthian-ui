@@ -99,6 +99,10 @@ class zynthian_gui_keybinding:
 		"85": "ARROW_RIGHT",
 		"83": "ARROW_LEFT",
 		"104": "ZYNSWITCH 3",
+		"79": "ZYNSWITCH 0",
+		"87": "ZYNSWITCH 1",
+		"81": "ZYNSWITCH 2",
+		"89": "ZYNSWITCH 3",
 
 		"10": "PROGRAM_CHANGE 1",
 		"11": "PROGRAM_CHANGE 2",
