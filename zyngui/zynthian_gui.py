@@ -947,7 +947,7 @@ class zynthian_gui:
 
 	def parse_cuia_params(self, params_str):
 		params = []
-		for i, p in enumerate(params_str.split(" ")):
+		for i, p in enumerate(params_str.split(",")):
 			try:
 				params.append(int(p))
 			except:
