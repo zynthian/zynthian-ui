@@ -101,6 +101,7 @@ class zynthian_gui:
 
 	def __init__(self):
 		self.test_mode = False
+		self.alt_mode = False
 
 		self.power_save_mode = False
 		self.last_event_flag = False
@@ -213,6 +214,7 @@ class zynthian_gui:
 			zynthian_gui_config.config_zynaptik()
 			zynthian_gui_config.config_zyntof()
 			self.wiring_midi_setup()
+			self.alt_mode = False
 		except Exception as e:
 			logging.error("ERROR configuring wiring: {}".format(e))
 
@@ -967,6 +969,12 @@ class zynthian_gui:
 	def cuia_test_mode(self, params):
 		self.test_mode = params
 		logging.warning('TEST_MODE: {}'.format(params))
+
+	def cuia_toggle_alt_mode(self, params):
+		if self.alt_mode:
+			self.alt_mode = False
+		else:
+			self.alt_mode = True
 
 	def cuia_power_off(self, params):
 		self.screens['admin'].power_off_confirmed()
@@ -1974,19 +1982,18 @@ class zynthian_gui:
 
 	def refresh_status(self):
 		try:
-			if zynthian_gui_config.show_cpu_status:
-				# Get CPU Load
-				#self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
-				self.status_info['cpu_load'] = zynautoconnect.get_jackd_cpu_load()
-			else:
-				# Get audio peak level
-				self.status_info['peakA'] = self.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 0)
-				self.status_info['peakB'] = self.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 1)
-				self.status_info['holdA'] = self.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 0)
-				self.status_info['holdB'] = self.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 1)
+			# Get CPU Load
+			#self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
+			self.status_info['cpu_load'] = zynautoconnect.get_jackd_cpu_load()
+
+			# Get audio peak level
+			self.status_info['peakA'] = self.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 0)
+			self.status_info['peakB'] = self.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 1)
+			self.status_info['holdA'] = self.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 0)
+			self.status_info['holdB'] = self.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 1)
 
 			# Get SOC sensors (once each 5 refreshes)
-			if self.status_counter>5:
+			if self.status_counter > 5:
 				self.status_counter = 0
 
 				self.status_info['overtemp'] = False
