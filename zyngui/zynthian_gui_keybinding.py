@@ -37,16 +37,16 @@ from os import environ
 
 """Provides interface to key binding"""
 
-modifiers = {
-	'shift': 1,
-	'caps': 2,
-	'ctrl': 4,
-	'alt': 8,
-	'num': 16,
-	'shift_r': 32,
-	'super': 64,
-	'altgr': 128
-}
+modifiers = [
+	'shift',
+	'caps',
+	'ctrl',
+	'alt',
+	'num',
+	'shift_r',
+	'super',
+	'altgr'
+]
 
 html2tk = {
 	"Escape": 9,
@@ -125,12 +125,12 @@ for x, y in html2tk.items():
 
 default_map = {
 	"Space": "ALL_NOTES_OFF",
-	"Space,shift": "ALL_SOUNDS_OFF",
+	"shift+Space": "ALL_SOUNDS_OFF",
 
-	"Home,shift": "RESTART_UI",
-	"Home,ctrl": "REBOOT",
-	"End,ctrl": "POWER_OFF",
-	"Insert,ctrl": "RELOAD_MIDI_CONFIG",
+	"shift+Home": "RESTART_UI",
+	"ctrl+Home": "REBOOT",
+	"ctrl+End": "POWER_OFF",
+	"ctrl+Insert": "RELOAD_MIDI_CONFIG",
 
 	"KeyI": "ZYNSWITCH 0",
 	"KeyK": "ZYNSWITCH 1",
@@ -140,28 +140,28 @@ default_map = {
 	"KeyL": "ZYNSWITCH 3",
 	"Enter": "ZYNSWITCH 3",
 
-	"Period,ctrl": "ZYNPOT 1,1",
-	"Comma,ctrl": "ZYNPOT 1,-1",
+	"ctrl+Period": "ZYNPOT 1,1",
+	"ctrl+Comma": "ZYNPOT 1,-1",
 	"Period": "ZYNPOT 3,1",
 	"Comma": "ZYNPOT 3,-1",
-	"Period,shift,ctrl": "ZYNPOT 0,1",
-	"Comma,shift,ctrl": "ZYNPOT 0,-1",
-	"Period,shift": "ZYNPOT 2,1",
-	"Comma,shift": "ZYNPOT 2,-1",
+	"shift+ctrl+Period": "ZYNPOT 0,1",
+	"shift+ctrl+Comma": "ZYNPOT 0,-1",
+	"shift+Period": "ZYNPOT 2,1",
+	"shift+Comma": "ZYNPOT 2,-1",
 
 	"KeyA": "START_AUDIO_RECORD",
-	"KeyA,shift": "STOP_AUDIO_RECORD",
-	"KeyA,alt": "TOGGLE_AUDIO_RECORD",
-	"KeyA,ctrl": "START_AUDIO_PLAY",
-	"KeyA,shift,ctrl": "STOP_AUDIO_PLAY",
-	"KeyA,ctrl,alt": "TOGGLE_AUDIO_PLAY",
+	"shift+KeyA": "STOP_AUDIO_RECORD",
+	"alt+KeyA": "TOGGLE_AUDIO_RECORD",
+	"ctrl+KeyA": "START_AUDIO_PLAY",
+	"shift+ctrl+KeyA": "STOP_AUDIO_PLAY",
+	"ctrl+alt+KeyA": "TOGGLE_AUDIO_PLAY",
 
 	"KeyM": "START_MIDI_RECORD",
-	"KeyM,shift": "STOP_MIDI_RECORD",
-	"KeyM,alt": "TOGGLE_MIDI_RECORD",
-	"KeyM,ctrl": "START_MIDI_PLAY",
-	"KeyM,shift,ctrl": "STOP_MIDI_PLAY",
-	"KeyM,ctrl,alt": "TOGGLE_MIDI_PLAY",
+	"shift+KeyM": "STOP_MIDI_RECORD",
+	"alt+KeyM": "TOGGLE_MIDI_RECORD",
+	"ctrl+KeyM": "START_MIDI_PLAY",
+	"shift+ctrl+KeyM": "STOP_MIDI_PLAY",
+	"ctrl+alt+KeyM": "TOGGLE_MIDI_PLAY",
 
 	"ArrowDown": "ARROW_DOWN",
 	"ArrowUp": "ARROW_UP",
@@ -212,7 +212,7 @@ def get_key_action(keycode, modifier):
 	except:
 		try:
 			# Default to no modifier
-			return mabinding_mapp[f"{keycode}"]
+			return binding_map[f"{keycode},0"]
 		except:
 			logging.debug("Key not configured")
 
@@ -240,12 +240,12 @@ def set_html_map(html_map):
 	binding_map = {}
 	for key_mod, value in html_map.items():
 		try:
-			parts = key_mod.split(",")
-			key = parts[0]
 			mod = 0
-			for txt in parts[1:]:
-				if txt in modifiers:
-					mod |=modifiers[txt] 
+			for part in key_mod.split("+"):
+				if part in modifiers:
+					mod |= 1 << modifiers.index(part)
+				else:
+					key = part
 			binding_map[f"{html2tk[key]},{mod}"] = value
 		except:
 			logging.warning(f"Failed to load keybinding for {key_mod}")
@@ -254,10 +254,15 @@ def get_html_map():
 	html_map = {}
 	for key_mod, cuia in binding_map.items():
 		key_code, mod_code = key_mod.split(",", 1)
-		html_key = tk2html[int(key_code)]
-		for x, y in modifiers.items(): #TODO: Optimise
-			if y & int(mod_code):
-				html_key += f",{x}"
+		mod_code = int(mod_code)
+		html_key = ""
+		i = 0
+		while mod_code:
+			if mod_code & 1:
+				html_key += f"{modifiers[i]}+"
+			mod_code >>= 1
+			i += 1
+		html_key += tk2html[int(key_code)]
 		html_map[html_key] = cuia
 	return html_map
 
@@ -282,10 +287,15 @@ def save(config="keybinding"):
 		return False
 
 
-def reset():
-	"""Reset keyboard binding to default values"""
+def reset(save_file=False):
+	"""Reset keyboard binding to default values
+	
+	save : True to save config to file
+	"""
 
 	set_html_map(default_map)
+	if save_file:
+		save()
 
 
 def add_binding(keycode, modifier, cuia):
@@ -318,6 +328,6 @@ def remove_binding(key):
 	except:
 		pass
 
-set_html_map(default_map)
+load()
 
 #------------------------------------------------------------------------------
