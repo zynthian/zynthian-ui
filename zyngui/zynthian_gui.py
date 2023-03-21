@@ -75,7 +75,7 @@ from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
 from zyngui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
 from zyngui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
-from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
+from zyngui import zynthian_gui_keybinding
 from zyngui.zynthian_gui_main import zynthian_gui_main
 from zyngui.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder

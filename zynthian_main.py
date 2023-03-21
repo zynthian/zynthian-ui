@@ -33,7 +33,7 @@ from tkinter import EventType
 from zyngui import zynthian_gui_config
 from zyncoder.zyncore import lib_zyncore
 from zyngui.zynthian_gui import zynthian_gui
-from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
+from zyngui import zynthian_gui_keybinding
 
 #******************************************************************************
 #------------------------------------------------------------------------------
