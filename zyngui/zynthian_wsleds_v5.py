@@ -44,6 +44,12 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 
 	def update_wsleds(self):
 		curscreen = self.zyngui.current_screen
+
+		if self.zyngui.alt_mode:
+			wscolor_light = self.wscolor_alt
+		else:
+			wscolor_light = self.wscolor_light
+
 		# Menu / Admin
 		if curscreen == "main":
 			self.wsleds.setPixelColor(0, self.wscolor_active)
@@ -52,7 +58,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		elif curscreen == "admin":
 			self.wsleds.setPixelColor(0, self.wscolor_admin)
 		else:
-			self.wsleds.setPixelColor(0, self.wscolor_light)
+			self.wsleds.setPixelColor(0, wscolor_light)
 
 		# Audio Mixer / ALSA Mixer
 		if curscreen == "audio_mixer":
@@ -60,7 +66,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		elif curscreen == "alsa_mixer":
 			self.wsleds.setPixelColor(1, self.wscolor_admin)
 		else:
-			self.wsleds.setPixelColor(1, self.wscolor_light)
+			self.wsleds.setPixelColor(1, wscolor_light)
 
 		# Control / Preset Screen:
 		if curscreen == "control":
@@ -68,7 +74,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		elif curscreen in ("preset", "bank"):
 			self.wsleds.setPixelColor(2, self.wscolor_admin)
 		else:
-			self.wsleds.setPixelColor(2, self.wscolor_light)
+			self.wsleds.setPixelColor(2, wscolor_light)
 
 		# ZS3 / Snapshot:
 		if curscreen == "zs3_learn":
@@ -76,10 +82,10 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		elif curscreen == "snapshot":
 			self.wsleds.setPixelColor(3, self.wscolor_admin)
 		else:
-			self.wsleds.setPixelColor(3, self.wscolor_light)
+			self.wsleds.setPixelColor(3, wscolor_light)
 
 		# F1 button
-		self.wsleds.setPixelColor(4, self.wscolor_light)
+		self.wsleds.setPixelColor(4, wscolor_light)
 
 		# Zynseq: Zynpad /Pattern Editor
 		if curscreen == "zynpad":
@@ -87,16 +93,16 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		elif curscreen == "pattern_editor":
 			self.wsleds.setPixelColor(5, self.wscolor_admin)
 		else:
-			self.wsleds.setPixelColor(5, self.wscolor_light)
+			self.wsleds.setPixelColor(5, wscolor_light)
 
 		# Tempo Screen
 		if curscreen == "tempo":
 			self.wsleds.setPixelColor(6, self.wscolor_active)
 		else:
-			self.wsleds.setPixelColor(6, self.wscolor_light)
+			self.wsleds.setPixelColor(6, wscolor_light)
 
 		# ALT button:
-		self.wsleds.setPixelColor(7, self.wscolor_yellow)
+		self.wsleds.setPixelColor(7, wscolor_light)
 
 
 		# REC button:
@@ -105,10 +111,10 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		elif self.zyngui.status_info['midi_recorder'] and "REC" in self.zyngui.status_info['midi_recorder']:
 			self.wsleds.setPixelColor(8, self.wscolor_blue)
 		else:
-			self.wsleds.setPixelColor(8, self.wscolor_light)
+			self.wsleds.setPixelColor(8, wscolor_light)
 
 		# STOP button
-		self.wsleds.setPixelColor(9, self.wscolor_light)
+		self.wsleds.setPixelColor(9, wscolor_light)
 
 		# PLAY button:
 		if curscreen == "pattern_editor":
@@ -120,7 +126,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 			elif pb_status in (zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC):
 				self.wsleds.setPixelColor(10, self.wscolor_red)
 			elif pb_status == zynseq.SEQ_STOPPED:
-				self.wsleds.setPixelColor(10, self.wscolor_light)
+				self.wsleds.setPixelColor(10, wscolor_light)
 		elif 'audio_player' in self.zyngui.status_info:
 			self.wsleds.setPixelColor(10, self.wscolor_active)
 		elif self.zyngui.status_info['midi_recorder'] and "PLAY" in self.zyngui.status_info['midi_recorder']:
@@ -128,13 +134,13 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		elif curscreen == "midi_recorder":
 			self.wsleds.setPixelColor(10, self.wscolor_active)
 		else:
-			self.wsleds.setPixelColor(10, self.wscolor_light)
+			self.wsleds.setPixelColor(10, wscolor_light)
 
 		# F2 button
-		self.wsleds.setPixelColor(11, self.wscolor_light)
+		self.wsleds.setPixelColor(11, wscolor_light)
 
 		# F3 button
-		self.wsleds.setPixelColor(12, self.wscolor_light)
+		self.wsleds.setPixelColor(12, wscolor_light)
 
 		# Select/Yes button
 		self.wsleds.setPixelColor(13, self.wscolor_green)
@@ -151,7 +157,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		self.wsleds.setPixelColor(18, self.wscolor_yellow)
 
 		# F4 button
-		self.wsleds.setPixelColor(19, self.wscolor_light)
+		self.wsleds.setPixelColor(19, wscolor_light)
 
 		try:
 			self.screens[curscreen].update_wsleds()
