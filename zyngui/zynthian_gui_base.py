@@ -74,13 +74,9 @@ class zynthian_gui_base(tkinter.Frame):
 		self.status_fs = int(self.status_h / 3)
 		self.status_lpad = self.status_fs
 
-		# CPU Meter parameters
-		self.cpum_l = 2 * self.status_rh - 3
-		self.cpum_x0 = self.status_l - self.cpum_l
-
 		# Digital Peak Meter (DPM) parameters
 		self.dpm_x0 = 0
-		self.dpm_l = self.status_l - self.cpum_l - 2
+		self.dpm_l = self.status_l - 2 * self.status_rh - 1
 		self.dpm_rangedB = 30	# Lowest meter reading in -dBFS
 		self.dpm_highdB = 10	# Start of yellow zone in -dBFS
 		self.dpm_overdB = 3		# Start of red zone in -dBFS
@@ -174,7 +170,6 @@ class zynthian_gui_base(tkinter.Frame):
 		self.button_push_ts = 0
 
 		self.init_status()
-		self.init_cpumeter()
 		self.init_dpmeter()
 
 		# Update Title
@@ -470,10 +465,6 @@ class zynthian_gui_base(tkinter.Frame):
 			state=tkinter.HIDDEN)
 
 
-	def init_cpumeter(self):
-		self.status_cpubar = self.status_canvas.create_rectangle((self.cpum_x0, 0, self.cpum_x0 + self.cpum_l, self.cpum_l), fill='#0f0', width=0, tags=('meters', 'cpum'))
-
-
 	def init_dpmeter(self):
 		self.status_peak_lA = self.status_canvas.create_rectangle((0, 0, self.dpm_high * self.dpm_l, self.status_rh - 2), fill="#00C000", width=0, tags=('meters', 'dpm'))
 		self.status_peak_lB = self.status_canvas.create_rectangle((0, self.status_rh - 1, self.dpm_high * self.dpm_l, 2 * self.status_rh - 3), fill="#00C000", width=0, tags=('meters', 'dpm'))
@@ -486,24 +477,6 @@ class zynthian_gui_base(tkinter.Frame):
 		self.status_hold_A = self.status_canvas.create_rectangle((0, 0, 0, self.status_rh - 2), width=0, state=tkinter.HIDDEN, tags=('meters'))
 		self.status_hold_B = self.status_canvas.create_rectangle((0, self.status_rh - 1, 0, self.status_rh - 3), width=0, state=tkinter.HIDDEN, tags=('meters'))
 		self.status_canvas.itemconfigure('dpm', state=tkinter.NORMAL)
-
-
-	def refresh_cpumeter(self, status={}):
-		cpu_load = status['cpu_load']
-		if cpu_load < 50:
-			cr = 0
-			cg = 0xCC
-		elif cpu_load < 75:
-			cr = int((cpu_load - 50) * 0XCC / 25)
-			cg = 0xCC
-		else:
-			cr = 0xCC
-			cg = int((100 - cpu_load) * 0xCC / 25)
-		color = "#%02x%02x%02x" % (cr, cg, 0)
-		try:
-			self.status_canvas.itemconfig(self.status_cpubar, fill=color)
-		except:
-			self.status_cpubar = self.status_canvas.create_rectangle((self.cpum_x0, 0, self.cpum_x0 + self.cpum_l, self.cpum_l), fill=color, width=0)
 
 
 	def refresh_dpmeter(self, status={}):
@@ -541,7 +514,6 @@ class zynthian_gui_base(tkinter.Frame):
 
 	def refresh_status(self, status={}):
 		if self.shown:
-			self.refresh_cpumeter(status)
 			self.refresh_dpmeter(status)
 
 			#status['xrun'] = True;
@@ -557,11 +529,23 @@ class zynthian_gui_base(tkinter.Frame):
 			elif 'overtemp' in status and status['overtemp']:
 				#flags = "\uf2c7"
 				flags = "\uf769"
+
+			if not flags:
+				# Display CPU load
+				cpu_load = status['cpu_load']
+				if cpu_load < 50:
+					cr = 0
+					cg = 0xCC
+				elif cpu_load < 75:
+					cr = int((cpu_load - 50) * 0XCC / 25)
+					cg = 0xCC
+				else:
+					cr = 0xCC
+					cg = int((100 - cpu_load) * 0xCC / 25)
+				color = "#%02x%02x%02x" % (cr, cg, 0)
+				flags = "\u2665"
+
 			self.status_canvas.itemconfig(self.status_error, text=flags, fill=color)
-			if flags == "":
-				self.status_canvas.itemconfigure('cpum', state=tkinter.NORMAL)
-			else:
-				self.status_canvas.itemconfigure('cpum', state=tkinter.HIDDEN)
 
 			# Display Audio Rec flag
 			flags = ""
