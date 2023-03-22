@@ -1987,10 +1987,14 @@ class zynthian_gui:
 			self.status_info['cpu_load'] = zynautoconnect.get_jackd_cpu_load()
 
 			# Get audio peak level
-			self.status_info['peakA'] = self.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 0)
-			self.status_info['peakB'] = self.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 1)
-			self.status_info['holdA'] = self.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 0)
-			self.status_info['holdB'] = self.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 1)
+			if self.zynmixer.get_mute(256):
+				self.status_info['mute'] = True
+			else:
+				self.status_info['mute'] = False
+				self.status_info['peakA'] = self.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 0)
+				self.status_info['peakB'] = self.zynmixer.get_dpm(MIXER_MAIN_CHANNEL, 1)
+				self.status_info['holdA'] = self.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 0)
+				self.status_info['holdB'] = self.zynmixer.get_dpm_hold(MIXER_MAIN_CHANNEL, 1)
 
 			# Get SOC sensors (once each 5 refreshes)
 			if self.status_counter > 5:

@@ -835,7 +835,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		pass
 
 	def refresh_dpmeter(self, status={}):
-		pass
+		if status["mute"]:
+			self.status_canvas.itemconfigure('mute', state=tkinter.NORMAL)
+		else:
+			self.status_canvas.itemconfigure('mute', state=tkinter.HIDDEN)
+
 
 
 	# Redefine set_title
