@@ -108,9 +108,9 @@ html2tk = {
 	"BrowserReload": 181
 }
 for i in range(12):
-	html2tk[f"F{i + 1}"] = 66 + i #TODO: add F13..F24
-for i in range(10):
-	html2tk[f"Digit{i + 1}"] = 9 + i
+	html2tk[f"F{i + 1}"] = 67 + i #TODO: add F13..F24
+for i in range(9):
+	html2tk[f"Digit{i + 1}"] = 10 + i
 for i in range(10):
 	html2tk[f"Key{'QWERTYUIOP'[i]}"] = 24 + i
 for i in range(9):
@@ -127,27 +127,23 @@ default_map = {
 	"Space": "ALL_NOTES_OFF",
 	"shift+Space": "ALL_SOUNDS_OFF",
 
-	"shift+Home": "RESTART_UI",
-	"ctrl+Home": "REBOOT",
-	"ctrl+End": "POWER_OFF",
-	"ctrl+Insert": "RELOAD_MIDI_CONFIG",
+	"Backspace": "ZYNSWITCH 1",
+	"Escape": "ZYNSWITCH 1",
+	"Enter": "ZYNSWITCH 3",
 
 	"KeyI": "ZYNSWITCH 0",
 	"KeyK": "ZYNSWITCH 1",
-	"Backspace": "ZYNSWITCH 1",
-	"Escape": "ZYNSWITCH 1",
 	"KeyO": "ZYNSWITCH 2",
 	"KeyL": "ZYNSWITCH 3",
-	"Enter": "ZYNSWITCH 3",
 
-	"ctrl+Period": "ZYNPOT 1,1",
-	"ctrl+Comma": "ZYNPOT 1,-1",
-	"Period": "ZYNPOT 3,1",
 	"Comma": "ZYNPOT 3,-1",
-	"shift+ctrl+Period": "ZYNPOT 0,1",
-	"shift+ctrl+Comma": "ZYNPOT 0,-1",
-	"shift+Period": "ZYNPOT 2,1",
+	"Period": "ZYNPOT 3,1",
 	"shift+Comma": "ZYNPOT 2,-1",
+	"shift+Period": "ZYNPOT 2,1",
+	"ctrl+Comma": "ZYNPOT 1,-1",
+	"ctrl+Period": "ZYNPOT 1,1",
+	"shift+ctrl+Comma": "ZYNPOT 0,-1",
+	"shift+ctrl+Period": "ZYNPOT 0,1",
 
 	"KeyA": "START_AUDIO_RECORD",
 	"shift+KeyA": "STOP_AUDIO_RECORD",
@@ -163,21 +159,22 @@ default_map = {
 	"shift+ctrl+KeyM": "STOP_MIDI_PLAY",
 	"ctrl+alt+KeyM": "TOGGLE_MIDI_PLAY",
 
-	"ArrowDown": "ARROW_DOWN",
 	"ArrowUp": "ARROW_UP",
-	"ArrowRight": "ARROW_RIGHT",
+	"ArrowDown": "ARROW_DOWN",
 	"ArrowLeft": "ARROW_LEFT",
+	"ArrowRight": "ARROW_RIGHT",
 
-	"Numpad2": "ARROW_DOWN",
-	"Numpad8": "ARROW_UP",
-	"Numpad6": "ARROW_RIGHT",
-	"Numpad4": "ARROW_LEFT",
-	"NumpadEnter": "ZYNSWITCH 3",
-	"Numpad7": "ZYNSWITCH 0",
 	"Numpad1": "ZYNSWITCH 1",
-	"Numpad9": "ZYNSWITCH 2",
+	"Numpad2": "ARROW_DOWN",
 	"Numpad3": "ZYNSWITCH 3",
+	"Numpad4": "ARROW_LEFT",
+	"Numpad6": "ARROW_RIGHT",
+	"Numpad7": "ZYNSWITCH 0",
+	"Numpad8": "ARROW_UP",
+	"Numpad9": "ZYNSWITCH 2",
+	"NumpadEnter": "ZYNSWITCH 3",
 
+	"Digit0": "PROGRAM_CHANGE 0",
 	"Digit1": "PROGRAM_CHANGE 1",
 	"Digit2": "PROGRAM_CHANGE 2",
 	"Digit3": "PROGRAM_CHANGE 3",
@@ -187,7 +184,11 @@ default_map = {
 	"Digit7": "PROGRAM_CHANGE 7",
 	"Digit8": "PROGRAM_CHANGE 8",
 	"Digit9": "PROGRAM_CHANGE 9",
-	"Digit0": "PROGRAM_CHANGE 0"
+
+	"shift+Home": "RESTART_UI",
+	"ctrl+Home": "REBOOT",
+	"ctrl+End": "POWER_OFF",
+	"ctrl+Insert": "RELOAD_MIDI_CONFIG"
 }
 
 
