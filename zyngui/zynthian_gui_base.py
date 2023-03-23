@@ -599,7 +599,7 @@ class zynthian_gui_base(tkinter.Frame):
 			if 'midi_clock' in status and status['midi_clock']:
 				self.status_canvas.itemconfig(self.status_midi_clock, state=tkinter.NORMAL)
 			else:
-				self.status_canvas.itemconfig(self.status_midi_clock, state=tkinter.NORMAL)
+				self.status_canvas.itemconfig(self.status_midi_clock, state=tkinter.HIDDEN)
 
 
 	def refresh_loading(self):
