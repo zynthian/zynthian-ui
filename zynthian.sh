@@ -65,50 +65,54 @@ function splash_zynthian() {
 
 
 function splash_zynthian_message() {
-        zynthian_message=$1
+	zynthian_message=$1
 
-        img_fpath=$2
-        [ "$img_fpath" ] || img_fpath="$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.png"
-        
-        # Generate a splash image with the message ...
-        img_w=`identify -format '%w' $img_fpath`
-        img_h=`identify -format '%h' $img_fpath`
-        if [[ "${#zynthian_message}" > "40" ]]; then
-            font_size=$(expr $img_w / 36)
-        else
-            font_size=$(expr $img_w / 28)
-        fi
-        strlen=$(expr ${#zynthian_message} \* $font_size / 2)
-        pos_x=$(expr $img_w / 2 - $strlen / 2)
-        pos_y=$(expr $img_h \* 10 / 100)
-        [[ "$pos_x" > "0" ]] || pos_x=5
-        convert -strip -family \"$ZYNTHIAN_UI_FONT_FAMILY\" -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"$zynthian_message\"" $img_fpath $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+	img_fpath=$2
+	[ "$img_fpath" ] || img_fpath="$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.png"
 
-        # Display error image
-        xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+	# Generate a splash image with the message ...
+	img_w=`identify -format '%w' $img_fpath`
+	img_h=`identify -format '%h' $img_fpath`
+	if [[ "${#zynthian_message}" > "40" ]]; then
+			font_size=$(expr $img_w / 36)
+	else
+			font_size=$(expr $img_w / 28)
+	fi
+	strlen=$(expr ${#zynthian_message} \* $font_size / 2)
+	pos_x=$(expr $img_w / 2 - $strlen / 2)
+	pos_y=$(expr $img_h \* 10 / 100)
+	[[ "$pos_x" > "0" ]] || pos_x=5
+	convert -strip -family \"$ZYNTHIAN_UI_FONT_FAMILY\" -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"$zynthian_message\"" $img_fpath $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+
+	# Display error image
+	xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
 }
 
 
 function splash_zynthian_error() {
-        # Generate an error splash image ...
-        splash_zynthian_message "$1" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"
+	# Generate an error splash image ...
+	splash_zynthian_message "$1" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"
 }
 
 
 function splash_zynthian_error_exit_ip() {
-        # Grab exit code if set
-        zynthian_error=$1
-        [ "$zynthian_error" ] || zynthian_error="???"
-        
-        # Get the IP
-        #zynthian_ip=`ip route get 1 | awk '{print $NF;exit}'`
-        zynthian_ip=`ip route get 1 | sed 's/^.*src \([^ ]*\).*$/\1/;q'`
+	# Grab exit code if set
+	zynthian_error=$1
+	[ "$zynthian_error" ] || zynthian_error="???"
 
-        # Format the message
-        zynthian_message="IP:$zynthian_ip    Exit:$zynthian_error"
-        
-        # Generate an error splash image with the IP & exit code ...
-        splash_zynthian_message "$zynthian_message" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"
+	# Get the IP
+	#zynthian_ip=`ip route get 1 | awk '{print $NF;exit}'`
+	zynthian_ip=`ip route get 1 | sed 's/^.*src \([^ ]*\).*$/\1/;q'`
+
+	# Format the message
+	zynthian_message="IP:$zynthian_ip    Exit:$zynthian_error"
+
+	# Generate an error splash image with the IP & exit code ...
+	splash_zynthian_message "$zynthian_message" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"
+}
+
+function splash_zynthian_last_message() {
+	xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
 }
 
 powersave_control.sh off
@@ -170,26 +174,26 @@ while true; do
 	case $status in
 		0)
 			#splash_zynthian_message "Powering Off..."
-			xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+			splash_zynthian_last_message
 			poweroff
 			backlight_control.sh off
 			break
 		;;
 		100)
-			xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
 			#splash_zynthian_message "Rebooting..."
+			splash_zynthian_last_message
 			reboot
 			break
 		;;
 		101)
-			xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
 			#splash_zynthian_message "Exiting..."
+			splash_zynthian_last_message
 			backlight_control.sh off
 			break
 		;;
 		102)
-			xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
 			#splash_zynthian_message "Restarting UI..."
+			splash_zynthian_last_message
 			load_config_env
 			sleep 10
 		;;
