@@ -28,7 +28,6 @@ import logging
 import tkinter
 from threading import Timer
 from tkinter import font as tkFont
-from PIL import ImageTk, Image  
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -83,8 +82,6 @@ class zynthian_gui_base(tkinter.Frame):
 		self.dpm_over = 1 - self.dpm_overdB / self.dpm_rangedB
 		self.dpm_scale_lm = int(self.dpm_high * self.dpm_l)
 		self.dpm_scale_lh = int(self.dpm_over * self.dpm_l)
-		img = Image.open("/zynthian/zynthian-ui/icons/mute.png").resize((2 * self.status_rh, 2 * self.status_rh), Image.ANTIALIAS)
-		self.mute_icon  = ImageTk.PhotoImage(img)
 
 		# Title Area parameters
 		self.title_canvas_width = zynthian_gui_config.display_width - self.status_l - self.status_lpad - 2
@@ -409,6 +406,13 @@ class zynthian_gui_base(tkinter.Frame):
 
 
 	def init_status(self):
+		self.status_mute = self.status_canvas.create_text(
+			int(self.status_l - self.status_fs * 1.3), 0,
+			anchor=tkinter.NE,
+			fill=zynthian_gui_config.color_status_error,
+			font=("forkawesome", self.status_fs),
+			text="\uf32f")
+
 		self.status_error = self.status_canvas.create_text(
 			self.status_l, 0,
 			anchor=tkinter.NE,
@@ -420,33 +424,41 @@ class zynthian_gui_base(tkinter.Frame):
 			0,
 			self.status_h - 2,
 			anchor=tkinter.SW,
-			fill=zynthian_gui_config.color_bg,
+			fill=zynthian_gui_config.color_status_record,
 			font=("forkawesome", self.status_fs),
-			text="")
+			text="\uf111",
+			state=tkinter.HIDDEN
+		)
 
 		self.status_audio_play = self.status_canvas.create_text(
 			int(self.status_fs * 1.3),
 			self.status_h - 2,
 			anchor=tkinter.SW,
-			fill=zynthian_gui_config.color_bg,
+			fill=zynthian_gui_config.color_status_play,
 			font=("forkawesome", self.status_fs),
-			text="")
+			text="\uf04b",
+			state=tkinter.HIDDEN
+		)
 
 		self.status_midi_rec = self.status_canvas.create_text(
 			int(self.status_fs * 2.6),
 			self.status_h - 2,
 			anchor=tkinter.SW,
-			fill=zynthian_gui_config.color_bg,
+			fill=zynthian_gui_config.color_status_midi,
 			font=("forkawesome", self.status_fs),
-			text="")
+			text="\uf111",
+			state=tkinter.HIDDEN
+		)
 
 		self.status_midi_play = self.status_canvas.create_text(
 			int(self.status_fs * 3.9),
 			self.status_h - 2,
 			anchor=tkinter.SW,
-			fill=zynthian_gui_config.color_bg,
+			fill=zynthian_gui_config.color_status_midi,
 			font=("forkawesome", self.status_fs),
-			text="")
+			text="\uf04b",
+			state=tkinter.HIDDEN
+		)
 
 		self.status_midi = self.status_canvas.create_text(
 			self.status_l,
@@ -465,12 +477,6 @@ class zynthian_gui_base(tkinter.Frame):
 			fill=zynthian_gui_config.color_status_midi,
 			state=tkinter.HIDDEN)
 
-		self.status_mute = self.status_canvas.create_image(self.dpm_l, 0, image=self.mute_icon,
-			anchor="ne",
-			state=tkinter.HIDDEN,
-			tags=('mute'),
-			)
-
 
 	def init_dpmeter(self):
 		self.status_peak_lA = self.status_canvas.create_rectangle((0, 0, self.dpm_high * self.dpm_l, self.status_rh - 2), fill="#00C000", width=0, tags=('meters', 'dpm'))
@@ -487,12 +493,6 @@ class zynthian_gui_base(tkinter.Frame):
 
 
 	def refresh_dpmeter(self, status={}):
-		if status["mute"]:
-			self.status_canvas.itemconfigure('mute', state=tkinter.NORMAL)
-			self.status_canvas.itemconfigure('meters', state=tkinter.HIDDEN)
-		else:
-			self.status_canvas.itemconfigure('mute', state=tkinter.HIDDEN)
-			self.status_canvas.itemconfigure('meters', state=tkinter.NORMAL)
 		# Do some calcs
 		lA = int(max(0, 1 + status['peakA'] / self.dpm_rangedB) * self.dpm_l)
 		lB = int(max(0, 1 + status['peakB'] / self.dpm_rangedB) * self.dpm_l)
@@ -525,25 +525,31 @@ class zynthian_gui_base(tkinter.Frame):
 			self.status_canvas.itemconfig(self.status_hold_B, state=tkinter.HIDDEN)
 
 
+
 	def refresh_status(self, status={}):
 		if self.shown:
-			self.refresh_dpmeter(status)
+			if status["mute"]:
+				self.status_canvas.itemconfigure(self.status_mute, state=tkinter.NORMAL)
+				self.status_canvas.itemconfigure('meters', state=tkinter.HIDDEN)
+			else:
+				self.status_canvas.itemconfigure(self.status_mute, state=tkinter.HIDDEN)
+				self.status_canvas.itemconfigure('meters', state=tkinter.NORMAL)
+				self.refresh_dpmeter(status)
 
 			#status['xrun'] = True;
-
 			# Display error flags
-			flags = ""
-			color = zynthian_gui_config.color_status_error
 			if 'xrun' in status and status['xrun']:
+				color = zynthian_gui_config.color_status_error
 				#flags = "\uf00d"
 				flags = "\uf071"
 			elif 'undervoltage' in status and status['undervoltage']:
+				color = zynthian_gui_config.color_status_error
 				flags = "\uf0e7"
 			elif 'overtemp' in status and status['overtemp']:
+				color = zynthian_gui_config.color_status_error
 				#flags = "\uf2c7"
 				flags = "\uf769"
-
-			if not flags:
+			else:
 				# Display CPU load
 				cpu_load = status['cpu_load']
 				if cpu_load < 50:
@@ -557,52 +563,43 @@ class zynthian_gui_base(tkinter.Frame):
 					cg = int((100 - cpu_load) * 0xCC / 25)
 				color = "#%02x%02x%02x" % (cr, cg, 0)
 				flags = "\u2665"
-
 			self.status_canvas.itemconfig(self.status_error, text=flags, fill=color)
 
 			# Display Audio Rec flag
-			flags = ""
-			color = zynthian_gui_config.color_bg
 			if 'audio_recorder' in status:
-				flags = "\uf111"
-				color = zynthian_gui_config.color_status_record
-			self.status_canvas.itemconfig(self.status_audio_rec, text=flags, fill=color)
+				self.status_canvas.itemconfig(self.status_audio_rec, state=tkinter.NORMAL)
+			else:
+				self.status_canvas.itemconfig(self.status_audio_rec, state=tkinter.HIDDEN)
 
 			# Display Audio Play flag
-			flags = ""
-			color = zynthian_gui_config.color_bg
 			if 'audio_player' in status:
-				flags = "\uf04b"
-				color = zynthian_gui_config.color_status_play
-			self.status_canvas.itemconfig(self.status_audio_play, text=flags, fill=color)
+				self.status_canvas.itemconfig(self.status_audio_play, state=tkinter.NORMAL)
+			else:
+				self.status_canvas.itemconfig(self.status_audio_play, state=tkinter.HIDDEN)
 
 			# Display MIDI Rec flag
-			flags = ""
-			color = zynthian_gui_config.color_status_midi
 			if 'midi_recorder' in status and status['midi_recorder'] in ('REC', 'PLAY+REC'):
-				flags = "\uf111"
-			self.status_canvas.itemconfig(self.status_midi_rec, text=flags, fill=color)
+				self.status_canvas.itemconfig(self.status_midi_rec, state=tkinter.NORMAL)
+			else:
+				self.status_canvas.itemconfig(self.status_midi_rec, state=tkinter.HIDDEN)
 
 			# Display MIDI Play flag
-			flags = ""
-			color = zynthian_gui_config.color_status_midi
 			if 'midi_recorder' in status and status['midi_recorder'] in ('PLAY', 'PLAY+REC'):
-				flags = "\uf04b"
-			self.status_canvas.itemconfig(self.status_midi_play, text=flags, fill=color)
+				self.status_canvas.itemconfig(self.status_midi_play, state=tkinter.NORMAL)
+			else:
+				self.status_canvas.itemconfig(self.status_midi_play, state=tkinter.HIDDEN)
 
 			# Display MIDI activity flag
 			if 'midi' in status and status['midi']:
-				mstate = tkinter.NORMAL
+				self.status_canvas.itemconfig(self.status_midi, state=tkinter.NORMAL)
 			else:
-				mstate = tkinter.HIDDEN
-			self.status_canvas.itemconfig(self.status_midi, state=mstate)
+				self.status_canvas.itemconfig(self.status_midi, state=tkinter.HIDDEN)
 
 			# Display MIDI clock flag
 			if 'midi_clock' in status and status['midi_clock']:
-				mcstate = tkinter.NORMAL
+				self.status_canvas.itemconfig(self.status_midi_clock, state=tkinter.NORMAL)
 			else:
-				mcstate = tkinter.HIDDEN
-			self.status_canvas.itemconfig(self.status_midi_clock, state=mcstate)
+				self.status_canvas.itemconfig(self.status_midi_clock, state=tkinter.NORMAL)
 
 
 	def refresh_loading(self):
