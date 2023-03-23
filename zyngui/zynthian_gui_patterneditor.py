@@ -1223,10 +1223,12 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#   returns True if action fully handled or False if parent action should be triggered
 	def switch(self, switch, type):
+		if type != "S":
+			return False
 		if switch == zynthian_gui_config.ENC_SNAPSHOT:
 			self.toggle_playback()
 			return True
-		elif switch == zynthian_gui_config.ENC_LAYER and type == 'B':
+		elif switch == zynthian_gui_config.ENC_LAYER:
 			self.show_menu()
 			return True
 		return False
