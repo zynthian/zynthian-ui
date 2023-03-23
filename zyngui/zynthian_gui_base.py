@@ -70,7 +70,7 @@ class zynthian_gui_base(tkinter.Frame):
 		self.status_l = int(self.width * 0.25)
 		self.status_h = self.topbar_height
 		self.status_rh = max(2, int(self.status_h / 4))
-		self.status_fs = int(self.status_h / 3)
+		self.status_fs = int(0.36 * self.status_h)
 		self.status_lpad = self.status_fs
 
 		# Digital Peak Meter (DPM) parameters
@@ -599,7 +599,7 @@ class zynthian_gui_base(tkinter.Frame):
 			if 'midi_clock' in status and status['midi_clock']:
 				self.status_canvas.itemconfig(self.status_midi_clock, state=tkinter.NORMAL)
 			else:
-				self.status_canvas.itemconfig(self.status_midi_clock, state=tkinter.NORMAL)
+				self.status_canvas.itemconfig(self.status_midi_clock, state=tkinter.HIDDEN)
 
 
 	def refresh_loading(self):
