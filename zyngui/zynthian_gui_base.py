@@ -75,7 +75,7 @@ class zynthian_gui_base(tkinter.Frame):
 
 		# Digital Peak Meter (DPM) parameters
 		self.dpm_l = self.status_l - 2 * self.status_rh - 1
-		self.dpm_rangedB = 30	# Lowest meter reading in -dBFS
+		self.dpm_rangedB = 50	# Lowest meter reading in -dBFS
 		self.dpm_highdB = 10	# Start of yellow zone in -dBFS
 		self.dpm_overdB = 3		# Start of red zone in -dBFS
 		self.dpm_high = 1 - self.dpm_highdB / self.dpm_rangedB

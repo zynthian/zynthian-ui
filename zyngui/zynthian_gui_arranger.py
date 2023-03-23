@@ -1218,7 +1218,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			else:
 				return False
 			return True
-		elif switch == zynthian_gui_config.ENC_LAYER and type == 'B':
+		elif switch == zynthian_gui_config.ENC_LAYER and type == 'S':
 			self.show_menu()
 			return True
 
