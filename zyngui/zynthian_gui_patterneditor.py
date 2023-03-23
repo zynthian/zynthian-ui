@@ -1028,6 +1028,14 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.keymap_offset = self.zyngui.zynseq.libseq.getRefNote()
 		keymap_len = len(self.keymap)
 		self.load_keymap()
+		# Scroll vertically so show lowest note that occurs at first step
+		for x,y in enumerate(self.keymap):
+			if self.zyngui.zynseq.libseq.getNoteStart(0, y["note"]) < 0:
+				continue
+			self.keymap_offset = x
+			self.redraw_pending = 4
+			self.selected_cell=(0, x)
+			break
 		if self.redraw_pending < 4:
 			if self.zyngui.zynseq.libseq.getSteps() != steps or len(self.keymap) != keymap_len:
 				self.redraw_pending = 4
