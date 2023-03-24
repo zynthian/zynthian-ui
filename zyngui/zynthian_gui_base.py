@@ -31,6 +31,7 @@ from tkinter import font as tkFont
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_dpm import zynthian_gui_dpm
 from zyngine import zynthian_controller
 
 #------------------------------------------------------------------------------
@@ -72,16 +73,6 @@ class zynthian_gui_base(tkinter.Frame):
 		self.status_rh = max(2, int(self.status_h / 4))
 		self.status_fs = int(0.36 * self.status_h)
 		self.status_lpad = self.status_fs
-
-		# Digital Peak Meter (DPM) parameters
-		self.dpm_l = self.status_l - 2 * self.status_rh - 1
-		self.dpm_rangedB = 50	# Lowest meter reading in -dBFS
-		self.dpm_highdB = 10	# Start of yellow zone in -dBFS
-		self.dpm_overdB = 3		# Start of red zone in -dBFS
-		self.dpm_high = 1 - self.dpm_highdB / self.dpm_rangedB
-		self.dpm_over = 1 - self.dpm_overdB / self.dpm_rangedB
-		self.dpm_scale_lm = int(self.dpm_high * self.dpm_l)
-		self.dpm_scale_lh = int(self.dpm_over * self.dpm_l)
 
 		# Title Area parameters
 		self.title_canvas_width = zynthian_gui_config.display_width - self.status_l - self.status_lpad - 2
@@ -167,6 +158,7 @@ class zynthian_gui_base(tkinter.Frame):
 
 		self.button_push_ts = 0
 
+		self.main_mute = 0
 		self.init_status()
 		self.init_dpmeter()
 
@@ -364,6 +356,7 @@ class zynthian_gui_base(tkinter.Frame):
 			if self.zyngui.test_mode:
 				logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
 			self.shown = True
+			self.refresh_status()
 			self.grid(row=0, column=0, sticky='nsew')
 			self.propagate(False)
 		self.main_frame.focus()
@@ -411,7 +404,8 @@ class zynthian_gui_base(tkinter.Frame):
 			anchor=tkinter.NE,
 			fill=zynthian_gui_config.color_status_error,
 			font=("forkawesome", self.status_fs),
-			text="\uf32f")
+			text="\uf32f",
+			state = tkinter.HIDDEN)
 
 		self.status_error = self.status_canvas.create_text(
 			self.status_l, 0,
@@ -479,62 +473,28 @@ class zynthian_gui_base(tkinter.Frame):
 
 
 	def init_dpmeter(self):
-		self.status_peak_lA = self.status_canvas.create_rectangle((0, 0, self.dpm_high * self.dpm_l, self.status_rh - 2), fill="#00C000", width=0, tags=('meters', 'dpm'))
-		self.status_peak_lB = self.status_canvas.create_rectangle((0, self.status_rh - 1, self.dpm_high * self.dpm_l, 2 * self.status_rh - 3), fill="#00C000", width=0, tags=('meters', 'dpm'))
-		self.status_peak_mA = self.status_canvas.create_rectangle((self.dpm_high * self.dpm_l, 0, self.dpm_over * self.dpm_l, self.status_rh - 2), fill="#C0C000", width=0, tags=('meters', 'dpm'))
-		self.status_peak_mB = self.status_canvas.create_rectangle((self.dpm_high * self.dpm_l, self.status_rh - 1, self.dpm_over * self.dpm_l, 2 * self.status_rh - 3), fill="#C0C000", width=0, tags=('meters', 'dpm'))
-		self.status_peak_hA = self.status_canvas.create_rectangle((self.dpm_over * self.dpm_l, 0, self.dpm_l, self.status_rh-2), fill="#C00000", width=0, tags=('meters', 'dpm'))
-		self.status_peak_hB = self.status_canvas.create_rectangle((self.dpm_over * self.dpm_l, self.status_rh - 1, self.dpm_l, 2 * self.status_rh - 3), fill="#C00000", width=0, tags=('meters', 'dpm'))
-		self.status_peak_bA = self.status_canvas.create_rectangle((0, 0, self.dpm_l, self.status_rh - 2), width=0, fill='#333', tags=('meters', 'dpm'))
-		self.status_peak_bB = self.status_canvas.create_rectangle((0, self.status_rh - 1, self.dpm_l, 2 * self.status_rh - 3), width=0, fill='#333', tags=('meters', 'dpm'))
-		self.status_hold_A = self.status_canvas.create_rectangle((0, 0, 0, self.status_rh - 2), width=0, state=tkinter.HIDDEN, tags=('meters'))
-		self.status_hold_B = self.status_canvas.create_rectangle((0, self.status_rh - 1, 0, self.status_rh - 3), width=0, state=tkinter.HIDDEN, tags=('meters'))
-		self.status_canvas.itemconfigure('dpm', state=tkinter.NORMAL)
-
-
-	def refresh_dpmeter(self, status={}):
-		# Do some calcs
-		lA = int(max(0, 1 + status['peakA'] / self.dpm_rangedB) * self.dpm_l)
-		lB = int(max(0, 1 + status['peakB'] / self.dpm_rangedB) * self.dpm_l)
-		lholdA = int(min(max(0, 1 + status['holdA'] / self.dpm_rangedB), 1) * self.dpm_l)
-		lholdB = int(min(max(0, 1 + status['holdB'] / self.dpm_rangedB), 1) * self.dpm_l)
-
-		# Display audio peak
-		self.status_canvas.coords(self.status_peak_bA, (lA, 0, self.dpm_l, self.status_rh - 2))
-		self.status_canvas.coords(self.status_peak_bB, (lB, self.status_rh - 1, self.dpm_l, 2 * self.status_rh - 3))
-
-		# Display audio hold
-		self.status_canvas.coords(self.status_hold_A, (lholdA, 0, lholdA, self.status_rh - 2))
-		if lholdA >= self.dpm_scale_lh:
-			self.status_canvas.itemconfig(self.status_hold_A, state=tkinter.NORMAL, fill="#FF0000")
-		elif lholdA >= self.dpm_scale_lm:
-			self.status_canvas.itemconfig(self.status_hold_A, state=tkinter.NORMAL, fill="#FFFF00")
-		elif lholdA > 0:
-			self.status_canvas.itemconfig(self.status_hold_A, state=tkinter.NORMAL, fill="#00FF00")
-		else:
-			self.status_canvas.itemconfig(self.status_hold_A, state=tkinter.HIDDEN)
-
-		self.status_canvas.coords(self.status_hold_B, (lholdB, self.status_rh - 1, lholdB, 2 * self.status_rh - 3))
-		if lholdB >= self.dpm_scale_lh:
-			self.status_canvas.itemconfig(self.status_hold_B, state=tkinter.NORMAL, fill="#FF0000")
-		elif lholdB >= self.dpm_scale_lm:
-			self.status_canvas.itemconfig(self.status_hold_B, state=tkinter.NORMAL, fill="#FFFF00")
-		elif lholdB > 0:
-			self.status_canvas.itemconfig(self.status_hold_B, state=tkinter.NORMAL, fill="#00FF00")
-		else:
-			self.status_canvas.itemconfig(self.status_hold_B, state=tkinter.HIDDEN)
-
+		width = int(self.status_l - 2 * self.status_rh - 1)
+		height = int(self.status_h / 4 - 1)
+		self.dpm_a = zynthian_gui_dpm(self.zyngui.zynmixer, 256, 0, self.status_canvas, 0, 0, width, height, False, ("status_dpm"))
+		self.dpm_b = zynthian_gui_dpm(self.zyngui.zynmixer, 256, 1, self.status_canvas, 0, height + 2, width, height, False, ("status_dpm"))
 
 
 	def refresh_status(self, status={}):
 		if self.shown:
-			if status["mute"]:
-				self.status_canvas.itemconfigure(self.status_mute, state=tkinter.NORMAL)
-				self.status_canvas.itemconfigure('meters', state=tkinter.HIDDEN)
-			else:
-				self.status_canvas.itemconfigure(self.status_mute, state=tkinter.HIDDEN)
-				self.status_canvas.itemconfigure('meters', state=tkinter.NORMAL)
-				self.refresh_dpmeter(status)
+			mute = self.zyngui.zynmixer.get_mute(256)
+			if mute != self.main_mute:
+				self.main_mute = mute
+				if mute:
+					self.status_canvas.itemconfigure(self.status_mute, state=tkinter.NORMAL)
+					if self.dpm_a:
+						self.status_canvas.itemconfigure('status_dpm', state=tkinter.HIDDEN)
+				else:
+					self.status_canvas.itemconfigure(self.status_mute, state=tkinter.HIDDEN)
+					if self.dpm_a:
+						self.status_canvas.itemconfigure('status_dpm', state=tkinter.NORMAL)
+			if not mute and self.dpm_a:
+					self.dpm_a.refresh()
+					self.dpm_b.refresh()
 
 			#status['xrun'] = True;
 			# Display error flags
@@ -549,7 +509,7 @@ class zynthian_gui_base(tkinter.Frame):
 				color = zynthian_gui_config.color_status_error
 				#flags = "\uf2c7"
 				flags = "\uf769"
-			else:
+			elif 'cpu_load' in status:
 				# Display CPU load
 				cpu_load = status['cpu_load']
 				if cpu_load < 50:
@@ -562,6 +522,9 @@ class zynthian_gui_base(tkinter.Frame):
 					cr = 0xCC
 					cg = int((100 - cpu_load) * 0xCC / 25)
 				color = "#%02x%02x%02x" % (cr, cg, 0)
+				flags = "\u2665"
+			else:
+				color = "#000000"
 				flags = "\u2665"
 			self.status_canvas.itemconfig(self.status_error, text=flags, fill=color)
 
