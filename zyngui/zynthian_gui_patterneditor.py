@@ -210,7 +210,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if mode == EDIT_MODE_SINGLE:
 			self.set_title("Note Parameters", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
 			self.set_edit_title()
-			self.init_buttonbar([("ZYNPOT 0,-1", "-1"),("ZYNPOT 0,+1", "+1"),("ZYNPOT 3,-1", "<PARAM"),("ZYNPOT 3,+1", "PARAM >"),(3,"OK")])
+			self.init_buttonbar([("ZYNPOT 0,-1", "-1"),("ZYNPOT 0,+1", "+1"),("ZYNPOT 3,-1", "PREV\nPARAM"),("ZYNPOT 3,+1", "NEXT\nPARAM"),(3,"OK")])
 		elif mode == EDIT_MODE_ALL:
 			self.set_title("Note Parameters ALL", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
 			self.set_edit_title()
