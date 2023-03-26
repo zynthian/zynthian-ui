@@ -308,7 +308,7 @@ class zynthian_gui_base(tkinter.Frame):
 					t = 'L'
 			self.zyngui.zynswitch_defered(t, cuia)
 		else:
-			self.zyngui.callable_ui_action(cuia)
+			self.zyngui.callable_ui_action_params(cuia)
 
 
 	# Default topbar touch callback
@@ -482,7 +482,7 @@ class zynthian_gui_base(tkinter.Frame):
 	def refresh_status(self, status={}):
 		if self.shown:
 			mute = self.zyngui.zynmixer.get_mute(256)
-			if mute != self.main_mute:
+			if True: # mute != self.main_mute:
 				self.main_mute = mute
 				if mute:
 					self.status_canvas.itemconfigure(self.status_mute, state=tkinter.NORMAL)
@@ -701,7 +701,7 @@ class zynthian_gui_base(tkinter.Frame):
 			self.format_print = "{}: {}"
 
 		self.label_select_path.config(bg=zynthian_gui_config.color_panel_tx, fg=zynthian_gui_config.color_header_bg)
-		self.init_buttonbar([("SELECT_DOWN", "-1"),("SELECT_UP", "+1"),("SNAPSHOT_DOWN", "-10"),("SNAPSHOT_UP", "+10"),(3,"OK")])
+		self.init_buttonbar([("ZYNPOT 3,-1", "-1"),("ZYNPOT 3,+1", "+1"),("ZYNPOT 3,-10", "-10"),("ZYNPOT 3,+10", "+10"),(3,"OK")])
 		self.update_param_editor()
 		self.update_layout()
 	

@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for Pianoteq (>=v7.5)
 #
-# Copyright (C) 2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2023 Fernando Moyano <jofemodo@zynthian.org>
 # 			  Holger Wirtz <holger@zynthian.org>
 #             Brian Walton <riban@zynthian.org>
 #
@@ -36,6 +36,102 @@ from subprocess import Popen, DEVNULL, PIPE, check_output
 
 from . import zynthian_engine
 from . import zynthian_controller
+
+pt_ctrl_map = {
+	"Condition": "Cond",
+	"Dynamics": "Dyn",
+	"Volume": "Volum",
+	"Post Effect Gain": "EffGain",
+	"Equalizer Switch": "EquOn",
+	"Aftertouch": "AfTouch",
+	"Diapason": "Diap",
+	"Sustain Pedal": "SustP",
+	"Soft Pedal": "SoftP",
+	"Sostenuto Pedal": "SostP",
+	"Harmonic Pedal": "HarmP",
+	"Rattle Pedal": "Rattle",
+	"Lute Stop Pedal": "LutStp",
+	"Celeste Pedal": "Celes",
+	"Mozart Rail": "Mozart",
+	"Super Sostenuto": "SSosP",
+	"Pinch Harmonic Pedal": "PinchH",
+	"Glissando Pedal": "Gliss",
+	"Harpsichord Register[1]": "Regis[1]",
+	"Harpsichord Register[2]": "Regis[2]",
+	"Harpsichord Register[3]": "Regis[3]",
+	"Reversed Sustain": "RevSus",
+	"Pitch Bend": "PBend",
+	"Clavinet Low Mic": "ClvMicL",
+	"Clavinet High Mic": "ClvMicH",
+	"Output Mode": "Output",
+	"Mute": "Mute",
+	"Damper Noise": "DampNois",
+	"Pedal Noise": "PSnd",
+	"Key Release Noise": "KSnd",
+	"Keyboard Range Switch": "KbRng",
+	"Bounce Switch": "MBOn",
+	"Bounce Delay": "MBDel",
+	"Bounce Sync": "MBSync",
+	"Bounce Sync Speed": "MBSyncS",
+	"Bounce Velocity Sensitivity": "MBVelS",
+	"Bounce Delay Loss": "MBAccel",
+	"Bounce Velocity Loss": "MBVelL",
+	"Bounce Humanization": "MBHuma",
+	"NFX Lfo Shape": "nfxLfoSh",
+	"NFX Lfo Skew": "nfxLfoSk",
+	"NFX Lfo Rate": "nfxLfoRt",
+	"NFX Lfo Phase": "nfxLfoP",
+	"NFX Lfo Phase Locked": "nfxLfoPL",
+	"NFX Onset Duration": "nfxOnset",
+	"NFX Vibrato": "nfxVibC",
+	"NFX Vibrato Offset": "nfxVibB",
+	"NFX Tremolo Depth": "nfxTrmD",
+	"NFX Tremolo Phase": "nfxTrmP",
+	"Attack Envelope": "AttkE",
+	"Virtuosity": "Virt",
+	"Fret": "Fret",
+	"Guitar Legato": "Legato",
+	"Guitar easy fingering": "GFing",
+	"Guitar Body": "GBody",
+	"Effect[1].Switch": "Eff[1].Switch",
+	"Effect[1].Param[1]": "Eff[1].Param[1]",
+	"Effect[1].Param[2]": "Eff[1].Param[2]",
+	"Effect[1].Param[3]": "Eff[1].Param[3]",
+	"Effect[1].Param[4]": "Eff[1].Param[4]",
+	"Effect[1].Param[5]": "Eff[1].Param[5]",
+	"Effect[1].Param[6]": "Eff[1].Param[6]",
+	"Effect[1].Param[7]": "Eff[1].Param[7]",
+	"Effect[1].Param[8]": "Eff[1].Param[8]",
+	"Effect[2].Switch": "Eff[2].Switch",
+	"Effect[2].Param[1]": "Eff[2].Param[1]",
+	"Effect[2].Param[2]": "Eff[2].Param[2]",
+	"Effect[2].Param[3]": "Eff[2].Param[3]",
+	"Effect[2].Param[4]": "Eff[2].Param[4]",
+	"Effect[2].Param[5]": "Eff[2].Param[5]",
+	"Effect[2].Param[6]": "Eff[2].Param[6]",
+	"Effect[2].Param[7]": "Eff[2].Param[7]",
+	"Effect[2].Param[8]": "Eff[2].Param[8]",
+	"Effect[3].Switch": "Eff[3].Switch",
+	"Effect[3].Param[1]": "Eff[3].Param[1]",
+	"Effect[3].Param[2]": "Eff[3].Param[2]",
+	"Effect[3].Param[3]": "Eff[3].Param[3]",
+	"Effect[3].Param[4]": "Eff[3].Param[4]",
+	"Effect[3].Param[5]": "Eff[3].Param[5]",
+	"Effect[3].Param[6]": "Eff[3].Param[6]",
+	"Effect[3].Param[7]": "Eff[3].Param[7]",
+	"Effect[3].Param[8]": "Eff[3].Param[8]",
+	"Reverb Switch": "RevrbOn",
+	"Reverb Duration": "RevDur",
+	"Reverb Mix": "RevM",
+	"Room Dimensions": "RevDim",
+	"Reverb Pre-delay": "RevDel",
+	"Reverb Early Reflections": "RevEarl",
+	"Reverb Tone": "RevTon",
+	"Limiter Switch": "LimOn",
+	"Limiter Sharpness": "LimSharp",
+	"Limiter Threshold": "LimThr",
+	"Limiter Gain": "LimGain"
+}
 
 # ------------------------------------------------------------------------------
 # Pianoteq module helper functions
@@ -393,7 +489,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		if result is None or 'result' not in result:
 			return None
 		for param in result['result']:
-			params[param['id']] = {'name': param['name'], 'value': param['normalized_value']}
+			params[param['id']] = {'name': param['name'], 'value': param['normalized_value'], 'cc': param['index']}
 		return params
 
 
@@ -411,9 +507,11 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	#   param: Parameter id
 	#   value: Normalized value (0.0..1.0)
 	#   returns: True on success
+	"""
 	def set_param(self, param, value):
 		result = self.rpc('setParameters', {'list':[{'id':param,'normalized_value':value}]})
 		return result and 'error' not in result
+	"""
 
 
 	# ---------------------------------------------------------------------------
@@ -589,7 +687,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				'value_min': 0.0,
 				'value_max': 1.0,
 				'is_integer': False,
-				'not_on_gui': False
+				'not_on_gui': False,
+				'midi_chan': layer.midi_chan,
+				'midi_cc': params[param]["cc"]
 			}
 			# Discrete parameter values
 			if param in ['Sustain Pedal', 'Soft Pedal', 'Sostenuto Pedal', 'Harmonic Pedal', 'Rattle Pedal', 'Lute Stop Pedal', 'Celeste Pedal', 'Mozart Rail', 'Super Sostenuto', 'Pitch Harmonic Pedal']:
@@ -601,7 +701,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				options['labels'] = ['Stereophonic',  'Monophonic', 'Sound Recording', 'Binaural',]
 			if param.startswith('Effect'):
 				options['group_symbol'] = 'Effects'
-			elif param.startswith('Reverb'):
+			elif param.startswith('Reverb') or param == "Room Dimensions":
 				options['group_symbol'] = 'Reverb'
 			elif param.startswith('Limiter'):
 				options['group_symbol'] = 'Limiter'
