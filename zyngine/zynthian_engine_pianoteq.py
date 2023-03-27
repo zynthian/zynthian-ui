@@ -33,6 +33,7 @@ from time import sleep
 from xml.etree import ElementTree
 from collections import OrderedDict
 from subprocess import Popen, DEVNULL, PIPE, check_output
+import struct
 
 from . import zynthian_engine
 from . import zynthian_controller
@@ -321,6 +322,68 @@ def fix_pianoteq_config(samplerate):
 			return format(e)
 
 
+def read_pianoteq_midi_mapping(file):
+	result = {}
+	with open(file, "rb") as f:
+		data = f.read()
+	if len(data) < 40:
+		print(f"Short read: {len(data)}")
+		return result
+	if struct.unpack("<I", data[0:4])[0] != 954245913:
+		print(f"Wrong magic header number: {struct.unpack('<I', data[0:4])[0]}")
+		return result
+	payload_len = struct.unpack("<i", data[4:8])[0]
+	if payload_len + 8 != len(data):
+		print("Error: Wrong length")
+	pos = 8
+	for key in ["Flag 1","Notes Channel","Notes Transposition","Flag 2","Flags 3","Dialect","MIDI Tuning","Map length"]:
+		result[key] = struct.unpack("<i", data[pos:pos+4])[0]
+		pos += 4
+	result["map"] = {}
+	while pos < len(data):
+		print(f"Get data at {pos}")
+		flag = struct.unpack("<i", data[pos:pos+4])[0]
+		pos += 4 # What is this extra flag?
+		trigger_len = struct.unpack("<i", data[pos:pos+4])[0]
+		pos += 4
+		trigger_str = data[pos:pos+trigger_len].decode()
+		pos += trigger_len
+		action_len = struct.unpack("<i", data[pos:pos+4])[0]
+		pos += 4
+		action_str = data[pos:pos+action_len].decode()
+		pos += action_len
+		result["map"][trigger_str] = [action_str, flag]
+	return result
+
+
+def write_pianoteq_midi_mapping(config, file):
+	data = bytes([25,163,224,56,0,0,0,0])
+	for key, val in {"Flag 1": 6, "Notes Channel": -1, "Notes Transposition": 0, "Flag 2": -1, "Flags 3": -1, "Dialect": 0, "MIDI Tuning": 0}.items():
+		if key in config:
+			data += struct.pack("<i", config[key])
+		else:
+			data += struct.pack("<i", val)
+	data += struct.pack("i", len(config["map"]))
+	for key, val in config["map"].items():
+		data += struct.pack("<i", val[1])
+		data += struct.pack("<i", len(key))
+		data += key.encode()
+		data += struct.pack("<i", len(val[0]))
+		data += val[0].encode()
+	with open(file, "wb") as f:
+		l = f.write(data)
+		f.seek(4)
+		f.write(struct.pack("i", l - 8))
+
+
+def save_midi_mapping(file):
+	data = {"map":{}}
+	for cc,param in enumerate(pt_ctrl_map.values()):
+		data["map"][f"Controller {cc}"] = [f"{{SetParameter|3|{param}|0:1}}", 1]
+	data["map"]["Pitch Bend"] = ["{SetParameter|3|PBend|0:1}", 1]
+	write_pianoteq_midi_mapping(data, file)
+
+
 # ------------------------------------------------------------------------------
 # Pianoteq module constants & parameter configuration/initialization
 # ------------------------------------------------------------------------------
@@ -332,6 +395,7 @@ PIANOTEQ_DATA_DIR = os.path.expanduser('~') + '/.local/share/Modartt/Pianoteq'
 PIANOTEQ_ADDON_DIR = PIANOTEQ_DATA_DIR + '/Addons'
 PIANOTEQ_MY_PRESETS_DIR = PIANOTEQ_DATA_DIR + '/Presets'
 PIANOTEQ_CONFIG_FILE = PIANOTEQ_CONFIG_DIR + '/Pianoteq.prefs'
+PIANOTEQ_MIDIMAPPINGS_DIR = PIANOTEQ_DATA_DIR + '/MidiMappings'
 
 # ------------------------------------------------------------------------------
 # Pianoteq Engine Class
@@ -359,8 +423,10 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.params = {}
 
 		create_pianoteq_config()
+		save_midi_mapping(f"{PIANOTEQ_MIDIMAPPINGS_DIR}/zynthian.ptm")
 
-		self.command = '{} --prefs {}'.format(PIANOTEQ_BINARY, PIANOTEQ_CONFIG_FILE)
+
+		self.command = f"{PIANOTEQ_BINARY} --prefs {PIANOTEQ_CONFIG_FILE} --midimapping zynthian"
 		if self.info['api']:
 			self.command +=  " --serve 9001"
 		if not self.config_remote_display():
