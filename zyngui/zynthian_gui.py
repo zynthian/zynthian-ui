@@ -24,7 +24,6 @@
 #******************************************************************************
 
 import os
-import sys
 import copy
 import liblo
 import ctypes
@@ -75,8 +74,8 @@ from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
 from zyngui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
 from zyngui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
-from zyngui import zynthian_gui_keybinding
-from zyngui.zynthian_gui_main import zynthian_gui_main
+from zyngui.zynthian_gui_main_menu import zynthian_gui_main_menu
+from zyngui.zynthian_gui_chain_menu import zynthian_gui_chain_menu
 from zyngui.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_zynpad import zynthian_gui_zynpad
@@ -85,6 +84,7 @@ from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
 from zyngui.zynthian_gui_mixer import zynthian_gui_mixer
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
+from zyngui import zynthian_gui_keybinding
 
 MIXER_MAIN_CHANNEL = 256 #TODO This constant should go somewhere else
 
@@ -444,9 +444,14 @@ class zynthian_gui:
 		self.screens['midi_profile'] = zynthian_gui_midi_profile()
 		self.screens['zs3_learn'] = zynthian_gui_zs3_learn()
 		self.screens['zs3_options'] = zynthian_gui_zs3_options()
-		self.screens['main'] = zynthian_gui_main()
 		self.screens['admin'] = zynthian_gui_admin()
 		self.screens['audio_mixer'] = zynthian_gui_mixer()
+
+		# Create the right main menu screen
+		if zynthian_gui_config.layout['menu'] == 'chain_menu':
+			self.screens['main_menu'] = zynthian_gui_chain_menu()
+		else:
+			self.screens['main_menu'] = zynthian_gui_main_menu()
 
 		# Create UI Apps Screens
 		self.screens['alsa_mixer'] = self.screens['control']
@@ -469,7 +474,7 @@ class zynthian_gui:
 		self.screens['layer'].refresh()
 
 		# Control Test enabled ...
-		init_screen = "main"
+		init_screen = "main_menu"
 		snapshot_loaded = False
 		if zynthian_gui_config.control_test_enabled:
 			init_screen = "control_test"
@@ -1209,8 +1214,8 @@ class zynthian_gui:
 		if params:
 			self.show_screen_reset(params[0])
 
-	def cuia_screen_main(self, params):
-		self.toggle_screen("main")
+	def cuia_screen_main_menu(self, params):
+		self.toggle_screen("main_menu")
 
 	def cuia_screen_admin(self, params):
 		self.toggle_screen("admin")
@@ -1296,7 +1301,7 @@ class zynthian_gui:
 		try:
 			self.screens[self.current_screen].toggle_menu()
 		except (AttributeError, TypeError) as err:
-			self.toggle_screen("main", hmode=zynthian_gui.SCREEN_HMODE_ADD)
+			self.toggle_screen("main_menu", hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 	def cuia_bank_preset(self, params=None):
 		if params:

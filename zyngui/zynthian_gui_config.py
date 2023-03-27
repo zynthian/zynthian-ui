@@ -544,7 +544,8 @@ if "zynthian_main.py" in sys.argv[0]:
 				],
 				'list_pos': (0, 0),
 				'ctrl_orientation': 'horizontal',
-				'ctrl_order': (0, 1, 2, 3)
+				'ctrl_order': (0, 1, 2, 3),
+				'menu': 'chain_menu'
 			}
 		else:
 			layout = {
@@ -559,7 +560,8 @@ if "zynthian_main.py" in sys.argv[0]:
 				],
 				'list_pos': (0, 1),
 				'ctrl_orientation': 'vertical',
-				'ctrl_order': (0, 2, 1, 3)
+				'ctrl_order': (0, 2, 1, 3),
+				'menu': 'main_menu'
 			}
 
 		# Adjust Root Window Geometry

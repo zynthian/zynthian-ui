@@ -52,7 +52,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 	def update_wsleds(self):
 		curscreen = self.zyngui.current_screen
 		# Menu
-		if curscreen == "main":
+		if curscreen == "main_menu":
 			self.wsleds.setPixelColor(0, self.wscolor_active)
 		elif curscreen == "stepseq" and self.zyngui.screens['stepseq'].is_shown_menu():
 			self.wsleds.setPixelColor(0, self.wscolor_active)

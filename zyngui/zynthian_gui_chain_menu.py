@@ -3,9 +3,9 @@
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
-# Zynthian GUI Main Menu Class
+# Zynthian GUI Chain Menu Class
 #
-# Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 #
@@ -23,47 +23,27 @@
 #
 #******************************************************************************
 
-import logging
-
 # Zynthian specific modules
-from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
 # Zynthian App Selection GUI Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_main(zynthian_gui_selector):
+class zynthian_gui_chain_menu(zynthian_gui_selector):
 
 	def __init__(self):
-		super().__init__('Main', True)
+		super().__init__('Chain', True)
 
 
 	def fill_list(self):
 		self.list_data=[]
-
-		# Main Views
 		self.list_data.append((self.new_synth_layer,0,"New Synth Chain"))
 		self.list_data.append((self.new_audiofx_layer,0,"New Audio Chain"))
 		self.list_data.append((self.new_midifx_layer,0,"New MIDI Chain"))
 		self.list_data.append((self.new_generator_layer,0,"New Generator Chain"))
 		self.list_data.append((self.new_special_layer,0,"New Special Chain"))
-		self.list_data.append((self.snapshots,0,"Snapshots"))
 		self.list_data.append((self.clean_all,0,"Clean All"))
-
-		# Add list of Apps
-		self.list_data.append((None,0,"> APPS"))
-		self.list_data.append((self.step_sequencer,0,"Sequencer"))
-		self.list_data.append((self.midi_recorder,0,"MIDI Recorder"))
-
-		# Add list of System / configuration views
-		self.list_data.append((None,0,"> SYSTEM"))
-		self.list_data.append((self.alsa_mixer,0,"Audio Levels"))
-		self.list_data.append((self.admin,0,"Admin"))
-		if zynthian_gui_config.control_test_enabled:
-			self.list_data.append((self.control_test,0,"Control Test"))
-		self.list_data.append((self.all_notes_off,0,"PANIC! All Notes Off"))
-
 		super().fill_list()
 
 
@@ -93,11 +73,6 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.zyngui.screens['layer'].add_layer("Special")
 
 
-	def snapshots(self, t='S'):
-		logging.info("Snapshots")
-		self.zyngui.show_screen_reset("snapshot")
-
-
 	def clean_all(self, t='S'):
 		self.zyngui.show_confirm("Do you really want to remove all chains?", self.clean_all_confirmed)
 
@@ -107,43 +82,7 @@ class zynthian_gui_main(zynthian_gui_selector):
 		self.zyngui.clean_all()
 
 
-	def audio_mixer(self, t='S'):
-		logging.info("Audio Mixer")
-		self.zyngui.show_screen_reset('audio_mixer')
-
-
-	def step_sequencer(self, t='S'):
-		logging.info("Step Sequencer")
-		self.zyngui.show_screen_reset('zynpad')
-
-
-	def midi_recorder(self, t='S'):
-		logging.info("MIDI Recorder")
-		self.zyngui.show_screen_reset("midi_recorder")
-
-
-	def alsa_mixer(self, t='S'):
-		logging.info("ALSA Mixer")
-		self.zyngui.show_screen_reset("alsa_mixer")
-
-
-	def admin(self, t='S'):
-		logging.info("Admin")
-		self.zyngui.show_screen_reset("admin")
-
-
-	def control_test(self, t='S'):
-		logging.info("Control Test")
-		self.zyngui.show_screen_reset("control_test")
-
-
-	def all_notes_off(self, t='S'):
-		logging.info("All Notes Off")
-		self.zyngui.callable_ui_action("ALL_SOUNDS_OFF")
-
-
 	def set_select_path(self):
-		self.select_path.set("Main")
-
+		self.select_path.set("Chain")
 
 #------------------------------------------------------------------------------
