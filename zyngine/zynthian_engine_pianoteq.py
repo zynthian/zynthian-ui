@@ -371,6 +371,14 @@ def write_pianoteq_midi_mapping(config, file):
 		data += key.encode()
 		data += struct.pack("<i", len(val[0]))
 		data += val[0].encode()
+	# Don't write the same data to disk
+	try:
+		with open(file, "rb") as f:
+			current_data = f.read()
+		if current_data[8:] == data[8:]:
+			return
+	except:
+		pass
 	with open(file, "wb") as f:
 		l = f.write(data)
 		f.seek(4)
