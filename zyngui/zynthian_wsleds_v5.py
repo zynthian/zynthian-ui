@@ -160,7 +160,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		self.wsleds.setPixelColor(19, wscolor_light)
 
 		try:
-			self.screens[curscreen].update_wsleds()
+			self.zyngui.screens[curscreen].update_wsleds()
 		except:
 			pass
 
