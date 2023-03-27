@@ -66,6 +66,14 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 			text="??",
 			font=(zynthian_gui_config.font_family, self.note_fs),
 			fill=zynthian_gui_config.color_panel_tx)
+		self.flat_arrow = self.widget_canvas.create_polygon(
+			0, 0, 0, 0, 0, 0,
+			fill=zynthian_gui_config.color_on
+		)
+		self.sharp_arrow = self.widget_canvas.create_polygon(
+			0, 0, 0, 0, 0, 0,
+			fill=zynthian_gui_config.color_hl
+		)
 		self.flat_bar = self.widget_canvas.create_rectangle(
 			0, 0, 0, 0,
 			fill=zynthian_gui_config.color_on)
@@ -93,8 +101,11 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 		self.bar_height = round(self.height / 10)
 		self.x0 = self.width // 2
 		self.y0 = self.height // 4
-		self.widget_canvas.coords(self.note_label, self.x0, int(0.7 * self.height))
+		text_y = int(0.7 * self.height)
+		self.widget_canvas.coords(self.note_label, self.x0, text_y)
 		self.widget_canvas.itemconfigure(self.note_label, width=4 * self.note_fs, font=(zynthian_gui_config.font_family, self.note_fs))
+		self.widget_canvas.coords(self.flat_arrow, int(0.5 * self.x0), text_y, int(0.3 * self.x0), int(0.8 * text_y), int(0.3 * self.x0), int(1.2 * text_y))
+		self.widget_canvas.coords(self.sharp_arrow, int(1.5 * self.x0), text_y, int(1.7 * self.x0), int(0.8 * text_y), int(1.7 * self.x0), int(1.2 * text_y))
 		self.widget_canvas.coords(self.axis_x, 0, self.y0, self.width, self.y0)
 		self.widget_canvas.coords(self.axis_y, self.x0, self.y0 + self.bar_height, self.x0, self.y0 - self.bar_height)
 		self.widget_canvas.coords(self.flat_bar, 0, self.y0 + self.bar_height, self.x0, self.y0 - self.bar_height)
@@ -132,8 +143,16 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 
 			if int(self.monitors['cent']) == 0:
 				self.widget_canvas.itemconfigure(self.note_label, text=note_name, state=tkinter.NORMAL, fill=zynthian_gui_config.color_hl)
+				self.widget_canvas.itemconfigure(self.flat_arrow, state=tkinter.HIDDEN)
+				self.widget_canvas.itemconfigure(self.sharp_arrow, state=tkinter.HIDDEN)
 			else:
 				self.widget_canvas.itemconfigure(self.note_label, text=note_name, state=tkinter.NORMAL, fill=zynthian_gui_config.color_panel_tx)
+				if int(self.monitors['cent']) > 0:
+					self.widget_canvas.itemconfigure(self.flat_arrow, state=tkinter.HIDDEN)
+					self.widget_canvas.itemconfigure(self.sharp_arrow, state=tkinter.NORMAL)
+				else:
+					self.widget_canvas.itemconfigure(self.flat_arrow, state=tkinter.NORMAL)
+					self.widget_canvas.itemconfigure(self.sharp_arrow, state=tkinter.HIDDEN)
 			self.widget_canvas.itemconfigure(self.flat_bar, state=tkinter.NORMAL)
 			self.widget_canvas.itemconfigure(self.sharp_bar, state=tkinter.NORMAL)
 			self.widget_canvas.coords(self.flat_bar, 0, self.y0 + self.bar_height, x, self.y0 - self.bar_height)
@@ -142,6 +161,8 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 			self.widget_canvas.itemconfigure(self.flat_bar, state=tkinter.HIDDEN)
 			self.widget_canvas.itemconfigure(self.sharp_bar, state=tkinter.HIDDEN)
 			self.widget_canvas.itemconfigure(self.note_label, state=tkinter.HIDDEN)
+			self.widget_canvas.itemconfigure(self.flat_arrow, state=tkinter.HIDDEN)
+			self.widget_canvas.itemconfigure(self.sharp_arrow, state=tkinter.HIDDEN)
 
 
 #------------------------------------------------------------------------------
