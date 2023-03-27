@@ -980,7 +980,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if swi == 0:
 			if t == "S":
 				if self.zyngui.screens['layer'].get_num_root_layers()<=1:
-					self.zyngui.show_screen('main')
+					self.zyngui.show_screen('main_menu')
 				elif self.highlighted_strip is not None:
 					self.highlighted_strip.toggle_solo()
 				return True

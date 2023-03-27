@@ -853,7 +853,7 @@ class zynthian_gui:
 		self.screens['layer'].add_layer_engine("AI", 256)
 		self.zynmixer.reset_state()
 		self.zynseq.load("")
-		self.show_screen_reset('main')
+		self.show_screen_reset('main_menu')
 		self.zynmixer.set_mute(256, 0)
 
 
@@ -1020,7 +1020,7 @@ class zynthian_gui:
 	def cuia_clean_all(self, params):
 		if params == ['CONFIRM']:
 			self.clean_all()
-			self.show_screen_reset('main') #TODO: Should send signal so that UI can react
+			self.show_screen_reset('main_menu') #TODO: Should send signal so that UI can react
 
 	# Audio & MIDI Recording/Playback actions
 	def cuia_start_audio_record(self, params):
@@ -1534,7 +1534,7 @@ class zynthian_gui:
 
 		# Default actions for the 4 standard ZynSwitches
 		if i == 0:
-			self.show_screen('main')
+			self.show_screen('main_menu')
 
 		elif i == 1:
 			try:

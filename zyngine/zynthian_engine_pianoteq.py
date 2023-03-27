@@ -32,7 +32,7 @@ import requests
 from time import sleep
 from xml.etree import ElementTree
 from collections import OrderedDict
-from subprocess import Popen, DEVNULL, PIPE, check_output
+from subprocess import Popen, DEVNULL, PIPE, check_output, run
 import struct
 
 from . import zynthian_engine
@@ -503,7 +503,12 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	#   bank: Name of bank preset resides (builtin presets have no bank)
 	#   returns: True on success
 	def load_preset(self, preset_name, bank):
+		throttle_cpu = run(["cat", "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"], capture_output=True).stdout
+		if throttle_cpu == b'2000000\n':
+			run(["cpufreq-set", "-f", "1.5Ghz"])
 		result = self.rpc('loadPreset', {'name':preset_name, 'bank':bank})
+		if throttle_cpu == b'2000000\n':
+			run(["cpufreq-set", "-f", "2Ghz"])
 		return result and 'error' not in result
 
 
