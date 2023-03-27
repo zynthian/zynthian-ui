@@ -43,7 +43,6 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 		super().__init__(parent)
 
 		self.note_label = []
-		self.cents_bar = []
 
 		# Geometry vars set accurately during resize
 		self.note_fs = 1
@@ -67,12 +66,16 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 			text="??",
 			font=(zynthian_gui_config.font_family, self.note_fs),
 			fill=zynthian_gui_config.color_panel_tx)
-		self.cents_bar = self.widget_canvas.create_rectangle(
+		self.flat_bar = self.widget_canvas.create_rectangle(
 			0, 0, 0, 0,
 			fill=zynthian_gui_config.color_on)
+		self.sharp_bar = self.widget_canvas.create_rectangle(
+			0, 0, 0, 0,
+			fill=zynthian_gui_config.color_hl)
 		# Scale axis for cents
 		self.axis_y = self.widget_canvas.create_line(
 			0, 0, 0, 0,
+			width=3,
 			fill=zynthian_gui_config.color_tx_off)
 		self.axis_x = self.widget_canvas.create_line(
 			0, 0, 0, 0,
@@ -87,17 +90,18 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 
 		self.note_fs = round(self.width / 8)
 		self.bar_width = round(self.width / 160)
-		self.bar_height = round(self.height / 20)
+		self.bar_height = round(self.height / 10)
 		self.x0 = self.width // 2
 		self.y0 = self.height // 4
-		self.widget_canvas.coords(self.note_label, self.x0, self.height // 2)
+		self.widget_canvas.coords(self.note_label, self.x0, int(0.7 * self.height))
 		self.widget_canvas.itemconfigure(self.note_label, width=4 * self.note_fs, font=(zynthian_gui_config.font_family, self.note_fs))
 		self.widget_canvas.coords(self.axis_x, 0, self.y0, self.width, self.y0)
-		self.widget_canvas.coords(self.axis_y, self.x0, self.y0 + self.bar_height * 2, self.x0, self.y0 - self.bar_height * 2)
-		self.widget_canvas.coords(self.cents_bar, self.x0 - self.bar_width, self.y0 + self.bar_height, self.x0 + self.bar_width, self.y0 - self.bar_height)
+		self.widget_canvas.coords(self.axis_y, self.x0, self.y0 + self.bar_height, self.x0, self.y0 - self.bar_height)
+		self.widget_canvas.coords(self.flat_bar, 0, self.y0 + self.bar_height, self.x0, self.y0 - self.bar_height)
+		self.widget_canvas.coords(self.sharp_bar, self.x0, self.y0 + self.bar_height, self.width, self.y0 - self.bar_height)
 		self.cent_dx = self.width / 100
 		dx = self.width // 20
-		dy = self.bar_height
+		dy = int(0.6 * self.bar_height)
 		self.widget_canvas.delete('axis')
 		for i in range(1, 10):
 			x = self.x0 + i * dx
@@ -130,14 +134,13 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 				self.widget_canvas.itemconfigure(self.note_label, text=note_name, state=tkinter.NORMAL, fill=zynthian_gui_config.color_hl)
 			else:
 				self.widget_canvas.itemconfigure(self.note_label, text=note_name, state=tkinter.NORMAL, fill=zynthian_gui_config.color_panel_tx)
-			self.widget_canvas.itemconfigure(self.cents_bar, state=tkinter.NORMAL)
-			self.widget_canvas.coords(self.cents_bar,
-				x - self.bar_width,
-				self.y0 + self.bar_height,
-				x + self.bar_width,
-				self.y0 - self.bar_height)
+			self.widget_canvas.itemconfigure(self.flat_bar, state=tkinter.NORMAL)
+			self.widget_canvas.itemconfigure(self.sharp_bar, state=tkinter.NORMAL)
+			self.widget_canvas.coords(self.flat_bar, 0, self.y0 + self.bar_height, x, self.y0 - self.bar_height)
+			self.widget_canvas.coords(self.sharp_bar, x, self.y0 + self.bar_height, self.width, self.y0 - self.bar_height)
 		else:
-			self.widget_canvas.itemconfigure(self.cents_bar, state=tkinter.HIDDEN)
+			self.widget_canvas.itemconfigure(self.flat_bar, state=tkinter.HIDDEN)
+			self.widget_canvas.itemconfigure(self.sharp_bar, state=tkinter.HIDDEN)
 			self.widget_canvas.itemconfigure(self.note_label, state=tkinter.HIDDEN)
 
 
