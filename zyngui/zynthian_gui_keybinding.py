@@ -205,7 +205,7 @@ def get_key_action(keycode, modifier):
 	logging.debug(f"Get keybinding function name for keycode: {keycode}, modifier: {modifier}")
 	try:
 		# Check for defined modifier
-		if keycode in [63,77,79,80,81,82,83,84,85,86,87,88,89,90,91,104,106]:
+		if keycode in [63, 77, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 104, 106]:
 			modifier &= 253
 		else:
 			modifier &= 239

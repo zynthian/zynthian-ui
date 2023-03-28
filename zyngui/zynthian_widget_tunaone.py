@@ -43,6 +43,7 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 		super().__init__(parent)
 
 		self.note_label = []
+		self.cents_bar = []
 
 		# Geometry vars set accurately during resize
 		self.note_fs = 1
@@ -66,24 +67,12 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 			text="??",
 			font=(zynthian_gui_config.font_family, self.note_fs),
 			fill=zynthian_gui_config.color_panel_tx)
-		self.flat_arrow = self.widget_canvas.create_polygon(
-			0, 0, 0, 0, 0, 0,
-			fill=zynthian_gui_config.color_on
-		)
-		self.sharp_arrow = self.widget_canvas.create_polygon(
-			0, 0, 0, 0, 0, 0,
-			fill=zynthian_gui_config.color_hl
-		)
-		self.flat_bar = self.widget_canvas.create_rectangle(
+		self.cents_bar = self.widget_canvas.create_rectangle(
 			0, 0, 0, 0,
 			fill=zynthian_gui_config.color_on)
-		self.sharp_bar = self.widget_canvas.create_rectangle(
-			0, 0, 0, 0,
-			fill=zynthian_gui_config.color_hl)
 		# Scale axis for cents
 		self.axis_y = self.widget_canvas.create_line(
 			0, 0, 0, 0,
-			width=3,
 			fill=zynthian_gui_config.color_tx_off)
 		self.axis_x = self.widget_canvas.create_line(
 			0, 0, 0, 0,
@@ -96,23 +85,19 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 		super().on_size(event)
 		self.widget_canvas.configure(width=self.width, height=self.height)
 
-		self.note_fs = round(self.width / 8)
-		self.bar_width = round(self.width / 160)
+		self.note_fs = round(self.height / 8)
+		self.bar_width = round(self.width / 60)
 		self.bar_height = round(self.height / 10)
 		self.x0 = self.width // 2
 		self.y0 = self.height // 4
-		text_y = int(0.7 * self.height)
-		self.widget_canvas.coords(self.note_label, self.x0, text_y)
+		self.widget_canvas.coords(self.note_label, self.x0, int(0.75 * self.height))
 		self.widget_canvas.itemconfigure(self.note_label, width=4 * self.note_fs, font=(zynthian_gui_config.font_family, self.note_fs))
-		self.widget_canvas.coords(self.flat_arrow, int(0.5 * self.x0), text_y, int(0.3 * self.x0), int(0.8 * text_y), int(0.3 * self.x0), int(1.2 * text_y))
-		self.widget_canvas.coords(self.sharp_arrow, int(1.5 * self.x0), text_y, int(1.7 * self.x0), int(0.8 * text_y), int(1.7 * self.x0), int(1.2 * text_y))
 		self.widget_canvas.coords(self.axis_x, 0, self.y0, self.width, self.y0)
-		self.widget_canvas.coords(self.axis_y, self.x0, self.y0 + self.bar_height, self.x0, self.y0 - self.bar_height)
-		self.widget_canvas.coords(self.flat_bar, 0, self.y0 + self.bar_height, self.x0, self.y0 - self.bar_height)
-		self.widget_canvas.coords(self.sharp_bar, self.x0, self.y0 + self.bar_height, self.width, self.y0 - self.bar_height)
+		self.widget_canvas.coords(self.axis_y, self.x0, self.y0 + self.bar_height * 2, self.x0, self.y0 - self.bar_height * 2)
+		self.widget_canvas.coords(self.cents_bar, self.x0 - self.bar_width, self.y0 + self.bar_height, self.x0 + self.bar_width, self.y0 - self.bar_height)
 		self.cent_dx = self.width / 100
 		dx = self.width // 20
-		dy = int(0.6 * self.bar_height)
+		dy = self.bar_height
 		self.widget_canvas.delete('axis')
 		for i in range(1, 10):
 			x = self.x0 + i * dx
@@ -120,6 +105,27 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 			x = self.x0 - i * dx
 			self.widget_canvas.create_line(x, self.y0 + dy, x, self.y0 - dy, fill=zynthian_gui_config.color_tx_off, tags='axis')
 		self.widget_canvas.grid(row=0, column=0, sticky='news')
+
+
+	def calc_monitor_color(self, cent):
+		try:
+			acent = abs(cent)
+			if acent > 25:
+				cr = 255
+				cg = 0
+				cb = 0
+			elif acent > 10:
+				cr = 255
+				cg = int((25 - acent) * 255 / 15)
+				cb = 0
+			else:
+				cr = int(acent * 255 / 40)
+				cg = 255
+				cb = 0
+			color = "#%02x%02x%02x" % (cr, cg, cb)
+		except:
+			color = "#00FF00"
+		return color
 
 
 	def refresh_gui(self):
@@ -141,28 +147,21 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 			except:
 				x = self.x0
 
-			if int(self.monitors['cent']) == 0:
-				self.widget_canvas.itemconfigure(self.note_label, text=note_name, state=tkinter.NORMAL, fill=zynthian_gui_config.color_hl)
-				self.widget_canvas.itemconfigure(self.flat_arrow, state=tkinter.HIDDEN)
-				self.widget_canvas.itemconfigure(self.sharp_arrow, state=tkinter.HIDDEN)
-			else:
-				self.widget_canvas.itemconfigure(self.note_label, text=note_name, state=tkinter.NORMAL, fill=zynthian_gui_config.color_panel_tx)
-				if int(self.monitors['cent']) > 0:
-					self.widget_canvas.itemconfigure(self.flat_arrow, state=tkinter.HIDDEN)
-					self.widget_canvas.itemconfigure(self.sharp_arrow, state=tkinter.NORMAL)
-				else:
-					self.widget_canvas.itemconfigure(self.flat_arrow, state=tkinter.NORMAL)
-					self.widget_canvas.itemconfigure(self.sharp_arrow, state=tkinter.HIDDEN)
-			self.widget_canvas.itemconfigure(self.flat_bar, state=tkinter.NORMAL)
-			self.widget_canvas.itemconfigure(self.sharp_bar, state=tkinter.NORMAL)
-			self.widget_canvas.coords(self.flat_bar, 0, self.y0 + self.bar_height, x, self.y0 - self.bar_height)
-			self.widget_canvas.coords(self.sharp_bar, x, self.y0 + self.bar_height, self.width, self.y0 - self.bar_height)
+			mcolor = self.calc_monitor_color(self.monitors['cent'])
+			try:
+				self.widget_canvas.itemconfigure(self.note_label, text=note_name, state=tkinter.NORMAL, fill=mcolor)
+				self.widget_canvas.itemconfigure(self.cents_bar, state=tkinter.NORMAL, fill=mcolor)
+				self.widget_canvas.coords(self.cents_bar,
+					x - self.bar_width,
+					self.y0 + self.bar_height,
+					x + self.bar_width,
+					self.y0 - self.bar_height)
+			except Exception as e:
+				logging.error(e)
+
 		else:
-			self.widget_canvas.itemconfigure(self.flat_bar, state=tkinter.HIDDEN)
-			self.widget_canvas.itemconfigure(self.sharp_bar, state=tkinter.HIDDEN)
+			self.widget_canvas.itemconfigure(self.cents_bar, state=tkinter.HIDDEN)
 			self.widget_canvas.itemconfigure(self.note_label, state=tkinter.HIDDEN)
-			self.widget_canvas.itemconfigure(self.flat_arrow, state=tkinter.HIDDEN)
-			self.widget_canvas.itemconfigure(self.sharp_arrow, state=tkinter.HIDDEN)
 
 
 #------------------------------------------------------------------------------
