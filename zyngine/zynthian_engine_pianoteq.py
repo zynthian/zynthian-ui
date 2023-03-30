@@ -235,7 +235,7 @@ def get_pianoteq_config_value(key):
 
 
 def create_pianoteq_config():
-	if not os.path.isfile(PIANOTEQ_CONFIG_FILE):
+	if not os.path.isfile(PIANOTEQ_CONFIG_FILE) or not os.stat(PIANOTEQ_CONFIG_FILE).st_size:
 		logging.debug("Pianoteq configuration does not exist. Creating one...")
 		if not os.path.exists(PIANOTEQ_CONFIG_DIR):
 			os.makedirs(PIANOTEQ_CONFIG_DIR)
@@ -257,12 +257,13 @@ def fix_pianoteq_config(samplerate):
 		while internal_sr > 24000:
 			internal_sr = internal_sr / 2
 
-		tree = ElementTree.parse(PIANOTEQ_CONFIG_FILE)
-		root = tree.getroot()
 		try:
+			tree = ElementTree.parse(PIANOTEQ_CONFIG_FILE)
+			root = tree.getroot()
 			audio_setup_node = None
 			midi_setup_node = None
 			crash_node = None
+			filter_nodes = []
 			for xml_value in root.iter("VALUE"):
 				if xml_value.attrib['name'] == 'engine_rate':
 					xml_value.set('val', str(internal_sr))
@@ -278,6 +279,11 @@ def fix_pianoteq_config(samplerate):
 					midi_setup_node = xml_value
 				elif xml_value.attrib['name'] == 'crash_detect':
 					crash_node = xml_value
+				elif xml_value.attrib['name'].startswith('filter-state-'):
+					filter_nodes.append(xml_value)
+
+			for node in filter_nodes:
+				root.remove(node) # Remove last state to avoid crash at startup
 
 			if audio_setup_node:
 				logging.debug("Fixing Audio Setup")
@@ -389,7 +395,7 @@ def save_midi_mapping(file):
 	data = {"map":{}}
 	for cc,param in enumerate(pt_ctrl_map.values()):
 		data["map"][f"Controller {cc}"] = [f"{{SetParameter|3|{param}|0:1}}", 1]
-	data["map"]["Pitch Bend"] = ["{SetParameter|3|PBend|0:1}", 1]
+	data["map"]["Pitch Bend"] = ["{SetParameter|3|PBend|0.458333:0.541667}", 1]
 	write_pianoteq_midi_mapping(data, file)
 
 
@@ -434,7 +440,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		create_pianoteq_config()
 		save_midi_mapping(f"{PIANOTEQ_MIDIMAPPINGS_DIR}/zynthian.ptm")
 
-
 		self.command = f"{PIANOTEQ_BINARY} --prefs {PIANOTEQ_CONFIG_FILE} --midimapping zynthian"
 		if self.info['api']:
 			self.command +=  " --serve 9001"
@@ -454,11 +459,14 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			sr = 44100
 		fix_pianoteq_config(sr)
 		super().start() #TODO: Use lightweight Popen - last attempt stopped RPC working
-		# Wait for RPC interface to be available or 5s for <7.5 with GUI
-		for i in range(5):
-			if self.get_info():
-				break
+		# Wait for RPC interface to be available or 6s for <7.5 with GUI
+		for i in range(6):
+			info = self.get_info()
+			if info:
+				return
 			sleep(1)
+		self.stop()
+		raise Exception("No response from Pianoteq RPC server")
 
 
 	def stop(self):
@@ -495,7 +503,10 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 	#	Get info
 	def get_info(self):
-		return self.rpc('getInfo') #TODO: Check method
+		try:
+			return self.rpc('getInfo')['result'][0]
+		except:
+			return None
 
 
 	#   Load a preset by name
@@ -503,12 +514,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	#   bank: Name of bank preset resides (builtin presets have no bank)
 	#   returns: True on success
 	def load_preset(self, preset_name, bank):
-		throttle_cpu = run(["cat", "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"], capture_output=True).stdout
-		if throttle_cpu == b'2000000\n':
-			run(["cpufreq-set", "-f", "1.5Ghz"])
 		result = self.rpc('loadPreset', {'name':preset_name, 'bank':bank})
-		if throttle_cpu == b'2000000\n':
-			run(["cpufreq-set", "-f", "2Ghz"])
 		return result and 'error' not in result
 
 
@@ -553,10 +559,13 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	#   returns: List of lists [instrument name, licenced (bool)] or None on failure
 	def get_instruments(self, group=None):
 		instruments = []
+		overclock = int(run(["cat", "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"], capture_output=True).stdout.decode()[:-1]) > 1900000
 		result = self.rpc('getListOfPresets')
 		if result and 'result' in result:
 			for preset in result['result']:
 				if (group is None or preset['class'] == group) and [preset['instr'], preset['license_status']=='ok'] not in instruments:
+					if overclock and preset['instr'] == "Classical Guitar":
+						continue
 					instruments.append([preset['instr'], preset['license_status']=='ok'])
 		return instruments
 
@@ -689,6 +698,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
+		if preset[3] == "Classical Guitar" and int(run(["cat", "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"], capture_output=True).stdout.decode()[:-1]) > 1900000:
+			return False
 		if self.load_preset(preset[0], preset[1]):
 			self.preset = preset
 			if preset[3] in ['CP-80', 'Vintage Tines MKI', 'Vintage Tines MKII', 'Vintage Reeds W1', 'Clavinet D6', 'Pianet N', 'Pianet T', 'Electra-Piano']:
