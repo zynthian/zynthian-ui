@@ -350,13 +350,18 @@ def set_midi_config():
 	else:
 		master_midi_note_cuia = {}
 		for cuianote in mmncuia_envar.split('\\n'):
-			try:
-				parts = cuianote.split(':')
-				note = parts[0].strip()
-				cuia = parts[1].strip()
-				master_midi_note_cuia[note] = cuia
-			except Exception as e:
-				logging.warning("Bad MIDI Master Note CUIA config {} => {}".format(cuianote, e))
+				cuianote = cuianote.strip()
+				if cuianote:
+					try:
+						parts = cuianote.split(':')
+						note = parts[0].strip()
+						cuia = parts[1].strip()
+						if note and cuia:
+							master_midi_note_cuia[note] = cuia
+						else:
+							raise Exception("Bad format!")
+					except Exception as e:
+						logging.warning("Bad MIDI Master Note CUIA config {} => {}".format(cuianote, e))
 
 
 #------------------------------------------------------------------------------
