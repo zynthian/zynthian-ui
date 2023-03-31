@@ -171,7 +171,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
 	def tap(self):
 		now = monotonic()
 		tap_dur = now - self.last_tap_ts
-		if self.last_tap_ts == 0 or tap_dur < 0.14285 or tap_dur > 3:
+		if self.last_tap_ts == 0 or tap_dur < 0.14285 or tap_dur > 2:
 			self.last_tap_ts = now
 			self.tap_buf = []
 		else:
