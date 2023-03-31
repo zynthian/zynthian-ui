@@ -27,6 +27,7 @@ __all__ = [
 	"zynthian_gui_chain_menu",
 	"zynthian_gui_midi_recorder",
 	"zynthian_gui_keyboard",
+	"zynthian_gui_tempo",
 	"zynthian_gui_control_test"
 ]
 

@@ -82,6 +82,7 @@ from zyngui.zynthian_gui_zynpad import zynthian_gui_zynpad
 from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
 from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
 from zyngui.zynthian_gui_mixer import zynthian_gui_mixer
+from zyngui.zynthian_gui_tempo import zynthian_gui_tempo
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
 from zyngui import zynthian_gui_keybinding
@@ -444,6 +445,7 @@ class zynthian_gui:
 		self.screens['midi_profile'] = zynthian_gui_midi_profile()
 		self.screens['zs3_learn'] = zynthian_gui_zs3_learn()
 		self.screens['zs3_options'] = zynthian_gui_zs3_options()
+		self.screens['tempo'] = zynthian_gui_tempo()
 		self.screens['admin'] = zynthian_gui_admin()
 		self.screens['audio_mixer'] = zynthian_gui_mixer()
 
@@ -486,8 +488,6 @@ class zynthian_gui:
 			# Try to load "default" snapshot ...
 			if not snapshot_loaded:
 				snapshot_loaded = self.screens['snapshot'].load_default_snapshot()
-
-		self.last_tap = 0
 
 		if snapshot_loaded:
 			init_screen = "audio_mixer"
@@ -948,9 +948,10 @@ class zynthian_gui:
 		logging.debug("CUIA '{}' => {}".format(cuia, params))
 		try:
 			cuia_func = getattr(self, "cuia_" + cuia.lower())
-			cuia_func(params)
 		except AttributeError:
 			logging.error("Unknown CUIA '{}'".format(cuia))
+
+		cuia_func(params)
 
 	def parse_cuia_params(self, params_str):
 		params = []
@@ -1087,6 +1088,11 @@ class zynthian_gui:
 		pass
 
 	def cuia_tempo(self, params):
+		self.screens["tempo"].tap()
+		if self.current_screen != "tempo":
+			self.show_screen("tempo")
+
+	def cuia_set_tempo(self, params):
 		try:
 			self.zynseq.set_tempo(params[0])
 		except (AttributeError, TypeError) as err:
@@ -1111,11 +1117,7 @@ class zynthian_gui:
 			self.zynseq.set_tempo(self.zynseq.get_tempo() - 1)
 
 	def cuia_tap_tempo(self, params):
-		now = monotonic()
-		tap_dur = now - self.last_tap
-		if tap_dur > 0.14285 and tap_dur <= 3:
-			self.zynseq.set_tempo(60 / tap_dur)
-		self.last_tap = now
+		self.screens["tempo"].tap()
 
 	# Zynpot & Zynswitch emulation CUIAs (low level)
 	def cuia_zynpot(self, params):

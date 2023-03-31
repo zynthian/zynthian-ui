@@ -382,7 +382,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'Metronome':
 			self.zyngui.zynseq.libseq.enableMetronome(not self.zyngui.zynseq.libseq.isMetronomeEnabled())
 		elif params == 'Metronome volume':
-			self.enable_param_editor(self, 'metro_vol', 'Metro volume', {'value_min':0, 'value_max':100, 'value_default':100, 'value':int(100 * self.zyngui.zynseq.libseq.getMetronomeVolume())})
+			self.enable_param_editor(self, 'metro_vol', 'Metro volume', {'value_min':0, 'value_max':100, 'value_default':100, 'value': int(100 * self.zyngui.zynseq.libseq.getMetronomeVolume())})
 		elif params == 'Play mode':
 			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynseq.PLAY_MODES, 'value':self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.selected_pad), 'value_default':zynseq.SEQ_LOOPALL}, self.set_play_mode)
 		elif params == 'MIDI channel':
