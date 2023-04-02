@@ -215,7 +215,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 			y1 = y0 - radius
 			x2 = x0 + radius
 			y2 = y0 + radius
-			self.title_width = ww - radius * 2 - 8
+			self.title_width = ww - radius * 2 - 0
 			self.coords(self.label_title, 4, 4)
 			self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
 			
