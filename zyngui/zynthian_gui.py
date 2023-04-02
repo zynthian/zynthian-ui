@@ -1343,10 +1343,6 @@ class zynthian_gui:
 	def cuia_preset_fav(self, params):
 		self.show_favorites()
 
-	def cuia_zctrl_touch(self, params):
-		if params:
-			self.screens['control'].midi_learn_zctrl(params[0])
-
 	def cuia_enter_midi_learn(self, params):
 		self.enter_midi_learn()
 
@@ -1362,10 +1358,24 @@ class zynthian_gui:
 		except (AttributeError, TypeError) as err:
 			pass
 
-	# Unlearn from currently selected (learning) control
+	# Learn control options
+	def cuia_midi_learn_control_options(self, params):
+		if self.current_screen in ("control", "alsa_mixer"):
+			self.screens[self.current_screen].midi_learn_options(params[0])
+
+	# Learn control
+	def cuia_midi_learn_control(self, params):
+		if self.current_screen in ("control", "alsa_mixer"):
+			self.screens[self.current_screen].midi_learn(params[0])
+
+	# Unlearn control
 	def cuia_midi_unlearn_control(self, params):
-		if self.midi_learn_zctrl:
-			self.midi_learn_zctrl.midi_unlearn()
+		if self.current_screen in ("control", "alsa_mixer"):
+			if params:
+				self.midi_learn_zctrl = self.screens[self.current_screen].get_zcontroller(params[0])
+			# if not parameter, unlearn selected learning control
+			if self.midi_learn_zctrl:
+				self.screens[self.current_screen].midi_unlearn_action()
 
 	# Unlearn all mixer controls
 	def cuia_midi_unlearn_mixer(self, params):
@@ -1385,6 +1395,25 @@ class zynthian_gui:
 			self.screens['layer'].midi_unlearn()
 		except (AttributeError, TypeError) as err:
 			logging.error(err)
+
+	# Z2 knob touch
+	def cuia_z2_zynpot_touch(self, params):
+		if params:
+			self.screens['control'].midi_learn_zctrl(params[0])
+
+	# V5 knob click
+	def cuia_v5_zynpot_switch(self, params):
+		t = params[1].upper()
+		if self.current_screen in ("control", "alsa_mixer"):
+			if t == 'S':
+				self.screens[self.current_screen].midi_learn(params[0])
+			elif t == 'B':
+				self.screens[self.current_screen].midi_learn_options(params[0])
+		else:
+			if t == 'S':
+				self.zynswitch_short(params[0])
+			elif t == 'B':
+				self.zynswitch_bold(params[0])
 
 	# MIDI CUIAs
 	def cuia_program_change(self, params):
@@ -1611,23 +1640,14 @@ class zynthian_gui:
 
 	def zynswitch_X(self, i):
 		logging.debug('X Switch %d' % i)
-		if self.current_screen == 'control' and self.screens['control'].mode == 'control':
+		if self.current_screen in ("control", "alsa_mixer") and self.screens[self.current_screen].mode == 'control':
 			self.screens['control'].midi_learn(i)
 
 
 	def zynswitch_Y(self,i):
 		logging.debug('Y Switch %d' % i)
-		if self.current_screen == 'control' and self.screens['control'].mode == 'control':
-			try:
-				zctrl = self.screens['control'].zgui_controllers[i].zctrl
-				options = {
-					"Unlearn '{}' control".format(zctrl.name): zctrl,
-					"Unlearn all controls": 0
-				}
-				self.screens['option'].config("MIDI Unlearn", options, self.midi_unlearn_options_cb)
-				self.show_screen('option')
-			except:
-				pass
+		if self.current_screen in ("control", "alsa_mixer") and self.screens[self.current_screen].mode == 'control':
+			self.screens['control'].midi_learn_options(i, unlearn_only=True)
 
 
 	def midi_unlearn_options_cb(self, option, param):
