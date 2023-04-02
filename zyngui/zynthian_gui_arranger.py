@@ -183,15 +183,10 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	def show_menu(self):
 		self.disable_param_editor()
 		options = OrderedDict()
-		options['Bank ({})'.format(self.zyngui.zynseq.bank)] = 'Bank'
-		if zynthian_gui_config.transport_clock_source == 0:
-			options['Tempo ({:0.1f})'.format(self.zyngui.zynseq.libseq.getTempo())] = 'Tempo'
+		options['Tempo'] = 'Tempo'
+		options['Arranger'] = 'Arranger'
 		options['Beats per bar ({})'.format(self.zyngui.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
-		if self.zyngui.zynseq.libseq.isMetronomeEnabled():
-			options['[X] Metronome'] = 'Metronome'
-		else:
-			options['[  ] Metronome'] = 'Metronome'
-		options['Metronome volume ({})'.format(int(100 * self.zyngui.zynseq.libseq.getMetronomeVolume()))] = 'Metronome volume'
+		options['Bank ({})'.format(self.zyngui.zynseq.bank)] = 'Bank'
 		options['> ARRANGER'] = None
 		if self.zyngui.zynseq.libseq.isMuted(self.zyngui.zynseq.bank, self.sequence, self.track):
 			options['Unmute track'] = 'Unmute track'
@@ -221,20 +216,15 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 
 	def menu_cb(self, option, params):
-		if params == 'Bank':
-			self.enable_param_editor(self, 'bank', 'Bank', {'value_min':1, 'value_max':64, 'value':self.zyngui.zynseq.bank})
 		if params == 'Tempo':
-			self.enable_param_editor(self, 'tempo', 'Tempo', {'value_min':10, 'value_max':420, 'value_default':120, 'is_integer':False, 'nudge_factor':0.1, 'value':self.zyngui.zynseq.libseq.getTempo()})
-		if params == 'Beats per bar':
+			self.zyngui.show_screen('tempo')
+		elif params == 'Arranger':
+			self.zyngui.show_screen('arranger')
+		elif params == 'Beats per bar':
 			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsPerBar()})
-		elif params == 'Metronome':
-			self.zyngui.zynseq.libseq.enableMetronome(True)
-		elif params == '[X] Metronome':
-			self.zyngui.zynseq.libseq.enableMetronome(False)
-		elif params == 'Metronome volume':
-			self.enable_param_editor(self, 'metro_vol', 'Metro volume', {'value_min':0, 'value_max':100, 'value_default':100, 'value':int(100*self.zyngui.zynseq.libseq.getMetronomeVolume())})
-			self.zyngui.zynseq.libseq.enableMetronome(False)
-		if 'ute track' in params:
+		elif params == 'Bank':
+			self.enable_param_editor(self, 'bank', 'Bank', {'value_min':1, 'value_max':64, 'value':self.zyngui.zynseq.bank})
+		elif 'ute track' in params:
 			self.toggle_mute()
 		elif params == 'MIDI channel':
 			labels = []

@@ -233,14 +233,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def show_menu(self):
 		self.disable_param_editor()
 		options = OrderedDict()
-		if zynthian_gui_config.transport_clock_source == 0:
-			options['Tempo ({:0.1f})'.format(self.zyngui.zynseq.libseq.getTempo())] = 'Tempo'
+		options['Tempo'] = 'Tempo'
+		options['Arranger'] = 'Arranger'
 		options['Beats per bar ({})'.format(self.zyngui.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
-		if self.zyngui.zynseq.libseq.isMetronomeEnabled():
-			options['[X] Metronome'] = 'Metronome'
-		else:
-			options['[  ] Metronome'] = 'Metronome'
-		options['Metronome volume ({})'.format(int(100 * self.zyngui.zynseq.libseq.getMetronomeVolume()))] = 'Metronome volume'
+		options['> PATTERN'] = None
 		options['Beats in pattern ({})'.format(self.zyngui.zynseq.libseq.getBeatsInPattern())] = 'Beats in pattern'
 		options['Steps per beat ({})'.format(self.zyngui.zynseq.libseq.getStepsPerBeat())] = 'Steps per beat'
 		options['Copy pattern'] = 'Copy pattern'
@@ -278,13 +274,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	def menu_cb(self, option, params):
 		if params == 'Tempo':
-			self.enable_param_editor(self, 'tempo', 'Tempo', {'value_min':10, 'value_max':420, 'value_default':120, 'is_integer':False, 'nudge_factor':0.1, 'value':self.zyngui.zynseq.libseq.getTempo()})
+			self.zyngui.show_screen('tempo')
+		elif params == 'Arranger':
+			self.zyngui.show_screen('arranger')
 		elif params == 'Beats per bar':
 			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsPerBar()})
-		elif params == 'Metronome':
-			self.zyngui.zynseq.libseq.enableMetronome(not self.zyngui.zynseq.libseq.isMetronomeEnabled())
-		elif params == 'Metronome volume':
-			self.enable_param_editor(self, 'metro_vol', 'Metro volume', {'value_min':0, 'value_max':100, 'value_default':100, 'value':int(100*self.zyngui.zynseq.libseq.getMetronomeVolume())})
 		elif params == 'Beats in pattern':
 			self.enable_param_editor(self, 'bip', 'Beats in pattern', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsInPattern()}, self.assert_beats_in_pattern)
 		elif params == 'Steps per beat':
