@@ -71,7 +71,7 @@ from zyngui.zynthian_gui_preset import zynthian_gui_preset
 from zyngui.zynthian_gui_control import zynthian_gui_control
 from zyngui.zynthian_gui_control_xy import zynthian_gui_control_xy
 from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
-from zyngui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
+from zyngui.zynthian_gui_zs3 import zynthian_gui_zs3
 from zyngui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
 from zyngui.zynthian_gui_main_menu import zynthian_gui_main_menu
@@ -443,7 +443,7 @@ class zynthian_gui:
 		self.screens['control'] = zynthian_gui_control()
 		self.screens['control_xy'] = zynthian_gui_control_xy()
 		self.screens['midi_profile'] = zynthian_gui_midi_profile()
-		self.screens['zs3_learn'] = zynthian_gui_zs3_learn()
+		self.screens['zs3'] = zynthian_gui_zs3()
 		self.screens['zs3_options'] = zynthian_gui_zs3_options()
 		self.screens['tempo'] = zynthian_gui_tempo()
 		self.screens['admin'] = zynthian_gui_admin()
@@ -1228,6 +1228,9 @@ class zynthian_gui:
 	def cuia_screen_snapshot(self, params):
 		self.toggle_screen("snapshot")
 
+	def cuia_screen_zs3(self, params):
+		self.toggle_screen("zs3")
+
 	def cuia_screen_midi_recorder(self, params):
 		self.toggle_screen("midi_recorder")
 
@@ -1804,7 +1807,7 @@ class zynthian_gui:
 					logging.info("MIDI PROGRAM CHANGE: CH#{}, PRG#{}".format(chan,pgm))
 
 					# SubSnapShot (ZS3) MIDI learn ...
-					if self.midi_learn_mode and self.current_screen == 'zs3_learn':
+					if self.midi_learn_mode and self.current_screen == 'zs3':
 						if self.screens['layer'].save_midi_prog_zs3(chan, pgm) is not None:
 							self.exit_midi_learn()
 							self.close_screen()

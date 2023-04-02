@@ -49,6 +49,7 @@ class zynthian_wsleds_base:
 		self.wscolor_off = rpi_ws281x.Color(0, 0, 0)
 		self.wscolor_light = rpi_ws281x.Color(0, 0, 255)
 		self.wscolor_active = rpi_ws281x.Color(0, 255, 0)
+		self.wscolor_active2 = rpi_ws281x.Color(120, 0, 0)
 		self.wscolor_admin = rpi_ws281x.Color(120, 0, 0)
 		self.wscolor_red = rpi_ws281x.Color(120, 0, 0)
 		self.wscolor_green = rpi_ws281x.Color(0, 255, 0)

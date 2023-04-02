@@ -3,7 +3,7 @@
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
-# Zynthian GUI ZS3 learn screen
+# Zynthian GUI ZS3 screen
 #
 # Copyright (C) 2018 Fernando Moyano <jofemodo@zynthian.org>
 #
@@ -32,10 +32,10 @@ from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
-# Zynthian Sub-SnapShot (ZS3) MIDI-learn GUI Class
+# Zynthian Sub-SnapShot (ZS3) GUI Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_zs3_learn(zynthian_gui_selector):
+class zynthian_gui_zs3(zynthian_gui_selector):
 
 	def __init__(self):
 		super().__init__('Program', True)
@@ -109,10 +109,7 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		if self.zyngui.curlayer:
-			self.select_path.set(self.zyngui.curlayer.get_basepath() + "/PROG MIDI-Learn")
-		else:
-			self.select_path.set("PROG MIDI-Learn")
+		self.select_path.set("ZS3 (SubSnapShots)")
 
 
 	def back_action(self):

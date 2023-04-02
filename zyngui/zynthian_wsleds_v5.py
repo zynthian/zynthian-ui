@@ -56,7 +56,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		elif curscreen == "stepseq" and self.zyngui.screens['stepseq'].is_shown_menu():
 			self.wsleds.setPixelColor(0, self.wscolor_active)
 		elif curscreen == "admin":
-			self.wsleds.setPixelColor(0, self.wscolor_admin)
+			self.wsleds.setPixelColor(0, self.wscolor_active2)
 		else:
 			self.wsleds.setPixelColor(0, wscolor_light)
 
@@ -64,7 +64,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		if curscreen == "audio_mixer":
 			self.wsleds.setPixelColor(1, self.wscolor_active)
 		elif curscreen == "alsa_mixer":
-			self.wsleds.setPixelColor(1, self.wscolor_admin)
+			self.wsleds.setPixelColor(1, self.wscolor_active2)
 		else:
 			self.wsleds.setPixelColor(1, wscolor_light)
 
@@ -72,15 +72,15 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		if curscreen == "control":
 			self.wsleds.setPixelColor(2, self.wscolor_active)
 		elif curscreen in ("preset", "bank"):
-			self.wsleds.setPixelColor(2, self.wscolor_admin)
+			self.wsleds.setPixelColor(2, self.wscolor_active2)
 		else:
 			self.wsleds.setPixelColor(2, wscolor_light)
 
 		# ZS3 / Snapshot:
-		if curscreen == "zs3_learn":
+		if curscreen == "zs3":
 			self.wsleds.setPixelColor(3, self.wscolor_active)
 		elif curscreen == "snapshot":
-			self.wsleds.setPixelColor(3, self.wscolor_admin)
+			self.wsleds.setPixelColor(3, self.wscolor_active2)
 		else:
 			self.wsleds.setPixelColor(3, wscolor_light)
 
@@ -91,7 +91,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		if curscreen == "zynpad":
 			self.wsleds.setPixelColor(5, self.wscolor_active)
 		elif curscreen == "pattern_editor":
-			self.wsleds.setPixelColor(5, self.wscolor_admin)
+			self.wsleds.setPixelColor(5, self.wscolor_active2)
 		else:
 			self.wsleds.setPixelColor(5, wscolor_light)
 
@@ -103,7 +103,6 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 
 		# ALT button:
 		self.wsleds.setPixelColor(7, wscolor_light)
-
 
 		# REC button:
 		if 'audio_recorder' in self.zyngui.status_info:
