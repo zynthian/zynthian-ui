@@ -582,10 +582,13 @@ class zynthian_gui_control(zynthian_gui_selector):
 			zctrl = self.zgui_controllers[i].zctrl
 			if not unlearn_only:
 				options["Learn '{}'...".format(zctrl.name)] = i
+				title = "Control MIDI-learn"
+			else:
+				title = "Control MIDI-unlearn"
 			if zctrl.midi_learn_cc:
 				options["Unlearn '{}'".format(zctrl.name)] = i
 			options["Unlearn All"] = None
-			self.zyngui.screens['option'].config("Control MIDI-learn", options, self.midi_learn_options_cb)
+			self.zyngui.screens['option'].config(title, options, self.midi_learn_options_cb)
 			self.zyngui.show_screen('option')
 		except Exception as e:
 			logging.error("Can't show Control MIDI-learn options => {}".format(e))
