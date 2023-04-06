@@ -436,6 +436,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self._ctrls = None
 		self.preset = ['','','','']
 		self.params = {}
+		self.overfreq = 1800000
 
 		create_pianoteq_config()
 		save_midi_mapping(f"{PIANOTEQ_MIDIMAPPINGS_DIR}/zynthian.ptm")
@@ -559,7 +560,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	#   returns: List of lists [instrument name, licenced (bool)] or None on failure
 	def get_instruments(self, group=None):
 		instruments = []
-		overclock = int(run(["cat", "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"], capture_output=True).stdout.decode()[:-1]) > 1900000
+		overclock = int(run(["cat", "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"], capture_output=True).stdout.decode()[:-1]) > self.overfreq
 		result = self.rpc('getListOfPresets')
 		if result and 'result' in result:
 			for preset in result['result']:
@@ -698,7 +699,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
-		if preset[3] == "Classical Guitar" and int(run(["cat", "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"], capture_output=True).stdout.decode()[:-1]) > 1900000:
+		if preset[3] == "Classical Guitar" and int(run(["cat", "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"], capture_output=True).stdout.decode()[:-1]) > self.overfreq:
 			return False
 		if self.load_preset(preset[0], preset[1]):
 			self.preset = preset
