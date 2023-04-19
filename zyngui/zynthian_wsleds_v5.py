@@ -51,9 +51,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 			wscolor_light = self.wscolor_light
 
 		# Menu / Admin
-		if curscreen == "main_menu":
-			self.wsleds.setPixelColor(0, self.wscolor_active)
-		elif curscreen == "stepseq" and self.zyngui.screens['stepseq'].is_shown_menu():
+		if self.zyngui.is_current_screen_menu():
 			self.wsleds.setPixelColor(0, self.wscolor_active)
 		elif curscreen == "admin":
 			self.wsleds.setPixelColor(0, self.wscolor_active2)

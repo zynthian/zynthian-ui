@@ -515,6 +515,21 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	#--------------------------------------------------------------------------
+	# Options Menu
+	#--------------------------------------------------------------------------
+
+	def show_menu(self):
+		self.zyngui.cuia_chain_options()
+
+
+	def toggle_menu(self):
+		if self.shown:
+			self.show_menu()
+		elif self.zyngui.current_screen.endswith("_options"):
+			self.close_screen()
+
+
+	#--------------------------------------------------------------------------
 	# MIDI learn management
 	#--------------------------------------------------------------------------
 

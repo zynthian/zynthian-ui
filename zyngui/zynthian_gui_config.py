@@ -92,6 +92,13 @@ def config_zynswitch_timing():
 custom_switch_ui_actions = []
 custom_switch_midi_events = []
 
+def get_env_switch_action(varname):
+	action = os.environ.get(varname, "").strip()
+	if not action or action == "NONE":
+		action = None
+	return action
+
+
 def config_custom_switches():
 	global num_zynswitches
 	global custom_switch_ui_actions
@@ -101,22 +108,24 @@ def config_custom_switches():
 	custom_switch_midi_events = []
 
 	for i in range(num_zynswitches):
-		cuias = {}
+		cuias = None
 		midi_event = None
 
 		root_varname = "ZYNTHIAN_WIRING_CUSTOM_SWITCH_{:02d}".format(i+1)
 		custom_type = os.environ.get(root_varname, "")
 
 		if custom_type == "UI_ACTION_PUSH":
-			cuias['P'] = os.environ.get(root_varname + "__UI_PUSH", "").strip()
+			cuias = {}
+			cuias['P'] = get_env_switch_action(root_varname + "__UI_PUSH")
 			cuias['S'] = ""
 			cuias['B'] = ""
 			cuias['L'] = ""
 		elif custom_type == "UI_ACTION" or custom_type == "UI_ACTION_RELEASE":
+			cuias = {}
 			cuias['P'] = ""
-			cuias['S'] = os.environ.get(root_varname + "__UI_SHORT", "").strip()
-			cuias['B'] = os.environ.get(root_varname + "__UI_BOLD", "").strip()
-			cuias['L'] = os.environ.get(root_varname + "__UI_LONG", "").strip()
+			cuias['S'] = get_env_switch_action(root_varname + "__UI_SHORT")
+			cuias['B'] = get_env_switch_action(root_varname + "__UI_BOLD")
+			cuias['L'] = get_env_switch_action(root_varname + "__UI_LONG")
 		elif custom_type != "":
 			evtype = None
 			if custom_type == "MIDI_CC":

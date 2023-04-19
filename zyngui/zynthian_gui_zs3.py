@@ -91,7 +91,7 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 		self.index = i
 		zs3_index = self.list_data[self.index][0]
 		if isinstance(zs3_index, int):
-			if t  == 'S':
+			if t == 'S':
 				self.zyngui.exit_midi_learn()
 				self.zyngui.screens['layer'].restore_zs3(zs3_index)
 				self.zyngui.close_screen()
@@ -105,7 +105,18 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 				self.zyngui.exit_midi_learn()
 				self.zyngui.screens['layer'].save_zs3()
 				self.zyngui.close_screen()
+
 				return True
+
+	def show_menu(self):
+		self.click_listbox(None, 'B')
+
+
+	def toggle_menu(self):
+		if self.shown:
+			self.show_menu()
+		elif self.zyngui.current_screen == "zs3_options":
+			self.close_screen()
 
 
 	def set_select_path(self):
