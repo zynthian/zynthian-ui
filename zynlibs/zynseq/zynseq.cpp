@@ -1919,6 +1919,10 @@ uint8_t getMidiLearnSequence()
     return g_nTriggerLearning & 0xFF;
 }
 
+void setSequence(uint8_t bank, uint8_t sequence) {
+    g_pSequence = g_seqMan.getSequence(bank, sequence);
+}
+
 void setSequenceName(uint8_t bank, uint8_t sequence, const char* name)
 {
     g_seqMan.getSequence(bank, sequence)->setName(std::string(name));

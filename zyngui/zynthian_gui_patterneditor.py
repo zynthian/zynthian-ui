@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Step-Sequencer Pattern Editor Class
 #
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
@@ -89,12 +89,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.duration = 1.0 # Current note entry duration
 		self.velocity = 100 # Current note entry velocity
 		self.copy_source = 1 # Index of pattern to copy
-		self.bank = 0 # Bank used for pattern editor sequence player
+		self.bank = None # Bank used for pattern editor sequence player
 		self.pattern = 0 # Pattern to edit
-		self.sequence = 0 # Sequence used for pattern editor sequence player
+		self.sequence = None # Sequence used for pattern editor sequence player
+		self.last_play_mode = zynseq.SEQ_LOOP
 		self.step_width = 40 # Grid column width in pixels
 		self.keymap_offset = 60 # MIDI note number of bottom row in grid
-		self.selected_cell = [0, 0] # Location of selected cell (column,row)
+		self.selected_cell = [0, 60] # Location of selected cell (column,row)
 		self.drag_velocity = False # True indicates drag will adjust velocity
 		self.drag_duration = False # True indicates drag will adjust duration
 		self.drag_start_velocity = None # Velocity value at start of drag
@@ -194,11 +195,18 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to show GUI
 	def build_view(self):
-		self.zyngui.zynseq.libseq.setGroup(self.bank, self.sequence, 0xFF)
+		if self.sequence is None:
+			self.sequence = 0
+		if self.bank is None:
+			self.bank = 0
+		if self.sequence == 0 and self.bank == 0:
+			self.zyngui.zynseq.libseq.setGroup(self.bank, self.sequence, 0xFF)
+		self.zyngui.zynseq.libseq.setSequence(self.bank, self.sequence)
 		self.copy_source = self.pattern
 		self.setup_zynpots()
 		if not self.param_editor_zctrl:
 			self.set_title("Pattern {}".format(self.pattern))
+		self.last_play_mode = self.zyngui.zynseq.libseq.getPlayMode(self.bank, self.sequence)
 		self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynseq.SEQ_LOOP)
 		self.zyngui.zynseq.libseq.enableMidiInput(True)
 
@@ -223,10 +231,12 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to hide GUI
 	def hide(self):
 		super().hide()
-		self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STOPPED)
+		if self.bank == 0 and self.sequence == 0:
+			self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STOPPED)
 		self.zyngui.zynseq.libseq.enableMidiInput(False)
 		self.enable_edit(EDIT_MODE_NONE)
 		self.zyngui.zynseq.libseq.setRefNote(self.keymap_offset)
+		self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, self.last_play_mode)
 
 
 	# Function to add menus
@@ -510,9 +520,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					if key == 0: # 'C'
 						new_entry.update({"name":"C{}".format(note // 12 - 1)})
 					self.keymap.append(new_entry)
-					if note <= base_note:
-						self.keymap_offset = len(self.keymap) - 1
-						self.selected_cell[1] = self.keymap_offset
 				map_name = "Chromatic"
 			else:
 				with open(CONFIG_ROOT + "/scales.json") as json_file:
@@ -525,9 +532,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 						if note > 127:
 							break
 						self.keymap.append({"note":note, "name":"{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1)})
-						if note <= base_note:
-							self.keymap_offset = len(self.keymap) - 1
-							self.selected_cell[1] = self.keymap_offset
 				map_name = data[scale]['name']
 
 		return map_name
@@ -873,7 +877,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.drawing = False
 
 
-
 	# Function to draw pianoroll key outlines (does not fill key colour)
 	def draw_pianoroll(self):
 		self.piano_roll.delete(tkinter.ALL)
@@ -1024,7 +1027,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	#   index: Pattern index
 	def load_pattern(self, index):
 		steps = self.zyngui.zynseq.libseq.getSteps()
-		self.zyngui.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
+		if self.bank == 0 and self.sequence == 0:
+			self.zyngui.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
 		self.pattern = index
 		self.zyngui.zynseq.libseq.selectPattern(index)
 		if self.selected_cell[0] >= self.zyngui.zynseq.libseq.getSteps():
@@ -1032,14 +1036,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.keymap_offset = self.zyngui.zynseq.libseq.getRefNote()
 		keymap_len = len(self.keymap)
 		self.load_keymap()
-		# Scroll vertically so show lowest note that occurs at first step
-		for x,y in enumerate(self.keymap):
-			if self.zyngui.zynseq.libseq.getNoteStart(0, y["note"]) < 0:
-				continue
-			self.keymap_offset = x
-			self.redraw_pending = 4
-			self.selected_cell=(0, x)
-			break
 		if self.redraw_pending < 4:
 			if self.zyngui.zynseq.libseq.getSteps() != steps or len(self.keymap) != keymap_len:
 				self.redraw_pending = 4
@@ -1047,8 +1043,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				self.redraw_pending = 3
 		if self.keymap_offset >= len(self.keymap):
 			self.keymap_offset = len(self.keymap) // 2 - self.zoom // 2
+		self.selected_cell = [0, int(self.keymap_offset)]# + self.zoom / 2))
 		self.draw_grid()
-		self.select_cell(0, int(self.keymap_offset + self.zoom / 2))
 		self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
 		self.set_title("Pattern {}".format(self.pattern))
 
