@@ -134,6 +134,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
 	def build_view(self):
 		self.set_zctrls()
+		self.last_tap_ts = 0
 
 
 	def zynpot_cb(self, i, dval):

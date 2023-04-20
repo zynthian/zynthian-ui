@@ -323,8 +323,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.export_smf()
 
 
-	def toggle_midi_record(self):
-		midi_record = not self.zyngui.zynseq.libseq.isMidiRecord()
+	def toggle_midi_record(self, midi_record=None):
+		if midi_record is None:
+			midi_record = not self.zyngui.zynseq.libseq.isMidiRecord()
 		self.zyngui.zynseq.libseq.enableMidiRecord(midi_record)
 		if midi_record and zynthian_gui_config.midi_single_active_channel:
 			layer = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(self.channel)

@@ -1033,14 +1033,20 @@ class zynthian_gui:
 		self.refresh_signal("AUDIO_RECORD")
 
 	def cuia_toggle_audio_record(self, params=None):
-		self.audio_recorder.toggle_recording()
-		self.refresh_signal("AUDIO_RECORD")
+		if self.current_screen == "pattern_editor":
+			self.screens["pattern_editor"].toggle_midi_record()
+		else:
+			self.audio_recorder.toggle_recording()
+			self.refresh_signal("AUDIO_RECORD")
 
 	def cuia_start_audio_play(self, params=None):
 		self.start_audio_player()
 
 	def cuia_stop_audio_play(self, params=None):
-		self.stop_audio_player()
+		if self.current_screen == "pattern_editor":
+			self.screens["pattern_editor"].stop_playback()
+		else:
+			self.stop_audio_player()
 
 	def cuia_toggle_audio_play(self, params=None):
 		if self.current_screen == "pattern_editor":

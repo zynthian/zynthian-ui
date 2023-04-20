@@ -103,7 +103,14 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		self.wsleds.setPixelColor(7, wscolor_light)
 
 		# REC button:
-		if 'audio_recorder' in self.zyngui.status_info:
+		if curscreen == "pattern_editor":
+			if self.zyngui.zynseq.libseq.isMidiRecord():
+				self.wsleds.setPixelColor(14, self.wscolor_orange)
+			elif 'audio_recorder' in self.zyngui.status_info:
+				self.wsleds.setPixelColor(14, self.wscolor_red)
+			else:
+				self.wsleds.setPixelColor(14, self.wscolor_light)
+		elif 'audio_recorder' in self.zyngui.status_info:
 			self.wsleds.setPixelColor(8, self.wscolor_red)
 		elif self.zyngui.status_info['midi_recorder'] and "REC" in self.zyngui.status_info['midi_recorder']:
 			self.wsleds.setPixelColor(8, self.wscolor_blue)
