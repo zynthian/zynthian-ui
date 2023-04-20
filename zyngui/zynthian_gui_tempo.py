@@ -26,6 +26,7 @@
 import tkinter
 import logging
 from time import monotonic
+from collections import deque
 
 # Zynthian specific modules
 from zyngine import zynthian_controller
@@ -37,14 +38,14 @@ from zyngui.zynthian_gui_selector import zynthian_gui_controller
 # Zynthian Tempo GUI Class
 #------------------------------------------------------------------------------
 
-NUM_TAPS = 2
+NUM_TAPS = 4
 
 class zynthian_gui_tempo(zynthian_gui_base):
 
 	def __init__(self):
 		super().__init__()
 
-		self.tap_buf = []
+		self.tap_buf = None
 		self.last_tap_ts = 0
 
 		self.zgui_ctrls = []
@@ -168,22 +169,19 @@ class zynthian_gui_tempo(zynthian_gui_base):
 				logging.debug("SETTING METRONOME VOLUME: {}".format(zctrl.value))
 				self.replot = True
 
-
 	def tap(self):
 		now = monotonic()
 		tap_dur = now - self.last_tap_ts
 		if self.last_tap_ts == 0 or tap_dur < 0.14285 or tap_dur > 2:
 			self.last_tap_ts = now
-			self.tap_buf = []
+			self.tap_buf = deque(maxlen=NUM_TAPS)
 		else:
 			self.last_tap_ts = now
 			self.tap_buf.append(tap_dur)
-			if len(self.tap_buf) >= NUM_TAPS:
-				logging.debug("TAP TEMPO BUFFER: {}".format(self.tap_buf))
-				bpm = 60 * len(self.tap_buf) / sum(self.tap_buf)
-				self.last_tap_ts = 0
-				self.zyngui.zynseq.libseq.setTempo(bpm)
-				logging.debug("SETTING TAP TEMPO BPM: {}".format(bpm))
+			logging.debug("TAP TEMPO BUFFER: {}".format(self.tap_buf))
+			bpm = 60 * len(self.tap_buf) / sum(self.tap_buf)
+			self.zyngui.zynseq.libseq.setTempo(bpm)
+			logging.debug("SETTING TAP TEMPO BPM: {}".format(bpm))
 
 
 	def refresh_bpm_value(self):
