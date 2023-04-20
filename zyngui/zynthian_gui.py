@@ -1887,8 +1887,9 @@ class zynthian_gui:
 					#Note Range Learn
 					elif self.current_screen == 'midi_key_range' and self.midi_learn_mode:
 						self.screens['midi_key_range'].learn_note_range((ev & 0x7F00) >> 8)
-					elif self.current_screen == 'pattern_editor' and self.zynseq.libseq.getInputChannel() < 16:
-						self.screens['pattern_editor'].midi_note((ev & 0x7F00) >> 8)
+					#Update pattern editor display
+					elif self.current_screen == 'pattern_editor' and self.zynseq.libseq.isMidiRecord():
+						self.screens['pattern_editor'].midi_note((ev >> 8) & 0x7F)
 
 				self.status_info['midi'] = True
 				self.last_event_flag = True

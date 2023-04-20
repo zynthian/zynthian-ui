@@ -68,7 +68,7 @@ EDIT_PARAM_LAST		= 3 # Index of last parameter
 
 # List of permissible steps per beat
 STEPS_PER_BEAT = [1,2,3,4,6,8,12,24]
-INPUT_CHANNEL_LABELS = ['OFF','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16']
+INPUT_CHANNEL_LABELS = ['OFF','ANY','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16']
 NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]
 
 # Class implements step sequencer pattern editor
@@ -170,6 +170,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.play_canvas.grid(column=1, row=1)
 
 		self.playhead = 0
+		self.zyngui.zynseq.libseq.setPlayMode(0, 0, zynseq.SEQ_LOOP)
 
 		# Load pattern 1 so that the editor has a default known state
 		self.load_pattern(1)
@@ -207,8 +208,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if not self.param_editor_zctrl:
 			self.set_title("Pattern {}".format(self.pattern))
 		self.last_play_mode = self.zyngui.zynseq.libseq.getPlayMode(self.bank, self.sequence)
-		self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynseq.SEQ_LOOP)
-		self.zyngui.zynseq.libseq.enableMidiInput(True)
+		if self.last_play_mode not in (zynseq.SEQ_LOOP,zynseq.SEQ_LOOPALL):
+			self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynseq.SEQ_LOOP)
 
 
 	# Function to enable note duration/velocity direct edit mode
@@ -233,7 +234,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		super().hide()
 		if self.bank == 0 and self.sequence == 0:
 			self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STOPPED)
-		self.zyngui.zynseq.libseq.enableMidiInput(False)
 		self.enable_edit(EDIT_MODE_NONE)
 		self.zyngui.zynseq.libseq.setRefNote(self.keymap_offset)
 		self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, self.last_play_mode)
@@ -262,10 +262,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		else:
 			options['Rest note (None)'] = 'Rest note'
 		#options['Add program change'] = 'Add program change'
-		channel = self.get_input_channel()
-		if channel == 0:
-			channel = 'OFF'
-		options['Input channel ({})'.format(channel)] = 'Input channel'
+		if self.zyngui.zynseq.libseq.isMidiRecord():
+			options['[X] Record MIDI'] = 'midi_record'
+		else:
+			options['[  ] Record MIDI'] = 'midi_record'
 		options['Export to SMF'] = 'Export to SMF'
 		self.zyngui.screens['option'].config("Pattern Editor Menu", options, self.menu_cb)
 		self.zyngui.show_screen('option')
@@ -317,10 +317,18 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.enable_param_editor(self, 'rest', 'Rest', options)
 		elif params == 'Add program change':
 			self.enable_param_editor(self, 'prog_change', 'Program', {'value_max':128, 'value':self.get_program_change()}, self.add_program_change)
-		elif params == 'Input channel':
-			self.enable_param_editor(self, 'in_chan', 'Input Chan', {'labels':INPUT_CHANNEL_LABELS, 'value': self.get_input_channel()})
+		elif params == 'midi_record':
+			self.toggle_midi_record()
 		elif params == 'Export to SMF':
 			self.export_smf()
+
+
+	def toggle_midi_record(self):
+		midi_record = not self.zyngui.zynseq.libseq.isMidiRecord()
+		self.zyngui.zynseq.libseq.enableMidiRecord(midi_record)
+		if midi_record and zynthian_gui_config.midi_single_active_channel:
+			layer = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(self.channel)
+			self.zyngui.set_curlayer(layer)
 
 
 	def send_controller_value(self, zctrl):
@@ -346,8 +354,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				self.zyngui.zynseq.libseq.setInputRest(128)
 			else:
 				self.zyngui.zynseq.libseq.setInputRest(zctrl.value - 1)
-		elif zctrl.symbol == 'in_chan':
-			self.zyngui.zynseq.libseq.setInputChannel(zctrl.value - 1)
 
 
 	# Function to transpose pattern
@@ -1012,15 +1018,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to add program change at start of pattern
 	def add_program_change(self, value):
 		self.zyngui.zynseq.libseq.addProgramChange(0, value)
-
-
-	# Function to get MIDI channel listening
-	# returns: MIDI channel ((1..16) or 0 for none
-	def get_input_channel(self):
-		channel = self.zyngui.zynseq.libseq.getInputChannel() + 1
-		if channel > 16:
-			channel = 0
-		return channel
 
 
 	# Function to load new pattern

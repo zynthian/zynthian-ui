@@ -49,7 +49,7 @@ static struct ev_start startEvents[128];
 
 SequenceManager g_seqMan; // Instance of sequence manager
 uint32_t g_nPattern = 0; // Index of currently selected pattern
-Sequence* g_pSequence = 0; // Pattern editor sequence
+Sequence* g_pSequence = NULL; // Pattern editor sequence
 jack_port_t * g_pInputPort; // Pointer to the JACK input port
 jack_port_t * g_pOutputPort; // Pointer to the JACK output port
 jack_port_t* g_pMetronomePort; // Pointer to the JACK metronome audio output port
@@ -65,9 +65,8 @@ uint32_t g_nXruns = 0;
 bool g_bDirty = false; // True if anything has been modified
 std::set<std::string> g_setTransportClient; // Set of timebase clients having requested transport play
 bool g_bClientPlaying = false; // True if any external client has requested transport play
-bool g_bInputEnabled = false; // True to add notes to current pattern from MIDI input
+bool g_bMidiRecord = false; // True to add notes to current pattern from MIDI input
 
-uint8_t g_nInputChannel = 0xFF; // MIDI channel for input (0xFF to disable)
 bool g_bSustain = false; // True if sustain pressed during note input
 uint8_t g_nInputRest = 0xFF; // MIDI note number that creates rest in pattern
 uint8_t g_nTriggerStatusByte = MIDI_NOTE_ON | 15; // MIDI status byte which triggers a sequence (optimisation)
@@ -416,10 +415,10 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         }
 
         // Handle MIDI events for programming patterns from MIDI input
-        if(g_bInputEnabled && g_pSequence && pPattern && g_nInputChannel == (midiEvent.buffer[0] & 0x0F))
+        if(g_bMidiRecord && g_pSequence && pPattern)
         {
             uint32_t nStep = getPatternPlayhead();
-            uint8_t nPlayState = getPlayState(0, 0);
+            uint8_t nPlayState = g_pSequence->getPlayState();
             bool bAdvance = false;
             if(((midiEvent.buffer[0] & 0xF0) == 0xB0) && midiEvent.buffer[1] == 64)
             {
@@ -1296,9 +1295,14 @@ bool isMuted(uint8_t bank, uint8_t sequence, uint32_t track)
 	return false;
 }
 
-void enableMidiInput(bool enable)
+void enableMidiRecord(bool enable)
 {
-    g_bInputEnabled = enable;
+    g_bMidiRecord = enable;
+}
+
+bool isMidiRecord()
+{
+    return g_bMidiRecord;
 }
 
 void selectPattern(uint32_t pattern)
@@ -1539,19 +1543,6 @@ void copyPattern(uint32_t source, uint32_t destination)
 {
     g_seqMan.copyPattern(source, destination);
     g_bDirty = true;
-}
-
-void setInputChannel(uint8_t channel)
-{
-    if(channel > 15)
-        g_nInputChannel = 0xFF;
-    g_nInputChannel = channel;
-    g_bDirty = true;
-}
-
-uint8_t getInputChannel()
-{
-    return g_nInputChannel;
 }
 
 void setInputRest(uint8_t note)
