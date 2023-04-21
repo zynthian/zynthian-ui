@@ -210,6 +210,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.last_play_mode = self.zyngui.zynseq.libseq.getPlayMode(self.bank, self.sequence)
 		if self.last_play_mode not in (zynseq.SEQ_LOOP,zynseq.SEQ_LOOPALL):
 			self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynseq.SEQ_LOOP)
+		if zynthian_gui_config.midi_single_active_channel:
+			layer = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(self.channel)
+			self.zyngui.set_curlayer(layer)
 
 
 	# Function to enable note duration/velocity direct edit mode
@@ -327,9 +330,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if midi_record is None:
 			midi_record = not self.zyngui.zynseq.libseq.isMidiRecord()
 		self.zyngui.zynseq.libseq.enableMidiRecord(midi_record)
-		if midi_record and zynthian_gui_config.midi_single_active_channel:
-			layer = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(self.channel)
-			self.zyngui.set_curlayer(layer)
 
 
 	def send_controller_value(self, zctrl):
