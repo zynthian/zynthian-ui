@@ -55,7 +55,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 		if self.zyngui.alt_mode:
 			wscolor_light = self.wscolor_alt
 		else:
-			wscolor_light = self.wscolor_light
+			wscolor_light = self.wscolor_default
 
 		# Menu
 		if self.zyngui.is_current_screen_menu():
@@ -78,7 +78,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 				self.wsleds.setPixelColor(1 + i, self.wscolor_off)
 		# => Light FX layer if not empty
 		if main_fxchain:
-			self.wsleds.setPixelColor(6, self.wscolor_light)
+			self.wsleds.setPixelColor(6, wscolor_light)
 		else:
 			self.wsleds.setPixelColor(6, self.wscolor_off)
 		# => Light active layer
@@ -101,7 +101,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 		elif self.zyngui.midi_learn_mode:
 			self.wsleds.setPixelColor(7, self.wscolor_active)
 		else:
-			self.wsleds.setPixelColor(7, self.wscolor_light)
+			self.wsleds.setPixelColor(7, self.wscolor_default)
 
 		# Stepseq screen:
 		if curscreen == "zynpad":
@@ -148,15 +148,13 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 		# REC button:
 		if curscreen == "pattern_editor":
 			if self.zyngui.zynseq.libseq.isMidiRecord():
-				self.wsleds.setPixelColor(14, self.wscolor_orange)
-			elif 'audio_recorder' in self.zyngui.status_info:
 				self.wsleds.setPixelColor(14, self.wscolor_red)
 			else:
-				self.wsleds.setPixelColor(14, self.wscolor_light)
+				self.wsleds.setPixelColor(14, wscolor_light)
 		elif 'audio_recorder' in self.zyngui.status_info:
 			self.wsleds.setPixelColor(14, self.wscolor_red)
 		elif self.zyngui.status_info['midi_recorder'] and "REC" in self.zyngui.status_info['midi_recorder']:
-			self.wsleds.setPixelColor(14, self.wscolor_blue)
+			self.wsleds.setPixelColor(14, self.wscolor_red)
 		else:
 			self.wsleds.setPixelColor(14, wscolor_light)
 
@@ -184,7 +182,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 		if curscreen == "tempo":
 			self.wsleds.setPixelColor(16, self.wscolor_active)
 		else:
-			self.wsleds.setPixelColor(16, wscolor_light)
+			self.wsleds.setPixelColor(16, self.wscolor_default)
 
 		# STOP button
 		self.wsleds.setPixelColor(17, wscolor_light)
