@@ -220,23 +220,29 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				pad_x = int(pad / self.columns) * self.column_width
 				pad_y = pad % self.columns * self.row_height
 				if self.redraw_pending == 2:
+					fs1 = int(self.row_height * 0.15)
+					fs2 = int(self.row_height * 0.2)
 					self.grid_canvas.create_rectangle(pad_x, pad_y, pad_x + self.column_width - 2, pad_y + self.row_height - 2,
 						fill='grey', width=0, tags=("pad:%d"%(pad), "gridcell", "trigger_%d"%(pad)))
-					self.grid_canvas.create_text(int(pad_x + self.column_width / 2), int(pad_y + 0.01 * self.row_height),
+					self.grid_canvas.create_text(pad_x + int(self.column_width / 2), pad_y + int(0.02 * self.row_height),
 						width=self.column_width,
 						anchor="n", justify="center",
-						font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
-						size=int(self.row_height * 0.2)),
+						font=(zynthian_gui_config.font_family, fs1),
 						fill=zynthian_gui_config.color_panel_tx,
 						tags=("lbl_pad:%d"%(pad),"trigger_%d"%(pad)))
-					self.grid_canvas.create_text(pad_x + 1, pad_y + self.row_height - 1,
-						anchor="sw",
-						font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
-						size=int(self.row_height * 0.2)),
+					self.grid_canvas.create_text(pad_x + int(self.column_width / 2), pad_y + 2 * fs1,
+						width=self.column_width,
+						anchor="n", justify="center",
+						font=(zynthian_gui_config.font_family, fs2),
+						fill=zynthian_gui_config.color_panel_tx,
+						tags=("pat_num:%d"%(pad),"trigger_%d"%(pad)))
+					self.grid_canvas.create_text(pad_x + int(1.5 * fs1), pad_y + int(0.94 * self.row_height),
+						anchor="s",
+						font=(zynthian_gui_config.font_family, fs1),
 						fill=zynthian_gui_config.color_panel_tx,
 						tags=("group:%d"%(pad),"trigger_%d"%(pad)))
-					self.grid_canvas.create_image(int(pad_x + self.column_width * 0.2), int(pad_y + 0.9 * self.row_height), tags=("mode:%d"%(pad),"trigger_%d"%(pad)), anchor="sw")
-					self.grid_canvas.create_image(int(pad_x + self.column_width * 0.9), int(pad_y + 0.9 * self.row_height), tags=("state:%d"%(pad),"trigger_%d"%(pad)), anchor="se")
+					self.grid_canvas.create_image(int(pad_x + self.column_width * 0.23), int(pad_y + 0.9 * self.row_height), tags=("mode:%d"%(pad),"trigger_%d"%(pad)), anchor="sw")
+					self.grid_canvas.create_image(int(pad_x + self.column_width * 0.92), int(pad_y + 0.9 * self.row_height), tags=("state:%d"%(pad),"trigger_%d"%(pad)), anchor="se")
 					self.grid_canvas.tag_bind("trigger_%d"%(pad), '<Button-1>', self.on_pad_press)
 					self.grid_canvas.tag_bind("trigger_%d"%(pad), '<ButtonRelease-1>', self.on_pad_release)
 				self.refresh_pad(pad, True)
@@ -273,8 +279,21 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				pad_y = int(pad / self.columns) * self.row_height
 				if self.zyngui.zynseq.libseq.getSequenceLength(self.zyngui.zynseq.bank, pad) == 0:
 					mode = 0
-				self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text=self.zyngui.zynseq.get_sequence_name(self.zyngui.zynseq.bank, pad), fill=foreground)
-				self.grid_canvas.itemconfig("group:%s"%(pad), text=chr(65 + self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, pad)), fill=foreground)
+				chan = self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, pad, 0)
+				label = self.zyngui.zynseq.get_sequence_name(self.zyngui.zynseq.bank, pad)
+				try:
+					patnum = str(int(label))
+					layer = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(chan)
+					if layer:
+						label = str(layer.preset_name)
+					else:
+						label = ""
+				except:
+					patnum = self.zyngui.zynseq.libseq.getPatternAt(self.zyngui.zynseq.bank, pad, 0, 0)
+				self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text=label, fill=foreground)
+				self.grid_canvas.itemconfig("pat_num:%d" % (pad), text=patnum, fill=foreground)
+				#self.grid_canvas.itemconfig("group:%s"%(pad), text=chr(65 + self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, pad)), fill=foreground)
+				self.grid_canvas.itemconfig("group:%s" % (pad), text="{}".format(chan+1), fill=foreground)
 				self.grid_canvas.itemconfig("mode:%d"%pad, image=self.mode_icon[mode])
 				if state == 0 and self.zyngui.zynseq.libseq.isEmpty(self.zyngui.zynseq.bank, pad):
 					self.grid_canvas.itemconfig("state:%d"%pad, image=self.empty_icon)
