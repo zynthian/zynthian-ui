@@ -594,9 +594,9 @@ if "zynthian_main.py" in sys.argv[0]:
 		#------------------------------------------------------------------------------
 
 		# Fonts
-		font_listbox = (font_family,int(1.0*font_size))
-		font_topbar = (font_family,topbar_fs)
-		font_buttonbar = (font_family,int(0.8*font_size))
+		font_listbox = (font_family, int(1.0*font_size))
+		font_topbar = (font_family, topbar_fs)
+		font_buttonbar = (font_family, int(0.8*font_size))
 
 		# Loading Logo Animation
 		loading_imgs=[]
