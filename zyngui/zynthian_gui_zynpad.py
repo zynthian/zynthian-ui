@@ -95,7 +95,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if event == zynseq.SEQ_EVENT_LOAD:
 			self.redraw_pending = 2
 		elif event == zynseq.SEQ_EVENT_BANK:
-			self.title = "Part {}".format(self.zyngui.zynseq.bank)
+			self.title = "Scene {}".format(self.zyngui.zynseq.bank)
 			self.bank = None
 			if self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank) != self.columns ** 2:
 				self.redraw_pending = 2
@@ -126,7 +126,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.setup_zynpots()
 		self.refresh_status({}, True)
 		if self.param_editor_zctrl == None:
-			self.set_title("Part {}".format(self.zyngui.zynseq.bank))
+			self.set_title("Scene {}".format(self.zyngui.zynseq.bank))
 
 
 	# Function to hide GUI
@@ -288,7 +288,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				pad_y = int(pad / self.columns) * self.row_height
 				if self.zyngui.zynseq.libseq.getSequenceLength(self.zyngui.zynseq.bank, pad) == 0:
 					mode = 0
-				#group = chr(65 + self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, pad))
+				group = chr(65 + self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, pad))
 				#patnum = self.zyngui.zynseq.libseq.getPatternAt(self.zyngui.zynseq.bank, pad, 0, 0)
 				chan = self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, pad, 0)
 				title = self.zyngui.zynseq.get_sequence_name(self.zyngui.zynseq.bank, pad)
@@ -303,7 +303,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 					pass
 				self.grid_canvas.itemconfig("title:%d" % pad, text=title, fill=foreground)
 				self.grid_canvas.itemconfig("group:%s" % pad, text="CH{}".format(chan+1), fill=foreground)
-				self.grid_canvas.itemconfig("num:%d" % pad, text="S{}".format(pad+1), fill=foreground)
+				self.grid_canvas.itemconfig("num:%d" % pad, text="{}{}".format(group,pad+1), fill=foreground)
 				self.grid_canvas.itemconfig("mode:%d" % pad, image=self.mode_icon[mode])
 				if state == 0 and self.zyngui.zynseq.libseq.isEmpty(self.zyngui.zynseq.bank, pad):
 					self.grid_canvas.itemconfig("state:%d" % pad, image=self.empty_icon)
@@ -537,7 +537,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.set_title("Tempo: {:.1f}".format(self.zyngui.zynseq.get_tempo()), None, None, 2)
 		elif encoder == zynthian_gui_config.ENC_LAYER:
 			self.zyngui.zynseq.select_bank(self.zyngui.zynseq.bank + dval)
-			self.set_title("Part {}".format(self.zyngui.zynseq.bank))
+			self.set_title("Scene {}".format(self.zyngui.zynseq.bank))
 
 
 	# Function to handle SELECT button press
