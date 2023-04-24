@@ -166,7 +166,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 
 	def set_bank(self, layer, bank):
-		pass
+		return True
 
 	# ---------------------------------------------------------------------------
 	# Preset Management
