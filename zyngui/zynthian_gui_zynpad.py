@@ -95,7 +95,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if event == zynseq.SEQ_EVENT_LOAD:
 			self.redraw_pending = 2
 		elif event == zynseq.SEQ_EVENT_BANK:
-			self.title = "Bank {}".format(self.zyngui.zynseq.bank)
+			self.title = "Part {}".format(self.zyngui.zynseq.bank)
 			self.bank = None
 			if self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank) != self.columns ** 2:
 				self.redraw_pending = 2
@@ -124,8 +124,9 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def build_view(self):
 		self.zyngui.zynseq.libseq.updateSequenceInfo()
 		self.setup_zynpots()
+		self.refresh_status({}, True)
 		if self.param_editor_zctrl == None:
-			self.set_title("Bank {}".format(self.zyngui.zynseq.bank))
+			self.set_title("Part {}".format(self.zyngui.zynseq.bank))
 
 
 	# Function to hide GUI
@@ -191,7 +192,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				self.row_height = self.height / self.columns
 				self.selection = self.grid_canvas.create_rectangle(0, 0, int(self.column_width), int(self.row_height), fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
 
-				iconsize = (int(self.column_width * 0.5), int(self.row_height * 0.2))
+				iconsize = (int(self.column_width * 0.25), int(self.row_height * 0.2))
 				img = (Image.open("/zynthian/zynthian-ui/icons/oneshot.png").resize(iconsize))
 				self.mode_icon[1] = ImageTk.PhotoImage(img)
 				img = (Image.open("/zynthian/zynthian-ui/icons/loop.png").resize(iconsize))
@@ -216,35 +217,43 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				self.state_icon[zynseq.SEQ_STOPPING] = ImageTk.PhotoImage(img)
 
 			# Draw pads
+			fs1 = int(self.row_height * 0.15)
+			fs2 = int(self.row_height * 0.11)
 			for pad in range(self.columns**2):
 				pad_x = int(pad / self.columns) * self.column_width
 				pad_y = pad % self.columns * self.row_height
 				if self.redraw_pending == 2:
-					fs1 = int(self.row_height * 0.15)
-					fs2 = int(self.row_height * 0.2)
 					self.grid_canvas.create_rectangle(pad_x, pad_y, pad_x + self.column_width - 2, pad_y + self.row_height - 2,
-						fill='grey', width=0, tags=("pad:%d"%(pad), "gridcell", "trigger_%d"%(pad)))
-					self.grid_canvas.create_text(pad_x + int(self.column_width / 2), pad_y + int(0.02 * self.row_height),
-						width=self.column_width,
-						anchor="n", justify="center",
-						font=(zynthian_gui_config.font_family, fs1),
-						fill=zynthian_gui_config.color_panel_tx,
-						tags=("lbl_pad:%d"%(pad),"trigger_%d"%(pad)))
-					self.grid_canvas.create_text(pad_x + int(self.column_width / 2), pad_y + 2 * fs1,
-						width=self.column_width,
-						anchor="n", justify="center",
+						fill='grey', width=0, tags=("pad:%d" % pad, "gridcell", "trigger_%d" % pad))
+
+					posx = pad_x + int(0.02 * self.column_width)
+					posy = pad_y + int(0.06 * self.row_height)
+					self.grid_canvas.create_image(posx + int(0.125 * self.column_width), posy,
+						anchor="n",
+						tags=("mode:%d" % pad,"trigger_%d" % pad))
+					self.grid_canvas.create_text(posx + int(3 * 0.125 * self.column_width), posy,
+						anchor="n",
 						font=(zynthian_gui_config.font_family, fs2),
 						fill=zynthian_gui_config.color_panel_tx,
-						tags=("pat_num:%d"%(pad),"trigger_%d"%(pad)))
-					self.grid_canvas.create_text(pad_x + int(1.5 * fs1), pad_y + int(0.94 * self.row_height),
-						anchor="s",
+						tags=("group:%d" % pad,"trigger_%d" % pad))
+					self.grid_canvas.create_text(posx + int(5 * 0.125 * self.column_width), posy,
+						anchor="n",
+						font=(zynthian_gui_config.font_family, fs2),
+						fill=zynthian_gui_config.color_panel_tx,
+						tags=("num:%d" % pad,"trigger_%d" % pad))
+					self.grid_canvas.create_image(posx + int(7 * 0.125 * self.column_width), posy,
+						anchor="n",
+						tags=("state:%d" % pad,"trigger_%d" % pad))
+
+					self.grid_canvas.create_text(posx, posy + 2 * fs1,
+						width=self.column_width - 0.04 * self.column_width,
+						anchor="nw", justify="left",
 						font=(zynthian_gui_config.font_family, fs1),
 						fill=zynthian_gui_config.color_panel_tx,
-						tags=("group:%d"%(pad),"trigger_%d"%(pad)))
-					self.grid_canvas.create_image(int(pad_x + self.column_width * 0.23), int(pad_y + 0.9 * self.row_height), tags=("mode:%d"%(pad),"trigger_%d"%(pad)), anchor="sw")
-					self.grid_canvas.create_image(int(pad_x + self.column_width * 0.92), int(pad_y + 0.9 * self.row_height), tags=("state:%d"%(pad),"trigger_%d"%(pad)), anchor="se")
-					self.grid_canvas.tag_bind("trigger_%d"%(pad), '<Button-1>', self.on_pad_press)
-					self.grid_canvas.tag_bind("trigger_%d"%(pad), '<ButtonRelease-1>', self.on_pad_release)
+						tags=("title:%d" % pad,"trigger_%d" % pad))
+
+					self.grid_canvas.tag_bind("trigger_%d" % pad, '<Button-1>', self.on_pad_press)
+					self.grid_canvas.tag_bind("trigger_%d" % pad, '<ButtonRelease-1>', self.on_pad_release)
 				self.refresh_pad(pad, True)
 			self.update_selection_cursor()
 		except Exception as e:
@@ -279,26 +288,27 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				pad_y = int(pad / self.columns) * self.row_height
 				if self.zyngui.zynseq.libseq.getSequenceLength(self.zyngui.zynseq.bank, pad) == 0:
 					mode = 0
+				#group = chr(65 + self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, pad))
+				#patnum = self.zyngui.zynseq.libseq.getPatternAt(self.zyngui.zynseq.bank, pad, 0, 0)
 				chan = self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, pad, 0)
-				label = self.zyngui.zynseq.get_sequence_name(self.zyngui.zynseq.bank, pad)
+				title = self.zyngui.zynseq.get_sequence_name(self.zyngui.zynseq.bank, pad)
 				try:
-					patnum = str(int(label))
+					kk = str(int(title))
 					layer = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(chan)
 					if layer:
-						label = str(layer.preset_name)
+						title = layer.preset_name
 					else:
-						label = ""
+						title = ""
 				except:
-					patnum = self.zyngui.zynseq.libseq.getPatternAt(self.zyngui.zynseq.bank, pad, 0, 0)
-				self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text=label, fill=foreground)
-				self.grid_canvas.itemconfig("pat_num:%d" % (pad), text=patnum, fill=foreground)
-				#self.grid_canvas.itemconfig("group:%s"%(pad), text=chr(65 + self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, pad)), fill=foreground)
-				self.grid_canvas.itemconfig("group:%s" % (pad), text="{}".format(chan+1), fill=foreground)
-				self.grid_canvas.itemconfig("mode:%d"%pad, image=self.mode_icon[mode])
+					pass
+				self.grid_canvas.itemconfig("title:%d" % pad, text=title, fill=foreground)
+				self.grid_canvas.itemconfig("group:%s" % pad, text="CH{}".format(chan+1), fill=foreground)
+				self.grid_canvas.itemconfig("num:%d" % pad, text="S{}".format(pad+1), fill=foreground)
+				self.grid_canvas.itemconfig("mode:%d" % pad, image=self.mode_icon[mode])
 				if state == 0 and self.zyngui.zynseq.libseq.isEmpty(self.zyngui.zynseq.bank, pad):
-					self.grid_canvas.itemconfig("state:%d"%pad, image=self.empty_icon)
+					self.grid_canvas.itemconfig("state:%d" % pad, image=self.empty_icon)
 				else:
-					self.grid_canvas.itemconfig("state:%d"%pad, image=self.state_icon[state])
+					self.grid_canvas.itemconfig("state:%d" % pad, image=self.state_icon[state])
 
 
 	# Function to move selection cursor
@@ -478,12 +488,13 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		return True
 
 
-	# Function to refresh status
-	def refresh_status(self, status={}):
+	# Function to refresh pads
+	def refresh_status(self, status={}, force=None):
 		super().refresh_status(status)
 		if self.redraw_pending:
 			self.update_grid()
-		force = self.zyngui.zynseq.bank != self.bank
+		if force is None:
+			force = self.zyngui.zynseq.bank != self.bank
 		if not self.redrawing:
 			self.bank = self.zyngui.zynseq.bank
 			for pad in range(0, self.columns**2):
@@ -526,7 +537,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.set_title("Tempo: {:.1f}".format(self.zyngui.zynseq.get_tempo()), None, None, 2)
 		elif encoder == zynthian_gui_config.ENC_LAYER:
 			self.zyngui.zynseq.select_bank(self.zyngui.zynseq.bank + dval)
-			self.set_title("Bank {}".format(self.zyngui.zynseq.bank))
+			self.set_title("Part {}".format(self.zyngui.zynseq.bank))
 
 
 	# Function to handle SELECT button press
