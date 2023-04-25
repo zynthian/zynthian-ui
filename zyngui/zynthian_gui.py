@@ -615,6 +615,10 @@ class zynthian_gui:
 		self.close_screen()
 
 
+	def purge_screen_history(self, screen):
+		self.screen_history = list(filter(lambda i: i != screen, self.screen_history))
+
+
 	def back_screen(self):
 		try:
 			res = self.screens[self.current_screen].back_action()
