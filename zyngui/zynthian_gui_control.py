@@ -420,7 +420,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				elif not self.zyngui.is_shown_alsa_mixer():
 					self.zyngui.cuia_bank_preset()
 					return True
-			else:
+			elif t == 'B':
 				self.back_action()
 				return False
 
