@@ -1620,10 +1620,10 @@ class zynthian_gui:
 
 		# Standard 4 ZynSwitches
 		if i == 0:
-			self.show_screen_reset("zynpad")
+			self.show_screen_reset("admin")
 
 		elif i == 1:
-			self.show_screen_reset("admin")
+			self.show_screen_reset("zynpad")
 
 		elif i == 2:
 			self.callable_ui_action("ALL_OFF")
