@@ -188,7 +188,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 		if curscreen == "tempo":
 			self.wsleds.setPixelColor(16, self.wscolor_active)
 		elif self.zyngui.zynseq.libseq.isMetronomeEnabled():
-			self.blink(6, self.wscolor_active)
+			self.blink(16, self.wscolor_active)
 		else:
 			self.wsleds.setPixelColor(16, self.wscolor_default)
 
