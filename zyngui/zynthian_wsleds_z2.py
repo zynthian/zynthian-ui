@@ -52,11 +52,6 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 	def update_wsleds(self):
 		curscreen = self.zyngui.current_screen
 
-		if self.zyngui.alt_mode:
-			wscolor_light = self.wscolor_alt
-		else:
-			wscolor_light = self.wscolor_default
-
 		# Menu
 		if self.zyngui.is_current_screen_menu():
 			self.wsleds.setPixelColor(0, self.wscolor_active)
@@ -66,19 +61,25 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 			self.wsleds.setPixelColor(0, self.wscolor_default)
 
 		# Active Layer
+		if self.zyngui.alt_mode:
+			wscolor_light = self.wscolor_alt
+			offset = 5
+		else:
+			wscolor_light = self.wscolor_default
+			offset = 0
 		# => Light non-empty layers
 		n = self.zyngui.screens['layer'].get_num_root_layers()
 		main_fxchain = self.zyngui.screens['layer'].get_main_fxchain_root_layer()
 		if main_fxchain:
 			n -= 1
 		for i in range(5):
-			if i < n:
+			if i + offset < n:
 				self.wsleds.setPixelColor(1 + i, wscolor_light)
 			else:
 				self.wsleds.setPixelColor(1 + i, self.wscolor_off)
 		# => Light FX layer if not empty
 		if main_fxchain:
-			self.wsleds.setPixelColor(6, wscolor_light)
+			self.wsleds.setPixelColor(6, self.wscolor_default)
 		else:
 			self.wsleds.setPixelColor(6, self.wscolor_off)
 		# => Light active layer
@@ -89,7 +90,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 					self.wsleds.setPixelColor(6, self.wscolor_active)
 				else:
 					self.blink(6, self.wscolor_active)
-			elif i < 5:
+			elif i + offset < 5:
 				if curscreen == "control":
 					self.wsleds.setPixelColor(1 + i, self.wscolor_active)
 				else:
@@ -103,13 +104,13 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 		else:
 			self.wsleds.setPixelColor(7, self.wscolor_default)
 
-		# Zynpad/Arranger screen:
+		# Zynpad screen:
 		if curscreen == "zynpad":
 			self.wsleds.setPixelColor(8, self.wscolor_active)
 		else:
 			self.wsleds.setPixelColor(8, self.wscolor_default)
 
-		# Pattern Editor screen:
+		# Pattern Editor/Arranger screen:
 		if curscreen == "pattern_editor":
 			self.wsleds.setPixelColor(9, self.wscolor_active)
 		elif curscreen == "arranger":
