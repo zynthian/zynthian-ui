@@ -106,14 +106,14 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 		# Zynpad/Arranger screen:
 		if curscreen == "zynpad":
 			self.wsleds.setPixelColor(8, self.wscolor_active)
-		elif curscreen == "arranger":
-			self.wsleds.setPixelColor(8, self.wscolor_active2)
 		else:
 			self.wsleds.setPixelColor(8, self.wscolor_default)
 
 		# Pattern Editor screen:
 		if curscreen == "pattern_editor":
 			self.wsleds.setPixelColor(9, self.wscolor_active)
+		elif curscreen == "arranger":
+			self.wsleds.setPixelColor(9, self.wscolor_active2)
 		else:
 			self.wsleds.setPixelColor(9, self.wscolor_default)
 
