@@ -1623,10 +1623,10 @@ class zynthian_gui:
 			self.show_screen_reset("admin")
 
 		elif i == 1:
-			self.show_screen_reset("zynpad")
-
+			self.callable_ui_action("ALL_SOUNDS_OFF")
+			
 		elif i == 2:
-			self.callable_ui_action("ALL_OFF")
+			self.show_screen_reset("zynpad")
 
 		elif i == 3:
 			self.screens['admin'].power_off()
