@@ -152,7 +152,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle changes to sequencer
 	def seq_cb(self, event):
 		if event in [zynseq.SEQ_EVENT_BANK]:
-			self.title = "Bank {}".format(self.zyngui.zynseq.bank)
+			self.title = "Scene {}".format(self.zyngui.zynseq.bank)
 			self.bank = self.zyngui.zynseq.bank
 			self.update_sequence_tracks()
 			self.redraw_pending = 4
@@ -186,7 +186,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		options['Tempo'] = 'Tempo'
 		options['Arranger'] = 'Arranger'
 		options['Beats per bar ({})'.format(self.zyngui.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
-		options['Bank ({})'.format(self.zyngui.zynseq.bank)] = 'Bank'
+		options['Scene ({})'.format(self.zyngui.zynseq.bank)] = 'Scene'
 		options['> ARRANGER'] = None
 		if self.zyngui.zynseq.libseq.isMuted(self.zyngui.zynseq.bank, self.sequence, self.track):
 			options['Unmute track'] = 'Unmute track'
@@ -202,7 +202,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		if self.zyngui.zynseq.libseq.getTracksInSequence(self.zyngui.zynseq.bank, self.sequence) > 1:
 			options['Remove track {}'.format(self.track + 1)] = 'Remove track'
 		options['Clear sequence'] = 'Clear sequence'
-		options['Clear bank'] = 'Clear bank'
+		options['Clear scene'] = 'Clear scene'
 		options['Import SMF'] = 'Import SMF'
 		self.zyngui.screens['option'].config("Arranger Menu", options, self.menu_cb)
 		self.zyngui.show_screen('option')
@@ -222,8 +222,8 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.show_screen('arranger')
 		elif params == 'Beats per bar':
 			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsPerBar()})
-		elif params == 'Bank':
-			self.enable_param_editor(self, 'bank', 'Bank', {'value_min':1, 'value_max':64, 'value':self.zyngui.zynseq.bank})
+		elif params == 'Scene':
+			self.enable_param_editor(self, 'scene', 'Scene', {'value_min':1, 'value_max':64, 'value':self.zyngui.zynseq.bank})
 		elif 'ute track' in params:
 			self.toggle_mute()
 		elif params == 'MIDI channel':
@@ -252,14 +252,14 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			self.remove_track()
 		elif params == 'Clear sequence':
 			self.clear_sequence()
-		elif params == 'Clear bank':
-			self.zyngui.show_confirm("Clear all sequences from bank %d and reset to 4x4 grid of new sequences?" % (self.zyngui.zynseq.bank), self.do_clear_bank)
+		elif params == 'Clear scene':
+			self.zyngui.show_confirm("Clear all sequences from scene %d and reset to 4x4 grid of new sequences?" % (self.zyngui.zynseq.bank), self.do_clear_bank)
 		elif params == 'Import SMF':
 			self.select_smf()
 
 
 	def send_controller_value(self, zctrl):
-		if zctrl.symbol == 'bank':
+		if zctrl.symbol == 'scene':
 			self.zyngui.zynseq.select_bank(zctrl.value)
 		elif zctrl.symbol == 'tempo':
 			self.zyngui.zynseq.libseq.setTempo(zctrl.value)
@@ -478,7 +478,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 		self.setup_zynpots()
 		if not self.param_editor_zctrl:
-			self.set_title("Bank %d" % (self.zyngui.zynseq.bank))
+			self.set_title("Scene %d" % (self.zyngui.zynseq.bank))
 
 			# Update list of layers
 			#TODO: Probably need to change this for chainification???
