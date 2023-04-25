@@ -55,6 +55,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def __init__(self):
 		logging.getLogger('PIL').setLevel(logging.WARNING)
 
+		self.ctrl_order = zynthian_gui_config.layout['ctrl_order']
 		self.columns = 4 # Quantity of columns in grid
 		self.selected_pad = 0 # Index of selected pad
 		self.redraw_pending = 2 # 0=no refresh pending, 1=update grid, 2=rebuild grid
@@ -113,10 +114,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	#Function to set values of encoders
 	def setup_zynpots(self):
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_LAYER, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_BACK, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SNAPSHOT, 0)
-		lib_zyncore.setup_behaviour_zynpot(zynthian_gui_config.ENC_SELECT, 0)
+		lib_zyncore.setup_behaviour_zynpot(0, 0)
+		lib_zyncore.setup_behaviour_zynpot(1, 0)
+		lib_zyncore.setup_behaviour_zynpot(2, 0)
+		lib_zyncore.setup_behaviour_zynpot(3, 0)
 
 
 	# Function to show GUI
@@ -357,10 +358,12 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def show_menu(self):
 		self.disable_param_editor()
 		options = OrderedDict()
-		options['Tempo'] = 'Tempo'
-		options['Arranger'] = 'Arranger'
+		if not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
+			options['Tempo'] = 'Tempo'
+			options['Scene ({})'.format(self.zyngui.zynseq.bank)] = 'Scene'
+		if not zynthian_gui_config.check_wiring_layout(["Z2"]):
+			options['Arranger'] = 'Arranger'
 		options['Beats per bar ({})'.format(self.zyngui.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
-		options['Bank ({})'.format(self.zyngui.zynseq.bank)] = 'Bank'
 		options['> PADS'] = None
 		options['Play mode ({})'.format(zynseq.PLAY_MODES[self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.selected_pad)])] = 'Play mode'
 		options['MIDI channel ({})'.format(1 + self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, self.selected_pad, 0))] = 'MIDI channel'
@@ -399,8 +402,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.show_screen('arranger')
 		elif params == 'Beats per bar':
 			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsPerBar()})
-		elif params == 'Bank':
-			self.enable_param_editor(self, 'bank', 'Bank', {'value_min':1, 'value_max':64, 'value':self.zyngui.zynseq.bank})
+		elif params == 'Scene':
+			self.enable_param_editor(self, 'bank', 'Scene', {'value_min':1, 'value_max':64, 'value':self.zyngui.zynseq.bank})
 		elif params == 'Play mode':
 			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynseq.PLAY_MODES, 'value':self.zyngui.zynseq.libseq.getPlayMode(self.zyngui.zynseq.bank, self.selected_pad), 'value_default':zynseq.SEQ_LOOPALL}, self.set_play_mode)
 		elif params == 'MIDI channel':
@@ -507,7 +510,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def zynpot_cb(self, encoder, dval):
 		if super().zynpot_cb(encoder, dval):
 			return
-		if encoder == zynthian_gui_config.ENC_SELECT:
+		if encoder == self.ctrl_order[3]:
 			# BACK encoder adjusts horizontal pad selection
 			pad = self.selected_pad + self.columns * dval
 			col = int(pad / self.columns)
@@ -524,20 +527,20 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				return
 			self.selected_pad = pad
 			self.update_selection_cursor()
-		elif encoder == zynthian_gui_config.ENC_BACK:
+		elif encoder == self.ctrl_order[2]:
 			# SELECT encoder adjusts vertical pad selection
 			pad = self.selected_pad + dval
 			if pad < 0 or pad >= self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank):
 				return
 			self.selected_pad = pad
 			self.update_selection_cursor()
-		elif encoder == zynthian_gui_config.ENC_SNAPSHOT and zynthian_gui_config.transport_clock_source == 0:
+		elif encoder == self.ctrl_order[1]:
+			self.zyngui.zynseq.select_bank(self.zyngui.zynseq.bank + dval)
+			self.set_title("Scene {}".format(self.zyngui.zynseq.bank))
+		elif encoder == self.ctrl_order[0] and zynthian_gui_config.transport_clock_source == 0:
 			self.zyngui.zynseq.update_tempo()
 			self.zyngui.zynseq.nudge_tempo(dval)
 			self.set_title("Tempo: {:.1f}".format(self.zyngui.zynseq.get_tempo()), None, None, 2)
-		elif encoder == zynthian_gui_config.ENC_LAYER:
-			self.zyngui.zynseq.select_bank(self.zyngui.zynseq.bank + dval)
-			self.set_title("Scene {}".format(self.zyngui.zynseq.bank))
 
 
 	# Function to handle SELECT button press

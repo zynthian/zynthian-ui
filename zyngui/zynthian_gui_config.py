@@ -67,8 +67,21 @@ if wiring_layout == "PROTOTYPE-1":
 else:
 	select_ctrl = 3
 
-# Zynswitches timing
-zynswitch_bold_us = 1000 * 300 
+
+def check_wiring_layout(wls):
+	for wl in wls:
+		if wiring_layout.startswith(wl):
+			return True
+	return False
+
+#------------------------------------------------------------------------------
+# Custom Switches Action Configuration
+#------------------------------------------------------------------------------
+
+custom_switch_ui_actions = []
+custom_switch_midi_events = []
+
+zynswitch_bold_us = 1000 * 300
 zynswitch_long_us = 1000 * 2000
 
 def config_zynswitch_timing():
@@ -85,12 +98,6 @@ def config_zynswitch_timing():
 	except Exception as e:
 		logging.error("ERROR configuring zynswitch timing: {}".format(e))
 
-#------------------------------------------------------------------------------
-# Custom Switches Action Configuration
-#------------------------------------------------------------------------------
-
-custom_switch_ui_actions = []
-custom_switch_midi_events = []
 
 def get_env_switch_action(varname):
 	action = os.environ.get(varname, "").strip()
@@ -120,12 +127,20 @@ def config_custom_switches():
 			cuias['S'] = ""
 			cuias['B'] = ""
 			cuias['L'] = ""
+			cuias['AP'] = get_env_switch_action(root_varname + "__UI_ALT_PUSH")
+			cuias['AS'] = ""
+			cuias['AB'] = ""
+			cuias['AL'] = ""
 		elif custom_type == "UI_ACTION" or custom_type == "UI_ACTION_RELEASE":
 			cuias = {}
 			cuias['P'] = ""
 			cuias['S'] = get_env_switch_action(root_varname + "__UI_SHORT")
 			cuias['B'] = get_env_switch_action(root_varname + "__UI_BOLD")
 			cuias['L'] = get_env_switch_action(root_varname + "__UI_LONG")
+			cuias['AP'] = ""
+			cuias['AS'] = get_env_switch_action(root_varname + "__UI_ALT_SHORT")
+			cuias['AB'] = get_env_switch_action(root_varname + "__UI_ALT_BOLD")
+			cuias['AL'] = get_env_switch_action(root_varname + "__UI_ALT_LONG")
 		elif custom_type != "":
 			evtype = None
 			if custom_type == "MIDI_CC":
@@ -377,18 +392,19 @@ def set_midi_config():
 # UI Color Parameters
 #------------------------------------------------------------------------------
 
-color_bg=os.environ.get('ZYNTHIAN_UI_COLOR_BG', "#000000")
-color_tx=os.environ.get('ZYNTHIAN_UI_COLOR_TX', "#ffffff")
-color_tx_off=os.environ.get('ZYNTHIAN_UI_COLOR_TX_OFF', "#e0e0e0")
-color_on=os.environ.get('ZYNTHIAN_UI_COLOR_ON', "#ff0000")
-color_off=os.environ.get('ZYNTHIAN_UI_COLOR_OFF', "#5a626d")
-color_hl=os.environ.get('ZYNTHIAN_UI_COLOR_HL', "#00b000")
-color_ml=os.environ.get('ZYNTHIAN_UI_COLOR_ML', "#f0f000")
-color_low_on=os.environ.get('ZYNTHIAN_UI_COLOR_LOW_ON', "#b00000")
-color_panel_bg=os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_BG', "#3a424d")
-color_panel_hl=os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_HL', "#2a323d")
-color_info=os.environ.get('ZYNTHIAN_UI_COLOR_INFO', "#8080ff")
-color_error=os.environ.get('ZYNTHIAN_UI_COLOR_ERROR', "#ff0000")
+color_bg = os.environ.get('ZYNTHIAN_UI_COLOR_BG', "#000000")
+color_tx = os.environ.get('ZYNTHIAN_UI_COLOR_TX', "#ffffff")
+color_tx_off = os.environ.get('ZYNTHIAN_UI_COLOR_TX_OFF', "#e0e0e0")
+color_on = os.environ.get('ZYNTHIAN_UI_COLOR_ON', "#ff0000")
+color_off = os.environ.get('ZYNTHIAN_UI_COLOR_OFF', "#5a626d")
+color_hl = os.environ.get('ZYNTHIAN_UI_COLOR_HL', "#00b000")
+color_ml = os.environ.get('ZYNTHIAN_UI_COLOR_ML', "#f0f000")
+color_low_on = os.environ.get('ZYNTHIAN_UI_COLOR_LOW_ON', "#b00000")
+color_panel_bg = os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_BG', "#3a424d")
+color_panel_hl = os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_HL', "#2a323d")
+color_info = os.environ.get('ZYNTHIAN_UI_COLOR_INFO', "#8080ff")
+color_midi = os.environ.get('ZYNTHIAN_UI_COLOR_MIDI', "#ff00ff")
+color_error = os.environ.get('ZYNTHIAN_UI_COLOR_ERROR', "#ff0000")
 
 # Color Scheme
 color_panel_bd = color_bg
@@ -399,7 +415,7 @@ color_ctrl_bg_off = color_off
 color_ctrl_bg_on = color_on
 color_ctrl_tx = color_tx
 color_ctrl_tx_off = color_tx_off
-color_status_midi = color_info
+color_status_midi = color_midi
 color_status_play = color_hl
 color_status_record = color_low_on
 color_status_error = color_error
@@ -545,7 +561,7 @@ if "zynthian_main.py" in sys.argv[0]:
 
 		# Controllers position and size
 		# pos(row,col)
-		if wiring_layout.startswith("Z2") or wiring_layout.startswith("V5"):
+		if check_wiring_layout(["Z2", "V5"]):
 			layout = {
 				'name': 'Z2',
 				'columns': 2,
@@ -559,7 +575,6 @@ if "zynthian_main.py" in sys.argv[0]:
 				'list_pos': (0, 0),
 				'ctrl_orientation': 'horizontal',
 				'ctrl_order': (0, 1, 2, 3),
-				'menu': 'chain_menu'
 			}
 		else:
 			layout = {
@@ -575,7 +590,6 @@ if "zynthian_main.py" in sys.argv[0]:
 				'list_pos': (0, 1),
 				'ctrl_orientation': 'vertical',
 				'ctrl_order': (0, 2, 1, 3),
-				'menu': 'main_menu'
 			}
 
 		# Adjust Root Window Geometry

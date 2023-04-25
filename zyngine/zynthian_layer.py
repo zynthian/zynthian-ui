@@ -287,7 +287,7 @@ class zynthian_layer:
 				return False
 
 			# Remove favorite marker char
-			if preset_name[0]=='❤':
+			if preset_name[0] == '❤':
 				preset_name=preset_name[1:]
 
 			# Check if preset is in favorites pseudo-bank and set real bank if needed
@@ -296,22 +296,18 @@ class zynthian_layer:
 				if bank_name!=self.bank_name:
 					self.set_bank_by_name(bank_name)
 
-			# Check if force set engine
-			if force_set_engine:
-				set_engine_needed = True
 			# Check if preset is already loaded
-			elif self.engine.cmp_presets(preset_info, self.preset_info):
-				set_engine_needed = False
+			if not force_set_engine and self.engine.cmp_presets(preset_info, self.preset_info):
 				logging.info("Preset already selected: %s (%d)" % (preset_name,i))
 				# Check if some other preset is preloaded
 				if self.preload_info and not self.engine.cmp_presets(self.preload_info,self.preset_info):
 					set_engine_needed = True
+				else:
+					set_engine_needed = False
 			else:
 				set_engine_needed = True
 				logging.info("Preset selected: %s (%d)" % (preset_name,i))
 
-			last_preset_index = self.preset_index
-			last_preset_name = self.preset_name
 			self.preset_index = i
 			self.preset_name = preset_name
 			self.preset_info = preset_info
@@ -338,8 +334,8 @@ class zynthian_layer:
 		for i in range(len(self.preset_list)):
 			name_i = self.preset_list[i][2]
 			try:
-				if name_i[0]=='❤':
-					name_i=name_i[1:]
+				if name_i[0] == '❤':
+					name_i = name_i[1:]
 				if preset_name == name_i:
 					return self.set_preset(i, set_engine, force_set_engine)
 			except:
@@ -351,7 +347,7 @@ class zynthian_layer:
 	#TODO Optimize search!!
 	def set_preset_by_id(self, preset_id, set_engine=True, force_set_engine=True):
 		for i in range(len(self.preset_list)):
-			if preset_id==self.preset_list[i][0]:
+			if preset_id == self.preset_list[i][0]:
 				return self.set_preset(i, set_engine, force_set_engine)
 		return False
 
@@ -366,7 +362,7 @@ class zynthian_layer:
 				self.preload_name = self.preset_list[i][2]
 				self.preload_info = copy.deepcopy(self.preset_list[i])
 				logging.info("Preset Preloaded: %s (%d)" % (self.preload_name,i))
-				self.engine.set_preset(self,self.preload_info,True)
+				self.engine.set_preset(self, self.preload_info,True)
 				return True
 		return False
 

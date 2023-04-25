@@ -49,6 +49,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.nickname = "AP"
 		self.type = "MIDI Synth"
 		self.options['replace'] = False
+		self.play_on_load = False
 		
 		if jackname:
 			self.jackname = jackname
@@ -92,6 +93,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 		self.reset()
 
+
+	def set_play_on_load(self, pol=True):
+		self.play_on_load = pol
 
 	# ---------------------------------------------------------------------------
 	# Subproccess Management & IPC
@@ -196,7 +200,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	def set_preset(self, layer, preset, preload=False):
 		handle = layer.midi_chan if layer.midi_chan < 16 else 16
 		if self.player.get_filename(handle) == preset[0] and self.player.get_file_duration(preset[0]) == self.player.get_duration(handle):
-			return
+			return False
 
 		good_file = self.player.load(handle, preset[0])
 		dur = self.player.get_duration(handle, )
@@ -205,6 +209,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			loop = 'looping'
 		else:
 			loop = 'one-shot'
+		logging.debug("Loading Audio Track '{}' in player {}".format(preset[0], handle))
+		if self.play_on_load:
+			self.player.start_playback(handle)
 		if self.player.get_playback_state(handle):
 			transport = 'playing'
 		else:
@@ -229,24 +236,24 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				track_labels.append('{}'.format(track + 1))
 				track_values.append(track)
 			self._ctrl_screens = [
-				['main',['record','loop','transport','position']],
-				['config',['left track','gain','right track']]
+				['main', ['record', 'loop', 'transport', 'position']],
+				['config', ['left track', 'gain', 'right track']]
 			]
 		else:
 			self._ctrl_screens = [
 				['main', ['record'], None, None],
 				['config', [None, 'gain']]
 		]
-		self._ctrls=[
-			['gain',None,gain,2.0],
-			['record',None,record,['stopped','recording']],
-			['loop',None,loop,['one-shot','looping']],
-			['transport',None,transport,['stopped','playing']],
-			['position',None,0.0,dur],
-			['left track',None,default_a,[track_labels,track_values]],
-			['right track',None,default_b,[track_labels,track_values]],
-			['loop start',None,0.0,dur],
-			['loop end',None,dur,dur]
+		self._ctrls = [
+			['gain', None, gain, 2.0],
+			['record', None, record, ['stopped', 'recording']],
+			['loop', None, loop, ['one-shot', 'looping']],
+			['transport', None, transport, ['stopped', 'playing']],
+			['position', None, 0.0, dur],
+			['left track', None, default_a, [track_labels, track_values]],
+			['right track', None,default_b, [track_labels, track_values]],
+			['loop start', None, 0.0, dur],
+			['loop end', None, dur, dur]
 		]
 		layer.refresh_controllers()
 		self.player.set_track_a(handle, default_a)
@@ -254,6 +261,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.monitors_dict[handle]['filename'] = self.player.get_filename(handle)
 		self.monitors_dict[handle]['duration'] = self.player.get_duration(handle)
 		self.monitors_dict[handle]['samplerate'] = self.player.get_samplerate(handle)
+		return True
 
 
 	def delete_preset(self, bank, preset):

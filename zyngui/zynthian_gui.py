@@ -193,11 +193,11 @@ class zynthian_gui:
 	# ---------------------------------------------------------------------------
 
 	def init_wsleds(self):
-		if zynthian_gui_config.wiring_layout.startswith("Z2"):
+		if zynthian_gui_config.check_wiring_layout(["Z2"]):
 			from zyngui.zynthian_wsleds_z2 import zynthian_wsleds_z2
 			self.wsleds = zynthian_wsleds_z2(self)
 			self.wsleds.start()
-		elif zynthian_gui_config.wiring_layout.startswith("V5"):
+		elif zynthian_gui_config.check_wiring_layout(["V5"]):
 			from zyngui.zynthian_wsleds_v5 import zynthian_wsleds_v5
 			self.wsleds = zynthian_wsleds_v5(self)
 			self.wsleds.start()
@@ -414,6 +414,8 @@ class zynthian_gui:
 	# ---------------------------------------------------------------------------
 
 	def start(self):
+		# Init Auto-connector
+		zynautoconnect.start()
 
 		# Create global objects first
 		self.audio_recorder = zynthian_audio_recorder()
@@ -450,22 +452,21 @@ class zynthian_gui:
 		self.screens['audio_mixer'] = zynthian_gui_mixer()
 
 		# Create the right main menu screen
-		if zynthian_gui_config.layout['menu'] == 'chain_menu':
+		if zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
 			self.screens['main_menu'] = zynthian_gui_chain_menu()
 		else:
 			self.screens['main_menu'] = zynthian_gui_main_menu()
 
 		# Create UI Apps Screens
-		self.screens['alsa_mixer'] = self.screens['control']
+		self.create_audio_player()
+		self.screens['audio_player'] = self.screens['control']
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
+		self.screens['alsa_mixer'] = self.screens['control']
 		self.screens['zynpad'] = zynthian_gui_zynpad()
 		self.screens['arranger'] = zynthian_gui_arranger()
 		self.screens['pattern_editor'] = zynthian_gui_patterneditor()
 		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
 		self.screens['control_test'] = zynthian_gui_control_test()
-		
-		# Init Auto-connector
-		zynautoconnect.start()
 
 		# Initialize OSC
 		self.osc_init()
@@ -547,6 +548,12 @@ class zynthian_gui:
 			if self.screens['layer'].amixer_layer:
 				self.screens['layer'].amixer_layer.refresh_controllers()
 				self.set_curlayer(self.screens['layer'].amixer_layer, save=True, populate_screens=False)
+			else:
+				return
+		elif screen == "audio_player":
+			if self.audio_player:
+				self.audio_player.refresh_controllers()
+				self.set_curlayer(self.audio_player, save=True, populate_screens=False)
 			else:
 				return
 
@@ -790,7 +797,8 @@ class zynthian_gui:
 	def set_curlayer(self, layer, save=False, populate_screens=True):
 		if layer is not None:
 			if self.curlayer != layer:
-				if save and not self.is_shown_alsa_mixer():
+				#if save and not self.is_shown_alsa_mixer():
+				if save and self.curlayer in self.screens['layer'].layers:
 					self._curlayer = self.curlayer
 				self.curlayer = layer
 			if populate_screens:
@@ -856,37 +864,51 @@ class zynthian_gui:
 		self.show_screen_reset('main_menu')
 		self.zynmixer.set_mute(256, 0)
 
-
-	def start_audio_player(self):
-		filename = self.audio_recorder.filename
-		if not filename or not os.path.exists(filename):
-			if os.path.ismount(self.audio_recorder.capture_dir_usb):
-				path = self.audio_recorder.capture_dir_usb
-			else:
-				path = self.audio_recorder.capture_dir_sdc
-			files = glob('{}/*.wav'.format(path))
-			if files:
-				filename = max(files, key=os.path.getctime)
-			else:
-				return
-
+	def create_audio_player(self):
 		if not self.audio_player:
 			try:
 				zyngine = self.screens['engine'].start_engine('AP')
+				zyngine.set_play_on_load(True)
 				self.audio_player = zynthian_layer(zyngine, 16, None)
 				zynautoconnect.audio_connect_aux(self.audio_player.jackname)
 			except Exception as e:
-				self.stop_audio_player()
-				return
-		self.audio_player.engine.set_preset(self.audio_player, [filename])
-		self.audio_player.engine.player.set_position(16, 0.0)
-		self.audio_player.engine.player.start_playback(16)
-		self.status_info['audio_player'] = 'PLAY'
+				logging.error("Can't create global Audio Player instance")
 
+
+	def destroy_audio_player(self):
+		if self.audio_player:
+			try:
+				self.audio_player.engine.del_layer(self.audio_player)
+				self.audio_player = None
+				self.screens['engine'].stop_unused_engines()
+			except Exception as e:
+				logging.error("Can't destroy global Audio Player instance")
+
+
+	def start_audio_player(self):
+		filename = self.audio_recorder.filename
+		if filename and os.path.exists(filename):
+			self.audio_player.engine.set_preset(self.audio_player, [filename])
+			#self.audio_player.engine.player.set_position(16, 0.0)
+			self.audio_player.engine.player.start_playback(16)
+			self.audio_recorder.filename = None
+		elif self.audio_player.preset_name:
+			self.audio_player.controllers_dict['transport'].set_value('playing')
+		elif self.audio_player.engine.player.get_filename(16):
+			self.audio_player.engine.player.start_playback(16)
+		else:
+			self.show_screen("audio_player")
+			if self.audio_player.bank_name is None:
+				self.replace_screen('bank')
+				if len(self.audio_player.bank_list) == 1:
+					self.screens['bank'].click_listbox()
 
 	def stop_audio_player(self):
-		if self.audio_player:
+		if self.audio_player.preset_name:
+			self.audio_player.controllers_dict['transport'].set_value('stopped')
+		else:
 			self.audio_player.engine.player.stop_playback(16)
+
 
 	# ------------------------------------------------------------------
 	# MIDI learning
@@ -1025,48 +1047,49 @@ class zynthian_gui:
 
 	# Audio & MIDI Recording/Playback actions
 	def cuia_start_audio_record(self, params=None):
-		self.audio_recorder.start_recording()
-		self.refresh_signal("AUDIO_RECORD")
+		#self.audio_player.engine.start_recording()
+		self.audio_player.controllers_dict['record'].set_value('recording')
 
 	def cuia_stop_audio_record(self, params=None):
-		self.audio_recorder.stop_recording()
-		self.refresh_signal("AUDIO_RECORD")
+		#self.audio_player.engine.stop_recording()
+		self.audio_player.controllers_dict['record'].set_value('stopped')
 
 	def cuia_toggle_audio_record(self, params=None):
-		if self.current_screen == "pattern_editor":
-			self.screens["pattern_editor"].toggle_midi_record()
+		if self.audio_recorder.get_status():
+			self.audio_player.controllers_dict['record'].set_value('stopped')
 		else:
-			self.audio_recorder.toggle_recording()
-			self.refresh_signal("AUDIO_RECORD")
+			self.audio_player.controllers_dict['record'].set_value('recording')
 
 	def cuia_start_audio_play(self, params=None):
 		self.start_audio_player()
 
 	def cuia_stop_audio_play(self, params=None):
-		if self.current_screen == "pattern_editor":
-			self.screens["pattern_editor"].stop_playback()
-		else:
-			self.stop_audio_player()
+		self.stop_audio_player()
+		self.audio_player.engine.player.set_position(16, 0.0)
 
 	def cuia_toggle_audio_play(self, params=None):
-		if self.current_screen == "pattern_editor":
-			self.screens["pattern_editor"].toggle_playback()
-		elif self.audio_player and self.audio_player.engine.player.get_playback_state(16):
+		if self.audio_player.engine.player.get_playback_state(16):
 			self.stop_audio_player()
 		else:
 			self.start_audio_player()
+
+	def cuia_audio_file_list(self, params=None):
+		self.show_screen("audio_player")
+		self.replace_screen('bank')
+		if len(self.audio_player.bank_list) == 1:
+			self.screens['bank'].click_listbox()
 
 	def cuia_start_midi_record(self, params=None):
 		self.screens['midi_recorder'].start_recording()
 
 	def cuia_stop_midi_record(self, params=None):
 		self.screens['midi_recorder'].stop_recording()
-		if self.current_screen=="midi_recorder":
+		if self.current_screen == "midi_recorder":
 			self.screens['midi_recorder'].select()
 
 	def cuia_toggle_midi_record(self, params=None):
 		self.screens['midi_recorder'].toggle_recording()
-		if self.current_screen=="midi_recorder":
+		if self.current_screen == "midi_recorder":
 			self.screens['midi_recorder'].select()
 
 	def cuia_start_midi_play(self, params=None):
@@ -1078,20 +1101,29 @@ class zynthian_gui:
 	def cuia_toggle_midi_play(self, params=None):
 		self.screens['midi_recorder'].toggle_playing()
 
-	def cuia_start_step_seq(self, params=None):
-		#TODO Implement this correctly or remove CUIA
-		#self.zynseq.start_transport()
-		pass
+	def cuia_toggle_record(self, params=None):
+		if self.current_screen == "pattern_editor":
+			self.screens["pattern_editor"].toggle_midi_record()
+		elif self.alt_mode:
+			self.cuia_toggle_midi_record()
+		else:
+			self.cuia_toggle_audio_record()
 
-	def cuia_stop_step_seq(self, params=None):
-		#TODO Implement this correctly or remove CUIA
-		#self.zynseq.stop_transport()
-		pass
+	def cuia_stop(self, params=None):
+		if self.current_screen == "pattern_editor":
+			self.screens["pattern_editor"].stop_playback()
+		elif self.alt_mode:
+			self.cuia_stop_midi_play()
+		else:
+			self.cuia_stop_audio_play()
 
-	def cuia_toggle_step_seq(self, params=None):
-		#TODO Implement this correctly or remove CUIA
-		#self.zynseq.toggle_transport()
-		pass
+	def cuia_toggle_play(self, params=None):
+		if self.current_screen == "pattern_editor":
+			self.screens["pattern_editor"].toggle_playback()
+		elif self.alt_mode:
+			self.cuia_toggle_midi_play()
+		else:
+			self.cuia_toggle_audio_play()
 
 	def cuia_tempo(self, params=None):
 		self.screens["tempo"].tap()
@@ -1310,6 +1342,8 @@ class zynthian_gui:
 
 	def cuia_menu(self, params=None):
 		try:
+			if self.current_screen == "alsa_mixer":
+				raise AttributeError
 			self.screens[self.current_screen].toggle_menu()
 		except (AttributeError, TypeError) as err:
 			self.toggle_screen("main_menu", hmode=zynthian_gui.SCREEN_HMODE_ADD)
@@ -1480,12 +1514,19 @@ class zynthian_gui:
 		if not action_config:
 			return
 
-		if t == "S" and (self.alt_mode or self.check_current_screen_switch(action_config)):
+		if t == "S" and self.check_current_screen_switch(action_config):
 			cuia = action_config['B']
 			if cuia:
 				self.callable_ui_action_params(cuia)
-				self.alt_mode = False
 				return
+
+		if self.alt_mode:
+			at = "A" + t
+			if at in action_config:
+				cuia = action_config[at]
+				if cuia:
+					self.callable_ui_action_params(cuia)
+					return
 
 		if t in action_config:
 			cuia = action_config[t]
@@ -1497,20 +1538,23 @@ class zynthian_gui:
 		if self.current_screen in ("main_menu", "engine", "midi_cc", "midi_chan", "midi_key_range", "audio_in", "audio_out", "midi_out", "midi_prog") or \
 				self.current_screen.endswith("_options"):
 			return True
-
 		if self.current_screen == "option" and len(self.screen_history) > 1 and self.screen_history[-2] in ("zynpad", "pattern_editor", "preset", "bank"):
 			return True
-
 		return False
 
 
 	def check_current_screen_switch(self, action_config):
+		# BIG ÑAPA!!
+		if action_config['B'] and action_config['B'].lower() == 'bank_preset' and self.current_screen in ('bank', 'preset'):
+			return True
 		#if self.is_current_screen_menu():
 		if self.current_screen == "main_menu":
 			screen_name = "menu"
 		else:
 			screen_name = self.current_screen
-		return action_config['S'].lower().endswith(screen_name)
+		if action_config['S'] and action_config['S'].lower().endswith(screen_name):
+			return True
+		return False
 
 
 	# -------------------------------------------------------------------
@@ -2096,20 +2140,19 @@ class zynthian_gui:
 			else:
 				self.status_counter += 1
 
-			# Get Recorder Status
+			# Audio Player Status
+			if self.audio_player.engine.player.get_playback_state(16):
+				self.status_info['audio_player'] = 'PLAY'
+			elif 'audio_player' in self.status_info:
+				self.status_info.pop('audio_player')
+
+			# Audio Recorder Status => Implemented in zyngui/zynthian_audio_recorder.py
+
+			# Get MIDI Player/Recorder Status
 			try:
 				self.status_info['midi_recorder'] = self.screens['midi_recorder'].get_status()
 			except Exception as e:
 				logging.error(e)
-
-			# Remove Player
-			if self.audio_player and self.audio_player.engine and not self.audio_player.engine.player.get_playback_state(16):
-					self.audio_player.engine.del_layer(self.audio_player)
-					self.audio_player = None
-					self.screens['engine'].stop_unused_engines()
-					if 'audio_player' in self.status_info:
-						self.status_info.pop('audio_player')
-
 
 			# Refresh On-Screen Status
 			try:
