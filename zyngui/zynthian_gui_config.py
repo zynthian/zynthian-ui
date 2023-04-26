@@ -61,18 +61,59 @@ if wiring_layout == "DUMMIES":
 	logging.info("No Wiring Layout configured. Only touch interface is available.")
 else:
 	logging.info("Wiring Layout %s" % wiring_layout)
-
 if wiring_layout == "PROTOTYPE-1":
 	select_ctrl = 2
 else:
 	select_ctrl = 3
-
 
 def check_wiring_layout(wls):
 	for wl in wls:
 		if wiring_layout.startswith(wl):
 			return True
 	return False
+
+#------------------------------------------------------------------------------
+# GUI layout
+#------------------------------------------------------------------------------
+
+gui_layout = os.environ.get('ZYNTHIAN_UI_GRAPHIC_LAYOUT', '')
+
+if not gui_layout:
+	if check_wiring_layout(["Z2", "V5"]):
+		gui_layout = "Z2"
+	else:
+		gui_layout = "V4"
+
+if gui_layout == "Z2":
+	layout = {
+		'name': 'Z2',
+		'columns': 2,
+		'rows': 4,
+		'ctrl_pos': [
+			(0, 1),
+			(1, 1),
+			(2, 1),
+			(3, 1)
+		],
+		'list_pos': (0, 0),
+		'ctrl_orientation': 'horizontal',
+		'ctrl_order': (0, 1, 2, 3),
+	}
+else:
+	layout = {
+		'name': 'V4',
+		'columns': 3,
+		'rows': 2,
+		'ctrl_pos': [
+			(0, 0),
+			(1, 0),
+			(0, 2),
+			(1, 2)
+		],
+		'list_pos': (0, 1),
+		'ctrl_orientation': 'vertical',
+		'ctrl_order': (0, 2, 1, 3),
+	}
 
 #------------------------------------------------------------------------------
 # Custom Switches Action Configuration
@@ -559,49 +600,16 @@ if "zynthian_main.py" in sys.argv[0]:
 			topbar_fs = int(1.1*font_size)
 			title_y = int(0.05 * topbar_height)
 
-		# Controllers position and size
-		# pos(row,col)
-		if check_wiring_layout(["Z2", "V5"]):
-			layout = {
-				'name': 'Z2',
-				'columns': 2,
-				'rows': 4,
-				'ctrl_pos': [
-					(0, 1),
-					(1, 1),
-					(2, 1),
-					(3, 1)
-				],
-				'list_pos': (0, 0),
-				'ctrl_orientation': 'horizontal',
-				'ctrl_order': (0, 1, 2, 3),
-			}
-		else:
-			layout = {
-				'name': 'V4',
-				'columns': 3,
-				'rows': 2,
-				'ctrl_pos': [
-					(0, 0),
-					(1, 0),
-					(0, 2),
-					(1, 2)
-				],
-				'list_pos': (0, 1),
-				'ctrl_orientation': 'vertical',
-				'ctrl_order': (0, 2, 1, 3),
-			}
-
 		# Adjust Root Window Geometry
 		top.geometry(str(display_width)+'x'+str(display_height))
 		top.maxsize(display_width, display_height)
 		top.minsize(display_width, display_height)
 
 		# Disable cursor for real Zynthian Boxes
-		if wiring_layout != "EMULATOR" and wiring_layout != "DUMMIES" and not force_enable_cursor:
-			top.config(cursor="none")
-		else:
+		if force_enable_cursor or wiring_layout == "EMULATOR" or wiring_layout == "DUMMIES":
 			top.config(cursor="cross")
+		else:
+			top.config(cursor="none")
 
 		#------------------------------------------------------------------------------
 		# Global Variables
@@ -613,7 +621,7 @@ if "zynthian_main.py" in sys.argv[0]:
 		font_buttonbar = (font_family, int(0.8*font_size))
 
 		# Loading Logo Animation
-		loading_imgs=[]
+		loading_imgs = []
 		pil_frame = Image.open("./img/zynthian_gui_loading.gif")
 		fw, fh = pil_frame.size
 		fw2 = display_width // 4 - 8
