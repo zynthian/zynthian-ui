@@ -193,21 +193,21 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				self.row_height = self.height / self.columns
 				self.selection = self.grid_canvas.create_rectangle(0, 0, int(self.column_width), int(self.row_height), fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
 
-				iconsize = (int(self.column_width * 0.25), int(self.row_height * 0.2))
-				img = (Image.open("/zynthian/zynthian-ui/icons/oneshot.png").resize(iconsize))
+				iconsize = (int(self.column_width * 0.22), int(self.row_height * 0.2))
+				img = (Image.open("/zynthian/zynthian-ui/icons/zynpad_mode_oneshot.png").resize(iconsize))
 				self.mode_icon[1] = ImageTk.PhotoImage(img)
-				img = (Image.open("/zynthian/zynthian-ui/icons/loop.png").resize(iconsize))
+				img = (Image.open("/zynthian/zynthian-ui/icons/zynpad_mode_loop.png").resize(iconsize))
 				self.mode_icon[2] = ImageTk.PhotoImage(img)
-				img = (Image.open("/zynthian/zynthian-ui/icons/oneshotall.png").resize(iconsize))
+				img = (Image.open("/zynthian/zynthian-ui/icons/zynpad_mode_oneshotall.png").resize(iconsize))
 				self.mode_icon[3] = ImageTk.PhotoImage(img)
-				img = (Image.open("/zynthian/zynthian-ui/icons/loopall.png").resize(iconsize))
+				img = (Image.open("/zynthian/zynthian-ui/icons/zynpad_mode_loopall.png").resize(iconsize))
 				self.mode_icon[4] = ImageTk.PhotoImage(img)
-				img = (Image.open("/zynthian/zynthian-ui/icons/oneshotsync.png").resize(iconsize))
+				img = (Image.open("/zynthian/zynthian-ui/icons/zynpad_mode_oneshotsync.png").resize(iconsize))
 				self.mode_icon[5] = ImageTk.PhotoImage(img)
-				img = (Image.open("/zynthian/zynthian-ui/icons/loopsync.png").resize(iconsize))
+				img = (Image.open("/zynthian/zynthian-ui/icons/zynpad_mode_loopsync.png").resize(iconsize))
 				self.mode_icon[6] = ImageTk.PhotoImage(img)
 
-				iconsize = (int(self.row_height * 0.2), int(self.row_height * 0.2))
+				iconsize = (int(self.row_height * 0.18), int(self.row_height * 0.18))
 				img = (Image.open("/zynthian/zynthian-ui/icons/stopped.png").resize(iconsize))
 				self.state_icon[zynseq.SEQ_STOPPED] = ImageTk.PhotoImage(img)
 				img = (Image.open("/zynthian/zynthian-ui/icons/starting.png").resize(iconsize))
@@ -297,7 +297,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 					kk = str(int(title))
 					layer = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(chan)
 					if layer:
-						title = layer.preset_name
+						title = layer.preset_name.replace("_", " ")
 					else:
 						title = ""
 				except:
