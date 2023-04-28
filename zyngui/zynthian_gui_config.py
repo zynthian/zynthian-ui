@@ -610,11 +610,9 @@ if "zynthian_main.py" in sys.argv[0]:
 		if display_width >= 800:
 			topbar_height = display_height // 12
 			topbar_fs = int(1.5*font_size)
-			title_y = int(0.1 * topbar_height)
 		else:
 			topbar_height = display_height // 10
 			topbar_fs = int(1.1*font_size)
-			title_y = int(0.05 * topbar_height)
 
 		# Adjust Root Window Geometry
 		top.geometry(str(display_width)+'x'+str(display_height))
