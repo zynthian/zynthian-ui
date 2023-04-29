@@ -102,7 +102,7 @@ class zynseq(zynthian_engine):
 			'nudge_factor':0.1
 			})
 		
-		self.event_cb_list = [] # List of callbacks registered for notification of change
+		self.event_queue_list = [] # List of callbacks registered for notification of change
 		self.bank = None
 		self.select_bank(1)
 
@@ -115,25 +115,25 @@ class zynseq(zynthian_engine):
 
 
 	#	Function to add a view to send events to
-	#	cb: Callback function
-	def add_event_cb(self, cb):
-		if cb not in self.event_cb_list:
-			self.event_cb_list.append(cb)
+	#	queue: Event queue
+	def add_event_cb(self, queue):
+		if queue not in self.event_queue_list:
+			self.event_queue_list.append(queue)
 
 
 	#	Function to remove a view to send events to
 	#	cb: Callback function
-	def remove_event_cb(self, cb):
-		if cb in self.event_cb_list:
-			self.event_cb_list.remove(cb)
+	def remove_event_cb(self, queue):
+		if queue in self.event_queue_list:
+			self.event_queue_list.remove(queue)
 
 
 	#	Function to send notification event to registered callback clients
 	#	event: Event number
 	def send_event(self, event):
-		for cb in self.event_cb_list:
+		for queue in self.event_queue_list:
 			try:
-				cb(event)
+				queue.put(event)
 			except Exception as e:
 				logging.warning(e)
 
@@ -216,6 +216,8 @@ class zynseq(zynthian_engine):
 	#	filename: Full path and filename
 	def load(self, filename):
 		self.libseq.load(bytes(filename, "utf-8"))
+		self.build_default_bank(1)
+		self.select_bank(1) #TODO: Store selected bank in seq file
 		self.send_event(SEQ_EVENT_LOAD)
 
 

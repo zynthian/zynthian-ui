@@ -62,7 +62,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.redraw_pending = 2 # 0=no refresh pending, 1=update grid, 2=rebuild grid
 		self.redrawing = False # True to block further redraws until complete
 		self.bank = None # The last successfully selected bank - used to update stale views
-		self.cb_queue = queue.Queue() # Queue of callback events
+		self.event_queue = queue.Queue() # Queue of callback events
 
 		super().__init__()
 
@@ -91,11 +91,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		# Selection highlight
 		self.selection = self.grid_canvas.create_rectangle(0, 0, self.column_width, self.row_height, fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
 
-		self.zyngui.zynseq.add_event_cb(self.seq_cb)
-
-
-	def seq_cb(self, event):
-		self.cb_queue.put(event)
+		self.zyngui.zynseq.add_event_cb(self.event_queue)
 
 
 	def on_cb_event(self, event):
@@ -516,10 +512,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.bank = self.zyngui.zynseq.bank
 			for pad in range(self.columns**2):
 				self.refresh_pad(pad, force)
-		while not self.cb_queue.empty():
+		while not self.event_queue.empty():
 			#TODO: Should we empty queue or process single callback per refresh?
 			try:
-				self.on_cb_event(self.cb_queue.get(block=False))
+				self.on_cb_event(self.event_queue.get(block=False))
 			except:
 				break
 
