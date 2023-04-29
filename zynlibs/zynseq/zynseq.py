@@ -165,7 +165,6 @@ class zynseq(zynthian_engine):
 					self.set_sequence_name(bank, seq, "{}".format(self.libseq.getPatternAt(bank, seq, 0, 0)))
 					self.libseq.setGroup(bank, seq, channel)
 					self.libseq.setChannel(bank, seq, 0, channel)
-			self.send_event(SEQ_EVENT_BANK)
 
 
 	#	Function to add / remove sequences to change bank size
@@ -217,8 +216,6 @@ class zynseq(zynthian_engine):
 	#	filename: Full path and filename
 	def load(self, filename):
 		self.libseq.load(bytes(filename, "utf-8"))
-		if self.libseq.getSequencesInBank(1) == 0:
-			self.build_default_bank(1)
 		self.send_event(SEQ_EVENT_LOAD)
 
 

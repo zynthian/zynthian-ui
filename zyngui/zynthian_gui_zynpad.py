@@ -32,6 +32,7 @@ from PIL import Image, ImageTk
 from time import sleep
 from threading import Timer
 from collections import OrderedDict
+import queue
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -61,6 +62,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.redraw_pending = 2 # 0=no refresh pending, 1=update grid, 2=rebuild grid
 		self.redrawing = False # True to block further redraws until complete
 		self.bank = None # The last successfully selected bank - used to update stale views
+		self.cb_queue = queue.Queue() # Queue of callback events
 
 		super().__init__()
 
@@ -93,6 +95,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 
 	def seq_cb(self, event):
+		self.cb_queue.put(event)
+
+
+	def on_cb_event(self, event):
 		if event == zynseq.SEQ_EVENT_LOAD:
 			self.redraw_pending = 2
 		elif event == zynseq.SEQ_EVENT_BANK:
@@ -508,8 +514,14 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			force = self.zyngui.zynseq.bank != self.bank
 		if not self.redrawing:
 			self.bank = self.zyngui.zynseq.bank
-			for pad in range(0, self.columns**2):
+			for pad in range(self.columns**2):
 				self.refresh_pad(pad, force)
+		while not self.cb_queue.empty():
+			#TODO: Should we empty queue or process single callback per refresh?
+			try:
+				self.on_cb_event(self.cb_queue.get(block=False))
+			except:
+				break
 
 
 	# Function to handle zynpots value change

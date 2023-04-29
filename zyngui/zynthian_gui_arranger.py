@@ -751,7 +751,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		sequence = self.sequence_tracks[row + self.row_offset][0]
 		track = self.sequence_tracks[row + self.row_offset][1]
 		group = self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, sequence)
-		fill = zynthian_gui_config.PAD_COLOUR_STOPPED[group % 16]
+		fill = zynthian_gui_config.PAD_COLOUR_GROUP_LIGHT[group % 16]
 		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
 		channel = self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, sequence, track)
 		if channel < 16 and self.layers[channel]:
