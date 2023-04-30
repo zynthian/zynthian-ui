@@ -91,10 +91,15 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		# Selection highlight
 		self.selection = self.grid_canvas.create_rectangle(0, 0, self.column_width, self.row_height, fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
 
-		self.zyngui.zynseq.add_event_cb(self.event_queue)
+		self.zyngui.zynseq.add_event_cb(self.on_cb_event)
 
 
 	def on_cb_event(self, event):
+		if self.shown:
+			self.event_queue.put(event)
+
+
+	def handle_event(self, event):
 		if event == zynseq.SEQ_EVENT_LOAD:
 			self.redraw_pending = 2
 		elif event == zynseq.SEQ_EVENT_BANK:
@@ -135,6 +140,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# Function to hide GUI
 	def hide(self):
 		super().hide()
+		with self.event_queue.mutex:
+			self.event_queue.queue.clear()
 
 
 	# Function to set quantity of pads
@@ -515,7 +522,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		while not self.event_queue.empty():
 			#TODO: Should we empty queue or process single callback per refresh?
 			try:
-				self.on_cb_event(self.event_queue.get(block=False))
+				self.handle_event(self.event_queue.get(block=False))
 			except:
 				break
 

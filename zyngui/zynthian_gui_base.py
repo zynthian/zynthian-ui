@@ -363,6 +363,8 @@ class zynthian_gui_base(tkinter.Frame):
 	# Hide the view
 	def hide(self):
 		if self.shown:
+			if self.param_editor_zctrl:
+				self.disable_param_editor()
 			self.shown=False
 			self.grid_remove()
 

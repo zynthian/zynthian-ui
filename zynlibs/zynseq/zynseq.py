@@ -102,7 +102,7 @@ class zynseq(zynthian_engine):
 			'nudge_factor':0.1
 			})
 		
-		self.event_queue_list = [] # List of callbacks registered for notification of change
+		self.cb_list = [] # List of callbacks registered for notification of change
 		self.bank = None
 		self.select_bank(1)
 
@@ -115,25 +115,25 @@ class zynseq(zynthian_engine):
 
 
 	#	Function to add a view to send events to
-	#	queue: Event queue
-	def add_event_cb(self, queue):
-		if queue not in self.event_queue_list:
-			self.event_queue_list.append(queue)
+	#	cb: Callback function
+	def add_event_cb(self, cb):
+		if cb not in self.cb_list:
+			self.cb_list.append(cb)
 
 
 	#	Function to remove a view to send events to
 	#	cb: Callback function
-	def remove_event_cb(self, queue):
-		if queue in self.event_queue_list:
-			self.event_queue_list.remove(queue)
+	def remove_event_cb(self, cb):
+		if cb in self.cb_list:
+			self.cb_list.remove(cb)
 
 
 	#	Function to send notification event to registered callback clients
 	#	event: Event number
 	def send_event(self, event):
-		for queue in self.event_queue_list:
+		for cb in self.cb_list:
 			try:
-				queue.put(event)
+				cb(event)
 			except Exception as e:
 				logging.warning(e)
 

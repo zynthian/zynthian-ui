@@ -148,10 +148,16 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.bank = self.zyngui.zynseq.bank # Local copy so we know if it has changed and grid needs redrawing
 		self.update_sequence_tracks()
 		self.redraw_pending = 4 #0:No refresh, 1:Refresh cell, 2:Refresh row, 3:Refresh grid, 4: Redraw grid
-		self.zyngui.zynseq.add_event_cb(self.event_queue)
+		self.zyngui.zynseq.add_event_cb(self.on_cb_event)
+
+
+	def on_cb_event(self, event):
+		if self.shown:
+			self.event_queue.put(event)
+
 
 	# Function to handle changes to sequencer
-	def on_cb_event(self, event):
+	def handle_event(self, event):
 		if event in [zynseq.SEQ_EVENT_BANK]:
 			self.title = "Scene {}".format(self.zyngui.zynseq.bank)
 			self.bank = self.zyngui.zynseq.bank
@@ -489,6 +495,13 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 						self.layers[chan] = layer
 						break
 		self.select_position()
+
+
+	# Function to hide GUI
+	def hide(self):
+		super().hide()
+		with self.event_queue.mutex:
+			self.event_queue.queue.clear()
 
 
 	# Function to set current pattern
@@ -1168,7 +1181,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		while not self.event_queue.empty():
 			#TODO: Should we empty queue or process single callback per refresh?
 			try:
-				self.on_cb_event(self.event_queue.get(block=False))
+				self.handle_event(self.event_queue.get(block=False))
 			except:
 				break
 
