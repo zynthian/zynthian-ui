@@ -535,13 +535,19 @@ PAD_COLOUR_GROUP = [
 	'#662426',			# Red Granate
 	'#3c6964',			# Blue Aguamarine
 	'#4d6817',			# Green Pistacho
-	'#495798',			# Blue Liloso
-	'#000060',			#1 dark
-	'#048C8C',			#2 dark
-	'#996633',			#3 dark
-	'#0010A0',			#4 medium too similar to 12
-	'#BF9C7C',			#5 medium
-	'#999966',			#6 medium
+	'#664980',			# Lila
+	'#4C709A',			# Mid Blue
+	'#4C94CC',			# Sky Blue
+	'#006000',			# Dark Green
+	'#B7AA5E',  		# Ocre
+	'#996633',  		# Maroon
+	'#746360',			# Dark Grey
+	'#D07272',			# Pink
+	'#000060',			# Blue sat.
+	'#048C8C',			# Turquesa
+	'#f46815',			# Orange
+	'#BF9C7C',			# Light Maroon
+	'#56A556',			# Light Green
 	'#FC6CB4',			#7 medium
 	'#CC8464',			#8 medium
 	'#4C94CC',			#9 medium
