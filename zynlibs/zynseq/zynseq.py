@@ -79,6 +79,7 @@ class zynseq(zynthian_engine):
 
 	#	Initiate library - performed by zynseq module
 	def __init__(self):
+		self.changing_bank = False
 		try:
 			self.libseq = ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynseq.so")
 			self.libseq.getSequenceName.restype = ctypes.c_char_p
@@ -141,12 +142,18 @@ class zynseq(zynthian_engine):
 	#	Function to select a bank for edit / control
 	#	bank: Index of bank
 	def select_bank(self, bank=None):
-		if isinstance(bank, int):
+		if self.changing_bank:
+			return
+		if bank is None:
+			bank = self.bank
+		else:
 			if bank < 1 or bank > 64 or bank == self.bank:
 				return
-			self.bank = bank
-		if self.libseq.getSequencesInBank(self.bank) == 0:
-			self.build_default_bank(self.bank)
+		self.changing_bank = True
+		if self.libseq.getSequencesInBank(bank) == 0:
+			self.build_default_bank(bank)
+		self.bank = bank
+		self.changing_bank = False
 		self.send_event(SEQ_EVENT_BANK)
 
 
@@ -168,7 +175,7 @@ class zynseq(zynthian_engine):
 
 
 	#	Function to add / remove sequences to change bank size
-	#	new_columns: Quanityt of columns (and rows) of new grid
+	#	new_columns: Quantity of columns (and rows) of new grid
 	def update_bank_grid(self, new_columns):
 		old_columns = int(sqrt(self.libseq.getSequencesInBank(self.bank)))
 		# To avoid odd behaviour we stop all sequences from playing before changing grid size (blunt but effective!)
@@ -204,6 +211,7 @@ class zynseq(zynthian_engine):
 			# Shrinking grid so remove excess sequences
 			# Lose excess columns
 			self.libseq.setSequencesInBank(self.bank, new_columns * old_columns)
+
 			# Lose exess rows
 			for col in range(new_columns - 1, -1, -1):
 				for row in range(old_columns - 1, new_columns -1, -1):

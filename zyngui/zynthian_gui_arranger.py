@@ -148,7 +148,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.bank = self.zyngui.zynseq.bank # Local copy so we know if it has changed and grid needs redrawing
 		self.update_sequence_tracks()
 		self.redraw_pending = 4 #0:No refresh, 1:Refresh cell, 2:Refresh row, 3:Refresh grid, 4: Redraw grid
-		self.zyngui.zynseq.add_event_cb(self.on_cb_event)
+		#self.zyngui.zynseq.add_event_cb(self.on_cb_event)
 
 
 	def on_cb_event(self, event):
@@ -191,9 +191,8 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.disable_param_editor()
 		options = OrderedDict()
 		options['Tempo'] = 'Tempo'
-		options['Arranger'] = 'Arranger'
 		options['Beats per bar ({})'.format(self.zyngui.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
-		options['Scene ({})'.format(self.zyngui.zynseq.bank)] = 'Scene'
+		options[f'Scene ({self.zyngui.zynseq.bank})'] = 'Scene'
 		options['> ARRANGER'] = None
 		if self.zyngui.zynseq.libseq.isMuted(self.zyngui.zynseq.bank, self.sequence, self.track):
 			options['Unmute track'] = 'Unmute track'
@@ -225,8 +224,6 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	def menu_cb(self, option, params):
 		if params == 'Tempo':
 			self.zyngui.show_screen('tempo')
-		elif params == 'Arranger':
-			self.zyngui.show_screen('arranger')
 		elif params == 'Beats per bar':
 			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsPerBar()})
 		elif params == 'Scene':
