@@ -205,37 +205,37 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.grid_canvas.create_rectangle(pad_x, pad_y, pad_x + self.column_width - 2, pad_y + header_h,
 				fill='darkgrey',
 				width=0,
-				tags=("pad", f"padh:{pad}", "gridcell", f"trigger:{pad}"))
+				tags=(f"padh:{pad}", "gridcell", f"trigger:{pad}", "pad"))
 			self.grid_canvas.create_rectangle(pad_x, pad_y + header_h, pad_x + self.column_width - 2, pad_y + self.row_height - 2,
 				fill='grey',
 				width=0,
-				tags=("pad", f"padb:{pad}", "gridcell", f"trigger:{pad}"))
+				tags=(f"padb:{pad}", "gridcell", f"trigger:{pad}", "pad"))
 			posx = pad_x + int(0.02 * self.column_width)
 			posy = pad_y + int(0.04 * self.row_height)
 			self.grid_canvas.create_image(posx + int(0.125 * self.column_width), posy,
 				anchor="nw",
-				tags=("pad", f"mode:{pad}", f"trigger:{pad}"))
+				tags=(f"mode:{pad}", f"trigger:{pad}", "pad"))
 			posy = pad_y + int(0.05 * self.row_height)
 			self.grid_canvas.create_text(posx + int(3 * 0.125 * self.column_width), posy,
 				anchor="n",
 				font=(zynthian_gui_config.font_family, fs2),
 				fill=zynthian_gui_config.color_panel_tx,
-				tags=("pad", f"group:{pad}", f"trigger:{pad}"))
+				tags=(f"group:{pad}", f"trigger:{pad}", "pad"))
 			self.grid_canvas.create_text(posx + int(5 * 0.125 * self.column_width), posy,
 				anchor="n",
 				font=(zynthian_gui_config.font_family, fs2),
 				fill=zynthian_gui_config.color_panel_tx,
-				tags=("pad", f"num:{pad}", f"trigger:{pad}"))
+				tags=(f"num:{pad}", f"trigger:{pad}", "pad"))
 			self.grid_canvas.create_image(posx + int(7 * 0.125 * self.column_width), posy,
 				anchor="n",
-				tags=("pad", f"state:{pad}", f"trigger:{pad}"))
+				tags=(f"state:{pad}", f"trigger:{pad}", "pad"))
 			posx = pad_x + int(0.03 * self.column_width)
 			self.grid_canvas.create_text(posx, posy + 2 * fs1,
 				width=self.column_width - 0.06 * self.column_width,
 				anchor="nw", justify="left",
 				font=(zynthian_gui_config.font_family, fs1),
 				fill=zynthian_gui_config.color_panel_tx,
-				tags=("pad", f"title:{pad}", f"trigger:{pad}"))
+				tags=(f"title:{pad}", f"trigger:{pad}", "pad"))
 		self.grid_canvas.tag_bind("pad", '<Button-1>', self.on_pad_press)
 		self.grid_canvas.tag_bind("pad", '<ButtonRelease-1>', self.on_pad_release)
 
