@@ -212,6 +212,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if zynthian_gui_config.midi_single_active_channel:
 			layer = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(self.channel)
 			self.zyngui.set_curlayer(layer)
+		zoom = self.zyngui.zynseq.libseq.getVerticalZoom()
+		if zoom != self.zoom:
+			self.set_vzoom(zoom)
 
 
 	# Function to enable note duration/velocity direct edit mode
@@ -468,6 +471,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to set vertical zoom
 	def set_vzoom(self, value):
 		self.zoom = value
+		self.zyngui.zynseq.libseq.setVerticalZoom(value)
 		self.update_row_height()
 		self.redraw_pending = 4
 		self.select_cell()
