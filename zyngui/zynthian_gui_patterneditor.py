@@ -217,7 +217,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					title = f"{group}{title}"
 			except:
 				pass
-			self.set_title(f"Pattern {self.pattern} ({title})")
+			if title:
+				self.set_title(f"Pattern {self.pattern} ({title})")
+			else:
+				self.set_title(f"Pattern {self.pattern}")
 		self.last_play_mode = self.zyngui.zynseq.libseq.getPlayMode(self.bank, self.sequence)
 		if self.last_play_mode not in (zynseq.SEQ_LOOP,zynseq.SEQ_LOOPALL):
 			self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynseq.SEQ_LOOP)

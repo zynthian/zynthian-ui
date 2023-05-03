@@ -745,6 +745,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	def add_event(self, col, sequence, track):
 		time = col * self.clocks_per_division
 		if self.zyngui.zynseq.add_pattern(self.zyngui.zynseq.bank, sequence, track, time, self.pattern_to_add):
+			self.redraw_pending = 2
 			return True
 		return False
 
