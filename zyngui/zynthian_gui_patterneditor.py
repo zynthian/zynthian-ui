@@ -236,6 +236,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to hide GUI
 	def hide(self):
+		if not self.shown:
+			return
 		super().hide()
 		if self.bank == 0 and self.sequence == 0:
 			self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STOPPED)

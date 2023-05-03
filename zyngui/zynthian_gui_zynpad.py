@@ -522,9 +522,9 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.toggle_screen("arranger")
 			return True
 		self.zyngui.screens['pattern_editor'].channel = self.zyngui.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)
-		self.zyngui.screens['pattern_editor'].load_pattern(pattern)
 		self.zyngui.screens['pattern_editor'].bank = self.bank
 		self.zyngui.screens['pattern_editor'].sequence = self.selected_pad
+		self.zyngui.screens['pattern_editor'].load_pattern(pattern)
 		self.zyngui.show_screen("pattern_editor")
 		return True
 
