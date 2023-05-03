@@ -29,7 +29,6 @@ import logging
 import tkinter.font as tkFont
 from math import sqrt
 from PIL import Image, ImageTk
-from time import sleep
 from threading import Timer
 from collections import OrderedDict
 import queue
@@ -87,7 +86,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 		# Selection highlight
 		self.zyngui.zynseq.add_event_cb(self.on_cb_event) # TODO: Only register for events when required, e.g. whilst MIDI learning
-
 
 
 	def on_cb_event(self, event):
@@ -198,44 +196,47 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		fs2 = int(row_height * 0.11)
 		self.selection = self.grid_canvas.create_rectangle(0, 0, int(self.column_width), int(self.row_height), fill="", outline=SELECT_BORDER, width=self.select_thickness, tags="selection")
 
+		self.pads = []
 		for pad in range(64):
+			pad_struct = {}
 			pad_x = int(pad / columns) * column_width
 			pad_y = pad % columns * row_height
 			header_h = int(0.28 * self.row_height)
-			self.grid_canvas.create_rectangle(pad_x, pad_y, pad_x + self.column_width - 2, pad_y + header_h,
+			pad_struct["header"] = self.grid_canvas.create_rectangle(pad_x, pad_y, pad_x + self.column_width - 2, pad_y + header_h,
 				fill='darkgrey',
 				width=0,
-				tags=(f"padh:{pad}", "gridcell", f"trigger:{pad}", "pad"))
-			self.grid_canvas.create_rectangle(pad_x, pad_y + header_h, pad_x + self.column_width - 2, pad_y + self.row_height - 2,
+				tags=(f"padh:{pad}", "gridcell", f"pad:{pad}", "pad"))
+			pad_struct["body"] = self.grid_canvas.create_rectangle(pad_x, pad_y + header_h, pad_x + self.column_width - 2, pad_y + self.row_height - 2,
 				fill='grey',
 				width=0,
-				tags=(f"padb:{pad}", "gridcell", f"trigger:{pad}", "pad"))
+				tags=(f"padb:{pad}", "gridcell", f"pad:{pad}", "pad"))
 			posx = pad_x + int(0.02 * self.column_width)
 			posy = pad_y + int(0.04 * self.row_height)
-			self.grid_canvas.create_image(posx + int(0.125 * self.column_width), posy,
+			pad_struct["mode"] = self.grid_canvas.create_image(posx + int(0.125 * self.column_width), posy,
 				anchor="nw",
-				tags=(f"mode:{pad}", f"trigger:{pad}", "pad"))
+				tags=(f"mode:{pad}", f"pad:{pad}", "pad"))
 			posy = pad_y + int(0.05 * self.row_height)
-			self.grid_canvas.create_text(posx + int(3 * 0.125 * self.column_width), posy,
+			pad_struct["group"] = self.grid_canvas.create_text(posx + int(3 * 0.125 * self.column_width), posy,
 				anchor="n",
 				font=(zynthian_gui_config.font_family, fs2),
 				fill=zynthian_gui_config.color_panel_tx,
-				tags=(f"group:{pad}", f"trigger:{pad}", "pad"))
-			self.grid_canvas.create_text(posx + int(5 * 0.125 * self.column_width), posy,
+				tags=(f"group:{pad}", f"pad:{pad}", "pad"))
+			pad_struct["num"] = self.grid_canvas.create_text(posx + int(5 * 0.125 * self.column_width), posy,
 				anchor="n",
 				font=(zynthian_gui_config.font_family, fs2),
 				fill=zynthian_gui_config.color_panel_tx,
-				tags=(f"num:{pad}", f"trigger:{pad}", "pad"))
-			self.grid_canvas.create_image(posx + int(7 * 0.125 * self.column_width), posy,
+				tags=(f"num:{pad}", f"pad:{pad}", "pad"))
+			pad_struct["state"] = self.grid_canvas.create_image(posx + int(7 * 0.125 * self.column_width), posy,
 				anchor="n",
-				tags=(f"state:{pad}", f"trigger:{pad}", "pad"))
+				tags=(f"state:{pad}", f"pad:{pad}", "pad"))
 			posx = pad_x + int(0.03 * self.column_width)
-			self.grid_canvas.create_text(posx, posy + 2 * fs1,
+			pad_struct["title"] = self.grid_canvas.create_text(posx, posy + 2 * fs1,
 				width=self.column_width - 0.06 * self.column_width,
 				anchor="nw", justify="left",
 				font=(zynthian_gui_config.font_family, fs1),
 				fill=zynthian_gui_config.color_panel_tx,
-				tags=(f"title:{pad}", f"trigger:{pad}", "pad"))
+				tags=(f"title:{pad}", f"pad:{pad}", "pad"))
+			self.pads.append(pad_struct)
 		self.grid_canvas.tag_bind("pad", '<Button-1>', self.on_pad_press)
 		self.grid_canvas.tag_bind("pad", '<ButtonRelease-1>', self.on_pad_release)
 
@@ -279,21 +280,21 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				pad_y = int(row * self.row_height)
 				pad = row + col * self.columns
 				header_h = int(0.28 * self.row_height)
-				self.grid_canvas.itemconfig(f"group:{pad}", font=(zynthian_gui_config.font_family, fs2))
-				self.grid_canvas.itemconfig(f"num:{pad}", font=(zynthian_gui_config.font_family, fs2))
-				self.grid_canvas.itemconfig(f"title:{pad}", font=(zynthian_gui_config.font_family, fs1))
-				self.grid_canvas.itemconfig(f"trigger:{pad}", state=tkinter.NORMAL)
-				self.grid_canvas.coords(f"padh:{pad}", pad_x, pad_y, pad_x + self.column_width - 2, pad_y + header_h)
-				self.grid_canvas.coords(f"padb:{pad}", pad_x, pad_y + header_h, pad_x + self.column_width - 2, pad_y + self.row_height - 2)
+				self.grid_canvas.itemconfig(self.pads[pad]["group"], font=(zynthian_gui_config.font_family, fs2))
+				self.grid_canvas.itemconfig(self.pads[pad]["num"], font=(zynthian_gui_config.font_family, fs2))
+				self.grid_canvas.itemconfig(self.pads[pad]["title"], width=int(0.96 * self.column_width), font=(zynthian_gui_config.font_family, fs1))
+				self.grid_canvas.itemconfig(f"pad:{pad}", state=tkinter.NORMAL)
+				self.grid_canvas.coords(self.pads[pad]["header"], pad_x, pad_y, pad_x + self.column_width - 2, pad_y + header_h)
+				self.grid_canvas.coords(self.pads[pad]["body"], pad_x, pad_y + header_h, pad_x + self.column_width - 2, pad_y + self.row_height - 2)
 				posx = pad_x + int(0.02 * self.column_width)
 				posy = pad_y + int(0.04 * self.row_height)
-				self.grid_canvas.coords(f"mode:{pad}", posx + int(0.125), posy)
+				self.grid_canvas.coords(self.pads[pad]["mode"], posx + int(0.125), posy)
 				posy = pad_y + int(0.05 * self.row_height)
-				self.grid_canvas.coords(f"group:{pad}", posx + int(3 * 0.125 * self.column_width), posy)
-				self.grid_canvas.coords(f"num:{pad}", posx + int(5 * 0.125 * self.column_width), posy)
-				self.grid_canvas.coords(f"state:{pad}", posx + int(7 * 0.125 * self.column_width), posy)
+				self.grid_canvas.coords(self.pads[pad]["group"], posx + int(3 * 0.125 * self.column_width), posy)
+				self.grid_canvas.coords(self.pads[pad]["num"], posx + int(5 * 0.125 * self.column_width), posy)
+				self.grid_canvas.coords(self.pads[pad]["state"], posx + int(7 * 0.125 * self.column_width), posy)
 				posx = pad_x + int(0.03 * self.column_width)
-				self.grid_canvas.coords(f"title:{pad}", posx, posy + 2 * fs1)
+				self.grid_canvas.coords(self.pads[pad]["title"], posx, posy + 2 * fs1)
 
 		self.redrawing = False
 
@@ -302,52 +303,49 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	#   pad: Pad index
 	#	force: True to force refresh
 	def refresh_pad(self, pad, force=False):
-		if pad >= self.zyngui.zynseq.libseq.getSequencesInBank(self.bank):
+		if pad > 63:
 			return
-		cellh = self.grid_canvas.find_withtag("padh:%d"%(pad))
-		if cellh:
-			if force or self.zyngui.zynseq.libseq.hasSequenceChanged(self.bank, pad):
-				mode = self.zyngui.zynseq.libseq.getPlayMode(self.bank, pad)
-				state = self.zyngui.zynseq.libseq.getPlayState(self.bank, pad)
-				if state == zynseq.SEQ_RESTARTING:
-					state = zynseq.SEQ_PLAYING
-				if state == zynseq.SEQ_STOPPINGSYNC:
-					state = zynseq.SEQ_STOPPING
-				group = self.zyngui.zynseq.libseq.getGroup(self.bank, pad)
-				foreground = "white"
-				cellb = self.grid_canvas.find_withtag("padb:%d" % (pad))
-				if self.zyngui.zynseq.libseq.getSequenceLength(self.bank, pad) == 0 or mode == zynseq.SEQ_DISABLED:
-					self.grid_canvas.itemconfig(cellh, fill=zynthian_gui_config.PAD_COLOUR_DISABLED)
-					self.grid_canvas.itemconfig(cellb, fill=zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT)
+		cellh = self.pads[pad]["header"]
+		if force or self.zyngui.zynseq.libseq.hasSequenceChanged(self.bank, pad):
+			mode = self.zyngui.zynseq.libseq.getPlayMode(self.bank, pad)
+			state = self.zyngui.zynseq.libseq.getPlayState(self.bank, pad)
+			if state == zynseq.SEQ_RESTARTING:
+				state = zynseq.SEQ_PLAYING
+			if state == zynseq.SEQ_STOPPINGSYNC:
+				state = zynseq.SEQ_STOPPING
+			group = self.zyngui.zynseq.libseq.getGroup(self.bank, pad)
+			foreground = "white"
+			cellb = self.pads[pad]["body"]
+			if self.zyngui.zynseq.libseq.getSequenceLength(self.bank, pad) == 0 or mode == zynseq.SEQ_DISABLED:
+				self.grid_canvas.itemconfig(cellh, fill=zynthian_gui_config.PAD_COLOUR_DISABLED)
+				self.grid_canvas.itemconfig(cellb, fill=zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT)
+			else:
+				self.grid_canvas.itemconfig(cellh, fill=zynthian_gui_config.PAD_COLOUR_GROUP[group%16])
+				self.grid_canvas.itemconfig(cellb, fill=zynthian_gui_config.PAD_COLOUR_GROUP_LIGHT[group % 16])
+			if self.zyngui.zynseq.libseq.getSequenceLength(self.bank, pad) == 0:
+				mode = 0
+			group = chr(65 + self.zyngui.zynseq.libseq.getGroup(self.bank, pad))
+			#patnum = self.zyngui.zynseq.libseq.getPatternAt(self.bank, pad, 0, 0)
+			chan = self.zyngui.zynseq.libseq.getChannel(self.bank, pad, 0)
+			title = self.zyngui.zynseq.get_sequence_name(self.bank, pad)
+			try:
+				str(int(title))
+				layer = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(chan)
+				if layer:
+					title = layer.preset_name.replace("_", " ")
 				else:
-					self.grid_canvas.itemconfig(cellh, fill=zynthian_gui_config.PAD_COLOUR_GROUP[group%16])
-					self.grid_canvas.itemconfig(cellb, fill=zynthian_gui_config.PAD_COLOUR_GROUP_LIGHT[group % 16])
-				pad_x = (pad % self.columns) * self.column_width
-				pad_y = int(pad / self.columns) * self.row_height
-				if self.zyngui.zynseq.libseq.getSequenceLength(self.bank, pad) == 0:
-					mode = 0
-				group = chr(65 + self.zyngui.zynseq.libseq.getGroup(self.bank, pad))
-				#patnum = self.zyngui.zynseq.libseq.getPatternAt(self.bank, pad, 0, 0)
-				chan = self.zyngui.zynseq.libseq.getChannel(self.bank, pad, 0)
-				title = self.zyngui.zynseq.get_sequence_name(self.bank, pad)
-				try:
-					kk = str(int(title))
-					layer = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(chan)
-					if layer:
-						title = layer.preset_name.replace("_", " ")
-					else:
-						title = ""
-				except:
-					pass
-				self.grid_canvas.itemconfig("title:%d" % pad, text=title, fill=foreground)
-				self.grid_canvas.itemconfig("group:%s" % pad, text="CH{}".format(chan+1), fill=foreground)
-				self.grid_canvas.itemconfig("num:%d" % pad, text="{}{}".format(group,pad+1), fill=foreground)
-				self.grid_canvas.itemconfig("mode:%d" % pad, image=self.mode_icon[self.columns][mode])
-				if state == 0 and self.zyngui.zynseq.libseq.isEmpty(self.bank, pad):
-					self.grid_canvas.itemconfig("state:%d" % pad, image=self.empty_icon)
-				else:
-					self.grid_canvas.itemconfig("state:%d" % pad, image=self.state_icon[self.columns][state])
-
+					title = ""
+			except:
+				pass
+			self.grid_canvas.itemconfig(self.pads[pad]["title"], text=title, fill=foreground)
+			self.grid_canvas.itemconfig(self.pads[pad]["group"], text=f"CH{chan+1}", fill=foreground)
+			self.grid_canvas.itemconfig(self.pads[pad]["num"], text=f"{group}{pad+1}", fill=foreground)
+			self.grid_canvas.itemconfig(self.pads[pad]["mode"], image=self.mode_icon[self.columns][mode])
+			if state == 0 and self.zyngui.zynseq.libseq.isEmpty(self.bank, pad):
+				self.grid_canvas.itemconfig(self.pads[pad]["state"], image=self.empty_icon)
+			else:
+				self.grid_canvas.itemconfig(self.pads[pad]["state"], image=self.state_icon[self.columns][state])
+	
 
 	# Function to move selection cursor
 	def update_selection_cursor(self):

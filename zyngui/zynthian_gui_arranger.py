@@ -32,7 +32,6 @@ from threading import Timer
 from math import sqrt
 from collections import OrderedDict
 import os
-import queue
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -70,8 +69,6 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.sequence = 0 # Index of selected sequence
 		self.track = 0 # Index of selected track
 		self.layers = [None] * 16 # Root layer indexed by MIDI channel
-		self.last_snapshot_count = 0
-		self.event_queue = queue.Queue() # Queue of callback events
 
 		self.vertical_zoom = self.zyngui.zynseq.libseq.getVerticalZoom() # Quantity of rows (tracks) displayed in grid
 		self.horizontal_zoom = self.zyngui.zynseq.libseq.getHorizontalZoom() # Quantity of columns (time divisions) displayed in grid
@@ -148,21 +145,6 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.bank = self.zyngui.zynseq.bank # Local copy so we know if it has changed and grid needs redrawing
 		self.update_sequence_tracks()
 		self.redraw_pending = 4 #0:No refresh, 1:Refresh cell, 2:Refresh row, 3:Refresh grid, 4: Redraw grid
-		self.zyngui.zynseq.add_event_cb(self.on_cb_event)
-
-
-	def on_cb_event(self, event):
-		if self.shown:
-			self.event_queue.put(event)
-
-
-	# Function to handle changes to sequencer
-	def handle_event(self, event):
-		if event == zynseq.SEQ_EVENT_LOAD:
-			self.vertical_zoom = self.zyngui.zynseq.libseq.getVerticalZoom()
-			self.horizontal_zoom = self.zyngui.zynseq.libseq.getHorizontalZoom()
-			self.update_cell_size()
-			self.redraw_pending = 4
 
 
 	# Function to set values of encoders
@@ -468,9 +450,8 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to show GUI
 	def build_view(self):
-		if self.last_snapshot_count < self.zyngui.screens['layer'].last_snapshot_count:
-			self.update_sequence_tracks()
-			self.last_snapshot_count = self.zyngui.screens['layer'].last_snapshot_count
+		self.vertical_zoom = self.zyngui.zynseq.libseq.getVerticalZoom()
+		self.horizontal_zoom = self.zyngui.zynseq.libseq.getHorizontalZoom()
 
 		self.setup_zynpots()
 		if not self.param_editor_zctrl:
@@ -493,8 +474,6 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to hide GUI
 	def hide(self):
 		super().hide()
-		with self.event_queue.mutex:
-			self.event_queue.queue.clear()
 
 
 	# Function to set current pattern
@@ -1172,12 +1151,6 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 					self.select_cell(0, self.selected_cell[1])
 		self.grid_canvas.coords('playheadline-%d'%seq_row, x, y1, x, y2)
 		self.grid_canvas.itemconfig('playheadline-%d'%seq_row, state='normal')
-		while not self.event_queue.empty():
-			#TODO: Should we empty queue or process single callback per refresh?
-			try:
-				self.handle_event(self.event_queue.get(block=False))
-			except:
-				break
 
 
 	# Function to handle zyncoder value change
