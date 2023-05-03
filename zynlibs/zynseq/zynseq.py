@@ -105,7 +105,7 @@ class zynseq(zynthian_engine):
 		
 		self.cb_list = [] # List of callbacks registered for notification of change
 		self.bank = None
-		self.select_bank(1)
+		self.select_bank(1, True)
 
 
 	#	Destoy instance of shared library
@@ -141,13 +141,14 @@ class zynseq(zynthian_engine):
 
 	#	Function to select a bank for edit / control
 	#	bank: Index of bank
-	def select_bank(self, bank=None):
+	#	force: True to fore bank selection even if same as current bank
+	def select_bank(self, bank=None, force=False):
 		if self.changing_bank:
 			return
 		if bank is None:
 			bank = self.bank
 		else:
-			if bank < 1 or bank > 64 or bank == self.bank:
+			if bank < 1 or bank > 64 or bank == self.bank and not force:
 				return
 		self.changing_bank = True
 		if self.libseq.getSequencesInBank(bank) == 0:
@@ -224,8 +225,7 @@ class zynseq(zynthian_engine):
 	#	filename: Full path and filename
 	def load(self, filename):
 		self.libseq.load(bytes(filename, "utf-8"))
-		self.build_default_bank(1)
-		self.select_bank(1) #TODO: Store selected bank in seq file
+		self.select_bank(1, True) #TODO: Store selected bank in seq file
 		self.send_event(SEQ_EVENT_LOAD)
 
 
