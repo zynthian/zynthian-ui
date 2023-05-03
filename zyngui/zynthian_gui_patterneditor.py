@@ -1256,11 +1256,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+		self.select_cell(self.selected_cell[0] + 1, None)
 
 	# Function to handle CUIA ARROW_LEFT
 	def arrow_left(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+		self.select_cell(self.selected_cell[0] - 1, None)
 
 
 	# Function to handle CUIA ARROW_UP
@@ -1268,7 +1268,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if self.param_editor_zctrl:
 			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
 		else:
-			self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
+			self.select_cell(None, self.selected_cell[1] + 1)
 
 
 	# Function to handle CUIA ARROW_DOWN
@@ -1276,7 +1276,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if self.param_editor_zctrl:
 			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
 		else:
-			self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
+			self.select_cell(None, self.selected_cell[1] - 1)
 
 
 	def start_playback(self):
