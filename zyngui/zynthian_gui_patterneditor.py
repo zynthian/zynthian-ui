@@ -1252,14 +1252,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		return False
 
 
-	#	CUIA Actions
-	# Function to handle BACK
-	def back_action(self):
-		if self.edit_mode:
-			self.enable_edit(EDIT_MODE_NONE)
-			return True
-
-
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
 		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
