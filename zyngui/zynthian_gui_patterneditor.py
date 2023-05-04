@@ -171,7 +171,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.play_canvas.grid(column=1, row=1)
 
 		self.playhead = 0
-		self.zyngui.zynseq.libseq.setPlayMode(0, 0, zynseq.SEQ_LOOP)
+		self.zynseq.libseq.setPlayMode(0, 0, zynseq.SEQ_LOOP)
 
 		# Load pattern 1 so that the editor has a default known state
 		self.load_pattern(1)
@@ -242,7 +242,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STOPPED)
 		self.enable_edit(EDIT_MODE_NONE)
 		self.zynseq.libseq.setRefNote(self.keymap_offset)
-		self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, self.last_play_mode)
+		self.zynseq.libseq.setPlayMode(self.bank, self.sequence, self.last_play_mode)
 
 
 	# Function to add menus

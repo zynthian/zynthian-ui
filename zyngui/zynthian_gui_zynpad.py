@@ -295,7 +295,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text=label, fill=foreground)
 				self.grid_canvas.itemconfig("pat_num:%d" % (pad), text=patnum, fill=foreground)
 				#self.grid_canvas.itemconfig("group:%s"%(pad), text=chr(65 + self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, pad)), fill=foreground)
-				self.grid_canvas.itemconfig("group:%s" % (pad), text="{}".format(chan+1), fill=foreground)				self.grid_canvas.itemconfig("mode:%d"%pad, image=self.mode_icon[mode])
+				self.grid_canvas.itemconfig("group:%s" % (pad), text="{}".format(chan+1), fill=foreground)
+				self.grid_canvas.itemconfig("mode:%d"%pad, image=self.mode_icon[mode])
 				if state == 0 and self.zynseq.libseq.isEmpty(self.zynseq.bank, pad):
 					self.grid_canvas.itemconfig("state:%d"%pad, image=self.empty_icon)
 				else:

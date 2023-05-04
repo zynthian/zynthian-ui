@@ -420,8 +420,7 @@ class zynthian_gui_base(tkinter.Frame):
 			fill=zynthian_gui_config.color_status_record,
 			font=("forkawesome", self.status_fs),
 			text="\uf111",
-			state=tkinter.HIDDEN
-			text="")
+			state=tkinter.HIDDEN)
 
 		self.status_audio_play = self.status_canvas.create_text(
 			int(self.status_fs * 1.3),
@@ -430,8 +429,7 @@ class zynthian_gui_base(tkinter.Frame):
 			fill=zynthian_gui_config.color_status_play,
 			font=("forkawesome", self.status_fs),
 			text="\uf04b",
-			state=tkinter.HIDDEN
-			text="")
+			state=tkinter.HIDDEN)
 
 		self.status_midi_rec = self.status_canvas.create_text(
 			int(self.status_fs * 2.6),
@@ -440,8 +438,7 @@ class zynthian_gui_base(tkinter.Frame):
 			fill=zynthian_gui_config.color_status_midi,
 			font=("forkawesome", self.status_fs),
 			text="\uf111",
-			state=tkinter.HIDDEN
-			text="")
+			state=tkinter.HIDDEN)
 
 		self.status_midi_play = self.status_canvas.create_text(
 			int(self.status_fs * 3.9),
@@ -450,8 +447,7 @@ class zynthian_gui_base(tkinter.Frame):
 			fill=zynthian_gui_config.color_status_midi,
 			font=("forkawesome", self.status_fs),
 			text="\uf04b",
-			state=tkinter.HIDDEN
-		)
+			state=tkinter.HIDDEN)
 
 		self.status_midi = self.status_canvas.create_text(
 			self.status_l,
@@ -474,13 +470,13 @@ class zynthian_gui_base(tkinter.Frame):
 	def init_dpmeter(self):
 		width = int(self.status_l - 2 * self.status_rh - 1)
 		height = int(self.status_h / 4 - 2)
-		self.dpm_a = zynthian_gui_dpm(self.zyngui.zynmixer, 256, 0, self.status_canvas, 0, 0, width, height, False, ("status_dpm"))
-		self.dpm_b = zynthian_gui_dpm(self.zyngui.zynmixer, 256, 1, self.status_canvas, 0, height + 2, width, height, False, ("status_dpm"))
+		self.dpm_a = zynthian_gui_dpm(self.zyngui.state_manager.zynmixer, 256, 0, self.status_canvas, 0, 0, width, height, False, ("status_dpm"))
+		self.dpm_b = zynthian_gui_dpm(self.zyngui.state_manager.zynmixer, 256, 1, self.status_canvas, 0, height + 2, width, height, False, ("status_dpm"))
 	
 
 	def refresh_status(self, status={}):
 		if self.shown:
-			mute = self.zyngui.zynmixer.get_mute(256)
+			mute = self.zyngui.state_manager.zynmixer.get_mute(256)
 			if True: # mute != self.main_mute:
 				self.main_mute = mute
 				if mute:

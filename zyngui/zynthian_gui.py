@@ -1846,8 +1846,8 @@ class zynthian_gui:
 	def refresh_status(self):
 		try:
 			# Get CPU Load
-			#self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
-			self.status_info['cpu_load'] = zynautoconnect.get_jackd_cpu_load()
+			#self.state_manager.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
+			self.state_manager.status_info['cpu_load'] = zynautoconnect.get_jackd_cpu_load()
 
 			# Get SOC sensors (once each 5 refreshes)
 			if self.status_counter > 5:
