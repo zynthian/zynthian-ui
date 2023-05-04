@@ -28,6 +28,7 @@ import logging
 import tkinter
 from threading import Timer
 from tkinter import font as tkFont
+from PIL import ImageTk, Image
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -74,7 +75,6 @@ class zynthian_gui_base(tkinter.Frame):
 		self.status_lpad = self.status_fs
 
 		# Digital Peak Meter (DPM) parameters
-		self.dpm_x0 = 0
 		self.dpm_l = self.status_l - 2 * self.status_rh - 1
 		self.dpm_rangedB = 30	# Lowest meter reading in -dBFS
 		self.dpm_highdB = 10	# Start of yellow zone in -dBFS
@@ -83,6 +83,8 @@ class zynthian_gui_base(tkinter.Frame):
 		self.dpm_over = 1 - self.dpm_overdB / self.dpm_rangedB
 		self.dpm_scale_lm = int(self.dpm_high * self.dpm_l)
 		self.dpm_scale_lh = int(self.dpm_over * self.dpm_l)
+		img = Image.open("/zynthian/zynthian-ui/icons/mute.png").resize((2 * self.status_rh, 2 * self.status_rh), Image.ANTIALIAS)
+		self.mute_icon  = ImageTk.PhotoImage(img)
 
 		# Title Area parameters
 		self.title_canvas_width = zynthian_gui_config.display_width - self.status_l - self.status_lpad - 2
@@ -462,6 +464,12 @@ class zynthian_gui_base(tkinter.Frame):
 			fill=zynthian_gui_config.color_status_midi,
 			state=tkinter.HIDDEN)
 
+		self.status_mute = self.status_canvas.create_image(self.dpm_l, 0, image=self.mute_icon,
+			anchor="ne",
+			state=tkinter.HIDDEN,
+			tags=('mute'),
+			)
+
 
 	def init_dpmeter(self):
 		self.status_peak_lA = self.status_canvas.create_rectangle((0, 0, self.dpm_high * self.dpm_l, self.status_rh - 2), fill="#00C000", width=0, tags=('meters', 'dpm'))
@@ -478,9 +486,15 @@ class zynthian_gui_base(tkinter.Frame):
 
 
 	def refresh_dpmeter(self, status={}):
+		if status["mute"]:
+			self.status_canvas.itemconfigure('mute', state=tkinter.NORMAL)
+			self.status_canvas.itemconfigure('meters', state=tkinter.HIDDEN)
+		else:
+			self.status_canvas.itemconfigure('mute', state=tkinter.HIDDEN)
+			self.status_canvas.itemconfigure('meters', state=tkinter.NORMAL)
 		# Do some calcs
-		lA = self.dpm_x0 + int((max(0, 1 + status['peakA'] / self.dpm_rangedB)) * self.dpm_l)
-		lB = self.dpm_x0 + int((max(0, 1 + status['peakB'] / self.dpm_rangedB)) * self.dpm_l)
+		lA = int(max(0, 1 + status['peakA'] / self.dpm_rangedB) * self.dpm_l)
+		lB = int(max(0, 1 + status['peakB'] / self.dpm_rangedB) * self.dpm_l)
 		lholdA = int(min(max(0, 1 + status['holdA'] / self.dpm_rangedB), 1) * self.dpm_l)
 		lholdB = int(min(max(0, 1 + status['holdB'] / self.dpm_rangedB), 1) * self.dpm_l)
 
