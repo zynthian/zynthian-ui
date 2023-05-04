@@ -31,6 +31,7 @@ import logging
 # Zynthian specific modules
 from . import zynthian_gui_base
 from . import zynthian_gui_config
+from zyngui.zynthian_gui_dpm import zynthian_gui_dpm
 from zyncoder.zyncore import get_lib_zyncore
 
 #------------------------------------------------------------------------------
@@ -74,20 +75,12 @@ class zynthian_gui_mixer_strip():
 		self.balance_control_width = int(self.width / 4) # Width of each half of balance control
 
 		#Digital Peak Meter (DPM) parameters
-		self.dpm_rangedB = 50 # Lowest meter reading in -dBFS
-		self.dpm_highdB = 10 # Start of yellow zone in -dBFS
-		self.dpm_overdB = 3  # Start of red zone in -dBFS
-		self.dpm_high = 1 - self.dpm_highdB / self.dpm_rangedB
-		self.dpm_over = 1 - self.dpm_overdB / self.dpm_rangedB
-		self.dpm_scale_lm = int(self.dpm_high * self.fader_height)
-		self.dpm_scale_lh = int(self.dpm_over * self.fader_height)
+		self.dpm_width = int(self.width / 10) # Width of each DPM
+		self.dpm_length = self.fader_height
+		self.dpm_y0 = self.fader_top
+		self.dpm_a_x0 = x + self.width - self.dpm_width * 2 - 2
+		self.dpm_b_x0 = x + self.width - self.dpm_width - 1
 
-		self.dpm_width = int(self.width / 10)
-		self.dpm_a_x = int(x + self.width - self.dpm_width * 2 - 2)
-		self.dpm_a_y = self.fader_bottom
-		self.dpm_b_x = x + self.width - self.dpm_width - 1
-		self.dpm_b_y = self.fader_bottom
-		self.dpm_zero_y = int(self.fader_bottom - self.fader_height * self.dpm_high)
 		self.fader_width = self.width - self.dpm_width * 2 - 2
 
 		self.fader_drag_start = None
@@ -111,10 +104,6 @@ class zynthian_gui_mixer_strip():
 		self.right_color = "#00EE00"
 		self.left_color_learn = "#AAAA00"
 		self.right_color_learn = "#EEEE00"
-		self.low_color = "#00AA00"
-		self.medium_color = "#CCCC00" # yellow
-		self.high_color = "#CC0000"
-		self.dpm_hold_color = self.low_color
 
 		self.mute_color = zynthian_gui_config.color_on #"#3090F0"
 		self.solo_color = "#D0D000"
@@ -145,21 +134,12 @@ class zynthian_gui_mixer_strip():
 		self.legend = self.parent.main_canvas.create_text(x, self.fader_bottom - 2, fill=self.legend_txt_color, text="", tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg)), angle=90, anchor="nw", font=self.font_fader)
 
 		# DPM
-		self.dpm_h_a = self.parent.main_canvas.create_rectangle(self.dpm_a_x, self.fader_top, self.dpm_a_x + self.dpm_width, self.dpm_a_y - self.dpm_scale_lh, width=0, fill=self.high_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
-		self.dpm_m_a = self.parent.main_canvas.create_rectangle(self.dpm_a_x, self.dpm_a_y - self.dpm_scale_lh, self.dpm_a_x + self.dpm_width, self.dpm_a_y - self.dpm_scale_lm, width=0, fill=self.medium_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
-		self.dpm_l_a = self.parent.main_canvas.create_rectangle(self.dpm_a_x, self.dpm_a_y - self.dpm_scale_lm, self.dpm_a_x + self.dpm_width,  self.fader_bottom, width=0, fill=self.low_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
-		self.dpm_b_a = self.parent.main_canvas.create_rectangle(self.dpm_a_x, self.fader_bottom, self.dpm_a_x + self.dpm_width, self.fader_top, width=0, fill=self.fader_bg_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
-		self.dpm_h_b = self.parent.main_canvas.create_rectangle(self.dpm_b_x, self.fader_top, self.dpm_b_x + self.dpm_width, self.dpm_b_y - self.dpm_scale_lh, width=0, fill=self.high_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
-		self.dpm_m_b = self.parent.main_canvas.create_rectangle(self.dpm_b_x, self.dpm_b_y - self.dpm_scale_lh, self.dpm_b_x + self.dpm_width, self.dpm_b_y - self.dpm_scale_lm, width=0, fill=self.medium_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
-		self.dpm_l_b = self.parent.main_canvas.create_rectangle(self.dpm_b_x, self.dpm_b_y - self.dpm_scale_lm, self.dpm_b_x + self.dpm_width,  self.fader_bottom, width=0, fill=self.low_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
-		self.dpm_b_b = self.parent.main_canvas.create_rectangle(self.dpm_b_x, self.fader_bottom, self.dpm_b_x + self.dpm_width, self.fader_top, width=0, fill=self.fader_bg_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg), "dpm"))
-		self.dpm_hold_a = self.parent.main_canvas.create_rectangle(self.dpm_a_x, self.fader_bottom, self.dpm_a_x + self.dpm_width, self.fader_bottom, width=0, fill=self.low_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)), state=tkinter.HIDDEN)
-		self.dpm_hold_b = self.parent.main_canvas.create_rectangle(self.dpm_b_x, self.fader_bottom, self.dpm_b_x + self.dpm_width, self.fader_bottom, width=0, fill=self.low_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)), state=tkinter.HIDDEN)
-		self.mono_text = self.parent.main_canvas.create_text(int(self.dpm_b_x + self.dpm_width / 2), int(self.fader_top + self.fader_height / 2), text="??", state=tkinter.HIDDEN)
+		# Left
+		self.dpm_a = zynthian_gui_dpm(self.zynmixer, None, 0, self.parent.main_canvas, self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.fader_height, True, ("strip:%s"%(self.fader_bg),"dpm"))
+		self.dpm_b = zynthian_gui_dpm(self.zynmixer, None, 1, self.parent.main_canvas, self.dpm_b_x0, self.dpm_y0, self.dpm_width, self.fader_height, True, ("strip:%s"%(self.fader_bg),"dpm"))
 
-		# 0dB line
-		self.parent.main_canvas.create_line(self.dpm_a_x, self.dpm_zero_y, x + self.width, self.dpm_zero_y, fill=self.medium_color, tags=("fader:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
-
+		self.mono_text = self.parent.main_canvas.create_text(int(self.dpm_b_x0 + self.dpm_width / 2), int(self.fader_top + self.fader_height / 2), text="??", state=tkinter.HIDDEN)
+		
 		# Solo button
 		self.solo = self.parent.main_canvas.create_rectangle(x, 0, x + self.width, self.button_height, fill=self.button_bgcol, width=0, tags=("solo_button:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)))
 		self.solo_text = self.parent.main_canvas.create_text(x + self.width / 2, self.button_height * 0.5, text="S", fill=self.button_txcol, tags=("solo_button:%s"%(self.fader_bg), "strip:%s"%(self.fader_bg), "audio_strip:%s"%(self.fader_bg)), font=self.font)
@@ -246,39 +226,8 @@ class zynthian_gui_mixer_strip():
 		if self.hidden or self.chain.mixer_chan is None:
 			return
 
-		# Get audio peaks from zynmixer
-		signal = max(0, 1 + self.zynmixer.get_dpm(self.chain.mixer_chan, 0) / self.dpm_rangedB)
-		level_a = int((1 - signal) * self.fader_height)
-		signal = max(0, 1 + self.zynmixer.get_dpm(self.chain.mixer_chan, 1) / self.dpm_rangedB)
-		level_b = int((1 - signal) * self.fader_height)
-		signal = max(0, 1 + self.zynmixer.get_dpm_hold(self.chain.mixer_chan, 0) / self.dpm_rangedB)
-		hold_a = int(min(signal, 1) * self.fader_height)
-		signal = max(0, 1 + self.zynmixer.get_dpm_hold(self.chain.mixer_chan, 1) / self.dpm_rangedB)
-		hold_b = int(min(signal, 1) * self.fader_height)
-
-		# Draw left meter
-		self.parent.main_canvas.coords(self.dpm_b_a, (self.dpm_a_x, self.fader_top, self.dpm_a_x + self.dpm_width, self.fader_top + level_a))
-		self.parent.main_canvas.coords(self.dpm_hold_a, (self.dpm_a_x, self.dpm_a_y - hold_a, self.dpm_a_x + self.dpm_width, self.dpm_a_y - hold_a - 1))
-		if hold_a >= self.dpm_scale_lh:
-			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state=tkinter.NORMAL, fill="#FF0000")
-		elif hold_a >= self.dpm_scale_lm:
-			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state=tkinter.NORMAL, fill="#FFFF00")
-		elif hold_a > 0:
-			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state=tkinter.NORMAL, fill=self.dpm_hold_color)
-		else:
-			self.parent.main_canvas.itemconfig(self.dpm_hold_a, state=tkinter.HIDDEN)
-
-		# Draw right meter
-		self.parent.main_canvas.coords(self.dpm_b_b, (self.dpm_b_x, self.fader_top, self.dpm_b_x + self.dpm_width, self.fader_top + level_b))
-		self.parent.main_canvas.coords(self.dpm_hold_b, (self.dpm_b_x, self.dpm_b_y - hold_b, self.dpm_b_x + self.dpm_width, self.dpm_b_y - hold_b - 1))
-		if hold_b >= self.dpm_scale_lh:
-			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state=tkinter.NORMAL, fill="#FF0000")
-		elif hold_b >= self.dpm_scale_lm:
-			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state=tkinter.NORMAL, fill="#FFFF00")
-		elif hold_b > 0:
-			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state=tkinter.NORMAL, fill=self.dpm_hold_color)
-		else:
-			self.parent.main_canvas.itemconfig(self.dpm_hold_b, state=tkinter.HIDDEN)
+				self.dpm_a.refresh()
+		self.dpm_b.refresh()
 
 
 	def draw_balance(self):
@@ -390,6 +339,7 @@ class zynthian_gui_mixer_strip():
 
 
 	def draw_mono(self):
+		"""
 		if self.zynmixer.get_mono(self.chain.mixer_chan):
 			self.parent.main_canvas.itemconfig(self.dpm_l_a, fill=self.mono_color)
 			self.parent.main_canvas.itemconfig(self.dpm_l_b, fill=self.mono_color)
@@ -398,6 +348,7 @@ class zynthian_gui_mixer_strip():
 			self.parent.main_canvas.itemconfig(self.dpm_l_a, fill=self.low_color)
 			self.parent.main_canvas.itemconfig(self.dpm_l_b, fill=self.low_color)
 			self.dpm_hold_color = "#00FF00"
+		"""
 
 
 	# Function to draw a mixer strip UI control
@@ -484,9 +435,13 @@ class zynthian_gui_mixer_strip():
 	def set_chain(self, chain_id):
 		self.chain_id = chain_id
 		self.chain = self.parent.zyngui.chain_manager.get_chain(chain_id)
-		if self.chain is None:
+		if self.chain is None or self.chain.mixer_chan is None:
 			self.hide()
+			self.dpm_a.set_strip(None)
+			self.dpm_b.set_strip(None)
 		else:
+			self.dpm_a.set_strip(self.chain.mixer_chan)
+			self.dpm_b.set_strip(self.chain.mixer_chan)
 			self.show()
 
 
@@ -815,14 +770,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.refresh_visible_strips()
 
 	def init_dpmeter(self):
-		pass
-
-	def refresh_dpmeter(self, status={}):
-		if status["mute"]:
-			self.status_canvas.itemconfigure('mute', state=tkinter.NORMAL)
-		else:
-			self.status_canvas.itemconfigure('mute', state=tkinter.HIDDEN)
-
+		self.dpm_a = self.dpm_b = None
 
 	# Redefine set_title
 	def set_title(self, title = "Mixer", fg=None, bg=None, timeout = None):

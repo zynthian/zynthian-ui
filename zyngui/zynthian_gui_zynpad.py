@@ -457,7 +457,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to refresh status
-	def refresh_status(self, status):
+	def refresh_status(self, status={}):
 		super().refresh_status(status)
 		if self.redraw_pending:
 			self.update_grid()
