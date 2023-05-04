@@ -370,7 +370,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'Metronome':
 			self.zynseq.libseq.enableMetronome(not self.zynseq.libseq.isMetronomeEnabled())
 		elif params == 'Metronome volume':
-			self.enable_param_editor(self, 'metro_vol', 'Metro volume', {'value_min':0, 'value_max':100, 'value_default':100, 'value':int(100 * self.zynseq.libseq.getMetronomeVolume())})
+			self.enable_param_editor(self, 'metro_vol', 'Metro volume', {'value_min':0, 'value_max':100, 'value_default':100, 'value': int(100 * self.zyngui.zynseq.libseq.getMetronomeVolume())})
 		elif params == 'Play mode':
 			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynseq.PLAY_MODES, 'value':self.zynseq.libseq.getPlayMode(self.zynseq.bank, self.selected_pad), 'value_default':zynseq.SEQ_LOOPALL}, self.set_play_mode)
 		elif params == 'MIDI channel':
@@ -537,7 +537,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, switch, type):
 		self.zynseq.disable_midi_learn()
-		if switch == zynthian_gui_config.ENC_LAYER and type == 'S':
+		if switch == zynthian_gui_config.ENC_LAYER and type == 'B':
 			self.show_menu()
 			return True
 		return False

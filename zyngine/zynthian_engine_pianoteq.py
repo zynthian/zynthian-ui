@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for Pianoteq (>=v7.5)
 #
-# Copyright (C) 2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2023 Fernando Moyano <jofemodo@zynthian.org>
 # 			  Holger Wirtz <holger@zynthian.org>
 #             Brian Walton <riban@zynthian.org>
 #
@@ -32,10 +32,107 @@ import requests
 from time import sleep
 from xml.etree import ElementTree
 from collections import OrderedDict
-from subprocess import Popen, DEVNULL, PIPE, check_output
+from subprocess import Popen, DEVNULL, PIPE, check_output, run
+import struct
 
 from . import zynthian_engine
 from . import zynthian_controller
+
+pt_ctrl_map = OrderedDict((
+	("Condition", "Cond"),
+	("Dynamics", "Dyn"),
+	("Volume", "Volum"),
+	("Post Effect Gain", "EffGain"),
+	("Equalizer Switch", "EquOn"),
+	("Aftertouch", "AfTouch"),
+	("Diapason", "Diap"),
+	("Sustain Pedal", "SustP"),
+	("Soft Pedal", "SoftP"),
+	("Sostenuto Pedal", "SostP"),
+	("Harmonic Pedal", "HarmP"),
+	("Rattle Pedal", "Rattle"),
+	("Lute Stop Pedal", "LutStp"),
+	("Celeste Pedal", "Celes"),
+	("Mozart Rail", "Mozart"),
+	("Super Sostenuto", "SSosP"),
+	("Pinch Harmonic Pedal", "PinchH"),
+	("Glissando Pedal", "Gliss"),
+	("Harpsichord Register[1]", "Regis[1]"),
+	("Harpsichord Register[2]", "Regis[2]"),
+	("Harpsichord Register[3]", "Regis[3]"),
+	("Reversed Sustain", "RevSus"),
+	("Pitch Bend", "PBend"),
+	("Clavinet Low Mic", "ClvMicL"),
+	("Clavinet High Mic", "ClvMicH"),
+	("Output Mode", "Output"),
+	("Mute", "Mute"),
+	("Damper Noise", "DampNois"),
+	("Pedal Noise", "PSnd"),
+	("Key Release Noise", "KSnd"),
+	("Keyboard Range Switch", "KbRng"),
+	("Bounce Switch", "MBOn"),
+	("Bounce Delay", "MBDel"),
+	("Bounce Sync", "MBSync"),
+	("Bounce Sync Speed", "MBSyncS"),
+	("Bounce Velocity Sensitivity", "MBVelS"),
+	("Bounce Delay Loss", "MBAccel"),
+	("Bounce Velocity Loss", "MBVelL"),
+	("Bounce Humanization", "MBHuma"),
+	("NFX Lfo Shape", "nfxLfoSh"),
+	("NFX Lfo Skew", "nfxLfoSk"),
+	("NFX Lfo Rate", "nfxLfoRt"),
+	("NFX Lfo Phase", "nfxLfoP"),
+	("NFX Lfo Phase Locked", "nfxLfoPL"),
+	("NFX Onset Duration", "nfxOnset"),
+	("NFX Vibrato", "nfxVibC"),
+	("NFX Vibrato Offset", "nfxVibB"),
+	("NFX Tremolo Depth", "nfxTrmD"),
+	("NFX Tremolo Phase", "nfxTrmP"),
+	("Attack Envelope", "AttkE"),
+	("Virtuosity", "Virt"),
+	("Fret", "Fret"),
+	("Guitar Legato", "Legato"),
+	("Guitar easy fingering", "GFing"),
+	("Guitar Body", "GBody"),
+	("Effect[1].Switch", "Eff[1].Switch"),
+	("Effect[1].Param[1]", "Eff[1].Param[1]"),
+	("Effect[1].Param[2]", "Eff[1].Param[2]"),
+	("Effect[1].Param[3]", "Eff[1].Param[3]"),
+	("Effect[1].Param[4]", "Eff[1].Param[4]"),
+	("Effect[1].Param[5]", "Eff[1].Param[5]"),
+	("Effect[1].Param[6]", "Eff[1].Param[6]"),
+	("Effect[1].Param[7]", "Eff[1].Param[7]"),
+	("Effect[1].Param[8]", "Eff[1].Param[8]"),
+	("Effect[2].Switch", "Eff[2].Switch"),
+	("Effect[2].Param[1]", "Eff[2].Param[1]"),
+	("Effect[2].Param[2]", "Eff[2].Param[2]"),
+	("Effect[2].Param[3]", "Eff[2].Param[3]"),
+	("Effect[2].Param[4]", "Eff[2].Param[4]"),
+	("Effect[2].Param[5]", "Eff[2].Param[5]"),
+	("Effect[2].Param[6]", "Eff[2].Param[6]"),
+	("Effect[2].Param[7]", "Eff[2].Param[7]"),
+	("Effect[2].Param[8]", "Eff[2].Param[8]"),
+	("Effect[3].Switch", "Eff[3].Switch"),
+	("Effect[3].Param[1]", "Eff[3].Param[1]"),
+	("Effect[3].Param[2]", "Eff[3].Param[2]"),
+	("Effect[3].Param[3]", "Eff[3].Param[3]"),
+	("Effect[3].Param[4]", "Eff[3].Param[4]"),
+	("Effect[3].Param[5]", "Eff[3].Param[5]"),
+	("Effect[3].Param[6]", "Eff[3].Param[6]"),
+	("Effect[3].Param[7]", "Eff[3].Param[7]"),
+	("Effect[3].Param[8]", "Eff[3].Param[8]"),
+	("Reverb Switch", "RevrbOn"),
+	("Reverb Duration", "RevDur"),
+	("Reverb Mix", "RevM"),
+	("Room Dimensions", "RevDim"),
+	("Reverb Pre-delay", "RevDel"),
+	("Reverb Early Reflections", "RevEarl"),
+	("Reverb Tone", "RevTon"),
+	("Limiter Switch", "LimOn"),
+	("Limiter Sharpness", "LimSharp"),
+	("Limiter Threshold", "LimThr"),
+	("Limiter Gain", "LimGain")
+))
 
 # ------------------------------------------------------------------------------
 # Pianoteq module helper functions
@@ -137,7 +234,7 @@ def get_pianoteq_config_value(key):
 
 
 def create_pianoteq_config():
-	if not os.path.isfile(PIANOTEQ_CONFIG_FILE):
+	if not os.path.isfile(PIANOTEQ_CONFIG_FILE) or not os.stat(PIANOTEQ_CONFIG_FILE).st_size:
 		logging.debug("Pianoteq configuration does not exist. Creating one...")
 		if not os.path.exists(PIANOTEQ_CONFIG_DIR):
 			os.makedirs(PIANOTEQ_CONFIG_DIR)
@@ -159,9 +256,13 @@ def fix_pianoteq_config(samplerate):
 		while internal_sr > 24000:
 			internal_sr = internal_sr / 2
 
-		tree = ElementTree.parse(PIANOTEQ_CONFIG_FILE)
-		root = tree.getroot()
 		try:
+			tree = ElementTree.parse(PIANOTEQ_CONFIG_FILE)
+			root = tree.getroot()
+			audio_setup_node = None
+			midi_setup_node = None
+			crash_node = None
+			filter_nodes = []
 			audio_setup_node = None
 			midi_setup_node = None
 			crash_node = None
@@ -180,6 +281,11 @@ def fix_pianoteq_config(samplerate):
 					midi_setup_node = xml_value
 				elif xml_value.attrib['name'] == 'crash_detect':
 					crash_node = xml_value
+				elif xml_value.attrib['name'].startswith('filter-state-'):
+					filter_nodes.append(xml_value)
+
+			for node in filter_nodes:
+				root.remove(node) # Remove last state to avoid crash at startup
 
 			if audio_setup_node:
 				logging.debug("Fixing Audio Setup")
@@ -224,6 +330,75 @@ def fix_pianoteq_config(samplerate):
 			logging.error("Fixing Pianoteq config failed: {}".format(e))
 			return format(e)
 
+def read_pianoteq_midi_mapping(file):
+	result = {}
+	with open(file, "rb") as f:
+		data = f.read()
+	if len(data) < 40:
+		print(f"Short read: {len(data)}")
+		return result
+	if struct.unpack("<I", data[0:4])[0] != 954245913:
+		print(f"Wrong magic header number: {struct.unpack('<I', data[0:4])[0]}")
+		return result
+	payload_len = struct.unpack("<i", data[4:8])[0]
+	if payload_len + 8 != len(data):
+		print("Error: Wrong length")
+	pos = 8
+	for key in ["Flag 1","Notes Channel","Notes Transposition","Flag 2","Flags 3","Dialect","MIDI Tuning","Map length"]:
+		result[key] = struct.unpack("<i", data[pos:pos+4])[0]
+		pos += 4
+	result["map"] = {}
+	while pos < len(data):
+		print(f"Get data at {pos}")
+		flag = struct.unpack("<i", data[pos:pos+4])[0]
+		pos += 4 # What is this extra flag?
+		trigger_len = struct.unpack("<i", data[pos:pos+4])[0]
+		pos += 4
+		trigger_str = data[pos:pos+trigger_len].decode()
+		pos += trigger_len
+		action_len = struct.unpack("<i", data[pos:pos+4])[0]
+		pos += 4
+		action_str = data[pos:pos+action_len].decode()
+		pos += action_len
+		result["map"][trigger_str] = [action_str, flag]
+	return result
+
+
+def write_pianoteq_midi_mapping(config, file):
+	data = bytes([25,163,224,56,0,0,0,0])
+	for key, val in {"Flag 1": 6, "Notes Channel": -1, "Notes Transposition": 0, "Flag 2": -1, "Flags 3": -1, "Dialect": 0, "MIDI Tuning": 0}.items():
+		if key in config:
+			data += struct.pack("<i", config[key])
+		else:
+			data += struct.pack("<i", val)
+	data += struct.pack("i", len(config["map"]))
+	for key, val in config["map"].items():
+		data += struct.pack("<i", val[1])
+		data += struct.pack("<i", len(key))
+		data += key.encode()
+		data += struct.pack("<i", len(val[0]))
+		data += val[0].encode()
+	# Don't write the same data to disk
+	try:
+		with open(file, "rb") as f:
+			current_data = f.read()
+		if current_data[8:] == data[8:]:
+			return
+	except:
+		pass
+	with open(file, "wb") as f:
+		l = f.write(data)
+		f.seek(4)
+		f.write(struct.pack("i", l - 8))
+
+
+def save_midi_mapping(file):
+	data = {"map":{}}
+	for cc,param in enumerate(pt_ctrl_map.values()):
+		data["map"][f"Controller {cc}"] = [f"{{SetParameter|3|{param}|0:1}}", 1]
+	data["map"]["Pitch Bend"] = ["{SetParameter|3|PBend|0.458333:0.541667}", 1]
+	write_pianoteq_midi_mapping(data, file)
+
 
 # ------------------------------------------------------------------------------
 # Pianoteq module constants & parameter configuration/initialization
@@ -264,7 +439,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 		create_pianoteq_config()
 
-		self.command = '{} --prefs {}'.format(PIANOTEQ_BINARY, PIANOTEQ_CONFIG_FILE)
+		self.command = f"{PIANOTEQ_BINARY} --prefs {PIANOTEQ_CONFIG_FILE} --midimapping zynthian"
 		if self.info['api']:
 			self.command +=  " --serve 9001"
 		if not self.config_remote_display():
@@ -283,11 +458,14 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			sr = 44100
 		fix_pianoteq_config(sr)
 		super().start() #TODO: Use lightweight Popen - last attempt stopped RPC working
-		# Wait for RPC interface to be available or 5s for <7.5 with GUI
-		for i in range(5):
-			if self.get_info():
-				break
+		# Wait for RPC interface to be available or 6s for <7.5 with GUI
+		for i in range(6):
+			info = self.get_info()
+			if info:
+				return
 			sleep(1)
+		self.stop()
+		raise Exception("No response from Pianoteq RPC server")
 
 
 	def stop(self):
@@ -324,7 +502,10 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 	#	Get info
 	def get_info(self):
-		return self.rpc('getInfo') #TODO: Check method
+		try:
+			return self.rpc('getInfo')['result'][0]
+		except:
+			return None
 
 
 	#   Load a preset by name
@@ -377,10 +558,13 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	#   returns: List of lists [instrument name, licenced (bool)] or None on failure
 	def get_instruments(self, group=None):
 		instruments = []
+		overclock = int(run(["cat", "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"], capture_output=True).stdout.decode()[:-1]) > 1900000
 		result = self.rpc('getListOfPresets')
 		if result and 'result' in result:
 			for preset in result['result']:
 				if (group is None or preset['class'] == group) and [preset['instr'], preset['license_status']=='ok'] not in instruments:
+					if overclock and preset['instr'] == "Classical Guitar":
+						continue
 					instruments.append([preset['instr'], preset['license_status']=='ok'])
 		return instruments
 
@@ -392,8 +576,12 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		result = self.rpc('getParameters')
 		if result is None or 'result' not in result:
 			return {}
+		param_list = list(pt_ctrl_map.keys())
 		for param in result['result']:
-			params[param['id']] = {'name': param['name'], 'value': param['normalized_value']}
+			if param['id'] in param_list:
+				params[param['id']] = {'name': param['name'], 'value': param['normalized_value'], 'cc': param_list.index(param['id'])}
+			else:
+				logging.warning(f"Unknown parameter {param['id']}")
 		return params
 
 
@@ -411,9 +599,11 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	#   param: Parameter id
 	#   value: Normalized value (0.0..1.0)
 	#   returns: True on success
+	"""
 	def set_param(self, param, value):
 		result = self.rpc('setParameters', {'list':[{'id':param,'normalized_value':value}]})
 		return result and 'error' not in result
+	"""
 
 
 	# ---------------------------------------------------------------------------
@@ -507,6 +697,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 
 	def set_preset(self, processor, preset, preload=False):
+		if preset[3] == "Classical Guitar" and int(run(["cat", "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"], capture_output=True).stdout.decode()[:-1]) > 1900000:
+			return False
 		if self.load_preset(preset[0], preset[1]):
 			self.preset = preset
 			if preset[3] in ['CP-80', 'Vintage Tines MKI', 'Vintage Tines MKII', 'Vintage Reeds W1', 'Clavinet D6', 'Pianet N', 'Pianet T', 'Electra-Piano']:
@@ -590,7 +782,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				'value_min': 0.0,
 				'value_max': 1.0,
 				'is_integer': False,
-				'not_on_gui': False
+				'not_on_gui': False,
+				'midi_chan': processor.midi_chan,
+				'midi_cc': params[param]["cc"]
 			}
 			# Discrete parameter values
 			if param in ['Sustain Pedal', 'Soft Pedal', 'Sostenuto Pedal', 'Harmonic Pedal', 'Rattle Pedal', 'Lute Stop Pedal', 'Celeste Pedal', 'Mozart Rail', 'Super Sostenuto', 'Pitch Harmonic Pedal']:
@@ -602,7 +796,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				options['labels'] = ['Stereophonic',  'Monophonic', 'Sound Recording', 'Binaural',]
 			if param.startswith('Effect'):
 				options['group_symbol'] = 'Effects'
-			elif param.startswith('Reverb'):
+			elif param.startswith('Reverb') or param == "Room Dimensions":
 				options['group_symbol'] = 'Reverb'
 			elif param.startswith('Limiter'):
 				options['group_symbol'] = 'Limiter'

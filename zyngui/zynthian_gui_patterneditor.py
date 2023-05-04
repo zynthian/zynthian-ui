@@ -210,11 +210,14 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if mode == EDIT_MODE_SINGLE:
 			self.set_title("Note Parameters", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
 			self.set_edit_title()
+			self.init_buttonbar([("ZYNPOT 0,-1", "-1"),("ZYNPOT 0,+1", "+1"),("ZYNPOT 3,-1", "<PARAM"),("ZYNPOT 3,+1", "PARAM >"),(3,"OK")])
 		elif mode == EDIT_MODE_ALL:
 			self.set_title("Note Parameters ALL", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
 			self.set_edit_title()
+			self.init_buttonbar([("ZYNPOT 0,-1", "-1"),("ZYNPOT 0,+1", "+1"),("ZYNPOT 3,-1", "PREV\nPARAM"),("ZYNPOT 3,+1", "NEXT\nPARAM"),(3,"OK")])
 		else:
 			self.set_title("Pattern {}".format(self.pattern), zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
+			self.init_buttonbar()
 
 
 	# Function to hide GUI
@@ -633,8 +636,14 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def on_grid_release(self, event):
 		if not self.grid_drag_start:
 			return
-		if not (self.drag_velocity or self.drag_duration):
-			self.toggle_event(self.selected_cell[0], self.selected_cell[1])
+		if event.time - self.grid_drag_start.time > 800:
+				# Bold click
+				if self.edit_mode == EDIT_MODE_NONE:
+					self.enable_edit(EDIT_MODE_SINGLE)
+				else:
+					self.enable_edit(EDIT_MODE_ALL)
+			else:
+				self.toggle_event(self.selected_cell[0], self.selected_cell[1])
 		self.drag_velocity = False
 		self.drag_duration = False
 		self.grid_drag_start = None
@@ -1236,12 +1245,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#   returns True if action fully handled or False if parent action should be triggered
 	def switch(self, switch, type):
-		if type != "S":
-			return False
-		if switch == zynthian_gui_config.ENC_SNAPSHOT:
+		if type == "S" and switch == zynthian_gui_config.ENC_SNAPSHOT:
 			self.toggle_playback()
 			return True
-		elif switch == zynthian_gui_config.ENC_LAYER:
+		elif type == "B" and switch == zynthian_gui_config.ENC_LAYER:
 			self.show_menu()
 			return True
 		return False

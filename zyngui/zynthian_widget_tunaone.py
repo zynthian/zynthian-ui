@@ -85,12 +85,12 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 		super().on_size(event)
 		self.widget_canvas.configure(width=self.width, height=self.height)
 
-		self.note_fs = round(self.width / 8)
-		self.bar_width = round(self.width / 160)
-		self.bar_height = round(self.height / 20)
+		self.note_fs = round(self.height / 8)
+		self.bar_width = round(self.width / 60)
+		self.bar_height = round(self.height / 10)
 		self.x0 = self.width // 2
 		self.y0 = self.height // 4
-		self.widget_canvas.coords(self.note_label, self.x0, self.height // 2)
+		self.widget_canvas.coords(self.note_label, self.x0, int(0.75 * self.height))
 		self.widget_canvas.itemconfigure(self.note_label, width=4 * self.note_fs, font=(zynthian_gui_config.font_family, self.note_fs))
 		self.widget_canvas.coords(self.axis_x, 0, self.y0, self.width, self.y0)
 		self.widget_canvas.coords(self.axis_y, self.x0, self.y0 + self.bar_height * 2, self.x0, self.y0 - self.bar_height * 2)
@@ -105,6 +105,27 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 			x = self.x0 - i * dx
 			self.widget_canvas.create_line(x, self.y0 + dy, x, self.y0 - dy, fill=zynthian_gui_config.color_tx_off, tags='axis')
 		self.widget_canvas.grid(row=0, column=0, sticky='news')
+
+
+	def calc_monitor_color(self, cent):
+		try:
+			acent = abs(cent)
+			if acent > 25:
+				cr = 255
+				cg = 0
+				cb = 0
+			elif acent > 10:
+				cr = 255
+				cg = int((25 - acent) * 255 / 15)
+				cb = 0
+			else:
+				cr = int(acent * 255 / 40)
+				cg = 255
+				cb = 0
+			color = "#%02x%02x%02x" % (cr, cg, cb)
+		except:
+			color = "#00FF00"
+		return color
 
 
 	def refresh_gui(self):
@@ -126,16 +147,18 @@ class zynthian_widget_tunaone(zynthian_widget_base.zynthian_widget_base):
 			except:
 				x = self.x0
 
-			if int(self.monitors['cent']) == 0:
-				self.widget_canvas.itemconfigure(self.note_label, text=note_name, state=tkinter.NORMAL, fill=zynthian_gui_config.color_hl)
-			else:
-				self.widget_canvas.itemconfigure(self.note_label, text=note_name, state=tkinter.NORMAL, fill=zynthian_gui_config.color_panel_tx)
-			self.widget_canvas.itemconfigure(self.cents_bar, state=tkinter.NORMAL)
-			self.widget_canvas.coords(self.cents_bar,
-				x - self.bar_width,
-				self.y0 + self.bar_height,
-				x + self.bar_width,
-				self.y0 - self.bar_height)
+			mcolor = self.calc_monitor_color(self.monitors['cent'])
+			try:
+				self.widget_canvas.itemconfigure(self.note_label, text=note_name, state=tkinter.NORMAL, fill=mcolor)
+				self.widget_canvas.itemconfigure(self.cents_bar, state=tkinter.NORMAL, fill=mcolor)
+				self.widget_canvas.coords(self.cents_bar,
+					x - self.bar_width,
+					self.y0 + self.bar_height,
+					x + self.bar_width,
+					self.y0 - self.bar_height)
+			except Exception as e:
+				logging.error(e)
+
 		else:
 			self.widget_canvas.itemconfigure(self.cents_bar, state=tkinter.HIDDEN)
 			self.widget_canvas.itemconfigure(self.note_label, state=tkinter.HIDDEN)

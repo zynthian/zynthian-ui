@@ -226,7 +226,7 @@ class zynthian_gui_mixer_strip():
 		if self.hidden or self.chain.mixer_chan is None:
 			return
 
-				self.dpm_a.refresh()
+		self.dpm_a.refresh()
 		self.dpm_b.refresh()
 
 

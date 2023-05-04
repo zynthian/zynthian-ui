@@ -33,7 +33,7 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 # Zynthian App Selection GUI Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_main(zynthian_gui_selector):
+class zynthian_gui_main_menu(zynthian_gui_selector):
 
 	def __init__(self):
 		super().__init__('Main', True)

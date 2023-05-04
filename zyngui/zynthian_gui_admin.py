@@ -444,9 +444,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def toggle_clock_source(self):
 		if zynthian_gui_config.transport_clock_source:
-			zynthian_gui_config.transport_clock_source = 0
+			self.list_data.append((self.toggle_clock_source, 0, "Clock Source: MIDI"))
 		else:
-			zynthian_gui_config.transport_clock_source = 1
+			self.list_data.append((self.toggle_clock_source, 0 ,"Clock Source: INTERNAL"))
+
 		self.zyngui.state_manager.zynseq.libseq.setClockSource(zynthian_gui_config.transport_clock_source)
 
 		# Save config

@@ -70,15 +70,17 @@ from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
 from zyngui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
 from zyngui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
-from zyngui import zynthian_gui_keybinding
-from zyngui.zynthian_gui_main import zynthian_gui_main
+from zyngui.zynthian_gui_main_menu import zynthian_gui_main_menu
+from zyngui.zynthian_gui_chain_menu import zynthian_gui_chain_menu
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_zynpad import zynthian_gui_zynpad
 from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
 from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
 from zyngui.zynthian_gui_mixer import zynthian_gui_mixer
+from zyngui.zynthian_gui_tempo import zynthian_gui_tempo
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
+from zyngui import zynthian_gui_keybinding
 
 MIXER_MAIN_CHANNEL = 256 #TODO This constant should go somewhere else
 
@@ -395,9 +397,15 @@ class zynthian_gui:
 		self.screens['midi_profile'] = zynthian_gui_midi_profile()
 		self.screens['zs3_learn'] = zynthian_gui_zs3_learn()
 		self.screens['zs3_options'] = zynthian_gui_zs3_options()
-		self.screens['main'] = zynthian_gui_main()
+		self.screens['tempo'] = zynthian_gui_tempo()
 		self.screens['admin'] = zynthian_gui_admin()
 		self.screens['audio_mixer'] = zynthian_gui_mixer()
+
+		# Create the right main menu screen
+		if zynthian_gui_config.layout['menu'] == 'chain_menu':
+			self.screens['main_menu'] = zynthian_gui_chain_menu()
+		else:
+			self.screens['main_menu'] = zynthian_gui_main_menu()
 
 		# Create UI Apps Screens
 		self.screens['alsa_mixer'] = self.screens['control']
@@ -412,7 +420,7 @@ class zynthian_gui:
 		self.osc_init()
 
 		# Control Test enabled ...
-		init_screen = "main"
+		init_screen = "main_menu"
 		snapshot_loaded = False
 		if zynthian_gui_config.control_test_enabled:
 			init_screen = "control_test"
@@ -425,7 +433,6 @@ class zynthian_gui:
 			if not snapshot_loaded:
 				snapshot_loaded = self.screens['snapshot'].load_default_snapshot()
 
-		self.last_tap = 0
 
 		if snapshot_loaded:
 			init_screen = "audio_mixer"
@@ -792,7 +799,7 @@ class zynthian_gui:
 		if self.chain_manager.get_chain_count() > 0:
 			self.screens['snapshot'].save_last_state_snapshot()
 		self.state_manager.reset()
-		self.show_screen_reset('main')
+		self.show_screen_reset('main_menu')
 		self.state_manager.zynmixer.set_mute(256, 0)
 
 
@@ -803,6 +810,17 @@ class zynthian_gui:
 	@classmethod
 	def get_cuia_list(cls):
 		return [method[5:].upper() for method in dir(cls) if method.startswith('cuia_') is True]
+
+
+	def callable_ui_action(self, cuia, params=None):
+		logging.debug("CUIA '{}' => {}".format(cuia, params))
+		try:
+			cuia_func = getattr(self, "cuia_" + cuia.lower())
+		except AttributeError:
+			logging.error("Unknown CUIA '{}'".format(cuia))
+
+		cuia_func(params)
+
 
 	# System actions CUIA
 	def cuia_test_mode(self, params):
@@ -854,7 +872,7 @@ class zynthian_gui:
 	def cuia_clean_all(self, params):
 		if params == ['CONFIRM']:
 			self.clean_all()
-			self.show_screen_reset('main') #TODO: Should send signal so that UI can react
+			self.show_screen_reset('main_menu') #TODO: Should send signal so that UI can react
 
 	# Audio & MIDI Recording/Playback actions
 	def cuia_start_audio_record(self, params):
@@ -920,6 +938,11 @@ class zynthian_gui:
 		pass
 
 	def cuia_tempo(self, params):
+		self.screens["tempo"].tap()
+		if self.current_screen != "tempo":
+			self.show_screen("tempo")
+
+	def cuia_set_tempo(self, params):
 		try:
 			self.state_manager.zynseq.set_tempo(params[0])
 		except (AttributeError, TypeError) as err:
@@ -944,11 +967,8 @@ class zynthian_gui:
 			self.state_manager.zynseq.set_tempo(self.state_manager.zynseq.get_tempo() - 1)
 
 	def cuia_tap_tempo(self, params):
-		now = monotonic()
-		tap_dur = now - self.last_tap
-		if tap_dur > 0.14285 and tap_dur <= 3:
-			self.state_manager.zynseq.set_tempo(60 / tap_dur)
-		self.last_tap = now
+		self.screens["tempo"].tap()
+
 
 	# Zynpot & Zynswitch emulation CUIAs (low level)
 	def cuia_zynpot(self, params):
@@ -1028,8 +1048,8 @@ class zynthian_gui:
 		if params:
 			self.show_screen_reset(params[0])
 
-	def cuia_screen_main(self, params):
-		self.toggle_screen("main")
+	def cuia_screen_main_menu(self, params):
+		self.toggle_screen("main_menu")
 
 	def cuia_screen_admin(self, params):
 		self.toggle_screen("admin")
@@ -1108,7 +1128,7 @@ class zynthian_gui:
 		try:
 			self.screens[self.current_screen].toggle_menu()
 		except (AttributeError, TypeError) as err:
-			self.toggle_screen("main", hmode=zynthian_gui.SCREEN_HMODE_ADD)
+			self.toggle_screen("main_menu", hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 	def cuia_bank_preset(self, params=None):
 		if params:
@@ -1350,7 +1370,7 @@ class zynthian_gui:
 
 		# Default actions for the 4 standard ZynSwitches
 		if i == 0:
-			self.show_screen('main')
+			self.show_screen('main_menu')
 
 		elif i == 1:
 			try:

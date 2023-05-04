@@ -350,13 +350,18 @@ def set_midi_config():
 	else:
 		master_midi_note_cuia = {}
 		for cuianote in mmncuia_envar.split('\\n'):
-			try:
-				parts = cuianote.split(':')
-				note = parts[0].strip()
-				cuia = parts[1].strip()
-				master_midi_note_cuia[note] = cuia
-			except Exception as e:
-				logging.warning("Bad MIDI Master Note CUIA config {} => {}".format(cuianote, e))
+				cuianote = cuianote.strip()
+				if cuianote:
+					try:
+						parts = cuianote.split(':')
+						note = parts[0].strip()
+						cuia = parts[1].strip()
+						if note and cuia:
+							master_midi_note_cuia[note] = cuia
+						else:
+							raise Exception("Bad format!")
+					except Exception as e:
+						logging.warning("Bad MIDI Master Note CUIA config {} => {}".format(cuianote, e))
 
 
 #------------------------------------------------------------------------------
@@ -545,7 +550,8 @@ if "zynthian_main.py" in sys.argv[0]:
 				],
 				'list_pos': (0, 0),
 				'ctrl_orientation': 'horizontal',
-				'ctrl_order': (0, 1, 2, 3)
+				'ctrl_order': (0, 1, 2, 3),
+				'menu': 'chain_menu'
 			}
 		else:
 			layout = {
@@ -560,7 +566,8 @@ if "zynthian_main.py" in sys.argv[0]:
 				],
 				'list_pos': (0, 1),
 				'ctrl_orientation': 'vertical',
-				'ctrl_order': (0, 2, 1, 3)
+				'ctrl_order': (0, 2, 1, 3),
+				'menu': 'main_menu'
 			}
 
 		# Adjust Root Window Geometry
