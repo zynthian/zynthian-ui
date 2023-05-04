@@ -260,8 +260,8 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			self.octave_zgui_ctrl.grid(row=0, column=0)
 			self.halftone_zgui_ctrl.grid(row=0, column=2)
 		else:
-			self.octave_zgui_ctrl.configure(height=self.height // 4, width=self.width // 3)
-			self.halftone_zgui_ctrl.configure(height=self.height // 4, width=self.width // 3)
+			self.octave_zgui_ctrl.configure(height=self.height // 4, width=self.width // 4)
+			self.halftone_zgui_ctrl.configure(height=self.height // 4, width=self.width // 4)
 			self.octave_zgui_ctrl.grid(row=0, column=2, pady=(0,1))
 			self.halftone_zgui_ctrl.grid(row=1, column=2, pady=(1,0))
 

@@ -537,7 +537,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, switch, type):
 		self.zynseq.disable_midi_learn()
-		if switch == zynthian_gui_config.ENC_LAYER and type == 'B':
+		if switch == zynthian_gui_config.ENC_LAYER and type == 'S':
 			self.show_menu()
 			return True
 		return False
