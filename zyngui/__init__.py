@@ -19,7 +19,7 @@ __all__ = [
 	"zynthian_gui_control",
 	"zynthian_gui_control_xy",
 	"zynthian_gui_midi_profile",
-	"zynthian_gui_zs3_learn",
+	"zynthian_gui_zs3",
 	"zynthian_gui_zs3_options",
 	"zynthian_gui_confirm",
 	"zynthian_gui_main_menu",

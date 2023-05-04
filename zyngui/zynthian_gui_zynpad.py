@@ -221,23 +221,30 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				pad_x = int(pad / self.columns) * self.column_width
 				pad_y = pad % self.columns * self.row_height
 				if self.redraw_pending == 2:
+					fs1 = int(self.row_height * 0.15)
+					fs2 = int(self.row_height * 0.2)
 					self.grid_canvas.create_rectangle(pad_x, pad_y, pad_x + self.column_width - 2, pad_y + self.row_height - 2,
 						fill='grey', width=0, tags=("pad:%d"%(pad), "gridcell", "trigger_%d"%(pad)))
-					self.grid_canvas.create_text(int(pad_x + self.column_width / 2), int(pad_y + 0.01 * self.row_height),
+					self.grid_canvas.create_text(pad_x + int(self.column_width / 2), pad_y + int(0.02 * self.row_height),
 						width=self.column_width,
 						anchor="n", justify="center",
-						font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
-						size=int(self.row_height * 0.2)),
+						font=(zynthian_gui_config.font_family, fs1),
+						size=int(self.row_height * 0.2),
 						fill=zynthian_gui_config.color_panel_tx,
 						tags=("lbl_pad:%d"%(pad),"trigger_%d"%(pad)))
-					self.grid_canvas.create_text(pad_x + 1, pad_y + self.row_height - 1,
-						anchor="sw",
-						font=tkFont.Font(family=zynthian_gui_config.font_topbar[0],
-						size=int(self.row_height * 0.2)),
+					self.grid_canvas.create_text(pad_x + int(self.column_width / 2), pad_y + 2 * fs1,
+						width=self.column_width,
+						anchor="n", justify="center",
+						font=(zynthian_gui_config.font_family, fs2),
+						fill=zynthian_gui_config.color_panel_tx,
+						tags=("pat_num:%d"%(pad),"trigger_%d"%(pad)))
+					self.grid_canvas.create_text(pad_x + int(1.5 * fs1), pad_y + int(0.94 * self.row_height),
+						anchor="s",
+						font=(zynthian_gui_config.font_family, fs1),
 						fill=zynthian_gui_config.color_panel_tx,
 						tags=("group:%d"%(pad),"trigger_%d"%(pad)))
-					self.grid_canvas.create_image(int(pad_x + self.column_width * 0.2), int(pad_y + 0.9 * self.row_height), tags=("mode:%d"%(pad),"trigger_%d"%(pad)), anchor="sw")
-					self.grid_canvas.create_image(int(pad_x + self.column_width * 0.9), int(pad_y + 0.9 * self.row_height), tags=("state:%d"%(pad),"trigger_%d"%(pad)), anchor="se")
+					self.grid_canvas.create_image(int(pad_x + self.column_width * 0.23), int(pad_y + 0.9 * self.row_height), tags=("mode:%d"%(pad),"trigger_%d"%(pad)), anchor="sw")
+					self.grid_canvas.create_image(int(pad_x + self.column_width * 0.92), int(pad_y + 0.9 * self.row_height), tags=("state:%d"%(pad),"trigger_%d"%(pad)), anchor="se")
 					self.grid_canvas.tag_bind("trigger_%d"%(pad), '<Button-1>', self.on_pad_press)
 					self.grid_canvas.tag_bind("trigger_%d"%(pad), '<ButtonRelease-1>', self.on_pad_release)
 				self.refresh_pad(pad, True)
@@ -274,9 +281,21 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				pad_y = int(pad / self.columns) * self.row_height
 				if self.zynseq.libseq.getSequenceLength(self.zynseq.bank, pad) == 0:
 					mode = 0
-				self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text=self.zynseq.get_sequence_name(self.zynseq.bank, pad), fill=foreground)
-				self.grid_canvas.itemconfig("group:%s"%(pad), text=chr(65 + self.zynseq.libseq.getGroup(self.zynseq.bank, pad)), fill=foreground)
-				self.grid_canvas.itemconfig("mode:%d"%pad, image=self.mode_icon[mode])
+				chan = self.zyngui.zynseq.libseq.getChannel(self.zyngui.zynseq.bank, pad, 0)
+				label = self.zyngui.zynseq.get_sequence_name(self.zyngui.zynseq.bank, pad)
+				try:
+					patnum = str(int(label))
+					layer = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(chan)
+					if layer:
+						label = str(layer.preset_name)
+					else:
+						label = ""
+				except:
+					patnum = self.zyngui.zynseq.libseq.getPatternAt(self.zyngui.zynseq.bank, pad, 0, 0)
+				self.grid_canvas.itemconfig("lbl_pad:%d"%(pad), text=label, fill=foreground)
+				self.grid_canvas.itemconfig("pat_num:%d" % (pad), text=patnum, fill=foreground)
+				#self.grid_canvas.itemconfig("group:%s"%(pad), text=chr(65 + self.zyngui.zynseq.libseq.getGroup(self.zyngui.zynseq.bank, pad)), fill=foreground)
+				self.grid_canvas.itemconfig("group:%s" % (pad), text="{}".format(chan+1), fill=foreground)				self.grid_canvas.itemconfig("mode:%d"%pad, image=self.mode_icon[mode])
 				if state == 0 and self.zynseq.libseq.isEmpty(self.zynseq.bank, pad):
 					self.grid_canvas.itemconfig("state:%d"%pad, image=self.empty_icon)
 				else:
@@ -316,16 +335,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def show_menu(self):
 		self.disable_param_editor()
 		options = OrderedDict()
+		options[f'Tempo ({self.zynseq.libseq.getTempo():0.1f})'] = 'Tempo'
 		options['Arranger'] = 'Arranger'
-		options['Bank ({})'.format(self.zynseq.bank)] = 'Bank'
-		if zynthian_gui_config.transport_clock_source == 0:
-			options['Tempo ({:0.1f})'.format(self.zynseq.libseq.getTempo())] = 'Tempo'
-		options['Beats per bar ({})'.format(self.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
-		if self.zynseq.libseq.isMetronomeEnabled():
-			options['[X] Metronome'] = 'Metronome'
-		else:
-			options['[  ] Metronome'] = 'Metronome'
-		options['Metronome volume ({})'.format(int(100 * self.zynseq.libseq.getMetronomeVolume()))] = 'Metronome volume'
+		options['Beats per bar ({})'.format(self.zyngui.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
+		options['Bank ({})'.format(self.zyngui.zynseq.bank)] = 'Bank'
 		options['> PADS'] = None
 		options['Play mode ({})'.format(zynseq.PLAY_MODES[self.zynseq.libseq.getPlayMode(self.zynseq.bank, self.selected_pad)])] = 'Play mode'
 		options['MIDI channel ({})'.format(1 + self.zynseq.libseq.getChannel(self.zynseq.bank, self.selected_pad, 0))] = 'MIDI channel'
@@ -359,18 +372,14 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 
 	def menu_cb(self, option, params):
-		if params == 'Arranger':
+		if params == 'Tempo':
+			self.zyngui.show_screen('tempo')
+		elif params == 'Arranger':
 			self.zyngui.show_screen('arranger')
+		elif params == 'Beats per bar':
+			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsPerBar()})
 		elif params == 'Bank':
 			self.enable_param_editor(self, 'bank', 'Bank', {'value_min':1, 'value_max':64, 'value':self.zynseq.bank})
-		elif params == 'Tempo':
-			self.enable_param_editor(self, 'tempo', 'Tempo', {'value_min':10, 'value_max':420, 'value_default':120, 'is_integer':False, 'nudge_factor':0.1, 'value':self.zynseq.libseq.getTempo()})
-		if params == 'Beats per bar':
-			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zynseq.libseq.getBeatsPerBar()})
-		elif params == 'Metronome':
-			self.zynseq.libseq.enableMetronome(not self.zynseq.libseq.isMetronomeEnabled())
-		elif params == 'Metronome volume':
-			self.enable_param_editor(self, 'metro_vol', 'Metro volume', {'value_min':0, 'value_max':100, 'value_default':100, 'value': int(100 * self.zyngui.zynseq.libseq.getMetronomeVolume())})
 		elif params == 'Play mode':
 			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynseq.PLAY_MODES, 'value':self.zynseq.libseq.getPlayMode(self.zynseq.bank, self.selected_pad), 'value_default':zynseq.SEQ_LOOPALL}, self.set_play_mode)
 		elif params == 'MIDI channel':
@@ -451,7 +460,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			return True
 		self.zyngui.screens['pattern_editor'].channel = self.zynseq.libseq.getChannel(self.zynseq.bank, self.selected_pad, 0)
 		self.zyngui.screens['pattern_editor'].load_pattern(pattern)
-		self.zynseq.libseq.enableMidiRecord(False)
+		self.zyngui.screens['pattern_editor'].bank = self.bank
+		self.zyngui.screens['pattern_editor'].sequence = self.selected_pad
 		self.zyngui.show_screen("pattern_editor")
 		return True
 

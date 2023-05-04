@@ -45,76 +45,84 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 	def update_wsleds(self):
 		curscreen = self.zyngui.current_screen
 
-		if self.zyngui.alt_mode:
-			wscolor_light = self.wscolor_alt
-		else:
-			wscolor_light = self.wscolor_light
-
 		# Menu / Admin
-		if curscreen == "main_menu":
-			self.wsleds.setPixelColor(0, self.wscolor_active)
-		elif curscreen == "stepseq" and self.zyngui.screens['stepseq'].is_shown_menu():
+		if self.zyngui.is_current_screen_menu():
 			self.wsleds.setPixelColor(0, self.wscolor_active)
 		elif curscreen == "admin":
-			self.wsleds.setPixelColor(0, self.wscolor_admin)
+			self.wsleds.setPixelColor(0, self.wscolor_active2)
 		else:
-			self.wsleds.setPixelColor(0, wscolor_light)
+			self.wsleds.setPixelColor(0, self.wscolor_default)
 
 		# Audio Mixer / ALSA Mixer
 		if curscreen == "audio_mixer":
 			self.wsleds.setPixelColor(1, self.wscolor_active)
 		elif curscreen == "alsa_mixer":
-			self.wsleds.setPixelColor(1, self.wscolor_admin)
+			self.wsleds.setPixelColor(1, self.wscolor_active2)
 		else:
-			self.wsleds.setPixelColor(1, wscolor_light)
+			self.wsleds.setPixelColor(1, self.wscolor_default)
 
 		# Control / Preset Screen:
 		if curscreen == "control":
 			self.wsleds.setPixelColor(2, self.wscolor_active)
 		elif curscreen in ("preset", "bank"):
-			self.wsleds.setPixelColor(2, self.wscolor_admin)
+			self.wsleds.setPixelColor(2, self.wscolor_active2)
 		else:
-			self.wsleds.setPixelColor(2, wscolor_light)
+			self.wsleds.setPixelColor(2, self.wscolor_default)
 
 		# ZS3 / Snapshot:
-		if curscreen == "zs3_learn":
+		if curscreen == "zs3":
 			self.wsleds.setPixelColor(3, self.wscolor_active)
 		elif curscreen == "snapshot":
-			self.wsleds.setPixelColor(3, self.wscolor_admin)
+			self.wsleds.setPixelColor(3, self.wscolor_active2)
 		else:
-			self.wsleds.setPixelColor(3, wscolor_light)
-
-		# F1 button
-		self.wsleds.setPixelColor(4, wscolor_light)
+			self.wsleds.setPixelColor(3, self.wscolor_default)
 
 		# Zynseq: Zynpad /Pattern Editor
 		if curscreen == "zynpad":
 			self.wsleds.setPixelColor(5, self.wscolor_active)
 		elif curscreen == "pattern_editor":
-			self.wsleds.setPixelColor(5, self.wscolor_admin)
+			self.wsleds.setPixelColor(5, self.wscolor_active2)
 		else:
-			self.wsleds.setPixelColor(5, wscolor_light)
+			self.wsleds.setPixelColor(5, self.wscolor_default)
 
 		# Tempo Screen
 		if curscreen == "tempo":
 			self.wsleds.setPixelColor(6, self.wscolor_active)
+		elif self.zyngui.zynseq.libseq.isMetronomeEnabled():
+			self.blink(6, self.wscolor_active)
 		else:
-			self.wsleds.setPixelColor(6, wscolor_light)
+			self.wsleds.setPixelColor(6, self.wscolor_default)
 
 		# ALT button:
-		self.wsleds.setPixelColor(7, wscolor_light)
-
+		if self.zyngui.alt_mode:
+			self.wsleds.setPixelColor(7, self.wscolor_alt)
+		else:
+			self.wsleds.setPixelColor(7, self.wscolor_default)
 
 		# REC button:
-		if 'audio_recorder' in self.zyngui.status_info:
-			self.wsleds.setPixelColor(8, self.wscolor_red)
-		elif self.zyngui.status_info['midi_recorder'] and "REC" in self.zyngui.status_info['midi_recorder']:
-			self.wsleds.setPixelColor(8, self.wscolor_blue)
+		if curscreen == "pattern_editor":
+			if self.zyngui.zynseq.libseq.isMidiRecord():
+				self.wsleds.setPixelColor(8, self.wscolor_red)
+			else:
+				self.wsleds.setPixelColor(8, self.wscolor_active2)
+		elif self.zyngui.alt_mode:
+			if self.zyngui.status_info['midi_recorder'] and "REC" in self.zyngui.status_info['midi_recorder']:
+				self.wsleds.setPixelColor(8, self.wscolor_red)
+			else:
+				self.wsleds.setPixelColor(8, self.wscolor_alt)
 		else:
-			self.wsleds.setPixelColor(8, wscolor_light)
+			if 'audio_recorder' in self.zyngui.status_info:
+				self.wsleds.setPixelColor(8, self.wscolor_red)
+			else:
+				self.wsleds.setPixelColor(8, self.wscolor_default)
 
 		# STOP button
-		self.wsleds.setPixelColor(9, wscolor_light)
+		if curscreen == "pattern_editor":
+			self.wsleds.setPixelColor(9, self.wscolor_active2)
+		elif self.zyngui.alt_mode:
+			self.wsleds.setPixelColor(9, self.wscolor_alt)
+		else:
+			self.wsleds.setPixelColor(9, self.wscolor_default)
 
 		# PLAY button:
 		if curscreen == "pattern_editor":
@@ -126,38 +134,39 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 			elif pb_status in (zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC):
 				self.wsleds.setPixelColor(10, self.wscolor_red)
 			elif pb_status == zynseq.SEQ_STOPPED:
-				self.wsleds.setPixelColor(10, wscolor_light)
-		elif 'audio_player' in self.zyngui.status_info:
-			self.wsleds.setPixelColor(10, self.wscolor_active)
-		elif self.zyngui.status_info['midi_recorder'] and "PLAY" in self.zyngui.status_info['midi_recorder']:
-			self.wsleds.setPixelColor(10, self.wscolor_blue)
-		elif curscreen == "midi_recorder":
-			self.wsleds.setPixelColor(10, self.wscolor_active)
+				self.wsleds.setPixelColor(10, self.wscolor_active2)
+		elif self.zyngui.alt_mode:
+			if self.zyngui.status_info['midi_recorder'] and "PLAY" in self.zyngui.status_info['midi_recorder']:
+				self.wsleds.setPixelColor(10, self.wscolor_green)
+			else:
+				self.wsleds.setPixelColor(10, self.wscolor_alt)
 		else:
-			self.wsleds.setPixelColor(10, wscolor_light)
-
-		# F2 button
-		self.wsleds.setPixelColor(11, wscolor_light)
-
-		# F3 button
-		self.wsleds.setPixelColor(12, wscolor_light)
+			if 'audio_player' in self.zyngui.status_info:
+				self.wsleds.setPixelColor(10, self.wscolor_green)
+			else:
+				self.wsleds.setPixelColor(10, self.wscolor_default)
 
 		# Select/Yes button
 		self.wsleds.setPixelColor(13, self.wscolor_green)
 
-		# Up button
-		self.wsleds.setPixelColor(14, self.wscolor_yellow)
-
 		# Back/No button
 		self.wsleds.setPixelColor(15, self.wscolor_red)
 
-		# Left, Bottom, Right button
+		# Arrow buttons (Up, Left, Bottom, Right)
+		self.wsleds.setPixelColor(14, self.wscolor_yellow)
 		self.wsleds.setPixelColor(16, self.wscolor_yellow)
 		self.wsleds.setPixelColor(17, self.wscolor_yellow)
 		self.wsleds.setPixelColor(18, self.wscolor_yellow)
 
-		# F4 button
-		self.wsleds.setPixelColor(19, wscolor_light)
+		# F1-F4 buttons
+		if self.zyngui.alt_mode:
+			wscolor_fx = self.wscolor_alt
+		else:
+			wscolor_fx = self.wscolor_default
+		self.wsleds.setPixelColor(4, wscolor_fx)
+		self.wsleds.setPixelColor(11, wscolor_fx)
+		self.wsleds.setPixelColor(12, wscolor_fx)
+		self.wsleds.setPixelColor(19, wscolor_fx)
 
 		try:
 			self.zyngui.screens[curscreen].update_wsleds()

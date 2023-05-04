@@ -25,7 +25,6 @@
 
 import logging
 import importlib
-from time import sleep
 from pathlib import Path
 from datetime import datetime
 
@@ -245,6 +244,13 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.zgui_controllers[i].show()
 		else:
 			self.zgui_controllers.append(zynthian_gui_controller(i, self.main_frame, ctrl))
+
+
+	def get_zcontroller(self, i):
+		if i < len(self.zgui_controllers):
+			return self.zgui_controllers[i].zctrl
+		else:
+			return None
 
 
 	def set_xyselect_controllers(self):
@@ -503,6 +509,21 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	#--------------------------------------------------------------------------
+	# Options Menu
+	#--------------------------------------------------------------------------
+
+	def show_menu(self):
+		self.zyngui.cuia_chain_options()
+
+
+	def toggle_menu(self):
+		if self.shown:
+			self.show_menu()
+		elif self.zyngui.current_screen.endswith("_options"):
+			self.close_screen()
+
+
+	#--------------------------------------------------------------------------
 	# MIDI learn management
 	#--------------------------------------------------------------------------
 
@@ -528,7 +549,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.exit_midi_learn()
 		elif self.midi_learning:
 			self.midi_learning = False
-			self.zyngui.show_screen("zs3_learn")
+			self.zyngui.show_screen("zs3")
 		else:
 			self.enter_midi_learn()
 			return True
@@ -563,6 +584,32 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in {} on MIDI channel {}?".format(self.zyngui.get_current_processor().engine.name, self.zyngui.get_current_processor().midi_chan + 1), self.midi_unlearn)
 		self.exit_midi_learn()
 
+
+	def midi_learn_options(self, i, unlearn_only=False):
+		try:
+			options = {}
+			zctrl = self.zgui_controllers[i].zctrl
+			if not unlearn_only:
+				options["Learn '{}'...".format(zctrl.name)] = i
+				title = "Control MIDI-learn"
+			else:
+				title = "Control MIDI-unlearn"
+			if zctrl.midi_learn_cc:
+				options["Unlearn '{}'".format(zctrl.name)] = i
+			options["Unlearn All"] = None
+			self.zyngui.screens['option'].config(title, options, self.midi_learn_options_cb)
+			self.zyngui.screens['option'].config("Control MIDI-learn", options, self.midi_learn_options_cb)
+			self.zyngui.show_screen('option')
+		except Exception as e:
+			logging.error("Can't show Control MIDI-learn options => {}".format(e))
+
+
+	def midi_learn_options_cb(self, option, param):
+		parts = option.split(" ")
+		if parts[0] == "Learn":
+			self.midi_learn(param)
+		elif parts[0] == "Unlearn":
+			self.midi_unlearn(param)
 
 	#--------------------------------------------------------------------------
 	# GUI Callback function

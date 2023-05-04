@@ -122,6 +122,17 @@ class zynthian_gui_bank(zynthian_gui_selector):
 			self.zyngui.show_screen('option')
 
 
+	def show_menu(self):
+		self.show_bank_options()
+
+
+	def toggle_menu(self):
+		if self.shown:
+			self.show_menu()
+		elif self.zyngui.current_screen == "option":
+			self.close_screen()
+
+
 	def bank_options_cb(self, option, bank):
 		self.options_bank_index = self.index
 		if option == "Rename":

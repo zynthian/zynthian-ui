@@ -453,21 +453,21 @@ void setPatternModified(Pattern* pPattern, bool bModified = true);
 */
 bool isPatternModified();
 
-/**    @brief    Get the reference note
-*    @retval uint8_t MIDI note number
-*    @note    May be used for position within user interface
+/** @brief  Get the reference note
+*   @retval uint8_t MIDI note number
+*   @note   May be used for position within user interface
 */
 uint8_t getRefNote();
 
-/**    @brief    Set the reference note
-*    @param    MIDI note number
-*    @note    May be used for position within user interface
+/** @brief  Set the reference note
+*   @param  MIDI note number
+*   @note   May be used for position within user interface
 */
 void setRefNote(uint8_t note);
 
-/**    @brief    Get the last populated step
-*    @retval    uint32_t Index of last populated step or -1 if empty
-*    @note    This may allow checking for empty patterns or whether truncation will have an effect
+/** @brief  Get the last populated step
+*   @retval uint32_t Index of last populated step or -1 if empty
+*   @note   This may allow checking for empty patterns or whether truncation will have an effect
 */
 uint32_t getLastStep();
 
@@ -707,6 +707,12 @@ uint8_t getMidiLearnBank();
 *   @retval uint8_t Sequence index
 */
 uint8_t getMidiLearnSequence();
+
+/** @brief  Set the pattern editor sequence
+*   @param  bank Bank index
+*   @param  sequence Sequence index
+*/
+void setSequence(uint8_t bank, uint8_t sequence);
 
 /** @brief  Set sequence name
 *   @param  bank Index of bank

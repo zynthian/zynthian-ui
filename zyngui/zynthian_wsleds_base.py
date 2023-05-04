@@ -47,16 +47,20 @@ class zynthian_wsleds_base:
 		self.pulse_step = 0
 		# Predefined colors
 		self.wscolor_off = rpi_ws281x.Color(0, 0, 0)
-		self.wscolor_light = rpi_ws281x.Color(0, 0, 255)
-		self.wscolor_active = rpi_ws281x.Color(0, 255, 0)
-		self.wscolor_admin = rpi_ws281x.Color(120, 0, 0)
-		self.wscolor_red = rpi_ws281x.Color(120, 0, 0)
-		self.wscolor_green = rpi_ws281x.Color(0, 255, 0)
+		self.wscolor_white = rpi_ws281x.Color(120, 120, 120)
+		self.wscolor_red = rpi_ws281x.Color(140, 0, 0)
+		self.wscolor_green = rpi_ws281x.Color(0, 220, 0)
 		self.wscolor_yellow = rpi_ws281x.Color(160, 160, 0)
 		self.wscolor_orange = rpi_ws281x.Color(190, 80, 0)
-		self.wscolor_blue = rpi_ws281x.Color(0, 80, 200)
+		self.wscolor_blue = rpi_ws281x.Color(0, 0, 220)
+		self.wscolor_blue_light = rpi_ws281x.Color(0, 130, 130)
+		self.wscolor_purple = rpi_ws281x.Color(130, 0, 130)
+		self.wscolor_default = self.wscolor_blue
+		self.wscolor_alt = self.wscolor_purple
+		self.wscolor_active = self.wscolor_green
+		self.wscolor_active2 = self.wscolor_orange
+		self.wscolor_admin = self.wscolor_red
 		self.wscolor_low = rpi_ws281x.Color(0, 100, 0)
-		self.wscolor_alt = self.wscolor_orange
 
 
 	def start(self):
@@ -83,7 +87,7 @@ class zynthian_wsleds_base:
 		if self.num_leds > 0:
 			# Light all LEDs
 			for i in range(0, self.num_leds):
-				self.wsleds.setPixelColor(i, self.wscolor_light)
+				self.wsleds.setPixelColor(i, self.wscolor_default)
 			self.wsleds.show()
 
 

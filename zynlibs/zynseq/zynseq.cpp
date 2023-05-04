@@ -49,7 +49,7 @@ static struct ev_start startEvents[128];
 
 SequenceManager g_seqMan; // Instance of sequence manager
 uint32_t g_nPattern = 0; // Index of currently selected pattern
-Sequence* g_pSequence = 0; // Pattern editor sequence
+Sequence* g_pSequence = NULL; // Pattern editor sequence
 jack_port_t * g_pInputPort; // Pointer to the JACK input port
 jack_port_t * g_pOutputPort; // Pointer to the JACK output port
 jack_port_t* g_pMetronomePort; // Pointer to the JACK metronome audio output port
@@ -418,7 +418,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         if(g_bMidiRecord && g_pSequence && pPattern)
         {
             uint32_t nStep = getPatternPlayhead();
-            uint8_t nPlayState = getPlayState(0, 0);
+            uint8_t nPlayState = g_pSequence->getPlayState();
             bool bAdvance = false;
             if(((midiEvent.buffer[0] & 0xF0) == 0xB0) && midiEvent.buffer[1] == 64)
             {
@@ -1908,6 +1908,10 @@ uint8_t getMidiLearnBank()
 uint8_t getMidiLearnSequence()
 {
     return g_nTriggerLearning & 0xFF;
+}
+
+void setSequence(uint8_t bank, uint8_t sequence) {
+    g_pSequence = g_seqMan.getSequence(bank, sequence);
 }
 
 void setSequenceName(uint8_t bank, uint8_t sequence, const char* name)

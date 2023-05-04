@@ -67,7 +67,7 @@ from zyngui.zynthian_gui_preset import zynthian_gui_preset
 from zyngui.zynthian_gui_control import zynthian_gui_control
 from zyngui.zynthian_gui_control_xy import zynthian_gui_control_xy
 from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
-from zyngui.zynthian_gui_zs3_learn import zynthian_gui_zs3_learn
+from zyngui.zynthian_gui_zs3 import zynthian_gui_zs3
 from zyngui.zynthian_gui_zs3_options import zynthian_gui_zs3_options
 from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
 from zyngui.zynthian_gui_main_menu import zynthian_gui_main_menu
@@ -395,7 +395,7 @@ class zynthian_gui:
 		self.screens['control'] = zynthian_gui_control()
 		self.screens['control_xy'] = zynthian_gui_control_xy()
 		self.screens['midi_profile'] = zynthian_gui_midi_profile()
-		self.screens['zs3_learn'] = zynthian_gui_zs3_learn()
+		self.screens['zs3'] = zynthian_gui_zs3()
 		self.screens['zs3_options'] = zynthian_gui_zs3_options()
 		self.screens['tempo'] = zynthian_gui_tempo()
 		self.screens['admin'] = zynthian_gui_admin()
@@ -827,128 +827,133 @@ class zynthian_gui:
 		self.test_mode = params
 		logging.warning('TEST_MODE: {}'.format(params))
 
-	def cuia_toggle_alt_mode(self, params):
+	def cuia_toggle_alt_mode(self, params=None):
 		if self.alt_mode:
 			self.alt_mode = False
 		else:
 			self.alt_mode = True
 
-	def cuia_power_off(self, params):
+	def cuia_power_off(self, params=None):
 		self.screens['admin'].power_off_confirmed()
 
-	def cuia_reboot(self, params):
+	def cuia_reboot(self, params=None):
 		self.screens['admin'].reboot_confirmed()
 
-	def cuia_restart_ui(self, params):
+	def cuia_restart_ui(self, params=None):
 		self.screens['admin'].restart_gui()
 
-	def cuia_exit_ui(self, params):
+	def cuia_exit_ui(self, params=None):
 		self.screens['admin'].exit_to_console()
 
-	def cuia_reload_wiring_layout(self, params):
+	def cuia_reload_wiring_layout(self, params=None):
 		self.reload_wiring_layout()
 
-	def cuia_reload_midi_config(self, params):
+	def cuia_reload_midi_config(self, params=None):
 		self.state_manager.reload_midi_config()
 
-	def cuia_reload_key_binding(self, params):
+	def cuia_reload_key_binding(self, params=None):
 		zynthian_gui_keybinding.load()
 
-	def cuia_last_state_action(self, params):
+	def cuia_last_state_action(self, params=None):
 		self.screens['admin'].last_state_action()
 
 	# Panic Actions
-	def cuia_all_notes_off(self, params):
+	def cuia_all_notes_off(self, params=None):
 		self.state_manager.all_notes_off()
 		sleep(0.1)
 		self.state_manager.raw_all_notes_off()
 
-	def cuia_all_sounds_off(self, params):
+	def cuia_all_sounds_off(self, params=None):
 		self.state_manager.all_notes_off()
 		self.state_manager.all_sounds_off()
 		sleep(0.1)
 		self.state_manager.raw_all_notes_off()
 
-	def cuia_clean_all(self, params):
+	def cuia_clean_all(self, params=None):
 		if params == ['CONFIRM']:
 			self.clean_all()
 			self.show_screen_reset('main_menu') #TODO: Should send signal so that UI can react
 
 	# Audio & MIDI Recording/Playback actions
-	def cuia_start_audio_record(self, params):
+	def cuia_start_audio_record(self, params=None):
 		self.state_manager.audio_recorder.start_recording()
 		self.refresh_signal("AUDIO_RECORD")
 
-	def cuia_stop_audio_record(self, params):
+	def cuia_stop_audio_record(self, params=None):
 		self.state_manager.audio_recorder.stop_recording()
 		self.refresh_signal("AUDIO_RECORD")
 
-	def cuia_toggle_audio_record(self, params):
-		self.state_manager.audio_recorder.toggle_recording()
-		self.refresh_signal("AUDIO_RECORD")
+	def cuia_toggle_audio_record(self, params=None):
+		if self.current_screen == "pattern_editor":
+			self.screens["pattern_editor"].toggle_midi_record()
+		else:
+			self.audio_recorder.toggle_recording()
+			self.refresh_signal("AUDIO_RECORD")
 
-	def cuia_start_audio_play(self, params):
+	def cuia_start_audio_play(self, params=None):
 		self.state_manager.start_audio_player()
 
-	def cuia_stop_audio_play(self, params):
-		self.state_manager.stop_audio_player()
+	def cuia_stop_audio_play(self, params=None):
+		if self.current_screen == "pattern_editor":
+			self.screens["pattern_editor"].stop_playback()
+		else:
+			self.stop_audio_player()
 
-	def cuia_toggle_audio_play(self, params):
+	def cuia_toggle_audio_play(self, params=None):
 		#TODO: This logic should not be here
 		if self.current_screen == "pattern_editor":
 			self.screens["pattern_editor"].toggle_playback()
 		else:
 			self.state_manager.toggle_audio_player()
 
-	def cuia_start_midi_record(self, params):
+	def cuia_start_midi_record(self, params=None):
 		self.screens['midi_recorder'].start_recording()
 
-	def cuia_stop_midi_record(self, params):
+	def cuia_stop_midi_record(self, params=None):
 		self.screens['midi_recorder'].stop_recording()
 		if self.current_screen=="midi_recorder":
 			self.screens['midi_recorder'].select()
 
-	def cuia_toggle_midi_record(self, params):
-		self.screens['midi_recorder'].toggle_recording()
-		if self.current_screen=="midi_recorder":
-			self.screens['midi_recorder'].select()
+	def cuia_toggle_midi_record(self, params=None):
+		if midi_record is None:
+			midi_record = not self.zyngui.zynseq.libseq.isMidiRecord()
 
-	def cuia_start_midi_play(self, params):
+	def cuia_start_midi_play(self, params=None):
 		self.screens['midi_recorder'].start_playing()
 
-	def cuia_stop_midi_play(self, params):
+	def cuia_stop_midi_play(self, params=None):
 		self.screens['midi_recorder'].stop_playing()
 
-	def cuia_toggle_midi_play(self, params):
+	def cuia_toggle_midi_play(self, params=None):
 		self.screens['midi_recorder'].toggle_playing()
 
-	def cuia_start_step_seq(self, params):
+	def cuia_start_step_seq(self, params=None):
 		#TODO Implement this correctly or remove CUIA
 		#self.state_manager.zynseq.start_transport()
 		pass
 
-	def cuia_stop_step_seq(self, params):
+	def cuia_stop_step_seq(self, params=None):
 		#TODO Implement this correctly or remove CUIA
 		#self.state_manager.zynseq.stop_transport()
 		pass
 
-	def cuia_toggle_step_seq(self, params):
+	def cuia_toggle_step_seq(self, params=None):
 		#TODO Implement this correctly or remove CUIA
 		#self.state_manager.zynseq.toggle_transport()
 		pass
 
-	def cuia_tempo(self, params):
+	def cuia_tempo(self, params=None):
 		self.screens["tempo"].tap()
 		if self.current_screen != "tempo":
 			self.show_screen("tempo")
 
-	def cuia_set_tempo(self, params):
+	def cuia_set_tempo(self, params=None):
 		try:
 			self.state_manager.zynseq.set_tempo(params[0])
 		except (AttributeError, TypeError) as err:
 			pass
 
-	def cuia_tempo_up(self, params):
+	def cuia_tempo_up(self, params=None):
 		if params:
 			try:
 				self.state_manager.zynseq.set_tempo(self.state_manager.zynseq.get_tempo() + params[0])
@@ -957,7 +962,7 @@ class zynthian_gui:
 		else:
 			self.state_manager.zynseq.set_tempo(self.state_manager.zynseq.get_tempo() + 1)
 
-	def cuia_tempo_down(self, params):
+	def cuia_tempo_down(self, params=None):
 		if params:
 			try:
 				self.state_manager.zynseq.set_tempo(self.state_manager.zynseq.get_tempo() - params[0])
@@ -966,12 +971,12 @@ class zynthian_gui:
 		else:
 			self.state_manager.zynseq.set_tempo(self.state_manager.zynseq.get_tempo() - 1)
 
-	def cuia_tap_tempo(self, params):
+	def cuia_tap_tempo(self, params=None):
 		self.screens["tempo"].tap()
 
 
 	# Zynpot & Zynswitch emulation CUIAs (low level)
-	def cuia_zynpot(self, params):
+	def cuia_zynpot(self, params=None):
 		try:
 			i = params[0]
 			d = params[1]
@@ -982,7 +987,7 @@ class zynthian_gui:
 		except Exception as e:
 			logging.error(e)
 
-	def cuia_zynswitch(self, params):
+	def cuia_zynswitch(self, params=None):
 		try:
 			i = params[0]
 			d = params[1]
@@ -995,97 +1000,100 @@ class zynthian_gui:
 
 	# Basic UI-Control CUIAs
 	# 4 x Arrows
-	def cuia_arrow_up(self, params):
+	def cuia_arrow_up(self, params=None):
 		try:
 			self.get_current_screen_obj().arrow_up()
 		except (AttributeError, TypeError) as err:
 			pass
 
-	def	cuia_arrow_down(self, params):
+	def	cuia_arrow_down(self, params=None):
 		try:
 			self.get_current_screen_obj().arrow_down()
 		except (AttributeError, TypeError) as err:
 			pass
 
-	def cuia_arrow_right(self, params):
+	def cuia_arrow_right(self, params=None):
 		try:
 			self.get_current_screen_obj().arrow_right()
 		except (AttributeError, TypeError) as err:
 			pass
 
-	def cuia_arrow_next(self, params):
+	def cuia_arrow_next(self, params=None):
 		self.cuia_arrow_right(params)
 
-	def cuia_arrow_left(self, params):
+	def cuia_arrow_left(self, params=None):
 		try:
 			self.get_current_screen_obj().arrow_left()
 		except (AttributeError, TypeError) as err:
 			pass
 
-	def cuia_arrow_prev(self, params):
+	def cuia_arrow_prev(self, params=None):
 		self.cuia_arrow_left(params)
 
 	# Back action
-	def cuia_back(self, params):
+	def cuia_back(self, params=None):
 		try:
 			self.back_screen()
 		except:
 			pass
 
 	# Select element in list => it receives an integer parameter!
-	def cuia_select(self, params):
+	def cuia_select(self, params=None):
 		try:
 			self.get_current_screen_obj().select(params[0])
 		except (AttributeError, TypeError) as err:
 			pass
 
 	# Screen/Mode management CUIAs
-	def cuia_toggle_screen(self, params):
+	def cuia_toggle_screen(self, params=None):
 		if params:
 			self.toggle_screen(params[0])
 
-	def cuia_show_screen(self, params):
+	def cuia_show_screen(self, params=None):
 		if params:
 			self.show_screen_reset(params[0])
 
-	def cuia_screen_main_menu(self, params):
+	def cuia_screen_main_menu(self, params=None):
 		self.toggle_screen("main_menu")
 
-	def cuia_screen_admin(self, params):
+	def cuia_screen_admin(self, params=None):
 		self.toggle_screen("admin")
 
-	def cuia_screen_audio_mixer(self, params):
+	def cuia_screen_audio_mixer(self, params=None):
 		self.toggle_screen("audio_mixer")
 
-	def cuia_screen_snapshot(self, params):
+	def cuia_screen_snapshot(self, params=None):
 		self.toggle_screen("snapshot")
 
-	def cuia_screen_midi_recorder(self, params):
+	def cuia_screen_zs3(self, params=None):
+		self.toggle_screen("zs3")
+
+	def cuia_screen_midi_recorder(self, params=None):
 		self.toggle_screen("midi_recorder")
 
-	def cuia_screen_alsa_mixer(self, params):
+	def cuia_screen_alsa_mixer(self, params=None):
 		self.toggle_screen("alsa_mixer", hmode=zynthian_gui.SCREEN_HMODE_RESET)
 
-	def cuia_screen_zynpad(self, params):
+	def cuia_screen_zynpad(self, params=None):
 		self.toggle_screen("zynpad")
 
-	def cuia_screen_pattern_editor(self, params):
+	def cuia_screen_pattern_editor(self, params=None):
 		success = False
 		if self.current_screen in ["arranger", "zynpad"]:
 			success = self.screens[self.current_screen].show_pattern_editor()
 		if not success:
 			self.toggle_screen("pattern_editor")
 
-	def cuia_screen_arranger(self, params):
+	def cuia_screen_arranger(self, params=None):
 		self.toggle_screen("arranger")
 
-	def cuia_screen_bank(self, params):
+	def cuia_screen_bank(self, params=None):
 		self.toggle_screen("bank")
 
-	def cuia_screen_preset(self, params):
+	def cuia_screen_preset(self, params=None):
 		self.toggle_screen("preset")
 
-	def cuia_screen_calibrate(self, params):
+	def cuia_screen_calibrate(self, params=None):
 		self.calibrate_touchscreen()
 
 	def cuia_chain_control(self, params=None):
@@ -1097,13 +1105,13 @@ class zynthian_gui:
 				pass
 		self.chain_control(chain_id)
 
-	def cuia_layer_control(self, params):
+	def cuia_layer_control(self, params=None):
 		self.cuia_chain_control(params)
 
-	def cuia_screen_control(self, params):
+	def cuia_screen_control(self, params=None):
 		self.cuia_chain_control(params)
 
-	def cuia_chain_options(self, params):
+	def cuia_chain_options(self, params=None):
 		try:
 			# Select chain by index
 			index = params[0]
@@ -1121,10 +1129,10 @@ class zynthian_gui:
 			self.screens['chain_options'].setup(chain_id)
 			self.toggle_screen('chain_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
-	def cuia_layer_options(self, params):
+	def cuia_layer_options(self, params=None):
 		self.cuia_chain_options(params)
 
-	def cuia_menu(self, params):
+	def cuia_menu(self, params=None):
 		try:
 			self.screens[self.current_screen].toggle_menu()
 		except (AttributeError, TypeError) as err:
@@ -1152,30 +1160,26 @@ class zynthian_gui:
 			elif len(self.get_current_processor().get_bank_list()) > 0 and self.get_current_processor().get_bank_list()[0][0] != '':
 				self.show_screen('bank', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
-	def cuia_preset(self, params):
+	def cuia_preset(self, params=None):
 		self.cuia_bank_preset(params)
 
-	def cuia_preset_fav(self, params):
+	def cuia_preset_fav(self, params=None):
 		self.show_favorites()
 
-	def cuia_zctrl_touch(self, params):
-		if params:
-			self.screens[self.current_screen].zctrl_touch(params[0])
-
-	def cuia_enable_midi_learn_cc(self, params):
+	def cuia_enable_midi_learn_cc(self, params=None):
 		if len(params) == 2:
 			self.state_manager.enable_learn_cc(params[0], params[1])
 
-	def cuia_disable_midi_learn_cc(self, params):
+	def cuia_disable_midi_learn_cc(self, params=None):
 		self.state_manager.disable_learn_cc()
 
-	def cuia_enable_midi_learn_pc(self, params):
+	def cuia_enable_midi_learn_pc(self, params=None):
 		if params:
 			self.state_manager.enable_learn_pc(params[0])
 		else:
 			self.state_manager.enable_learn_pc("")
 
-	def cuia_disable_midi_learn_pc(self, params):
+	def cuia_disable_midi_learn_pc(self, params=None):
 		self.state_manager.disable_learn_pc()
 
 	def cuia_enable_midi_learn(self, params=None):
@@ -1196,36 +1200,69 @@ class zynthian_gui:
 			else:
 				self.cuia_enable_midi_learn(params)
 
-	def cuia_action_midi_unlearn(self, params):
+	def cuia_action_midi_unlearn(self, params=None):
 		try:
 			self.screens[self.current_screen].midi_unlearn_action()
 		except (AttributeError, TypeError) as err:
 			pass
 
-	# Unlearn from currently selected (learning) control
-	def cuia_midi_unlearn_control(self, params):
-		#TODO: Implement cuia_midi_unlearn_control
-		pass
+	# Learn control options
+	def cuia_midi_learn_control_options(self, params=None):
+		if self.current_screen in ("control", "alsa_mixer"):
+			self.screens[self.current_screen].midi_learn_options(params[0])
+
+	# Learn control
+	def cuia_midi_learn_control(self, params=None):
+		if self.current_screen in ("control", "alsa_mixer"):
+			self.screens[self.current_screen].midi_learn(params[0])
+
+	# Unlearn control
+	def cuia_midi_unlearn_control(self, params=None):
+		if self.current_screen in ("control", "alsa_mixer"):
+			if params:
+				self.midi_learn_zctrl = self.screens[self.current_screen].get_zcontroller(params[0])
+			# if not parameter, unlearn selected learning control
+			if self.midi_learn_zctrl:
+				self.screens[self.current_screen].midi_unlearn_action()
 
 	# Unlearn all mixer controls
-	def cuia_midi_unlearn_mixer(self, params):
+	def cuia_midi_unlearn_mixer(self, params=None):
 		try:
 			self.screens['audio_mixer'].midi_unlearn_all()
 		except (AttributeError, TypeError) as err:
 			logging.error(err)
 
-	def cuia_midi_unlearn_node(self, params):
+	# Z2 knob touch
+	def cuia_z2_zynpot_touch(self, params=None):
+		if params:
+			self.screens['control'].midi_learn_zctrl(params[0])
+
+	# V5 knob click
+	def cuia_v5_zynpot_switch(self, params=None):
+		t = params[1].upper()
+		if self.current_screen in ("control", "alsa_mixer"):
+			if t == 'S':
+				self.screens[self.current_screen].midi_learn(params[0])
+			elif t == 'B':
+				self.screens[self.current_screen].midi_learn_options(params[0])
+		else:
+			if t == 'S':
+				self.zynswitch_short(params[0])
+			elif t == 'B':
+				self.zynswitch_bold(params[0])
+
+	def cuia_midi_unlearn_node(self, params=None):
 		if params:
 			self.chain_manager.remove_midi_learn([params[0], params[1]])
 
-	def cuia_midi_unlearn_chain(self, params):
+	def cuia_midi_unlearn_chain(self, params=None):
 		if params:
 			self.chain_manager.clean_midi_learn(params[0])
 		else:
 			self.chain_manager.clean_midi_learn(self.chain_manager.active_chain_id)
 
 	# MIDI CUIAs
-	def cuia_program_change(self, params):
+	def cuia_program_change(self, params=None):
 		if len(params) > 0:
 			pgm = int(params[0])
 			if len(params) > 1:
@@ -1236,37 +1273,37 @@ class zynthian_gui:
 				get_lib_zyncore().write_zynmidi_program_change(chan, pgm)
 
 	# Common methods to control views derived from zynthian_gui_base
-	def cuia_show_topbar(self, params):
+	def cuia_show_topbar(self, params=None):
 		try:
 			self.screens[self.current_screen].show_topbar(True)
 		except (AttributeError, TypeError) as err:
 			pass
 
-	def cuia_hide_topbar(self, params):
+	def cuia_hide_topbar(self, params=None):
 		try:
 			self.screens[self.current_screen].show_topbar(False)
 		except (AttributeError, TypeError) as err:
 			pass
 
-	def cuia_show_buttonbar(self, params):
+	def cuia_show_buttonbar(self, params=None):
 		try:
 			self.screens[self.current_screen].show_buttonbar(True)
 		except (AttributeError, TypeError) as err:
 			pass
 
-	def cuia_hide_buttonbar(self, params):
+	def cuia_hide_buttonbar(self, params=None):
 		try:
 			self.screens[self.current_screen].show_buttonbar(False)
 		except (AttributeError, TypeError) as err:
 			pass
 
-	def cuia_show_sidebar(self, params):
+	def cuia_show_sidebar(self, params=None):
 		try:
 			self.screens[self.current_screen].show_sidebar(True)
 		except (AttributeError, TypeError) as err:
 			pass
 
-	def cuia_hide_sidebar(self, params):
+	def cuia_hide_sidebar(self, params=None):
 		try:
 			self.screens[self.current_screen].show_sidebar(False)
 		except (AttributeError, TypeError) as err:
@@ -1280,11 +1317,41 @@ class zynthian_gui:
 
 	def custom_switch_ui_action(self, i, t):
 		action_config = zynthian_gui_config.custom_switch_ui_actions[i]
+		if not action_config:
+			return
+
+		if t == "S" and (self.alt_mode or self.check_current_screen_switch(action_config)):
+			cuia = action_config['B']
+			if cuia:
+				self.callable_ui_action_params(cuia)
+				self.alt_mode = False
+				return
+
 		if t in action_config:
 			cuia = action_config[t]
-			if cuia and cuia != "NONE":
+			if cuia:
 				self.cuia_queue.put_nowait(cuia)
 				return True
+
+	def is_current_screen_menu(self):
+		if self.current_screen in ("main_menu", "engine", "midi_cc", "midi_chan", "midi_key_range", "audio_in", "audio_out", "midi_out", "midi_prog") or \
+				self.current_screen.endswith("_options"):
+			return True
+
+		if self.current_screen == "option" and len(self.screen_history) > 1 and self.screen_history[-2] in ("zynpad", "pattern_editor", "preset", "bank"):
+			return True
+
+		return False
+
+
+	def check_current_screen_switch(self, action_config):
+		#if self.is_current_screen_menu():
+		if self.current_screen == "main_menu":
+			screen_name = "menu"
+		else:
+			screen_name = self.current_screen
+		return action_config['S'].lower().endswith(screen_name)
+
 
 	# -------------------------------------------------------------------
 	# Switches
@@ -1432,24 +1499,13 @@ class zynthian_gui:
 
 	def zynswitch_X(self, i):
 		logging.debug('X Switch %d' % i)
-		if self.current_screen == 'control' and self.screens['control'].mode == 'control':
+		if self.current_screen in ("control", "alsa_mixer") and self.screens[self.current_screen].mode == 'control':
 			self.screens['control'].midi_learn(i) #TODO: Check zynswitch_X/Y learn
-
 
 	def zynswitch_Y(self,i):
 		logging.debug('Y Switch %d' % i)
-		if self.current_screen == 'control' and self.screens['control'].mode == 'control':
-			try:
-				zctrl = self.screens['control'].zgui_controllers[i].zctrl
-				options = {
-					"Unlearn '{}' control".format(zctrl.name): zctrl,
-					"Unlearn all controls": 0
-				}
-				self.screens['option'].config("MIDI Unlearn", options, self.midi_unlearn_options_cb)
-				self.show_screen('option')
-			except:
-				pass
-
+		if self.current_screen in ("control", "alsa_mixer") and self.screens[self.current_screen].mode == 'control':
+			self.screens['control'].midi_learn_options(i, unlearn_only=True)
 
 	def midi_unlearn_options_cb(self, option, param):
 		if param:

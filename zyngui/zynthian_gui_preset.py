@@ -103,6 +103,17 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		self.zyngui.show_screen('option')
 
 
+	def show_menu(self):
+		self.show_preset_options()
+
+
+	def toggle_menu(self):
+		if self.shown:
+			self.show_menu()
+		elif self.zyngui.current_screen == "option":
+			self.close_screen()
+
+
 	def preset_options_cb(self, option, preset):
 		if option.endswith("Favourite"):
 			self.zyngui.get_current_processor().toggle_preset_fav(preset)

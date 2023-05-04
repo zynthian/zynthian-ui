@@ -3,9 +3,9 @@
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
-# Zynthian GUI ZS3 learn screen
+# Zynthian GUI ZS3 screen
 #
-# Copyright (C) 2018-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2018-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 #
@@ -31,10 +31,10 @@ from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
-# Zynthian Sub-SnapShot (ZS3) MIDI-learn GUI Class
+# Zynthian Sub-SnapShot (ZS3) GUI Class
 #------------------------------------------------------------------------------
 
-class zynthian_gui_zs3_learn(zynthian_gui_selector):
+class zynthian_gui_zs3(zynthian_gui_selector):
 
 	def __init__(self):
 		super().__init__('Program', True)
@@ -91,7 +91,7 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 			self.zyngui.close_screen()
 			return True
 		else:
-			if t  == 'S':
+			if t == 'S':
 				self.zyngui.state_manager.disable_learn_pc()
 				self.zyngui.state_manager.load_zs3(zs3_index)
 				self.zyngui.close_screen()
@@ -102,11 +102,19 @@ class zynthian_gui_zs3_learn(zynthian_gui_selector):
 				return True
 
 
+	def show_menu(self):
+		self.click_listbox(None, 'B')
+
+
+	def toggle_menu(self):
+		if self.shown:
+			self.show_menu()
+		elif self.zyngui.current_screen == "zs3_options":
+			self.close_screen()
+
+
 	def set_select_path(self):
-		if self.zyngui.get_current_processor():
-			self.select_path.set(self.zyngui.get_current_processor().get_basepath() + "/PROG MIDI-Learn")
-		else:
-			self.select_path.set("PROG MIDI-Learn")
+		self.select_path.set("ZS3 (SubSnapShots)")
 
 
 	def back_action(self):
