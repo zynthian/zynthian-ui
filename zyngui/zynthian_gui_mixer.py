@@ -811,13 +811,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		for chan in range(self.zynmixer.get_max_channels()):
 			self.zynmixer.enable_dpm(chan, False)
 
-		if zynthian_gui_config.show_cpu_status:
-			self.set_meter_mode(self.METER_CPU)
-		else:
-			self.set_meter_mode(self.METER_NONE) # Don't show meter in status bar (there are meters all over the mixer)
-
 		self.set_title()
 		self.refresh_visible_strips()
+
+	def init_dpmeter(self):
+		pass
+
+	def refresh_dpmeter(self, status={}):
+		pass
 
 
 	# Redefine set_title

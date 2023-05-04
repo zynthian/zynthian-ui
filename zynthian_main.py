@@ -34,7 +34,7 @@ from zyngui import zynthian_gui_config
 from zyngine.zynthian_chain import *
 from zyncoder.zyncore import get_lib_zyncore
 from zyngui.zynthian_gui import zynthian_gui
-from zyngui.zynthian_gui_keybinding import zynthian_gui_keybinding
+from zyngui import zynthian_gui_keybinding
 from zynlibs.zynseq import *
 
 #******************************************************************************
