@@ -20,14 +20,15 @@ __all__ = [
 	"zynthian_gui_control",
 	"zynthian_gui_control_xy",
 	"zynthian_gui_midi_profile",
-	"zynthian_gui_zs3_learn",
+	"zynthian_gui_zs3",
 	"zynthian_gui_zs3_options",
 	"zynthian_gui_confirm",
-	"zynthian_gui_main",
-	"zynthian_gui_audio_recorder",
+	"zynthian_gui_main_menu",
+	"zynthian_gui_chain_menu",
 	"zynthian_gui_midi_recorder",
 	"zynthian_gui_keyboard",
-	"zynthian_gui_control_test",
+	"zynthian_gui_tempo",
+	"zynthian_gui_control_test"
 ]
 
 import zyngui.zynthian_gui_config as zynthian_gui_config

@@ -25,9 +25,7 @@
 
 import logging
 import importlib
-from time import sleep
 from pathlib import Path
-from string import Template
 from datetime import datetime
 
 # Zynthian specific modules
@@ -259,6 +257,12 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.zgui_controllers.append(zynthian_gui_controller(i, self.main_frame, ctrl))
 
 
+	def get_zcontroller(self, i):
+		if i < len(self.zgui_controllers):
+			return self.zgui_controllers[i].zctrl
+		else:
+			return None
+
 	def set_xyselect_controllers(self):
 		for i in range(0, len(self.zgui_controllers)):
 			try:
@@ -416,7 +420,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				elif not self.zyngui.is_shown_alsa_mixer():
 					self.zyngui.cuia_bank_preset()
 					return True
-			else:
+			elif t == 'B':
 				self.back_action()
 				return False
 
@@ -511,6 +515,21 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	#--------------------------------------------------------------------------
+	# Options Menu
+	#--------------------------------------------------------------------------
+
+	def show_menu(self):
+		self.zyngui.cuia_chain_options()
+
+
+	def toggle_menu(self):
+		if self.shown:
+			self.show_menu()
+		elif self.zyngui.current_screen.endswith("_options"):
+			self.close_screen()
+
+
+	#--------------------------------------------------------------------------
 	# MIDI learn management
 	#--------------------------------------------------------------------------
 
@@ -532,8 +551,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if self.zyngui.midi_learn_mode:
 			self.zyngui.exit_midi_learn()
 			if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
-				self.zyngui.screens['zs3_learn'].index = 0
-				self.zyngui.show_screen("zs3_learn")
+				self.zyngui.screens['zs3'].index = 0
+				self.zyngui.show_screen("zs3")
 		else:
 			self.zyngui.enter_midi_learn()
 
@@ -553,19 +572,49 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def midi_unlearn(self, zctrl=None):
-		if zctrl:
+		if isinstance(zctrl, zynthian_controller):
 			zctrl.midi_unlearn()
+		elif isinstance(zctrl, int):
+			try:
+				self.zgui_controllers[zctrl].zctrl.midi_unlearn()
+			except Exception as e:
+				logging.error("Can't unlearn control {} => {}".format(zctrl, e))
 		elif self.zyngui.curlayer:
 			self.zyngui.screens['layer'].midi_unlearn()
 		self.zyngui.exit_midi_learn()
 
 
 	def midi_unlearn_action(self):
-		if self.zyngui.midi_learn_zctrl:
+		if self.zyngui.midi_learn_zctrl and self.zyngui.midi_learn_zctrl.midi_learn_cc:
 			self.zyngui.show_confirm("Do you want to clean MIDI-learn for '{}' control?".format(self.zyngui.midi_learn_zctrl.name), self.midi_unlearn, self.zyngui.midi_learn_zctrl)
 		elif self.zyngui.curlayer and self.zyngui.curlayer.engine:
 			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in {} on MIDI channel {}?".format(self.zyngui.curlayer.engine.name, self.zyngui.curlayer.midi_chan + 1), self.midi_unlearn)
 		self.exit_midi_learn()
+
+	def midi_learn_options(self, i, unlearn_only=False):
+		try:
+			options = {}
+			zctrl = self.zgui_controllers[i].zctrl
+			if not unlearn_only:
+				options["Learn '{}'...".format(zctrl.name)] = i
+				title = "Control MIDI-learn"
+			else:
+				title = "Control MIDI-unlearn"
+			if zctrl.midi_learn_cc:
+				options["Unlearn '{}'".format(zctrl.name)] = i
+			options["Unlearn All"] = None
+			self.zyngui.screens['option'].config(title, options, self.midi_learn_options_cb)
+			self.zyngui.show_screen('option')
+		except Exception as e:
+			logging.error("Can't show Control MIDI-learn options => {}".format(e))
+
+
+	def midi_learn_options_cb(self, option, param):
+		parts = option.split(" ")
+		if parts[0] == "Learn":
+			self.midi_learn(param)
+		elif parts[0] == "Unlearn":
+			self.midi_unlearn(param)
 
 
 	#--------------------------------------------------------------------------

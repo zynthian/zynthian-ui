@@ -64,9 +64,10 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		if t=='S':
+		if t == 'S':
 			self.zyngui.curlayer.set_preset(i)
-			self.zyngui.show_screen_reset('control')
+			self.zyngui.purge_screen_history("bank")
+			self.zyngui.close_screen()
 
 
 	def arrow_right(self):
@@ -99,6 +100,17 @@ class zynthian_gui_preset(zynthian_gui_selector):
 				options["Delete"] = preset
 		self.zyngui.screens['option'].config("Preset: {}".format(preset_name), options, self.preset_options_cb)
 		self.zyngui.show_screen('option')
+
+
+	def show_menu(self):
+		self.show_preset_options()
+
+
+	def toggle_menu(self):
+		if self.shown:
+			self.show_menu()
+		elif self.zyngui.current_screen == "option":
+			self.close_screen()
 
 
 	def preset_options_cb(self, option, preset):

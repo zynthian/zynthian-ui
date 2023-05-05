@@ -142,6 +142,7 @@ SEQ_EVENT* Track::getEvent()
 {
     // This function is called repeatedly for each clock period until no more events are available to populate JACK MIDI output schedule
     static SEQ_EVENT seqEvent; // A MIDI event timestamped for some imminent or future time
+    static uint32_t nStutterCount = 0; // Count stutters already added to this event
     if(m_nCurrentPatternPos < 0 || m_nNextEvent < 0)
         return NULL; //!@todo Can we stop between note on and note off being processed resulting in stuck note?
     // Track is being played and playhead is within a pattern
@@ -162,8 +163,6 @@ SEQ_EVENT* Track::getEvent()
             if(!pEvent || pEvent->getPosition() != m_nNextStep)
             {
                 // No more events or next event is not this step so move to next step
-//                if(++m_nNextStep >= pPattern->getSteps())
- //                   m_nNextStep = 0;
                 return NULL;
             }
         }
@@ -172,14 +171,26 @@ SEQ_EVENT* Track::getEvent()
             // Have not yet started to interpolate value
             m_nEventValue = pEvent->getValue2start();
             seqEvent.time = m_nLastClockTime;
+            nStutterCount = 0;
         }
         else if(pEvent->getValue2start() == m_nEventValue)
         {
+            //!@todo Don't get here if start and end values are the same, e.g. note on and off velocity are both 100
             // Already processed start value
-            m_nEventValue = pEvent->getValue2end(); //!@todo Currently just move straight to end value but should interpolate for CC
+            // Add note off/on for each stutter
             if(nCommand == MIDI_NOTE_ON)
-                seqEvent.msg.command = MIDI_NOTE_OFF | m_nChannel;
-            seqEvent.time = m_nLastClockTime + pEvent->getDuration() * pPattern->getClocksPerStep() * m_dSamplesPerClock - 1; // -1 to send note-off one sample before next step
+                seqEvent.msg.command = (nStutterCount % 2 ? MIDI_NOTE_ON:MIDI_NOTE_OFF) | m_nChannel;
+            seqEvent.time =  m_nLastClockTime + pEvent->getDuration() * pPattern->getClocksPerStep() * m_dSamplesPerClock - 1; // -1 to send note-off one sample before next step
+            if(pEvent->getStutterCount())
+            {
+                uint32_t stutter_time = m_nLastClockTime + pEvent->getStutterDur() * ++nStutterCount * m_dSamplesPerClock;
+                if(stutter_time < seqEvent.time && 2 * pEvent->getStutterCount() >= nStutterCount)
+                    seqEvent.time = stutter_time;
+                else
+                    m_nEventValue = pEvent->getValue2end();
+            }
+            else
+                m_nEventValue = pEvent->getValue2end(); //!@todo Currently just move straight to end value but should interpolate for CC
             //printf("Scheduling note off. Event duration: %u, clocks per step: %u, samples per clock: %u\n", pEvent->getDuration(), pPattern->getClocksPerStep(), m_nSamplePerClock);
         }
         seqEvent.msg.value1 = pEvent->getValue1start();

@@ -38,7 +38,7 @@ class zynthian_gui_save_preset():
 			self.save_preset_create_bank_name = None
 			self.save_preset_bank_info = None
 			self.layer.load_bank_list()
-			if not self.layer.bank_list or not self.layer.bank_list[0][0]:
+			if not self.layer.bank_list or not self.layer.bank_list[0][0] or self.layer.auto_save_bank:
 				self.save_preset_select_name_cb()
 				return
 			options = {}

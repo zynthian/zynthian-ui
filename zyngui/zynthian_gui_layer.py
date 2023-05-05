@@ -1657,6 +1657,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			# Get state
 			state = self.get_state()
 
+			# Snapshot file version
+			state['version'] = 1
+
 			# Extra engine state
 			state['extended_config'] = self.get_extended_config()
 
@@ -1698,6 +1701,21 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		return True
 
 
+	#	Fix snapshot, migrating to latest file format
+	#	snapshot: Snapshot state in JSON
+	#	Returns True on success
+	def fix_snapshot(self, snapshot):
+		version = 0
+		if 'version' in snapshot:
+			version = snapshot['version']
+
+		if version < 1:
+			# Version 1 2022-11-10
+			for lss in snapshot['layers']:
+				if 'Pianoteq' in lss['engine_name']:
+					lss['engine_name'] = 'Pianoteq' # Pevious version used Pianoteq<ver>
+
+
 	def load_snapshot(self, fpath, load_sequences=True):
 		try:
 			with open(fpath,"r") as fh:
@@ -1708,7 +1726,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			return False
 
 		try:
-			snapshot=JSONDecoder().decode(json)
+			snapshot = JSONDecoder().decode(json)
+			self.fix_snapshot(snapshot)
 			# Layers
 			self._load_snapshot_layers(snapshot)
 			# Sequences

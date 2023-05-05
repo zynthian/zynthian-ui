@@ -152,7 +152,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle changes to sequencer
 	def seq_cb(self, event):
 		if event in [zynseq.SEQ_EVENT_BANK]:
-			self.title = "Bank {}".format(self.zyngui.zynseq.bank)
+			self.title = "Scene {}".format(self.zyngui.zynseq.bank)
 			self.bank = self.zyngui.zynseq.bank
 			self.update_sequence_tracks()
 			self.redraw_pending = 4
@@ -183,14 +183,10 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	def show_menu(self):
 		self.disable_param_editor()
 		options = OrderedDict()
-		options['Bank ({})'.format(self.zyngui.zynseq.bank)] = 'Bank'
-		options['Tempo ({:0.1f})'.format(self.zyngui.zynseq.libseq.getTempo())] = 'Tempo'
+		options['Tempo'] = 'Tempo'
+		options['Arranger'] = 'Arranger'
 		options['Beats per bar ({})'.format(self.zyngui.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
-		if self.zyngui.zynseq.libseq.isMetronomeEnabled():
-			options['[X] Metronome'] = 'Metronome'
-		else:
-			options['[  ] Metronome'] = 'Metronome'
-		options['Metronome volume ({})'.format(int(100 * self.zyngui.zynseq.libseq.getMetronomeVolume()))] = 'Metronome volume'
+		options['Scene ({})'.format(self.zyngui.zynseq.bank)] = 'Scene'
 		options['> ARRANGER'] = None
 		if self.zyngui.zynseq.libseq.isMuted(self.zyngui.zynseq.bank, self.sequence, self.track):
 			options['Unmute track'] = 'Unmute track'
@@ -206,7 +202,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		if self.zyngui.zynseq.libseq.getTracksInSequence(self.zyngui.zynseq.bank, self.sequence) > 1:
 			options['Remove track {}'.format(self.track + 1)] = 'Remove track'
 		options['Clear sequence'] = 'Clear sequence'
-		options['Clear bank'] = 'Clear bank'
+		options['Clear scene'] = 'Clear scene'
 		options['Import SMF'] = 'Import SMF'
 		self.zyngui.screens['option'].config("Arranger Menu", options, self.menu_cb)
 		self.zyngui.show_screen('option')
@@ -220,20 +216,15 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 
 	def menu_cb(self, option, params):
-		if params == 'Bank':
-			self.enable_param_editor(self, 'bank', 'Bank', {'value_min':1, 'value_max':64, 'value':self.zyngui.zynseq.bank})
 		if params == 'Tempo':
-			self.enable_param_editor(self, 'tempo', 'Tempo', {'value_min':10, 'value_max':420, 'value_default':120, 'is_integer':False, 'nudge_factor':0.1, 'value':self.zyngui.zynseq.libseq.getTempo()})
-		if params == 'Beats per bar':
+			self.zyngui.show_screen('tempo')
+		elif params == 'Arranger':
+			self.zyngui.show_screen('arranger')
+		elif params == 'Beats per bar':
 			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsPerBar()})
-		elif params == 'Metronome':
-			self.zyngui.zynseq.libseq.enableMetronome(True)
-		elif params == '[X] Metronome':
-			self.zyngui.zynseq.libseq.enableMetronome(False)
-		elif params == 'Metronome volume':
-			self.enable_param_editor(self, 'metro_vol', 'Metro volume', {'value_min':0, 'value_max':100, 'value_default':100, 'value':int(100*self.zyngui.zynseq.libseq.getMetronomeVolume())})
-			self.zyngui.zynseq.libseq.enableMetronome(False)
-		if 'ute track' in params:
+		elif params == 'Scene':
+			self.enable_param_editor(self, 'scene', 'Scene', {'value_min':1, 'value_max':64, 'value':self.zyngui.zynseq.bank})
+		elif 'ute track' in params:
 			self.toggle_mute()
 		elif params == 'MIDI channel':
 			labels = []
@@ -261,14 +252,14 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			self.remove_track()
 		elif params == 'Clear sequence':
 			self.clear_sequence()
-		elif params == 'Clear bank':
-			self.zyngui.show_confirm("Clear all sequences from bank %d and reset to 4x4 grid of new sequences?" % (self.zyngui.zynseq.bank), self.do_clear_bank)
+		elif params == 'Clear scene':
+			self.zyngui.show_confirm("Clear all sequences from scene %d and reset to 4x4 grid of new sequences?" % (self.zyngui.zynseq.bank), self.do_clear_bank)
 		elif params == 'Import SMF':
 			self.select_smf()
 
 
 	def send_controller_value(self, zctrl):
-		if zctrl.symbol == 'bank':
+		if zctrl.symbol == 'scene':
 			self.zyngui.zynseq.select_bank(zctrl.value)
 		elif zctrl.symbol == 'tempo':
 			self.zyngui.zynseq.libseq.setTempo(zctrl.value)
@@ -487,7 +478,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 		self.setup_zynpots()
 		if not self.param_editor_zctrl:
-			self.set_title("Bank %d" % (self.zyngui.zynseq.bank))
+			self.set_title("Scene %d" % (self.zyngui.zynseq.bank))
 
 			# Update list of layers
 			#TODO: Probably need to change this for chainification???
@@ -688,9 +679,11 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		if pattern > 0:
 			self.zyngui.screens['pattern_editor'].channel = channel
 			self.zyngui.screens['pattern_editor'].load_pattern(pattern)
+			self.zyngui.zynseq.libseq.enableMidiRecord(False)
+			self.zyngui.screens['pattern_editor'].bank = 0
+			self.zyngui.screens['pattern_editor'].sequence = 0
 			self.zyngui.show_screen("pattern_editor")
 			return True
-
 
 
 	# Function to handle pattern click
@@ -1139,7 +1132,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to refresh playhead
-	def refresh_status(self, status):
+	def refresh_status(self, status={}):
 		super().refresh_status(status)
 		if self.redraw_pending:
 			self.draw_grid()
@@ -1187,7 +1180,8 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 			self.select_cell(self.selected_cell[0] + dval, self.selected_cell[1])
 		elif encoder == zynthian_gui_config.ENC_LAYER:
 			self.set_pattern(self.pattern + dval)
-		elif encoder == zynthian_gui_config.ENC_SNAPSHOT:
+		elif encoder == zynthian_gui_config.ENC_SNAPSHOT and zynthian_gui_config.transport_clock_source == 0:
+			self.zyngui.zynseq.update_tempo()
 			self.zyngui.zynseq.nudge_tempo(dval)
 			self.set_title("Tempo: {:.1f}".format(self.zyngui.zynseq.get_tempo()), None, None, 2)
 

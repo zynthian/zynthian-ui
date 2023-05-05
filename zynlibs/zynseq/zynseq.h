@@ -57,6 +57,11 @@ extern "C"
 {
 #endif
 
+enum TRANSPORT_CLOCK
+{
+    TRANSPORT_CLOCK_INTERNAL = 0,
+    TRANSPORT_CLOCK_MIDI = 1
+};
 
 // ** Library management functions **
 
@@ -192,10 +197,15 @@ void setTriggerNote(uint8_t bank, uint8_t sequence, uint8_t note);
 // ** Pattern management functions - pattern events are quantized to steps **
 //!@todo Current implementation selects a pattern then operates on it. API may be simpler to comprehend if patterns were acted on directly by passing the pattern index, e.g. clearPattern(index)
 
-/** @brief  Enable MIDI input to add notes to current pattern
+/** @brief  Enable record from MIDI input to add notes to current pattern
 *   @param  enable True to enable MIDI input
 */
-void enableMidiInput(bool enable);
+void enableMidiRecord(bool enable);
+
+/** @brief  Get MIDI record enable state
+*   @retval bool True if MIDI record enabled
+*/
+bool isMidiRecord();
 
 /** @brief  Create a new pattern
 *   @retval uint32_t Index of new pattern
@@ -314,6 +324,34 @@ uint8_t getNoteVelocity(uint32_t step, uint8_t note);
 */
 void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity);
 
+/** @brief  Get stutter count of note in selected pattern
+*   @param  step Index of step at which note resides
+*   @param  note MIDI note number
+*   @retval uint8_t Stutter count
+*/
+uint8_t getStutterCount(uint32_t step, uint8_t note);
+
+/** @brief  Set stutter count of note in selected pattern
+*   @param  step Index of step at which note resides
+*   @param  note MIDI note number
+*   @param  count Stutter count
+*/
+void setStutterCount(uint32_t step, uint8_t note, uint8_t count);
+
+/** @brief  Get stutter duration of note in selected pattern
+*   @param  step Index of step at which note resides
+*   @param  note MIDI note number
+*   @retval uint8_t Stutter duration in clock cycles
+*/
+uint8_t getStutterDur(uint32_t step, uint8_t note);
+
+/** @brief  Set stutter duration of note in selected pattern
+*   @param  step Index of step at which note resides
+*   @param  note MIDI note number
+*   @param  dur Stutter duration in clock cycles
+*/
+void setStutterDur(uint32_t step, uint8_t note, uint8_t dur);
+
 /** @brief  Get duration of note in selected pattern
 *   @param  position Index of step at which note starts
 *   @note   note MIDI note number
@@ -354,6 +392,16 @@ void changeVelocityAll(int value);
 */
 void changeDurationAll(float value);
 
+/** @brief  Change stutter count of all notes in patterm
+*   @param  value Offset to adjust +/-100 or whatever
+*/
+void changeStutterCountAll(int value);
+
+/** @brief  Change stutter duration of all notes in patterm
+*   @param  value Offset to adjust +/-100 or whatever
+*/
+void changeStutterDurAll(int value);
+
 /** @brief  Clears events from selected pattern
 *   @note   Does not change other parameters such as pattern length
 */
@@ -364,17 +412,6 @@ void clear();
 *   @param  destination Index of pattern to which to copy
 */
 void copyPattern(uint32_t source, uint32_t destination);
-
-/** @brief  Set MIDI input channel
-*   @param  channel MIDI channel [0..16]
-*   @note   >16 to disable MIDI input
-*/
-void setInputChannel(uint8_t channel);
-
-/** @brief  Get MIDI input channel
-*   @retval uint8_t MIDI channel [0..15, 0xFF if disabled]
-*/
-uint8_t getInputChannel();
 
 /** @brief  Set note used as rest when using MIDI input for pattern editing
 *   @param  note MIDI note number [0..127]
@@ -544,8 +581,9 @@ void togglePlayState(uint8_t bank, uint8_t sequence);
 /** @brief  Get quantity of tracks in a sequence
 *   @param  bank Index of bank
 *   @param  sequence Index of sequence
+*   @retval uint32_t Quantity of tracks in sequence
 */
-size_t getTracksInSequence(uint8_t bank, uint8_t sequence);
+uint32_t getTracksInSequence(uint8_t bank, uint8_t sequence);
 
 /** @brief  Stops all sequences
 */
@@ -669,6 +707,12 @@ uint8_t getMidiLearnBank();
 *   @retval uint8_t Sequence index
 */
 uint8_t getMidiLearnSequence();
+
+/** @brief  Set the pattern editor sequence
+*   @param  bank Bank index
+*   @param  sequence Sequence index
+*/
+void setSequence(uint8_t bank, uint8_t sequence);
 
 /** @brief  Set sequence name
 *   @param  bank Index of bank
@@ -842,7 +886,21 @@ void setMetronomeVolume(float level);
 */
 float getMetronomeVolume();
 
+/** @brief Get clock source
+*   @retval uint8_t Clock source [0:Internal 1:MIDI]
+*/
+uint8_t getClockSource();
+
+/** @brief Set clock source
+*   @param source uint8_t Clock source [0:Internal 1:MIDI]
+*/
+void setClockSource(uint8_t source);
+
+/** @brief  Get quantity of frames in each clock cycle
+*   @retval double Quantity of frames
+*/
+double getFramesPerClock(double dTempo);
+
 #ifdef __cplusplus
 }
 #endif
-

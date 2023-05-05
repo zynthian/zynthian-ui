@@ -109,7 +109,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		if 'audio_route' in eng_options and eng_options['audio_route']:
 			self.list_data.append((self.layer_audio_routing, None, "Audio Output..."))
 
-		if 'audio_rec' in eng_options:
+		if 'audio_rec' in eng_options and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
 			if self.zyngui.audio_recorder.get_status():
 				self.list_data.append((self.toggle_recording, None, "■ Stop Audio Recording"))
 			else:

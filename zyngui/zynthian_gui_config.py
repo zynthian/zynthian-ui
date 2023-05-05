@@ -36,8 +36,8 @@ import zynconf
 # Log level and debuging
 #------------------------------------------------------------------------------
 
-log_level=int(os.environ.get('ZYNTHIAN_LOG_LEVEL',logging.WARNING))
-#log_level=logging.DEBUG
+log_level = int(os.environ.get('ZYNTHIAN_LOG_LEVEL', logging.WARNING))
+#log_level = logging.DEBUG
 
 logging.basicConfig(format='%(levelname)s:%(module)s.%(funcName)s: %(message)s', stream=sys.stderr, level=log_level)
 logging.getLogger().setLevel(level=log_level)
@@ -51,24 +51,78 @@ logging.info("ZYNTHIAN-UI CONFIG ...")
 # Wiring layout
 #------------------------------------------------------------------------------
 
-ENC_LAYER			= 0
-ENC_BACK			= 1
-ENC_SNAPSHOT		= 2
-ENC_SELECT			= 3
+ENC_LAYER = 0
+ENC_BACK = 1
+ENC_SNAPSHOT = 2
+ENC_SELECT = 3
 
-wiring_layout=os.environ.get('ZYNTHIAN_WIRING_LAYOUT',"DUMMIES")
-if wiring_layout=="DUMMIES":
+wiring_layout = os.environ.get('ZYNTHIAN_WIRING_LAYOUT', "DUMMIES")
+if wiring_layout == "DUMMIES":
 	logging.info("No Wiring Layout configured. Only touch interface is available.")
 else:
 	logging.info("Wiring Layout %s" % wiring_layout)
-
-if wiring_layout=="PROTOTYPE-1":
-	select_ctrl=2
+if wiring_layout == "PROTOTYPE-1":
+	select_ctrl = 2
 else:
-	select_ctrl=3
+	select_ctrl = 3
 
-# Zynswitches timing
-zynswitch_bold_us = 1000 * 300 
+def check_wiring_layout(wls):
+	for wl in wls:
+		if wiring_layout.startswith(wl):
+			return True
+	return False
+
+#------------------------------------------------------------------------------
+# GUI layout
+#------------------------------------------------------------------------------
+
+gui_layout = os.environ.get('ZYNTHIAN_UI_GRAPHIC_LAYOUT', '')
+
+if not gui_layout:
+	if check_wiring_layout(["Z2", "V5"]):
+		gui_layout = "Z2"
+	else:
+		gui_layout = "V4"
+
+if gui_layout == "Z2":
+	layout = {
+		'name': 'Z2',
+		'columns': 2,
+		'rows': 4,
+		'ctrl_pos': [
+			(0, 1),
+			(1, 1),
+			(2, 1),
+			(3, 1)
+		],
+		'list_pos': (0, 0),
+		'ctrl_orientation': 'horizontal',
+		'ctrl_order': (0, 1, 2, 3),
+	}
+else:
+	layout = {
+		'name': 'V4',
+		'columns': 3,
+		'rows': 2,
+		'ctrl_pos': [
+			(0, 0),
+			(1, 0),
+			(0, 2),
+			(1, 2)
+		],
+		'list_pos': (0, 1),
+		'ctrl_orientation': 'vertical',
+		'ctrl_order': (0, 2, 1, 3),
+	}
+
+#------------------------------------------------------------------------------
+# Custom Switches Action Configuration
+#------------------------------------------------------------------------------
+
+custom_switch_ui_actions = []
+custom_switch_midi_events = []
+
+zynswitch_bold_us = 1000 * 300
 zynswitch_long_us = 1000 * 2000
 
 def config_zynswitch_timing():
@@ -85,12 +139,13 @@ def config_zynswitch_timing():
 	except Exception as e:
 		logging.error("ERROR configuring zynswitch timing: {}".format(e))
 
-#------------------------------------------------------------------------------
-# Custom Switches Action Configuration
-#------------------------------------------------------------------------------
 
-custom_switch_ui_actions = []
-custom_switch_midi_events = []
+def get_env_switch_action(varname):
+	action = os.environ.get(varname, "").strip()
+	if not action or action == "NONE":
+		action = None
+	return action
+
 
 def config_custom_switches():
 	global num_zynswitches
@@ -101,37 +156,47 @@ def config_custom_switches():
 	custom_switch_midi_events = []
 
 	for i in range(num_zynswitches):
-		cuias = {}
+		cuias = None
 		midi_event = None
 
 		root_varname = "ZYNTHIAN_WIRING_CUSTOM_SWITCH_{:02d}".format(i+1)
 		custom_type = os.environ.get(root_varname, "")
 
 		if custom_type == "UI_ACTION_PUSH":
-			cuias['P'] = os.environ.get(root_varname + "__UI_PUSH", "")
+			cuias = {}
+			cuias['P'] = get_env_switch_action(root_varname + "__UI_PUSH")
 			cuias['S'] = ""
 			cuias['B'] = ""
 			cuias['L'] = ""
+			cuias['AP'] = get_env_switch_action(root_varname + "__UI_ALT_PUSH")
+			cuias['AS'] = ""
+			cuias['AB'] = ""
+			cuias['AL'] = ""
 		elif custom_type == "UI_ACTION" or custom_type == "UI_ACTION_RELEASE":
+			cuias = {}
 			cuias['P'] = ""
-			cuias['S'] = os.environ.get(root_varname + "__UI_SHORT", "")
-			cuias['B'] = os.environ.get(root_varname + "__UI_BOLD", "")
-			cuias['L'] = os.environ.get(root_varname + "__UI_LONG", "")
+			cuias['S'] = get_env_switch_action(root_varname + "__UI_SHORT")
+			cuias['B'] = get_env_switch_action(root_varname + "__UI_BOLD")
+			cuias['L'] = get_env_switch_action(root_varname + "__UI_LONG")
+			cuias['AP'] = ""
+			cuias['AS'] = get_env_switch_action(root_varname + "__UI_ALT_SHORT")
+			cuias['AB'] = get_env_switch_action(root_varname + "__UI_ALT_BOLD")
+			cuias['AL'] = get_env_switch_action(root_varname + "__UI_ALT_LONG")
 		elif custom_type != "":
 			evtype = None
-			if custom_type=="MIDI_CC":
+			if custom_type == "MIDI_CC":
 				evtype = 0xB
-			elif custom_type=="MIDI_NOTE":
+			elif custom_type == "MIDI_NOTE":
 				evtype = 0x9
-			elif custom_type=="MIDI_PROG_CHANGE":
+			elif custom_type == "MIDI_PROG_CHANGE":
 				evtype = 0xC
-			elif custom_type=="CVGATE_IN":
+			elif custom_type == "CVGATE_IN":
 				evtype = -4
-			elif custom_type=="CVGATE_OUT":
+			elif custom_type == "CVGATE_OUT":
 				evtype = -5
-			elif custom_type=="GATE_OUT":
+			elif custom_type == "GATE_OUT":
 				evtype = -6
-			elif custom_type=="MIDI_CC_SWITCH":
+			elif custom_type == "MIDI_CC_SWITCH":
 				evtype = -7
 
 			if evtype:
@@ -156,7 +221,7 @@ def config_custom_switches():
 
 				try:
 					num = int(num)
-					if num>=0 and num<=127:
+					if num >= 0 and num <= 127:
 						midi_event = {
 							'type': evtype,
 							'chan': chan,
@@ -184,11 +249,11 @@ def get_zynsensor_config(root_varname):
 	evtype = None
 
 	event_type = os.environ.get(root_varname, "")
-	if event_type=="MIDI_CC":
+	if event_type == "MIDI_CC":
 		evtype = 0xB
-	elif event_type=="MIDI_PITCH_BEND":
+	elif event_type == "MIDI_PITCH_BEND":
 		evtype = 0xE
-	elif event_type=="MIDI_CHAN_PRESS":
+	elif event_type == "MIDI_CHAN_PRESS":
 		evtype = 0xD
 	else:
 		evtype = None
@@ -197,7 +262,7 @@ def get_zynsensor_config(root_varname):
 		chan = os.environ.get(root_varname + "__MIDI_CHAN")
 		try:
 			chan = int(chan) - 1
-			if chan<0 or chan>15:
+			if chan < 0 or chan > 15:
 				chan = None
 		except:
 			chan = None
@@ -205,7 +270,7 @@ def get_zynsensor_config(root_varname):
 		num = os.environ.get(root_varname + "__MIDI_NUM")
 		try:
 			num = int(num)
-			if num>=0 and num<=127:
+			if num >= 0 and num <= 127:
 				midi_event = {
 					'type': evtype,
 					'chan': chan,
@@ -268,31 +333,33 @@ def set_midi_config():
 	global master_midi_bank_change_up, master_midi_bank_change_down
 	global master_midi_bank_change_down_ccnum, master_midi_bank_base
 	global disabled_midi_in_ports, enabled_midi_out_ports, enabled_midi_fb_ports
+	global transport_clock_source, master_midi_note_cuia
 
 	# MIDI options
-	midi_fine_tuning=float(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING',440.0))
-	midi_single_active_channel=int(os.environ.get('ZYNTHIAN_MIDI_SINGLE_ACTIVE_CHANNEL',0))
-	midi_prog_change_zs3=int(os.environ.get('ZYNTHIAN_MIDI_PROG_CHANGE_ZS3',1))
-	midi_bank_change=int(os.environ.get('ZYNTHIAN_MIDI_BANK_CHANGE',0))
-	preset_preload_noteon=int(os.environ.get('ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON',1))
-	midi_filter_output=int(os.environ.get('ZYNTHIAN_MIDI_FILTER_OUTPUT',0))
-	midi_sys_enabled=int(os.environ.get('ZYNTHIAN_MIDI_SYS_ENABLED',1))
-	midi_cc_automode=int(os.environ.get('ZYNTHIAN_MIDI_CC_AUTOMODE',0))
-	midi_network_enabled=int(os.environ.get('ZYNTHIAN_MIDI_NETWORK_ENABLED',0))
-	midi_rtpmidi_enabled=int(os.environ.get('ZYNTHIAN_MIDI_RTPMIDI_ENABLED',0))
-	midi_touchosc_enabled=int(os.environ.get('ZYNTHIAN_MIDI_TOUCHOSC_ENABLED',0))
-	midi_aubionotes_enabled=int(os.environ.get('ZYNTHIAN_MIDI_AUBIONOTES_ENABLED',0))
+	midi_fine_tuning = float(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING', 440.0))
+	midi_single_active_channel = int(os.environ.get('ZYNTHIAN_MIDI_SINGLE_ACTIVE_CHANNEL', 0))
+	midi_prog_change_zs3 = int(os.environ.get('ZYNTHIAN_MIDI_PROG_CHANGE_ZS3', 1))
+	midi_bank_change = int(os.environ.get('ZYNTHIAN_MIDI_BANK_CHANGE', 0))
+	preset_preload_noteon = int(os.environ.get('ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON', 1))
+	midi_filter_output = int(os.environ.get('ZYNTHIAN_MIDI_FILTER_OUTPUT', 0))
+	midi_sys_enabled = int(os.environ.get('ZYNTHIAN_MIDI_SYS_ENABLED', 1))
+	midi_cc_automode = int(os.environ.get('ZYNTHIAN_MIDI_CC_AUTOMODE', 0))
+	midi_network_enabled = int(os.environ.get('ZYNTHIAN_MIDI_NETWORK_ENABLED', 0))
+	midi_rtpmidi_enabled = int(os.environ.get('ZYNTHIAN_MIDI_RTPMIDI_ENABLED', 0))
+	midi_touchosc_enabled = int(os.environ.get('ZYNTHIAN_MIDI_TOUCHOSC_ENABLED', 0))
+	midi_aubionotes_enabled = int(os.environ.get('ZYNTHIAN_MIDI_AUBIONOTES_ENABLED', 0))
+	transport_clock_source = int(os.environ.get('ZYNTHIAN_TRANSPORT_CLOCK_SOURCE', 0))
 
 	# Filter Rules
-	midi_filter_rules=os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES',"")
-	midi_filter_rules=midi_filter_rules.replace("\\n","\n")
+	midi_filter_rules = os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES', "")
+	midi_filter_rules = midi_filter_rules.replace("\\n", "\n")
 
 	# MIDI Ports
-	midi_ports=os.environ.get('ZYNTHIAN_MIDI_PORTS',"DISABLED_IN=\nENABLED_OUT=ttymidi:MIDI_out\nENABLED_FB=")
-	midi_ports=midi_ports.replace("\\n","\n")
-	disabled_midi_in_ports=zynconf.get_disabled_midi_in_ports(midi_ports)
-	enabled_midi_out_ports=zynconf.get_enabled_midi_out_ports(midi_ports)
-	enabled_midi_fb_ports=zynconf.get_enabled_midi_fb_ports(midi_ports)
+	midi_ports = os.environ.get('ZYNTHIAN_MIDI_PORTS', "DISABLED_IN=\nENABLED_OUT=ttymidi:MIDI_out\nENABLED_FB=")
+	midi_ports = midi_ports.replace("\\n", "\n")
+	disabled_midi_in_ports = zynconf.get_disabled_midi_in_ports(midi_ports)
+	enabled_midi_out_ports = zynconf.get_enabled_midi_out_ports(midi_ports)
+	enabled_midi_fb_ports = zynconf.get_enabled_midi_fb_ports(midi_ports)
 
 	# Master Channel Features
 	master_midi_channel = int(os. environ.get('ZYNTHIAN_MIDI_MASTER_CHANNEL', 0))
@@ -312,26 +379,26 @@ def set_midi_config():
 	#master_midi_bank_change_ccnum = int(os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_CCNUM',0x00))
 
 	mmpcu = os.environ.get('ZYNTHIAN_MIDI_MASTER_PROGRAM_CHANGE_UP', "")
-	if mmc_hex and len(mmpcu)==4:
-		master_midi_program_change_up = int('{:<06}'.format(mmpcu.replace('#',mmc_hex)),16)
+	if mmc_hex and len(mmpcu) == 4:
+		master_midi_program_change_up = int("{:<06}".format(mmpcu.replace('#', mmc_hex)), 16)
 	else:
 		master_midi_program_change_up = None
 
 	mmpcd = os.environ.get('ZYNTHIAN_MIDI_MASTER_PROGRAM_CHANGE_DOWN', "")
-	if mmc_hex and len(mmpcd)==4:
-		master_midi_program_change_down = int('{:<06}'.format(mmpcd.replace('#',mmc_hex)),16)
+	if mmc_hex and len(mmpcd) == 4:
+		master_midi_program_change_down = int("{:<06}".format(mmpcd.replace('#', mmc_hex)), 16)
 	else:
 		master_midi_program_change_down = None
 
 	mmbcu = os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_UP', "")
-	if mmc_hex and len(mmbcu)==6:
-		master_midi_bank_change_up = int('{:<06}'.format(mmbcu.replace('#',mmc_hex)),16)
+	if mmc_hex and len(mmbcu) == 6:
+		master_midi_bank_change_up = int("{:<06}".format(mmbcu.replace('#', mmc_hex)), 16)
 	else:
 		master_midi_bank_change_up = None
 
 	mmbcd = os.environ.get('ZYNTHIAN_MIDI_MASTER_BANK_CHANGE_DOWN', "")
-	if mmc_hex and len(mmbcd)==6:
-		master_midi_bank_change_down = int('{:<06}'.format(mmbcd.replace('#',mmc_hex)),16)
+	if mmc_hex and len(mmbcd) == 6:
+		master_midi_bank_change_down = int("{:<06}".format(mmbcd.replace('#', mmc_hex)), 16)
 	else:
 		master_midi_bank_change_down = None
 
@@ -341,55 +408,76 @@ def set_midi_config():
 	logging.debug("MMC Program Change UP: {}".format(master_midi_program_change_up))
 	logging.debug("MMC Program Change DOWN: {}".format(master_midi_program_change_down))
 
+	# Master Note CUIA
+	mmncuia_envar = os.environ.get('ZYNTHIAN_MIDI_MASTER_NOTE_CUIA', None)
+	if mmncuia_envar is None:
+		master_midi_note_cuia = zynconf.NoteCuiaDefault
+	else:
+		master_midi_note_cuia = {}
+		for cuianote in mmncuia_envar.split('\\n'):
+				cuianote = cuianote.strip()
+				if cuianote:
+					try:
+						parts = cuianote.split(':')
+						note = parts[0].strip()
+						cuia = parts[1].strip()
+						if note and cuia:
+							master_midi_note_cuia[note] = cuia
+						else:
+							raise Exception("Bad format!")
+					except Exception as e:
+						logging.warning("Bad MIDI Master Note CUIA config {} => {}".format(cuianote, e))
+
 
 #------------------------------------------------------------------------------
 # UI Color Parameters
 #------------------------------------------------------------------------------
 
-color_bg=os.environ.get('ZYNTHIAN_UI_COLOR_BG',"#000000")
-color_tx=os.environ.get('ZYNTHIAN_UI_COLOR_TX',"#ffffff")
-color_tx_off=os.environ.get('ZYNTHIAN_UI_COLOR_TX_OFF',"#e0e0e0")
-color_on=os.environ.get('ZYNTHIAN_UI_COLOR_ON',"#ff0000")
-color_off=os.environ.get('ZYNTHIAN_UI_COLOR_OFF',"#5a626d")
-color_hl=os.environ.get('ZYNTHIAN_UI_COLOR_HL',"#00b000")
-color_ml=os.environ.get('ZYNTHIAN_UI_COLOR_ML',"#f0f000")
-color_low_on=os.environ.get('ZYNTHIAN_UI_COLOR_LOW_ON',"#b00000")
-color_panel_bg=os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_BG',"#3a424d")
-color_panel_hl=os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_HL',"#2a323d")
-color_info=os.environ.get('ZYNTHIAN_UI_COLOR_INFO',"#8080ff")
-color_error=os.environ.get('ZYNTHIAN_UI_COLOR_ERROR',"#ff0000")
+color_bg = os.environ.get('ZYNTHIAN_UI_COLOR_BG', "#000000")
+color_tx = os.environ.get('ZYNTHIAN_UI_COLOR_TX', "#ffffff")
+color_tx_off = os.environ.get('ZYNTHIAN_UI_COLOR_TX_OFF', "#e0e0e0")
+color_on = os.environ.get('ZYNTHIAN_UI_COLOR_ON', "#ff0000")
+color_off = os.environ.get('ZYNTHIAN_UI_COLOR_OFF', "#5a626d")
+color_hl = os.environ.get('ZYNTHIAN_UI_COLOR_HL', "#00b000")
+color_ml = os.environ.get('ZYNTHIAN_UI_COLOR_ML', "#f0f000")
+color_low_on = os.environ.get('ZYNTHIAN_UI_COLOR_LOW_ON', "#b00000")
+color_panel_bg = os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_BG', "#3a424d")
+color_panel_hl = os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_HL', "#2a323d")
+color_info = os.environ.get('ZYNTHIAN_UI_COLOR_INFO', "#8080ff")
+color_midi = os.environ.get('ZYNTHIAN_UI_COLOR_MIDI', "#ff00ff")
+color_error = os.environ.get('ZYNTHIAN_UI_COLOR_ERROR', "#ff0000")
 
 # Color Scheme
-color_panel_bd=color_bg
-color_panel_tx=color_tx
-color_header_bg=color_bg
-color_header_tx=color_tx
-color_ctrl_bg_off=color_off
-color_ctrl_bg_on=color_on
-color_ctrl_tx=color_tx
-color_ctrl_tx_off=color_tx_off
-color_status_midi=color_info
-color_status_play=color_hl
-color_status_record=color_low_on
-color_status_error=color_error
+color_panel_bd = color_bg
+color_panel_tx = color_tx
+color_header_bg = color_bg
+color_header_tx = color_tx
+color_ctrl_bg_off = color_off
+color_ctrl_bg_on = color_on
+color_ctrl_tx = color_tx
+color_ctrl_tx_off = color_tx_off
+color_status_midi = color_midi
+color_status_play = color_hl
+color_status_record = color_low_on
+color_status_error = color_error
 
 #------------------------------------------------------------------------------
 # Font Family
 #------------------------------------------------------------------------------
 
-font_family=os.environ.get('ZYNTHIAN_UI_FONT_FAMILY',"Audiowide")
-#font_family="Helvetica" #=> the original ;-)
-#font_family="Economica" #=> small
-#font_family="Orbitron" #=> Nice, but too strange
-#font_family="Abel" #=> Quite interesting, also "Strait"
+font_family = os.environ.get('ZYNTHIAN_UI_FONT_FAMILY', "Audiowide")
+#font_family = "Helvetica" #=> the original ;-)
+#font_family = "Economica" #=> small
+#font_family = "Orbitron" #=> Nice, but too strange
+#font_family = "Abel" #=> Quite interesting, also "Strait"
 
 #------------------------------------------------------------------------------
 # Touch Options
 #------------------------------------------------------------------------------
 
-enable_touch_widgets=int(os.environ.get('ZYNTHIAN_UI_TOUCH_WIDGETS',False))
-enable_onscreen_buttons=int(os.environ.get('ZYNTHIAN_UI_ONSCREEN_BUTTONS',False))
-force_enable_cursor=int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR',False))
+enable_touch_widgets = int(os.environ.get('ZYNTHIAN_UI_TOUCH_WIDGETS', False))
+enable_onscreen_buttons = int(os.environ.get('ZYNTHIAN_UI_ONSCREEN_BUTTONS', False))
+force_enable_cursor = int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR', False))
 
 if wiring_layout.startswith("Z2") and not enable_onscreen_buttons:
 	enable_touch_controller_switches = 0
@@ -400,12 +488,11 @@ else:
 # UI Options
 #------------------------------------------------------------------------------
 
-restore_last_state=int(os.environ.get('ZYNTHIAN_UI_RESTORE_LAST_STATE',False))
-snapshot_mixer_settings=int(os.environ.get('ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS',False))
-show_cpu_status=int(os.environ.get('ZYNTHIAN_UI_SHOW_CPU_STATUS',False))
-visible_mixer_strips=int(os.environ.get('ZYNTHIAN_UI_VISIBLE_MIXER_STRIPS',0))
-multichannel_recorder=int(os.environ.get('ZYNTHIAN_UI_MULTICHANNEL_RECORDER', 0))
-ctrl_graph=int(os.environ.get('ZYNTHIAN_UI_CTRL_GRAPH', 1))
+restore_last_state = int(os.environ.get('ZYNTHIAN_UI_RESTORE_LAST_STATE', False))
+snapshot_mixer_settings = int(os.environ.get('ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS', False))
+visible_mixer_strips = int(os.environ.get('ZYNTHIAN_UI_VISIBLE_MIXER_STRIPS', 0))
+multichannel_recorder = int(os.environ.get('ZYNTHIAN_UI_MULTICHANNEL_RECORDER', 0))
+ctrl_graph = int(os.environ.get('ZYNTHIAN_UI_CTRL_GRAPH', 1))
 control_test_enabled = int(os.environ.get('ZYNTHIAN_UI_CONTROL_TEST_ENABLED', 0))
 power_save_secs = 60 * int(os.environ.get('ZYNTHIAN_UI_POWER_SAVE_MINUTES', 60))
 
@@ -413,21 +500,21 @@ power_save_secs = 60 * int(os.environ.get('ZYNTHIAN_UI_POWER_SAVE_MINUTES', 60))
 # Audio Options
 #------------------------------------------------------------------------------
 
-rbpi_headphones=int(os.environ.get('ZYNTHIAN_RBPI_HEADPHONES',False))
-enable_dpm=int(os.environ.get('ZYNTHIAN_DPM',True))
+rbpi_headphones = int(os.environ.get('ZYNTHIAN_RBPI_HEADPHONES', False))
+enable_dpm = int(os.environ.get('ZYNTHIAN_DPM', True))
 
 #------------------------------------------------------------------------------
 # Networking Options
 #------------------------------------------------------------------------------
 
-vncserver_enabled=int(os.environ.get('ZYNTHIAN_VNCSERVER_ENABLED',False))
+vncserver_enabled=int(os.environ.get('ZYNTHIAN_VNCSERVER_ENABLED', False))
 
 #------------------------------------------------------------------------------
 # Player configuration
 #------------------------------------------------------------------------------
 
-midi_play_loop=int(os.environ.get('ZYNTHIAN_MIDI_PLAY_LOOP',0))
-audio_play_loop=int(os.environ.get('ZYNTHIAN_AUDIO_PLAY_LOOP',0))
+midi_play_loop = int(os.environ.get('ZYNTHIAN_MIDI_PLAY_LOOP',0))
+audio_play_loop = int(os.environ.get('ZYNTHIAN_AUDIO_PLAY_LOOP',0))
 
 #------------------------------------------------------------------------------
 # Experimental features
@@ -439,17 +526,28 @@ experimental_features = os.environ.get('ZYNTHIAN_EXPERIMENTAL_FEATURES',"").spli
 # Sequence states
 #------------------------------------------------------------------------------
 
-PAD_COLOUR_DISABLED = '#2a2a2a'
+PAD_COLOUR_DISABLED = '#303030'
+PAD_COLOUR_DISABLED_LIGHT = '#505050'
 PAD_COLOUR_STARTING = '#ffbb00'
 PAD_COLOUR_PLAYING = '#00d000'
 PAD_COLOUR_STOPPING = 'red'
-PAD_COLOUR_STOPPED = [
-	'#000060',			#1 dark
-	'#048C8C',			#2 dark
-	'#996633',			#3 dark
-	'#0010A0',			#4 medium too similar to 12
-	'#BF9C7C',			#5 medium
-	'#999966',			#6 medium
+PAD_COLOUR_GROUP = [
+	'#662426',			# Red Granate
+	'#3c6964',			# Blue Aguamarine
+	'#4d6817',			# Green Pistacho
+	'#664980',			# Lila
+	'#4C709A',			# Mid Blue
+	'#4C94CC',			# Sky Blue
+	'#006000',			# Dark Green
+	'#B7AA5E',  		# Ocre
+	'#996633',  		# Maroon
+	'#746360',			# Dark Grey
+	'#D07272',			# Pink
+	'#000060',			# Blue sat.
+	'#048C8C',			# Turquesa
+	'#f46815',			# Orange
+	'#BF9C7C',			# Light Maroon
+	'#56A556',			# Light Green
 	'#FC6CB4',			#7 medium
 	'#CC8464',			#8 medium
 	'#4C94CC',			#9 medium
@@ -462,12 +560,23 @@ PAD_COLOUR_STOPPED = [
 	'#9C7CEC'			#16 light
 ]
 
+def color_variant(hex_color, brightness_offset=1):
+	""" takes a color like #87c95f and produces a lighter or darker variant """
+	if len(hex_color) != 7:
+		raise Exception("Passed %s into color_variant(), needs to be in #87c95f format." % hex_color)
+	rgb_hex = [hex_color[x:x + 2] for x in [1, 3, 5]]
+	new_rgb_int = [int(hex_value, 16) + brightness_offset for hex_value in rgb_hex]
+	new_rgb_int = [min([255, max([0, i])]) for i in new_rgb_int]  # make sure new values are between 0 and 255
+	# hex() produces "0x88", we want just "88"
+	return "#" + "".join([hex(i)[2:] for i in new_rgb_int])
+
+PAD_COLOUR_GROUP_LIGHT = [ color_variant(c, 40) for c in PAD_COLOUR_GROUP ]
 
 #------------------------------------------------------------------------------
 # X11 Related Stuff
 #------------------------------------------------------------------------------
 
-if "zynthian_gui.py" in sys.argv[0]:
+if "zynthian_main.py" in sys.argv[0]:
 	import tkinter
 	from PIL import Image, ImageTk
 
@@ -498,7 +607,7 @@ if "zynthian_gui.py" in sys.argv[0]:
 				display_height = 240
 
 		# Global font size
-		font_size = int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE',None))
+		font_size = int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE', None))
 		if not font_size:
 			font_size = int(display_width / 40)
 
@@ -507,43 +616,9 @@ if "zynthian_gui.py" in sys.argv[0]:
 		if display_width >= 800:
 			topbar_height = display_height // 12
 			topbar_fs = int(1.5*font_size)
-			title_y = int(0.1 * topbar_height)
 		else:
 			topbar_height = display_height // 10
 			topbar_fs = int(1.1*font_size)
-			title_y = int(0.05 * topbar_height)
-
-		# Controllers position and size
-		# pos(row,col)
-		if wiring_layout.startswith("Z2"):
-			layout = {
-				'name': 'Z2',
-				'columns': 2,
-				'rows': 4,
-				'ctrl_pos': [
-					(0,1),
-					(1,1),
-					(2,1),
-					(3,1)
-				],
-				'list_pos': (0,0),
-				'ctrl_orientation': 'horizontal'
-			}
-		else:
-			layout = {
-				'name': 'V4',
-				'columns': 3,
-				'rows': 2,
-				'ctrl_pos': [
-					(0,0),
-					(1,0),
-					(0,2),
-					(1,2)
-				],
-				'list_pos': (0,1),
-				'ctrl_orientation': 'vertical'
-			}
-
 
 		# Adjust Root Window Geometry
 		top.geometry(str(display_width)+'x'+str(display_height))
@@ -551,22 +626,22 @@ if "zynthian_gui.py" in sys.argv[0]:
 		top.minsize(display_width, display_height)
 
 		# Disable cursor for real Zynthian Boxes
-		if wiring_layout!="EMULATOR" and wiring_layout!="DUMMIES" and not force_enable_cursor:
-			top.config(cursor="none")
-		else:
+		if force_enable_cursor or wiring_layout == "EMULATOR" or wiring_layout == "DUMMIES":
 			top.config(cursor="cross")
+		else:
+			top.config(cursor="none")
 
 		#------------------------------------------------------------------------------
 		# Global Variables
 		#------------------------------------------------------------------------------
 
 		# Fonts
-		font_listbox = (font_family,int(1.0*font_size))
-		font_topbar = (font_family,topbar_fs)
-		font_buttonbar = (font_family,int(0.8*font_size))
+		font_listbox = (font_family, int(1.0*font_size))
+		font_topbar = (font_family, topbar_fs)
+		font_buttonbar = (font_family, int(0.8*font_size))
 
 		# Loading Logo Animation
-		loading_imgs=[]
+		loading_imgs = []
 		pil_frame = Image.open("./img/zynthian_gui_loading.gif")
 		fw, fh = pil_frame.size
 		fw2 = display_width // 4 - 8

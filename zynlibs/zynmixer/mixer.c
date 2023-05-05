@@ -260,10 +260,15 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                     {
                         fSampleA = fabs(fSampleA);
                         if(fSampleA > g_dynamic[chan].dpmA)
-                            g_dynamic[chan].dpmA = fSampleA;
-                        fSampleB = fabs(fSampleB);
+                            if(g_dynamic[chan].dpmA > 1.0)
+                                g_dynamic[chan].dpmA = 1.0;
+                            else
+                                g_dynamic[chan].dpmA = fSampleA;
                         if(fSampleB > g_dynamic[chan].dpmB)
-                            g_dynamic[chan].dpmB = fSampleB;
+                            if(g_dynamic[chan].dpmB > 1.0)
+                                g_dynamic[chan].dpmB = 1.0;
+                            else
+                                g_dynamic[chan].dpmB = fSampleB;
                     }
                 }
             }
@@ -371,14 +376,20 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         pOutB[frame] *= curLevelB;
         curLevelA += fDeltaA;
         curLevelB += fDeltaB;
-        fSampleA = fabs(pOutA[frame]);
         if(g_mainOutput.enable_dpm)
         {
+            fSampleA = fabs(pOutA[frame]);
             if(fSampleA > g_mainOutput.dpmA)
-                g_mainOutput.dpmA = fSampleA;
+                if(fSampleA > 1.0)
+                    g_mainOutput.dpmA = 1.0;
+                else
+                    g_mainOutput.dpmA = fSampleA;
             fSampleB = fabs(pOutB[frame]);
             if(fSampleB > g_mainOutput.dpmB)
-                g_mainOutput.dpmB = fSampleB;
+                if(fSampleB > 1.0)
+                    g_mainOutput.dpmB = 1.0;
+                else
+                    g_mainOutput.dpmB = fSampleB;
         }
     }
 

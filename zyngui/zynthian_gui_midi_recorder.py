@@ -89,7 +89,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			status = "REC"
 
 		if libsmf.getPlayState():
-			if status=="REC":
+			if status == "REC":
 				status = "PLAY+REC"
 			else:
 				status = "PLAY"
@@ -99,7 +99,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def build_view(self):
 		super().build_view()
-		if libsmf.getPlayState():
+		if zynthian_gui_config.transport_clock_source == 0 and libsmf.getPlayState():
 			self.show_playing_bpm()
 
 
@@ -152,14 +152,14 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 					logging.warning(e)
 
 				# Generate title
-				title = "{}[{}:{:02d}] {}".format(src_name, int(length/60), int(length%60), fname.replace(";",">",1).replace(";","/"))
+				title = "{}[{}:{:02d}] {}".format(src_name, int(length/60), int(length % 60), fname.replace(";", ">", 1).replace(";", "/"))
 
 				res.append({
 					'fpath': fpath,
 					'fname': fname,
 					'ext': fext,
-					'length' : length,
-					'mtime' : mtime,
+					'length': length,
+					'mtime': mtime,
 					'title': title
 				})
 
@@ -174,7 +174,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def update_status_playback(self):
 		if libsmf.getPlayState() == 0:
-			self.current_playback_fpath=None
+			self.current_playback_fpath = None
 
 		item_labels = self.listbox.get(0, tkinter.END)
 		for i, row in enumerate(self.list_data):
@@ -193,9 +193,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def update_status_recording(self, fill=False):
 		if self.list_data:
 			if libsmf.isRecording():
-				self.list_data[0] = ("STOP_RECORDING",0,"■ Stop MIDI Recording")
+				self.list_data[0] = ("STOP_RECORDING", 0, "■ Stop MIDI Recording")
 			else:
-				self.list_data[0] = ("START_RECORDING",0,"⬤ Start MIDI Recording")
+				self.list_data[0] = ("START_RECORDING", 0, "⬤ Start MIDI Recording")
 			if fill:
 				self.listbox.delete(0)
 				self.listbox.insert(0, self.list_data[0][2])
@@ -204,10 +204,10 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def update_status_loop(self, fill=False):
 		if zynthian_gui_config.midi_play_loop:
-			self.list_data[1] = ("LOOP",0,"[x] Loop Play")
+			self.list_data[1] = ("LOOP", 0, "[x] Loop Play")
 			libsmf.setLoop(True)
 		else:
-			self.list_data[1] = ("LOOP",0,"[  ] Loop Play")
+			self.list_data[1] = ("LOOP", 0, "[  ] Loop Play")
 			libsmf.setLoop(False)
 		if fill:
 			self.listbox.delete(1)
@@ -218,16 +218,16 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def select_action(self, i, t='S'):
 		fpath = self.list_data[i][0]
 
-		if fpath=="START_RECORDING":
+		if fpath == "START_RECORDING":
 			self.start_recording()
-		elif fpath=="STOP_PLAYING":
+		elif fpath == "STOP_PLAYING":
 			self.stop_playing()
-		elif fpath=="STOP_RECORDING":
+		elif fpath == "STOP_RECORDING":
 			self.stop_recording()
-		elif fpath=="LOOP":
+		elif fpath == "LOOP":
 			self.toggle_loop()
 		elif fpath:
-			if t=='S':
+			if t == 'S':
 				self.toggle_playing(fpath)
 			else:
 				self.zyngui.show_confirm("Do you really want to delete '{}'?".format(self.list_data[i][2]), self.delete_confirmed, fpath)
@@ -254,7 +254,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def get_new_filename(self):
 		try:
 			parts = self.zyngui.curlayer.get_presetpath().split('#',2)
-			file_name = parts[1].replace("/",";").replace(">",";").replace(" ; ",";")
+			file_name = parts[1].replace("/", ";").replace(">", ";").replace(" ; ", ";")
 		except:
 			file_name = "jack_capture"
 		return self.get_next_filenum() + '-' + file_name + '.mid'
@@ -315,7 +315,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			return
 
 		try:
-			zynsmf.load(self.smf_player,fpath)
+			zynsmf.load(self.smf_player, fpath)
 			tempo = libsmf.getTempo(self.smf_player, 0)
 			logging.info("STARTING MIDI PLAY '{}' => {}BPM".format(fpath, tempo))
 			self.zyngui.zynseq.set_tempo(tempo)
@@ -323,8 +323,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.zyngui.zynseq.transport_start("zynsmf")
 #			self.zyngui.zynseq.libseq.transportLocate(0)
 			self.current_playback_fpath=fpath
-			self.show_playing_bpm()
-			self.smf_timer = Timer(interval = 1, function=self.check_playback)
+			if zynthian_gui_config.transport_clock_source == 0:
+				self.show_playing_bpm()
+			self.smf_timer = Timer(interval=1, function=self.check_playback)
 			self.smf_timer.start()
 		except Exception as e:
 			logging.error("ERROR STARTING MIDI PLAY: %s" % e)
@@ -342,14 +343,14 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		if self.smf_timer:
 			self.smf_timer.cancel()
 			self.smf_timer = None
-		self.current_playback_fpath=None
+		self.current_playback_fpath = None
 		self.hide_playing_bpm()
 		#self.update_list()
 		self.update_status_playback()
 
 
 	def stop_playing(self):
-		if libsmf.getPlayState()!=zynsmf.PLAY_STATE_STOPPED:
+		if libsmf.getPlayState() != zynsmf.PLAY_STATE_STOPPED:
 			logging.info("STOPPING MIDI PLAY ...")
 			libsmf.stopPlayback()
 			sleep(0.1)
@@ -366,7 +367,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		if fpath is None:
 			fpath = self.get_current_track_fpath()
 
-		if fpath and fpath!=self.current_playback_fpath:
+		if fpath and fpath != self.current_playback_fpath:
 			self.start_playing(fpath)
 		else:
 			self.stop_playing()
@@ -386,10 +387,11 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.bpm_zgui_ctrl = zynthian_gui_controller(bmp_ctrl_index, self.main_frame, self.zyngui.zynseq.zctrl_tempo)
 			self.loading_canvas.grid_remove()
 			self.bpm_zgui_ctrl.grid(
-				row    = zynthian_gui_config.layout['ctrl_pos'][bmp_ctrl_index][0],
-				column = zynthian_gui_config.layout['ctrl_pos'][bmp_ctrl_index][1],
-				sticky = 'news'
+				row=zynthian_gui_config.layout['ctrl_pos'][bmp_ctrl_index][0],
+				column=zynthian_gui_config.layout['ctrl_pos'][bmp_ctrl_index][1],
+				sticky='news'
 			)
+		self.zyngui.zynseq.update_tempo()
 
 
 	def hide_playing_bpm(self):
@@ -442,7 +444,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def get_first_track_index(self):
 		for i, row in enumerate(self.list_data):
-			if row[1]>0:
+			if row[1] > 0:
 				return i
 		return None
 

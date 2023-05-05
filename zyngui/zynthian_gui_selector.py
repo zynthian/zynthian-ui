@@ -243,7 +243,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		if (len(cursel) > 0):
 			index = int(cursel[0])
 		else:
-			index=0
+			index = 0
 		return index
 
 
@@ -254,7 +254,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 			index = len(self.list_data) - 1
 		index = self.skip_separators(index)
 		# Set selection
-		self.listbox.selection_clear(0 ,tkinter.END)
+		self.listbox.selection_clear(0, tkinter.END)
 		if index is None:
 			return
 		self.listbox.selection_set(index)
@@ -309,7 +309,8 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 
 	def select(self, index=None):
-		if index is None: index = self.index
+		if index is None:
+			index = self.index
 		self.select_listbox(index)
 		if self.shown and self.zselector and self.zselector.zctrl.value != self.index:
 			self.zselector.zctrl.set_value(self.index, False)

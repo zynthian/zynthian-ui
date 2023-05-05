@@ -1,6 +1,6 @@
 zynseq file format (RIFF)
 =========================
-Version 7
+Version 8
 Pattern time is measured in steps.
 Sequence time is measured in MIDI clock cycles.
 
@@ -37,6 +37,8 @@ Block:
 		Value 2 start [1]
 		Value 1 end [1]
 		Value 2 end [1]
+		Stutter count [1]
+		Stutter duration [1]
 		Unused padding [1] = 0
 
 RIFF Header:
