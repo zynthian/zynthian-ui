@@ -456,7 +456,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.last_bank_dir = self.bank_dir
 			index = self.midi_banks[bn]
 			self.bank_dir = self.list_data[index][2]
-			logging.debug("Snapshot Bank Change {} => {}, {}".format(pn, index, self.bank_dir))
+			logging.debug("Snapshot Bank Change {} => {}, {}".format(bn, index, self.bank_dir))
 			self.zyngui.show_screen("snapshot")
 			return True
 		else:
