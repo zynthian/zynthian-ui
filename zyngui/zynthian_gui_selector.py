@@ -311,7 +311,8 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 
 	def select(self, index=None):
-		if index is None: index = self.index
+		if index is None:
+			index = self.index
 		self.select_listbox(index)
 		if self.shown and self.zselector and self.zselector.zctrl.value != self.index:
 			self.zselector.zctrl.set_value(self.index, False)

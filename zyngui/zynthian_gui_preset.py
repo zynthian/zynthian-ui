@@ -66,7 +66,8 @@ class zynthian_gui_preset(zynthian_gui_selector):
 	def select_action(self, i, t='S'):
 		if t=='S':
 			self.zyngui.get_current_processor().set_preset(i)
-			self.zyngui.show_screen_reset('control')
+			self.zyngui.purge_screen_history("bank")
+			self.zyngui.close_screen()
 
 
 	def arrow_right(self):

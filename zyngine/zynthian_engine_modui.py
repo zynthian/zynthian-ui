@@ -55,7 +55,8 @@ class zynthian_engine_modui(zynthian_engine):
 
 	bank_dirs = [
 		('EX', zynthian_engine.ex_data_dir + "/presets/mod-ui/pedalboards"),
-		('_', zynthian_engine.my_data_dir + "/presets/mod-ui/pedalboards")
+		# this is a symlink to zynthian_engine.my_data_dir + "/presets/mod-ui/pedalboards"
+		('_', os.path.expanduser("~/.pedalboards/"))
 	]
 
 	# ---------------------------------------------------------------------------

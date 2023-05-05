@@ -117,7 +117,6 @@ class zynthian_gui_base(tkinter.Frame):
 		self.title_timer = None
 
 		# Topbar's Select Path
-		self.title_y = zynthian_gui_config.title_y
 		self.select_path = tkinter.StringVar()
 		self.select_path.trace(tkinter.W, self.cb_select_path)
 		self.label_select_path = tkinter.Label(self.title_canvas,
@@ -126,7 +125,7 @@ class zynthian_gui_base(tkinter.Frame):
 			justify=tkinter.LEFT,
 			bg=zynthian_gui_config.color_header_bg,
 			fg=zynthian_gui_config.color_header_tx)
-		self.label_select_path.place(x=0, y=self.title_y)
+		self.label_select_path.place(x=0, rely=0.5, anchor='w')
 		# Setup Topbar's Callback
 		self.label_select_path.bind('<Button-1>', self.cb_topbar)
 		self.label_select_path.bind('<ButtonRelease-1>', self.cb_topbar_release)
@@ -364,6 +363,8 @@ class zynthian_gui_base(tkinter.Frame):
 	# Hide the view
 	def hide(self):
 		if self.shown:
+			if self.param_editor_zctrl:
+				self.disable_param_editor()
 			self.shown=False
 			self.grid_remove()
 
@@ -641,7 +642,7 @@ class zynthian_gui_base(tkinter.Frame):
 		self.select_path_width = self.select_path_font.measure(self.select_path.get())
 		self.select_path_offset = 0
 		self.select_path_dir = 2
-		self.label_select_path.place(x=0, y=self.title_y)
+		self.label_select_path.place(x=0, rely=0.5, anchor='w')
 
 
 	def cb_scroll_select_path(self):
@@ -657,20 +658,20 @@ class zynthian_gui_base(tkinter.Frame):
 		if self.select_path_width > self.title_canvas_width:
 			#Scroll label
 			self.select_path_offset += self.select_path_dir
-			self.label_select_path.place(x=-self.select_path_offset, y=self.title_y)
+			self.label_select_path.place(x=-self.select_path_offset, rely=0.5, anchor='w')
 
 			#Change direction ...
 			if self.select_path_offset > (self.select_path_width - self.title_canvas_width):
 				self.select_path_dir = -2
 				return True
-			elif self.select_path_offset<=0:
+			elif self.select_path_offset <= 0:
 				self.select_path_dir = 2
 				return True
 
 		elif self.select_path_offset != 0:
 			self.select_path_offset = 0
 			self.select_path_dir = 2
-			self.label_select_path.place(x=0, y=self.title_y)
+			self.label_select_path.place(x=0, rely=0.5, anchor='w')
 
 		return False
 

@@ -78,11 +78,12 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def __init__(self):
 
 		super().__init__()
+		os.makedirs(CONFIG_ROOT, exist_ok=True) #TODO: Do we want/need these dirs?
 		self.zynseq = self.zyngui.state_manager.zynseq
 
 		self.status_canvas.bind("<ButtonRelease-1>", self.cb_status_release)
 
-		os.makedirs(CONFIG_ROOT, exist_ok=True) #TODO: Do we want/need these dirs?
+		self.ctrl_order = zynthian_gui_config.layout['ctrl_order']
 
 		self.edit_mode = EDIT_MODE_NONE # Enable encoders to adjust duration and velocity
 		self.edit_param = EDIT_PARAM_DUR # Parameter to adjust in parameter edit mode
@@ -189,10 +190,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	#Function to set values of encoders
 	def setup_zynpots(self):
-		get_lib_zyncore().setup_behaviour_zynpot(zynthian_gui_config.ENC_LAYER, 0)
-		get_lib_zyncore().setup_behaviour_zynpot(zynthian_gui_config.ENC_BACK, 0)
-		get_lib_zyncore().setup_behaviour_zynpot(zynthian_gui_config.ENC_SNAPSHOT, 0)
-		get_lib_zyncore().setup_behaviour_zynpot(zynthian_gui_config.ENC_SELECT, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(0, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(1, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(2, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(3, 0)
 
 
 	# Function to show GUI
@@ -202,21 +203,38 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if self.bank is None:
 			self.bank = 0
 		if self.sequence == 0 and self.bank == 0:
-			self.zyngui.zynseq.libseq.setGroup(self.bank, self.sequence, 0xFF)
-		self.zyngui.zynseq.libseq.setSequence(self.bank, self.sequence)
+			self.zynseq.libseq.setGroup(self.bank, self.sequence, 0xFF)
+		self.zynseq.libseq.setSequence(self.bank, self.sequence)
 		self.copy_source = self.pattern
 		self.setup_zynpots()
 		if not self.param_editor_zctrl:
-			self.set_title("Pattern {}".format(self.pattern))
-		self.last_play_mode = self.zyngui.zynseq.libseq.getPlayMode(self.bank, self.sequence)
+			title = self.zynseq.get_sequence_name(self.bank, self.sequence)
+			try:
+				str(int(title))
+				chan = self.zynseq.libseq.getChannel(self.bank, self.sequence, 0)
+				layer = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(chan)
+				if layer:
+					title = layer.preset_name.replace("_", " ")
+				else:
+					group = chr(65 + self.zynseq.libseq.getGroup(self.bank, self.sequence))
+					title = f"{group}{title}"
+			except:
+				pass
+			if title:
+				self.set_title(f"Pattern {self.pattern} ({title})")
+			else:
+				self.set_title(f"Pattern {self.pattern}")
+		self.last_play_mode = self.zynseq.libseq.getPlayMode(self.bank, self.sequence)
 		if self.last_play_mode not in (zynseq.SEQ_LOOP,zynseq.SEQ_LOOPALL):
-			self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynseq.SEQ_LOOP)
+			self.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynseq.SEQ_LOOP)
 		if zynthian_gui_config.midi_single_active_channel:
 			try:
 				self.zyngui.chain_manager.set_active_chain_by_object(self.zyngui.chain_manager.midi_chan_2_chain[self.channel])
 			except:
 				pass
-
+		zoom = self.zynseq.libseq.getVerticalZoom()
+		if zoom != self.zoom:
+			self.set_vzoom(zoom)
 
 	# Function to enable note duration/velocity direct edit mode
 	#	mode: Edit mode to enable [EDIT_MODE_NONE | EDIT_MODE_SINGLE | EDIT_MODE_ALL]
@@ -237,9 +255,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to hide GUI
 	def hide(self):
+		if not self.shown:
+			return
 		super().hide()
 		if self.bank == 0 and self.sequence == 0:
-			self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STOPPED)
+			self.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STOPPED)
 		self.enable_edit(EDIT_MODE_NONE)
 		self.zynseq.libseq.setRefNote(self.keymap_offset)
 		self.zynseq.libseq.setPlayMode(self.bank, self.sequence, self.last_play_mode)
@@ -249,8 +269,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def show_menu(self):
 		self.disable_param_editor()
 		options = OrderedDict()
-		options[f'Tempo ({self.zynseq.libseq.getTempo():0.1f})'] = 'Tempo'
-		options['Arranger'] = 'Arranger'
+		extra_options = not zynthian_gui_config.check_wiring_layout(["Z2", "V5"])
+		if extra_options:
+			options['Tempo'] = 'Tempo'
+		if not zynthian_gui_config.check_wiring_layout(["Z2"]):
+			options['Arranger'] = 'Arranger'
 		options['Beats per bar ({})'.format(self.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
 		options['Beats in pattern ({})'.format(self.zynseq.libseq.getBeatsInPattern())] = 'Beats in pattern'
 		options['Steps per beat ({})'.format(self.zynseq.libseq.getStepsPerBeat())] = 'Steps per beat'
@@ -267,10 +290,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		else:
 			options['Rest note (None)'] = 'Rest note'
 		#options['Add program change'] = 'Add program change'
-		if self.zynseq.libseq.isMidiRecord():
-			options['[X] Record MIDI'] = 'midi_record'
-		else:
-			options['[  ] Record MIDI'] = 'midi_record'
+		if extra_options:
+			if self.zynseq.libseq.isMidiRecord():
+				options['[X] Record MIDI'] = 'midi_record'
+			else:
+				options['[  ] Record MIDI'] = 'midi_record'
 		options['Export to SMF'] = 'Export to SMF'
 		self.zyngui.screens['option'].config("Pattern Editor Menu", options, self.menu_cb)
 		self.zyngui.show_screen('option')
@@ -466,6 +490,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to set vertical zoom
 	def set_vzoom(self, value):
 		self.zoom = value
+		self.zynseq.libseq.setVerticalZoom(value)
 		self.update_row_height()
 		self.redraw_pending = 4
 		self.select_cell()
@@ -1027,7 +1052,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def load_pattern(self, index):
 		steps = self.zynseq.libseq.getSteps()
 		if self.bank == 0 and self.sequence == 0:
-			self.zyngui.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
+			self.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
 		self.pattern = index
 		self.zynseq.libseq.selectPattern(index)
 		if self.selected_cell[0] >= self.zynseq.libseq.getSteps():
@@ -1106,7 +1131,41 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if super().zynpot_cb(i, dval):
 			return
 
-		if i == zynthian_gui_config.ENC_LAYER:
+		if i == self.ctrl_order[0] and zynthian_gui_config.transport_clock_source == 0:
+			self.zyngui.state_manager.zynseq.update_tempo()
+			self.zyngui.state_manager.zynseq.nudge_tempo(dval)
+			self.set_title("Tempo: {:.1f}".format(self.zyngui.state_manager.zynseq.get_tempo()), None, None, 2)
+
+		elif i == self.ctrl_order[1]:
+			if self.edit_mode == EDIT_MODE_SINGLE:
+				if self.edit_param == EDIT_PARAM_DUR:
+					if dval > 0:
+						duration = (int(self.duration * 10) + 1) / 10
+					elif dval < 0:
+						duration = (int(self.duration * 10) - 1) / 10
+					if duration > self.zyngui.state_manager.zynseq.libseq.getSteps() or duration < 0.1:
+						return
+					self.duration = duration
+					note = self.keymap[self.selected_cell[1]]["note"]
+					if self.zyngui.state_manager.zynseq.libseq.getNoteDuration(self.selected_cell[0], note):
+						self.add_event(self.selected_cell[0], self.selected_cell[1])
+					else:
+						self.select_cell()
+					self.set_edit_title()
+			elif self.edit_mode == EDIT_MODE_ALL:
+				if self.edit_param == EDIT_PARAM_DUR:
+					if dval > 0:
+						self.zyngui.state_manager.zynseq.libseq.changeDurationAll(0.1)
+					if dval < 0:
+						self.zyngui.state_manager.zynseq.libseq.changeDurationAll(-0.1)
+					self.redraw_pending = 3
+			else:
+				patnum = self.pattern + dval
+				if patnum > 0:
+					self.pattern = patnum
+					self.load_pattern(self.pattern)
+
+		elif i == self.ctrl_order[2]:
 			if self.edit_mode == EDIT_MODE_SINGLE:
 				step = self.selected_cell[0]
 				note = self.get_note_from_row(self.selected_cell[1])
@@ -1163,34 +1222,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				elif self.edit_param == EDIT_PARAM_STUT_DUR:
 					self.zynseq.libseq.changeStutterDurAll(dval)
 					self.redraw_pending = 3
-
-		elif i == zynthian_gui_config.ENC_BACK:
-			if self.edit_mode == EDIT_MODE_SINGLE:
-				if self.edit_param == EDIT_PARAM_DUR:
-					if dval > 0:
-						duration = (int(self.duration * 10) + 1) / 10
-					elif dval < 0:
-						duration = (int(self.duration * 10) - 1) / 10
-					if duration > self.zynseq.libseq.getSteps() or duration < 0.1:
-						return
-					self.duration = duration
-					note = self.keymap[self.selected_cell[1]]["note"]
-					if self.zynseq.libseq.getNoteDuration(self.selected_cell[0], note):
-						self.add_event(self.selected_cell[0], self.selected_cell[1])
-					else:
-						self.select_cell()
-					self.set_edit_title()
-			elif self.edit_mode == EDIT_MODE_ALL:
-				if self.edit_param == EDIT_PARAM_DUR:
-					if dval > 0:
-						self.zynseq.libseq.changeDurationAll(0.1)
-					if dval < 0:
-						self.zynseq.libseq.changeDurationAll(-0.1)
-					self.redraw_pending = 3
 			else:
 				self.select_cell(None, self.selected_cell[1] - dval)
 
-		elif i == zynthian_gui_config.ENC_SELECT:
+		elif i == self.ctrl_order[3]:
 			if self.edit_mode == EDIT_MODE_SINGLE or self.edit_mode == EDIT_MODE_ALL:
 				self.edit_param += dval
 				if self.edit_param < 0:
@@ -1201,11 +1236,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			else:
 				self.select_cell(self.selected_cell[0] + dval, None)
 
-		elif i == zynthian_gui_config.ENC_SNAPSHOT:
-			if zynthian_gui_config.transport_clock_source == 0:
-				self.zynseq.update_tempo()
-				self.zynseq.nudge_tempo(dval)
-				self.set_title("Tempo: {:.1f}".format(self.zynseq.get_tempo()), None, None, 2)
 
 	# Function to handle SELECT button press
 	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
@@ -1241,36 +1271,29 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 
 	#	CUIA Actions
-	# Function to handle BACK
-	def back_action(self):
-		if self.edit_mode:
-			self.enable_edit(EDIT_MODE_NONE)
-			return True
-
-
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+		self.zynpot_cb(self.ctrl_order[3], 1)
 
 	# Function to handle CUIA ARROW_LEFT
 	def arrow_left(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+		self.zynpot_cb(self.ctrl_order[3], -1)
 
 
 	# Function to handle CUIA ARROW_UP
 	def arrow_up(self):
 		if self.param_editor_zctrl:
-			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+			self.zynpot_cb(self.ctrl_order[3], 1)
 		else:
-			self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
+			self.zynpot_cb(self.ctrl_order[2], -1)
 
 
 	# Function to handle CUIA ARROW_DOWN
 	def arrow_down(self):
 		if self.param_editor_zctrl:
-			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+			self.zynpot_cb(self.ctrl_order[3], -1)
 		else:
-			self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
+			self.zynpot_cb(self.ctrl_order[2], 1)
 
 
 	def start_playback(self):

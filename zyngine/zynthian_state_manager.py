@@ -798,47 +798,54 @@ class zynthian_state_manager:
     # Global Audio Player
     # ---------------------------------------------------------------------------
 
-    def start_audio_player(self):
-        """Start playback of global audio player"""
-
-        filename = self.audio_recorder.filename
-        if not filename or not os.path.exists(filename):
-            if os.path.ismount(self.audio_recorder.capture_dir_usb):
-                path = self.audio_recorder.capture_dir_usb
-            else:
-                path = self.audio_recorder.capture_dir_sdc
-            files = glob('{}/*.wav'.format(path))
-            if files:
-                filename = max(files, key=os.path.getctime)
-            else:
-                return
-
+    def create_audio_player(self):
         if not self.audio_player:
             try:
                 self.audio_player = zynthian_processor("AP", self.chain_manager.engine_info["AP"])
                 self.audio_player.midi_chan = 16
                 self.chain_manager.start_engine(self.audio_player, "AP")
+                self.audio_player.engine.set_play_on_load(True)
                 zynautoconnect.request_audio_connect(True)
             except Exception as e:
-                self.stop_audio_player()
-                zynautoconnect.request_midi_connect()
+                logging.error("Can't create global Audio Player instance")
                 return
-        self.audio_player.engine.set_preset(self.audio_player, [filename])
-        self.audio_player.engine.player.set_position(16, 0.0)
-        self.audio_player.engine.player.start_playback(16)
-        self.status_info['audio_player'] = 'PLAY'
 
-    def stop_audio_player(self):
-        """Stop playback of global audio player"""
 
+    def destroy_audio_player(self):
         if self.audio_player:
-            self.audio_player.engine.player.stop_playback(16)
             self.audio_player.engine.remove_processor(self.audio_player)
             self.audio_player = None
             try:
                 self.status_info.pop('audio_player')
-            except:
-                pass
+            except Exception as e:
+               logging.error("Can't destroy global Audio Player instance")
+
+
+
+    def start_audio_player(self):
+        filename = self.audio_recorder.filename
+        if filename and os.path.exists(filename):
+            self.audio_player.engine.set_preset(self.audio_player, [filename])
+            #self.audio_player.engine.player.set_position(16, 0.0)
+            self.audio_player.engine.player.start_playback(16)
+            self.audio_recorder.filename = None
+        elif self.audio_player.preset_name:
+            self.audio_player.controllers_dict['transport'].set_value('playing')
+        elif self.audio_player.engine.player.get_filename(16):
+            self.audio_player.engine.player.start_playback(16)
+        else:
+            self.show_screen("audio_player")
+            if self.audio_player.bank_name is None:
+                self.replace_screen('bank')
+                if len(self.audio_player.bank_list) == 1:
+                    self.screens['bank'].click_listbox()
+
+    def stop_audio_player(self):
+        if self.audio_player.preset_name:
+            self.audio_player.controllers_dict['transport'].set_value('stopped')
+        else:
+            self.audio_player.engine.player.stop_playback(16)
+
 
     def toggle_audio_player(self):
         """Toggle playback of global audio player"""

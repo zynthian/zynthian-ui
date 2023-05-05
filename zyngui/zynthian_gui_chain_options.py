@@ -63,7 +63,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			#TODO: Add mixer output audio routing
 			self.list_data.append((self.chain_audio_routing, None, "Audio Output..."))
 
-		if self.chain_id == "main":
+		if self.chain_id == "main" and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
 			if self.zyngui.state_manager.audio_recorder.get_status():
 				self.list_data.append((self.toggle_recording, None, "■ Stop Audio Recording"))
 			else:

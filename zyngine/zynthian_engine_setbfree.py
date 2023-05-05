@@ -78,61 +78,61 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
 
-	drawbar_ticks = [ ['0','1','2','3','4','5','6','7','8'], [127,119,103,87,71,55,39,23,7] ]
+	drawbar_ticks = [['0', '1', '2', '3', '4', '5', '6', '7', '8'], [127, 119, 103, 87, 71, 55, 39, 23, 7]]
+ 
 
 	# MIDI Controllers
 	_ctrls = [
-		['volume',7,96,127],
-#		['swellpedal 2',11,96],
-		['reverb',91,4,127],
-		['convol. mix',94,64,127],
+		['volume', 7, 96, 127],
+#              ['swellpedal 2', 11, 96],
+               ['reverb', 91, 4, 127],
+               ['convol. mix', 94, 64, 127],
 
-		['rotary toggle',64,'off','off|on'],
-#		['rotary speed',1,64,127],
-#		['rotary speed',1,'off','slow|off|fast'],
-		['rotary speed',1,'off',[['slow','off','fast'],[0,43,86]]],
-#		['rotary select',67,0,127],
-#		['rotary select',67,'off/off','off/off|slow/off|fast/off|off/slow|slow/slow|fast/slow|off/fast|slow/fast|fast/fast'],
-		['rotary select',67,'off/off',[['off/off','slow/off','fast/off','off/slow','slow/slow','fast/slow','off/fast','slow/fast','fast/fast'],[0,15,30,45,60,75,90,105,120]]],
+               ['rotary toggle', 64, 'off', 'off|on'],
+#              ['rotary speed', 1, 64, 127],
+#              ['rotary speed', 1, 'off', 'slow|off|fast'],
+               ['rotary speed', 1, 'off', [['slow', 'off', 'fast'], [0, 43, 86]]],
+#              ['rotary select', 67, 0, 127],
+#              ['rotary select', 67, 'off/off', 'off/off|slow/off|fast/off|off/slow|slow/slow|fast/slow|off/fast|slow/fast|fast/fast'],
+               ['rotary select', 67, 'off/off', [['off/off', 'slow/off', 'fast/off', 'off/slow', 'slow/slow', 'fast/slow', 'off/fast', 'slow/fast', 'fast/fast'], [0, 15, 30, 45, 60, 75, 90, 105, 120]]],
+               ['DB 16', 70, '8', drawbar_ticks],
+               ['DB 5 1/3', 71, '8', drawbar_ticks],
+               ['DB 8', 72, '8', drawbar_ticks],
+               ['DB 4', 73, '0', drawbar_ticks],
+               ['DB 2 2/3', 74, '0', drawbar_ticks],
+               ['DB 2', 75, '0', drawbar_ticks],
+               ['DB 1 3/5', 76, '0', drawbar_ticks],
+               ['DB 1 1/3', 77, '0', drawbar_ticks],
+               ['DB 1', 78, '0', drawbar_ticks],
 
-		['DB 16',70,'8',drawbar_ticks],
-		['DB 5 1/3',71,'8',drawbar_ticks],
-		['DB 8',72,'8',drawbar_ticks],
-		['DB 4',73,'0',drawbar_ticks],
-		['DB 2 2/3',74,'0',drawbar_ticks],
-		['DB 2',75,'0',drawbar_ticks],
-		['DB 1 3/5',76,'0',drawbar_ticks],
-		['DB 1 1/3',77,'0',drawbar_ticks],
-		['DB 1',78,'0',drawbar_ticks],
+               ['vibrato upper', 31, 'off', 'off|on'],
+               ['vibrato lower', 30, 'off', 'off|on'],
+               ['vibrato routing', 95, 'off', 'off|lower|upper|both'],
+               #['vibrato selector', 92, 'c3', 'v1|v2|v3|c1|c2|c3'],
+               ['vibrato selector', 92, 'c3', [['v1', 'v2', 'v3', 'c1', 'c2', 'c3'], [0, 23, 46, 69, 92, 115]]],
 
-		['vibrato upper',31,'off','off|on'],
-		['vibrato lower',30,'off','off|on'],
-		['vibrato routing',95,'off','off|lower|upper|both'],
-		#['vibrato selector',92,'c3','v1|v2|v3|c1|c2|c3'],
-		['vibrato selector',92,'c3',[['v1','v2','v3','c1','c2','c3'],[0,23,46,69,92,115]]],
+               #['percussion', 66, 'off' ,'off|on'],
+               ['percussion', 80, 'off', 'off|on'],
+               ['percussion volume', 81, 'soft', 'soft|hard'],
+               ['percussion decay', 82, 'slow', 'slow|fast'],
+               ['percussion harmonic', 83, '2nd', '2nd|3rd'],
 
-		#['percussion',66,'off','off|on'],
-		['percussion',80,'off','off|on'],
-		['percussion volume',81,'soft','soft|hard'],
-		['percussion decay',82,'slow','slow|fast'],
-		['percussion harmonic',83,'2nd','2nd|3rd'],
-
-		['overdrive',65,'off','off|on'],
-		['overdrive character',93,0,127],
-		['overdrive inputgain',21,45,127],
-		['overdrive outputgain',22,10,127]
+               ['overdrive', 65, 'off', 'off|on'],
+               ['overdrive character', 93, 0, 127],
+               ['overdrive inputgain', 21, 45, 127],
+               ['overdrive outputgain', 22, 10, 127]
 	]
 
 	# Controller Screens
 	_ctrl_screens = [
-		['main',['volume','percussion','rotary speed','vibrato routing']],
-		['drawbars 1',['DB 16','DB 5 1/3','DB 8','DB 4']],
-		['drawbars 2',['DB 2 2/3','DB 2','DB 1 3/5','DB 1 1/3']],
-		['drawbars 3 & reverb',['DB 1', 'reverb', 'convol. mix']],
-		['rotary',['rotary toggle','rotary select','rotary speed']],
-		['vibrato',['vibrato upper','vibrato lower','vibrato routing','vibrato selector']],
-		['percussion',['percussion','percussion decay','percussion harmonic','percussion volume']],
-		['overdrive',['overdrive','overdrive character','overdrive inputgain','overdrive outputgain']]
+		['main', ['volume', 'percussion', 'rotary speed', 'vibrato routing']],
+               ['drawbars 1', ['DB 16', 'DB 5 1/3', 'DB 8', 'DB 4']],
+               ['drawbars 2', ['DB 2 2/3', 'DB 2', 'DB 1 3/5', 'DB 1 1/3']],
+               ['drawbars 3 & reverb', ['DB 1', 'reverb', 'convol. mix']],
+               ['rotary', ['rotary toggle', 'rotary select', 'rotary speed']],
+               ['vibrato', ['vibrato upper', 'vibrato lower', 'vibrato routing', 'vibrato selector']],
+               ['percussion', ['percussion', 'percussion decay', 'percussion harmonic', 'percussion volume']],
+               ['overdrive', ['overdrive', 'overdrive character', 'overdrive inputgain', 'overdrive outputgain']]
 	]
 
 	# setBfree preset params => controllers
@@ -190,7 +190,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.tonewheel_model = None
 		self.show_favs_bank = False
 
-		#Process command ...
+		# Process command ...
 		if self.config_remote_display():
 			self.command = "setBfree -p \"{}\" -c \"{}\"".format(self.presets_fpath, self.config_autogen_fpath)
 		else:
@@ -267,9 +267,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 		# Get user's config
 		try:
 			with open(self.config_my_fpath, 'r') as my_cfg_file:
-				my_cfg_data=my_cfg_file.read()
+				my_cfg_data = my_cfg_file.read()
 		except:
-			my_cfg_data=""
+			my_cfg_data = ""
 		
 		# Dummy MIDI channel to use for disabled manuals
 		for disabled_midi_chan in range(15, -1, -1):
@@ -363,13 +363,13 @@ class zynthian_engine_setbfree(zynthian_engine):
 		else:
 			#self.show_favs_bank = True
 			if processor.bank_name == "Upper":
-				return [[self.base_dir + "/pgm-banks/upper/most_popular.pgm",0, "Upper", "_"]]
+				return [[self.base_dir + "/pgm-banks/upper/most_popular.pgm", 0, "Upper", "_"]]
 			elif processor.bank_name == "Lower":
-				return [[self.base_dir + "/pgm-banks/lower/lower_voices.pgm",0, "Lower", "_"]]
+				return [[self.base_dir + "/pgm-banks/lower/lower_voices.pgm", 0, "Lower", "_"]]
 			elif processor.bank_name == "Pedals":
-				return [[self.base_dir + "/pgm-banks/pedals/pedals.pgm",0, "Pedals", "_"]]
+				return [[self.base_dir + "/pgm-banks/pedals/pedals.pgm", 0, "Pedals", "_"]]
 
-		#return self.get_filelist(self.get_bank_dir(processor),"pgm")
+		#return self.get_filelist(self.get_bank_dir(processor), "pgm")
 
 
 	def set_bank(self, processor, bank):
@@ -397,7 +397,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 
 	def set_preset(self, processor, preset, preload=False):
-		if super().set_preset(processor,preset):
+		if super().set_preset(processor, preset):
 			self.update_controller_values(processor, preset)
 			return True
 		else:
@@ -430,25 +430,28 @@ class zynthian_engine_setbfree(zynthian_engine):
 			try:
 				zctrl=processor.controllers_dict[zcsymbol]
 
-				if zctrl.symbol=='rotary speed':
-					if v=='tremolo': v='fast'
-					elif v=='chorale': v='slow'
-					else: v='off'
+				if zctrl.symbol == 'rotary speed':
+					if v == 'tremolo':
+						v = 'fast'
+					elif v == 'chorale':
+						v = 'slow'
+					else:
+						v = 'off'
 
-				#logging.debug("Updating controller '{}' ({}) => {}".format(zctrl.symbol,zctrl.name,zctrl.value))
+				#logging.debug("Updating controller '{}' ({}) => {}".format(zctrl.symbol, zctrl.name,zctrl.value))
 				zctrl.set_value(v, True)
 
 				#Refresh GUI controller in screen when needed ...
-				#if self.state_manager.current_screen=='control':
+				#if self.state_manager.current_screen == 'control':
 				#TODO:	self.state_manager.screens['control'].set_controller_value(zctrl)
 
 			except Exception as e:
-				logging.debug("Can't update controller '{}' => {}".format(zcsymbol,e))
+				logging.debug("Can't update controller '{}' => {}".format(zcsymbol, e))
 
 
 	def midi_zctrl_change(self, zctrl, val):
 		try:
-			if val!=zctrl.get_value():
+			if val != zctrl.get_value():
 				zctrl.set_value(val)
 				#logging.debug("MIDI CC {} -> '{}' = {}".format(zctrl.midi_cc, zctrl.name, val))
 
@@ -468,63 +471,63 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 
 	def load_program_list(self,fpath):
-		pgm_list=None
+		pgm_list = None
 		try:
 			with open(fpath) as f:
-				pgm_list=[]
+				pgm_list = []
 				lines = f.readlines()
-				ptrn1=re.compile("^([\d]+)[\s]*\{[\s]*name\=\"([^\"]+)\"")
-				ptrn2=re.compile("[\s]*[\{\}\,]+[\s]*")
+				ptrn1 = re.compile("^([\d]+)[\s]*\{[\s]*name\=\"([^\"]+)\"")
+				ptrn2 = re.compile("[\s]*[\{\}\,]+[\s]*")
 				i=0
 				for line in lines:
 					#Test with first pattern
-					m=ptrn1.match(line)
+					m = ptrn1.match(line)
 					if not m: continue
 
 					#Get line parts...
-					fragments=ptrn2.split(line)
+					fragments = ptrn2.split(line)
 
-					params={}
+					params = {}
 					try:
 						#Get program MIDI number
-						prg=int(fragments[0])-1
-						if prg>=0:
+						prg = int(fragments[0]) - 1
+						if prg >= 0:
 							#Get params from line parts ...
 							for frg in fragments[1:]:
-								parts=frg.split('=')
+								parts = frg.split('=')
 								try:
-									params[parts[0].lower()]=parts[1].strip("\"\'")
+									params[parts[0].lower()] = parts[1].strip("\"\'")
 								except:
 									pass
 
 							#Extract program name
-							title=params['name']
+							title = params['name']
 							del params['name']
 
 							#Complete program params ...
 							#if 'vibrato' in params:
-							#	params['vibratoupper']='on'
-							#	params['vibratorouting']='upper'
+							#	params['vibratoupper'] = 'on'
+							#	params['vibratorouting'] = 'upper'
 
 							#Extract drawbars values
 							if 'drawbars' in params:
-								j=1
+								j = 1
 								for v in params['drawbars']:
 									if v in ['0','1','2','3','4','5','6','7','8']:
 										params['drawbar_'+str(j)]=v
-										j=j+1
+										j = j + 1
 								del params['drawbars']
 
 							#Add program to list
-							pgm_list.append([i,[0,0,prg],title,params])
-							i=i+1
+							pgm_list.append([i, [0, 0, prg], title, params])
+							i = i + 1
 					except:
 						#print("Ignored line: %s" % line)
 						pass
 
 		except Exception as err:
-			pgm_list=None
-			logging.error("Getting program info from %s => %s" % (fpath,err))
+			pgm_list = None
+			logging.error("Getting program info from %s => %s" % (fpath, err))
 
 		return pgm_list
 

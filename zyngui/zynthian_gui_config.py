@@ -67,8 +67,63 @@ if wiring_layout == "PROTOTYPE-1":
 else:
 	select_ctrl = 3
 
-# Zynswitches timing
-zynswitch_bold_us = 1000 * 300 
+def check_wiring_layout(wls):
+	for wl in wls:
+		if wiring_layout.startswith(wl):
+			return True
+	return False
+
+#------------------------------------------------------------------------------
+# GUI layout
+#------------------------------------------------------------------------------
+
+gui_layout = os.environ.get('ZYNTHIAN_UI_GRAPHIC_LAYOUT', '')
+
+if not gui_layout:
+	if check_wiring_layout(["Z2", "V5"]):
+		gui_layout = "Z2"
+	else:
+		gui_layout = "V4"
+
+if gui_layout == "Z2":
+	layout = {
+		'name': 'Z2',
+		'columns': 2,
+		'rows': 4,
+		'ctrl_pos': [
+			(0, 1),
+			(1, 1),
+			(2, 1),
+			(3, 1)
+		],
+		'list_pos': (0, 0),
+		'ctrl_orientation': 'horizontal',
+		'ctrl_order': (0, 1, 2, 3),
+	}
+else:
+	layout = {
+		'name': 'V4',
+		'columns': 3,
+		'rows': 2,
+		'ctrl_pos': [
+			(0, 0),
+			(1, 0),
+			(0, 2),
+			(1, 2)
+		],
+		'list_pos': (0, 1),
+		'ctrl_orientation': 'vertical',
+		'ctrl_order': (0, 2, 1, 3),
+	}
+
+#------------------------------------------------------------------------------
+# Custom Switches Action Configuration
+#------------------------------------------------------------------------------
+
+custom_switch_ui_actions = []
+custom_switch_midi_events = []
+
+zynswitch_bold_us = 1000 * 300
 zynswitch_long_us = 1000 * 2000
 
 def config_zynswitch_timing():
@@ -85,12 +140,6 @@ def config_zynswitch_timing():
 	except Exception as e:
 		logging.error("ERROR configuring zynswitch timing: {}".format(e))
 
-#------------------------------------------------------------------------------
-# Custom Switches Action Configuration
-#------------------------------------------------------------------------------
-
-custom_switch_ui_actions = []
-custom_switch_midi_events = []
 
 def get_env_switch_action(varname):
 	action = os.environ.get(varname, "").strip()
@@ -120,12 +169,20 @@ def config_custom_switches():
 			cuias['S'] = ""
 			cuias['B'] = ""
 			cuias['L'] = ""
+			cuias['AP'] = get_env_switch_action(root_varname + "__UI_ALT_PUSH")
+			cuias['AS'] = ""
+			cuias['AB'] = ""
+			cuias['AL'] = ""
 		elif custom_type == "UI_ACTION" or custom_type == "UI_ACTION_RELEASE":
 			cuias = {}
 			cuias['P'] = ""
 			cuias['S'] = get_env_switch_action(root_varname + "__UI_SHORT")
 			cuias['B'] = get_env_switch_action(root_varname + "__UI_BOLD")
 			cuias['L'] = get_env_switch_action(root_varname + "__UI_LONG")
+			cuias['AP'] = ""
+			cuias['AS'] = get_env_switch_action(root_varname + "__UI_ALT_SHORT")
+			cuias['AB'] = get_env_switch_action(root_varname + "__UI_ALT_BOLD")
+			cuias['AL'] = get_env_switch_action(root_varname + "__UI_ALT_LONG")
 		elif custom_type != "":
 			evtype = None
 			if custom_type == "MIDI_CC":
@@ -147,7 +204,7 @@ def config_custom_switches():
 				chan = os.environ.get(root_varname + "__MIDI_CHAN")
 				try:
 					chan = int(chan) - 1
-					if chan<0 or chan>15:
+					if chan < 0 or chan > 15:
 						chan = None
 				except:
 					chan = None
@@ -388,6 +445,7 @@ color_low_on = os.environ.get('ZYNTHIAN_UI_COLOR_LOW_ON', "#b00000")
 color_panel_bg = os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_BG', "#3a424d")
 color_panel_hl = os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_HL', "#2a323d")
 color_info = os.environ.get('ZYNTHIAN_UI_COLOR_INFO', "#8080ff")
+color_midi = os.environ.get('ZYNTHIAN_UI_COLOR_MIDI', "#ff00ff")
 color_error = os.environ.get('ZYNTHIAN_UI_COLOR_ERROR', "#ff0000")
 
 # Color Scheme
@@ -399,7 +457,7 @@ color_ctrl_bg_off = color_off
 color_ctrl_bg_on = color_on
 color_ctrl_tx = color_tx
 color_ctrl_tx_off = color_tx_off
-color_status_midi = color_info
+color_status_midi = color_midi
 color_status_play = color_hl
 color_status_record = color_low_on
 color_status_error = color_error
@@ -470,17 +528,28 @@ experimental_features = os.environ.get('ZYNTHIAN_EXPERIMENTAL_FEATURES', "").spl
 # Sequence states
 #------------------------------------------------------------------------------
 
-PAD_COLOUR_DISABLED = '#2a2a2a'
+PAD_COLOUR_DISABLED = '#303030'
+PAD_COLOUR_DISABLED_LIGHT = '#505050'
 PAD_COLOUR_STARTING = '#ffbb00'
 PAD_COLOUR_PLAYING = '#00d000'
 PAD_COLOUR_STOPPING = 'red'
-PAD_COLOUR_STOPPED = [
-	'#000060',			#1 dark
-	'#048C8C',			#2 dark
-	'#996633',			#3 dark
-	'#0010A0',			#4 medium too similar to 12
-	'#BF9C7C',			#5 medium
-	'#999966',			#6 medium
+PAD_COLOUR_GROUP = [
+	'#662426',			# Red Granate
+	'#3c6964',			# Blue Aguamarine
+	'#4d6817',			# Green Pistacho
+	'#664980',			# Lila
+	'#4C709A',			# Mid Blue
+	'#4C94CC',			# Sky Blue
+	'#006000',			# Dark Green
+	'#B7AA5E',  		# Ocre
+	'#996633',  		# Maroon
+	'#746360',			# Dark Grey
+	'#D07272',			# Pink
+	'#000060',			# Blue sat.
+	'#048C8C',			# Turquesa
+	'#f46815',			# Orange
+	'#BF9C7C',			# Light Maroon
+	'#56A556',			# Light Green
 	'#FC6CB4',			#7 medium
 	'#CC8464',			#8 medium
 	'#4C94CC',			#9 medium
@@ -493,6 +562,17 @@ PAD_COLOUR_STOPPED = [
 	'#9C7CEC'			#16 light
 ]
 
+def color_variant(hex_color, brightness_offset=1):
+	""" takes a color like #87c95f and produces a lighter or darker variant """
+	if len(hex_color) != 7:
+		raise Exception("Passed %s into color_variant(), needs to be in #87c95f format." % hex_color)
+	rgb_hex = [hex_color[x:x + 2] for x in [1, 3, 5]]
+	new_rgb_int = [int(hex_value, 16) + brightness_offset for hex_value in rgb_hex]
+	new_rgb_int = [min([255, max([0, i])]) for i in new_rgb_int]  # make sure new values are between 0 and 255
+	# hex() produces "0x88", we want just "88"
+	return "#" + "".join([hex(i)[2:] for i in new_rgb_int])
+
+PAD_COLOUR_GROUP_LIGHT = [ color_variant(c, 40) for c in PAD_COLOUR_GROUP ]
 
 #------------------------------------------------------------------------------
 # X11 Related Stuff
@@ -538,46 +618,9 @@ if "zynthian_main.py" in sys.argv[0]:
 		if display_width >= 800:
 			topbar_height = display_height // 12
 			topbar_fs = int(1.5*font_size)
-			title_y = int(0.1 * topbar_height)
 		else:
 			topbar_height = display_height // 10
 			topbar_fs = int(1.1*font_size)
-			title_y = int(0.05 * topbar_height)
-
-		# Controllers position and size
-		# pos(row,col)
-		if wiring_layout.startswith("Z2") or wiring_layout.startswith("V5"):
-			layout = {
-				'name': 'Z2',
-				'columns': 2,
-				'rows': 4,
-				'ctrl_pos': [
-					(0, 1),
-					(1, 1),
-					(2, 1),
-					(3, 1)
-				],
-				'list_pos': (0, 0),
-				'ctrl_orientation': 'horizontal',
-				'ctrl_order': (0, 1, 2, 3),
-				'menu': 'chain_menu'
-			}
-		else:
-			layout = {
-				'name': 'V4',
-				'columns': 3,
-				'rows': 2,
-				'ctrl_pos': [
-					(0, 0),
-					(1, 0),
-					(0, 2),
-					(1, 2)
-				],
-				'list_pos': (0, 1),
-				'ctrl_orientation': 'vertical',
-				'ctrl_order': (0, 2, 1, 3),
-				'menu': 'main_menu'
-			}
 
 		# Adjust Root Window Geometry
 		top.geometry(str(display_width)+'x'+str(display_height))
@@ -585,10 +628,10 @@ if "zynthian_main.py" in sys.argv[0]:
 		top.minsize(display_width, display_height)
 
 		# Disable cursor for real Zynthian Boxes
-		if wiring_layout != "EMULATOR" and wiring_layout != "DUMMIES" and not force_enable_cursor:
-			top.config(cursor="none")
-		else:
+		if force_enable_cursor or wiring_layout == "EMULATOR" or wiring_layout == "DUMMIES":
 			top.config(cursor="cross")
+		else:
+			top.config(cursor="none")
 
 		#------------------------------------------------------------------------------
 		# Global Variables
@@ -600,7 +643,7 @@ if "zynthian_main.py" in sys.argv[0]:
 		font_buttonbar = (font_family, int(0.8*font_size))
 
 		# Loading Logo Animation
-		loading_imgs=[]
+		loading_imgs = []
 		pil_frame = Image.open("./img/zynthian_gui_loading.gif")
 		fw, fh = pil_frame.size
 		fw2 = display_width // 4 - 8

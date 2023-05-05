@@ -67,9 +67,6 @@ class zynthian_basic_engine:
 		self.command_cwd = cwd
 		self.ignore_not_on_gui = False
 
-	def __del__(self):
-		self.stop()
-
 
 	# ---------------------------------------------------------------------------
 	# Subprocess Management & IPC
@@ -193,10 +190,6 @@ class zynthian_engine(zynthian_basic_engine):
 		self.preset_favs = None
 		self.preset_favs_fpath = None
 		self.show_favs_bank = True
-
-
-	def __del__(self):
-		self.stop()
 
 
 	def reset(self):
