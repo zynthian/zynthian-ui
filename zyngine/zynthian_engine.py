@@ -68,9 +68,6 @@ class zynthian_basic_engine:
 		self.command_cwd = cwd
 		self.ignore_not_on_gui = False
 
-	def __del__(self):
-		self.stop()
-
 
 	# ---------------------------------------------------------------------------
 	# Subproccess Management & IPC
@@ -201,10 +198,6 @@ class zynthian_engine(zynthian_basic_engine):
 
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 		self.learned_zctrls = {}
-
-
-	def __del__(self):
-		self.stop()
 
 
 	def reset(self):
