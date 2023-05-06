@@ -141,9 +141,9 @@ def cb_keybinding(event):
 		# Emulate Zynswitch Push/Release with KeyPress/KeyRelease
 		if cuia.lower().startswith("zynswitch"):
 			if event.type == EventType.KeyPress:
-				cuia += " P"
+				cuia += ",P"
 			else:
-				cuia += " R"
+				cuia += ",R"
 			zyngui.cuia_queue.put_nowait(cuia)
 		# Or normal CUIA
 		elif event.type == EventType.KeyPress:

@@ -494,6 +494,8 @@ class zynthian_gui:
 				self.current_processor = self.state_manager.audio_player
 			else:
 				return
+		else:
+			self.current_processor = self.get_current_processor()
 
 		if screen not in ("bank", "preset", "option"):
 			self.chain_manager.restore_presets()
@@ -826,7 +828,6 @@ class zynthian_gui:
 	def get_cuia_list(cls):
 		return [method[5:].upper() for method in dir(cls) if method.startswith('cuia_') is True]
 
-
 	def callable_ui_action(self, cuia, params=None):
 		logging.debug("CUIA '{}' => {}".format(cuia, params))
 		try:
@@ -836,6 +837,23 @@ class zynthian_gui:
 
 		cuia_func(params)
 
+	def parse_cuia_params(self, params_str):
+		params = []
+		for i, p in enumerate(params_str.split(",")):
+			try:
+				params.append(int(p))
+			except:
+				params.append(p.strip())
+		return params
+
+	def callable_ui_action_params(self, cuia_str):
+		parts = cuia_str.split(" ", 2)
+		cuia = parts[0]
+		if len(parts) > 1:
+			params = self.parse_cuia_params(parts[1])
+		else:
+			params = None
+		self.callable_ui_action(cuia, params)
 
 	# System actions CUIA
 	def cuia_test_mode(self, params):
@@ -1012,8 +1030,8 @@ class zynthian_gui:
 	# Zynpot & Zynswitch emulation CUIAs (low level)
 	def cuia_zynpot(self, params=None):
 		try:
-			i = params[0]
-			d = params[1]
+			i = int(params[0])
+			d = int(params[1])
 			self.get_current_screen_obj().zynpot_cb(i, d)
 		except IndexError:
 			logging.error("zynpot requires 2 parameters: index, delta, not {params}")
@@ -1025,7 +1043,7 @@ class zynthian_gui:
 		try:
 			i = params[0]
 			d = params[1]
-			self.cuia_queue.put_nowait(f"zynswitch i d")
+			self.cuia_queue.put_nowait(["zynswitch", [i,d]])
 		except IndexError:
 			logging.error("zynswitch requires 2 parameters: index, delta, not {params}")
 			return
@@ -1373,7 +1391,7 @@ class zynthian_gui:
 		if t in action_config:
 			cuia = action_config[t]
 			if cuia:
-				self.cuia_queue.put_nowait(cuia)
+				self.callable_ui_action_params(cuia)
 				return True
 
 	def is_current_screen_menu(self):
@@ -1413,7 +1431,7 @@ class zynthian_gui:
 			# dtus is 0 of switched pressed, dur of last press or -1 if already processed
 			dtus = get_lib_zyncore().get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
 			if dtus >= 0:
-				self.cuia_queue.put_nowait(f"zynswitch {i} {self.zynswitch_timing(dtus)}")
+				self.cuia_queue.put_nowait(["zynswitch", [i,self.zynswitch_timing(dtus)]])
 			i += 1
 
 	def zynswitch_timing(self, dtus):
@@ -1449,7 +1467,7 @@ class zynthian_gui:
 		# Custom ZynSwitches
 		elif i >= 4:
 			logging.debug('Push Switch ' + str(i))
-			return self.custom_switch_ui_action(i-4, "P")
+			return self.custom_switch_ui_action(i - 4, "P")
 
 
 	def zynswitch_long(self, i):
@@ -1505,7 +1523,7 @@ class zynthian_gui:
 
 
 	def zynswitch_short(self, i):
-		logging.debug('Short Switch '+str(i))
+		logging.debug('Short Switch ' + str(i))
 
 		try:
 			if self.screens[self.current_screen].switch(i, 'S'):
@@ -1528,7 +1546,7 @@ class zynthian_gui:
 
 		# Custom ZynSwitches
 		elif i >= 4:
-			return self.custom_switch_ui_action(i-4, "S")
+			return self.custom_switch_ui_action(i - 4, "S")
 
 
 	def zynswitch_double(self, i):
@@ -1996,16 +2014,11 @@ class zynthian_gui:
 				if isinstance(event, str):
 					if event == "__EXIT__":
 						break
-					# comma seperated cuia, params...
-					parts = event.split(' ')
+					# space seperated cuia param,param...
+					parts = event.split(" ", 2)
 					cuia = parts.pop(0).lower()
 					if parts:
-						params = []
-						for p in parts:
-							try:
-								params.append(int(p))
-							except:
-								params.append(p.strip())
+						params = parts[0].split(",")
 				else:
 					# list [cuia, [params]]
 					cuia = event[0].lower()
@@ -2015,7 +2028,7 @@ class zynthian_gui:
 				if cuia == "zynswitch":
 					# zynswitch has parameters: [switch, action] where action is P(ressed), R(eleased), S(hort), B(old), L(ong), X or Y
 					try:
-						i = params[0]
+						i = int(params[0])
 						t = params[1]
 						if t == 'R':
 							val = zynswitch_cuia_ts[i]
@@ -2023,7 +2036,7 @@ class zynthian_gui:
 							if val > 0:
 								dtus = int(1000000 * (monotonic() - val))
 								t = self.zynswitch_timing(dtus)
-						if t == 'P':
+						elif t == 'P':
 							if self.zynswitch_push(i):
 								zynswitch_cuia_ts[i] = -REPEAT_DELAY
 							else:

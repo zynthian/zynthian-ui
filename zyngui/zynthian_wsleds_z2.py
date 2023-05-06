@@ -110,7 +110,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 		if curscreen == "control":
 			self.wsleds.setPixelColor(10, self.wscolor_active)
 		elif curscreen in ("preset", "bank"):
-			if self.zyngui.curlayer.get_show_fav_presets():
+			if self.zyngui.current_processor.get_show_fav_presets():
 				self.blink(10, self.wscolor_active2)
 			else:
 				self.wsleds.setPixelColor(10, self.wscolor_active2)
