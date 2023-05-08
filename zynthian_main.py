@@ -139,7 +139,7 @@ def cb_keybinding(event):
 	cuia = zynthian_gui_keybinding.get_key_action(event.keycode, event.state)
 	if cuia is not None:
 		# Emulate Zynswitch Push/Release with KeyPress/KeyRelease
-		if cuia.lower().startswith("zynswitch"):
+		if cuia.lower().startswith("zyn"):
 			if event.type == EventType.KeyPress:
 				cuia += ",P"
 			else:

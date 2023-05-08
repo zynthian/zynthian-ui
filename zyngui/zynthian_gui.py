@@ -2005,6 +2005,7 @@ class zynthian_gui:
 		"""
 
 		zynswitch_cuia_ts = [None] * (zynthian_gui_config.num_zynswitches + 4)
+		zynpot_cuia_ts = [None] * (zynthian_gui_config.num_zynpots)
 		REPEAT_DELAY = 3 # Quantity of repeat intervals to delay before triggering auto repeat
 		REPEAT_INTERVAL = 0.15 # Auto repeat interval in seconds
 
@@ -2065,6 +2066,17 @@ class zynthian_gui:
 					except Exception as err:
 						logging.error(f"CUIA zynswitch needs 2 parameters: index, action_type, not {params}")
 
+				elif cuia == "zynpot":
+					# zynpot has parameters: [pot, delta] where delta is P(ressed), R(eleased), +/-offset
+					try:
+						if params[2] == 'R':
+							zynpot_cuia_ts[i] = None
+						elif params[2] == 'P':
+							self.cuia_zynpot(params[:2])
+							zynpot_cuia_ts[i] = [REPEAT_DELAY, params]
+					except:
+						self.cuia_zynpot(params[0], params[1])
+
 				else:
 					try:
 						cuia_func = getattr(self, "cuia_" + cuia)
@@ -2075,6 +2087,7 @@ class zynthian_gui:
 				self.set_event_flag()
 
 			except Empty:
+				#TODO: Optimise - we probably only have one key pressed at a time...
 				for i, ts in enumerate(zynswitch_cuia_ts):
 					if ts is None:
 						continue
@@ -2082,6 +2095,13 @@ class zynthian_gui:
 						zynswitch_cuia_ts[i] += 1
 					if zynswitch_cuia_ts[i] == 0:
 						self.zynswitch_push(i)
+				for i, ts in enumerate(zynpot_cuia_ts):
+					if ts is None:
+						continue
+					if ts[0]:
+						zynpot_cuia_ts[i][0] -= 1
+					else:
+						self.cuia_zynpot(zynpot_cuia_ts[i][1])
 			except:
 				pass
 
