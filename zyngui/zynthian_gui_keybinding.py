@@ -199,7 +199,7 @@ def get_key_action(keycode, modifier):
 	modifier : Bitwise flags of keyboard modifiers [0: none, 1: shift, 2: capslock, 4: ctrl, 8: alt, 16: numlock, 64: super, 128: altgr]
 		None to match any modifer (other configurations with modifiers will be captured first)
 
-	Returns : Space separated list of cuia and parameters mapped to the keybinding or None if no match found		
+	Returns : Space separated list of cuia and (comma separated) parameters mapped to the keybinding or None if no match found
 	"""
 
 	logging.debug(f"Get keybinding function name for keycode: {keycode}, modifier: {modifier}")

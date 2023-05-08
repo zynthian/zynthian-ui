@@ -253,9 +253,9 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 	def audio_menu_cb(self, options, params):
 		if params == 'mono':
-			self.zyngui.state_manager.zynmixer.toggle_mono(self.chain.midi_chan)
+			self.zyngui.state_manager.zynmixer.toggle_mono(self.chain.mixer_chan)
 		elif params == 'phase':
-			self.zyngui.state_manager.zynmixer.toggle_phase(self.chain.midi_chan)
+			self.zyngui.state_manager.zynmixer.toggle_phase(self.chain.mixer_chan)
 		self.audio_options()
 
 

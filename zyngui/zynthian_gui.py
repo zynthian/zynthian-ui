@@ -1425,13 +1425,14 @@ class zynthian_gui:
 	def zynswitches(self):
 		"""Process physical switch triggers"""
 
-		if not get_lib_zyncore(): return
+		if not get_lib_zyncore():
+			return
 		i = 0
 		while i <= zynthian_gui_config.last_zynswitch_index:
 			# dtus is 0 of switched pressed, dur of last press or -1 if already processed
 			dtus = get_lib_zyncore().get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
 			if dtus >= 0:
-				self.cuia_queue.put_nowait(["zynswitch", [i,self.zynswitch_timing(dtus)]])
+				self.cuia_queue.put_nowait(["zynswitch", [i, self.zynswitch_timing(dtus)]])
 			i += 1
 
 	def zynswitch_timing(self, dtus):
@@ -1539,7 +1540,7 @@ class zynthian_gui:
 			self.back_screen()
 
 		elif i == 2:
-			self.cuia_queue.put_nowait("cuia_toggle_midi_learn")
+			self.cuia_toggle_midi_learn()
 
 		elif i == 3:
 			self.screens[self.current_screen].switch_select('S')
@@ -1695,7 +1696,7 @@ class zynthian_gui:
 									params.append('R')
 								else:
 									params.append('P')
-								self.cuia_queue.put_nowait(cuia, params)
+								self.cuia_queue.put_nowait([cuia, params])
 							# Or normal CUIA
 							elif evtype == 0x9 and vel > 0:
 								self.cuia_queue.put_nowait([cuia, params])
@@ -2016,9 +2017,9 @@ class zynthian_gui:
 						break
 					# space seperated cuia param,param...
 					parts = event.split(" ", 2)
-					cuia = parts.pop(0).lower()
-					if parts:
-						params = parts[0].split(",")
+					cuia = parts[0].lower()
+					if len(parts) > 1:
+						params = parts[1].split(",")
 				else:
 					# list [cuia, [params]]
 					cuia = event[0].lower()
@@ -2036,7 +2037,9 @@ class zynthian_gui:
 							if val > 0:
 								dtus = int(1000000 * (monotonic() - val))
 								t = self.zynswitch_timing(dtus)
-						elif t == 'P':
+							else:
+								continue
+						if t == 'P':
 							if self.zynswitch_push(i):
 								zynswitch_cuia_ts[i] = -REPEAT_DELAY
 							else:
@@ -2077,7 +2080,7 @@ class zynthian_gui:
 						continue
 					if ts < 0:
 						zynswitch_cuia_ts[i] += 1
-					if ts == 0:
+					if zynswitch_cuia_ts[i] == 0:
 						self.zynswitch_push(i)
 			except:
 				pass
