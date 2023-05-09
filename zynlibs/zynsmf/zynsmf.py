@@ -108,7 +108,7 @@ def destroy():
 def load(smf, filename):
 	if libsmf:
 		return libsmf.load(smf, bytes(filename, "utf-8"))
-	return None
+	return False
 
 
 #	Save a MIDI file
@@ -118,7 +118,7 @@ def load(smf, filename):
 def save(smf, filename):
 	if libsmf:
 		return libsmf.save(smf, bytes(filename, "utf-8"))
-	return None
+	return False
 
 
 #-------------------------------------------------------------------------------

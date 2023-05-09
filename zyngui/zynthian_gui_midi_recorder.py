@@ -25,15 +25,11 @@
 
 import os
 import logging
-from threading import Timer
-from time import sleep
-from os.path import isfile, join, basename
-import ctypes
+from os.path import isfile, join
 import tkinter
 
 # Zynthian specific modules
 import zynconf
-from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
@@ -49,58 +45,30 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def __init__(self):
 		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
 		self.capture_dir_usb = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
-		self.current_playback_fpath = None # Filename of currently playing SMF
+		self.recording = False
+		self.playing = False
 
-		self.smf_player = None # Pointer to SMF player
-		self.smf_recorder = None # Pointer to SMF recorder
 		self.smf_timer = None # 1s timer used to check end of SMF playback
 
 		super().__init__('MIDI Recorder', True)
 
 		self.bpm_zgui_ctrl = None
 
-		try:
-			self.smf_player = libsmf.addSmf()
-			libsmf.attachPlayer(self.smf_player)
-		except Exception as e:
-			logging.error(e)
 
-		try:
-			self.smf_recorder = libsmf.addSmf()
-			libsmf.attachRecorder(self.smf_recorder)
-		except Exception as e:
-			logging.error(e)
-
-		logging.info("midi recorder created")
-
-
-	def check_playback(self):
-		if libsmf.getPlayState() == 0:
-			self.end_playing()
-		else:
-			self.smf_timer = Timer(interval = 1, function=self.check_playback)
-			self.smf_timer.start()
-
-
-	def get_status(self):
-		status = None
-
-		if libsmf.isRecording():
-			status = "REC"
-
-		if libsmf.getPlayState():
-			if status == "REC":
-				status = "PLAY+REC"
-			else:
-				status = "PLAY"
-
-		return status
+	def refresh_status(self):
+		super().refresh_status()
+		if self.recording != self.zyngui.state_manager.status_midi_recorder:
+			self.recording = self.zyngui.state_manager.status_midi_recorder
+			self.fill_list()
+		if self.playing != self.zyngui.state_manager.status_midi_player:
+			self.playing = self.zyngui.state_manager.status_midi_player
+			self.fill_list()
+			self.update_status_playback()
 
 
 	def build_view(self):
 		super().build_view()
-		if zynthian_gui_config.transport_clock_source == 0 and libsmf.getPlayState():
-			self.show_playing_bpm()
+		self.update_status_playback()
 
 
 	def hide(self):
@@ -173,12 +141,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 
 	def update_status_playback(self):
-		if libsmf.getPlayState() == 0:
-			self.current_playback_fpath = None
-
 		item_labels = self.listbox.get(0, tkinter.END)
 		for i, row in enumerate(self.list_data):
-			if row[0] and row[0] == self.current_playback_fpath:
+			if self.playing and row[0] and row[0] == self.zyngui.state_manager.last_midi_file:
 				item_label = '▶ ' + row[2]
 			else:
 				item_label = row[2]
@@ -187,12 +152,18 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 				self.listbox.delete(i)
 				self.listbox.insert(i, item_label)
 
+		if self.playing:
+			if zynthian_gui_config.transport_clock_source == 0:
+				self.show_playing_bpm()
+		else:
+			self.hide_playing_bpm()
+
 		self.select_listbox(self.index)
 
 
 	def update_status_recording(self, fill=False):
 		if self.list_data:
-			if libsmf.isRecording():
+			if self.zyngui.state_manager.status_midi_recorder:
 				self.list_data[0] = ("STOP_RECORDING", 0, "■ Stop MIDI Recording")
 			else:
 				self.list_data[0] = ("START_RECORDING", 0, "⬤ Start MIDI Recording")
@@ -219,18 +190,18 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		fpath = self.list_data[i][0]
 
 		if fpath == "START_RECORDING":
-			self.start_recording()
+			self.zyngui.state_manager.start_midi_record()
 		elif fpath == "STOP_PLAYING":
-			self.stop_playing()
+			self.zyngui.state_manager.stop_midi_playback()
 		elif fpath == "STOP_RECORDING":
-			self.stop_recording()
+			self.zyngui.state_manager.stop_midi_record()
 		elif fpath == "LOOP":
 			self.toggle_loop()
 		elif fpath:
 			if t == 'S':
-				self.toggle_playing(fpath)
+				self.zyngui.state_manager.toggle_midi_playback(fpath)
 			else:
-				self.zyngui.show_confirm("Do you really want to delete '{}'?".format(self.list_data[i][2]), self.delete_confirmed, fpath)
+				self.zyngui.show_confirm(f"Do you really want to delete '{self.list_data[i][2]}'?", self.delete_confirmed, fpath)
 
 
 	# Function to handle *all* switch presses.
@@ -240,24 +211,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def switch(self, swi, t='S'):
 		if swi == 0:
 			if t == 'S':
-				return True
-
-
-	def get_next_filenum(self):
-		try:
-			n = max(map(lambda item: int(os.path.basename(item[0])[0:3]) if item[0] and os.path.basename(item[0])[0:3].isdigit() else 0, self.list_data))
-		except:
-			n = 0
-		return "{0:03d}".format(n+1)
-
-
-	def get_new_filename(self):
-		try:
-			parts = self.zyngui.get_current_processor().get_presetpath().split('#', 2)
-			file_name = parts[1].replace("/", ";").replace(">", ";").replace(" ; ", ";")
-		except:
-			file_name = "jack_capture"
-		return self.get_next_filenum() + '-' + file_name + '.mid'
+				return True # Block short layer press
 
 
 	def delete_confirmed(self, fpath):
@@ -269,108 +223,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			logging.error(e)
 
 
-	def start_recording(self):
-		if not libsmf.isRecording():
-			logging.info("STARTING NEW MIDI RECORD ...")
-			libsmf.unload(self.smf_recorder)
-			libsmf.startRecording()
-			self.update_status_recording(True)
-			return True
-		else:
-			return False
-
-
-	def stop_recording(self):
-		if libsmf.isRecording():
-			logging.info("STOPPING MIDI RECORDING ...")
-			libsmf.stopRecording()
-			if os.path.ismount(self.capture_dir_usb):
-				filename = "{}/{}".format(self.capture_dir_usb, self.get_new_filename())
-			else:
-				filename = "{}/{}".format(self.capture_dir_sdc, self.get_new_filename())
-			zynsmf.save(self.smf_recorder, filename)
-			os.sync()
-
-			self.update_list()
-			return True
-
-		else:
-			return False
-
-
 	def toggle_recording(self):
-		logging.info("TOGGLING MIDI RECORDING ...")
-		if not self.stop_recording():
-			self.start_recording()
-
-
-	def start_playing(self, fpath=None):
-		self.stop_playing()
-
-		if fpath is None:
-			fpath = self.get_current_track_fpath()
-		
-		if fpath is None:
-			logging.info("No track to play!")
-			return
-
-		try:
-			zynsmf.load(self.smf_player, fpath)
-			tempo = libsmf.getTempo(self.smf_player, 0)
-			logging.info("STARTING MIDI PLAY '{}' => {}BPM".format(fpath, tempo))
-			self.zyngui.state_manager.zynseq.set_tempo(tempo)
-			libsmf.startPlayback()
-			self.zyngui.state_manager.zynseq.transport_start("zynsmf")
-#			self.zyngui.state_manager.zynseq.libseq.transportLocate(0)
-			self.current_playback_fpath=fpath
-			if zynthian_gui_config.transport_clock_source == 0:
-				self.show_playing_bpm()
-			self.smf_timer = Timer(interval=1, function=self.check_playback)
-			self.smf_timer.start()
-		except Exception as e:
-			logging.error("ERROR STARTING MIDI PLAY: %s" % e)
-			self.zyngui.show_info("ERROR STARTING MIDI PLAY:\n %s" % e)
-			self.zyngui.hide_info_timer(5000)
-
-		#self.update_list()
-		self.update_status_playback()
-		return True
-
-
-	def end_playing(self):
-		logging.info("ENDING MIDI PLAY ...")
-		self.zyngui.state_manager.zynseq.transport_stop("zynsmf")
-		if self.smf_timer:
-			self.smf_timer.cancel()
-			self.smf_timer = None
-		self.current_playback_fpath = None
-		self.hide_playing_bpm()
-		#self.update_list()
-		self.update_status_playback()
-
-
-	def stop_playing(self):
-		if libsmf.getPlayState() != zynsmf.PLAY_STATE_STOPPED:
-			logging.info("STOPPING MIDI PLAY ...")
-			libsmf.stopPlayback()
-			sleep(0.1)
-			self.end_playing()
-			return True
-
-		else:
-			return False
-
-
-	def toggle_playing(self, fpath=None):
-		logging.info("TOGGLING MIDI PLAY ...")
-		
-		if fpath is None:
-			fpath = self.get_current_track_fpath()
-
-		if fpath and fpath != self.current_playback_fpath:
-			self.start_playing(fpath)
-		else:
-			self.stop_playing()
+		self.zyngui.state_manager.toggle_midi_record()
 
 
 	def show_playing_bpm(self):
@@ -427,35 +281,13 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.bpm_zgui_ctrl.plot_value()
 
 
-	def get_current_track_fpath(self):
-		if not self.list_data:
-			self.fill_list()
-		#if selected track ...
-		if self.list_data[self.index][1]>0:
-			return self.list_data[self.index][0]
-		#return first track in list if there is one ...
-		fti = self.get_first_track_index()
-		if fti is not None:
-			return self.list_data[fti][0]
-		#else return None
-		else:
-			return None
-
-
-	def get_first_track_index(self):
-		for i, row in enumerate(self.list_data):
-			if row[1] > 0:
-				return i
-		return None
-
-
 	def toggle_loop(self):
 		if zynthian_gui_config.midi_play_loop:
 			logging.info("MIDI play loop OFF")
-			zynthian_gui_config.midi_play_loop=False
+			zynthian_gui_config.midi_play_loop = False
 		else:
 			logging.info("MIDI play loop ON")
-			zynthian_gui_config.midi_play_loop=True
+			zynthian_gui_config.midi_play_loop = True
 		zynconf.save_config({"ZYNTHIAN_MIDI_PLAY_LOOP": str(int(zynthian_gui_config.midi_play_loop))})
 		self.update_status_loop(True)
 

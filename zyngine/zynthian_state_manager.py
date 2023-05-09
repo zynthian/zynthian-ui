@@ -30,7 +30,7 @@ from glob import glob
 import logging
 from threading  import Thread
 from json import JSONEncoder, JSONDecoder
-from os.path import basename, isdir
+from os.path import basename, isdir, isfile, join
 
 # Zynthian specific modules
 import zynconf
@@ -44,14 +44,17 @@ from zynlibs.zynseq import zynseq
 from zyncoder.zyncore import *
 from zyngine import zynthian_midi_filter
 from zyncoder.zyncore import get_lib_zyncore
-from zyngine import zynthian_controller
 from zyngine import zynthian_legacy_snapshot
+from zynlibs.zynsmf import zynsmf # Python wrapper for zynsmf (ensures initialised and wraps load() function)
+from zynlibs.zynsmf.zynsmf import libsmf # Direct access to shared library
 
 # ----------------------------------------------------------------------------
 # Zynthian State Manager Class
 # ----------------------------------------------------------------------------
 
 SNAPSHOT_SCHEMA_VERSION = 1
+capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
+capture_dir_usb = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
 
 class zynthian_state_manager:
 
@@ -67,7 +70,6 @@ class zynthian_state_manager:
         self.last_snapshot_count = 0 # Increments each time a snapshot is loaded - modules may use to update if required
         self.reset_zs3()
 
-        self.status_counter = 0 # Used to throttle status updates
         self.hwmon_thermal_file = None
         self.hwmon_undervolt_file = None
         self.hwmon_undervolt_file = None
@@ -85,10 +87,35 @@ class zynthian_state_manager:
         self.midi_learn_cc = None # Controller currently listening for MIDI learn [proc,param_symbol] or None
         self.midi_learn_pc = None # ZS3 name listening for MIDI learn "" for new zs3 or None
         self.zs3 = {} # Dictionary or zs3 configs indexed by "ch/pc"
-        self.status_info = {}
         self.snapshot_bank = None # Name of snapshot bank (without path)
         self.snapshot_program = 0
         self.snapshot_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/snapshots"
+
+        self.status_xrun = False
+        self.status_undervoltage = False
+        self.status_overtemp = False
+        self.status_cpu_load = 0 # 0..100
+        self.status_audio_recorder = False
+        self.status_audio_player = False # True if playing
+        self.status_midi_recorder = False
+        self.status_midi_player = False
+        self.last_midi_file = None
+        self.status_midi = False
+        self.status_midi_clock = False
+
+        # Initialize SMF MIDI recorder and player
+        try:
+            self.smf_player = libsmf.addSmf()
+            libsmf.attachPlayer(self.smf_player)
+        except Exception as e:
+            logging.error(e)
+
+        try:
+            self.smf_recorder = libsmf.addSmf()
+            libsmf.attachRecorder(self.smf_recorder)
+        except Exception as e:
+            logging.error(e)
+
 
         # Initialize MIDI & Switches
         self.dtsw = []
@@ -212,18 +239,22 @@ class zynthian_state_manager:
     def thread_task(self):
         """Perform background tasks"""
 
+        status_counter = 0
+        xruns_status = self.status_xrun
+        midi_status = self.status_midi
+        midi_clock_status = self.status_midi_clock
         while not self.exit_flag:
            # Get CPU Load
-            #self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
-            self.status_info['cpu_load'] = zynautoconnect.get_jackd_cpu_load()
+            #self.status_cpu_load = max(psutil.cpu_percent(None, True))
+            self.status_cpu_load = zynautoconnect.get_jackd_cpu_load()
 
             try:
                 # Get SOC sensors (once each 5 refreshes)
-                if self.status_counter > 5:
-                    self.status_counter = 0
+                if status_counter > 5:
+                    status_counter = 0
 
-                    self.status_info['overtemp'] = False
-                    self.status_info['undervoltage'] = False
+                    self.status_overtemp = False
+                    self.status_undervoltage = False
 
                     if self.hwmon_thermal_file and self.hwmon_undervolt_file:
                         try:
@@ -231,7 +262,7 @@ class zynthian_state_manager:
                             res = int(self.hwmon_thermal_file.read())/1000
                             #logging.debug("CPU Temperature => {}".format(res))
                             if res > self.overtemp_warning:
-                                self.status_info['overtemp'] = True
+                                self.status_overtemp = True
                         except Exception as e:
                             logging.error(e)
 
@@ -239,7 +270,7 @@ class zynthian_state_manager:
                             self.hwmon_undervolt_file.seek(0)
                             res = self.hwmon_undervolt_file.read()
                             if res == "1":
-                                self.status_info['undervoltage'] = True
+                                self.status_undervoltage = True
                         except Exception as e:
                             logging.error(e)
 
@@ -248,31 +279,49 @@ class zynthian_state_manager:
                             self.get_throttled_file.seek(0)
                             thr = int('0x%s' % self.get_throttled_file.read(), 16)
                             if thr & 0x1:
-                                self.status_info['undervoltage'] = True
+                                self.status_undervoltage = True
                             elif thr & (0x4 | 0x2):
-                                self.status_info['overtemp'] = True
+                                self.status_overtemp = True
                         except Exception as e:
                             logging.error(e)
 
                     else:
-                        self.status_info['overtemp'] = True
-                        self.status_info['undervoltage'] = True
+                        self.status_overtemp = True
+                        self.status_undervoltage = True
 
                 else:
-                    self.status_counter += 1
+                    status_counter += 1
 
                 # Audio Player Status
-                if self.audio_player.engine.player.get_playback_state(16):
-                    self.status_info['audio_player'] = 'PLAY'
-                elif 'audio_player' in self.status_info:
-                    self.status_info.pop('audio_player')
+                #TODO: Update audio player status with callback
+                self.status_audio_player = self.audio_player.engine.player.get_playback_state(16)
 
                 # Audio Recorder Status => Implemented in zyngui/zynthian_audio_recorder.py
 
-                # Clean some state_manager.status_info
-                self.status_info['xrun'] = False
-                self.status_info['midi'] = False
-                self.status_info['midi_clock'] = False
+                # MIDI Player
+                self.status_midi_player = libsmf.getPlayState()
+
+                # MIDI Recorder
+                self.status_midi_recorder = libsmf.isRecording()
+
+                # Clean some status flags
+                if xruns_status:
+                    self.status_xrun = False
+                    xruns_status = False
+                if self.status_xrun:
+                    xruns_status = True
+
+                if midi_status:
+                    self.status_midi = False
+                    midi_status = False
+                if self.status_midi:
+                    midi_status = True
+
+                if midi_clock_status:
+                    self.status_midi_clock = False
+                    midi_clock_status = False
+                if self.status_midi_clock:
+                    midi_clock_status = True
 
             except Exception as e:
                 logging.exception(e)
@@ -922,10 +971,7 @@ class zynthian_state_manager:
         if self.audio_player:
             self.audio_player.engine.remove_processor(self.audio_player)
             self.audio_player = None
-            try:
-                self.status_info.pop('audio_player')
-            except Exception as e:
-               logging.error("Can't destroy global Audio Player instance")
+            self.status_audio_player = False
 
 
 
@@ -961,6 +1007,102 @@ class zynthian_state_manager:
             self.stop_audio_player()
         else:
             self.start_audio_player()
+
+
+    # ---------------------------------------------------------------------------
+    # Global MIDI Player
+    # ---------------------------------------------------------------------------
+
+    def start_midi_record(self):
+        if not libsmf.isRecording():
+            libsmf.unload(self.smf_recorder)
+            libsmf.startRecording()
+            return True
+        else:
+            return False
+
+    def stop_midi_record(self):
+        if libsmf.isRecording():
+            logging.info("STOPPING MIDI RECORDING ...")
+            libsmf.stopRecording()
+            try:
+                parts = self.chain_manager.get_processors(self.chain_manager.active_chain_id, "SYNTH")[0].get_presetpath().split('#', 2)
+                filename = parts[1].replace("/", ";").replace(">", ";").replace(" ; ", ";")
+            except:
+                filename = "jack_capture"
+
+            if os.path.ismount(capture_dir_usb):
+                dir = capture_dir_usb
+            else:
+                dir = capture_dir_sdc
+            n = 1
+            for fn in sorted(os.listdir(dir)):
+                if fn.lower().endswith(".mid"):
+                    try:
+                        n = int(fn[:3]) + 1
+                    except:
+                        pass
+            fpath = f"{dir}/{n:03}-{filename}.mid"
+
+            if zynsmf.save(self.smf_recorder, fpath):
+                os.sync()
+                self.last_midi_file = fpath
+                return True
+        return False
+
+    def toggle_midi_record(self):
+        if libsmf.isRecording():
+            self.stop_midi_record()
+        else:
+            self.start_midi_record()
+
+    def start_midi_playback(self, fpath):
+        self.stop_midi_playback()
+        if fpath is None:
+            if self.last_midi_file:
+                fpath = self.last_midi_file
+            else:
+                # Get latest file
+                latest_mtime = 0
+                for dir in [capture_dir_sdc, capture_dir_usb]:
+                    for fn in os.listdir(dir):
+                        fp = join(dir, fn)
+                        if isfile(fp) and fn[-4:] == '.mid':
+                            mtime = os.path.getmtime(fp)
+                            if mtime > latest_mtime:
+                                fpath = fp
+                                latest_mtime = mtime
+
+        if fpath is None:
+            logging.info("No track to play!")
+            return self.status_midi_player
+
+        try:
+            zynsmf.load(self.smf_player, fpath)
+            tempo = libsmf.getTempo(self.smf_player, 0)
+            logging.info(f"STARTING MIDI PLAY '{fpath}' => {tempo}BPM")
+            self.zynseq.set_tempo(tempo)
+            libsmf.startPlayback()
+            self.zynseq.transport_start("zynsmf")
+            self.status_midi_player = libsmf.getPlayState() != zynsmf.PLAY_STATE_STOPPED
+            self.last_midi_file = fpath
+    		#self.zynseq.libseq.transportLocate(0)
+        except Exception as e:
+            logging.error(f"ERROR STARTING MIDI PLAY: {e}")
+            return False
+        return self.status_midi_player
+
+    def stop_midi_playback(self):
+        if libsmf.getPlayState() != zynsmf.PLAY_STATE_STOPPED:
+            libsmf.stopPlayback()
+            self.status_midi_player = False
+        return self.status_midi_player
+
+    def toggle_midi_playback(self, fname=None):
+        if libsmf.getPlayState() == zynsmf.PLAY_STATE_STOPPED:
+            self.start_midi_playback(fname)
+        else:
+            self.stop_midi_playback()
 
     #----------------------------------------------------------------------------
     # Clone, Note Range & Transpose

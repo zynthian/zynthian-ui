@@ -475,7 +475,7 @@ class zynthian_gui_base(tkinter.Frame):
 		self.dpm_b = zynthian_gui_dpm(self.zyngui.state_manager.zynmixer, 256, 1, self.status_canvas, 0, height + 2, width, height, False, ("status_dpm"))
 	
 
-	def refresh_status(self, status={}):
+	def refresh_status(self):
 		if self.shown:
 			mute = self.zyngui.state_manager.zynmixer.get_mute(256)
 			if True: # mute != self.main_mute:
@@ -497,19 +497,18 @@ class zynthian_gui_base(tkinter.Frame):
 			# Display error flags
 			flags = ""
 			color = zynthian_gui_config.color_status_error
-			if 'xrun' in status and status['xrun']:
+			if self.zyngui.state_manager.status_xrun:
 				color = zynthian_gui_config.color_status_error
 				#flags = "\uf00d"
 				flags = "\uf071"
-			elif 'undervoltage' in status and status['undervoltage']:
+			elif self.zyngui.state_manager.status_undervoltage:
 				flags = "\uf0e7"
-			elif 'overtemp' in status and status['overtemp']:
+			elif self.zyngui.state_manager.status_overtemp:
 				color = zynthian_gui_config.color_status_error
 				#flags = "\uf2c7"
 				flags = "\uf769"
-			elif 'cpu_load' in status:
-				# Display CPU load
-				cpu_load = status['cpu_load']
+			else:
+				cpu_load = self.zyngui.state_manager.status_cpu_load
 				if cpu_load < 50:
 					cr = 0
 					cg = 0xCC
@@ -521,16 +520,13 @@ class zynthian_gui_base(tkinter.Frame):
 					cg = int((100 - cpu_load) * 0xCC / 25)
 				color = "#%02x%02x%02x" % (cr, cg, 0)
 				flags = "\u2665"
-			else:
-				color = "#000000"
-				flags = "\u2665"
 
 			self.status_canvas.itemconfig(self.status_error, text=flags, fill=color)
 
 			# Display Audio Rec flag
 			flags = ""
 			color = zynthian_gui_config.color_bg
-			if 'audio_recorder' in status:
+			if self.zyngui.state_manager.status_audio_recorder:
 				self.status_canvas.itemconfig(self.status_audio_rec, state=tkinter.NORMAL)
 			else:
 				self.status_canvas.itemconfig(self.status_audio_rec, state=tkinter.HIDDEN)
@@ -538,7 +534,7 @@ class zynthian_gui_base(tkinter.Frame):
 			# Display Audio Play flag
 			flags = ""
 			color = zynthian_gui_config.color_bg
-			if 'audio_player' in status:
+			if self.zyngui.state_manager.status_audio_player:
 				self.status_canvas.itemconfig(self.status_audio_play, state=tkinter.NORMAL)
 			else:
 				self.status_canvas.itemconfig(self.status_audio_play, state=tkinter.HIDDEN)
@@ -546,24 +542,24 @@ class zynthian_gui_base(tkinter.Frame):
 			# Display MIDI Rec flag
 			flags = ""
 			color = zynthian_gui_config.color_status_midi
-			if 'midi_recorder' in status and status['midi_recorder'] in ('REC', 'PLAY+REC'):
+			if self.zyngui.state_manager.status_midi_recorder:
 				self.status_canvas.itemconfig(self.status_midi_rec, state=tkinter.NORMAL)
 			else:
 				self.status_canvas.itemconfig(self.status_midi_rec, state=tkinter.HIDDEN)
 
 			# Display MIDI Play flag
-			if 'midi_recorder' in status and status['midi_recorder'] in ('PLAY', 'PLAY+REC'):
+			if self.zyngui.state_manager.status_midi_player:
 				self.status_canvas.itemconfig(self.status_midi_play, state=tkinter.NORMAL)
 			else:
 				self.status_canvas.itemconfig(self.status_midi_play, state=tkinter.HIDDEN)
 			# Display MIDI activity flag
-			if 'midi' in status and status['midi']:
+			if self.zyngui.state_manager.status_midi:
 				self.status_canvas.itemconfig(self.status_midi, state=tkinter.NORMAL)
 			else:
 				self.status_canvas.itemconfig(self.status_midi, state=tkinter.HIDDEN)
 
 			# Display MIDI clock flag
-			if 'midi_clock' in status and status['midi_clock']:
+			if self.zyngui.state_manager.status_midi_clock:
 				self.status_canvas.itemconfig(self.status_midi_clock, state=tkinter.NORMAL)
 			else:
 				self.status_canvas.itemconfig(self.status_midi_clock, state=tkinter.HIDDEN)

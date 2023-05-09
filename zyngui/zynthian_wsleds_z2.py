@@ -141,13 +141,15 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 			else:
 				self.wsleds.setPixelColor(14, self.wscolor_active2)
 		elif self.zyngui.alt_mode:
-			if self.zyngui.state_manager.status_info['midi_recorder'] and "REC" in self.zyngui.state_manager.status_info['midi_recorder']:
+			if self.zyngui.state_manager.status_midi_recorder:
 				self.wsleds.setPixelColor(14, self.wscolor_red)
 			else:
 				self.wsleds.setPixelColor(14, self.wscolor_alt)
 		else:
-			if 'audio_recorder' in self.zyngui.state_manager.status_info:
+			if self.zyngui.state_manager.status_audio_recorder:
 				self.wsleds.setPixelColor(14, self.wscolor_red)
+			elif self.zyngui.state_manager.status_midi_recorder:
+				self.wsleds.setPixelColor(14, self.wscolor_purple)
 			else:
 				self.wsleds.setPixelColor(14, self.wscolor_default)
 
@@ -163,13 +165,15 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 			elif pb_status == zynseq.SEQ_STOPPED:
 				self.wsleds.setPixelColor(15, self.wscolor_active2)
 		elif self.zyngui.alt_mode:
-			if self.zyngui.state_manager.status_info['midi_recorder'] and "PLAY" in self.zyngui.state_manager.status_info['midi_recorder']:
+			if self.zyngui.state_manager.status_midi_recorder:
 				self.wsleds.setPixelColor(15, self.wscolor_green)
 			else:
 				self.wsleds.setPixelColor(15, self.wscolor_alt)
 		else:
-			if 'audio_player' in self.zyngui.state_manager.status_info:
+			if self.zyngui.state_manager.status_audio_player:
 				self.wsleds.setPixelColor(15, self.wscolor_green)
+			elif self.zyngui.state_manager.status_midi_player:
+				self.wsleds.setPixelColor(15, self.wscolor_purple)
 			else:
 				self.wsleds.setPixelColor(15, self.wscolor_default)
 

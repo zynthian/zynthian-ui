@@ -811,9 +811,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to refresh screen (slow)
-	def refresh_status(self, status={}):
+	def refresh_status(self):
 		if self.shown:
-			super().refresh_status(status)
+			super().refresh_status()
 			self.main_mixbus_strip.draw_dpm()
 			self.main_mixbus_strip.refresh_status()
 			for strip in self.visible_mixer_strips:

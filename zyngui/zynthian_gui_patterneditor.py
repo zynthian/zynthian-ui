@@ -1077,8 +1077,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to refresh status
-	def refresh_status(self, status={}):
-		super().refresh_status(status)
+	def refresh_status(self):
+		super().refresh_status()
 		step = self.zynseq.libseq.getPatternPlayhead()
 		if self.playhead != step:
 			self.playhead = step

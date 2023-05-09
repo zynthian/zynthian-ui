@@ -527,8 +527,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to refresh pads
-	def refresh_status(self, status={}, force=False):
-		super().refresh_status(status)
+	def refresh_status(self, force=False):
+		super().refresh_status()
 		if self.redrawing and not force:
 			return
 		force |= self.zynseq.bank != self.bank

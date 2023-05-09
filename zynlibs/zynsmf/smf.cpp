@@ -330,7 +330,7 @@ bool Smf::load(char* sFilename)
 bool Smf::save(char* sFilename)
 {
 	if(getEvents() == 0)
-		return true; // Don't save if empty
+		return false; // Don't save if empty
 	FILE *pFile;
 	pFile = fopen(sFilename, "w");
 	if(pFile == NULL)

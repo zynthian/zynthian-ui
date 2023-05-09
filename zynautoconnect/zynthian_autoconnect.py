@@ -647,7 +647,7 @@ def cb_jack_xrun(delayed_usecs: float):
 	global xruns
 	xruns += 1
 	logger.warning(f"Jack Audio XRUN! =>count: {xruns}, delay: {delayed_usecs}us")
-	state_manager.status_info['xrun'] = True
+	state_manager.status_xrun = True
 
 
 def get_jackd_cpu_load():

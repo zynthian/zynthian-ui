@@ -900,7 +900,7 @@ class zynthian_gui:
 		if self.current_screen == "pattern_editor":
 			self.screens["pattern_editor"].toggle_midi_record()
 		else:
-			if self.audio_recorder.get_status():
+			if self.state_manager.status_audio_recorder:
 				self.state_manager.audio_player.controllers_dict['record'].set_value('stopped')
 			else:
 				self.state_manager.audio_player.controllers_dict['record'].set_value('recording')
@@ -932,25 +932,26 @@ class zynthian_gui:
 			self.screens['bank'].click_listbox()
 
 	def cuia_start_midi_record(self, params=None):
-		self.screens['midi_recorder'].start_recording()
+		self.state_manager.start_midi_record()
 
 	def cuia_stop_midi_record(self, params=None):
-		self.screens['midi_recorder'].stop_recording()
+		self.state_manager.stop_midi_record()
 		if self.current_screen == "midi_recorder":
 			self.screens['midi_recorder'].select()
 
 	def cuia_toggle_midi_record(self, params=None):
-		if midi_record is None:
-			midi_record = not self.state_manager.zynseq.libseq.isMidiRecord()
+		self.state_manager.toggle_midi_record()
+		if self.current_screen == "midi_recorder":
+			self.screens['midi_recorder'].select()
 
 	def cuia_start_midi_play(self, params=None):
-		self.screens['midi_recorder'].start_playing()
+		self.state_manager.start_midi_playback()
 
 	def cuia_stop_midi_play(self, params=None):
-		self.screens['midi_recorder'].stop_playing()
+		self.state_manager.stop_midi_playback()
 
 	def cuia_toggle_midi_play(self, params=None):
-		self.screens['midi_recorder'].toggle_playing()
+		self.state_manager.toggle_midi_playback()
 
 	def cuia_toggle_record(self, params=None):
 		if self.current_screen == "pattern_editor":
@@ -1513,7 +1514,7 @@ class zynthian_gui:
 
 		# Custom ZynSwitches
 		elif i >= 4:
-			return self.custom_switch_ui_action(i-4, "B")
+			return self.custom_switch_ui_action(i - 4, "B")
 
 
 	def zynswitch_short(self, i):
@@ -1618,7 +1619,7 @@ class zynthian_gui:
 				if evtype == 0xF:
 					# Clock
 					if chan == 0x8:
-						self.state_manager.status_info['midi_clock'] = True
+						self.state_manager.status_midi_clock = True
 						continue
 					# Tick
 					elif chan == 0x9:
@@ -1761,7 +1762,7 @@ class zynthian_gui:
 					elif self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
 						self.screens['pattern_editor'].midi_note((ev & 0x7F00) >> 8)
 
-				self.state_manager.status_info['midi'] = True
+				self.state_manager.status_midi = True
 				self.last_event_flag = True
 
 		except Exception as err:
@@ -1904,16 +1905,9 @@ class zynthian_gui:
 
 	def refresh_status(self):
 		try:
-			# Get MIDI Player/Recorder Status
-			try:
-				#TODO: This should be in state manager
-				self.state_manager.status_info['midi_recorder'] = self.screens['midi_recorder'].get_status()
-			except Exception as e:
-				logging.error(e)
-			
 			# Refresh On-Screen Status
 			try:
-				self.screens[self.current_screen].refresh_status(self.state_manager.status_info)
+				self.screens[self.current_screen].refresh_status()
 			except AttributeError:
 				pass
 

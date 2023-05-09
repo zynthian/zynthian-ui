@@ -1114,8 +1114,8 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to refresh playhead
-	def refresh_status(self, status={}):
-		super().refresh_status(status)
+	def refresh_status(self):
+		super().refresh_status()
 		if self.redraw_pending:
 			self.draw_grid()
 		previous_sequence = -1
