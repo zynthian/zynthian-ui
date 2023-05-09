@@ -66,7 +66,13 @@ class zynthian_state_manager:
         self.chain_manager = zynthian_chain_manager(self)
         self.last_snapshot_count = 0 # Increments each time a snapshot is loaded - modules may use to update if required
         self.reset_zs3()
-        
+
+        self.status_counter = 0 # Used to throttle status updates
+        self.hwmon_thermal_file = None
+        self.hwmon_undervolt_file = None
+        self.hwmon_undervolt_file = None
+        self.get_throttled_file = None
+
         self.alsa_mixer_processor = zynthian_processor("MX", ("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_alsa_mixer, True))
         self.alsa_mixer_processor.engine = zynthian_engine_alsa_mixer()
         self.alsa_mixer_processor.refresh_controllers()
@@ -97,11 +103,9 @@ class zynthian_state_manager:
         self.exit_flag = False
         self.set_midi_learn(False)
         #TODO: We may need this in future... self.start_thread()
+        self.thread = None
         self.reset()
         self.end_busy("zynthian_state_manager")
-        self.thread = Thread(target=self.thread_task, args=())
-        self.thread.name = "Status Manager MIDI"
-        self.thread.daemon = True # thread dies with the program
 
     def reset(self):
         """Reset state manager to clean initial start-up state"""
@@ -114,6 +118,22 @@ class zynthian_state_manager:
         """Stop state manager"""
 
         self.exit_flag = True
+        if self.thread and self.thread.is_alive():
+            self.thread.join()
+        self.thread = None
+
+        self.destroy_audio_player()
+
+        if self.hwmon_thermal_file:
+            self.hwmon_thermal_file.close
+            self.hwmon_thermal_file = None
+        if self.hwmon_undervolt_file:
+            self.hwmon_undervolt_file.close
+            self.hwmon_undervolt_file = None
+        if self.get_throttled_file:
+            self.get_throttled_file.close
+            self.get_throttled_file = None
+
         zynautoconnect.stop()
         self.last_snapshot_fpath = ""
         self.zynseq.load("")
@@ -126,11 +146,35 @@ class zynthian_state_manager:
 
         self.zynmixer.reset_state()
         self.reload_midi_config()
+
+        # Initialize SOC sensors monitoring
+        try:
+            self.hwmon_thermal_file = open('/sys/class/hwmon/hwmon0/temp1_input')
+            self.hwmon_undervolt_file = open('/sys/class/hwmon/hwmon1/in0_lcrit_alarm')
+            self.overtemp_warning = 75.0
+            self.get_throttled_file = None
+        except:
+            logging.warning("Can't access sensors. Trying legacy interface...")
+            self.hwmon_thermal_file = None
+            self.hwmon_undervolt_file = None
+            self.overtemp_warning = None
+            try:
+                self.get_throttled_file = open('/sys/devices/platform/soc/soc:firmware/get_throttled')
+                logging.debug("Accessing sensors using legacy interface!")
+            except Exception as e:
+                logging.error("Can't access monitoring sensors at all!")
+
+        self.create_audio_player()
+
         zynautoconnect.start(self)
         zynautoconnect.request_midi_connect(True)
         zynautoconnect.request_audio_connect(True)
+
         self.exit_flag = True
-        #self.thread.start()
+        self.thread = Thread(target=self.thread_task, args=())
+        self.thread.name = "Status Manager MIDI"
+        self.thread.daemon = True # thread dies with the program
+        self.thread.start()
 
 
     def start_busy(self, id):
@@ -170,6 +214,70 @@ class zynthian_state_manager:
         """Perform background tasks"""
 
         while not self.exit_flag:
+           # Get CPU Load
+            #self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
+            self.status_info['cpu_load'] = zynautoconnect.get_jackd_cpu_load()
+
+        try:
+            # Get SOC sensors (once each 5 refreshes)
+            if self.status_counter > 5:
+                self.status_counter = 0
+
+                self.status_info['overtemp'] = False
+                self.status_info['undervoltage'] = False
+
+                if self.hwmon_thermal_file and self.hwmon_undervolt_file:
+                    try:
+                        self.hwmon_thermal_file.seek(0)
+                        res = int(self.hwmon_thermal_file.read())/1000
+                        #logging.debug("CPU Temperature => {}".format(res))
+                        if res > self.overtemp_warning:
+                            self.status_info['overtemp'] = True
+                    except Exception as e:
+                        logging.error(e)
+
+                    try:
+                        self.hwmon_undervolt_file.seek(0)
+                        res = self.hwmon_undervolt_file.read()
+                        if res == "1":
+                            self.status_info['undervoltage'] = True
+                    except Exception as e:
+                        logging.error(e)
+
+                elif self.get_throttled_file:
+                    try:
+                        self.get_throttled_file.seek(0)
+                        thr = int('0x%s' % self.get_throttled_file.read(), 16)
+                        if thr & 0x1:
+                            self.status_info['undervoltage'] = True
+                        elif thr & (0x4 | 0x2):
+                            self.status_info['overtemp'] = True
+                    except Exception as e:
+                        logging.error(e)
+
+                else:
+                    self.status_info['overtemp'] = True
+                    self.status_info['undervoltage'] = True
+
+            else:
+                self.status_counter += 1
+
+            # Audio Player Status
+            if self.audio_player.engine.player.get_playback_state(16):
+                self.status_info['audio_player'] = 'PLAY'
+            elif 'audio_player' in self.status_info:
+                self.status_info.pop('audio_player')
+
+            # Audio Recorder Status => Implemented in zyngui/zynthian_audio_recorder.py
+
+            # Clean some state_manager.status_info
+            self.status_info['xrun'] = False
+            self.status_info['midi'] = False
+            self.status_info['midi_clock'] = False
+
+        except Exception as e:
+            logging.exception(e)
+
             sleep(0.2)
 
     #----------------------------------------------------------------------------

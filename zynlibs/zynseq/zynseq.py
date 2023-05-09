@@ -169,7 +169,7 @@ class zynseq(zynthian_engine):
 					channel = column
 				for row in range(4):
 					seq = row + 4 * column
-					self.set_sequence_name(bank, seq, "{}".format(self.libseq.getPatternAt(bank, seq, 0, 0)))
+					self.set_sequence_name(bank, seq, f"{self.libseq.getPatternAt(bank, seq, 0, 0)}")
 					self.libseq.setGroup(bank, seq, channel)
 					self.libseq.setChannel(bank, seq, 0, channel)
 

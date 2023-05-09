@@ -369,6 +369,7 @@ void SequenceManager::setSequencesInBank(uint8_t bank, uint8_t sequences)
         return;
     // Remove excessive sequences
     size_t nSize = m_mBanks[bank].size();
+    while(nSize > sequences)
     {
         setSequencePlayState(bank, nSize - 1, STOPPED);
         delete m_mBanks[bank].back();

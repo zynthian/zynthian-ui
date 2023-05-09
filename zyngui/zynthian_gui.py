@@ -146,23 +146,6 @@ class zynthian_gui:
 		self.osc_clients = {}
 		self.osc_heartbeat_timeout = 120 # Heartbeat timeout period
 
-		# Initialize SOC sensors monitoring
-		try:
-			self.hwmon_thermal_file = open('/sys/class/hwmon/hwmon0/temp1_input')
-			self.hwmon_undervolt_file = open('/sys/class/hwmon/hwmon1/in0_lcrit_alarm')
-			self.overtemp_warning = 75.0
-			self.get_throttled_file = None
-		except:
-			logging.warning("Can't access sensors. Trying legacy interface...")
-			self.hwmon_thermal_file = None
-			self.hwmon_undervolt_file = None
-			self.overtemp_warning = None
-			try:
-				self.get_throttled_file = open('/sys/devices/platform/soc/soc:firmware/get_throttled')
-				logging.debug("Accessing sensors using legacy interface!")
-			except Exception as e:
-				logging.error("Can't access monitoring sensors at all!")
-
 	# ---------------------------------------------------------------------------
 	# WSLeds Init
 	# ---------------------------------------------------------------------------
@@ -408,7 +391,6 @@ class zynthian_gui:
 			self.screens['main_menu'] = zynthian_gui_main_menu()
 
 		# Create UI Apps Screens
-		self.state_manager.create_audio_player()
 		self.screens['audio_player'] = self.screens['control']
 		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
 		self.screens['alsa_mixer'] = self.screens['control']
@@ -489,8 +471,8 @@ class zynthian_gui:
 			self.current_processor = self.state_manager.alsa_mixer_processor
 
 		elif screen == "audio_player":
-			if self.audio_player:
-				self.audio_player.refresh_controllers()
+			if self.state_manager.audio_player:
+				self.state_manager.audio_player.refresh_controllers()
 				self.current_processor = self.state_manager.audio_player
 			else:
 				return
@@ -959,7 +941,7 @@ class zynthian_gui:
 
 	def cuia_toggle_midi_record(self, params=None):
 		if midi_record is None:
-			midi_record = not self.zyngui.zynseq.libseq.isMidiRecord()
+			midi_record = not self.state_manager.zynseq.libseq.isMidiRecord()
 
 	def cuia_start_midi_play(self, params=None):
 		self.screens['midi_recorder'].start_playing()
@@ -1911,63 +1893,9 @@ class zynthian_gui:
 
 	def refresh_status(self):
 		try:
-			# Get CPU Load
-			#self.state_manager.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
-			self.state_manager.status_info['cpu_load'] = zynautoconnect.get_jackd_cpu_load()
-
-			# Get SOC sensors (once each 5 refreshes)
-			if self.status_counter > 5:
-				self.status_counter = 0
-
-				self.state_manager.status_info['overtemp'] = False
-				self.state_manager.status_info['undervoltage'] = False
-
-				if self.hwmon_thermal_file and self.hwmon_undervolt_file:
-					try:
-						self.hwmon_thermal_file.seek(0)
-						res = int(self.hwmon_thermal_file.read())/1000
-						#logging.debug("CPU Temperature => {}".format(res))
-						if res > self.overtemp_warning:
-							self.state_manager.status_info['overtemp'] = True
-					except Exception as e:
-						logging.error(e)
-
-					try:
-						self.hwmon_undervolt_file.seek(0)
-						res = self.hwmon_undervolt_file.read()
-						if res == "1":
-							self.state_manager.status_info['undervoltage'] = True
-					except Exception as e:
-						logging.error(e)
-
-				elif self.get_throttled_file:
-					try:
-						self.get_throttled_file.seek(0)
-						thr = int('0x%s' % self.get_throttled_file.read(), 16)
-						if thr & 0x1:
-							self.state_manager.status_info['undervoltage'] = True
-						elif thr & (0x4 | 0x2):
-							self.state_manager.status_info['overtemp'] = True
-					except Exception as e:
-						logging.error(e)
-
-				else:
-					self.state_manager.status_info['overtemp'] = True
-					self.state_manager.status_info['undervoltage'] = True
-
-			else:
-				self.status_counter += 1
-
-			# Audio Player Status
-			if self.state_manager.audio_player.engine.player.get_playback_state(16):
-				self.status_info['audio_player'] = 'PLAY'
-			elif 'audio_player' in self.state_manager.status_info:
-				self.state_manager.status_info.pop('audio_player')
-
-			# Audio Recorder Status => Implemented in zyngui/zynthian_audio_recorder.py
-
 			# Get MIDI Player/Recorder Status
 			try:
+				#TODO: This should be in state manager
 				self.state_manager.status_info['midi_recorder'] = self.screens['midi_recorder'].get_status()
 			except Exception as e:
 				logging.error(e)
@@ -1977,11 +1905,6 @@ class zynthian_gui:
 				self.screens[self.current_screen].refresh_status(self.state_manager.status_info)
 			except AttributeError:
 				pass
-
-			# Clean some state_manager.status_info
-			self.state_manager.status_info['xrun'] = False
-			self.state_manager.status_info['midi'] = False
-			self.state_manager.status_info['midi_clock'] = False
 
 		except Exception as e:
 			logging.exception(e)
@@ -2005,7 +1928,8 @@ class zynthian_gui:
 		"""
 
 		zynswitch_cuia_ts = [None] * (zynthian_gui_config.num_zynswitches + 4)
-		zynpot_cuia_ts = [None] * (zynthian_gui_config.num_zynpots)
+		zynswitch_repeat = {}
+		zynpot_repeat = {}
 		REPEAT_DELAY = 3 # Quantity of repeat intervals to delay before triggering auto repeat
 		REPEAT_INTERVAL = 0.15 # Auto repeat interval in seconds
 
@@ -2033,16 +1957,16 @@ class zynthian_gui:
 						i = int(params[0])
 						t = params[1]
 						if t == 'R':
-							val = zynswitch_cuia_ts[i]
-							zynswitch_cuia_ts[i] = None
-							if val > 0:
-								dtus = int(1000000 * (monotonic() - val))
-								t = self.zynswitch_timing(dtus)
-							else:
+							if zynswitch_cuia_ts[i] is None:
+								del zynswitch_repeat[i]
 								continue
+							else:
+								dtus = int(1000000 * (monotonic() - zynswitch_cuia_ts[i]))
+								zynswitch_cuia_ts[i] = None
+								t = self.zynswitch_timing(dtus)
 						if t == 'P':
 							if self.zynswitch_push(i):
-								zynswitch_cuia_ts[i] = -REPEAT_DELAY
+								zynswitch_repeat[i] = REPEAT_DELAY
 							else:
 								zynswitch_cuia_ts[i] = monotonic()
 						elif t == 'S':
@@ -2067,14 +1991,14 @@ class zynthian_gui:
 						logging.error(f"CUIA zynswitch needs 2 parameters: index, action_type, not {params}")
 
 				elif cuia == "zynpot":
-					# zynpot has parameters: [pot, delta] where delta is P(ressed), R(eleased), +/-offset
-					try:
+					# zynpot has parameters: [pot, delta, 'P'|'R'] 'P','R' is only used for keybinding to zynpot
+					if len(params) > 2:
 						if params[2] == 'R':
-							zynpot_cuia_ts[i] = None
+							del zynpot_repeat[i]
 						elif params[2] == 'P':
 							self.cuia_zynpot(params[:2])
-							zynpot_cuia_ts[i] = [REPEAT_DELAY, params]
-					except:
+							zynpot_repeat[i] = [REPEAT_DELAY, params]
+					else:
 						self.cuia_zynpot(params[0], params[1])
 
 				else:
@@ -2087,21 +2011,16 @@ class zynthian_gui:
 				self.set_event_flag()
 
 			except Empty:
-				#TODO: Optimise - we probably only have one key pressed at a time...
-				for i, ts in enumerate(zynswitch_cuia_ts):
-					if ts is None:
-						continue
-					if ts < 0:
-						zynswitch_cuia_ts[i] += 1
-					if zynswitch_cuia_ts[i] == 0:
-						self.zynswitch_push(i)
-				for i, ts in enumerate(zynpot_cuia_ts):
-					if ts is None:
-						continue
-					if ts[0]:
-						zynpot_cuia_ts[i][0] -= 1
+				for i in zynswitch_repeat:
+					if zynswitch_repeat[i]:
+						zynswitch_repeat[i] -= 1
 					else:
-						self.cuia_zynpot(zynpot_cuia_ts[i][1])
+						self.zynswitch_push(i)
+				for i in zynpot_repeat:
+					if zynpot_repeat[i][0]:
+						zynpot_repeat[i][0] -= 1
+					else:
+						self.cuia_zynpot(zynpot_repeat[i][1])
 			except:
 				pass
 

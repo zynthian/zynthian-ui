@@ -211,10 +211,12 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			title = self.zynseq.get_sequence_name(self.bank, self.sequence)
 			try:
 				str(int(title))
-				chan = self.zynseq.libseq.getChannel(self.bank, self.sequence, 0)
-				layer = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(chan)
-				if layer:
-					title = layer.preset_name.replace("_", " ")
+				# Get preset title from synth engine on this MIDI channel
+				midi_chan = self.zynseq.libseq.getChannel(self.bank, self.sequence, 0)
+				chain_id = self.zyngui.chain_manager.midi_chain_2_chain_id[midi_chan]
+				processors = self.zyngui.chain_manager.get_processors(chain_id, "SYNTH")
+				if processors:
+					title = processors[0].preset_name.replace("_", " ")
 				else:
 					group = chr(65 + self.zynseq.libseq.getGroup(self.bank, self.sequence))
 					title = f"{group}{title}"
@@ -1075,7 +1077,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to refresh status
-	def refresh_status(self, status):
+	def refresh_status(self, status={}):
 		super().refresh_status(status)
 		step = self.zynseq.libseq.getPatternPlayhead()
 		if self.playhead != step:
