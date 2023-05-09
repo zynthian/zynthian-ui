@@ -205,13 +205,31 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.copy_source = self.pattern
 		self.setup_zynpots()
 		if not self.param_editor_zctrl:
-			self.set_title("Pattern {}".format(self.pattern))
+			title = self.zyngui.zynseq.get_sequence_name(self.bank, self.sequence)
+			try:
+				str(int(title))
+				chan = self.zyngui.zynseq.libseq.getChannel(self.bank, self.sequence, 0)
+				layer = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(chan)
+				if layer:
+					title = layer.preset_name.replace("_", " ")
+				else:
+					group = chr(65 + self.zyngui.zynseq.libseq.getGroup(self.bank, self.sequence))
+					title = f"{group}{title}"
+			except:
+				pass
+			if title:
+				self.set_title(f"Pattern {self.pattern} ({title})")
+			else:
+				self.set_title(f"Pattern {self.pattern}")
 		self.last_play_mode = self.zyngui.zynseq.libseq.getPlayMode(self.bank, self.sequence)
 		if self.last_play_mode not in (zynseq.SEQ_LOOP,zynseq.SEQ_LOOPALL):
 			self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynseq.SEQ_LOOP)
 		if zynthian_gui_config.midi_single_active_channel:
 			layer = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(self.channel)
 			self.zyngui.set_curlayer(layer)
+		zoom = self.zyngui.zynseq.libseq.getVerticalZoom()
+		if zoom != self.zoom:
+			self.set_vzoom(zoom)
 
 
 	# Function to enable note duration/velocity direct edit mode
@@ -233,6 +251,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to hide GUI
 	def hide(self):
+		if not self.shown:
+			return
 		super().hide()
 		if self.bank == 0 and self.sequence == 0:
 			self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STOPPED)
@@ -468,6 +488,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to set vertical zoom
 	def set_vzoom(self, value):
 		self.zoom = value
+		self.zyngui.zynseq.libseq.setVerticalZoom(value)
 		self.update_row_height()
 		self.redraw_pending = 4
 		self.select_cell()
@@ -1244,14 +1265,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.show_menu()
 			return True
 		return False
-
-
-	#	CUIA Actions
-	# Function to handle BACK
-	def back_action(self):
-		if self.edit_mode:
-			self.enable_edit(EDIT_MODE_NONE)
-			return True
 
 
 	# Function to handle CUIA ARROW_RIGHT

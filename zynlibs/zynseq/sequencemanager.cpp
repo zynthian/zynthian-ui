@@ -137,8 +137,10 @@ void SequenceManager::copyPattern(uint32_t source, uint32_t destination)
 Sequence* SequenceManager::getSequence(uint8_t bank, uint8_t sequence)
 {
     // Add missing sequences
-    while(m_mBanks[bank].size() <= sequence)
+    while(m_mBanks[bank].size() <= sequence) {
         m_mBanks[bank].push_back(new Sequence());
+        addPattern(bank, m_mBanks[bank].size() - 1, 0, 0, createPattern(), false);
+    }
     return m_mBanks[bank][sequence];
 }
 
@@ -363,24 +365,20 @@ void SequenceManager::cleanPatterns()
 
 void SequenceManager::setSequencesInBank(uint8_t bank, uint8_t sequences)
 {
+    if(sequences == 0)
+        return;
     // Remove excessive sequences
     size_t nSize = m_mBanks[bank].size();
     while(nSize > sequences)
     {
-        setSequencePlayState(bank, --nSize, STOPPED);
-        delete getSequence(bank, nSize);
+        setSequencePlayState(bank, nSize - 1, STOPPED);
+        delete m_mBanks[bank].back();
         m_mBanks[bank].pop_back();
+        nSize = m_mBanks[bank].size();
     }
     cleanPatterns();
     // Add required sequences
-    for(size_t nSequence = nSize; nSequence < sequences; ++nSequence)
-    {
-        Sequence* pSequence = new Sequence();
-        m_mBanks[bank].push_back(pSequence);
-        // Add a new pattern at start of eacn new track
-        uint32_t nPattern = createPattern();
-        addPattern(bank, nSequence, 0, 0, nPattern, false);
-    }
+    getSequence(bank, sequences - 1);
 }
 
 uint32_t SequenceManager::getSequencesInBank(uint32_t bank)
@@ -412,17 +410,8 @@ bool SequenceManager::moveSequence(uint8_t bank, uint8_t sequence, uint8_t posit
 
 void SequenceManager::insertSequence(uint8_t bank, uint8_t sequence)
 {
-    if(sequence >= m_mBanks[bank].size())
-    {
-        setSequencesInBank(bank, sequence + 1);
-        return;
-    }
-    Sequence* pSequence = new Sequence();
-    m_mBanks[bank].insert(m_mBanks[bank].begin() + sequence, pSequence);
-    // Add a new pattern at start of eacn new track
-    cleanPatterns();
-    uint32_t nPattern = createPattern();
-    addPattern(bank, sequence, 0, 0, nPattern, false);
+    m_mBanks[bank].insert(m_mBanks[bank].begin() + sequence, new Sequence());
+    addPattern(bank, sequence, 0, 0, createPattern(), false);
 }
 
 void SequenceManager::removeSequence(uint8_t bank, uint8_t sequence)
