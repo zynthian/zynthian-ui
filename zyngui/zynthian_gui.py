@@ -1308,6 +1308,17 @@ class zynthian_gui:
 			if chan >= 0 and chan < 16 and pgm >= 0 and pgm < 128:
 				get_lib_zyncore().write_zynmidi_program_change(chan, pgm)
 
+	def cuia_zyn_cc(self, params=None):
+		if len(params) > 2:
+			chan = int(params[0])
+			cc = int(params[1])
+			if params[-1] == 'R':
+				if len(params) > 3:
+					get_lib_zyncore().write_zynmidi_ccontrol_change(chan, cc, int(params[3]))
+			else:
+				get_lib_zyncore().write_zynmidi_ccontrol_change(chan, cc, int(params[2]))
+
+
 	# Common methods to control views derived from zynthian_gui_base
 	def cuia_show_topbar(self, params=None):
 		try:
@@ -1969,24 +1980,27 @@ class zynthian_gui:
 								zynswitch_repeat[i] = REPEAT_DELAY
 							else:
 								zynswitch_cuia_ts[i] = monotonic()
-						elif t == 'S':
-							zynswitch_cuia_ts[i] = None
-							self.zynswitch_short(i)
-						elif t == 'B':
-							zynswitch_cuia_ts[i] = None
-							# Double switches must be bold
-							if not self.zynswitch_double(i):
-								self.zynswitch_bold(i)
-						elif t == 'L':
-							zynswitch_cuia_ts[i] = None
-							self.zynswitch_long(i)
-						elif t == 'X':
-							self.zynswitch_X(i)
-						elif t == 'Y':
-							self.zynswitch_Y(i)
 						else:
-							zynswitch_cuia_ts[i] = None
-							logging.warning("Unknown Action Type: {}".format(t))
+							if t == 'S':
+								zynswitch_cuia_ts[i] = None
+								self.zynswitch_short(i)
+							elif t == 'B':
+								zynswitch_cuia_ts[i] = None
+								# Double switches must be bold
+								if not self.zynswitch_double(i):
+									self.zynswitch_bold(i)
+							elif t == 'L':
+								zynswitch_cuia_ts[i] = None
+								self.zynswitch_long(i)
+							elif t == 'X':
+								self.zynswitch_X(i)
+							elif t == 'Y':
+								self.zynswitch_Y(i)
+							else:
+								zynswitch_cuia_ts[i] = None
+								logging.warning("Unknown Action Type: {}".format(t))
+							if i in zynswitch_repeat:
+								del zynswitch_repeat[i]
 					except Exception as err:
 						logging.error(f"CUIA zynswitch needs 2 parameters: index, action_type, not {params}")
 

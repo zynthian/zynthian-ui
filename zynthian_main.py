@@ -131,6 +131,7 @@ zynthian_gui_config.top.protocol("WM_DELETE_WINDOW", delete_window)
 event : key event
 keypress : True if press, False if release
 """
+cb_toggle = {}
 def cb_keybinding(event):
 	# Avoid TAB confusing widget focus change
 	if event.keycode == 23:
@@ -140,11 +141,20 @@ def cb_keybinding(event):
 	if cuia is not None:
 		# Emulate Zynswitch Push/Release with KeyPress/KeyRelease
 		if cuia.lower().startswith("zyn"):
-			if event.type == EventType.KeyPress:
-				cuia += ",P"
+			if cuia[-2:] == ',T':
+				if event.type == EventType.KeyPress:
+					if event.keycode in cb_toggle:
+						cb_toggle[event.keycode] = not cb_toggle[event.keycode]
+					else:
+						cb_toggle[event.keycode] = True
+					if cb_toggle[event.keycode]:
+						zyngui.cuia_queue.put_nowait(cuia[:-1] + "P")
+					else:
+						zyngui.cuia_queue.put_nowait(cuia[:-1] + "R")
+			elif event.type == EventType.KeyPress:
+				zyngui.cuia_queue.put_nowait(cuia + ",P")
 			else:
-				cuia += ",R"
-			zyngui.cuia_queue.put_nowait(cuia)
+				zyngui.cuia_queue.put_nowait(cuia + ",R")
 		# Or normal CUIA
 		elif event.type == EventType.KeyPress:
 			zyngui.cuia_queue.put_nowait(cuia)

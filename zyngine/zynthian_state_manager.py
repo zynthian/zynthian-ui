@@ -102,7 +102,6 @@ class zynthian_state_manager:
 
         self.exit_flag = False
         self.set_midi_learn(False)
-        #TODO: We may need this in future... self.start_thread()
         self.thread = None
         self.reset()
         self.end_busy("zynthian_state_manager")
@@ -170,7 +169,7 @@ class zynthian_state_manager:
         zynautoconnect.request_midi_connect(True)
         zynautoconnect.request_audio_connect(True)
 
-        self.exit_flag = True
+        self.exit_flag = False
         self.thread = Thread(target=self.thread_task, args=())
         self.thread.name = "Status Manager MIDI"
         self.thread.daemon = True # thread dies with the program
@@ -218,65 +217,65 @@ class zynthian_state_manager:
             #self.status_info['cpu_load'] = max(psutil.cpu_percent(None, True))
             self.status_info['cpu_load'] = zynautoconnect.get_jackd_cpu_load()
 
-        try:
-            # Get SOC sensors (once each 5 refreshes)
-            if self.status_counter > 5:
-                self.status_counter = 0
+            try:
+                # Get SOC sensors (once each 5 refreshes)
+                if self.status_counter > 5:
+                    self.status_counter = 0
 
-                self.status_info['overtemp'] = False
-                self.status_info['undervoltage'] = False
+                    self.status_info['overtemp'] = False
+                    self.status_info['undervoltage'] = False
 
-                if self.hwmon_thermal_file and self.hwmon_undervolt_file:
-                    try:
-                        self.hwmon_thermal_file.seek(0)
-                        res = int(self.hwmon_thermal_file.read())/1000
-                        #logging.debug("CPU Temperature => {}".format(res))
-                        if res > self.overtemp_warning:
-                            self.status_info['overtemp'] = True
-                    except Exception as e:
-                        logging.error(e)
+                    if self.hwmon_thermal_file and self.hwmon_undervolt_file:
+                        try:
+                            self.hwmon_thermal_file.seek(0)
+                            res = int(self.hwmon_thermal_file.read())/1000
+                            #logging.debug("CPU Temperature => {}".format(res))
+                            if res > self.overtemp_warning:
+                                self.status_info['overtemp'] = True
+                        except Exception as e:
+                            logging.error(e)
 
-                    try:
-                        self.hwmon_undervolt_file.seek(0)
-                        res = self.hwmon_undervolt_file.read()
-                        if res == "1":
-                            self.status_info['undervoltage'] = True
-                    except Exception as e:
-                        logging.error(e)
+                        try:
+                            self.hwmon_undervolt_file.seek(0)
+                            res = self.hwmon_undervolt_file.read()
+                            if res == "1":
+                                self.status_info['undervoltage'] = True
+                        except Exception as e:
+                            logging.error(e)
 
-                elif self.get_throttled_file:
-                    try:
-                        self.get_throttled_file.seek(0)
-                        thr = int('0x%s' % self.get_throttled_file.read(), 16)
-                        if thr & 0x1:
-                            self.status_info['undervoltage'] = True
-                        elif thr & (0x4 | 0x2):
-                            self.status_info['overtemp'] = True
-                    except Exception as e:
-                        logging.error(e)
+                    elif self.get_throttled_file:
+                        try:
+                            self.get_throttled_file.seek(0)
+                            thr = int('0x%s' % self.get_throttled_file.read(), 16)
+                            if thr & 0x1:
+                                self.status_info['undervoltage'] = True
+                            elif thr & (0x4 | 0x2):
+                                self.status_info['overtemp'] = True
+                        except Exception as e:
+                            logging.error(e)
+
+                    else:
+                        self.status_info['overtemp'] = True
+                        self.status_info['undervoltage'] = True
 
                 else:
-                    self.status_info['overtemp'] = True
-                    self.status_info['undervoltage'] = True
+                    self.status_counter += 1
 
-            else:
-                self.status_counter += 1
+                # Audio Player Status
+                if self.audio_player.engine.player.get_playback_state(16):
+                    self.status_info['audio_player'] = 'PLAY'
+                elif 'audio_player' in self.status_info:
+                    self.status_info.pop('audio_player')
 
-            # Audio Player Status
-            if self.audio_player.engine.player.get_playback_state(16):
-                self.status_info['audio_player'] = 'PLAY'
-            elif 'audio_player' in self.status_info:
-                self.status_info.pop('audio_player')
+                # Audio Recorder Status => Implemented in zyngui/zynthian_audio_recorder.py
 
-            # Audio Recorder Status => Implemented in zyngui/zynthian_audio_recorder.py
+                # Clean some state_manager.status_info
+                self.status_info['xrun'] = False
+                self.status_info['midi'] = False
+                self.status_info['midi_clock'] = False
 
-            # Clean some state_manager.status_info
-            self.status_info['xrun'] = False
-            self.status_info['midi'] = False
-            self.status_info['midi_clock'] = False
-
-        except Exception as e:
-            logging.exception(e)
+            except Exception as e:
+                logging.exception(e)
 
             sleep(0.2)
 
