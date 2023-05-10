@@ -178,6 +178,8 @@ class zynthian_processor:
         i = 0
         self.bank_msb_info = [[0,0], [0,0], [0,0]] # system, user, external => [offset, n]
         for bank in self.bank_list:
+            if bank[0] is None:
+                continue
             if bank[0].startswith(self.ex_data_dir):
                 self.bank_msb_info[0][0] += 1
                 self.bank_msb_info[1][0] += 1
