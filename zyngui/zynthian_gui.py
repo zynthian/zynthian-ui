@@ -701,6 +701,8 @@ class zynthian_gui:
 			chain_id = self.chain_manager.active_chain_id
 		else:
 			self.chain_manager.set_active_chain_by_id(chain_id)
+		if processor:
+			self.current_processor = processor
 
 		if self.get_current_processor():
 			control_screen_name = 'control'
@@ -747,7 +749,6 @@ class zynthian_gui:
 
 	def show_control(self):
 		self.chain_control()
-
 
 	def show_control_xy(self, xctrl, yctrl):
 		self.screens['control_xy'].set_controllers(xctrl, yctrl)

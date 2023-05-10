@@ -254,6 +254,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 
 	def start(self):
+		self.state_manager.start_busy("Aeolus")
 		chain_manager = self.state_manager.chain_manager
 		if len(self.processors) <= 1:
 			# Add extra processors
@@ -293,6 +294,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.set_midi_chan()
 		zynautoconnect.request_midi_connect(True)
 		zynautoconnect.request_audio_connect()
+		self.state_manager.end_busy("Aeolus")
 
 	def stop(self):
 		if self.proc:

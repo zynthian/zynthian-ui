@@ -192,9 +192,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 		# Process command ...
 		if self.config_remote_display():
-			self.command = "setBfree -p \"{}\" -c \"{}\"".format(self.presets_fpath, self.config_autogen_fpath)
+			self.command = f"setBfree -p \"{self.presets_fpath}\" -c \"{self.config_autogen_fpath}\""
 		else:
-			self.command = "setBfree -p \"{}\" -c \"{}\"".format(self.presets_fpath, self.config_autogen_fpath)
+			self.command = f"setBfree -p \"{self.presets_fpath}\" -c \"{self.config_autogen_fpath}\"" 
 
 		self.command_prompt = "\nAll systems go."
 
@@ -392,7 +392,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
-		logging.debug("Preset List for Bank {}".format(bank[0]))
+		logging.debug(f"Preset List for Bank {bank[0]}")
 		return self.load_program_list(bank[0])
 
 
@@ -424,7 +424,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 			try:
 				zcsymbol=self._param2zcsymbol[param]
 			except Exception as e:
-				logging.debug("No controller for param {}".format(param))
+				logging.debug(f"No controller for param {param}")
 				continue
 
 			try:
@@ -438,7 +438,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 					else:
 						v = 'off'
 
-				#logging.debug("Updating controller '{}' ({}) => {}".format(zctrl.symbol, zctrl.name,zctrl.value))
+				#logging.debug(f"Updating controller '{zctrl.symbol}' ({zctrl.name}) => {zctrl.value}")
 				zctrl.set_value(v, True)
 
 				#Refresh GUI controller in screen when needed ...
@@ -446,14 +446,14 @@ class zynthian_engine_setbfree(zynthian_engine):
 				#TODO:	self.state_manager.screens['control'].set_controller_value(zctrl)
 
 			except Exception as e:
-				logging.debug("Can't update controller '{}' => {}".format(zcsymbol, e))
+				logging.debug(f"Can't update controller '{zcsymbol}' => {e}")
 
 
 	def midi_zctrl_change(self, zctrl, val):
 		try:
 			if val != zctrl.get_value():
 				zctrl.set_value(val)
-				#logging.debug("MIDI CC {} -> '{}' = {}".format(zctrl.midi_cc, zctrl.name, val))
+				#logging.debug(f"MIDI CC {zctrl.midi_cc} -> '{zctrl.name}' = {val}")
 
 		except Exception as e:
 			logging.debug(e)
@@ -553,6 +553,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 					chain_manager.get_chain(chain_manager.get_chain_id_by_processor(processor)).mixer_chan = None
 
 		except Exception as e:
-			logging.error("Can't setup extended config => {}".format(e))
+			logging.error(f"Can't setup extended config => {e}")
 
 #******************************************************************************

@@ -103,7 +103,7 @@ class zynthian_chain_manager():
                 cls.engine_info['PT'] = ('Pianoteq', pt_info['name'], "MIDI Synth", None, zynthian_engine_pianoteq6, True)
 
         for plugin_name, plugin_info in get_jalv_plugins().items():
-            engine = 'JV/{}'.format(plugin_name)
+            engine = f"JV/{plugin_name}"
             cls.engine_info[engine] = ( plugin_name, plugin_name,
                 plugin_info['TYPE'], plugin_info.get('CLASS', None),
                 zynthian_engine_jalv, plugin_info['ENABLED'])
@@ -663,11 +663,11 @@ class zynthian_chain_manager():
             info = self.engine_info[engine]
             zynthian_engine_class = info[4]
             if engine[0:3] == "JV/":
-                engine = "JV/{}".format(self.zyngine_counter)
+                engine = f"JV/{self.zyngine_counter}"
                 self.zyngines[engine] = zynthian_engine_class(
                     info[0], info[2], self.state_manager, False)
             elif engine in ["SF"]:
-                engine = "{}/{}".format(engine, self.zyngine_counter)
+                engine = f"{engine}/{self.zyngine_counter}"
                 self.zyngines[engine] = zynthian_engine_class(self.state_manager)
             else:
                 self.zyngines[engine] = zynthian_engine_class(self.state_manager)
@@ -681,7 +681,7 @@ class zynthian_chain_manager():
 
         for engine in list(self.zyngines.keys()):
             if not self.zyngines[engine].processors:
-                logging.debug("Stopping Unused Engine '{}' ...".format(engine))
+                logging.debug(f"Stopping Unused Engine '{engine}' ...")
                 self.zyngines[engine].stop()
                 del self.zyngines[engine]
 
@@ -722,12 +722,12 @@ class zynthian_chain_manager():
                 if jn is not None and jn.startswith(jackname):
                     names.add(jn)
             i = 1
-            while "{}-{:02d}".format(jackname, i) in names:
+            while f"{jackname}-{i:02}" in names:
                 i += 1
-            return "{}-{:02d}".format(jackname, i)
+            return f"{jackname}-{i:02}"
         except Exception as e:
             logging.error(e)
-            return "{}-00".format(jackname)
+            return f"{jackname}-00"
 
     # ------------------------------------------------------------------------
     # State Management
@@ -1004,7 +1004,7 @@ class zynthian_chain_manager():
                         continue
                     changed |= processor.set_preset(prognum, True)
             except Exception as e:
-                logging.error("Can't set preset for CH#{}:PC#{} => {}".format(midich, prognum, e))
+                logging.error(f"Can't set preset for CH#{midich}:PC#{prognum} => {e}")
         return changed
 
     def set_midi_chan(self, chain_id, midi_chan):
