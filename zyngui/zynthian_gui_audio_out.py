@@ -81,12 +81,12 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 		if zynthian_gui_config.multichannel_recorder:
 			if self.zyngui.state_manager.audio_recorder.get_status():
 				# Recording so don't allow change of armed state
-				if self.zyngui.state_manager.audio_recorder.is_armed(self.chain.midi_chan):
+				if self.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan):
 					self.list_data.append((None, 'record_disable', '[x] multitrack recorder'))
 				else:
 					self.list_data.append((None, 'record_enable', '[  ] multitrack recorder'))
 			else:
-				if self.zyngui.state_manager.audio_recorder.is_armed(self.chain.midi_chan):
+				if self.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan):
 					self.list_data.append(('record', None, '[x] multitrack recorder'))
 				else:
 					self.list_data.append(('record', None, '[  ] multitrack recorder'))
@@ -100,7 +100,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 	def select_action(self, i, t='S'):
 		if self.list_data[i][0] == 'record':
-			self.zyngui.state_manager.audio_recorder.toggle_arm(self.chain.midi_chan)
+			self.zyngui.state_manager.audio_recorder.toggle_arm(self.chain.mixer_chan)
 		else:
 			self.chain.toggle_audio_out(self.list_data[i][0])
 		self.fill_list()

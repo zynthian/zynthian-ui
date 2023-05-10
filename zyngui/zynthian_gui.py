@@ -1996,7 +1996,7 @@ class zynthian_gui:
 							if i in zynswitch_repeat:
 								del zynswitch_repeat[i]
 					except Exception as err:
-						logging.error(f"CUIA zynswitch needs 2 parameters: index, action_type, not {params}")
+						logging.error(f"CUIA zynswitch failed with params: {params} and error {err}")
 
 				elif cuia == "zynpot":
 					# zynpot has parameters: [pot, delta, 'P'|'R'] 'P','R' is only used for keybinding to zynpot
@@ -2014,7 +2014,7 @@ class zynthian_gui:
 						cuia_func = getattr(self, "cuia_" + cuia)
 						cuia_func(params)
 					except AttributeError:
-						logging.error("Unknown of faulty CUIA '{}'".format(cuia))
+						logging.error(f"Unknown or faulty CUIA '{cuia}' with params {params}")
 
 				self.set_event_flag()
 

@@ -196,6 +196,7 @@ class zynthian_chain_manager():
             if chain_id != "main":
                 if chain.mixer_chan is not None:
                     self.state_manager.zynmixer.reset(chain.mixer_chan)
+                    self.state_manager.audio_recorder.unarm(chain.mixer_chan)
                 self.chains.pop(chain_id)
                 self.state_manager.zynmixer.set_mute(chain.mixer_chan, False, True)
                 del chain

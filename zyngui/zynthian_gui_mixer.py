@@ -104,6 +104,7 @@ class zynthian_gui_mixer_strip():
 		self.right_color = "#00EE00"
 		self.left_color_learn = "#AAAA00"
 		self.right_color_learn = "#EEEE00"
+		self.high_color = "#CCCC00" # yellow
 
 		self.mute_color = zynthian_gui_config.color_on #"#3090F0"
 		self.solo_color = "#D0D000"
@@ -216,7 +217,7 @@ class zynthian_gui_mixer_strip():
 
 	def refresh_status(self):
 		if self.parent.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan):
-			self.parent.main_canvas.itemconfig(self.status_indicator, text="{}\uf111".format(self.chain.status), fill=self.high_color)
+			self.parent.main_canvas.itemconfig(self.status_indicator, text=f"{self.chain.status}\uf111", fill=self.high_color)
 		else:
 			self.parent.main_canvas.itemconfig(self.status_indicator, text=self.chain.status, fill="#009000")
 	
