@@ -107,6 +107,7 @@ class zynthian_gui_mixer_strip():
 		self.right_color = "#00EE00"
 		self.left_color_learn = "#AAAA00"
 		self.right_color_learn = "#EEEE00"
+		self.high_color = "#CCCC00" # yellow
 
 		self.mute_color = zynthian_gui_config.color_on #"#3090F0"
 		self.solo_color = "#D0D000"
