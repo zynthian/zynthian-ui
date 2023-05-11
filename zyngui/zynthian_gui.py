@@ -119,7 +119,6 @@ class zynthian_gui:
 		self.zynread_wait_flag = False
 		self.exit_flag = False
 		self.exit_code = 0
-		self.exit_wait_count = 0
 
 		self.zynmidi = None
 
@@ -439,13 +438,6 @@ class zynthian_gui:
 		#self.state_manager.init_mpe_zones(0, 2)
 
 
-	def stop(self):
-		logging.info("STOPPING ZYNTHIAN-UI ...")
-		self.state_manager.stop()
-		self.screens['midi_recorder'].stop_playing() # Need to stop timing thread
-		#self.zyntransport.stop()
-
-
 	def hide_screens(self, exclude=None):
 		if not exclude:
 			exclude = self.current_screen
@@ -703,8 +695,15 @@ class zynthian_gui:
 			self.chain_manager.set_active_chain_by_id(chain_id)
 		if processor:
 			self.current_processor = processor
+		elif processor not in self.chain_manager.get_processors(chain_id):
+			self.current_processor = None
+			for type in ["MIDI Synth", "MIDI Tool", "Audio Effect"]:
+				processors = self.chain_manager.get_processors(chain_id, type)
+				if processors:
+					self.current_processor = processors[0]
+					break
 
-		if self.get_current_processor():
+		if self.current_processor:
 			control_screen_name = 'control'
 
 			# Check for a custom GUI (widget)
@@ -1756,7 +1755,9 @@ class zynthian_gui:
 					self.screens['midi_chan'].midi_chan_activity(chan)
 					#Preload preset (note-on)
 					if self.current_screen == 'preset' and zynthian_gui_config.preset_preload_noteon and chan == self.get_current_processor().get_midi_chan():
+						self.state_manager.start_busy("preselect preset")
 						self.screens['preset'].preselect_action()
+						self.state_manager.end_busy("preselect preset")
 					#Note Range Learn
 					elif self.current_screen == 'midi_key_range' and self.state_manager.midi_learn_state:
 						self.screens['midi_key_range'].learn_note_range((ev & 0x7F00) >> 8)
@@ -2038,10 +2039,32 @@ class zynthian_gui:
 	#------------------------------------------------------------------
 
 	def exit(self, code=0):
-		self.stop()
+		logging.info("STOPPING ZYNTHIAN-UI ...")
+		self.state_manager.stop()
+		#self.zyntransport.stop()
+
 		self.exit_code = code
 		self.exit_flag = True
 		self.cuia_queue.put_nowait("__EXIT__")
+		self.exit_wait_count = 0
+		self.stop()
+
+
+	def stop(self):
+		running_thread_names = []
+		for t in [self.control_thread, self.status_thread, self.loading_thread, self.cuia_thread, self.state_manager.thread]:
+			if t and t.is_alive():
+				running_thread_names.append(t.name)
+		if zynautoconnect.is_running():
+			running_thread_names.append("Autoconect")
+		self.exit_wait_count += 1
+		if self.exit_wait_count > 10:
+			for i in running_thread_names:
+				logging.error(f"{i} thread failed to terminate")
+			zynthian_gui_config.top.quit()
+			return
+
+		zynthian_gui_config.top.after(160, self.stop)
 
 
 	#------------------------------------------------------------------
@@ -2049,40 +2072,11 @@ class zynthian_gui:
 	#------------------------------------------------------------------
 
 	def start_polling(self):
-		self.poll()
 		self.osc_timeout()
 
 
 	def after(self, msec, func):
 		zynthian_gui_config.top.after(msec, func)
-
-
-	def poll(self):
-		# Capture exit event and finish
-		if self.exit_flag:
-			timeout = 10
-			if self.exit_wait_count == 0:
-				logging.info("EXITING ZYNTHIAN-UI...")
-			if self.exit_wait_count < timeout and (self.control_thread.is_alive() or self.status_thread.is_alive() or self.loading_thread.is_alive() or zynautoconnect.is_running() or self.state_manager.thread.is_alive() or self.cuia_thread.is_alive()):
-				self.exit_wait_count += 1
-			else:
-				if self.control_thread.is_alive():
-					logging.error("Control thread failed to terminate")
-				if self.status_thread.is_alive():
-					logging.error("Status thread failed to terminate")
-				if self.loading_thread.is_alive():
-					logging.error("Loading thread failed to terminate")
-				if zynautoconnect.is_running():
-					logging.error("Autoconnect thread failed to terminate")
-				if self.state_manager.thread.is_alive():
-					logging.error("State manager thread failed to terminate")
-				if self.cuia_thread.is_alive():
-					logging.error("CUIA thread failed to terminate")
-				zynthian_gui_config.top.quit()
-				return
-
-		# Poll
-		zynthian_gui_config.top.after(160, self.poll)
 
 
 	def osc_timeout(self):

@@ -170,7 +170,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		self.options['drop_pc'] = True
 		self.options['clone'] = False
 
-		self.command = ['sooperlooper', '-q', '-l 0', '-D no', '-p {}'.format(self.osc_target_port), '-j{}'.format(self.jackname)]
+		self.command = ["sooperlooper", "-q", "-l 0", "-D no", f"-p {self.osc_target_port}", f"-j{self.jackname}"]
 
 		self.state = [-1] * self.MAX_LOOPS # Current SL state for each loop
 		self.next_state = [-1] * self.MAX_LOOPS # Next SL state for each loop (-1 if no state change pending)
@@ -181,9 +181,9 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_sooperlooper.py"
 		self.monitors_dict = OrderedDict({
-			'state':0,
-			'next_state':-1,
-			'loop_count':0
+			"state":0,
+			"next_state":-1,
+			"loop_count":0
 		})
 
 		# MIDI Controllers
@@ -282,7 +282,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				self.proc.kill()
 				self.proc = None
 			except Exception as err:
-				logging.error("Can't stop engine {} => {}".format(self.name, err))
+				logging.error(f"Can't stop engine {self.name} => {err}")
 
 		self.osc_end()
 
@@ -311,8 +311,8 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
-		presets = self.get_filelist('{}/presets/sooperlooper'.format(self.data_dir), 'slsess')
-		presets += self.get_filelist('{}/presets/sooperlooper'.format(self.my_data_dir), 'slsess')
+		presets = self.get_filelist(f"{self.data_dir}/presets/sooperlooper", "slsess")
+		presets += self.get_filelist(f"{self.my_data_dir}/presets/sooperlooper", "slsess")
 		return presets
 
 
@@ -341,19 +341,19 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 
 	def preset_exists(self, bank_info, preset_name):
-		return os.path.exists('{}/presets/sooperlooper/{}.slsess'.format(self.my_data_dir, preset_name))
+		return os.path.exists(f"{self.my_data_dir}/presets/sooperlooper/{preset_name}.slsess")
 
 
 	def save_preset(self, bank_name, preset_name):
 		if self.osc_server is None:
 			return
-		path = '{}/presets/sooperlooper'.format(self.my_data_dir)
+		path = f"{self.my_data_dir}/presets/sooperlooper"
 		if not os.path.exists(path):
 			try:
 				os.mkdir(path)
 			except Exception as e:
-				logging.warning("Failed to create SooperLooper user preset directory: {}".format(e))
-		uri = '{}/{}.slsess'.format(path, preset_name)
+				logging.warning(f"Failed to create SooperLooper user preset directory: {e}")
+		uri = f"{path}/{preset_name}.slsess"
 		# Undocumented feature: set 4th (int) parameter to 1 to save loop audio
 		self.osc_server.send(self.osc_target, '/save_session', ('s', uri),  ('s', self.osc_server_url), ('s', '/error'), ('i', 1))
 		return uri
@@ -362,7 +362,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	def delete_preset(self, bank, preset):
 		try:
 			os.remove(preset[0])
-			wavs = glob('{}_loop*.wav'.format(preset[0]))
+			wavs = glob(f"{preset[0]}_loop*.wav")
 			for file in wavs:
 				os.remove(file)
 		except Exception as e:
@@ -371,7 +371,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 	def rename_preset(self, bank_info, preset, new_name):
 		try:
-			os.rename(preset[0], '{}/presets/sooperlooper/{}.slsess'.format(self.my_data_dir, new_name))
+			os.rename(preset[0], f"{self.my_data_dir}/presets/sooperlooper/{new_name}.slsess")
 			return True
 		except Exception as e:
 			logging.debug(e)
@@ -399,7 +399,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 
 	def send_controller_value(self, zctrl):
-		#logging.warning("{} {}".format(zctrl.symbol, zctrl.value))
+		#logging.warning(f"{zctrl.symbol} {zctrl.value}")
 		if self.osc_server is None or zctrl.symbol in ['oneshot', 'oneshot', 'trigger'] and zctrl.value == 0:
 			# Ignore off signals
 			return
@@ -449,7 +449,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		if self.osc_server is None:
 			return
 		try:
-			#logging.debug("Rx OSC => {} {}".format(path, args))
+			#logging.debug(f"Rx OSC => {path} {args}")
 			if path == '/state':
 				# args: i:Loop index, s:control, f:value
 				#logging.warning("Loop: %d %s=%0.1f", args[0], args[1], args[2])
@@ -469,9 +469,9 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				if self.next_state[loop] == self.state[loop]:
 					self.next_state[loop] = -1
 
-				self.monitors_dict['state_{}'.format(loop)] = self.state[loop]
-				self.monitors_dict['next_state_{}'.format(loop)] = self.next_state[loop]
-				self.monitors_dict['waiting_{}'.format(loop)] = self.waiting[loop]
+				self.monitors_dict[f"state_{loop}"] = self.state[loop]
+				self.monitors_dict[f"next_state_{loop}"] = self.next_state[loop]
+				self.monitors_dict[f"waiting_{loop}"] = self.waiting[loop]
 				if self.selected_loop == loop:
 					self.monitors_dict['state'] = self.state[loop]
 					self.monitors_dict['next_state'] = self.next_state[loop]
@@ -487,7 +487,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				if loop_count_changed:
 					labels = ['Internal','MidiClock','Jack/Host','None']
 					for loop in range(self.loop_count):
-						labels.append('Loop {}'.format(loop + 1))
+						labels.append(f"Loop {loop + 1}")
 					try:
 							self.zctrls['sync_source'].set_options({'labels':labels, 'ticks':[], 'value_max':self.loop_count})
 							self.zctrls['loop_count'].set_value(self.loop_count, False)
@@ -496,15 +496,15 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 						pass # zctrls may not yet be initialised
 					if loop_count_changed > 0:
 						for i in range(loop_count_changed):
-							self.osc_server.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'loop_pos'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
-							self.osc_server.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'loop_len'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
-							self.osc_server.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'mute'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
-							self.osc_server.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'state'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
-							self.osc_server.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'next_state'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
-							self.osc_server.send(self.osc_target, '/sl/{}/register_auto_update'.format(self.loop_count - 1 - i), ('s', 'waiting'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
+							self.osc_server.send(self.osc_target, f"/sl/{self.loop_count - 1 - i}/register_auto_update", ('s', 'loop_pos'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
+							self.osc_server.send(self.osc_target, f"/sl/{self.loop_count - 1 - i}/register_auto_update", ('s', 'loop_len'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
+							self.osc_server.send(self.osc_target, f"/sl/{self.loop_count - 1 - i}/register_auto_update", ('s', 'mute'), ('i', 100), ('s', self.osc_server_url), ('s', '/monitor'))
+							self.osc_server.send(self.osc_target, f"/sl/{self.loop_count - 1 - i}/register_auto_update", ('s', 'state'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
+							self.osc_server.send(self.osc_target, f"/sl/{self.loop_count - 1 - i}/register_auto_update", ('s', 'next_state'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
+							self.osc_server.send(self.osc_target, f"/sl/{self.loop_count - 1 - i}/register_auto_update", ('s', 'waiting'), ('i', 100), ('s', self.osc_server_url), ('s', '/state'))
 							if self.loop_count > 1:
 								# Set defaults for new loops
-								self.osc_server.send(self.osc_target, '/sl/{}/set'.format(self.loop_count - 1 - i), ('s', 'sync'), ('f', 1))
+								self.osc_server.send(self.osc_target, f"/sl/{self.loop_count - 1 - i}/set", ('s', 'sync'), ('f', 1))
 						if self.loop_count > 1:
 							self.select_loop(self.loop_count - 1, True)
 
@@ -540,11 +540,11 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 							pass # zctrls may not yet be initialised
 					self.monitors_dict[args[1]] = args[2]
 				else:
-					self.monitors_dict['{}_{}'.format(args[1], args[0])] = args[2]
+					self.monitors_dict[f"{args[1]}_{args[0]}"] = args[2]
 					#if args[1] in ['loop_len', 'rate_output', 'mute']:
 					#	logging.warning("Monitor: Loop %d %s=%0.2f", args[0], args[1], args[2])
 			elif path == 'error':
-				logging.warning("SooperLooper daemon error: {}".format(args[0]))
+				logging.warning(f"SooperLooper daemon error: {args[0]}")
 		except Exception as e:
 			logging.warning(e)
 

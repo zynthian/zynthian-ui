@@ -202,6 +202,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 
 	def start(self):
+		self.state_manager.start_busy("setBfree")
 		chain_manager = self.state_manager.chain_manager
 		midi_chan = self.processors[0].get_midi_chan()
 		self.midi_chans = [midi_chan, None, None]
@@ -260,6 +261,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 		# Select first chain so that preset selection is on "Upper" manual
 		chain_manager.set_active_chain_by_id(chain_manager.get_chain_id_by_processor(self.processors[0]))
+		self.state_manager.end_busy("setBfree")
 
 
 	def generate_config_file(self, chans):

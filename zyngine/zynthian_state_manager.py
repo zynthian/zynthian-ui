@@ -124,7 +124,7 @@ class zynthian_state_manager:
             self.zynswitches_init()
             self.zynswitches_midi_setup()
         except Exception as e:
-            logging.error("ERROR initializing MIDI & Switches: {}".format(e))
+            logging.error(f"ERROR initializing MIDI & Switches: {e}")
             self.zynmidi = None
 
         self.exit_flag = False
@@ -136,9 +136,11 @@ class zynthian_state_manager:
     def reset(self):
         """Reset state manager to clean initial start-up state"""
 
+        self.start_busy("reset state")
         self.stop()
         sleep(0.2)
         self.start()
+        self.end_busy("reset state")
 
     def stop(self):
         """Stop state manager"""
@@ -260,7 +262,7 @@ class zynthian_state_manager:
                         try:
                             self.hwmon_thermal_file.seek(0)
                             res = int(self.hwmon_thermal_file.read())/1000
-                            #logging.debug("CPU Temperature => {}".format(res))
+                            #logging.debug(f"CPU Temperature => {res}")
                             if res > self.overtemp_warning:
                                 self.status_overtemp = True
                         except Exception as e:
@@ -380,6 +382,7 @@ class zynthian_state_manager:
         Returns : True on success
         """
 
+        self.start_busy("save snapshot")
         try:
             # Get state
             state = self.get_state()
@@ -394,9 +397,11 @@ class zynthian_state_manager:
                 os.fsync(fh.fileno())
         except Exception as e:
             logging.error("Can't save snapshot file '%s': %s" % (fpath, e))
+            self.end_busy("save snapshot")
             return False
 
         self.last_snapshot_fpath = fpath
+        self.end_busy("save snapshot")
         return True
 
 
@@ -409,12 +414,14 @@ class zynthian_state_manager:
         Returns : State dictionary or None on failure
         """
 
+        self.start_busy("load snapshot")
         try:
             with open(fpath, "r") as fh:
                 json = fh.read()
                 logging.info("Loading snapshot %s => \n%s" % (fpath, json))
         except Exception as e:
             logging.error("Can't load snapshot '%s': %s" % (fpath, e))
+            self.end_busy("load snapshot")
             return None
 
         mute = self.zynmixer.get_mute(256)
@@ -465,6 +472,7 @@ class zynthian_state_manager:
 
         except Exception as e:
             logging.exception("Invalid snapshot: %s" % e)
+            self.end_busy("load snapshot")
             return None
 
         zynautoconnect.request_midi_connect()
@@ -478,6 +486,7 @@ class zynthian_state_manager:
             self.snapshot_program = int(basename(fpath[:3]))
         except:
             pass
+        self.end_busy("load snapshot")
         return state
 
     def set_snapshot_midi_bank(self, bank):
@@ -816,17 +825,17 @@ class zynthian_state_manager:
 
 
     def all_sounds_off_chan(self, chan):
-        logging.info("All Sounds Off for channel {}!".format(chan))
+        logging.info(f"All Sounds Off for channel {chan}!")
         get_lib_zyncore().ui_send_ccontrol_change(chan, 120, 0)
 
 
     def all_notes_off_chan(self, chan):
-        logging.info("All Notes Off for channel {}!".format(chan))
+        logging.info(f"All Notes Off for channel {chan}!")
         get_lib_zyncore().ui_send_ccontrol_change(chan, 123, 0)
 
 
     def raw_all_notes_off_chan(self, chan):
-        logging.info("Raw All Notes Off for channel {}!".format(chan))
+        logging.info(f"Raw All Notes Off for channel {chan}!")
         get_lib_zyncore().ui_send_all_notes_off_chan(chan)
 
 
@@ -837,7 +846,7 @@ class zynthian_state_manager:
     def init_mpe_zones(self, lower_n_chans, upper_n_chans):
         # Configure Lower Zone
         if not isinstance(lower_n_chans, int) or lower_n_chans < 0 or lower_n_chans > 0xF:
-            logging.error("Can't initialize MPE Lower Zone. Incorrect num of channels ({})".format(lower_n_chans))
+            logging.error(f"Can't initialize MPE Lower Zone. Incorrect num of channels ({lower_n_chans})")
         else:
             get_lib_zyncore().ctrlfb_send_ccontrol_change(0x0, 0x79, 0x0)
             get_lib_zyncore().ctrlfb_send_ccontrol_change(0x0, 0x64, 0x6)
@@ -846,7 +855,7 @@ class zynthian_state_manager:
 
         # Configure Upper Zone
         if not isinstance(upper_n_chans, int) or upper_n_chans < 0 or upper_n_chans > 0xF:
-            logging.error("Can't initialize MPE Upper Zone. Incorrect num of channels ({})".format(upper_n_chans))
+            logging.error(f"Can't initialize MPE Upper Zone. Incorrect num of channels ({upper_n_chans})")
         else:
             get_lib_zyncore().ctrlfb_send_ccontrol_change(0xF, 0x79, 0x0)
             get_lib_zyncore().ctrlfb_send_ccontrol_change(0xF, 0x64, 0x6)
@@ -927,7 +936,7 @@ class zynthian_state_manager:
             self.midi_filter_script = zynthian_midi_filter.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
 
         except Exception as e:
-            logging.error("ERROR initializing MIDI : {}".format(e))
+            logging.error(f"ERROR initializing MIDI : {e}")
 
 
     def reload_midi_config(self):
@@ -1317,7 +1326,7 @@ class zynthian_state_manager:
     #TODO: This should be in UI code
     def zynswitches_init(self):
         if not get_lib_zyncore(): return
-        logging.info("INIT {} ZYNSWITCHES ...".format(zynthian_gui_config.num_zynswitches))
+        logging.info(f"INIT {zynthian_gui_config.num_zynswitches} ZYNSWITCHES ...")
         self.dtsw = [datetime.now()] * (zynthian_gui_config.num_zynswitches + 4)
 
     # Initialize custom switches, analog I/O, TOF sensors, etc.
@@ -1336,10 +1345,10 @@ class zynthian_state_manager:
 
                 if midi_chan is not None:
                     get_lib_zyncore().setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'], event['val'])
-                    logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}, {}".format(swi, event['type'], midi_chan, event['num'], event['val']))
+                    logging.info(f"MIDI ZYNSWITCH {swi}: {event['type']} CH#{midi_chan}, {event['num']}, {event['val']}")
                 else:
                     get_lib_zyncore().setup_zynswitch_midi(swi, 0, 0, 0, 0)
-                    logging.info("MIDI ZYNSWITCH {}: DISABLED!".format(swi))
+                    logging.info(f"MIDI ZYNSWITCH {swi}: DISABLED!")
 
         # Configure Zynaptik Analog Inputs (CV-IN)
         for i, event in enumerate(zynthian_gui_config.zynaptik_ad_midi_events):
@@ -1351,10 +1360,10 @@ class zynthian_state_manager:
 
                 if midi_chan is not None:
                     get_lib_zyncore().setup_zynaptik_cvin(i, event['type'], midi_chan, event['num'])
-                    logging.info("ZYNAPTIK CV-IN {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+                    logging.info(f"ZYNAPTIK CV-IN {i}: {event['type']} CH#{midi_chan}, {event['num']}")
                 else:
                     get_lib_zyncore().disable_zynaptik_cvin(i)
-                    logging.info("ZYNAPTIK CV-IN {}: DISABLED!".format(i))
+                    logging.info(f"ZYNAPTIK CV-IN {i}: DISABLED!")
 
         # Configure Zynaptik Analog Outputs (CV-OUT)
         for i, event in enumerate(zynthian_gui_config.zynaptik_da_midi_events):
@@ -1366,10 +1375,10 @@ class zynthian_state_manager:
 
                 if midi_chan is not None:
                     get_lib_zyncore().setup_zynaptik_cvout(i, event['type'], midi_chan, event['num'])
-                    logging.info("ZYNAPTIK CV-OUT {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+                    logging.info(f"ZYNAPTIK CV-OUT {i}: {event['type']} CH#{midi_chan}, {event['num']}")
                 else:
                     get_lib_zyncore().disable_zynaptik_cvout(i)
-                    logging.info("ZYNAPTIK CV-OUT {}: DISABLED!".format(i))
+                    logging.info(f"ZYNAPTIK CV-OUT {i}: DISABLED!")
 
         # Configure Zyntof Inputs (Distance Sensor)
         for i, event in enumerate(zynthian_gui_config.zyntof_midi_events):
@@ -1381,10 +1390,10 @@ class zynthian_state_manager:
 
                 if midi_chan is not None:
                     get_lib_zyncore().setup_zyntof(i, event['type'], midi_chan, event['num'])
-                    logging.info("ZYNTOF {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+                    logging.info(f"ZYNTOF {i}: {event['type']} CH#{midi_chan}, {event['num']}")
                 else:
                     get_lib_zyncore().disable_zyntof(i)
-                    logging.info("ZYNTOF {}: DISABLED!".format(i))
+                    logging.info(f"ZYNTOF {i}: DISABLED!")
 
     def get_midi_profile_state(self):
         """Get MIDI profile state as an ordered dictionary"""

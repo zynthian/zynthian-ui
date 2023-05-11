@@ -65,7 +65,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def select_action(self, i, t='S'):
 		if t=='S':
+			self.zyngui.state_manager.start_busy("set preset")
 			self.zyngui.get_current_processor().set_preset(i)
+			self.zyngui.state_manager.end_busy("set preset")
 			self.zyngui.purge_screen_history("bank")
 			self.zyngui.close_screen()
 
@@ -138,7 +140,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 				processor.engine.rename_preset(processor.bank_info, preset, new_name)
 				self.zyngui.close_screen()
 				if preset[0] == processor.preset_info[0]:
+					self.zyngui.state_manager.start_busy("set preset")
 					processor.set_preset_by_name(new_name)
+					self.zyngui.state_manager.end_busy("set preset")
 			except Exception as e:
 				logging.error("Failed to rename preset => {}".format(e))
 
