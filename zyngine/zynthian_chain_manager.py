@@ -1092,8 +1092,9 @@ class zynthian_chain_manager():
         """
         try:
             chain_id = self.midi_chan_2_chain_id[midi_chan]
-            processors = self.get_processors(chain_id, "SYNTH")
-            return processors[0].get_preset_name()
+            if chain_id:
+                processors = self.get_processors(chain_id, "MIDI Synth")
+                return processors[0].get_preset_name()
         except:
             return None
 
