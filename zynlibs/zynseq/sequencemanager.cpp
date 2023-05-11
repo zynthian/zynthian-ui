@@ -365,8 +365,6 @@ void SequenceManager::cleanPatterns()
 
 void SequenceManager::setSequencesInBank(uint8_t bank, uint8_t sequences)
 {
-    if(sequences == 0)
-        return;
     // Remove excessive sequences
     size_t nSize = m_mBanks[bank].size();
     while(nSize > sequences)
@@ -378,7 +376,8 @@ void SequenceManager::setSequencesInBank(uint8_t bank, uint8_t sequences)
     }
     cleanPatterns();
     // Add required sequences
-    getSequence(bank, sequences - 1);
+    if(sequences > 0)
+        getSequence(bank, sequences - 1);
 }
 
 uint32_t SequenceManager::getSequencesInBank(uint32_t bank)

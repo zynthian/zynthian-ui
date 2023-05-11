@@ -225,7 +225,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'Clear sequence':
 			self.clear_sequence()
 		elif params == 'Clear scene':
-			self.zyngui.show_confirm(f"Clear all sequences from scene {self.zynseq.bank} and reset to 4x4 grid of new sequences?", self.do_clear_bank)
+			self.zyngui.show_confirm(f"Clear all sequences from scene {self.zynseq.bank} and reset to 4x4 grid of new sequences?\n\nThis will also remove all patterns and tracks from sequences in scene.", self.do_clear_bank)
 		elif params == 'Import SMF':
 			self.select_smf()
 
@@ -274,8 +274,10 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to actually clear bank
 	def do_clear_bank(self, params=None):
 		self.zynseq.libseq.clearBank(self.zynseq.bank)
-		self.zynseq.select_bank()
+		self.zynseq.select_bank(self.zynseq.bank, True)
+		self.update_sequence_tracks()
 		self.zynseq.libseq.setPlayPosition(self.zynseq.bank, self.sequence, 0)
+		self.redraw_pending = 4
 
 
 	# Function to clear sequence
@@ -283,13 +285,14 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		name = self.zynseq.get_sequence_name(self.zynseq.bank, self.sequence)
 		if len(name) == 0:
 			name = f"{self.sequence + 1}"
-		self.zyngui.show_confirm(f"Clear all patterns from sequence '{name}'?", self.do_clear_sequence)
+		self.zyngui.show_confirm(f"Clear all tracks and patterns from sequence '{name}'?", self.do_clear_sequence)
 
 
 	# Function to actually clear selected sequence
 	def do_clear_sequence(self, params=None):
 		self.zynseq.libseq.clearSequence(self.zynseq.bank, self.sequence)
-		self.zynseq.select_bank()
+		self.update_sequence_tracks()
+		self.redraw_pending = 4
 
 
 	# Function to add track to selected sequence immediately after selected track
