@@ -329,8 +329,8 @@ bool Smf::load(char* sFilename)
 
 bool Smf::save(char* sFilename)
 {
-	if(getEvents() == 0)
-		return false; // Don't save if empty
+	if(getEvents() < 2)
+		return false; // Don't save if empty (or only the first tempo)
 	FILE *pFile;
 	pFile = fopen(sFilename, "w");
 	if(pFile == NULL)

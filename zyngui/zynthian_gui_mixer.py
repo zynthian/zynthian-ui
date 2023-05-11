@@ -855,13 +855,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			strip = self.main_mixbus_strip
 		else:
 			chain = self.zyngui.chain_manager.get_chain(self.zyngui.chain_manager.active_chain_id)
-			count = 0
 			for s in self.visible_mixer_strips:
-				if s.chain:
-					count +=1
 				if s.chain == chain:
 					strip = s
-			if strip is None or count < len(chain_keys) and count < len(self.visible_mixer_strips):
+					break
+			if strip is None:
 				refresh = True
 		if refresh:
 			chan_strip = self.refresh_visible_strips()
