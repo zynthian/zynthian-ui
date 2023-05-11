@@ -213,10 +213,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				str(int(title))
 				# Get preset title from synth engine on this MIDI channel
 				midi_chan = self.zynseq.libseq.getChannel(self.bank, self.sequence, 0)
-				chain_id = self.zyngui.chain_manager.midi_chain_2_chain_id[midi_chan]
-				processors = self.zyngui.chain_manager.get_processors(chain_id, "SYNTH")
-				if processors:
-					title = processors[0].preset_name.replace("_", " ")
+				preset_name = self.zyngui.chain_manager.get_synth_preset_name(midi_chan)
+				if preset_name:
+					title = preset_name.replace("_", " ")
 				else:
 					group = chr(65 + self.zynseq.libseq.getGroup(self.bank, self.sequence))
 					title = f"{group}{title}"
@@ -231,7 +230,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynseq.SEQ_LOOP)
 		if zynthian_gui_config.midi_single_active_channel:
 			try:
-				self.zyngui.chain_manager.set_active_chain_by_object(self.zyngui.chain_manager.midi_chan_2_chain[self.channel])
+				self.zyngui.chain_manager.set_active_chain_by_id(self.zyngui.chain_manager.midi_chan_2_chain_id[self.channel])
 			except:
 				pass
 		zoom = self.zynseq.libseq.getVerticalZoom()
@@ -265,6 +264,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.enable_edit(EDIT_MODE_NONE)
 		self.zynseq.libseq.setRefNote(self.keymap_offset)
 		self.zynseq.libseq.setPlayMode(self.bank, self.sequence, self.last_play_mode)
+		self.zynseq.libseq.enableMidiRecord(False)
 
 
 	# Function to add menus
@@ -355,8 +355,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 
 	def toggle_midi_record(self):
-		midi_record = not self.zynseq.libseq.isMidiRecord()
-		self.zynseq.libseq.enableMidiRecord(midi_record)
+		self.zynseq.libseq.enableMidiRecord(not self.zynseq.libseq.isMidiRecord())
 
 
 	def send_controller_value(self, zctrl):
@@ -509,9 +508,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if scale == 0:
 			# Search for a map
 			path = None
-			try:
-				path = self.zyngui.chain_manager.midi_chan_2_chain(self.channel).get_presetpath()
-			except:
+			chain_id = self.zyngui.chain_manager.midi_chan_2_chain_id[self.channel]
+			processors = self.zyngui.chain_manager.get_processors(chain_id, "SYNTH")
+			if processors:
+				path = processors[0].get_presetpath()
+			else:
 				logging.info("MIDI channel {} seems empty.".format(self.channel))
 
 			if path:
@@ -528,7 +529,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				if map_name:
 					logging.info("Loading keymap {} for MIDI channel {}...".format(map_name, self.channel))
 					try:
-						xml = minidom.parse(CONFIG_ROOT + "/%s.midnam" % (map_name))
+						xml = minidom.parse(CONFIG_ROOT + f"/{map_name}.midnam")
 						notes = xml.getElementsByTagName('Note')
 						for note in notes:
 							self.keymap.append({'note':int(note.attributes['Number'].value), 'name':note.attributes['Name'].value})
@@ -765,7 +766,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	#	colour: Black, white or None (default) to not care
 	def draw_row(self, index, white=None):
 		row = index - self.keymap_offset
-		self.grid_canvas.itemconfig("lastnotetext%d" % (row), state="hidden")
+		self.grid_canvas.itemconfig(f"lastnotetext{row}", state="hidden")
 		for step in range(self.zynseq.libseq.getSteps()):
 			self.draw_cell(step, row, white)
 
@@ -809,24 +810,24 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		duration = self.zynseq.libseq.getNoteDuration(step, note)
 		if not duration:
 			duration = 1.0
-		fill_colour = "#%02x%02x%02x" % (velocity_colour, velocity_colour, velocity_colour)
+		fill_colour = f"#{velocity_colour:02x}{velocity_colour:02x}{velocity_colour:02x}"
 		coord = self.get_cell(step, row, duration)
 		if cell:
 			# Update existing cell
 			if white:
-				self.grid_canvas.itemconfig(cell, fill=fill_colour, tags=("%d,%d"%(step,row), "gridcell", "step%d"%step, "white"))
+				self.grid_canvas.itemconfig(cell, fill=fill_colour, tags=(f"{step},{row}", "gridcell", f"step{step}", "white"))
 			else:
-				self.grid_canvas.itemconfig(cell, fill=fill_colour, tags=("%d,%d"%(step,row), "gridcell", "step%d"%step))
+				self.grid_canvas.itemconfig(cell, fill=fill_colour, tags=(f"{step},{row}", "gridcell", f"step{step}"))
 			self.grid_canvas.coords(cell, coord)
 		else:
 			# Create new cell
 			if white:
-				cell = self.grid_canvas.create_rectangle(coord, fill=fill_colour, width=0, tags=("%d,%d"%(step,row), "gridcell", "step%d"%step, "white"))
+				cell = self.grid_canvas.create_rectangle(coord, fill=fill_colour, width=0, tags=(f"{step},{row}", "gridcell", f"step{step}", "white"))
 			else:
-				cell = self.grid_canvas.create_rectangle(coord, fill=fill_colour, width=0, tags=("%d,%d"%(step,row), "gridcell", "step%d"%step))
+				cell = self.grid_canvas.create_rectangle(coord, fill=fill_colour, width=0, tags=(f"{step},{row}", "gridcell", f"step{step}"))
 			self.cells[cellIndex] = cell
 		if step + duration > self.zynseq.libseq.getSteps():
-			self.grid_canvas.itemconfig("lastnotetext%d" % row, text="+%d" % (duration - self.zynseq.libseq.getSteps() + step), state="normal")
+			self.grid_canvas.itemconfig(f"lastnotetext{row}", text=f"+{duration - self.zynseq.libseq.getSteps() + step}", state="normal")
 
 
 	# Function to draw grid
@@ -878,11 +879,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					break
 
 				# Create last note labels in grid
-				self.grid_canvas.create_text(self.grid_width - self.select_thickness, int(self.row_height * (self.zoom - row - 0.5)), state="hidden", tags=("lastnotetext%d" % (row), "lastnotetext", "gridcell"), font=font, anchor="e")
+				self.grid_canvas.create_text(self.grid_width - self.select_thickness, int(self.row_height * (self.zoom - row - 0.5)), state="hidden", tags=(f"lastnotetext{row}", "lastnotetext", "gridcell"), font=font, anchor="e")
 
 				fill = "black"
 				# Update pianoroll keys
-				id = "row%d" % (row)
+				id = f"row{row}"
 				try:
 					name = self.keymap[index]["name"]
 				except:
@@ -906,7 +907,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		# Set z-order to allow duration to show
 		if redraw_pending > 2:
 			for step in range(self.zynseq.libseq.getSteps()):
-				self.grid_canvas.tag_lower("step%d"%step)
+				self.grid_canvas.tag_lower(f"step{step}")
 		self.select_cell()
 		self.drawing = False
 
@@ -920,7 +921,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			y1 = self.get_cell(0, row, 1)[1]
 			x2 = self.piano_roll_width
 			y2 = y1 + self.row_height - 1
-			id = "row%d" % (row)
+			id = f"row{row}"
 			id = self.piano_roll.create_rectangle(x1, y1, x2, y2, width=0, tags=id)
 
 
@@ -997,7 +998,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to clear a pattern
 	def clear_pattern(self, params=None):
-		self.zyngui.show_confirm("Clear pattern %d?"%(self.pattern), self.do_clear_pattern)
+		self.zyngui.show_confirm(f"Clear pattern {self.pattern}?", self.do_clear_pattern)
 
 
 	# Function to actually clear pattern

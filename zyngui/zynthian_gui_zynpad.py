@@ -319,25 +319,25 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				self.grid_canvas.itemconfig(cellh, fill=zynthian_gui_config.PAD_COLOUR_DISABLED)
 				self.grid_canvas.itemconfig(cellb, fill=zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT)
 			else:
-				self.grid_canvas.itemconfig(cellh, fill=zynthian_gui_config.PAD_COLOUR_GROUP[group%16])
+				self.grid_canvas.itemconfig(cellh, fill=zynthian_gui_config.PAD_COLOUR_GROUP[group % 16])
 				self.grid_canvas.itemconfig(cellb, fill=zynthian_gui_config.PAD_COLOUR_GROUP_LIGHT[group % 16])
 			if self.zynseq.libseq.getSequenceLength(self.bank, pad) == 0:
 				mode = 0
 			group = chr(65 + self.zynseq.libseq.getGroup(self.bank, pad))
 			#patnum = self.zynseq.libseq.getPatternAt(self.bank, pad, 0, 0)
-			chan = self.zynseq.libseq.getChannel(self.bank, pad, 0)
+			midi_chan = self.zynseq.libseq.getChannel(self.bank, pad, 0)
 			title = self.zynseq.get_sequence_name(self.bank, pad)
 			try:
-				str(int(title))
-				layer = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(chan)
-				if layer:
-					title = layer.preset_name.replace("_", " ")
+				str(int(title)) # Test for default (integer index)
+				preset_name = self.zyngui.chain_manager.get_synth_preset_name(midi_chan)
+				if preset_name:
+					title = preset_name.replace("_", " ")
 				else:
 					title = ""
 			except:
 				pass
 			self.grid_canvas.itemconfig(self.pads[pad]["title"], text=title, fill=foreground)
-			self.grid_canvas.itemconfig(self.pads[pad]["group"], text=f"CH{chan+1}", fill=foreground)
+			self.grid_canvas.itemconfig(self.pads[pad]["group"], text=f"CH{midi_chan + 1}", fill=foreground)
 			self.grid_canvas.itemconfig(self.pads[pad]["num"], text=f"{group}{pad+1}", fill=foreground)
 			self.grid_canvas.itemconfig(self.pads[pad]["mode"], image=self.mode_icon[self.columns][mode])
 			if state == 0 and self.zynseq.libseq.isEmpty(self.bank, pad):
@@ -440,15 +440,15 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'Scene':
 			self.enable_param_editor(self, 'bank', 'Scene', {'value_min':1, 'value_max':64, 'value':self.bank})
 		elif params == 'Play mode':
-			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynseq.PLAY_MODES, 'value':self.zynseq.libseq.getPlayMode(self.nseq.bank, self.selected_pad), 'value_default':zynseq.SEQ_LOOPALL}, self.set_play_mode)
+			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynseq.PLAY_MODES, 'value':self.zynseq.libseq.getPlayMode(self.zynseq.bank, self.selected_pad), 'value_default':zynseq.SEQ_LOOPALL}, self.set_play_mode)
 		elif params == 'MIDI channel':
 			labels = []
-			for chan in range(16):
-				chain = self.zyngui.chain_manager.midi_chan_2_chain[chan]
-				try:
-					labels.append(f"{chan + 1} {chain.get_processors('Synth', 0)[0].get_preset_name()}")
-				except:
-					labels.append(f"{chan + 1}")
+			for midi_chan in range(16):
+				preset_name = self.zyngui.chain_manager.get_synth_preset_name(midi_chan)
+				if preset_name:
+					labels.append(f"{midi_chan + 1} ({preset_name})")
+				else:
+					labels.append(f"{midi_chan + 1}")
 			self.enable_param_editor(self, 'midi_chan', 'MIDI channel', {'labels':labels, 'value_default':self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0), 'value':self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)})
 		elif params == 'Trigger channel':
 			self.enable_param_editor(self, 'trigger_chan', 'Trigger channel', {'labels':INPUT_CHANNEL_LABELS, 'value':self.get_trigger_channel()})

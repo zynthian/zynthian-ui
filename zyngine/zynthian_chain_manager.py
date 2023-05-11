@@ -61,7 +61,7 @@ class zynthian_chain_manager():
         self.zyngines = OrderedDict()  # List of instantiated engines
         self.processors = {} # Dictionary of processor objects indexed by UID
         self.active_chain_id = None # Active chain id
-        self.midi_chain_2_chain_id = [None] * 16  # Chain ID mapped by MIDI channel
+        self.midi_chan_2_chain_id = [None] * 16  # Chain ID mapped by MIDI channel
         self.midi_learn_map = {} # Map of lists of [proc, param_symbol] mapped by 16-bit chan<<8|cc
 
         self.get_engine_info()
@@ -181,7 +181,7 @@ class zynthian_chain_manager():
             chain = self.chains[chain_id]
             if isinstance(chain.midi_chan, int) and chain.midi_chan < 16:
                 get_lib_zyncore().ui_send_ccontrol_change(chain.midi_chan, 120, 0)
-                self.midi_chain_2_chain_id[chain.midi_chan] = None
+                self.midi_chan_2_chain_id[chain.midi_chan] = None
             if chain.mixer_chan is not None:
                 mute = self.state_manager.zynmixer.get_mute(chain.mixer_chan)
                 self.state_manager.zynmixer.set_mute(chain.mixer_chan, True, True)
@@ -437,7 +437,7 @@ class zynthian_chain_manager():
                 else:
                     # Check if currently selected channel is valid
                     midi_chan = get_lib_zyncore().get_midi_active_chan()
-                    if midi_chan >= 0 and midi_chan < 16 and self.midi_chain_2_chain_id[midi_chan]:
+                    if midi_chan >= 0 and midi_chan < 16 and self.midi_chan_2_chain_id[midi_chan]:
                         return
                     # Find a MIDI chain
                     for chain in self.chains.values():
@@ -906,7 +906,7 @@ class zynthian_chain_manager():
         """
 
         self.state_manager.alsa_mixer_processor.midi_control_change(chan, ccnum, ccval)
-        chain_id = self.midi_chain_2_chain_id[chan]
+        chain_id = self.midi_chan_2_chain_id[chan]
         if chain_id:
             chain = self.chains[chain_id]
             if zynthian_gui_config.midi_bank_change and ccnum == 0:
@@ -1018,11 +1018,11 @@ class zynthian_chain_manager():
             return
         chain = self.chains[chain_id]
         try:
-            self.midi_chain_2_chain_id[chain.midi_chan] = None
+            self.midi_chan_2_chain_id[chain.midi_chan] = None
         except:
             pass
         try:
-            self.midi_chain_2_chain_id[midi_chan] = chain_id
+            self.midi_chan_2_chain_id[midi_chan] = chain_id
         except:
             pass
         chain.set_midi_chan(midi_chan)
@@ -1083,6 +1083,19 @@ class zynthian_chain_manager():
             if i in free_chans:
                 return i
         raise Exception("No available free MIDI channels!")
+
+    def get_synth_preset_name(self, midi_chan):
+        """Get the preset name for a synth on MIDI channel
+        
+        chan : MIDI channel
+        Returns : Preset name or None on failure
+        """
+        try:
+            chain_id = self.midi_chan_2_chain_id[midi_chan]
+            processors = self.get_processors(chain_id, "SYNTH")
+            return processors[0].get_preset_name()
+        except:
+            return None
 
     # ---------------------------------------------------------------------------
     # Extended Config
