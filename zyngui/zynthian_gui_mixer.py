@@ -924,7 +924,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def back_action(self):
 		if self.midi_learning:
 			self.zynmixer.disable_midi_learn()
-			return True
+		return True
 
 
 	# Function to handle switches press
