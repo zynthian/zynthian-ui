@@ -1272,7 +1272,10 @@ class zynthian_gui:
 	# Z2 knob touch
 	def cuia_z2_zynpot_touch(self, params=None):
 		if params:
-			self.screens['control'].midi_learn_zctrl(params[0])
+			try:
+				self.screens[self.current_screen].zctrl_touch(params[0])
+			except AttributeError:
+				pass #TODO: Should all screens be derived from base?
 
 	# V5 knob click
 	def cuia_v5_zynpot_switch(self, params=None):
