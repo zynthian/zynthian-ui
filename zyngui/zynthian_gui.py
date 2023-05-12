@@ -111,7 +111,7 @@ class zynthian_gui:
 		
 		self.current_processor = None
 
-		self.loading_thread = None
+		self.busy_thread = None
 		self.control_thread = None
 		self.status_thread = None
 		self.cuia_thread = None
@@ -429,7 +429,7 @@ class zynthian_gui:
 
 		# Start polling threads
 		self.start_polling()
-		self.start_loading_thread()
+		self.start_busy_thread()
 		self.start_control_thread()
 		self.start_status_thread()
 		self.start_cuia_thread()
@@ -1721,6 +1721,7 @@ class zynthian_gui:
 						self.state_manager.all_sounds_off_chan(chan)
 					elif ccnum == 123:
 						self.state_manager.all_notes_off_chan(chan)
+					self.state_manager.alsa_mixer_processor.midi_control_change(chan, ccnum, ccval)
 
 				# Program Change ...
 				elif evtype == 0xC:
@@ -1780,7 +1781,7 @@ class zynthian_gui:
 
 	def start_control_thread(self):
 		self.control_thread = Thread(target=self.control_thread_task, args=())
-		self.control_thread.name = "control"
+		self.control_thread.name = "Control"
 		self.control_thread.daemon = True # thread dies with the program
 		self.control_thread.start()
 
@@ -1864,27 +1865,27 @@ class zynthian_gui:
 	# "Busy" Animated Icon Thread
 	#------------------------------------------------------------------
 
-	def start_loading_thread(self):
-		self.loading_thread = Thread(target=self.loading_refresh, args=())
-		self.loading_thread.name = "loading"
-		self.loading_thread.daemon = True # thread dies with the program
-		self.loading_thread.start()
+	def start_busy_thread(self):
+		self.busy_thread = Thread(target=self.busy_thread_task, args=())
+		self.busy_thread.name = "Busy"
+		self.busy_thread.daemon = True # thread dies with the program
+		self.busy_thread.start()
 
 
-	def loading_refresh(self):
+	def busy_thread_task(self):
 		busy_timeout = 0
 		busy_warn_time = 200
 		while not self.exit_flag:
 			try:
 				self.screens[self.current_screen].refresh_loading()
 			except Exception as err:
-				logging.error("zynthian_gui.loading_refresh() => %s" % err)
+				logging.error(f"zynthian_gui.busy_thread_task() => {err}")
 			if self.state_manager.is_busy():
 				busy_timeout += 1
 			else:
 				busy_timeout = 0
 			if busy_timeout == busy_warn_time:
-				logging.warning("Clients have been busy for longer than %ds: %s", busy_warn_time / 10, self.state_manager.busy)
+				logging.warning(f"Clients have been busy for longer than {int(busy_warn_time / 10)}s: {self.state_manager.busy}")
 			sleep(0.1)
 
 	#------------------------------------------------------------------
@@ -1893,7 +1894,7 @@ class zynthian_gui:
 
 	def start_status_thread(self):
 		self.status_thread = Thread(target=self.status_thread_task, args=())
-		self.status_thread.name = "status"
+		self.status_thread.name = "Status"
 		self.status_thread.daemon = True # thread dies with the program
 		self.status_thread.start()
 
@@ -1926,7 +1927,7 @@ class zynthian_gui:
 
 	def start_cuia_thread(self):
 		self.cuia_thread = Thread(target=self.cuia_thread_task, args=())
-		self.cuia_thread.name = "cuia"
+		self.cuia_thread.name = "CUIA"
 		self.cuia_thread.daemon = True # thread dies with the program
 		self.cuia_thread.start()
 
@@ -2055,7 +2056,7 @@ class zynthian_gui:
 
 	def stop(self):
 		running_thread_names = []
-		for t in [self.control_thread, self.status_thread, self.loading_thread, self.cuia_thread, self.state_manager.thread]:
+		for t in [self.control_thread, self.status_thread, self.busy_thread, self.cuia_thread, self.state_manager.thread]:
 			if t and t.is_alive():
 				running_thread_names.append(t.name)
 		if zynautoconnect.is_running():

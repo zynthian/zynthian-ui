@@ -67,12 +67,13 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 	# Initialization
 	#----------------------------------------------------------------------------
 
-	def __init__(self, state_manager=None):
+	def __init__(self, state_manager, proc):
 		super().__init__(state_manager)
 
 		self.type = "Mixer"
 		self.name = "Audio Levels"
 		self.nickname = "MX"
+		self.proc = proc
 
 		self.audio_out = []
 		self.options = {
@@ -86,23 +87,12 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 		}
 
 		self.zctrls = None
-		self.sender_poll_enabled = False
 
 		self.get_soundcard_config()
-
-
-		def stop(self):
-			self.stop_sender_poll()
-			super().stop()
-
 
 	# ---------------------------------------------------------------------------
 	# Processor Management
 	# ---------------------------------------------------------------------------
-
-	def add_processor(self, processor):
-		super().add_processor(processor)
-
 
 	def get_path(self, processor):
 		return self.name
@@ -155,9 +145,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 		elif ctrl_list is None:
 			ctrl_list = copy.copy(self.ctrl_list)
 
-		logging.debug("MIXER CTRL LIST: {}".format(ctrl_list))
-
-		self.stop_sender_poll()
+		logging.debug(f"MIXER CTRL LIST: {ctrl_list}")
 
 		zctrls = self.get_mixer_zctrls(self.device_name, ctrl_list)
 
@@ -169,7 +157,8 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 					'value': lib_zyncore.get_hpvol(),
 					'value_min': 0,
 					'value_max': lib_zyncore.get_hpvol_max(),
-					'is_integer': True
+					'is_integer': True,
+					'processor': self.proc
 				})
 				hp_zctrl.last_value_sent = None
 				zctrls["Headphones"] = hp_zctrl
@@ -195,7 +184,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 				logging.debug("Added RBPi Headphone volume control")
 
 			except Exception as e:
-				logging.error("Can't configure headphones volume control: {}".format(e))
+				logging.error(f"Can't configure headphones volume control: {e}")
 
 		# Sort zctrls to match the configured mixer control list
 		if ctrl_list and len(ctrl_list) > 0:
@@ -213,10 +202,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 		# Generate control screens
 		self._ctrl_screens = None
 		self.generate_ctrl_screens(sorted_zctrls)
-
 		self.zctrls = sorted_zctrls
-		self.start_sender_poll()
-
 		return sorted_zctrls
 
 
@@ -224,10 +210,10 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 		zctrls = OrderedDict()
 
 		try:
-			ctrls = check_output("amixer -M -c {}".format(device_name), shell=True).decode("utf-8").split("Simple mixer control ")
+			ctrls = check_output(f"amixer -M -c {device_name}", shell=True).decode("utf-8").split("Simple mixer control ")
 			for ctrl in ctrls:
 				lines = ctrl.splitlines()
-				if len(lines)==0:
+				if len(lines) == 0:
 					continue
 
 				m = re.match("'(.*?)'.*", lines[0], re.M | re.I)
@@ -250,11 +236,11 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 				ctrl_value = 50
 				ctrl_values = []
 
-				#logging.debug("MIXER CONTROL => {}\n{}".format(ctrl_name, ctrl))
+				#logging.debug(f"MIXER CONTROL => {ctrl_name}\nctrl{}")
 				for line in lines[1:]:
 					try:
 						key, value = line.strip().split(": ",1)
-						#logging.debug("  {} => {}".format(key,value))
+						#logging.debug(f"  {key} => {value}")
 					except:
 						continue
 
@@ -309,8 +295,8 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 									ctrl_item0 = 'on' if (ctrl_value>0) else 'off'
 
 				if ctrl_symbol and ctrl_type:
-					if ctrl_type in ("Selector", "Toggle", "VToggle") and len(ctrl_items)>1 and (not ctrl_list or ctrl_name in ctrl_list):
-						#logging.debug("ADDING ZCTRL SELECTOR: {} => {}".format(ctrl_symbol, ctrl_item0))
+					if ctrl_type in ("Selector", "Toggle", "VToggle") and len(ctrl_items) > 1 and (not ctrl_list or ctrl_name in ctrl_list):
+						#logging.debug(f"ADDING ZCTRL SELECTOR: {ctrl_symbol} => {ctrl_item0}")
 						zctrl = zynthian_controller(self, ctrl_symbol, ctrl_name, {
 							'graph_path': [ctrl_name, ctrl_type],
 							'labels': ctrl_items,
@@ -319,7 +305,8 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 							'value_min': ctrl_ticks[0],
 							'value_max': ctrl_ticks[-1],
 							'is_toggle': (ctrl_type=='Toggle'),
-							'is_integer': True
+							'is_integer': True,
+							'processor': self.proc
 						})
 						zctrl.last_value_sent = None
 						zctrls[ctrl_symbol] = zctrl
@@ -339,14 +326,15 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 								zctrl_symbol = ctrl_symbol
 								zctrl_name = ctrl_name
 							if not ctrl_list or zctrl_name in ctrl_list:
-								logging.debug("ADDING ZCTRL LEVEL: {} => {}".format(zctrl_symbol, ctrl_values[i]))
+								logging.debug(f"ADDING ZCTRL LEVEL: {zctrl_symbol} => {ctrl_values[i]}")
 								zctrl = zynthian_controller(self, zctrl_symbol, zctrl_name, {
 									'graph_path': graph_path,
 									'value': ctrl_values[i],
 									'value_min': ctrl_minval,
 									'value_max': ctrl_maxval,
 									'is_toggle': False,
-									'is_integer': True
+									'is_integer': True,
+									'processor': self.proc
 								})
 								zctrl.last_value_sent = None
 								zctrls[zctrl_symbol] = zctrl
@@ -358,19 +346,15 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
 
 	def send_controller_value(self, zctrl):
-		pass
-
-
-	def _send_controller_value(self, zctrl):
 		try:
 			if callable(zctrl.graph_path):
 				zctrl.graph_path(zctrl.value)
 			else:
 				if zctrl.labels:
 					if zctrl.graph_path[1]=="VToggle":
-						amixer_command = "amixer -M -c {} set '{}' '{}%'".format(self.device_name, zctrl.graph_path[0], zctrl.value)
+						amixer_command = f"amixer -M -c {self.device_name} set '{zctrl.graph_path[0]}' '{zctrl.value}%'"
 					else:
-						amixer_command = "amixer -M -c {} set '{}' '{}'".format(self.device_name, zctrl.graph_path[0], zctrl.get_value2label())
+						amixer_command = f"amixer -M -c {self.device_name} set '{zctrl.graph_path[0]}' '{zctrl.get_value2label()}'"
 				else:
 					if zctrl.symbol=="Headphone" and self.allow_rbpi_headphones() and self.state_manager and self.state_manager.get_zynthian_config("rbpi_headphones"):
 						devname = self.rbpi_device_name
@@ -378,19 +362,19 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 						devname = self.device_name
 
 					values=[]
-					if len(zctrl.graph_path)>2:
+					if len(zctrl.graph_path) > 2:
 						nchans = zctrl.graph_path[3]
 						symbol_prefix = zctrl.symbol[:-1]
 						for i in range(0, nchans):
 							symbol_i = symbol_prefix + str(i)
 							if symbol_i in self.zctrls:
-								values.append("{}%".format(self.zctrls[symbol_i].value))
+								values.append(f"{self.zctrls[symbol_i].value}%")
 							else:
 								values.append("0%")
 					else:
-						values.append("{}%".format(zctrl.value))
+						values.append(f"{zctrl.value}%")
 
-					amixer_command = "amixer -M -c {} set '{}' '{}' {} unmute".format(devname, zctrl.graph_path[0], zctrl.graph_path[1], ','.join(values))
+					amixer_command = f"amixer -M -c {devname} set '{zctrl.graph_path[0]}' '{zctrl.graph_path[1]}' {','.join(values)} unmute"
 
 				logging.debug(amixer_command)
 				check_output(shlex.split(amixer_command))
@@ -399,32 +383,6 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
 		except Exception as err:
 			logging.error(err)
-
-
-	def start_sender_poll(self):
-
-		def runInThread():
-			sleep(0.1)
-			while self.sender_poll_enabled:
-				counter = 0
-				if self.zctrls:
-					for sym, zctrl in self.zctrls.items():
-						if zctrl.last_value_sent != zctrl.value:
-							zctrl.last_value_sent = zctrl.value
-							self._send_controller_value(zctrl)
-							counter += 1
-
-				if counter==0:
-					sleep(0.05)
-
-		self.sender_poll_enabled = True
-		thread = threading.Thread(target=runInThread, daemon=True)
-		thread.name = "ALSA mixer engine"
-		thread.start()
-
-
-	def stop_sender_poll(self):
-		self.sender_poll_enabled = False
 
 
 	#----------------------------------------------------------------------------

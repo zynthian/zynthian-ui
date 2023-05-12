@@ -76,7 +76,7 @@ class zynthian_state_manager:
         self.get_throttled_file = None
 
         self.alsa_mixer_processor = zynthian_processor("MX", ("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_alsa_mixer, True))
-        self.alsa_mixer_processor.engine = zynthian_engine_alsa_mixer()
+        self.alsa_mixer_processor.engine = zynthian_engine_alsa_mixer(self, self.alsa_mixer_processor)
         self.alsa_mixer_processor.refresh_controllers()
         self.audio_recorder = zynthian_audio_recorder(self)
         self.zynmixer = zynthian_engine_audio_mixer.zynmixer()
