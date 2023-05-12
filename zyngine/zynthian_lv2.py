@@ -274,6 +274,16 @@ def get_plugin_type(plugin):
 # LV2 Bank/Preset management
 #------------------------------------------------------------------------------
 
+
+# workaround to fix segfault:
+def generate_presets_cache_workaround():
+	global world
+	start = int(round(time.time()))
+	for plugin in world.get_all_plugins():
+		plugin.get_name()
+	logging.info('Workaround took {}s'.format(int(round(time.time())) - start))
+
+
 def generate_all_presets_cache(refresh=True):
 	global world
 
@@ -555,11 +565,7 @@ if __name__ == '__main__':
 			generate_plugins_config_file(False)
 
 		elif sys.argv[1]=="presets":
-			#workaround to fix segfault:
-			for plugin in world.get_all_plugins():
-				plugin.get_name()
-			logging.info('Workaround took {}s'.format(int(round(time.time())) - start))
-
+			generate_presets_cache_workaround()
 			if len(sys.argv)>2:
 				plugin_url = sys.argv[2]
 				generate_plugin_presets_cache(plugin_url, False)

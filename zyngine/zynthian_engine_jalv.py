@@ -175,14 +175,17 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		self.native_gui = False
 		if 'UI' in self.plugins_dict[plugin_name]:
-			self.native_gui = self.plugins_dict[plugin_name]['UI']
 			if self.plugin_url in self.broken_ui:
 				self.native_gui = self.broken_ui[self.plugin_url][self.rpi]
+			else:
+				self.native_gui = self.plugins_dict[plugin_name]['UI']
+				if not self.native_gui:
+					self.native_gui = "AUTO"
 
-		if plugin_type=="MIDI Tool":
+		if plugin_type == "MIDI Tool":
 			self.options['midi_route'] = True
 			self.options['audio_route'] = False
-		elif plugin_type=="Audio Effect":
+		elif plugin_type == "Audio Effect":
 			self.options['audio_capture'] = True
 			self.options['note_range'] = False
 
@@ -662,6 +665,7 @@ class zynthian_engine_jalv(zynthian_engine):
 	@classmethod
 	def refresh_zynapi_instance(cls):
 		if cls.zynapi_instance:
+			zynthian_lv2.generate_presets_cache_workaround()
 			zynthian_lv2.generate_plugin_presets_cache(cls.zynapi_instance.plugin_url)
 			plugin_name = cls.zynapi_instance.plugin_name
 			plugin_type = cls.zynapi_instance.type
