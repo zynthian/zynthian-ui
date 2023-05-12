@@ -595,6 +595,10 @@ class zynthian_chain:
                     return i
         return None
 
+    def set_current_processor(self, processor):
+        if processor in self.get_processors():
+            self.current_processor = processor
+
     # ------------------------------------------------------------------------
     # State Management
     # ------------------------------------------------------------------------

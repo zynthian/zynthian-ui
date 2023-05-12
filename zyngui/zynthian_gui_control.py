@@ -199,7 +199,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.screen_info = self.list_data[self.index]
 			self.screen_title = self.screen_info[2]
 			self.screen_processor = self.screen_info[3]
-			self.zyngui.chain_manager.get_active_chain().current_processor = self.screen_processor
+			try:
+				self.zyngui.chain_manager.get_active_chain().set_current_processor(self.screen_processor)
+			except:
+				pass
 
 			# Show the widget for the current processor
 			if self.mode == 'control':
