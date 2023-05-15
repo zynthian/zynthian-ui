@@ -84,8 +84,8 @@ class zynthian_state_manager:
         self.audio_player = None
 
         self.midi_filter_script = None
-        self.midi_learn_cc = None # Controller currently listening for MIDI learn [proc,param_symbol] or None
         self.midi_learn_pc = None # ZS3 name listening for MIDI learn "" for new zs3 or None
+        self.midi_learn_zctrl = None # zctrl currently being learned
         self.zs3 = {} # Dictionary or zs3 configs indexed by "ch/pc"
         self.snapshot_bank = None # Name of snapshot bank (without path)
         self.snapshot_program = 0
@@ -869,39 +869,40 @@ class zynthian_state_manager:
 
     def set_midi_learn(self, state):
         """Enable / disable MIDI learn in MIDI router
+
         state : True to enable MIDI learn
         """
+
         get_lib_zyncore().set_midi_learning_mode(state)
         self.midi_learn_state = state
 
-    def enable_learn_cc(self, proc, param):
+    def enable_learn_cc(self, zctrl):
         """Enable MIDI CC learning
     
-        proc : Processor object
-        param : Parameter symbol
+        zctrl : zctrl to learn to
         """
 
         self.disable_learn_pc()
-        self.midi_learn_cc = [proc, param]
+        self.midi_learn_zctrl = zctrl
         self.set_midi_learn(True)
 
     def disable_learn_cc(self):
         """Disables MIDI CC learning"""
 
-        self.midi_learn_cc = None
+        self.midi_learn_zctrl = None
         self.set_midi_learn(False)
 
     def toggle_learn_cc(self):
         """Toggle MIDI CC learning"""
 
-        if self.midi_learn_cc:
+        if self.midi_learn_zctrl:
             self.disable_learn_cc()
         else:
             self.enable_learn_cc()
 
     def get_midi_learn_zctrl(self):
         try:
-            return self.midi_learn_cc[0].controllers_dict[self.midi_learn_cc[1]]
+            return self.midi_learn_zctrl
         except:
             return None
 

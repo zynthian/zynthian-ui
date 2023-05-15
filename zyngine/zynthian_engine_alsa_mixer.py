@@ -67,7 +67,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 	# Initialization
 	#----------------------------------------------------------------------------
 
-	def __init__(self, state_manager, proc):
+	def __init__(self, state_manager=None, proc=None):
 		super().__init__(state_manager)
 
 		self.type = "Mixer"
@@ -383,24 +383,6 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
 		except Exception as err:
 			logging.error(err)
-
-
-	#----------------------------------------------------------------------------
-	# MIDI CC processing
-	#----------------------------------------------------------------------------
-
-	def midi_control_change(self, chan, ccnum, val):
-		if zynthian_gui_config.midi_single_active_channel:
-			for ch in range(0,16):
-				try:
-					self.learned_cc[ch][ccnum].midi_control_change(val)
-				except:
-					pass
-		else:
-			try:
-				self.learned_cc[chan][ccnum].midi_control_change(val)
-			except:
-				pass
 
 
 	#--------------------------------------------------------------------------

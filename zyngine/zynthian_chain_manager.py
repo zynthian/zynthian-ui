@@ -62,7 +62,9 @@ class zynthian_chain_manager():
         self.processors = {} # Dictionary of processor objects indexed by UID
         self.active_chain_id = None # Active chain id
         self.midi_chan_2_chain_id = [None] * 16  # Chain ID mapped by MIDI channel
-        self.midi_learn_map = {} # Map of lists of [proc, param_symbol] mapped by 16-bit chan<<8|cc
+        self.midi_learn_map = {} # Map of lists of [zctrl, active_chain] mapped by 16-bit chan<<8|cc, active_chain=True if only responds when active chain
+        self.held_zctrls = [] # List of currently held (sustained) zctrls
+        self.active_hold = False # True if sustain pedal down in omni mode
 
         self.get_engine_info()
         self.add_chain("main", enable_audio_thru=True)
@@ -434,6 +436,8 @@ class zynthian_chain_manager():
                 midi_chan = chain.midi_chan
                 if isinstance(midi_chan, int) and midi_chan < 16:
                     get_lib_zyncore().set_midi_active_chan(midi_chan)
+                    if self.active_hold:
+                        get_lib_zyncore().write_zynmidi_ccontrol_change(midi_chan, 64, 127)
                 else:
                     # Check if currently selected channel is valid
                     midi_chan = get_lib_zyncore().get_midi_active_chan()
@@ -810,25 +814,26 @@ class zynthian_chain_manager():
 	#----------------------------------------------------------------------------
 
 
-    def add_midi_learn(self, midi_chan, midi_cc, proc, param):
+    def add_midi_learn(self, midi_chan, midi_cc, zctrl):
         """Adds a midi learn configuration
 
         midi_chan : MIDI channel of CC message
         midi_cc : CC number of CC message
-        proc : Processor object
-        param : Parameter symbol
+        zctrl : Controller object
         """
 
+        if zctrl is None:
+            return
         id = midi_chan << 8 | midi_cc
-        self.remove_midi_learn(proc, param)
+        self.remove_midi_learn(zctrl.processor, zctrl.symbol)
         if id in self.midi_learn_map:
-            if [proc, param] not in self.midi_learn_map[id]:
-                self.midi_learn_map[id].append([proc, param])
+            if [zctrl, True] not in self.midi_learn_map[id]:
+                self.midi_learn_map[id].append([zctrl, zynthian_gui_config.midi_single_active_channel])
         else:
-            self.midi_learn_map[id] = [[proc, param]]
-        if proc.type_code == "MD":
+            self.midi_learn_map[id] = [[zctrl, zynthian_gui_config.midi_single_active_channel]]
+        if zctrl.processor.type_code == "MD":
             # Add native MIDI learn
-            proc.engine.set_midi_learn(proc.controllers_dict[param], midi_chan, midi_cc)
+            zctrl.processor.engine.set_midi_learn(zctrl, midi_chan, midi_cc)
         #TODO: Do we have to disable learn_cc here or should we rely on parent app to do that?
         self.state_manager.disable_learn_cc()
 
@@ -839,63 +844,33 @@ class zynthian_chain_manager():
         param : Parameter symbol
         """
 
-        params = self.get_midi_learn_from_param(proc, param)
+        if param not in proc.controllers_dict:
+            return
+        zctrl = proc.controllers_dict[param]
+        params = self.get_midi_learn_from_zctrl(zctrl)
         if params:
             for i, p in enumerate(self.midi_learn_map[params[0] << 8 | params[1]]):
-                if p == [proc, param]:
+                if p[0] == zctrl:
                     del self.midi_learn_map[params[0] << 8 | params[1]][i]
                     if not self.midi_learn_map[params[0] << 8 | params[1]]:
                         del self.midi_learn_map[params[0] << 8 | params[1]]
                     if proc.type_code == "MD":
                         # Remove native MIDI learn
-                        proc.engine.midi_unlearn(proc.controllers_dict[param])
+                        proc.engine.midi_unlearn(zctrl)
                     return
 
-    def get_midi_learn(self, midi_chan, midi_cc, chain_id=None):
-        """Get list of parameters mapped
-
-        midi_chan : MIDI channel of CC message
-        midi_cc : CC number of CC message
-        chain_id : Optional filter by chain_id
-        Returns : List of [processr, parameter]
-        """
-
-        id = midi_chan << 8 | midi_cc
-        try:
-            ret = []
-            if chain_id is not None:
-                chain_procs = self.get_processors(chain_id)
-                id = id & 0xff
-                for chan in range(16):
-                    try:
-                        ml = self.midi_learn_map[chan << 8 | id]
-                        for val in ml:
-                            if val[0] in chain_procs:
-                                ret.append(val)
-                    except:
-                        pass
-            else:
-                ret =  self.midi_learn_map[id]
-            return ret
-            
-        except:
-            pass
-        return None
-
-
-    def get_midi_learn_from_param(self, proc, param_symbol):
+    def get_midi_learn_from_zctrl(self, zctrl):
         """Get MIDI channel and CC controlling processor parameter
 
-        proc : Processor object
-        param_symbol : Parameter symbol
+        zctrl : Zctrl object
         Returns : [midi_channel, cc] or None if not mapped or not found
         """
+
         for item in self.midi_learn_map.items():
             for params in item[1]:
-                if proc == params[0] and param_symbol == params[1]:
-                    return [(item[0] & 0xff00) >> 8, item[0] & 0xff]
+                if zctrl == params[0]:
+                    return [(item[0] & 0xff00) >> 8, item[0] & 0xff, params[1]]
         return None
-
 
     def midi_control_change(self, chan, ccnum, ccval):
         """Send MIDI CC message to relevant chain
@@ -905,7 +880,6 @@ class zynthian_chain_manager():
         ccval : CC value
         """
 
-        self.state_manager.alsa_mixer_processor.midi_control_change(chan, ccnum, ccval)
         chain_id = self.midi_chan_2_chain_id[chan]
         if chain_id:
             chain = self.chains[chain_id]
@@ -918,16 +892,29 @@ class zynthian_chain_manager():
                     processor.midi_bank_lsb(ccval)
                     return
 
-        if zynthian_gui_config.midi_single_active_channel:
-            chain = self.active_chain_id
-        else:
-            chain = None
-        try:
-            for param_map in self.get_midi_learn(chan, ccnum, chain):
-                zctrl = param_map[0].controllers_dict[param_map[1]]
-                zctrl.midi_control_change(ccval)
-        except:
-            pass
+        id = chan << 8 | ccnum
+
+        if id in self.midi_learn_map:
+            if zynthian_gui_config.midi_single_active_channel:
+                # Handle pedals
+                chain_procs = self.get_processors(self.active_chain_id)
+                if ccnum == 64:
+                    self.active_hold = ccval >= 64
+
+            for param_map in self.midi_learn_map[id]:
+                zctrl = param_map[0]
+                if zynthian_gui_config.midi_single_active_channel and param_map[1]:
+                    if zctrl.processor in chain_procs:
+                        zctrl.midi_control_change(ccval)
+                        if ccnum in [64, 66, 67, 69] and ccval >= 64:
+                            self.held_zctrls.append(zctrl)
+                else:
+                    # Not constrained to active channel so send CC to controller
+                    zctrl.midi_control_change(ccval)
+                # Handle pedals
+                if ccnum in [64, 66, 67, 69] and ccval < 64:
+                    while self.held_zctrls:
+                        self.held_zctrls.pop().midi_control_change(ccval)
 
     def set_midi_learn_state(self, state):
         """Set MIDI learn state (e.g. from ZS3)
@@ -940,7 +927,7 @@ class zynthian_chain_manager():
             params = []
             for param in param_list:
                 try:
-                    params.append([self.processors[int(param[0])], param[1]])
+                    params.append([self.processors[int(param[0])].controllers_dict[param[1]], param[2]])
                 except:
                     logging.warning(f"Failed to add MIDI learn for parameters {param}")
             self.midi_learn_map[int(id)] = params
@@ -955,7 +942,7 @@ class zynthian_chain_manager():
         for id, param_list in self.midi_learn_map.items():
             ret_val[id] = []
             for param in param_list:
-                ret_val[id].append([self.get_processor_id(param[0]), param[1]])
+                ret_val[id].append([self.get_processor_id(param[0].processor), param[0].symbol, param[1]])
         return ret_val
 
     def clean_midi_learn(self, obj):

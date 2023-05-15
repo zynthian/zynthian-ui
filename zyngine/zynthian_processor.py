@@ -145,10 +145,10 @@ class zynthian_processor:
             self.engine.set_midi_chan(self)
             for zctrl in self.controllers_dict.values():
                 if zctrl.midi_chan == self.midi_chan:
-                    ml = self.engine.state_manager.chain_manager.get_midi_learn(self.midi_chan, zctrl.midi_cc)
+                    ml = self.engine.state_manager.chain_manager.get_midi_learn_from_zctrl(zctrl)
                     if ml and [zctrl.processor, zctrl.symbol] in ml:
                         # This was (probably) auto-midi-learned
-                        self.engine.state_manager.chain_manager.add_midi_learn(midi_chan, zctrl.midi_cc, zctrl.processor, zctrl.symbol)
+                        self.engine.state_manager.chain_manager.add_midi_learn(midi_chan, zctrl.midi_cc, zctrl)
                 zctrl.set_midi_chan(midi_chan)
             self.send_ctrlfb_midi_cc()
             # Set "Drop Program Change" flag for each MIDI chan

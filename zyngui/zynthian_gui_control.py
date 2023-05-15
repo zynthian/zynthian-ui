@@ -127,7 +127,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			screen_list = processor.get_ctrl_screens()
 			if len(screen_list) > 0:
 				if len(self.processors) > 1:
-					self.list_data.append((None, None, "> {}".format(processor.engine.name.split("/")[-1])))
+					self.list_data.append((None, None, f"> {processor.engine.name.split('/')[-1]}"))
 				for cscr in screen_list:
 					self.list_data.append((cscr, i, cscr, processor, j))
 					i += 1
@@ -163,7 +163,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 						class_ = getattr(module, module_name)
 						self.widgets[widget_name] = class_(self.main_frame)
 					except Exception as e:
-						logging.error("Can't load custom widget {} => {}".format(widget_name, e))
+						logging.error(f"Can't load custom widget {widget_name} => {e}")
 
 				if widget_name in self.widgets:
 					self.widgets[widget_name].set_processor(processor)
@@ -218,13 +218,13 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.hide_widgets()
 
 		# Setup GUI Controllers
-		logging.debug("SET CONTROLLER SCREEN {}".format(self.screen_title))
+		logging.debug(f"SET CONTROLLER SCREEN {self.screen_title}")
 		# Configure zgui_controllers
 		for i in range(4):
 			if i < len(self.zcontrollers):
 				try:
 					ctrl = self.zcontrollers[i]
-					#logging.debug("CONTROLLER ARRAY {} => {} ({})".format(i, ctrl.symbol, ctrl.short_name))
+					#logging.debug(f"CONTROLLER ARRAY {i} => {ctrl.symbol} ({ctrl.short_name})")
 					self.set_zcontroller(i, ctrl)
 				except Exception as e:
 					logging.exception("Controller %s (%d) => %s" % (ctrl.short_name, i, e))
@@ -566,7 +566,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def midi_learn(self, i):
 		if self.mode == 'control' and self.zgui_controllers[i].zctrl:
-			self.zyngui.state_manager.enable_learn_cc(self.zgui_controllers[i].zctrl.processor, self.zgui_controllers[i].zctrl.symbol)
+			self.zyngui.state_manager.enable_learn_cc(self.zgui_controllers[i].zctrl)
 			self.enter_midi_learn()
 			self.refresh_midi_bind()
 			self.set_select_path()
@@ -582,9 +582,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def midi_unlearn_action(self):
 		if self.zyngui.state_manager.midi_learn_cc:
-			self.zyngui.show_confirm("Do you want to clean MIDI-learn for '{}' control?".format(self.zyngui.state_manager.midi_learn_cc[1]), self.midi_unlearn, self.zyngui.state_manager.midi_learn_cc)
+			self.zyngui.show_confirm(f"Do you want to clean MIDI-learn for '{self.zyngui.state_manager.midi_learn_cc[1]}' control?", self.midi_unlearn, self.zyngui.state_manager.midi_learn_cc)
 		elif self.zyngui.get_current_processor() and self.zyngui.get_current_processor().engine:
-			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in {} on MIDI channel {}?".format(self.zyngui.get_current_processor().engine.name, self.zyngui.get_current_processor().midi_chan + 1), self.midi_unlearn)
+			self.zyngui.show_confirm(f"Do you want to clean MIDI-learn for ALL controls in {self.zyngui.get_current_processor().engine.name} on MIDI channel {self.zyngui.get_current_processor().midi_chan + 1}?", self.midi_unlearn)
 		self.exit_midi_learn()
 
 
@@ -593,18 +593,19 @@ class zynthian_gui_control(zynthian_gui_selector):
 			options = {}
 			zctrl = self.zgui_controllers[i].zctrl
 			if not unlearn_only:
-				options["Learn '{}'...".format(zctrl.name)] = i
+				options["Learn '{zctrl.name}'..."] = i
 				title = "Control MIDI-learn"
 			else:
 				title = "Control MIDI-unlearn"
-			if zctrl.midi_learn_cc:
-				options["Unlearn '{}'".format(zctrl.name)] = i
+			params = self.zyngui.chain_manager.get_midi_learn_from_zctrl(zctrl)
+			if params[1]:
+				options[f"Unlearn '{zctrl.name}'"] = zctrl
 			options["Unlearn All"] = None
 			self.zyngui.screens['option'].config(title, options, self.midi_learn_options_cb)
 			self.zyngui.screens['option'].config("Control MIDI-learn", options, self.midi_learn_options_cb)
 			self.zyngui.show_screen('option')
 		except Exception as e:
-			logging.error("Can't show Control MIDI-learn options => {}".format(e))
+			logging.error(f"Can't show Control MIDI-learn options => {e}")
 
 
 	def midi_learn_options_cb(self, option, param):

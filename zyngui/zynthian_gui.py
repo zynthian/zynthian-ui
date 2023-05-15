@@ -1141,6 +1141,7 @@ class zynthian_gui:
 		self.chain_control(chain_id)
 
 	def cuia_layer_control(self, params=None):
+		# Legacy support
 		self.cuia_chain_control(params)
 
 	def cuia_screen_control(self, params=None):
@@ -1148,23 +1149,23 @@ class zynthian_gui:
 
 	def cuia_chain_options(self, params=None):
 		try:
+			# Select chain by ID
+			chain_id = params[0]
 			# Select chain by index
-			index = params[0]
-			if index == 0:
-				chain_id = "main"
-			else:
-				chain_id = self.chain_manager.chain_ids_ordered[params[0] - 1]
+			if isinstance(chain_id, int):
+				index = params[0]
+				if index == 0:
+					chain_id = "main"
+				else:
+					chain_id = self.chain_manager.chain_ids_ordered[params[0] - 1]
 		except:
-			try:
-				# Select chain by ID
-				chain_id = params[0]
-			except:
-				pass
+			chain_id = self.chain_manager.active_chain_id
 		if chain_id is not None:
 			self.screens['chain_options'].setup(chain_id)
 			self.toggle_screen('chain_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 	def cuia_layer_options(self, params=None):
+		# Legacy support
 		self.cuia_chain_options(params)
 
 	def cuia_menu(self, params=None):
@@ -1204,6 +1205,7 @@ class zynthian_gui:
 		self.show_favorites()
 
 	def cuia_enable_midi_learn_cc(self, params=None):
+		#TODO: Find zctrl
 		if len(params) == 2:
 			self.state_manager.enable_learn_cc(params[0], params[1])
 
@@ -1670,8 +1672,8 @@ class zynthian_gui:
 						elif ccnum == 123:
 							self.state_manager.all_notes_off()
 
-						if self.state_manager.midi_learn_cc:
-							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_cc[0], self.state_manager.midi_learn_cc[1])
+						if self.state_manager.midi_learn_zctrl:
+							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_zctrl)
 						else:
 							self.state_manager.zynmixer.midi_control_change(chan, ccnum, ccval)
 					# Note-on/off => CUIA
@@ -1707,21 +1709,21 @@ class zynthian_gui:
 					#logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan,ccnum,ccval))
 					if ccnum < 120:
 						# If MIDI learn pending ...
-						if self.state_manager.midi_learn_cc:
-							#TODO: Could optimise by sending ev & 0x7f00 to addt_midi_learn()
-							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_cc[0], self.state_manager.midi_learn_cc[1])
+						if self.state_manager.midi_learn_zctrl:
+							#TODO: Could optimise by sending ev & 0x7f00 to add_midi_learn()
+							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_zctrl)
 							self.screens['control'].exit_midi_learn()
 							self.show_current_screen()
 						# Try processor parameter
 						else:
 							self.chain_manager.midi_control_change(chan, ccnum, ccval)
 							self.state_manager.zynmixer.midi_control_change(chan, ccnum, ccval)
+							self.state_manager.alsa_mixer_processor.midi_control_change(chan, ccnum, ccval)
 					# Special CCs >= Channel Mode
 					elif ccnum == 120:
 						self.state_manager.all_sounds_off_chan(chan)
 					elif ccnum == 123:
 						self.state_manager.all_notes_off_chan(chan)
-					self.state_manager.alsa_mixer_processor.midi_control_change(chan, ccnum, ccval)
 
 				# Program Change ...
 				elif evtype == 0xC:

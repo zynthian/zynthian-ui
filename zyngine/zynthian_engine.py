@@ -555,7 +555,7 @@ class zynthian_engine(zynthian_basic_engine):
 				zctrls[zctrl.symbol] = zctrl
 
 				if zctrl.midi_chan is not None and zctrl.midi_cc is not None:
-					self.state_manager.chain_manager.add_midi_learn(zctrl.midi_chan, zctrl.midi_cc, processor, zctrl.symbol)
+					self.state_manager.chain_manager.add_midi_learn(zctrl.midi_chan, zctrl.midi_cc, zctrl)
 
 		return zctrls
 

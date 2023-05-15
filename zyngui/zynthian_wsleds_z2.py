@@ -87,7 +87,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 		# MODE button => MIDI LEARN
 		if self.zyngui.state_manager.get_midi_learn_zctrl() or curscreen == "zs3":
 			self.wsleds.setPixelColor(7, self.wscolor_yellow)
-		elif self.zyngui.state_manager.midi_learn_cc:
+		elif self.zyngui.state_manager.midi_learn_zctrl:
 			self.wsleds.setPixelColor(7, self.wscolor_active)
 		else:
 			self.wsleds.setPixelColor(7, self.wscolor_default)

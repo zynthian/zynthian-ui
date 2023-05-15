@@ -417,19 +417,19 @@ class zynthian_gui_controller(tkinter.Canvas):
 		if self.hidden:
 			return
 		if self.zctrl:
-			midi_learn_params = self.zyngui.chain_manager.get_midi_learn_from_param(self.zctrl.processor, self.zctrl.symbol)
+			midi_learn_params = self.zyngui.chain_manager.get_midi_learn_from_zctrl(self.zctrl)
 			if self.selector_counter:
 				#self.erase_midi_bind()
-				self.plot_midi_bind("/{}".format(self.zctrl.value_range))
+				self.plot_midi_bind(f"/{self.zctrl.value_range}")
 			elif self.zctrl == self.zyngui.state_manager.get_midi_learn_zctrl():
 				self.plot_midi_bind("??",zynthian_gui_config.color_ml)
 			elif preselection is not None:
 				self.plot_midi_bind("??",zynthian_gui_config.color_hl)
 			elif midi_learn_params:
-				if zynthian_gui_config.midi_single_active_channel:
-					self.plot_midi_bind(f"{midi_learn_params[0] + 1}#{midi_learn_params[1]}")
+				if zynthian_gui_config.midi_single_active_channel and midi_learn_params[2]:
+					self.plot_midi_bind(f"{midi_learn_params[0] + 1}#{midi_learn_params[1]}", zynthian_gui_config.color_midi)
 				else:
-					self.plot_midi_bind(f"{midi_learn_params[1]}")
+					self.plot_midi_bind(f"{midi_learn_params[0] + 1}#{midi_learn_params[1]}")
 			else:
 				self.erase_midi_bind()
 				return False
@@ -517,7 +517,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 	def config(self, zctrl):
 		#logging.debug("CONFIG CONTROLLER %s => %s" % (self.index,zctrl.name))
 		
-		self.step = 0				#By default, use adaptative step size based on rotary speed
+		self.step = 0 #By default, use adaptative step size based on rotary speed
 		self.format_print = None
 
 		self.zctrl = zctrl
@@ -591,14 +591,14 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.canvas_motion_y0 = event.y
 		self.canvas_motion_x0 = event.x
 		self.canvas_motion_dx = 0
-		#logging.debug("CONTROL {} PUSH => {} ({},{})".format(self.index, self.canvas_push_ts, self.canvas_motion_x0, self.canvas_motion_y0))
+		#logging.debug(f"CONTROL {self.index} PUSH => {self.canvas_push_ts} ({self.canvas_motion_x0},{self.canvas_motion_y0})")
 
 
 	def cb_canvas_release(self,event):
 		if self.canvas_push_ts:
 			dts = (datetime.now()-self.canvas_push_ts).total_seconds()
 			self.canvas_push_ts = None
-			#logging.debug("CONTROL {} RELEASE => {}, {}".format(self.index, dts, motion_rate))
+			#logging.debug(f"CONTROL {self.index} RELEASE => {dts}, {motion_rate}")
 			if self.active_motion_axis == 0:
 				if zynthian_gui_config.enable_touch_controller_switches:
 					if dts < zynthian_gui_config.zynswitch_bold_seconds:

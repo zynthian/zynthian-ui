@@ -809,7 +809,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				# Default MIDI CC mapping
 				default_cc = {'Sustain Pedal': 64, 'Sostenuto Pedal': 66, 'Soft Pedal': 67, 'Harmonic Pedal': 69}
 				if param in default_cc:
-					self.state_manager.chain_manager.add_midi_learn(processor.midi_chan, default_cc[param], processor, zctrl.symbol)
+					self.state_manager.chain_manager.add_midi_learn(processor.midi_chan, default_cc[param], zctrl)
 
 			else:
 				self._ctrls[param].set_options(options)
