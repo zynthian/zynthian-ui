@@ -118,6 +118,25 @@ function splash_zynthian_last_message() {
 powersave_control.sh off
 
 #------------------------------------------------------------------------------
+# Run Hardware Test
+#------------------------------------------------------------------------------
+
+export ZYNTHIAN_HW_TEST=""
+if [ -n "${ZYNTHIAN_HW_TEST}" ]; then
+	echo "Running hardware test:  $ZYNTHIAN_HW_TEST"
+	result=$($ZYNTHIAN_SYS_DIR/sbin/zynthian_hw_test.py $ZYNTHIAN_HW_TEST | tail -1)
+	res=${result%:*}
+	message=${result#*:}
+	if [[ "$res" == "OK" ]]; then
+		splash_zynthian_message "$result"
+	else
+		splash_zynthian_error "$message"
+	fi
+	sleep 3600
+	exit
+fi
+
+#------------------------------------------------------------------------------
 # Test splash screen generator
 #------------------------------------------------------------------------------
 

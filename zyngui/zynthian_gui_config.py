@@ -629,7 +629,7 @@ if "zynthian_main.py" in sys.argv[0]:
 
 		# Disable cursor for real Zynthian Boxes
 		if force_enable_cursor or wiring_layout == "EMULATOR" or wiring_layout == "DUMMIES":
-			top.config(cursor="cross")
+			top.config(cursor="arrow")
 		else:
 			top.config(cursor="none")
 
