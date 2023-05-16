@@ -375,7 +375,6 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.fill_list()
 		except Exception as e:
 			logging.warning("Failed to rename snapshot {} to {} => {}".format(data[0], data[1], e))
-		self.zyngui.close_screen()
 
 
 	def set_program(self, value):
@@ -436,7 +435,6 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		parts = self.get_parts_from_path(dfpath)
 		
 		self.zyngui.close_screen()
-		self.zyngui.close_screen()
 		self.select_listbox_by_name(parts[2][:-4])
 
 
@@ -446,6 +444,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			name = format(program, "03") + "-" + name
 		path = self.get_snapshot_fpath(name.replace('>',';').replace('/',';')) + '.zss'
 		self.save_snapshot(path)
+		self.fill_list()
 
 
 	def save_snapshot(self, path):
@@ -482,6 +481,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		logging.info("DELETE SNAPSHOT: {}".format(fpath))
 		try:
 			os.remove(fpath)
+			self.fill_list()
 		except Exception as e:
 			logging.error(e)
 		self.zyngui.close_screen()
