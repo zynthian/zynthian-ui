@@ -814,12 +814,13 @@ class zynthian_chain_manager():
 	#----------------------------------------------------------------------------
 
 
-    def add_midi_learn(self, midi_chan, midi_cc, zctrl):
+    def add_midi_learn(self, midi_chan, midi_cc, zctrl, active_filter=True):
         """Adds a midi learn configuration
 
         midi_chan : MIDI channel of CC message
         midi_cc : CC number of CC message
         zctrl : Controller object
+        active_filter : True for stage mode to filter CC by active chain
         """
 
         if zctrl is None:
@@ -828,9 +829,9 @@ class zynthian_chain_manager():
         self.remove_midi_learn(zctrl.processor, zctrl.symbol)
         if id in self.midi_learn_map:
             if [zctrl, True] not in self.midi_learn_map[id]:
-                self.midi_learn_map[id].append([zctrl, zynthian_gui_config.midi_single_active_channel])
+                self.midi_learn_map[id].append([zctrl, active_filter])
         else:
-            self.midi_learn_map[id] = [[zctrl, zynthian_gui_config.midi_single_active_channel]]
+            self.midi_learn_map[id] = [[zctrl, active_filter]]
         if zctrl.processor.type_code == "MD":
             # Add native MIDI learn
             zctrl.processor.engine.set_midi_learn(zctrl, midi_chan, midi_cc)

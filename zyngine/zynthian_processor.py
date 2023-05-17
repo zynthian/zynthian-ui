@@ -141,20 +141,18 @@ class zynthian_processor:
         midi_chan : MIDI channel 0..15 or None
         """
 
+        self.midi_chan = midi_chan
         if self.engine:
             self.engine.set_midi_chan(self)
             for zctrl in self.controllers_dict.values():
-                if zctrl.midi_chan == self.midi_chan:
-                    ml = self.engine.state_manager.chain_manager.get_midi_learn_from_zctrl(zctrl)
-                    if ml and [zctrl.processor, zctrl.symbol] in ml:
-                        # This was (probably) auto-midi-learned
-                        self.engine.state_manager.chain_manager.add_midi_learn(midi_chan, zctrl.midi_cc, zctrl)
+                ml = self.engine.state_manager.chain_manager.get_midi_learn_from_zctrl(zctrl)
+                if ml and ml[2]:
+                    self.engine.state_manager.chain_manager.add_midi_learn(midi_chan, zctrl.midi_cc, zctrl, ml[2])
                 zctrl.set_midi_chan(midi_chan)
             self.send_ctrlfb_midi_cc()
             # Set "Drop Program Change" flag for each MIDI chan
             if midi_chan is not None and midi_chan < 16:
                 get_lib_zyncore().zmop_chain_set_flag_droppc(midi_chan, int(self.engine.options['drop_pc']))
-        self.midi_chan = midi_chan
 
     def get_midi_chan(self):
         """Get MIDI channel (0..15 or None)

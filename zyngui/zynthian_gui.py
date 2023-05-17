@@ -1673,7 +1673,7 @@ class zynthian_gui:
 							self.state_manager.all_notes_off()
 
 						if self.state_manager.midi_learn_zctrl:
-							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_zctrl)
+							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_zctrl, zynthian_gui_config.midi_single_active_channel)
 						else:
 							self.state_manager.zynmixer.midi_control_change(chan, ccnum, ccval)
 					# Note-on/off => CUIA
@@ -1711,7 +1711,7 @@ class zynthian_gui:
 						# If MIDI learn pending ...
 						if self.state_manager.midi_learn_zctrl:
 							#TODO: Could optimise by sending ev & 0x7f00 to add_midi_learn()
-							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_zctrl)
+							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_zctrl, zynthian_gui_config.midi_single_active_channel)
 							self.screens['control'].exit_midi_learn()
 							self.show_current_screen()
 						# Try processor parameter
