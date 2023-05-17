@@ -61,7 +61,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
 			bd=0,
 			highlightthickness=0)
 		self.main_frame.rowconfigure(2, weight=1)
-		if zynthian_gui_config.layout['name'] == 'V4':
+		if zynthian_gui_config.layout['columns'] == 3:
 			self.info_canvas.grid(row=0, column=1, rowspan=2, padx=(2, 2), sticky='news')
 			self.main_frame.columnconfigure(1, weight=1)
 		else:
@@ -71,7 +71,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
 		self.bpm_text = self.info_canvas.create_text(
 			0,
 			0,
-			anchor=tkinter.NW,
+			anchor=tkinter.N,
 			width=0,
 			text="",
 			font=(zynthian_gui_config.font_family, 10),
@@ -116,8 +116,11 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
 	def update_layout(self):
 		super().update_layout()
-		fs = self.width//20
-		self.info_canvas.coords(self.bpm_text, int(0.175*self.width), int(0.375*self.height))
+		fs = self.width // 20
+		if zynthian_gui_config.layout['columns'] == 3:
+			self.info_canvas.coords(self.bpm_text, int(0.25*self.width), int(0.375*self.height))
+		else:
+			self.info_canvas.coords(self.bpm_text, int(0.375*self.width), int(0.375*self.height))
 		self.info_canvas.itemconfigure(self.bpm_text, width=9*fs, font=(zynthian_gui_config.font_family, fs))
 
 
