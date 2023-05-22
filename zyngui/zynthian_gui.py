@@ -36,6 +36,7 @@ from datetime import datetime
 from threading  import Thread, Lock
 from subprocess import check_output
 
+import zyncoder
 # Zynthian specific modules
 import zynconf
 import zynautoconnect
@@ -249,10 +250,10 @@ class zynthian_gui:
 					midi_chan = curlayer_chan
 
 				if midi_chan is not None:
-					lib_zyncore.setup_zynaptik_cvin(i, event['type'], midi_chan, event['num'])
+					lib_zyncore.zynaptik_setup_cvin(i, event['type'], midi_chan, event['num'])
 					logging.info("ZYNAPTIK CV-IN {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
 				else:
-					lib_zyncore.disable_zynaptik_cvin(i)
+					lib_zyncore.zynaptik_disable_cvin(i)
 					logging.info("ZYNAPTIK CV-IN {}: DISABLED!".format(i))
 
 		# Configure Zynaptik Analog Outputs (CV-OUT)
@@ -264,10 +265,10 @@ class zynthian_gui:
 					midi_chan = curlayer_chan
 
 				if midi_chan is not None:
-					lib_zyncore.setup_zynaptik_cvout(i, event['type'], midi_chan, event['num'])
+					lib_zyncore.zynaptik_setup_cvout(i, event['type'], midi_chan, event['num'])
 					logging.info("ZYNAPTIK CV-OUT {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
 				else:
-					lib_zyncore.disable_zynaptik_cvout(i)
+					lib_zyncore.zynaptik_disable_cvout(i)
 					logging.info("ZYNAPTIK CV-OUT {}: DISABLED!".format(i))
 
 		# Configure Zyntof Inputs (Distance Sensor)
@@ -1509,6 +1510,30 @@ class zynthian_gui:
 		except (AttributeError, TypeError) as err:
 			pass
 
+	def cuia_zynaptik_cvin_set_volts_octave(self, params):
+		try:
+			lib_zyncore.zynaptik_cvin_set_volts_octave(float(params[0]))
+		except Exception as err:
+			logging.debug(err)
+
+	def cuia_zynaptik_cvin_set_note0(self, params):
+		try:
+			lib_zyncore.zynaptik_cvin_set_note0(int(params[0]))
+		except Exception as err:
+			logging.debug(err)
+
+	def cuia_zynaptik_cvout_set_volts_octave(self, params):
+		try:
+			lib_zyncore.zynaptik_cvout_set_volts_octave(int(params[0]))
+		except Exception as err:
+			logging.debug(err)
+
+	def cuia_zynaptik_cvout_set_note0(self, params):
+		try:
+			lib_zyncore.zynaptik_cvout_set_note0(float(params[0]))
+		except Exception as err:
+			logging.debug(err)
+
 	def refresh_signal(self, sname):
 		try:
 			self.screens[self.current_screen].refresh_signal(sname)
@@ -2265,6 +2290,10 @@ class zynthian_gui:
 		logging.info("All Notes Off!")
 		for chan in range(16):
 			lib_zyncore.ui_send_ccontrol_change(chan, 123, 0)
+		try:
+			lib_zyncore.zynaptik_all_gates_off()
+		except:
+			pass
 
 
 	def raw_all_notes_off(self):
