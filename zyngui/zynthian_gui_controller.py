@@ -426,8 +426,8 @@ class zynthian_gui_controller(tkinter.Canvas):
 			elif preselection is not None:
 				self.plot_midi_bind("??",zynthian_gui_config.color_hl)
 			elif midi_learn_params:
-				if zynthian_gui_config.midi_single_active_channel and midi_learn_params[2]:
-					self.plot_midi_bind(f"{midi_learn_params[0] + 1}#{midi_learn_params[1]}", zynthian_gui_config.color_midi)
+				if isinstance(midi_learn_params[0], str):
+					self.plot_midi_bind(f"{midi_learn_params[1]}")
 				else:
 					self.plot_midi_bind(f"{midi_learn_params[0] + 1}#{midi_learn_params[1]}")
 			else:
