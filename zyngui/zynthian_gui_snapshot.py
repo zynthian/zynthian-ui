@@ -281,16 +281,13 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			return
 
 		if option == "Load":
-			self.zyngui.screens['layer'].load_snapshot(fpath)
-			self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
+			self.zyngui.show_confirm("Loading %s will destroy current chains & sequences..." % (fname), self.load_snapshot, fpath)
 		elif option == "Load Chains":
-			self.zyngui.screens['layer'].load_snapshot_layers(fpath)
-			self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
+			self.zyngui.show_confirm("Loading chains from %s will destroy current chains..." % (fname), self.load_snapshot_chains, fpath)
 		elif option == "Load Sequences":
-			self.zyngui.screens['layer'].load_snapshot_sequences(fpath)
-			self.zyngui.show_screen('stepseq', hmode=self.zyngui.SCREEN_HMODE_RESET)
+			self.zyngui.show_confirm("Loading sequences from %s will destroy current sequences..." % (fname), self.load_snapshot_sequences, fpath)
 		elif option == "Save":
-			self.zyngui.show_confirm("Do you really want to overwrite %s with current configuration" % (fname), self.save_snapshot, fpath)
+			self.zyngui.show_confirm("Do you really want to overwrite %s?" % (fname), self.save_snapshot, fpath)
 		elif option == "Rename":
 			self.zyngui.show_keyboard(self.rename_snapshot, parts[1])
 		elif option == "Set Program":
@@ -397,6 +394,21 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		path = self.get_snapshot_fpath(name.replace('>',';').replace('/',';')) + '.zss'
 		self.save_snapshot(path)
 		self.fill_list()
+
+
+	def load_snapshot(self, fpath):
+		self.zyngui.screens['layer'].load_snapshot(fpath)
+		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
+
+
+	def load_snapshot_chains(self, fpath):
+		self.zyngui.screens['layer'].load_snapshot_layers(fpath)
+		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
+
+
+	def load_snapshot_sequences(self, fpath):
+		self.zyngui.screens['layer'].load_snapshot_sequences(fpath)
+		self.zyngui.show_screen('zynpad', hmode=self.zyngui.SCREEN_HMODE_RESET)
 
 
 	def save_snapshot(self, path):
