@@ -1635,7 +1635,7 @@ class zynthian_gui:
 
 		# Custom ZynSwitches
 		elif i >= 4:
-			logging.debug('Push Switch ' + str(i))
+			#logging.debug('Push Switch ' + str(i))
 			self.start_loading()
 			self.custom_switch_ui_action(i-4, "P")
 			self.stop_loading()
@@ -2078,14 +2078,19 @@ class zynthian_gui:
 
 
 	def start_loading(self):
-		self.loading = self.loading + 1
-		if self.loading < 1: self.loading = 1
+		if self.loading > 0:
+			self.loading += 1
+		else:
+			self.loading = 1
+
 		#logging.debug("START LOADING %d" % self.loading)
 
 
 	def stop_loading(self):
-		self.loading = self.loading - 1
-		if self.loading < 0: self.loading = 0
+		if self.loading > 0:
+			self.loading -= 1
+		else:
+			self.loading = 0
 		#logging.debug("STOP LOADING %d" % self.loading)
 
 
