@@ -91,10 +91,22 @@ void enableDebug(bool bEnable);
 */
 bool load(const char* filename);
 
-/** @brief  Save sequences and patterns from file
+/** @brief  Load pattern from file
+*   @param  nPattern Pattern number
+*   @param  filename Full path and filename
+*/
+bool load_pattern(uint32_t nPattern, const char* filename);
+
+/** @brief  Save sequences and patterns to file
 *   @param  filename Full path and filename
 */
 void save(const char* filename);
+
+/** @brief  Save pattern to file
+*   @param  nPattern Pattern number
+*   @param  filename Full path and filename
+*/
+void save_pattern(uint32_t nPattern, const char* filename);
 
 /** @brief  Get vertical zoom
 *   @retval uint16_t Vertical zoom

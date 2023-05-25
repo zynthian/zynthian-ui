@@ -817,7 +817,7 @@ bool load(const char* filename)
             g_nHorizontalZoom = fileRead16(pFile);
             //printf("Version:%u Tempo:%0.2lf Beats per bar:%u Zoom V:%u H:%u\n", nVersion, g_dTempo, g_nBeatsPerBar, g_nVerticalZoom, g_nHorizontalZoom);
         }
-        if(memcmp(sHeader, "patn", 4) == 0)
+        else if(memcmp(sHeader, "patn", 4) == 0)
         {
             if(nVersion == 4)
             {
@@ -957,6 +957,97 @@ bool load(const char* filename)
     g_bDirty = false;
     g_pSequence = g_seqMan.getSequence(0, 0);
     selectPattern(1);
+    return true;
+}
+
+bool load_pattern(uint32_t nPattern, const char* filename)
+{
+    uint32_t nVersion = 0;
+    FILE *pFile;
+    pFile = fopen(filename, "r");
+    if(pFile == NULL)
+        return false;
+    char sHeader[4];
+    // Iterate each block within IFF file
+    while(fread(sHeader, 4, 1, pFile) == 1)
+    {
+        uint32_t nBlockSize = fileRead32(pFile);
+        if(memcmp(sHeader, "vers", 4) == 0)
+        {
+            if(nBlockSize != 10)
+            {
+                fclose(pFile);
+                printf("Error reading vers block from pattern file\n");
+                return false;
+            }
+            nVersion = fileRead32(pFile);
+            if(nVersion < 4 || nVersion > FILE_VERSION)
+            {
+                fclose(pFile);
+                DPRINTF("Unsupported pattern file version %d. Not loading file.\n", nVersion);
+                return false;
+            }
+            g_nBeatsPerBar = fileRead16(pFile);
+            g_nVerticalZoom = fileRead16(pFile);
+            g_nHorizontalZoom = fileRead16(pFile);
+            //printf("Version:%u Beats per bar:%u Zoom V:%u H:%u\n", nVersion, g_nBeatsPerBar, g_nVerticalZoom, g_nHorizontalZoom);
+        }
+        else if(memcmp(sHeader, "patn", 4) == 0)
+        {
+            if(nVersion == 4)
+            {
+            if(checkBlock(pFile, nBlockSize, 12))
+                continue;
+            }
+            else
+            {
+                if(checkBlock(pFile, nBlockSize, 14))
+                    continue;
+            }
+            Pattern* pPattern = g_seqMan.getPattern(nPattern);
+            pPattern->clear();
+            pPattern->setBeatsInPattern(fileRead32(pFile));
+            pPattern->setStepsPerBeat(fileRead16(pFile));
+            pPattern->setScale(fileRead8(pFile));
+            pPattern->setTonic(fileRead8(pFile));
+            if(nVersion >=5)
+            {
+                pPattern->setRefNote(fileRead8(pFile));
+                fileRead8(pFile);
+                nBlockSize -= 2;
+            }
+            nBlockSize -= 12;
+            //printf("Pattern:%u Beats:%u StepsPerBeat:%u Scale:%u Tonic:%u\n", nPattern, pPattern->getBeatsInPattern(), pPattern->getStepsPerBeat(), pPattern->getScale(), pPattern->getTonic());
+            while(nBlockSize)
+            {
+                if(checkBlock(pFile, nBlockSize, 14))
+                    break;
+                uint32_t nStep = fileRead32(pFile);
+                float fDuration = float(fileRead16(pFile))/100 + fileRead16(pFile); // fractional + integral (BCD)
+                uint8_t nCommand = fileRead8(pFile);
+                uint8_t nValue1start = fileRead8(pFile);
+                uint8_t nValue2start = fileRead8(pFile);
+                uint8_t nValue1end = fileRead8(pFile);
+                uint8_t nValue2end = fileRead8(pFile);
+                StepEvent* pEvent = pPattern->addEvent(nStep, nCommand, nValue1start, nValue2start, fDuration);
+                pEvent->setValue1end(nValue1end);
+                pEvent->setValue2end(nValue2end);
+                nBlockSize -= 14;
+                if(nVersion > 7)
+                {
+                    uint8_t nStutterCount = fileRead8(pFile);
+                    uint8_t nStutterDur = fileRead8(pFile);
+                    pEvent->setStutterCount(nStutterCount);
+                    pEvent->setStutterDur(nStutterDur);
+                    nBlockSize -= 2;
+                }
+                fileRead8(pFile); // Padding
+                //printf(" Step:%u Duration:%u Command:%02X, Value1:%u..%u, Value2:%u..%u\n", nTime, nDuration, nCommand, nValue1start, nValue2end, nValue2start, nValue2end);
+            }
+        }
+    }
+    fclose(pFile);
+    //printf("Ver: %d Loaded %lu pattern from file %s\n", nVersion, m_mPatterns.size(), filename);
     return true;
 }
 
@@ -1106,6 +1197,71 @@ void save(const char* filename)
 
     fclose(pFile);
     g_bDirty = false;
+}
+
+void save_pattern(uint32_t nPattern, const char* filename)
+{
+    //!@todo Need to save / load ticks per beat (unless we always use 1920)
+
+    Pattern* pPattern = g_seqMan.getPattern(nPattern);
+	// Only save pattern if it has content
+	if(!pPattern->getEventAt(0))
+	{
+        fprintf(stderr, "WARNING: SequenceManager don't save pattern %d because it's empty\n", nPattern);
+        return;
+	}
+
+    FILE *pFile;
+    int nPos = 0;
+    pFile = fopen(filename, "w");
+    if(pFile == NULL)
+    {
+        fprintf(stderr, "ERROR: SequenceManager failed to open file %s\n", filename);
+        return;
+    }
+
+    uint32_t nBlockSize;
+    fwrite("vers", 4, 1, pFile); // IFF block name
+    nPos += 4;
+    nPos += fileWrite32(10, pFile); // IFF block size
+    nPos += fileWrite32(FILE_VERSION, pFile); // IFF block content
+    nPos += fileWrite16(g_nBeatsPerBar, pFile); //!@todo Write current beats per bar
+    nPos += fileWrite16(g_nVerticalZoom, pFile);
+    nPos += fileWrite16(g_nHorizontalZoom, pFile);
+
+	fwrite("patn", 4, 1, pFile);
+	nPos += 4;
+	nPos += fileWrite32(0, pFile); // IFF block size
+	uint32_t nStartOfBlock = nPos;
+	nPos += fileWrite32(pPattern->getBeatsInPattern(), pFile);
+	nPos += fileWrite16(pPattern->getStepsPerBeat(), pFile);
+	nPos += fileWrite8(pPattern->getScale(), pFile);
+	nPos += fileWrite8(pPattern->getTonic(), pFile);
+	nPos += fileWrite8(pPattern->getRefNote(), pFile);
+	nPos += fileWrite8('\0', pFile);
+	uint32_t nEvent = 0;
+	while(StepEvent* pEvent = pPattern->getEventAt(nEvent++))
+	{
+		nPos += fileWrite32(pEvent->getPosition(), pFile);
+		float fDuration = pEvent->getDuration();
+		uint16_t nUnits = uint16_t(fDuration);
+		uint16_t nDecimal = uint16_t((fDuration - nUnits) * 100);
+		nPos += fileWrite16(nDecimal, pFile); // fractional (BCD)
+		nPos += fileWrite16(nUnits, pFile); // integral (BCD)
+		nPos += fileWrite8(pEvent->getCommand(), pFile);
+		nPos += fileWrite8(pEvent->getValue1start(), pFile);
+		nPos += fileWrite8(pEvent->getValue2start(), pFile);
+		nPos += fileWrite8(pEvent->getValue1end(), pFile);
+		nPos += fileWrite8(pEvent->getValue2end(), pFile);
+		nPos += fileWrite8(pEvent->getStutterCount(), pFile);
+		nPos += fileWrite8(pEvent->getStutterDur(), pFile);
+		nPos += fileWrite8('\0', pFile); // Pad to even block (could do at end but simplest here)
+	}
+	nBlockSize = nPos - nStartOfBlock;
+	fseek(pFile, nStartOfBlock - 4, SEEK_SET);
+	fileWrite32(nBlockSize, pFile);
+	fseek(pFile, 0, SEEK_END);
+    fclose(pFile);
 }
 
 uint16_t getVerticalZoom()

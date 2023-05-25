@@ -54,6 +54,7 @@ SEQ_EVENT_PLAYMODE	= 6
 SEQ_EVENT_SEQUENCE	= 7
 SEQ_EVENT_LOAD		= 8
 SEQ_EVENT_MIDI_LEARN= 9
+SEQ_EVENT_LOAD_PAT	= 10
 
 SEQ_MAX_PATTERNS	= 64872
 
@@ -228,6 +229,12 @@ class zynseq(zynthian_engine):
 		self.select_bank(1, True) #TODO: Store selected bank in seq file
 		self.send_event(SEQ_EVENT_LOAD)
 
+	#	Load a zynseq pattern file
+	#	patnum: Pattern number
+	#	filename: Full path and filename
+	def load_pattern(self, patnum, filename):
+		self.libseq.load_pattern(int(patnum), bytes(filename, "utf-8"))
+		self.send_event(SEQ_EVENT_LOAD_PAT)
 
 	#	Save a zynseq file
 	#	filename: Full path and filename
@@ -235,6 +242,15 @@ class zynseq(zynthian_engine):
 	def save(self, filename):
 		if self.libseq:
 			return self.libseq.save(bytes(filename, "utf-8"))
+		return None
+
+	#	Save a zynseq pattern file
+	#	patnum: Pattern number
+	#	filename: Full path and filename
+	#	Returns: True on success
+	def save_pattern(self, patnum, filename):
+		if self.libseq:
+			return self.libseq.save_pattern(int(patnum), bytes(filename, "utf-8"))
 		return None
 
 

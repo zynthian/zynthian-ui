@@ -23,13 +23,11 @@
 # 
 #******************************************************************************
 
-import sys
-import tkinter
 import logging
+import os
 
 # Zynthian specific modules
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
-from . import zynthian_gui_config
 
 #------------------------------------------------------------------------------
 # Zynthian Option Selection GUI Class
@@ -39,7 +37,7 @@ class zynthian_gui_option(zynthian_gui_selector):
 
 	def __init__(self):
 		self.title = ""
-		self.options = []
+		self.options = {}
 		self.cb_select = None
 		super().__init__("Option", True)
 
@@ -50,11 +48,29 @@ class zynthian_gui_option(zynthian_gui_selector):
 		self.cb_select = cb_select
 
 
+	def config_file_list(self, title, dpath, fext, cb_select):
+		self.title = title
+		self.cb_select = cb_select
+		self.options = {}
+		for fname in sorted(os.listdir(dpath)):
+			if fext and fext != ".*":
+				fparts = os.path.splitext(fname)
+				if fparts[1].lower() != fext.lower():
+					continue
+				fbase = fparts[0]
+			else:
+				fbase = fname
+
+			fpath = os.path.join(dpath, fname)
+			if os.path.isfile(fpath):
+				self.options[fbase] = fpath
+
+
 	def fill_list(self):
-		i=0
-		self.list_data=[]
-		for k,v in self.options.items():
-			self.list_data.append((v,i,k))
+		i = 0
+		self.list_data = []
+		for k, v in self.options.items():
+			self.list_data.append((v, i, k))
 			i += 1
 		super().fill_list()
 

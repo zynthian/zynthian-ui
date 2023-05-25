@@ -78,6 +78,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def __init__(self):
 		super().__init__()
 		os.makedirs(CONFIG_ROOT, exist_ok=True) #TODO: Do we want/need these dirs?
+		self.my_zynseq_dpath = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/zynseq"
+		self.my_patterns_dpath = self.my_zynseq_dpath + "/patterns"
+		self.my_captures_dpath = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
 
 		self.status_canvas.bind("<ButtonRelease-1>", self.cb_status_release)
 
@@ -271,12 +274,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if not zynthian_gui_config.check_wiring_layout(["Z2"]):
 			options['Arranger'] = 'Arranger'
 		options['Beats per bar ({})'.format(self.zyngui.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
-		options['> PATTERN'] = None
+		options['> PATTERN OPTIONS'] = None
 		options['Beats in pattern ({})'.format(self.zyngui.zynseq.libseq.getBeatsInPattern())] = 'Beats in pattern'
 		options['Steps per beat ({})'.format(self.zyngui.zynseq.libseq.getStepsPerBeat())] = 'Steps per beat'
-		options['Copy pattern'] = 'Copy pattern'
-		options['Clear pattern'] = 'Clear pattern'
-		options['Transpose pattern'] = 'Transpose pattern'
 		options['Vertical zoom ({})'.format(self.zoom)] = 'Vertical zoom'
 		scales = self.get_scales()
 		options['Scale ({})'.format(scales[self.zyngui.zynseq.libseq.getScale()])] = 'Scale'
@@ -287,12 +287,19 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		else:
 			options['Rest note (None)'] = 'Rest note'
 		#options['Add program change'] = 'Add program change'
+		options['> PATTERN EDIT'] = None
 		if extra_options:
 			if self.zyngui.zynseq.libseq.isMidiRecord():
-				options['[X] Record MIDI'] = 'midi_record'
+				options['[X] Record from MIDI'] = 'midi_record'
 			else:
-				options['[  ] Record MIDI'] = 'midi_record'
+				options['[  ] Record from MIDI'] = 'midi_record'
+		options['Transpose pattern'] = 'Transpose pattern'
+		options['Copy pattern'] = 'Copy pattern'
+		options['Load pattern'] = 'Load pattern'
+		options['Save pattern'] = 'Save pattern'
+		options['Clear pattern'] = 'Clear pattern'
 		options['Export to SMF'] = 'Export to SMF'
+
 		self.zyngui.screens['option'].config("Pattern Editor Menu", options, self.menu_cb)
 		self.zyngui.show_screen('option')
 
@@ -322,6 +329,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'Copy pattern':
 			self.copy_source = self.pattern
 			self.enable_param_editor(self, 'copy', 'Copy pattern to', {'value_min':1, 'value_max':zynseq.SEQ_MAX_PATTERNS, 'value':self.pattern}, self.copy_pattern)
+		elif params == 'Load pattern':
+			self.zyngui.screens['option'].config_file_list("Load pattern", self.my_patterns_dpath, ".zpat", self.load_pattern_file)
+			self.zyngui.show_screen('option')
+		elif params == 'Save pattern':
+			self.zyngui.show_keyboard(self.save_pattern_file, "pat#{}".format(self.pattern))
 		elif params == 'Clear pattern':
 			self.clear_pattern()
 		elif params == 'Transpose pattern':
@@ -346,7 +358,14 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'midi_record':
 			self.toggle_midi_record()
 		elif params == 'Export to SMF':
-			self.export_smf()
+			self.zyngui.show_keyboard(self.export_smf, "pat#{}".format(self.pattern))
+
+	def save_pattern_file(self, fname):
+		self.zyngui.zynseq.save_pattern(self.pattern, "{}/{}.zpat".format(self.my_patterns_dpath, fname))
+
+
+	def load_pattern_file(self, fname, fpath):
+		self.zyngui.zynseq.load_pattern(self.pattern, fpath)
 
 
 	def toggle_midi_record(self, midi_record=None):
@@ -418,7 +437,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to export pattern to SMF
-	def export_smf(self):
+	def export_smf(self, fname):
 		smf = zynsmf.libsmf.addSmf()
 		tempo = self.zyngui.zynseq.libseq.getTempo()
 		zynsmf.libsmf.addTempo(smf, 0, tempo)
@@ -433,7 +452,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				velocity = self.zyngui.zynseq.libseq.getNoteVelocity(step, note)
 				zynsmf.libsmf.addNote(smf, 0, time, duration, self.channel, note, velocity)
 		zynsmf.libsmf.setEndOfTrack(smf, 0, int(self.zyngui.zynseq.libseq.getSteps() * ticks_per_step))
-		zynsmf.save(smf, "/zynthian/zynthian-my-data/capture/pattern{}_{}.mid".format(self.pattern, datetime.now()))
+		zynsmf.save(smf, "{}/{}.mid".format(self.my_captures_dpath, fname))
 
 
 	# Function to assert steps per beat

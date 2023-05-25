@@ -399,7 +399,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if not zynthian_gui_config.check_wiring_layout(["Z2"]):
 			options['Arranger'] = 'Arranger'
 		options['Beats per bar ({})'.format(self.zyngui.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
-		options['> PADS'] = None
+		options['Grid size ({}x{})'.format(self.columns, self.columns)] = 'Grid size'
+		options['> PAD OPTIONS'] = None
 		options['Play mode ({})'.format(zynseq.PLAY_MODES[self.zyngui.zynseq.libseq.getPlayMode(self.bank, self.selected_pad)])] = 'Play mode'
 		options['MIDI channel ({})'.format(1 + self.zyngui.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0))] = 'MIDI channel'
 		trigger_channel = self.get_trigger_channel()
@@ -417,8 +418,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if tally_channel == 0:
 			tally_channel = 'OFF'
 		options['Tally channel ({})'.format(tally_channel)] = 'Tally channel'
-		options['Grid size ({}x{})'.format(self.columns, self.columns)] = 'Grid size'
 		options['Rename sequence'] = 'Rename sequence'
+
 		self.zyngui.screens['option'].config("ZynPad Menu", options, self.menu_cb)
 		self.zyngui.show_screen('option')
 
