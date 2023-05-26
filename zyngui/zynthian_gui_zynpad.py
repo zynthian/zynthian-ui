@@ -403,7 +403,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		options['Beats per bar ({})'.format(self.zyngui.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
 		trigger_channel = self.get_trigger_channel()
 		if trigger_channel == 0:
-			trigger_channel == 'OFF'
+			trigger_channel = 'OFF'
 		options['Trigger channel ({})'.format(trigger_channel)] = 'Trigger channel'
 		tally_channel = self.get_tally_channel()
 		if tally_channel == 0:
