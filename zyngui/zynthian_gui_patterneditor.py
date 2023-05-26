@@ -78,6 +78,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def __init__(self):
 		super().__init__()
 		os.makedirs(CONFIG_ROOT, exist_ok=True) #TODO: Do we want/need these dirs?
+		self.zynseq_dpath = os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data") + "/zynseq"
+		self.patterns_dpath = self.zynseq_dpath + "/patterns"
 		self.my_zynseq_dpath = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/zynseq"
 		self.my_patterns_dpath = self.my_zynseq_dpath + "/patterns"
 		self.my_captures_dpath = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
@@ -269,11 +271,15 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.disable_param_editor()
 		options = OrderedDict()
 		extra_options = not zynthian_gui_config.check_wiring_layout(["Z2", "V5"])
+
+		# Global Options
 		if extra_options:
 			options['Tempo'] = 'Tempo'
 		if not zynthian_gui_config.check_wiring_layout(["Z2"]):
 			options['Arranger'] = 'Arranger'
 		options['Beats per bar ({})'.format(self.zyngui.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
+
+		# Pattern Options
 		options['> PATTERN OPTIONS'] = None
 		options['Beats in pattern ({})'.format(self.zyngui.zynseq.libseq.getBeatsInPattern())] = 'Beats in pattern'
 		options['Steps per beat ({})'.format(self.zyngui.zynseq.libseq.getStepsPerBeat())] = 'Steps per beat'
@@ -287,6 +293,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		else:
 			options['Rest note (None)'] = 'Rest note'
 		#options['Add program change'] = 'Add program change'
+
+		# Pattern Edit
 		options['> PATTERN EDIT'] = None
 		if extra_options:
 			if self.zyngui.zynseq.libseq.isMidiRecord():
@@ -330,7 +338,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.copy_source = self.pattern
 			self.enable_param_editor(self, 'copy', 'Copy pattern to', {'value_min':1, 'value_max':zynseq.SEQ_MAX_PATTERNS, 'value':self.pattern}, self.copy_pattern)
 		elif params == 'Load pattern':
-			self.zyngui.screens['option'].config_file_list("Load pattern", self.my_patterns_dpath, ".zpat", self.load_pattern_file)
+			self.zyngui.screens['option'].config_file_list("Load pattern", [self.patterns_dpath, self.my_patterns_dpath], ".zpat", self.load_pattern_file)
 			self.zyngui.show_screen('option')
 		elif params == 'Save pattern':
 			self.zyngui.show_keyboard(self.save_pattern_file, "pat#{}".format(self.pattern))

@@ -48,22 +48,27 @@ class zynthian_gui_option(zynthian_gui_selector):
 		self.cb_select = cb_select
 
 
-	def config_file_list(self, title, dpath, fext, cb_select):
+	def config_file_list(self, title, dpaths, fext, cb_select):
 		self.title = title
 		self.cb_select = cb_select
 		self.options = {}
-		for fname in sorted(os.listdir(dpath)):
-			if fext and fext != ".*":
-				fparts = os.path.splitext(fname)
-				if fparts[1].lower() != fext.lower():
-					continue
-				fbase = fparts[0]
-			else:
-				fbase = fname
 
-			fpath = os.path.join(dpath, fname)
-			if os.path.isfile(fpath):
-				self.options[fbase] = fpath
+		if isinstance(dpaths, str):
+			dpaths = [dpaths]
+		if isinstance(dpaths, (list, tuple)):
+			for dpath in dpaths:
+				for fname in sorted(os.listdir(dpath)):
+					if fext and fext != ".*":
+						fparts = os.path.splitext(fname)
+						if fparts[1].lower() != fext.lower():
+							continue
+						fbase = fparts[0]
+					else:
+						fbase = fname
+
+					fpath = os.path.join(dpath, fname)
+					if os.path.isfile(fpath):
+						self.options[fbase] = fpath
 
 
 	def fill_list(self):
