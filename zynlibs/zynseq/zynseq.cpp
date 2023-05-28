@@ -1289,6 +1289,18 @@ void setHorizontalZoom(uint16_t zoom)
     g_nHorizontalZoom = zoom;
 }
 
+void setTransportAlwaysRunning(bool flag) {
+	g_bTransportAlwaysRunning = flag;
+	if (g_bTransportAlwaysRunning) {
+		transportStart("zynseq");
+	}
+}
+
+bool getTransportAlwaysRunning() {
+	return g_bTransportAlwaysRunning;
+}
+
+
 // ** Direct MIDI interface **
 
 // Schedule a MIDI message to be sent in next JACK process cycle
