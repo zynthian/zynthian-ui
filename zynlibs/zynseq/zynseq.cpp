@@ -332,8 +332,8 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     static double dBeatsPerBar; // Store so that we can check for change and do less maths
     static jack_nframes_t nFramerate; // Store so that we can check for change and do less maths
     static uint32_t nFramesPerPulse;
-    static jack_nframes_t nLastBeatFrame = 0; // Frames since jack epoch of last quarter note
-    static uint8_t nClocksSinceLastBeat = 0;
+    static jack_nframes_t nLastBeatFrame = 0; // Frames since jack epoch of last quarter note used to calc tempo of external clock
+    static uint8_t nClocksSinceLastBeat = 0; // Count external clock ticks
 
     // Get output buffer that will be processed in this process cycle
     void* pOutputBuffer = jack_port_get_buffer(g_pOutputPort, nFrames);
@@ -351,6 +351,9 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     jack_midi_event_t midiEvent;
     jack_nframes_t nCount = jack_midi_get_event_count(pInputBuffer);
     Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
+    while(g_bMutex)
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
+    g_bMutex = true;
     for(jack_nframes_t i = 0; i < nCount; i++)
     {
         if(jack_midi_event_get(&midiEvent, pInputBuffer, i))
@@ -370,14 +373,14 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             */
             case MIDI_CLOCK:
                 //DPRINTF("StepJackClient MIDI CLOCK\n");
-                if(g_nClockSource == TRANSPORT_CLOCK_MIDI)
+                if(g_nClockSource == TRANSPORT_CLOCK_MIDI && nState == JackTransportRolling)
                 {
                     g_qClockPos.push(nNow + midiEvent.time);
                     if(++nClocksSinceLastBeat > 23)
                     {
                         // Update tempo on each beat
                         if(nLastBeatFrame)
-                            setTempo(60.0 * (double)g_nSampleRate / ((nNow + midiEvent.time - nLastBeatFrame)));
+                            setTempo(60.0 * (double)g_nSampleRate / (nNow + midiEvent.time - nLastBeatFrame));
                         nLastBeatFrame = nNow + midiEvent.time;
                         nClocksSinceLastBeat = 0;
                     }
@@ -486,9 +489,6 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 
     // Send MIDI output aligned with first sample of frame resulting in similar latency to audio
     //!@todo Interpolate events across frame, e.g. CC variations
-    while(g_bMutex)
-        std::this_thread::sleep_for(std::chrono::microseconds(10));
-    g_bMutex = true;
 
     // Iterate through clocks in this period, adding any events and handling any timebase changes
     if(nState == JackTransportRolling)
@@ -1919,6 +1919,8 @@ void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state)
     {
         if(state == STARTING)
         {
+            if(g_nPlayingSequences == 0)
+                g_nPlayingSequences = 1; // Avoid sequence stopping immediately if clock delayed
             setTransportToStartOfBar();
             transportStart("zynseq");
         }
@@ -2258,6 +2260,7 @@ void transportReleaseTimebase()
 
 void transportStart(const char* client)
 {
+    fprintf(stderr, "transportStart(%s)\n", client);
     if(strcmp("zynseq", client))
     {
         // Not zynseq so flag other client(s) playing
@@ -2265,16 +2268,23 @@ void transportStart(const char* client)
         g_setTransportClient.emplace(client);
     }
     jack_position_t pos;
-    if(jack_transport_query(g_pJackClient, &pos) == JackTransportStopped)
+    if(jack_transport_query(g_pJackClient, &pos) != JackTransportRolling)
     {
         if(g_nClockSource == TRANSPORT_CLOCK_INTERNAL)
+        {
+            while(g_bMutex)
+                std::this_thread::sleep_for(std::chrono::microseconds(10));
+            g_bMutex = true;
             g_qClockPos.push(jack_frame_time(g_pJackClient) + jack_get_buffer_size(g_pJackClient));
+            g_bMutex = false;
+        }
         jack_transport_start(g_pJackClient);
     }
 }
 
 void transportStop(const char* client)
 {
+    fprintf(stderr, "transportStop(%s)\n", client);
     auto itClient = g_setTransportClient.find(std::string(client));
     if(itClient != g_setTransportClient.end())
         g_setTransportClient.erase(itClient);
@@ -2365,7 +2375,11 @@ void setClockSource(uint8_t source)
 {
     g_nClockSource = source;
     std::queue<double> qEmpty;
+    while(g_bMutex)
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
+    g_bMutex = true;
     std::swap(g_qClockPos, qEmpty);
-    if(g_nClockSource == TRANSPORT_CLOCK_INTERNAL && transportGetPlayStatus() != JackTransportStopped)
+    if(g_nClockSource == TRANSPORT_CLOCK_INTERNAL && transportGetPlayStatus() == JackTransportRolling)
         g_qClockPos.push(jack_frame_time(g_pJackClient) + jack_get_buffer_size(g_pJackClient));
+    g_bMutex = false;
 }
