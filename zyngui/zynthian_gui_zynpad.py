@@ -415,7 +415,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		options['> PAD OPTIONS'] = None
 		options['Play mode ({})'.format(zynseq.PLAY_MODES[self.zyngui.zynseq.libseq.getPlayMode(self.bank, self.selected_pad)])] = 'Play mode'
 		options['MIDI channel ({})'.format(1 + self.zyngui.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0))] = 'MIDI channel'
-		if trigger_channel > 0:
+		if isinstance(trigger_channel, int):
 			note = self.zyngui.zynseq.libseq.getTriggerNote(self.bank, self.selected_pad)
 			if note < 128:
 				trigger_note = "{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1)
