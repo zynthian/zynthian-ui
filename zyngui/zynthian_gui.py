@@ -1450,17 +1450,28 @@ class zynthian_gui:
 
 	# V5 knob click
 	def cuia_v5_zynpot_switch(self, params):
+		i = params[0]
 		t = params[1].upper()
-		if self.current_screen in ("control", "alsa_mixer"):
-			if t == 'S':
-				self.screens[self.current_screen].midi_learn(params[0])
-			elif t == 'B':
-				self.screens[self.current_screen].midi_learn_options(params[0])
-		else:
-			if t == 'S':
-				self.zynswitch_short(params[0])
-			elif t == 'B':
-				self.zynswitch_bold(params[0])
+		if i == 3:
+			if self.current_screen in ("control", "alsa_mixer"):
+				if t == 'S':
+					self.zynswitch_short(i)
+				elif t == 'B':
+					self.screens[self.current_screen].midi_learn_options(i)
+			else:
+				if t == 'S':
+					self.zynswitch_short(i)
+				elif t == 'B':
+					self.zynswitch_bold(i)
+		elif i < 3:
+			if self.current_screen in ("control", "alsa_mixer"):
+				if t == 'S':
+					self.screens[self.current_screen].midi_learn(i)
+				elif t == 'B':
+					self.screens[self.current_screen].midi_learn_options(i)
+			elif self.current_screen in ("audio_mixer"):
+				if t == 'S':
+					self.zynswitch_short(i)
 
 	# MIDI CUIAs
 	def cuia_program_change(self, params):
