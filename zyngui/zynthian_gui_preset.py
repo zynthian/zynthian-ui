@@ -132,9 +132,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		if new_name != preset[2]:
 			try:
 				self.zyngui.curlayer.engine.rename_preset(self.zyngui.curlayer.bank_info, preset, new_name)
-				self.zyngui.close_screen()
-				if preset[0]==self.zyngui.curlayer.preset_info[0]:
+				if preset[0] == self.zyngui.curlayer.preset_info[0]:
 					self.zyngui.curlayer.set_preset_by_id(preset[0])
+				self.fill_list()
 			except Exception as e:
 				logging.error("Failed to rename preset => {}".format(e))
 
@@ -147,7 +147,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		try:
 			count = self.zyngui.curlayer.engine.delete_preset(self.zyngui.curlayer.bank_info, preset)
 			self.zyngui.curlayer.remove_preset_fav(preset)
-			self.zyngui.close_screen()
+			self.fill_list()
 			if count == 0:
 				self.zyngui.close_screen()
 		except Exception as e:

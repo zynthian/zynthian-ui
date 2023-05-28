@@ -191,9 +191,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		for ext in self.file_exts:
 			presets += self.get_filelist(bank[0], ext)
 		for preset in presets:
-			name = preset[4]
+			fparts = os.path.splitext(preset[4])
 			duration = self.player.get_file_duration(preset[0])
-			preset[2] = "{} ({:02d}:{:02d})".format(name, int(duration/60), round(duration)%60)
+			preset.append("{} ({:02d}:{:02d})".format(fparts[1], int(duration/60), round(duration)%60))
 		return presets
 
 
