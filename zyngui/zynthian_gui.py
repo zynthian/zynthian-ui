@@ -1348,12 +1348,12 @@ class zynthian_gui:
 		self.cuia_chain_options(params)
 
 	def cuia_menu(self, params=None):
-		try:
-			if self.current_screen == "alsa_mixer":
-				raise AttributeError
-			self.screens[self.current_screen].toggle_menu()
-		except (AttributeError, TypeError) as err:
-			self.toggle_screen("main_menu", hmode=zynthian_gui.SCREEN_HMODE_ADD)
+		if self.current_screen != "alsa_mixer":
+			toggle_menu_func = getattr(self.screens[self.current_screen], "toggle_menu", None)
+			if callable(toggle_menu_func):
+				toggle_menu_func()
+				return
+		self.toggle_screen("main_menu", hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 	def cuia_bank_preset(self, params=None):
 		if params:
