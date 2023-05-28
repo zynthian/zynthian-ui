@@ -2260,7 +2260,6 @@ void transportReleaseTimebase()
 
 void transportStart(const char* client)
 {
-    fprintf(stderr, "transportStart(%s)\n", client);
     if(strcmp("zynseq", client))
     {
         // Not zynseq so flag other client(s) playing
@@ -2284,7 +2283,6 @@ void transportStart(const char* client)
 
 void transportStop(const char* client)
 {
-    fprintf(stderr, "transportStop(%s)\n", client);
     auto itClient = g_setTransportClient.find(std::string(client));
     if(itClient != g_setTransportClient.end())
         g_setTransportClient.erase(itClient);
