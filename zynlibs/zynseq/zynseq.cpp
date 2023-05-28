@@ -34,6 +34,7 @@
 #include <set>
 #include <string>
 #include <cstring> //provides strcmp
+#include <queue> //provides queue
 
 #include "metronome.h" // metronome wav data
 
@@ -93,7 +94,7 @@ uint32_t g_nBeat = 1; // Current beat within bar
 uint32_t g_nTick = 0; // Current tick within bar
 double g_dBarStartTick = 0; // Quantity of ticks from start of song to start of current bar
 jack_nframes_t g_nTransportStartFrame = 0; // Quantity of frames from JACK epoch to transport start
-double g_dFramesToNextClock = 99999.0; // Frames until next clock pulse
+std::queue <double> g_qClockPos; // Queue of pending clock positions relative to JACK epoch
 double g_dFramesPerClock = getFramesPerClock(g_dTempo); //!@todo Change to integer will have 0.1% jitter at 1920 PPQN and much better jitter (0.01%) at current 24PPQN
 uint8_t g_nClock = 0; // Quantity of MIDI clocks since start of beat
 uint8_t g_nClockSource = TRANSPORT_CLOCK_INTERNAL; // Source of clock that progresses playback
@@ -371,7 +372,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 //DPRINTF("StepJackClient MIDI CLOCK\n");
                 if(g_nClockSource == TRANSPORT_CLOCK_MIDI)
                 {
-                    g_dFramesToNextClock = midiEvent.time;
+                    g_qClockPos.push(nNow + midiEvent.time);
                     if(++nClocksSinceLastBeat > 23)
                     {
                         // Update tempo on each beat
@@ -493,12 +494,12 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     if(nState == JackTransportRolling)
     {
         bool bSync = false; // True if at start of bar
-        while(g_dFramesToNextClock < nFrames)
+        while(!g_qClockPos.empty() && g_qClockPos.front() < nNow + nFrames)
         {
-            // Add a MIDI clock to the queue
             if(g_bSendMidiClock)
             {
-                uint32_t nClockTime = g_dFramesToNextClock;
+                // Add a MIDI clock to the queue
+                uint32_t nClockTime = g_qClockPos.front() - nNow;
                 while(g_mSchedule.find(nClockTime) != g_mSchedule.end())
                     ++nClockTime; // Move event forward until we find a spare time slot
                 g_mSchedule[nClockTime] = new MIDI_MESSAGE({MIDI_CLOCK, 0, 0});
@@ -514,7 +515,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             }
             // Schedule events in next period
             // Pass clock time and schedule to pattern manager so it can populate with events. Pass sync pulse so that it can synchronise its sequences, e.g. start zynpad sequences
-            g_nPlayingSequences = g_seqMan.clock(nNow + g_dFramesToNextClock, &g_mSchedule, bSync, g_dFramesPerClock); //!@todo Optimise to reduce rate calling clock especially if we increase the clock rate from 24 to 96 or above. Maybe return the time until next check
+            g_nPlayingSequences = g_seqMan.clock(g_qClockPos.front(), &g_mSchedule, bSync, g_dFramesPerClock); //!@todo Optimise to reduce rate calling clock especially if we increase the clock rate from 24 to 96 or above. Maybe return the time until next check
             // Advance clock
             if(++g_nClock >= PPQN)
             {
@@ -527,13 +528,10 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 }
                 DPRINTF("Beat %u of %u\n", g_nBeat, g_nBeatsPerBar);
             }
-            if(g_nClockSource)
-                g_dFramesToNextClock = 999999.0;
-            else
-                g_dFramesToNextClock += g_dFramesPerClock;
+            if(!g_nClockSource)
+                g_qClockPos.push(g_qClockPos.back() + g_dFramesPerClock);
+            g_qClockPos.pop();
         }
-        if(g_nClockSource == TRANSPORT_CLOCK_INTERNAL)
-            g_dFramesToNextClock -= nFrames;
         //g_nTick = g_dTicksPerBeat - nRemainingFrames / getFramesPerTick(g_dTempo);
 
         if(g_nPlayingSequences == 0 && g_bTransportAlwaysRunning == false)
@@ -2270,7 +2268,7 @@ void transportStart(const char* client)
     if(jack_transport_query(g_pJackClient, &pos) == JackTransportStopped)
     {
         if(g_nClockSource == TRANSPORT_CLOCK_INTERNAL)
-            g_dFramesToNextClock = 1.0;
+            g_qClockPos.push(jack_frame_time(g_pJackClient) + jack_get_buffer_size(g_pJackClient));
         jack_transport_start(g_pJackClient);
     }
 }
@@ -2366,5 +2364,8 @@ uint8_t getClockSource()
 void setClockSource(uint8_t source)
 {
     g_nClockSource = source;
-    g_dFramesToNextClock = 1.0;
+    std::queue<double> qEmpty;
+    std::swap(g_qClockPos, qEmpty);
+    if(g_nClockSource == TRANSPORT_CLOCK_INTERNAL && transportGetPlayStatus() != JackTransportStopped)
+        g_qClockPos.push(jack_frame_time(g_pJackClient) + jack_get_buffer_size(g_pJackClient));
 }
