@@ -87,7 +87,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
 			self.zgui_ctrls.append(self.bpm_zgui_ctrl)
 
 		if not self.clk_source_zgui_ctrl:
-			self.clk_source_zctrl = zynthian_controller(self, 'Clock Source', 'clock source', {'labels': ['Internal', 'MIDI'], 'ticks': [0, 1], 'value': zynthian_gui_config.transport_clock_source})
+			self.clk_source_zctrl = zynthian_controller(self, 'Clock Source', 'clock source', {'labels': ['Internal', 'Internal Send', 'MIDI'], 'ticks': [0, 1, 2], 'value': zynthian_gui_config.transport_clock_source})
 			self.clk_source_zgui_ctrl = zynthian_gui_controller(1, self.main_frame, self.clk_source_zctrl)
 			self.zgui_ctrls.append(self.clk_source_zgui_ctrl)
 
@@ -159,7 +159,8 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
 			elif zctrl == self.clk_source_zctrl:
 				zynthian_gui_config.transport_clock_source = zctrl.value
-				self.zyngui.zynseq.libseq.setClockSource(zctrl.value)
+				self.zyngui.zynseq.libseq.setClockSource(zctrl.value == 2)
+				self.zyngui.zynseq.libseq.enableMidiClockOutput(zctrl.value == 1)
 				logging.debug("SETTING CLOCK SOURCE: {}".format(zctrl.value))
 				self.replot = True
 

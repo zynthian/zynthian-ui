@@ -181,6 +181,11 @@ void sendMidiClock();
 */
 void sendMidiCommand(uint8_t status, uint8_t value1, uint8_t value2);
 
+/** @brief  Enable or disable sending MIDI clock to output
+*   @param  enable True to enable MIDI clock output (Default: true)
+*/
+void enableMidiClockOutput(bool enable=true);
+
 // ** Status **
 /** @brief  Get MIDI channel used to send tally of sequence state change
 *   @retval uint8_t MIDI channel

@@ -97,6 +97,7 @@ double g_dFramesToNextClock = 99999.0; // Frames until next clock pulse
 double g_dFramesPerClock = getFramesPerClock(g_dTempo); //!@todo Change to integer will have 0.1% jitter at 1920 PPQN and much better jitter (0.01%) at current 24PPQN
 uint8_t g_nClock = 0; // Quantity of MIDI clocks since start of beat
 uint8_t g_nClockSource = TRANSPORT_CLOCK_INTERNAL; // Source of clock that progresses playback
+bool g_bSendMidiClock = false; // True to send MIDI clock
 jack_nframes_t g_nFramesSinceLastBeat = 0; // Quantity of frames since last beat
 
 size_t g_nMetronomePtr = -1; // Position within metronome click wav data
@@ -494,6 +495,14 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         bool bSync = false; // True if at start of bar
         while(g_dFramesToNextClock < nFrames)
         {
+            // Add a MIDI clock to the queue
+            if(g_bSendMidiClock)
+            {
+                uint32_t nClockTime = g_dFramesToNextClock;
+                while(g_mSchedule.find(nClockTime) != g_mSchedule.end())
+                    ++nClockTime; // Move event forward until we find a spare time slot
+                g_mSchedule[nClockTime] = new MIDI_MESSAGE({MIDI_CLOCK, 0, 0});
+            }
             bSync = false;
             if(g_nClock == 0)
             {
@@ -573,15 +582,23 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 return 0; // Must have bumped beyond end of this frame time so must wait until next frame - earlier events were processed and pointer nulled so will not trigger in next period
             }
             nNextTime = nTime + 1;
-            // Get a pointer to the next 3 available bytes in the output buffer
-            //!@todo Should we use correct buffer size based on MIDI message size, e.g. 1 byte for realtime messages?
-            int nSize;
-            switch(it->second->command & 0xF0) {
-                case 0xC0:
-                    nSize = 2;
-                    break;
-                default:
-                    nSize = 3;
+            // Get a pointer to the next available bytes in the output buffer
+            int nSize = 1;
+            if(it->second->command < 0xF4)
+            {
+                uint8_t nType = it->second->command;
+                if(nType < 0xF0)
+                    nType &= 0xF0;
+                switch(nType) {
+                    case MIDI_PROGRAM:
+                    case MIDI_CHAN_PRESSURE:
+                    case MIDI_TIMECODE:
+                    case MIDI_SONG:
+                        nSize = 2;
+                        break;
+                    default:
+                        nSize = 3;
+                }
             }
             pBuffer = jack_midi_event_reserve(pOutputBuffer, nTime, nSize);
             if(pBuffer == NULL)
@@ -1401,6 +1418,11 @@ void sendMidiCommand(uint8_t status, uint8_t value1, uint8_t value2)
     pMsg->value1 = value1;
     pMsg->value2 = value2;
     sendMidiMsg(pMsg);
+}
+
+void enableMidiClockOutput(bool enable)
+{
+    g_bSendMidiClock = enable;
 }
 
 uint8_t getTriggerChannel()
@@ -2248,7 +2270,7 @@ void transportStart(const char* client)
     if(jack_transport_query(g_pJackClient, &pos) == JackTransportStopped)
     {
         if(g_nClockSource == TRANSPORT_CLOCK_INTERNAL)
-            g_dFramesToNextClock = 0.0;
+            g_dFramesToNextClock = 1.0;
         jack_transport_start(g_pJackClient);
     }
 }
@@ -2344,5 +2366,5 @@ uint8_t getClockSource()
 void setClockSource(uint8_t source)
 {
     g_nClockSource = source;
-    g_dFramesToNextClock = 0.0;
+    g_dFramesToNextClock = 1.0;
 }
