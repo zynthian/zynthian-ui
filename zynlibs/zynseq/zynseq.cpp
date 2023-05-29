@@ -362,17 +362,17 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         {
             /*
             case MIDI_STOP:
-                DPRINTF("StepJackClient MIDI STOP\n");
-                break;
-            case MIDI_START:
-                DPRINTF("StepJackClient MIDI START\n");
-                break;
-            case MIDI_CONTINUE:
-                DPRINTF("StepJackClient MIDI CONTINUE\n");
                 break;
             */
+            case MIDI_START:
+            case MIDI_CONTINUE:
+                if(g_nClockSource == TRANSPORT_CLOCK_MIDI && nState != JackTransportRolling)
+                {
+                    transportStart("zynseq");
+                    nState = JackTransportRolling;
+                }
+                break;
             case MIDI_CLOCK:
-                //DPRINTF("StepJackClient MIDI CLOCK\n");
                 if(g_nClockSource == TRANSPORT_CLOCK_MIDI && nState == JackTransportRolling)
                 {
                     g_qClockPos.push(nNow + midiEvent.time);
@@ -524,6 +524,10 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             {
                 // Add a MIDI clock to the queue
                 uint32_t nClockTime = g_qClockPos.front() - nNow;
+                while(g_mSchedule.find(nClockTime) != g_mSchedule.end())
+                    ++nClockTime; // Move event forward until we find a spare time slot
+                if(bSync)
+                    g_mSchedule[nClockTime] = new MIDI_MESSAGE({MIDI_CONTINUE, 0, 0});
                 while(g_mSchedule.find(nClockTime) != g_mSchedule.end())
                     ++nClockTime; // Move event forward until we find a spare time slot
                 g_mSchedule[nClockTime] = new MIDI_MESSAGE({MIDI_CLOCK, 0, 0});
@@ -1919,8 +1923,6 @@ void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state)
     {
         if(state == STARTING)
         {
-            if(g_nPlayingSequences == 0)
-                g_nPlayingSequences = 1; // Avoid sequence stopping immediately if clock delayed
             setTransportToStartOfBar();
             transportStart("zynseq");
         }
