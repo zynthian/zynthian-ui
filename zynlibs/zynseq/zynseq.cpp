@@ -496,14 +496,6 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         bool bSync = false; // True if at start of bar
         while(!g_qClockPos.empty() && g_qClockPos.front() < nNow + nFrames)
         {
-            if(g_bSendMidiClock)
-            {
-                // Add a MIDI clock to the queue
-                uint32_t nClockTime = g_qClockPos.front() - nNow;
-                while(g_mSchedule.find(nClockTime) != g_mSchedule.end())
-                    ++nClockTime; // Move event forward until we find a spare time slot
-                g_mSchedule[nClockTime] = new MIDI_MESSAGE({MIDI_CLOCK, 0, 0});
-            }
             bSync = false;
             if(g_nClock == 0)
             {
@@ -527,6 +519,14 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                         ++g_nBar;
                 }
                 DPRINTF("Beat %u of %u\n", g_nBeat, g_nBeatsPerBar);
+            }
+            if(g_bSendMidiClock && g_nPlayingSequences)
+            {
+                // Add a MIDI clock to the queue
+                uint32_t nClockTime = g_qClockPos.front() - nNow;
+                while(g_mSchedule.find(nClockTime) != g_mSchedule.end())
+                    ++nClockTime; // Move event forward until we find a spare time slot
+                g_mSchedule[nClockTime] = new MIDI_MESSAGE({MIDI_CLOCK, 0, 0});
             }
             if(!g_nClockSource)
                 g_qClockPos.push(g_qClockPos.back() + g_dFramesPerClock);
