@@ -86,7 +86,6 @@ double g_dTicksPerBeat = 1920.0;
 double g_dTempo = 120.0;
 double g_dTicksPerClock = g_dTicksPerBeat / PPQN;
 bool g_bTimebaseChanged = false; // True to trigger recalculation of timebase parameters
-bool g_bTransportAlwaysRunning = false; // True for having transport running all the time
 Timebase* g_pTimebase = NULL; // Pointer to the timebase object for selected song
 TimebaseEvent* g_pNextTimebaseEvent = NULL; // Pointer to the next timebase event or NULL if no more events in this song
 uint32_t g_nBar = 1; // Current bar
@@ -508,7 +507,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 // Clock zero so on beat
                 bSync = (g_nBeat == 1);
                 g_nTick = 0; //!@todo ticks are not updated under normal rolling condition
-                g_pMetro = bSync?&g_metro_pip:&g_metro_peep;
+                g_pMetro = bSync?&g_metro_peep:&g_metro_pip;
                 g_nMetronomePtr = 0;
             }
             // Schedule events in next period
@@ -540,7 +539,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         }
         //g_nTick = g_dTicksPerBeat - nRemainingFrames / getFramesPerTick(g_dTempo);
 
-        if(g_nPlayingSequences == 0 && g_bTransportAlwaysRunning == false)
+        if(g_nPlayingSequences == 0)
         {
             DPRINTF("Stopping transport because no sequences playing clock: %u beat: %u tick: %u\n", g_nClock, g_nBeat, g_nTick);
             transportStop("zynseq");
@@ -727,11 +726,6 @@ void init(char* name) {
     atexit(end);
 
     transportRequestTimebase();
-    if (g_bTransportAlwaysRunning) {
-    	transportStart("zynseq");
-    } else {
-    	transportStop("zynseq");
-    }
     transportLocate(0);
     g_pSequence = g_seqMan.getSequence(0, 0);
     selectPattern(1);
@@ -1310,18 +1304,6 @@ void setHorizontalZoom(uint16_t zoom)
 {
     g_nHorizontalZoom = zoom;
 }
-
-void setTransportAlwaysRunning(bool flag) {
-	g_bTransportAlwaysRunning = flag;
-	if (g_bTransportAlwaysRunning) {
-		transportStart("zynseq");
-	}
-}
-
-bool getTransportAlwaysRunning() {
-	return g_bTransportAlwaysRunning;
-}
-
 
 // ** Direct MIDI interface **
 
@@ -2302,7 +2284,7 @@ uint8_t transportGetPlayStatus()
 
 void setTempo(double tempo)
 {
-    if(tempo > 10.0 && tempo < 500.0)
+    if(tempo >= 10.0 && tempo < 500.0)
     {
         g_dTempo = tempo;
         if(transportGetPlayStatus() != JackTransportRolling)
