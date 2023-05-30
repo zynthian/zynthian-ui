@@ -245,11 +245,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if mode == EDIT_MODE_SINGLE:
 			self.set_title("Note Parameters", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
 			self.set_edit_title()
-			self.init_buttonbar([("ZYNPOT 0,-1", "-1"),("ZYNPOT 0,+1", "+1"),("ZYNPOT 3,-1", "PREV\nPARAM"),("ZYNPOT 3,+1", "NEXT\nPARAM"),(3,"OK")])
 		elif mode == EDIT_MODE_ALL:
 			self.set_title("Note Parameters ALL", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
 			self.set_edit_title()
-			self.init_buttonbar([("ZYNPOT 3,-1", "<Param"),("ZYNPOT 3,+1", ">Param"),("ZYNPOT 0,-1", "-1"),("ZYNPOT 0,+1", "+1"),(3,"OK")])
 		else:
 			self.set_title("Pattern {}".format(self.pattern), zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
 			self.init_buttonbar()
@@ -1139,24 +1137,31 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def set_edit_title(self):
 		step = self.selected_cell[0]
 		note = self.get_note_from_row(self.selected_cell[1])
+		delta = "1"
+		zynpot = 2
 		if self.edit_mode == EDIT_MODE_ALL:
 			if self.edit_param == EDIT_PARAM_DUR:
 				self.set_title("Duration ALL")
+				delta = "0.1"
+				zynpot = 1
 			elif self.edit_param == EDIT_PARAM_VEL:
 				self.set_title("Velocity ALL")
 			elif self.edit_param == EDIT_PARAM_STUT_CNT:
 				self.set_title("Stutter count ALL")
 			elif self.edit_param == EDIT_PARAM_STUT_DUR:
 				self.set_title("Stutter duration ALL")
-			return
-		if self.edit_param == EDIT_PARAM_DUR:
-			self.set_title(f"Duration: {self.duration:0.1f} steps")
-		elif self.edit_param == EDIT_PARAM_VEL:
-			self.set_title(f"Velocity: {self.velocity}")
-		elif self.edit_param == EDIT_PARAM_STUT_CNT:
-			self.set_title(f"Stutter count: {self.zyngui.zynseq.libseq.getStutterCount(step, note)}")
-		elif self.edit_param == EDIT_PARAM_STUT_DUR:
-			self.set_title(f"Stutter duration: {self.zyngui.zynseq.libseq.getStutterDur(step, note)}")
+		else:
+			if self.edit_param == EDIT_PARAM_DUR:
+				self.set_title(f"Duration: {self.duration:0.1f} steps")
+				delta = "0.1"
+				zynpot = 1
+			elif self.edit_param == EDIT_PARAM_VEL:
+				self.set_title(f"Velocity: {self.velocity}")
+			elif self.edit_param == EDIT_PARAM_STUT_CNT:
+				self.set_title(f"Stutter count: {self.zyngui.zynseq.libseq.getStutterCount(step, note)}")
+			elif self.edit_param == EDIT_PARAM_STUT_DUR:
+				self.set_title(f"Stutter duration: {self.zyngui.zynseq.libseq.getStutterDur(step, note)}")
+		self.init_buttonbar([(f"ZYNPOT {zynpot},-1", f"-{delta}"),(f"ZYNPOT {zynpot},+1", f"+{delta}"),("ZYNPOT 3,-1", "PREV\nPARAM"),("ZYNPOT 3,+1", "NEXT\nPARAM"),(3,"OK")])
 
 
 	# Function to handle zynpots value change
@@ -1305,9 +1310,18 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		return False
 
 
+	# Function to handle BACK button
+	def back_action(self):
+		if self.edit_mode == EDIT_MODE_NONE:
+			return super().back_action()
+		self.enable_edit(EDIT_MODE_NONE)
+		return True
+
+
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
 		self.zynpot_cb(self.ctrl_order[3], 1)
+
 
 	# Function to handle CUIA ARROW_LEFT
 	def arrow_left(self):
