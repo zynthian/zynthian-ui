@@ -34,6 +34,7 @@ from xml.dom import minidom
 from datetime import datetime
 from math import ceil
 from collections import OrderedDict
+from pathlib import Path
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -368,12 +369,15 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'Export to SMF':
 			self.zyngui.show_keyboard(self.export_smf, "pat#{}".format(self.pattern))
 
+
 	def save_pattern_file(self, fname):
+		Path(self.my_patterns_dpath).mkdir(parents=True, exist_ok=True)
 		self.zyngui.zynseq.save_pattern(self.pattern, "{}/{}.zpat".format(self.my_patterns_dpath, fname))
 
 
 	def load_pattern_file(self, fname, fpath):
 		self.zyngui.zynseq.load_pattern(self.pattern, fpath)
+		self.redraw_pending = 3
 
 
 	def toggle_midi_record(self, midi_record=None):
