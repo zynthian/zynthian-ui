@@ -95,7 +95,7 @@ uint8_t Track::clock(uint32_t nTime, uint32_t nPosition, double dSamplesPerClock
     if(m_mPatterns.find(nPosition) != m_mPatterns.end())
     {
         // Playhead at start of pattern
-        //printf("Start of pattern\n");
+        //fprintf(stderr, "Start of pattern\n");
         m_nCurrentPatternPos = nPosition;
         m_nNextStep = 0;
         m_nNextEvent = 0;
@@ -105,12 +105,12 @@ uint8_t Track::clock(uint32_t nTime, uint32_t nPosition, double dSamplesPerClock
         m_nEventValue = -1;
         m_nDivCount = 0; // Trigger first step immediately
         m_nLastClockTime = nTime;
-        //printf("m_nCurrentPatternPos: %u m_nClkPerStep: %u\n", m_nCurrentPatternPos, m_nClkPerStep);
+        //fprintf(stderr, "m_nCurrentPatternPos: %u m_nClkPerStep: %u\n", m_nCurrentPatternPos, m_nClkPerStep);
     }
     else if(m_nCurrentPatternPos >= 0 && nPosition >= m_nCurrentPatternPos + m_mPatterns[m_nCurrentPatternPos]->getLength())
     {
         // At end of pattern
-        //printf("End of pattern\n");
+        //fprintf(stderr, "End of pattern\n");
         m_nCurrentPatternPos = -1;
         m_nNextEvent = -1;
         m_nNextStep = 0;
@@ -122,13 +122,13 @@ uint8_t Track::clock(uint32_t nTime, uint32_t nPosition, double dSamplesPerClock
     {
         // Within pattern
         ++m_nDivCount;
-        //printf("Next Step: %d, Next Event: %d DivCount: %u\n", m_nNextStep, m_nNextEvent, m_nDivCount);
+        //fprintf(stderr, "Next Step: %d, Next Event: %d DivCount: %u\n", m_nNextStep, m_nNextEvent, m_nDivCount);
     }
 
     if(m_nCurrentPatternPos >= 0 && m_nDivCount >= m_nClkPerStep)
     {
         // Reached next step
-        //printf("Reached next step \n");
+        //fprintf(stderr, "Reached next step \n");
         m_nLastClockTime = nTime;
         m_nDivCount = 0;
         ++m_nNextStep;
@@ -148,10 +148,10 @@ SEQ_EVENT* Track::getEvent()
     // Track is being played and playhead is within a pattern
     Pattern* pPattern = m_mPatterns[m_nCurrentPatternPos];
     StepEvent* pEvent = pPattern->getEventAt(m_nNextEvent); // Don't advance event here because need to interpolate
-    //printf("Track::getEvent Next step:%u, next event:%u, event %u at time: %u\n", m_nNextStep, m_nNextEvent, pEvent, pEvent->getPosition());
+    //fprintf(stderr, "Track::getEvent Next step:%u, next event:%u, event %u at time: %u, framesperclock: %f\n", m_nNextStep, m_nNextEvent, pEvent, pEvent->getPosition(), m_dSamplesPerClock);
     if(pEvent && pEvent->getPosition() == m_nNextStep)
     {
-        //printf("  found event at %u\n", m_nNextStep);
+        //fprintf(stderr, "  found event at %u\n", m_nNextStep);
         uint8_t nCommand = pEvent->getCommand();
         seqEvent.msg.command =  nCommand | m_nChannel;
         // Found event at (or before) this step
@@ -191,11 +191,11 @@ SEQ_EVENT* Track::getEvent()
             }
             else
                 m_nEventValue = pEvent->getValue2end(); //!@todo Currently just move straight to end value but should interpolate for CC
-            //printf("Scheduling note off. Event duration: %u, clocks per step: %u, samples per clock: %u\n", pEvent->getDuration(), pPattern->getClocksPerStep(), m_nSamplePerClock);
+            //fprintf(stderr, "Scheduling note off. Event duration: %u, clocks per step: %u, samples per clock: %u\n", pEvent->getDuration(), pPattern->getClocksPerStep(), m_nSamplePerClock);
         }
         seqEvent.msg.value1 = pEvent->getValue1start();
         seqEvent.msg.value2 = m_nEventValue;
-        //printf("Track::getEvent Scheduled event %u,%u,%u at %u currentTime: %u duration: %u clkperstep: %u sampleperclock: %f event position: %u\n", seqEvent.msg.command, seqEvent.msg.value1, seqEvent.msg.value2, seqEvent.time, m_nLastClockTime, pEvent->getDuration(), pPattern->getClocksPerStep(), m_dSamplesPerClock, pEvent->getPosition());
+        //fprintf(stderr, "Track::getEvent Scheduled event %u,%u,%u at %u currentTime: %u duration: %u clkperstep: %u sampleperclock: %f event position: %u\n", seqEvent.msg.command, seqEvent.msg.value1, seqEvent.msg.value2, seqEvent.time, m_nLastClockTime, pEvent->getDuration(), pPattern->getClocksPerStep(), m_dSamplesPerClock, pEvent->getPosition());
         return &seqEvent;
     }
     m_nEventValue = -1;
@@ -240,7 +240,7 @@ void Track::setPosition(uint32_t position)
 {
     m_nDivCount = 0;
     m_nNextStep = position / m_nClkPerStep;
-    //printf("setPosition: next step: %d\n", m_nNextStep);
+    //fprintf(stderr, "setPosition: next step: %d\n", m_nNextStep);
     m_nNextEvent = -1; // Avoid playing wrong pattern
     for(auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
     {

@@ -67,13 +67,13 @@ class SequenceManager
         void updateAllSequenceLengths();
 
         /** @brief  Handle clock
-        *   @param  nTime Offset since JACK epoch for start of next period
+        *   @param  timeinfo Pair: Offset since JACK epoch for start of next period, duration of clock cycle in frames
         *   @param  pSchedule Pointer to the schedule to populate with events
         *   @param  bSync True indicates a sync pulse
         *   @param  dSamplesPerClock Quantity of samples in each clock cycle
         *   @retval size_t Quantity of playing sequences
         */
-        size_t clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync, double dSamplesPerClock);
+        size_t clock(std::pair<double,double> timeinfo, std::multimap<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync);
 
         /** @brief  Get pointer to sequence
         *   @param  bank Index of bank containing sequence
