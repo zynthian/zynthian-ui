@@ -29,6 +29,8 @@ from time import monotonic
 from collections import deque
 
 # Zynthian specific modules
+import zynconf
+from zyncoder.zyncore import lib_zyncore
 from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
@@ -149,6 +151,20 @@ class zynthian_gui_tempo(zynthian_gui_base):
 		else:
 			return False
 
+	def set_transport_clock_source(self, val, save_config=False):
+		self.zyngui.zynseq.libseq.setClockSource(val == 2)
+		self.zyngui.zynseq.libseq.enableMidiClockOutput(val == 1)
+		if val > 0:
+			lib_zyncore.set_midi_filter_system_events(1)
+		else:
+			lib_zyncore.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
+
+		# Save config
+		if save_config:
+			zynthian_gui_config.transport_clock_source = val
+			zynconf.update_midi_profile({
+				"ZYNTHIAN_TRANSPORT_CLOCK_SOURCE": str(int(val))
+			})
 
 	def send_controller_value(self, zctrl):
 		if self.shown:
@@ -158,9 +174,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
 				self.replot = True
 
 			elif zctrl == self.clk_source_zctrl:
-				zynthian_gui_config.transport_clock_source = zctrl.value
-				self.zyngui.zynseq.libseq.setClockSource(zctrl.value == 2)
-				self.zyngui.zynseq.libseq.enableMidiClockOutput(zctrl.value == 1)
+				self.set_transport_clock_source(zctrl.value, save_config=True)
 				logging.debug("SETTING CLOCK SOURCE: {}".format(zctrl.value))
 				self.replot = True
 
