@@ -1226,7 +1226,7 @@ void save_pattern(uint32_t nPattern, const char* filename)
 
     Pattern* pPattern = g_seqMan.getPattern(nPattern);
 	// Only save pattern if it has content
-	if(!pPattern->getEventAt(0))
+	if(isPatternEmpty(nPattern))
 	{
         fprintf(stderr, "WARNING: SequenceManager don't save pattern %d because it's empty\n", nPattern);
         return;
@@ -1490,6 +1490,11 @@ void selectPattern(uint32_t pattern)
     g_nPattern = pattern;
     setPatternModified(g_seqMan.getPattern(g_nPattern), true);
     addPattern(0, 0, 0, 0, g_nPattern, true);
+}
+
+bool isPatternEmpty(uint32_t pattern) {
+    Pattern* pPattern = g_seqMan.getPattern(pattern);
+	return pPattern->getEventAt(0) == NULL;
 }
 
 uint32_t getPatternIndex()

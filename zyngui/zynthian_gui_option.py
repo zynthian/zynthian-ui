@@ -57,18 +57,21 @@ class zynthian_gui_option(zynthian_gui_selector):
 			dpaths = [dpaths]
 		if isinstance(dpaths, (list, tuple)):
 			for dpath in dpaths:
-				for fname in sorted(os.listdir(dpath)):
-					if fext and fext != ".*":
-						fparts = os.path.splitext(fname)
-						if fparts[1].lower() != fext.lower():
-							continue
-						fbase = fparts[0]
-					else:
-						fbase = fname
+				try:
+					for fname in sorted(os.listdir(dpath)):
+						if fext and fext != ".*":
+							fparts = os.path.splitext(fname)
+							if fparts[1].lower() != fext.lower():
+								continue
+							fbase = fparts[0]
+						else:
+							fbase = fname
 
-					fpath = os.path.join(dpath, fname)
-					if os.path.isfile(fpath):
-						self.options[fbase] = fpath
+						fpath = os.path.join(dpath, fname)
+						if os.path.isfile(fpath):
+							self.options[fbase] = fpath
+				except:
+					pass
 
 
 	def fill_list(self):

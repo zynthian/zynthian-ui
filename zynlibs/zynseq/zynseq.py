@@ -262,6 +262,14 @@ class zynseq(zynthian_engine):
 			self.send_event(SEQ_EVENT_SEQUENCE)
 
 
+	#	Check if pattern is empty
+	#	Returns: True is pattern is empty
+	def is_pattern_empty(self, patnum):
+		if self.libseq:
+			return self.libseq.isPatternEmpty(patnum)
+		return False
+
+
 	#	Get sequence name
 	#	Returns: Sequence name (maximum 16 characters)
 	def get_sequence_name(self, bank, sequence):

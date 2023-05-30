@@ -368,12 +368,20 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'Export to SMF':
 			self.zyngui.show_keyboard(self.export_smf, "pat#{}".format(self.pattern))
 
+
 	def save_pattern_file(self, fname):
 		self.zyngui.zynseq.save_pattern(self.pattern, "{}/{}.zpat".format(self.my_patterns_dpath, fname))
 
 
 	def load_pattern_file(self, fname, fpath):
+		if not self.zyngui.zynseq.is_pattern_empty(self.pattern):
+			self.zyngui.show_confirm("Do you want to overwrite pattern '{}'?".format(self.pattern), self.do_load_pattern_file, fpath)
+		else:
+			self.do_load_pattern_file(fpath)
+
+	def do_load_pattern_file(self, fpath):
 		self.zyngui.zynseq.load_pattern(self.pattern, fpath)
+		self.redraw_pending = 3
 
 
 	def toggle_midi_record(self, midi_record=None):
