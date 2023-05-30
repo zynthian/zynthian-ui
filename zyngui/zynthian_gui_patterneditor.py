@@ -34,7 +34,6 @@ from xml.dom import minidom
 from datetime import datetime
 from math import ceil
 from collections import OrderedDict
-from pathlib import Path
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -371,11 +370,16 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 
 	def save_pattern_file(self, fname):
-		Path(self.my_patterns_dpath).mkdir(parents=True, exist_ok=True)
 		self.zyngui.zynseq.save_pattern(self.pattern, "{}/{}.zpat".format(self.my_patterns_dpath, fname))
 
 
 	def load_pattern_file(self, fname, fpath):
+		if not self.zyngui.zynseq.is_pattern_empty(self.pattern):
+			self.zyngui.show_confirm("Do you want to overwrite pattern '{}'?".format(self.pattern), self.do_load_pattern_file, fpath)
+		else:
+			self.do_load_pattern_file(fpath)
+
+	def do_load_pattern_file(self, fpath):
 		self.zyngui.zynseq.load_pattern(self.pattern, fpath)
 		self.redraw_pending = 3
 

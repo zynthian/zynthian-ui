@@ -48,6 +48,7 @@
 #include "constants.h"
 #include "timebase.h"
 #include <cstdint>
+#include "pattern.h"
 
 //-----------------------------------------------------------------------------
 // Library Initialization
@@ -271,6 +272,12 @@ uint32_t getPatternAt(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t p
 *   @param  pattern Index of pattern to select
 */
 void selectPattern(uint32_t pattern);
+
+/** @brief  Check if selected pattern is empty
+*   @param  pattern Pattern index
+*   @retval bool True if pattern is empty
+*/
+bool isPatternEmpty(uint32_t pattern);
 
 /** @brief  Get the index of the selected pattern
 *   @retval uint32_t Index of pattern or -1 if not found
