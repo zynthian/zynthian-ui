@@ -899,16 +899,13 @@ class zynthian_gui:
 			#self.audio_player.engine.player.set_position(16, 0.0)
 			self.audio_player.engine.player.start_playback(16)
 			self.audio_recorder.filename = None
-		elif self.audio_player.preset_name:
+		elif self.audio_player.preset_name and os.path.exists(self.audio_player.preset_info[0]):
 			self.audio_player.controllers_dict['transport'].set_value('playing')
 		elif self.audio_player.engine.player.get_filename(16):
 			self.audio_player.engine.player.start_playback(16)
 		else:
-			self.show_screen("audio_player")
-			if self.audio_player.bank_name is None:
-				self.replace_screen('bank')
-				if len(self.audio_player.bank_list) == 1:
-					self.screens['bank'].click_listbox()
+			self.audio_player.reset_preset()
+			self.cuia_audio_file_list()
 
 	def stop_audio_player(self):
 		if self.audio_player.preset_name:
@@ -1083,7 +1080,7 @@ class zynthian_gui:
 	def cuia_audio_file_list(self, params=None):
 		self.show_screen("audio_player")
 		self.replace_screen('bank')
-		if len(self.audio_player.bank_list) == 1:
+		if len(self.audio_player.bank_list) == 1 or self.audio_player.bank_name:
 			self.screens['bank'].click_listbox()
 
 	def cuia_start_midi_record(self, params=None):
