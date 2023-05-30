@@ -508,7 +508,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 // Clock zero so on beat
                 bSync = (g_nBeat == 1);
                 g_nTick = 0; //!@todo ticks are not updated under normal rolling condition
-                g_pMetro = bSync?&g_metro_pip:&g_metro_peep;
+                g_pMetro = bSync?&g_metro_peep:&g_metro_pip;
                 g_nMetronomePtr = 0;
             }
             // Schedule events in next period
@@ -2302,7 +2302,7 @@ uint8_t transportGetPlayStatus()
 
 void setTempo(double tempo)
 {
-    if(tempo > 10.0 && tempo < 500.0)
+    if(tempo >= 10.0 && tempo < 500.0)
     {
         g_dTempo = tempo;
         if(transportGetPlayStatus() != JackTransportRolling)
