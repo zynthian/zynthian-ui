@@ -104,6 +104,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.drag_velocity = False # True indicates drag will adjust velocity
 		self.drag_duration = False # True indicates drag will adjust duration
 		self.drag_start_velocity = None # Velocity value at start of drag
+		self.drag_note = False # True if dragging note in grid
 		self.grid_drag_start = None # Coordinates at start of grid drag
 		self.keymap = [] # Array of {"note":MIDI_NOTE_NUMBER, "name":"key name","colour":"key colour"} name and colour are optional
 		#TODO: Get values from persistent storage
@@ -679,6 +680,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.drag_start_duration = self.zyngui.zynseq.libseq.getNoteDuration(step, note)
 		if not self.drag_start_velocity:
 			self.play_note(note)
+			self.drag_note = True
 
 
 	# Function to handle grid mouse release
@@ -687,7 +689,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if not self.grid_drag_start:
 			return
 		if not (self.drag_velocity or self.drag_duration):
-			if event.time - self.grid_drag_start.time > 800:
+			if not self.drag_note and event.time - self.grid_drag_start.time > 800:
 				# Bold click
 				if self.edit_mode == EDIT_MODE_NONE:
 					self.enable_edit(EDIT_MODE_SINGLE)
@@ -697,6 +699,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				self.toggle_event(self.selected_cell[0], self.selected_cell[1])
 		self.drag_velocity = False
 		self.drag_duration = False
+		self.drag_note = False
 		self.grid_drag_start = None
 
 
