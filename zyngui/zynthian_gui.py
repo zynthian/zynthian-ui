@@ -300,13 +300,12 @@ class zynthian_gui:
 			lib_zyncore.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
 			# Set MIDI CC automode
 			lib_zyncore.set_midi_filter_cc_automode(zynthian_gui_config.midi_cc_automode)
-			# Set MIDI System Messages flag
-			lib_zyncore.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
 			# Setup MIDI filter rules
 			if self.midi_filter_script:
 				self.midi_filter_script.clean()
 			self.midi_filter_script = zynthian_midi_filter.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
-			self.zynseq.libseq.setClockSource(zynthian_gui_config.transport_clock_source)
+			# Setup transport, MIDI clock & sys message options
+			self.screens['tempo'].set_transport_clock_source(zynthian_gui_config.transport_clock_source)
 
 		except Exception as e:
 			logging.error("ERROR initializing MIDI : {}".format(e))

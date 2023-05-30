@@ -81,25 +81,21 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			else:
 				self.list_data.append((self.toggle_bank_change, 0, "[  ] MIDI Bank Change"))
 
-		if zynthian_gui_config.transport_clock_source:
-			self.list_data.append((self.toggle_clock_source, 0, "Clock Source: MIDI"))
-		else:
-			self.list_data.append((self.toggle_clock_source, 0 ,"Clock Source: INTERNAL"))
-
 		if zynthian_gui_config.preset_preload_noteon:
 			self.list_data.append((self.toggle_preset_preload_noteon, 0, "[x] Preset Preload"))
 		else:
 			self.list_data.append((self.toggle_preset_preload_noteon, 0, "[  ] Preset Preload"))
 
 		if zynthian_gui_config.midi_filter_output:
-			self.list_data.append((self.toggle_midi_filter_output, 0, "[x] Bridge MIDI Input to Output"))
+			self.list_data.append((self.toggle_midi_bridge_output, 0, "[x] Bridge MIDI-OUT"))
 		else:
-			self.list_data.append((self.toggle_midi_filter_output, 0, "[  ] Bridge MIDI Input to Output"))
+			self.list_data.append((self.toggle_midi_bridge_output, 0, "[  ] Bridge MIDI-OUT"))
 
-		if zynthian_gui_config.midi_sys_enabled:
-			self.list_data.append((self.toggle_midi_sys, 0, "[x] MIDI System Messages"))
-		else:
-			self.list_data.append((self.toggle_midi_sys, 0, "[  ] MIDI System Messages"))
+		if zynthian_gui_config.transport_clock_source == 0:
+			if zynthian_gui_config.midi_sys_enabled:
+				self.list_data.append((self.toggle_midi_sys, 0, "[x] MIDI System Messages"))
+			else:
+				self.list_data.append((self.toggle_midi_sys, 0, "[  ] MIDI System Messages"))
 
 		self.list_data.append((self.midi_profile, 0, "MIDI Profile"))
 
@@ -356,12 +352,12 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.fill_list()
 
 
-	def toggle_midi_filter_output(self):
+	def toggle_midi_bridge_output(self):
 		if zynthian_gui_config.midi_filter_output:
-			logging.info("MIDI Filter Output OFF")
+			logging.info("MIDI Bridge Output OFF")
 			zynthian_gui_config.midi_filter_output = False
 		else:
-			logging.info("MIDI Filter Output ON")
+			logging.info("MIDI Bridge Output ON")
 			zynthian_gui_config.midi_filter_output = True
 
 		# Update MIDI profile
@@ -435,21 +431,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		# Save config
 		zynconf.update_midi_profile({ 
 			"ZYNTHIAN_MIDI_BANK_CHANGE": str(int(zynthian_gui_config.midi_bank_change))
-		})
-
-		self.fill_list()
-
-
-	def toggle_clock_source(self):
-		if zynthian_gui_config.transport_clock_source:
-			zynthian_gui_config.transport_clock_source = 0
-		else:
-			zynthian_gui_config.transport_clock_source = 1
-		self.zyngui.zynseq.libseq.setClockSource(zynthian_gui_config.transport_clock_source)
-
-		# Save config
-		zynconf.update_midi_profile({
-			"ZYNTHIAN_TRANSPORT_CLOCK_SOURCE": str(int(zynthian_gui_config.transport_clock_source))
 		})
 
 		self.fill_list()

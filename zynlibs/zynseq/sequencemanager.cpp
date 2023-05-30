@@ -1,5 +1,6 @@
 #include "sequencemanager.h"
 #include <cstring>
+#include <stdio.h>
 
 /** SequenceManager class methods implementation **/
 
@@ -178,11 +179,13 @@ void SequenceManager::updateAllSequenceLengths()
             (*itSeq)->updateLength();
 }
 
-size_t SequenceManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync, double dSamplesPerClock)
+size_t SequenceManager::clock(std::pair<double,double> timeinfo, std::multimap<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync)
 {
     /** Get events scheduled for next step from all tracks in each playing sequence.
         Populate schedule with start, end and interpolated events
     */
+   uint32_t nTime = timeinfo.first;
+   double dSamplesPerClock = timeinfo.second;
     for(auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end(); )
     {
         Sequence* pSequence = getSequence(it->first, it->second);
@@ -198,11 +201,9 @@ size_t SequenceManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* 
             while(SEQ_EVENT* pEvent = pSequence->getEvent())
             {
                 uint32_t nEventTime = pEvent->time;
-                while(pSchedule->find(nEventTime) != pSchedule->end())
-                    ++nEventTime; // Move event forward until we find a spare time slot
                 MIDI_MESSAGE* pNewEvent = new MIDI_MESSAGE(pEvent->msg);
-                (*pSchedule)[nEventTime] = pNewEvent;
-                //printf("Clock time: %u Scheduling event 0x%x 0x%x 0x%x with time %u at %u\n", nTime, pEvent->msg.command, pEvent->msg.value1, pEvent->msg.value2, pEvent->time, nEventTime);
+                pSchedule->insert(std::pair<uint32_t,MIDI_MESSAGE*>(nEventTime, pNewEvent));
+                //fprintf(stderr, "Clock time: %u Scheduling event 0x%x 0x%x 0x%x with time %u at %u framesPerClock: %f\n", nTime, pEvent->msg.command, pEvent->msg.value1, pEvent->msg.value2, pEvent->time, nEventTime, dSamplesPerClock);
             }
         }
         if(nEventType & 2)
@@ -233,10 +234,7 @@ size_t SequenceManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* 
                     default:
                         continue;
                 }
-                //!@todo Can we optimise time search?
-                while(pSchedule->find(nTime) != pSchedule->end())
-                    ++nTime; // Move event forward until we find a spare time slot
-                (*pSchedule)[nTime] = pEvent;
+                pSchedule->insert(std::pair<uint32_t,MIDI_MESSAGE*>(nTime, pEvent));
             }
         }
         ++it;

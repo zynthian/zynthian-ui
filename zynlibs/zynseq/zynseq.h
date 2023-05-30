@@ -129,17 +129,6 @@ uint16_t getHorizontalZoom();
 */
 void setHorizontalZoom(uint16_t zoom);
 
-/** @brief  Set transport always-running flag
-*   @param bool Transport always-running flag
-*/
-void setTransportAlwaysRunning(bool flag);
-
-/** @brief  Get transport always-running flag
-*   @retval bool Transport always-running flag
-*/
-bool getTransportAlwaysRunning();
-
-
 // ** Direct MIDI interface **
 //!@todo Should direct MIDI output be removed because JACK clients can do that themselves?
 
