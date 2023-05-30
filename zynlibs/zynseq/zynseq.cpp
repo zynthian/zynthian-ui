@@ -2264,6 +2264,12 @@ void transportStart(const char* client)
 
 void transportStop(const char* client)
 {
+    if(strcmp(client, "ALL") == 0)
+    {
+        g_setTransportClient.clear();
+        jack_transport_stop(g_pJackClient);
+        return;
+    }
     auto itClient = g_setTransportClient.find(std::string(client));
     if(itClient != g_setTransportClient.end())
         g_setTransportClient.erase(itClient);
