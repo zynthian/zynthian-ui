@@ -179,6 +179,11 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		return False
 
 
+	def cuia_toggle_play(self):
+		if self.zyngui.curlayer.engine.nickname == "AP":
+			self.click_listbox()
+
+
 	def set_selector(self, zs_hiden=False):
 		super().set_selector(zs_hiden)
 

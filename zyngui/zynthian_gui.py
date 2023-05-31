@@ -971,12 +971,11 @@ class zynthian_gui:
 
 	def callable_ui_action(self, cuia, params=None):
 		logging.debug("CUIA '{}' => {}".format(cuia, params))
-		try:
-			cuia_func = getattr(self, "cuia_" + cuia.lower())
-		except AttributeError:
+		cuia_func = getattr(self, "cuia_" + cuia.lower(), None)
+		if callable(cuia_func):
+			cuia_func(params)
+		else:
 			logging.error("Unknown CUIA '{}'".format(cuia))
-
-		cuia_func(params)
 
 	def parse_cuia_params(self, params_str):
 		params = []
@@ -1105,24 +1104,27 @@ class zynthian_gui:
 		self.screens['midi_recorder'].toggle_playing()
 
 	def cuia_toggle_record(self, params=None):
-		if self.current_screen == "pattern_editor":
-			self.screens["pattern_editor"].toggle_midi_record()
+		cuia_func = getattr(self.get_current_screen_obj(), "cuia_toggle_record", None)
+		if callable(cuia_func):
+			cuia_func()
 		elif self.alt_mode:
 			self.cuia_toggle_midi_record()
 		else:
 			self.cuia_toggle_audio_record()
 
 	def cuia_stop(self, params=None):
-		if self.current_screen == "pattern_editor":
-			self.screens["pattern_editor"].stop_playback()
+		cuia_func = getattr(self.get_current_screen_obj(), "cuia_stop", None)
+		if callable(cuia_func):
+			cuia_func()
 		elif self.alt_mode:
 			self.cuia_stop_midi_play()
 		else:
 			self.cuia_stop_audio_play()
 
 	def cuia_toggle_play(self, params=None):
-		if self.current_screen == "pattern_editor":
-			self.screens["pattern_editor"].toggle_playback()
+		cuia_func = getattr(self.get_current_screen_obj(), "cuia_toggle_play", None)
+		if callable(cuia_func):
+			cuia_func()
 		elif self.alt_mode:
 			self.cuia_toggle_midi_play()
 		else:
@@ -1222,17 +1224,14 @@ class zynthian_gui:
 		except (AttributeError, TypeError) as err:
 			pass
 
-	def cuia_arrow_next(self, params=None):
-		self.cuia_arrow_right(params)
-
 	def cuia_arrow_left(self, params=None):
 		try:
 			self.get_current_screen_obj().arrow_left()
 		except (AttributeError, TypeError) as err:
 			pass
 
-	def cuia_arrow_prev(self, params=None):
-		self.cuia_arrow_left(params)
+	cuia_arrow_next = cuia_arrow_right
+	cuia_arrow_prev = cuia_arrow_left
 
 	# Back action
 	def cuia_back(self, params=None):
@@ -1317,11 +1316,8 @@ class zynthian_gui:
 		else:
 			self.layer_control()
 
-	def cuia_layer_control(self, params=None):
-		self.cuia_chain_control(params)
-
-	def cuia_screen_control(self, params=None):
-		self.cuia_chain_control(params)
+	cuia_layer_control = cuia_chain_control
+	cuia_screen_control = cuia_chain_control
 
 	def cuia_chain_options(self, params=None):
 		try:
@@ -1338,10 +1334,9 @@ class zynthian_gui:
 			self.screens['layer_options'].reset()
 			self.toggle_screen('layer_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 		except Exception as e:
-			logging.warning("Can't show options for layer ({})! => {}".format(params,e))
+			logging.warning("Can't show options for layer ({})! => {}".format(params, e))
 
-	def cuia_layer_options(self, params=None):
-		self.cuia_chain_options(params)
+	cuia_layer_options = cuia_chain_options
 
 	def cuia_menu(self, params=None):
 		if self.current_screen != "alsa_mixer":
@@ -1380,8 +1375,7 @@ class zynthian_gui:
 			else:
 				self.restore_curlayer()
 
-	def cuia_preset(self, params=None):
-		self.cuia_bank_preset(params)
+	cuia_preset = cuia_bank_preset
 
 	def cuia_preset_fav(self, params=None):
 		self.show_favorites()

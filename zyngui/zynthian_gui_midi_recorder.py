@@ -372,6 +372,10 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		else:
 			self.stop_playing()
 
+	# Setup CUIA methods
+	cuia_toggle_record = toggle_recording
+	cuia_stop = stop_playing
+	cuia_toggle_play = toggle_playing
 
 	def show_playing_bpm(self):
 		if self.bpm_zgui_ctrl:

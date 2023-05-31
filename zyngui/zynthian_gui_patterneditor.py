@@ -1360,6 +1360,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		else:
 			self.stop_playback()
 
+	# Setup CUIA methods
+	cuia_toggle_record = toggle_midi_record
+	cuia_stop = stop_playback
+	cuia_toggle_play = toggle_playback
 
 	def get_playback_status(self):
 		return self.zyngui.zynseq.libseq.getPlayState(self.bank, self.sequence)

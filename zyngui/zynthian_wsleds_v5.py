@@ -105,7 +105,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 				self.wsleds.setPixelColor(8, self.wscolor_red)
 			else:
 				self.wsleds.setPixelColor(8, self.wscolor_active2)
-		elif self.zyngui.alt_mode:
+		elif (self.zyngui.alt_mode and curscreen != "audio_recorder") or curscreen == "midi_recorder":
 			if self.zyngui.status_info['midi_recorder'] and "REC" in self.zyngui.status_info['midi_recorder']:
 				self.wsleds.setPixelColor(8, self.wscolor_red)
 			else:
