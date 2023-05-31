@@ -148,6 +148,10 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.monitors = self.layer.engine.get_monitors_dict(self.layer.midi_chan)
 
 
+	def get_player_index(self):
+		return self.layer.midi_chan if self.layer.midi_chan < 16 else 16
+
+
 	def refresh_gui(self):
 		if self.refreshing:
 			return
@@ -247,5 +251,27 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.layer.controllers_dict['position'].nudge(1)
 		except Exception as e:
 			logging.debug("Failed to change value")
+
+
+	def cuia_toggle_record(self):
+		if self.zyngui.audio_recorder.get_status():
+			self.layer.controllers_dict['record'].set_value("stopped")
+		else:
+			self.layer.controllers_dict['record'].set_value("recording")
+
+
+	def cuia_stop(self):
+		i = self.get_player_index()
+		self.layer.engine.player.stop_playback(i)
+		self.layer.engine.player.set_position(i, 0.0)
+
+
+	def cuia_toggle_play(self):
+		i = self.get_player_index()
+		if self.layer.engine.player.get_playback_state(i):
+			self.layer.engine.player.stop_playback(i)
+		else:
+			self.layer.engine.player.start_playback(i)
+
 
 #------------------------------------------------------------------------------

@@ -119,7 +119,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 			self.wsleds.setPixelColor(9, self.wscolor_default)
 
 		# Control / Preset Screen:
-		if curscreen == "control":
+		if curscreen in ("control", "audio_player"):
 			self.wsleds.setPixelColor(10, self.wscolor_active)
 		elif curscreen in ("preset", "bank"):
 			if self.zyngui.curlayer.get_show_fav_presets():

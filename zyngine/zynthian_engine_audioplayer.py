@@ -62,7 +62,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.start()
 
 		# MIDI Controllers
-		self._ctrls=[
+		self._ctrls = [
 			['gain', None, 1.0, 2.0],
 			['record', None, 'stopped', ['stopped', 'recording']],
 			['loop', None, 'one-shot', ['one-shot', 'looping']],
@@ -76,8 +76,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 		# Controller Screens
 		self._ctrl_screens = [
-				['main', ['record'], None, None],
-				['config', [None, 'gain']]
+				['main', ['record', 'gain']],
 		]
 
 		self.monitors_dict = []
@@ -236,14 +235,14 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				track_labels.append('{}'.format(track + 1))
 				track_values.append(track)
 			self._ctrl_screens = [
-				['main', ['record', 'loop', 'transport', 'position']],
-				['config', ['left track', 'gain', 'right track']]
+				['main', ['record', 'gain', 'transport', 'position']],
+				['loop', ['loop', 'loop start', 'loop end']],
+				['track config', ['left track', 'right track']]
 			]
 		else:
 			self._ctrl_screens = [
-				['main', ['record'], None, None],
-				['config', [None, 'gain']]
-		]
+				['main', ['record', 'gain']],
+			]
 		self._ctrls = [
 			['gain', None, gain, 2.0],
 			['record', None, record, ['stopped', 'recording']],
@@ -251,7 +250,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['transport', None, transport, ['stopped', 'playing']],
 			['position', None, 0.0, dur],
 			['left track', None, default_a, [track_labels, track_values]],
-			['right track', None,default_b, [track_labels, track_values]],
+			['right track', None, default_b, [track_labels, track_values]],
 			['loop start', None, 0.0, dur],
 			['loop end', None, dur, dur]
 		]
@@ -298,10 +297,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def control_cb(self, handle, id, value):
-		if handle == 16:
-			if id == 1 and value == 0:
-				self.zyngui.stop_audio_player()
-			return
 		try:
 			for layer in self.layers:
 				if layer.midi_chan == handle:
@@ -329,9 +324,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					elif id == 12:
 						ctrl_dict['loop end'].set_value(value, False)
 						self.monitors_dict[handle]['loop end'] = value
-					return
+					break
 		except Exception as e:
-			return
+			logging.error(e)
 
 
 	def send_controller_value(self, zctrl):

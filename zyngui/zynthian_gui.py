@@ -555,6 +555,7 @@ class zynthian_gui:
 				self.audio_player.refresh_controllers()
 				self.set_curlayer(self.audio_player, save=True, populate_screens=False)
 			else:
+				logging.error("Audio Player not created!")
 				return
 
 		if screen not in ("bank", "preset", "option"):
@@ -732,7 +733,7 @@ class zynthian_gui:
 		if self.curlayer:
 			control_screen_name = 'control'
 
-			# Check for a custom GUI (widget)
+			# Check for a custom GUI
 			module_path = self.curlayer.engine.custom_gui_fpath
 			if module_path:
 				module_name = Path(module_path).stem
@@ -895,23 +896,17 @@ class zynthian_gui:
 		filename = self.audio_recorder.filename
 		if filename and os.path.exists(filename):
 			self.audio_player.engine.set_preset(self.audio_player, [filename])
-			#self.audio_player.engine.player.set_position(16, 0.0)
+			self.audio_player.engine.player.set_position(16, 0.0)
 			self.audio_player.engine.player.start_playback(16)
 			self.audio_recorder.filename = None
-		elif self.audio_player.preset_name and os.path.exists(self.audio_player.preset_info[0]):
-			self.audio_player.controllers_dict['transport'].set_value('playing')
-		elif self.audio_player.engine.player.get_filename(16):
+		elif (self.audio_player.preset_name and os.path.exists(self.audio_player.preset_info[0])) or self.audio_player.engine.player.get_filename(16):
 			self.audio_player.engine.player.start_playback(16)
 		else:
 			self.audio_player.reset_preset()
 			self.cuia_audio_file_list()
 
 	def stop_audio_player(self):
-		if self.audio_player.preset_name:
-			self.audio_player.controllers_dict['transport'].set_value('stopped')
-		else:
-			self.audio_player.engine.player.stop_playback(16)
-
+		self.audio_player.engine.player.stop_playback(16)
 
 	# ------------------------------------------------------------------
 	# MIDI learning
@@ -1049,18 +1044,16 @@ class zynthian_gui:
 
 	# Audio & MIDI Recording/Playback actions
 	def cuia_start_audio_record(self, params=None):
-		#self.audio_player.engine.start_recording()
-		self.audio_player.controllers_dict['record'].set_value('recording')
+		self.audio_player.controllers_dict['record'].set_value("recording")
 
 	def cuia_stop_audio_record(self, params=None):
-		#self.audio_player.engine.stop_recording()
-		self.audio_player.controllers_dict['record'].set_value('stopped')
+		self.audio_player.controllers_dict['record'].set_value("stopped")
 
 	def cuia_toggle_audio_record(self, params=None):
 		if self.audio_recorder.get_status():
-			self.audio_player.controllers_dict['record'].set_value('stopped')
+			self.audio_player.controllers_dict['record'].set_value("stopped")
 		else:
-			self.audio_player.controllers_dict['record'].set_value('recording')
+			self.audio_player.controllers_dict['record'].set_value("recording")
 
 	def cuia_start_audio_play(self, params=None):
 		self.start_audio_player()
@@ -1077,7 +1070,8 @@ class zynthian_gui:
 
 	def cuia_audio_file_list(self, params=None):
 		self.show_screen("audio_player")
-		self.replace_screen('bank')
+		self.show_screen('bank')
+		#self.replace_screen('bank')
 		if len(self.audio_player.bank_list) == 1 or self.audio_player.bank_name:
 			self.screens['bank'].click_listbox()
 
@@ -1577,7 +1571,7 @@ class zynthian_gui:
 
 	def check_current_screen_switch(self, action_config):
 		# BIG ÑAPA!!
-		if action_config['B'] and action_config['B'].lower() == 'bank_preset' and self.current_screen in ('bank', 'preset'):
+		if action_config['B'] and action_config['B'].lower() == 'bank_preset' and self.current_screen in ("bank", "preset", "audio_player"):
 			return True
 		#if self.is_current_screen_menu():
 		if self.current_screen == "main_menu":
@@ -1974,7 +1968,6 @@ class zynthian_gui:
 						self.screens['pattern_editor'].midi_note((ev >> 8) & 0x7F)
 					elif self.current_screen == 'zynpad' and self.midi_learn_mode:
 						self.screens['zynpad'].midi_note(chan, (ev >> 8) & 0x7F)
-
 				self.status_info['midi'] = True
 				self.last_event_flag = True
 

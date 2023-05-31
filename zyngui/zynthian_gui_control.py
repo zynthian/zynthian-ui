@@ -48,6 +48,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.screen_layer = None
 
 		self.widgets = {}
+		self.current_widget = None
+		self.cuia_toggle_record = None
+		self.cuia_stop = None
+		self.cuia_toggle_play = None
+
 		self.ctrl_screens = {}
 		self.zcontrollers = []
 		self.screen_name = None
@@ -158,7 +163,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def set_selector(self, zs_hiden=True):
-		if self.mode=='select': super().set_selector(zs_hiden)
+		if self.mode == 'select':
+			super().set_selector(zs_hiden)
 
 
 	def show_widget(self, layer):
@@ -191,6 +197,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 						self.listbox.grid_remove()
 						widget.grid(row=zynthian_gui_config.layout['list_pos'][0], column=zynthian_gui_config.layout['list_pos'][1], rowspan=4, padx=padx, sticky="news")
 						widget.show()
+						self.set_current_widget(widget)
 					else:
 						widget.grid_remove()
 						widget.hide()
@@ -202,7 +209,26 @@ class zynthian_gui_control(zynthian_gui_selector):
 		for k, widget in self.widgets.items():
 			widget.grid_remove()
 			widget.hide()
+		self.set_current_widget(None)
 		self.listbox.grid()
+
+
+	def set_current_widget(self, widget):
+		self.current_widget = widget
+		if self.current_widget is not None:
+			func = getattr(self.current_widget, "cuia_toggle_record", None)
+			if callable(func):
+				self.cuia_toggle_record = func
+			func = getattr(self.current_widget, "cuia_stop", None)
+			if callable(func):
+				self.cuia_stop = func
+			func = getattr(self.current_widget, "cuia_toggle_play", None)
+			if callable(func):
+				self.cuia_toggle_play = func
+		else:
+			self.cuia_toggle_record = None
+			self.cuia_stop = None
+			self.cuia_toggle_play = None
 
 
 	def set_controller_screen(self):
@@ -456,7 +482,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if self.mode == 'select':
 			self.set_controller_screen()
 			self.set_selector_screen()
-		
+
 
 	def zynpot_cb(self, i, dval):
 		if self.mode == 'control' and self.zcontrollers:
