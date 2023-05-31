@@ -104,7 +104,6 @@ class zynseq(zynthian_engine):
 			'nudge_factor':0.1
 			})
 		
-		self.cb_list = [] # List of callbacks registered for notification of change
 		self.bank = None
 		self.select_bank(1, True)
 
@@ -114,30 +113,6 @@ class zynseq(zynthian_engine):
 		if self.libseq:
 			ctypes.dlclose(self.libseq._handle)
 		self.libseq = None
-
-
-	#	Function to add a view to send events to
-	#	cb: Callback function
-	def add_event_cb(self, cb):
-		if cb not in self.cb_list:
-			self.cb_list.append(cb)
-
-
-	#	Function to remove a view to send events to
-	#	cb: Callback function
-	def remove_event_cb(self, cb):
-		if cb in self.cb_list:
-			self.cb_list.remove(cb)
-
-
-	#	Function to send notification event to registered callback clients
-	#	event: Event number
-	def send_event(self, event):
-		for cb in self.cb_list:
-			try:
-				cb(event)
-			except Exception as e:
-				logging.warning(e)
 
 
 	#	Function to select a bank for edit / control
@@ -156,7 +131,6 @@ class zynseq(zynthian_engine):
 			self.build_default_bank(bank)
 		self.bank = bank
 		self.changing_bank = False
-		self.send_event(SEQ_EVENT_BANK)
 
 
 	#	Build a default bank 1 with 16 sequences in grid of midi channels 1,2,3,10
@@ -219,7 +193,6 @@ class zynseq(zynthian_engine):
 				for row in range(old_columns - 1, new_columns -1, -1):
 					offset = old_columns * col + row
 					self.libseq.removeSequence(self.bank, offset)
-		self.send_event(SEQ_EVENT_BANK)
 
 
 	#	Load a zynseq file
@@ -227,14 +200,12 @@ class zynseq(zynthian_engine):
 	def load(self, filename):
 		self.libseq.load(bytes(filename, "utf-8"))
 		self.select_bank(1, True) #TODO: Store selected bank in seq file
-		self.send_event(SEQ_EVENT_LOAD)
 
 	#	Load a zynseq pattern file
 	#	patnum: Pattern number
 	#	filename: Full path and filename
 	def load_pattern(self, patnum, filename):
 		self.libseq.load_pattern(int(patnum), bytes(filename, "utf-8"))
-		self.send_event(SEQ_EVENT_LOAD_PAT)
 
 	#	Save a zynseq file
 	#	filename: Full path and filename
@@ -259,7 +230,6 @@ class zynseq(zynthian_engine):
 	def set_sequence_name(self, bank, sequence, name):
 		if self.libseq:
 			self.libseq.setSequenceName(bank, sequence, bytes(name, "utf-8"))
-			self.send_event(SEQ_EVENT_SEQUENCE)
 
 
 	#	Check if pattern is empty
@@ -320,46 +290,38 @@ class zynseq(zynthian_engine):
 	def send_controller_value(self, zctrl):
 		if zctrl == self.zctrl_tempo:
 			self.libseq.setTempo(zctrl.value)
-			self.send_event(SEQ_EVENT_TEMPO)
 
 
 	def set_midi_channel(self, bank, sequence, track, channel):
 		self.libseq.setChannel(bank, sequence, track, channel)
-		self.send_event(SEQ_EVENT_CHANNEL)
 
 
 	def set_group(self, bank, sequence, group):
 		self.libseq.setGroup(bank, sequence, group)
-		self.send_event(SEQ_EVENT_GROUP)
 
 
 	def set_sequences_in_bank(self, bank, count):
 		self.libseq.setSequencesInBank(bank, count)
-		self.send_event(SEQ_EVENT_BANK)
 
 
 	def insert_sequence(self, bank, sequence):
 		self.libseq.insertSequence(bank, sequence)
-		self.send_event(SEQ_EVENT_BANK)
+
 
 	def set_beats_per_bar(self, bpb):
 		self.libseq.setBeatsPerBar(bpb)
-		self.send_event(SEQ_EVENT_BPB)
 
 
 	def set_play_mode(self, bank, sequence, mode):
 		self.libseq.setPlayMode(bank, sequence, mode)
-		self.send_event(SEQ_EVENT_PLAYMODE)
 
 
 	def remove_pattern(self, bank, sequence, track, time):
 		self.libseq.removePattern(bank, sequence, track, time)
-		self.send_event(SEQ_EVENT_SEQUENCE)
 
 
 	def add_pattern(self, bank, sequence, track, time, pattern, force=False):
 		if self.libseq.addPattern(bank, sequence, track, time, pattern, force):
-			self.send_event(SEQ_EVENT_SEQUENCE)
 			return True
 
 
@@ -375,12 +337,6 @@ class zynseq(zynthian_engine):
 			self.libseq.enableMidiLearn(0, 0, ctypes.py_object(self), self.midi_learn_cb)
 		except Exception as e:
 			logging.error(e)
-
-
-	@ctypes.CFUNCTYPE(None, ctypes.py_object, ctypes.c_ubyte)
-	def midi_learn_cb(self, note):
-		self.disable_midi_learn()
-		self.send_event(SEQ_EVENT_MIDI_LEARN)
 
 
 	def get_riff_data(self):

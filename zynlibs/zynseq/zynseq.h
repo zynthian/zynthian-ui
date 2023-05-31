@@ -66,9 +66,6 @@ enum TRANSPORT_CLOCK
 
 // ** Library management functions **
 
-// MIDI learn callback function
-void (*g_pMidiLearnCb)(void*, uint8_t);
-
 /** @brief  Initialise library and connect to jackd server
 *   @param  name Client name
 *   @note   Call init() before any other functions will work
@@ -589,7 +586,7 @@ bool isEmpty(uint8_t bank, uint8_t sequence);
 /** @brief  Set play state
 *   @param  bank Index of bank containing sequence
 *   @param  sequence Index (sequence) of sequence within bank
-*   @param  uint8_t Play state [STOPPED | STARTING | PLAYING | STOPPING]
+*   @param  state Play state [STOPPED | STARTING | PLAYING | STOPPING]
 *   @note   STARTING will reset to start of sequence. PLAYING resumes at last played position.
 *   @note   If all sequences have stopped and no external clients have registered for transport then transport is stopped.
 */
@@ -716,15 +713,6 @@ void addTimeSigEvent(uint8_t bank, uint8_t sequence, uint8_t beats, uint8_t type
 *   @retval uint16_t Time signature - MSB numerator, LSB denominator
 */
 uint16_t getTimeSigAt(uint8_t bank, uint8_t sequence, uint16_t bar);
-
-/** @brief  Enable MIDI learn for a sequence trigger
-*   @param  bank Index of bank or 0 to disable learning
-*   @param  sequence Sequence index or 0 to disable learning
-*   @param  cb_object Pointer to the object hosting the callback function (allows Python class access) [Default: NULL for none]
-*   @param  cbfunc Pointer to callback function to call when MIDI learn completes [Default: NULL for none]
-*   @note   Whilst in learn mode the next MIDI note-on event received on trigger channel will set the pad's trigger note
-*/
-void enableMidiLearn(uint8_t bank, uint8_t sequence, void* cb_object, void (*cbfunc)(void*, uint8_t));
 
 /** @brief  Get bank currently in MIDI learn mode
 *   @retval uint8_t Bank index or 0 if disabled

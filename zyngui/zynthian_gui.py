@@ -1972,6 +1972,8 @@ class zynthian_gui:
 					#Update pattern editor display
 					elif self.current_screen == 'pattern_editor' and self.zynseq.libseq.isMidiRecord():
 						self.screens['pattern_editor'].midi_note((ev >> 8) & 0x7F)
+					elif self.current_screen == 'zynpad' and self.midi_learn_mode:
+						self.screens['zynpad'].midi_note(chan, (ev >> 8) & 0x7F)
 
 				self.status_info['midi'] = True
 				self.last_event_flag = True

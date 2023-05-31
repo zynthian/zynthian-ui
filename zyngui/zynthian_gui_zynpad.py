@@ -63,7 +63,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.redraw_pending = 2 # 0=no refresh pending, 1=update grid, 2=rebuild grid
 		self.redrawing = False # True to block further redraws until complete
 		self.bank = self.zyngui.zynseq.bank # The last successfully selected bank - used to update stale views
-		self.event_queue = queue.Queue() # Queue of callback events
+		self.midi_learn = False
 
 		# Geometry vars
 		self.select_thickness = 1 + int(self.width / 400) # Scale thickness of select border based on screen
@@ -84,35 +84,29 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 		self.build_grid()
 
-		# Selection highlight
-		self.zyngui.zynseq.add_event_cb(self.on_cb_event) # TODO: Only register for events when required, e.g. whilst MIDI learning
+
+	def enter_midi_learn(self):
+		if self.zyngui.zynseq.libseq.getTriggerChannel() > 15:
+			return
+		self.midi_learn = True
+		labels = ['None']
+		for note in range(128):
+			labels.append("{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1))
+		value = self.zyngui.zynseq.libseq.getTriggerNote(self.bank, self.selected_pad) + 1
+		if value > 128:
+			value = 0
+		self.enable_param_editor(self, 'trigger_note', 'Trigger note', {'labels':labels, 'value':value})
 
 
-	def on_cb_event(self, event):
-		if self.shown:
-			self.event_queue.put(event)
+	def exit_midi_learn(self):
+		self.midi_learn = False
+		self.disable_param_editor()
 
 
-	def handle_event(self, event):
-		'''
-		if event == zynseq.SEQ_EVENT_LOAD:
-			self.redraw_pending = 2
-		elif event == zynseq.SEQ_EVENT_BANK:
-			self.set_title(f"Scene {self.zyngui.zynseq.bank}")
-			self.bank = None
-			if self.zyngui.zynseq.libseq.getSequencesInBank(self.zyngui.zynseq.bank) != self.columns ** 2:
-				self.redraw_pending = 2
-			else:
-				self.redraw_pending = 1
-		elif self.redraw_pending < 2 and event in [
-					zynseq.SEQ_EVENT_CHANNEL,
-					zynseq.SEQ_EVENT_GROUP,
-					zynseq.SEQ_EVENT_SEQUENCE]:
-			self.redraw_pending = 1
-		'''
-		if event == zynseq.SEQ_EVENT_MIDI_LEARN:
-			if self.param_editor_zctrl:
-				self.disable_param_editor()
+	def midi_note(self, chan, note):
+		if chan == self.zyngui.zynseq.libseq.getTriggerChannel() and self.midi_learn:
+			self.zyngui.zynseq.libseq.setTriggerNote(self.bank, self.selected_pad, note)
+			self.zyngui.exit_midi_learn()
 
 
 	#Function to set values of encoders
@@ -136,8 +130,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# Function to hide GUI
 	def hide(self):
 		super().hide()
-		with self.event_queue.mutex:
-			self.event_queue.queue.clear()
 
 
 	# Function to set quantity of pads
@@ -459,14 +451,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'Trigger channel':
 			self.enable_param_editor(self, 'trigger_chan', 'Trigger channel', {'labels':INPUT_CHANNEL_LABELS, 'value':self.get_trigger_channel()})
 		elif params == 'Trigger note':
-			labels = ['None']
-			for note in range(128):
-				labels.append("{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1))
-			value = self.zyngui.zynseq.libseq.getTriggerNote(self.bank, self.selected_pad) + 1
-			if value > 128:
-				value = 0
-			self.enable_param_editor(self, 'trigger_note', 'Trigger note', {'labels':labels, 'value':value})
-			self.zyngui.zynseq.enable_midi_learn(self.bank, self.selected_pad)
+			self.zyngui.enter_midi_learn()
 		elif params == 'Tally channel':
 			self.enable_param_editor(self, 'tally_chan', 'Tally channel', {'labels':INPUT_CHANNEL_LABELS, 'value':self.get_tally_channel()})
 		elif params == 'Grid size':
@@ -546,12 +531,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				self.update_grid(columns)
 		for pad in range(self.columns ** 2):
 			self.refresh_pad(pad, force)
-		while not self.event_queue.empty():
-			#TODO: Should we empty queue or process single callback per refresh?
-			try:
-				self.handle_event(self.event_queue.get(block=False))
-			except:
-				break
 
 
 	# Function to handle zynpots value change
@@ -603,8 +582,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 
 	def back_action(self):
-		if self.param_editor_zctrl:
-			self.zyngui.zynseq.disable_midi_learn()
+		self.zyngui.exit_midi_learn()
 		return super().back_action()
 
 

@@ -73,8 +73,6 @@ uint8_t g_nInputRest = 0xFF; // MIDI note number that creates rest in pattern
 uint8_t g_nTriggerStatusByte = MIDI_NOTE_ON | 15; // MIDI status byte which triggers a sequence (optimisation)
 uint16_t g_nVerticalZoom = 12; // Quantity of rows to show in pattern and arranger view
 uint16_t g_nHorizontalZoom = 16; // Quantity of beats to show in arranger view
-uint16_t g_nTriggerLearning = 0; // 2 word bank|sequence that is waiting for MIDI to learn trigger (0 if not learning)
-void* g_pMidiLearnObj = NULL; // Object hosting midi learn function
 char g_sName[16]; // Buffer to hold sequence name so that it can be sent back for Python to parse
 
 bool g_bMutex = false; // Mutex lock for access to g_mSchedule
@@ -406,18 +404,9 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         if((midiEvent.buffer[0] == g_nTriggerStatusByte) && midiEvent.buffer[2])
         {
             uint8_t nNote = midiEvent.buffer[1];
-            if(g_nTriggerLearning)
-            {
-                setTriggerNote((g_nTriggerLearning >> 8) & 0xFF, g_nTriggerLearning & 0xFF, nNote);
-                if(g_pMidiLearnCb)
-                    g_pMidiLearnCb(g_pMidiLearnObj, nNote);
-            }
-            else
-            {
-                uint16_t nSeq = g_seqMan.getTriggerSequence(nNote);
-                if(nSeq)
-                    togglePlayState(nSeq >> 8, nSeq & 0xFF);
-            }
+            uint16_t nSeq = g_seqMan.getTriggerSequence(nNote);
+            if(nSeq)
+                togglePlayState(nSeq >> 8, nSeq & 0xFF);
         }
 
         // Handle MIDI events for programming patterns from MIDI input
@@ -660,8 +649,6 @@ __attribute__((constructor)) void zynseq(void) {
 
 void init(char* name) {
     //!@todo Invalid name triggers seg fault
-
-    g_pMidiLearnCb = NULL;
 
     g_metro_pip.data = metronome_pip;
     g_metro_pip.size = sizeof(metronome_pip) / sizeof(float);
@@ -1918,6 +1905,7 @@ void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state)
             state = STOPPED;
     }
     g_seqMan.setSequencePlayState(bank, sequence, state);
+    /*
     if(sequence == 0)
     {
         while(g_bMutex)
@@ -1927,6 +1915,7 @@ void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state)
             startEvents[i].start = -1;
         g_bMutex = false;
     }
+    */
 }
 
 void togglePlayState(uint8_t bank, uint8_t sequence)
@@ -2076,28 +2065,6 @@ uint8_t getBeatsPerBar(uint8_t bank, uint8_t sequence, uint16_t bar)
 uint32_t getTracksInSequence(uint8_t bank, uint8_t sequence)
 {
     return g_seqMan.getSequence(bank, sequence)->getTracks();
-}
-
-void enableMidiLearn(uint8_t bank, uint8_t sequence, void* cb_object, void (*cbfunc)(void*, uint8_t))
-{
-    g_nTriggerLearning = (bank << 8) | sequence;
-    if(g_nTriggerLearning) {
-        g_pMidiLearnObj = cb_object;
-        g_pMidiLearnCb = cbfunc;
-    } else {
-        g_pMidiLearnObj = NULL;
-        g_pMidiLearnCb = NULL;
-    }
-}
-
-uint8_t getMidiLearnBank()
-{
-    return g_nTriggerLearning >> 8;
-}
-
-uint8_t getMidiLearnSequence()
-{
-    return g_nTriggerLearning & 0xFF;
 }
 
 void setSequence(uint8_t bank, uint8_t sequence) {
