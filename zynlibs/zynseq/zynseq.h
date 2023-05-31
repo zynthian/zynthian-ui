@@ -639,6 +639,11 @@ uint32_t getSequenceLength(uint8_t bank, uint8_t sequence);
 */
 void clearSequence(uint8_t bank, uint8_t sequence);
 
+/** @brief  Get the quantity of playing sequences
+*   @retval size_t Quantity of playing sequences
+*/
+size_t getPlayingSequences();
+
 /** @brief  Get sequence group
 *   @param  bank Index of bank
 *   @param  sequence Sequence number

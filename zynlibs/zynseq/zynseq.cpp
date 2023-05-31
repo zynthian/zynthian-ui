@@ -332,7 +332,6 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     static jack_nframes_t nFramerate; // Store so that we can check for change and do less maths
     static uint32_t nFramesPerPulse;
     static jack_nframes_t nLastBeatFrame = 0; // Frames since jack epoch of last quarter note used to calc tempo of external clock
-    static uint8_t nClocksSinceLastBeat = 0; // Count external clock ticks
 
     // Get output buffer that will be processed in this process cycle
     void* pOutputBuffer = jack_port_get_buffer(g_pOutputPort, nFrames);
@@ -373,17 +372,15 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                     nState = JackTransportRolling;
                     g_nClock = 0;
                     nLastBeatFrame = 0;
-                    nClocksSinceLastBeat = 0;
                     g_nBeat = 1; //!@todo This should be reset with START, not CONTINUE but currently used for bar sync
                     break;
                 case MIDI_CLOCK:
-                    if(++nClocksSinceLastBeat > 23)
+                    if(g_nClock == 0)
                     {
                         // Update tempo on each beat
                         if(nLastBeatFrame)
                             setTempo(60.0 * (double)g_nSampleRate / (nNow + midiEvent.time - nLastBeatFrame));
                         nLastBeatFrame = nNow + midiEvent.time;
-                        nClocksSinceLastBeat = 0;
                     }
                     if(nState == JackTransportRolling)
                         g_qClockPos.push(std::pair<double,double>(nNow + midiEvent.time, g_dFramesPerClock));
@@ -497,6 +494,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     if(nState == JackTransportRolling)
     {
         bool bSync = false; // True if at start of bar
+        jack_nframes_t nClockOffset = 0; // Position within this period that clock 0 occurs
         if(g_nClockSource == TRANSPORT_CLOCK_INTERNAL && g_qClockPos.empty())
             g_qClockPos.push(std::pair<double,double>(nNow, g_dFramesPerClock)); // There should always be a clock scheduled for internal clock source when transport is rolling
         while(!g_qClockPos.empty() && (g_qClockPos.front().first < nNow + nFrames))
@@ -509,6 +507,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 g_nTick = 0; //!@todo ticks are not updated under normal rolling condition
                 g_pMetro = bSync?&g_metro_peep:&g_metro_pip;
                 g_nMetronomePtr = 0;
+                nClockOffset = g_qClockPos.front().first - nNow;
             }
             // Schedule events in next period
             // Pass clock time and schedule to pattern manager so it can populate with events. Pass sync pulse so that it can synchronise its sequences, e.g. start zynpad sequences
@@ -555,11 +554,11 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         if(g_bMetronome && g_nMetronomePtr >= 0) {
             for(int n = 0; n < nFrames; ++n) {
                 if(g_nMetronomePtr < g_pMetro->size) {
-                    pOutMetronome[n] = g_pMetro->data[g_nMetronomePtr++] * g_fMetronomeLevel;
+                    pOutMetronome[n + nClockOffset] = g_pMetro->data[g_nMetronomePtr++] * g_fMetronomeLevel;
                 }
                 else {
                     g_nMetronomePtr = -1;
-                    pOutMetronome[n] = 0.0;
+                    break;
                 }
             }
         }
@@ -1981,6 +1980,11 @@ void clearSequence(uint8_t bank, uint8_t sequence)
     Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
     pSequence->clear();
     g_bDirty = true;
+}
+
+size_t getPlayingSequences()
+{
+    return g_nPlayingSequences;
 }
 
 void setSequencesInBank(uint8_t bank, uint8_t sequences)
