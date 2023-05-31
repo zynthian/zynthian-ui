@@ -608,17 +608,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		return super().back_action()
 
 
-	# Function to handle switch press
-	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
-	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
-	#	returns True if action fully handled or False if parent action should be triggered
-	def switch(self, switch, type):
-		if switch == zynthian_gui_config.ENC_LAYER and type == 'B':
-			self.show_menu()
-			return True
-		return False
-
-
 	#	CUIA Actions
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):

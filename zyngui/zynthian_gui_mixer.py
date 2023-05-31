@@ -995,16 +995,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return True
 
 		elif swi == 2:
-			if t == 'B':
+			if t == 'S':
 				if self.midi_learning:
 					self.midi_unlearn_action()
 				else:
 					self.midi_learn_menu()
 				return True
-
-		elif swi == 3:
-			self.switch_select(t)
-			return True
 
 		return False
 
