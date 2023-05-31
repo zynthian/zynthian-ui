@@ -651,8 +651,8 @@ class zynthian_gui:
 
 	def refresh_screen(self):
 		screen = self.current_screen
-		if screen=='preset' and len(self.curlayer.preset_list) <= 1:
-			screen='control'
+		if screen == 'preset' and len(self.curlayer.preset_list) <= 1:
+			screen = 'control'
 		self.show_screen(screen)
 
 
@@ -1462,6 +1462,8 @@ class zynthian_gui:
 			elif self.current_screen in ("audio_mixer"):
 				if t == 'S':
 					self.zynswitch_short(i)
+				elif t == 'B':
+					self.zynswitch_bold(i)
 
 	# MIDI CUIAs
 	def cuia_program_change(self, params):

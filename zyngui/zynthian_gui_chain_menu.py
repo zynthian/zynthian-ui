@@ -37,7 +37,7 @@ class zynthian_gui_chain_menu(zynthian_gui_selector):
 
 
 	def fill_list(self):
-		self.list_data=[]
+		self.list_data = []
 		self.list_data.append((self.new_synth_layer, 0, "New Synth Chain"))
 		self.list_data.append((self.new_audiofx_layer, 0, "New Audio Chain"))
 		self.list_data.append((self.new_midifx_layer, 0, "New MIDI Chain"))
@@ -49,7 +49,7 @@ class zynthian_gui_chain_menu(zynthian_gui_selector):
 
 	def select_action(self, i, t='S'):
 		if self.list_data[i][0]:
-			self.last_action=self.list_data[i][0]
+			self.last_action = self.list_data[i][0]
 			self.last_action(t)
 
 

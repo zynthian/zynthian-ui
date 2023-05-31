@@ -25,9 +25,9 @@
 #******************************************************************************
 
 import os
-import copy
 import tkinter
 import logging
+from collections import OrderedDict
 
 # Zynthian specific modules
 import zyngine
@@ -998,7 +998,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if t == 'B':
 				if self.midi_learning:
 					self.midi_unlearn_action()
-					return True
+				else:
+					self.midi_learn_menu()
+				return True
 
 		elif swi == 3:
 			self.switch_select(t)
@@ -1097,6 +1099,22 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# MIDI learning management
 	#--------------------------------------------------------------------------
 
+	def midi_learn_menu(self):
+		options = OrderedDict()
+		options['Enter MIDI-learn'] = "enter"
+		options['Clean MIDI-learn'] = "clean"
+		self.zyngui.screens['option'].config("MIDI-learn", options, self.midi_learn_menu_cb)
+		self.zyngui.show_screen('option')
+
+	def midi_learn_menu_cb(self, options, params):
+		if params == 'enter':
+			if self.zyngui.current_screen != "audio_mixer":
+				self.zyngui.show_screen("audio_mixer")
+			self.zyngui.enter_midi_learn()
+		elif params == 'clean':
+			self.midi_unlearn_action()
+
+
 	# Pre-select all controls in a chain to allow selection of actual control to MIDI learn
 	def enter_midi_learn(self):
 		for strip in self.visible_mixer_strips:
@@ -1114,7 +1132,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if modified_strip != self.main_mixbus_strip:
 			self.main_mixbus_strip.enable_midi_learn(False)
 
-    
+
 	def exit_midi_learn(self):
 		for strip in self.visible_mixer_strips:
 			strip.enable_midi_learn(False)

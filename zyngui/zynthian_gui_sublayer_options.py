@@ -61,21 +61,21 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_pre
 			self.list_data.append((self.save_preset, None, "Save Preset"))
 
 		# Effect Layer Options
-		if self.sublayer_type=="Audio Effect":
+		if self.sublayer_type == "Audio Effect":
 			self.list_data.append((self.audiofx_replace, None, "Replace"))
 			if self.audiofx_can_move_upchain():
 				self.list_data.append((self.audiofx_move_upchain, None, "Move up chain"))
 			if self.audiofx_can_move_downchain():
 				self.list_data.append((self.audiofx_move_downchain, None, "Move down chain"))
 
-		elif self.sublayer_type=="MIDI Tool":
+		elif self.sublayer_type == "MIDI Tool":
 			self.list_data.append((self.midifx_replace, None, "Replace"))
 			if self.midifx_can_move_upchain():
 				self.list_data.append((self.midifx_move_upchain, None, "Move up chain"))
 			if self.midifx_can_move_downchain():
 				self.list_data.append((self.midifx_move_downchain, None, "Move down chain"))
 
-		elif self.sublayer_type=="MIDI Synth":
+		elif self.sublayer_type == "MIDI Synth":
 			eng_options = self.sublayer.engine.get_options()
 			if eng_options['replace'] and eng_options['midi_chan']:
 				self.list_data.append((self.synth_replace, None, "Replace"))
@@ -91,7 +91,7 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_pre
 	def build_view(self):
 		if self.sublayer_index is not None:
 			super().build_view()
-			if self.index>=len(self.list_data):
+			if self.index >= len(self.list_data):
 				self.index = len(self.list_data)-1
 		else:
 			self.zyngui.close_screen()
@@ -139,7 +139,11 @@ class zynthian_gui_sublayer_options(zynthian_gui_selector, zynthian_gui_save_pre
 
 	def midi_clean(self):
 		if self.sublayer and self.sublayer.engine:
-			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in {} on MIDI channel {}?".format(self.sublayer.engine.name, self.sublayer.midi_chan + 1), self.sublayer.midi_unlearn)
+			if self.sublayer.midi_chan == 256:
+				chain_label = "MAIN"
+			else:
+				chain_label = "CH#{}".format(self.sublayer.midi_chan + 1)
+			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in {} at {}?".format(self.sublayer.engine.name, chain_label), self.sublayer.midi_unlearn)
 
 
 	# FX-Chain management

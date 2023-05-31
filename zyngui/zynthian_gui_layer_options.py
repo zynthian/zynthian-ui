@@ -23,8 +23,8 @@
 #
 #******************************************************************************
 
-from collections import OrderedDict
 import logging
+from collections import OrderedDict
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -115,14 +115,14 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			else:
 				self.list_data.append((self.toggle_recording, None, "⬤ Start Audio Recording"))
 
-		if 'midi_learn' in eng_options:
-			self.list_data.append((self.midi_learn, None, "MIDI Learn"))
-
 		if 'midi_route' in eng_options and eng_options['midi_route']:
 			self.list_data.append((self.layer_midi_routing, None, "MIDI Routing"))
 
 		if 'midi_chan' in eng_options and eng_options['midi_chan']:
 			self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
+
+		if 'midi_learn' in eng_options:
+			self.list_data.append((self.midi_learn, None, "MIDI Learn"))
 
 
 		self.list_data.append((None, None, "> Chain"))
@@ -281,10 +281,15 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 	def midi_learn_menu_cb(self, options, params):
 		if params == 'enter':
-			self.zyngui.close_screen()
+			if self.zyngui.current_screen != "control":
+				self.zyngui.show_screen("control")
 			self.zyngui.enter_midi_learn()
 		elif params == 'clean':
-			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in all engines in the whole chain?", self.zyngui.screens['layer'].midi_unlearn, self.layer)
+			if self.layer.midi_chan == 256:
+				chain_label = "MAIN"
+			else:
+				chain_label = "CH#{}".format(self.layer.midi_chan + 1)
+			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in ALL engines at {}?".format(chain_label), self.zyngui.screens['layer'].midi_unlearn, self.layer)
 
 
 	def layer_midi_routing(self):

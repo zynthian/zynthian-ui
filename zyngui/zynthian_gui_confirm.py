@@ -107,7 +107,7 @@ class zynthian_gui_confirm():
 			self.main_frame.grid()
 
 
-	def zyncoder_read(self):
+	def zynpot_cb(self, i, dval):
 		pass
 
 

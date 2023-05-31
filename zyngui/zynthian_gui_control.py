@@ -588,7 +588,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if self.zyngui.midi_learn_zctrl and self.zyngui.midi_learn_zctrl.midi_learn_cc:
 			self.zyngui.show_confirm("Do you want to clean MIDI-learn for '{}' control?".format(self.zyngui.midi_learn_zctrl.name), self.midi_unlearn, self.zyngui.midi_learn_zctrl)
 		elif self.zyngui.curlayer and self.zyngui.curlayer.engine:
-			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in {} on MIDI channel {}?".format(self.zyngui.curlayer.engine.name, self.zyngui.curlayer.midi_chan + 1), self.midi_unlearn)
+			if self.zyngui.curlayer.midi_chan == 256:
+				chain_label = "MAIN"
+			else:
+				chain_label = "CH#{}".format(self.zyngui.curlayer.midi_chan + 1)
+			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL controls in {} at {}?".format(self.zyngui.curlayer.engine.name, chain_label), self.midi_unlearn)
 		self.exit_midi_learn()
 
 	def midi_learn_options(self, i, unlearn_only=False):
@@ -602,7 +606,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 				title = "Control MIDI-unlearn"
 			if zctrl.midi_learn_cc:
 				options["Unlearn '{}'".format(zctrl.name)] = i
-			options["Unlearn All"] = None
+			options["Unlearn All"] = ""
 			self.zyngui.screens['option'].config(title, options, self.midi_learn_options_cb)
 			self.zyngui.show_screen('option')
 		except Exception as e:
@@ -614,7 +618,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if parts[0] == "Learn":
 			self.midi_learn(param)
 		elif parts[0] == "Unlearn":
-			self.midi_unlearn(param)
+			if isinstance(param, int):
+				self.midi_unlearn(param)
+			else:
+				self.midi_unlearn_action()
 
 
 	#--------------------------------------------------------------------------
