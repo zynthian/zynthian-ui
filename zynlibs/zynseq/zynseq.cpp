@@ -552,9 +552,9 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         }
 
         if(g_bMetronome && g_nMetronomePtr >= 0) {
-            for(int n = 0; n < nFrames; ++n) {
+            for(int n = nClockOffset; n < nFrames; ++n) {
                 if(g_nMetronomePtr < g_pMetro->size) {
-                    pOutMetronome[n + nClockOffset] = g_pMetro->data[g_nMetronomePtr++] * g_fMetronomeLevel;
+                    pOutMetronome[n] = g_pMetro->data[g_nMetronomePtr++] * g_fMetronomeLevel;
                 }
                 else {
                     g_nMetronomePtr = -1;

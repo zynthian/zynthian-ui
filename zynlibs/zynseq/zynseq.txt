@@ -5,7 +5,7 @@ Zynseq is Zynthian's step sequencer. It has a hierarchical structure of C++ clas
     A scene (previously known as "bank") contains 1 or more sequences
     A sequence contains 1 or more tracks
     A track contains 0 or more patterns
-    A pattern contains 0 or more events
+    A pattern contains 0 or more step events
 
 
 A step event is a class that represents an event within a pattern. It defines:

@@ -165,7 +165,7 @@ class SequenceManager
         */
         size_t getPlayingSequencesCount();
 
-        /** @brief  Stop all colections / sequences
+        /** @brief  Stop all collections / sequences
         */
         void stop();
         
