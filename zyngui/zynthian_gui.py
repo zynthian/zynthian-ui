@@ -2294,6 +2294,7 @@ class zynthian_gui:
 
 	def all_notes_off(self):
 		logging.info("All Notes Off!")
+		self.zynseq.libseq.stop()
 		for chan in range(16):
 			lib_zyncore.ui_send_ccontrol_change(chan, 123, 0)
 		try:
