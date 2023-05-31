@@ -26,23 +26,21 @@
 
 import tkinter
 import logging
-import tkinter.font as tkFont
 from math import sqrt
 from PIL import Image, ImageTk
 from threading import Timer
 from collections import OrderedDict
-import queue
 
 # Zynthian specific modules
+import zynautoconnect
 from zyngui import zynthian_gui_config
-from zyngui.zynthian_gui_patterneditor import EDIT_MODE_NONE
 from . import zynthian_gui_base
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 
-SELECT_BORDER	= zynthian_gui_config.color_on
-INPUT_CHANNEL_LABELS = ['OFF','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16']
-NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]
+SELECT_BORDER = zynthian_gui_config.color_on
+INPUT_CHANNEL_LABELS = ['OFF', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16']
+NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
 #------------------------------------------------------------------------------
 # Zynthian Step-Sequencer Sequence / Pad Trigger GUI Class
@@ -396,7 +394,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		trigger_channel = self.get_trigger_channel()
 		if trigger_channel == 0:
 			trigger_channel = 'OFF'
-		options['Trigger channel ({})'.format(trigger_channel)] = 'Trigger channel'
+		options['Trigger device ({})'.format(trigger_channel)] = 'Trigger device'
 		tally_channel = self.get_tally_channel()
 		if tally_channel == 0:
 			tally_channel = 'OFF'
@@ -447,18 +445,19 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 						break
 				if len(labels) <= chan:
 					labels.append('{}'.format(chan + 1))
-			self.enable_param_editor(self, 'midi_chan', 'MIDI channel', {'labels':labels, 'value_default':self.zyngui.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0), 'value':self.zyngui.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)})
-		elif params == 'Trigger channel':
-			self.enable_param_editor(self, 'trigger_chan', 'Trigger channel', {'labels':INPUT_CHANNEL_LABELS, 'value':self.get_trigger_channel()})
+			self.enable_param_editor(self, 'midi_chan', 'MIDI channel', {'labels': labels, 'value_default': self.zyngui.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0), 'value':self.zyngui.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)})
+		elif params == 'Trigger device':
+			labels = list(filter(None, zynautoconnect.devices_in))
+			self.enable_param_editor(self, 'trigger_chan', 'Trigger device', {'labels': labels, 'value': self.get_trigger_channel()})
 		elif params == 'Trigger note':
 			self.zyngui.enter_midi_learn()
 		elif params == 'Tally channel':
-			self.enable_param_editor(self, 'tally_chan', 'Tally channel', {'labels':INPUT_CHANNEL_LABELS, 'value':self.get_tally_channel()})
+			self.enable_param_editor(self, 'tally_chan', 'Tally channel', {'labels': INPUT_CHANNEL_LABELS, 'value': self.get_tally_channel()})
 		elif params == 'Grid size':
 			labels = []
 			for i in range(1, 9):
 				labels.append("{}x{}".format(i,i))
-			self.enable_param_editor(self, 'grid_size', 'Grid size', {'labels':labels, 'value':self.columns - 1, 'value_default':3}, self.set_grid_size)
+			self.enable_param_editor(self, 'grid_size', 'Grid size', {'labels': labels, 'value': self.columns - 1, 'value_default':3}, self.set_grid_size)
 		elif params == 'Rename sequence':
 			self.rename_sequence()
 

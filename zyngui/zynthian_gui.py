@@ -1820,9 +1820,10 @@ class zynthian_gui:
 					break
 
 				#logging.info("MIDI_UI MESSAGE: {}".format(hex(ev)))
+				idev = ((ev & 0xFF000000) >> 24) - 1
 				evtype = (ev & 0xF00000) >> 20
 				chan = (ev & 0x0F0000) >> 16
-				#logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))
+				#logging.info("UI-MIDI MESSAGE: DEV#{} CH#{} => {}".format(idev, chan, evtype))
 
 				# System Messages (Common & RT)
 				if evtype == 0xF:
@@ -1967,7 +1968,7 @@ class zynthian_gui:
 					elif self.current_screen == 'pattern_editor' and self.zynseq.libseq.isMidiRecord():
 						self.screens['pattern_editor'].midi_note((ev >> 8) & 0x7F)
 					elif self.current_screen == 'zynpad' and self.midi_learn_mode:
-						self.screens['zynpad'].midi_note(chan, (ev >> 8) & 0x7F)
+						self.screens['zynpad'].midi_note(idev, (ev >> 8) & 0x7F)
 				self.status_info['midi'] = True
 				self.last_event_flag = True
 
