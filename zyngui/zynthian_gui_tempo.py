@@ -163,7 +163,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
 		if save_config:
 			zynthian_gui_config.transport_clock_source = val
 			zynconf.update_midi_profile({
-				"ZYNTHIAN_TRANSPORT_CLOCK_SOURCE": str(int(val))
+				"ZYNTHIAN_MIDI_TRANSPORT_CLOCK_SOURCE": str(int(val))
 			})
 
 	def send_controller_value(self, zctrl):
