@@ -436,7 +436,7 @@ class zynthian_gui_base(tkinter.Frame):
 			int(self.status_fs * 2.6),
 			self.status_h - 2,
 			anchor=tkinter.SW,
-			fill=zynthian_gui_config.color_status_midi,
+			fill=zynthian_gui_config.color_status_play_midi,
 			font=("forkawesome", self.status_fs),
 			text="\uf111",
 			state=tkinter.HIDDEN
@@ -446,7 +446,27 @@ class zynthian_gui_base(tkinter.Frame):
 			int(self.status_fs * 3.9),
 			self.status_h - 2,
 			anchor=tkinter.SW,
-			fill=zynthian_gui_config.color_status_midi,
+			fill=zynthian_gui_config.color_status_play_midi,
+			font=("forkawesome", self.status_fs),
+			text="\uf04b",
+			state=tkinter.HIDDEN
+		)
+
+		self.status_seq_rec = self.status_canvas.create_text(
+			int(self.status_fs * 5.2),
+			self.status_h - 2,
+			anchor=tkinter.SW,
+			fill=zynthian_gui_config.color_status_play_seq,
+			font=("forkawesome", self.status_fs),
+			text="\uf111",
+			state=tkinter.HIDDEN
+		)
+
+		self.status_seq_play = self.status_canvas.create_text(
+			int(self.status_fs * 6.5),
+			self.status_h - 2,
+			anchor=tkinter.SW,
+			fill=zynthian_gui_config.color_status_play_seq,
 			font=("forkawesome", self.status_fs),
 			text="\uf04b",
 			state=tkinter.HIDDEN
@@ -549,6 +569,18 @@ class zynthian_gui_base(tkinter.Frame):
 				self.status_canvas.itemconfig(self.status_midi_play, state=tkinter.NORMAL)
 			else:
 				self.status_canvas.itemconfig(self.status_midi_play, state=tkinter.HIDDEN)
+
+			# Display SEQ Rec flag
+			if self.zyngui.zynseq.libseq.isMidiRecord():
+				self.status_canvas.itemconfig(self.status_seq_rec, state=tkinter.NORMAL)
+			else:
+				self.status_canvas.itemconfig(self.status_seq_rec, state=tkinter.HIDDEN)
+
+			# Display SEQ Play flag
+			if self.zyngui.zynseq.libseq.getPlayingSequences() > 0:
+				self.status_canvas.itemconfig(self.status_seq_play, state=tkinter.NORMAL)
+			else:
+				self.status_canvas.itemconfig(self.status_seq_play, state=tkinter.HIDDEN)
 
 			# Display MIDI activity flag
 			if 'midi' in status and status['midi']:

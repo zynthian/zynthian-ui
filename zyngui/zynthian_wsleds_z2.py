@@ -174,7 +174,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 				self.wsleds.setPixelColor(15, self.wscolor_red)
 			elif pb_status == zynseq.SEQ_STOPPED:
 				self.wsleds.setPixelColor(15, self.wscolor_active2)
-		elif self.zyngui.alt_mode:
+		elif (self.zyngui.alt_mode and curscreen != "audio_recorder") or curscreen == "midi_recorder":
 			if self.zyngui.status_info['midi_recorder'] and "PLAY" in self.zyngui.status_info['midi_recorder']:
 				self.wsleds.setPixelColor(15, self.wscolor_green)
 			else:
@@ -196,7 +196,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 		# STOP button
 		if curscreen == "pattern_editor":
 			self.wsleds.setPixelColor(17, self.wscolor_active2)
-		elif self.zyngui.alt_mode:
+		elif (self.zyngui.alt_mode and curscreen != "audio_recorder") or curscreen == "midi_recorder":
 			self.wsleds.setPixelColor(17, self.wscolor_alt)
 		else:
 			self.wsleds.setPixelColor(17, self.wscolor_default)

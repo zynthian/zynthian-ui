@@ -116,12 +116,12 @@ class zynthian_gui_main_menu(zynthian_gui_selector):
 
 
 	def audio_recorder(self, t='S'):
-		logging.info("MIDI Recorder")
-		self.zyngui.show_screen("audio_recorder")
+		logging.info("Audio Recorder/Player")
+		self.zyngui.show_screen("audio_player")
 
 
 	def midi_recorder(self, t='S'):
-		logging.info("MIDI Recorder")
+		logging.info("MIDI Recorder/Player")
 		self.zyngui.show_screen("midi_recorder")
 
 

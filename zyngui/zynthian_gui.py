@@ -1462,8 +1462,6 @@ class zynthian_gui:
 			elif self.current_screen in ("audio_mixer"):
 				if t == 'S':
 					self.zynswitch_short(i)
-				elif t == 'B':
-					self.zynswitch_bold(i)
 
 	# MIDI CUIAs
 	def cuia_program_change(self, params):
@@ -1719,7 +1717,7 @@ class zynthian_gui:
 
 		# Default actions for the standard 4 ZynSwitches
 		if i == 0:
-			pass
+			self.cuia_menu()
 
 		elif i == 1:
 			self.back_screen()
@@ -2296,6 +2294,7 @@ class zynthian_gui:
 
 	def all_notes_off(self):
 		logging.info("All Notes Off!")
+		self.zynseq.libseq.stop()
 		for chan in range(16):
 			lib_zyncore.ui_send_ccontrol_change(chan, 123, 0)
 		try:

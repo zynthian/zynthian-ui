@@ -1182,23 +1182,20 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to handle switch press
-	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	#	i: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
-	def switch(self, switch, type):
-		if switch == zynthian_gui_config.ENC_SELECT and type == 'B':
+	def switch(self, i, type):
+		if i == 1 and type == 'B':
 			self.show_pattern_editor()
 			return True
-		elif switch == zynthian_gui_config.ENC_SNAPSHOT:
+		elif i == 2:
 			if type == 'S':
 				self.zyngui.zynseq.libseq.togglePlayState(self.zyngui.zynseq.bank, self.sequence)
 			elif type == 'B':
 				self.zyngui.zynseq.libseq.setPlayPosition(self.zyngui.zynseq.bank, self.sequence, 0)
 			else:
 				return False
-			return True
-		elif switch == zynthian_gui_config.ENC_LAYER and type == 'B':
-			self.show_menu()
 			return True
 
 
