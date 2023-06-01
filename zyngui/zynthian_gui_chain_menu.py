@@ -74,7 +74,7 @@ class zynthian_gui_chain_menu(zynthian_gui_selector):
 
 
 	def clean_all(self, t='S'):
-		self.zyngui.show_confirm("Do you really want to remove all chains?", self.clean_all_confirmed)
+		self.zyngui.show_confirm("Do you really want to remove ALL chains & sequences?", self.clean_all_confirmed)
 
 
 	def clean_all_confirmed(self, params=None):

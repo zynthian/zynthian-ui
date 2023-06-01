@@ -397,19 +397,19 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 
 	def load_snapshot(self, fpath):
-		self.zyngui.show_loading("Loading snapshot...")
+		self.zyngui.show_loading("loading snapshot...")
 		self.zyngui.screens['layer'].load_snapshot(fpath)
 		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 
 
 	def load_snapshot_chains(self, fpath):
-		self.zyngui.show_loading("Loading snapshot chains...")
+		self.zyngui.show_loading("loading snapshot chains...")
 		self.zyngui.screens['layer'].load_snapshot_layers(fpath)
 		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 
 
 	def load_snapshot_sequences(self, fpath):
-		self.zyngui.show_loading("Loading snapshot sequences...")
+		self.zyngui.show_loading("loading snapshot sequences...")
 		self.zyngui.screens['layer'].load_snapshot_sequences(fpath)
 		self.zyngui.show_screen('zynpad', hmode=self.zyngui.SCREEN_HMODE_RESET)
 
@@ -425,7 +425,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def load_default_snapshot(self):
 		if isfile(self.default_snapshot_fpath):
-			self.zyngui.show_loading("Loading default state...")
+			self.zyngui.show_loading("loading default state...")
 			return self.zyngui.screens['layer'].load_snapshot(self.default_snapshot_fpath)
 
 
@@ -435,7 +435,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def load_last_state_snapshot(self):
 		if isfile(self.last_state_snapshot_fpath):
-			self.zyngui.show_loading("Loading last state...")
+			self.zyngui.show_loading("loading last state...")
 			return self.zyngui.screens['layer'].load_snapshot(self.last_state_snapshot_fpath)
 
 

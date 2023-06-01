@@ -504,6 +504,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.zyngui.zynautoconnect_acquire_lock()
 		while i > 0:
 			i -= 1
+			self.zyngui.set_loading_details("removing {} from CH#{}".format(self.layers[i].engine.name, self.layers[i].midi_chan))
 			logging.debug("Remove layer {} => {} ...".format(i, self.layers[i].get_basepath()))
 			self.layers[i].reset()
 			self.layers.pop(i)
@@ -514,6 +515,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		# Stop ALL engines
 		if stop_engines:
+			self.zyngui.set_loading_details("stopping unused engines")
 			self.zyngui.screens['engine'].stop_unused_engines()
 
 		self.index = 0
@@ -1800,7 +1802,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					jackname = "audioin-{:02d}".format(lss['midi_chan'])
 				else:
 					jackname = None
-				self.zyngui.set_loading_details("starting engine {}".format(lss['engine_name']))
+				self.zyngui.set_loading_details("starting {} in CH#{}".format(lss['engine_name'], lss['midi_chan']))
 				engine = self.zyngui.screens['engine'].start_engine(lss['engine_nick'], jackname)
 				self.layers.append(zynthian_layer(engine, lss['midi_chan'], self.zyngui))
 

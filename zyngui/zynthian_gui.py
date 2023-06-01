@@ -476,7 +476,7 @@ class zynthian_gui:
 		self.osc_init()
 
 		# Loading screen
-		self.show_loading("Starting UI ...")
+		self.show_loading("starting user interface ...")
 
 		# Start polling & threads
 		self.start_polling()
@@ -890,7 +890,7 @@ class zynthian_gui:
 
 
 	def clean_all(self):
-		self.zynmixer.set_mute(256, 1)
+		self.show_loading("cleaning all...")
 		if len(self.screens['layer'].layers) > 0:
 			self.screens['snapshot'].save_last_state_snapshot()
 		self.screens['layer'].reset()
@@ -898,7 +898,7 @@ class zynthian_gui:
 		self.zynmixer.reset_state()
 		self.zynseq.load("")
 		self.show_screen_reset('main_menu')
-		self.zynmixer.set_mute(256, 0)
+
 
 	def create_audio_player(self):
 		if not self.audio_player:
@@ -2134,7 +2134,7 @@ class zynthian_gui:
 				if self.current_screen:
 					self.screens[self.current_screen].refresh_loading()
 			except Exception as err:
-				logging.error(err)
+				logging.error("Screen {} => {}".format(self.current_screen, err))
 			sleep(0.1)
 
 	#------------------------------------------------------------------

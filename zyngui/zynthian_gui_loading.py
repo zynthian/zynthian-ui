@@ -99,8 +99,8 @@ class zynthian_gui_loading:
 	def refresh_loading(self):
 		if self.shown:
 			if self.zyngui.loading:
-				self.loading_index = self.loading_index+1
-				if self.loading_index > len(zynthian_gui_config.loading_imgs) + 1:
+				self.loading_index += 1
+				if self.loading_index >= len(zynthian_gui_config.loading_imgs):
 					self.loading_index = 0
 				self.canvas.itemconfig(self.loading_item, image=zynthian_gui_config.loading_imgs[self.loading_index])
 			else:
