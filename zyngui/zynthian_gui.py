@@ -1436,26 +1436,33 @@ class zynthian_gui:
 	def cuia_v5_zynpot_switch(self, params):
 		i = params[0]
 		t = params[1].upper()
-		if i == 3:
-			if self.current_screen in ("control", "alsa_mixer"):
-				if t == 'S':
-					self.zynswitch_short(i)
-				elif t == 'B':
-					self.screens[self.current_screen].midi_learn_options(i)
-			else:
-				if t == 'S':
-					self.zynswitch_short(i)
-				elif t == 'B':
-					self.zynswitch_bold(i)
-		elif i < 3:
-			if self.current_screen in ("control", "alsa_mixer"):
-				if t == 'S':
-					self.screens[self.current_screen].midi_learn(i)
-				elif t == 'B':
-					self.screens[self.current_screen].midi_learn_options(i)
-			elif self.current_screen in ("audio_mixer"):
-				if t == 'S':
-					self.zynswitch_short(i)
+
+		if self.current_screen in ("control", "alsa_mixer"):
+			if i < 3 and t == 'S':
+				self.screens[self.current_screen].midi_learn(i)
+				return
+			elif t == 'B':
+				self.screens[self.current_screen].midi_learn_options(i)
+				return
+		elif self.current_screen == "audio_mixer":
+			if t == 'S':
+				self.zynswitch_short(i)
+				return
+			elif i == 2 and t == 'B':
+				self.screens["audio_mixer"].midi_learn_menu()
+				return
+		elif self.current_screen == "zynpad":
+			if i == 2 and t == 'S':
+				self.zynswitch_short(i)
+				return
+		elif i == 3:
+			if t == 'S':
+				self.zynswitch_short(i)
+				return
+			elif t == 'B':
+				self.zynswitch_bold(i)
+				return
+
 
 	# MIDI CUIAs
 	def cuia_program_change(self, params):

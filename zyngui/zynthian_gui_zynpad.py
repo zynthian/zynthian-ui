@@ -85,30 +85,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.build_grid()
 
 
-	def enter_midi_learn(self):
-		if self.zyngui.zynseq.libseq.getTriggerChannel() > 15:
-			return
-		self.midi_learn = True
-		labels = ['None']
-		for note in range(128):
-			labels.append("{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1))
-		value = self.zyngui.zynseq.libseq.getTriggerNote(self.bank, self.selected_pad) + 1
-		if value > 128:
-			value = 0
-		self.enable_param_editor(self, 'trigger_note', 'Trigger note', {'labels':labels, 'value':value})
-
-
-	def exit_midi_learn(self):
-		self.midi_learn = False
-		self.disable_param_editor()
-
-
-	def midi_note(self, chan, note):
-		if chan == self.zyngui.zynseq.libseq.getTriggerChannel() and self.midi_learn:
-			self.zyngui.zynseq.libseq.setTriggerNote(self.bank, self.selected_pad, note)
-			self.zyngui.exit_midi_learn()
-
-
 	#Function to set values of encoders
 	def setup_zynpots(self):
 		lib_zyncore.setup_behaviour_zynpot(0, 0)
@@ -495,6 +471,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			else:
 				self.zyngui.zynseq.libseq.setTallyChannel(0xFF)
 
+
 	#	Function to set the playmode of the selected pad
 	def set_play_mode(self, mode):
 		self.zyngui.zynseq.set_play_mode(self.bank, self.selected_pad, mode)
@@ -611,6 +588,34 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.zynpot_cb(self.ctrl_order[3], -1)
 		else:
 			self.zynpot_cb(self.ctrl_order[2], 1)
+
+	#**************************************************************************
+	# MIDI learning management
+	#**************************************************************************
+
+	def enter_midi_learn(self):
+		if self.zyngui.zynseq.libseq.getTriggerChannel() > 15:
+			return
+		self.midi_learn = True
+		labels = ['None']
+		for note in range(128):
+			labels.append("{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1))
+		value = self.zyngui.zynseq.libseq.getTriggerNote(self.bank, self.selected_pad) + 1
+		if value > 128:
+			value = 0
+		self.enable_param_editor(self, 'trigger_note', 'Trigger note', {'labels': labels, 'value': value})
+
+
+	def exit_midi_learn(self):
+		self.midi_learn = False
+		self.disable_param_editor()
+
+
+	def midi_note(self, chan, note):
+		if chan == self.zyngui.zynseq.libseq.getTriggerChannel() and self.midi_learn:
+			self.zyngui.zynseq.libseq.setTriggerNote(self.bank, self.selected_pad, note)
+			self.zyngui.exit_midi_learn()
+
 
 
 #------------------------------------------------------------------------------
