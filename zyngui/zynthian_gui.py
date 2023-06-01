@@ -53,6 +53,7 @@ from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_keyboard
 from zyngui.zynthian_gui_info import zynthian_gui_info
 from zyngui.zynthian_gui_splash import zynthian_gui_splash
+from zyngui.zynthian_gui_loading import zynthian_gui_loading
 from zyngui.zynthian_gui_option import zynthian_gui_option
 from zyngui.zynthian_gui_admin import zynthian_gui_admin
 from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
@@ -223,8 +224,6 @@ class zynthian_gui:
 
 	# Initialize custom switches, analog I/O, TOF sensors, etc.
 	def wiring_midi_setup(self, curlayer_chan=None):
-		logging.info("CUSTOM I/O SETUP...")
-
 		# Configure Custom Switches
 		for i, event in enumerate(zynthian_gui_config.custom_switch_midi_events):
 			if event is not None:
@@ -370,7 +369,11 @@ class zynthian_gui:
 		if parts[0] == "" and part1 == "CUIA":
 			self.set_event_flag()
 			# Execute action
-			self.callable_ui_action(parts[2].upper(), args)
+			cuia = parts[2].upper()
+			if self.loading:
+				logging.debug("BUSY! Ignoring OSC CUIA '{}' => {}".format(cuia, args))
+				return
+			self.callable_ui_action(cuia, args)
 			# Run autoconnect if needed
 			self.zynautoconnect_do()
 		elif part1 in ("MIXER", "DAWOSC"):
@@ -413,7 +416,7 @@ class zynthian_gui:
 	# GUI Core Management
 	# ---------------------------------------------------------------------------
 
-	def start(self):
+	def create_screens(self):
 		# Init Auto-connector
 		zynautoconnect.start()
 
@@ -425,6 +428,7 @@ class zynthian_gui:
 		# Create Core UI Screens
 		self.screens['info'] = zynthian_gui_info()
 		self.screens['splash'] = zynthian_gui_splash()
+		self.screens['loading'] = zynthian_gui_loading()
 		self.screens['confirm'] = zynthian_gui_confirm()
 		self.screens['keyboard'] = zynthian_gui_keyboard.zynthian_gui_keyboard()
 		self.screens['option'] = zynthian_gui_option()
@@ -471,18 +475,36 @@ class zynthian_gui:
 		# Initialize OSC
 		self.osc_init()
 
-		# Add main mixbus chain in case no valid snapshot is loaded
-		self.screens['layer'].add_layer_eng = "AI"
-		self.screens['layer'].add_layer_midich(256, False)
-		self.screens['layer'].refresh()
+		# Loading screen
+		self.show_loading("Starting UI ...")
 
-		# Control Test enabled ...
-		init_screen = "main_menu"
+		# Start polling & threads
+		self.start_polling()
+		self.start_loading_thread()
+		self.start_control_thread()
+		self.start_status_thread()
+
+
+	#--------------------------------------------------------------------------
+	# Start task => Must run as a thread, so we can go into tkinter loop
+	#**************************************************************************
+
+	def run_start_thread(self):
+		self.start_thread = Thread(target=self.start_task, args=())
+		self.start_thread.name = "start"
+		self.start_thread.daemon = True # thread dies with the program
+		self.start_thread.start()
+
+
+	def start_task(self):
+		self.start_loading()
+
 		snapshot_loaded = False
+		# Control Test enabled ...
 		if zynthian_gui_config.control_test_enabled:
 			init_screen = "control_test"
 		else:
-			# TODO: Move this to later (after display shown) and give indication of progress to avoid apparent hang during startup
+			init_screen = "main_menu"
 			# Try to load "last_state" snapshot ...
 			if zynthian_gui_config.restore_last_state:
 				snapshot_loaded = self.screens['snapshot'].load_last_state_snapshot()
@@ -493,6 +515,10 @@ class zynthian_gui:
 		if snapshot_loaded:
 			init_screen = "audio_mixer"
 		else:
+			# Add main mixbus chain in case no valid snapshot is loaded
+			self.screens['layer'].add_layer_eng = "AI"
+			self.screens['layer'].add_layer_midich(256, False)
+			self.screens['layer'].refresh()
 			# Init MIDI Subsystem => MIDI Profile
 			self.init_midi()
 			self.init_midi_services()
@@ -501,17 +527,10 @@ class zynthian_gui:
 		# Show initial screen
 		self.show_screen(init_screen)
 
-		# Start polling threads
-		self.start_polling()
-		self.start_loading_thread()
-		self.start_control_thread()
-		self.start_status_thread()
+		self.stop_loading()
 
 		# Run autoconnect if needed
 		self.zynautoconnect_do()
-
-		# Initialize MPE Zones
-		#self.init_mpe_zones(0, 2)
 
 
 	def stop(self):
@@ -715,6 +734,16 @@ class zynthian_gui:
 		self.screens['splash'].show(text)
 		self.current_screen = 'splash'
 		self.hide_screens(exclude='splash')
+
+
+	def show_loading(self, title="", details=""):
+		self.screens['loading'].show(title, details)
+		self.current_screen = 'loading'
+		self.hide_screens(exclude='loading')
+
+
+	def set_loading_details(self, details):
+		self.screens['loading'].set_details(details)
 
 
 	def calibrate_touchscreen(self):
@@ -1652,7 +1681,7 @@ class zynthian_gui:
 			self.show_screen_reset("admin")
 
 		elif i == 1:
-			self.callable_ui_action("ALL_SOUNDS_OFF")
+			self.cuia_all_sounds_off()
 
 		elif i == 2:
 			self.show_screen_reset("zynpad")
@@ -1812,7 +1841,7 @@ class zynthian_gui:
 		except Exception as err:
 			logging.exception(err)
 
-		self.reset_loading()
+		#self.reset_loading()
 
 
 	#------------------------------------------------------------------
@@ -1898,7 +1927,6 @@ class zynthian_gui:
 								params = self.parse_cuia_params(parts[1])
 							else:
 								params = None
-
 							# Emulate Zynswitch Push/Release with Note On/Off
 							if cuia == "zynswitch" and len(params) == 1:
 								if evtype == 0x8 or vel == 0:
@@ -2074,7 +2102,7 @@ class zynthian_gui:
 	#------------------------------------------------------------------
 
 	def start_loading_thread(self):
-		self.loading_thread=Thread(target=self.loading_refresh, args=())
+		self.loading_thread = Thread(target=self.loading_refresh, args=())
 		self.loading_thread.name = "loading"
 		self.loading_thread.daemon = True # thread dies with the program
 		self.loading_thread.start()
@@ -2085,8 +2113,7 @@ class zynthian_gui:
 			self.loading += 1
 		else:
 			self.loading = 1
-
-		#logging.debug("START LOADING %d" % self.loading)
+		logging.debug("START LOADING %d" % self.loading)
 
 
 	def stop_loading(self):
@@ -2094,7 +2121,7 @@ class zynthian_gui:
 			self.loading -= 1
 		else:
 			self.loading = 0
-		#logging.debug("STOP LOADING %d" % self.loading)
+		logging.debug("STOP LOADING %d" % self.loading)
 
 
 	def reset_loading(self):
@@ -2104,9 +2131,10 @@ class zynthian_gui:
 	def loading_refresh(self):
 		while not self.exit_flag:
 			try:
-				self.screens[self.current_screen].refresh_loading()
+				if self.current_screen:
+					self.screens[self.current_screen].refresh_loading()
 			except Exception as err:
-				logging.error("zynthian_gui.loading_refresh() => %s" % err)
+				logging.error(err)
 			sleep(0.1)
 
 	#------------------------------------------------------------------
@@ -2257,7 +2285,7 @@ class zynthian_gui:
 			try:
 				self.curlayer.refresh()
 			except Exception as e:
-				self.reset_loading()
+				#self.reset_loading()
 				logging.exception(e)
 
 		# Poll

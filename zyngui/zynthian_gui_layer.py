@@ -1779,6 +1779,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.zyngui.zynmixer.set_mute(256, True)
 
 		# Clean all layers, but don't stop unused engines
+		self.zyngui.set_loading_details("cleaning current chains")
 		self.remove_all_layers(False)
 
 		# Reusing Jalv engine instances raise problems (audio routing & jack names, etc..),
@@ -1799,12 +1800,15 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					jackname = "audioin-{:02d}".format(lss['midi_chan'])
 				else:
 					jackname = None
+				self.zyngui.set_loading_details("starting engine {}".format(lss['engine_name']))
 				engine = self.zyngui.screens['engine'].start_engine(lss['engine_nick'], jackname)
 				self.layers.append(zynthian_layer(engine, lss['midi_chan'], self.zyngui))
 
 		# Finally, stop all unused engines
+		self.zyngui.set_loading_details("stopping unused engines")
 		self.zyngui.screens['engine'].stop_unused_engines()
 
+		self.zyngui.set_loading_details("restoring state")
 		self.restore_state_snapshot(snapshot)
 
 		# Restore mute state
