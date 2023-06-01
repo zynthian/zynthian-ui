@@ -92,6 +92,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if layer is None:
 			layer = self.zyngui.curlayer
 
+		# Recalculate list of root layers
+		self.root_layers = self.get_fxchain_roots()
 		try:
 			self.index = self.root_layers.index(self.get_chain_root(layer))
 		except:
