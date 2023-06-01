@@ -1484,7 +1484,7 @@ class zynthian_gui:
 			if i == 2 and t == 'S':
 				self.zynswitch_short(i)
 				return
-		elif i == 3:
+		if i == 3:
 			if t == 'S':
 				self.zynswitch_short(i)
 				return
@@ -2113,7 +2113,7 @@ class zynthian_gui:
 			self.loading += 1
 		else:
 			self.loading = 1
-		logging.debug("START LOADING %d" % self.loading)
+		#logging.debug("START LOADING %d" % self.loading)
 
 
 	def stop_loading(self):
@@ -2121,7 +2121,7 @@ class zynthian_gui:
 			self.loading -= 1
 		else:
 			self.loading = 0
-		logging.debug("STOP LOADING %d" % self.loading)
+		#logging.debug("STOP LOADING %d" % self.loading)
 
 
 	def reset_loading(self):
