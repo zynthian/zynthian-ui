@@ -232,7 +232,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				track_values.append(track)
 			self._ctrl_screens = [
 				['main', ['record', 'gain', 'transport', 'position']],
-				['loop', ['loop', 'loop start', 'loop end']],
+				['loop', ['loop']], #, 'loop start', 'loop end']],
 				['track config', ['left track', 'right track']]
 			]
 		else:
@@ -247,8 +247,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['position', None, 0.0, dur],
 			['left track', None, default_a, [track_labels, track_values]],
 			['right track', None, default_b, [track_labels, track_values]],
-			['loop start', None, 0.0, dur],
-			['loop end', None, dur, dur]
+			#['loop start', None, 0.0, dur],
+			#['loop end', None, dur, dur]
 		]
 		layer.refresh_controllers()
 		self.player.set_track_a(handle, default_a)
@@ -314,12 +314,14 @@ class zynthian_engine_audioplayer(zynthian_engine):
 						ctrl_dict['left track'].set_value(int(value), False)
 					elif id == 6:
 						ctrl_dict['right track'].set_value(int(value), False)
+					"""
 					elif id == 11:
 						ctrl_dict['loop start'].set_value(value, False)
 						self.monitors_dict[handle]['loop start'] = value
 					elif id == 12:
 						ctrl_dict['loop end'].set_value(value, False)
 						self.monitors_dict[handle]['loop end'] = value
+					"""
 					break
 		except Exception as e:
 			logging.error(e)
@@ -347,10 +349,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				self.zyngui.audio_recorder.start_recording()
 			else:
 				self.zyngui.audio_recorder.stop_recording()
+		"""
 		elif zctrl.symbol == "loop start":
 			self.player.set_loop_start(handle, zctrl.value)
 		elif zctrl.symbol == "loop end":
 			self.player.set_loop_end(handle, zctrl.value)
+		"""
 
 
 	def get_monitors_dict(self, handle):
