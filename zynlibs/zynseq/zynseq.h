@@ -208,6 +208,12 @@ uint8_t getTriggerNote(uint8_t bank, uint8_t sequence);
 */
 void setTriggerNote(uint8_t bank, uint8_t sequence, uint8_t note);
 
+/** @brief  Get the sequence triggered by a MIDI note
+*   @param  note MIDI note number
+*   @retval uint16_t Bank and sequence id encoded as 16-bit
+*/
+uint16_t getTriggerSequence(uint8_t note);
+
 // ** Pattern management functions - pattern events are quantized to steps **
 //!@todo Current implementation selects a pattern then operates on it. API may be simpler to comprehend if patterns were acted on directly by passing the pattern index, e.g. clearPattern(index)
 

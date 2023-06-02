@@ -612,10 +612,14 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 
 	def midi_note(self, chan, note):
-		if chan == self.zyngui.zynseq.libseq.getTriggerChannel() and self.midi_learn:
-			self.zyngui.zynseq.libseq.setTriggerNote(self.bank, self.selected_pad, note)
-			self.zyngui.exit_midi_learn()
-
+		if chan == self.zyngui.zynseq.libseq.getTriggerChannel():
+			if self.midi_learn:
+				self.zyngui.zynseq.libseq.setTriggerNote(self.bank, self.selected_pad, note)
+				self.zyngui.exit_midi_learn()
+			else:
+				seq = self.zyngui.zynseq.libseq.getTriggerSequence(note)
+				if seq:
+					self.zyngui.zynseq.libseq.togglePlayState(seq >> 8, seq & 0xFF)
 
 
 #------------------------------------------------------------------------------

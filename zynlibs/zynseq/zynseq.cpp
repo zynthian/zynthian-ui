@@ -400,15 +400,6 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             }
         }
 
-        // Handle MIDI Note On events to trigger sequences
-        if((midiEvent.buffer[0] == g_nTriggerStatusByte) && midiEvent.buffer[2])
-        {
-            uint8_t nNote = midiEvent.buffer[1];
-            uint16_t nSeq = g_seqMan.getTriggerSequence(nNote);
-            if(nSeq)
-                togglePlayState(nSeq >> 8, nSeq & 0xFF);
-        }
-
         // Handle MIDI events for programming patterns from MIDI input
         if(g_bMidiRecord && g_pSequence && pPattern)
         {
@@ -1432,6 +1423,11 @@ void setTriggerNote(uint8_t bank, uint8_t sequence, uint8_t note)
 {
     g_seqMan.setTriggerNote(bank, sequence, note);
     g_bDirty = true;
+}
+
+uint16_t getTriggerSequence(uint8_t note)
+{
+    return g_seqMan.getTriggerSequence(note);
 }
 
 // ** Pattern management functions **
