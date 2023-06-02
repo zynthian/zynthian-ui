@@ -49,8 +49,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.nickname = "AP"
 		self.type = "MIDI Synth"
 		self.options['replace'] = False
-		self.play_on_load = False
-		
+
 		if jackname:
 			self.jackname = jackname
 		else:
@@ -92,9 +91,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 		self.reset()
 
-
-	def set_play_on_load(self, pol=True):
-		self.play_on_load = pol
 
 	# ---------------------------------------------------------------------------
 	# Subproccess Management & IPC
@@ -209,7 +205,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		else:
 			loop = 'one-shot'
 		logging.debug("Loading Audio Track '{}' in player {}".format(preset[0], handle))
-		if self.play_on_load:
+		if handle == 16:
 			self.player.start_playback(handle)
 		if self.player.get_playback_state(handle):
 			transport = 'playing'
