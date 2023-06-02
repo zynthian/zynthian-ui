@@ -181,7 +181,7 @@ def get_pianoteq_binary_info():
 				# Get version info
 				info['version_str'] = m.group(1)
 				info['version'] = list(map(int, str(info['version_str']).split(".")))
-				if info['version'][0] > 7 or info['version'][0] == 7 and info['version'][1] >= 5:
+				if info['version'][0] > 7: # or info['version'][0] == 7 and info['version'][1] >= 5:
 					info['api'] = True
 				else:
 					info['api'] = False
