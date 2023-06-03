@@ -311,7 +311,24 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				self.grid_canvas.itemconfig(self.pads[pad]["state"], image=self.empty_icon)
 			else:
 				self.grid_canvas.itemconfig(self.pads[pad]["state"], image=self.state_icon[self.columns][state])
-	
+
+		note = self.zyngui.zynseq.libseq.getTriggerNote(self.bank, pad)
+		if note < 128:
+			self.update_launchpad_mini(note, state)
+
+
+	def update_launchpad_mini(self, note, state):
+		if state == zynseq.SEQ_PLAYING:
+			vel = 0x3C
+		elif state == zynseq.SEQ_STARTING:
+			# vel = 0x38
+			vel = 0x3A
+		elif state == zynseq.SEQ_STOPPING:
+			vel = 0x0B
+		elif state == zynseq.SEQ_STOPPED:
+			vel = 0x3F
+		lib_zyncore.ctrlfb_send_note_on(0, note, vel)
+
 
 	# Function to move selection cursor
 	def update_selection_cursor(self):
