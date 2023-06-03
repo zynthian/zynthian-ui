@@ -192,26 +192,26 @@ while true; do
 	# Proccess output status
 	case $status in
 		0)
-			#splash_zynthian_message "Powering Off..."
+			#splash_zynthian_message "Powering Off"
 			splash_zynthian_last_message
 			poweroff
 			backlight_control.sh off
 			break
 		;;
 		100)
-			#splash_zynthian_message "Rebooting..."
+			#splash_zynthian_message "Rebooting"
 			splash_zynthian_last_message
 			reboot
 			break
 		;;
 		101)
-			#splash_zynthian_message "Exiting..."
+			#splash_zynthian_message "Exiting"
 			splash_zynthian_last_message
 			backlight_control.sh off
 			break
 		;;
 		102)
-			#splash_zynthian_message "Restarting UI..."
+			#splash_zynthian_message "Restarting UI"
 			splash_zynthian_last_message
 			load_config_env
 			sleep 10
