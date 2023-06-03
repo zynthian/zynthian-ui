@@ -31,7 +31,6 @@ import logging
 import importlib
 from pathlib import Path
 from time import sleep, monotonic
-from glob import glob
 from datetime import datetime
 from threading  import Thread, Lock
 from subprocess import check_output
