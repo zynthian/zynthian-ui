@@ -904,7 +904,6 @@ class zynthian_gui:
 		if not self.audio_player:
 			try:
 				zyngine = self.screens['engine'].start_engine('AP')
-				zyngine.set_play_on_load(True)
 				self.audio_player = zynthian_layer(zyngine, 16, None)
 				zynautoconnect.audio_connect_aux(self.audio_player.jackname)
 			except Exception as e:

@@ -342,7 +342,13 @@ def read_pianoteq_midi_mapping(file):
 	if payload_len + 8 != len(data):
 		print("Error: Wrong length")
 	pos = 8
-	for key in ["Flag 1","Notes Channel","Notes Transposition","Flag 2","Flags 3","Dialect","MIDI Tuning","Map length"]:
+
+	if get_pianoteq_binary_info()["version"][0] < 8:
+		header = ["Flag 1","Notes Channel","Notes Transposition","Dialect","MIDI Tuning","Map length"]
+	else:
+		header = ["Flag 1","Notes Channel","Notes Transposition","Flag 2","Flag 3","Dialect","MIDI Tuning","Map length"]
+
+	for key in header:
 		result[key] = struct.unpack("<i", data[pos:pos+4])[0]
 		pos += 4
 	result["map"] = {}
@@ -364,7 +370,13 @@ def read_pianoteq_midi_mapping(file):
 
 def write_pianoteq_midi_mapping(config, file):
 	data = bytes([25,163,224,56,0,0,0,0])
-	for key, val in {"Flag 1": 6, "Notes Channel": -1, "Notes Transposition": 0, "Flag 2": -1, "Flags 3": -1, "Dialect": 0, "MIDI Tuning": 0}.items():
+
+	if get_pianoteq_binary_info()["version"][0] < 8:
+		header = {"Flag 1": 4, "Notes Channel": -1, "Notes Transposition": 0, "Dialect": 0, "MIDI Tuning": 0}
+	else:
+		header = {"Flag 1": 6, "Notes Channel": -1, "Notes Transposition": 0, "Flag 2": -1, "Flag 3": -1, "Dialect": 0, "MIDI Tuning": 0}
+
+	for key, val in header.items():
 		if key in config:
 			data += struct.pack("<i", config[key])
 		else:
@@ -459,8 +471,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			sr = 44100
 		fix_pianoteq_config(sr)
 		super().start() #TODO: Use lightweight Popen - last attempt stopped RPC working
-		# Wait for RPC interface to be available or 6s for <7.5 with GUI
-		for i in range(6):
+		# Wait for RPC interface to be available or 10s for <7.5 with GUI
+		for i in range(10):
 			info = self.get_info()
 			if info:
 				return
