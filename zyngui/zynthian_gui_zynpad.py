@@ -317,6 +317,11 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.update_launchpad_mini(note, state)
 
 
+
+	def init_launchpad_mini(self):
+		pass
+
+
 	def update_launchpad_mini(self, note, state):
 		if state == zynseq.SEQ_PLAYING:
 			vel = 0x3C
