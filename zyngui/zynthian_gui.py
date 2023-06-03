@@ -525,7 +525,7 @@ class zynthian_gui:
 			self.zynautoconnect()
 
 		# Show initial screen
-		self.show_screen(init_screen)
+		self.show_screen(init_screen, self.SCREEN_HMODE_RESET)
 
 		self.stop_loading()
 
@@ -629,8 +629,11 @@ class zynthian_gui:
 				last_screen = "audio_mixer"
 				break
 
-		logging.debug("CLOSE SCREEN '{}' => Back to '{}'".format(self.current_screen, last_screen))
-		self.show_screen(last_screen)
+		if last_screen in self.screens:
+			logging.debug("CLOSE SCREEN '{}' => Back to '{}'".format(self.current_screen, last_screen))
+			self.show_screen(last_screen)
+		else:
+			self.hide_screens()
 
 
 	def close_modal(self):
@@ -737,9 +740,51 @@ class zynthian_gui:
 
 
 	def show_loading(self, title="", details=""):
-		self.screens['loading'].show(title, details)
+		self.screens['loading'].set_title(title)
+		self.screens['loading'].set_details(details)
+		self.screens['loading'].show()
 		self.current_screen = 'loading'
 		self.hide_screens(exclude='loading')
+
+
+	def show_loading_error(self, title="", details=""):
+		self.screens['loading'].set_error(title)
+		self.screens['loading'].set_details(details)
+		self.screens['loading'].show()
+		self.current_screen = 'loading'
+		self.hide_screens(exclude='loading')
+
+
+	def show_loading_warning(self, title="", details=""):
+		self.screens['loading'].set_warning(title)
+		self.screens['loading'].set_details(details)
+		self.screens['loading'].show()
+		self.current_screen = 'loading'
+		self.hide_screens(exclude='loading')
+
+
+	def show_loading_success(self, title="", details=""):
+		self.screens['loading'].set_warning(title)
+		self.screens['loading'].set_details(details)
+		self.screens['loading'].show()
+		self.current_screen = 'loading'
+		self.hide_screens(exclude='loading')
+
+
+	def set_loading_title(self, title):
+		self.screens['loading'].set_title(title)
+
+
+	def set_loading_error(self, title):
+		self.screens['loading'].set_error(title)
+
+
+	def set_loading_warning(self, title):
+		self.screens['loading'].set_waning(title)
+
+
+	def set_loading_success(self, title):
+		self.screens['loading'].set_success(title)
 
 
 	def set_loading_details(self, details):
@@ -890,7 +935,7 @@ class zynthian_gui:
 
 
 	def clean_all(self):
-		self.show_loading("cleaning all...")
+		self.show_loading("cleaning all")
 		if len(self.screens['layer'].layers) > 0:
 			self.screens['snapshot'].save_last_state_snapshot()
 		self.screens['layer'].reset()

@@ -74,26 +74,44 @@ class zynthian_gui_loading:
 		self.loading_item = self.canvas.create_image(self.width//2, self.height//2, image=zynthian_gui_config.loading_imgs[0], anchor=tkinter.CENTER)
 
 
+	def build_view(self):
+		pass
+
+
 	def hide(self):
 		if self.shown:
 			self.shown = False
 			self.canvas.grid_forget()
 
 
-	def show(self, title="", details=""):
-		self.set_title(title)
-		self.set_details(details)
+	def show(self):
 		if not self.shown:
 			self.shown = True
 			self.canvas.grid()
 
 
-	def set_title(self, txt=""):
-		self.canvas.itemconfig(self.title_text, text=txt)
+	def set_error(self, txt):
+		self.set_title(txt, zynthian_gui_config.color_error)
 
 
-	def set_details(self, txt=""):
-		self.canvas.itemconfig(self.details_text, text=txt)
+	def set_warning(self, txt):
+		self.set_title(txt, zynthian_gui_config.color_alt2)
+
+
+	def set_success(self, txt):
+		self.set_title(txt, zynthian_gui_config.color_status_play)
+
+
+	def set_title(self, txt, color=None):
+		if color is None:
+			color = zynthian_gui_config.color_header_tx
+		self.canvas.itemconfig(self.title_text, text=txt, fill=color)
+
+
+	def set_details(self, txt, color=None):
+		if color is None:
+			color = zynthian_gui_config.color_tx_off
+		self.canvas.itemconfig(self.details_text, text=txt, fill=color)
 
 
 	def refresh_loading(self):

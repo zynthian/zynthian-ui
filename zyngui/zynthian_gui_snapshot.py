@@ -281,20 +281,20 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			return
 
 		if option == "Load":
-			self.zyngui.show_confirm("Loading %s will destroy current chains & sequences..." % (fname), self.load_snapshot, fpath)
+			self.zyngui.show_confirm("Loading '%s' will destroy current chains & sequences..." % (fname), self.load_snapshot, fpath)
 		elif option == "Load Chains":
-			self.zyngui.show_confirm("Loading chains from %s will destroy current chains..." % (fname), self.load_snapshot_chains, fpath)
+			self.zyngui.show_confirm("Loading chains from '%s' will destroy current chains..." % (fname), self.load_snapshot_chains, fpath)
 		elif option == "Load Sequences":
-			self.zyngui.show_confirm("Loading sequences from %s will destroy current sequences..." % (fname), self.load_snapshot_sequences, fpath)
+			self.zyngui.show_confirm("Loading sequences from '%s' will destroy current sequences..." % (fname), self.load_snapshot_sequences, fpath)
 		elif option == "Save":
-			self.zyngui.show_confirm("Do you really want to overwrite %s?" % (fname), self.save_snapshot, fpath)
+			self.zyngui.show_confirm("Do you really want to overwrite '%s'?" % (fname), self.save_snapshot, fpath)
 		elif option == "Rename":
 			self.zyngui.show_keyboard(self.rename_snapshot, parts[1])
 		elif option == "Set Program":
 			self.zyngui.screens['midi_prog'].config(parts[0], self.set_program)
 			self.zyngui.show_screen('midi_prog')
 		elif option == "Delete":
-			self.zyngui.show_confirm("Do you really want to delete %s" % (fname), self.delete_confirmed, fpath)
+			self.zyngui.show_confirm("Do you really want to delete '%s'" % (fname), self.delete_confirmed, fpath)
 
 
 	def rename_snapshot(self, new_name):
@@ -312,7 +312,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		if new_path[-4:].lower() != '.zss':
 			new_path += '.zss'
 		if isfile(new_path):
-			self.zyngui.show_confirm("Do you really want to overwrite the snapshot %s?" % new_name, self.do_rename, [parts[3], new_path])
+			self.zyngui.show_confirm("Do you really want to overwrite '%s'?" % new_name, self.do_rename, [parts[3], new_path])
 		else:
 			self.do_rename([parts[3], new_path])
 		self.select_listbox_by_name(parts[2][:-4])
@@ -323,14 +323,14 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			os.rename(data[0], data[1])
 			self.fill_list()
 		except Exception as e:
-			logging.warning("Failed to rename snapshot {} to {} => {}".format(data[0], data[1], e))
+			logging.warning("Failed to rename snapshot '{}' to '{}' => {}".format(data[0], data[1], e))
 
 
 	def set_program(self, value):
 		fpath = self.list_data[self.index][0]
 		parts = self.get_parts_from_path(fpath)
 		if parts is None:
-			logging.warning("Wrong snapshot {} => {}".format(self.index, fpath))
+			logging.warning("Wrong snapshot '{}' => '{}'".format(self.index, fpath))
 			return
 
 		try:
@@ -397,19 +397,19 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 
 	def load_snapshot(self, fpath):
-		self.zyngui.show_loading("loading snapshot...")
+		self.zyngui.show_loading("loading snapshot")
 		self.zyngui.screens['layer'].load_snapshot(fpath)
 		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 
 
 	def load_snapshot_chains(self, fpath):
-		self.zyngui.show_loading("loading snapshot chains...")
+		self.zyngui.show_loading("loading snapshot chains")
 		self.zyngui.screens['layer'].load_snapshot_layers(fpath)
 		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 
 
 	def load_snapshot_sequences(self, fpath):
-		self.zyngui.show_loading("loading snapshot sequences...")
+		self.zyngui.show_loading("loading snapshot sequences")
 		self.zyngui.screens['layer'].load_snapshot_sequences(fpath)
 		self.zyngui.show_screen('zynpad', hmode=self.zyngui.SCREEN_HMODE_RESET)
 
@@ -425,7 +425,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def load_default_snapshot(self):
 		if isfile(self.default_snapshot_fpath):
-			self.zyngui.show_loading("loading default state...")
+			self.zyngui.set_loading_title("loading default snapshot")
 			return self.zyngui.screens['layer'].load_snapshot(self.default_snapshot_fpath)
 
 
@@ -435,7 +435,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def load_last_state_snapshot(self):
 		if isfile(self.last_state_snapshot_fpath):
-			self.zyngui.show_loading("loading last state...")
+			self.zyngui.set_loading_title("loading last state")
 			return self.zyngui.screens['layer'].load_snapshot(self.last_state_snapshot_fpath)
 
 
@@ -538,7 +538,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 
 	def set_select_path(self):
-		title = ("snapshots").title()
+		title = "snapshots".title()
 		if not self.bankless_mode and self.bank_dir:
 			title = title + ": " + self.bank_dir
 		self.select_path.set(title)

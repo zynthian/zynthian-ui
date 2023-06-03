@@ -186,7 +186,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def execute_commands(self):
 		self.zyngui.start_loading()
-		
 		error_counter=0
 		for cmd in self.commands:
 			logging.info("Executing Command: %s" % cmd)
@@ -653,41 +652,40 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.zyngui.add_info(" {} => {}\n".format(k,v[0]),v[1])
 
 		self.zyngui.hide_info_timer(5000)
-		self.zyngui.stop_loading()
 
 
 	def start_wifi(self):
+		self.zyngui.show_loading("connecting to WIFI")
 		if not zynconf.start_wifi():
-			self.zyngui.show_info("STARTING WIFI ERROR\n")
-			self.zyngui.add_info("Can't start WIFI network!","WARNING")
-			self.zyngui.hide_info_timer(2000)
-
-		self.fill_list()
+			self.zyngui.set_loading_error("ERROR CONNECTING TO WIFI")
+			self.zyngui.set_loading_details("Can't start WIFI network!")
+			sleep(2.0)
+		self.zyngui.close_screen()
 
 
 	def start_wifi_hotspot(self):
+		self.zyngui.show_loading("starting WIFI HotSpot")
 		if not zynconf.start_wifi_hotspot():
-			self.zyngui.show_info("STARTING WIFI HOTSPOT ERROR\n")
-			self.zyngui.add_info("Can't start WIFI Hotspot!","WARNING")
-			self.zyngui.hide_info_timer(2000)
-
-		self.fill_list()
+			self.zyngui.set_loading_error("ERROR STARTING WIFI HOTSPOT")
+			self.zyngui.set_loading_details("Can't start WIFI HotSpot!")
+			sleep(2.0)
+		self.zyngui.close_screen()
 
 
 	def stop_wifi(self):
 		if not zynconf.stop_wifi():
-			self.zyngui.show_info("STOPPING WIFI ERROR\n")
-			self.zyngui.add_info("Can't stop WIFI network!","WARNING")
-			self.zyngui.hide_info_timer(2000)
-
-		self.fill_list()
+			self.zyngui.show_loading_error("ERROR STOPPING WIFI", "Can't stop WIFI network")
+			sleep(2.0)
+			self.zyngui.close_screen()
+		else:
+			self.fill_list()
 
 
 	def start_vncserver(self, save_config=True):
+		self.zyngui.show_loading("starting VNC")
+
 		# Start VNC for Zynthian-UI
 		if not zynconf.is_service_active("vncserver0"):
-			self.zyngui.start_loading()
-
 			try:
 				logging.info("STARTING VNC-UI SERVICE")
 				check_output("systemctl start novnc0", shell=True)
@@ -695,12 +693,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			except Exception as e:
 				logging.error(e)
 
-			self.zyngui.stop_loading()
 
 		# Start VNC for Engine's native GUIs
 		if not zynconf.is_service_active("vncserver1"):
-			self.zyngui.start_loading()
-
 			# Save state and stop engines
 			if len(self.zyngui.screens['layer'].layers)>0:
 				self.zyngui.screens['snapshot'].save_last_state_snapshot()
@@ -719,22 +714,20 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			if restore_state:
 				self.zyngui.screens['snapshot'].load_last_state_snapshot()
 
-			self.zyngui.stop_loading()
-
 		# Update Config
 		if save_config:
 			zynconf.save_config({ 
 				"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
 			})
 
-		self.show()
+		self.zyngui.close_screen()
 
 
 	def stop_vncserver(self, save_config=True):
+		self.zyngui.show_loading("stopping VNC")
+
 		# Stop VNC for Zynthian-UI
 		if zynconf.is_service_active("vncserver0"):
-			self.zyngui.start_loading()
-
 			try:
 				logging.info("STOPPING VNC-UI SERVICE")
 				check_output("systemctl stop vncserver0", shell=True)
@@ -742,12 +735,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			except Exception as e:
 				logging.error(e)
 
-			self.zyngui.stop_loading()
-
 		# Start VNC for Engine's native GUIs
 		if zynconf.is_service_active("vncserver1"):
-			self.zyngui.start_loading()
-
 			# Save state and stop engines
 			if len(self.zyngui.screens['layer'].layers)>0:
 				self.zyngui.screens['snapshot'].save_last_state_snapshot()
@@ -765,8 +754,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			# Restore state
 			if restore_state:
 				self.zyngui.screens['snapshot'].load_last_state_snapshot()
-				
-			self.zyngui.stop_loading()
 
 		# Update Config
 		if save_config:
@@ -774,7 +761,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
 			})
 
-		self.show()
+		self.zyngui.close_screen()
 
 
 	#Start/Stop VNC Server depending on configuration
