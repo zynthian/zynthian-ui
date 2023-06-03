@@ -727,7 +727,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
 			})
 
-		self.fill_list()
+		self.show()
 
 
 	def stop_vncserver(self, save_config=True):
@@ -774,7 +774,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
 			})
 
-		self.fill_list()
+		self.show()
 
 
 	#Start/Stop VNC Server depending on configuration
