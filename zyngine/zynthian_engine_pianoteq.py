@@ -344,9 +344,9 @@ def read_pianoteq_midi_mapping(file):
 	pos = 8
 
 	if get_pianoteq_binary_info()["version"][0] < 8:
-		header = ["Flag 1","Notes Channel","Notes Transposition","Dialect","MIDI Tuning","Map length"]
+		header = ["Flag 1", "Notes Channel", "Notes Transposition", "Dialect", "MIDI Tuning", "Map length"]
 	else:
-		header = ["Flag 1","Notes Channel","Notes Transposition","Flag 2","Flag 3","Dialect","MIDI Tuning","Map length"]
+		header = ["Flag 1", "Notes Channel", "Notes Transposition", "Flag 2", "Flag 3", "Dialect", "MIDI Tuning", "Map length"]
 
 	for key in header:
 		result[key] = struct.unpack("<i", data[pos:pos+4])[0]
@@ -404,7 +404,8 @@ def write_pianoteq_midi_mapping(config, file):
 
 def save_midi_mapping(file):
 	data = {"map":{}}
-	for cc,param in enumerate(pt_ctrl_map.values()):
+	for i, param in enumerate(pt_ctrl_map.values()):
+		cc = i + 1
 		data["map"][f"Controller {cc}"] = [f"{{SetParameter|3|{param}|0:1}}", 1]
 	data["map"]["Pitch Bend"] = ["{SetParameter|3|PBend|0.458333:0.541667}", 1]
 	write_pianoteq_midi_mapping(data, file)
@@ -592,7 +593,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		param_list = list(pt_ctrl_map.keys())
 		for param in result['result']:
 			if param['id'] in param_list:
-				params[param['id']] = {'name': param['name'], 'value': param['normalized_value'], 'cc': param_list.index(param['id'])}
+				params[param['id']] = {'name': param['name'], 'value': param['normalized_value'], 'cc': param_list.index(param['id']) + 1}
 			else:
 				logging.warning(f"Unknown parameter {param['id']}")
 		return params
