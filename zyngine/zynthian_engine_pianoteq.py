@@ -134,7 +134,6 @@ pt_ctrl_map = OrderedDict((
 	("Limiter Gain", "LimGain")
 ))
 
-
 # ------------------------------------------------------------------------------
 # Pianoteq module helper functions
 # ------------------------------------------------------------------------------
@@ -343,7 +342,13 @@ def read_pianoteq_midi_mapping(file):
 	if payload_len + 8 != len(data):
 		print("Error: Wrong length")
 	pos = 8
-	for key in ["Flag 1","Notes Channel","Notes Transposition","Flag 2","Flags 3","Dialect","MIDI Tuning","Map length"]:
+
+	if get_pianoteq_binary_info()["version"][0] < 8:
+		header = ["Flag 1", "Notes Channel", "Notes Transposition", "Dialect", "MIDI Tuning", "Map length"]
+	else:
+		header = ["Flag 1", "Notes Channel", "Notes Transposition", "Flag 2", "Flag 3", "Dialect", "MIDI Tuning", "Map length"]
+
+	for key in header:
 		result[key] = struct.unpack("<i", data[pos:pos+4])[0]
 		pos += 4
 	result["map"] = {}
@@ -365,7 +370,13 @@ def read_pianoteq_midi_mapping(file):
 
 def write_pianoteq_midi_mapping(config, file):
 	data = bytes([25,163,224,56,0,0,0,0])
-	for key, val in {"Flag 1": 6, "Notes Channel": -1, "Notes Transposition": 0, "Flag 2": -1, "Flags 3": -1, "Dialect": 0, "MIDI Tuning": 0}.items():
+
+	if get_pianoteq_binary_info()["version"][0] < 8:
+		header = {"Flag 1": 4, "Notes Channel": -1, "Notes Transposition": 0, "Dialect": 0, "MIDI Tuning": 0}
+	else:
+		header = {"Flag 1": 6, "Notes Channel": -1, "Notes Transposition": 0, "Flag 2": -1, "Flag 3": -1, "Dialect": 0, "MIDI Tuning": 0}
+
+	for key, val in header.items():
 		if key in config:
 			data += struct.pack("<i", config[key])
 		else:
@@ -393,7 +404,8 @@ def write_pianoteq_midi_mapping(config, file):
 
 def save_midi_mapping(file):
 	data = {"map":{}}
-	for cc,param in enumerate(pt_ctrl_map.values()):
+	for i, param in enumerate(pt_ctrl_map.values()):
+		cc = i + 1
 		data["map"][f"Controller {cc}"] = [f"{{SetParameter|3|{param}|0:1}}", 1]
 	data["map"]["Pitch Bend"] = ["{SetParameter|3|PBend|0.458333:0.541667}", 1]
 	write_pianoteq_midi_mapping(data, file)
@@ -434,7 +446,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.show_demo = True
 		self.command_prompt = None
 		self._ctrls = None
-		self.preset = ['','','','']
+		self.preset = ['', '', '', '']
 		self.params = {}
 		self.overfreq = 1800000
 
@@ -443,7 +455,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 		self.command = f"{PIANOTEQ_BINARY} --prefs {PIANOTEQ_CONFIG_FILE} --midimapping zynthian"
 		if self.info['api']:
-			self.command +=  " --serve 9001"
+			self.command += " --serve 9001"
 		if not self.config_remote_display():
 			self.command += " --headless"
 
@@ -460,8 +472,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			sr = 44100
 		fix_pianoteq_config(sr)
 		super().start() #TODO: Use lightweight Popen - last attempt stopped RPC working
-		# Wait for RPC interface to be available or 6s for <7.5 with GUI
-		for i in range(6):
+		# Wait for RPC interface to be available or 10s for <7.5 with GUI
+		for i in range(10):
 			info = self.get_info()
 			if info:
 				return
@@ -489,7 +501,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	def rpc(self, method, params=None, id=0):
 		url = 'http://127.0.0.1:9001/jsonrpc'
 		if params is None:
-			params=[]
+			params = []
 		payload = {
 			"method": method,
 			"params": params,
@@ -581,7 +593,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		param_list = list(pt_ctrl_map.keys())
 		for param in result['result']:
 			if param['id'] in param_list:
-				params[param['id']] = {'name': param['name'], 'value': param['normalized_value'], 'cc': param_list.index(param['id'])}
+				params[param['id']] = {'name': param['name'], 'value': param['normalized_value'], 'cc': param_list.index(param['id']) + 1}
 			else:
 				logging.warning(f"Unknown parameter {param['id']}")
 		return params
@@ -729,7 +741,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 	def preset_exists(self, bank_info, preset_name):
 		# Instruments are presented as banks in Zynthian UI but user presets are saved in pianoteq banks 
-		presets = self.zynapi_get_presets({'name':'My Presets', 'fullpath':f'{PIANOTEQ_MY_PRESETS_DIR}/My Presets'})
+		presets = self.zynapi_get_presets({'name': 'My Presets', 'fullpath': f'{PIANOTEQ_MY_PRESETS_DIR}/My Presets'})
 		for preset in presets:
 			if preset['name'] == preset_name:
 				return True
@@ -849,7 +861,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		if bank['name'] == '':
 			all_presets = check_output([PIANOTEQ_BINARY, '--list-presets']).decode('utf-8').split('\n')
 			for preset in all_presets:
-				if preset == '' or  '/' in preset: continue
+				if preset == '' or '/' in preset: continue
 				presets.append({
 					'text': preset,
 					'name': preset,

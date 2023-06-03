@@ -43,7 +43,8 @@ from zyngui import zynthian_gui_keybinding
 
 logging.info("STARTING ZYNTHIAN-UI ...")
 zynthian_gui_config.zyngui = zyngui = zynthian_gui()
-zyngui.start()
+zyngui.create_screens()
+zyngui.run_start_thread()
 
 #------------------------------------------------------------------------------
 # Zynlib Callbacks
@@ -63,7 +64,6 @@ def zynpot_cb(i, dval):
 
 lib_zyncore.setup_zynpot_cb(zynpot_cb)
 
-
 #------------------------------------------------------------------------------
 # Reparent Top Window using GTK XEmbed protocol features
 #------------------------------------------------------------------------------
@@ -74,7 +74,7 @@ def flushflush():
 	zynthian_gui_config.top.after(200, flushflush)
 
 
-if zynthian_gui_config.wiring_layout=="EMULATOR":
+if zynthian_gui_config.wiring_layout == "EMULATOR":
 	top_xid = zynthian_gui_config.top.winfo_id()
 	print("Zynthian GUI XID: " + str(top_xid))
 	if len(sys.argv) > 1:
@@ -85,7 +85,6 @@ if zynthian_gui_config.wiring_layout=="EMULATOR":
 		zynthian_gui_config.top.wm_withdraw()
 		flushflush()
 		zynthian_gui_config.top.after(1000, zynthian_gui_config.top.wm_deiconify)
-
 
 #------------------------------------------------------------------------------
 # Signal Catching
@@ -118,7 +117,6 @@ def delete_window():
 
 
 zynthian_gui_config.top.protocol("WM_DELETE_WINDOW", delete_window)
-
 
 #------------------------------------------------------------------------------
 # Key Bindings
@@ -159,7 +157,6 @@ def cb_keybinding(event):
 
 zynthian_gui_config.top.bind("<KeyPress>", cb_keybinding)
 zynthian_gui_config.top.bind("<KeyRelease>", cb_keybinding)
-
 
 #------------------------------------------------------------------------------
 # Mouse/Touch Bindings
