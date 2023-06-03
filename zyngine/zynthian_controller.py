@@ -363,7 +363,7 @@ class zynthian_controller:
 
 						elif self.midi_cc:
 							lib_zyncore.ui_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
-							logging.debug("Sending MIDI Controller '{}', CH{}#CC{}={}".format(self.symbol, self.midi_chan, self.midi_cc, mval))
+							#logging.debug("Sending MIDI Controller '{}', CH{}#CC{}={}".format(self.symbol, self.midi_chan, self.midi_cc, mval))
 
 					except Exception as e:
 						logging.warning("Can't send controller '{}' => {}".format(self.symbol, e))
