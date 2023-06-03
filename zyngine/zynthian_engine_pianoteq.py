@@ -134,7 +134,6 @@ pt_ctrl_map = OrderedDict((
 	("Limiter Gain", "LimGain")
 ))
 
-
 # ------------------------------------------------------------------------------
 # Pianoteq module helper functions
 # ------------------------------------------------------------------------------
@@ -434,7 +433,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.show_demo = True
 		self.command_prompt = None
 		self._ctrls = None
-		self.preset = ['','','','']
+		self.preset = ['', '', '', '']
 		self.params = {}
 		self.overfreq = 1800000
 
@@ -443,7 +442,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 		self.command = f"{PIANOTEQ_BINARY} --prefs {PIANOTEQ_CONFIG_FILE} --midimapping zynthian"
 		if self.info['api']:
-			self.command +=  " --serve 9001"
+			self.command += " --serve 9001"
 		if not self.config_remote_display():
 			self.command += " --headless"
 
@@ -489,7 +488,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	def rpc(self, method, params=None, id=0):
 		url = 'http://127.0.0.1:9001/jsonrpc'
 		if params is None:
-			params=[]
+			params = []
 		payload = {
 			"method": method,
 			"params": params,
@@ -729,7 +728,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 	def preset_exists(self, bank_info, preset_name):
 		# Instruments are presented as banks in Zynthian UI but user presets are saved in pianoteq banks 
-		presets = self.zynapi_get_presets({'name':'My Presets', 'fullpath':f'{PIANOTEQ_MY_PRESETS_DIR}/My Presets'})
+		presets = self.zynapi_get_presets({'name': 'My Presets', 'fullpath': f'{PIANOTEQ_MY_PRESETS_DIR}/My Presets'})
 		for preset in presets:
 			if preset['name'] == preset_name:
 				return True
@@ -849,7 +848,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		if bank['name'] == '':
 			all_presets = check_output([PIANOTEQ_BINARY, '--list-presets']).decode('utf-8').split('\n')
 			for preset in all_presets:
-				if preset == '' or  '/' in preset: continue
+				if preset == '' or '/' in preset: continue
 				presets.append({
 					'text': preset,
 					'name': preset,
