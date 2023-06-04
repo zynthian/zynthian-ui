@@ -506,7 +506,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		self.zyngui.zynautoconnect_acquire_lock()
 		while i > 0:
 			i -= 1
-			self.zyngui.set_loading_details("removing {} from CH#{}".format(self.layers[i].engine.name, self.layers[i].midi_chan))
+			self.zyngui.set_loading_details("removing {} from CH#{}".format(self.layers[i].engine.name, self.layers[i].midi_chan + 1))
 			logging.debug("Remove layer {} => {} ...".format(i, self.layers[i].get_basepath()))
 			self.layers[i].reset()
 			self.layers.pop(i)
