@@ -1804,7 +1804,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					jackname = "audioin-{:02d}".format(lss['midi_chan'])
 				else:
 					jackname = None
-				self.zyngui.set_loading_details("starting {} in CH#{}".format(lss['engine_name'], lss['midi_chan']))
+				self.zyngui.set_loading_details("starting {} in CH#{}".format(lss['engine_name'], lss['midi_chan'] + 1))
 				engine = self.zyngui.screens['engine'].start_engine(lss['engine_nick'], jackname)
 				self.layers.append(zynthian_layer(engine, lss['midi_chan'], self.zyngui))
 
