@@ -274,4 +274,25 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			self.layer.engine.player.start_playback(i)
 
 
+	def update_wsleds(self, wsleds):
+		wsl = self.zyngui.wsleds
+		i = self.get_player_index()
+		if i == 16:
+			color_default = wsl.wscolor_default
+		else:
+			color_default = wsl.wscolor_active2
+		# REC Button
+		if self.zyngui.audio_recorder.get_status():
+			wsl.wsleds.setPixelColor(wsleds[0], wsl.wscolor_red)
+		else:
+			wsl.wsleds.setPixelColor(wsleds[0], color_default)
+		# STOP button
+		wsl.wsleds.setPixelColor(wsleds[1], color_default)
+		# PLAY button:
+		if self.layer.engine.player.get_playback_state(i):
+			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_green)
+		else:
+			wsl.wsleds.setPixelColor(wsleds[2], color_default)
+
+
 #------------------------------------------------------------------------------

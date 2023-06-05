@@ -63,6 +63,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.bank = self.zyngui.zynseq.bank # The last successfully selected bank - used to update stale views
 		self.midi_learn = False
 		self.trigger_device = 0
+		self.trigger_channel = 0
 
 		# Geometry vars
 		self.select_thickness = 1 + int(self.width / 400) # Scale thickness of select border based on screen

@@ -225,10 +225,14 @@ class zynthian_gui_control(zynthian_gui_selector):
 			func = getattr(self.current_widget, "cuia_toggle_play", None)
 			if callable(func):
 				self.cuia_toggle_play = func
+			func = getattr(self.current_widget, "update_wsleds", None)
+			if callable(func):
+				self.update_wsleds = func
 		else:
 			self.cuia_toggle_record = None
 			self.cuia_stop = None
 			self.cuia_toggle_play = None
+			self.update_wsleds = None
 
 
 	def set_controller_screen(self):
