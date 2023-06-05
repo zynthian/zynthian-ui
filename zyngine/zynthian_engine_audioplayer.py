@@ -233,7 +233,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				track_values.append(track)
 			self._ctrl_screens = [
 				['main', ['record', 'gain', 'transport', 'position']],
-				['loop', ['loop', 'loop start', 'loop end']],
+				['loop', ['loop', 'loop start', 'loop end', 'sustain']],
 				['config', ['bend range', 'left track', 'right track']]
 			]
 		else:
@@ -247,6 +247,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['transport', None, transport, ['stopped', 'playing']],
 			['position', None, 0.0, dur],
 			['bend range', None, bend_range, 24],
+			['sustain', 64, 'off', ['off', 'on']],
 			['left track', None, default_a, [track_labels, track_values]],
 			['right track', None, default_b, [track_labels, track_values]],
 			['loop start', None, 0.0, dur],
@@ -322,6 +323,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					elif id == 12:
 						ctrl_dict['loop end'].set_value(value, False)
 						self.monitors_dict[handle]['loop end'] = value
+					elif id == 13:
+						ctrl_dict['sustain'].set_value(value, False)
 					break
 		except Exception as e:
 			logging.error(e)
@@ -355,6 +358,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.player.set_loop_end(handle, zctrl.value)
 		elif zctrl.symbol == "bend range":
 			self.player.set_pitchbend_range(handle, zctrl.value)
+		elif zctrl.symbol == "sustain":
+			self.player.set_sustain(handle, zctrl.value)
 
 
 	def get_monitors_dict(self, handle):
