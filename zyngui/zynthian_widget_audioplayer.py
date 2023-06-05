@@ -98,7 +98,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			0,
 			self.height,
 			fill=zynthian_gui_config.color_ml,
-			state=tkinter.HIDDEN # loop markers currently disabled
+			#state=tkinter.HIDDEN # loop markers currently disabled
 		)
 
 		self.loop_end_line = self.widget_canvas.create_line(
@@ -107,7 +107,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			self.width,
 			self.height,
 			fill=zynthian_gui_config.color_ml,
-			state=tkinter.HIDDEN # loop markers currently disabled
+			#state=tkinter.HIDDEN # loop markers currently disabled
 		)
 
 		self.info_text = self.widget_canvas.create_text(

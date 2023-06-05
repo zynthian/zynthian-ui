@@ -315,6 +315,20 @@ class zynaudioplayer():
 		return self.libaudioplayer.get_track_b(handle)
 
 
+	#	Set pitchbend range
+	#	handle: Index of player
+	#	range: Pitchbend range in semitones
+	def set_pitchbend_range(self, handle, range):
+		return self.libaudioplayer.set_pitchbend_range(handle, range)
+
+
+	#	Get pitchbend range
+	#	handle: Index of player
+	#	Returns: Pitchbend range in semitones
+	def get_pitchbend_range(self, handle):
+		return self.libaudioplayer.get_pitchbend_range(handle)
+
+
 	#	Set file read buffer size
 	#	handle: Index of player
 	#	count: Buffer size in frames

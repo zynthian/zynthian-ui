@@ -37,7 +37,13 @@ enum seekState {
     IDLE        = 0, // Not seeking
     SEEKING     = 1, // Seeking within file
     LOADING     = 2, // Seek complete, loading data from file
-    LOOPING     = 3  // Reached loop end point, need to load from loop start point
+    LOOPING     = 3, // Reached loop end point, need to load from loop start point
+};
+
+enum fileState {
+    FILE_CLOSED  = 0,
+    FILE_OPENING = 1,
+    FILE_OPEN    = 2
 };
 
 struct AUDIO_PLAYER {
@@ -52,7 +58,6 @@ struct AUDIO_PLAYER {
     uint8_t play_state; // Current playback state (STOPPED|STARTING|PLAYING|STOPPING)
     sf_count_t file_read_pos; // Current file read position (frames)
     uint8_t loop; // 1 to loop at end of song
-    uint8_t loop_loaded; // 1 if next loop loaded
     sf_count_t loop_start; // Start of loop in frames from start of file
     sf_count_t loop_start_src; // Start of loop in frames from start of file after SRC
     sf_count_t loop_end; // End of loop in frames from start of file
@@ -90,7 +95,8 @@ struct AUDIO_PLAYER {
     uint8_t last_note_played; // MIDI note number of last note that triggered playback
     double src_ratio; // Samplerate ratio of file
     float pitch_shift; // Factor of pitch shift
-    unsigned int pitch_bend; // Amount of MIDI pitch bend applied (0..16383, centre=8192 (0x2000))
+    float pitch_bend; // Amount of MIDI pitch bend applied +/-range
+    uint8_t pitch_bend_range; // Pitchbend range in semitones
     void * cb_object; // Pointer to the object hosting the callback function
     cb_fn_t * cb_fn; // Pointer to function to receive notification of chage
     float pos_notify_delta; // Position time difference to trigger notification
@@ -104,10 +110,21 @@ jack_nframes_t g_samplerate = 44100; // Playback samplerate set by jackd
 uint8_t g_debug = 0;
 uint8_t g_last_debug = 0;
 char g_supported_codecs[1024];
+uint8_t g_mutex = 0;
 
 #define DPRINTF(fmt, args...) if(g_debug) fprintf(stderr, fmt, ## args)
     
 // **** Internal (non-public) functions ****
+
+void getMutex() {
+    while(g_mutex)
+        usleep(10);
+    g_mutex = 1;
+}
+
+void releaseMutex() {
+    g_mutex = 0;
+}
 
 static inline struct AUDIO_PLAYER * get_player(int player_handle) {
     if(player_handle > MAX_PLAYERS || player_handle < 0)
@@ -147,7 +164,7 @@ char* get_supported_codecs() {
 
 void send_notifications(struct AUDIO_PLAYER * pPlayer, int param) {
     // Send dynamic notifications within this thread, not jack process
-    if(!pPlayer || pPlayer->file_open != 2)
+    if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return;
     if((param == NOTIFY_ALL || param == NOTIFY_TRANSPORT) && pPlayer->last_play_state != pPlayer->play_state) {
         pPlayer->last_play_state = pPlayer->play_state;
@@ -213,11 +230,11 @@ void* file_thread_fn(void * param) {
 
     SNDFILE* pFile = sf_open(pPlayer->filename, SFM_READ, &pPlayer->sf_info);
     if(!pFile || pPlayer->sf_info.channels < 1) {
-        pPlayer->file_open = 0;
+        pPlayer->file_open = FILE_CLOSED;
         fprintf(stderr, "libaudioplayer error: failed to open file %s: %s\n", pPlayer->filename, sf_strerror(pFile));
     }
     if(pPlayer->sf_info.channels < 0) {
-        pPlayer->file_open = 0;
+        pPlayer->file_open = FILE_CLOSED;
         fprintf(stderr, "libaudioplayer error: file %s has no tracks\n", pPlayer->filename);
         int nError = sf_close(pFile);
         if(nError != 0)
@@ -234,21 +251,20 @@ void* file_thread_fn(void * param) {
         pPlayer->last_loop_start = -1;
         pPlayer->loop_end  = pPlayer->sf_info.frames;
         pPlayer->last_loop_end = -1;
-        pPlayer->loop_loaded = 0;
         pPlayer->file_read_pos = 0;
-        pPlayer->pos_notify_delta = 0.1;
         pPlayer->file_read_status = SEEKING;
         pPlayer->src_ratio = (double)g_samplerate / pPlayer->sf_info.samplerate;
         if(pPlayer->src_ratio < 0.1)
             pPlayer->src_ratio = 1;
         srcData.src_ratio = pPlayer->src_ratio;
+        pPlayer->pos_notify_delta = pPlayer->sf_info.frames / g_samplerate / 100;
         pPlayer->output_buffer_size = pPlayer->src_ratio * pPlayer->input_buffer_size;
         pPlayer->ringbuffer_a = jack_ringbuffer_create(pPlayer->output_buffer_size * pPlayer->buffer_count * sizeof(float));
         jack_ringbuffer_mlock(pPlayer->ringbuffer_a);
         pPlayer->ringbuffer_b = jack_ringbuffer_create(pPlayer->output_buffer_size * pPlayer->buffer_count * sizeof(float));
         jack_ringbuffer_mlock(pPlayer->ringbuffer_b);
 
-        pPlayer->file_open = 2;
+        pPlayer->file_open = FILE_OPEN;
 
         // Initialise samplerate converter
         float pBufferIn[pPlayer->input_buffer_size * pPlayer->sf_info.channels]; // Buffer used to read sample data from file
@@ -256,7 +272,8 @@ void* file_thread_fn(void * param) {
         srcData.data_in = pBufferIn;
         srcData.data_out = pBufferOut;
         pPlayer->pitch_shift = 1.0;
-        pPlayer->pitch_bend = 0x2000;
+        pPlayer->pitch_bend = 0.0;
+        pPlayer->pitch_bend_range = 2;
         srcData.output_frames = pPlayer->output_buffer_size;
         pPlayer->frames = pPlayer->sf_info.frames * pPlayer->src_ratio;
         pPlayer->loop_end_src = pPlayer->loop_end * pPlayer->src_ratio;
@@ -265,23 +282,24 @@ void* file_thread_fn(void * param) {
         pSrcState = src_new(pPlayer->src_quality, pPlayer->sf_info.channels, &nError);
         if(!pSrcState) {
             fprintf(stderr, "Failed to create a samplerate converter: %d\n", nError);
-            pPlayer->file_open = 0;
+            pPlayer->file_open = FILE_CLOSED;
         }
  
         DPRINTF("Opened file '%s' with samplerate %u, duration: %f\n", pPlayer->filename, pPlayer->sf_info.samplerate, get_duration(pPlayer->handle));
 
-        while(pPlayer->file_open == 2) {
+        while(pPlayer->file_open == FILE_OPEN) {
             if(pPlayer->file_read_status == SEEKING) {
                 // Main thread has signalled seek within file
                 jack_ringbuffer_reset(pPlayer->ringbuffer_a);
                 jack_ringbuffer_reset(pPlayer->ringbuffer_b);
-                pPlayer->loop_loaded = 0;
                 size_t nNewPos = pPlayer->play_pos_frames / pPlayer->src_ratio;
                 sf_count_t pos = sf_seek(pFile, nNewPos, SEEK_SET);
+                getMutex();
                 if(pos >= 0)
                     pPlayer->file_read_pos = pos;
-                DPRINTF("Seeking to %u frames (%fs) src ratio=%f\n", nNewPos, get_position(pPlayer->handle), srcData.src_ratio);
+                //DPRINTF("Seeking to %u frames (%fs) src ratio=%f\n", nNewPos, get_position(pPlayer->handle), srcData.src_ratio);
                 pPlayer->file_read_status = LOADING;
+                releaseMutex();
                 src_reset(pSrcState);
                 nUnusedFrames = 0;
                 srcData.end_of_input = 0;
@@ -289,111 +307,108 @@ void* file_thread_fn(void * param) {
                 // Reached loop end point and need to read from loop start point
                 // Only load one loop to avoid playback of loops after looping disabled
                 sf_count_t pos = sf_seek(pFile, pPlayer->loop_start, SEEK_SET);
+                getMutex();
                 if(pos >= 0)
                     pPlayer->file_read_pos = pos;
                 pPlayer->file_read_status = LOADING;
-                pPlayer->loop_loaded = 1;
+                releaseMutex();
                 src_reset(pSrcState);
                 srcData.end_of_input = 0;
                 nUnusedFrames = 0;
             }
 
-            nMaxFrames = pPlayer->input_buffer_size;
-            int nFramesRead;
-            if(pPlayer->file_read_status == LOADING) {
+            if(pPlayer->file_read_status == LOADING)
+            {
+                int nFramesRead;
                 // Load block of data from file to SRC or output buffer
-                if(pPlayer->loop && pPlayer->file_read_pos + nMaxFrames > pPlayer->loop_end)
-                    nMaxFrames = pPlayer->loop_end - pPlayer->file_read_pos;
-    
-                if(srcData.src_ratio == 1.0) {
-                    // No SRC required so populate SRC output buffer directly
-                    nFramesRead = sf_readf_float(pFile, pBufferOut, nMaxFrames);
-                } else {
-                    // Populate SRC input buffer before SRC process
-                    nMaxFrames = pPlayer->input_buffer_size - nUnusedFrames;
-                    nFramesRead = sf_readf_float(pFile, pBufferIn + nUnusedFrames * pPlayer->sf_info.channels, nMaxFrames);
-                }
-                pPlayer->file_read_pos += nFramesRead;
 
-                if(nFramesRead) {
-                    DPRINTF("libzynaudioplayer read %u frames into input buffer\n", nFramesRead);
-                } else if(pPlayer->loop) {
-                    // Short read - looping so fill from loop start point in file
-                    if(!pPlayer->loop_loaded) {
+                nMaxFrames = pPlayer->input_buffer_size - nUnusedFrames;
+
+                if(jack_ringbuffer_write_space(pPlayer->ringbuffer_a) >= nMaxFrames * sizeof(float) * pPlayer->src_ratio
+                    && jack_ringbuffer_write_space(pPlayer->ringbuffer_b) >= nMaxFrames * sizeof(float)  * pPlayer->src_ratio) {
+
+                    if(pPlayer->loop && pPlayer->file_read_pos + nMaxFrames > pPlayer->loop_end)
+                        // Limit read to loop range
+                        nMaxFrames = pPlayer->loop_end - pPlayer->file_read_pos;
+
+                    if(srcData.src_ratio == 1.0) {
+                        // No SRC required so populate SRC output buffer directly
+                        nFramesRead = sf_readf_float(pFile, pBufferOut, nMaxFrames);
+                    } else {
+                        // Populate SRC input buffer before SRC process
+                        nFramesRead = sf_readf_float(pFile, pBufferIn + nUnusedFrames * pPlayer->sf_info.channels, nMaxFrames);
+                    }
+                    getMutex();
+                    pPlayer->file_read_pos += nFramesRead;
+
+                    if(nFramesRead) {
+                        // Got some audio data to process...
+                        // Remain in LOADING state to trigger next file read when FIFO is sufficient space
+                        releaseMutex();
+                        DPRINTF("libzynaudioplayer read %u frames into input buffer\n", nFramesRead);
+
+                        if(srcData.src_ratio != 1.0) {
+                            // We need to perform SRC on this block of code
+                            srcData.input_frames = nFramesRead;
+                            int rc = src_process(pSrcState, &srcData);
+                            nUnusedFrames = nFramesRead - srcData.input_frames_used;
+                            nFramesRead = srcData.output_frames_gen;
+                            if(rc) {
+                                DPRINTF("SRC failed with error %d, %u frames generated\n", nFramesRead, srcData.output_frames_gen);
+                            } else {
+                                DPRINTF("SRC suceeded - %u frames generated, %u frames used, %u frames unused\n", srcData.output_frames_gen, srcData.input_frames_used, nUnusedFrames);
+                            }
+                            // Shift unused samples to start of buffer
+                            memcpy(pBufferIn, pBufferIn + srcData.input_frames_used * sizeof(float) * pPlayer->sf_info.channels, nUnusedFrames * sizeof(float) * pPlayer->sf_info.channels);
+                        } else {
+                            //DPRINTF("No SRC, read %u frames\n", nFramesRead);
+                        }
+                        // Demux samples and populate playback ring buffers
+                        for(size_t frame = 0; frame < nFramesRead; ++frame) {
+                            float fA = 0.0, fB = 0.0;
+                            size_t sample = frame * pPlayer->sf_info.channels;
+                            if(pPlayer->sf_info.channels > 1) {
+                                if(pPlayer->track_a < 0) {
+                                    // Send sum of odd channels to A
+                                    for(int track = 0; track < pPlayer->sf_info.channels; track += 2)
+                                        fA += pBufferOut[sample + track] / (pPlayer->sf_info.channels / 2);
+                                } else {
+                                    // Send pPlayer->track to A
+                                    fA = pBufferOut[sample + pPlayer->track_a];
+                                }
+                                if(pPlayer->track_b < 0) {
+                                    // Send sum of odd channels to B
+                                    for(int track = 0; track + 1 < pPlayer->sf_info.channels; track += 2)
+                                        fB += pBufferOut[sample + track + 1] / (pPlayer->sf_info.channels / 2);
+                                } else {
+                                    // Send pPlayer->track to B
+                                    fB = pBufferOut[sample + pPlayer->track_b];
+                                }
+                            } else {
+                                // Mono source so send to both outputs
+                                fA = pBufferOut[sample] / 2;
+                                fB = pBufferOut[sample] / 2;
+                            }
+                            int nWrote = jack_ringbuffer_write(pPlayer->ringbuffer_b, (const char*)(&fB), sizeof(float));
+                            if(sizeof(float) < jack_ringbuffer_write(pPlayer->ringbuffer_a, (const char*)(&fA), nWrote)) {
+                                // Shouldn't underun due to previous wait for space but just in case...
+                                fprintf(stderr, "libZynAudioPlayer Underrun during writing to ringbuffer - this should never happen!!!\n");
+                                break;
+                            }
+                        }
+                    } else if(pPlayer->loop) {
+                        // Short read - looping so fill from loop start point in file
                         pPlayer->file_read_status = LOOPING;
                         srcData.end_of_input = 1;
+                        releaseMutex();
                         DPRINTF("libzynaudioplayer read to loop point in input file - setting loading status to looping\n");
                     } else {
+                        // End of file
                         pPlayer->file_read_status = IDLE;
-                        srcData.end_of_input = 0;
+                        srcData.end_of_input = 1;
+                        releaseMutex();
+                        DPRINTF("libzynaudioplayer read to end of input file - setting loading status to IDLE\n");
                     }
-                } else {
-                    // End of file
-                    pPlayer->file_read_status = IDLE;
-                    srcData.end_of_input = 1;
-                    DPRINTF("libzynaudioplayer read to end of input file - setting loading status to IDLE\n");
-                }
-
-                if(srcData.src_ratio != 1.0) {
-                    // We need to perform SRC on this block of code
-                    srcData.input_frames = nFramesRead;
-                    int rc = src_process(pSrcState, &srcData);
-                    nUnusedFrames = nFramesRead - srcData.input_frames_used;
-                    nFramesRead = srcData.output_frames_gen;
-                    if(rc) {
-                        DPRINTF("SRC failed with error %d, %u frames generated\n", nFramesRead, srcData.output_frames_gen);
-                    } else {
-                        DPRINTF("SRC suceeded - %u frames generated, %u frames used, %u frames unused\n", srcData.output_frames_gen, srcData.input_frames_used, nUnusedFrames);
-                    }
-                    // Shift unused samples to start of buffer
-                    memcpy(pBufferIn, pBufferIn + srcData.input_frames_used * sizeof(float) * pPlayer->sf_info.channels, nUnusedFrames * sizeof(float) * pPlayer->sf_info.channels);
-                } else {
-                    //DPRINTF("No SRC, read %u frames\n", nFramesRead);
-                }
-            }
-
-            // Wait until there is sufficient space in ring buffer to add new sample data
-            while(jack_ringbuffer_write_space(pPlayer->ringbuffer_a) < nFramesRead * sizeof(float)
-                && jack_ringbuffer_write_space(pPlayer->ringbuffer_b) < nFramesRead * sizeof(float)
-                || (pPlayer->file_read_status == IDLE)
-                ) {
-                send_notifications(pPlayer, NOTIFY_ALL);
-                usleep(10000); //!@todo Tune sleep for responsiveness / cpu load
-                if(pPlayer->file_open == 0)
-                    break;
-            }
-            
-            // Demux samples and populate playback ring buffers
-            for(size_t frame = 0; frame < nFramesRead; ++frame) {
-                float fA = 0.0, fB = 0.0;
-                size_t sample = frame * pPlayer->sf_info.channels;
-                if(pPlayer->sf_info.channels > 1) {
-                    if(pPlayer->track_a < 0) {
-                        // Send sum of odd channels to A
-                        for(int track = 0; track < pPlayer->sf_info.channels; track += 2)
-                            fA += pBufferOut[sample + track] / (pPlayer->sf_info.channels / 2);
-                    } else {
-                        // Send pPlayer->track to A
-                        fA = pBufferOut[sample + pPlayer->track_a];
-                    }
-                    if(pPlayer->track_b < 0) {
-                        // Send sum of odd channels to B
-                        for(int track = 0; track + 1 < pPlayer->sf_info.channels; track += 2)
-                            fB += pBufferOut[sample + track + 1] / (pPlayer->sf_info.channels / 2);
-                    } else {
-                        // Send pPlayer->track to B
-                        fB = pBufferOut[sample + pPlayer->track_b];
-                    }
-                } else {
-                    // Mono source so send to both outputs
-                    fA = pBufferOut[sample] / 2;
-                    fB = pBufferOut[sample] / 2;
-                }
-                int nWrote = jack_ringbuffer_write(pPlayer->ringbuffer_b, (const char*)(&fB), sizeof(float));
-                if(sizeof(float) < jack_ringbuffer_write(pPlayer->ringbuffer_a, (const char*)(&fA), nWrote)) {
-                    // Shouldn't underun due to previous wait for space but just in case...
-                    fprintf(stderr, "libZynAudioPlayer Underrun during writing to ringbuffer - this should never happen!!!\n");
-                    break;
                 }
             }
             usleep(10000);
@@ -401,7 +416,9 @@ void* file_thread_fn(void * param) {
         }
     }
 
+    getMutex();
     pPlayer->play_state = STOPPED; // Already stopped when clearing file_open but let's be sure!
+    releaseMutex();
     if(pFile) {
         int nError = sf_close(pFile);
         if(nError != 0)
@@ -439,13 +456,13 @@ uint8_t load(int player_handle, const char* filename, void* cb_object, cb_fn_t c
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
-    pPlayer->file_open = 1;
+    pPlayer->file_open = FILE_OPENING;
     if(pthread_create(&pPlayer->file_thread, &attr, file_thread_fn, pPlayer)) {
         fprintf(stderr, "libzynaudioplayer error: failed to create file reading thread\n");
         unload(player_handle);
         return 0;
     }
-    while(pPlayer->file_open == 1) {
+    while(pPlayer->file_open == FILE_OPENING) {
         usleep(10000); //!@todo Optimise wait for file open
     }
 
@@ -453,15 +470,15 @@ uint8_t load(int player_handle, const char* filename, void* cb_object, cb_fn_t c
         pPlayer->cb_object = cb_object;
         pPlayer->cb_fn = cb_fn;
     }
-    return (pPlayer->file_open == 2);
+    return (pPlayer->file_open == FILE_OPEN);
 }
 
 void unload(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open == 0)
+    if(!pPlayer || pPlayer->file_open == FILE_CLOSED)
         return;
     stop_playback(player_handle);
-    pPlayer->file_open = 0;
+    pPlayer->file_open = FILE_CLOSED;
     pPlayer->cb_fn = NULL;
     void* status;
     pthread_join(pPlayer->file_thread, &status);
@@ -471,50 +488,51 @@ void unload(int player_handle) {
 uint8_t save(int player_handle, const char* filename) {
     //!@todo Implement save
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open != 2)
+    if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
     return 0;
 }
 
 const char* get_filename(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open != 2)
+    if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return "";
     return pPlayer->filename;
 }
 
 float get_duration(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(pPlayer && pPlayer->file_open == 2 && pPlayer->sf_info.samplerate)
+    if(pPlayer && pPlayer->file_open == FILE_OPEN && pPlayer->sf_info.samplerate)
         return (float)pPlayer->sf_info.frames / pPlayer->sf_info.samplerate;
     return 0.0f;
 }
 
 void set_position(int player_handle, float time) {
+
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open != 2)
+    if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return;
     sf_count_t frames = time * g_samplerate;
     if(pPlayer->loop) {
         if(frames > pPlayer->loop_end_src)
             frames = pPlayer->loop_end_src;
-        if(frames < pPlayer->loop_start_src)
+        else if(frames < pPlayer->loop_start_src)
             frames = pPlayer->loop_start_src;
     } else {
         if(frames >= pPlayer->frames)
             frames = pPlayer->frames - 1;
     }
+    getMutex();
     pPlayer->play_pos_frames = frames;
     pPlayer->file_read_status = SEEKING;
-    jack_ringbuffer_reset(pPlayer->ringbuffer_b);
-    jack_ringbuffer_reset(pPlayer->ringbuffer_a);
+    releaseMutex();
     DPRINTF("New position requested, setting loading status to SEEKING\n");
     send_notifications(pPlayer, NOTIFY_POSITION);
 }
 
 float get_position(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(pPlayer && pPlayer->file_open == 2 && g_samplerate)
+    if(pPlayer && pPlayer->file_open == FILE_OPEN)
         return (float)(pPlayer->play_pos_frames) / g_samplerate;
     return 0.0;
 }
@@ -523,18 +541,12 @@ void enable_loop(int player_handle, uint8_t bLoop) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
     if(!pPlayer)
         return;
+    getMutex();
     pPlayer->loop = bLoop;
-    if(bLoop) {
-        if(g_samplerate) {
-            if(pPlayer->play_pos_frames < pPlayer->loop_start_src)
-                set_position(player_handle, pPlayer->loop_start_src / g_samplerate);
-            if(pPlayer->play_pos_frames > pPlayer->loop_end_src)
-                set_position(player_handle, pPlayer->loop_end_src / g_samplerate);
-        }
-        if(pPlayer->file_read_status == IDLE)
-            pPlayer->file_read_status = LOOPING;
-        DPRINTF("Looping requested, setting loading status to SEEKING\n");
-    }
+    if(bLoop && pPlayer->play_pos_frames > pPlayer->loop_end_src)
+        pPlayer->play_pos_frames = pPlayer->loop_start_src;
+    pPlayer->file_read_status = SEEKING;
+    releaseMutex();
     send_notifications(pPlayer, NOTIFY_LOOP);
 }
 
@@ -545,10 +557,18 @@ void set_loop_start_time(int player_handle, float time) {
     jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
     if(frames >= pPlayer->loop_end)
         return;
+    getMutex();
     pPlayer->loop_start = frames;
     pPlayer->loop_start_src = pPlayer->loop_start * pPlayer->src_ratio;
-    if(pPlayer->play_pos_frames < pPlayer->loop_start_src)
-        set_position(player_handle, get_position(player_handle));
+    if(pPlayer->loop) {
+        if(pPlayer->play_pos_frames < frames) {
+            releaseMutex();
+            set_position(player_handle, time);
+        }
+        else
+            pPlayer->file_read_status = SEEKING;
+    }
+    releaseMutex();
 }
 
 float get_loop_start_time(int player_handle) {
@@ -565,10 +585,12 @@ void set_loop_end_time(int player_handle, float time) {
     jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
     if(frames <= pPlayer->loop_start || frames >= pPlayer->frames)
         return;
+    getMutex();
     pPlayer->loop_end = frames;
     pPlayer->loop_end_src = pPlayer->loop_end * pPlayer->src_ratio;
-    if(pPlayer->play_pos_frames > pPlayer->loop_end_src)
-        set_position(player_handle, get_position(player_handle));
+    if(pPlayer->loop)
+        pPlayer->file_read_status = SEEKING;
+    releaseMutex();
 }
 
 float get_loop_end_time(int player_handle) {
@@ -580,14 +602,14 @@ float get_loop_end_time(int player_handle) {
 
 uint8_t is_loop(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open != 2)
+    if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
     return(pPlayer->loop);
 }
 
 void start_playback(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(pPlayer && g_jack_client && pPlayer->file_open == 2 && pPlayer->play_state != PLAYING)
+    if(pPlayer && g_jack_client && pPlayer->file_open == FILE_OPEN && pPlayer->play_state != PLAYING)
         pPlayer->play_state = STARTING;
     send_notifications(pPlayer, NOTIFY_TRANSPORT);
 }
@@ -601,35 +623,35 @@ void stop_playback(int player_handle) {
 
 uint8_t get_playback_state(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open != 2)
+    if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return STOPPED;
     return pPlayer->play_state;
 }
 
 int get_samplerate(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open != 2)
+    if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return g_samplerate;
     return pPlayer->sf_info.samplerate;
 }
 
 int get_channels(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open != 2)
+    if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
     return pPlayer->sf_info.channels;
 }
 
 int get_frames(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open != 2)
+    if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
     return pPlayer->sf_info.frames;
 }
 
 int get_format(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open != 2)
+    if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
     return pPlayer->sf_info.format;
 }
@@ -638,15 +660,15 @@ int get_format(int player_handle) {
 
 // Handle JACK process callback
 int on_jack_process(jack_nframes_t nFrames, void * arg) {
+    getMutex();
     for(int i = 0; i < MAX_PLAYERS; ++i) {
         struct AUDIO_PLAYER * pPlayer = (struct AUDIO_PLAYER *) (g_players[i]);
-        if(!pPlayer || pPlayer->file_open != 2)
+        if(!pPlayer || pPlayer->file_open != FILE_OPEN)
             continue;
 
-        size_t r_count = 0; // Quantity of samples removed from queue, i.e. how far advanced through the audio
-        size_t a_count = 0; // Quantity of samples added to jack buffer
+        size_t r_count = 0; // Quantity of frames removed from queue, i.e. how far advanced through the audio
+        size_t a_count = 0; // Quantity of frames added to jack buffer
         float f_count = 0.0; // Amount moved through buffer when pitch shifting
-        float tmp;
         jack_default_audio_sample_t *pOutA = (jack_default_audio_sample_t*)jack_port_get_buffer(pPlayer->jack_out_a, nFrames);
         jack_default_audio_sample_t *pOutB = (jack_default_audio_sample_t*)jack_port_get_buffer(pPlayer->jack_out_b, nFrames);
 
@@ -661,11 +683,10 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                         (jack_ringbuffer_peek(pPlayer->ringbuffer_b, (char*)(&pOutB[a_count]), sizeof(jack_default_audio_sample_t)) < sizeof(jack_default_audio_sample_t))
                     )
                         break;
-
                     while(f_count < a_count) {
                         f_count += pPlayer->pitch_shift;
-                        jack_ringbuffer_read(pPlayer->ringbuffer_a, (char*)(&tmp), sizeof(jack_default_audio_sample_t));
-                        jack_ringbuffer_read(pPlayer->ringbuffer_b, (char*)(&tmp), sizeof(jack_default_audio_sample_t));
+                        jack_ringbuffer_read_advance(pPlayer->ringbuffer_a, sizeof(jack_default_audio_sample_t));
+                        jack_ringbuffer_read_advance(pPlayer->ringbuffer_b, sizeof(jack_default_audio_sample_t));
                         ++r_count;
                         if(jack_ringbuffer_read_space(pPlayer->ringbuffer_a) == 0 || jack_ringbuffer_read_space(pPlayer->ringbuffer_a) == 0)
                             break; // Run out of data to read 
@@ -688,20 +709,16 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 pOutB[offset] *= pPlayer->gain;
             }
             pPlayer->play_pos_frames += r_count;
-            int eof = (pPlayer->file_read_status == IDLE && jack_ringbuffer_read_space(pPlayer->ringbuffer_a) == 0);
             if(pPlayer->loop) {
-                if(pPlayer->play_pos_frames >= pPlayer->loop_end_src || eof) {
+                if(pPlayer->play_pos_frames >= pPlayer->loop_end_src) {
                     pPlayer->play_pos_frames %= pPlayer->loop_end_src;
                     pPlayer->play_pos_frames += pPlayer->loop_start_src;
-                    pPlayer->loop_loaded = 0;
-                    pPlayer->file_read_status = LOOPING;
                 }
             } else {
-                if(pPlayer->play_pos_frames >= pPlayer->frames || eof) {
+                if(a_count < nFrames && pPlayer->file_read_status == IDLE) {
                     // Reached end of file
                     pPlayer->play_pos_frames = 0;
                     pPlayer->play_state = STOPPING;
-                    pPlayer->file_read_status = SEEKING;
                 }
             }
         }
@@ -713,6 +730,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 pOutB[offset] *= 1.0 - ((jack_default_audio_sample_t)offset / a_count);
             }
             pPlayer->play_state = STOPPED;
+            pPlayer->file_read_status = SEEKING;
 
             DPRINTF("libzynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", a_count, nFrames, nFrames - a_count, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
         }
@@ -740,17 +758,18 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 pPlayer->last_note_played = 0;
             } else if(cmd == 0x90) {
                 // Note on
-                pPlayer->pitch_shift  = pow(1.059463094359, 60 - midiEvent.buffer[1]);
+                pPlayer->last_note_played = midiEvent.buffer[1];
+                pPlayer->pitch_shift  = pow(1.059463094359, 60 - pPlayer->last_note_played + pPlayer->pitch_bend);
                 pPlayer->play_pos_frames = pPlayer->loop_start_src;
                 pPlayer->file_read_status = SEEKING;
                 jack_ringbuffer_reset(pPlayer->ringbuffer_a);
                 jack_ringbuffer_reset(pPlayer->ringbuffer_b);
-                pPlayer->last_note_played = midiEvent.buffer[1];
                 pPlayer->play_state = STARTING;
             } else if(cmd == 0xE0) {
                 // Pitchbend
-                //!@todo Pitchbend does nothing - want it to affect live playback (different to note-on that affects whole file)
-                pPlayer->pitch_bend = midiEvent.buffer[1] + 128 * midiEvent.buffer[2];
+                pPlayer->pitch_bend =  pPlayer->pitch_bend_range * (1.0 - (midiEvent.buffer[1] + 128 * midiEvent.buffer[2]) / 8192.0);
+                if(pPlayer->last_note_played)
+                    pPlayer->pitch_shift  = pow(1.059463094359, 60 - pPlayer->last_note_played + pPlayer->pitch_bend);
             }
             #ifdef ENABLE_MIDI
             else if(cmd == 0xB0) {
@@ -783,6 +802,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
             #endif //ENABLE_MIDI
         }
     }
+    releaseMutex();
     return 0;
 }
 
@@ -817,6 +837,8 @@ static void lib_init(void) {
         fprintf(stderr, "libaudioplayer error: cannot activate client\n");
 
     g_samplerate = jack_get_sample_rate(g_jack_client);
+    if(g_samplerate < 10)
+        g_samplerate = 44100;
 }
 
 static void lib_exit(void) {
@@ -845,7 +867,7 @@ int add_player(int player_handle) {
         return 0;
     }
 
-    pPlayer->file_open = 0;
+    pPlayer->file_open = FILE_CLOSED;
     pPlayer->file_read_status = IDLE;
     pPlayer->play_state = STOPPED;
     pPlayer->loop = 0;
@@ -911,48 +933,54 @@ const char* get_jack_client_name() {
 
 uint8_t set_src_quality(int player_handle, unsigned int quality) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open != 2)
+    if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
     if(quality > SRC_LINEAR)
         return 0;
+    getMutex();
     pPlayer->src_quality = quality;
+    releaseMutex();
     send_notifications(pPlayer, NOTIFY_QUALITY);
     return 1;
 }
 
 unsigned int get_src_quality(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open != 2)
+    if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 2;
     return pPlayer->src_quality;
 }
 
 void set_gain(int player_handle, float gain) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open != 2)
+    if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return;
     if(gain < 0 || gain > 2)
         return;
+    getMutex();
     pPlayer->gain = gain;
+    releaseMutex();
     send_notifications(pPlayer, NOTIFY_GAIN);
 }
 
 float get_gain(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open != 2)
+    if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0.0;
     return pPlayer->gain;
 }
 
 void set_track_a(int player_handle, int track) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open != 2)
+    if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return;
-    if(pPlayer->file_open == 2 && track < pPlayer->sf_info.channels) {
+    if(track < pPlayer->sf_info.channels) {
+        getMutex();
         if(pPlayer->sf_info.channels == 1)
             pPlayer->track_a = 0;
         else
             pPlayer->track_a = track;
+        releaseMutex();
     }
     set_position(player_handle, get_position(player_handle));
     send_notifications(pPlayer, NOTIFY_TRACK_A);
@@ -960,13 +988,15 @@ void set_track_a(int player_handle, int track) {
 
 void set_track_b(int player_handle, int track) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open != 2)
+    if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return;
-    if(pPlayer->file_open == 2 && track < pPlayer->sf_info.channels) {
+    if(track < pPlayer->sf_info.channels) {
+        getMutex();
         if(pPlayer->sf_info.channels == 1)
             pPlayer->track_b = 0;
         else
             pPlayer->track_b = track;
+        releaseMutex();
     }
     set_position(player_handle, get_position(player_handle));
     send_notifications(pPlayer, NOTIFY_TRACK_B);
@@ -974,22 +1004,43 @@ void set_track_b(int player_handle, int track) {
 
 int get_track_a(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open != 2)
+    if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
     return pPlayer->track_a;
 }
 
 int get_track_b(int player_handle) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open != 2)
+    if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
     return pPlayer->track_b;
 }
 
+void set_pitchbend_range(int player_handle, uint8_t range) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(!pPlayer || range >= 64)
+        return;
+    getMutex();
+    pPlayer->pitch_bend_range = range;
+    releaseMutex();
+}
+
+uint8_t get_pitchbend_range(int player_handle) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(!pPlayer)
+        return 0;
+    return pPlayer->pitch_bend_range;
+}
+
+
+
 void set_buffer_size(int player_handle, unsigned int size) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(pPlayer && pPlayer->file_open == 0)
+    if(pPlayer && pPlayer->file_open == FILE_CLOSED) {
+        getMutex();
         pPlayer->input_buffer_size = size;
+        releaseMutex();
+    }
 }
 
 unsigned int get_buffer_size(int player_handle) {
@@ -1001,8 +1052,11 @@ unsigned int get_buffer_size(int player_handle) {
 
 void set_buffer_count(int player_handle, unsigned int count) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(pPlayer && pPlayer->file_open == 0 && count > 1)
+    if(pPlayer && pPlayer->file_open == FILE_CLOSED && count > 1) {
+        getMutex();
         pPlayer->buffer_count = count;
+        releaseMutex();
+    }
 }
 
 unsigned int get_buffer_count(int player_handle) {
@@ -1014,8 +1068,11 @@ unsigned int get_buffer_count(int player_handle) {
 
 void set_pos_notify_delta(int player_handle, float time) {
     struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(pPlayer)
+    if(pPlayer) {
+        getMutex();
         pPlayer->pos_notify_delta = time;
+        releaseMutex();
+    }
 }
 
 /**** Global functions ***/

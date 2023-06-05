@@ -237,6 +237,18 @@ int get_track_a(int player_handle);
 */
 int get_track_b(int player_handle);
 
+/** @brief  Set pitchbend range
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  range Range in semitones
+*/
+void set_pitchbend_range(int player_handle, uint8_t range);
+
+/** @brief  Get pitchbend range
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval uint8_t Range in semitones
+*/
+uint8_t get_pitchbend_range(int player_handle);
+
 /** @brief  Set size of file read buffers
 *   @param  player_handle Handle of player provided by init_player()
 *   @param  size Size of buffers in frames
