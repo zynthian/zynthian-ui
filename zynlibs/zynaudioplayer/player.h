@@ -25,7 +25,8 @@ enum {
     NOTIFY_BUFFER_COUNT =  9,
     NOTIFY_DEBUG        = 10,
     NOTIFY_LOOP_START   = 11,
-    NOTIFY_LOOP_END     = 12
+    NOTIFY_LOOP_END     = 12,
+    NOTIFY_SUSTAIN      = 13
 };
 
 /** @brief  Library constructor (initalisation) */

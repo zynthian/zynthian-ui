@@ -93,6 +93,9 @@ struct AUDIO_PLAYER {
     size_t frames; // Quanity of frames after samplerate conversion
     char filename[128];
     uint8_t last_note_played; // MIDI note number of last note that triggered playback
+    uint8_t held_notes[128]; // MIDI notes numbers that have been pressed but not released
+    uint8_t sustain; // True when sustain pedal held
+    uint8_t last_sustain;
     double src_ratio; // Samplerate ratio of file
     float pitch_shift; // Factor of pitch shift
     float pitch_bend; // Amount of MIDI pitch bend applied +/-range
@@ -195,6 +198,11 @@ void send_notifications(struct AUDIO_PLAYER * pPlayer, int param) {
         pPlayer->last_loop_end = pPlayer->loop_end;
         if(pPlayer->cb_fn)
             ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_LOOP_END, get_loop_end_time(pPlayer->handle));
+    }
+    if((param == NOTIFY_ALL || param == NOTIFY_SUSTAIN) && pPlayer->sustain != pPlayer->last_sustain) {
+        pPlayer->last_sustain = pPlayer->sustain;
+        if(pPlayer->cb_fn)
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_SUSTAIN, pPlayer->sustain);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_TRACK_A) && pPlayer->track_a != pPlayer->last_track_a) {
         pPlayer->last_track_a = pPlayer->track_a;
@@ -564,6 +572,7 @@ void set_loop_start_time(int player_handle, float time) {
         if(pPlayer->play_pos_frames < frames) {
             releaseMutex();
             set_position(player_handle, time);
+            return;
         }
         else
             pPlayer->file_read_status = SEEKING;
@@ -751,25 +760,67 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         if(g_players[chan]) {
             struct AUDIO_PLAYER * pPlayer = g_players[chan];
             uint8_t cmd = midiEvent.buffer[0] & 0xF0;
-            if((cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) && pPlayer->last_note_played == midiEvent.buffer[1]) {
+            if(cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) {
                 // Note off
-                stop_playback(pPlayer->handle);
-                pPlayer->pitch_shift = 1.0;
-                pPlayer->last_note_played = 0;
+                pPlayer->held_notes[midiEvent.buffer[1]] = 0;
+                if(pPlayer->last_note_played == midiEvent.buffer[1]) {
+                    uint8_t pressed = 0;
+                    for (uint8_t i = 0; i < 128; ++i) {
+                        if(pPlayer->held_notes[i]) {
+                            pPlayer->last_note_played = i;
+                            pPlayer->pitch_shift  = pow(1.059463094359, 60 - pPlayer->last_note_played + pPlayer->pitch_bend);
+                            pressed = 1;
+                            break;
+                        }
+                    }
+                    if(pressed)
+                        continue;
+                    if(pPlayer->sustain == 0) {
+                        stop_playback(pPlayer->handle);
+                        pPlayer->pitch_shift = 1.0;
+                    }
+                }
             } else if(cmd == 0x90) {
                 // Note on
+                if(pPlayer->play_state == STOPPED) {
+                    pPlayer->play_state = STARTING;
+                    pPlayer->play_pos_frames = pPlayer->loop_start_src;
+                }
                 pPlayer->last_note_played = midiEvent.buffer[1];
+                pPlayer->held_notes[pPlayer->last_note_played] = 1;
                 pPlayer->pitch_shift  = pow(1.059463094359, 60 - pPlayer->last_note_played + pPlayer->pitch_bend);
-                pPlayer->play_pos_frames = pPlayer->loop_start_src;
                 pPlayer->file_read_status = SEEKING;
                 jack_ringbuffer_reset(pPlayer->ringbuffer_a);
                 jack_ringbuffer_reset(pPlayer->ringbuffer_b);
-                pPlayer->play_state = STARTING;
             } else if(cmd == 0xE0) {
                 // Pitchbend
                 pPlayer->pitch_bend =  pPlayer->pitch_bend_range * (1.0 - (midiEvent.buffer[1] + 128 * midiEvent.buffer[2]) / 8192.0);
-                if(pPlayer->last_note_played)
+                if(pPlayer->play_state != STOPPED)
                     pPlayer->pitch_shift  = pow(1.059463094359, 60 - pPlayer->last_note_played + pPlayer->pitch_bend);
+            } else if(cmd == 0xB0) {
+                if(midiEvent.buffer[1] == 64) {
+                    // Sustain pedal
+                    pPlayer->sustain = midiEvent.buffer[2];
+                    if(!pPlayer->sustain) {
+                        uint8_t released = 1;
+                        for(uint8_t i = 0; i < 128; ++i) {
+                            if(pPlayer->held_notes[i]) {
+                                released = 0;
+                                break;
+                            }
+                        }
+                        if(released) {
+                            stop_playback(pPlayer->handle);
+                            pPlayer->pitch_shift = 1.0;
+                        }
+                    }
+                } else if (midiEvent.buffer[1] == 120 || midiEvent.buffer[1] == 123) {
+                    // All off
+                    for(uint8_t i = 0; i < 128; ++i)
+                        pPlayer->held_notes[i] = 0;
+                    stop_playback(pPlayer->handle);
+                    pPlayer->pitch_shift = 1.0;
+                }
             }
             #ifdef ENABLE_MIDI
             else if(cmd == 0xB0) {
@@ -890,7 +941,11 @@ int add_player(int player_handle) {
     pPlayer->loop_start_src = pPlayer->loop_start * pPlayer->src_ratio;
 
     pPlayer->loop_end_src = pPlayer->loop_end;
-    pPlayer->last_note_played = 0;
+    pPlayer->last_note_played = 60;
+    for (uint8_t i = 0; i < 128; ++i)
+        pPlayer->held_notes[i] = 0;
+    pPlayer->sustain = 0;
+    pPlayer->last_sustain = 0;
 
     // Create audio output ports
     char port_name[8];
