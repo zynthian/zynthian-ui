@@ -177,7 +177,7 @@ class zynaudioplayer():
 	#	handle: Index of player
 	#	Returns: True looping enabled
 	def is_loop(self, handle):
-		return (self.libaudioplayer.is_loop(handle) == 1)
+		return (self.libaudioplayer.is_loop(handle) > 0)
 
 
 	#	Get start of loop in seconds from start of file
