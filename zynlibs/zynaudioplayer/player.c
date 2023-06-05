@@ -93,6 +93,7 @@ struct AUDIO_PLAYER {
     size_t frames; // Quanity of frames after samplerate conversion
     char filename[128];
     uint8_t last_note_played; // MIDI note number of last note that triggered playback
+    uint8_t held_notes[128]; // MIDI notes numbers that have been pressed but not released
     double src_ratio; // Samplerate ratio of file
     float pitch_shift; // Factor of pitch shift
     float pitch_bend; // Amount of MIDI pitch bend applied +/-range
@@ -564,6 +565,7 @@ void set_loop_start_time(int player_handle, float time) {
         if(pPlayer->play_pos_frames < frames) {
             releaseMutex();
             set_position(player_handle, time);
+            return;
         }
         else
             pPlayer->file_read_status = SEEKING;
@@ -751,14 +753,27 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         if(g_players[chan]) {
             struct AUDIO_PLAYER * pPlayer = g_players[chan];
             uint8_t cmd = midiEvent.buffer[0] & 0xF0;
-            if((cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) && pPlayer->last_note_played == midiEvent.buffer[1]) {
+            if(cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) {
                 // Note off
+                pPlayer->held_notes[midiEvent.buffer[1]] = 0;
+                if(pPlayer->last_note_played == midiEvent.buffer[1]) {
+                    pPlayer->last_note_played = 0;
+                    for (uint8_t i = 0; i < 128; ++i) {
+                        if(pPlayer->held_notes[i]) {
+                            pPlayer->last_note_played = i;
+                            pPlayer->pitch_shift  = pow(1.059463094359, 60 - pPlayer->last_note_played + pPlayer->pitch_bend);
+                            break;
+                        }
+                    }
+                }
+                if(pPlayer->last_note_played)
+                    continue;
                 stop_playback(pPlayer->handle);
                 pPlayer->pitch_shift = 1.0;
-                pPlayer->last_note_played = 0;
             } else if(cmd == 0x90) {
                 // Note on
                 pPlayer->last_note_played = midiEvent.buffer[1];
+                pPlayer->held_notes[pPlayer->last_note_played] = 1;
                 pPlayer->pitch_shift  = pow(1.059463094359, 60 - pPlayer->last_note_played + pPlayer->pitch_bend);
                 pPlayer->play_pos_frames = pPlayer->loop_start_src;
                 pPlayer->file_read_status = SEEKING;
@@ -891,6 +906,8 @@ int add_player(int player_handle) {
 
     pPlayer->loop_end_src = pPlayer->loop_end;
     pPlayer->last_note_played = 0;
+    for (uint8_t i = 0; i < 128; ++i)
+        pPlayer->held_notes[i] = 0;
 
     // Create audio output ports
     char port_name[8];
