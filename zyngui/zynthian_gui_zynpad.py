@@ -321,7 +321,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 			note = self.zyngui.zynseq.libseq.getTriggerNote(self.bank, pad)
 			if note < 128:
-				self.update_launchpad_mini(note, state)
+				self.update_launchpad_mini(note, state, mode)
 
 
 	def get_midi_device_name(self, idev):
@@ -358,12 +358,15 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				pad = row + col * self.columns
 				note = 16 * row + col
 				state = self.get_pad_state(pad)
+				mode = self.zyngui.zynseq.libseq.getPlayMode(self.bank, pad)
 				self.zyngui.zynseq.libseq.setTriggerNote(self.bank, pad, note)
-				self.update_launchpad_mini(note, state)
+				self.update_launchpad_mini(note, state, mode)
 
 
-	def update_launchpad_mini(self, note, state):
-		if state == zynseq.SEQ_PLAYING:
+	def update_launchpad_mini(self, note, state, mode):
+		if mode == 0:
+			vel = 0xC
+		elif state == zynseq.SEQ_PLAYING:
 			vel = 0x3C
 		elif state == zynseq.SEQ_STARTING:
 			# vel = 0x38
