@@ -597,8 +597,11 @@ void set_loop_end_time(int player_handle, float time) {
     getMutex();
     pPlayer->loop_end = frames;
     pPlayer->loop_end_src = pPlayer->loop_end * pPlayer->src_ratio;
-    if(pPlayer->loop)
+    if(pPlayer->loop) {
+        if(pPlayer->play_pos_frames > frames)
+            pPlayer->play_pos_frames = frames;
         pPlayer->file_read_status = SEEKING;
+    }
     releaseMutex();
 }
 
