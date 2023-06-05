@@ -70,7 +70,6 @@ bool g_bMidiRecord = false; // True to add notes to current pattern from MIDI in
 
 bool g_bSustain = false; // True if sustain pressed during note input
 uint8_t g_nInputRest = 0xFF; // MIDI note number that creates rest in pattern
-uint8_t g_nTriggerStatusByte = MIDI_NOTE_ON | 15; // MIDI status byte which triggers a sequence (optimisation)
 uint16_t g_nVerticalZoom = 12; // Quantity of rows to show in pattern and arranger view
 uint16_t g_nHorizontalZoom = 16; // Quantity of beats to show in arranger view
 char g_sName[16]; // Buffer to hold sequence name so that it can be sent back for Python to parse
@@ -807,8 +806,7 @@ bool load(const char* filename)
             g_dTempo = fileRead16(pFile); //!@todo save and load tempo as fraction of BPM
             g_nBeatsPerBar = fileRead16(pFile);
             g_seqMan.setTriggerChannel(fileRead8(pFile));
-            g_nTriggerStatusByte = MIDI_NOTE_ON | g_seqMan.getTriggerChannel();
-            fileRead8(pFile); //!@todo Set JACK input
+            g_seqMan.setTriggerDevice(fileRead8(pFile));
             fileRead8(pFile); //!@todo Set JACK output
             fileRead8(pFile); // padding
             g_nVerticalZoom = fileRead16(pFile);
@@ -1068,7 +1066,7 @@ void save(const char* filename)
     nPos += fileWrite16(uint16_t(g_dTempo), pFile); //!@todo Write current tempo
     nPos += fileWrite16(g_nBeatsPerBar, pFile); //!@todo Write current beats per bar
     nPos += fileWrite8(g_seqMan.getTriggerChannel(), pFile);
-    nPos += fileWrite8('\0', pFile); // JACK input not yet implemented
+    nPos += fileWrite8(g_seqMan.getTriggerDevice(), pFile);
     nPos += fileWrite8('\0', pFile); // JACK output not yet implemented
     nPos += fileWrite8('\0', pFile);
     nPos += fileWrite16(g_nVerticalZoom, pFile);
@@ -1387,6 +1385,17 @@ void enableMidiClockOutput(bool enable)
     g_bSendMidiClock = enable;
 }
 
+uint8_t getTriggerDevice()
+{
+    return g_seqMan.getTriggerDevice();
+}
+
+void setTriggerDevice(uint8_t idev)
+{
+    g_seqMan.setTriggerDevice(idev);
+    g_bDirty = true;
+}
+
 uint8_t getTriggerChannel()
 {
     return g_seqMan.getTriggerChannel();
@@ -1394,23 +1403,7 @@ uint8_t getTriggerChannel()
 
 void setTriggerChannel(uint8_t channel)
 {
-    if(channel > 15)
-        channel = 0xFF;
     g_seqMan.setTriggerChannel(channel);
-    g_nTriggerStatusByte = MIDI_NOTE_ON | g_seqMan.getTriggerChannel();
-    g_bDirty = true;
-}
-
-uint8_t getTallyChannel()
-{
-    return g_seqMan.getTallyChannel();
-}
-
-void setTallyChannel(uint8_t channel)
-{
-    if(channel > 15)
-        channel = 0xFF;
-    g_seqMan.setTallyChannel(channel);
     g_bDirty = true;
 }
 

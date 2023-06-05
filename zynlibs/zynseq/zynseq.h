@@ -173,16 +173,15 @@ void sendMidiCommand(uint8_t status, uint8_t value1, uint8_t value2);
 */
 void enableMidiClockOutput(bool enable=true);
 
-// ** Status **
-/** @brief  Get MIDI channel used to send tally of sequence state change
-*   @retval uint8_t MIDI channel
+/** @brief  Get MIDI device used for external trigger of sequences
+*   @retval uint8_t MIDI device index
 */
-uint8_t getTallyChannel();
+uint8_t getTriggerDevice();
 
-/** @brief  Set MIDI channel used to send tally of sequence state change
-*   @param channel MIDI channel [0..15 or other value to disable MIDI tally]
+/** @brief  Set MIDI device used for external trigger of sequences
+*   @param idev MIDI device index [0..15 or other value to disable MIDI trigger]
 */
-void setTallyChannel(uint8_t channel);
+void setTriggerDevice(uint8_t idev);
 
 /** @brief  Get MIDI channel used for external trigger of sequences
 *   @retval uint8_t MIDI channel

@@ -108,11 +108,7 @@ For each JACK period:
                                 Set NOTE ON / NOTE OFF for stutter or interpolate value and time (not yet implemented - currently set to end values)
                             When sequence event's value is the same as the step event's end value we move to the next step event because we must have interpolated the full range
 
-
                     For each event, add a MIDI event to the schedule at the next available slot at or after this time
-                For change of play state:
-                    If state tally enabled, add a MIDI event indicating state (tally) at next available slot at or after this time
-
 
             A counter of beats within the bar increments and resets after the configured beats per bar
                 This is used to identify the start of a bar / sync point.

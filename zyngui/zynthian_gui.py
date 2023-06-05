@@ -2269,11 +2269,17 @@ class zynthian_gui:
 			except Exception as e:
 				logging.error(e)
 
-			# Refresh On-Screen Status
+			# Refresh on-screen status
 			try:
 				self.screens[self.current_screen].refresh_status(self.status_info)
 			except AttributeError:
 				pass
+
+			# Refresh status of external controllers
+			try:
+				self.screens["zynpad"].refresh_trigger_device()
+			except Exception as err:
+				logging.error(err)
 
 			# Clean some status_info
 			self.status_info['xrun'] = False

@@ -556,44 +556,6 @@ class TestLibZynSeq(unittest.TestCase):
         self.assertEqual(libseq.getPlayState(sequence), play_state["STOPPING"])
         sleep(2)
         self.assertEqual(libseq.getPlayState(sequence), play_state["STOPPED"])
-    # Sequence play tallies
-    def test_ah05_tallies(self):
-        client.transport_stop()
-        sleep(0.3)
-        global last_rx
-        last_rx = bytes(0)
-        sequence1 = libseq.getSequence(1001,libseq.addTrack(1001))
-        sequence2 = libseq.getSequence(1001,libseq.addTrack(1001))
-        self.assertEqual(libseq.getTallyChannel(sequence1), 255) # New sequences should have tally disabled
-        libseq.setTallyChannel(sequence1, 4)
-        self.assertEqual(libseq.getTallyChannel(sequence1), 4)
-        libseq.setTriggerNote(sequence1, 0x10)
-        libseq.selectPattern(2)
-        libseq.clear()
-        libseq.setBeatsInPattern(2)
-        libseq.addPattern(sequence1, 999, 0, True)
-        libseq.addPattern(sequence2, 999, 0, True)
-        libseq.setPlayMode(sequence1, play_mode["LOOPSYNC"])
-        libseq.setPlayMode(sequence2, play_mode["LOOPSYNC"])
-        libseq.setPlayState(sequence2, play_state["STARTING"]) # Start a loop playing so that we can watch sequence1 state progress
-        sleep(0.1)
-        self.assertEqual(libseq.getPlayState(sequence2), play_state["PLAYING"])
-        libseq.setPlayState(sequence1, play_state["STARTING"])
-        sleep(0.1)
-        self.assertEqual(libseq.getPlayState(sequence1), play_state["STARTING"])
-        self.assertEqual(binascii.hexlify(last_rx).decode(), "941005") # Starting tally = 5
-        sleep(2)
-        self.assertEqual(libseq.getPlayState(sequence1), play_state["PLAYING"])
-        self.assertEqual(binascii.hexlify(last_rx).decode(), "941001") # Playing tally = 1
-        libseq.setPlayState(sequence1, play_state["STOPPING"])
-        libseq.setPlayState(sequence2, play_state["STOPPING"])
-        sleep(0.1)
-        self.assertEqual(libseq.getPlayState(sequence1), play_state["STOPPING"])
-        self.assertEqual(binascii.hexlify(last_rx).decode(), "941004") # Stopping tally = 4
-        sleep(2)
-        self.assertEqual(binascii.hexlify(last_rx).decode(), "941003") # Stopped tally = 3
-        self.assertEqual(libseq.getPlayState(sequence1), play_state["STOPPED"])
-        self.assertEqual(libseq.getPlayState(sequence2), play_state["STOPPED"])
     # Exclusive groups
     def test_ah06_groups(self):
         client.transport_stop()

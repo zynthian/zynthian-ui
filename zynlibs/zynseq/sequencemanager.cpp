@@ -209,33 +209,8 @@ size_t SequenceManager::clock(std::pair<double,double> timeinfo, std::multimap<u
         if(nEventType & 2)
         {
             // Change of state
-            uint8_t nTrigger = getTriggerNote(it->first, it->second);
-            if(m_nTallyChannel < 16 && nTrigger < 128)
-            {
-                MIDI_MESSAGE* pEvent = new MIDI_MESSAGE();
-                pEvent->command = MIDI_NOTE_ON | m_nTallyChannel;
-                pEvent->value1 = nTrigger;
-                switch(pSequence->getPlayState())
-                {
-                    //!@todo Tallies are hard coded to Akai APC but should be configurable
-                    case STOPPED:
-                        pEvent->value2 = 3;
-                        break;
-                    case PLAYING:
-                        pEvent->value2 = 1;
-                        break;
-                    case STOPPING:
-                    case STOPPING_SYNC:
-                        pEvent->value2 = 4;
-                        break;
-                    case STARTING:
-                        pEvent->value2 = 5;
-                        break;
-                    default:
-                        continue;
-                }
-                pSchedule->insert(std::pair<uint32_t,MIDI_MESSAGE*>(nTime, pEvent));
-            }
+            // uint8_t nTrigger = getTriggerNote(it->first, it->second);
+            // It's currently polled from python
         }
         ++it;
     }
@@ -292,23 +267,17 @@ uint8_t SequenceManager::getTriggerChannel()
 
 void SequenceManager::setTriggerChannel(uint8_t channel)
 {
-    if(channel > 15)
-        m_nTriggerChannel = 0xFF;
-    else
-        m_nTriggerChannel = channel;
+	m_nTriggerChannel = channel;
 }
 
-uint8_t SequenceManager::getTallyChannel()
+uint8_t SequenceManager::getTriggerDevice()
 {
-    return m_nTallyChannel;
+    return m_nTriggerDevice;
 }
 
-void SequenceManager::setTallyChannel(uint8_t channel)
+void SequenceManager::setTriggerDevice(uint8_t idev)
 {
-    if(channel > 15)
-        m_nTallyChannel = 0xFF;
-    else
-        m_nTallyChannel = channel;
+	m_nTriggerDevice = idev;
 }
 
 uint16_t SequenceManager::getTriggerSequence(uint8_t note)
