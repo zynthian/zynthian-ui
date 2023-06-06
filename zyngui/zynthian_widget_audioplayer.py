@@ -54,7 +54,10 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.bg_color = "000000"
 		self.waveform_color = "6070B0"
 		self.image = None
+		self.image_hires = None
 		self.loading_image = False
+		self.zoom = 1.0
+		self.offset_factor = 0
 
 		self.widget_canvas = tkinter.Canvas(self,
 			bd=0,
@@ -157,12 +160,24 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			return
 		self.refreshing = True
 		try:
-			pos = self.monitors["pos"]
 			dur = self.monitors["duration"]
+			pos = self.monitors["pos"]
+
+			if self.monitors["zoom"] and self.zoom != self.monitors["zoom"]:
+				self.zoom = self.monitors["zoom"]
+				self.offset_factor = max(0, (pos - dur / self.zoom / 2) / dur)
+				self.offset_factor = min(self.offset_factor, 1 - 1 / self.zoom)
+				if self.image:
+					x = int(self.offset_factor * self.image.width)
+					w = int(self.image.width / self.zoom)
+					self.img = ImageTk.PhotoImage(self.image.crop((x, 0, x + w, 800)).resize((self.width, self.height)))
+					self.widget_canvas.itemconfigure(self.waveform, image=self.img, state=tkinter.NORMAL)
+					self.play_pos = self.loop_start = self.loop_end = -1 # Force redraw of markers
+
 			if self.play_pos != pos:
 				self.play_pos = pos
 				if dur:
-					x =  int(pos / dur * self.width)
+					x = int(self.width * self.zoom * (pos / dur - self.offset_factor))
 				else:
 					x = 0
 				self.widget_canvas.coords(self.play_line, x, 0, x, self.height)
@@ -171,7 +186,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			if self.loop_start != loop_start:
 				self.loop_start = loop_start
 				if dur:
-					x =  int(loop_start / dur * self.width)
+					x = int(self.width * self.zoom * (loop_start / dur - self.offset_factor))
 				else:
 					x = 0
 				self.widget_canvas.coords(self.loop_start_line, x, 0, x, self.height)
@@ -180,7 +195,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			if self.loop_end != loop_end:
 				self.loop_end = loop_end
 				if dur:
-					x =  int(loop_end / dur * self.width)
+					x = int(self.width * self.zoom * (loop_end / dur - self.offset_factor))
 				else:
 					x = 0
 				self.widget_canvas.coords(self.loop_end_line, x, 0, x, self.height)
@@ -226,7 +241,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				waveform_png,
 				1024,
 				800,
-				self.bg_color,
+				#self.bg_color,
+				"444444",
 				self.waveform_color
 			)
 			os.system(cmd)
@@ -240,6 +256,31 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.image.close()
 				self.image = None
 			self.widget_canvas.itemconfigure(self.loading_text, text="Cannot\ndisplay\nwaveform")
+
+		# Rebuild image with high resolution
+		if rebuild and self.image:
+			frames = self.duration * self.monitors["samplerate"]
+			width = int(min(frames / 60, 150000))
+
+			cmd = 'audiowaveform -i "{}" -o "{}" --split-channels -w {} -h {} --zoom auto --background-color {} --waveform-color {} --no-axis-labels > /dev/null 2>&1'.format(
+				self.filename,
+				waveform_png,
+				width,
+				800,
+				self.bg_color,
+				self.waveform_color
+			)
+			os.system(cmd)
+		try:
+			self.image = Image.open(waveform_png)
+			self.img = ImageTk.PhotoImage(self.image.resize((self.width, self.height)))
+			self.widget_canvas.itemconfigure(self.waveform, image=self.img, state=tkinter.NORMAL)
+		except:
+			if self.image:
+				self.image.close()
+				self.image = None
+			self.widget_canvas.itemconfigure(self.loading_text, text="Cannot\ndisplay\nwaveform")
+
 		self.loading_image = False
 	
 
