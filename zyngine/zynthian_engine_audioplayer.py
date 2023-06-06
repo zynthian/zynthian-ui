@@ -71,7 +71,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['right track', None, 0, [['mixdown'], [0]]],
 			['loop start', None, 0.0, 0.0],
 			['loop end', None, 0.0, 0.0],
-			['zoom', None, 1, 100]
+			['zoom', None, 1, ["x1"],[1]]
 		]
 
 		# Controller Screens
