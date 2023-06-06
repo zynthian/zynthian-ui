@@ -265,7 +265,7 @@ void* file_thread_fn(void * param) {
         if(pPlayer->src_ratio < 0.1)
             pPlayer->src_ratio = 1;
         srcData.src_ratio = pPlayer->src_ratio;
-        pPlayer->pos_notify_delta = pPlayer->sf_info.frames / g_samplerate / 100;
+        pPlayer->pos_notify_delta = pPlayer->sf_info.frames / g_samplerate / 400;
         pPlayer->output_buffer_size = pPlayer->src_ratio * pPlayer->input_buffer_size;
         pPlayer->ringbuffer_a = jack_ringbuffer_create(pPlayer->output_buffer_size * pPlayer->buffer_count * sizeof(float));
         jack_ringbuffer_mlock(pPlayer->ringbuffer_a);
@@ -598,8 +598,8 @@ void set_loop_end_time(int player_handle, float time) {
     pPlayer->loop_end = frames;
     pPlayer->loop_end_src = pPlayer->loop_end * pPlayer->src_ratio;
     if(pPlayer->loop) {
-        if(pPlayer->play_pos_frames > frames)
-            pPlayer->play_pos_frames = frames;
+        if(pPlayer->play_pos_frames > pPlayer->loop_end_src)
+            pPlayer->play_pos_frames = pPlayer->loop_end_src;
         pPlayer->file_read_status = SEEKING;
     }
     releaseMutex();
