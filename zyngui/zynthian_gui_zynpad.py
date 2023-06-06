@@ -316,16 +316,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# Trigger MIDI device integration
 	#------------------------------------------------------------------------------------------------------------------
 
-	def get_midi_device_name(self, idev):
-		if idev > 0 and idev <= len(zynautoconnect.devices_in):
-			devname = zynautoconnect.devices_in[idev - 1]
-		else:
-			devname = None
-		if not devname:
-			return "UNKNOWN"
-		else:
-			return devname
-
 
 	def set_trigger_channel(self, chan):
 		self.zyngui.zynseq.libseq.setTriggerChannel(chan)
@@ -333,23 +323,38 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 
 	def set_trigger_device(self, idev):
-		self.zyngui.zynseq.libseq.setTriggerDevice(idev)
+		# Currently selected device, if any ...
 		if self.trigger_device > 0:
+			# Restore routing & remove from feedback list
 			lib_zyncore.zmip_set_route_extdev(self.trigger_device-1, 1)
+			zynautoconnect.remove_midi_fb_port(self.trigger_device-1)
+			# Call end function
+			if callable(self.end_trigger_device):
+				self.end_trigger_device()
+
+		# Set new selected device (idev)
 		self.trigger_device = idev
+		self.zyngui.zynseq.libseq.setTriggerDevice(idev)
+
+		# New selected device => Unroute & add feedback list
 		if self.trigger_device > 0:
 			lib_zyncore.zmip_set_route_extdev(self.trigger_device-1, 0)
+			zynautoconnect.add_midi_fb_port(self.trigger_device-1)
+			zynautoconnect.midi_autoconnect(True)
+
+		# Initialize new selected device
 		self.init_trigger_device(idev)
 
 
 	def init_trigger_device(self, idev=None):
 		if idev is None:
 			idev = self.trigger_device
-		devname = self.get_midi_device_name(idev)
+		devname = zynautoconnect.get_midi_device_name(idev)
 		logging.debug("Initializing Trigger Device {} => {}".format(idev, devname))
 		if devname.startswith("Launchpad_Mini"):
 			self.init_launchpad_mini()
 		else:
+			self.end_trigger_device = None
 			self.update_trigger_device_pad = None
 
 
@@ -369,6 +374,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				self.update_trigger_device_pad(note, state, mode)
 
 
+	end_trigger_device = None
 	update_trigger_device_pad = None
 
 	#------------------------------------------------------------------------------------------------------------------
@@ -392,7 +398,16 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				self.zyngui.zynseq.libseq.setTriggerNote(self.bank, pad, note)
 				self.update_launchpad_mini_pad(note, state, mode)
 
+		self.end_trigger_device = self.end_launchpad_mini
 		self.update_trigger_device_pad = self.update_launchpad_mini_pad
+
+
+	def end_launchpad_mini(self):
+		# Light-Off all LEDs
+		for row in range(8):
+			for col in range(9):
+				note = 16 * row + col
+				lib_zyncore.ctrlfb_send_note_on(0, note, 0xC)
 
 
 	def update_launchpad_mini_pad(self, note, state, mode):
@@ -472,7 +487,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if not self.trigger_device:
 			options['Trigger device (OFF)'] = 'Trigger device'
 		else:
-			devname = self.get_midi_device_name(self.trigger_device).replace("_", " ")
+			devname = zynautoconnect.get_midi_device_name(self.trigger_device).replace("_", " ")
 			options['Trigger device ({})'.format(devname)] = 'Trigger device'
 
 		if not self.trigger_device:

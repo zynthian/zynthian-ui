@@ -60,6 +60,7 @@ lib_zyncore = get_lib_zyncore()
 last_hw_str = None
 max_num_devs = 16
 devices_in = [None for i in range(max_num_devs)]
+extra_midi_fb_ports = []
 
 refresh_time = 0.1
 mididev_refresh_time = 2
@@ -133,6 +134,47 @@ def replicate_connections_to(port1, port2):
 			jclient.disconnect(p, port2)
 
 
+def get_midi_device_name(idev):
+	if idev > 0 and idev <= len(devices_in):
+		devname = devices_in[idev - 1]
+	else:
+		devname = None
+	if not devname:
+		return "UNKNOWN"
+	else:
+		return devname
+
+
+def add_midi_fb_port(idev):
+	global extra_midi_fb_ports
+	try:
+		midi_dev_name = devices_in[idev]
+		extra_midi_fb_ports.append(midi_dev_name)
+	except:
+		logging.debug("Can't add midi device {} to FeedBack list!".format(idev))
+	purge_midi_fb_ports()
+
+def remove_midi_fb_port(idev):
+	global extra_midi_fb_ports
+	try:
+		midi_dev_name = devices_in[idev]
+		extra_midi_fb_ports.remove(midi_dev_name)
+	except:
+		logging.debug("Can't remove midi device {} from FeedBack list!".format(idev))
+	purge_midi_fb_ports()
+
+def clean_midi_fb_ports():
+	global extra_midi_fb_ports
+	extra_midi_fb_ports = []
+
+
+def purge_midi_fb_ports():
+	global extra_midi_fb_ports
+	for xmp in extra_midi_fb_ports:
+		if xmp not in devices_in:
+			extra_midi_fb_ports.remove(xmp)
+
+
 #------------------------------------------------------------------------------
 
 def midi_autoconnect(force=False):
@@ -192,9 +234,9 @@ def midi_autoconnect(force=False):
 	zyngine_list = zynthian_gui_config.zyngui.screens["engine"].zyngines
 
 	#Get Engines MIDI input, output & feedback ports:
-	engines_in={}
-	engines_out=[]
-	engines_fb=[]
+	engines_in = {}
+	engines_out = []
+	engines_fb = []
 	for k, zyngine in zyngine_list.items():
 		if not zyngine.jackname:
 			continue
@@ -463,9 +505,10 @@ def midi_autoconnect(force=False):
 		pass
 
 	#Connect ZynMidiRouter:ctrl_out to enabled MIDI-FB ports (MIDI-Controller FeedBack)
+	midi_fb_ports = zynthian_gui_config.enabled_midi_fb_ports + extra_midi_fb_ports
 	for hw in hw_in:
 		try:
-			if get_port_alias_id(hw) in zynthian_gui_config.enabled_midi_fb_ports:
+			if get_port_alias_id(hw) in midi_fb_ports:
 				jclient.connect(zmr_out['ctrl_out'], hw)
 			else:
 				jclient.disconnect(zmr_out['ctrl_out'], hw)
