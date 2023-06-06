@@ -460,7 +460,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if evtype == 9:
 			note = (ev >> 8) & 0x7F
 			col, row = self._launchpad_mini_get_note_xy(note)
-			logging.debug("COL = {}, ROW= {}".format(col, row))
 			# scene change
 			if col == 8:
 				self.set_bank(row+1)
@@ -605,7 +604,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			for devname in zynautoconnect.devices_in:
 				if devname:
 					labels.append(devname.replace('_', ' '))
-			self.enable_param_editor(self, 'trigger_device', 'Trigger device', {'labels': labels, 'value': self.trigger_device, 'value_default': 0})
+			self.enable_param_editor(self, 'trigger_device', 'Trigger device', {'labels': labels, 'value': self.trigger_device, 'value_default': 0}, self.set_trigger_device)
 		elif params == 'Trigger channel':
 			self.enable_param_editor(self, 'trigger_chan', 'Trigger channel', {'labels': INPUT_CHANNEL_LABELS, 'value': self.trigger_channel})
 		elif params == 'Trigger note':
@@ -643,7 +642,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.zynseq.set_midi_channel(self.bank, self.selected_pad, 0, zctrl.value)
 			self.zyngui.zynseq.set_group(self.bank, self.selected_pad, zctrl.value)
 		elif zctrl.symbol == 'trigger_device':
-			self.set_trigger_device(zctrl.value)
+			#self.set_trigger_device(zctrl.value)
+			pass
 		elif zctrl.symbol == 'trigger_chan':
 			self.zyngui.zynseq.libseq.setTriggerChannel(zctrl.value)
 		elif zctrl.symbol == 'trigger_note':
@@ -743,8 +743,11 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 
 	def back_action(self):
-		self.zyngui.exit_midi_learn()
-		return super().back_action()
+		if self.midi_learn:
+			self.zyngui.exit_midi_learn()
+			return True
+		else:
+			return super().back_action()
 
 
 	#	CUIA Actions
@@ -778,6 +781,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	#**************************************************************************
 
 	def enter_midi_learn(self):
+		if callable(self.midi_event_trigger_device):
+			return
 		self.midi_learn = True
 		labels = ['None']
 		for note in range(128):
@@ -801,9 +806,12 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		#	logging.debug("MIDI EVENT FROM '{}'".format(zynautoconnect.devices_in[idev - 1]))
 
 		if idev == self.trigger_device or chan == (self.trigger_channel - 1):
-			evtype = (ev & 0xF00000) >> 20
+			# Trigger-device MIDI handler
+			if callable(self.midi_event_trigger_device) and self.midi_event_trigger_device(ev):
+				return
 
 			# Zynpad's default midi learn mechanism
+			evtype = (ev & 0xF00000) >> 20
 			if evtype == 9:
 				note = (ev >> 8) & 0x7F
 				if self.midi_learn:
@@ -815,10 +823,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 					if seq:
 						self.zyngui.zynseq.libseq.togglePlayState(seq >> 8, seq & 0xFF)
 						return
-
-			# Trigger-device MIDI handler
-			if callable(self.midi_event_trigger_device):
-				self.midi_event_trigger_device(ev)
 
 
 #------------------------------------------------------------------------------
