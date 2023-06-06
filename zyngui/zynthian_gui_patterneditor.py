@@ -230,9 +230,12 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.last_play_mode = self.zyngui.zynseq.libseq.getPlayMode(self.bank, self.sequence)
 		if self.last_play_mode not in (zynseq.SEQ_LOOP,zynseq.SEQ_LOOPALL):
 			self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynseq.SEQ_LOOP)
-		if zynthian_gui_config.midi_single_active_channel:
-			layer = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(self.channel)
-			self.zyngui.set_curlayer(layer)
+
+		# Set Omni-On mode for Pattern Editor, setting pattern's chain active
+		layer = self.zyngui.screens['layer'].get_root_layer_by_midi_chan(self.channel)
+		self.zyngui.set_curlayer(layer)
+		lib_zyncore.set_midi_active_chan(self.channel)
+
 		zoom = self.zyngui.zynseq.libseq.getVerticalZoom()
 		if zoom != self.zoom:
 			self.set_vzoom(zoom)
@@ -263,6 +266,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.enable_edit(EDIT_MODE_NONE)
 		self.zyngui.zynseq.libseq.setRefNote(self.keymap_offset)
 		self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, self.last_play_mode)
+		# Restore multi-timbral mode if needed
+		if not zynthian_gui_config.midi_single_active_channel:
+			lib_zyncore.set_midi_active_chan(-1)
 
 
 	# Function to add menus
