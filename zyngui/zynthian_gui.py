@@ -2091,7 +2091,6 @@ class zynthian_gui:
 					logging.error(e)
 
 				# Power Save Mode
-				zynthian_gui_config.power_save_secs = 10
 				if zynthian_gui_config.power_save_secs > 0:
 					if self.last_event_flag:
 						self.last_event_ts = monotonic()
