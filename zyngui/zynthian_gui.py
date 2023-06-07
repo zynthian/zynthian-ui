@@ -2091,6 +2091,7 @@ class zynthian_gui:
 					logging.error(e)
 
 				# Power Save Mode
+				zynthian_gui_config.power_save_secs = 10
 				if zynthian_gui_config.power_save_secs > 0:
 					if self.last_event_flag:
 						self.last_event_ts = monotonic()
@@ -2113,10 +2114,12 @@ class zynthian_gui:
 		self.power_save_mode = psm
 		if psm:
 			logging.info("Power Save Mode: ON")
+			self.screens["zynpad"].light_off_trigger_device()
 			check_output("powersave_control.sh on", shell=True)
 		else:
 			logging.info("Power Save Mode: OFF")
 			check_output("powersave_control.sh off", shell=True)
+			self.screens["zynpad"].refresh_trigger_device(force=True)
 
 
 	def set_event_flag(self):
@@ -2202,9 +2205,12 @@ class zynthian_gui:
 			if self.wsleds:
 				self.wsleds.update()
 			sleep(0.2)
+		# On exit ...
+		# Release zynpad trigger device
+		self.screens["zynpad"].end_trigger_device()
+		# Light-off LEDs
 		if self.wsleds:
 			self.wsleds.end()
-
 
 	def refresh_status(self):
 		try:
