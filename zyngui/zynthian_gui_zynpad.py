@@ -254,15 +254,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.redrawing = False
 
 
-	def get_pad_state(self, pad):
-		state = self.zyngui.zynseq.libseq.getPlayState(self.bank, pad)
-		if state == zynseq.SEQ_RESTARTING:
-			state = zynseq.SEQ_PLAYING
-		elif state == zynseq.SEQ_STOPPINGSYNC:
-			state = zynseq.SEQ_STOPPING
-		return state
-
-
 	# Function to refresh pad if it has changed
 	#   pad: Pad index
 	#	force: True to force refresh
@@ -307,15 +298,43 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				self.grid_canvas.itemconfig(self.pads[pad]["state"], image=self.state_icon[self.columns][state])
 
 			if callable(self.update_trigger_device_pad):
-				note = self.zyngui.zynseq.libseq.getTriggerNote(self.bank, pad)
-				if note < 128:
-					self.update_trigger_device_pad(note, state, mode)
+				self.update_trigger_device_pad(pad, state, mode)
+
+
+	#------------------------------------------------------------------------------------------------------------------
+	# Some useful functions
+	#------------------------------------------------------------------------------------------------------------------
+
+	def set_bank(self, bank):
+		self.zyngui.zynseq.select_bank(bank)
+		self.refresh_status(force=True)
+
+
+	def get_pad_state(self, pad):
+		state = self.zyngui.zynseq.libseq.getPlayState(self.bank, pad)
+		if state == zynseq.SEQ_RESTARTING:
+			state = zynseq.SEQ_PLAYING
+		elif state == zynseq.SEQ_STOPPINGSYNC:
+			state = zynseq.SEQ_STOPPING
+		return state
+
+
+	def get_xy_from_pad(self, pad):
+		col = pad // self.columns
+		row = pad % self.columns
+		return (col, row)
+
+
+	def get_pad_from_xy(self, col, row):
+		if col < self.columns and row < self.columns:
+			return col * self.columns + row
+		else:
+			return -1
 
 
 	#------------------------------------------------------------------------------------------------------------------
 	# Trigger MIDI device integration
 	#------------------------------------------------------------------------------------------------------------------
-
 
 	def set_trigger_channel(self, chan):
 		self.zyngui.zynseq.libseq.setTriggerChannel(chan)
@@ -344,6 +363,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 		# Initialize new selected device
 		self.init_trigger_device(idev)
+		self.refresh_trigger_device(force=True)
 
 
 	def init_trigger_device(self, idev=None):
@@ -355,27 +375,36 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.init_launchpad_mini()
 		else:
 			self.end_trigger_device = None
+			self.update_trigger_device_bank = None
 			self.update_trigger_device_pad = None
+			self.midi_event_trigger_device = None
 
 
 	def refresh_trigger_device(self, force=False):
 		# When zynpad is shown, this is done by refresh_status, so no need to refresh twice
-		if not self.shown and callable(self.update_trigger_device_pad):
-			for pad in range(self.columns ** 2):
-				self.refresh_trigger_device_pad(pad, force)
+		if force or not self.shown:
+			if callable(self.update_trigger_device_bank):
+				self.update_trigger_device_bank()
+			if callable(self.update_trigger_device_pad):
+				for pad in range(self.columns ** 2):
+					if force or self.zyngui.zynseq.libseq.hasSequenceChanged(self.bank, pad):
+						mode = self.zyngui.zynseq.libseq.getPlayMode(self.bank, pad)
+						state = self.get_pad_state(pad)
+						self.update_trigger_device_pad(pad, state, mode)
 
 
 	def refresh_trigger_device_pad(self, pad, force=False):
 		if (force or self.zyngui.zynseq.libseq.hasSequenceChanged(self.bank, pad)) and callable(self.update_trigger_device_pad):
-			note = self.zyngui.zynseq.libseq.getTriggerNote(self.bank, pad)
-			if note < 128:
-				mode = self.zyngui.zynseq.libseq.getPlayMode(self.bank, pad)
-				state = self.get_pad_state(pad)
-				self.update_trigger_device_pad(note, state, mode)
+			mode = self.zyngui.zynseq.libseq.getPlayMode(self.bank, pad)
+			state = self.get_pad_state(pad)
+			self.update_trigger_device_pad(pad, state, mode)
 
 
 	end_trigger_device = None
+	update_trigger_device_bank = None
 	update_trigger_device_pad = None
+	midi_event_trigger_device = None
+
 
 	#------------------------------------------------------------------------------------------------------------------
 	# Launchpad Mini Integration
@@ -383,34 +412,33 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	def init_launchpad_mini(self):
 		# Light-Off all LEDs
-		for row in range(8):
-			for col in range(9):
-				note = 16 * row + col
-				lib_zyncore.ctrlfb_send_note_on(0, note, 0xC)
+		self._launchpad_mini_all_leds_off()
 
-		# Assign pads
-		for col in range(self.columns):
-			for row in range(self.columns):
-				pad = row + col * self.columns
-				note = 16 * row + col
-				state = self.get_pad_state(pad)
-				mode = self.zyngui.zynseq.libseq.getPlayMode(self.bank, pad)
-				self.zyngui.zynseq.libseq.setTriggerNote(self.bank, pad, note)
-				self.update_launchpad_mini_pad(note, state, mode)
-
+		# Bind driver functions
 		self.end_trigger_device = self.end_launchpad_mini
+		self.update_trigger_device_bank = self.update_launchpad_mini_bank
 		self.update_trigger_device_pad = self.update_launchpad_mini_pad
+		self.midi_event_trigger_device = self.midi_event_launchpad_mini
 
 
 	def end_launchpad_mini(self):
-		# Light-Off all LEDs
-		for row in range(8):
-			for col in range(9):
-				note = 16 * row + col
+		self._launchpad_mini_all_leds_off()
+
+
+	def update_launchpad_mini_bank(self):
+		# Scene LED feedback
+		col = 8
+		for row in range(0,8):
+			note = 16 * row + col
+			if row == self.bank - 1:
+				lib_zyncore.ctrlfb_send_note_on(0, note, 0x3C)
+			else:
 				lib_zyncore.ctrlfb_send_note_on(0, note, 0xC)
 
 
-	def update_launchpad_mini_pad(self, note, state, mode):
+	def update_launchpad_mini_pad(self, pad, state, mode):
+		col, row = self.get_xy_from_pad(pad)
+		note = 16 * row + col
 		if mode == 0:
 			vel = 0xC
 		elif state == zynseq.SEQ_PLAYING:
@@ -426,7 +454,40 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			vel = 0xC
 		lib_zyncore.ctrlfb_send_note_on(0, note, vel)
 
+
+	def midi_event_launchpad_mini(self, ev):
+		evtype = (ev & 0xF00000) >> 20
+		if evtype == 9:
+			note = (ev >> 8) & 0x7F
+			col, row = self._launchpad_mini_get_note_xy(note)
+			# scene change
+			if col == 8:
+				self.set_bank(row+1)
+				return True
+			# launch/stop pad
+			pad = self.get_pad_from_xy(col, row)
+			if pad >= 0:
+				self.zyngui.zynseq.libseq.togglePlayState(self.bank, pad)
+				return True
+
+	#--------------------------------------------------------------------------
+
+	# Light-Off all LEDs
+	def _launchpad_mini_all_leds_off(self):
+		for row in range(8):
+			for col in range(9):
+				note = 16 * row + col
+				lib_zyncore.ctrlfb_send_note_on(0, note, 0xC)
+
+
+	def _launchpad_mini_get_note_xy(self, note):
+		row = note // 16
+		col = note % 16
+		return col, row
+
 	#------------------------------------------------------------------------------------------------------------------
+	# /Launchpad Mini Integration
+	# ------------------------------------------------------------------------------------------------------------------
 
 
 	# Function to move selection cursor
@@ -543,7 +604,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			for devname in zynautoconnect.devices_in:
 				if devname:
 					labels.append(devname.replace('_', ' '))
-			self.enable_param_editor(self, 'trigger_device', 'Trigger device', {'labels': labels, 'value': self.trigger_device, 'value_default': 0})
+			self.enable_param_editor(self, 'trigger_device', 'Trigger device', {'labels': labels, 'value': self.trigger_device, 'value_default': 0}, self.set_trigger_device)
 		elif params == 'Trigger channel':
 			self.enable_param_editor(self, 'trigger_chan', 'Trigger channel', {'labels': INPUT_CHANNEL_LABELS, 'value': self.trigger_channel})
 		elif params == 'Trigger note':
@@ -581,7 +642,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.zyngui.zynseq.set_midi_channel(self.bank, self.selected_pad, 0, zctrl.value)
 			self.zyngui.zynseq.set_group(self.bank, self.selected_pad, zctrl.value)
 		elif zctrl.symbol == 'trigger_device':
-			self.set_trigger_device(zctrl.value)
+			#self.set_trigger_device(zctrl.value)
+			pass
 		elif zctrl.symbol == 'trigger_chan':
 			self.zyngui.zynseq.libseq.setTriggerChannel(zctrl.value)
 		elif zctrl.symbol == 'trigger_note':
@@ -627,7 +689,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			if columns != self.columns:
 				self.update_grid(columns)
 			self.set_trigger_device(self.zyngui.zynseq.libseq.getTriggerDevice())
-			self.trigger_channel = self.zyngui.zynseq.libseq.getTriggerChannel()
+			self.set_trigger_channel(self.zyngui.zynseq.libseq.getTriggerChannel())
 		for pad in range(self.columns ** 2):
 			self.refresh_pad(pad, force)
 
@@ -681,8 +743,11 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 
 	def back_action(self):
-		self.zyngui.exit_midi_learn()
-		return super().back_action()
+		if self.midi_learn:
+			self.zyngui.exit_midi_learn()
+			return True
+		else:
+			return super().back_action()
 
 
 	#	CUIA Actions
@@ -716,6 +781,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	#**************************************************************************
 
 	def enter_midi_learn(self):
+		if callable(self.midi_event_trigger_device):
+			return
 		self.midi_learn = True
 		labels = ['None']
 		for note in range(128):
@@ -738,17 +805,24 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		#if idev>0 and idev<=len(zynautoconnect.devices_in):
 		#	logging.debug("MIDI EVENT FROM '{}'".format(zynautoconnect.devices_in[idev - 1]))
 
-		if idev == self.trigger_device or chan == self.trigger_channel:
+		if idev == self.trigger_device or chan == (self.trigger_channel - 1):
+			# Trigger-device MIDI handler
+			if callable(self.midi_event_trigger_device) and self.midi_event_trigger_device(ev):
+				return
+
+			# Zynpad's default midi learn mechanism
 			evtype = (ev & 0xF00000) >> 20
 			if evtype == 9:
 				note = (ev >> 8) & 0x7F
 				if self.midi_learn:
 					self.zyngui.zynseq.libseq.setTriggerNote(self.bank, self.selected_pad, note)
 					self.zyngui.exit_midi_learn()
+					return
 				else:
 					seq = self.zyngui.zynseq.libseq.getTriggerSequence(note)
 					if seq:
 						self.zyngui.zynseq.libseq.togglePlayState(seq >> 8, seq & 0xFF)
+						return
 
 
 #------------------------------------------------------------------------------
