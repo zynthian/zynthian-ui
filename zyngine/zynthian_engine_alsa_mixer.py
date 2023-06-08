@@ -143,9 +143,12 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def allow_rbpi_headphones(self):
-		if not callable(lib_zyncore.set_hpvol) and self.rbpi_device_name and self.device_name!=self.rbpi_device_name:
-			return True
-		else:
+		try:
+			if not callable(lib_zyncore.set_hpvol) and self.rbpi_device_name and self.device_name != self.rbpi_device_name:
+				return True
+			else:
+				return False
+		except:
 			return False
 
 
