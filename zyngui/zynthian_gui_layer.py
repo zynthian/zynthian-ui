@@ -702,7 +702,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			else:
 				logging.debug("Can't find ZS3#{}".format(i))
 		except Exception as e:
-			logging.error("Can't restore ZS3 state => %s", e)
+			logging.exception("Can't restore ZS3 state => %s", e)
 
 		return False
 
@@ -1595,7 +1595,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		layer2restore = []
 		for i, lss in enumerate(state['layers']):
 			l2r = False
-			if lss:
+			if lss and lss["engine_nick"] == self.layers[i].engine.nickname:
 				if zynthian_gui_config.midi_single_active_channel:
 					if lss['midi_chan'] == 256 or restore_midi_chan is not None and lss['midi_chan'] == restore_midi_chan:
 						l2r = True
@@ -1604,14 +1604,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			layer2restore.append(l2r)
 
 		# Restore layer state, step 1 => Restore Bank & Preset Status
-		for i, layer in enumerate(self.layers):
+		for i, lss in enumerate(state['layers']):
 			if layer2restore[i]:
-				layer.restore_state_1(state['layers'][i])
+				self.layers[i].restore_state_1(state['layers'][i])
 
 		# Restore layer state, step 2 => Restore Controllers Status
-		for i, layer in enumerate(self.layers):
+		for i, lss in enumerate(state['layers']):
 			if layer2restore[i]:
-				layer.restore_state_2(state['layers'][i])
+				self.layers[i].restore_state_2(state['layers'][i])
 
 		# Set Audio Capture
 		if 'audio_capture' in state:
@@ -1825,6 +1825,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			b64_bytes = snapshot['zynseq_riff_b64'].encode('utf-8')
 			binary_riff_data = base64.decodebytes(b64_bytes)
 			self.zyngui.zynseq.restore_riff_data(binary_riff_data)
+			self.zyngui.screens["zynpad"].sync_state()
 
 
 	def get_midi_profile_state(self):
