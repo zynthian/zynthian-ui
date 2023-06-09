@@ -155,30 +155,29 @@ class zynseq(zynthian_engine):
 	#	Function to add / remove sequences to change bank size
 	#	new_columns: Quantity of columns (and rows) of new grid
 	def update_bank_grid(self, new_columns):
-		old_columns = int(sqrt(self.libseq.getSequencesInBank(self.bank)))
 		# To avoid odd behaviour we stop all sequences from playing before changing grid size (blunt but effective!)
 		for seq in range(self.libseq.getSequencesInBank(self.bank)):
 			self.libseq.setPlayState(self.bank, seq, SEQ_STOPPED)
 		channels = []
 		groups = []
 		for column in range(new_columns):
-			if column < old_columns:
-				channels.append(self.libseq.getChannel(self.bank, column * old_columns, 0))
-				groups.append(self.libseq.getGroup(self.bank, column * old_columns))
+			if column < self.col_in_bank:
+				channels.append(self.libseq.getChannel(self.bank, column * self.col_in_bank, 0))
+				groups.append(self.libseq.getGroup(self.bank, column * self.col_in_bank))
 			else:
 				channels.append(column)
 				groups.append(column)
-		delta = new_columns - old_columns
+		delta = new_columns - self.col_in_bank
 		if delta > 0:
 			# Growing grid so add extra sequences
-			for column in range(old_columns):
-				for row in range(old_columns, old_columns + delta):
+			for column in range(self.col_in_bank):
+				for row in range(self.col_in_bank, self.col_in_bank + delta):
 					pad = row + column * new_columns
 					self.libseq.insertSequence(self.bank, pad)
 					self.libseq.setChannel(self.bank, pad, 0, channels[column])
 					self.libseq.setGroup(self.bank, pad, groups[column])
 					self.set_sequence_name(self.bank, pad, "%s"%(pad + 1))
-			for column in range(old_columns, new_columns):
+			for column in range(self.col_in_bank, new_columns):
 				for row in range(new_columns):
 					pad = row + column * new_columns
 					self.libseq.insertSequence(self.bank, pad)
@@ -188,13 +187,15 @@ class zynseq(zynthian_engine):
 		elif delta < 0:
 			# Shrinking grid so remove excess sequences
 			# Lose excess columns
-			self.libseq.setSequencesInBank(self.bank, new_columns * old_columns)
+			self.libseq.setSequencesInBank(self.bank, new_columns * self.col_in_bank)
 
 			# Lose exess rows
 			for col in range(new_columns - 1, -1, -1):
-				for row in range(old_columns - 1, new_columns -1, -1):
-					offset = old_columns * col + row
+				for row in range(self.col_in_bank - 1, new_columns -1, -1):
+					offset = self.col_in_bank * col + row
 					self.libseq.removeSequence(self.bank, offset)
+		self.seq_in_bank = self.libseq.getSequencesInBank(self.bank)
+		self.col_in_bank = int(sqrt(self.seq_in_bank))
 
 
 	#	Load a zynseq file
