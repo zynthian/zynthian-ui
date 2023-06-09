@@ -300,7 +300,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			else:
 				self.grid_canvas.itemconfig(self.pads[pad]["state"], image=self.state_icon[self.zyngui.zynseq.col_in_bank][state])
 
-			if callable(self.update_trigger_device_pad):
+			if self.trigger_device_driver:
 				#TODO: This should be sent on change of state of any sequence, not just visible within GUI
 				self.update_trigger_device_pad(pad, state, mode)
 
@@ -413,6 +413,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	def refresh_trigger_device_pads(self, force=False):
 		if self.trigger_device_driver:
+			if force:
+				self.light_off_trigger_device()
 			for pad in range(self.zyngui.zynseq.col_in_bank ** 2):
 				# It MUST be called for cleaning the dirty bit
 				changed_state = self.zyngui.zynseq.libseq.hasSequenceChanged(self.bank, pad)
@@ -446,7 +448,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	def init_launchpad_mini(self):
 		# Light-Off all LEDs
-		self.light_off_launchpad_mini()
+		#self.light_off_launchpad_mini()
 
 		# Bind driver functions
 		self.end_trigger_device = self.end_launchpad_mini
@@ -532,7 +534,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# ------------------------------------------------------------------------------------------------------------------
 
 	def init_launchkey_mini_3(self):
-
 		# Enable session mode on launchkey
 		lib_zyncore.ctrlfb_send_note_on(15, 12, 127)
 		self.update_launchkey_mini_3_bank()
@@ -567,7 +568,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	def update_launchkey_mini_3_pad(self, pad, state, mode):
 
-		PAD_COLOURS = [71,104,76,51,104,41,64,12,11,71,4,67,42,9,105,15]
+		PAD_COLOURS = [71, 104, 76, 51, 104, 41, 64, 12, 11, 71, 4, 67, 42, 9, 105, 15]
 		STARTING_COLOUR = 123
 		STOPPING_COLOUR = 120
 
@@ -799,9 +800,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif zctrl.symbol == 'midi_chan':
 			self.zyngui.zynseq.set_midi_channel(self.bank, self.selected_pad, 0, zctrl.value)
 			self.zyngui.zynseq.set_group(self.bank, self.selected_pad, zctrl.value)
-		elif zctrl.symbol == 'trigger_device':
-			#self.set_trigger_device(zctrl.value)
-			pass
 		elif zctrl.symbol == 'trigger_chan':
 			self.zyngui.zynseq.libseq.setTriggerChannel(zctrl.value)
 		elif zctrl.symbol == 'trigger_note':
@@ -847,6 +845,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.set_title("Scene {}".format(self.bank))
 			if self.columns != self.zyngui.zynseq.col_in_bank:
 				self.update_grid()
+			self.light_off_trigger_device()
 			self.refresh_trigger_device_extra()
 
 		for pad in range(self.zyngui.zynseq.col_in_bank ** 2):
