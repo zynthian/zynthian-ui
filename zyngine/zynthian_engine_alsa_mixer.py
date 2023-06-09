@@ -143,9 +143,12 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def allow_rbpi_headphones(self):
-		if self.rbpi_device_name and self.device_name!=self.rbpi_device_name:
-			return True
-		else:
+		try:
+			if not callable(lib_zyncore.set_hpvol) and self.rbpi_device_name and self.device_name != self.rbpi_device_name:
+				return True
+			else:
+				return False
+		except:
 			return False
 
 
@@ -173,7 +176,8 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 				})
 				hp_zctrl.last_value_sent = None
 				zctrls["Headphones"] = hp_zctrl
-				ctrl_list.insert(0, "Headphones")
+				#ctrl_list.insert(0, "Headphones")
+				ctrl_list.append("Headphones")
 				logging.debug("Added Headphones Amplifier volume control")
 		except:
 			pass
@@ -191,7 +195,8 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 					raise Exception("RBPi Headphone volume control not found!")
 
 				zctrls["Headphone"] = hp_zctrl
-				ctrl_list.insert(0, "Headphone")
+				#ctrl_list.insert(0, "Headphone")
+				ctrl_list.append("Headphone")
 				logging.debug("Added RBPi Headphone volume control")
 
 			except Exception as e:
