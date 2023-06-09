@@ -56,11 +56,11 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		super().__init__()
 
 		self.ctrl_order = zynthian_gui_config.layout['ctrl_order']
-		self.columns = 4 # Quantity of columns in grid
 		self.selected_pad = 0 # Index of selected pad
 		self.redraw_pending = 2 # 0=no refresh pending, 1=update grid, 2=rebuild grid
 		self.redrawing = False # True to block further redraws until complete
 		self.bank = self.zyngui.zynseq.bank # The last successfully selected bank - used to update stale views
+		self.columns = self.zyngui.zynseq.col_in_bank # Columns used during last layout - used to update stale views
 		self.midi_learn = False
 		self.trigger_channel = 0
 		self.trigger_device = 0
@@ -68,8 +68,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 		# Geometry vars
 		self.select_thickness = 1 + int(self.width / 400) # Scale thickness of select border based on screen
-		self.column_width = self.width / self.columns
-		self.row_height = self.height / self.columns
+		self.column_width = self.width / self.zyngui.zynseq.col_in_bank
+		self.row_height = self.height / self.zyngui.zynseq.col_in_bank
 
 		# Pad grid
 		self.grid_canvas = tkinter.Canvas(self.main_frame,
@@ -140,7 +140,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def update_layout(self):
 		super().update_layout()
 		self.redraw_pending = 2
-		self.update_grid(self.columns)
+		self.update_grid()
 
 
 	# Function to create 64 pads
@@ -219,22 +219,21 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to clear and calculate grid sizes
-	def update_grid(self, columns):
+	def update_grid(self):
 		self.redrawing = True
-		self.columns = columns
-		self.column_width = self.width / self.columns
-		self.row_height = self.height / self.columns
+		self.column_width = self.width / self.zyngui.zynseq.col_in_bank
+		self.row_height = self.height / self.zyngui.zynseq.col_in_bank
 
 		# Update pads location / size
 		fs1 = int(self.row_height * 0.15)
 		fs2 = int(self.row_height * 0.11)
 		self.grid_canvas.itemconfig("pad", state=tkinter.HIDDEN)
 		self.update_selection_cursor()
-		for col in range(self.columns):
+		for col in range(self.zyngui.zynseq.col_in_bank):
 			pad_x = int(col * self.column_width)
-			for row in range(self.columns):
+			for row in range(self.zyngui.zynseq.col_in_bank):
 				pad_y = int(row * self.row_height)
-				pad = row + col * self.columns
+				pad = row + col * self.zyngui.zynseq.col_in_bank
 				header_h = int(0.28 * self.row_height)
 				self.grid_canvas.itemconfig(self.pads[pad]["group"], font=(zynthian_gui_config.font_family, fs2))
 				self.grid_canvas.itemconfig(self.pads[pad]["num"], font=(zynthian_gui_config.font_family, fs2))
@@ -253,6 +252,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				self.grid_canvas.coords(self.pads[pad]["title"], posx, posy + 2 * fs1)
 
 		self.redrawing = False
+		self.columns = self.zyngui.zynseq.col_in_bank
 
 
 	# Function to refresh pad if it has changed
@@ -294,13 +294,14 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.grid_canvas.itemconfig(self.pads[pad]["title"], text=title, fill=foreground)
 			self.grid_canvas.itemconfig(self.pads[pad]["group"], text=f"CH{chan+1}", fill=foreground)
 			self.grid_canvas.itemconfig(self.pads[pad]["num"], text=f"{group}{pad+1}", fill=foreground)
-			self.grid_canvas.itemconfig(self.pads[pad]["mode"], image=self.mode_icon[self.columns][mode])
+			self.grid_canvas.itemconfig(self.pads[pad]["mode"], image=self.mode_icon[self.zyngui.zynseq.col_in_bank][mode])
 			if state == 0 and self.zyngui.zynseq.libseq.isEmpty(self.bank, pad):
 				self.grid_canvas.itemconfig(self.pads[pad]["state"], image=self.empty_icon)
 			else:
-				self.grid_canvas.itemconfig(self.pads[pad]["state"], image=self.state_icon[self.columns][state])
+				self.grid_canvas.itemconfig(self.pads[pad]["state"], image=self.state_icon[self.zyngui.zynseq.col_in_bank][state])
 
-			if self.trigger_device_driver:
+			if callable(self.update_trigger_device_pad):
+				#TODO: This should be sent on change of state of any sequence, not just visible within GUI
 				self.update_trigger_device_pad(pad, state, mode)
 
 
@@ -323,14 +324,14 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 
 	def get_xy_from_pad(self, pad):
-		col = pad // self.columns
-		row = pad % self.columns
+		col = pad // self.zyngui.zynseq.col_in_bank
+		row = pad % self.zyngui.zynseq.col_in_bank
 		return (col, row)
 
 
 	def get_pad_from_xy(self, col, row):
-		if col < self.columns and row < self.columns:
-			return col * self.columns + row
+		if col < self.zyngui.zynseq.col_in_bank and row < self.zyngui.zynseq.col_in_bank:
+			return col * self.zyngui.zynseq.col_in_bank + row
 		else:
 			return -1
 
@@ -384,9 +385,11 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			idev = self.trigger_device
 		devname = zynautoconnect.get_midi_device_name(idev)
 		logging.debug("Initializing Trigger Device {} => {}".format(idev, devname))
+		self.trigger_device_driver = True
 		if devname.startswith("Launchpad_Mini"):
 			self.init_launchpad_mini()
-			self.trigger_device_driver = True
+		elif devname.startswith("Launchkey_Mini_MK3_MIDI_2"):
+			self.init_launchkey_mini_3()
 		else:
 			self.trigger_device_driver = False
 			self.end_trigger_device = self._do_nothing
@@ -410,7 +413,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	def refresh_trigger_device_pads(self, force=False):
 		if self.trigger_device_driver:
-			for pad in range(self.columns ** 2):
+			for pad in range(self.zyngui.zynseq.col_in_bank ** 2):
 				# It MUST be called for cleaning the dirty bit
 				changed_state = self.zyngui.zynseq.libseq.hasSequenceChanged(self.bank, pad)
 				if changed_state or force:
@@ -428,7 +431,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.update_trigger_device_pad(pad, state, mode)
 
 
-	def _do_nothing(self):
+	def _do_nothing(self, *args):
 		pass
 
 	end_trigger_device = _do_nothing
@@ -524,13 +527,133 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# /Launchpad Mini Integration
 	# ------------------------------------------------------------------------------------------------------------------
 
+	#------------------------------------------------------------------------------------------------------------------
+	# Launchkey Mini Integration
+	# ------------------------------------------------------------------------------------------------------------------
+
+	def init_launchkey_mini_3(self):
+
+		# Enable session mode on launchkey
+		lib_zyncore.ctrlfb_send_note_on(15, 12, 127)
+		self.update_launchkey_mini_3_bank()
+
+		# Bind driver functions
+		self.end_trigger_device = self.end_launchkey_mini_3
+		self.update_trigger_device_bank = self.update_launchkey_mini_3_bank
+		self.update_trigger_device_pad = self.update_launchkey_mini_3_pad
+		self.midi_event_trigger_device = self.midi_event_launchkey_mini_3
+
+
+	def end_launchkey_mini_3(self):
+		# Disable session mode on launchkey
+		lib_zyncore.ctrlfb_send_note_on(15, 12, 0)
+
+
+	def update_launchkey_mini_3_bank(self):
+		# Update pad status
+		for row in range(2):
+			too_big = row >= self.zyngui.zynseq.col_in_bank
+			for col in range(8):
+				too_big |= col >= self.zyngui.zynseq.col_in_bank
+				if too_big:
+					note = 96 + row * 16 + col
+					lib_zyncore.ctrlfb_send_note_on(0, note, 0)
+				else:
+					pad = self.zyngui.zynseq.col_in_bank * col + row
+					state = self.zyngui.zynseq.libseq.getPlayState(self.bank, pad)
+					mode = self.zyngui.zynseq.libseq.getPlayMode(self.bank, pad)
+					self.update_launchkey_mini_3_pad(pad, state, mode)
+
+
+	def update_launchkey_mini_3_pad(self, pad, state, mode):
+
+		PAD_COLOURS = [71,104,76,51,104,41,64,12,11,71,4,67,42,9,105,15]
+		STARTING_COLOUR = 123
+		STOPPING_COLOUR = 120
+
+		col = pad // self.zyngui.zynseq.col_in_bank
+		row = pad % self.zyngui.zynseq.col_in_bank
+		if row > 1:
+			return
+		note = 96 + row * 16 + col
+		try:
+			group = self.zyngui.zynseq.libseq.getGroup(self.bank, pad)
+			if mode == 0 or group > 16:
+				lib_zyncore.ctrlfb_send_note_on(0, note, 0)
+			elif state == zynseq.SEQ_PLAYING:
+				lib_zyncore.ctrlfb_send_note_on(2, note, PAD_COLOURS[group])
+			elif state == zynseq.SEQ_STARTING:
+				lib_zyncore.ctrlfb_send_note_on(1, note, STARTING_COLOUR)
+			elif state == zynseq.SEQ_STOPPING:
+				lib_zyncore.ctrlfb_send_note_on(1, note, STOPPING_COLOUR)
+			elif state == zynseq.SEQ_STOPPED:
+				lib_zyncore.ctrlfb_send_note_on(0, note, PAD_COLOURS[group])
+		except Exception as e:
+			pass
+			#logging.warning(e)
+
+
+	def midi_event_launchkey_mini_3(self, ev):
+		evtype = (ev & 0xF00000) >> 20
+		cmd = (ev & 0xff0000) >> 16
+		val1 = (ev & 0xff00) >> 8
+		val2 = (ev & 0xff)
+		if evtype == 0x9:
+			note = (ev >> 8) & 0x7F
+			if ev == 0x90900c7f:
+				# Entered session mode so set pad LEDs
+				self.update_launchkey_mini_3_bank()
+			else:
+				# Toggle pad
+				try:
+					col = (note - 96) // 16
+					row = (note - 96) % 16
+					pad = row * self.zyngui.zynseq.col_in_bank + col
+					self.zyngui.zynseq.libseq.togglePlayState(self.bank, pad)
+				except:
+					pass
+		elif evtype == 0xB:
+			cc_name = f"{val1:02x}"
+			if val1 == 0x68:
+				cc_name = "UP"
+			elif val1 == 0x69:
+				cc_name = "DOWN"
+			elif val1 == 0x73:
+				cc_name = "PLAY"
+				if val2:
+					self.zyngui.cuia_toggle_play()
+			elif val1 == 0x75:
+				cc_name = "RECORD"
+				if val2:
+					self.zyngui.cuia_toggle_record()
+			elif val1 == 0x75:
+				cc_name = "SHIFT"
+			elif val1 == 0x67:
+				cc_name = "TRACK LEFT"
+			elif val1 == 0x67:
+				cc_name = "TRACK RIGHT"
+			if val1 >= 0x15 and val1 <= 0x1C:
+				logging.debug(f"KNOB {val1 - 0x14}: {val2}")
+			elif val2:
+				logging.debug(f"{cc_name} PRESSED")
+			else:
+				logging.debug(f"{cc_name} RELEASED")
+		elif evtype == 0xC:
+			self.set_bank(val1 + 1)
+
+		return True
+
+	#------------------------------------------------------------------------------------------------------------------
+	# /Launchkey Mini Integration
+	# ------------------------------------------------------------------------------------------------------------------
+
 
 	# Function to move selection cursor
 	def update_selection_cursor(self):
 		if self.selected_pad >= self.zyngui.zynseq.libseq.getSequencesInBank(self.bank):
 			self.selected_pad = self.zyngui.zynseq.libseq.getSequencesInBank(self.bank) - 1
-		col = int(self.selected_pad / self.columns)
-		row = self.selected_pad % self.columns
+		col = int(self.selected_pad / self.zyngui.zynseq.col_in_bank)
+		row = self.selected_pad % self.zyngui.zynseq.col_in_bank
 		self.grid_canvas.coords(self.selection,
 				1 + col * self.column_width, 1 + row * self.row_height,
 				(1 + col) * self.column_width - self.select_thickness, (1 + row) * self.row_height - self.select_thickness)
@@ -592,7 +715,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			else:
 				options['Trigger channel ({})'.format(self.trigger_channel)] = 'Trigger channel'
 
-		options['Grid size ({}x{})'.format(self.columns, self.columns)] = 'Grid size'
+		options['Grid size ({}x{})'.format(self.zyngui.zynseq.col_in_bank, self.zyngui.zynseq.col_in_bank)] = 'Grid size'
 
 		# Single Pad Options
 		options['> PAD OPTIONS'] = None
@@ -633,7 +756,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			labels = []
 			for i in range(1, 9):
 				labels.append("{}x{}".format(i,i))
-			self.enable_param_editor(self, 'grid_size', 'Grid size', {'labels': labels, 'value': self.columns - 1, 'value_default': 3}, self.set_grid_size)
+			self.enable_param_editor(self, 'grid_size', 'Grid size', {'labels': labels, 'value': self.zyngui.zynseq.col_in_bank - 1, 'value_default': 3}, self.set_grid_size)
 		elif params == 'Trigger device':
 			labels = ['OFF']
 			for devname in zynautoconnect.devices_in:
@@ -722,12 +845,11 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if force:
 			self.bank = self.zyngui.zynseq.bank
 			self.set_title("Scene {}".format(self.bank))
-			columns = int(sqrt(self.zyngui.zynseq.libseq.getSequencesInBank(self.bank)))
-			if columns != self.columns:
-				self.update_grid(columns)
+			if self.columns != self.zyngui.zynseq.col_in_bank:
+				self.update_grid()
 			self.refresh_trigger_device_extra()
 
-		for pad in range(self.columns ** 2):
+		for pad in range(self.zyngui.zynseq.col_in_bank ** 2):
 			self.refresh_pad(pad, force)
 
 
@@ -738,18 +860,18 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if super().zynpot_cb(encoder, dval):
 			return
 		if encoder == self.ctrl_order[3]:
-			pad = self.selected_pad + self.columns * dval
-			col = int(pad / self.columns)
-			row = pad % self.columns
-			if col >= self.columns:
+			pad = self.selected_pad + self.zyngui.zynseq.col_in_bank * dval
+			col = int(pad / self.zyngui.zynseq.col_in_bank)
+			row = pad % self.zyngui.zynseq.col_in_bank
+			if col >= self.zyngui.zynseq.col_in_bank:
 				col = 0
 				row += 1
-				pad = row + self.columns * col
+				pad = row + self.zyngui.zynseq.col_in_bank * col
 			elif pad < 0:
-				col = self.columns -1
+				col = self.zyngui.zynseq.col_in_bank -1
 				row -= 1
-				pad = row + self.columns * col
-			if row < 0 or row >= self.columns or col >= self.columns:
+				pad = row + self.zyngui.zynseq.col_in_bank * col
+			if row < 0 or row >= self.zyngui.zynseq.col_in_bank or col >= self.zyngui.zynseq.col_in_bank:
 				return
 			self.selected_pad = pad
 			self.update_selection_cursor()

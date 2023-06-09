@@ -129,6 +129,8 @@ class zynseq(zynthian_engine):
 		self.changing_bank = True
 		if self.libseq.getSequencesInBank(bank) == 0:
 			self.build_default_bank(bank)
+		self.seq_in_bank = self.libseq.getSequencesInBank(bank)
+		self.col_in_bank = int(sqrt(self.seq_in_bank))
 		self.bank = bank
 		self.changing_bank = False
 
