@@ -610,7 +610,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 					col = (note - 96) // 16
 					row = (note - 96) % 16
 					pad = row * self.zyngui.zynseq.col_in_bank + col
-					self.zyngui.zynseq.libseq.togglePlayState(self.bank, pad)
+					if pad < self.zyngui.zynseq.seq_in_bank:
+						self.zyngui.zynseq.libseq.togglePlayState(self.bank, pad)
 				except:
 					pass
 		elif evtype == 0xB:
