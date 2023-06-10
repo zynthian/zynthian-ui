@@ -1378,11 +1378,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def get_state(self):
 		state = {
-			'index':self.index,
-			'mixer':[],
-			'layers':[],
-			'clone':[],
-			'note_range':[],
+			'index': self.index,
+			'mixer': [],
+			'layers': [],
+			'clone': [],
+			'note_range': [],
 			'audio_capture': self.get_audio_capture(),
 			'last_snapshot_fpath': self.last_snapshot_fpath
 		}
@@ -1391,14 +1391,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for layer in self.layers:
 			state['layers'].append(layer.get_state())
 
-		# Add ALSA-Mixer setting as a layer
+		# Add ALSA-Mixer settings, separately from layers!!
 		if zynthian_gui_config.snapshot_mixer_settings and self.amixer_layer:
-			state['layers'].append(self.amixer_layer.get_state())
+			state['amixer_layer'] = self.amixer_layer.get_state()
 
 		# Clone info
-		for i in range(0,16):
+		for i in range(0, 16):
 			state['clone'].append([])
-			for j in range(0,16):
+			for j in range(0, 16):
 				clone_info = {
 					'enabled': lib_zyncore.get_midi_filter_clone(i,j),
 					'cc': list(map(int,lib_zyncore.get_midi_filter_clone_cc(i,j).nonzero()[0]))
@@ -1595,12 +1595,17 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		layer2restore = []
 		for i, lss in enumerate(state['layers']):
 			l2r = False
-			if lss and lss["engine_nick"] == self.layers[i].engine.nickname:
-				if zynthian_gui_config.midi_single_active_channel:
-					if lss['midi_chan'] == 256 or restore_midi_chan is not None and lss['midi_chan'] == restore_midi_chan:
+			if lss:
+				# Ignore AlsaMixer / out of range layers
+				if i >= len(self.layers):
+					pass
+				# Ensure layer's engine matches
+				elif lss["engine_nick"] == self.layers[i].engine.nickname:
+					if zynthian_gui_config.midi_single_active_channel:
+						if lss['midi_chan'] == 256 or restore_midi_chan is not None and lss['midi_chan'] == restore_midi_chan:
+							l2r = True
+					else:
 						l2r = True
-				elif lss['engine_nick'] != "MX":
-					l2r = True
 			layer2restore.append(l2r)
 
 		# Restore layer state, step 1 => Restore Bank & Preset Status
@@ -1793,7 +1798,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		#Create new layers, starting engines when needed
 		for i, lss in enumerate(snapshot['layers']):
 			if lss['engine_nick'] == "MX":
-				if zynthian_gui_config.snapshot_mixer_settings:
+				if zynthian_gui_config.snapshot_mixer_settings and 'amixer_layer' not in snapshot:
 					snapshot['amixer_layer'] = lss
 				del snapshot['layers'][i]
 			else:
