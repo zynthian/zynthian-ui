@@ -84,6 +84,7 @@ from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
 from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
 from zyngui.zynthian_gui_mixer import zynthian_gui_mixer
 from zyngui.zynthian_gui_tempo import zynthian_gui_tempo
+from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
 from zyngui import zynthian_gui_keybinding
@@ -470,6 +471,13 @@ class zynthian_gui:
 		self.screens['pattern_editor'] = zynthian_gui_patterneditor()
 		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
 		self.screens['control_test'] = zynthian_gui_control_test()
+
+		# Create Zynaptik-related screens
+		try:
+			if callable(lib_zyncore.init_zynaptik):
+				self.screens['cv_config'] = zynthian_gui_cv_config()
+		except:
+			pass
 
 		# Initialize OSC
 		self.osc_init()
@@ -1598,13 +1606,13 @@ class zynthian_gui:
 
 	def cuia_zynaptik_cvout_set_volts_octave(self, params):
 		try:
-			lib_zyncore.zynaptik_cvout_set_volts_octave(int(params[0]))
+			lib_zyncore.zynaptik_cvout_set_volts_octave(float(params[0]))
 		except Exception as err:
 			logging.debug(err)
 
 	def cuia_zynaptik_cvout_set_note0(self, params):
 		try:
-			lib_zyncore.zynaptik_cvout_set_note0(float(params[0]))
+			lib_zyncore.zynaptik_cvout_set_note0(int(params[0]))
 		except Exception as err:
 			logging.debug(err)
 
@@ -1675,8 +1683,9 @@ class zynthian_gui:
 	def zynswitches(self):
 		i = 0
 		while i <= zynthian_gui_config.last_zynswitch_index:
-			dtus = lib_zyncore.get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
-			self.zynswitch_timing(i, dtus)
+			if i < 4 or zynthian_gui_config.custom_switch_ui_actions[i-4]:
+				dtus = lib_zyncore.get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
+				self.zynswitch_timing(i, dtus)
 			i += 1
 
 	def zynswitch_timing(self, i, dtus):

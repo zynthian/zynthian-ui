@@ -97,6 +97,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			else:
 				self.list_data.append((self.toggle_midi_sys, 0, "[  ] MIDI System Messages"))
 
+		if "cv_config" in self.zyngui.screens:
+			self.list_data.append((self.show_cv_config, 0, "CV Settings"))
+
 		self.list_data.append((self.midi_profile, 0, "MIDI Profile"))
 
 		self.list_data.append((None, 0, "> AUDIO"))
@@ -636,8 +639,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.stop_aubionotes(False)
 
 
+	def show_cv_config(self):
+		self.zyngui.show_screen("cv_config")
+
+
 	def midi_profile(self):
-		logging.info("MIDI Profile")
 		self.zyngui.show_screen("midi_profile")
 
 #------------------------------------------------------------------------------

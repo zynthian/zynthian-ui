@@ -30,7 +30,8 @@ __all__ = [
 	"zynthian_gui_tempo",
 	"zynthian_gui_control_test",
 	"zynthian_gui_splash",
-	"zynthian_gui_loading"
+	"zynthian_gui_loading",
+	"zynthian_gui_cv_config"
 ]
 
 import zyngui.zynthian_gui_config as zynthian_gui_config
