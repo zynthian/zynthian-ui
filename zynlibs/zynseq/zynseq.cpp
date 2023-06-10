@@ -353,7 +353,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     {
         if(jack_midi_event_get(&midiEvent, pInputBuffer, i))
             continue;
-        if(g_nClockSource == TRANSPORT_CLOCK_MIDI)
+        if(g_nClockSource & (TRANSPORT_CLOCK_MIDI |  TRANSPORT_CLOCK_ANALOG))
         {
             switch(midiEvent.buffer[0])
             {
@@ -372,15 +372,18 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                     g_nBeat = 1; //!@todo This should be reset with START, not CONTINUE but currently used for bar sync
                     break;
                 case MIDI_CLOCK:
-                    if(g_nClock == 0)
+                    if(g_nClockSource & TRANSPORT_CLOCK_MIDI)
                     {
-                        // Update tempo on each beat
-                        if(nLastBeatFrame)
-                            setTempo(60.0 * (double)g_nSampleRate / (nNow + midiEvent.time - nLastBeatFrame));
-                        nLastBeatFrame = nNow + midiEvent.time;
+                        if(g_nClock == 0)
+                        {
+                            // Update tempo on each beat
+                            if(nLastBeatFrame)
+                                setTempo(60.0 * (double)g_nSampleRate / (nNow + midiEvent.time - nLastBeatFrame));
+                            nLastBeatFrame = nNow + midiEvent.time;
+                        }
+                        if(nState == JackTransportRolling)
+                            g_qClockPos.push(std::pair<double,double>(nNow + midiEvent.time, g_dFramesPerClock));
                     }
-                    if(nState == JackTransportRolling)
-                        g_qClockPos.push(std::pair<double,double>(nNow + midiEvent.time, g_dFramesPerClock));
                     break;
                 /*
                 case MIDI_POSITION:
@@ -474,7 +477,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     {
         bool bSync = false; // True if at start of bar
         jack_nframes_t nClockOffset = 0; // Position within this period that clock 0 occurs
-        if(g_nClockSource == TRANSPORT_CLOCK_INTERNAL && g_qClockPos.empty())
+        if(g_nClockSource & TRANSPORT_CLOCK_INTERNAL && g_qClockPos.empty())
             g_qClockPos.push(std::pair<double,double>(nNow, g_dFramesPerClock)); // There should always be a clock scheduled for internal clock source when transport is rolling
         while(!g_qClockPos.empty() && (g_qClockPos.front().first < nNow + nFrames))
         {
@@ -511,7 +514,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                     g_mSchedule.insert(std::pair<uint32_t,MIDI_MESSAGE*>(nClockTime, new MIDI_MESSAGE({MIDI_CONTINUE, 0, 0})));
                 g_mSchedule.insert(std::pair<uint32_t,MIDI_MESSAGE*>(nClockTime, new MIDI_MESSAGE({MIDI_CLOCK, 0, 0})));
             }
-            if(g_nClockSource == TRANSPORT_CLOCK_INTERNAL)
+            if(g_nClockSource & TRANSPORT_CLOCK_INTERNAL)
                 g_qClockPos.push(std::pair<double,double>(g_qClockPos.back().first + g_dFramesPerClock, g_dFramesPerClock));
             g_qClockPos.pop();
         }
@@ -522,7 +525,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             DPRINTF("Stopping transport because no sequences playing clock: %u beat: %u tick: %u\n", g_nClock, g_nBeat, g_nTick);
             transportStop("zynseq");
             g_nMetronomePtr = -1;
-            //if(g_nClockSource == TRANSPORT_CLOCK_INTERNAL)
+            //if(g_nClockSource & TRANSPORT_CLOCK_INTERNAL)
             {
                 // Remove pending clocks
                 std::queue<std::pair<double,double>> qEmpty;
@@ -1887,7 +1890,7 @@ void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state)
         if(state == STARTING)
         {
             setTransportToStartOfBar();
-            if(g_nClockSource == TRANSPORT_CLOCK_INTERNAL)
+            if(g_nClockSource & TRANSPORT_CLOCK_INTERNAL)
                 transportStart("zynseq");
         }
         else if(state == STOPPING)
@@ -2317,6 +2320,8 @@ uint8_t getClockSource()
 
 void setClockSource(uint8_t source)
 {
+    if(source == 0)
+        return;
     g_nClockSource = source;
     std::queue<std::pair<double,double>> qEmpty;
     while(g_bMutex)

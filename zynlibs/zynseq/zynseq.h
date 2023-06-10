@@ -60,8 +60,9 @@ extern "C"
 
 enum TRANSPORT_CLOCK
 {
-    TRANSPORT_CLOCK_INTERNAL = 0,
-    TRANSPORT_CLOCK_MIDI = 1
+    TRANSPORT_CLOCK_INTERNAL = 1,
+    TRANSPORT_CLOCK_MIDI = 2,
+    TRANSPORT_CLOCK_ANALOG = 4
 };
 
 // ** Library management functions **
