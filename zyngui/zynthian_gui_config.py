@@ -190,6 +190,14 @@ def config_custom_switches():
 				evtype = 0x9
 			elif custom_type == "MIDI_PROG_CHANGE":
 				evtype = 0xC
+			elif custom_type == "MIDI_CLOCK":
+				evtype = 0xF8
+			elif custom_type == "MIDI_TRANSPORT_START":
+				evtype = 0xFA
+			elif custom_type == "MIDI_TRANSPORT_CONTINUE":
+				evtype = 0xFB
+			elif custom_type == "MIDI_TRANSPORT_STOP":
+				evtype = 0xFC
 			elif custom_type == "CVGATE_IN":
 				evtype = -4
 			elif custom_type == "CVGATE_OUT":

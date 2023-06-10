@@ -228,17 +228,21 @@ class zynthian_gui:
 		for i, event in enumerate(zynthian_gui_config.custom_switch_midi_events):
 			if event is not None:
 				swi = 4 + i
-				if event['chan'] is not None:
-					midi_chan = event['chan']
+				if event['type'] >= 0xF8:
+					lib_zyncore.setup_zynswitch_midi(swi, event['type'], 0, 0, 0)
+					logging.info("MIDI ZYNSWITCH {}: SYSRT {}".format(swi, event['type']))
 				else:
-					midi_chan = curlayer_chan
+					if event['chan'] is not None:
+						midi_chan = event['chan']
+					else:
+						midi_chan = curlayer_chan
 
-				if midi_chan is not None:
-					lib_zyncore.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'], event['val'])
-					logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}, {}".format(swi, event['type'], midi_chan, event['num'], event['val']))
-				else:
-					lib_zyncore.setup_zynswitch_midi(swi, 0, 0, 0, 0)
-					logging.info("MIDI ZYNSWITCH {}: DISABLED!".format(swi))
+					if midi_chan is not None:
+						lib_zyncore.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'], event['val'])
+						logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}, {}".format(swi, event['type'], midi_chan, event['num'], event['val']))
+					else:
+						lib_zyncore.setup_zynswitch_midi(swi, 0, 0, 0, 0)
+						logging.info("MIDI ZYNSWITCH {}: DISABLED!".format(swi))
 
 		# Configure Zynaptik Analog Inputs (CV-IN)
 		for i, event in enumerate(zynthian_gui_config.zynaptik_ad_midi_events):
