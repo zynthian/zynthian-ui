@@ -25,7 +25,8 @@
 
 import os
 import logging
-from os.path import isfile, isdir, join, basename
+from datetime import datetime
+from os.path import isfile, isdir, join, basename, dirname
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -398,25 +399,39 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def load_snapshot(self, fpath):
 		self.zyngui.show_loading("loading snapshot")
+		self.save_last_state_snapshot()
 		self.zyngui.screens['layer'].load_snapshot(fpath)
 		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 
 
 	def load_snapshot_chains(self, fpath):
 		self.zyngui.show_loading("loading snapshot chains")
+		self.save_last_state_snapshot()
 		self.zyngui.screens['layer'].load_snapshot_layers(fpath)
 		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 
 
 	def load_snapshot_sequences(self, fpath):
 		self.zyngui.show_loading("loading snapshot sequences")
+		self.save_last_state_snapshot()
 		self.zyngui.screens['layer'].load_snapshot_sequences(fpath)
 		self.zyngui.show_screen('zynpad', hmode=self.zyngui.SCREEN_HMODE_RESET)
 
 
 	def save_snapshot(self, path):
+		self.backup_snapshot(path)
 		self.zyngui.screens['layer'].save_snapshot(path)
 		#self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
+
+
+	def backup_snapshot(self, path):
+		if isfile(path):
+			dpath = dirname(path)
+			budir = dpath + "/.backup"
+			if not isdir(budir):
+				os.mkdir(budir)
+			ts_str = datetime.now().strftime("%Y%m%d%H%M%S")
+			os.rename(path, "{}/{}.{}".format(budir, basename(path), ts_str))
 
 
 	def save_default_snapshot(self):
