@@ -1189,8 +1189,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 						duration = (int(self.duration * 10) + 1) / 10
 					elif dval < 0:
 						duration = (int(self.duration * 10) - 1) / 10
-					if duration > self.zyngui.zynseq.libseq.getSteps() or duration < 0.1:
-						return
+					max_duration = self.zyngui.zynseq.libseq.getSteps()
+					if duration > max_duration:
+						duration = max_duration
+					elif duration < 0.1:
+						duration = 0.1
 					self.duration = duration
 					note = self.keymap[self.selected_cell[1]]["note"]
 					if self.zyngui.zynseq.libseq.getNoteDuration(self.selected_cell[0], note):
