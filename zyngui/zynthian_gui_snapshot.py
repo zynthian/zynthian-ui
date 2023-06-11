@@ -261,6 +261,11 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			"Load Sequences": fpath,
 			"Save": fname
 		}
+
+		budir = dirname(fpath) + "/.backup"
+		if isdir(budir):
+			options["Restore Backup"] = fpath
+
 		if not restrict_options:
 			options.update(
 				{
@@ -289,6 +294,10 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.zyngui.show_confirm("Loading sequences from '%s' will destroy current sequences..." % (fname), self.load_snapshot_sequences, fpath)
 		elif option == "Save":
 			self.zyngui.show_confirm("Do you really want to overwrite '%s'?" % (fname), self.save_snapshot, fpath)
+		elif option == "Restore Backup":
+			budir = dirname(fpath) + "/.backup"
+			self.zyngui.screens['option'].config_file_list("Restore backup: {}".format(fname), budir, ".*", self.restore_backup_cb)
+			self.zyngui.show_screen('option')
 		elif option == "Rename":
 			self.zyngui.show_keyboard(self.rename_snapshot, parts[1])
 		elif option == "Set Program":
@@ -296,6 +305,11 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.zyngui.show_screen('midi_prog')
 		elif option == "Delete":
 			self.zyngui.show_confirm("Do you really want to delete '%s'" % (fname), self.delete_confirmed, fpath)
+
+
+	def restore_backup_cb(self, fname, fpath):
+		logging.debug("Restoring snapshot backup '{}'".format(fname))
+		self.load_snapshot(fpath)
 
 
 	def rename_snapshot(self, new_name):
