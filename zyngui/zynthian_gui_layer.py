@@ -1601,28 +1601,33 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					pass
 				# Ensure layer's engine matches
 				elif lss["engine_nick"] == self.layers[i].engine.nickname:
+					# Omni-On (stege) mode, only retore zs3's active chain & main chain
 					if zynthian_gui_config.midi_single_active_channel:
 						if lss['midi_chan'] == 256 or restore_midi_chan is not None and lss['midi_chan'] == restore_midi_chan:
+							l2r = True
+					# Multi-timbral mode
+					elif "restore" in lss:
+						if lss["restore"]:
 							l2r = True
 					else:
 						l2r = True
 			layer2restore.append(l2r)
 
-		# Restore layer state, step 1 => Restore Bank & Preset Status
+		# Restore layers state, step 1 => Restore Bank & Preset Status
 		for i, lss in enumerate(state['layers']):
 			if layer2restore[i]:
 				self.layers[i].restore_state_1(state['layers'][i])
 
-		# Restore layer state, step 2 => Restore Controllers Status
+		# Restore layers state, step 2 => Restore Controllers Status
 		for i, lss in enumerate(state['layers']):
 			if layer2restore[i]:
 				self.layers[i].restore_state_2(state['layers'][i])
 
-		# Set Audio Capture
+		# Restore Audio Capture state
 		if 'audio_capture' in state:
 			self.set_audio_capture(state['audio_capture'])
 
-		# Audio Recorder Armed
+		# Restore Recorder Armed state
 		if 'audio_recorder_armed' in state:
 			for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
 				if midi_chan in state['audio_recorder_armed']:
@@ -1630,11 +1635,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				else:
 					self.zyngui.audio_recorder.unarm(midi_chan)
 
-		# Set Clone
+		# Restore Channel Clone
 		if 'clone' in state:
 			self.set_clone(state['clone'])
 
-		# Note-range & Tranpose
+		# Restore Note-range & Tranpose
 		if 'note_range' in state:
 			self.set_note_range(state['note_range'])
 		# BW compat.
@@ -1642,7 +1647,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.reset_note_range()
 			self.set_transpose(state['transpose'])
 
-		# Mixer
+		# Restore Audio Mixer
 		if 'mixer' in state:
 			self.zyngui.zynmixer.set_state(state['mixer'])
 
@@ -1651,14 +1656,45 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.amixer_layer.restore_state_1(state['amixer_layer'])
 			self.amixer_layer.restore_state_2(state['amixer_layer'])
 
-		# Set active layer
-		if index is not None and index!=self.index:
+		# ONLY when Omni-On (stage) mode is enabled, set active layer
+		if zynthian_gui_config.midi_single_active_channel and index is not None and index != self.index:
 			logging.info("Setting curlayer to {}".format(index))
 			self.index = index
 			self.zyngui.set_curlayer(self.root_layers[index])
 
 		# Autoconnect Audio => Not Needed!! It's called after action
 		#self.zyngui.zynautoconnect_audio(True)
+
+
+	def get_zs3_layer_restore_flag(self, zs3_i, layer_i):
+		try:
+			lss = self.learned_zs3[zs3_i]["layers"][layer_i]
+			if "restore" in lss:
+				return lss['restore']
+		except:
+			logging.error("Invalid ZS3 ({}) or layer ({}) index.".format(zs3_i, layer_i))
+		return False
+
+
+	def set_zs3_layer_restore_flag(self, zs3_i, layer_i, rflag):
+		try:
+			lss = self.learned_zs3[zs3_i]["layers"][layer_i]
+			lss['restore'] = rflag
+		except:
+			logging.error("Invalid ZS3 ({}) or layer ({}) index.".format(zs3_i, layer_i))
+
+
+	def toggle_zs3_layer_restore_flag(self, zs3_i, layer_i):
+		try:
+			lss = self.learned_zs3[zs3_i]["layers"][layer_i]
+			if "restore" in lss and not lss["restore"]:
+				lss['restore'] = True
+				return False
+			else:
+				lss['restore'] = False
+				return True
+		except:
+			logging.error("Invalid ZS3 ({}) or layer ({}) index.".format(zs3_i, layer_i))
 
 
 	def save_snapshot(self, fpath):

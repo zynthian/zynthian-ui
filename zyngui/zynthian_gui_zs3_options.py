@@ -26,6 +26,7 @@
 import logging
 
 # Zynthian specific modules
+from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
@@ -35,29 +36,74 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 class zynthian_gui_zs3_options(zynthian_gui_selector):
 
 	def __init__(self):
+		self.last_action = None
 		self.zs3_index = None
 		super().__init__('Option', True)
 
 
 	def config(self, i):
+		self.last_action = None
 		self.zs3_index = i
 
 
 	def fill_list(self):
-		self.list_data=[]
-
-		self.list_data.append((self.zs3_rename,0, "Rename"))
-		self.list_data.append((self.zs3_update,0, "Update"))
-		self.list_data.append((self.zs3_delete,0, "Delete"))
-
+		self.list_data = []
+		if not zynthian_gui_config.midi_single_active_channel:
+			self.list_data.append((self.zs3_restoring_submenu, 1, "Restoring..."))
+		self.list_data.append((self.zs3_rename, 2, "Rename"))
+		self.list_data.append((self.zs3_update, 3, "Update"))
+		self.list_data.append((self.zs3_delete, 4, "Delete"))
+		self.preselect_last_action()
 		super().fill_list()
+
+
+	def preselect_last_action(self, force_select=False):
+		for i, data in enumerate(self.list_data):
+			if self.last_action and self.last_action == data[0]:
+				if force_select:
+					self.select_listbox(i)
+				else:
+					self.index = i
+				return i
+		return 0
 
 
 	def select_action(self, i, t='S'):
 		self.index = i
 		if self.list_data[i][0]:
-			self.last_action=self.list_data[i][0]
+			self.last_action = self.list_data[i][0]
 			self.last_action()
+
+
+	def zs3_restoring_submenu(self):
+		try:
+			state = self.zyngui.screens['layer'].learned_zs3[self.zs3_index]
+		except:
+			logging.error("Bad ZS3 index ({}).".format(self.zs3_index))
+
+		self.zyngui.screens['option'].config("ZS3 restoring: {}".format(state["zs3_title"]), self.zs3_restoring_options_cb, self.zs3_restoring_options_select_cb, close_on_select=False)
+		self.zyngui.show_screen('option')
+
+
+	def zs3_restoring_options_cb(self):
+		try:
+			state = self.zyngui.screens['layer'].learned_zs3[self.zs3_index]
+		except:
+			logging.error("Bad ZS3 index ({}).".format(self.zs3_index))
+
+		options = {}
+		for i, lss in enumerate(state['layers']):
+			label = "{}#{} > {}".format(lss["midi_chan"], lss["engine_name"], lss["preset_name"])
+			if "restore" in lss and not lss['restore']:
+				options["[  ] {}".format(label)] = i
+			else:
+				options["[x] {}".format(label)] = i
+
+		return options
+
+
+	def	zs3_restoring_options_select_cb(self, label, index):
+		self.zyngui.screens["layer"].toggle_zs3_layer_restore_flag(self.zs3_index, index)
 
 
 	def zs3_rename(self):

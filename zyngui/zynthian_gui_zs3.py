@@ -66,11 +66,11 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 
 
 	def fill_list(self):
-		self.list_data=[]
+		self.list_data = []
 		self.list_data.append(('SAVE_ZS3', None, "Save as new ZS3"))
 
 		#Add list of programs
-		if len(self.zyngui.screens['layer'].learned_zs3)>0:
+		if len(self.zyngui.screens['layer'].learned_zs3) > 0:
 			self.list_data.append((None, None, "> SAVED ZS3s"))
 		for i, state in enumerate(self.zyngui.screens['layer'].learned_zs3):
 			if state['midi_learn_prognum'] is not None:
