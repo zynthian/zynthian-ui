@@ -287,13 +287,17 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			return
 
 		if option == "Load":
-			self.zyngui.show_confirm("Loading '%s' will destroy current chains & sequences..." % (fname), self.load_snapshot, fpath)
+			#self.zyngui.show_confirm("Loading '%s' will destroy current chains & sequences..." % (fname), self.load_snapshot, fpath)
+			self.load_snapshot(fpath)
 		elif option == "Load Chains":
-			self.zyngui.show_confirm("Loading chains from '%s' will destroy current chains..." % (fname), self.load_snapshot_chains, fpath)
+			#self.zyngui.show_confirm("Loading chains from '%s' will destroy current chains..." % (fname), self.load_snapshot_chains, fpath)
+			self.load_snapshot_chains(fpath)
 		elif option == "Load Sequences":
-			self.zyngui.show_confirm("Loading sequences from '%s' will destroy current sequences..." % (fname), self.load_snapshot_sequences, fpath)
+			#self.zyngui.show_confirm("Loading sequences from '%s' will destroy current sequences..." % (fname), self.load_snapshot_sequences, fpath)
+			self.load_snapshot_sequences(fpath)
 		elif option == "Save":
-			self.zyngui.show_confirm("Do you really want to overwrite '%s'?" % (fname), self.save_snapshot, fpath)
+			#self.zyngui.show_confirm("Do you really want to overwrite '%s'?" % (fname), self.save_snapshot, fpath)
+			self.save_snapshot(fpath)
 		elif option == "Restore Backup":
 			budir = dirname(fpath) + "/.backup"
 			self.zyngui.screens['option'].config_file_list("Restore backup: {}".format(fname), budir, ".*", self.restore_backup_cb)
