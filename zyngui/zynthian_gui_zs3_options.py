@@ -87,28 +87,40 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 
 	def zs3_restoring_options_cb(self):
 		try:
-			state = self.zyngui.screens['layer'].learned_zs3[self.zs3_index]
+			state = self.zyngui.screens["layer"].learned_zs3[self.zs3_index]
 		except:
 			logging.error("Bad ZS3 index ({}).".format(self.zs3_index))
 
 		options = {}
-		slayers = state['layers']
-		for i, lss in enumerate(sorted(slayers, key=lambda lss: lss['midi_chan'])):
+
+		# Restoring Chains (layers)
+		slayers = state["layers"]
+		for i, lss in enumerate(sorted(slayers, key=lambda lss: lss["midi_chan"])):
 			if lss["midi_chan"] == 256:
 				chan = "Main"
 			else:
 				chan = lss["midi_chan"] + 1
 			label = "{}#{} > {}".format(chan, lss["engine_name"], lss["preset_name"])
-			if "restore" in lss and not lss['restore']:
+			if "restore" in lss and not lss["restore"]:
 				options["[  ] {}".format(label)] = slayers.index(lss)
 			else:
 				options["[x] {}".format(label)] = slayers.index(lss)
+
+		# Restoring Audio Mixer
+		smixer = state["mixer"]
+		if "restore" in smixer and not smixer["restore"]:
+			options["[  ] Mixer"] = -1
+		else:
+			options["[x] Mixer"] = -1
 
 		return options
 
 
 	def	zs3_restoring_options_select_cb(self, label, index):
-		self.zyngui.screens["layer"].toggle_zs3_layer_restore_flag(self.zs3_index, index)
+		if index >= 0:
+			self.zyngui.screens["layer"].toggle_zs3_layer_restore_flag(self.zs3_index, index)
+		elif index == -1:
+			self.zyngui.screens["layer"].toggle_zs3_mixer_restore_flag(self.zs3_index)
 
 
 	def zs3_rename(self):

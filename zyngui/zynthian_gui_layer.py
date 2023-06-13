@@ -1593,7 +1593,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		# Calculate the layers to restore, depending of mode OMNI/MULTI, etc
 		layer2restore = []
-		for i, lss in enumerate(state['layers']):
+		slayers = state['layers']
+		for i, lss in enumerate(slayers):
 			l2r = False
 			if lss:
 				# Ignore AlsaMixer / out of range layers
@@ -1614,47 +1615,49 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			layer2restore.append(l2r)
 
 		# Restore layers state, step 1 => Restore Bank & Preset Status
-		for i, lss in enumerate(state['layers']):
+		for i, lss in enumerate(slayers):
 			if layer2restore[i]:
-				self.layers[i].restore_state_1(state['layers'][i])
+				self.layers[i].restore_state_1(slayers[i])
 
 		# Restore layers state, step 2 => Restore Controllers Status
-		for i, lss in enumerate(state['layers']):
+		for i, lss in enumerate(slayers):
 			if layer2restore[i]:
-				self.layers[i].restore_state_2(state['layers'][i])
+				self.layers[i].restore_state_2(slayers[i], restore_midi_learn=False)
 
 		# Restore Audio Capture state
-		if 'audio_capture' in state:
-			self.set_audio_capture(state['audio_capture'])
+		if "audio_capture" in state:
+			self.set_audio_capture(state["audio_capture"])
 
 		# Restore Recorder Armed state
-		if 'audio_recorder_armed' in state:
-			for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
-				if midi_chan in state['audio_recorder_armed']:
+		if "audio_recorder_armed" in state:
+			for midi_chan in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 256]:
+				if midi_chan in state["audio_recorder_armed"]:
 					self.zyngui.audio_recorder.arm(midi_chan)
 				else:
 					self.zyngui.audio_recorder.unarm(midi_chan)
 
 		# Restore Channel Clone
-		if 'clone' in state:
-			self.set_clone(state['clone'])
+		if "clone" in state:
+			self.set_clone(state["clone"])
 
 		# Restore Note-range & Tranpose
-		if 'note_range' in state:
-			self.set_note_range(state['note_range'])
+		if "note_range" in state:
+			self.set_note_range(state["note_range"])
 		# BW compat.
-		elif 'transpose' in state:
+		elif "transpose" in state:
 			self.reset_note_range()
-			self.set_transpose(state['transpose'])
+			self.set_transpose(state["transpose"])
 
 		# Restore Audio Mixer
-		if 'mixer' in state:
-			self.zyngui.zynmixer.set_state(state['mixer'])
+		if "mixer" in state:
+			smixer = state["mixer"]
+			if "restore" not in smixer or smixer["restore"]:
+				self.zyngui.zynmixer.set_state(smixer, restore_midi_learn=False)
 
-		# Restore ALSA-Mixer settings
-		if self.amixer_layer and 'amixer_layer' in state:
-			self.amixer_layer.restore_state_1(state['amixer_layer'])
-			self.amixer_layer.restore_state_2(state['amixer_layer'])
+		# Restore ALSA-Mixer settings => Disabled for ZS3!!!
+		#if self.amixer_layer and 'amixer_layer' in state:
+		#	self.amixer_layer.restore_state_1(state['amixer_layer'])
+		#	self.amixer_layer.restore_state_2(state['amixer_layer'])
 
 		# ONLY when Omni-On (stage) mode is enabled, set active layer
 		if zynthian_gui_config.midi_single_active_channel and index is not None and index != self.index:
@@ -1695,6 +1698,19 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				return True
 		except:
 			logging.error("Invalid ZS3 ({}) or layer ({}) index.".format(zs3_i, layer_i))
+
+
+	def toggle_zs3_mixer_restore_flag(self, zs3_i):
+		try:
+			smixer = self.learned_zs3[zs3_i]["mixer"]
+			if "restore" in smixer and not smixer["restore"]:
+				smixer['restore'] = True
+				return False
+			else:
+				smixer['restore'] = False
+				return True
+		except:
+			logging.error("Invalid ZS3 index ({}).".format(zs3_i))
 
 
 	def save_snapshot(self, fpath):
