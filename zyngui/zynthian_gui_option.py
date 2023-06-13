@@ -42,11 +42,12 @@ class zynthian_gui_option(zynthian_gui_selector):
 		self.options = {}
 		self.options_cb = None
 		self.cb_select = None
+		self.click_type = False
 		self.close_on_select = True
 		super().__init__("Option", True)
 
 
-	def config(self, title, options, cb_select, close_on_select=True):
+	def config(self, title, options, cb_select, close_on_select=True, click_type=False):
 		self.title = title
 		if callable(options):
 			self.options_cb = options
@@ -56,15 +57,17 @@ class zynthian_gui_option(zynthian_gui_selector):
 			self.options = options
 		self.cb_select = cb_select
 		self.close_on_select = close_on_select
+		self.click_type = click_type
 		self.index = 0
 
 
-	def config_file_list(self, title, dpaths, fpat, cb_select, close_on_select=True):
+	def config_file_list(self, title, dpaths, fpat, cb_select, close_on_select=True, click_type=False):
 		self.title = title
 		self.options = {}
 		self.options_cb = None
 		self.cb_select = cb_select
 		self.close_on_select = close_on_select
+		self.click_type = click_type
 		self.index = 0
 
 		if isinstance(dpaths, str):
@@ -100,7 +103,10 @@ class zynthian_gui_option(zynthian_gui_selector):
 		if self.close_on_select:
 			self.zyngui.close_screen()
 		if self.cb_select and i < len(self.list_data):
-			self.cb_select(self.list_data[i][2], self.list_data[i][0])
+			if self.click_type:
+				self.cb_select(self.list_data[i][2], self.list_data[i][0], t)
+			else:
+				self.cb_select(self.list_data[i][2], self.list_data[i][0])
 			if not self.close_on_select:
 				self.fill_list()
 

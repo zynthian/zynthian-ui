@@ -80,8 +80,9 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 			state = self.zyngui.screens['layer'].learned_zs3[self.zs3_index]
 		except:
 			logging.error("Bad ZS3 index ({}).".format(self.zs3_index))
+			return
 
-		self.zyngui.screens['option'].config("ZS3 restoring: {}".format(state["zs3_title"]), self.zs3_restoring_options_cb, self.zs3_restoring_options_select_cb, close_on_select=False)
+		self.zyngui.screens['option'].config("ZS3 restoring: {}".format(state["zs3_title"]), self.zs3_restoring_options_cb, self.zs3_restoring_options_select_cb, close_on_select=False, click_type=True)
 		self.zyngui.show_screen('option')
 
 
@@ -90,6 +91,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 			state = self.zyngui.screens["layer"].learned_zs3[self.zs3_index]
 		except:
 			logging.error("Bad ZS3 index ({}).".format(self.zs3_index))
+			return
 
 		options = {}
 
@@ -116,10 +118,21 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 		return options
 
 
-	def	zs3_restoring_options_select_cb(self, label, index):
-		if index >= 0:
-			self.zyngui.screens["layer"].toggle_zs3_layer_restore_flag(self.zs3_index, index)
-		elif index == -1:
+	def	zs3_restoring_options_select_cb(self, label, index, ct):
+		if ct == "S":
+			if index >= 0:
+				self.zyngui.screens["layer"].toggle_zs3_layer_restore_flag(self.zs3_index, index)
+			elif index == -1:
+				self.zyngui.screens["layer"].toggle_zs3_mixer_restore_flag(self.zs3_index)
+		elif ct == "B":
+			try:
+				state = self.zyngui.screens["layer"].learned_zs3[self.zs3_index]
+			except:
+				logging.error("Bad ZS3 index ({}).".format(self.zs3_index))
+				return
+			# Invert selection (toggle all elements in list)
+			for i in range(0, len(state["layers"])):
+				self.zyngui.screens["layer"].toggle_zs3_layer_restore_flag(self.zs3_index, i)
 			self.zyngui.screens["layer"].toggle_zs3_mixer_restore_flag(self.zs3_index)
 
 
