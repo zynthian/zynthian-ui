@@ -343,7 +343,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.copy_source = self.pattern
 			self.enable_param_editor(self, 'copy', 'Copy pattern to', {'value_min':1, 'value_max':zynseq.SEQ_MAX_PATTERNS, 'value':self.pattern}, self.copy_pattern)
 		elif params == 'Load pattern':
-			self.zyngui.screens['option'].config_file_list("Load pattern", [self.patterns_dpath, self.my_patterns_dpath], ".zpat", self.load_pattern_file)
+			self.zyngui.screens['option'].config_file_list("Load pattern", [self.patterns_dpath, self.my_patterns_dpath], "*.zpat", self.load_pattern_file)
 			self.zyngui.show_screen('option')
 		elif params == 'Save pattern':
 			self.zyngui.show_keyboard(self.save_pattern_file, "pat#{}".format(self.pattern))

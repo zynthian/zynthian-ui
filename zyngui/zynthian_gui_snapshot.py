@@ -26,10 +26,9 @@
 import os
 import logging
 from datetime import datetime
-from os.path import isfile, isdir, join, basename, dirname
+from os.path import isfile, isdir, join, basename, dirname, splitext
 
 # Zynthian specific modules
-from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
@@ -201,8 +200,8 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		head, bname = os.path.split(self.bank_dir)
 		for f in sorted(os.listdir(join(self.base_dir, self.bank_dir))):
 			fpath = self.get_snapshot_fpath(f)
-			if isfile(fpath) and f[-4:].lower() == '.zss':
-				title = f[:-4].replace(';', '>', 1).replace(';', '/')
+			if isfile(fpath) and f[-4:].lower() == ".zss":
+				title = f[:-4].replace(";", ">", 1).replace(";", "/")
 				self.list_data.append((fpath, i, title))
 				try:
 					bn = self.get_midi_number(bname)
@@ -279,9 +278,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 
 	def options_cb(self, option, param):
-		fpath=self.list_data[self.index][0]
-		fname=self.list_data[self.index][2]
-		parts=self.get_parts_from_path(fpath)
+		fpath = self.list_data[self.index][0]
+		fname = self.list_data[self.index][2]
+		parts = self.get_parts_from_path(fpath)
 		if parts is None:
 			logging.warning("Wrong snapshot {} => {}".format(self.index, fpath))
 			return
@@ -300,7 +299,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.save_snapshot(fpath)
 		elif option == "Restore Backup":
 			budir = dirname(fpath) + "/.backup"
-			self.zyngui.screens['option'].config_file_list("Restore backup: {}".format(fname), budir, ".*", self.restore_backup_cb)
+			fbase, fext = splitext(fname)
+			fpat = "{}.*.zss".format(fbase)
+			self.zyngui.screens['option'].config_file_list("Restore backup: {}".format(fname), budir, fpat, self.restore_backup_cb)
 			self.zyngui.show_screen('option')
 		elif option == "Rename":
 			self.zyngui.show_keyboard(self.rename_snapshot, parts[1])
@@ -445,11 +446,12 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 	def backup_snapshot(self, path):
 		if isfile(path):
 			dpath = dirname(path)
+			fbase, fext = splitext(basename(path))
+			ts_str = datetime.now().strftime("%Y%m%d%H%M%S")
 			budir = dpath + "/.backup"
 			if not isdir(budir):
 				os.mkdir(budir)
-			ts_str = datetime.now().strftime("%Y%m%d%H%M%S")
-			os.rename(path, "{}/{}.{}".format(budir, basename(path), ts_str))
+			os.rename(path, "{}/{}.{}{}".format(budir, fbase, ts_str, fext))
 
 
 	def save_default_snapshot(self):

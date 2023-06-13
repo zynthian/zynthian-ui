@@ -23,8 +23,10 @@
 # 
 #******************************************************************************
 
-import logging
 import os
+import glob
+import logging
+from os.path import basename, splitext
 
 # Zynthian specific modules
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
@@ -57,7 +59,7 @@ class zynthian_gui_option(zynthian_gui_selector):
 		self.index = 0
 
 
-	def config_file_list(self, title, dpaths, fext, cb_select, close_on_select=True):
+	def config_file_list(self, title, dpaths, fpat, cb_select, close_on_select=True):
 		self.title = title
 		self.options = {}
 		self.options_cb = None
@@ -70,20 +72,18 @@ class zynthian_gui_option(zynthian_gui_selector):
 		if isinstance(dpaths, (list, tuple)):
 			for dpath in dpaths:
 				try:
-					for fname in sorted(os.listdir(dpath)):
-						if fext and fext != ".*":
-							fparts = os.path.splitext(fname)
-							if fparts[1].lower() != fext.lower():
-								continue
-							fbase = fparts[0]
+					#for fname in sorted(os.listdir(dpath)):
+					for fpath in sorted(glob.iglob("{}/{}".format(dpath, fpat))):
+						fname = basename(fpath)
+						if fpat != "*":
+							fbase, fext = splitext(fname)
 						else:
 							fbase = fname
 
-						fpath = os.path.join(dpath, fname)
 						if os.path.isfile(fpath):
 							self.options[fbase] = fpath
-				except:
-					pass
+				except Exception as err:
+					logging.warning("Can't get file list for {}/{}: {}".format(dpath, fpat, err))
 
 
 	def fill_list(self):
