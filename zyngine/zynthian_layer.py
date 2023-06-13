@@ -621,7 +621,7 @@ class zynthian_layer:
 		self.restore_state_legacy(state)
 
 
-	def restore_state_2(self, state):
+	def restore_state_2(self, state, restore_midi_learn=True):
 
 		# WARNING => This is really UGLY!
 		# For non-LV2 engines, bank and preset can affect what controllers do.
@@ -635,7 +635,7 @@ class zynthian_layer:
 		#Set controller values
 		for k in state['controllers_dict']:
 			try:
-				self.controllers_dict[k].restore_state(state['controllers_dict'][k])
+				self.controllers_dict[k].restore_state(state['controllers_dict'][k], restore_midi_learn=restore_midi_learn)
 			except Exception as e:
 				logging.warning("Invalid Controller on layer {}: {}".format(self.get_basepath(), e))
 
