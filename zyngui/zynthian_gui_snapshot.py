@@ -164,6 +164,8 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		i = i + 1
 
 		for f in sorted(os.listdir(self.base_dir)):
+			if f.startswith('.'):
+				continue
 			dpath = join(self.base_dir, f)
 			if isdir(dpath):
 				self.list_data.append((dpath, i, f))
