@@ -72,7 +72,6 @@ class zynthian_gui_option(zynthian_gui_selector):
 		if isinstance(dpaths, (list, tuple)):
 			for dpath in dpaths:
 				try:
-					#for fname in sorted(os.listdir(dpath)):
 					for fpath in sorted(glob.iglob("{}/{}".format(dpath, fpat))):
 						fname = basename(fpath)
 						if fpat != "*":
