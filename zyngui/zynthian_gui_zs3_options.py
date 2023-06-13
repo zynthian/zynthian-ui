@@ -92,8 +92,12 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 			logging.error("Bad ZS3 index ({}).".format(self.zs3_index))
 
 		options = {}
-		for i, lss in enumerate(state['layers']):
-			label = "{}#{} > {}".format(lss["midi_chan"], lss["engine_name"], lss["preset_name"])
+		for i, lss in enumerate(sorted(state['layers'], key=lambda lss: lss['midi_chan'])):
+			if lss["midi_chan"] == 256:
+				chan = "Main"
+			else:
+				chan = lss["midi_chan"] + 1
+			label = "{}#{} > {}".format(chan, lss["engine_name"], lss["preset_name"])
 			if "restore" in lss and not lss['restore']:
 				options["[  ] {}".format(label)] = i
 			else:
