@@ -84,8 +84,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.monitors_dict.append(OrderedDict())
 			self.monitors_dict[chan]["state"] = 0
 			self.monitors_dict[chan]["pos"] = 0
-			self.monitors_dict[chan]["duration"] = 0
-			self.monitors_dict[chan]["samplerate"] = 0
+			self.monitors_dict[chan]["frames"] = 0
+			self.monitors_dict[chan]["channels"] = 0
+			self.monitors_dict[chan]["samplerate"] = 44100
 			self.monitors_dict[chan]["filename"] = ""
 			self.monitors_dict[chan]["loop start"] = 0
 			self.monitors_dict[chan]["loop end"] = 0
@@ -226,8 +227,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		zoom_labels = ['x1']
 		zoom_values = [1]
 		z = 1
-		while z < dur:
-			z = z * 2
+		while z < dur * 250:
+			z *= 2
 			zoom_labels.append(f"x{z}")
 			zoom_values.append(z)
 		if dur:
@@ -267,7 +268,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.player.set_track_a(handle, default_a)
 		self.player.set_track_b(handle, default_b)
 		self.monitors_dict[handle]['filename'] = self.player.get_filename(handle)
-		self.monitors_dict[handle]['duration'] = self.player.get_duration(handle)
+		self.monitors_dict[handle]['frames'] = self.player.get_frames(handle)
+		self.monitors_dict[handle]['channels'] = self.player.get_frames(handle)
 		self.monitors_dict[handle]['samplerate'] = self.player.get_samplerate(handle)
 		self.monitors_dict[handle]['zoom'] = 1
 		return True
