@@ -71,7 +71,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['right track', None, 0, [['mixdown'], [0]]],
 			['loop start', None, 0.0, 0.0],
 			['loop end', None, 0.0, 0.0],
-			['zoom', None, 1, ["x1"],[1]]
+			['zoom', None, 1, ["x1"],[1]],
+			['info', None, 0, ["Length", "Play Time", "Remaining", "Samplerate", "None"]]
 		]
 
 		# Controller Screens
@@ -91,6 +92,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.monitors_dict[chan]["loop start"] = 0
 			self.monitors_dict[chan]["loop end"] = 0
 			self.monitors_dict[chan]["zoom"] = 1
+			self.monitors_dict[chan]["info"] = 0
 
 		self.reset()
 
@@ -244,7 +246,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self._ctrl_screens = [
 				['main', ['record', 'gain', 'transport', 'position']],
 				['loop', ['loop', 'loop start', 'loop end', 'zoom']],
-				['config', ['bend range', 'left track', 'right track', 'sustain']]
+				['config', ['bend range', 'left track', 'right track', 'sustain']],
+				['info', ['info', None, None, None]]
 			]
 		else:
 			self._ctrl_screens = [
@@ -262,7 +265,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['right track', None, default_b, [track_labels, track_values]],
 			['loop start', None, 0.0, dur],
 			['loop end', None, dur, dur],
-			['zoom', None, 1, [zoom_labels, zoom_values]]
+			['zoom', None, 1, [zoom_labels, zoom_values]],
+			['info', None, 0, ["Length", "Play Time", "Remaining", "Samplerate", "None"]]
 		]
 		layer.refresh_controllers()
 		self.player.set_track_a(handle, default_a)
@@ -382,6 +386,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					layer.controllers_dict['loop start'].nudge_factor = pos_zctrl.nudge_factor
 					layer.controllers_dict['loop end'].nudge_factor = pos_zctrl.nudge_factor
 					return
+		elif zctrl.symbol == "info":
+			self.monitors_dict[handle]['info'] = zctrl.value
 
 
 	def get_monitors_dict(self, handle):
