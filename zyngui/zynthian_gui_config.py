@@ -211,7 +211,7 @@ def config_custom_switches():
 				chan = os.environ.get(root_varname + "__MIDI_CHAN")
 				try:
 					chan = int(chan) - 1
-					if chan<0 or chan>15:
+					if chan < 0 or chan > 15:
 						chan = None
 				except:
 					chan = None
