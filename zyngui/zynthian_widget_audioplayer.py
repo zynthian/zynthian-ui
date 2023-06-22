@@ -8,7 +8,6 @@
 # Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 # Copyright (C) 2015-2023 Brian Walton <riban@zynthian.org>
 #
-# Depends on https://github.com/bbc/audiowaveform
 #******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
@@ -29,6 +28,7 @@ from threading import Thread
 import tkinter
 import logging
 import soundfile
+from time import monotonic
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -135,40 +135,44 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.widget_canvas.coords(self.loading_text, self.width // 2, self.height // 2)
 		self.widget_canvas.coords(self.info_text, self.width - zynthian_gui_config.font_size // 2, self.height)
 		self.widget_canvas.itemconfig(self.info_text, width=self.width)
-		self.draw_waveform(self.offset, self.frames // self.zoom)
+		self.zoom = None # This will force a redraw on next refresh cycle
 
 
 	def get_monitors(self):
-		self.monitors = self.layer.engine.get_monitors_dict(self.layer.midi_chan)
+		self.monitors = self.layer.engine.get_monitors_dict(self.layer.handle)
 
 
 	def get_player_index(self):
-		return self.layer.midi_chan if self.layer.midi_chan < 16 else 16
-
+		return self.layer.handle
 
 	def load_file(self):
+		#a = monotonic()
+		self.info = None
+		self.zoom = None
 		self.widget_canvas.delete("waveform")
+		self.widget_canvas.itemconfig("overlay", state=tkinter.HIDDEN)
 		try:
 			with soundfile.SoundFile(self.filename) as snd:
 				self.audio_data = snd.read()
-				self.frames = snd.frames
 				self.channels = snd.channels
 				self.samplerate = snd.samplerate
-				if snd.samplerate:
-					self.duration = snd.frames / snd.samplerate
+				self.frames = len(self.audio_data)
+				if self.samplerate:
+					self.duration = self.frames / self.samplerate
 				else:
 					self.duration = 0.0
 			y0 = self.height // self.channels
 			for chan in range(self.channels):
 				v_offset = chan * y0
-				self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=zynthian_gui_config.PAD_COLOUR_GROUP[chan // 2 % len(zynthian_gui_config.PAD_COLOUR_GROUP)], tags="waveform")
-				self.widget_canvas.create_line(0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags="waveform")
-				self.widget_canvas.create_line(0,0,0,0, fill="white", tags=("waveform", f"waveform{chan}"))
+				self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=zynthian_gui_config.PAD_COLOUR_GROUP[chan // 2 % len(zynthian_gui_config.PAD_COLOUR_GROUP)], tags="waveform", state=tkinter.HIDDEN)
+				self.widget_canvas.create_line(0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags="waveform", state=tkinter.HIDDEN)
+				self.widget_canvas.create_line(0,0,0,0, fill="white", tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
 			self.widget_canvas.tag_raise("overlay")
-			self.draw_waveform(0, self.frames)
 		except Exception as e:
 			logging.warning(e)
 		self.refreshing = False
+		self.update()
+		#logging.warning(f"{monotonic() - a}s to open {self.filename}")
 
 
 	def draw_waveform(self, start, length):
@@ -201,7 +205,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				data += [x, y1, x, y2]
 				pos += frames_per_pixel
 			self.widget_canvas.coords(f"waveform{chan}", data)
-		self.widget_canvas.tag_raise("overlay")
 
 
 	def refresh_gui(self):
@@ -226,19 +229,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			loop_end = int(self.samplerate * self.monitors["loop end"])
 			pos_time = self.monitors["pos"]
 			pos = int(pos_time * self.samplerate)
-
-			if self.monitors["info"] != self.info:
-				self.info = self.monitors["info"]
-				if self.info == 0:
-					self.widget_canvas.itemconfigure(self.info_text, text=f"{int(self.duration / 60):02d}:{int(self.duration % 60):02d}", state=tkinter.NORMAL)
-				elif self.info == 1:
-					self.widget_canvas.itemconfigure(self.info_text, text=f"{int(pos_time / 60):02d}:{int(pos_time % 60):02d}", state=tkinter.NORMAL)
-				elif self.info == 2:
-					self.widget_canvas.itemconfigure(self.info_text, text=f"{int((self.duration - pos_time) / 60):02d}:{int((self.duration - pos_time) % 60):02d}", state=tkinter.NORMAL)
-				elif self.info == 3:
-					self.widget_canvas.itemconfig(self.info_text, text=f"{self.samplerate}", state="normal")
-				else:
-					self.widget_canvas.itemconfig(self.info_text, state="hidden")
 
 			if self.zoom != self.monitors["zoom"]:
 				self.zoom = self.monitors["zoom"]
@@ -283,6 +273,21 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.widget_canvas.coords(self.loop_end_line, x, 0, x, self.height)
 				x = int(f * (pos - self.offset))
 				self.widget_canvas.coords(self.play_line, x, 0, x, self.height)
+
+			if self.monitors["info"] != self.info:
+				self.widget_canvas.itemconfig("waveform", state=tkinter.NORMAL)
+				self.widget_canvas.itemconfig("overlay", state=tkinter.NORMAL)
+				self.info = self.monitors["info"]
+				if self.info == 0:
+					self.widget_canvas.itemconfigure(self.info_text, text=f"{int(self.duration / 60):02d}:{int(self.duration % 60):02d}", state=tkinter.NORMAL)
+				elif self.info == 1:
+					self.widget_canvas.itemconfigure(self.info_text, text=f"{int(pos_time / 60):02d}:{int(pos_time % 60):02d}", state=tkinter.NORMAL)
+				elif self.info == 2:
+					self.widget_canvas.itemconfigure(self.info_text, text=f"{int((self.duration - pos_time) / 60):02d}:{int((self.duration - pos_time) % 60):02d}", state=tkinter.NORMAL)
+				elif self.info == 3:
+					self.widget_canvas.itemconfig(self.info_text, text=f"{self.samplerate}", state=tkinter.NORMAL)
+				else:
+					self.widget_canvas.itemconfig(self.info_text, state=tkinter.HIDDEN)
 
 		except Exception as e:
 			logging.error(e)

@@ -121,15 +121,17 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def add_layer(self, layer):
-		handle = layer.midi_chan if layer.midi_chan < 16 else 16
-		if self.player.add_player(handle):
-			self.layers.append(layer)
-			layer.jackname = self.jackname
-			layer.jackname = "{}:out_{:02d}(a|b)".format(self.jackname, handle + 1)
+		for handle in range(17):
+			if self.player.add_player(handle):
+				self.layers.append(layer)
+				layer.handle = handle
+				layer.jackname = self.jackname
+				layer.jackname = "{}:out_{:02d}(a|b)".format(self.jackname, handle + 1)
+				return
 
 
 	def del_layer(self, layer):
-		self.player.remove_player(layer.midi_chan if layer.midi_chan < 16 else 16)
+		self.player.remove_player(layer.handle)
 		super().del_layer(layer)
 
 
@@ -198,21 +200,20 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
-		handle = layer.midi_chan if layer.midi_chan < 16 else 16
-		if self.player.get_filename(handle) == preset[0] and self.player.get_file_duration(preset[0]) == self.player.get_duration(handle):
+		if self.player.get_filename(layer.handle) == preset[0] and self.player.get_file_duration(preset[0]) == self.player.get_duration(layer.handle):
 			return False
 
-		good_file = self.player.load(handle, preset[0])
-		dur = self.player.get_duration(handle)
-		self.player.set_position(handle, 0)
-		if self.player.is_loop(handle):
+		good_file = self.player.load(layer.handle, preset[0])
+		dur = self.player.get_duration(layer.handle)
+		self.player.set_position(layer.handle, 0)
+		if self.player.is_loop(layer.handle):
 			loop = 'looping'
 		else:
 			loop = 'one-shot'
-		logging.debug("Loading Audio Track '{}' in player {}".format(preset[0], handle))
-		if handle == 16:
-			self.player.start_playback(handle)
-		if self.player.get_playback_state(handle):
+		logging.debug("Loading Audio Track '{}' in player {}".format(preset[0], layer.handle))
+		if layer.handle == self.zyngui.audio_player.handle:
+			self.player.start_playback(layer.handle)
+		if self.player.get_playback_state(layer.handle):
 			transport = 'playing'
 		else:
 			transport = 'stopped'
@@ -220,8 +221,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			record = 'recording'
 		else:
 			record = 'stopped'
-		gain = self.player.get_gain(handle)
-		bend_range = self.player.get_pitchbend_range(handle)
+		gain = self.player.get_gain(layer.handle)
+		bend_range = self.player.get_pitchbend_range(layer.handle)
 		default_a = 0
 		default_b = 0
 		track_labels = ['mixdown']
@@ -234,7 +235,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			zoom_labels.append(f"x{z}")
 			zoom_values.append(z)
 		if dur:
-			channels = self.player.get_channels(handle)
+			channels = self.player.get_channels(layer.handle)
 			if channels > 2:
 				default_a = -1
 				default_b = -1
@@ -246,9 +247,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self._ctrl_screens = [
 				['main', ['record', 'gain', 'transport', 'position']],
 				['loop', ['loop', 'loop start', 'loop end', 'zoom']],
-				['config', ['bend range', 'left track', 'right track', 'sustain']],
+				['config', ['left track', 'right track', 'bend range', 'sustain']],
 				['info', ['info', None, None, None]]
 			]
+			if layer.handle == self.zyngui.audio_player.handle:
+				self._ctrl_screens[2][1][2] = None
+				self._ctrl_screens[2][1][3] = None
 		else:
 			self._ctrl_screens = [
 				['main', ['record', 'gain']],
@@ -259,8 +263,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['loop', None, loop, ['one-shot', 'looping']],
 			['transport', None, transport, ['stopped', 'playing']],
 			['position', None, 0.0, dur],
-			['bend range', None, bend_range, 24],
-			['sustain', 64, 'off', ['off', 'on']],
 			['left track', None, default_a, [track_labels, track_values]],
 			['right track', None, default_b, [track_labels, track_values]],
 			['loop start', None, 0.0, dur],
@@ -268,14 +270,17 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['zoom', None, 1, [zoom_labels, zoom_values]],
 			['info', None, 0, ["Length", "Play Time", "Remaining", "Samplerate", "None"]]
 		]
+		if layer.handle != self.zyngui.audio_player.handle:
+			self._ctrls += [['sustain', 64, 'off', ['off', 'on']],
+						['bend range', None, bend_range, 24]]
 		layer.refresh_controllers()
-		self.player.set_track_a(handle, default_a)
-		self.player.set_track_b(handle, default_b)
-		self.monitors_dict[handle]['filename'] = self.player.get_filename(handle)
-		self.monitors_dict[handle]['frames'] = self.player.get_frames(handle)
-		self.monitors_dict[handle]['channels'] = self.player.get_frames(handle)
-		self.monitors_dict[handle]['samplerate'] = self.player.get_samplerate(handle)
-		self.monitors_dict[handle]['zoom'] = 1
+		self.player.set_track_a(layer.handle, default_a)
+		self.player.set_track_b(layer.handle, default_b)
+		self.monitors_dict[layer.handle]['filename'] = self.player.get_filename(layer.handle)
+		self.monitors_dict[layer.handle]['frames'] = self.player.get_frames(layer.handle)
+		self.monitors_dict[layer.handle]['channels'] = self.player.get_frames(layer.handle)
+		self.monitors_dict[layer.handle]['samplerate'] = self.player.get_samplerate(layer.handle)
+		self.monitors_dict[layer.handle]['zoom'] = 1
 		return True
 
 
@@ -312,10 +317,17 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# Controllers Management
 	#----------------------------------------------------------------------------
 
+	def get_controllers_dict(self, layer):
+		ctrls = super().get_controllers_dict(layer)
+		for zctrl in ctrls.values():
+			zctrl.handle = layer.handle
+		return ctrls
+
+
 	def control_cb(self, handle, id, value):
 		try:
 			for layer in self.layers:
-				if layer.midi_chan == handle:
+				if layer.handle == handle:
 					ctrl_dict = layer.controllers_dict
 					if id == 1:
 						ctrl_dict['transport'].set_value(int(value) * 64, False)
@@ -348,7 +360,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 
 	def send_controller_value(self, zctrl):
-		handle = zctrl.midi_chan if zctrl.midi_chan < 16 else 16
+		handle = zctrl.handle
 		if zctrl.symbol == "position":
 			self.player.set_position(handle, zctrl.value)
 		elif zctrl.symbol == "gain":
@@ -380,7 +392,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		elif zctrl.symbol == "zoom":
 			self.monitors_dict[handle]['zoom'] = zctrl.value
 			for layer in self.layers:
-				if layer.midi_chan == handle:
+				if layer.handle == handle:
 					pos_zctrl = layer.controllers_dict['position']
 					pos_zctrl.nudge_factor = pos_zctrl.value_max / 400 / zctrl.value
 					layer.controllers_dict['loop start'].nudge_factor = pos_zctrl.nudge_factor
