@@ -50,13 +50,10 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.loop_end = 1.0
 		self.filename = "?"
 		self.duration = 0.0
-		self.bg_color = "000000"
-		self.waveform_color = "6070B0"
-		self.image = None
-		self.image_hires = None
-		self.loading_image = False
+		self.bg_color = "black"
+		self.waveform_color = "white"
 		self.zoom = 1
-		self.zoom_switch = 1
+		self.refresh_waveform = False # True to force redraw of waveform on next refresh
 		self.offset = 0 # Frames from start of file that waveform display starts
 		self.channels = 0 # Quantity of channels in audio
 		self.frames = 0 # Quantity of frames in audio
@@ -135,7 +132,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.widget_canvas.coords(self.loading_text, self.width // 2, self.height // 2)
 		self.widget_canvas.coords(self.info_text, self.width - zynthian_gui_config.font_size // 2, self.height)
 		self.widget_canvas.itemconfig(self.info_text, width=self.width)
-		self.zoom = None # This will force a redraw on next refresh cycle
+		self.refresh_waveform = True
 
 
 	def get_monitors(self):
@@ -148,7 +145,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 	def load_file(self):
 		#a = monotonic()
 		self.info = None
-		self.zoom = None
 		self.widget_canvas.delete("waveform")
 		self.widget_canvas.itemconfig("overlay", state=tkinter.HIDDEN)
 		try:
@@ -166,11 +162,12 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				v_offset = chan * y0
 				self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=zynthian_gui_config.PAD_COLOUR_GROUP[chan // 2 % len(zynthian_gui_config.PAD_COLOUR_GROUP)], tags="waveform", state=tkinter.HIDDEN)
 				self.widget_canvas.create_line(0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags="waveform", state=tkinter.HIDDEN)
-				self.widget_canvas.create_line(0,0,0,0, fill="white", tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
+				self.widget_canvas.create_line(0,0,0,0, fill=self.waveform_color, tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
 			self.widget_canvas.tag_raise("overlay")
 		except Exception as e:
 			logging.warning(e)
 		self.refreshing = False
+		self.refresh_waveform = True
 		self.update()
 		#logging.warning(f"{monotonic() - a}s to open {self.filename}")
 
@@ -205,6 +202,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				data += [x, y1, x, y2]
 				pos += frames_per_pixel
 			self.widget_canvas.coords(f"waveform{chan}", data)
+		self.refresh_waveform = False
 
 
 	def refresh_gui(self):
@@ -224,27 +222,27 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 			offset = self.offset
 			refresh_markers = False
-			refresh_waveform = False
 			loop_start = int(self.samplerate * self.monitors["loop start"])
 			loop_end = int(self.samplerate * self.monitors["loop end"])
 			pos_time = self.monitors["pos"]
 			pos = int(pos_time * self.samplerate)
 
 			if self.zoom != self.monitors["zoom"]:
+				centre = offset + 0.5 * self.frames / self.zoom
 				self.zoom = self.monitors["zoom"]
-				offset = max(0, pos - self.frames / self.zoom // 2)
-				refresh_waveform = True
+				offset = int(centre - 0.5 * self.frames / self.zoom)
+				self.refresh_waveform = True
 
 			if self.loop_start != loop_start:
 				self.loop_start = loop_start
 				if self.loop_start < offset or self.loop_start > offset + self.frames // self.zoom:
-					offset = max(0, self.loop_start - self.frames / self.zoom // 2)
+					offset = int(self.loop_start - 0.25 * self.frames / self.zoom)
 				refresh_markers = True
 
 			if self.loop_end != loop_end:
 				self.loop_end = loop_end
 				if self.loop_end < offset or self.loop_end > offset + self.frames // self.zoom:
-					offset = max(0, self.loop_end - self.frames / self.zoom // 2)
+					offset = int(self.loop_end - 0.75 * self.frames / self.zoom)
 				refresh_markers = True
 
 			if self.play_pos != pos:
@@ -257,11 +255,13 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 					self.widget_canvas.itemconfigure(self.info_text, text=f"{int((self.duration - pos_time) / 60):02d}:{int((self.duration - pos_time) % 60):02d}")
 				refresh_markers = True
 
+			offset = max(0, offset)
+			offset = min(self.frames - self.frames // self.zoom, offset)
 			if offset != self.offset:
 				self.offset = offset
-				refresh_waveform = True
+				self.refresh_waveform = True
 
-			if refresh_waveform:
+			if self.refresh_waveform:
 				self.draw_waveform(offset, self.frames // self.zoom)
 				refresh_markers = True
 
@@ -298,9 +298,29 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 	def cb_canvas_wheel(self, event):
 		try:
 			if event.num == 5 or event.delta == -120:
-				self.layer.controllers_dict['position'].nudge(-1)
-			if event.num == 4 or event.delta == 120:
-				self.layer.controllers_dict['position'].nudge(1)
+				if event.state == 1: # Shift
+					self.layer.controllers_dict['loop start'].nudge(-1)
+				elif event.state == 5: # Shift+Ctrl
+					self.layer.controllers_dict['loop end'].nudge(-1)
+				elif event.state == 4: # Ctrl
+					self.layer.controllers_dict['zoom'].nudge(-1)
+				elif event.state == 8: # Alt
+					self.offset = max(0, self.offset - self.frames // self.zoom // 10)
+					self.refresh_waveform = True
+				else:
+					self.layer.controllers_dict['position'].nudge(-1)
+			elif event.num == 4 or event.delta == 120:
+				if event.state == 1: # Shift
+					self.layer.controllers_dict['loop start'].nudge(1)
+				elif event.state == 5: # Shift+Ctrl
+					self.layer.controllers_dict['loop end'].nudge(1)
+				elif event.state == 4: # Ctrl
+					self.layer.controllers_dict['zoom'].nudge(1)
+				elif event.state == 8: # Alt
+					self.offset = min(self.frames - self.frames // self.zoom, self.offset + self.frames // self.zoom // 10)
+					self.refresh_waveform = True
+				else:
+					self.layer.controllers_dict['position'].nudge(1)
 		except Exception as e:
 			logging.debug("Failed to change value")
 
