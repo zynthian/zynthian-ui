@@ -71,6 +71,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['right track', None, 0, [['mixdown'], [0]]],
 			['loop start', None, 0.0, 0.0],
 			['loop end', None, 0.0, 0.0],
+			['crop start', None, 0.0, 0.0],
+			['crop end', None, 0.0, 0.0],
 			['zoom', None, 1, ["x1"],[1]],
 			['info', None, 0, ["Length", "Play Time", "Remaining", "Samplerate", "None"]]
 		]
@@ -91,6 +93,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.monitors_dict[chan]["filename"] = ""
 			self.monitors_dict[chan]["loop start"] = 0
 			self.monitors_dict[chan]["loop end"] = 0
+			self.monitors_dict[chan]["crop start"] = 0
+			self.monitors_dict[chan]["crop end"] = 0
 			self.monitors_dict[chan]["zoom"] = 1
 			self.monitors_dict[chan]["info"] = 0
 
@@ -121,13 +125,14 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def add_layer(self, layer):
-		for handle in range(17):
-			if self.player.add_player(handle):
-				self.layers.append(layer)
-				layer.handle = handle
-				layer.jackname = self.jackname
-				layer.jackname = "{}:out_{:02d}(a|b)".format(self.jackname, handle + 1)
-				return
+		handle = self.player.add_player()
+		if handle < 0:
+			return
+		self.layers.append(layer)
+		layer.handle = handle
+		layer.jackname = self.jackname
+		layer.jackname = "{}:out_{:02d}(a|b)".format(self.jackname, handle + 1)
+		self.set_midi_chan(layer)
 
 
 	def del_layer(self, layer):
@@ -138,6 +143,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
+
+	def set_midi_chan(self, layer):
+		self.player.set_midi_chan(layer.handle, layer.midi_chan)
 
 
 	# ---------------------------------------------------------------------------
@@ -246,6 +254,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				track_values.append(track)
 			self._ctrl_screens = [
 				['main', ['record', 'gain', 'transport', 'position']],
+				['crop', ['crop start', 'crop end', 'position', 'zoom']],
 				['loop', ['loop', 'loop start', 'loop end', 'zoom']],
 				['config', ['left track', 'right track', 'bend range', 'sustain']],
 				['info', ['info', None, None, None]]
@@ -267,6 +276,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['right track', None, default_b, [track_labels, track_values]],
 			['loop start', None, 0.0, dur],
 			['loop end', None, dur, dur],
+			['crop start', None, 0.0, dur],
+			['crop end', None, dur, dur],
 			['zoom', None, 1, [zoom_labels, zoom_values]],
 			['info', None, 0, ["Length", "Play Time", "Remaining", "Samplerate", "None"]]
 		]
@@ -353,6 +364,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 						ctrl_dict['loop end'].set_value(value, False)
 						self.monitors_dict[handle]['loop end'] = value
 					elif id == 13:
+						ctrl_dict['crop start'].set_value(value, False)
+						self.monitors_dict[handle]['crop start'] = value
+					elif id == 14:
+						ctrl_dict['crop end'].set_value(value, False)
+						self.monitors_dict[handle]['crop end'] = value
+					elif id == 15:
 						ctrl_dict['sustain'].set_value(value, False)
 					break
 		except Exception as e:
@@ -385,6 +402,10 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.player.set_loop_start(handle, zctrl.value)
 		elif zctrl.symbol == "loop end":
 			self.player.set_loop_end(handle, zctrl.value)
+		elif zctrl.symbol == "crop start":
+			self.player.set_crop_start(handle, zctrl.value)
+		elif zctrl.symbol == "crop end":
+			self.player.set_crop_end(handle, zctrl.value)
 		elif zctrl.symbol == "bend range":
 			self.player.set_pitchbend_range(handle, zctrl.value)
 		elif zctrl.symbol == "sustain":
@@ -397,6 +418,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					pos_zctrl.nudge_factor = pos_zctrl.value_max / 400 / zctrl.value
 					layer.controllers_dict['loop start'].nudge_factor = pos_zctrl.nudge_factor
 					layer.controllers_dict['loop end'].nudge_factor = pos_zctrl.nudge_factor
+					layer.controllers_dict['crop start'].nudge_factor = pos_zctrl.nudge_factor
+					layer.controllers_dict['crop end'].nudge_factor = pos_zctrl.nudge_factor
 					return
 		elif zctrl.symbol == "info":
 			self.monitors_dict[handle]['info'] = zctrl.value

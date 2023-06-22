@@ -582,7 +582,6 @@ class zynthian_gui:
 				return
 		elif screen == "audio_player":
 			if self.audio_player:
-				#self.audio_player.refresh_controllers()
 				self.set_curlayer(self.audio_player, save=True, populate_screens=False)
 			else:
 				logging.error("Audio Player not created!")

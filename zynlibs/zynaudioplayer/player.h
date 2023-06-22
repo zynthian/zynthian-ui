@@ -26,7 +26,9 @@ enum {
     NOTIFY_DEBUG        = 10,
     NOTIFY_LOOP_START   = 11,
     NOTIFY_LOOP_END     = 12,
-    NOTIFY_SUSTAIN      = 13
+    NOTIFY_CROP_START   = 13,
+    NOTIFY_CROP_END     = 14,
+    NOTIFY_SUSTAIN      = 15
 };
 
 /** @brief  Library constructor (initalisation) */
@@ -51,14 +53,20 @@ char* get_supported_codecs();
 
 /** @brief  Add a player instance
 *   @param  player_handle Index of player to initialise
-*   @retval int 1 on success
+*   @retval int Player handel on success or -1 on failure
 */
-int add_player(int player_handle);
+int add_player();
 
 /** @brief  Remove player from library
 *   @param  player_handle Handle of player provided by init_player()
 */
 void remove_player(int player_handle);
+
+/** @brief  Set player MIDI channel
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  midi_chan MIDI channel (0..15 or other value to disable MIDI listen)
+*/
+void set_midi_chan(int player_handle, uint8_t midi_chan);
 
 /** @brief Get jack client name
 *   @retval const char* Jack client name
@@ -145,6 +153,30 @@ void set_loop_end_time(int player_handle, float time);
 *   @retval float End of loop in seconds since end of file
 */
 float get_loop_end_time(int player_handle);
+
+/** @brief  Set start of audio (crop)
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  time Start of crop in seconds since start of file
+*/
+void set_crop_start_time(int player_handle, float time);
+
+/** @brief  Get start of audio (crop)
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval float Start of crop in seconds since start of file
+*/
+float get_crop_start_time(int player_handle);
+
+/** @brief  Set end audio (crop)
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  time End of crop in seconds since end of file
+*/
+void set_crop_end_time(int player_handle, float time);
+
+/** @brief  Get end of audio (crop)
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval float End of crop in seconds since end of file
+*/
+float get_crop_end_time(int player_handle);
 
 /** @brief  Start playback
 *   @param  player_handle Handle of player provided by init_player()
