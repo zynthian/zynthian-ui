@@ -3,8 +3,7 @@
     License: LGPL V3
 */
 
-/** @todo   Resolve occasional segfault when adusting position
-    @todo   Add in/out markers including gradient, e.g. in_start, in_end, out_start, out_end
+/**
     @todo   Add 'slate' markers- general purpose markers that can be jumpped to
 */
 
@@ -44,6 +43,15 @@ enum fileState {
     FILE_CLOSED  = 0,
     FILE_OPENING = 1,
     FILE_OPEN    = 2
+};
+
+enum envState {
+    ENV_IDLE = 0,
+    ENV_ATTACK,
+    ENV_DECAY,
+    ENV_SUSTAIN,
+    ENV_RELEASE,
+    ENV_END
 };
 
 struct AUDIO_PLAYER {
@@ -90,6 +98,29 @@ struct AUDIO_PLAYER {
     unsigned int last_buffer_count;
     unsigned int last_src_quality;
 
+    // ADSR envelope
+    int env_state;
+    uint8_t env_gate;
+    float env_level;
+    float env_attack_rate;
+    float last_env_attack_rate;
+    float env_attack_base;
+    float env_attack_coef;
+    float env_decay_rate;
+    float last_env_decay_rate;
+    float env_decay_base;
+    float env_decay_coef;
+    float env_sustain_level;
+    float last_env_sustain_level;
+    float env_release_rate;
+    float last_env_release_rate;
+    float env_release_base;
+    float env_release_coef;
+    float env_target_ratio_a;
+    float last_env_target_ratio_a;
+    float env_target_ratio_dr;
+    float last_env_target_ratio_dr;
+
     struct SF_INFO  sf_info; // Structure containing currently loaded file info
     pthread_t file_thread; // ID of file reader thread
     // Note that jack_ringbuffer handles bytes so need to convert data between bytes and floats
@@ -101,9 +132,10 @@ struct AUDIO_PLAYER {
     uint8_t midi_chan; // MIDI channel to listen
     uint8_t last_note_played; // MIDI note number of last note that triggered playback
     uint8_t held_notes[128]; // MIDI notes numbers that have been pressed but not released
+    uint8_t held_note; // 1 if any MIDI notes held
     uint8_t sustain; // True when sustain pedal held
     uint8_t last_sustain;
-    double src_ratio; // Samplerate ratio of file
+    float src_ratio; // Samplerate ratio of file
     float pitch_shift; // Factor of pitch shift
     float pitch_bend; // Amount of MIDI pitch bend applied +/-range
     uint8_t pitch_bend_range; // Pitchbend range in semitones
@@ -121,6 +153,11 @@ uint8_t g_debug = 0;
 uint8_t g_last_debug = 0;
 char g_supported_codecs[1024];
 uint8_t g_mutex = 0;
+
+// Declare local functions
+void set_env_gate(struct AUDIO_PLAYER * pPlayer, uint8_t gate);
+void reset_env(struct AUDIO_PLAYER * pPlayer);
+float process_env(struct AUDIO_PLAYER * pPlayer);
 
 #define DPRINTF(fmt, args...) if(g_debug) fprintf(stderr, fmt, ## args)
     
@@ -221,6 +258,36 @@ void send_notifications(struct AUDIO_PLAYER * pPlayer, int param) {
         if(pPlayer->cb_fn)
             ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_SUSTAIN, pPlayer->sustain);
     }
+    if((param == NOTIFY_ALL || param == NOTIFY_ENV_ATTACK) && pPlayer->env_attack_rate != pPlayer->last_env_attack_rate) {
+        pPlayer->last_env_attack_rate = pPlayer->env_attack_rate;
+        if(pPlayer->cb_fn)
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_ENV_ATTACK, pPlayer->env_attack_rate);
+    }
+    if((param == NOTIFY_ALL || param == NOTIFY_ENV_DECAY) && pPlayer->env_decay_rate != pPlayer->last_env_decay_rate) {
+        pPlayer->last_env_decay_rate = pPlayer->env_decay_rate;
+        if(pPlayer->cb_fn)
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_ENV_DECAY, pPlayer->env_decay_rate);
+    }
+    if((param == NOTIFY_ALL || param == NOTIFY_ENV_SUSTAIN) && pPlayer->env_sustain_level != pPlayer->last_env_sustain_level) {
+        pPlayer->last_env_sustain_level = pPlayer->env_sustain_level;
+        if(pPlayer->cb_fn)
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_ENV_SUSTAIN, pPlayer->env_sustain_level);
+    }
+    if((param == NOTIFY_ALL || param == NOTIFY_ENV_RELEASE) && pPlayer->env_release_rate != pPlayer->last_env_release_rate) {
+        pPlayer->last_env_release_rate = pPlayer->env_release_rate;
+        if(pPlayer->cb_fn)
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_ENV_RELEASE, pPlayer->env_release_rate);
+    }
+    if((param == NOTIFY_ALL || param == NOTIFY_ENV_ATTACK_CURVE) && pPlayer->env_target_ratio_a != pPlayer->last_env_target_ratio_a) {
+        pPlayer->last_env_target_ratio_a = pPlayer->env_target_ratio_a;
+        if(pPlayer->cb_fn)
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_ENV_ATTACK_CURVE, pPlayer->env_target_ratio_a);
+    }
+    if((param == NOTIFY_ALL || param == NOTIFY_ENV_DECAY_CURVE) && pPlayer->env_target_ratio_dr != pPlayer->last_env_target_ratio_dr) {
+        pPlayer->last_env_target_ratio_dr = pPlayer->env_target_ratio_dr;
+        if(pPlayer->cb_fn)
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_ENV_DECAY_CURVE, pPlayer->env_target_ratio_dr);
+    }
     if((param == NOTIFY_ALL || param == NOTIFY_TRACK_A) && pPlayer->track_a != pPlayer->last_track_a) {
         pPlayer->last_track_a = pPlayer->track_a;
         if(pPlayer->cb_fn)
@@ -282,7 +349,7 @@ void* file_thread_fn(void * param) {
         pPlayer->last_crop_end = -1;
         pPlayer->file_read_pos = 0;
         pPlayer->file_read_status = SEEKING;
-        pPlayer->src_ratio = (double)g_samplerate / pPlayer->sf_info.samplerate;
+        pPlayer->src_ratio = (float)g_samplerate / pPlayer->sf_info.samplerate;
         if(pPlayer->src_ratio < 0.1)
             pPlayer->src_ratio = 1;
         srcData.src_ratio = pPlayer->src_ratio;
@@ -757,7 +824,182 @@ int get_format(int player_handle) {
     return pPlayer->sf_info.format;
 }
 
+
+float calc_env_coef(float rate, float ratio) {
+    return (rate <= 0) ? 0.0 : exp(-log((1.0 + ratio) / ratio) / rate);
+}
+
+void set_env_attack(int player_handle, float rate) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(!pPlayer)
+        return;
+    getMutex();
+    pPlayer->env_attack_rate = rate;
+    pPlayer->env_attack_coef = calc_env_coef(rate * g_samplerate, pPlayer->env_target_ratio_a);
+    pPlayer->env_attack_base = (1.0 + pPlayer->env_target_ratio_a) * (1.0 - pPlayer->env_attack_coef);
+    releaseMutex();
+    send_notifications(pPlayer, NOTIFY_ENV_ATTACK);
+}
+
+float get_env_attack(int player_handle) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(!pPlayer)
+        return 0.0;
+    return pPlayer->env_attack_rate;
+}
+
+void set_env_decay(int player_handle, float rate) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(!pPlayer)
+        return;
+    getMutex();
+    pPlayer->env_decay_rate = rate;
+    pPlayer->env_decay_coef = calc_env_coef(rate * g_samplerate, pPlayer->env_target_ratio_dr);
+    pPlayer->env_decay_base = (pPlayer->env_sustain_level - pPlayer->env_target_ratio_dr) * (1.0 - pPlayer->env_decay_coef);
+    releaseMutex();
+    send_notifications(pPlayer, NOTIFY_ENV_DECAY);
+}
+
+float get_env_decay(int player_handle) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(!pPlayer)
+        return 0.0;
+    return pPlayer->env_decay_rate;
+}
+
+void set_env_release(int player_handle, float rate) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(!pPlayer)
+        return;
+    getMutex();
+    pPlayer->env_release_rate = rate;
+    pPlayer->env_release_coef = calc_env_coef(rate * g_samplerate, pPlayer->env_target_ratio_dr);
+    pPlayer->env_release_base = -pPlayer->env_target_ratio_dr * (1.0 - pPlayer->env_release_coef);
+    releaseMutex();
+    send_notifications(pPlayer, NOTIFY_ENV_RELEASE);
+}
+
+float get_env_release(int player_handle) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(!pPlayer)
+        return 0.0;
+    return pPlayer->env_release_rate;
+}
+
+void set_env_sustain(int player_handle, float level) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(!pPlayer)
+        return;
+    getMutex();
+    pPlayer->env_sustain_level = level;
+    pPlayer->env_decay_base = (pPlayer->env_sustain_level - pPlayer->env_target_ratio_dr) * (1.0 - pPlayer->env_decay_coef);
+    releaseMutex();
+    send_notifications(pPlayer, NOTIFY_ENV_SUSTAIN);
+}
+
+float get_env_sustain(int player_handle) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(!pPlayer)
+        return 0.0;
+    return pPlayer->env_sustain_level;
+}
+
+void set_env_target_ratio_a(int player_handle, float ratio) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(!pPlayer)
+        return;
+    if (ratio < 0.000000001)
+        ratio = 0.000000001;  // -180 dB
+    getMutex();
+    pPlayer->env_target_ratio_a = ratio;
+    pPlayer->env_attack_coef = calc_env_coef(pPlayer->env_attack_rate * g_samplerate, pPlayer->env_target_ratio_a);
+    pPlayer->env_attack_base = (1.0 + pPlayer->env_target_ratio_a) * (1.0 - pPlayer->env_attack_coef);
+    releaseMutex();
+    send_notifications(pPlayer, NOTIFY_ENV_ATTACK_CURVE);
+}
+
+float get_env_target_ratio_a(int player_handle) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(!pPlayer)
+        return 0.0;
+    return pPlayer->env_target_ratio_a;
+}
+
+void set_env_target_ratio_dr(int player_handle, float ratio) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(!pPlayer)
+        return;
+    if (ratio < 0.000000001)
+        ratio = 0.000000001;  // -180 dB
+    getMutex();
+    pPlayer->env_target_ratio_dr = ratio;
+    pPlayer->env_decay_coef = calc_env_coef(pPlayer->env_decay_rate * g_samplerate, pPlayer->env_target_ratio_dr);
+    pPlayer->env_release_coef = calc_env_coef(pPlayer->env_release_rate * g_samplerate, pPlayer->env_target_ratio_dr);
+    pPlayer->env_decay_base = (pPlayer->env_sustain_level - pPlayer->env_target_ratio_dr) * (1.0 - pPlayer->env_decay_coef);
+    pPlayer->env_release_base = -pPlayer->env_target_ratio_dr * (1.0 - pPlayer->env_release_coef);
+    releaseMutex();
+    send_notifications(pPlayer, NOTIFY_ENV_DECAY_CURVE);
+}
+
+float get_env_target_ratio_dr(int player_handle) {
+    struct AUDIO_PLAYER * pPlayer = get_player(player_handle);
+    if(!pPlayer)
+        return 0.0;
+    return pPlayer->env_target_ratio_dr;
+}
+
 /*** Private functions not exposed as external C functions (not declared in header) ***/
+
+// Process ADSR envelope
+inline float process_env(struct AUDIO_PLAYER * pPlayer) {
+    switch (pPlayer->env_state) {
+        case ENV_IDLE:
+            break;
+        case ENV_ATTACK:
+            pPlayer->env_level = pPlayer->env_attack_base + pPlayer->env_level * pPlayer->env_attack_coef;
+            if (pPlayer->env_level >= 1.0) {
+                pPlayer->env_level = 1.0;
+                pPlayer->env_state = ENV_DECAY;
+                //fprintf(stderr, "Envelope: DECAY\n");
+            }
+            break;
+        case ENV_DECAY:
+            pPlayer->env_level = pPlayer->env_decay_base + pPlayer->env_level * pPlayer->env_decay_coef;
+            if (pPlayer->env_level <= pPlayer->env_sustain_level) {
+                pPlayer->env_level = pPlayer->env_sustain_level;
+                pPlayer->env_state = ENV_SUSTAIN;
+                //fprintf(stderr, "Envelope: SUSTAIN\n");
+            }
+            break;
+        case ENV_SUSTAIN:
+            break;
+        case ENV_RELEASE:
+            pPlayer->env_level = pPlayer->env_release_base + pPlayer->env_level * pPlayer->env_release_coef;
+            if (pPlayer->env_level < 0.0000000001) {
+                // Below -200dBfs so let's end this thing
+                pPlayer->env_level = 0.0;
+                pPlayer->env_state = ENV_END;
+                // fprintf(stderr, "Envelope: END\n");
+            }
+    }
+    return pPlayer->env_level;
+}
+
+inline void set_env_gate(struct AUDIO_PLAYER * pPlayer, uint8_t gate) {
+    if (gate) {
+        pPlayer->env_state = ENV_ATTACK;
+        // fprintf(stderr, "Envelope: ATTACK\n");
+    } else if (pPlayer->env_state != ENV_IDLE) {
+        pPlayer->env_state = ENV_RELEASE;
+        // fprintf(stderr, "Envelope: RELEASE\n");
+    }
+    pPlayer->env_gate = gate;
+}
+
+inline void reset_env(struct AUDIO_PLAYER * pPlayer) {
+    pPlayer->env_state = ENV_IDLE;
+    pPlayer->env_level = 0.0;
+}
 
 // Handle JACK process callback
 int on_jack_process(jack_nframes_t nFrames, void * arg) {
@@ -804,10 +1046,21 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
 
             if(a_count > nFrames)
                 a_count = nFrames;
+            if(pPlayer->held_note != pPlayer->env_gate)
+                set_env_gate(pPlayer, pPlayer->held_note);
             for(size_t offset = 0; offset < a_count; ++offset) {
-                // Set volume / gain / level
-                pOutA[offset] *= pPlayer->gain;
-                pOutB[offset] *= pPlayer->gain;
+                // Set volume / gain / level / envelope
+                if(pPlayer->env_state != ENV_IDLE) {
+                    process_env(pPlayer);
+                    pOutA[offset] *= pPlayer->gain * pPlayer->env_level;
+                    pOutB[offset] *= pPlayer->gain * pPlayer->env_level;
+                } else if(pPlayer->env_state == ENV_END) {
+                    pOutA[offset] = 0.0;
+                    pOutB[offset] = 0.0;
+                } else {
+                    pOutA[offset] *= pPlayer->gain;
+                    pOutB[offset] *= pPlayer->gain;
+                }
             }
             pPlayer->play_pos_frames += r_count;
             if(pPlayer->loop) {
@@ -824,7 +1077,9 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
             }
         }
 
-        if(pPlayer->play_state == STOPPING) {
+        if(pPlayer->env_state == ENV_END)
+            pPlayer->env_state = ENV_IDLE;
+        if(pPlayer->play_state == STOPPING && pPlayer->env_state == ENV_IDLE) {
             // Soft mute (not perfect for short last period of file but better than nowt)
             for(size_t offset = 0; offset < a_count; ++offset) {
                 pOutA[offset] *= 1.0 - ((jack_default_audio_sample_t)offset / a_count);
@@ -859,20 +1114,19 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                     // Note off
                     pPlayer->held_notes[midiEvent.buffer[1]] = 0;
                     if(pPlayer->last_note_played == midiEvent.buffer[1]) {
-                        uint8_t pressed = 0;
+                        pPlayer->held_note = 0;
                         for (uint8_t i = 0; i < 128; ++i) {
                             if(pPlayer->held_notes[i]) {
                                 pPlayer->last_note_played = i;
                                 pPlayer->pitch_shift  = pow(1.059463094359, 60 - pPlayer->last_note_played + pPlayer->pitch_bend);
-                                pressed = 1;
+                                pPlayer->held_note = 1;
                                 break;
                             }
                         }
-                        if(pressed)
+                        if(pPlayer->held_note)
                             continue;
                         if(pPlayer->sustain == 0) {
                             stop_playback(pPlayer->handle);
-                            pPlayer->pitch_shift = 1.0;
                         }
                     }
                 } else if(cmd == 0x90) {
@@ -883,6 +1137,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                     }
                     pPlayer->last_note_played = midiEvent.buffer[1];
                     pPlayer->held_notes[pPlayer->last_note_played] = 1;
+                    pPlayer->held_note = 1;
                     pPlayer->pitch_shift  = pow(1.059463094359, 60 - pPlayer->last_note_played + pPlayer->pitch_bend);
                     pPlayer->file_read_status = SEEKING;
                     jack_ringbuffer_reset(pPlayer->ringbuffer_a);
@@ -897,14 +1152,14 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                         // Sustain pedal
                         pPlayer->sustain = midiEvent.buffer[2];
                         if(!pPlayer->sustain) {
-                            uint8_t released = 1;
+                            pPlayer->held_note = 0;
                             for(uint8_t i = 0; i < 128; ++i) {
                                 if(pPlayer->held_notes[i]) {
-                                    released = 0;
+                                    pPlayer->held_note = 1;
                                     break;
                                 }
                             }
-                            if(released) {
+                            if(!pPlayer->held_note) {
                                 stop_playback(pPlayer->handle);
                                 pPlayer->pitch_shift = 1.0;
                             }
@@ -913,6 +1168,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                         // All off
                         for(uint8_t i = 0; i < 128; ++i)
                             pPlayer->held_notes[i] = 0;
+                        pPlayer->held_note = 0;
                         stop_playback(pPlayer->handle);
                         pPlayer->pitch_shift = 1.0;
                     }
@@ -1043,8 +1299,19 @@ int add_player() {
     pPlayer->last_note_played = 60;
     for (uint8_t i = 0; i < 128; ++i)
         pPlayer->held_notes[i] = 0;
+    pPlayer->held_note = 0;
     pPlayer->sustain = 0;
     pPlayer->last_sustain = 0;
+    g_players[player_handle] = pPlayer;
+
+    set_env_target_ratio_a(player_handle, 0.3);
+    set_env_target_ratio_dr(player_handle, 0.0001);
+    set_env_attack(player_handle, 0.0);
+    set_env_decay(player_handle, 0.0);
+    set_env_release(player_handle, 0.0);
+    set_env_sustain(player_handle, 1.0);
+    set_env_gate(pPlayer, 0);
+    reset_env(pPlayer);
 
     // Create audio output ports
     char port_name[8];
@@ -1060,7 +1327,6 @@ int add_player() {
         return 0;
     }
 
-    g_players[player_handle] = pPlayer;
     //fprintf(stderr, "libzynaudioplayer: Created new audio player\n");
     return player_handle;
 }

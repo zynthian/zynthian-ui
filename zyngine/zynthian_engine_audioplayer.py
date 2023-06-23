@@ -73,8 +73,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['loop end', None, 0.0, 0.0],
 			['crop start', None, 0.0, 0.0],
 			['crop end', None, 0.0, 0.0],
+			['attack', None, 0.1, 20.0],
+			['decay', None, 0.1, 20.0],
+			['sustain', None, 0.8, 1.0],
+			['release', None, 0.1,20.0],
 			['zoom', None, 1, ["x1"],[1]],
-			['info', None, 0, ["Length", "Play Time", "Remaining", "Samplerate", "None"]]
+			['info', None, 0, ["Length", "Play Time", "Remaining", "Samplerate", "None"]],
+			['bend range', None, 2, 24],
 		]
 
 		# Controller Screens
@@ -231,6 +236,10 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			record = 'stopped'
 		gain = self.player.get_gain(layer.handle)
 		bend_range = self.player.get_pitchbend_range(layer.handle)
+		attack = self.player.get_attack(layer.handle)
+		decay = self.player.get_decay(layer.handle)
+		sustain = self.player.get_sustain(layer.handle)
+		release = self.player.get_release(layer.handle)
 		default_a = 0
 		default_b = 0
 		track_labels = ['mixdown']
@@ -256,12 +265,15 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['main', ['record', 'gain', 'transport', 'position']],
 				['crop', ['crop start', 'crop end', 'position', 'zoom']],
 				['loop', ['loop', 'loop start', 'loop end', 'zoom']],
-				['config', ['left track', 'right track', 'bend range', 'sustain']],
+				['config', ['left track', 'right track', 'bend range', 'damper']],
 				['info', ['info', None, None, None]]
 			]
 			if layer.handle == self.zyngui.audio_player.handle:
-				self._ctrl_screens[2][1][2] = None
-				self._ctrl_screens[2][1][3] = None
+				self._ctrl_screens[3][1][2] = None
+				self._ctrl_screens[3][1][3] = None
+			else:
+				self._ctrl_screens += [['envelope', ['attack', 'decay', 'sustain', 'release']]]
+
 		else:
 			self._ctrl_screens = [
 				['main', ['record', 'gain']],
@@ -279,11 +291,15 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['crop start', None, 0.0, dur],
 			['crop end', None, dur, dur],
 			['zoom', None, 1, [zoom_labels, zoom_values]],
-			['info', None, 0, ["Length", "Play Time", "Remaining", "Samplerate", "None"]]
+			['info', None, 0, ["Length", "Play Time", "Remaining", "Samplerate", "None"]],
 		]
 		if layer.handle != self.zyngui.audio_player.handle:
-			self._ctrls += [['sustain', 64, 'off', ['off', 'on']],
-						['bend range', None, bend_range, 24]]
+			self._ctrls += [['damper', 64, 'off', ['off', 'on']],
+						['bend range', None, bend_range, 24],
+						['attack', None, attack, 20.0],
+						['decay', None, decay, 20.0],
+						['sustain', None, sustain, 1.0],
+						['release', None, release, 20.0]]
 		layer.refresh_controllers()
 		self.player.set_track_a(layer.handle, default_a)
 		self.player.set_track_b(layer.handle, default_b)
@@ -370,7 +386,15 @@ class zynthian_engine_audioplayer(zynthian_engine):
 						ctrl_dict['crop end'].set_value(value, False)
 						self.monitors_dict[handle]['crop end'] = value
 					elif id == 15:
+						ctrl_dict['damper'].set_value(value, False)
+					elif id == 16:
+						ctrl_dict['attack'].set_value(value, False)
+					elif id == 17:
+						ctrl_dict['decay'].set_value(value, False)
+					elif id == 18:
 						ctrl_dict['sustain'].set_value(value, False)
+					elif id == 19:
+						ctrl_dict['release'].set_value(value, False)
 					break
 		except Exception as e:
 			logging.error(e)
@@ -408,8 +432,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.player.set_crop_end(handle, zctrl.value)
 		elif zctrl.symbol == "bend range":
 			self.player.set_pitchbend_range(handle, zctrl.value)
-		elif zctrl.symbol == "sustain":
-			self.player.set_sustain(handle, zctrl.value)
+		elif zctrl.symbol == "damper":
+			self.player.set_damper(handle, zctrl.value)
 		elif zctrl.symbol == "zoom":
 			self.monitors_dict[handle]['zoom'] = zctrl.value
 			for layer in self.layers:
@@ -423,6 +447,14 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					return
 		elif zctrl.symbol == "info":
 			self.monitors_dict[handle]['info'] = zctrl.value
+		elif zctrl.symbol == "attack":
+			self.player.set_attack(handle, zctrl.value)
+		elif zctrl.symbol == "decay":
+			self.player.set_decay(handle, zctrl.value)
+		elif zctrl.symbol == "sustain":
+			self.player.set_sustain(handle, zctrl.value)
+		elif zctrl.symbol == "release":
+			self.player.set_release(handle, zctrl.value)
 
 
 	def get_monitors_dict(self, handle):
