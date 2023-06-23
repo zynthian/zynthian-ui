@@ -381,7 +381,7 @@ class zynmixer(zynthian_engine):
 
 	# Set full mixer state
 	# state: List of mixer channels containing dictionary of each state value
-	def set_state(self, state):
+	def set_state(self, state, restore_midi_learn=True):
 		for chan in range(self.get_max_channels() + 1):
 			if chan < self.get_max_channels():
 				key = 'chan_{:02d}'.format(chan)
@@ -389,7 +389,7 @@ class zynmixer(zynthian_engine):
 				key = 'main'
 			if key in state:
 				for symbol in self.zctrls[chan]:
-					self.zctrls[chan][symbol].restore_state(state[key][symbol])
+					self.zctrls[chan][symbol].restore_state(state[key][symbol], restore_midi_learn=restore_midi_learn)
 
 
 	def send_update(self, chan, ctrl, value):

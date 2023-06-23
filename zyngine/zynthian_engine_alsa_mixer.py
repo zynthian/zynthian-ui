@@ -29,8 +29,8 @@ import shlex
 import logging
 import threading
 from time import sleep
-from subprocess import check_output
 from collections import OrderedDict
+from subprocess import check_output, Popen, PIPE, DEVNULL, STDOUT
 
 from zyncoder.zyncore import lib_zyncore
 from . import zynthian_engine
@@ -87,6 +87,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
 		self.zctrls = None
 		self.sender_poll_enabled = False
+		self.amixer_sender_proc = None
 
 		self.get_soundcard_config()
 
@@ -153,7 +154,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
 
 	def get_controllers_dict(self, layer, ctrl_list=None):
-		if ctrl_list=="*":
+		if ctrl_list == "*":
 			ctrl_list = None
 		elif ctrl_list is None:
 			ctrl_list = copy.copy(self.ctrl_list)
@@ -373,34 +374,34 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 				zctrl.graph_path(zctrl.value)
 			else:
 				if zctrl.labels:
-					if zctrl.graph_path[1]=="VToggle":
-						amixer_command = "amixer -M -c {} set '{}' '{}%'".format(self.device_name, zctrl.graph_path[0], zctrl.value)
+					if zctrl.graph_path[1] == "VToggle":
+						amixer_command = "set '{}' '{}%'".format(self.device_name, zctrl.graph_path[0], zctrl.value)
 					else:
-						amixer_command = "amixer -M -c {} set '{}' '{}'".format(self.device_name, zctrl.graph_path[0], zctrl.get_value2label())
+						amixer_command = "set '{}' '{}'".format(self.device_name, zctrl.graph_path[0], zctrl.get_value2label())
+					logging.debug(amixer_command)
+					print(amixer_command, file=self.amixer_sender_proc.stdin, flush=True)
 				else:
-					if zctrl.symbol=="Headphone" and self.allow_rbpi_headphones() and self.zyngui and self.zyngui.get_zynthian_config("rbpi_headphones"):
-						devname = self.rbpi_device_name
+					if zctrl.symbol == "Headphone" and self.allow_rbpi_headphones() and self.zyngui and self.zyngui.get_zynthian_config("rbpi_headphones"):
+						amixer_command = "amixer -M -c {} set '{}' '{}' {}% unmute".format(self.rbpi_device_name, zctrl.graph_path[0], zctrl.graph_path[1], zctrl.value)
+						logging.debug(amixer_command)
+						check_output(shlex.split(amixer_command))
 					else:
-						devname = self.device_name
+						values=[]
+						if len(zctrl.graph_path)>2:
+							nchans = zctrl.graph_path[3]
+							symbol_prefix = zctrl.symbol[:-1]
+							for i in range(0, nchans):
+								symbol_i = symbol_prefix + str(i)
+								if symbol_i in self.zctrls:
+									values.append("{}%".format(self.zctrls[symbol_i].value))
+								else:
+									values.append("0%")
+						else:
+							values.append("{}%".format(zctrl.value))
 
-					values=[]
-					if len(zctrl.graph_path)>2:
-						nchans = zctrl.graph_path[3]
-						symbol_prefix = zctrl.symbol[:-1]
-						for i in range(0, nchans):
-							symbol_i = symbol_prefix + str(i)
-							if symbol_i in self.zctrls:
-								values.append("{}%".format(self.zctrls[symbol_i].value))
-							else:
-								values.append("0%")
-					else:
-						values.append("{}%".format(zctrl.value))
-
-					amixer_command = "amixer -M -c {} set '{}' '{}' {} unmute".format(devname, zctrl.graph_path[0], zctrl.graph_path[1], ','.join(values))
-
-				logging.debug(amixer_command)
-				check_output(shlex.split(amixer_command))
-
+						amixer_command = "set '{}' '{}' {} unmute".format(zctrl.graph_path[0], zctrl.graph_path[1], ','.join(values))
+						logging.debug(amixer_command)
+						print(amixer_command, file=self.amixer_sender_proc.stdin, flush=True)
 			sleep(0.05)
 
 		except Exception as err:
@@ -411,6 +412,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
 		def runInThread():
 			sleep(0.1)
+			self.amixer_sender_proc = Popen(["amixer", "-s", "-M", "-c", self.device_name], stdin=PIPE, stdout=DEVNULL, stderr=STDOUT, bufsize=1, universal_newlines=True)
 			while self.sender_poll_enabled:
 				counter = 0
 				if self.zctrls:
@@ -420,8 +422,10 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 							self._send_controller_value(zctrl)
 							counter += 1
 
-				if counter==0:
+				if counter == 0:
 					sleep(0.05)
+			self.amixer_sender_proc.terminate()
+			self.amixer_sender_proc = None
 
 		self.sender_poll_enabled = True
 		thread = threading.Thread(target=runInThread, daemon=True)

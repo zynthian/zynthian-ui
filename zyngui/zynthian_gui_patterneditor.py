@@ -343,7 +343,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.copy_source = self.pattern
 			self.enable_param_editor(self, 'copy', 'Copy pattern to', {'value_min':1, 'value_max':zynseq.SEQ_MAX_PATTERNS, 'value':self.pattern}, self.copy_pattern)
 		elif params == 'Load pattern':
-			self.zyngui.screens['option'].config_file_list("Load pattern", [self.patterns_dpath, self.my_patterns_dpath], ".zpat", self.load_pattern_file)
+			self.zyngui.screens['option'].config_file_list("Load pattern", [self.patterns_dpath, self.my_patterns_dpath], "*.zpat", self.load_pattern_file)
 			self.zyngui.show_screen('option')
 		elif params == 'Save pattern':
 			self.zyngui.show_keyboard(self.save_pattern_file, "pat#{}".format(self.pattern))
@@ -1189,8 +1189,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 						duration = (int(self.duration * 10) + 1) / 10
 					elif dval < 0:
 						duration = (int(self.duration * 10) - 1) / 10
-					if duration > self.zyngui.zynseq.libseq.getSteps() or duration < 0.1:
-						return
+					max_duration = self.zyngui.zynseq.libseq.getSteps()
+					if duration > max_duration:
+						duration = max_duration
+					elif duration < 0.1:
+						duration = 0.1
 					self.duration = duration
 					note = self.keymap[self.selected_cell[1]]["note"]
 					if self.zyngui.zynseq.libseq.getNoteDuration(self.selected_cell[0], note):
