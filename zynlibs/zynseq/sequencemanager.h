@@ -54,6 +54,12 @@ class SequenceManager
         *   @param  destination Index of pattern to populate
         */
         void copyPattern(uint32_t source, uint32_t destination);
+
+        /** @brief  Replace pattern
+        *   @param  index Pattern index
+        *   @param  pattern Pointer to new pattern
+        */
+        void replacePattern(uint32_t index, Pattern* pattern); 
         
         /** @brief  Update sequence lengths in current bank
         *   @param  bank Index of bank

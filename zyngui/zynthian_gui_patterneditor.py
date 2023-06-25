@@ -393,6 +393,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if midi_record is None:
 			midi_record = not self.zyngui.zynseq.libseq.isMidiRecord()
 		self.zyngui.zynseq.libseq.enableMidiRecord(midi_record)
+		if midi_record:
+			self.zyngui.zynseq.libseq.snapshotPattern(self.pattern)
+		else:
+			self.zyngui.zynseq.libseq.resetPatternSnapshot()
 
 
 	def send_controller_value(self, zctrl):
@@ -1321,7 +1325,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle BACK button
 	def back_action(self):
-		if self.edit_mode == EDIT_MODE_NONE:
+		if self.zyngui.zynseq.libseq.isMidiRecord():
+			self.zyngui.zynseq.libseq.undoPattern()
+			self.redraw_pending = 3
+		elif self.edit_mode == EDIT_MODE_NONE:
 			return super().back_action()
 		self.enable_edit(EDIT_MODE_NONE)
 		return True

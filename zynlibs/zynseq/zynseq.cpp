@@ -35,6 +35,8 @@
 #include <string>
 #include <cstring> //provides strcmp
 #include <queue> //provides queue
+#include <vector>
+#include "pattern.h"
 
 #include "metronome.h" // metronome wav data
 
@@ -103,6 +105,7 @@ bool g_bMetronome = false; // True to enable metronome
 struct metro_wav_t g_metro_pip;
 struct metro_wav_t g_metro_peep;
 struct metro_wav_t * g_pMetro = &g_metro_pip; // Pointer to the current metronome sound (pip/peep)
+std::vector<Pattern*> g_vPatternSnapshots; // Vector of patterns in undo queue
 
 // ** Internal (non-public) functions  (not delcared in header so need to be in correct order in source file) **
 
@@ -1258,6 +1261,28 @@ void save_pattern(uint32_t nPattern, const char* filename)
 	fileWrite32(nBlockSize, pFile);
 	fseek(pFile, 0, SEEK_END);
     fclose(pFile);
+}
+
+void snapshotPattern() {
+    Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
+    g_vPatternSnapshots.push_back(pPattern = new Pattern(pPattern));
+}
+
+void resetPatternSnapshot() {
+    for(auto it = g_vPatternSnapshots.begin(); it != g_vPatternSnapshots.end(); ++it)
+        delete(*it);
+    g_vPatternSnapshots.clear();
+}
+
+void undoPattern() {
+    if(g_vPatternSnapshots.size()) {
+        Pattern* pPattern = g_vPatternSnapshots.back();
+        g_seqMan.replacePattern(g_nPattern, pPattern);
+        if(g_vPatternSnapshots.size() > 1) {
+            delete(pPattern);
+            g_vPatternSnapshots.pop_back();
+        }
+    }
 }
 
 uint16_t getVerticalZoom()

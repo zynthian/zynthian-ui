@@ -135,6 +135,16 @@ void SequenceManager::copyPattern(uint32_t source, uint32_t destination)
         m_mPatterns[destination].addEvent(pEvent);
 }
 
+void SequenceManager::replacePattern(uint32_t index, Pattern* pattern)
+{
+    m_mPatterns[index].clear();
+    m_mPatterns[index].setBeatsInPattern(pattern->getBeatsInPattern());
+    m_mPatterns[index].setStepsPerBeat(pattern->getStepsPerBeat());
+    uint32_t nIndex = 0;
+    while(StepEvent* pEvent = pattern->getEventAt(nIndex++))
+        m_mPatterns[index].addEvent(pEvent);
+}
+
 Sequence* SequenceManager::getSequence(uint8_t bank, uint8_t sequence)
 {
     // Add missing sequences

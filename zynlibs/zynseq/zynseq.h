@@ -106,6 +106,16 @@ void save(const char* filename);
 */
 void save_pattern(uint32_t nPattern, const char* filename);
 
+/** Clear pattern undo queue */
+void resetPatternSnapshot();
+
+/** Restore previous state of pattern */
+void undoPattern();
+
+/** @brief  Store current pattern on undo queue
+*/
+void snapshotPattern();
+
 /** @brief  Get vertical zoom
 *   @retval uint16_t Vertical zoom
 */
