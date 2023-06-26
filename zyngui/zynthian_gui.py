@@ -1521,7 +1521,8 @@ class zynthian_gui:
 		t = params[1].upper()
 
 		if self.current_screen in ("control", "alsa_mixer"):
-			if i < 3 and t == 'S':
+			#if i < 3 and t == 'S':
+			if t == 'S':
 				self.screens[self.current_screen].midi_learn(i)
 				return
 			elif t == 'B':
