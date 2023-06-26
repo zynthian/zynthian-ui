@@ -52,7 +52,13 @@ class zynaudioplayer():
 			self.libaudioplayer.get_position.restype = ctypes.c_float
 			self.libaudioplayer.get_loop_start_time.restype = ctypes.c_float
 			self.libaudioplayer.get_loop_end_time.restype = ctypes.c_float
+			self.libaudioplayer.get_crop_start_time.restype = ctypes.c_float
+			self.libaudioplayer.get_crop_end_time.restype = ctypes.c_float
 			self.libaudioplayer.get_file_duration.restype = ctypes.c_float
+			self.libaudioplayer.get_env_attack.restype = ctypes.c_float
+			self.libaudioplayer.get_env_decay.restype = ctypes.c_float
+			self.libaudioplayer.get_env_sustain.restype = ctypes.c_float
+			self.libaudioplayer.get_env_release.restype = ctypes.c_float
 			self.libaudioplayer.get_file_info.restype = ctypes.c_char_p
 			self.libaudioplayer.get_filename.restype = ctypes.c_char_p
 			self.libaudioplayer.get_supported_codecs.restype = ctypes.c_char_p
@@ -62,7 +68,13 @@ class zynaudioplayer():
 			self.libaudioplayer.set_position.argtypes = [ctypes.c_int, ctypes.c_float]
 			self.libaudioplayer.set_loop_start_time.argtypes = [ctypes.c_int, ctypes.c_float]
 			self.libaudioplayer.set_loop_end_time.argtypes = [ctypes.c_int, ctypes.c_float]
+			self.libaudioplayer.set_crop_start_time.argtypes = [ctypes.c_int, ctypes.c_float]
+			self.libaudioplayer.set_crop_end_time.argtypes = [ctypes.c_int, ctypes.c_float]
 			self.libaudioplayer.set_pos_notify_delta.argtypes = [ctypes.c_int, ctypes.c_float]
+			self.libaudioplayer.set_env_attack.argtypes = [ctypes.c_int, ctypes.c_float]
+			self.libaudioplayer.set_env_decay.argtypes = [ctypes.c_int, ctypes.c_float]
+			self.libaudioplayer.set_env_sustain.argtypes = [ctypes.c_int, ctypes.c_float]
+			self.libaudioplayer.set_env_release.argtypes = [ctypes.c_int, ctypes.c_float]
 			self.control_cb = None
 		except Exception as e:
 			self.libaudioplayer=None
@@ -96,13 +108,20 @@ class zynaudioplayer():
 
 
 	#	Add a player
-	def add_player(self, handle):
-		return self.libaudioplayer.add_player(handle)
+	def add_player(self):
+		return self.libaudioplayer.add_player()
 
 
 	#	Remove a player
 	def remove_player(self, handle):
 		return self.libaudioplayer.remove_player(handle)
+
+
+	#	Set a player's MIDI channe;
+	#	handle: Index of player
+	#	midi_chan: MIDI channel (0..15 or other value to disable MIDI)
+	def set_midi_chan(self, handle, midi_chan):
+		self.libaudioplayer.set_midi_chan(handle, midi_chan)
 
 
 	#	Load an audio file
@@ -206,6 +225,34 @@ class zynaudioplayer():
 	#	time: Loop end
 	def set_loop_end(self, handle, time):
 		self.libaudioplayer.set_loop_end_time(handle, time)
+
+
+	#	Get start of audio (crop) in seconds from start of file
+	#	handle: Index of player
+	#	Returns: Crop start
+	def get_crop_start(self, handle):
+		return self.libaudioplayer.get_crop_start_time(handle)
+
+
+	#	Set start of audio (crop) in seconds from start of file
+	#	handle: Index of player
+	#	time: Crop start
+	def set_crop_start(self, handle, time):
+		self.libaudioplayer.set_crop_start_time(handle, time)
+
+
+	#	Get end of audio (crop) in seconds from end of file
+	#	handle: Index of player
+	#	Returns: Crop end
+	def get_crop_end(self, handle):
+		return self.libaudioplayer.get_crop_end_time(handle)
+
+
+	#	Set end of audio (crop) in seconds from end of file
+	#	handle: Index of player
+	#	time: Crop end
+	def set_crop_end(self, handle, time):
+		self.libaudioplayer.set_crop_end_time(handle, time)
 
 
 	#	Start playback
@@ -327,6 +374,62 @@ class zynaudioplayer():
 	#	Returns: Pitchbend range in semitones
 	def get_pitchbend_range(self, handle):
 		return self.libaudioplayer.get_pitchbend_range(handle)
+
+
+	#	Set envelope attack
+	#	handle: Index of player
+	#	attack: Attack time in seconds
+	def set_attack(self, handle, attack):
+		self.libaudioplayer.set_env_attack(handle, attack)
+
+
+	#	Get envelope attack
+	#	handle: Index of player
+	#	Returns: Attack time in seconds
+	def get_attack(self, handle):
+		return self.libaudioplayer.get_env_attack(handle)
+
+
+	#	Set envelope decay
+	#	handle: Index of player
+	#	decay: Decay time in seconds
+	def set_decay(self, handle, decay):
+		self.libaudioplayer.set_env_decay(handle, decay)
+
+
+	#	Get envelope decay
+	#	handle: Index of player
+	#	Returns: Decay time in seconds
+	def get_decay(self, handle):
+		return self.libaudioplayer.get_env_decay(handle)
+
+
+	#	Set envelope sustain
+	#	handle: Index of player
+	#	sustain: Sustain time in seconds
+	def set_sustain(self, handle, sustain):
+		self.libaudioplayer.set_env_sustain(handle, sustain)
+
+
+	#	Get envelope sustain
+	#	handle: Index of player
+	#	Returns: Sustain time in seconds
+	def get_sustain(self, handle):
+		return self.libaudioplayer.get_env_sustain(handle)
+
+
+	#	Set envelope release
+	#	handle: Index of player
+	#	release: Release time in seconds
+	def set_release(self, handle, release):
+		self.libaudioplayer.set_env_release(handle, release)
+
+
+	#	Get envelope release
+	#	handle: Index of player
+	#	Returns: Release time in seconds
+	def get_release(self, handle):
+		return self.libaudioplayer.get_env_release(handle)
 
 
 	#	Set file read buffer size
