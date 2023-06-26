@@ -115,8 +115,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			0,
 			0,
 			self.height,
-			fill="white",
-			stipple="gray25",
+			fill="black",
+			stipple="gray50",
 			tags="overlay"
 		)
 
@@ -125,8 +125,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			0,
 			self.width,
 			self.height,
-			fill="white",
-			stipple="gray25",
+			fill="black",
+			stipple="gray50",
 			tags="overlay"
 		)
 
