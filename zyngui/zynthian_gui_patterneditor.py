@@ -263,6 +263,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		super().hide()
 		if self.bank == 0 and self.sequence == 0:
 			self.zyngui.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STOPPED)
+		self.toggle_midi_record(False)
 		self.enable_edit(EDIT_MODE_NONE)
 		self.zyngui.zynseq.libseq.setRefNote(self.keymap_offset)
 		self.zyngui.zynseq.libseq.setPlayMode(self.bank, self.sequence, self.last_play_mode)
