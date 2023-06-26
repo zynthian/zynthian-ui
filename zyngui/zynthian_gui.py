@@ -2213,10 +2213,18 @@ class zynthian_gui:
 
 	def status_thread_task(self):
 		while not self.exit_flag:
-			self.refresh_status()
-			if self.wsleds:
-				self.wsleds.update()
-			sleep(0.2)
+			# When in power save mode:
+			# + Make LED refresh faster so the fading effect looks smooth
+			# + Don't need to refresh status info because it's not shown
+			if self.power_save_mode:
+				if self.wsleds:
+					self.wsleds.update()
+				sleep(0.05)
+			else:
+				self.refresh_status()
+				if self.wsleds:
+					self.wsleds.update()
+				sleep(0.2)
 		# On exit ...
 		# Release zynpad trigger device
 		self.screens["zynpad"].end_trigger_device()
