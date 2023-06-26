@@ -262,9 +262,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				track_labels.append('{}'.format(track + 1))
 				track_values.append(track)
 			self._ctrl_screens = [
-				['main', ['record', 'gain', 'transport', 'position']],
+				['main', ['record', 'transport', 'position', 'gain']],
 				['crop', ['crop start', 'crop end', 'position', 'zoom']],
-				['loop', ['loop', 'loop start', 'loop end', 'zoom']],
+				['loop', ['loop start', 'loop end', 'loop', 'zoom']],
 				['config', ['left track', 'right track', 'bend range', 'damper']],
 				['info', ['info', None, None, None]]
 			]
@@ -272,12 +272,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				self._ctrl_screens[3][1][2] = None
 				self._ctrl_screens[3][1][3] = None
 			else:
-				self._ctrl_screens += [['envelope', ['attack', 'decay', 'sustain', 'release']]]
+				self._ctrl_screens.insert(-2, ['envelope', ['attack', 'decay', 'sustain', 'release']])
 
 		else:
 			self._ctrl_screens = [
 				['main', ['record', 'gain']],
 			]
+
 		self._ctrls = [
 			['gain', None, gain, 2.0],
 			['record', None, record, ['stopped', 'recording']],
@@ -300,6 +301,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 						['decay', None, decay, 20.0],
 						['sustain', None, sustain, 1.0],
 						['release', None, release, 20.0]]
+
 		layer.refresh_controllers()
 		self.player.set_track_a(layer.handle, default_a)
 		self.player.set_track_b(layer.handle, default_b)
