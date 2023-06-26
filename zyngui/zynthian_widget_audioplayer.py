@@ -6,9 +6,8 @@
 # Zynthian Widget Class for "Zynthian Audio Player" (zynaudioplayer#one)
 # 
 # Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2015-2022 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2015-2023 Brian Walton <riban@zynthian.org>
 #
-# Depends on https://github.com/bbc/audiowaveform
 #******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
@@ -27,13 +26,13 @@
 
 from threading import Thread
 import tkinter
-from PIL import Image, ImageTk
-import os
 import logging
+import soundfile
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_widget_base
+from zyngui import zynthian_gui_config
 
 #------------------------------------------------------------------------------
 # Zynthian Widget Class for "zynaudioplayer"
@@ -48,16 +47,20 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.play_pos = 0.0
 		self.loop_start = 0.0
 		self.loop_end = 1.0
+		self.crop_start = 0.0
+		self.crop_end = 1.0
 		self.filename = "?"
 		self.duration = 0.0
-		self.samplerate = 44100
-		self.bg_color = "000000"
-		self.waveform_color = "6070B0"
-		self.image = None
-		self.image_hires = None
-		self.loading_image = False
-		self.zoom = 1.0
-		self.offset_factor = 0
+		self.bg_color = "black"
+		self.waveform_color = "white"
+		self.zoom = 1
+		self.refresh_waveform = False # True to force redraw of waveform on next refresh
+		self.offset = 0 # Frames from start of file that waveform display starts
+		self.channels = 0 # Quantity of channels in audio
+		self.frames = 0 # Quantity of frames in audio
+		self.limit_factor = 1500000 # Used to limit the quantity of frames processed in large data sets
+		self.info = None
+		self.images=[]
 
 		self.widget_canvas = tkinter.Canvas(self,
 			bd=0,
@@ -65,7 +68,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			relief='flat',
 			bg=zynthian_gui_config.color_bg)
 		self.widget_canvas.grid(sticky='news')
-
 
 		self.loading_text = self.widget_canvas.create_text(
 			0,
@@ -79,20 +81,14 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			fill=zynthian_gui_config.color_tx_off,
 			text="Creating\nwaveform..."
 		)
-		
-		self.waveform = self.widget_canvas.create_image(
-			0,
-			0,
-			anchor=tkinter.NW,
-			state=tkinter.HIDDEN
-		)
 
 		self.play_line = self.widget_canvas.create_line(
 			0,
 			0,
 			0,
 			self.height,
-			fill=zynthian_gui_config.color_on
+			fill=zynthian_gui_config.color_on,
+			tags="overlay"
 		)
 
 		self.loop_start_line = self.widget_canvas.create_line(
@@ -101,7 +97,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			0,
 			self.height,
 			fill=zynthian_gui_config.color_ml,
-			#state=tkinter.HIDDEN # loop markers currently disabled
+			tags="overlay"
 		)
 
 		self.loop_end_line = self.widget_canvas.create_line(
@@ -110,22 +106,44 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			self.width,
 			self.height,
 			fill=zynthian_gui_config.color_ml,
-			#state=tkinter.HIDDEN # loop markers currently disabled
+			tags="overlay"
+		)
+
+
+		self.crop_start_rect = self.widget_canvas.create_rectangle(
+			0,
+			0,
+			0,
+			self.height,
+			fill="white",
+			stipple="gray25",
+			tags="overlay"
+		)
+
+		self.crop_end_rect = self.widget_canvas.create_rectangle(
+			self.width,
+			0,
+			self.width,
+			self.height,
+			fill="white",
+			stipple="gray25",
+			tags="overlay"
 		)
 
 		self.info_text = self.widget_canvas.create_text(
-			self.width-int(0.5 * zynthian_gui_config.font_size),
+			self.width - int(0.5 * zynthian_gui_config.font_size),
 			self.height,
 			anchor = tkinter.SE,
 			justify=tkinter.RIGHT,
 			width=self.width,
-			font=(zynthian_gui_config.font_family, int(1.5 * zynthian_gui_config.font_size)),
+			font=("DejaVu Sans Mono", int(1.5 * zynthian_gui_config.font_size)),
 			fill=zynthian_gui_config.color_panel_tx,
-			text="00:00"
+			text="",
+			state = "hidden",
+			tags = "overlay"
 		)
 		self.widget_canvas.bind("<Button-4>",self.cb_canvas_wheel)
 		self.widget_canvas.bind("<Button-5>",self.cb_canvas_wheel)
-
 
 	def on_size(self, event):
 		if event.width == self.width and event.height == self.height:
@@ -136,23 +154,75 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.widget_canvas.coords(self.loading_text, self.width // 2, self.height // 2)
 		self.widget_canvas.coords(self.info_text, self.width - zynthian_gui_config.font_size // 2, self.height)
 		self.widget_canvas.itemconfig(self.info_text, width=self.width)
-		if self.image:
-			try:
-				self.img = ImageTk.PhotoImage(self.image.resize((self.width, self.height)))
-				self.widget_canvas.itemconfigure(self.waveform, image=self.img, state=tkinter.NORMAL)
-			except:
-				if self.image:
-					self.image.close()
-					self.image = None
-				self.widget_canvas.itemconfigure(self.loading_text, text="Cannot\ndisplay\nwaveform")
+		self.refresh_waveform = True
 
 
 	def get_monitors(self):
-		self.monitors = self.layer.engine.get_monitors_dict(self.layer.midi_chan)
+		self.monitors = self.layer.engine.get_monitors_dict(self.layer.handle)
 
 
 	def get_player_index(self):
-		return self.layer.midi_chan if self.layer.midi_chan < 16 else 16
+		return self.layer.handle
+
+	def load_file(self):
+		self.info = None
+		self.widget_canvas.delete("waveform")
+		self.widget_canvas.itemconfig("overlay", state=tkinter.HIDDEN)
+		try:
+			with soundfile.SoundFile(self.filename) as snd:
+				self.audio_data = snd.read()
+				self.channels = snd.channels
+				self.samplerate = snd.samplerate
+				self.frames = len(self.audio_data)
+				if self.samplerate:
+					self.duration = self.frames / self.samplerate
+				else:
+					self.duration = 0.0
+			y0 = self.height // self.channels
+			for chan in range(self.channels):
+				v_offset = chan * y0
+				self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=zynthian_gui_config.PAD_COLOUR_GROUP[chan // 2 % len(zynthian_gui_config.PAD_COLOUR_GROUP)], tags="waveform", state=tkinter.HIDDEN)
+				self.widget_canvas.create_line(0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags="waveform", state=tkinter.HIDDEN)
+				self.widget_canvas.create_line(0,0,0,0, fill=self.waveform_color, tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
+			self.widget_canvas.tag_raise("overlay")
+		except Exception as e:
+			logging.warning(e)
+		self.refreshing = False
+		self.refresh_waveform = True
+		self.update()
+
+
+	def draw_waveform(self, start, length):
+		if not self.channels:
+			return
+		start = max(0, start)
+		start = min(self.frames, start)
+		length = min(self.frames - start, length)
+		limit = max(1, length // self.limit_factor)
+		
+		frames_per_pixel = length / self.width
+		step = frames_per_pixel / limit
+		y0 = self.height // self.channels
+
+		for chan in range(self.channels):
+			pos = start
+			data = []
+			v_offset = chan * y0
+			for x in range(self.width):
+				offset = pos
+				v1 = v2 = self.audio_data[int(offset)][chan]
+				while offset < pos + frames_per_pixel and offset < len(self.audio_data):
+					if v1 < self.audio_data[int(offset)][chan]:
+						v1 = self.audio_data[int(offset)][chan]
+					if v2 > self.audio_data[int(offset)][chan]:
+						v2 = self.audio_data[int(offset)][chan]
+					offset += step
+				y1 = v_offset + int((y0 * (1 + v1)) / 2)
+				y2 = v_offset + int((y0 * (1 + v2)) / 2)
+				data += [x, y1, x, y2]
+				pos += frames_per_pixel
+			self.widget_canvas.coords(f"waveform{chan}", data)
+		self.refresh_waveform = False
 
 
 	def refresh_gui(self):
@@ -160,73 +230,102 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			return
 		self.refreshing = True
 		try:
-			dur = self.monitors["duration"]
-			pos = self.monitors["pos"]
+			if self.filename != self.monitors["filename"] or self.frames != self.frames:
+				self.filename = self.monitors["filename"]
+				waveform_thread = Thread(target=self.load_file, name="waveform image")
+				waveform_thread.start()
+				return
 
-			if self.filename != self.monitors["filename"] or self.duration != dur:
-				self.filename != self.monitors["filename"]
-				if(dur):
-					waveform_thread = Thread(target=self.load_image, name="waveform image")
-					waveform_thread.start()
-				else:
-					self.widget_canvas.itemconfigure(self.loading_text, text="No\nfile\nloaded")
-					self.widget_canvas.itemconfigure(self.waveform, state=tkinter.HIDDEN)
-
-			if self.duration != dur:
-				self.duration = dur
-				sr = self.monitors["samplerate"]
-				self.widget_canvas.itemconfigure(self.info_text, text="{:02d}:{:02d} ({:d})".format(int(dur / 60), int(dur % 60), sr), state=tkinter.NORMAL)
-
-			if dur == 0:
+			if self.duration == 0.0:
 				self.refreshing = False
 				return
 
-			offset_factor = self.offset_factor
+			offset = self.offset
 			refresh_markers = False
-			refresh_waveform = False
+			loop_start = int(self.samplerate * self.monitors["loop start"])
+			loop_end = int(self.samplerate * self.monitors["loop end"])
+			crop_start = int(self.samplerate * self.monitors["crop start"])
+			crop_end = int(self.samplerate * self.monitors["crop end"])
+			pos_time = self.monitors["pos"]
+			pos = int(pos_time * self.samplerate)
 
 			if self.zoom != self.monitors["zoom"]:
+				centre = offset + 0.5 * self.frames / self.zoom
 				self.zoom = self.monitors["zoom"]
-				offset_factor = max(0, (pos - dur / self.zoom / 2) / dur)
-				refresh_waveform = True
+				offset = int(centre - 0.5 * self.frames / self.zoom)
+				self.refresh_waveform = True
 
-			if self.loop_start != self.monitors["loop start"]:
-				self.loop_start = self.monitors["loop start"]
-				if self.loop_start < offset_factor * dur or self.loop_start > offset_factor * dur + dur / self.zoom:
-					offset_factor = max(0, (self.loop_start - dur / self.zoom / 2) / dur)
+			if self.loop_start != loop_start:
+				self.loop_start = loop_start
+				if self.loop_start < offset or self.loop_start > offset + self.frames // self.zoom:
+					offset = int(self.loop_start - 0.25 * self.frames / self.zoom)
 				refresh_markers = True
 
-			if self.loop_end != self.monitors["loop end"]:
-				self.loop_end = self.monitors["loop end"]
-				if self.loop_end < offset_factor * dur or self.loop_end > offset_factor * dur + dur / self.zoom:
-					offset_factor = max(0, (self.loop_end - dur / self.zoom / 2) / dur)
+			if self.loop_end != loop_end:
+				self.loop_end = loop_end
+				if self.loop_end < offset or self.loop_end > offset + self.frames // self.zoom:
+					offset = int(self.loop_end - 0.75 * self.frames / self.zoom)
 				refresh_markers = True
-	
+
+			if self.crop_start != crop_start:
+				self.crop_start = crop_start
+				if self.crop_start < offset or self.crop_start > offset + self.frames // self.zoom:
+					offset = int(self.crop_start - 0.25 * self.frames / self.zoom)
+				refresh_markers = True
+
+			if self.crop_end != crop_end:
+				self.crop_end = crop_end
+				if self.crop_end < offset or self.crop_end > offset + self.frames // self.zoom:
+					offset = int(self.crop_end - 0.75 * self.frames / self.zoom)
+				refresh_markers = True
+
 			if self.play_pos != pos:
 				self.play_pos = pos
-				if pos < offset_factor * dur or pos > offset_factor * dur + dur / self.zoom:
-					offset_factor = max(0, (pos - dur / self.zoom / 2) / dur)
+				if pos < offset  or pos > offset + self.frames // self.zoom:
+					offset = max(0, pos)
+				if self.info == 1:
+					self.widget_canvas.itemconfigure(self.info_text, text=f"{int(pos_time / 60):02d}:{int(pos_time % 60):02d}")
+				elif self.info == 2:
+					self.widget_canvas.itemconfigure(self.info_text, text=f"{int((self.duration - pos_time) / 60):02d}:{int((self.duration - pos_time) % 60):02d}")
 				refresh_markers = True
 
-			offset_factor = min(offset_factor, 1 - 1 / self.zoom)
-			if self.image and (offset_factor != self.offset_factor or refresh_waveform):
-				x = int(offset_factor * self.image.width)
-				w = int(self.image.width / self.zoom)
-				img = ImageTk.PhotoImage(self.image.crop((x, 0, x + w, 800)).resize((self.width, self.height)))
-				self.widget_canvas.itemconfigure(self.waveform, image=img, state=tkinter.NORMAL)
-				self.img = img
-				refresh_markers = True
+			offset = max(0, offset)
+			offset = min(self.frames - self.frames // self.zoom, offset)
+			if offset != self.offset:
+				self.offset = offset
+				self.refresh_waveform = True
 
-			self.offset_factor = offset_factor
+			if self.refresh_waveform:
+				self.draw_waveform(offset, self.frames // self.zoom)
+				refresh_markers = True
 
 			if refresh_markers:
-				f = self.width * self.zoom
-				x = int(f * (self.loop_start / dur - self.offset_factor))
+				f = self.width / self.frames * self.zoom
+				x = int(f * (self.loop_start - self.offset))
 				self.widget_canvas.coords(self.loop_start_line, x, 0, x, self.height)
-				x = int(f * (self.loop_end / dur - self.offset_factor))
+				x = int(f * (self.loop_end - self.offset))
 				self.widget_canvas.coords(self.loop_end_line, x, 0, x, self.height)
-				x = int(f * (pos / dur - self.offset_factor))
+				x = int(f * (self.crop_start - self.offset))
+				self.widget_canvas.coords(self.crop_start_rect, 0, 0, x, self.height)
+				x = int(f * (self.crop_end - self.offset))
+				self.widget_canvas.coords(self.crop_end_rect, x, 0, self.width, self.height)
+				x = int(f * (pos - self.offset))
 				self.widget_canvas.coords(self.play_line, x, 0, x, self.height)
+
+			if self.monitors["info"] != self.info:
+				self.widget_canvas.itemconfig("waveform", state=tkinter.NORMAL)
+				self.widget_canvas.itemconfig("overlay", state=tkinter.NORMAL)
+				self.info = self.monitors["info"]
+				if self.info == 0:
+					self.widget_canvas.itemconfigure(self.info_text, text=f"{int(self.duration / 60):02d}:{int(self.duration % 60):02d}", state=tkinter.NORMAL)
+				elif self.info == 1:
+					self.widget_canvas.itemconfigure(self.info_text, text=f"{int(pos_time / 60):02d}:{int(pos_time % 60):02d}", state=tkinter.NORMAL)
+				elif self.info == 2:
+					self.widget_canvas.itemconfigure(self.info_text, text=f"{int((self.duration - pos_time) / 60):02d}:{int((self.duration - pos_time) % 60):02d}", state=tkinter.NORMAL)
+				elif self.info == 3:
+					self.widget_canvas.itemconfig(self.info_text, text=f"{self.samplerate}", state=tkinter.NORMAL)
+				else:
+					self.widget_canvas.itemconfig(self.info_text, state=tkinter.HIDDEN)
 
 		except Exception as e:
 			logging.error(e)
@@ -234,78 +333,32 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.refreshing = False
 
 
-	def load_image(self):
-		if self.loading_image:
-			return
-		self.loading_image = True
-		self.widget_canvas.itemconfigure(self.waveform, state=tkinter.HIDDEN)
-		self.widget_canvas.itemconfigure(self.loading_text, text="Creating\nwaveform...")
-		waveform_png = "{}.png".format(self.monitors["filename"])
-		self.filename = self.monitors["filename"]
-		try:
-			self.image = Image.open(waveform_png)
-			rebuild = os.path.getmtime(self.filename) > os.path.getmtime(waveform_png)
-		except:
-			rebuild = True
-
-		if rebuild:
-			if self.image:
-				self.image.close()
-			self.image = None
-			cmd = 'audiowaveform -i "{}" -o "{}" --split-channels -w {} -h {} --zoom auto --background-color {} --waveform-color {} --no-axis-labels > /dev/null 2>&1'.format(
-				self.filename,
-				waveform_png,
-				1024,
-				800,
-				#self.bg_color,
-				"444444",
-				self.waveform_color
-			)
-			os.system(cmd)
-		try:
-			if self.image is None:
-				self.image = Image.open(waveform_png)
-			self.img = ImageTk.PhotoImage(self.image.resize((self.width, self.height)))
-			self.widget_canvas.itemconfigure(self.waveform, image=self.img, state=tkinter.NORMAL)
-		except:
-			if self.image:
-				self.image.close()
-				self.image = None
-			self.widget_canvas.itemconfigure(self.loading_text, text="Cannot\ndisplay\nwaveform")
-
-		# Rebuild image with high resolution
-		if rebuild and self.image:
-			frames = self.duration * self.monitors["samplerate"]
-			width = int(min(frames / 60, 150000))
-
-			cmd = 'audiowaveform -i "{}" -o "{}" --split-channels -w {} -h {} --zoom auto --background-color {} --waveform-color {} --no-axis-labels > /dev/null 2>&1'.format(
-				self.filename,
-				waveform_png,
-				width,
-				800,
-				self.bg_color,
-				self.waveform_color
-			)
-			os.system(cmd)
-		try:
-			self.image = Image.open(waveform_png)
-			self.img = ImageTk.PhotoImage(self.image.resize((self.width, self.height)))
-			self.widget_canvas.itemconfigure(self.waveform, image=self.img, state=tkinter.NORMAL)
-		except:
-			if self.image:
-				self.image.close()
-				self.image = None
-			self.widget_canvas.itemconfigure(self.loading_text, text="Cannot\ndisplay\nwaveform")
-
-		self.loading_image = False
-	
-
 	def cb_canvas_wheel(self, event):
 		try:
 			if event.num == 5 or event.delta == -120:
-				self.layer.controllers_dict['position'].nudge(-1)
-			if event.num == 4 or event.delta == 120:
-				self.layer.controllers_dict['position'].nudge(1)
+				if event.state == 1: # Shift
+					self.layer.controllers_dict['loop start'].nudge(-1)
+				elif event.state == 5: # Shift+Ctrl
+					self.layer.controllers_dict['loop end'].nudge(-1)
+				elif event.state == 4: # Ctrl
+					self.layer.controllers_dict['zoom'].nudge(-1)
+				elif event.state == 8: # Alt
+					self.offset = max(0, self.offset - self.frames // self.zoom // 10)
+					self.refresh_waveform = True
+				else:
+					self.layer.controllers_dict['position'].nudge(-1)
+			elif event.num == 4 or event.delta == 120:
+				if event.state == 1: # Shift
+					self.layer.controllers_dict['loop start'].nudge(1)
+				elif event.state == 5: # Shift+Ctrl
+					self.layer.controllers_dict['loop end'].nudge(1)
+				elif event.state == 4: # Ctrl
+					self.layer.controllers_dict['zoom'].nudge(1)
+				elif event.state == 8: # Alt
+					self.offset = min(self.frames - self.frames // self.zoom, self.offset + self.frames // self.zoom // 10)
+					self.refresh_waveform = True
+				else:
+					self.layer.controllers_dict['position'].nudge(1)
 		except Exception as e:
 			logging.debug("Failed to change value")
 

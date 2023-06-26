@@ -582,7 +582,6 @@ class zynthian_gui:
 				return
 		elif screen == "audio_player":
 			if self.audio_player:
-				self.audio_player.refresh_controllers()
 				self.set_curlayer(self.audio_player, save=True, populate_screens=False)
 			else:
 				logging.error("Audio Player not created!")
@@ -980,17 +979,17 @@ class zynthian_gui:
 		filename = self.audio_recorder.filename
 		if filename and os.path.exists(filename):
 			self.audio_player.engine.set_preset(self.audio_player, [filename])
-			self.audio_player.engine.player.set_position(16, 0.0)
-			self.audio_player.engine.player.start_playback(16)
+			self.audio_player.engine.player.set_position(self.audio_player.handle, 0.0)
+			self.audio_player.engine.player.start_playback(self.audio_player.handle)
 			self.audio_recorder.filename = None
-		elif (self.audio_player.preset_name and os.path.exists(self.audio_player.preset_info[0])) or self.audio_player.engine.player.get_filename(16):
-			self.audio_player.engine.player.start_playback(16)
+		elif (self.audio_player.preset_name and os.path.exists(self.audio_player.preset_info[0])) or self.audio_player.engine.player.get_filename(self.audio_player.handle):
+			self.audio_player.engine.player.start_playback(self.audio_player.handle)
 		else:
 			self.audio_player.reset_preset()
 			self.cuia_audio_file_list()
 
 	def stop_audio_player(self):
-		self.audio_player.engine.player.stop_playback(16)
+		self.audio_player.engine.player.stop_playback(self.audio_player.handle)
 
 	# ------------------------------------------------------------------
 	# MIDI learning
@@ -1144,10 +1143,10 @@ class zynthian_gui:
 
 	def cuia_stop_audio_play(self, params=None):
 		self.stop_audio_player()
-		self.audio_player.engine.player.set_position(16, 0.0)
+		self.audio_player.engine.player.set_position(self.audio_player.handle, 0.0)
 
 	def cuia_toggle_audio_play(self, params=None):
-		if self.audio_player.engine.player.get_playback_state(16):
+		if self.audio_player.engine.player.get_playback_state(self.audio_player.handle):
 			self.stop_audio_player()
 		else:
 			self.start_audio_player()
@@ -2274,7 +2273,7 @@ class zynthian_gui:
 				self.status_counter += 1
 
 			# Audio Player Status
-			if self.audio_player.engine.player.get_playback_state(16):
+			if self.audio_player.engine.player.get_playback_state(self.audio_player.handle):
 				self.status_info['audio_player'] = 'PLAY'
 			elif 'audio_player' in self.status_info:
 				self.status_info.pop('audio_player')

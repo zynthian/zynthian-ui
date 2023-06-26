@@ -89,7 +89,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
 			self.zgui_ctrls.append(self.bpm_zgui_ctrl)
 
 		if not self.clk_source_zgui_ctrl:
-			self.clk_source_zctrl = zynthian_controller(self, 'clock_source', 'Clock Source', {'labels': ['Internal', 'Internal Send', 'MIDI'], 'ticks': [0, 1, 2], 'value': zynthian_gui_config.transport_clock_source})
+			self.clk_source_zctrl = zynthian_controller(self, 'clock_source', 'Clock Source', {'labels': ['Internal', 'Internal Send', 'MIDI', 'Analogue'], 'ticks': [0, 1, 2, 3], 'value': zynthian_gui_config.transport_clock_source})
 			self.clk_source_zgui_ctrl = zynthian_gui_controller(1, self.main_frame, self.clk_source_zctrl)
 			self.zgui_ctrls.append(self.clk_source_zgui_ctrl)
 
@@ -152,7 +152,12 @@ class zynthian_gui_tempo(zynthian_gui_base):
 			return False
 
 	def set_transport_clock_source(self, val, save_config=False):
-		self.zyngui.zynseq.libseq.setClockSource(val == 2)
+		if val == 2:
+			self.zyngui.zynseq.libseq.setClockSource(2)
+		elif val == 3:
+			self.zyngui.zynseq.libseq.setClockSource(5)
+		else:
+			self.zyngui.zynseq.libseq.setClockSource(1)
 		self.zyngui.zynseq.libseq.enableMidiClockOutput(val == 1)
 		if val > 0:
 			lib_zyncore.set_midi_filter_system_events(1)

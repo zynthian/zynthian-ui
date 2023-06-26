@@ -1,6 +1,7 @@
 /*  Audio file player library for Zynthian
     Copyright (C) 2021 Brian Walton <brian@riban.co.uk>
     License: LGPL V3
+    Envelope generator based on code by EarLevel Engineering <https://www.earlevel.com/main/2013/06/03/envelope-generators-adsr-code/>
 */
 
 #include <stdint.h>
@@ -26,7 +27,15 @@ enum {
     NOTIFY_DEBUG        = 10,
     NOTIFY_LOOP_START   = 11,
     NOTIFY_LOOP_END     = 12,
-    NOTIFY_SUSTAIN      = 13
+    NOTIFY_CROP_START   = 13,
+    NOTIFY_CROP_END     = 14,
+    NOTIFY_SUSTAIN      = 15,
+    NOTIFY_ENV_ATTACK   = 16,
+    NOTIFY_ENV_DECAY    = 17,
+    NOTIFY_ENV_SUSTAIN  = 18,
+    NOTIFY_ENV_RELEASE  = 19,
+    NOTIFY_ENV_ATTACK_CURVE = 20,
+    NOTIFY_ENV_DECAY_CURVE = 21
 };
 
 /** @brief  Library constructor (initalisation) */
@@ -51,14 +60,20 @@ char* get_supported_codecs();
 
 /** @brief  Add a player instance
 *   @param  player_handle Index of player to initialise
-*   @retval int 1 on success
+*   @retval int Player handel on success or -1 on failure
 */
-int add_player(int player_handle);
+int add_player();
 
 /** @brief  Remove player from library
 *   @param  player_handle Handle of player provided by init_player()
 */
 void remove_player(int player_handle);
+
+/** @brief  Set player MIDI channel
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  midi_chan MIDI channel (0..15 or other value to disable MIDI listen)
+*/
+void set_midi_chan(int player_handle, uint8_t midi_chan);
 
 /** @brief Get jack client name
 *   @retval const char* Jack client name
@@ -145,6 +160,30 @@ void set_loop_end_time(int player_handle, float time);
 *   @retval float End of loop in seconds since end of file
 */
 float get_loop_end_time(int player_handle);
+
+/** @brief  Set start of audio (crop)
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  time Start of crop in seconds since start of file
+*/
+void set_crop_start_time(int player_handle, float time);
+
+/** @brief  Get start of audio (crop)
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval float Start of crop in seconds since start of file
+*/
+float get_crop_start_time(int player_handle);
+
+/** @brief  Set end audio (crop)
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  time End of crop in seconds since end of file
+*/
+void set_crop_end_time(int player_handle, float time);
+
+/** @brief  Get end of audio (crop)
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval float End of crop in seconds since end of file
+*/
+float get_crop_end_time(int player_handle);
 
 /** @brief  Start playback
 *   @param  player_handle Handle of player provided by init_player()
@@ -282,6 +321,79 @@ unsigned int get_buffer_count(int player_handle);
 */
 void set_pos_notify_delta(int player_handle, float time);
 
+/**** Envelope functions ****/
+
+/** @brief  Set envelope attack rate
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  rate Attack rate
+*/
+void set_env_attack(int player_handle, float rate);
+
+/** @brief  Get envelope attack rate
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval <float> Attack rate
+*/
+float get_env_attack(int player_handle);
+
+/** @brief  Set envelope decay rate
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  rate Decay rate
+*/
+void set_env_decay(int player_handle, float rate);
+
+/** @brief  Get envelope decay rate
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval <float> Decay rate
+*/
+float get_env_decay(int player_handle);
+
+/** @brief  Set envelope release rate
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  rate Release rate
+*/
+void set_env_release(int player_handle, float rate);
+
+/** @brief  Get envelope release rate
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval <float> Release rate
+*/
+float get_env_release(int player_handle);
+
+/** @brief  Set envelope sustain level
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  level Sustain level
+*/
+void set_env_sustain(int player_handle, float level);
+
+/** @brief  Get envelope sustain level
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval <float> Sustain level
+*/
+float get_env_sustain(int player_handle);
+
+/** @brief  Set envelope attack target ratio (curve)
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  ratio Target ratio
+*/
+void set_env_target_ratio_a(int player_handle, float ratio);
+
+/** @brief  Get envelope attack target ratio (curve)
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval <float> Target ratio
+*/
+float get_env_target_ratio_a(int player_handle);
+
+/** @brief  Set envelope decay / release target ratio (curve)
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  ratio Target ratio
+*/
+void set_env_target_ratio_dr(int player_handle, float ratio);
+
+/** @brief  Get envelope decay / release target ratio (curve)
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval <float> Target ratio
+*/
+float get_env_target_ratio_dr(int player_handle);
 
 /**** Global functions ****/
 
