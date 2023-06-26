@@ -1071,7 +1071,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
             } else {
                 if(a_count < nFrames && pPlayer->file_read_status == IDLE) {
                     // Reached end of file
-                    pPlayer->play_pos_frames = 0;
+                    pPlayer->play_pos_frames = pPlayer->crop_start_src;
                     pPlayer->play_state = STOPPING;
                 }
             }

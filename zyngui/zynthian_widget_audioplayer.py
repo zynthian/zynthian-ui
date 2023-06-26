@@ -28,6 +28,7 @@ from threading import Thread
 import tkinter
 import logging
 import soundfile
+from math import modf
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -248,6 +249,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			crop_end = int(self.samplerate * self.monitors["crop end"])
 			pos_time = self.monitors["pos"]
 			pos = int(pos_time * self.samplerate)
+			refresh_info = False
 
 			if self.zoom != self.monitors["zoom"]:
 				centre = offset + 0.5 * self.frames / self.zoom
@@ -283,10 +285,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.play_pos = pos
 				if pos < offset  or pos > offset + self.frames // self.zoom:
 					offset = max(0, pos)
-				if self.info == 1:
-					self.widget_canvas.itemconfigure(self.info_text, text=f"{int(pos_time / 60):02d}:{int(pos_time % 60):02d}")
-				elif self.info == 2:
-					self.widget_canvas.itemconfigure(self.info_text, text=f"{int((self.duration - pos_time) / 60):02d}:{int((self.duration - pos_time) % 60):02d}")
 				refresh_markers = True
 
 			offset = max(0, offset)
@@ -311,19 +309,30 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.widget_canvas.coords(self.crop_end_rect, x, 0, self.width, self.height)
 				x = int(f * (pos - self.offset))
 				self.widget_canvas.coords(self.play_line, x, 0, x, self.height)
+				refresh_info = True
+
 
 			if self.monitors["info"] != self.info:
 				self.widget_canvas.itemconfig("waveform", state=tkinter.NORMAL)
 				self.widget_canvas.itemconfig("overlay", state=tkinter.NORMAL)
 				self.info = self.monitors["info"]
-				if self.info == 0:
-					self.widget_canvas.itemconfigure(self.info_text, text=f"{int(self.duration / 60):02d}:{int(self.duration % 60):02d}", state=tkinter.NORMAL)
-				elif self.info == 1:
-					self.widget_canvas.itemconfigure(self.info_text, text=f"{int(pos_time / 60):02d}:{int(pos_time % 60):02d}", state=tkinter.NORMAL)
+				refresh_info = True
+
+			if refresh_info:
+				if self.info == 1:
+					time = (self.crop_end - self.crop_start) / self.samplerate
+					self.widget_canvas.itemconfigure(self.info_text, text=f"Duration: {self.format_time(time)}", state=tkinter.NORMAL)
 				elif self.info == 2:
-					self.widget_canvas.itemconfigure(self.info_text, text=f"{int((self.duration - pos_time) / 60):02d}:{int((self.duration - pos_time) % 60):02d}", state=tkinter.NORMAL)
+					time = max(0, pos - self.crop_start) / self.samplerate
+					self.widget_canvas.itemconfigure(self.info_text, text=f"Position: {self.format_time(time)}", state=tkinter.NORMAL)
 				elif self.info == 3:
-					self.widget_canvas.itemconfig(self.info_text, text=f"{self.samplerate}", state=tkinter.NORMAL)
+					time = max(0, self.crop_end - pos) / self.samplerate
+					self.widget_canvas.itemconfigure(self.info_text, text=f"Remaining: {self.format_time(time)}", state=tkinter.NORMAL)
+				elif self.info == 4:
+					time = (self.loop_end - self.loop_start) / self.samplerate
+					self.widget_canvas.itemconfigure(self.info_text, text=f"Loop length: {self.format_time(time)}", state=tkinter.NORMAL)
+				elif self.info == 5:
+					self.widget_canvas.itemconfig(self.info_text, text=f"Samplerate: {self.samplerate}", state=tkinter.NORMAL)
 				else:
 					self.widget_canvas.itemconfig(self.info_text, state=tkinter.HIDDEN)
 
@@ -331,6 +340,10 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			logging.error(e)
 		
 		self.refreshing = False
+
+
+	def format_time(self, time):
+		return f"{int(time / 60):02d}:{int(time % 60):02d}.{int(modf(time)[0] * 1000):03}"
 
 
 	def cb_canvas_wheel(self, event):

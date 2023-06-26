@@ -292,7 +292,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['crop start', None, 0.0, dur],
 			['crop end', None, dur, dur],
 			['zoom', None, 1, [zoom_labels, zoom_values]],
-			['info', None, 0, ["Length", "Play Time", "Remaining", "Samplerate", "None"]],
+			['info', None, 1, ["None", "Length", "Play Time", "Remaining", "Loop Length", "Samplerate"]],
 		]
 		if layer.handle != self.zyngui.audio_player.handle:
 			self._ctrls += [['damper', 64, 'off', ['off', 'on']],
