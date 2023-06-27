@@ -259,7 +259,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.refreshing = False
 				return
 
-			offset = self.offset
 			refresh_markers = False
 			loop_start = int(self.samplerate * self.monitors["loop start"])
 			loop_end = int(self.samplerate * self.monitors["loop end"])
@@ -269,6 +268,11 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			pos = int(pos_time * self.samplerate)
 			refresh_info = False
 
+			if self.monitors["offset"] is not None and self.monitors["offset"] != self.offset:
+				offset = self.monitors["offset"]
+				self.zoom = self.monitors["zoom"]
+			else:
+				offset = self.offset
 			if self.zoom != self.monitors["zoom"]:
 				centre = offset + 0.5 * self.frames / self.zoom
 				self.zoom = self.monitors["zoom"]
