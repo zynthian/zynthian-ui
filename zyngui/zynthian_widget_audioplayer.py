@@ -62,6 +62,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.limit_factor = 1500000 # Used to limit the quantity of frames processed in large data sets
 		self.info = None
 		self.images=[]
+		self.zoom_height = 0.94 # ratio of height for y offset of zoom overview display
 
 		self.widget_canvas = tkinter.Canvas(self,
 			bd=0,
@@ -131,6 +132,16 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			tags="overlay"
 		)
 
+		self.zoom_rect = self.widget_canvas.create_rectangle(
+			0,
+			self.height,
+			self.width,
+			self.height,
+			width=0,
+			fill="dark grey",
+			tags="overlay"
+		)
+
 		self.info_text = self.widget_canvas.create_text(
 			self.width - int(0.5 * zynthian_gui_config.font_size),
 			self.height,
@@ -179,7 +190,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 					self.duration = self.frames / self.samplerate
 				else:
 					self.duration = 0.0
-			y0 = self.height // self.channels
+			y0 = self.zoom_height * self.height // self.channels
 			for chan in range(self.channels):
 				v_offset = chan * y0
 				self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=zynthian_gui_config.PAD_COLOUR_GROUP[chan // 2 % len(zynthian_gui_config.PAD_COLOUR_GROUP)], tags="waveform", state=tkinter.HIDDEN)
@@ -203,7 +214,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		
 		frames_per_pixel = length / self.width
 		step = frames_per_pixel / limit
-		y0 = self.height // self.channels
+		y0 = self.height * self.zoom_height // self.channels
 
 		for chan in range(self.channels):
 			pos = start
@@ -305,17 +316,18 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				refresh_markers = True
 
 			if refresh_markers:
+				h = int(self.zoom_height * self.height)
 				f = self.width / self.frames * self.zoom
 				x = int(f * (self.loop_start - self.offset))
-				self.widget_canvas.coords(self.loop_start_line, x, 0, x, self.height)
+				self.widget_canvas.coords(self.loop_start_line, x, 0, x, h)
 				x = int(f * (self.loop_end - self.offset))
-				self.widget_canvas.coords(self.loop_end_line, x, 0, x, self.height)
+				self.widget_canvas.coords(self.loop_end_line, x, 0, x, h)
 				x = int(f * (self.crop_start - self.offset))
-				self.widget_canvas.coords(self.crop_start_rect, 0, 0, x, self.height)
+				self.widget_canvas.coords(self.crop_start_rect, 0, 0, x, h)
 				x = int(f * (self.crop_end - self.offset))
-				self.widget_canvas.coords(self.crop_end_rect, x, 0, self.width, self.height)
+				self.widget_canvas.coords(self.crop_end_rect, x, 0, self.width, h)
 				x = int(f * (pos - self.offset))
-				self.widget_canvas.coords(self.play_line, x, 0, x, self.height)
+				self.widget_canvas.coords(self.play_line, x, 0, x, h)
 				refresh_info = True
 
 
@@ -326,6 +338,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				refresh_info = True
 
 			if refresh_info:
+				zoom_offset = self.width * offset // self.frames
+				self.widget_canvas.coords(self.zoom_rect, zoom_offset, int(self.zoom_height * self.height), zoom_offset + max(1, self.width // self.zoom), self.height)
 				if self.info == 1:
 					time = (self.crop_end - self.crop_start) / self.samplerate
 					self.widget_canvas.itemconfigure(self.info_text, text=f"Duration: {self.format_time(time)}", state=tkinter.NORMAL)
