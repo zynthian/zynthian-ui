@@ -211,12 +211,19 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			v_offset = chan * y0
 			for x in range(self.width):
 				offset = pos
-				v1 = v2 = self.audio_data[int(offset)][chan]
+				if self.channels == 1:
+					v1 = v2 = self.audio_data[int(offset)]
+				else:
+					v1 = v2 = self.audio_data[int(offset)][chan]
 				while offset < pos + frames_per_pixel and offset < len(self.audio_data):
-					if v1 < self.audio_data[int(offset)][chan]:
-						v1 = self.audio_data[int(offset)][chan]
-					if v2 > self.audio_data[int(offset)][chan]:
-						v2 = self.audio_data[int(offset)][chan]
+					if self.channels == 1:
+						sample = self.audio_data[int(offset)]
+					else:
+						sample = self.audio_data[int(offset)][chan]
+					if v1 < sample:
+						v1 = sample
+					if v2 > sample:
+						v2 = sample
 					offset += step
 				y1 = v_offset + int((y0 * (1 + v1)) / 2)
 				y2 = v_offset + int((y0 * (1 + v2)) / 2)
