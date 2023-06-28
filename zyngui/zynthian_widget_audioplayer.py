@@ -64,6 +64,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.info = None
 		self.images=[]
 		self.zoom_height = 0.94 # ratio of height for y offset of zoom overview display
+		self.v_zoom = 1.0 # vertical zoom factor
 
 		self.widget_canvas = tkinter.Canvas(self,
 			bd=0,
@@ -71,6 +72,10 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			relief='flat',
 			bg=zynthian_gui_config.color_bg)
 		self.widget_canvas.grid(sticky='news')
+
+		self.widget_canvas.bind('<ButtonPress-1>', self.on_zoom_press)
+		self.widget_canvas.bind('<ButtonRelease-1>', self.on_zoom_release)
+		self.widget_canvas.bind('<B1-Motion>', self.on_zoom_drag)
 
 		self.loading_text = self.widget_canvas.create_text(
 			0,
@@ -170,6 +175,47 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.refresh_waveform = True
 
 
+	def on_zoom_press(self, event):
+		self.zoom_drag_x = event.x
+		self.zoom_drag_y = event.y
+		self.drag_mode = None
+
+
+	def on_zoom_release(self, event):
+		pass
+
+
+	def on_zoom_drag(self, event):
+		if self.drag_mode is None:
+			if self.zoom_drag_y > self.zoom_height * self.height and abs(event.x - self.zoom_drag_x) > self.width // 40:
+				self.drag_mode = 'z'
+			elif abs(event.x - self.zoom_drag_x) > self.width // 40:
+				self.drag_mode = 'x'
+			elif abs(event.y - self.zoom_drag_y) > self.width // 40:
+				self.drag_mode = 'y'
+		if self.drag_mode == 'x':
+			self.offset += int(self.frames * (self.zoom_drag_x - event.x) / self.width / self.zoom)
+			self.offset = max(0, self.offset)
+			self.offset = min(self.frames - self.frames // self.zoom, self.offset)
+			self.zoom_drag_x = event.x
+			self.refresh_waveform = True
+		elif self.drag_mode == 'y':
+			self.v_zoom += (self.zoom_drag_y - event.y) / self.height
+			self.v_zoom = min(self.v_zoom, 4.0)
+			self.v_zoom = max(self.v_zoom, 0.1)
+			self.zoom_drag_y = event.y
+			self.refresh_waveform = True
+		elif self.drag_mode == 'z':
+			delta = event.x - self.zoom_drag_x
+			zctrl = self.monitors['zoom_zctrl']
+			if delta > self.width / len(zctrl.ticks):
+				zctrl.nudge(1)
+				self.zoom_drag_x = event.x
+			elif -delta > self.width / len(zctrl.ticks):
+				zctrl.nudge(-1)
+				self.zoom_drag_x = event.x
+
+
 	def get_monitors(self):
 		self.monitors = self.layer.engine.get_monitors_dict(self.layer.handle)
 
@@ -237,6 +283,12 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 					if v2 > sample:
 						v2 = sample
 					offset += step
+				v1 *= self.v_zoom
+				v1 = min(1.0, v1)
+				v1 = max(-1.0, v1)
+				v2 *= self.v_zoom
+				v2 = min(1.0, v2)
+				v2 = max(-1.0, v2)
 				y1 = v_offset + int((y0 * (1 + v1)) / 2)
 				y2 = v_offset + int((y0 * (1 + v2)) / 2)
 				data += [x, y1, x, y2]

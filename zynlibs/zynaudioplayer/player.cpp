@@ -13,156 +13,19 @@
 #include <string.h> //provides strcmp, memset
 #include <jack/jack.h> //provides interface to JACK
 #include <jack/midiport.h> //provides JACK MIDI interface
-#include <jack/ringbuffer.h> //provides jack ring buffer
-#include <sndfile.h> //provides sound file manipulation
-#include <samplerate.h> //provides samplerate conversion
 #include <pthread.h> //provides multithreading
 #include <unistd.h> //provides usleep
 #include <stdlib.h> //provides exit
 #include <arpa/inet.h> // provides inet_pton
 #include <fcntl.h> //provides fcntl
 #include <math.h> // provides pow
-#include <rubberband/RubberBandStretcher.h>
+#include <vector>
 
 using namespace RubberBand;
 using namespace std;
 
-#define MAX_PLAYERS 17 // Maximum quanity of audio players the library can host
-
-enum playState {
-    STOPPED		= 0,
-    STARTING	= 1,
-    PLAYING		= 2,
-    STOPPING	= 3
-};
-
-enum seekState {
-    IDLE        = 0, // Not seeking
-    SEEKING     = 1, // Seeking within file
-    LOADING     = 2, // Seek complete, loading data from file
-    LOOPING     = 3, // Reached loop end point, need to load from loop start point
-    WAITING     = 4  // File buffer is full so wait a cycle then try again
-};
-
-enum fileState {
-    FILE_CLOSED  = 0,
-    FILE_OPENING = 1,
-    FILE_OPEN    = 2
-};
-
-enum envState {
-    ENV_IDLE = 0,
-    ENV_ATTACK,
-    ENV_DECAY,
-    ENV_SUSTAIN,
-    ENV_RELEASE,
-    ENV_END
-};
-
-class AUDIO_PLAYER {
-    public:
-
-        ~AUDIO_PLAYER() {
-            delete stretcher;
-            if(ringbuffer_a)
-                jack_ringbuffer_free(ringbuffer_a);
-            if(ringbuffer_b)
-                jack_ringbuffer_free(ringbuffer_b);
-        }
-
-    unsigned int handle;
-
-    jack_port_t* jack_out_a;
-    jack_port_t* jack_out_b;
-
-    uint8_t file_open; // 0=file closed, 1=file opening, 2=file open - used to flag thread to close file or thread to flag file failed to open
-    uint8_t file_read_status = IDLE; // File reading status (IDLE|SEEKING|LOADING)
-
-    uint8_t play_state; // Current playback state (STOPPED|STARTING|PLAYING|STOPPING)
-    sf_count_t file_read_pos = 0; // Current file read position (frames)
-    uint8_t loop; // 1 to loop at end of song
-    sf_count_t loop_start = 0; // Start of loop in frames from start of file
-    sf_count_t loop_start_src = -1; // Start of loop in frames from start after SRC
-    sf_count_t loop_end; // End of loop in frames from start of file
-    sf_count_t loop_end_src; // End of loop in frames from start after SRC
-    sf_count_t crop_start = 0; // Start of audio (crop) in frames from start of file
-    sf_count_t crop_start_src = -1; // Start of audio (crop) in frames from start after SRC
-    sf_count_t crop_end; // End of audio (crop) in frames from start of file
-    sf_count_t crop_end_src; // End of audio (crop) in frames from start after SRC
-    float gain; // Audio level (volume) 0..1
-    int track_a; // Which track to playback to left output (-1 to mix all stereo pairs)
-    int track_b; // Which track to playback to right output (-1 to mix all stereo pairs)
-    unsigned int input_buffer_size; // Quantity of frames that may be read from file
-    unsigned int output_buffer_size; // Quantity of frames that may be SRC
-    unsigned int buffer_count; // Factor by which ring buffer is larger than input / SRC buffer
-    unsigned int src_quality; // SRC quality [0..4]
-
-    // Value of data at last notification
-    uint8_t last_play_state = -1;
-    uint8_t last_loop = -1;
-    sf_count_t last_loop_start = -1;
-    sf_count_t last_loop_end = -1;
-    sf_count_t last_crop_start = -1;
-    sf_count_t last_crop_end = -1;
-    float last_position = -1;
-    float last_gain = -1.0;
-    int last_track_a = -1;
-    int last_track_b = -1;
-    unsigned int last_input_buffer_size = -1;
-    unsigned int last_output_buffer_size = -1;
-    unsigned int last_buffer_count = -1;
-    unsigned int last_src_quality = -1;
-
-    // ADSR envelope
-    int env_state;
-    uint8_t env_gate;
-    float env_level;
-    float env_attack_rate;
-    float last_env_attack_rate;
-    float env_attack_base;
-    float env_attack_coef;
-    float env_decay_rate;
-    float last_env_decay_rate;
-    float env_decay_base;
-    float env_decay_coef;
-    float env_sustain_level;
-    float last_env_sustain_level;
-    float env_release_rate;
-    float last_env_release_rate;
-    float env_release_base;
-    float env_release_coef;
-    float env_target_ratio_a;
-    float last_env_target_ratio_a;
-    float env_target_ratio_dr;
-    float last_env_target_ratio_dr;
-
-    struct SF_INFO  sf_info; // Structure containing currently loaded file info
-    pthread_t file_thread; // ID of file reader thread
-    // Note that jack_ringbuffer handles bytes so need to convert data between bytes and floats
-
-    jack_ringbuffer_t * ringbuffer_a = NULL; // Used to pass A samples from file reader to jack process
-    jack_ringbuffer_t * ringbuffer_b = NULL; // Used to pass B samples from file reader to jack process
-    jack_nframes_t play_pos_frames = 0; // Current playback position in frames since start of audio at play samplerate
-    size_t frames; // Quanity of frames after samplerate conversion
-    char filename[128];
-    uint8_t midi_chan; // MIDI channel to listen
-    uint8_t last_note_played = 0; // MIDI note number of last note that triggered playback
-    uint8_t held_notes[128]; // MIDI notes numbers that have been pressed but not released
-    uint8_t held_note = 0; // 1 if any MIDI notes held
-    uint8_t sustain = 0; // True when sustain pedal held
-    uint8_t last_sustain = -1;
-    float src_ratio = 1.0; // Samplerate ratio of file
-    float pitch_bend = 0.0; // Amount of MIDI pitch bend applied +/-range
-    uint8_t pitch_bend_range = 2; // Pitchbend range in semitones
-    void * cb_object = NULL; // Pointer to the object hosting the callback function
-    cb_fn_t * cb_fn = NULL; // Pointer to function to receive notification of chage
-    float pos_notify_delta; // Position time difference to trigger notification
-
-    RubberBandStretcher * stretcher = NULL; // Time / pitch stretcher
-};
-
 // **** Global variables ****
-AUDIO_PLAYER * g_players[MAX_PLAYERS];
+vector<AUDIO_PLAYER*> g_vPlayers;
 jack_client_t* g_jack_client;
 jack_port_t* g_jack_midi_in;
 jack_nframes_t g_samplerate = 44100; // Playback samplerate set by jackd
@@ -170,6 +33,7 @@ uint8_t g_debug = 0;
 uint8_t g_last_debug = 0;
 char g_supported_codecs[1024];
 uint8_t g_mutex = 0;
+uint32_t g_nextIndex = 1;
 
 // Declare local functions
 void set_env_gate(AUDIO_PLAYER * pPlayer, uint8_t gate);
@@ -188,12 +52,6 @@ void getMutex() {
 
 void releaseMutex() {
     g_mutex = 0;
-}
-
-static inline AUDIO_PLAYER * get_player(int player_handle) {
-    if(player_handle > MAX_PLAYERS || player_handle < 0)
-        return NULL;
-    return g_players[player_handle];
 }
 
 int is_codec_supported(const char* codec) {
@@ -233,97 +91,97 @@ void send_notifications(AUDIO_PLAYER * pPlayer, int param) {
     if((param == NOTIFY_ALL || param == NOTIFY_TRANSPORT) && pPlayer->last_play_state != pPlayer->play_state) {
         pPlayer->last_play_state = pPlayer->play_state;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_TRANSPORT, (float)(pPlayer->play_state));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_TRANSPORT, (float)(pPlayer->play_state));
     }
-    if((param == NOTIFY_ALL || param == NOTIFY_POSITION) && fabs(get_position(pPlayer->handle) - pPlayer->last_position) >= pPlayer->pos_notify_delta) {
-        pPlayer->last_position = get_position(pPlayer->handle);
+    if((param == NOTIFY_ALL || param == NOTIFY_POSITION) && fabs(get_position(pPlayer) - pPlayer->last_position) >= pPlayer->pos_notify_delta) {
+        pPlayer->last_position = get_position(pPlayer);
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_POSITION, pPlayer->last_position);
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_POSITION, pPlayer->last_position);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_GAIN) && fabs(pPlayer->gain - pPlayer->last_gain) >= 0.01) {
         pPlayer->last_gain = pPlayer->gain;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_GAIN, (float)(pPlayer->gain));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_GAIN, (float)(pPlayer->gain));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_LOOP) && pPlayer->loop != pPlayer->last_loop) {
         pPlayer->last_loop = pPlayer->loop;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_LOOP, (float)(pPlayer->loop));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_LOOP, (float)(pPlayer->loop));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_LOOP_START) && pPlayer->loop_start != pPlayer->last_loop_start) {
         pPlayer->last_loop_start = pPlayer->loop_start;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_LOOP_START, get_loop_start_time(pPlayer->handle));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_LOOP_START, get_loop_start_time(pPlayer));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_LOOP_END) && pPlayer->loop_end != pPlayer->last_loop_end) {
         pPlayer->last_loop_end = pPlayer->loop_end;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_LOOP_END, get_loop_end_time(pPlayer->handle));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_LOOP_END, get_loop_end_time(pPlayer));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_CROP_START) && pPlayer->crop_start != pPlayer->last_crop_start) {
         pPlayer->last_crop_start = pPlayer->crop_start;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_CROP_START, get_crop_start_time(pPlayer->handle));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_CROP_START, get_crop_start_time(pPlayer));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_CROP_END) && pPlayer->crop_end != pPlayer->last_crop_end) {
         pPlayer->last_crop_end = pPlayer->crop_end;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_CROP_END, get_crop_end_time(pPlayer->handle));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_CROP_END, get_crop_end_time(pPlayer));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_SUSTAIN) && pPlayer->sustain != pPlayer->last_sustain) {
         pPlayer->last_sustain = pPlayer->sustain;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_SUSTAIN, pPlayer->sustain);
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_SUSTAIN, pPlayer->sustain);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_ENV_ATTACK) && pPlayer->env_attack_rate != pPlayer->last_env_attack_rate) {
         pPlayer->last_env_attack_rate = pPlayer->env_attack_rate;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_ENV_ATTACK, pPlayer->env_attack_rate);
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_ENV_ATTACK, pPlayer->env_attack_rate);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_ENV_DECAY) && pPlayer->env_decay_rate != pPlayer->last_env_decay_rate) {
         pPlayer->last_env_decay_rate = pPlayer->env_decay_rate;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_ENV_DECAY, pPlayer->env_decay_rate);
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_ENV_DECAY, pPlayer->env_decay_rate);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_ENV_SUSTAIN) && pPlayer->env_sustain_level != pPlayer->last_env_sustain_level) {
         pPlayer->last_env_sustain_level = pPlayer->env_sustain_level;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_ENV_SUSTAIN, pPlayer->env_sustain_level);
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_ENV_SUSTAIN, pPlayer->env_sustain_level);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_ENV_RELEASE) && pPlayer->env_release_rate != pPlayer->last_env_release_rate) {
         pPlayer->last_env_release_rate = pPlayer->env_release_rate;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_ENV_RELEASE, pPlayer->env_release_rate);
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_ENV_RELEASE, pPlayer->env_release_rate);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_ENV_ATTACK_CURVE) && pPlayer->env_target_ratio_a != pPlayer->last_env_target_ratio_a) {
         pPlayer->last_env_target_ratio_a = pPlayer->env_target_ratio_a;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_ENV_ATTACK_CURVE, pPlayer->env_target_ratio_a);
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_ENV_ATTACK_CURVE, pPlayer->env_target_ratio_a);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_ENV_DECAY_CURVE) && pPlayer->env_target_ratio_dr != pPlayer->last_env_target_ratio_dr) {
         pPlayer->last_env_target_ratio_dr = pPlayer->env_target_ratio_dr;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_ENV_DECAY_CURVE, pPlayer->env_target_ratio_dr);
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_ENV_DECAY_CURVE, pPlayer->env_target_ratio_dr);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_TRACK_A) && pPlayer->track_a != pPlayer->last_track_a) {
         pPlayer->last_track_a = pPlayer->track_a;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_TRACK_A, (float)(pPlayer->track_a));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_TRACK_A, (float)(pPlayer->track_a));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_TRACK_B) && pPlayer->track_b != pPlayer->last_track_b) {
         pPlayer->last_track_b = pPlayer->track_b;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_TRACK_B, (float)(pPlayer->track_b));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_TRACK_B, (float)(pPlayer->track_b));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_QUALITY) && pPlayer->src_quality != pPlayer->last_src_quality) {
         pPlayer->last_src_quality = pPlayer->src_quality;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_QUALITY, (float)(pPlayer->src_quality));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_QUALITY, (float)(pPlayer->src_quality));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_DEBUG) && g_debug != g_last_debug) {
         g_last_debug = g_debug;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer->handle, NOTIFY_DEBUG, (float)(g_debug));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_DEBUG, (float)(g_debug));
     }
 }
 
@@ -335,14 +193,14 @@ void* file_thread_fn(void * param) {
     size_t nMaxFrames; // Maximum quantity of frames that may be read from file
     size_t nUnusedFrames = 0; // Quantity of frames in input buffer not used by SRC
 
-    SNDFILE* pFile = sf_open(pPlayer->filename, SFM_READ, &pPlayer->sf_info);
+    SNDFILE* pFile = sf_open(pPlayer->filename.c_str(), SFM_READ, &pPlayer->sf_info);
     if(!pFile || pPlayer->sf_info.channels < 1) {
         pPlayer->file_open = FILE_CLOSED;
-        fprintf(stderr, "libaudioplayer error: failed to open file %s: %s\n", pPlayer->filename, sf_strerror(pFile));
+        fprintf(stderr, "libaudioplayer error: failed to open file %s: %s\n", pPlayer->filename.c_str(), sf_strerror(pFile));
     }
     if(pPlayer->sf_info.channels < 0) {
         pPlayer->file_open = FILE_CLOSED;
-        fprintf(stderr, "libaudioplayer error: file %s has no tracks\n", pPlayer->filename);
+        fprintf(stderr, "libaudioplayer error: file %s has no tracks\n", pPlayer->filename.c_str());
         int nError = sf_close(pFile);
         if(nError != 0)
             fprintf(stderr, "libaudioplayer error: failed to close file with error code %d\n", nError);
@@ -391,7 +249,7 @@ void* file_thread_fn(void * param) {
             pPlayer->file_open = FILE_CLOSED;
         }
  
-        DPRINTF("Opened file '%s' with samplerate %u, duration: %f\n", pPlayer->filename, pPlayer->sf_info.samplerate, get_duration(pPlayer->handle));
+        DPRINTF("Opened file '%s' with samplerate %u, duration: %f\n", pPlayer->filename.c_str(), pPlayer->sf_info.samplerate, get_duration(pPlayer));
 
         while(pPlayer->file_open == FILE_OPEN) {
             if(pPlayer->file_read_status == SEEKING) {
@@ -403,7 +261,7 @@ void* file_thread_fn(void * param) {
                 sf_count_t pos = sf_seek(pFile, nNewPos, SEEK_SET);
                 if(pos >= 0)
                     pPlayer->file_read_pos = pos;
-                //DPRINTF("Seeking to %u frames (%fs) src ratio=%f\n", nNewPos, get_position(pPlayer->handle), srcData.src_ratio);
+                //DPRINTF("Seeking to %u frames (%fs) src ratio=%f\n", nNewPos, get_position(pPlayer), srcData.src_ratio);
                 pPlayer->file_read_status = LOADING;
                 releaseMutex();
                 src_reset(pSrcState);
@@ -429,7 +287,6 @@ void* file_thread_fn(void * param) {
             {
                 int nFramesRead;
                 // Load block of data from file to SRC or output buffer
-
                 nMaxFrames = pPlayer->input_buffer_size - nUnusedFrames;
 
                 if(jack_ringbuffer_write_space(pPlayer->ringbuffer_a) >= nMaxFrames * sizeof(float) * pPlayer->src_ratio
@@ -536,16 +393,12 @@ void* file_thread_fn(void * param) {
             }
         }
     }
-
-    getMutex();
-    pPlayer->play_state = STOPPED; // Already stopped when clearing file_open but let's be sure!
-    releaseMutex();
     if(pFile) {
         int nError = sf_close(pFile);
         if(nError != 0)
             fprintf(stderr, "libaudioplayer error: failed to close file with error code %d\n", nError);
         else
-            pPlayer->filename[0] = '\0';
+            pPlayer->filename = "";
     }
     pPlayer->play_pos_frames = 0;
     pPlayer->cb_fn = NULL;
@@ -559,24 +412,21 @@ void* file_thread_fn(void * param) {
 
 /**** player instance functions take 'handle' param to identify player instance****/
 
-uint8_t load(int player_handle, const char* filename, void* cb_object, cb_fn_t cb_fn) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer)
-        return 0;
-    unload(player_handle);
+uint8_t load(AUDIO_PLAYER * pPlayer, const char* filename, void* cb_object, cb_fn_t cb_fn) {
+    unload(pPlayer);
     pPlayer->cb_fn;
     pPlayer->cb_object = NULL;
     pPlayer->track_a = 0;
     pPlayer->track_b = 0;
-    strcpy(pPlayer->filename, filename);
+    pPlayer->filename = filename;
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+    //pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     pPlayer->file_open = FILE_OPENING;
     if(pthread_create(&pPlayer->file_thread, &attr, file_thread_fn, pPlayer)) {
         fprintf(stderr, "libzynaudioplayer error: failed to create file reading thread\n");
-        unload(player_handle);
+        unload(pPlayer);
         return 0;
     }
     while(pPlayer->file_open == FILE_OPENING) {
@@ -590,43 +440,33 @@ uint8_t load(int player_handle, const char* filename, void* cb_object, cb_fn_t c
     return (pPlayer->file_open == FILE_OPEN);
 }
 
-void unload(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
-    if(!pPlayer || pPlayer->file_open == FILE_CLOSED)
+void unload(AUDIO_PLAYER * pPlayer) {
+    if(!pPlayer || !pPlayer->file_thread)
         return;
-    stop_playback(player_handle);
+    stop_playback(pPlayer);
     pPlayer->file_open = FILE_CLOSED;
-    pPlayer->cb_fn = NULL;
-    void* status;
-    pthread_join(pPlayer->file_thread, &status);
-    pPlayer->filename[0] = '\0';
 }
 
-uint8_t save(int player_handle, const char* filename) {
+uint8_t save(AUDIO_PLAYER * pPlayer, const char* filename) {
     //!@todo Implement save
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
     return 0;
 }
 
-const char* get_filename(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+const char* get_filename(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return "";
-    return pPlayer->filename;
+    return pPlayer->filename.c_str();
 }
 
-float get_duration(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+float get_duration(AUDIO_PLAYER * pPlayer) {
     if(pPlayer && pPlayer->file_open == FILE_OPEN && pPlayer->sf_info.samplerate)
         return (float)pPlayer->sf_info.frames / pPlayer->sf_info.samplerate;
     return 0.0f;
 }
 
-void set_position(int player_handle, float time) {
-
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_position(AUDIO_PLAYER * pPlayer, float time) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return;
     sf_count_t frames = time * g_samplerate;
@@ -642,15 +482,13 @@ void set_position(int player_handle, float time) {
     send_notifications(pPlayer, NOTIFY_POSITION);
 }
 
-float get_position(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+float get_position(AUDIO_PLAYER * pPlayer) {
     if(pPlayer && pPlayer->file_open == FILE_OPEN)
         return (float)(pPlayer->play_pos_frames) / g_samplerate;
     return 0.0;
 }
 
-void enable_loop(int player_handle, uint8_t bLoop) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void enable_loop(AUDIO_PLAYER * pPlayer, uint8_t bLoop) {
     if(!pPlayer)
         return;
     getMutex();
@@ -662,8 +500,7 @@ void enable_loop(int player_handle, uint8_t bLoop) {
     send_notifications(pPlayer, NOTIFY_LOOP);
 }
 
-void set_loop_start_time(int player_handle, float time) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_loop_start_time(AUDIO_PLAYER * pPlayer, float time) {
     if(!pPlayer)
         return;
     jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
@@ -677,7 +514,7 @@ void set_loop_start_time(int player_handle, float time) {
     if(pPlayer->loop) {
         if(pPlayer->play_pos_frames < frames) {
             releaseMutex();
-            set_position(player_handle, time);
+            set_position(pPlayer, time);
             return;
         }
         else
@@ -686,15 +523,13 @@ void set_loop_start_time(int player_handle, float time) {
     releaseMutex();
 }
 
-float get_loop_start_time(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+float get_loop_start_time(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->sf_info.samplerate == 0)
         return 0.0;
     return (float)(pPlayer->loop_start) / pPlayer->sf_info.samplerate;
 }
 
-void set_loop_end_time(int player_handle, float time) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_loop_end_time(AUDIO_PLAYER * pPlayer, float time) {
     if(!pPlayer)
         return;
     jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
@@ -713,22 +548,19 @@ void set_loop_end_time(int player_handle, float time) {
     releaseMutex();
 }
 
-float get_loop_end_time(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+float get_loop_end_time(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->sf_info.samplerate == 0)
         return 0.0;
     return (float)(pPlayer->loop_end) / pPlayer->sf_info.samplerate;
 }
 
-uint8_t is_loop(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+uint8_t is_loop(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
     return(pPlayer->loop);
 }
 
-void set_crop_start_time(int player_handle, float time) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_crop_start_time(AUDIO_PLAYER * pPlayer, float time) {
     if(!pPlayer)
         return;
     if(time < 0.0)
@@ -737,27 +569,25 @@ void set_crop_start_time(int player_handle, float time) {
     if(frames >= pPlayer->crop_end)
         frames = pPlayer->crop_end - 1;
     if(frames > pPlayer->loop_start)
-        set_loop_start_time(player_handle, time);
+        set_loop_start_time(pPlayer, time);
     getMutex();
     pPlayer->crop_start = frames;
     pPlayer->crop_start_src = pPlayer->crop_start * pPlayer->src_ratio;
     if(pPlayer->play_pos_frames < frames) {
         releaseMutex();
-        set_position(player_handle, time);
+        set_position(pPlayer, time);
         return;
     }
     releaseMutex();
 }
 
-float get_crop_start_time(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+float get_crop_start_time(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->sf_info.samplerate == 0)
         return 0.0;
     return (float)(pPlayer->crop_start) / pPlayer->sf_info.samplerate;
 }
 
-void set_crop_end_time(int player_handle, float time) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_crop_end_time(AUDIO_PLAYER * pPlayer, float time) {
     if(!pPlayer)
         return;
     jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
@@ -766,7 +596,7 @@ void set_crop_end_time(int player_handle, float time) {
     if(frames > pPlayer->sf_info.frames)
         frames = pPlayer->sf_info.frames;
     if(frames < pPlayer->loop_end)
-        set_loop_end_time(player_handle, time);
+        set_loop_end_time(pPlayer, time);
     getMutex();
     pPlayer->crop_end = frames;
     pPlayer->crop_end_src = frames * pPlayer->src_ratio;
@@ -780,43 +610,37 @@ void set_crop_end_time(int player_handle, float time) {
     releaseMutex();
 }
 
-float get_crop_end_time(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+float get_crop_end_time(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->sf_info.samplerate == 0)
         return 0.0;
     return (float)(pPlayer->crop_end) / pPlayer->sf_info.samplerate;
 }
 
-void start_playback(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void start_playback(AUDIO_PLAYER * pPlayer) {
     if(pPlayer && g_jack_client && pPlayer->file_open == FILE_OPEN && pPlayer->play_state != PLAYING)
         pPlayer->play_state = STARTING;
     send_notifications(pPlayer, NOTIFY_TRANSPORT);
 }
 
-void stop_playback(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void stop_playback(AUDIO_PLAYER * pPlayer) {
     if(pPlayer && pPlayer->play_state != STOPPED)
         pPlayer->play_state = STOPPING;
     send_notifications(pPlayer, NOTIFY_TRANSPORT);
 }
 
-uint8_t get_playback_state(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+uint8_t get_playback_state(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return STOPPED;
     return pPlayer->play_state;
 }
 
-int get_samplerate(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+int get_samplerate(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return g_samplerate;
     return pPlayer->sf_info.samplerate;
 }
 
-const char* get_codec(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+const char* get_codec(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return "NONE";
     // Define some constants that are not included in my version of sndfile header
@@ -884,22 +708,19 @@ const char* get_codec(int player_handle) {
     return "UNKNOWN";
 }
 
-int get_channels(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+int get_channels(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
     return pPlayer->sf_info.channels;
 }
 
-int get_frames(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+int get_frames(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
     return pPlayer->sf_info.frames;
 }
 
-int get_format(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+int get_format(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
     return pPlayer->sf_info.format;
@@ -910,8 +731,7 @@ float calc_env_coef(float rate, float ratio) {
     return (rate <= 0) ? 0.0 : exp(-log((1.0 + ratio) / ratio) / rate);
 }
 
-void set_env_attack(int player_handle, float rate) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_env_attack(AUDIO_PLAYER * pPlayer, float rate) {
     if(!pPlayer)
         return;
     getMutex();
@@ -922,15 +742,13 @@ void set_env_attack(int player_handle, float rate) {
     send_notifications(pPlayer, NOTIFY_ENV_ATTACK);
 }
 
-float get_env_attack(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+float get_env_attack(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer)
         return 0.0;
     return pPlayer->env_attack_rate;
 }
 
-void set_env_decay(int player_handle, float rate) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_env_decay(AUDIO_PLAYER * pPlayer, float rate) {
     if(!pPlayer)
         return;
     getMutex();
@@ -941,15 +759,13 @@ void set_env_decay(int player_handle, float rate) {
     send_notifications(pPlayer, NOTIFY_ENV_DECAY);
 }
 
-float get_env_decay(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+float get_env_decay(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer)
         return 0.0;
     return pPlayer->env_decay_rate;
 }
 
-void set_env_release(int player_handle, float rate) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_env_release(AUDIO_PLAYER * pPlayer, float rate) {
     if(!pPlayer)
         return;
     getMutex();
@@ -960,15 +776,13 @@ void set_env_release(int player_handle, float rate) {
     send_notifications(pPlayer, NOTIFY_ENV_RELEASE);
 }
 
-float get_env_release(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+float get_env_release(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer)
         return 0.0;
     return pPlayer->env_release_rate;
 }
 
-void set_env_sustain(int player_handle, float level) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_env_sustain(AUDIO_PLAYER * pPlayer, float level) {
     if(!pPlayer)
         return;
     getMutex();
@@ -978,15 +792,13 @@ void set_env_sustain(int player_handle, float level) {
     send_notifications(pPlayer, NOTIFY_ENV_SUSTAIN);
 }
 
-float get_env_sustain(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+float get_env_sustain(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer)
         return 0.0;
     return pPlayer->env_sustain_level;
 }
 
-void set_env_target_ratio_a(int player_handle, float ratio) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_env_target_ratio_a(AUDIO_PLAYER * pPlayer, float ratio) {
     if(!pPlayer)
         return;
     if (ratio < 0.000000001)
@@ -999,15 +811,13 @@ void set_env_target_ratio_a(int player_handle, float ratio) {
     send_notifications(pPlayer, NOTIFY_ENV_ATTACK_CURVE);
 }
 
-float get_env_target_ratio_a(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+float get_env_target_ratio_a(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer)
         return 0.0;
     return pPlayer->env_target_ratio_a;
 }
 
-void set_env_target_ratio_dr(int player_handle, float ratio) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_env_target_ratio_dr(AUDIO_PLAYER * pPlayer, float ratio) {
     if(!pPlayer)
         return;
     if (ratio < 0.000000001)
@@ -1022,8 +832,7 @@ void set_env_target_ratio_dr(int player_handle, float ratio) {
     send_notifications(pPlayer, NOTIFY_ENV_DECAY_CURVE);
 }
 
-float get_env_target_ratio_dr(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+float get_env_target_ratio_dr(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer)
         return 0.0;
     return pPlayer->env_target_ratio_dr;
@@ -1085,9 +894,9 @@ inline void reset_env(AUDIO_PLAYER * pPlayer) {
 // Handle JACK process callback
 int on_jack_process(jack_nframes_t nFrames, void * arg) {
     getMutex();
-    for(int i = 0; i < MAX_PLAYERS; ++i) {
-        AUDIO_PLAYER * pPlayer = (AUDIO_PLAYER *) (g_players[i]);
-        if(!pPlayer || pPlayer->file_open != FILE_OPEN)
+    for(auto it = g_vPlayers.begin(); it != g_vPlayers.end(); ++it) {
+        AUDIO_PLAYER * pPlayer = *it;
+        if(pPlayer->file_open != FILE_OPEN)
             continue;
 
         size_t r_count = 0; // Quantity of frames removed from queue, i.e. how far advanced through the audio
@@ -1180,107 +989,106 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
     {
         jack_midi_event_get(&midiEvent, pMidiBuffer, i);
         uint8_t chan = midiEvent.buffer[0] & 0x0F;
-        for(int i = 0; i < MAX_PLAYERS; ++i) {
-            if(g_players[i]) {
-                AUDIO_PLAYER * pPlayer = g_players[i];
-                if(pPlayer->midi_chan != chan)
-                    continue;
-                uint8_t cmd = midiEvent.buffer[0] & 0xF0;
-                if(cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) {
-                    // Note off
-                    pPlayer->held_notes[midiEvent.buffer[1]] = 0;
-                    if(pPlayer->last_note_played == midiEvent.buffer[1]) {
-                        pPlayer->held_note = pPlayer->sustain;
-                        for (uint8_t i = 0; i < 128; ++i) {
+        for(auto it = g_vPlayers.begin(); it != g_vPlayers.end(); ++it) {
+            AUDIO_PLAYER * pPlayer = *it;
+            if(pPlayer->midi_chan != chan)
+                continue;
+            uint8_t cmd = midiEvent.buffer[0] & 0xF0;
+            if(cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) {
+                // Note off
+                pPlayer->held_notes[midiEvent.buffer[1]] = 0;
+                if(pPlayer->last_note_played == midiEvent.buffer[1]) {
+                    pPlayer->held_note = pPlayer->sustain;
+                    for (uint8_t i = 0; i < 128; ++i) {
+                        if(pPlayer->held_notes[i]) {
+                            pPlayer->last_note_played = i;
+                            pPlayer->stretcher->reset();
+                            pPlayer->stretcher->setPitchScale(pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12));
+                            pPlayer->held_note = 1;
+                            break;
+                        }
+                    }
+                    if(pPlayer->held_note)
+                        continue;
+                    if(pPlayer->sustain == 0) {
+                        stop_playback(pPlayer);
+                    }
+                }
+            } else if(cmd == 0x90) {
+                // Note on
+                if(pPlayer->play_state == STOPPED) {
+                    pPlayer->play_pos_frames = pPlayer->crop_start_src;
+                    pPlayer->play_state = STARTING;
+                }
+                pPlayer->last_note_played = midiEvent.buffer[1];
+                pPlayer->held_notes[pPlayer->last_note_played] = 1;
+                pPlayer->held_note = 1;
+                pPlayer->stretcher->reset();
+                pPlayer->stretcher->setPitchScale(pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12));
+                pPlayer->file_read_status = SEEKING;
+                jack_ringbuffer_reset(pPlayer->ringbuffer_a);
+                jack_ringbuffer_reset(pPlayer->ringbuffer_b);
+            } else if(cmd == 0xE0) {
+                // Pitchbend
+                pPlayer->pitch_bend =  pPlayer->pitch_bend_range * ((midiEvent.buffer[1] + 128 * midiEvent.buffer[2]) / 8192.0 - 1.0);
+                if(pPlayer->play_state != STOPPED) {
+                    pPlayer->stretcher->setPitchScale(pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12));
+                }
+            } else if(cmd == 0xB0) {
+                if(midiEvent.buffer[1] == 64) {
+                    // Sustain pedal
+                    pPlayer->sustain = midiEvent.buffer[2];
+                    if(!pPlayer->sustain) {
+                        pPlayer->held_note = 0;
+                        for(uint8_t i = 0; i < 128; ++i) {
                             if(pPlayer->held_notes[i]) {
-                                pPlayer->last_note_played = i;
-                                pPlayer->stretcher->reset();
-                                pPlayer->stretcher->setPitchScale(pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12));
                                 pPlayer->held_note = 1;
                                 break;
                             }
                         }
-                        if(pPlayer->held_note)
-                            continue;
-                        if(pPlayer->sustain == 0) {
-                            stop_playback(pPlayer->handle);
+                        if(!pPlayer->held_note) {
+                            stop_playback(pPlayer);
                         }
                     }
-                } else if(cmd == 0x90) {
-                    // Note on
-                    if(pPlayer->play_state == STOPPED) {
-                        pPlayer->play_pos_frames = pPlayer->crop_start_src;
-                        pPlayer->play_state = STARTING;
-                    }
-                    pPlayer->last_note_played = midiEvent.buffer[1];
-                    pPlayer->held_notes[pPlayer->last_note_played] = 1;
-                    pPlayer->held_note = 1;
-                    pPlayer->stretcher->reset();
-                    pPlayer->stretcher->setPitchScale(pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12));
-                    pPlayer->file_read_status = SEEKING;
-                    jack_ringbuffer_reset(pPlayer->ringbuffer_a);
-                    jack_ringbuffer_reset(pPlayer->ringbuffer_b);
-                } else if(cmd == 0xE0) {
-                    // Pitchbend
-                    pPlayer->pitch_bend =  pPlayer->pitch_bend_range * ((midiEvent.buffer[1] + 128 * midiEvent.buffer[2]) / 8192.0 - 1.0);
-                    if(pPlayer->play_state != STOPPED) {
-                        pPlayer->stretcher->setPitchScale(pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12));
-                    }
-                } else if(cmd == 0xB0) {
-                    if(midiEvent.buffer[1] == 64) {
-                        // Sustain pedal
-                        pPlayer->sustain = midiEvent.buffer[2];
-                        if(!pPlayer->sustain) {
-                            pPlayer->held_note = 0;
-                            for(uint8_t i = 0; i < 128; ++i) {
-                                if(pPlayer->held_notes[i]) {
-                                    pPlayer->held_note = 1;
-                                    break;
-                                }
-                            }
-                            if(!pPlayer->held_note) {
-                                stop_playback(pPlayer->handle);
-                            }
-                        }
-                    } else if (midiEvent.buffer[1] == 120 || midiEvent.buffer[1] == 123) {
-                        // All off
-                        for(uint8_t i = 0; i < 128; ++i)
-                            pPlayer->held_notes[i] = 0;
-                        pPlayer->held_note = 0;
-                        stop_playback(pPlayer->handle);
-                        pPlayer->stretcher->setPitchScale(1.0);
-                    }
+                } else if (midiEvent.buffer[1] == 120 || midiEvent.buffer[1] == 123) {
+                    // All off
+                    for(uint8_t i = 0; i < 128; ++i)
+                        pPlayer->held_notes[i] = 0;
+                    pPlayer->held_note = 0;
+                    stop_playback(pPlayer);
+                    pPlayer->stretcher->setPitchScale(1.0);
                 }
-                #ifdef ENABLE_MIDI
-                else if(cmd == 0xB0) {
-                    // CC
-                    switch(midiEvent.buffer[1])
-                    {
-                        case 1:
-                            set_position(pPlayer->handle, midiEvent.buffer[2] * get_duration(pPlayer->handle) / 127);
-                            break;
-                        case 2:
-                            set_loop_start(pPlayer->handle, midiEvent.buffer[2] * get_duration(pPlayer->handle) / 127);
-                            break;
-                        case 3:
-                            set_loop_end(pPlayer->handle, midiEvent.buffer[2] * get_duration(pPlayer->handle) / 127);
-                            break;
-                        case 7:
-                            pPlayer->gain = (float)midiEvent.buffer[2] / 100.0;
-                            break;
-                        case 68:
-                            if(midiEvent.buffer[2] > 63)
-                                start_playback(pPlayer->handle);
-                            else
-                                stop_playback(pPlayer->handle);
-                            break;
-                        case 69:
-                            enable_loop(pPlayer->handle, midiEvent.buffer[2] > 63);
-                            break;
-                    }
-                }
-                #endif //ENABLE_MIDI
             }
+            #ifdef ENABLE_MIDI
+            else if(cmd == 0xB0) {
+                // CC
+                switch(midiEvent.buffer[1])
+                {
+                    case 1:
+                        set_position(pPlayer, midiEvent.buffer[2] * get_duration(pPlayer) / 127);
+                        break;
+                    case 2:
+                        set_loop_start(pPlayer, midiEvent.buffer[2] * get_duration(pPlayer) / 127);
+                        break;
+                    case 3:
+                        set_loop_end(pPlayer, midiEvent.buffer[2] * get_duration(pPlayer) / 127);
+                        break;
+                    case 7:
+                        pPlayer->gain = (float)midiEvent.buffer[2] / 100.0;
+                        break;
+                    case 68:
+                        if(midiEvent.buffer[2] > 63)
+                            start_playback(pPlayer);
+                        else
+                            stop_playback(pPlayer);
+                        break;
+                    case 69:
+                        enable_loop(pPlayer, midiEvent.buffer[2] > 63);
+                        break;
+                }
+            }
+            #endif //ENABLE_MIDI
+
         }
      }
     releaseMutex();
@@ -1299,9 +1107,6 @@ static void lib_init(void) {
     fprintf(stderr, "libzynaudioplayer initialised\n");
     jack_status_t nStatus;
     jack_options_t nOptions = JackNoStartServer;
-
-    for(int i = 0; i < MAX_PLAYERS; ++i)
-        g_players[i] = NULL;
 
     if((g_jack_client = jack_client_open("audioplayer", nOptions, &nStatus)) == 0)
         fprintf(stderr, "libaudioplayer error: failed to start jack client: %d\n", nStatus);
@@ -1330,42 +1135,22 @@ static void lib_exit(void) {
 }
 
 void lib_stop() {
-    for(int i = 0; i < MAX_PLAYERS; ++i)
-        remove_player(i);
-    jack_client_close(g_jack_client);
+    auto it = g_vPlayers.begin();
+    while(it != g_vPlayers.end()) {
+        auto pPlayer = *it;
+        remove_player(*it);
+        it = g_vPlayers.begin();
+    }
+    jack_deactivate(g_jack_client);
+    //jack_client_close(g_jack_client);
     g_jack_client = NULL;
 }
 
-int add_player() {
-    AUDIO_PLAYER * pPlayer = NULL;
-    int player_handle;
-    for(player_handle = 0; player_handle < MAX_PLAYERS; ++player_handle) {
-        if(!g_players[player_handle])
-            break;
-    }
-    if(player_handle >= MAX_PLAYERS) {
-        fprintf(stderr, "Failed to create instance of audio player %d\n", player_handle);
-        return -1;
-    }
-
-    pPlayer = new AUDIO_PLAYER();
-    pPlayer->file_open = FILE_CLOSED;
-    pPlayer->file_read_status = IDLE;
-    pPlayer->play_state = STOPPED;
-    pPlayer->loop = 0;
-    pPlayer->play_pos_frames = 0;
-    pPlayer->src_quality = SRC_SINC_FASTEST;
-    pPlayer->filename[0] = '\0';
-    pPlayer->gain = 1.0;
-    pPlayer->track_a = 0;
-    pPlayer->last_track_a = 0;
-    pPlayer->last_track_b = 0;
-    pPlayer->track_b = 0;
-    pPlayer->handle = player_handle;
-    pPlayer->input_buffer_size = 48000; // Quantity of frames
-    pPlayer->buffer_count = 5;
-    pPlayer->frames = 0;
-    pPlayer->loop_start = 0;
+AUDIO_PLAYER* add_player() {
+    AUDIO_PLAYER * pPlayer = new AUDIO_PLAYER();
+    if(!pPlayer)
+        return nullptr;
+    pPlayer->index = g_nextIndex++;;
     pPlayer->loop_start_src = pPlayer->loop_start * pPlayer->src_ratio;
     pPlayer->loop_end = pPlayer->input_buffer_size;
     pPlayer->loop_end_src = pPlayer->loop_end * pPlayer->src_ratio;
@@ -1373,32 +1158,26 @@ int add_player() {
     pPlayer->crop_start_src = pPlayer->crop_start * pPlayer->src_ratio;
     pPlayer->crop_end = pPlayer->input_buffer_size;
     pPlayer->crop_end_src = pPlayer->crop_end * pPlayer->src_ratio;
-    pPlayer->midi_chan = -1;
-    pPlayer->last_note_played = 60;
-    for (uint8_t i = 0; i < 128; ++i)
-        pPlayer->held_notes[i] = 0;
-    pPlayer->held_note = 0;
-    pPlayer->sustain = 0;
-    pPlayer->last_sustain = 0;
-    g_players[player_handle] = pPlayer;
+    g_vPlayers.push_back(pPlayer);
 
-    set_env_target_ratio_a(player_handle, 0.3);
-    set_env_target_ratio_dr(player_handle, 0.0001);
-    set_env_attack(player_handle, 0.0);
-    set_env_decay(player_handle, 0.0);
-    set_env_release(player_handle, 0.0);
-    set_env_sustain(player_handle, 1.0);
+    set_env_target_ratio_a(pPlayer, 0.3);
+    set_env_target_ratio_dr(pPlayer, 0.0001);
+    set_env_attack(pPlayer, 0.0);
+    set_env_decay(pPlayer, 0.0);
+    set_env_release(pPlayer, 0.0);
+    set_env_sustain(pPlayer, 1.0);
     set_env_gate(pPlayer, 0);
     reset_env(pPlayer);
 
     // Create audio output ports
     char port_name[8];
-    sprintf(port_name, "out_%02da", player_handle + 1);
+
+    sprintf(port_name, "out_%02da", pPlayer->index);
     if (!(pPlayer->jack_out_a = jack_port_register(g_jack_client, port_name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
         fprintf(stderr, "libaudioplayer error: cannot register audio output port %s\n", port_name);
         return 0;
     }
-    sprintf(port_name, "out_%02db", player_handle + 1);
+    sprintf(port_name, "out_%02db", pPlayer->index);
     if (!(pPlayer->jack_out_b = jack_port_register(g_jack_client, port_name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
         fprintf(stderr, "libaudioplayer error: cannot register audio output port %s\n", port_name);
         jack_port_unregister(g_jack_client, pPlayer->jack_out_a);
@@ -1406,26 +1185,29 @@ int add_player() {
     }
 
     //fprintf(stderr, "libzynaudioplayer: Created new audio player\n");
-    return player_handle;
+    return pPlayer;
 }
 
-void remove_player(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void remove_player(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer)
         return;
-    unload(player_handle);
+    unload(pPlayer);
     if (jack_port_unregister(g_jack_client, pPlayer->jack_out_a)) {
-        fprintf(stderr, "libaudioplayer error: cannot unregister audio output port %02dA\n", player_handle + 1);
+        fprintf(stderr, "libaudioplayer error: cannot unregister audio output port %02dA\n", pPlayer + 1);
     }
     if (jack_port_unregister(g_jack_client, pPlayer->jack_out_b)) {
-        fprintf(stderr, "libaudioplayer error: cannot unregister audio output port %02dB\n", player_handle + 1);
+        fprintf(stderr, "libaudioplayer error: cannot unregister audio output port %02dB\n", pPlayer + 1);
     }
-    g_players[player_handle] = NULL;
-    delete pPlayer;
+    for(auto it = g_vPlayers.begin(); it != g_vPlayers.end(); ++it) {
+        if(pPlayer != *it)
+            continue;
+        g_vPlayers.erase(it);
+        delete pPlayer;
+        break;
+    }
 }
 
-void set_midi_chan(int player_handle, uint8_t midi_chan) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_midi_chan(AUDIO_PLAYER * pPlayer, uint8_t midi_chan) {
     if(!pPlayer)
         return;
     if(midi_chan < 16)
@@ -1434,13 +1216,18 @@ void set_midi_chan(int player_handle, uint8_t midi_chan) {
         pPlayer->midi_chan = -1;        
 }
 
+int get_index(AUDIO_PLAYER * pPlayer) {
+    if(!pPlayer)
+        return -1;
+    return pPlayer->index;
+}
+
 
 const char* get_jack_client_name() {
     return jack_get_client_name(g_jack_client);
 }
 
-uint8_t set_src_quality(int player_handle, unsigned int quality) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+uint8_t set_src_quality(AUDIO_PLAYER * pPlayer, unsigned int quality) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
     if(quality > SRC_LINEAR)
@@ -1452,15 +1239,13 @@ uint8_t set_src_quality(int player_handle, unsigned int quality) {
     return 1;
 }
 
-unsigned int get_src_quality(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+unsigned int get_src_quality(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 2;
     return pPlayer->src_quality;
 }
 
-void set_gain(int player_handle, float gain) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_gain(AUDIO_PLAYER * pPlayer, float gain) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return;
     if(gain < 0 || gain > 2)
@@ -1471,15 +1256,13 @@ void set_gain(int player_handle, float gain) {
     send_notifications(pPlayer, NOTIFY_GAIN);
 }
 
-float get_gain(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+float get_gain(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0.0;
     return pPlayer->gain;
 }
 
-void set_track_a(int player_handle, int track) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_track_a(AUDIO_PLAYER * pPlayer, int track) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return;
     if(track < pPlayer->sf_info.channels) {
@@ -1490,12 +1273,11 @@ void set_track_a(int player_handle, int track) {
             pPlayer->track_a = track;
         releaseMutex();
     }
-    set_position(player_handle, get_position(player_handle));
+    set_position(pPlayer, get_position(pPlayer));
     send_notifications(pPlayer, NOTIFY_TRACK_A);
 }
 
-void set_track_b(int player_handle, int track) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_track_b(AUDIO_PLAYER * pPlayer, int track) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return;
     if(track < pPlayer->sf_info.channels) {
@@ -1506,26 +1288,23 @@ void set_track_b(int player_handle, int track) {
             pPlayer->track_b = track;
         releaseMutex();
     }
-    set_position(player_handle, get_position(player_handle));
+    set_position(pPlayer, get_position(pPlayer));
     send_notifications(pPlayer, NOTIFY_TRACK_B);
 }
 
-int get_track_a(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+int get_track_a(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
     return pPlayer->track_a;
 }
 
-int get_track_b(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+int get_track_b(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
     return pPlayer->track_b;
 }
 
-void set_pitchbend_range(int player_handle, uint8_t range) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_pitchbend_range(AUDIO_PLAYER * pPlayer, uint8_t range) {
     if(!pPlayer || range >= 64)
         return;
     getMutex();
@@ -1533,8 +1312,7 @@ void set_pitchbend_range(int player_handle, uint8_t range) {
     releaseMutex();
 }
 
-uint8_t get_pitchbend_range(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+uint8_t get_pitchbend_range(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer)
         return 0;
     return pPlayer->pitch_bend_range;
@@ -1542,8 +1320,7 @@ uint8_t get_pitchbend_range(int player_handle) {
 
 
 
-void set_buffer_size(int player_handle, unsigned int size) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_buffer_size(AUDIO_PLAYER * pPlayer, unsigned int size) {
     if(pPlayer && pPlayer->file_open == FILE_CLOSED) {
         getMutex();
         pPlayer->input_buffer_size = size;
@@ -1551,15 +1328,13 @@ void set_buffer_size(int player_handle, unsigned int size) {
     }
 }
 
-unsigned int get_buffer_size(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+unsigned int get_buffer_size(AUDIO_PLAYER * pPlayer) {
     if(pPlayer)
         return pPlayer->input_buffer_size;
     return 0;
 }
 
-void set_buffer_count(int player_handle, unsigned int count) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_buffer_count(AUDIO_PLAYER * pPlayer, unsigned int count) {
     if(pPlayer && pPlayer->file_open == FILE_CLOSED && count > 1) {
         getMutex();
         pPlayer->buffer_count = count;
@@ -1567,15 +1342,13 @@ void set_buffer_count(int player_handle, unsigned int count) {
     }
 }
 
-unsigned int get_buffer_count(int player_handle) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+unsigned int get_buffer_count(AUDIO_PLAYER * pPlayer) {
     if(pPlayer)
         return pPlayer->buffer_count;
     return 0;
 }
 
-void set_pos_notify_delta(int player_handle, float time) {
-    AUDIO_PLAYER * pPlayer = get_player(player_handle);
+void set_pos_notify_delta(AUDIO_PLAYER * pPlayer, float time) {
     if(pPlayer) {
         getMutex();
         pPlayer->pos_notify_delta = time;
@@ -1620,9 +1393,5 @@ int is_debug() {
 }
 
 unsigned int get_player_count() {
-    int count = 0;
-    for(int i = 0; i < MAX_PLAYERS; ++i)
-        if(g_players[i])
-            ++count;
-    return count;
+    return g_vPlayers.size();
 }

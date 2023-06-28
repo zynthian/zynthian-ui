@@ -87,23 +87,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['main', ['record', 'gain']],
 		]
 
-		self.monitors_dict = []
-		for chan in range(17):
-			self.monitors_dict.append(OrderedDict())
-			self.monitors_dict[chan]["state"] = 0
-			self.monitors_dict[chan]["pos"] = 0
-			self.monitors_dict[chan]["frames"] = 0
-			self.monitors_dict[chan]["channels"] = 0
-			self.monitors_dict[chan]["samplerate"] = 44100
-			self.monitors_dict[chan]["filename"] = ""
-			self.monitors_dict[chan]["loop start"] = 0
-			self.monitors_dict[chan]["loop end"] = 0
-			self.monitors_dict[chan]["crop start"] = 0
-			self.monitors_dict[chan]["crop end"] = 0
-			self.monitors_dict[chan]["zoom"] = 1
-			self.monitors_dict[chan]["offset"] = None
-			self.monitors_dict[chan]["info"] = 0
-
+		self.monitors_dict = {}
 		self.reset()
 
 
@@ -132,12 +116,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 	def add_layer(self, layer):
 		handle = self.player.add_player()
-		if handle < 0:
+		if handle == 0:
 			return
 		self.layers.append(layer)
 		layer.handle = handle
 		layer.jackname = self.jackname
-		layer.jackname = "{}:out_{:02d}(a|b)".format(self.jackname, handle + 1)
+		layer.jackname = "{}:out_{:02d}(a|b)".format(self.jackname, self.player.get_index(handle))
 		self.set_midi_chan(layer)
 
 
@@ -218,6 +202,25 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			return False
 
 		good_file = self.player.load(layer.handle, preset[0])
+
+		self.monitors_dict[layer.handle] = OrderedDict()
+		self.monitors_dict[layer.handle]["state"] = 0
+		self.monitors_dict[layer.handle]["pos"] = 0
+		self.monitors_dict[layer.handle]["filename"] = ""
+		self.monitors_dict[layer.handle]["loop start"] = 0
+		self.monitors_dict[layer.handle]["loop end"] = 0
+		self.monitors_dict[layer.handle]["crop start"] = 0
+		self.monitors_dict[layer.handle]["crop end"] = 0
+		self.monitors_dict[layer.handle]["offset"] = None
+		self.monitors_dict[layer.handle]["info"] = 0
+		self.monitors_dict[layer.handle]['filename'] = self.player.get_filename(layer.handle)
+		self.monitors_dict[layer.handle]['frames'] = self.player.get_frames(layer.handle)
+		self.monitors_dict[layer.handle]['channels'] = self.player.get_frames(layer.handle)
+		self.monitors_dict[layer.handle]['samplerate'] = self.player.get_samplerate(layer.handle)
+		self.monitors_dict[layer.handle]['codec'] = self.player.get_codec(layer.handle)
+		self.monitors_dict[layer.handle]['zoom'] = 1
+		self.monitors_dict[layer.handle]['offset'] = None
+
 		dur = self.player.get_duration(layer.handle)
 		self.player.set_position(layer.handle, 0)
 		if self.player.is_loop(layer.handle):
@@ -305,15 +308,10 @@ class zynthian_engine_audioplayer(zynthian_engine):
 						['release', None, release, 20.0]]
 
 		layer.refresh_controllers()
+		self.monitors_dict[layer.handle]['zoom_zctrl'] = layer.controllers_dict['zoom']
 		self.player.set_track_a(layer.handle, default_a)
 		self.player.set_track_b(layer.handle, default_b)
-		self.monitors_dict[layer.handle]['filename'] = self.player.get_filename(layer.handle)
-		self.monitors_dict[layer.handle]['frames'] = self.player.get_frames(layer.handle)
-		self.monitors_dict[layer.handle]['channels'] = self.player.get_frames(layer.handle)
-		self.monitors_dict[layer.handle]['samplerate'] = self.player.get_samplerate(layer.handle)
-		self.monitors_dict[layer.handle]['codec'] = self.player.get_codec(layer.handle)
-		self.monitors_dict[layer.handle]['zoom'] = 1
-		self.monitors_dict[layer.handle]['offset'] = None
+
 		return True
 
 
