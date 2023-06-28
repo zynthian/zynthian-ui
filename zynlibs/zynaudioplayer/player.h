@@ -58,6 +58,12 @@ int is_codec_supported(const char* codec);
 */
 char* get_supported_codecs();
 
+/** @brief  Get name of CODEC of loaded file
+*   @param  player_handle Index of player to initialise
+*   @retval const char* Name of CODEC
+*/
+const char* get_codec(int player_handle);
+
 /** @brief  Add a player instance
 *   @param  player_handle Index of player to initialise
 *   @retval int Player handel on success or -1 on failure

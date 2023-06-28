@@ -29,6 +29,7 @@ import tkinter
 import logging
 import soundfile
 from math import modf
+from os.path import basename
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -358,6 +359,10 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 					self.widget_canvas.itemconfigure(self.info_text, text=f"Loop length: {self.format_time(time)}", state=tkinter.NORMAL)
 				elif self.info == 5:
 					self.widget_canvas.itemconfig(self.info_text, text=f"Samplerate: {self.samplerate}", state=tkinter.NORMAL)
+				elif self.info == 6:
+					self.widget_canvas.itemconfig(self.info_text, text=f"CODEC: {self.monitors['codec']}", state=tkinter.NORMAL)
+				elif self.info == 7:
+					self.widget_canvas.itemconfig(self.info_text, text=f"Filename: {basename(self.filename)}", state=tkinter.NORMAL)
 				else:
 					self.widget_canvas.itemconfig(self.info_text, state=tkinter.HIDDEN)
 

@@ -62,6 +62,7 @@ class zynaudioplayer():
 			self.libaudioplayer.get_file_info.restype = ctypes.c_char_p
 			self.libaudioplayer.get_filename.restype = ctypes.c_char_p
 			self.libaudioplayer.get_supported_codecs.restype = ctypes.c_char_p
+			self.libaudioplayer.get_codec.restype = ctypes.c_char_p
 			self.libaudioplayer.get_jack_client_name.restype = ctypes.c_char_p
 			self.libaudioplayer.get_gain.restype = ctypes.c_float
 			self.libaudioplayer.set_gain.argtypes = [ctypes.c_int, ctypes.c_float]
@@ -275,9 +276,16 @@ class zynaudioplayer():
 
  	#	Get samplerate of loaded file
 	#	handle: Index of player
-	#	Returns:Samplerate of loaded file
+	#	Returns: Samplerate of loaded file
 	def get_samplerate(self, handle):
 		return self.libaudioplayer.get_samplerate(handle)
+
+
+	#	Get CODEC of loaded file
+	#	handle: Index of player
+	#	Returns: Name of CODEC (WAV|FLAC|OGG|MP3)
+	def get_codec(self, handle):
+		return self.libaudioplayer.get_codec(handle).decode("utf-8")
 
 
  	#	Get quantity of channels in loaded file

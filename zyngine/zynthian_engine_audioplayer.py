@@ -78,7 +78,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['sustain', None, 0.8, 1.0],
 			['release', None, 0.1,20.0],
 			['zoom', None, 1, ["x1"],[1]],
-			['info', None, 0, ["Length", "Play Time", "Remaining", "Samplerate", "None"]],
+			['info', None, 1, ["None", "Duration", "Position", "Remaining", "Loop length", "Samplerate", "CODEC", "Filename"]],
 			['bend range', None, 2, 24],
 		]
 
@@ -294,7 +294,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['crop end', None, dur, dur],
 			['zoom', None, 1, [zoom_labels, zoom_values]],
 			['zoom range', None, 0, ["User", "File", "Crop", "Loop"]],
-			['info', None, 1, ["None", "Length", "Play Time", "Remaining", "Loop Length", "Samplerate"]],
+			['info', None, 1, ["None", "Duration", "Position", "Remaining", "Loop length", "Samplerate", "CODEC", "Filename"]],
 		]
 		if layer.handle != self.zyngui.audio_player.handle:
 			self._ctrls += [['sustain pedal', 64, 'off', ['off', 'on']],
@@ -311,6 +311,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.monitors_dict[layer.handle]['frames'] = self.player.get_frames(layer.handle)
 		self.monitors_dict[layer.handle]['channels'] = self.player.get_frames(layer.handle)
 		self.monitors_dict[layer.handle]['samplerate'] = self.player.get_samplerate(layer.handle)
+		self.monitors_dict[layer.handle]['codec'] = self.player.get_codec(layer.handle)
 		self.monitors_dict[layer.handle]['zoom'] = 1
 		self.monitors_dict[layer.handle]['offset'] = None
 		return True
