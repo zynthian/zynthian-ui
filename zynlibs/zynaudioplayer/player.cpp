@@ -356,7 +356,9 @@ void* file_thread_fn(void * param) {
             | RubberBandStretcher::OptionFormantPreserved);
         pPlayer->stretcher->setMaxProcessSize(256);
 
-        pPlayer->loop_end  = pPlayer->sf_info.frames;
+        pPlayer->loop_start = 0;
+        pPlayer->loop_end = pPlayer->sf_info.frames;
+        pPlayer->crop_start = 0;
         pPlayer->crop_end  = pPlayer->sf_info.frames;
         pPlayer->file_read_status = SEEKING;
         pPlayer->src_ratio = (float)g_samplerate / pPlayer->sf_info.samplerate;
