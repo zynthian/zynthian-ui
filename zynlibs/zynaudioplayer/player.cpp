@@ -41,6 +41,7 @@ enum seekState {
     SEEKING     = 1, // Seeking within file
     LOADING     = 2, // Seek complete, loading data from file
     LOOPING     = 3, // Reached loop end point, need to load from loop start point
+    WAITING     = 4  // File buffer is full so wait a cycle then try again
 };
 
 enum fileState {
@@ -419,7 +420,10 @@ void* file_thread_fn(void * param) {
                 nUnusedFrames = 0;
             }
 
-            if(pPlayer->file_read_status == LOADING)
+            if(pPlayer->file_read_status == WAITING)
+                pPlayer->file_read_status = LOADING;
+
+            while(pPlayer->file_read_status == LOADING)
             {
                 int nFramesRead;
                 // Load block of data from file to SRC or output buffer
@@ -431,11 +435,11 @@ void* file_thread_fn(void * param) {
 
                     if(pPlayer->loop) {
                         // Limit read to loop range
-                        if(pPlayer->file_read_pos > pPlayer->loop_end)
+                        if(pPlayer->file_read_pos >= pPlayer->loop_end)
                             nMaxFrames = 0;
                         else if(pPlayer->file_read_pos + nMaxFrames > pPlayer->loop_end)
                             nMaxFrames = pPlayer->loop_end - pPlayer->file_read_pos;
-                    } else if(pPlayer->file_read_pos > pPlayer->crop_end) {
+                    } else if(pPlayer->file_read_pos >= pPlayer->crop_end) {
                         nMaxFrames = 0;
                     } else if(pPlayer->file_read_pos + nMaxFrames > pPlayer->crop_end) {
                         // Limit read to crop range
@@ -510,7 +514,7 @@ void* file_thread_fn(void * param) {
                     } else if(pPlayer->loop) {
                         // Short read - looping so fill from loop start point in file
                         pPlayer->file_read_status = LOOPING;
-                        srcData.end_of_input = 1;
+                        //srcData.end_of_input = 1;
                         releaseMutex();
                         DPRINTF("libzynaudioplayer read to loop point in input file - setting loading status to looping\n");
                     } else {
@@ -520,12 +524,14 @@ void* file_thread_fn(void * param) {
                         releaseMutex();
                         DPRINTF("libzynaudioplayer read to end of input file - setting loading status to IDLE\n");
                     }
+                } else {
+                    pPlayer->file_read_status = WAITING;
                 }
             }
-            //if(pPlayer->file_read_status != LOOPING) {
-                usleep(10000);
+            if(pPlayer->file_read_status != LOOPING) {
                 send_notifications(pPlayer, NOTIFY_ALL);
-            //}
+                usleep(10000); // Reduce CPU load by waiting until next file read operation
+            }
         }
     }
 
@@ -755,13 +761,15 @@ void set_crop_end_time(int player_handle, float time) {
     jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
     if(frames < pPlayer->crop_start)
         frames = pPlayer->crop_start + 1;
+    if(frames > pPlayer->sf_info.frames)
+        frames = pPlayer->sf_info.frames;
     if(frames < pPlayer->loop_end)
         set_loop_end_time(player_handle, time);
     getMutex();
     pPlayer->crop_end = frames;
     pPlayer->crop_end_src = frames * pPlayer->src_ratio;
-    if(pPlayer->crop_end_src >= pPlayer->frames) {
-        pPlayer->crop_end_src = pPlayer->frames - 1;
+    if(pPlayer->crop_end_src > pPlayer->frames) {
+        pPlayer->crop_end_src = pPlayer->frames;
         pPlayer->crop_end = pPlayer->frames / pPlayer->src_ratio;
     }
     if(pPlayer->play_pos_frames > pPlayer->crop_end_src)
@@ -1180,7 +1188,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                     // Note off
                     pPlayer->held_notes[midiEvent.buffer[1]] = 0;
                     if(pPlayer->last_note_played == midiEvent.buffer[1]) {
-                        pPlayer->held_note = 0;
+                        pPlayer->held_note = pPlayer->sustain;
                         for (uint8_t i = 0; i < 128; ++i) {
                             if(pPlayer->held_notes[i]) {
                                 pPlayer->last_note_played = i;
@@ -1230,7 +1238,6 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                             }
                             if(!pPlayer->held_note) {
                                 stop_playback(pPlayer->handle);
-                                pPlayer->stretcher->setPitchScale(1.0);
                             }
                         }
                     } else if (midiEvent.buffer[1] == 120 || midiEvent.buffer[1] == 123) {
