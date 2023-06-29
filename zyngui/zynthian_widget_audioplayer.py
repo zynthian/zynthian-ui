@@ -28,7 +28,7 @@ from threading import Thread
 import tkinter
 import logging
 import soundfile
-from math import modf
+from math import modf, sqrt
 from os.path import basename
 
 # Zynthian specific modules
@@ -73,9 +73,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			bg=zynthian_gui_config.color_bg)
 		self.widget_canvas.grid(sticky='news')
 
-		self.widget_canvas.bind('<ButtonPress-1>', self.on_zoom_press)
-		self.widget_canvas.bind('<ButtonRelease-1>', self.on_zoom_release)
-		self.widget_canvas.bind('<B1-Motion>', self.on_zoom_drag)
+		self.widget_canvas.bind('<ButtonPress-1>', self.on_canvas_press)
+		self.widget_canvas.bind('<ButtonRelease-1>', self.on_canvas_release)
+		self.widget_canvas.bind('<B1-Motion>', self.on_canvas_drag)
 
 		self.loading_text = self.widget_canvas.create_text(
 			0,
@@ -175,24 +175,41 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.refresh_waveform = True
 
 
-	def on_zoom_press(self, event):
+	def on_canvas_press(self, event):
 		self.zoom_drag_x = event.x
 		self.zoom_drag_y = event.y
+		f = self.width / self.frames * self.zoom
+		pos = (event.x / f + self.offset) / self.samplerate
+		self.duration / self.zoom
+		max_delta = 0.02 * self.duration / self.zoom
 		self.drag_mode = None
+		if event.y > 0.8 * self.height:
+			self.drag_mode = 'z'
+		else:
+			for symbol in ['position', 'loop start', 'loop end', 'crop start', 'crop end']:
+				if abs(pos - self.layer.controllers_dict[symbol].value) < max_delta:
+					self.drag_mode = symbol
+					break
 
 
-	def on_zoom_release(self, event):
-		pass
-
-
-	def on_zoom_drag(self, event):
+	def on_canvas_release(self, event):
 		if self.drag_mode is None:
-			if self.zoom_drag_y > self.zoom_height * self.height and abs(event.x - self.zoom_drag_x) > self.width // 40:
-				self.drag_mode = 'z'
-			elif abs(event.x - self.zoom_drag_x) > self.width // 40:
+			f = self.width / self.frames * self.zoom
+			pos = (event.x / f + self.offset) / self.samplerate
+			if event.x < self.width / 3:
+				self.layer.controllers_dict['loop start'].set_value(pos)
+			elif event.x > 2 * self.width / 3:
+				self.layer.controllers_dict['loop end'].set_value(pos)
+
+
+	def on_canvas_drag(self, event):
+		if self.drag_mode is None:
+			if abs(event.x - self.zoom_drag_x) > self.width // 40:
 				self.drag_mode = 'x'
 			elif abs(event.y - self.zoom_drag_y) > self.width // 40:
 				self.drag_mode = 'y'
+			else:
+				return
 		if self.drag_mode == 'x':
 			self.offset += int(self.frames * (self.zoom_drag_x - event.x) / self.width / self.zoom)
 			self.offset = max(0, self.offset)
@@ -207,13 +224,13 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			self.refresh_waveform = True
 		elif self.drag_mode == 'z':
 			delta = event.x - self.zoom_drag_x
-			zctrl = self.monitors['zoom_zctrl']
-			if delta > self.width / len(zctrl.ticks):
-				zctrl.nudge(1)
-				self.zoom_drag_x = event.x
-			elif -delta > self.width / len(zctrl.ticks):
-				zctrl.nudge(-1)
-				self.zoom_drag_x = event.x
+			zctrl = self.layer.controllers_dict['zoom']
+			zctrl.set_value(zctrl.value + 4 * delta / self.width * self.zoom)
+			self.zoom_drag_x = event.x
+		else:
+			f = self.width / self.frames * self.zoom
+			pos = (event.x / f + self.offset) / self.samplerate
+			self.layer.controllers_dict[self.drag_mode].set_value(pos)
 
 
 	def get_monitors(self):
@@ -243,6 +260,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=zynthian_gui_config.PAD_COLOUR_GROUP[chan // 2 % len(zynthian_gui_config.PAD_COLOUR_GROUP)], tags="waveform", state=tkinter.HIDDEN)
 				self.widget_canvas.create_line(0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags="waveform", state=tkinter.HIDDEN)
 				self.widget_canvas.create_line(0,0,0,0, fill=self.waveform_color, tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
+			self.widget_canvas.tag_raise("waveform")
 			self.widget_canvas.tag_raise("overlay")
 		except Exception as e:
 			logging.warning(e)

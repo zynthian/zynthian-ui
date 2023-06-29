@@ -308,7 +308,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 						['release', None, release, 20.0]]
 
 		layer.refresh_controllers()
-		self.monitors_dict[layer.handle]['zoom_zctrl'] = layer.controllers_dict['zoom']
 		self.player.set_track_a(layer.handle, default_a)
 		self.player.set_track_b(layer.handle, default_b)
 
