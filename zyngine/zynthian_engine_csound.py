@@ -104,10 +104,6 @@ class zynthian_engine_csound(zynthian_engine):
 	# Bank Managament
 	#----------------------------------------------------------------------------
 
-	def get_bank_list(self, layer=None):
-		return self.get_dirlist(self.bank_dirs)
-
-
 	def set_bank(self, layer, bank):
 		return True
 

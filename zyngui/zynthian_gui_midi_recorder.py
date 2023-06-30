@@ -33,7 +33,6 @@ import tkinter
 
 # Zynthian specific modules
 import zynconf
-from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
@@ -47,8 +46,9 @@ from zynlibs.zynsmf.zynsmf import libsmf # Direct access to shared library
 class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def __init__(self):
-		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
-		self.capture_dir_usb = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
+		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
+		self.ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
+
 		self.current_playback_fpath = None # Filename of currently playing SMF
 
 		self.smf_player = None # Pointer to SMF player
@@ -120,9 +120,10 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		self.list_data.append((None, 0, "> MIDI Tracks"))
 
-		# Add file list, sorted by mtime
+		# Generate file list, sorted by mtime
 		flist = self.get_filelist(self.capture_dir_sdc, "SD")
-		flist += self.get_filelist(self.capture_dir_usb, "USB")
+		for exd in zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
+			flist += self.get_filelist(exd, "USB")
 		i = 1
 		for finfo in sorted(flist, key=lambda d: d['mtime'], reverse=True) :
 			self.list_data.append((finfo['fpath'], i, finfo['title']))
@@ -284,8 +285,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		if libsmf.isRecording():
 			logging.info("STOPPING MIDI RECORDING ...")
 			libsmf.stopRecording()
-			if os.path.ismount(self.capture_dir_usb):
-				filename = "{}/{}".format(self.capture_dir_usb, self.get_new_filename())
+			exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
+			if exdirs is not None:
+				filename = "{}/{}".format(exdirs[0], self.get_new_filename())
 			else:
 				filename = "{}/{}".format(self.capture_dir_sdc, self.get_new_filename())
 			zynsmf.save(self.smf_recorder, filename)

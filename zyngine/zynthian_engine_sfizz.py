@@ -120,10 +120,6 @@ class zynthian_engine_sfizz(zynthian_engine):
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
-	def get_bank_list(self, layer=None):
-		return self.get_dirlist(self.bank_dirs)
-
-
 	def set_bank(self, layer, bank):
 		return True
 

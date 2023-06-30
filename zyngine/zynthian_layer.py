@@ -39,10 +39,10 @@ class zynthian_layer:
 	# Data dirs
 	# ---------------------------------------------------------------------------
 
-	config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
-	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR',"/zynthian/zynthian-data")
-	my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data")
-	ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
+	config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR', "/zynthian/config")
+	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data")
+	my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data")
+	ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 
 	# ---------------------------------------------------------------------------
 	# Initialization
@@ -158,7 +158,7 @@ class zynthian_layer:
 
 		# Calculate info for bank_msb
 		i = 0
-		self.bank_msb_info = [[0,0], [0,0], [0,0]] # system, user, external => [offset, n]
+		self.bank_msb_info = [[0, 0], [0, 0], [0, 0]]  # system, user, external => [offset, n]
 		for bank in self.bank_list:
 			if bank[0] is None:
 				continue
@@ -177,7 +177,7 @@ class zynthian_layer:
 
 		# Add favourites virtual bank if there is some preset marked as favourite
 		if self.engine.show_favs_bank and len(self.engine.get_preset_favs(self))>0:
-			self.bank_list = [["*FAVS*",0,"*** Favorites ***"]] + self.bank_list
+			self.bank_list = [["*FAVS*", 0, "*** Favorites ***"]] + self.bank_list
 			for i in range(3):
 				self.bank_msb_info[i][0] += 1
 

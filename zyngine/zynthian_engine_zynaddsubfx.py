@@ -201,13 +201,6 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 			self.osc_server.send(self.osc_target, "/part%d/Prcvchn" % layer.part_i, layer.get_midi_chan())
 
 	#----------------------------------------------------------------------------
-	# Bank Managament
-	#----------------------------------------------------------------------------
-
-	def get_bank_list(self, layer=None):
-		return self.get_dirlist(self.bank_dirs)
-
-	#----------------------------------------------------------------------------
 	# Preset Managament
 	#----------------------------------------------------------------------------
 
