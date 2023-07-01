@@ -443,10 +443,11 @@ def set_midi_config():
 
 def get_external_storage_dirs(exdpath):
 	exdirs = []
-	for dname in sorted(os.listdir(exdpath)):
-		dpath = os.path.join(exdpath, dname)
-		if os.path.isdir(dpath) and os.path.ismount(dpath):
-			exdirs.append(dpath)
+	if os.path.isdir(exdpath):
+		for dname in sorted(os.listdir(exdpath)):
+			dpath = os.path.join(exdpath, dname)
+			if os.path.isdir(dpath) and os.path.ismount(dpath):
+				exdirs.append(dpath)
 	return exdirs
 
 

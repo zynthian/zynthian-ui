@@ -38,7 +38,6 @@ from zyngui import zynthian_gui_config
 
 class zynthian_audio_recorder():
 
-
 	def __init__(self):
 		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
 		self.ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
@@ -58,7 +57,7 @@ class zynthian_audio_recorder():
 
 	def get_new_filename(self):
 		exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
-		if exdirs is not None:
+		if exdirs:
 			path = exdirs[0]
 		else:
 			path = self.capture_dir_sdc

@@ -155,21 +155,19 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					banks.append([walk[0] + "/" + dir, None, "  " + dir, None])
 					break
 
-		exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
-		if exdirs is not None:
-			for exd in exdirs:
-				dname = os.path.basename(exd)
-				for ext in self.file_exts:
-					if glob(exd + "/*." + ext) or glob(exd + "/*/*." + ext):
-						banks.append([exd, None, "USB> {}".format(dname), None])
-						walk = next(os.walk(exd))
-						walk[1].sort()
-						for dir in walk[1]:
-							for ext in self.file_exts:
-								if glob(walk[0] + "/" + dir + "/*." + ext):
-									banks.append([walk[0] + "/" + dir, None, "  " + dir, None])
-									break
-						break
+		for exd in zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
+			dname = os.path.basename(exd)
+			for ext in self.file_exts:
+				if glob(exd + "/*." + ext) or glob(exd + "/*/*." + ext):
+					banks.append([exd, None, "USB> {}".format(dname), None])
+					walk = next(os.walk(exd))
+					walk[1].sort()
+					for dir in walk[1]:
+						for ext in self.file_exts:
+							if glob(walk[0] + "/" + dir + "/*." + ext):
+								banks.append([walk[0] + "/" + dir, None, "  " + dir, None])
+								break
+					break
 
 		return banks
 
