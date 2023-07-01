@@ -88,6 +88,7 @@ from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
 from zyngui import zynthian_gui_keybinding
+from zyngui.multitouch import MultiTouch
 
 MIXER_MAIN_CHANNEL = 256 #TODO This constant should go somewhere else
 
@@ -103,6 +104,7 @@ class zynthian_gui:
 	SCREEN_HMODE_RESET = 3
 
 	def __init__(self):
+		self.multitouch = MultiTouch(invert_x_axis=True, invert_y_axis=True)
 		self.test_mode = False
 		self.alt_mode = False
 
@@ -605,6 +607,8 @@ class zynthian_gui:
 
 		if self.current_screen != screen:
 			self.current_screen = screen
+			for cb in ["press", "release", "move"]:
+				self.multitouch.set_callback(cb, getattr(self.screens[screen], f"on_touch_{cb}", None))
 			self.screens[screen].show()
 
 

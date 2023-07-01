@@ -163,6 +163,31 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.widget_canvas.bind("<Button-4>",self.cb_canvas_wheel)
 		self.widget_canvas.bind("<Button-5>",self.cb_canvas_wheel)
 
+	def show(self):
+		self.zyngui.multitouch.set_drag_horizontal_callback(self.on_horizontal_drag)
+		self.zyngui.multitouch.set_drag_vertical_callback(self.on_vertical_drag)
+		self.zyngui.multitouch.set_zoom_horizontal_callback(self.on_horizontal_zoom)
+		self.zyngui.multitouch.set_zoom_vertical_callback(self.on_vertical_zoom)
+
+	def hide(self):
+		self.zyngui.multitouch.set_drag_horizontal_callback(None)
+		self.zyngui.multitouch.set_drag_vertical_callback(None)
+		self.zyngui.multitouch.set_zoom_horizontal_callback(None)
+		self.zyngui.multitouch.set_zoom_vertical_callback(None)
+
+	def on_horizontal_drag(self, delta):
+		logging.warning(f"Horizontal drag {delta}")
+
+	def on_vertical_drag(self, delta):
+		logging.warning(f"Vertical drag {delta}")
+
+	def on_horizontal_zoom(self, delta):
+		logging.warning(f"Horizontal zoom {delta}")
+
+	def on_vertical_zoom(self, delta):
+		logging.warning(f"Vertical zoom {delta}")
+
+
 	def on_size(self, event):
 		if event.width == self.width and event.height == self.height:
 			return

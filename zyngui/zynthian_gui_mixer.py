@@ -786,10 +786,25 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.set_title()
 
+		self.touch_arcs = []
+		for i in range(10):
+			self.touch_arcs.append(self.main_canvas.create_oval(0,0,20,20, fill="red", state="hidden"))
+
 
 	def init_dpmeter(self):
 		self.dpm_a = self.dpm_b = None
 
+	def on_touch_press(self, event):
+		self.main_canvas.coords(self.touch_arcs[event.slot], event.x-20, event.y-20,event.x+20, event.y+20)
+		self.main_canvas.itemconfig(self.touch_arcs[event.slot], state="normal")
+		#logging.warning(f"Press {event.slot} ({event.x},{event.y}) Held: {self.zyngui.multitouch.touch_count}")
+
+	def on_touch_move(self, event):
+		self.main_canvas.coords(self.touch_arcs[event.slot], event.x-20, event.y-20,event.x+20, event.y+20)
+
+	def on_touch_release(self, event):
+		#logging.warning(f"Release {event.slot} ({event.x},{event.y}) Held: {self.zyngui.multitouch.touch_count}")
+		self.main_canvas.itemconfig(self.touch_arcs[event.slot], state="hidden")
 
 	# Redefine set_title
 	def set_title(self, title = "Mixer", fg=None, bg=None, timeout = None):
