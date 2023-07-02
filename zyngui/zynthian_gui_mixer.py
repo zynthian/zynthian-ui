@@ -166,6 +166,8 @@ class zynthian_gui_mixer_strip():
 		# Fader indicators
 		self.status_indicator = self.parent.main_canvas.create_text(x + 2, self.fader_top + 2, fill="#009000", anchor="nw", tags=("strip:%s"%(self.fader_bg)))
 
+		#self.parent.zyngui.multitouch.tag_bind(self.parent.main_canvas, "fader:%s"%(self.fader_bg), "press", self.on_fader_press)
+		self.parent.zyngui.multitouch.tag_bind(self.parent.main_canvas, "fader:%s"%(self.fader_bg), "motion", self.on_fader_motion)
 		self.parent.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_fader_press)
 		self.parent.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<B1-Motion>", self.on_fader_motion)
 		if os.environ.get("ZYNTHIAN_UI_ENABLE_CURSOR") == "1":
@@ -581,11 +583,12 @@ class zynthian_gui_mixer_strip():
 	# Function to handle fader press
 	#	event: Mouse event
 	def on_fader_press(self, event):
-		self.fader_drag_start = event
+		logging.warning(self.layer.midi_chan)
 
 		if zynthian_gui_config.zyngui.cb_touch(event):
 			return "break"
 
+		self.touch_y = event.y
 		if self.midi_learning is True:
 			self.enable_midi_learn('level')
 
@@ -596,8 +599,13 @@ class zynthian_gui_mixer_strip():
 	#	event: Mouse event
 	def on_fader_motion(self, event):
 		if self.zctrls:
-			self.set_volume(self.zctrls['level'].value + (self.fader_drag_start.y - event.y) / self.fader_height)
-			self.fader_drag_start = event
+			self.set_volume(self.zctrls['level'].value + (self.touch_y - event.y) / self.fader_height)
+			self.touch_y = event.y
+			self.draw_fader()
+
+	def on_fader_motion_multi(self, event):
+		if self.zctrls:
+			self.set_volume(self.zctrls['level'].value + (event.last_y - event.y) / self.fader_height)
 			self.draw_fader()
 
 

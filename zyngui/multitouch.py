@@ -9,6 +9,8 @@ from queue import Queue
 from evdev import ecodes, InputDevice
 import logging
 from time import monotonic
+from dataclasses import dataclass
+from zyngui import zynthian_gui_config
 
 """A multitouch event"""
 TouchEvent = namedtuple('TouchEvent', ('timestamp', 'type', 'code', 'value'))
@@ -17,13 +19,13 @@ TouchEvent = namedtuple('TouchEvent', ('timestamp', 'type', 'code', 'value'))
 TS_IDLE = -1
 TS_RELEASE = 0
 TS_PRESS = 1
-TS_MOVE = 2
+TS_MOTION = 2
 
 # Drag modes
-DRAG_HOROZONTAL = 1
+DRAG_HORIZONTAL = 1
 DRAG_VERTICAL = 2
-ZOOM_HORIZONTAL = 3
-ZOOM_VERTICAL = 4
+PINCH_HORIZONTAL = 3
+PINCH_VERTICAL = 4
 
 """Class representing a touch slot (one slot per touch point)"""
 class Touch(object):
@@ -41,7 +43,7 @@ class Touch(object):
         self.last_x = None
         self.last_y = None
         
-        self._id = -1 # Id for associated press/move events (same action/session)
+        self._id = -1 # Id for associated press/motion events (same action/session)
         self._type = TS_IDLE # Current event type
             
     @property
@@ -60,7 +62,7 @@ class Touch(object):
         
     @property
     def id(self):
-        """Get id of event collection - press, move, release associated with same session"""
+        """Get id of event collection - press, motion, release associated with same session"""
 
         return self._id
 
@@ -119,6 +121,12 @@ class Touch(object):
         self._y = value
 
 
+@dataclass
+class TouchCallback:
+    widget: object
+    tag: int
+    function: object
+
 class MultiTouch(object):
     """Class representing a multitouch interface driver"""
     
@@ -141,23 +149,38 @@ class MultiTouch(object):
         self._invert_y = invert_y_axis
         self.events = [] # List of pending multipoint events (not yet sent)
 
-        # Event callback functions
-        self._on_move = None
-        self._on_press = None
-        self._on_release = None
+        # Event callback functions - lists of TouchCallback objects
+        self._on_motion = []
+        self._on_press = [] 
+        self._on_release = []
+        self._on_drag_horizontal_begin = None
         self._on_drag_horizontal = None
+        self._on_drag_horizontal_end = None
+        self._on_drag_vertical_begin = None
         self._on_drag_vertical = None
-        self._on_zoom_horizontal = None
-        self._on_zoom_vertical = None
+        self._on_drag_vertical_end = None
+        self._on_pinch_horizontal_begin = None
+        self._on_pinch_horizontal = None
+        self._on_pinch_horizontal_end = None
+        self._on_pinch_vertical_begin = None
+        self._on_pinch_vertical = None
+        self._on_pinch_vertical_end = None
 
-        self.device = self._detect_device(device)
-        if self.device:
-            try:
-                self._f_device = open(self.device, 'rb', self.EVENT_SIZE)
-            except:
-                self._f_device = None
+        self._f_device = None
+        if device:
+            devices = [device]
         else:
-            self._f_device = None
+            devices = glob("/dev/input/event*")
+        for device in devices:
+            try:
+                if ecodes.ABS_MT_SLOT in InputDevice(device).capabilities()[ecodes.EV_ABS][ecodes.ABS_Z]:
+                    self.max_x = InputDevice(device).capabilities()[ecodes.EV_ABS][ecodes.ABS_X][1].max
+                    self.max_y = InputDevice(device).capabilities()[ecodes.EV_ABS][ecodes.ABS_Y][1].max
+                    self._f_device = open(device, 'rb', self.EVENT_SIZE)
+                    break
+            except:
+                pass
+        
         self.touches = [Touch(x) for x in range(10)] # 10 touch slot objects
         self._event_queue = Queue() # Used to store evdev events before processing into touch events
         self._current_touch = self.touches[0] # Current touch object being processed
@@ -202,22 +225,47 @@ class MultiTouch(object):
             self._f_device.close()
 
     def _handle_event(self):
-        """Run outstanding press/release/move events"""
+        """Run outstanding press/release/motion events"""
 
         for event in self.events:
-            if event._type == TS_MOVE:
-                if callable(self._on_move):
-                    self._on_move(event)
+            handled = False
+            #TODO: Handle widgets without tags
+            if event._type == TS_MOTION:
+                event.x = event.x_root - event.offset_x
+                event.y = event.y_root - event.offset_y
+                for ev_handler in self._on_motion:
+                    if ev_handler.widget == event.widget and ev_handler.tag == event.tag:
+                        ev_handler.function(event)
+                        handled = True
+                if not handled:
+                    event.widget.event_generate("<B1-Motion>", rootx=event.x_root, rooty=event.y_root, x=event.x, y=event.y)
             elif event._type == TS_PRESS:
-                if callable(self._on_press):
-                    self._on_press(event)
-                event._type = TS_MOVE
+                event.widget = zynthian_gui_config.zyngui.get_current_screen_obj().winfo_containing(event.x_root, event.y_root)
+                event.offset_x = event.widget.winfo_rootx() # Is this offset from root or just parent?
+                event.offset_y = event.widget.winfo_rooty()
+                event.x = event.x_root - event.offset_x
+                event.y = event.y_root - event.offset_y
+                try:
+                    event.tag = event.widget.find_overlapping(event.x_root, event.y_root, event.x_root, event.y_root)[0]
+                except:
+                    event.tag = None
+                for ev_handler in self._on_press:
+                    if ev_handler.widget == event.widget and ev_handler.tag == event.tag:
+                        ev_handler.function(event)
+                        handled = True
+                event._type = TS_MOTION
+                if not handled:
+                    event.widget.event_generate("<ButtonPress-1>", x=event.x, y=event.y)
             elif event._type == TS_RELEASE:
-                if callable(self._on_release):
-                    self._on_release(event)
+                for ev_handler in self._on_release:
+                    if ev_handler.widget == event.widget and ev_handler.tag == event.tag:
+                        ev_handler.function(event)
+                        handled = True
                 event._id = -1
                 event._type = TS_IDLE
-            self.process_gesture(event)
+                if not handled:
+                    event.widget.event_generate("<ButtonRelease-1>")
+            #self.process_gesture(event)
 
         self.events = []
 
@@ -240,21 +288,23 @@ class MultiTouch(object):
                         self.events.append(self._current_touch)
                 elif event.code == ecodes.ABS_MT_POSITION_X:
                     if self._invert_x:
-                        self._current_touch.x = self.max_x - event.value
+                        self._current_touch.x_root = self.max_x - event.value
                     else:
-                        self._current_touch.x = event.value
+                        self._current_touch.x_root = event.value
                     if self._current_touch not in self.events:
                         self.events.append(self._current_touch)
                 elif event.code == ecodes.ABS_MT_POSITION_Y:
                     if self._invert_y:
-                        self._current_touch.y = self.max_y - event.value
+                        self._current_touch.y_root = self.max_y - event.value
                     else:
-                        self._current_touch.y = event.value
+                        self._current_touch.y_root = event.value
                     if self._current_touch not in self.events:
                         self.events.append(self._current_touch)
     
     def process_gesture(self, event):
         """Process recent events into gestures"""
+
+        # Pinch start, pinch change, pinch end
 
         now = monotonic()
         dtime = now - self._gesture_press_start_time
@@ -274,76 +324,58 @@ class MultiTouch(object):
                 self._gesture_start_delta_x = abs(self.touches[0].x - self.touches[1].x)
                 self._gesture_start_delta_y = abs(self.touches[0].y - self.touches[1].y)
 
-            if event._type == TS_MOVE and dtime > 0.2:
+            if event._type == TS_MOTION and dtime > 0.2:
                 delta_x = abs(self.touches[0].x - self.touches[1].x)
                 delta_y = abs(self.touches[0].y - self.touches[1].y)
                 deltadelta_x = delta_x - self._gesture_start_delta_x
                 deltadelta_y = delta_y - self._gesture_start_delta_y
                 if self._gesture_drag_axis is None:
                     if abs(deltadelta_x) > 40:
-                        self._gesture_drag_axis = ZOOM_HORIZONTAL
+                        self._gesture_drag_axis = PINCH_HORIZONTAL
+                        if self._on_pinch_horizontal_begin:
+                            self._on_pinch_horizontal_begin()
                     elif abs(deltadelta_y) > 40:
-                        self._gesture_drag_axis = ZOOM_VERTICAL
+                        self._gesture_drag_axis = PINCH_VERTICAL
+                        if self._on_pinch_vertical_begin:
+                            self._on_pinch_vertical_begin()
                     elif abs(self.touches[0].x - self._gesture_start_origin[0][0]) > 10 and deltadelta_x < 10:
-                        self._gesture_drag_axis = DRAG_HOROZONTAL
+                        self._gesture_drag_axis = DRAG_HORIZONTAL
+                        if self._on_drag_horizontal_begin:
+                            self._on_drag_horizontal_begin()
                     elif abs(self.touches[0].y - self._gesture_start_origin[0][1]) > 10 and deltadelta_x < 10:
                         self._gesture_drag_axis = DRAG_VERTICAL
-                elif self._gesture_drag_axis == DRAG_HOROZONTAL:
+                        if self._on_drag_vertical_begin:
+                            self._on_drag_vertical_begin()
+                elif self._gesture_drag_axis == DRAG_HORIZONTAL:
                     if self._on_drag_horizontal:
                         self._on_drag_horizontal(self.touches[0].x - self._gesture_start_origin[0][0])
                 elif self._gesture_drag_axis == DRAG_VERTICAL:
                     if self._on_drag_vertical:
                         self._on_drag_vertical(self.touches[0].y - self._gesture_start_origin[0][1])
-                elif self._gesture_drag_axis == ZOOM_HORIZONTAL:
-                    if self._on_zoom_horizontal:
-                        self._on_zoom_horizontal(deltadelta_x)
-                elif self._gesture_drag_axis == ZOOM_VERTICAL:
-                    if self._on_zoom_vertical:
-                        self._on_zoom_vertical(deltadelta_y)
-                """
-                delta_x = self.touches[0].x - self.touches[1].x
-                delta_y = self.touches[0].y - self.touches[1].y
-                if abs(delta_x) > abs(delta_y):
-                    delta = delta_x
-                else:
-                    delta = delta_y
-                delta_delta = delta - self._gesture_last_delta
-                if delta_delta > 1:
-                    logging.warning("Pinch+")
-                elif delta_delta < 1:
-                    logging.warning("Pinch-")
-                self._gesture_last_delta = delta
-                """
+                elif self._gesture_drag_axis == PINCH_HORIZONTAL:
+                    if self._on_pinch_horizontal:
+                        self._on_pinch_horizontal(deltadelta_x)
+                elif self._gesture_drag_axis == PINCH_VERTICAL:
+                    if self._on_pinch_vertical:
+                        self._on_pinch_vertical(deltadelta_y)
         else:
+            if self._gesture_drag_axis == PINCH_HORIZONTAL and self._on_pinch_horizontal_end:
+                self._on_pinch_horizontal_end()
+            elif self._gesture_drag_axis == PINCH_VERTICAL and self._on_pinch_vertical_end:
+                self._on_pinch_vertical_end()
+            elif self._gesture_drag_axis == DRAG_HORIZONTAL and self._on_drag_horizontal_end:
+                self._on_drag_horizontal_end()
+            elif self._gesture_drag_axis == DRAG_VERTICAL and self._on_drag_vertical_end:
+                self._on_drag_vertical_end()
+
             self._gesture_drag_axis = None
             self._gesture_press_start_time = 0
         self._gesture_last_held_count = self.touch_count
-
-    def _detect_device(self, device):
-        """Detect / validate multitouch device
-        
-        device - Path to device, e.g. /dev/input/event0. May be None to detect first valid file
-        returns - Device path or None if invalid / none found
-        """
-        
-        if device:
-            devices = [device]
-        else:
-            devices = glob("/dev/input/event*")
-        for device in devices:
-            try:
-                if ecodes.ABS_MT_SLOT in InputDevice(device).capabilities()[ecodes.EV_ABS][ecodes.ABS_Z]:
-                    self.max_x = InputDevice(device).capabilities()[ecodes.EV_ABS][ecodes.ABS_X][1].max
-                    self.max_y = InputDevice(device).capabilities()[ecodes.EV_ABS][ecodes.ABS_Y][1].max
-                    return device
-            except:
-                pass
-        return None
     
     def set_callback(self, event_type, cb):
         """Set event callback
         
-        event_type - Name of event type ["press" | "release" | "move"]
+        event_type - Name of event type ["press" | "release" | "motion"]
         cb - Python function to call when event occurs
         """
         
@@ -352,38 +384,99 @@ class MultiTouch(object):
             fn(cb)
         except:
             pass
+
+
+    def tag_bind(self, widget, tagOrId, sequence, function, add=False):
+        """Binds events to canvas objects
+        
+        widget - Canvas widget
+        tagOrId - Tag or object ID to bind event to
+        sequence - Event sequence to bind ["press" "motion" | "release" | "horizontal_drag"]
+        function - Callback function
+        add - True to append the binding otherwise remove existing bindings (default)
+
+        Note that the bindings are applied to items that have this tag at the time of the tag_bind method call.
+        If tags are later removed from those items, the bindings will persist on those items. 
+        If the tag you specify is later applied to items that did not have that tag when you called tag_bind, that binding will not be applied to the newly tagged items.
+        """
+        
+        event_list = getattr(self, f"_on_{sequence}", None)
+        if isinstance(event_list, list) and callable(function):
+            existing = []
+            tags = widget.find_withtag(tagOrId)
+            for tag in tags:
+                for event in event_list:
+                    if event.widget == widget and tag == event.tag:
+                        existing.append(event)
+
+            if not add:
+                for event in existing:
+                    event_list.remove(event)
+
+            for tag in tags:
+                event_list.append(TouchCallback(widget, tag, function))
+
+    def tag_unbind(self, widget, tagOrId, sequence, function=None):
+        """Remove binding of press event
+
+        widget - Canvas widget
+        tagOrId - Tag or object ID to bind event to
+        sequence - Event sequence to bind ["press" "motion" | "release" | "horizontal_drag"]
+        function - Callback function (Optional - default None=remove all bindings)
+        """
+
+        event_list = getattr(self, f"_on_{sequence}", None)
+        if event_list:
+            existing = []
+            tags = widget.find_withtag(tagOrId)
+            for tag in tags:
+                for event in event_list:
+                    if function:
+                        if event.widget == widget and tag == event.tag and function == event.function:
+                            existing.append(event)
+                    else:
+                        if event.widget == widget and tag == event.tag:
+                            existing.append(event)
+
+            for event in existing:
+                event_list.remove(event)
+
     
-    def set_press_callback(self, cb):
-        """Set callback for press events
+    def set_drag_horizontal_begin_callback(self, cb):
+        """Set callback for horizontal drag begin event
         
         cb - Python function to call when event occurs
         """
-        
-        self._on_press = cb
-    
-    def set_release_callback(self, cb):
-        """Set callback for release events
-        
-        cb - Python function to call when event occurs
-        """
-        
-        self._on_release = cb
-    
-    def set_move_callback(self, cb):
-        """Set callback for move events
-        
-        cb - Python function to call when event occurs
-        """
-        
-        self._on_move = cb
-    
+
+        if callable(cb):
+            self._on_drag_horizontal_begin = cb
+
     def set_drag_horizontal_callback(self, cb):
-        """Set callback for horizontal drag events
+        """Set callback for horizontal drag event
         
         cb - Python function to call when event occurs
         """
         
-        self._on_drag_horizontal = cb
+        if callable(cb):
+            self._on_drag_horizontal = cb
+    
+    def set_drag_horizontal_end_callback(self, cb):
+        """Set callback for horizontal drag end event
+        
+        cb - Python function to call when event occurs
+        """
+        
+        if callable(cb):
+            self._on_drag_horizontal_end = cb
+    
+    def set_drag_vertical_begin_callback(self, cb):
+        """Set callback for vertical drag begin event
+        
+        cb - Python function to call when event occurs
+        """
+        
+        if callable(cb):
+            self._on_drag_vertical_begin = cb
     
     def set_drag_vertical_callback(self, cb):
         """Set callback for vertical drag events
@@ -391,29 +484,69 @@ class MultiTouch(object):
         cb - Python function to call when event occurs
         """
         
-        self._on_drag_vertical = cb
+        if callable(cb):
+            self._on_drag_vertical = cb
     
-    def set_zoom_horizontal_callback(self, cb):
-        """Set callback for horizontal zoom events
+    def set_drag_vertical_end_callback(self, cb):
+        """Set callback for vertical drag end event
         
         cb - Python function to call when event occurs
         """
         
-        self._on_zoom_horizontal = cb
+        if callable(cb):
+            self._on_drag_vertical_end = cb
     
-    def set_zoom_vertical_callback(self, cb):
-        """Set callback for vertical zoom events
+    def set_pinch_horizontal_begin_callback(self, cb):
+        """Set callback for horizontal pinch begin event
         
         cb - Python function to call when event occurs
         """
         
-        self._on_zoom_vertical = cb
-    
-    def set_callbacks(self, cb):
-        """Set single callback for all events
+        if callable(cb):
+            self._on_pinch_horizontal_begin = cb
+
+    def set_pinch_horizontal_callback(self, cb):
+        """Set callback for horizontal pinch event
         
         cb - Python function to call when event occurs
         """
-        self._on_press = cb
-        self._on_release = cb
-        self._on_move = cb
+        
+        if callable(cb):
+            self._on_pinch_horizontal = cb
+
+    def set_pinch_horizontal_end_callback(self, cb):
+        """Set callback for horizontal pinch end event
+        
+        cb - Python function to call when event occurs
+        """
+        
+        if callable(cb):
+            self._on_pinch_horizontal_end = cb
+    
+    def set_pinch_vertical_begin_callback(self, cb):
+        """Set callback for vertical pinch begin event
+        
+        cb - Python function to call when event occurs
+        """
+        
+        if callable(cb):
+            self._on_pinch_vertical_begin = cb
+    
+    def set_pinch_vertical_callback(self, cb):
+        """Set callback for vertical pinch event
+        
+        cb - Python function to call when event occurs
+        """
+        
+        if callable(cb):
+            self._on_pinch_vertical = cb
+    
+    def set_pinch_vertical_end_callback(self, cb):
+        """Set callback for vertical pinch end event
+        
+        cb - Python function to call when event occurs
+        """
+        
+        if callable(cb):
+            self._on_pinch_vertical_end = cb
+    

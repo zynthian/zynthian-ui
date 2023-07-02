@@ -164,28 +164,49 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.widget_canvas.bind("<Button-5>",self.cb_canvas_wheel)
 
 	def show(self):
+		super().show()
 		self.zyngui.multitouch.set_drag_horizontal_callback(self.on_horizontal_drag)
 		self.zyngui.multitouch.set_drag_vertical_callback(self.on_vertical_drag)
-		self.zyngui.multitouch.set_zoom_horizontal_callback(self.on_horizontal_zoom)
-		self.zyngui.multitouch.set_zoom_vertical_callback(self.on_vertical_zoom)
+		self.zyngui.multitouch.set_pinch_horizontal_begin_callback(self.on_horizontal_pinch_begin)
+		self.zyngui.multitouch.set_pinch_horizontal_callback(self.on_horizontal_pinch)
+		self.zyngui.multitouch.set_pinch_horizontal_end_callback(self.on_horizontal_pinch_end)
+		self.zyngui.multitouch.set_pinch_vertical_callback(self.on_vertical_pinch)
 
 	def hide(self):
 		self.zyngui.multitouch.set_drag_horizontal_callback(None)
 		self.zyngui.multitouch.set_drag_vertical_callback(None)
-		self.zyngui.multitouch.set_zoom_horizontal_callback(None)
-		self.zyngui.multitouch.set_zoom_vertical_callback(None)
+		self.zyngui.multitouch.set_pinch_horizontal_end_callback(None)
+		self.zyngui.multitouch.set_pinch_horizontal_callback(None)
+		self.zyngui.multitouch.set_pinch_horizontal_end_callback(None)
+		self.zyngui.multitouch.set_pinch_vertical_callback(None)
+		super().hide()
+
+	def on_horizontal_drag_begin(self):
+		logging.warning(f"Horizontal drag begin")
 
 	def on_horizontal_drag(self, delta):
 		logging.warning(f"Horizontal drag {delta}")
 
+	def on_horizontal_drag_end(self):
+		logging.warning(f"Horizontal drag end")
+
 	def on_vertical_drag(self, delta):
 		logging.warning(f"Vertical drag {delta}")
 
-	def on_horizontal_zoom(self, delta):
-		logging.warning(f"Horizontal zoom {delta}")
+	def on_horizontal_pinch_begin(self):
+		logging.warning(f"Horizontal pinch begin")
+		self.pinch_begin_zoom = self.zoom
 
-	def on_vertical_zoom(self, delta):
-		logging.warning(f"Vertical zoom {delta}")
+	def on_horizontal_pinch(self, delta):
+		logging.warning(f"Horizontal pinch {delta}")
+		zctrl = self.layer.controllers_dict['zoom']
+		zctrl.set_value(zctrl.value + 4 * delta / self.width * self.pinch_begin_zoom)
+
+	def on_horizontal_pinch_end(self):
+		logging.warning(f"Horizontal pinch end")
+
+	def on_vertical_pinch(self, delta):
+		logging.warning(f"Vertical pinch {delta}")
 
 
 	def on_size(self, event):
@@ -228,6 +249,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 
 	def on_canvas_drag(self, event):
+		return
 		if self.drag_mode is None:
 			if abs(event.x - self.zoom_drag_x) > self.width // 40:
 				self.drag_mode = 'x'

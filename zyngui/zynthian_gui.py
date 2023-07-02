@@ -607,8 +607,6 @@ class zynthian_gui:
 
 		if self.current_screen != screen:
 			self.current_screen = screen
-			for cb in ["press", "release", "move"]:
-				self.multitouch.set_callback(cb, getattr(self.screens[screen], f"on_touch_{cb}", None))
 			self.screens[screen].show()
 
 

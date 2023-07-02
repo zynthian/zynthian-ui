@@ -234,31 +234,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.cuia_toggle_play = None
 			self.update_wsleds = None
 
-
-	def on_touch_press(self, type, event):
-		for widget in self.widgets.values():
-			try:
-				widget.on_touch_press(event)
-			except:
-				pass
-
-
-	def on_touch_release(self, type, event):
-		for widget in self.widgets.values():
-			try:
-				widget.on_touch_release(event)
-			except:
-				pass
-
-
-	def on_touch_move(self, type, event):
-		for widget in self.widgets.values():
-			try:
-				widget.on_touch_move(event)
-			except:
-				pass
-
-
 	def set_controller_screen(self):
 		# Get screen info
 		if 0 <= self.index < len(self.list_data):
