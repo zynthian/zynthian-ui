@@ -166,7 +166,7 @@ class zynthian_gui_mixer_strip():
 		# Fader indicators
 		self.status_indicator = self.parent.main_canvas.create_text(x + 2, self.fader_top + 2, fill="#009000", anchor="nw", tags=("strip:%s"%(self.fader_bg)))
 
-		#self.parent.zyngui.multitouch.tag_bind(self.parent.main_canvas, "fader:%s"%(self.fader_bg), "press", self.on_fader_press)
+		self.parent.zyngui.multitouch.tag_bind(self.parent.main_canvas, "fader:%s"%(self.fader_bg), "press", self.on_fader_press)
 		self.parent.zyngui.multitouch.tag_bind(self.parent.main_canvas, "fader:%s"%(self.fader_bg), "motion", self.on_fader_motion)
 		self.parent.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_fader_press)
 		self.parent.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<B1-Motion>", self.on_fader_motion)
