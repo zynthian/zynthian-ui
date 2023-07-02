@@ -10,6 +10,8 @@ from evdev import ecodes, InputDevice
 import logging
 from time import monotonic
 from dataclasses import dataclass
+from subprocess import run,PIPE
+
 from zyngui import zynthian_gui_config
 
 """A multitouch event"""
@@ -173,14 +175,21 @@ class MultiTouch(object):
             devices = glob("/dev/input/event*")
         for device in devices:
             try:
-                if ecodes.ABS_MT_SLOT in InputDevice(device).capabilities()[ecodes.EV_ABS][ecodes.ABS_Z]:
+                idev = InputDevice(device)
+                if ecodes.ABS_MT_SLOT in idev.capabilities()[ecodes.EV_ABS][ecodes.ABS_Z]:
                     self.max_x = InputDevice(device).capabilities()[ecodes.EV_ABS][ecodes.ABS_X][1].max
                     self.max_y = InputDevice(device).capabilities()[ecodes.EV_ABS][ecodes.ABS_Y][1].max
                     self._f_device = open(device, 'rb', self.EVENT_SIZE)
+                    for libinput in self.xinput("--list").split("\n"):
+                        if idev.name in libinput and "slave  pointer" in libinput:
+                            device_id = libinput.split("id=")[1].split()[0]
+                            self.xinput("disable", device_id)
+                            break
                     break
             except:
                 pass
-        
+
+
         self.touches = [Touch(x) for x in range(10)] # 10 touch slot objects
         self._event_queue = Queue() # Used to store evdev events before processing into touch events
         self._current_touch = self.touches[0] # Current touch object being processed
@@ -372,19 +381,18 @@ class MultiTouch(object):
             self._gesture_press_start_time = 0
         self._gesture_last_held_count = self.touch_count
     
-    def set_callback(self, event_type, cb):
-        """Set event callback
-        
-        event_type - Name of event type ["press" | "release" | "motion"]
-        cb - Python function to call when event occurs
+    def xinput(self, *args):
+        """Run xinput
+        args: List of arguments to pass to xinput
+        Returns: Output of xinput as string
+        Credit: https://github.com/reinderien/xcalibrate
         """
-        
         try:
-            fn = getattr(self, f"set_{event_type}_callback", None)
-            fn(cb)
+            return run(args=('/usr/bin/xinput', *args),
+                stdout=PIPE, check=True,
+                universal_newlines=True).stdout
         except:
-            pass
-
+            return ""
 
     def tag_bind(self, widget, tagOrId, sequence, function, add=False):
         """Binds events to canvas objects

@@ -104,7 +104,10 @@ class zynthian_gui:
 	SCREEN_HMODE_RESET = 3
 
 	def __init__(self):
-		self.multitouch = MultiTouch(invert_x_axis=True, invert_y_axis=True)
+		if zynthian_gui_config.check_wiring_layout(["Z2"]):
+			self.multitouch = MultiTouch(invert_x_axis=True, invert_y_axis=True)
+		else:
+			self.multitouch = MultiTouch()
 		self.test_mode = False
 		self.alt_mode = False
 
