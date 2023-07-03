@@ -273,7 +273,7 @@ class MultiTouch(object):
                 event._id = -1
                 event._type = TS_IDLE
                 if not handled:
-                    event.widget.event_generate("<ButtonRelease-1>")
+                    event.widget.event_generate("<ButtonRelease-1>", x=event.x, y=event.y)
             #self.process_gesture(event)
 
         self.events = []
