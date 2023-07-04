@@ -236,6 +236,7 @@ class MultiTouch(object):
     def _handle_event(self):
         """Run outstanding press/release/motion events"""
 
+        now = int(monotonic() * 1000)
         for event in self.events:
             handled = False
             #TODO: Handle widgets without tags
@@ -247,7 +248,12 @@ class MultiTouch(object):
                         ev_handler.function(event)
                         handled = True
                 if not handled:
-                    event.widget.event_generate("<B1-Motion>", rootx=event.x_root, rooty=event.y_root, x=event.x, y=event.y)
+                    event.widget.event_generate("<B1-Motion>",
+                        x=event.x,
+                        y=event.y,
+                        rootx=event.x_root,
+                        rooty=event.y_root,
+                        time=now)
             elif event._type == TS_PRESS:
                 event.widget = zynthian_gui_config.zyngui.get_current_screen_obj().winfo_containing(event.x_root, event.y_root)
                 event.offset_x = event.widget.winfo_rootx() # Is this offset from root or just parent?
@@ -264,7 +270,12 @@ class MultiTouch(object):
                         handled = True
                 event._type = TS_MOTION
                 if not handled:
-                    event.widget.event_generate("<ButtonPress-1>", x=event.x, y=event.y)
+                    event.widget.event_generate("<ButtonPress-1>",
+                        x=event.x,
+                        y=event.y,
+                        rootx=event.x_root,
+                        rooty=event.y_root,
+                        time=now)
             elif event._type == TS_RELEASE:
                 for ev_handler in self._on_release:
                     if ev_handler.widget == event.widget and ev_handler.tag == event.tag:
@@ -273,7 +284,12 @@ class MultiTouch(object):
                 event._id = -1
                 event._type = TS_IDLE
                 if not handled:
-                    event.widget.event_generate("<ButtonRelease-1>", x=event.x, y=event.y)
+                    event.widget.event_generate("<ButtonRelease-1>",
+                        x=event.x,
+                        y=event.y,
+                        rootx=event.x_root,
+                        rooty=event.y_root,
+                        time=now)
             #self.process_gesture(event)
 
         self.events = []
