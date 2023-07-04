@@ -583,8 +583,6 @@ class zynthian_gui_mixer_strip():
 	# Function to handle fader press
 	#	event: Mouse event
 	def on_fader_press(self, event):
-		logging.warning(self.layer.midi_chan)
-
 		if zynthian_gui_config.zyngui.cb_touch(event):
 			return "break"
 
@@ -601,11 +599,6 @@ class zynthian_gui_mixer_strip():
 		if self.zctrls:
 			self.set_volume(self.zctrls['level'].value + (self.touch_y - event.y) / self.fader_height)
 			self.touch_y = event.y
-			self.draw_fader()
-
-	def on_fader_motion_multi(self, event):
-		if self.zctrls:
-			self.set_volume(self.zctrls['level'].value + (event.last_y - event.y) / self.fader_height)
 			self.draw_fader()
 
 
@@ -802,17 +795,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def init_dpmeter(self):
 		self.dpm_a = self.dpm_b = None
 
-	def on_touch_press(self, event):
-		self.main_canvas.coords(self.touch_arcs[event.slot], event.x-20, event.y-20,event.x+20, event.y+20)
-		self.main_canvas.itemconfig(self.touch_arcs[event.slot], state="normal")
-		#logging.warning(f"Press {event.slot} ({event.x},{event.y}) Held: {self.zyngui.multitouch.touch_count}")
-
-	def on_touch_move(self, event):
-		self.main_canvas.coords(self.touch_arcs[event.slot], event.x-20, event.y-20,event.x+20, event.y+20)
-
-	def on_touch_release(self, event):
-		#logging.warning(f"Release {event.slot} ({event.x},{event.y}) Held: {self.zyngui.multitouch.touch_count}")
-		self.main_canvas.itemconfig(self.touch_arcs[event.slot], state="hidden")
 
 	# Redefine set_title
 	def set_title(self, title = "Mixer", fg=None, bg=None, timeout = None):

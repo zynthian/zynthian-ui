@@ -18,10 +18,13 @@ from zyngui import zynthian_gui_config
 TouchEvent = namedtuple('TouchEvent', ('timestamp', 'type', 'code', 'value'))
 
 # Touch event types
-TS_IDLE = -1
-TS_RELEASE = 0
-TS_PRESS = 1
-TS_MOTION = 2
+MTS_IDLE = -1
+MTS_RELEASE = 0
+MTS_PRESS = 1
+MTS_MOTION = 2
+TS_RELEASE = 3
+TS_PRESS = 4
+TS_MOTION = 5
 
 # Drag modes
 DRAG_HORIZONTAL = 1
@@ -44,10 +47,13 @@ class Touch(object):
         self._y = None
         self.last_x = None
         self.last_y = None
-        
+        self.offset_x = 0
+        self.offset_y = 0
+
         self._id = -1 # Id for associated press/motion events (same action/session)
-        self._type = TS_IDLE # Current event type
-            
+        self._type = MTS_IDLE # Current event type
+        self._handled = False # True if event session handled by multitouch event handler
+        
     @property
     def position(self):
         
@@ -82,10 +88,13 @@ class Touch(object):
 
         if id != self._id:
             if id == -1:
-                self._type = TS_RELEASE
-                return -1
+                if self._type in [MTS_PRESS, MTS_MOTION]:
+                    self._type = MTS_RELEASE
+                    return -1
+                else:
+                    self._type = TS_RELEASE
             else:
-                self._type = TS_PRESS
+                self._type = MTS_PRESS
                 self._id = id
                 return 1
         return 0
@@ -128,7 +137,7 @@ class TouchCallback:
     widget: object
     tag: int
     function: object
-
+    
 class MultiTouch(object):
     """Class representing a multitouch interface driver"""
     
@@ -242,25 +251,11 @@ class MultiTouch(object):
 
         now = int(monotonic() * 1000)
         for event in self.events:
-            handled = False
-            #TODO: Handle widgets without tags
-            if event._type == TS_MOTION:
-                event.x = event.x_root - event.offset_x
-                event.y = event.y_root - event.offset_y
-                for ev_handler in self._on_motion:
-                    if ev_handler.widget == event.widget and ev_handler.tag == event.tag:
-                        ev_handler.function(event)
-                        handled = True
-                if not handled:
-                    event.widget.event_generate("<B1-Motion>",
-                        x=event.x,
-                        y=event.y,
-                        rootx=event.x_root,
-                        rooty=event.y_root,
-                        time=now)
-            elif event._type == TS_PRESS:
+            event.x = event.x_root - event.offset_x
+            event.y = event.y_root - event.offset_y
+            if event._type == MTS_PRESS:
                 event.widget = zynthian_gui_config.zyngui.get_current_screen_obj().winfo_containing(event.x_root, event.y_root)
-                event.offset_x = event.widget.winfo_rootx() # Is this offset from root or just parent?
+                event.offset_x = event.widget.winfo_rootx() #TODO: Is this offset from root or just parent?
                 event.offset_y = event.widget.winfo_rooty()
                 event.x = event.x_root - event.offset_x
                 event.y = event.y_root - event.offset_y
@@ -271,29 +266,42 @@ class MultiTouch(object):
                 for ev_handler in self._on_press:
                     if ev_handler.widget == event.widget and ev_handler.tag == event.tag:
                         ev_handler.function(event)
-                        handled = True
-                event._type = TS_MOTION
-                if not handled:
+                        event._type = MTS_MOTION
+                if event._type == MTS_PRESS:
+                    event._type = TS_MOTION
                     event.widget.event_generate("<ButtonPress-1>",
                         x=event.x,
                         y=event.y,
                         rootx=event.x_root,
                         rooty=event.y_root,
                         time=now)
-            elif event._type == TS_RELEASE:
+            elif event._type == MTS_RELEASE:
                 for ev_handler in self._on_release:
                     if ev_handler.widget == event.widget and ev_handler.tag == event.tag:
                         ev_handler.function(event)
-                        handled = True
+                event._handled = False
                 event._id = -1
-                event._type = TS_IDLE
-                if not handled:
-                    event.widget.event_generate("<ButtonRelease-1>",
-                        x=event.x,
-                        y=event.y,
-                        rootx=event.x_root,
-                        rooty=event.y_root,
-                        time=now)
+                event._type = MTS_IDLE
+            elif event._type == MTS_MOTION:
+                for ev_handler in self._on_motion:
+                    if ev_handler.widget == event.widget and ev_handler.tag == event.tag:
+                        ev_handler.function(event)
+            elif event._type == TS_RELEASE:
+                event.widget.event_generate("<ButtonRelease-1>",
+                    x=event.x,
+                    y=event.y,
+                    rootx=event.x_root,
+                    rooty=event.y_root,
+                    time=now)
+                event._id = -1
+                event._type = MTS_IDLE
+            elif event._type == TS_MOTION:
+                event.widget.event_generate("<B1-Motion>",
+                    x=event.x,
+                    y=event.y,
+                    rootx=event.x_root,
+                    rooty=event.y_root,
+                    time=now)
             #self.process_gesture(event)
 
         self.events = []
