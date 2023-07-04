@@ -254,7 +254,8 @@ class MultiTouch(object):
             event.x = event.x_root - event.offset_x
             event.y = event.y_root - event.offset_y
             if event._type == MTS_PRESS:
-                event.widget = zynthian_gui_config.zyngui.get_current_screen_obj().winfo_containing(event.x_root, event.y_root)
+                #event.widget = zynthian_gui_config.zyngui.get_current_screen_obj().winfo_containing(event.x_root, event.y_root)
+                event.widget = zynthian_gui_config.top.winfo_containing(event.x_root, event.y_root)
                 event.offset_x = event.widget.winfo_rootx() #TODO: Is this offset from root or just parent?
                 event.offset_y = event.widget.winfo_rooty()
                 event.x = event.x_root - event.offset_x
