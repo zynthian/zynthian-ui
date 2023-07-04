@@ -234,7 +234,11 @@ class MultiTouch(object):
             self._f_device.close()
 
     def _handle_event(self):
-        """Run outstanding press/release/motion events"""
+        """Run outstanding press/release/motion events
+        
+        If event not handled by multitouch driver then a similar event is sent for normal handling
+        This event will not have state (modifier / mouse button) set.
+        """
 
         now = int(monotonic() * 1000)
         for event in self.events:
@@ -261,7 +265,7 @@ class MultiTouch(object):
                 event.x = event.x_root - event.offset_x
                 event.y = event.y_root - event.offset_y
                 try:
-                    event.tag = event.widget.find_overlapping(event.x_root, event.y_root, event.x_root, event.y_root)[0]
+                    event.tag = event.widget.find_overlapping(event.x, event.y, event.x, event.y)[0]
                 except:
                     event.tag = None
                 for ev_handler in self._on_press:
