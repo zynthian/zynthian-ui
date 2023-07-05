@@ -75,7 +75,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.widget_canvas.grid(sticky='news')
 
 		self.widget_canvas.bind('<ButtonPress-1>', self.on_canvas_press)
-		self.widget_canvas.bind('<ButtonRelease-1>', self.on_canvas_release)
 		self.widget_canvas.bind('<B1-Motion>', self.on_canvas_drag)
 
 		self.loading_text = self.widget_canvas.create_text(
@@ -218,10 +217,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			if abs(pos - self.layer.controllers_dict[symbol].value) < max_delta:
 				self.drag_marker = symbol
 				break
-
-
-	def on_canvas_release(self, event):
-		pass
 
 
 	def on_canvas_drag(self, event):

@@ -358,7 +358,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 							layer.status = ""
 					elif id == 2:
 						ctrl_dict['position'].set_value(value, False)
-						self.monitors_dict[handle]['pos'] = value
 					elif id == 3:
 						ctrl_dict['gain'].set_value(value, False)
 					elif id == 4:
@@ -369,16 +368,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 						ctrl_dict['right track'].set_value(int(value), False)
 					elif id == 11:
 						ctrl_dict['loop start'].set_value(value, False)
-						self.monitors_dict[handle]['loop start'] = value
 					elif id == 12:
 						ctrl_dict['loop end'].set_value(value, False)
-						self.monitors_dict[handle]['loop end'] = value
 					elif id == 13:
 						ctrl_dict['crop start'].set_value(value, False)
-						self.monitors_dict[handle]['crop start'] = value
 					elif id == 14:
 						ctrl_dict['crop end'].set_value(value, False)
-						self.monitors_dict[handle]['crop end'] = value
 					elif id == 15:
 						ctrl_dict['sustain pedal'].set_value(value, False)
 					elif id == 16:
