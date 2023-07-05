@@ -35,6 +35,7 @@ from os.path import basename
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_widget_base
 from zyngui import zynthian_gui_config
+from zyngui.multitouch import MultitouchTypes
 
 #------------------------------------------------------------------------------
 # Zynthian Widget Class for "zynaudioplayer"
@@ -162,51 +163,38 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		)
 		self.widget_canvas.bind("<Button-4>",self.cb_canvas_wheel)
 		self.widget_canvas.bind("<Button-5>",self.cb_canvas_wheel)
+		self.zyngui.multitouch.tag_bind(self.widget_canvas, None, "gesture", self.on_gesture)
 
 	def show(self):
 		super().show()
-		self.zyngui.multitouch.set_drag_horizontal_callback(self.on_horizontal_drag)
-		self.zyngui.multitouch.set_drag_vertical_callback(self.on_vertical_drag)
-		self.zyngui.multitouch.set_pinch_horizontal_begin_callback(self.on_horizontal_pinch_begin)
-		self.zyngui.multitouch.set_pinch_horizontal_callback(self.on_horizontal_pinch)
-		self.zyngui.multitouch.set_pinch_horizontal_end_callback(self.on_horizontal_pinch_end)
-		self.zyngui.multitouch.set_pinch_vertical_callback(self.on_vertical_pinch)
 
 	def hide(self):
-		self.zyngui.multitouch.set_drag_horizontal_callback(None)
-		self.zyngui.multitouch.set_drag_vertical_callback(None)
-		self.zyngui.multitouch.set_pinch_horizontal_end_callback(None)
-		self.zyngui.multitouch.set_pinch_horizontal_callback(None)
-		self.zyngui.multitouch.set_pinch_horizontal_end_callback(None)
-		self.zyngui.multitouch.set_pinch_vertical_callback(None)
 		super().hide()
 
-	def on_horizontal_drag_begin(self):
-		logging.warning(f"Horizontal drag begin")
+	def on_gesture(self, type, value):
+		if type == MultitouchTypes.GESTURE_H_DRAG:
+			self.on_horizontal_drag(value)
+		elif type == MultitouchTypes.GESTURE_H_PINCH:
+			self.on_horizontal_pinch(value)
+		elif type == MultitouchTypes.GESTURE_V_PINCH:
+			self.on_vertical_pinch(value)
 
-	def on_horizontal_drag(self, delta):
-		logging.warning(f"Horizontal drag {delta}")
+	def on_horizontal_drag(self, value):
+		self.offset -= int(self.frames * value / self.width / self.zoom)
+		self.offset = max(0, self.offset)
+		self.offset = min(self.frames - self.frames // self.zoom, self.offset)
+		self.refresh_waveform = True
 
-	def on_horizontal_drag_end(self):
-		logging.warning(f"Horizontal drag end")
-
-	def on_vertical_drag(self, delta):
-		logging.warning(f"Vertical drag {delta}")
-
-	def on_horizontal_pinch_begin(self):
-		logging.warning(f"Horizontal pinch begin")
-		self.pinch_begin_zoom = self.zoom
-
-	def on_horizontal_pinch(self, delta):
-		logging.warning(f"Horizontal pinch {delta}")
+	def on_horizontal_pinch(self, value):
 		zctrl = self.layer.controllers_dict['zoom']
-		zctrl.set_value(zctrl.value + 4 * delta / self.width * self.pinch_begin_zoom)
+		zctrl.set_value(zctrl.value + 4 * value / self.width * zctrl.value)
+		self.refresh_waveform = True
 
-	def on_horizontal_pinch_end(self):
-		logging.warning(f"Horizontal pinch end")
-
-	def on_vertical_pinch(self, delta):
-		logging.warning(f"Vertical pinch {delta}")
+	def on_vertical_pinch(self, value):
+		self.v_zoom += value / self.height
+		self.v_zoom = min(self.v_zoom, 4.0)
+		self.v_zoom = max(self.v_zoom, 0.1)
+		self.refresh_waveform = True
 
 
 	def on_size(self, event):
@@ -222,62 +210,25 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 
 	def on_canvas_press(self, event):
-		self.zoom_drag_x = event.x
-		self.zoom_drag_y = event.y
 		f = self.width / self.frames * self.zoom
 		pos = (event.x / f + self.offset) / self.samplerate
-		self.duration / self.zoom
 		max_delta = 0.02 * self.duration / self.zoom
-		self.drag_mode = None
-		if event.y > 0.8 * self.height:
-			self.drag_mode = 'z'
-		else:
-			for symbol in ['position', 'loop start', 'loop end', 'crop start', 'crop end']:
-				if abs(pos - self.layer.controllers_dict[symbol].value) < max_delta:
-					self.drag_mode = symbol
-					break
+		self.drag_marker = None
+		for symbol in ['position', 'loop start', 'loop end', 'crop start', 'crop end']:
+			if abs(pos - self.layer.controllers_dict[symbol].value) < max_delta:
+				self.drag_marker = symbol
+				break
 
 
 	def on_canvas_release(self, event):
-		if self.drag_mode is None:
-			f = self.width / self.frames * self.zoom
-			pos = (event.x / f + self.offset) / self.samplerate
-			if event.x < self.width / 3:
-				self.layer.controllers_dict['loop start'].set_value(pos)
-			elif event.x > 2 * self.width / 3:
-				self.layer.controllers_dict['loop end'].set_value(pos)
+		pass
 
 
 	def on_canvas_drag(self, event):
-		return
-		if self.drag_mode is None:
-			if abs(event.x - self.zoom_drag_x) > self.width // 40:
-				self.drag_mode = 'x'
-			elif abs(event.y - self.zoom_drag_y) > self.width // 40:
-				self.drag_mode = 'y'
-			else:
-				return
-		if self.drag_mode == 'x':
-			self.offset += int(self.frames * (self.zoom_drag_x - event.x) / self.width / self.zoom)
-			self.offset = max(0, self.offset)
-			self.offset = min(self.frames - self.frames // self.zoom, self.offset)
-			self.zoom_drag_x = event.x
-			self.refresh_waveform = True
-		elif self.drag_mode == 'y':
-			self.v_zoom += (self.zoom_drag_y - event.y) / self.height
-			self.v_zoom = min(self.v_zoom, 4.0)
-			self.v_zoom = max(self.v_zoom, 0.1)
-			self.zoom_drag_y = event.y
-			self.refresh_waveform = True
-		elif self.drag_mode == 'z':
-			delta = event.x - self.zoom_drag_x
-			zctrl = self.layer.controllers_dict['zoom']
-			zctrl.set_value(zctrl.value + 4 * delta / self.width * self.zoom)
-			self.zoom_drag_x = event.x
-		else:
+		if self.drag_marker:
 			f = self.width / self.frames * self.zoom
 			pos = (event.x / f + self.offset) / self.samplerate
-			self.layer.controllers_dict[self.drag_mode].set_value(pos)
+			self.layer.controllers_dict[self.drag_marker].set_value(pos)
 
 
 	def get_monitors(self):
@@ -378,11 +329,11 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				return
 
 			refresh_markers = False
-			loop_start = int(self.samplerate * self.monitors["loop start"])
-			loop_end = int(self.samplerate * self.monitors["loop end"])
-			crop_start = int(self.samplerate * self.monitors["crop start"])
-			crop_end = int(self.samplerate * self.monitors["crop end"])
-			pos_time = self.monitors["pos"]
+			loop_start = int(self.samplerate * self.layer.controllers_dict['loop start'].value)
+			loop_end = int(self.samplerate * self.layer.controllers_dict['loop end'].value)
+			crop_start = int(self.samplerate * self.layer.controllers_dict['crop start'].value)
+			crop_end = int(self.samplerate * self.layer.controllers_dict['crop end'].value)
+			pos_time = self.layer.controllers_dict['position'].value
 			pos = int(pos_time * self.samplerate)
 			refresh_info = False
 

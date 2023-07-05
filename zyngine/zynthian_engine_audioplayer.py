@@ -219,7 +219,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.monitors_dict[layer.handle]['samplerate'] = self.player.get_samplerate(layer.handle)
 		self.monitors_dict[layer.handle]['codec'] = self.player.get_codec(layer.handle)
 		self.monitors_dict[layer.handle]['zoom'] = 1
-		self.monitors_dict[layer.handle]['offset'] = None
 
 		dur = self.player.get_duration(layer.handle)
 		self.player.set_position(layer.handle, 0)
