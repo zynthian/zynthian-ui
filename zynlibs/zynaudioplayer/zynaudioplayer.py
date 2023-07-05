@@ -150,10 +150,9 @@ class zynaudioplayer():
 
 	def set_control_cb(self, cb):
 		self.control_cb = cb
-		#TODO: Does this need to be a set of 17?
 
 
-	@ctypes.CFUNCTYPE(None, ctypes.py_object, ctypes.c_int, ctypes.c_int, ctypes.c_float)
+	@ctypes.CFUNCTYPE(None, ctypes.py_object, ctypes.c_uint32, ctypes.c_int, ctypes.c_float)
 	def value_cb(self, handle, type, value):
 		if self.control_cb:
 			self.control_cb(handle, type, value)

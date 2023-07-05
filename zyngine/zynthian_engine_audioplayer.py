@@ -98,8 +98,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	def start(self):
 		self.player = zynaudioplayer.zynaudioplayer(self.jackname)
 		self.jackname = self.player.get_jack_client_name()
-		self.player.set_control_cb(self.control_cb)
 		self.file_exts = self.get_file_exts()
+		self.player.set_control_cb(self.control_cb)
 
 
 	def stop(self):
