@@ -282,8 +282,6 @@ class MultiTouch(object):
                 event.widget = zynthian_gui_config.top.winfo_containing(event.x_root, event.y_root)
                 event.offset_x = event.widget.winfo_rootx() #TODO: Is this offset from root or just parent?
                 event.offset_y = event.widget.winfo_rooty()
-                event.x = event.x_root - event.offset_x
-                event.y = event.y_root - event.offset_y
                 event.start_x = event.x
                 event.start_y = event.y
 
@@ -317,14 +315,17 @@ class MultiTouch(object):
                         ev_handler.function(event)
 
             elif event._type == MultitouchTypes.GESTURE_MOTION:
-                if abs(event.x + event.gest_pair.x - event.start_x - event.gest_pair.start_x) > 20:
-                    event._type = event.gest_pair._type = MultitouchTypes.GESTURE_H_DRAG
-                elif abs(event.y + event.gest_pair.y - event.start_y - event.gest_pair.start_y) > 20:
-                    event._type = event.gest_pair._type = MultitouchTypes.GESTURE_V_DRAG
-                elif abs(abs(event.x - event.gest_pair.x) - abs(event.start_x - event.gest_pair.start_x)) > 15:
-                    event._type = event.gest_pair._type = MultitouchTypes.GESTURE_H_PINCH
-                elif abs(abs(event.y - event.gest_pair.y) - abs(event.start_y - event.gest_pair.start_y)) > 15:
-                    event._type = event.gest_pair._type = MultitouchTypes.GESTURE_V_PINCH
+                if abs(event.x - event.start_x) + abs(event.gest_pair.x - event.gest_pair.start_x) > 40:
+                    if abs(abs(event.x - event.gest_pair.x) - abs(event.start_x - event.gest_pair.start_x)) > 30:
+                        event._type = event.gest_pair._type = MultitouchTypes.GESTURE_H_PINCH
+                    else:
+                        event._type = event.gest_pair._type = MultitouchTypes.GESTURE_H_DRAG
+                elif abs(event.y - event.start_y) + abs(event.gest_pair.y - event.gest_pair.start_y) > 40:
+                    if abs(abs(event.y - event.gest_pair.y) - abs(event.start_y - event.gest_pair.start_y)) > 30:
+                        event._type = event.gest_pair._type = MultitouchTypes.GESTURE_V_PINCH
+                    else:
+                        event._type = event.gest_pair._type = MultitouchTypes.GESTURE_V_DRAG
+
             
             elif event._type == MultitouchTypes.GESTURE_RELEASE:
                 if hasattr(event, "gest_pair"):
@@ -420,10 +421,12 @@ class MultiTouch(object):
             return True #TODO: This shouldn't be possible
         for ev_handler in self._on_gesture:
             if ev_handler.widget is None or ev_handler.widget == self._g_pending.widget:
-                self._g_pending._type = MultitouchTypes.GESTURE_MOTION
+                event._type = self._g_pending._type = MultitouchTypes.GESTURE_MOTION
                 self._g_pending.gest_pair = event
-                event._type = MultitouchTypes.GESTURE_MOTION
                 event.gest_pair = self._g_pending
+                # Set start points again in case of movement before second touch
+                self._g_pending.start_x = self._g_pending.x
+                self._g_pending.start_y = self._g_pending.y
                 self._g_pending = None
                 return True
         event._id = -1

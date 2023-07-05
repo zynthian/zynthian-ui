@@ -337,14 +337,10 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			pos = int(pos_time * self.samplerate)
 			refresh_info = False
 
-			if self.monitors["offset"] is not None and self.monitors["offset"] != self.offset:
-				offset = self.monitors["offset"]
-				self.zoom = self.monitors["zoom"]
-			else:
-				offset = self.offset
-			if self.zoom != self.monitors["zoom"]:
+			offset = self.offset
+			if self.zoom != self.layer.controllers_dict['zoom'].value:
 				centre = offset + 0.5 * self.frames / self.zoom
-				self.zoom = self.monitors["zoom"]
+				self.zoom = self.layer.controllers_dict['zoom'].value
 				offset = int(centre - 0.5 * self.frames / self.zoom)
 				self.refresh_waveform = True
 
@@ -404,10 +400,10 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				refresh_info = True
 
 
-			if self.monitors["info"] != self.info:
+			if self.info != self.layer.controllers_dict['info'].value:
 				self.widget_canvas.itemconfig("waveform", state=tkinter.NORMAL)
 				self.widget_canvas.itemconfig("overlay", state=tkinter.NORMAL)
-				self.info = self.monitors["info"]
+				self.info = self.layer.controllers_dict['info'].value
 				refresh_info = True
 
 			if refresh_info:
