@@ -23,11 +23,13 @@
 #******************************************************************************
 
 import os
-from collections import OrderedDict
 import logging
 from glob import glob
-from . import zynthian_engine
+from collections import OrderedDict
+
 from zynlibs.zynaudioplayer import zynaudioplayer
+from . import zynthian_engine
+from zyngui import zynthian_gui_config
 
 #------------------------------------------------------------------------------
 # Audio Player Engine Class
@@ -144,28 +146,29 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 	def get_bank_list(self, layer=None):
 		banks = [[self.my_data_dir + "/capture", None, "Internal", None]]
-		try:
-			walk = next(os.walk(self.my_data_dir + "/capture"))
-			walk[1].sort()
-			for dir in walk[1]:
-				for ext in self.file_exts:
-					if glob(walk[0] + "/" + dir + "/*." + ext):
-						banks.append([walk[0] + "/" + dir, None, "  " + dir, None])
-						break
-			if os.path.ismount(self.ex_data_dir):
-				for ext in self.file_exts:
-					if glob(self.ex_data_dir + "/*." + ext) or glob(self.ex_data_dir + "/*/*." + ext):
-						banks.append([self.ex_data_dir, None, "USB", None])
-						walk = next(os.walk(self.ex_data_dir))
-						walk[1].sort()
-						for dir in walk[1]:
-							for ext in self.file_exts:
-								if glob(walk[0] + "/" + dir + "/*." + ext):
-									banks.append([walk[0] + "/" + dir, None, "  " + dir, None])
-									break
-						break
-		except:
-			pass
+
+		walk = next(os.walk(self.my_data_dir + "/capture"))
+		walk[1].sort()
+		for dir in walk[1]:
+			for ext in self.file_exts:
+				if glob(walk[0] + "/" + dir + "/*." + ext):
+					banks.append([walk[0] + "/" + dir, None, "  " + dir, None])
+					break
+
+		for exd in zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
+			dname = os.path.basename(exd)
+			for ext in self.file_exts:
+				if glob(exd + "/*." + ext) or glob(exd + "/*/*." + ext):
+					banks.append([exd, None, "USB> {}".format(dname), None])
+					walk = next(os.walk(exd))
+					walk[1].sort()
+					for dir in walk[1]:
+						for ext in self.file_exts:
+							if glob(walk[0] + "/" + dir + "/*." + ext):
+								banks.append([walk[0] + "/" + dir, None, "  " + dir, None])
+								break
+					break
+
 		return banks
 
 

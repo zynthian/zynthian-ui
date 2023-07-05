@@ -38,10 +38,10 @@ from zyngui import zynthian_gui_config
 
 class zynthian_audio_recorder():
 
-
 	def __init__(self):
-		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
-		self.capture_dir_usb = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
+		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
+		self.ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
+
 		self.rec_proc = None
 		self.armed = set() # List of chains armed to record
 		self.zyngui = zynthian_gui_config.zyngui
@@ -56,8 +56,9 @@ class zynthian_audio_recorder():
 
 
 	def get_new_filename(self):
-		if os.path.ismount(self.capture_dir_usb):
-			path = self.capture_dir_usb
+		exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
+		if exdirs:
+			path = exdirs[0]
 		else:
 			path = self.capture_dir_sdc
 		try:

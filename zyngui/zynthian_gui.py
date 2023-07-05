@@ -1441,6 +1441,7 @@ class zynthian_gui:
 				logging.warning("Can't set control screen layer! ")
 
 		if self.current_screen == 'preset':
+			self.curlayer.load_bank_list()
 			if len(self.curlayer.bank_list) > 1:
 				self.replace_screen('bank')
 			else:
