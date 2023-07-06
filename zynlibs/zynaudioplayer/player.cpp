@@ -648,64 +648,12 @@ const char* get_codec(AUDIO_PLAYER * pPlayer) {
     const char* sType = NULL;
     const char* sSubtype = NULL;
 
-    static const size_t SF_FORMAT_MPEG = 0x230000;
-    static const size_t SF_FORMAT_MPEG_LAYER_I = 0x0080;
-    static const size_t SF_FORMAT_MPEG_LAYER_II = 0x0081;
-    static const size_t SF_FORMAT_MPEG_LAYER_III = 0x0082;
-    switch(pPlayer->sf_info.format & 0xFF0000) {
-        case SF_FORMAT_WAV:
-            sType =  "WAV";
-            break;
-        case SF_FORMAT_AIFF:
-            sType = "AIFF";
-            break;
-        case SF_FORMAT_FLAC:
-            sType = "FLAC";
-            break;
-        case SF_FORMAT_OGG:
-            sType = "OGG";
-            break;
-        case SF_FORMAT_WAVEX:
-            sType = "WAVX";
-            break;
-        case SF_FORMAT_MPEG:
-            if(pPlayer->sf_info.format & 0x03 > 1)
-                sType = "MPEG-2";
-            else
-                sType = "MPEG-1";
-    }
-    switch(pPlayer->sf_info.format & 0xFF) {
-        case SF_FORMAT_PCM_S8:
-        case SF_FORMAT_PCM_U8:
-            sSubtype = "8 bit";
-            break;
-        case SF_FORMAT_PCM_16:
-            sSubtype = "16 bit";
-            break;
-        case SF_FORMAT_PCM_24:
-            sSubtype = "24 bit";
-            break;
-        case SF_FORMAT_PCM_32:
-            sSubtype = "32 bit";
-            break;
-        case SF_FORMAT_FLOAT:
-            sSubtype = "32 bit float";
-            break;
-        case SF_FORMAT_DOUBLE:
-            sSubtype = "64 bit float";
-            break;
-        case SF_FORMAT_VORBIS:
-            sSubtype = "Vorbis";
-            break;
-    }
-    if(sType) {
-        if(sSubtype)
-            sprintf(buffer, "%s (%s)", sType, sSubtype);
-        else
-            sprintf(buffer, "%s", sType);
-        return buffer;
-    }
-    return "UNKNOWN";
+
+    SF_FORMAT_INFO format_info;
+    format_info.format = pPlayer->sf_info.format;
+    if(sf_command(NULL, SFC_GET_FORMAT_INFO, &format_info, sizeof(format_info)))
+        return "UNKNOWN";
+    return format_info.name;
 }
 
 int get_channels(AUDIO_PLAYER * pPlayer) {
