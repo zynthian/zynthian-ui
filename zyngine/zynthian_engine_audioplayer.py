@@ -78,10 +78,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['attack', None, 0.1, 20.0],
 			['decay', None, 0.1, 20.0],
 			['sustain', None, 0.8, 1.0],
-			['release', None, 0.1,20.0],
+			['release', None, 0.1, 20.0],
 			['zoom', None, 1, ["x1"],[1]],
 			['info', None, 1, ["None", "Duration", "Position", "Remaining", "Loop length", "Samplerate", "CODEC", "Filename"]],
 			['bend range', None, 2, 24],
+			['view offset', None, 0, 1],
+			['amp zoom', None, 1.0, 4.0]
 		]
 
 		# Controller Screens
@@ -264,7 +266,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['crop', ['crop start', 'crop end', 'position', 'zoom']],
 				['loop', ['loop start', 'loop end', 'loop', 'zoom']],
 				['config', ['left track', 'right track', 'bend range', 'sustain pedal']],
-				['info', ['info', 'zoom range', None, None]]
+				['info', ['info', 'zoom range', 'amp zoom', 'view offset']]
 			]
 			if layer.handle == self.zyngui.audio_player.handle:
 				self._ctrl_screens[3][1][2] = None
@@ -292,6 +294,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['zoom', None, 1, [zoom_labels, zoom_values]],
 			['zoom range', None, 0, ["User", "File", "Crop", "Loop"]],
 			['info', None, 1, ["None", "Duration", "Position", "Remaining", "Loop length", "Samplerate", "CODEC", "Filename"]],
+			['view offset', None, 0, dur],
+			['amp zoom', None, 1.0, 4.0]
 		]
 		if layer.handle != self.zyngui.audio_player.handle:
 			self._ctrls += [['sustain pedal', 64, 'off', ['off', 'on']],
@@ -445,21 +449,21 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				if layer.handle == handle:
 					if zctrl.value == 1:
 						# Show whole file
-						self.monitors_dict[handle]['zoom'] = 1
-						self.monitors_dict[handle]['offset'] = 0
+						layer.controllers_dict['zoom'].set_value(1, False)
+						layer.controllers_dict['view offset'].set_value(0)
 						range = self.player.get_duration(handle)
 					elif zctrl.value == 2:
 						# Show cropped region
 						start = self.player.get_crop_start(handle)
 						range = self.player.get_crop_end(handle) - start
-						self.monitors_dict[handle]['offset'] = start * self.player.get_samplerate(handle)
-						self.monitors_dict[handle]['zoom'] = self.player.get_duration(handle) / range
+						layer.controllers_dict['view offset'].set_value(start)
+						layer.controllers_dict['zoom'].set_value(self.player.get_duration(handle) / range, False)
 					elif zctrl.value == 3:
 						# Show loop region
 						start = self.player.get_loop_start(handle)
 						range = self.player.get_loop_end(handle) - start
-						self.monitors_dict[handle]['offset'] = start * self.player.get_samplerate(handle)
-						self.monitors_dict[handle]['zoom'] = self.player.get_duration(handle) / range
+						layer.controllers_dict['view offset'].set_value(start)
+						layer.controllers_dict['zoom'].set_value(self.player.get_duration(handle) / range, False)
 
 		elif zctrl.symbol == "info":
 			self.monitors_dict[handle]['info'] = zctrl.value
