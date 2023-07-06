@@ -328,6 +328,21 @@ class MultiTouch(object):
 
             
             elif event._type == MultitouchTypes.GESTURE_RELEASE:
+                if self._g_pending:
+                    # Cancel multitouch detection and send on_press event before processing release event
+                    event._type = MultitouchTypes.GESTURE_PRESS
+                    self._on_touch_timeout(True)
+                    event.widget.event_generate("<ButtonRelease-1>",
+                        x=event.x,
+                        y=event.y,
+                        rootx=event.x_root,
+                        rooty=event.y_root,
+                        time=now)
+                else:
+                    for ev_handler in self._on_release:
+                        if ev_handler.widget == event.widget and ev_handler.tag == event.tag:
+                            ev_handler.function(event)
+
                 if hasattr(event, "gest_pair"):
                     event2 = event.gest_pair
                     event2._id = -1
@@ -402,14 +417,14 @@ class MultiTouch(object):
             if ev_handler.widget == event.widget and ev_handler.tag == event.tag:
                 ev_handler.function(event)
                 event._type = MultitouchTypes.MULTI_MOTION
-        if try_single_touch and event._type in [MultitouchTypes.MULTI_PRESS, MultitouchTypes.GESTURE_PRESS]:
-            event._type = MultitouchTypes.SINGLE_MOTION
-            event.widget.event_generate("<ButtonPress-1>",
-                x=event.x,
-                y=event.y,
-                rootx=event.x_root,
-                rooty=event.y_root,
-                time=event.time)
+        if try_single_touch and event._type == MultitouchTypes.GESTURE_PRESS:
+                event._type = MultitouchTypes.SINGLE_MOTION
+                event.widget.event_generate("<ButtonPress-1>",
+                    x=event.x,
+                    y=event.y,
+                    rootx=event.x_root,
+                    rooty=event.y_root,
+                    time=event.time)
 
     def _on_gesture_start(self, event):
         """Handle 2 finger press as start of gesture"""
