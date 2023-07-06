@@ -179,9 +179,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			self.on_vertical_pinch(value)
 
 	def on_horizontal_drag(self, value):
-		offset = self.layer.controllers_dict['view offset'].value - int(self.duration * value / self.width / self.zoom)
+		offset = self.layer.controllers_dict['view offset'].value - self.duration * value / self.width / self.zoom
 		offset = max(0, offset)
-		offset = min(self.duration - self.duration // self.zoom, offset)
+		offset = min(self.duration - self.duration / self.zoom, offset)
 		self.layer.controllers_dict['view offset'].set_value(offset, False)
 		self.refresh_waveform = True
 
