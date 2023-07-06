@@ -164,11 +164,14 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.widget_canvas.bind("<Button-5>",self.cb_canvas_wheel)
 		self.zyngui.multitouch.tag_bind(self.widget_canvas, None, "gesture", self.on_gesture)
 
+
 	def show(self):
 		super().show()
 
+
 	def hide(self):
 		super().hide()
+
 
 	def on_gesture(self, type, value):
 		if type == MultitouchTypes.GESTURE_H_DRAG:
@@ -178,6 +181,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		elif type == MultitouchTypes.GESTURE_V_PINCH:
 			self.on_vertical_pinch(value)
 
+
 	def on_horizontal_drag(self, value):
 		offset = self.layer.controllers_dict['view offset'].value - self.duration * value / self.width / self.zoom
 		offset = max(0, offset)
@@ -185,10 +189,12 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.layer.controllers_dict['view offset'].set_value(offset, False)
 		self.refresh_waveform = True
 
+
 	def on_horizontal_pinch(self, value):
 		zctrl = self.layer.controllers_dict['zoom']
 		zctrl.set_value(zctrl.value + 4 * value / self.width * zctrl.value)
 		self.refresh_waveform = True
+
 
 	def on_vertical_pinch(self, value):
 		v_zoom = self.layer.controllers_dict['amp zoom'].value + value / self.height
@@ -217,6 +223,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.drag_marker = None
 		if event.y > 0.8 * self.height:
 			self.drag_marker = "view offset"
+			pos = self.duration * event.x / self.width
+			self.layer.controllers_dict[self.drag_marker].set_value(pos)
 		else:
 			for symbol in ['position', 'loop start', 'loop end', 'crop start', 'crop end']:
 				if abs(pos - self.layer.controllers_dict[symbol].value) < max_delta:
@@ -240,6 +248,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 	def get_player_index(self):
 		return self.layer.handle
+
 
 	def load_file(self):
 		self.info = None
