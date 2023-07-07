@@ -28,11 +28,14 @@ from threading import Thread
 import tkinter
 import logging
 import soundfile
+from math import modf, sqrt
+from os.path import basename
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_widget_base
 from zyngui import zynthian_gui_config
+from zyngui.multitouch import MultitouchTypes
 
 #------------------------------------------------------------------------------
 # Zynthian Widget Class for "zynaudioplayer"
@@ -54,6 +57,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.bg_color = "black"
 		self.waveform_color = "white"
 		self.zoom = 1
+		self.v_zoom = 1
 		self.refresh_waveform = False # True to force redraw of waveform on next refresh
 		self.offset = 0 # Frames from start of file that waveform display starts
 		self.channels = 0 # Quantity of channels in audio
@@ -61,6 +65,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.limit_factor = 1500000 # Used to limit the quantity of frames processed in large data sets
 		self.info = None
 		self.images=[]
+		self.zoom_height = 0.94 # ratio of height for y offset of zoom overview display
 
 		self.widget_canvas = tkinter.Canvas(self,
 			bd=0,
@@ -68,6 +73,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			relief='flat',
 			bg=zynthian_gui_config.color_bg)
 		self.widget_canvas.grid(sticky='news')
+
+		self.widget_canvas.bind('<ButtonPress-1>', self.on_canvas_press)
+		self.widget_canvas.bind('<B1-Motion>', self.on_canvas_drag)
 
 		self.loading_text = self.widget_canvas.create_text(
 			0,
@@ -115,8 +123,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			0,
 			0,
 			self.height,
-			fill="white",
-			stipple="gray25",
+			fill="black",
+			stipple="gray50",
 			tags="overlay"
 		)
 
@@ -125,8 +133,18 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			0,
 			self.width,
 			self.height,
-			fill="white",
-			stipple="gray25",
+			fill="black",
+			stipple="gray50",
+			tags="overlay"
+		)
+
+		self.zoom_rect = self.widget_canvas.create_rectangle(
+			0,
+			self.height,
+			self.width,
+			self.height,
+			width=0,
+			fill="dark grey",
 			tags="overlay"
 		)
 
@@ -144,6 +162,47 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		)
 		self.widget_canvas.bind("<Button-4>",self.cb_canvas_wheel)
 		self.widget_canvas.bind("<Button-5>",self.cb_canvas_wheel)
+		self.zyngui.multitouch.tag_bind(self.widget_canvas, None, "gesture", self.on_gesture)
+
+
+	def show(self):
+		super().show()
+
+
+	def hide(self):
+		super().hide()
+
+
+	def on_gesture(self, type, value):
+		if type == MultitouchTypes.GESTURE_H_DRAG:
+			self.on_horizontal_drag(value)
+		elif type == MultitouchTypes.GESTURE_H_PINCH:
+			self.on_horizontal_pinch(value)
+		elif type == MultitouchTypes.GESTURE_V_PINCH:
+			self.on_vertical_pinch(value)
+
+
+	def on_horizontal_drag(self, value):
+		offset = self.layer.controllers_dict['view offset'].value - self.duration * value / self.width / self.zoom
+		offset = max(0, offset)
+		offset = min(self.duration - self.duration / self.zoom, offset)
+		self.layer.controllers_dict['view offset'].set_value(offset, False)
+		self.refresh_waveform = True
+
+
+	def on_horizontal_pinch(self, value):
+		zctrl = self.layer.controllers_dict['zoom']
+		zctrl.set_value(zctrl.value + 4 * value / self.width * zctrl.value)
+		self.refresh_waveform = True
+
+
+	def on_vertical_pinch(self, value):
+		v_zoom = self.layer.controllers_dict['amp zoom'].value + value / self.height
+		v_zoom = min(v_zoom, 4.0)
+		v_zoom = max(v_zoom, 0.1)
+		self.layer.controllers_dict['amp zoom'].set_value(v_zoom)
+		self.refresh_waveform = True
+
 
 	def on_size(self, event):
 		if event.width == self.width and event.height == self.height:
@@ -157,12 +216,39 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.refresh_waveform = True
 
 
+	def on_canvas_press(self, event):
+		f = self.width / self.frames * self.zoom
+		pos = (event.x / f + self.offset) / self.samplerate
+		max_delta = 0.02 * self.duration / self.zoom
+		self.drag_marker = None
+		if event.y > 0.8 * self.height:
+			self.drag_marker = "view offset"
+			pos = self.duration * event.x / self.width
+			self.layer.controllers_dict[self.drag_marker].set_value(pos)
+		else:
+			for symbol in ['position', 'loop start', 'loop end', 'crop start', 'crop end']:
+				if abs(pos - self.layer.controllers_dict[symbol].value) < max_delta:
+					self.drag_marker = symbol
+					break
+
+
+	def on_canvas_drag(self, event):
+		if self.drag_marker:
+			if self.drag_marker == "view offset":
+				pos = self.duration * event.x / self.width
+			else:
+				f = self.width / self.frames * self.zoom
+				pos = (event.x / f + self.offset) / self.samplerate
+			self.layer.controllers_dict[self.drag_marker].set_value(pos)
+
+
 	def get_monitors(self):
 		self.monitors = self.layer.engine.get_monitors_dict(self.layer.handle)
 
 
 	def get_player_index(self):
 		return self.layer.handle
+
 
 	def load_file(self):
 		self.info = None
@@ -178,12 +264,13 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 					self.duration = self.frames / self.samplerate
 				else:
 					self.duration = 0.0
-			y0 = self.height // self.channels
+			y0 = self.zoom_height * self.height // self.channels
 			for chan in range(self.channels):
 				v_offset = chan * y0
 				self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=zynthian_gui_config.PAD_COLOUR_GROUP[chan // 2 % len(zynthian_gui_config.PAD_COLOUR_GROUP)], tags="waveform", state=tkinter.HIDDEN)
 				self.widget_canvas.create_line(0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags="waveform", state=tkinter.HIDDEN)
 				self.widget_canvas.create_line(0,0,0,0, fill=self.waveform_color, tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
+			self.widget_canvas.tag_raise("waveform")
 			self.widget_canvas.tag_raise("overlay")
 		except Exception as e:
 			logging.warning(e)
@@ -202,7 +289,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		
 		frames_per_pixel = length / self.width
 		step = frames_per_pixel / limit
-		y0 = self.height // self.channels
+		y0 = self.height * self.zoom_height // self.channels
 
 		for chan in range(self.channels):
 			pos = start
@@ -210,13 +297,26 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			v_offset = chan * y0
 			for x in range(self.width):
 				offset = pos
-				v1 = v2 = self.audio_data[int(offset)][chan]
+				if self.channels == 1:
+					v1 = v2 = self.audio_data[int(offset)]
+				else:
+					v1 = v2 = self.audio_data[int(offset)][chan]
 				while offset < pos + frames_per_pixel and offset < len(self.audio_data):
-					if v1 < self.audio_data[int(offset)][chan]:
-						v1 = self.audio_data[int(offset)][chan]
-					if v2 > self.audio_data[int(offset)][chan]:
-						v2 = self.audio_data[int(offset)][chan]
+					if self.channels == 1:
+						sample = self.audio_data[int(offset)]
+					else:
+						sample = self.audio_data[int(offset)][chan]
+					if v1 < sample:
+						v1 = sample
+					if v2 > sample:
+						v2 = sample
 					offset += step
+				v1 *= self.layer.controllers_dict['amp zoom'].value
+				v1 = min(1.0, v1)
+				v1 = max(-1.0, v1)
+				v2 *= self.layer.controllers_dict['amp zoom'].value
+				v2 = min(1.0, v2)
+				v2 = max(-1.0, v2)
 				y1 = v_offset + int((y0 * (1 + v1)) / 2)
 				y2 = v_offset + int((y0 * (1 + v2)) / 2)
 				data += [x, y1, x, y2]
@@ -230,6 +330,11 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			return
 		self.refreshing = True
 		try:
+			if self.v_zoom != self.layer.controllers_dict['amp zoom'].value:
+				self.v_zoom = self.layer.controllers_dict['amp zoom'].value
+				self.refresh_waveform = True
+
+
 			if self.filename != self.monitors["filename"] or self.frames != self.frames:
 				self.filename = self.monitors["filename"]
 				waveform_thread = Thread(target=self.load_file, name="waveform image")
@@ -240,18 +345,19 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.refreshing = False
 				return
 
-			offset = self.offset
 			refresh_markers = False
-			loop_start = int(self.samplerate * self.monitors["loop start"])
-			loop_end = int(self.samplerate * self.monitors["loop end"])
-			crop_start = int(self.samplerate * self.monitors["crop start"])
-			crop_end = int(self.samplerate * self.monitors["crop end"])
-			pos_time = self.monitors["pos"]
+			loop_start = int(self.samplerate * self.layer.controllers_dict['loop start'].value)
+			loop_end = int(self.samplerate * self.layer.controllers_dict['loop end'].value)
+			crop_start = int(self.samplerate * self.layer.controllers_dict['crop start'].value)
+			crop_end = int(self.samplerate * self.layer.controllers_dict['crop end'].value)
+			pos_time = self.layer.controllers_dict['position'].value
 			pos = int(pos_time * self.samplerate)
+			refresh_info = False
 
-			if self.zoom != self.monitors["zoom"]:
+			offset = int(self.samplerate * self.layer.controllers_dict['view offset'].value)
+			if self.zoom != self.layer.controllers_dict['zoom'].value:
 				centre = offset + 0.5 * self.frames / self.zoom
-				self.zoom = self.monitors["zoom"]
+				self.zoom = self.layer.controllers_dict['zoom'].value
 				offset = int(centre - 0.5 * self.frames / self.zoom)
 				self.refresh_waveform = True
 
@@ -283,10 +389,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.play_pos = pos
 				if pos < offset  or pos > offset + self.frames // self.zoom:
 					offset = max(0, pos)
-				if self.info == 1:
-					self.widget_canvas.itemconfigure(self.info_text, text=f"{int(pos_time / 60):02d}:{int(pos_time % 60):02d}")
-				elif self.info == 2:
-					self.widget_canvas.itemconfigure(self.info_text, text=f"{int((self.duration - pos_time) / 60):02d}:{int((self.duration - pos_time) % 60):02d}")
 				refresh_markers = True
 
 			offset = max(0, offset)
@@ -300,30 +402,48 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				refresh_markers = True
 
 			if refresh_markers:
+				h = int(self.zoom_height * self.height)
 				f = self.width / self.frames * self.zoom
 				x = int(f * (self.loop_start - self.offset))
-				self.widget_canvas.coords(self.loop_start_line, x, 0, x, self.height)
+				self.widget_canvas.coords(self.loop_start_line, x, 0, x, h)
 				x = int(f * (self.loop_end - self.offset))
-				self.widget_canvas.coords(self.loop_end_line, x, 0, x, self.height)
+				self.widget_canvas.coords(self.loop_end_line, x, 0, x, h)
 				x = int(f * (self.crop_start - self.offset))
-				self.widget_canvas.coords(self.crop_start_rect, 0, 0, x, self.height)
+				self.widget_canvas.coords(self.crop_start_rect, 0, 0, x, h)
 				x = int(f * (self.crop_end - self.offset))
-				self.widget_canvas.coords(self.crop_end_rect, x, 0, self.width, self.height)
+				self.widget_canvas.coords(self.crop_end_rect, x, 0, self.width, h)
 				x = int(f * (pos - self.offset))
-				self.widget_canvas.coords(self.play_line, x, 0, x, self.height)
+				self.widget_canvas.coords(self.play_line, x, 0, x, h)
+				refresh_info = True
 
-			if self.monitors["info"] != self.info:
+
+			if self.info != self.layer.controllers_dict['info'].value:
 				self.widget_canvas.itemconfig("waveform", state=tkinter.NORMAL)
 				self.widget_canvas.itemconfig("overlay", state=tkinter.NORMAL)
-				self.info = self.monitors["info"]
-				if self.info == 0:
-					self.widget_canvas.itemconfigure(self.info_text, text=f"{int(self.duration / 60):02d}:{int(self.duration % 60):02d}", state=tkinter.NORMAL)
-				elif self.info == 1:
-					self.widget_canvas.itemconfigure(self.info_text, text=f"{int(pos_time / 60):02d}:{int(pos_time % 60):02d}", state=tkinter.NORMAL)
+				self.info = self.layer.controllers_dict['info'].value
+				refresh_info = True
+
+			if refresh_info:
+				zoom_offset = self.width * offset // self.frames
+				self.widget_canvas.coords(self.zoom_rect, zoom_offset, int(self.zoom_height * self.height), zoom_offset + max(1, self.width // self.zoom), self.height)
+				if self.info == 1:
+					time = (self.crop_end - self.crop_start) / self.samplerate
+					self.widget_canvas.itemconfigure(self.info_text, text=f"Duration: {self.format_time(time)}", state=tkinter.NORMAL)
 				elif self.info == 2:
-					self.widget_canvas.itemconfigure(self.info_text, text=f"{int((self.duration - pos_time) / 60):02d}:{int((self.duration - pos_time) % 60):02d}", state=tkinter.NORMAL)
+					time = max(0, pos - self.crop_start) / self.samplerate
+					self.widget_canvas.itemconfigure(self.info_text, text=f"Position: {self.format_time(time)}", state=tkinter.NORMAL)
 				elif self.info == 3:
-					self.widget_canvas.itemconfig(self.info_text, text=f"{self.samplerate}", state=tkinter.NORMAL)
+					time = max(0, self.crop_end - pos) / self.samplerate
+					self.widget_canvas.itemconfigure(self.info_text, text=f"Remaining: {self.format_time(time)}", state=tkinter.NORMAL)
+				elif self.info == 4:
+					time = (self.loop_end - self.loop_start) / self.samplerate
+					self.widget_canvas.itemconfigure(self.info_text, text=f"Loop length: {self.format_time(time)}", state=tkinter.NORMAL)
+				elif self.info == 5:
+					self.widget_canvas.itemconfig(self.info_text, text=f"Samplerate: {self.samplerate}", state=tkinter.NORMAL)
+				elif self.info == 6:
+					self.widget_canvas.itemconfig(self.info_text, text=f"CODEC: {self.monitors['codec']}", state=tkinter.NORMAL)
+				elif self.info == 7:
+					self.widget_canvas.itemconfig(self.info_text, text=f"Filename: {basename(self.filename)}", state=tkinter.NORMAL)
 				else:
 					self.widget_canvas.itemconfig(self.info_text, state=tkinter.HIDDEN)
 
@@ -331,6 +451,10 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			logging.error(e)
 		
 		self.refreshing = False
+
+
+	def format_time(self, time):
+		return f"{int(time / 60):02d}:{int(time % 60):02d}.{int(modf(time)[0] * 1000):03}"
 
 
 	def cb_canvas_wheel(self, event):

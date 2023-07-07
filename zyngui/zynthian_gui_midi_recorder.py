@@ -286,7 +286,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			logging.info("STOPPING MIDI RECORDING ...")
 			libsmf.stopRecording()
 			exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
-			if exdirs is not None:
+			if exdirs:
 				filename = "{}/{}".format(exdirs[0], self.get_new_filename())
 			else:
 				filename = "{}/{}".format(self.capture_dir_sdc, self.get_new_filename())

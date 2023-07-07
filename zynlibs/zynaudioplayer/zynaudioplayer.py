@@ -62,19 +62,22 @@ class zynaudioplayer():
 			self.libaudioplayer.get_file_info.restype = ctypes.c_char_p
 			self.libaudioplayer.get_filename.restype = ctypes.c_char_p
 			self.libaudioplayer.get_supported_codecs.restype = ctypes.c_char_p
+			self.libaudioplayer.get_codec.restype = ctypes.c_char_p
 			self.libaudioplayer.get_jack_client_name.restype = ctypes.c_char_p
 			self.libaudioplayer.get_gain.restype = ctypes.c_float
-			self.libaudioplayer.set_gain.argtypes = [ctypes.c_int, ctypes.c_float]
-			self.libaudioplayer.set_position.argtypes = [ctypes.c_int, ctypes.c_float]
-			self.libaudioplayer.set_loop_start_time.argtypes = [ctypes.c_int, ctypes.c_float]
-			self.libaudioplayer.set_loop_end_time.argtypes = [ctypes.c_int, ctypes.c_float]
-			self.libaudioplayer.set_crop_start_time.argtypes = [ctypes.c_int, ctypes.c_float]
-			self.libaudioplayer.set_crop_end_time.argtypes = [ctypes.c_int, ctypes.c_float]
-			self.libaudioplayer.set_pos_notify_delta.argtypes = [ctypes.c_int, ctypes.c_float]
-			self.libaudioplayer.set_env_attack.argtypes = [ctypes.c_int, ctypes.c_float]
-			self.libaudioplayer.set_env_decay.argtypes = [ctypes.c_int, ctypes.c_float]
-			self.libaudioplayer.set_env_sustain.argtypes = [ctypes.c_int, ctypes.c_float]
-			self.libaudioplayer.set_env_release.argtypes = [ctypes.c_int, ctypes.c_float]
+			self.libaudioplayer.add_player.restype = ctypes.c_uint32
+			self.libaudioplayer.set_gain.argtypes = [ctypes.c_uint32, ctypes.c_float]
+			self.libaudioplayer.set_position.argtypes = [ctypes.c_uint32, ctypes.c_float]
+			self.libaudioplayer.set_loop_start_time.argtypes = [ctypes.c_uint32, ctypes.c_float]
+			self.libaudioplayer.set_loop_end_time.argtypes = [ctypes.c_uint32, ctypes.c_float]
+			self.libaudioplayer.set_crop_start_time.argtypes = [ctypes.c_uint32, ctypes.c_float]
+			self.libaudioplayer.set_crop_end_time.argtypes = [ctypes.c_uint32, ctypes.c_float]
+			self.libaudioplayer.set_pos_notify_delta.argtypes = [ctypes.c_uint32, ctypes.c_float]
+			self.libaudioplayer.set_env_attack.argtypes = [ctypes.c_uint32, ctypes.c_float]
+			self.libaudioplayer.set_env_decay.argtypes = [ctypes.c_uint32, ctypes.c_float]
+			self.libaudioplayer.set_env_sustain.argtypes = [ctypes.c_uint32, ctypes.c_float]
+			self.libaudioplayer.set_env_release.argtypes = [ctypes.c_uint32, ctypes.c_float]
+			self.libaudioplayer.set_env_release.argtypes = [ctypes.c_uint32, ctypes.c_float]
 			self.control_cb = None
 		except Exception as e:
 			self.libaudioplayer=None
@@ -117,11 +120,18 @@ class zynaudioplayer():
 		return self.libaudioplayer.remove_player(handle)
 
 
-	#	Set a player's MIDI channe;
+	#	Set a player's MIDI channel;
 	#	handle: Index of player
 	#	midi_chan: MIDI channel (0..15 or other value to disable MIDI)
 	def set_midi_chan(self, handle, midi_chan):
 		self.libaudioplayer.set_midi_chan(handle, midi_chan)
+
+
+	#	Get a player's index;
+	#	handle: Index of player
+	#	Returns: Index
+	def get_index(self, handle):
+		return self.libaudioplayer.get_index(handle)
 
 
 	#	Load an audio file
@@ -140,10 +150,9 @@ class zynaudioplayer():
 
 	def set_control_cb(self, cb):
 		self.control_cb = cb
-		#TODO: Does this need to be a set of 17?
 
 
-	@ctypes.CFUNCTYPE(None, ctypes.py_object, ctypes.c_int, ctypes.c_int, ctypes.c_float)
+	@ctypes.CFUNCTYPE(None, ctypes.py_object, ctypes.c_uint32, ctypes.c_int, ctypes.c_float)
 	def value_cb(self, handle, type, value):
 		if self.control_cb:
 			self.control_cb(handle, type, value)
@@ -275,9 +284,16 @@ class zynaudioplayer():
 
  	#	Get samplerate of loaded file
 	#	handle: Index of player
-	#	Returns:Samplerate of loaded file
+	#	Returns: Samplerate of loaded file
 	def get_samplerate(self, handle):
 		return self.libaudioplayer.get_samplerate(handle)
+
+
+	#	Get CODEC of loaded file
+	#	handle: Index of player
+	#	Returns: Name of CODEC (WAV|FLAC|OGG|MP3)
+	def get_codec(self, handle):
+		return self.libaudioplayer.get_codec(handle).decode("utf-8")
 
 
  	#	Get quantity of channels in loaded file

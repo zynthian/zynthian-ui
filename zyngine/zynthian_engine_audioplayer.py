@@ -78,10 +78,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['attack', None, 0.1, 20.0],
 			['decay', None, 0.1, 20.0],
 			['sustain', None, 0.8, 1.0],
-			['release', None, 0.1,20.0],
+			['release', None, 0.1, 20.0],
 			['zoom', None, 1, ["x1"],[1]],
-			['info', None, 0, ["Length", "Play Time", "Remaining", "Samplerate", "None"]],
+			['info', None, 1, ["None", "Duration", "Position", "Remaining", "Loop length", "Samplerate", "CODEC", "Filename"]],
 			['bend range', None, 2, 24],
+			['view offset', None, 0, 1],
+			['amp zoom', None, 1.0, 4.0]
 		]
 
 		# Controller Screens
@@ -89,22 +91,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['main', ['record', 'gain']],
 		]
 
-		self.monitors_dict = []
-		for chan in range(17):
-			self.monitors_dict.append(OrderedDict())
-			self.monitors_dict[chan]["state"] = 0
-			self.monitors_dict[chan]["pos"] = 0
-			self.monitors_dict[chan]["frames"] = 0
-			self.monitors_dict[chan]["channels"] = 0
-			self.monitors_dict[chan]["samplerate"] = 44100
-			self.monitors_dict[chan]["filename"] = ""
-			self.monitors_dict[chan]["loop start"] = 0
-			self.monitors_dict[chan]["loop end"] = 0
-			self.monitors_dict[chan]["crop start"] = 0
-			self.monitors_dict[chan]["crop end"] = 0
-			self.monitors_dict[chan]["zoom"] = 1
-			self.monitors_dict[chan]["info"] = 0
-
+		self.monitors_dict = {}
 		self.reset()
 
 
@@ -115,8 +102,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	def start(self):
 		self.player = zynaudioplayer.zynaudioplayer(self.jackname)
 		self.jackname = self.player.get_jack_client_name()
-		self.player.set_control_cb(self.control_cb)
 		self.file_exts = self.get_file_exts()
+		self.player.set_control_cb(self.control_cb)
 
 
 	def stop(self):
@@ -133,12 +120,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 	def add_layer(self, layer):
 		handle = self.player.add_player()
-		if handle < 0:
+		if handle == 0:
 			return
 		self.layers.append(layer)
 		layer.handle = handle
 		layer.jackname = self.jackname
-		layer.jackname = "{}:out_{:02d}(a|b)".format(self.jackname, handle + 1)
+		layer.jackname = "{}:out_{:02d}(a|b)".format(self.jackname, self.player.get_index(handle))
 		self.set_midi_chan(layer)
 
 
@@ -170,21 +157,19 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					banks.append([walk[0] + "/" + dir, None, "  " + dir, None])
 					break
 
-		exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
-		if exdirs is not None:
-			for exd in exdirs:
-				dname = os.path.basename(exd)
-				for ext in self.file_exts:
-					if glob(exd + "/*." + ext) or glob(exd + "/*/*." + ext):
-						banks.append([exd, None, "USB> {}".format(dname), None])
-						walk = next(os.walk(exd))
-						walk[1].sort()
-						for dir in walk[1]:
-							for ext in self.file_exts:
-								if glob(walk[0] + "/" + dir + "/*." + ext):
-									banks.append([walk[0] + "/" + dir, None, "  " + dir, None])
-									break
-						break
+		for exd in zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
+			dname = os.path.basename(exd)
+			for ext in self.file_exts:
+				if glob(exd + "/*." + ext) or glob(exd + "/*/*." + ext):
+					banks.append([exd, None, "USB> {}".format(dname), None])
+					walk = next(os.walk(exd))
+					walk[1].sort()
+					for dir in walk[1]:
+						for ext in self.file_exts:
+							if glob(walk[0] + "/" + dir + "/*." + ext):
+								banks.append([walk[0] + "/" + dir, None, "  " + dir, None])
+								break
+					break
 
 		return banks
 
@@ -222,6 +207,16 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			return False
 
 		good_file = self.player.load(layer.handle, preset[0])
+
+		self.monitors_dict[layer.handle] = OrderedDict()
+		self.monitors_dict[layer.handle]["filename"] = ""
+		self.monitors_dict[layer.handle]["info"] = 0
+		self.monitors_dict[layer.handle]['filename'] = self.player.get_filename(layer.handle)
+		self.monitors_dict[layer.handle]['frames'] = self.player.get_frames(layer.handle)
+		self.monitors_dict[layer.handle]['channels'] = self.player.get_frames(layer.handle)
+		self.monitors_dict[layer.handle]['samplerate'] = self.player.get_samplerate(layer.handle)
+		self.monitors_dict[layer.handle]['codec'] = self.player.get_codec(layer.handle)
+
 		dur = self.player.get_duration(layer.handle)
 		self.player.set_position(layer.handle, 0)
 		if self.player.is_loop(layer.handle):
@@ -270,8 +265,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['main', ['record', 'transport', 'position', 'gain']],
 				['crop', ['crop start', 'crop end', 'position', 'zoom']],
 				['loop', ['loop start', 'loop end', 'loop', 'zoom']],
-				['config', ['left track', 'right track', 'bend range', 'damper']],
-				['info', ['info', None, None, None]]
+				['config', ['left track', 'right track', 'bend range', 'sustain pedal']],
+				['info', ['info', 'zoom range', 'amp zoom', 'view offset']]
 			]
 			if layer.handle == self.zyngui.audio_player.handle:
 				self._ctrl_screens[3][1][2] = None
@@ -297,10 +292,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['crop start', None, 0.0, dur],
 			['crop end', None, dur, dur],
 			['zoom', None, 1, [zoom_labels, zoom_values]],
-			['info', None, 0, ["Length", "Play Time", "Remaining", "Samplerate", "None"]],
+			['zoom range', None, 0, ["User", "File", "Crop", "Loop"]],
+			['info', None, 1, ["None", "Duration", "Position", "Remaining", "Loop length", "Samplerate", "CODEC", "Filename"]],
+			['view offset', None, 0, dur],
+			['amp zoom', None, 1.0, 4.0]
 		]
 		if layer.handle != self.zyngui.audio_player.handle:
-			self._ctrls += [['damper', 64, 'off', ['off', 'on']],
+			self._ctrls += [['sustain pedal', 64, 'off', ['off', 'on']],
 						['bend range', None, bend_range, 24],
 						['attack', None, attack, 20.0],
 						['decay', None, decay, 20.0],
@@ -310,11 +308,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		layer.refresh_controllers()
 		self.player.set_track_a(layer.handle, default_a)
 		self.player.set_track_b(layer.handle, default_b)
-		self.monitors_dict[layer.handle]['filename'] = self.player.get_filename(layer.handle)
-		self.monitors_dict[layer.handle]['frames'] = self.player.get_frames(layer.handle)
-		self.monitors_dict[layer.handle]['channels'] = self.player.get_frames(layer.handle)
-		self.monitors_dict[layer.handle]['samplerate'] = self.player.get_samplerate(layer.handle)
-		self.monitors_dict[layer.handle]['zoom'] = 1
+
 		return True
 
 
@@ -371,7 +365,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 							layer.status = ""
 					elif id == 2:
 						ctrl_dict['position'].set_value(value, False)
-						self.monitors_dict[handle]['pos'] = value
 					elif id == 3:
 						ctrl_dict['gain'].set_value(value, False)
 					elif id == 4:
@@ -382,18 +375,14 @@ class zynthian_engine_audioplayer(zynthian_engine):
 						ctrl_dict['right track'].set_value(int(value), False)
 					elif id == 11:
 						ctrl_dict['loop start'].set_value(value, False)
-						self.monitors_dict[handle]['loop start'] = value
 					elif id == 12:
 						ctrl_dict['loop end'].set_value(value, False)
-						self.monitors_dict[handle]['loop end'] = value
 					elif id == 13:
 						ctrl_dict['crop start'].set_value(value, False)
-						self.monitors_dict[handle]['crop start'] = value
 					elif id == 14:
 						ctrl_dict['crop end'].set_value(value, False)
-						self.monitors_dict[handle]['crop end'] = value
 					elif id == 15:
-						ctrl_dict['damper'].set_value(value, False)
+						ctrl_dict['sustain pedal'].set_value(value, False)
 					elif id == 16:
 						ctrl_dict['attack'].set_value(value, False)
 					elif id == 17:
@@ -411,6 +400,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		handle = zctrl.handle
 		if zctrl.symbol == "position":
 			self.player.set_position(handle, zctrl.value)
+			self.monitors_dict[handle]['offset'] = None
 		elif zctrl.symbol == "gain":
 			self.player.set_gain(handle, zctrl.value)
 		elif zctrl.symbol == "loop":
@@ -439,19 +429,42 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.player.set_crop_end(handle, zctrl.value)
 		elif zctrl.symbol == "bend range":
 			self.player.set_pitchbend_range(handle, zctrl.value)
-		elif zctrl.symbol == "damper":
+		elif zctrl.symbol == "sustain pedal":
 			self.player.set_damper(handle, zctrl.value)
 		elif zctrl.symbol == "zoom":
 			self.monitors_dict[handle]['zoom'] = zctrl.value
 			for layer in self.layers:
 				if layer.handle == handle:
+					layer.controllers_dict['zoom range'].set_value(0)
 					pos_zctrl = layer.controllers_dict['position']
 					pos_zctrl.nudge_factor = pos_zctrl.value_max / 400 / zctrl.value
 					layer.controllers_dict['loop start'].nudge_factor = pos_zctrl.nudge_factor
 					layer.controllers_dict['loop end'].nudge_factor = pos_zctrl.nudge_factor
 					layer.controllers_dict['crop start'].nudge_factor = pos_zctrl.nudge_factor
 					layer.controllers_dict['crop end'].nudge_factor = pos_zctrl.nudge_factor
+					self.monitors_dict[handle]['offset'] = None
 					return
+		elif zctrl.symbol == "zoom range":
+			for layer in self.layers:
+				if layer.handle == handle:
+					if zctrl.value == 1:
+						# Show whole file
+						layer.controllers_dict['zoom'].set_value(1, False)
+						layer.controllers_dict['view offset'].set_value(0)
+						range = self.player.get_duration(handle)
+					elif zctrl.value == 2:
+						# Show cropped region
+						start = self.player.get_crop_start(handle)
+						range = self.player.get_crop_end(handle) - start
+						layer.controllers_dict['view offset'].set_value(start)
+						layer.controllers_dict['zoom'].set_value(self.player.get_duration(handle) / range, False)
+					elif zctrl.value == 3:
+						# Show loop region
+						start = self.player.get_loop_start(handle)
+						range = self.player.get_loop_end(handle) - start
+						layer.controllers_dict['view offset'].set_value(start)
+						layer.controllers_dict['zoom'].set_value(self.player.get_duration(handle) / range, False)
+
 		elif zctrl.symbol == "info":
 			self.monitors_dict[handle]['info'] = zctrl.value
 		elif zctrl.symbol == "attack":
