@@ -284,6 +284,8 @@ class MultiTouch(object):
                 event.offset_y = event.widget.winfo_rooty()
                 event.start_x = event.x
                 event.start_y = event.y
+                event.last_x = event.x
+                event.last_y = event.y
 
                 if self._g_pending:
                     # There is an existing touch event pending gesture detection 
@@ -315,13 +317,13 @@ class MultiTouch(object):
                         ev_handler.function(event)
 
             elif event._type == MultitouchTypes.GESTURE_MOTION:
-                if abs(event.x - event.start_x) + abs(event.gest_pair.x - event.gest_pair.start_x) > 40:
-                    if abs(abs(event.x - event.gest_pair.x) - abs(event.start_x - event.gest_pair.start_x)) > 30:
+                if abs(event.x - event.start_x) + abs(event.gest_pair.x - event.gest_pair.start_x) > 10:
+                    if abs(abs(event.x - event.gest_pair.x) - abs(event.start_x - event.gest_pair.start_x)) > 13:
                         event._type = event.gest_pair._type = MultitouchTypes.GESTURE_H_PINCH
                     else:
                         event._type = event.gest_pair._type = MultitouchTypes.GESTURE_H_DRAG
-                elif abs(event.y - event.start_y) + abs(event.gest_pair.y - event.gest_pair.start_y) > 40:
-                    if abs(abs(event.y - event.gest_pair.y) - abs(event.start_y - event.gest_pair.start_y)) > 30:
+                elif abs(event.y - event.start_y) + abs(event.gest_pair.y - event.gest_pair.start_y) > 10:
+                    if abs(abs(event.y - event.gest_pair.y) - abs(event.start_y - event.gest_pair.start_y)) > 13:
                         event._type = event.gest_pair._type = MultitouchTypes.GESTURE_V_PINCH
                     else:
                         event._type = event.gest_pair._type = MultitouchTypes.GESTURE_V_DRAG
