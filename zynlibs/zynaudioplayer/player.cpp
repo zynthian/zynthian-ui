@@ -445,6 +445,7 @@ void unload(AUDIO_PLAYER * pPlayer) {
         return;
     stop_playback(pPlayer);
     pPlayer->file_open = FILE_CLOSED;
+    pthread_join(pPlayer->file_thread, NULL);
 }
 
 uint8_t save(AUDIO_PLAYER * pPlayer, const char* filename) {
