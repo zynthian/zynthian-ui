@@ -710,6 +710,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	def remove_event(self, col, sequence, track):
 		time = col * self.clocks_per_division
 		self.zyngui.zynseq.remove_pattern(self.zyngui.zynseq.bank, sequence, track, time)
+		self.redraw_pending = 2
 
 
 	# Function to add an event
