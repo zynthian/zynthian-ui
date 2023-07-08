@@ -554,6 +554,7 @@ class zynthian_gui:
 		zynautoconnect.stop()
 		self.screens['layer'].reset()
 		self.screens['midi_recorder'].stop_playing() # Need to stop timing thread
+		self.multitouch.stop()
 		self.zynseq.transport_stop("ALL")
 
 
