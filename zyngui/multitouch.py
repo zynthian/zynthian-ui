@@ -103,6 +103,8 @@ class Touch(object):
             else:
                 self._type = MultitouchTypes.MULTI_PRESS
                 self._id = id
+                self.start_x = self.x
+                self.start_y = self.y
                 return 1
         return 0
     
@@ -285,8 +287,6 @@ class MultiTouch(object):
                 event.widget = zynthian_gui_config.top.winfo_containing(event.x_root, event.y_root)
                 event.offset_x = event.widget.winfo_rootx() #TODO: Is this offset from root or just parent?
                 event.offset_y = event.widget.winfo_rooty()
-                event.start_x = event.x
-                event.start_y = event.y
                 event.last_x = event.x
                 event.last_y = event.y
 
@@ -320,17 +320,20 @@ class MultiTouch(object):
                         ev_handler.function(event)
 
             elif event._type == MultitouchTypes.GESTURE_MOTION:
-                if abs(event.x - event.start_x) + abs(event.gest_pair.x - event.gest_pair.start_x) > 10:
-                    if abs(abs(event.x - event.gest_pair.x) - abs(event.start_x - event.gest_pair.start_x)) > 12:
+                dx1 = event.x - event.start_x
+                dx2 = event.gest_pair.x - event.gest_pair.start_x
+                dy1 = event.y - event.start_y
+                dy2 = event.gest_pair.y - event.gest_pair.start_y
+                if abs(dx1) > 2 and abs(dx2) > 2:
+                    if dx1 ^ dx2 < 0:
                         event._type = event.gest_pair._type = MultitouchTypes.GESTURE_H_PINCH
                     else:
                         event._type = event.gest_pair._type = MultitouchTypes.GESTURE_H_DRAG
-                elif abs(event.y - event.start_y) + abs(event.gest_pair.y - event.gest_pair.start_y) > 10:
-                    if abs(abs(event.y - event.gest_pair.y) - abs(event.start_y - event.gest_pair.start_y)) > 12:
+                elif abs(dy1) > 2 and abs(dy2) > 2:
+                    if dy1 ^ dy2 < 0:
                         event._type = event.gest_pair._type = MultitouchTypes.GESTURE_V_PINCH
                     else:
                         event._type = event.gest_pair._type = MultitouchTypes.GESTURE_V_DRAG
-
             
             elif event._type == MultitouchTypes.GESTURE_RELEASE:
                 if self._g_pending:
@@ -412,6 +415,8 @@ class MultiTouch(object):
         """Handle timeout of initial touch when no other touch event has occured, i.e. no gesture"""
 
         zynthian_gui_config.top.after_cancel(self._g_timeout)
+        if self._g_pending is None:
+            return
         event = self._g_pending
         self._g_pending = None
         try:
@@ -447,6 +452,8 @@ class MultiTouch(object):
                 # Set start points again in case of movement before second touch
                 self._g_pending.start_x = self._g_pending.x
                 self._g_pending.start_y = self._g_pending.y
+                event.start_x = event.x
+                event.start_y = event.y
                 self._g_pending = None
                 return True
         event._id = -1
