@@ -267,6 +267,7 @@ void* file_thread_fn(void * param) {
                 src_reset(pSrcState);
                 nUnusedFrames = 0;
                 srcData.end_of_input = 0;
+                pPlayer->stretcher->reset();
             } else if(pPlayer->file_read_status == LOOPING) {
                 // Reached loop end point and need to read from loop start point
                 sf_count_t pos = sf_seek(pFile, pPlayer->loop_start, SEEK_SET);
@@ -928,6 +929,9 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         // Silence remainder of frame
         memset(pOutA + a_count, 0, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
         memset(pOutB + a_count, 0, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
+        if(pPlayer->env_state != ENV_IDLE)
+            for(int i = 0; i < nFrames-a_count; ++i)
+                process_env(pPlayer);
     }
 
     // Process MIDI input

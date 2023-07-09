@@ -273,10 +273,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.monitors = self.layer.engine.get_monitors_dict(self.layer.handle)
 
 
-	def get_player_index(self):
-		return self.layer.handle
-
-
 	def load_file(self):
 		self.info = None
 		self.widget_canvas.delete("waveform")
@@ -525,23 +521,20 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 
 	def cuia_stop(self):
-		i = self.get_player_index()
-		self.layer.engine.player.stop_playback(i)
-		self.layer.engine.player.set_position(i, 0.0)
+		self.layer.engine.player.stop_playback(self.layer.handle)
+		self.layer.engine.player.set_position(self.layer.handle, 0.0)
 
 
 	def cuia_toggle_play(self):
-		i = self.get_player_index()
-		if self.layer.engine.player.get_playback_state(i):
-			self.layer.engine.player.stop_playback(i)
+		if self.layer.engine.player.get_playback_state(self.layer.handle):
+			self.layer.engine.player.stop_playback(self.layer.handle)
 		else:
-			self.layer.engine.player.start_playback(i)
+			self.layer.engine.player.start_playback(self.layer.handle)
 
 
 	def update_wsleds(self, wsleds):
 		wsl = self.zyngui.wsleds
-		i = self.get_player_index()
-		if i == 16:
+		if self.layer.handle == self.zyngui.audio_player.handle:
 			color_default = wsl.wscolor_default
 		else:
 			color_default = wsl.wscolor_active2
@@ -553,7 +546,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		# STOP button
 		wsl.wsleds.setPixelColor(wsleds[1], color_default)
 		# PLAY button:
-		if self.layer.engine.player.get_playback_state(i):
+		if self.layer.engine.player.get_playback_state(self.layer.handle):
 			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_green)
 		else:
 			wsl.wsleds.setPixelColor(wsleds[2], color_default)
