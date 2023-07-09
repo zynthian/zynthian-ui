@@ -53,6 +53,7 @@ class AUDIO_PLAYER {
     uint8_t play_state = STOPPED; // Current playback state (STOPPED|STARTING|PLAYING|STOPPING)
     sf_count_t file_read_pos = 0; // Current file read position (frames)
     uint8_t loop = 0; // 1 to loop at end of song
+    bool looped = false; // True if started playing a loop (not first time)
     sf_count_t loop_start = 0; // Start of loop in frames from start of file
     sf_count_t loop_start_src = -1; // Start of loop in frames from start after SRC
     sf_count_t loop_end; // End of loop in frames from start of file

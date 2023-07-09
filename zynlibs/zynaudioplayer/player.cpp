@@ -263,6 +263,7 @@ void* file_thread_fn(void * param) {
                     pPlayer->file_read_pos = pos;
                 //DPRINTF("Seeking to %u frames (%fs) src ratio=%f\n", nNewPos, get_position(pPlayer), srcData.src_ratio);
                 pPlayer->file_read_status = LOADING;
+                pPlayer->looped = false;
                 releaseMutex();
                 src_reset(pSrcState);
                 nUnusedFrames = 0;
@@ -275,6 +276,7 @@ void* file_thread_fn(void * param) {
                 if(pos >= 0)
                     pPlayer->file_read_pos = pos;
                 pPlayer->file_read_status = LOADING;
+                pPlayer->looped = true;
                 releaseMutex();
                 src_reset(pSrcState);
                 srcData.end_of_input = 0;
@@ -513,15 +515,8 @@ void set_loop_start_time(AUDIO_PLAYER * pPlayer, float time) {
     getMutex();
     pPlayer->loop_start = frames;
     pPlayer->loop_start_src = pPlayer->loop_start * pPlayer->src_ratio;
-    if(pPlayer->loop) {
-        if(pPlayer->play_pos_frames < frames) {
-            releaseMutex();
-            set_position(pPlayer, time);
-            return;
-        }
-        else
-            pPlayer->file_read_status = SEEKING;
-    }
+    if(pPlayer->loop && pPlayer->looped)
+        pPlayer->file_read_status = SEEKING;
     releaseMutex();
 }
 
@@ -542,11 +537,8 @@ void set_loop_end_time(AUDIO_PLAYER * pPlayer, float time) {
     getMutex();
     pPlayer->loop_end = frames;
     pPlayer->loop_end_src = pPlayer->loop_end * pPlayer->src_ratio;
-    if(pPlayer->loop) {
-        if(pPlayer->play_pos_frames > pPlayer->loop_end_src)
-            pPlayer->play_pos_frames = pPlayer->loop_end_src;
+    if(pPlayer->loop && pPlayer->looped)
         pPlayer->file_read_status = SEEKING;
-    }
     releaseMutex();
 }
 
@@ -606,9 +598,11 @@ void set_crop_end_time(AUDIO_PLAYER * pPlayer, float time) {
         pPlayer->crop_end_src = pPlayer->frames;
         pPlayer->crop_end = pPlayer->frames / pPlayer->src_ratio;
     }
-    if(pPlayer->play_pos_frames > pPlayer->crop_end_src)
-            pPlayer->play_pos_frames = pPlayer->crop_end_src;
+    if(pPlayer->play_pos_frames > pPlayer->crop_end_src) {
+        pPlayer->play_pos_frames = pPlayer->crop_end_src;
         pPlayer->file_read_status = SEEKING;
+    } else
+        pPlayer->file_read_status = WAITING;
     releaseMutex();
 }
 
@@ -932,6 +926,11 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         if(pPlayer->env_state != ENV_IDLE)
             for(int i = 0; i < nFrames-a_count; ++i)
                 process_env(pPlayer);
+
+        if(pPlayer->play_pos_frames > pPlayer->crop_end_src) {
+            pPlayer->play_pos_frames = pPlayer->crop_end_src;
+            pPlayer->file_read_status = SEEKING;
+        }
     }
 
     // Process MIDI input
