@@ -343,6 +343,18 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	def is_preset_user(self, preset):
 		return True
 
+
+	def load_latest(self, layer):
+		list_of_wavs = glob(os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture/*.wav")
+		dirs = zynthian_gui_config.get_external_storage_dirs(os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root"))
+		for dir in dirs:
+			list_of_wavs += glob(f"{dir}/*.wav")
+
+		if list_of_wavs:
+			latest_file = max(list_of_wavs, key=os.path.getctime)
+			self.set_preset(layer, [latest_file])
+
+
 	#----------------------------------------------------------------------------
 	# Controllers Management
 	#----------------------------------------------------------------------------

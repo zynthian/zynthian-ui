@@ -693,7 +693,7 @@ class zynthian_engine(zynthian_basic_engine):
 				logging.warning("Can't unlearn => {}".format(e))
 
 
-	def set_midi_learn(self, zctrl ,chan, cc):
+	def set_midi_learn(self, zctrl, chan, cc):
 		try:
 			# Clean implied CC bindings if any ...
 			try:
