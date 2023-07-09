@@ -30,6 +30,7 @@ import logging
 import soundfile
 from math import modf, sqrt
 from os.path import basename
+from collections import OrderedDict
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -66,6 +67,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.info = None
 		self.images=[]
 		self.zoom_height = 0.94 # ratio of height for y offset of zoom overview display
+		self.tap_time = 0
 
 		self.widget_canvas = tkinter.Canvas(self,
 			bd=0,
@@ -217,6 +219,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 
 	def on_canvas_press(self, event):
+		if self.frames == 0:
+			return
 		f = self.width / self.frames * self.zoom
 		pos = (event.x / f + self.offset) / self.samplerate
 		max_delta = 0.02 * self.duration / self.zoom
@@ -225,15 +229,38 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			self.drag_marker = "view offset"
 			pos = self.duration * event.x / self.width
 			self.layer.controllers_dict[self.drag_marker].set_value(pos)
+			return
+		elif event.time - self.tap_time < 200:
+			if pos > self.layer.controllers_dict['loop end'].value:
+				self.drag_marker = 'loop end'
+				self.on_canvas_drag(event)
+			elif pos < self.layer.controllers_dict['loop start'].value:
+				self.drag_marker = 'loop start'
+				self.on_canvas_drag(event)
+			else:
+				self.on_canvas_double_tap(event)
 		else:
 			for symbol in ['position', 'loop start', 'loop end', 'crop start', 'crop end']:
 				if abs(pos - self.layer.controllers_dict[symbol].value) < max_delta:
 					self.drag_marker = symbol
-					break
+		self.tap_time = event.time
+
+
+	def on_canvas_double_tap(self, event):
+		options = OrderedDict()
+		options['Loop start'] = event
+		options['Loop end'] = event
+		self.zyngui.screens['option'].config('Add marker', options, self.add_marker)
+		self.zyngui.show_screen('option')
+
+
+	def add_marker(self, option, event):
+		self.drag_marker = option.lower()
+		self.on_canvas_drag(event)
 
 
 	def on_canvas_drag(self, event):
-		if self.drag_marker:
+		if self.drag_marker and self.frames:
 			if self.drag_marker == "view offset":
 				pos = self.duration * event.x / self.width
 			else:
@@ -401,7 +428,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.draw_waveform(offset, self.frames // self.zoom)
 				refresh_markers = True
 
-			if refresh_markers:
+			if refresh_markers and self.frames:
 				h = int(self.zoom_height * self.height)
 				f = self.width / self.frames * self.zoom
 				x = int(f * (self.loop_start - self.offset))
