@@ -281,6 +281,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.info = None
 		self.widget_canvas.delete("waveform")
 		self.widget_canvas.itemconfig("overlay", state=tkinter.HIDDEN)
+		self.widget_canvas.itemconfig(self.loading_text, text="Creating\nwaveform...")
 		try:
 			with soundfile.SoundFile(self.filename) as snd:
 				self.audio_data = snd.read()
@@ -300,7 +301,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			self.widget_canvas.tag_raise("waveform")
 			self.widget_canvas.tag_raise("overlay")
 		except Exception as e:
-			logging.warning(e)
+			self.widget_canvas.itemconfig(self.loading_text, text="No file\nloaded")
 		self.refreshing = False
 		self.refresh_waveform = True
 		self.update()
@@ -384,7 +385,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			offset = int(self.samplerate * self.layer.controllers_dict['view offset'].value)
 			if self.zoom != self.layer.controllers_dict['zoom'].value:
 				centre = offset + 0.5 * self.frames / self.zoom
-				self.zoom = self.layer.controllers_dict['zoom'].value
+				zoom = self.layer.controllers_dict['zoom'].value
+				if zoom:
+					self.zoom = zoom
 				offset = int(centre - 0.5 * self.frames / self.zoom)
 				self.refresh_waveform = True
 
