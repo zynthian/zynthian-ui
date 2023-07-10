@@ -554,6 +554,7 @@ class zynthian_gui:
 		zynautoconnect.stop()
 		self.screens['layer'].reset()
 		self.screens['midi_recorder'].stop_playing() # Need to stop timing thread
+		self.multitouch.stop()
 		self.zynseq.transport_stop("ALL")
 
 
@@ -588,6 +589,7 @@ class zynthian_gui:
 		elif screen == "audio_player":
 			if self.audio_player:
 				self.set_curlayer(self.audio_player, save=True, populate_screens=False)
+				self.audio_player.engine.load_latest(self.audio_player)
 			else:
 				logging.error("Audio Player not created!")
 				return

@@ -30,6 +30,7 @@ import logging
 import soundfile
 from math import modf, sqrt
 from os.path import basename
+from collections import OrderedDict
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -66,6 +67,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.info = None
 		self.images=[]
 		self.zoom_height = 0.94 # ratio of height for y offset of zoom overview display
+		self.tap_time = 0
 
 		self.widget_canvas = tkinter.Canvas(self,
 			bd=0,
@@ -217,6 +219,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 
 	def on_canvas_press(self, event):
+		if self.frames == 0:
+			return
 		f = self.width / self.frames * self.zoom
 		pos = (event.x / f + self.offset) / self.samplerate
 		max_delta = 0.02 * self.duration / self.zoom
@@ -225,15 +229,35 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			self.drag_marker = "view offset"
 			pos = self.duration * event.x / self.width
 			self.layer.controllers_dict[self.drag_marker].set_value(pos)
+			return
+		elif event.time - self.tap_time < 200:
+			self.on_canvas_double_tap(event)
 		else:
 			for symbol in ['position', 'loop start', 'loop end', 'crop start', 'crop end']:
 				if abs(pos - self.layer.controllers_dict[symbol].value) < max_delta:
 					self.drag_marker = symbol
-					break
+		self.tap_time = event.time
+
+
+	def on_canvas_double_tap(self, event):
+		options = OrderedDict()
+		options['--LOOP--'] = None
+		options['Loop start'] = event
+		options['Loop end'] = event
+		options['--CROP--'] = None
+		options['Crop start'] = event
+		options['Crop end'] = event
+		self.zyngui.screens['option'].config('Add marker', options, self.add_marker)
+		self.zyngui.show_screen('option')
+
+
+	def add_marker(self, option, event):
+		self.drag_marker = option.lower()
+		self.on_canvas_drag(event)
 
 
 	def on_canvas_drag(self, event):
-		if self.drag_marker:
+		if self.drag_marker and self.frames:
 			if self.drag_marker == "view offset":
 				pos = self.duration * event.x / self.width
 			else:
@@ -246,14 +270,11 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.monitors = self.layer.engine.get_monitors_dict(self.layer.handle)
 
 
-	def get_player_index(self):
-		return self.layer.handle
-
-
 	def load_file(self):
 		self.info = None
 		self.widget_canvas.delete("waveform")
 		self.widget_canvas.itemconfig("overlay", state=tkinter.HIDDEN)
+		self.widget_canvas.itemconfig(self.loading_text, text="Creating\nwaveform...")
 		try:
 			with soundfile.SoundFile(self.filename) as snd:
 				self.audio_data = snd.read()
@@ -273,7 +294,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			self.widget_canvas.tag_raise("waveform")
 			self.widget_canvas.tag_raise("overlay")
 		except Exception as e:
-			logging.warning(e)
+			self.widget_canvas.itemconfig(self.loading_text, text="No file\nloaded")
 		self.refreshing = False
 		self.refresh_waveform = True
 		self.update()
@@ -357,7 +378,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			offset = int(self.samplerate * self.layer.controllers_dict['view offset'].value)
 			if self.zoom != self.layer.controllers_dict['zoom'].value:
 				centre = offset + 0.5 * self.frames / self.zoom
-				self.zoom = self.layer.controllers_dict['zoom'].value
+				zoom = self.layer.controllers_dict['zoom'].value
+				if zoom:
+					self.zoom = zoom
 				offset = int(centre - 0.5 * self.frames / self.zoom)
 				self.refresh_waveform = True
 
@@ -401,7 +424,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.draw_waveform(offset, self.frames // self.zoom)
 				refresh_markers = True
 
-			if refresh_markers:
+			if refresh_markers and self.frames:
 				h = int(self.zoom_height * self.height)
 				f = self.width / self.frames * self.zoom
 				x = int(f * (self.loop_start - self.offset))
@@ -495,23 +518,20 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 
 	def cuia_stop(self):
-		i = self.get_player_index()
-		self.layer.engine.player.stop_playback(i)
-		self.layer.engine.player.set_position(i, 0.0)
+		self.layer.engine.player.stop_playback(self.layer.handle)
+		self.layer.engine.player.set_position(self.layer.handle, 0.0)
 
 
 	def cuia_toggle_play(self):
-		i = self.get_player_index()
-		if self.layer.engine.player.get_playback_state(i):
-			self.layer.engine.player.stop_playback(i)
+		if self.layer.engine.player.get_playback_state(self.layer.handle):
+			self.layer.engine.player.stop_playback(self.layer.handle)
 		else:
-			self.layer.engine.player.start_playback(i)
+			self.layer.engine.player.start_playback(self.layer.handle)
 
 
 	def update_wsleds(self, wsleds):
 		wsl = self.zyngui.wsleds
-		i = self.get_player_index()
-		if i == 16:
+		if self.layer.handle == self.zyngui.audio_player.handle:
 			color_default = wsl.wscolor_default
 		else:
 			color_default = wsl.wscolor_active2
@@ -523,7 +543,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		# STOP button
 		wsl.wsleds.setPixelColor(wsleds[1], color_default)
 		# PLAY button:
-		if self.layer.engine.player.get_playback_state(i):
+		if self.layer.engine.player.get_playback_state(self.layer.handle):
 			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_green)
 		else:
 			wsl.wsleds.setPixelColor(wsleds[2], color_default)

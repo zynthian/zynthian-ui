@@ -263,10 +263,12 @@ void* file_thread_fn(void * param) {
                     pPlayer->file_read_pos = pos;
                 //DPRINTF("Seeking to %u frames (%fs) src ratio=%f\n", nNewPos, get_position(pPlayer), srcData.src_ratio);
                 pPlayer->file_read_status = LOADING;
+                pPlayer->looped = false;
                 releaseMutex();
                 src_reset(pSrcState);
                 nUnusedFrames = 0;
                 srcData.end_of_input = 0;
+                pPlayer->stretcher->reset();
             } else if(pPlayer->file_read_status == LOOPING) {
                 // Reached loop end point and need to read from loop start point
                 sf_count_t pos = sf_seek(pFile, pPlayer->loop_start, SEEK_SET);
@@ -274,6 +276,7 @@ void* file_thread_fn(void * param) {
                 if(pos >= 0)
                     pPlayer->file_read_pos = pos;
                 pPlayer->file_read_status = LOADING;
+                pPlayer->looped = true;
                 releaseMutex();
                 src_reset(pSrcState);
                 srcData.end_of_input = 0;
@@ -445,6 +448,7 @@ void unload(AUDIO_PLAYER * pPlayer) {
         return;
     stop_playback(pPlayer);
     pPlayer->file_open = FILE_CLOSED;
+    pthread_join(pPlayer->file_thread, NULL);
 }
 
 uint8_t save(AUDIO_PLAYER * pPlayer, const char* filename) {
@@ -511,16 +515,11 @@ void set_loop_start_time(AUDIO_PLAYER * pPlayer, float time) {
     getMutex();
     pPlayer->loop_start = frames;
     pPlayer->loop_start_src = pPlayer->loop_start * pPlayer->src_ratio;
-    if(pPlayer->loop) {
-        if(pPlayer->play_pos_frames < frames) {
-            releaseMutex();
-            set_position(pPlayer, time);
-            return;
-        }
-        else
-            pPlayer->file_read_status = SEEKING;
-    }
+    if(pPlayer->loop && pPlayer->looped)
+        pPlayer->file_read_status = SEEKING;
     releaseMutex();
+    pPlayer->last_loop_start = -1;
+    send_notifications(pPlayer, NOTIFY_LOOP_START);
 }
 
 float get_loop_start_time(AUDIO_PLAYER * pPlayer) {
@@ -540,12 +539,11 @@ void set_loop_end_time(AUDIO_PLAYER * pPlayer, float time) {
     getMutex();
     pPlayer->loop_end = frames;
     pPlayer->loop_end_src = pPlayer->loop_end * pPlayer->src_ratio;
-    if(pPlayer->loop) {
-        if(pPlayer->play_pos_frames > pPlayer->loop_end_src)
-            pPlayer->play_pos_frames = pPlayer->loop_end_src;
+    if(pPlayer->loop && pPlayer->looped)
         pPlayer->file_read_status = SEEKING;
-    }
     releaseMutex();
+    pPlayer->last_loop_end = -1;
+    send_notifications(pPlayer, NOTIFY_LOOP_END);
 }
 
 float get_loop_end_time(AUDIO_PLAYER * pPlayer) {
@@ -566,19 +564,20 @@ void set_crop_start_time(AUDIO_PLAYER * pPlayer, float time) {
     if(time < 0.0)
         time = 0.0;
     jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
-    if(frames >= pPlayer->crop_end)
-        frames = pPlayer->crop_end - 1;
+    //if(frames >= pPlayer->crop_end)
+    //    frames = pPlayer->crop_end - 1;
+    if(frames > pPlayer->loop_end)
+        frames = pPlayer->loop_end - 1;
     if(frames > pPlayer->loop_start)
         set_loop_start_time(pPlayer, time);
     getMutex();
     pPlayer->crop_start = frames;
     pPlayer->crop_start_src = pPlayer->crop_start * pPlayer->src_ratio;
-    if(pPlayer->play_pos_frames < frames) {
-        releaseMutex();
-        set_position(pPlayer, time);
-        return;
-    }
     releaseMutex();
+    if(pPlayer->play_pos_frames < frames)
+        set_position(pPlayer, time);
+    pPlayer->last_crop_start = -1;
+    send_notifications(pPlayer, NOTIFY_CROP_START);
 }
 
 float get_crop_start_time(AUDIO_PLAYER * pPlayer) {
@@ -591,8 +590,10 @@ void set_crop_end_time(AUDIO_PLAYER * pPlayer, float time) {
     if(!pPlayer)
         return;
     jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
-    if(frames < pPlayer->crop_start)
-        frames = pPlayer->crop_start + 1;
+    //if(frames < pPlayer->crop_start)
+    //    frames = pPlayer->crop_start + 1;
+    if(frames < pPlayer->loop_start)
+        frames = pPlayer->loop_start + 1;
     if(frames > pPlayer->sf_info.frames)
         frames = pPlayer->sf_info.frames;
     if(frames < pPlayer->loop_end)
@@ -604,10 +605,14 @@ void set_crop_end_time(AUDIO_PLAYER * pPlayer, float time) {
         pPlayer->crop_end_src = pPlayer->frames;
         pPlayer->crop_end = pPlayer->frames / pPlayer->src_ratio;
     }
-    if(pPlayer->play_pos_frames > pPlayer->crop_end_src)
-            pPlayer->play_pos_frames = pPlayer->crop_end_src;
+    if(pPlayer->play_pos_frames > pPlayer->crop_end_src) {
+        pPlayer->play_pos_frames = pPlayer->crop_end_src;
         pPlayer->file_read_status = SEEKING;
+    } else
+        pPlayer->file_read_status = WAITING;
     releaseMutex();
+    pPlayer->last_crop_end = -1;
+    send_notifications(pPlayer, NOTIFY_CROP_END);
 }
 
 float get_crop_end_time(AUDIO_PLAYER * pPlayer) {
@@ -927,6 +932,14 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         // Silence remainder of frame
         memset(pOutA + a_count, 0, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
         memset(pOutB + a_count, 0, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
+        if(pPlayer->env_state != ENV_IDLE)
+            for(int i = 0; i < nFrames-a_count; ++i)
+                process_env(pPlayer);
+
+        if(pPlayer->play_pos_frames > pPlayer->crop_end_src) {
+            pPlayer->play_pos_frames = pPlayer->crop_end_src;
+            pPlayer->file_read_status = SEEKING;
+        }
     }
 
     // Process MIDI input

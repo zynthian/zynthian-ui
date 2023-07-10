@@ -127,6 +127,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		layer.jackname = self.jackname
 		layer.jackname = "{}:out_{:02d}(a|b)".format(self.jackname, self.player.get_index(handle))
 		self.set_midi_chan(layer)
+		self.monitors_dict[layer.handle] = OrderedDict()
+		self.monitors_dict[layer.handle]["filename"] = ""
+		self.monitors_dict[layer.handle]["info"] = 0
+		self.monitors_dict[layer.handle]['frames'] = 0
+		self.monitors_dict[layer.handle]['channels'] = 0
+		self.monitors_dict[layer.handle]['samplerate'] = 44100
+		self.monitors_dict[layer.handle]['codec'] = "UNKNOWN"
 
 
 	def del_layer(self, layer):
@@ -207,10 +214,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			return False
 
 		good_file = self.player.load(layer.handle, preset[0])
-
-		self.monitors_dict[layer.handle] = OrderedDict()
-		self.monitors_dict[layer.handle]["filename"] = ""
-		self.monitors_dict[layer.handle]["info"] = 0
 		self.monitors_dict[layer.handle]['filename'] = self.player.get_filename(layer.handle)
 		self.monitors_dict[layer.handle]['frames'] = self.player.get_frames(layer.handle)
 		self.monitors_dict[layer.handle]['channels'] = self.player.get_frames(layer.handle)
@@ -295,15 +298,14 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['zoom range', None, 0, ["User", "File", "Crop", "Loop"]],
 			['info', None, 1, ["None", "Duration", "Position", "Remaining", "Loop length", "Samplerate", "CODEC", "Filename"]],
 			['view offset', None, 0, dur],
-			['amp zoom', None, 1.0, 4.0]
+			['amp zoom', None, 1.0, 4.0],
+			['sustain pedal', 64, 'off', ['off', 'on']],
+			['bend range', None, bend_range, 24],
+			['attack', None, attack, 20.0],
+			['decay', None, decay, 20.0],
+			['sustain', None, sustain, 1.0],
+			['release', None, release, 20.0]
 		]
-		if layer.handle != self.zyngui.audio_player.handle:
-			self._ctrls += [['sustain pedal', 64, 'off', ['off', 'on']],
-						['bend range', None, bend_range, 24],
-						['attack', None, attack, 20.0],
-						['decay', None, decay, 20.0],
-						['sustain', None, sustain, 1.0],
-						['release', None, release, 20.0]]
 
 		layer.refresh_controllers()
 		self.player.set_track_a(layer.handle, default_a)
@@ -340,6 +342,18 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		
 	def is_preset_user(self, preset):
 		return True
+
+
+	def load_latest(self, layer):
+		list_of_wavs = glob(os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture/*.wav")
+		dirs = zynthian_gui_config.get_external_storage_dirs(os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root"))
+		for dir in dirs:
+			list_of_wavs += glob(f"{dir}/*.wav")
+
+		if list_of_wavs:
+			latest_file = max(list_of_wavs, key=os.path.getctime)
+			self.set_preset(layer, [latest_file])
+
 
 	#----------------------------------------------------------------------------
 	# Controllers Management
