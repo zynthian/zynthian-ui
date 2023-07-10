@@ -231,14 +231,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			self.layer.controllers_dict[self.drag_marker].set_value(pos)
 			return
 		elif event.time - self.tap_time < 200:
-			if pos > self.layer.controllers_dict['loop end'].value:
-				self.drag_marker = 'loop end'
-				self.on_canvas_drag(event)
-			elif pos < self.layer.controllers_dict['loop start'].value:
-				self.drag_marker = 'loop start'
-				self.on_canvas_drag(event)
-			else:
-				self.on_canvas_double_tap(event)
+			self.on_canvas_double_tap(event)
 		else:
 			for symbol in ['position', 'loop start', 'loop end', 'crop start', 'crop end']:
 				if abs(pos - self.layer.controllers_dict[symbol].value) < max_delta:
@@ -248,8 +241,12 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 	def on_canvas_double_tap(self, event):
 		options = OrderedDict()
+		options['--LOOP--'] = None
 		options['Loop start'] = event
 		options['Loop end'] = event
+		options['--CROP--'] = None
+		options['Crop start'] = event
+		options['Crop end'] = event
 		self.zyngui.screens['option'].config('Add marker', options, self.add_marker)
 		self.zyngui.show_screen('option')
 

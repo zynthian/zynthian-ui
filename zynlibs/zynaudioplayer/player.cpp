@@ -518,6 +518,8 @@ void set_loop_start_time(AUDIO_PLAYER * pPlayer, float time) {
     if(pPlayer->loop && pPlayer->looped)
         pPlayer->file_read_status = SEEKING;
     releaseMutex();
+    pPlayer->last_loop_start = -1;
+    send_notifications(pPlayer, NOTIFY_LOOP_START);
 }
 
 float get_loop_start_time(AUDIO_PLAYER * pPlayer) {
@@ -540,6 +542,8 @@ void set_loop_end_time(AUDIO_PLAYER * pPlayer, float time) {
     if(pPlayer->loop && pPlayer->looped)
         pPlayer->file_read_status = SEEKING;
     releaseMutex();
+    pPlayer->last_loop_end = -1;
+    send_notifications(pPlayer, NOTIFY_LOOP_END);
 }
 
 float get_loop_end_time(AUDIO_PLAYER * pPlayer) {
@@ -560,19 +564,20 @@ void set_crop_start_time(AUDIO_PLAYER * pPlayer, float time) {
     if(time < 0.0)
         time = 0.0;
     jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
-    if(frames >= pPlayer->crop_end)
-        frames = pPlayer->crop_end - 1;
+    //if(frames >= pPlayer->crop_end)
+    //    frames = pPlayer->crop_end - 1;
+    if(frames > pPlayer->loop_end)
+        frames = pPlayer->loop_end - 1;
     if(frames > pPlayer->loop_start)
         set_loop_start_time(pPlayer, time);
     getMutex();
     pPlayer->crop_start = frames;
     pPlayer->crop_start_src = pPlayer->crop_start * pPlayer->src_ratio;
-    if(pPlayer->play_pos_frames < frames) {
-        releaseMutex();
-        set_position(pPlayer, time);
-        return;
-    }
     releaseMutex();
+    if(pPlayer->play_pos_frames < frames)
+        set_position(pPlayer, time);
+    pPlayer->last_crop_start = -1;
+    send_notifications(pPlayer, NOTIFY_CROP_START);
 }
 
 float get_crop_start_time(AUDIO_PLAYER * pPlayer) {
@@ -585,8 +590,10 @@ void set_crop_end_time(AUDIO_PLAYER * pPlayer, float time) {
     if(!pPlayer)
         return;
     jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
-    if(frames < pPlayer->crop_start)
-        frames = pPlayer->crop_start + 1;
+    //if(frames < pPlayer->crop_start)
+    //    frames = pPlayer->crop_start + 1;
+    if(frames < pPlayer->loop_start)
+        frames = pPlayer->loop_start + 1;
     if(frames > pPlayer->sf_info.frames)
         frames = pPlayer->sf_info.frames;
     if(frames < pPlayer->loop_end)
@@ -604,6 +611,8 @@ void set_crop_end_time(AUDIO_PLAYER * pPlayer, float time) {
     } else
         pPlayer->file_read_status = WAITING;
     releaseMutex();
+    pPlayer->last_crop_end = -1;
+    send_notifications(pPlayer, NOTIFY_CROP_END);
 }
 
 float get_crop_end_time(AUDIO_PLAYER * pPlayer) {
