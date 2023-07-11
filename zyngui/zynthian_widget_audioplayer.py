@@ -355,7 +355,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.v_zoom = self.layer.controllers_dict['amp zoom'].value
 				self.refresh_waveform = True
 
-
 			if self.filename != self.monitors["filename"] or self.frames != self.frames:
 				self.filename = self.monitors["filename"]
 				waveform_thread = Thread(target=self.load_file, name="waveform image")
@@ -381,7 +380,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				zoom = self.layer.controllers_dict['zoom'].value
 				if zoom:
 					self.zoom = zoom
-				offset = int(centre - 0.5 * self.frames / self.zoom)
+				if self.layer.controllers_dict['zoom range'].value == 0:
+					offset = int(centre - 0.5 * self.frames / self.zoom)
 				self.refresh_waveform = True
 
 			if self.loop_start != loop_start:
@@ -418,6 +418,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			offset = min(self.frames - self.frames // self.zoom, offset)
 			if offset != self.offset:
 				self.offset = offset
+				if self.layer.controllers_dict['zoom range'].value == 0:
+					self.layer.controllers_dict['view offset'].set_value(offset / self.samplerate, False)
 				self.refresh_waveform = True
 
 			if self.refresh_waveform:

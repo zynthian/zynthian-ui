@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for audio player
 #
-# Copyright (C) 2021-2022 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2021-2023 Brian Walton <riban@zynthian.org>
 #
 #******************************************************************************
 #
@@ -60,8 +60,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.file_exts = []
 		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
 
-		self.start()
-
 		# MIDI Controllers
 		self._ctrls = [
 			['gain', None, 1.0, 2.0],
@@ -83,15 +81,16 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['info', None, 1, ["None", "Duration", "Position", "Remaining", "Loop length", "Samplerate", "CODEC", "Filename"]],
 			['bend range', None, 2, 24],
 			['view offset', None, 0, 1],
-			['amp zoom', None, 1.0, 4.0]
+			['amp zoom', None, 1.0, 10.0]
 		]
 
 		# Controller Screens
 		self._ctrl_screens = [
-				['main', ['record', 'gain']],
+			['main', ['record', 'gain']],
 		]
 
 		self.monitors_dict = {}
+		self.start()
 		self.reset()
 
 

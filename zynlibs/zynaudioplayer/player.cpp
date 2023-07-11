@@ -1,6 +1,7 @@
 /*  Audio file player library for Zynthian
-    Copyright (C) 2021-2022 Brian Walton <brian@riban.co.uk>
+    Copyright (C) 2021-2023 Brian Walton <brian@riban.co.uk>
     License: LGPL V3
+    Envelope generator based on code by EarLevel Engineering <https://www.earlevel.com/main/2013/06/03/envelope-generators-adsr-code/>
 */
 
 /**

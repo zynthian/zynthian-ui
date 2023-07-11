@@ -5,7 +5,7 @@
 #
 # A Python wrapper for zynaudioplayer library
 #
-# Copyright (C) 2021-2022 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2021-2023 Brian Walton <brian@riban.co.uk>
 # License: LGPL V3
 #
 #********************************************************************
