@@ -80,7 +80,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# Config variables
 	# ---------------------------------------------------------------------------
 
-	soundfont_dirs=[
+	bank_dirs = [
 		('EX', zynthian_engine.ex_data_dir + "/soundfonts/sf2"),
 		('MY', zynthian_engine.my_data_dir + "/soundfonts/sf2"),
 		('_', zynthian_engine.data_dir + "/soundfonts/sf2")
@@ -159,7 +159,11 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def get_bank_list(self, processor=None):
-		return self.get_filelist(self.soundfont_dirs,"sf2") + self.get_filelist(self.soundfont_dirs,"sf3")
+		xbank_dirs = self.get_bank_dirs()
+		if xbank_dirs is not None:
+			return self.get_filelist(xbank_dirs, "sf2") + self.get_filelist(xbank_dirs, "sf3")
+		else:
+			return []
 
 
 	def set_bank(self, processor, bank):

@@ -4,7 +4,7 @@
  *
  * Library providing step sequencer as a Jack connected device
  *
- * Copyright (C) 2020-2021 Brian Walton <brian@riban.co.uk>
+ * Copyright (C) 2020-2023 Brian Walton <brian@riban.co.uk>
  *
  * ******************************************************************
  *
@@ -48,6 +48,7 @@
 #include "constants.h"
 #include "timebase.h"
 #include <cstdint>
+#include "pattern.h"
 
 //-----------------------------------------------------------------------------
 // Library Initialization
@@ -59,14 +60,12 @@ extern "C"
 
 enum TRANSPORT_CLOCK
 {
-    TRANSPORT_CLOCK_INTERNAL = 0,
-    TRANSPORT_CLOCK_MIDI = 1
+    TRANSPORT_CLOCK_INTERNAL = 1,
+    TRANSPORT_CLOCK_MIDI = 2,
+    TRANSPORT_CLOCK_ANALOG = 4
 };
 
 // ** Library management functions **
-
-// MIDI learn callback function
-void (*g_pMidiLearnCb)(void*, uint8_t);
 
 /** @brief  Initialise library and connect to jackd server
 *   @param  name Client name
@@ -91,10 +90,32 @@ void enableDebug(bool bEnable);
 */
 bool load(const char* filename);
 
-/** @brief  Save sequences and patterns from file
+/** @brief  Load pattern from file
+*   @param  nPattern Pattern number
+*   @param  filename Full path and filename
+*/
+bool load_pattern(uint32_t nPattern, const char* filename);
+
+/** @brief  Save sequences and patterns to file
 *   @param  filename Full path and filename
 */
 void save(const char* filename);
+
+/** @brief  Save pattern to file
+*   @param  nPattern Pattern number
+*   @param  filename Full path and filename
+*/
+void save_pattern(uint32_t nPattern, const char* filename);
+
+/** Clear pattern undo queue */
+void resetPatternSnapshot();
+
+/** Restore previous state of pattern */
+void undoPattern();
+
+/** @brief  Store current pattern on undo queue
+*/
+void snapshotPattern();
 
 /** @brief  Get vertical zoom
 *   @retval uint16_t Vertical zoom
@@ -115,7 +136,6 @@ uint16_t getHorizontalZoom();
 *   @param uint16_t Horizontal zoom
 */
 void setHorizontalZoom(uint16_t zoom);
-
 
 // ** Direct MIDI interface **
 //!@todo Should direct MIDI output be removed because JACK clients can do that themselves?
@@ -159,16 +179,20 @@ void sendMidiClock();
 */
 void sendMidiCommand(uint8_t status, uint8_t value1, uint8_t value2);
 
-// ** Status **
-/** @brief  Get MIDI channel used to send tally of sequence state change
-*   @retval uint8_t MIDI channel
+/** @brief  Enable or disable sending MIDI clock to output
+*   @param  enable True to enable MIDI clock output (Default: true)
 */
-uint8_t getTallyChannel();
+void enableMidiClockOutput(bool enable=true);
 
-/** @brief  Set MIDI channel used to send tally of sequence state change
-*   @param channel MIDI channel [0..15 or other value to disable MIDI tally]
+/** @brief  Get MIDI device used for external trigger of sequences
+*   @retval uint8_t MIDI device index
 */
-void setTallyChannel(uint8_t channel);
+uint8_t getTriggerDevice();
+
+/** @brief  Set MIDI device used for external trigger of sequences
+*   @param idev MIDI device index [0..15 or other value to disable MIDI trigger]
+*/
+void setTriggerDevice(uint8_t idev);
 
 /** @brief  Get MIDI channel used for external trigger of sequences
 *   @retval uint8_t MIDI channel
@@ -193,6 +217,12 @@ uint8_t getTriggerNote(uint8_t bank, uint8_t sequence);
 *   @param  note MIDI note number [0xFF for none]
 */
 void setTriggerNote(uint8_t bank, uint8_t sequence, uint8_t note);
+
+/** @brief  Get the sequence triggered by a MIDI note
+*   @param  note MIDI note number
+*   @retval uint16_t Bank and sequence id encoded as 16-bit
+*/
+uint16_t getTriggerSequence(uint8_t note);
 
 // ** Pattern management functions - pattern events are quantized to steps **
 //!@todo Current implementation selects a pattern then operates on it. API may be simpler to comprehend if patterns were acted on directly by passing the pattern index, e.g. clearPattern(index)
@@ -244,6 +274,12 @@ uint32_t getPatternAt(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t p
 *   @param  pattern Index of pattern to select
 */
 void selectPattern(uint32_t pattern);
+
+/** @brief  Check if selected pattern is empty
+*   @param  pattern Pattern index
+*   @retval bool True if pattern is empty
+*/
+bool isPatternEmpty(uint32_t pattern);
 
 /** @brief  Get the index of the selected pattern
 *   @retval uint32_t Index of pattern or -1 if not found
@@ -453,21 +489,21 @@ void setPatternModified(Pattern* pPattern, bool bModified = true);
 */
 bool isPatternModified();
 
-/** @brief  Get the reference note
-*   @retval uint8_t MIDI note number
-*   @note   May be used for position within user interface
+/**    @brief    Get the reference note
+*    @retval uint8_t MIDI note number
+*    @note    May be used for position within user interface
 */
 uint8_t getRefNote();
 
-/** @brief  Set the reference note
-*   @param  MIDI note number
-*   @note   May be used for position within user interface
+/**    @brief    Set the reference note
+*    @param    MIDI note number
+*    @note    May be used for position within user interface
 */
 void setRefNote(uint8_t note);
 
-/** @brief  Get the last populated step
-*   @retval uint32_t Index of last populated step or -1 if empty
-*   @note   This may allow checking for empty patterns or whether truncation will have an effect
+/**    @brief    Get the last populated step
+*    @retval    uint32_t Index of last populated step or -1 if empty
+*    @note    This may allow checking for empty patterns or whether truncation will have an effect
 */
 uint32_t getLastStep();
 
@@ -566,7 +602,7 @@ bool isEmpty(uint8_t bank, uint8_t sequence);
 /** @brief  Set play state
 *   @param  bank Index of bank containing sequence
 *   @param  sequence Index (sequence) of sequence within bank
-*   @param  uint8_t Play state [STOPPED | STARTING | PLAYING | STOPPING]
+*   @param  state Play state [STOPPED | STARTING | PLAYING | STOPPING]
 *   @note   STARTING will reset to start of sequence. PLAYING resumes at last played position.
 *   @note   If all sequences have stopped and no external clients have registered for transport then transport is stopped.
 */
@@ -615,6 +651,11 @@ uint32_t getSequenceLength(uint8_t bank, uint8_t sequence);
 *   @param  sequence Sequence number
 */
 void clearSequence(uint8_t bank, uint8_t sequence);
+
+/** @brief  Get the quantity of playing sequences
+*   @retval size_t Quantity of playing sequences
+*/
+size_t getPlayingSequences();
 
 /** @brief  Get sequence group
 *   @param  bank Index of bank
@@ -688,15 +729,6 @@ void addTimeSigEvent(uint8_t bank, uint8_t sequence, uint8_t beats, uint8_t type
 *   @retval uint16_t Time signature - MSB numerator, LSB denominator
 */
 uint16_t getTimeSigAt(uint8_t bank, uint8_t sequence, uint16_t bar);
-
-/** @brief  Enable MIDI learn for a sequence trigger
-*   @param  bank Index of bank or 0 to disable learning
-*   @param  sequence Sequence index or 0 to disable learning
-*   @param  cb_object Pointer to the object hosting the callback function (allows Python class access) [Default: NULL for none]
-*   @param  cbfunc Pointer to callback function to call when MIDI learn completes [Default: NULL for none]
-*   @note   Whilst in learn mode the next MIDI note-on event received on trigger channel will set the pad's trigger note
-*/
-void enableMidiLearn(uint8_t bank, uint8_t sequence, void* cb_object, void (*cbfunc)(void*, uint8_t));
 
 /** @brief  Get bank currently in MIDI learn mode
 *   @retval uint8_t Bank index or 0 if disabled

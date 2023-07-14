@@ -1,5 +1,6 @@
 #include "sequencemanager.h"
 #include <cstring>
+#include <stdio.h>
 
 /** SequenceManager class methods implementation **/
 
@@ -134,6 +135,16 @@ void SequenceManager::copyPattern(uint32_t source, uint32_t destination)
         m_mPatterns[destination].addEvent(pEvent);
 }
 
+void SequenceManager::replacePattern(uint32_t index, Pattern* pattern)
+{
+    m_mPatterns[index].clear();
+    m_mPatterns[index].setBeatsInPattern(pattern->getBeatsInPattern());
+    m_mPatterns[index].setStepsPerBeat(pattern->getStepsPerBeat());
+    uint32_t nIndex = 0;
+    while(StepEvent* pEvent = pattern->getEventAt(nIndex++))
+        m_mPatterns[index].addEvent(pEvent);
+}
+
 Sequence* SequenceManager::getSequence(uint8_t bank, uint8_t sequence)
 {
     // Add missing sequences
@@ -178,11 +189,13 @@ void SequenceManager::updateAllSequenceLengths()
             (*itSeq)->updateLength();
 }
 
-size_t SequenceManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync, double dSamplesPerClock)
+size_t SequenceManager::clock(std::pair<double,double> timeinfo, std::multimap<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync)
 {
     /** Get events scheduled for next step from all tracks in each playing sequence.
         Populate schedule with start, end and interpolated events
     */
+   uint32_t nTime = timeinfo.first;
+   double dSamplesPerClock = timeinfo.second;
     for(auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end(); )
     {
         Sequence* pSequence = getSequence(it->first, it->second);
@@ -198,46 +211,16 @@ size_t SequenceManager::clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* 
             while(SEQ_EVENT* pEvent = pSequence->getEvent())
             {
                 uint32_t nEventTime = pEvent->time;
-                while(pSchedule->find(nEventTime) != pSchedule->end())
-                    ++nEventTime; // Move event forward until we find a spare time slot
                 MIDI_MESSAGE* pNewEvent = new MIDI_MESSAGE(pEvent->msg);
-                (*pSchedule)[nEventTime] = pNewEvent;
-                //printf("Clock time: %u Scheduling event 0x%x 0x%x 0x%x with time %u at %u\n", nTime, pEvent->msg.command, pEvent->msg.value1, pEvent->msg.value2, pEvent->time, nEventTime);
+                pSchedule->insert(std::pair<uint32_t,MIDI_MESSAGE*>(nEventTime, pNewEvent));
+                //fprintf(stderr, "Clock time: %u Scheduling event 0x%x 0x%x 0x%x with time %u at %u framesPerClock: %f\n", nTime, pEvent->msg.command, pEvent->msg.value1, pEvent->msg.value2, pEvent->time, nEventTime, dSamplesPerClock);
             }
         }
         if(nEventType & 2)
         {
             // Change of state
-            uint8_t nTrigger = getTriggerNote(it->first, it->second);
-            if(m_nTallyChannel < 16 && nTrigger < 128)
-            {
-                MIDI_MESSAGE* pEvent = new MIDI_MESSAGE();
-                pEvent->command = MIDI_NOTE_ON | m_nTallyChannel;
-                pEvent->value1 = nTrigger;
-                switch(pSequence->getPlayState())
-                {
-                    //!@todo Tallies are hard coded to Akai APC but should be configurable
-                    case STOPPED:
-                        pEvent->value2 = 3;
-                        break;
-                    case PLAYING:
-                        pEvent->value2 = 1;
-                        break;
-                    case STOPPING:
-                    case STOPPING_SYNC:
-                        pEvent->value2 = 4;
-                        break;
-                    case STARTING:
-                        pEvent->value2 = 5;
-                        break;
-                    default:
-                        continue;
-                }
-                //!@todo Can we optimise time search?
-                while(pSchedule->find(nTime) != pSchedule->end())
-                    ++nTime; // Move event forward until we find a spare time slot
-                (*pSchedule)[nTime] = pEvent;
-            }
+            // uint8_t nTrigger = getTriggerNote(it->first, it->second);
+            // It's currently polled from python
         }
         ++it;
     }
@@ -294,23 +277,17 @@ uint8_t SequenceManager::getTriggerChannel()
 
 void SequenceManager::setTriggerChannel(uint8_t channel)
 {
-    if(channel > 15)
-        m_nTriggerChannel = 0xFF;
-    else
-        m_nTriggerChannel = channel;
+	m_nTriggerChannel = channel;
 }
 
-uint8_t SequenceManager::getTallyChannel()
+uint8_t SequenceManager::getTriggerDevice()
 {
-    return m_nTallyChannel;
+    return m_nTriggerDevice;
 }
 
-void SequenceManager::setTallyChannel(uint8_t channel)
+void SequenceManager::setTriggerDevice(uint8_t idev)
 {
-    if(channel > 15)
-        m_nTallyChannel = 0xFF;
-    else
-        m_nTallyChannel = channel;
+	m_nTriggerDevice = idev;
 }
 
 uint16_t SequenceManager::getTriggerSequence(uint8_t note)
@@ -365,6 +342,8 @@ void SequenceManager::cleanPatterns()
 
 void SequenceManager::setSequencesInBank(uint8_t bank, uint8_t sequences)
 {
+    if(sequences == 0)
+        return;
     // Remove excessive sequences
     size_t nSize = m_mBanks[bank].size();
     while(nSize > sequences)
@@ -376,8 +355,7 @@ void SequenceManager::setSequencesInBank(uint8_t bank, uint8_t sequences)
     }
     cleanPatterns();
     // Add required sequences
-    if(sequences > 0)
-        getSequence(bank, sequences - 1);
+    getSequence(bank, sequences - 1);
 }
 
 uint32_t SequenceManager::getSequencesInBank(uint32_t bank)

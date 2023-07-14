@@ -61,6 +61,7 @@ deferred_audio_connect = False # True to perform audio connect on next port chec
 last_hw_str = None # Fingerprint of MIDI ports used to check for change of ports
 max_num_devs = 16 # Maximum quantity of hardware inputs
 devices_in = [None for i in range(max_num_devs)] # List of hardware inputs
+extra_midi_fb_ports = []
 zyn_routed_audio = {} # Map of lists of audio sources routed by zynautoconnect, indexed by destination
 zyn_routed_midi = {} # Map of lists of MIDI sources routed by zynautoconnect, indexed by destination
 
@@ -78,6 +79,47 @@ def get_port_alias_id(midi_port):
 	except:
 		alias_id = midi_port.name
 	return alias_id
+
+
+def get_midi_device_name(idev):
+	if idev > 0 and idev <= len(devices_in):
+		devname = devices_in[idev - 1]
+	else:
+		devname = None
+	if not devname:
+		return "UNKNOWN"
+	else:
+		return devname
+
+
+def add_midi_fb_port(idev):
+	global extra_midi_fb_ports
+	try:
+		midi_dev_name = devices_in[idev]
+		extra_midi_fb_ports.append(midi_dev_name)
+	except:
+		logging.debug("Can't add midi device {} to FeedBack list!".format(idev))
+	purge_midi_fb_ports()
+
+def remove_midi_fb_port(idev):
+	global extra_midi_fb_ports
+	try:
+		midi_dev_name = devices_in[idev]
+		extra_midi_fb_ports.remove(midi_dev_name)
+	except:
+		logging.debug("Can't remove midi device {} from FeedBack list!".format(idev))
+	purge_midi_fb_ports()
+
+def clean_midi_fb_ports():
+	global extra_midi_fb_ports
+	extra_midi_fb_ports = []
+
+
+def purge_midi_fb_ports():
+	global extra_midi_fb_ports
+	for xmp in extra_midi_fb_ports:
+		if xmp not in devices_in:
+			extra_midi_fb_ports.remove(xmp)
 
 
 #------------------------------------------------------------------------------
@@ -320,8 +362,9 @@ def midi_autoconnect():
 	required_routes["zynseq:input"].add("ZynMidiRouter:step_out")
 
 	#Connect ZynMidiRouter:ctrl_out to enabled MIDI-FB ports (MIDI-Controller FeedBack)
+	midi_fb_ports = zynthian_gui_config.enabled_midi_fb_ports + extra_midi_fb_ports
 	for port in hw_dst_ports:
-		if get_port_alias_id(port) in zynthian_gui_config.enabled_midi_fb_ports:
+		if get_port_alias_id(port) in midi_fb_ports:
 			required_routes[port.name].add("ZynMidiRouter:ctrl_out")
 
 	# Remove mod-ui routes

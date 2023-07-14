@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI keyboard Class
 # 
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
@@ -129,7 +129,7 @@ class zynthian_gui_keyboard():
 						'4','5','6',
 						'7','8','9']
 		elif self.shift:
-			self.keys = ['!','£','$','€','%','*','(',')','+','-',
+			self.keys = ['!','£','$','€','%','#','(',')','+','-',
 						'Q','W','E','R','T','Y','U','I','O','P',
 						'A','S','D','F','G','H','J','K','L','[',
 						'Z','X','C','V','B','N','M','<','>',']']

@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI MIDI Recorder Class
 # 
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -43,10 +43,16 @@ from zynlibs.zynsmf.zynsmf import libsmf # Direct access to shared library
 class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def __init__(self):
-		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
-		self.capture_dir_usb = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
+		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
+		self.ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 		self.recording = False
 		self.playing = False
+
+		# Setup CUIA methods
+		self.cuia_toggle_record = self.zyngui.state_manager.toggle_midi_record
+		self.cuia_stop = self.zyngui.state_manager.stop_midi_playback
+		self.cuia_toggle_play = self.zyngui.state_manager.toggle_midi_playback
+
 
 		self.smf_timer = None # 1s timer used to check end of SMF playback
 
@@ -88,9 +94,10 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		self.list_data.append((None, 0, "> MIDI Tracks"))
 
-		# Add file list, sorted by mtime
+		# Generate file list, sorted by mtime
 		flist = self.get_filelist(self.capture_dir_sdc, "SD")
-		flist += self.get_filelist(self.capture_dir_usb, "USB")
+		for exd in zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
+			flist += self.get_filelist(exd, "USB")
 		i = 1
 		for finfo in sorted(flist, key=lambda d: d['mtime'], reverse=True) :
 			self.list_data.append((finfo['fpath'], i, finfo['title']))
@@ -290,6 +297,22 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			zynthian_gui_config.midi_play_loop = True
 		zynconf.save_config({"ZYNTHIAN_MIDI_PLAY_LOOP": str(int(zynthian_gui_config.midi_play_loop))})
 		self.update_status_loop(True)
+
+
+	def update_wsleds(self, wsleds):
+		wsl = self.zyngui.wsleds
+		# REC button
+		if self.zyngui.status_info['midi_recorder'] and "REC" in self.zyngui.status_info['midi_recorder']:
+			wsl.wsleds.setPixelColor(wsleds[0], wsl.wscolor_red)
+		else:
+			wsl.wsleds.setPixelColor(wsleds[0], wsl.wscolor_alt)
+		# STOP button
+		wsl.wsleds.setPixelColor(wsleds[1], wsl.wscolor_alt)
+		# PLAY button:
+		if self.zyngui.status_info['midi_recorder'] and "PLAY" in self.zyngui.status_info['midi_recorder']:
+			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_green)
+		else:
+			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_alt)
 
 
 	def set_select_path(self):

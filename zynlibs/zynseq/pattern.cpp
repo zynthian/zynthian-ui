@@ -10,6 +10,14 @@ Pattern::Pattern(uint32_t beats, uint32_t stepsPerBeat) :
     setStepsPerBeat(stepsPerBeat);
 }
 
+Pattern::Pattern(Pattern* pattern) {
+    m_nBeats = pattern->getBeatsInPattern();
+    setStepsPerBeat(pattern->getStepsPerBeat());
+    uint32_t nIndex = 0;
+    while(StepEvent* pEvent = pattern->getEventAt(nIndex++))
+        addEvent(pEvent);
+}
+
 Pattern::~Pattern()
 {
     clear();

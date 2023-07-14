@@ -249,10 +249,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
-	def get_bank_list(self, processor=None):
-		return self.get_dirlist(self.bank_dirs)
-
-
 	def set_bank(self, processor, bank):
 		return True
 

@@ -5,8 +5,8 @@
 #
 # Zynthian GUI Audio Mixer
 #
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2015-2022 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+#                         Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 #
@@ -27,6 +27,7 @@
 import os
 import tkinter
 import logging
+from collections import OrderedDict
 
 # Zynthian specific modules
 from . import zynthian_gui_base
@@ -60,6 +61,7 @@ class zynthian_gui_mixer_strip():
 		self.chain = None
 		self.midi_learning = False # False: Not learning, True: Preselection, gui_control: Learning
 		self.MAIN_MIXBUS_STRIP_INDEX = self.zynmixer.get_max_channels()
+		self.drag_axis = 0
 
 		self.hidden = True
 
@@ -162,7 +164,11 @@ class zynthian_gui_mixer_strip():
 		# Fader indicators
 		self.status_indicator = self.parent.main_canvas.create_text(x + 2, self.fader_top + 2, fill="#009000", anchor="nw", tags=(f"strip:{self.fader_bg}"))
 
+		self.parent.zyngui.multitouch.tag_bind(self.parent.main_canvas, "fader:%s"%(self.fader_bg), "press", self.on_fader_press)
+		self.parent.zyngui.multitouch.tag_bind(self.parent.main_canvas, "fader:%s"%(self.fader_bg), "release", self.on_fader_release)
+		self.parent.zyngui.multitouch.tag_bind(self.parent.main_canvas, "fader:%s"%(self.fader_bg), "motion", self.on_fader_motion)
 		self.parent.main_canvas.tag_bind(f"fader:{self.fader_bg}", "<ButtonPress-1>", self.on_fader_press)
+		self.parent.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<ButtonRelease-1>", self.on_fader_release)
 		self.parent.main_canvas.tag_bind(f"fader:{self.fader_bg}", "<B1-Motion>", self.on_fader_motion)
 		if os.environ.get("ZYNTHIAN_UI_ENABLE_CURSOR") == "1":
 			self.parent.main_canvas.tag_bind(f"fader:{self.fader_bg}", "<Button-4>", self.on_fader_wheel_up)
@@ -566,11 +572,12 @@ class zynthian_gui_mixer_strip():
 	# Function to handle fader press
 	#	event: Mouse event
 	def on_fader_press(self, event):
-		self.fader_drag_start = event
 
 		if zynthian_gui_config.zyngui.cb_touch(event):
 			return "break"
 
+		self.touch_x = event.x
+		self.touch_y = event.y
 		if self.midi_learning is True:
 			self.enable_midi_learn('level')
 		self.fader_drag_start = event
@@ -579,13 +586,30 @@ class zynthian_gui_mixer_strip():
 			self.parent.highlight_active_chain()
 
 
+	# Function to handle fader release
+	#	event: Mouse event
+	def on_fader_release(self, event):
+		self.drag_axis = 0
+
+
 	# Function to handle fader drag
 	#	event: Mouse event
 	def on_fader_motion(self, event):
-		if self.zctrls and self.fader_drag_start:
-			self.set_volume(self.zctrls['level'].value + (self.fader_drag_start.y - event.y) / self.fader_height)
-			self.fader_drag_start = event
-			self.draw_fader()
+		if self.drag_axis == 0:
+			if abs(event.x - self.touch_x) > 2:
+				self.drag_axis = 1
+			elif abs(event.y - self.touch_y) > 2:
+				self.drag_axis = 2
+		if self.drag_axis == 1:
+			if self.zctrls:
+				self.set_balance(self.zctrls['balance'].value + (event.x - self.touch_x) / self.fader_width)
+				self.touch_x = event.x
+				self.draw_balance()
+		elif self.drag_axis == 2:
+			if self.zctrls:
+				self.set_volume(self.zctrls['level'].value + (self.touch_y - event.y) / self.fader_height)
+				self.touch_y = event.y
+				self.draw_fader()
 
 
 	# Function to handle mouse wheel down over fader
@@ -947,10 +971,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return True
 
 		elif swi == 2:
-			if t == 'B':
+			if t == 'S':
 				if self.midi_learning:
 					self.midi_unlearn_action()
-					return True
+				else:
+					self.midi_learn_menu()
+				return True
 
 		elif swi == 3:
 			self.switch_select(t)
@@ -1054,6 +1080,23 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# MIDI learning management
 	#--------------------------------------------------------------------------
 
+	def midi_learn_menu(self):
+		options = OrderedDict()
+		options['Enter MIDI-learn'] = "enter"
+		options['Clean MIDI-learn'] = "clean"
+		self.zyngui.screens['option'].config("MIDI-learn", options, self.midi_learn_menu_cb)
+		self.zyngui.show_screen('option')
+
+
+	def midi_learn_menu_cb(self, options, params):
+		if params == 'enter':
+			if self.zyngui.current_screen != "audio_mixer":
+				self.zyngui.show_screen("audio_mixer")
+			self.zyngui.enter_midi_learn()
+		elif params == 'clean':
+			self.midi_unlearn_action()
+
+
 	# Pre-select all controls in a chain to allow selection of actual control to MIDI learn
 	def toggle_midi_learn(self):
 		if self.midi_learning:
@@ -1076,7 +1119,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if modified_strip != self.main_mixbus_strip:
 			self.main_mixbus_strip.enable_midi_learn(False)
 
-    
+
 	def exit_midi_learn(self):
 		for strip in self.visible_mixer_strips:
 			strip.enable_midi_learn(False)

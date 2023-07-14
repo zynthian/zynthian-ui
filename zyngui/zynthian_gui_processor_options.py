@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Porcessor Options Class
 #
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 #
@@ -61,7 +61,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector, zynthian_gui_save_pr
 		if self.can_move_downchain():
 			self.list_data.append((self.move_downchain, None, "Move down chain"))
 
-		if self.processor.type=="MIDI Synth":
+		if self.processor.type == "MIDI Synth":
 			eng_options = self.processor.engine.get_options()
 			if eng_options['replace'] and eng_options['midi_chan']:
 				self.list_data.append((self.replace, None, "Replace"))

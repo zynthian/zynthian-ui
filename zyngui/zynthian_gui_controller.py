@@ -55,7 +55,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.zyngui = zynthian_gui_config.zyngui
 		self.zctrl = None
 		self.step = 0
-		self.vertical = zynthian_gui_config.layout['ctrl_orientation'] == 'vertical' #TODO: Do we need different method to configure oriention?
+		self.vertical = zynthian_gui_config.layout['ctrl_orientation'] == 'vertical'
 
 		self.value_plot = 0 # Normalised position of plot start point
 		self.value_print = None
@@ -216,7 +216,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 			y1 = y0 - radius
 			x2 = x0 + radius
 			y2 = y0 + radius
-			self.title_width = ww - radius * 2 - 0
+			self.title_width = int(ww - radius * 1.8)
 			self.coords(self.label_title, 4, 4)
 			self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
 			

@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Admin Class
 # 
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -82,25 +82,24 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			else:
 				self.list_data.append((self.toggle_bank_change, 0, "[  ] MIDI Bank Change"))
 
-		if zynthian_gui_config.transport_clock_source:
-			self.list_data.append((self.toggle_clock_source,0,"Clock Source: MIDI"))
-		else:
-			self.list_data.append((self.toggle_clock_source,0,"Clock Source: INTERNAL"))
-
 		if zynthian_gui_config.preset_preload_noteon:
 			self.list_data.append((self.toggle_preset_preload_noteon, 0, "[x] Preset Preload"))
 		else:
 			self.list_data.append((self.toggle_preset_preload_noteon, 0, "[  ] Preset Preload"))
 
 		if zynthian_gui_config.midi_filter_output:
-			self.list_data.append((self.toggle_midi_filter_output, 0, "[x] Bridge MIDI Input to Output"))
+			self.list_data.append((self.toggle_midi_bridge_output, 0, "[x] Bridge MIDI-OUT"))
 		else:
-			self.list_data.append((self.toggle_midi_filter_output, 0, "[  ] Bridge MIDI Input to Output"))
+			self.list_data.append((self.toggle_midi_bridge_output, 0, "[  ] Bridge MIDI-OUT"))
 
-		if zynthian_gui_config.midi_sys_enabled:
-			self.list_data.append((self.toggle_midi_sys, 0, "[x] MIDI System Messages"))
-		else:
-			self.list_data.append((self.toggle_midi_sys, 0, "[  ] MIDI System Messages"))
+		if zynthian_gui_config.transport_clock_source == 0:
+			if zynthian_gui_config.midi_sys_enabled:
+				self.list_data.append((self.toggle_midi_sys, 0, "[x] MIDI System Messages"))
+			else:
+				self.list_data.append((self.toggle_midi_sys, 0, "[  ] MIDI System Messages"))
+
+		if "cv_config" in self.zyngui.screens:
+			self.list_data.append((self.show_cv_config, 0, "CV Settings"))
 
 		self.list_data.append((self.midi_profile, 0, "MIDI Profile"))
 
@@ -190,7 +189,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def execute_commands(self):
-		
 		self.zyngui.state_manager.start_busy("gui_admin")
 		
 		error_counter=0
@@ -231,7 +229,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def start_command(self,cmds):
 		if not self.commands:
-			logging.info("Starting Command Sequence ...")
+			logging.info("Starting Command Sequence")
 			self.commands=cmds
 			self.thread=Thread(target=self.execute_commands, args=())
 			self.thread.name = "command sequence"
@@ -270,7 +268,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def killable_start_command(self,cmds):
 		if not self.commands:
-			logging.info("Starting Command Sequence ...")
+			logging.info("Starting Command Sequence")
 			self.commands=cmds
 			self.thread=Thread(target=self.killable_execute_commands, args=())
 			self.thread.name = "killable command sequence"
@@ -357,12 +355,12 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.fill_list()
 
 
-	def toggle_midi_filter_output(self):
+	def toggle_midi_bridge_output(self):
 		if zynthian_gui_config.midi_filter_output:
-			logging.info("MIDI Filter Output OFF")
+			logging.info("MIDI Bridge Output OFF")
 			zynthian_gui_config.midi_filter_output = False
 		else:
-			logging.info("MIDI Filter Output ON")
+			logging.info("MIDI Bridge Output ON")
 			zynthian_gui_config.midi_filter_output = True
 
 		# Update MIDI profile
@@ -442,22 +440,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.fill_list()
 
 
-	def toggle_clock_source(self):
-		if zynthian_gui_config.transport_clock_source:
-			self.list_data.append((self.toggle_clock_source, 0, "Clock Source: MIDI"))
-		else:
-			self.list_data.append((self.toggle_clock_source, 0 ,"Clock Source: INTERNAL"))
-
-		self.zyngui.state_manager.zynseq.libseq.setClockSource(zynthian_gui_config.transport_clock_source)
-
-		# Save config
-		zynconf.update_midi_profile({
-			"ZYNTHIAN_TRANSPORT_CLOCK_SOURCE": str(int(zynthian_gui_config.transport_clock_source))
-		})
-
-		self.fill_list()
-
-
 	def toggle_preset_preload_noteon(self):
 		if zynthian_gui_config.preset_preload_noteon:
 			logging.info("Preset Preload OFF")
@@ -513,6 +495,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.fill_list()
 
 
+	def show_cv_config(self):
+		self.zyngui.show_screen("cv_config")
+
+
 	def midi_profile(self):
 		logging.info("MIDI Profile")
 		self.zyngui.show_screen("midi_profile")
@@ -533,37 +519,38 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 
 	def start_wifi(self):
+		self.zyngui.show_loading("connecting to WIFI")
 		if not zynconf.start_wifi():
-			self.zyngui.show_info("STARTING WIFI ERROR\n")
-			self.zyngui.add_info("Can't start WIFI network!","WARNING")
-			self.zyngui.hide_info_timer(2000)
-
-		self.fill_list()
+			self.zyngui.set_loading_error("ERROR CONNECTING TO WIFI")
+			self.zyngui.set_loading_details("Can't start WIFI network!")
+			sleep(2.0)
+		self.zyngui.close_screen()
 
 
 	def start_wifi_hotspot(self):
+		self.zyngui.show_loading("starting WIFI HotSpot")
 		if not zynconf.start_wifi_hotspot():
-			self.zyngui.show_info("STARTING WIFI HOTSPOT ERROR\n")
-			self.zyngui.add_info("Can't start WIFI Hotspot!","WARNING")
-			self.zyngui.hide_info_timer(2000)
-
-		self.fill_list()
+			self.zyngui.set_loading_error("ERROR STARTING WIFI HOTSPOT")
+			self.zyngui.set_loading_details("Can't start WIFI HotSpot!")
+			sleep(2.0)
+		self.zyngui.close_screen()
 
 
 	def stop_wifi(self):
 		if not zynconf.stop_wifi():
-			self.zyngui.show_info("STOPPING WIFI ERROR\n")
-			self.zyngui.add_info("Can't stop WIFI network!","WARNING")
-			self.zyngui.hide_info_timer(2000)
+			self.zyngui.show_loading_error("ERROR STOPPING WIFI", "Can't stop WIFI network")
+			sleep(2.0)
+			self.zyngui.close_screen()
+		else:
+			self.fill_list()
 
 		self.fill_list()
 
 
 	def start_vncserver(self, save_config=True):
 		# Start VNC for Zynthian-UI
+		self.zyngui.show_loading("starting VNC")
 		if not zynconf.is_service_active("vncserver0"):
-			self.zyngui.state_manager.start_busy("gui_admin")
-
 			try:
 				logging.info("STARTING VNC-UI SERVICE")
 				check_output("systemctl start novnc0", shell=True)
@@ -571,11 +558,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			except Exception as e:
 				logging.error(e)
 
-			self.zyngui.state_manager.end_busy("gui_admin")
 
 		# Start VNC for Engine's native GUIs
 		if not zynconf.is_service_active("vncserver1"):
-			self.zyngui.state_manager.start_busy("gui_admin")
 
 			# Save state and stop engines
 			if self.zyngui.chain_manager.get_chain_count() > 0:
@@ -595,22 +580,20 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			if restore_state:
 				self.zyngui.screens['snapshot'].load_last_state_snapshot()
 
-			self.zyngui.state_manager.end_busy("gui_admin")
-
 		# Update Config
 		if save_config:
 			zynconf.save_config({ 
 				"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
 			})
 
-		self.fill_list()
+		self.zyngui.close_screen()
 
 
 	def stop_vncserver(self, save_config=True):
+		self.zyngui.show_loading("stopping VNC")
+
 		# Stop VNC for Zynthian-UI
 		if zynconf.is_service_active("vncserver0"):
-			self.zyngui.state_manager.start_busy("gui_admin")
-
 			try:
 				logging.info("STOPPING VNC-UI SERVICE")
 				check_output("systemctl stop vncserver0", shell=True)
@@ -618,11 +601,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			except Exception as e:
 				logging.error(e)
 
-			self.zyngui.state_manager.end_busy("gui_admin")
-
 		# Start VNC for Engine's native GUIs
 		if zynconf.is_service_active("vncserver1"):
-			self.zyngui.state_manager.start_busy("gui_admin")
 
 			# Save state and stop engines
 			if len(self.zyngui.screens['processor'].processors)>0:
@@ -641,8 +621,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			# Restore state
 			if restore_state:
 				self.zyngui.screens['snapshot'].load_last_state_snapshot()
-				
-			self.zyngui.state_manager.end_busy("gui_admin")
 
 		# Update Config
 		if save_config:
@@ -650,7 +628,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
 			})
 
-		self.fill_list()
+		self.zyngui.close_screen()
 
 
 	#Start/Stop VNC Server depending on configuration
@@ -706,14 +684,14 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def restart_gui(self):
 		logging.info("RESTART ZYNTHIAN-UI")
-		self.zyngui.show_splash("Restarting UI...")
+		self.zyngui.show_splash("Restarting UI")
 		self.last_state_action()
 		self.zyngui.exit(102)
 
 
 	def exit_to_console(self):
 		logging.info("EXIT TO CONSOLE")
-		self.zyngui.show_splash("Exiting...")
+		self.zyngui.show_splash("Exiting")
 		self.last_state_action()
 		self.zyngui.exit(101)
 
@@ -724,7 +702,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def reboot_confirmed(self, params=None):
 		logging.info("REBOOT")
-		self.zyngui.show_splash("Rebooting...")
+		self.zyngui.show_splash("Rebooting")
 		self.last_state_action()
 		self.zyngui.exit(100)
 
@@ -735,7 +713,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def power_off_confirmed(self, params=None):
 		logging.info("POWER OFF")
-		self.zyngui.show_splash("Powering Off...")
+		self.zyngui.show_splash("Powering Off")
 		self.last_state_action()
 		self.zyngui.exit(0)
 

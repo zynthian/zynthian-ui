@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Confirm Class
 # 
-# Copyright (C) 2022 Markus Heidt <markus@heidt-tech.com>
+# Copyright (C) 2023 Markus Heidt <markus@heidt-tech.com>
 #                    Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
@@ -107,7 +107,7 @@ class zynthian_gui_confirm():
 			self.main_frame.grid()
 
 
-	def zyncoder_read(self):
+	def zynpot_cb(self, i, dval):
 		pass
 
 

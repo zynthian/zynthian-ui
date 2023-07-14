@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for PureData
 #
-# Copyright (C) 2015-2018 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 #
@@ -110,10 +110,6 @@ class zynthian_engine_puredata(zynthian_engine):
 	#----------------------------------------------------------------------------
 	# Bank Managament
 	#----------------------------------------------------------------------------
-
-	def get_bank_list(self, processor=None):
-		return self.get_dirlist(self.bank_dirs)
-
 
 	def set_bank(self, processor, bank):
 		return True

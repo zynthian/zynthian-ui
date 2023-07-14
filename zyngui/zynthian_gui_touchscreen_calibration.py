@@ -32,6 +32,7 @@ from datetime import datetime # Only to timestamp config file updates
 from evdev import InputDevice, ecodes
 from select import select
 import os
+import glob
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -125,7 +126,7 @@ class zynthian_gui_touchscreen_calibration:
 			font=(zynthian_gui_config.font_family, zynthian_gui_config.font_size, "normal"),
 			fill="white")
 
-		self.device_name = None # libinput name of selected device
+		self.device_id = None # libinput name of selected device
 		
 
 	#	Run xinput
@@ -145,11 +146,13 @@ class zynthian_gui_touchscreen_calibration:
 	def detectDevice(self):
 		# Populate list of absolute x/y devices
 		devices = []
-		for filename in os.listdir("/dev/input"):
-			if filename.startswith("event"):
-				device = InputDevice("/dev/input/%s" % (filename))
-				if ecodes.EV_ABS in device.capabilities().keys():
-					devices.append(device)
+		for filename in glob.glob("/dev/input/event*"):
+			try:
+				device = InputDevice(filename)
+				device.capabilities()[ecodes.EV_ABS][ecodes.ABS_X]
+				devices.append(device)
+			except:
+				pass
 		# Loop until we get a touch button event or the view hides
 		self.running = True
 		while self.running and self.shown:
@@ -169,7 +172,7 @@ class zynthian_gui_touchscreen_calibration:
 								self.canvas.itemconfig("crosshairs_circles", outline="white")
 								self.pressed = False
 								self.countdown = self.timeout
-								if self.device_name:
+								if self.device_id:
 									self.index = 0
 									self.drawCross()
 									self.canvas.bind('<Button-1>', self.onPress)
@@ -182,18 +185,20 @@ class zynthian_gui_touchscreen_calibration:
 	#	path: Path to device, e.g. '/dev/input/event0'
 	#	Returns: True on success
 	def setDevice(self, name, path):
-		# Transform evdev name to libinput name
+		# Transform evdev name to libinput id
 		props = None
-		for libinput_name in self.xinput("--list", "--name-only").split("\n"):
-			props_temp = self.xinput('--list-props', libinput_name)
-			if props_temp.find(path) != -1:
-				props = props_temp
-				break
+		for libinput in self.xinput("--list").split("\n"):
+			if name not in libinput or "slave  pointer" not in libinput:
+				continue
+			try:
+				self.device_id = libinput.split("id=")[1].split()[0]
+				props = self.xinput('--list-props', self.device_id)
+			except:
+				continue
+			break
 		if not props:
 			return False
-		self.device_name = libinput_name
-		self.canvas.itemconfig(self.device_text, text=name)
-		props = self.xinput('--list-props', self.device_name)
+		self.canvas.itemconfig(name, text=name)		
 		ctm_start = props.find('Coordinate Transformation Matrix')
 		ctm_end = props.find("\n", ctm_start)
 		if ctm_start < 0 or ctm_end < 0:
@@ -209,14 +214,14 @@ class zynthian_gui_touchscreen_calibration:
 		for value in props[ctm_start:ctm_end].split(", "):
 			self.ctm.append(float(value))
 		self.node = props[node_start:node_end] # Get node name to allow mapping between evdev and xinput names
-		self.setCalibration(self.device_name, [1,0,0,0,1,0,0,0,1]) # Reset calibration to allow absolute acquisition
+		self.setCalibration(self.device_id, [1,0,0,0,1,0,0,0,1]) # Reset calibration to allow absolute acquisition
 		return True
 
 
 	#	Handle touch press event
 	#	event: Event including x,y coordinates (optional)
 	def onPress(self, event=None):
-		if self.device_name and not self.pressed:
+		if self.device_id and not self.pressed:
 			self.canvas.itemconfig("crosshairs_lines", fill="red")
 			self.canvas.itemconfig("crosshairs_circles", outline="red")
 			self.pressed = True
@@ -231,7 +236,7 @@ class zynthian_gui_touchscreen_calibration:
 			return
 		self.pressed = False
 		self.countdown = self.timeout
-		if not self.device_name:
+		if not self.device_id:
 			return
 		if self.index < 2:
 			# More points to acquire
@@ -294,7 +299,7 @@ class zynthian_gui_touchscreen_calibration:
 						f = 1 + (0.15 * self.height / e + min_y) / self.height
 
 				self.ctm = [a, b, c, d, e, f, 0, 0, 1]
-				self.setCalibration(self.device_name, self.ctm, True)
+				self.setCalibration(self.device_id, self.ctm, True)
 
 				#TODO: Allow user to check calibration
 
@@ -392,7 +397,7 @@ class zynthian_gui_touchscreen_calibration:
 		if self.shown:
 			self.timer.cancel()
 			self.running = False
-			self.setCalibration(self.device_name, self.ctm)
+			self.setCalibration(self.device_id, self.ctm)
 			self.main_frame.grid_forget()
 			self.shown=False
 
@@ -402,7 +407,7 @@ class zynthian_gui_touchscreen_calibration:
 		if self.zyngui.test_mode:
 			logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
 		self.shown=True
-		self.device_name = None
+		self.device_id = None
 		self.ctm = [1,0,0,0,1,0,0,0,1]
 		self.canvas.unbind('<Button-1>')
 		self.canvas.unbind('<ButtonRelease-1>')

@@ -29,6 +29,8 @@ from time import monotonic
 from collections import deque
 
 # Zynthian specific modules
+import zynconf
+from zyncoder.zyncore import lib_zyncore
 from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
@@ -82,22 +84,22 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
 	def set_zctrls(self):
 		if not self.bpm_zgui_ctrl:
-			self.bpm_zctrl = zynthian_controller(self, 'BPM', 'bpm', {'value_min': 10, 'value_max': 420, 'is_integer': False, 'nudge_factor': 0.1, 'value': self.zyngui.state_manager.zynseq.libseq.getTempo()})
+			self.bpm_zctrl = zynthian_controller(self, 'bpm', 'BPM', {'value_min': 10, 'value_max': 420, 'is_integer': False, 'nudge_factor': 0.1, 'value': self.zynseq.libseq.getTempo()})
 			self.bpm_zgui_ctrl = zynthian_gui_controller(0, self.main_frame, self.bpm_zctrl)
 			self.zgui_ctrls.append(self.bpm_zgui_ctrl)
 
 		if not self.clk_source_zgui_ctrl:
-			self.clk_source_zctrl = zynthian_controller(self, 'Clock Source', 'clock source', {'labels': ['Internal', 'MIDI'], 'ticks': [0, 1], 'value': zynthian_gui_config.transport_clock_source})
+			self.clk_source_zctrl = zynthian_controller(self, 'clock_source', 'Clock Source', {'labels': ['Internal', 'Internal Send', 'MIDI', 'Analogue'], 'ticks': [0, 1, 2, 3], 'value': zynthian_gui_config.transport_clock_source})
 			self.clk_source_zgui_ctrl = zynthian_gui_controller(1, self.main_frame, self.clk_source_zctrl)
 			self.zgui_ctrls.append(self.clk_source_zgui_ctrl)
 
 		if not self.mtr_enable_zgui_ctrl:
-			self.mtr_enable_zctrl = zynthian_controller(self, 'Metronome On/Off', 'metronome on/off', {'labels': ['Off', 'On'], 'ticks': [0, 1], 'is_toggle': True, 'value': self.zyngui.state_manager.zynseq.libseq.isMetronomeEnabled()})
+			self.mtr_enable_zctrl = zynthian_controller(self, 'metronome_enable', 'Metronome On/Off', {'labels': ['Off', 'On'], 'ticks': [0, 1], 'is_toggle': True, 'value': self.zynseq.libseq.isMetronomeEnabled()})
 			self.mtr_enable_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.mtr_enable_zctrl)
 			self.zgui_ctrls.append(self.mtr_enable_zgui_ctrl)
 
 		if not self.mtr_volume_zgui_ctrl:
-			self.mtr_volume_zctrl = zynthian_controller(self, 'Metronome Volume', 'metronome volume', {'value_min': 0, 'value_max': 100, 'value': int(100 * self.zyngui.state_manager.zynseq.libseq.getMetronomeVolume())})
+			self.mtr_volume_zctrl = zynthian_controller(self, 'metronome_volume', 'Metronome Volume', {'value_min': 0, 'value_max': 100, 'value': int(100 * self.zynseq.libseq.getMetronomeVolume())})
 			self.mtr_volume_zgui_ctrl = zynthian_gui_controller(3, self.main_frame, self.mtr_volume_zctrl)
 			self.zgui_ctrls.append(self.mtr_volume_zgui_ctrl)
 
@@ -149,6 +151,27 @@ class zynthian_gui_tempo(zynthian_gui_base):
 			return False
 
 
+	def set_transport_clock_source(self, val, save_config=False):
+		if val == 2:
+			self.zyngui.state_manager.zynseq.libseq.setClockSource(2)
+		elif val == 3:
+			self.zyngui.state_manager.zynseq.libseq.setClockSource(5)
+		else:
+			self.zyngui.state_manager.zynseq.libseq.setClockSource(1)
+		self.zyngui.state_manager.zynseq.libseq.enableMidiClockOutput(val == 1)
+		if val > 0:
+			lib_zyncore.set_midi_filter_system_events(1)
+		else:
+			lib_zyncore.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
+
+		# Save config
+		if save_config:
+			zynthian_gui_config.transport_clock_source = val
+			zynconf.update_midi_profile({
+				"ZYNTHIAN_MIDI_TRANSPORT_CLOCK_SOURCE": str(int(val))
+			})
+
+
 	def send_controller_value(self, zctrl):
 		if self.shown:
 			if zctrl == self.bpm_zctrl:
@@ -157,8 +180,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
 				self.replot = True
 
 			elif zctrl == self.clk_source_zctrl:
-				zynthian_gui_config.transport_clock_source = zctrl.value
-				self.zyngui.state_manager.zynseq.libseq.setClockSource(zctrl.value)
+				self.set_transport_clock_source(zctrl.value, save_config=True)
 				logging.debug("SETTING CLOCK SOURCE: {}".format(zctrl.value))
 				self.replot = True
 

@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Chain Options Class
 #
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 #
@@ -25,6 +25,7 @@
 
 from collections import OrderedDict
 import logging
+from collections import OrderedDict
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -73,15 +74,15 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			self.list_data.append((self.chain_note_range, None, "Note Range & Transpose"))
 			self.list_data.append((self.chain_clone, None, "Clone MIDI to..."))
 
-		if self.chain.get_processor_count():
-			#TODO Disable midi learn for some chains???
-			self.list_data.append((self.midi_learn, None, "MIDI Learn"))
-
 		if self.chain.midi_thru:
 			self.list_data.append((self.chain_midi_routing, None, "MIDI Routing"))
 
 		if self.chain.is_midi():
 			self.list_data.append((self.chain_midi_chan, None, "MIDI Channel"))
+
+		if self.chain.get_processor_count():
+			#TODO Disable midi learn for some chains???
+			self.list_data.append((self.midi_learn, None, "MIDI Learn"))
 
 		self.list_data.append((None, None, "> Chain"))
 

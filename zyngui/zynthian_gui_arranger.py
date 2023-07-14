@@ -5,8 +5,8 @@
 #
 # Zynthian GUI Step-Sequencer Arranger Class
 #
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
-# Copyright (C) 2020-2022 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+#                         Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
 #
@@ -707,6 +707,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	def remove_event(self, col, sequence, track):
 		time = col * self.clocks_per_division
 		self.zynseq.remove_pattern(self.zynseq.bank, sequence, track, time)
+		self.redraw_pending = 2
 
 
 	# Function to add an event
@@ -1179,23 +1180,20 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 
 	# Function to handle switch press
-	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	#	i: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
-	def switch(self, switch, type):
-		if switch == zynthian_gui_config.ENC_SELECT and type == 'B':
+	def switch(self, i, type):
+		if i == 1 and type == 'B':
 			self.show_pattern_editor()
 			return True
-		elif switch == zynthian_gui_config.ENC_SNAPSHOT:
+		elif i == 2:
 			if type == 'S':
 				self.zynseq.libseq.togglePlayState(self.zynseq.bank, self.sequence)
 			elif type == 'B':
 				self.zynseq.libseq.setPlayPosition(self.zynseq.bank, self.sequence, 0)
 			else:
 				return False
-			return True
-		elif switch == zynthian_gui_config.ENC_LAYER and type == 'B':
-			self.show_menu()
 			return True
 
 

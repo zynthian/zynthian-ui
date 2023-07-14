@@ -106,6 +106,11 @@ class Pattern
         */
         Pattern(uint32_t beats = 4, uint32_t stepsPerBeat = 4);
 
+        /** @brief  Copy constructor
+        *   @param  Pointer to pattern to copy
+        */
+        Pattern(Pattern* pattern);
+
         /** @brief  Destruct pattern object
         */
         ~Pattern();

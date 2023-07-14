@@ -39,7 +39,7 @@ class zynthian_gui_chain_menu(zynthian_gui_selector):
 
 
 	def fill_list(self):
-		self.list_data=[]
+		self.list_data = []
 		self.list_data.append((self.new_synth_chain, 0, "New Synth Chain"))
 		self.list_data.append((self.new_audiofx_chain, 0, "New Audio Chain"))
 		self.list_data.append((self.new_midifx_chain, 0, "New MIDI Chain"))
@@ -51,7 +51,7 @@ class zynthian_gui_chain_menu(zynthian_gui_selector):
 
 	def select_action(self, i, t='S'):
 		if self.list_data[i][0]:
-			self.last_action=self.list_data[i][0]
+			self.last_action = self.list_data[i][0]
 			self.last_action(t)
 
 
@@ -81,7 +81,7 @@ class zynthian_gui_chain_menu(zynthian_gui_selector):
 
 
 	def clean_all(self, t='S'):
-		self.zyngui.show_confirm("Do you really want to remove all chains?", self.clean_all_confirmed)
+		self.zyngui.show_confirm("Do you really want to remove ALL chains & sequences?", self.clean_all_confirmed)
 
 
 	def clean_all_confirmed(self, params=None):

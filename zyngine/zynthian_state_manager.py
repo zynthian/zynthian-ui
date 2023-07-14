@@ -54,7 +54,7 @@ from zynlibs.zynsmf.zynsmf import libsmf # Direct access to shared library
 
 SNAPSHOT_SCHEMA_VERSION = 1
 capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
-capture_dir_usb = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
+ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 
 class zynthian_state_manager:
 
@@ -164,6 +164,7 @@ class zynthian_state_manager:
 
         zynautoconnect.stop()
         self.last_snapshot_fpath = ""
+        self.zynseq.transport_stop("ALL")
         self.zynseq.load("")
         self.chain_manager.remove_all_chains(True)
         self.reset_zs3()
@@ -814,8 +815,13 @@ class zynthian_state_manager:
     def all_notes_off(self):
         logging.info("All Notes Off!")
         self.start_busy("all_notes_off")
+        self.zynseq.libseq.stop()
         for chan in range(16):
             get_lib_zyncore().ui_send_ccontrol_change(chan, 123, 0)
+        try:
+            get_lib_zyncore().zynaptik_all_gates_off()
+        except:
+            pass
         self.end_busy("all_notes_off")
 
 
@@ -970,12 +976,10 @@ class zynthian_state_manager:
                 self.audio_player = zynthian_processor("AP", self.chain_manager.engine_info["AP"])
                 self.audio_player.midi_chan = 16
                 self.chain_manager.start_engine(self.audio_player, "AP")
-                self.audio_player.engine.set_play_on_load(True)
                 zynautoconnect.request_audio_connect(True)
             except Exception as e:
                 logging.error("Can't create global Audio Player instance")
                 return
-
 
     def destroy_audio_player(self):
         if self.audio_player:
@@ -983,31 +987,22 @@ class zynthian_state_manager:
             self.audio_player = None
             self.status_audio_player = False
 
-
-
     def start_audio_player(self):
         filename = self.audio_recorder.filename
         if filename and os.path.exists(filename):
             self.audio_player.engine.set_preset(self.audio_player, [filename])
-            #self.audio_player.engine.player.set_position(16, 0.0)
+            self.audio_player.engine.player.set_position(16, 0.0)
             self.audio_player.engine.player.start_playback(16)
             self.audio_recorder.filename = None
-        elif self.audio_player.preset_name:
-            self.audio_player.controllers_dict['transport'].set_value('playing')
-        elif self.audio_player.engine.player.get_filename(16):
+        elif (self.audio_player.preset_name and os.path.exists(self.audio_player.preset_info[0])) or self.audio_player.engine.player.get_filename(16):
             self.audio_player.engine.player.start_playback(16)
         else:
-            self.show_screen("audio_player")
-            if self.audio_player.bank_name is None:
-                self.replace_screen('bank')
-                if len(self.audio_player.bank_list) == 1:
-                    self.screens['bank'].click_listbox()
+            self.audio_player.reset_preset()
+            self.cuia_audio_file_list()
+
 
     def stop_audio_player(self):
-        if self.audio_player.preset_name:
-            self.audio_player.controllers_dict['transport'].set_value('stopped')
-        else:
-            self.audio_player.engine.player.stop_playback(16)
+        self.audio_player.engine.player.stop_playback(16)
 
 
     def toggle_audio_player(self):
@@ -1041,10 +1036,12 @@ class zynthian_state_manager:
             except:
                 filename = "jack_capture"
 
-            if os.path.ismount(capture_dir_usb):
-                dir = capture_dir_usb
-            else:
+            exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
+            if exdirs is None:
                 dir = capture_dir_sdc
+            else:
+                dir = exdirs[0]
+
             n = 1
             for fn in sorted(os.listdir(dir)):
                 if fn.lower().endswith(".mid"):
@@ -1074,7 +1071,7 @@ class zynthian_state_manager:
             else:
                 # Get latest file
                 latest_mtime = 0
-                for dir in [capture_dir_sdc, capture_dir_usb]:
+                for dir in [capture_dir_sdc] + zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
                     for fn in os.listdir(dir):
                         fp = join(dir, fn)
                         if isfile(fp) and fn[-4:] == '.mid':

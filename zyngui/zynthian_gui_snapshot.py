@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Snapshot Selector (load/save)) Class
 # 
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -25,13 +25,13 @@
 
 import os
 import logging
-from os.path import isfile, isdir, join, basename
+from datetime import datetime
+from os.path import isfile, isdir, join, basename, dirname, splitext
 from glob import glob
 import shutil
 
 
 # Zynthian specific modules
-from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
@@ -163,6 +163,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		for dpath in sorted(glob(f"{self.zyngui.state_manager.snapshot_dir}/[0-9][0-9][0-9]*")):
 			if isdir(dpath):
 				bank_name = basename(dpath)
+				if bank_name.startswith('.'):
+					continue
+
 				self.list_data.append((dpath, i, bank_name))
 				try:
 					bank_number = self.get_midi_number(bank_name)
@@ -303,6 +306,11 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			"Load Sequences": fpath,
 			"Save": fname
 		}
+
+		budir = dirname(fpath) + "/.backup"
+		if isdir(budir):
+			options["Restore Backup"] = fpath
+
 		if not restrict_options:
 			options.update(
 				{
@@ -324,28 +332,61 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			return
 
 		if option == "Load":
-			state = self.zyngui.state_manager.load_snapshot(fpath)
-			if state is None:
-				self.zyngui.clean_all()
-			if state and "zyngui" in state:
-				if self.load_zyngui(state["zyngui"]):
-					return
-			self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
+			#self.zyngui.show_confirm("Loading '%s' will destroy current chains & sequences..." % (fname), self.load_snapshot, fpath)
+			self.load_snapshot(fpath)
 		elif option == "Load Chains":
-			self.zyngui.state_manager.load_snapshot(fpath, load_sequences=False)
-			self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
+			#self.zyngui.show_confirm("Loading chains from '%s' will destroy current chains..." % (fname), self.load_snapshot_chains, fpath)
+			self.load_snapshot_chains(fpath)
 		elif option == "Load Sequences":
-			self.zyngui.state_manager.load_snapshot(fpath, load_chains=False)
-			self.zyngui.show_screen('stepseq', hmode=self.zyngui.SCREEN_HMODE_RESET)
+			#self.zyngui.show_confirm("Loading sequences from '%s' will destroy current sequences..." % (fname), self.load_snapshot_sequences, fpath)
+			self.load_snapshot_sequences(fpath)
 		elif option == "Save":
-			self.zyngui.show_confirm("Do you really want to overwrite %s with current configuration" % (fname), self.save_snapshot, fpath)
+			#self.zyngui.show_confirm("Do you really want to overwrite '%s'?" % (fname), self.save_snapshot, fpath)
+			self.save_snapshot(fpath)
+		elif option == "Restore Backup":
+			budir = dirname(fpath) + "/.backup"
+			fbase, fext = splitext(fname)
+			fpat = "{}.*.zss".format(fbase)
+			self.zyngui.screens['option'].config_file_list("Restore backup: {}".format(fname), budir, fpat, self.restore_backup_cb)
+			self.zyngui.show_screen('option')
 		elif option == "Rename":
 			self.zyngui.show_keyboard(self.rename_snapshot, parts[1])
 		elif option == "Set Program":
 			self.zyngui.screens['midi_prog'].config(parts[0], self.set_program)
 			self.zyngui.show_screen('midi_prog')
 		elif option == "Delete":
-			self.zyngui.show_confirm("Do you really want to delete %s" % (fname), self.delete_confirmed, fpath)
+			self.zyngui.show_confirm("Do you really want to delete '%s'" % (fname), self.delete_confirmed, fpath)
+
+
+	def load_snapshot(self, fpath):
+		self.zyngui.show_loading("loading snapshot")
+		self.save_last_state_snapshot()
+		state = self.zyngui.state_manager.load_snapshot(fpath)
+		if state is None:
+			self.zyngui.clean_all()
+		if state and "zyngui" in state:
+			if self.load_zyngui(state["zyngui"]):
+				return
+		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
+
+
+	def load_snapshot_chains(self, fpath):
+		self.zyngui.show_loading("loading snapshot chains")
+		self.save_last_state_snapshot()
+		self.zyngui.state_manager.load_snapshot(fpath, load_sequences=False)
+		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
+
+
+	def load_snapshot_sequences(self, fpath):
+		self.zyngui.show_loading("loading snapshot sequences")
+		self.save_last_state_snapshot()
+		self.zyngui.state_manager.load_snapshot(fpath, load_chains=False)
+		self.zyngui.show_screen('zynpad', hmode=self.zyngui.SCREEN_HMODE_RESET)
+
+
+	def restore_backup_cb(self, fname, fpath):
+		logging.debug("Restoring snapshot backup '{}'".format(fname))
+		self.load_snapshot(fpath)
 
 
 	def rename_snapshot(self, new_name):
@@ -363,7 +404,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		if new_path[-4:].lower() != '.zss':
 			new_path += '.zss'
 		if isfile(new_path):
-			self.zyngui.show_confirm("Do you really want to overwrite the snapshot %s?" % new_name, self.do_rename, [parts[3], new_path])
+			self.zyngui.show_confirm("Do you really want to overwrite '%s'?" % new_name, self.do_rename, [parts[3], new_path])
 		else:
 			self.do_rename([parts[3], new_path])
 		self.select_listbox_by_name(parts[2][:-4])
@@ -374,14 +415,14 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			os.rename(data[0], data[1])
 			self.fill_list()
 		except Exception as e:
-			logging.warning("Failed to rename snapshot {} to {} => {}".format(data[0], data[1], e))
+			logging.warning("Failed to rename snapshot '{}' to '{}' => {}".format(data[0], data[1], e))
 
 
 	def set_program(self, value):
 		fpath = self.list_data[self.index][0]
 		parts = self.get_parts_from_path(fpath)
 		if parts is None:
-			logging.warning("Wrong snapshot {} => {}".format(self.index, fpath))
+			logging.warning("Wrong snapshot '{}' => '{}'".format(self.index, fpath))
 			return
 
 		try:
@@ -448,8 +489,20 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 
 	def save_snapshot(self, path):
+		self.backup_snapshot(path)
 		self.zyngui.state_manager.save_snapshot(path)
 		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
+
+
+	def backup_snapshot(self, path):
+		if isfile(path):
+			dpath = dirname(path)
+			fbase, fext = splitext(basename(path))
+			ts_str = datetime.now().strftime("%Y%m%d%H%M%S")
+			budir = dpath + "/.backup"
+			if not isdir(budir):
+				os.mkdir(budir)
+			os.rename(path, "{}/{}.{}{}".format(budir, fbase, ts_str, fext))
 
 
 	def save_default_snapshot(self):
@@ -458,6 +511,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def load_default_snapshot(self):
 		if isfile(self.default_snapshot_fpath):
+			self.zyngui.set_loading_title("loading default snapshot")
 			return self.zyngui.state_manager.load_snapshot(self.default_snapshot_fpath)
 
 
@@ -467,6 +521,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def load_last_state_snapshot(self):
 		if isfile(self.last_state_snapshot_fpath):
+			self.zyngui.set_loading_title("loading last state")
 			return self.zyngui.state_manager.load_snapshot(self.last_state_snapshot_fpath)
 
 

@@ -108,10 +108,10 @@ class zynthian_wsleds_base:
 
 	def pulse(self, i):
 		if self.blink_state:
-			color = rpi_ws281x.Color(0, self.pulse_step * 24, 0)
+			color = rpi_ws281x.Color(0, self.pulse_step * 6, 0)
 			self.pulse_step += 1
 		elif self.pulse_step > 0:
-			color = rpi_ws281x.Color(0, self.pulse_step * 24, 0)
+			color = rpi_ws281x.Color(0, self.pulse_step * 6, 0)
 			self.pulse_step -= 1
 		else:
 			color = self.wscolor_off
@@ -122,7 +122,7 @@ class zynthian_wsleds_base:
 	def update(self):
 		# Power Save Mode
 		if self.zyngui.power_save_mode:
-			if self.blink_count % 16 > 11:
+			if self.blink_count % 64 > 44:
 				self.blink_state = True
 			else:
 				self.blink_state = False

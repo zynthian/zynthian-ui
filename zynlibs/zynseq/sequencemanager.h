@@ -54,6 +54,12 @@ class SequenceManager
         *   @param  destination Index of pattern to populate
         */
         void copyPattern(uint32_t source, uint32_t destination);
+
+        /** @brief  Replace pattern
+        *   @param  index Pattern index
+        *   @param  pattern Pointer to new pattern
+        */
+        void replacePattern(uint32_t index, Pattern* pattern); 
         
         /** @brief  Update sequence lengths in current bank
         *   @param  bank Index of bank
@@ -67,13 +73,13 @@ class SequenceManager
         void updateAllSequenceLengths();
 
         /** @brief  Handle clock
-        *   @param  nTime Offset since JACK epoch for start of next period
+        *   @param  timeinfo Pair: Offset since JACK epoch for start of next period, duration of clock cycle in frames
         *   @param  pSchedule Pointer to the schedule to populate with events
         *   @param  bSync True indicates a sync pulse
         *   @param  dSamplesPerClock Quantity of samples in each clock cycle
         *   @retval size_t Quantity of playing sequences
         */
-        size_t clock(uint32_t nTime, std::map<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync, double dSamplesPerClock);
+        size_t clock(std::pair<double,double> timeinfo, std::multimap<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync);
 
         /** @brief  Get pointer to sequence
         *   @param  bank Index of bank containing sequence
@@ -134,15 +140,15 @@ class SequenceManager
         */
         void setTriggerChannel(uint8_t channel);
 
-        /** @brief  Get MIDI tally channel
-        *   @retval uint8_t MIDI channel
+        /** @brief  Get MIDI trigger device
+        *   @retval uint8_t MIDI device index
         */
-        uint8_t getTallyChannel();
+        uint8_t getTriggerDevice();
 
-        /** @brief  Set MIDI tally channel
-        *   @param  channel MIDI channel [0..15 or other to disable MIDI trigger]
+        /** @brief  Set MIDI trigger device
+        *   @param  idev MIDI device index [0..15 or other to disable MIDI device]
         */
-        void setTallyChannel(uint8_t channel);
+        void setTriggerDevice(uint8_t idev);
 
         /** @brief  Get sequence triggered by MIDI note
         *   @param  note MIDI note number
@@ -165,7 +171,7 @@ class SequenceManager
         */
         size_t getPlayingSequencesCount();
 
-        /** @brief  Stop all colections / sequences
+        /** @brief  Stop all collections / sequences
         */
         void stop();
         
@@ -228,8 +234,8 @@ class SequenceManager
         uint8_t fileRead8(FILE* pFile);
         bool checkBlock(FILE* pFile, uint32_t nActualSize,  uint32_t nExpectedSize);
 
-        uint8_t m_nTriggerChannel = 0xFF; // MIDI channel to recieve sequence triggers (note-on)
-        uint8_t m_nTallyChannel = 0xFF; // MIDI channel to send sequence state change tallies (note-on)
+        uint8_t m_nTriggerDevice = 0xFF; // MIDI device to receive sequence triggers (note-on)
+        uint8_t m_nTriggerChannel = 0xFF; // MIDI channel to receive sequence triggers (note-on)
 
         // Note: Maps are used for patterns and sequences to allow addition and removal of sequences whilst maintaining consistent access to remaining instances
         std::map<uint32_t, Pattern> m_mPatterns; // Map of patterns indexed by pattern number

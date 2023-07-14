@@ -45,7 +45,8 @@ from zynlibs.zynseq import *
 
 logging.info("STARTING ZYNTHIAN-UI ...")
 zynthian_gui_config.zyngui = zyngui = zynthian_gui()
-zyngui.start()
+zyngui.create_screens()
+zyngui.run_start_thread()
 
 #------------------------------------------------------------------------------
 # Zynlib Callbacks
@@ -76,7 +77,7 @@ def flushflush():
 	zynthian_gui_config.top.after(200, flushflush)
 
 
-if zynthian_gui_config.wiring_layout=="EMULATOR":
+if zynthian_gui_config.wiring_layout == "EMULATOR":
 	top_xid = zynthian_gui_config.top.winfo_id()
 	print("Zynthian GUI XID: " + str(top_xid))
 	if len(sys.argv) > 1:

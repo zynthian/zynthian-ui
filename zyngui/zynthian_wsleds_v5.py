@@ -44,6 +44,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 
 	def update_wsleds(self):
 		curscreen = self.zyngui.current_screen
+		curscreen_obj = self.zyngui.get_current_screen_obj()
 
 		# Menu / Admin
 		if self.zyngui.is_current_screen_menu():
@@ -62,7 +63,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 			self.wsleds.setPixelColor(1, self.wscolor_default)
 
 		# Control / Preset Screen:
-		if curscreen == "control":
+		if curscreen in ("control", "audio_player"):
 			self.wsleds.setPixelColor(2, self.wscolor_active)
 		elif curscreen in ("preset", "bank"):
 			self.wsleds.setPixelColor(2, self.wscolor_active2)
@@ -88,7 +89,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		# Tempo Screen
 		if curscreen == "tempo":
 			self.wsleds.setPixelColor(6, self.wscolor_active)
-		elif self.zyngui.zynseq.libseq.isMetronomeEnabled():
+		elif self.zynseq.libseq.isMetronomeEnabled():
 			self.blink(6, self.wscolor_active)
 		else:
 			self.wsleds.setPixelColor(6, self.wscolor_default)
@@ -99,52 +100,26 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		else:
 			self.wsleds.setPixelColor(7, self.wscolor_default)
 
-		# REC button:
-		if curscreen == "pattern_editor":
-			if self.zyngui.zynseq.libseq.isMidiRecord():
-				self.wsleds.setPixelColor(8, self.wscolor_red)
-			else:
-				self.wsleds.setPixelColor(8, self.wscolor_active2)
-		elif self.zyngui.alt_mode:
-			if self.zyngui.status_midi_recorder:
-				self.wsleds.setPixelColor(8, self.wscolor_red)
-			else:
-				self.wsleds.setPixelColor(8, self.wscolor_alt)
+		wsleds = [8, 9, 10]
+		update_wsleds_func = getattr(curscreen_obj, "update_wsleds", None)
+		if callable(update_wsleds_func):
+			update_wsleds_func(wsleds)
 		else:
-			if self.zyngui.status_audio_recorder:
-				self.wsleds.setPixelColor(8, self.wscolor_red)
+			if self.zyngui.alt_mode:
+				self.zyngui.screens["midi_recorder"].update_wsleds(wsleds)
 			else:
-				self.wsleds.setPixelColor(8, self.wscolor_default)
-
-		# STOP button
-		if curscreen == "pattern_editor":
-			self.wsleds.setPixelColor(9, self.wscolor_active2)
-		elif self.zyngui.alt_mode:
-			self.wsleds.setPixelColor(9, self.wscolor_alt)
-		else:
-			self.wsleds.setPixelColor(9, self.wscolor_default)
-
-		# PLAY button:
-		if curscreen == "pattern_editor":
-			pb_status = self.zyngui.screens['pattern_editor'].get_playback_status()
-			if pb_status == zynseq.SEQ_PLAYING:
-				self.wsleds.setPixelColor(10, self.wscolor_green)
-			elif pb_status in (zynseq.SEQ_STARTING, zynseq.SEQ_RESTARTING):
-				self.wsleds.setPixelColor(10, self.wscolor_yellow)
-			elif pb_status in (zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC):
-				self.wsleds.setPixelColor(10, self.wscolor_red)
-			elif pb_status == zynseq.SEQ_STOPPED:
-				self.wsleds.setPixelColor(10, self.wscolor_active2)
-		elif self.zyngui.alt_mode:
-			if self.zyngui.status_midi_recorder:
-				self.wsleds.setPixelColor(10, self.wscolor_green)
-			else:
-				self.wsleds.setPixelColor(10, self.wscolor_alt)
-		else:
-			if self.zyngui.state_manager.status_audio_player:
-				self.wsleds.setPixelColor(10, self.wscolor_green)
-			else:
-				self.wsleds.setPixelColor(10, self.wscolor_default)
+				# REC Button
+				if 'audio_recorder' in self.zyngui.status_info:
+					self.wsleds.setPixelColor(wsleds[0], self.wscolor_red)
+				else:
+					self.wsleds.setPixelColor(wsleds[0], self.wscolor_default)
+				# STOP button
+				self.wsleds.setPixelColor(wsleds[1], self.wscolor_default)
+				# PLAY button:
+				if 'audio_player' in self.zyngui.status_info:
+					self.wsleds.setPixelColor(wsleds[2], self.wscolor_green)
+				else:
+					self.wsleds.setPixelColor(wsleds[2], self.wscolor_default)
 
 		# Select/Yes button
 		self.wsleds.setPixelColor(13, self.wscolor_green)

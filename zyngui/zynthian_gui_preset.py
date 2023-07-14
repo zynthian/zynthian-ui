@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Preset Selector Class
 #
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 #
@@ -121,8 +121,6 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		if option.endswith("Favourite"):
 			self.zyngui.get_current_processor().toggle_preset_fav(preset)
 			self.zyngui.get_current_processor().load_preset_list()
-			# Clumsey way to repopulate options screen by hide then show
-			self.zyngui.close_screen()
 			self.show_preset_options()
 		elif option == "Rename":
 			self.zyngui.show_keyboard(self.rename_preset, preset[2])
@@ -138,10 +136,10 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			try:
 				#TODO: Confirm rename if overwriting existing preset or duplicate name
 				processor.engine.rename_preset(processor.bank_info, preset, new_name)
-				self.zyngui.close_screen()
-				if preset[0] == processor.preset_info[0]:
+				if preset[0] == self.zyngui.curlayer.preset_info[0]:
 					self.zyngui.state_manager.start_busy("set preset")
-					processor.set_preset_by_name(new_name)
+					self.zyngui.curlayer.set_preset_by_id(preset[0])
+					self.fill_list()
 					self.zyngui.state_manager.end_busy("set preset")
 			except Exception as e:
 				logging.error("Failed to rename preset => {}".format(e))
@@ -155,7 +153,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		try:
 			count = self.zyngui.get_current_processor().engine.delete_preset(self.zyngui.get_current_processor().bank_info, preset)
 			self.zyngui.get_current_processor().remove_preset_fav(preset)
-			self.zyngui.close_screen()
+			self.fill_list()
 			if count == 0:
 				self.zyngui.close_screen()
 		except Exception as e:
@@ -185,6 +183,11 @@ class zynthian_gui_preset(zynthian_gui_selector):
 				self.show_preset_options()
 				return True
 		return False
+
+
+	def cuia_toggle_play(self):
+		if self.zyngui.curlayer.engine.nickname == "AP":
+			self.click_listbox()
 
 
 	def set_selector(self, zs_hiden=False):

@@ -31,12 +31,13 @@ import pexpect
 from time import sleep
 from string import Template
 from collections import OrderedDict
-from os.path import isfile, isdir, join
+from os.path import isfile, isdir, ismount, join
 
 from . import zynthian_controller
+from zyngui import zynthian_gui_config
 
 #--------------------------------------------------------------------------------
-# Basic Engine Class: Spawn a proccess & manage IPC communication using pexpect
+# Basic Engine Class: Spawn a process & manage IPC communication using pexpect
 #--------------------------------------------------------------------------------
 
 class zynthian_basic_engine:
@@ -45,10 +46,10 @@ class zynthian_basic_engine:
 	# Data dirs 
 	# ---------------------------------------------------------------------------
 
-	config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
-	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR',"/zynthian/zynthian-data")
-	my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data")
-	ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
+	config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR', "/zynthian/config")
+	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data")
+	my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data")
+	ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 
 	# ---------------------------------------------------------------------------
 	# Initialization
@@ -143,14 +144,16 @@ class zynthian_engine(zynthian_basic_engine):
 	# ---------------------------------------------------------------------------
 
 	# Standard MIDI Controllers
-	_ctrls=[]
+	_ctrls = []
 
 	# Controller Screens
-	_ctrl_screens=[]
+	_ctrl_screens = []
 
 	# ---------------------------------------------------------------------------
 	# Config variables
 	# ---------------------------------------------------------------------------
+
+	bank_dirs = None
 
 	# ---------------------------------------------------------------------------
 	# Initialization
@@ -311,7 +314,8 @@ class zynthian_engine(zynthian_basic_engine):
 	@staticmethod
 	def get_dirlist(dpath, exclude_empty=True):
 		res = []
-		if isinstance(dpath, str): dpath = [('_', dpath)]
+		if isinstance(dpath, str):
+			dpath = [('_', dpath)]
 		i = 0
 		for dpd in dpath:
 			dp = dpd[1]
@@ -377,10 +381,28 @@ class zynthian_engine(zynthian_basic_engine):
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
+	def get_bank_dirs(self):
+		if self.bank_dirs is not None:
+			exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
+			xbank_dirs = []
+			for bd in self.bank_dirs:
+				if bd[1].startswith(self.ex_data_dir):
+					for exd in exdirs:
+						xbank_dirs.append((bd[0], bd[1].replace(self.ex_data_dir, exd)))
+				else:
+					xbank_dirs.append(bd)
+			return xbank_dirs
+		else:
+			return None
 
-	def get_bank_list(self, processor=None):
-		logging.info('Getting Bank List for %s: NOT IMPLEMENTED!' % self.name)
-		return []
+
+	def get_bank_list(self, layer=None):
+		xbank_dirs = self.get_bank_dirs()
+		if xbank_dirs is not None:
+			return self.get_dirlist(xbank_dirs)
+		else:
+			logging.info('Getting Bank List for %s: NOT IMPLEMENTED!' % self.name)
+			return []
 
 
 	def set_bank(self, processor, bank):

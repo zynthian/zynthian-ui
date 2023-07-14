@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI configuration
 # 
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -191,6 +191,14 @@ def config_custom_switches():
 				evtype = 0x9
 			elif custom_type == "MIDI_PROG_CHANGE":
 				evtype = 0xC
+			elif custom_type == "MIDI_CLOCK":
+				evtype = 0xF8
+			elif custom_type == "MIDI_TRANSPORT_START":
+				evtype = 0xFA
+			elif custom_type == "MIDI_TRANSPORT_CONTINUE":
+				evtype = 0xFB
+			elif custom_type == "MIDI_TRANSPORT_STOP":
+				evtype = 0xFC
 			elif custom_type == "CVGATE_IN":
 				evtype = -4
 			elif custom_type == "CVGATE_OUT":
@@ -349,7 +357,8 @@ def set_midi_config():
 	midi_rtpmidi_enabled = int(os.environ.get('ZYNTHIAN_MIDI_RTPMIDI_ENABLED', 0))
 	midi_touchosc_enabled = int(os.environ.get('ZYNTHIAN_MIDI_TOUCHOSC_ENABLED', 0))
 	midi_aubionotes_enabled = int(os.environ.get('ZYNTHIAN_MIDI_AUBIONOTES_ENABLED', 0))
-	transport_clock_source = int(os.environ.get('ZYNTHIAN_TRANSPORT_CLOCK_SOURCE' ,0))
+	transport_clock_source = int(os.environ.get('ZYNTHIAN_MIDI_TRANSPORT_CLOCK_SOURCE', 0))
+	transport_clock_source = int(os.environ.get('ZYNTHIAN_MIDI_TRANSPORT_CLOCK_SOURCE' ,0))
 
 	# Filter Rules
 	midi_filter_rules = os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES', "")
@@ -431,6 +440,20 @@ def set_midi_config():
 
 
 #------------------------------------------------------------------------------
+# External storage (removable disks)
+#------------------------------------------------------------------------------
+
+def get_external_storage_dirs(exdpath):
+	exdirs = []
+	if os.path.isdir(exdpath):
+		for dname in sorted(os.listdir(exdpath)):
+			dpath = os.path.join(exdpath, dname)
+			if os.path.isdir(dpath) and os.path.ismount(dpath):
+				exdirs.append(dpath)
+	return exdirs
+
+
+#------------------------------------------------------------------------------
 # UI Color Parameters
 #------------------------------------------------------------------------------
 
@@ -445,7 +468,9 @@ color_low_on = os.environ.get('ZYNTHIAN_UI_COLOR_LOW_ON', "#b00000")
 color_panel_bg = os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_BG', "#3a424d")
 color_panel_hl = os.environ.get('ZYNTHIAN_UI_COLOR_PANEL_HL', "#2a323d")
 color_info = os.environ.get('ZYNTHIAN_UI_COLOR_INFO', "#8080ff")
-color_midi = os.environ.get('ZYNTHIAN_UI_COLOR_MIDI', "#ff00ff")
+color_midi = os.environ.get('ZYNTHIAN_UI_COLOR_MIDI', "#9090ff")
+color_alt = os.environ.get('ZYNTHIAN_UI_COLOR_ALT', "#ff00ff")
+color_alt2 = os.environ.get('ZYNTHIAN_UI_COLOR_ALT2', "#ff9000")
 color_error = os.environ.get('ZYNTHIAN_UI_COLOR_ERROR', "#ff0000")
 
 # Color Scheme
@@ -460,6 +485,8 @@ color_ctrl_tx_off = color_tx_off
 color_status_midi = color_midi
 color_status_play = color_hl
 color_status_record = color_low_on
+color_status_play_midi = color_alt
+color_status_play_seq = color_alt2
 color_status_error = color_error
 
 #------------------------------------------------------------------------------

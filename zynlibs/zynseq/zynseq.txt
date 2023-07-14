@@ -1,0 +1,147 @@
+Description of zynseq code
+
+Zynseq is Zynthian's step sequencer. It has a hierarchical structure of C++ classes:
+
+    A scene (previously known as "bank") contains 1 or more sequences
+    A sequence contains 1 or more tracks
+    A track contains 0 or more patterns
+    A pattern contains 0 or more step events
+
+
+A step event is a class that represents an event within a pattern. It defines:
+
+    Start position of event in steps relative to start of pattern
+    Duration of event in steps
+    MIDI command without channel
+    MIDI value 1 at start of event (for commands with > 0 values)
+    MIDI value 1 at end of event (for commands with > 0 values)
+    MIDI value 2 at start of event (for commands with > 1 values)
+    MIDI value 2 at end of event (for commands with > 1 values)
+    Quantity of stutters (fast repeats) at start of event (NOTE_ON events only)
+    Duration of each stutter in clock cycles (NOTE_ON events only)
+
+A track is a class that acts as a container for non-overlapping patterns which may be contiguous or non-contiguous. It provides the mechanism to provide linear / absolute timing of events from within its patterns on a single MIDI channel. It defines:
+
+    MIDI channel
+    JACK output port (for future use)
+    Clock cycles per step
+    Map of pointers to patterns, indexed by start position in clock cycles
+    Quantity of clock cycles in track (until end of last pattern)
+    
+    Index of a note map or scale (for UI - not used internally)
+    Current count of clock cycles within divisor
+    Start position of pattern currently being played
+    Index of next event to process or -1 if no more events at this clock cycle
+    Value of event at current interpolation point or -1 if no event
+    Time of last clock pulse (sample)
+    Current play postion within pattern (step)
+    Quantity of samples per MIDI clock cycle used to schedule future events, e.g. note off / interpolation
+    Flag to solo track
+    Flag to mute track
+    Flag to indicate track has changed since last save (dirty)
+    Flag to indicate track is empty (may contain empty patterns)
+
+
+A sequence is a class that acts as a containter for parallel tracks. It provides the mechanism for simultaneous playback of multiple tracks of patterns / events on multiple MIDI channels. It defines:
+
+    Vector of tracks within sequence
+    A timebase object that describes timebase change events within the sequence
+    Sequence play state (stopped, starting, etc.)
+    Sequence play mode (loop, oneshot, etc.)
+    Index of track currently being queried for events
+        during playback tracks are iterated to get events, one track at a time
+    Play position in clock cycles
+    Position of last (previous) sync pulse in clock cycles
+    Length of sequence in clock cycles (longest track)
+    Sequence's mutually exclusive group
+    Flag to indicate track has changed since last save (dirty)
+    Flag to indicate state has changed since last clock cycle
+    Flag to indicate sequence is empty (may contain empty tracks)
+    Sequence name (for UI - not used internally)
+
+A scene is a class that acts as a containter for sequences. It allows the grouping of sequences, e.g. for display as pages, songs, scenes, etc.
+
+A SEQ_EVENT event is a structure describing a MIDI event and time relative to start of pattern. This is derived from the STEP_EVENT context (track, sequence, scene) to provide the data used during playback.
+
+Manipulating Events
+===================
+Events are added to patterns based on their type, time/position, duration and parameters, e.g. velocity. The same mechanism is used for live record as for step record. If the new event overlaps an existing event with the same characteristics then the previous event is removed, e.g. if a new note event overlaps any existing note events in the pattern with the same note number then the old note events are removed before adding the new event.
+
+Events are positioned within a pattern by steps, i.e. it must start on a step boundary. Event duration is measured in fractions of steps so may be shorter or longer than a step.
+
+Playback
+========
+Playback (and live record) is handled by the JACK process callback only if the JACK transport is rolling. A schedule contains MIDI events indexed by the scheduled time for each event relative to JACK epoch. During a JACK period, events that start within the period are added to the queue and also any events related, e.g. NOTE OFF events associated with NOTE ON events. Events within the queue that are scheduled within the JACK period are then sent at the appropriate time within the period. This means that events can be scheduled to occur after stopping the transport.
+***It may be advantageous to process these events immediately after stopping***
+
+For each JACK period:
+
+    Each pending clock pulse is identified and processed:
+        A counter of clocks within the beat increments and resets after the configured PPQN (24)
+            This is used to identify the start of a beat
+            A clock pulse is sent to the sequence manager which populates a schedule of events due within this JACK period
+                Note: this may include events that occur in the future, e.g. NOTE OFF events
+
+                Iterate vector of playing sequences
+                If sequence has stopped, remove from vector
+                A clock pulse is sent to each sequence. The result is bitwise flags indicating types of event at this time:
+
+                    If sync pulse then change play state / position as required
+                    If playing, send clock pulse to each track then advance position and check for step events
+
+                        If track empty or muted then do nothing
+                        If at start of a pattern, update track to the pattern parameters
+                        If at end of pattern, reset track
+                        Otherwise advance postion
+                        If within a pattern and reached next step, increment step pointer and point to the first event at this step
+
+                    If at end of sequence, change playstate / position as required
+                    Check for change of play state
+                For step events:
+                    Repeatedly request event from each track in each sequence until no more events at this time
+
+                        If not within pattern or at end of pattern, do nothing
+                        For the currently processing step event:
+                            Create a sequence event with the track's MIDI channel
+                            If we haven't started processing this step event, set the sequence event to the step event's start value and step's time 
+                            If we have started processing this step event:
+                                Set NOTE ON / NOTE OFF for stutter or interpolate value and time (not yet implemented - currently set to end values)
+                            When sequence event's value is the same as the step event's end value we move to the next step event because we must have interpolated the full range
+
+                    For each event, add a MIDI event to the schedule at the next available slot at or after this time
+
+            A counter of beats within the bar increments and resets after the configured beats per bar
+                This is used to identify the start of a bar / sync point.
+                The metronome sound is changed for the first beat of a bar
+                Sequence play state changes are processes on the first beat of a bar
+                A counter of bars increments - this is most likely used by linear sequence presentation, e.g. arranger
+        The quantity of JACK frames until the next clock is calculated which can avoid having to process empty periods
+    If all sequences are stopped then the JACK transport is requested to stop
+        Note: JACK transport has registrations from multiple clients and will only stop rolling when all clients are stopped
+    If metronome is enabled the relevant block of audio data is loaded into the playback buffer, scaled by volume config
+        Note: metronome audio data is a pair of static data arrays (one for each tone) defined in metronome.h
+    
+    The schedule of events is iterated. It is assumed that the schedule is ordered by event time
+    Events in the future beyond this period are assumed to be the end of data to process in the period
+    Events in the past before this period are assumed to have been overruns from earlier processing and are sent immediately (at start of period)
+    Each event is given a unique time slot within the period in order of their scheduled time. Concurrently timed events may be shifted by one or more frames adding some jitter.
+        ***TODO***: Do we need to give events unique time slot?
+        If no more slots available then end processing for this period and any remaining events will be processed in future period(s).
+    MIDI event is added to the JACK output buffer and removed from the schedule.
+
+
+
+Sync
+====
+The JACK process callback checks for MIDI sync signals if external sync is enabled. The internal clock is advanced one cycle for each MIDI CLOCK message received and the internal tempo is calculated from the time between clock cycles.
+
+There is currently no handling of start, stop, position, etc.
+
+Trigger
+=======
+The JACK process callback cheks for MIDI trigger events, e.g. NOTE ON event. If configured this will trigger the appropriate (mapped) sequence to toggle state.
+
+Live Record
+===========
+The JACK process callback checks for MIDI events that should be recorded (added) to the currently selected pattern. The pattern may be hosted by an existing sequence or a special sequence (0) reserved for pattern manipulation. If the sequence is playing then an event is added to the sequence at the relevant postion and duration based on the trigger's time. If not playing then the event is added at the current playhead position with the currently configured duration. If the event is a NOTE then the playhead is advanced one step.
+

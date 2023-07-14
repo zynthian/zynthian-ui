@@ -179,8 +179,8 @@ class zynthian_engine_jalv(zynthian_engine):
 				self.native_gui = self.broken_ui[self.plugin_url][self.rpi]
 			else:
 				self.native_gui = self.plugins_dict[plugin_name]['UI']
-				if not self.native_gui:
-					self.native_gui = "AUTO"
+				#if not self.native_gui:
+				#	self.native_gui = "AUTO"
 
 		if plugin_type == "MIDI Tool":
 			self.options['midi_route'] = True

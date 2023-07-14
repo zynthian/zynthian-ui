@@ -199,12 +199,6 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		if self.osc_server and processor.part_i is not None:
 			self.osc_server.send(self.osc_target, "/part%d/Prcvchn" % processor.part_i, processor.get_midi_chan())
 
-	#----------------------------------------------------------------------------
-	# Bank Managament
-	#----------------------------------------------------------------------------
-
-	def get_bank_list(self, processor=None):
-		return self.get_dirlist(self.bank_dirs)
 
 	#----------------------------------------------------------------------------
 	# Preset Managament

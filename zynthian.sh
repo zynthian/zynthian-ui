@@ -4,7 +4,7 @@
 # 
 # Start all services needed by zynthian and the zynthian UI
 # 
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -70,7 +70,7 @@ function splash_zynthian_message() {
 	img_fpath=$2
 	[ "$img_fpath" ] || img_fpath="$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.png"
 
-	# Generate a splash image with the message ...
+	# Generate a splash image with the message...
 	img_w=`identify -format '%w' $img_fpath`
 	img_h=`identify -format '%h' $img_fpath`
 	if [[ "${#zynthian_message}" > "40" ]]; then
@@ -90,7 +90,7 @@ function splash_zynthian_message() {
 
 
 function splash_zynthian_error() {
-	# Generate an error splash image ...
+	# Generate an error splash image...
 	splash_zynthian_message "$1" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"
 }
 
@@ -107,7 +107,7 @@ function splash_zynthian_error_exit_ip() {
 	# Format the message
 	zynthian_message="IP:$zynthian_ip    Exit:$zynthian_error"
 
-	# Generate an error splash image with the IP & exit code ...
+	# Generate an error splash image with the IP & exit code...
 	splash_zynthian_message "$zynthian_message" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"
 }
 
@@ -167,7 +167,7 @@ fi
 #------------------------------------------------------------------------------
 
 if [[ "$(systemctl is-enabled first_boot)" == "enabled" ]]; then
-	echo "Running first boot ..."
+	echo "Running first boot..."
 	splash_zynthian_message "Configuring your zynthian. Time to relax before the waves..."
 	sleep 1800
 	splash_zynthian_error "It takes too long! Bad sdcard/image, poor power supply..."

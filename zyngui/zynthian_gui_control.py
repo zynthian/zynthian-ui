@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Instrument-Control Class
 # 
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -47,6 +47,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.screen_processor = None #TODO: Refactor
 
 		self.widgets = {}
+		self.current_widget = None
+		self.cuia_toggle_record = None
+		self.cuia_stop = None
+		self.cuia_toggle_play = None
 		self.ctrl_screens = {}
 		self.zcontrollers = []
 		self.screen_name = None
@@ -146,7 +150,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 
 	def set_selector(self, zs_hiden=True):
-		if self.mode=='select': super().set_selector(zs_hiden)
+		if self.mode == 'select':
+			super().set_selector(zs_hiden)
 
 
 	def show_widget(self, processor):
@@ -179,6 +184,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 						self.listbox.grid_remove()
 						widget.grid(row=zynthian_gui_config.layout['list_pos'][0], column=zynthian_gui_config.layout['list_pos'][1], rowspan=4, padx=padx, sticky="news")
 						widget.show()
+						self.set_current_widget(widget)
 					else:
 						widget.grid_remove()
 						widget.hide()
@@ -190,7 +196,30 @@ class zynthian_gui_control(zynthian_gui_selector):
 		for k, widget in self.widgets.items():
 			widget.grid_remove()
 			widget.hide()
+		self.set_current_widget(None)
 		self.listbox.grid()
+
+
+	def set_current_widget(self, widget):
+		self.current_widget = widget
+		if self.current_widget is not None:
+			func = getattr(self.current_widget, "cuia_toggle_record", None)
+			if callable(func):
+				self.cuia_toggle_record = func
+			func = getattr(self.current_widget, "cuia_stop", None)
+			if callable(func):
+				self.cuia_stop = func
+			func = getattr(self.current_widget, "cuia_toggle_play", None)
+			if callable(func):
+				self.cuia_toggle_play = func
+			func = getattr(self.current_widget, "update_wsleds", None)
+			if callable(func):
+				self.update_wsleds = func
+		else:
+			self.cuia_toggle_record = None
+			self.cuia_stop = None
+			self.cuia_toggle_play = None
+			self.update_wsleds = None
 
 
 	def set_controller_screen(self):
@@ -450,7 +479,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if self.mode == 'select':
 			self.set_controller_screen()
 			self.set_selector_screen()
-		
+
 
 	def zynpot_cb(self, i, dval):
 		if self.mode == 'control' and self.zcontrollers:
@@ -600,7 +629,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			params = self.zyngui.chain_manager.get_midi_learn_from_zctrl(zctrl)
 			if params[1]:
 				options[f"Unlearn '{zctrl.name}'"] = zctrl
-			options["Unlearn All"] = None
+			options["Unlearn All"] = ""
 			self.zyngui.screens['option'].config(title, options, self.midi_learn_options_cb)
 			self.zyngui.screens['option'].config("Control MIDI-learn", options, self.midi_learn_options_cb)
 			self.zyngui.show_screen('option')
@@ -613,7 +642,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if parts[0] == "Learn":
 			self.midi_learn(param)
 		elif parts[0] == "Unlearn":
-			self.midi_unlearn(param)
+			if isinstance(param, int):
+				self.midi_unlearn(param)
+			else:
+				self.midi_unlearn_action()
 
 	#--------------------------------------------------------------------------
 	# GUI Callback function
