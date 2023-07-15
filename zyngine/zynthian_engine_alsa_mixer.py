@@ -67,12 +67,13 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 	# Initialization
 	#----------------------------------------------------------------------------
 
-	def __init__(self, zyngui=None):
-		super().__init__(zyngui)
+	def __init__(self, state_manager=None, proc=None):
+		super().__init__(state_manager)
 
 		self.type = "Mixer"
 		self.name = "Audio Levels"
 		self.nickname = "MX"
+		self.proc = proc
 
 		self.audio_out = []
 		self.options = {
@@ -98,14 +99,10 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
 
 	# ---------------------------------------------------------------------------
-	# Layer Management
+	# Processor Management
 	# ---------------------------------------------------------------------------
 
-	def add_layer(self, layer):
-		super().add_layer(layer)
-
-
-	def get_path(self, layer):
+	def get_path(self, processor):
 		return self.name
 
 	# ---------------------------------------------------------------------------
@@ -116,11 +113,11 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 	# Bank Managament
 	#----------------------------------------------------------------------------
 
-	def get_bank_list(self, layer=None):
+	def get_bank_list(self, processor=None):
 		return [("", None, "", None)]
 
 
-	def set_bank(self, layer, bank):
+	def set_bank(self, processor, bank):
 		return True
 
 	#----------------------------------------------------------------------------
@@ -131,7 +128,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 		return [("", None, "", None)]
 
 
-	def set_preset(self, layer, preset, preload=False):
+	def set_preset(self, processor, preset, preload=False):
 		return True
 
 
@@ -153,7 +150,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 			return False
 
 
-	def get_controllers_dict(self, layer, ctrl_list=None):
+	def get_controllers_dict(self, processor, ctrl_list=None):
 		if ctrl_list == "*":
 			ctrl_list = None
 		elif ctrl_list is None:
@@ -184,7 +181,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 			pass
 
 		# Add RBPi headphones if enabled and available... 
-		if self.allow_rbpi_headphones() and self.zyngui and self.zyngui.get_zynthian_config("rbpi_headphones"):
+		if self.allow_rbpi_headphones() and self.state_manager and self.state_manager.get_zynthian_config("rbpi_headphones"):
 			try:
 				zctrls_headphones = self.get_mixer_zctrls(self.rbpi_device_name, ["Headphone","PCM"])
 				if "Headphone" in zctrls_headphones:
@@ -326,7 +323,8 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 							'value_min': ctrl_ticks[0],
 							'value_max': ctrl_ticks[-1],
 							'is_toggle': (ctrl_type=='Toggle'),
-							'is_integer': True
+							'is_integer': True,
+							'processor': self.proc
 						})
 						zctrl.last_value_sent = None
 						zctrls[ctrl_symbol] = zctrl
@@ -381,7 +379,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 					logging.debug(amixer_command)
 					print(amixer_command, file=self.amixer_sender_proc.stdin, flush=True)
 				else:
-					if zctrl.symbol == "Headphone" and self.allow_rbpi_headphones() and self.zyngui and self.zyngui.get_zynthian_config("rbpi_headphones"):
+					if zctrl.symbol == "Headphone" and self.allow_rbpi_headphones() and self.state_manager and self.state_manager.get_zynthian_config("rbpi_headphones"):
 						amixer_command = "amixer -M -c {} set '{}' '{}' {}% unmute".format(self.rbpi_device_name, zctrl.graph_path[0], zctrl.graph_path[1], zctrl.value)
 						logging.debug(amixer_command)
 						check_output(shlex.split(amixer_command))

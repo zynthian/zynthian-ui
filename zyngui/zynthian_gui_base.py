@@ -571,13 +571,13 @@ class zynthian_gui_base(tkinter.Frame):
 			else:
 				self.status_canvas.itemconfig(self.status_midi_play, state=tkinter.HIDDEN)
 			# Display SEQ Rec flag
-			if self.zyngui.zynseq.libseq.isMidiRecord():
+			if self.zyngui.state_manager.zynseq.libseq.isMidiRecord():
 				self.status_canvas.itemconfig(self.status_seq_rec, state=tkinter.NORMAL)
 			else:
 				self.status_canvas.itemconfig(self.status_seq_rec, state=tkinter.HIDDEN)
 
 			# Display SEQ Play flag
-			if self.zyngui.zynseq.libseq.getPlayingSequences() > 0:
+			if self.zyngui.state_manager.zynseq.libseq.getPlayingSequences() > 0:
 				self.status_canvas.itemconfig(self.status_seq_play, state=tkinter.NORMAL)
 			else:
 				self.status_canvas.itemconfig(self.status_seq_play, state=tkinter.HIDDEN)

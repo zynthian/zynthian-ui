@@ -164,7 +164,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		if self.shown and self.loading_canvas:
 			try:
 				if self.zyngui.state_manager.is_busy():
-					self.loading_index = self.loading_index + 1
+					self.loading_index += 1
 					if self.loading_index > len(zynthian_gui_config.loading_imgs) + 1:
 						self.loading_index = 0
 					self.loading_canvas.itemconfig(self.loading_item, image=zynthian_gui_config.loading_imgs[self.loading_index])

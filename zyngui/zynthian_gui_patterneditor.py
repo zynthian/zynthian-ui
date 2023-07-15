@@ -383,18 +383,18 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 
 	def save_pattern_file(self, fname):
-		self.zyngui.zynseq.save_pattern(self.pattern, "{}/{}.zpat".format(self.my_patterns_dpath, fname))
+		self.zynseq.save_pattern(self.pattern, "{}/{}.zpat".format(self.my_patterns_dpath, fname))
 
 
 	def load_pattern_file(self, fname, fpath):
-		if not self.zyngui.zynseq.is_pattern_empty(self.pattern):
+		if not self.zynseq.is_pattern_empty(self.pattern):
 			self.zyngui.show_confirm("Do you want to overwrite pattern '{}'?".format(self.pattern), self.do_load_pattern_file, fpath)
 		else:
 			self.do_load_pattern_file(fpath)
 
 
 	def do_load_pattern_file(self, fpath):
-		self.zyngui.zynseq.load_pattern(self.pattern, fpath)
+		self.zynseq.load_pattern(self.pattern, fpath)
 		self.redraw_pending = 3
 
 
@@ -1180,9 +1180,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			elif self.edit_param == EDIT_PARAM_VEL:
 				self.set_title(f"Velocity: {self.velocity}")
 			elif self.edit_param == EDIT_PARAM_STUT_CNT:
-				self.set_title(f"Stutter count: {self.zyngui.zynseq.libseq.getStutterCount(step, note)}")
+				self.set_title(f"Stutter count: {self.zynseq.libseq.getStutterCount(step, note)}")
 			elif self.edit_param == EDIT_PARAM_STUT_DUR:
-				self.set_title(f"Stutter duration: {self.zyngui.zynseq.libseq.getStutterDur(step, note)}")
+				self.set_title(f"Stutter duration: {self.zynseq.libseq.getStutterDur(step, note)}")
 		self.init_buttonbar([(f"ZYNPOT {zynpot},-1", f"-{delta}"),(f"ZYNPOT {zynpot},+1", f"+{delta}"),("ZYNPOT 3,-1", "PREV\nPARAM"),("ZYNPOT 3,+1", "NEXT\nPARAM"),(3,"OK")])
 
 
@@ -1403,7 +1403,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def update_wsleds(self, wsleds):
 		wsl = self.zyngui.wsleds
 		# REC button:
-		if self.zyngui.zynseq.libseq.isMidiRecord():
+		if self.zynseq.libseq.isMidiRecord():
 			wsl.wsleds.setPixelColor(wsleds[0], wsl.wscolor_red)
 		else:
 			wsl.wsleds.setPixelColor(wsleds[0], wsl.wscolor_active2)

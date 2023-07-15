@@ -26,7 +26,6 @@
 # Zynthian specific modules
 from zyngui.zynthian_wsleds_base import zynthian_wsleds_base
 from zyngui import zynthian_gui_config
-from zynlibs.zynseq import zynseq
 
 # ---------------------------------------------------------------------------
 # Zynthian WSLeds class for Z2
@@ -144,14 +143,14 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 				self.zyngui.screens["midi_recorder"].update_wsleds(wsleds)
 			else:
 				# REC Button
-				if 'audio_recorder' in self.zyngui.status_info:
+				if self.zyngui.state_manager.status_audio_recorder:
 					self.wsleds.setPixelColor(wsleds[0], self.wscolor_red)
 				else:
 					self.wsleds.setPixelColor(wsleds[0], self.wscolor_default)
 				# STOP button
 				self.wsleds.setPixelColor(wsleds[1], self.wscolor_default)
 				# PLAY button:
-				if 'audio_player' in self.zyngui.status_info:
+				if self.zyngui.state_manager.status_audio_player:
 					self.wsleds.setPixelColor(wsleds[2], self.wscolor_green)
 				else:
 					self.wsleds.setPixelColor(wsleds[2], self.wscolor_default)

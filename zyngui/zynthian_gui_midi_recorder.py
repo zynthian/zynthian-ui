@@ -48,17 +48,16 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		self.recording = False
 		self.playing = False
 
-		# Setup CUIA methods
-		self.cuia_toggle_record = self.zyngui.state_manager.toggle_midi_record
-		self.cuia_stop = self.zyngui.state_manager.stop_midi_playback
-		self.cuia_toggle_play = self.zyngui.state_manager.toggle_midi_playback
-
-
 		self.smf_timer = None # 1s timer used to check end of SMF playback
 
 		super().__init__('MIDI Recorder', True)
 
 		self.bpm_zgui_ctrl = None
+
+		# Setup CUIA methods
+		self.cuia_toggle_record = self.zyngui.state_manager.toggle_midi_record
+		self.cuia_stop = self.zyngui.state_manager.stop_midi_playback
+		self.cuia_toggle_play = self.zyngui.state_manager.toggle_midi_playback
 
 
 	def refresh_status(self):

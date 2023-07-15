@@ -64,7 +64,7 @@ class zynthian_state_manager:
         Manages full Zynthian state, i.e. snapshot
         """
 
-        logging.warning("Creating state manager")
+        logging.info("Creating state manager")
         self.busy = set(["zynthian_state_manager"]) # Set of clients indicating they are busy doing something (may be used by UI to show progress)
         self.chain_manager = zynthian_chain_manager(self)
         self.last_snapshot_count = 0 # Increments each time a snapshot is loaded - modules may use to update if required
@@ -297,7 +297,7 @@ class zynthian_state_manager:
 
                 # Audio Player Status
                 #TODO: Update audio player status with callback
-                self.status_audio_player = self.audio_player.engine.player.get_playback_state(16)
+                self.status_audio_player = self.audio_player.engine.player.get_playback_state(self.audio_player.handle)
 
                 # Audio Recorder Status => Implemented in zyngui/zynthian_audio_recorder.py
 
@@ -974,7 +974,6 @@ class zynthian_state_manager:
         if not self.audio_player:
             try:
                 self.audio_player = zynthian_processor("AP", self.chain_manager.engine_info["AP"])
-                self.audio_player.midi_chan = 16
                 self.chain_manager.start_engine(self.audio_player, "AP")
                 zynautoconnect.request_audio_connect(True)
             except Exception as e:
@@ -991,18 +990,18 @@ class zynthian_state_manager:
         filename = self.audio_recorder.filename
         if filename and os.path.exists(filename):
             self.audio_player.engine.set_preset(self.audio_player, [filename])
-            self.audio_player.engine.player.set_position(16, 0.0)
-            self.audio_player.engine.player.start_playback(16)
+            self.audio_player.engine.player.set_position(self.audio_player.handle, 0.0)
+            self.audio_player.engine.player.start_playback(self.audio_player.handle)
             self.audio_recorder.filename = None
-        elif (self.audio_player.preset_name and os.path.exists(self.audio_player.preset_info[0])) or self.audio_player.engine.player.get_filename(16):
-            self.audio_player.engine.player.start_playback(16)
+        elif (self.audio_player.preset_name and os.path.exists(self.audio_player.preset_info[0])) or self.audio_player.engine.player.get_filename(self.audio_player.handle):
+            self.audio_player.engine.player.start_playback(self.audio_player.handle)
         else:
             self.audio_player.reset_preset()
             self.cuia_audio_file_list()
 
 
     def stop_audio_player(self):
-        self.audio_player.engine.player.stop_playback(16)
+        self.audio_player.engine.player.stop_playback(self.audio_player.handle)
 
 
     def toggle_audio_player(self):

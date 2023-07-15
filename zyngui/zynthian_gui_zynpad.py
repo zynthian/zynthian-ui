@@ -58,6 +58,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 		super().__init__()
 
+		self.zynseq = self.zyngui.state_manager.zynseq
 		self.ctrl_order = zynthian_gui_config.layout['ctrl_order']
 		self.selected_pad = 0 # Index of selected pad
 		self.redraw_pending = 2 # 0=no refresh pending, 1=update grid, 2=rebuild grid
@@ -68,7 +69,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.trigger_channel = 0
 		self.trigger_device = 0
 		self.trigger_device_driver = False
-		self.zynseq = self.zyngui.state_manager.zynseq
 
 		# Geometry vars
 		self.select_thickness = 1 + int(self.width / 400) # Scale thickness of select border based on screen

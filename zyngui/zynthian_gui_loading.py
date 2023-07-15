@@ -116,7 +116,7 @@ class zynthian_gui_loading:
 
 	def refresh_loading(self):
 		if self.shown:
-			if self.zyngui.loading:
+			if self.zyngui.state_manager.is_busy():
 				self.loading_index += 1
 				if self.loading_index >= len(zynthian_gui_config.loading_imgs):
 					self.loading_index = 0

@@ -45,8 +45,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# Initialization
 	# ---------------------------------------------------------------------------
 
-	def __init__(self, zyngui=None, jackname=None):
-		super().__init__(zyngui)
+	def __init__(self, state_manager=None, jackname=None):
+		super().__init__(state_manager)
 		self.name = "AudioPlayer"
 		self.nickname = "AP"
 		self.type = "MIDI Synth"
@@ -55,7 +55,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		if jackname:
 			self.jackname = jackname
 		else:
-			self.jackname = self.get_next_jackname("audioplayer")
+			self.jackname = self.state_manager.chain_manager.get_next_jackname("audioplayer")
 
 		self.file_exts = []
 		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
@@ -114,45 +114,45 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 
 	# ---------------------------------------------------------------------------
-	# Layer Management
+	# Process Management
 	# ---------------------------------------------------------------------------
 
-	def add_layer(self, layer):
+	def add_processor(self, processor):
 		handle = self.player.add_player()
 		if handle == 0:
 			return
-		self.layers.append(layer)
-		layer.handle = handle
-		layer.jackname = self.jackname
-		layer.jackname = "{}:out_{:02d}(a|b)".format(self.jackname, self.player.get_index(handle))
-		self.set_midi_chan(layer)
-		self.monitors_dict[layer.handle] = OrderedDict()
-		self.monitors_dict[layer.handle]["filename"] = ""
-		self.monitors_dict[layer.handle]["info"] = 0
-		self.monitors_dict[layer.handle]['frames'] = 0
-		self.monitors_dict[layer.handle]['channels'] = 0
-		self.monitors_dict[layer.handle]['samplerate'] = 44100
-		self.monitors_dict[layer.handle]['codec'] = "UNKNOWN"
+		self.processors.append(processor)
+		processor.handle = handle
+		processor.jackname = self.jackname
+		processor.jackname = "{}:out_{:02d}(a|b)".format(self.jackname, self.player.get_index(handle))
+		self.set_midi_chan(processor)
+		self.monitors_dict[processor.handle] = OrderedDict()
+		self.monitors_dict[processor.handle]["filename"] = ""
+		self.monitors_dict[processor.handle]["info"] = 0
+		self.monitors_dict[processor.handle]['frames'] = 0
+		self.monitors_dict[processor.handle]['channels'] = 0
+		self.monitors_dict[processor.handle]['samplerate'] = 44100
+		self.monitors_dict[processor.handle]['codec'] = "UNKNOWN"
 
 
-	def del_layer(self, layer):
-		self.player.remove_player(layer.handle)
-		super().del_layer(layer)
+	def del_processor(self, processor):
+		self.player.remove_player(processor.handle)
+		super().del_processor(processor)
 
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
-	def set_midi_chan(self, layer):
-		self.player.set_midi_chan(layer.handle, layer.midi_chan)
+	def set_midi_chan(self, processor):
+		self.player.set_midi_chan(processor.handle, processor.midi_chan)
 
 
 	# ---------------------------------------------------------------------------
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
-	def get_bank_list(self, layer=None):
+	def get_bank_list(self, processor=None):
 		banks = [[self.my_data_dir + "/capture", None, "Internal", None]]
 
 		walk = next(os.walk(self.my_data_dir + "/capture"))
@@ -180,7 +180,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		return banks
 
 
-	def set_bank(self, layer, bank):
+	def set_bank(self, processor, bank):
 		return True
 
 	# ---------------------------------------------------------------------------
@@ -208,27 +208,27 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		return presets
 
 
-	def set_preset(self, layer, preset, preload=False):
-		if self.player.get_filename(layer.handle) == preset[0] and self.player.get_file_duration(preset[0]) == self.player.get_duration(layer.handle):
+	def set_preset(self, processor, preset, preload=False):
+		if self.player.get_filename(processor.handle) == preset[0] and self.player.get_file_duration(preset[0]) == self.player.get_duration(processor.handle):
 			return False
 
-		good_file = self.player.load(layer.handle, preset[0])
-		self.monitors_dict[layer.handle]['filename'] = self.player.get_filename(layer.handle)
-		self.monitors_dict[layer.handle]['frames'] = self.player.get_frames(layer.handle)
-		self.monitors_dict[layer.handle]['channels'] = self.player.get_frames(layer.handle)
-		self.monitors_dict[layer.handle]['samplerate'] = self.player.get_samplerate(layer.handle)
-		self.monitors_dict[layer.handle]['codec'] = self.player.get_codec(layer.handle)
+		good_file = self.player.load(processor.handle, preset[0])
+		self.monitors_dict[processor.handle]['filename'] = self.player.get_filename(processor.handle)
+		self.monitors_dict[processor.handle]['frames'] = self.player.get_frames(processor.handle)
+		self.monitors_dict[processor.handle]['channels'] = self.player.get_frames(processor.handle)
+		self.monitors_dict[processor.handle]['samplerate'] = self.player.get_samplerate(processor.handle)
+		self.monitors_dict[processor.handle]['codec'] = self.player.get_codec(processor.handle)
 
-		dur = self.player.get_duration(layer.handle)
-		self.player.set_position(layer.handle, 0)
-		if self.player.is_loop(layer.handle):
+		dur = self.player.get_duration(processor.handle)
+		self.player.set_position(processor.handle, 0)
+		if self.player.is_loop(processor.handle):
 			loop = 'looping'
 		else:
 			loop = 'one-shot'
-		logging.debug("Loading Audio Track '{}' in player {}".format(preset[0], layer.handle))
-		if layer.handle == self.zyngui.audio_player.handle:
-			self.player.start_playback(layer.handle)
-		if self.player.get_playback_state(layer.handle):
+		logging.debug("Loading Audio Track '{}' in player {}".format(preset[0], processor.handle))
+		if processor.handle == self.zyngui.audio_player.handle:
+			self.player.start_playback(processor.handle)
+		if self.player.get_playback_state(processor.handle):
 			transport = 'playing'
 		else:
 			transport = 'stopped'
@@ -236,12 +236,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			record = 'recording'
 		else:
 			record = 'stopped'
-		gain = self.player.get_gain(layer.handle)
-		bend_range = self.player.get_pitchbend_range(layer.handle)
-		attack = self.player.get_attack(layer.handle)
-		decay = self.player.get_decay(layer.handle)
-		sustain = self.player.get_sustain(layer.handle)
-		release = self.player.get_release(layer.handle)
+		gain = self.player.get_gain(processor.handle)
+		bend_range = self.player.get_pitchbend_range(processor.handle)
+		attack = self.player.get_attack(processor.handle)
+		decay = self.player.get_decay(processor.handle)
+		sustain = self.player.get_sustain(processor.handle)
+		release = self.player.get_release(processor.handle)
 		default_a = 0
 		default_b = 0
 		track_labels = ['mixdown']
@@ -254,7 +254,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			zoom_labels.append(f"x{z}")
 			zoom_values.append(z)
 		if dur:
-			channels = self.player.get_channels(layer.handle)
+			channels = self.player.get_channels(processor.handle)
 			if channels > 2:
 				default_a = -1
 				default_b = -1
@@ -270,7 +270,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['config', ['left track', 'right track', 'bend range', 'sustain pedal']],
 				['info', ['info', 'zoom range', 'amp zoom', 'view offset']]
 			]
-			if layer.handle == self.zyngui.audio_player.handle:
+			if processor.handle == self.zyngui.audio_player.handle:
 				self._ctrl_screens[3][1][2] = None
 				self._ctrl_screens[3][1][3] = None
 			else:
@@ -306,9 +306,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['release', None, release, 20.0]
 		]
 
-		layer.refresh_controllers()
-		self.player.set_track_a(layer.handle, default_a)
-		self.player.set_track_b(layer.handle, default_b)
+		processor.refresh_controllers()
+		self.player.set_track_a(processor.handle, default_a)
+		self.player.set_track_b(processor.handle, default_b)
 
 		return True
 
@@ -343,7 +343,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		return True
 
 
-	def load_latest(self, layer):
+	def load_latest(self, processor):
 		list_of_wavs = glob(os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture/*.wav")
 		dirs = zynthian_gui_config.get_external_storage_dirs(os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root"))
 		for dir in dirs:
@@ -351,31 +351,31 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 		if list_of_wavs:
 			latest_file = max(list_of_wavs, key=os.path.getctime)
-			self.set_preset(layer, [latest_file])
+			self.set_preset(processor, [latest_file])
 
 
 	#----------------------------------------------------------------------------
 	# Controllers Management
 	#----------------------------------------------------------------------------
 
-	def get_controllers_dict(self, layer):
-		ctrls = super().get_controllers_dict(layer)
+	def get_controllers_dict(self, processor):
+		ctrls = super().get_controllers_dict(processor)
 		for zctrl in ctrls.values():
-			zctrl.handle = layer.handle
+			zctrl.handle = processor.handle
 		return ctrls
 
 
 	def control_cb(self, handle, id, value):
 		try:
-			for layer in self.layers:
-				if layer.handle == handle:
-					ctrl_dict = layer.controllers_dict
+			for processor in self.processors:
+				if processor.handle == handle:
+					ctrl_dict = processor.controllers_dict
 					if id == 1:
 						ctrl_dict['transport'].set_value(int(value) * 64, False)
 						if value:
-							layer.status = "\uf04b"
+							processor.status = "\uf04b"
 						else:
-							layer.status = ""
+							processor.status = ""
 					elif id == 2:
 						ctrl_dict['position'].set_value(value, False)
 					elif id == 3:
@@ -446,37 +446,37 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.player.set_damper(handle, zctrl.value)
 		elif zctrl.symbol == "zoom":
 			self.monitors_dict[handle]['zoom'] = zctrl.value
-			for layer in self.layers:
-				if layer.handle == handle:
-					layer.controllers_dict['zoom range'].set_value(0)
-					pos_zctrl = layer.controllers_dict['position']
+			for processor in self.processors:
+				if processor.handle == handle:
+					processor.controllers_dict['zoom range'].set_value(0)
+					pos_zctrl = processor.controllers_dict['position']
 					pos_zctrl.nudge_factor = pos_zctrl.value_max / 400 / zctrl.value
-					layer.controllers_dict['loop start'].nudge_factor = pos_zctrl.nudge_factor
-					layer.controllers_dict['loop end'].nudge_factor = pos_zctrl.nudge_factor
-					layer.controllers_dict['crop start'].nudge_factor = pos_zctrl.nudge_factor
-					layer.controllers_dict['crop end'].nudge_factor = pos_zctrl.nudge_factor
+					processor.controllers_dict['loop start'].nudge_factor = pos_zctrl.nudge_factor
+					processor.controllers_dict['loop end'].nudge_factor = pos_zctrl.nudge_factor
+					processor.controllers_dict['crop start'].nudge_factor = pos_zctrl.nudge_factor
+					processor.controllers_dict['crop end'].nudge_factor = pos_zctrl.nudge_factor
 					self.monitors_dict[handle]['offset'] = None
 					return
 		elif zctrl.symbol == "zoom range":
-			for layer in self.layers:
-				if layer.handle == handle:
+			for processor in self.processors:
+				if processor.handle == handle:
 					if zctrl.value == 1:
 						# Show whole file
-						layer.controllers_dict['zoom'].set_value(1, False)
-						layer.controllers_dict['view offset'].set_value(0)
+						processor.controllers_dict['zoom'].set_value(1, False)
+						processor.controllers_dict['view offset'].set_value(0)
 						range = self.player.get_duration(handle)
 					elif zctrl.value == 2:
 						# Show cropped region
 						start = self.player.get_crop_start(handle)
 						range = self.player.get_crop_end(handle) - start
-						layer.controllers_dict['view offset'].set_value(start)
-						layer.controllers_dict['zoom'].set_value(self.player.get_duration(handle) / range, False)
+						processor.controllers_dict['view offset'].set_value(start)
+						processor.controllers_dict['zoom'].set_value(self.player.get_duration(handle) / range, False)
 					elif zctrl.value == 3:
 						# Show loop region
 						start = self.player.get_loop_start(handle)
 						range = self.player.get_loop_end(handle) - start
-						layer.controllers_dict['view offset'].set_value(start)
-						layer.controllers_dict['zoom'].set_value(self.player.get_duration(handle) / range, False)
+						processor.controllers_dict['view offset'].set_value(start)
+						processor.controllers_dict['zoom'].set_value(self.player.get_duration(handle) / range, False)
 
 		elif zctrl.symbol == "info":
 			self.monitors_dict[handle]['info'] = zctrl.value

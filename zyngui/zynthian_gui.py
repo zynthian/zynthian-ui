@@ -370,6 +370,7 @@ class zynthian_gui:
 		# Create Core UI Screens
 		self.screens['info'] = zynthian_gui_info()
 		self.screens['splash'] = zynthian_gui_splash()
+		self.screens['loading'] = zynthian_gui_loading()
 		self.screens['confirm'] = zynthian_gui_confirm()
 		self.screens['keyboard'] = zynthian_gui_keyboard.zynthian_gui_keyboard()
 		self.screens['option'] = zynthian_gui_option()
@@ -444,7 +445,7 @@ class zynthian_gui:
 
 
 	def start_task(self):
-		self.start_loading()
+		self.state_manager.start_busy("ui startup")
 
 		snapshot_loaded = False
 		if zynthian_gui_config.control_test_enabled:
@@ -469,7 +470,7 @@ class zynthian_gui:
 		# Show initial screen
 		self.show_screen(init_screen, self.SCREEN_HMODE_RESET)
 
-		self.stop_loading()
+		self.state_manager.end_busy("ui startup")
 		
 		#Run autoconnect if needed
 		zynautoconnect.request_audio_connect()
@@ -1560,9 +1561,10 @@ class zynthian_gui:
 		i = 0
 		while i <= zynthian_gui_config.last_zynswitch_index:
 			# dtus is 0 if switched pressed, dur of last press or -1 if already processed
-			if i < 4 or zynthian_gui_config.custom_switch_ui_actions[i-4]:
+			if i < 4 or zynthian_gui_config.custom_switch_ui_actions[i - 4]:
 				dtus = get_lib_zyncore().get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
-				self.zynswitch_timing(i, dtus)
+				if dtus >= 0:
+					self.cuia_queue.put_nowait(["zynswitch", [i, self.zynswitch_timing(dtus)]])
 			i += 1
 
 	def zynswitch_timing(self, dtus):
@@ -1905,7 +1907,6 @@ class zynthian_gui:
 						self.screens['midi_key_range'].learn_note_range((ev & 0x7F00) >> 8)
 					elif self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
 						self.screens['pattern_editor'].midi_note((ev & 0x7F00) >> 8)
-					self.screens['zynpad'].midi_note(chan, (ev >> 8) & 0x7F)
 				self.state_manager.status_midi = True
 				self.last_event_flag = True
 

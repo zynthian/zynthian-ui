@@ -53,7 +53,7 @@ class zynthian_chain_manager():
         state_manager : State manager object
         """
 
-        logging.warning("Creating chain manager")
+        logging.info("Creating chain manager")
         self.state_manager = state_manager
         self.chains = {}  # Map of chain objects indexed by chain id
         self.chain_ids_ordered = [] # List of chain IDs in order (excluding "main")
