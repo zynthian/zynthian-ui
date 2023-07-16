@@ -1170,7 +1170,6 @@ void remove_player(AUDIO_PLAYER * pPlayer) {
 }
 
 void set_midi_chan(AUDIO_PLAYER * pPlayer, uint8_t midi_chan) {
-    fprintf(stderr, "set_midi_chan(%u, %u)\n", pPlayer, midi_chan);
     if(!pPlayer)
         return;
     if(midi_chan < 16)
