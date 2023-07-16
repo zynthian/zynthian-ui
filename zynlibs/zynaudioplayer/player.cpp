@@ -953,7 +953,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         uint8_t chan = midiEvent.buffer[0] & 0x0F;
         for(auto it = g_vPlayers.begin(); it != g_vPlayers.end(); ++it) {
             AUDIO_PLAYER * pPlayer = *it;
-            if(pPlayer->midi_chan != chan)
+            if(!pPlayer->file_open || pPlayer->midi_chan != chan)
                 continue;
             uint8_t cmd = midiEvent.buffer[0] & 0xF0;
             if(cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) {
@@ -1170,6 +1170,7 @@ void remove_player(AUDIO_PLAYER * pPlayer) {
 }
 
 void set_midi_chan(AUDIO_PLAYER * pPlayer, uint8_t midi_chan) {
+    fprintf(stderr, "set_midi_chan(%u, %u)\n", pPlayer, midi_chan);
     if(!pPlayer)
         return;
     if(midi_chan < 16)

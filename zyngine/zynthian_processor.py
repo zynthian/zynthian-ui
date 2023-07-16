@@ -146,9 +146,9 @@ class zynthian_processor:
             self.engine.set_midi_chan(self)
             for zctrl in self.controllers_dict.values():
                 ml = self.engine.state_manager.chain_manager.get_midi_learn_from_zctrl(zctrl)
-                if ml and ml[2]:
-                    self.engine.state_manager.chain_manager.add_midi_learn(midi_chan, zctrl.midi_cc, zctrl, ml[2])
-                zctrl.set_midi_chan(midi_chan)
+                if ml:
+                    self.engine.state_manager.chain_manager.add_midi_learn(midi_chan, zctrl.midi_cc, zctrl)
+                zctrl.set_midi_chan(midi_chan) #TODO: Why does zctrl have midi chan?
             self.send_ctrlfb_midi_cc()
             # Set "Drop Program Change" flag for each MIDI chan
             if midi_chan is not None and midi_chan < 16:

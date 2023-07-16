@@ -226,13 +226,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		else:
 			loop = 'one-shot'
 		logging.debug("Loading Audio Track '{}' in player {}".format(preset[0], processor.handle))
-		if processor.handle == self.zyngui.audio_player.handle:
+		if processor.handle == self.state_manager.audio_player.handle:
 			self.player.start_playback(processor.handle)
 		if self.player.get_playback_state(processor.handle):
 			transport = 'playing'
 		else:
 			transport = 'stopped'
-		if self.zyngui.state_manager.audio_recorder.get_status():
+		if self.state_manager.audio_recorder.get_status():
 			record = 'recording'
 		else:
 			record = 'stopped'
@@ -270,7 +270,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['config', ['left track', 'right track', 'bend range', 'sustain pedal']],
 				['info', ['info', 'zoom range', 'amp zoom', 'view offset']]
 			]
-			if processor.handle == self.zyngui.audio_player.handle:
+			if processor.handle == self.state_manager.audio_player.handle:
 				self._ctrl_screens[3][1][2] = None
 				self._ctrl_screens[3][1][3] = None
 			else:
@@ -429,9 +429,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.player.set_track_b(handle, zctrl.value)
 		elif zctrl.symbol == "record":
 			if zctrl.value:
-				self.zyngui.state_manager.audio_recorder.start_recording()
+				self.state_manager.audio_recorder.start_recording()
 			else:
-				self.zyngui.state_manager.audio_recorder.stop_recording()
+				self.state_manager.audio_recorder.stop_recording()
 		elif zctrl.symbol == "loop start":
 			self.player.set_loop_start(handle, zctrl.value)
 		elif zctrl.symbol == "loop end":

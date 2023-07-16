@@ -124,7 +124,10 @@ class zynaudioplayer():
 	#	handle: Index of player
 	#	midi_chan: MIDI channel (0..15 or other value to disable MIDI)
 	def set_midi_chan(self, handle, midi_chan):
-		self.libaudioplayer.set_midi_chan(handle, midi_chan)
+		if isinstance(midi_chan, int) and midi_chan < 16 and midi_chan >= 0:
+			self.libaudioplayer.set_midi_chan(handle, midi_chan)
+		else:
+			self.libaudioplayer.set_midi_chan(handle, -1)
 
 
 	#	Get a player's index;

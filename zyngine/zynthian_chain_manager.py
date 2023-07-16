@@ -63,7 +63,7 @@ class zynthian_chain_manager():
         self.active_chain_id = None # Active chain id
         self.midi_chan_2_chain_id = [None] * 16  # Chain ID mapped by MIDI channel
         self.absolute_midi_cc_binding = {} # Map of CC map indexed by MIDI channel. CC map is map of zctrl indexed by cc number
-        self.chain_midi_cc_binding = {} # Map of CC map indexed by chain id. CC map is map of zctrl indexed by cc number
+        self.chain_midi_cc_binding = {} # Map of CC map indexed by chain id. CC map is map of lists of zctrl indexed by cc number
         self.held_zctrls = {64:[False], 66:[False], 67:[False], 69:[False]} # Map of lists of currently held (sustained) zctrls, indexed by cc number - first element indicates pedal state
 
         self.get_engine_info()
@@ -816,10 +816,10 @@ class zynthian_chain_manager():
 	#----------------------------------------------------------------------------
 
 
-    def add_midi_learn(self, midi_chan, midi_cc, zctrl, bind_chain=True):
+    def add_midi_learn(self, chan, midi_cc, zctrl):
         """Adds a midi learn configuration
 
-        midi_chan : MIDI channel of CC message
+        chan : MIDI channel of CC message or chain id for absolute mapping (None to use active chain)
         midi_cc : CC number of CC message
         zctrl : Controller object
         bind_chain: True to bind to chain, False to bind to MIDI channel
@@ -828,23 +828,23 @@ class zynthian_chain_manager():
         if zctrl is None:
             return
         self.remove_midi_learn(zctrl.processor, zctrl.symbol)
-        if bind_chain:
-            if self.active_chain_id is None:
-                return
-            if self.active_chain_id not in self.chain_midi_cc_binding:
-                self.chain_midi_cc_binding[self.active_chain_id] = {}
-            if midi_cc not in self.chain_midi_cc_binding[self.active_chain_id]:
-                self.chain_midi_cc_binding[self.active_chain_id][midi_cc] = []
-            self.chain_midi_cc_binding[self.active_chain_id][midi_cc].append(zctrl)
-        else:
-            if midi_chan not in self.absolute_midi_cc_binding:
-                self.absolute_midi_cc_binding[midi_chan] = {}
-            if midi_cc not in self.absolute_midi_cc_binding[midi_chan]:
-                self.absolute_midi_cc_binding[midi_chan][midi_cc] = []
-            self.absolute_midi_cc_binding[midi_chan][midi_cc].append(zctrl)
+        if chan is None:
+            chan = self.active_chain_id
+        if isinstance(chan, str):
+            if chan not in self.chain_midi_cc_binding:
+                self.chain_midi_cc_binding[chan] = {}
+            if midi_cc not in self.chain_midi_cc_binding[chan]:
+                self.chain_midi_cc_binding[chan][midi_cc] = []
+            self.chain_midi_cc_binding[chan][midi_cc].append(zctrl)
+        elif isinstance(chan, int):
+            if chan not in self.absolute_midi_cc_binding:
+                self.absolute_midi_cc_binding[chan] = {}
+            if midi_cc not in self.absolute_midi_cc_binding[chan]:
+                self.absolute_midi_cc_binding[chan][midi_cc] = []
+            self.absolute_midi_cc_binding[chan][midi_cc].append(zctrl)
             if zctrl.processor.type_code == "MD":
                 # Add native MIDI learn #TODO: Should / can we still use native midi learn?
-                zctrl.processor.engine.set_midi_learn(zctrl, midi_chan, midi_cc)
+                zctrl.processor.engine.set_midi_learn(zctrl, chan, midi_cc)
 
         #TODO: Do we have to disable learn_cc here or should we rely on parent app to do that?
         self.state_manager.disable_learn_cc()
@@ -948,8 +948,23 @@ class zynthian_chain_manager():
         """
 
         #TODO: Is "absolute" the right term? The different bindings are chain or midi channel
-        self.absolute_midi_cc_binding = state["absolute"]
-        self.chain_midi_cc_binding = state["chain"]
+        for chain_id, map in state["absolute"].items():
+            for cc, ctrls in map.items():
+                for proc_id, symbol in ctrls:
+                    if proc_id in self.processors:
+                        proc = self.processors[proc_id]
+                        midi_chan = proc.midi_chan
+                        zctrl = proc.controllers_dict[symbol]
+                        self.add_midi_learn(midi_chan, cc, zctrl)
+                    pass
+        for chain_id, map in state["chain"].items():
+            for cc, ctrls in map.items():
+                for proc_id, symbol in ctrls:
+                    if proc_id in self.processors:
+                        proc = self.processors[proc_id]
+                        zctrl = proc.controllers_dict[symbol]
+                        self.add_midi_learn(chain_id, cc, zctrl)
+                    pass
 
     def get_midi_learn_state(self):
         """Get MIDI learn state as dictionary
@@ -957,9 +972,23 @@ class zynthian_chain_manager():
         Returns : MIDI learn state as dictionary
         """
 
+        abs_bind = {}
+        for chain_id, map in self.absolute_midi_cc_binding.items():
+            abs_bind[chain_id] = {}
+            for cc, zctrls in map.items():
+                abs_bind[chain_id][cc] = []
+                for zctrl in zctrls:
+                    abs_bind[chain_id][cc].append([zctrl.processor.id, zctrl.symbol])
+        chain_bind = {}
+        for chain_id, map in self.chain_midi_cc_binding.items():
+            chain_bind[chain_id] = {}
+            for cc, zctrls in map.items():
+                chain_bind[chain_id][cc] = []
+                for zctrl in zctrls:
+                    chain_bind[chain_id][cc].append([zctrl.processor.id, zctrl.symbol])
         return {
-            "absolute": self.absolute_midi_cc_binding,
-            "chain": self.chain_midi_cc_binding
+            "absolute": abs_bind,
+            "chain": chain_bind
         }
 
     def clean_midi_learn(self, obj):

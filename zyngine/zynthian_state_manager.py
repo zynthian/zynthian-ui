@@ -150,8 +150,6 @@ class zynthian_state_manager:
             self.thread.join()
         self.thread = None
 
-        self.destroy_audio_player()
-
         if self.hwmon_thermal_file:
             self.hwmon_thermal_file.close
             self.hwmon_thermal_file = None
@@ -169,6 +167,7 @@ class zynthian_state_manager:
         self.chain_manager.remove_all_chains(True)
         self.reset_zs3()
         self.busy.clear()
+        self.destroy_audio_player()
 
     def start(self):
         """Start state manager"""
@@ -391,7 +390,7 @@ class zynthian_state_manager:
                 state = {**state, **extra_data}
             # JSON Encode
             json = JSONEncoder().encode(state)
-            with open(fpath,"w") as fh:
+            with open(fpath, "w") as fh:
                 logging.info("Saving snapshot %s => \n%s" % (fpath, json))
                 fh.write(json)
                 fh.flush()

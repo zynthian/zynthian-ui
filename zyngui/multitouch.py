@@ -206,7 +206,7 @@ class MultiTouch(object):
                 
         self.touch_count = 0 # Quantity of currently pressed slots
         if self._f_device:
-            self.thread = Thread(target=self._run, name="multitouch")
+            self.thread = Thread(target=self._run, name="Multitouch")
             self.thread.start()
     
     def _run(self):

@@ -2207,7 +2207,6 @@ class zynthian_gui:
 		logging.info("STOPPING ZYNTHIAN-UI...")
 		self.state_manager.stop()
 		self.multitouch.stop()
-		self.destroy_audio_player()
 
 		self.exit_code = code
 		self.exit_flag = True

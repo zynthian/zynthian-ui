@@ -185,24 +185,24 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 
 	def on_horizontal_drag(self, value):
-		offset = self.layer.controllers_dict['view offset'].value - self.duration * value / self.width / self.zoom
+		offset = self.processor.controllers_dict['view offset'].value - self.duration * value / self.width / self.zoom
 		offset = max(0, offset)
 		offset = min(self.duration - self.duration / self.zoom, offset)
-		self.layer.controllers_dict['view offset'].set_value(offset, False)
+		self.processor.controllers_dict['view offset'].set_value(offset, False)
 		self.refresh_waveform = True
 
 
 	def on_horizontal_pinch(self, value):
-		zctrl = self.layer.controllers_dict['zoom']
+		zctrl = self.processor.controllers_dict['zoom']
 		zctrl.set_value(zctrl.value + 4 * value / self.width * zctrl.value)
 		self.refresh_waveform = True
 
 
 	def on_vertical_pinch(self, value):
-		v_zoom = self.layer.controllers_dict['amp zoom'].value + value / self.height
+		v_zoom = self.processor.controllers_dict['amp zoom'].value + value / self.height
 		v_zoom = min(v_zoom, 4.0)
 		v_zoom = max(v_zoom, 0.1)
-		self.layer.controllers_dict['amp zoom'].set_value(v_zoom)
+		self.processor.controllers_dict['amp zoom'].set_value(v_zoom)
 		self.refresh_waveform = True
 
 
@@ -228,13 +228,13 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		if event.y > 0.8 * self.height:
 			self.drag_marker = "view offset"
 			pos = self.duration * event.x / self.width
-			self.layer.controllers_dict[self.drag_marker].set_value(pos)
+			self.processor.controllers_dict[self.drag_marker].set_value(pos)
 			return
 		elif event.time - self.tap_time < 200:
 			self.on_canvas_double_tap(event)
 		else:
 			for symbol in ['position', 'loop start', 'loop end', 'crop start', 'crop end']:
-				if abs(pos - self.layer.controllers_dict[symbol].value) < max_delta:
+				if abs(pos - self.processor.controllers_dict[symbol].value) < max_delta:
 					self.drag_marker = symbol
 		self.tap_time = event.time
 
@@ -263,11 +263,11 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			else:
 				f = self.width / self.frames * self.zoom
 				pos = (event.x / f + self.offset) / self.samplerate
-			self.layer.controllers_dict[self.drag_marker].set_value(pos)
+			self.processor.controllers_dict[self.drag_marker].set_value(pos)
 
 
 	def get_monitors(self):
-		self.monitors = self.layer.engine.get_monitors_dict(self.layer.handle)
+		self.monitors = self.processor.engine.get_monitors_dict(self.processor.handle)
 
 
 	def load_file(self):
@@ -332,10 +332,10 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 					if v2 > sample:
 						v2 = sample
 					offset += step
-				v1 *= self.layer.controllers_dict['amp zoom'].value
+				v1 *= self.processor.controllers_dict['amp zoom'].value
 				v1 = min(1.0, v1)
 				v1 = max(-1.0, v1)
-				v2 *= self.layer.controllers_dict['amp zoom'].value
+				v2 *= self.processor.controllers_dict['amp zoom'].value
 				v2 = min(1.0, v2)
 				v2 = max(-1.0, v2)
 				y1 = v_offset + int((y0 * (1 + v1)) / 2)
@@ -351,8 +351,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			return
 		self.refreshing = True
 		try:
-			if self.v_zoom != self.layer.controllers_dict['amp zoom'].value:
-				self.v_zoom = self.layer.controllers_dict['amp zoom'].value
+			if self.v_zoom != self.processor.controllers_dict['amp zoom'].value:
+				self.v_zoom = self.processor.controllers_dict['amp zoom'].value
 				self.refresh_waveform = True
 
 			if self.filename != self.monitors["filename"] or self.frames != self.frames:
@@ -366,21 +366,21 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				return
 
 			refresh_markers = False
-			loop_start = int(self.samplerate * self.layer.controllers_dict['loop start'].value)
-			loop_end = int(self.samplerate * self.layer.controllers_dict['loop end'].value)
-			crop_start = int(self.samplerate * self.layer.controllers_dict['crop start'].value)
-			crop_end = int(self.samplerate * self.layer.controllers_dict['crop end'].value)
-			pos_time = self.layer.controllers_dict['position'].value
+			loop_start = int(self.samplerate * self.processor.controllers_dict['loop start'].value)
+			loop_end = int(self.samplerate * self.processor.controllers_dict['loop end'].value)
+			crop_start = int(self.samplerate * self.processor.controllers_dict['crop start'].value)
+			crop_end = int(self.samplerate * self.processor.controllers_dict['crop end'].value)
+			pos_time = self.processor.controllers_dict['position'].value
 			pos = int(pos_time * self.samplerate)
 			refresh_info = False
 
-			offset = int(self.samplerate * self.layer.controllers_dict['view offset'].value)
-			if self.zoom != self.layer.controllers_dict['zoom'].value:
+			offset = int(self.samplerate * self.processor.controllers_dict['view offset'].value)
+			if self.zoom != self.processor.controllers_dict['zoom'].value:
 				centre = offset + 0.5 * self.frames / self.zoom
-				zoom = self.layer.controllers_dict['zoom'].value
+				zoom = self.processor.controllers_dict['zoom'].value
 				if zoom:
 					self.zoom = zoom
-				if self.layer.controllers_dict['zoom range'].value == 0:
+				if self.processor.controllers_dict['zoom range'].value == 0:
 					offset = int(centre - 0.5 * self.frames / self.zoom)
 				self.refresh_waveform = True
 
@@ -418,8 +418,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			offset = min(self.frames - self.frames // self.zoom, offset)
 			if offset != self.offset:
 				self.offset = offset
-				if self.layer.controllers_dict['zoom range'].value == 0:
-					self.layer.controllers_dict['view offset'].set_value(offset / self.samplerate, False)
+				if self.processor.controllers_dict['zoom range'].value == 0:
+					self.processor.controllers_dict['view offset'].set_value(offset / self.samplerate, False)
 				self.refresh_waveform = True
 
 			if self.refresh_waveform:
@@ -442,10 +442,10 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				refresh_info = True
 
 
-			if self.info != self.layer.controllers_dict['info'].value:
+			if self.info != self.processor.controllers_dict['info'].value:
 				self.widget_canvas.itemconfig("waveform", state=tkinter.NORMAL)
 				self.widget_canvas.itemconfig("overlay", state=tkinter.NORMAL)
-				self.info = self.layer.controllers_dict['info'].value
+				self.info = self.processor.controllers_dict['info'].value
 				refresh_info = True
 
 			if refresh_info:
@@ -486,54 +486,54 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		try:
 			if event.num == 5 or event.delta == -120:
 				if event.state == 1: # Shift
-					self.layer.controllers_dict['loop start'].nudge(-1)
+					self.processor.controllers_dict['loop start'].nudge(-1)
 				elif event.state == 5: # Shift+Ctrl
-					self.layer.controllers_dict['loop end'].nudge(-1)
+					self.processor.controllers_dict['loop end'].nudge(-1)
 				elif event.state == 4: # Ctrl
-					self.layer.controllers_dict['zoom'].nudge(-1)
+					self.processor.controllers_dict['zoom'].nudge(-1)
 				elif event.state == 8: # Alt
 					self.offset = max(0, self.offset - self.frames // self.zoom // 10)
 					self.refresh_waveform = True
 				else:
-					self.layer.controllers_dict['position'].nudge(-1)
+					self.processor.controllers_dict['position'].nudge(-1)
 			elif event.num == 4 or event.delta == 120:
 				if event.state == 1: # Shift
-					self.layer.controllers_dict['loop start'].nudge(1)
+					self.processor.controllers_dict['loop start'].nudge(1)
 				elif event.state == 5: # Shift+Ctrl
-					self.layer.controllers_dict['loop end'].nudge(1)
+					self.processor.controllers_dict['loop end'].nudge(1)
 				elif event.state == 4: # Ctrl
-					self.layer.controllers_dict['zoom'].nudge(1)
+					self.processor.controllers_dict['zoom'].nudge(1)
 				elif event.state == 8: # Alt
 					self.offset = min(self.frames - self.frames // self.zoom, self.offset + self.frames // self.zoom // 10)
 					self.refresh_waveform = True
 				else:
-					self.layer.controllers_dict['position'].nudge(1)
+					self.processor.controllers_dict['position'].nudge(1)
 		except Exception as e:
 			logging.debug("Failed to change value")
 
 
 	def cuia_toggle_record(self):
 		if self.zyngui.state_manager.audio_recorder.get_status():
-			self.layer.controllers_dict['record'].set_value("stopped")
+			self.processor.controllers_dict['record'].set_value("stopped")
 		else:
-			self.layer.controllers_dict['record'].set_value("recording")
+			self.processor.controllers_dict['record'].set_value("recording")
 
 
 	def cuia_stop(self):
-		self.layer.engine.player.stop_playback(self.layer.handle)
-		self.layer.engine.player.set_position(self.layer.handle, 0.0)
+		self.processor.engine.player.stop_playback(self.processor.handle)
+		self.processor.engine.player.set_position(self.processor.handle, 0.0)
 
 
 	def cuia_toggle_play(self):
-		if self.layer.engine.player.get_playback_state(self.layer.handle):
-			self.layer.engine.player.stop_playback(self.layer.handle)
+		if self.processor.engine.player.get_playback_state(self.processor.handle):
+			self.processor.engine.player.stop_playback(self.processor.handle)
 		else:
-			self.layer.engine.player.start_playback(self.layer.handle)
+			self.processor.engine.player.start_playback(self.processor.handle)
 
 
 	def update_wsleds(self, wsleds):
 		wsl = self.zyngui.wsleds
-		if self.layer.handle == self.zyngui.state_manager.audio_player.handle:
+		if self.processor.handle == self.zyngui.state_manager.audio_player.handle:
 			color_default = wsl.wscolor_default
 		else:
 			color_default = wsl.wscolor_active2
@@ -545,7 +545,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		# STOP button
 		wsl.wsleds.setPixelColor(wsleds[1], color_default)
 		# PLAY button:
-		if self.layer.engine.player.get_playback_state(self.layer.handle):
+		if self.processor.engine.player.get_playback_state(self.processor.handle):
 			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_green)
 		else:
 			wsl.wsleds.setPixelColor(wsleds[2], color_default)
