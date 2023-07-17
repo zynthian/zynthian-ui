@@ -94,15 +94,27 @@
                     #... Other MIDI learn configs
                 }
             },
-            "midi_learn_cc": { # Dictionary of MIDI learn parameters mapped by 16-bit chan<<8|cc
-                "64": [ # List of MIDI learn mappings
-                    [
-                        1, # Processor UID
-                        "sustain" # Parameter symbol
-                    ],
-                    #... Other parameters mapped to this CC
-                ],
-                #... Other CC
+            "midi_learn_cc": { # Dictionary of MIDI learn / mapping configuration
+                "absolute": { # Dictionary of absolute mapping indexed by chain id
+                    "01": { # Dictionary of MIDI mapping indexed by MIDI CC
+                        "7": [ # List of controller configs
+                            ["2", "volume"], # Controller configs [proc_id, symbol]
+                            #... Other controllers mapped to this CC
+                        ],
+                        #... Other CC mapped to this chain
+                    },
+                    #... Other absolute CC mappings
+                },
+                "chain": { # Dictionary of chain specific mapping indexed by chain id
+                    "01": { # Dictionary of MIDI mapping indexed by MIDI CC
+                        "7": [ # List of controller configs
+                            ["2", "volume"], # Controller configs [proc_id, symbol]
+                            #... Other controllers mapped to this CC
+                        ],
+                        #... Other CC mapped to this chain
+                    },
+                    #... Other chain CC mappings
+                },
             },
             "chains": { # Dictionary of chain specific ZS3 config indexed by chain ID
                 "01": { # Chain 01

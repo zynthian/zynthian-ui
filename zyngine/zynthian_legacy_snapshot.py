@@ -51,7 +51,10 @@ class zynthian_legacy_snapshot:
                     "midi_clone": {},
                     "processors": {},
                     "mixer": {},
-                    "midi_learn_cc": {}
+                    "midi_learn_cc": {
+                        "absolute": {},
+                        "chain": {}
+                    }
                 },
             },
             "engine_config": {},
@@ -184,7 +187,7 @@ class zynthian_legacy_snapshot:
         if "clone" in snapshot and len(snapshot["clone"]) == 16:
             state["zs3"]["zs3-0"]["midi_clone"] = self.get_midi_clone(snapshot["clone"])
 
-        # Create map of audio only chanels for 'sidechaining'
+        # Create map of audio only channels for 'sidechaining'
         audio_only_chains = {}
         for chain_id, chain in chains.items():
             if len(chain["midi_processors"]) + len(chain["synth_processors"]) > 0 or len(chain["audio_processors"]) == 0:
@@ -334,14 +337,15 @@ class zynthian_legacy_snapshot:
                 "controllers": proc["controllers"]
             }
             for symbol, ctrl in proc["controllers"].items():
-                try:
-                    id = int(ctrl["midi_learn_chan"] << 8 | int(ctrl["midi_learn_cc"]))
-                    if id not in ml:
-                        ml[id] = []
-                    ml[id].append([proc["id"], symbol])
+                try: #TODO: How to identify chain/absolute mapping?
+                    if chain_id not in ml:
+                        ml[chain_id] = {}
+                    if ctrl["midi_learn_cc"] not in ml[chain_id]:
+                        ml[chain_id][ctrl["midi_learn_cc"]] = []
+                    ml[chain_id][ctrl["midi_learn_cc"]].append([proc["id"], symbol])
                 except:
                     pass
-        state["zs3"]["zs3-0"]["midi_learn_cc"] = ml
+        state["zs3"]["zs3-0"]["midi_learn_cc"]["absolute"] = ml
 
         next_id = 1
         if "learned_zs3" in snapshot:
@@ -364,6 +368,10 @@ class zynthian_legacy_snapshot:
                     "title": zs3["zs3_title"],
                     "active_chain": zs3["index"],
                     "processors": {},
+                    "midi_learn_cc": {
+                        "absolute": {},
+                        "chain": {}
+                    },
                     "mixer": zs3["mixer"]
                 }
                 self.jackname_counters = {}
@@ -383,14 +391,16 @@ class zynthian_legacy_snapshot:
                             "controllers": layer["controllers_dict"]
                         }
                         for symbol, ctrl in layer["controllers_dict"].items():
-                            try:
-                                id = int(ctrl["midi_learn_chan"] << 8 | int(ctrl["midi_learn_cc"]))
-                                if id not in ml:
-                                    ml[id] = []
-                                ml[id].append([proc["id"], symbol])
+                            try: #TODO: How to identify chain/absolute mapping?
+                                if chain_id not in ml:
+                                    ml[chain_id] = {}
+                                if ctrl["midi_learn_cc"] not in ml[chain_id]:
+                                    ml[chain_id][ctrl["midi_learn_cc"]] = []
+                                ml[chain_id][ctrl["midi_learn_cc"]].append([proc["id"], symbol])
                             except:
                                 pass
-                state["zs3"][zs3_id]["midi_learn_cc"] = ml
+                state["zs3"][zs3_id]["midi_learn_cc"]["absolute"] = ml
+                state["zs3"][zs3_id]["midi_learn_cc"]["chain"] = {}
 
         # Fix ZS3 mixer MIDI learn
         for zs3 in state["zs3"].values():
