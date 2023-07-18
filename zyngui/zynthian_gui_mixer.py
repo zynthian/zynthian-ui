@@ -62,7 +62,6 @@ class zynthian_gui_mixer_strip():
 		self.layer = layer
 		self.midi_learning = False # False: Not learning, True: Preselection, gui_control: Learning
 		self.MAIN_MIXBUS_STRIP_INDEX = zynthian_gui_config.zyngui.zynmixer.get_max_channels()
-		self.drag_axis = 0
 
 		if not layer:
 			self.hidden = True
@@ -168,10 +167,8 @@ class zynthian_gui_mixer_strip():
 		self.status_indicator = self.parent.main_canvas.create_text(x + 2, self.fader_top + 2, fill="#009000", anchor="nw", tags=("strip:%s"%(self.fader_bg)))
 
 		self.parent.zyngui.multitouch.tag_bind(self.parent.main_canvas, "fader:%s"%(self.fader_bg), "press", self.on_fader_press)
-		self.parent.zyngui.multitouch.tag_bind(self.parent.main_canvas, "fader:%s"%(self.fader_bg), "release", self.on_fader_release)
 		self.parent.zyngui.multitouch.tag_bind(self.parent.main_canvas, "fader:%s"%(self.fader_bg), "motion", self.on_fader_motion)
 		self.parent.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<ButtonPress-1>", self.on_fader_press)
-		self.parent.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<ButtonRelease-1>", self.on_fader_release)
 		self.parent.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<B1-Motion>", self.on_fader_motion)
 		if os.environ.get("ZYNTHIAN_UI_ENABLE_CURSOR") == "1":
 			self.parent.main_canvas.tag_bind("fader:%s"%(self.fader_bg), "<Button-4>", self.on_fader_wheel_up)
@@ -590,37 +587,19 @@ class zynthian_gui_mixer_strip():
 			return "break"
 
 		self.touch_y = event.y
-		self.touch_x = event.x
 		if self.midi_learning is True:
 			self.enable_midi_learn('level')
 
 		self.parent.select_chain_by_layer(self.layer)
 
 
-	# Function to handle fader release
-	#	event: Mouse event
-	def on_fader_release(self, event):
-		self.drag_axis = 0
-
-
 	# Function to handle fader drag
 	#	event: Mouse event
 	def on_fader_motion(self, event):
-		if self.drag_axis == 0:
-			if abs(event.x - self.touch_x) > 4:
-				self.drag_axis = 1
-			elif abs(event.y - self.touch_y) > 2:
-				self.drag_axis = 2
-		if self.drag_axis == 1:
-			if self.zctrls:
-				self.set_balance(self.zctrls['balance'].value + (event.x - self.touch_x) / self.fader_width)
-				self.touch_x = event.x
-				self.draw_balance()
-		elif self.drag_axis == 2:
-			if self.zctrls:
-				self.set_volume(self.zctrls['level'].value + (self.touch_y - event.y) / self.fader_height)
-				self.touch_y = event.y
-				self.draw_fader()
+		if self.zctrls:
+			self.set_volume(self.zctrls['level'].value + (self.touch_y - event.y) / self.fader_height)
+			self.touch_y = event.y
+			self.draw_fader()
 
 
 	# Function to handle mouse wheel down over fader
