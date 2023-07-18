@@ -607,7 +607,7 @@ class zynthian_gui_mixer_strip():
 	#	event: Mouse event
 	def on_fader_motion(self, event):
 		if self.drag_axis == 0:
-			if abs(event.x - self.touch_x) > 2:
+			if abs(event.x - self.touch_x) > 4:
 				self.drag_axis = 1
 			elif abs(event.y - self.touch_y) > 2:
 				self.drag_axis = 2
