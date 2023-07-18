@@ -889,6 +889,7 @@ class zynthian_gui:
 
 	def show_favorites(self):
 		if self.curlayer:
+			self.cuia_bank_preset()
 			self.curlayer.set_show_fav_presets(True)
 			self.show_screen("preset")
 
@@ -1437,7 +1438,9 @@ class zynthian_gui:
 				self.set_curlayer(params, True)
 			except:
 				logging.error("Can't set layer passed as CUIA parameter!")
-		elif self.current_screen == 'control':
+		#elif self.current_screen == 'control':
+		else:
+			self.screens["control"].fill_list()
 			try:
 				self.set_curlayer(self.screens['control'].screen_layer, True)
 			except:
@@ -1629,6 +1632,10 @@ class zynthian_gui:
 		except Exception as err:
 			logging.debug(err)
 
+	# -------------------------------------------------------------------
+	# Zynswitch Event Management
+	# -------------------------------------------------------------------
+
 	def refresh_signal(self, sname):
 		try:
 			self.screens[self.current_screen].refresh_signal(sname)
@@ -1681,11 +1688,6 @@ class zynthian_gui:
 		if action_config['S'] and action_config['S'].lower().endswith(screen_name):
 			return True
 		return False
-
-
-	# -------------------------------------------------------------------
-	# Zynswitch Event Management
-	# -------------------------------------------------------------------
 
 	# Init Standard Zynswitches
 	def zynswitches_init(self):
