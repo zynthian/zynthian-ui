@@ -27,12 +27,13 @@ import os
 import copy
 import liblo
 import ctypes
+import ffmpeg
 import logging
 import importlib
 from pathlib import Path
 from time import sleep, monotonic
 from datetime import datetime
-from threading  import Thread, Lock
+from threading import Thread, Lock
 from subprocess import check_output
 
 import zyncoder
@@ -104,10 +105,14 @@ class zynthian_gui:
 	SCREEN_HMODE_RESET = 3
 
 	def __init__(self):
+		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
+		self.ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
+
 		if zynthian_gui_config.check_wiring_layout(["Z2"]):
 			self.multitouch = MultiTouch(invert_x_axis=True, invert_y_axis=True)
 		else:
 			self.multitouch = MultiTouch()
+
 		self.test_mode = False
 		self.alt_mode = False
 
@@ -147,6 +152,10 @@ class zynthian_gui:
 
 		self.zynautoconnect_audio_flag = False
 		self.zynautoconnect_midi_flag = False
+
+		self.capture_log_ts0 = None
+		self.capture_log_fname = None
+		self.capture_ffmpeg_thread = None
 
 		self.audio_player = None
 
@@ -194,6 +203,49 @@ class zynthian_gui:
 				logging.debug("Accessing sensors using legacy interface!")
 			except Exception as e:
 				logging.error("Can't access monitoring sensors at all!")
+
+	# ---------------------------------------------------------------------------
+	# Capture Log
+	# ---------------------------------------------------------------------------
+
+	def start_capture_log(self, title):
+		now = datetime.now()
+		self.capture_log_ts0 = now
+		self.capture_log_fname = "{}-{}".format(title, now.strftime("%Y%m%d%H%M%S"))
+		self.capture_ffmpeg_thread = Thread(target=self.task_capture_ffmpeg, daemon=True)
+		self.capture_ffmpeg_thread.name = "Capture FFMPEG"
+		self.capture_ffmpeg_thread.start()
+
+
+	def task_capture_ffmpeg(self):
+		fbdev = os.environ.get("FRAMEBUFFER", "/dev/fb0")
+		fpath = "{}/{}.mp4".format(self.capture_dir_sdc, self.capture_log_fname)
+		ffmpeg\
+			.output(ffmpeg.input(fbdev, r=30, f="fbdev"),
+				#ffmpeg.input("sine=frequency=500", f="lavfi"),\
+				#ffmpeg.input("ffmpeg", f="jack"),\
+				fpath, vcodec="libx264", acodec="aac", preset="fast", pix_fmt="yuv420p", loglevel="quiet", t=60)\
+			.global_args('-nostdin', '-hide_banner', '-nostats')\
+			.overwrite_output()\
+			.run()
+
+
+	def end_capture_log(self):
+		self.capture_log_fname = None
+		self.capture_log_ts0 = None
+		self.capture_ffmpeg_thread = None
+
+
+	def write_capture_log(self, message):
+		if self.capture_log_fname:
+			try:
+				rts = str(datetime.now() - self.capture_log_ts0)
+				fh = open("{}/{}.log".format(self.capture_dir_sdc, self.capture_log_fname), 'a')
+				fh.write("{} {}\n".format(rts, message))
+				fh.close()
+			except Exception as e:
+				logging.error("Can't write to capture log: {}".format(e))
+
 
 	# ---------------------------------------------------------------------------
 	# WSLeds Init
@@ -542,6 +594,8 @@ class zynthian_gui:
 
 		# Show initial screen
 		self.show_screen(init_screen, self.SCREEN_HMODE_RESET)
+
+		self.start_capture_log("ui_sesion")
 
 		self.stop_loading()
 
@@ -1060,6 +1114,8 @@ class zynthian_gui:
 		cuia_func = getattr(self, "cuia_" + cuia.lower(), None)
 		if callable(cuia_func):
 			cuia_func(params)
+			if self.capture_log_fname:
+				self.write_capture_log("CUIA:{},{}".format(cuia, str(params)))
 		else:
 			logging.error("Unknown CUIA '{}'".format(cuia))
 
@@ -1635,6 +1691,10 @@ class zynthian_gui:
 		except (AttributeError, TypeError) as err:
 			pass
 
+	# -------------------------------------------------------------------
+	# Zynswitch Event Management
+	# -------------------------------------------------------------------
+
 	def custom_switch_ui_action(self, i, t):
 		action_config = zynthian_gui_config.custom_switch_ui_actions[i]
 		if not action_config:
@@ -1683,10 +1743,6 @@ class zynthian_gui:
 		return False
 
 
-	# -------------------------------------------------------------------
-	# Zynswitch Event Management
-	# -------------------------------------------------------------------
-
 	# Init Standard Zynswitches
 	def zynswitches_init(self):
 		logging.info("INIT {} ZYNSWITCHES ...".format(zynthian_gui_config.num_zynswitches))
@@ -1719,6 +1775,9 @@ class zynthian_gui:
 	def zynswitch_push(self, i):
 		self.set_event_flag()
 
+		if self.capture_log_fname:
+			self.write_capture_log("ZYNSWITCH:P,{}".format(i))
+
 		try:
 			if self.screens[self.current_screen].switch(i, 'P'):
 				return
@@ -1740,6 +1799,9 @@ class zynthian_gui:
 	def zynswitch_long(self, i):
 		logging.debug('Looooooooong Switch '+str(i))
 		self.start_loading()
+
+		if self.capture_log_fname:
+			self.write_capture_log("ZYNSWITCH:L,{}".format(i))
 
 		# Standard 4 ZynSwitches
 		if i == 0:
@@ -1763,8 +1825,10 @@ class zynthian_gui:
 
 	def zynswitch_bold(self, i):
 		logging.debug('Bold Switch '+str(i))
-
 		self.start_loading()
+
+		if self.capture_log_fname:
+			self.write_capture_log("ZYNSWITCH:B,{}".format(i))
 
 		try:
 			if self.screens[self.current_screen].switch(i, 'B'):
@@ -1800,8 +1864,10 @@ class zynthian_gui:
 
 	def zynswitch_short(self, i):
 		logging.debug('Short Switch '+str(i))
-
 		self.start_loading()
+
+		if self.capture_log_fname:
+			self.write_capture_log("ZYNSWITCH:S,{}".format(i))
 
 		try:
 			if self.screens[self.current_screen].switch(i, 'S'):

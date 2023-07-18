@@ -45,6 +45,7 @@ class zynthian_wsleds_base:
 		self.blink_count = 0
 		self.blink_state = False
 		self.pulse_step = 0
+		self.last_wsled_state = ""
 		# Predefined colors
 		self.wscolor_off = rpi_ws281x.Color(0, 0, 0)
 		self.wscolor_white = rpi_ws281x.Color(120, 120, 120)
@@ -61,6 +62,16 @@ class zynthian_wsleds_base:
 		self.wscolor_active2 = self.wscolor_orange
 		self.wscolor_admin = self.wscolor_red
 		self.wscolor_low = rpi_ws281x.Color(0, 100, 0)
+		# Color Codes
+		self.wscolors_dict = {
+			str(self.wscolor_off): "0",
+			str(self.wscolor_blue): "B",
+			str(self.wscolor_green): "G",
+			str(self.wscolor_red): "R",
+			str(self.wscolor_orange): "O",
+			str(self.wscolor_yellow): "Y",
+			str(self.wscolor_purple): "P"
+		}
 
 
 	def start(self):
@@ -129,6 +140,7 @@ class zynthian_wsleds_base:
 			for i in range(0, self.num_leds):
 				self.wsleds.setPixelColor(i, self.wscolor_off)
 			self.pulse(0)
+			self.wsleds.show()
 
 		# Normal mode
 		else:
@@ -142,9 +154,23 @@ class zynthian_wsleds_base:
 			except Exception as e:
 				logging.error(e)
 
-		self.wsleds.show()
-		self.blink_count += 1
+			self.wsleds.show()
 
+			if self.zyngui.capture_log_fname:
+				try:
+					wsled_state = []
+					for i in range(self.num_leds):
+						c = str(self.wsleds.getPixelColor(i))
+						if c in self.wscolors_dict:
+							wsled_state.append(self.wscolors_dict[c])
+					wsled_state = ",".join(wsled_state)
+					if wsled_state != self.last_wsled_state:
+						self.last_wsled_state = wsled_state
+						self.zyngui.write_capture_log("LEDSTATE:" + wsled_state)
+				except Exception as e:
+					logging.error(e)
+
+		self.blink_count += 1
 
 	def update_wsleds(self):
 		pass
