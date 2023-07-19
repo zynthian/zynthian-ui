@@ -943,6 +943,7 @@ class zynthian_gui:
 
 	def show_favorites(self):
 		if self.curlayer:
+			self.cuia_bank_preset()
 			self.curlayer.set_show_fav_presets(True)
 			self.show_screen("preset")
 
@@ -1493,7 +1494,9 @@ class zynthian_gui:
 				self.set_curlayer(params, True)
 			except:
 				logging.error("Can't set layer passed as CUIA parameter!")
-		elif self.current_screen == 'control':
+		#elif self.current_screen == 'control':
+		else:
+			self.screens["control"].fill_list()
 			try:
 				self.set_curlayer(self.screens['control'].screen_layer, True)
 			except:
@@ -1685,6 +1688,7 @@ class zynthian_gui:
 		except Exception as err:
 			logging.debug(err)
 
+
 	def refresh_signal(self, sname):
 		try:
 			self.screens[self.current_screen].refresh_signal(sname)
@@ -1749,6 +1753,7 @@ class zynthian_gui:
 		self.dtsw = [datetime.now()] * (zynthian_gui_config.num_zynswitches + 4)
 		self.zynswitch_cuia_ts = [None] * (zynthian_gui_config.num_zynswitches + 4)
 
+
 	def zynswitches(self):
 		i = 0
 		while i <= zynthian_gui_config.last_zynswitch_index:
@@ -1756,6 +1761,7 @@ class zynthian_gui:
 				dtus = lib_zyncore.get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
 				self.zynswitch_timing(i, dtus)
 			i += 1
+
 
 	def zynswitch_timing(self, i, dtus):
 		if dtus < 0:

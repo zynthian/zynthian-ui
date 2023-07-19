@@ -125,7 +125,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			logging.error("Can't fill control screen list for None layer!")
 			return
 
-		if self.zyngui.curlayer.engine.nickname=="MX":
+		if self.zyngui.curlayer.engine.nickname == "MX":
 			self.layers = [self.zyngui.curlayer]
 		else:
 			# Get MIDI effects not including root
@@ -142,7 +142,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		for layer in self.layers:
 			j = 0
 			screen_list = layer.get_ctrl_screens()
-			if len(screen_list)>0:
+			if len(screen_list) > 0:
 				if len(self.layers) > 1:
 					self.list_data.append((None, None, "> {}".format(layer.engine.name.split("/")[-1])))
 				for cscr in screen_list:
@@ -151,7 +151,28 @@ class zynthian_gui_control(zynthian_gui_selector):
 					j += 1
 
 		self.index = self.zyngui.curlayer.get_current_screen_index()
+		self.get_screen_info()
+
 		super().fill_list()
+
+
+	def get_screen_info(self):
+		if 0 <= self.index < len(self.list_data):
+			self.screen_info = self.list_data[self.index]
+			if len(self.screen_info) < 5:
+				if self.index + 1 < len(self.list_data):
+					self.index += 1
+					self.screen_info = self.list_data[self.index]
+				else:
+					self.screen_info = None
+			if len(self.screen_info) == 5:
+				self.screen_title = self.screen_info[2]
+				self.screen_layer = self.screen_info[3]
+				return True
+			else:
+				logging.error("Can't get screen info!!")
+				return False
+		return False
 
 
 	def fill_listbox(self):
@@ -236,11 +257,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def set_controller_screen(self):
 		# Get screen info
-		if 0 <= self.index < len(self.list_data):
-			self.screen_info = self.list_data[self.index]
-			self.screen_title = self.screen_info[2]
-			self.screen_layer = self.screen_info[3]
-
+		if self.get_screen_info():
 			# Show the widget for the current sublayer
 			if self.mode == 'control':
 				self.show_widget(self.screen_layer)
