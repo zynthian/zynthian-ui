@@ -865,6 +865,7 @@ class zynthian_gui:
 
 	def show_favorites(self):
 		if self.get_current_processor():
+			self.cuia_bank_preset()
 			self.get_current_processor().set_show_fav_presets(True)
 			self.show_screen("preset")
 
@@ -1270,9 +1271,15 @@ class zynthian_gui:
 	def cuia_bank_preset(self, params=None):
 		if params:
 			try:
-				self.current_processor = params #TODO: This doesn't do enough
+				self.chain_manager.get_active_chain().set_current_processor(params)
 			except:
 				logging.error("Can't set chain passed as CUIA parameter!")
+		else:
+			self.screens["control"].fill_list()
+			try:
+				self.chain_manager.get_active_chain().set_current_processor(self.screens['control'].screen_processor)
+			except:
+				logging.warning("Can't set control screen layer! ")
 
 		if self.current_screen == 'preset':
 			if len(self.get_current_processor().get_bank_list()) > 1:
