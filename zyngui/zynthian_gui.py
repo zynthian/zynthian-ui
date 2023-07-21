@@ -155,7 +155,7 @@ class zynthian_gui:
 
 		self.capture_log_ts0 = None
 		self.capture_log_fname = None
-		self.capture_ffmpeg_thread = None
+		self.capture_ffmpeg_proc = None
 
 		self.audio_player = None
 
@@ -208,32 +208,37 @@ class zynthian_gui:
 	# Capture Log
 	# ---------------------------------------------------------------------------
 
-	def start_capture_log(self, title):
+	def start_capture_log(self, title=None):
+		if not title:
+			title = "ui_sesion"
 		now = datetime.now()
 		self.capture_log_ts0 = now
 		self.capture_log_fname = "{}-{}".format(title, now.strftime("%Y%m%d%H%M%S"))
-		self.capture_ffmpeg_thread = Thread(target=self.task_capture_ffmpeg, daemon=True)
-		self.capture_ffmpeg_thread.name = "Capture FFMPEG"
-		self.capture_ffmpeg_thread.start()
+		self.start_capture_ffmpeg()
 
 
-	def task_capture_ffmpeg(self):
+	def start_capture_ffmpeg(self):
 		fbdev = os.environ.get("FRAMEBUFFER", "/dev/fb0")
 		fpath = "{}/{}.mp4".format(self.capture_dir_sdc, self.capture_log_fname)
-		ffmpeg\
+		self.capture_ffmpeg_proc = ffmpeg\
 			.output(ffmpeg.input(fbdev, r=30, f="fbdev"),
 				#ffmpeg.input("sine=frequency=500", f="lavfi"),\
-				#ffmpeg.input("ffmpeg", f="jack"),\
-				fpath, vcodec="libx264", acodec="aac", preset="fast", pix_fmt="yuv420p", loglevel="quiet", t=60)\
+				#ffmpeg.input("ffmpeg", f="jack"),\ , acodec="aac"
+				fpath, vcodec="libx264", preset="fast", pix_fmt="yuv420p")\
 			.global_args('-nostdin', '-hide_banner', '-nostats')\
-			.overwrite_output()\
-			.run()
+			.run_async(quiet=True, overwrite_output=True)
 
 
-	def end_capture_log(self):
+	def stop_capture_ffmpeg(self):
+		if self.capture_ffmpeg_proc:
+			self.capture_ffmpeg_proc.terminate()
+		self.capture_ffmpeg_proc = None
+
+
+	def stop_capture_log(self):
+		self.stop_capture_ffmpeg()
 		self.capture_log_fname = None
 		self.capture_log_ts0 = None
-		self.capture_ffmpeg_thread = None
 
 
 	def write_capture_log(self, message):
@@ -594,8 +599,6 @@ class zynthian_gui:
 
 		# Show initial screen
 		self.show_screen(init_screen, self.SCREEN_HMODE_RESET)
-
-		self.start_capture_log("ui_sesion")
 
 		self.stop_loading()
 

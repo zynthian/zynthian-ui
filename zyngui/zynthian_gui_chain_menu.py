@@ -24,6 +24,7 @@
 #******************************************************************************
 
 # Zynthian specific modules
+from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
@@ -44,6 +45,19 @@ class zynthian_gui_chain_menu(zynthian_gui_selector):
 		self.list_data.append((self.new_generator_layer, 0, "New Generator Chain"))
 		self.list_data.append((self.new_special_layer, 0, "New Special Chain"))
 		self.list_data.append((self.clean_all, 0, "Clean All"))
+
+		# Add list of Apps
+		self.list_data.append((None, 0, "> MAIN"))
+		if self.zyngui.capture_log_fname:
+			self.list_data.append((self.workflow_capture_stop, 0, "[x] Stop Workflow Capture"))
+		else:
+			self.list_data.append((self.workflow_capture_start, 0, "[  ] Start Workflow Capture"))
+
+		# Add list of System / configuration views
+		if zynthian_gui_config.control_test_enabled:
+			self.list_data.append((None, 0, "> SYSTEM"))
+			self.list_data.append((self.control_test, 0, "Control Test"))
+
 		super().fill_list()
 
 
@@ -75,6 +89,16 @@ class zynthian_gui_chain_menu(zynthian_gui_selector):
 
 	def clean_all(self, t='S'):
 		self.zyngui.show_confirm("Do you really want to remove ALL chains & sequences?", self.clean_all_confirmed)
+
+
+	def workflow_capture_start(self, t='S'):
+		self.zyngui.start_capture_log()
+		self.fill_list()
+
+
+	def workflow_capture_stop(self, t='S'):
+		self.zyngui.stop_capture_log()
+		self.fill_list()
 
 
 	def clean_all_confirmed(self, params=None):
