@@ -683,7 +683,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 
 	def midi_unlearn(self, zctrl):
-		if zctrl.get_path() in self.learned_zctrls:
+		if zctrl.get_path() in self.learned_zctrls and zctrl.midi_learn_chan is not None and zctrl.midi_learn_chan < 16:
 			#logging.info("Unlearning '{}' ...".format(zctrl.symbol))
 			try:
 				self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = None
@@ -694,7 +694,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 
 	def set_midi_learn(self, zctrl, chan, cc):
-		try:
+		if zctrl.midi_learn_chan is not None and zctrl.midi_learn_chan < 16:
 			# Clean implied CC bindings if any ...
 			try:
 				self.learned_cc[chan][cc].midi_unlearn()
@@ -705,12 +705,13 @@ class zynthian_engine(zynthian_basic_engine):
 			except:
 				pass
 
-			# Add midi learning info
-			self.learned_zctrls[zctrl.get_path()] = zctrl
-			self.learned_cc[chan][cc] = zctrl
-			return zctrl._set_midi_learn(chan, cc)
-		except Exception as e:
-			logging.error("Can't learn {} ({}) for CH{}#CC{} => {}".format(zctrl.symbol, zctrl.get_path(), chan, cc, e))
+			try:
+				# Add midi learning info
+				self.learned_zctrls[zctrl.get_path()] = zctrl
+				self.learned_cc[chan][cc] = zctrl
+				return zctrl._set_midi_learn(chan, cc)
+			except Exception as e:
+				logging.error("Can't learn {} ({}) for CH{}#CC{} => {}".format(zctrl.symbol, zctrl.get_path(), chan, cc, e))
 
 
 	def keep_midi_learn(self, zctrl):
