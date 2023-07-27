@@ -590,7 +590,6 @@ class zynthian_gui:
 		elif screen == "audio_player":
 			if self.audio_player:
 				self.set_curlayer(self.audio_player, save=True, populate_screens=False)
-				self.audio_player.engine.load_latest(self.audio_player)
 			else:
 				logging.error("Audio Player not created!")
 				return
@@ -994,8 +993,8 @@ class zynthian_gui:
 		elif (self.audio_player.preset_name and os.path.exists(self.audio_player.preset_info[0])) or self.audio_player.engine.player.get_filename(self.audio_player.handle):
 			self.audio_player.engine.player.start_playback(self.audio_player.handle)
 		else:
-			self.audio_player.reset_preset()
-			self.cuia_audio_file_list()
+			self.audio_player.engine.load_latest(self.audio_player)
+
 
 	def stop_audio_player(self):
 		self.audio_player.engine.player.stop_playback(self.audio_player.handle)
@@ -1438,8 +1437,7 @@ class zynthian_gui:
 				self.set_curlayer(params, True)
 			except:
 				logging.error("Can't set layer passed as CUIA parameter!")
-		#elif self.current_screen == 'control':
-		else:
+		elif self.current_screen != 'audio_player':
 			self.screens["control"].fill_list()
 			try:
 				self.set_curlayer(self.screens['control'].screen_layer, True)
