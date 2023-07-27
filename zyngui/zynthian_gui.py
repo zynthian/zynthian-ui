@@ -984,20 +984,34 @@ class zynthian_gui:
 
 
 	def start_audio_player(self):
-		filename = self.audio_recorder.filename
-		if filename and os.path.exists(filename):
-			self.audio_player.engine.set_preset(self.audio_player, [filename])
-			self.audio_player.engine.player.set_position(self.audio_player.handle, 0.0)
-			self.audio_player.engine.player.start_playback(self.audio_player.handle)
-			self.audio_recorder.filename = None
-		elif (self.audio_player.preset_name and os.path.exists(self.audio_player.preset_info[0])) or self.audio_player.engine.player.get_filename(self.audio_player.handle):
+		if (self.audio_player.preset_name and os.path.exists(self.audio_player.preset_info[0])) or self.audio_player.engine.player.get_filename(self.audio_player.handle):
 			self.audio_player.engine.player.start_playback(self.audio_player.handle)
 		else:
 			self.audio_player.engine.load_latest(self.audio_player)
+			self.audio_player.engine.player.start_playback(self.audio_player.handle)
 
 
 	def stop_audio_player(self):
 		self.audio_player.engine.player.stop_playback(self.audio_player.handle)
+
+
+	def refresh_recording_status(self):
+		if self.audio_recorder.get_status():
+			rec_status = True
+			rec_value = "recording"
+		else:
+			rec_status = False
+			rec_value = "stopped"
+		for layer in self.audio_player.engine.layers:
+			layer.controllers_dict['record'].set_value(rec_value, False)
+		if not rec_status:
+			self.audio_player.engine.load_latest(self.audio_player)
+			if self.curlayer in self.audio_player.engine.layers:
+				if self.curlayer != self.audio_player:
+					self.audio_player.engine.load_latest(self.curlayer)
+				if self.current_screen in ("audio_player", "control"):
+					self.get_current_screen_obj().set_mode_control()
+
 
 	# ------------------------------------------------------------------
 	# MIDI learning
@@ -1135,16 +1149,19 @@ class zynthian_gui:
 
 	# Audio & MIDI Recording/Playback actions
 	def cuia_start_audio_record(self, params=None):
-		self.audio_player.controllers_dict['record'].set_value("recording")
+		self.audio_recorder.start_recording()
+		self.refresh_recording_status()
 
 	def cuia_stop_audio_record(self, params=None):
-		self.audio_player.controllers_dict['record'].set_value("stopped")
+		self.audio_recorder.stop_recording()
+		self.refresh_recording_status()
 
 	def cuia_toggle_audio_record(self, params=None):
 		if self.audio_recorder.get_status():
-			self.audio_player.controllers_dict['record'].set_value("stopped")
+			self.audio_recorder.stop_recording()
 		else:
-			self.audio_player.controllers_dict['record'].set_value("recording")
+			self.audio_recorder.start_recording()
+		self.refresh_recording_status()
 
 	def cuia_start_audio_play(self, params=None):
 		self.start_audio_player()
@@ -2107,7 +2124,8 @@ class zynthian_gui:
 				# Refresh GUI Controllers
 				try:
 					self.screens[self.current_screen].plot_zctrls()
-				except AttributeError:
+				except AttributeError as e:
+					#logging.warning(e)
 					pass
 				except Exception as e:
 					logging.error(e)

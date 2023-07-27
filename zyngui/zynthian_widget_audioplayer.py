@@ -512,13 +512,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			logging.debug("Failed to change value")
 
 
-	def cuia_toggle_record(self):
-		if self.zyngui.audio_recorder.get_status():
-			self.layer.controllers_dict['record'].set_value("stopped")
-		else:
-			self.layer.controllers_dict['record'].set_value("recording")
-
-
 	def cuia_stop(self):
 		self.layer.engine.player.stop_playback(self.layer.handle)
 		self.layer.engine.player.set_position(self.layer.handle, 0.0)

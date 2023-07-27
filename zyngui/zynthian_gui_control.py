@@ -255,6 +255,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.cuia_toggle_play = None
 			self.update_wsleds = None
 
+
 	def set_controller_screen(self):
 		# Get screen info
 		if self.get_screen_info():
