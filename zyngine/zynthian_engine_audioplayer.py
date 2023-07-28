@@ -226,8 +226,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		else:
 			loop = 'one-shot'
 		logging.debug("Loading Audio Track '{}' in player {}".format(preset[0], layer.handle))
-		if layer.handle == self.zyngui.audio_player.handle:
-			self.player.start_playback(layer.handle)
 		if self.player.get_playback_state(layer.handle):
 			transport = 'playing'
 		else:
@@ -344,14 +342,20 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 
 	def load_latest(self, layer):
-		list_of_wavs = glob(os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture/*.wav")
-		dirs = zynthian_gui_config.get_external_storage_dirs(os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root"))
-		for dir in dirs:
-			list_of_wavs += glob(f"{dir}/*.wav")
+		bank_dirs = [os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"]
+		bank_dirs += zynthian_gui_config.get_external_storage_dirs(os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root"))
 
-		if list_of_wavs:
-			latest_file = max(list_of_wavs, key=os.path.getctime)
-			self.set_preset(layer, [latest_file])
+		wav_fpaths = []
+		for bank_dir in bank_dirs:
+			wav_fpaths += glob(f"{bank_dir}/*.wav")
+
+		if len(wav_fpaths) > 0:
+			latest_fpath = max(wav_fpaths, key=os.path.getctime)
+			bank_fpath = os.path.dirname(latest_fpath)
+			layer.load_bank_list()
+			layer.set_bank_by_id(bank_fpath)
+			layer.load_preset_list()
+			layer.set_preset_by_id(latest_fpath)
 
 
 	#----------------------------------------------------------------------------
@@ -371,10 +375,11 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				if layer.handle == handle:
 					ctrl_dict = layer.controllers_dict
 					if id == 1:
-						ctrl_dict['transport'].set_value(int(value) * 64, False)
 						if value:
+							ctrl_dict['transport'].set_value("playing", False)
 							layer.status = "\uf04b"
 						else:
+							ctrl_dict['transport'].set_value("stopped", False)
 							layer.status = ""
 					elif id == 2:
 						ctrl_dict['position'].set_value(value, False)
@@ -429,9 +434,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.player.set_track_b(handle, zctrl.value)
 		elif zctrl.symbol == "record":
 			if zctrl.value:
-				self.zyngui.audio_recorder.start_recording()
+				self.zyngui.cuia_start_audio_record()
 			else:
-				self.zyngui.audio_recorder.stop_recording()
+				self.zyngui.cuia_stop_audio_record()
 		elif zctrl.symbol == "loop start":
 			self.player.set_loop_start(handle, zctrl.value)
 		elif zctrl.symbol == "loop end":
