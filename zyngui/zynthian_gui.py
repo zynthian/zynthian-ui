@@ -33,7 +33,7 @@ import importlib
 from pathlib import Path
 from time import sleep, monotonic
 from datetime import datetime
-from threading import Thread, Lock
+from threading import Thread, Lock, Event
 from subprocess import check_output
 
 import zyncoder
@@ -128,6 +128,11 @@ class zynthian_gui:
 		
 		self.curlayer = None
 		self._curlayer = None
+
+		self.zynpot_dval = zynthian_gui_config.num_zynpots * [0]
+		self.zynpot_event = Event()
+		self.zynpot_lock = Lock()
+		self.zynpot_thread = None
 
 		self.dtsw = []
 
@@ -554,6 +559,7 @@ class zynthian_gui:
 		# Start polling & threads
 		self.start_polling()
 		self.start_loading_thread()
+		self.start_zynpot_thread()
 		self.start_control_thread()
 		self.start_status_thread()
 
@@ -2172,6 +2178,35 @@ class zynthian_gui:
 
 
 	#------------------------------------------------------------------
+	# Zynpot Thread
+	#------------------------------------------------------------------
+
+	def start_zynpot_thread(self):
+		self.zynpot_thread = Thread(target=self.zynpot_thread_task, args=())
+		self.zynpot_thread.name = "zynpot"
+		self.zynpot_thread.daemon = True # thread dies with the program
+		self.zynpot_thread.start()
+
+
+	def zynpot_thread_task(self):
+		while not self.exit_flag:
+			self.zynpot_event.wait()
+			self.zynpot_event.clear()
+			for i in range(0, zynthian_gui_config.num_zynpots):
+				self.zynpot_lock.acquire()
+				dval = self.zynpot_dval[i]
+				self.zynpot_dval[i] = 0
+				self.zynpot_lock.release()
+				if dval != 0:
+					try:
+						self.screens[self.current_screen].zynpot_cb(i, dval)
+						self.last_event_flag = True
+					except Exception as err:
+						pass  # Some screens don't use controllers
+						logging.exception(err)
+
+
+	#------------------------------------------------------------------
 	# Control Thread
 	#------------------------------------------------------------------
 
@@ -2445,11 +2480,13 @@ class zynthian_gui:
 			timeout = 10
 			if self.exit_wait_count == 0:
 				logging.info("EXITING ZYNTHIAN-UI...")
-			if self.exit_wait_count < timeout and (self.control_thread.is_alive() or self.status_thread.is_alive() or self.loading_thread.is_alive() or zynautoconnect.is_running()):
+			if self.exit_wait_count < timeout and (self.zynpot_thread.is_alive() or self.control_thread.is_alive() or self.status_thread.is_alive() or self.loading_thread.is_alive() or zynautoconnect.is_running()):
 				self.exit_wait_count += 1
 			else:
 				if self.exit_wait_count == timeout:
 					# Exceeded wait time for threads to stop
+					if self.zynpot_thread.is_alive():
+						logging.error("Zynpot thread failed to terminate")
 					if self.control_thread.is_alive():
 						logging.error("Control thread failed to terminate")
 					if self.status_thread.is_alive():
