@@ -172,6 +172,11 @@ class zynthian_wsleds_base:
 
 		self.blink_count += 1
 
+
+	def reset_last_state(self):
+		self.last_wsled_state = ""
+
+
 	def update_wsleds(self):
 		pass
 

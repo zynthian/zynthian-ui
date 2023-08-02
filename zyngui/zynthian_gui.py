@@ -219,6 +219,7 @@ class zynthian_gui:
 		now = datetime.now()
 		self.capture_log_ts0 = now
 		self.capture_log_fname = "{}-{}".format(title, now.strftime("%Y%m%d%H%M%S"))
+		self.wsleds.reset_last_state()
 		self.start_capture_ffmpeg()
 
 
@@ -2201,6 +2202,8 @@ class zynthian_gui:
 					try:
 						self.screens[self.current_screen].zynpot_cb(i, dval)
 						self.last_event_flag = True
+						if self.capture_log_fname:
+							self.write_capture_log("ZYNPOT:{},{}".format(i, dval))
 					except Exception as err:
 						pass  # Some screens don't use controllers
 						logging.exception(err)
