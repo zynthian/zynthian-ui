@@ -2194,12 +2194,12 @@ class zynthian_gui:
 			self.zynpot_event.wait()
 			self.zynpot_event.clear()
 			for i in range(0, zynthian_gui_config.num_zynpots):
-				self.zynpot_lock.acquire()
-				dval = self.zynpot_dval[i]
-				self.zynpot_dval[i] = 0
-				self.zynpot_lock.release()
-				if dval != 0:
+				if self.zynpot_dval[i] != 0:
 					try:
+						self.zynpot_lock.acquire()
+						dval = self.zynpot_dval[i]
+						self.zynpot_dval[i] = 0
+						self.zynpot_lock.release()
 						self.screens[self.current_screen].zynpot_cb(i, dval)
 						self.last_event_flag = True
 						if self.capture_log_fname:
