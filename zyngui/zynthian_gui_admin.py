@@ -163,6 +163,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data.append((self.test_midi, 0, "Test MIDI"))
 
 		self.list_data.append((None, 0, "> SYSTEM"))
+		if self.zyngui.capture_log_fname:
+			self.list_data.append((self.workflow_capture_stop, 0, "[x] Workflow Capture"))
+		else:
+			self.list_data.append((self.workflow_capture_start, 0, "[  ] Workflow Capture"))
 		self.list_data.append((self.zyngui.calibrate_touchscreen, 0, "Calibrate Touchscreen"))
 		if self.is_update_available():
 			self.list_data.append((self.update_software, 0, "Update Software"))
@@ -778,9 +782,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.stop_vncserver(False)
 
 
-#------------------------------------------------------------------------------
-# SYSTEM FEATURES
-#------------------------------------------------------------------------------
+	#------------------------------------------------------------------------------
+	# TEST FEATURES
+	#------------------------------------------------------------------------------
 
 	def test_audio(self):
 		logging.info("TESTING AUDIO")
@@ -795,6 +799,19 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		logging.info("TESTING MIDI")
 		self.zyngui.show_info("TEST MIDI")
 		self.killable_start_command(["aplaymidi -p 14 {}/mid/test.mid".format(self.data_dir)])
+
+	# ------------------------------------------------------------------------------
+	# SYSTEM FEATURES
+	# ------------------------------------------------------------------------------
+
+	def workflow_capture_start(self):
+		self.zyngui.start_capture_log()
+		self.zyngui.close_screen()
+
+
+	def workflow_capture_stop(self):
+		self.zyngui.stop_capture_log()
+		self.fill_list()
 
 
 	def update_software(self):
