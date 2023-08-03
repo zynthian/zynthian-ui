@@ -2482,7 +2482,10 @@ class zynthian_gui:
 		if self.exit_flag:
 			timeout = 10
 			if self.exit_wait_count == 0:
+				# Log exit message
 				logging.info("EXITING ZYNTHIAN-UI...")
+				# Signal zynpot thread so it can unlock and finish normally
+				self.zynpot_event.set()
 			if self.exit_wait_count < timeout and (self.zynpot_thread.is_alive() or self.control_thread.is_alive() or self.status_thread.is_alive() or self.loading_thread.is_alive() or zynautoconnect.is_running()):
 				self.exit_wait_count += 1
 			else:
