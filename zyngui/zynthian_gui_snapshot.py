@@ -301,7 +301,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.save_snapshot(fpath)
 		elif option == "Restore Backup":
 			budir = dirname(fpath) + "/.backup"
-			fbase, fext = splitext(fname)
+			fbase, fext = splitext(parts[2])
 			fpat = "{}.*.zss".format(fbase)
 			self.zyngui.screens['option'].config_file_list("Restore backup: {}".format(fname), budir, fpat, self.restore_backup_cb)
 			self.zyngui.show_screen('option')
