@@ -220,6 +220,8 @@ class zynthian_gui:
 		self.capture_log_ts0 = now
 		self.capture_log_fname = "{}-{}".format(title, now.strftime("%Y%m%d%H%M%S"))
 		self.wsleds.reset_last_state()
+		self.write_capture_log("LAYOUT: {}".format(zynthian_gui_config.wiring_layout))
+		self.write_capture_log("TITLE: {}".format(self.capture_log_fname))
 		self.start_capture_ffmpeg()
 
 
