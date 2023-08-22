@@ -617,7 +617,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle grid mouse release
 	#	event: Mouse event
 	def on_grid_release(self, event):
-		if self.grid_timer.isAlive():
+		if self.grid_timer.is_alive():
 			# Haven't moved cursor so just toggle current pattern
 			self.toggle_event(self.selected_cell[0], self.selected_cell[1])
 			self.grid_timer.cancel()
@@ -639,7 +639,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		row = self.row_offset + int(event.y / self.row_height)
 		if col < self.col_offset or col >= self.col_offset + self.horizontal_zoom or row < self.row_offset or row >= self.row_offset + self.vertical_zoom:
 			return # Avoid scrolling display
-		if self.grid_timer.isAlive():
+		if self.grid_timer.is_alive():
 			if col == self.source_col and row == self.source_row:
 				return # Haven't moved from original cell
 			self.grid_timer.cancel()

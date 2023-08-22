@@ -310,7 +310,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 
 
 	def on_loop_release(self, event):
-		if self.click_timer and self.click_timer.isAlive():
+		if self.click_timer and self.click_timer.is_alive():
 			self.click_timer.cancel()
 
 

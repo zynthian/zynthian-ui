@@ -676,7 +676,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle pad release
 	def on_pad_release(self, event):
-		if self.grid_timer.isAlive():
+		if self.grid_timer.is_alive():
 			self.toggle_pad()
 		self.grid_timer.cancel()
 
