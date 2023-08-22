@@ -221,9 +221,9 @@ def convert_from_all_plugins():
 def get_plugin_type(plugin):
 	global world
 	lv2_plugin_classes = {
-		"MIDI_SYNTH" : ("Instrument"),
+		"MIDI_SYNTH": ("Instrument"),
 
-		"AUDIO_EFFECT" : ("Analyser", "Spectral", "Delay", "Compressor", "Distortion", "Filter", "Equaliser",
+		"AUDIO_EFFECT": ("Analyser", "Spectral", "Delay", "Compressor", "Distortion", "Filter", "Equaliser",
 			"Modulator", "Expander", "Spatial", "Limiter", "Pitch Shifter", "Reverb", "Simulator", "Envelope",
 			"Gate", "Amplifier", "Chorus", "Flanger", "Phaser", "Highpass", "Lowpass", "Dynamics"),
 
@@ -254,16 +254,16 @@ def get_plugin_type(plugin):
 	n_midi_in += plugin.get_num_ports_of_class(world.ns.lv2.InputPort, world.ns.atom.AtomPort)
 	n_midi_out += plugin.get_num_ports_of_class(world.ns.lv2.OutputPort, world.ns.atom.AtomPort)
 
-	if n_audio_out>0 and n_audio_in==0:
-		if n_midi_in>0:
+	if n_audio_out > 0 and n_audio_in == 0:
+		if n_midi_in > 0:
 			return PluginType.MIDI_SYNTH
 		else:
 			return PluginType.AUDIO_GENERATOR
 
-	if n_audio_out>0 and n_audio_in>0 and n_midi_out==0:
+	if n_audio_out > 0 and n_audio_in > 0 and n_midi_out == 0:
 		return PluginType.AUDIO_EFFECT
 
-	if n_midi_in>0 and n_midi_out>0 and n_audio_in==n_audio_out==0:
+	if n_midi_in > 0 and n_midi_out > 0 and n_audio_in == n_audio_out == 0:
 		return PluginType.MIDI_TOOL
 
 	#return PluginType.UNKNOWN
@@ -544,15 +544,18 @@ def get_node_value(node):
 
 #------------------------------------------------------------------------------
 
-# Init Lilv
 world = lilv.World()
-init_lilv()
 
+# Disable language filtering
+#world.set_option(lilv.OPTION_FILTER_LANG, world.new_bool(False))
+
+# Init Lilv
+init_lilv()
 # Load presets from cache
 load_plugins()
 
 if __name__ == '__main__':
-
+	# Init logging
 	#log_level=logging.DEBUG
 	#log_level=logging.WARNING
 	log_level=logging.INFO

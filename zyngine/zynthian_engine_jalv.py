@@ -82,7 +82,7 @@ class zynthian_engine_jalv(zynthian_engine):
 	elif "Raspberry Pi 3" in os.environ.get('RBPI_VERSION'):
 		rpi = "RPi3"
 	else:
-		rpi = "Rpi2"
+		rpi = "RPi2"
 
 	plugins_custom_gui = {
 		'http://gareus.org/oss/lv2/meters#spectr30mono': "/zynthian/zynthian-ui/zyngui/zynthian_widget_spectr30.py",
@@ -207,7 +207,10 @@ class zynthian_engine_jalv(zynthian_engine):
 				self.command = ("{} --jack-name {} {}".format(jalv_bin, self.jackname, self.plugin_url))
 			else:
 				self.command = ("jalv -n {} {}".format(self.jackname, self.plugin_url))
-				self.command_env['DISPLAY'] = "X"
+				# Some plugins need a X11 display for running headless (QT5, QT6),
+				# but some others can't run headless if there is a valid DISPLAY defined
+				if not self.plugin_name.endswith("v1"):
+					self.command_env['DISPLAY'] = "X"
 
 			self.command_prompt = "\n> "
 
@@ -234,7 +237,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				else:
 					ctrl_screen = None
 				if ctrl_screen:
-					self._ctrl_screens = [['MIDI Controllers',copy.copy(ctrl_screen)]]
+					self._ctrl_screens = [['MIDI Controllers', copy.copy(ctrl_screen)]]
 					self._ctrls = []
 					for ctrl_name in ctrl_screen:
 						self._ctrls.append([ctrl_name] + self.plugin_ctrl_info['ctrls'][ctrl_name])
