@@ -21,3 +21,23 @@ __all__ = [
 	"zynthian_engine_audioplayer",
 	"zynthian_engine_audio_in"
 ]
+from zyngine.zynthian_zcmidi import *
+from zyngine.zynthian_midi_filter import *
+from zyngine.zynthian_controller import *
+from zyngine.zynthian_layer import *
+from zyngine.zynthian_lv2 import *
+from zyngine.zynthian_engine import *
+from zyngine.zynthian_engine_zynaddsubfx import *
+from zyngine.zynthian_engine_linuxsampler import *
+from zyngine.zynthian_engine_fluidsynth import *
+from zyngine.zynthian_engine_setbfree import *
+from zyngine.zynthian_engine_modui import *
+from zyngine.zynthian_engine_pianoteq import *
+from zyngine.zynthian_engine_pianoteq6 import *
+from zyngine.zynthian_engine_puredata import *
+from zyngine.zynthian_engine_aeolus import *
+from zyngine.zynthian_engine_jalv import *
+from zyngine.zynthian_engine_sfizz import *
+from zyngine.zynthian_engine_alsa_mixer import *
+from zyngine.zynthian_engine_audioplayer import *
+from zyngine.zynthian_engine_audio_in import *
