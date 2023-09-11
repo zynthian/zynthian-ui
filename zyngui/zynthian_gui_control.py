@@ -138,7 +138,27 @@ class zynthian_gui_control(zynthian_gui_selector):
 					j += 1
 
 		self.index = self.zyngui.get_current_processor().get_current_screen_index()
+		self.get_screen_info()
 		super().fill_list()
+
+
+	def get_screen_info(self):
+		if 0 <= self.index < len(self.list_data):
+			self.screen_info = self.list_data[self.index]
+			if len(self.screen_info) < 5:
+				if self.index + 1 < len(self.list_data):
+					self.index += 1
+					self.screen_info = self.list_data[self.index]
+				else:
+					self.screen_info = None
+			if len(self.screen_info) == 5:
+				self.screen_title = self.screen_info[2]
+				self.screen_layer = self.screen_info[3]
+				return True
+			else:
+				logging.error("Can't get screen info!!")
+				return False
+		return False
 
 
 	def fill_listbox(self):
@@ -224,10 +244,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def set_controller_screen(self):
 		# Get screen info
-		if 0 <= self.index < len(self.list_data):
-			self.screen_info = self.list_data[self.index]
-			self.screen_title = self.screen_info[2]
-			self.screen_processor = self.screen_info[3]
+		if self.get_screen_info():
 			try:
 				self.zyngui.chain_manager.get_active_chain().set_current_processor(self.screen_processor)
 			except:

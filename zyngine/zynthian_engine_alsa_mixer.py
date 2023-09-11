@@ -262,7 +262,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 					except:
 						continue
 
-					if key=='Capabilities':
+					if key == 'Capabilities':
 						ctrl_caps = value.split(' ')
 						if 'enum' in ctrl_caps:
 							ctrl_type = "Selector"
@@ -275,30 +275,30 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 							ctrl_items = ["off", "on"]
 							ctrl_ticks = [0, 1]
 
-					elif key=='Playback channels':
+					elif key == 'Playback channels':
 						ctrl_chans = value.strip().split(' - ')
 
-					elif key=='Capture channels':
+					elif key ==' Capture channels':
 						ctrl_chans = value.strip().split(' - ')
 
-					elif key=='Limits':
+					elif key == 'Limits':
 						m = re.match(".*(\d+) - (\d+).*", value, re.M | re.I)
 						if m:
 							ctrl_limits = [int(m.group(1)), int(m.group(2))]
-							if ctrl_limits[0]==0 and ctrl_limits[1]==1:
+							if ctrl_limits[0] == 0 and ctrl_limits[1] == 1:
 								ctrl_type = "VToggle"
 								ctrl_items = ["off", "on"]
 								ctrl_ticks = [0, 100]
 
-					elif key=='Items':
+					elif key == 'Items':
 						ctrl_items = value[1:-1].split("' '")
 						ctrl_ticks = list(range(len(ctrl_items)))
 
-					elif key=='Item0':
+					elif key == 'Item0':
 						ctrl_item0 = value[1:-1]
 
 					elif key in ctrl_chans:
-						if ctrl_type=="Toggle":
+						if ctrl_type == "Toggle":
 							m = re.match(".*\[(off|on)\].*", value, re.M | re.I)
 							if m:
 								ctrl_item0 = m.group(1)
@@ -309,7 +309,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 							if m:
 								ctrl_value = int(m.group(1))
 								ctrl_values.append(ctrl_value)
-								if ctrl_type=="VToggle":
+								if ctrl_type == "VToggle":
 									ctrl_item0 = 'on' if (ctrl_value>0) else 'off'
 
 				if ctrl_symbol and ctrl_type:
