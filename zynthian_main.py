@@ -56,11 +56,11 @@ zyngui.run_start_thread()
 def zynpot_cb(i, dval):
 	#logging.debug("Zynpot {} Callback => {}".format(i, dval))
 	try:
-		zyngui.screens[zyngui.current_screen].zynpot_cb(i, dval)
-		zyngui.last_event_flag = True
-
+		zyngui.zynpot_lock.acquire()
+		zyngui.zynpot_dval[i] += dval
+		zyngui.zynpot_lock.release()
+		zyngui.zynpot_event.set()
 	except Exception as err:
-		pass # Some screens don't use controllers
 		logging.exception(err)
 
 

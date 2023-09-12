@@ -1105,24 +1105,29 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to load new pattern
 	#   index: Pattern index
 	def load_pattern(self, index):
-		steps = self.zynseq.libseq.getSteps()
+		steps0 = self.zynseq.libseq.getSteps()
 		if self.bank == 0 and self.sequence == 0:
 			self.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
 		self.pattern = index
 		self.zynseq.libseq.selectPattern(index)
+		steps1 = self.zynseq.libseq.getSteps()
+		if self.selected_cell[0] >= steps1:
+			self.selected_cell[0] = int(steps1) - 1
 		if self.selected_cell[0] >= self.zynseq.libseq.getSteps():
 			self.selected_cell[0] = int(self.zynseq.libseq.getSteps()) - 1
 		self.keymap_offset = self.zynseq.libseq.getRefNote()
 		keymap_len = len(self.keymap)
 		self.load_keymap()
 		if self.redraw_pending < 4:
-			if self.zynseq.libseq.getSteps() != steps or len(self.keymap) != keymap_len:
+			if steps1 != steps0 or len(self.keymap) != keymap_len:
 				self.redraw_pending = 4
 			else:
 				self.redraw_pending = 3
 		if self.keymap_offset >= len(self.keymap):
 			self.keymap_offset = len(self.keymap) // 2 - self.zoom // 2
 		self.selected_cell = [0, int(self.keymap_offset)]# + self.zoom / 2))
+		if self.duration > steps1:
+			self.duration = 1
 		self.draw_grid()
 		self.select_cell(0, int(self.keymap_offset + self.zoom / 2))
 		self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
@@ -1239,9 +1244,12 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 						duration = (int(self.duration * 10) + 10) / 10
 					elif dval < 0:
 						duration = (int(self.duration * 10) - 10) / 10
-					if duration > self.zynseq.libseq.getSteps() or duration < 0.1:
+					max_duration = self.zynseq.libseq.getSteps()
+					if duration > max_duration or duration < 0.1:
 						return
 					self.duration = duration
+					if self.zynseq.libseq.getNoteDuration(step, note):
+						self.add_event(step, self.selected_cell[1])
 					if self.zynseq.libseq.getNoteDuration(self.selected_cell[0], note):
 						self.add_event(step, note)
 					else:

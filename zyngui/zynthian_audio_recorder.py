@@ -101,7 +101,7 @@ class zynthian_audio_recorder():
 			# Already recording
 			return False
 
-		cmd = ["/usr/local/bin/jack_capture", "--daemon"]
+		cmd = ["/usr/local/bin/jack_capture", "--daemon", "--bitdepth", "16", "--bufsize", "30", "--maxbufsize", "120"]
 		for port in sorted(self.armed):
 			cmd.append("--port")
 			if port == 256:

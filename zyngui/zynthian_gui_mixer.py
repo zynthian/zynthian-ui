@@ -830,7 +830,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def plot_zctrls(self):
 		while self.pending_refresh_queue:
 			ctrl = self.pending_refresh_queue.pop()
-			ctrl[0].draw_control(ctrl[1])
+			if ctrl[0]:
+				ctrl[0].draw_control(ctrl[1])
 
 
 	#--------------------------------------------------------------------------

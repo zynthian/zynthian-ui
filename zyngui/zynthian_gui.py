@@ -32,9 +32,10 @@ from time import sleep
 from pathlib import Path
 from time import monotonic
 from datetime import datetime
-from threading import Thread, Lock
+from threading import Thread, Lock, Event
 from subprocess import check_output
 from queue import SimpleQueue, Empty
+import os
 
 # Zynthian specific modules
 import zynconf
@@ -140,7 +141,7 @@ class zynthian_gui:
 
 		self.capture_log_ts0 = None
 		self.capture_log_fname = None
-		self.capture_ffmpeg_thread = None
+		self.capture_ffmpeg_proc = None
 
 		# Create Lock object to avoid concurrence problems
 		self.lock = Lock()
@@ -159,37 +160,50 @@ class zynthian_gui:
 		self.osc_clients = {}
 		self.osc_heartbeat_timeout = 120 # Heartbeat timeout period
 
+		self.zynpot_dval = zynthian_gui_config.num_zynpots * [0]
+		self.zynpot_event = Event()
+		self.zynpot_lock = Lock()
+		self.zynpot_thread = None
 
 	# ---------------------------------------------------------------------------
 	# Capture Log
 	# ---------------------------------------------------------------------------
 
 	def start_capture_log(self, title):
+		if not title:
+			title = "ui_sesion"
 		now = datetime.now()
 		self.capture_log_ts0 = now
 		self.capture_log_fname = "{}-{}".format(title, now.strftime("%Y%m%d%H%M%S"))
-		self.capture_ffmpeg_thread = Thread(target=self.task_capture_ffmpeg, daemon=True)
-		self.capture_ffmpeg_thread.name = "Capture FFMPEG"
-		self.capture_ffmpeg_thread.start()
+		self.start_capture_ffmpeg()
+		if self.wsleds:
+			self.wsleds.reset_last_state()
+		self.write_capture_log("LAYOUT: {}".format(zynthian_gui_config.wiring_layout))
+		self.write_capture_log("TITLE: {}".format(self.capture_log_fname))
 
 
-	def task_capture_ffmpeg(self):
+	def start_capture_ffmpeg(self):
 		fbdev = os.environ.get("FRAMEBUFFER", "/dev/fb0")
 		fpath = "{}/{}.mp4".format(self.capture_dir_sdc, self.capture_log_fname)
-		ffmpeg\
+		self.capture_ffmpeg_proc = ffmpeg\
 			.output(ffmpeg.input(fbdev, r=30, f="fbdev"),
 				#ffmpeg.input("sine=frequency=500", f="lavfi"),\
-				#ffmpeg.input("ffmpeg", f="jack"),\
-				fpath, vcodec="libx264", acodec="aac", preset="fast", pix_fmt="yuv420p", loglevel="quiet", t=60)\
+				#ffmpeg.input("ffmpeg", f="jack"),\ , acodec="aac"
+				fpath, vcodec="libx264", preset="fast", pix_fmt="yuv420p")\
 			.global_args('-nostdin', '-hide_banner', '-nostats')\
-			.overwrite_output()\
-			.run()
+			.run_async(quiet=True, overwrite_output=True)
 
 
-	def end_capture_log(self):
+	def stop_capture_ffmpeg(self):
+		if self.capture_ffmpeg_proc:
+			self.capture_ffmpeg_proc.terminate()
+		self.capture_ffmpeg_proc = None
+
+
+	def stop_capture_log(self):
+		self.stop_capture_ffmpeg()
 		self.capture_log_fname = None
 		self.capture_log_ts0 = None
-		self.capture_ffmpeg_thread = None
 
 
 	def write_capture_log(self, message):
@@ -521,7 +535,6 @@ class zynthian_gui:
 
 		# Show initial screen
 		self.show_screen(init_screen, self.SCREEN_HMODE_RESET)
-		self.start_capture_log("ui_sesion")
 
 		self.state_manager.end_busy("ui startup")
 		
@@ -561,7 +574,6 @@ class zynthian_gui:
 			if self.state_manager.audio_player:
 				self.state_manager.audio_player.refresh_controllers()
 				self.current_processor = self.state_manager.audio_player
-				self.state_manager.audio_player.engine.load_latest(self.state_manager.audio_player)
 			else:
 				logging.error("Audio Player not created!")
 				return
@@ -1047,16 +1059,13 @@ class zynthian_gui:
 
 	# Audio & MIDI Recording/Playback actions
 	def cuia_start_audio_record(self, params=None):
-		self.state_manager.audio_player.controllers_dict['record'].set_value('recording')
+		self.state_manager.audio_recorder.start_recording()
 
 	def cuia_stop_audio_record(self, params=None):
-		self.state_manager.audio_player.controllers_dict['record'].set_value('stopped')
+		self.state_manager.audio_recorder.stop_recording()
 
 	def cuia_toggle_audio_record(self, params=None):
-		if self.state_manager.status_audio_recorder:
-			self.state_manager.audio_player.controllers_dict['record'].set_value('stopped')
-		else:
-			self.state_manager.audio_player.controllers_dict['record'].set_value('recording')
+		self.state_manager.audio_recorder.toggle_recording()
 
 	def cuia_start_audio_play(self, params=None):
 		self.state_manager.start_audio_player()
@@ -1329,7 +1338,7 @@ class zynthian_gui:
 				self.chain_manager.get_active_chain().set_current_processor(params)
 			except:
 				logging.error("Can't set chain passed as CUIA parameter!")
-		else:
+		elif self.current_screen != 'audio_player':
 			self.screens["control"].fill_list()
 			try:
 				self.chain_manager.get_active_chain().set_current_processor(self.screens['control'].screen_processor)
@@ -1993,6 +2002,37 @@ class zynthian_gui:
 
 
 	#------------------------------------------------------------------
+	# Zynpot Thread
+	#------------------------------------------------------------------
+
+	def start_zynpot_thread(self):
+		self.zynpot_thread = Thread(target=self.zynpot_thread_task, args=())
+		self.zynpot_thread.name = "zynpot"
+		self.zynpot_thread.daemon = True # thread dies with the program
+		self.zynpot_thread.start()
+
+
+	def zynpot_thread_task(self):
+		while not self.exit_flag:
+			self.zynpot_event.wait()
+			self.zynpot_event.clear()
+			for i in range(0, zynthian_gui_config.num_zynpots):
+				if self.zynpot_dval[i] != 0:
+					try:
+						self.zynpot_lock.acquire()
+						dval = self.zynpot_dval[i]
+						self.zynpot_dval[i] = 0
+						self.zynpot_lock.release()
+						self.screens[self.current_screen].zynpot_cb(i, dval)
+						self.last_event_flag = True
+						if self.capture_log_fname:
+							self.write_capture_log("ZYNPOT:{},{}".format(i, dval))
+					except Exception as err:
+						pass  # Some screens don't use controllers
+						logging.exception(err)
+
+
+	#------------------------------------------------------------------
 	# Control Thread
 	#------------------------------------------------------------------
 
@@ -2018,7 +2058,8 @@ class zynthian_gui:
 				# Refresh GUI Controllers
 				try:
 					self.screens[self.current_screen].plot_zctrls()
-				except AttributeError:
+				except AttributeError as e:
+					#logging.warning(e)
 					pass
 				except Exception as e:
 					logging.error(e)
@@ -2282,7 +2323,10 @@ class zynthian_gui:
 	#------------------------------------------------------------------
 
 	def exit(self, code=0):
+		# Log exit message
 		logging.info("STOPPING ZYNTHIAN-UI...")
+		# Signal zynpot thread so it can unlock and finish normally
+		self.zynpot_event.set()
 		self.state_manager.stop()
 		self.multitouch.stop()
 
@@ -2295,7 +2339,7 @@ class zynthian_gui:
 
 	def stop(self):
 		running_thread_names = []
-		for t in [self.control_thread, self.status_thread, self.busy_thread, self.cuia_thread, self.state_manager.thread, self.multitouch.thread]:
+		for t in [self.control_thread, self.status_thread, self.busy_thread, self.cuia_thread, self.state_manager.thread, self.multitouch.thread, zynpot_thread]:
 			if t and t.is_alive():
 				running_thread_names.append(t.name)
 		if zynautoconnect.is_running():

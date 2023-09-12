@@ -10,16 +10,17 @@
 
 #include "player.h"
 
-#include <stdio.h> //provides printf
-#include <string.h> //provides strcmp, memset
-#include <jack/jack.h> //provides interface to JACK
-#include <jack/midiport.h> //provides JACK MIDI interface
-#include <pthread.h> //provides multithreading
-#include <unistd.h> //provides usleep
-#include <stdlib.h> //provides exit
+include <stdio.h> // provides printf
+#include <jack/jack.h> // provides interface to JACK
+#include <jack/midiport.h> // provides JACK MIDI interface
+#include <pthread.h> // provides multithreading
+#include <unistd.h> // provides usleep
+#include <stdlib.h> // provides exit
 #include <arpa/inet.h> // provides inet_pton
-#include <fcntl.h> //provides fcntl
+#include <fcntl.h> // provides fcntl
 #include <math.h> // provides pow
+#include <string> // provides std:string
+#include <cstring> // provides strcmp, memset
 #include <vector>
 
 using namespace RubberBand;

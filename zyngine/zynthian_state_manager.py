@@ -95,7 +95,6 @@ class zynthian_state_manager:
         self.status_undervoltage = False
         self.status_overtemp = False
         self.status_cpu_load = 0 # 0..100
-        self.status_audio_recorder = False
         self.status_audio_player = False # True if playing
         self.status_midi_recorder = False
         self.status_midi_player = False
@@ -986,22 +985,27 @@ class zynthian_state_manager:
             self.status_audio_player = False
 
     def start_audio_player(self):
-        filename = self.audio_recorder.filename
-        if filename and os.path.exists(filename):
-            self.audio_player.engine.set_preset(self.audio_player, [filename])
-            self.audio_player.engine.player.set_position(self.audio_player.handle, 0.0)
-            self.audio_player.engine.player.start_playback(self.audio_player.handle)
-            self.audio_recorder.filename = None
-        elif (self.audio_player.preset_name and os.path.exists(self.audio_player.preset_info[0])) or self.audio_player.engine.player.get_filename(self.audio_player.handle):
+        if (self.audio_player.preset_name and os.path.exists(self.audio_player.preset_info[0])) or self.audio_player.engine.player.get_filename(self.audio_player.handle):
             self.audio_player.engine.player.start_playback(self.audio_player.handle)
         else:
-            self.audio_player.reset_preset()
-            self.cuia_audio_file_list()
-
+            self.audio_player.engine.load_latest(self.audio_player)
+            self.audio_player.engine.player.start_playback(self.audio_player.handle)
+        self.refresh_recording_status()
 
     def stop_audio_player(self):
         self.audio_player.engine.player.stop_playback(self.audio_player.handle)
+        self.refresh_recording_status()
 
+    def refresh_recording_status(self):
+        if not self.audio_recorder.get_status():
+            for processor in self.audio_player.engine.processors:
+                if processor.controllers_dict['record'].get_value() == "recording":
+                    processor.controllers_dict['record'].set_value("stopped", False)
+                    self.audio_player.engine.load_latest(processor)
+                """TODO: Move this to GUI
+                if self.current_screen in ("audio_player", "control"):
+                    self.get_current_screen_obj().set_mode_control()
+                """
 
     def toggle_audio_player(self):
         """Toggle playback of global audio player"""

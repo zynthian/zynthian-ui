@@ -26,6 +26,7 @@
 import logging
 
 # Zynthian specific modules
+from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
@@ -46,6 +47,12 @@ class zynthian_gui_chain_menu(zynthian_gui_selector):
 		self.list_data.append((self.new_generator_chain, 0, "New Generator Chain"))
 		self.list_data.append((self.new_special_chain, 0, "New Special Chain"))
 		self.list_data.append((self.clean_all, 0, "Clean All"))
+
+		# Add list of System / configuration views
+		if zynthian_gui_config.control_test_enabled:
+			self.list_data.append((None, 0, "> SYSTEM"))
+			self.list_data.append((self.control_test, 0, "Control Test"))
+
 		super().fill_list()
 
 

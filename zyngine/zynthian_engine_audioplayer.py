@@ -226,8 +226,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		else:
 			loop = 'one-shot'
 		logging.debug("Loading Audio Track '{}' in player {}".format(preset[0], processor.handle))
-		if processor.handle == self.state_manager.audio_player.handle:
-			self.player.start_playback(processor.handle)
 		if self.player.get_playback_state(processor.handle):
 			transport = 'playing'
 		else:
@@ -344,15 +342,20 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 
 	def load_latest(self, processor):
-		list_of_wavs = glob(os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture/*.wav")
-		dirs = zynthian_gui_config.get_external_storage_dirs(os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root"))
-		for dir in dirs:
-			list_of_wavs += glob(f"{dir}/*.wav")
+		bank_dirs = [os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"]
+		bank_dirs += zynthian_gui_config.get_external_storage_dirs(os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root"))
+		
+		wav_fpaths = []
+		for bank_dir in bank_dirs:
+			wav_fpaths += glob(f"{bank_dir}/*.wav")
 
-		if list_of_wavs:
-			latest_file = max(list_of_wavs, key=os.path.getctime)
-			self.set_preset(processor, [latest_file])
-
+		if len(wav_fpaths) > 0:
+			latest_fpath = max(wav_fpaths, key=os.path.getctime)
+			bank_fpath = os.path.dirname(latest_fpath)
+			processor.load_bank_list()
+			processor.set_bank_by_id(bank_fpath)
+			processor.load_preset_list()
+			processor.set_preset_by_id(latest_fpath)
 
 	#----------------------------------------------------------------------------
 	# Controllers Management
@@ -371,10 +374,11 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				if processor.handle == handle:
 					ctrl_dict = processor.controllers_dict
 					if id == 1:
-						ctrl_dict['transport'].set_value(int(value) * 64, False)
 						if value:
+							ctrl_dict['transport'].set_value("playing", False)
 							processor.status = "\uf04b"
 						else:
+							ctrl_dict['transport'].set_value("stopped", False)
 							processor.status = ""
 					elif id == 2:
 						ctrl_dict['position'].set_value(value, False)
