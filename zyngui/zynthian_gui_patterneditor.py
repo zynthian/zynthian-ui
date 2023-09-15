@@ -720,33 +720,31 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		step = self.selected_cell[0]
 		index = self.selected_cell[1]
 		note = self.keymap[index]['note']
+		sel_duration = self.zyngui.zynseq.libseq.getNoteDuration(step, note)
+		sel_velocity = self.zyngui.zynseq.libseq.getNoteVelocity(step, note)
 		if self.drag_start_velocity:
 			# Selected cell has a note so we want to adjust its velocity or duration
 			if not self.drag_velocity and not self.drag_duration and (event.x > (self.drag_start_step + 1) * self.step_width or event.x < self.drag_start_step * self.step_width):
 				self.drag_duration = True
 			if not self.drag_duration and not self.drag_velocity and (event.y > self.grid_drag_start.y + self.row_height / 2 or event.y < self.grid_drag_start.y - self.row_height / 2):
 				self.drag_velocity = True
-			value = 0
 			if self.drag_velocity:
 				value = (self.grid_drag_start.y - event.y) / self.row_height
 				if value:
-					self.velocity = int(self.drag_start_velocity + value * self.height / 100)
-					if self.velocity > 127:
-						self.velocity = 127
-						return
-					if self.velocity < 1:
-						self.velocity = 1
-						return
-					self.velocity_canvas.coords("velocityIndicator", 0, 0, self.piano_roll_width * self.velocity / 127, PLAYHEAD_HEIGHT)
-					if self.zyngui.zynseq.libseq.getNoteDuration(self.selected_cell[0], note):
-						self.zyngui.zynseq.libseq.setNoteVelocity(self.selected_cell[0], note, self.velocity)
-						self.draw_cell(self.selected_cell[0], index - self.keymap_offset)
+					velocity = int(self.drag_start_velocity + value * self.height / 100)
+					if velocity >= 1 and velocity <= 127:
+						self.set_velocity_indicator(velocity)
+						if sel_duration and velocity != sel_velocity:
+							self.zyngui.zynseq.libseq.setNoteVelocity(step, note, velocity)
+							self.draw_cell(step, index - self.keymap_offset)
 			if self.drag_duration:
 				value = int(event.x / self.step_width) - self.drag_start_step
 				duration = self.drag_start_duration + value
-				if duration != self.duration and duration > 0:
-					self.duration = duration
-					self.add_event(step, index) # Change length by adding event over previous one
+				if duration > 0 and duration != self.duration:
+					self.add_event(step, index, sel_velocity, duration)
+				else:
+					#self.duration = duration
+					pass
 		else:
 			# Clicked on empty cell so want to add a new note by dragging towards the desired cell
 			x1 = self.selected_cell[0] * self.step_width # x pos of start of event
@@ -765,6 +763,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				self.play_note(self.keymap[self.selected_cell[1]]["note"])
 
 
+
+	# Function to adjust velocity indicator
+	#	velocity
+	def set_velocity_indicator(self, velocity):
+		self.velocity_canvas.coords("velocityIndicator", 0, 0, self.piano_roll_width * velocity / 127, PLAYHEAD_HEIGHT)
+
+
 	# Function to toggle note event
 	#	step: step (column) index
 	#	index: key map index
@@ -777,7 +782,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if start_step >= 0:
 			self.remove_event(start_step, index)
 		else:
-			self.add_event(step, index)
+			self.add_event(step, index, self.velocity, self.duration)
 			return note
 
 
@@ -797,9 +802,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to add an event
 	#	step: step (column) index
 	#	index: keymap index
-	def add_event(self, step, index):
+	#	vel: velocity (0-127)
+	#	dur: duration (in steps)
+	def add_event(self, step, index, vel, dur):
 		note = self.keymap[index]["note"]
-		self.zyngui.zynseq.libseq.addNote(step, note, self.velocity, self.duration)
+		self.zyngui.zynseq.libseq.addNote(step, note, vel, dur)
 		self.draw_row(index)
 		self.select_cell(step, index)
 
@@ -1015,9 +1022,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			step = self.zyngui.zynseq.libseq.getSteps() - 1
 		self.selected_cell = [int(step), index]
 		cell = self.grid_canvas.find_withtag("selection")
-		duration = self.zyngui.zynseq.libseq.getNoteDuration(step, row)
-		if not duration:
+		duration = self.zyngui.zynseq.libseq.getNoteDuration(step, note)
+		if duration:
+			velocity = self.zyngui.zynseq.libseq.getNoteVelocity(step, note)
+		else:
 			duration = self.duration
+			velocity = self.velocity
+		self.set_velocity_indicator(velocity)
 		coord = self.get_cell(step, row, duration)
 		coord[0] = coord[0] - 1
 		coord[1] = coord[1] - 1
@@ -1185,7 +1196,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if super().zynpot_cb(i, dval):
 			return
 
-		if i == self.ctrl_order[0] and zynthian_gui_config.transport_clock_source == 0:
+		if i == self.ctrl_order[0] and zynthian_gui_config.transport_clock_source <= 1:
 			self.zyngui.zynseq.update_tempo()
 			self.zyngui.zynseq.nudge_tempo(dval)
 			self.set_title("Tempo: {:.1f}".format(self.zyngui.zynseq.get_tempo()), None, None, 2)
@@ -1193,22 +1204,29 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		elif i == self.ctrl_order[1]:
 			if self.edit_mode == EDIT_MODE_SINGLE:
 				if self.edit_param == EDIT_PARAM_DUR:
-					if dval > 0:
-						duration = (int(self.duration * 10) + 1) / 10
-					elif dval < 0:
-						duration = (int(self.duration * 10) - 1) / 10
-					max_duration = self.zyngui.zynseq.libseq.getSteps()
-					if duration > max_duration:
-						duration = max_duration
-					elif duration < 0.1:
-						duration = 0.1
-					self.duration = duration
-					note = self.keymap[self.selected_cell[1]]["note"]
-					if self.zyngui.zynseq.libseq.getNoteDuration(self.selected_cell[0], note):
-						self.add_event(self.selected_cell[0], self.selected_cell[1])
+					step = self.selected_cell[0]
+					index = self.selected_cell[1]
+					note = self.keymap[index]['note']
+					sel_duration = self.zyngui.zynseq.libseq.getNoteDuration(step, note)
+					sel_velocity = self.zyngui.zynseq.libseq.getNoteVelocity(step, note)
+					if sel_duration>0:
+						duration = sel_duration
 					else:
+						duration = self.duration
+					if dval > 0:
+						duration = (int(duration * 10) + 1) / 10
+					elif dval < 0:
+						duration = (int(duration * 10) - 1) / 10
+					max_duration = self.zyngui.zynseq.libseq.getSteps()
+					if duration > max_duration or duration < 0.1:
+						return
+					if sel_duration:
+						self.add_event(step, self.selected_cell[1], sel_velocity, duration)
+					else:
+						self.duration = duration
 						self.select_cell()
 					self.set_edit_title()
+
 			elif self.edit_mode == EDIT_MODE_ALL:
 				if self.edit_param == EDIT_PARAM_DUR:
 					if dval > 0:
@@ -1225,32 +1243,43 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		elif i == self.ctrl_order[2]:
 			if self.edit_mode == EDIT_MODE_SINGLE:
 				step = self.selected_cell[0]
-				note = self.get_note_from_row(self.selected_cell[1])
+				index = self.selected_cell[1]
+				note = self.keymap[index]['note']
+				sel_duration = self.zyngui.zynseq.libseq.getNoteDuration(step, note)
 				if self.edit_param == EDIT_PARAM_DUR:
+					if sel_duration > 0:
+						duration = sel_duration
+					else:
+						duration = self.duration
 					if dval > 0:
-						duration = (int(self.duration * 10) + 10) / 10
+						duration = (int(duration * 10) + 10) / 10
 					elif dval < 0:
-						duration = (int(self.duration * 10) - 10) / 10
+						duration = (int(duration * 10) - 10) / 10
 					max_duration = self.zyngui.zynseq.libseq.getSteps()
 					if duration > max_duration or duration < 0.1:
 						return
-					self.duration = duration
-					if self.zyngui.zynseq.libseq.getNoteDuration(step, note):
-						self.add_event(step, self.selected_cell[1])
+					if sel_duration:
+						sel_velocity = self.zyngui.zynseq.libseq.getNoteVelocity(step, note)
+						self.add_event(step, index, sel_velocity, duration)
 					else:
+						self.duration = duration
 						self.select_cell()
 				elif self.edit_param == EDIT_PARAM_VEL:
-					self.velocity = self.velocity + dval
-					if self.velocity > 127:
-						self.velocity = 127
+					if sel_duration:
+						sel_velocity = self.zyngui.zynseq.libseq.getNoteVelocity(step, note)
+						velocity = sel_velocity
+					else:
+						velocity = self.velocity
+					velocity += dval
+					if velocity > 127 or velocity < 1:
 						return
-					if self.velocity < 1:
-						self.velocity = 1
-						return
-					self.velocity_canvas.coords("velocityIndicator", 0, 0, self.piano_roll_width * self.velocity / 127, PLAYHEAD_HEIGHT)
-					if self.zyngui.zynseq.libseq.getNoteDuration(step, note):
-						self.zyngui.zynseq.libseq.setNoteVelocity(step, note, self.velocity)
-						self.draw_cell(step, note - self.keymap_offset)
+					self.set_velocity_indicator(velocity)
+					if sel_duration and velocity != sel_velocity:
+						self.zyngui.zynseq.libseq.setNoteVelocity(step, note, velocity)
+						self.draw_cell(step, index - self.keymap_offset)
+					else:
+						self.velocity = velocity
+						self.select_cell()
 				elif self.edit_param == EDIT_PARAM_STUT_CNT:
 					val = self.zyngui.zynseq.libseq.getStutterCount(step, note) + dval
 					if val < 0:
