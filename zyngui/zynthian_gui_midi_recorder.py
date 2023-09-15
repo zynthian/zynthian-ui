@@ -99,7 +99,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def build_view(self):
 		super().build_view()
-		if zynthian_gui_config.transport_clock_source == 0 and libsmf.getPlayState():
+		if zynthian_gui_config.transport_clock_source <= 1 and libsmf.getPlayState():
 			self.show_playing_bpm()
 
 
