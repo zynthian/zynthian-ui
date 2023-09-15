@@ -94,20 +94,20 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			else:
 				eng_options['midi_learn'] = True
 
-		if self.layer.midi_chan is not None:
-			if 'note_range' in eng_options and eng_options['note_range']:
-				self.list_data.append((self.layer_note_range, None, "Note Range & Transpose"))
+		if 'note_range' in eng_options and eng_options['note_range']:
+			self.list_data.append((self.layer_note_range, None, "Note Range & Transpose"))
 
-			if 'clone' in eng_options and eng_options['clone']:
-				self.list_data.append((self.layer_clone, None, "Clone MIDI to..."))
+		if 'clone' in eng_options and eng_options['clone']:
+			self.list_data.append((self.layer_clone, None, "Clone MIDI to..."))
 
+		if self.layer.engine.type != 'MIDI Tool':
 			self.list_data.append((self.audio_options, None, "Audio Options..."))
 
 		if 'audio_capture' in eng_options and eng_options['audio_capture']:
 			self.list_data.append((self.layer_audio_capture, None, "Audio Capture"))
 
 		if 'audio_route' in eng_options and eng_options['audio_route']:
-			self.list_data.append((self.layer_audio_routing, None, "Audio Output..."))
+			self.list_data.append((self.layer_audio_routing, None, "Audio Routing..."))
 
 		if 'audio_rec' in eng_options and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
 			if self.zyngui.audio_recorder.get_status():
@@ -121,7 +121,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		if 'midi_chan' in eng_options and eng_options['midi_chan']:
 			self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
 
-		if 'midi_learn' in eng_options:
+		if 'midi_learn' in eng_options and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
 			self.list_data.append((self.midi_learn, None, "MIDI Learn"))
 
 
