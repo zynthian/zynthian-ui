@@ -107,7 +107,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 				self.zyngui.screens["midi_recorder"].update_wsleds(wsleds)
 			else:
 				# REC Button
-				if self.zyngui.state_manager.status_audio_recorder:
+				if self.zyngui.state_manager.audio_recorder.rec_proc:
 					self.wsleds.setPixelColor(wsleds[0], self.wscolor_red)
 				else:
 					self.wsleds.setPixelColor(wsleds[0], self.wscolor_default)

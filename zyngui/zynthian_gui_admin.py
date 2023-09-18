@@ -667,6 +667,20 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.workflow_capture_start, 0, "[  ] Workflow Capture"))
 
 
+	# ------------------------------------------------------------------------------
+	# SYSTEM FEATURES
+	# ------------------------------------------------------------------------------
+
+	def workflow_capture_start(self):
+		self.zyngui.start_capture_log()
+		self.zyngui.close_screen()
+
+
+	def workflow_capture_stop(self):
+		self.zyngui.stop_capture_log()
+		self.fill_list()
+
+
 	def update_software(self):
 		logging.info("UPDATE SOFTWARE")
 		self.zyngui.show_info("UPDATE SOFTWARE")

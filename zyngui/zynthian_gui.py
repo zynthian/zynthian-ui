@@ -497,6 +497,7 @@ class zynthian_gui:
 		self.start_control_thread()
 		self.start_status_thread()
 		self.start_cuia_thread()
+		self.start_zynpot_thread()
 
 
 	#--------------------------------------------------------------------------

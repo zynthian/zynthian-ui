@@ -10,7 +10,7 @@
 
 #include "player.h"
 
-include <stdio.h> // provides printf
+#include <stdio.h> // provides printf
 #include <jack/jack.h> // provides interface to JACK
 #include <jack/midiport.h> // provides JACK MIDI interface
 #include <pthread.h> // provides multithreading

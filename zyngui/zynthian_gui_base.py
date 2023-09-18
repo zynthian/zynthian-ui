@@ -544,7 +544,7 @@ class zynthian_gui_base(tkinter.Frame):
 			# Display Audio Rec flag
 			flags = ""
 			color = zynthian_gui_config.color_bg
-			if self.zyngui.state_manager.status_audio_recorder:
+			if self.zyngui.state_manager.audio_recorder.rec_proc:
 				self.status_canvas.itemconfig(self.status_audio_rec, state=tkinter.NORMAL)
 			else:
 				self.status_canvas.itemconfig(self.status_audio_rec, state=tkinter.HIDDEN)
