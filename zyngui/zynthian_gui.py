@@ -384,7 +384,7 @@ class zynthian_gui:
 			self.set_event_flag()
 			# Execute action
 			cuia = parts[2].upper()
-			if self.loading:
+			if self.state_manager.is_busy():
 				logging.debug("BUSY! Ignoring OSC CUIA '{}' => {}".format(cuia, args))
 				return
 			self.cuia_queue.put_nowait([cuia, args])

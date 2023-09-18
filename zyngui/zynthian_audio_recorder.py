@@ -140,6 +140,7 @@ class zynthian_audio_recorder():
 				return False
 			self.state_manager.status_audio_recorder = False
 			os.sync()
+			self.state_manager.audio_player.engine.load_latest(self.state_manager.audio_player)
 			return True
 
 		return False
