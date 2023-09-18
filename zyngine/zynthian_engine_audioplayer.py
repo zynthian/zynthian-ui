@@ -352,7 +352,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		if len(wav_fpaths) > 0:
 			latest_fpath = max(wav_fpaths, key=os.path.getctime)
 			bank_fpath = os.path.dirname(latest_fpath)
-			processor.load_bank_list()
+			processor.get_bank_list()
 			processor.set_bank_by_id(bank_fpath)
 			processor.load_preset_list()
 			processor.set_preset_by_id(latest_fpath)

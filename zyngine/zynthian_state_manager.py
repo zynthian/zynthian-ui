@@ -1010,7 +1010,7 @@ class zynthian_state_manager:
     def toggle_audio_player(self):
         """Toggle playback of global audio player"""
 
-        if self.audio_player:
+        if self.audio_player.engine.player.get_playback_state(self.audio_player.handle):
             self.stop_audio_player()
         else:
             self.start_audio_player()
