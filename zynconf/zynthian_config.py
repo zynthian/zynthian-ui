@@ -487,6 +487,19 @@ def get_current_wifi_mode():
 
 	return "off"
 
+#------------------------------------------------------------------------------
+# External storage (removable disks)
+#------------------------------------------------------------------------------
+
+def get_external_storage_dirs(exdpath):
+	exdirs = []
+	if os.path.isdir(exdpath):
+		for dname in sorted(os.listdir(exdpath)):
+			dpath = os.path.join(exdpath, dname)
+			if os.path.isdir(dpath) and os.path.ismount(dpath):
+				exdirs.append(dpath)
+	return exdirs
+
 
 #-------------------------------------------------------------------------------
 # Utility functions

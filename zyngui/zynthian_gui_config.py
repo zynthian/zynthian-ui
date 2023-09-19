@@ -442,15 +442,7 @@ def set_midi_config():
 #------------------------------------------------------------------------------
 
 def get_external_storage_dirs(exdpath):
-	exdirs = []
-	if os.path.isdir(exdpath):
-		for dname in sorted(os.listdir(exdpath)):
-			dpath = os.path.join(exdpath, dname)
-			if os.path.isdir(dpath) and os.path.ismount(dpath):
-				exdirs.append(dpath)
-	return exdirs
-
-
+	return zynconf.get_external_storage_dirs(exdpath)
 
 #------------------------------------------------------------------------------
 # UI Color Parameters
