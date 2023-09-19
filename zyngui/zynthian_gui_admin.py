@@ -167,6 +167,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.workflow_capture_stop, 0, "[x] Workflow Capture"))
 		else:
 			self.list_data.append((self.workflow_capture_start, 0, "[  ] Workflow Capture"))
+		self.list_data.append((self.zyngui.brightness_config, 0, "Brightness"))
 		self.list_data.append((self.zyngui.calibrate_touchscreen, 0, "Calibrate Touchscreen"))
 		if self.is_update_available():
 			self.list_data.append((self.update_software, 0, "Update Software"))

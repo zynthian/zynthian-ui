@@ -31,6 +31,7 @@ __all__ = [
 	"zynthian_gui_control_test",
 	"zynthian_gui_splash",
 	"zynthian_gui_loading",
+	"zynthian_gui_brightness_config",
 	"zynthian_gui_cv_config"
 ]
 
