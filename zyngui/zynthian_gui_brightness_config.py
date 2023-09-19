@@ -111,7 +111,7 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
 				self.zgui_ctrls.append(self.display_brightness_gui_ctrl)
 			else:
 				self.display_brightness_zctrl.set_value(val)
-				self.replot
+				self.replot = True
 		except:
 			pass
 
@@ -123,8 +123,8 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
 				self.wsleds_brightness_gui_ctrl = zynthian_gui_controller(1, self.main_frame, self.wsleds_brightness_zctrl)
 				self.zgui_ctrls.append(self.wsleds_brightness_gui_ctrl)
 			else:
-				self.display_wsleds_zctrl.set_value(val)
-				self.replot
+				self.wsleds_brightness_zctrl.set_value(val)
+				self.replot = True
 
 		self.setup_zctrls_layout()
 
