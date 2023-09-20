@@ -822,7 +822,6 @@ class zynthian_chain_manager():
         chan : MIDI channel of CC message or chain id for absolute mapping (None to use active chain)
         midi_cc : CC number of CC message
         zctrl : Controller object
-        bind_chain: True to bind to chain, False to bind to MIDI channel
         """
 
         if zctrl is None:

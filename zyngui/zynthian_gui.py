@@ -1066,7 +1066,11 @@ class zynthian_gui:
 		self.state_manager.audio_recorder.stop_recording()
 
 	def cuia_toggle_audio_record(self, params=None):
-		self.state_manager.audio_recorder.toggle_recording()
+		if self.current_screen == 'control' and self.current_processor.engine.name == 'AudioPlayer':
+			self.state_manager.audio_recorder.toggle_recording(self.current_processor)
+			self.get_current_screen_obj().set_mode_control()
+		else:
+			self.state_manager.audio_recorder.toggle_recording()
 
 	def cuia_start_audio_play(self, params=None):
 		self.state_manager.start_audio_player()
@@ -1934,7 +1938,7 @@ class zynthian_gui:
 						# If MIDI learn pending...
 						if self.state_manager.midi_learn_zctrl:
 							#TODO: Could optimise by sending ev & 0x7f00 to add_midi_learn()
-							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_zctrl, zynthian_gui_config.midi_single_active_channel)
+							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_zctrl)
 							self.screens['control'].exit_midi_learn()
 							self.show_current_screen()
 						# Try processor parameter

@@ -435,7 +435,10 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			if zctrl.value:
 				self.state_manager.audio_recorder.start_recording()
 			else:
-				self.state_manager.audio_recorder.stop_recording()
+				for proc in self.processors:
+					if proc.handle != handle:
+						continue
+					self.state_manager.audio_recorder.stop_recording(proc)
 		elif zctrl.symbol == "loop start":
 			self.player.set_loop_start(handle, zctrl.value)
 		elif zctrl.symbol == "loop end":

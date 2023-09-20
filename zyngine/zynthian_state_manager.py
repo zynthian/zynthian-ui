@@ -101,6 +101,7 @@ class zynthian_state_manager:
         self.last_midi_file = None
         self.status_midi = False
         self.status_midi_clock = False
+        self.sync = False # True to request file system sync
 
         # Initialize SMF MIDI recorder and player
         try:
@@ -323,6 +324,10 @@ class zynthian_state_manager:
                     midi_clock_status = False
                 if self.status_midi_clock:
                     midi_clock_status = True
+
+                if self.sync:
+                    self.sync = False
+                    os.sync()
 
             except Exception as e:
                 logging.exception(e)
@@ -1054,7 +1059,7 @@ class zynthian_state_manager:
             fpath = f"{dir}/{n:03}-{filename}.mid"
 
             if zynsmf.save(self.smf_recorder, fpath):
-                os.sync()
+                self.sync = True
                 self.last_midi_file = fpath
                 return True
         return False

@@ -96,7 +96,7 @@ class zynthian_audio_recorder():
 		return channel in self.armed
 
 
-	def start_recording(self):
+	def start_recording(self, processor=None):
 		if self.rec_proc:
 			# Already recording
 			return False
@@ -126,10 +126,12 @@ class zynthian_audio_recorder():
 			return False
 
 		self.state_manager.status_audio_recorder = True
+		if processor:
+			processor.controllers_dict['record'].set_value("recording", False)
 		return True
 
 
-	def stop_recording(self):
+	def stop_recording(self, player=None):
 		if self.rec_proc:
 			logging.info("STOPPING AUDIO RECORD ...")
 			try:
@@ -139,19 +141,24 @@ class zynthian_audio_recorder():
 				logging.error("ERROR STOPPING AUDIO RECORD: %s" % e)
 				return False
 			self.state_manager.status_audio_recorder = False
-			os.sync()
-			self.state_manager.audio_player.engine.load_latest(self.state_manager.audio_player)
+			if player is None:
+				self.state_manager.audio_player.engine.load_latest(self.state_manager.audio_player)
+			else:
+				self.state_manager.audio_player.engine.load_latest(player)
+			self.state_manager.sync = True
 			return True
 
 		return False
 
 
-	def toggle_recording(self):
+	def toggle_recording(self, player=None):
 		logging.info("TOGGLING AUDIO RECORDING ...")
 		if self.get_status():
-			self.stop_recording()
+			self.stop_recording(player)
+			return False
 		else:
-			self.start_recording()
+			self.start_recording(player)
+			return  True
 
 
 #------------------------------------------------------------------------------

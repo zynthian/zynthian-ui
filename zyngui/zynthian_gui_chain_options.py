@@ -266,7 +266,10 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 
 	def toggle_recording(self):
-		self.zyngui.audio_recorder.toggle_recording()
+		if self.processor and self.processor.engine and self.processor.engine.name == 'AudioPlayer':
+			self.zyngui.state_manager.audio_recorder.toggle_recording(self.processor)
+		else:
+			self.zyngui.state_manager.audio_recorder.toggle_recording(self.zyngui.state_manager.audio_player)
 		self.fill_list()
 
 
