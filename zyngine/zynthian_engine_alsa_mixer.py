@@ -87,7 +87,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 		}
 
 		self.zctrls = None
-		self.sender_poll_enabled = False
+		self.sender_poll_state = 0
 		self.amixer_sender_proc = None
 
 		self.get_soundcard_config()
@@ -401,7 +401,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 		def runInThread():
 			sleep(0.1)
 			self.amixer_sender_proc = Popen(["amixer", "-s", "-M", "-c", self.device_name], stdin=PIPE, stdout=DEVNULL, stderr=STDOUT, bufsize=1, universal_newlines=True)
-			while self.sender_poll_enabled:
+			while self.sender_poll_state == 1:
 				counter = 0
 				if self.zctrls:
 					for sym, zctrl in self.zctrls.items():
@@ -414,15 +414,19 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 					sleep(0.05)
 			self.amixer_sender_proc.terminate()
 			self.amixer_sender_proc = None
+			self.sender_poll_state = 0
 
-		self.sender_poll_enabled = True
+		self.sender_poll_state = 1
 		thread = threading.Thread(target=runInThread, daemon=True)
 		thread.name = "ALSA mixer engine"
 		thread.start()
 
 
 	def stop_sender_poll(self):
-		self.sender_poll_enabled = False
+		if self.sender_poll_state == 1:
+			self.sender_poll_state = 2
+		while self.sender_poll_state:
+			sleep(0.1)
 
 
 	#----------------------------------------------------------------------------
