@@ -97,9 +97,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			else:
 				self.list_data.append((self.toggle_midi_sys, 0, "[  ] MIDI System Messages"))
 
-		if "cv_config" in self.zyngui.screens:
-			self.list_data.append((self.show_cv_config, 0, "CV Settings"))
-
 		self.list_data.append((self.midi_profile, 0, "MIDI Profile"))
 
 		self.list_data.append((None, 0, "> AUDIO"))
@@ -125,7 +122,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.start_aubionotes, 0, "[  ] AubioNotes (Audio2MIDI)"))
 
-		self.list_data.append((None,0,"> NETWORK"))
+		self.list_data.append((None, 0, "> NETWORK"))
 
 		self.list_data.append((self.network_info, 0, "Network Info"))
 
@@ -158,17 +155,22 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.start_touchosc2midi, 0, "[  ] TouchOSC MIDI Bridge"))
 
-		self.list_data.append((None,0,"> TEST"))
+		self.list_data.append((None, 0, "> SETTINGS"))
+		if self.zyngui.screens["brightness_config"].get_num_zctrls() > 0:
+			self.list_data.append((self.zyngui.brightness_config, 0, "Brightness"))
+		if "cv_config" in self.zyngui.screens:
+			self.list_data.append((self.show_cv_config, 0, "CV Settings"))
+		self.list_data.append((self.zyngui.calibrate_touchscreen, 0, "Calibrate Touchscreen"))
+
+		self.list_data.append((None, 0, "> TEST"))
 		self.list_data.append((self.test_audio, 0, "Test Audio"))
 		self.list_data.append((self.test_midi, 0, "Test MIDI"))
 
 		self.list_data.append((None, 0, "> SYSTEM"))
 		if self.zyngui.capture_log_fname:
-			self.list_data.append((self.workflow_capture_stop, 0, "[x] Workflow Capture"))
+			self.list_data.append((self.workflow_capture_stop, 0, "[x] Capture Workflow"))
 		else:
-			self.list_data.append((self.workflow_capture_start, 0, "[  ] Workflow Capture"))
-		self.list_data.append((self.zyngui.brightness_config, 0, "Brightness"))
-		self.list_data.append((self.zyngui.calibrate_touchscreen, 0, "Calibrate Touchscreen"))
+			self.list_data.append((self.workflow_capture_start, 0, "[  ] Capture Workflow"))
 		if self.is_update_available():
 			self.list_data.append((self.update_software, 0, "Update Software"))
 		else:

@@ -46,11 +46,13 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
 	def __init__(self):
 		super().__init__()
 
-		self.init_values_from_env()
-
 		self.zgui_ctrls = []
+		self.display_brightness_zctrl = None
 		self.display_brightness_gui_ctrl = None
+		self.wsleds_brightness_zctrl = None
 		self.wsleds_brightness_gui_ctrl = None
+
+		self.init_ctrls()
 
 		self.info_canvas = tkinter.Canvas(self.main_frame,
 			height=1,
@@ -69,15 +71,21 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
 		self.replot = True
 
 
-	def init_values_from_env(self):
+	def init_ctrls(self):
 		try:
 			val = int(os.environ.get("ZYNTHIAN_DISPLAY_BRIGHTNESS", "100"))
 		except:
 			val = 100
 			logging.warning("Can't get init value for display brightness. Using default value.")
 		try:
-			self.set_display_brightness(int(val * 255 / 100))
+			val = int(val * 255 / 100)
+			self.set_display_brightness(val)
 			logging.info("Setting display brightness to {}.".format(val))
+			# Create display brightness control
+			if not self.display_brightness_gui_ctrl:
+				self.display_brightness_zctrl = zynthian_controller(self, 'display_brightness', 'Display', {'value_min': 0, 'value_max': 100, 'is_integer': True, 'nudge_factor': 1, 'value': val})
+				self.display_brightness_gui_ctrl = zynthian_gui_controller(0, self.main_frame, self.display_brightness_zctrl)
+				self.zgui_ctrls.append(self.display_brightness_gui_ctrl)
 		except:
 			logging.warning("Can't set display brightness!")
 
@@ -87,8 +95,18 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
 			except:
 				val = 100
 				logging.warning("Can't get init value for LED brightness. Using default value.")
-			self.zyngui.wsleds.set_brightness(val / 100.0)
+			val = val / 100.0
+			self.zyngui.wsleds.set_brightness(val)
 			logging.info("Setting LED brightness to {}.".format(val))
+			# Create LEDs brightness control
+			if not self.wsleds_brightness_gui_ctrl:
+				self.wsleds_brightness_zctrl = zynthian_controller(self, 'wsleds_brightness', 'LEDs', {'value_min': 0, 'value_max': 100, 'is_integer': True, 'nudge_factor': 1, 'value':  val})
+				self.wsleds_brightness_gui_ctrl = zynthian_gui_controller(1, self.main_frame, self.wsleds_brightness_zctrl)
+				self.zgui_ctrls.append(self.wsleds_brightness_gui_ctrl)
+
+
+	def get_num_zctrls(self):
+		return len(self.zgui_ctrls)
 
 
 	def get_display_brightness(self):
@@ -103,28 +121,20 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
 
 	def setup_zctrls(self):
 		try:
-			val = int(self.get_display_brightness() * 100 / 255)
-			logging.debug("DISPLAY BRIGHTNESS => {}".format(val))
-			if not self.display_brightness_gui_ctrl:
-				self.display_brightness_zctrl = zynthian_controller(self, 'display_brightness', 'Display', {'value_min': 0, 'value_max': 100, 'is_integer': True, 'nudge_factor': 1, 'value':  val})
-				self.display_brightness_gui_ctrl = zynthian_gui_controller(0, self.main_frame, self.display_brightness_zctrl)
-				self.zgui_ctrls.append(self.display_brightness_gui_ctrl)
-			else:
+			if self.display_brightness_gui_ctrl:
+				val = int(self.get_display_brightness() * 100 / 255)
+				logging.debug("DISPLAY BRIGHTNESS => {}".format(val))
 				self.display_brightness_zctrl.set_value(val)
 				self.replot = True
+
+			if self.zyngui.wsleds:
+				if self.wsleds_brightness_gui_ctrl:
+					val = int(self.zyngui.wsleds.get_brightness() * 100)
+					logging.debug("LED BRIGHTNESS => {}".format(val))
+					self.wsleds_brightness_zctrl.set_value(val)
+					self.replot = True
 		except:
 			pass
-
-		if self.zyngui.wsleds:
-			val = int(self.zyngui.wsleds.get_brightness() * 100)
-			logging.debug("LED BRIGHTNESS => {}".format(val))
-			if not self.wsleds_brightness_gui_ctrl:
-				self.wsleds_brightness_zctrl = zynthian_controller(self, 'wsleds_brightness', 'LEDs', {'value_min': 0, 'value_max': 100, 'is_integer': True, 'nudge_factor': 1, 'value':  val})
-				self.wsleds_brightness_gui_ctrl = zynthian_gui_controller(1, self.main_frame, self.wsleds_brightness_zctrl)
-				self.zgui_ctrls.append(self.wsleds_brightness_gui_ctrl)
-			else:
-				self.wsleds_brightness_zctrl.set_value(val)
-				self.replot = True
 
 		self.setup_zctrls_layout()
 
@@ -132,12 +142,12 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
 	def send_controller_value(self, zctrl):
 		if self.shown:
 			if zctrl == self.display_brightness_zctrl:
-				logging.debug("Display Brightness => {}".format(zctrl.value))
+				#logging.debug("Display Brightness => {}".format(zctrl.value))
 				self.set_display_brightness(int(zctrl.value * 255 / 100))
 				self.replot = True
 
 			elif zctrl == self.wsleds_brightness_zctrl:
-				logging.debug("LEDs Brightness => {}".format(zctrl.value))
+				#logging.debug("LEDs Brightness => {}".format(zctrl.value))
 				if self.zyngui.wsleds:
 					self.zyngui.wsleds.set_brightness(zctrl.value / 100.0)
 				self.replot = True
@@ -145,10 +155,14 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
 
 	def hide(self):
 		if self.shown:
-			zynconf.save_config({
-				"ZYNTHIAN_DISPLAY_BRIGHTNESS": str(self.display_brightness_zctrl.value),
-				"ZYNTHIAN_WSLEDS_BRIGHTNESS": str(self.wsleds_brightness_zctrl.value)
-			})
+			config = {}
+			if self.display_brightness_zctrl:
+				config["ZYNTHIAN_DISPLAY_BRIGHTNESS"] = str(self.display_brightness_zctrl.value)
+			if self.wsleds_brightness_zctrl:
+				config["ZYNTHIAN_WSLEDS_BRIGHTNESS"] = str(self.wsleds_brightness_zctrl.value)
+			if len(config) > 0:
+				zynconf.save_config(config)
+
 		super().hide()
 
 
