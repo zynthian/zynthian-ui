@@ -1938,7 +1938,10 @@ class zynthian_gui:
 						# If MIDI learn pending...
 						if self.state_manager.midi_learn_zctrl:
 							#TODO: Could optimise by sending ev & 0x7f00 to add_midi_learn()
-							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_zctrl)
+							if zynthian_gui_config.midi_single_active_channel:
+								self.chain_manager.add_midi_learn(None, ccnum, self.state_manager.midi_learn_zctrl)
+							else:
+								self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_zctrl)
 							self.screens['control'].exit_midi_learn()
 							self.show_current_screen()
 						# Try processor parameter
@@ -2341,7 +2344,7 @@ class zynthian_gui:
 
 	def stop(self):
 		running_thread_names = []
-		for t in [self.control_thread, self.status_thread, self.busy_thread, self.cuia_thread, self.state_manager.thread, self.multitouch.thread, zynpot_thread]:
+		for t in [self.control_thread, self.status_thread, self.busy_thread, self.cuia_thread, self.state_manager.thread, self.multitouch.thread, self.zynpot_thread]:
 			if t and t.is_alive():
 				running_thread_names.append(t.name)
 		if zynautoconnect.is_running():

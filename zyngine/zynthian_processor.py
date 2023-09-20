@@ -548,7 +548,7 @@ class zynthian_processor:
     def refresh_controllers(self):
         """Refresh processor controllers configuration"""
 
-        self.controllers_dict = self.engine.get_controllers_dict(self) #TODO: Update existing controllers
+        self.engine.get_controllers_dict(self) #TODO: Update existing controllers
         self.init_ctrl_screens()
 
 

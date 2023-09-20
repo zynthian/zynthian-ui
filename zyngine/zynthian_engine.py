@@ -529,11 +529,21 @@ class zynthian_engine(zynthian_basic_engine):
 
 	# Get zynthian controllers dictionary:
 	# + Default implementation uses a static controller definition array
+	# Updates existing processor dictionary
 	def get_controllers_dict(self, processor):
 		midich = processor.get_midi_chan()
-		zctrls = OrderedDict()
 
 		if self._ctrls is not None:
+			# Remove controls that are no longer used
+			for name in list(processor.controllers_dict):
+				d = True
+				for i in self._ctrls:
+					if name == i[0]:
+						d = False
+						break
+				if d:
+					del processor.controllers_dict[name]
+
 			for ctrl in self._ctrls:
 				options = {"processor": processor}
 
@@ -556,7 +566,14 @@ class zynthian_engine(zynthian_basic_engine):
 					cc = ctrl[1]
 
 				#Build controller depending on array length ...
-				if len(ctrl) > 4:
+				if ctrl[0] in processor.controllers_dict:
+					if len(ctrl) > 2:
+						processor.controllers_dict[ctrl[0]].setup_controller(midich, cc, ctrl[2], ctrl[3])
+					else:
+						processor.controllers_dict[ctrl[0]].setup_controller(midich, cc, ctrl[2])
+					continue
+
+				elif len(ctrl) > 4:
 					if isinstance(ctrl[4], str):
 						zctrl = zynthian_controller(self, ctrl[4], ctrl[0])
 					else:
@@ -574,12 +591,16 @@ class zynthian_engine(zynthian_basic_engine):
 				if len(options) > 0:
 					zctrl.set_options(options)
 
-				zctrls[zctrl.symbol] = zctrl
 
-				if zctrl.midi_chan is not None and zctrl.midi_cc is not None:
-					self.state_manager.chain_manager.add_midi_learn(zctrl.midi_chan, zctrl.midi_cc, zctrl)
+				if zctrl.midi_cc is not None:
+					if zynthian_gui_config.midi_single_active_channel:
+						self.state_manager.chain_manager.add_midi_learn(None, zctrl.midi_cc, zctrl)
+					else:
+						self.state_manager.chain_manager.add_midi_learn(zctrl.midi_chan, zctrl.midi_cc, zctrl)
 
-		return zctrls
+				processor.controllers_dict[zctrl.symbol] = zctrl
+
+		return processor.controllers_dict
 
 
 	def get_ctrl_screen_name(self, gname, i):

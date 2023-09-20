@@ -52,11 +52,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 	def build_view(self):
 		processor = self.zyngui.get_current_processor()
 		if processor:
-			bank_list = processor.get_bank_list()
-			if len(bank_list) < 2:
-				# Only one option so select and move on...
-				self.select_action(0)
-				return
+			processor.get_bank_list()
 			self.index = processor.get_bank_index()
 			if self.zyngui.get_current_processor().get_show_fav_presets():
 				if len(self.zyngui.get_current_processor().get_preset_favs()) > 0:
