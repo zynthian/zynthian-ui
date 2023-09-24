@@ -71,13 +71,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 		else:
 			super().__init__(selcap, True, False)
 
-
 		# xyselect mode vars
 		self.xyselect_mode = False
 		self.x_zctrl = None
 		self.y_zctrl = None
-
-		self.topbar_bold_touch_action = lambda: self.zyngui.zynswitch_defered('B', 1)
 
 		# Configure layout
 		for ctrl_pos in zynthian_gui_config.layout['ctrl_pos']:

@@ -224,10 +224,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.zyngui.close_screen()
 
 
-	def topbar_bold_touch_action(self):
-		self.zyngui.zynswitch_defered('B', 1)
-
-
 	def select_action(self, i, t='S'):
 		self.index = i
 		if self.list_data[i][0] is None:

@@ -725,7 +725,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	def __init__(self):	
 		
-		super().__init__()
+		super().__init__(False)
 
 		self.zynmixer = self.zyngui.zynmixer
 		self.zynmixer.set_ctrl_update_cb(self.ctrl_change_cb)
@@ -995,9 +995,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		elif swi == 1:
 			# This is ugly, but it's the only way i figured for MIDI-learning "mute" without touch.
 			# Moving the "learn" button to back is not an option. It's a labeled button on V4!!
-			if (t == "S" and not self.midi_learning) or t == "B":
+			if t == "S" and not self.midi_learning:
 				if self.highlighted_strip is not None:
 					self.highlighted_strip.toggle_mute()
+				return True
+			elif t == "B":
+				self.zyngui.show_screen('admin')
 				return True
 
 		elif swi == 2:
@@ -1067,15 +1070,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	#--------------------------------------------------------------------------
 	# GUI Event Management
 	#--------------------------------------------------------------------------
-
-
-	# Function to override topbar touch action
-	def topbar_touch_action(self):
-		# Avoid toggle mute when touchbar pressed
-		if self.midi_learning:
-			super().topbar_touch_action()
-		else:
-			self.topbar_bold_touch_action()
 
 
 	# Function to handle mouse wheel event when not over fader strip
