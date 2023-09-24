@@ -62,7 +62,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 		if self.chain.is_audio() and self.chain_id != "main":
 			#TODO: Add mixer output audio routing
-			self.list_data.append((self.chain_audio_routing, None, "Audio Output..."))
+			self.list_data.append((self.chain_audio_routing, None, "Audio Routing..."))
 
 		if self.chain_id == "main" and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
 			if self.zyngui.state_manager.audio_recorder.get_status():
@@ -80,7 +80,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		if self.chain.is_midi():
 			self.list_data.append((self.chain_midi_chan, None, "MIDI Channel"))
 
-		if self.chain.get_processor_count():
+		if self.chain.get_processor_count() and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
 			#TODO Disable midi learn for some chains???
 			self.list_data.append((self.midi_learn, None, "MIDI Learn"))
 

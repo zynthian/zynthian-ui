@@ -46,22 +46,27 @@ class zynthian_wsleds_base:
 		self.blink_state = False
 		self.pulse_step = 0
 		self.last_wsled_state = ""
+		self.brightness = 1
+		self.setup_colors()
+
+
+	def setup_colors(self):
 		# Predefined colors
-		self.wscolor_off = rpi_ws281x.Color(0, 0, 0)
-		self.wscolor_white = rpi_ws281x.Color(120, 120, 120)
-		self.wscolor_red = rpi_ws281x.Color(140, 0, 0)
-		self.wscolor_green = rpi_ws281x.Color(0, 220, 0)
-		self.wscolor_yellow = rpi_ws281x.Color(160, 160, 0)
-		self.wscolor_orange = rpi_ws281x.Color(190, 80, 0)
-		self.wscolor_blue = rpi_ws281x.Color(0, 0, 220)
-		self.wscolor_blue_light = rpi_ws281x.Color(0, 130, 130)
-		self.wscolor_purple = rpi_ws281x.Color(130, 0, 130)
+		self.wscolor_off = self.create_color(0, 0, 0)
+		self.wscolor_white = self.create_color(120, 120, 120)
+		self.wscolor_red = self.create_color(140, 0, 0)
+		self.wscolor_green = self.create_color(0, 220, 0)
+		self.wscolor_yellow = self.create_color(160, 160, 0)
+		self.wscolor_orange = self.create_color(190, 80, 0)
+		self.wscolor_blue = self.create_color(0, 0, 220)
+		self.wscolor_blue_light = self.create_color(0, 130, 130)
+		self.wscolor_purple = self.create_color(130, 0, 130)
 		self.wscolor_default = self.wscolor_blue
 		self.wscolor_alt = self.wscolor_purple
 		self.wscolor_active = self.wscolor_green
 		self.wscolor_active2 = self.wscolor_orange
 		self.wscolor_admin = self.wscolor_red
-		self.wscolor_low = rpi_ws281x.Color(0, 100, 0)
+		self.wscolor_low = self.create_color(0, 100, 0)
 		# Color Codes
 		self.wscolors_dict = {
 			str(self.wscolor_off): "0",
@@ -72,6 +77,24 @@ class zynthian_wsleds_base:
 			str(self.wscolor_yellow): "Y",
 			str(self.wscolor_purple): "P"
 		}
+
+
+	def create_color(self, r, g, b):
+		return rpi_ws281x.Color(int(self.brightness * r), int(self.brightness * g), int(self.brightness * b))
+
+
+	def set_brightness(self, brightness):
+		if brightness < 0:
+			self.brightness = 0
+		elif brightness > 1:
+			self.brightness = 0
+		else:
+			self.brightness = brightness
+		self.setup_colors()
+
+
+	def get_brightness(self):
+		return self.brightness
 
 
 	def start(self):
@@ -119,10 +142,10 @@ class zynthian_wsleds_base:
 
 	def pulse(self, i):
 		if self.blink_state:
-			color = rpi_ws281x.Color(0, self.pulse_step * 6, 0)
+			color = rpi_ws281x.Color(0, int(self.brightness * self.pulse_step * 6), 0)
 			self.pulse_step += 1
 		elif self.pulse_step > 0:
-			color = rpi_ws281x.Color(0, self.pulse_step * 6, 0)
+			color = rpi_ws281x.Color(0, int(self.brightness * self.pulse_step * 6), 0)
 			self.pulse_step -= 1
 		else:
 			color = self.wscolor_off

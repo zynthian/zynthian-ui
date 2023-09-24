@@ -80,8 +80,9 @@ from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
 from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
 from zyngui.zynthian_gui_mixer import zynthian_gui_mixer
 from zyngui.zynthian_gui_tempo import zynthian_gui_tempo
-from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
+from zyngui.zynthian_gui_brightness_config import zynthian_gui_brightness_config
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
+from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
 from zyngui import zynthian_gui_keybinding
 from zyngui.multitouch import MultiTouch
@@ -475,6 +476,7 @@ class zynthian_gui:
 		self.screens['zynpad'] = zynthian_gui_zynpad()
 		self.screens['arranger'] = zynthian_gui_arranger()
 		self.screens['pattern_editor'] = zynthian_gui_patterneditor()
+		self.screens['brightness_config'] = zynthian_gui_brightness_config()
 		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
 		self.screens['control_test'] = zynthian_gui_control_test()
 
@@ -559,7 +561,7 @@ class zynthian_gui:
 
 	def show_screen(self, screen=None, hmode=SCREEN_HMODE_ADD):
 		self.cancel_screen_timer()
-		self.current_processor = None
+		#self.current_processor = None
 		
 		if screen is None:
 			if self.current_screen:
@@ -573,8 +575,8 @@ class zynthian_gui:
 
 		elif screen == "audio_player":
 			if self.state_manager.audio_player:
-				self.state_manager.audio_player.refresh_controllers()
 				self.current_processor = self.state_manager.audio_player
+				#self.state_manager.audio_player.refresh_controllers()
 			else:
 				logging.error("Audio Player not created!")
 				return
@@ -797,6 +799,10 @@ class zynthian_gui:
 
 	def calibrate_touchscreen(self):
 		self.show_screen('touchscreen_calibration')
+
+
+	def brightness_config(self):
+		self.show_screen('brightness_config')
 
 
 	def modify_chain(self, status={}): #TODO: Rename - this is called for various chain manipulation purposes

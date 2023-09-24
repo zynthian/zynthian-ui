@@ -899,7 +899,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif encoder == self.ctrl_order[1]:
 			self.zynseq.select_bank(self.zynseq.bank + dval)
 			self.set_title(f"Scene {self.zynseq.bank}")
-		elif encoder == self.ctrl_order[0] and zynthian_gui_config.transport_clock_source == 0:
+		elif encoder == self.ctrl_order[0] and zynthian_gui_config.transport_clock_source <= 1:
 			self.zynseq.update_tempo()
 			self.zynseq.nudge_tempo(dval)
 			self.set_title("Tempo: {:.1f}".format(self.zynseq.get_tempo()), None, None, 2)
