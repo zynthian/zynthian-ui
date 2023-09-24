@@ -670,7 +670,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.update_selection_cursor()
 		if self.param_editor_zctrl:
 			self.disable_param_editor()
-		self.grid_timer = Timer(1.4, self.on_grid_timer)
+		self.grid_timer = Timer(zynthian_gui_config.zynswitch_bold_seconds, self.on_grid_timer)
 		self.grid_timer.start()
 
 
