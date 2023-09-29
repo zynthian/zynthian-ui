@@ -275,13 +275,12 @@ class zynthian_ctrldev_base():
 		self.zyngui = zynthian_gui_config.zyngui
 
 
-	# Setup the device connected to slot idev
-	# It *MUST* be matched before calling setup!!
+	# Setup the device connected in slot #idev
+	# Before calling this, the caller (ctrldev-manager) should check that driver's ID string matches device's ID string
 	def setup(self, idev=None):
 		if idev != self.idev:
 			# Release currently selected device, if any ...
 			self.release()
-
 			# Init new selected device
 			if idev > 0:
 				self.idev = idev
@@ -307,25 +306,32 @@ class zynthian_ctrldev_base():
 		self.idev = 0
 
 
+	# Refresh device status (LED feedback, etc)
+	# It *SHOULD* be implemented by child class
 	def refresh(self, force=False):
 		logging.debug("Refresh LEDs for {}: NOT IMPLEMENTED!".format(self.dev_id))
 
 
+	# Device MIDI event handler
+	# It *SHOULD* be implemented by child class
 	def midi_event(self, ev):
 		logging.debug("MIDI EVENT FROM '{}'".format(self.dev_id))
 
 
 	# Light-Off LEDs
+	# It *SHOULD* be implemented by child class
 	def light_off(self):
 		logging.debug("Lighting Off LEDs for {}: NOT IMPLEMENTED!".format(self.dev_id))
 
 
 	# Sleep On
+	# It *COULD* be improved by child class
 	def sleep_on(self):
 		self.light_off()
 
 
 	# Sleep On
+	# It *COULD* be improved by child class
 	def sleep_off(self):
 		self.refresh(True)
 
@@ -353,6 +359,7 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 			self.refresh_zynpad_bank()
 
 
+	# It *SHOULD* be implemented by child class
 	def refresh_zynpad_bank(self):
 		pass
 
@@ -377,4 +384,8 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 			state = self.zynpad.get_pad_state(pad)
 			self.update_pad(pad, state, mode)
 
+
+	# It *SHOULD* be implemented by child class
+	def update_pad(self, pad, state, mode):
+		pass
 #------------------------------------------------------------------------------
