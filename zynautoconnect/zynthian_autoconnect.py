@@ -32,14 +32,14 @@ from threading  import Thread, Lock
 from collections import OrderedDict
 
 # Zynthian specific modules
-from zyncoder.zyncore import get_lib_zyncore
+from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config
 
 #-------------------------------------------------------------------------------
 # Configure logging
 #-------------------------------------------------------------------------------
 
-log_level = int(os.environ.get('ZYNTHIAN_LOG_LEVEL',logging.WARNING))
+log_level = int(os.environ.get('ZYNTHIAN_LOG_LEVEL', logging.WARNING))
 
 logger = logging.getLogger(__name__)
 logger.setLevel(log_level)
@@ -55,16 +55,16 @@ jclient = None
 thread = None
 exit_flag = False
 
-lib_zyncore = get_lib_zyncore()
-
 last_hw_str = None
 max_num_devs = 16
 devices_in = [None for i in range(max_num_devs)]
+devices_out = [None for i in range(max_num_devs)]
 extra_midi_fb_ports = []
 
 refresh_time = 0.1
 mididev_refresh_time = 2
 mididev_refresh_time_count = 0
+mididev_changed = False
 
 #------------------------------------------------------------------------------
 
@@ -73,10 +73,14 @@ def get_port_alias_id(midi_port):
 		alias_id = '_'.join(midi_port.aliases[0].split('-')[5:])
 	except:
 		alias_id = midi_port.name
+	if alias_id.startswith("a2j:"):
+		alias_id = "ALSA MIDI"
+	elif alias_id == "f_midi":
+		alias_id = None
 	return alias_id
 
 
-#Dirty hack for having MIDI working with PureData & CSound: #TODO => Improve it!!
+#Dirty hack for having MIDI working with PureData,  CSound, MOD-UI: #TODO => Improve it!!
 def get_fixed_midi_port_name(port_name):
 	if port_name == "pure_data":
 		port_name = "Pure Data"
@@ -136,13 +140,9 @@ def replicate_connections_to(port1, port2):
 
 def get_midi_device_name(idev):
 	if idev > 0 and idev <= len(devices_in):
-		devname = devices_in[idev - 1]
+		return devices_in[idev - 1]
 	else:
-		devname = None
-	if not devname:
-		return "UNKNOWN"
-	else:
-		return devname
+		return None
 
 
 def add_midi_fb_port(idev):
@@ -154,6 +154,7 @@ def add_midi_fb_port(idev):
 		logging.debug("Can't add midi device {} to FeedBack list!".format(idev))
 	purge_midi_fb_ports()
 
+
 def remove_midi_fb_port(idev):
 	global extra_midi_fb_ports
 	try:
@@ -162,6 +163,7 @@ def remove_midi_fb_port(idev):
 	except:
 		logging.debug("Can't remove midi device {} from FeedBack list!".format(idev))
 	purge_midi_fb_ports()
+
 
 def clean_midi_fb_ports():
 	global extra_midi_fb_ports
@@ -174,6 +176,14 @@ def purge_midi_fb_ports():
 		if xmp not in devices_in:
 			extra_midi_fb_ports.remove(xmp)
 
+
+def set_mididev_changed(flag):
+	global mididev_changed
+	mididev_changed = flag
+
+
+def get_mididev_changed():
+	return mididev_changed
 
 #------------------------------------------------------------------------------
 
@@ -198,11 +208,11 @@ def midi_autoconnect(force=False):
 		hw_out = []
 
 	#Get Physical MIDI output ports ...
-	hw_in=jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
+	hw_in = jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
 	if len(hw_in) == 0:
 		hw_in = []
 
-	#Add Aubio MIDI out port ...
+	#Add Aubio to MIDI input ports ...
 	if zynthian_gui_config.midi_aubionotes_enabled:
 		aubio_out = jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
 		try:
@@ -221,14 +231,18 @@ def midi_autoconnect(force=False):
 		hw_str += hw.name + "\n"
 
 	#Check for new devices (HW and virtual)...
-	if not force and hw_str == last_hw_str:
+	if hw_str != last_hw_str:
+		last_hw_str = hw_str
+		hw_str_changed = True
+	else:
+		hw_str_changed = False
+
+	if not force and not hw_str_changed:
 		mididev_refresh_time_count = 0
 		#Release Mutex Lock
 		release_lock()
 		#logger.info("ZynAutoConnect: MIDI Shortened ...")
 		return
-	else:
-		last_hw_str = hw_str
 
 	#Get Engines list from UI
 	zyngine_list = zynthian_gui_config.zyngui.screens["engine"].zyngines
@@ -326,32 +340,73 @@ def midi_autoconnect(force=False):
 	#------------------------------------
 
 	#Connect MIDI Input Devices
+	busy_idevs = []
 	for hw in hw_out:
 		devnum = None
 		port_alias_id = get_port_alias_id(hw)
-		#logger.debug("Connecting MIDI Input {} => {}".format(hw,zmr_in['main_in']))
-		try:
-			#If the device is marked as disabled, disconnect from all dev ports
-			if port_alias_id in zynthian_gui_config.disabled_midi_in_ports:
-				for i in range(16):
-					jclient.disconnect(hw,zmr_in['dev{}_in'.format(i)])
-			 #else ...
-			else:
+		if port_alias_id:
+			#logger.debug("Connecting MIDI Input {}".format(hw))
+			try:
+				#If the device is marked as disabled, disconnect from all dev ports
+				if port_alias_id in zynthian_gui_config.disabled_midi_in_ports:
+					for i in range(16):
+						jclient.disconnect(hw, zmr_in['dev{}_in'.format(i)])
+				 #else ...
+				else:
+					#if the device is already registered, takes the number
+					if port_alias_id in devices_in:
+						devnum = devices_in.index(port_alias_id)
+					#else registers it, taking the first free port
+					else:
+						for i in range(16):
+							if devices_in[i] is None:
+								devnum = i
+								devices_in[devnum] = port_alias_id
+								break
+					if devnum is not None:
+						busy_idevs.append(devnum)
+						jclient.connect(hw, zmr_in['dev{}_in'.format(devnum)])
+			except Exception as e:
+				#logger.debug("Exception {}".format(e))
+				pass
+	#Delete disconnected input devices from list
+	for i in range(0,16):
+		if i not in busy_idevs:
+			devices_in[i] = None
+
+	#Connect MIDI Output Devices
+	busy_idevs = []
+	for hw in hw_in:
+		devnum = None
+		port_alias_id = get_port_alias_id(hw)
+		if port_alias_id:
+			#logger.debug("Connecting MIDI Output {}".format(hw))
+			try:
 				#if the device is already registered, takes the number
-				if port_alias_id in devices_in:
-					devnum = devices_in.index(port_alias_id)
+				if port_alias_id in devices_out:
+					devnum = devices_out.index(port_alias_id)
 				#else registers it, taking the first free port
 				else:
 					for i in range(16):
-						if devices_in[i] is None:
+						if devices_out[i] is None:
 							devnum = i
-							devices_in[devnum] = port_alias_id
+							devices_out[devnum] = port_alias_id
 							break
 				if devnum is not None:
-					jclient.connect(hw,zmr_in['dev{}_in'.format(devnum)])
-		except Exception as e:
-			#logger.debug("Exception {}".format(e))
-			pass
+					busy_idevs.append(devnum)
+					jclient.connect(zmr_out['dev{}_out'.format(devnum)], hw)
+			except Exception as e:
+				#logger.debug("Exception {}".format(e))
+				pass
+
+	#Delete disconnected output devices from list
+	for i in range(0,16):
+		if i not in busy_idevs:
+			devices_out[i] = None
+
+	# Flag device list changes
+	if hw_str_changed:
+		set_mididev_changed(True)
 
 	#logger.debug("Connecting RTP-MIDI & QMidiNet to ZynMidiRouter:net_in ...")
 
@@ -397,7 +452,7 @@ def midi_autoconnect(force=False):
 	#Connect Engine's Controller-FeedBack to ZynMidiRouter:ctrl_in
 	try:
 		for efbp in engines_fb:
-			jclient.connect(efbp,zmr_in['ctrl_in'])
+			jclient.connect(efbp, zmr_in['ctrl_in'])
 	except:
 		pass
 
@@ -422,7 +477,7 @@ def midi_autoconnect(force=False):
 						for dport in dports:
 							#logger.debug(" => Connecting {} => {}".format(sport_name, mi))
 							try:
-								jclient.connect(sports[0],dport)
+								jclient.connect(sports[0], dport)
 							except:
 								pass
 							try:
@@ -474,14 +529,8 @@ def midi_autoconnect(force=False):
 				except:
 					pass
 
-	# Set zyncore's routing flags
-	# => Set MIDI THRU
+	# Set MIDI THRU
 	lib_zyncore.set_midi_thru(zynthian_gui_config.midi_filter_output)
-	# => For each chain: Drop Program Change, Drop CC
-	for layer in zynguilayer.root_layers:
-		if layer.midi_chan is not None and layer.midi_chan < 16:
-			lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, int(layer.engine.options['drop_pc']))
-			lib_zyncore.zmop_chain_set_flag_dropcc(layer.midi_chan, int(layer.engine.options['drop_cc']))
 
 	# Connect MIDI OUT to enabled Hardware Output Ports
 	for paid, hwport in enabled_hw_ports.items():
@@ -735,6 +784,19 @@ def audio_autoconnect(force=False):
 
 	#Release Mutex Lock
 	release_lock()
+
+
+# Connect mixer to the ffmpeg recorder
+def audio_connect_ffmpeg(timeout=2.0):
+	t = 0
+	while t < timeout:
+		try:
+			jclient.connect("zynmixer:output_a", "ffmpeg:input_1")
+			jclient.connect("zynmixer:output_b", "ffmpeg:input_2")
+			return
+		except:
+			sleep(0.1)
+			t += 0.1
 
 
 def audio_connect_aux(source_name):

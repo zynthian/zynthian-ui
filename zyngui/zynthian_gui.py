@@ -51,6 +51,9 @@ from zyngine import zynthian_layer
 
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_keyboard
+from zyngui import zynthian_gui_keybinding
+from zyngui.multitouch import MultiTouch
+from zyngui.zynthian_ctrldev_manager import zynthian_ctrldev_manager
 from zyngui.zynthian_gui_info import zynthian_gui_info
 from zyngui.zynthian_gui_splash import zynthian_gui_splash
 from zyngui.zynthian_gui_loading import zynthian_gui_loading
@@ -89,8 +92,6 @@ from zyngui.zynthian_gui_brightness_config import zynthian_gui_brightness_config
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
-from zyngui import zynthian_gui_keybinding
-from zyngui.multitouch import MultiTouch
 
 MIXER_MAIN_CHANNEL = 256 #TODO This constant should go somewhere else
 
@@ -225,19 +226,22 @@ class zynthian_gui:
 			self.wsleds.reset_last_state()
 		self.write_capture_log("LAYOUT: {}".format(zynthian_gui_config.wiring_layout))
 		self.write_capture_log("TITLE: {}".format(self.capture_log_fname))
+		# Capture video + jack audio is not working yet
+		#zynautoconnect.audio_connect_ffmpeg(timeout=2.0)
 
 
 	def start_capture_ffmpeg(self):
 		fbdev = os.environ.get("FRAMEBUFFER", "/dev/fb0")
 		fpath = "{}/{}.mp4".format(self.capture_dir_sdc, self.capture_log_fname)
-		self.capture_ffmpeg_proc = ffmpeg\
-			.output(ffmpeg.input(fbdev, r=30, f="fbdev"),
-				#ffmpeg.input("sine=frequency=500", f="lavfi"),\
-				#ffmpeg.input("ffmpeg", f="jack"),\ , acodec="aac"
-				fpath, vcodec="libx264", preset="fast", pix_fmt="yuv420p")\
-			.global_args('-nostdin', '-hide_banner', '-nostats')\
+		self.capture_ffmpeg_proc = ffmpeg.output(
+				# ffmpeg.input(":0", r=25, f="x11grab"),
+				ffmpeg.input(fbdev, r=20, f="fbdev"),
+				#ffmpeg.input("sine=frequency=500", f="lavfi"),
+				#ffmpeg.input("ffmpeg", f="jack"),
+				# fpath, vcodec="h264_v4l2m2m", acodec="aac", preset="ultrafast", pix_fmt="nv21", sample_fmt="s16") \
+				fpath, vcodec="libx264", acodec="aac", preset="ultrafast", pix_fmt="yuv420p") \
+			.global_args('-nostdin', '-hide_banner', '-nostats') \
 			.run_async(quiet=True, overwrite_output=True)
-
 
 	def stop_capture_ffmpeg(self):
 		if self.capture_ffmpeg_proc:
@@ -555,6 +559,9 @@ class zynthian_gui:
 				self.screens['cv_config'] = zynthian_gui_cv_config()
 		except:
 			pass
+
+		# Initialize Control Device Manager
+		self.ctrldev_manager = zynthian_ctrldev_manager()
 
 		# Initialize OSC
 		self.osc_init()
@@ -2028,7 +2035,8 @@ class zynthian_gui:
 
 				#logging.info("MIDI_UI MESSAGE: {}".format(hex(ev)))
 
-				if self.screens['zynpad'].midi_event(ev):
+				# Try to manage with configured control devices
+				if self.ctrldev_manager.midi_event(ev):
 					self.status_info['midi'] = True
 					self.last_event_flag = True
 					continue
@@ -2273,12 +2281,12 @@ class zynthian_gui:
 		self.power_save_mode = psm
 		if psm:
 			logging.info("Power Save Mode: ON")
-			self.screens["zynpad"].light_off_trigger_device()
+			self.ctrldev_manager.sleep_on()
 			check_output("powersave_control.sh on", shell=True)
 		else:
 			logging.info("Power Save Mode: OFF")
 			check_output("powersave_control.sh off", shell=True)
-			self.screens["zynpad"].refresh_trigger_device(force=True)
+			self.ctrldev_manager.sleep_off()
 
 
 	def set_event_flag(self):
@@ -2373,8 +2381,8 @@ class zynthian_gui:
 					self.wsleds.update()
 				sleep(0.2)
 		# On exit ...
-		# Release zynpad trigger device
-		self.screens["zynpad"].end_trigger_device()
+		# Release control devices
+		self.ctrldev_manager.end_all()
 		# Light-off LEDs
 		if self.wsleds:
 			self.wsleds.end()
@@ -2448,9 +2456,17 @@ class zynthian_gui:
 			except AttributeError:
 				pass
 
-			# Refresh status of external controllers
+			# Refresh control device list
+			if zynautoconnect.get_mididev_changed():
+				zynautoconnect.set_mididev_changed(False)
+				try:
+					self.ctrldev_manager.refresh_device_list()
+				except Exception as err:
+					logging.error(err)
+
+			# Refresh status of control devices
 			try:
-				self.screens["zynpad"].refresh_trigger_device()
+				self.ctrldev_manager.refresh_all()
 			except Exception as err:
 				logging.error(err)
 

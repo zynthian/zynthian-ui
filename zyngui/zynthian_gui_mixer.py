@@ -31,6 +31,7 @@ from collections import OrderedDict
 
 # Zynthian specific modules
 import zyngine
+import zynautoconnect
 from . import zynthian_gui_base
 from . import zynthian_gui_config
 from zyngui.zynthian_gui_dpm import zynthian_gui_dpm
@@ -60,8 +61,9 @@ class zynthian_gui_mixer_strip():
 		self.height = height
 		self.hidden = False
 		self.layer = layer
-		self.midi_learning = False # False: Not learning, True: Preselection, gui_control: Learning
 		self.MAIN_MIXBUS_STRIP_INDEX = zynthian_gui_config.zyngui.zynmixer.get_max_channels()
+
+		self.midi_learning = False # False: Not learning, True: Preselection, gui_control: Learning
 
 		if not layer:
 			self.hidden = True
@@ -534,6 +536,7 @@ class zynthian_gui_mixer_strip():
 		elif not self.midi_learning:
 			if self.zctrls:
 				self.zctrls['mute'].set_value(value)
+				self.parent.ctrldev_refresh()
 		self.parent.pending_refresh_queue.add((self, 'mute'))
 
 
@@ -545,6 +548,7 @@ class zynthian_gui_mixer_strip():
 		elif not self.midi_learning:
 			if self.zctrls:
 				self.zctrls['solo'].set_value(value)
+				self.parent.ctrldev_refresh()
 		for strip in self.parent.visible_mixer_strips:
 			self.parent.pending_refresh_queue.add((strip, 'solo'))
 		self.parent.pending_refresh_queue.add((self.parent.main_mixbus_strip, 'solo'))
@@ -723,9 +727,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	MAIN_MIXBUS_MIDI_CHANNEL = 256
 
-	def __init__(self):	
-		
-		super().__init__(False)
+	def __init__(self):
+		super().__init__(has_backbutton=False)
 
 		self.zynmixer = self.zyngui.zynmixer
 		self.zynmixer.set_ctrl_update_cb(self.ctrl_change_cb)
@@ -733,7 +736,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.chan2strip = [None] * (self.MAIN_MIXBUS_STRIP_INDEX + 1)
 
 		self.pending_refresh_queue = set() # List of (strip,control) requiring gui refresh (control=None for whole strip refresh)
+
 		self.midi_learning = False
+		self.ctrldev = None
+		self.ctrldev_id = None
+		self.ctrldev_idev = 0
 
 		self.number_chains = 0 # Quantity of chains
 		visible_chains = zynthian_gui_config.visible_mixer_strips # Maximum quantity of mixer strips to display (Defines strip width. Main always displayed.)
@@ -789,7 +796,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.touch_arcs = []
 		for i in range(10):
-			self.touch_arcs.append(self.main_canvas.create_oval(0,0,20,20, fill="red", state="hidden"))
+			self.touch_arcs.append(self.main_canvas.create_oval(0, 0, 20, 20, fill="red", state="hidden"))
 
 
 	def init_dpmeter(self):
@@ -804,7 +811,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				ssname = os.path.basename(fparts[0])
 			else:
 				ssname = fparts[0].replace(self.zyngui.screens['snapshot'].base_dir + "/","")
-			title +=  ": " + ssname.replace("last_state", "Last State")
+			title += ": " + ssname.replace("last_state", "Last State")
 
 		super().set_title(title, fg, bg, timeout)
 
@@ -854,7 +861,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if ctrl[0]:
 				ctrl[0].draw_control(ctrl[1])
 
-
 	#--------------------------------------------------------------------------
 	# Mixer Functionality
 	#--------------------------------------------------------------------------
@@ -890,6 +896,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.highlighted_strip.set_highlight(False)
 		self.highlighted_strip = strip
 		self.highlighted_strip.set_highlight(True)
+		self.ctrldev_refresh()
 
 
 	# Function to select chain by index
@@ -1071,7 +1078,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# GUI Event Management
 	#--------------------------------------------------------------------------
 
-
 	# Function to handle mouse wheel event when not over fader strip
 	#	event: Mouse event
 	def on_wheel(self, event):
@@ -1089,6 +1095,15 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def ctrl_change_cb(self, chan, ctrl, value):
 		if chan is not None:
 			self.pending_refresh_queue.add((self.chan2strip[chan], ctrl))
+
+
+	#--------------------------------------------------------------------------
+	# Control device
+	#--------------------------------------------------------------------------
+
+	def ctrldev_refresh(self):
+		if self.ctrldev:
+			self.ctrldev.refresh()
 
 
 	#--------------------------------------------------------------------------
@@ -1155,6 +1170,5 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		else:
 			self.midi_unlearn_all()
 		self.zyngui.exit_midi_learn()
-
 
 #--------------------------------------------------------------------------
