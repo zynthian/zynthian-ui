@@ -393,7 +393,7 @@ class zynthian_controller:
 				dval = abs(self.ticks[0] - val)
 				for i in range(1, len(self.ticks)):
 					ndval = abs(self.ticks[i] - val)
-					if  ndval < dval:
+					if ndval < dval:
 						dval = ndval
 						index = i
 					else:
