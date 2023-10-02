@@ -95,7 +95,7 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_base):
 				solo = 0
 
 			if zynthian_gui_config.midi_single_active_channel:
-				if self.zyngui.curlayer and layers[index] == self.zyngui.curlayer:
+				if self.zyngui.curlayer and index < len(layers) and layers[index] == self.zyngui.curlayer:
 					rec = 1
 				else:
 					rec = 0
@@ -158,11 +158,13 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_base):
 					if zynthian_gui_config.midi_single_active_channel:
 						self.zyngui_mixer.select_chain_by_index(index)
 					else:
-						layer = self.zyngui.screens['layer'].get_root_layers()[index]
-						self.zyngui.audio_recorder.toggle_arm(layer.midi_chan)
-						# Send LED feedback
-						val = self.zyngui.audio_recorder.is_armed(layer.midi_chan)
-						lib_zyncore.dev_send_note_on(self.idev, 0, note, val)
+						layers = self.zyngui.screens['layer'].get_root_layers()
+						if index < len(layers):
+							layer = layers[index]
+							self.zyngui.audio_recorder.toggle_arm(layer.midi_chan)
+							# Send LED feedback
+							val = self.zyngui.audio_recorder.is_armed(layer.midi_chan)
+							lib_zyncore.dev_send_note_on(self.idev, 0, note, val)
 				return True
 		elif evtype == 0xB:
 			ccnum = (ev & 0x7F00) >> 8
