@@ -360,7 +360,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def set_ctrldev(self, idev=None):
 		# Release previous device, if any
 		if self.ctrldev and idev != self.ctrldev_idev:
-			self.ctrldev.release()
+			self.zyngui.ctrldev_manager.end_device(self.ctrldev_idev)
 		# Try to setup a zynpad control driver
 		ctrldev = self.zyngui.ctrldev_manager.init_device(idev)
 		if ctrldev and ctrldev.dev_zynpad:

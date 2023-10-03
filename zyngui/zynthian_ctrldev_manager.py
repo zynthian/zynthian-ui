@@ -354,7 +354,6 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 		# When zynpad is shown, this is done by refresh_status, so no need to refresh twice
 		if force or not self.zynpad.shown:
 			self.refresh_pads(force)
-			self.refresh_zynpad_bank()
 		if force:
 			self.refresh_zynpad_bank()
 
@@ -388,4 +387,5 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 	# It *SHOULD* be implemented by child class
 	def update_pad(self, pad, state, mode):
 		pass
+
 #------------------------------------------------------------------------------
