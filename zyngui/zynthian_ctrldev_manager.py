@@ -50,8 +50,9 @@ class zynthian_ctrldev_manager():
 
 		self.drivers = {}
 		self.load_drivers()
-		self.zynpad_drivers = self.get_zynpad_drivers()
-		self.zynmixer_drivers = self.get_zynmixer_drivers()
+		self.drivers_ids = self.get_drivers_ids()
+		self.zynpad_drivers_ids = self.get_zynpad_drivers_ids()
+		self.zynmixer_drivers_ids = self.get_zynmixer_drivers_ids()
 
 		self.ctrldevs = [None for idev in range(17)]
 
@@ -62,15 +63,14 @@ class zynthian_ctrldev_manager():
 			if not f.startswith('.') and isfile(module_path) and f[-3:].lower() == '.py':
 				module_name = Path(module_path).stem
 				if module_name.startswith("zynthian_ctrldev_"):
-					#ctrldev_name = module_name[len("zynthian_ctrldev_"):]
 					try:
+						ctrldev_name = module_name[len("zynthian_ctrldev_"):]
 						spec = importlib.util.spec_from_file_location(module_name, module_path)
 						module = importlib.util.module_from_spec(spec)
 						spec.loader.exec_module(module)
 						class_ = getattr(module, module_name)
-						ctrldev_id = class_.dev_id
-						if ctrldev_id not in self.drivers:
-							self.drivers[ctrldev_id] = class_()
+						if ctrldev_name not in self.drivers:
+							self.drivers[ctrldev_name] = class_()
 							logging.info("Loaded ctrldev driver {}.".format(module_name))
 					except Exception as e:
 						logging.error("Can't load ctrldev driver {} => {}".format(module_name, e))
@@ -79,32 +79,46 @@ class zynthian_ctrldev_manager():
 	def reload_drivers(self):
 		self.drivers = {}
 		self.load_drivers()
+		self.drivers_ids = self.get_drivers_ids()
+		self.zynpad_drivers_ids = self.get_zynpad_drivers_ids()
+		self.zynmixer_drivers_ids = self.get_zynmixer_drivers_ids()
 
 
-	def get_zynpad_drivers(self):
+	def get_drivers_ids(self):
 		res = {}
-		for id, driver in self.drivers.items():
-			if driver.dev_zynpad:
-				res[id] = driver
+		for name, driver in self.drivers.items():
+			for dev_id in driver.dev_ids:
+				res[dev_id] = driver
 		return res
 
 
-	def get_zynmixer_drivers(self):
+	def get_zynpad_drivers_ids(self):
 		res = {}
-		for id, driver in self.drivers.items():
+		for name, driver in self.drivers.items():
+			if driver.dev_zynpad:
+				for dev_id in driver.dev_ids:
+					res[dev_id] = driver
+		return res
+
+
+	def get_zynmixer_drivers_ids(self):
+		res = {}
+		for name, driver in self.drivers.items():
 			if driver.dev_zynmixer:
-				res[id] = driver
+				for dev_id in driver.dev_ids:
+					res[dev_id] = driver
 		return res
 
 
 	def init_device(self, idev):
-		dev_id = zynautoconnect.get_midi_device_name(idev)
-		# If a driver that matches the device ID string is found ...
-		if dev_id and dev_id in self.drivers:
-			driver = self.drivers[dev_id]
-			driver.setup(idev)
-			self.ctrldevs[idev] = driver
-			return driver
+		# Check it's a valid dev index (>0) and the slot is not empty ...
+		if idev > 0 and zynautoconnect.get_midi_device_name(idev):
+			# Look for a driver that matches the device ...
+			for name, driver in self.drivers.items():
+				dev_id = driver.setup(idev)
+				if dev_id:
+					self.ctrldevs[idev] = driver
+					return driver
 
 
 	def end_device(self, idev):
@@ -119,18 +133,13 @@ class zynthian_ctrldev_manager():
 
 
 	def init_device_by_id(self, dev_id):
-		# Find index in connected devices
+		# Find device index in connected devices list
 		try:
 			idev = zynautoconnect.devices_in.index(dev_id) + 1
+			# If found, try to init the device
+			return self.init_device(idev)
 		except:
 			return None
-
-		# If found an available driver...
-		if dev_id in self.drivers:
-			driver = self.drivers[dev_id]
-			driver.setup(idev)
-			self.ctrldevs[idev] = driver
-			return driver
 
 
 	def init_all(self):
@@ -165,7 +174,7 @@ class zynthian_ctrldev_manager():
 		zynpad = self.zyngui.screens['zynpad']
 		if not zynpad.ctrldev_idev and zynpad.ctrldev_id:
 			try:
-				if zynpad.ctrldev_id in self.zynpad_drivers.keys():
+				if zynpad.ctrldev_id in self.zynpad_drivers_ids.keys():
 					driver = self.init_device_by_id(zynpad.ctrldev_id)
 					if driver:
 						zynpad.ctrldev = driver
@@ -175,7 +184,7 @@ class zynthian_ctrldev_manager():
 				pass
 		if not zynpad.ctrldev_idev:
 			try:
-				for dev_id in self.zynpad_drivers.keys():
+				for dev_id in self.zynpad_drivers_ids.keys():
 					driver = self.init_device_by_id(dev_id)
 					if driver:
 						zynpad.ctrldev = driver
@@ -192,7 +201,7 @@ class zynthian_ctrldev_manager():
 		zynmixer = self.zyngui.screens['audio_mixer']
 		if not zynmixer.ctrldev_idev and zynmixer.ctrldev_id:
 			try:
-				if zynmixer.ctrldev_id in self.zynmixer_drivers.keys():
+				if zynmixer.ctrldev_id in self.zynmixer_drivers_ids.keys():
 					driver = self.init_device_by_id(zynmixer.ctrldev_id)
 					if driver:
 						zynmixer.ctrldev = driver
@@ -202,7 +211,7 @@ class zynthian_ctrldev_manager():
 				pass
 		if not zynmixer.ctrldev_idev:
 			try:
-				for dev_id in self.zynmixer_drivers.keys():
+				for dev_id in self.zynmixer_drivers_ids.keys():
 					driver = self.init_device_by_id(dev_id)
 					if driver:
 						zynmixer.ctrldev = driver
@@ -263,10 +272,11 @@ class zynthian_ctrldev_manager():
 
 class zynthian_ctrldev_base():
 
-	dev_id = None  		# String that identifies the device (class variable!)
+	dev_ids = []			# String list that could identifies the device
+	dev_id = None  			# String that identifies the device
 	dev_zynpad = False		# Can act as a zynpad trigger device
 	dev_zynmixer = False	# Can act as an audio mixer controller device
-	dev_pated = False	# Can act as a pattern editor device
+	dev_pated = False		# Can act as a pattern editor device
 
 
 	# Function to initialise class
@@ -276,13 +286,20 @@ class zynthian_ctrldev_base():
 
 
 	# Setup the device connected in slot #idev
-	# Before calling this, the caller (ctrldev-manager) should check that driver's ID string matches device's ID string
-	def setup(self, idev=None):
-		if idev != self.idev:
-			# Release currently selected device, if any ...
-			self.release()
-			# Init new selected device
-			if idev > 0:
+	def setup(self, idev):
+		# Check it's a valid dev index (>0)
+		if idev > 0:
+			# Check if dev_id matches some dev_id in the driver's list
+			dev_id = zynautoconnect.get_midi_device_name(idev)
+			# If it's already active, don't setup again
+			if idev == self.idev:
+				return dev_id
+			if self.dev_ids and dev_id in self.dev_ids:
+				# Release currently selected device, if any ...
+				self.release()
+				# Set driver's dev_id
+				self.dev_id = dev_id
+				# Init new selected device
 				self.idev = idev
 				logging.info("Setting-up {} in slot {}".format(self.dev_id, self.idev))
 				# Setup routing
@@ -291,6 +308,8 @@ class zynthian_ctrldev_base():
 				# Initialize new selected device
 				self.init()
 				self.refresh(force=True)
+				return dev_id
+		return None
 
 
 	def release(self):
@@ -304,24 +323,25 @@ class zynthian_ctrldev_base():
 			lib_zyncore.zmip_set_route_extdev(self.idev - 1, 1)
 			zynautoconnect.midi_autoconnect(True)
 		self.idev = 0
+		self.dev_id = None
 
 
 	# Refresh device status (LED feedback, etc)
 	# It *SHOULD* be implemented by child class
 	def refresh(self, force=False):
-		logging.debug("Refresh LEDs for {}: NOT IMPLEMENTED!".format(self.dev_id))
+		logging.debug("Refresh LEDs for {}: NOT IMPLEMENTED!".format(type(self).__name__))
 
 
 	# Device MIDI event handler
 	# It *SHOULD* be implemented by child class
 	def midi_event(self, ev):
-		logging.debug("MIDI EVENT FROM '{}'".format(self.dev_id))
+		logging.debug("MIDI EVENT FROM '{}'".format(type(self).__name__))
 
 
 	# Light-Off LEDs
 	# It *SHOULD* be implemented by child class
 	def light_off(self):
-		logging.debug("Lighting Off LEDs for {}: NOT IMPLEMENTED!".format(self.dev_id))
+		logging.debug("Lighting Off LEDs for {}: NOT IMPLEMENTED!".format(type(self).__name__))
 
 
 	# Sleep On
@@ -360,6 +380,7 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 
 	# It *SHOULD* be implemented by child class
 	def refresh_zynpad_bank(self):
+		#logging.debug("Refressh zynpad banks for {}: NOT IMPLEMENTED!".format(type(self).__name__))
 		pass
 
 
@@ -386,6 +407,6 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 
 	# It *SHOULD* be implemented by child class
 	def update_pad(self, pad, state, mode):
-		pass
+		logging.debug("Update pads for {}: NOT IMPLEMENTED!".format(type(self).__name__))
 
 #------------------------------------------------------------------------------
