@@ -55,10 +55,17 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 		self.list_data = []
 
 		if self.end_layer:
-			midi_outs = {
-				"MIDI-OUT": "Hardware MIDI Out",
-				"NET-OUT": "Network MIDI Out"
-			}
+			midi_outs = {}
+			# USB connected device ports
+			for idev in range(1, 16):
+				dev_id = zynautoconnect.devices_out[idev - 1]
+				if dev_id:
+					dev_name = zynautoconnect.devices_out_name[idev - 1]
+					midi_outs[dev_name] = dev_id.replace("_", " ")
+			# Hardcoded ports
+			midi_outs["NET-OUT"] = "Network MIDI-OUT"
+			midi_outs["CVGate-OUT"] = "CV/Gate"
+			# Internal Chain ports
 			for layer in zynthian_gui_config.zyngui.screens['layer'].get_midichain_roots():
 				if layer.midi_chan != self.end_layer.midi_chan:
 					midi_outs[layer.get_midi_jackname()] = layer.get_presetpath()

@@ -70,7 +70,7 @@ class zynthian_layer:
 		else:
 			self.audio_in = [] # Only AI uses audio_in
 
-		self.midi_out = ["MIDI-OUT", "NET-OUT"]
+		self.midi_out = []
 
 		self.bank_list = []
 		self.bank_index = 0

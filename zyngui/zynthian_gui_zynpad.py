@@ -431,10 +431,9 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if not self.ctrldev_idev:
 			options['Control device (OFF)'] = 'Control device'
 		else:
-			devname = zynautoconnect.get_midi_device_name(self.ctrldev_idev)
-			if devname:
-				devname = devname.replace("_", " ")
-			else:
+			try:
+				devname = zynautoconnect.get_midi_in_devid(self.ctrldev_idev).replace("_", " ")
+			except:
 				devname = "UNKNOWN"
 			options['Control device ({})'.format(devname)] = 'Control device'
 

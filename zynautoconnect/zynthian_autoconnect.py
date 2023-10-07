@@ -58,8 +58,9 @@ exit_flag = False
 last_hw_str = None
 max_num_devs = 16
 devices_in = [None for i in range(max_num_devs)]
+devices_in_name = [None for i in range(max_num_devs)]
 devices_out = [None for i in range(max_num_devs)]
-extra_midi_fb_ports = []
+devices_out_name = [None for i in range(max_num_devs)]
 
 refresh_time = 0.1
 mididev_refresh_time = 2
@@ -73,8 +74,16 @@ def get_port_alias_id(midi_port):
 		alias_id = '_'.join(midi_port.aliases[0].split('-')[5:])
 	except:
 		alias_id = midi_port.name
-	if alias_id.startswith("a2j:"):
-		alias_id = "ALSA MIDI"
+	if alias_id.startswith("ttymidi:"):
+		if midi_port.is_input:
+			alias_id = "DIN-5 MIDI-OUT"
+		else:
+			alias_id = "DIN-5 MIDI-IN"
+	elif alias_id.startswith("a2j:"):
+		if midi_port.is_input:
+			alias_id = "ALSA MIDI-OUT"
+		else:
+			alias_id = "ALSA MIDI-IN"
 	elif alias_id == "f_midi":
 		alias_id = None
 	return alias_id
@@ -138,43 +147,18 @@ def replicate_connections_to(port1, port2):
 			jclient.disconnect(p, port2)
 
 
-def get_midi_device_name(idev):
+def get_midi_in_devid(idev):
 	if idev > 0 and idev <= len(devices_in):
 		return devices_in[idev - 1]
 	else:
 		return None
 
 
-def add_midi_fb_port(idev):
-	global extra_midi_fb_ports
-	try:
-		midi_dev_name = devices_in[idev]
-		extra_midi_fb_ports.append(midi_dev_name)
-	except:
-		logging.debug("Can't add midi device {} to FeedBack list!".format(idev))
-	purge_midi_fb_ports()
-
-
-def remove_midi_fb_port(idev):
-	global extra_midi_fb_ports
-	try:
-		midi_dev_name = devices_in[idev]
-		extra_midi_fb_ports.remove(midi_dev_name)
-	except:
-		logging.debug("Can't remove midi device {} from FeedBack list!".format(idev))
-	purge_midi_fb_ports()
-
-
-def clean_midi_fb_ports():
-	global extra_midi_fb_ports
-	extra_midi_fb_ports = []
-
-
-def purge_midi_fb_ports():
-	global extra_midi_fb_ports
-	for xmp in extra_midi_fb_ports:
-		if xmp not in devices_in:
-			extra_midi_fb_ports.remove(xmp)
+def get_midi_out_devid(idev):
+	if idev > 0 and idev <= len(devices_out):
+		return devices_out[idev - 1]
+	else:
+		return None
 
 
 def set_mididev_changed(flag):
@@ -294,7 +278,7 @@ def midi_autoconnect(force=False):
 	#logger.debug("ZynMidiRouter Output Ports: {}".format(zmr_in))
 
 	#------------------------------------
-	# Build MIDI-input routed ports dict
+	# Build routed-in (output) ports dict
 	#------------------------------------
 
 	# Add engines_in
@@ -302,23 +286,23 @@ def midi_autoconnect(force=False):
 	for pn, port in engines_in.items():
 		routed_in[pn] = [port]
 
-	# Add Zynmaster input
+	# Add Zynmaster (CV/gate output)
 	zmip = jclient.get_ports("ZynMaster:midi_in", is_input=True, is_physical=False, is_midi=True)
 	try:
+		routed_in["CV/Gate Out"] = [zmip[0]]
 		port_alias_id = get_port_alias_id(zmip[0])
 		enabled_hw_ports = { port_alias_id: zmip[0] }
-		routed_in["MIDI-OUT"] = [zmip[0]]
 	except:
+		routed_in["CVGate-OUT"] = []
 		enabled_hw_ports = {}
-		routed_in["MIDI-OUT"] = []
 
 	# Add enabled Hardware ports 
 	for hwp in hw_in:
 		try:
+			routed_in[hwp.name] = [hwp]
 			port_alias_id = get_port_alias_id(hwp)
 			if port_alias_id in zynthian_gui_config.enabled_midi_out_ports:
 				enabled_hw_ports[port_alias_id] = hwp
-				routed_in["MIDI-OUT"].append(hwp)
 		except:
 			pass
 
@@ -330,8 +314,8 @@ def midi_autoconnect(force=False):
 		try:
 			port_alias_id = get_port_alias_id(zmip[0])
 			if port_alias_id in zynthian_gui_config.enabled_midi_out_ports:
-				enabled_nw_ports[port_alias_id] = zmip[0]
 				routed_in["NET-OUT"].append(zmip[0])
+				enabled_nw_ports[port_alias_id] = zmip[0]
 		except:
 			pass
 
@@ -362,6 +346,7 @@ def midi_autoconnect(force=False):
 							if devices_in[i] is None:
 								devnum = i
 								devices_in[devnum] = port_alias_id
+								devices_in_name[devnum] = hw.name
 								break
 					if devnum is not None:
 						busy_idevs.append(devnum)
@@ -373,6 +358,7 @@ def midi_autoconnect(force=False):
 	for i in range(0,16):
 		if i not in busy_idevs:
 			devices_in[i] = None
+			devices_in_name[i] = None
 
 	#Connect MIDI Output Devices
 	busy_idevs = []
@@ -391,6 +377,7 @@ def midi_autoconnect(force=False):
 						if devices_out[i] is None:
 							devnum = i
 							devices_out[devnum] = port_alias_id
+							devices_out_name[devnum] = hw.name
 							break
 				if devnum is not None:
 					busy_idevs.append(devnum)
@@ -403,6 +390,7 @@ def midi_autoconnect(force=False):
 	for i in range(0,16):
 		if i not in busy_idevs:
 			devices_out[i] = None
+			devices_out_name[i] = None
 
 	# Flag device list changes
 	if hw_str_changed:
@@ -532,14 +520,14 @@ def midi_autoconnect(force=False):
 	# Set MIDI THRU
 	lib_zyncore.set_midi_thru(zynthian_gui_config.midi_filter_output)
 
-	# Connect MIDI OUT to enabled Hardware Output Ports
+	# Connect MIDI-THRU output to enabled Hardware Output Ports
 	for paid, hwport in enabled_hw_ports.items():
 		try:
 			jclient.connect(zmr_out['midi_out'], hwport)
 		except:
 			pass
 
-	# Connect MIDI NET to enabled Hardware Output Ports
+	# Connect MIDI NET output to enabled Hardware Output Ports
 	for paid, nwport in enabled_nw_ports.items():
 		# Connect ZynMidiRouter:net_out to ...
 		try:
@@ -554,10 +542,9 @@ def midi_autoconnect(force=False):
 		pass
 
 	#Connect ZynMidiRouter:ctrl_out to enabled MIDI-FB ports (MIDI-Controller FeedBack)
-	midi_fb_ports = zynthian_gui_config.enabled_midi_fb_ports + extra_midi_fb_ports
 	for hw in hw_in:
 		try:
-			if get_port_alias_id(hw) in midi_fb_ports:
+			if get_port_alias_id(hw) in zynthian_gui_config.enabled_midi_fb_ports:
 				jclient.connect(zmr_out['ctrl_out'], hw)
 			else:
 				jclient.disconnect(zmr_out['ctrl_out'], hw)

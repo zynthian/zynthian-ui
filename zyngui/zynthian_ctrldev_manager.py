@@ -112,7 +112,7 @@ class zynthian_ctrldev_manager():
 
 	def init_device(self, idev):
 		# Check it's a valid dev index (>0) and the slot is not empty ...
-		if idev > 0 and zynautoconnect.get_midi_device_name(idev):
+		if idev > 0 and zynautoconnect.get_midi_in_devid(idev):
 			# Look for a driver that matches the device ...
 			for name, driver in self.drivers.items():
 				dev_id = driver.setup(idev)
@@ -290,7 +290,7 @@ class zynthian_ctrldev_base():
 		# Check it's a valid dev index (>0)
 		if idev > 0:
 			# Check if dev_id matches some dev_id in the driver's list
-			dev_id = zynautoconnect.get_midi_device_name(idev)
+			dev_id = zynautoconnect.get_midi_in_devid(idev)
 			# If it's already active, don't setup again
 			if idev == self.idev:
 				return dev_id
@@ -316,7 +316,7 @@ class zynthian_ctrldev_base():
 		if self.idev > 0:
 			logging.info("Releasing {} in slot {}".format(self.dev_id, self.idev))
 			# If device is still connected, call end
-			dev_id = zynautoconnect.get_midi_device_name(self.idev)
+			dev_id = zynautoconnect.get_midi_in_devid(self.idev)
 			if dev_id and dev_id == self.dev_id:
 				self.end()
 			# Restore routing
