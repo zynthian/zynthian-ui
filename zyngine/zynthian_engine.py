@@ -179,6 +179,7 @@ class zynthian_engine(zynthian_basic_engine):
 			'clone': True,
 			'note_range': True,
 			'audio_capture': False,
+			'midi_capture': True,
 			'audio_route': True,
 			'midi_route': False,
 			'midi_chan': True,
