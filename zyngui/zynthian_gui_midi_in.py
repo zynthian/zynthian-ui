@@ -54,8 +54,8 @@ class zynthian_gui_midi_in(zynthian_gui_selector):
 
 		if self.root_layer:
 			midi_ins = []
-			# USB connected device ports
-			for i in range(0, 15):
+			# Connected device ports
+			for i in range(0, 16):
 				dev_id = zynautoconnect.devices_in[i]
 				if dev_id:
 					midi_ins.append(dev_id.replace("_", " "))
