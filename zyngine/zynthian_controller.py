@@ -246,13 +246,8 @@ class zynthian_controller:
 
 	def set_midi_chan(self, chan):
 		self.midi_chan = chan
-		if zynthian_gui_config.midi_single_active_channel:
-			if self.midi_learn_cc:
-				self.midi_learn_chan = chan
-		else:
-			if self.midi_cc is not None:
-				if self.midi_learn_cc == self.midi_cc:
-					self.midi_learn_chan = chan
+		if self.midi_learn_cc:
+			self.midi_learn_chan = chan
 
 
 	#TODO: I think get_ctrl_array is an unused function

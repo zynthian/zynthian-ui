@@ -104,6 +104,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.zyngui.set_curlayer(None, populate_screens=False)
 
 
+	def update_index(self):
+		try:
+			self.index = self.root_layers.index(self.get_chain_root(self.zyngui.curlayer))
+		except:
+			self.index = 0
+
+
 	def select_action(self, i, t='S'):
 		self.index = i
 		logging.warning("THIS SHOULDN'T BE CALLED!!")
@@ -619,10 +626,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	#----------------------------------------------------------------------------
 
 	def set_midi_prog_zs3(self, midich, prognum):
-		if zynthian_gui_config.midi_single_active_channel:
-			i = self.get_zs3_index_by_prognum(prognum)
-		else:
-			i = self.get_zs3_index_by_midich_prognum(midich, prognum)
+		i = self.get_zs3_index_by_prognum(prognum)
+		#i = self.get_zs3_index_by_midich_prognum(midich, prognum)
 
 		if i is not None:
 			return self.restore_zs3(i)
@@ -634,10 +639,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def save_midi_prog_zs3(self, midich, prognum):
 		# Look for a matching zs3 
 		if midich is not None and prognum is not None:
-			if zynthian_gui_config.midi_single_active_channel:
-				i = self.get_zs3_index_by_prognum(prognum)
-			else:
-				i = self.get_zs3_index_by_midich_prognum(midich, prognum)
+			i = self.get_zs3_index_by_prognum(prognum)
+			#i = self.get_zs3_index_by_midich_prognum(midich, prognum)
 		else:
 			i = None
 		
@@ -1582,7 +1585,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def restore_state_zs3(self, state):
 
 		# Get restored active layer index
-		if state['index']<len(self.root_layers):
+		if state['index'] < len(self.root_layers):
 			index = state['index']
 			restore_midi_chan = self.root_layers[index].midi_chan
 		else:
@@ -1602,15 +1605,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					pass
 				# Ensure layer's engine matches
 				elif lss["engine_nick"] == self.layers[i].engine.nickname:
-					# Omni-On (stege) mode, only retore zs3's active chain & main chain
-					if zynthian_gui_config.midi_single_active_channel:
-						if lss['midi_chan'] == 256 or restore_midi_chan is not None and lss['midi_chan'] == restore_midi_chan:
-							l2r = True
-					# Multi-timbral mode
-					elif "restore" in lss:
-						if lss["restore"]:
-							l2r = True
-					else:
+					# If restore flag is set, honor it!
+					if "restore" in lss:
+						l2r = lss["restore"]
+					# else retore zs3's active chain & main chain
+					elif lss['midi_chan'] == 256 or restore_midi_chan is not None and lss['midi_chan'] == restore_midi_chan:
 						l2r = True
 			layer2restore.append(l2r)
 
@@ -1659,8 +1658,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		#	self.amixer_layer.restore_state_1(state['amixer_layer'])
 		#	self.amixer_layer.restore_state_2(state['amixer_layer'])
 
-		# ONLY when Omni-On (stage) mode is enabled, set active layer
-		if zynthian_gui_config.midi_single_active_channel and index is not None and index != self.index:
+		# Set active layer
+		logging.info("Setting curlayer to {} (from {})".format(index, self.index))
+		if index is not None and index != self.index:
 			logging.info("Setting curlayer to {}".format(index))
 			self.index = index
 			self.zyngui.set_curlayer(self.root_layers[index])

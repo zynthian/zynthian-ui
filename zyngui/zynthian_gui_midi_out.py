@@ -23,10 +23,7 @@
 # 
 #******************************************************************************
 
-import sys
-import tkinter
 import logging
-from collections import OrderedDict
 
 # Zynthian specific modules
 import zynautoconnect
@@ -87,7 +84,7 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 	# Highlight current engine assigned outputs ...
 	def highlight(self):
 		for i in range(len(self.list_data)):
-			if self.list_data[i][2][:2]=='[x':
+			if self.list_data[i][2][:2] == '[x':
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_hl})
 			else:
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_panel_tx})

@@ -360,15 +360,9 @@ class zynmixer(zynthian_engine):
 	#--------------------------------------------------------------------------
 
 	def midi_control_change(self, chan, ccnum, val):
-		if zynthian_gui_config.midi_single_active_channel:
-			for ch in range(16):
-				try:
-					self.learned_cc[ch][ccnum].midi_control_change(val)
-				except:
-					pass
-		else:
+		for ch in range(16):
 			try:
-				self.learned_cc[chan][ccnum].midi_control_change(val)
+				self.learned_cc[ch][ccnum].midi_control_change(val)
 			except:
 				pass
 

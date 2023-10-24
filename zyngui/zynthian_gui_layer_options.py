@@ -99,9 +99,6 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		if 'note_range' in eng_options and eng_options['note_range']:
 			self.list_data.append((self.layer_note_range, None, "Note Range & Transpose"))
 
-		if 'clone' in eng_options and eng_options['clone']:
-			self.list_data.append((self.layer_clone, None, "Clone MIDI to..."))
-
 		if 'midi_capture' in eng_options and eng_options['midi_capture']:
 			self.list_data.append((self.layer_midi_capture, None, "MIDI Capture"))
 
@@ -110,6 +107,9 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		if 'midi_chan' in eng_options and eng_options['midi_chan']:
 			self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
+
+		if 'clone' in eng_options and eng_options['clone']:
+			self.list_data.append((self.layer_clone, None, "Clone MIDI to..."))
 
 		if 'midi_learn' in eng_options and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
 			self.list_data.append((self.midi_learn, None, "MIDI Learn"))

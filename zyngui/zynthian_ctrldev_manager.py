@@ -127,6 +127,13 @@ class zynthian_ctrldev_manager():
 			self.ctrldevs[idev] = None
 
 
+	def get_device_driver(self, idev):
+		try:
+			return self.ctrldevs[idev]
+		except:
+			return None
+
+
 	def refresh_device(self, idev, force=False):
 		if idev > 0 and idev <= 16 and self.ctrldevs[idev]:
 			self.ctrldevs[idev].refresh(force)

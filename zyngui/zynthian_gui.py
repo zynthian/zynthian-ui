@@ -984,6 +984,8 @@ class zynthian_gui:
 				self.curlayer = layer
 			if populate_screens:
 				self.screens['layer'].refresh_index()
+			else:
+				self.screens['layer'].update_index()
 			self.screens['audio_mixer'].select_chain_by_layer(layer, set_curlayer=False)
 			self.set_active_channel()
 		else:
@@ -996,7 +998,7 @@ class zynthian_gui:
 			self._curlayer = None
 
 
-	#If "MIDI Single Active Channel" mode is enabled, set MIDI Active Channel to layer's one
+	# Set MIDI Active Channel to layer's one
 	def set_active_channel(self):
 		curlayer_chan = None
 		active_chan = -1
@@ -1006,7 +1008,7 @@ class zynthian_gui:
 			if self.curlayer.engine.nickname == 'MX':
 				return
 			curlayer_chan = self.curlayer.get_midi_chan()
-			if zynthian_gui_config.midi_single_active_channel and curlayer_chan is not None:
+			if curlayer_chan is not None:
 				if curlayer_chan >= 16:
 					return
 				active_chan = curlayer_chan
@@ -1028,10 +1030,6 @@ class zynthian_gui:
 				return self.curlayer
 			else:
 				sleep(0.1)
-
-
-	def is_single_active_channel(self):
-		return zynthian_gui_config.midi_single_active_channel
 
 
 	def clean_all(self):

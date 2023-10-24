@@ -39,6 +39,7 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_base):
 
 	dev_ids = ["MIDI_Mix_MIDI_1"]
 	dev_zynmixer = True  # Can act as an audio mixer controller device
+	rec_mode = 0
 
 	bank_left_note = 25
 	bank_right_note = 26
@@ -94,8 +95,8 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_base):
 				mute = 0
 				solo = 0
 
-			if zynthian_gui_config.midi_single_active_channel:
-				if self.zyngui.curlayer and index < len(layers) and layers[index] == self.zyngui.curlayer:
+			if not self.rec_mode:
+				if index < len(layers) and self.zyngui.curlayer and layers[index] == self.zyngui.curlayer:
 					rec = 1
 				else:
 					rec = 0
@@ -155,16 +156,14 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_base):
 				if self.midimix_bank:
 					index += 8
 				if index < len(self.zynmixer.zctrls):
-					if zynthian_gui_config.midi_single_active_channel:
+					if not self.rec_mode:
 						self.zyngui_mixer.select_chain_by_index(index)
 					else:
-						layers = self.zyngui.screens['layer'].get_root_layers()
-						if index < len(layers):
-							layer = layers[index]
-							self.zyngui.audio_recorder.toggle_arm(layer.midi_chan)
-							# Send LED feedback
-							val = self.zyngui.audio_recorder.is_armed(layer.midi_chan)
-							lib_zyncore.dev_send_note_on(self.idev, 0, note, val)
+						layer = self.zyngui.screens['layer'].get_root_layers()[index]
+						self.zyngui.audio_recorder.toggle_arm(layer.midi_chan)
+						# Send LED feedback
+						val = self.zyngui.audio_recorder.is_armed(layer.midi_chan)
+						lib_zyncore.dev_send_note_on(self.idev, 0, note, val)
 				return True
 		elif evtype == 0xB:
 			ccnum = (ev & 0x7F00) >> 8

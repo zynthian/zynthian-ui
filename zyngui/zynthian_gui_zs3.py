@@ -74,10 +74,7 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 			self.list_data.append((None, None, "> SAVED ZS3s"))
 		for i, state in enumerate(self.zyngui.screens['layer'].learned_zs3):
 			if state['midi_learn_prognum'] is not None:
-				if zynthian_gui_config.midi_single_active_channel:
-					title = "{} -> PR#{}".format(state['zs3_title'], state['midi_learn_prognum'])
-				else:
-					title = "{} -> CH#{}:PR#{}".format(state['zs3_title'], state['midi_learn_chan'], state['midi_learn_prognum'])
+				title = "{} -> PR#{}".format(state['zs3_title'], state['midi_learn_prognum'])
 			else:
 				title = state['zs3_title']
 			self.list_data.append((i, state, title))
