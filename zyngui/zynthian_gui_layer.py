@@ -33,6 +33,7 @@ from collections import OrderedDict
 from json import JSONEncoder, JSONDecoder
 
 # Zynthian specific modules
+import zynautoconnect
 from zyncoder.zyncore import lib_zyncore
 from zyngine import zynthian_layer
 from zyngui import zynthian_gui_config
@@ -884,6 +885,86 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	#----------------------------------------------------------------------------
+	# MIDI Capture
+	#----------------------------------------------------------------------------
+
+	def get_midi_capture(self):
+		# Get UI managed devices
+		ctrldev_ids = []
+		for idev in range(1, 17):
+			driver = self.zyngui.ctrldev_manager.get_device_driver(idev)
+			if driver:
+				ctrldev_ids.append(driver.dev_id)
+
+		# Get zmips flags and chain routing
+		zmip_acti_flags = []
+		zmip_omni_flags = []
+		zmip_routed_chans = []
+		for i in range(0, 17):
+			zmip_acti_flags.append(bool(lib_zyncore.zmip_get_flag_active_chan(i)))
+			zmip_omni_flags.append(bool(lib_zyncore.zmip_get_flag_omni_chan(i)))
+			zmip_routed_chans.append([])
+			for ch in range(0, 16):
+				zmip_routed_chans[i].append(bool(lib_zyncore.zmop_get_route_from(ch, i)))
+
+		# Return dictionary with results
+		res = {
+			"dev_ids": zynautoconnect.devices_in,
+			"ctrldev_ids": ctrldev_ids,
+			"zmip_acti_flags": zmip_acti_flags,
+			"zmip_omni_flags": zmip_omni_flags,
+			"zmip_routed_chans": zmip_routed_chans
+		}
+		return res
+
+
+	def set_midi_capture(self, midi_capture=None):
+		if midi_capture:
+			for dev_id in midi_capture["ctrldev_ids"]:
+				self.zyngui.ctrldev_manager.init_device_by_id(dev_id)
+
+			dev_ids = midi_capture["dev_ids"]
+			zmip_acti_flags = midi_capture["zmip_acti_flags"]
+			zmip_omni_flags = midi_capture["zmip_omni_flags"]
+			zmip_routed_chans = midi_capture["zmip_routed_chans"]
+			for i in range(0, 17):
+				# MIDI-input devices
+				if i < 16:
+					# If no device, continue with next device
+					dev_id = dev_ids[i]
+					if not dev_id:
+						continue
+					# Find a matching device (j) currently connected
+					try:
+						j = zynautoconnect.devices_in.index(dev_id)
+					except:
+						continue
+				# Network MIDI-input
+				else:
+					j = i
+
+				# Set zmip flags
+				lib_zyncore.zmip_set_flag_active_chan(j, int(zmip_acti_flags[i]))
+				lib_zyncore.zmip_set_flag_omni_chan(j, int(zmip_omni_flags[i]))
+
+				# Route zmops (chans)
+				for ch in range(0, 16):
+					lib_zyncore.zmop_set_route_from(ch, j, int(zmip_routed_chans[i][ch]))
+
+		else:
+			self.reset_midi_capture()
+
+
+	def reset_midi_capture(self):
+		for i in range(0, 17):
+			# Set zmip flags
+			lib_zyncore.zmip_set_flag_active_chan(i, 1)
+			lib_zyncore.zmip_set_flag_omni_chan(i, 0)
+			# Route zmops (chans)
+			for ch in (0, 16):
+				lib_zyncore.zmop_set_route_from(ch, i, 1)
+
+	#----------------------------------------------------------------------------
 	# Jackname managing
 	#----------------------------------------------------------------------------
 
@@ -1386,6 +1467,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			'layers': [],
 			'clone': [],
 			'note_range': [],
+			'midi_capture': self.get_midi_capture(),
 			'audio_capture': self.get_audio_capture(),
 			'last_snapshot_fpath': self.last_snapshot_fpath
 		}
@@ -1468,6 +1550,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		# Restore layer state, step 2 => Restore Controllers Status
 		for i, lss in enumerate(state['layers']):
 			self.layers[i].restore_state_2(lss)
+
+		# Set MIDI Capture
+		if 'midi_capture' in state:
+			self.set_midi_capture(state['midi_capture'])
+		else:
+			self.reset_audio_capture()
 
 		# Set Audio Routing
 		if 'audio_routing' in state:
@@ -1622,6 +1710,10 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for i, lss in enumerate(slayers):
 			if layer2restore[i]:
 				self.layers[i].restore_state_2(slayers[i], restore_midi_learn=False)
+
+		# Restore MIDI Capture state
+		if 'midi_capture' in state:
+			self.set_midi_capture(state['midi_capture'])
 
 		# Restore Audio Capture state
 		if "audio_capture" in state:
