@@ -856,28 +856,28 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		velocity_colour = self.zyngui.zynseq.libseq.getNoteVelocity(step, note)
 		if velocity_colour:
 			velocity_colour += 70
+			duration = self.zyngui.zynseq.libseq.getNoteDuration(step, note)
 		else:
 			velocity_colour = 30 * int(white)
+			duration = 1.0
 		fill_colour = "#%02x%02x%02x" % (velocity_colour, velocity_colour, velocity_colour)
 
-		duration = self.zyngui.zynseq.libseq.getNoteDuration(step, note)
 		if not duration:
 			duration = 1.0
 		coord = self.get_cell(step, row, duration)
 
+		if white:
+			cell_tags = ("%d,%d" % (step, row), "gridcell", "step%d" % step, "white")
+		else:
+			cell_tags = ("%d,%d" % (step, row), "gridcell", "step%d" % step)
+
 		if cell:
 			# Update existing cell
-			if white:
-				self.grid_canvas.itemconfig(cell, fill=fill_colour)
-			else:
-				self.grid_canvas.itemconfig(cell, fill=fill_colour)
+			self.grid_canvas.itemconfig(cell, fill=fill_colour,  tags=cell_tags)
 			self.grid_canvas.coords(cell, coord)
 		else:
 			# Create new cell
-			if white:
-				cell = self.grid_canvas.create_rectangle(coord, fill=fill_colour, width=0, tags=("%d,%d"%(step,row), "gridcell", "step%d"%step, "white"))
-			else:
-				cell = self.grid_canvas.create_rectangle(coord, fill=fill_colour, width=0, tags=("%d,%d"%(step,row), "gridcell", "step%d"%step))
+			cell = self.grid_canvas.create_rectangle(coord, fill=fill_colour, width=0, tags=cell_tags)
 			self.cells[cellIndex] = cell
 
 		if step + duration > self.n_steps:
@@ -909,7 +909,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.play_canvas.coords("playCursor", 1 + self.playhead * self.step_width, 0, 1 + self.playhead * self.step_width + self.step_width, PLAYHEAD_HEIGHT)
 
 		# Draw cells of grid
-		self.grid_canvas.itemconfig("gridcell", fill="black")
+		# self.grid_canvas.itemconfig("gridcell", fill="black")
 		if redraw_pending > 2:
 			# Redraw gridlines
 			self.grid_canvas.delete("gridline")
