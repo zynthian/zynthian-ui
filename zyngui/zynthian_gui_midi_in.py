@@ -52,32 +52,31 @@ class zynthian_gui_midi_in(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data = []
 
+		def append_device(i, devname):
+			# Check if captured by device manager
+			if self.zyngui.ctrldev_manager.get_device_driver(i+1):
+				self.list_data.append((i, -1, "[  ] ----- - " + devname))
+			else:
+				# Check mode (Acti/Omni/Multi)
+				if lib_zyncore.zmip_get_flag_active_chan(i):
+					mode = "ACTI"
+				elif lib_zyncore.zmip_get_flag_omni_chan(i):
+					mode = "OMNI"
+				else:
+					mode = "MULTI"
+				if lib_zyncore.zmop_get_route_from(self.root_layer.midi_chan, i):
+					self.list_data.append((i, 0, "[x] " + mode + " - " + devname))
+				else:
+					self.list_data.append((i, 1, "[  ] " + mode + " - " + devname))
+
 		if self.root_layer:
-			midi_ins = []
 			# Connected device ports
 			for i in range(0, 16):
 				dev_id = zynautoconnect.devices_in[i]
 				if dev_id:
-					midi_ins.append(dev_id.replace("_", " "))
+					append_device(i, dev_id.replace("_", " "))
 			# Hardcoded ports
-			midi_ins.append("Network MIDI-IN")
-
-			for i, devname in enumerate(midi_ins):
-				# Check if captured by device manager
-				if self.zyngui.ctrldev_manager.get_device_driver(i+1):
-					self.list_data.append((i, -1, "[  ] ----- - " + devname))
-				else:
-					# Check mode (Acti/Omni/Multi)
-					if lib_zyncore.zmip_get_flag_active_chan(i):
-						mode = "ACTI"
-					elif lib_zyncore.zmip_get_flag_omni_chan(i):
-						mode = "OMNI"
-					else:
-						mode = "MULTI"
-					if lib_zyncore.zmop_get_route_from(self.root_layer.midi_chan, i):
-						self.list_data.append((i, 0, "[x] " + mode + " - " + devname))
-					else:
-						self.list_data.append((i, 1, "[  ] " + mode + " - " + devname))
+			append_device(16, "Network MIDI-IN")
 
 		super().fill_list()
 
@@ -97,15 +96,16 @@ class zynthian_gui_midi_in(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
+		dev_i = self.list_data[i][0]
 		# Ignore if captured by device manager
 		if self.list_data[i][1] < 0:
 			return
 		# Route/Unroute
 		elif t == 'S':
-			lib_zyncore.zmop_set_route_from(self.root_layer.midi_chan, i, self.list_data[i][1])
+			lib_zyncore.zmop_set_route_from(self.root_layer.midi_chan, dev_i, self.list_data[i][1])
 		# Change mode
 		elif t == 'B':
-			lib_zyncore.zmip_rotate_flags_active_omni_chan(i)
+			lib_zyncore.zmip_rotate_flags_active_omni_chan(dev_i)
 		self.fill_list()
 
 
