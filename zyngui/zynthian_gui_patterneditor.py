@@ -98,6 +98,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.pattern = 0 # Pattern to edit
 		self.sequence = None # Sequence used for pattern editor sequence player
 		self.last_play_mode = zynseq.SEQ_LOOP
+		self.n_steps = 0 # Number of steps in current pattern
+		self.n_steps_beat = 0 # Number of steps per beat (current pattern)
 		self.step_width = 40 # Grid column width in pixels
 		self.keymap_offset = 60 # MIDI note number of bottom row in grid
 		self.selected_cell = [0, 60] # Location of selected cell (column,row)
@@ -285,7 +287,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		# Pattern Options
 		options['> PATTERN OPTIONS'] = None
 		options['Beats in pattern ({})'.format(self.zyngui.zynseq.libseq.getBeatsInPattern())] = 'Beats in pattern'
-		options['Steps per beat ({})'.format(self.zyngui.zynseq.libseq.getStepsPerBeat())] = 'Steps per beat'
+		options['Steps per beat ({})'.format(self.n_steps_beat)] = 'Steps per beat'
 		options['Vertical zoom ({})'.format(self.zoom)] = 'Vertical zoom'
 		scales = self.get_scales()
 		options['Scale ({})'.format(scales[self.zyngui.zynseq.libseq.getScale()])] = 'Scale'
@@ -336,7 +338,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'Beats in pattern':
 			self.enable_param_editor(self, 'bip', 'Beats in pattern', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zyngui.zynseq.libseq.getBeatsInPattern()}, self.assert_beats_in_pattern)
 		elif params == 'Steps per beat':
-			self.enable_param_editor(self, 'spb', 'Steps per beat', {'ticks':STEPS_PER_BEAT, 'value_default':3, 'value':self.zyngui.zynseq.libseq.getStepsPerBeat()}, self.assert_steps_per_beat)
+			self.enable_param_editor(self, 'spb', 'Steps per beat', {'ticks':STEPS_PER_BEAT, 'value_default':3, 'value':self.n_steps_beat}, self.assert_steps_per_beat)
 		elif params == 'Copy pattern':
 			self.copy_source = self.pattern
 			self.enable_param_editor(self, 'copy', 'Copy pattern to', {'value_min':1, 'value_max':zynseq.SEQ_MAX_PATTERNS, 'value':self.pattern}, self.copy_pattern)
@@ -464,8 +466,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		smf = zynsmf.libsmf.addSmf()
 		tempo = self.zyngui.zynseq.libseq.getTempo()
 		zynsmf.libsmf.addTempo(smf, 0, tempo)
-		ticks_per_step = zynsmf.libsmf.getTicksPerQuarterNote(smf) / self.zyngui.zynseq.libseq.getStepsPerBeat()
-		for step in range(self.zyngui.zynseq.libseq.getSteps()):
+		ticks_per_step = zynsmf.libsmf.getTicksPerQuarterNote(smf) / self.n_steps_beat
+		for step in range(self.n_steps):
 			time = int(step * ticks_per_step)
 			for note in range(128):
 				duration = self.zyngui.zynseq.libseq.getNoteDuration(step, note)
@@ -474,7 +476,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				duration = int(duration * ticks_per_step)
 				velocity = self.zyngui.zynseq.libseq.getNoteVelocity(step, note)
 				zynsmf.libsmf.addNote(smf, 0, time, duration, self.channel, note, velocity)
-		zynsmf.libsmf.setEndOfTrack(smf, 0, int(self.zyngui.zynseq.libseq.getSteps() * ticks_per_step))
+		zynsmf.libsmf.setEndOfTrack(smf, 0, int(self.n_steps * ticks_per_step))
 		zynsmf.save(smf, "{}/{}.mid".format(self.my_captures_dpath, fname))
 
 
@@ -486,6 +488,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to actually change steps per beat
 	def do_steps_per_beat(self, value):
 		self.zyngui.zynseq.libseq.setStepsPerBeat(value)
+		self.n_steps_beat = self.zyngui.zynseq.libseq.getStepsPerBeat()
+		self.n_steps = self.zyngui.zynseq.libseq.getSteps()
 		self.redraw_pending = 4
 
 
@@ -499,6 +503,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to assert beats in pattern
 	def set_beats_in_pattern(self, value):
 		self.zyngui.zynseq.libseq.setBeatsInPattern(value)
+		self.n_steps = self.zyngui.zynseq.libseq.getSteps()
 		self.redraw_pending = 4
 
 
@@ -675,7 +680,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		step = int(event.x / self.step_width)
 		row = self.zoom - int(event.y / self.row_height) - 1
 		note = self.keymap[self.keymap_offset + int(row)]["note"]
-		if step < 0 or step >= self.zyngui.zynseq.libseq.getSteps():
+		if step < 0 or step >= self.n_steps:
 			return
 		start_step = self.zyngui.zynseq.libseq.getNoteStart(step, note)
 		self.drag_start_step = step
@@ -772,7 +777,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	#	index: key map index
 	# 	Returns: Note if note added else None
 	def toggle_event(self, step, index):
-		if step < 0 or step >= self.zyngui.zynseq.libseq.getSteps() or index >= len(self.keymap):
+		if step < 0 or step >= self.n_steps or index >= len(self.keymap):
 			return
 		note = self.keymap[index]['note']
 		start_step = self.zyngui.zynseq.libseq.getNoteStart(step, note)
@@ -814,7 +819,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def draw_row(self, index, white=None):
 		row = index - self.keymap_offset
 		self.grid_canvas.itemconfig("lastnotetext%d" % (row), state="hidden")
-		for step in range(self.zyngui.zynseq.libseq.getSteps()):
+		for step in range(self.n_steps):
 			self.draw_cell(step, row, white)
 
 
@@ -837,14 +842,14 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	#	white: True for white notes
 	def draw_cell(self, step, row, white=None):
 		self.zyngui.zynseq.libseq.isPatternModified() # Flush modified flag to avoid refresh redrawing whole grid
-		cellIndex = row * self.zyngui.zynseq.libseq.getSteps() + step # Cells are stored in array sequentially: 1st row, 2nd row...
+		cellIndex = row * self.n_steps + step # Cells are stored in array sequentially: 1st row, 2nd row...
 		if cellIndex >= len(self.cells):
 			return
 		note = self.keymap[row + self.keymap_offset]["note"]
 		cell = self.cells[cellIndex]
 		if white is None:
 			if cell:
-				white =  "white" in self.grid_canvas.gettags(cell)
+				white = "white" in self.grid_canvas.gettags(cell)
 			else:
 				white = True
 		
@@ -853,18 +858,19 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			velocity_colour += 70
 		else:
 			velocity_colour = 30 * int(white)
+		fill_colour = "#%02x%02x%02x" % (velocity_colour, velocity_colour, velocity_colour)
 
 		duration = self.zyngui.zynseq.libseq.getNoteDuration(step, note)
 		if not duration:
 			duration = 1.0
-		fill_colour = "#%02x%02x%02x" % (velocity_colour, velocity_colour, velocity_colour)
 		coord = self.get_cell(step, row, duration)
+
 		if cell:
 			# Update existing cell
 			if white:
-				self.grid_canvas.itemconfig(cell, fill=fill_colour, tags=("%d,%d"%(step,row), "gridcell", "step%d"%step, "white"))
+				self.grid_canvas.itemconfig(cell, fill=fill_colour)
 			else:
-				self.grid_canvas.itemconfig(cell, fill=fill_colour, tags=("%d,%d"%(step,row), "gridcell", "step%d"%step))
+				self.grid_canvas.itemconfig(cell, fill=fill_colour)
 			self.grid_canvas.coords(cell, coord)
 		else:
 			# Create new cell
@@ -873,8 +879,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			else:
 				cell = self.grid_canvas.create_rectangle(coord, fill=fill_colour, width=0, tags=("%d,%d"%(step,row), "gridcell", "step%d"%step))
 			self.cells[cellIndex] = cell
-		if step + duration > self.zyngui.zynseq.libseq.getSteps():
-			self.grid_canvas.itemconfig("lastnotetext%d" % row, text="+%d" % (duration - self.zyngui.zynseq.libseq.getSteps() + step), state="normal")
+
+		if step + duration > self.n_steps:
+			self.grid_canvas.itemconfig("lastnotetext%d" % row, text="+%d" % (duration - self.n_steps + step), state="normal")
 
 
 	# Function to draw grid
@@ -884,9 +891,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.drawing = True
 		redraw_pending = self.redraw_pending
 		self.redraw_pending = 0
-		if len(self.cells) != self.zoom * self.zyngui.zynseq.libseq.getSteps():
+		if len(self.cells) != self.zoom * self.n_steps:
 			redraw_pending = 4
-		if self.zyngui.zynseq.libseq.getSteps() == 0:
+		if self.n_steps == 0:
 			self.drawing = False
 			return #TODO: Should we clear grid?
 		if self.keymap_offset > len(self.keymap) - self.zoom:
@@ -896,9 +903,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
 		if redraw_pending == 4:
 			self.grid_canvas.delete(tkinter.ALL)
-			self.step_width = (self.grid_width - 2) / self.zyngui.zynseq.libseq.getSteps()
+			self.step_width = (self.grid_width - 2) / self.n_steps
 			self.draw_pianoroll()
-			self.cells = [None] * self.zoom * self.zyngui.zynseq.libseq.getSteps()
+			self.cells = [None] * self.zoom * self.n_steps
 			self.play_canvas.coords("playCursor", 1 + self.playhead * self.step_width, 0, 1 + self.playhead * self.step_width + self.step_width, PLAYHEAD_HEIGHT)
 
 		# Draw cells of grid
@@ -906,8 +913,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if redraw_pending > 2:
 			# Redraw gridlines
 			self.grid_canvas.delete("gridline")
-			if self.zyngui.zynseq.libseq.getStepsPerBeat():
-				for step in range(0, self.zyngui.zynseq.libseq.getSteps() + 1, self.zyngui.zynseq.libseq.getStepsPerBeat()):
+			if self.n_steps_beat:
+				for step in range(0, self.n_steps + 1, self.n_steps_beat):
 					self.grid_canvas.create_line(step * self.step_width, 0, step * self.step_width, self.zoom * self.row_height - 1, fill=GRID_LINE, tags=("gridline"))
 
 		if redraw_pending > 1:
@@ -953,7 +960,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 		# Set z-order to allow duration to show
 		if redraw_pending > 2:
-			for step in range(self.zyngui.zynseq.libseq.getSteps()):
+			for step in range(self.n_steps):
 				self.grid_canvas.tag_lower("step%d"%step)
 		self.select_cell()
 		self.drawing = False
@@ -984,8 +991,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			index = self.selected_cell[1]
 		if step < 0:
 			step = 0
-		if step >= self.zyngui.zynseq.libseq.getSteps():
-			step = self.zyngui.zynseq.libseq.getSteps() - 1
+		if step >= self.n_steps:
+			step = self.n_steps - 1
 		if index >= len(self.keymap):
 			index = len(self.keymap) - 1
 		if index >= self.keymap_offset + self.zoom:
@@ -1015,8 +1022,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				break
 		if step < 0:
 			step = 0
-		if step >= self.zyngui.zynseq.libseq.getSteps():
-			step = self.zyngui.zynseq.libseq.getSteps() - 1
+		if step >= self.n_steps:
+			step = self.n_steps - 1
 		self.selected_cell = [int(step), index]
 		cell = self.grid_canvas.find_withtag("selection")
 		duration = self.zyngui.zynseq.libseq.getNoteDuration(step, note)
@@ -1103,26 +1110,27 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to load new pattern
 	#   index: Pattern index
 	def load_pattern(self, index):
-		steps0 = self.zyngui.zynseq.libseq.getSteps()
 		if self.bank == 0 and self.sequence == 0:
 			self.zyngui.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
 		self.pattern = index
 		self.zyngui.zynseq.libseq.selectPattern(index)
-		steps1 = self.zyngui.zynseq.libseq.getSteps()
-		if self.selected_cell[0] >= steps1:
-			self.selected_cell[0] = int(steps1) - 1
+		n_steps = self.zyngui.zynseq.libseq.getSteps()
+		self.n_steps_beat = self.zyngui.zynseq.libseq.getStepsPerBeat()
+		if self.selected_cell[0] >= n_steps:
+			self.selected_cell[0] = int(n_steps) - 1
 		self.keymap_offset = self.zyngui.zynseq.libseq.getRefNote()
 		keymap_len = len(self.keymap)
 		self.load_keymap()
 		if self.redraw_pending < 4:
-			if steps1 != steps0 or len(self.keymap) != keymap_len:
+			if n_steps != self.n_steps or len(self.keymap) != keymap_len:
+				self.n_steps = n_steps
 				self.redraw_pending = 4
 			else:
 				self.redraw_pending = 3
 		if self.keymap_offset >= len(self.keymap):
 			self.keymap_offset = len(self.keymap) // 2 - self.zoom // 2
 		self.selected_cell = [0, int(self.keymap_offset)]# + self.zoom / 2))
-		if self.duration > steps1:
+		if self.duration > n_steps:
 			self.duration = 1
 		self.draw_grid()
 		self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
@@ -1174,11 +1182,21 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				self.set_title("Stutter duration ALL")
 		else:
 			if self.edit_param == EDIT_PARAM_DUR:
-				self.set_title(f"Duration: {self.duration:0.1f} steps")
+				sel_duration = self.zyngui.zynseq.libseq.getNoteDuration(step, note)
+				if sel_duration > 0:
+					duration = sel_duration
+				else:
+					duration = self.duration
+				self.set_title(f"Duration: {duration:0.1f} steps")
 				delta = "0.1"
 				zynpot = 1
 			elif self.edit_param == EDIT_PARAM_VEL:
-				self.set_title(f"Velocity: {self.velocity}")
+				sel_velocity = self.zyngui.zynseq.libseq.getNoteVelocity(step, note)
+				if sel_velocity > 0:
+					velocity = sel_velocity
+				else:
+					velocity = self.velocity
+				self.set_title(f"Velocity: {velocity}")
 			elif self.edit_param == EDIT_PARAM_STUT_CNT:
 				self.set_title(f"Stutter count: {self.zyngui.zynseq.libseq.getStutterCount(step, note)}")
 			elif self.edit_param == EDIT_PARAM_STUT_DUR:
@@ -1205,19 +1223,16 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					index = self.selected_cell[1]
 					note = self.keymap[index]['note']
 					sel_duration = self.zyngui.zynseq.libseq.getNoteDuration(step, note)
-					sel_velocity = self.zyngui.zynseq.libseq.getNoteVelocity(step, note)
-					if sel_duration>0:
+					if sel_duration > 0:
 						duration = sel_duration
 					else:
 						duration = self.duration
-					if dval > 0:
-						duration = (int(duration * 10) + 1) / 10
-					elif dval < 0:
-						duration = (int(duration * 10) - 1) / 10
-					max_duration = self.zyngui.zynseq.libseq.getSteps()
-					if duration > max_duration or duration < 0.1:
+					duration += 0.1 * dval
+					max_duration = self.n_steps
+					if duration > max_duration or duration < 0.05:
 						return
 					if sel_duration:
+						sel_velocity = self.zyngui.zynseq.libseq.getNoteVelocity(step, note)
 						self.add_event(step, self.selected_cell[1], sel_velocity, duration)
 					else:
 						self.duration = duration
@@ -1226,10 +1241,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 			elif self.edit_mode == EDIT_MODE_ALL:
 				if self.edit_param == EDIT_PARAM_DUR:
-					if dval > 0:
-						self.zyngui.zynseq.libseq.changeDurationAll(0.1)
-					if dval < 0:
-						self.zyngui.zynseq.libseq.changeDurationAll(-0.1)
+					self.zyngui.zynseq.libseq.changeDurationAll(dval * 0.1)
 					self.redraw_pending = 3
 			else:
 				patnum = self.pattern + dval
@@ -1248,12 +1260,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 						duration = sel_duration
 					else:
 						duration = self.duration
-					if dval > 0:
-						duration = (int(duration * 10) + 10) / 10
-					elif dval < 0:
-						duration = (int(duration * 10) - 10) / 10
-					max_duration = self.zyngui.zynseq.libseq.getSteps()
-					if duration > max_duration or duration < 0.1:
+					duration += dval
+					max_duration = self.n_steps
+					if duration > max_duration or duration < 0.05:
 						return
 					if sel_duration:
 						sel_velocity = self.zyngui.zynseq.libseq.getNoteVelocity(step, note)
