@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <jack/jack.h> //provides interface to JACK
 #include <sndfile.h> //provides sound file manipulation
 #include <jack/ringbuffer.h> //provides jack ring buffer
