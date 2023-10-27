@@ -437,7 +437,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				devname = "UNKNOWN"
 			options['Control device ({})'.format(devname)] = 'Control device'
 
-		if not self.ctrldev_idev:
+		if self.ctrldev_idev and not self.ctrldev:
 			if not self.trigger_channel:
 				options['Trigger channel (OFF)'] = 'Trigger channel'
 			else:
@@ -450,13 +450,14 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		options['Play mode ({})'.format(zynseq.PLAY_MODES[self.zyngui.zynseq.libseq.getPlayMode(self.bank, self.selected_pad)])] = 'Play mode'
 		options['MIDI channel ({})'.format(1 + self.zyngui.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0))] = 'MIDI channel'
 
-		if not self.ctrldev_idev and self.trigger_channel > 0:
+		if self.ctrldev_idev and not self.ctrldev and self.trigger_channel > 0:
 			note = self.zyngui.zynseq.libseq.getTriggerNote(self.bank, self.selected_pad)
 			if note < 128:
 				trigger_note = "{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1)
 			else:
 				trigger_note = "None"
 			options['Trigger note ({})'.format(trigger_note)] = 'Trigger note'
+
 
 		options['Rename sequence'] = 'Rename sequence'
 
@@ -688,6 +689,11 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		# Zynpad's default midi learn mechanism
 		evtype = (ev & 0xF00000) >> 20
 		if evtype == 9:
+			# If trigger channel is set, filter events from other channels
+			if self.trigger_channel > 0:
+				chan = 1 + (ev & 0x0F0000) >> 16
+				if chan != self.trigger_channel:
+					return False
 			note = (ev >> 8) & 0x7F
 			if self.midi_learn:
 				self.zyngui.zynseq.libseq.setTriggerNote(self.bank, self.selected_pad, note)
