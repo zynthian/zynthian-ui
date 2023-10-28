@@ -285,12 +285,13 @@ class MultiTouch(object):
 
             if event._type == MultitouchTypes.MULTI_PRESS:
                 event.widget = zynthian_gui_config.top.winfo_containing(event.x_root, event.y_root)
-                event.offset_x = event.widget.winfo_rootx()
-                event.offset_y = event.widget.winfo_rooty()
-                event.x = event.x_root - event.offset_x # Reassert because offset has changed
-                event.y = event.y_root - event.offset_y
-                event.last_x = event.x
-                event.last_y = event.y
+                if event.widget:
+                    event.offset_x = event.widget.winfo_rootx()
+                    event.offset_y = event.widget.winfo_rooty()
+                    event.x = event.x_root - event.offset_x # Reassert because offset has changed
+                    event.y = event.y_root - event.offset_y
+                    event.last_x = event.x
+                    event.last_y = event.y
 
                 if self._g_pending:
                     # There is an existing touch event pending gesture detection 
