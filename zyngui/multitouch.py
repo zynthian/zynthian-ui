@@ -343,12 +343,13 @@ class MultiTouch(object):
                     # Cancel multitouch detection and send on_press event before processing release event
                     event._type = MultitouchTypes.GESTURE_PRESS
                     self._on_touch_timeout(True)
-                    event.widget.event_generate("<ButtonRelease-1>",
-                        x=event.x,
-                        y=event.y,
-                        rootx=event.x_root,
-                        rooty=event.y_root,
-                        time=now)
+                    if event.widget:
+                        event.widget.event_generate("<ButtonRelease-1>",
+                            x=event.x,
+                            y=event.y,
+                            rootx=event.x_root,
+                            rooty=event.y_root,
+                            time=now)
                 else:
                     for ev_handler in self._on_release:
                         if ev_handler.widget == event.widget and ev_handler.tag == event.tag:
@@ -395,22 +396,24 @@ class MultiTouch(object):
                             ev_handler.function(MultitouchTypes.GESTURE_V_DRAG, drag)
 
             elif event._type == MultitouchTypes.SINGLE_RELEASE:
-                event.widget.event_generate("<ButtonRelease-1>",
-                    x=event.x,
-                    y=event.y,
-                    rootx=event.x_root,
-                    rooty=event.y_root,
-                    time=now)
-                event._id = -1
-                event._type = MultitouchTypes.IDLE
+                if event.widget:
+                    event.widget.event_generate("<ButtonRelease-1>",
+                        x=event.x,
+                        y=event.y,
+                        rootx=event.x_root,
+                        rooty=event.y_root,
+                        time=now)
+                    event._id = -1
+                    event._type = MultitouchTypes.IDLE
 
             elif event._type == MultitouchTypes.SINGLE_MOTION:
-                event.widget.event_generate("<B1-Motion>",
-                    x=event.x,
-                    y=event.y,
-                    rootx=event.x_root,
-                    rooty=event.y_root,
-                    time=now)
+                if event.widget:
+                    event.widget.event_generate("<B1-Motion>",
+                        x=event.x,
+                        y=event.y,
+                        rootx=event.x_root,
+                        rooty=event.y_root,
+                        time=now)
 
         self.events = []
 
@@ -430,7 +433,7 @@ class MultiTouch(object):
             if ev_handler.widget == event.widget and ev_handler.tag == event.tag:
                 ev_handler.function(event)
                 event._type = MultitouchTypes.MULTI_MOTION
-        if try_single_touch and event._type == MultitouchTypes.GESTURE_PRESS:
+        if try_single_touch and event._type == MultitouchTypes.GESTURE_PRESS and event.widget:
                 event._type = MultitouchTypes.SINGLE_MOTION
                 event.widget.event_generate("<ButtonPress-1>",
                     x=event.x,
