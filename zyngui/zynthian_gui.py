@@ -1441,44 +1441,44 @@ class zynthian_gui:
 			self.show_screen_reset(params[0])
 
 	def cuia_screen_main_menu(self, params=None):
-		self.toggle_screen("main_menu")
+		self.show_screen("main_menu")
 
 	def cuia_screen_admin(self, params=None):
-		self.toggle_screen("admin")
+		self.show_screen("admin")
 
 	def cuia_screen_audio_mixer(self, params=None):
-		self.toggle_screen("audio_mixer")
+		self.show_screen("audio_mixer")
 
 	def cuia_screen_snapshot(self, params=None):
-		self.toggle_screen("snapshot")
+		self.show_screen("snapshot")
 
 	def cuia_screen_zs3(self, params=None):
-		self.toggle_screen("zs3")
+		self.show_screen("zs3")
 
 	def cuia_screen_midi_recorder(self, params=None):
-		self.toggle_screen("midi_recorder")
+		self.show_screen("midi_recorder")
 
 	def cuia_screen_alsa_mixer(self, params):
-		self.toggle_screen("alsa_mixer", hmode=zynthian_gui.SCREEN_HMODE_RESET)
+		self.show_screen("alsa_mixer", hmode=zynthian_gui.SCREEN_HMODE_RESET)
 
 	def cuia_screen_zynpad(self, params=None):
-		self.toggle_screen("zynpad")
+		self.show_screen("zynpad")
 
 	def cuia_screen_pattern_editor(self, params=None):
 		success = False
 		if self.current_screen in ["arranger", "zynpad"]:
 			success = self.screens[self.current_screen].show_pattern_editor()
 		if not success:
-			self.toggle_screen("pattern_editor")
+			self.show_screen("pattern_editor")
 
 	def cuia_screen_arranger(self, params=None):
-		self.toggle_screen("arranger")
+		self.show_screen("arranger")
 
 	def cuia_screen_bank(self, params=None):
-		self.toggle_screen("bank")
+		self.show_screen("bank")
 
 	def cuia_screen_preset(self, params=None):
-		self.toggle_screen("preset")
+		self.show_screen("preset")
 
 	def cuia_screen_calibrate(self, params=None):
 		self.calibrate_touchscreen()
@@ -1505,6 +1505,7 @@ class zynthian_gui:
 
 	def cuia_chain_options(self, params=None):
 		try:
+			self.screens['layer_options'].reset()
 			if params:
 				i = params[0] - 1
 				n = self.screens['layer'].get_num_root_layers()
@@ -1512,11 +1513,10 @@ class zynthian_gui:
 				if main_fxchain:
 					n -= 1
 				if i >= 0 and i < n:
-					self.screens['layer'].select(i)
+					self.screens['layer_options'].setup(i)
 				elif i < 0 and main_fxchain:
-					self.screens['layer'].select(n)
-			self.screens['layer_options'].reset()
-			self.toggle_screen('layer_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
+					self.screens['layer_options'].setup(n)
+			self.show_screen('layer_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 		except Exception as e:
 			logging.warning("Can't show options for layer ({})! => {}".format(params, e))
 
