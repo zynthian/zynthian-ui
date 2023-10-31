@@ -222,7 +222,7 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		if self.layer is not None and self.layer in self.zyngui.screens['layer'].root_layers:
 			super().build_view()
-			if self.index>=len(self.list_data):
+			if self.index >= len(self.list_data):
 				self.index = len(self.list_data)-1
 		else:
 			self.zyngui.close_screen()
@@ -243,6 +243,22 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.zyngui.show_screen_reset('audio_mixer')
 			return True
 		return False
+
+
+	def arrow_right(self):
+		next_index = self.layer_index + 1
+		if next_index < self.zyngui.screens['layer'].get_num_root_layers():
+			self.setup(next_index)
+			self.set_select_path()
+			self.fill_list()
+
+
+	def arrow_left(self):
+		prev_index = self.layer_index - 1
+		if prev_index >= 0:
+			self.setup(prev_index)
+			self.set_select_path()
+			self.fill_list()
 
 
 	def sublayer_options(self, sublayer, t='S'):
