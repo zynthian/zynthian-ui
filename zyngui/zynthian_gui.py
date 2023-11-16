@@ -713,8 +713,8 @@ class zynthian_gui:
 		return self.curlayer == self.screens['layer'].amixer_layer
 
 	
- 	def is_shown_audio_player(self):
-                return self.curlayer == self.audio_player
+	def is_shown_audio_player(self):
+		return self.curlayer == self.audio_player
 
 	
 	def close_screen(self):
