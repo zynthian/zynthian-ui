@@ -489,9 +489,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 			elif self.mode == 'select':
 				self.click_listbox()
 		elif t == 'B':
-			if not self.zyngui.is_shown_alsa_mixer():
-				self.zyngui.screens['layer_options'].reset()
-				self.zyngui.show_screen('layer_options')
+			self.zyngui.cuia_chain_options()
+
 		return True
 
 
