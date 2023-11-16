@@ -302,7 +302,7 @@ def midi_autoconnect(force=False):
 		try:
 			routed_in[hwp.name] = [hwp]
 			port_alias_id = get_port_alias_id(hwp)
-			if port_alias_id in zynthian_gui_config.enabled_midi_out_ports:
+			if port_alias_id.replace(" ", "_") in zynthian_gui_config.enabled_midi_out_ports:
 				enabled_hw_ports[port_alias_id] = hwp
 		except:
 			pass
@@ -314,7 +314,7 @@ def midi_autoconnect(force=False):
 		zmip = jclient.get_ports(nwp, is_input=True, is_physical=False, is_midi=True)
 		try:
 			port_alias_id = get_port_alias_id(zmip[0])
-			if port_alias_id in zynthian_gui_config.enabled_midi_out_ports:
+			if port_alias_id.replace(" ", "_") in zynthian_gui_config.enabled_midi_out_ports:
 				routed_in["NET-OUT"].append(zmip[0])
 				enabled_nw_ports[port_alias_id] = zmip[0]
 		except:
