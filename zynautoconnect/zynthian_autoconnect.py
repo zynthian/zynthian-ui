@@ -74,18 +74,19 @@ def get_port_alias_id(midi_port):
 		alias_id = '_'.join(midi_port.aliases[0].split('-')[5:])
 	except:
 		alias_id = midi_port.name
+
+	if midi_port.is_input:
+		postfix = "OUT"
+	else:
+		postfix = "IN"
+
 	if alias_id.startswith("ttymidi:"):
-		if midi_port.is_input:
-			alias_id = "DIN-5 MIDI-OUT"
-		else:
-			alias_id = "DIN-5 MIDI-IN"
+		alias_id = f"DIN-5 MIDI-{postfix}"
 	elif alias_id.startswith("a2j:"):
-		if midi_port.is_input:
-			alias_id = "ALSA MIDI-OUT"
-		else:
-			alias_id = "ALSA MIDI-IN"
+		alias_id = f"ALSA MIDI-{postfix}"
 	elif alias_id == "f_midi":
-		alias_id = None
+		alias_id = f"USB MIDI-{postfix}"
+
 	return alias_id
 
 
