@@ -26,33 +26,48 @@
 import logging
 
 # Zynthian specific modules
+from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
-# Zynthian App Selection GUI Class
+# Zynthian ZS3 options GUI Class
 #------------------------------------------------------------------------------
 
 class zynthian_gui_zs3_options(zynthian_gui_selector):
 
-	#TODO: Replace with options screen
-
 	def __init__(self):
+		self.last_action = None
 		self.zs3_id = None
 		super().__init__('Option', True)
 
 
-	def config(self, i):
-		self.zs3_id = i
+	def config(self, id):
+		self.last_action = None
+		self.zs3_id = id
 
 
 	def fill_list(self):
 		self.list_data=[]
-
-		self.list_data.append((self.zs3_rename,0, "Rename"))
-		self.list_data.append((self.zs3_update,0, "Update"))
-		self.list_data.append((self.zs3_delete,0, "Delete"))
-
+		if self.zs3_id == "zs3-0":
+			self.list_data.append((self.zs3_update, 2, "Update"))
+		else:
+			self.list_data.append((self.zs3_restoring_submenu, 1, "Restoring..."))
+			self.list_data.append((self.zs3_update, 2, "Update"))
+			self.list_data.append((self.zs3_rename, 3, "Rename"))
+			self.list_data.append((self.zs3_delete, 4, "Delete"))
+			self.preselect_last_action()
 		super().fill_list()
+
+
+	def preselect_last_action(self, force_select=False):
+		for i, data in enumerate(self.list_data):
+			if self.last_action and self.last_action == data[0]:
+				if force_select:
+					self.select_listbox(i)
+				else:
+					self.index = i
+				return i
+		return 0
 
 
 	def select_action(self, i, t='S'):
@@ -62,19 +77,93 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 			self.last_action()
 
 
+	def zs3_restoring_submenu(self):
+		try:
+			state = self.zyngui.state_manager.zs3[self.zs3_id]
+		except:
+			logging.error("Bad ZS3 id ({}).".format(self.zs3_id))
+			return
+
+		title = self.zyngui.state_manager.get_zs3_title(self.zs3_id)
+		self.zyngui.screens['option'].config(f"ZS3 Restoring: {title}", self.zs3_restoring_options_cb,
+			self.zs3_restoring_options_select_cb, close_on_select=False, click_type=True)
+		self.zyngui.show_screen('option')
+
+
+	def zs3_restoring_options_cb(self):
+		try:
+			state = self.zyngui.state_manager.zs3[self.zs3_id]
+		except:
+			logging.error(f"Bad ZS3 id ({self.zs3_id}).")
+			return
+
+		options = {}
+
+		# Restoring normal chains
+		for chain_id, chain_state in state["chains"].items():
+			if chain_id == "main":
+				continue
+			chain = self.zyngui.chain_manager.get_chain(chain_id)
+			label = f"{chain_id.title()}#{chain.get_title()}"
+			try:
+				restore_flag = chain_state["restore"]
+			except:
+				restore_flag = True
+			if restore_flag:
+				options[f"[x] {label}"] = chain_id
+			else:
+				options[f"[  ] {label}"] = chain_id
+
+		# Restoring main chain
+		main_chain_state = state["chains"]["main"]
+		try:
+			restore_flag = main_chain_state["restore"]
+		except:
+			restore_flag = True
+		if restore_flag:
+			options["[x] Main"] = "main"
+		else:
+			options["[  ] Main"] = "main"
+
+		# Restoring Audio Mixer
+		mixer_state = state["mixer"]
+		try:
+			restore_flag = mixer_state["restore"]
+		except:
+			restore_flag = True
+		if restore_flag:
+			options["[x] Mixer"] = "mixer"
+		else:
+			options["[  ] Mixer"] = "mixer"
+
+		return options
+
+	def zs3_restoring_options_select_cb(self, label, id, ct):
+		if ct == "S":
+			self.zyngui.state_manager.toggle_zs3_chain_restore_flag(self.zs3_id, id)
+		elif ct == "B":
+			try:
+				state = self.zyngui.state_manager.zs3[self.zs3_id]
+			except:
+				logging.error("Bad ZS3 ID ({}).".format(self.zs3_id))
+				return
+			# Invert selection (toggle all elements in list)
+			for chain_id in state["chains"]:
+				self.zyngui.state_manager.toggle_zs3_chain_restore_flag(self.zs3_id, chain_id)
+			self.zyngui.state_manager.toggle_zs3_chain_restore_flag(self.zs3_id, "mixer")
+
 	def zs3_rename(self):
 		title = self.zyngui.state_manager.get_zs3_title(self.zs3_id)
 		self.zyngui.show_keyboard(self.zs3_rename_cb, title)
 
-
 	def zs3_rename_cb(self, title):
-		logging.info("Renaming ZS3#{}".format(self.zs3_id))
+		logging.info("Renaming ZS3 '{}'".format(self.zs3_id))
 		self.zyngui.state_manager.set_zs3_title(self.zs3_id, title)
 		self.zyngui.close_screen()
 
 
 	def zs3_update(self):
-		logging.info("Updating ZS3#{}".format(self.zs3_id))
+		logging.info("Updating ZS3 '{}'".format(self.zs3_id))
 		self.zyngui.state_manager.save_zs3(self.zs3_id)
 		self.zyngui.close_screen()
 
@@ -84,13 +173,17 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 
 
 	def do_delete(self, params):
-		logging.info("Deleting ZS3#{}".format(self.zs3_id))
-		self.zyngui.state_manager.delete_zs3(self.zs3_id)
+		if self.zs3_id == "zs3-0":
+			logging.info("Can't delete ZS3 '{}'!".format(self.zs3_id))
+		else:
+			logging.info("Deleting ZS3 '{}'".format(self.zs3_id))
+			self.zyngui.state_manager.delete_zs3(self.zs3_id)
 		self.zyngui.close_screen()
 
 
 	def set_select_path(self):
-		self.select_path.set("ZS3 Options")
+		title = self.zyngui.state_manager.get_zs3_title(self.zs3_id)
+		self.select_path.set(f"ZS3 Options: {title}")
 
 
 #------------------------------------------------------------------------------

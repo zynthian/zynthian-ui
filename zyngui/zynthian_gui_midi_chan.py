@@ -27,7 +27,7 @@ import logging
 from datetime import datetime
 
 # Zynthian specific modules
-from zyncoder.zyncore import get_lib_zyncore
+from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 import zynautoconnect
@@ -54,31 +54,31 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 		self.midi_chan_sel = None
 		self.midi_chan_act = None
 
-		if self.mode=='ADD':
+		if self.mode == 'ADD':
 			pass
-		elif self.mode=='SET':
+		elif self.mode == 'SET':
 			self.index = self.get_midi_chan_index(chan)
-		elif self.mode=='CLONE':
+		elif self.mode == 'CLONE':
 			self.midi_chan = chan
 
 
 	def fill_list(self):
 		self.list_data=[]
-		if self.mode=='ADD' or self.mode=='SET':
+		if self.mode == 'ADD' or self.mode == 'SET':
 			for i in self.zyngui.chain_manager.get_free_midi_chans():
 				if i == zynthian_gui_config.master_midi_channel:
 					continue
 				self.list_data.append((str(i + 1), i, "MIDI CH#" + str(i + 1)))
-		elif self.mode=='CLONE':
+		elif self.mode == 'CLONE':
 			for i in self.chan_list:
 				if i in (self.midi_chan, zynthian_gui_config.master_midi_channel):
 					continue
-				elif get_lib_zyncore().get_midi_filter_clone(self.midi_chan, i):
-					cc_to_clone = get_lib_zyncore().get_midi_filter_clone_cc(self.midi_chan, i).nonzero()[0]
-					self.list_data.append((str(i+1),i,"[x] CH#{}, CC {}".format(i+1, ' '.join(map(str, cc_to_clone)))))
+				elif lib_zyncore.get_midi_filter_clone(self.midi_chan, i):
+					cc_to_clone = lib_zyncore.get_midi_filter_clone_cc(self.midi_chan, i).nonzero()[0]
+					self.list_data.append((str(i+1), i, "[x] CH#{}, CC {}".format(i+1, ' '.join(map(str, cc_to_clone)))))
 					logging.debug("CC TO CLONE: {}".format(cc_to_clone))
 				else:
-					self.list_data.append((str(i+1),i,"[  ] CH#{}".format(i+1)))
+					self.list_data.append((str(i+1), i, "[  ] CH#{}".format(i+1)))
 		super().fill_list()
 
 
@@ -92,7 +92,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 	def highlight_cloned(self):
 		i=0
 		for item in self.list_data:
-			if item[2][:2]=='[x':
+			if item[2][:2] == '[x':
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_hl})
 			else:
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_panel_tx})
@@ -100,8 +100,8 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 
 
 	def get_midi_chan_index(self, chan):
-		for i,ch in enumerate(self.chan_list):
-			if ch==chan:
+		for i, ch in enumerate(self.chan_list):
+			if ch == chan:
 				return i
 
 
@@ -109,29 +109,29 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 		selchan = self.list_data[i][1]
 		self.midi_chan_sel = selchan
 
-		if self.mode=='ADD':
+		if self.mode == 'ADD':
 			self.zyngui.modify_chain_status["midi_chan"] = selchan
 			self.zyngui.modify_chain()
 
-		elif self.mode=='SET':
+		elif self.mode == 'SET':
 			self.zyngui.chain_manager.set_midi_chan(self.zyngui.chain_manager.active_chain_id, selchan)
 			zynautoconnect.request_midi_connect()
 			self.zyngui.screens['audio_mixer'].refresh_visible_strips()
 			self.zyngui.close_screen()
 
-		elif self.mode=='CLONE':
+		elif self.mode == 'CLONE':
 
-			if selchan!=self.midi_chan:
-				if t=='S':
-					if get_lib_zyncore().get_midi_filter_clone(self.midi_chan, selchan):
-						get_lib_zyncore().set_midi_filter_clone(self.midi_chan, selchan, 0)
+			if selchan != self.midi_chan:
+				if t == 'S':
+					if lib_zyncore.get_midi_filter_clone(self.midi_chan, selchan):
+						lib_zyncore.set_midi_filter_clone(self.midi_chan, selchan, 0)
 					else:
-						get_lib_zyncore().set_midi_filter_clone(self.midi_chan, selchan, 1)
+						lib_zyncore.set_midi_filter_clone(self.midi_chan, selchan, 1)
 						
 					self.update_list()
 					logging.info("CLONE MIDI CHANNEL {} => {}".format(self.midi_chan, selchan))
 
-				elif t=='B':
+				elif t == 'B':
 					self.clone_config_cc()
 
 
@@ -141,20 +141,20 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 
 
 	def midi_chan_activity(self, chan):
-		if self.shown and self.mode!='CLONE' and not zynthian_gui_config.midi_single_active_channel and not self.zyngui.state_manager.zynseq.libseq.transportGetPlayStatus():
+		if self.shown and self.mode != 'CLONE' and not self.zyngui.state_manager.zynseq.libseq.transportGetPlayStatus():
 			i = self.get_midi_chan_index(chan)
-			if i is not None and i!=self.index:
+			if i is not None and i != self.index:
 				dts = (datetime.now()-self.last_index_change_ts).total_seconds()
 				selchan = self.list_data[self.index][1]
-				if (selchan==self.midi_chan_act and dts>0.2) or dts>2:
+				if (selchan == self.midi_chan_act and dts > zynthian_gui_config.zynswitch_bold_seconds) or dts > zynthian_gui_config.zynswitch_long_seconds:
 					self.midi_chan_act = chan
 					self.select(i)
 
 
 	def set_select_path(self):
-		if self.mode=='ADD' or self.mode=='SET':
+		if self.mode == 'ADD' or self.mode == 'SET':
 			self.select_path.set("MIDI Channel")
-		elif self.mode=='CLONE':
+		elif self.mode == 'CLONE':
 			self.select_path.set("Clone MIDI Channel {} to ...".format(self.midi_chan+1))
 
 #------------------------------------------------------------------------------

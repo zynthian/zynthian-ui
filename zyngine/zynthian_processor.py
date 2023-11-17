@@ -23,14 +23,12 @@
 #
 #*****************************************************************************
 
-from collections import OrderedDict
+import os
 import copy
 import logging
-from time import sleep
-import os
 
 # Zynthian specific modules
-from zyncoder.zyncore import get_lib_zyncore
+from zyncoder.zyncore import lib_zyncore
 
 
 class zynthian_processor:
@@ -65,6 +63,7 @@ class zynthian_processor:
         self.name = type_info[0]
         self.midi_chan = None
         self.jackname = None
+        self.chain_id = None
 
         self.bank_list = []
         self.bank_index = 0
@@ -122,7 +121,7 @@ class zynthian_processor:
         self.engine.add_processor(self) # TODO: Refactor engine to replace processor with processor
         if self.midi_chan is not None and self.midi_chan < 16:
             engine.set_midi_chan(self)
-            get_lib_zyncore().zmop_chain_set_flag_droppc(self.midi_chan, int(self.engine.options['drop_pc']))
+            lib_zyncore.zmop_chain_set_flag_droppc(self.midi_chan, int(self.engine.options['drop_pc']))
         self.refresh_controllers() #TODO: What is this?
 
     def get_name(self):
@@ -130,6 +129,16 @@ class zynthian_processor:
 
         if self.engine:
             return self.engine.get_name(self)
+
+    def set_chain_id(self, chain_id):
+        """Set the ID of the chain to which the processor belongs"""
+
+        self.chain_id = chain_id
+
+    def get_chain_id(self):
+        """Get ID of the chain to which the processor belongs, if any"""
+        return self.chain_id
+
 
     # ---------------------------------------------------------------------------
     # MIDI Channel Management
@@ -152,7 +161,7 @@ class zynthian_processor:
             self.send_ctrlfb_midi_cc()
             # Set "Drop Program Change" flag for each MIDI chan
             if midi_chan is not None and midi_chan < 16:
-                get_lib_zyncore().zmop_chain_set_flag_droppc(midi_chan, int(self.engine.options['drop_pc']))
+                lib_zyncore.zmop_chain_set_flag_droppc(midi_chan, int(self.engine.options['drop_pc']))
 
     def get_midi_chan(self):
         """Get MIDI channel (0..15 or None)
@@ -559,7 +568,7 @@ class zynthian_processor:
         """
 
         #Build control screens ...
-        self.ctrl_screens_dict = OrderedDict()
+        self.ctrl_screens_dict = {}
         for cscr in self.engine._ctrl_screens:
             self.ctrl_screens_dict[cscr[0]] = self.build_ctrl_screen(cscr[1])
 
@@ -639,7 +648,7 @@ class zynthian_processor:
 
         for k, zctrl in self.controllers_dict.items():
             if zctrl.midi_cc:
-                get_lib_zyncore().ui_send_ccontrol_change(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value))
+                lib_zyncore.ui_send_ccontrol_change(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value))
                 logging.debug("Sending MIDI CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value), k))
         self.send_ctrlfb_midi_cc()
 
@@ -652,7 +661,7 @@ class zynthian_processor:
 
         for k, zctrl in self.controllers_dict.items():
             if zctrl.midi_feedback:
-                get_lib_zyncore().ctrlfb_send_ccontrol_change(zctrl.midi_feedback[0], zctrl.midi_feedback[1], int(zctrl.value))
+                lib_zyncore.ctrlfb_send_ccontrol_change(zctrl.midi_feedback[0], zctrl.midi_feedback[1], int(zctrl.value))
                 logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_feedback[0], zctrl.midi_feedback[1], int(zctrl.value), k))
 
 
@@ -665,15 +674,14 @@ class zynthian_processor:
         
         chan : MIDI channel
         ccnum : CC number
-        ccval : CC value
+         ccval : CC value
         """
         
-        if self.engine:
-            #logging.debug("Receving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
-            try:
-                self.engine.midi_control_change(chan, ccnum, ccval)
-            except:
-                pass
+        #logging.debug("Receving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
+        try:
+            self.engine.midi_control_change(chan, ccnum, ccval)
+        except:
+            pass
 
 
     def midi_bank_msb(self, bank_msb):
@@ -764,7 +772,7 @@ class zynthian_processor:
         #Set legacy Note Range (BW compatibility)
         if self.midi_chan is not None and self.midi_chan >= 0 and 'note_range' in state:
             nr = state['note_range']
-            get_lib_zyncore().set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
+            lib_zyncore.set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
 
 
     # ---------------------------------------------------------------------------

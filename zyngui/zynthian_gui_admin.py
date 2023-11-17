@@ -45,15 +45,15 @@ from zyngine import zynthian_gui_config
 #-------------------------------------------------------------------------------
 class zynthian_gui_admin(zynthian_gui_selector):
 
-	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR',"/zynthian/zynthian-data")
-	sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR',"/zynthian/zynthian-sys")
+	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data")
+	sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR', "/zynthian/zynthian-sys")
 
 
 	def __init__(self):
-		self.commands=None
-		self.thread=None
-		self.child_pid=None
-		self.last_action=None
+		self.commands = None
+		self.thread = None
+		self.child_pid = None
+		self.last_action = None
 
 		super().__init__('Action', True)
 
@@ -67,11 +67,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data=[]
 
 		self.list_data.append((None, 0, "> MIDI"))
-
-		if zynthian_gui_config.midi_single_active_channel:
-			self.list_data.append((self.toggle_single_channel, 0, "Mode: Omni-On (Stage)"))
-		else:
-			self.list_data.append((self.toggle_single_channel, 0, "Mode: Multi-timbral"))
 
 		if zynthian_gui_config.midi_prog_change_zs3:
 			self.list_data.append((self.toggle_prog_change_zs3, 0, "[x] Program Change ZS3"))
@@ -393,25 +388,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		})
 
 		get_lib_zyncore().set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
-		self.fill_list()
-
-
-	def toggle_single_channel(self):
-		if zynthian_gui_config.midi_single_active_channel:
-			logging.info("Single Channel Mode OFF")
-			zynthian_gui_config.midi_single_active_channel = False
-		else:
-			logging.info("Single Channel Mode ON")
-			zynthian_gui_config.midi_single_active_channel = True
-
-		self.zyngui.chain_manager.set_active_chain_by_id()
-
-		# Update MIDI profile
-		zynconf.update_midi_profile({ 
-			"ZYNTHIAN_MIDI_SINGLE_ACTIVE_CHANNEL": str(int(zynthian_gui_config.midi_single_active_channel))
-		})
-
-		sleep(0.5)
 		self.fill_list()
 
 

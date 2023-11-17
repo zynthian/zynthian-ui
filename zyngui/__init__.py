@@ -14,6 +14,7 @@ __all__ = [
 	"zynthian_gui_audio_out",
 	"zynthian_gui_midi_out",
 	"zynthian_gui_audio_in",
+	"zynthian_gui_midi_in",
 	"zynthian_gui_bank",
 	"zynthian_gui_preset",
 	"zynthian_gui_control",

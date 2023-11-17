@@ -260,7 +260,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 			processor.set_preset(0)
 
 		# Select first chain so that preset selection is on "Upper" manual
-		chain_manager.set_active_chain_by_id(chain_manager.get_chain_id_by_processor(self.processors[0]))
+		chain_manager.set_active_chain_by_id(self.processors[0].chain_id)
 		self.state_manager.end_busy("setBfree")
 
 
@@ -549,10 +549,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 		try:
 			self.manuals_config = engine_state['manuals_config']
 			self.tonewheel_model = engine_state['tonewheel_model']
-			chain_manager = self.state_manager.chain_manager
 			for i, processor in enumerate(self.processors):
 				if i:
-					chain_manager.get_chain(chain_manager.get_chain_id_by_processor(processor)).mixer_chan = None
+					self.state_manager.chain_manager.get_chain(processor.chain_id).mixer_chan = None
 
 		except Exception as e:
 			logging.error(f"Can't setup extended config => {e}")

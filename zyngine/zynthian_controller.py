@@ -27,7 +27,7 @@ import liblo
 import logging
 
 # Zynthian specific modules
-from zyncoder.zyncore import get_lib_zyncore
+from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config
 
 class zynthian_controller:
@@ -61,7 +61,7 @@ class zynthian_controller:
 		self.not_on_gui = False # True to hint to GUI to show control
 		self.display_priority = 0 # Hint of order in which to display control (higher comes first)
 
-		# Parameters to send values if dedciated engine send method not available
+		# Parameters to send values if engine-specific send method not available
 		self.midi_chan = None # MIDI channel to send CC messages from control
 		self.midi_cc = None # MIDI CC number to send CC messages from control
 		self.midi_feedback = None # [chan,cc] for MIDI control feedback
@@ -356,7 +356,7 @@ class zynthian_controller:
 							#logging.debug("Sending OSC Controller '{}', {} => {}".format(self.symbol, self.osc_path, self.get_ctrl_osc_val()))
 
 						elif self.midi_cc:
-							get_lib_zyncore().ui_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
+							lib_zyncore.ui_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
 							#logging.debug("Sending MIDI Controller '{}', CH{}#CC{}={}".format(self.symbol, self.midi_chan, self.midi_cc, mval))
 
 					except Exception as e:
@@ -367,7 +367,7 @@ class zynthian_controller:
 			# Send feedback to MIDI controllers
 			#TODO: Set midi_feeback to MIDI learn
 			try:
-				get_lib_zyncore().ctrlfb_send_ccontrol_change(self.midi_feedback[0], self.midi_feedback[1], mval)
+				lib_zyncore.ctrlfb_send_ccontrol_change(self.midi_feedback[0], self.midi_feedback[1], mval)
 
 			except Exception as e:
 				logging.warning("Can't send controller feedback '{}' => Val={}".format(self.symbol, e))
@@ -385,7 +385,7 @@ class zynthian_controller:
 				dval = abs(self.ticks[0] - val)
 				for i in range(1, len(self.ticks)):
 					ndval = abs(self.ticks[i] - val)
-					if  ndval < dval:
+					if ndval < dval:
 						dval = ndval
 						index = i
 					else:

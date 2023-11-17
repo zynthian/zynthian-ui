@@ -57,6 +57,43 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
 	chan_names = ["Left", "Right"]
 
+	# ---------------------------------------------------------------------------
+	# Translations by device
+	# ---------------------------------------------------------------------------
+
+	if zynthian_gui_config.gui_layout == "Z2":
+		chan_trans = ["1", "2"]
+	else:
+		chan_trans = chan_names
+
+	translations_by_device = {
+		"sndrpihifiberry": {
+			"Digital Left": "Output {} Level".format(chan_trans[0]),
+			"Digital Right": "Output {} Level".format(chan_trans[1]),
+			"ADC Left": "Input {} Level".format(chan_trans[0]),
+			"ADC Right": "Input {} Level".format(chan_trans[1]),
+			"PGA Gain Left": "Input {} Gain".format(chan_trans[0]),
+			"PGA Gain Right": "Input {} Gain".format(chan_trans[1]),
+			"ADC Left Input": "Input {} Mode".format(chan_trans[0]),
+			"ADC Right Input": "Input {} Mode".format(chan_trans[1]),
+			"No Select": "Disabled",
+			"VINL1[SE]": "Unbalanced Mono TS",
+			"VINL2[SE]": "Unbalanced Mono TR",
+			"VINL2[SE] + VINL1[SE]": "Stereo TRS to Mono",
+			"{VIN1P, VIN1M}[DIFF]": "Balanced Mono TRS",
+			"VINR1[SE]": "Unbalanced Mono TS",
+			"VINR2[SE]": "Unbalanced Mono TR",
+			"VINR2[SE] + VINR1[SE]": "Stereo TRS to Mono",
+			"{VIN2P, VIN2M}[DIFF]": "Balanced Mono TRS"
+		}
+	}
+
+	# ---------------------------------------------------------------------------
+	# Controllers & Screens
+	# ---------------------------------------------------------------------------
+
+	_ctrl_screens = []
+
 	#----------------------------------------------------------------------------
 	# ZynAPI variables
 	#----------------------------------------------------------------------------
@@ -159,50 +196,64 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 		logging.debug(f"MIXER CTRL LIST: {ctrl_list}")
 
 		self.stop_sender_poll()
+		ctrls = self.get_mixer_zctrls(self.device_name, ctrl_list)
 
-		self._ctrls = self.get_mixer_zctrls(self.device_name, ctrl_list)
-
-
-		# Add RBPi headphones if enabled and available... 
-		if self.allow_rbpi_headphones() and self.state_manager and self.state_manager.get_zynthian_config("rbpi_headphones"):
-			try:
-				hp_ctrls = self.get_mixer_zctrls(self.rbpi_device_name, ["Headphone"])
-				if hp_ctrls:
-					logging.debug("Added RBPi Headphone volume control")
-				else:
-					hp_ctrls = self.get_mixer_zctrls(self.rbpi_device_name, ["PCM"])
-				if hp_ctrls:
-					logging.debug("Added RBPi Headphone volume control")
-				else:
-					raise Exception("RBPi Headphone volume control not found!")
-			except Exception as e:
-				logging.error(f"Can't configure RPi  headphones volume control: {e}")
-		else:
-			# Add HP amplifier interface if available
-			try:
-				if callable(lib_zyncore.set_hpvol):
-					self._ctrls.append(["Headphones", "Headphones", {
-						'graph_path': lib_zyncore.set_hpvol,
+		# Add HP amplifier interface if available
+		try:
+			if callable(lib_zyncore.set_hpvol):
+				ctrls.append(["Headphone", "Headphone", {
+					'graph_path': lib_zyncore.set_hpvol,
 					'value': lib_zyncore.get_hpvol(),
 					'value_min': 0,
 					'value_max': lib_zyncore.get_hpvol_max(),
 					'is_integer': True
 				}])
-				logging.debug("Added Headphones Amplifier volume control")
-			except:
-				pass
+				logging.debug("Added zyncore Headphones Amplifier volume control")
+		except:
+			pass
+
+		# Add RBPi headphones if enabled and available... 
+		if self.allow_rbpi_headphones() and self.state_manager and self.state_manager.get_zynthian_config("rbpi_headphones"):
+			try:
+				hp_ctrls = self.get_mixer_zctrls(self.rbpi_device_name, ["Headphone", "PCM"])
+				if "Headphone" in hp_ctrls:
+					ctrls.append(hp_ctrls["Headphone"])
+					logging.debug("Added RBPi Headphones Amplifier volume control")
+				elif "PCM" in hp_ctrls:
+					hp_zctrl = hp_ctrls["PCM"]
+					hp_zctrl[2]["symbol"] = hp_zctrl[2]["name"] = hp_zctrl[2]["short_name"] = "Headphone"
+					ctrls.append(hp_zctrl)
+					logging.debug("Added RBPi Headphones Amplifier volume control")
+				else:
+					raise Exception("RBPi Headphone volume control not found!")
+			except Exception as e:
+				logging.error(f"Can't configure RBPi  headphones volume control: {e}")
+
+		# Sort ctrls to match the configured mixer control list
+		if ctrl_list and len(ctrl_list) > 0:
+			sorted_ctrls = []
+			for ctrl_name in ctrl_list:
+				trans_name = self.translate(ctrl_name)
+				try:
+					for ctrl in ctrls:
+						if ctrl[1] == trans_name:
+							sorted_ctrls.append(ctrl)
+							break
+				except:
+					pass
+			ctrls = sorted_ctrls
 
 		# Remove controls that are no longer used
 		for name in list(processor.controllers_dict):
 			d = True
-			for i in self._ctrls:
+			for i in ctrls:
 				if name == i[0]:
 					d = False
 					break
 			if d:
 				del processor.controllers_dict[name]
 
-		for ctrl in self._ctrls:
+		for ctrl in ctrls:
 			if ctrl[0] in processor.controllers_dict:
 				processor.controllers_dict[ctrl[0]].set_options(ctrl[2])
 			processor.controllers_dict[ctrl[0]] = zynthian_controller(self, ctrl[0], ctrl[1], ctrl[2])
@@ -272,7 +323,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 					elif key == 'Playback channels':
 						ctrl_chans = value.strip().split(' - ')
 
-					elif key ==' Capture channels':
+					elif key == 'Capture channels':
 						ctrl_chans = value.strip().split(' - ')
 
 					elif key == 'Limits':
@@ -307,27 +358,33 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 									ctrl_item0 = 'on' if (ctrl_value>0) else 'off'
 
 				if ctrl_symbol and ctrl_type:
-					if ctrl_type in ("Selector", "Toggle", "VToggle") and len(ctrl_items)>1 and (not ctrl_list or ctrl_name in ctrl_list):
-						#logging.debug(f"ADDING ZCTRL SELECTOR: {ctrl_symbol} => {ctrl_item0}")
-						_ctrls.append([ctrl_symbol, ctrl_name, {
-							'graph_path': [ctrl_name, ctrl_type],
-							'labels': ctrl_items,
+					if ctrl_type in ("Selector", "Toggle", "VToggle") and len(ctrl_items) > 1 and (
+							not ctrl_list or ctrl_name in ctrl_list):
+						# Translate control name & labels
+						ctrl_name_trans = self.translate(ctrl_name)
+						ctrl_labels = [self.translate(item) for item in ctrl_items]
+						# ctrl_labels = ctrl_items
+						ctrl_value = self.translate(ctrl_item0)
+						logging.debug("ADDING ZCTRL SELECTOR: {} ({}) => {}".format(ctrl_name_trans, ctrl_symbol, ctrl_item0))
+						_ctrls.append([ctrl_symbol, ctrl_name_trans, {
+							'graph_path': [ctrl_name, ctrl_type, ctrl_items],
+							'labels': ctrl_labels,
 							'ticks': ctrl_ticks,
-							'value': ctrl_item0,
+							'value': ctrl_value,
 							'value_min': ctrl_ticks[0],
 							'value_max': ctrl_ticks[-1],
-							'is_toggle': (ctrl_type=='Toggle'),
+							'is_toggle': (ctrl_type == 'Toggle'),
 							'is_integer': True,
 							'processor': self.proc
 						}])
 
-					elif ctrl_type in ("Playback" ,"Capture"):
+					elif ctrl_type in ("Playback", "Capture"):
 						for i, chan in enumerate(ctrl_chans):
-							if len(ctrl_chans)>2:
+							if len(ctrl_chans) > 2:
 								graph_path = [ctrl_name, ctrl_type, i, len(ctrl_chans)]
 								zctrl_symbol = ctrl_symbol + "_" + str(i)
 								zctrl_name = ctrl_name + " " + str(i+1)
-							elif len(ctrl_chans)==2:
+							elif len(ctrl_chans) == 2:
 								graph_path = [ctrl_name, ctrl_type, i, 2]
 								zctrl_symbol = ctrl_symbol + "_" + str(i)
 								zctrl_name = ctrl_name + " " + self.chan_names[i]
@@ -336,8 +393,9 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 								zctrl_symbol = ctrl_symbol
 								zctrl_name = ctrl_name
 							if not ctrl_list or zctrl_name in ctrl_list:
-								logging.debug(f"ADDING ZCTRL LEVEL: {zctrl_symbol} => {ctrl_values[i]}")
-								_ctrls.append([zctrl_symbol, zctrl_name, {
+								zctrl_name_trans = self.translate(zctrl_name)
+								logging.debug("ADDING ZCTRL LEVEL: {} ({}) => {}".format(zctrl_name_trans, zctrl_symbol, ctrl_values[i]))
+								_ctrls.append([zctrl_symbol, zctrl_name_trans, {
 									'graph_path': graph_path,
 									'value': ctrl_values[i],
 									'value_min': ctrl_minval,
@@ -350,6 +408,13 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 			logging.error(err)
 
 		return _ctrls
+
+
+	def translate(self, text):
+		try:
+			return self.translations[text]
+		except:
+			return text
 
 
 	def send_controller_value(self, zctrl):
@@ -365,7 +430,12 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 					if zctrl.graph_path[1] == "VToggle":
 						amixer_command = f"set '{zctrl.graph_path[0]}' '{zctrl.value}%'"
 					else:
-						amixer_command = f"set '{zctrl.graph_path[0]}' '{zctrl.get_value2label()}'"
+						i = zctrl.get_value2index()
+						try:
+							itemval = zctrl.graph_path[2][i]
+						except:
+							itemval = zctrl.get_value()
+						amixer_command = f"set '{zctrl.graph_path[0]}' '{itemval}'"
 					logging.debug(amixer_command)
 					print(amixer_command, file=self.amixer_sender_proc.stdin, flush=True)
 				else:
@@ -374,7 +444,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 						logging.debug(amixer_command)
 						check_output(shlex.split(amixer_command))
 					else:
-						values=[]
+						values = []
 						if len(zctrl.graph_path) > 2:
 							nchans = zctrl.graph_path[3]
 							symbol_prefix = zctrl.symbol[:-1]
@@ -434,15 +504,9 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def midi_control_change(self, chan, ccnum, val):
-		if zynthian_gui_config.midi_single_active_channel:
-			for ch in range(0,16):
-				try:
-					self.learned_cc[ch][ccnum].midi_control_change(val)
-				except:
-					pass
-		else:
+		for ch in range(0, 16):
 			try:
-				self.learned_cc[chan][ccnum].midi_control_change(val)
+				self.learned_cc[ch][ccnum].midi_control_change(val)
 			except:
 				pass
 
@@ -460,13 +524,18 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 			self.device_name = "0"
 
 		try:
+			self.translations = self.translations_by_device[self.device_name]
+		except:
+			self.translations = {}
+
+		try:
 			cmd = self.sys_dir + "/sbin/get_rbpi_audio_device.sh"
 			self.rbpi_device_name = check_output(cmd, shell=True).decode("utf-8")
 		except:
 			self.rbpi_device_name = None
 
 		try:
-			scmix = os.environ.get('SOUNDCARD_MIXER',"").replace("\\n","")
+			scmix = os.environ.get('SOUNDCARD_MIXER', "").replace("\\n", "")
 			self.ctrl_list = [item.strip() for item in scmix.split(',')]
 		except:
 			self.ctrl_list = None

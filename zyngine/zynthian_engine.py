@@ -175,6 +175,7 @@ class zynthian_engine(zynthian_basic_engine):
 			'clone': True,
 			'note_range': True,
 			'audio_capture': False,
+			'midi_capture': True,
 			'audio_route': True,
 			'midi_route': False,
 			'midi_chan': True,
@@ -343,7 +344,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 	def add_processor(self, processor):
 		self.processors.append(processor)
-		processor.jackname = self.jackname #TODO: Should we set chain jackname to processor jackname?
+		processor.jackname = self.jackname
 
 
 	def remove_processor(self, processor):
@@ -568,9 +569,9 @@ class zynthian_engine(zynthian_basic_engine):
 				#Build controller depending on array length ...
 				if ctrl[0] in processor.controllers_dict:
 					if len(ctrl) > 2:
-						processor.controllers_dict[ctrl[0]].setup_controller(midich, cc, ctrl[2], ctrl[3])
+						processor.controllers_dict[ctrl[0]].setup_controller(midich, cc, ctrl[1], ctrl[2])
 					else:
-						processor.controllers_dict[ctrl[0]].setup_controller(midich, cc, ctrl[2])
+						processor.controllers_dict[ctrl[0]].setup_controller(midich, cc, ctrl[1])
 					continue
 
 				elif len(ctrl) > 4:
@@ -593,10 +594,8 @@ class zynthian_engine(zynthian_basic_engine):
 
 
 				if zctrl.midi_cc is not None:
-					if zynthian_gui_config.midi_single_active_channel:
-						self.state_manager.chain_manager.add_midi_learn(None, zctrl.midi_cc, zctrl)
-					else:
-						self.state_manager.chain_manager.add_midi_learn(zctrl.midi_chan, zctrl.midi_cc, zctrl)
+					self.state_manager.chain_manager.add_midi_learn(None, zctrl.midi_cc, zctrl)
+					#self.state_manager.chain_manager.add_midi_learn(zctrl.midi_chan, zctrl.midi_cc, zctrl)
 
 				processor.controllers_dict[zctrl.symbol] = zctrl
 

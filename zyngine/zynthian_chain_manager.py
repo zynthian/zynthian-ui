@@ -24,7 +24,6 @@
 # ****************************************************************************
 
 import logging
-from time import sleep
 
 # Zynthian specific modules
 from zyngine import *
@@ -32,6 +31,7 @@ from zyngine.zynthian_processor import zynthian_processor
 from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_engine_jalv import *
 from zyngine.zynthian_chain import *
+from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config #TODO: Factor out UI
 import zynautoconnect
 
@@ -64,8 +64,12 @@ class zynthian_chain_manager():
         self.midi_chan_2_chain_id = [None] * 16  # Chain ID mapped by MIDI channel
         self.absolute_midi_cc_binding = {} # Map of CC map indexed by MIDI channel. CC map is map of zctrl indexed by cc number
         self.chain_midi_cc_binding = {} # Map of CC map indexed by chain id. CC map is map of lists of zctrl indexed by cc number
-        self.held_zctrls = {64:[False], 66:[False], 67:[False], 69:[False]} # Map of lists of currently held (sustained) zctrls, indexed by cc number - first element indicates pedal state
-
+        self.held_zctrls = {    # Map of lists of currently held (sustained) zctrls, indexed by cc number - first element indicates pedal state
+            64: [False],
+            66: [False],
+            67: [False],
+            69: [False]
+        }
         self.get_engine_info()
         self.add_chain("main", enable_audio_thru=True)
 
@@ -142,7 +146,7 @@ class zynthian_chain_manager():
             self.state_manager.end_busy("add_chain")
             return self.chains[chain_id]
         else:
-            chain = zynthian_chain(midi_chan, enable_midi_thru, enable_audio_thru)
+            chain = zynthian_chain(chain_id, midi_chan, enable_midi_thru, enable_audio_thru)
             if chain:
                 self.chains[chain_id] = chain
 
@@ -182,7 +186,7 @@ class zynthian_chain_manager():
         for chain_id in chains_to_remove:
             chain = self.chains[chain_id]
             if isinstance(chain.midi_chan, int) and chain.midi_chan < 16:
-                get_lib_zyncore().ui_send_ccontrol_change(chain.midi_chan, 120, 0)
+                lib_zyncore.ui_send_ccontrol_change(chain.midi_chan, 120, 0)
                 self.midi_chan_2_chain_id[chain.midi_chan] = None
             if chain.mixer_chan is not None:
                 mute = self.state_manager.zynmixer.get_mute(chain.mixer_chan)
@@ -236,21 +240,22 @@ class zynthian_chain_manager():
     def get_chain(self, chain_id):
         """Get a chain object by id"""
 
-        if chain_id in self.chains:
+        try:
             return self.chains[chain_id]
-        return None
+        except:
+            return None
 
-    def get_chain_id_by_processor(self, processor):
-        """Get ID of chain that contains processor
-        
-        processor : Processor object
-        Returns : Chain ID or None if not found
-        """
 
-        for chain_id in self.chains:
-            for proc in self.get_processors(chain_id):
-                if processor == proc:
-                    return chain_id
+    def get_chain_by_index(self, index):
+        """Get a chain object by index"""
+
+        try:
+            if index == 0:
+                return self.chains["main"]
+            else:
+                return self.chains[self.chain_ids_ordered[index - 1]]
+        except:
+            return None
 
     def update_chain_ids_ordered(self):
         """Update list of chain IDs in mixer & midi channel order (excluding "main")"""
@@ -426,32 +431,29 @@ class zynthian_chain_manager():
         Returns : ID of active chain
         """
 
-        if chain_id == None:
+        if chain_id is None:
             chain_id = self.active_chain_id
         try:
             chain = self.chains[chain_id]
             self.active_chain_id = chain_id
             # Update active MIDI channel
-            if zynthian_gui_config.midi_single_active_channel:
-                midi_chan = chain.midi_chan
-                if isinstance(midi_chan, int) and midi_chan < 16:
-                    get_lib_zyncore().set_midi_active_chan(midi_chan)
-                    for pedal_cc in self.held_zctrls:
-                        if self.held_zctrls[pedal_cc][0]:
-                            get_lib_zyncore().write_zynmidi_ccontrol_change(midi_chan, pedal_cc, 127)
-                            #TODO: Check if zctrl gets added to self.held_zctrls
-                else:
-                    # Check if currently selected channel is valid
-                    midi_chan = get_lib_zyncore().get_midi_active_chan()
-                    if midi_chan >= 0 and midi_chan < 16 and self.midi_chan_2_chain_id[midi_chan]:
-                        return
-                    # Find a MIDI chain
-                    for chain in self.chains.values():
-                        if chain.is_midi():
-                            get_lib_zyncore().set_midi_active_chan(chain.midi_chan)
-                            break
+            midi_chan = chain.midi_chan
+            if isinstance(midi_chan, int) and midi_chan < 16:
+                lib_zyncore.set_midi_active_chan(midi_chan)
+                for pedal_cc in self.held_zctrls:
+                    if self.held_zctrls[pedal_cc][0]:
+                        lib_zyncore.write_zynmidi_ccontrol_change(midi_chan, pedal_cc, 127)
+                        #TODO: Check if zctrl gets added to self.held_zctrls
             else:
-                get_lib_zyncore().set_midi_active_chan(-1)
+                # Check if currently selected channel is valid
+                midi_chan = lib_zyncore.get_midi_active_chan()
+                if midi_chan >= 0 and midi_chan < 16 and self.midi_chan_2_chain_id[midi_chan]:
+                    return
+                # If not, find a valid MIDI chain => first chain's MICI channel
+                for chain in self.chains.values():
+                    if chain.is_midi():
+                        lib_zyncore.set_midi_active_chan(chain.midi_chan)
+                        break
         except:
             pass
         return self.active_chain_id
@@ -468,6 +470,23 @@ class zynthian_chain_manager():
                 self.set_active_chain_by_id(id)
                 break
         return self.active_chain_id
+
+    def set_active_chain_by_index(self, index):
+        """Select the active chain by index
+
+        index : Index of chain in chain_ids_ordered
+        Returns : ID of active chain
+        """
+
+        try:
+            if index == 0:
+                chain_id = "main"
+            else:
+                chain_id = self.chain_ids_ordered[index - 1]
+            return self.set_active_chain_by_id(chain_id)
+        except:
+            return self.active_chain_id
+
 
     def next_chain(self, nudge=1):
         """Select the next chain as active
@@ -499,8 +518,8 @@ class zynthian_chain_manager():
         return self.next_chain(-nudge)
 
     def get_active_chain(self):
-
         """Get the active chain object or None if no active chain"""
+
         if self.active_chain_id in self.chains:
             return self.chains[self.active_chain_id]
         return None
@@ -554,6 +573,8 @@ class zynthian_chain_manager():
                 zynautoconnect.request_midi_connect(True)
                 self.state_manager.end_busy("add_processor")
                 return processor
+            else:
+                chain.remove_processor(processor)
         del self.processors[proc_id] # Failed so remove processor from list
         self.state_manager.end_busy("add_processor")
         return None
@@ -684,7 +705,6 @@ class zynthian_chain_manager():
 
     def stop_unused_engines(self):
         """Stop engines that are not used by any processors"""
-
         for engine in list(self.zyngines.keys()):
             if not self.zyngines[engine].processors:
                 logging.debug(f"Stopping Unused Engine '{engine}' ...")
@@ -774,7 +794,7 @@ class zynthian_chain_manager():
 
         # Reusing Jalv engine instances raise problems (audio routing & jack names, etc..),
         # so we stop Jalv engines!
-        self.stop_unused_jalv_engines() #TODO: Can we factor this out?
+        self.stop_unused_jalv_engines() #TODO: Can we factor this out? => Not yet!!
 
         for chain_id, chain_state in state.items():
             midi_chan = None
@@ -906,39 +926,38 @@ class zynthian_chain_manager():
             if zynthian_gui_config.midi_bank_change and midi_cc == 0:
                 for processor in chain.get_processors():
                     processor.midi_bank_msb(ccval)
-                    return
+                    break
+                return
             elif zynthian_gui_config.midi_bank_change and midi_cc == 32:
                 for processor in chain.get_processors():
                     processor.midi_bank_lsb(ccval)
-                    return
+                    break
+                return
 
         # Handle absolute CC binding
         if midi_chan in self.absolute_midi_cc_binding and midi_cc in self.absolute_midi_cc_binding[midi_chan]:
             for zctrl in self.absolute_midi_cc_binding[midi_chan][midi_cc]:
                 zctrl.midi_control_change(ccval)
 
-        if zynthian_gui_config.midi_single_active_channel:
-            chain_id = self.active_chain_id
-        else:
-            chain_id = self.midi_chan_2_chain_id[midi_chan]
+        # Handle chain CC binding
+        chain_id = self.active_chain_id
         if chain_id is None:
             return
-        
-        # Handle chain CC binding
+
         if chain_id in self.chain_midi_cc_binding and midi_cc in self.chain_midi_cc_binding[chain_id]:
             for zctrl in self.chain_midi_cc_binding[chain_id][midi_cc]:
                 zctrl.midi_control_change(ccval)
+
         # Handle pedals
-        if zynthian_gui_config.midi_single_active_channel:
-            if midi_cc in self.held_zctrls:
-                if ccval >= 64:
-                    if zctrl not in self.held_zctrls[midi_cc]:
-                        self.held_zctrls[midi_cc].append(zctrl)
-                    self.held_zctrls[midi_cc][0] = True
-                else:
-                    self.held_zctrls[midi_cc][0] = False
-                    while len(self.held_zctrls[midi_cc]) > 1:
-                        self.held_zctrls[midi_cc].pop().midi_control_change(ccval)
+        if midi_cc in self.held_zctrls:
+            if ccval >= 64:
+                if zctrl not in self.held_zctrls[midi_cc]:
+                    self.held_zctrls[midi_cc].append(zctrl)
+                self.held_zctrls[midi_cc][0] = True
+            else:
+                self.held_zctrls[midi_cc][0] = False
+                while len(self.held_zctrls[midi_cc]) > 1:
+                    self.held_zctrls[midi_cc].pop().midi_control_change(ccval)
 
     def set_midi_learn_state(self, state):
         """Set MIDI learn state (e.g. from ZS3)

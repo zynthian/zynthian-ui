@@ -37,7 +37,7 @@ from zyngui import zynthian_gui_config
 # Configure logging
 #-------------------------------------------------------------------------------
 
-log_level = int(os.environ.get('ZYNTHIAN_LOG_LEVEL',logging.WARNING))
+log_level = int(os.environ.get('ZYNTHIAN_LOG_LEVEL', logging.WARNING))
 
 logger = logging.getLogger(__name__)
 logger.setLevel(log_level)
@@ -49,21 +49,26 @@ logger.setLevel(log_level)
 # Define some Constants and Global Variables
 #-------------------------------------------------------------------------------
 
-jclient = None # JACK client
-thread = None # Thread to check for changed MIDI ports
-exit_flag = False # True to exit thread
-state_manager = None # State Manager object
-chain_manager = None # Chain Manager object
-xruns = 0 # Quantity of xruns since startup or last reset
-deferred_midi_connect = False # True to perform MIDI connect on next port check cycle
-deferred_audio_connect = False # True to perform audio connect on next port check cycle
+jclient = None					# JACK client
+thread = None					# Thread to check for changed MIDI ports
+exit_flag = False				# True to exit thread
+state_manager = None			# State Manager object
+chain_manager = None			# Chain Manager object
+xruns = 0						# Quantity of xruns since startup or last reset
+deferred_midi_connect = False 	# True to perform MIDI connect on next port check cycle
+deferred_audio_connect = False 	# True to perform audio connect on next port check cycle
 
-last_hw_str = None # Fingerprint of MIDI ports used to check for change of ports
-max_num_devs = 16 # Maximum quantity of hardware inputs
-devices_in = [None for i in range(max_num_devs)] # List of hardware inputs
-extra_midi_fb_ports = []
-zyn_routed_audio = {} # Map of lists of audio sources routed by zynautoconnect, indexed by destination
-zyn_routed_midi = {} # Map of lists of MIDI sources routed by zynautoconnect, indexed by destination
+last_hw_str = None				# Fingerprint of MIDI ports used to check for change of ports
+max_num_devs = 16				# Maximum quantity of hardware inputs
+devices_in = [None for i in range(max_num_devs)]		# List of hardware inputs
+devices_in_name = [None for i in range(max_num_devs)]	# List of hardware input names
+devices_out = [None for i in range(max_num_devs)]	# List of hardware outputs
+devices_out_name = [None for i in range(max_num_devs)]	# List of hardware output names
+
+zyn_routed_audio = {}			# Map of lists of audio sources routed by zynautoconnect, indexed by destination
+zyn_routed_midi = {}			# Map of lists of MIDI sources routed by zynautoconnect, indexed by destination
+
+mididev_changed = False			# Flag mididev changes
 
 #------------------------------------------------------------------------------
 
@@ -78,49 +83,47 @@ def get_port_alias_id(midi_port):
 		alias_id = '_'.join(midi_port.aliases[0].split('-')[5:])
 	except:
 		alias_id = midi_port.name
+
+	if midi_port.is_input:
+		postfix = "OUT"
+	else:
+		postfix = "IN"
+
+	if alias_id.startswith("ttymidi:"):
+		alias_id = f"DIN-5 MIDI-{postfix}"
+	elif alias_id.startswith("a2j:"):
+		alias_id = f"ALSA MIDI-{postfix}"
+	elif alias_id == "f_midi":
+		alias_id = f"USB MIDI-{postfix}"
+	elif alias_id == "ZynMaster:midi_in":
+		alias_id = "CV/Gate Out"
+	elif alias_id == "aubio":
+		alias_id = "Audio => MIDI"
+
 	return alias_id
 
 
-def get_midi_device_name(idev):
+def get_midi_in_devid(idev):
 	if idev > 0 and idev <= len(devices_in):
-		devname = devices_in[idev - 1]
+		return devices_in[idev - 1]
 	else:
-		devname = None
-	if not devname:
-		return "UNKNOWN"
+		return None
+
+
+def get_midi_out_devid(idev):
+	if idev > 0 and idev <= len(devices_out):
+		return devices_out[idev - 1]
 	else:
-		return devname
+		return None
 
 
-def add_midi_fb_port(idev):
-	global extra_midi_fb_ports
-	try:
-		midi_dev_name = devices_in[idev]
-		extra_midi_fb_ports.append(midi_dev_name)
-	except:
-		logging.debug("Can't add midi device {} to FeedBack list!".format(idev))
-	purge_midi_fb_ports()
-
-def remove_midi_fb_port(idev):
-	global extra_midi_fb_ports
-	try:
-		midi_dev_name = devices_in[idev]
-		extra_midi_fb_ports.remove(midi_dev_name)
-	except:
-		logging.debug("Can't remove midi device {} from FeedBack list!".format(idev))
-	purge_midi_fb_ports()
-
-def clean_midi_fb_ports():
-	global extra_midi_fb_ports
-	extra_midi_fb_ports = []
+def set_mididev_changed(flag):
+	global mididev_changed
+	mididev_changed = flag
 
 
-def purge_midi_fb_ports():
-	global extra_midi_fb_ports
-	for xmp in extra_midi_fb_ports:
-		if xmp not in devices_in:
-			extra_midi_fb_ports.remove(xmp)
-
+def get_mididev_changed():
+	return mididev_changed
 
 #------------------------------------------------------------------------------
 
@@ -188,22 +191,93 @@ def midi_autoconnect():
 		except:
 			pass
 
-	# Add Zynmaster input
+	# Add Zynmaster (CV/gate output))
 	zmip = jclient.get_ports("ZynMaster:midi_in", is_input=True, is_physical=False, is_midi=True)
 	try:
-		port_alias_id = get_port_alias_id(zmip[0])
 		enabled_hw_dst_ports.append(zmip[0])
 	except:
 		pass
 
-	# Treat Aubio as physical MIDI destination port
+	# Treat Aubio as physical MIDI source port
 	aubio_out = jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
 	try:
 		hw_src_ports.append(aubio_out[0])
 	except:
 		pass
 
-	# List of MIDI over IP destination ports
+	# Create graph of required chain routes as sets of sources indexed by destination
+	required_routes = {}
+	all_midi_dst = jclient.get_ports(is_input=True, is_midi=True)
+	for dst in all_midi_dst:
+		required_routes[dst.name] = set()
+
+	# Connect MIDI Input Devices to ZynMidiRouter ports (zmips)
+	busy_idevs = []
+	for hwsp in hw_src_ports:
+		devnum = None
+		port_alias_id = get_port_alias_id(hwsp)
+		if port_alias_id:
+			# logger.debug("Connecting MIDI Input {}".format(hwsp))
+			# Device is already registered, takes the number
+			try:
+				devnum = devices_in.index(port_alias_id)
+			# else register it, taking the first free port
+			except:
+				for i in range(max_num_devs):
+					if devices_in[i] is None:
+						devnum = i
+						devices_in[devnum] = port_alias_id
+						devices_in_name[devnum] = hwsp.name
+						logger.debug("Connected MIDI-in device {}: {}".format(devnum, port_alias_id))
+						break
+			if devnum is not None:
+				dst = f"ZynMidiRouter:dev{devnum}_in"
+				required_routes[dst].add(hwsp.name)
+				busy_idevs.append(devnum)
+				set_mididev_changed(True)
+
+	# Delete disconnected input devices from list
+	for i in range(0, max_num_devs):
+		if i not in busy_idevs and devices_in[i] is not None:
+			devices_in[i] = None
+			devices_in_name[i] = None
+			set_mididev_changed(True)
+			logger.debug("Disconnected MIDI-in device {}: {}".format(i, devices_in[i]))
+
+	# Connect MIDI Output Devices
+	busy_idevs = []
+	for hwdp in hw_dst_ports:
+		devnum = None
+		port_alias_id = get_port_alias_id(hwdp)
+		if port_alias_id:
+			# logger.debug("Connecting MIDI Output {}".format(hwdp))
+			# if the device is already registered, takes the number
+			try:
+				devnum = devices_out.index(port_alias_id)
+			# else register it, taking the first free port
+			except:
+				for i in range(max_num_devs):
+					if devices_out[i] is None:
+						devnum = i
+						devices_out[devnum] = port_alias_id
+						devices_out_name[devnum] = hwdp.name
+						logger.debug("Connected MIDI-out device {}: {}".format(devnum, port_alias_id))
+						break
+			if devnum is not None:
+				src = f"ZynMidiRouter:dev{devnum}_out"
+				required_routes[hwdp.name].add(src)
+				busy_idevs.append(devnum)
+				set_mididev_changed(True)
+
+	# Delete disconnected output devices from list
+	for i in range(0, max_num_devs):
+		if i not in busy_idevs and devices_out[i] is not None:
+			devices_out[i] = None
+			devices_out_name[i] = None
+			set_mididev_changed(True)
+			logger.debug("Disconnected MIDI-out device {}: {}".format(i, devices_out[i]))
+
+	# List MIDI over IP destination ports
 	nw_dst_ports = []
 	enabled_nw_dst_ports = []
 	for port_name in ("QmidiNet:in_1", "jackrtpmidid:rtpmidi_in", "RtMidiIn Client:TouchOSC Bridge"):
@@ -216,6 +290,7 @@ def midi_autoconnect():
 		except:
 			pass
 
+	# List MIDI over IP source ports
 	nw_src_ports = []
 	enabled_nw_src_ports = []
 	for port_name in ("QmidiNet:out_1", "jackrtpmidid:rtpmidi_out", "RtMidiIn Client:TouchOSC Bridge"):
@@ -227,16 +302,9 @@ def midi_autoconnect():
 				enabled_nw_src_ports.append(ports[0])
 		except:
 			pass
-	
+
 	# Chain MIDI routing
 	#TODO: Handle processors with multiple MIDI ports
-
-	# Create graph of required chain routes as sets of sources indexed by destination
-	required_routes = {}
-
-	all_midi_dst = jclient.get_ports(is_input=True, is_midi=True)
-	for dst in all_midi_dst:
-		required_routes[dst.name] = set()
 
 	for chain_id, chain in chain_manager.chains.items():
 		# Add chain internal routes
@@ -255,9 +323,7 @@ def midi_autoconnect():
 		if chain.midi_slots and chain.midi_thru:
 			dests = []
 			for out in chain.midi_out:
-				if out == "MIDI-OUT":
-					dests += enabled_hw_dst_ports
-				elif out == "NET-OUT":
+				if out == "NET-OUT":
 					dests += enabled_nw_dst_ports
 				elif out in chain_manager.chains:
 					for processor in chain_manager.get_processors(out, "MIDI Tool", 0):
@@ -283,41 +349,14 @@ def midi_autoconnect():
 						dst = dst_ports[0]
 						required_routes[dst.name].add(src.name)
 
-	# Add MIDI Input Devices
-	for src in enabled_hw_src_ports:
-		devnum = None
-		port_alias_id = get_port_alias_id(src) #TODO: Why use port alias?
-		try:
-			#if the device is already registered, takes the number
-			if port_alias_id in devices_in:
-				devnum = devices_in.index(port_alias_id)
-			#else registers it, taking the first free port
-			else:
-				for i in range(16):
-					if devices_in[i] is None:
-						devnum = i
-						devices_in[devnum] = port_alias_id
-						break
-			if devnum is not None:
-				dst = f"ZynMidiRouter:dev{devnum}_in"
-				required_routes[dst].add(src.name)
-		except Exception as e:
-			#logger.debug("Exception {}".format(e))
-			pass
 
 	#Connect RTP-MIDI output to ZynMidiRouter:net_in
 	if zynthian_gui_config.midi_rtpmidi_enabled:
-		try:
-			required_routes["ZynMidiRouter:net_in"].add("jackrtpmidid:rtpmidi_out")
-		except:
-			pass
+		required_routes["ZynMidiRouter:net_in"].add("jackrtpmidid:rtpmidi_out")
 
 	#Connect QMidiNet output to ZynMidiRouter:net_in
 	if zynthian_gui_config.midi_network_enabled:
-		try:
-			required_routes["ZynMidiRouter:net_in"].add("QmidiNet:out_1")
-		except:
-			pass
+		required_routes["ZynMidiRouter:net_in"].add("QmidiNet:out_1")
 
 	#Connect TouchOSC output to ZynMidiRouter:net_in
 	if zynthian_gui_config.midi_touchosc_enabled:
@@ -330,10 +369,7 @@ def midi_autoconnect():
 	required_routes["ZynMidiRouter:seq_in"].add("zynsmf:midi_out")
 
 	#Connect ZynMidiRouter:main_out to zynsmf input
-	try:
-		required_routes["zynsmf:midi_in"].add("ZynMidiRouter:main_out")
-	except:
-		pass
+	required_routes["zynsmf:midi_in"].add("ZynMidiRouter:main_out")
 
 	# Add MIDI synth engine's controller-feedback to ZynMidiRouter:ctrl_in
 	for processor in chain_manager.processors.values():
@@ -344,16 +380,15 @@ def midi_autoconnect():
 			except:
 				pass
 
-
-	# Set zyncore's routing flags
 	# => Set MIDI THRU
 	lib_zyncore.set_midi_thru(zynthian_gui_config.midi_filter_output)
 
-	# Add MIDI OUT
+	# Route MIDI-THRU output to enabled output ports
 	for port in enabled_hw_dst_ports:
 		# Connect ZynMidiRouter:midi_out to...
 		required_routes[port.name].add("ZynMidiRouter:midi_out")
-	# Add network MIDI Output Ports
+
+	# Route MIDI-THRU output to network enabled output ports
 	for port in enabled_nw_dst_ports:
 		# Connect ZynMidiRouter:net_out to...
 		required_routes[port.name].add("ZynMidiRouter:net_out")
@@ -362,9 +397,8 @@ def midi_autoconnect():
 	required_routes["zynseq:input"].add("ZynMidiRouter:step_out")
 
 	#Connect ZynMidiRouter:ctrl_out to enabled MIDI-FB ports (MIDI-Controller FeedBack)
-	midi_fb_ports = zynthian_gui_config.enabled_midi_fb_ports + extra_midi_fb_ports
 	for port in hw_dst_ports:
-		if get_port_alias_id(port) in midi_fb_ports:
+		if get_port_alias_id(port) in zynthian_gui_config.enabled_midi_fb_ports:
 			required_routes[port.name].add("ZynMidiRouter:ctrl_out")
 
 	# Remove mod-ui routes
@@ -530,6 +564,19 @@ def get_audio_input_ports(exclude_system_playback=False):
 	return res
 
 
+# Connect mixer to the ffmpeg recorder
+def audio_connect_ffmpeg(timeout=2.0):
+	t = 0
+	while t < timeout:
+		try:
+			jclient.connect("zynmixer:output_a", "ffmpeg:input_1")
+			jclient.connect("zynmixer:output_b", "ffmpeg:input_2")
+			return
+		except:
+			sleep(0.1)
+			t += 0.1
+
+
 def get_audio_capture_ports():
 	"""Get list of hardware audio inputs"""
 
@@ -687,10 +734,11 @@ def cb_jack_xrun(delayed_usecs: float):
 	delayed_usecs : Period of delay caused by last jack xrun
 	"""
 
-	global xruns
-	xruns += 1
-	logger.warning(f"Jack Audio XRUN! =>count: {xruns}, delay: {delayed_usecs}us")
-	state_manager.status_xrun = True
+	if not state_manager.power_save_mode:
+		global xruns
+		xruns += 1
+		logger.warning(f"Jack Audio XRUN! =>count: {xruns}, delay: {delayed_usecs}us")
+		state_manager.status_xrun = True
 
 
 def get_jackd_cpu_load():

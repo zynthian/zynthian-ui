@@ -54,28 +54,13 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data = []
 	
-		if self.chain.is_audio():
-			self.list_data.append((self.audio_options, None, "Audio Options..."))
-
-		if self.chain.audio_thru and self.chain_id != "main":
-			self.list_data.append((self.chain_audio_capture, None, "Audio Input..."))
-
-		if self.chain.is_audio() and self.chain_id != "main":
-			#TODO: Add mixer output audio routing
-			self.list_data.append((self.chain_audio_routing, None, "Audio Routing..."))
-
-		if self.chain_id == "main" and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
-			if self.zyngui.state_manager.audio_recorder.get_status():
-				self.list_data.append((self.toggle_recording, None, "■ Stop Audio Recording"))
-			else:
-				self.list_data.append((self.toggle_recording, None, "⬤ Start Audio Recording"))
-
 		if self.chain.is_midi():
 			self.list_data.append((self.chain_note_range, None, "Note Range & Transpose"))
 			self.list_data.append((self.chain_clone, None, "Clone MIDI to..."))
+			self.list_data.append((self.chain_midi_capture, None, "MIDI Capture"))
 
 		if self.chain.midi_thru:
-			self.list_data.append((self.chain_midi_routing, None, "MIDI Routing"))
+			self.list_data.append((self.chain_midi_routing, None, "MIDI Send"))
 
 		if self.chain.is_midi():
 			self.list_data.append((self.chain_midi_chan, None, "MIDI Channel"))
@@ -83,6 +68,23 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		if self.chain.get_processor_count() and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
 			#TODO Disable midi learn for some chains???
 			self.list_data.append((self.midi_learn, None, "MIDI Learn"))
+
+		if self.chain.audio_thru and self.chain_id != "main":
+			self.list_data.append((self.chain_audio_capture, None, "Audio Capture"))
+
+		if self.chain.is_audio() and self.chain_id != "main":
+			#TODO: Add mixer output audio routing
+			self.list_data.append((self.chain_audio_routing, None, "Audio Send"))
+
+		if self.chain.is_audio():
+			self.list_data.append((self.audio_options, None, "Audio Options"))
+
+		if self.chain_id == "main" and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
+			if self.zyngui.state_manager.audio_recorder.get_status():
+				self.list_data.append((self.toggle_recording, None, "■ Stop Audio Recording"))
+			else:
+				self.list_data.append((self.toggle_recording, None, "⬤ Start Audio Recording"))
+
 
 		self.list_data.append((None, None, "> Chain"))
 
@@ -225,6 +227,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 
 	def chain_midi_routing(self):
+		self.zyngui.screens['midi_out'].set_chain(self.chain_id)
 		self.zyngui.show_screen('midi_out')
 
 
@@ -259,6 +262,11 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 	def chain_audio_capture(self):
 		self.zyngui.screens['audio_in'].set_chain(self.chain)
 		self.zyngui.show_screen('audio_in')
+
+
+	def chain_midi_capture(self):
+		self.zyngui.screens['midi_in'].set_chain(self.chain)
+		self.zyngui.show_screen('midi_in')
 
 
 	def toggle_recording(self):

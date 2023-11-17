@@ -39,7 +39,7 @@ class zynthian_chain:
     # Initialization
     # ------------------------------------------------------------------------
 
-    def __init__(self, midi_chan=None,
+    def __init__(self, chain_id, midi_chan=None,
         enable_midi_thru=False, enable_audio_thru=False):
         """ Create an instance of a chain
 
@@ -60,6 +60,7 @@ class zynthian_chain:
         self.midi_slots = []  # Midi subchain (list of lists of processors)
         self.audio_slots = []  # Audio subchain (list of lists of processors)
         self.synth_slots = [] # Synth/generator/special slots (should be single slot)
+        self.chain_id = chain_id # Chain's ID
         self.midi_chan = midi_chan  # Chain's MIDI channel - may be None for purely audio chain
         self.mixer_chan = None
         self.midi_thru = enable_midi_thru # True to pass MIDI if chain empty
@@ -84,8 +85,8 @@ class zynthian_chain:
             get_lib_zyncore().reset_midi_filter_note_range(self.midi_chan)
         else:
             self.midi_in = []
-        self.midi_out = ["MIDI-OUT", "NET-OUT"]
-        self.audio_in = [1,2]
+        self.midi_out = []
+        self.audio_in = [1, 2]
         self.audio_out = ["mixer"]
         if self.mixer_chan and self.mixer_chan > 15:
             # main mixbus chain
@@ -376,7 +377,6 @@ class zynthian_chain:
             return len(self.audio_slots)
         else:
             return len(self.synth_slots)
-        return slots
 
     def get_processor_count(self, type=None, slot=None):
         """Get quantity of processors in chain (slot)
@@ -454,6 +454,7 @@ class zynthian_chain:
             else:
                 slots.insert(slot + 1, [processor])
 
+        processor.set_chain_id(self.chain_id)
         processor.set_midi_chan(self.midi_chan)
         self.current_processor = processor
         return True
@@ -471,7 +472,7 @@ class zynthian_chain:
             for j, processor in enumerate(slot):
                 if processor == old_processor:
                     self.slots[i][j] = new_processor
-                    self.remove(old_processor)
+                    self.remove_processor(old_processor)
                     self.rebuild_graph()
                     new_processor.set_midi_chan(self.midi_chan)
                     zynautoconnect.request_audio_connect()
@@ -500,6 +501,7 @@ class zynthian_chain:
         if len(slots[slot]) == 0:
             slots.pop(slot)
 
+        processor.set_chain_id(None)
         if processor.engine:
             processor.engine.remove_processor(processor)
 
@@ -515,7 +517,8 @@ class zynthian_chain:
                 self.current_processor = self.midi_slots[0][0]
             else:
                 self.current_processor = None
-        del processor
+
+        #del processor => I don't think this is needed nor right?? (Jofemodo)
 
         return True
 

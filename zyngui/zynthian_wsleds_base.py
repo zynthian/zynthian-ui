@@ -155,7 +155,7 @@ class zynthian_wsleds_base:
 
 	def update(self):
 		# Power Save Mode
-		if self.zyngui.power_save_mode:
+		if self.zyngui.state_manager.power_save_mode:
 			if self.blink_count % 64 > 44:
 				self.blink_state = True
 			else:

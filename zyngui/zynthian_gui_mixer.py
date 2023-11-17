@@ -27,13 +27,13 @@
 import os
 import tkinter
 import logging
-from collections import OrderedDict
 
 # Zynthian specific modules
+import zynautoconnect
 from . import zynthian_gui_base
 from . import zynthian_gui_config
 from zyngui.zynthian_gui_dpm import zynthian_gui_dpm
-from zyncoder.zyncore import get_lib_zyncore
+from zyncoder.zyncore import lib_zyncore
 
 #------------------------------------------------------------------------------
 # Zynthian Mixer Strip Class
@@ -520,6 +520,7 @@ class zynthian_gui_mixer_strip():
 		elif not self.midi_learning:
 			if self.zctrls:
 				self.zctrls['mute'].set_value(value)
+				self.parent.ctrldev_refresh()
 		self.parent.pending_refresh_queue.add((self, 'mute'))
 
 
@@ -531,6 +532,7 @@ class zynthian_gui_mixer_strip():
 		elif not self.midi_learning:
 			if self.zctrls:
 				self.zctrls['solo'].set_value(value)
+				self.parent.ctrldev_refresh()
 		for strip in self.parent.visible_mixer_strips:
 			self.parent.pending_refresh_queue.add((strip, 'solo'))
 		self.parent.pending_refresh_queue.add((self.parent.main_mixbus_strip, 'solo'))
@@ -710,7 +712,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	def __init__(self):	
 		
-		super().__init__(False)
+		super().__init__(has_backbutton=False)
 
 		self.zynmixer = self.zyngui.state_manager.zynmixer
 		self.zynmixer.set_ctrl_update_cb(self.ctrl_change_cb)
@@ -721,6 +723,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.pending_refresh_queue = set() # List of (strip,control) requiring gui refresh (control=None for whole strip refresh)
 		self.midi_learning = False
+		self.ctrldev = None
+		self.ctrldev_id = None
+		self.ctrldev_idev = 0
 
 		visible_chains = zynthian_gui_config.visible_mixer_strips # Maximum quantity of mixer strips to display (Defines strip width. Main always displayed.)
 		if visible_chains < 1:
@@ -876,6 +881,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.highlighted_strip = strip
 		if strip:
 			strip.set_highlight(True)
+		self.ctrldev_refresh()
 
 
 	# Function refresh and populate visible mixer strips
@@ -969,10 +975,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 
 	def setup_zynpots(self):
-		get_lib_zyncore().setup_behaviour_zynpot(0, 0)
-		get_lib_zyncore().setup_behaviour_zynpot(1, 0)
-		get_lib_zyncore().setup_behaviour_zynpot(2, 0)
-		get_lib_zyncore().setup_behaviour_zynpot(3, 1)
+		lib_zyncore.setup_behaviour_zynpot(0, 0)
+		lib_zyncore.setup_behaviour_zynpot(1, 0)
+		lib_zyncore.setup_behaviour_zynpot(2, 0)
+		lib_zyncore.setup_behaviour_zynpot(3, 1)
 
 
 	# Function to handle zynpot CB
@@ -1048,13 +1054,21 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.pending_refresh_queue.add((self.chan2strip[chan], ctrl))
 			self.pending_refresh_queue.add((self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX], "solo"))
 
+	# --------------------------------------------------------------------------
+	# Control device
+	# --------------------------------------------------------------------------
+
+	def ctrldev_refresh(self):
+		if self.ctrldev:
+			self.ctrldev.refresh()
+
 
 	#--------------------------------------------------------------------------
 	# MIDI learning management
 	#--------------------------------------------------------------------------
 
 	def midi_learn_menu(self):
-		options = OrderedDict()
+		options = {}
 		options['Enter MIDI-learn'] = "enter"
 		options['Clean MIDI-learn'] = "clean"
 		self.zyngui.screens['option'].config("MIDI-learn", options, self.midi_learn_menu_cb)

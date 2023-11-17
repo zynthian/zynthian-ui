@@ -45,6 +45,9 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 			fg = zynthian_gui_config.color_ml,
 			bg = zynthian_gui_config.color_panel_bg
 		)
+
+
+	def show_waiting_label(self):
 		if self.wide:
 			padx = (0,2)
 		else:
@@ -52,14 +55,18 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 		self.zs3_waiting_label.grid(row=zynthian_gui_config.layout['list_pos'][0] + 4, column=zynthian_gui_config.layout['list_pos'][1], padx=padx, sticky='ew')
 
 
+	def hide_waiting_label(self):
+		self.zs3_waiting_label.grid_forget()
+
+
 	def show(self):
-		self.zyngui.state_manager.enable_learn_pc()
+		self.enable_midi_learn()
 		super().show()
 
 
 	def hide(self):
 		if self.shown:
-			self.zyngui.state_manager.disable_learn_pc()
+			self.disable_midi_learn()
 			super().hide()
 
 
@@ -72,12 +79,15 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 			self.list_data.append((None, None, "> SAVED ZS3s"))
 		for id, state in self.zyngui.state_manager.zs3.items():
 			if id == "zs3-0":
-				continue
-			if id.startswith("zs3"):
-				title = state['title']
+				title = f"Zero State ({id})"
+			elif id.startswith("zs3"):
+				title = f"{state['title']}"
 			else:
-				chan, prog = id.split('/')
-				title = f"{state['title']} -> CH#{chan}:PR#{prog}"
+				parts = id.split('/')
+				if len(parts) > 1:
+					title = f"{state['title']} -> CH#{parts[0]}:PR#{parts[1]}"
+				else:
+					title = f"{state['title']} ({id})"
 			self.list_data.append((id, state, title))
 
 		super().fill_list()
@@ -88,13 +98,15 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 		if zs3_index == "SAVE_ZS3":
 			self.zyngui.state_manager.disable_learn_pc()
 			self.zyngui.state_manager.save_zs3()
-			self.zyngui.close_screen()
+			self.update_list()
+			self.disable_midi_learn()
 			return True
 		else:
 			if t == 'S':
 				self.zyngui.state_manager.disable_learn_pc()
 				self.zyngui.state_manager.load_zs3(zs3_index)
 				self.zyngui.close_screen()
+				return True
 			elif t == 'B':
 				self.zyngui.state_manager.disable_learn_pc()
 				self.zyngui.screens['zs3_options'].config(zs3_index)
@@ -111,6 +123,16 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 			self.show_menu()
 		elif self.zyngui.current_screen == "zs3_options":
 			self.close_screen()
+
+
+	def enable_midi_learn(self):
+		self.zyngui.state_manager.enable_learn_pc()
+		self.show_waiting_label()
+
+
+	def disable_midi_learn(self):
+		self.zyngui.state_manager.disable_learn_pc()
+		self.hide_waiting_label()
 
 
 	def set_select_path(self):

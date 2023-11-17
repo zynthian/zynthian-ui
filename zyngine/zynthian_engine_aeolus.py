@@ -276,7 +276,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 					self.add_processor(processor)
 
 			# Select first chain so that preset selection is on "Grand manual"
-			chain_manager.set_active_chain_by_id(chain_manager.get_chain_id_by_processor(self.processors[0]))
+			chain_manager.set_active_chain_by_id(self.processors[0].chain_id)
 
 		self.osc_init()
 		self.get_current_config()
@@ -634,9 +634,8 @@ class zynthian_engine_aeolus(zynthian_engine):
 		if current_keyboard != self.keyboard_config:
 			self.restart_flag = True
 
-		chain_manager = self.state_manager.chain_manager
 		for i, processor in enumerate(self.processors):
-			chain = chain_manager.get_chain(chain_manager.get_chain_id_by_processor(processor))
+			chain = self.state_manager.chain_manager.get_chain(processor.chain_id)
 			try:
 				processor.division = engine_state["divisions"][i]
 			except:

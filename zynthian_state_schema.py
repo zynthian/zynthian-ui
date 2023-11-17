@@ -21,7 +21,7 @@
 # 
 #******************************************************************************
 
-{
+ZynthianState = {
     "schema_version": 1, # Version of state (snapshot) model
     "last_snapshot_fpath": "/zynthian/zynthian-my-data/snapshots/000/My Snapshot 1.zss", # Full path and filename of last loaded snapshot
     "midi_profile_state": { # MIDI Profile TODO: Document midi profile

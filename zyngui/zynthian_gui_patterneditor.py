@@ -271,9 +271,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.zynseq.libseq.setRefNote(self.keymap_offset)
 		self.zynseq.libseq.setPlayMode(self.bank, self.sequence, self.last_play_mode)
 		self.zynseq.libseq.enableMidiRecord(False)
-		# Restore multi-timbral mode if needed
-		if not zynthian_gui_config.midi_single_active_channel:
-			get_lib_zyncore().set_midi_active_chan(-1)
 
 
 	# Function to add menus
