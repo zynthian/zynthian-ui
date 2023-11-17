@@ -662,6 +662,9 @@ class zynthian_state_manager:
                 except Exception as e:
                     loggin.error(f"Failed to restore processor {proc_id} state => {e}")
 
+        if "active_chain" in zs3_state:
+            self.chain_manager.set_active_chain_by_id(zs3_state["active_chain"])
+
         if "mixer" in zs3_state:
             try:
                 restore_flag = zs3_state["mixer"]["restore"]
@@ -672,9 +675,6 @@ class zynthian_state_manager:
 
         if "midi_capture" in zs3_state:
             self.set_midi_capture_state(zs3_state['midi_capture'])
-
-        if "active_chain" in zs3_state:
-            self.chain_manager.set_active_chain_by_id(zs3_state["active_chain"])
 
         if "midi_learn_cc" in zs3_state:
             self.chain_manager.set_midi_learn_state(zs3_state["midi_learn_cc"])

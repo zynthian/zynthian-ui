@@ -829,7 +829,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 					if zynthian_gui_config.enable_dpm:
 						strip.draw_dpm()
 					strip.refresh_status()
-
+			self.highlight_active_chain()
 
 	# Function to refresh display (fast)
 	def plot_zctrls(self):
