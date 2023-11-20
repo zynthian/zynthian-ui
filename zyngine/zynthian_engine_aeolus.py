@@ -22,19 +22,17 @@
 #
 #******************************************************************************
 
-from os.path import exists as file_exists
 import copy
-import logging
 import json
-from  subprocess import Popen, DEVNULL
+import logging
 import pexpect
-from collections import OrderedDict
 from time import sleep
+from subprocess import Popen, DEVNULL
+from os.path import exists as file_exists
 
+import zynautoconnect
 from . import zynthian_engine
 from zyngine.zynthian_processor import zynthian_processor
-import zynautoconnect
-
 
 #------------------------------------------------------------------------------
 # Aeolus Engine Class
@@ -58,9 +56,11 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 	keyboard_config_names = {
 		15: "Manual I+II+III+Pedals",
+		13: "Manual I+III+Pedals",
 		11: "Manual I+II+Pedals",
 		9: "Manual I+Pedals",
 		7: "Manual I+II+III",
+		5: "Manual I+III",
 		3: "Manual I+II",
 		1: "Manual I"
 	}
@@ -69,18 +69,19 @@ class zynthian_engine_aeolus(zynthian_engine):
 	# Tuning temperaments
 	# ---------------------------------------------------------------------------
 
-	temperament_names = OrderedDict()
-	temperament_names[5] = "Equally Tempered"
-	temperament_names[4] = "Well Tempered"
-	temperament_names[1] = "Meantone 1/4"
-	temperament_names[2] = "Werckmeister III"
-	temperament_names[3] = "Kimberger III"
-	temperament_names[6] = "Vogel/Ahrend"
-	temperament_names[7] = "Vallotti"
-	temperament_names[8] = "Kellner"
-	temperament_names[9] = "Lehman"
-	temperament_names[10] = "Pure C/F/G"
-	temperament_names[0] = "Pythagorean"
+	temperament_names = {
+		5: "Equally Tempered",
+		4: "Well Tempered",
+		1: "Meantone 1/4",
+		2: "Werckmeister III",
+		3: "Kimberger III",
+		6: "Vogel/Ahrend",
+		7: "Vallotti",
+		8: "Kellner",
+		9: "Lehman",
+		10: "Pure C/F/G",
+		0: "Pythagorean"
+	}
 
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
@@ -92,7 +93,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 		['Trem Amp', 13, 64],
 	]
 
-	instrument = OrderedDict()
+	instrument = {}
 	instrument["Manual I"] = {
 		"ctrls": [
 			['Principal 8', 14, 'off', 'off|on', [2, 0]],
@@ -362,7 +363,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def add_processor(self, processor):
-		chain_manager = self.state_manager.chain_manager
 		processor_index = len(self.processors)
 		try:
 			processor.division = list(self.instrument)[processor_index]
@@ -555,6 +555,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 
 	def get_controllers_dict(self, processor):
+		logging.error("AEOLUS GET CONTROLLERS DICT!!")
 		self._ctrls = self.instrument[processor.division]['ctrls']
 		self._ctrl_screens = self.instrument[processor.division]['ctrl_screens']
 		return super().get_controllers_dict(processor)
