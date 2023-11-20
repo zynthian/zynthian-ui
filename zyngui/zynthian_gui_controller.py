@@ -310,9 +310,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		if self.hidden or self.zctrl is None:
 			return
 
-		val = None
 		if self.zctrl.ticks:
-			val = self.zctrl.value
 			n = len(self.zctrl.ticks)
 			try:
 				i = self.zctrl.get_value2index()
@@ -325,7 +323,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 			except Exception as err:
 				logging.error("Calc Error => %s" % (err))
 				self.value_plot = self.zctrl.value
-				self.value_print="ERR"
+				self.value_print = "ERR"
 
 		else:
 			if self.zctrl.value_range == 0:
