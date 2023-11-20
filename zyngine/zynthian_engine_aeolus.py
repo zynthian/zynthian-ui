@@ -94,7 +94,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 	instrument = OrderedDict()
 	instrument["Manual I"] = {
-		"ctrls":  [
+		"ctrls": [
 			['Principal 8', 14, 'off', 'off|on', [2, 0]],
 			['Principal 4', 15, 'off', 'off|on', [2, 1]],
 			['Octave 2', 16, 'off', 'off|on', [2, 2]],
@@ -113,7 +113,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 			['I+III', 29, 'off', 'off|on', [2, 15]],
 			['Sustain', 64, "off", "off|on"]
 		],
-		"ctrl_screens" : [
+		"ctrl_screens": [
 			['Manual I (1)', ['Principal 8', 'Principal 4', 'Octave 2', 'Octave 1']],
 			['Manual I (2)', ['Quint 5 1/3', 'Quint 2 2/3', 'Tibia 8', 'Celesta 8']],
 			['Manual I (3)', ['Flöte 8', 'Flöte 4', 'Flöte 2', 'Cymbel VI']],
@@ -122,7 +122,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 		]
 	}
 	instrument["Manual II"] = {
-		"ctrls":  [
+		"ctrls": [
 			['Rohrflöte 8', 30, 'off', 'off|on', [1, 0]],
 			['Harmonic Flute 4', 31, 'off', 'off|on', [1, 1]],
 			['Flauto Dolce 4', 32, 'off', 'off|on', [1, 2]],
@@ -138,7 +138,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 			['II+III', 42, 'off', 'off|on', [1, 12]],
 			['Sustain', 64, "off", "off|on"]
 		] + swell_ctrls,
-		"ctrl_screens" : [
+		"ctrl_screens": [
 			['Manual II (1)', ['Rohrflöte 8', 'Harmonic Flute 4', 'Flauto Dolce 4', 'Nasard 2 2/3']],
 			['Manual II (2)', ['Ottavina 2', 'Tertia 1 3/5', 'Sesqui-altera', 'Septime']],
 			['Manual II (3)', ['Krumhorn', 'Melodia', 'Tremulant', 'II+III']],
@@ -146,7 +146,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 		]
 	}
 	instrument["Manual III"] = {
-		"ctrls":  [
+		"ctrls": [
 			['Principal 8', 43, 'off', 'off|on', [0, 0]],
 			['Gemshorn 8', 44, 'off', 'off|on', [0, 1]],
 			['Quinta-dena 8', 45, 'off', 'off|on', [0, 2]],
@@ -161,7 +161,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 			['Tremulant', 54, 'off', 'off|on', [0, 11]],
 			['Sustain', 64, "off", "off|on"]
 		] + swell_ctrls,
-		"ctrl_screens" : [
+		"ctrl_screens": [
 			['Manual III (1)', ['Principal 8', 'Gemshorn 8', 'Quinta-dena 8', 'Suabile 8']],
 			['Manual III (2)', ['Rohrflöte 4', 'Dulzflöte 4', 'Quintflöte 2 2/3', 'Super-octave 2']],
 			['Manual III (3)', ['Sifflet 1', 'Cymbel VI', 'Oboe', 'Tremulant']],
@@ -169,7 +169,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 		]
 	}
 	instrument["Pedals"] = {
-		"ctrls":  [
+		"ctrls": [
 			['Subbass 16', 55, 'off', 'off|on', [3, 0]],
 			['Principal 16', 56, 'off', 'off|on', [3, 1]],
 			['Principal 8', 57, 'off', 'off|on', [3, 2]],
@@ -188,7 +188,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 			['P+III', 70, 'off', 'off|on', [3, 15]],
 			['Sustain', 64, "off", "off|on"]
 		],
-		"ctrl_screens" : [
+		"ctrl_screens": [
 			['Pedals (1)', ['Subbass 16', 'Principal 16', 'Principal 8', 'Principal 4']],
 			['Pedals (2)', ['Octave 2', 'Octave 1', 'Quint 5 1/3', 'Quint 2 2/3']],
 			['Pedals (3)', ['Mixtur', 'Fagott 16', 'Trombone 16', 'Bombarde 32']],
@@ -197,8 +197,8 @@ class zynthian_engine_aeolus(zynthian_engine):
 		]
 	}
 
-	_ctrls=[]
-	_ctrl_screens=[]
+	_ctrls = []
+	_ctrl_screens = []
 
 	#----------------------------------------------------------------------------
 	# Config variables
@@ -250,7 +250,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 			if self.ready:
 				return
 			timeout -= 0.25
-			sleep (0.25)
+			sleep(0.25)
 
 
 	def start(self):
@@ -386,7 +386,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 		if self.osc_server is None:
 			return
-		keyboard_order = [2,1,0,3] # Order of manuals/pedals in aeolus native config
+		keyboard_order = [2, 1, 0, 3] # Order of manuals/pedals in aeolus native config
 		midi_config = []
 		for chan in range(16):
 			val = 0

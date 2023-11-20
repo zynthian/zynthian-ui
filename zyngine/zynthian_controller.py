@@ -217,7 +217,7 @@ class zynthian_controller:
 			self.is_integer = False
 		# Selector
 		elif isinstance(maxval, str):
-			self.labels=maxval.split('|')
+			self.labels = maxval.split('|')
 		elif isinstance(maxval, list):
 			if isinstance(maxval[0], list):
 				self.labels = maxval[0]

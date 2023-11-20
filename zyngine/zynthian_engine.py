@@ -552,16 +552,16 @@ class zynthian_engine(zynthian_basic_engine):
 				if isinstance(ctrl[1], str):
 					#replace variables ...
 					tpl = Template(ctrl[1])
-					cc = tpl.safe_substitute(ch = midich)
+					cc = tpl.safe_substitute(ch=midich)
 					try:
-						cc = tpl.safe_substitute(i = processor.part_i)
+						cc = tpl.safe_substitute(i=processor.part_i)
 					except:
 						pass
 					#set osc_port option ...
 					if self.osc_target_port > 0:
 						options['osc_port'] = self.osc_target_port
 					#debug message
-					logging.debug('CONTROLLER %s OSC PATH => %s' % (ctrl[0],cc))
+					logging.debug('CONTROLLER %s OSC PATH => %s' % (ctrl[0], cc))
 				#MIDI Control =>
 				else:
 					cc = ctrl[1]
