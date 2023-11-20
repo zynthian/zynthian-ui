@@ -22,7 +22,6 @@
 # 
 #******************************************************************************
 
-#import sys
 import os
 import json
 import liblo
@@ -30,7 +29,6 @@ import logging
 import pexpect
 from time import sleep
 from string import Template
-from collections import OrderedDict
 from os.path import isfile, isdir, ismount, join
 
 from . import zynthian_controller
@@ -510,9 +508,9 @@ class zynthian_engine(zynthian_basic_engine):
 
 			try:
 				with open(self.preset_favs_fpath) as f:
-					self.preset_favs = json.load(f, object_pairs_hook=OrderedDict)
+					self.preset_favs = json.load(f)
 			except:
-				self.preset_favs = OrderedDict()
+				self.preset_favs = {}
 
 			#TODO: Remove invalid presets from favourite's list
 
@@ -569,9 +567,9 @@ class zynthian_engine(zynthian_basic_engine):
 				#Build controller depending on array length ...
 				if ctrl[0] in processor.controllers_dict:
 					if len(ctrl) > 2:
-						processor.controllers_dict[ctrl[0]].setup_controller(midich, cc, ctrl[1], ctrl[2])
+						processor.controllers_dict[ctrl[0]].setup_controller(midich, cc, ctrl[2], ctrl[3])
 					else:
-						processor.controllers_dict[ctrl[0]].setup_controller(midich, cc, ctrl[1])
+						processor.controllers_dict[ctrl[0]].setup_controller(midich, cc, ctrl[2])
 					continue
 
 				elif len(ctrl) > 4:
@@ -613,14 +611,14 @@ class zynthian_engine(zynthian_basic_engine):
 			self._ctrl_screens = []
 
 		# Get zctrls by group
-		zctrl_group = OrderedDict()
+		zctrl_group = {}
 		for symbol, zctrl in zctrl_dict.items():
 			gsymbol = zctrl.group_symbol
 			if gsymbol not in zctrl_group:
 				if zctrl.group_name:
-					zctrl_group[gsymbol] = [zctrl.group_name, OrderedDict()]
+					zctrl_group[gsymbol] = [zctrl.group_name, {}]
 				else:
-					zctrl_group[gsymbol] = [zctrl.group_symbol, OrderedDict()]
+					zctrl_group[gsymbol] = [zctrl.group_symbol, {}]
 			zctrl_group[gsymbol][1][symbol] = zctrl
 		if None in zctrl_group:
 			zctrl_group[None][0] = "Ctrls"
