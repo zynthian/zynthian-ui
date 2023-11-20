@@ -39,13 +39,11 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 	def __init__(self):
 		self.chain = None
-		self.chain_id = None
 		super().__init__('Audio Out', True)
 
 
-	def set_chain(self, chain_id):
-		self.chain_id = chain_id
-		self.chain = self.zyngui.chain_manager.get_chain(chain_id)
+	def set_chain(self, chain):
+		self.chain = chain
 
 
 	def fill_list(self):
@@ -53,7 +51,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 		#TODO: Show chain name
 		mod_running = False
-		if self.chain_id == "main":
+		if self.chain.chain_id == "main":
 			port_names = [["system", "system"]] #TODO: Get list of available system outputs
 		else:
 			port_names = [["mixer", "mixer"]]
@@ -61,7 +59,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 		for chain_id, chain in self.zyngui.chain_manager.chains.items():
 			if isinstance(chain, zynthian_engine_modui):
 				mod_running = True
-			if chain_id == self.chain_id:
+			if chain == self.chain:
 				continue
 			for processor in chain.get_processors():
 				jackname = processor.get_jackname()
@@ -70,7 +68,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 					port_names.append([f"{chain_id}/{processor.id}: {processor.get_basepath()}", processor])
 
 		if mod_running:
-			port_names.append([self.chain_id, None, "mod-ui"]) #TODO: Should this now be handled by chain input
+			port_names.append([self.chain.chain_id, None, "mod-ui"]) #TODO: Should this now be handled by chain input
 
 		for title,processor in port_names:
 			if processor in self.chain.audio_out:

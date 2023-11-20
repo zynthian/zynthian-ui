@@ -227,12 +227,12 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 
 	def chain_midi_routing(self):
-		self.zyngui.screens['midi_out'].set_chain(self.chain_id)
+		self.zyngui.screens['midi_out'].set_chain(self.chain)
 		self.zyngui.show_screen('midi_out')
 
 
 	def chain_audio_routing(self):
-		self.zyngui.screens['audio_out'].set_chain(self.chain_id)
+		self.zyngui.screens['audio_out'].set_chain(self.chain)
 		self.zyngui.show_screen('audio_out')
 
 

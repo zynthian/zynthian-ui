@@ -64,9 +64,9 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 			midi_outs["NET-OUT"] = "Network MIDI-OUT"
 			midi_outs["CVGate-OUT"] = "CV/Gate"
 
-			for chain_id, chain in chain_manager.chains.items():
+			for chain_id, chain in self.chain_manager.chains.items():
 				if chain.is_midi() and chain != self.chain:
-					if chain_manager.will_route_howl(chain_manager.active_chain_id, chain_id):
+					if self.chain_manager.will_route_howl(self.chain_manager.active_chain_id, chain_id):
 						midi_outs[chain_id] = f"∞Chain {chain_id}"
 					else:
 						midi_outs[chain_id] = f"Chain {chain_id}"
@@ -86,7 +86,7 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 
 	def select_action(self, i, t='S'):
 		try:
-			zynthian_gui_config.zyngui.chain_manager.get_active_chain().toggle_midi_out(self.list_data[i][1])
+			self.chain_manager.get_active_chain().toggle_midi_out(self.list_data[i][1])
 			self.fill_list()
 		except Exception as e:
 			logging.error(e)
