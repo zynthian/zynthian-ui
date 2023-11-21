@@ -74,6 +74,7 @@ class zynthian_gui_midi_in(zynthian_gui_selector):
 					append_device(i, dev_id.replace("_", " "))
 			# Hardcoded ports
 			append_device(16, "Network MIDI-IN")
+			append_device(20, "CVGate-IN")
 
 		super().fill_list()
 
