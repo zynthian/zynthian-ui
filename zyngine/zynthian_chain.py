@@ -27,7 +27,7 @@ import logging
 
 # Zynthian specific modules
 import zynautoconnect
-from zyncoder.zyncore import get_lib_zyncore
+from zyncoder.zyncore import lib_zyncore
 
 CHAIN_MODE_SERIES = 0
 CHAIN_MODE_PARALLEL = 1
@@ -80,9 +80,10 @@ class zynthian_chain:
         Does not change midi/audio thru
         """
 
-        if self.midi_chan is not None and self.midi_chan < 16:
+        if isinstance(self.midi_chan, int) and self.midi_chan>=0 and self.midi_chan < 16:
             self.midi_in = ["ZynMidiRouter:ch{}_out".format(self.midi_chan)]
-            get_lib_zyncore().reset_midi_filter_note_range(self.midi_chan)
+            lib_zyncore.reset_midi_filter_note_range(self.midi_chan)
+            lib_zyncore.reset_midi_filter_clone(self.midi_chan)
         else:
             self.midi_in = []
         self.midi_out = []
@@ -95,8 +96,6 @@ class zynthian_chain:
             self.audio_thru = True
         self.current_processor = None
         self.remove_all_processors()
-        if isinstance(self.midi_chan, int) and self.midi_chan < 16:
-            get_lib_zyncore().reset_midi_filter_clone(self.midi_chan)
 
     def get_slots_by_type(self, type):
         """Get the list of slots
@@ -135,8 +134,8 @@ class zynthian_chain:
         chan : MIDI channel 0..15 or None
         """
 
-        if self.midi_chan == get_lib_zyncore().get_midi_active_chan():
-            get_lib_zyncore().set_midi_active_chan(chan)
+        if self.midi_chan == lib_zyncore.get_midi_active_chan():
+            lib_zyncore.set_midi_active_chan(chan)
         self.midi_chan = chan
         for processor in self.get_processors():
             processor.set_midi_chan(chan)
@@ -257,6 +256,8 @@ class zynthian_chain:
     def rebuild_midi_graph(self):
         """Build dictionary of lists of sources mapped by destination"""
 
+        self.setup_zmop_options()
+
         if not zynautoconnect.acquire_lock():
             return
  
@@ -357,6 +358,17 @@ class zynthian_chain:
         """Returns True if chain processes MIDI"""
 
         return self.midi_thru or len(self.midi_slots) or self.midi_chan is not None
+
+
+    def setup_zmop_options(self):
+        if len(self.synth_slots) > 0 or len(self.audio_slots) > 0:
+            logging.info(f"Dropping MIDI CC & PC from chain {self.chain_id}")
+            lib_zyncore.zmop_chain_set_flag_droppc(self.midi_chan, 1)
+            lib_zyncore.zmop_chain_set_flag_dropcc(self.midi_chan, 1)
+        else:
+            logging.info(f"Routing MIDI CC & PC to chain {self.chain_id}")
+            lib_zyncore.zmop_chain_set_flag_droppc(self.midi_chan, 0)
+            lib_zyncore.zmop_chain_set_flag_dropcc(self.midi_chan, 0)
 
     # ---------------------------------------------------------------------------
     # Processor management

@@ -120,9 +120,9 @@ class zynthian_processor:
         self.engine = engine
         self.engine.add_processor(self) # TODO: Refactor engine to replace processor with processor
         if self.midi_chan is not None and self.midi_chan < 16:
-            engine.set_midi_chan(self)
-            lib_zyncore.zmop_chain_set_flag_droppc(self.midi_chan, int(self.engine.options['drop_pc']))
-        self.refresh_controllers() #TODO: What is this?
+            engine.set_midi_chan(self) # When adding the processor to the engine, shouldn't be set the midi chan?
+        self.refresh_controllers() # Get the controllers list from the engine.
+
 
     def get_name(self):
         """Get name of processor"""
@@ -154,14 +154,9 @@ class zynthian_processor:
         if self.engine:
             self.engine.set_midi_chan(self)
             for zctrl in self.controllers_dict.values():
-                ml = self.engine.state_manager.chain_manager.get_midi_learn_from_zctrl(zctrl)
-                if ml:
-                    self.engine.state_manager.chain_manager.add_midi_learn(midi_chan, zctrl.midi_cc, zctrl)
-                zctrl.set_midi_chan(midi_chan) #TODO: Why does zctrl have midi chan?
+                zctrl.set_midi_chan(midi_chan)
+                #TODO: Why does zctrl have midi chan? => Because it's convenient when sending MIDI CC to the engine
             self.send_ctrlfb_midi_cc()
-            # Set "Drop Program Change" flag for each MIDI chan
-            if midi_chan is not None and midi_chan < 16:
-                lib_zyncore.zmop_chain_set_flag_droppc(midi_chan, int(self.engine.options['drop_pc']))
 
     def get_midi_chan(self):
         """Get MIDI channel (0..15 or None)
@@ -649,7 +644,7 @@ class zynthian_processor:
         for k, zctrl in self.controllers_dict.items():
             if zctrl.midi_cc:
                 lib_zyncore.ui_send_ccontrol_change(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value))
-                logging.debug("Sending MIDI CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value), k))
+                #logging.debug("Sending MIDI CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value), k))
         self.send_ctrlfb_midi_cc()
 
 
@@ -662,7 +657,7 @@ class zynthian_processor:
         for k, zctrl in self.controllers_dict.items():
             if zctrl.midi_feedback:
                 lib_zyncore.ctrlfb_send_ccontrol_change(zctrl.midi_feedback[0], zctrl.midi_feedback[1], int(zctrl.value))
-                logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_feedback[0], zctrl.midi_feedback[1], int(zctrl.value), k))
+                #logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_feedback[0], zctrl.midi_feedback[1], int(zctrl.value), k))
 
 
     #----------------------------------------------------------------------------
