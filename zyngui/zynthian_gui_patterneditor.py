@@ -39,7 +39,7 @@ from collections import OrderedDict
 from zyngui import zynthian_gui_config
 from zynlibs.zynsmf import zynsmf
 from . import zynthian_gui_base
-from zyncoder.zyncore import get_lib_zyncore
+from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 
 
@@ -196,10 +196,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	#Function to set values of encoders
 	def setup_zynpots(self):
-		get_lib_zyncore().setup_behaviour_zynpot(0, 0)
-		get_lib_zyncore().setup_behaviour_zynpot(1, 0)
-		get_lib_zyncore().setup_behaviour_zynpot(2, 0)
-		get_lib_zyncore().setup_behaviour_zynpot(3, 0)
+		lib_zyncore.setup_behaviour_zynpot(0, 0)
+		lib_zyncore.setup_behaviour_zynpot(1, 0)
+		lib_zyncore.setup_behaviour_zynpot(2, 0)
+		lib_zyncore.setup_behaviour_zynpot(3, 0)
 
 
 	# Function to show GUI
@@ -234,12 +234,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.last_play_mode = self.zynseq.libseq.getPlayMode(self.bank, self.sequence)
 		if self.last_play_mode not in (zynseq.SEQ_LOOP,zynseq.SEQ_LOOPALL):
 			self.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynseq.SEQ_LOOP)
-		if zynthian_gui_config.midi_single_active_channel:
 			try:
-				self.zyngui.chain_manager.set_active_chain_by_id(self.zyngui.chain_manager.midi_chan_2_chain_id[self.channel])
-				get_lib_zyncore().set_midi_active_chan(self.channel)
+				chain_id = self.zyngui.chain_manager.midi_chan_2_chain_id[self.channel]
+				self.zyngui.chain_manager.set_active_chain_by_id(chain_id)
 			except:
-				pass
+				logging.error(f"Couldn't set active chain to channel {self.channel}.")
 		zoom = self.zynseq.libseq.getVerticalZoom()
 		if zoom != self.zoom:
 			self.set_vzoom(zoom)
