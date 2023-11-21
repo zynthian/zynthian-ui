@@ -1989,7 +1989,7 @@ class zynthian_gui:
 							if self.current_screen == 'audio_mixer':
 								self.screens['audio_mixer'].refresh_visible_strips()
 							elif self.current_screen == 'control':
-								self.screens['control'].build_view()
+								self.chain_control()
 
 				# Note-On...
 				elif evtype == 0x9:
