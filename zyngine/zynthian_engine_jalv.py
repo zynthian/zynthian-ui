@@ -288,7 +288,7 @@ class zynthian_engine_jalv(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def set_midi_chan(self, processor):
-		if self.plugin_name=="Triceratops":
+		if self.plugin_name == "Triceratops":
 			self.lv2_zctrl_dict["midi_channel"].set_value(processor.midi_chan+1.5)
 		elif self.plugin_name.startswith("SO-"):
 			self.lv2_zctrl_dict["channel"].set_value(processor.midi_chan)
