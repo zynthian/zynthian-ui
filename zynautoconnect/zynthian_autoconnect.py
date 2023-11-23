@@ -223,6 +223,7 @@ def midi_autoconnect():
 				devnum = devices_in.index(port_alias_id)
 			# else register it, taking the first free port
 			except:
+				set_mididev_changed(True)
 				for i in range(max_num_devs):
 					if devices_in[i] is None:
 						devnum = i
@@ -234,7 +235,6 @@ def midi_autoconnect():
 				dst = f"ZynMidiRouter:dev{devnum}_in"
 				required_routes[dst].add(hwsp.name)
 				busy_idevs.append(devnum)
-				set_mididev_changed(True)
 
 	# Delete disconnected input devices from list
 	for i in range(0, max_num_devs):
@@ -256,6 +256,7 @@ def midi_autoconnect():
 				devnum = devices_out.index(port_alias_id)
 			# else register it, taking the first free port
 			except:
+				set_mididev_changed(True)
 				for i in range(max_num_devs):
 					if devices_out[i] is None:
 						devnum = i
@@ -267,7 +268,6 @@ def midi_autoconnect():
 				src = f"ZynMidiRouter:dev{devnum}_out"
 				required_routes[hwdp.name].add(src)
 				busy_idevs.append(devnum)
-				set_mididev_changed(True)
 
 	# Delete disconnected output devices from list
 	for i in range(0, max_num_devs):
