@@ -920,7 +920,7 @@ class zynthian_gui:
 		self.state_manager.zynmixer.set_mute(256, 1)
 		if self.chain_manager.get_chain_count() > 0:
 			self.screens['snapshot'].save_last_state_snapshot()
-		self.state_manager.reset()
+		self.state_manager.clean_all()
 		self.show_screen_reset('main_menu')
 		self.state_manager.zynmixer.set_mute(256, 0)
 

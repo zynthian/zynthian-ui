@@ -27,7 +27,6 @@ import jack
 import logging
 from time import sleep
 from threading  import Thread, Lock
-from collections import OrderedDict
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
@@ -52,6 +51,7 @@ logger.setLevel(log_level)
 jclient = None					# JACK client
 thread = None					# Thread to check for changed MIDI ports
 exit_flag = False				# True to exit thread
+paused_flag = False				# True id autoconnect task is paused
 state_manager = None			# State Manager object
 chain_manager = None			# Chain Manager object
 xruns = 0						# Quantity of xruns since startup or last reset
@@ -133,10 +133,12 @@ def request_audio_connect(fast = False):
 	fast : True for fast update (default=False to trigger on next 2s cycle
 	"""
 
-	global deferred_audio_connect
+	#if paused_flag:
+	#	return
 	if fast:
 		audio_autoconnect()
 	else:
+		global deferred_audio_connect
 		deferred_audio_connect = True
 
 def request_midi_connect(fast = False):
@@ -145,19 +147,24 @@ def request_midi_connect(fast = False):
 	fast : True for fast update (default=False to trigger on next 2s cycle
 	"""
 
-	global deferred_midi_connect
+	#if paused_flag:
+	#	return
 	if fast:
 		midi_autoconnect()
 	else:
+		global deferred_midi_connect
 		deferred_midi_connect = True
 
 def midi_autoconnect():
 	"""Connect all expected MIDI routes"""
 
-	#Get Mutex Lock 
+	#Get Mutex Lock
 	if not acquire_lock():
 		return
-	
+
+	global deferred_midi_connect
+	deferred_midi_connect = False
+
 	#logger.info("ZynAutoConnect: MIDI ...")
 	global zyn_routed_midi
 
@@ -412,7 +419,11 @@ def midi_autoconnect():
 			zyn_routed_midi[dst] = sources
 		else:
 			zyn_routed_midi[dst] = zyn_routed_midi[dst].union(sources)
-		current_routes = jclient.get_all_connections(dst)
+		try:
+			current_routes = jclient.get_all_connections(dst)
+		except Exception as e:
+			current_routes = []
+			logging.error(e)
 		for src in current_routes:
 			if src.name in sources:
 				continue
@@ -437,7 +448,10 @@ def audio_autoconnect():
 	#Get Mutex Lock
 	if not acquire_lock():
 		return
-	
+
+	global deferred_audio_connect
+	deferred_audio_connect = False
+
 	# Get System Playback Ports
 	system_playback_ports = jclient.get_ports("system:playback", is_input=True, is_audio=True, is_physical=True)
 
@@ -515,7 +529,11 @@ def audio_autoconnect():
 			zyn_routed_audio[dst] = sources
 		else:
 			zyn_routed_audio[dst] = zyn_routed_audio[dst].union(sources)
-		current_routes = jclient.get_all_connections(dst)
+		try:
+			current_routes = jclient.get_all_connections(dst)
+		except Exception as e:
+			current_routes = []
+			logging.error(e)
 		for src in current_routes:
 			if src.name in sources:
 				continue
@@ -542,12 +560,12 @@ def get_audio_input_ports(exclude_system_playback=False):
 	exclude_system_playback : True to exclude playback destinations
 	TODO : Used for side-chaining but could be done better
 	"""
-	res = OrderedDict()
+	res = {}
 	try:
 		for aip in jclient.get_ports(is_input=True, is_audio=True, is_physical=False):
 			parts = aip.name.split(':')
 			client_name = parts[0]
-			if client_name in ["jack_capture","Headphones","mod-monitor"] or client_name[:7] == "effect_":
+			if client_name in ["jack_capture", "Headphones", "mod-monitor"] or client_name[:7] == "effect_":
 				continue
 			if client_name == "system" or client_name == "zynmixer":
 				if exclude_system_playback:
@@ -592,7 +610,7 @@ def autoconnect():
 def auto_connect_thread():
 	"""Thread to run autoconnect, checking if physical (hardware) interfaces have changed, e.g. USB plug"""
 
-	global last_hw_str, deferred_midi_connect, deferred_audio_connect
+	global last_hw_str
 
 	deferred_timeout = 2 # Period to run deferred connect (in seconds)
 	deferred_inc = 0.1 # Delay between loop cycles (in seconds)
@@ -601,39 +619,38 @@ def auto_connect_thread():
 	do_midi = False
 
 	while not exit_flag:
-		try:
-			if deferred_count > deferred_timeout:
-				deferred_count = 0
+		if not paused_flag:
+			try:
+				if deferred_count > deferred_timeout:
+					deferred_count = 0
 
-				hw_str = "" # Hardware device fingerprint
-				hw_src_ports = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
-				for hw in hw_src_ports:
-					hw_str += hw.name + "\n"
-				hw_dst_ports = jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
-				for hw in hw_dst_ports:
-					hw_str += hw.name + "\n"
-				if hw_str != last_hw_str:
-					last_hw_str = hw_str
-					do_midi = True
+					hw_str = "" # Hardware device fingerprint
+					hw_src_ports = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
+					for hw in hw_src_ports:
+						hw_str += hw.name + "\n"
+					hw_dst_ports = jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
+					for hw in hw_dst_ports:
+						hw_str += hw.name + "\n"
+					if hw_str != last_hw_str:
+						last_hw_str = hw_str
+						do_midi = True
 
-				if deferred_midi_connect:
-					do_midi = True
+					if deferred_midi_connect:
+						do_midi = True
 
-				if deferred_audio_connect:
-					do_audio = True
+					if deferred_audio_connect:
+						do_audio = True
 
-			if do_midi:
-				midi_autoconnect()
-				do_midi = False
-				deferred_midi_connect = False
+				if do_midi:
+					midi_autoconnect()
+					do_midi = False
 
-			if do_audio:
-				audio_autoconnect()
-				do_audio = False
-				deferred_audio_connect = False
+				if do_audio:
+					audio_autoconnect()
+					do_audio = False
 
-		except Exception as err:
-			logger.error("ZynAutoConnect ERROR: {}".format(err))
+			except Exception as err:
+				logger.error("ZynAutoConnect ERROR: {}".format(err))
 
 		sleep(deferred_inc)
 		deferred_count += deferred_inc
@@ -716,6 +733,13 @@ def stop():
 		jclient.deactivate()
 		jclient = None
 
+def pause():
+	global paused_flag
+	paused_flag = True
+
+def resume():
+	global paused_flag
+	paused_flag = False
 
 def is_running():
 	"""Check if autoconnect thread is running
@@ -734,7 +758,7 @@ def cb_jack_xrun(delayed_usecs: float):
 	delayed_usecs : Period of delay caused by last jack xrun
 	"""
 
-	if not state_manager.power_save_mode:
+	if not state_manager.power_save_mode and not paused_flag:
 		global xruns
 		xruns += 1
 		logger.warning(f"Jack Audio XRUN! =>count: {xruns}, delay: {delayed_usecs}us")

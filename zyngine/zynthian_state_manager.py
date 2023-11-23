@@ -156,6 +156,17 @@ class zynthian_state_manager:
             self.thread.join()
         self.thread = None
 
+        self.last_snapshot_fpath = ""
+        self.zynseq.transport_stop("ALL")
+        self.zynseq.load("")
+        self.chain_manager.remove_all_chains(True)
+        self.reset_zs3()
+        self.ctrldev_manager.end_all()
+        self.destroy_audio_player()
+        zynautoconnect.stop()
+
+        self.busy.clear() # TODO Is this needed?
+
         if self.hwmon_thermal_file:
             self.hwmon_thermal_file.close
             self.hwmon_thermal_file = None
@@ -166,21 +177,9 @@ class zynthian_state_manager:
             self.get_throttled_file.close
             self.get_throttled_file = None
 
-        zynautoconnect.stop()
-        self.last_snapshot_fpath = ""
-        self.zynseq.transport_stop("ALL")
-        self.zynseq.load("")
-        self.chain_manager.remove_all_chains(True)
-        self.reset_zs3()
-        self.ctrldev_manager.end_all()
-        self.busy.clear()
-        self.destroy_audio_player()
 
     def start(self):
         """Start state manager"""
-
-        self.zynmixer.reset_state()
-        self.reload_midi_config()
 
         # Initialize SOC sensors monitoring
         try:
@@ -199,18 +198,31 @@ class zynthian_state_manager:
             except Exception as e:
                 logging.error("Can't access monitoring sensors at all!")
 
-        self.create_audio_player()
-
         zynautoconnect.start(self)
+        self.zynmixer.reset_state()
+        self.reload_midi_config()
+        self.create_audio_player()
         zynautoconnect.request_midi_connect(True)
         zynautoconnect.request_audio_connect(True)
 
         self.exit_flag = False
-        self.thread = Thread(target=self.thread_task, args=())
+        self.thread = Thread(target=self.thread_task, args=(0.2,))
         self.thread.name = "Status Manager MIDI"
         self.thread.daemon = True # thread dies with the program
         self.thread.start()
 
+    def clean_all(self):
+        self.start_busy("clean all")
+        self.last_snapshot_fpath = ""
+        self.zynseq.transport_stop("ALL")
+        self.zynseq.load("")
+        self.chain_manager.remove_all_chains(True)
+        self.reset_zs3()
+        self.zynmixer.reset_state()
+        self.reload_midi_config()
+        zynautoconnect.request_midi_connect(True)
+        zynautoconnect.request_audio_connect(True)
+        self.end_busy("clean all")
 
     def start_busy(self, id):
         """Add client to list of busy clients
@@ -218,7 +230,7 @@ class zynthian_state_manager:
         """
 
         self.busy.add(id)
-        logging.debug(f"Start busy for {id}. Current busy clients: {self.busy}")
+        #logging.debug(f"Start busy for {id}. Current busy clients: {self.busy}")
 
     def end_busy(self, id):
         """Remove client from list of busy clients
@@ -229,7 +241,7 @@ class zynthian_state_manager:
             self.busy.remove(id)
         except:
             pass
-        logging.debug(f"End busy for {id}: {self.busy}")
+        #logging.debug(f"End busy for {id}: {self.busy}")
 
     def is_busy(self, client=None):
         """Check if clients are busy
@@ -245,7 +257,7 @@ class zynthian_state_manager:
     # Background task thread
     #------------------------------------------------------------------
 
-    def thread_task(self):
+    def thread_task(self, tsleep=0.2):
         """Perform background tasks"""
 
         status_counter = 0
@@ -339,7 +351,7 @@ class zynthian_state_manager:
             except Exception as e:
                 logging.exception(e)
 
-            sleep(0.2)
+            sleep(tsleep)
 
     #----------------------------------------------------------------------------
     # Snapshot Save & Load
@@ -1076,7 +1088,7 @@ class zynthian_state_manager:
         """Reload MII configuration from saved state"""
 
         zynconf.load_config()
-        midi_profile_fpath=zynconf.get_midi_config_fpath()
+        midi_profile_fpath = zynconf.get_midi_config_fpath()
         if midi_profile_fpath:
             zynconf.load_config(True, midi_profile_fpath)
             zynthian_gui_config.set_midi_config()

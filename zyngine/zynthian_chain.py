@@ -174,6 +174,32 @@ class zynthian_chain:
             pass
         return ""
 
+    def get_name(self):
+        """Get chain name (short title)
+
+        Returns : User defined chain title or default processor name if not set
+        """
+
+        try:
+            if self.title:
+                return self.title
+            elif self.synth_slots:
+                return f"{self.synth_slots[0][0].get_basepath()}"
+            elif self.get_slot_count("Audio Effect"):
+                return self.get_processors("Audio Effect")[0].get_basepath()
+            elif self.get_slot_count("MIDI Tool"):
+                return self.get_processors("MIDI Tool")[0].get_basepath()
+            elif self.audio_thru:
+                if self.audio_in == ["zynmixer:send"]:
+                    return "Main"
+                label = ""
+                for input in self.audio_in:
+                    label += f"Audio input {input}\n"
+                return label
+        except:
+            pass
+        return ""
+
     # ----------------------------------------------------------------------------
     # Routing Graph
     # ----------------------------------------------------------------------------

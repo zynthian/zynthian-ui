@@ -173,6 +173,7 @@ class zynthian_chain_manager():
 
         if chain_id not in self.chains:
             return False
+        zynautoconnect.pause()
         self.state_manager.start_busy("remove_chain")
         chains_to_remove = [chain_id] # List of associated chains that shold be removed simultaneously
         chain = self.chains[chain_id]
@@ -209,14 +210,15 @@ class zynthian_chain_manager():
             else:
                 self.state_manager.zynmixer.set_mute(chain.mixer_chan, mute, True)
 
-        if stop_engines:
-            self.stop_unused_engines()
         self.update_chain_ids_ordered()
         zynautoconnect.request_audio_connect(True)
         zynautoconnect.request_midi_connect(True)
+        if stop_engines:
+            self.stop_unused_engines()
         if self.active_chain_id not in self.chains:
             self.next_chain()
         self.state_manager.end_busy("remove_chain")
+        zynautoconnect.resume()
         return True
 
     def remove_all_chains(self, stop_engines=True):

@@ -333,7 +333,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			if self.chain_id == "main":
 				chain_name = "Main"
 			else:
-				chain_name = self.chain.current_processor.get_basepath()
+				chain_name = self.chain.get_name()
 			self.select_path.set(f"Chain Options: {chain_name}")
 		except:
 			self.select_path.set("Chain Options")
