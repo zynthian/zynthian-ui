@@ -794,10 +794,7 @@ class zynthian_processor:
 
         path = self.engine.get_path(self)
         if self.midi_chan is not None:
-            if self.midi_chan < 16:
-                path = "{}#{}".format(self.midi_chan + 1, path)
-            elif self.midi_chan == 256: #TODO: This is not valid
-                path = "Main#{}".format(path)
+            path = "{}#{}".format(self.midi_chan + 1, path)
         return path
 
 
@@ -816,19 +813,16 @@ class zynthian_processor:
 
         #TODO: UI
         path = self.get_basepath()
-
         subpath = None
         bank_name = self.get_preset_bank_name()
-        if bank_name and bank_name!="None" and not path.endswith(bank_name):
+        if bank_name and bank_name != "None" and not path.endswith(bank_name):
             subpath = bank_name
             if self.preset_name:
                 subpath += "/" + self.preset_name
         elif self.preset_name:
             subpath = self.preset_name
-
         if subpath:
             path += " > " + subpath
-
         return path
 
 #-----------------------------------------------------------------------------

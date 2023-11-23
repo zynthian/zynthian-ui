@@ -117,15 +117,16 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def fill_list(self):
 		self.list_data = []
+		curproc = self.zyngui.get_current_processor()
 
-		if not self.zyngui.get_current_processor():
+		if not curproc:
 			logging.error("Can't fill control screen list for None processor!")
 			return
 
-		if self.zyngui.get_current_processor().engine.nickname=="MX":
-			self.processors = [self.zyngui.get_current_processor()]
+		if curproc in (self.zyngui.state_manager.alsa_mixer_processor, self.zyngui.state_manager.audio_player):
+			self.processors = [curproc]
 		else:
-			self.processors = self.zyngui.chain_manager.get_processors(self.zyngui.chain_manager.active_chain_id)
+			self.processors = self.zyngui.chain_manager.get_processors(curproc.chain_id)
 
 		i = 0
 		for processor in self.processors:
@@ -139,7 +140,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 					i += 1
 					j += 1
 
-		self.index = self.zyngui.get_current_processor().get_current_screen_index()
+		self.index = curproc.get_current_screen_index()
 		self.get_screen_info()
 		super().fill_list()
 
@@ -487,9 +488,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 			elif self.mode == 'select':
 				self.click_listbox()
 		elif t == 'B':
-			if not self.zyngui.is_shown_alsa_mixer():
-				self.zyngui.screens['chain_options'].setup(self.zyngui.chain_manager.active_chain_id, self.screen_processor)
-				self.zyngui.show_screen('chain_options')
+			self.zyngui.cuia_chain_options()
+
 		return True
 
 

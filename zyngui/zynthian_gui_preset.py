@@ -46,8 +46,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			logging.error("Can't fill preset list for None processor!")
 			return
 
-		self.zyngui.get_current_processor().load_preset_list()
-		self.list_data = self.zyngui.get_current_processor().preset_list
+		proc = self.zyngui.get_current_processor()
+		proc.load_preset_list()
+		self.list_data = proc.preset_list
 		super().fill_list()
 
 
@@ -64,7 +65,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 
 	def select_action(self, i, t='S'):
-		if t=='S':
+		if t == 'S':
 			self.zyngui.state_manager.start_busy("set preset")
 			self.zyngui.get_current_processor().set_preset(i)
 			self.zyngui.state_manager.end_busy("set preset")
@@ -86,17 +87,19 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def show_preset_options(self):
 		preset = copy.deepcopy(self.list_data[self.index])
-		if preset[2][0] == "❤": preset[2] = preset[2][1:]
+		if preset[2][0] == "❤":
+			preset[2] = preset[2][1:]
 		preset_name = preset[2]
 		options = {}
-		if self.zyngui.get_current_processor().engine.is_preset_fav(preset):
+		proc = self.zyngui.get_current_processor()
+		if proc.engine.is_preset_fav(preset):
 			options["[x] Favourite"] = preset
 		else:
 			options["[  ] Favourite"] = preset
-		if self.zyngui.get_current_processor().engine.is_preset_user(preset):
-			if hasattr(self.zyngui.get_current_processor().engine, "rename_preset"):
+		if proc.engine.is_preset_user(preset):
+			if hasattr(proc.engine, "rename_preset"):
 				options["Rename"] = preset
-			if hasattr(self.zyngui.get_current_processor().engine, "delete_preset"):
+			if hasattr(proc.engine, "delete_preset"):
 				options["Delete"] = preset
 		self.zyngui.screens['option'].config("Preset: {}".format(preset_name), options, self.preset_options_cb)
 		self.zyngui.show_screen('option')
@@ -128,13 +131,13 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		preset = self.list_data[self.index]
 		new_name = new_name.strip()
 		if new_name != preset[2]:
-			processor = self.zyngui.get_current_processor()
+			proc = self.zyngui.get_current_processor()
 			try:
 				#TODO: Confirm rename if overwriting existing preset or duplicate name
-				processor.engine.rename_preset(processor.bank_info, preset, new_name)
-				if preset[0] == self.zyngui.curlayer.preset_info[0]:
+				proc.engine.rename_preset(proc.bank_info, preset, new_name)
+				if preset[0] == proc.preset_info[0]:
 					self.zyngui.state_manager.start_busy("set preset")
-					self.zyngui.curlayer.set_preset_by_id(preset[0])
+					proc.set_preset_by_id(preset[0])
 					self.fill_list()
 					self.zyngui.state_manager.end_busy("set preset")
 			except Exception as e:
@@ -147,8 +150,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def delete_preset_confirmed(self, preset):
 		try:
-			count = self.zyngui.get_current_processor().engine.delete_preset(self.zyngui.get_current_processor().bank_info, preset)
-			self.zyngui.get_current_processor().remove_preset_fav(preset)
+			proc = self.zyngui.get_current_processor()
+			count = proc.engine.delete_preset(proc.bank_info, preset)
+			proc.remove_preset_fav(preset)
 			self.fill_list()
 			if count == 0:
 				self.zyngui.close_screen()
@@ -182,8 +186,11 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 
 	def cuia_toggle_play(self):
-		if self.zyngui.curlayer.engine.nickname == "AP":
-			self.click_listbox()
+		try:
+			if self.zyngui.get_current_processor().engine.nickname == "AP":
+				self.click_listbox()
+		except:
+			pass
 
 
 	def set_selector(self, zs_hiden=False):

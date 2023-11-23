@@ -186,7 +186,7 @@ def midi_autoconnect():
 	for port in hw_dst_ports:
 		try:
 			port_alias_id = get_port_alias_id(port)
-			if port_alias_id in zynthian_gui_config.enabled_midi_out_ports:
+			if port_alias_id.replace(" ", "_") in zynthian_gui_config.enabled_midi_out_ports:
 				enabled_hw_dst_ports.append(port)
 		except:
 			pass
@@ -285,7 +285,7 @@ def midi_autoconnect():
 		nw_dst_ports += ports
 		try:
 			port_alias_id = get_port_alias_id(ports[0])
-			if port_alias_id in zynthian_gui_config.enabled_midi_out_ports:
+			if port_alias_id.replace(" ", "_") in zynthian_gui_config.enabled_midi_out_ports:
 				enabled_nw_dst_ports.append(ports[0])
 		except:
 			pass

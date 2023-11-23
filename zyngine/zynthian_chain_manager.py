@@ -74,7 +74,6 @@ class zynthian_chain_manager():
         self.get_engine_info()
         self.add_chain("main", enable_audio_thru=True)
 
-
     @classmethod
     def get_engine_info(cls):
         """Update dictionary of available engines"""
@@ -246,9 +245,8 @@ class zynthian_chain_manager():
         except:
             return None
 
-
     def get_chain_by_index(self, index):
-        """Get a chain object by index"""
+        """Get a chain object by the index"""
 
         try:
             if index == 0:
@@ -257,6 +255,28 @@ class zynthian_chain_manager():
                 return self.chains[self.chain_ids_ordered[index - 1]]
         except:
             return None
+
+    def get_chain_id_by_index(self, index):
+        """Get a chain ID by the index"""
+
+        try:
+            if index == 0:
+                return "main"
+            else:
+                return self.chain_ids_ordered[index - 1]
+        except:
+            return None
+
+    def get_chain_index(self, chain_id):
+        """Get the index of a chain"""
+
+        if chain_id == "main":
+            return 0
+        else:
+            try:
+                return self.chain_ids_ordered.index(chain_id) + 1
+            except:
+                return -1
 
     def update_chain_ids_ordered(self):
         """Update list of chain IDs in mixer & midi channel order (excluding "main")"""

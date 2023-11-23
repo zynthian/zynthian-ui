@@ -781,14 +781,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.dpm_a = self.dpm_b = None
 
 	# Redefine set_title
-	def set_title(self, title = "Mixer", fg=None, bg=None, timeout = None):
+	def set_title(self, title="Mixer", fg=None, bg=None, timeout = None):
 		if self.zyngui.state_manager.last_snapshot_fpath:
 			fparts = os.path.splitext(self.zyngui.state_manager.last_snapshot_fpath)
 			if self.zyngui.screens['snapshot'].bankless_mode:
 				ssname = os.path.basename(fparts[0])
 			else:
 				ssname = fparts[0].rsplit("/", 1)[-1]
-			title +=  ": " + ssname.replace("last_state", "Last State")
+			title += ": " + ssname.replace("last_state", "Last State")
 
 		super().set_title(title, fg, bg, timeout)
 
