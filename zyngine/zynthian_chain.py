@@ -282,8 +282,6 @@ class zynthian_chain:
     def rebuild_midi_graph(self):
         """Build dictionary of lists of sources mapped by destination"""
 
-        self.setup_zmop_options()
-
         if not zynautoconnect.acquire_lock():
             return
  
@@ -388,11 +386,11 @@ class zynthian_chain:
 
     def setup_zmop_options(self):
         if len(self.synth_slots) > 0 or len(self.audio_slots) > 0:
-            logging.info(f"Dropping MIDI CC & PC from chain {self.chain_id}")
+            #logging.info(f"Dropping MIDI CC & PC from chain {self.chain_id}")
             lib_zyncore.zmop_chain_set_flag_droppc(self.midi_chan, 1)
             lib_zyncore.zmop_chain_set_flag_dropcc(self.midi_chan, 1)
         else:
-            logging.info(f"Routing MIDI CC & PC to chain {self.chain_id}")
+            #logging.info(f"Routing MIDI CC & PC to chain {self.chain_id}")
             lib_zyncore.zmop_chain_set_flag_droppc(self.midi_chan, 0)
             lib_zyncore.zmop_chain_set_flag_dropcc(self.midi_chan, 0)
 
@@ -494,6 +492,8 @@ class zynthian_chain:
 
         processor.set_chain_id(self.chain_id)
         processor.set_midi_chan(self.midi_chan)
+
+        self.setup_zmop_options()
         self.current_processor = processor
         return True
 
@@ -543,7 +543,9 @@ class zynthian_chain:
         if processor.engine:
             processor.engine.remove_processor(processor)
 
+        self.setup_zmop_options()
         self.rebuild_graph()
+
         if processor == self.current_processor:
             if slots:
                 self.current_processor = slots[0][0]
@@ -557,7 +559,6 @@ class zynthian_chain:
                 self.current_processor = None
 
         #del processor => I don't think this is needed nor right?? (Jofemodo)
-
         return True
 
     def remove_all_processors(self):
