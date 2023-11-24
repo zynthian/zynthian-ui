@@ -158,10 +158,10 @@ class zynthian_state_manager:
 
         self.last_snapshot_fpath = ""
         self.zynseq.transport_stop("ALL")
-        self.zynseq.load("")
         self.chain_manager.remove_all_chains(True)
         self.reset_zs3()
-        self.ctrldev_manager.end_all()
+        self.zynseq.load("")
+        self.ctrldev_manager.refresh_all(True)
         self.destroy_audio_player()
         zynautoconnect.stop()
 
@@ -215,13 +215,16 @@ class zynthian_state_manager:
         self.start_busy("clean all")
         self.last_snapshot_fpath = ""
         self.zynseq.transport_stop("ALL")
-        self.zynseq.load("")
+        zynautoconnect.pause()
         self.chain_manager.remove_all_chains(True)
         self.reset_zs3()
+        self.zynseq.load("")
         self.zynmixer.reset_state()
         self.reload_midi_config()
+        self.ctrldev_manager.refresh_all(True)
         zynautoconnect.request_midi_connect(True)
         zynautoconnect.request_audio_connect(True)
+        zynautoconnect.resume()
         self.end_busy("clean all")
 
     def start_busy(self, id):
@@ -455,9 +458,11 @@ class zynthian_state_manager:
             if load_chains:
                 # Mute output to avoid unwanted noises
                 self.zynmixer.set_mute(256, True)
+                zynautoconnect.pause()
                 if "chains" in state:
                     self.chain_manager.set_state(state['chains'])
                 self.chain_manager.stop_unused_engines()
+                zynautoconnect.resume()
 
             if "engine_config" in state:
                 for id, engine_state in state["engine_config"].items():
@@ -480,8 +485,8 @@ class zynthian_state_manager:
                 if "alsa_mixer" in state:
                     self.alsa_mixer_processor.set_state(state["alsa_mixer"])
                 if "audio_recorder_armed" in state:
-                    for midi_chan in [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,256]:
-                        if midi_chan in  state["audio_recorder_armed"]:
+                    for midi_chan in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 256]:
+                        if midi_chan in state["audio_recorder_armed"]:
                             self.audio_recorder.arm(midi_chan)
                         else:
                             self.audio_recorder.unarm(midi_chan)
@@ -489,6 +494,9 @@ class zynthian_state_manager:
                 # Restore MIDI profile state
                 if "midi_profile_state" in state:
                     self.set_midi_profile_state(state["midi_profile_state"])
+
+            # Refresh all devices
+            self.ctrldev_manager.refresh_all(True)
 
             if fpath == self.last_snapshot_fpath and "last_state_fpath" in state:
                 self.last_snapshot_fpath = state["last_snapshot_fpath"]

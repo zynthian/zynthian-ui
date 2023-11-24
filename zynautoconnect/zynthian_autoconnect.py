@@ -423,7 +423,7 @@ def midi_autoconnect():
 			current_routes = jclient.get_all_connections(dst)
 		except Exception as e:
 			current_routes = []
-			logging.error(e)
+			logging.warning(e)
 		for src in current_routes:
 			if src.name in sources:
 				continue
@@ -533,7 +533,7 @@ def audio_autoconnect():
 			current_routes = jclient.get_all_connections(dst)
 		except Exception as e:
 			current_routes = []
-			logging.error(e)
+			logging.warning(e)
 		for src in current_routes:
 			if src.name in sources:
 				continue

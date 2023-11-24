@@ -173,7 +173,6 @@ class zynthian_chain_manager():
 
         if chain_id not in self.chains:
             return False
-        zynautoconnect.pause()
         self.state_manager.start_busy("remove_chain")
         chains_to_remove = [chain_id] # List of associated chains that shold be removed simultaneously
         chain = self.chains[chain_id]
@@ -218,7 +217,6 @@ class zynthian_chain_manager():
         if self.active_chain_id not in self.chains:
             self.next_chain()
         self.state_manager.end_busy("remove_chain")
-        zynautoconnect.resume()
         return True
 
     def remove_all_chains(self, stop_engines=True):
@@ -846,6 +844,7 @@ class zynthian_chain_manager():
                             self.add_processor(chain_id, slot_state[proc_id], CHAIN_MODE_PARALLEL, proc_id=int(proc_id))
                         else:
                             self.add_processor(chain_id, slot_state[proc_id], CHAIN_MODE_SERIES, proc_id=int(proc_id))
+
         self.state_manager.end_busy("set_chain_state")
 
     def restore_presets(self):
