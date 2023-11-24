@@ -176,6 +176,22 @@ class zynthian_ctrldev_manager():
 			if self.ctrldevs[idev]:
 				self.ctrldevs[idev].sleep_off()
 
+	def set_state(self, ctrldev_ids):
+		# Stop devices not in state list
+		for idev in range(1, 16):
+			if self.ctrldevs[idev] and self.ctrldevs[idev].dev_id not in ctrldev_ids:
+				self.end_device(idev)
+		# Init devices from state list
+		for dev_id in ctrldev_ids:
+			self.init_device_by_id(dev_id)
+
+	def get_state(self):
+		ctrldev_ids = []
+		for idev in range(1, 17):
+			driver = self.get_device_driver(idev)
+			if driver:
+				ctrldev_ids.append(driver.dev_id)
+		return ctrldev_ids
 
 	def zynpad_ctrldev_autoconfig(self):
 		zynpad = self.zyngui.screens['zynpad']
@@ -279,7 +295,7 @@ class zynthian_ctrldev_manager():
 
 class zynthian_ctrldev_base():
 
-	dev_ids = []			# String list that could identifies the device
+	dev_ids = []			# String list that could identify the device
 	dev_id = None  			# String that identifies the device
 	dev_zynpad = False		# Can act as a zynpad trigger device
 	dev_zynmixer = False	# Can act as an audio mixer controller device

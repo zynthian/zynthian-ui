@@ -139,48 +139,10 @@ class zynthian_state_manager:
         self.start()
         self.end_busy("zynthian_state_manager")
 
-    def reset(self):
-        """Reset state manager to clean initial start-up state"""
-
-        self.start_busy("reset state")
-        self.stop()
-        sleep(0.2)
-        self.start()
-        self.end_busy("reset state")
-
-    def stop(self):
-        """Stop state manager"""
-
-        self.exit_flag = True
-        if self.thread and self.thread.is_alive():
-            self.thread.join()
-        self.thread = None
-
-        self.last_snapshot_fpath = ""
-        self.zynseq.transport_stop("ALL")
-        self.chain_manager.remove_all_chains(True)
-        self.reset_zs3()
-        self.zynseq.load("")
-        self.ctrldev_manager.refresh_all(True)
-        self.destroy_audio_player()
-        zynautoconnect.stop()
-
-        self.busy.clear() # TODO Is this needed?
-
-        if self.hwmon_thermal_file:
-            self.hwmon_thermal_file.close
-            self.hwmon_thermal_file = None
-        if self.hwmon_undervolt_file:
-            self.hwmon_undervolt_file.close
-            self.hwmon_undervolt_file = None
-        if self.get_throttled_file:
-            self.get_throttled_file.close
-            self.get_throttled_file = None
-
-
     def start(self):
         """Start state manager"""
 
+        self.start_busy("start state")
         # Initialize SOC sensors monitoring
         try:
             self.hwmon_thermal_file = open('/sys/class/hwmon/hwmon0/temp1_input')
@@ -210,6 +172,50 @@ class zynthian_state_manager:
         self.thread.name = "Status Manager MIDI"
         self.thread.daemon = True # thread dies with the program
         self.thread.start()
+
+        self.end_busy("start state")
+
+    def stop(self):
+        """Stop state manager"""
+
+        self.start_busy("stop state")
+
+        self.exit_flag = True
+        if self.thread and self.thread.is_alive():
+            self.thread.join()
+        self.thread = None
+
+        self.last_snapshot_fpath = ""
+        self.zynseq.transport_stop("ALL")
+        zynautoconnect.pause()
+        self.chain_manager.remove_all_chains(True)
+        self.reset_zs3()
+        self.zynseq.load("")
+        self.ctrldev_manager.refresh_all(True)
+        self.destroy_audio_player()
+        zynautoconnect.stop()
+
+        if self.hwmon_thermal_file:
+            self.hwmon_thermal_file.close
+            self.hwmon_thermal_file = None
+        if self.hwmon_undervolt_file:
+            self.hwmon_undervolt_file.close
+            self.hwmon_undervolt_file = None
+        if self.get_throttled_file:
+            self.get_throttled_file.close
+            self.get_throttled_file = None
+
+        self.end_busy("stop state")
+
+    def reset(self):
+        """Reset state manager to clean initial start-up state"""
+
+        self.start_busy("reset state")
+        self.stop()
+        sleep(0.2)
+        self.busy.clear()  # TODO Is this needed?
+        self.start()
+        self.end_busy("reset state")
 
     def clean_all(self):
         self.start_busy("clean all")
@@ -942,12 +948,8 @@ class zynthian_state_manager:
     # ----------------------------------------------------------------------------
 
     def get_midi_capture_state(self):
-        # Get UI managed devices
-        ctrldev_ids = []
-        for idev in range(1, 17):
-            driver = self.ctrldev_manager.get_device_driver(idev)
-            if driver:
-                ctrldev_ids.append(driver.dev_id)
+        # Get UI control devices
+        ctrldev_ids = self.ctrldev_manager.get_state()
 
         # Get zmips flags and chain routing
         zmip_acti_flags = []
@@ -972,8 +974,11 @@ class zynthian_state_manager:
 
     def set_midi_capture_state(self, mcstate=None):
         if mcstate:
-            for dev_id in mcstate["ctrldev_ids"]:
-                self.ctrldev_manager.init_device_by_id(dev_id)
+            # Restore UI control devices
+            try:
+                self.ctrldev_manager.set_state(mcstate["ctrldev_ids"])
+            except Exception as e:
+                logging.error(f"Can't restore control device state ({e})")
 
             dev_ids = mcstate["dev_ids"]
             zmip_acti_flags = mcstate["zmip_acti_flags"]
