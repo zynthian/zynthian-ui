@@ -686,7 +686,7 @@ class zynthian_state_manager:
                     if processor.chain_id in restored_chains:
                         processor.set_state(proc_state)
                 except Exception as e:
-                    loggin.error(f"Failed to restore processor {proc_id} state => {e}")
+                    logging.error(f"Failed to restore processor {proc_id} state => {e}")
 
         if "active_chain" in zs3_state:
             self.chain_manager.set_active_chain_by_id(zs3_state["active_chain"])
@@ -1318,7 +1318,7 @@ class zynthian_state_manager:
         cc : List of MIDI CC numbers to clone or list of 128 flags, 1=CC enabled
         """
 
-        cc_array = (c_ubyte * 128)()
+        cc_array = (ctypes.c_ubyte * 128)()
         if len(cc) == 128:
             for cc_num in range(0, 128):
                 cc_array[cc_num] = cc[cc_num]
