@@ -1584,7 +1584,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		if 'midi_capture' in state:
 			self.set_midi_capture(state['midi_capture'])
 		else:
-			self.reset_audio_capture()
+			self.reset_midi_capture()
 
 		# Set Audio Routing
 		if 'audio_routing' in state:

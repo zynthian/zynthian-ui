@@ -712,7 +712,11 @@ class zynthian_gui:
 	def is_shown_alsa_mixer(self):
 		return self.curlayer == self.screens['layer'].amixer_layer
 
+	
+	def is_shown_audio_player(self):
+		return self.curlayer == self.audio_player
 
+	
 	def close_screen(self):
 		logging.debug("SCREEN HISTORY => {}".format(self.screen_history))
 		while True:
@@ -1504,6 +1508,12 @@ class zynthian_gui:
 	cuia_screen_control = cuia_chain_control
 
 	def cuia_chain_options(self, params=None):
+		if self.is_shown_alsa_mixer():
+			return
+		if self.is_shown_audio_player():
+			self.cuia_bank_preset()
+			self.cuia_menu()
+			return
 		try:
 			self.screens['layer_options'].reset()
 			if params:
@@ -1531,6 +1541,8 @@ class zynthian_gui:
 		self.toggle_screen("main_menu", hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 	def cuia_bank_preset(self, params=None):
+		if self.is_shown_alsa_mixer():
+			return
 		if params:
 			try:
 				self.set_curlayer(params, True)
@@ -1629,7 +1641,7 @@ class zynthian_gui:
 		i = params[0]
 		t = params[1].upper()
 
-		if self.current_screen in ("control", "alsa_mixer"):
+		if self.current_screen in ("control", "alsa_mixer", "audio_player"):
 			#if i < 3 and t == 'S':
 			if t == 'S':
 				self.screens[self.current_screen].midi_learn(i)
@@ -2141,6 +2153,7 @@ class zynthian_gui:
 						else:
 							self.screens['layer'].midi_control_change(chan, ccnum, ccval)
 							self.zynmixer.midi_control_change(chan, ccnum, ccval)
+							self.audio_player.midi_control_change(chan, ccnum, ccval)
 					# Special CCs >= Channel Mode
 					elif ccnum == 120:
 						self.all_sounds_off_chan(chan)
