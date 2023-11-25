@@ -643,9 +643,11 @@ class zynthian_layer:
 	def restore_state_legacy(self, state):
 		# Set legacy Note Range (BW compatibility)
 		if self.midi_chan is not None and self.midi_chan >= 0 and 'note_range' in state:
-			nr = state['note_range']
-			lib_zyncore.set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
-
+			nr_state = state['note_range']
+			lib_zyncore.set_midi_filter_note_low(self.midi_chan, nr_state['note_low'])
+			lib_zyncore.set_midi_filter_note_high(self.midi_chan, nr_state['note_high'])
+			lib_zyncore.set_midi_filter_transpose_octave(self.midi_chan, nr_state['octave_trans'])
+			lib_zyncore.set_midi_filter_transpose_semitone(self.midi_chan, nr_state['halftone_trans'])
 
 	def wait_stop_loading(self):
 		while self.engine.loading>0:

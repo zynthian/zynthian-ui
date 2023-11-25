@@ -185,8 +185,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def get_root_layers(self):
-		self.root_layers = self.get_fxchain_roots()
-		return self.root_layers
+		return self.get_fxchain_roots()
 
 
 	def get_root_layer_index(self, layer=None):
@@ -375,6 +374,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.layers.append(layer)
 
 			self.root_layers = self.get_fxchain_roots()
+			self.setup_zmop_options_layer(layer)
 			self.zyngui.zynautoconnect()
 
 			if select:
@@ -561,13 +561,16 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def set_transpose(self, tr_status):
 		for i in range(0,16):
-			lib_zyncore.set_midi_filter_halftone_trans(i, tr_status[i])
+			lib_zyncore.set_midi_filter_transpose_semitone(i, tr_status[i])
 
 
-	def set_note_range(self, nr_status):
+	def set_note_range(self, nr_state):
 		for i in range(0,16):
-			if nr_status[i]:
-				lib_zyncore.set_midi_filter_note_range(i, nr_status[i]['note_low'], nr_status[i]['note_high'], nr_status[i]['octave_trans'], nr_status[i]['halftone_trans'])
+			if nr_state[i]:
+				lib_zyncore.set_midi_filter_note_low(i, nr_state[i]['note_low'])
+				lib_zyncore.set_midi_filter_note_high(i, nr_state[i]['note_high'])
+				lib_zyncore.set_midi_filter_transpose_octave(i, nr_state[i]['octave_trans'])
+				lib_zyncore.set_midi_filter_transpose_semitone(i, nr_state[i]['halftone_trans'])
 
 
 	def reset_note_range(self):
@@ -1007,6 +1010,29 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					layers.append(l)
 		return layers
 
+
+	def setup_zmop_options_layer(self, layer):
+		layer = self.get_chain_root(layer)
+		if layer.engine.type == "MIDI Tool" or layer.engine.type == "Special":
+			#logging.info(f"Routing MIDI CC & PC to chain {layer.midi_chan}")
+			lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, 0)
+			lib_zyncore.zmop_chain_set_flag_dropcc(layer.midi_chan, 0)
+		else:
+			#logging.info(f"Dropping MIDI CC & PC from chain {layer.midi_chan}")
+			lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, 1)
+			lib_zyncore.zmop_chain_set_flag_dropcc(layer.midi_chan, 1)
+
+
+	def setup_zmop_options_all(self):
+		for layer in self.root_layers:
+			if layer.engine.type == "MIDI Tool" or layer.engine.type == "Special":
+				# logging.info(f"Routing MIDI CC & PC to chain {layer.midi_chan}")
+				lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, 0)
+				lib_zyncore.zmop_chain_set_flag_dropcc(layer.midi_chan, 0)
+			else:
+				# logging.info(f"Dropping MIDI CC & PC from chain {layer.midi_chan}")
+				lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, 1)
+				lib_zyncore.zmop_chain_set_flag_dropcc(layer.midi_chan, 1)
 
 	# ---------------------------------------------------------------------------
 	# Synth node
@@ -1530,6 +1556,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 		# Calculate root_layers
 		self.root_layers = self.get_fxchain_roots()
+
+		# Setup Router Options
+		self.setup_zmop_options_all()
 
 		# Autoconnect MIDI
 		self.zyngui.zynautoconnect_midi(True)
