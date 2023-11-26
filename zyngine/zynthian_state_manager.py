@@ -69,16 +69,16 @@ class zynthian_state_manager:
         """
 
         logging.info("Creating state manager")
+        self.hwmon_thermal_file = None
+        self.hwmon_undervolt_file = None
+        self.hwmon_undervolt_file = None
+        self.get_throttled_file = None
+
         self.busy = set(["zynthian_state_manager"]) # Set of clients indicating they are busy doing something (may be used by UI to show progress)
         self.chain_manager = zynthian_chain_manager(self)
         self.last_snapshot_count = 0 # Increments each time a snapshot is loaded - modules may use to update if required
         self.last_snapshot_fpath = ""
         self.reset_zs3()
-
-        self.hwmon_thermal_file = None
-        self.hwmon_undervolt_file = None
-        self.hwmon_undervolt_file = None
-        self.get_throttled_file = None
 
         self.alsa_mixer_processor = zynthian_processor("MX", ("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_alsa_mixer, True))
         self.alsa_mixer_processor.engine = zynthian_engine_alsa_mixer(self, self.alsa_mixer_processor)
@@ -121,7 +121,6 @@ class zynthian_state_manager:
             libsmf.attachRecorder(self.smf_recorder)
         except Exception as e:
             logging.error(e)
-
 
         # Initialize MIDI & Switches
         self.dtsw = []
@@ -232,6 +231,7 @@ class zynthian_state_manager:
         zynautoconnect.request_audio_connect(True)
         zynautoconnect.resume()
         self.end_busy("clean all")
+        self.busy.clear()  # Sometimes it's needed, why??
 
     def start_busy(self, id):
         """Add client to list of busy clients
