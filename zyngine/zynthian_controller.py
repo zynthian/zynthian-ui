@@ -184,7 +184,7 @@ class zynthian_controller:
 		if self.value_default is None:
 			self.value_default = self.value
 
-		if self.nudge_factor is None:
+		if not self.nudge_factor:
 			if self.is_logarithmic:
 				self.nudge_factor = 1 / 200 #TODO: Use number of divisions
 			elif not self.is_integer and not self.is_toggle:
