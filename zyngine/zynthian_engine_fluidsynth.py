@@ -28,8 +28,8 @@ import copy
 import shutil
 import logging
 import oyaml as yaml
-from collections import OrderedDict
 from subprocess import check_output
+
 from . import zynthian_engine
 from . import zynthian_controller
 import zynautoconnect
@@ -98,7 +98,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 		self.options['drop_pc'] = True
 
-		self.bank_config = OrderedDict()
+		self.bank_config = {}
 
 		self.fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64 -o midi.jack.id='{}' -o audio.jack.id='{}' -o audio.jack.autoconnect=0 -o audio.jack.multi='yes' -o synth.audio-groups=16 -o synth.audio-channels=16 -o synth.effects-groups=1 -o synth.chorus.active=0 -o synth.reverb.active=0".format(self.jackname,self.jackname)
 
@@ -190,14 +190,19 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	def load_bank_config(self, bank_fpath):
 		config_fpath = bank_fpath[0:-3] + "yml"
 		try:
-			with open(config_fpath,"r") as fh:
-				yml = fh.read()
-				logging.info("Loading bank config file %s => \n%s" % (config_fpath,yml))
-				self.bank_config[bank_fpath] = yaml.load(yml, Loader=yaml.SafeLoader)
-				return True
-		except Exception as e:
-			logging.info("Can't load bank config file '%s': %s" % (config_fpath,e))
+			fh = open(config_fpath, "r")
+		except:
+			logging.info(f"No yaml config file for soundfont '{bank_fpath}'")
 			return False
+		try:
+			yml = fh.read()
+			logging.info(f"Loading yaml config file for soundfont '{bank_path}' =>\n{yml}")
+			self.bank_config[bank_fpath] = yaml.load(yml, Loader=yaml.SafeLoader)
+			return True
+		except Exception as e:
+			logging.error(f"Bad yaml config file for soundfont '{bank_fpath}' => {e}")
+			return False
+
 
 	# ---------------------------------------------------------------------------
 	# Preset Management
@@ -274,7 +279,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			try:
 				c=1
 				ctrl_set = []
-				zctrls_extra = OrderedDict()
+				zctrls_extra = {}
 				for name, options in ctrl_items:
 					try:
 						if isinstance(options, int):
@@ -346,27 +351,25 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		else:
 			return self.soundfont_index[sf]
 
-
 	def unload_unused_soundfonts(self):
-		#Make a copy of soundfont index and remove used soundfonts
+		# Make a copy of soundfont index and remove used soundfonts
 		sf_unload = copy.copy(self.soundfont_index)
 		for processor in self.processors:
-			bi=processor.bank_info
+			bi = processor.bank_info
 			if bi is not None:
 				if bi[2] and bi[0] in sf_unload:
 					#print("Skip "+bi[0]+"("+str(sf_unload[bi[0]])+")")
 					del sf_unload[bi[0]]
-			pi=processor.preset_info
+			pi = processor.preset_info
 			if pi is not None:
 				if pi[2] and pi[3] in sf_unload:
 					#print("Skip "+pi[0]+"("+str(sf_unload[pi[3]])+")")
 					del sf_unload[pi[3]]
-		#Then, remove the remaining ;-)
-		for sf,sfi in sf_unload.items():
+		# Then, remove the remaining ;-)
+		for sf, sfi in sf_unload.items():
 			logging.info("Unload SoundFont => {}".format(sfi))
 			self.proc_cmd("unload {}".format(sfi))
 			del self.soundfont_index[sf]
-
 
 	# Set presets for all processors to restore soundfont assign (select) after load/unload soundfonts 
 	def set_all_presets(self):
