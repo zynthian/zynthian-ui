@@ -643,7 +643,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 				processor.division = list(self.instrument)[i]
 			if i:
 				chain.mixer_chan = None
-		self.set_tuning()
 		
 
 	def get_name(self, processor):
