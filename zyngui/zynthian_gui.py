@@ -28,6 +28,7 @@ import liblo
 import ctypes
 import ffmpeg
 import logging
+import traceback
 import importlib
 from time import sleep
 from pathlib import Path
@@ -2235,8 +2236,8 @@ class zynthian_gui:
 								logging.warning("Unknown Action Type: {}".format(t))
 							if i in zynswitch_repeat:
 								del zynswitch_repeat[i]
-					except Exception as err:
-						logging.error(f"CUIA zynswitch failed with params: {params} and error {err}")
+					except:
+						logging.error(f"CUIA zynswitch failed with params: {params}\n{traceback.format_exc()}")
 
 				elif cuia == "zynpot":
 					# zynpot has parameters: [pot, delta, 'P'|'R'] 'P','R' is only used for keybinding to zynpot
@@ -2270,7 +2271,7 @@ class zynthian_gui:
 					else:
 						self.cuia_zynpot(zynpot_repeat[i][1])
 			except:
-				pass
+				logging.error(traceback.format_exc())
 
 	#------------------------------------------------------------------
 	# Thread ending on Exit
