@@ -215,7 +215,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
 
     #	Show display
     def show(self):
-        self.proc = pexpect.spawn("/usr/local/bin/bluetoothctl", echo=False, timeout=5)
+        self.proc = pexpect.spawn("/usr/bin/bluetoothctl", echo=False, timeout=5)
         self.proc.delaybeforesend = 0.2
         self.set_uuid_filter()
         super().show()
