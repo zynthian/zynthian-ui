@@ -66,7 +66,6 @@ def zynpot_cb(i, dval):
 
 get_lib_zyncore().setup_zynpot_cb(zynpot_cb)
 
-
 #------------------------------------------------------------------------------
 # Reparent Top Window using GTK XEmbed protocol features
 #------------------------------------------------------------------------------
