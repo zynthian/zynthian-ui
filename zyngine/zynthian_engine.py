@@ -540,6 +540,8 @@ class zynthian_engine(zynthian_basic_engine):
 						break
 				if d:
 					del processor.controllers_dict[name]
+				else:
+					processor.controllers_dict[name].reset()
 
 			for ctrl in self._ctrls:
 				options = {"processor": processor}
