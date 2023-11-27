@@ -442,8 +442,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.nickname = "PT"
 		self.jackname = self.info['jackname']
 
-		self.options['drop_pc'] = True
-
 		self.show_demo = True
 		self.command_prompt = None
 		self._ctrls = None

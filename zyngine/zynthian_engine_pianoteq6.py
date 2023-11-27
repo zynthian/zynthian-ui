@@ -193,8 +193,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 		self.nickname = "PT"
 		self.jackname = self.info['jackname']
 
-		self.options['drop_pc'] = True
-
 		self.preset = ""
 		self.midimapping = "ZynthianControllers"
 

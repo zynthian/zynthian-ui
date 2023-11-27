@@ -226,7 +226,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.osc_target_port = 9000
 
 		self.options['replace'] = False
-		self.options['drop_pc'] = True #TODO: This does not seem to be working
 		self.ready = True
 
 		self.keyboard_config = None

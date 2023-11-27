@@ -480,6 +480,7 @@ def audio_autoconnect():
 	except:
 		pass
 
+	# Connect inputs to aubionotes
 	if zynthian_gui_config.midi_aubionotes_enabled:
 		capture_ports = get_audio_capture_ports()
 		#Get Aubio Input ports...
@@ -627,7 +628,7 @@ def auto_connect_thread():
 
 	deferred_timeout = 2 # Period to run deferred connect (in seconds)
 	deferred_inc = 0.1 # Delay between loop cycles (in seconds)
-	deferred_count = 5 # Run in startup
+	deferred_count = 5 # Run at startup
 	do_audio = False
 	do_midi = False
 

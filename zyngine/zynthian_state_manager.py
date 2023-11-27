@@ -69,32 +69,14 @@ class zynthian_state_manager:
         """
 
         logging.info("Creating state manager")
-        self.hwmon_thermal_file = None
-        self.hwmon_undervolt_file = None
-        self.hwmon_undervolt_file = None
-        self.get_throttled_file = None
-
         self.busy = set(["zynthian_state_manager"]) # Set of clients indicating they are busy doing something (may be used by UI to show progress)
-        self.chain_manager = zynthian_chain_manager(self)
-        self.last_snapshot_count = 0 # Increments each time a snapshot is loaded - modules may use to update if required
-        self.last_snapshot_fpath = ""
-        self.reset_zs3()
 
-        self.alsa_mixer_processor = zynthian_processor("MX", ("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_alsa_mixer, True))
-        self.alsa_mixer_processor.engine = zynthian_engine_alsa_mixer(self, self.alsa_mixer_processor)
-        self.alsa_mixer_processor.refresh_controllers()
-        self.audio_recorder = zynthian_audio_recorder(self)
-        self.zynmixer = zynthian_engine_audio_mixer.zynmixer()
-        self.zynseq = zynseq.zynseq()
-        self.audio_player = None
-
-        self.midi_filter_script = None
-        self.midi_learn_pc = None # When ZS3 Program Change MIDI learning is enabled, the name used for creating new ZS3, empty string for auto-generating a name. None when disabled.
-        self.midi_learn_zctrl = None # zctrl currently being learned
-        self.zs3 = {} # Dictionary or zs3 configs indexed by "ch/pc"
+        self.snapshot_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/snapshots"
         self.snapshot_bank = None # Name of snapshot bank (without path)
         self.snapshot_program = 0
-        self.snapshot_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/snapshots"
+        self.last_snapshot_count = 0 # Increments each time a snapshot is loaded - modules may use to update if required
+        self.last_snapshot_fpath = ""
+        self.zs3 = {} # Dictionary or zs3 configs indexed by "ch/pc"
 
         self.power_save_mode = False
         self.status_xrun = False
@@ -107,7 +89,29 @@ class zynthian_state_manager:
         self.last_midi_file = None
         self.status_midi = False
         self.status_midi_clock = False
+        self.midi_filter_script = None
+        self.midi_learn_state = False
+        self.midi_learn_pc = None # When ZS3 Program Change MIDI learning is enabled, the name used for creating new ZS3, empty string for auto-generating a name. None when disabled.
+        self.midi_learn_zctrl = None # zctrl currently being learned
         self.sync = False # True to request file system sync
+
+        self.hwmon_thermal_file = None
+        self.hwmon_undervolt_file = None
+        self.hwmon_undervolt_file = None
+        self.get_throttled_file = None
+
+        self.chain_manager = zynthian_chain_manager(self)
+        self.reset_zs3()
+
+        self.alsa_mixer_processor = zynthian_processor("MX", ("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_alsa_mixer, True))
+        self.alsa_mixer_processor.engine = zynthian_engine_alsa_mixer(self, self.alsa_mixer_processor)
+        self.alsa_mixer_processor.refresh_controllers()
+
+        self.audio_recorder = zynthian_audio_recorder(self)
+        self.zynmixer = zynthian_engine_audio_mixer.zynmixer()
+        self.zynseq = zynseq.zynseq()
+        self.ctrldev_manager = None
+        self.audio_player = None
 
         # Initialize SMF MIDI recorder and player
         try:
@@ -133,9 +137,9 @@ class zynthian_state_manager:
             self.zynmidi = None
 
         self.exit_flag = False
-        self.set_midi_learn(False)
         self.thread = None
         self.start()
+
         self.end_busy("zynthian_state_manager")
 
     def start(self):

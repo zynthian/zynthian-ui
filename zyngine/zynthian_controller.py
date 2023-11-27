@@ -40,9 +40,16 @@ class zynthian_controller:
 		else:
 			self.name = self.short_name = symbol
 
+		self.processor = None
+		self.reset()
+
+		if options:
+			self.set_options(options)
+
+
+	def reset(self):
 		self.group_symbol = None
 		self.group_name = None
-		self.processor = None
 
 		self.value = 0 # Absolute value of the control
 		self.value_default = None # Default value to use when reset control
@@ -71,9 +78,6 @@ class zynthian_controller:
 
 		self.label2value = None # Dictionary for fast conversion from discrete label to value
 		self.value2label = None # Dictionary for fast conversion from discrete value to label
-
-		if options:
-			self.set_options(options)
 
 
 	def set_options(self, options):
