@@ -175,7 +175,7 @@ def midi_autoconnect():
 	# Remove a2j MIDI through
 	try:
 		a2j_thru = jclient.get_ports("a2j:Midi Through", is_output=True, is_physical=True, is_midi=True)[0]
-		hw_dst_ports.remove(a2j_thru)
+		hw_src_ports.remove(a2j_thru)
 	except:
 		pass
 
@@ -191,7 +191,7 @@ def midi_autoconnect():
 	if host_usb_suspended:
 		try:
 			f_midi = jclient.get_ports("f_midi", is_input=True, is_physical=True, is_midi=True)[0]
-			hw_src_ports.remove(f_midi)
+			hw_dst_ports.remove(f_midi)
 		except:
 			pass
 
