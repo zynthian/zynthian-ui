@@ -177,9 +177,7 @@ class zynthian_engine(zynthian_basic_engine):
 			'audio_route': True,
 			'midi_route': False,
 			'midi_chan': True,
-			'replace': True,
-			'drop_pc': False,
-			'drop_cc': True
+			'replace': True
 		}
 
 		self.osc_proto = liblo.UDP

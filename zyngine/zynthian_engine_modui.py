@@ -72,7 +72,6 @@ class zynthian_engine_modui(zynthian_engine):
 		self.jackname = "mod-monitor"
 
 		#self.audio_out = []
-		self.options['drop_cc'] = False
 
 		self.websocket = None
 		self.ws_thread = None
