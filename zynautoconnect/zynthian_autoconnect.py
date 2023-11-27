@@ -58,7 +58,6 @@ xruns = 0						# Quantity of xruns since startup or last reset
 deferred_midi_connect = False 	# True to perform MIDI connect on next port check cycle
 deferred_audio_connect = False 	# True to perform audio connect on next port check cycle
 
-last_hw_str = None				# Fingerprint of MIDI ports used to check for change of ports
 max_num_devs = 16				# Maximum quantity of hardware inputs
 devices_in = [None for i in range(max_num_devs)]		# List of hardware inputs
 devices_in_name = [None for i in range(max_num_devs)]	# List of hardware input names
@@ -69,6 +68,8 @@ zyn_routed_audio = {}			# Map of lists of audio sources routed by zynautoconnect
 zyn_routed_midi = {}			# Map of lists of MIDI sources routed by zynautoconnect, indexed by destination
 
 mididev_changed = False			# Flag mididev changes
+
+host_usb_suspended = True		# False if connected to host USB
 
 #------------------------------------------------------------------------------
 
@@ -137,6 +138,10 @@ def request_midi_connect(fast = False):
 		global deferred_midi_connect
 		deferred_midi_connect = True
 
+def is_host_usb_suspended():
+	with open("/sys/class/udc/fe980000.usb/device/gadget/suspended") as f:
+		return (f.read() == "1\n")
+
 def midi_autoconnect():
 	"""Connect all expected MIDI routes"""
 
@@ -158,6 +163,22 @@ def midi_autoconnect():
 
 	# List of physical MIDI source ports
 	hw_src_ports = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
+
+	# Remove host USB if not connected
+	if host_usb_suspended:
+		try:
+			f_midi = jclient.get_ports("f_midi", is_output=True, is_physical=True, is_midi=True)[0]
+			hw_src_ports.remove(f_midi)
+		except:
+			pass
+
+	# Remove a2j MIDI through
+	try:
+		a2j_thru = jclient.get_ports("a2j:Midi Through", is_output=True, is_physical=True, is_midi=True)[0]
+		hw_dst_ports.remove(a2j_thru)
+	except:
+		pass
+
 	enabled_hw_src_ports = []
 	for port in hw_src_ports:
 		if port.name not in zynthian_gui_config.disabled_midi_in_ports:
@@ -165,12 +186,22 @@ def midi_autoconnect():
 
 	# List of physical MIDI destination ports
 	hw_dst_ports = jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
-	# Remove a2j MIDI through (which would cause howl-round)
+
+	# Remove host USB if not connected
+	if host_usb_suspended:
+		try:
+			f_midi = jclient.get_ports("f_midi", is_input=True, is_physical=True, is_midi=True)[0]
+			hw_src_ports.remove(f_midi)
+		except:
+			pass
+
+	# Remove a2j MIDI through
 	try:
 		a2j_thru = jclient.get_ports("a2j:Midi Through", is_input=True, is_physical=True, is_midi=True)[0]
-		hw_dst_ports.pop(hw_dst_ports.index(a2j_thru))
+		hw_dst_ports.remove(a2j_thru)
 	except:
 		pass
+
 	enabled_hw_dst_ports = []
 	for port in hw_dst_ports:
 		try:
@@ -624,13 +655,14 @@ def autoconnect():
 def auto_connect_thread():
 	"""Thread to run autoconnect, checking if physical (hardware) interfaces have changed, e.g. USB plug"""
 
-	global last_hw_str
+	global host_usb_suspended
 
 	deferred_timeout = 2 # Period to run deferred connect (in seconds)
 	deferred_inc = 0.1 # Delay between loop cycles (in seconds)
 	deferred_count = 5 # Run at startup
 	do_audio = False
 	do_midi = False
+	last_hw_str = None # Fingerprint of MIDI ports used to check for change of ports
 
 	while not exit_flag:
 		if not paused_flag:
@@ -648,12 +680,17 @@ def auto_connect_thread():
 					if hw_str != last_hw_str:
 						last_hw_str = hw_str
 						do_midi = True
+					hms = is_host_usb_suspended()
+					if host_usb_suspended != hms:
+						host_usb_suspended = hms
+						do_midi = True
 
 					if deferred_midi_connect:
 						do_midi = True
 
 					if deferred_audio_connect:
 						do_audio = True
+
 
 				if do_midi:
 					set_midi_port_aliases()
