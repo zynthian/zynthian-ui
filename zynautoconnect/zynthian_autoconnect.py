@@ -80,27 +80,9 @@ def get_port_alias_id(midi_port):
 	"""
 
 	try:
-		alias_id = '_'.join(midi_port.aliases[0].split('-')[5:])
+		return midi_port.aliases[0]
 	except:
-		alias_id = midi_port.name
-
-	if midi_port.is_input:
-		postfix = "OUT"
-	else:
-		postfix = "IN"
-
-	if alias_id.startswith("ttymidi:"):
-		alias_id = f"DIN-5 MIDI-{postfix}"
-	elif alias_id.startswith("a2j:"):
-		alias_id = f"ALSA MIDI-{postfix}"
-	elif alias_id == "f_midi":
-		alias_id = f"USB MIDI-{postfix}"
-	elif alias_id == "ZynMaster:midi_in":
-		alias_id = "CV/Gate Out"
-	elif alias_id == "aubio":
-		alias_id = "Audio => MIDI"
-
-	return alias_id
+		return midi_port.name
 
 
 def get_midi_in_devid(idev):
@@ -498,18 +480,15 @@ def audio_autoconnect():
 	except:
 		pass
 
-	#Get System Capture ports => jack output ports!!
-	capture_ports = get_audio_capture_ports()
-	capture_ports += jclient.get_ports('zynmixer:send')
 	if zynthian_gui_config.midi_aubionotes_enabled:
+		capture_ports = get_audio_capture_ports()
 		#Get Aubio Input ports...
 		aubio_in = jclient.get_ports("aubio", is_input=True, is_audio=True)
-		if len(aubio_in) > 0:
-			nip = len(aubio_in)
+		nip = len(aubio_in)
+		if nip:
 			#Connect System Capture to Aubio ports
-			j = 0
-			for scp in capture_ports:
-				required_routes[aubio_in[j % nip]].add(scp)
+			for i, scp in enumerate(capture_ports):
+				required_routes[aubio_in[i % nip].name].add(scp.name)
 
 	# Remove mod-ui routes
 	for dst in list(required_routes.keys()):
@@ -600,6 +579,40 @@ def get_audio_capture_ports():
 
 	return jclient.get_ports("system", is_output=True, is_audio=True, is_physical=True)
 
+def set_midi_port_aliases():
+	user_midi_port_alias = {} #TODO: Allow user to set port alias
+	for port in jclient.get_ports(is_physical=True, is_midi=True):
+		try:
+			if port.aliases:
+				continue
+			if port.name in user_midi_port_alias:
+				port.set_alias(user_midi_port_alias[port.name])
+			elif port.name == "ttymidi:MIDI_in":
+				port.set_alias("DIN-5 MIDI-IN")
+			elif port.name == "ttymidi:MIDI_out":
+				port.set_alias("DIN-5 MIDI-OUT")
+			elif port.name.endswith(" (capture): f_midi"):
+				port.set_alias("USB HOST IN")
+			elif port.name.endswith("(playback): f_midi"):
+				port.set_alias("USB HOST OUT")
+			else:
+				port.set_alias((port.name.split(':')[2].strip()))
+		except:
+			logging.warning(f"Unable to set alias for port {port.name}")
+
+
+def set_midi_port_alias(port_name, alias, is_output=None, force=False):
+		ports = jclient.get_ports(port_name, is_midi=True, is_output=is_output)
+		if ports:
+			if ports[0].aliases:
+				if force:
+					# Blunt! Remove all aliases - we only use alias[0]
+					for a in ports[0].aliases:
+						ports[0].unset_alias(a)
+				else:
+					return
+			ports[0].set_alias(alias)
+
 
 def autoconnect():
 	"""Connect expected routes and disconnect unexpected routes"""
@@ -614,7 +627,7 @@ def auto_connect_thread():
 
 	deferred_timeout = 2 # Period to run deferred connect (in seconds)
 	deferred_inc = 0.1 # Delay between loop cycles (in seconds)
-	deferred_count = 0
+	deferred_count = 5 # Run in startup
 	do_audio = False
 	do_midi = False
 
@@ -642,6 +655,7 @@ def auto_connect_thread():
 						do_audio = True
 
 				if do_midi:
+					set_midi_port_aliases()
 					midi_autoconnect()
 					do_midi = False
 
@@ -714,6 +728,7 @@ def start(sm):
 	thread.daemon = True # thread dies with the program
 	thread.name = "Autoconnect"
 	thread.start()
+	set_midi_port_alias("ZynMaster:midi_in", "CV/Gate Out") #TODO Set alias in lib
 
 
 def stop():

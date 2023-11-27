@@ -1462,6 +1462,7 @@ class zynthian_state_manager:
         logging.info("STARTING aubionotes")
         try:
             check_output("systemctl start aubionotes", shell=True)
+            zynautoconnect.set_midi_port_alias("aubio", "Audio => MIDI", True)
             zynthian_gui_config.midi_aubionotes_enabled = 1
             # Update MIDI profile
             if save_config:
