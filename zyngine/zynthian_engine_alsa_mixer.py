@@ -220,9 +220,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 					ctrls.append(hp_ctrls["Headphone"])
 					logging.debug("Added RBPi Headphones Amplifier volume control")
 				elif "PCM" in hp_ctrls:
-					hp_zctrl = hp_ctrls["PCM"]
-					hp_zctrl[2]["symbol"] = hp_zctrl[2]["name"] = hp_zctrl[2]["short_name"] = "Headphone"
-					ctrls.append(hp_zctrl)
+					ctrls.append(["Headphone", "Headphone", hp_ctrls["PCM"][2]])
 					logging.debug("Added RBPi Headphones Amplifier volume control")
 				else:
 					raise Exception("RBPi Headphone volume control not found!")
@@ -232,10 +230,10 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 		# Sort ctrls to match the configured mixer control list
 		if ctrl_list and len(ctrl_list) > 0:
 			sorted_ctrls = []
-			for ctrl_name in ctrl_list:
+			for ctrl_symbol in ctrl_list:
 				try:
 					for ctrl in ctrls:
-						if ctrl[1] == ctrl_name:
+						if ctrl[0] == ctrl_symbol:
 							sorted_ctrls.append(ctrl)
 							break
 				except:
@@ -245,14 +243,14 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 		if processor:
 			self.zctrls = processor.controllers_dict
 			# Remove controls that are no longer used
-			for name in list(self.zctrls):
+			for symbol in self.zctrls:
 				d = True
-				for i in ctrls:
-					if name == i[0]:
+				for ctrl in ctrls:
+					if symbol == ctrl[0]:
 						d = False
 						break
 				if d:
-					del self.zctrls[name]
+					del self.zctrls[symbol]
 		else:
 			self.zctrls = {}
 
@@ -362,8 +360,8 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
 				if ctrl_symbol and ctrl_type:
 					if ctrl_type in ("Selector", "Toggle", "VToggle") and len(ctrl_items) > 1:
-						ctrl_name_trans = self.translate(ctrl_name)
-						if not ctrl_list or ctrl_name_trans in ctrl_list:
+						if not ctrl_list or ctrl_symbol in ctrl_list:
+							ctrl_name_trans = self.translate(ctrl_name)
 							ctrl_labels = [self.translate(item) for item in ctrl_items]
 							# ctrl_labels = ctrl_items
 							ctrl_value = self.translate(ctrl_item0)
@@ -394,8 +392,8 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 								graph_path = [ctrl_name, ctrl_type]
 								zctrl_symbol = ctrl_symbol
 								zctrl_name = ctrl_name
-							zctrl_name_trans = self.translate(zctrl_name)
-							if not ctrl_list or zctrl_name_trans in ctrl_list:
+							if not ctrl_list or zctrl_symbol in ctrl_list:
+								zctrl_name_trans = self.translate(zctrl_name)
 								logging.debug("ADDING ZCTRL LEVEL: {} ({}) => {}".format(zctrl_name_trans, zctrl_symbol, ctrl_values[i]))
 								_ctrls.append([zctrl_symbol, zctrl_name_trans, {
 									'graph_path': graph_path,
