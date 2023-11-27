@@ -498,18 +498,16 @@ def audio_autoconnect():
 	except:
 		pass
 
-	#Get System Capture ports => jack output ports!!
-	capture_ports = get_audio_capture_ports()
-	capture_ports += jclient.get_ports('zynmixer:send')
+	# Connect inputs to aubionotes
 	if zynthian_gui_config.midi_aubionotes_enabled:
+		capture_ports = get_audio_capture_ports()
 		#Get Aubio Input ports...
 		aubio_in = jclient.get_ports("aubio", is_input=True, is_audio=True)
-		if len(aubio_in) > 0:
-			nip = len(aubio_in)
+		nip = len(aubio_in)
+		if nip:
 			#Connect System Capture to Aubio ports
-			j = 0
-			for scp in capture_ports:
-				required_routes[aubio_in[j % nip]].add(scp)
+			for i, scp in enumerate(capture_ports):
+				required_routes[aubio_in[i % nip].name].add(scp.name)
 
 	# Remove mod-ui routes
 	for dst in list(required_routes.keys()):
@@ -614,7 +612,7 @@ def auto_connect_thread():
 
 	deferred_timeout = 2 # Period to run deferred connect (in seconds)
 	deferred_inc = 0.1 # Delay between loop cycles (in seconds)
-	deferred_count = 0
+	deferred_count = 5 # Run at startup
 	do_audio = False
 	do_midi = False
 
