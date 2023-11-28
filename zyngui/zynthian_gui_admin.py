@@ -158,6 +158,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		if "cv_config" in self.zyngui.screens:
 			self.list_data.append((self.show_cv_config, 0, "CV Settings"))
 		self.list_data.append((self.zyngui.calibrate_touchscreen, 0, "Calibrate Touchscreen"))
+		self.list_data.append((self.zyngui.bluetooth_config, 0, "Bluetooth MIDI"))
 
 		self.list_data.append((None, 0, "> TEST"))
 		self.list_data.append((self.test_audio, 0, "Test Audio"))
