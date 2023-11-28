@@ -786,8 +786,6 @@ class zynthian_gui:
 
 		if status:
 			self.modify_chain_status = status
-		else:
-			self.modify_chain_status = {}
 
 		if "midi_chan" in self.modify_chain_status:
 			# We know the MIDI channel so create a new chain and processor
