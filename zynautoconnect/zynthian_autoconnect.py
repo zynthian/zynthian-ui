@@ -4,7 +4,7 @@
 # 
 # Autoconnect Jack clients
 # 
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #********************************************************************
 # 
@@ -155,11 +155,11 @@ def midi_autoconnect():
 	#logger.info("ZynAutoConnect: MIDI ...")
 	global zyn_routed_midi
 
-	#------------------------------------
+	#-----------------------------------------------------------
 	# Get Input/Output MIDI Ports: 
-	#  - outputs are inputs for jack
-	#  - inputs are outputs for jack
-	#------------------------------------
+	#  - sources including physical inputs are jack outputs
+	#  - destinations including physical outputs are jack inputs
+	#-----------------------------------------------------------
 
 	# List of physical MIDI source ports
 	hw_src_ports = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
@@ -172,13 +172,14 @@ def midi_autoconnect():
 		except:
 			pass
 
-	# Remove a2j MIDI through
+	# Remove a2j MIDI through (we don't currently use but may want to renable in future)
 	try:
 		a2j_thru = jclient.get_ports("a2j:Midi Through", is_output=True, is_physical=True, is_midi=True)[0]
 		hw_src_ports.remove(a2j_thru)
 	except:
 		pass
 
+	#TODO: Do we want to maintain a list of user disabled MIDI ports? A user has freedom to configure routing in the UI
 	enabled_hw_src_ports = []
 	for port in hw_src_ports:
 		if port.name not in zynthian_gui_config.disabled_midi_in_ports:
@@ -195,17 +196,19 @@ def midi_autoconnect():
 		except:
 			pass
 
-	# Remove a2j MIDI through
+	# Remove a2j MIDI through (we don't want this - it can lead to howl-round)
 	try:
 		a2j_thru = jclient.get_ports("a2j:Midi Through", is_input=True, is_physical=True, is_midi=True)[0]
 		hw_dst_ports.remove(a2j_thru)
 	except:
 		pass
 
+	#TODO: Do we want to maintain a list of user disabled MIDI ports? A user has freedom to configure routing in the UI
 	enabled_hw_dst_ports = []
 	for port in hw_dst_ports:
 		try:
 			port_alias_id = get_port_alias_id(port)
+			#TODO: Use port names, not aliases
 			if port_alias_id.replace(" ", "_") in zynthian_gui_config.enabled_midi_out_ports:
 				enabled_hw_dst_ports.append(port)
 		except:
@@ -325,7 +328,6 @@ def midi_autoconnect():
 
 	# Chain MIDI routing
 	#TODO: Handle processors with multiple MIDI ports
-
 	for chain_id, chain in chain_manager.chains.items():
 		# Add chain internal routes
 		routes = chain_manager.get_chain_midi_routing(chain_id)
@@ -401,6 +403,7 @@ def midi_autoconnect():
 				pass
 
 	# => Set MIDI THRU
+	#TODO: Do we want to retain MIDI THRU now that we have MIDI chains that can pass thru with per device filtering?
 	lib_zyncore.set_midi_thru(zynthian_gui_config.midi_filter_output)
 
 	# Route MIDI-THRU output to enabled output ports
