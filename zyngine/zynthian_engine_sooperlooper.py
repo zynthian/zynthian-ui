@@ -240,7 +240,6 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			['Levels 2',['input_gain', 'selected_loop_num', 'loop_count']]
 		]
 
-		self.zctrls = OrderedDict()
 		self.start()
 
 
@@ -382,7 +381,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_controllers_dict(self, processor):
-		if not self.zctrls:
+		if not processor.controllers_dict:
 			midi_chan = processor.midi_chan
 			if midi_chan is None or midi_chan < 0 or midi_chan > 15:
 				midi_chan = zynthian_gui_config.master_midi_channel
@@ -391,10 +390,11 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			for ctrl in self._ctrls:
 				zctrl = zynthian_controller(self, ctrl[0], ctrl[1], ctrl[2])
 				zctrl.set_options({"processor": processor})
-				self.zctrls[zctrl.symbol] = zctrl
+				processor.controllers_dict[zctrl.symbol] = zctrl
 				if midi_chan is not None and len(ctrl) > 3:
 					self.state_manager.chain_manager.add_midi_learn(midi_chan, ctrl[3], zctrl)
-		return self.zctrls
+		return processor.controllers_dict
+	
 
 
 	def send_controller_value(self, zctrl):
@@ -448,6 +448,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		if self.osc_server is None:
 			return
 		try:
+			processor = self.processors[0]
 			#logging.debug(f"Rx OSC => {path} {args}")
 			if path == '/state':
 				# args: i:Loop index, s:control, f:value
@@ -488,9 +489,9 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 					for loop in range(self.loop_count):
 						labels.append(f"Loop {loop + 1}")
 					try:
-							self.zctrls['sync_source'].set_options({'labels':labels, 'ticks':[], 'value_max':self.loop_count})
-							self.zctrls['loop_count'].set_value(self.loop_count, False)
-							self.zctrls['selected_loop_num'].value_max = self.loop_count
+							processor.controllers_dict['sync_source'].set_options({'labels':labels, 'ticks':[], 'value_max':self.loop_count})
+							processor.controllers_dict['loop_count'].set_value(self.loop_count, False)
+							processor.controllers_dict['selected_loop_num'].value_max = self.loop_count
 					except:
 						pass # zctrls may not yet be initialised
 					if loop_count_changed > 0:
@@ -521,7 +522,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 					self.select_loop(args[2])
 					return
 				try:
-					self.zctrls[args[1]].set_value(args[2], False)
+					processor.controllers_dict[args[1]].set_value(args[2], False)
 				except Exception as e:
 					pass
 					#logging.warning("Unsupported tally (or zctrl not yet configured) %s (%f)", args[1], args[2])
@@ -532,9 +533,9 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 					if args[1] == 'rate_output':
 						try:
 							if args[2] < 0.0:
-								self.zctrls['reverse'].set_value(1, False)
+								processor.controllers_dict['reverse'].set_value(1, False)
 							else:
-								self.zctrls['reverse'].set_value(0, False)
+								processor.controllers_dict['reverse'].set_value(0, False)
 						except:
 							pass # zctrls may not yet be initialised
 					self.monitors_dict[args[1]] = args[2]
@@ -554,14 +555,19 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 	# Update each mutually exclusive 'state' controller to match state of selected loop
 	def update_state(self):
+		try:
+			processor = self.processors[0]
+		except:
+			return
+
 		for state in self.SL_STATES:
 			if state < 0:
 				continue
 			if self.SL_STATES[state]['symbol']:
 				if state == self.state[self.selected_loop]:
-					self.zctrls[self.SL_STATES[state]['symbol']].set_value(1, False)
+					processor.controllers_dict[self.SL_STATES[state]['symbol']].set_value(1, False)
 				else:
-					self.zctrls[self.SL_STATES[state]['symbol']].set_value(0, False)
+					processor.controllers_dict[self.SL_STATES[state]['symbol']].set_value(0, False)
 		#self.processors[0].status = self.SL_STATES[self.state]['icon']
 
 
@@ -573,7 +579,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		self.monitors_dict['next_state'] = self.next_state[self.selected_loop]
 		self.monitors_dict['waiting'] = self.waiting[self.selected_loop]
 		try:
-			self.zctrls['selected_loop_num'].set_value(loop + 1, False)
+			self.processors[0].controllers_dict['selected_loop_num'].set_value(loop + 1, False)
 		except:
 			pass
 		if send and self.osc_server:

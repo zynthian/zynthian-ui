@@ -38,3 +38,4 @@ from zyngine.zynthian_engine_jalv import *
 from zyngine.zynthian_engine_sfizz import *
 from zyngine.zynthian_engine_alsa_mixer import *
 from zyngine.zynthian_engine_audioplayer import *
+from zyngine.zynthian_engine_sooperlooper import *
