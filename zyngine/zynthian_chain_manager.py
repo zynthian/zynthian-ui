@@ -580,7 +580,7 @@ class zynthian_chain_manager():
             proc_id = self.get_available_processor_id() #TODO: Derive next available processor id from self.processors
         elif proc_id in self.processors:
             return None
-        self.state_manager.start_busy("add_processor")
+        self.state_manager.start_busy("add_processor", None, f"adding {type} to chain {chain_id}")
         processor = zynthian_processor(type, self.engine_info[type], proc_id)
         chain = self.chains[chain_id]
         self.processors[proc_id] = processor # Add proc early to allow engines to add more as required, e.g. Aeolus
@@ -612,7 +612,7 @@ class zynthian_chain_manager():
         if chain_id not in self.chains:
             return False
 
-        self.state_manager.start_busy("remove_processor")
+        self.state_manager.start_busy("remove_processor", None, f"removing {self.get_basepath()} from chain {chain_id}")
         for param in processor.controllers_dict:
             self.remove_midi_learn(processor, param)
 
@@ -808,7 +808,7 @@ class zynthian_chain_manager():
         Returns : True on success
         """
 
-        self.state_manager.start_busy("set_chain_state")
+        self.state_manager.start_busy("set_chain_state", None, "loading chains")
 
         # Clean all chains but don't stop unused engines
         self.remove_all_chains(False)

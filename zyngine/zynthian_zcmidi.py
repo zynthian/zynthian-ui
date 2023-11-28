@@ -23,26 +23,33 @@
 #******************************************************************************
 
 import logging
-from zyncoder.zyncore import get_lib_zyncore
+from zyncoder.zyncore import lib_zyncore
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # MIDI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_zcmidi:
 
-	bank_msb_selected=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-	bank_lsb_selected=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-	prg_selected=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-
+	bank_msb_selected = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+	bank_lsb_selected = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+	prg_selected = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
 	def __init__(self):
 		pass
 
+	@staticmethod
+	def note_on(chan, note, vel):
+		lib_zyncore.ui_send_note_on(chan, note, vel)
 
-	def set_midi_control(self, chan, ctrl, val):
-		get_lib_zyncore().ui_send_ccontrol_change(chan, ctrl, val)
+	@staticmethod
+	def note_off(chan, note):
+		lib_zyncore.ui_send_note_on(chan, note, 0)
 
+	@staticmethod
+	def set_midi_control(chan, ctrl, val):
+		lib_zyncore.ui_send_ccontrol_change(chan, ctrl, val)
 
 	def set_midi_bank_msb(self, chan, msb):
 		if not isinstance(chan, int) or chan > len(self.bank_msb_selected):
@@ -51,40 +58,34 @@ class zynthian_zcmidi:
 		self.bank_msb_selected[chan] = msb
 		self.set_midi_control(chan, 0, msb)
 
-
 	def get_midi_bank_msb(self, chan):
 		if not isinstance(chan, int) or chan > len(self.bank_msb_selected):
 			return 0
 		return self.bank_msb_selected[chan]
 
-
 	def set_midi_bank_lsb(self, chan, lsb):
 		if not isinstance(chan, int) or chan > len(self.bank_msb_selected):
 			return
 		logging.debug("Set MIDI CH " + str(chan) + ", Bank LSB: " + str(lsb))
-		self.bank_lsb_selected[chan]=lsb
-		self.set_midi_control(chan,32,lsb)
-
+		self.bank_lsb_selected[chan] = lsb
+		self.set_midi_control(chan, 32, lsb)
 
 	def get_midi_bank_lsb(self, chan):
 		if not isinstance(chan, int) or chan > len(self.bank_msb_selected):
 			return 0
 		return self.bank_lsb_selected[chan]
 
-
 	def set_midi_prg(self, chan, prg):
 		if not isinstance(chan, int) or chan > len(self.bank_msb_selected):
 			return
 		logging.debug("Set MIDI CH " + str(chan) + ", Program: " + str(prg))
 		self.prg_selected[chan] = prg
-		get_lib_zyncore().ui_send_program_change(chan, prg)
-
+		lib_zyncore.ui_send_program_change(chan, prg)
 
 	def get_midi_prg(self, chan):
 		if not isinstance(chan, int) or chan > len(self.bank_msb_selected):
 			return 0
 		return self.prg_selected[chan]
-
 
 	def set_midi_preset(self, chan, msb, lsb, prg):
 		if not isinstance(chan, int) or chan > len(self.bank_msb_selected):
@@ -95,18 +96,10 @@ class zynthian_zcmidi:
 		self.prg_selected[chan] = prg
 		self.set_midi_control(chan, 0, msb)
 		self.set_midi_control(chan, 32, lsb)
-		get_lib_zyncore().ui_send_program_change(chan, prg)
-
+		lib_zyncore.ui_send_program_change(chan, prg)
 
 	def get_midi_preset(self, chan):
 		if not isinstance(chan, int) or chan > len(self.bank_msb_selected):
 			return []
 		return [self.bank_msb_selected[chan], self.bank_lsb_selected[chan], self.prg_selected[chan]]
 
-
-	def note_on(self, chan, note, vel):
-		get_lib_zyncore().ui_send_note_on(chan, note, vel)
-
-
-	def note_off(self, chan, note):
-		get_lib_zyncore().ui_send_note_on(chan, note, 0)

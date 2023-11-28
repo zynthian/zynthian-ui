@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-#*****************************************************************************
+# *****************************************************************************
 # ZYNTHIAN PROJECT: Zynthian processor (zynthian_processor)
 #
 # zynthian processor
@@ -7,7 +7,7 @@
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #						  Brian Walton <riban@zynthian.org>
 #
-#*****************************************************************************
+# *****************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#*****************************************************************************
+# *****************************************************************************
 
 import os
 import copy
@@ -139,7 +139,6 @@ class zynthian_processor:
         """Get ID of the chain to which the processor belongs, if any"""
         return self.chain_id
 
-
     # ---------------------------------------------------------------------------
     # MIDI Channel Management
     # ---------------------------------------------------------------------------
@@ -205,14 +204,12 @@ class zynthian_processor:
         logging.debug("BANK MSB INFO => \n{}".format(self.bank_msb_info))
         return self.bank_list
 
-
     def reset_bank(self):
         """Reset bank to default (empty)"""
 
         self.bank_index = 0
         self.bank_name = None
         self.bank_info = None
-
 
     def set_bank(self, bank_index, set_engine=True):
         """Set processor's engine bank by index
@@ -244,7 +241,6 @@ class zynthian_processor:
 
         return False
 
-
     def set_bank_by_info(self, bank_info, set_engine=True):
         try:
             self.bank_name = bank_info[2]
@@ -273,8 +269,7 @@ class zynthian_processor:
                 return self.set_bank(i, set_engine)
         return False
 
-
-    #TODO Optimize search!!
+    # TODO Optimize search!!
     def set_bank_by_id(self, bank_id, set_engine=True):
         """Set processor's engine bank by id
 
@@ -288,11 +283,9 @@ class zynthian_processor:
                 return self.set_bank(i, set_engine)
         return False
 
-
     def get_bank_name(self):
         """Get current bank name"""
         return self.bank_name
-
 
     def get_bank_index(self):
         """Get current bank index"""
@@ -301,7 +294,6 @@ class zynthian_processor:
             if self.bank_info and self.bank_info == bank_info:
                 return index
         return self.bank_index #TODO: can we lose or optimise this?
-
 
     # ---------------------------------------------------------------------------
     # Preset Management
@@ -325,14 +317,12 @@ class zynthian_processor:
         self.preset_list = preset_list
         logging.debug("PRESET LIST => \n%s" % str(self.preset_list))
 
-
     def reset_preset(self):
         """Reset preset to default (empty)"""
         logging.debug("PRESET RESET!")
         self.preset_index = 0
         self.preset_name = None
         self.preset_info = None
-
 
     def set_preset(self, preset_index, set_engine=True, force_set_engine=True):
         """Set the processor's engine preset
@@ -393,7 +383,6 @@ class zynthian_processor:
 
         return True
 
-
     def set_preset_by_name(self, preset_name, set_engine=True, force_set_engine=True):
         """Set processor's engine preset by name
         
@@ -414,8 +403,7 @@ class zynthian_processor:
 
         return False
 
-
-    #TODO Optimize search!!
+    # TODO Optimize search!!
     def set_preset_by_id(self, preset_id, set_engine=True, force_set_engine=True):
         """Set processor's engine preset by ID
         
@@ -429,7 +417,6 @@ class zynthian_processor:
             if preset_id == self.preset_list[i][0]:
                 return self.set_preset(i, set_engine, force_set_engine)
         return False
-
 
     def preload_preset(self, preset_index):
         """Preload processor's engine preset by index
@@ -446,10 +433,9 @@ class zynthian_processor:
                 self.preload_name = self.preset_list[preset_index][2]
                 self.preload_info = copy.deepcopy(self.preset_list[preset_index])
                 logging.info("Preset Preloaded: %s (%d)" % (self.preload_name, preset_index))
-                self.engine.set_preset(self,self.preload_info, True)
+                self.engine.set_preset(self, self.preload_info, True)
                 return True
         return False
-
 
     def restore_preset(self):
         """Restore preset after temporary preload"""
@@ -465,11 +451,9 @@ class zynthian_processor:
             return True
         return False
 
-
     def get_preset_name(self):
         """Get current preset name"""
         return self.preset_name
-
 
     def get_preset_index(self):
         """Get index of current preset"""
@@ -480,14 +464,12 @@ class zynthian_processor:
         """Get current preset's bank index"""
         return self.preset_bank_index
 
-
     def get_preset_bank_name(self):
         """Get current preset's bank name"""
         try:
             return self.bank_list[self.preset_bank_index][2]
         except:
             return None
-
 
     def toggle_preset_fav(self, preset):
         """Toggle preset's favourite state
@@ -499,7 +481,6 @@ class zynthian_processor:
         if self.show_fav_presets and not len(self.get_preset_favs()):
             self.set_show_fav_presets(False)
 
-
     def remove_preset_fav(self, preset):
         """Remove preset from favourites
 
@@ -510,12 +491,10 @@ class zynthian_processor:
         if self.show_fav_presets and not len(self.get_preset_favs()):
             self.set_show_fav_presets(False)
 
-
     def get_preset_favs(self):
         """Get list of favourite preset info structures"""
 
         return self.engine.get_preset_favs(self)
-
 
     def set_show_fav_presets(self, flag=True):
         """Set/reset flag indicating whether to show preset favourites
@@ -530,11 +509,9 @@ class zynthian_processor:
         else:
             self.show_fav_presets = False
 
-
     def get_show_fav_presets(self):
         """Get the flag indicating whether to show preset favourites"""
         return self.show_fav_presets
-
 
     def toggle_show_fav_presets(self):
         """Toggle flag indicating whether to show preset favourites"""
@@ -555,25 +532,23 @@ class zynthian_processor:
         self.engine.get_controllers_dict(self)
         self.init_ctrl_screens()
 
-
     def init_ctrl_screens(self):
         """Create controller screens from zynthian controller keys
         
         TODO: This should be in UI
         """
 
-        #Build control screens ...
+        # Build control screens ...
         self.ctrl_screens_dict = {}
         for cscr in self.engine._ctrl_screens:
             self.ctrl_screens_dict[cscr[0]] = self.build_ctrl_screen(cscr[1])
 
-        #Set active the first screen
+        # Set active the first screen
         if len(self.ctrl_screens_dict) > 0:
             if self.current_screen_index == -1:
                 self.current_screen_index = 0
         else:
             self.current_screen_index = -1
-
 
     def get_ctrl_screens(self):
         """Get processor controller screens
@@ -583,7 +558,6 @@ class zynthian_processor:
         """
         
         return self.ctrl_screens_dict
-
 
     def get_ctrl_screen(self, key):
         """Get processor controller screen
@@ -598,7 +572,6 @@ class zynthian_processor:
         except:
             return None
 
-
     def get_current_screen_index(self):
         """Get index of last selected controller screen
         
@@ -608,7 +581,6 @@ class zynthian_processor:
         
         return self.current_screen_index
 
-
     def set_current_screen_index(self, screen_index):
         """Set index of last selected controller screen
         
@@ -616,7 +588,6 @@ class zynthian_processor:
         TODO: This should be in UI
         """
         self.current_screen_index = screen_index
-
 
     def build_ctrl_screen(self, ctrl_keys):
         """Build array of zynthian_controllers from list of keys
@@ -634,7 +605,6 @@ class zynthian_processor:
                     logging.error("Controller %s is not defined" % k)
         return zctrls
 
-
     def send_ctrl_midi_cc(self):
         """Send MIDI CC for all controllers
         
@@ -647,7 +617,6 @@ class zynthian_processor:
                 #logging.debug("Sending MIDI CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value), k))
         self.send_ctrlfb_midi_cc()
 
-
     def send_ctrlfb_midi_cc(self):
         """Send MIDI CC for all feeback controllers
         
@@ -659,10 +628,9 @@ class zynthian_processor:
                 lib_zyncore.ctrlfb_send_ccontrol_change(zctrl.midi_feedback[0], zctrl.midi_feedback[1], int(zctrl.value))
                 #logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_feedback[0], zctrl.midi_feedback[1], int(zctrl.value), k))
 
-
-    #----------------------------------------------------------------------------
+    # ----------------------------------------------------------------------------
     # MIDI processing
-    #----------------------------------------------------------------------------
+    # ----------------------------------------------------------------------------
 
     def midi_control_change(self, chan, ccnum, ccval):
         """Handle MIDI CC message
@@ -678,7 +646,6 @@ class zynthian_processor:
         except:
             pass
 
-
     def midi_bank_msb(self, bank_msb):
         """Handle MIDI bank MSB message
         
@@ -687,7 +654,6 @@ class zynthian_processor:
         logging.debug("Received Bank MSB for CH#{}: {}".format(self.midi_chan, bank_msb))
         if bank_msb >= 0 and bank_msb <= 2:
             self.bank_msb = bank_msb
-
 
     def midi_bank_lsb(self, bank_lsb):
         """Handle MIDI bank MSB message
@@ -703,7 +669,6 @@ class zynthian_processor:
             self.load_preset_list()
         else:
             logging.warning("Bank index {} doesn't exist for MSB {} on CH#{}".format(bank_lsb, self.bank_msb, self.midi_chan))
-
 
     # ---------------------------------------------------------------------------
     # State Management
@@ -764,11 +729,10 @@ class zynthian_processor:
         TODO: Move this to snapshot handler
         """
         
-        #Set legacy Note Range (BW compatibility)
+        # Set legacy Note Range (BW compatibility)
         if self.midi_chan is not None and self.midi_chan >= 0 and 'note_range' in state:
             nr = state['note_range']
             lib_zyncore.set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
-
 
     # ---------------------------------------------------------------------------
     # Path/Breadcrumb Strings
@@ -787,7 +751,6 @@ class zynthian_processor:
             path = self.bank_name
         return path
 
-
     def get_basepath(self):
         """Get base path string"""
         #TODO: UI
@@ -796,7 +759,6 @@ class zynthian_processor:
         if self.midi_chan is not None:
             path = "{}#{}".format(self.midi_chan + 1, path)
         return path
-
 
     def get_bankpath(self):
         """Get bank path string"""
@@ -807,11 +769,10 @@ class zynthian_processor:
             path += " > " + self.bank_name
         return path
 
-
     def get_presetpath(self):
         """Get preset path string"""
 
-        #TODO: UI
+        # TODO: UI
         path = self.get_basepath()
         subpath = None
         bank_name = self.get_preset_bank_name()
@@ -825,4 +786,4 @@ class zynthian_processor:
             path += " > " + subpath
         return path
 
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------

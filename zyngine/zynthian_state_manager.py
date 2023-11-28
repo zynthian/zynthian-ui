@@ -1,4 +1,4 @@
-    # -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # ****************************************************************************
 # ZYNTHIAN PROJECT: Zynthian State Manager (zynthian_state_manager)
 #
@@ -28,7 +28,7 @@ import ctypes
 import logging
 from glob import glob
 from datetime import datetime
-from threading  import Thread
+from threading import Thread
 from subprocess import check_output
 from json import JSONEncoder, JSONDecoder
 from os.path import basename, isdir, isfile, join
@@ -39,8 +39,8 @@ import zynautoconnect
 
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
-from zynlibs.zynsmf import zynsmf # Python wrapper for zynsmf (ensures initialised and wraps load() function)
-from zynlibs.zynsmf.zynsmf import libsmf # Direct access to shared library
+from zynlibs.zynsmf import zynsmf  # Python wrapper for zynsmf (ensures initialised and wraps load() function)
+from zynlibs.zynsmf.zynsmf import libsmf  # Direct access to shared library
 
 from zyngine.zynthian_chain_manager import *
 from zyngine.zynthian_processor import zynthian_processor 
@@ -57,8 +57,9 @@ from zyngui.zynthian_audio_recorder import zynthian_audio_recorder
 # ----------------------------------------------------------------------------
 
 SNAPSHOT_SCHEMA_VERSION = 1
-capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
+capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
 ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
+
 
 class zynthian_state_manager:
 
@@ -69,21 +70,29 @@ class zynthian_state_manager:
         """
 
         logging.info("Creating state manager")
-        self.busy = set(["zynthian_state_manager"]) # Set of clients indicating they are busy doing something (may be used by UI to show progress)
 
-        self.snapshot_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/snapshots"
-        self.snapshot_bank = None # Name of snapshot bank (without path)
+        self.busy = set()  # Set of clients indicating they are busy doing something (may be used by UI to show progress)
+        self.busy_message = None
+        self.busy_error = None
+        self.busy_warning = None
+        self.busy_success = None
+        self.busy_details = None
+        self.start_busy("zynthian_state_manager")
+
+        self.snapshot_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/snapshots"
+        self.snapshot_bank = None  # Name of snapshot bank (without path)
         self.snapshot_program = 0
-        self.last_snapshot_count = 0 # Increments each time a snapshot is loaded - modules may use to update if required
+        self.last_snapshot_count = 0  # Increments each time a snapshot is loaded - modules may use to update if required
         self.last_snapshot_fpath = ""
-        self.zs3 = {} # Dictionary or zs3 configs indexed by "ch/pc"
+        self.zs3 = {}  # Dictionary or zs3 configs indexed by "ch/pc"
 
         self.power_save_mode = False
         self.status_xrun = False
         self.status_undervoltage = False
+        self.overtemp_warning = 75  # Temperature limit before warning overtemperature
         self.status_overtemp = False
-        self.status_cpu_load = 0 # 0..100
-        self.status_audio_player = False # True if playing
+        self.status_cpu_load = 0  # 0..100
+        self.status_audio_player = False  # True if playing
         self.status_midi_recorder = False
         self.status_midi_player = False
         self.last_midi_file = None
@@ -91,9 +100,9 @@ class zynthian_state_manager:
         self.status_midi_clock = False
         self.midi_filter_script = None
         self.midi_learn_state = False
-        self.midi_learn_pc = None # When ZS3 Program Change MIDI learning is enabled, the name used for creating new ZS3, empty string for auto-generating a name. None when disabled.
-        self.midi_learn_zctrl = None # zctrl currently being learned
-        self.sync = False # True to request file system sync
+        self.midi_learn_pc = None  # When ZS3 Program Change MIDI learning is enabled, the name used for creating new ZS3, empty string for auto-generating a name. None when disabled.
+        self.midi_learn_zctrl = None  # zctrl currently being learned
+        self.sync = False  # True to request file system sync
 
         self.hwmon_thermal_file = None
         self.hwmon_undervolt_file = None
@@ -126,15 +135,8 @@ class zynthian_state_manager:
         except Exception as e:
             logging.error(e)
 
-        # Initialize MIDI & Switches
-        self.dtsw = []
-        try:
-            self.zynmidi = zynthian_zcmidi()
-            self.zynswitches_init()
-            self.zynswitches_midi_setup()
-        except Exception as e:
-            logging.error(f"ERROR initializing MIDI & Switches: {e}")
-            self.zynmidi = None
+        # Initialize internal MIDI sender
+        self.zynmidi = zynthian_zcmidi()
 
         self.exit_flag = False
         self.thread = None
@@ -150,18 +152,16 @@ class zynthian_state_manager:
         try:
             self.hwmon_thermal_file = open('/sys/class/hwmon/hwmon0/temp1_input')
             self.hwmon_undervolt_file = open('/sys/class/hwmon/hwmon1/in0_lcrit_alarm')
-            self.overtemp_warning = 75.0
             self.get_throttled_file = None
         except:
             logging.warning("Can't access sensors. Trying legacy interface...")
             self.hwmon_thermal_file = None
             self.hwmon_undervolt_file = None
-            self.overtemp_warning = None
             try:
                 self.get_throttled_file = open('/sys/devices/platform/soc/soc:firmware/get_throttled')
                 logging.debug("Accessing sensors using legacy interface!")
             except Exception as e:
-                logging.error("Can't access monitoring sensors at all!")
+                logging.error(f"Can't access monitoring sensors at all! => {e}")
 
         zynautoconnect.start(self)
         self.zynmixer.reset_state()
@@ -173,7 +173,7 @@ class zynthian_state_manager:
         self.exit_flag = False
         self.thread = Thread(target=self.thread_task, args=(0.2,))
         self.thread.name = "Status Manager MIDI"
-        self.thread.daemon = True # thread dies with the program
+        self.thread.daemon = True  # thread dies with the program
         self.thread.start()
 
         self.end_busy("start state")
@@ -199,13 +199,13 @@ class zynthian_state_manager:
         zynautoconnect.stop()
 
         if self.hwmon_thermal_file:
-            self.hwmon_thermal_file.close
+            self.hwmon_thermal_file.close()
             self.hwmon_thermal_file = None
         if self.hwmon_undervolt_file:
-            self.hwmon_undervolt_file.close
+            self.hwmon_undervolt_file.close()
             self.hwmon_undervolt_file = None
         if self.get_throttled_file:
-            self.get_throttled_file.close
+            self.get_throttled_file.close()
             self.get_throttled_file = None
 
         self.end_busy("stop state")
@@ -216,12 +216,12 @@ class zynthian_state_manager:
         self.start_busy("reset state")
         self.stop()
         sleep(0.2)
-        self.busy.clear()  # TODO Is this needed?
+        self.clear_busy()  # TODO Is this needed?
         self.start()
         self.end_busy("reset state")
 
     def clean_all(self):
-        self.start_busy("clean all")
+        self.start_busy("clean all", "cleaning all...")
         self.last_snapshot_fpath = ""
         self.zynseq.transport_stop("ALL")
         zynautoconnect.pause()
@@ -237,24 +237,46 @@ class zynthian_state_manager:
         self.end_busy("clean all")
         self.busy.clear()  # Sometimes it's needed, why??
 
-    def start_busy(self, id):
+    # -------------------------------------------------------------------------
+    # Busy state management
+    # -------------------------------------------------------------------------
+
+    def start_busy(self, clid, message=None, details=None):
         """Add client to list of busy clients
-        id : Client id
+        clid : Client id
         """
 
-        self.busy.add(id)
-        #logging.debug(f"Start busy for {id}. Current busy clients: {self.busy}")
+        self.busy.add(clid)
+        if message:
+            self.busy_message = message
+        if details:
+            self.busy_details = details
+        #logging.debug(f"Start busy for {clid}. Current busy clients: {self.busy}")
 
-    def end_busy(self, id):
+    def end_busy(self, clid):
         """Remove client from list of busy clients
-        id : Client id
+        clid : Client id
         """
 
         try:
-            self.busy.remove(id)
+            self.busy.remove(clid)
         except:
             pass
-        #logging.debug(f"End busy for {id}: {self.busy}")
+        if len(self.busy) == 0:
+            self.busy_message = None
+            self.busy_error = None
+            self.busy_warning = None
+            self.busy_success = None
+            self.busy_details = None
+        #logging.debug(f"End busy for {clid}: {self.busy}")
+
+    def clear_busy(self):
+        self.busy.clear()
+        self.busy_message = None
+        self.busy_error = None
+        self.busy_warning = None
+        self.busy_success = None
+        self.busy_details = None
 
     def is_busy(self, client=None):
         """Check if clients are busy
@@ -266,9 +288,102 @@ class zynthian_state_manager:
             return client in self.busy
         return len(self.busy) > 0
 
-    #------------------------------------------------------------------
+    def set_busy_message(self, message, details=None):
+        """Set busy message
+        message : message text
+        """
+
+        if len(self.busy) > 0:
+            self.busy_message = message
+            if details:
+                self.details = details
+
+    def get_busy_message(self):
+        """Returns busy message and clean it
+        return message text
+        """
+
+        res = self.busy_message
+        self.busy_message = None
+        return res
+
+    def set_busy_error(self, message, details=None):
+        """Set busy error message
+        message : message text
+        """
+
+        if len(self.busy) > 0:
+            self.busy_error = message
+            if details:
+                self.details = details
+
+    def get_busy_error(self):
+        """Returns busy error message and clean it
+        return message text
+        """
+
+        res = self.busy_error
+        self.busy_error = None
+        return res
+
+    def set_busy_warning(self, message, details=None):
+        """Set busy warning message
+        message : message text
+        """
+
+        if len(self.busy) > 0:
+            self.busy_warning = message
+            if details:
+                self.details = details
+
+    def get_busy_warning(self):
+        """Returns busy warning message and clean it
+        return message text
+        """
+
+        res = self.busy_warning
+        self.busy_warning = None
+        return res
+
+    def set_busy_success(self, message, details=None):
+        """Set busy success message text
+        details : details text
+        """
+
+        if len(self.busy) > 0:
+            self.busy_success = message
+            if details:
+                self.details = details
+
+    def get_busy_success(self):
+        """Returns busy success message and clean it
+        return message text
+        """
+
+        res = self.busy_success
+        self.busy_success = None
+        return res
+
+    def set_busy_details(self, details):
+        """Set busy details text
+        details : details text
+        """
+
+        if len(self.busy) > 0:
+            self.busy_details = details
+
+    def get_busy_details(self):
+        """Returns busy details and clean it
+        return details text
+        """
+
+        res = self.busy_details
+        self.busy_details = None
+        return res
+
+    # ------------------------------------------------------------------
     # Background task thread
-    #------------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     def thread_task(self, tsleep=0.2):
         """Perform background tasks"""
@@ -278,7 +393,7 @@ class zynthian_state_manager:
         midi_status = self.status_midi
         midi_clock_status = self.status_midi_clock
         while not self.exit_flag:
-           # Get CPU Load
+            # Get CPU Load
             #self.status_cpu_load = max(psutil.cpu_percent(None, True))
             self.status_cpu_load = zynautoconnect.get_jackd_cpu_load()
 
@@ -327,7 +442,7 @@ class zynthian_state_manager:
                     status_counter += 1
 
                 # Audio Player Status
-                #TODO: Update audio player status with callback
+                # TODO: Update audio player status with callback
                 self.status_audio_player = self.audio_player.engine.player.get_playback_state(self.audio_player.handle)
 
                 # Audio Recorder Status => Implemented in zyngui/zynthian_audio_recorder.py
@@ -366,9 +481,9 @@ class zynthian_state_manager:
 
             sleep(tsleep)
 
-    #----------------------------------------------------------------------------
+    # ----------------------------------------------------------------------------
     # Snapshot Save & Load
-    #----------------------------------------------------------------------------
+    # ----------------------------------------------------------------------------
 
     def get_state(self):
         """Get a dictionary describing the full state model"""
@@ -384,10 +499,10 @@ class zynthian_state_manager:
         }
 
         engine_states = {}
-        for id, engine in self.chain_manager.zyngines.items():
+        for eid, engine in self.chain_manager.zyngines.items():
             engine_state = engine.get_extended_config()
             if engine_state:
-                engine_states[id] = engine_state
+                engine_states[eid] = engine_state
         if engine_states:
             state["engine_config"] = engine_states
 
@@ -418,7 +533,7 @@ class zynthian_state_manager:
         Returns : True on success
         """
 
-        self.start_busy("save snapshot")
+        self.start_busy("save snapshot", "saving snapshot")
         try:
             # Get state
             state = self.get_state()
@@ -433,13 +548,14 @@ class zynthian_state_manager:
                 os.fsync(fh.fileno())
         except Exception as e:
             logging.error("Can't save snapshot file '%s': %s" % (fpath, e))
+            self.set_busy_error("ERROR saving snapshot", e)
+            sleep(2)
             self.end_busy("save snapshot")
             return False
 
         self.last_snapshot_fpath = fpath
         self.end_busy("save snapshot")
         return True
-
 
     def load_snapshot(self, fpath, load_chains=True, load_sequences=True):
         """Loads a snapshot from file
@@ -450,7 +566,7 @@ class zynthian_state_manager:
         Returns : State dictionary or None on failure
         """
 
-        self.start_busy("load snapshot")
+        self.start_busy("load snapshot", "loading snapshot")
         try:
             with open(fpath, "r") as fh:
                 json = fh.read()
@@ -475,11 +591,12 @@ class zynthian_state_manager:
                 zynautoconnect.resume()
 
             if "engine_config" in state:
-                for id, engine_state in state["engine_config"].items():
+                self.set_busy_details("processor engine config")
+                for eid, engine_state in state["engine_config"].items():
                     try:
-                        self.chain_manager.zyngines[id].set_extended_config(engine_state)
+                        self.chain_manager.zyngines[eid].set_extended_config(engine_state)
                     except Exception as e:
-                        logging.info("Failed to set extended engine state for %s: %s", id, e)
+                        logging.info("Failed to set extended engine state for %s: %s", eid, e)
 
             self.reset_midi_capture_state()
 
@@ -515,6 +632,8 @@ class zynthian_state_manager:
 
         except Exception as e:
             logging.exception("Invalid snapshot: %s" % e)
+            self.set_busy_error("ERROR: Invalid snapshot", e)
+            sleep(2)
             self.end_busy("load snapshot")
             return None
 
@@ -529,6 +648,7 @@ class zynthian_state_manager:
             self.snapshot_program = int(basename(fpath[:3]))
         except:
             pass
+
         self.end_busy("load snapshot")
         return state
 
@@ -554,29 +674,30 @@ class zynthian_state_manager:
         if bank is None:
             bank = self.snapshot_bank
         if bank is None:
-            return # Don't load snapshot if invalid bank selected
+            return  # Don't load snapshot if invalid bank selected
         files = glob(f"{self.snapshot_dir}/{bank}/{program:03d}-*.zss")
         if files:
             self.load_snapshot(files[0])
             return True
         return False
 
-
     def fix_snapshot(self, snapshot):
         """Apply fixes to snapshot based on format version"""
 
         if "schema_version" not in snapshot:
+            self.set_busy_details("fixing legacy snapshot")
             converter = zynthian_legacy_snapshot.zynthian_legacy_snapshot()
             state = converter.convert_state(snapshot)
         else:
             state = snapshot
             if state["schema_version"] < SNAPSHOT_SCHEMA_VERSION:
+                #self.set_busy_details("nothing to fix yet")
                 pass
         return state
 
-    #----------------------------------------------------------------------------
+    # ----------------------------------------------------------------------------
     # ZS3 management
-    #----------------------------------------------------------------------------
+    # ----------------------------------------------------------------------------
 
     def get_zs3_title(self, zs3_id):
         """Get ZS3 title
@@ -618,6 +739,7 @@ class zynthian_state_manager:
 
         restored_chains = []
         if "chains" in zs3_state:
+            self.set_busy_details("restoring chains state")
             for chain_id, chain_state in zs3_state["chains"].items():
                 try:
                     restore_flag = chain_state["restore"]
@@ -674,6 +796,7 @@ class zynthian_state_manager:
                 chain.rebuild_graph()
 
         if "midi_clone" in zs3_state:
+            self.set_busy_details("restoring midi clone state")
             for src_chan in range(16):
                 for dst_chan in range(16):
                     try:
@@ -688,6 +811,7 @@ class zynthian_state_manager:
                 try:
                     processor = self.chain_manager.processors[int(proc_id)]
                     if processor.chain_id in restored_chains:
+                        self.set_busy_details(f"restoring {processor.get_basepath()} state")
                         processor.set_state(proc_state)
                 except Exception as e:
                     logging.error(f"Failed to restore processor {proc_id} state => {e}")
@@ -701,12 +825,15 @@ class zynthian_state_manager:
             except:
                 restore_flag = True
             if restore_flag:
+                self.set_busy_details("restoring mixer state")
                 self.zynmixer.set_state(zs3_state["mixer"])
 
         if "midi_capture" in zs3_state:
+            self.set_busy_details("restoring midi capture state")
             self.set_midi_capture_state(zs3_state['midi_capture'])
 
         if "midi_learn_cc" in zs3_state:
+            self.set_busy_details("restoring midi learning state")
             self.chain_manager.set_midi_learn_state(zs3_state["midi_learn_cc"])
 
         return True
@@ -729,10 +856,10 @@ class zynthian_state_manager:
 
         # Get next id and name
         used_ids = []
-        for id in self.zs3:
-            if id.startswith("zs3-"):
+        for zid in self.zs3:
+            if zid.startswith("zs3-"):
                 try:
-                    used_ids.append(int(id.split('-')[1]))
+                    used_ids.append(int(zid.split('-')[1]))
                 except:
                     pass
         used_ids.sort()
@@ -760,8 +887,9 @@ class zynthian_state_manager:
         }
         chain_states = {}
         for chain_id, chain in self.chain_manager.chains.items():
-            chain_state = {}
-            chain_state["midi_chan"] = chain.midi_chan
+            chain_state = {
+                "midi_chan": chain.midi_chan
+            }
             if isinstance(chain.midi_chan, int) and chain.midi_chan < 16:
                 #TODO: This is MIDI channel related, not chain specific
                 note_low = lib_zyncore.get_midi_filter_note_low(chain.midi_chan)
@@ -863,25 +991,23 @@ class zynthian_state_manager:
                     if processor_id not in self.chain_manager.processors:
                         del self.zs3[state]["process"][processor_id]
 
-    #------------------------------------------------------------------
+    # ------------------------------------------------------------------
     # Jackd Info
-    #------------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     def get_jackd_samplerate(self):
         """Get the samplerate that jackd is running"""
 
         return zynautoconnect.get_jackd_samplerate()
 
-
     def get_jackd_blocksize(self):
         """Get the block size used by jackd"""
 
         return zynautoconnect.get_jackd_blocksize()
 
-    #------------------------------------------------------------------
+    # ------------------------------------------------------------------
     # All Notes/Sounds Off => PANIC!
-    #------------------------------------------------------------------
-
+    # ------------------------------------------------------------------
 
     def all_sounds_off(self):
         logging.info("All Sounds Off!")
@@ -889,7 +1015,6 @@ class zynthian_state_manager:
         for chan in range(16):
             lib_zyncore.ui_send_ccontrol_change(chan, 120, 0)
         self.end_busy("all_sounds_off")
-
 
     def all_notes_off(self):
         logging.info("All Notes Off!")
@@ -903,30 +1028,25 @@ class zynthian_state_manager:
             pass
         self.end_busy("all_notes_off")
 
-
     def raw_all_notes_off(self):
         logging.info("Raw All Notes Off!")
         lib_zyncore.ui_send_all_notes_off()
-
 
     def all_sounds_off_chan(self, chan):
         logging.info(f"All Sounds Off for channel {chan}!")
         lib_zyncore.ui_send_ccontrol_change(chan, 120, 0)
 
-
     def all_notes_off_chan(self, chan):
         logging.info(f"All Notes Off for channel {chan}!")
         lib_zyncore.ui_send_ccontrol_change(chan, 123, 0)
-
 
     def raw_all_notes_off_chan(self, chan):
         logging.info(f"Raw All Notes Off for channel {chan}!")
         lib_zyncore.ui_send_all_notes_off_chan(chan)
 
-
-    #------------------------------------------------------------------
+    # ------------------------------------------------------------------
     # MPE initialization
-    #------------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     def init_mpe_zones(self, lower_n_chans, upper_n_chans):
         # Configure Lower Zone
@@ -1024,9 +1144,9 @@ class zynthian_state_manager:
             for ch in (0, 16):
                 lib_zyncore.zmop_set_route_from(ch, i, 1)
 
-    #------------------------------------------------------------------
+    # ------------------------------------------------------------------
     # MIDI learning
-    #------------------------------------------------------------------
+    # ------------------------------------------------------------------
 
     def set_midi_learn(self, state):
         """Enable / disable MIDI learn in MIDI router
@@ -1053,14 +1173,6 @@ class zynthian_state_manager:
         self.midi_learn_zctrl = None
         self.set_midi_learn(False)
 
-    def toggle_learn_cc(self):
-        """Toggle MIDI CC learning"""
-
-        if self.midi_learn_zctrl:
-            self.disable_learn_cc()
-        else:
-            self.enable_learn_cc()
-
     def get_midi_learn_zctrl(self):
         try:
             return self.midi_learn_zctrl
@@ -1083,23 +1195,22 @@ class zynthian_state_manager:
     def init_midi(self):
         """Initialise MIDI configuration"""
         try:
-            #Set Global Tuning
+            # Set Global Tuning
             self.fine_tuning_freq = zynthian_gui_config.midi_fine_tuning
             lib_zyncore.set_midi_filter_tuning_freq(ctypes.c_double(self.fine_tuning_freq))
-            #Set MIDI Master Channel
+            # Set MIDI Master Channel
             lib_zyncore.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
-            #Set MIDI CC automode
+            # Set MIDI CC automode
             lib_zyncore.set_midi_filter_cc_automode(zynthian_gui_config.midi_cc_automode)
-            #Set MIDI System Messages flag
+            # Set MIDI System Messages flag
             lib_zyncore.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
-            #Setup MIDI filter rules
+            # Setup MIDI filter rules
             if self.midi_filter_script:
                 self.midi_filter_script.clean()
             self.midi_filter_script = zynthian_midi_filter.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
 
         except Exception as e:
             logging.error(f"ERROR initializing MIDI : {e}")
-
 
     def reload_midi_config(self):
         """Reload MII configuration from saved state"""
@@ -1121,6 +1232,42 @@ class zynthian_state_manager:
         self.default_touchosc()
         self.default_aubionotes()
 
+    # -------------------------------------------------------------------
+    # MIDI profile
+    # -------------------------------------------------------------------
+
+    def get_midi_profile_state(self):
+        """Get MIDI profile state as an ordered dictionary"""
+
+        midi_profile_state = OrderedDict()
+        for key in os.environ.keys():
+            if key.startswith("ZYNTHIAN_MIDI_"):
+                midi_profile_state[key[14:]] = os.environ[key]
+        return midi_profile_state
+
+    def set_midi_profile_state(self, state):
+        """Set MIDI profile from state
+
+        state : MIDI profile state dictionary
+        """
+
+        if state is not None:
+            for key in state:
+                if key.startswith("MASTER_"):
+                    # Drop Master Channel config, as it's global
+                    continue
+                os.environ["ZYNTHIAN_MIDI_" + key] = state[key]
+            zynthian_gui_config.set_midi_config()
+            self.init_midi()
+            self.init_midi_services()
+            zynautoconnect.request_midi_connect()
+            return True
+
+    def reset_midi_profile(self):
+        """Clear MIDI profiles"""
+
+        self.reload_midi_config()
+
     # ---------------------------------------------------------------------------
     # Control Device Manager
     # ---------------------------------------------------------------------------
@@ -1129,7 +1276,6 @@ class zynthian_state_manager:
         """Create and initialize Control Device Manager"""
 
         self.ctrldev_manager = zynthian_ctrldev_manager()
-
 
     # ---------------------------------------------------------------------------
     # Global Audio Player
@@ -1142,7 +1288,7 @@ class zynthian_state_manager:
                 self.chain_manager.start_engine(self.audio_player, "AP")
                 zynautoconnect.request_audio_connect(True)
             except Exception as e:
-                logging.error("Can't create global Audio Player instance")
+                logging.error(f"Can't create global Audio Player instance => {e}")
                 return
 
     def destroy_audio_player(self):
@@ -1206,12 +1352,12 @@ class zynthian_state_manager:
 
             exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
             if exdirs is None:
-                dir = capture_dir_sdc
+                midir = capture_dir_sdc
             else:
-                dir = exdirs[0]
+                midir = exdirs[0]
 
             n = 1
-            for fn in sorted(os.listdir(dir)):
+            for fn in sorted(os.listdir(midir)):
                 if fn.lower().endswith(".mid"):
                     try:
                         n = int(fn[:3]) + 1
@@ -1239,9 +1385,9 @@ class zynthian_state_manager:
             else:
                 # Get latest file
                 latest_mtime = 0
-                for dir in [capture_dir_sdc] + zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
-                    for fn in os.listdir(dir):
-                        fp = join(dir, fn)
+                for midir in [capture_dir_sdc] + zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
+                    for fn in os.listdir(midir):
+                        fp = join(midir, fn)
                         if isfile(fp) and fn[-4:] == '.mid':
                             mtime = os.path.getmtime(fp)
                             if mtime > latest_mtime:
@@ -1261,7 +1407,7 @@ class zynthian_state_manager:
             self.zynseq.transport_start("zynsmf")
             self.status_midi_player = libsmf.getPlayState() != zynsmf.PLAY_STATE_STOPPED
             self.last_midi_file = fpath
-    		#self.zynseq.libseq.transportLocate(0)
+            #self.zynseq.libseq.transportLocate(0)
         except Exception as e:
             logging.error(f"ERROR STARTING MIDI PLAY: {e}")
             return False
@@ -1279,19 +1425,19 @@ class zynthian_state_manager:
         else:
             self.stop_midi_playback()
 
-    #----------------------------------------------------------------------------
+    # ----------------------------------------------------------------------------
     # Clone, Note Range & Transpose
-    #----------------------------------------------------------------------------
+    # ----------------------------------------------------------------------------
 
     def get_clone_state(self):
         """Get MIDI clone state as list of dictionaries"""
 
         state = {}
-        for src_chan in range(0,16):
+        for src_chan in range(0, 16):
             for dst_chan in range(0, 16):
                 clone_info = {
                     "enabled": lib_zyncore.get_midi_filter_clone(src_chan, dst_chan),
-                    "cc": list(map(int,lib_zyncore.get_midi_filter_clone_cc(src_chan, dst_chan).nonzero()[0]))
+                    "cc": list(map(int, lib_zyncore.get_midi_filter_clone_cc(src_chan, dst_chan).nonzero()[0]))
                 }
                 if clone_info["enabled"] or clone_info["cc"] != [1, 2, 64, 65, 66, 67, 68]:
                     if src_chan not in state:
@@ -1353,7 +1499,7 @@ class zynthian_state_manager:
     # Services
     # ---------------------------------------------------------------------------
 
-    #Start/Stop RTP-MIDI depending on configuration
+    # Start/Stop RTP-MIDI depending on configuration
     def default_rtpmidi(self):
         if zynthian_gui_config.midi_rtpmidi_enabled:
             self.start_rtpmidi(False)
@@ -1375,7 +1521,6 @@ class zynthian_state_manager:
         except Exception as e:
             logging.error(e)
 
-
     def stop_rtpmidi(self, save_config=True):
         logging.info("STOPPING RTP-MIDI")
         try:
@@ -1391,7 +1536,7 @@ class zynthian_state_manager:
             logging.error(e)
 
     def start_qmidinet(self, save_config=True):
-        logging.info("STARTING QMIDINET")
+        logging.info("STARTING QMidiNet")
         try:
             check_output("systemctl start qmidinet", shell=True)
             zynthian_gui_config.midi_network_enabled = 1
@@ -1405,9 +1550,8 @@ class zynthian_state_manager:
         except Exception as e:
             logging.error(e)
 
-
     def stop_qmidinet(self, save_config=True):
-        logging.info("STOPPING QMIDINET")
+        logging.info("STOPPING QMidiNet")
         try:
             check_output("systemctl stop qmidinet", shell=True)
             zynthian_gui_config.midi_network_enabled = 0
@@ -1419,13 +1563,12 @@ class zynthian_state_manager:
         except Exception as e:
             logging.error(e)
 
-    #Start/Stop QMidiNet depending on configuration
+    # Start/Stop QMidiNet depending on configuration
     def default_qmidinet(self):
         if zynthian_gui_config.midi_network_enabled:
             self.start_qmidinet(False)
         else:
             self.stop_qmidinet(False)
-
 
     def start_touchosc2midi(self, save_config=True):
         logging.info("STARTING touchosc2midi")
@@ -1455,7 +1598,7 @@ class zynthian_state_manager:
         except Exception as e:
             logging.error(e)
 
-    #Start/Stop TouchOSC depending on configuration
+    # Start/Stop TouchOSC depending on configuration
     def default_touchosc(self):
         if zynthian_gui_config.midi_touchosc_enabled:
             self.start_touchosc2midi(False)
@@ -1491,120 +1634,9 @@ class zynthian_state_manager:
         except Exception as e:
             logging.error(e)
 
-    #Start/Stop AubioNotes depending on configuration
+    # Start/Stop AubioNotes depending on configuration
     def default_aubionotes(self):
         if zynthian_gui_config.midi_aubionotes_enabled:
             self.start_aubionotes(False)
         else:
             self.stop_aubionotes(False)
-
-
-    # -------------------------------------------------------------------
-    # Switches
-    # -------------------------------------------------------------------
-
-    # Init Standard Zynswitches
-    #TODO: This should be in UI code
-    def zynswitches_init(self):
-        if not lib_zyncore: return
-        logging.info(f"INIT {zynthian_gui_config.num_zynswitches} ZYNSWITCHES ...")
-        self.dtsw = [datetime.now()] * (zynthian_gui_config.num_zynswitches + 4)
-
-    # Initialize custom switches, analog I/O, TOF sensors, etc.
-    def zynswitches_midi_setup(self, current_chain_chan=None):
-        if not lib_zyncore: return
-        logging.info("CUSTOM I/O SETUP...")
-
-        # Configure Custom Switches
-        for i, event in enumerate(zynthian_gui_config.custom_switch_midi_events):
-            if event is not None:
-                swi = 4 + i
-                if event['chan'] is not None:
-                    midi_chan = event['chan']
-                else:
-                    midi_chan = current_chain_chan
-
-                if midi_chan is not None:
-                    lib_zyncore.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'], event['val'])
-                    logging.info(f"MIDI ZYNSWITCH {swi}: {event['type']} CH#{midi_chan}, {event['num']}, {event['val']}")
-                else:
-                    lib_zyncore.setup_zynswitch_midi(swi, 0, 0, 0, 0)
-                    logging.info(f"MIDI ZYNSWITCH {swi}: DISABLED!")
-
-        # Configure Zynaptik Analog Inputs (CV-IN)
-        for i, event in enumerate(zynthian_gui_config.zynaptik_ad_midi_events):
-            if event is not None:
-                if event['chan'] is not None:
-                    midi_chan = event['chan']
-                else:
-                    midi_chan = current_chain_chan
-
-                if midi_chan is not None:
-                    lib_zyncore.setup_zynaptik_cvin(i, event['type'], midi_chan, event['num'])
-                    logging.info(f"ZYNAPTIK CV-IN {i}: {event['type']} CH#{midi_chan}, {event['num']}")
-                else:
-                    lib_zyncore.disable_zynaptik_cvin(i)
-                    logging.info(f"ZYNAPTIK CV-IN {i}: DISABLED!")
-
-        # Configure Zynaptik Analog Outputs (CV-OUT)
-        for i, event in enumerate(zynthian_gui_config.zynaptik_da_midi_events):
-            if event is not None:
-                if event['chan'] is not None:
-                    midi_chan = event['chan']
-                else:
-                    midi_chan = current_chain_chan
-
-                if midi_chan is not None:
-                    lib_zyncore.setup_zynaptik_cvout(i, event['type'], midi_chan, event['num'])
-                    logging.info(f"ZYNAPTIK CV-OUT {i}: {event['type']} CH#{midi_chan}, {event['num']}")
-                else:
-                    lib_zyncore.disable_zynaptik_cvout(i)
-                    logging.info(f"ZYNAPTIK CV-OUT {i}: DISABLED!")
-
-        # Configure Zyntof Inputs (Distance Sensor)
-        for i, event in enumerate(zynthian_gui_config.zyntof_midi_events):
-            if event is not None:
-                if event['chan'] is not None:
-                    midi_chan = event['chan']
-                else:
-                    midi_chan = current_chain_chan
-
-                if midi_chan is not None:
-                    lib_zyncore.setup_zyntof(i, event['type'], midi_chan, event['num'])
-                    logging.info(f"ZYNTOF {i}: {event['type']} CH#{midi_chan}, {event['num']}")
-                else:
-                    lib_zyncore.disable_zyntof(i)
-                    logging.info(f"ZYNTOF {i}: DISABLED!")
-
-    def get_midi_profile_state(self):
-        """Get MIDI profile state as an ordered dictionary"""
-
-        midi_profile_state = OrderedDict()
-        for key in os.environ.keys():
-            if key.startswith("ZYNTHIAN_MIDI_"):
-                midi_profile_state[key[14:]] = os.environ[key]
-        return midi_profile_state
-
-    def set_midi_profile_state(self, state):
-        """Set MIDI profile from state
-        
-        state : MIDI profile state dictionary
-        """
-
-        if state is not None:
-            for key in state:
-                if key.startswith("MASTER_"):
-                    # Drop Master Channel config, as it's global
-                    continue
-                os.environ["ZYNTHIAN_MIDI_" + key] = state[key]
-            zynthian_gui_config.set_midi_config()
-            self.init_midi()
-            self.init_midi_services()
-            zynautoconnect.request_midi_connect()
-            return True
-
-    def reset_midi_profile(self):
-        """Clear MIDI profiles"""
-
-        self.reload_midi_config()
-
