@@ -38,7 +38,7 @@ from zynlibs.zynseq import zynseq
 
 class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad):
 
-	dev_ids = ["Launchkey_Mini_MK3_MIDI_2"]
+	dev_ids = ["Launchkey Mini MK3 MIDI 2"]
 
 	PAD_COLOURS = [71, 104, 76, 51, 104, 41, 64, 12, 11, 71, 4, 67, 42, 9, 105, 15]
 	STARTING_COLOUR = 123

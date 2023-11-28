@@ -38,7 +38,7 @@ from zynlibs.zynseq import zynseq
 
 class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 
-	dev_ids = ["Launchpad_Mini_MIDI_1"]
+	dev_ids = ["Launchpad Mini MIDI 1"]
 
 	OFF_COLOUR = 0xC
 	PLAYING_COLOUR = 0x3C

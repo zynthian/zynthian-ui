@@ -39,7 +39,7 @@ from zynlibs.zynseq import zynseq
 
 class zynthian_ctrldev_launchpad_pro_mk3(zynthian_ctrldev_zynpad):
 
-	dev_ids = ["LPProMK3_DAW"]
+	dev_ids = ["LPProMK3 DAW"]
 
 	PAD_COLOURS = [6, 29, 17, 49, 66, 41, 23, 13, 96, 2, 81, 82, 83, 84, 85, 86, 87]
 	STARTING_COLOUR = 21

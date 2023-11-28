@@ -140,7 +140,7 @@ def request_midi_connect(fast = False):
 
 def is_host_usb_suspended():
 	with open("/sys/class/udc/fe980000.usb/device/gadget/suspended") as f:
-		return (f.read() == "1\n")
+		return f.read() == "1\n"
 
 def midi_autoconnect():
 	"""Connect all expected MIDI routes"""
@@ -172,7 +172,7 @@ def midi_autoconnect():
 		except:
 			pass
 
-	# Remove a2j MIDI through (we don't currently use but may want to renable in future)
+	# Remove a2j MIDI through (we don't currently use it but may want to renable in future)
 	try:
 		a2j_thru = jclient.get_ports("a2j:Midi Through", is_output=True, is_physical=True, is_midi=True)[0]
 		hw_src_ports.remove(a2j_thru)
@@ -180,6 +180,7 @@ def midi_autoconnect():
 		pass
 
 	#TODO: Do we want to maintain a list of user disabled MIDI ports? A user has freedom to configure routing in the UI
+	# NO. This has to be removed, but after global MIDI THRU configuration has been implemented in UI
 	enabled_hw_src_ports = []
 	for port in hw_src_ports:
 		if port.name not in zynthian_gui_config.disabled_midi_in_ports:
@@ -204,6 +205,7 @@ def midi_autoconnect():
 		pass
 
 	#TODO: Do we want to maintain a list of user disabled MIDI ports? A user has freedom to configure routing in the UI
+	# NO. This has to be removed, but after global MIDI THRU configuration has been implemented in UI
 	enabled_hw_dst_ports = []
 	for port in hw_dst_ports:
 		try:
@@ -262,10 +264,10 @@ def midi_autoconnect():
 	# Delete disconnected input devices from list
 	for i in range(0, max_num_devs):
 		if i not in busy_idevs and devices_in[i] is not None:
+			logger.debug("Disconnected MIDI-in device {}: {}".format(i, devices_in[i]))
 			devices_in[i] = None
 			devices_in_name[i] = None
 			set_mididev_changed(True)
-			logger.debug("Disconnected MIDI-in device {}: {}".format(i, devices_in[i]))
 
 	# Connect MIDI Output Devices
 	busy_idevs = []
@@ -295,10 +297,10 @@ def midi_autoconnect():
 	# Delete disconnected output devices from list
 	for i in range(0, max_num_devs):
 		if i not in busy_idevs and devices_out[i] is not None:
+			logger.debug("Disconnected MIDI-out device {}: {}".format(i, devices_out[i]))
 			devices_out[i] = None
 			devices_out_name[i] = None
 			set_mididev_changed(True)
-			logger.debug("Disconnected MIDI-out device {}: {}".format(i, devices_out[i]))
 
 	# List MIDI over IP destination ports
 	nw_dst_ports = []

@@ -37,7 +37,8 @@ from zyncoder.zyncore import lib_zyncore
 
 class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_base):
 
-	dev_ids = ["MIDI_Mix_MIDI_1"]
+	dev_ids = ["MIDI Mix MIDI 1"]
+
 	dev_zynmixer = True  # Can act as an audio mixer controller device
 	rec_mode = 0
 

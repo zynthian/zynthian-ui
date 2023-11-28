@@ -40,7 +40,7 @@ from zynlibs.zynseq import zynseq
 
 class zynthian_ctrldev_launchpad_x(zynthian_ctrldev_zynpad):
 
-	dev_ids = ["Launchpad_X_MIDI_1", "LPX_DAW"]
+	dev_ids = ["Launchpad X MIDI 1", "LPX DAW"]
 
 	PAD_COLOURS = [6, 29, 17, 49, 66, 41, 23, 13, 96, 2, 81, 82, 83, 84, 85, 86, 87]
 	STARTING_COLOUR = 21
