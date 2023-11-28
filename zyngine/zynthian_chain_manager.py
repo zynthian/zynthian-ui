@@ -173,7 +173,7 @@ class zynthian_chain_manager():
 
         if chain_id not in self.chains:
             return False
-        self.state_manager.start_busy("remove_chain")
+        self.state_manager.start_busy("remove_chain", None, f"removing chain {chain_id}")
         chains_to_remove = [chain_id] # List of associated chains that shold be removed simultaneously
         chain = self.chains[chain_id]
         if chain.synth_slots:
@@ -729,6 +729,7 @@ class zynthian_chain_manager():
         for engine in list(self.zyngines.keys()):
             if not self.zyngines[engine].processors:
                 logging.debug(f"Stopping Unused Engine '{engine}' ...")
+                self.state_manager.set_busy_details(f"stopping engine {self.zyngines[engine].get_name()}")
                 self.zyngines[engine].stop()
                 del self.zyngines[engine]
 
@@ -736,6 +737,8 @@ class zynthian_chain_manager():
         """Stop JALV engines that are not used by any processors"""
         for engine in list(self.zyngines.keys()):
             if len(self.zyngines[engine].processors) == 0 and engine[0:3] in ("JV/"):
+                logging.debug(f"Stopping Unused Jalv Engine '{engine}' ...")
+                self.state_manager.set_busy_details(f"stopping engine {self.zyngines[engine].get_name()}")
                 self.zyngines[engine].stop()
                 del self.zyngines[engine]
 

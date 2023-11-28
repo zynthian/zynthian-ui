@@ -495,13 +495,16 @@ class zynthian_gui:
 		# Initialize OSC
 		self.osc_init()
 
+		# Initial loading screen
+		self.show_loading("Starting User Interface")
+
 		# Start polling & threads
-		self.start_polling()
 		self.start_busy_thread()
 		self.start_control_thread()
 		self.start_status_thread()
 		self.start_cuia_thread()
 		self.start_zynpot_thread()
+		self.start_polling()
 
 	# --------------------------------------------------------------------------
 	# Start task => Must run as a thread, so we can go into tkinter loop
@@ -514,7 +517,7 @@ class zynthian_gui:
 		self.start_thread.start()
 
 	def start_task(self):
-		self.state_manager.start_busy("ui startup", "Starting user interface...")
+		self.state_manager.start_busy("ui startup")
 
 		snapshot_loaded = False
 		if zynthian_gui_config.control_test_enabled:
@@ -1580,10 +1583,8 @@ class zynthian_gui:
 		if self.current_screen in ("main_menu", "engine", "midi_cc", "midi_chan", "midi_key_range", "audio_in", "audio_out", "midi_out", "midi_prog") or \
 				self.current_screen.endswith("_options"):
 			return True
-
 		if self.current_screen == "option" and len(self.screen_history) > 1 and self.screen_history[-2] in ("zynpad", "pattern_editor", "preset", "bank"):
 			return True
-
 		return False
 
 	def check_current_screen_switch(self, action_config):
