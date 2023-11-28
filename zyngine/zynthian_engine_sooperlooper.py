@@ -448,7 +448,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		if self.osc_server is None:
 			return
 		try:
-			procesor = self.processors[0]
+			processor = self.processors[0]
 			#logging.debug(f"Rx OSC => {path} {args}")
 			if path == '/state':
 				# args: i:Loop index, s:control, f:value
