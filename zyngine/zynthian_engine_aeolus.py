@@ -644,7 +644,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 				chain.mixer_chan = None
 		
 
-	def get_name(self, processor):
+	def get_name(self, processor=None):
 		try:
 			return f"{self.name} {processor.division}"
 		except:

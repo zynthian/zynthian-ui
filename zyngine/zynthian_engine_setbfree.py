@@ -296,21 +296,22 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# Processor Management
 	# ---------------------------------------------------------------------------
 
-	def get_name(self, processor):
+	def get_name(self, processor=None):
 		res = self.name
-		chan_name = self.get_chan_name(processor.midi_chan)
-		if chan_name:
-			res = res + '/' + chan_name
+		if processor:
+			chan_name = self.get_chan_name(processor.midi_chan)
+			if chan_name:
+				res = res + '/' + chan_name
 		return res
 
 
-	def get_path(self, processor):
+	def get_path(self, processor=None):
 		path = self.name
 		if not self.manuals_config:
 			path += "/Manuals"
 		elif not self.tonewheel_model:
 			path += "/Tonewheel"
-		else:
+		elif processor:
 			#chan_name = self.get_chan_name(processor.get_midi_chan())
 			#if chan_name:
 			#	path = path + '/' + chan_name

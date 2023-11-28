@@ -276,11 +276,11 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.set_midi_chan(processor)
 
 
-	def get_name(self, processor):
+	def get_name(self, processor=None):
 		return self.plugin_name
 
 
-	def get_path(self, processor):
+	def get_path(self, processor=None):
 		return self.plugin_name
 
 	# ---------------------------------------------------------------------------

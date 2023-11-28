@@ -348,11 +348,11 @@ class zynthian_engine(zynthian_basic_engine):
 		processor.jackname = None
 
 
-	def get_name(self, processor):
+	def get_name(self, processor=None):
 		return self.name
 
 
-	def get_path(self, processor):
+	def get_path(self, processor=None):
 		return self.name
 	
 
