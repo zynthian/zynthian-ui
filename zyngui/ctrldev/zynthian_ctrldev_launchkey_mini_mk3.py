@@ -122,7 +122,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad):
 					row = (note - 96) % 16
 					pad = row * self.zyngui.zynseq.col_in_bank + col
 					if pad < self.zyngui.zynseq.seq_in_bank:
-						self.zyngui.zynseq.libseq.togglePlayState(self.zynbank.bank, pad)
+						self.zyngui.zynseq.libseq.togglePlayState(self.zynpad.bank, pad)
 				except:
 					pass
 		elif evtype == 0xB:
@@ -144,7 +144,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad):
 				pass
 			#self.logging_debug_cc(val1, val2)
 		elif evtype == 0xC:
-			self.zynbank.set_bank(val1 + 1)
+			self.zynpad.set_bank(val1 + 1)
 
 		return True
 
