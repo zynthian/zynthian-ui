@@ -45,15 +45,14 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		self.bankless_mode = False
 		self.index_offset = 0
 		super().__init__('Bank', True)
-		self.default_snapshot_fpath = join(self.zyngui.state_manager.snapshot_dir, "default.zss")
-		self.last_state_snapshot_fpath = join(self.zyngui.state_manager.snapshot_dir, "last_state.zss")
+		self.sm = self.zyngui.state_manager
 
 		self.check_bankless_mode()
 
 	def get_snapshot_fpath(self, f):
 		if f in ["last_state.zss", "default.zss"]:
-			return join(self.zyngui.state_manager.snapshot_dir, f)
-		return join(self.zyngui.state_manager.snapshot_dir, self.zyngui.state_manager.snapshot_bank, f)
+			return join(self.sm.snapshot_dir, f)
+		return join(self.sm.snapshot_dir, self.sm.snapshot_bank, f)
 
 	def get_next_program(self, offset):
 		"""Get the next available program number
@@ -121,16 +120,16 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.index = 0
 
 	def check_bankless_mode(self):
-		bank_dirs = [d for d in os.listdir(self.zyngui.state_manager.snapshot_dir) if os.path.isdir(join(self.zyngui.state_manager.snapshot_dir, d))]
+		bank_dirs = [d for d in os.listdir(self.sm.snapshot_dir) if os.path.isdir(join(self.sm.snapshot_dir, d))]
 		n_banks = len(bank_dirs)
 		# If no banks, create the first one and choose it.
 		if n_banks == 0:
-			os.makedirs(f"{self.zyngui.state_manager.snapshot_dir}/000")
+			os.makedirs(f"{self.sm.snapshot_dir}/000")
 			self.bankless_mode = True
 		# If only one bank, choose it.
 		elif n_banks == 1:
 			self.bankless_mode = True
-			self.zyngui.state_manager.snapshot_bank = bank_dirs[0]
+			self.sm.snapshot_bank = bank_dirs[0]
 		# If more than 1, multibank mode
 		else:
 			self.bankless_mode = False
@@ -138,17 +137,17 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 	def load_bank_list(self):
 		self.list_data = []
 		i = 0
-		if isfile(self.default_snapshot_fpath):
-			self.list_data.append((self.default_snapshot_fpath, i, "Default"))
+		if isfile(self.sm.default_snapshot_fpath):
+			self.list_data.append((self.sm.default_snapshot_fpath, i, "Default"))
 			i = i + 1
-		if isfile(self.last_state_snapshot_fpath):
-			self.list_data.append((self.last_state_snapshot_fpath, i, "Last State"))
+		if isfile(self.sm.last_state_snapshot_fpath):
+			self.list_data.append((self.sm.last_state_snapshot_fpath, i, "Last State"))
 			i = i + 1
 		self.list_data.append(("NEW_BANK", i, "New Bank"))
 		i = i + 1
 		self.change_index_offset(i)
 
-		for dpath in sorted(glob(f"{self.zyngui.state_manager.snapshot_dir}/[0-9][0-9][0-9]*")):
+		for dpath in sorted(glob(f"{self.sm.snapshot_dir}/[0-9][0-9][0-9]*")):
 			if isdir(dpath):
 				bank_name = basename(dpath)
 				if bank_name.startswith('.'):
@@ -160,7 +159,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 					logging.debug("Snapshot Bank '%s' => MIDI bank %d" % (bank_name, bank_number))
 				except:
 					logging.warning("Snapshot Bank '%s' don't have a MIDI bank number" % bank_name)
-				if bank_name == self.zyngui.state_manager.snapshot_bank:
+				if bank_name == self.sm.snapshot_bank:
 					self.index = i
 				i = i + 1
 
@@ -168,23 +167,23 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		self.list_data = []
 		i = 0
 		if not self.bankless_mode:
-			self.list_data.append((self.zyngui.state_manager.snapshot_dir, i, ".."))
+			self.list_data.append((self.sm.snapshot_dir, i, ".."))
 			i += 1
 
 		if self.zyngui.chain_manager.get_chain_count() or self.zyngui.chain_manager.get_processor_count() > 0:
 			# TODO: Add better validation of populated state, e.g. sequences
 			self.list_data.append(("SAVE", i, "Save as new snapshot"))
 		if self.bankless_mode:
-			if isfile(self.default_snapshot_fpath):
-				self.list_data.append((self.default_snapshot_fpath, i, "Default"))
+			if isfile(self.sm.default_snapshot_fpath):
+				self.list_data.append((self.sm.default_snapshot_fpath, i, "Default"))
 				i += 1
-			if isfile(self.last_state_snapshot_fpath):
-				self.list_data.append((self.last_state_snapshot_fpath, i, "Last State"))
+			if isfile(self.sm.last_state_snapshot_fpath):
+				self.list_data.append((self.sm.last_state_snapshot_fpath, i, "Last State"))
 				i += 1
 
 		self.change_index_offset(i)
 
-		for fpath in sorted(glob(f"{self.zyngui.state_manager.snapshot_dir}/{self.zyngui.state_manager.snapshot_bank}/*.zss")):
+		for fpath in sorted(glob(f"{self.sm.snapshot_dir}/{self.sm.snapshot_bank}/*.zss")):
 			if isfile(fpath):
 				title = basename(fpath)[:-4].replace(';', '>', 1).replace(';', '/')
 				self.list_data.append((fpath, i, title))
@@ -192,7 +191,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def fill_list(self):
 		self.check_bankless_mode()
-		if self.zyngui.state_manager.snapshot_bank is None:
+		if self.sm.snapshot_bank is None:
 			self.load_bank_list()
 		else:
 			self.load_snapshot_list()
@@ -203,12 +202,12 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		if fpath == 'NEW_BANK':
 			self.zyngui.show_keyboard(self.new_bank, "")
 		elif isdir(fpath):
-			if fpath == self.zyngui.state_manager.snapshot_dir:
-				self.zyngui.state_manager.snapshot_bank = None
+			if fpath == self.sm.snapshot_dir:
+				self.sm.snapshot_bank = None
 			elif t == 'B':
 				self.show_bank_options(self.list_data[i][2])
 			else:
-				self.zyngui.state_manager.snapshot_bank = self.list_data[i][2]
+				self.sm.snapshot_bank = self.list_data[i][2]
 			self.build_view()
 		else:
 			if fpath:
@@ -222,14 +221,14 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		if title:
 			full_title = f"{full_title}-{title}"
 		try:
-			os.mkdir(join(self.zyngui.state_manager.snapshot_dir, full_title))
-			self.zyngui.state_manager.snapshot_bank = full_title
+			os.mkdir(join(self.sm.snapshot_dir, full_title))
+			self.sm.snapshot_bank = full_title
 		except:
 			logging.warning("Failed to create new snapshot bank")
 		self.build_view()
 
 	def show_bank_options(self, bank):
-		if not isdir(f"{self.zyngui.state_manager.snapshot_dir}/{bank}"):
+		if not isdir(f"{self.sm.snapshot_dir}/{bank}"):
 			return
 		options = {
 			"Delete Bank": bank,
@@ -240,7 +239,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 	def bank_options_cb(self, option, param):
 		if option == "Delete Bank":
-			snapshots = glob(f"{self.zyngui.state_manager.snapshot_dir}/{param}/*.zss")
+			snapshots = glob(f"{self.sm.snapshot_dir}/{param}/*.zss")
 			self.zyngui.show_confirm(f"Do you really want to delete bank {param} with {len(snapshots)} snapshots", self.delete_bank, param)
 		elif option == "Rename Bank":
 			parts = param.split("-", 1)
@@ -250,23 +249,23 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			else:
 				self.old_prog = parts[0]
 				name = ""
-			self.old_path = f"{self.zyngui.state_manager.snapshot_dir}/{param}"
+			self.old_path = f"{self.sm.snapshot_dir}/{param}"
 			self.zyngui.show_keyboard(self.rename_bank, name)
 
 	def delete_bank(self, bank):
 		try:
-			shutil.rmtree(f"{self.zyngui.state_manager.snapshot_dir}/{bank}")
-			if self.zyngui.state_manager.snapshot_bank == bank:
-				self.zyngui.state_manager.snapshot_dir = None
+			shutil.rmtree(f"{self.sm.snapshot_dir}/{bank}")
+			if self.sm.snapshot_bank == bank:
+				self.sm.snapshot_dir = None
 			self.fill_list()
 		except:
 			pass
 
 	def rename_bank(self, name):
 		if name:
-			new_path = f"{self.zyngui.state_manager.snapshot_dir}/{self.old_prog}-{name}"
+			new_path = f"{self.sm.snapshot_dir}/{self.old_prog}-{name}"
 		else:
-			new_path = f"{self.zyngui.state_manager.snapshot_dir}/{self.old_prog}"
+			new_path = f"{self.sm.snapshot_dir}/{self.old_prog}"
 		try:
 			os.rename(self.old_path, new_path)
 			self.fill_list()
@@ -328,8 +327,8 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.zyngui.show_confirm("Do you really want to delete '%s'" % fname, self.delete_confirmed, fpath)
 
 	def load_snapshot(self, fpath):
-		self.save_last_state_snapshot()
-		state = self.zyngui.state_manager.load_snapshot(fpath)
+		self.sm.save_last_state_snapshot()
+		state = self.sm.load_snapshot(fpath)
 		if state is None:
 			self.zyngui.clean_all()
 		if state and "zyngui" in state:
@@ -338,13 +337,13 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 
 	def load_snapshot_chains(self, fpath):
-		self.save_last_state_snapshot()
-		self.zyngui.state_manager.load_snapshot(fpath, load_sequences=False)
+		self.sm.save_last_state_snapshot()
+		self.sm.load_snapshot(fpath, load_sequences=False)
 		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
 
 	def load_snapshot_sequences(self, fpath):
-		self.save_last_state_snapshot()
-		self.zyngui.state_manager.load_snapshot(fpath, load_chains=False)
+		self.sm.save_last_state_snapshot()
+		self.sm.load_snapshot(fpath, load_chains=False)
 		self.zyngui.show_screen('zynpad', hmode=self.zyngui.SCREEN_HMODE_RESET)
 
 	def restore_backup_cb(self, fname, fpath):
@@ -446,41 +445,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		self.fill_list()
 
 	def save_snapshot(self, path):
-		self.backup_snapshot(path)
-		self.zyngui.state_manager.save_snapshot(path)
+		self.sm.backup_snapshot(path)
+		self.sm.save_snapshot(path)
 		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
-
-	def backup_snapshot(self, path):
-		if isfile(path):
-			dpath = dirname(path)
-			fbase, fext = splitext(basename(path))
-			ts_str = datetime.now().strftime("%Y%m%d%H%M%S")
-			budir = dpath + "/.backup"
-			if not isdir(budir):
-				os.mkdir(budir)
-			os.rename(path, "{}/{}.{}{}".format(budir, fbase, ts_str, fext))
-
-	def save_default_snapshot(self):
-		self.zyngui.state_manager.save_snapshot(self.default_snapshot_fpath)
-
-	def load_default_snapshot(self):
-		if isfile(self.default_snapshot_fpath):
-			self.zyngui.set_loading_title("loading default snapshot")
-			return self.zyngui.state_manager.load_snapshot(self.default_snapshot_fpath)
-
-	def save_last_state_snapshot(self):
-		self.zyngui.state_manager.save_snapshot(self.last_state_snapshot_fpath)
-
-	def load_last_state_snapshot(self):
-		if isfile(self.last_state_snapshot_fpath):
-			self.zyngui.set_loading_title("loading last state")
-			return self.zyngui.state_manager.load_snapshot(self.last_state_snapshot_fpath)
-
-	def delete_last_state_snapshot(self):
-		try:
-			os.remove(self.last_state_snapshot_fpath)
-		except:
-			pass
 
 	def delete_confirmed(self, fpath):
 		logging.info("DELETE SNAPSHOT: {}".format(fpath))

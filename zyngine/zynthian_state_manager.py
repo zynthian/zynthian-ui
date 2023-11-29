@@ -80,10 +80,12 @@ class zynthian_state_manager:
         self.start_busy("zynthian_state_manager")
 
         self.snapshot_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/snapshots"
-        self.snapshot_bank = None  # Name of snapshot bank (without path)
-        self.snapshot_program = 0
+        self.default_snapshot_fpath = join(self.snapshot_dir, "default.zss")
+        self.last_state_snapshot_fpath = join(self.snapshot_dir, "last_state.zss")
         self.last_snapshot_count = 0  # Increments each time a snapshot is loaded - modules may use to update if required
         self.last_snapshot_fpath = ""
+        self.snapshot_bank = None  # Name of snapshot bank (without path)
+        self.snapshot_program = 0
         self.zs3 = {}  # Dictionary or zs3 configs indexed by "ch/pc"
 
         self.power_save_mode = False
@@ -695,6 +697,38 @@ class zynthian_state_manager:
                 pass
         return state
 
+    def backup_snapshot(self, path):
+        """Make a backup copy of a snapshot file"""
+
+        if isfile(path):
+            dpath = dirname(path)
+            fbase, fext = splitext(basename(path))
+            ts_str = datetime.now().strftime("%Y%m%d%H%M%S")
+            budir = dpath + "/.backup"
+            if not isdir(budir):
+                os.mkdir(budir)
+            os.rename(path, "{}/{}.{}{}".format(budir, fbase, ts_str, fext))
+
+    def save_default_snapshot(self):
+        self.save_snapshot(self.default_snapshot_fpath)
+
+    def load_default_snapshot(self):
+        if isfile(self.default_snapshot_fpath):
+            return self.load_snapshot(self.default_snapshot_fpath)
+
+    def save_last_state_snapshot(self):
+        self.save_snapshot(self.last_state_snapshot_fpath)
+
+    def load_last_state_snapshot(self):
+        if isfile(self.last_state_snapshot_fpath):
+            return self.load_snapshot(self.last_state_snapshot_fpath)
+
+    def delete_last_state_snapshot(self):
+        try:
+            os.remove(self.last_state_snapshot_fpath)
+        except:
+            pass
+
     # ----------------------------------------------------------------------------
     # ZS3 management
     # ----------------------------------------------------------------------------
@@ -1208,7 +1242,6 @@ class zynthian_state_manager:
             if self.midi_filter_script:
                 self.midi_filter_script.clean()
             self.midi_filter_script = zynthian_midi_filter.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
-
         except Exception as e:
             logging.error(f"ERROR initializing MIDI : {e}")
 
@@ -1496,7 +1529,129 @@ class zynthian_state_manager:
             self.ctrldev_manager.sleep_off()
 
     # ---------------------------------------------------------------------------
-    # Services
+    # Core Network Services
+    # ---------------------------------------------------------------------------
+
+    def start_wifi(self):
+        self.start_busy("start_wifi", "connecting to WIFI")
+        if not zynconf.start_wifi():
+            self.set_busy_error("ERROR CONNECTING TO WIFI", "Can't start WIFI network!")
+            sleep(2.0)
+        self.end_busy("start_wifi")
+
+    def start_wifi_hotspot(self):
+        self.start_busy("start_wifi_hotspot", "starting WIFI HotSpot")
+        if not zynconf.start_wifi_hotspot():
+            self.set_busy_error("ERROR STARTING WIFI HOTSPOT", "Can't start WIFI HotSpot!")
+            sleep(2.0)
+        self.end_busy("start_wifi_hotspot")
+
+    def stop_wifi(self):
+        self.start_busy("stop_wifi", "stopping WIFI")
+        if not zynconf.stop_wifi():
+            self.set_busy_error("ERROR STOPPING WIFI", "Can't stop WIFI network")
+            sleep(2.0)
+        self.end_busy("stop_wifi")
+
+    def start_vncserver(self, save_config=True):
+        # Start VNC for Zynthian-UI
+        self.start_busy("start_vncserver", "starting VNC")
+
+        if not zynconf.is_service_active("vncserver0"):
+            try:
+                logging.info("STARTING VNC-UI SERVICE")
+                self.set_busy_details("starting VNC-UI service")
+                check_output("systemctl start novnc0", shell=True)
+                zynthian_gui_config.vncserver_enabled = 1
+            except Exception as e:
+                logging.error(e)
+                self.set_busy_error("ERROR STARTING VNC-UI", e)
+                sleep(2.0)
+
+        # Start VNC for Engine's native GUIs
+        if not zynconf.is_service_active("vncserver1"):
+            # Save state and stop engines
+            if self.chain_manager.get_chain_count() > 0:
+                self.save_last_state_snapshot()
+                restore_state = True
+            else:
+                restore_state = False
+            # Start VNC for Engines
+            try:
+                logging.info("STARTING VNC-ENGINES SERVICE")
+                self.set_busy_details("starting VNC-ENGINES service")
+                check_output("systemctl start novnc1", shell=True)
+                zynthian_gui_config.vncserver_enabled = 1
+            except Exception as e:
+                logging.error(e)
+                self.set_busy_error("ERROR STARTING VNC-ENGINES", e)
+                sleep(2.0)
+            # Restore state
+            if restore_state:
+                self.load_last_state_snapshot()
+
+        # Update Config
+        if save_config:
+            zynconf.save_config({
+                "ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
+            })
+
+        self.end_busy("start_vncserver")
+
+    def stop_vncserver(self, save_config=True):
+        self.start_busy("stop_vncserver", "stopping VNC")
+
+        # Stop VNC for Zynthian-UI
+        if zynconf.is_service_active("vncserver0"):
+            try:
+                logging.info("STOPPING VNC-UI SERVICE")
+                self.set_busy_details("stopping VNC-UI service")
+                check_output("systemctl stop vncserver0", shell=True)
+                zynthian_gui_config.vncserver_enabled = 0
+            except Exception as e:
+                logging.error(e)
+                self.set_busy_error("ERROR STOPPING VNC-UI", e)
+                sleep(2.0)
+
+        # Start VNC for Engine's native GUIs
+        if zynconf.is_service_active("vncserver1"):
+            # Save state and stop engines
+            if len(self.chain_manager.processors) > 0:
+                self.save_last_state_snapshot()
+                restore_state = True
+            else:
+                restore_state = False
+            # Stop VNC for engiens
+            try:
+                logging.info("STOPPING VNC-ENGINES SERVICE")
+                self.set_busy_details("stopping VNC-ENGINES service")
+                check_output("systemctl stop vncserver1", shell=True)
+                zynthian_gui_config.vncserver_enabled = 0
+            except Exception as e:
+                logging.error(e)
+                self.set_busy_error("ERROR STOPPING VNC-ENGINES", e)
+                sleep(2.0)
+            # Restore state
+            if restore_state:
+                self.load_last_state_snapshot()
+
+        # Update Config
+        if save_config:
+            zynconf.save_config({
+                "ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
+            })
+
+        self.end_busy("stop_vncserver")
+
+    # Start/Stop VNC Server depending on configuration
+    def default_vncserver(self):
+        if zynthian_gui_config.vncserver_enabled:
+            self.start_vncserver(False)
+        else:
+            self.stop_vncserver(False)
+
+    # ---------------------------------------------------------------------------
+    # MIDI Network Services
     # ---------------------------------------------------------------------------
 
     # Start/Stop RTP-MIDI depending on configuration
@@ -1507,61 +1662,81 @@ class zynthian_state_manager:
             self.stop_rtpmidi(False)
 
     def start_rtpmidi(self, save_config=True):
+        self.start_busy("start_rtpmidi", "starting RTP-MIDI")
         logging.info("STARTING RTP-MIDI")
         try:
             check_output("systemctl start jackrtpmidid", shell=True)
             zynthian_gui_config.midi_rtpmidi_enabled = 1
             # Update MIDI profile
             if save_config:
-                zynconf.update_midi_profile({ 
+                zynconf.update_midi_profile({
                     "ZYNTHIAN_MIDI_RTPMIDI_ENABLED": str(zynthian_gui_config.midi_rtpmidi_enabled)
                 })
             # Call autoconnect after a little time
             zynautoconnect.request_midi_connect()
         except Exception as e:
             logging.error(e)
+            self.set_busy_error("ERROR STARTING RTP-MIDI", e)
+            sleep(2.0)
+
+        self.end_busy("start_rtpmidi")
 
     def stop_rtpmidi(self, save_config=True):
+        self.start_busy("stop_rtpmidi", "stopping RTP-MIDI")
         logging.info("STOPPING RTP-MIDI")
         try:
             check_output("systemctl stop jackrtpmidid", shell=True)
             zynthian_gui_config.midi_rtpmidi_enabled = 0
             # Update MIDI profile
             if save_config:
-                zynconf.update_midi_profile({ 
+                zynconf.update_midi_profile({
                     "ZYNTHIAN_MIDI_RTPMIDI_ENABLED": str(zynthian_gui_config.midi_rtpmidi_enabled)
                 })
 
         except Exception as e:
             logging.error(e)
+            self.set_busy_error("ERROR STOPPING RTP-MIDI", e)
+            sleep(2.0)
+
+        self.end_busy("stop_rtpmidi")
 
     def start_qmidinet(self, save_config=True):
+        self.start_busy("start_qmidinet", "starting QMidiNet")
         logging.info("STARTING QMidiNet")
         try:
             check_output("systemctl start qmidinet", shell=True)
             zynthian_gui_config.midi_network_enabled = 1
             # Update MIDI profile
             if save_config:
-                zynconf.update_midi_profile({ 
+                zynconf.update_midi_profile({
                     "ZYNTHIAN_MIDI_NETWORK_ENABLED": str(zynthian_gui_config.midi_network_enabled)
                 })
             # Call autoconnect after a little time
             zynautoconnect.request_midi_connect()
         except Exception as e:
             logging.error(e)
+            self.set_busy_error("ERROR STARTING QMidiNet", e)
+            sleep(2.0)
+
+        self.end_busy("start_qmidinet")
 
     def stop_qmidinet(self, save_config=True):
+        self.start_busy("stop_qmidinet", "stopping QMidiNet")
         logging.info("STOPPING QMidiNet")
         try:
             check_output("systemctl stop qmidinet", shell=True)
             zynthian_gui_config.midi_network_enabled = 0
             # Update MIDI profile
             if save_config:
-                zynconf.update_midi_profile({ 
+                zynconf.update_midi_profile({
                     "ZYNTHIAN_MIDI_NETWORK_ENABLED": str(zynthian_gui_config.midi_network_enabled)
                 })
         except Exception as e:
             logging.error(e)
+            self.set_busy_error("ERROR STOPPING QMidiNet", e)
+            sleep(2.0)
+
+        self.end_busy("stop_qmidinet")
 
     # Start/Stop QMidiNet depending on configuration
     def default_qmidinet(self):
@@ -1571,32 +1746,42 @@ class zynthian_state_manager:
             self.stop_qmidinet(False)
 
     def start_touchosc2midi(self, save_config=True):
+        self.start_busy("start_touchosc2midi", "starting Touch-OSC")
         logging.info("STARTING touchosc2midi")
         try:
             check_output("systemctl start touchosc2midi", shell=True)
             zynthian_gui_config.midi_touchosc_enabled = 1
             # Update MIDI profile
             if save_config:
-                zynconf.update_midi_profile({ 
+                zynconf.update_midi_profile({
                     "ZYNTHIAN_MIDI_TOUCHOSC_ENABLED": str(zynthian_gui_config.midi_touchosc_enabled)
                 })
             # Call autoconnect after a little time
             zynautoconnect.request_midi_connect()
         except Exception as e:
             logging.error(e)
+            self.set_busy_error("ERROR STARTING Touch-OSC", e)
+            sleep(2.0)
+
+        self.end_busy("start_touchosc2midi")
 
     def stop_touchosc2midi(self, save_config=True):
+        self.start_busy("stop_touchosc2midi", "stopping Touch-OSC")
         logging.info("STOPPING touchosc2midi")
         try:
             check_output("systemctl stop touchosc2midi", shell=True)
             zynthian_gui_config.midi_touchosc_enabled = 0
             # Update MIDI profile
             if save_config:
-                zynconf.update_midi_profile({ 
+                zynconf.update_midi_profile({
                     "ZYNTHIAN_MIDI_TOUCHOSC_ENABLED": str(zynthian_gui_config.midi_touchosc_enabled)
                 })
         except Exception as e:
             logging.error(e)
+            self.set_busy_error("ERROR STOPPING Touch-OSC", e)
+            sleep(2.0)
+
+        self.end_busy("stop_touchosc2midi")
 
     # Start/Stop TouchOSC depending on configuration
     def default_touchosc(self):
@@ -1606,6 +1791,7 @@ class zynthian_state_manager:
             self.stop_touchosc2midi(False)
 
     def start_aubionotes(self, save_config=True):
+        self.start_busy("start_aubionotes", "starting AubioNotes")
         logging.info("STARTING aubionotes")
         try:
             check_output("systemctl start aubionotes", shell=True)
@@ -1613,7 +1799,7 @@ class zynthian_state_manager:
             zynthian_gui_config.midi_aubionotes_enabled = 1
             # Update MIDI profile
             if save_config:
-                zynconf.update_midi_profile({ 
+                zynconf.update_midi_profile({
                     "ZYNTHIAN_MIDI_AUBIONOTES_ENABLED": str(zynthian_gui_config.midi_aubionotes_enabled)
                 })
             # Call autoconnect after a little time
@@ -1621,19 +1807,29 @@ class zynthian_state_manager:
             zynautoconnect.request_audio_connect()
         except Exception as e:
             logging.error(e)
+            self.set_busy_error("ERROR STARTING AubioNotes", e)
+            sleep(2.0)
+
+        self.end_busy("start_aubionotes")
+
 
     def stop_aubionotes(self, save_config=True):
+        self.start_busy("stop_aubionotes", "stopping AubioNotes")
         logging.info("STOPPING aubionotes")
         try:
             check_output("systemctl stop aubionotes", shell=True)
             zynthian_gui_config.midi_aubionotes_enabled = 0
             # Update MIDI profile
             if save_config:
-                zynconf.update_midi_profile({ 
+                zynconf.update_midi_profile({
                     "ZYNTHIAN_MIDI_AUBIONOTES_ENABLED": str(zynthian_gui_config.midi_aubionotes_enabled)
                 })
         except Exception as e:
             logging.error(e)
+            self.set_busy_error("ERROR STOPPING AubioNotes", e)
+            sleep(2.0)
+
+        self.end_busy("stop_aubionotes")
 
     # Start/Stop AubioNotes depending on configuration
     def default_aubionotes(self):
@@ -1641,3 +1837,21 @@ class zynthian_state_manager:
             self.start_aubionotes(False)
         else:
             self.stop_aubionotes(False)
+
+    # ---------------------------------------------------------------------------
+    # Zynthian Config Info
+    # ---------------------------------------------------------------------------
+
+    def get_zynthian_config(self, varname):
+        try:
+            return eval("zynthian_gui_config.{}".format(varname))
+        except:
+            return None
+
+    def allow_rbpi_headphones(self):
+        try:
+            return self.alsa_mixer_processor.engine.allow_rbpi_headphones()
+        except:
+            return False
+
+    # ---------------------------------------------------------------------------

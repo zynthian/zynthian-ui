@@ -106,11 +106,6 @@ class zynthian_gui:
 	def __init__(self):
 		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
 		self.ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
-	
-		if zynthian_gui_config.check_wiring_layout(["Z2"]):
-			self.multitouch = MultiTouch(invert_x_axis=True, invert_y_axis=True)
-		else:
-			self.multitouch = MultiTouch()
 
 		self.test_mode = False
 		self.alt_mode = False
@@ -125,12 +120,19 @@ class zynthian_gui:
 		
 		self.current_processor = None
 
+		self.lock = Lock()  # Create Lock object to avoid concurrence problems
 		self.busy_thread = None
 		self.control_thread = None
 		self.status_thread = None
 		self.cuia_thread = None
 		self.cuia_queue = SimpleQueue()
 		self.zynread_wait_flag = False
+		self.zynpot_thread = None
+		self.zynpot_event = Event()
+		self.zynpot_lock = Lock()
+		self.zynpot_dval = zynthian_gui_config.num_zynpots * [0]
+		self.dtsw = []
+
 		self.exit_flag = False
 		self.exit_code = 0
 
@@ -144,12 +146,15 @@ class zynthian_gui:
 		self.capture_log_fname = None
 		self.capture_ffmpeg_proc = None
 
-		# Create Lock object to avoid concurrence problems
-		self.lock = Lock()
-
 		# Init LEDs
 		self.wsleds = None
 		self.init_wsleds()
+
+		# Init multitouch driver
+		if zynthian_gui_config.check_wiring_layout(["Z2"]):
+			self.multitouch = MultiTouch(invert_x_axis=True, invert_y_axis=True)
+		else:
+			self.multitouch = MultiTouch()
 
 		# Load keyboard binding map
 		zynthian_gui_keybinding.load()
@@ -161,13 +166,6 @@ class zynthian_gui:
 		# Dictionary of {OSC clients, last heartbeat} registered for mixer feedback
 		self.osc_clients = {}
 		self.osc_heartbeat_timeout = 120  # Heartbeat timeout period
-
-		self.dtsw = []
-
-		self.zynpot_dval = zynthian_gui_config.num_zynpots * [0]
-		self.zynpot_event = Event()
-		self.zynpot_lock = Lock()
-		self.zynpot_thread = None
 
 	# ---------------------------------------------------------------------------
 	# Capture Log
@@ -316,29 +314,6 @@ class zynthian_gui:
 			self.alt_mode = False
 		except Exception as e:
 			logging.error("ERROR configuring wiring: {}".format(e))
-
-	# ---------------------------------------------------------------------------
-	# MIDI Router Init & Config
-	# ---------------------------------------------------------------------------
-
-	def init_midi(self):
-		try:
-			# Set Global Tuning
-			self.fine_tuning_freq = zynthian_gui_config.midi_fine_tuning
-			lib_zyncore.set_midi_filter_tuning_freq(ctypes.c_double(self.fine_tuning_freq))
-			# Set MIDI Master Channel
-			lib_zyncore.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
-			# Set MIDI CC automode
-			lib_zyncore.set_midi_filter_cc_automode(zynthian_gui_config.midi_cc_automode)
-			# Setup MIDI filter rules
-			if self.state_manager.midi_filter_script:
-				self.state_manager.midi_filter_script.clean()
-			self.midi_filter_script = self.state_manager.zynthian_midi_filter_script.MidiFilterScript(zynthian_gui_config.midi_filter_rules)
-			# Setup transport, MIDI clock & sys message options
-			self.screens['tempo'].set_transport_clock_source(zynthian_gui_config.transport_clock_source)
-
-		except Exception as e:
-			logging.error("ERROR initializing MIDI : {}".format(e))
 
 	# ---------------------------------------------------------------------------
 	# OSC Management
@@ -490,6 +465,9 @@ class zynthian_gui:
 		except Exception as e:
 			logging.error(f"ERROR initializing Switches & Wiring MIDI: {e}")
 
+		# Start VNC as configured
+		self.state_manager.default_vncserver()
+
 		# Initialize Control device Manager
 		self.state_manager.create_ctrldev_manager()
 		self.ctrldev_manager = self.state_manager.ctrldev_manager
@@ -528,10 +506,10 @@ class zynthian_gui:
 			init_screen = "main_menu"
 			# Try to load "last_state" snapshot...
 			if zynthian_gui_config.restore_last_state:
-				snapshot_loaded = self.screens['snapshot'].load_last_state_snapshot()
+				snapshot_loaded = self.state_manager.load_last_state_snapshot()
 			# Try to load "default" snapshot...
 			if not snapshot_loaded:
-				snapshot_loaded = self.screens['snapshot'].load_default_snapshot()
+				snapshot_loaded = self.state_manager.load_default_snapshot()
 
 		if snapshot_loaded:
 			init_screen = "audio_mixer"
@@ -932,10 +910,10 @@ class zynthian_gui:
 	def clean_all(self):
 		self.state_manager.zynmixer.set_mute(256, 1)
 		if self.chain_manager.get_chain_count() > 0:
-			self.screens['snapshot'].save_last_state_snapshot()
+			self.state_manager.save_last_state_snapshot()
 		self.state_manager.clean_all()
-		self.show_screen_reset('main_menu')
 		self.state_manager.zynmixer.set_mute(256, 0)
+		self.show_screen_reset('main_menu')
 
 	# -------------------------------------------------------------------
 	# Callable UI Actions
@@ -2364,37 +2342,50 @@ class zynthian_gui:
 		# Log exit message
 		logging.info("STOPPING ZYNTHIAN-UI...")
 
+		self.exit_code = code
+		self.exit_flag = True
 		# Signal zynpot thread so it can unlock and finish normally
 		self.zynpot_event.set()
+
 		# Light-off LEDs
 		if self.wsleds:
 			self.wsleds.end()
+
 		# Stop Multitouch driver
 		self.multitouch.stop()
+
 		# Stop State manager
 		self.state_manager.stop()
 
-		self.exit_code = code
-		self.exit_flag = True
+		# Signal cuia thread so it can unlock and finish normally
 		self.cuia_queue.put_nowait("__EXIT__")
+
+		# Ends UI
 		self.exit_wait_count = 0
 		self.stop()
 
 	def stop(self):
+		# Get threads still running
 		running_thread_names = []
 		for t in [self.control_thread, self.status_thread, self.busy_thread, self.cuia_thread, self.state_manager.thread, self.multitouch.thread, self.zynpot_thread]:
 			if t and t.is_alive():
 				running_thread_names.append(t.name)
 		if zynautoconnect.is_running():
 			running_thread_names.append("Autoconect")
-		self.exit_wait_count += 1
-		if self.exit_wait_count > 10:
+
+		# Clean End
+		if not running_thread_names:
+			logging.info(f"All threads finished normally")
+			zynthian_gui_config.top.quit()
+		# End with running threads
+		elif self.exit_wait_count > 10:
 			for i in running_thread_names:
 				logging.error(f"{i} thread failed to terminate")
 			zynthian_gui_config.top.quit()
-			return
-
-		zynthian_gui_config.top.after(160, self.stop)
+		# Still waiting threads to end ...
+		else:
+			self.exit_wait_count += 1
+			zynthian_gui_config.top.after(160, self.stop)
 
 	# ------------------------------------------------------------------
 	# Polling
@@ -2428,14 +2419,8 @@ class zynthian_gui:
 	# Zynthian Config Info
 	# ------------------------------------------------------------------
 
+	# This should be removed!!
 	def get_zynthian_config(self, varname):
 		return eval("zynthian_gui_config.{}".format(varname))
-
-	def allow_rbpi_headphones(self):
-		try:
-			# TODO: Add alsa mixer
-			self.state_manager.alsa_mixer_processor.engine.allow_rbpi_headphones()
-		except:
-			pass
 
 # ------------------------------------------------------------------------------

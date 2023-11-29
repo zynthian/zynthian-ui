@@ -60,10 +60,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		self.state_manager = self.zyngui.state_manager
 
-		if self.zyngui.allow_rbpi_headphones():
+		if self.state_manager.allow_rbpi_headphones():
 			self.default_rbpi_headphones()
-
-		self.default_vncserver()
 
 	def fill_list(self):
 		self.list_data = []
@@ -98,7 +96,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		self.list_data.append((None, 0, "> AUDIO"))
 
-		if self.zyngui.allow_rbpi_headphones():
+		if self.state_manager.allow_rbpi_headphones():
 			if zynthian_gui_config.rbpi_headphones:
 				self.list_data.append((self.stop_rbpi_headphones, 0, "[x] RBPi Headphones"))
 			else:
@@ -115,9 +113,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.toggle_dpm, 0, "[  ] Mixer Peak Meters"))
 
 		if zynconf.is_service_active("aubionotes"):
-			self.list_data.append((self.stop_aubionotes, 0, "[x] AubioNotes (Audio2MIDI)"))
+			self.list_data.append((self.state_manager.stop_aubionotes, 0, "[x] AubioNotes (Audio2MIDI)"))
 		else:
-			self.list_data.append((self.start_aubionotes, 0, "[  ] AubioNotes (Audio2MIDI)"))
+			self.list_data.append((self.state_manager.start_aubionotes, 0, "[  ] AubioNotes (Audio2MIDI)"))
 
 		self.list_data.append((None, 0, "> NETWORK"))
 
@@ -125,32 +123,32 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		if zynconf.is_wifi_active():
 			if zynconf.is_service_active("hostapd"):
-				self.list_data.append((self.stop_wifi, 0, "[x] Wi-Fi Hotspot"))
+				self.list_data.append((self.state_manager.stop_wifi, 0, "[x] Wi-Fi Hotspot"))
 			else:
-				self.list_data.append((self.stop_wifi, 0, "[x] Wi-Fi"))
+				self.list_data.append((self.state_manager.stop_wifi, 0, "[x] Wi-Fi"))
 		else:
-			self.list_data.append((self.start_wifi, 0, "[  ] Wi-Fi"))
-			self.list_data.append((self.start_wifi_hotspot, 0, "[  ] Wi-Fi Hotspot"))
+			self.list_data.append((self.state_manager.start_wifi, 0, "[  ] Wi-Fi"))
+			self.list_data.append((self.state_manager.start_wifi_hotspot, 0, "[  ] Wi-Fi Hotspot"))
 
 		if zynconf.is_service_active("vncserver0"):
-			self.list_data.append((self.stop_vncserver, 0, "[x] VNC Server"))
+			self.list_data.append((self.state_manager.stop_vncserver, 0, "[x] VNC Server"))
 		else:
-			self.list_data.append((self.start_vncserver, 0, "[  ] VNC Server"))
+			self.list_data.append((self.state_manager.start_vncserver, 0, "[  ] VNC Server"))
 
 		if zynconf.is_service_active("jackrtpmidid"):
-			self.list_data.append((self.stop_rtpmidi, 0, "[x] RTP-MIDI"))
+			self.list_data.append((self.state_manager.stop_rtpmidi, 0, "[x] RTP-MIDI"))
 		else:
-			self.list_data.append((self.start_rtpmidi, 0, "[  ] RTP-MIDI"))
+			self.list_data.append((self.state_manager.start_rtpmidi, 0, "[  ] RTP-MIDI"))
 
 		if zynconf.is_service_active("qmidinet"):
-			self.list_data.append((self.stop_qmidinet, 0, "[x] QmidiNet (IP Multicast)"))
+			self.list_data.append((self.state_manager.stop_qmidinet, 0, "[x] QmidiNet (IP Multicast)"))
 		else:
-			self.list_data.append((self.start_qmidinet, 0, "[  ] QmidiNet (IP Multicast)"))
+			self.list_data.append((self.state_manager.start_qmidinet, 0, "[  ] QmidiNet (IP Multicast)"))
 
 		if zynconf.is_service_active("touchosc2midi"):
-			self.list_data.append((self.stop_touchosc2midi, 0, "[x] TouchOSC MIDI Bridge"))
+			self.list_data.append((self.state_manager.stop_touchosc2midi, 0, "[x] TouchOSC MIDI Bridge"))
 		else:
-			self.list_data.append((self.start_touchosc2midi, 0, "[  ] TouchOSC MIDI Bridge"))
+			self.list_data.append((self.state_manager.start_touchosc2midi, 0, "[  ] TouchOSC MIDI Bridge"))
 
 		self.list_data.append((None, 0, "> SETTINGS"))
 		if self.zyngui.screens["brightness_config"].get_num_zctrls() > 0:
@@ -286,7 +284,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def start_rbpi_headphones(self, save_config=True):
 		logging.info("STARTING RBPI HEADPHONES")
-
 		try:
 			check_output("systemctl start headphones", shell=True)
 			zynthian_gui_config.rbpi_headphones = 1
@@ -420,38 +417,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		})
 		self.fill_list()
 
-	def start_qmidinet(self, save_config=True):
-		self.zyngui.state_manager.start_qmidinet(save_config)
-		self.fill_list()
-
-	def stop_qmidinet(self, save_config=True):
-		self.zyngui.state_manager.stop_qmidinet(save_config)
-		self.fill_list()
-
-	def start_rtpmidi(self, save_config=True):
-		self.zyngui.state_manager.start_rtpmidi(save_config)
-		self.fill_list()
-
-	def stop_rtpmidi(self, save_config=True):
-		self.zyngui.state_manager.stop_rtpmidi(save_config)
-		self.fill_list()
-
-	def start_touchosc2midi(self, save_config=True):
-		self.zyngui.state_manager.start_touchosc2midi(save_config)
-		self.fill_list()
-
-	def stop_touchosc2midi(self, save_config=True):
-		self.zyngui.state_manager.stop_touchosc2midi(save_config)
-		self.fill_list()
-
-	def start_aubionotes(self, save_config=True):
-		self.zyngui.state_manager.start_aubionotes(save_config)
-		self.fill_list()
-
-	def stop_aubionotes(self, save_config=True):
-		self.zyngui.state_manager.stop_aubionotes(save_config)
-		self.fill_list()
-
 	def show_cv_config(self):
 		self.zyngui.show_screen("cv_config")
 
@@ -460,7 +425,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.zyngui.show_screen("midi_profile")
 
 	# ------------------------------------------------------------------------------
-	# NETWORK FEATURES
+	# NETWORK INFO
 	# ------------------------------------------------------------------------------
 
 	def network_info(self):
@@ -473,124 +438,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.zyngui.hide_info_timer(5000)
 		self.zyngui.state_manager.end_busy("gui_admin")
 
-	def start_wifi(self):
-		self.state_manager.start_busy("start_wifi", "connecting to WIFI")
-		if not zynconf.start_wifi():
-			self.state_manager.set_busy_error("ERROR CONNECTING TO WIFI", "Can't start WIFI network!")
-			sleep(2.0)
-		self.state_manager.end_busy("start_wifi")
-
-	def start_wifi_hotspot(self):
-		self.state_manager.start_busy("start_wifi_hotspot", "starting WIFI HotSpot")
-		if not zynconf.start_wifi_hotspot():
-			self.state_manager.set_busy_error("ERROR STARTING WIFI HOTSPOT", "Can't start WIFI HotSpot!")
-			sleep(2.0)
-		self.state_manager.end_busy("start_wifi_hotspot")
-
-	def stop_wifi(self):
-		self.state_manager.start_busy("stop_wifi", "stopping WIFI")
-		if not zynconf.stop_wifi():
-			self.state_manager.set_busy_error("ERROR STOPPING WIFI", "Can't stop WIFI network")
-			sleep(2.0)
-		self.state_manager.end_busy("stop_wifi")
-
-	def start_vncserver(self, save_config=True):
-		# Start VNC for Zynthian-UI
-		self.state_manager.start_busy("start_vncserver", "starting VNC")
-		if not zynconf.is_service_active("vncserver0"):
-			try:
-				logging.info("STARTING VNC-UI SERVICE")
-				self.state_manager.set_busy_details("starting VNC-UI service")
-				check_output("systemctl start novnc0", shell=True)
-				zynthian_gui_config.vncserver_enabled = 1
-			except Exception as e:
-				logging.error(e)
-				self.state_manager.set_busy_error("ERROR STARTING VNC-UI", e)
-				sleep(2.0)
-
-		# Start VNC for Engine's native GUIs
-		if not zynconf.is_service_active("vncserver1"):
-
-			# Save state and stop engines
-			if self.zyngui.chain_manager.get_chain_count() > 0:
-				self.zyngui.screens['snapshot'].save_last_state_snapshot()
-				restore_state = True
-			else:
-				restore_state = False
-
-			try:
-				logging.info("STARTING VNC-ENGINES SERVICE")
-				self.state_manager.set_busy_details("starting VNC-ENGINES service")
-				check_output("systemctl start novnc1", shell=True)
-				zynthian_gui_config.vncserver_enabled = 1
-			except Exception as e:
-				logging.error(e)
-
-			# Restore state
-			if restore_state:
-				self.zyngui.screens['snapshot'].load_last_state_snapshot()
-
-		# Update Config
-		if save_config:
-			zynconf.save_config({ 
-				"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
-			})
-
-		self.state_manager.end_busy("start_vncserver")
-
-	def stop_vncserver(self, save_config=True):
-		self.state_manager.start_busy("stop_vncserver", "stopping VNC")
-
-		# Stop VNC for Zynthian-UI
-		if zynconf.is_service_active("vncserver0"):
-			try:
-				logging.info("STOPPING VNC-UI SERVICE")
-				self.state_manager.set_busy_details("stopping VNC-UI service")
-				check_output("systemctl stop vncserver0", shell=True)
-				zynthian_gui_config.vncserver_enabled = 0
-			except Exception as e:
-				logging.error(e)
-
-		# Start VNC for Engine's native GUIs
-		if zynconf.is_service_active("vncserver1"):
-
-			# Save state and stop engines
-			if len(self.zyngui.chain_manager.processors) > 0:
-				self.zyngui.screens['snapshot'].save_last_state_snapshot()
-				restore_state = True
-			else:
-				restore_state = False
-
-			try:
-				logging.info("STOPPING VNC-ENGINES SERVICE")
-				self.state_manager.set_busy_details("stopping VNC-ENGINES service")
-				check_output("systemctl stop vncserver1", shell=True)
-				zynthian_gui_config.vncserver_enabled = 0
-			except Exception as e:
-				logging.error(e)
-
-			# Restore state
-			if restore_state:
-				self.zyngui.screens['snapshot'].load_last_state_snapshot()
-
-		# Update Config
-		if save_config:
-			zynconf.save_config({ 
-				"ZYNTHIAN_VNCSERVER_ENABLED": str(zynthian_gui_config.vncserver_enabled)
-			})
-
-		self.state_manager.end_busy("stop_vncserver")
-
-	#Start/Stop VNC Server depending on configuration
-	def default_vncserver(self):
-		if zynthian_gui_config.vncserver_enabled:
-			self.start_vncserver(False)
-		else:
-			self.stop_vncserver(False)
-
-# ------------------------------------------------------------------------------
-# TEST FEATURES
-# ------------------------------------------------------------------------------
+	# ------------------------------------------------------------------------------
+	# TEST FUNCTIONS
+	# ------------------------------------------------------------------------------
 
 	def test_audio(self):
 		logging.info("TESTING AUDIO")
@@ -610,7 +460,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.workflow_capture_start, 0, "[  ] Workflow Capture"))
 
 	# ------------------------------------------------------------------------------
-	# SYSTEM FEATURES
+	# SYSTEM FUNCTIONS
 	# ------------------------------------------------------------------------------
 
 	def workflow_capture_start(self):
@@ -674,8 +524,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def last_state_action(self):
 		if zynthian_gui_config.restore_last_state:
-			self.zyngui.screens['snapshot'].save_last_state_snapshot()
+			self.state_manager.save_last_state_snapshot()
 		else:
-			self.zyngui.screens['snapshot'].delete_last_state_snapshot()
+			self.state_manager.delete_last_state_snapshot()
 
 # ------------------------------------------------------------------------------
