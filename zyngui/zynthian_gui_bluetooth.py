@@ -47,6 +47,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
         self.ble_enabled = False
         super().__init__('Bluetooth', True)
         self.proc = None
+        self.detect_flag = False
         self.detect_thread = None
         self.devices = {}
         #self.set_title("Bluetooth")
@@ -121,7 +122,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
         devices = {}
         device = None
         dirty = False
-        while self.shown:
+        while self.detect_flag:
             if self.proc and self.proc.isalive():
                 #now = monotonic()
                 try:
@@ -225,6 +226,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
         self.proc = pexpect.spawn("/usr/bin/bluetoothctl", echo=False, timeout=5)
         self.proc.delaybeforesend = 0.2
         self.set_uuid_filter()
+        self.detect_flag = True
         self.detect_thread = Thread(target=self.detect, args=(), daemon=True)
         self.detect_thread.name = "Bluetooth"
         self.detect_thread.start()
@@ -234,12 +236,15 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
         self.zyngui.state_manager.end_busy("start bluetoothctl")
 
     def hide(self):
+        self.zyngui.state_manager.start_busy("stop bluetoothctl")
+        self.detect_flag = False
+        sleep(0.2)
         if self.proc and self.proc.isalive():
-            self.zyngui.state_manager.start_busy("stop bluetoothctl")
             self.proc.sendline("scan off")
+            self.proc.sendline("exit")
             self.proc.close()
             self.proc = None
-            self.zyngui.state_manager.end_busy("stop bluetoothctl")
+        self.zyngui.state_manager.end_busy("stop bluetoothctl")
         super().hide()
 
     def set_select_path(self):
