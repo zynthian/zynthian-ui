@@ -120,7 +120,8 @@ class zynthian_gui:
 		
 		self.current_processor = None
 
-		self.lock = Lock()  # Create Lock object to avoid concurrence problems
+		self.screen_lock = Lock()  # Lock object to avoid concurrence problems when showing/closing screens
+
 		self.busy_thread = None
 		self.control_thread = None
 		self.status_thread = None
@@ -475,7 +476,7 @@ class zynthian_gui:
 		# Initialize OSC
 		self.osc_init()
 
-		# Initial loading screen
+		# Initial loading screen. We need "current_screen" from here ...
 		self.show_loading("Starting User Interface")
 
 		# Start polling & threads
@@ -518,17 +519,15 @@ class zynthian_gui:
 			self.state_manager.init_midi()
 			self.state_manager.init_midi_services()
 
-		# Show initial screen
-		self.show_screen(init_screen, self.SCREEN_HMODE_RESET)
-		
 		# Run autoconnect if needed
 		zynautoconnect.request_audio_connect()
 		zynautoconnect.request_midi_connect()
 
-		# Initialize MPE Zones
-		#self.state_manager.init_mpe_zones(0, 2)
-
 		self.state_manager.end_busy("ui startup")
+
+		# Show initial screen
+		self.show_screen(init_screen, self.SCREEN_HMODE_RESET)
+
 
 	def hide_screens(self, exclude=None):
 		if not exclude:
@@ -540,6 +539,7 @@ class zynthian_gui:
 				screen_obj.hide()
 
 	def show_screen(self, screen=None, hmode=SCREEN_HMODE_ADD):
+		self.screen_lock.acquire()
 		self.cancel_screen_timer()
 		#self.current_processor = None
 		
@@ -578,10 +578,12 @@ class zynthian_gui:
 			self.screen_history = [screen]
 
 		if self.current_screen != screen:
-			self.current_screen = screen
+			#logging.debug(f"SHOW_SCREEN {screen}")
 			self.screens[screen].build_view()
 			self.screens[screen].show()
+			self.current_screen = screen
 			self.hide_screens(exclude=screen)
+		self.screen_lock.release()
 
 	def show_modal(self, screen=None):
 		self.show_screen(screen, hmode=zynthian_gui.SCREEN_HMODE_ADD)
@@ -612,11 +614,11 @@ class zynthian_gui:
 				last_screen = "audio_mixer"
 				break
 
-		if last_screen in self.screens:
-			logging.debug("CLOSE SCREEN '{}' => Back to '{}'".format(self.current_screen, last_screen))
-			self.show_screen(last_screen)
-		else:
-			self.hide_screens()
+		if last_screen not in self.screens:
+			logging.error(f"Can't back to screen '{last_screen}'. It doesn't exist!")
+			last_screen = "audio_mixer"
+		logging.debug(f"CLOSE SCREEN '{self.current_screen}' => Back to '{last_screen}'")
+		self.show_screen(last_screen)
 
 	def close_modal(self):
 		self.close_screen()
@@ -661,29 +663,39 @@ class zynthian_gui:
 			return None
 
 	def refresh_current_screen(self):
+		self.screen_lock.acquire()
 		self.screens[self.current_screen].show()
+		self.screen_lock.release()
 
 	def show_confirm(self, text, callback=None, cb_params=None):
+		self.screen_lock.acquire()
 		self.screens['confirm'].show(text, callback, cb_params)
 		self.current_screen = 'confirm'
 		self.hide_screens(exclude='confirm')
+		self.screen_lock.release()
 
 	def show_keyboard(self, callback, text="", max_chars=None):
+		self.screen_lock.acquire()
 		self.screens['keyboard'].set_mode(zynthian_gui_keyboard.OSK_QWERTY)
 		self.screens['keyboard'].show(callback, text, max_chars)
 		self.current_screen = 'keyboard'
 		self.hide_screens(exclude='keyboard')
+		self.screen_lock.release()
 
 	def show_numpad(self, callback, text="", max_chars=None):
+		self.screen_lock.acquire()
 		self.screens['keyboard'].set_mode(zynthian_gui_keyboard.OSK_NUMPAD)
 		self.screens['keyboard'].show(callback, text, max_chars)
 		self.current_screen = 'keyboard'
 		self.hide_screens(exclude='keyboard')
+		self.screen_lock.release()
 
 	def show_info(self, text, tms=None):
+		self.screen_lock.acquire()
 		self.screens['info'].show(text)
 		self.current_screen = 'info'
 		self.hide_screens(exclude='info')
+		self.screen_lock.release()
 		if tms:
 			zynthian_gui_config.top.after(tms, self.hide_info)
 
@@ -700,37 +712,47 @@ class zynthian_gui:
 			self.screen_timer_id = zynthian_gui_config.top.after(tms, self.hide_info)
 
 	def show_splash(self, text):
+		self.screen_lock.acquire()
 		self.screens['splash'].show(text)
 		self.current_screen = 'splash'
 		self.hide_screens(exclude='splash')
+		self.screen_lock.release()
 
 	def show_loading(self, title="", details=""):
+		self.screen_lock.acquire()
 		self.screens['loading'].set_title(title)
 		self.screens['loading'].set_details(details)
 		self.screens['loading'].show()
 		self.current_screen = 'loading'
 		self.hide_screens(exclude='loading')
+		self.screen_lock.release()
 
 	def show_loading_error(self, title="", details=""):
+		self.screen_lock.acquire()
 		self.screens['loading'].set_error(title)
 		self.screens['loading'].set_details(details)
 		self.screens['loading'].show()
 		self.current_screen = 'loading'
 		self.hide_screens(exclude='loading')
+		self.screen_lock.release()
 
 	def show_loading_warning(self, title="", details=""):
+		self.screen_lock.acquire()
 		self.screens['loading'].set_warning(title)
 		self.screens['loading'].set_details(details)
 		self.screens['loading'].show()
 		self.current_screen = 'loading'
 		self.hide_screens(exclude='loading')
+		self.screen_lock.release()
 
 	def show_loading_success(self, title="", details=""):
+		self.screen_lock.acquire()
 		self.screens['loading'].set_warning(title)
 		self.screens['loading'].set_details(details)
 		self.screens['loading'].show()
 		self.current_screen = 'loading'
 		self.hide_screens(exclude='loading')
+		self.screen_lock.release()
 
 	def set_loading_title(self, title):
 		self.screens['loading'].set_title(title)
@@ -2152,7 +2174,7 @@ class zynthian_gui:
 				if self.current_screen:
 					self.screens[self.current_screen].refresh_loading()
 			except Exception as err:
-				logging.error(f"zynthian_gui.busy_thread_task() => {err}")
+				logging.error(f"refresh_loading() on screen '{self.current_screen}' => {err}")
 
 			if busy_timeout == busy_warn_time:
 				logging.warning(f"Clients have been busy for longer than {int(busy_warn_time / 10)}s: {self.state_manager.busy}")
