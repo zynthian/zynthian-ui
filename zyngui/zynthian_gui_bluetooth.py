@@ -80,6 +80,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
     def toggle_enable(self, unused, t='S'):
         if self.proc and self.proc.isalive():
             self.ble_enabled = not self.ble_enabled
+            self.zyngui.state_manager.start_busy("toggle bluetoothctl")
             if self.ble_enabled:
                 # Bluetoothd often crashes so lets restart service here
                 #os.system("systemctl restart bluetooth")
@@ -89,6 +90,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
             else:
                 self.proc.sendline("scan off")
                 self.proc.sendline("power off")
+            self.zyngui.state_manager.end_busy("toggle bluetoothctl")
             self.fill_list()
 
     def select_device(self, uuid, t='S'):

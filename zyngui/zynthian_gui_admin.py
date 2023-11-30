@@ -23,22 +23,21 @@
 # 
 # ******************************************************************************
 
-from curses import A_HORIZONTAL
 import os
 import re
 import signal
 import logging
 from time import sleep
 from threading import Thread
+from curses import A_HORIZONTAL
 from subprocess import check_output, Popen, PIPE, STDOUT
 
 # Zynthian specific modules
 import zynconf
 import zynautoconnect
-from zyncoder.zyncore import get_lib_zyncore
+from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
-from zyngine import zynthian_gui_config
 
 # -------------------------------------------------------------------------------
 # Zynthian Admin GUI Class
@@ -68,23 +67,23 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data.append((None, 0, "> MIDI"))
 
 		if zynthian_gui_config.midi_prog_change_zs3:
-			self.list_data.append((self.toggle_prog_change_zs3, 0, "[x] Program Change ZS3"))
+			self.list_data.append((self.toggle_prog_change_zs3, 0, "[x] Program Change for ZS3"))
 		else:
-			self.list_data.append((self.toggle_prog_change_zs3, 0, "[  ] Program Change ZS3"))
+			self.list_data.append((self.toggle_prog_change_zs3, 0, "[  ] Program Change for ZS3"))
 			if zynthian_gui_config.midi_bank_change:
 				self.list_data.append((self.toggle_bank_change, 0, "[x] MIDI Bank Change"))
 			else:
 				self.list_data.append((self.toggle_bank_change, 0, "[  ] MIDI Bank Change"))
 
 		if zynthian_gui_config.preset_preload_noteon:
-			self.list_data.append((self.toggle_preset_preload_noteon, 0, "[x] Preset Preload"))
+			self.list_data.append((self.toggle_preset_preload_noteon, 0, "[x] Note-On Preset Preload"))
 		else:
-			self.list_data.append((self.toggle_preset_preload_noteon, 0, "[  ] Preset Preload"))
+			self.list_data.append((self.toggle_preset_preload_noteon, 0, "[  ] Note-On Preset Preload"))
 
 		if zynthian_gui_config.midi_filter_output:
-			self.list_data.append((self.toggle_midi_bridge_output, 0, "[x] Bridge MIDI-OUT"))
+			self.list_data.append((self.toggle_midi_bridge_output, 0, "[x] Global MIDI-THRU"))
 		else:
-			self.list_data.append((self.toggle_midi_bridge_output, 0, "[  ] Bridge MIDI-OUT"))
+			self.list_data.append((self.toggle_midi_bridge_output, 0, "[  ] Global MIDI-THRU"))
 
 		if zynthian_gui_config.transport_clock_source == 0:
 			if zynthian_gui_config.midi_sys_enabled:
@@ -92,6 +91,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			else:
 				self.list_data.append((self.toggle_midi_sys, 0, "[  ] MIDI System Messages"))
 
+		self.list_data.append((self.zyngui.bluetooth_config, 0, "Bluetooth MIDI"))
 		self.list_data.append((self.midi_profile, 0, "MIDI Profile"))
 
 		self.list_data.append((None, 0, "> AUDIO"))
@@ -156,7 +156,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		if "cv_config" in self.zyngui.screens:
 			self.list_data.append((self.show_cv_config, 0, "CV Settings"))
 		self.list_data.append((self.zyngui.calibrate_touchscreen, 0, "Calibrate Touchscreen"))
-		self.list_data.append((self.zyngui.bluetooth_config, 0, "Bluetooth MIDI"))
 
 		self.list_data.append((None, 0, "> TEST"))
 		self.list_data.append((self.test_audio, 0, "Test Audio"))
@@ -370,7 +369,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			"ZYNTHIAN_MIDI_SYS_ENABLED": str(int(zynthian_gui_config.midi_sys_enabled))
 		})
 
-		get_lib_zyncore().set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
+		lib_zyncore.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
 		self.fill_list()
 
 	def toggle_prog_change_zs3(self):
