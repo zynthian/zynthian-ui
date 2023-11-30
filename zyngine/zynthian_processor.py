@@ -755,7 +755,10 @@ class zynthian_processor:
         """Get base path string"""
         #TODO: UI
 
-        path = self.engine.get_path(self)
+        if self.engine:
+            path = self.engine.get_path(self)
+        else:
+            path = "NONE"
         if self.midi_chan is not None:
             path = "{}#{}".format(self.midi_chan + 1, path)
         return path

@@ -610,9 +610,14 @@ class zynthian_chain_manager():
         """
 
         if chain_id not in self.chains:
+            logging.error(f"Chain {chain_id} doesn't exist!")
             return False
 
-        self.state_manager.start_busy("remove_processor", None, f"removing {self.get_basepath()} from chain {chain_id}")
+        if not isinstance(processor, zynthian_processor):
+            logging.error(f"Invalid processor instance '{processor}' can't be removed from chain {chain_id}!")
+            return False
+
+        self.state_manager.start_busy("remove_processor", None, f"removing {processor.get_basepath()} from chain {chain_id}")
         for param in processor.controllers_dict:
             self.remove_midi_learn(processor, param)
 
