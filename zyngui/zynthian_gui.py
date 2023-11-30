@@ -566,8 +566,6 @@ class zynthian_gui:
 		if screen not in ("bank", "preset", "option"):
 			self.chain_manager.restore_presets()
 
-		self.screens[screen].build_view()
-		self.hide_screens(exclude=screen)
 		if hmode == zynthian_gui.SCREEN_HMODE_ADD:
 			if len(self.screen_history) == 0 or self.screen_history[-1] != screen:
 				self.purge_screen_history(screen)
@@ -581,7 +579,9 @@ class zynthian_gui:
 
 		if self.current_screen != screen:
 			self.current_screen = screen
+			self.screens[screen].build_view()
 			self.screens[screen].show()
+			self.hide_screens(exclude=screen)
 
 	def show_modal(self, screen=None):
 		self.show_screen(screen, hmode=zynthian_gui.SCREEN_HMODE_ADD)
