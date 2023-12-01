@@ -29,6 +29,7 @@ import logging
 import socket
 import shutil
 from time import sleep
+from os.path import isfile
 from subprocess import check_output
 from collections import OrderedDict
 
@@ -263,11 +264,13 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		preset_list = []
 		preset_dpath = bank[0]
 		if os.path.isdir(preset_dpath):
+			# Get SFZ file list
 			exclude_sfz = re.compile(r"[MOPRSTV][1-9]?l?\.sfz")
 			cmd = "find '" + preset_dpath + "' -maxdepth 3 -type f -name '*.sfz'"
 			output = check_output(cmd, shell=True).decode('utf8')
+			# Get GIG file list
 			cmd = "find '" + preset_dpath + "' -maxdepth 2 -type f -name '*.gig'"
-			output = output + "\n" + check_output(cmd, shell=True).decode('utf8')
+			output += "\n" + check_output(cmd, shell=True).decode('utf8')
 			lines = output.split('\n')
 			for f in lines:
 				if f:
@@ -277,8 +280,41 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 						filename = filename[len(preset_dpath) + 1:]
 						title = filename.replace('_', ' ')
 						engine = filext[1:].lower()
-						preset_list.append([f, i, title, engine, f"{filename}{filext}"])
-						i += 1
+						if engine == "gig":
+							# Get instrument list inside each GIG file
+							inslist = ""
+							# Try getting from cache file
+							icache_fpath = f + ".ins"
+							if isfile(icache_fpath):
+								try:
+									with open(icache_fpath, "r") as fh:
+										inslist = fh.read()
+								except Exception as e:
+									logging.error(f"Can't load instrument cache '{icache_fpath}'")
+							# If not cache, parse soundfont and cache info
+							if not inslist:
+								cmd = f"gigdump --instrument-names \"{f}\""
+								inslist = check_output(cmd, shell=True).decode('utf8')
+								try:
+									with open(icache_fpath, "w") as fh:
+										fh.write(inslist)
+								except Exception as e:
+									logging.error(f"Can't save instrument cache '{icache_fpath}'")
+							#logging.debug(f"INSTRUMENTS IN {f} =>\n{inslist}")
+							ilines = inslist.split('\n')
+							ii = 0
+							for iline in ilines:
+								try:
+									parts = iline.split(")")
+									ititle = title + "/" + parts[1].replace('"', '').strip()
+								except:
+									continue
+								preset_list.append([f"{f}#{ii}", i, ititle, engine, f"{filename}{filext}#{ii}"])
+								ii += 1
+								i += 1
+						else:
+							preset_list.append([f, i, title, engine, f"{filename}{filext}"])
+							i += 1
 		return preset_list
 
 
@@ -287,7 +323,15 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 
 	def set_preset(self, processor, preset, preload=False):
-		if self.ls_set_preset(processor, preset[3], preset[0]):
+		# Search for an instrument index, if any
+		parts = preset[0].split("#")
+		sfpath = parts[0]
+		try:
+			ii = int(parts[1])
+		except:
+			ii = 0
+		# Load instrument from soundfont
+		if self.ls_set_preset(processor, preset[3], sfpath, ii):
 			processor.send_ctrl_midi_cc()
 			return True
 		else:
@@ -368,7 +412,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			processor.jackname = f"LinuxSampler:out{audio_out}_"
 
 
-	def ls_set_preset(self, processor, ls_engine, fpath):
+	def ls_set_preset(self, processor, ls_engine, fpath, ii=0):
 		res = False
 		if processor.ls_chan_info:
 			ls_chan_id = processor.ls_chan_info['chan_id']
@@ -387,7 +431,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			# Load instument
 			try:
 				self.sock.settimeout(10)
-				self.lscp_send_single(f"LOAD INSTRUMENT '{fpath}' 0 {ls_chan_id}")
+				self.lscp_send_single(f"LOAD INSTRUMENT '{fpath}' {ii} {ls_chan_id}")
 				res = True
 			except zyngine_lscp_error as err:
 				logging.error(err)
