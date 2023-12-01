@@ -31,7 +31,7 @@ from datetime import datetime
 from threading import Thread
 from subprocess import check_output
 from json import JSONEncoder, JSONDecoder
-from os.path import basename, isdir, isfile, join
+from os.path import basename, isdir, isfile, join, dirname, splitext
 
 # Zynthian specific modules
 import zynconf
