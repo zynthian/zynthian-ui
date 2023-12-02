@@ -1680,8 +1680,6 @@ class zynthian_gui:
 	def zynswitches(self):
 		"""Process physical switch triggers"""
 
-		if not lib_zyncore:
-			return
 		i = 0
 		while i <= zynthian_gui_config.last_zynswitch_index:
 			# dtus is 0 if switched pressed, dur of last press or -1 if already processed
@@ -2275,6 +2273,7 @@ class zynthian_gui:
 				if cuia == "zynswitch":
 					# zynswitch has parameters: [switch, action] where action is P(ressed), R(eleased), S(hort), B(old), L(ong), X or Y
 					try:
+						self.state_manager.start_busy("cuia_zynswitch")
 						i = int(params[0])
 						t = params[1]
 						if t == 'R':
@@ -2311,12 +2310,12 @@ class zynthian_gui:
 								logging.warning("Unknown Action Type: {}".format(t))
 							if i in zynswitch_repeat:
 								del zynswitch_repeat[i]
+						self.state_manager.end_busy("cuia_zynswitch")
 					except Exception as e:
 						logging.error(f"CUIA zynswitch failed with params: {params}\n{traceback.format_exc()}")
 						self.state_manager.set_busy_error(f"ERROR CUIA zynswitch: {params}", e)
 						sleep(3)
 						self.state_manager.clear_busy()
-
 
 				elif cuia == "zynpot":
 					# zynpot has parameters: [pot, delta, 'P'|'R'] 'P','R' is only used for keybinding to zynpot
