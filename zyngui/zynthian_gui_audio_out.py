@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
 # Zynthian GUI Audio-Out Selector Class
 # 
 # Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import logging
 
@@ -31,9 +31,10 @@ from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngine.zynthian_engine_modui import zynthian_engine_modui
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian Audio-Out Selection GUI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_audio_out(zynthian_gui_selector):
 
@@ -41,18 +42,16 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 		self.chain = None
 		super().__init__('Audio Out', True)
 
-
 	def set_chain(self, chain):
 		self.chain = chain
-
 
 	def fill_list(self):
 		self.list_data = []
 
-		#TODO: Show chain name
+		# TODO: Show chain name
 		mod_running = False
 		if self.chain.chain_id == "main":
-			port_names = [["system", "system"]] #TODO: Get list of available system outputs
+			port_names = [["system", "system"]]  # TODO: Get list of available system outputs
 		else:
 			port_names = [["mixer", "mixer"]]
 		jack_input_ports = list(zynautoconnect.get_audio_input_ports(True).keys())
@@ -64,11 +63,11 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 			for processor in chain.get_processors():
 				jackname = processor.get_jackname()
 				if jackname in jack_input_ports:
-					#TODO: Check for howl-round
+					# TODO: Check for howl-round
 					port_names.append([f"{chain_id}/{processor.id}: {processor.get_basepath()}", processor])
 
 		if mod_running:
-			port_names.append([self.chain.chain_id, None, "mod-ui"]) #TODO: Should this now be handled by chain input
+			port_names.append([self.chain.chain_id, None, "mod-ui"])  # TODO: Should this now be handled by chain input
 
 		for title,processor in port_names:
 			if processor in self.chain.audio_out:
@@ -91,10 +90,8 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 		super().fill_list()
 
-
 	def fill_listbox(self):
 		super().fill_listbox()
-
 
 	def select_action(self, i, t='S'):
 		if self.list_data[i][0] == 'record':
@@ -103,8 +100,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 			self.chain.toggle_audio_out(self.list_data[i][0])
 		self.fill_list()
 
-
 	def set_select_path(self):
 		self.select_path.set("Send Audio to ...")
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------

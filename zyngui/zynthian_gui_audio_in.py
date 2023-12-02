@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
 # Zynthian GUI Audio-In Selector Class
 # 
 # Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import logging
 
@@ -29,20 +29,19 @@ import logging
 import zynautoconnect
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian Audio-In Selection GUI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_audio_in(zynthian_gui_selector):
 
 	def __init__(self):
 		self.chain = None
-		super().__init__('Audio Capture', True)
-
+		super().__init__('Audio In', True)
 
 	def set_chain(self, chain):
 		self.chain = chain
-
 
 	def fill_list(self):
 		self.list_data = []
@@ -55,18 +54,14 @@ class zynthian_gui_audio_in(zynthian_gui_selector):
 
 		super().fill_list()
 
-
 	def fill_listbox(self):
 		super().fill_listbox()
-
 
 	def select_action(self, i, t='S'):
 		self.chain.toggle_audio_in(self.list_data[i][0])
 		self.fill_list()
 
-
 	def set_select_path(self):
 		self.select_path.set("Capture Audio from ...")
 
-
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------

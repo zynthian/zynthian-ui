@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
 # Zynthian GUI MIDI-In Selector Class
 # 
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import logging
 
@@ -31,9 +31,10 @@ from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian MIDI-In Selection GUI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_midi_in(zynthian_gui_selector):
 
@@ -41,10 +42,8 @@ class zynthian_gui_midi_in(zynthian_gui_selector):
 		super().__init__('MIDI In', True)
 		self.chain = None
 
-
 	def set_chain(self, chain):
 		self.chain = chain
-
 
 	def fill_list(self):
 		self.list_data = []
@@ -78,11 +77,9 @@ class zynthian_gui_midi_in(zynthian_gui_selector):
 
 		super().fill_list()
 
-
 	def fill_listbox(self):
 		super().fill_listbox()
 		self.highlight()
-
 
 	# Highlight current engine assigned outputs ...
 	def highlight(self):
@@ -91,7 +88,6 @@ class zynthian_gui_midi_in(zynthian_gui_selector):
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_tx_off})
 			else:
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_panel_tx})
-
 
 	def select_action(self, i, t='S'):
 		dev_i = self.list_data[i][0]
@@ -106,8 +102,7 @@ class zynthian_gui_midi_in(zynthian_gui_selector):
 			lib_zyncore.zmip_rotate_flags_active_omni_chan(dev_i)
 		self.fill_list()
 
-
 	def set_select_path(self):
 		self.select_path.set("Capture MIDI from ...")
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------

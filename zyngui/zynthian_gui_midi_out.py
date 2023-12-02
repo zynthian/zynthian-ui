@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
 # Zynthian GUI MIDI-Out Selector Class
 # 
 # Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import logging
 
@@ -30,9 +30,10 @@ import zynautoconnect
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian MIDI-Out Selection GUI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_midi_out(zynthian_gui_selector):
 
@@ -41,10 +42,8 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 		self.chain = None
 		self.chain_manager = zynthian_gui_config.zyngui.chain_manager
 
-
 	def set_chain(self, chain):
 		self.chain = chain
-
 
 	def fill_list(self):
 		self.list_data = []
@@ -79,10 +78,8 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 
 		super().fill_list()
 
-
 	def fill_listbox(self):
 		super().fill_listbox()
-
 
 	def select_action(self, i, t='S'):
 		try:
@@ -91,8 +88,7 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 		except Exception as e:
 			logging.error(e)
 
-
 	def set_select_path(self):
 		self.select_path.set("Send MIDI to ...")
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------

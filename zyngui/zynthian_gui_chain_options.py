@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
 # Zynthian GUI Chain Options Class
 #
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 from collections import OrderedDict
 import logging
@@ -31,9 +31,10 @@ from collections import OrderedDict
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian Chain Options GUI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_chain_options(zynthian_gui_selector):
 
@@ -56,24 +57,24 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		if self.chain.is_midi():
 			self.list_data.append((self.chain_note_range, None, "Note Range & Transpose"))
 			self.list_data.append((self.chain_clone, None, "Clone MIDI to..."))
-			self.list_data.append((self.chain_midi_capture, None, "MIDI Input"))
+			self.list_data.append((self.chain_midi_capture, None, "MIDI In"))
 
 		if self.chain.midi_thru:
-			self.list_data.append((self.chain_midi_routing, None, "MIDI Output"))
+			self.list_data.append((self.chain_midi_routing, None, "MIDI Out"))
 
 		if self.chain.is_midi():
 			self.list_data.append((self.chain_midi_chan, None, "MIDI Channel"))
 
 		if self.chain.get_processor_count() and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
-			#TODO Disable midi learn for some chains???
+			# TODO Disable midi learn for some chains???
 			self.list_data.append((self.midi_learn, None, "MIDI Learn"))
 
 		if self.chain.audio_thru and self.chain_id != "main":
-			self.list_data.append((self.chain_audio_capture, None, "Audio Input"))
+			self.list_data.append((self.chain_audio_capture, None, "Audio In"))
 
 		if self.chain.is_audio() and self.chain_id != "main":
-			#TODO: Add mixer output audio routing
-			self.list_data.append((self.chain_audio_routing, None, "Audio Output"))
+			# TODO: Add mixer output audio routing
+			self.list_data.append((self.chain_audio_routing, None, "Audio Out"))
 
 		if self.chain.is_audio():
 			self.list_data.append((self.audio_options, None, "Audio Options"))
@@ -338,5 +339,4 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		except:
 			self.select_path.set("Chain Options")
 
-
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
