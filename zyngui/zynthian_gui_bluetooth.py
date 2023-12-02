@@ -44,7 +44,7 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 class zynthian_gui_bluetooth(zynthian_gui_selector):
 
     def __init__(self):
-        self.ble_enabled = False
+        self.ble_enabled = None
         super().__init__('Bluetooth', True)
         self.proc = None
         self.detect_flag = False
@@ -57,7 +57,9 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
 
     def fill_list(self):
         self.list_data = []
-        if self.ble_enabled:
+        if self.ble_enabled is None:
+            self.list_data.append((None, 0, "Checking status ..."))
+        elif self.ble_enabled:
             self.list_data.append((self.toggle_enable, 0, "[X] BLE MIDI"))
             self.list_data.append((None, 0, "> Detected devices"))
             for uuid in self.devices:
@@ -70,7 +72,6 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                     self.list_data.append((self.select_device, uuid, f"[  ] {name}"))
         else:
             self.list_data.append((self.toggle_enable, 0, "[  ] BLE MIDI"))
-
         super().fill_list()
 
     def select_action(self, i, t='S'):
@@ -238,6 +239,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
     def hide(self):
         self.zyngui.state_manager.start_busy("stop bluetoothctl")
         self.detect_flag = False
+        self.ble_enabled = None
         sleep(0.2)
         if self.proc and self.proc.isalive():
             self.proc.sendline("scan off")
