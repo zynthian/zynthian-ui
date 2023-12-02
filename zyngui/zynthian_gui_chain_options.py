@@ -56,10 +56,10 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		if self.chain.is_midi():
 			self.list_data.append((self.chain_note_range, None, "Note Range & Transpose"))
 			self.list_data.append((self.chain_clone, None, "Clone MIDI to..."))
-			self.list_data.append((self.chain_midi_capture, None, "MIDI Capture"))
+			self.list_data.append((self.chain_midi_capture, None, "MIDI Input"))
 
 		if self.chain.midi_thru:
-			self.list_data.append((self.chain_midi_routing, None, "MIDI Send"))
+			self.list_data.append((self.chain_midi_routing, None, "MIDI Output"))
 
 		if self.chain.is_midi():
 			self.list_data.append((self.chain_midi_chan, None, "MIDI Channel"))
@@ -69,11 +69,11 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			self.list_data.append((self.midi_learn, None, "MIDI Learn"))
 
 		if self.chain.audio_thru and self.chain_id != "main":
-			self.list_data.append((self.chain_audio_capture, None, "Audio Capture"))
+			self.list_data.append((self.chain_audio_capture, None, "Audio Input"))
 
 		if self.chain.is_audio() and self.chain_id != "main":
 			#TODO: Add mixer output audio routing
-			self.list_data.append((self.chain_audio_routing, None, "Audio Send"))
+			self.list_data.append((self.chain_audio_routing, None, "Audio Output"))
 
 		if self.chain.is_audio():
 			self.list_data.append((self.audio_options, None, "Audio Options"))
