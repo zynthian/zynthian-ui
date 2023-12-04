@@ -1521,8 +1521,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			info = {
 				'note_low': lib_zyncore.get_midi_filter_note_low(i),
 				'note_high': lib_zyncore.get_midi_filter_note_high(i),
-				'octave_trans': lib_zyncore.get_midi_filter_octave_trans(i),
-				'halftone_trans': lib_zyncore.get_midi_filter_halftone_trans(i)
+				'octave_trans': lib_zyncore.get_midi_filter_transpose_octave(i),
+				'halftone_trans': lib_zyncore.get_midi_filter_transpose_semitone(i)
 			}
 			state['note_range'].append(info)
 
