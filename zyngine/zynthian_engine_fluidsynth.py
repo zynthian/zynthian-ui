@@ -275,7 +275,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		if ctrl_items:
 			logging.debug("Generating extra controllers config ...")
 			try:
-				c=1
+				c = 1
 				ctrl_set = []
 				zctrls_extra = {}
 				for name, options in ctrl_items:
