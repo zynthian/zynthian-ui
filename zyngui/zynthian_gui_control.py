@@ -162,13 +162,15 @@ class zynthian_gui_control(zynthian_gui_selector):
 					self.screen_info = self.list_data[self.index]
 				else:
 					self.screen_info = None
-			if len(self.screen_info) == 5:
+			if self.screen_info and len(self.screen_info) == 5:
 				self.screen_title = self.screen_info[2]
 				self.screen_layer = self.screen_info[3]
 				return True
 			else:
 				logging.error("Can't get screen info!!")
-				return False
+
+		self.screen_title = ""
+		self.screen_layer = self.zyngui.curlayer
 		return False
 
 
