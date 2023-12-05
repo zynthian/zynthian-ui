@@ -148,13 +148,14 @@ class zynthian_gui_control(zynthian_gui_selector):
 					self.screen_info = self.list_data[self.index]
 				else:
 					self.screen_info = None
-			if len(self.screen_info) == 5:
+			if self.screen_info and len(self.screen_info) == 5:
 				self.screen_title = self.screen_info[2]
 				self.screen_processor = self.screen_info[3]
 				return True
 			else:
 				logging.error("Can't get screen info!!")
-				return False
+		self.screen_title = ""
+		self.screen_processor = self.zyngui.get_current_processor()
 		return False
 
 	def fill_listbox(self):
