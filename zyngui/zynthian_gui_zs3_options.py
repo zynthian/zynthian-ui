@@ -115,17 +115,17 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 			else:
 				restore_flag = False
 			if restore_flag:
-				options["[x] {}".format(label)] = slayers.index(lss)
+				options["\u2612 {}".format(label)] = slayers.index(lss)
 			else:
-				options["[  ] {}".format(label)] = slayers.index(lss)
+				options["\u2610 {}".format(label)] = slayers.index(lss)
 
 
 		# Restoring Audio Mixer
 		smixer = state["mixer"]
 		if "restore" in smixer and not smixer["restore"]:
-			options["[  ] Mixer"] = -1
+			options["\u2610 Mixer"] = -1
 		else:
-			options["[x] Mixer"] = -1
+			options["\u2612 Mixer"] = -1
 
 		return options
 

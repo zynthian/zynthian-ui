@@ -52,9 +52,9 @@ class zynthian_gui_audio_in(zynthian_gui_selector):
 
 		for scp in zynautoconnect.get_audio_capture_ports():
 			if scp.name in self.layer.get_audio_in():
-				self.list_data.append((scp.name, scp.name, "[x] " + scp.name))
+				self.list_data.append((scp.name, scp.name, "\u2612 " + scp.name))
 			else:
-				self.list_data.append((scp.name, scp.name, "[  ] " + scp.name))
+				self.list_data.append((scp.name, scp.name, "\u2610 " + scp.name))
 
 		super().fill_list()
 

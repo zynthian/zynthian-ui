@@ -90,22 +90,22 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 						pass
 
 					if k in self.end_layer.get_audio_out():
-						self.list_data.append((k, k, "[x] " + title))
+						self.list_data.append((k, k, "\u2612 " + title))
 					else:
-						self.list_data.append((k, k, "[  ] " + title))
+						self.list_data.append((k, k, "\u2610 " + title))
 
 		if zynthian_gui_config.multichannel_recorder:
 			if self.zyngui.audio_recorder.get_status():
 				# Recording so don't allow change of armed state
 				if self.zyngui.audio_recorder.is_armed(self.layer.midi_chan):
-					self.list_data.append((None, 'record_disable', '[x] multitrack recorder'))
+					self.list_data.append((None, 'record_disable', '\u2612 multitrack recorder'))
 				else:
-					self.list_data.append((None, 'record_enable', '[  ] multitrack recorder'))
+					self.list_data.append((None, 'record_enable', '\u2610 multitrack recorder'))
 			else:
 				if self.zyngui.audio_recorder.is_armed(self.layer.midi_chan):
-					self.list_data.append(('record', None, '[x] multitrack recorder'))
+					self.list_data.append(('record', None, '\u2612 multitrack recorder'))
 				else:
-					self.list_data.append(('record', None, '[  ] multitrack recorder'))
+					self.list_data.append(('record', None, '\u2610 multitrack recorder'))
 
 		super().fill_list()
 

@@ -55,15 +55,15 @@ class zynthian_gui_midi_in(zynthian_gui_selector):
 		def append_device(i, devname):
 			# Check if captured by device manager
 			if self.zyngui.ctrldev_manager.get_device_driver(i+1):
-				self.list_data.append((i, -1, "[  ] ----- - " + devname))
+				self.list_data.append((i, -1, "\u2610 ----- - " + devname))
 			else:
 				# Get mode: ACTI/OMNI/MULTI
 				mode = zynautoconnect.get_midi_in_dev_mode(i)
 				# Get routing info: Device enabled/disabled for this chain
 				if lib_zyncore.zmop_get_route_from(self.root_layer.midi_chan, i):
-					self.list_data.append((i, 0, "[x] " + mode + " - " + devname))
+					self.list_data.append((i, 0, "\u2612 " + mode + " - " + devname))
 				else:
-					self.list_data.append((i, 1, "[  ] " + mode + " - " + devname))
+					self.list_data.append((i, 1, "\u2610 " + mode + " - " + devname))
 
 		if self.root_layer:
 			# Connected device ports

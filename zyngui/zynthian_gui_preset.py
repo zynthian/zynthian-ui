@@ -86,9 +86,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		preset_name = preset[2]
 		options = {}
 		if self.zyngui.curlayer.engine.is_preset_fav(preset):
-			options["[x] Favourite"] = preset
+			options["\u2612 Favourite"] = preset
 		else:
-			options["[  ] Favourite"] = preset
+			options["\u2610 Favourite"] = preset
 		if self.zyngui.curlayer.engine.is_preset_user(preset):
 			if hasattr(self.zyngui.curlayer.engine, "rename_preset"):
 				options["Rename"] = preset

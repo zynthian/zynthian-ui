@@ -69,9 +69,9 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 				
 			for jn, title in midi_outs.items():
 				if jn in self.end_layer.get_midi_out():
-					self.list_data.append((jn, jn, "[x] " + title))
+					self.list_data.append((jn, jn, "\u2612 " + title))
 				else:
-					self.list_data.append((jn, jn, "[  ] " + title))
+					self.list_data.append((jn, jn, "\u2610 " + title))
 
 		super().fill_list()
 
