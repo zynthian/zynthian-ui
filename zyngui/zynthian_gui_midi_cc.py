@@ -53,9 +53,9 @@ class zynthian_gui_midi_cc(zynthian_gui_selector):
 		self.list_data=[]
 		for i, ccnum in enumerate(self.cc):
 			if ccnum:
-				self.list_data.append((str(i),i,"[x] CC {}".format(str(i).zfill(2))))
+				self.list_data.append((str(i),i,"\u2612 CC {}".format(str(i).zfill(2))))
 			else:
-				self.list_data.append((str(i),i,"[  ] CC {}".format(str(i).zfill(2))))
+				self.list_data.append((str(i),i,"\u2610 CC {}".format(str(i).zfill(2))))
 		super().fill_list()
 
 
