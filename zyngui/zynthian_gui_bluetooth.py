@@ -60,18 +60,18 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
         if self.ble_enabled is None:
             self.list_data.append((None, 0, "Checking status ..."))
         elif self.ble_enabled:
-            self.list_data.append((self.toggle_enable, 0, "[X] BLE MIDI"))
+            self.list_data.append((self.toggle_enable, 0, "\u2612 BLE MIDI"))
             self.list_data.append((None, 0, "> Detected devices"))
             for uuid in self.devices:
                 name, trusted, connected = self.devices[uuid]
                 if connected:
                     name = f"\uf293 {name}"
                 if trusted:
-                    self.list_data.append((self.select_device, uuid, f"[X] {name}"))
+                    self.list_data.append((self.select_device, uuid, f"\u2612 {name}"))
                 else:
-                    self.list_data.append((self.select_device, uuid, f"[  ] {name}"))
+                    self.list_data.append((self.select_device, uuid, f"\u2610 {name}"))
         else:
-            self.list_data.append((self.toggle_enable, 0, "[  ] BLE MIDI"))
+            self.list_data.append((self.toggle_enable, 0, "\u2610 BLE MIDI"))
         super().fill_list()
 
     def select_action(self, i, t='S'):

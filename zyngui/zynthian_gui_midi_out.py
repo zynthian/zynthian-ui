@@ -72,9 +72,9 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 
 			for dst_node, title in midi_outs.items():
 				if dst_node in self.chain.midi_out:
-					self.list_data.append((dst_node, dst_node, f"[x] {title}"))
+					self.list_data.append((dst_node, dst_node, f"\u2612 {title}"))
 				else:
-					self.list_data.append((dst_node, dst_node, f"[  ] {title}"))
+					self.list_data.append((dst_node, dst_node, f"\u2610 {title}"))
 
 		super().fill_list()
 

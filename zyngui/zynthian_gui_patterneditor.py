@@ -303,9 +303,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		#options['Add program change'] = 'Add program change'
 		if extra_options:
 			if self.zynseq.libseq.isMidiRecord():
-				options['[X] Record from MIDI'] = 'midi_record'
+				options['\u2612 Record from MIDI'] = 'midi_record'
 			else:
-				options['[  ] Record from MIDI'] = 'midi_record'
+				options['\u2610 Record from MIDI'] = 'midi_record'
 		options['Transpose pattern'] = 'Transpose pattern'
 		options['Copy pattern'] = 'Copy pattern'
 		options['Load pattern'] = 'Load pattern'

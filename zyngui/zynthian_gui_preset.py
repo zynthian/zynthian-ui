@@ -86,9 +86,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		options = {}
 		proc = self.zyngui.get_current_processor()
 		if proc.engine.is_preset_fav(preset):
-			options["[x] Favourite"] = preset
+			options["\u2612 Favourite"] = preset
 		else:
-			options["[  ] Favourite"] = preset
+			options["\u2610 Favourite"] = preset
 		if proc.engine.is_preset_user(preset):
 			if hasattr(proc.engine, "rename_preset"):
 				options["Rename"] = preset
