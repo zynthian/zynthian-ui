@@ -110,9 +110,9 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 			except:
 				restore_flag = True
 			if restore_flag:
-				options[f"[x] {label}"] = chain_id
+				options[f"\u2612 {label}"] = chain_id
 			else:
-				options[f"[  ] {label}"] = chain_id
+				options[f"\u2610 {label}"] = chain_id
 
 		# Restoring main chain
 		main_chain_state = state["chains"]["main"]
@@ -121,9 +121,9 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 		except:
 			restore_flag = True
 		if restore_flag:
-			options["[x] Main"] = "main"
+			options["\u2612 Main"] = "main"
 		else:
-			options["[  ] Main"] = "main"
+			options["\u2610 Main"] = "main"
 
 		# Restoring Audio Mixer
 		mixer_state = state["mixer"]
@@ -132,9 +132,9 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 		except:
 			restore_flag = True
 		if restore_flag:
-			options["[x] Mixer"] = "mixer"
+			options["\u2612 Mixer"] = "mixer"
 		else:
-			options["[  ] Mixer"] = "mixer"
+			options["\u2610 Mixer"] = "mixer"
 
 		return options
 

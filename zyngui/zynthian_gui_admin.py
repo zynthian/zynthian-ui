@@ -67,29 +67,29 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data.append((None, 0, "> MIDI"))
 
 		if zynthian_gui_config.midi_prog_change_zs3:
-			self.list_data.append((self.toggle_prog_change_zs3, 0, "[x] Program Change for ZS3"))
+			self.list_data.append((self.toggle_prog_change_zs3, 0, "\u2612 Program Change for ZS3"))
 		else:
-			self.list_data.append((self.toggle_prog_change_zs3, 0, "[  ] Program Change for ZS3"))
+			self.list_data.append((self.toggle_prog_change_zs3, 0, "\u2610 Program Change for ZS3"))
 			if zynthian_gui_config.midi_bank_change:
-				self.list_data.append((self.toggle_bank_change, 0, "[x] MIDI Bank Change"))
+				self.list_data.append((self.toggle_bank_change, 0, "\u2612 MIDI Bank Change"))
 			else:
-				self.list_data.append((self.toggle_bank_change, 0, "[  ] MIDI Bank Change"))
+				self.list_data.append((self.toggle_bank_change, 0, "\u2610 MIDI Bank Change"))
 
 		if zynthian_gui_config.preset_preload_noteon:
-			self.list_data.append((self.toggle_preset_preload_noteon, 0, "[x] Note-On Preset Preload"))
+			self.list_data.append((self.toggle_preset_preload_noteon, 0, "\u2612 Note-On Preset Preload"))
 		else:
-			self.list_data.append((self.toggle_preset_preload_noteon, 0, "[  ] Note-On Preset Preload"))
+			self.list_data.append((self.toggle_preset_preload_noteon, 0, "\u2610 Note-On Preset Preload"))
 
 		if zynthian_gui_config.midi_filter_output:
-			self.list_data.append((self.toggle_midi_bridge_output, 0, "[x] Global MIDI-THRU"))
+			self.list_data.append((self.toggle_midi_bridge_output, 0, "\u2612 Global MIDI-THRU"))
 		else:
-			self.list_data.append((self.toggle_midi_bridge_output, 0, "[  ] Global MIDI-THRU"))
+			self.list_data.append((self.toggle_midi_bridge_output, 0, "\u2610 Global MIDI-THRU"))
 
 		if zynthian_gui_config.transport_clock_source == 0:
 			if zynthian_gui_config.midi_sys_enabled:
-				self.list_data.append((self.toggle_midi_sys, 0, "[x] MIDI System Messages"))
+				self.list_data.append((self.toggle_midi_sys, 0, "\u2612 MIDI System Messages"))
 			else:
-				self.list_data.append((self.toggle_midi_sys, 0, "[  ] MIDI System Messages"))
+				self.list_data.append((self.toggle_midi_sys, 0, "\u2610 MIDI System Messages"))
 
 		self.list_data.append((self.zyngui.bluetooth_config, 0, "Bluetooth MIDI"))
 		self.list_data.append((self.midi_profile, 0, "MIDI Profile"))
@@ -98,24 +98,24 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		if self.state_manager.allow_rbpi_headphones():
 			if zynthian_gui_config.rbpi_headphones:
-				self.list_data.append((self.stop_rbpi_headphones, 0, "[x] RBPi Headphones"))
+				self.list_data.append((self.stop_rbpi_headphones, 0, "\u2612 RBPi Headphones"))
 			else:
-				self.list_data.append((self.start_rbpi_headphones, 0, "[  ] RBPi Headphones"))
+				self.list_data.append((self.start_rbpi_headphones, 0, "\u2610 RBPi Headphones"))
 
 		if zynthian_gui_config.snapshot_mixer_settings:
-			self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "[x] Audio Levels on Snapshots"))
+			self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2612 Audio Levels on Snapshots"))
 		else:
-			self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "[  ] Audio Levels on Snapshots"))
+			self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2610 Audio Levels on Snapshots"))
 
 		if zynthian_gui_config.enable_dpm:
-			self.list_data.append((self.toggle_dpm, 0, "[x] Mixer Peak Meters"))
+			self.list_data.append((self.toggle_dpm, 0, "\u2612 Mixer Peak Meters"))
 		else:
-			self.list_data.append((self.toggle_dpm, 0, "[  ] Mixer Peak Meters"))
+			self.list_data.append((self.toggle_dpm, 0, "\u2610 Mixer Peak Meters"))
 
 		if zynconf.is_service_active("aubionotes"):
-			self.list_data.append((self.state_manager.stop_aubionotes, 0, "[x] AubioNotes (Audio2MIDI)"))
+			self.list_data.append((self.state_manager.stop_aubionotes, 0, "\u2612 AubioNotes (Audio2MIDI)"))
 		else:
-			self.list_data.append((self.state_manager.start_aubionotes, 0, "[  ] AubioNotes (Audio2MIDI)"))
+			self.list_data.append((self.state_manager.start_aubionotes, 0, "\u2610 AubioNotes (Audio2MIDI)"))
 
 		self.list_data.append((None, 0, "> NETWORK"))
 
@@ -123,32 +123,32 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		if zynconf.is_wifi_active():
 			if zynconf.is_service_active("hostapd"):
-				self.list_data.append((self.state_manager.stop_wifi, 0, "[x] Wi-Fi Hotspot"))
+				self.list_data.append((self.state_manager.stop_wifi, 0, "\u2612 Wi-Fi Hotspot"))
 			else:
-				self.list_data.append((self.state_manager.stop_wifi, 0, "[x] Wi-Fi"))
+				self.list_data.append((self.state_manager.stop_wifi, 0, "\u2612 Wi-Fi"))
 		else:
-			self.list_data.append((self.state_manager.start_wifi, 0, "[  ] Wi-Fi"))
-			self.list_data.append((self.state_manager.start_wifi_hotspot, 0, "[  ] Wi-Fi Hotspot"))
+			self.list_data.append((self.state_manager.start_wifi, 0, "\u2610 Wi-Fi"))
+			self.list_data.append((self.state_manager.start_wifi_hotspot, 0, "\u2610 Wi-Fi Hotspot"))
 
 		if zynconf.is_service_active("vncserver0"):
-			self.list_data.append((self.state_manager.stop_vncserver, 0, "[x] VNC Server"))
+			self.list_data.append((self.state_manager.stop_vncserver, 0, "\u2612 VNC Server"))
 		else:
-			self.list_data.append((self.state_manager.start_vncserver, 0, "[  ] VNC Server"))
+			self.list_data.append((self.state_manager.start_vncserver, 0, "\u2610 VNC Server"))
 
 		if zynconf.is_service_active("jackrtpmidid"):
-			self.list_data.append((self.state_manager.stop_rtpmidi, 0, "[x] RTP-MIDI"))
+			self.list_data.append((self.state_manager.stop_rtpmidi, 0, "\u2612 RTP-MIDI"))
 		else:
-			self.list_data.append((self.state_manager.start_rtpmidi, 0, "[  ] RTP-MIDI"))
+			self.list_data.append((self.state_manager.start_rtpmidi, 0, "\u2610 RTP-MIDI"))
 
 		if zynconf.is_service_active("qmidinet"):
-			self.list_data.append((self.state_manager.stop_qmidinet, 0, "[x] QmidiNet (IP Multicast)"))
+			self.list_data.append((self.state_manager.stop_qmidinet, 0, "\u2612 QmidiNet (IP Multicast)"))
 		else:
-			self.list_data.append((self.state_manager.start_qmidinet, 0, "[  ] QmidiNet (IP Multicast)"))
+			self.list_data.append((self.state_manager.start_qmidinet, 0, "\u2610 QmidiNet (IP Multicast)"))
 
 		if zynconf.is_service_active("touchosc2midi"):
-			self.list_data.append((self.state_manager.stop_touchosc2midi, 0, "[x] TouchOSC MIDI Bridge"))
+			self.list_data.append((self.state_manager.stop_touchosc2midi, 0, "\u2612 TouchOSC MIDI Bridge"))
 		else:
-			self.list_data.append((self.state_manager.start_touchosc2midi, 0, "[  ] TouchOSC MIDI Bridge"))
+			self.list_data.append((self.state_manager.start_touchosc2midi, 0, "\u2610 TouchOSC MIDI Bridge"))
 
 		self.list_data.append((None, 0, "> SETTINGS"))
 		if self.zyngui.screens["brightness_config"].get_num_zctrls() > 0:
@@ -163,9 +163,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		self.list_data.append((None, 0, "> SYSTEM"))
 		if self.zyngui.capture_log_fname:
-			self.list_data.append((self.workflow_capture_stop, 0, "[x] Capture Workflow"))
+			self.list_data.append((self.workflow_capture_stop, 0, "\u2612 Capture Workflow"))
 		else:
-			self.list_data.append((self.workflow_capture_start, 0, "[  ] Capture Workflow"))
+			self.list_data.append((self.workflow_capture_start, 0, "\u2610 Capture Workflow"))
 		if self.is_update_available():
 			self.list_data.append((self.update_software, 0, "Update Software"))
 		else:
@@ -454,9 +454,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.killable_start_command(["aplaymidi -p 14 {}/mid/test.mid".format(self.data_dir)])
 
 		if self.zyngui.capture_log_fname:
-			self.list_data.append((self.workflow_capture_stop, 0, "[x] Workflow Capture"))
+			self.list_data.append((self.workflow_capture_stop, 0, "\u2612 Workflow Capture"))
 		else:
-			self.list_data.append((self.workflow_capture_start, 0, "[  ] Workflow Capture"))
+			self.list_data.append((self.workflow_capture_start, 0, "\u2610 Workflow Capture"))
 
 	# ------------------------------------------------------------------------------
 	# SYSTEM FUNCTIONS

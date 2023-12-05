@@ -75,10 +75,10 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 					continue
 				elif lib_zyncore.get_midi_filter_clone(self.midi_chan, i):
 					cc_to_clone = lib_zyncore.get_midi_filter_clone_cc(self.midi_chan, i).nonzero()[0]
-					self.list_data.append((str(i+1), i, "[x] CH#{}, CC {}".format(i+1, ' '.join(map(str, cc_to_clone)))))
+					self.list_data.append((str(i+1), i, "\u2612 CH#{}, CC {}".format(i+1, ' '.join(map(str, cc_to_clone)))))
 					logging.debug("CC TO CLONE: {}".format(cc_to_clone))
 				else:
-					self.list_data.append((str(i+1), i, "[  ] CH#{}".format(i+1)))
+					self.list_data.append((str(i+1), i, "\u2610 CH#{}".format(i+1)))
 		super().fill_list()
 
 

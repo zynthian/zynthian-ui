@@ -51,7 +51,7 @@ class zynthian_gui_midi_in(zynthian_gui_selector):
 		def append_device(i, devname):
 			# Check if captured by device manager
 			if self.zyngui.ctrldev_manager.get_device_driver(i+1):
-				self.list_data.append((i, -1, "[  ] ----- - " + devname))
+				self.list_data.append((i, -1, "\u2610 ----- - " + devname))
 			else:
 				# Check mode (Acti/Omni/Multi)
 				if lib_zyncore.zmip_get_flag_active_chan(i):
@@ -61,9 +61,9 @@ class zynthian_gui_midi_in(zynthian_gui_selector):
 				else:
 					mode = "MULTI"
 				if lib_zyncore.zmop_get_route_from(self.chain.midi_chan, i):
-					self.list_data.append((i, 0, "[x] " + mode + " - " + devname))
+					self.list_data.append((i, 0, "\u2612 " + mode + " - " + devname))
 				else:
-					self.list_data.append((i, 1, "[  ] " + mode + " - " + devname))
+					self.list_data.append((i, 1, "\u2610 " + mode + " - " + devname))
 
 		if self.chain:
 			# Connected device ports

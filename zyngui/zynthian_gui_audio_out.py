@@ -71,22 +71,22 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 		for title,processor in port_names:
 			if processor in self.chain.audio_out:
-				self.list_data.append((processor, processor, "[x] " + title))
+				self.list_data.append((processor, processor, "\u2612 " + title))
 			else:
-				self.list_data.append((processor, processor, "[  ] " + title))
+				self.list_data.append((processor, processor, "\u2610 " + title))
 
 		if zynthian_gui_config.multichannel_recorder:
 			if self.zyngui.state_manager.audio_recorder.get_status():
 				# Recording so don't allow change of armed state
 				if self.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan):
-					self.list_data.append((None, 'record_disable', '[x] multitrack recorder'))
+					self.list_data.append((None, 'record_disable', '\u2612 multitrack recorder'))
 				else:
-					self.list_data.append((None, 'record_enable', '[  ] multitrack recorder'))
+					self.list_data.append((None, 'record_enable', '\u2610 multitrack recorder'))
 			else:
 				if self.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan):
-					self.list_data.append(('record', None, '[x] multitrack recorder'))
+					self.list_data.append(('record', None, '\u2612 multitrack recorder'))
 				else:
-					self.list_data.append(('record', None, '[  ] multitrack recorder'))
+					self.list_data.append(('record', None, '\u2610 multitrack recorder'))
 
 		super().fill_list()
 
