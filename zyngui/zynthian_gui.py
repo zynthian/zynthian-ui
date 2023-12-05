@@ -64,9 +64,8 @@ from zyngui.zynthian_gui_midi_cc import zynthian_gui_midi_cc
 from zyngui.zynthian_gui_midi_prog import zynthian_gui_midi_prog
 from zyngui.zynthian_gui_midi_key_range import zynthian_gui_midi_key_range
 from zyngui.zynthian_gui_audio_out import zynthian_gui_audio_out
-from zyngui.zynthian_gui_midi_out import zynthian_gui_midi_out
+from zyngui.zynthian_gui_midi_config import zynthian_gui_midi_config
 from zyngui.zynthian_gui_audio_in import zynthian_gui_audio_in
-from zyngui.zynthian_gui_midi_in import zynthian_gui_midi_in
 from zyngui.zynthian_gui_bank import zynthian_gui_bank
 from zyngui.zynthian_gui_preset import zynthian_gui_preset
 from zyngui.zynthian_gui_control import zynthian_gui_control
@@ -419,9 +418,8 @@ class zynthian_gui:
 		self.screens['midi_prog'] = zynthian_gui_midi_prog()
 		self.screens['midi_key_range'] = zynthian_gui_midi_key_range()
 		self.screens['audio_out'] = zynthian_gui_audio_out()
-		self.screens['midi_out'] = zynthian_gui_midi_out()
 		self.screens['audio_in'] = zynthian_gui_audio_in()
-		self.screens['midi_in'] = zynthian_gui_midi_in()
+		self.screens['midi_config'] = zynthian_gui_midi_config()
 		self.screens['bank'] = zynthian_gui_bank()
 		self.screens['preset'] = zynthian_gui_preset()
 		self.screens['control'] = zynthian_gui_control()
@@ -468,10 +466,6 @@ class zynthian_gui:
 
 		# Start VNC as configured
 		self.state_manager.default_vncserver()
-
-		# Initialize Control device Manager
-		self.state_manager.create_ctrldev_manager()
-		self.ctrldev_manager = self.state_manager.ctrldev_manager
 
 		# Initialize OSC
 		self.osc_init()
@@ -777,6 +771,16 @@ class zynthian_gui:
 
 	def bluetooth_config(self):
 		self.show_screen('bluetooth')
+
+	def midi_in_config(self):
+		self.screens['midi_config'].chain = None
+		self.screens['midi_config'].input = True
+		self.show_screen('midi_config')
+
+	def midi_out_config(self):
+		self.screens['midi_config'].chain = None
+		self.screens['midi_config'].input = False
+		self.show_screen('midi_config')
 
 	def modify_chain(self, status=None):  # TODO: Rename - this is called for various chain manipulation purposes
 		"""Manage the stages of adding or changing a processor or chain
@@ -1583,7 +1587,7 @@ class zynthian_gui:
 				return True
 
 	def is_current_screen_menu(self):
-		if self.current_screen in ("main_menu", "engine", "midi_cc", "midi_chan", "midi_key_range", "audio_in", "audio_out", "midi_out", "midi_prog") or \
+		if self.current_screen in ("main_menu", "engine", "midi_cc", "midi_chan", "midi_key_range", "audio_in", "audio_out", "midi_prog") or \
 				self.current_screen.endswith("_options"):
 			return True
 		if self.current_screen == "option" and len(self.screen_history) > 1 and self.screen_history[-2] in ("zynpad", "pattern_editor", "preset", "bank"):
@@ -1872,7 +1876,7 @@ class zynthian_gui:
 					break
 
 				# Try to manage with configured control devices
-				if self.ctrldev_manager.midi_event(ev):
+				if self.state_manager.ctrldev_manager.midi_event(ev):
 					self.state_manager.status_midi = True
 					self.last_event_flag = True
 					continue
@@ -2212,19 +2216,13 @@ class zynthian_gui:
 			except AttributeError:
 				pass
 
-			# Refresh control device list
-			if zynautoconnect.get_mididev_changed():
-				zynautoconnect.set_mididev_changed(False)
-				try:
-					self.ctrldev_manager.refresh_device_list()
-				except Exception as err:
-					logging.error(err)
-
 			# Refresh status of control devices
+			"""
 			try:
 				self.ctrldev_manager.refresh_all()
 			except Exception as err:
 				logging.error(err)
+			"""
 
 		except Exception as e:
 			logging.exception(e)

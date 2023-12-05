@@ -102,7 +102,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.setup_zynpots()
 		self.refresh_status(force=True)
 		if self.param_editor_zctrl == None:
-			self.set_title("Scene {}".format(self.bank))
+			self.set_title(f"Scene {self.bank}")
 
 	# Function to hide GUI
 	def hide(self):
@@ -114,7 +114,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if columns > 8:
 			columns = 8
 		if self.zynseq.libseq.getSequencesInBank(self.bank) > columns ** 2:
-			self.zyngui.show_confirm("Reducing the quantity of sequences in bank {} will delete sequences but patterns will still be available. Continue?".format(self.bank), self._set_grid_size, columns)
+			self.zyngui.show_confirm(f"Reducing the quantity of sequences in bank {self.bank} will delete sequences but patterns will still be available. Continue?", self._set_grid_size, columns)
 		else:
 			self._set_grid_size(columns)
 
@@ -403,36 +403,41 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			options[f'Scene ({self.bank})'] = 'Scene'
 		if not zynthian_gui_config.check_wiring_layout(["Z2"]):
 			options['Arranger'] = 'Arranger'
-		options['Beats per bar ({})'.format(self.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
+		options[f'Beats per bar ({self.zynseq.libseq.getBeatsPerBar()})'] = 'Beats per bar'
 
+		"""
 		if not self.ctrldev_idev:
 			options['Control device (OFF)'] = 'Control device'
 		else:
 			try:
-				devname = zynautoconnect.get_midi_in_devid(self.ctrldev_idev).replace("_", " ")
+				devname = zynautoconnect.devices_in[self.ctrldev_idev - 1].aliases[1]
 			except:
 				devname = "UNKNOWN"
-			options['Control device ({})'.format(devname)] = 'Control device'
+			options[f'Control device ({devname})'] = 'Control device'
 
 		if self.ctrldev_idev and not self.ctrldev:
 			if not self.trigger_channel:
 				options['Trigger channel (OFF)'] = 'Trigger channel'
 			else:
-				options['Trigger channel ({})'.format(self.trigger_channel)] = 'Trigger channel'
+				options[f'Trigger channel ({self.trigger_channel})'] = 'Trigger channel'
 
-		options['Grid size ({}x{})'.format(self.zynseq.col_in_bank, self.zynseq.col_in_bank)] = 'Grid size'
+		options[f'Grid size ({self.zynseq.col_in_bank}x{self.zynseq.col_in_bank})'] = 'Grid size'
+		"""
 
 		# Single Pad Options
 		options['> PAD OPTIONS'] = None
-		options['Play mode ({})'.format(zynseq.PLAY_MODES[self.zynseq.libseq.getPlayMode(self.bank, self.selected_pad)])] = 'Play mode'
-		options['MIDI channel ({})'.format(1 + self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0))] = 'MIDI channel'
+		options[f'Play mode ({zynseq.PLAY_MODES[self.zynseq.libseq.getPlayMode(self.bank, self.selected_pad)]})'] = 'Play mode'
+		options[f'MIDI channel ({1 + self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)})'] = 'MIDI channel'
+		options['Trigger learn'] = 'Trigger learn'
+		"""
 		if self.ctrldev_idev and not self.ctrldev and self.trigger_channel > 0:
 			note = self.zynseq.libseq.getTriggerNote(self.bank, self.selected_pad)
 			if note < 128:
-				trigger_note = "{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1)
+				trigger_note = "f{NOTE_NAMES[note % 12]}{note // 12 - 1}"
 			else:
 				trigger_note = "None"
-			options['Trigger note ({})'.format(trigger_note)] = 'Trigger note'
+			options[f'Trigger note ({trigger_note})'] = 'Trigger note'
+		"""
 
 		#options['> MISC'] = None
 		options['Rename sequence'] = 'Rename sequence'
@@ -458,18 +463,20 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'Grid size':
 			labels = []
 			for i in range(1, 9):
-				labels.append("{}x{}".format(i, i))
+				labels.append(f'{i}x{i}')
 			self.enable_param_editor(self, 'grid_size', 'Grid size', {'labels': labels, 'value': self.zynseq.col_in_bank - 1, 'value_default': 3}, self.set_grid_size)
 		elif params == 'Control device':
 			labels = ['OFF']
-			for label in zynautoconnect.devices_in:
-				if label:
-					labels.append(label.replace('_', ' '))
+			for dev in zynautoconnect.devices_in:
+				if dev:
+					labels.append(dev.aliases[1])
 			self.enable_param_editor(self, 'control_device', 'Control device', {'labels': labels, 'value': self.ctrldev_idev, 'value_default': 0}, self.set_ctrldev)
 		elif params == 'Trigger channel':
 			self.enable_param_editor(self, 'trigger_chan', 'Trigger channel', {'labels': INPUT_CHANNEL_LABELS, 'value': self.trigger_channel})
 		elif params == 'Trigger note':
-			self.zyngui.enter_midi_learn()
+			self.zyngui.cuia_enable_midi_learn()
+		elif params == 'Trigger learn':
+			self.zyngui.cuia_enable_midi_learn()
 		elif params == 'Play mode':
 			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynseq.PLAY_MODES, 'value':self.zynseq.libseq.getPlayMode(self.zynseq.bank, self.selected_pad), 'value_default':zynseq.SEQ_LOOPALL}, self.set_play_mode)
 		elif params == 'MIDI channel':
@@ -539,7 +546,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		force |= self.zynseq.bank != self.bank
 		if force:
 			self.bank = self.zynseq.bank
-			self.set_title("Scene {}".format(self.bank))
+			self.set_title(f"Scene {self.bank}")
 			if self.columns != self.zynseq.col_in_bank:
 				self.update_grid()
 			if self.ctrldev:
@@ -594,7 +601,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif encoder == self.ctrl_order[0] and zynthian_gui_config.transport_clock_source <= 1:
 			self.zynseq.update_tempo()
 			self.zynseq.nudge_tempo(dval)
-			self.set_title("Tempo: {:.1f}".format(self.zynseq.get_tempo()), None, None, 2)
+			self.set_title(f"Tempo: {self.zynseq.get_tempo():.1f}", None, None, 2)
 
 	# Function to handle SELECT button press
 	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
@@ -608,7 +615,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	def back_action(self):
 		if self.midi_learn:
-			self.zyngui.exit_midi_learn()
+			self.zyngui.cuia_disable_midi_learn()
 			return True
 		else:
 			return super().back_action()
@@ -657,7 +664,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.midi_learn = True
 		labels = ['None']
 		for note in range(128):
-			labels.append("{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1))
+			labels.append(f"{NOTE_NAMES[note % 12]}{note // 12 - 1}")
 		value = self.zyngui.state_manager.zynseq.libseq.getTriggerNote(self.bank, self.selected_pad) + 1
 		if value > 128:
 			value = 0

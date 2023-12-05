@@ -612,6 +612,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 		try:
 			options = {}
 			zctrl = self.zgui_controllers[i].zctrl
+			if zctrl is None:
+				return
 			title = "Control Options"
 			if not unlearn_only:
 				options["X-Y Touch-Pad"] = i

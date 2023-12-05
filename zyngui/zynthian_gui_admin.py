@@ -92,6 +92,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				self.list_data.append((self.toggle_midi_sys, 0, "[  ] MIDI System Messages"))
 
 		self.list_data.append((self.zyngui.bluetooth_config, 0, "Bluetooth MIDI"))
+		self.list_data.append((self.zyngui.midi_in_config, 0, "MIDI Input Devices"))
+		self.list_data.append((self.zyngui.midi_out_config, 0, "MIDI Output Devices"))
 		self.list_data.append((self.midi_profile, 0, "MIDI Profile"))
 
 		self.list_data.append((None, 0, "> AUDIO"))

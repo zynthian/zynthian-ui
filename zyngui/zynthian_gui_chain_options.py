@@ -235,8 +235,9 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			self.zyngui.show_confirm(f"Do you want to clean MIDI-learn for ALL controls in ALL processors within chain {self.chain_id}?", self.zyngui.chain_manager.clean_midi_learn, self.chain_id)
 
 	def chain_midi_routing(self):
-		self.zyngui.screens['midi_out'].set_chain(self.chain)
-		self.zyngui.show_screen('midi_out')
+		self.zyngui.screens['midi_config'].set_chain(self.chain)
+		self.zyngui.screens['midi_config'].input = False
+		self.zyngui.show_screen('midi_config')
 
 	def chain_audio_routing(self):
 		self.zyngui.screens['audio_out'].set_chain(self.chain)
@@ -268,8 +269,9 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		self.zyngui.show_screen('audio_in')
 
 	def chain_midi_capture(self):
-		self.zyngui.screens['midi_in'].set_chain(self.chain)
-		self.zyngui.show_screen('midi_in')
+		self.zyngui.screens['midi_config'].set_chain(self.chain)
+		self.zyngui.screens['midi_config'].input = True
+		self.zyngui.show_screen('midi_config')
 
 	def toggle_recording(self):
 		if self.processor and self.processor.engine and self.processor.engine.name == 'AudioPlayer':

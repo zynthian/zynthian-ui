@@ -46,7 +46,11 @@ ZynthianState = {
 		"FINE_TUNING": "440",
 		"MASTER_PROGRAM_CHANGE_TYPE": "Custom",
 		"PLAY_LOOP": "0",
-		"FILTER_OUTPUT": "0"
+		"FILTER_OUTPUT": "0",
+        "port_names": { # Dictionary of MIDI port friendly names indexed by port uid
+            "USB-1.1.1 CH345 MIDI IN": "VZ-1 IN", # Friendly name mapped by uid
+            #... More ports
+        }
     },
     "chains": { # Dictionary of chains indexed by chain ID
         "01": { # Chain 01
@@ -130,6 +134,12 @@ ZynthianState = {
                     "transpose_semitone": 0, # Semitones to transpose chain MIDI
                 },
                 #... Other chains
+            },
+            "midi_capture": { # Dictionary of midi input configuration mapped by port input uid 
+                "ttymidi:MIDI_in": { # 
+                    "zmip_flags": 0, # Input mode bitwise flags (acti, omini, mixer_ctrl, zynpad_ctrl)
+                    "routed_chans": 0, # 16 bitwise flags indicating channels routed from this input
+                }
             },
             "midi_clone": { # Dictionary MIDI clone configs mapped by source channel
                 "0": { # Indexed by MIDI channel to clone from (0..15)

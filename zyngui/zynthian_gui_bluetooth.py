@@ -35,6 +35,7 @@ from threading import Thread
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
+import zynautoconnect
 
 # ------------------------------------------------------------------------------
 # Zynthian Bluetooth config GUI Class
@@ -100,6 +101,13 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
             try:
                 if t == 'B':
                     # Bold press to remove from list
+                    # Clear jack port uid aliases
+                    alsa_name = uuid
+                    ports =zynautoconnect.get_ports(f"^a2j:{alsa_name} \[.*{alsa_name}$")
+                    for port in ports:
+                        for alias in port.aliases:
+                            port.unset_alias(alias)
+
                     self.proc.sendline(f"untrust {uuid}")
                     self.proc.sendline(f"disconnect {uuid}")
                     self.proc.sendline(f"remove {uuid}")
@@ -155,8 +163,8 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                         elif parsing_device == 2:
                             # Phase 2 of device detection
                             parsing_device = device
-                    elif parts[0] == 'Alias:':
-                        devices[parsing_device][0] = ''.join(parts[1:])
+                    elif parts[0] == 'Name:':
+                        devices[parsing_device][0] = line[6:]
                     elif parts[0] == 'Trusted:':
                         devices[parsing_device][1] = (parts[1] == "yes")
                     elif parts[0] == 'Connected:':
@@ -164,6 +172,18 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                         if devices[parsing_device][2] and not devices[parsing_device][1]:
                             # Should not allow connection if device not trusted (bluetoothd bug)
                             self.proc.sendline(f"disconnect {parsing_device}")
+                        elif devices[parsing_device][2] and devices[parsing_device][1]:
+                            # Set jack port uid aliases
+                            name = devices[parsing_device][0]
+                            ports =zynautoconnect.get_ports(f"^a2j:{name} \[.*{name} Bluetooth$")
+                            for port in ports:
+                                if not port.aliases:
+                                    if port.is_input:
+                                        port.set_alias(f"BLE:{parsing_device}_out")
+                                        port.set_alias(f"{name} OUT")
+                                    else:
+                                        port.set_alias(f"BLE:{parsing_device}_in")
+                                        port.set_alias(f"{name} IN")
                         parsing_device = 2
                         if device not in self.devices or self.devices[device] != devices[device]:
                             self.devices[device] = devices.pop(device)

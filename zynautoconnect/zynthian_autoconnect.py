@@ -22,11 +22,12 @@
 # 
 #********************************************************************
 
-import os
-import jack
+import os, re
+import jack, alsa_midi
 import logging
 from time import sleep
 from threading  import Thread, Lock
+import usb
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
@@ -49,6 +50,7 @@ logger.setLevel(log_level)
 #-------------------------------------------------------------------------------
 
 jclient = None					# JACK client
+aclient = None					# ALSA client
 thread = None					# Thread to check for changed MIDI ports
 exit_flag = False				# True to exit thread
 paused_flag = False				# True id autoconnect task is paused
@@ -59,54 +61,97 @@ deferred_midi_connect = False 	# True to perform MIDI connect on next port check
 deferred_audio_connect = False 	# True to perform audio connect on next port check cycle
 
 max_num_devs = 16				# Maximum quantity of hardware inputs
-devices_in = [None for i in range(max_num_devs)]		# List of hardware inputs
-devices_in_name = [None for i in range(max_num_devs)]	# List of hardware input names
+devices_in = [None for i in range(max_num_devs)]	# List of hardware inputs
 devices_out = [None for i in range(max_num_devs)]	# List of hardware outputs
-devices_out_name = [None for i in range(max_num_devs)]	# List of hardware output names
 
+# zyn_routed_* are used to avoid changing routes made by other jack clients
 zyn_routed_audio = {}			# Map of lists of audio sources routed by zynautoconnect, indexed by destination
 zyn_routed_midi = {}			# Map of lists of MIDI sources routed by zynautoconnect, indexed by destination
 
-mididev_changed = False			# Flag mididev changes
+host_usb_connected = False		# True if connected to host USB
 
-host_usb_suspended = True		# False if connected to host USB
-
+midi_port_names = {}			# Map of user friendly names indexed by device uid (alias[0])
 #------------------------------------------------------------------------------
 
-def get_port_alias_id(midi_port):
+def get_ports(name):
+	return jclient.get_ports(name)
+
+def set_midi_port_names(port_names):
+	global midi_port_names
+	midi_port_names = port_names.copy()
+
+def get_port_aliases(midi_port):
 	"""Get port alias for a MIDI port
 	
 	midi_port : Jack MIDI port
-	#TODO: Can we lose this?
+	returns : List of aliases or port name if alias not set
 	"""
 
 	try:
-		return midi_port.aliases[0]
+		return (midi_port.aliases[0], midi_port.aliases[1])
 	except:
-		return midi_port.name
+		return (midi_port.name, midi_port.name)
 
+def get_port_from_name(name):
+	"""Get a JACK port from its name
+	
+	name : Port name
+	returns : JACK port or None if not found
+	"""
+
+	try:
+		return jclient.get_port_by_name(name)
+	except:
+		return None
 
 def get_midi_in_devid(idev):
-	if idev > 0 and idev <= len(devices_in):
-		return devices_in[idev - 1]
-	else:
+	"""Get the ALSA name of the port connected to ZMIP port
+	
+	idev : Index of ZMIP port
+	returns : ALSA name or None if not found
+	"""
+
+	try:
+		return devices_in[idev].name.split('] (capture): ')[1]
+	except:
 		return None
 
 
 def get_midi_out_devid(idev):
-	if idev > 0 and idev <= len(devices_out):
-		return devices_out[idev - 1]
-	else:
+	"""Get the ALSA name of the port connected from ZMOP port
+	
+	idev : Index of ZMOP port
+	returns : ALSA name or None if not found
+	"""
+
+	try:
+		return devices_out[idev].name.split('] (playback): ')[1]
+	except:
 		return None
 
+def get_midi_in_devid_by_uid(uid):
+	"""Get the index of the ZMIP connected to physical input
+	
+	name : The uid name of the port (jack alias [0])
+	"""
 
-def set_mididev_changed(flag):
-	global mididev_changed
-	mididev_changed = flag
+	for i, port in enumerate(devices_in):
+		if port and port.aliases[0] == uid:
+			return i
+	return None
 
 
-def get_mididev_changed():
-	return mididev_changed
+def get_midi_out_devid_by_uid(uid):
+	"""Get the index of the ZMOP connected to physical output
+	
+	name : The uid name of the port (jack alias [0])
+	"""
+
+	for i, port in enumerate(devices_out):
+		if port and port.aliases[0] == uid:
+			return i
+	return None
+
 
 #------------------------------------------------------------------------------
 
@@ -138,9 +183,14 @@ def request_midi_connect(fast = False):
 		global deferred_midi_connect
 		deferred_midi_connect = True
 
-def is_host_usb_suspended():
+def is_host_usb_connected():
+	"""Check if the USB host (e.g. USB-Type B connection) is connected
+
+	returns : True if connected to USB host		
+	"""
+
 	with open("/sys/class/udc/fe980000.usb/device/gadget/suspended") as f:
-		return f.read() == "1\n"
+		return f.read() != "1\n"
 
 def midi_autoconnect():
 	"""Connect all expected MIDI routes"""
@@ -155,6 +205,9 @@ def midi_autoconnect():
 	#logger.info("ZynAutoConnect: MIDI ...")
 	global zyn_routed_midi
 
+	# Update aliases used to persistently uniquely identify physical ports
+	update_midi_port_aliases()
+	
 	#-----------------------------------------------------------
 	# Get Input/Output MIDI Ports: 
 	#  - sources including physical inputs are jack outputs
@@ -165,16 +218,16 @@ def midi_autoconnect():
 	hw_src_ports = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
 
 	# Remove host USB if not connected
-	if host_usb_suspended:
+	if not host_usb_connected:
 		try:
-			f_midi = jclient.get_ports("f_midi", is_output=True, is_physical=True, is_midi=True)[0]
+			f_midi = jclient.get_ports("^a2j:f_midi \[.*] \(capture\)", is_output=True, is_physical=True, is_midi=True)[0]
 			hw_src_ports.remove(f_midi)
 		except:
 			pass
 
-	# Remove a2j MIDI through (we don't currently use it but may want to renable in future)
+	# Remove a2j MIDI through (we don't currently use it but may want to enable in future)
 	try:
-		a2j_thru = jclient.get_ports("a2j:Midi Through", is_output=True, is_physical=True, is_midi=True)[0]
+		a2j_thru = jclient.get_ports("^a2j:Midi Through", is_output=True, is_physical=True, is_midi=True)[0]
 		hw_src_ports.remove(a2j_thru)
 	except:
 		pass
@@ -190,16 +243,16 @@ def midi_autoconnect():
 	hw_dst_ports = jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
 
 	# Remove host USB if not connected
-	if host_usb_suspended:
+	if not host_usb_connected:
 		try:
-			f_midi = jclient.get_ports("f_midi", is_input=True, is_physical=True, is_midi=True)[0]
+			f_midi = jclient.get_ports("^a2j:f_midi \[.*] \(capture\)", is_input=True, is_physical=True, is_midi=True)[0]
 			hw_dst_ports.remove(f_midi)
 		except:
 			pass
 
 	# Remove a2j MIDI through (we don't want this - it can lead to howl-round)
 	try:
-		a2j_thru = jclient.get_ports("a2j:Midi Through", is_input=True, is_physical=True, is_midi=True)[0]
+		a2j_thru = jclient.get_ports("^a2j:Midi Through", is_input=True, is_physical=True, is_midi=True)[0]
 		hw_dst_ports.remove(a2j_thru)
 	except:
 		pass
@@ -209,9 +262,7 @@ def midi_autoconnect():
 	enabled_hw_dst_ports = []
 	for port in hw_dst_ports:
 		try:
-			port_alias_id = get_port_alias_id(port)
-			#TODO: Use port names, not aliases
-			if port_alias_id.replace(" ", "_") in zynthian_gui_config.enabled_midi_out_ports:
+			if port.name.replace(" ", "_") in zynthian_gui_config.enabled_midi_out_ports:
 				enabled_hw_dst_ports.append(port)
 		except:
 			pass
@@ -240,67 +291,60 @@ def midi_autoconnect():
 	busy_idevs = []
 	for hwsp in hw_src_ports:
 		devnum = None
-		port_alias_id = get_port_alias_id(hwsp)
-		if port_alias_id:
-			# logger.debug("Connecting MIDI Input {}".format(hwsp))
+		# logger.debug("Connecting MIDI Input {}".format(hwsp))
+		try:
 			# Device is already registered, takes the number
-			try:
-				devnum = devices_in.index(port_alias_id)
+			devnum = devices_in.index(hwsp)
+		except:
 			# else register it, taking the first free port
-			except:
-				set_mididev_changed(True)
-				for i in range(max_num_devs):
-					if devices_in[i] is None:
-						devnum = i
-						devices_in[devnum] = port_alias_id
-						devices_in_name[devnum] = hwsp.name
-						logger.debug("Connected MIDI-in device {}: {}".format(devnum, port_alias_id))
-						break
-			if devnum is not None:
-				dst = f"ZynMidiRouter:dev{devnum}_in"
-				required_routes[dst].add(hwsp.name)
-				busy_idevs.append(devnum)
+			for i in range(max_num_devs):
+				if devices_in[i] is None:
+					devnum = i
+					devices_in[devnum] = hwsp
+					if state_manager.ctrldev_manager.load_driver(get_midi_in_devid(i), i):
+						lib_zyncore.zmip_set_route_extdev(i, 0)
+					#state_manager.zs3["zs3-0"]["midi_capture"]["zmip_flags"]
+					#TODO: Add to zs30 state and set
+					logger.debug(f"Connected MIDI-in device {devnum}: {hwsp.name}")
+					break
+		if devnum is not None:
+			required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(hwsp.name)
+			busy_idevs.append(devnum)
 
 	# Delete disconnected input devices from list
 	for i in range(0, max_num_devs):
 		if i not in busy_idevs and devices_in[i] is not None:
-			logger.debug("Disconnected MIDI-in device {}: {}".format(i, devices_in[i]))
+			logger.debug(f"Disconnected MIDI-in device {i}: {devices_in[i].name}")
 			devices_in[i] = None
-			devices_in_name[i] = None
-			set_mididev_changed(True)
+			if state_manager.ctrldev_manager.unload_driver(i):
+				lib_zyncore.zmip_set_route_extdev(i, 1)
+
 
 	# Connect MIDI Output Devices
 	busy_idevs = []
 	for hwdp in hw_dst_ports:
 		devnum = None
-		port_alias_id = get_port_alias_id(hwdp)
-		if port_alias_id:
-			# logger.debug("Connecting MIDI Output {}".format(hwdp))
+		# logger.debug("Connecting MIDI Output {}".format(hwdp))
+		try:
 			# if the device is already registered, takes the number
-			try:
-				devnum = devices_out.index(port_alias_id)
+			devnum = devices_out.index(hwdp)
+		except:
 			# else register it, taking the first free port
-			except:
-				set_mididev_changed(True)
-				for i in range(max_num_devs):
-					if devices_out[i] is None:
-						devnum = i
-						devices_out[devnum] = port_alias_id
-						devices_out_name[devnum] = hwdp.name
-						logger.debug("Connected MIDI-out device {}: {}".format(devnum, port_alias_id))
-						break
-			if devnum is not None:
-				src = f"ZynMidiRouter:dev{devnum}_out"
-				required_routes[hwdp.name].add(src)
-				busy_idevs.append(devnum)
+			for i in range(max_num_devs):
+				if devices_out[i] is None:
+					devnum = i
+					devices_out[devnum] = hwdp
+					logger.debug("fConnected MIDI-out device {dev_num}: {hwdp.name}")
+					break
+		if devnum is not None:
+			required_routes[hwdp.name].add(f"ZynMidiRouter:dev{devnum}_out")
+			busy_idevs.append(devnum)
 
 	# Delete disconnected output devices from list
 	for i in range(0, max_num_devs):
 		if i not in busy_idevs and devices_out[i] is not None:
-			logger.debug("Disconnected MIDI-out device {}: {}".format(i, devices_out[i]))
+			logger.debug(f"Disconnected MIDI-out device {i}: {devices_out[i].name}")
 			devices_out[i] = None
-			devices_out_name[i] = None
-			set_mididev_changed(True)
 
 	# List MIDI over IP destination ports
 	nw_dst_ports = []
@@ -309,8 +353,8 @@ def midi_autoconnect():
 		ports = jclient.get_ports(port_name, is_midi=True, is_input=True)
 		nw_dst_ports += ports
 		try:
-			port_alias_id = get_port_alias_id(ports[0])
-			if port_alias_id.replace(" ", "_") in zynthian_gui_config.enabled_midi_out_ports:
+			port_id = ports[0].name
+			if port_id.replace(" ", "_") in zynthian_gui_config.enabled_midi_out_ports:
 				enabled_nw_dst_ports.append(ports[0])
 		except:
 			pass
@@ -322,8 +366,8 @@ def midi_autoconnect():
 		ports = jclient.get_ports(port_name, is_midi=True, is_output=True)
 		nw_src_ports += ports
 		try:
-			port_alias_id = get_port_alias_id(ports[0])
-			if port_alias_id in zynthian_gui_config.enabled_midi_in_ports:
+			port_id = ports[0].name
+			if port_id in zynthian_gui_config.enabled_midi_in_ports:
 				enabled_nw_src_ports.append(ports[0])
 		except:
 			pass
@@ -348,19 +392,18 @@ def midi_autoconnect():
 			dests = []
 			for out in chain.midi_out:
 				if out == "NET-OUT":
-					dests += enabled_nw_dst_ports
+					for dst in enabled_nw_dst_ports:
+						dests += dst
 				elif out in chain_manager.chains:
 					for processor in chain_manager.get_processors(out, "MIDI Tool", 0):
-						try:
-							dests += jclient.get_ports(processor.get_jackname(True), is_midi=True, is_input=True)
-						except:
-							pass
+						for dst in jclient.get_ports(processor.get_jackname(True), is_midi=True, is_input=True):
+							dests.append(dst.name)
 				else:
-					dests += jclient.get_ports(out, is_midi=True, is_input=True)
+					dests.append(out)
 			for processor in chain.midi_slots[-1]:
 				src = jclient.get_ports(processor.get_jackname(True), is_midi=True, is_output=True)[0]
 				for dst in dests:
-					required_routes[dst.name].add(src.name)
+					required_routes[dst].add(src.name)
 
 		# Add MIDI router outputs
 		if chain.is_midi():
@@ -423,7 +466,7 @@ def midi_autoconnect():
 
 	#Connect ZynMidiRouter:ctrl_out to enabled MIDI-FB ports (MIDI-Controller FeedBack)
 	for port in hw_dst_ports:
-		if get_port_alias_id(port) in zynthian_gui_config.enabled_midi_fb_ports:
+		if get_port_aliases(port)[0] in zynthian_gui_config.enabled_midi_fb_ports:
 			required_routes[port.name].add("ZynMidiRouter:ctrl_out")
 
 	# Remove mod-ui routes
@@ -433,10 +476,6 @@ def midi_autoconnect():
 
 	# Connect and disconnect routes
 	for dst, sources in required_routes.items():
-		if dst not in zyn_routed_midi:
-			zyn_routed_midi[dst] = sources
-		else:
-			zyn_routed_midi[dst] = zyn_routed_midi[dst].union(sources)
 		try:
 			current_routes = jclient.get_all_connections(dst)
 		except Exception as e:
@@ -447,14 +486,17 @@ def midi_autoconnect():
 				continue
 			if src.name in zyn_routed_midi[dst]:
 				try:
-					jclient.disconnect(src.name, dst)
+					jclient.disconnect(src, dst)
 				except:
 					pass
 				zyn_routed_midi[dst].remove(src.name)
 		for src in sources:
 			try:
 				jclient.connect(src, dst)
-				zyn_routed_midi[dst].append(src.name)
+				if dst not in zyn_routed_midi:
+					zyn_routed_midi[dst] = [src]
+				else:
+					zyn_routed_midi[dst].append(src)
 			except:
 				pass
 
@@ -616,39 +658,124 @@ def get_audio_capture_ports():
 
 	return jclient.get_ports("system", is_output=True, is_audio=True, is_physical=True)
 
-def set_midi_port_aliases():
-	user_midi_port_alias = {} #TODO: Allow user to set port alias
+
+def build_midi_port_name(port):
+	try:
+		name = port.shortname.split(':')[-1].strip()
+		alsa_client_id = int(port.shortname.split('[')[1].split(']')[0])
+		# USB ports
+		card_id = aclient.get_client_info(alsa_client_id).card_id
+		with open(f"/proc/asound/card{card_id}/usbbus", "r") as f:
+			usbbus = f.readline()
+		tmp = re.findall(r'\d+', usbbus)
+		bus = int(tmp[0])
+		address = int(tmp[1])
+		usb_port_nos = usb.core.find(bus=bus, address=address).port_numbers
+		uid = f"{bus}"
+		for i in usb_port_nos:
+			uid += f".{i}"
+		uid = f"USB:{uid} {name}"
+	except:
+		uid = name
+	if port.is_input:
+		uid += " OUT"
+	else:
+		uid += " IN"
+	return uid, name
+
+
+def get_midi_port_aliases():
+	aliases = {}
+	for port in jclient.get_ports(is_midi=True):
+		try: #TODO: Do not include default names
+			aliases[port.aliases[0]] = port.aliases[1]
+		except:
+			pass
+	return aliases
+
+
+def update_midi_port_aliases():
+	"""Ensure all physical jack ports have uid and friendly name in aliases 0 & 1
+	"""
+
+	#TODO: Optimise - should not rebuild all on every iteration
 	for port in jclient.get_ports(is_physical=True, is_midi=True):
 		try:
-			if port.aliases:
-				continue
-			if port.name in user_midi_port_alias:
-				port.set_alias(user_midi_port_alias[port.name])
-			elif port.name == "ttymidi:MIDI_in":
-				port.set_alias("DIN-5 MIDI-IN")
+			alias1 = port.name
+			alias2 = None
+			# Static ports
+			if port.name == "ttymidi:MIDI_in":
+				alias2 = "DIN-5 MIDI IN"
 			elif port.name == "ttymidi:MIDI_out":
-				port.set_alias("DIN-5 MIDI-OUT")
+				alias2 = "DIN-5 MIDI OUT"
 			elif port.name.endswith(" (capture): f_midi"):
-				port.set_alias("USB HOST IN")
+				alias1 = "f_midi:in"
+				alias2 = "USB HOST IN"
 			elif port.name.endswith("(playback): f_midi"):
-				port.set_alias("USB HOST OUT")
+				alias1 = "f_midi:out"
+				alias2 = "USB HOST OUT"
+			# Dynamic ports
+			elif port.name.endswith("Bluetooth"):
+				continue
 			else:
-				port.set_alias((port.name.split(':')[2].strip()))
+				alias1, alias2 = (build_midi_port_name(port))
+
+			# Clear current aliases - blunt!
+			for alias in port.aliases:
+				port.unset_alias(alias)
+
+			# Set aliases
+			port.set_alias(alias1)
+			if alias1 in midi_port_names: # User defined names
+				port.set_alias(midi_port_names[alias1])
+			else:
+				if alias2:
+					port.set_alias(alias2)
+				else:
+					port.set_alias(alias1)
 		except:
 			logging.warning(f"Unable to set alias for port {port.name}")
 
 
-def set_midi_port_alias(port_name, alias, is_output=None, force=False):
-		ports = jclient.get_ports(port_name, is_midi=True, is_output=is_output)
-		if ports:
-			if ports[0].aliases:
-				if force:
-					# Blunt! Remove all aliases - we only use alias[0]
-					for a in ports[0].aliases:
-						ports[0].unset_alias(a)
-				else:
-					return
-			ports[0].set_alias(alias)
+def set_midi_port_alias(port_name, alias1, alias2=None):
+	global midi_port_names
+
+	try:
+		port = jclient.get_port_by_name(port_name)
+		for a in port.aliases:
+			port.unset_alias(a)
+		port.set_alias(alias1)
+		if alias2 is None:
+			if alias1 in midi_port_names:
+				alias2 = midi_port_names[alias1]
+			else:
+				alias2 = alias1
+		port.set_alias(alias2)
+		midi_port_names[alias1] = alias2
+	except:
+		pass
+
+def set_port_friendly_name(port_name, friendly_name):
+	global midi_port_names
+	try:
+		port = jclient.get_port_by_name(port_name)
+		if len(port.aliases) < 1:
+			return
+		if len(port.aliases) > 1:
+			port.unset_alias(port.aliases[1])
+		port.set_alias(friendly_name)
+		midi_port_names[port.aliases[0]] = friendly_name
+	except:
+		pass
+
+
+def set_port_friendly_name_from_uid(uid, friendly_name):
+	for port in jclient.get_ports():
+		if len(port.aliases) and port.aliases[0] == uid:
+			if len(port.aliases) > 1:
+				port.unset_alias(port.aliases[1])
+			port.set_alias(friendly_name)
+			break
 
 
 def autoconnect():
@@ -660,45 +787,39 @@ def autoconnect():
 def auto_connect_thread():
 	"""Thread to run autoconnect, checking if physical (hardware) interfaces have changed, e.g. USB plug"""
 
-	global host_usb_suspended
+	global host_usb_connected
 
 	deferred_timeout = 2 # Period to run deferred connect (in seconds)
-	deferred_inc = 0.1 # Delay between loop cycles (in seconds)
+	deferred_inc = 0.1 # Delay between loop cycles (in seconds) - allows faster exit from thread
 	deferred_count = 5 # Run at startup
 	do_audio = False
 	do_midi = False
-	last_hw_str = None # Fingerprint of MIDI ports used to check for change of ports
+	last_hw_devs = None # Fingerprint of MIDI ports used to check for change of ports
+	last_hw_change = 0
 
 	while not exit_flag:
 		if not paused_flag:
 			try:
 				if deferred_count > deferred_timeout:
 					deferred_count = 0
-
-					hw_str = "" # Hardware device fingerprint
-					hw_src_ports = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
-					for hw in hw_src_ports:
-						hw_str += hw.name + "\n"
-					hw_dst_ports = jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
-					for hw in hw_dst_ports:
-						hw_str += hw.name + "\n"
-					if hw_str != last_hw_str:
-						last_hw_str = hw_str
+					# Check if hardware MIDI ports changed, e.g. USB inserted/removed
+					hw_devs = jclient.get_ports(is_midi=True, is_physical=True)
+					if last_hw_devs != hw_devs:
+						last_hw_devs = hw_devs
 						do_midi = True
-					hms = is_host_usb_suspended()
-					if host_usb_suspended != hms:
-						host_usb_suspended = hms
+					# Check if connection to host USB changed
+					hms = is_host_usb_connected()
+					if host_usb_connected != hms:
+						host_usb_connected = hms
 						do_midi = True
-
+					# Check if requested to run midi connect (slow)
 					if deferred_midi_connect:
 						do_midi = True
-
+					# Check if requested to run audio connect (slow)
 					if deferred_audio_connect:
 						do_audio = True
 
-
 				if do_midi:
-					set_midi_port_aliases()
 					midi_autoconnect()
 					do_midi = False
 
@@ -748,31 +869,41 @@ def start(sm):
 	sm : State manager object
 	"""
 
-	global refresh_time, exit_flag, jclient, thread, lock, chain_manager, state_manager
+	global refresh_time, exit_flag, jclient, aclient, thread, lock, chain_manager, state_manager
 	if jclient:
 		return # Already started
 	refresh_time = 2
 	exit_flag = False
 	state_manager = sm
 	chain_manager = sm.chain_manager
-
+	
 	try:
 		jclient = jack.Client("Zynthian_autoconnect")
 		jclient.set_xrun_callback(cb_jack_xrun)
 		jclient.activate()
 	except Exception as e:
-		logger.error("ZynAutoConnect ERROR: Can't connect with Jack Audio Server ({})".format(e))
+		logger.error(f"ZynAutoConnect ERROR: Can't connect with Jack Audio Server ({e})")
+	
+	try:
+		aclient = alsa_midi.SequencerClient("Zynthian_autoconnect")
+	except Exception as e:
+		logger.error(f"ZynAutoConnect ERROR: Can't connect with ALSA ({e})")
 
 	# Create Lock object (Mutex) to avoid concurrence problems
 	lock = Lock()
+
+	# Set aliases for static MIDI ports
+	set_midi_port_alias("ZynMaster:midi_in", "ZynMaster:midi_in", "CV/Gate OUT") 
+	set_midi_port_alias("ZynMaster:midi_out", "ZynMaster:midi_out", "CV/Gate IN") 
+	set_midi_port_alias("ZynMidiRouter:net_in", "ZynMidiRouter:net_in", "Network MIDI OUT") 
+	set_midi_port_alias("ZynMidiRouter:net_out", "ZynMidiRouter:net_out", "Network MIDI IN") 
 
 	# Start port change checking thread
 	thread = Thread(target=auto_connect_thread, args=())
 	thread.daemon = True # thread dies with the program
 	thread.name = "Autoconnect"
 	thread.start()
-	set_midi_port_alias("ZynMaster:midi_in", "CV/Gate Out") #TODO Set alias in lib
-
+	
 
 def stop():
 	"""Reset state and stop autoconnect thread"""

@@ -27,8 +27,7 @@
 import logging
 
 # Zynthian specific modules
-from zyngui import zynthian_gui_config
-from zyngui.zynthian_ctrldev_manager import zynthian_ctrldev_zynpad
+from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 

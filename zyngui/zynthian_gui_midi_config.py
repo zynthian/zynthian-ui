@@ -33,7 +33,6 @@ from time import sleep
 import zynconf
 import zynautoconnect
 from zyncoder.zyncore import lib_zyncore
-from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 # ------------------------------------------------------------------------------
@@ -41,7 +40,7 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 # ------------------------------------------------------------------------------
 
 
-class zynthian_gui_midi_in(zynthian_gui_selector):
+class zynthian_gui_midi_config(zynthian_gui_selector):
 
     def __init__(self):
         self.chain = None # Chain object
@@ -158,9 +157,9 @@ class zynthian_gui_midi_in(zynthian_gui_selector):
 
         if not self.input and self.chain:
             self.list_data.append((None, None, "Chain inputs"))
-            for chain_id, chain in self.chain_manager.chains.items():
+            for chain_id, chain in self.zyngui.chain_manager.chains.items():
                 if chain.is_midi() and chain != self.chain:
-                    if self.chain_manager.will_route_howl(self.chain_manager.active_chain_id, chain_id):
+                    if self.zyngui.chain_manager.will_route_howl(self.zyngui.chain_manager.active_chain_id, chain_id):
                         append_device(None, chain_id, f"∞Chain {chain_id}")
                     else:
                         append_device(None, chain_id, f"Chain {chain_id}")
@@ -197,7 +196,7 @@ class zynthian_gui_midi_in(zynthian_gui_selector):
                         lib_zyncore.zmop_set_route_from(self.idev, dev_i, not lib_zyncore.zmop_get_route_from(self.idev, dev_i))
                 else:
                     try:
-                        self.chain_manager.get_active_chain().toggle_midi_out(self.list_data[i][0])
+                        self.zyngui.chain_manager.get_active_chain().toggle_midi_out(self.list_data[i][0])
                     except Exception as e:
                         logging.error(e)
                 self.fill_list()
