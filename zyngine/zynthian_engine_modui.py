@@ -73,6 +73,11 @@ class zynthian_engine_modui(zynthian_engine):
 
 		#self.audio_out = []
 
+		self.options['midi_capture'] = True
+		self.options['midi_route'] = True
+		#self.options['audio_capture'] = True
+		self.options['audio_route'] = True
+
 		self.websocket = None
 		self.ws_thread = None
 		self.ws_preset_loaded = False
@@ -633,7 +638,7 @@ class zynthian_engine_modui(zynthian_engine):
 				except Exception as err:
 					logging.error("Configuring Controllers: "+pgraph+" => "+str(err))
 
-			#Add bypass Zcontroller
+			# Add bypass Zcontroller
 			bypass_zctrl = zynthian_controller(self, 'bypass', 'bypass', {
 				'graph_path': pgraph+'/:bypass',
 				'value': 0,
@@ -647,13 +652,13 @@ class zynthian_engine_modui(zynthian_engine):
 
 			self.plugin_zctrls[pgraph][':bypass'] = bypass_zctrl
 			pinfo['ports']['control']['input'].insert(0, {'symbol': ':bypass', 'ctrl': bypass_zctrl})
-			#Add position info
+			# Add position info
 			pinfo['posx'] = int(round(float(posx)))
 			pinfo['posy'] = int(round(float(posy)))
 			#Add to info array
 			self.plugin_info[pgraph] = pinfo
-			#Set Refresh
-			self.refresh_all()
+			# Refresh controllers
+			processors[0].refresh_controllers()
 			self.state_manager.end_busy("mod-ui")
 
 
@@ -665,8 +670,8 @@ class zynthian_engine_modui(zynthian_engine):
 			del self.plugin_zctrls[pgraph]
 		if pgraph in self.plugin_info:
 			del self.plugin_info[pgraph]
-		#Set Refresh
-		self.refresh_all()
+		# Refresh controllers
+		processors[0].refresh_controllers()
 		self.state_manager.end_busy("mod-ui")
 
 

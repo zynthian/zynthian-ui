@@ -194,7 +194,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			return False
 		try:
 			yml = fh.read()
-			logging.info(f"Loading yaml config file for soundfont '{bank_path}' =>\n{yml}")
+			logging.info(f"Loading yaml config file for soundfont '{bank_fpath}' =>\n{yml}")
 			self.bank_config[bank_fpath] = yaml.load(yml, Loader=yaml.SafeLoader)
 			return True
 		except Exception as e:
@@ -275,7 +275,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		if ctrl_items:
 			logging.debug("Generating extra controllers config ...")
 			try:
-				c=1
+				c = 1
 				ctrl_set = []
 				zctrls_extra = {}
 				for name, options in ctrl_items:

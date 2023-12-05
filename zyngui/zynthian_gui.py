@@ -86,7 +86,7 @@ from zyngui.zynthian_gui_brightness_config import zynthian_gui_brightness_config
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
-from zyngui.zynthian_gui_bluetooth import zynthian_gui_bluetooth
+
 
 MIXER_MAIN_CHANNEL = 256  # TODO This constant should go somewhere else
 
@@ -430,7 +430,6 @@ class zynthian_gui:
 		self.screens['tempo'] = zynthian_gui_tempo()
 		self.screens['admin'] = zynthian_gui_admin()
 		self.screens['audio_mixer'] = zynthian_gui_mixer()
-		self.screens['bluetooth'] = zynthian_gui_bluetooth()
 
 		# Create the right main menu screen
 		if zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
@@ -768,9 +767,6 @@ class zynthian_gui:
 
 	def brightness_config(self):
 		self.show_screen('brightness_config')
-
-	def bluetooth_config(self):
-		self.show_screen('bluetooth')
 
 	def midi_in_config(self):
 		self.screens['midi_config'].chain = None

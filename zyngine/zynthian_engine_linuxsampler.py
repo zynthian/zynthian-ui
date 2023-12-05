@@ -1,12 +1,12 @@
 ﻿# -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_linuxsampler)
 # 
 # zynthian_engine implementation for Linux Sampler
 # 
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -20,7 +20,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import os
 import re
@@ -35,16 +35,23 @@ from collections import OrderedDict
 
 from . import zynthian_engine
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Linuxsampler Exception Classes
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
-class zyngine_lscp_error(Exception): pass
-class zyngine_lscp_warning(Exception): pass
 
-#------------------------------------------------------------------------------
+class zyngine_lscp_error(Exception):
+	pass
+
+
+class zyngine_lscp_warning(Exception):
+	pass
+
+
+# ------------------------------------------------------------------------------
 # Linuxsampler Engine Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_engine_linuxsampler(zynthian_engine):
 
@@ -118,7 +125,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		self.lscp_connect()
 		self.reset()
 
-
 	def reset(self):
 		super().reset()
 		self.ls_chans = {}
@@ -144,7 +150,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 				i += 1
 		return self.sock
 
-
 	def lscp_send(self, command):
 		command = command + "\r\n"
 		try:
@@ -152,13 +157,11 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		except Exception as err:
 			logging.error("FAILED lscp_send: %s" % err)
 
-
 	def lscp_get_result_index(self, result):
 		parts = result.split('[')
-		if len(parts)>1:
+		if len(parts) > 1:
 			parts = parts[1].split(']')
 			return int(parts[0])
-
 
 	def lscp_send_single(self, command):
 		#logging.debug("LSCP SEND => %s" % command)
@@ -184,7 +187,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			parts = line.split(':')
 			self.state_manager.end_busy("linux_sampler")
 			raise zyngine_lscp_warning("{} ({} {})".format(parts[2], parts[0], parts[1]))
-
 
 	def lscp_send_multi(self, command):
 		#logging.debug("LSCP SEND => %s" % command)
@@ -224,13 +226,10 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		processor.ls_chan_info = None
 		self.ls_set_channel(processor)
 		self.set_midi_chan(processor)
-		processor.refresh_flag = True
-
 
 	def remove_processor(self, processor):
 		#self.ls_unset_channel(processor)
 		super().remove_processor(processor)
-
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
@@ -317,10 +316,8 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 							i += 1
 		return preset_list
 
-
 	def get_preset_list(self, bank):
 		return self._get_preset_list(bank)
-
 
 	def set_preset(self, processor, preset, preload=False):
 		# Search for an instrument index, if any
@@ -337,7 +334,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		else:
 			return False
 
-
 	def cmp_presets(self, preset1, preset2):
 		try:
 			if preset1[0] == preset2[0] and preset1[3] == preset2[3]:
@@ -350,7 +346,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# Controllers Management
 	# ---------------------------------------------------------------------------
-
 
 	# ---------------------------------------------------------------------------
 	# Specific functions
@@ -385,7 +380,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		except zyngine_lscp_warning as warn:
 			logging.warning(warn)
 
-
 	def ls_set_channel(self, processor):
 		# Adding new channel
 		ls_chan_id = self.lscp_send_single("ADD CHANNEL")
@@ -410,7 +404,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 				'audio_output': audio_out
 			}
 			processor.jackname = f"LinuxSampler:out{audio_out}_"
-
 
 	def ls_set_preset(self, processor, ls_engine, fpath, ii=0):
 		res = False
@@ -447,7 +440,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 		return res
 
-
 	def ls_unset_channel(self, processor):
 		if processor.ls_chan_info:
 			chan_id = processor.ls_chan_info['chan_id']
@@ -463,7 +455,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 			processor.ls_chan_info = None
 			processor.jackname = None
-
 
 	def ls_get_free_output_channel(self):
 		for i in range(16):
@@ -495,7 +486,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			})
 		return banks
 
-
 	@classmethod
 	def zynapi_get_presets(cls, bank):
 		presets = []
@@ -510,7 +500,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			})
 		return presets
 
-
 	@classmethod
 	def zynapi_new_bank(cls, bank_name):
 		if bank_name.lower().startswith("gig/"):
@@ -523,18 +512,15 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			bank_type = "sfz"
 		os.mkdir(zynthian_engine.my_data_dir + "/soundfonts/{}/{}".format(bank_type, bank_name))
 
-
 	@classmethod
 	def zynapi_rename_bank(cls, bank_path, new_bank_name):
 		head, tail = os.path.split(bank_path)
 		new_bank_path = head + "/" + new_bank_name
 		os.rename(bank_path, new_bank_path)
 
-
 	@classmethod
 	def zynapi_remove_bank(cls, bank_path):
 		shutil.rmtree(bank_path)
-
 
 	@classmethod
 	def zynapi_rename_preset(cls, preset_path, new_preset_name):
@@ -543,12 +529,10 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		new_preset_path = head + "/" + new_preset_name + ext
 		os.rename(preset_path, new_preset_path)
 
-
 	@classmethod
 	def zynapi_remove_preset(cls, preset_path):
 		os.remove(preset_path)
-		#TODO => If last preset in SFZ dir, delete it too!
-
+		# TODO => If last preset in SFZ dir, delete it too!
 
 	@classmethod
 	def zynapi_download(cls, fullpath):
@@ -559,10 +543,9 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		else:
 			return fullpath
 
-
 	@classmethod
 	def zynapi_install(cls, dpath, bank_path):
-		#TODO: Test that bank_path fits preset type (sfz/gig)
+		# TODO: Test that bank_path fits preset type (sfz/gig)
 		 
 		fname, ext = os.path.splitext(dpath)
 		if os.path.isdir(dpath):
@@ -601,14 +584,12 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		else:
 			raise Exception("File doesn't look like a SFZ or GIG soundfont")
 
-
 	@classmethod
 	def zynapi_get_formats(cls):
 		return "gig,zip,tgz,tar.gz,tar.bz2"
-
 
 	@classmethod
 	def zynapi_martifact_formats(cls):
 		return "sfz,gig"
 
-#******************************************************************************
+# ******************************************************************************

@@ -87,7 +87,6 @@ class zynthian_processor:
         self.controllers_dict = {} # Map of zctrls indexed by symbol
         self.ctrl_screens_dict = {}
         self.current_screen_index = -1
-        self.refresh_flag = False
         self.auto_save_bank = False
 
     def reset(self):
@@ -97,8 +96,6 @@ class zynthian_processor:
         self.midi_unlearn()
         # Delete processor from engine
         self.engine.remove_processor(self) #TODO: Is this done elsewhere?
-        # Clear refresh flag
-        self.refresh_flag = False #TODO: GUI
 
     def get_jackname(self, engine=False):
         """ Get the jackname for the processor's engine
@@ -118,10 +115,10 @@ class zynthian_processor:
         """Set engine that this processor uses"""
         
         self.engine = engine
-        self.engine.add_processor(self) # TODO: Refactor engine to replace processor with processor
+        self.engine.add_processor(self)  # TODO: Refactor engine to replace processor with processor
         if self.midi_chan is not None and self.midi_chan < 16:
-            engine.set_midi_chan(self) # When adding the processor to the engine, shouldn't be set the midi chan?
-        self.refresh_controllers() # Get the controllers list from the engine.
+            engine.set_midi_chan(self)  # When adding the processor to the engine, shouldn't be set the midi chan?
+        self.refresh_controllers()  # Get the controllers list from the engine.
 
 
     def get_name(self):

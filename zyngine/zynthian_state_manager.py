@@ -47,10 +47,10 @@ from zyngine.zynthian_processor import zynthian_processor
 from zyngine import zynthian_legacy_snapshot
 from zyngine import zynthian_engine_audio_mixer
 from zyngine import zynthian_midi_filter
+from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 
 from zyngui import zynthian_gui_config
 from zyngine.zynthian_ctrldev_manager import zynthian_ctrldev_manager
-from zyngui.zynthian_audio_recorder import zynthian_audio_recorder
 
 # ----------------------------------------------------------------------------
 # Zynthian State Manager Class
@@ -448,7 +448,7 @@ class zynthian_state_manager:
                 # TODO: Update audio player status with callback
                 self.status_audio_player = self.audio_player.engine.player.get_playback_state(self.audio_player.handle)
 
-                # Audio Recorder Status => Implemented in zyngui/zynthian_audio_recorder.py
+                # Audio Recorder Status => Implemented in zyngine/zynthian_audio_recorder.py
 
                 # MIDI Player
                 self.status_midi_player = libsmf.getPlayState()

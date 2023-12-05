@@ -62,26 +62,34 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         self.list_data = []
 
         def append_device(i, port):
-            # Check if captured by device manager
-            if i in self.zyngui.state_manager.ctrldev_manager.drivers:
-                if self.idev:
-                    return
-                self.list_data.append(("ctrl_dev", i, port.aliases[1], port))
-            else:
-                # Check mode (Acti/Omni/Multi)
-                if lib_zyncore.zmip_get_flag_active_chan(i):
-                    mode = "ACTI"
-                elif lib_zyncore.zmip_get_flag_omni_chan(i):
-                    mode = "OMNI"
+            if self.input:
+                # Check if captured by device manager
+                if i in self.zyngui.state_manager.ctrldev_manager.drivers:
+                    if self.idev:
+                        return
+                    self.list_data.append(("ctrl_dev", i, port.aliases[1], port))
                 else:
-                    mode = "MULTI"
-                if self.idev is None:
-                    self.list_data.append((port.aliases[0], i, port.aliases[1], port))
-                else:
-                    if lib_zyncore.zmop_get_route_from(self.idev , i):
-                        self.list_data.append((port.aliases[0], i, f"\u2612 {mode} - {port.aliases[1]}", port))
+                    # Check mode (Acti/Omni/Multi)
+                    if lib_zyncore.zmip_get_flag_active_chan(i):
+                        mode = "ACTI"
+                    elif lib_zyncore.zmip_get_flag_omni_chan(i):
+                        mode = "OMNI"
                     else:
-                        self.list_data.append((port.aliases[0], i, f"\u2610 {mode} - {port.aliases[1]}", port))
+                        mode = "MULTI"
+                    if self.idev is None:
+                        self.list_data.append((port.aliases[0], i, port.aliases[1], port))
+                    else:
+                        if lib_zyncore.zmop_get_route_from(self.idev , i):
+                            self.list_data.append((port.aliases[0], i, f"\u2612 {mode} - {port.aliases[1]}", port))
+                        else:
+                            self.list_data.append((port.aliases[0], i, f"\u2610 {mode} - {port.aliases[1]}", port))
+            else:
+                if self.chain is None:
+                    self.list_data.append((port.aliases[0], i, f"{port.aliases[1]}", port))
+                elif port.name in self.chain.midi_out:
+                    self.list_data.append((port.name, i, f"\u2612 {port.aliases[1]}", port))
+                else:
+                    self.list_data.append((port.name, i, f"\u2610 {port.aliases[1]}", port))
 
         int_devices = []
         usb_devices = []
@@ -160,9 +168,13 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             for chain_id, chain in self.zyngui.chain_manager.chains.items():
                 if chain.is_midi() and chain != self.chain:
                     if self.zyngui.chain_manager.will_route_howl(self.zyngui.chain_manager.active_chain_id, chain_id):
-                        append_device(None, chain_id, f"∞Chain {chain_id}")
+                        prefix = "∞"
                     else:
-                        append_device(None, chain_id, f"Chain {chain_id}")
+                        prefix = ""
+                    if chain_id in self.chain.midi_out:
+                        self.list_data.append((chain_id, None, f"\u2612 {prefix}Chain {chain_id}"))
+                    else:
+                        self.list_data.append((chain_id, None, f"\u2610 {prefix}Chain {chain_id}"))
 
         super().fill_list()
 

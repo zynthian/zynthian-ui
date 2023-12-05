@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine)
 # 
 # zynthian_engine is the base class for the Zynthian Synth Engine
 # 
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -20,7 +20,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import os
 import json
@@ -34,9 +34,10 @@ from os.path import isfile, isdir, ismount, join
 from . import zynthian_controller
 from zyngui import zynthian_gui_config
 
-#--------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------
 # Basic Engine Class: Spawn a process & manage IPC communication using pexpect
-#--------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------
+
 
 class zynthian_basic_engine:
 
@@ -66,7 +67,6 @@ class zynthian_basic_engine:
 		self.command_cwd = cwd
 		self.ignore_not_on_gui = False
 
-
 	# ---------------------------------------------------------------------------
 	# Subprocess Management & IPC
 	# ---------------------------------------------------------------------------
@@ -78,16 +78,14 @@ class zynthian_basic_engine:
 				logging.debug("Command: {}".format(self.command))
 				# Turns out that environment's PWD is not set automatically 
 				# when cwd is specified for pexpect.spawn(), so do it here.
-				if (self.command_cwd):
+				if self.command_cwd:
 					self.command_env['PWD'] = self.command_cwd
 
 				# Setting cwd is because we've set PWD above. Some engines doesn't
 				# care about the process's cwd, but it is more consistent to set 
 				# cwd when PWD has been set.
 				self.proc = pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env, cwd=self.command_cwd)
-
 				self.proc.delaybeforesend = 0
-
 				output = self.proc_get_output()
 
 				if self.proc_start_sleep:
@@ -98,7 +96,6 @@ class zynthian_basic_engine:
 			except Exception as err:
 				logging.error("Can't start engine {} => {}".format(self.name, err))
 
-
 	def stop(self):
 		if self.proc:
 			try:
@@ -108,7 +105,6 @@ class zynthian_basic_engine:
 			except Exception as err:
 				logging.error("Can't stop engine {} => {}".format(self.name, err))
 
-
 	def proc_get_output(self):
 		if self.command_prompt:
 			self.proc.expect(self.command_prompt)
@@ -117,23 +113,23 @@ class zynthian_basic_engine:
 			logging.warning("Command Prompt is not defined!")
 			return None
 
-
 	def proc_cmd(self, cmd):
 		if self.proc:
 			try:
 				#logging.debug("proc command: "+cmd)
 				self.proc.sendline(cmd)
-				out=self.proc_get_output()
+				out = self.proc_get_output()
 				#logging.debug("proc output:\n{}".format(out))
 			except Exception as err:
-				out=""
+				out = ""
 				logging.error("Can't exec engine command: {} => {}".format(cmd, err))
 			return out
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Synth Engine Base Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_engine(zynthian_basic_engine):
 
@@ -191,15 +187,12 @@ class zynthian_engine(zynthian_basic_engine):
 		self.preset_favs_fpath = None
 		self.show_favs_bank = True
 
-
 	def reset(self):
 		pass
-		#TODO: OSC, IPC, ...
-
+		# TODO: OSC, IPC, ...
 
 	def get_jackname(self):
 		return self.jackname
-
 
 	def config_remote_display(self):
 		if 'ZYNTHIAN_X11_SSH' in os.environ and 'SSH_CLIENT' in os.environ and 'DISPLAY' in os.environ:
@@ -210,19 +203,12 @@ class zynthian_engine(zynthian_basic_engine):
 			self.command_env['DISPLAY'] = ':1'
 			return True
 
-
 	# ---------------------------------------------------------------------------
 	# Refresh Management
 	# ---------------------------------------------------------------------------
 
-	def refresh_all(self, refresh=True):
-		for processor in self.processors:
-			processor.refresh_flag = refresh
-
-
 	def refresh(self):
-		raise NotImplementedError
-
+		pass
 
 	# ---------------------------------------------------------------------------
 	# OSC Management
@@ -243,7 +229,6 @@ class zynthian_engine(zynthian_basic_engine):
 			except liblo.AddressError as err:
 				logging.error("OSC Server can't be started ({}). Running without OSC feedback.".format(err))
 
-
 	def osc_end(self):
 		if self.osc_server:
 			try:
@@ -253,17 +238,14 @@ class zynthian_engine(zynthian_basic_engine):
 			except Exception as err:
 				logging.error("OSC server can't be stopped => {}".format(err))
 
-
 	def osc_add_methods(self):
 		if self.osc_server:
 			self.osc_server.add_method(None, None, self.cb_osc_all)
-
 
 	def cb_osc_all(self, path, args, types, src):
 		logging.info("OSC MESSAGE '{}' from '{}'".format(path, src.url))
 		for a, t in zip(args, types):
 			logging.debug("argument of type '{}': {}".format(t, a))
-
 
 	# ---------------------------------------------------------------------------
 	# Subproccess Management & IPC
@@ -273,11 +255,9 @@ class zynthian_engine(zynthian_basic_engine):
 		self.osc_init()
 		super().start()
 
-
 	def stop(self):
 		super().stop()
 		self.osc_end()
-
 
 	# ---------------------------------------------------------------------------
 	# Generating list from different sources
@@ -306,7 +286,6 @@ class zynthian_engine(zynthian_basic_engine):
 				pass
 
 		return res
-
 
 	@staticmethod
 	def get_dirlist(dpath, exclude_empty=True):
@@ -342,27 +321,22 @@ class zynthian_engine(zynthian_basic_engine):
 		self.processors.append(processor)
 		processor.jackname = self.jackname
 
-
 	def remove_processor(self, processor):
 		self.processors.remove(processor)
 		processor.jackname = None
 
-
 	def get_name(self, processor=None):
 		return self.name
-
 
 	def get_path(self, processor=None):
 		return self.name
 	
-
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
 	def set_midi_chan(self, processor):
 		pass
-
 
 	def get_active_midi_channels(self):
 		chans = []
@@ -372,7 +346,6 @@ class zynthian_engine(zynthian_basic_engine):
 			elif processor.midi_chan >= 0 and processor.midi_chan <= 15:
 				chans.append(processor.midi_chan)
 		return chans
-
 
 	# ---------------------------------------------------------------------------
 	# Bank Management
@@ -392,7 +365,6 @@ class zynthian_engine(zynthian_basic_engine):
 		else:
 			return None
 
-
 	def get_bank_list(self, layer=None):
 		xbank_dirs = self.get_bank_dirs()
 		if xbank_dirs is not None:
@@ -401,11 +373,9 @@ class zynthian_engine(zynthian_basic_engine):
 			logging.info('Getting Bank List for %s: NOT IMPLEMENTED!' % self.name)
 			return []
 
-
 	def set_bank(self, processor, bank):
 		self.state_manager.zynmidi.set_midi_bank_msb(processor.get_midi_chan(), bank[1])
 		return True
-
 
 	# ---------------------------------------------------------------------------
 	# Preset Management
@@ -414,14 +384,12 @@ class zynthian_engine(zynthian_basic_engine):
 	def get_preset_list(self, bank):
 		logging.info('Getting Preset List for %s: NOT IMPLEMENTED!', self.name)
 
-
 	def set_preset(self, processor, preset, preload=False):
 		if isinstance(preset[1], int):
 			self.state_manager.zynmidi.set_midi_prg(processor.get_midi_chan(), preset[1])
 		else:
 			self.state_manager.zynmidi.set_midi_preset(processor.get_midi_chan(), preset[1][0], preset[1][1], preset[1][2])
 		return True
-
 
 	def cmp_presets(self, preset1, preset2):
 		try:
@@ -432,14 +400,11 @@ class zynthian_engine(zynthian_basic_engine):
 		except:
 			return False
 
-
 	def is_preset_user(self, preset):
 		return isinstance(preset[0], str) and preset[0].startswith(self.my_data_dir)
 
-
 	def preset_exists(self, bank_info, preset_name):
 		logging.error("Not implemented!!!")
-
 
 	# Implement in derived classes to enable features in GUI
 	#def save_preset(self, bank_name, preset_name):
@@ -469,7 +434,6 @@ class zynthian_engine(zynthian_basic_engine):
 
 		return fav_status
 
-
 	def remove_preset_fav(self, preset):
 		if self.preset_favs is None:
 			self.load_preset_favs()
@@ -480,13 +444,11 @@ class zynthian_engine(zynthian_basic_engine):
 		except:
 			pass # Don't care if preset not in favs
 
-
 	def get_preset_favs(self, processor):
 		if self.preset_favs is None:
 			self.load_preset_favs()
 
 		return self.preset_favs
-
 
 	def is_preset_fav(self, preset):
 		if self.preset_favs is None:
@@ -497,7 +459,6 @@ class zynthian_engine(zynthian_basic_engine):
 			return True
 		else:
 			return False
-
 
 	def load_preset_favs(self):
 		if self.nickname:
@@ -515,7 +476,6 @@ class zynthian_engine(zynthian_basic_engine):
 		else:
 			logging.warning("Can't load preset favorites until the engine have a nickname!")
 
-
 	# ---------------------------------------------------------------------------
 	# Controllers Management
 	# ---------------------------------------------------------------------------
@@ -523,10 +483,9 @@ class zynthian_engine(zynthian_basic_engine):
 	def set_ctrl_update_cb(self, cb):
 		self.processor_cb = cb
 
-
-	# Get zynthian controllers dictionary:
+	# Get zynthian controllers dictionary.
+	# Updates existing processor dictionary.
 	# + Default implementation uses a static controller definition array
-	# Updates existing processor dictionary
 	def get_controllers_dict(self, processor):
 		midich = processor.get_midi_chan()
 
@@ -546,7 +505,7 @@ class zynthian_engine(zynthian_basic_engine):
 			for ctrl in self._ctrls:
 				options = {"processor": processor}
 
-				#OSC control =>
+				# OSC control =>
 				if isinstance(ctrl[1], str):
 					#replace variables ...
 					tpl = Template(ctrl[1])
@@ -560,11 +519,11 @@ class zynthian_engine(zynthian_basic_engine):
 						options['osc_port'] = self.osc_target_port
 					#debug message
 					logging.debug('CONTROLLER %s OSC PATH => %s' % (ctrl[0], cc))
-				#MIDI Control =>
+				# MIDI Control =>
 				else:
 					cc = ctrl[1]
 
-				#Build controller depending on array length ...
+				# Build controller depending on array length ...
 				if ctrl[0] in processor.controllers_dict:
 					if len(ctrl) > 3:
 						processor.controllers_dict[ctrl[0]].setup_controller(midich, cc, ctrl[2], ctrl[3])
@@ -586,7 +545,7 @@ class zynthian_engine(zynthian_basic_engine):
 					zctrl = zynthian_controller(self, ctrl[0])
 					zctrl.setup_controller(midich, cc, ctrl[2])
 
-				#Set controller extra options
+				# Set controller extra options
 				if len(options) > 0:
 					zctrl.set_options(options)
 
@@ -599,12 +558,10 @@ class zynthian_engine(zynthian_basic_engine):
 
 		return processor.controllers_dict
 
-
 	def get_ctrl_screen_name(self, gname, i):
 		if i > 0:
 			gname = "{}#{}".format(gname, i)
 		return gname
-
 
 	def generate_ctrl_screens(self, zctrl_dict):
 		if self._ctrl_screens is None:
@@ -648,10 +605,8 @@ class zynthian_engine(zynthian_basic_engine):
 				#logging.debug("ADDING CONTROLLER SCREEN {}",format(self.get_ctrl_screen_name(gname,c)))
 				self._ctrl_screens.append([self.get_ctrl_screen_name(gname,c),ctrl_set])
 
-
 	def send_controller_value(self, zctrl):
 		raise Exception("NOT IMPLEMENTED!")
-
 
 	# ---------------------------------------------------------------------------
 	# Options and Extended Config
@@ -660,10 +615,8 @@ class zynthian_engine(zynthian_basic_engine):
 	def get_options(self):
 		return self.options
 
-
 	def get_extended_config(self):
 		return None
-
 
 	def set_extended_config(self, xconfig):
 		pass
@@ -677,7 +630,6 @@ class zynthian_engine(zynthian_basic_engine):
 		return [f for f in dir(cls) if f.startswith('zynapi_')]
 		#callable(f) and
 
-
 	# Remove double spacing
 	@classmethod
 	def remove_double_spacing(cls, lines):
@@ -689,5 +641,4 @@ class zynthian_engine(zynthian_basic_engine):
 		for line in double_line:
 			del lines[line]
 
-
-#******************************************************************************
+# ******************************************************************************
