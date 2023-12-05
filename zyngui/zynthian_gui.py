@@ -2053,6 +2053,7 @@ class zynthian_gui:
 					self.last_event_flag = True
 					continue
 
+				idev = (ev & 0xFF000000) >> 24
 				evtype = (ev & 0xF00000) >> 20
 				chan = (ev & 0x0F0000) >> 16
 				#logging.info("UI-MIDI MESSAGE: DEV#{} CH#{} => {}".format(idev, chan, evtype))
@@ -2151,7 +2152,7 @@ class zynthian_gui:
 							self.show_current_screen()
 						# Try layer's zctrls
 						else:
-							self.screens['layer'].midi_control_change(chan, ccnum, ccval)
+							self.screens['layer'].midi_control_change(idev, chan, ccnum, ccval)
 							self.zynmixer.midi_control_change(chan, ccnum, ccval)
 							self.audio_player.midi_control_change(chan, ccnum, ccval)
 					# Special CCs >= Channel Mode

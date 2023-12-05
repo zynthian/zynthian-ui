@@ -592,7 +592,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	# MIDI CC & Program Change (when ZS3 is disabled!)
 	# ----------------------------------------------------------------------------
 
-	def midi_control_change(self, chan, ccnum, ccval):
+	def midi_control_change(self, idev, chan, ccnum, ccval):
 		if (ccnum == 0 or ccnum == 32) and zynthian_gui_config.midi_bank_change:
 			for layer in self.root_layers:
 				if layer.midi_chan == chan:
@@ -601,11 +601,23 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					elif ccnum == 32:
 						layer.midi_bank_lsb(ccval)
 		else:
-			# Only active chain receives MIDI-CC, except pedals, that are received by all chains
-			# Absolute mode is not implemented in testing branch.
-			for layer in self.layers:
-				if (self.zyngui.curlayer and layer.midi_chan == self.zyngui.curlayer.midi_chan) or ccnum in (64, 66, 67, 69):
+			mode = zynautoconnect.get_midi_in_dev_mode(idev-1)
+			# All this should be limited to chains with the device (idev) enabled!!
+
+			# ACTI mode: Only active chain gets MIDI-CC. Pedals are received by all chains. MIDI channel is ignored.
+			if mode == "ACTI":
+				if self.zyngui.curlayer:
+					for layer in self.layers:
+						if layer.midi_chan == self.zyngui.curlayer.midi_chan or ccnum in (64, 66, 67, 69):
+							layer.midi_control_change(None, ccnum, ccval)
+			elif mode == "OMNI":
+				for layer in self.layers:
+					layer.midi_control_change(None, ccnum, ccval)
+			# MULTI mode: Global MIDI-learning (MIDI channel + CC)
+			else:  # mode == "MULTI":
+				for layer in self.layers:
 					layer.midi_control_change(chan, ccnum, ccval)
+
 			# Audio Levels "chain"
 			self.amixer_layer.midi_control_change(chan, ccnum, ccval)
 
@@ -1584,6 +1596,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			self.set_midi_capture(state['midi_capture'])
 		else:
 			self.reset_midi_capture()
+		# Refresh MIDI-IN device mode state
+		zynautoconnect.update_midi_in_dev_mode_all()
 
 		# Set Audio Routing
 		if 'audio_routing' in state:
@@ -1742,6 +1756,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		# Restore MIDI Capture state
 		if 'midi_capture' in state:
 			self.set_midi_capture(state['midi_capture'])
+			# Refresh MIDI-IN device mode state
+			zynautoconnect.update_midi_in_dev_mode_all()
 
 		# Restore Audio Capture state
 		if "audio_capture" in state:

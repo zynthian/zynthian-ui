@@ -54,10 +54,10 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 		if self.end_layer:
 			midi_outs = {}
 			# USB connected device ports
-			for idev in range(1, 16):
-				dev_id = zynautoconnect.devices_out[idev - 1]
+			for i in range(zynautoconnect.max_num_devs):
+				dev_id = zynautoconnect.devices_out[i]
 				if dev_id:
-					dev_name = zynautoconnect.devices_out_name[idev - 1]
+					dev_name = zynautoconnect.devices_out_name[i]
 					midi_outs[dev_name] = dev_id.replace("_", " ")
 			# Hardcoded ports
 			midi_outs["NET-OUT"] = "Network MIDI-OUT"

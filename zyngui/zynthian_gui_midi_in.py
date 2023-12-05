@@ -57,13 +57,9 @@ class zynthian_gui_midi_in(zynthian_gui_selector):
 			if self.zyngui.ctrldev_manager.get_device_driver(i+1):
 				self.list_data.append((i, -1, "[  ] ----- - " + devname))
 			else:
-				# Check mode (Acti/Omni/Multi)
-				if lib_zyncore.zmip_get_flag_active_chan(i):
-					mode = "ACTI"
-				elif lib_zyncore.zmip_get_flag_omni_chan(i):
-					mode = "OMNI"
-				else:
-					mode = "MULTI"
+				# Get mode: ACTI/OMNI/MULTI
+				mode = zynautoconnect.get_midi_in_dev_mode(i)
+				# Get routing info: Device enabled/disabled for this chain
 				if lib_zyncore.zmop_get_route_from(self.root_layer.midi_chan, i):
 					self.list_data.append((i, 0, "[x] " + mode + " - " + devname))
 				else:
@@ -71,7 +67,7 @@ class zynthian_gui_midi_in(zynthian_gui_selector):
 
 		if self.root_layer:
 			# Connected device ports
-			for i in range(0, 16):
+			for i in range(zynautoconnect.max_num_devs):
 				dev_id = zynautoconnect.devices_in[i]
 				if dev_id:
 					append_device(i, dev_id.replace("_", " "))
@@ -106,6 +102,7 @@ class zynthian_gui_midi_in(zynthian_gui_selector):
 		# Change mode
 		elif t == 'B':
 			lib_zyncore.zmip_rotate_flags_active_omni_chan(dev_i)
+			zynautoconnect.update_midi_in_dev_mode(dev_i)
 		self.fill_list()
 
 

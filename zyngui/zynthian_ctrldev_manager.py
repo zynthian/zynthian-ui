@@ -256,7 +256,7 @@ class zynthian_ctrldev_manager():
 
 
 	def midi_event(self, ev):
-		idev = ((ev & 0xFF000000) >> 24)
+		idev = (ev & 0xFF000000) >> 24
 
 		if idev > 0 and idev <= 16:
 			#if idev>0 and idev<=len(zynautoconnect.devices_in):
