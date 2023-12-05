@@ -714,7 +714,6 @@ class zynthian_engine(zynthian_basic_engine):
 			except Exception as e:
 				logging.error("Can't learn {} ({}) for CH{}#CC{} => {}".format(zctrl.symbol, zctrl.get_path(), chan, cc, e))
 
-
 	def keep_midi_learn(self, zctrl):
 		try:
 			zpath = zctrl.get_path()
@@ -727,32 +726,30 @@ class zynthian_engine(zynthian_basic_engine):
 		except:
 			pass
 
-
 	def refresh_midi_learn(self):
 		logging.info("Refresh MIDI-learn ...")
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 		for zctrl in self.learned_zctrls.values():
 			self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = zctrl
 
-
 	def reset_midi_learn(self):
 		logging.info("Reset MIDI-learn ...")
 		self.learned_zctrls = {}
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 
-
 	def cb_midi_learn(self, zctrl, chan, cc):
 		return self.set_midi_learn(zctrl, chan, cc)
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# MIDI CC processing
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def midi_control_change(self, chan, ccnum, val):
-		if self.learned_cc[chan][ccnum]:
-			self.learned_cc[chan][ccnum].midi_control_change(val)
-
+		# Ignore MIDI channel! This is a limitation, specially when using "MULTI" mode.
+		# This is addressed by "absolute MIDI learn" in "chain_manager" branch.
+		for ch in range(0, 15):
+			if self.learned_cc[ch][ccnum]:
+				self.learned_cc[ch][ccnum].midi_control_change(val)
 
 	def midi_zctrl_change(self, zctrl, val):
 		if val != zctrl.get_ctrl_midi_val():
@@ -761,7 +758,6 @@ class zynthian_engine(zynthian_basic_engine):
 			except Exception as e:
 				logging.debug(e)
 
-
 	# ---------------------------------------------------------------------------
 	# Options and Extended Config
 	# ---------------------------------------------------------------------------
@@ -769,10 +765,8 @@ class zynthian_engine(zynthian_basic_engine):
 	def get_options(self):
 		return self.options
 
-
 	def get_extended_config(self):
 		return None
-
 
 	def set_extended_config(self, xconfig):
 		pass

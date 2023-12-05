@@ -516,10 +516,9 @@ class zynthian_layer:
 		for k, zctrl in self.controllers_dict.items():
 			zctrl.midi_unlearn()
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# MIDI processing
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def midi_control_change(self, chan, ccnum, ccval):
 		if self.engine:
@@ -529,12 +528,10 @@ class zynthian_layer:
 			except:
 				pass
 
-
 	def midi_bank_msb(self, i):
 		logging.debug("Received Bank MSB for CH#{}: {}".format(self.midi_chan, i))
 		if i>=0 and i<=2:
 			self.bank_msb = i
-
 
 	def midi_bank_lsb(self, i):
 		info = self.bank_msb_info[self.bank_msb]
@@ -546,7 +543,6 @@ class zynthian_layer:
 			self.load_preset_list()
 		else:
 			logging.warning("Bank index {} doesn't exist for MSB {} on CH#{}".format(i, self.bank_msb, self.midi_chan))
-
 
 	# ---------------------------------------------------------------------------
 	# State Management

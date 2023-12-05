@@ -577,10 +577,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for i in range(0,16):
 			lib_zyncore.reset_midi_filter_note_range(i)
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# MIDI learn management
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def midi_unlearn(self, root_layer=None):
 		if root_layer is None:
@@ -589,25 +588,26 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			for layer in self.get_chain_layers(root_layer):
 				layer.midi_unlearn()
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# MIDI CC & Program Change (when ZS3 is disabled!)
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def midi_control_change(self, chan, ccnum, ccval):
-		if zynthian_gui_config.midi_bank_change and ccnum==0:
+		if (ccnum == 0 or ccnum == 32) and zynthian_gui_config.midi_bank_change:
 			for layer in self.root_layers:
-				if layer.midi_chan==chan:
-					layer.midi_bank_msb(ccval)
-		elif zynthian_gui_config.midi_bank_change and ccnum==32:
-			for layer in self.root_layers:
-				if layer.midi_chan==chan:
-					layer.midi_bank_lsb(ccval)
+				if layer.midi_chan == chan:
+					if ccnum == 0:
+						layer.midi_bank_msb(ccval)
+					elif ccnum == 32:
+						layer.midi_bank_lsb(ccval)
 		else:
+			# Only active chain receives MIDI-CC, except pedals, that are received by all chains
+			# Absolute mode is not implemented in testing branch.
 			for layer in self.layers:
-				layer.midi_control_change(chan, ccnum, ccval)
+				if (self.zyngui.curlayer and layer.midi_chan == self.zyngui.curlayer.midi_chan) or ccnum in (64, 66, 67, 69):
+					layer.midi_control_change(chan, ccnum, ccval)
+			# Audio Levels "chain"
 			self.amixer_layer.midi_control_change(chan, ccnum, ccval)
-
 
 	def set_midi_prog_preset(self, midich, prognum):
 		changed = False
@@ -624,10 +624,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				logging.error("Can't set preset for CH#{}:PC#{} => {}".format(midich, prognum, e))
 		return changed
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# ZS3 management
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def set_midi_prog_zs3(self, midich, prognum):
 		i = self.get_zs3_index_by_prognum(prognum)
