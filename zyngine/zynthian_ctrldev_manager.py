@@ -73,14 +73,14 @@ class zynthian_ctrldev_manager():
 					self.available_drivers[dev_id] = dev_class
 
 
-	def load_driver(self, device_type, izmip):
+	def load_driver(self, izmip):
 		"""Loads a device driver
 		
-		device_type : name of MIDI device type
 		izmip : Index of zmip to attach driver
 		returns : True if new driver loaded
 		"""
 
+		device_type = zynautoconnect.get_midi_in_devid(izmip)
 		if device_type not in self.available_drivers:
 			return False
 		if izmip in self.drivers:
@@ -102,7 +102,7 @@ class zynthian_ctrldev_manager():
 		"""
 
 		if izmip in self.drivers:
-			self.drivers.remove(izmip)
+			self.drivers.pop(izmip)
 			return True
 		return False
 

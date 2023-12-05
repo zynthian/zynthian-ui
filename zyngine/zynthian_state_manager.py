@@ -1105,7 +1105,7 @@ class zynthian_state_manager:
 
     def get_midi_capture_state(self):
         # Get UI control devices
-        ctrldev_ids = self.ctrldev_manager.get_state()
+        ctrldev_ids = self.ctrldev_manager.drivers
 
         # Get zmips flags and chain routing
         mcstate = {}
@@ -1125,16 +1125,8 @@ class zynthian_state_manager:
                 mcd["zmip_flags"] |= 1 << 0
             if lib_zyncore.zmip_get_flag_omni_chan(i):
                 mcd["zmip_flags"] |= 1 << 1
-            if self.ctrldev_manager.is_mixer_ctrl(i):
+            if i in ctrldev_ids:
                 mcd["zmip_flags"] |= 1 << 2
-            if self.ctrldev_manager.is_zynpad_ctrl(i):
-                mcd["zmip_flags"] |= 1 << 3
-            if uid.startswith("USB:"):
-                #TODO: Should store uid in ctrldev_manager to distinguish between same controller types
-                tmp = uid.split()
-                ctrl_dev = uid[len(tmp[0]) + 1:-3]
-                if ctrl_dev in ctrldev_ids:
-                    mcd["zmip_flags"] |= 1 << 2
             routed_chans = 0
             for ch in range(0, 16):
                 if (lib_zyncore.zmop_get_route_from(ch, i)):

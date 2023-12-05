@@ -63,26 +63,22 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
         def append_device(i, port):
             if self.input:
-                # Check if captured by device manager
-                if i in self.zyngui.state_manager.ctrldev_manager.drivers:
-                    if self.idev:
-                        return
-                    self.list_data.append(("ctrl_dev", i, port.aliases[1], port))
+                # Check mode (Acti/Omni/Multi)
+                if lib_zyncore.zmip_get_flag_active_chan(i):
+                    mode = "ACTI"
+                elif lib_zyncore.zmip_get_flag_omni_chan(i):
+                    mode = "OMNI"
                 else:
-                    # Check mode (Acti/Omni/Multi)
-                    if lib_zyncore.zmip_get_flag_active_chan(i):
-                        mode = "ACTI"
-                    elif lib_zyncore.zmip_get_flag_omni_chan(i):
-                        mode = "OMNI"
+                    mode = "MULTI"
+                if self.chain is None:
+                    self.list_data.append((port.aliases[0], i, port.aliases[1], port))
+                elif i in self.zyngui.state_manager.ctrldev_manager.drivers:
+                    self.list_data.append((port.aliases[0], i, f"    DEVI - {port.aliases[1]}", port))
+                else:
+                    if lib_zyncore.zmop_get_route_from(self.idev , i):
+                        self.list_data.append((port.aliases[0], i, f"\u2612 {mode} - {port.aliases[1]}", port))
                     else:
-                        mode = "MULTI"
-                    if self.idev is None:
-                        self.list_data.append((port.aliases[0], i, port.aliases[1], port))
-                    else:
-                        if lib_zyncore.zmop_get_route_from(self.idev , i):
-                            self.list_data.append((port.aliases[0], i, f"\u2612 {mode} - {port.aliases[1]}", port))
-                        else:
-                            self.list_data.append((port.aliases[0], i, f"\u2610 {mode} - {port.aliases[1]}", port))
+                        self.list_data.append((port.aliases[0], i, f"\u2610 {mode} - {port.aliases[1]}", port))
             else:
                 if self.chain is None:
                     self.list_data.append((port.aliases[0], i, f"{port.aliases[1]}", port))
@@ -204,8 +200,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             elif self.chain:
                 if self.input:
                     dev_i = self.list_data[i][1]
-                    if self.input:
-                        lib_zyncore.zmop_set_route_from(self.idev, dev_i, not lib_zyncore.zmop_get_route_from(self.idev, dev_i))
+                    if dev_i in self.zyngui.state_manager.ctrldev_manager.drivers:
+                        return
+                    lib_zyncore.zmop_set_route_from(self.idev, dev_i, not lib_zyncore.zmop_get_route_from(self.idev, dev_i))
                 else:
                     try:
                         self.zyngui.chain_manager.get_active_chain().toggle_midi_out(self.list_data[i][0])
@@ -249,11 +246,12 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 else:
                     options[f'\u25CE Multitimbral mode'] = "MULTI"
                 options["Configuration"] = None
-                if self.list_data[i][0] == "ctrl_dev":
-                    if self.zyngui.state_manager.ctrldev_manager.drivers[self.list_data[i][1]].enabled:
-                        options[f"\u2612 Enable ZynPad driver"] = "ZYNPAD"
+                if zynautoconnect.get_midi_in_devid(dev_i) in self.zyngui.state_manager.ctrldev_manager.available_drivers:
+                    #TODO: Offer list of profiles
+                    if dev_i in self.zyngui.state_manager.ctrldev_manager.drivers:
+                        options[f"\u2612 Enable controller driver"] = "UNLOAD_DRIVER"
                     else:
-                        options[f"\u2610 Enable ZynPad driver"] = "ZYNPAD"
+                        options[f"\u2610 Enable controller driver"] = "LOAD_DRIVER"
             options[f'Rename port {self.list_data[i][3].aliases[0]}'] = "RENAME"
             self.zyngui.screens['option'].config("MIDI Input Device", options, self.menu_cb)
             self.zyngui.show_screen('option')
@@ -263,8 +261,10 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         if params == "RENAME":
             self.zyngui.show_keyboard(self.rename_device, self.list_data[self.index][3].aliases[1])
             return
-        elif params == "ZYNPAD":
-            self.zyngui.state_manager.ctrldev_manager.drivers[self.list_data[self.index][1]].enabled = not self.zyngui.state_manager.ctrldev_manager.drivers[self.list_data[self.index][1]].enabled
+        elif params == "LOAD_DRIVER":
+            self.zyngui.state_manager.ctrldev_manager.load_driver(self.list_data[self.index][1])
+        elif params == "UNLOAD_DRIVER":
+            self.zyngui.state_manager.ctrldev_manager.unload_driver(self.list_data[self.index][1])
         elif not self.input:
             dev_i = self.list_data[self.index][1]
             flags_acti = params == "ACTI"
