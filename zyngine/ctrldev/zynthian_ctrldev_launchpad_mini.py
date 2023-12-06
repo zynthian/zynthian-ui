@@ -71,7 +71,7 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 		col = 8
 		for row in range(0, 8):
 			note = 16 * row + col
-			if row == self.zynpad.bank - 1:
+			if row == self.zynseq.bank - 1:
 				lib_zyncore.dev_send_note_on(self.idev_out, 0, note, self.PLAYING_COLOUR)
 			else:
 				lib_zyncore.dev_send_note_on(self.idev_out, 0, note, self.OFF_COLOUR)
@@ -81,7 +81,7 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 		if self.idev_out <= 0:
 			return
 		#logging.debug("Updating Launchpad MINI pad {}".format(pad))
-		col, row = self.zynpad.get_xy_from_pad(pad)
+		col, row = self.zynseq.get_xy_from_pad(pad)
 		note = 16 * row + col
 		chan = 0
 		if mode == 0:
@@ -107,12 +107,12 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 			col, row = self.get_note_xy(note)
 			# scene change
 			if col == 8:
-				self.zynpad.set_bank(row + 1)
+				self.zynseq.set_bank(row + 1)
 				return True
 			# launch/stop pad
-			pad = self.zynpad.get_pad_from_xy(col, row)
+			pad = self.zynzynseqpad.get_pad_from_xy(col, row)
 			if pad >= 0:
-				self.zynseq.libseq.togglePlayState(self.zynpad.bank, pad)
+				self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
 				return True
 
 

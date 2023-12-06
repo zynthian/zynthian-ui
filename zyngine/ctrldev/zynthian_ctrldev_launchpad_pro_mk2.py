@@ -80,7 +80,7 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad):
 		#logging.debug("Updating Launchpad Pro MK2 bank leds")
 		for row in range(0, 8):
 			note = 89 - 10 * row
-			if row == self.zynpad.bank - 1:
+			if row == self.zynseq.bank - 1:
 				lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, note, 29)
 			else:
 				lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, note, 0)
@@ -91,10 +91,10 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad):
 		if self.idev_out <= 0:
 			return
 		#logging.debug("Updating LaunchpadPro MK2 pad {}".format(pad))
-		col, row = self.zynpad.get_xy_from_pad(pad)
+		col, row = self.zynseq.get_xy_from_pad(pad)
 		note = 10 * (8 - row) + col + 1
 
-		group = self.zynseq.libseq.getGroup(self.zynpad.bank, pad)
+		group = self.zynseq.libseq.getGroup(self.zynseq.bank, pad)
 		try:
 			if mode == 0:
 				chan = 0
@@ -131,9 +131,9 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad):
 			val = ev & 0x7F
 			if val > 0:
 				col, row = self.get_note_xy(note)
-				pad = self.zynpad.get_pad_from_xy(col, row)
+				pad = self.zynseq.get_pad_from_xy(col, row)
 				if pad >= 0:
-					self.zynseq.libseq.togglePlayState(self.zynpad.bank, pad)
+					self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
 			return True
 		# CC => scene change
 		elif evtype == 0xB:
@@ -151,6 +151,6 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad):
 				else:
 					col, row = self.get_note_xy(ccnum)
 					if col == 8:
-						self.zynpad.set_bank(row + 1)
+						self.zynseq.set_bank(row + 1)
 			return True
 #------------------------------------------------------------------------------

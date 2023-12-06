@@ -34,6 +34,7 @@ class zynthian_ctrldev_base():
 
 	dev_ids = []			# String list that could identify the device
 	dev_id = None  			# String that identifies the device
+	fb_dev_id = None		# Index of zmop connected to controller input
 	dev_zynpad = False		# Can act as a zynpad trigger device
 	dev_zynmixer = False	# Can act as an audio mixer controller device
 	dev_pated = False		# Can act as a pattern editor device
@@ -41,9 +42,12 @@ class zynthian_ctrldev_base():
 
 
 	# Function to initialise class
-	def __init__(self):
-		self.idev = 0		# Slot index where the input device is connected, starting from 1 (0 = None)
-		self.idev_out = 0	# Slot index where the output device (feedback), if any, is connected, starting from 1 (0 = None)
+	def __init__(self, state_manager, idev_in, idev_out=None):
+		self.idev = idev_in		# Slot index where the input device is connected, starting from 1 (0 = None)
+		self.idev_out = idev_out + 1	# Slot index where the output device (feedback), if any, is connected, starting from 1 (0 = None)
+		self.zynseq = state_manager.zynseq
+		self.zynmixer = state_manager.zynmixer
+		self.init()
 
 	# Refresh device status (LED feedback, etc)
 	# It *SHOULD* be implemented by child class
@@ -83,14 +87,10 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 
 	dev_zynpad = True		# Can act as a zynpad trigger device
 
-	def __init__(self):
-		super().__init__()
-
-
 	def refresh(self, force=False):
 		return #TODO: Implement refresh
 		# When zynpad is shown, this is done by refresh_status, so no need to refresh twice
-		if force or not self.zynpad.shown:
+		if force or not self.zynseq.shown:
 			self.refresh_pads(force)
 		if force:
 			self.refresh_zynpad_bank()
@@ -107,19 +107,19 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 			self.light_off()
 		for pad in range(self.zynseq.col_in_bank ** 2):
 			# It MUST be called for cleaning the dirty bit
-			changed_state = self.zynseq.libseq.hasSequenceChanged(self.zynpad.bank, pad)
+			changed_state = self.zynseq.libseq.hasSequenceChanged(self.zynseq.bank, pad)
 			if changed_state or force:
-				mode = self.zynseq.libseq.getPlayMode(self.zynpad.bank, pad)
-				state = self.zynpad.get_pad_state(pad)
+				mode = self.zynseq.libseq.getPlayMode(self.zynseq.bank, pad)
+				state = self.zynseq.libseq.getPlayState(self.zynseq.bank, pad)
 				self.update_pad(pad, state, mode)
 
 
 	def refresh_pad(self, pad, force=False):
 		# It MUST be called for cleaning the dirty bit!!
-		changed_state = self.zynseq.libseq.hasSequenceChanged(self.zynpad.bank, pad)
+		changed_state = self.zynseq.libseq.hasSequenceChanged(self.zynseq.bank, pad)
 		if changed_state or force:
-			mode = self.zynseq.libseq.getPlayMode(self.zynpad.bank, pad)
-			state = self.zynpad.get_pad_state(pad)
+			mode = self.zynseq.libseq.getPlayMode(self.zynseq.bank, pad)
+			state = self.zynseq.libseq.getPlayState(self.zynseq.bank, pad)
 			self.update_pad(pad, state, mode)
 
 

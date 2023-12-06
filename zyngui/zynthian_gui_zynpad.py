@@ -24,7 +24,6 @@
 #
 #******************************************************************************
 
-import ctypes
 import tkinter
 import logging
 from time import sleep
@@ -68,6 +67,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.ctrldev = None
 		self.ctrldev_id = None
 		self.ctrldev_idev = 0
+		self.queue = None
 
 		# Geometry vars
 		self.select_thickness = 1 + int(self.width / 400) # Scale thickness of select border based on screen
@@ -100,12 +100,15 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def build_view(self):
 		self.zynseq.libseq.updateSequenceInfo()
 		self.setup_zynpots()
-		self.refresh_status(force=True)
+		self.refresh_status(True)
 		if self.param_editor_zctrl == None:
 			self.set_title(f"Scene {self.bank}")
+		self.queue = self.zyngui.state_manager.register_seq()
 
 	# Function to hide GUI
 	def hide(self):
+		if self.queue:
+			self.zyngui.state_manager.unregister_seq(self.queue)
 		super().hide()
 
 	# Function to set quantity of pads
@@ -129,8 +132,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# Function to rename selected sequence
 	def do_rename_sequence(self, name):
 		self.zynseq.set_sequence_name(self.bank, self.selected_pad, name)
-		if self.ctrldev:
-			self.ctrldev.refresh_pad(self.selected_pad, True)
 
 	def update_layout(self):
 		super().update_layout()
@@ -250,51 +251,47 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# Function to refresh pad if it has changed
 	#   pad: Pad index
 	#	force: True to force refresh
-	def refresh_pad(self, pad, force=False):
+	def refresh_pad(self, pad, mode=None, state=None):
 		if pad > 63:
 			return
 		cellh = self.pads[pad]["header"]
 		# It MUST be called for cleaning the dirty bit
-		changed_state = self.zynseq.libseq.hasSequenceChanged(self.bank, pad)
-		if changed_state or force:
+		if mode is None:
 			mode = self.zynseq.libseq.getPlayMode(self.bank, pad)
+		if state is None:
 			state = self.get_pad_state(pad)
-			group = self.zynseq.libseq.getGroup(self.bank, pad)
-			foreground = "white"
-			cellb = self.pads[pad]["body"]
-			if self.zynseq.libseq.getSequenceLength(self.bank, pad) == 0 or mode == zynseq.SEQ_DISABLED:
-				self.grid_canvas.itemconfig(cellh, fill=zynthian_gui_config.PAD_COLOUR_DISABLED)
-				self.grid_canvas.itemconfig(cellb, fill=zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT)
+		group = self.zynseq.libseq.getGroup(self.bank, pad)
+		foreground = "white"
+		cellb = self.pads[pad]["body"]
+		if self.zynseq.libseq.getSequenceLength(self.bank, pad) == 0 or mode == zynseq.SEQ_DISABLED:
+			self.grid_canvas.itemconfig(cellh, fill=zynthian_gui_config.PAD_COLOUR_DISABLED)
+			self.grid_canvas.itemconfig(cellb, fill=zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT)
+		else:
+			self.grid_canvas.itemconfig(cellh, fill=zynthian_gui_config.PAD_COLOUR_GROUP[group % 16])
+			self.grid_canvas.itemconfig(cellb, fill=zynthian_gui_config.PAD_COLOUR_GROUP_LIGHT[group % 16])
+		if self.zynseq.libseq.getSequenceLength(self.bank, pad) == 0:
+			mode = 0
+		group = chr(65 + group)
+		#patnum = self.zynseq.libseq.getPatternAt(self.bank, pad, 0, 0)
+		midi_chan = self.zynseq.libseq.getChannel(self.bank, pad, 0)
+		title = self.zynseq.get_sequence_name(self.bank, pad)
+		try:
+			str(int(title)) # Test for default (integer index)
+			preset_name = self.zyngui.chain_manager.get_synth_preset_name(midi_chan)
+			if preset_name:
+				title = preset_name.replace("_", " ")
 			else:
-				self.grid_canvas.itemconfig(cellh, fill=zynthian_gui_config.PAD_COLOUR_GROUP[group % 16])
-				self.grid_canvas.itemconfig(cellb, fill=zynthian_gui_config.PAD_COLOUR_GROUP_LIGHT[group % 16])
-			if self.zynseq.libseq.getSequenceLength(self.bank, pad) == 0:
-				mode = 0
-			group = chr(65 + group)
-			#patnum = self.zynseq.libseq.getPatternAt(self.bank, pad, 0, 0)
-			midi_chan = self.zynseq.libseq.getChannel(self.bank, pad, 0)
-			title = self.zynseq.get_sequence_name(self.bank, pad)
-			try:
-				str(int(title)) # Test for default (integer index)
-				preset_name = self.zyngui.chain_manager.get_synth_preset_name(midi_chan)
-				if preset_name:
-					title = preset_name.replace("_", " ")
-				else:
-					title = ""
-			except:
-				pass
-			self.grid_canvas.itemconfig(self.pads[pad]["title"], text=title, fill=foreground)
-			self.grid_canvas.itemconfig(self.pads[pad]["group"], text=f"CH{midi_chan + 1}", fill=foreground)
-			self.grid_canvas.itemconfig(self.pads[pad]["num"], text=f"{group}{pad+1}", fill=foreground)
-			self.grid_canvas.itemconfig(self.pads[pad]["mode"], image=self.mode_icon[self.zynseq.col_in_bank][mode])
-			if state == 0 and self.zynseq.libseq.isEmpty(self.bank, pad):
-				self.grid_canvas.itemconfig(self.pads[pad]["state"], image=self.empty_icon)
-			else:
-				self.grid_canvas.itemconfig(self.pads[pad]["state"], image=self.state_icon[self.zynseq.col_in_bank][state])
-
-			# TODO: This should be sent on change of state of any sequence, not just visible within GUI
-			if self.ctrldev:
-				self.ctrldev.update_pad(pad, state, mode)
+				title = ""
+		except:
+			pass
+		self.grid_canvas.itemconfig(self.pads[pad]["title"], text=title, fill=foreground)
+		self.grid_canvas.itemconfig(self.pads[pad]["group"], text=f"CH{midi_chan + 1}", fill=foreground)
+		self.grid_canvas.itemconfig(self.pads[pad]["num"], text=f"{group}{pad+1}", fill=foreground)
+		self.grid_canvas.itemconfig(self.pads[pad]["mode"], image=self.mode_icon[self.zynseq.col_in_bank][mode])
+		if state == 0 and self.zynseq.libseq.isEmpty(self.bank, pad):
+			self.grid_canvas.itemconfig(self.pads[pad]["state"], image=self.empty_icon)
+		else:
+			self.grid_canvas.itemconfig(self.pads[pad]["state"], image=self.state_icon[self.zynseq.col_in_bank][state])
 
 	# ------------------------------------------------------------------------------------------------------------------
 	# Some useful functions
@@ -311,17 +308,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif state == zynseq.SEQ_STOPPINGSYNC:
 			state = zynseq.SEQ_STOPPING
 		return state
-
-	def get_xy_from_pad(self, pad):
-		col = pad // self.zynseq.col_in_bank
-		row = pad % self.zynseq.col_in_bank
-		return (col, row)
-
-	def get_pad_from_xy(self, col, row):
-		if col < self.zynseq.col_in_bank and row < self.zynseq.col_in_bank:
-			return col * self.zynseq.col_in_bank + row
-		else:
-			return -1
 
 	# ------------------------------------------------------------------------------------------------------------------
 	# Trigger MIDI device integration
@@ -503,7 +489,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.zynseq.libseq.setBeatsPerBar(zctrl.value)
 		elif zctrl.symbol == 'playmode':
 			self.set_play_mode(zctrl.value)
-			self.refresh_pad(self.selected_pad, force=True)
+			#self.refresh_pad(self.selected_pad, force=True) #TODO Is this required?
 		elif zctrl.symbol == 'midi_chan':
 			self.zynseq.set_midi_channel(self.bank, self.selected_pad, 0, zctrl.value)
 			self.zynseq.set_group(self.bank, self.selected_pad, zctrl.value)
@@ -549,12 +535,13 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.set_title(f"Scene {self.bank}")
 			if self.columns != self.zynseq.col_in_bank:
 				self.update_grid()
-			if self.ctrldev:
-				self.ctrldev.light_off()
-				self.ctrldev.refresh_zynpad_bank()
-
-		for pad in range(self.zynseq.col_in_bank ** 2):
-			self.refresh_pad(pad, force)
+			for pad in range(self.zynseq.col_in_bank ** 2):
+				self.refresh_pad(pad)
+		else:
+			while self.queue and not self.queue.empty():
+				bank, seq, state, mode = self.queue.get()
+				if bank == self.bank:
+					self.refresh_pad(seq, mode=mode, state=state)
 
 	# Function to select a pad
 	#	pad: Index of pad to select (Default: refresh existing selection)

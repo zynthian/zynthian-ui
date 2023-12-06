@@ -26,15 +26,14 @@
 
 import os
 import logging
-import importlib
-from pathlib import Path
-from os.path import isfile, join
-from glob import glob
 import sys
+from threading import Thread
+from time import sleep
 
 # Zynthian specific modules
 import zynautoconnect
 from zyngine.ctrldev import *
+from zyncoder.zyncore import lib_zyncore
 
 #------------------------------------------------------------------------------
 # Zynthian Control Device Manager Class
@@ -45,24 +44,29 @@ class zynthian_ctrldev_manager():
 	ctrldev_dpath = os.environ.get('ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui") + "/zyngui/ctrldev"
 
 	# Function to initialise class
-	def __init__(self):
+	def __init__(self, state_manager):
+		self.state_manager = state_manager
 		self.available_drivers = {} # Map of driver classes indexed by device type name
 		self.drivers = {} # Map of device driver objects indexed by zmip
-
 		self.update_available_drivers()
-		#self.drivers_ids = self.get_drivers_ids() # Map of drivers indexed by device type name
-		#self.zynpad_drivers_ids = self.get_zynpad_drivers_ids() # Map of pad drivers indexed by device type name
-		#self.zynmixer_drivers_ids = self.get_zynmixer_drivers_ids() # Map of mixer drivers indexed by device type name
-		#self.ctrldevs = [] # List of connected and configured devices (index in zynautoconnect.devices_in)
-		self.mixer_devs = {} # Map of mixer device objects indexed by zmip index
-		self.zynpad_devs = {} # Map of zynpad device objects indexed by zmip index
+		self.seq_queue = None
+		self.thread = Thread(target=self.thread_task)
+		self.thread.name = "Control Device Manager"
+		self.thread.daemon = True  # thread dies with the program
+		self.thread.start()
 
+	def thread_task(self):
+		while not self.state_manager.exit_flag:
+			if self.seq_queue and not self.seq_queue.empty():
+				bank, seq, state, mode = self.seq_queue.get(timeout=1)
+				for driver in self.drivers.values():
+					if driver.dev_zynpad:
+						driver.update_pad(seq, state, mode)
+			else:
+				sleep(0.01)
 
 	def update_available_drivers(self):
-		"""Get a map of available driver names
-		
-		returns : Map of driver names, indexed by device names
-		"""
+		"""Update map of available driver names"""
 
 		self.available_drivers = {}
 		for module_name in list(sys.modules):
@@ -85,8 +89,12 @@ class zynthian_ctrldev_manager():
 			return False
 		if izmip in self.drivers:
 			return False #TODO: Should check if driver differs
+		izmop = zynautoconnect.dev_in_2_dev_out(izmip)
 		try:
-			self.drivers[izmip] = self.available_drivers[device_type]()
+			lib_zyncore.zmip_set_route_extdev(izmip, 0)
+			self.drivers[izmip] = self.available_drivers[device_type](self.state_manager, izmip, izmop)
+			if self.seq_queue is None and self.drivers[izmip].dev_zynpad:
+				self.seq_queue = self.state_manager.register_seq()
 			logging.info(f"Loaded ctrldev driver {device_type}.")
 			return True
 		except Exception as e:
@@ -102,73 +110,21 @@ class zynthian_ctrldev_manager():
 		"""
 
 		if izmip in self.drivers:
+			if self.drivers[izmip].dev_zynpad:
+				found = False
+				for driver in self.drivers.values():
+					if driver.dev_zynpad:
+						found = True
+						break
+				if not found:
+					self.state_manager.unregister_seq(self.seq_queue)
+					self.seq_queue = None
+
+			self.drivers[izmip].end()
 			self.drivers.pop(izmip)
+			lib_zyncore.zmip_set_route_extdev(izmip, 1)
 			return True
 		return False
-
-
-	def get_drivers_ids(self):
-		res = {}
-		for driver in self.drivers.values():
-			for dev_id in driver.dev_ids:
-				res[dev_id] = driver
-		return res
-
-
-	def get_zynpad_drivers_ids(self):
-		res = {}
-		for driver in self.drivers.values():
-			if driver.dev_zynpad:
-				for dev_id in driver.dev_ids:
-					res[dev_id] = driver
-		return res
-
-
-	def get_zynmixer_drivers_ids(self):
-		res = {}
-		for driver in self.drivers.values():
-			if driver.dev_zynmixer:
-				for dev_id in driver.dev_ids:
-					res[dev_id] = driver
-		return res
-
-
-	def init_mixer_device(self, idev):
-		if self.mixer_devs[idev]:
-			if self.mixer_devs[idev] == zynautoconnect.devices_in[idev]:
-				return
-			self.end_device(idev)
-		self.drivers[idev] = self.init_device(idev)
-				
-
-	def init_zynpad_device(self, idev):
-		if self.zynpad_devs[idev]:
-			if self.aynpad_devs[idev] == zynautoconnect.devices_in[idev]:
-				return
-			self.end_device(idev)
-		self.zynpad_devs[idev] = self.init_device(idev)
-
-
-	def end_device(self, idev):
-		if idev in self.drivers:
-			self.drivers[idev].release()
-			self.drivers.remove(idev)
-
-
-	def refresh_device(self, idev, force=False):
-		for dev in self.drivers.values():
-			dev.refresh(force)
-
-
-	def end_all(self):
-		for id in list(self.drivers):
-			self.end_device(id)
-
-
-	def refresh_all(self, force=False):
-		for dev in self.drivers.values():
-			dev.refresh(force)
-
 
 	def sleep_on(self):
 		for dev in self.drivers.values():
@@ -178,114 +134,14 @@ class zynthian_ctrldev_manager():
 		for dev in self.drivers.values():
 			dev.sleep_off()
 
-	def set_device(self, idev, enable):
-		if enable:
-			self.init_device(idev)
-		else:
-			self.end_device(idev)
-
-	def set_mixer_ctrl(self, idev, enable):
-		if enable:
-			self.init_mixer_device(idev)
-		else:
-			self.end_mixer_device(idev)
-
-	def set_zynpad_ctrl(self, idev, enable):
-		if enable:
-			self.init_zynpad_device(idev)
-		else:
-			self.end_zynpad_device(idev)
-
 	def is_mixer_ctrl(self, idev):
 		return idev in self.mixer_devs
 
 	def is_zynpad_ctrl(self, idev):
 		return idev in self.zynpad_devs
 
-
-	def zynpad_ctrldev_autoconfig(self):
-		return #TODO: Implement zynpad_ctrldev_autoconfig
-		zynpad = self.zyngui.screens['zynpad']
-		if not zynpad.ctrldev_idev and zynpad.ctrldev_id:
-			try:
-				if zynpad.ctrldev_id in self.zynpad_drivers_ids.keys():
-					driver = self.init_device_by_id(zynpad.ctrldev_id)
-					if driver:
-						zynpad.ctrldev = driver
-						zynpad.ctrldev_idev = driver.idev
-			except Exception as err:
-				# logging.debug(err)
-				pass
-		if not zynpad.ctrldev_idev:
-			try:
-				for dev_id in self.zynpad_drivers_ids.keys():
-					driver = self.init_device_by_id(dev_id)
-					if driver:
-						zynpad.ctrldev = driver
-						zynpad.ctrldev_id = dev_id
-						zynpad.ctrldev_idev = driver.idev
-						break
-			except Exception as err:
-				# logging.debug(err)
-				pass
-		return zynpad.ctrldev_idev
-
-
-	def zynmixer_ctrldev_autoconfig(self):
-		return #TODO: implement zynmixer_ctrldev_autoconfig
-		zynmixer = self.zyngui.screens['audio_mixer']
-		if not zynmixer.ctrldev_idev and zynmixer.ctrldev_id:
-			try:
-				if zynmixer.ctrldev_id in self.zynmixer_drivers_ids.keys():
-					driver = self.init_device_by_id(zynmixer.ctrldev_id)
-					if driver:
-						zynmixer.ctrldev = driver
-						zynmixer.ctrldev_idev = driver.idev
-			except Exception as err:
-				# logging.debug(err)
-				pass
-		if not zynmixer.ctrldev_idev:
-			try:
-				for dev_id in self.zynmixer_drivers_ids.keys():
-					driver = self.init_device_by_id(dev_id)
-					if driver:
-						zynmixer.ctrldev = driver
-						zynmixer.ctrldev_id = dev_id
-						zynmixer.ctrldev_idev = driver.idev
-						break
-			except Exception as err:
-				# logging.debug(err)
-				pass
-		return zynmixer.ctrldev_idev
-
-
-	def refresh_device_list(self):
-		return #TODO: Implement in autoconnect
-		# Remove disconnected devices
-		logging.debug("Refreshing control device list...")
-		for idev in range(1, 16):
-			dev_id = zynautoconnect.devices_in[idev - 1]
-			if not dev_id:
-				# If zynmixer device got disconnected ...
-				if self.zyngui.screens['audio_mixer'].ctrldev_idev == idev:
-					#logging.debug("Releasing mixer control device...")
-					self.zyngui.screens['audio_mixer'].ctrldev_idev = 0
-				# If zynpad device got disconnected ...
-				if self.zyngui.screens['zynpad'].ctrldev_idev == idev:
-					#logging.debug("Releasing zynpad control device...")
-					self.zyngui.screens['zynpad'].ctrldev_idev = 0
-					self.zyngui.screens['zynpad'].ctrldev = None
-				# Release device if it's active
-				if self.ctrldevs[idev]:
-					self.end_device(idev)
-
-		# Autoconfig devices
-		self.zynmixer_ctrldev_autoconfig()
-		self.zynpad_ctrldev_autoconfig()
-
-
 	def midi_event(self, ev):
-		idev = ((ev & 0xFF000000) >> 24)
+		idev = ((ev & 0xFF000000) >> 24) - 1
 
 		# Try device driver ...
 		if idev in self.drivers:

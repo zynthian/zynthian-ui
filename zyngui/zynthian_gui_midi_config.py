@@ -64,18 +64,18 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         def append_device(i, port):
             if self.input:
                 # Check mode (Acti/Omni/Multi)
-                if lib_zyncore.zmip_get_flag_active_chan(i):
-                    mode = "↦" #2a16
+                if i in self.zyngui.state_manager.ctrldev_manager.drivers:
+                    mode = "↻" #\u21bb
+                elif lib_zyncore.zmip_get_flag_active_chan(i):
+                    mode = "↦" #\u2a16
                 elif lib_zyncore.zmip_get_flag_omni_chan(i):
-                    mode = "∈" #2208
-                elif i in self.zyngui.state_manager.ctrldev_manager.drivers:
-                    mode = "↻" #21bb
+                    mode = "∈" #\u2208
                 else:
-                    mode = "⇶" # 21f6
+                    mode = "⇶" #\u21f6
                 if self.chain is None:
                     self.list_data.append((port.aliases[0], i, f"{mode} {port.aliases[1]}", port))
                 elif i in self.zyngui.state_manager.ctrldev_manager.drivers:
-                    self.list_data.append((port.aliases[0], i, f"    ↺ {port.aliases[1]}", port))
+                    self.list_data.append((port.aliases[0], i, f"    {mode} {port.aliases[1]}", port))
                 else:
                     if lib_zyncore.zmop_get_route_from(self.idev , i):
                         self.list_data.append((port.aliases[0], i, f"\u2612 {mode} {port.aliases[1]}", port))
@@ -251,9 +251,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 if zynautoconnect.get_midi_in_devid(dev_i) in self.zyngui.state_manager.ctrldev_manager.available_drivers:
                     #TODO: Offer list of profiles
                     if dev_i in self.zyngui.state_manager.ctrldev_manager.drivers:
-                        options[f"\u2612 Enable controller driver"] = "UNLOAD_DRIVER"
+                        options[f"\u2612 ↻ Enable controller driver"] = "UNLOAD_DRIVER"
                     else:
-                        options[f"\u2610 Enable controller driver"] = "LOAD_DRIVER"
+                        options[f"\u2610 ↻ Enable controller driver"] = "LOAD_DRIVER"
             options[f'Rename port {self.list_data[i][3].aliases[0]}'] = "RENAME"
             self.zyngui.screens['option'].config("MIDI Input Device", options, self.menu_cb)
             self.zyngui.show_screen('option')

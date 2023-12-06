@@ -73,8 +73,22 @@ host_usb_connected = False		# True if connected to host USB
 midi_port_names = {}			# Map of user friendly names indexed by device uid (alias[0])
 #------------------------------------------------------------------------------
 
+### MIDI port helper functions ###
+
 def get_ports(name):
 	return jclient.get_ports(name)
+
+def dev_in_2_dev_out(zmip):
+	"""Get index of output devices from its input device index
+
+	zmip : Input port index
+	returns : Output port index or None if not found
+	"""
+	
+	try:
+		return devices_out.index(jclient.get_port_by_name(devices_in[zmip].name.replace("capture", "playback")))
+	except:
+		return None
 
 def set_midi_port_names(port_names):
 	global midi_port_names
@@ -301,8 +315,9 @@ def midi_autoconnect():
 				if devices_in[i] is None:
 					devnum = i
 					devices_in[devnum] = hwsp
-					if state_manager.ctrldev_manager.load_driver(i):
-						lib_zyncore.zmip_set_route_extdev(i, 0)
+					# TODO: Configure ctrldev manager in zs-3
+					#if state_manager.ctrldev_manager.load_driver(i):
+					#	lib_zyncore.zmip_set_route_extdev(i, 0)
 					#state_manager.zs3["zs3-0"]["midi_capture"]["zmip_flags"]
 					#TODO: Add to zs30 state and set
 					logger.debug(f"Connected MIDI-in device {devnum}: {hwsp.name}")
@@ -474,7 +489,8 @@ def midi_autoconnect():
 		if dst.startswith("effect_"):
 			required_routes.pop(dst)
 
-	# Connect and disconnect routes
+
+	### Connect and disconnect routes ###
 	for dst, sources in required_routes.items():
 		try:
 			current_routes = jclient.get_all_connections(dst)

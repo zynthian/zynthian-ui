@@ -32,6 +32,7 @@ from threading import Thread
 from subprocess import check_output
 from json import JSONEncoder, JSONDecoder
 from os.path import basename, isdir, isfile, join, dirname, splitext
+from queue import SimpleQueue
 
 # Zynthian specific modules
 import zynconf
@@ -105,6 +106,7 @@ class zynthian_state_manager:
         self.midi_learn_pc = None  # When ZS3 Program Change MIDI learning is enabled, the name used for creating new ZS3, empty string for auto-generating a name. None when disabled.
         self.midi_learn_zctrl = None  # zctrl currently being learned
         self.sync = False  # True to request file system sync
+        self.seq_queue = [] # List of queues for sequence state and mode change messages
 
         self.hwmon_thermal_file = None
         self.hwmon_undervolt_file = None
@@ -167,7 +169,7 @@ class zynthian_state_manager:
 
         zynautoconnect.start(self)
         self.zynmixer.reset_state()
-        self.ctrldev_manager = zynthian_ctrldev_manager()
+        self.ctrldev_manager = zynthian_ctrldev_manager(self)
         self.reload_midi_config()
         self.create_audio_player()
         zynautoconnect.request_midi_connect(True)
@@ -456,6 +458,14 @@ class zynthian_state_manager:
                 # MIDI Recorder
                 self.status_midi_recorder = libsmf.isRecording()
 
+                # Sequencer
+                for seq in range(self.zynseq.col_in_bank ** 2):
+                    if self.zynseq.libseq.hasSequenceChanged(self.zynseq.bank, seq):
+                        mode = self.zynseq.libseq.getPlayMode(self.zynseq.bank, seq)
+                        state = self.zynseq.libseq.getPlayState(self.zynseq.bank, seq)
+                        for q in self.seq_queue:
+                            q.put_nowait((self.zynseq.bank, seq, state, mode))
+
                 # Clean some status flags
                 if xruns_status:
                     self.status_xrun = False
@@ -483,6 +493,21 @@ class zynthian_state_manager:
                 logging.exception(e)
 
             sleep(tsleep)
+
+    # ----------------------------------------------------------------------------
+    # Sequencer event queues
+    # ----------------------------------------------------------------------------
+
+    def register_seq(self):
+        queue = SimpleQueue()
+        self.seq_queue.append(queue)
+        return queue
+
+    def unregister_seq(self, queue):
+        try:
+            self.seq_queue.remove(queue)
+        except:
+            pass
 
     # ----------------------------------------------------------------------------
     # Snapshot Save & Load
@@ -1125,7 +1150,7 @@ class zynthian_state_manager:
                 mcd["zmip_flags"] |= 1 << 0
             if lib_zyncore.zmip_get_flag_omni_chan(i):
                 mcd["zmip_flags"] |= 1 << 1
-            if i in ctrldev_ids:
+            if i not in ctrldev_ids:
                 mcd["zmip_flags"] |= 1 << 2
             routed_chans = 0
             for ch in range(0, 16):
@@ -1153,9 +1178,11 @@ class zynthian_state_manager:
                 zmip_flags = int(state["zmip_flags"])
                 lib_zyncore.zmip_set_flag_active_chan(id, bool(zmip_flags & (1 << 0)))
                 lib_zyncore.zmip_set_flag_omni_chan(id, bool(zmip_flags & (1 << 1)))
-                #self.ctrldev_manager.set_ctrl(id, bool(zmip_flags & 1 << 2))
-                #self.ctrldev_manager.set_mixer_ctrl(id, bool(zmip_flags & 1 << 2))
-                #self.ctrldev_manager.set_zynpad_ctrl(id, bool(zmip_flags & 1 << 3))
+                if zmip_flags & (1 << 2):
+                    # Bit 2 used to disable (automatic) driver loading
+                    self.ctrldev_manager.unload_driver(id)
+                else:
+                    self.ctrldev_manager.load_driver(id)
 
                 # Route zmops (chans)
                 routed_chans = int(state["routed_chans"])

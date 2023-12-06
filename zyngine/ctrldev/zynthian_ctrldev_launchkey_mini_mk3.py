@@ -66,18 +66,18 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad):
 					lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
 				else:
 					pad = self.zynseq.col_in_bank * col + row
-					state = self.zynseq.libseq.getPlayState(self.zynpad.bank, pad)
-					mode = self.zynseq.libseq.getPlayMode(self.zynpad.bank, pad)
+					state = self.zynseq.libseq.getPlayState(self.zynseq.bank, pad)
+					mode = self.zynseq.libseq.getPlayMode(self.zynseq.bank, pad)
 					self.update_pad(pad, state, mode)
 
 
 	def update_pad(self, pad, state, mode):
-		col, row = self.zynpad.get_xy_from_pad(pad)
+		col, row = self.zynseq.get_xy_from_pad(pad)
 		if row > 1:
 			return
 		note = 96 + row * 16 + col
 		try:
-			group = self.zynseq.libseq.getGroup(self.zynpad.bank, pad)
+			group = self.zynseq.libseq.getGroup(self.zynseq.bank, pad)
 			if mode == 0 or group > 16:
 				chan = 0
 				vel = 0
@@ -121,7 +121,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad):
 					row = (note - 96) % 16
 					pad = row * self.zynseq.col_in_bank + col
 					if pad < self.zynseq.seq_in_bank:
-						self.zynseq.libseq.togglePlayState(self.zynpad.bank, pad)
+						self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
 				except:
 					pass
 		elif evtype == 0xB:

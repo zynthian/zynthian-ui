@@ -374,4 +374,17 @@ class zynseq(zynthian_engine):
 			logging.error("Can't restore RIFF data! => {}".format(e))
 			return False
 
+
+	def get_xy_from_pad(self, pad):
+		col = pad // self.col_in_bank
+		row = pad % self.col_in_bank
+		return (col, row)
+
+
+	def get_pad_from_xy(self, col, row):
+		if col < self.col_in_bank and row < self.col_in_bank:
+			return col * self.col_in_bank + row
+		else:
+			return -1
+
 #-------------------------------------------------------------------------------
