@@ -2212,14 +2212,6 @@ class zynthian_gui:
 			except AttributeError:
 				pass
 
-			# Refresh status of control devices
-			"""
-			try:
-				self.ctrldev_manager.refresh_all()
-			except Exception as err:
-				logging.error(err)
-			"""
-
 		except Exception as e:
 			logging.exception(e)
 

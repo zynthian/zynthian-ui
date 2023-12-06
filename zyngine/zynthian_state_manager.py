@@ -199,7 +199,8 @@ class zynthian_state_manager:
         self.chain_manager.remove_all_chains(True)
         self.reset_zs3()
         self.zynseq.load("")
-        self.ctrldev_manager.refresh_all(True)
+        for izmip in list(self.ctrldev_manager.drivers):
+            self.ctrldev_manager.unload_driver(izmip)
         self.destroy_audio_player()
         zynautoconnect.stop()
 
@@ -235,7 +236,6 @@ class zynthian_state_manager:
         self.zynseq.load("")
         self.zynmixer.reset_state()
         self.reload_midi_config()
-        self.ctrldev_manager.refresh_all(True)
         zynautoconnect.request_midi_connect(True)
         zynautoconnect.request_audio_connect(True)
         zynautoconnect.resume()
@@ -1198,7 +1198,6 @@ class zynthian_state_manager:
             # Set zmip flags
             lib_zyncore.zmip_set_flag_active_chan(i, 1)
             lib_zyncore.zmip_set_flag_omni_chan(i, 0)
-            #self.ctrldev_manager.reset()
             # Route zmops (chans)
             for ch in (0, 16):
                 lib_zyncore.zmop_set_route_from(ch, i, 1)
@@ -1819,7 +1818,7 @@ class zynthian_state_manager:
             # Update MIDI profile
             if save_config:
                 zynconf.update_midi_profile({
-                    "ZYNTHIAN_BLUETOOTH_ENABLED": str(zynthian_gui_config.bluetooth_enabled)
+                    "ZYNTHIAN_MIDI_BLE_ENABLED": str(zynthian_gui_config.bluetooth_enabled)
                 })
             # Call autoconnect after a little time
             zynautoconnect.request_midi_connect()
@@ -1839,7 +1838,7 @@ class zynthian_state_manager:
             # Update MIDI profile
             if save_config:
                 zynconf.update_midi_profile({
-                    "ZYNTHIAN_BLUETOOTH_ENABLED": str(zynthian_gui_config.bluetooth_enabled)
+                    "ZYNTHIAN_MIDI_BLE_ENABLED": str(zynthian_gui_config.bluetooth_enabled)
                 })
         except Exception as e:
             logging.error(e)

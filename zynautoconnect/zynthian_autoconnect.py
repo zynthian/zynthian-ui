@@ -315,11 +315,6 @@ def midi_autoconnect():
 				if devices_in[i] is None:
 					devnum = i
 					devices_in[devnum] = hwsp
-					# TODO: Configure ctrldev manager in zs-3
-					#if state_manager.ctrldev_manager.load_driver(i):
-					#	lib_zyncore.zmip_set_route_extdev(i, 0)
-					#state_manager.zs3["zs3-0"]["midi_capture"]["zmip_flags"]
-					#TODO: Add to zs30 state and set
 					logger.debug(f"Connected MIDI-in device {devnum}: {hwsp.name}")
 					break
 		if devnum is not None:

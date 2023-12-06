@@ -316,29 +316,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def sync_state(self):
 		self.set_trigger_channel()
 
-	def set_trigger_channel(self, chan=None):
-		if chan is None:
-			chan = self.zynseq.libseq.getTriggerChannel()
-		if chan < 1 or chan > 16:
-			chan = 0
-		if chan != self.trigger_channel:
-			self.zynseq.libseq.setTriggerChannel(chan)
-			self.trigger_channel = chan
-
-	def set_ctrldev(self, idev=None):
-		# Release previous device, if any
-		if self.ctrldev and idev != self.ctrldev_idev:
-			self.zyngui.ctrldev_manager.end_device(self.ctrldev_idev)
-		# Try to setup a zynpad control driver
-		ctrldev = self.zyngui.ctrldev_manager.init_device(idev)
-		if ctrldev and ctrldev.dev_zynpad:
-			self.ctrldev = ctrldev
-
-		else:
-			self.ctrldev = None
-		# Set device as control/trigger device
-		self.ctrldev_idev = idev
-
 	# ------------------------------------------------------------------------------------------------------------------
 
 	# Function to move selection cursor
@@ -391,39 +368,11 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			options['Arranger'] = 'Arranger'
 		options[f'Beats per bar ({self.zynseq.libseq.getBeatsPerBar()})'] = 'Beats per bar'
 
-		"""
-		if not self.ctrldev_idev:
-			options['Control device (OFF)'] = 'Control device'
-		else:
-			try:
-				devname = zynautoconnect.devices_in[self.ctrldev_idev - 1].aliases[1]
-			except:
-				devname = "UNKNOWN"
-			options[f'Control device ({devname})'] = 'Control device'
-
-		if self.ctrldev_idev and not self.ctrldev:
-			if not self.trigger_channel:
-				options['Trigger channel (OFF)'] = 'Trigger channel'
-			else:
-				options[f'Trigger channel ({self.trigger_channel})'] = 'Trigger channel'
-
-		options[f'Grid size ({self.zynseq.col_in_bank}x{self.zynseq.col_in_bank})'] = 'Grid size'
-		"""
-
 		# Single Pad Options
 		options['> PAD OPTIONS'] = None
 		options[f'Play mode ({zynseq.PLAY_MODES[self.zynseq.libseq.getPlayMode(self.bank, self.selected_pad)]})'] = 'Play mode'
 		options[f'MIDI channel ({1 + self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)})'] = 'MIDI channel'
 		options['Trigger learn'] = 'Trigger learn'
-		"""
-		if self.ctrldev_idev and not self.ctrldev and self.trigger_channel > 0:
-			note = self.zynseq.libseq.getTriggerNote(self.bank, self.selected_pad)
-			if note < 128:
-				trigger_note = "f{NOTE_NAMES[note % 12]}{note // 12 - 1}"
-			else:
-				trigger_note = "None"
-			options[f'Trigger note ({trigger_note})'] = 'Trigger note'
-		"""
 
 		#options['> MISC'] = None
 		options['Rename sequence'] = 'Rename sequence'
@@ -451,16 +400,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			for i in range(1, 9):
 				labels.append(f'{i}x{i}')
 			self.enable_param_editor(self, 'grid_size', 'Grid size', {'labels': labels, 'value': self.zynseq.col_in_bank - 1, 'value_default': 3}, self.set_grid_size)
-		elif params == 'Control device':
-			labels = ['OFF']
-			for dev in zynautoconnect.devices_in:
-				if dev:
-					labels.append(dev.aliases[1])
-			self.enable_param_editor(self, 'control_device', 'Control device', {'labels': labels, 'value': self.ctrldev_idev, 'value_default': 0}, self.set_ctrldev)
-		elif params == 'Trigger channel':
-			self.enable_param_editor(self, 'trigger_chan', 'Trigger channel', {'labels': INPUT_CHANNEL_LABELS, 'value': self.trigger_channel})
-		elif params == 'Trigger note':
-			self.zyngui.cuia_enable_midi_learn()
 		elif params == 'Trigger learn':
 			self.zyngui.cuia_enable_midi_learn()
 		elif params == 'Play mode':
@@ -493,14 +432,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif zctrl.symbol == 'midi_chan':
 			self.zynseq.set_midi_channel(self.bank, self.selected_pad, 0, zctrl.value)
 			self.zynseq.set_group(self.bank, self.selected_pad, zctrl.value)
-		elif zctrl.symbol == 'trigger_chan':
-			self.set_trigger_channel(zctrl.value)
-		elif zctrl.symbol == 'trigger_note':
-			if zctrl.value == 0:
-				value = 128
-			else:
-				value = zctrl.value - 1
-			self.zynseq.libseq.setTriggerNote(self.bank, self.selected_pad, value)
 
 	#	Function to set the playmode of the selected pad
 	def set_play_mode(self, mode):
@@ -666,19 +597,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		evtype = (ev & 0xF00000) >> 20
 		if evtype == 9:
 			# If trigger channel is set, filter events from other channels
-			if self.trigger_channel > 0:
-				chan = 1 + (ev & 0x0F0000) >> 16
-				if chan != self.trigger_channel:
-					return False
 			note = (ev >> 8) & 0x7F
 			if self.midi_learn:
 				self.zynseq.libseq.setTriggerNote(self.bank, self.selected_pad, note)
 				self.zyngui.exit_midi_learn()
 				return True
-			else:
-				seq = self.zynseq.libseq.getTriggerSequence(note)
-				if seq:
-					self.zynseq.libseq.togglePlayState(seq >> 8, seq & 0xFF)
-					return True
 
 #------------------------------------------------------------------------------

@@ -118,9 +118,12 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             for i in usb_devices:
                 append_device(i[0], i[1])
 
-        self.list_data.append((None, None, "Bluetooth Devices"))
-        if zynconf.is_service_active("bluetooth"):
-            self.list_data.append(("stop_bluetooth", None, "\u2612 BLE MIDI"))
+        ble_enabled = zynconf.is_service_active("bluetooth")
+        if not self.chain or ble_enabled and ble_devices:
+            self.list_data.append((None, None, "Bluetooth Devices"))
+        if ble_enabled:
+            if not self.chain:
+                self.list_data.append(("stop_bluetooth", None, "\u2612 BLE MIDI"))
             if self.chain:
                 for i in ble_devices:
                     append_device(i[0], i[1])
@@ -135,27 +138,30 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                         title += "\uf293 "
                     title += data[0]
                     self.list_data.append(("ble_device", addr, title))
-        else:
+        elif not self.chain:
             self.list_data.append(("start_bluetooth", None, "\u2610 BLE MIDI"))
 
-        self.list_data.append((None, None, "Network Devices"))
-        net = False
-        if zynconf.is_service_active("jackrtpmidid"):
-            self.list_data.append(("stop_rtpmidi", None, "\u2612 RTP-MIDI"))
-            net = True
-        else:
-            self.list_data.append(("start_rtpmidi", None, "\u2610 RTP-MIDI"))
-        if zynconf.is_service_active("qmidinet"):
-            self.list_data.append(("stop_qmidinet", None, "\u2612 QmidiNet (IP Multicast)"))
-            net = True
-        else:
-            self.list_data.append(("start_qmidinet", None, "\u2610 QmidiNet (IP Multicast)"))
-        if zynconf.is_service_active("touchosc2midi"):
-            self.list_data.append(("stop_touchosc", None, "\u2612 TouchOSC MIDI Bridge"))
-            net = True
-        else:
-            self.list_data.append(("start_touchosc", None, "\u2610 TouchOSC MIDI Bridge"))
-        if net:
+        rtpmidi_enabled = zynconf.is_service_active("jackrtpmidid")
+        qmidi_enabled = zynconf.is_service_active("qmidinet")
+        touchosc_enabled = zynconf.is_service_active("touchosc2midi")
+        netmidi_enabled = rtpmidi_enabled | qmidi_enabled | touchosc_enabled
+
+        if not self.chain or netmidi_enabled:
+            self.list_data.append((None, None, "Network Devices"))
+        if not self.chain:
+            if rtpmidi_enabled:
+                self.list_data.append(("stop_rtpmidi", None, "\u2612 RTP-MIDI"))
+            else:
+                self.list_data.append(("start_rtpmidi", None, "\u2610 RTP-MIDI"))
+            if qmidi_enabled:
+                self.list_data.append(("stop_qmidinet", None, "\u2612 QmidiNet (IP Multicast)"))
+            else:
+                self.list_data.append(("start_qmidinet", None, "\u2610 QmidiNet (IP Multicast)"))
+            if touchosc_enabled:
+                self.list_data.append(("stop_touchosc", None, "\u2612 TouchOSC MIDI Bridge"))
+            else:
+                self.list_data.append(("start_touchosc", None, "\u2610 TouchOSC MIDI Bridge"))
+        if netmidi_enabled:
             if self.input:
                 append_device(zynautoconnect.max_num_devs, zynautoconnect.get_port_from_name("ZynMidiRouter:net_out"))
             else:

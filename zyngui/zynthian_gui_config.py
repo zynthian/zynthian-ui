@@ -337,6 +337,7 @@ def config_zyntof():
 # MIDI Configuration
 # ------------------------------------------------------------------------------
 
+#TODO: Why are these defined global here, in global scope?
 global preset_preload_noteon, midi_prog_change_zs3
 global midi_bank_change, midi_fine_tuning
 global midi_filter_rules, midi_filter_output
@@ -376,7 +377,7 @@ def set_midi_config():
 	midi_network_enabled = int(os.environ.get('ZYNTHIAN_MIDI_NETWORK_ENABLED', 0))
 	midi_rtpmidi_enabled = int(os.environ.get('ZYNTHIAN_MIDI_RTPMIDI_ENABLED', 0))
 	midi_touchosc_enabled = int(os.environ.get('ZYNTHIAN_MIDI_TOUCHOSC_ENABLED', 0))
-	bluetooth_enabled = int(os.environ.get('ZYNTHIAN_BLUETOOTH_ENABLED', 0))
+	bluetooth_enabled = int(os.environ.get('ZYNTHIAN_MIDI_BLE_ENABLED', 0))
 	midi_aubionotes_enabled = int(os.environ.get('ZYNTHIAN_MIDI_AUBIONOTES_ENABLED', 0))
 	transport_clock_source = int(os.environ.get('ZYNTHIAN_MIDI_TRANSPORT_CLOCK_SOURCE', 0))
 	transport_clock_source = int(os.environ.get('ZYNTHIAN_MIDI_TRANSPORT_CLOCK_SOURCE', 0))
