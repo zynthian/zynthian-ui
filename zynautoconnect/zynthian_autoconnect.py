@@ -75,8 +75,8 @@ midi_port_names = {}			# Map of user friendly names indexed by device uid (alias
 
 ### MIDI port helper functions ###
 
-def get_ports(name):
-	return jclient.get_ports(name)
+def get_ports(name, is_input=None):
+	return jclient.get_ports(name, is_input=is_input)
 
 def dev_in_2_dev_out(zmip):
 	"""Get index of output devices from its input device index
@@ -246,13 +246,6 @@ def midi_autoconnect():
 	except:
 		pass
 
-	#TODO: Do we want to maintain a list of user disabled MIDI ports? A user has freedom to configure routing in the UI
-	# NO. This has to be removed, but after global MIDI THRU configuration has been implemented in UI
-	enabled_hw_src_ports = []
-	for port in hw_src_ports:
-		if port.name not in zynthian_gui_config.disabled_midi_in_ports:
-			enabled_hw_src_ports.append(port)
-
 	# List of physical MIDI destination ports
 	hw_dst_ports = jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
 
@@ -271,29 +264,20 @@ def midi_autoconnect():
 	except:
 		pass
 
-	#TODO: Do we want to maintain a list of user disabled MIDI ports? A user has freedom to configure routing in the UI
-	# NO. This has to be removed, but after global MIDI THRU configuration has been implemented in UI
-	enabled_hw_dst_ports = []
-	for port in hw_dst_ports:
+	# Treat some virtual MIDI ports as hardware
+	for port_name in ("QmidiNet:in_1", "jackrtpmidid:rtpmidi_in", "RtMidiIn Client:TouchOSC Bridge", "ZynMaster:midi_in"):
 		try:
-			if port.name.replace(" ", "_") in zynthian_gui_config.enabled_midi_out_ports:
-				enabled_hw_dst_ports.append(port)
+			ports = jclient.get_ports(port_name, is_midi=True, is_input=True)
+			hw_dst_ports += ports
+		except:
+			pass
+	for port_name in ("QmidiNet:out_1", "jackrtpmidid:rtpmidi_out", "RtMidiOut Client:TouchOSC Bridge", "aubio"):
+		try:
+			ports = jclient.get_ports(port_name, is_midi=True, is_output=True)
+			hw_src_ports += ports
 		except:
 			pass
 
-	# Add Zynmaster (CV/gate output))
-	zmip = jclient.get_ports("ZynMaster:midi_in", is_input=True, is_physical=False, is_midi=True)
-	try:
-		enabled_hw_dst_ports.append(zmip[0])
-	except:
-		pass
-
-	# Treat Aubio as physical MIDI source port
-	aubio_out = jclient.get_ports("aubio", is_output=True, is_physical=False, is_midi=True)
-	try:
-		hw_src_ports.append(aubio_out[0])
-	except:
-		pass
 
 	# Create graph of required chain routes as sets of sources indexed by destination
 	required_routes = {}
@@ -356,32 +340,6 @@ def midi_autoconnect():
 			logger.debug(f"Disconnected MIDI-out device {i}: {devices_out[i].name}")
 			devices_out[i] = None
 
-	# List MIDI over IP destination ports
-	nw_dst_ports = []
-	enabled_nw_dst_ports = []
-	for port_name in ("QmidiNet:in_1", "jackrtpmidid:rtpmidi_in", "RtMidiIn Client:TouchOSC Bridge"):
-		ports = jclient.get_ports(port_name, is_midi=True, is_input=True)
-		nw_dst_ports += ports
-		try:
-			port_id = ports[0].name
-			if port_id.replace(" ", "_") in zynthian_gui_config.enabled_midi_out_ports:
-				enabled_nw_dst_ports.append(ports[0])
-		except:
-			pass
-
-	# List MIDI over IP source ports
-	nw_src_ports = []
-	enabled_nw_src_ports = []
-	for port_name in ("QmidiNet:out_1", "jackrtpmidid:rtpmidi_out", "RtMidiIn Client:TouchOSC Bridge"):
-		ports = jclient.get_ports(port_name, is_midi=True, is_output=True)
-		nw_src_ports += ports
-		try:
-			port_id = ports[0].name
-			if port_id in zynthian_gui_config.enabled_midi_in_ports:
-				enabled_nw_src_ports.append(ports[0])
-		except:
-			pass
-
 	# Chain MIDI routing
 	#TODO: Handle processors with multiple MIDI ports
 	for chain_id, chain in chain_manager.chains.items():
@@ -401,10 +359,7 @@ def midi_autoconnect():
 		if chain.midi_slots and chain.midi_thru:
 			dests = []
 			for out in chain.midi_out:
-				if out == "NET-OUT":
-					for dst in enabled_nw_dst_ports:
-						dests += dst
-				elif out in chain_manager.chains:
+				if out in chain_manager.chains:
 					for processor in chain_manager.get_processors(out, "MIDI Tool", 0):
 						for dst in jclient.get_ports(processor.get_jackname(True), is_midi=True, is_input=True):
 							dests.append(dst.name)
@@ -425,19 +380,6 @@ def midi_autoconnect():
 						src = src_ports[0]
 						dst = dst_ports[0]
 						required_routes[dst.name].add(src.name)
-
-
-	#Connect RTP-MIDI output to ZynMidiRouter:net_in
-	if zynthian_gui_config.midi_rtpmidi_enabled:
-		required_routes["ZynMidiRouter:net_in"].add("jackrtpmidid:rtpmidi_out")
-
-	#Connect QMidiNet output to ZynMidiRouter:net_in
-	if zynthian_gui_config.midi_network_enabled:
-		required_routes["ZynMidiRouter:net_in"].add("QmidiNet:out_1")
-
-	#Connect TouchOSC output to ZynMidiRouter:net_in
-	if zynthian_gui_config.midi_touchosc_enabled:
-		required_routes["ZynMidiRouter:net_in"].add("RtMidiOut Client:TouchOSC Bridge")
 
 	#Connect zynseq (stepseq) output to ZynMidiRouter:step_in
 	required_routes["ZynMidiRouter:step_in"].add("zynseq:output")
@@ -462,14 +404,9 @@ def midi_autoconnect():
 	lib_zyncore.set_midi_thru(zynthian_gui_config.midi_filter_output)
 
 	# Route MIDI-THRU output to enabled output ports
-	for port in enabled_hw_dst_ports:
+	for port in hw_dst_ports:
 		# Connect ZynMidiRouter:midi_out to...
 		required_routes[port.name].add("ZynMidiRouter:midi_out")
-
-	# Route MIDI-THRU output to network enabled output ports
-	for port in enabled_nw_dst_ports:
-		# Connect ZynMidiRouter:net_out to...
-		required_routes[port.name].add("ZynMidiRouter:net_out")
 
 	#Connect ZynMidiRouter:step_out to ZynthStep input
 	required_routes["zynseq:input"].add("ZynMidiRouter:step_out")
@@ -746,13 +683,14 @@ def update_midi_port_aliases():
 					port.set_alias(alias1)
 		except:
 			logging.warning(f"Unable to set alias for port {port.name}")
-	try:
-		port = jclient.get_port_by_name("aubio:midi_out_1")
-		if not port.aliases:
-			port.set_alias("AUBIO:in")
-			port.set_alias("Audio\u2794MIDI")
-	except:
-		pass
+
+	set_midi_port_alias("aubio:midi_out_1", "AUBIO:in", "Audio\u2794MIDI")
+	set_midi_port_alias("jackrtpmidid:rtpmidi_out", "NET:rtp_in", "RTP MIDI IN")
+	set_midi_port_alias("jackrtpmidid:rtpmidi_in", "NET:rtp_out", "RTP MIDI OUT")
+	set_midi_port_alias("QmidiNet:out_1", "NET:qmidi_in", "QMIDI IN")
+	set_midi_port_alias("QmidiNet:in_1", "NET:qmidi_out", "QMIDI OUT")
+	set_midi_port_alias("RtMidiOut Client:TouchOSC Bridge", "NET:touchosc_in", "TouchOSC IN")
+	set_midi_port_alias("RtMidiIn Client:TouchOSC Bridge", "NET:touchosc_out", "TouchOSC OUT")
 
 
 def set_midi_port_alias(port_name, alias1, alias2=None, force=False):
@@ -775,10 +713,9 @@ def set_midi_port_alias(port_name, alias1, alias2=None, force=False):
 	except:
 		pass
 
-def set_port_friendly_name(port_name, friendly_name):
+def set_port_friendly_name(port, friendly_name):
 	global midi_port_names
 	try:
-		port = jclient.get_port_by_name(port_name)
 		if len(port.aliases) < 1:
 			return
 		if len(port.aliases) > 1:
@@ -915,8 +852,6 @@ def start(sm):
 	# Set aliases for static MIDI ports
 	set_midi_port_alias("ZynMaster:midi_in", "ZynMaster:midi_in", "CV/Gate OUT") 
 	set_midi_port_alias("ZynMaster:midi_out", "ZynMaster:midi_out", "CV/Gate IN") 
-	set_midi_port_alias("ZynMidiRouter:net_in", "ZynMidiRouter:net_in", "Network MIDI OUT") 
-	set_midi_port_alias("ZynMidiRouter:net_out", "ZynMidiRouter:net_out", "Network MIDI IN") 
 	
 	# Start port change checking thread
 	thread = Thread(target=auto_connect_thread, args=())

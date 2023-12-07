@@ -1314,8 +1314,6 @@ class zynthian_state_manager:
             for key in state:
                 if key == "port_names":
                     zynautoconnect.set_midi_port_names(state[key])
-                    #for x,y in state[key].items():
-                    #    zynautoconnect.set_port_friendly_name_from_uid(x, y)
                 elif not key.startswith("MASTER_"): # Drop Master Channel config, as it's global
                     os.environ["ZYNTHIAN_MIDI_" + key] = state[key]
             zynthian_gui_config.set_midi_config()
@@ -1692,7 +1690,7 @@ class zynthian_state_manager:
                     "ZYNTHIAN_MIDI_RTPMIDI_ENABLED": str(zynthian_gui_config.midi_rtpmidi_enabled)
                 })
             # Call autoconnect after a little time
-            zynautoconnect.request_midi_connect()
+            zynautoconnect.request_midi_connect(True)
         except Exception as e:
             logging.error(e)
             self.set_busy_error("ERROR STARTING RTP-MIDI", e)
@@ -1731,7 +1729,7 @@ class zynthian_state_manager:
                     "ZYNTHIAN_MIDI_NETWORK_ENABLED": str(zynthian_gui_config.midi_network_enabled)
                 })
             # Call autoconnect after a little time
-            zynautoconnect.request_midi_connect()
+            zynautoconnect.request_midi_connect(True)
         except Exception as e:
             logging.error(e)
             self.set_busy_error("ERROR STARTING QMidiNet", e)
@@ -1776,7 +1774,7 @@ class zynthian_state_manager:
                     "ZYNTHIAN_MIDI_TOUCHOSC_ENABLED": str(zynthian_gui_config.midi_touchosc_enabled)
                 })
             # Call autoconnect after a little time
-            zynautoconnect.request_midi_connect()
+            zynautoconnect.request_midi_connect(True)
         except Exception as e:
             logging.error(e)
             self.set_busy_error("ERROR STARTING Touch-OSC", e)
@@ -1821,7 +1819,7 @@ class zynthian_state_manager:
                     "ZYNTHIAN_MIDI_BLE_ENABLED": str(zynthian_gui_config.bluetooth_enabled)
                 })
             # Call autoconnect after a little time
-            zynautoconnect.request_midi_connect()
+            zynautoconnect.request_midi_connect(True)
         except Exception as e:
             logging.error(e)
             self.set_busy_error("ERROR STARTING Bluetooth", e)
