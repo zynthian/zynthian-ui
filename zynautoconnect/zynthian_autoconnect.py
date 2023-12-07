@@ -746,13 +746,22 @@ def update_midi_port_aliases():
 					port.set_alias(alias1)
 		except:
 			logging.warning(f"Unable to set alias for port {port.name}")
+	try:
+		port = jclient.get_port_by_name("aubio:midi_out_1")
+		if not port.aliases:
+			port.set_alias("AUBIO:in")
+			port.set_alias("Audio\u2794MIDI")
+	except:
+		pass
 
 
-def set_midi_port_alias(port_name, alias1, alias2=None):
+def set_midi_port_alias(port_name, alias1, alias2=None, force=False):
 	global midi_port_names
 
 	try:
 		port = jclient.get_port_by_name(port_name)
+		if len(port.aliases) > 1 and not force:
+			return
 		for a in port.aliases:
 			port.unset_alias(a)
 		port.set_alias(alias1)
@@ -908,7 +917,7 @@ def start(sm):
 	set_midi_port_alias("ZynMaster:midi_out", "ZynMaster:midi_out", "CV/Gate IN") 
 	set_midi_port_alias("ZynMidiRouter:net_in", "ZynMidiRouter:net_in", "Network MIDI OUT") 
 	set_midi_port_alias("ZynMidiRouter:net_out", "ZynMidiRouter:net_out", "Network MIDI IN") 
-
+	
 	# Start port change checking thread
 	thread = Thread(target=auto_connect_thread, args=())
 	thread.daemon = True # thread dies with the program

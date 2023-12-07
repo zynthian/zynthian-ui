@@ -34,6 +34,7 @@ import zynconf
 import zynautoconnect
 from zyncoder.zyncore import lib_zyncore
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zyngui import zynthian_gui_config
 
 # ------------------------------------------------------------------------------
 # Zynthian MIDI-In Selection GUI Class
@@ -92,6 +93,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         int_devices = []
         usb_devices = []
         ble_devices = []
+        aubio_devices = []
         for i in range(zynautoconnect.max_num_devs):
             if self.input:
                 dev = zynautoconnect.devices_in[i]
@@ -102,6 +104,8 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                     usb_devices.append((i, dev))
                 elif dev.aliases[0].startswith("BLE:"):
                     ble_devices.append((i, dev))
+                elif dev.aliases[0].startswith("AUBIO:"):
+                    aubio_devices.append((i, dev))
                 else:
                     int_devices.append((i, dev))
         if int_devices:
@@ -118,10 +122,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             for i in usb_devices:
                 append_device(i[0], i[1])
 
-        ble_enabled = zynconf.is_service_active("bluetooth")
-        if not self.chain or ble_enabled and ble_devices:
+        if not self.chain or zynthian_gui_config.bluetooth_enabled and ble_devices:
             self.list_data.append((None, None, "Bluetooth Devices"))
-        if ble_enabled:
+        if zynthian_gui_config.bluetooth_enabled:
             if not self.chain:
                 self.list_data.append(("stop_bluetooth", None, "\u2612 BLE MIDI"))
             if self.chain:
@@ -141,23 +144,20 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         elif not self.chain:
             self.list_data.append(("start_bluetooth", None, "\u2610 BLE MIDI"))
 
-        rtpmidi_enabled = zynconf.is_service_active("jackrtpmidid")
-        qmidi_enabled = zynconf.is_service_active("qmidinet")
-        touchosc_enabled = zynconf.is_service_active("touchosc2midi")
-        netmidi_enabled = rtpmidi_enabled | qmidi_enabled | touchosc_enabled
+        netmidi_enabled = zynthian_gui_config.midi_aubionotes_enabled | zynthian_gui_config.midi_network_enabled | zynthian_gui_config.midi_touchosc_enabled
 
         if not self.chain or netmidi_enabled:
             self.list_data.append((None, None, "Network Devices"))
         if not self.chain:
-            if rtpmidi_enabled:
+            if zynthian_gui_config.midi_aubionotes_enabled:
                 self.list_data.append(("stop_rtpmidi", None, "\u2612 RTP-MIDI"))
             else:
                 self.list_data.append(("start_rtpmidi", None, "\u2610 RTP-MIDI"))
-            if qmidi_enabled:
+            if zynthian_gui_config.midi_network_enabled:
                 self.list_data.append(("stop_qmidinet", None, "\u2612 QmidiNet (IP Multicast)"))
             else:
                 self.list_data.append(("start_qmidinet", None, "\u2610 QmidiNet (IP Multicast)"))
-            if touchosc_enabled:
+            if zynthian_gui_config.midi_touchosc_enabled:
                 self.list_data.append(("stop_touchosc", None, "\u2612 TouchOSC MIDI Bridge"))
             else:
                 self.list_data.append(("start_touchosc", None, "\u2610 TouchOSC MIDI Bridge"))
@@ -166,6 +166,17 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 append_device(zynautoconnect.max_num_devs, zynautoconnect.get_port_from_name("ZynMidiRouter:net_out"))
             else:
                 append_device(zynautoconnect.max_num_devs, zynautoconnect.get_port_from_name("ZynMidiRouter:net_in"))
+
+        if self.input:
+            if not self.chain or zynthian_gui_config.midi_aubionotes_enabled:
+                self.list_data.append((None, None, "Aubionotes Audio=>MIDI"))
+            if not self.chain:
+                if zynthian_gui_config.midi_aubionotes_enabled:
+                    self.list_data.append(("stop_aubionotes", None, "\u2612 Aubionotes"))
+                else:
+                    self.list_data.append(("start_aubionotes", None, "\u2610 Aubionotes"))
+            for i in aubio_devices:
+                append_device(i[0], i[1])
 
         if not self.input and self.chain:
             self.list_data.append((None, None, "Chain inputs"))
@@ -197,6 +208,10 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 self.zyngui.state_manager.stop_touchosc2midi()
             elif self.list_data[i][0] == "start_touchosc":
                 self.zyngui.state_manager.start_touchosc2midi()
+            if self.list_data[i][0] == "stop_aubionotes":
+                self.zyngui.state_manager.stop_aubionotes()
+            if self.list_data[i][0] == "start_aubionotes":
+                self.zyngui.state_manager.start_aubionotes()
             if self.list_data[i][0] == "stop_bluetooth":
                 self.zyngui.state_manager.stop_bluetooth()
             elif self.list_data[i][0] == "start_bluetooth":
@@ -298,7 +313,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             pass
 
     def check_ble(self):
-        if zynconf.is_service_active("bluetooth"):
+        if zynthian_gui_config.bluetooth_enabled:
             try:
                 proc = Popen('bluetoothctl', stdin=PIPE, stdout=PIPE, encoding='utf-8')
                 proc.stdin.write('menu scan\nuuids 03B80E5A-EDE8-4B33-A751-6CE34EC4C700\nback\nscan on\n')
