@@ -75,6 +75,17 @@ midi_port_names = {}			# Map of user friendly names indexed by device uid (alias
 
 ### MIDI port helper functions ###
 
+def get_friendly_name(uid):
+	"""Get port friendly name
+	
+	uid : Port uid (alias 2)
+	returns : Friendly name or None if not set
+	"""
+	
+	if uid in midi_port_names:
+		return midi_port_names[uid]
+	return None
+
 def get_ports(name, is_input=None):
 	return jclient.get_ports(name, is_input=is_input)
 
@@ -713,13 +724,22 @@ def set_midi_port_alias(port_name, alias1, alias2=None, force=False):
 	except:
 		pass
 
-def set_port_friendly_name(port, friendly_name):
+def set_port_friendly_name(port, friendly_name=None):
+	"""Set the friendly name for a JACK port
+	
+	port : JACK port object
+	friendly_name : New friendly name (optional) Default:Reset to port shortname 
+	"""
+
 	global midi_port_names
+
 	try:
 		if len(port.aliases) < 1:
 			return
 		if len(port.aliases) > 1:
 			port.unset_alias(port.aliases[1])
+		if friendly_name is None:
+			friendly_name = port.shortname
 		port.set_alias(friendly_name)
 		midi_port_names[port.aliases[0]] = friendly_name
 	except:
@@ -729,9 +749,7 @@ def set_port_friendly_name(port, friendly_name):
 def set_port_friendly_name_from_uid(uid, friendly_name):
 	for port in jclient.get_ports():
 		if len(port.aliases) and port.aliases[0] == uid:
-			if len(port.aliases) > 1:
-				port.unset_alias(port.aliases[1])
-			port.set_alias(friendly_name)
+			set_port_friendly_name(port, friendly_name)
 			break
 
 

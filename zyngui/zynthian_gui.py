@@ -769,12 +769,12 @@ class zynthian_gui:
 		self.show_screen('brightness_config')
 
 	def midi_in_config(self):
-		self.screens['midi_config'].chain = None
+		self.screens['midi_config'].set_chain(None)
 		self.screens['midi_config'].input = True
 		self.show_screen('midi_config')
 
 	def midi_out_config(self):
-		self.screens['midi_config'].chain = None
+		self.screens['midi_config'].set_chain(None)
 		self.screens['midi_config'].input = False
 		self.show_screen('midi_config')
 
