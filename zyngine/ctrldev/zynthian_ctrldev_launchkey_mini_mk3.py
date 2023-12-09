@@ -46,6 +46,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 
 	def init(self):
 		# Enable session mode on launchkey
+		self.shift = False
 		lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 127)
 		self.refresh_zynpad_bank()
 
@@ -127,6 +128,9 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 		elif evtype == 0xB:
 			if val1 > 20 and val1 < 29:
 				self.zynmixer.set_level(val1 - 21, val2 / 127.0)
+			elif val1 == 0x6C:
+				# SHIFT
+				self.shift = val2 != 0
 			elif val2 == 0:
 				return True
 			if val1 == 0x68:
@@ -135,47 +139,27 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 			elif val1 == 0x69:
 				# DOWN
 				self.state_manager.send_cuia("ARROW_DOWN")
-			elif val1 == 0x6C:
-				# SHIFT
-				pass
 			elif val1 == 0x73:
 				# PLAY
-				self.state_manager.send_cuia("TOGGLE_AUDIO_PLAY")
+				if self.shift:
+					self.state_manager.send_cuia("TOGGLE_MIDI_PLAY")
+				else:
+					self.state_manager.send_cuia("TOGGLE_AUDIO_PLAY")
 			elif val1 == 0x75:
 				# RECORD
-				self.state_manager.send_cuia("TOGGLE_AUDIO_RECORD")
-			elif val1 == 0x67:
-				self.state_manager.send_cuia("ARROW_LEFT")
-				pass
-			elif val1 == 0x68:
+				if self.shift:
+					self.state_manager.send_cuia("TOGGLE_MIDI_RECORD")
+				else:
+					self.state_manager.send_cuia("TOGGLE_AUDIO_RECORD")
+			elif val1 == 0x66:
 				# TRACK RIGHT
 				self.state_manager.send_cuia("ARROW_RIGHT")
-			#self.logging_debug_cc(val1, val2)
+			elif val1 == 0x67:
+				# TRACK LEFT
+				self.state_manager.send_cuia("ARROW_LEFT")
 		elif evtype == 0xC:
-			self.zynpad.set_bank(val1 + 1)
+			self.zynseq.select_bank(val1 + 1)
 
 		return True
-
-	def logging_debug_cc(self, ccnum, ccval):
-		if ccnum >= 0x15 and ccnum <= 0x1C:
-			logging.debug(f"KNOB {ccnum - 0x14}: {ccval}")
-		else:
-			cc_names = {
-				"UP": 0x68,
-				"DOWN": 0x69,
-				"SHIFT": 0x6C,
-				"PLAY": 0x73,
-				"RECORD": 0x75,
-				"TRACK LEFT": 0x67,
-				"TRACK RIGHT": 0x68
-			}
-			try:
-				cc_name = list(cc_names.keys())[list(cc_names.values()).index(ccnum)]
-			except:
-				cc_name = f"{ccnum:02x}"
-			if ccval > 0:
-				logging.debug(f"{cc_name} PRESSED")
-			else:
-				logging.debug(f"{cc_name} RELEASED")
 
 #------------------------------------------------------------------------------

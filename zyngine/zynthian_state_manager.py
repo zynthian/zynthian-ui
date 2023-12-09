@@ -1442,20 +1442,19 @@ class zynthian_state_manager:
             except:
                 filename = "jack_capture"
 
-            exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
-            if exdirs is None:
-                midir = capture_dir_sdc
-            else:
+            exdirs = zynthian_gui_config.get_external_storage_dirs(ex_data_dir)
+            if exdirs:
                 midir = exdirs[0]
+            else:
+                midir = capture_dir_sdc
 
             n = 1
-            for fn in sorted(os.listdir(midir)):
-                if fn.lower().endswith(".mid"):
-                    try:
-                        n = int(fn[:3]) + 1
-                    except:
-                        pass
-            fpath = f"{dir}/{n:03}-{filename}.mid"
+            for fn in glob(f"{midir}/*mid"):
+                try:
+                    n = int(fn[:3]) + 1
+                except:
+                    pass
+            fpath = f"{midir}/{n:03}-{filename}.mid"
 
             if zynsmf.save(self.smf_recorder, fpath):
                 self.sync = True
@@ -1477,14 +1476,12 @@ class zynthian_state_manager:
             else:
                 # Get latest file
                 latest_mtime = 0
-                for midir in [capture_dir_sdc] + zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
-                    for fn in os.listdir(midir):
-                        fp = join(midir, fn)
-                        if isfile(fp) and fn[-4:] == '.mid':
-                            mtime = os.path.getmtime(fp)
-                            if mtime > latest_mtime:
-                                fpath = fp
-                                latest_mtime = mtime
+                for dir in [capture_dir_sdc] + zynthian_gui_config.get_external_storage_dirs(ex_data_dir):
+                    for fn in glob(f"{dir}//*.mid"):
+                        mtime = os.path.getmtime(fn)
+                        if mtime > latest_mtime:
+                            fpath = fn
+                            latest_mtime = mtime
 
         if fpath is None:
             logging.info("No track to play!")

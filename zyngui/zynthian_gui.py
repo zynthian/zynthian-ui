@@ -2346,7 +2346,7 @@ class zynthian_gui:
 						zynpot_repeat[i][0] -= 1
 					else:
 						self.cuia_zynpot(zynpot_repeat[i][1])
-			except:
+			except Exception as e:
 				logging.error(traceback.format_exc())
 				self.state_manager.set_busy_error(f"ERROR CUIA {cuia}", e)
 				sleep(3)
