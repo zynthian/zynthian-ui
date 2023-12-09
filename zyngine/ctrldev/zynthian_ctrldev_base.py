@@ -45,10 +45,8 @@ class zynthian_ctrldev_base:
 	# Function to initialise class
 	def __init__(self, state_manager, idev_in, idev_out=None):
 		self.state_manager = state_manager
-		self.zyngui = zynthian_gui_config.zyngui
 		self.idev = idev_in		       # Slot index where the input device is connected, starting from 1 (0 = None)
 		self.idev_out = idev_out       # Slot index where the output device (feedback), if any, is connected, starting from 1 (0 = None)
-		self.zynseq = state_manager.zynseq
 		self.zynmixer = state_manager.zynmixer
 		self.init()
 
@@ -86,40 +84,42 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 
 	dev_zynpad = True		# Can act as a zynpad trigger device
 
-	def refresh(self, force=False):
-		return  # TODO: Implement refresh
-		# When zynpad is shown, this is done by refresh_status, so no need to refresh twice
-		if force or not self.zynseq.shown:
-			self.refresh_pads(force)
-		if force:
-			self.refresh_zynpad_bank()
+	def __init__(self, state_manager, idev_in, idev_out=None):
+		self.zynseq = state_manager.zynseq
+		super().__init__(state_manager, idev_in, idev_out)
 
 	# It *SHOULD* be implemented by child class
 	def refresh_zynpad_bank(self):
 		#logging.debug("Refressh zynpad banks for {}: NOT IMPLEMENTED!".format(type(self).__name__))
 		pass
 
-	def refresh_pads(self, force=False):
-		if force:
-			self.light_off()
-		for pad in range(self.zynseq.col_in_bank ** 2):
-			# It MUST be called for cleaning the dirty bit
-			changed_state = self.zynseq.libseq.hasSequenceChanged(self.zynseq.bank, pad)
-			if changed_state or force:
-				mode = self.zynseq.libseq.getPlayMode(self.zynseq.bank, pad)
-				state = self.zynseq.libseq.getPlayState(self.zynseq.bank, pad)
-				self.update_pad(pad, state, mode)
-
-	def refresh_pad(self, pad, force=False):
-		# It MUST be called for cleaning the dirty bit!!
-		changed_state = self.zynseq.libseq.hasSequenceChanged(self.zynseq.bank, pad)
-		if changed_state or force:
-			mode = self.zynseq.libseq.getPlayMode(self.zynseq.bank, pad)
-			state = self.zynseq.libseq.getPlayState(self.zynseq.bank, pad)
-			self.update_pad(pad, state, mode)
-
 	# It *SHOULD* be implemented by child class
 	def update_pad(self, pad, state, mode):
 		logging.debug("Update pads for {}: NOT IMPLEMENTED!".format(type(self).__name__))
 
+# -----------------------------------------------------------------------------------------
+
+
+# ------------------------------------------------------------------------------------------------------------------
+# Zynmixer control device base class
+# ------------------------------------------------------------------------------------------------------------------
+
+class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
+
+	dev_zynmixer = True		# Can act as a zynmixer trigger device
+
+	def __init__(self, state_manager, idev_in, idev_out=None):
+		self.zynmixer = state_manager.zynmixer
+		super().__init__(state_manager, idev_in, idev_out)
+
+	def update(self, chan, ctrl, value):
+		"""Update hardware indications
+		*SHOULD* be implemented by child class
+
+		chan - MIDI channel
+		ctrl - MIDI CC
+		value - MIDI value
+		"""
+		
+		logging.debug(f"Update mixer for {type(self).__name__}: NOT IMPLEMENTED!")
 # -----------------------------------------------------------------------------------------

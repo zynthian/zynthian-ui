@@ -664,15 +664,15 @@ def update_midi_port_aliases():
 			alias2 = None
 			# Static ports
 			if port.name == "ttymidi:MIDI_in":
-				alias2 = "DIN-5 MIDI IN"
+				alias2 = "DIN-5 MIDI"
 			elif port.name == "ttymidi:MIDI_out":
-				alias2 = "DIN-5 MIDI OUT"
+				alias2 = "DIN-5 MIDI"
 			elif port.name.endswith(" (capture): f_midi"):
 				alias1 = "f_midi:in"
-				alias2 = "USB HOST IN"
+				alias2 = "USB HOST"
 			elif port.name.endswith("(playback): f_midi"):
 				alias1 = "f_midi:out"
-				alias2 = "USB HOST OUT"
+				alias2 = "USB HOST"
 			# Dynamic ports
 			elif port.name.endswith("Bluetooth"):
 				continue
@@ -696,12 +696,12 @@ def update_midi_port_aliases():
 			logging.warning(f"Unable to set alias for port {port.name}")
 
 	set_midi_port_alias("aubio:midi_out_1", "AUBIO:in", "Audio\u2794MIDI")
-	set_midi_port_alias("jackrtpmidid:rtpmidi_out", "NET:rtp_in", "RTP MIDI IN")
-	set_midi_port_alias("jackrtpmidid:rtpmidi_in", "NET:rtp_out", "RTP MIDI OUT")
-	set_midi_port_alias("QmidiNet:out_1", "NET:qmidi_in", "QMIDI IN")
-	set_midi_port_alias("QmidiNet:in_1", "NET:qmidi_out", "QMIDI OUT")
-	set_midi_port_alias("RtMidiOut Client:TouchOSC Bridge", "NET:touchosc_in", "TouchOSC IN")
-	set_midi_port_alias("RtMidiIn Client:TouchOSC Bridge", "NET:touchosc_out", "TouchOSC OUT")
+	set_midi_port_alias("jackrtpmidid:rtpmidi_out", "NET:rtp_in", "RTP MIDI")
+	set_midi_port_alias("jackrtpmidid:rtpmidi_in", "NET:rtp_out", "RTP MIDI")
+	set_midi_port_alias("QmidiNet:out_1", "NET:qmidi_in", "QMIDI")
+	set_midi_port_alias("QmidiNet:in_1", "NET:qmidi_out", "QMIDI")
+	set_midi_port_alias("RtMidiOut Client:TouchOSC Bridge", "NET:touchosc_in", "TouchOSC")
+	set_midi_port_alias("RtMidiIn Client:TouchOSC Bridge", "NET:touchosc_out", "TouchOSC")
 
 
 def set_midi_port_alias(port_name, alias1, alias2=None, force=False):

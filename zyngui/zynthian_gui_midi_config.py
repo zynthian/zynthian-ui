@@ -291,88 +291,83 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                         logging.error(e)
                 self.fill_list()
             elif self.list_data[i][0].startswith("BLE:"):
-                self.toggle_ble_device(self.list_data[i][0][4:])
+                self.toggle_ble_trust(self.list_data[i][0][4:])
 
         # Change mode
-        elif t == 'B' and self.list_data[i][1] is not None:
+        elif t == 'B':
+            if self.list_data[i][1] is None:
+                if self.list_data[i][0].startswith("BLE:"):
+                    # BLE MIDI device not connected
+                    addr = self.list_data[i][0][4:]
+                    if addr not in self.ble_devices or not self.ble_devices[addr][2]:
+                        # Not trusted so offer to remove
+                        self.zyngui.show_confirm(f"Remove BLE MIDI device?\n{self.list_data[i][0]}", self.remove_ble, self.list_data[i][0][4:])
+                return
             dev_i = self.list_data[i][1]
             if dev_i is None:
                 return
-            options = OrderedDict()
-            if self.input:
-                # Check mode (Acti/Omni/Multi)
-                if lib_zyncore.zmip_get_flag_active_chan(dev_i):
-                    mode = 0
-                elif lib_zyncore.zmip_get_flag_omni_chan(dev_i):
-                    mode = 1
-                else:
-                    mode = 2
-                options["MIDI Input Mode"] = None
-                if mode == 0:
-                    options[f'\u25C9 ↦ Active channel'] = "ACTI"
-                else:
-                    options[f'\u25CE ↦ Active channel'] = "ACTI"
-                if mode == 1:
-                    options[f'\u25C9 ∈ Omni mode'] = "OMNI"
-                else:
-                    options[f'\u25CE ∈ Omni mode'] = "OMNI"
-                if mode == 2:
-                    options[f'\u25C9 ⇶ Multitimbral mode '] = "MULTI"
-                else:
-                    options[f'\u25CE ⇶ Multitimbral mode'] = "MULTI"
-
-                options["Configuration"] = None
-                dev_id = zynautoconnect.get_midi_in_devid(dev_i)
-                if dev_id in self.zyngui.state_manager.ctrldev_manager.available_drivers:
-                    #TODO: Offer list of profiles
-                    if dev_i in self.zyngui.state_manager.ctrldev_manager.drivers:
-                        options[f"\u2612 ↻ Controller driver"] = "UNLOAD_DRIVER"
+            try:
+                options = OrderedDict()
+                if self.input:
+                    # Check mode (Acti/Omni/Multi)
+                    if lib_zyncore.zmip_get_flag_active_chan(dev_i):
+                        mode = 0
+                    elif lib_zyncore.zmip_get_flag_omni_chan(dev_i):
+                        mode = 1
                     else:
-                        options[f"\u2610 ↻ Controller driver"] = "LOAD_DRIVER"
-                port = zynautoconnect.devices_in[dev_i]
-            else:
-                port = zynautoconnect.devices_out[dev_i]
-            options[f'Rename port {port.aliases[0]}'] = port
-            self.zyngui.screens['option'].config("MIDI Input Device", options, self.menu_cb)
-            self.zyngui.show_screen('option')
+                        mode = 2
+                    options["MIDI Input Mode"] = None
+                    if mode == 0:
+                        options[f'\u25C9 ↦ Active channel'] = "ACTI"
+                    else:
+                        options[f'\u25CE ↦ Active channel'] = "ACTI"
+                    if mode == 1:
+                        options[f'\u25C9 ∈ Omni mode'] = "OMNI"
+                    else:
+                        options[f'\u25CE ∈ Omni mode'] = "OMNI"
+                    if mode == 2:
+                        options[f'\u25C9 ⇶ Multitimbral mode '] = "MULTI"
+                    else:
+                        options[f'\u25CE ⇶ Multitimbral mode'] = "MULTI"
+
+                    options["Configuration"] = None
+                    dev_id = zynautoconnect.get_midi_in_devid(dev_i)
+                    if dev_id in self.zyngui.state_manager.ctrldev_manager.available_drivers:
+                        #TODO: Offer list of profiles
+                        if dev_i in self.zyngui.state_manager.ctrldev_manager.drivers:
+                            options[f"\u2612 ↻ Controller driver"] = "UNLOAD_DRIVER"
+                        else:
+                            options[f"\u2610 ↻ Controller driver"] = "LOAD_DRIVER"
+                    port = zynautoconnect.devices_in[dev_i]
+                else:
+                    port = zynautoconnect.devices_out[dev_i]
+                options[f'Rename port {port.aliases[0]}'] = port
+                self.zyngui.screens['option'].config("MIDI Input Device", options, self.menu_cb)
+                self.zyngui.show_screen('option')
+            except:
+                pass # Port may have disappeared whilst building menu
 
 
     def menu_cb(self, option, params):
-        if option.startswith("Rename port"):
-            port = params
-            self.zyngui.show_keyboard(self.rename_device, port.aliases[1])
-            return
-        elif params == "LOAD_DRIVER":
-            self.zyngui.state_manager.ctrldev_manager.load_driver(self.list_data[self.index][1])
-        elif params == "UNLOAD_DRIVER":
-            self.zyngui.state_manager.ctrldev_manager.unload_driver(self.list_data[self.index][1])
-        elif self.input:
-            dev_i = self.list_data[self.index][1]
-            flags_acti = params == "ACTI"
-            flags_omni = params == "OMNI"
-            lib_zyncore.zmip_set_flag_active_chan(dev_i, flags_acti)
-            lib_zyncore.zmip_set_flag_omni_chan(dev_i, flags_omni)
-
-        self.fill_list()
-
-    def toggle_ble_device(self, addr):
         try:
-            if self.ble_devices[addr][2]:
-                self.zyngui.state_manager.start_busy("trust_ble", f"Untrusting BLE MIDI device\n{addr}")
-                check_output(['bluetoothctl', 'untrust', addr], encoding='utf-8', timeout=1)
-                check_output(['bluetoothctl', 'disconnect', addr], encoding='utf-8', timeout=5)
-                self.ble_devices[addr][3] = False
-                self.ble_devices[addr][2] = False
-            else:
-                self.zyngui.state_manager.start_busy("trust_ble", f"Trusting BLE MIDI device\n{addr}")
-                check_output(['bluetoothctl', 'trust', addr], encoding='utf-8', timeout=1)
-                check_output(['bluetoothctl', 'connect', addr], encoding='utf-8', timeout=5)
-                self.ble_devices[addr][2] = True
-        except Exception as e:
-            logging.warning(f"Failed to complete toggle BLE device action: {e}")
+            if option.startswith("Rename port"):
+                port = params
+                self.zyngui.show_keyboard(self.rename_device, port.aliases[1])
+                return
+            elif params == "LOAD_DRIVER":
+                self.zyngui.state_manager.ctrldev_manager.load_driver(self.list_data[self.index][1])
+            elif params == "UNLOAD_DRIVER":
+                self.zyngui.state_manager.ctrldev_manager.unload_driver(self.list_data[self.index][1])
+            elif self.input:
+                dev_i = self.list_data[self.index][1]
+                flags_acti = params == "ACTI"
+                flags_omni = params == "OMNI"
+                lib_zyncore.zmip_set_flag_active_chan(dev_i, flags_acti)
+                lib_zyncore.zmip_set_flag_omni_chan(dev_i, flags_omni)
 
-        zynautoconnect.midi_autoconnect() # Need to update devices before filling list
-        self.zyngui.state_manager.end_busy("trust_ble")
+            self.fill_list()
+        except:
+            pass # Ports may have changed since menu opened
 
     def process_ble(self, scan=True):
         """Process BLE MIDI devices
@@ -448,15 +443,56 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             # Repeat every 2s
             Timer(2, self.process_ble).start()
 
+    def toggle_ble_trust(self, addr):
+        """Toggle trust of BLE device
+        
+        addr - BLE address
+        """
+
+        try:
+            if self.ble_devices[addr][2]:
+                self.zyngui.state_manager.start_busy("trust_ble", f"Untrusting BLE MIDI device\n{addr}")
+                check_output(['bluetoothctl', 'untrust', addr], encoding='utf-8', timeout=1)
+                check_output(['bluetoothctl', 'disconnect', addr], encoding='utf-8', timeout=5)
+                self.ble_devices[addr][3] = False
+                self.ble_devices[addr][2] = False
+            else:
+                self.zyngui.state_manager.start_busy("trust_ble", f"Trusting BLE MIDI device\n{addr}")
+                check_output(['bluetoothctl', 'trust', addr], encoding='utf-8', timeout=1)
+                check_output(['bluetoothctl', 'connect', addr], encoding='utf-8', timeout=5)
+                self.ble_devices[addr][2] = True
+        except Exception as e:
+            logging.warning(f"Failed to complete toggle BLE device action: {e}")
+
+        zynautoconnect.midi_autoconnect() # Need to update devices before filling list
+        self.zyngui.state_manager.end_busy("trust_ble")
+
+    def remove_ble(self, addr):
+        """Remove the BLE MIDI device
+        
+        addr : BLE address
+        """
+        
+        self.zyngui.state_manager.start_busy("remove_ble", f"Removing BLE MIDI device\n{addr}")
+        try:
+            self.ble_devices.pop(addr)
+            check_output(['bluetoothctl', 'remove', addr], encoding='utf-8', timeout=1)
+        except:
+            pass
+        self.zyngui.state_manager.end_busy("remove_ble")
 
     def rename_device(self, name):
+        """Set the friendly name of selected
+        
+        name : New friendly name
+        """
+
         if self.input:
             port = zynautoconnect.devices_in[self.list_data[self.index][1]]
         else:
             port = zynautoconnect.devices_out[self.list_data[self.index][1]]
         zynautoconnect.set_port_friendly_name(port, name)
         self.fill_list()
-
 
     def set_select_path(self):
         if self.chain:

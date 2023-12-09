@@ -27,7 +27,7 @@
 import logging
 
 # Zynthian specific modules
-from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_base
+from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer
 from zyncoder.zyncore import lib_zyncore
 
 # --------------------------------------------------------------------------
@@ -35,11 +35,10 @@ from zyncoder.zyncore import lib_zyncore
 # --------------------------------------------------------------------------
 
 
-class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_base):
+class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 
 	dev_ids = ["MIDI Mix MIDI 1"]
 
-	dev_zynmixer = True  # Can act as an audio mixer controller device
 	rec_mode = 0
 
 	bank_left_note = 25
@@ -60,7 +59,6 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_base):
 		super().__init__(state_manager, idev_in, idev_out)
 		self.midimix_bank = 0
 		self.chain_manager = self.state_manager.chain_manager
-		self.zyngui_mixer = self.zyngui.screens["audio_mixer"]
 
 	def init(self):
 		self.midimix_bank = 0
@@ -70,6 +68,17 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_base):
 		self.light_off()
 
 	# Update LED status
+	def update(self, chan, ctrl, value):
+		if self.idev_out <= 0 or chan > 7:
+			return
+		if ctrl == "record":
+			lib_zyncore.dev_send_note_on(self.idev_out, 0, self.rec_notes[chan], value)
+		elif ctrl == "mute":
+			lib_zyncore.dev_send_note_on(self.idev_out, 0, self.mute_notes[chan], value)
+		elif ctrl == "solo":
+			lib_zyncore.dev_send_note_on(self.idev_out, 0, self.solo_notes[chan], value)
+
+
 	def refresh(self, force = False):
 		if self.idev_out <= 0:
 			return
@@ -146,8 +155,6 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_base):
 				else:
 					val = 1
 				self.zynmixer.set_solo(index, val, True)
-				# Update Main "solo" control
-				self.zyngui_mixer.pending_refresh_queue.add((self.zyngui_mixer.main_mixbus_strip, 'solo'))
 				# Send LED feedback
 				lib_zyncore.dev_send_note_on(self.idev_out, 0, note, val)
 				return True
@@ -158,7 +165,6 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_base):
 				if index < len(self.zynmixer.zctrls):
 					if not self.rec_mode:
 						self.chain_manager.set_active_chain_by_index(index + 1)
-						self.zyngui_mixer.highlight_active_chain()
 					else:
 						chain = self.chain_manager.get_chain_by_index(index + 1)
 						self.state_manager.audio_recorder.toggle_arm(chain.midi_chan)
@@ -170,7 +176,7 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_base):
 			ccnum = (ev & 0x7F00) >> 8
 			ccval = (ev & 0x007F)
 			if ccnum == self.master_ccnum:
-				self.zyngui_mixer.main_mixbus_strip.zctrls['level'].set_value(ccval/127.0)
+				self.zynmixer.set_level(255, ccval / 127.0)
 				return True
 			elif ccnum in self.faders_ccnum:
 				index = self.faders_ccnum.index(ccnum)

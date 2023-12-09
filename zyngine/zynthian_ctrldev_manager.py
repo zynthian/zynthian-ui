@@ -56,6 +56,7 @@ class zynthian_ctrldev_manager():
         self.drivers = {}  # Map of device driver objects indexed by zmip
         self.update_available_drivers()
         self.seq_queue = None
+        self.mixer_queue = None
         self.thread = Thread(target=self.thread_task)
         self.thread.name = "Control Device Manager"
         self.thread.daemon = True  # thread dies with the program
@@ -70,6 +71,11 @@ class zynthian_ctrldev_manager():
                 for driver in self.drivers.values():
                     if driver.dev_zynpad:
                         driver.update_pad(seq, state, mode)
+            elif self.mixer_queue and not self.mixer_queue.empty():
+                chan, ctrl, value = self.mixer_queue.get(timeout=1)
+                for driver in self.drivers.values():
+                    if driver.dev_zynmixer:
+                        driver.update(chan, ctrl, value)
             else:
                 sleep(0.01)
 
@@ -100,13 +106,15 @@ class zynthian_ctrldev_manager():
         izmop = zynautoconnect.dev_in_2_dev_out(izmip)
         try:
             lib_zyncore.zmip_set_route_extdev(izmip, 0)
-            self.drivers[izmip] = self.available_drivers[device_type](self.state_manager, izmip, izmop)
+            self.drivers[izmip] = self.available_drivers[dev_id](self.state_manager, izmip, izmop)
             if self.seq_queue is None and self.drivers[izmip].dev_zynpad:
                 self.seq_queue = self.state_manager.register_seq()
-            logging.info(f"Loaded ctrldev driver {device_type}.")
+            if self.mixer_queue is None and self.drivers[izmip].dev_zynmixer:
+                self.mixer_queue = self.state_manager.register_mixer()
+            logging.info(f"Loaded ctrldev driver {dev_id}.")
             return True
         except Exception as e:
-            logging.error(f"Can't load ctrldev driver {device_type} => {e}")
+            logging.error(f"Can't load ctrldev driver {dev_id} => {e}")
             return False
 
     def unload_driver(self, izmip):
@@ -117,19 +125,25 @@ class zynthian_ctrldev_manager():
         """
 
         if izmip in self.drivers:
-            if self.drivers[izmip].dev_zynpad:
-                found = False
-                for driver in self.drivers.values():
-                    if driver.dev_zynpad:
-                        found = True
-                        break
-                if not found:
-                    self.state_manager.unregister_seq(self.seq_queue)
-                    self.seq_queue = None
-
+            # Unload driver
             self.drivers[izmip].end()
             self.drivers.pop(izmip)
             lib_zyncore.zmip_set_route_extdev(izmip, 1)
+
+            # Unregister if no more drivers loaded
+            found_seq = found_mixer = False
+            for driver in self.drivers.values():
+                if driver.dev_zynpad:
+                    found_seq = True
+                if driver.dev_zynmixer:
+                    found_mixer = True
+            if not found_seq:
+                self.state_manager.unregister_seq(self.seq_queue)
+                self.seq_queue = None
+            if not found_mixer:
+                self.state_manager.unregister_mixer(self.mixer_queue)
+                self.mixer_queue = None
+
             return True
         return False
 

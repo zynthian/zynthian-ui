@@ -107,6 +107,7 @@ class zynthian_state_manager:
         self.midi_learn_zctrl = None  # zctrl currently being learned
         self.sync = False  # True to request file system sync
         self.seq_queue = [] # List of queues for sequence state and mode change messages
+        self.mixer_queue = [] # List of queues for mixer state change messages
 
         self.hwmon_thermal_file = None
         self.hwmon_undervolt_file = None
@@ -180,6 +181,8 @@ class zynthian_state_manager:
         self.thread.name = "Status Manager MIDI"
         self.thread.daemon = True  # thread dies with the program
         self.thread.start()
+
+        self.zynmixer.set_ctrl_update_cb(self.mixer_cb)
 
         self.end_busy("start state")
 
@@ -508,6 +511,25 @@ class zynthian_state_manager:
             self.seq_queue.remove(queue)
         except:
             pass
+
+    # ----------------------------------------------------------------------------
+    # Mixer event queues
+    # ----------------------------------------------------------------------------
+
+    def register_mixer(self):
+        queue = SimpleQueue()
+        self.mixer_queue.append(queue)
+        return queue
+
+    def unregister_mixer(self, queue):
+        try:
+            self.mixer_queue.remove(queue)
+        except:
+            pass
+
+    def mixer_cb(self, chan, ctrl, value):
+        for q in self.mixer_queue:
+            q.put_nowait((chan, ctrl, value))
 
     # ----------------------------------------------------------------------------
     # Snapshot Save & Load
