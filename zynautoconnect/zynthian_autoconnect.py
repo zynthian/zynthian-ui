@@ -339,7 +339,7 @@ def midi_autoconnect():
 				if devices_out[i] is None:
 					devnum = i
 					devices_out[devnum] = hwdp
-					logger.debug("fConnected MIDI-out device {dev_num}: {hwdp.name}")
+					logger.debug(f"Connected MIDI-out device {dev_num}: {hwdp.name}")
 					break
 		if devnum is not None:
 			required_routes[hwdp.name].add(f"ZynMidiRouter:dev{devnum}_out")
