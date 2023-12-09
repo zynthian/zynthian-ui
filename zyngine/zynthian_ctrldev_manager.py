@@ -165,7 +165,7 @@ class zynthian_ctrldev_manager():
         ev - 32-bit MIDI event: [device] [cmd] [val1] [val2]
         """
         
-        idev = ((ev & 0xFF000000) >> 24) - 1
+        idev = (ev & 0xFF000000) >> 24
 
         # Try device driver ...
         if idev in self.drivers:

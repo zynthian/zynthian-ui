@@ -1877,6 +1877,7 @@ class zynthian_gui:
 					self.last_event_flag = True
 					continue
 
+				#idev = (ev & 0xFF000000) >> 24
 				evtype = (ev & 0xF00000) >> 20
 				chan = (ev & 0x0F0000) >> 16
 				#logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))

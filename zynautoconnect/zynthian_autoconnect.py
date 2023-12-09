@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-#********************************************************************
+# ********************************************************************
 # ZYNTHIAN PROJECT: Zynthian Autoconnector
 # 
 # Autoconnect Jack clients
 # 
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#********************************************************************
+# ********************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -20,22 +20,24 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#********************************************************************
+# ********************************************************************
 
-import os, re
-import jack, alsa_midi
-import logging
-from time import sleep
-from threading  import Thread, Lock
+import os
+import re
 import usb
+import jack
+import logging
+import alsa_midi
+from time import sleep
+from threading import Thread, Lock
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Configure logging
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 log_level = int(os.environ.get('ZYNTHIAN_LOG_LEVEL', logging.WARNING))
 
@@ -45,13 +47,14 @@ logger.setLevel(log_level)
 #if log_level==logging.DEBUG:
 #	import inspect
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Define some Constants and Global Variables
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 jclient = None					# JACK client
 aclient = None					# ALSA client
 thread = None					# Thread to check for changed MIDI ports
+lock = None						# Manage concurrence
 exit_flag = False				# True to exit thread
 paused_flag = False				# True id autoconnect task is paused
 state_manager = None			# State Manager object
@@ -60,20 +63,23 @@ xruns = 0						# Quantity of xruns since startup or last reset
 deferred_midi_connect = False 	# True to perform MIDI connect on next port check cycle
 deferred_audio_connect = False 	# True to perform audio connect on next port check cycle
 
-max_num_devs = 16				# Maximum quantity of hardware inputs
-devices_in = [None for i in range(max_num_devs)]	# List of hardware inputs
-devices_out = [None for i in range(max_num_devs)]	# List of hardware outputs
+# These variables are initialized in the init() function. These are "example values".
+max_num_devs = 16    # Max number of MIDI devices
+max_num_chains = 16  # Max number of chains
+devices_in = []      # List of MIDI input devices
+devices_out = []     # List of MIDI output devices
 
 # zyn_routed_* are used to avoid changing routes made by other jack clients
 zyn_routed_audio = {}			# Map of lists of audio sources routed by zynautoconnect, indexed by destination
 zyn_routed_midi = {}			# Map of lists of MIDI sources routed by zynautoconnect, indexed by destination
 
+midi_port_names = {}			# Map of user friendly names indexed by device uid (alias[0])
 host_usb_connected = False		# True if connected to host USB
 
-midi_port_names = {}			# Map of user friendly names indexed by device uid (alias[0])
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
-### MIDI port helper functions ###
+# MIDI port helper functions
+
 
 def get_friendly_name(uid):
 	"""Get port friendly name
@@ -86,8 +92,10 @@ def get_friendly_name(uid):
 		return midi_port_names[uid]
 	return None
 
+
 def get_ports(name, is_input=None):
 	return jclient.get_ports(name, is_input=is_input)
+
 
 def dev_in_2_dev_out(zmip):
 	"""Get index of output devices from its input device index
@@ -101,9 +109,11 @@ def dev_in_2_dev_out(zmip):
 	except:
 		return None
 
+
 def set_midi_port_names(port_names):
 	global midi_port_names
 	midi_port_names = port_names.copy()
+
 
 def get_port_aliases(midi_port):
 	"""Get port alias for a MIDI port
@@ -113,9 +123,10 @@ def get_port_aliases(midi_port):
 	"""
 
 	try:
-		return (midi_port.aliases[0], midi_port.aliases[1])
+		return midi_port.aliases[0], midi_port.aliases[1]
 	except:
-		return (midi_port.name, midi_port.name)
+		return midi_port.name, midi_port.name
+
 
 def get_port_from_name(name):
 	"""Get a JACK port from its name
@@ -128,6 +139,7 @@ def get_port_from_name(name):
 		return jclient.get_port_by_name(name)
 	except:
 		return None
+
 
 def get_midi_in_devid(idev):
 	"""Get the ALSA name of the port connected to ZMIP port
@@ -154,6 +166,7 @@ def get_midi_out_devid(idev):
 	except:
 		return None
 
+
 def get_midi_in_devid_by_uid(uid):
 	"""Get the index of the ZMIP connected to physical input
 	
@@ -178,9 +191,10 @@ def get_midi_out_devid_by_uid(uid):
 	return None
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
-def request_audio_connect(fast = False):
+
+def request_audio_connect(fast=False):
 	"""Request audio connection graph refresh
 
 	fast : True for fast update (default=False to trigger on next 2s cycle
@@ -194,7 +208,8 @@ def request_audio_connect(fast = False):
 		global deferred_audio_connect
 		deferred_audio_connect = True
 
-def request_midi_connect(fast = False):
+
+def request_midi_connect(fast=False):
 	"""Request MIDI connection graph refresh
 
 	fast : True for fast update (default=False to trigger on next 2s cycle
@@ -208,6 +223,7 @@ def request_midi_connect(fast = False):
 		global deferred_midi_connect
 		deferred_midi_connect = True
 
+
 def is_host_usb_connected():
 	"""Check if the USB host (e.g. USB-Type B connection) is connected
 
@@ -217,10 +233,11 @@ def is_host_usb_connected():
 	with open("/sys/class/udc/fe980000.usb/device/gadget/suspended") as f:
 		return f.read() != "1\n"
 
+
 def midi_autoconnect():
 	"""Connect all expected MIDI routes"""
 
-	#Get Mutex Lock
+	# Get Mutex Lock
 	if not acquire_lock():
 		return
 
@@ -233,11 +250,11 @@ def midi_autoconnect():
 	# Update aliases used to persistently uniquely identify physical ports
 	update_midi_port_aliases()
 	
-	#-----------------------------------------------------------
+	# -----------------------------------------------------------
 	# Get Input/Output MIDI Ports: 
 	#  - sources including physical inputs are jack outputs
 	#  - destinations including physical outputs are jack inputs
-	#-----------------------------------------------------------
+	# -----------------------------------------------------------
 
 	# List of physical MIDI source ports
 	hw_src_ports = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
@@ -289,7 +306,6 @@ def midi_autoconnect():
 		except:
 			pass
 
-
 	# Create graph of required chain routes as sets of sources indexed by destination
 	required_routes = {}
 	all_midi_dst = jclient.get_ports(is_input=True, is_midi=True)
@@ -324,7 +340,6 @@ def midi_autoconnect():
 			if state_manager.ctrldev_manager.unload_driver(i):
 				lib_zyncore.zmip_set_route_extdev(i, 1)
 
-
 	# Connect MIDI Output Devices
 	busy_idevs = []
 	for hwdp in hw_dst_ports:
@@ -352,7 +367,7 @@ def midi_autoconnect():
 			devices_out[i] = None
 
 	# Chain MIDI routing
-	#TODO: Handle processors with multiple MIDI ports
+	# TODO: Handle processors with multiple MIDI ports
 	for chain_id, chain in chain_manager.chains.items():
 		# Add chain internal routes
 		routes = chain_manager.get_chain_midi_routing(chain_id)
@@ -382,6 +397,7 @@ def midi_autoconnect():
 					required_routes[dst].add(src.name)
 
 		# Add MIDI router outputs
+		# TODO: Chains shouldn't be tied to hardcoded MIDI channels !!
 		if chain.is_midi():
 			src_ports = jclient.get_ports(f"ZynMidiRouter:ch{chain.midi_chan}_out", is_midi=True, is_output=True)
 			if src_ports:
@@ -392,14 +408,15 @@ def midi_autoconnect():
 						dst = dst_ports[0]
 						required_routes[dst.name].add(src.name)
 
-	#Connect zynseq (stepseq) output to ZynMidiRouter:step_in
+	# Connect zynseq output to ZynMidiRouter:step_in
 	required_routes["ZynMidiRouter:step_in"].add("zynseq:output")
 
-	#Connect zynsmf output to ZynMidiRouter:seq_in
+	# Connect zynsmf output to ZynMidiRouter:seq_in
 	required_routes["ZynMidiRouter:seq_in"].add("zynsmf:midi_out")
 
-	#Connect ZynMidiRouter:main_out to zynsmf input
-	required_routes["zynsmf:midi_in"].add("ZynMidiRouter:main_out")
+	# Connect chain's MIDI output to zynsmf input => Implement chain selection to record from zynsmf?
+	for i in range(max_num_chains):
+		required_routes["zynsmf:midi_in"].add(f"ZynMidiRouter:ch{i}_out")
 
 	# Add MIDI synth engine's controller-feedback to ZynMidiRouter:ctrl_in
 	for processor in chain_manager.processors.values():
@@ -410,19 +427,10 @@ def midi_autoconnect():
 			except:
 				pass
 
-	# => Set MIDI THRU
-	#TODO: Do we want to retain MIDI THRU now that we have MIDI chains that can pass thru with per device filtering?
-	lib_zyncore.set_midi_thru(zynthian_gui_config.midi_filter_output)
-
-	# Route MIDI-THRU output to enabled output ports
-	for port in hw_dst_ports:
-		# Connect ZynMidiRouter:midi_out to...
-		required_routes[port.name].add("ZynMidiRouter:midi_out")
-
-	#Connect ZynMidiRouter:step_out to ZynthStep input
+	# Connect ZynMidiRouter:step_out to ZynthStep input
 	required_routes["zynseq:input"].add("ZynMidiRouter:step_out")
 
-	#Connect ZynMidiRouter:ctrl_out to enabled MIDI-FB ports (MIDI-Controller FeedBack)
+	# Connect ZynMidiRouter:ctrl_out to enabled MIDI-FB ports (MIDI-Controller FeedBack)
 	for port in hw_dst_ports:
 		if get_port_aliases(port)[0] in zynthian_gui_config.enabled_midi_fb_ports:
 			required_routes[port.name].add("ZynMidiRouter:ctrl_out")
@@ -432,8 +440,7 @@ def midi_autoconnect():
 		if dst.startswith("effect_"):
 			required_routes.pop(dst)
 
-
-	### Connect and disconnect routes ###
+	# Connect and disconnect routes
 	for dst, sources in required_routes.items():
 		try:
 			current_routes = jclient.get_all_connections(dst)
@@ -459,12 +466,12 @@ def midi_autoconnect():
 			except:
 				pass
 
-	#Release Mutex Lock
+	# Release Mutex Lock
 	release_lock()
 
-def audio_autoconnect():
 
-	#Get Mutex Lock
+def audio_autoconnect():
+	# Get Mutex Lock
 	if not acquire_lock():
 		return
 
@@ -511,7 +518,7 @@ def audio_autoconnect():
 
 	# Connect mixer to the System Output
 	try:
-		#TODO: Support configurable output routing
+		# TODO: Support configurable output routing
 		required_routes[system_playback_ports[0].name].add("zynmixer:output_a")
 		required_routes[system_playback_ports[1].name].add("zynmixer:output_b")
 	except:
@@ -538,7 +545,6 @@ def audio_autoconnect():
 	if len(hp_ports) >= 2:
 		required_routes[hp_ports[0]] = required_routes[system_playback_ports[0].name]
 		required_routes[hp_ports[1]] = required_routes[system_playback_ports[1].name]
-
 
 	# Connect and disconnect routes
 	for dst, sources in required_routes.items():
@@ -567,7 +573,7 @@ def audio_autoconnect():
 			except:
 				pass
 
-	#Release Mutex Lock
+	# Release Mutex Lock
 	release_lock()
 
 
@@ -619,8 +625,8 @@ def get_audio_capture_ports():
 
 
 def build_midi_port_name(port):
+	name = port.shortname.split(':')[-1].strip()
 	try:
-		name = port.shortname.split(':')[-1].strip()
 		alsa_client_id = int(port.shortname.split('[')[1].split(']')[0])
 		# USB ports
 		card_id = aclient.get_client_info(alsa_client_id).card_id
@@ -646,7 +652,7 @@ def build_midi_port_name(port):
 def get_midi_port_aliases():
 	aliases = {}
 	for port in jclient.get_ports(is_midi=True):
-		try: #TODO: Do not include default names
+		try:  # TODO: Do not include default names
 			aliases[port.aliases[0]] = port.aliases[1]
 		except:
 			pass
@@ -657,7 +663,7 @@ def update_midi_port_aliases():
 	"""Ensure all physical jack ports have uid and friendly name in aliases 0 & 1
 	"""
 
-	#TODO: Optimise - should not rebuild all on every iteration
+	# TODO: Optimise - should not rebuild all on every iteration
 	for port in jclient.get_ports(is_physical=True, is_midi=True):
 		try:
 			alias1 = port.name
@@ -685,7 +691,7 @@ def update_midi_port_aliases():
 
 			# Set aliases
 			port.set_alias(alias1)
-			if alias1 in midi_port_names: # User defined names
+			if alias1 in midi_port_names:  # User defined names
 				port.set_alias(midi_port_names[alias1])
 			else:
 				if alias2:
@@ -723,6 +729,7 @@ def set_midi_port_alias(port_name, alias1, alias2=None, force=False):
 		midi_port_names[alias1] = alias2
 	except:
 		pass
+
 
 def set_port_friendly_name(port, friendly_name=None):
 	"""Set the friendly name for a JACK port
@@ -764,13 +771,12 @@ def auto_connect_thread():
 
 	global host_usb_connected
 
-	deferred_timeout = 2 # Period to run deferred connect (in seconds)
-	deferred_inc = 0.1 # Delay between loop cycles (in seconds) - allows faster exit from thread
-	deferred_count = 5 # Run at startup
+	deferred_timeout = 2  # Period to run deferred connect (in seconds)
+	deferred_inc = 0.1  # Delay between loop cycles (in seconds) - allows faster exit from thread
+	deferred_count = 5  # Run at startup
 	do_audio = False
 	do_midi = False
-	last_hw_devs = None # Fingerprint of MIDI ports used to check for change of ports
-	last_hw_change = 0
+	last_hw_devs = None  # Fingerprint of MIDI ports used to check for change of ports
 
 	while not exit_flag:
 		if not paused_flag:
@@ -838,20 +844,38 @@ def release_lock():
 		logging.warning("Attempted to release unlocked mutex")
 
 
+def init():
+	global max_num_devs, max_num_chains
+	global devices_in, devices_out
+
+	num_devs_in = lib_zyncore.zmip_get_num_devs()
+	num_devs_out = lib_zyncore.zmop_get_num_devs()
+	max_num_devs = min(num_devs_in, num_devs_out)
+	max_num_chains = lib_zyncore.zmop_get_num_chains()
+
+	logging.info(f"Initializing {max_num_devs} slots for MIDI devices")
+	while len(devices_in) < max_num_devs:
+		devices_in.append(None)
+	while len(devices_out) < max_num_devs:
+		devices_out.append(None)
+
+
 def start(sm):
 	"""Initialise autoconnect and start MIDI port checker
 	
 	sm : State manager object
 	"""
 
-	global refresh_time, exit_flag, jclient, aclient, thread, lock, chain_manager, state_manager
+	global exit_flag, jclient, aclient, thread, lock, chain_manager, state_manager
+
 	if jclient:
-		return # Already started
-	refresh_time = 2
+		return  # Already started
+
 	exit_flag = False
 	state_manager = sm
 	chain_manager = sm.chain_manager
-	
+	init()
+
 	try:
 		jclient = jack.Client("Zynthian_autoconnect")
 		jclient.set_xrun_callback(cb_jack_xrun)
@@ -873,7 +897,7 @@ def start(sm):
 	
 	# Start port change checking thread
 	thread = Thread(target=auto_connect_thread, args=())
-	thread.daemon = True # thread dies with the program
+	thread.daemon = True  # thread dies with the program
 	thread.name = "Autoconnect"
 	thread.start()
 	
@@ -895,13 +919,16 @@ def stop():
 		jclient.deactivate()
 		jclient = None
 
+
 def pause():
 	global paused_flag
 	paused_flag = True
 
+
 def resume():
 	global paused_flag
 	paused_flag = False
+
 
 def is_running():
 	"""Check if autoconnect thread is running
@@ -945,4 +972,4 @@ def get_jackd_blocksize():
 	return jclient.blocksize
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
