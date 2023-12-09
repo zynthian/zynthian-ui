@@ -32,6 +32,7 @@ from threading import Thread
 from subprocess import check_output
 from json import JSONEncoder, JSONDecoder
 from os.path import basename, isdir, isfile, join, dirname, splitext
+from queue import SimpleQueue
 
 # Zynthian specific modules
 import zynconf
@@ -50,7 +51,7 @@ from zyngine import zynthian_midi_filter
 from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 
 from zyngui import zynthian_gui_config
-from zyngui.zynthian_ctrldev_manager import zynthian_ctrldev_manager
+from zyngine.zynthian_ctrldev_manager import zynthian_ctrldev_manager
 
 # ----------------------------------------------------------------------------
 # Zynthian State Manager Class
@@ -105,6 +106,9 @@ class zynthian_state_manager:
         self.midi_learn_pc = None  # When ZS3 Program Change MIDI learning is enabled, the name used for creating new ZS3, empty string for auto-generating a name. None when disabled.
         self.midi_learn_zctrl = None  # zctrl currently being learned
         self.sync = False  # True to request file system sync
+        self.seq_queue = [] # List of queues for sequence state and mode change messages
+        self.mixer_queue = [] # List of queues for mixer state change messages
+        self.cuia_queue = [] # List of queues for GUI (CUIA) change messages
 
         self.hwmon_thermal_file = None
         self.hwmon_undervolt_file = None
@@ -167,6 +171,7 @@ class zynthian_state_manager:
 
         zynautoconnect.start(self)
         self.zynmixer.reset_state()
+        self.ctrldev_manager = zynthian_ctrldev_manager(self)
         self.reload_midi_config()
         self.create_audio_player()
         zynautoconnect.request_midi_connect(True)
@@ -177,6 +182,8 @@ class zynthian_state_manager:
         self.thread.name = "Status Manager MIDI"
         self.thread.daemon = True  # thread dies with the program
         self.thread.start()
+
+        self.zynmixer.set_ctrl_update_cb(self.mixer_cb)
 
         self.end_busy("start state")
 
@@ -196,7 +203,8 @@ class zynthian_state_manager:
         self.chain_manager.remove_all_chains(True)
         self.reset_zs3()
         self.zynseq.load("")
-        self.ctrldev_manager.refresh_all(True)
+        for izmip in list(self.ctrldev_manager.drivers):
+            self.ctrldev_manager.unload_driver(izmip)
         self.destroy_audio_player()
         zynautoconnect.stop()
 
@@ -232,7 +240,6 @@ class zynthian_state_manager:
         self.zynseq.load("")
         self.zynmixer.reset_state()
         self.reload_midi_config()
-        self.ctrldev_manager.refresh_all(True)
         zynautoconnect.request_midi_connect(True)
         zynautoconnect.request_audio_connect(True)
         zynautoconnect.resume()
@@ -455,6 +462,14 @@ class zynthian_state_manager:
                 # MIDI Recorder
                 self.status_midi_recorder = libsmf.isRecording()
 
+                # Sequencer
+                for seq in range(self.zynseq.col_in_bank ** 2):
+                    if self.zynseq.libseq.hasSequenceChanged(self.zynseq.bank, seq):
+                        mode = self.zynseq.libseq.getPlayMode(self.zynseq.bank, seq)
+                        state = self.zynseq.libseq.getPlayState(self.zynseq.bank, seq)
+                        for q in self.seq_queue:
+                            q.put_nowait((self.zynseq.bank, seq, state, mode))                   
+
                 # Clean some status flags
                 if xruns_status:
                     self.status_xrun = False
@@ -482,6 +497,59 @@ class zynthian_state_manager:
                 logging.exception(e)
 
             sleep(tsleep)
+
+    # ----------------------------------------------------------------------------
+    # Sequencer event queues
+    # ----------------------------------------------------------------------------
+
+    def register_seq(self):
+        queue = SimpleQueue()
+        self.seq_queue.append(queue)
+        return queue
+
+    def unregister_seq(self, queue):
+        try:
+            self.seq_queue.remove(queue)
+        except:
+            pass
+
+    # ----------------------------------------------------------------------------
+    # Mixer event queues
+    # ----------------------------------------------------------------------------
+
+    def register_mixer(self):
+        queue = SimpleQueue()
+        self.mixer_queue.append(queue)
+        return queue
+
+    def unregister_mixer(self, queue):
+        try:
+            self.mixer_queue.remove(queue)
+        except:
+            pass
+
+    def mixer_cb(self, chan, ctrl, value):
+        for q in self.mixer_queue:
+            q.put_nowait((chan, ctrl, value))
+
+    # ----------------------------------------------------------------------------
+    # CUIA event queues
+    # ----------------------------------------------------------------------------
+
+    def register_cuia(self):
+        queue = SimpleQueue()
+        self.cuia_queue.append(queue)
+        return queue
+
+    def unregister_cuia(self, queue):
+        try:
+            self.cuia_queue.remove(queue)
+        except:
+            pass
+
+    def send_cuia(self, cuia, params=None):
+        for q in self.cuia_queue:
+            q.put_nowait((cuia, params))
 
     # ----------------------------------------------------------------------------
     # Snapshot Save & Load
@@ -623,9 +691,6 @@ class zynthian_state_manager:
                 # Restore MIDI profile state
                 if "midi_profile_state" in state:
                     self.set_midi_profile_state(state["midi_profile_state"])
-
-            # Refresh all devices
-            self.ctrldev_manager.refresh_all(True)
 
             if fpath == self.last_snapshot_fpath and "last_state_fpath" in state:
                 self.last_snapshot_fpath = state["last_snapshot_fpath"]
@@ -1107,70 +1172,66 @@ class zynthian_state_manager:
 
     def get_midi_capture_state(self):
         # Get UI control devices
-        ctrldev_ids = self.ctrldev_manager.get_state()
+        ctrldev_ids = self.ctrldev_manager.drivers
 
         # Get zmips flags and chain routing
-        zmip_acti_flags = []
-        zmip_omni_flags = []
-        zmip_routed_chans = []
-        for i in range(0, 17):
-            zmip_acti_flags.append(bool(lib_zyncore.zmip_get_flag_active_chan(i)))
-            zmip_omni_flags.append(bool(lib_zyncore.zmip_get_flag_omni_chan(i)))
-            zmip_routed_chans.append([])
+        mcstate = {}
+        for i in range(18):
+            if i < 16:
+                if zynautoconnect.devices_in[i] is None:
+                    continue
+                uid = zynautoconnect.devices_in[i].aliases[0]
+            else:
+                uid = ["ZynMidiRouter:net_out", "ZynMaster:midi_out"][i - 16]
+            mcd = {
+                "zmip_flags": 0,
+                "ctrkdev_ids": [],
+                "routed_chans": 0
+                    }
+            if lib_zyncore.zmip_get_flag_active_chan(i):
+                mcd["zmip_flags"] |= 1 << 0
+            if lib_zyncore.zmip_get_flag_omni_chan(i):
+                mcd["zmip_flags"] |= 1 << 1
+            if i not in ctrldev_ids:
+                mcd["zmip_flags"] |= 1 << 2
+            routed_chans = 0
             for ch in range(0, 16):
-                zmip_routed_chans[i].append(bool(lib_zyncore.zmop_get_route_from(ch, i)))
+                if (lib_zyncore.zmop_get_route_from(ch, i)):
+                    routed_chans |= (1 << ch)
+            mcd["routed_chans"] = routed_chans
+            mcstate[uid] = mcd
 
-        # Return dictionary with results
-        mcstate = {
-            "dev_ids": zynautoconnect.devices_in,
-            "ctrldev_ids": ctrldev_ids,
-            "zmip_acti_flags": zmip_acti_flags,
-            "zmip_omni_flags": zmip_omni_flags,
-            "zmip_routed_chans": zmip_routed_chans
-        }
         return mcstate
 
     def set_midi_capture_state(self, mcstate=None):
         if mcstate:
             # Restore UI control devices
-            try:
-                self.ctrldev_manager.set_state(mcstate["ctrldev_ids"])
-            except Exception as e:
-                logging.error(f"Can't restore control device state ({e})")
-
-            dev_ids = mcstate["dev_ids"]
-            zmip_acti_flags = mcstate["zmip_acti_flags"]
-            zmip_omni_flags = mcstate["zmip_omni_flags"]
-            zmip_routed_chans = mcstate["zmip_routed_chans"]
-            for i in range(0, 17):
-                # MIDI-input devices
-                if i < 16:
-                    # If no device, continue with next device
-                    dev_id = dev_ids[i]
-                    if not dev_id:
-                        continue
-                    # Find a matching device (j) currently connected
-                    try:
-                        j = zynautoconnect.devices_in.index(dev_id)
-                    except:
-                        continue
-                # Network MIDI-input
+            ctrldev_ids = []
+            for uid, state in mcstate.items():
+                try:
+                    zmip = zynautoconnect.get_midi_in_devid_by_uid(uid)
+                except:
+                    continue
+                zmip_flags = int(state["zmip_flags"])
+                lib_zyncore.zmip_set_flag_active_chan(zmip, bool(zmip_flags & (1 << 0)))
+                lib_zyncore.zmip_set_flag_omni_chan(zmip, bool(zmip_flags & (1 << 1)))
+                if zmip_flags & (1 << 2):
+                    # Bit 2 used to disable (automatic) driver loading
+                    self.ctrldev_manager.unload_driver(zmip)
                 else:
-                    j = i
-
-                # Set zmip flags
-                lib_zyncore.zmip_set_flag_active_chan(j, int(zmip_acti_flags[i]))
-                lib_zyncore.zmip_set_flag_omni_chan(j, int(zmip_omni_flags[i]))
+                    self.ctrldev_manager.load_driver(zmip)
 
                 # Route zmops (chans)
+                routed_chans = int(state["routed_chans"])
                 for ch in range(0, 16):
-                    lib_zyncore.zmop_set_route_from(ch, j, int(zmip_routed_chans[i][ch]))
+                    lib_zyncore.zmop_set_route_from(ch, zmip, routed_chans & 1)
+                    routed_chans >>= 1
 
         else:
             self.reset_midi_capture_state()
 
     def reset_midi_capture_state(self):
-        for i in range(0, 17):
+        for i in range(0, 18):
             # Set zmip flags
             lib_zyncore.zmip_set_flag_active_chan(i, 1)
             lib_zyncore.zmip_set_flag_omni_chan(i, 0)
@@ -1246,7 +1307,7 @@ class zynthian_state_manager:
             logging.error(f"ERROR initializing MIDI : {e}")
 
     def reload_midi_config(self):
-        """Reload MII configuration from saved state"""
+        """Reload MIDI configuration from saved state"""
 
         zynconf.load_config()
         midi_profile_fpath = zynconf.get_midi_config_fpath()
@@ -1263,6 +1324,7 @@ class zynthian_state_manager:
         self.default_rtpmidi()
         self.default_qmidinet()
         self.default_touchosc()
+        self.default_bluetooth()
         self.default_aubionotes()
 
     # -------------------------------------------------------------------
@@ -1276,6 +1338,7 @@ class zynthian_state_manager:
         for key in os.environ.keys():
             if key.startswith("ZYNTHIAN_MIDI_"):
                 midi_profile_state[key[14:]] = os.environ[key]
+        midi_profile_state["port_names"] = zynautoconnect.get_midi_port_aliases()
         return midi_profile_state
 
     def set_midi_profile_state(self, state):
@@ -1286,10 +1349,10 @@ class zynthian_state_manager:
 
         if state is not None:
             for key in state:
-                if key.startswith("MASTER_"):
-                    # Drop Master Channel config, as it's global
-                    continue
-                os.environ["ZYNTHIAN_MIDI_" + key] = state[key]
+                if key == "port_names":
+                    zynautoconnect.set_midi_port_names(state[key])
+                elif not key.startswith("MASTER_"): # Drop Master Channel config, as it's global
+                    os.environ["ZYNTHIAN_MIDI_" + key] = state[key]
             zynthian_gui_config.set_midi_config()
             self.init_midi()
             self.init_midi_services()
@@ -1300,15 +1363,6 @@ class zynthian_state_manager:
         """Clear MIDI profiles"""
 
         self.reload_midi_config()
-
-    # ---------------------------------------------------------------------------
-    # Control Device Manager
-    # ---------------------------------------------------------------------------
-
-    def create_ctrldev_manager(self):
-        """Create and initialize Control Device Manager"""
-
-        self.ctrldev_manager = zynthian_ctrldev_manager()
 
     # ---------------------------------------------------------------------------
     # Global Audio Player
@@ -1383,20 +1437,19 @@ class zynthian_state_manager:
             except:
                 filename = "jack_capture"
 
-            exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
-            if exdirs is None:
-                midir = capture_dir_sdc
-            else:
+            exdirs = zynthian_gui_config.get_external_storage_dirs(ex_data_dir)
+            if exdirs:
                 midir = exdirs[0]
+            else:
+                midir = capture_dir_sdc
 
             n = 1
-            for fn in sorted(os.listdir(midir)):
-                if fn.lower().endswith(".mid"):
-                    try:
-                        n = int(fn[:3]) + 1
-                    except:
-                        pass
-            fpath = f"{dir}/{n:03}-{filename}.mid"
+            for fn in glob(f"{midir}/*mid"):
+                try:
+                    n = int(fn[:3]) + 1
+                except:
+                    pass
+            fpath = f"{midir}/{n:03}-{filename}.mid"
 
             if zynsmf.save(self.smf_recorder, fpath):
                 self.sync = True
@@ -1418,14 +1471,12 @@ class zynthian_state_manager:
             else:
                 # Get latest file
                 latest_mtime = 0
-                for midir in [capture_dir_sdc] + zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
-                    for fn in os.listdir(midir):
-                        fp = join(midir, fn)
-                        if isfile(fp) and fn[-4:] == '.mid':
-                            mtime = os.path.getmtime(fp)
-                            if mtime > latest_mtime:
-                                fpath = fp
-                                latest_mtime = mtime
+                for dir in [capture_dir_sdc] + zynthian_gui_config.get_external_storage_dirs(ex_data_dir):
+                    for fn in glob(f"{dir}//*.mid"):
+                        mtime = os.path.getmtime(fn)
+                        if mtime > latest_mtime:
+                            fpath = fn
+                            latest_mtime = mtime
 
         if fpath is None:
             logging.info("No track to play!")
@@ -1673,7 +1724,7 @@ class zynthian_state_manager:
                     "ZYNTHIAN_MIDI_RTPMIDI_ENABLED": str(zynthian_gui_config.midi_rtpmidi_enabled)
                 })
             # Call autoconnect after a little time
-            zynautoconnect.request_midi_connect()
+            zynautoconnect.request_midi_connect(True)
         except Exception as e:
             logging.error(e)
             self.set_busy_error("ERROR STARTING RTP-MIDI", e)
@@ -1712,7 +1763,7 @@ class zynthian_state_manager:
                     "ZYNTHIAN_MIDI_NETWORK_ENABLED": str(zynthian_gui_config.midi_network_enabled)
                 })
             # Call autoconnect after a little time
-            zynautoconnect.request_midi_connect()
+            zynautoconnect.request_midi_connect(True)
         except Exception as e:
             logging.error(e)
             self.set_busy_error("ERROR STARTING QMidiNet", e)
@@ -1757,7 +1808,7 @@ class zynthian_state_manager:
                     "ZYNTHIAN_MIDI_TOUCHOSC_ENABLED": str(zynthian_gui_config.midi_touchosc_enabled)
                 })
             # Call autoconnect after a little time
-            zynautoconnect.request_midi_connect()
+            zynautoconnect.request_midi_connect(True)
         except Exception as e:
             logging.error(e)
             self.set_busy_error("ERROR STARTING Touch-OSC", e)
@@ -1790,12 +1841,57 @@ class zynthian_state_manager:
         else:
             self.stop_touchosc2midi(False)
 
+    def start_bluetooth(self, save_config=True):
+        self.start_busy("start_bluetooth", "starting Bluetooth")
+        logging.info("STARTING Bluetooth")
+        try:
+            check_output("systemctl start bluetooth", shell=True)
+            zynthian_gui_config.bluetooth_enabled = 1
+            # Update MIDI profile
+            if save_config:
+                zynconf.update_midi_profile({
+                    "ZYNTHIAN_MIDI_BLE_ENABLED": str(zynthian_gui_config.bluetooth_enabled)
+                })
+            # Call autoconnect after a little time
+            zynautoconnect.request_midi_connect(True)
+        except Exception as e:
+            logging.error(e)
+            self.set_busy_error("ERROR STARTING Bluetooth", e)
+            sleep(2.0)
+
+        self.end_busy("start_bluetooth")
+
+    def stop_bluetooth(self, save_config=True):
+        self.start_busy("stop_bluetooth", "stopping Bluetooth")
+        logging.info("STOPPING bluetooth")
+        try:
+            check_output("systemctl stop bluetooth", shell=True)
+            zynthian_gui_config.bluetooth_enabled = 0
+            # Update MIDI profile
+            if save_config:
+                zynconf.update_midi_profile({
+                    "ZYNTHIAN_MIDI_BLE_ENABLED": str(zynthian_gui_config.bluetooth_enabled)
+                })
+        except Exception as e:
+            logging.error(e)
+            self.set_busy_error("ERROR STOPPING Bluetooth", e)
+            sleep(2.0)
+
+        self.end_busy("stop_bluetooth")
+
+    # Start/Stop Bluetooth depending on configuration
+    def default_bluetooth(self):
+        if zynthian_gui_config.bluetooth_enabled:
+            self.start_bluetooth(False)
+        else:
+            self.stop_bluetooth(False)
+
+
     def start_aubionotes(self, save_config=True):
         self.start_busy("start_aubionotes", "starting AubioNotes")
         logging.info("STARTING aubionotes")
         try:
             check_output("systemctl start aubionotes", shell=True)
-            zynautoconnect.set_midi_port_alias("aubio", "Audio => MIDI", True)
             zynthian_gui_config.midi_aubionotes_enabled = 1
             # Update MIDI profile
             if save_config:
@@ -1803,7 +1899,7 @@ class zynthian_state_manager:
                     "ZYNTHIAN_MIDI_AUBIONOTES_ENABLED": str(zynthian_gui_config.midi_aubionotes_enabled)
                 })
             # Call autoconnect after a little time
-            zynautoconnect.request_midi_connect()
+            zynautoconnect.request_midi_connect(True)
             zynautoconnect.request_audio_connect()
         except Exception as e:
             logging.error(e)

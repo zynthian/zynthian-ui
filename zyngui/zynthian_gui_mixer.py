@@ -27,6 +27,7 @@
 import os
 import tkinter
 import logging
+from queue import SimpleQueue
 
 # Zynthian specific modules
 import zynautoconnect
@@ -224,7 +225,7 @@ class zynthian_gui_mixer_strip():
 			self.parent.main_canvas.itemconfig(self.status_indicator, text=f"{self.chain.status}\uf111", fill=self.high_color)
 		else:
 			self.parent.main_canvas.itemconfig(self.status_indicator, text=self.chain.status, fill="#009000")
-	
+
 
 	# Function to draw the DPM level meter for a mixer strip
 	def draw_dpm(self):
@@ -715,7 +716,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		super().__init__(has_backbutton=False)
 
 		self.zynmixer = self.zyngui.state_manager.zynmixer
-		self.zynmixer.set_ctrl_update_cb(self.ctrl_change_cb)
 		self.zynmixer.set_midi_learn_cb(self.exit_midi_learn)
 		self.MAIN_MIXBUS_STRIP_INDEX = self.zynmixer.get_max_channels()
 		self.chan2strip = [None] * (self.MAIN_MIXBUS_STRIP_INDEX + 1)
@@ -776,6 +776,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.set_title()
 		self.refresh_visible_strips()
+		#self.mixer_queue = self.zyngui.state_manager.register_mixer()
 
 	def init_dpmeter(self):
 		self.dpm_a = self.dpm_b = None
@@ -820,6 +821,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to refresh screen (slow)
 	def refresh_status(self):
+		"""
+		while not self.mixer_queue.empty():
+			ev = self.mixer_queue.get_nowait()
+			# ev: (chan, ctrl, value)
+			if ev[0] is not None:
+				self.pending_refresh_queue.add((self.chan2strip[ev[0]], ev[1]))
+				self.pending_refresh_queue.add((self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX], "solo"))
+		"""
 		if self.shown:
 			super().refresh_status()
 			self.main_mixbus_strip.draw_dpm()
@@ -838,6 +847,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if ctrl[0]:
 				ctrl[0].draw_control(ctrl[1])
 
+	# Function to add control to be updated (fast)
+	def update_control(self, chan, symbol):
+		self.pending_refresh_queue.add((self.chan2strip[chan], symbol))
+		self.pending_refresh_queue.add((self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX], "solo"))
 
 	#--------------------------------------------------------------------------
 	# Mixer Functionality
@@ -1047,12 +1060,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return
 			self.mixer_strip_offset += 1
 		self.highlight_active_chain()
-
-
-	def ctrl_change_cb(self, chan, ctrl, value):
-		if chan is not None:
-			self.pending_refresh_queue.add((self.chan2strip[chan], ctrl))
-			self.pending_refresh_queue.add((self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX], "solo"))
 
 	# --------------------------------------------------------------------------
 	# Control device

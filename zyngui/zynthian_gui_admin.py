@@ -91,7 +91,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			else:
 				self.list_data.append((self.toggle_midi_sys, 0, "\u2610 MIDI System Messages"))
 
-		self.list_data.append((self.zyngui.bluetooth_config, 0, "Bluetooth MIDI"))
+		self.list_data.append((self.zyngui.midi_in_config, 0, "MIDI Input Devices"))
+		self.list_data.append((self.zyngui.midi_out_config, 0, "MIDI Output Devices"))
 		self.list_data.append((self.midi_profile, 0, "MIDI Profile"))
 
 		self.list_data.append((None, 0, "> AUDIO"))
@@ -112,11 +113,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.toggle_dpm, 0, "\u2610 Mixer Peak Meters"))
 
-		if zynconf.is_service_active("aubionotes"):
-			self.list_data.append((self.state_manager.stop_aubionotes, 0, "\u2612 AubioNotes (Audio2MIDI)"))
-		else:
-			self.list_data.append((self.state_manager.start_aubionotes, 0, "\u2610 AubioNotes (Audio2MIDI)"))
-
 		self.list_data.append((None, 0, "> NETWORK"))
 
 		self.list_data.append((self.network_info, 0, "Network Info"))
@@ -134,21 +130,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.state_manager.stop_vncserver, 0, "\u2612 VNC Server"))
 		else:
 			self.list_data.append((self.state_manager.start_vncserver, 0, "\u2610 VNC Server"))
-
-		if zynconf.is_service_active("jackrtpmidid"):
-			self.list_data.append((self.state_manager.stop_rtpmidi, 0, "\u2612 RTP-MIDI"))
-		else:
-			self.list_data.append((self.state_manager.start_rtpmidi, 0, "\u2610 RTP-MIDI"))
-
-		if zynconf.is_service_active("qmidinet"):
-			self.list_data.append((self.state_manager.stop_qmidinet, 0, "\u2612 QmidiNet (IP Multicast)"))
-		else:
-			self.list_data.append((self.state_manager.start_qmidinet, 0, "\u2610 QmidiNet (IP Multicast)"))
-
-		if zynconf.is_service_active("touchosc2midi"):
-			self.list_data.append((self.state_manager.stop_touchosc2midi, 0, "\u2612 TouchOSC MIDI Bridge"))
-		else:
-			self.list_data.append((self.state_manager.start_touchosc2midi, 0, "\u2610 TouchOSC MIDI Bridge"))
 
 		self.list_data.append((None, 0, "> SETTINGS"))
 		if self.zyngui.screens["brightness_config"].get_num_zctrls() > 0:

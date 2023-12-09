@@ -27,8 +27,7 @@
 import logging
 
 # Zynthian specific modules
-from zyngui import zynthian_gui_config
-from zyngui.zynthian_ctrldev_manager import zynthian_ctrldev_zynpad
+from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 
@@ -36,7 +35,7 @@ from zynlibs.zynseq import zynseq
 # Novation Launchkey Mini MK3
 # ------------------------------------------------------------------------------------------------------------------
 
-class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad):
+class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer):
 
 	dev_ids = ["Launchkey Mini MK3 MIDI 2"]
 
@@ -47,6 +46,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad):
 
 	def init(self):
 		# Enable session mode on launchkey
+		self.shift = False
 		lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 127)
 		self.refresh_zynpad_bank()
 
@@ -67,18 +67,18 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad):
 					lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
 				else:
 					pad = self.zynseq.col_in_bank * col + row
-					state = self.zynseq.libseq.getPlayState(self.zynpad.bank, pad)
-					mode = self.zynseq.libseq.getPlayMode(self.zynpad.bank, pad)
+					state = self.zynseq.libseq.getPlayState(self.zynseq.bank, pad)
+					mode = self.zynseq.libseq.getPlayMode(self.zynseq.bank, pad)
 					self.update_pad(pad, state, mode)
 
 
 	def update_pad(self, pad, state, mode):
-		col, row = self.zynpad.get_xy_from_pad(pad)
+		col, row = self.zynseq.get_xy_from_pad(pad)
 		if row > 1:
 			return
 		note = 96 + row * 16 + col
 		try:
-			group = self.zynseq.libseq.getGroup(self.zynpad.bank, pad)
+			group = self.zynseq.libseq.getGroup(self.zynseq.bank, pad)
 			if mode == 0 or group > 16:
 				chan = 0
 				vel = 0
@@ -122,52 +122,44 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad):
 					row = (note - 96) % 16
 					pad = row * self.zynseq.col_in_bank + col
 					if pad < self.zynseq.seq_in_bank:
-						self.zynseq.libseq.togglePlayState(self.zynpad.bank, pad)
+						self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
 				except:
 					pass
 		elif evtype == 0xB:
+			if val1 > 20 and val1 < 29:
+				self.zynmixer.set_level(val1 - 21, val2 / 127.0)
+			elif val1 == 0x6C:
+				# SHIFT
+				self.shift = val2 != 0
+			elif val2 == 0:
+				return True
 			if val1 == 0x68:
-				pass
+				# UP
+				self.state_manager.send_cuia("ARROW_UP")
 			elif val1 == 0x69:
-				pass
+				# DOWN
+				self.state_manager.send_cuia("ARROW_DOWN")
 			elif val1 == 0x73:
-				if val2:
-					self.zyngui.cuia_toggle_play()
+				# PLAY
+				if self.shift:
+					self.state_manager.send_cuia("TOGGLE_MIDI_PLAY")
+				else:
+					self.state_manager.send_cuia("TOGGLE_AUDIO_PLAY")
 			elif val1 == 0x75:
-				if val2:
-					self.zyngui.cuia_toggle_record()
-			elif val1 == 0x75:
-				pass
+				# RECORD
+				if self.shift:
+					self.state_manager.send_cuia("TOGGLE_MIDI_RECORD")
+				else:
+					self.state_manager.send_cuia("TOGGLE_AUDIO_RECORD")
+			elif val1 == 0x66:
+				# TRACK RIGHT
+				self.state_manager.send_cuia("ARROW_RIGHT")
 			elif val1 == 0x67:
-				pass
-			elif val1 == 0x67:
-				pass
-			#self.logging_debug_cc(val1, val2)
+				# TRACK LEFT
+				self.state_manager.send_cuia("ARROW_LEFT")
 		elif evtype == 0xC:
-			self.zynpad.set_bank(val1 + 1)
+			self.zynseq.select_bank(val1 + 1)
 
 		return True
-
-	def logging_debug_cc(self, ccnum, ccval):
-		if ccnum >= 0x15 and ccnum <= 0x1C:
-			logging.debug(f"KNOB {ccnum - 0x14}: {ccval}")
-		else:
-			cc_names = {
-				"UP": 0x68,
-				"DOWN": 0x69,
-				"PLAY": 0x73,
-				"RECORD": 0x74, # This was 0x75 too but it's repeated!
-				"SHIFT": 0x75,
-				"TRACK LEFT": 0x67,
-				"TRACK RIGHT": 0x67
-			}
-			try:
-				cc_name = list(cc_names.keys())[list(cc_names.values()).index(ccnum)]
-			except:
-				cc_name = f"{ccnum:02x}"
-			if ccval > 0:
-				logging.debug(f"{cc_name} PRESSED")
-			else:
-				logging.debug(f"{cc_name} RELEASED")
 
 #------------------------------------------------------------------------------

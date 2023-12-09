@@ -64,9 +64,8 @@ from zyngui.zynthian_gui_midi_cc import zynthian_gui_midi_cc
 from zyngui.zynthian_gui_midi_prog import zynthian_gui_midi_prog
 from zyngui.zynthian_gui_midi_key_range import zynthian_gui_midi_key_range
 from zyngui.zynthian_gui_audio_out import zynthian_gui_audio_out
-from zyngui.zynthian_gui_midi_out import zynthian_gui_midi_out
+from zyngui.zynthian_gui_midi_config import zynthian_gui_midi_config
 from zyngui.zynthian_gui_audio_in import zynthian_gui_audio_in
-from zyngui.zynthian_gui_midi_in import zynthian_gui_midi_in
 from zyngui.zynthian_gui_bank import zynthian_gui_bank
 from zyngui.zynthian_gui_preset import zynthian_gui_preset
 from zyngui.zynthian_gui_control import zynthian_gui_control
@@ -87,7 +86,7 @@ from zyngui.zynthian_gui_brightness_config import zynthian_gui_brightness_config
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
-from zyngui.zynthian_gui_bluetooth import zynthian_gui_bluetooth
+
 
 MIXER_MAIN_CHANNEL = 256  # TODO This constant should go somewhere else
 
@@ -122,11 +121,14 @@ class zynthian_gui:
 
 		self.screen_lock = Lock()  # Lock object to avoid concurrence problems when showing/closing screens
 
+		self.state_manager = zynthian_state_manager.zynthian_state_manager()
+		self.chain_manager = self.state_manager.chain_manager
+
 		self.busy_thread = None
 		self.control_thread = None
 		self.status_thread = None
 		self.cuia_thread = None
-		self.cuia_queue = SimpleQueue()
+		self.cuia_queue = self.state_manager.register_cuia()
 		self.zynread_wait_flag = False
 		self.zynpot_thread = None
 		self.zynpot_event = Event()
@@ -139,8 +141,6 @@ class zynthian_gui:
 
 		self.status_counter = 0
 
-		self.state_manager = zynthian_state_manager.zynthian_state_manager()
-		self.chain_manager = self.state_manager.chain_manager
 		self.modify_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
 
 		self.capture_log_ts0 = None
@@ -358,7 +358,7 @@ class zynthian_gui:
 			if self.state_manager.is_busy():
 				logging.debug("BUSY! Ignoring OSC CUIA '{}' => {}".format(cuia, args))
 				return
-			self.cuia_queue.put_nowait([cuia, args])
+			self.cuia_queue.put_nowait((cuia, args))
 			# Run autoconnect if needed
 			zynautoconnect.request_audio_connect()
 			zynautoconnect.request_midi_connect()
@@ -419,9 +419,8 @@ class zynthian_gui:
 		self.screens['midi_prog'] = zynthian_gui_midi_prog()
 		self.screens['midi_key_range'] = zynthian_gui_midi_key_range()
 		self.screens['audio_out'] = zynthian_gui_audio_out()
-		self.screens['midi_out'] = zynthian_gui_midi_out()
 		self.screens['audio_in'] = zynthian_gui_audio_in()
-		self.screens['midi_in'] = zynthian_gui_midi_in()
+		self.screens['midi_config'] = zynthian_gui_midi_config()
 		self.screens['bank'] = zynthian_gui_bank()
 		self.screens['preset'] = zynthian_gui_preset()
 		self.screens['control'] = zynthian_gui_control()
@@ -432,7 +431,6 @@ class zynthian_gui:
 		self.screens['tempo'] = zynthian_gui_tempo()
 		self.screens['admin'] = zynthian_gui_admin()
 		self.screens['audio_mixer'] = zynthian_gui_mixer()
-		self.screens['bluetooth'] = zynthian_gui_bluetooth()
 
 		# Create the right main menu screen
 		if zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
@@ -468,10 +466,6 @@ class zynthian_gui:
 
 		# Start VNC as configured
 		self.state_manager.default_vncserver()
-
-		# Initialize Control device Manager
-		self.state_manager.create_ctrldev_manager()
-		self.ctrldev_manager = self.state_manager.ctrldev_manager
 
 		# Initialize OSC
 		self.osc_init()
@@ -775,8 +769,15 @@ class zynthian_gui:
 	def brightness_config(self):
 		self.show_screen('brightness_config')
 
-	def bluetooth_config(self):
-		self.show_screen('bluetooth')
+	def midi_in_config(self):
+		self.screens['midi_config'].set_chain(None)
+		self.screens['midi_config'].input = True
+		self.show_screen('midi_config')
+
+	def midi_out_config(self):
+		self.screens['midi_config'].set_chain(None)
+		self.screens['midi_config'].input = False
+		self.show_screen('midi_config')
 
 	def modify_chain(self, status=None):  # TODO: Rename - this is called for various chain manipulation purposes
 		"""Manage the stages of adding or changing a processor or chain
@@ -1159,7 +1160,7 @@ class zynthian_gui:
 		try:
 			i = params[0]
 			d = params[1]
-			self.cuia_queue.put_nowait(["zynswitch", [i, d]])
+			self.cuia_queue.put_nowait(("zynswitch", (i, d)))
 		except IndexError:
 			logging.error("zynswitch requires 2 parameters: index, delta, not {params}")
 			return
@@ -1583,7 +1584,7 @@ class zynthian_gui:
 				return True
 
 	def is_current_screen_menu(self):
-		if self.current_screen in ("main_menu", "engine", "midi_cc", "midi_chan", "midi_key_range", "audio_in", "audio_out", "midi_out", "midi_prog") or \
+		if self.current_screen in ("main_menu", "engine", "midi_cc", "midi_chan", "midi_key_range", "audio_in", "audio_out", "midi_prog") or \
 				self.current_screen.endswith("_options"):
 			return True
 		if self.current_screen == "option" and len(self.screen_history) > 1 and self.screen_history[-2] in ("zynpad", "pattern_editor", "preset", "bank"):
@@ -1686,7 +1687,7 @@ class zynthian_gui:
 			if i < 4 or zynthian_gui_config.custom_switch_ui_actions[i - 4]:
 				dtus = lib_zyncore.get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
 				if dtus >= 0:
-					self.cuia_queue.put_nowait(["zynswitch", [i, self.zynswitch_timing(dtus)]])
+					self.cuia_queue.put_nowait(("zynswitch", (i, self.zynswitch_timing(dtus))))
 			i += 1
 
 	def zynswitch_timing(self, dtus):
@@ -1843,7 +1844,7 @@ class zynthian_gui:
 	# ------------------------------------------------------------------
 
 	def zynswitch_defered(self, t, i):
-		self.cuia_queue.put_nowait(["zynswitch", [i, t]])
+		self.cuia_queue.put_nowait(("zynswitch", (i, t)))
 
 	# ------------------------------------------------------------------
 	# Read Physical Zynswitches
@@ -1872,11 +1873,12 @@ class zynthian_gui:
 					break
 
 				# Try to manage with configured control devices
-				if self.ctrldev_manager.midi_event(ev):
+				if self.state_manager.ctrldev_manager.midi_event(ev):
 					self.state_manager.status_midi = True
 					self.last_event_flag = True
 					continue
 
+				#idev = (ev & 0xFF000000) >> 24
 				evtype = (ev & 0xF00000) >> 20
 				chan = (ev & 0x0F0000) >> 16
 				#logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))
@@ -1956,10 +1958,10 @@ class zynthian_gui:
 									params.append('R')
 								else:
 									params.append('P')
-								self.cuia_queue.put_nowait([cuia, params])
+								self.cuia_queue.put_nowait((cuia, params))
 							# Or normal CUIA
 							elif evtype == 0x9 and vel > 0:
-								self.cuia_queue.put_nowait([cuia, params])
+								self.cuia_queue.put_nowait((cuia, params))
 
 				# Control Change...
 				elif evtype == 0xB:
@@ -2068,6 +2070,8 @@ class zynthian_gui:
 
 	def control_thread_task(self):
 		j = 0
+		mixer_queue = self.state_manager.register_mixer()
+
 		while not self.exit_flag:
 			# Read zynswitches, MIDI & OSC events
 			self.zynswitch_read()
@@ -2079,6 +2083,13 @@ class zynthian_gui:
 				j = 0
 
 				# Refresh GUI Controllers
+				# Process fast GUI updates
+				while not mixer_queue.empty():
+					ev = mixer_queue.get_nowait()
+					# ev: (chan, ctrl, value)
+					if ev[0] is not None:
+						self.screens["audio_mixer"].update_control(ev[0], ev[1])
+						self.screens["audio_mixer"].update_control(ev[0], ev[1])
 				try:
 					self.screens[self.current_screen].plot_zctrls()
 				except AttributeError:
@@ -2102,6 +2113,7 @@ class zynthian_gui:
 			sleep(0.01)
 
 		# End Thread task
+		self.state_manager.unregister_mixer(mixer_queue)
 		self.osc_end()
 
 	def set_event_flag(self):
@@ -2211,20 +2223,6 @@ class zynthian_gui:
 				self.screens[self.current_screen].refresh_status()
 			except AttributeError:
 				pass
-
-			# Refresh control device list
-			if zynautoconnect.get_mididev_changed():
-				zynautoconnect.set_mididev_changed(False)
-				try:
-					self.ctrldev_manager.refresh_device_list()
-				except Exception as err:
-					logging.error(err)
-
-			# Refresh status of control devices
-			try:
-				self.ctrldev_manager.refresh_all()
-			except Exception as err:
-				logging.error(err)
 
 		except Exception as e:
 			logging.exception(e)
@@ -2349,7 +2347,7 @@ class zynthian_gui:
 						zynpot_repeat[i][0] -= 1
 					else:
 						self.cuia_zynpot(zynpot_repeat[i][1])
-			except:
+			except Exception as e:
 				logging.error(traceback.format_exc())
 				self.state_manager.set_busy_error(f"ERROR CUIA {cuia}", e)
 				sleep(3)

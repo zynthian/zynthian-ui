@@ -76,17 +76,19 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 				self.list_data.append((processor, processor, "\u2610 " + title))
 
 		if zynthian_gui_config.multichannel_recorder:
+			armed = self.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan)
 			if self.zyngui.state_manager.audio_recorder.get_status():
 				# Recording so don't allow change of armed state
-				if self.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan):
+				if armed:
 					self.list_data.append((None, 'record_disable', '\u2612 multitrack recorder'))
 				else:
 					self.list_data.append((None, 'record_enable', '\u2610 multitrack recorder'))
 			else:
-				if self.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan):
+				if armed:
 					self.list_data.append(('record', None, '\u2612 multitrack recorder'))
 				else:
 					self.list_data.append(('record', None, '\u2610 multitrack recorder'))
+			self.zyngui.state_manager.mixer_cb(self.chain.mixer_chan, "record", armed)
 
 		super().fill_list()
 
