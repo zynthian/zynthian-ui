@@ -337,7 +337,7 @@ def midi_autoconnect():
 		if i not in busy_idevs and devices_in[i] is not None:
 			logger.debug(f"Disconnected MIDI-in device {i}: {devices_in[i].name}")
 			devices_in[i] = None
-			state_manager.ctrldev_manager.unload_driver(i):
+			state_manager.ctrldev_manager.unload_driver(i)
 
 	# Connect MIDI Output Devices
 	busy_idevs = []
