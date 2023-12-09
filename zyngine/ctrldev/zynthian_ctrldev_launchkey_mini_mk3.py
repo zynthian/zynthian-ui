@@ -125,24 +125,31 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 				except:
 					pass
 		elif evtype == 0xB:
+			if val1 > 20 and val1 < 29:
+				self.zynmixer.set_level(val1 - 21, val2 / 127.0)
+			elif val2 == 0:
+				return True
 			if val1 == 0x68:
-				pass
+				# UP
+				self.state_manager.send_cuia("ARROW_UP")
 			elif val1 == 0x69:
+				# DOWN
+				self.state_manager.send_cuia("ARROW_DOWN")
+			elif val1 == 0x6C:
+				# SHIFT
 				pass
 			elif val1 == 0x73:
-				if val2:
-					self.zyngui.cuia_toggle_play()
+				# PLAY
+				self.state_manager.send_cuia("TOGGLE_AUDIO_PLAY")
 			elif val1 == 0x75:
-				if val2:
-					self.zyngui.cuia_toggle_record()
-			elif val1 == 0x75:
-				pass
+				# RECORD
+				self.state_manager.send_cuia("TOGGLE_AUDIO_RECORD")
 			elif val1 == 0x67:
+				self.state_manager.send_cuia("ARROW_LEFT")
 				pass
-			elif val1 == 0x67:
-				pass
-			elif val1 > 20 and val1 < 29:
-				self.zynmixer.set_level(val1 - 21, val2 / 127.0)
+			elif val1 == 0x68:
+				# TRACK RIGHT
+				self.state_manager.send_cuia("ARROW_RIGHT")
 			#self.logging_debug_cc(val1, val2)
 		elif evtype == 0xC:
 			self.zynpad.set_bank(val1 + 1)
@@ -156,11 +163,11 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 			cc_names = {
 				"UP": 0x68,
 				"DOWN": 0x69,
+				"SHIFT": 0x6C,
 				"PLAY": 0x73,
-				"RECORD": 0x74, # This was 0x75 too but it's repeated!
-				"SHIFT": 0x75,
+				"RECORD": 0x75,
 				"TRACK LEFT": 0x67,
-				"TRACK RIGHT": 0x67
+				"TRACK RIGHT": 0x68
 			}
 			try:
 				cc_name = list(cc_names.keys())[list(cc_names.values()).index(ccnum)]

@@ -108,6 +108,7 @@ class zynthian_state_manager:
         self.sync = False  # True to request file system sync
         self.seq_queue = [] # List of queues for sequence state and mode change messages
         self.mixer_queue = [] # List of queues for mixer state change messages
+        self.cuia_queue = [] # List of queues for GUI (CUIA) change messages
 
         self.hwmon_thermal_file = None
         self.hwmon_undervolt_file = None
@@ -467,7 +468,7 @@ class zynthian_state_manager:
                         mode = self.zynseq.libseq.getPlayMode(self.zynseq.bank, seq)
                         state = self.zynseq.libseq.getPlayState(self.zynseq.bank, seq)
                         for q in self.seq_queue:
-                            q.put_nowait((self.zynseq.bank, seq, state, mode))
+                            q.put_nowait((self.zynseq.bank, seq, state, mode))                   
 
                 # Clean some status flags
                 if xruns_status:
@@ -530,6 +531,25 @@ class zynthian_state_manager:
     def mixer_cb(self, chan, ctrl, value):
         for q in self.mixer_queue:
             q.put_nowait((chan, ctrl, value))
+
+    # ----------------------------------------------------------------------------
+    # CUIA event queues
+    # ----------------------------------------------------------------------------
+
+    def register_cuia(self):
+        queue = SimpleQueue()
+        self.cuia_queue.append(queue)
+        return queue
+
+    def unregister_cuia(self, queue):
+        try:
+            self.cuia_queue.remove(queue)
+        except:
+            pass
+
+    def send_cuia(self, cuia, params=None):
+        for q in self.cuia_queue:
+            q.put_nowait((cuia, params))
 
     # ----------------------------------------------------------------------------
     # Snapshot Save & Load
