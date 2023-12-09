@@ -44,7 +44,7 @@ class zynthian_ctrldev_base:
 	# Function to initialise class
 	def __init__(self, state_manager, idev_in, idev_out=None):
 		self.idev = idev_in		       # Slot index where the input device is connected, starting from 1 (0 = None)
-		self.idev_out = idev_out + 1   # Slot index where the output device (feedback), if any, is connected, starting from 1 (0 = None)
+		self.idev_out = idev_out       # Slot index where the output device (feedback), if any, is connected, starting from 1 (0 = None)
 		self.zynseq = state_manager.zynseq
 		self.zynmixer = state_manager.zynmixer
 		self.init()

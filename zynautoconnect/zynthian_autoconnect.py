@@ -137,7 +137,7 @@ def get_midi_in_devid(idev):
 	"""
 
 	try:
-		return devices_in[idev].name.split('] (capture): ')[1]
+		return devices_in[idev].name.split(' (capture): ')[1]
 	except:
 		return None
 
@@ -150,7 +150,7 @@ def get_midi_out_devid(idev):
 	"""
 
 	try:
-		return devices_out[idev].name.split('] (playback): ')[1]
+		return devices_out[idev].name.split(' (playback): ')[1]
 	except:
 		return None
 
@@ -339,7 +339,7 @@ def midi_autoconnect():
 				if devices_out[i] is None:
 					devnum = i
 					devices_out[devnum] = hwdp
-					logger.debug(f"Connected MIDI-out device {dev_num}: {hwdp.name}")
+					logger.debug(f"Connected MIDI-out device {devnum}: {hwdp.name}")
 					break
 		if devnum is not None:
 			required_routes[hwdp.name].add(f"ZynMidiRouter:dev{devnum}_out")

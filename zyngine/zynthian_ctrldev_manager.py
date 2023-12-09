@@ -82,6 +82,7 @@ class zynthian_ctrldev_manager():
                 class_name = module_name[16:]
                 dev_class = getattr(sys.modules[module_name], class_name)
                 for dev_id in dev_class.dev_ids:
+                    logging.info(f"Ctrldev driver '{class_name}' for devices with ID '{dev_id}'")
                     self.available_drivers[dev_id] = dev_class
 
     def load_driver(self, izmip):
@@ -91,8 +92,8 @@ class zynthian_ctrldev_manager():
         returns : True if new driver loaded
         """
 
-        device_type = zynautoconnect.get_midi_in_devid(izmip)
-        if device_type not in self.available_drivers:
+        dev_id = zynautoconnect.get_midi_in_devid(izmip)
+        if dev_id not in self.available_drivers:
             return False
         if izmip in self.drivers:
             return False #TODO: Should check if driver differs

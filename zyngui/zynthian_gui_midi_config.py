@@ -3,9 +3,10 @@
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
-# Zynthian GUI MIDI-In Selector Class
+# Zynthian GUI MIDI config Class
 # 
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+#                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
 # 
@@ -36,17 +37,17 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui import zynthian_gui_config
 
 # ------------------------------------------------------------------------------
-# Zynthian MIDI-In Selection GUI Class
+# Zynthian MIDI config GUI Class
 # ------------------------------------------------------------------------------
 
 
 class zynthian_gui_midi_config(zynthian_gui_selector):
 
     def __init__(self):
-        self.chain = None # Chain object
-        self.idev = None # Index of midi device in autoconnect devices
-        self.ble_devices = {} # Map of BLE MIDI device configs indexed by BLE address. Config: [name, paired, trusted, connected]
-        self.input = True # True to process MIDI inputs, False for MIDI outputs
+        self.chain = None      # Chain object
+        self.chain_zmop = None
+        self.ble_devices = {}  # Map of BLE MIDI device configs indexed by BLE address. Config: [name, paired, trusted, connected]
+        self.input = True      # True to process MIDI inputs, False for MIDI outputs
         super().__init__('MIDI Devices', True)
 
     def build_view(self):
@@ -57,12 +58,11 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
     def set_chain(self, chain):
         self.chain = chain
+        if self.chain:
+            self.chain_zmop = self.chain.midi_chan    # This could change in the future, when multi-channel chains are implemented
+        else:
+            self.chain_zmop = None
         self.set_select_path()
-        try:
-            #TODO: This looks wrong!
-            self.idev = int(chain.chain_id) - 1
-        except:
-            self.idev = None
 
     def fill_list(self):
         """Populate data list used for display and configuration.
@@ -82,14 +82,14 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             """Get input mode prefix"""
             mode = ""
             if self.input:
-                if lib_zyncore.zmip_get_flag_active_chan(i):
+                if i in self.zyngui.state_manager.ctrldev_manager.drivers:
+                    mode += "↻" #\u21bb
+                elif lib_zyncore.zmip_get_flag_active_chan(i):
                     mode = "↦" #\u2a16
                 elif lib_zyncore.zmip_get_flag_omni_chan(i):
                     mode = "∈" #\u2208
                 else:
                     mode = "⇶" #\u21f6
-                if i in self.zyngui.state_manager.ctrldev_manager.drivers:
-                    mode += "↻" #\u21bb
             if mode:
                 mode += " "
             return mode
@@ -104,7 +104,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 elif dev_i in self.zyngui.state_manager.ctrldev_manager.drivers:
                     self.list_data.append((port.aliases[0], dev_i, f"    {mode}{port.aliases[1]}"))
                 else:
-                    if lib_zyncore.zmop_get_route_from(self.idev , dev_i):
+                    if lib_zyncore.zmop_get_route_from(self.chain_zmop, dev_i):
                         self.list_data.append((port.aliases[0], dev_i, f"\u2612 {mode}{port.aliases[1]}"))
                     else:
                         self.list_data.append((port.aliases[0], dev_i, f"\u2610 {mode}{port.aliases[1]}"))
@@ -132,11 +132,11 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 self.list_data.append((f"start_{dev_name}", None, f"\u2610 {obj}"))
 
         # Lists of zmop/zmip indicies
-        int_devices = [] # Internal MIDI ports
-        usb_devices = [] # USB MIDI ports
-        ble_devices = {} # BLE MIDI ports, indexed by BLE address
-        aubio_devices = [] # Aubio MIDI ports
-        net_devices = {} # Network MIDI ports, indexed by jack port name
+        int_devices = []    # Internal MIDI ports
+        usb_devices = []    # USB MIDI ports
+        ble_devices = {}    # BLE MIDI ports, indexed by BLE address
+        aubio_devices = []  # Aubio MIDI ports
+        net_devices = {}    # Network MIDI ports, indexed by jack port name
         for i in range(zynautoconnect.max_num_devs):
             if self.input:
                 dev = zynautoconnect.devices_in[i]
@@ -254,26 +254,28 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
 
     def select_action(self, i, t='S'):
+        action = self.list_data[i][0]
         if t == 'S':
-            if self.list_data[i][0] == "stop_jackrtpmidid":
+            action = self.list_data[i][0]
+            if action == "stop_jackrtpmidid":
                 self.zyngui.state_manager.stop_rtpmidi()
-            elif self.list_data[i][0] == "start_jackrtpmidid":
+            elif action == "start_jackrtpmidid":
                 self.zyngui.state_manager.start_rtpmidi()
-            elif self.list_data[i][0] == "stop_QmidiNet":
+            elif action == "stop_QmidiNet":
                 self.zyngui.state_manager.stop_qmidinet()
-            elif self.list_data[i][0] == "start_QmidiNet":
+            elif action == "start_QmidiNet":
                 self.zyngui.state_manager.start_qmidinet()
-            elif self.list_data[i][0] in ("stop_RtMidiIn Client:TouchOSC Bridge", "stop_touchosc"):
+            elif action in ("stop_RtMidiIn Client:TouchOSC Bridge", "stop_touchosc"):
                 self.zyngui.state_manager.stop_touchosc2midi()
-            elif self.list_data[i][0] in ("start_RtMidiIn Client:TouchOSC Bridge", "start_touchosc"):
+            elif action in ("start_RtMidiIn Client:TouchOSC Bridge", "start_touchosc"):
                 self.zyngui.state_manager.start_touchosc2midi()
-            elif self.list_data[i][0] == "stop_aubionotes":
+            elif action == "stop_aubionotes":
                 self.zyngui.state_manager.stop_aubionotes()
-            elif self.list_data[i][0] == "start_aubionotes":
+            elif action == "start_aubionotes":
                 self.zyngui.state_manager.start_aubionotes()
-            elif self.list_data[i][0] == "stop_bluetooth":
+            elif action == "stop_bluetooth":
                 self.zyngui.state_manager.stop_bluetooth()
-            elif self.list_data[i][0] == "start_bluetooth":
+            elif action == "start_bluetooth":
                 self.zyngui.state_manager.start_bluetooth()
             # Route/Unroute
             elif self.chain:
@@ -281,7 +283,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                     dev_i = self.list_data[i][1]
                     if dev_i in self.zyngui.state_manager.ctrldev_manager.drivers:
                         return
-                    lib_zyncore.zmop_set_route_from(self.idev, dev_i, not lib_zyncore.zmop_get_route_from(self.idev, dev_i))
+                    lib_zyncore.zmop_set_route_from(self.chain_zmop, dev_i, not lib_zyncore.zmop_get_route_from(self.chain_zmop, dev_i))
                 else:
                     try:
                         self.zyngui.chain_manager.get_active_chain().toggle_midi_out(self.list_data[i][0])
@@ -293,19 +295,18 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
         # Change mode
         elif t == 'B' and self.list_data[i][1] is not None:
-            # Check mode (Acti/Omni/Multi)
             dev_i = self.list_data[i][1]
             if dev_i is None:
                 return
             options = OrderedDict()
             if self.input:
+                # Check mode (Acti/Omni/Multi)
                 if lib_zyncore.zmip_get_flag_active_chan(dev_i):
                     mode = 0
                 elif lib_zyncore.zmip_get_flag_omni_chan(dev_i):
                     mode = 1
                 else:
                     mode = 2
-
                 options["MIDI Input Mode"] = None
                 if mode == 0:
                     options[f'\u25C9 ↦ Active channel'] = "ACTI"
@@ -319,16 +320,18 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                     options[f'\u25C9 ⇶ Multitimbral mode '] = "MULTI"
                 else:
                     options[f'\u25CE ⇶ Multitimbral mode'] = "MULTI"
+
                 options["Configuration"] = None
-                if zynautoconnect.get_midi_in_devid(dev_i) in self.zyngui.state_manager.ctrldev_manager.available_drivers:
+                dev_id = zynautoconnect.get_midi_in_devid(dev_i)
+                if dev_id in self.zyngui.state_manager.ctrldev_manager.available_drivers:
                     #TODO: Offer list of profiles
                     if dev_i in self.zyngui.state_manager.ctrldev_manager.drivers:
-                        options[f"\u2612 ↻ Enable controller driver"] = "UNLOAD_DRIVER"
+                        options[f"\u2612 ↻ Controller driver"] = "UNLOAD_DRIVER"
                     else:
-                        options[f"\u2610 ↻ Enable controller driver"] = "LOAD_DRIVER"
-                port = zynautoconnect.devices_in[self.list_data[i][1]]
+                        options[f"\u2610 ↻ Controller driver"] = "LOAD_DRIVER"
+                port = zynautoconnect.devices_in[dev_i]
             else:
-                port = zynautoconnect.devices_out[self.list_data[i][1]]
+                port = zynautoconnect.devices_out[dev_i]
             options[f'Rename port {port.aliases[0]}'] = port
             self.zyngui.screens['option'].config("MIDI Input Device", options, self.menu_cb)
             self.zyngui.show_screen('option')
