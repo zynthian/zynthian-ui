@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
 # Zynthian Control Device Manager Class
@@ -8,7 +8,7 @@
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -22,7 +22,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 import os
 import logging
@@ -35,9 +35,10 @@ import zynautoconnect
 from zyngine.ctrldev import *
 from zyncoder.zyncore import lib_zyncore
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian Control Device Manager Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_ctrldev_manager():
 
@@ -51,8 +52,8 @@ class zynthian_ctrldev_manager():
         """
 
         self.state_manager = state_manager
-        self.available_drivers = {} # Map of driver classes indexed by device type name
-        self.drivers = {} # Map of device driver objects indexed by zmip
+        self.available_drivers = {}  # Map of driver classes indexed by device type name
+        self.drivers = {}  # Map of device driver objects indexed by zmip
         self.update_available_drivers()
         self.seq_queue = None
         self.thread = Thread(target=self.thread_task)
@@ -83,7 +84,6 @@ class zynthian_ctrldev_manager():
                 for dev_id in dev_class.dev_ids:
                     self.available_drivers[dev_id] = dev_class
 
-
     def load_driver(self, izmip):
         """Loads a device driver
         
@@ -107,7 +107,6 @@ class zynthian_ctrldev_manager():
         except Exception as e:
             logging.error(f"Can't load ctrldev driver {device_type} => {e}")
             return False
-
 
     def unload_driver(self, izmip):
         """Unloads a device driver
@@ -158,3 +157,5 @@ class zynthian_ctrldev_manager():
             return self.drivers[idev].midi_event(ev)
 
         return False
+
+# -----------------------------------------------------------------------------------------

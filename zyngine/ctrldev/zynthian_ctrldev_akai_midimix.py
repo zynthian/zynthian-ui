@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
 # Zynthian Control Device Driver for "Akai MIDI-mix"
@@ -8,7 +8,7 @@
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -22,7 +22,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+#* *****************************************************************************
 
 import logging
 
@@ -33,6 +33,7 @@ from zyncoder.zyncore import lib_zyncore
 # --------------------------------------------------------------------------
 # Akai MIDI-Mix Integration
 # --------------------------------------------------------------------------
+
 
 class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_base):
 
@@ -54,24 +55,21 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_base):
 	faders_ccnum = [19, 23, 27, 31, 49, 53, 57, 61]
 	master_ccnum = 62
 
-
 	# Function to initialise class
 	def __init__(self):
 		super().__init__()
 		self.midimix_bank = 0
-		self.chain_manager = self.zyngui.state_manager.chain_manager
-		self.zynmixer = self.zyngui.state_manager.zynmixer
+		self.state_manager = self.zyngui.state_manager
+		self.chain_manager = self.state_manager.chain_manager
+		self.zynmixer = self.state_manager.zynmixer
 		self.zyngui_mixer = self.zyngui.screens["audio_mixer"]
-
 
 	def init(self):
 		self.midimix_bank = 0
 		self.light_off()
 
-
 	def end(self):
 		self.light_off()
-
 
 	# Update LED status
 	def refresh(self, force = False):
@@ -107,14 +105,13 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_base):
 					rec = 0
 			else:
 				if chain:
-					rec = self.zyngui.audio_recorder.is_armed(chain.midi_chan)
+					rec = self.state_manager.audio_recorder.is_armed(chain.midi_chan)
 				else:
 					rec = 0
 
 			lib_zyncore.dev_send_note_on(self.idev_out, 0, self.mute_notes[i], mute)
 			lib_zyncore.dev_send_note_on(self.idev_out, 0, self.solo_notes[i], solo)
 			lib_zyncore.dev_send_note_on(self.idev_out, 0, self.rec_notes[i], rec)
-
 
 	def midi_event(self, ev):
 		evtype = (ev & 0xF00000) >> 20
@@ -166,9 +163,9 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_base):
 						self.zyngui_mixer.highlight_active_chain()
 					else:
 						chain = self.chain_manager.get_chain_by_index(index + 1)
-						self.zyngui.audio_recorder.toggle_arm(chain.midi_chan)
+						self.state_manager.audio_recorder.toggle_arm(chain.midi_chan)
 						# Send LED feedback
-						val = self.zyngui.audio_recorder.is_armed(chain.midi_chan)
+						val = self.state_manager.audio_recorder.is_armed(chain.midi_chan)
 						lib_zyncore.dev_send_note_on(self.idev_out, 0, note, val)
 				return True
 		elif evtype == 0xB:
@@ -190,11 +187,10 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_base):
 				self.zynmixer.set_balance(index, 2.0 * ccval/127.0 - 1.0)
 				return True
 
-
 	# Light-Off all LEDs
 	def light_off(self):
 		for note in range(1, 28):
 			lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
 
+# ------------------------------------------------------------------------------
 
-#------------------------------------------------------------------------------

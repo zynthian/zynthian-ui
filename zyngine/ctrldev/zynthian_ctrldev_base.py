@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
 # Zynthian Control Device Manager Class
@@ -8,7 +8,7 @@
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -22,29 +22,29 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 import logging
 
-#------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------
 # Control device base class
-#------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------
 
-class zynthian_ctrldev_base():
+
+class zynthian_ctrldev_base:
 
 	dev_ids = []			# String list that could identify the device
 	dev_id = None  			# String that identifies the device
 	fb_dev_id = None		# Index of zmop connected to controller input
 	dev_zynpad = False		# Can act as a zynpad trigger device
-	dev_zynmixer = False	# Can act as an audio mixer controller device
+	dev_zynmixer = False    # Can act as an audio mixer controller device
 	dev_pated = False		# Can act as a pattern editor device
 	enabled = False			# True if device driver is enabled
 
-
 	# Function to initialise class
 	def __init__(self, state_manager, idev_in, idev_out=None):
-		self.idev = idev_in		# Slot index where the input device is connected, starting from 1 (0 = None)
-		self.idev_out = idev_out + 1	# Slot index where the output device (feedback), if any, is connected, starting from 1 (0 = None)
+		self.idev = idev_in		       # Slot index where the input device is connected, starting from 1 (0 = None)
+		self.idev_out = idev_out + 1   # Slot index where the output device (feedback), if any, is connected, starting from 1 (0 = None)
 		self.zynseq = state_manager.zynseq
 		self.zynmixer = state_manager.zynmixer
 		self.init()
@@ -54,24 +54,20 @@ class zynthian_ctrldev_base():
 	def refresh(self, force=False):
 		logging.debug("Refresh LEDs for {}: NOT IMPLEMENTED!".format(type(self).__name__))
 
-
 	# Device MIDI event handler
 	# It *SHOULD* be implemented by child class
 	def midi_event(self, ev):
 		logging.debug("MIDI EVENT FROM '{}'".format(type(self).__name__))
-
 
 	# Light-Off LEDs
 	# It *SHOULD* be implemented by child class
 	def light_off(self):
 		logging.debug("Lighting Off LEDs for {}: NOT IMPLEMENTED!".format(type(self).__name__))
 
-
 	# Sleep On
 	# It *COULD* be improved by child class
 	def sleep_on(self):
 		self.light_off()
-
 
 	# Sleep On
 	# It *COULD* be improved by child class
@@ -88,19 +84,17 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 	dev_zynpad = True		# Can act as a zynpad trigger device
 
 	def refresh(self, force=False):
-		return #TODO: Implement refresh
+		return  # TODO: Implement refresh
 		# When zynpad is shown, this is done by refresh_status, so no need to refresh twice
 		if force or not self.zynseq.shown:
 			self.refresh_pads(force)
 		if force:
 			self.refresh_zynpad_bank()
 
-
 	# It *SHOULD* be implemented by child class
 	def refresh_zynpad_bank(self):
 		#logging.debug("Refressh zynpad banks for {}: NOT IMPLEMENTED!".format(type(self).__name__))
 		pass
-
 
 	def refresh_pads(self, force=False):
 		if force:
@@ -113,7 +107,6 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 				state = self.zynseq.libseq.getPlayState(self.zynseq.bank, pad)
 				self.update_pad(pad, state, mode)
 
-
 	def refresh_pad(self, pad, force=False):
 		# It MUST be called for cleaning the dirty bit!!
 		changed_state = self.zynseq.libseq.hasSequenceChanged(self.zynseq.bank, pad)
@@ -122,9 +115,8 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 			state = self.zynseq.libseq.getPlayState(self.zynseq.bank, pad)
 			self.update_pad(pad, state, mode)
 
-
 	# It *SHOULD* be implemented by child class
 	def update_pad(self, pad, state, mode):
 		logging.debug("Update pads for {}: NOT IMPLEMENTED!".format(type(self).__name__))
 
-#-----------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------
