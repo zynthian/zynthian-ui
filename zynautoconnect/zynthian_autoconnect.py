@@ -317,13 +317,11 @@ def midi_autoconnect():
 			busy_idevs.append(devnum)
 
 	# Delete disconnected input devices from list
-	for i in range(0, max_num_devs):
-		if i not in busy_idevs and devices_in[i] is not None:
-			logger.debug(f"Disconnected MIDI-in device {i}: {devices_in[i].name}")
-			devices_in[i] = None
-			if state_manager.ctrldev_manager.unload_driver(i):
-				lib_zyncore.zmip_set_route_extdev(i, 1)
-
+	for izmip in range(0, max_num_devs):
+		if izmip not in busy_idevs and devices_in[izmip] is not None:
+			logger.debug(f"Disconnected MIDI-in device {izmip}: {devices_in[izmip].name}")
+			devices_in[izmip] = None
+			state_manager.ctrldev_manager.unload_driver(izmip)
 
 	# Connect MIDI Output Devices
 	busy_idevs = []

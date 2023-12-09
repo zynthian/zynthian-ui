@@ -1208,28 +1208,23 @@ class zynthian_state_manager:
             # Restore UI control devices
             ctrldev_ids = []
             for uid, state in mcstate.items():
-                if uid == "ZynMidiRouter:net_out":
-                    id = 16
-                elif uid == "ZynMaster:midi_out":
-                    id = 17
-                else:
-                    try:
-                        id = zynautoconnect.get_midi_in_devid_by_uid(uid)
-                    except:
-                        continue
+                try:
+                    zmip = zynautoconnect.get_midi_in_devid_by_uid(uid)
+                except:
+                    continue
                 zmip_flags = int(state["zmip_flags"])
-                lib_zyncore.zmip_set_flag_active_chan(id, bool(zmip_flags & (1 << 0)))
-                lib_zyncore.zmip_set_flag_omni_chan(id, bool(zmip_flags & (1 << 1)))
+                lib_zyncore.zmip_set_flag_active_chan(zmip, bool(zmip_flags & (1 << 0)))
+                lib_zyncore.zmip_set_flag_omni_chan(zmip, bool(zmip_flags & (1 << 1)))
                 if zmip_flags & (1 << 2):
                     # Bit 2 used to disable (automatic) driver loading
-                    self.ctrldev_manager.unload_driver(id)
+                    self.ctrldev_manager.unload_driver(zmip)
                 else:
-                    self.ctrldev_manager.load_driver(id)
+                    self.ctrldev_manager.load_driver(zmip)
 
                 # Route zmops (chans)
                 routed_chans = int(state["routed_chans"])
                 for ch in range(0, 16):
-                    lib_zyncore.zmop_set_route_from(ch, id, routed_chans & 1)
+                    lib_zyncore.zmop_set_route_from(ch, zmip, routed_chans & 1)
                     routed_chans >>= 1
 
         else:
