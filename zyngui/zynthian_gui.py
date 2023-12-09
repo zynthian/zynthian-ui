@@ -121,11 +121,14 @@ class zynthian_gui:
 
 		self.screen_lock = Lock()  # Lock object to avoid concurrence problems when showing/closing screens
 
+		self.state_manager = zynthian_state_manager.zynthian_state_manager()
+		self.chain_manager = self.state_manager.chain_manager
+
 		self.busy_thread = None
 		self.control_thread = None
 		self.status_thread = None
 		self.cuia_thread = None
-		self.cuia_queue = SimpleQueue()
+		self.cuia_queue = self.state_manager.register_cuia()
 		self.zynread_wait_flag = False
 		self.zynpot_thread = None
 		self.zynpot_event = Event()
@@ -138,8 +141,6 @@ class zynthian_gui:
 
 		self.status_counter = 0
 
-		self.state_manager = zynthian_state_manager.zynthian_state_manager()
-		self.chain_manager = self.state_manager.chain_manager
 		self.modify_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
 
 		self.capture_log_ts0 = None
@@ -357,7 +358,7 @@ class zynthian_gui:
 			if self.state_manager.is_busy():
 				logging.debug("BUSY! Ignoring OSC CUIA '{}' => {}".format(cuia, args))
 				return
-			self.cuia_queue.put_nowait([cuia, args])
+			self.cuia_queue.put_nowait((cuia, args))
 			# Run autoconnect if needed
 			zynautoconnect.request_audio_connect()
 			zynautoconnect.request_midi_connect()
@@ -1159,7 +1160,7 @@ class zynthian_gui:
 		try:
 			i = params[0]
 			d = params[1]
-			self.cuia_queue.put_nowait(["zynswitch", [i, d]])
+			self.cuia_queue.put_nowait(("zynswitch", (i, d)))
 		except IndexError:
 			logging.error("zynswitch requires 2 parameters: index, delta, not {params}")
 			return
@@ -1686,7 +1687,7 @@ class zynthian_gui:
 			if i < 4 or zynthian_gui_config.custom_switch_ui_actions[i - 4]:
 				dtus = lib_zyncore.get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
 				if dtus >= 0:
-					self.cuia_queue.put_nowait(["zynswitch", [i, self.zynswitch_timing(dtus)]])
+					self.cuia_queue.put_nowait(("zynswitch", (i, self.zynswitch_timing(dtus))))
 			i += 1
 
 	def zynswitch_timing(self, dtus):
@@ -1843,7 +1844,7 @@ class zynthian_gui:
 	# ------------------------------------------------------------------
 
 	def zynswitch_defered(self, t, i):
-		self.cuia_queue.put_nowait(["zynswitch", [i, t]])
+		self.cuia_queue.put_nowait(("zynswitch", (i, t)))
 
 	# ------------------------------------------------------------------
 	# Read Physical Zynswitches
@@ -1957,10 +1958,10 @@ class zynthian_gui:
 									params.append('R')
 								else:
 									params.append('P')
-								self.cuia_queue.put_nowait([cuia, params])
+								self.cuia_queue.put_nowait((cuia, params))
 							# Or normal CUIA
 							elif evtype == 0x9 and vel > 0:
-								self.cuia_queue.put_nowait([cuia, params])
+								self.cuia_queue.put_nowait((cuia, params))
 
 				# Control Change...
 				elif evtype == 0xB:
@@ -2346,7 +2347,7 @@ class zynthian_gui:
 						zynpot_repeat[i][0] -= 1
 					else:
 						self.cuia_zynpot(zynpot_repeat[i][1])
-			except:
+			except Exception as e:
 				logging.error(traceback.format_exc())
 				self.state_manager.set_busy_error(f"ERROR CUIA {cuia}", e)
 				sleep(3)

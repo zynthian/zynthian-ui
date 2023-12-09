@@ -143,8 +143,9 @@ class zynthian_ctrldev_manager():
             if not found_mixer:
                 self.state_manager.unregister_mixer(self.mixer_queue)
                 self.mixer_queue = None
-
+            lib_zyncore.zmip_set_route_extdev(izmip, 1)
             return True
+
         return False
 
     def sleep_on(self):

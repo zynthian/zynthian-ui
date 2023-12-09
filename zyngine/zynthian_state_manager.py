@@ -108,6 +108,7 @@ class zynthian_state_manager:
         self.sync = False  # True to request file system sync
         self.seq_queue = [] # List of queues for sequence state and mode change messages
         self.mixer_queue = [] # List of queues for mixer state change messages
+        self.cuia_queue = [] # List of queues for GUI (CUIA) change messages
 
         self.hwmon_thermal_file = None
         self.hwmon_undervolt_file = None
@@ -467,7 +468,7 @@ class zynthian_state_manager:
                         mode = self.zynseq.libseq.getPlayMode(self.zynseq.bank, seq)
                         state = self.zynseq.libseq.getPlayState(self.zynseq.bank, seq)
                         for q in self.seq_queue:
-                            q.put_nowait((self.zynseq.bank, seq, state, mode))
+                            q.put_nowait((self.zynseq.bank, seq, state, mode))                   
 
                 # Clean some status flags
                 if xruns_status:
@@ -530,6 +531,25 @@ class zynthian_state_manager:
     def mixer_cb(self, chan, ctrl, value):
         for q in self.mixer_queue:
             q.put_nowait((chan, ctrl, value))
+
+    # ----------------------------------------------------------------------------
+    # CUIA event queues
+    # ----------------------------------------------------------------------------
+
+    def register_cuia(self):
+        queue = SimpleQueue()
+        self.cuia_queue.append(queue)
+        return queue
+
+    def unregister_cuia(self, queue):
+        try:
+            self.cuia_queue.remove(queue)
+        except:
+            pass
+
+    def send_cuia(self, cuia, params=None):
+        for q in self.cuia_queue:
+            q.put_nowait((cuia, params))
 
     # ----------------------------------------------------------------------------
     # Snapshot Save & Load
@@ -1188,28 +1208,23 @@ class zynthian_state_manager:
             # Restore UI control devices
             ctrldev_ids = []
             for uid, state in mcstate.items():
-                if uid == "ZynMidiRouter:net_out":
-                    id = 16
-                elif uid == "ZynMaster:midi_out":
-                    id = 17
-                else:
-                    try:
-                        id = zynautoconnect.get_midi_in_devid_by_uid(uid)
-                    except:
-                        continue
+                try:
+                    zmip = zynautoconnect.get_midi_in_devid_by_uid(uid)
+                except:
+                    continue
                 zmip_flags = int(state["zmip_flags"])
-                lib_zyncore.zmip_set_flag_active_chan(id, bool(zmip_flags & (1 << 0)))
-                lib_zyncore.zmip_set_flag_omni_chan(id, bool(zmip_flags & (1 << 1)))
+                lib_zyncore.zmip_set_flag_active_chan(zmip, bool(zmip_flags & (1 << 0)))
+                lib_zyncore.zmip_set_flag_omni_chan(zmip, bool(zmip_flags & (1 << 1)))
                 if zmip_flags & (1 << 2):
                     # Bit 2 used to disable (automatic) driver loading
-                    self.ctrldev_manager.unload_driver(id)
+                    self.ctrldev_manager.unload_driver(zmip)
                 else:
-                    self.ctrldev_manager.load_driver(id)
+                    self.ctrldev_manager.load_driver(zmip)
 
                 # Route zmops (chans)
                 routed_chans = int(state["routed_chans"])
                 for ch in range(0, 16):
-                    lib_zyncore.zmop_set_route_from(ch, id, routed_chans & 1)
+                    lib_zyncore.zmop_set_route_from(ch, zmip, routed_chans & 1)
                     routed_chans >>= 1
 
         else:
@@ -1422,20 +1437,19 @@ class zynthian_state_manager:
             except:
                 filename = "jack_capture"
 
-            exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
-            if exdirs is None:
-                midir = capture_dir_sdc
-            else:
+            exdirs = zynthian_gui_config.get_external_storage_dirs(ex_data_dir)
+            if exdirs:
                 midir = exdirs[0]
+            else:
+                midir = capture_dir_sdc
 
             n = 1
-            for fn in sorted(os.listdir(midir)):
-                if fn.lower().endswith(".mid"):
-                    try:
-                        n = int(fn[:3]) + 1
-                    except:
-                        pass
-            fpath = f"{dir}/{n:03}-{filename}.mid"
+            for fn in glob(f"{midir}/*mid"):
+                try:
+                    n = int(fn[:3]) + 1
+                except:
+                    pass
+            fpath = f"{midir}/{n:03}-{filename}.mid"
 
             if zynsmf.save(self.smf_recorder, fpath):
                 self.sync = True
@@ -1457,14 +1471,12 @@ class zynthian_state_manager:
             else:
                 # Get latest file
                 latest_mtime = 0
-                for midir in [capture_dir_sdc] + zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
-                    for fn in os.listdir(midir):
-                        fp = join(midir, fn)
-                        if isfile(fp) and fn[-4:] == '.mid':
-                            mtime = os.path.getmtime(fp)
-                            if mtime > latest_mtime:
-                                fpath = fp
-                                latest_mtime = mtime
+                for dir in [capture_dir_sdc] + zynthian_gui_config.get_external_storage_dirs(ex_data_dir):
+                    for fn in glob(f"{dir}//*.mid"):
+                        mtime = os.path.getmtime(fn)
+                        if mtime > latest_mtime:
+                            fpath = fn
+                            latest_mtime = mtime
 
         if fpath is None:
             logging.info("No track to play!")

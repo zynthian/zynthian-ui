@@ -46,6 +46,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 
 	def init(self):
 		# Enable session mode on launchkey
+		self.shift = False
 		lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 127)
 		self.refresh_zynpad_bank()
 
@@ -125,50 +126,40 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 				except:
 					pass
 		elif evtype == 0xB:
-			if val1 == 0x68:
-				pass
-			elif val1 == 0x69:
-				pass
-			elif val1 == 0x73:
-				if val2:
-					self.zyngui.cuia_toggle_play()
-			elif val1 == 0x75:
-				if val2:
-					self.zyngui.cuia_toggle_record()
-			elif val1 == 0x75:
-				pass
-			elif val1 == 0x67:
-				pass
-			elif val1 == 0x67:
-				pass
-			elif val1 > 20 and val1 < 29:
+			if val1 > 20 and val1 < 29:
 				self.zynmixer.set_level(val1 - 21, val2 / 127.0)
-			#self.logging_debug_cc(val1, val2)
+			elif val1 == 0x6C:
+				# SHIFT
+				self.shift = val2 != 0
+			elif val2 == 0:
+				return True
+			if val1 == 0x68:
+				# UP
+				self.state_manager.send_cuia("ARROW_UP")
+			elif val1 == 0x69:
+				# DOWN
+				self.state_manager.send_cuia("ARROW_DOWN")
+			elif val1 == 0x73:
+				# PLAY
+				if self.shift:
+					self.state_manager.send_cuia("TOGGLE_MIDI_PLAY")
+				else:
+					self.state_manager.send_cuia("TOGGLE_AUDIO_PLAY")
+			elif val1 == 0x75:
+				# RECORD
+				if self.shift:
+					self.state_manager.send_cuia("TOGGLE_MIDI_RECORD")
+				else:
+					self.state_manager.send_cuia("TOGGLE_AUDIO_RECORD")
+			elif val1 == 0x66:
+				# TRACK RIGHT
+				self.state_manager.send_cuia("ARROW_RIGHT")
+			elif val1 == 0x67:
+				# TRACK LEFT
+				self.state_manager.send_cuia("ARROW_LEFT")
 		elif evtype == 0xC:
-			self.zynpad.set_bank(val1 + 1)
+			self.zynseq.select_bank(val1 + 1)
 
 		return True
-
-	def logging_debug_cc(self, ccnum, ccval):
-		if ccnum >= 0x15 and ccnum <= 0x1C:
-			logging.debug(f"KNOB {ccnum - 0x14}: {ccval}")
-		else:
-			cc_names = {
-				"UP": 0x68,
-				"DOWN": 0x69,
-				"PLAY": 0x73,
-				"RECORD": 0x74, # This was 0x75 too but it's repeated!
-				"SHIFT": 0x75,
-				"TRACK LEFT": 0x67,
-				"TRACK RIGHT": 0x67
-			}
-			try:
-				cc_name = list(cc_names.keys())[list(cc_names.values()).index(ccnum)]
-			except:
-				cc_name = f"{ccnum:02x}"
-			if ccval > 0:
-				logging.debug(f"{cc_name} PRESSED")
-			else:
-				logging.debug(f"{cc_name} RELEASED")
 
 #------------------------------------------------------------------------------
