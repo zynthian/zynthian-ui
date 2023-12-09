@@ -56,12 +56,10 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_base):
 	master_ccnum = 62
 
 	# Function to initialise class
-	def __init__(self):
-		super().__init__()
+	def __init__(self, state_manager, idev_in, idev_out=None):
+		super().__init__(state_manager, idev_in, idev_out)
 		self.midimix_bank = 0
-		self.state_manager = self.zyngui.state_manager
 		self.chain_manager = self.state_manager.chain_manager
-		self.zynmixer = self.state_manager.zynmixer
 		self.zyngui_mixer = self.zyngui.screens["audio_mixer"]
 
 	def init(self):

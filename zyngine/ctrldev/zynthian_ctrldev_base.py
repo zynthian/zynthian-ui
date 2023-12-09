@@ -25,6 +25,7 @@
 # ******************************************************************************
 
 import logging
+from zyngui import zynthian_gui_config
 
 # ------------------------------------------------------------------------------------------------------------------
 # Control device base class
@@ -43,6 +44,8 @@ class zynthian_ctrldev_base:
 
 	# Function to initialise class
 	def __init__(self, state_manager, idev_in, idev_out=None):
+		self.state_manager = state_manager
+		self.zyngui = zynthian_gui_config.zyngui
 		self.idev = idev_in		       # Slot index where the input device is connected, starting from 1 (0 = None)
 		self.idev_out = idev_out       # Slot index where the output device (feedback), if any, is connected, starting from 1 (0 = None)
 		self.zynseq = state_manager.zynseq
