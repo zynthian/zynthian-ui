@@ -27,7 +27,7 @@
 import logging
 
 # Zynthian specific modules
-from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad
+from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 
@@ -35,7 +35,7 @@ from zynlibs.zynseq import zynseq
 # Novation Launchkey Mini MK3
 # ------------------------------------------------------------------------------------------------------------------
 
-class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad):
+class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer):
 
 	dev_ids = ["Launchkey Mini MK3 MIDI 2"]
 
@@ -141,6 +141,8 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad):
 				pass
 			elif val1 == 0x67:
 				pass
+			elif val1 > 20 and val1 < 29:
+				self.zynmixer.set_level(val1 - 21, val2 / 127.0)
 			#self.logging_debug_cc(val1, val2)
 		elif evtype == 0xC:
 			self.zynpad.set_bank(val1 + 1)

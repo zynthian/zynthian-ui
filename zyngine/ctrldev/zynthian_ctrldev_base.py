@@ -46,8 +46,7 @@ class zynthian_ctrldev_base:
 	def __init__(self, state_manager, idev_in, idev_out=None):
 		self.state_manager = state_manager
 		self.idev = idev_in		       # Slot index where the input device is connected, starting from 1 (0 = None)
-		self.idev_out = idev_out       # Slot index where the output device (feedback), if any, is connected, starting from 1 (0 = None)
-		self.zynmixer = state_manager.zynmixer
+		self.idev_out = idev_out+1       # Slot index where the output device (feedback), if any, is connected, starting from 1 (0 = None)
 		self.init()
 
 	# Refresh device status (LED feedback, etc)
@@ -112,13 +111,13 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
 		self.zynmixer = state_manager.zynmixer
 		super().__init__(state_manager, idev_in, idev_out)
 
-	def update(self, chan, ctrl, value):
+	def update_mixer(self, chan, ctrl, value):
 		"""Update hardware indications
 		*SHOULD* be implemented by child class
 
-		chan - MIDI channel
-		ctrl - MIDI CC
-		value - MIDI value
+		chan - Mixer strip index
+		ctrl - Control name
+		value - Control value
 		"""
 		
 		logging.debug(f"Update mixer for {type(self).__name__}: NOT IMPLEMENTED!")

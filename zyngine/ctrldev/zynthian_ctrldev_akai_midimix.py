@@ -67,8 +67,7 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 	def end(self):
 		self.light_off()
 
-	# Update LED status
-	def update(self, chan, ctrl, value):
+	def update_mixer(self, chan, ctrl, value):
 		if self.idev_out <= 0 or chan > 7:
 			return
 		if ctrl == "record":
@@ -79,6 +78,7 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 			lib_zyncore.dev_send_note_on(self.idev_out, 0, self.solo_notes[chan], value)
 
 
+	# Update LED status
 	def refresh(self, force = False):
 		if self.idev_out <= 0:
 			return

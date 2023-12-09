@@ -2068,6 +2068,8 @@ class zynthian_gui:
 
 	def control_thread_task(self):
 		j = 0
+		mixer_queue = self.state_manager.register_mixer()
+
 		while not self.exit_flag:
 			# Read zynswitches, MIDI & OSC events
 			self.zynswitch_read()
@@ -2079,6 +2081,13 @@ class zynthian_gui:
 				j = 0
 
 				# Refresh GUI Controllers
+				# Process fast GUI updates
+				while not mixer_queue.empty():
+					ev = mixer_queue.get_nowait()
+					# ev: (chan, ctrl, value)
+					if ev[0] is not None:
+						self.screens["audio_mixer"].update_control(ev[0], ev[1])
+						self.screens["audio_mixer"].update_control(ev[0], ev[1])
 				try:
 					self.screens[self.current_screen].plot_zctrls()
 				except AttributeError:
@@ -2102,6 +2111,7 @@ class zynthian_gui:
 			sleep(0.01)
 
 		# End Thread task
+		self.state_manager.unregister_mixer(mixer_queue)
 		self.osc_end()
 
 	def set_event_flag(self):

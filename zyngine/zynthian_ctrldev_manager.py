@@ -75,7 +75,7 @@ class zynthian_ctrldev_manager():
                 chan, ctrl, value = self.mixer_queue.get(timeout=1)
                 for driver in self.drivers.values():
                     if driver.dev_zynmixer:
-                        driver.update(chan, ctrl, value)
+                        driver.update_mixer(chan, ctrl, value)
             else:
                 sleep(0.01)
 
@@ -162,7 +162,7 @@ class zynthian_ctrldev_manager():
     def midi_event(self, ev):
         """Process MIDI event from zynmidirouter
         
-        ev - 32-bit MIDI event: device cmd val1 val2
+        ev - 32-bit MIDI event: [device] [cmd] [val1] [val2]
         """
         
         idev = ((ev & 0xFF000000) >> 24) - 1

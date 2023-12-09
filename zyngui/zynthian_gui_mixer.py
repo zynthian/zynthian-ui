@@ -776,7 +776,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.set_title()
 		self.refresh_visible_strips()
-		self.mixer_queue = self.zyngui.state_manager.register_mixer()
+		#self.mixer_queue = self.zyngui.state_manager.register_mixer()
 
 	def init_dpmeter(self):
 		self.dpm_a = self.dpm_b = None
@@ -821,12 +821,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to refresh screen (slow)
 	def refresh_status(self):
+		"""
 		while not self.mixer_queue.empty():
 			ev = self.mixer_queue.get_nowait()
 			# ev: (chan, ctrl, value)
 			if ev[0] is not None:
 				self.pending_refresh_queue.add((self.chan2strip[ev[0]], ev[1]))
 				self.pending_refresh_queue.add((self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX], "solo"))
+		"""
 		if self.shown:
 			super().refresh_status()
 			self.main_mixbus_strip.draw_dpm()
@@ -845,6 +847,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if ctrl[0]:
 				ctrl[0].draw_control(ctrl[1])
 
+	# Function to add control to be updated (fast)
+	def update_control(self, chan, symbol):
+		self.pending_refresh_queue.add((self.chan2strip[chan], symbol))
+		self.pending_refresh_queue.add((self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX], "solo"))
 
 	#--------------------------------------------------------------------------
 	# Mixer Functionality
