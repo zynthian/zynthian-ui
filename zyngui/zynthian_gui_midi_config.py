@@ -105,14 +105,14 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             """Get input mode prefix"""
             mode = ""
             if self.input:
-                if i in self.zyngui.state_manager.ctrldev_manager.drivers:
-                    mode += ZMIP_MODE_CONTROLLER
                 if lib_zyncore.zmip_get_flag_active_chan(i):
                     mode += ZMIP_MODE_ACTIVE
                 elif lib_zyncore.zmip_get_flag_omni_chan(i):
                     mode += ZMIP_MODE_OMNI
                 else:
                     mode += ZMIP_MODE_MULTI
+                if i in self.zyngui.state_manager.ctrldev_manager.drivers:
+                    mode += f" {ZMIP_MODE_CONTROLLER}"
             if mode:
                 mode += " "
             return mode
