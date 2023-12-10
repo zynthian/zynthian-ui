@@ -796,7 +796,7 @@ def autoconnect():
 def get_hw_src_ports():
 	return hw_src_ports
 
-def get_hw_dst_port():
+def get_hw_dst_ports():
 	return hw_dst_ports
 
 def auto_connect_thread():
