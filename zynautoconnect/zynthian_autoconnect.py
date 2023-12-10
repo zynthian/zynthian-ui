@@ -722,14 +722,8 @@ def build_midi_port_name(port):
 	return uid, name
 
 
-def get_midi_port_aliases():
-	aliases = {}
-	for port in jclient.get_ports(is_midi=True):
-		try:  # TODO: Do not include default names
-			aliases[port.aliases[0]] = port.aliases[1]
-		except:
-			pass
-	return aliases
+def get_port_friendly_names():
+	return midi_port_names
 
 
 def update_midi_port_aliases(port):

@@ -1302,7 +1302,7 @@ class zynthian_state_manager:
         for key in os.environ.keys():
             if key.startswith("ZYNTHIAN_MIDI_"):
                 midi_profile_state[key[14:]] = os.environ[key]
-        midi_profile_state["port_names"] = zynautoconnect.get_midi_port_aliases()
+        midi_profile_state["port_names"] = zynautoconnect.get_port_friendly_names()
         return midi_profile_state
 
     def set_midi_profile_state(self, state):
