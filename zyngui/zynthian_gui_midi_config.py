@@ -48,13 +48,31 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         self.chain_zmop = None
         self.ble_devices = {}  # Map of BLE MIDI device configs indexed by BLE address. Config: [name, paired, trusted, connected]
         self.input = True      # True to process MIDI inputs, False for MIDI outputs
+        self.fingerprint = []  # Used to detect changes in port list
+        self.ble_scan_proc = None
         super().__init__('MIDI Devices', True)
 
     def build_view(self):
         super().build_view()
+        if self.input:
+            self.fingerprint = zynautoconnect.hw_src_ports.copy()
+        else:
+            self.fingerprint = zynautoconnect.hw_dst_ports.copy()
         if self.chain is None:
-            # Start processing Bluetooth
-            Timer(0.1, self.process_ble, [False]).start()
+            # Start scanning and processing bluetooth
+            self.ble_scan_proc = Popen('bluetoothctl', stdin=PIPE, stdout=PIPE, encoding='utf-8')
+            self.ble_scan_proc.stdin.write('menu scan\nuuids 03B80E5A-EDE8-4B33-A751-6CE34EC4C700\nback\nscan on\n')
+            self.ble_scan_proc.stdin.flush()
+            Timer(0.1, self.process_dynamic_ports).start()
+
+    def hide(self):
+        if self.ble_scan_proc:
+            # Stop bluetooth scanning
+            self.ble_scan_proc.stdin.write('scan off\nexit\n')
+            self.ble_scan_proc.stdin.flush()
+            self.ble_scan_proc.terminate()
+            self.ble_scan_proc = None
+        super().hide()
 
     def set_chain(self, chain):
         self.chain = chain
@@ -227,7 +245,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
         if self.input:
             if not self.chain or zynthian_gui_config.midi_aubionotes_enabled:
-                self.list_data.append((None, None, "Aubionotes Audio=>MIDI"))
+                self.list_data.append((None, None, "Aubionotes Audio\u2794MIDI"))
                 if self.chain:
                     for i in aubio_devices:
                         append_port(i)
@@ -369,29 +387,16 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         except:
             pass # Ports may have changed since menu opened
 
-    def process_ble(self, scan=True):
-        """Process BLE MIDI devices
+    def process_dynamic_ports(self):
+        """Process dynamically added/removed MIDI devices
         
-        Calls itself every 2s. Blocks (own thread) whilst scanning for 5s
-        scan - True to scan for new devices
+        Calls itself every 2s
         """
 
         if not self.shown or not zynthian_gui_config.bluetooth_enabled:
             return
 
         update = False
-        if scan:
-            # Scan for 5s - blocks this thread
-            try:
-                proc = Popen('bluetoothctl', stdin=PIPE, stdout=PIPE, encoding='utf-8')
-                proc.stdin.write('menu scan\nuuids 03B80E5A-EDE8-4B33-A751-6CE34EC4C700\nback\nscan on\n')
-                proc.stdin.flush()
-                sleep(5)
-                proc.stdin.write('scan off\n')
-                proc.stdin.flush()
-            except:
-                pass
-
         try:
             # Get list of available BLE Devices
             devices = check_output(['bluetoothctl', 'devices'], encoding='utf-8', timeout=0.1).split('\n')
@@ -436,12 +441,21 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         except:
             pass
 
+        if self.input:
+            if self.fingerprint != zynautoconnect.get_hw_src_ports():
+                self.fingerprint = zynautoconnect.get_hw_src_ports()
+                update = True
+        else:
+            if self.fingerprint != zynautoconnect.get_hw_dst_ports():
+                self.fingerprint = zynautoconnect.get_hw_dst_ports()
+                update = True
+
         if update:
             self.fill_list()
         
         if self.shown:
             # Repeat every 2s
-            Timer(2, self.process_ble).start()
+            Timer(2, self.process_dynamic_ports).start()
 
     def toggle_ble_trust(self, addr):
         """Toggle trust of BLE device

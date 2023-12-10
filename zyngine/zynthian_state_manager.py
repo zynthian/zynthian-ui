@@ -1688,6 +1688,7 @@ class zynthian_state_manager:
                     "ZYNTHIAN_MIDI_RTPMIDI_ENABLED": str(zynthian_gui_config.midi_rtpmidi_enabled)
                 })
             # Call autoconnect after a little time
+            sleep(0.5)
             zynautoconnect.request_midi_connect(True)
         except Exception as e:
             logging.error(e)

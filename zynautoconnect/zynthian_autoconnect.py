@@ -62,6 +62,8 @@ chain_manager = None			# Chain Manager object
 xruns = 0						# Quantity of xruns since startup or last reset
 deferred_midi_connect = False 	# True to perform MIDI connect on next port check cycle
 deferred_audio_connect = False 	# True to perform audio connect on next port check cycle
+hw_src_ports = []				# List of hardware source ports (including network, aubionotes, etc.)
+hw_dst_ports = []				# List of hardware destination ports (including network, aubionotes, etc.)
 
 # These variables are initialized in the init() function. These are "example values".
 max_num_devs = 16    # Max number of MIDI devices
@@ -218,6 +220,7 @@ def request_midi_connect(fast=False):
 	#if paused_flag:
 	#	return
 	if fast:
+		update_hw_midi_ports()
 		midi_autoconnect()
 	else:
 		global deferred_midi_connect
@@ -233,28 +236,31 @@ def is_host_usb_connected():
 	with open("/sys/class/udc/fe980000.usb/device/gadget/suspended") as f:
 		return f.read() != "1\n"
 
+def update_hw_midi_ports():
+	"""Update lists of external (hardware) source and destination MIDI ports
 
-def midi_autoconnect():
-	"""Connect all expected MIDI routes"""
+	returns - True if changed since last call
+	"""
 
 	# Get Mutex Lock
 	if not acquire_lock():
 		return
 
-	global deferred_midi_connect
-	deferred_midi_connect = False
+	global hw_src_ports, hw_dst_ports
+	global host_usb_connected
 
-	#logger.info("ZynAutoConnect: MIDI ...")
-	global zyn_routed_midi
-
-	# Update aliases used to persistently uniquely identify physical ports
-	update_midi_port_aliases()
-	
 	# -----------------------------------------------------------
 	# Get Input/Output MIDI Ports: 
 	#  - sources including physical inputs are jack outputs
 	#  - destinations including physical outputs are jack inputs
 	# -----------------------------------------------------------
+
+	last_hw_devs = hw_src_ports + hw_dst_ports  # Fingerprint of MIDI ports detected on last scan
+
+	# Check if connection to host USB changed
+	hms = is_host_usb_connected()
+	if host_usb_connected != hms:
+		host_usb_connected = hms
 
 	# List of physical MIDI source ports
 	hw_src_ports = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
@@ -293,18 +299,40 @@ def midi_autoconnect():
 		pass
 
 	# Treat some virtual MIDI ports as hardware
-	for port_name in ("QmidiNet:in_1", "jackrtpmidid:rtpmidi_in", "RtMidiIn Client:TouchOSC Bridge", "ZynMaster:midi_in"):
+	for port_name in ("QmidiNet:in", "jackrtpmidid:rtpmidi_in", "RtMidiIn Client:TouchOSC Bridge", "ZynMaster:midi_in"):
 		try:
 			ports = jclient.get_ports(port_name, is_midi=True, is_input=True)
 			hw_dst_ports += ports
 		except:
 			pass
-	for port_name in ("QmidiNet:out_1", "jackrtpmidid:rtpmidi_out", "RtMidiOut Client:TouchOSC Bridge", "aubio"):
+	for port_name in ("QmidiNet:out", "jackrtpmidid:rtpmidi_out", "RtMidiOut Client:TouchOSC Bridge", "aubio"):
 		try:
 			ports = jclient.get_ports(port_name, is_midi=True, is_output=True)
 			hw_src_ports += ports
 		except:
 			pass
+
+	if last_hw_devs != hw_src_ports + hw_dst_ports:
+		release_lock()
+		update_midi_port_aliases()
+		return True
+
+	release_lock()
+	return False
+
+
+def midi_autoconnect():
+	"""Connect all expected MIDI routes"""
+
+	# Get Mutex Lock
+	if not acquire_lock():
+		return
+
+	global deferred_midi_connect
+	deferred_midi_connect = False
+
+	#logger.info("ZynAutoConnect: MIDI ...")
+	global zyn_routed_midi
 
 	# Create graph of required chain routes as sets of sources indexed by destination
 	required_routes = {}
@@ -761,21 +789,24 @@ def set_port_friendly_name_from_uid(uid, friendly_name):
 
 def autoconnect():
 	"""Connect expected routes and disconnect unexpected routes"""
+	update_hw_midi_ports()
 	midi_autoconnect()
 	audio_autoconnect()
 
+def get_hw_src_ports():
+	return hw_src_ports
+
+def get_hw_dst_port():
+	return hw_dst_ports
 
 def auto_connect_thread():
 	"""Thread to run autoconnect, checking if physical (hardware) interfaces have changed, e.g. USB plug"""
-
-	global host_usb_connected
 
 	deferred_timeout = 2  # Period to run deferred connect (in seconds)
 	deferred_inc = 0.1  # Delay between loop cycles (in seconds) - allows faster exit from thread
 	deferred_count = 5  # Run at startup
 	do_audio = False
 	do_midi = False
-	last_hw_devs = None  # Fingerprint of MIDI ports used to check for change of ports
 
 	while not exit_flag:
 		if not paused_flag:
@@ -783,14 +814,7 @@ def auto_connect_thread():
 				if deferred_count > deferred_timeout:
 					deferred_count = 0
 					# Check if hardware MIDI ports changed, e.g. USB inserted/removed
-					hw_devs = jclient.get_ports(is_midi=True, is_physical=True)
-					if last_hw_devs != hw_devs:
-						last_hw_devs = hw_devs
-						do_midi = True
-					# Check if connection to host USB changed
-					hms = is_host_usb_connected()
-					if host_usb_connected != hms:
-						host_usb_connected = hms
+					if update_hw_midi_ports():
 						do_midi = True
 					# Check if requested to run midi connect (slow)
 					if deferred_midi_connect:
