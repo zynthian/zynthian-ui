@@ -319,7 +319,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
         # Change mode
         elif t == 'B':
-            if self.list_data[i][1] is None:
+            if self.list_data[i][1]  is None:
                 if self.list_data[i][0].startswith("BLE:"):
                     # BLE MIDI device not connected
                     addr = self.list_data[i][0][4:]
@@ -366,7 +366,8 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                     port = zynautoconnect.devices_in[dev_i]
                 else:
                     port = zynautoconnect.devices_out[dev_i]
-                options[f'Rename port {port.aliases[0]}'] = port
+                options[f"Rename port '{port.aliases[0]}'"] = port
+                options[f"Reset name to '{zynautoconnect.build_midi_port_name(port)[1]}"] = port
                 self.zyngui.screens['option'].config("MIDI Input Device", options, self.menu_cb)
                 self.zyngui.show_screen('option')
             except:
@@ -376,9 +377,10 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
     def menu_cb(self, option, params):
         try:
             if option.startswith("Rename port"):
-                port = params
-                self.zyngui.show_keyboard(self.rename_device, port.aliases[1])
+                self.zyngui.show_keyboard(self.rename_device, params.aliases[1])
                 return
+            elif option.startswith("Reset name"):
+                zynautoconnect.set_port_friendly_name(params)
             elif params == "LOAD_DRIVER":
                 self.zyngui.state_manager.ctrldev_manager.load_driver(self.list_data[self.index][1])
             elif params == "UNLOAD_DRIVER":
@@ -436,12 +438,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                                 else:
                                     port.set_alias(f"BLE:{addr}_in")
                             if len(port.aliases) < 2:
-                                friendly_name = zynautoconnect.get_friendly_name(port.aliases[0])
-                                if friendly_name:
-                                    zynautoconnect.set_port_friendly_name(port, friendly_name)
-                                else:
-                                    zynautoconnect.set_port_friendly_name(port, name)
-                                    
+                                zynautoconnect.set_port_friendly_name(port)
                     else:
                         # Do not let an untrusted device remain connected
                         check_output(['bluetoothctl', 'disconnect', addr], encoding='utf-8', timeout=5)
@@ -514,7 +511,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             port = zynautoconnect.devices_out[self.list_data[self.index][1]]
         zynautoconnect.set_port_friendly_name(port, name)
         self.fill_list()
-
+    
     def set_select_path(self):
         if self.chain:
             if self.input:

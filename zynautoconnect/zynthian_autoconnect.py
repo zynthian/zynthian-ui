@@ -83,7 +83,7 @@ host_usb_connected = False		# True if connected to host USB
 # MIDI port helper functions
 
 
-def get_friendly_name(uid):
+def get_port_friendly_name(uid):
 	"""Get port friendly name
 	
 	uid : Port uid (alias 2)
@@ -93,6 +93,33 @@ def get_friendly_name(uid):
 	if uid in midi_port_names:
 		return midi_port_names[uid]
 	return None
+
+def set_port_friendly_name(port, friendly_name=None):
+	"""Set the friendly name for a JACK port
+	
+	port : JACK port object
+	friendly_name : New friendly name (optional) Default:Reset to ALSA name 
+	"""
+
+	global midi_port_names
+
+	if len(port.aliases) < 1:
+		return
+	while len(port.aliases) > 1:
+		port.unset_alias(port.aliases[1])
+
+	try:
+		alias1 = port.aliases[0]
+		if friendly_name is None:
+			# Reset name
+			if alias1 in midi_port_names:
+				midi_port_names.pop(alias1)
+			alias1, friendly_name = build_midi_port_name(port)
+		else:
+			midi_port_names[alias1] = friendly_name
+		port.set_alias(friendly_name)
+	except:
+		pass
 
 
 def get_ports(name, is_input=None):
@@ -255,7 +282,7 @@ def update_hw_midi_ports():
 	#  - destinations including physical outputs are jack inputs
 	# -----------------------------------------------------------
 
-	last_hw_devs = hw_src_ports + hw_dst_ports  # Fingerprint of MIDI ports detected on last scan
+	hw_port_fingerprint = hw_src_ports + hw_dst_ports
 
 	# Check if connection to host USB changed
 	hms = is_host_usb_connected()
@@ -312,13 +339,15 @@ def update_hw_midi_ports():
 		except:
 			pass
 
-	if last_hw_devs != hw_src_ports + hw_dst_ports:
-		release_lock()
-		update_midi_port_aliases()
-		return True
+
+	update = False
+	for port in hw_src_ports + hw_dst_ports:
+		if port not in hw_port_fingerprint:
+			update_midi_port_aliases(port)
+			update = True
 
 	release_lock()
-	return False
+	return update
 
 
 def midi_autoconnect():
@@ -652,8 +681,25 @@ def get_audio_capture_ports():
 
 
 def build_midi_port_name(port):
+	if port.name.startswith("ttymidi:MIDI_in"):
+		return port.name, "DIN-5 MIDI"
+	elif port.name.endswith(": f_midi"):
+		return port.name, "USB HOST"
+	elif port.name.startswith("jackrtpmidid:rtpmidi_"):
+		return f"NET:rtp_{port.name[21:]}", "RTP MIDI"
+	elif port.name.startswith("QmidiNet:"):
+		return f"NET:qmidi_{port.name[9:]}", "QmidiNet"
+	elif port.name.endswith(" Client:TouchOSC Bridge"):
+		return f"NET:touchosc_{port.name.split()[0][6:]}", "TouchOSC"
+	elif port.name.startswith("aubio:midi_out"):
+		return f"AUBIO:in", "Audio\u2794MIDI"
+
+	# Dynamic ports
+
 	name = port.shortname.split(':')[-1].strip()
 	try:
+		if port.name.endswith(" Bluetooth") and len(port.aliases):
+			return port.aliases[0], name[:-10]
 		alsa_client_id = int(port.shortname.split('[')[1].split(']')[0])
 		# USB ports
 		card_id = aclient.get_client_info(alsa_client_id).card_id
@@ -686,55 +732,35 @@ def get_midi_port_aliases():
 	return aliases
 
 
-def update_midi_port_aliases():
-	"""Ensure all physical jack ports have uid and friendly name in aliases 0 & 1
+def update_midi_port_aliases(port):
+	"""Set the uid and friendly name of port in aliases 0 & 1
+
+	port - JACK port object
 	"""
 
-	# TODO: Optimise - should not rebuild all on every iteration
-	for port in jclient.get_ports(is_physical=True, is_midi=True):
-		try:
-			alias1 = port.name
-			alias2 = None
-			# Static ports
-			if port.name == "ttymidi:MIDI_in":
-				alias2 = "DIN-5 MIDI"
-			elif port.name == "ttymidi:MIDI_out":
-				alias2 = "DIN-5 MIDI"
-			elif port.name.endswith(" (capture): f_midi"):
-				alias1 = "f_midi:in"
-				alias2 = "USB HOST"
-			elif port.name.endswith("(playback): f_midi"):
-				alias1 = "f_midi:out"
-				alias2 = "USB HOST"
-			# Dynamic ports
-			elif port.name.endswith("Bluetooth"):
-				continue
+	try:
+		alias1 = port.name
+		alias2 = None
+		if port.name.endswith("Bluetooth"):
+			return # TODO: BLE is handled by gui - need a way to handle in core
+		else:
+			alias1, alias2 = (build_midi_port_name(port))
+
+		# Clear current aliases - blunt!
+		for alias in port.aliases:
+			port.unset_alias(alias)
+
+		# Set aliases
+		port.set_alias(alias1)
+		if alias1 in midi_port_names:  # User defined names
+			port.set_alias(midi_port_names[alias1])
+		else:
+			if alias2:
+				port.set_alias(alias2)
 			else:
-				alias1, alias2 = (build_midi_port_name(port))
-
-			# Clear current aliases - blunt!
-			for alias in port.aliases:
-				port.unset_alias(alias)
-
-			# Set aliases
-			port.set_alias(alias1)
-			if alias1 in midi_port_names:  # User defined names
-				port.set_alias(midi_port_names[alias1])
-			else:
-				if alias2:
-					port.set_alias(alias2)
-				else:
-					port.set_alias(alias1)
-		except:
-			logging.warning(f"Unable to set alias for port {port.name}")
-
-	set_midi_port_alias("aubio:midi_out_1", "AUBIO:in", "Audio\u2794MIDI")
-	set_midi_port_alias("jackrtpmidid:rtpmidi_out", "NET:rtp_in", "RTP MIDI")
-	set_midi_port_alias("jackrtpmidid:rtpmidi_in", "NET:rtp_out", "RTP MIDI")
-	set_midi_port_alias("QmidiNet:out_1", "NET:qmidi_in", "QMIDI")
-	set_midi_port_alias("QmidiNet:in_1", "NET:qmidi_out", "QMIDI")
-	set_midi_port_alias("RtMidiOut Client:TouchOSC Bridge", "NET:touchosc_in", "TouchOSC")
-	set_midi_port_alias("RtMidiIn Client:TouchOSC Bridge", "NET:touchosc_out", "TouchOSC")
+				port.set_alias(alias1)
+	except:
+		logging.warning(f"Unable to set alias for port {port.name}")
 
 
 def set_midi_port_alias(port_name, alias1, alias2=None, force=False):
@@ -756,35 +782,6 @@ def set_midi_port_alias(port_name, alias1, alias2=None, force=False):
 		midi_port_names[alias1] = alias2
 	except:
 		pass
-
-
-def set_port_friendly_name(port, friendly_name=None):
-	"""Set the friendly name for a JACK port
-	
-	port : JACK port object
-	friendly_name : New friendly name (optional) Default:Reset to port shortname 
-	"""
-
-	global midi_port_names
-
-	try:
-		if len(port.aliases) < 1:
-			return
-		if len(port.aliases) > 1:
-			port.unset_alias(port.aliases[1])
-		if friendly_name is None:
-			friendly_name = port.shortname
-		port.set_alias(friendly_name)
-		midi_port_names[port.aliases[0]] = friendly_name
-	except:
-		pass
-
-
-def set_port_friendly_name_from_uid(uid, friendly_name):
-	for port in jclient.get_ports():
-		if len(port.aliases) and port.aliases[0] == uid:
-			set_port_friendly_name(port, friendly_name)
-			break
 
 
 def autoconnect():
