@@ -319,7 +319,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
         # Change mode
         elif t == 'B':
-            if self.list_data[i][1]  is None:
+            if self.list_data[i][1] is None:
                 if self.list_data[i][0].startswith("BLE:"):
                     # BLE MIDI device not connected
                     addr = self.list_data[i][0][4:]
@@ -367,7 +367,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 else:
                     port = zynautoconnect.devices_out[dev_i]
                 options[f"Rename port '{port.aliases[0]}'"] = port
-                options[f"Reset name to '{zynautoconnect.build_midi_port_name(port)[1]}"] = port
+                options[f"Reset name to '{zynautoconnect.build_midi_port_name(port)[1]}'"] = port
                 self.zyngui.screens['option'].config("MIDI Input Device", options, self.menu_cb)
                 self.zyngui.show_screen('option')
             except:
@@ -427,21 +427,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 if addr not in self.ble_devices or self.ble_devices[addr] != [name, paired, trusted, connected]:
                     self.ble_devices[addr] = [name, paired, trusted, connected]
                     update = True
-                if connected:
-                    if trusted:
-                        ports = zynautoconnect.get_ports(f"^a2j:{name} \[.*{name} Bluetooth$")
-                        for port in ports:
-                            if not port.aliases:
-                                update = True
-                                if port.is_input:
-                                    port.set_alias(f"BLE:{addr}_out")
-                                else:
-                                    port.set_alias(f"BLE:{addr}_in")
-                            if len(port.aliases) < 2:
-                                zynautoconnect.set_port_friendly_name(port)
-                    else:
-                        # Do not let an untrusted device remain connected
-                        check_output(['bluetoothctl', 'disconnect', addr], encoding='utf-8', timeout=5)
+                if connected and not trusted:
+                    # Do not let an untrusted device remain connected
+                    check_output(['bluetoothctl', 'disconnect', addr], encoding='utf-8', timeout=5)
         except:
             pass
 
@@ -482,7 +470,6 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         except Exception as e:
             logging.warning(f"Failed to complete toggle BLE device action: {e}")
 
-        zynautoconnect.midi_autoconnect() # Need to update devices before filling list
         self.zyngui.state_manager.end_busy("trust_ble")
 
     def remove_ble(self, addr):
@@ -511,7 +498,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             port = zynautoconnect.devices_out[self.list_data[self.index][1]]
         zynautoconnect.set_port_friendly_name(port, name)
         self.fill_list()
-    
+
     def set_select_path(self):
         if self.chain:
             if self.input:

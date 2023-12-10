@@ -30,6 +30,7 @@ import logging
 import alsa_midi
 from time import sleep
 from threading import Thread, Lock
+from subprocess import check_output
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
@@ -339,7 +340,6 @@ def update_hw_midi_ports():
 		except:
 			pass
 
-
 	update = False
 	for port in hw_src_ports + hw_dst_ports:
 		if port not in hw_port_fingerprint:
@@ -453,7 +453,6 @@ def midi_autoconnect():
 					required_routes[dst].add(src.name)
 
 		# Add MIDI router outputs
-		# TODO: Chains shouldn't be tied to hardcoded MIDI channels !!
 		if chain.is_midi():
 			src_ports = jclient.get_ports(f"ZynMidiRouter:ch{chain.midi_chan}_out", is_midi=True, is_output=True)
 			if src_ports:
@@ -698,21 +697,38 @@ def build_midi_port_name(port):
 
 	name = port.shortname.split(':')[-1].strip()
 	try:
-		if port.name.endswith(" Bluetooth") and len(port.aliases):
-			return port.aliases[0], name[:-10]
-		alsa_client_id = int(port.shortname.split('[')[1].split(']')[0])
-		# USB ports
-		card_id = aclient.get_client_info(alsa_client_id).card_id
-		with open(f"/proc/asound/card{card_id}/usbbus", "r") as f:
-			usbbus = f.readline()
-		tmp = re.findall(r'\d+', usbbus)
-		bus = int(tmp[0])
-		address = int(tmp[1])
-		usb_port_nos = usb.core.find(bus=bus, address=address).port_numbers
-		uid = f"{bus}"
-		for i in usb_port_nos:
-			uid += f".{i}"
-		uid = f"USB:{uid} {name}"
+		if port.name.endswith(" Bluetooth"):
+			# Found BLE MIDI device
+			name = name[:-10]
+			if len(port.aliases):
+				# UID already assigned
+				return port.aliases[0], name
+			# Get BLE address
+			devices = check_output(['bluetoothctl', 'devices'], encoding='utf-8', timeout=0.1).split('\n')
+			for device in devices:
+				if not device:
+					continue
+				addr = device.split()[1]
+				dev_name = device[25:]
+				if dev_name == name:
+					if port.is_input:
+						return f"BLE:{addr}_OUT", name
+					else:
+						return f"BLE:{addr}_IN", name
+		else:
+			alsa_client_id = int(port.shortname.split('[')[1].split(']')[0])
+			# USB ports
+			card_id = aclient.get_client_info(alsa_client_id).card_id
+			with open(f"/proc/asound/card{card_id}/usbbus", "r") as f:
+				usbbus = f.readline()
+			tmp = re.findall(r'\d+', usbbus)
+			bus = int(tmp[0])
+			address = int(tmp[1])
+			usb_port_nos = usb.core.find(bus=bus, address=address).port_numbers
+			uid = f"{bus}"
+			for i in usb_port_nos:
+				uid += f".{i}"
+			uid = f"USB:{uid} {name}"
 	except:
 		uid = name
 	if port.is_input:
@@ -725,7 +741,6 @@ def build_midi_port_name(port):
 def get_port_friendly_names():
 	return midi_port_names
 
-
 def update_midi_port_aliases(port):
 	"""Set the uid and friendly name of port in aliases 0 & 1
 
@@ -733,12 +748,7 @@ def update_midi_port_aliases(port):
 	"""
 
 	try:
-		alias1 = port.name
-		alias2 = None
-		if port.name.endswith("Bluetooth"):
-			return # TODO: BLE is handled by gui - need a way to handle in core
-		else:
-			alias1, alias2 = (build_midi_port_name(port))
+		alias1, alias2 = (build_midi_port_name(port))
 
 		# Clear current aliases - blunt!
 		for alias in port.aliases:
