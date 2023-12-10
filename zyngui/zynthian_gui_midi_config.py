@@ -40,8 +40,13 @@ from zyngui import zynthian_gui_config
 # Zynthian MIDI config GUI Class
 # ------------------------------------------------------------------------------
 
+ZMIP_MODE_CONTROLLER = "⌨" #\u2328
+ZMIP_MODE_ACTIVE = "⇥" #\u21e5
+ZMIP_MODE_OMNI = "∈" #\u2208
+ZMIP_MODE_MULTI = "⇶" #\u21f6
 
 class zynthian_gui_midi_config(zynthian_gui_selector):
+
 
     def __init__(self):
         self.chain = None      # Chain object
@@ -100,14 +105,14 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             """Get input mode prefix"""
             mode = ""
             if self.input:
-                if lib_zyncore.zmip_get_flag_active_chan(i):
-                    mode = "↦" #\u2a16
-                elif lib_zyncore.zmip_get_flag_omni_chan(i):
-                    mode = "∈" #\u2208
-                else:
-                    mode = "⇶" #\u21f6
                 if i in self.zyngui.state_manager.ctrldev_manager.drivers:
-                    mode += "↻" #\u21bb
+                    mode += ZMIP_MODE_CONTROLLER
+                if lib_zyncore.zmip_get_flag_active_chan(i):
+                    mode += ZMIP_MODE_ACTIVE
+                elif lib_zyncore.zmip_get_flag_omni_chan(i):
+                    mode += ZMIP_MODE_OMNI
+                else:
+                    mode += ZMIP_MODE_MULTI
             if mode:
                 mode += " "
             return mode
@@ -336,27 +341,28 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                     else:
                         mode = 2
                     options["MIDI Input Mode"] = None
+                    
                     if mode == 0:
-                        options[f'\u25C9 ↦ Active channel'] = "ACTI"
+                        options[f'\u25C9 {ZMIP_MODE_ACTIVE} Active channel'] = "ACTI"
                     else:
-                        options[f'\u25CE ↦ Active channel'] = "ACTI"
-                    if mode == 1:
-                        options[f'\u25C9 ∈ Omni mode'] = "OMNI"
-                    else:
-                        options[f'\u25CE ∈ Omni mode'] = "OMNI"
+                        options[f'\u25CE {ZMIP_MODE_ACTIVE} Active channel'] = "ACTI"
                     if mode == 2:
-                        options[f'\u25C9 ⇶ Multitimbral mode '] = "MULTI"
+                        options[f'\u25C9 {ZMIP_MODE_MULTI} Multitimbral mode '] = "MULTI"
                     else:
-                        options[f'\u25CE ⇶ Multitimbral mode'] = "MULTI"
+                        options[f'\u25CE {ZMIP_MODE_MULTI} Multitimbral mode'] = "MULTI"
+                    if mode == 1:
+                        options[f'\u25C9 {ZMIP_MODE_OMNI} Omni mode'] = "OMNI"
+                    else:
+                        options[f'\u25CE {ZMIP_MODE_OMNI} Omni mode'] = "OMNI"
 
                     options["Configuration"] = None
                     dev_id = zynautoconnect.get_midi_in_devid(dev_i)
                     if dev_id in self.zyngui.state_manager.ctrldev_manager.available_drivers:
                         #TODO: Offer list of profiles
                         if dev_i in self.zyngui.state_manager.ctrldev_manager.drivers:
-                            options[f"\u2612 ↻ Controller driver"] = "UNLOAD_DRIVER"
+                            options[f"\u2612 {ZMIP_MODE_CONTROLLER} Controller driver"] = "UNLOAD_DRIVER"
                         else:
-                            options[f"\u2610 ↻ Controller driver"] = "LOAD_DRIVER"
+                            options[f"\u2610 {ZMIP_MODE_CONTROLLER} Controller driver"] = "LOAD_DRIVER"
                     port = zynautoconnect.devices_in[dev_i]
                 else:
                     port = zynautoconnect.devices_out[dev_i]
