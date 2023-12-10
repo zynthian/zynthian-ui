@@ -40,21 +40,44 @@ from zyngui import zynthian_gui_config
 # Zynthian MIDI config GUI Class
 # ------------------------------------------------------------------------------
 
+ZMIP_MODE_CONTROLLER = "⌨" #\u2328
+ZMIP_MODE_ACTIVE = "⇥" #\u21e5
+ZMIP_MODE_OMNI = "∈" #\u2208
+ZMIP_MODE_MULTI = "⇶" #\u21f6
 
 class zynthian_gui_midi_config(zynthian_gui_selector):
+
 
     def __init__(self):
         self.chain = None      # Chain object
         self.chain_zmop = None
         self.ble_devices = {}  # Map of BLE MIDI device configs indexed by BLE address. Config: [name, paired, trusted, connected]
         self.input = True      # True to process MIDI inputs, False for MIDI outputs
+        self.fingerprint = []  # Used to detect changes in port list
+        self.ble_scan_proc = None
         super().__init__('MIDI Devices', True)
 
     def build_view(self):
-        super().build_view()
+        if self.input:
+            self.fingerprint = zynautoconnect.get_hw_src_ports()
+        else:
+            self.fingerprint = zynautoconnect.get_hw_dst_ports()
         if self.chain is None:
-            # Start processing Bluetooth
-            Timer(0.1, self.process_ble, [False]).start()
+            # Start scanning and processing bluetooth
+            self.ble_scan_proc = Popen('bluetoothctl', stdin=PIPE, stdout=PIPE, encoding='utf-8')
+            self.ble_scan_proc.stdin.write('menu scan\nuuids 03B80E5A-EDE8-4B33-A751-6CE34EC4C700\nback\nscan on\n')
+            self.ble_scan_proc.stdin.flush()
+            Timer(0.1, self.process_dynamic_ports).start()
+        super().build_view()
+
+    def hide(self):
+        if self.ble_scan_proc:
+            # Stop bluetooth scanning
+            self.ble_scan_proc.stdin.write('scan off\nexit\n')
+            self.ble_scan_proc.stdin.flush()
+            self.ble_scan_proc.terminate()
+            self.ble_scan_proc = None
+        super().hide()
 
     def set_chain(self, chain):
         self.chain = chain
@@ -83,13 +106,13 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             mode = ""
             if self.input:
                 if lib_zyncore.zmip_get_flag_active_chan(i):
-                    mode = "↦" #\u2a16
+                    mode += ZMIP_MODE_ACTIVE
                 elif lib_zyncore.zmip_get_flag_omni_chan(i):
-                    mode = "∈" #\u2208
+                    mode += ZMIP_MODE_OMNI
                 else:
-                    mode = "⇶" #\u21f6
+                    mode += ZMIP_MODE_MULTI
                 if i in self.zyngui.state_manager.ctrldev_manager.drivers:
-                    mode += "↻" #\u21bb
+                    mode += f" {ZMIP_MODE_CONTROLLER}"
             if mode:
                 mode += " "
             return mode
@@ -227,7 +250,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
         if self.input:
             if not self.chain or zynthian_gui_config.midi_aubionotes_enabled:
-                self.list_data.append((None, None, "Aubionotes Audio=>MIDI"))
+                self.list_data.append((None, None, "Aubionotes Audio\u2794MIDI"))
                 if self.chain:
                     for i in aubio_devices:
                         append_port(i)
@@ -257,26 +280,27 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         action = self.list_data[i][0]
         if t == 'S':
             action = self.list_data[i][0]
+            wait = 2 # Delay after starting service to allow jack ports to update
             if action == "stop_jackrtpmidid":
-                self.zyngui.state_manager.stop_rtpmidi()
+                self.zyngui.state_manager.stop_rtpmidi(wait=wait)
             elif action == "start_jackrtpmidid":
-                self.zyngui.state_manager.start_rtpmidi()
+                self.zyngui.state_manager.start_rtpmidi(wait=wait)
             elif action == "stop_QmidiNet":
-                self.zyngui.state_manager.stop_qmidinet()
+                self.zyngui.state_manager.stop_qmidinet(wait=wait)
             elif action == "start_QmidiNet":
-                self.zyngui.state_manager.start_qmidinet()
-            elif action in ("stop_RtMidiIn Client:TouchOSC Bridge", "stop_touchosc"):
-                self.zyngui.state_manager.stop_touchosc2midi()
-            elif action in ("start_RtMidiIn Client:TouchOSC Bridge", "start_touchosc"):
-                self.zyngui.state_manager.start_touchosc2midi()
+                self.zyngui.state_manager.start_qmidinet(wait=wait)
+            elif action == "stop_touchosc":
+                self.zyngui.state_manager.stop_touchosc2midi(wait=wait)
+            elif action == "start_touchosc":
+                self.zyngui.state_manager.start_touchosc2midi(wait=wait)
             elif action == "stop_aubionotes":
-                self.zyngui.state_manager.stop_aubionotes()
+                self.zyngui.state_manager.stop_aubionotes(wait=wait)
             elif action == "start_aubionotes":
-                self.zyngui.state_manager.start_aubionotes()
+                self.zyngui.state_manager.start_aubionotes(wait=wait)
             elif action == "stop_bluetooth":
-                self.zyngui.state_manager.stop_bluetooth()
+                self.zyngui.state_manager.stop_bluetooth(wait=wait)
             elif action == "start_bluetooth":
-                self.zyngui.state_manager.start_bluetooth()
+                self.zyngui.state_manager.start_bluetooth(wait=wait)
             # Route/Unroute
             elif self.chain:
                 if self.input:
@@ -317,31 +341,33 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                     else:
                         mode = 2
                     options["MIDI Input Mode"] = None
+                    
                     if mode == 0:
-                        options[f'\u25C9 ↦ Active channel'] = "ACTI"
+                        options[f'\u25C9 {ZMIP_MODE_ACTIVE} Active channel'] = "ACTI"
                     else:
-                        options[f'\u25CE ↦ Active channel'] = "ACTI"
-                    if mode == 1:
-                        options[f'\u25C9 ∈ Omni mode'] = "OMNI"
-                    else:
-                        options[f'\u25CE ∈ Omni mode'] = "OMNI"
+                        options[f'\u25CE {ZMIP_MODE_ACTIVE} Active channel'] = "ACTI"
                     if mode == 2:
-                        options[f'\u25C9 ⇶ Multitimbral mode '] = "MULTI"
+                        options[f'\u25C9 {ZMIP_MODE_MULTI} Multitimbral mode '] = "MULTI"
                     else:
-                        options[f'\u25CE ⇶ Multitimbral mode'] = "MULTI"
+                        options[f'\u25CE {ZMIP_MODE_MULTI} Multitimbral mode'] = "MULTI"
+                    if mode == 1:
+                        options[f'\u25C9 {ZMIP_MODE_OMNI} Omni mode'] = "OMNI"
+                    else:
+                        options[f'\u25CE {ZMIP_MODE_OMNI} Omni mode'] = "OMNI"
 
                     options["Configuration"] = None
                     dev_id = zynautoconnect.get_midi_in_devid(dev_i)
                     if dev_id in self.zyngui.state_manager.ctrldev_manager.available_drivers:
                         #TODO: Offer list of profiles
                         if dev_i in self.zyngui.state_manager.ctrldev_manager.drivers:
-                            options[f"\u2612 ↻ Controller driver"] = "UNLOAD_DRIVER"
+                            options[f"\u2612 {ZMIP_MODE_CONTROLLER} Controller driver"] = "UNLOAD_DRIVER"
                         else:
-                            options[f"\u2610 ↻ Controller driver"] = "LOAD_DRIVER"
+                            options[f"\u2610 {ZMIP_MODE_CONTROLLER} Controller driver"] = "LOAD_DRIVER"
                     port = zynautoconnect.devices_in[dev_i]
                 else:
                     port = zynautoconnect.devices_out[dev_i]
-                options[f'Rename port {port.aliases[0]}'] = port
+                options[f"Rename port '{port.aliases[0]}'"] = port
+                options[f"Reset name to '{zynautoconnect.build_midi_port_name(port)[1]}'"] = port
                 self.zyngui.screens['option'].config("MIDI Input Device", options, self.menu_cb)
                 self.zyngui.show_screen('option')
             except:
@@ -351,9 +377,10 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
     def menu_cb(self, option, params):
         try:
             if option.startswith("Rename port"):
-                port = params
-                self.zyngui.show_keyboard(self.rename_device, port.aliases[1])
+                self.zyngui.show_keyboard(self.rename_device, params.aliases[1])
                 return
+            elif option.startswith("Reset name"):
+                zynautoconnect.set_port_friendly_name(params)
             elif params == "LOAD_DRIVER":
                 self.zyngui.state_manager.ctrldev_manager.load_driver(self.list_data[self.index][1])
             elif params == "UNLOAD_DRIVER":
@@ -369,29 +396,16 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         except:
             pass # Ports may have changed since menu opened
 
-    def process_ble(self, scan=True):
-        """Process BLE MIDI devices
+    def process_dynamic_ports(self):
+        """Process dynamically added/removed MIDI devices
         
-        Calls itself every 2s. Blocks (own thread) whilst scanning for 5s
-        scan - True to scan for new devices
+        Calls itself every 2s
         """
 
         if not self.shown or not zynthian_gui_config.bluetooth_enabled:
             return
 
         update = False
-        if scan:
-            # Scan for 5s - blocks this thread
-            try:
-                proc = Popen('bluetoothctl', stdin=PIPE, stdout=PIPE, encoding='utf-8')
-                proc.stdin.write('menu scan\nuuids 03B80E5A-EDE8-4B33-A751-6CE34EC4C700\nback\nscan on\n')
-                proc.stdin.flush()
-                sleep(5)
-                proc.stdin.write('scan off\n')
-                proc.stdin.flush()
-            except:
-                pass
-
         try:
             # Get list of available BLE Devices
             devices = check_output(['bluetoothctl', 'devices'], encoding='utf-8', timeout=0.1).split('\n')
@@ -413,35 +427,27 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 if addr not in self.ble_devices or self.ble_devices[addr] != [name, paired, trusted, connected]:
                     self.ble_devices[addr] = [name, paired, trusted, connected]
                     update = True
-                if connected:
-                    if trusted:
-                        ports = zynautoconnect.get_ports(f"^a2j:{name} \[.*{name} Bluetooth$")
-                        for port in ports:
-                            if not port.aliases:
-                                update = True
-                                if port.is_input:
-                                    port.set_alias(f"BLE:{addr}_out")
-                                else:
-                                    port.set_alias(f"BLE:{addr}_in")
-                            if len(port.aliases) < 2:
-                                friendly_name = zynautoconnect.get_friendly_name(port.aliases[0])
-                                if friendly_name:
-                                    zynautoconnect.set_port_friendly_name(port, friendly_name)
-                                else:
-                                    zynautoconnect.set_port_friendly_name(port, name)
-                                    
-                    else:
-                        # Do not let an untrusted device remain connected
-                        check_output(['bluetoothctl', 'disconnect', addr], encoding='utf-8', timeout=5)
+                if connected and not trusted:
+                    # Do not let an untrusted device remain connected
+                    check_output(['bluetoothctl', 'disconnect', addr], encoding='utf-8', timeout=5)
         except:
             pass
+
+        if self.input:
+            if self.fingerprint != zynautoconnect.get_hw_src_ports():
+                self.fingerprint = zynautoconnect.get_hw_src_ports()
+                update = True
+        else:
+            if self.fingerprint != zynautoconnect.get_hw_dst_ports():
+                self.fingerprint = zynautoconnect.get_hw_dst_ports()
+                update = True
 
         if update:
             self.fill_list()
         
         if self.shown:
             # Repeat every 2s
-            Timer(2, self.process_ble).start()
+            Timer(2, self.process_dynamic_ports).start()
 
     def toggle_ble_trust(self, addr):
         """Toggle trust of BLE device
@@ -464,7 +470,6 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         except Exception as e:
             logging.warning(f"Failed to complete toggle BLE device action: {e}")
 
-        zynautoconnect.midi_autoconnect() # Need to update devices before filling list
         self.zyngui.state_manager.end_busy("trust_ble")
 
     def remove_ble(self, addr):

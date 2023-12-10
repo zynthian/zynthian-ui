@@ -528,7 +528,7 @@ class zynthian_gui:
 			exclude = self.current_screen
 		exclude_obj = self.screens[exclude]
 
-		for screen_name, screen_obj in self.screens.items():
+		for screen_obj in self.screens.values():
 			if screen_obj != exclude_obj:
 				screen_obj.hide()
 

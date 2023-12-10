@@ -1298,7 +1298,7 @@ class zynthian_state_manager:
         for key in os.environ.keys():
             if key.startswith("ZYNTHIAN_MIDI_"):
                 midi_profile_state[key[14:]] = os.environ[key]
-        midi_profile_state["port_names"] = zynautoconnect.get_midi_port_aliases()
+        midi_profile_state["port_names"] = zynautoconnect.get_port_friendly_names()
         return midi_profile_state
 
     def set_midi_profile_state(self, state):
@@ -1672,7 +1672,7 @@ class zynthian_state_manager:
         else:
             self.stop_rtpmidi(False)
 
-    def start_rtpmidi(self, save_config=True):
+    def start_rtpmidi(self, save_config=True, wait=0):
         self.start_busy("start_rtpmidi", "starting RTP-MIDI")
         logging.info("STARTING RTP-MIDI")
         try:
@@ -1684,6 +1684,7 @@ class zynthian_state_manager:
                     "ZYNTHIAN_MIDI_RTPMIDI_ENABLED": str(zynthian_gui_config.midi_rtpmidi_enabled)
                 })
             # Call autoconnect after a little time
+            sleep(wait)
             zynautoconnect.request_midi_connect(True)
         except Exception as e:
             logging.error(e)
@@ -1692,7 +1693,7 @@ class zynthian_state_manager:
 
         self.end_busy("start_rtpmidi")
 
-    def stop_rtpmidi(self, save_config=True):
+    def stop_rtpmidi(self, save_config=True, wait=0):
         self.start_busy("stop_rtpmidi", "stopping RTP-MIDI")
         logging.info("STOPPING RTP-MIDI")
         try:
@@ -1703,6 +1704,7 @@ class zynthian_state_manager:
                 zynconf.update_midi_profile({
                     "ZYNTHIAN_MIDI_RTPMIDI_ENABLED": str(zynthian_gui_config.midi_rtpmidi_enabled)
                 })
+            sleep(wait)
 
         except Exception as e:
             logging.error(e)
@@ -1711,7 +1713,7 @@ class zynthian_state_manager:
 
         self.end_busy("stop_rtpmidi")
 
-    def start_qmidinet(self, save_config=True):
+    def start_qmidinet(self, save_config=True, wait=0):
         self.start_busy("start_qmidinet", "starting QMidiNet")
         logging.info("STARTING QMidiNet")
         try:
@@ -1723,6 +1725,7 @@ class zynthian_state_manager:
                     "ZYNTHIAN_MIDI_NETWORK_ENABLED": str(zynthian_gui_config.midi_network_enabled)
                 })
             # Call autoconnect after a little time
+            sleep(wait)
             zynautoconnect.request_midi_connect(True)
         except Exception as e:
             logging.error(e)
@@ -1731,7 +1734,7 @@ class zynthian_state_manager:
 
         self.end_busy("start_qmidinet")
 
-    def stop_qmidinet(self, save_config=True):
+    def stop_qmidinet(self, save_config=True, wait=0):
         self.start_busy("stop_qmidinet", "stopping QMidiNet")
         logging.info("STOPPING QMidiNet")
         try:
@@ -1742,6 +1745,7 @@ class zynthian_state_manager:
                 zynconf.update_midi_profile({
                     "ZYNTHIAN_MIDI_NETWORK_ENABLED": str(zynthian_gui_config.midi_network_enabled)
                 })
+            sleep(wait)
         except Exception as e:
             logging.error(e)
             self.set_busy_error("ERROR STOPPING QMidiNet", e)
@@ -1756,7 +1760,7 @@ class zynthian_state_manager:
         else:
             self.stop_qmidinet(False)
 
-    def start_touchosc2midi(self, save_config=True):
+    def start_touchosc2midi(self, save_config=True, wait=0):
         self.start_busy("start_touchosc2midi", "starting Touch-OSC")
         logging.info("STARTING touchosc2midi")
         try:
@@ -1769,6 +1773,7 @@ class zynthian_state_manager:
                 })
             # Call autoconnect after a little time
             zynautoconnect.request_midi_connect(True)
+            sleep(wait)
         except Exception as e:
             logging.error(e)
             self.set_busy_error("ERROR STARTING Touch-OSC", e)
@@ -1776,7 +1781,7 @@ class zynthian_state_manager:
 
         self.end_busy("start_touchosc2midi")
 
-    def stop_touchosc2midi(self, save_config=True):
+    def stop_touchosc2midi(self, save_config=True, wait=0):
         self.start_busy("stop_touchosc2midi", "stopping Touch-OSC")
         logging.info("STOPPING touchosc2midi")
         try:
@@ -1787,6 +1792,7 @@ class zynthian_state_manager:
                 zynconf.update_midi_profile({
                     "ZYNTHIAN_MIDI_TOUCHOSC_ENABLED": str(zynthian_gui_config.midi_touchosc_enabled)
                 })
+            sleep(wait)
         except Exception as e:
             logging.error(e)
             self.set_busy_error("ERROR STOPPING Touch-OSC", e)
@@ -1801,7 +1807,7 @@ class zynthian_state_manager:
         else:
             self.stop_touchosc2midi(False)
 
-    def start_bluetooth(self, save_config=True):
+    def start_bluetooth(self, save_config=True, wait=0):
         self.start_busy("start_bluetooth", "starting Bluetooth")
         logging.info("STARTING Bluetooth")
         try:
@@ -1813,6 +1819,7 @@ class zynthian_state_manager:
                     "ZYNTHIAN_MIDI_BLE_ENABLED": str(zynthian_gui_config.bluetooth_enabled)
                 })
             # Call autoconnect after a little time
+            sleep(wait)
             zynautoconnect.request_midi_connect(True)
         except Exception as e:
             logging.error(e)
@@ -1821,7 +1828,7 @@ class zynthian_state_manager:
 
         self.end_busy("start_bluetooth")
 
-    def stop_bluetooth(self, save_config=True):
+    def stop_bluetooth(self, save_config=True, wait=0):
         self.start_busy("stop_bluetooth", "stopping Bluetooth")
         logging.info("STOPPING bluetooth")
         try:
@@ -1832,6 +1839,7 @@ class zynthian_state_manager:
                 zynconf.update_midi_profile({
                     "ZYNTHIAN_MIDI_BLE_ENABLED": str(zynthian_gui_config.bluetooth_enabled)
                 })
+            sleep(wait)
         except Exception as e:
             logging.error(e)
             self.set_busy_error("ERROR STOPPING Bluetooth", e)
@@ -1847,7 +1855,7 @@ class zynthian_state_manager:
             self.stop_bluetooth(False)
 
 
-    def start_aubionotes(self, save_config=True):
+    def start_aubionotes(self, save_config=True, wait=0):
         self.start_busy("start_aubionotes", "starting AubioNotes")
         logging.info("STARTING aubionotes")
         try:
@@ -1859,6 +1867,7 @@ class zynthian_state_manager:
                     "ZYNTHIAN_MIDI_AUBIONOTES_ENABLED": str(zynthian_gui_config.midi_aubionotes_enabled)
                 })
             # Call autoconnect after a little time
+            sleep(wait)
             zynautoconnect.request_midi_connect(True)
             zynautoconnect.request_audio_connect()
         except Exception as e:
@@ -1869,7 +1878,7 @@ class zynthian_state_manager:
         self.end_busy("start_aubionotes")
 
 
-    def stop_aubionotes(self, save_config=True):
+    def stop_aubionotes(self, save_config=True, wait=0):
         self.start_busy("stop_aubionotes", "stopping AubioNotes")
         logging.info("STOPPING aubionotes")
         try:
@@ -1880,6 +1889,7 @@ class zynthian_state_manager:
                 zynconf.update_midi_profile({
                     "ZYNTHIAN_MIDI_AUBIONOTES_ENABLED": str(zynthian_gui_config.midi_aubionotes_enabled)
                 })
+            sleep(wait)
         except Exception as e:
             logging.error(e)
             self.set_busy_error("ERROR STOPPING AubioNotes", e)
