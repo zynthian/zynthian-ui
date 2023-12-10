@@ -27,8 +27,6 @@
 import os
 import logging
 import sys
-from threading import Thread
-from time import sleep
 
 # Zynthian specific modules
 import zynautoconnect
@@ -55,29 +53,6 @@ class zynthian_ctrldev_manager():
         self.available_drivers = {}  # Map of driver classes indexed by device type name
         self.drivers = {}  # Map of device driver objects indexed by zmip
         self.update_available_drivers()
-        self.seq_queue = None
-        self.mixer_queue = None
-        self.thread = Thread(target=self.thread_task)
-        self.thread.name = "Control Device Manager"
-        self.thread.daemon = True  # thread dies with the program
-        self.thread.start()
-
-    def thread_task(self):
-        """Thread to update device status"""
-
-        while not self.state_manager.exit_flag:
-            if self.seq_queue and not self.seq_queue.empty():
-                bank, seq, state, mode = self.seq_queue.get(timeout=1)
-                for driver in self.drivers.values():
-                    if driver.dev_zynpad:
-                        driver.update_pad(seq, state, mode)
-            elif self.mixer_queue and not self.mixer_queue.empty():
-                chan, ctrl, value = self.mixer_queue.get(timeout=1)
-                for driver in self.drivers.values():
-                    if driver.dev_zynmixer:
-                        driver.update_mixer(chan, ctrl, value)
-            else:
-                sleep(0.01)
 
     def update_available_drivers(self):
         """Update map of available driver names"""
@@ -102,15 +77,11 @@ class zynthian_ctrldev_manager():
         if dev_id not in self.available_drivers:
             return False
         if izmip in self.drivers:
-            return False #TODO: Should check if driver differs
+            return False  # TODO: Should check if driver differs
         izmop = zynautoconnect.dev_in_2_dev_out(izmip)
         try:
             lib_zyncore.zmip_set_route_extdev(izmip, 0)
             self.drivers[izmip] = self.available_drivers[dev_id](self.state_manager, izmip, izmop)
-            if self.seq_queue is None and self.drivers[izmip].dev_zynpad:
-                self.seq_queue = self.state_manager.register_seq()
-            if self.mixer_queue is None and self.drivers[izmip].dev_zynmixer:
-                self.mixer_queue = self.state_manager.register_mixer()
             logging.info(f"Loaded ctrldev driver {dev_id}.")
             return True
         except Exception as e:
@@ -129,24 +100,13 @@ class zynthian_ctrldev_manager():
             self.drivers[izmip].end()
             self.drivers.pop(izmip)
             lib_zyncore.zmip_set_route_extdev(izmip, 1)
-
-            # Unregister if no more drivers loaded
-            found_seq = found_mixer = False
-            for driver in self.drivers.values():
-                if driver.dev_zynpad:
-                    found_seq = True
-                if driver.dev_zynmixer:
-                    found_mixer = True
-            if not found_seq:
-                self.state_manager.unregister_seq(self.seq_queue)
-                self.seq_queue = None
-            if not found_mixer:
-                self.state_manager.unregister_mixer(self.mixer_queue)
-                self.mixer_queue = None
-            lib_zyncore.zmip_set_route_extdev(izmip, 1)
             return True
 
         return False
+
+    def unload_all_drivers(self):
+        for izmip in list(self.drivers):
+            self.unload_driver(izmip)
 
     def sleep_on(self):
         """Enable sleep state"""

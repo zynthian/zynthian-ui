@@ -56,8 +56,6 @@ class zynthian_basic_engine:
 
 	def __init__(self, name=None, command=None, prompt=None, cwd=None):
 		self.name = name
-		self.processor_cb = None
-
 		self.proc = None
 		self.proc_timeout = 20
 		self.proc_start_sleep = None
@@ -479,9 +477,6 @@ class zynthian_engine(zynthian_basic_engine):
 	# ---------------------------------------------------------------------------
 	# Controllers Management
 	# ---------------------------------------------------------------------------
-
-	def set_ctrl_update_cb(self, cb):
-		self.processor_cb = cb
 
 	# Get zynthian controllers dictionary.
 	# Updates existing processor dictionary.

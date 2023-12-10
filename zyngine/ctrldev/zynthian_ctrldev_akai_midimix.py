@@ -27,8 +27,9 @@
 import logging
 
 # Zynthian specific modules
-from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer
 from zyncoder.zyncore import lib_zyncore
+from zyngine.zynthian_signal_manager import zynsigman
+from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer
 
 # --------------------------------------------------------------------------
 # Akai MIDI-Mix Integration
@@ -62,25 +63,50 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 
 	def init(self):
 		self.midimix_bank = 0
+		zynsigman.register(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_mixer_active_chain)
+		zynsigman.register(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
 		self.light_off()
+		self.refresh()
 
 	def end(self):
+		zynsigman.unregister(zynsigman.CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_mixer_active_chain)
+		zynsigman.unregister(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
 		self.light_off()
 
-	def update_mixer(self, chan, ctrl, value):
-		if self.idev_out <= 0 or chan > 7:
+	# Update LED status for a single strip
+	def update_mixer_strip(self, chan, symbol, value):
+		if self.idev_out is None or chan > 7:
 			return
-		if ctrl == "record":
-			lib_zyncore.dev_send_note_on(self.idev_out, 0, self.rec_notes[chan], value)
-		elif ctrl == "mute":
+		if symbol == "mute":
 			lib_zyncore.dev_send_note_on(self.idev_out, 0, self.mute_notes[chan], value)
-		elif ctrl == "solo":
+		elif symbol == "solo":
 			lib_zyncore.dev_send_note_on(self.idev_out, 0, self.solo_notes[chan], value)
+		#elif symbol == "rec":
+		#	lib_zyncore.dev_send_note_on(self.idev_out, 0, self.rec_notes[chan], value)
 
+	# Update LED status for active chain
+	def update_mixer_active_chain(self, active_chain):
+		if self.rec_mode:
+			return
+		if self.midimix_bank:
+			index0 = 8
+		else:
+			index0 = 0
+		for i in range(0, 8):
+			index = index0 + i
+			if index < len(self.zynmixer.zctrls):
+				chain = self.chain_manager.get_chain_by_index(index + 1)
+			else:
+				chain = None
+			if chain and chain == self.chain_manager.get_active_chain():
+				rec = 1
+			else:
+				rec = 0
+			lib_zyncore.dev_send_note_on(self.idev_out, 0, self.rec_notes[i], rec)
 
-	# Update LED status
-	def refresh(self, force = False):
-		if self.idev_out <= 0:
+	# Update full LED status
+	def refresh(self, force=False):
+		if self.idev_out is None:
 			return
 
 		# Bank selection LED
@@ -144,7 +170,8 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 					val = 1
 				self.zynmixer.set_mute(index, val, True)
 				# Send LED feedback
-				lib_zyncore.dev_send_note_on(self.idev_out, 0, note, val)
+				if self.idev_out is not None:
+					lib_zyncore.dev_send_note_on(self.idev_out, 0, note, val)
 				return True
 			elif note in self.solo_notes:
 				index = self.solo_notes.index(note)
@@ -156,7 +183,8 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 					val = 1
 				self.zynmixer.set_solo(index, val, True)
 				# Send LED feedback
-				lib_zyncore.dev_send_note_on(self.idev_out, 0, note, val)
+				if self.idev_out is not None:
+					lib_zyncore.dev_send_note_on(self.idev_out, 0, note, val)
 				return True
 			elif note in self.rec_notes:
 				index = self.rec_notes.index(note)
@@ -165,12 +193,14 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 				if index < len(self.zynmixer.zctrls):
 					if not self.rec_mode:
 						self.chain_manager.set_active_chain_by_index(index + 1)
+						self.refresh()
 					else:
 						chain = self.chain_manager.get_chain_by_index(index + 1)
 						self.state_manager.audio_recorder.toggle_arm(chain.midi_chan)
 						# Send LED feedback
-						val = self.state_manager.audio_recorder.is_armed(chain.midi_chan)
-						lib_zyncore.dev_send_note_on(self.idev_out, 0, note, val)
+						if self.idev_out is not None:
+							val = self.state_manager.audio_recorder.is_armed(chain.midi_chan)
+							lib_zyncore.dev_send_note_on(self.idev_out, 0, note, val)
 				return True
 		elif evtype == 0xB:
 			ccnum = (ev & 0x7F00) >> 8
@@ -193,6 +223,8 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 
 	# Light-Off all LEDs
 	def light_off(self):
+		if self.idev_out is None:
+			return
 		for note in range(1, 28):
 			lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
 

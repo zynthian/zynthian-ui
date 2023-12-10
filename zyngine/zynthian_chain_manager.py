@@ -33,14 +33,18 @@ from zyngine import *
 from zyngine.zynthian_chain import *
 from zyngine.zynthian_engine_jalv import *
 from zyngine.zynthian_engine_pianoteq import *
+from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_processor import zynthian_processor
-from zyngui import zynthian_gui_config #TODO: Factor out UI
+from zyngui import zynthian_gui_config  # TODO: Factor out UI
 
 # ----------------------------------------------------------------------------
 # Zynthian Chain Manager Class
 # ----------------------------------------------------------------------------
 
 class zynthian_chain_manager():
+
+    # Subsignals are defined inside each module. Here we define chain_manager subsignals:
+    SS_SET_ACTIVE_CHAIN = 1
 
     single_processor_engines = ["BF", "MD", "PT", "PD", "AE", "CS", "SL"]
 
@@ -55,7 +59,9 @@ class zynthian_chain_manager():
         """
 
         logging.info("Creating chain manager")
+
         self.state_manager = state_manager
+
         self.chains = {}  # Map of chain objects indexed by chain id
         self.chain_ids_ordered = [] # List of chain IDs in order (excluding "main")
         self.zyngine_counter = 0 # Appended to engine names for uniqueness
@@ -457,6 +463,7 @@ class zynthian_chain_manager():
         try:
             chain = self.chains[chain_id]
             self.active_chain_id = chain_id
+            zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain=self.active_chain_id)
             # Update active MIDI channel
             midi_chan = chain.midi_chan
             if isinstance(midi_chan, int) and midi_chan < 16:
@@ -470,7 +477,7 @@ class zynthian_chain_manager():
                 midi_chan = lib_zyncore.get_midi_active_chan()
                 if midi_chan >= 0 and midi_chan < 16 and self.midi_chan_2_chain_id[midi_chan]:
                     return
-                # If not, find a valid MIDI chain => first chain's MICI channel
+                # If not, find a valid MIDI chain => first chain's MIDI channel
                 for chain in self.chains.values():
                     if chain.is_midi():
                         lib_zyncore.set_midi_active_chan(chain.midi_chan)

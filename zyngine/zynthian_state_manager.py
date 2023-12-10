@@ -27,12 +27,12 @@ import base64
 import ctypes
 import logging
 from glob import glob
-from datetime import datetime
 from threading import Thread
+from queue import SimpleQueue
+from datetime import datetime
 from subprocess import check_output
 from json import JSONEncoder, JSONDecoder
 from os.path import basename, isdir, isfile, join, dirname, splitext
-from queue import SimpleQueue
 
 # Zynthian specific modules
 import zynconf
@@ -43,6 +43,7 @@ from zynlibs.zynseq import zynseq
 from zynlibs.zynsmf import zynsmf  # Python wrapper for zynsmf (ensures initialised and wraps load() function)
 from zynlibs.zynsmf.zynsmf import libsmf  # Direct access to shared library
 
+#from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_chain_manager import *
 from zyngine.zynthian_processor import zynthian_processor 
 from zyngine import zynthian_legacy_snapshot
@@ -63,6 +64,9 @@ ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 
 
 class zynthian_state_manager:
+
+    # Subsignals are defined inside each module. Here we define state_manager subsignals:
+    #SS_XXX = 1
 
     def __init__(self):
         """ Create an instance of a state manager
@@ -106,9 +110,7 @@ class zynthian_state_manager:
         self.midi_learn_pc = None  # When ZS3 Program Change MIDI learning is enabled, the name used for creating new ZS3, empty string for auto-generating a name. None when disabled.
         self.midi_learn_zctrl = None  # zctrl currently being learned
         self.sync = False  # True to request file system sync
-        self.seq_queue = [] # List of queues for sequence state and mode change messages
-        self.mixer_queue = [] # List of queues for mixer state change messages
-        self.cuia_queue = [] # List of queues for GUI (CUIA) change messages
+        self.cuia_queue = []  # List of queues for GUI (CUIA) change messages
 
         self.hwmon_thermal_file = None
         self.hwmon_undervolt_file = None
@@ -183,8 +185,6 @@ class zynthian_state_manager:
         self.thread.daemon = True  # thread dies with the program
         self.thread.start()
 
-        self.zynmixer.set_ctrl_update_cb(self.mixer_cb)
-
         self.end_busy("start state")
 
     def stop(self):
@@ -203,8 +203,7 @@ class zynthian_state_manager:
         self.chain_manager.remove_all_chains(True)
         self.reset_zs3()
         self.zynseq.load("")
-        for izmip in list(self.ctrldev_manager.drivers):
-            self.ctrldev_manager.unload_driver(izmip)
+        self.ctrldev_manager.unload_all_drivers()
         self.destroy_audio_player()
         zynautoconnect.stop()
 
@@ -467,8 +466,7 @@ class zynthian_state_manager:
                     if self.zynseq.libseq.hasSequenceChanged(self.zynseq.bank, seq):
                         mode = self.zynseq.libseq.getPlayMode(self.zynseq.bank, seq)
                         state = self.zynseq.libseq.getPlayState(self.zynseq.bank, seq)
-                        for q in self.seq_queue:
-                            q.put_nowait((self.zynseq.bank, seq, state, mode))                   
+                        #(self.zynseq.bank, seq, state, mode)
 
                 # Clean some status flags
                 if xruns_status:
@@ -497,40 +495,6 @@ class zynthian_state_manager:
                 logging.exception(e)
 
             sleep(tsleep)
-
-    # ----------------------------------------------------------------------------
-    # Sequencer event queues
-    # ----------------------------------------------------------------------------
-
-    def register_seq(self):
-        queue = SimpleQueue()
-        self.seq_queue.append(queue)
-        return queue
-
-    def unregister_seq(self, queue):
-        try:
-            self.seq_queue.remove(queue)
-        except:
-            pass
-
-    # ----------------------------------------------------------------------------
-    # Mixer event queues
-    # ----------------------------------------------------------------------------
-
-    def register_mixer(self):
-        queue = SimpleQueue()
-        self.mixer_queue.append(queue)
-        return queue
-
-    def unregister_mixer(self, queue):
-        try:
-            self.mixer_queue.remove(queue)
-        except:
-            pass
-
-    def mixer_cb(self, chan, ctrl, value):
-        for q in self.mixer_queue:
-            q.put_nowait((chan, ctrl, value))
 
     # ----------------------------------------------------------------------------
     # CUIA event queues
