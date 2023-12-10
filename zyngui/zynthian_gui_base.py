@@ -418,7 +418,7 @@ class zynthian_gui_base(tkinter.Frame):
 		if self.shown:
 			if self.param_editor_zctrl:
 				self.disable_param_editor()
-			self.shown=False
+			self.shown = False
 			self.grid_remove()
 
 

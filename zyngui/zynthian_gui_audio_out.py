@@ -27,10 +27,10 @@ import logging
 
 # Zynthian specific modules
 import zynautoconnect
+from zyngine.zynthian_signal_manager import zynsigman
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngine.zynthian_engine_modui import zynthian_engine_modui
-
 # ------------------------------------------------------------------------------
 # Zynthian Audio-Out Selection GUI Class
 # ------------------------------------------------------------------------------
@@ -88,7 +88,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 					self.list_data.append(('record', None, '\u2612 multitrack recorder'))
 				else:
 					self.list_data.append(('record', None, '\u2610 multitrack recorder'))
-			self.zyngui.state_manager.mixer_cb(self.chain.mixer_chan, "record", armed)
+			zynsigman.send(zynsigman.S_AUDIO_MIXER, self.state_manager.zynmixer.SS_ZCTRL_SET_VALUE, chan=self.chain.mixer_chan, symbol="rec", value=armed)
 
 		super().fill_list()
 

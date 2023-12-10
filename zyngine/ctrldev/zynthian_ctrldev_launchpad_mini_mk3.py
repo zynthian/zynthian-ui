@@ -28,9 +28,9 @@ import logging
 from time import sleep
 
 # Zynthian specific modules
-from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad
-from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
+from zyncoder.zyncore import lib_zyncore
+from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad
 
 # ------------------------------------------------------------------------------------------------------------------
 # Novation Launchpad Mini MK3
@@ -65,8 +65,10 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 		self.send_sysex("00 00")
 		# Light off
 		#self.light_off()
+		super().init()
 
 	def end(self):
+		super().end()
 		# Light off
 		self.light_off()
 		# Exit DAW session mode
@@ -74,8 +76,7 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 		# Select Keys layout (drums = 0x04, keys = 0x05, user = 0x06, prog = 0x7F)
 		self.send_sysex("00 05")
 
-	# Zynpad Scene LED feedback
-	def refresh_zynpad_bank(self):
+	def update_seq_bank(self):
 		if self.idev_out <= 0:
 			return
 		#logging.debug("Updating Launchpad MINI MK3 bank leds")
@@ -86,15 +87,14 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 			else:
 				lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, note, 0)
 
-	# Zynpad Pad LED feedback
-	def update_pad(self, pad, state, mode):
-		if self.idev_out <= 0:
+	def update_seq_play_state(self, bank, seq, state, mode):
+		if self.idev_out <= 0 or bank != self.zynseq.bank:
 			return
-		#logging.debug("Updating Launchpad MINI MK3 pad {}".format(pad))
-		col, row = self.zynseq.get_xy_from_pad(pad)
+		#logging.debug(f"Updating Launchpad MINI MK3 bank {bank} pad {seq} => state {state}, mode {mode}")
+		col, row = self.zynseq.get_xy_from_pad(seq)
 		note = 10 * (8 - row) + col + 1
 
-		group = self.zynseq.libseq.getGroup(self.zynseq.bank, pad)
+		group = self.zynseq.libseq.getGroup(self.zynseq.bank, seq)
 		try:
 			if mode == 0:
 				chan = 0
@@ -118,7 +118,7 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 			chan = 0
 			vel = 0
 
-		#logging.debug("Lighting PAD {}, group {} => {}, {}, {}".format(pad, group, chan, note, vel))
+		#logging.debug("Lighting PAD {}, group {} => {}, {}, {}".format(seq, group, chan, note, vel))
 		lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
 
 	def midi_event(self, ev):
@@ -140,18 +140,23 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 			val = ev & 0x7F
 			if val > 0:
 				if ccnum == 0x5B:
-					self.zyngui.cuia_arrow_up()
+					self.state_manager.send_cuia("ARROW_UP")
 				elif ccnum == 0x5C:
-					self.zyngui.cuia_arrow_down()
+					self.state_manager.send_cuia("ARROW_DOWN")
 				elif ccnum == 0x5D:
-					self.zyngui.cuia_arrow_left()
+					self.state_manager.send_cuia("ARROW_LEFT")
 				elif ccnum == 0x5E:
-					self.zyngui.cuia_arrow_right()
+					self.state_manager.send_cuia("ARROW_RIGHT")
 				else:
 					col, row = self.get_note_xy(ccnum)
 					if col == 8:
-						self.zynseq.set_bank(row + 1)
+						self.zynseq.select_bank(row + 1)
 			return True
+
+	# Light-Off the pad specified with column & row
+	def pad_off(self, col, row):
+		note = 10 * (8 - row) + col + 1
+		lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
 
 	# Light-Off LEDs
 	def light_off(self):

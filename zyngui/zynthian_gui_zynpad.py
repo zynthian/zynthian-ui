@@ -32,11 +32,14 @@ from threading import Timer
 
 # Zynthian specific modules
 import zynautoconnect
+from zynlibs.zynseq import zynseq
+from zyncoder.zyncore import lib_zyncore
+from zyngine.zynthian_signal_manager import zynsigman
+
+from . import zynthian_gui_base
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_patterneditor import EDIT_MODE_NONE
-from . import zynthian_gui_base
-from zyncoder.zyncore import lib_zyncore
-from zynlibs.zynseq import zynseq
+
 
 SELECT_BORDER = zynthian_gui_config.color_on
 INPUT_CHANNEL_LABELS = ['OFF', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16']
@@ -55,19 +58,20 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 		super().__init__()
 
-		self.zynseq = self.zyngui.state_manager.zynseq
+		# Zynthian Core objects
+		self.state_manager = self.zyngui.state_manager
+		self.zynseq = self.state_manager.zynseq
+		self.chain_manager = self.state_manager.chain_manager
+
 		self.ctrl_order = zynthian_gui_config.layout['ctrl_order']
-		self.selected_pad = 0 # Index of selected pad
-		self.redraw_pending = 2 # 0=no refresh pending, 1=update grid, 2=rebuild grid
-		self.redrawing = False # True to block further redraws until complete
-		self.bank = self.zyngui.state_manager.zynseq.bank # The last successfully selected bank - used to update stale views
-		self.columns = self.zynseq.col_in_bank # Columns used during last layout - used to update stale views
+		self.selected_pad = 0  # Index of selected pad
+		self.redraw_pending = 2  # 0=no refresh pending, 1=update grid, 2=rebuild grid
+		self.redrawing = False  # True to block further redraws until complete
+		self.bank = self.zynseq.bank  # The last successfully selected bank - used to update stale views
+		self.columns = self.zynseq.col_in_bank  # Columns used during last layout - used to update stale views
 		self.midi_learn = False
 		self.trigger_channel = 0
 		self.ctrldev = None
-		self.ctrldev_id = None
-		self.ctrldev_idev = 0
-		self.queue = None
 
 		# Geometry vars
 		self.select_thickness = 1 + int(self.width / 400) # Scale thickness of select border based on screen
@@ -103,13 +107,13 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.refresh_status(True)
 		if self.param_editor_zctrl == None:
 			self.set_title(f"Scene {self.bank}")
-		self.queue = self.zyngui.state_manager.register_seq()
+		zynsigman.register(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_play_state)
 
 	# Function to hide GUI
 	def hide(self):
-		if self.queue:
-			self.zyngui.state_manager.unregister_seq(self.queue)
-		super().hide()
+		if self.shown:
+			zynsigman.unregister(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_play_state)
+			super().hide()
 
 	# Function to set quantity of pads
 	def set_grid_size(self, value):
@@ -249,13 +253,12 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.columns = self.zynseq.col_in_bank
 
 	# Function to refresh pad if it has changed
-	#   pad: Pad index
-	#	force: True to force refresh
+	#  pad: Pad index
+	#  force: True to force refresh
 	def refresh_pad(self, pad, mode=None, state=None):
 		if pad > 63:
 			return
 		cellh = self.pads[pad]["header"]
-		# It MUST be called for cleaning the dirty bit
 		if mode is None:
 			mode = self.zynseq.libseq.getPlayMode(self.bank, pad)
 		if state is None:
@@ -277,7 +280,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		title = self.zynseq.get_sequence_name(self.bank, pad)
 		try:
 			str(int(title)) # Test for default (integer index)
-			preset_name = self.zyngui.chain_manager.get_synth_preset_name(midi_chan)
+			preset_name = self.chain_manager.get_synth_preset_name(midi_chan)
 			if preset_name:
 				title = preset_name.replace("_", " ")
 			else:
@@ -292,6 +295,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.grid_canvas.itemconfig(self.pads[pad]["state"], image=self.empty_icon)
 		else:
 			self.grid_canvas.itemconfig(self.pads[pad]["state"], image=self.state_icon[self.zynseq.col_in_bank][state])
+
+	def update_play_state(self, bank, seq, state, mode):
+		if bank == self.bank:
+			self.refresh_pad(seq, mode=mode, state=state)
 
 	# ------------------------------------------------------------------------------------------------------------------
 	# Some useful functions
@@ -367,6 +374,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if not zynthian_gui_config.check_wiring_layout(["Z2"]):
 			options['Arranger'] = 'Arranger'
 		options[f'Beats per bar ({self.zynseq.libseq.getBeatsPerBar()})'] = 'Beats per bar'
+		options[f'Grid size ({self.zynseq.col_in_bank}x{self.zynseq.col_in_bank})'] = 'Grid size'
 
 		# Single Pad Options
 		options['> PAD OPTIONS'] = None
@@ -407,7 +415,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'MIDI channel':
 			labels = []
 			for midi_chan in range(16):
-				preset_name = self.zyngui.chain_manager.get_synth_preset_name(midi_chan)
+				preset_name = self.chain_manager.get_synth_preset_name(midi_chan)
 				if preset_name:
 					labels.append(f"{midi_chan + 1} ({preset_name})")
 				else:
@@ -468,11 +476,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				self.update_grid()
 			for pad in range(self.zynseq.col_in_bank ** 2):
 				self.refresh_pad(pad)
-		else:
-			while self.queue and not self.queue.empty():
-				bank, seq, state, mode = self.queue.get()
-				if bank == self.bank:
-					self.refresh_pad(seq, mode=mode, state=state)
 
 	# Function to select a pad
 	#	pad: Index of pad to select (Default: refresh existing selection)

@@ -71,10 +71,12 @@ class zynthian_signal_manager:
 
     def register(self, signal, subsignal, callback):
         if 0 <= signal <= self.last_signal and 0 <= subsignal <= self.last_subsignal:
+            #logging.debug(f"Registering callback '{callback.__name__}()' for signal({signal},{subsignal})")
             self.signal_register[signal][subsignal].append(callback)
 
     def unregister(self, signal, subsignal, callback):
         if 0 <= signal <= self.last_signal and 0 <= subsignal <= self.last_subsignal:
+            #logging.debug(f"Unregistering callback '{callback.__name__}()' from signal({signal},{subsignal})")
             try:
                 self.signal_register[signal][subsignal].remove(callback)
             except:
@@ -90,11 +92,13 @@ class zynthian_signal_manager:
 
     def send(self, signal, subsignal, **kwargs):
         if 0 <= signal <= self.last_signal and 0 <= subsignal <= self.last_subsignal:
+            #logging.debug(f"Signal({signal},{subsignal}): {kwargs}")
             for cb in self.signal_register[signal][subsignal]:
                 try:
+                    #logging.debug(f"  => calling {cb.__name__}(...)")
                     cb(**kwargs)
                 except Exception as e:
-                    logging.error(f"Callback for signal({signal},{subsignal}): {e}")
+                    logging.error(f"Callback '{cb.__name__}(...)' for signal({signal},{subsignal}): {e}")
 
 # ---------------------------------------------------------------------------
 

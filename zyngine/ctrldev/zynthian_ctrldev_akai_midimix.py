@@ -28,7 +28,6 @@ import logging
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
-from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer
 
 # --------------------------------------------------------------------------
@@ -57,20 +56,16 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 
 	# Function to initialise class
 	def __init__(self, state_manager, idev_in, idev_out=None):
-		super().__init__(state_manager, idev_in, idev_out)
 		self.midimix_bank = 0
-		self.chain_manager = self.state_manager.chain_manager
+		super().__init__(state_manager, idev_in, idev_out)
 
 	def init(self):
-		self.midimix_bank = 0
-		zynsigman.register(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_mixer_active_chain)
-		zynsigman.register(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
 		self.light_off()
 		self.refresh()
+		super().init()
 
 	def end(self):
-		zynsigman.unregister(zynsigman.CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_mixer_active_chain)
-		zynsigman.unregister(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
+		super().end()
 		self.light_off()
 
 	# Update LED status for a single strip
@@ -81,8 +76,8 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 			lib_zyncore.dev_send_note_on(self.idev_out, 0, self.mute_notes[chan], value)
 		elif symbol == "solo":
 			lib_zyncore.dev_send_note_on(self.idev_out, 0, self.solo_notes[chan], value)
-		#elif symbol == "rec":
-		#	lib_zyncore.dev_send_note_on(self.idev_out, 0, self.rec_notes[chan], value)
+		elif symbol == "rec" and self.rec_mode:
+			lib_zyncore.dev_send_note_on(self.idev_out, 0, self.rec_notes[chan], value)
 
 	# Update LED status for active chain
 	def update_mixer_active_chain(self, active_chain):
@@ -95,17 +90,17 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 		for i in range(0, 8):
 			index = index0 + i
 			if index < len(self.zynmixer.zctrls):
-				chain = self.chain_manager.get_chain_by_index(index + 1)
+				chain_id = self.chain_manager.get_chain_id_by_index(index + 1)
 			else:
-				chain = None
-			if chain and chain == self.chain_manager.get_active_chain():
+				chain_id = None
+			if chain_id and chain_id == active_chain:
 				rec = 1
 			else:
 				rec = 0
 			lib_zyncore.dev_send_note_on(self.idev_out, 0, self.rec_notes[i], rec)
 
 	# Update full LED status
-	def refresh(self, force=False):
+	def refresh(self):
 		if self.idev_out is None:
 			return
 

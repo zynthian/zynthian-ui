@@ -43,7 +43,6 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 	STARTING_COLOUR = 123
 	STOPPING_COLOUR = 120
 
-
 	def init(self):
 		# Enable session mode on launchkey
 		self.shift = False

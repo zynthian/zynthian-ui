@@ -1867,6 +1867,7 @@ class zynthian_gui:
 
 	def zynmidi_read(self):
 		try:
+			# TODO: This should be improved: Get all pending MIDI messages in one call!
 			while True:
 				ev = lib_zyncore.read_zynmidi()
 				if ev == 0:
@@ -1935,6 +1936,9 @@ class zynthian_gui:
 						elif ccnum == 123:
 							self.state_manager.all_notes_off()
 
+						# QUESTION!!
+						# Is this OK? It seems we learn MASTER channel CC events to chain's zctrls,
+						# but we drive zynmixer only?
 						if self.state_manager.midi_learn_zctrl:
 							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_zctrl)
 						else:

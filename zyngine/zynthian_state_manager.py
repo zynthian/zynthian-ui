@@ -66,7 +66,7 @@ ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 class zynthian_state_manager:
 
     # Subsignals are defined inside each module. Here we define state_manager subsignals:
-    #SS_XXX = 1
+    # SS_XXX = 1
 
     def __init__(self):
         """ Create an instance of a state manager
@@ -461,12 +461,8 @@ class zynthian_state_manager:
                 # MIDI Recorder
                 self.status_midi_recorder = libsmf.isRecording()
 
-                # Sequencer
-                for seq in range(self.zynseq.col_in_bank ** 2):
-                    if self.zynseq.libseq.hasSequenceChanged(self.zynseq.bank, seq):
-                        mode = self.zynseq.libseq.getPlayMode(self.zynseq.bank, seq)
-                        state = self.zynseq.libseq.getPlayState(self.zynseq.bank, seq)
-                        #(self.zynseq.bank, seq, state, mode)
+                # Sequencer Status => It must be improved using callbacks
+                self.zynseq.update_state()
 
                 # Clean some status flags
                 if xruns_status:

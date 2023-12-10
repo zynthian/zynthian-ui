@@ -25,7 +25,8 @@
 # ******************************************************************************
 
 import logging
-from zyngui import zynthian_gui_config
+
+from zyngine.zynthian_signal_manager import zynsigman
 
 # ------------------------------------------------------------------------------------------------------------------
 # Control device base class
@@ -49,9 +50,19 @@ class zynthian_ctrldev_base:
 		self.idev_out = idev_out       # Slot index where the output device (feedback), if any, is connected, starting from 1 (0 = None)
 		self.init()
 
-	# Refresh device status (LED feedback, etc)
+	# Initialize control device: setup, regisater signals, etc
 	# It *SHOULD* be implemented by child class
-	def refresh(self, force=False):
+	def init(self):
+		logging.debug("Init() for {}: NOT IMPLEMENTED!".format(type(self).__name__))
+
+	# End control device: restore initial state, unregister signals, etc
+	# It *SHOULD* be implemented by child class
+	def end(self):
+		logging.debug("End() for {}: NOT IMPLEMENTED!".format(type(self).__name__))
+
+	# Refresh full device status (LED feedback, etc)
+	# It *SHOULD* be implemented by child class
+	def refresh(self):
 		logging.debug("Refresh LEDs for {}: NOT IMPLEMENTED!".format(type(self).__name__))
 
 	# Device MIDI event handler
@@ -84,24 +95,67 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 	dev_zynpad = True		# Can act as a zynpad trigger device
 
 	def __init__(self, state_manager, idev_in, idev_out=None):
+		self.cols = 8
+		self.rows = 8
 		self.zynseq = state_manager.zynseq
 		super().__init__(state_manager, idev_in, idev_out)
 
-	# It *SHOULD* be implemented by child class
-	def refresh_zynpad_bank(self):
-		#logging.debug("Refressh zynpad banks for {}: NOT IMPLEMENTED!".format(type(self).__name__))
+	def init(self):
+		self.refresh()
+		# Register for zynseq updates
+		zynsigman.register(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_seq_play_state)
+		zynsigman.register(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_REFRESH, self.refresh)
+
+	def end(self):
+		# Unregister from zynseq updates
+		zynsigman.unregister(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_seq_play_state)
+		zynsigman.unregister(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_REFRESH, self.refresh)
+
+	def update_seq_bank(self):
+		"""Update hardware indicators for active bank and refresh sequence state as needed.
+		*COULD* be implemented by child class
+		"""
 		pass
 
-	# It *SHOULD* be implemented by child class
-	def update_pad(self, pad, state, mode):
-		logging.debug("Update pads for {}: NOT IMPLEMENTED!".format(type(self).__name__))
+	def update_seq_play_state(self, bank, seq, state, mode):
+		"""Update hardware indicators for a sequence (pad): playing state etc.
+		*SHOULD* be implemented by child class
 
-# -----------------------------------------------------------------------------------------
+		bank - bank
+		seq - sequence index
+		state - sequence's state
+		mode - sequence's mode
+		"""
+		logging.debug("Update sequence playing state for {}: NOT IMPLEMENTED!".format(type(self).__name__))
 
+	def refresh(self):
+		"""Refresh full device status (LED feedback, etc)
+		*SHOULD* be implemented by child class
+		"""
+		if self.idev_out is None:
+			return
+		#self.light_off()
+		self.update_seq_bank()
+		for i in range(self.cols):
+			for j in range(self.rows):
+				if i >= self.zynseq.col_in_bank or j >= self.zynseq.col_in_bank:
+					self.pad_off(i, j)
+				else:
+					seq = i * self.zynseq.col_in_bank + j
+					state = self.zynseq.libseq.getPlayState(self.zynseq.bank, seq)
+					mode = self.zynseq.libseq.getPlayMode(self.zynseq.bank, seq)
+					self.update_seq_play_state(bank=self.zynseq.bank, seq=seq, state=state, mode=mode)
+
+	def pad_off(self, col, row):
+		"""Light-Off the pad specified with column & row
+		*SHOULD* be implemented by child class
+		"""
+		pass
 
 # ------------------------------------------------------------------------------------------------------------------
 # Zynmixer control device base class
 # ------------------------------------------------------------------------------------------------------------------
+
 
 class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
 
@@ -112,14 +166,30 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
 		self.chain_manager = state_manager.chain_manager
 		super().__init__(state_manager, idev_in, idev_out)
 
-	def update_mixer(self, channel, symbol, value):
-		"""Update hardware indications
+	def init(self):
+		zynsigman.register(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_mixer_active_chain)
+		zynsigman.register(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
+
+	def end(self):
+		zynsigman.unregister(zynsigman.CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_mixer_active_chain)
+		zynsigman.unregister(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
+
+	def update_mixer_strip(self, chan, symbol, value):
+		"""Update hardware indicators for a mixer strip: mute, solo, level, balance, etc.
 		*SHOULD* be implemented by child class
 
 		chan - Mixer strip index
-		ctrl - Control name
+		symbol - Control name
 		value - Control value
 		"""
-		
-		logging.debug(f"Update mixer for {type(self).__name__}: NOT IMPLEMENTED!")
+		logging.debug(f"Update mixer strip for {type(self).__name__}: NOT IMPLEMENTED!")
+
+	def update_mixer_active_chain(self, active_chain):
+		"""Update hardware indicators for active_chain
+		*SHOULD* be implemented by child class
+
+		active_chain - Active chain
+		"""
+		logging.debug(f"Update mixer active chain for {type(self).__name__}: NOT IMPLEMENTED!")
+
 # -----------------------------------------------------------------------------------------

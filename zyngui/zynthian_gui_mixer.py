@@ -731,9 +731,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.set_title()
 		self.refresh_visible_strips()
 
-		#self.mixer_queue = self.zyngui.state_manager.register_mixer()
-		zynsigman.register(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_control)
-
 	def init_dpmeter(self):
 		self.dpm_a = self.dpm_b = None
 
@@ -749,15 +746,15 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		super().set_title(title, fg, bg, timeout)
 
-
 	# Function to handle hiding display
 	def hide(self):
-		if not self.zyngui.osc_clients:
-			for chan in range(self.zynmixer.get_max_channels()):
-				self.zynmixer.enable_dpm(chan, False)
-		self.zynmixer.disable_midi_learn()
-		super().hide()
-
+		if self.shown:
+			if not self.zyngui.osc_clients:
+				for chan in range(self.zynmixer.get_max_channels()):
+					self.zynmixer.enable_dpm(chan, False)
+			self.zynmixer.disable_midi_learn()
+			zynsigman.unregister(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_control)
+			super().hide()
 
 	# Function to handle showing display
 	def build_view(self):
@@ -767,7 +764,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.zynmixer.enable_dpm(chan, True)
 		self.highlight_active_chain(True)
 		self.setup_zynpots()
-
+		zynsigman.register(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_control)
 
 	# Function to update display, e.g. after geometry changes
 	def update_layout(self):
