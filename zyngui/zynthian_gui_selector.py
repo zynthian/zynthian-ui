@@ -49,6 +49,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		super().__init__()
 
 		self.index = 0
+		self.scroll_y = 0
 		self.list_data = []
 		self.zselector = None
 		self.zselector_hidden = False
@@ -265,12 +266,12 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.listbox.selection_set(index)
 		# Set window
 		if see:
-			if index and index > self.index:
-				self.listbox.see(index + 1)
-			elif index < self.index:
-				self.listbox.see(index - 1)
-			else:
-				self.listbox.see(index)
+			self.listbox.yview_moveto(self.scroll_y) # Restore vertical position
+			# Show next/previous item when scrolling but ensure selected item is in view
+			self.listbox.see(index + 1)
+			self.listbox.see(index - 1)
+			self.listbox.see(index)
+			self.scroll_y = self.listbox.yview()[0] # Save vertical position
 			if self.listbox.bbox(index):
 				self.list_entry_height = self.listbox.bbox(index)[3]
 		# Set index value

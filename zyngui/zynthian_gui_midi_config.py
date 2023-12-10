@@ -53,17 +53,17 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         super().__init__('MIDI Devices', True)
 
     def build_view(self):
-        super().build_view()
         if self.input:
-            self.fingerprint = zynautoconnect.hw_src_ports.copy()
+            self.fingerprint = zynautoconnect.get_hw_src_ports()
         else:
-            self.fingerprint = zynautoconnect.hw_dst_ports.copy()
+            self.fingerprint = zynautoconnect.get_hw_dst_ports()
         if self.chain is None:
             # Start scanning and processing bluetooth
             self.ble_scan_proc = Popen('bluetoothctl', stdin=PIPE, stdout=PIPE, encoding='utf-8')
             self.ble_scan_proc.stdin.write('menu scan\nuuids 03B80E5A-EDE8-4B33-A751-6CE34EC4C700\nback\nscan on\n')
             self.ble_scan_proc.stdin.flush()
             Timer(0.1, self.process_dynamic_ports).start()
+        super().build_view()
 
     def hide(self):
         if self.ble_scan_proc:
@@ -275,26 +275,27 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         action = self.list_data[i][0]
         if t == 'S':
             action = self.list_data[i][0]
+            wait = 2 # Delay after starting service to allow jack ports to update
             if action == "stop_jackrtpmidid":
-                self.zyngui.state_manager.stop_rtpmidi()
+                self.zyngui.state_manager.stop_rtpmidi(wait=wait)
             elif action == "start_jackrtpmidid":
-                self.zyngui.state_manager.start_rtpmidi()
+                self.zyngui.state_manager.start_rtpmidi(wait=wait)
             elif action == "stop_QmidiNet":
-                self.zyngui.state_manager.stop_qmidinet()
+                self.zyngui.state_manager.stop_qmidinet(wait=wait)
             elif action == "start_QmidiNet":
-                self.zyngui.state_manager.start_qmidinet()
-            elif action in ("stop_RtMidiIn Client:TouchOSC Bridge", "stop_touchosc"):
-                self.zyngui.state_manager.stop_touchosc2midi()
-            elif action in ("start_RtMidiIn Client:TouchOSC Bridge", "start_touchosc"):
-                self.zyngui.state_manager.start_touchosc2midi()
+                self.zyngui.state_manager.start_qmidinet(wait=wait)
+            elif action == "stop_touchosc":
+                self.zyngui.state_manager.stop_touchosc2midi(wait=wait)
+            elif action == "start_touchosc":
+                self.zyngui.state_manager.start_touchosc2midi(wait=wait)
             elif action == "stop_aubionotes":
-                self.zyngui.state_manager.stop_aubionotes()
+                self.zyngui.state_manager.stop_aubionotes(wait=wait)
             elif action == "start_aubionotes":
-                self.zyngui.state_manager.start_aubionotes()
+                self.zyngui.state_manager.start_aubionotes(wait=wait)
             elif action == "stop_bluetooth":
-                self.zyngui.state_manager.stop_bluetooth()
+                self.zyngui.state_manager.stop_bluetooth(wait=wait)
             elif action == "start_bluetooth":
-                self.zyngui.state_manager.start_bluetooth()
+                self.zyngui.state_manager.start_bluetooth(wait=wait)
             # Route/Unroute
             elif self.chain:
                 if self.input:
