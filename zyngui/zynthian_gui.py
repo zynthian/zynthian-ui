@@ -87,8 +87,7 @@ from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen
 from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
 
-
-MIXER_MAIN_CHANNEL = 256  # TODO This constant should go somewhere else
+MIXER_MAIN_CHANNEL = 255  # TODO This constant should go somewhere else
 
 # -------------------------------------------------------------------------------
 # Zynthian Main GUI Class
@@ -931,11 +930,11 @@ class zynthian_gui:
 				sleep(0.1)
 
 	def clean_all(self):
-		self.state_manager.zynmixer.set_mute(256, 1)
+		self.state_manager.zynmixer.set_mute(255, 1)
 		if self.chain_manager.get_chain_count() > 0:
 			self.state_manager.save_last_state_snapshot()
 		self.state_manager.clean_all()
-		self.state_manager.zynmixer.set_mute(256, 0)
+		self.state_manager.zynmixer.set_mute(255, 0)
 		self.show_screen_reset('main_menu')
 
 	# -------------------------------------------------------------------

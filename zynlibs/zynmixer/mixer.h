@@ -103,9 +103,14 @@ void setMono(int channel, int mono);
 
 /** @brief  Get mono state of channel
 *   @param  channel Index of channel
-*   @retval int Channel mono state (0: Stereo, 1: mono)
+*   @retval uint8_t Channel mono state (0: Stereo, 1: mono)
 */
-int  getMono(int channel);
+uint8_t  getMono(int channel);
+
+/** @brief  Get all mono states
+*   @param  values Pointer to array of uint8_t to populate with values
+*/
+void getAllMono(uint8_t* values);
 
 /** @brief  Set phase state of channel
 *   @param  channel Index of channel
@@ -137,12 +142,28 @@ int isChannelRouted(int channel);
 */
 float getDpm(int channel, int leg);
 
+/** @brief  Get all DPM levels
+*   @param  values Pointer to array of floats to hold DPM level values
+*/
+void getAllDpm(float* levels);
+
 /** @brief  Get DPM hold level
 *   @param  channel Index of channel
 *   @param  leg 0 for A leg (left), 1 for B leg (right)
 *   @retval float DPM hold level
 */
 float getDpmHold(int channel, int leg);
+
+/** @brief  Get all DPM hold levels
+*   @param  values Pointer to array of floats to hold DPM hold level values
+*/
+void getAllDpmHold(float* levels);
+
+/** @brief  Get DPM state for a channel
+*   @param  channel Index of the channel
+*   @param  values Pointer to array of flats to hold DPM, hold, and mono status 
+*/
+void getDpmState(uint8_t channel, float* values);
 
 /** @brief  Enable / disable peak programme metering
 *   @param  channel Index of channel

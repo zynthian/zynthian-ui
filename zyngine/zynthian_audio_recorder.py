@@ -97,12 +97,12 @@ class zynthian_audio_recorder:
 		cmd = ["/usr/local/bin/jack_capture", "--daemon", "--bitdepth", "16", "--bufsize", "30", "--maxbufsize", "120"]
 		for port in sorted(self.armed):
 			cmd.append("--port")
-			if port == 256:
+			if port == 255:
 				cmd.append("zynmixer:output_a")
 			else:
 				cmd.append("zynmixer:input_{:02d}a".format(port + 1))
 			cmd.append("--port")
-			if port == 256:
+			if port == 255:
 				cmd.append("zynmixer:output_b")
 			else:
 				cmd.append("zynmixer:input_{:02d}b".format(port + 1))

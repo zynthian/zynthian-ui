@@ -45,7 +45,7 @@ int g_sendEvents = 1; // Set to 0 to exit event thread
 //#define DEBUG
 
 #define MAX_CHANNELS 17
-#define MAIN_CHANNEL 256
+#define MAIN_CHANNEL 255
 #define MAX_OSC_CLIENTS 5
 
 struct dynamic
@@ -760,11 +760,19 @@ void setMono(int channel, int mono){
     sendOscInt(g_oscpath, mono);
 }
 
-int getMono(int channel)
+uint8_t getMono(int channel)
 {
     if(channel >= MAX_CHANNELS)
         return g_mainOutput.mono;
     return g_dynamic[channel].mono;
+}
+
+void getAllMono(uint8_t* values)
+{
+    for (uint8_t channel = 0; channel <= MAX_CHANNELS; ++channel)
+    {
+        *(values + channel) = getMono(channel);
+    }
 }
 
 void reset(int channel)
@@ -799,6 +807,15 @@ float getDpm(int channel, int leg)
     return convertToDBFS(g_dynamic[channel].dpmA);
 }
 
+void getAllDpm(float* values)
+{
+    for (uint8_t channel = 0; channel <= MAX_CHANNELS; ++channel)
+    {
+        *(values + channel * 2) = getDpm(channel, 0);
+        *(values + channel * 2 + 1) = getDpm(channel, 1);
+    }
+}
+
 float getDpmHold(int channel, int leg)
 {
     if(channel >= MAX_CHANNELS)
@@ -810,6 +827,24 @@ float getDpmHold(int channel, int leg)
     if(leg)
         return convertToDBFS(g_dynamic[channel].holdB);
     return convertToDBFS(g_dynamic[channel].holdA);
+}
+
+void getAllDpmHold(float* values)
+{
+    for (uint8_t channel = 0; channel <= MAX_CHANNELS; ++channel)
+    {
+        *(values + channel * 2) = getDpmHold(channel, 0);
+        *(values + channel * 2 + 1) = getDpmHold(channel, 1);
+    }
+}
+
+void getDpmState(uint8_t channel, float* values)
+{
+    *values = getDpm(channel, 0);
+    *(values + 1) = getDpm(channel, 1);
+    *(values + 2) = getDpmHold(channel, 0);
+    *(values + 3) = getDpmHold(channel, 1);
+    *(values + 4) = getMono(channel);
 }
 
 void enableDpm(int channel, int enable)

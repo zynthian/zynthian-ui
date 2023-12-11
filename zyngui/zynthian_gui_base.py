@@ -544,13 +544,13 @@ class zynthian_gui_base(tkinter.Frame):
 	def init_dpmeter(self):
 		width = int(self.status_l - 2 * self.status_rh - 1)
 		height = int(self.status_h / 4 - 2)
-		self.dpm_a = zynthian_gui_dpm(self.zyngui.state_manager.zynmixer, 256, 0, self.status_canvas, 0, 0, width, height, False, ("status_dpm"))
-		self.dpm_b = zynthian_gui_dpm(self.zyngui.state_manager.zynmixer, 256, 1, self.status_canvas, 0, height + 2, width, height, False, ("status_dpm"))
+		self.dpm_a = zynthian_gui_dpm(self.zyngui.state_manager.zynmixer, 255, 0, self.status_canvas, 0, 0, width, height, False, ("status_dpm"))
+		self.dpm_b = zynthian_gui_dpm(self.zyngui.state_manager.zynmixer, 255, 1, self.status_canvas, 0, height + 2, width, height, False, ("status_dpm"))
 	
 
 	def refresh_status(self):
 		if self.shown:
-			mute = self.zyngui.state_manager.zynmixer.get_mute(256)
+			mute = self.zyngui.state_manager.zynmixer.get_mute(255)
 			if True: # mute != self.main_mute:
 				self.main_mute = mute
 				if mute:
@@ -562,8 +562,9 @@ class zynthian_gui_base(tkinter.Frame):
 					if self.dpm_a:
 						self.status_canvas.itemconfigure('status_dpm', state=tkinter.NORMAL)
 			if not mute and self.dpm_a:
-					self.dpm_a.refresh()
-					self.dpm_b.refresh()
+				state = self.zyngui.state_manager.zynmixer.get_dpm_state(255)
+				self.dpm_a.refresh(state[0], state[2], state[4])
+				self.dpm_b.refresh(state[1], state[3], state[4])
 
 			#status['xrun'] = True;
 

@@ -29,7 +29,6 @@ import logging
 from zyngine import zynthian_engine
 from zyngine import zynthian_controller
 from zyngine.zynthian_signal_manager import zynsigman
-from zyngui import zynthian_gui_config
 
 # -------------------------------------------------------------------------------
 # Zynmixer Library Wrapper
@@ -49,8 +48,12 @@ class zynmixer(zynthian_engine):
 		self.lib_zynmixer.getLevel.restype = ctypes.c_float
 		self.lib_zynmixer.getBalance.restype = ctypes.c_float
 		self.lib_zynmixer.getDpm.restype = ctypes.c_float
+		self.lib_zynmixer.getAllDpm.argtypes = [ctypes.POINTER(ctypes.c_float)]
 		self.lib_zynmixer.getDpmHold.restype = ctypes.c_float
-		self.MAX_NUM_CHANNELS = self.lib_zynmixer.getMaxChannels()
+		self.lib_zynmixer.getAllDpmHold.argtypes = [ctypes.POINTER(ctypes.c_float)]
+		self.lib_zynmixer.getAllMono.argtypes = [ctypes.POINTER(ctypes.c_bool)]
+		self.lib_zynmixer.getDpmState.argtypes = [ctypes.c_uint8, ctypes.POINTER(ctypes.c_float)]
+		self.MAX_NUM_CHANNELS:int = self.lib_zynmixer.getMaxChannels()
 
 		self.learned_cc = [dict() for x in range(16)]   # List of learned {cc:zctrl} indexed by learned MIDI channel
 
@@ -190,7 +193,7 @@ class zynmixer(zynthian_engine):
 	# Function to toggle mute of a channel
 	# channel: Index of channel
 	# update: True for update controller
-	def toggle_mute(self, channel):
+	def toggle_mute(self, channel, update=False):
 		if channel >= self.MAX_NUM_CHANNELS:
 			channel = self.MAX_NUM_CHANNELS
 		self.lib_zynmixer.toggleMute(channel)
@@ -295,6 +298,16 @@ class zynmixer(zynthian_engine):
 	def get_mono(self, channel):
 		return self.lib_zynmixer.getMono(channel) == 1
 
+	# Function to get all mono
+	# returns: List of mono states (True if mono)
+	def get_all_monos(self):
+		monos = (ctypes.c_bool * (self.MAX_NUM_CHANNELS + 1))()
+		self.lib_zynmixer.getAllMono(monos)
+		result = []
+		for i in monos:
+			result.append(i)
+		return result
+
 	# Function to toggle mono of a channel
 	# channel: Index of channel
 	# update: True for update controller
@@ -323,17 +336,50 @@ class zynmixer(zynthian_engine):
 	def get_dpm(self, channel, leg):
 		return self.lib_zynmixer.getDpm(channel, leg)
 
+	# Function to get all peak programme levels
+	# returns: List of levels interleaved, left/right
+	def get_all_dpms(self):
+		dpms = (ctypes.c_float * ((self.MAX_NUM_CHANNELS + 1) * 2))()
+		self.lib_zynmixer.getAllDpm(dpms)
+		result = []
+		for i in dpms:
+			result.append(i)
+		return result
+
 	# Function to get peak programme hold level for a channel
 	# channel: Index of channel
 	# leg: 0 for A-leg (left), 1 for B-leg (right)
 	# returns: Peak programme hold level
-	def get_dpm_hold(self, channel, leg):
+	def get_dpm_holds(self, channel, leg):
 		if channel is None:
 			return
 		return self.lib_zynmixer.getDpmHold(channel, leg)
 
+	# Function to get all peak programme hold levels
+	# returns: List of levels interleaved, left/right
+	def get_all_holds(self):
+		holds = (ctypes.c_float * ((self.MAX_NUM_CHANNELS + 1) * 2))()
+		self.lib_zynmixer.getAllDpm(holds)
+		result = []
+		for i in holds:
+			result.append(i)
+		return result
+
+	# Function to get the dpm state for a channel
+	# channel: Index of channel
+	# returns: Tuple containing (dpm_a, dpm_b, hold_a, hold_b, mono)
+	def get_dpm_state(self, channel):
+		state = (ctypes.c_float * 5)()
+		self.lib_zynmixer.getDpmState(channel, state)
+		result = []
+		for i in range(4):
+			result.append(state[i])
+		result.append(state[4] != 0.0)
+		return result
+			
+
 	# Function to enable or disable digital peak meters
-	# chan: Mixer channel (256 for main mix bus)
+	# chan: Mixer channel (255 for main mix bus)
 	# enable: True to enable
 	def enable_dpm(self, channel, enable):
 		if channel is None:

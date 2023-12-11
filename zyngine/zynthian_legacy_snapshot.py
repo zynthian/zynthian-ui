@@ -292,7 +292,7 @@ class zynthian_legacy_snapshot:
             if not chain["midi_processors"] and not chain["synth_processors"]:
                 state["zs3"]["zs3-0"]["chains"][chain_id]["audio_thru"] = True
                 chain["midi_chan"] = None
-                if not audio_out and chain["mixer_chan"] != 256:
+                if not audio_out and chain["mixer_chan"] != 255:
                     audio_out = ["mixer"]
             state["zs3"]["zs3-0"]["chains"][chain_id]["audio_out"] = audio_out
             state["zs3"]["zs3-0"]["chains"][chain_id]["midi_out"] = midi_out

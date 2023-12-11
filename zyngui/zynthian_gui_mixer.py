@@ -27,10 +27,8 @@
 import os
 import tkinter
 import logging
-from queue import SimpleQueue
 
 # Zynthian specific modules
-import zynautoconnect
 from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_signal_manager import zynsigman
 
@@ -226,12 +224,12 @@ class zynthian_gui_mixer_strip():
 			self.parent.main_canvas.itemconfig(self.status_indicator, text=self.chain.status, fill="#009000")
 
 	# Function to draw the DPM level meter for a mixer strip
-	def draw_dpm(self):
+	def draw_dpm(self, dpm_a, dpm_b, hold_a, hold_b, mono):
 		if self.hidden or self.chain.mixer_chan is None:
 			return
 
-		self.dpm_a.refresh()
-		self.dpm_b.refresh()
+		self.dpm_a.refresh(dpm_a, hold_a, mono)
+		self.dpm_b.refresh(dpm_b, hold_b, mono)
 
 	def draw_balance(self):
 		balance = self.zynmixer.get_balance(self.chain.mixer_chan)
@@ -383,8 +381,8 @@ class zynthian_gui_mixer_strip():
 		except Exception as e:
 			logging.error(e)
 
-		if control == None:
-			self.draw_dpm()
+		#if control == None:
+			#self.draw_dpm()
 			#self.refresh_status()
 
 		if control in [None, 'level']:
@@ -784,12 +782,26 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		"""
 		if self.shown:
 			super().refresh_status()
-			self.main_mixbus_strip.draw_dpm()
+			dpms = self.zynmixer.get_all_dpms()
+			holds = self.zynmixer.get_all_holds()
+			monos = self.zynmixer.get_all_monos()
+
+			self.main_mixbus_strip.draw_dpm(
+				dpms[self.zynmixer.MAX_NUM_CHANNELS * 2],
+				dpms[self.zynmixer.MAX_NUM_CHANNELS * 2 + 1],
+				holds[self.zynmixer.MAX_NUM_CHANNELS * 2],
+				holds[self.zynmixer.MAX_NUM_CHANNELS * 2 + 1],
+				monos[self.zynmixer.MAX_NUM_CHANNELS])
 			self.main_mixbus_strip.refresh_status()
 			for strip in self.visible_mixer_strips:
 				if not strip.hidden:
 					if zynthian_gui_config.enable_dpm:
-						strip.draw_dpm()
+						strip.draw_dpm(
+							dpms[strip.chain.mixer_chan * 2],
+							dpms[strip.chain.mixer_chan * 2 + 1],
+							holds[self.zynmixer.MAX_NUM_CHANNELS * 2],
+							holds[self.zynmixer.MAX_NUM_CHANNELS * 2 + 1],
+							monos[strip.chain.mixer_chan])
 					strip.refresh_status()
 			self.highlight_active_chain()
 
