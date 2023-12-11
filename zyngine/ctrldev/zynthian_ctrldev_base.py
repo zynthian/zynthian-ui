@@ -110,6 +110,7 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 		# Unregister from zynseq updates
 		zynsigman.unregister(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_seq_play_state)
 		zynsigman.unregister(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_REFRESH, self.refresh)
+		self.light_off()
 
 	def update_seq_bank(self):
 		"""Update hardware indicators for active bank and refresh sequence state as needed.
@@ -127,6 +128,12 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 		mode - sequence's mode
 		"""
 		logging.debug("Update sequence playing state for {}: NOT IMPLEMENTED!".format(type(self).__name__))
+
+	def pad_off(self, col, row):
+		"""Light-Off the pad specified with column & row
+		*SHOULD* be implemented by child class
+		"""
+		pass
 
 	def refresh(self):
 		"""Refresh full device status (LED feedback, etc)
@@ -146,12 +153,6 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 					mode = self.zynseq.libseq.getPlayMode(self.zynseq.bank, seq)
 					self.update_seq_play_state(bank=self.zynseq.bank, seq=seq, state=state, mode=mode)
 
-	def pad_off(self, col, row):
-		"""Light-Off the pad specified with column & row
-		*SHOULD* be implemented by child class
-		"""
-		pass
-
 # ------------------------------------------------------------------------------------------------------------------
 # Zynmixer control device base class
 # ------------------------------------------------------------------------------------------------------------------
@@ -167,12 +168,14 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
 		super().__init__(state_manager, idev_in, idev_out)
 
 	def init(self):
+		self.refresh()
 		zynsigman.register(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_mixer_active_chain)
 		zynsigman.register(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
 
 	def end(self):
 		zynsigman.unregister(zynsigman.CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_mixer_active_chain)
 		zynsigman.unregister(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
+		self.light_off()
 
 	def update_mixer_strip(self, chan, symbol, value):
 		"""Update hardware indicators for a mixer strip: mute, solo, level, balance, etc.

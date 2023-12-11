@@ -59,15 +59,6 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 		self.midimix_bank = 0
 		super().__init__(state_manager, idev_in, idev_out)
 
-	def init(self):
-		self.light_off()
-		self.refresh()
-		super().init()
-
-	def end(self):
-		super().end()
-		self.light_off()
-
 	# Update LED status for a single strip
 	def update_mixer_strip(self, chan, symbol, value):
 		if self.idev_out is None or chan > 7:

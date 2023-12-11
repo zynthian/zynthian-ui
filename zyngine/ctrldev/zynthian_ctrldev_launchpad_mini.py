@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
 # Zynthian Control Device Driver for "Novation Launchpad Mini Mk1 & MK2"
@@ -8,7 +8,7 @@
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -22,7 +22,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 import logging
 
@@ -35,6 +35,7 @@ from zynlibs.zynseq import zynseq
 # Novation Launchpad Mini MK1 & MK2
 # ------------------------------------------------------------------------------------------------------------------
 
+
 class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 
 	dev_ids = ["Launchpad Mini MIDI 1"]
@@ -46,25 +47,12 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 	# STARTING_COLOUR =  = 0x38
 	STOPPING_COLOUR = 0x0B
 
-
 	def get_note_xy(self, note):
 		row = note // 16
 		col = note % 16
 		return col, row
 
-
-	def init(self):
-		pass
-		# Light-Off all LEDs
-		#self.light_off()
-
-
-	def end(self):
-		self.light_off()
-
-
-	# Scene LED feedback
-	def refresh_zynpad_bank(self):
+	def update_seq_bank(self):
 		if self.idev_out <= 0:
 			return
 		#logging.debug("Updating Launchpad MINI bank leds")
@@ -76,12 +64,11 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 			else:
 				lib_zyncore.dev_send_note_on(self.idev_out, 0, note, self.OFF_COLOUR)
 
-
-	def update_pad(self, pad, state, mode):
-		if self.idev_out <= 0:
+	def update_seq_play_state(self, bank, seq, state, mode):
+		if self.idev_out <= 0 or bank != self.zynseq.bank:
 			return
-		#logging.debug("Updating Launchpad MINI pad {}".format(pad))
-		col, row = self.zynseq.get_xy_from_pad(pad)
+		#logging.debug("Updating Launchpad MINI pad {}".format(seq))
+		col, row = self.zynseq.get_xy_from_pad(seq)
 		note = 16 * row + col
 		chan = 0
 		if mode == 0:
@@ -98,6 +85,10 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 			vel = self.OFF_COLOUR
 		lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
 
+	# Light-Off the pad specified with column & row
+	def pad_off(self, col, row):
+		note = 16 * row + col
+		lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0xC)
 
 	def midi_event(self, ev):
 		#logging.debug("Launchpad MINI MIDI handler => {}".format(ev))
@@ -107,29 +98,25 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 			col, row = self.get_note_xy(note)
 			# scene change
 			if col == 8:
-				self.zynseq.set_bank(row + 1)
+				self.zynseq.select_bank(row + 1)
 				return True
 			# launch/stop pad
-			pad = self.zynzynseqpad.get_pad_from_xy(col, row)
+			pad = self.zynseq.get_pad_from_xy(col, row)
 			if pad >= 0:
 				self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
 				return True
 
-
 	# Light-Off all LEDs
 	def light_off(self):
-		for row in range(8):
-			for col in range(9):
+		for row in range(self.rows):
+			for col in range(self.cols + 1):
 				note = 16 * row + col
 				lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0xC)
-
 
 	def sleep_on(self):
 		self.light_off()
 
-
 	def sleep_off(self):
-		self.refresh(force=True)
+		self.refresh()
 
-
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------

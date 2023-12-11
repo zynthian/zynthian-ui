@@ -63,14 +63,10 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 		self.send_sysex("10 01")
 		# Select session layout (session = 0x00, faders = 0x0D)
 		self.send_sysex("00 00")
-		# Light off
-		#self.light_off()
 		super().init()
 
 	def end(self):
 		super().end()
-		# Light off
-		self.light_off()
 		# Exit DAW session mode
 		self.send_sysex("10 00")
 		# Select Keys layout (drums = 0x04, keys = 0x05, user = 0x06, prog = 0x7F)
@@ -121,6 +117,11 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 		#logging.debug("Lighting PAD {}, group {} => {}, {}, {}".format(seq, group, chan, note, vel))
 		lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
 
+	# Light-Off the pad specified with column & row
+	def pad_off(self, col, row):
+		note = 10 * (8 - row) + col + 1
+		lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
+
 	def midi_event(self, ev):
 		#logging.debug("Launchpad MINI MK3 MIDI handler => {}".format(ev))
 		evtype = (ev & 0xF00000) >> 20
@@ -152,11 +153,6 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 					if col == 8:
 						self.zynseq.select_bank(row + 1)
 			return True
-
-	# Light-Off the pad specified with column & row
-	def pad_off(self, col, row):
-		note = 10 * (8 - row) + col + 1
-		lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
 
 	# Light-Off LEDs
 	def light_off(self):

@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
 # Zynthian Control Device Driver for "Novation Launchkey Mini MK3"
@@ -8,7 +8,7 @@
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -22,7 +22,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 import logging
 
@@ -35,6 +35,7 @@ from zynlibs.zynseq import zynseq
 # Novation Launchkey Mini MK3
 # ------------------------------------------------------------------------------------------------------------------
 
+
 class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer):
 
 	dev_ids = ["Launchkey Mini MK3 MIDI 2"]
@@ -43,41 +44,32 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 	STARTING_COLOUR = 123
 	STOPPING_COLOUR = 120
 
+	# Function to initialise class
+	def __init__(self, state_manager, idev_in, idev_out=None):
+		self.cols = 8
+		self.rows = 2
+		self.shift = False
+		super().__init__(state_manager, idev_in, idev_out)
+
 	def init(self):
 		# Enable session mode on launchkey
-		self.shift = False
 		lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 127)
-		self.refresh_zynpad_bank()
-
+		super().init()
 
 	def end(self):
+		super().end()
 		# Disable session mode on launchkey
 		lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 0)
 
-
-	def refresh_zynpad_bank(self):
-		# Update pad status
-		for row in range(2):
-			too_big = row >= self.zynseq.col_in_bank
-			for col in range(8):
-				too_big |= col >= self.zynseq.col_in_bank
-				if too_big:
-					note = 96 + row * 16 + col
-					lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
-				else:
-					pad = self.zynseq.col_in_bank * col + row
-					state = self.zynseq.libseq.getPlayState(self.zynseq.bank, pad)
-					mode = self.zynseq.libseq.getPlayMode(self.zynseq.bank, pad)
-					self.update_pad(pad, state, mode)
-
-
-	def update_pad(self, pad, state, mode):
-		col, row = self.zynseq.get_xy_from_pad(pad)
+	def update_seq_play_status(self, bank, seq, state, mode):
+		if self.idev_out <= 0 or bank != self.zynseq.bank:
+			return
+		col, row = self.zynseq.get_xy_from_pad(seq)
 		if row > 1:
 			return
 		note = 96 + row * 16 + col
 		try:
-			group = self.zynseq.libseq.getGroup(self.zynseq.bank, pad)
+			group = self.zynseq.libseq.getGroup(self.zynseq.bank, seq)
 			if mode == 0 or group > 16:
 				chan = 0
 				vel = 0
@@ -103,6 +95,9 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 
 		lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
 
+	def pad_off(self, col, row):
+		note = 96 + row * 16 + col
+		lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
 
 	def midi_event(self, ev):
 		evtype = (ev & 0xF00000) >> 20
@@ -113,7 +108,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 			note = (ev >> 8) & 0x7F
 			# Entered session mode so set pad LEDs => This shouldn't work because message size is fixed to 3 bytes!
 			if ev == 0x90900C7F:
-				self.refresh_zynpad_bank()
+				self.update_seq_bank()
 			else:
 				# Toggle pad
 				try:
@@ -161,4 +156,4 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 
 		return True
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
