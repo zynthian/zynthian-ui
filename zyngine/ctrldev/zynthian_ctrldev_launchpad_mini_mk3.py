@@ -83,14 +83,13 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 			else:
 				lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, note, 0)
 
-	def update_seq_state(self, bank, seq, state, mode):
+	def update_seq_state(self, bank, seq, state, mode, group):
 		if self.idev_out <= 0 or bank != self.zynseq.bank:
 			return
 		#logging.debug(f"Updating Launchpad MINI MK3 bank {bank} pad {seq} => state {state}, mode {mode}")
 		col, row = self.zynseq.get_xy_from_pad(seq)
 		note = 10 * (8 - row) + col + 1
 
-		group = self.zynseq.libseq.getGroup(self.zynseq.bank, seq)
 		try:
 			if mode == 0:
 				chan = 0

@@ -255,16 +255,23 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# Function to refresh pad if it has changed
 	#  pad: Pad index
 	#  force: True to force refresh
-	def refresh_pad(self, pad, mode=None, state=None):
+	def refresh_pad(self, pad, mode=None, state=None, group=None):
 		if pad > 63:
 			return
-		cellh = self.pads[pad]["header"]
-		if mode is None:
-			mode = self.zynseq.libseq.getPlayMode(self.bank, pad)
-		if state is None:
-			state = self.get_pad_state(pad)
-		group = self.zynseq.libseq.getGroup(self.bank, pad)
+
+		# Get pad info if needed
+		if mode is None or state is None or group is None:
+			state = self.zynseq.libseq.getSequenceState(self.zynseq.bank, pad)
+			mode = (state >> 8) & 0xFF
+			group = (state >> 16) & 0xFF
+			state &= 0xFF
+			if state == zynseq.SEQ_RESTARTING:
+				state = zynseq.SEQ_PLAYING
+			elif state == zynseq.SEQ_STOPPINGSYNC:
+				state = zynseq.SEQ_STOPPING
+
 		foreground = "white"
+		cellh = self.pads[pad]["header"]
 		cellb = self.pads[pad]["body"]
 		if self.zynseq.libseq.getSequenceLength(self.bank, pad) == 0 or mode == zynseq.SEQ_DISABLED:
 			self.grid_canvas.itemconfig(cellh, fill=zynthian_gui_config.PAD_COLOUR_DISABLED)
@@ -298,7 +305,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	def update_play_state(self, bank, seq, state, mode, group):
 		if bank == self.bank:
-			self.refresh_pad(seq, mode=mode, state=state)
+			self.refresh_pad(seq, mode=mode, state=state, group=group)
 
 	# ------------------------------------------------------------------------------------------------------------------
 	# Some useful functions
@@ -307,14 +314,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def set_bank(self, bank):
 		self.zynseq.select_bank(bank)
 		self.refresh_status(force=True)
-
-	def get_pad_state(self, pad):
-		state = self.zynseq.libseq.getPlayState(self.bank, pad)
-		if state == zynseq.SEQ_RESTARTING:
-			state = zynseq.SEQ_PLAYING
-		elif state == zynseq.SEQ_STOPPINGSYNC:
-			state = zynseq.SEQ_STOPPING
-		return state
 
 	# ------------------------------------------------------------------------------------------------------------------
 	# Trigger MIDI device integration

@@ -64,7 +64,7 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 			else:
 				lib_zyncore.dev_send_note_on(self.idev_out, 0, note, self.OFF_COLOUR)
 
-	def update_seq_state(self, bank, seq, state, mode):
+	def update_seq_state(self, bank, seq, state, mode, group):
 		if self.idev_out <= 0 or bank != self.zynseq.bank:
 			return
 		#logging.debug("Updating Launchpad MINI pad {}".format(seq))

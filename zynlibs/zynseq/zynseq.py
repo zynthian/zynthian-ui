@@ -131,7 +131,6 @@ class zynseq(zynthian_engine):
 			seq = (states[i] >> 24) & 0xff
 			zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_PLAY_STATE, bank=self.bank, seq=seq, state=state, mode=mode, group=group)
 
-
 	# Function to select a bank for edit / control
 	# bank: Index of bank
 	# force: True to fore bank selection even if same as current bank
