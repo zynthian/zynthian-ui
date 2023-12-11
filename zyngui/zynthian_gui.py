@@ -1432,7 +1432,10 @@ class zynthian_gui:
 		if self.current_screen in ("control", "alsa_mixer", "audio_player"):
 			#if i < 3 and t == 'S':
 			if t == 'S':
-				self.screens[self.current_screen].toggle_midi_learn(i)
+				if self.screens[self.current_screen].mode == 'select':
+					self.zynswitch_short(i)
+				else:
+					self.screens[self.current_screen].toggle_midi_learn(i)
 				return
 			elif t == 'B':
 				self.screens[self.current_screen].midi_learn_options(i)
