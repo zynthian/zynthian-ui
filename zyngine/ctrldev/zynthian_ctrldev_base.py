@@ -83,7 +83,7 @@ class zynthian_ctrldev_base:
 	# Sleep On
 	# It *COULD* be improved by child class
 	def sleep_off(self):
-		self.refresh(True)
+		self.refresh()
 
 
 # ------------------------------------------------------------------------------------------------------------------
@@ -142,7 +142,6 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 		"""
 		if self.idev_out is None:
 			return
-		#self.light_off()
 		self.update_seq_bank()
 		for i in range(self.cols):
 			for j in range(self.rows):
