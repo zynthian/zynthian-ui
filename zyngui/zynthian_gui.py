@@ -1867,11 +1867,13 @@ class zynthian_gui:
 
 	def zynmidi_read(self):
 		try:
-			# TODO: This should be improved: Get all pending MIDI messages in one call!
-			while True:
-				ev = lib_zyncore.read_zynmidi()
-				if ev == 0:
-					break
+			n = lib_zyncore.get_zynmidi_num_pending()
+			if n <= 0:
+				return
+			midi_events = (ctypes.c_uint32 * n)()
+			n = lib_zyncore.read_zynmidi_buffer(midi_events, n)
+			for i in range(n):
+				ev = midi_events[i]
 
 				# Try to manage with configured control devices
 				if self.state_manager.ctrldev_manager.midi_event(ev):
