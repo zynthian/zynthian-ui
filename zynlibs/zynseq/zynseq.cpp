@@ -1971,9 +1971,7 @@ uint8_t getStateChange(uint8_t bank, uint8_t start, uint8_t end, uint32_t* state
     {
         if (hasSequenceChanged(bank, sequence))
         {
-            Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
-            *(states + count) = getSequenceState(bank, sequence);
-            ++count;
+        	states[count++] = (g_seqMan.getSequence(bank, sequence)->getState() & 0xffffff) | uint32_t(sequence << 24);
         }
     }
     return count;
