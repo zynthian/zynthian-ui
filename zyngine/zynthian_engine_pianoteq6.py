@@ -42,6 +42,7 @@ import zynautoconnect
 # Pianoteq module helper functions
 # ------------------------------------------------------------------------------
 
+
 def ensure_dir(file_path):
 	directory = os.path.dirname(file_path)
 	if not os.path.exists(directory):
@@ -58,6 +59,7 @@ PIANOTEQ_MIDIMAPPINGS_DIR = PIANOTEQ_DATA_DIR + '/MidiMappings'
 # ------------------------------------------------------------------------------
 # Piantoteq Engine Class
 # ------------------------------------------------------------------------------
+
 
 class zynthian_engine_pianoteq6(zynthian_engine):
 	# ---------------------------------------------------------------------------
@@ -175,7 +177,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 		['main', ['volume', 'sostenuto', 'dynamic', 'sustain']]
 	]
 
-
 	# ----------------------------------------------------------------------------
 	# Config Variables
 	# ----------------------------------------------------------------------------
@@ -225,7 +226,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 		self.purge_banks()
 		self.generate_presets_midimapping()
 
-
 	def start(self):
 		try:
 			sr = self.zyngui.get_jackd_samplerate()
@@ -233,7 +233,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 			sr = 44100
 		fix_pianoteq_config(sr)
 		super().start()
-
 
 	# ---------------------------------------------------------------------------
 	# Processor Management
@@ -250,11 +249,9 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 	def get_bank_list(self, processor=None):
 		return self.bank_list
 
-
 	def set_bank(self, processor, bank):
 		self.name = (f"Pianoteq {bank[0]}")
 		return True
-
 
 	def prepare_banks(self):
 
@@ -299,7 +296,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 					else:
 						unlicensed_banks.append(bank)
 				self.bank_list = licensed_banks + free_banks + self.spacer_demo_bank + unlicensed_banks
-
 
 	# ----------------------------------------------------------------------------
 	# Preset Managament
@@ -356,7 +352,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 			return False
 		return True
 
-
 	def load_presets_cache(self):
 		# Load from file
 		try:
@@ -374,7 +369,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 			return False
 		return True
 
-
 	# Get user banks
 	@classmethod
 	def get_user_banks(cls):
@@ -386,7 +380,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 				user_banks.append(list(bank) + [bank[2]])
 		return user_banks
 
-
 	# Get user preset file list
 	@classmethod
 	def get_user_preset_files(cls):
@@ -395,7 +388,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 			for f in sorted(os.listdir(PIANOTEQ_MY_PRESETS_DIR + "/" + d)):
 				flist.append(d + "/" + f)
 		return flist
-
 
 	# Get user presets
 	@classmethod
@@ -414,7 +406,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 						user_presets.append([preset_path, None, preset_title, None, dbank])
 		return user_presets
 
-
 	# Get user presets
 	def load_user_presets(self):
 		type(self).user_presets_flist = self.get_user_preset_files()
@@ -428,7 +419,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 				except:
 					self.presets[bank_name] = user_presets
 
-
 	# Remove banks without presets
 	def purge_banks(self):
 		logging.debug("Purge Banks ...")
@@ -441,7 +431,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 				pass
 		self.bank_list = purged_bank_list
 
-
 	def get_preset_list(self, bank):
 		bank_name = bank[0]
 		if bank_name in self.presets:
@@ -451,7 +440,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 			logging.error("Can't get Preset List for %s [%s]" % (self.name, bank_name))
 			res = []
 		return res
-
 
 	def set_preset(self, processor, preset, preload=False):
 		mm = "Zynthian-{}".format(preset[3])
@@ -474,7 +462,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 		processor.send_ctrl_midi_cc()
 		return True
 
-
 	def cmp_presets(self, preset1, preset2):
 		try:
 			if preset1[0] == preset2[0] and preset1[2] == preset2[2]:
@@ -483,7 +470,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 				return False
 		except:
 			return False
-
 
 	# --------------------------------------------------------------------------
 	# Special
@@ -527,7 +513,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 		if len(data) > 0:
 			self.create_midimapping_file(mmn, data)
 
-
 	def create_midimapping_file(self, mmn, data):
 		# Create a new file copying from "static" Controllers Mappging and adding the "generated" Presets Mappgings
 		fpath = PIANOTEQ_MIDIMAPPINGS_DIR + "/Zynthian-{}.ptm".format(mmn)
@@ -553,7 +538,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 			file.seek(0)
 			file.write(header)
 
-
 	# ---------------------------------------------------------------------------
 	# API methods
 	# ---------------------------------------------------------------------------
@@ -571,7 +555,6 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 			})
 		return banks
 
-
 	@classmethod
 	def zynapi_get_presets(cls, bank):
 		presets = []
@@ -584,6 +567,5 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 				'readonly': False
 			})
 		return presets
-
 
 # ******************************************************************************

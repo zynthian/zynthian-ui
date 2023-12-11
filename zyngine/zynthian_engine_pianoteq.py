@@ -138,6 +138,7 @@ pt_ctrl_map = OrderedDict((
 # Pianoteq module helper functions
 # ------------------------------------------------------------------------------
 
+
 # True if pianoteq binary is installed. Fixes symlink if broken
 def check_pianoteq_binary():
 	if os.path.islink(PIANOTEQ_BINARY) and not os.access(PIANOTEQ_BINARY, os.X_OK):
@@ -330,6 +331,7 @@ def fix_pianoteq_config(samplerate):
 			logging.error("Fixing Pianoteq config failed: {}".format(e))
 			return format(e)
 
+
 def read_pianoteq_midi_mapping(file):
 	result = {}
 	with open(file, "rb") as f:
@@ -424,10 +426,12 @@ PIANOTEQ_DATA_DIR = os.path.expanduser('~') + '/.local/share/Modartt/Pianoteq'
 PIANOTEQ_ADDON_DIR = PIANOTEQ_DATA_DIR + '/Addons'
 PIANOTEQ_MY_PRESETS_DIR = PIANOTEQ_DATA_DIR + '/Presets'
 PIANOTEQ_CONFIG_FILE = PIANOTEQ_CONFIG_DIR + '/Pianoteq.prefs'
+PIANOTEQ_MIDIMAPPINGS_DIR = PIANOTEQ_DATA_DIR + '/MidiMappings'
 
 # ------------------------------------------------------------------------------
 # Pianoteq Engine Class
 # ------------------------------------------------------------------------------
+
 
 class zynthian_engine_pianoteq(zynthian_engine):
 
@@ -444,12 +448,12 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 		self.show_demo = True
 		self.command_prompt = None
-		self._ctrls = None
 		self.preset = ['', '', '', '']
 		self.params = {}
 		self.overfreq = 1800000
 
 		create_pianoteq_config()
+		save_midi_mapping(f"{PIANOTEQ_MIDIMAPPINGS_DIR}/zynthian.ptm")
 
 		self.command = f"{PIANOTEQ_BINARY} --prefs {PIANOTEQ_CONFIG_FILE} --midimapping zynthian"
 		if self.info['api']:
@@ -458,7 +462,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			self.command += " --headless"
 
 		self.start()
-
 
 	def start(self):
 		if self.proc:
@@ -479,7 +482,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		self.stop()
 		raise Exception("No response from Pianoteq RPC server")
 
-
 	def stop(self):
 		if not self.proc:
 			return
@@ -487,7 +489,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		if self.proc.isalive():
 			self.proc.close(True)
 		self.proc = None
-
 
 	# ---------------------------------------------------------------------------
 	# RPC-JSON API
@@ -511,14 +512,12 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			return None
 		return result
 
-
 	#	Get info
 	def get_info(self):
 		try:
 			return self.rpc('getInfo')['result'][0]
 		except:
 			return None
-
 
 	#   Load a preset by name
 	#   preset_name: Name of preset to load
@@ -528,7 +527,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		result = self.rpc('loadPreset', {'name':preset_name, 'bank':bank})
 		return result and 'error' not in result
 
-
 	#   Save a preset by name to "zynthian" bank
 	#   preset_name: Name of preset to save
 	#   Note: Overwrites existing preset if exists
@@ -536,7 +534,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	def save_preset(self, bank_info, preset_name):
 		result = self.rpc('savePreset', {'name':preset_name, 'bank':'My Presets'})
 		return result and 'error' not in result
-
 
 	#   Get a list of preset names for an instrument
 	#   instrument: Name of instrument for which to load presets (default: all instruments)
@@ -551,7 +548,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				presets.append([preset['name'], preset['bank']])
 		return presets
 
-
 	#   Get a list of groups (classes of instrument)
 	#   returns: List of group names or None on failure
 	def get_groups(self):
@@ -563,7 +559,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			if preset['class'] not in groups:
 				groups.append(preset['class'])
 		return groups
-
 
 	#   Get a list of instruments
 	#   group: Name of group to filter instruments (default: all groups)
@@ -580,7 +575,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 					instruments.append([preset['instr'], preset['license_status']=='ok'])
 		return instruments
 
-
 	#   Get a list of parameters for the loaded preset
 	#   returns: dictionary of all parameters indexed by parameter id: {name, value}
 	def get_params(self):
@@ -596,7 +590,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				logging.warning(f"Unknown parameter {param['id']}")
 		return params
 
-
 	#   Get a value of a parameter for the loaded preset
 	#   param: Parameter id
 	#   returns: Normalized value (0.0..1.0)
@@ -606,17 +599,13 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			return params[param]['value']
 		return 0
 
-
 	#   Set a value of a parameter for the loaded preset
 	#   param: Parameter id
 	#   value: Normalized value (0.0..1.0)
 	#   returns: True on success
-	"""
 	def set_param(self, param, value):
-		result = self.rpc('setParameters', {'list':[{'id':param,'normalized_value':value}]})
+		result = self.rpc('setParameters', {'list': [{'id': param, 'normalized_value': value}]})
 		return result and 'error' not in result
-	"""
-
 
 	# ---------------------------------------------------------------------------
 	# Processor Management
@@ -626,7 +615,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		super().add_processor(processor)
 		self.generate_ctrl_screens(self.get_controllers_dict(processor)) #TODO: This takes too long and appends to end of existing list
 		processor.auto_save_bank = True
-
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
@@ -648,7 +636,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				if not instrument[1]:
 					banks.append([instrument[0], None, instrument[0], instrument[1]])
 		return banks
-
 
 	def set_bank(self, processor, bank):
 		self.name = (f"Pianoteq {bank[0]}")
@@ -686,7 +673,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 		else:
 			return preset_name
 
-
 	def get_preset_list(self, bank):
 		# [uri/uid, pt bank, display name,zyn bank (pt instr)]
 		presets = []
@@ -707,35 +693,32 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				presets.append([preset[0], preset[1] , self.get_display_name(preset[0], stub), bank[0]])
 		return presets
 
-
 	def set_preset(self, processor, preset, preload=False):
 		if preset[3] == "Classical Guitar" and int(run(["cat", "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"], capture_output=True).stdout.decode()[:-1]) > self.overfreq:
 			return False
 		if self.load_preset(preset[0], preset[1]):
 			self.preset = preset
 			if preset[3] in ['CP-80', 'Vintage Tines MKI', 'Vintage Tines MKII', 'Vintage Reeds W1', 'Clavinet D6', 'Pianet N', 'Pianet T', 'Electra-Piano']:
-				self._ctrls['Output Mode'].set_options({'labels': ['Line out (stereo)',  'Line out (mono)', 'Room mic', 'Binaural']})
+				processor.controllers_dict['Output Mode'].set_options({'labels': ['Line out (stereo)',  'Line out (mono)', 'Room mic', 'Binaural']})
 			else:
-				self._ctrls['Output Mode'].set_options({'labels': ['Stereophonic',  'Monophonic', 'Sound Recording', 'Binaural']})
+				processor.controllers_dict['Output Mode'].set_options({'labels': ['Stereophonic',  'Monophonic', 'Sound Recording', 'Binaural']})
 			self.params = self.get_params()
 			for param in self.params:
-				self._ctrls[param].set_value(self.params[param]['value'], False)
+				processor.controllers_dict[param].set_value(self.params[param]['value'], False)
 			# Update control labels
 			for effect in range(1, 4):
 				for effect_param in range(1, 9):
 					symbol = f'Effect[{effect}].Param[{effect_param}]'
 					try:
-						self._ctrls[symbol].name = self.params[symbol]['name']
-						self._ctrls[symbol].short_name = self.params[symbol]['name']
+						processor.controllers_dict[symbol].name = self.params[symbol]['name']
+						processor.controllers_dict[symbol].short_name = self.params[symbol]['name']
 					except:
 						pass
 			return True
 		return False
 
-
 	def is_preset_user(self, preset):
 		return preset[1] != ''
-
 
 	def preset_exists(self, bank_info, preset_name):
 		# Instruments are presented as banks in Zynthian UI but user presets are saved in pianoteq banks 
@@ -745,7 +728,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				return True
 		return False
 
-
 	def cmp_presets(self, preset1, preset2):
 		try:
 			if preset1[0] == preset2[0] and preset1[3] == preset2[3]:
@@ -754,7 +736,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				return False
 		except:
 			return False
-
 
 	def is_modified(self):
 		params = self.get_params()
@@ -766,14 +747,11 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				return True
 		return False
 
-
 	def delete_preset(self, bank_info, preset):
 		return self.zynapi_remove_preset(f'{PIANOTEQ_MY_PRESETS_DIR}/{preset[1]}/{preset[0]}.fxp')
 
-
 	def rename_preset(self, bank_info, preset, new_name):
 		return self.zynapi_rename_preset(f'{PIANOTEQ_MY_PRESETS_DIR}/{preset[1]}/{preset[0]}.fxp', new_name)
-
 
 	# ---------------------------------------------------------------------------
 	# Controller management
@@ -781,10 +759,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 	# Get zynthian controllers dictionary:
 	def get_controllers_dict(self, processor):
-		init = False
-		if self._ctrls is None:
-			self._ctrls = OrderedDict()
-			init = True
+		if processor.controllers_dict is None:
+			processor.controllers_dict = {}
 
 		params = self.get_params()
 		for param in params:
@@ -814,22 +790,20 @@ class zynthian_engine_pianoteq(zynthian_engine):
 				options['group_symbol'] = 'Limiter'
 			#TODO Scale Diapason: 220..880Hz, Volume: 0..100 (maybe many parameters to be %)
 
-			if init:
+			if param in processor.controllers_dict:
+				processor.controllers_dict[param].set_options(options)
+			else:
 				zctrl = zynthian_controller(self, param, params[param]['name'], options)
-				self._ctrls[param] = zctrl
+				processor.controllers_dict[param] = zctrl
 				# Default MIDI CC mapping
 				default_cc = {'Sustain Pedal': 64, 'Sostenuto Pedal': 66, 'Soft Pedal': 67, 'Harmonic Pedal': 69}
 				if param in default_cc:
 					self.state_manager.chain_manager.add_midi_learn(processor.midi_chan, default_cc[param], zctrl)
 
-			else:
-				self._ctrls[param].set_options(options)
-		return self._ctrls
+		return processor.controllers_dict
 
-
-	def send_controller_value(self, zctrl):
-		self.set_param(zctrl.symbol, zctrl.value)
-
+	#def send_controller_value(self, zctrl):
+	#	self.set_param(zctrl.symbol, zctrl.value)
 
 	# ---------------------------------------------------------------------------
 	# API methods
@@ -880,21 +854,17 @@ class zynthian_engine_pianoteq(zynthian_engine):
 					})
 		return presets
 
-
 	@classmethod
 	def zynapi_download(cls, fullpath):
 		return fullpath
-
 
 	@classmethod
 	def zynapi_get_formats(cls):
 		return "fxp"
 
-
 	@classmethod
 	def zynapi_martifact_formats(cls):
 		return "fxp"
-
 
 	@classmethod
 	def zynapi_install(cls, dpath, bank_path):
@@ -903,7 +873,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			shutil.move(dpath, bank_path)
 		else:
 			raise Exception("File doesn't look like a Pianoteq FXP preset")
-
 
 	@classmethod
 	def zynapi_rename_preset(cls, preset_path, new_preset_name):
@@ -919,7 +888,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			pass
 		return False
 		
-
 	@classmethod
 	def zynapi_remove_preset(cls, preset_path):
 		if preset_path[-4:].lower() != ".fxp":

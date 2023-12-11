@@ -286,7 +286,7 @@ class zynthian_engine_modui(zynthian_engine):
 	#----------------------------------------------------------------------------
 
 	def get_controllers_dict(self, processor):
-		zctrls = OrderedDict()
+		processor.controllers_dict = {}
 		self._ctrl_screens = []
 		try:
 			for pgraph in sorted(self.plugin_info, key=lambda k: self.plugin_info[k]['posx']):
@@ -307,7 +307,7 @@ class zynthian_engine_modui(zynthian_engine):
 				for param in self.plugin_info[pgraph]['ports']['control']['input']:
 					try:
 						logging.debug("CTRL LIST PLUGIN %s PARAM %s" % (pgraph, param['ctrl']))
-						zctrls[param['ctrl'].graph_path] = param['ctrl']
+						processor.controllers_dict[param['ctrl'].graph_path] = param['ctrl']
 						ctrl_set.append(param['ctrl'].graph_path)
 						if len(ctrl_set) >= 4:
 							logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
@@ -321,7 +321,7 @@ class zynthian_engine_modui(zynthian_engine):
 					self._ctrl_screens.append([pgname+'#'+str(c), ctrl_set])
 		except Exception as err:
 			logging.error("Generating Controller List: %s" % err)
-		return zctrls
+		return processor.controllers_dict
 
 
 	def send_controller_value(self, zctrl):
