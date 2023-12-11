@@ -88,7 +88,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 					self.list_data.append(('record', None, '\u2612 multitrack recorder'))
 				else:
 					self.list_data.append(('record', None, '\u2610 multitrack recorder'))
-			zynsigman.send(zynsigman.S_AUDIO_MIXER, self.state_manager.zynmixer.SS_ZCTRL_SET_VALUE, chan=self.chain.mixer_chan, symbol="rec", value=armed)
+			zynsigman.send(zynsigman.S_AUDIO_MIXER, self.zyngui.state_manager.zynmixer.SS_ZCTRL_SET_VALUE, chan=self.chain.mixer_chan, symbol="rec", value=armed)
 
 		super().fill_list()
 
