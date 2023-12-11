@@ -562,7 +562,7 @@ class zynthian_gui_base(tkinter.Frame):
 					if self.dpm_a:
 						self.status_canvas.itemconfigure('status_dpm', state=tkinter.NORMAL)
 			if not mute and self.dpm_a:
-				state = self.zyngui.state_manager.zynmixer.get_dpm_state(255)
+				state = self.zyngui.state_manager.zynmixer.get_dpm_states(255, 255)[0]
 				self.dpm_a.refresh(state[0], state[2], state[4])
 				self.dpm_b.refresh(state[1], state[3], state[4])
 

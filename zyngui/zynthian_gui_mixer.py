@@ -757,9 +757,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle showing display
 	def build_view(self):
 		self.set_title()
-		#TODO: Check user setting to enable DPM
-		for chan in range(self.zynmixer.get_max_channels()):
-			self.zynmixer.enable_dpm(chan, True)
+		if zynthian_gui_config.enable_dpm:
+			for chan in range(self.zynmixer.get_max_channels()):
+				self.zynmixer.enable_dpm(chan, True)
+		else:
+			for strip in self.visible_mixer_strips:
+				strip.draw_dpm(-200, -200, -200, -200, False)
+
 		self.highlight_active_chain(True)
 		self.setup_zynpots()
 		zynsigman.register(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_control)
@@ -782,27 +786,16 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		"""
 		if self.shown:
 			super().refresh_status()
-			dpms = self.zynmixer.get_all_dpms()
-			holds = self.zynmixer.get_all_holds()
-			monos = self.zynmixer.get_all_monos()
-
-			self.main_mixbus_strip.draw_dpm(
-				dpms[self.zynmixer.MAX_NUM_CHANNELS * 2],
-				dpms[self.zynmixer.MAX_NUM_CHANNELS * 2 + 1],
-				holds[self.zynmixer.MAX_NUM_CHANNELS * 2],
-				holds[self.zynmixer.MAX_NUM_CHANNELS * 2 + 1],
-				monos[self.zynmixer.MAX_NUM_CHANNELS])
-			self.main_mixbus_strip.refresh_status()
-			for strip in self.visible_mixer_strips:
-				if not strip.hidden:
-					if zynthian_gui_config.enable_dpm:
-						strip.draw_dpm(
-							dpms[strip.chain.mixer_chan * 2],
-							dpms[strip.chain.mixer_chan * 2 + 1],
-							holds[self.zynmixer.MAX_NUM_CHANNELS * 2],
-							holds[self.zynmixer.MAX_NUM_CHANNELS * 2 + 1],
-							monos[strip.chain.mixer_chan])
-					strip.refresh_status()
+			state = self.zynmixer.get_dpm_states(255, 255)[0]
+			self.main_mixbus_strip.draw_dpm(state[0], state[1], state[2], state[3], state[4])
+			if zynthian_gui_config.enable_dpm:
+				states = self.zynmixer.get_dpm_states(0, self.zynmixer.MAX_NUM_CHANNELS)
+				for strip in self.visible_mixer_strips:
+					if not strip.hidden:
+						state = states[strip.chain.mixer_chan]
+						strip.draw_dpm(state[0], state[1], state[2], state[3], state[4])
+						strip.refresh_status()
+					self.main_mixbus_strip.refresh_status()
 			self.highlight_active_chain()
 
 	# Function to refresh display (fast)

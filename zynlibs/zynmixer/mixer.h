@@ -4,7 +4,7 @@
  *
  * Library providing stereo audio summing mixer
  *
- * Copyright (C) 2019-2022 Brian Walton <brian@riban.co.uk>
+ * Copyright (C) 2019-2023 Brian Walton <brian@riban.co.uk>
  *
  * ******************************************************************
  *
@@ -107,11 +107,6 @@ void setMono(int channel, int mono);
 */
 uint8_t  getMono(int channel);
 
-/** @brief  Get all mono states
-*   @param  values Pointer to array of uint8_t to populate with values
-*/
-void getAllMono(uint8_t* values);
-
 /** @brief  Set phase state of channel
 *   @param  channel Index of channel
 *   @param  phase (0: in phase, 1: phase reversed)
@@ -142,11 +137,6 @@ int isChannelRouted(int channel);
 */
 float getDpm(int channel, int leg);
 
-/** @brief  Get all DPM levels
-*   @param  values Pointer to array of floats to hold DPM level values
-*/
-void getAllDpm(float* levels);
-
 /** @brief  Get DPM hold level
 *   @param  channel Index of channel
 *   @param  leg 0 for A leg (left), 1 for B leg (right)
@@ -154,16 +144,12 @@ void getAllDpm(float* levels);
 */
 float getDpmHold(int channel, int leg);
 
-/** @brief  Get all DPM hold levels
-*   @param  values Pointer to array of floats to hold DPM hold level values
+/** @brief  Get DPM state for a set of channels
+*   @param  start Index of the first channel
+*   @param  end Index of the last channel
+*   @param  values Pointer to array of floats to hold DPM, hold, and mono status for each channel
 */
-void getAllDpmHold(float* levels);
-
-/** @brief  Get DPM state for a channel
-*   @param  channel Index of the channel
-*   @param  values Pointer to array of flats to hold DPM, hold, and mono status 
-*/
-void getDpmState(uint8_t channel, float* values);
+void getDpmStates(uint8_t start, uint8_t end, float* values);
 
 /** @brief  Enable / disable peak programme metering
 *   @param  channel Index of channel

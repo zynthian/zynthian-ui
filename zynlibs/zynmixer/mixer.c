@@ -4,7 +4,7 @@
  *
  * Library providing stereo audio summing mixer
  *
- * Copyright (C) 2019-2022 Brian Walton <brian@riban.co.uk>
+ * Copyright (C) 2019-2023 Brian Walton <brian@riban.co.uk>
  *
  * ******************************************************************
  *
@@ -767,14 +767,6 @@ uint8_t getMono(int channel)
     return g_dynamic[channel].mono;
 }
 
-void getAllMono(uint8_t* values)
-{
-    for (uint8_t channel = 0; channel <= MAX_CHANNELS; ++channel)
-    {
-        *(values + channel) = getMono(channel);
-    }
-}
-
 void reset(int channel)
 {
     if(channel >= MAX_CHANNELS)
@@ -807,15 +799,6 @@ float getDpm(int channel, int leg)
     return convertToDBFS(g_dynamic[channel].dpmA);
 }
 
-void getAllDpm(float* values)
-{
-    for (uint8_t channel = 0; channel <= MAX_CHANNELS; ++channel)
-    {
-        *(values + channel * 2) = getDpm(channel, 0);
-        *(values + channel * 2 + 1) = getDpm(channel, 1);
-    }
-}
-
 float getDpmHold(int channel, int leg)
 {
     if(channel >= MAX_CHANNELS)
@@ -829,22 +812,18 @@ float getDpmHold(int channel, int leg)
     return convertToDBFS(g_dynamic[channel].holdA);
 }
 
-void getAllDpmHold(float* values)
+void getDpmStates(uint8_t start, uint8_t end, float* values)
 {
-    for (uint8_t channel = 0; channel <= MAX_CHANNELS; ++channel)
+    uint8_t count = end - start + 1;
+    while(count--)
     {
-        *(values + channel * 2) = getDpmHold(channel, 0);
-        *(values + channel * 2 + 1) = getDpmHold(channel, 1);
+        *(values++) = getDpm(start, 0);
+        *(values++) = getDpm(start, 1);
+        *(values++) = getDpmHold(start, 0);
+        *(values++) = getDpmHold(start, 1);
+        *(values++) = getMono(start);
+        ++start;
     }
-}
-
-void getDpmState(uint8_t channel, float* values)
-{
-    *values = getDpm(channel, 0);
-    *(values + 1) = getDpm(channel, 1);
-    *(values + 2) = getDpmHold(channel, 0);
-    *(values + 3) = getDpmHold(channel, 1);
-    *(values + 4) = getMono(channel);
 }
 
 void enableDpm(int channel, int enable)
