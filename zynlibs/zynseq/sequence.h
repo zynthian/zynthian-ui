@@ -48,6 +48,11 @@ class Sequence
         */
         void setPlayState(uint8_t state);
 
+        /** @brief  Get sequence state
+        *   @retval uint32_t Sequence state as 32-bit word [0x00, group, mode, play state]
+        */
+        uint32_t getState();
+
         /** @brief  Add new track to sequence
         *   @param  track Index of track afterwhich to add new track (Optional - default: add to end of sequence)
         *   @retval uint32_t Index of track added

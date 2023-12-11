@@ -144,6 +144,11 @@ void Sequence::setPlayState(uint8_t state)
     m_bChanged = true;
 }
 
+uint32_t Sequence::getState()
+{
+    return (m_nGroup << 16) | (m_nMode << 8) | m_nState;
+}
+
 uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock)
 {
     m_nCurrentTrack = 0;

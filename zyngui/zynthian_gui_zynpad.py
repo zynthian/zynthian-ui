@@ -296,7 +296,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		else:
 			self.grid_canvas.itemconfig(self.pads[pad]["state"], image=self.state_icon[self.zynseq.col_in_bank][state])
 
-	def update_play_state(self, bank, seq, state, mode):
+	def update_play_state(self, bank, seq, state, mode, group):
 		if bank == self.bank:
 			self.refresh_pad(seq, mode=mode, state=state)
 

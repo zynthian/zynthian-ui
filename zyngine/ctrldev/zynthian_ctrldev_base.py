@@ -103,12 +103,12 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 	def init(self):
 		self.refresh()
 		# Register for zynseq updates
-		zynsigman.register(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_seq_play_state)
+		zynsigman.register(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
 		zynsigman.register(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_REFRESH, self.refresh)
 
 	def end(self):
 		# Unregister from zynseq updates
-		zynsigman.unregister(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_seq_play_state)
+		zynsigman.unregister(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
 		zynsigman.unregister(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_REFRESH, self.refresh)
 		self.light_off()
 
@@ -118,7 +118,7 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 		"""
 		pass
 
-	def update_seq_play_state(self, bank, seq, state, mode):
+	def update_seq_state(self, bank, seq, state=None, mode=None, group=None):
 		"""Update hardware indicators for a sequence (pad): playing state etc.
 		*SHOULD* be implemented by child class
 
@@ -126,6 +126,7 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 		seq - sequence index
 		state - sequence's state
 		mode - sequence's mode
+		group - sequence's group
 		"""
 		logging.debug("Update sequence playing state for {}: NOT IMPLEMENTED!".format(type(self).__name__))
 
@@ -149,9 +150,11 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 					self.pad_off(i, j)
 				else:
 					seq = i * self.zynseq.col_in_bank + j
-					state = self.zynseq.libseq.getPlayState(self.zynseq.bank, seq)
-					mode = self.zynseq.libseq.getPlayMode(self.zynseq.bank, seq)
-					self.update_seq_play_state(bank=self.zynseq.bank, seq=seq, state=state, mode=mode)
+					state = self.zynseq.libseq.getSequenceState(self.zynseq.bank, seq)
+					mode = (state >> 8) & 0xFF
+					group = (state >> 16) & 0xFF
+					state &= 0xFF
+					self.update_seq_state(bank=self.zynseq.bank, seq=seq, state=state, mode=mode, group=group)
 
 # ------------------------------------------------------------------------------------------------------------------
 # Zynmixer control device base class

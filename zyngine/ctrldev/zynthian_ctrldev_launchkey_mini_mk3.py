@@ -61,7 +61,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 		# Disable session mode on launchkey
 		lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 0)
 
-	def update_seq_play_status(self, bank, seq, state, mode):
+	def update_seq_state(self, bank, seq, state, mode, group):
 		if self.idev_out <= 0 or bank != self.zynseq.bank:
 			return
 		col, row = self.zynseq.get_xy_from_pad(seq)
@@ -69,7 +69,6 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 			return
 		note = 96 + row * 16 + col
 		try:
-			group = self.zynseq.libseq.getGroup(self.zynseq.bank, seq)
 			if mode == 0 or group > 16:
 				chan = 0
 				vel = 0

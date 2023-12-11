@@ -614,6 +614,23 @@ void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state);
 */
 void togglePlayState(uint8_t bank, uint8_t sequence);
 
+/** @brief  Get sequence states encoded as 32-bit word
+*   @param  bank Index of bank containing sequence
+*   @param  sequence Index (sequence) of sequence within bank
+*   @retval uint32_t State encode as 32-bit word: [sequence, group, mode, play state]
+*/
+uint32_t getSequenceState(uint8_t bank, uint8_t sequence);
+
+/** @brief  Get state of changed sequences in bank
+*   @param  bank Index of bank
+*   @param  start Index of first sequence to check
+*   @param  start Index of last sequence to check
+*   @param  states Pointer to array of uint32_t to hold results
+*   @retval uint8_t Quantity of changed sequences
+*   @note   State is represented as 4 bytes encoded as single 32-bit word: [sequence, group, mode, play state]
+*/
+uint8_t getStateChange(uint8_t bank, uint8_t start, uint8_t end, uint32_t* states);
+
 /** @brief  Get quantity of tracks in a sequence
 *   @param  bank Index of bank
 *   @param  sequence Index of sequence

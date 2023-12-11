@@ -96,6 +96,8 @@ class zynseq(zynthian_engine):
 			self.libseq.setTempo.argtypes = [ctypes.c_double]
 			self.libseq.setMetronomeVolume.argtypes = [ctypes.c_float]
 			self.libseq.getMetronomeVolume.restype = ctypes.c_float
+			self.libseq.getStateChange.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.POINTER(ctypes.c_uint32)]
+			self.libseq.getStateChange.restype = ctypes.c_uint32
 			self.libseq.init(bytes("zynseq", "utf-8"))
 		except Exception as e:
 			self.libseq = None
@@ -119,11 +121,16 @@ class zynseq(zynthian_engine):
 		self.libseq = None
 
 	def update_state(self):
-		for seq in range(self.col_in_bank ** 2):
-			if self.libseq.hasSequenceChanged(self.bank, seq):
-				state = self.libseq.getPlayState(self.bank, seq)
-				mode = self.libseq.getPlayMode(self.bank, seq)
-				zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_PLAY_STATE, bank=self.bank, seq=seq, state=state, mode=mode)
+		num_seq = self.col_in_bank ** 2
+		states = (ctypes.c_uint32 * num_seq)()
+		count = self.libseq.getStateChange(self.bank, 0, num_seq - 1, states)
+		for i in range(count):
+			state = states[i] & 0xff
+			mode = (states[i] >> 8) & 0xff
+			group = (states[i] >> 16) & 0xff
+			seq = (states[i] >> 24) & 0xff
+			zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_PLAY_STATE, bank=self.bank, seq=seq, state=state, mode=mode, group=group)
+
 
 	# Function to select a bank for edit / control
 	# bank: Index of bank
