@@ -1966,13 +1966,26 @@ uint32_t getSequenceState(uint8_t bank, uint8_t sequence)
 
 uint8_t getStateChange(uint8_t bank, uint8_t start, uint8_t end, uint32_t* states)
 {
-    uint32_t count = 0;
+    uint8_t count = 0;
     Sequence* pSequence;
     for(uint8_t sequence = start; sequence < end; ++sequence)
     {
         pSequence = g_seqMan.getSequence(bank, sequence);
         if (pSequence->isModified())
         	states[count++] = (pSequence->getState() & 0xffffff) | uint32_t(sequence << 24);
+    }
+    return count;
+}
+
+uint8_t getProgress(uint8_t bank, uint8_t start, uint8_t end, uint16_t* progress)
+{
+    uint8_t count = 0;
+    Sequence* pSequence;
+    for(uint8_t sequence = start; sequence < end; ++sequence)
+    {
+        pSequence = g_seqMan.getSequence(bank, sequence);
+        if (pSequence->getLength())
+            progress[count++] = (100 * pSequence->getPlayPosition() / pSequence->getLength()) & 0xff | uint32_t(sequence << 8);
     }
     return count;
 }

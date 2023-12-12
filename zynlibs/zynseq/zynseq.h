@@ -631,6 +631,16 @@ uint32_t getSequenceState(uint8_t bank, uint8_t sequence);
 */
 uint8_t getStateChange(uint8_t bank, uint8_t start, uint8_t end, uint32_t* states);
 
+/** @brief  Get progress of populated sequences in bank
+*   @param  bank Index of bank
+*   @param  start Index of first sequence to check
+*   @param  start Index of last sequence to check
+*   @param  progress Pointer to array of uint16_t to hold results
+*   @retval uint8_t Quantity of changed sequences
+*   @note   Progess is represented as 2 bytes encoded as single 16-bit word: [sequence, % progress]
+*/
+uint8_t getProgress(uint8_t bank, uint8_t start, uint8_t end, uint16_t* progress);
+
 /** @brief  Get quantity of tracks in a sequence
 *   @param  bank Index of bank
 *   @param  sequence Index of sequence
