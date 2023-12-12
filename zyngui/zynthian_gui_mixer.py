@@ -27,10 +27,8 @@
 import os
 import tkinter
 import logging
-from queue import SimpleQueue
 
 # Zynthian specific modules
-import zynautoconnect
 from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_signal_manager import zynsigman
 
@@ -226,12 +224,12 @@ class zynthian_gui_mixer_strip():
 			self.parent.main_canvas.itemconfig(self.status_indicator, text=self.chain.status, fill="#009000")
 
 	# Function to draw the DPM level meter for a mixer strip
-	def draw_dpm(self):
+	def draw_dpm(self, dpm_a, dpm_b, hold_a, hold_b, mono):
 		if self.hidden or self.chain.mixer_chan is None:
 			return
 
-		self.dpm_a.refresh()
-		self.dpm_b.refresh()
+		self.dpm_a.refresh(dpm_a, hold_a, mono)
+		self.dpm_b.refresh(dpm_b, hold_b, mono)
 
 	def draw_balance(self):
 		balance = self.zynmixer.get_balance(self.chain.mixer_chan)
@@ -383,8 +381,8 @@ class zynthian_gui_mixer_strip():
 		except Exception as e:
 			logging.error(e)
 
-		if control == None:
-			self.draw_dpm()
+		#if control == None:
+			#self.draw_dpm()
 			#self.refresh_status()
 
 		if control in [None, 'level']:
@@ -759,9 +757,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle showing display
 	def build_view(self):
 		self.set_title()
-		#TODO: Check user setting to enable DPM
-		for chan in range(self.zynmixer.get_max_channels()):
-			self.zynmixer.enable_dpm(chan, True)
+		if zynthian_gui_config.enable_dpm:
+			for chan in range(self.zynmixer.get_max_channels()):
+				self.zynmixer.enable_dpm(chan, True)
+		else:
+			for strip in self.visible_mixer_strips:
+				strip.draw_dpm(-200, -200, -200, -200, False)
+
 		self.highlight_active_chain(True)
 		self.setup_zynpots()
 		zynsigman.register(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_control)
@@ -784,13 +786,16 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		"""
 		if self.shown:
 			super().refresh_status()
-			self.main_mixbus_strip.draw_dpm()
-			self.main_mixbus_strip.refresh_status()
-			for strip in self.visible_mixer_strips:
-				if not strip.hidden:
-					if zynthian_gui_config.enable_dpm:
-						strip.draw_dpm()
-					strip.refresh_status()
+			state = self.zynmixer.get_dpm_states(255, 255)[0]
+			self.main_mixbus_strip.draw_dpm(state[0], state[1], state[2], state[3], state[4])
+			if zynthian_gui_config.enable_dpm:
+				states = self.zynmixer.get_dpm_states(0, self.zynmixer.MAX_NUM_CHANNELS)
+				for strip in self.visible_mixer_strips:
+					if not strip.hidden:
+						state = states[strip.chain.mixer_chan]
+						strip.draw_dpm(state[0], state[1], state[2], state[3], state[4])
+						strip.refresh_status()
+					self.main_mixbus_strip.refresh_status()
 			self.highlight_active_chain()
 
 	# Function to refresh display (fast)

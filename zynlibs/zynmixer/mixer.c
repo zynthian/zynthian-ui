@@ -4,7 +4,7 @@
  *
  * Library providing stereo audio summing mixer
  *
- * Copyright (C) 2019-2022 Brian Walton <brian@riban.co.uk>
+ * Copyright (C) 2019-2023 Brian Walton <brian@riban.co.uk>
  *
  * ******************************************************************
  *
@@ -45,7 +45,7 @@ int g_sendEvents = 1; // Set to 0 to exit event thread
 //#define DEBUG
 
 #define MAX_CHANNELS 17
-#define MAIN_CHANNEL 256
+#define MAIN_CHANNEL 255
 #define MAX_OSC_CLIENTS 5
 
 struct dynamic
@@ -760,7 +760,7 @@ void setMono(int channel, int mono){
     sendOscInt(g_oscpath, mono);
 }
 
-int getMono(int channel)
+uint8_t getMono(int channel)
 {
     if(channel >= MAX_CHANNELS)
         return g_mainOutput.mono;
@@ -810,6 +810,20 @@ float getDpmHold(int channel, int leg)
     if(leg)
         return convertToDBFS(g_dynamic[channel].holdB);
     return convertToDBFS(g_dynamic[channel].holdA);
+}
+
+void getDpmStates(uint8_t start, uint8_t end, float* values)
+{
+    uint8_t count = end - start + 1;
+    while(count--)
+    {
+        *(values++) = getDpm(start, 0);
+        *(values++) = getDpm(start, 1);
+        *(values++) = getDpmHold(start, 0);
+        *(values++) = getDpmHold(start, 1);
+        *(values++) = getMono(start);
+        ++start;
+    }
 }
 
 void enableDpm(int channel, int enable)

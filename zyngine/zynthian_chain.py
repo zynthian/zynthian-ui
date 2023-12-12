@@ -124,11 +124,11 @@ class zynthian_chain:
     def set_mixer_chan(self, chan):
         """Set chain mixer channel
 
-        chan : Mixer channel 0..15, 256 or None
+        chan : Mixer channel 0..15, 255 or None
         """
 
         self.mixer_chan = chan
-        if chan == 256:
+        if chan == 255:
             self.audio_in = ["zynmixer:send"]
             self.audio_out = ["zynmixer:return"]
             self.audio_thru = True

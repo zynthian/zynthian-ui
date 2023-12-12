@@ -157,7 +157,7 @@ class zynthian_chain_manager():
             self.chains[chain_id] = chain
         if enable_audio_thru:
             if chain_id == "main":
-                chain.set_mixer_chan(256)
+                chain.set_mixer_chan(255)
             else:
                 chain.set_mixer_chan(self.get_next_free_mixer_chan())
         if isinstance(midi_chan, int) or enable_midi_thru:

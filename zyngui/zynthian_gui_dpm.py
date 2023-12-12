@@ -112,10 +112,9 @@ class zynthian_gui_dpm():
 		self.strip = strip
 
 
-	def refresh(self):
+	def refresh(self, dpm, hold, mono):
 		if self.strip is None:
 			return
-		mono = self.zynmixer.get_mono(self.strip)
 		if mono != self.mono:
 			self.mono = mono
 			if mono:
@@ -125,9 +124,9 @@ class zynthian_gui_dpm():
 
 
 		if self.vertical:
-			y1 = int(self.y0 + self.height * max(self.zynmixer.get_dpm(self.strip, self.channel), self.lowdB) / self.lowdB)
+			y1 = int(self.y0 + self.height * max(dpm, self.lowdB) / self.lowdB)
 			self.parent.coords(self.overlay, (self.x0, self.y0, self.x1, y1))
-			y1 = int(self.y0 + self.height * max(self.zynmixer.get_dpm_hold(self.strip, self.channel), self.lowdB) / self.lowdB)
+			y1 = int(self.y0 + self.height * max(hold, self.lowdB) / self.lowdB)
 			self.parent.coords(self.hold, (self.x0, y1, self.x1, y1 + self.hold_thickness))
 			if y1 <= self.y_over:
 				self.parent.itemconfig(self.hold, state=NORMAL, fill="#FF0000")
@@ -142,9 +141,9 @@ class zynthian_gui_dpm():
 				self.parent.itemconfig(self.hold, state=HIDDEN)
 
 		else:
-			x0 = int(self.width - self.width * max(self.zynmixer.get_dpm(self.strip, self.channel), self.lowdB) / self.lowdB)
+			x0 = int(self.width - self.width * max(dpm, self.lowdB) / self.lowdB)
 			self.parent.coords(self.overlay, (x0, self.y0, self.x1, self.y1))
-			x0 = int(self.width - self.width * max(self.zynmixer.get_dpm_hold(self.strip, self.channel), self.lowdB) / self.lowdB)
+			x0 = int(self.width - self.width * max(hold, self.lowdB) / self.lowdB)
 			self.parent.coords(self.hold, (x0, self.y0, x0 + self.hold_thickness, self.y1))
 			if x0 > self.x_over:
 				self.parent.itemconfig(self.hold, state=NORMAL, fill=self.over_hold_color)
