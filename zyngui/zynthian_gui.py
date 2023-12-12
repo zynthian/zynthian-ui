@@ -374,7 +374,8 @@ class zynthian_gui:
 						logging.warning("Error trying to add OSC client registration {}".format(src.hostname))
 						return
 				self.osc_clients[src.hostname] = monotonic()
-				self.state_manager.zynmixer.enable_dpm(0, self.state_manager.zynmixer.get_max_channels(), True)
+				for chan in range(self.state_manager.zynmixer.MAX_NUM_CHANNELS):
+					self.state_manager.zynmixer.enable_dpm(chan, True)
 			else:
 				if part2[:6] == "VOLUME":
 					self.state_manager.zynmixer.set_level(int(part2[6:]), float(args[0]))
@@ -2426,9 +2427,8 @@ class zynthian_gui:
 					except:
 						pass
 
-			#TODO: Add event signal queue for OSC clients
-			#if not self.osc_clients and self.current_screen != "audio_mixer":
-			#	self.state_manager.zynmixer.enable_dpm(0, self.state_manager.zynmixer.get_max_channels() - 1, False)
+			if not self.osc_clients and self.current_screen != "audio_mixer":
+				self.state_manager.zynmixer.enable_dpm(0, self.state_manager.zynmixer.MAX_NUM_CHANNELS, False)
 
 			# Poll
 			zynthian_gui_config.top.after(self.osc_heartbeat_timeout * 1000, self.osc_timeout)

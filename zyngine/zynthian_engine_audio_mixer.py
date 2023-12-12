@@ -88,7 +88,7 @@ class zynmixer(zynthian_engine):
 
 		self.lib_zynmixer.getMaxChannels.restype = ctypes.c_uint8
 
-		self.MAX_NUM_CHANNELS:int = self.lib_zynmixer.getMaxChannels()
+		self.MAX_NUM_CHANNELS = self.lib_zynmixer.getMaxChannels()
 
 		self.learned_cc = [dict() for x in range(16)]   # List of learned {cc:zctrl} indexed by learned MIDI channel
 
@@ -160,10 +160,6 @@ class zynmixer(zynthian_engine):
 		except Exception as e:
 			logging.warning(e)
 
-	# Get maximum quantity of channels (excluding main mix bus)
-	# returns: Maximum quantity of channels
-	def get_max_channels(self):
-		return self.MAX_NUM_CHANNELS
 
 	# Function to set fader level for a channel
 	# channel: Index of channel
