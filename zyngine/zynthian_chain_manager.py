@@ -41,6 +41,11 @@ from zyngui import zynthian_gui_config  # TODO: Factor out UI
 # Zynthian Chain Manager Class
 # ----------------------------------------------------------------------------
 
+MAX_NUM_MIDI_CHANS = 16
+# TODO: Get this from zynmixer
+MAX_NUM_MIXER_CHANS = 16
+# TODO: Get this from lib_zyncore
+MAX_NUM_CHAINS = 16
 
 class zynthian_chain_manager():
 
@@ -69,7 +74,7 @@ class zynthian_chain_manager():
         self.zyngines = OrderedDict()  # List of instantiated engines
         self.processors = {}  # Dictionary of processor objects indexed by UID
         self.active_chain_id = None  # Active chain id
-        self.midi_chan_2_chain_ids = [[]] * 16  # Chain IDs mapped by MIDI channel
+        self.midi_chan_2_chain_ids = [list() for _ in range(MAX_NUM_CHAINS)]  # Chain IDs mapped by MIDI channel
         self.absolute_midi_cc_binding = {}  # Map of CC map indexed by MIDI channel. CC map is map of zctrl indexed by cc number
         self.chain_midi_cc_binding = {}  # Map of CC map indexed by chain id. CC map is map of lists of zctrl indexed by cc number
         self.held_zctrls = {    # Map of lists of currently held (sustained) zctrls, indexed by cc number - first element indicates pedal state
@@ -79,7 +84,7 @@ class zynthian_chain_manager():
             69: [False]
         }
         self.get_engine_info()
-        self.add_chain("main", enable_audio_thru=True)
+        self.add_chain("main", audio_thru=True)
 
     @classmethod
     def get_engine_info(cls):
@@ -126,13 +131,13 @@ class zynthian_chain_manager():
     # Chain Management
     # ------------------------------------------------------------------------
 
-    def add_chain(self, chain_id, midi_chan=None, enable_midi_thru=False, enable_audio_thru=False):
+    def add_chain(self, chain_id, midi_chan=None, midi_thru=False, audio_thru=False, mixer_chan=None, zmop_index=None):
         """Add a chain
 
         chain_id: UID of chain (None to get next available)
         midi_chan : MIDI channel associated with chain
-        enable_midi_thru : True to enable MIDI thru for empty chain (Default: False)
-        enable_audio_thru : True to enable audio thru for empty chain (Default: False)
+        midi_thru : True to enable MIDI thru for empty chain (Default: False)
+        audio_thru : True to enable audio thru for empty chain (Default: False)
         Returns : Chain ID or None if chain could not be created
         """
 
@@ -144,23 +149,23 @@ class zynthian_chain_manager():
                 id += 1
             chain_id = f"{id:02}"
         if chain_id == "main":
-            enable_midi_thru = False
-            enable_audio_thru = True
+            midi_thru = False
+            audio_thru = True
         if chain_id in self.chains:
-            self.chains[chain_id].midi_thru = enable_midi_thru
-            self.chains[chain_id].audio_thru = enable_audio_thru
+            self.chains[chain_id].midi_thru = midi_thru
+            self.chains[chain_id].audio_thru = audio_thru
             self.state_manager.end_busy("add_chain")
             return self.chains[chain_id]
 
-        chain = zynthian_chain(chain_id, midi_chan, enable_midi_thru, enable_audio_thru)
+        chain = zynthian_chain(chain_id, midi_chan, midi_thru, audio_thru)
         if chain:
             self.chains[chain_id] = chain
-        if enable_audio_thru:
+        if audio_thru:
             if chain_id == "main":
                 chain.set_mixer_chan(255)
             else:
                 chain.set_mixer_chan(self.get_next_free_mixer_chan())
-        if isinstance(midi_chan, int) or enable_midi_thru:
+        if isinstance(midi_chan, int) or midi_thru:
             chain.set_zmop_index(self.get_next_free_zmop_index())
         self.set_midi_chan(chain_id, midi_chan)
         self.set_active_chain_by_id(chain_id)
@@ -169,8 +174,35 @@ class zynthian_chain_manager():
         zynautoconnect.request_audio_connect(True)
         zynautoconnect.request_midi_connect(True)
 
+        logging.debug(f"ADDED CHAIN {chain_id} => midi_chan={chain.midi_chan}, mixer_chan={chain.mixer_chan}, zmop_index={chain.zmop_index}")
+        #logging.debug(f"chain_ids_ordered = {self.chain_ids_ordered}")
+        #logging.debug(f"midi_chan_2_chain_ids = {self.midi_chan_2_chain_ids}")
+
         self.state_manager.end_busy("add_chain")
         return chain_id
+
+    def add_chain_from_state(self, chain_id, chain_state):
+        if 'midi_chan' in chain_state:
+            midi_chan = chain_state['midi_chan']
+        else:
+            midi_chan = None
+        if 'midi_thru' in chain_state:
+            midi_thru = chain_state['midi_thru']
+        else:
+            midi_thru = False
+        if 'audio_thru' in chain_state:
+            audio_thru = chain_state['audio_thru']
+        else:
+            audio_thru = False
+        if 'mixer_chan' in chain_state:
+            mixer_chan = chain_state['mixer_chan']
+        else:
+            mixer_chan = None
+        if 'zmop_index' in chain_state:
+            zmop_index = chain_state['zmop_index']
+        else:
+            zmop_index = None
+        self.add_chain(chain_id, midi_chan=midi_chan, midi_thru=midi_thru, audio_thru=audio_thru, mixer_chan=mixer_chan, zmop_index=zmop_index)
 
     def remove_chain(self, chain_id, stop_engines=True):
         """Removes a chain or resets "main" chain
@@ -183,7 +215,7 @@ class zynthian_chain_manager():
         if chain_id not in self.chains:
             return False
         self.state_manager.start_busy("remove_chain", None, f"removing chain {chain_id}")
-        chains_to_remove = [chain_id] # List of associated chains that shold be removed simultaneously
+        chains_to_remove = [chain_id]  # List of associated chains that shold be removed simultaneously
         chain = self.chains[chain_id]
         if chain.synth_slots:
             if chain.synth_slots[0][0].type_code in ["BF", "AE"]:
@@ -197,7 +229,7 @@ class zynthian_chain_manager():
             if isinstance(chain.midi_chan, int):
                 self.midi_chan_2_chain_ids[chain.midi_chan].remove(chain_id)
                 # TODO: Manage All-NOTES-OFF when a chain receives several MIDI channels or all
-                if chain.midi_chan < 16:
+                if chain.midi_chan < MAX_NUM_MIDI_CHANS:
                     lib_zyncore.ui_send_ccontrol_change(chain.midi_chan, 120, 0)
             if chain.mixer_chan is not None:
                 mute = self.state_manager.zynmixer.get_mute(chain.mixer_chan)
@@ -470,7 +502,7 @@ class zynthian_chain_manager():
             self.active_chain_id = chain_id
             zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain=self.active_chain_id)
             # Update active MIDI channel
-            if chain.is_midi() and chain.midi_chan < 16:
+            if chain.is_midi() and chain.midi_chan < MAX_NUM_MIDI_CHANS:
                 lib_zyncore.set_midi_active_chan(chain.midi_chan)
                 # Re-assert pedals on new active channel
                 for pedal_cc in self.held_zctrls:
@@ -480,13 +512,13 @@ class zynthian_chain_manager():
             else:
                 # Check if currently selected channel is valid
                 midi_chan = lib_zyncore.get_midi_active_chan()
-                if midi_chan >= 0 and midi_chan < 16 and len(self.midi_chan_2_chain_ids[midi_chan]) > 0:
+                if midi_chan >= 0 and midi_chan < MAX_NUM_MIDI_CHANS and len(self.midi_chan_2_chain_ids[midi_chan]) > 0:
                     return self.active_chain_id
                 # If not, find a valid MIDI chain => first chain's MIDI channel
                 for chain in self.chains.values():
                     if chain.is_midi():
                         # This would change with MIDI 2.0
-                        if chain.midi_chan < 16:
+                        if chain.midi_chan < MAX_NUM_MIDI_CHANS:
                             lib_zyncore.set_midi_active_chan(chain.midi_chan)
                         else:
                             lib_zyncore.set_midi_active_chan(0)
@@ -857,22 +889,7 @@ class zynthian_chain_manager():
         self.stop_unused_jalv_engines() #TODO: Can we factor this out? => Not yet!!
 
         for chain_id, chain_state in state.items():
-            midi_chan = None
-            midi_thru = False
-            audio_thru = False
-            if 'midi_chan' in chain_state:
-                midi_chan = chain_state['midi_chan']
-                del chain_state['midi_chan']
-            if 'midi_thru' in chain_state:
-                midi_thru = chain_state['midi_thru']
-                del chain_state['midi_thru']
-            if 'audio_thru' in chain_state:
-                audio_thru = chain_state['audio_thru']
-                del chain_state['audio_thru']
-            self.add_chain(chain_id, midi_chan, midi_thru, audio_thru)
-            chain = self.get_chain(chain_id)
-            if chain:
-                chain.set_state(chain_state)
+            self.add_chain_from_state(chain_id, chain_state)
 
             if "slots" in chain_state:
                 for slot_state in chain_state["slots"]:
@@ -1141,11 +1158,11 @@ class zynthian_chain_manager():
         if isinstance(chain.midi_chan, int):
             midi_chans = []
             # Single MIDI channel
-            if 0 <= chain.midi_chan < 16:
+            if 0 <= chain.midi_chan < MAX_NUM_MIDI_CHANS:
                 midi_chans = [chain.midi_chan]
             # ALL MIDI channels
             elif chain.midi_chan == 0xffff:
-                midi_chans = list(range(16))
+                midi_chans = list(range(MAX_NUM_MIDI_CHANS))
             # Remove from dictionary
             for mc in midi_chans:
                 try:
@@ -1157,15 +1174,16 @@ class zynthian_chain_manager():
         if isinstance(midi_chan, int):
             midi_chans = []
             # Single MIDI channel
-            if 0 <= midi_chan < 16:
+            if 0 <= midi_chan < MAX_NUM_MIDI_CHANS:
                 midi_chans = [midi_chan]
             # ALL MIDI channels
             elif midi_chan == 0xffff:
-                midi_chans = list(range(16))
-            # Remove from dictionary
+                midi_chans = list(range(MAX_NUM_MIDI_CHANS))
+            # Add to dictionary
             for mc in midi_chans:
                 try:
                     self.midi_chan_2_chain_ids[mc].append(chain_id)
+                    #logging.debug(f"Adding chain ID {chain_id} to MIDI channel {mc}")
                 except:
                     pass
 
@@ -1175,7 +1193,7 @@ class zynthian_chain_manager():
     def get_free_midi_chans(self):
         """Get list of unused MIDI channels"""
 
-        free_chans = list(range(16))
+        free_chans = list(range(MAX_NUM_MIDI_CHANS))
         try:
             free_chans.remove(zynthian_gui_config.master_midi_channel)
         except:
@@ -1194,7 +1212,7 @@ class zynthian_chain_manager():
         """
 
         free_chans = self.get_free_midi_chans()
-        for i in range(chan, 16):
+        for i in range(chan, MAX_NUM_MIDI_CHANS):
             if i in free_chans:
                 return i
         for i in range(chan):
@@ -1205,7 +1223,7 @@ class zynthian_chain_manager():
     def get_free_mixer_chans(self):
         """Get list of unused mixer channels"""
 
-        free_chans = list(range(16))
+        free_chans = list(range(MAX_NUM_MIXER_CHANS))
         for chain in self.chains:
             try:
                 free_chans.remove(self.chains[chain].mixer_chan)
@@ -1220,7 +1238,7 @@ class zynthian_chain_manager():
         """
 
         free_chans = self.get_free_mixer_chans()
-        for i in range(chan, 16):
+        for i in range(chan, MAX_NUM_MIXER_CHANS):
             if i in free_chans:
                 return i
         for i in range(chan):
@@ -1233,13 +1251,13 @@ class zynthian_chain_manager():
         """
 
         # TODO: take max number of chain zmops from lib_zyncore!!
-        busy_zmops = [0] * 16
-        for chain in self.chains:
+        busy_zmops = [0] * MAX_NUM_CHAINS
+        for chain_id in self.chains:
             try:
-                busy_zmops[self.chains[chain].zmop_index] = 1
+                busy_zmops[self.chains[chain_id].zmop_index] = 1
             except:
                 pass
-        for i in range(0, 16):
+        for i in range(0, MAX_NUM_CHAINS):
             if not busy_zmops[i]:
                 return i
         return None

@@ -39,7 +39,7 @@ class zynthian_chain:
     # Initialization
     # ------------------------------------------------------------------------
 
-    def __init__(self, chain_id, midi_chan=None, enable_midi_thru=False, enable_audio_thru=False):
+    def __init__(self, chain_id, midi_chan=None, midi_thru=False, audio_thru=False):
         """ Create an instance of a chain
 
         A chain contains zero or more slots.
@@ -51,8 +51,8 @@ class zynthian_chain:
         Pass-through disabled by default.
 
         midi_chan : Optional MIDI channel for chain input / control
-        enable_midi_thru : True to enable MIDI thru for empty chain
-        enable_audio_thru : True to enable audio thru for empty chain
+        midi_thru : True to enable MIDI thru for empty chain
+        audio_thru : True to enable audio thru for empty chain
         """
 
         # Each slot contains a list of parallel processors
@@ -64,8 +64,8 @@ class zynthian_chain:
         self.midi_chan = midi_chan  # Chain's MIDI channel - None for purely audio chain, 0xffff for *All Chains*
         self.mixer_chan = None
         self.zmop_index = None
-        self.midi_thru = enable_midi_thru  # True to pass MIDI if chain empty
-        self.audio_thru = enable_audio_thru  # True to pass audio if chain empty
+        self.midi_thru = midi_thru  # True to pass MIDI if chain empty
+        self.audio_thru = audio_thru  # True to pass audio if chain empty
         self.midi_in = []
         self.midi_out = []
         self.audio_in = []
@@ -696,28 +696,12 @@ class zynthian_chain:
                 slots_states.append(slot_state)
 
         state = {
-            "mixer_chan": self.mixer_chan,
             "midi_chan": self.midi_chan,
+            "midi_thru": self.midi_thru,
+            "audio_thru": self.audio_thru,
+            "mixer_chan": self.mixer_chan,
             "zmop_index": self.zmop_index,
             "slots": slots_states
         }
-        if self.midi_thru:
-            state["midi_thru"] = True
-        if self.audio_thru:
-            state["audio_thru"] = True
 
         return state
-
-    def set_state(self, state):
-        """Configure chain from model state dictionary
-
-        state : Chain state
-        """
-
-        if 'mixer_chan' in state:
-            self.mixer_chan = state["mixer_chan"]
-        if 'midi_chan' in state:
-            self.midi_chan = state["midi_chan"]
-        if 'zmop_index' in state:
-            self.zmop_index = state["zmop_index"]
-
