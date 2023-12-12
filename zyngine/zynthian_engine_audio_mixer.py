@@ -45,12 +45,50 @@ class zynmixer(zynthian_engine):
 		super().__init__()
 		self.lib_zynmixer = ctypes.cdll.LoadLibrary("/zynthian/zynthian-ui/zynlibs/zynmixer/build/libzynmixer.so")
 		self.lib_zynmixer.init()
+
+		self.lib_zynmixer.setLevel.argtypes = [ctypes.c_uint8, ctypes.c_float]
+		self.lib_zynmixer.getLevel.argtypes = [ctypes.c_uint8]
 		self.lib_zynmixer.getLevel.restype = ctypes.c_float
+
+		self.lib_zynmixer.setBalance.argtypes = [ctypes.c_uint8, ctypes.c_float]
+		self.lib_zynmixer.getBalance.argtypes = [ctypes.c_uint8]
 		self.lib_zynmixer.getBalance.restype = ctypes.c_float
+
+		self.lib_zynmixer.setMute.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
+		self.lib_zynmixer.toggleMute.argtypes = [ctypes.c_uint8]
+		self.lib_zynmixer.getMute.argtypes = [ctypes.c_uint8]
+		self.lib_zynmixer.getMute.restype = ctypes.c_uint8
+
+		self.lib_zynmixer.setSolo.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
+		self.lib_zynmixer.getSolo.argtypes = [ctypes.c_uint8]
+		self.lib_zynmixer.getSolo.restype = ctypes.c_uint8
+
+		self.lib_zynmixer.setMono.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
+		self.lib_zynmixer.getMono.argtypes = [ctypes.c_uint8]
+		self.lib_zynmixer.getMono.restype = ctypes.c_uint8
+
+		self.lib_zynmixer.setPhase.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
+		self.lib_zynmixer.getPhase.argtypes = [ctypes.c_uint8]
+		self.lib_zynmixer.getPhase.restype = ctypes.c_uint8
+
+		self.lib_zynmixer.reset.argtypes = [ctypes.c_uint8]
+
+		self.lib_zynmixer.isChannelRouted.argtypes = [ctypes.c_uint8]
+		self.lib_zynmixer.isChannelRouted.restype = ctypes.c_uint8
+
+		self.lib_zynmixer.getDpm.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
 		self.lib_zynmixer.getDpm.restype = ctypes.c_float
+
+		self.lib_zynmixer.getDpmHold.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
 		self.lib_zynmixer.getDpmHold.restype = ctypes.c_float
+
 		self.lib_zynmixer.getDpmStates.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.POINTER(ctypes.c_float)]
-		self.MAX_NUM_CHANNELS:int = self.lib_zynmixer.getMaxChannels()
+
+		self.lib_zynmixer.enableDpm.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
+
+		self.lib_zynmixer.getMaxChannels.restype = ctypes.c_uint8
+
+		self.MAX_NUM_CHANNELS = self.lib_zynmixer.getMaxChannels()
 
 		self.learned_cc = [dict() for x in range(16)]   # List of learned {cc:zctrl} indexed by learned MIDI channel
 
@@ -122,10 +160,6 @@ class zynmixer(zynthian_engine):
 		except Exception as e:
 			logging.warning(e)
 
-	# Get maximum quantity of channels (excluding main mix bus)
-	# returns: Maximum quantity of channels
-	def get_max_channels(self):
-		return self.MAX_NUM_CHANNELS
 
 	# Function to set fader level for a channel
 	# channel: Index of channel
@@ -342,7 +376,7 @@ class zynmixer(zynthian_engine):
 			return
 		return self.lib_zynmixer.getDpmHold(channel, leg)
 
-	# Function to get the dpm states for a set of channel
+	# Function to get the dpm states for a set of channels
 	# start: Index of first channel
 	# end: Index of last channel
 	# returns: List of tuples containing (dpm_a, dpm_b, hold_a, hold_b, mono)
@@ -350,22 +384,26 @@ class zynmixer(zynthian_engine):
 		state = (ctypes.c_float * (5 * (end - start + 1)))()
 		self.lib_zynmixer.getDpmStates(start, end, state)
 		result = []
-		l = []
+		offset = 0
 		for channel in range(start, end + 1):
+			l = []
 			for i in range(4):
-				l.append(state[i])
-			l.append(state[4] != 0.0)
+				l.append(state[offset])
+				offset +=1
+			l.append(state[offset] != 0.0)
+			offset +=1
 			result.append(l)
 		return result
 
 
 	# Function to enable or disable digital peak meters
-	# chan: Mixer channel (255 for main mix bus)
+	# start: First mixer channel (255 for main mix bus)
+	# end: Last mixer channel (255 for main mix bus)
 	# enable: True to enable
-	def enable_dpm(self, channel, enable):
-		if channel is None:
+	def enable_dpm(self, start, end, enable):
+		if start is None or end is None:
 			return
-		self.lib_zynmixer.enableDpm(channel, int(enable))
+		self.lib_zynmixer.enableDpm(start, end, int(enable))
 
 	# Function to add OSC client registration
 	# client: IP address of OSC client

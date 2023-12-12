@@ -60,12 +60,12 @@ struct dynamic
     float dpmB; // Current peak programme B-leg
     float holdA; // Current peak hold level A-leg
     float holdB; // Current peak hold level B-leg
-    int mute; // 1 if muted
-    int solo; // 1 if solo
-    int mono; // 1 if mono
-    int phase; // 1 if channel B phase reversed
-    int routed; // 1 if source routed to channel
-    int enable_dpm; // 1 to enable calculation of peak meter
+    uint8_t mute; // 1 if muted
+    uint8_t solo; // 1 if solo
+    uint8_t mono; // 1 if mono
+    uint8_t phase; // 1 if channel B phase reversed
+    uint8_t routed; // 1 if source routed to channel
+    uint8_t enable_dpm; // 1 to enable calculation of peak meter
 };
 
 jack_client_t * g_pJackClient;
@@ -411,18 +411,18 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs)
             g_mainOutput.dpmB *= g_fDpmDecay;
             g_nDampingCount = g_nDampingPeriod;
         }
-    }
 
         // Damping and hold counts are used throughout cycle so update at end of cycle
         --g_nDampingCount;
         --g_nHoldCount;
+    }
 
     return 0;
 }
 
 void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void* args)
 {
-    unsigned int chan;
+    uint8_t chan;
     for(chan = 0; chan < MAX_CHANNELS; chan++)
     {
         if(jack_port_connected(g_dynamic[chan].portA) > 0 || (jack_port_connected(g_dynamic[chan].portB) > 0))
@@ -456,7 +456,7 @@ int init()
 {
     // Initialsize OSC
     g_oscfd = socket(AF_INET, SOCK_DGRAM, 0);
-    for(int i = 0; i < MAX_OSC_CLIENTS; ++i)
+    for(uint8_t i = 0; i < MAX_OSC_CLIENTS; ++i)
     {
         memset(g_oscClient[i].sin_zero, '\0', sizeof g_oscClient[i].sin_zero);
         g_oscClient[i].sin_family = AF_INET;
@@ -612,7 +612,7 @@ void end() {
     pthread_join(g_eventThread, &status);
 }
 
-void setLevel(int channel, float level)
+void setLevel(uint8_t channel, float level)
 {
     if(channel >= MAX_CHANNELS) {
         channel = MAIN_CHANNEL;
@@ -624,14 +624,14 @@ void setLevel(int channel, float level)
     sendOscFloat(g_oscpath, level);
 }
 
-float getLevel(int channel)
+float getLevel(uint8_t channel)
 {
     if(channel >= MAX_CHANNELS)
         return g_mainOutput.reqlevel;
     return g_dynamic[channel].reqlevel;
 }
 
-void setBalance(int channel, float balance)
+void setBalance(uint8_t channel, float balance)
 {
     if(fabs(balance) > 1)
         return;
@@ -645,14 +645,14 @@ void setBalance(int channel, float balance)
     sendOscFloat(g_oscpath, balance);
 }
 
-float getBalance(int channel)
+float getBalance(uint8_t channel)
 {
     if(channel >= MAX_CHANNELS)
         return g_mainOutput.reqbalance;
     return g_dynamic[channel].reqbalance;
 }
 
-void setMute(int channel, int mute)
+void setMute(uint8_t channel, uint8_t mute)
 {
     if(channel >= MAX_CHANNELS) {
         channel = MAIN_CHANNEL;
@@ -664,14 +664,14 @@ void setMute(int channel, int mute)
     sendOscInt(g_oscpath, mute);
 }
 
-int getMute(int channel)
+uint8_t getMute(uint8_t channel)
 {
     if(channel >= MAX_CHANNELS)
         return g_mainOutput.mute;
     return g_dynamic[channel].mute;
 }
 
-void setPhase(int channel, int phase)
+void setPhase(uint8_t channel, uint8_t phase)
 {
     if(channel >= MAX_CHANNELS) {
         channel = MAIN_CHANNEL;
@@ -683,18 +683,18 @@ void setPhase(int channel, int phase)
     sendOscInt(g_oscpath, phase);
 }
 
-int getPhase(int channel)
+uint8_t getPhase(uint8_t channel)
 {
     if(channel >= MAX_CHANNELS)
         return g_mainOutput.phase;
     return g_dynamic[channel].phase;
 }
 
-void setSolo(int channel, int solo)
+void setSolo(uint8_t channel, uint8_t solo)
 {
     if(channel >= MAX_CHANNELS)
     {
-        for(int nChannel = 0; nChannel < MAX_CHANNELS; ++nChannel)
+        for(uint8_t nChannel = 0; nChannel < MAX_CHANNELS; ++nChannel)
         {
             g_dynamic[nChannel].solo = 0;
             sprintf(g_oscpath, "/mixer/solo%d", nChannel);
@@ -709,22 +709,22 @@ void setSolo(int channel, int solo)
     }
     // g_mainOutput.solo indicates overall summary of solo status, i.e. 1 if any channel solo enabled
     g_mainOutput.solo = 0;
-    for(int nChannel = 0; nChannel < MAX_CHANNELS; ++ nChannel)
+    for(uint8_t nChannel = 0; nChannel < MAX_CHANNELS; ++ nChannel)
         g_mainOutput.solo |= g_dynamic[nChannel].solo;
     sprintf(g_oscpath, "/mixer/solo%d", MAIN_CHANNEL);
     sendOscInt(g_oscpath, g_mainOutput.solo);
 }
 
-int getSolo(int channel)
+uint8_t getSolo(uint8_t channel)
 {
     if(channel >= MAX_CHANNELS)
         return g_mainOutput.solo;
     return g_dynamic[channel].solo;
 }
 
-void toggleMute(int channel)
+void toggleMute(uint8_t channel)
 {
-    int mute;
+    uint8_t mute;
     if(channel >= MAX_CHANNELS)
         mute = g_mainOutput.mute;
     else
@@ -735,9 +735,9 @@ void toggleMute(int channel)
         setMute(channel, 1);
 }
 
-void togglePhase(int channel)
+void togglePhase(uint8_t channel)
 {
-    int phase;
+    uint8_t phase;
     if(channel >= MAX_CHANNELS)
         phase = g_mainOutput.phase;
     else
@@ -749,7 +749,7 @@ void togglePhase(int channel)
 }
 
 
-void setMono(int channel, int mono){
+void setMono(uint8_t channel, uint8_t mono){
     if(channel >= MAX_CHANNELS) {
         channel = MAIN_CHANNEL;
         g_mainOutput.mono = (mono != 0);
@@ -760,14 +760,14 @@ void setMono(int channel, int mono){
     sendOscInt(g_oscpath, mono);
 }
 
-uint8_t getMono(int channel)
+uint8_t getMono(uint8_t channel)
 {
     if(channel >= MAX_CHANNELS)
         return g_mainOutput.mono;
     return g_dynamic[channel].mono;
 }
 
-void reset(int channel)
+void reset(uint8_t channel)
 {
     if(channel >= MAX_CHANNELS)
         channel = MAIN_CHANNEL;
@@ -779,14 +779,14 @@ void reset(int channel)
     setSolo(channel, 0);
 }
 
-int isChannelRouted(int channel)
+uint8_t isChannelRouted(uint8_t channel)
 {
     if(channel >= MAX_CHANNELS)
         return 0;
     return g_dynamic[channel].routed;
 }
 
-float getDpm(int channel, int leg)
+float getDpm(uint8_t channel, uint8_t leg)
 {
     if(channel >= MAX_CHANNELS)
     {
@@ -799,7 +799,7 @@ float getDpm(int channel, int leg)
     return convertToDBFS(g_dynamic[channel].dpmA);
 }
 
-float getDpmHold(int channel, int leg)
+float getDpmHold(uint8_t channel, uint8_t leg)
 {
     if(channel >= MAX_CHANNELS)
     {
@@ -814,6 +814,15 @@ float getDpmHold(int channel, int leg)
 
 void getDpmStates(uint8_t start, uint8_t end, float* values)
 {
+    if (start > end) {
+        uint8_t tmp = start;
+        start = end;
+        end = tmp;
+    }
+    if (end > MAX_CHANNELS)
+        end = MAX_CHANNELS;
+    if (start > MAX_CHANNELS)
+        start = MAX_CHANNELS;
     uint8_t count = end - start + 1;
     while(count--)
     {
@@ -826,26 +835,40 @@ void getDpmStates(uint8_t start, uint8_t end, float* values)
     }
 }
 
-void enableDpm(int channel, int enable)
+void enableDpm(uint8_t start, uint8_t end, uint8_t enable)
 {
     struct dynamic * pChannel;
-    if(channel >= MAX_CHANNELS)
-        pChannel = &g_mainOutput;
-    else
-        pChannel = &(g_dynamic[channel]);
-    pChannel->enable_dpm = enable;
-    if(enable == 0)
+    if (start > end) {
+        uint8_t tmp = start;
+        start = end;
+        end = tmp;
+    }
+    if(start > MAX_CHANNELS)
+        start = MAX_CHANNELS;
+    if(end > MAX_CHANNELS)
+        end = MAX_CHANNELS;
+    for (uint8_t channel = start; channel <= end; ++channel)
     {
-        pChannel->dpmA = 0;
-        pChannel->dpmB = 0;
-        pChannel->holdA = 0;
-        pChannel->holdB = 0;
+        if(channel >= MAX_CHANNELS)
+            pChannel = &g_mainOutput;
+        else
+            pChannel = &(g_dynamic[channel]);
+        pChannel->enable_dpm = enable;
+        if(enable == 0)
+        {
+            pChannel->dpmA = 0;
+            pChannel->dpmB = 0;
+            pChannel->holdA = 0;
+            pChannel->holdB = 0;
+        }
+        if(channel >= MAX_CHANNELS)
+            break;
     }
 }
 
 int addOscClient(const char* client)
 {
-    for(int i = 0; i < MAX_OSC_CLIENTS; ++i)
+    for(uint8_t i = 0; i < MAX_OSC_CLIENTS; ++i)
     {
         if(g_oscClient[i].sin_addr.s_addr != 0)
             continue;
@@ -892,7 +915,7 @@ void removeOscClient(const char* client)
     if(inet_pton(AF_INET, client, pClient) != 1)
         return;
     g_bOsc = 0;
-    for(int i = 0; i < MAX_OSC_CLIENTS; ++i)
+    for(uint8_t i = 0; i < MAX_OSC_CLIENTS; ++i)
     {
         if(memcmp(pClient, &g_oscClient[i].sin_addr.s_addr, 4) == 0)
         {
@@ -904,7 +927,7 @@ void removeOscClient(const char* client)
     }
 }
 
-size_t getMaxChannels()
+uint8_t getMaxChannels()
 {
     return MAX_CHANNELS;
 }

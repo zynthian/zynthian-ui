@@ -63,7 +63,7 @@ class zynthian_gui_mixer_strip():
 		self.chain_id = None
 		self.chain = None
 		self.midi_learning = False # False: Not learning, True: Preselection, gui_control: Learning
-		self.MAIN_MIXBUS_STRIP_INDEX = self.zynmixer.get_max_channels()
+		self.MAIN_MIXBUS_STRIP_INDEX = self.zynmixer.MAX_NUM_CHANNELS
 
 		self.hidden = True
 
@@ -672,7 +672,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.zynmixer = self.zyngui.state_manager.zynmixer
 		self.zynmixer.set_midi_learn_cb(self.exit_midi_learn)
-		self.MAIN_MIXBUS_STRIP_INDEX = self.zynmixer.get_max_channels()
+		self.MAIN_MIXBUS_STRIP_INDEX = self.zynmixer.MAX_NUM_CHANNELS
 		self.chan2strip = [None] * (self.MAIN_MIXBUS_STRIP_INDEX + 1)
 		self.highlighted_strip = None # highligted mixer strip object
 
@@ -721,10 +721,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.main_mixbus_strip = zynthian_gui_mixer_strip(self, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height)
 		self.main_mixbus_strip.set_chain("main")
-		self.main_mixbus_strip.zctrls = self.zynmixer.zctrls[self.zynmixer.get_max_channels()]
+		self.main_mixbus_strip.zctrls = self.zynmixer.zctrls[self.zynmixer.MAX_NUM_CHANNELS]
 
-		for chan in range(self.zynmixer.get_max_channels()):
-			self.zynmixer.enable_dpm(chan, False)
+		self.zynmixer.enable_dpm(0, self.zynmixer.MAX_NUM_CHANNELS - 1, False)
 
 		self.set_title()
 		self.refresh_visible_strips()
@@ -748,8 +747,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def hide(self):
 		if self.shown:
 			if not self.zyngui.osc_clients:
-				for chan in range(self.zynmixer.get_max_channels()):
-					self.zynmixer.enable_dpm(chan, False)
+				self.zynmixer.enable_dpm(0, self.zynmixer.MAX_NUM_CHANNELS - 1, False)
 			self.zynmixer.disable_midi_learn()
 			zynsigman.unregister(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_control)
 			super().hide()
@@ -758,9 +756,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def build_view(self):
 		self.set_title()
 		if zynthian_gui_config.enable_dpm:
-			for chan in range(self.zynmixer.get_max_channels()):
-				self.zynmixer.enable_dpm(chan, True)
+			self.zynmixer.enable_dpm(0, self.zynmixer.MAX_NUM_CHANNELS, True)
 		else:
+			# Reset all DPM which will not be updated by refresh
 			for strip in self.visible_mixer_strips:
 				strip.draw_dpm(-200, -200, -200, -200, False)
 
@@ -776,18 +774,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to refresh screen (slow)
 	def refresh_status(self):
-		"""
-		while not self.mixer_queue.empty():
-			ev = self.mixer_queue.get_nowait()
-			# ev: (chan, ctrl, value)
-			if ev[0] is not None:
-				self.pending_refresh_queue.add((self.chan2strip[ev[0]], ev[1]))
-				self.pending_refresh_queue.add((self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX], "solo"))
-		"""
 		if self.shown:
 			super().refresh_status()
+			# Update main chain DPM
 			state = self.zynmixer.get_dpm_states(255, 255)[0]
 			self.main_mixbus_strip.draw_dpm(state[0], state[1], state[2], state[3], state[4])
+			# Update other chains DPM
 			if zynthian_gui_config.enable_dpm:
 				states = self.zynmixer.get_dpm_states(0, self.zynmixer.MAX_NUM_CHANNELS)
 				for strip in self.visible_mixer_strips:
