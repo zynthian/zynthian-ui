@@ -151,21 +151,22 @@ class zynthian_chain:
         iz : 0...16 (TODO: get maximum number of chains from lib_zyncore!)
         """
         self.free_zmop()
-        self.zmop_index = iz
-        self.midi_in = [f"ZynMidiRouter:ch{iz}_out"]
-        if isinstance(self.midi_chan, int):
-            if 0 <= self.midi_chan < 16:
-                lib_zyncore.zmop_set_midi_chan(iz, self.midi_chan)
-            elif self.midi_chan == 0xffff:
-                lib_zyncore.zmop_set_midi_chan_all(iz)
+        if isinstance(iz, int) and iz >= 0:
+            self.zmop_index = iz
+            self.midi_in = [f"ZynMidiRouter:ch{iz}_out"]
+            if isinstance(self.midi_chan, int):
+                if 0 <= self.midi_chan < 16:
+                    lib_zyncore.zmop_set_midi_chan(iz, self.midi_chan)
+                elif self.midi_chan == 0xffff:
+                    lib_zyncore.zmop_set_midi_chan_all(iz)
 
     def free_zmop(self):
         """If already using a zmop, release and reset it
         """
-        if self.zmop_index is not None:
+        if isinstance(self.zmop_index, int) and self.zmop_index >= 0:
             lib_zyncore.zmop_reset_midi_chans(self.zmop_index)
-            self.zmop_index = None
-            self.midi_in = []
+        self.zmop_index = None
+        self.midi_in = []
 
     def set_midi_chan(self, chan):
         """Set chain (and its processors) MIDI channel
@@ -176,7 +177,7 @@ class zynthian_chain:
         if self.midi_chan == lib_zyncore.get_midi_active_chan():
             lib_zyncore.set_midi_active_chan(chan)
         self.midi_chan = chan
-        if self.zmop_index is not None and isinstance(self.midi_chan, int):
+        if isinstance(self.zmop_index, int) and self.zmop_index >= 0 and isinstance(self.midi_chan, int):
             if 0 <= self.midi_chan < 16:
                 lib_zyncore.zmop_set_midi_chan(self.zmop_index, self.midi_chan)
             elif self.midi_chan == 0xffff:
@@ -420,12 +421,14 @@ class zynthian_chain:
     def is_audio(self):
         """Returns True if chain is processes audio"""
 
-        return self.mixer_chan is not None# or self.audio_thru or len(self.audio_slots) > 0 or len(self.synth_slots) > 0
+        return self.mixer_chan is not None
+        # or self.audio_thru or len(self.audio_slots) > 0 or len(self.synth_slots) > 0
 
     def is_midi(self):
         """Returns True if chain processes MIDI"""
 
-        return self.midi_thru or len(self.midi_slots) or self.midi_chan is not None
+        return isinstance(self.midi_chan, int)
+        # or self.midi_thru or len(self.midi_slots) > 0
 
     # ---------------------------------------------------------------------------
     # Processor management

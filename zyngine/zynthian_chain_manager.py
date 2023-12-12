@@ -187,7 +187,7 @@ class zynthian_chain_manager():
         chain = self.chains[chain_id]
         if chain.synth_slots:
             if chain.synth_slots[0][0].type_code in ["BF", "AE"]:
-                #TODO: We remove all setBfree and Aeolus chains but maybe we should allow chain manipulation
+                # TODO: We remove all setBfree and Aeolus chains but maybe we should allow chain manipulation
                 for id, ch in self.chains.items():
                     if ch != chain and ch.synth_slots and ch.synth_slots[0][0].type_code == chain.synth_slots[0][0].type_code:
                         chains_to_remove.append(id)
@@ -441,7 +441,7 @@ class zynthian_chain_manager():
             # src_id only provided on first call (not re-entrant cycles)
             if src_id not in self.chains:
                 return False
-            node_list = [src_id] # Init node_list on first call
+            node_list = [src_id]  # Init node_list on first call
         if dst_id in node_list:
             return True
         node_list.append(dst_id)
@@ -470,18 +470,18 @@ class zynthian_chain_manager():
             self.active_chain_id = chain_id
             zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain=self.active_chain_id)
             # Update active MIDI channel
-            midi_chan = chain.midi_chan
-            if isinstance(midi_chan, int) and midi_chan < 16:
-                lib_zyncore.set_midi_active_chan(midi_chan)
+            if chain.is_midi() and chain.midi_chan < 16:
+                lib_zyncore.set_midi_active_chan(chain.midi_chan)
+                # Re-assert pedals on new active channel
                 for pedal_cc in self.held_zctrls:
                     if self.held_zctrls[pedal_cc][0]:
-                        lib_zyncore.write_zynmidi_ccontrol_change(midi_chan, pedal_cc, 127)
-                        #TODO: Check if zctrl gets added to self.held_zctrls
+                        lib_zyncore.write_zynmidi_ccontrol_change(chain.midi_chan, pedal_cc, 127)
+                        # TODO: Check if zctrl gets added to self.held_zctrls
             else:
                 # Check if currently selected channel is valid
                 midi_chan = lib_zyncore.get_midi_active_chan()
-                if midi_chan >= 0 and midi_chan < 16 and len(self.midi_chan_2_chain_id[midi_chan]) > 0:
-                    return
+                if midi_chan >= 0 and midi_chan < 16 and len(self.midi_chan_2_chain_ids[midi_chan]) > 0:
+                    return self.active_chain_id
                 # If not, find a valid MIDI chain => first chain's MIDI channel
                 for chain in self.chains.values():
                     if chain.is_midi():
@@ -525,11 +525,11 @@ class zynthian_chain_manager():
             return self.active_chain_id
 
 
-    def next_chain(self, nudge=1):
-        """Select the next chain as active
+    def get_next_chain_id(self, nudge=1):
+        """Get the next chain from the ordered list
 
         nudge : Quantity of chains to step (may be negative, default: 1)
-        Returns : Index of selected chain
+        Returns : Chain ID
         """
 
         chain_keys = self.chain_ids_ordered + ["main"]
@@ -544,19 +544,34 @@ class zynthian_chain_manager():
             chain_id = chain_keys[0]
         else:
             chain_id = chain_keys[index]
-        return self.set_active_chain_by_id(chain_id)
+        return chain_id
 
-    def previous_chain(self, nudge=1):
-        """Select the previous chain as active
+    def get_previous_chain_id(self, nudge=1):
+        """Get the previous chain from the ordered list
 
         nudge : Quantity of chains to step (may be negative, default: 1)
-        Returns : Index of selected chain
+        Returns : Chain ID
         """
-        return self.next_chain(-nudge)
+        return self.get_next_chain_id(-nudge)
+
+    def next_chain(self, nudge=1):
+        """Set active the next chain from the ordered list
+
+        nudge : Quantity of chains to step (may be negative, default: 1)
+        Returns : Chain ID
+        """
+        return self.set_active_chain_by_id(self.get_next_chain_id(nudge))
+
+    def previous_chain(self, nudge=1):
+        """Set active the previous chain from the ordered list
+
+        nudge : Quantity of chains to step (may be negative, default: 1)
+        Returns : Chain ID
+        """
+        return self.set_active_chain_by_id(self.get_next_chain_id(-nudge))
 
     def get_active_chain(self):
         """Get the active chain object or None if no active chain"""
-
         if self.active_chain_id in self.chains:
             return self.chains[self.active_chain_id]
         return None
@@ -593,7 +608,7 @@ class zynthian_chain_manager():
             or proc_id is not None and proc_id in self.processors):
             return None
         if proc_id is None:
-            proc_id = self.get_available_processor_id() #TODO: Derive next available processor id from self.processors
+            proc_id = self.get_available_processor_id() # TODO: Derive next available processor id from self.processors
         elif proc_id in self.processors:
             return None
         self.state_manager.start_busy("add_processor", None, f"adding {type} to chain {chain_id}")
@@ -601,7 +616,7 @@ class zynthian_chain_manager():
         chain = self.chains[chain_id]
         self.processors[proc_id] = processor # Add proc early to allow engines to add more as required, e.g. Aeolus
         if chain.insert_processor(processor, parallel, slot):
-            if chain.mixer_chan is None and processor.type != "MIDI Tool": #TODO: Fails to detect MIDI only chains in snapshots
+            if chain.mixer_chan is None and processor.type != "MIDI Tool": # TODO: Fails to detect MIDI only chains in snapshots
                 chain.mixer_chan = self.get_next_free_mixer_chan()
             engine = self.start_engine(processor, type)
             if engine:
@@ -1124,6 +1139,7 @@ class zynthian_chain_manager():
 
         # Remove current midi_chan(s) from dictionary
         if isinstance(chain.midi_chan, int):
+            midi_chans = []
             # Single MIDI channel
             if 0 <= chain.midi_chan < 16:
                 midi_chans = [chain.midi_chan]
@@ -1139,6 +1155,7 @@ class zynthian_chain_manager():
 
         # Add new midi_chan(s) to dictionary
         if isinstance(midi_chan, int):
+            midi_chans = []
             # Single MIDI channel
             if 0 <= midi_chan < 16:
                 midi_chans = [midi_chan]

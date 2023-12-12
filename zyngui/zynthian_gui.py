@@ -570,12 +570,13 @@ class zynthian_gui:
 		elif hmode == zynthian_gui.SCREEN_HMODE_RESET:
 			self.screen_history = [screen]
 
+		self.screens[screen].build_view()
 		if self.current_screen != screen:
 			#logging.debug(f"SHOW_SCREEN {screen}")
-			self.screens[screen].build_view()
 			self.screens[screen].show()
 			self.current_screen = screen
 			self.hide_screens(exclude=screen)
+
 		self.screen_lock.release()
 
 	def show_modal(self, screen=None):
@@ -787,8 +788,8 @@ class zynthian_gui:
 		if status:
 			self.modify_chain_status = status
 
+		# We know the MIDI channel so create a new chain and processor
 		if "midi_chan" in self.modify_chain_status:
-			# We know the MIDI channel so create a new chain and processor
 			if "midi_thru" not in self.modify_chain_status:
 				self.modify_chain_status["midi_thru"] = False
 			if "audio_thru" not in self.modify_chain_status:
@@ -837,9 +838,10 @@ class zynthian_gui:
 			chain_id = self.chain_manager.active_chain_id
 		else:
 			self.chain_manager.set_active_chain_by_id(chain_id)
-		if processor:
+
+		if processor in self.chain_manager.get_processors(chain_id):
 			self.current_processor = processor
-		elif processor not in self.chain_manager.get_processors(chain_id):
+		else:
 			self.current_processor = None
 			for t in ["MIDI Synth", "MIDI Tool", "Audio Effect"]:
 				processors = self.chain_manager.get_processors(chain_id, t)
@@ -851,7 +853,7 @@ class zynthian_gui:
 			control_screen_name = 'control'
 
 			# Check for a custom GUI
-			module_path = self.get_current_processor().engine.custom_gui_fpath
+			module_path = self.current_processor.engine.custom_gui_fpath
 			if module_path:
 				module_name = Path(module_path).stem
 				if module_name.startswith("zynthian_gui_"):
@@ -870,20 +872,20 @@ class zynthian_gui:
 						control_screen_name = custom_screen_name
 
 			# If a preset is selected => control screen
-			if self.get_current_processor().get_preset_name():
+			if self.current_processor.get_preset_name():
 				self.show_screen_reset(control_screen_name)
 			# If not => bank/preset selector screen
 			else:
-				if len(self.get_current_processor().get_bank_list()) > 1:
+				if len(self.current_processor.get_bank_list()) > 1:
 					self.show_screen_reset('bank')
 				else:
-					self.get_current_processor().set_bank(0)
-					self.get_current_processor().load_preset_list()
-					if len(self.get_current_processor().preset_list) > 1:
+					self.current_processor.set_bank(0)
+					self.current_processor.load_preset_list()
+					if len(self.current_processor.preset_list) > 1:
 						self.show_screen_reset('preset')
 					else:
-						if len(self.get_current_processor().preset_list):
-							self.get_current_processor().set_preset(0)
+						if len(self.current_processor.preset_list):
+							self.current_processor.set_preset(0)
 						self.show_screen_reset(control_screen_name)
 		else:
 			chain = self.chain_manager.get_chain(chain_id)
