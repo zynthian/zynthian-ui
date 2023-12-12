@@ -171,9 +171,7 @@ class zynthian_gui:
 	# Capture Log
 	# ---------------------------------------------------------------------------
 
-	def start_capture_log(self, title):
-		if not title:
-			title = "ui_sesion"
+	def start_capture_log(self, title="ui_sesion"):
 		now = datetime.now()
 		self.capture_log_ts0 = now
 		self.capture_log_fname = "{}-{}".format(title, now.strftime("%Y%m%d%H%M%S"))
