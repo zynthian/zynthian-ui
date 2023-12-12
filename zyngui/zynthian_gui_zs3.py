@@ -49,19 +49,14 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 
 	def show_waiting_label(self):
 		if self.wide:
-			padx = (0,2)
+			padx = (0, 2)
 		else:
-			padx = (2,2)
+			padx = (2, 2)
 		self.zs3_waiting_label.grid(row=zynthian_gui_config.layout['list_pos'][0] + 4, column=zynthian_gui_config.layout['list_pos'][1], padx=padx, sticky='ew')
 
 
 	def hide_waiting_label(self):
 		self.zs3_waiting_label.grid_forget()
-
-
-	def show(self):
-		self.enable_midi_learn()
-		super().show()
 
 
 	def hide(self):
