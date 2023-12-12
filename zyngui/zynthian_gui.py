@@ -1233,6 +1233,7 @@ class zynthian_gui:
 		self.show_screen("snapshot")
 
 	def cuia_screen_zs3(self, params=None):
+		self.screens["zs3"].enable_midi_learn()
 		self.show_screen("zs3")
 
 	def cuia_screen_midi_recorder(self, params=None):
