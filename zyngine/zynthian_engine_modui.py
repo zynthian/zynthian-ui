@@ -145,9 +145,9 @@ class zynthian_engine_modui(zynthian_engine):
 	def set_midi_chan(self, processor):
 		for ch in range(0, 16):
 			if ch == processor.midi_chan:
-				lib_zyncore.zmop_set_midi_chan(ZMOP_MOD_INDEX, ch, ch)
+				lib_zyncore.zmop_set_midi_chan(ZMOP_MOD_INDEX, ch)
 			else:
-				lib_zyncore.zmop_set_midi_chan(ZMOP_MOD_INDEX, ch, -1)
+				lib_zyncore.zmop_set_midi_chan_all(ZMOP_MOD_INDEX)
 
 
 	# ---------------------------------------------------------------------------

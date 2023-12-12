@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
 # Zynthian GUI Step-Sequencer Pattern Editor Class
@@ -8,7 +8,7 @@
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -22,7 +22,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 import os
 from queue import Queue
@@ -43,35 +43,38 @@ from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian Step-Sequencer Pattern Editor GUI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 # Local constants
-SELECT_BORDER       = zynthian_gui_config.color_on
-PLAYHEAD_CURSOR     = zynthian_gui_config.color_on
-CANVAS_BACKGROUND   = zynthian_gui_config.color_panel_bg
-CELL_BACKGROUND     = zynthian_gui_config.color_panel_bd
-CELL_FOREGROUND     = zynthian_gui_config.color_panel_tx
-GRID_LINE           = zynthian_gui_config.color_tx_off
-PLAYHEAD_HEIGHT     = 5
-CONFIG_ROOT         = "/zynthian/zynthian-data/zynseq"
+SELECT_BORDER		= zynthian_gui_config.color_on
+PLAYHEAD_CURSOR		= zynthian_gui_config.color_on
+CANVAS_BACKGROUND	= zynthian_gui_config.color_panel_bg
+CELL_BACKGROUND		= zynthian_gui_config.color_panel_bd
+CELL_FOREGROUND		= zynthian_gui_config.color_panel_tx
+GRID_LINE			= zynthian_gui_config.color_tx_off
+PLAYHEAD_HEIGHT		= 5
+CONFIG_ROOT			= "/zynthian/zynthian-data/zynseq"
 
-EDIT_MODE_NONE		= 0 # Edit mode disabled
-EDIT_MODE_SINGLE	= 1 # Edit mode enabled for selected note
-EDIT_MODE_ALL		= 2 # Edit mode enabled for all notes
-EDIT_PARAM_DUR		= 0 # Edit note duration
-EDIT_PARAM_VEL		= 1 # Edit note velocity
-EDIT_PARAM_STUT_CNT	= 2 # Edit note stutter count
-EDIT_PARAM_STUT_DUR	= 3 # Edit note stutter duration
-EDIT_PARAM_LAST		= 3 # Index of last parameter
+EDIT_MODE_NONE		= 0  # Edit mode disabled
+EDIT_MODE_SINGLE	= 1  # Edit mode enabled for selected note
+EDIT_MODE_ALL		= 2  # Edit mode enabled for all notes
+EDIT_PARAM_DUR		= 0  # Edit note duration
+EDIT_PARAM_VEL		= 1  # Edit note velocity
+EDIT_PARAM_STUT_CNT	= 2  # Edit note stutter count
+EDIT_PARAM_STUT_DUR	= 3  # Edit note stutter duration
+EDIT_PARAM_LAST		= 3  # Index of last parameter
 
 # List of permissible steps per beat
-STEPS_PER_BEAT = [1,2,3,4,6,8,12,24]
-INPUT_CHANNEL_LABELS = ['OFF','ANY','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16']
-NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]
+STEPS_PER_BEAT = [1, 2, 3, 4, 6, 8, 12, 24]
+INPUT_CHANNEL_LABELS = ['OFF', 'ANY', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16']
+NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
+# -----------------------------------------------------------------------------
 # Class implements step sequencer pattern editor
+# -----------------------------------------------------------------------------
+
 class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to initialise class
@@ -110,15 +113,15 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.drag_start_velocity = None # Velocity value at start of drag
 		self.drag_note = False # True if dragging note in grid
 		self.grid_drag_start = None # Coordinates at start of grid drag
-		self.keymap = [] # Array of {"note":MIDI_NOTE_NUMBER, "name":"key name","colour":"key colour"} name and colour are optional
-		#TODO: Get values from persistent storage
-		self.cells = [] # Array of cells indices
-		self.redraw_pending = 4 # What to redraw: 0=nothing, 1=selected cell, 2=selected row, 3=refresh grid, 4=rebuild grid
+		self.keymap = []  # Array of {"note":MIDI_NOTE_NUMBER, "name":"key name","colour":"key colour"} name and colour are optional
+		# TODO: Get values from persistent storage
+		self.cells = []  # Array of cells indices
+		self.redraw_pending = 4  # What to redraw: 0=nothing, 1=selected cell, 2=selected row, 3=refresh grid, 4=rebuild grid
 		self.rows_pending = Queue()
 		self.title = "Pattern 0"
 		self.channel = 0
-		self.drawing = False # mutex to avoid mutliple concurrent] screen draws
-		self.reload_keymap = False # Signal keymap needs reloading
+		self.drawing = False  # mutex to avoid mutliple concurrent] screen draws
+		self.reload_keymap = False  # Signal keymap needs reloading
 
 		# Geometry vars
 		self.select_thickness = 1 + int(self.width / 500) # Scale thickness of select border based on screen resolution
@@ -138,7 +141,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.grid_canvas.tag_bind("gridcell", '<ButtonPress-1>', self.on_grid_press)
 		self.grid_canvas.tag_bind("gridcell", '<ButtonRelease-1>', self.on_grid_release)
 		self.grid_canvas.tag_bind("gridcell", '<B1-Motion>', self.on_grid_drag)
-
 
 		# Create velocity level indicator canvas
 		self.velocity_canvas = tkinter.Canvas(self.main_frame,
@@ -533,13 +535,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 		if scale == 0:
 			# Search for a map
-			path = None
-			chain_id = self.zyngui.chain_manager.midi_chan_2_chain_id[self.channel]
-			processors = self.zyngui.chain_manager.get_processors(chain_id, "SYNTH")
-			if processors:
-				path = processors[0].get_presetpath()
+			synth_proc = self.zyngui.chain_manager.get_synth_processor(self.channel)
+			if synth_proc:
+				path = synth_proc.get_presetpath()
 			else:
-				logging.info("MIDI channel {} seems empty.".format(self.channel))
+				path = None
 
 			if path:
 				try:
@@ -561,6 +561,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 							self.keymap.append({'note':int(note.attributes['Number'].value), 'name':note.attributes['Name'].value})
 					except Exception as e:
 						logging.error("Can't load midnam file => {}".format(e))
+
+			else:
+				logging.info("MIDI channel {} has not synth processors.".format(self.channel))
 
 		# Not found map
 		if map_name is None:
@@ -1156,7 +1159,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				self.set_title(f"Stutter duration: {self.zynseq.libseq.getStutterDur(step, note)}")
 		self.init_buttonbar([(f"ZYNPOT {zynpot},-1", f"-{delta}"),(f"ZYNPOT {zynpot},+1", f"+{delta}"),("ZYNPOT 3,-1", "PREV\nPARAM"),("ZYNPOT 3,+1", "NEXT\nPARAM"),(3,"OK")])
 
-
 	# Function to handle zynpots value change
 	#   i: Zynpot index [0..n]
 	#   dval: Current value of zyncoder
@@ -1281,9 +1283,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			else:
 				self.select_cell(self.selected_cell[0] + dval, None)
 
-
 	# Function to handle SELECT button press
-	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
+	# type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, type='S'):
 		if super().switch_select(type):
 			return
@@ -1300,7 +1301,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			else:
 				self.enable_edit(EDIT_MODE_ALL)
 
-
 	# Function to handle switch press
 	#   i: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
@@ -1314,7 +1314,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			return True
 		return False
 
-
 	# Function to handle BACK button
 	def back_action(self):
 		if self.zynseq.libseq.isMidiRecord():
@@ -1325,17 +1324,15 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.enable_edit(EDIT_MODE_NONE)
 		return True
 
+	# CUIA Actions
 
-	#	CUIA Actions
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
 		self.zynpot_cb(self.ctrl_order[3], 1)
 
-
 	# Function to handle CUIA ARROW_LEFT
 	def arrow_left(self):
 		self.zynpot_cb(self.ctrl_order[3], -1)
-
 
 	# Function to handle CUIA ARROW_UP
 	def arrow_up(self):
@@ -1344,7 +1341,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		else:
 			self.zynpot_cb(self.ctrl_order[2], -1)
 
-
 	# Function to handle CUIA ARROW_DOWN
 	def arrow_down(self):
 		if self.param_editor_zctrl:
@@ -1352,16 +1348,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		else:
 			self.zynpot_cb(self.ctrl_order[2], 1)
 
-
 	def start_playback(self):
 		# Set to start of pattern - work around for timebase issue in library.
 		self.zynseq.libseq.setPlayPosition(self.bank, self.sequence, 0)
 		self.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STARTING)
 
-
 	def stop_playback(self):
 		self.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STOPPED)
-
 
 	def toggle_playback(self):
 		if self.zynseq.libseq.getPlayState(self.bank, self.sequence) == zynseq.SEQ_STOPPED:
@@ -1369,16 +1362,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		else:
 			self.stop_playback()
 
-
 	# Setup CUIA methods
 	cuia_toggle_record = toggle_midi_record
 	cuia_stop = stop_playback
 	cuia_toggle_play = toggle_playback
 
-
 	def get_playback_status(self):
 		return self.zynseq.libseq.getPlayState(self.bank, self.sequence)
-
 
 	def update_wsleds(self, wsleds):
 		wsl = self.zyngui.wsleds
@@ -1400,10 +1390,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		elif pb_status == zynseq.SEQ_STOPPED:
 			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_active2)
 
-
 	# Default status area release callback
 	def cb_status_release(self, params=None):
 		self.toggle_playback()
 
-
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------

@@ -116,7 +116,7 @@ class zynthian_processor:
         
         self.engine = engine
         self.engine.add_processor(self)  # TODO: Refactor engine to replace processor with processor
-        if self.midi_chan is not None and self.midi_chan < 16:
+        if isinstance(self.midi_chan, int):
             engine.set_midi_chan(self)  # When adding the processor to the engine, shouldn't be set the midi chan?
         self.refresh_controllers()  # Get the controllers list from the engine.
 
@@ -149,6 +149,7 @@ class zynthian_processor:
         self.midi_chan = midi_chan
         if self.engine:
             self.engine.set_midi_chan(self)
+        if isinstance(midi_chan, int) and 0 <= midi_chan < 16:
             for zctrl in self.controllers_dict.values():
                 zctrl.set_midi_chan(midi_chan)
                 #TODO: Why does zctrl have midi chan? => Because it's convenient when sending MIDI CC to the engine
@@ -727,7 +728,7 @@ class zynthian_processor:
         """
         
         # Set legacy Note Range (BW compatibility)
-        if self.midi_chan is not None and self.midi_chan >= 0 and 'note_range' in state:
+        if isinstance(self.midi_chan, int) and 0 <= self.midi_chan < 16 and 'note_range' in state:
             nr = state['note_range']
             lib_zyncore.set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
 
@@ -756,8 +757,11 @@ class zynthian_processor:
             path = self.engine.get_path(self)
         else:
             path = "NONE"
-        if self.midi_chan is not None:
-            path = "{}#{}".format(self.midi_chan + 1, path)
+        if isinstance(self.midi_chan, int):
+            if 0 <= self.midi_chan < 16:
+                path = f"{self.midi_chan + 1}#{path}"
+            elif self.midi_chan == 0xffff:
+                path = f"ALL#{path}"
         return path
 
     def get_bankpath(self):

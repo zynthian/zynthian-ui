@@ -1131,67 +1131,62 @@ class zynthian_state_manager:
     # ----------------------------------------------------------------------------
 
     def get_midi_capture_state(self):
-        # Get UI control devices
-        ctrldev_ids = self.ctrldev_manager.drivers
-
-        # Get zmips flags and chain routing
+        # Get zmips flags, chain routing, etc
         mcstate = {}
-        for i in range(18):
-            if i < 16:
-                if zynautoconnect.devices_in[i] is None:
-                    continue
-                uid = zynautoconnect.devices_in[i].aliases[0]
-            else:
-                uid = ["ZynMidiRouter:net_out", "ZynMaster:midi_out"][i - 16]
-            mcd = {
-                "zmip_flags": 0,
-                "ctrkdev_ids": [],
-                "routed_chans": 0
-                    }
-            if lib_zyncore.zmip_get_flag_active_chan(i):
-                mcd["zmip_flags"] |= 1 << 0
-            if lib_zyncore.zmip_get_flag_omni_chan(i):
-                mcd["zmip_flags"] |= 1 << 1
-            if i not in ctrldev_ids:
-                mcd["zmip_flags"] |= 1 << 2
-            routed_chans = 0
+        for idev in range(24):
+            if zynautoconnect.devices_in[idev] is None:
+                continue
+
+            routed_chains = []
             for ch in range(0, 16):
-                if (lib_zyncore.zmop_get_route_from(ch, i)):
-                    routed_chans |= (1 << ch)
-            mcd["routed_chans"] = routed_chans
-            mcstate[uid] = mcd
+                if (lib_zyncore.zmop_get_route_from(ch, idev)):
+                    routed_chains.append(ch)
+
+            uid = zynautoconnect.devices_in[idev].aliases[0]
+            mcstate[uid] = {
+                "zmip_active_chan": lib_zyncore.zmip_get_flag_active_chan(idev),
+                "zmip_omni_chan": lib_zyncore.zmip_get_flag_omni_chan(idev),
+                "ctrldev_load": idev in self.ctrldev_manager.drivers,
+                "routed_chains": routed_chains
+            }
 
         return mcstate
 
     def set_midi_capture_state(self, mcstate=None):
         if mcstate:
-            # Restore UI control devices
-            ctrldev_ids = []
             for uid, state in mcstate.items():
                 try:
                     zmip = zynautoconnect.get_midi_in_devid_by_uid(uid)
                 except:
                     continue
-                zmip_flags = int(state["zmip_flags"])
-                lib_zyncore.zmip_set_flag_active_chan(zmip, bool(zmip_flags & (1 << 0)))
-                lib_zyncore.zmip_set_flag_omni_chan(zmip, bool(zmip_flags & (1 << 1)))
-                if zmip_flags & (1 << 2):
-                    # Bit 2 used to disable (automatic) driver loading
-                    self.ctrldev_manager.unload_driver(zmip)
-                else:
-                    self.ctrldev_manager.load_driver(zmip)
-
-                # Route zmops (chans)
-                routed_chans = int(state["routed_chans"])
-                for ch in range(0, 16):
-                    lib_zyncore.zmop_set_route_from(ch, zmip, routed_chans & 1)
-                    routed_chans >>= 1
+                try:
+                    lib_zyncore.zmip_set_flag_active_chan(zmip, bool(state["zmip_active_chan"]))
+                except:
+                    pass
+                try:
+                    lib_zyncore.zmip_set_flag_omni_chan(zmip, bool(state["zmip_omni_chan"]))
+                except:
+                    pass
+                try:
+                    if state["ctrldev_load"]:
+                        self.ctrldev_manager.load_driver(zmip)
+                    else:
+                        self.ctrldev_manager.unload_driver(zmip)
+                except:
+                    pass
+                # Route chain zmops
+                try:
+                    routed_chains = state["routed_chains"]
+                    for ch in range(0, 16):
+                        lib_zyncore.zmop_set_route_from(ch, zmip, routed_chains[ch])
+                except:
+                    pass
 
         else:
             self.reset_midi_capture_state()
 
     def reset_midi_capture_state(self):
-        for i in range(0, 18):
+        for i in range(0, 24):
             # Set zmip flags
             lib_zyncore.zmip_set_flag_active_chan(i, 1)
             lib_zyncore.zmip_set_flag_omni_chan(i, 0)

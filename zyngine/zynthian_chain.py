@@ -39,8 +39,7 @@ class zynthian_chain:
     # Initialization
     # ------------------------------------------------------------------------
 
-    def __init__(self, chain_id, midi_chan=None,
-        enable_midi_thru=False, enable_audio_thru=False):
+    def __init__(self, chain_id, midi_chan=None, enable_midi_thru=False, enable_audio_thru=False):
         """ Create an instance of a chain
 
         A chain contains zero or more slots.
@@ -59,17 +58,24 @@ class zynthian_chain:
         # Each slot contains a list of parallel processors
         self.midi_slots = []  # Midi subchain (list of lists of processors)
         self.audio_slots = []  # Audio subchain (list of lists of processors)
-        self.synth_slots = [] # Synth/generator/special slots (should be single slot)
-        self.chain_id = chain_id # Chain's ID
-        self.midi_chan = midi_chan  # Chain's MIDI channel - may be None for purely audio chain
+        self.synth_slots = []  # Synth/generator/special slots (should be single slot)
+
+        self.chain_id = chain_id  # Chain's ID
+        self.midi_chan = midi_chan  # Chain's MIDI channel - None for purely audio chain, 0xffff for *All Chains*
         self.mixer_chan = None
-        self.midi_thru = enable_midi_thru # True to pass MIDI if chain empty
-        self.audio_thru = enable_audio_thru # True to pass audio if chain empty
-        self.status = "" # Arbitary status text
-        self.current_processor = None # Selected processor object
-        self.title = None # User defined title for chain
-        self.midi_routes = {} # Map of MIDI routes indexed by jackname
-        self.audio_routes = {} # Map of audio routes indexed by jackname
+        self.zmop_index = None
+        self.midi_thru = enable_midi_thru  # True to pass MIDI if chain empty
+        self.audio_thru = enable_audio_thru  # True to pass audio if chain empty
+        self.midi_in = []
+        self.midi_out = []
+        self.audio_in = []
+        self.audio_out = []
+
+        self.status = ""  # Arbitary status text
+        self.current_processor = None  # Selected processor object
+        self.title = None  # User defined title for chain
+        self.midi_routes = {}  # Map of MIDI routes indexed by jackname
+        self.audio_routes = {}  # Map of audio routes indexed by jackname
         self.reset()
 
     def reset(self):
@@ -81,19 +87,20 @@ class zynthian_chain:
         """
 
         if isinstance(self.midi_chan, int) and self.midi_chan>=0 and self.midi_chan < 16:
-            self.midi_in = ["ZynMidiRouter:ch{}_out".format(self.midi_chan)]
             lib_zyncore.reset_midi_filter_note_range(self.midi_chan)
             lib_zyncore.reset_midi_filter_clone(self.midi_chan)
-        else:
-            self.midi_in = []
+
+        self.free_zmop()
         self.midi_out = []
+
         self.audio_in = [1, 2]
         self.audio_out = ["mixer"]
+        # main mixbus chain
         if self.mixer_chan and self.mixer_chan > 15:
-            # main mixbus chain
             self.audio_in = ["zynmixer:send"]
             self.audio_out = ["zynmixer:return"]
             self.audio_thru = True
+
         self.current_processor = None
         self.remove_all_processors()
 
@@ -128,6 +135,38 @@ class zynthian_chain:
 
         self.rebuild_audio_graph()
 
+    def set_zmop_options(self):
+        if self.zmop_index is not None and (len(self.synth_slots) > 0 or len(self.audio_slots) > 0):
+            #logging.info(f"Dropping MIDI CC & PC from chain {self.chain_id}")
+            lib_zyncore.zmop_set_flag_droppc(self.zmop_index, 1)
+            lib_zyncore.zmop_set_flag_dropcc(self.zmop_index, 1)
+        else:
+            #logging.info(f"Routing MIDI CC & PC to chain {self.chain_id}")
+            lib_zyncore.zmop_set_flag_droppc(self.zmop_index, 0)
+            lib_zyncore.zmop_set_flag_dropcc(self.zmop_index, 0)
+
+    def set_zmop_index(self, iz):
+        """Set chain zmop index
+
+        iz : 0...16 (TODO: get maximum number of chains from lib_zyncore!)
+        """
+        self.free_zmop()
+        self.zmop_index = iz
+        self.midi_in = [f"ZynMidiRouter:ch{iz}_out"]
+        if isinstance(self.midi_chan, int):
+            if 0 <= self.midi_chan < 16:
+                lib_zyncore.zmop_set_midi_chan(iz, self.midi_chan)
+            elif self.midi_chan == 0xffff:
+                lib_zyncore.zmop_set_midi_chan_all(iz)
+
+    def free_zmop(self):
+        """If already using a zmop, release and reset it
+        """
+        if self.zmop_index is not None:
+            lib_zyncore.zmop_reset_midi_chans(self.zmop_index)
+            self.zmop_index = None
+            self.midi_in = []
+
     def set_midi_chan(self, chan):
         """Set chain (and its processors) MIDI channel
 
@@ -137,6 +176,11 @@ class zynthian_chain:
         if self.midi_chan == lib_zyncore.get_midi_active_chan():
             lib_zyncore.set_midi_active_chan(chan)
         self.midi_chan = chan
+        if self.zmop_index is not None and isinstance(self.midi_chan, int):
+            if 0 <= self.midi_chan < 16:
+                lib_zyncore.zmop_set_midi_chan(self.zmop_index, self.midi_chan)
+            elif self.midi_chan == 0xffff:
+                lib_zyncore.zmop_set_midi_chan_all(self.zmop_index)
         for processor in self.get_processors():
             processor.set_midi_chan(chan)
 
@@ -383,17 +427,6 @@ class zynthian_chain:
 
         return self.midi_thru or len(self.midi_slots) or self.midi_chan is not None
 
-
-    def setup_zmop_options(self):
-        if len(self.synth_slots) > 0 or len(self.audio_slots) > 0:
-            #logging.info(f"Dropping MIDI CC & PC from chain {self.chain_id}")
-            lib_zyncore.zmop_chain_set_flag_droppc(self.midi_chan, 1)
-            lib_zyncore.zmop_chain_set_flag_dropcc(self.midi_chan, 1)
-        else:
-            #logging.info(f"Routing MIDI CC & PC to chain {self.chain_id}")
-            lib_zyncore.zmop_chain_set_flag_droppc(self.midi_chan, 0)
-            lib_zyncore.zmop_chain_set_flag_dropcc(self.midi_chan, 0)
-
     # ---------------------------------------------------------------------------
     # Processor management
     # ---------------------------------------------------------------------------
@@ -493,7 +526,7 @@ class zynthian_chain:
         processor.set_chain_id(self.chain_id)
         processor.set_midi_chan(self.midi_chan)
 
-        self.setup_zmop_options()
+        self.set_zmop_options()
         self.current_processor = processor
         return True
 
@@ -543,7 +576,7 @@ class zynthian_chain:
         if processor.engine:
             processor.engine.remove_processor(processor)
 
-        self.setup_zmop_options()
+        self.set_zmop_options()
         self.rebuild_graph()
 
         if processor == self.current_processor:
@@ -662,6 +695,7 @@ class zynthian_chain:
         state = {
             "mixer_chan": self.mixer_chan,
             "midi_chan": self.midi_chan,
+            "zmop_index": self.zmop_index,
             "slots": slots_states
         }
         if self.midi_thru:
@@ -681,3 +715,6 @@ class zynthian_chain:
             self.mixer_chan = state["mixer_chan"]
         if 'midi_chan' in state:
             self.midi_chan = state["midi_chan"]
+        if 'zmop_index' in state:
+            self.zmop_index = state["zmop_index"]
+

@@ -454,7 +454,7 @@ def midi_autoconnect():
 
 		# Add MIDI router outputs
 		if chain.is_midi():
-			src_ports = jclient.get_ports(f"ZynMidiRouter:ch{chain.midi_chan}_out", is_midi=True, is_output=True)
+			src_ports = jclient.get_ports(f"ZynMidiRouter:ch{chain.zmop_index}_out", is_midi=True, is_output=True)
 			if src_ports:
 				for dst_proc in chain.get_processors(slot=0):
 					dst_ports = jclient.get_ports(dst_proc.get_jackname(True), is_midi=True, is_input=True)
