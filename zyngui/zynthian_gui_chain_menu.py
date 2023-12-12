@@ -68,7 +68,7 @@ class zynthian_gui_chain_menu(zynthian_gui_selector):
 
 	def new_audiofx_chain(self, t='S'):
 		try:
-			chain_id = self.zyngui.chain_manager.add_chain(None, enable_audio_thru = True)
+			chain_id = self.zyngui.chain_manager.add_chain(None, audio_thru=True)
 			self.zyngui.modify_chain({"type": "Audio Effect", "audio_thru": True, "chain_id": chain_id})
 		except Exception as e:
 			logging.error(e)
