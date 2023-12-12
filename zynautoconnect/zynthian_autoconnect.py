@@ -141,8 +141,15 @@ def dev_in_2_dev_out(zmip):
 
 
 def set_midi_port_names(port_names):
+	"""Set port friendly names from map
+	
+	port_names - Map of friendly names indexed by uid
+	"""
+	
 	global midi_port_names
 	midi_port_names = port_names.copy()
+	for port in hw_src_ports + hw_dst_ports:
+		update_midi_port_aliases(port)
 
 
 def get_port_aliases(midi_port):

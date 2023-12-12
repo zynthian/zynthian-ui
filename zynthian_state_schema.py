@@ -137,8 +137,10 @@ ZynthianState = {
             },
             "midi_capture": { # Dictionary of midi input configuration mapped by port input uid 
                 "ttymidi:MIDI_in": { # 
-                    "zmip_flags": 0, # Input mode bitwise flags (acti, omini, mixer_ctrl, zynpad_ctrl)
-                    "routed_chans": 0, # 16 bitwise flags indicating channels routed from this input
+                    "zmip_active_chan": 1, # 1 if active chain mode enabled (stage mode)
+                    "zmip_omni_chan": 0, # 1 if omni mode enabled
+                    "ctrldev_load": 0, # 1 to attempt loading controller device driver
+                    "routed_chains": [] # List of chain zmops this input is routed to
                 }
             },
             "midi_clone": { # Dictionary MIDI clone configs mapped by source channel
