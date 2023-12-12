@@ -108,11 +108,13 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if self.param_editor_zctrl == None:
 			self.set_title(f"Scene {self.bank}")
 		zynsigman.register(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_play_state)
+		zynsigman.register(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PROGRESS, self.update_progress)
 
 	# Function to hide GUI
 	def hide(self):
 		if self.shown:
 			zynsigman.unregister(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_play_state)
+			zynsigman.unregister(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PROGRESS, self.update_progress)
 			super().hide()
 
 	# Function to set quantity of pads
@@ -191,6 +193,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				font=(zynthian_gui_config.font_family, fs1),
 				fill=zynthian_gui_config.color_panel_tx,
 				tags=(f"title:{pad}", f"pad:{pad}", "pad"))
+			pad_struct["progress"] = self.grid_canvas.create_rectangle(0, 0, 0, 0,
+				fill='white',
+				width=0,
+				tags=(f"progress:{pad}", f"pad:{pad}", "pad"))
 			self.pads.append(pad_struct)
 		self.grid_canvas.tag_bind("pad", '<Button-1>', self.on_pad_press)
 		self.grid_canvas.tag_bind("pad", '<ButtonRelease-1>', self.on_pad_release)
@@ -254,7 +260,9 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to refresh pad if it has changed
 	#  pad: Pad index
-	#  force: True to force refresh
+	#  mode: Play mode
+	#  state: Play state
+	#  group: Sequence group
 	def refresh_pad(self, pad, mode=None, state=None, group=None):
 		if pad > 63:
 			return
@@ -306,6 +314,16 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def update_play_state(self, bank, seq, state, mode, group):
 		if bank == self.bank:
 			self.refresh_pad(seq, mode=mode, state=state, group=group)
+
+	def update_progress(self, bank, seq, progress):
+		if bank == self.bank:
+			x0 = int(seq / self.columns) * self.column_width
+			y0 = (seq % self.columns + 1) * self.row_height - 8
+			x1 = x0 + int(progress * self.column_width / 100)
+			y1 = y0 + 4
+
+			self.grid_canvas.coords(self.pads[seq]["progress"], x0, y0, x1, y1)
+
 
 	# ------------------------------------------------------------------------------------------------------------------
 	# Some useful functions
