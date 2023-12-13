@@ -28,6 +28,7 @@ import ctypes
 import logging
 from glob import glob
 from threading import Thread
+from time import monotonic
 from queue import SimpleQueue
 from datetime import datetime
 from subprocess import check_output
@@ -111,6 +112,7 @@ class zynthian_state_manager:
         self.midi_learn_zctrl = None  # zctrl currently being learned
         self.sync = False  # True to request file system sync
         self.cuia_queue = []  # List of queues for GUI (CUIA) change messages
+        self.update_available = False
 
         self.hwmon_thermal_file = None
         self.hwmon_undervolt_file = None
@@ -400,10 +402,12 @@ class zynthian_state_manager:
         xruns_status = self.status_xrun
         midi_status = self.status_midi
         midi_clock_status = self.status_midi_clock
+        next_update_check = monotonic() + 2 # Short delay after startup before first check for updates
         while not self.exit_flag:
             # Get CPU Load
             #self.status_cpu_load = max(psutil.cpu_percent(None, True))
             self.status_cpu_load = zynautoconnect.get_jackd_cpu_load()
+            now = monotonic()
 
             try:
                 # Get SOC sensors (once each 5 refreshes)
@@ -486,6 +490,10 @@ class zynthian_state_manager:
                 if self.sync:
                     self.sync = False
                     os.sync()
+
+                if now > next_update_check:
+                    self.check_for_updates()
+                    next_update_check = now + 3600 #TODO: Add update frequency config
 
             except Exception as e:
                 logging.exception(e)
@@ -1914,5 +1922,22 @@ class zynthian_state_manager:
             return self.alsa_mixer_processor.engine.allow_rbpi_headphones()
         except:
             return False
+
+    def check_for_updates(self):
+        def update_thread():
+            try:
+                repos = ["/zynthian/zyncoder", "/zynthian/zynthian-ui", "/zynthian/zynthian-sys", "/zynthian/zynthian-webconf", "/zynthian/zynthian-data"]
+                for path in repos:
+                    branch = check_output(["git", "-C", path, "rev-parse", "--abbrev-ref", "HEAD"], encoding="utf-8").strip()
+                    local_hash = check_output(["git", "-C", path, "rev-parse", "HEAD"], encoding="utf-8").strip()
+                    remote_hash = check_output(["git", "-C", path, "ls-remote", "origin", branch], encoding="utf-8").strip().split('\t')[0]
+                    self.update_available |= local_hash == remote_hash
+            except:
+                self.update_available = False
+
+        thread = Thread(target=update_thread, args=())
+        thread.name = "Check update"
+        thread.daemon = True  # thread dies with the program
+        thread.start()
 
     # ---------------------------------------------------------------------------

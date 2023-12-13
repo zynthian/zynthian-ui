@@ -593,7 +593,10 @@ class zynthian_gui_base(tkinter.Frame):
 					cr = 0xCC
 					cg = int((100 - cpu_load) * 0xCC / 25)
 				color = "#%02x%02x%02x" % (cr, cg, 0)
-				flags = "\u2665"
+				if self.zyngui.state_manager.update_available:
+					flags = "\u21bb"
+				else:
+					flags = "\u2665"
 
 			self.status_canvas.itemconfig(self.status_error, text=flags, fill=color)
 

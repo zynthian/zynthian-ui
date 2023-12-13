@@ -321,7 +321,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			y0 = (seq % self.columns + 1) * self.row_height - 8
 			x1 = x0 + int(progress * self.column_width / 100)
 			y1 = y0 + 4
-
 			self.grid_canvas.coords(self.pads[seq]["progress"], x0, y0, x1, y1)
 
 

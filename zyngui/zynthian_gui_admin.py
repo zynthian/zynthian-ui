@@ -54,6 +54,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.thread = None
 		self.child_pid = None
 		self.last_action = None
+		self.update_available = False
 
 		super().__init__('Action', True)
 
@@ -61,6 +62,14 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		if self.state_manager.allow_rbpi_headphones():
 			self.default_rbpi_headphones()
+
+
+	def refresh_status(self):
+		super().refresh_status()
+		if self.update_available != self.state_manager.update_available:
+			self.update_available = self.state_manager.update_available
+			self.fill_list()
+
 
 	def fill_list(self):
 		self.list_data = []
@@ -147,10 +156,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.workflow_capture_stop, 0, "\u2612 Capture Workflow"))
 		else:
 			self.list_data.append((self.workflow_capture_start, 0, "\u2610 Capture Workflow"))
-		if self.is_update_available():
+		if self.state_manager.update_available:
 			self.list_data.append((self.update_software, 0, "Update Software"))
-		else:
-			self.list_data.append((self.check_for_updates, 0, "Check for software updates"))
 		#self.list_data.append((self.update_system, 0, "Update Operating System"))
 		#self.list_data.append((None, 0, "> POWER"))
 		#self.list_data.append((self.restart_gui, 0, "Restart UI"))
@@ -455,17 +462,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		logging.info("UPDATE SOFTWARE")
 		self.zyngui.show_info("UPDATE SOFTWARE")
 		self.start_command([self.sys_dir + "/scripts/update_zynthian.sh"])
-
-	def is_update_available(self):
-		repos = ["/zynthian/zyncoder", "/zynthian/zynthian-ui", "/zynthian/zynthian-sys", "/zynthian/zynthian-webconf", "/zynthian/zynthian-data"]
-		update_available = False
-		for path in repos:
-			update_available |= (check_output("git -C %s status --porcelain -bs | grep behind | wc -l" % path, shell=True).decode()[:1] == '1')
-		return update_available
-
-	def check_for_updates(self):
-		self.zyngui.show_info("CHECK FOR UPDATES")
-		self.start_command(["git -C /zynthian/zyncoder remote update; git -C /zynthian/zynthian-ui remote update; git -C /zynthian/zynthian-sys remote update; git -C /zynthian/zynthian-webconf remote update; git -C /zynthian/zynthian-data remote update"])
+		self.state_manager.update_available = False
 
 	def update_system(self):
 		logging.info("UPDATE SYSTEM")
