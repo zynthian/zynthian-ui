@@ -113,6 +113,7 @@ class zynthian_state_manager:
         self.sync = False  # True to request file system sync
         self.cuia_queue = []  # List of queues for GUI (CUIA) change messages
         self.update_available = False
+        self.update_status = False # True whilst checking for updates
 
         self.hwmon_thermal_file = None
         self.hwmon_undervolt_file = None
@@ -1924,6 +1925,9 @@ class zynthian_state_manager:
             return False
 
     def check_for_updates(self):
+        if self.update_status:
+            return
+        self.update_status = True
         def update_thread():
             try:
                 repos = ["/zynthian/zyncoder", "/zynthian/zynthian-ui", "/zynthian/zynthian-sys", "/zynthian/zynthian-webconf", "/zynthian/zynthian-data"]
@@ -1931,9 +1935,10 @@ class zynthian_state_manager:
                     branch = check_output(["git", "-C", path, "rev-parse", "--abbrev-ref", "HEAD"], encoding="utf-8").strip()
                     local_hash = check_output(["git", "-C", path, "rev-parse", "HEAD"], encoding="utf-8").strip()
                     remote_hash = check_output(["git", "-C", path, "ls-remote", "origin", branch], encoding="utf-8").strip().split('\t')[0]
-                    self.update_available |= local_hash == remote_hash
+                    self.update_available |= local_hash != remote_hash
             except:
                 self.update_available = False
+            self.update_status = False
 
         thread = Thread(target=update_thread, args=())
         thread.name = "Check update"

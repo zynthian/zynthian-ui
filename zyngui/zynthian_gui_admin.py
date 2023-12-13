@@ -71,6 +71,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.fill_list()
 
 
+	def build_view(self):
+		self.state_manager.check_for_updates()
+		super().build_view()
+
+
 	def fill_list(self):
 		self.list_data = []
 		self.list_data.append((None, 0, "> MIDI"))
