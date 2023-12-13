@@ -269,9 +269,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                     else:
                         prefix = ""
                     if chain_id in self.chain.midi_out:
-                        self.list_data.append((chain_id, None, f"\u2612 {prefix}Chain {chain_id}"))
+                        self.list_data.append((chain_id, None, f"\u2612 {prefix}Chain {chain_id:02d}"))
                     else:
-                        self.list_data.append((chain_id, None, f"\u2610 {prefix}Chain {chain_id}"))
+                        self.list_data.append((chain_id, None, f"\u2610 {prefix}Chain {chain_id:02d}"))
 
         super().fill_list()
 
@@ -502,9 +502,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
     def set_select_path(self):
         if self.chain:
             if self.input:
-                self.select_path.set(f"Chain {self.chain.chain_id} MIDI Input")
+                self.select_path.set(f"Chain {self.chain.chain_id:02d} MIDI Input")
             else:
-                self.select_path.set(f"Chain {self.chain.chain_id} MIDI Output")
+                self.select_path.set(f"Chain {self.chain.chain_id:02d} MIDI Output")
         else:
             if self.input:
                 self.select_path.set(f"MIDI Input Devices")

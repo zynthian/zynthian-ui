@@ -101,7 +101,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 
 		# Restoring normal chains
 		for chain_id, chain_state in state["chains"].items():
-			if chain_id == "main":
+			if chain_id == 0:
 				continue
 			chain = self.zyngui.chain_manager.get_chain(chain_id)
 			label = f"{chain_id.title()}#{chain.get_title()}"
@@ -115,15 +115,15 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 				options[f"\u2610 {label}"] = chain_id
 
 		# Restoring main chain
-		main_chain_state = state["chains"]["main"]
+		main_chain_state = state["chains"][0]
 		try:
 			restore_flag = main_chain_state["restore"]
 		except:
 			restore_flag = True
 		if restore_flag:
-			options["\u2612 Main"] = "main"
+			options["\u2612 Main"] = 0
 		else:
-			options["\u2610 Main"] = "main"
+			options["\u2610 Main"] = 0
 
 		# Restoring Audio Mixer
 		mixer_state = state["mixer"]
@@ -150,7 +150,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 			# Invert selection (toggle all elements in list)
 			for chain_id in state["chains"]:
 				self.zyngui.state_manager.toggle_zs3_chain_restore_flag(self.zs3_id, chain_id)
-			self.zyngui.state_manager.toggle_zs3_chain_restore_flag(self.zs3_id, "mixer")
+			self.zyngui.state_manager.toggle_zs3_chain_restore_flag(self.zs3_id, -1) #***TODO***
 
 	def zs3_rename(self):
 		title = self.zyngui.state_manager.get_zs3_title(self.zs3_id)

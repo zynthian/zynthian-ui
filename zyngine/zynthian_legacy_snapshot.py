@@ -118,7 +118,7 @@ class zynthian_legacy_snapshot:
             except:
                 info = []
             midi_chan = l["midi_chan"]
-            chain_id = f"{midi_chan + 1:02d}"
+            chain_id = midi_chan + 1
             if chain_id not in chains:
                 chains[chain_id] = {
                     "midi_processors": [], # Temporary list of processors in chain - used to build slots
@@ -315,9 +315,9 @@ class zynthian_legacy_snapshot:
 
         # Fix main chain
         try:
-            chains["main"] = chains.pop("257")
-            chains["main"]["midi_chan"] = None
-            #chains["main"]["mixer_chan"] = None
+            chains[0] = chains.pop("257")
+            chains[0]["midi_chan"] = None
+            #chains[0]["mixer_chan"] = None
         except:
             pass
 
@@ -407,7 +407,7 @@ class zynthian_legacy_snapshot:
             if "mixer" in zs3:
                 zs3["mixer"]["midi_learn"] = {}
                 for strip, config in zs3["mixer"].items():
-                    if strip == "main":
+                    if strip == "main": #***TODO***
                         strip_id = 17 #TODO: Get actual main mixer strip index
                     else:
                         try:
@@ -434,7 +434,7 @@ class zynthian_legacy_snapshot:
         for id, zs3 in state["zs3"].items():
             if "chains" in zs3:
                 if "257" in zs3["chains"]:
-                    zs3["chains"]["main"] = zs3["chains"].pop("257")
+                    zs3["chains"][0] = zs3["chains"].pop("257")
                 for chain_id, chain in zs3["chains"].items():
                     mout = False
                     out = []
@@ -449,8 +449,8 @@ class zynthian_legacy_snapshot:
                     chain["audio_out"] = out.copy()
                     if mout and "mixer" not in chain["audio_out"]:
                         chain["audio_out"].append("mixer")
-                    if chain_id == "main":
-                        if state["chains"]["main"]["slots"]:
+                    if chain_id == 0:
+                        if state["chains"][0]["slots"]:
                             chain["audio_in"] = ["zynmixer:send"]
                         else:
                             chain["audio_in"] = []

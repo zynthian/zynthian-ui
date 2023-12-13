@@ -81,7 +81,7 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 		for i in range(0, 8):
 			index = index0 + i
 			if index < len(self.zynmixer.zctrls):
-				chain_id = self.chain_manager.get_chain_id_by_index(index + 1)
+				chain_id = self.chain_manager.get_chain_id_by_index(index)
 			else:
 				chain_id = None
 			if chain_id and chain_id == active_chain:
@@ -109,7 +109,7 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 		for i in range(0, 8):
 			index = index0 + i
 			if index < len(self.zynmixer.zctrls):
-				chain = self.chain_manager.get_chain_by_index(index + 1)
+				chain = self.chain_manager.get_chain_by_index(index)
 				mute = self.zynmixer.get_mute(index)
 				solo = self.zynmixer.get_solo(index)
 			else:
@@ -178,13 +178,13 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 					index += 8
 				if index < len(self.zynmixer.zctrls):
 					if not self.rec_mode:
-						self.chain_manager.set_active_chain_by_index(index + 1)
+						self.chain_manager.set_active_chain_by_index(index)
 						self.refresh()
 					else:
-						chain = self.chain_manager.get_chain_by_index(index + 1)
+						chain = self.chain_manager.get_chain_by_index(index)
 						self.state_manager.audio_recorder.toggle_arm(chain.midi_chan)
 						# Send LED feedback
-						if self.idev_out is not None:
+						if chain is not None and self.idev_out is not None:
 							val = self.state_manager.audio_recorder.is_armed(chain.midi_chan)
 							lib_zyncore.dev_send_note_on(self.idev_out, 0, note, val)
 				return True

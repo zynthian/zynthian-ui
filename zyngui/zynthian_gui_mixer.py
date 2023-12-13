@@ -150,11 +150,11 @@ class zynthian_gui_mixer_strip():
 
 		# Mute button
 		self.mute = self.parent.main_canvas.create_rectangle(x, self.button_height, x + self.width, self.button_height * 2, fill=self.button_bgcol, width=0, tags=(f"mute:{self.fader_bg}", f"strip:{self.fader_bg}", f"audio_strip:{self.fader_bg}"))
-		self.mute_text = self.parent.main_canvas.create_text(x + self.width / 2, self.button_height * 1.5, text="M", fill=self.button_txcol, tags=(f"mute:{self.fader_bg}", f"strip:{self.fader_bg}", f"audio_strip:{self.fader_bg}"), font=self.font_icons)
+		self.mute_text = self.parent.main_canvas.create_text(x + self.width / 2, self.button_height * 1.5, text="M", fill=self.button_txcol, tags=(f"mute:{self.fader_bg}", f"strip:{self.fader_bg}", f"audio_strip:{self.fader_bg}"), font=self.font)
 
 		# Legend strip at bottom of screen
 		self.legend_strip_bg = self.parent.main_canvas.create_rectangle(x, self.height - self.legend_height, x + self.width, self.height, width=0, tags=(f"strip:{self.fader_bg}",f"legend_strip:{self.fader_bg}"), fill=self.legend_bg_color)
-		self.legend_strip_txt = self.parent.main_canvas.create_text(int(fader_centre), self.height - self.legend_height / 2, fill=self.legend_txt_color, text="-", tags=(f"strip:{self.fader_bg}",f"legend_strip:{self.fader_bg}"), font=self.font)
+		self.legend_strip_txt = self.parent.main_canvas.create_text(int(fader_centre), self.height - self.legend_height / 2, fill=self.legend_txt_color, text="-", tags=(f"strip:{self.fader_bg}",f"legend_strip:{self.fader_bg}"), font=self.font_icons)
 
 		# Balance indicator
 		self.balance_left = self.parent.main_canvas.create_rectangle(x, self.balance_top, int(fader_centre - 0.5), self.balance_top + self.balance_height, fill=self.left_color, width=0, tags=(f"strip:{self.fader_bg}", f"balance:{self.fader_bg}", f"audio_strip:{self.fader_bg}"))
@@ -354,15 +354,19 @@ class zynthian_gui_mixer_strip():
 
 		if control == None:
 			self.parent.main_canvas.itemconfig(self.legend, text="")
-			if self.chain_id == "main":
+			if self.chain_id == 0:
 				self.parent.main_canvas.itemconfig(self.legend_strip_txt, text="Main")
 				self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text(), state=tkinter.NORMAL)
 			else:
 				if isinstance(self.chain.midi_chan, int):
-					strip_txt = str(self.chain.midi_chan + 1)
+					strip_txt = f"♫ {self.chain.midi_chan + 1}"
+					self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=strip_txt, font=self.font)
+				elif self.chain.is_audio:
+					strip_txt = "\uf130" * min(4, len(self.chain.audio_in))
+					self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=strip_txt, font=self.font_icons)
 				else:
-					strip_txt = "X"
-				self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=strip_txt)
+					strip_txt = "\uf0ae"
+					self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=strip_txt, font=self.font_icons)
 				label_parts = self.get_legend_text().split("\n")
 				for i, label in enumerate(label_parts):
 					self.parent.main_canvas.itemconfig(self.legend, text=label, state=tkinter.NORMAL)
@@ -720,7 +724,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.visible_mixer_strips[strip] = zynthian_gui_mixer_strip(self, 1 + self.fader_width * strip, 0, self.fader_width - 1, self.height)
 
 		self.main_mixbus_strip = zynthian_gui_mixer_strip(self, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height)
-		self.main_mixbus_strip.set_chain("main")
+		self.main_mixbus_strip.set_chain(0)
 		self.main_mixbus_strip.zctrls = self.zynmixer.zctrls[self.zynmixer.MAX_NUM_CHANNELS]
 
 		self.zynmixer.enable_dpm(0, self.zynmixer.MAX_NUM_CHANNELS - 1, False)
@@ -783,7 +787,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if zynthian_gui_config.enable_dpm:
 				states = self.zynmixer.get_dpm_states(0, self.zynmixer.MAX_NUM_CHANNELS)
 				for strip in self.visible_mixer_strips:
-					if not strip.hidden:
+					if not strip.hidden and strip.chain.mixer_chan is not None:
 						state = states[strip.chain.mixer_chan]
 						strip.draw_dpm(state[0], state[1], state[2], state[3], state[4])
 						strip.refresh_status()
@@ -817,13 +821,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if active_index < self.mixer_strip_offset:
 			self.mixer_strip_offset = active_index
 			refresh = True
-		elif active_index >= self.mixer_strip_offset + len(self.visible_mixer_strips) and self.zyngui.chain_manager.active_chain_id != "main":
+		elif active_index >= self.mixer_strip_offset + len(self.visible_mixer_strips) and self.zyngui.chain_manager.active_chain_id != 0:
 			self.mixer_strip_offset = active_index - len(self.visible_mixer_strips) + 1
 			refresh = True
 		#TODO: Handle aux
 
 		strip = None
-		if self.zyngui.chain_manager.active_chain_id == "main":
+		if self.zyngui.chain_manager.active_chain_id == 0:
 			strip = self.main_mixbus_strip
 		else:
 			chain = self.zyngui.chain_manager.get_chain(self.zyngui.chain_manager.active_chain_id)
@@ -855,7 +859,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		active_strip = None
 		strip_index = 0
-		for chain_id in self.zyngui.chain_manager.chain_ids_ordered[self.mixer_strip_offset:self.mixer_strip_offset + len(self.visible_mixer_strips)]:
+		for chain_id in self.zyngui.chain_manager.chain_ids_ordered[:-1][self.mixer_strip_offset:self.mixer_strip_offset + len(self.visible_mixer_strips)]:
 			strip = self.visible_mixer_strips[strip_index]
 			strip.set_chain(chain_id)
 			if strip.chain.mixer_chan is not None and strip.chain.mixer_chan < len(self.zynmixer.zctrls):
@@ -866,7 +870,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			if chain_id == self.zyngui.chain_manager.active_chain_id:
 				active_strip = strip
 			strip_index += 1
-			
+		
+		# Hide unpopulated strips
 		for strip in self.visible_mixer_strips[strip_index:len(self.visible_mixer_strips)]:
 			strip.set_chain(None)
 			strip.zctrls = None
@@ -1005,6 +1010,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return
 			self.mixer_strip_offset -= 1
 		elif event.num == 4:
+			#***TODO***
 			if self.mixer_strip_offset +  len(self.visible_mixer_strips) >= self.zyngui.chain_manager.get_chain_count() - 1:
 				return
 			self.mixer_strip_offset += 1

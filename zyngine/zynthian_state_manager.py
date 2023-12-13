@@ -782,8 +782,9 @@ class zynthian_state_manager:
         self.zs3[zs3_id]["title"] = title
 
     def toggle_zs3_chain_restore_flag(self, zs3_id, chain_id):
+        #***TODO***
         zs3_state = self.zs3[zs3_id]
-        if chain_id == "mixer":
+        if chain_id == -1:
             tstate = zs3_state["mixer"]
         else:
             tstate = zs3_state["chains"][chain_id]

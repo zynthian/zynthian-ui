@@ -68,7 +68,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 			wscolor_light = self.wscolor_default
 			offset = 0
 		# => Light non-empty chains
-		for i, chain_id in enumerate(["01", "02", "03", "04", "05", "main"]):
+		for i, chain_id in enumerate([1, 2, 3, 4, 5, 0]):
 			if self.zyngui.chain_manager.get_chain(chain_id) is None:
 				self.wsleds.setPixelColor(i + 1, self.wscolor_off)
 			else:

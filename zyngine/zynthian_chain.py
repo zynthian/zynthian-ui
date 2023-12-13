@@ -86,6 +86,10 @@ class zynthian_chain:
         Does not change midi/audio thru
         """
 
+        if self.chain_id == 0:
+            self.title = "Main"
+        else:
+            self.title = ""
         if isinstance(self.midi_chan, int) and self.midi_chan>=0 and self.midi_chan < 16:
             lib_zyncore.reset_midi_filter_note_range(self.midi_chan)
             lib_zyncore.reset_midi_filter_clone(self.midi_chan)
@@ -211,9 +215,7 @@ class zynthian_chain:
             elif self.audio_thru:
                 if self.audio_in == ["zynmixer:send"]:
                     return ""
-                label = ""
-                for input in self.audio_in:
-                    label += f"Audio input {input}\n"
+                label = "Audio input " + ','.join([str(i) for i in self.audio_in])
                 return label
         except:
             pass
@@ -237,9 +239,7 @@ class zynthian_chain:
             elif self.audio_thru:
                 if self.audio_in == ["zynmixer:send"]:
                     return "Main"
-                label = ""
-                for input in self.audio_in:
-                    label += f"Audio input {input}\n"
+                label = "Audio input " + ','.join([str(i) for i in self.audio_in])
                 return label
         except:
             pass

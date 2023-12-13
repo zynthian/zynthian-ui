@@ -50,7 +50,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 		# TODO: Show chain name
 		mod_running = False
-		if self.chain.chain_id == "main":
+		if self.chain.chain_id == 0:
 			port_names = [["system", "system"]]  # TODO: Get list of available system outputs
 		else:
 			port_names = [["mixer", "mixer"]]

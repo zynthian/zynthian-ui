@@ -1270,9 +1270,9 @@ class zynthian_gui:
 			if isinstance(chain_id, int):
 				index = params[0]
 				if index == 0:
-					chain_id = "main"
+					chain_id = 0
 				else:
-					chain_id = self.chain_manager.chain_ids_ordered[params[0] - 1]
+					chain_id = self.chain_manager.get_chain_id_by_index(params[0] - 1)
 		except:
 			chain_id = self.chain_manager.active_chain_id
 		self.chain_control(chain_id)
@@ -1293,9 +1293,9 @@ class zynthian_gui:
 			# Select chain by index
 			if isinstance(chain_id, int):
 				if params[0] == 0:
-					chain_id = "main"
+					chain_id = 0
 				else:
-					chain_id = self.chain_manager.chain_ids_ordered[params[0] - 1]
+					chain_id = self.chain_manager.get_chain_id_by_index(params[0] - 1)
 		except:
 			chain_id = self.chain_manager.active_chain_id
 
