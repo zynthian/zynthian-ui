@@ -855,7 +855,13 @@ class zynthian_chain_manager():
         self.stop_unused_jalv_engines() #TODO: Can we factor this out? => Not yet!!
 
         for chain_id, chain_state in state.items():
-            chain_id = int(chain_id)
+            try:
+                chain_id = int(chain_id)
+            except Exception as e:
+                if chain_id == "main":
+                    chain_id = 0
+                else:
+                    raise e
             self.add_chain_from_state(chain_id, chain_state)
 
             if "slots" in chain_state:
@@ -1033,7 +1039,14 @@ class zynthian_chain_manager():
                     if proc_id in self.processors:
                         proc = self.processors[proc_id]
                         zctrl = proc.controllers_dict[symbol]
-                        self.add_midi_learn(int(chain_id), int(cc), zctrl)
+                        try:
+                            chain_id = int(chain_id)
+                        except Exception as e:
+                            if chain_id == "main":
+                                chain_id = 0
+                            else:
+                                raise e
+                        self.add_midi_learn(chain_id, int(cc), zctrl)
                     pass
 
     def get_midi_learn_state(self):
