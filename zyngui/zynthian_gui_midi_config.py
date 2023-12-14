@@ -101,45 +101,47 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
         self.list_data = []
 
-        def get_mode(i):
+        def get_mode_str(idev):
+            mode_str = ""
             """Get input mode prefix"""
-            mode = ""
             if self.input:
-                if lib_zyncore.zmip_get_flag_active_chan(i):
-                    mode += ZMIP_MODE_ACTIVE
-                elif lib_zyncore.zmip_get_flag_omni_chan(i):
-                    mode += ZMIP_MODE_OMNI
-                else:
-                    mode += ZMIP_MODE_MULTI
-                if i in self.zyngui.state_manager.ctrldev_manager.drivers:
-                    mode += f" {ZMIP_MODE_CONTROLLER}"
-            if mode:
-                mode += " "
-            return mode
+                if 0 <= idev < len(zynautoconnect.devices_in_mode):
+                    mode = zynautoconnect.get_midi_in_dev_mode(idev)
+                    if mode == "ACTI":
+                        mode_str += ZMIP_MODE_ACTIVE
+                    elif mode == "OMNI":
+                        mode_str += ZMIP_MODE_OMNI
+                    elif mode == "MULTI":
+                        mode_str += ZMIP_MODE_MULTI
+                    if idev in self.zyngui.state_manager.ctrldev_manager.drivers:
+                        mode_str += f" {ZMIP_MODE_CONTROLLER}"
+            if mode_str:
+                mode_str += " "
+            return mode_str
 
-        def append_port(dev_i):
+        def append_port(idev):
             """Add a port to list"""
             if self.input:
-                port = zynautoconnect.devices_in[dev_i]
-                mode = get_mode(dev_i)
+                port = zynautoconnect.devices_in[idev]
+                mode = get_mode_str(idev)
                 if self.chain is None:
-                    self.list_data.append((port.aliases[0], dev_i, f"{mode}{port.aliases[1]}"))
-                elif dev_i in self.zyngui.state_manager.ctrldev_manager.drivers:
-                    self.list_data.append((port.aliases[0], dev_i, f"    {mode}{port.aliases[1]}"))
+                    self.list_data.append((port.aliases[0], idev, f"{mode}{port.aliases[1]}"))
+                elif idev in self.zyngui.state_manager.ctrldev_manager.drivers:
+                    self.list_data.append((port.aliases[0], idev, f"    {mode}{port.aliases[1]}"))
                 else:
-                    if lib_zyncore.zmop_get_route_from(self.chain_zmop, dev_i):
-                        self.list_data.append((port.aliases[0], dev_i, f"\u2612 {mode}{port.aliases[1]}"))
+                    if lib_zyncore.zmop_get_route_from(self.chain_zmop, idev):
+                        self.list_data.append((port.aliases[0], idev, f"\u2612 {mode}{port.aliases[1]}"))
                     else:
-                        self.list_data.append((port.aliases[0], dev_i, f"\u2610 {mode}{port.aliases[1]}"))
+                        self.list_data.append((port.aliases[0], idev, f"\u2610 {mode}{port.aliases[1]}"))
             else:
-                port = zynautoconnect.devices_out[dev_i]
+                port = zynautoconnect.devices_out[idev]
                 if self.chain is None:
-                    self.list_data.append((port.aliases[0], dev_i, f"{port.aliases[1]}"))
+                    self.list_data.append((port.aliases[0], idev, f"{port.aliases[1]}"))
                 elif port.name in self.chain.midi_out:
                     #TODO: Why use port.name here?
-                    self.list_data.append((port.name, dev_i, f"\u2612 {port.aliases[1]}"))
+                    self.list_data.append((port.name, idev, f"\u2612 {port.aliases[1]}"))
                 else:
-                    self.list_data.append((port.name, dev_i, f"\u2610 {port.aliases[1]}"))
+                    self.list_data.append((port.name, idev, f"\u2610 {port.aliases[1]}"))
 
         def append_service_device(dev_name, obj):
             """Add service (that is also a port) to list"""
@@ -149,7 +151,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 else:
                     port = zynautoconnect.devices_out[obj]
                 if port:
-                    mode = get_mode(obj)
+                    mode = get_mode_str(obj)
                     self.list_data.append((f"stop_{dev_name}", obj, f"\u2612 {mode}{port.aliases[1]}"))
             else:
                 self.list_data.append((f"start_{dev_name}", None, f"\u2610 {obj}"))
@@ -205,19 +207,19 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                         else:
                             title = "\u2610 "
                         if addr in ble_devices:
-                            dev_i = ble_devices[addr]
-                            title += get_mode(dev_i)
+                            idev = ble_devices[addr]
+                            title += get_mode_str(idev)
                         else:
-                            dev_i = None
+                            idev = None
                         if data[3]:
                             title += "\uf293 "
-                        if dev_i is None:
+                        if idev is None:
                             title += data[0]
                         elif self.input:
-                            title += zynautoconnect.devices_in[dev_i].aliases[1]
+                            title += zynautoconnect.devices_in[idev].aliases[1]
                         else:
-                            title += zynautoconnect.devices_out[dev_i].aliases[1]
-                        self.list_data.append((f"BLE:{addr}", dev_i, title))
+                            title += zynautoconnect.devices_out[idev].aliases[1]
+                        self.list_data.append((f"BLE:{addr}", idev, title))
             elif not self.chain:
                 self.list_data.append(("start_bluetooth", None, "\u2610 BLE MIDI"))
 
@@ -277,10 +279,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
 
     def select_action(self, i, t='S'):
-        action = self.list_data[i][0]
         if t == 'S':
             action = self.list_data[i][0]
-            wait = 2 # Delay after starting service to allow jack ports to update
+            wait = 2  # Delay after starting service to allow jack ports to update
             if action == "stop_jackrtpmidid":
                 self.zyngui.state_manager.stop_rtpmidi(wait=wait)
             elif action == "start_jackrtpmidid":
@@ -304,10 +305,10 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             # Route/Unroute
             elif self.chain:
                 if self.input:
-                    dev_i = self.list_data[i][1]
-                    if dev_i in self.zyngui.state_manager.ctrldev_manager.drivers:
+                    idev = self.list_data[i][1]
+                    if idev in self.zyngui.state_manager.ctrldev_manager.drivers:
                         return
-                    lib_zyncore.zmop_set_route_from(self.chain_zmop, dev_i, not lib_zyncore.zmop_get_route_from(self.chain_zmop, dev_i))
+                    lib_zyncore.zmop_set_route_from(self.chain_zmop, idev, not lib_zyncore.zmop_get_route_from(self.chain_zmop, idev))
                 else:
                     try:
                         self.zyngui.chain_manager.get_active_chain().toggle_midi_out(self.list_data[i][0])
@@ -327,52 +328,44 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                         # Not trusted so offer to remove
                         self.zyngui.show_confirm(f"Remove BLE MIDI device?\n{self.list_data[i][0]}", self.remove_ble, self.list_data[i][0][4:])
                 return
-            dev_i = self.list_data[i][1]
-            if dev_i is None:
+            idev = self.list_data[i][1]
+            if idev is None:
                 return
             try:
-                options = OrderedDict()
+                options = {}
                 if self.input:
-                    # Check mode (Acti/Omni/Multi)
-                    if lib_zyncore.zmip_get_flag_active_chan(dev_i):
-                        mode = 0
-                    elif lib_zyncore.zmip_get_flag_omni_chan(dev_i):
-                        mode = 1
-                    else:
-                        mode = 2
                     options["MIDI Input Mode"] = None
-                    
-                    if mode == 0:
+                    mode = zynautoconnect.get_midi_in_dev_mode(idev)
+                    if mode == "ACTI":
                         options[f'\u25C9 {ZMIP_MODE_ACTIVE} Active channel'] = "ACTI"
                     else:
                         options[f'\u25CE {ZMIP_MODE_ACTIVE} Active channel'] = "ACTI"
-                    if mode == 2:
-                        options[f'\u25C9 {ZMIP_MODE_MULTI} Multitimbral mode '] = "MULTI"
-                    else:
-                        options[f'\u25CE {ZMIP_MODE_MULTI} Multitimbral mode'] = "MULTI"
-                    if mode == 1:
+                    if mode == "OMNI":
                         options[f'\u25C9 {ZMIP_MODE_OMNI} Omni mode'] = "OMNI"
                     else:
                         options[f'\u25CE {ZMIP_MODE_OMNI} Omni mode'] = "OMNI"
+                    if mode == "MULTI":
+                        options[f'\u25C9 {ZMIP_MODE_MULTI} Multitimbral mode '] = "MULTI"
+                    else:
+                        options[f'\u25CE {ZMIP_MODE_MULTI} Multitimbral mode'] = "MULTI"
 
                     options["Configuration"] = None
-                    dev_id = zynautoconnect.get_midi_in_devid(dev_i)
+                    dev_id = zynautoconnect.get_midi_in_devid(idev)
                     if dev_id in self.zyngui.state_manager.ctrldev_manager.available_drivers:
-                        #TODO: Offer list of profiles
-                        if dev_i in self.zyngui.state_manager.ctrldev_manager.drivers:
+                        # TODO: Offer list of profiles
+                        if idev in self.zyngui.state_manager.ctrldev_manager.drivers:
                             options[f"\u2612 {ZMIP_MODE_CONTROLLER} Controller driver"] = "UNLOAD_DRIVER"
                         else:
                             options[f"\u2610 {ZMIP_MODE_CONTROLLER} Controller driver"] = "LOAD_DRIVER"
-                    port = zynautoconnect.devices_in[dev_i]
+                    port = zynautoconnect.devices_in[idev]
                 else:
-                    port = zynautoconnect.devices_out[dev_i]
+                    port = zynautoconnect.devices_out[idev]
                 options[f"Rename port '{port.aliases[0]}'"] = port
                 options[f"Reset name to '{zynautoconnect.build_midi_port_name(port)[1]}'"] = port
                 self.zyngui.screens['option'].config("MIDI Input Device", options, self.menu_cb)
                 self.zyngui.show_screen('option')
             except:
-                pass # Port may have disappeared whilst building menu
-
+                pass  # Port may have disappeared whilst building menu
 
     def menu_cb(self, option, params):
         try:
@@ -386,15 +379,15 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             elif params == "UNLOAD_DRIVER":
                 self.zyngui.state_manager.ctrldev_manager.unload_driver(self.list_data[self.index][1])
             elif self.input:
-                dev_i = self.list_data[self.index][1]
+                idev = self.list_data[self.index][1]
                 flags_acti = params == "ACTI"
                 flags_omni = params == "OMNI"
-                lib_zyncore.zmip_set_flag_active_chan(dev_i, flags_acti)
-                lib_zyncore.zmip_set_flag_omni_chan(dev_i, flags_omni)
-
+                lib_zyncore.zmip_set_flag_active_chan(idev, flags_acti)
+                lib_zyncore.zmip_set_flag_omni_chan(idev, flags_omni)
+                zynautoconnect.update_midi_in_dev_mode(idev)
             self.fill_list()
         except:
-            pass # Ports may have changed since menu opened
+            pass  # Ports may have changed since menu opened
 
     def process_dynamic_ports(self):
         """Process dynamically added/removed MIDI devices

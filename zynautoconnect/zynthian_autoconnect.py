@@ -67,10 +67,11 @@ hw_src_ports = []				# List of hardware source ports (including network, aubiono
 hw_dst_ports = []				# List of hardware destination ports (including network, aubionotes, etc.)
 
 # These variables are initialized in the init() function. These are "example values".
-max_num_devs = 16    # Max number of MIDI devices
-max_num_chains = 16  # Max number of chains
-devices_in = []      # List of MIDI input devices
-devices_out = []     # List of MIDI output devices
+max_num_devs = 16     # Max number of MIDI devices
+max_num_chains = 16   # Max number of chains
+devices_in = []       # List of MIDI input devices
+devices_in_mode = []  # List of MIDI input devices modes
+devices_out = []      # List of MIDI output devices
 
 # zyn_routed_* are used to avoid changing routes made by other jack clients
 zyn_routed_audio = {}			# Map of lists of audio sources routed by zynautoconnect, indexed by destination
@@ -227,6 +228,34 @@ def get_midi_out_devid_by_uid(uid):
 			return i
 	return None
 
+def get_midi_in_dev_mode(idev):
+	"""Get mode for a midi input device
+
+	returns: mode (ACTI|OMNI|MULTI)
+	"""
+	if 0 <= idev < len(devices_in_mode):
+		return devices_in_mode[idev]
+	else:
+		return None
+
+def update_midi_in_dev_mode(idev):
+	"""Update mode cache for a midi input device
+
+	idev : midi input device index
+	"""
+	if 0 <= idev < len(devices_in_mode):
+		if lib_zyncore.zmip_get_flag_active_chan(idev):
+			devices_in_mode[idev] = "ACTI"
+		elif lib_zyncore.zmip_get_flag_omni_chan(idev):
+			devices_in_mode[idev] = "OMNI"
+		else:
+			devices_in_mode[idev] = "MULTI"
+
+def update_midi_in_dev_mode_all():
+	"""Update mode cache for all midi input devices
+	"""
+	for idev in range(len(devices_in_mode)):
+		update_midi_in_dev_mode(idev)
 
 # ------------------------------------------------------------------------------
 
@@ -887,8 +916,12 @@ def init():
 	logging.info(f"Initializing {max_num_devs} slots for MIDI devices")
 	while len(devices_in) < max_num_devs:
 		devices_in.append(None)
+	while len(devices_in_mode) < max_num_devs:
+		devices_in_mode.append(None)
 	while len(devices_out) < max_num_devs:
 		devices_out.append(None)
+
+	update_midi_in_dev_mode_all()
 
 
 def start(sm):

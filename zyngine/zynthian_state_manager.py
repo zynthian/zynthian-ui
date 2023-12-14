@@ -1184,6 +1184,7 @@ class zynthian_state_manager:
                     lib_zyncore.zmip_set_flag_omni_chan(zmip, bool(state["zmip_omni_chan"]))
                 except:
                     pass
+                zynautoconnect.update_midi_in_dev_mode(zmip)
                 try:
                     if state["ctrldev_load"]:
                         self.ctrldev_manager.load_driver(zmip)
@@ -1198,7 +1199,6 @@ class zynthian_state_manager:
                         lib_zyncore.zmop_set_route_from(ch, zmip, routed_chains[ch])
                 except:
                     pass
-
         else:
             self.reset_midi_capture_state()
 
@@ -1207,6 +1207,7 @@ class zynthian_state_manager:
             # Set zmip flags
             lib_zyncore.zmip_set_flag_active_chan(i, 1)
             lib_zyncore.zmip_set_flag_omni_chan(i, 0)
+            zynautoconnect.devices_in_mode[i] = "ACTI"
             # Route zmops (chans)
             for ch in (0, 16):
                 lib_zyncore.zmop_set_route_from(ch, i, 1)

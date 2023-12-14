@@ -1884,7 +1884,7 @@ class zynthian_gui:
 					self.last_event_flag = True
 					continue
 
-				#idev = (ev & 0xFF000000) >> 24
+				idev = (ev & 0xFF000000) >> 24
 				evtype = (ev & 0xF00000) >> 20
 				chan = (ev & 0x0F0000) >> 16
 				#logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))
@@ -2021,14 +2021,22 @@ class zynthian_gui:
 
 				# Note-On...
 				elif evtype == 0x9:
-					self.screens['midi_chan'].midi_chan_activity(chan)
-					# Preload preset (note-on)
-					if self.current_screen == 'preset' and zynthian_gui_config.preset_preload_noteon and chan == self.get_current_processor().get_midi_chan():
+					# Pattern recording
+					if self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
+						self.screens['pattern_editor'].midi_note((ev & 0x7F00) >> 8)
+					# Preload preset (note-on) => TODO: support OMNI mode!! Need to cache device->chain routes
+					elif self.current_screen == 'preset' and zynthian_gui_config.preset_preload_noteon and\
+							(zynautoconnect.get_midi_in_dev_mode(idev) == "ACTI" or chan == self.get_current_processor().get_midi_chan()):
 						self.screens['preset'].preselect_action()
 					# Note Range Learn
 					elif self.current_screen == 'midi_key_range' and self.state_manager.midi_learn_state:
 						self.screens['midi_key_range'].learn_note_range((ev & 0x7F00) >> 8)
-					elif self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
+					self.screens['midi_chan'].midi_chan_activity(chan)
+
+				# Note-Off...
+				elif evtype == 0x8:
+					# Pattern recording
+					if self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
 						self.screens['pattern_editor'].midi_note((ev & 0x7F00) >> 8)
 
 				# Flag MIDI event
