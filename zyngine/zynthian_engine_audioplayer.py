@@ -135,9 +135,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.monitors_dict[processor.handle]['codec'] = "UNKNOWN"
 
 
-	def del_processor(self, processor):
+	def remove_processor(self, processor):
 		self.player.remove_player(processor.handle)
-		super().del_processor(processor)
+		super().remove_processor(processor)
 
 
 	# ---------------------------------------------------------------------------

@@ -89,7 +89,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			pos = self.zyngui.chain_manager.get_chain_index(self.chain_id)
 			if pos:
 				self.list_data.append((self.move_chain_down, None, "⇦Move chain left"))
-			if pos < len(self.zyngui.chain_manager.chain_ids_ordered) - 2:
+			if pos < len(self.zyngui.chain_manager.ordered_chain_ids) - 2:
 				self.list_data.append((self.move_chain_up, None, "⇨Move chain right"))
 
 		self.list_data.append((None, None, "> Chain"))
@@ -178,7 +178,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			self.list_data[i][0](self.list_data[i][1], t)
 
 	def arrow_right(self):
-		chain_keys = self.zyngui.chain_manager.chain_ids_ordered
+		chain_keys = self.zyngui.chain_manager.ordered_chain_ids
 		try:
 			index = chain_keys.index(self.chain_id) + 1
 		except:
@@ -192,7 +192,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			self.fill_list()
 
 	def arrow_left(self):
-		chain_keys = self.zyngui.chain_manager.chain_ids_ordered
+		chain_keys = self.zyngui.chain_manager.ordered_chain_ids
 		try:
 			index = chain_keys.index(self.chain_id) - 1
 		except:
