@@ -69,7 +69,7 @@ class zynthian_chain_manager():
         self.state_manager = state_manager
 
         self.chains = {}  # Map of chain objects indexed by chain id
-        self.chain_ids_ordered = []  # List of chain IDs in display order
+        self.ordered_chain_ids = []  # List of chain IDs in display order
         self.zyngine_counter = 0  # Appended to engine names for uniqueness
         self.zyngines = OrderedDict()  # List of instantiated engines
         self.processors = {}  # Dictionary of processor objects indexed by UID
@@ -170,13 +170,13 @@ class zynthian_chain_manager():
         self.set_midi_chan(chain_id, midi_chan)
         chain_pos = self.get_chain_index(self.active_chain_id)
         self.set_active_chain_by_id(chain_id)
-        self.chain_ids_ordered.insert(chain_pos, chain_id)
+        self.ordered_chain_ids.insert(chain_pos, chain_id)
 
         zynautoconnect.request_audio_connect(True)
         zynautoconnect.request_midi_connect(True)
 
         logging.debug(f"ADDED CHAIN {chain_id} => midi_chan={chain.midi_chan}, mixer_chan={chain.mixer_chan}, zmop_index={chain.zmop_index}")
-        #logging.debug(f"chain_ids_ordered = {self.chain_ids_ordered}")
+        #logging.debug(f"ordered_chain_ids = {self.ordered_chain_ids}")
         #logging.debug(f"midi_chan_2_chain_ids = {self.midi_chan_2_chain_ids}")
 
         self.state_manager.end_busy("add_chain")
@@ -203,6 +203,7 @@ class zynthian_chain_manager():
             zmop_index = chain_state['zmop_index']
         else:
             zmop_index = None
+        self.set_active_chain_by_id(0) # Want to add new chains immediately before Main chain
         self.add_chain(chain_id, midi_chan=midi_chan, midi_thru=midi_thru, audio_thru=audio_thru, mixer_chan=mixer_chan, zmop_index=zmop_index)
 
     def remove_chain(self, chain_id, stop_engines=True):
@@ -237,12 +238,8 @@ class zynthian_chain_manager():
                 mute = self.state_manager.zynmixer.get_mute(chain.mixer_chan)
                 self.state_manager.zynmixer.set_mute(chain.mixer_chan, True, True)
             for processor in chain.get_processors():
-                for param in processor.controllers_dict:
-                    self.remove_midi_learn(processor, param)
-                try:
-                    self.processors.pop(processor.id)
-                except Exception as e:
-                    pass
+                self.remove_processor(chain_id, processor, False, False)
+
             chain.reset()
             if chain_id != 0:
                 if chain.mixer_chan is not None:
@@ -251,8 +248,8 @@ class zynthian_chain_manager():
                 self.chains.pop(chain_id)
                 self.state_manager.zynmixer.set_mute(chain.mixer_chan, False, True)
                 del chain
-                if chain_id in self.chain_ids_ordered:
-                    self.chain_ids_ordered.remove(chain_id)
+                if chain_id in self.ordered_chain_ids:
+                    self.ordered_chain_ids.remove(chain_id)
             else:
                 self.state_manager.zynmixer.set_mute(chain.mixer_chan, mute, True)
 
@@ -262,7 +259,7 @@ class zynthian_chain_manager():
         if stop_engines:
             self.stop_unused_engines()
         if self.active_chain_id not in self.chains:
-            if chain_pos + 1 >= len(self.chain_ids_ordered):
+            if chain_pos + 1 >= len(self.ordered_chain_ids):
                 chain_pos -= 1
             self.set_active_chain_by_index(chain_pos)
         self.state_manager.end_busy("remove_chain")
@@ -282,16 +279,16 @@ class zynthian_chain_manager():
         return success
 
     def move_chain_down(self, chain_id):
-        if chain_id in self.chain_ids_ordered:
-            index = self.chain_ids_ordered.index(chain_id)
-            if index > 0 and index < len(self.chain_ids_ordered) - 1:
-                self.chain_ids_ordered[index], self.chain_ids_ordered[index - 1] = self.chain_ids_ordered[index - 1], self.chain_ids_ordered[index]
+        if chain_id in self.ordered_chain_ids:
+            index = self.ordered_chain_ids.index(chain_id)
+            if index > 0 and index < len(self.ordered_chain_ids) - 1:
+                self.ordered_chain_ids[index], self.ordered_chain_ids[index - 1] = self.ordered_chain_ids[index - 1], self.ordered_chain_ids[index]
 
     def move_chain_up(self, chain_id):
-        if chain_id in self.chain_ids_ordered:
-            index = self.chain_ids_ordered.index(chain_id)
-            if index  < len(self.chain_ids_ordered) - 2:
-                self.chain_ids_ordered[index], self.chain_ids_ordered[index + 1] = self.chain_ids_ordered[index + 1], self.chain_ids_ordered[index]
+        if chain_id in self.ordered_chain_ids:
+            index = self.ordered_chain_ids.index(chain_id)
+            if index  < len(self.ordered_chain_ids) - 2:
+                self.ordered_chain_ids[index], self.ordered_chain_ids[index + 1] = self.ordered_chain_ids[index + 1], self.ordered_chain_ids[index]
 
 
     def get_chain_count(self):
@@ -311,7 +308,7 @@ class zynthian_chain_manager():
         """Get a chain object by the index"""
 
         try:
-            return self.chains[self.chain_ids_ordered[index]]
+            return self.chains[self.ordered_chain_ids[index]]
         except:
             return None
 
@@ -319,7 +316,7 @@ class zynthian_chain_manager():
         """Get a chain ID by the index"""
 
         try:
-            return self.chain_ids_ordered[index]
+            return self.ordered_chain_ids[index]
         except:
             return None
 
@@ -524,12 +521,12 @@ class zynthian_chain_manager():
     def set_active_chain_by_index(self, index):
         """Select the active chain by index
 
-        index : Index of chain in chain_ids_ordered
+        index : Index of chain in ordered_chain_ids
         Returns : ID of active chain
         """
 
-        if index < len(self.chain_ids_ordered):
-            return self.set_active_chain_by_id(self.chain_ids_ordered[index])
+        if index < len(self.ordered_chain_ids):
+            return self.set_active_chain_by_id(self.ordered_chain_ids[index])
         else:
             return self.set_active_chain_by_id(0)
 
@@ -543,7 +540,7 @@ class zynthian_chain_manager():
 
         index = self.get_chain_index(self.active_chain_id)
         index += nudge
-        index = min(index, len(self.chain_ids_ordered) - 1)
+        index = min(index, len(self.ordered_chain_ids) - 1)
         index = max(index, 0)
         return self.set_active_chain_by_index(index)
 
@@ -570,8 +567,8 @@ class zynthian_chain_manager():
         returns : Index or 0 if not found
         """
         
-        if chain_id in self.chain_ids_ordered:
-            return self.chain_ids_ordered.index(chain_id)
+        if chain_id in self.ordered_chain_ids:
+            return self.ordered_chain_ids.index(chain_id)
         return 0
 
     # ------------------------------------------------------------------------
@@ -629,7 +626,7 @@ class zynthian_chain_manager():
         self.state_manager.end_busy("add_processor")
         return None
 
-    def remove_processor(self, chain_id, processor, stop_engine=True):
+    def remove_processor(self, chain_id, processor, stop_engine=True, autoroute=True):
         """Remove a processor from a chain
 
         chain : Chain id
@@ -663,8 +660,9 @@ class zynthian_chain_manager():
                 pass
             if stop_engine:
                 self.stop_unused_engines()
-        zynautoconnect.request_audio_connect(True)
-        zynautoconnect.request_midi_connect(True)
+        if autoroute:
+            zynautoconnect.request_audio_connect(True)
+            zynautoconnect.request_midi_connect(True)
         self.state_manager.end_busy("remove_processor")
         return success
 
@@ -821,8 +819,8 @@ class zynthian_chain_manager():
         """Get dictionary of chain slot states indexed by chain id"""
 
         state = {}
-        for chain_id, chain in self.chains.items():
-            state[chain_id] = chain.get_state()
+        for chain_id in self.ordered_chain_ids:
+            state[chain_id] = self.chains[chain_id].get_state()
         return state
 
     def get_zs3_processor_state(self):

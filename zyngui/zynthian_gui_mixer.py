@@ -154,7 +154,7 @@ class zynthian_gui_mixer_strip():
 
 		# Legend strip at bottom of screen
 		self.legend_strip_bg = self.parent.main_canvas.create_rectangle(x, self.height - self.legend_height, x + self.width, self.height, width=0, tags=(f"strip:{self.fader_bg}",f"legend_strip:{self.fader_bg}"), fill=self.legend_bg_color)
-		self.legend_strip_txt = self.parent.main_canvas.create_text(int(fader_centre), self.height - self.legend_height / 2, fill=self.legend_txt_color, text="-", tags=(f"strip:{self.fader_bg}",f"legend_strip:{self.fader_bg}"), font=self.font_icons)
+		self.legend_strip_txt = self.parent.main_canvas.create_text(int(fader_centre), self.height - self.legend_height / 2, fill=self.legend_txt_color, text="-", tags=(f"strip:{self.fader_bg}",f"legend_strip:{self.fader_bg}"), font=self.font)
 
 		# Balance indicator
 		self.balance_left = self.parent.main_canvas.create_rectangle(x, self.balance_top, int(fader_centre - 0.5), self.balance_top + self.balance_height, fill=self.left_color, width=0, tags=(f"strip:{self.fader_bg}", f"balance:{self.fader_bg}", f"audio_strip:{self.fader_bg}"))
@@ -355,7 +355,7 @@ class zynthian_gui_mixer_strip():
 		if control == None:
 			self.parent.main_canvas.itemconfig(self.legend, text="")
 			if self.chain_id == 0:
-				self.parent.main_canvas.itemconfig(self.legend_strip_txt, text="Main")
+				self.parent.main_canvas.itemconfig(self.legend_strip_txt, text="Main", font=self.font)
 				self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text(), state=tkinter.NORMAL)
 			else:
 				if isinstance(self.chain.midi_chan, int):
@@ -859,7 +859,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		active_strip = None
 		strip_index = 0
-		for chain_id in self.zyngui.chain_manager.chain_ids_ordered[:-1][self.mixer_strip_offset:self.mixer_strip_offset + len(self.visible_mixer_strips)]:
+		for chain_id in self.zyngui.chain_manager.ordered_chain_ids[:-1][self.mixer_strip_offset:self.mixer_strip_offset + len(self.visible_mixer_strips)]:
 			strip = self.visible_mixer_strips[strip_index]
 			strip.set_chain(chain_id)
 			if strip.chain.mixer_chan is not None and strip.chain.mixer_chan < len(self.zynmixer.zctrls):
