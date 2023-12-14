@@ -278,18 +278,21 @@ class zynthian_chain_manager():
             success &= self.remove_chain(chain, stop_engines)
         return success
 
-    def move_chain_down(self, chain_id):
-        if chain_id in self.ordered_chain_ids:
-            index = self.ordered_chain_ids.index(chain_id)
-            if index > 0 and index < len(self.ordered_chain_ids) - 1:
-                self.ordered_chain_ids[index], self.ordered_chain_ids[index - 1] = self.ordered_chain_ids[index - 1], self.ordered_chain_ids[index]
+    def move_chain(self, offset, chain_id=None):
+        """Move a chain's position
+        
+        chain_id - Chain id
+        offset - Position to move to relative to current position (+/-)
+        """
 
-    def move_chain_up(self, chain_id):
-        if chain_id in self.ordered_chain_ids:
+        if chain_id is None:
+            chain_id = self.active_chain_id
+        if chain_id and chain_id in self.ordered_chain_ids:
             index = self.ordered_chain_ids.index(chain_id)
-            if index  < len(self.ordered_chain_ids) - 2:
-                self.ordered_chain_ids[index], self.ordered_chain_ids[index + 1] = self.ordered_chain_ids[index + 1], self.ordered_chain_ids[index]
-
+            pos = index + offset
+            pos = min(pos, len(self.ordered_chain_ids) - 2)
+            pos = max(pos, 0)
+            self.ordered_chain_ids.insert(pos, self.ordered_chain_ids.pop(index))
 
     def get_chain_count(self):
         """Get the quantity of chains"""

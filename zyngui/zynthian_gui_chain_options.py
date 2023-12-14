@@ -86,11 +86,8 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 				self.list_data.append((self.toggle_recording, None, "⬤ Start Audio Recording"))
 
 		if self.chain_id:
-			pos = self.zyngui.chain_manager.get_chain_index(self.chain_id)
-			if pos:
-				self.list_data.append((self.move_chain_down, None, "⇦Move chain left"))
-			if pos < len(self.zyngui.chain_manager.ordered_chain_ids) - 2:
-				self.list_data.append((self.move_chain_up, None, "⇨Move chain right"))
+			if len(self.zyngui.chain_manager.ordered_chain_ids) > 2:
+				self.list_data.append((self.move_chain, None, "⇦⇨Move chain"))
 
 		self.list_data.append((None, None, "> Chain"))
 
@@ -287,12 +284,8 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			self.zyngui.state_manager.audio_recorder.toggle_recording(self.zyngui.state_manager.audio_player)
 		self.fill_list()
 
-	def move_chain_down(self):
-		self.zyngui.chain_manager.move_chain_down(self.chain_id)
-		self.zyngui.show_screen_reset('audio_mixer')
-
-	def move_chain_up(self):
-		self.zyngui.chain_manager.move_chain_up(self.chain_id)
+	def move_chain(self):
+		self.zyngui.screens["audio_mixer"].moving_chain = True
 		self.zyngui.show_screen_reset('audio_mixer')
 
 	# Remove submenu

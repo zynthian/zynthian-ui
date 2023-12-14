@@ -358,15 +358,20 @@ class zynthian_gui_mixer_strip():
 				self.parent.main_canvas.itemconfig(self.legend_strip_txt, text="Main", font=self.font)
 				self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text(), state=tkinter.NORMAL)
 			else:
-				if isinstance(self.chain.midi_chan, int):
+				font = self.font
+				if self.parent.moving_chain and self.chain_id == self.parent.zyngui.chain_manager.active_chain_id:
+					strip_txt = f"⇦⇨"
+				elif isinstance(self.chain.midi_chan, int):
 					strip_txt = f"♫ {self.chain.midi_chan + 1}"
-					self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=strip_txt, font=self.font)
 				elif self.chain.is_audio:
-					strip_txt = "\uf130" * min(4, len(self.chain.audio_in))
-					self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=strip_txt, font=self.font_icons)
+					strip_txt = "\uf130"
+					font = self.font_icons
 				else:
 					strip_txt = "\uf0ae"
-					self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=strip_txt, font=self.font_icons)
+					font = self.font_icons
+					procs = self.chain.get_processor_count() - 1
+				self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=strip_txt, font=font)
+
 				label_parts = self.get_legend_text().split("\n")
 				for i, label in enumerate(label_parts):
 					self.parent.main_canvas.itemconfig(self.legend, text=label, state=tkinter.NORMAL)
@@ -679,6 +684,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.MAIN_MIXBUS_STRIP_INDEX = self.zynmixer.MAX_NUM_CHANNELS
 		self.chan2strip = [None] * (self.MAIN_MIXBUS_STRIP_INDEX + 1)
 		self.highlighted_strip = None # highligted mixer strip object
+		self.moving_chain = False # True if moving a chain left/right
 
 		self.pending_refresh_queue = set() # List of (strip,control) requiring gui refresh (control=None for whole strip refresh)
 		self.midi_learning = False
@@ -889,7 +895,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle SELECT button press
 	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, type='S'):
-		if type == "S" and not self.midi_learning:
+		if self.moving_chain:
+			self.moving_chain = False
+			self.refresh_visible_strips()
+		elif type == "S" and not self.midi_learning:
 			self.zyngui.chain_control()
 		elif type == "B":
 			# Chain Options
@@ -899,6 +908,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle BACK action
 	def back_action(self):
+		if self.moving_chain:
+			self.moving_chain = False
+			self.refresh_visible_strips()
+
 		if self.midi_learning:
 			self.zynmixer.disable_midi_learn()
 		return True
@@ -969,21 +982,32 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		# SELECT encoder moves chain selection
 		elif i == 3:
-			self.zyngui.chain_manager.next_chain(dval)
-			self.highlight_active_chain()
-
+			if self.moving_chain:
+				self.zyngui.chain_manager.move_chain(dval)
+				self.refresh_visible_strips()
+			else:
+				self.zyngui.chain_manager.next_chain(dval)
+				self.highlight_active_chain()
 
 
 	# Function to handle CUIA ARROW_LEFT
 	def arrow_left(self):
-		self.zyngui.chain_manager.previous_chain()
-		self.highlight_active_chain()
+		if self.moving_chain:
+			self.zyngui.chain_manager.move_chain(-1)
+			self.refresh_visible_strips()
+		else:
+			self.zyngui.chain_manager.previous_chain()
+			self.highlight_active_chain()
 
 
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
-		self.zyngui.chain_manager.next_chain()
-		self.highlight_active_chain()
+		if self.moving_chain:
+			self.zyngui.chain_manager.move_chain(1)
+			self.refresh_visible_strips()
+		else:
+			self.zyngui.chain_manager.next_chain()
+			self.highlight_active_chain()
 
 
 	# Function to handle CUIA ARROW_UP
