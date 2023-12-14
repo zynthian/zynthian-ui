@@ -51,6 +51,7 @@ class zynthian_chain_manager():
 
     # Subsignals are defined inside each module. Here we define chain_manager subsignals:
     SS_SET_ACTIVE_CHAIN = 1
+    SS_MOVE_CHAIN = 2
 
     single_processor_engines = ["BF", "MD", "PT", "PD", "AE", "CS", "SL"]
 
@@ -293,6 +294,7 @@ class zynthian_chain_manager():
             pos = min(pos, len(self.ordered_chain_ids) - 2)
             pos = max(pos, 0)
             self.ordered_chain_ids.insert(pos, self.ordered_chain_ids.pop(index))
+            zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_MOVE_CHAIN)
 
     def get_chain_count(self):
         """Get the quantity of chains"""
@@ -322,6 +324,14 @@ class zynthian_chain_manager():
             return self.ordered_chain_ids[index]
         except:
             return None
+
+    def get_chain_id_by_mixer_chan(self, chan):
+        """Get a chain by the mixer channel"""
+
+        for chain_id, chain in self.chains.items():
+            if chain.mixer_chan is not None and chain.mixer_chan == chan:
+                return chain_id
+        return None
 
     # ------------------------------------------------------------------------
     # Chain Input/Output and Routing Management

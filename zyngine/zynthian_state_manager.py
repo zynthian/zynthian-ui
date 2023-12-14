@@ -810,7 +810,13 @@ class zynthian_state_manager:
         if "chains" in zs3_state:
             self.set_busy_details("restoring chains state")
             for chain_id, chain_state in zs3_state["chains"].items():
-                chain_id = int(chain_id)
+                try:
+                    chain_id = int(chain_id)
+                except Exception as e:
+                    if chain_id == "main":
+                        chain_id = 0
+                    else:
+                        raise e
                 try:
                     restore_flag = chain_state["restore"]
                 except:

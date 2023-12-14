@@ -85,11 +85,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			else:
 				self.list_data.append((self.toggle_recording, None, "⬤ Start Audio Recording"))
 
-		if self.chain_id:
-			if len(self.zyngui.chain_manager.ordered_chain_ids) > 2:
-				self.list_data.append((self.move_chain, None, "⇦⇨Move chain"))
-
-		self.list_data.append((None, None, "> Chain"))
+		self.list_data.append((None, None, "> Processors"))
 
 		if self.chain.is_midi():
 			# Add MIDI-FX options
@@ -108,6 +104,12 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 				self.list_data.append((self.remove_cb, None, "Remove..."))
 		elif self.chain.get_processor_count("Audio Effect") > 1:
 			self.list_data.append((self.remove_all_audiofx, None, "Remove all Audio-FX"))
+
+		self.list_data.append((None, None, "> GUI"))
+
+		if self.chain_id:
+			if len(self.zyngui.chain_manager.ordered_chain_ids) > 2:
+				self.list_data.append((self.move_chain, None, "⇦⇨ Move chain"))
 
 		super().fill_list()
 
