@@ -141,7 +141,8 @@ ZynthianState = {
                     "zmip_active_chan": 1, # 1 if active chain mode enabled (stage mode)
                     "zmip_omni_chan": 0, # 1 if omni mode enabled
                     "ctrldev_load": 0, # 1 to attempt loading controller device driver
-                    "routed_chains": [] # List of chain zmops this input is routed to
+                    "routed_chains": [], # List of chain zmops this input is routed to
+                    "audio_in": [0,1] # List of audio inputs, e.g. for aubio (optional)
                 }
             },
             "midi_clone": { # Dictionary MIDI clone configs mapped by source channel

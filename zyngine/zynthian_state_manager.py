@@ -132,6 +132,7 @@ class zynthian_state_manager:
         self.zynseq = zynseq.zynseq()
         self.ctrldev_manager = None
         self.audio_player = None
+        self.aubio_in = [1,2] # List of aubio inputs
 
         # Initialize SMF MIDI recorder and player
         try:
@@ -1164,6 +1165,8 @@ class zynthian_state_manager:
                 "ctrldev_load": idev in self.ctrldev_manager.drivers,
                 "routed_chains": routed_chains
             }
+            if uid == "AUBIO:in":
+                mcstate[uid]["audio_in"] = self.aubio_in
 
         return mcstate
 
@@ -1179,6 +1182,10 @@ class zynthian_state_manager:
                     pass
                 try:
                     lib_zyncore.zmip_set_flag_omni_chan(zmip, bool(state["zmip_omni_chan"]))
+                except:
+                    pass
+                try:
+                    self.aubio_in = state["audio_in"]
                 except:
                     pass
                 zynautoconnect.update_midi_in_dev_mode(zmip)

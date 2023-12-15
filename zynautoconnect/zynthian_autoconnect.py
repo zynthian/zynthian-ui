@@ -624,13 +624,12 @@ def audio_autoconnect():
 	# Connect inputs to aubionotes
 	if zynthian_gui_config.midi_aubionotes_enabled:
 		capture_ports = get_audio_capture_ports()
-		#Get Aubio Input ports...
-		aubio_in = jclient.get_ports("aubio", is_input=True, is_audio=True)
-		nip = len(aubio_in)
-		if nip:
-			#Connect System Capture to Aubio ports
-			for i, scp in enumerate(capture_ports):
-				required_routes[aubio_in[i % nip].name].add(scp.name)
+		for port in jclient.get_ports("aubio", is_input=True, is_audio=True):
+			for i in state_manager.aubio_in:
+				try:
+					required_routes[port.name].add(capture_ports[i - 1].name)
+				except:
+					pass
 
 	# Remove mod-ui routes
 	for dst in list(required_routes.keys()):
