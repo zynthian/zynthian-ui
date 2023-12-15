@@ -174,6 +174,9 @@ class zynthian_state_manager:
             except Exception as e:
                 logging.error(f"Can't access monitoring sensors at all! => {e}")
 
+		# Start VNC as configured
+        self.default_vncserver()
+
         zynautoconnect.start(self)
         self.zynmixer.reset_state()
         self.ctrldev_manager = zynthian_ctrldev_manager(self)

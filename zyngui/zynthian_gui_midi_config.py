@@ -26,7 +26,7 @@
 
 import logging
 from collections import OrderedDict
-from threading import Timer
+from threading import Thread
 from subprocess import check_output, Popen, PIPE
 from time import sleep
 
@@ -50,41 +50,29 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
     def __init__(self):
         self.chain = None      # Chain object
-        self.chain_zmop = None
         self.ble_devices = {}  # Map of BLE MIDI device configs indexed by BLE address. Config: [name, paired, trusted, connected]
         self.input = True      # True to process MIDI inputs, False for MIDI outputs
-        self.fingerprint = []  # Used to detect changes in port list
         self.ble_scan_proc = None
+        self.thread = None
         super().__init__('MIDI Devices', True)
 
     def build_view(self):
-        if self.input:
-            self.fingerprint = zynautoconnect.get_hw_src_ports()
-        else:
-            self.fingerprint = zynautoconnect.get_hw_dst_ports()
+        # Enable background scan for MIDI devices
+        self.midi_scan = True
+        self.thread = Thread(target=self.process_dynamic_ports, name="MIDI port scan")
+        self.thread.start()
+        # Only scan for new BLE devices in admin view
         if self.chain is None:
-            # Start scanning and processing bluetooth
-            self.ble_scan_proc = Popen('bluetoothctl', stdin=PIPE, stdout=PIPE, encoding='utf-8')
-            self.ble_scan_proc.stdin.write('menu scan\nuuids 03B80E5A-EDE8-4B33-A751-6CE34EC4C700\nback\nscan on\n')
-            self.ble_scan_proc.stdin.flush()
-            Timer(0.1, self.process_dynamic_ports).start()
+            self.enable_ble_scan()
         super().build_view()
 
     def hide(self):
-        if self.ble_scan_proc:
-            # Stop bluetooth scanning
-            self.ble_scan_proc.stdin.write('scan off\nexit\n')
-            self.ble_scan_proc.stdin.flush()
-            self.ble_scan_proc.terminate()
-            self.ble_scan_proc = None
+        self.disable_ble_scan()
+        self.midi_scan = False
         super().hide()
 
     def set_chain(self, chain):
         self.chain = chain
-        if self.chain:
-            self.chain_zmop = self.chain.midi_chan    # This could change in the future, when multi-channel chains are implemented
-        else:
-            self.chain_zmop = None
         self.set_select_path()
 
     def fill_list(self):
@@ -129,7 +117,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 elif idev in self.zyngui.state_manager.ctrldev_manager.drivers:
                     self.list_data.append((port.aliases[0], idev, f"    {mode}{port.aliases[1]}"))
                 else:
-                    if lib_zyncore.zmop_get_route_from(self.chain_zmop, idev):
+                    if lib_zyncore.zmop_get_route_from(self.chain.zmop_index, idev):
                         self.list_data.append((port.aliases[0], idev, f"\u2612 {mode}{port.aliases[1]}"))
                     else:
                         self.list_data.append((port.aliases[0], idev, f"\u2610 {mode}{port.aliases[1]}"))
@@ -299,16 +287,18 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             elif action == "start_aubionotes":
                 self.zyngui.state_manager.start_aubionotes(wait=wait)
             elif action == "stop_bluetooth":
+                self.disable_ble_scan()
                 self.zyngui.state_manager.stop_bluetooth(wait=wait)
             elif action == "start_bluetooth":
                 self.zyngui.state_manager.start_bluetooth(wait=wait)
+                self.enable_ble_scan()
             # Route/Unroute
             elif self.chain:
                 if self.input:
                     idev = self.list_data[i][1]
                     if idev in self.zyngui.state_manager.ctrldev_manager.drivers:
                         return
-                    lib_zyncore.zmop_set_route_from(self.chain_zmop, idev, not lib_zyncore.zmop_get_route_from(self.chain_zmop, idev))
+                    lib_zyncore.zmop_set_route_from(self.chain.zmop_index, idev, not lib_zyncore.zmop_get_route_from(self.chain.zmop_index, idev))
                 else:
                     try:
                         self.zyngui.chain_manager.get_active_chain().toggle_midi_out(self.list_data[i][0])
@@ -389,58 +379,74 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         except:
             pass  # Ports may have changed since menu opened
 
+    def enable_ble_scan(self):
+        """Enable scanning for BLE MIDI devices"""
+
+        if self.chain is None:
+            # Start scanning and processing bluetooth
+            self.ble_scan_proc = Popen('bluetoothctl', stdin=PIPE, stdout=PIPE, encoding='utf-8')
+            self.ble_scan_proc.stdin.write('menu scan\nuuids 03B80E5A-EDE8-4B33-A751-6CE34EC4C700\nback\nscan on\n')
+            self.ble_scan_proc.stdin.flush()
+
+    def disable_ble_scan(self):
+        """Stop scanning for BLE MIDI devices"""
+
+        if self.ble_scan_proc:
+            # Stop bluetooth scanning
+            self.ble_scan_proc.stdin.write('scan off\nexit\n')
+            self.ble_scan_proc.stdin.flush()
+            self.ble_scan_proc.terminate()
+            self.ble_scan_proc = None
+
     def process_dynamic_ports(self):
-        """Process dynamically added/removed MIDI devices
-        
-        Calls itself every 2s
-        """
-
-        if not self.shown or not zynthian_gui_config.bluetooth_enabled:
-            return
-
-        update = False
-        try:
-            # Get list of available BLE Devices
-            devices = check_output(['bluetoothctl', 'devices'], encoding='utf-8', timeout=0.1).split('\n')
-            for device in devices:
-                if not device:
-                    continue
-                addr = device.split()[1]
-                name = device[25:]
-                info = check_output(['bluetoothctl', 'info', addr], encoding='utf-8', timeout=0.1).split('\n')
-                for line in info:
-                    if line.startswith('\tName:'):
-                        name = line[7:]
-                    if line.startswith('\tPaired:'):
-                        paired = line[9:] == "yes"
-                    if line.startswith('\tTrusted:'):
-                        trusted = line[10:] == "yes"
-                    if line.startswith('\tConnected:'):
-                        connected = line[12:] == "yes"
-                if addr not in self.ble_devices or self.ble_devices[addr] != [name, paired, trusted, connected]:
-                    self.ble_devices[addr] = [name, paired, trusted, connected]
-                    update = True
-                if connected and not trusted:
-                    # Do not let an untrusted device remain connected
-                    check_output(['bluetoothctl', 'disconnect', addr], encoding='utf-8', timeout=5)
-        except:
-            pass
+        """Process dynamically added/removed MIDI devices"""
 
         if self.input:
-            if self.fingerprint != zynautoconnect.get_hw_src_ports():
-                self.fingerprint = zynautoconnect.get_hw_src_ports()
-                update = True
+            last_fingerprint = zynautoconnect.get_hw_src_ports()
         else:
-            if self.fingerprint != zynautoconnect.get_hw_dst_ports():
-                self.fingerprint = zynautoconnect.get_hw_dst_ports()
+            last_fingerprint = zynautoconnect.get_hw_dst_ports()
+
+        while self.midi_scan:
+            update = False
+            try:
+                # Get list of available BLE Devices
+                devices = check_output(['bluetoothctl', 'devices'], encoding='utf-8', timeout=0.1).split('\n')
+                for device in devices:
+                    if not device:
+                        continue
+                    addr = device.split()[1]
+                    name = device[25:]
+                    info = check_output(['bluetoothctl', 'info', addr], encoding='utf-8', timeout=0.1).split('\n')
+                    for line in info:
+                        if line.startswith('\tName:'):
+                            name = line[7:]
+                        if line.startswith('\tPaired:'):
+                            paired = line[9:] == "yes"
+                        if line.startswith('\tTrusted:'):
+                            trusted = line[10:] == "yes"
+                        if line.startswith('\tConnected:'):
+                            connected = line[12:] == "yes"
+                    if addr not in self.ble_devices or self.ble_devices[addr] != [name, paired, trusted, connected]:
+                        self.ble_devices[addr] = [name, paired, trusted, connected]
+                        update = True
+                    if connected and not trusted:
+                        # Do not let an untrusted device remain connected
+                        check_output(['bluetoothctl', 'disconnect', addr], encoding='utf-8', timeout=5)
+            except:
+                pass
+
+            if self.input:
+                fingerprint = zynautoconnect.get_hw_src_ports()
+            else:
+                fingerprint = zynautoconnect.get_hw_dst_ports()
+            if last_fingerprint != fingerprint:
+                self.fingerprint = fingerprint
                 update = True
 
-        if update:
-            self.fill_list()
-        
-        if self.shown:
-            # Repeat every 2s
-            Timer(2, self.process_dynamic_ports).start()
+            if update:
+                self.fill_list()
+            
+            sleep(2) # Repeat every 2s
 
     def toggle_ble_trust(self, addr):
         """Toggle trust of BLE device
