@@ -245,6 +245,15 @@ class zynthian_chain:
             pass
         return ""
 
+    def get_strid(self):
+        if isinstance(self.chain_id, int):
+            if self.chain_id == 0:
+                return "Main"
+            elif chain_id > 0:
+                return str(self.chain_id)
+            else:
+                return "None"
+
     # ----------------------------------------------------------------------------
     # Routing Graph
     # ----------------------------------------------------------------------------

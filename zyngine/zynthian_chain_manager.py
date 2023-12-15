@@ -145,11 +145,10 @@ class zynthian_chain_manager():
         self.state_manager.start_busy("add_chain")
         if chain_id is None:
             # Create new unique chain ID
-            id = 1
-            while id in self.chains:
-                id += 1
-            chain_id = id
-        if chain_id == 0: # main
+            chain_id = 1
+            while chain_id in self.chains:
+                chain_id += 1
+        if chain_id == 0:  # main
             midi_thru = False
             audio_thru = True
         if chain_id in self.chains:
@@ -866,15 +865,8 @@ class zynthian_chain_manager():
         self.stop_unused_jalv_engines() #TODO: Can we factor this out? => Not yet!!
 
         for chain_id, chain_state in state.items():
-            try:
-                chain_id = int(chain_id)
-            except Exception as e:
-                if chain_id == "main":
-                    chain_id = 0
-                else:
-                    raise e
+            chain_id = int(chain_id)
             self.add_chain_from_state(chain_id, chain_state)
-
             if "slots" in chain_state:
                 for slot_state in chain_state["slots"]:
                     # slot_state is a dict of proc_id:proc_type for procs in this slot
@@ -1045,18 +1037,12 @@ class zynthian_chain_manager():
                         self.add_midi_learn(int(midi_chan), int(cc), zctrl)
                     pass
         for chain_id, map in state["chain"].items():
+            chain_id = int(chain_id)
             for cc, ctrls in map.items():
                 for proc_id, symbol in ctrls:
                     if proc_id in self.processors:
                         proc = self.processors[proc_id]
                         zctrl = proc.controllers_dict[symbol]
-                        try:
-                            chain_id = int(chain_id)
-                        except Exception as e:
-                            if chain_id == "main":
-                                chain_id = 0
-                            else:
-                                raise e
                         self.add_midi_learn(chain_id, int(cc), zctrl)
                     pass
 

@@ -819,7 +819,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to highlight the selected chain's strip
 	def highlight_active_chain(self, refresh=False):
 		"""Higlights active chain, redrawing strips if required"""
-		chain_keys = sorted(self.zyngui.chain_manager.chains)
+		try:
+			chain_keys = sorted(self.zyngui.chain_manager.chains)
+		except:
+			logging.error(f"Ordering Chains => {self.zyngui.chain_manager.chains}")
 		try:
 			active_index = chain_keys.index(self.zyngui.chain_manager.active_chain_id)
 		except:

@@ -623,33 +623,29 @@ class zynthian_state_manager:
             if load_chains:
                 # Mute output to avoid unwanted noises
                 self.zynmixer.set_mute(255, True)
+
                 zynautoconnect.pause()
                 if "chains" in state:
                     self.chain_manager.set_state(state['chains'])
                 self.chain_manager.stop_unused_engines()
                 zynautoconnect.resume()
 
-            if "engine_config" in state:
-                self.set_busy_details("processor engine config")
-                for eid, engine_state in state["engine_config"].items():
-                    try:
-                        self.chain_manager.zyngines[eid].set_extended_config(engine_state)
-                    except Exception as e:
-                        logging.info("Failed to set extended engine state for %s: %s", eid, e)
+                if "engine_config" in state:
+                    self.set_busy_details("processor engine config")
+                    for eid, engine_state in state["engine_config"].items():
+                        try:
+                            self.chain_manager.zyngines[eid].set_extended_config(engine_state)
+                        except Exception as e:
+                            logging.info("Failed to set extended engine state for %s: %s", eid, e)
 
-            self.reset_midi_capture_state()
+                self.reset_midi_capture_state()
 
-            self.zs3 = state["zs3"]
-            self.load_zs3("zs3-0")
+                self.zs3 = state["zs3"]
+                self.load_zs3("zs3-0")
 
-            if load_sequences and "zynseq_riff_b64" in state:
-                b64_bytes = state["zynseq_riff_b64"].encode("utf-8")
-                binary_riff_data = base64.decodebytes(b64_bytes)
-                self.zynseq.restore_riff_data(binary_riff_data)
-
-            if load_chains and load_sequences:
                 if "alsa_mixer" in state:
                     self.alsa_mixer_processor.set_state(state["alsa_mixer"])
+
                 if "audio_recorder_armed" in state:
                     for midi_chan in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255]:
                         if midi_chan in state["audio_recorder_armed"]:
@@ -657,9 +653,13 @@ class zynthian_state_manager:
                         else:
                             self.audio_recorder.unarm(midi_chan)
 
-                # Restore MIDI profile state
                 if "midi_profile_state" in state:
                     self.set_midi_profile_state(state["midi_profile_state"])
+
+            if load_sequences and "zynseq_riff_b64" in state:
+                b64_bytes = state["zynseq_riff_b64"].encode("utf-8")
+                binary_riff_data = base64.decodebytes(b64_bytes)
+                self.zynseq.restore_riff_data(binary_riff_data)
 
             if fpath == self.last_snapshot_fpath and "last_state_fpath" in state:
                 self.last_snapshot_fpath = state["last_snapshot_fpath"]
@@ -810,13 +810,8 @@ class zynthian_state_manager:
         if "chains" in zs3_state:
             self.set_busy_details("restoring chains state")
             for chain_id, chain_state in zs3_state["chains"].items():
-                try:
-                    chain_id = int(chain_id)
-                except Exception as e:
-                    if chain_id == "main":
-                        chain_id = 0
-                    else:
-                        raise e
+                chain_id = int(chain_id)
+
                 try:
                     restore_flag = chain_state["restore"]
                 except:
@@ -967,7 +962,7 @@ class zynthian_state_manager:
                 "midi_chan": chain.midi_chan
             }
             if isinstance(chain.midi_chan, int) and chain.midi_chan < 16:
-                #TODO: This is MIDI channel related, not chain specific
+                # TODO: This is MIDI channel related, not chain specific
                 note_low = lib_zyncore.get_midi_filter_note_low(chain.midi_chan)
                 if note_low:
                     chain_state["note_low"] = note_low
@@ -1161,8 +1156,8 @@ class zynthian_state_manager:
 
             uid = zynautoconnect.devices_in[idev].aliases[0]
             mcstate[uid] = {
-                "zmip_active_chan": lib_zyncore.zmip_get_flag_active_chan(idev),
-                "zmip_omni_chan": lib_zyncore.zmip_get_flag_omni_chan(idev),
+                "zmip_active_chan": bool(lib_zyncore.zmip_get_flag_active_chan(idev)),
+                "zmip_omni_chan": bool(lib_zyncore.zmip_get_flag_omni_chan(idev)),
                 "ctrldev_load": idev in self.ctrldev_manager.drivers,
                 "routed_chains": routed_chains
             }
@@ -1172,9 +1167,8 @@ class zynthian_state_manager:
     def set_midi_capture_state(self, mcstate=None):
         if mcstate:
             for uid, state in mcstate.items():
-                try:
-                    zmip = zynautoconnect.get_midi_in_devid_by_uid(uid)
-                except:
+                zmip = zynautoconnect.get_midi_in_devid_by_uid(uid)
+                if zmip is None:
                     continue
                 try:
                     lib_zyncore.zmip_set_flag_active_chan(zmip, bool(state["zmip_active_chan"]))

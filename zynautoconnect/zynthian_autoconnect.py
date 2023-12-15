@@ -212,8 +212,11 @@ def get_midi_in_devid_by_uid(uid):
 	"""
 
 	for i, port in enumerate(devices_in):
-		if port and port.aliases[0] == uid:
-			return i
+		try:
+			if port and port.aliases[0] == uid:
+				return i
+		except:
+			pass
 	return None
 
 
@@ -224,8 +227,11 @@ def get_midi_out_devid_by_uid(uid):
 	"""
 
 	for i, port in enumerate(devices_out):
-		if port and port.aliases[0] == uid:
-			return i
+		try:
+			if port and port.aliases[0] == uid:
+				return i
+		except:
+			pass
 	return None
 
 def get_midi_in_dev_mode(idev):

@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
 # Zynthian GUI ZS3 options selector Class
 # 
 # Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import logging
 
@@ -29,9 +29,10 @@ import logging
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian ZS3 options GUI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_zs3_options(zynthian_gui_selector):
 
@@ -40,11 +41,9 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 		self.zs3_id = None
 		super().__init__('Option', True)
 
-
 	def config(self, id):
 		self.last_action = None
 		self.zs3_id = id
-
 
 	def fill_list(self):
 		self.list_data=[]
@@ -58,7 +57,6 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 			self.preselect_last_action()
 		super().fill_list()
 
-
 	def preselect_last_action(self, force_select=False):
 		for i, data in enumerate(self.list_data):
 			if self.last_action and self.last_action == data[0]:
@@ -69,13 +67,11 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 				return i
 		return 0
 
-
 	def select_action(self, i, t='S'):
 		self.index = i
 		if self.list_data[i][0]:
 			self.last_action = self.list_data[i][0]
 			self.last_action()
-
 
 	def zs3_restoring_submenu(self):
 		try:
@@ -88,7 +84,6 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 		self.zyngui.screens['option'].config(f"ZS3 Restoring: {title}", self.zs3_restoring_options_cb,
 			self.zs3_restoring_options_select_cb, close_on_select=False, click_type=True)
 		self.zyngui.show_screen('option')
-
 
 	def zs3_restoring_options_cb(self):
 		try:
@@ -104,7 +99,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 			if chain_id == 0:
 				continue
 			chain = self.zyngui.chain_manager.get_chain(chain_id)
-			label = f"{chain_id.title()}#{chain.get_title()}"
+			label = f"{chain_id}#{chain.get_title()}"
 			try:
 				restore_flag = chain_state["restore"]
 			except:
@@ -150,7 +145,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 			# Invert selection (toggle all elements in list)
 			for chain_id in state["chains"]:
 				self.zyngui.state_manager.toggle_zs3_chain_restore_flag(self.zs3_id, chain_id)
-			self.zyngui.state_manager.toggle_zs3_chain_restore_flag(self.zs3_id, -1) #***TODO***
+			self.zyngui.state_manager.toggle_zs3_chain_restore_flag(self.zs3_id, -1) # ***TODO***
 
 	def zs3_rename(self):
 		title = self.zyngui.state_manager.get_zs3_title(self.zs3_id)
@@ -161,16 +156,13 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 		self.zyngui.state_manager.set_zs3_title(self.zs3_id, title)
 		self.zyngui.close_screen()
 
-
 	def zs3_update(self):
 		logging.info("Updating ZS3 '{}'".format(self.zs3_id))
 		self.zyngui.state_manager.save_zs3(self.zs3_id)
 		self.zyngui.close_screen()
 
-
 	def zs3_delete(self):
 		self.zyngui.show_confirm(f"Do you really want to delete ZS3: {self.zs3_id}?", self.do_delete)
-
 
 	def do_delete(self, params):
 		if self.zs3_id == "zs3-0":
@@ -180,10 +172,8 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 			self.zyngui.state_manager.delete_zs3(self.zs3_id)
 		self.zyngui.close_screen()
 
-
 	def set_select_path(self):
 		title = self.zyngui.state_manager.get_zs3_title(self.zs3_id)
 		self.select_path.set(f"ZS3 Options: {title}")
 
-
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------

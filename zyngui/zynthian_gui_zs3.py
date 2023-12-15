@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
 # Zynthian GUI ZS3 screen
 #
 # Copyright (C) 2018-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 import tkinter
 import logging
@@ -30,9 +30,10 @@ import logging
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian Sub-SnapShot (ZS3) GUI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_zs3(zynthian_gui_selector):
 
@@ -40,12 +41,11 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 		super().__init__('Program', True)
 		
 		self.zs3_waiting_label = tkinter.Label(self.main_frame,
-			text = 'Waiting for MIDI Program Change...',
+			text='Waiting for MIDI Program Change...',
 			font=(zynthian_gui_config.font_family, zynthian_gui_config.font_size-2),
-			fg = zynthian_gui_config.color_ml,
-			bg = zynthian_gui_config.color_panel_bg
+			fg=zynthian_gui_config.color_ml,
+			bg=zynthian_gui_config.color_panel_bg
 		)
-
 
 	def show_waiting_label(self):
 		if self.wide:
@@ -54,22 +54,19 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 			padx = (2, 2)
 		self.zs3_waiting_label.grid(row=zynthian_gui_config.layout['list_pos'][0] + 4, column=zynthian_gui_config.layout['list_pos'][1], padx=padx, sticky='ew')
 
-
 	def hide_waiting_label(self):
 		self.zs3_waiting_label.grid_forget()
-
 
 	def hide(self):
 		if self.shown:
 			self.disable_midi_learn()
 			super().hide()
 
-
 	def fill_list(self):
 		self.list_data = []
 		self.list_data.append(('SAVE_ZS3', None, "Save as new ZS3"))
 
-		#Add list of programs
+		# Add list of programs
 		if len(self.zyngui.state_manager.zs3) > 0:
 			self.list_data.append((None, None, "> SAVED ZS3s"))
 		for id, state in self.zyngui.state_manager.zs3.items():
@@ -86,7 +83,6 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 			self.list_data.append((id, state, title))
 
 		super().fill_list()
-
 
 	def select_action(self, i, t='S'):
 		zs3_index = self.list_data[i][0]
@@ -108,10 +104,8 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 				self.zyngui.show_screen('zs3_options')
 				return True
 
-
 	def show_menu(self):
 		self.click_listbox(None, 'B')
-
 
 	def toggle_menu(self):
 		if self.shown:
@@ -119,24 +113,19 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 		elif self.zyngui.current_screen == "zs3_options":
 			self.close_screen()
 
-
 	def enable_midi_learn(self):
 		self.zyngui.state_manager.enable_learn_pc()
 		self.show_waiting_label()
-
 
 	def disable_midi_learn(self):
 		self.zyngui.state_manager.disable_learn_pc()
 		self.hide_waiting_label()
 
-
 	def set_select_path(self):
 		self.select_path.set("ZS3 (SubSnapShots)")
-
 
 	def back_action(self):
 		self.zyngui.state_manager.disable_learn_pc()
 		return False
 
-
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
