@@ -90,7 +90,7 @@ class zynthian_chain:
             self.title = "Main"
         else:
             self.title = ""
-        if isinstance(self.midi_chan, int) and self.midi_chan>=0 and self.midi_chan < 16:
+        if isinstance(self.midi_chan, int) and self.midi_chan >= 0 and self.midi_chan < 16:
             lib_zyncore.reset_midi_filter_note_range(self.midi_chan)
             lib_zyncore.reset_midi_filter_clone(self.midi_chan)
 
@@ -245,14 +245,6 @@ class zynthian_chain:
             pass
         return ""
 
-    def get_strid(self):
-        if isinstance(self.chain_id, int):
-            if self.chain_id == 0:
-                return "Main"
-            elif chain_id > 0:
-                return str(self.chain_id)
-            else:
-                return "None"
 
     # ----------------------------------------------------------------------------
     # Routing Graph

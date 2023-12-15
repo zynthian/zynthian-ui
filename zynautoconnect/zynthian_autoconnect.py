@@ -213,7 +213,7 @@ def get_midi_in_devid_by_uid(uid):
 
 	for i, port in enumerate(devices_in):
 		try:
-			if port and port.aliases[0] == uid:
+			if port.aliases[0] == uid:
 				return i
 		except:
 			pass
@@ -228,7 +228,7 @@ def get_midi_out_devid_by_uid(uid):
 
 	for i, port in enumerate(devices_out):
 		try:
-			if port and port.aliases[0] == uid:
+			if port.aliases[0] == uid:
 				return i
 		except:
 			pass
