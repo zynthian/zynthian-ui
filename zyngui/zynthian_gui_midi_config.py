@@ -36,6 +36,23 @@ from zyncoder.zyncore import lib_zyncore
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui import zynthian_gui_config
 
+
+# ------------------------------------------------------------------------------
+# Mini class to allow use of audio_in gui
+# ------------------------------------------------------------------------------
+class aubio_inputs():
+    def __init__(self, state_manager):
+        self.state_manager = state_manager
+        self.audio_in = state_manager.aubio_in
+
+    def toggle_audio_in(self, input):
+        if input in self.audio_in:
+            self.audio_in.remove(input)
+        else:
+            self.audio_in.append(input)
+        self.state_manager.aubio_in = self.audio_in
+        zynautoconnect.request_audio_connect()
+
 # ------------------------------------------------------------------------------
 # Zynthian MIDI config GUI Class
 # ------------------------------------------------------------------------------
@@ -350,6 +367,8 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                     port = zynautoconnect.devices_in[idev]
                 else:
                     port = zynautoconnect.devices_out[idev]
+                if self.list_data[i][0].endswith("aubionotes"):
+                    options["Select aubio inputs"] = "AUBIO_INPUTS"
                 options[f"Rename port '{port.aliases[0]}'"] = port
                 options[f"Reset name to '{zynautoconnect.build_midi_port_name(port)[1]}'"] = port
                 self.zyngui.screens['option'].config("MIDI Input Device", options, self.menu_cb)
@@ -368,6 +387,10 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 self.zyngui.state_manager.ctrldev_manager.load_driver(self.list_data[self.index][1])
             elif params == "UNLOAD_DRIVER":
                 self.zyngui.state_manager.ctrldev_manager.unload_driver(self.list_data[self.index][1])
+            elif params == "AUBIO_INPUTS":
+                ain = aubio_inputs(self.zyngui.state_manager)
+                self.zyngui.screens['audio_in'].set_chain(ain)
+                self.zyngui.show_screen('audio_in')
             elif self.input:
                 idev = self.list_data[self.index][1]
                 flags_acti = params == "ACTI"
