@@ -205,7 +205,7 @@ class zynthian_gui_mixer_strip():
 
 	def get_legend_text(self):
 		if self.chain is not None:
-			res1 = self.chain.get_title()
+			res1 = self.chain.get_description(2)
 			res2 = "" #TODO
 			return res1+res2
 		return "No info"
@@ -369,7 +369,7 @@ class zynthian_gui_mixer_strip():
 				else:
 					strip_txt = "\uf0ae"
 					font = self.font_icons
-					procs = self.chain.get_processor_count() - 1
+					#procs = self.chain.get_processor_count() - 1
 				self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=strip_txt, font=font)
 
 				label_parts = self.get_legend_text().split("\n")
@@ -684,12 +684,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.MAIN_MIXBUS_STRIP_INDEX = self.zynmixer.MAX_NUM_CHANNELS
 		self.chan2strip = [None] * (self.MAIN_MIXBUS_STRIP_INDEX + 1)
 		self.highlighted_strip = None # highligted mixer strip object
-		self.moving_chain = False # True if moving a chain left/right
+		self.moving_chain = False  # True if moving a chain left/right
 
-		self.pending_refresh_queue = set() # List of (strip,control) requiring gui refresh (control=None for whole strip refresh)
+		self.pending_refresh_queue = set()  # List of (strip,control) requiring gui refresh (control=None for whole strip refresh)
 		self.midi_learning = False
 
-		visible_chains = zynthian_gui_config.visible_mixer_strips # Maximum quantity of mixer strips to display (Defines strip width. Main always displayed.)
+		visible_chains = zynthian_gui_config.visible_mixer_strips  # Maximum quantity of mixer strips to display (Defines strip width. Main always displayed.)
 		if visible_chains < 1:
 			# Automatic sizing if not defined in config
 			if self.width <= 400: visible_chains = 6
@@ -708,12 +708,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.fader_top = self.fader_bottom - self.fader_height
 		self.balance_control_height = self.fader_height * 0.1
 		self.balance_top = self.fader_top
-		self.balance_control_width = self.width / 4 # Width of each half of balance control
+		self.balance_control_width = self.width / 4  # Width of each half of balance control
 		self.balance_control_centre = self.fader_width + self.balance_control_width
 
 		# Arrays of GUI elements for mixer strips - Chains + Main
-		self.visible_mixer_strips = [None] * visible_chains # List of mixer strip objects indexed by horizontal position on screen
-		self.mixer_strip_offset = 0 # Index of first mixer strip displayed on far left
+		self.visible_mixer_strips = [None] * visible_chains  # List of mixer strip objects indexed by horizontal position on screen
+		self.mixer_strip_offset = 0  # Index of first mixer strip displayed on far left
 
 		# Fader Canvas
 		self.main_canvas = tkinter.Canvas(self.main_frame,
