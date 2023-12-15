@@ -54,6 +54,7 @@ ZynthianState = {
     },
     "chains": { # Dictionary of chains indexed by chain ID
         "1": { # Chain 1
+            "title": "My first chain", # Chain title (optional)
             "mixer_chan": 0, # Chain audio mixer channel (may be None)
             "midi_chan": 0, # Chain MIDI channel (may be None)
             "current_processor": 0, # Index of the processor last selected within chain (Should this go in GUI section?)

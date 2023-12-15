@@ -705,6 +705,7 @@ class zynthian_chain:
                 slots_states.append(slot_state)
 
         state = {
+            "title": self.title,
             "midi_chan": self.midi_chan,
             "midi_thru": self.midi_thru,
             "audio_thru": self.audio_thru,

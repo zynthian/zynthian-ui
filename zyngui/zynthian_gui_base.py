@@ -362,7 +362,8 @@ class zynthian_gui_base(tkinter.Frame):
 
 	# Default topbar bold touch action
 	def topbar_bold_touch_action(self):
-		self.zyngui.show_screen("admin")
+		#self.zyngui.show_screen("admin")
+		self.zyngui.show_screen_reset('audio_mixer')
 
 	# ---------------------------------
 	# backbutton touch event management
