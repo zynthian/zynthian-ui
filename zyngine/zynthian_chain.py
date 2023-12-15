@@ -90,7 +90,8 @@ class zynthian_chain:
             self.title = "Main"
         else:
             self.title = ""
-        if isinstance(self.midi_chan, int) and self.midi_chan >= 0 and self.midi_chan < 16:
+
+        if isinstance(self.midi_chan, int) and 0 <= self.midi_chan < 16:
             lib_zyncore.reset_midi_filter_note_range(self.midi_chan)
             lib_zyncore.reset_midi_filter_clone(self.midi_chan)
 
@@ -199,51 +200,72 @@ class zynthian_chain:
 
     def get_title(self):
         """Get chain title
-        
+
         Returns : User defined chain title or processor title if not set
         """
 
+        if title:
+            return self.title
+        else:
+            return self.get_description_parts()[0]
+
+    def get_description_parts(self, basepath=False, preset=False):
+        """Get chain description parts, using synth or first processor
+
+            - basepath: use engine's basepath or name
+            - preset: include the selected preset
+        """
+        parts = []
         try:
             if self.title:
-                return self.title
-            elif self.synth_slots:
-                return f"{self.synth_slots[0][0].get_name()}\n{self.synth_slots[0][0].get_preset_name()}"
-            elif self.get_slot_count("Audio Effect"):
-                return self.get_processors("Audio Effect")[0].engine.name
-            elif self.get_slot_count("MIDI Tool"):
-                return self.get_processors("MIDI Tool")[0].engine.name
+                parts.append(self.title)
+            elif self.chain_id == 0:
+                parts.append("Main")
             elif self.audio_thru:
-                if self.audio_in == ["zynmixer:send"]:
-                    return ""
-                label = "Audio input " + ','.join([str(i) for i in self.audio_in])
-                return label
+                parts.append("Audio Input " + ','.join([str(i) for i in self.audio_in]))
+
+            if self.synth_slots:
+                proc = self.synth_slots[0][0]
+            elif self.get_slot_count("Audio Effect"):
+                proc = self.get_processors("Audio Effect")[0]
+            elif self.get_slot_count("MIDI Tool"):
+                proc = self.get_processors("MIDI Tool")[0]
+
+            if proc:
+                if basepath:
+                    parts.append(proc.get_basepath())
+                else:
+                    parts.append(proc.get_name())
+                if preset:
+                    preset_name = proc.get_preset_name()
+                    if preset_name:
+                        parts.append(preset_name)
+            elif not parts:
+                parts.append(f"Chain {self.chain_id}")
         except:
             pass
-        return ""
+        return parts
+
+    def get_description(self, n_lines=None):
+        """Get chain description text
+
+            n_lines: Max number of lines. None is "All"
+        """
+        parts = self.get_description_parts(basepath=False, preset=True)
+        return "\n".join(parts[:n_lines])
+
 
     def get_name(self):
         """Get chain name (short title)
 
         Returns : User defined chain title or default processor name if not set
         """
+        parts = self.get_description_parts(basepath=True, preset=False)
+        if parts:
+            return parts[0]
+        else:
+            return ""
 
-        try:
-            if self.title:
-                return self.title
-            elif self.synth_slots:
-                return f"{self.synth_slots[0][0].get_basepath()}"
-            elif self.get_slot_count("Audio Effect"):
-                return self.get_processors("Audio Effect")[0].get_basepath()
-            elif self.get_slot_count("MIDI Tool"):
-                return self.get_processors("MIDI Tool")[0].get_basepath()
-            elif self.audio_thru:
-                if self.audio_in == ["zynmixer:send"]:
-                    return "Main"
-                label = "Audio input " + ','.join([str(i) for i in self.audio_in])
-                return label
-        except:
-            pass
-        return ""
 
 
     # ----------------------------------------------------------------------------

@@ -99,7 +99,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 			if chain_id == 0:
 				continue
 			chain = self.zyngui.chain_manager.get_chain(chain_id)
-			label = f"{chain_id}#{chain.get_title()}"
+			label = f"{chain_id}#{chain.get_description(2)}"
 			try:
 				restore_flag = chain_state["restore"]
 			except:

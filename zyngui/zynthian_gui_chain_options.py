@@ -122,7 +122,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			procs = self.chain.get_processors("MIDI Tool", slot)
 			num_procs = len(procs)
 			for index, processor in enumerate(procs):
-				name = processor.engine.get_name(self.chain)
+				name = processor.get_name()
 				if index == num_procs - 1:
 					res.append((self.processor_options, processor, "  " * indent + "╰─ " + name))
 				else:
@@ -131,14 +131,14 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		# Add synth processor
 		for slot in self.chain.synth_slots:
 			for proc in slot:
-				res.append((self.processor_options, proc, "  " * indent + "╰━ " + proc.engine.get_name(self.chain)))
+				res.append((self.processor_options, proc, "  " * indent + "╰━ " + proc.get_name()))
 				indent += 1
 		# Build audio effects chain
 		for slot in range(self.chain.get_slot_count("Audio Effect")):
 			procs = self.chain.get_processors("Audio Effect", slot)
 			num_procs = len(procs)
 			for index, processor in enumerate(procs):
-				name = processor.engine.get_name(self.chain)
+				name = processor.get_name()
 				if index == num_procs - 1:
 					res.append((self.processor_options, processor, "  " * indent + "┗━ " + name))
 				else:

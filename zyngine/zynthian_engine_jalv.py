@@ -381,8 +381,9 @@ class zynthian_engine_jalv(zynthian_engine):
 	def get_preset_list(self, bank):
 		preset_list = []
 		try:
-			for info in  self.preset_info[bank[2]]['presets']:
-				preset_list.append([info['url'], None, info['label'], bank[0]])
+			for info in self.preset_info[bank[2]]['presets']:
+				title = info['label'].replace("_", " ").strip()
+				preset_list.append([info['url'], None, title, bank[0]])
 		except:
 			preset_list.append(("", None, "", None))
 
@@ -503,9 +504,9 @@ class zynthian_engine_jalv(zynthian_engine):
 			except Exception as e:
 				logging.error(e)
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Controllers Managament
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def get_lv2_controllers_dict(self):
 		logging.info("Getting Controller List from LV2 Plugin ...")
@@ -515,7 +516,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			symbol = info['symbol']
 			#logging.debug("Controller {} info =>\n{}!".format(symbol, info))
 			try:
-				#If there is points info ...
+				# If there is points info ...
 				if len(info['scale_points']) > 1:
 					labels = []
 					values = []
@@ -538,7 +539,7 @@ class zynthian_engine_jalv(zynthian_engine):
 						'display_priority': info['display_priority']
 					})
 
-				#If it's a numeric controller ...
+				# If it's a numeric controller ...
 				else:
 					r = info['range']['max'] - info['range']['min']
 					if info['is_integer']:
@@ -614,7 +615,7 @@ class zynthian_engine_jalv(zynthian_engine):
 								'display_priority': info['display_priority']
 							})
 
-			#If control info is not OK
+			# If control info is not OK
 			except Exception as e:
 				logging.error(e)
 

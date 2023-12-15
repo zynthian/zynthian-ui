@@ -45,7 +45,8 @@ MAX_NUM_MIDI_CHANS = 16
 # TODO: Get this from zynmixer
 MAX_NUM_MIXER_CHANS = 16
 # TODO: Get this from lib_zyncore
-MAX_NUM_CHAINS = 16
+MAX_NUM_ZMOPS = 16
+MAX_NUM_MIDI_DEVS = 24
 
 class zynthian_chain_manager():
 
@@ -75,7 +76,7 @@ class zynthian_chain_manager():
         self.zyngines = OrderedDict()  # List of instantiated engines
         self.processors = {}  # Dictionary of processor objects indexed by UID
         self.active_chain_id = None  # Active chain id
-        self.midi_chan_2_chain_ids = [list() for _ in range(MAX_NUM_CHAINS)]  # Chain IDs mapped by MIDI channel
+        self.midi_chan_2_chain_ids = [list() for _ in range(MAX_NUM_ZMOPS)]  # Chain IDs mapped by MIDI channel
         self.absolute_midi_cc_binding = {}  # Map of CC map indexed by MIDI channel. CC map is map of zctrl indexed by cc number
         self.chain_midi_cc_binding = {}  # Map of CC map indexed by chain id. CC map is map of lists of zctrl indexed by cc number
         self.held_zctrls = {    # Map of lists of currently held (sustained) zctrls, indexed by cc number - first element indicates pedal state
@@ -132,7 +133,7 @@ class zynthian_chain_manager():
     # Chain Management
     # ------------------------------------------------------------------------
 
-    def add_chain(self, chain_id, midi_chan=None, midi_thru=False, audio_thru=False, mixer_chan=None, zmop_index=None, title=""):
+    def add_chain(self, chain_id, midi_chan=None, midi_thru=False, audio_thru=False, mixer_chan=None, zmop_index=None, title="", chain_pos=None):
         """Add a chain
 
         chain_id: UID of chain (None to get next available)
@@ -174,13 +175,14 @@ class zynthian_chain_manager():
             chain.set_zmop_index(self.get_next_free_zmop_index())
         if chain.zmop_index is not None:
             # Enable all MIDI inputs by default
-            #TODO: Should we allow user to define default routing?
-            for zmip in range(24): #TODO: Get NUM_ZMIP_DEVS from zyncore
+            # TODO: Should we allow user to define default routing?
+            for zmip in range(MAX_NUM_MIDI_DEVS):
                 lib_zyncore.zmop_set_route_from(chain.zmop_index, zmip, 1)
 
         self.set_midi_chan(chain_id, midi_chan)
-        chain_pos = self.get_chain_index(self.active_chain_id)
-        self.set_active_chain_by_id(chain_id)
+
+        if chain_pos is None:
+            chain_pos = self.get_chain_index(0)
         self.ordered_chain_ids.insert(chain_pos, chain_id)
 
         zynautoconnect.request_audio_connect(True)
@@ -218,7 +220,6 @@ class zynthian_chain_manager():
             zmop_index = chain_state['zmop_index']
         else:
             zmop_index = None
-        self.set_active_chain_by_id(0) # Want to add new chains immediately before Main chain
         self.add_chain(chain_id, midi_chan=midi_chan, midi_thru=midi_thru, audio_thru=audio_thru, mixer_chan=mixer_chan, zmop_index=zmop_index, title=title)
 
     def remove_chain(self, chain_id, stop_engines=True):
@@ -267,7 +268,6 @@ class zynthian_chain_manager():
                     self.ordered_chain_ids.remove(chain_id)
             else:
                 self.state_manager.zynmixer.set_mute(chain.mixer_chan, mute, True)
-
 
         zynautoconnect.request_audio_connect(True)
         zynautoconnect.request_midi_connect(True)
@@ -1242,13 +1242,13 @@ class zynthian_chain_manager():
         """
 
         # TODO: take max number of chain zmops from lib_zyncore!!
-        busy_zmops = [0] * MAX_NUM_CHAINS
+        busy_zmops = [0] * MAX_NUM_ZMOPS
         for chain_id in self.chains:
             try:
                 busy_zmops[self.chains[chain_id].zmop_index] = 1
             except:
                 pass
-        for i in range(0, MAX_NUM_CHAINS):
+        for i in range(0, MAX_NUM_ZMOPS):
             if not busy_zmops[i]:
                 return i
         return None
