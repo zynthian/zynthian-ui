@@ -106,10 +106,10 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			self.list_data.append((self.remove_all_audiofx, None, "Remove all Audio-FX"))
 
 		self.list_data.append((None, None, "> GUI"))
-
+		self.list_data.append((self.rename_chain, None, "Rename chain"))
 		if self.chain_id:
 			if len(self.zyngui.chain_manager.ordered_chain_ids) > 2:
-				self.list_data.append((self.move_chain, None, "⇦⇨ Move chain"))
+				self.list_data.append((self.move_chain, None, "Move chain ⇦ ⇨"))
 
 		super().fill_list()
 
@@ -288,6 +288,13 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 	def move_chain(self):
 		self.zyngui.screens["audio_mixer"].moving_chain = True
+		self.zyngui.show_screen_reset('audio_mixer')
+
+	def rename_chain(self):
+		self.zyngui.show_keyboard(self.do_rename_chain, self.chain.title)
+
+	def do_rename_chain(self, title):
+		self.chain.title = title
 		self.zyngui.show_screen_reset('audio_mixer')
 
 	# Remove submenu

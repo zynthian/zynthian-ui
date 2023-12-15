@@ -132,13 +132,16 @@ class zynthian_chain_manager():
     # Chain Management
     # ------------------------------------------------------------------------
 
-    def add_chain(self, chain_id, midi_chan=None, midi_thru=False, audio_thru=False, mixer_chan=None, zmop_index=None):
+    def add_chain(self, chain_id, midi_chan=None, midi_thru=False, audio_thru=False, mixer_chan=None, zmop_index=None, title=""):
         """Add a chain
 
         chain_id: UID of chain (None to get next available)
         midi_chan : MIDI channel associated with chain
         midi_thru : True to enable MIDI thru for empty chain (Default: False)
         audio_thru : True to enable audio thru for empty chain (Default: False)
+        mixer_chan : Mixer channel (Default: None)
+        zmop_index : MIDI router output (Default: None)
+        title : Chain title (Default: None)
         Returns : Chain ID or None if chain could not be created
         """
 
@@ -159,8 +162,10 @@ class zynthian_chain_manager():
             return self.chains[chain_id]
 
         chain = zynthian_chain(chain_id, midi_chan, midi_thru, audio_thru)
-        if chain:
-            self.chains[chain_id] = chain
+        if not chain:
+            return None
+        self.chains[chain_id] = chain
+        chain.title = title
         if audio_thru:
             if chain_id == 0:
                 chain.set_mixer_chan(255)
@@ -168,6 +173,12 @@ class zynthian_chain_manager():
                 chain.set_mixer_chan(self.get_next_free_mixer_chan())
         if isinstance(midi_chan, int) or midi_thru:
             chain.set_zmop_index(self.get_next_free_zmop_index())
+        if chain.zmop_index is not None:
+            # Enable all MIDI inputs by default
+            #TODO: Should we allow user to define default routing?
+            for zmip in range(24): #TODO: Get NUM_ZMIP_DEVS from zyncore
+                lib_zyncore.zmop_set_route_from(chain.zmop_index, zmip, 1)
+
         self.set_midi_chan(chain_id, midi_chan)
         chain_pos = self.get_chain_index(self.active_chain_id)
         self.set_active_chain_by_id(chain_id)
@@ -184,6 +195,10 @@ class zynthian_chain_manager():
         return chain_id
 
     def add_chain_from_state(self, chain_id, chain_state):
+        if 'title' in chain_state:
+            title = chain_state['title']
+        else:
+            title = ""
         if 'midi_chan' in chain_state:
             midi_chan = chain_state['midi_chan']
         else:
@@ -205,7 +220,7 @@ class zynthian_chain_manager():
         else:
             zmop_index = None
         self.set_active_chain_by_id(0) # Want to add new chains immediately before Main chain
-        self.add_chain(chain_id, midi_chan=midi_chan, midi_thru=midi_thru, audio_thru=audio_thru, mixer_chan=mixer_chan, zmop_index=zmop_index)
+        self.add_chain(chain_id, midi_chan=midi_chan, midi_thru=midi_thru, audio_thru=audio_thru, mixer_chan=mixer_chan, zmop_index=zmop_index, title=title)
 
     def remove_chain(self, chain_id, stop_engines=True):
         """Removes a chain or resets main chain
@@ -866,13 +881,7 @@ class zynthian_chain_manager():
         self.stop_unused_jalv_engines() #TODO: Can we factor this out? => Not yet!!
 
         for chain_id, chain_state in state.items():
-            try:
-                chain_id = int(chain_id)
-            except Exception as e:
-                if chain_id == "main":
-                    chain_id = 0
-                else:
-                    raise e
+            chain_id = int(chain_id)
             self.add_chain_from_state(chain_id, chain_state)
 
             if "slots" in chain_state:
@@ -1050,13 +1059,7 @@ class zynthian_chain_manager():
                     if proc_id in self.processors:
                         proc = self.processors[proc_id]
                         zctrl = proc.controllers_dict[symbol]
-                        try:
-                            chain_id = int(chain_id)
-                        except Exception as e:
-                            if chain_id == "main":
-                                chain_id = 0
-                            else:
-                                raise e
+                        chain_id = int(chain_id)
                         self.add_midi_learn(chain_id, int(cc), zctrl)
                     pass
 
