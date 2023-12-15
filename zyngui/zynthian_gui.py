@@ -461,9 +461,6 @@ class zynthian_gui:
 		except Exception as e:
 			logging.error(f"ERROR initializing Switches & Wiring MIDI: {e}")
 
-		# Start VNC as configured
-		self.state_manager.default_vncserver()
-
 		# Initialize OSC
 		self.osc_init()
 
