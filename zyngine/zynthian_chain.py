@@ -122,6 +122,16 @@ class zynthian_chain:
         else:
             return self.synth_slots
 
+    def get_type(self):
+        if self.synth_slots:
+            return "MIDI Synth"
+        elif self.get_slot_count("Audio Effect"):
+            return "Audio Effect"
+        elif self.get_slot_count("MIDI Tool"):
+            return "MIDI Tool"
+        else:
+            return "Empty"
+
     # ----------------------------------------------------------------------------
     # Chain Management
     # ----------------------------------------------------------------------------

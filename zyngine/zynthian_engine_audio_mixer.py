@@ -146,7 +146,10 @@ class zynmixer(zynthian_engine):
 		self.midi_learn_cb = None
 
 	def get_controllers_dict(self, processor):
-		return self.zctrls[processor.mixer_chan]
+		try:
+			return self.zctrls[processor.mixer_chan]
+		except:
+			return None
 
 	def get_learned_cc(self, zctrl):
 		for chan in range(16):
@@ -193,12 +196,20 @@ class zynmixer(zynthian_engine):
 	# channel: Index of channel
 	# returns: Fader level (0..+1)
 	def get_level(self, channel):
+		if channel is None:
+			return
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		return self.lib_zynmixer.getLevel(channel)
 
 	# Function to get balance for a channel
 	# channel: Index of channel
 	# returns: Balance value (-1..+1)
 	def get_balance(self, channel):
+		if channel is None:
+			return
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		return self.lib_zynmixer.getBalance(channel)
 
 	# Function to set mute for a channel
@@ -219,6 +230,10 @@ class zynmixer(zynthian_engine):
 	# channel: Index of channel
 	# returns: Mute state (True if muted)
 	def get_mute(self, channel, update=False):
+		if channel is None:
+			return
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		return self.lib_zynmixer.getMute(channel)
 
 	# Function to toggle mute of a channel
@@ -251,12 +266,18 @@ class zynmixer(zynthian_engine):
 	# channel: Index of channel
 	# returns: Phase reversal state (True if phase reversed)
 	def get_phase(self, channel):
+		if channel is None:
+			return
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		return self.lib_zynmixer.getPhase(channel)
 
 	# Function to toggle phase reversal of a channel
 	# channel: Index of channel
 	# update: True for update controller
 	def toggle_phase(self, channel, update=True):
+		if channel is None:
+			return
 		if channel >= self.MAX_NUM_CHANNELS:
 			channel = self.MAX_NUM_CHANNELS
 		self.lib_zynmixer.togglePhase(channel)
@@ -293,7 +314,11 @@ class zynmixer(zynthian_engine):
 	# Function to get solo for a channel
 	# channel: Index of channel
 	# returns: Solo state (True if solo)
-	def	get_solo(self, channel):
+	def get_solo(self, channel):
+		if channel is None:
+			return
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		return self.lib_zynmixer.getSolo(channel) == 1
 
 	# Function to toggle mute of a channel
@@ -327,6 +352,10 @@ class zynmixer(zynthian_engine):
 	# channel: Index of channel
 	# returns: Mono state (True if mono)
 	def get_mono(self, channel):
+		if channel is None:
+			return
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		return self.lib_zynmixer.getMono(channel) == 1
 
 	# Function to get all mono
@@ -358,6 +387,10 @@ class zynmixer(zynthian_engine):
 	# channel: Index of channel
 	# returns: True if routed
 	def is_channel_routed(self, channel):
+		if channel is None:
+			return
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		return (self.lib_zynmixer.isChannelRouted(channel) != 0)
 
 	# Function to get peak programme level for a channel
@@ -365,6 +398,10 @@ class zynmixer(zynthian_engine):
 	# leg: 0 for A-leg (left), 1 for B-leg (right)
 	# returns: Peak programme level
 	def get_dpm(self, channel, leg):
+		if channel is None:
+			return
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		return self.lib_zynmixer.getDpm(channel, leg)
 
 	# Function to get peak programme hold level for a channel
@@ -374,6 +411,8 @@ class zynmixer(zynthian_engine):
 	def get_dpm_holds(self, channel, leg):
 		if channel is None:
 			return
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
 		return self.lib_zynmixer.getDpmHold(channel, leg)
 
 	# Function to get the dpm states for a set of channels

@@ -819,7 +819,12 @@ class zynthian_gui:
 					self.chain_control(self.modify_chain_status["chain_id"], processor)
 				return
 			# Adding a new chain so select its MIDI channel
-			self.screens["midi_chan"].set_mode("ADD")
+			logging.debug(self.modify_chain_status)
+			if self.modify_chain_status["type"] == "MIDI Tool":
+				chan_all = True
+			else:
+				chan_all = False
+			self.screens["midi_chan"].set_mode("ADD", chan_all=chan_all)
 			self.show_screen("midi_chan")
 		elif "type" in self.modify_chain_status:
 			# We know the type so select the engine

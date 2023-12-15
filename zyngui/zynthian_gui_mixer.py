@@ -233,6 +233,8 @@ class zynthian_gui_mixer_strip():
 
 	def draw_balance(self):
 		balance = self.zynmixer.get_balance(self.chain.mixer_chan)
+		if balance is None:
+			return
 		if balance > 0:
 			self.parent.main_canvas.coords(self.balance_left,
 				self.x + balance * self.width / 2, self.balance_top,
@@ -273,7 +275,9 @@ class zynthian_gui_mixer_strip():
 		self.parent.main_canvas.itemconfig(self.balance_text, state=txstate, text=text, fill=txcolor)
 
 	def draw_fader(self):
-		self.parent.main_canvas.coords(self.fader, self.x, self.fader_top + self.fader_height * (1 - self.zynmixer.get_level(self.chain.mixer_chan)), self.x + self.fader_width, self.fader_bottom)
+		level = self.zynmixer.get_level(self.chain.mixer_chan)
+		if level is not None:
+			self.parent.main_canvas.coords(self.fader, self.x, self.fader_top + self.fader_height * (1 - level), self.x + self.fader_width, self.fader_bottom)
 
 	def draw_level(self):
 		self.draw_fader()
@@ -362,7 +366,12 @@ class zynthian_gui_mixer_strip():
 				if self.parent.moving_chain and self.chain_id == self.parent.zyngui.chain_manager.active_chain_id:
 					strip_txt = f"⇦⇨"
 				elif isinstance(self.chain.midi_chan, int):
-					strip_txt = f"♫ {self.chain.midi_chan + 1}"
+					if 0 <= self.chain.midi_chan < 16:
+						strip_txt = f"♫ {self.chain.midi_chan + 1}"
+					elif self.chain.midi_chan == 0xffff:
+						strip_txt = f"♫ All"
+					else:
+						strip_txt = f"♫ Err"
 				elif self.chain.is_audio:
 					strip_txt = "\uf130"
 					font = self.font_icons
@@ -809,7 +818,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to add control to be updated (fast)
 	def update_control(self, chan, symbol, value):
-		self.pending_refresh_queue.add((self.chan2strip[chan], symbol))
+		strip = self.chan2strip[chan]
+		if strip.chain.mixer_chan is None:
+			return
+		self.pending_refresh_queue.add((strip, symbol))
 		#self.pending_refresh_queue.add((self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX], "solo"))
 
 	#--------------------------------------------------------------------------

@@ -171,7 +171,7 @@ class zynthian_chain_manager():
                 chain.set_mixer_chan(255)
             else:
                 chain.set_mixer_chan(self.get_next_free_mixer_chan())
-        if isinstance(midi_chan, int) or midi_thru:
+        if isinstance(midi_chan, int):
             chain.set_zmop_index(self.get_next_free_zmop_index())
         if chain.zmop_index is not None:
             # Enable all MIDI inputs by default

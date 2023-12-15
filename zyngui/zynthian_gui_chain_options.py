@@ -211,7 +211,11 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 	def chain_midi_chan(self):
 		chan_list = self.zyngui.chain_manager.get_free_midi_chans() + [self.chain.midi_chan]
 		chan_list.sort()
-		self.zyngui.screens['midi_chan'].set_mode("SET", self.chain.midi_chan, chan_list)
+		if self.chain.get_type() == "MIDI Tool":
+			chan_all = True
+		else:
+			chan_all = False
+		self.zyngui.screens['midi_chan'].set_mode("SET", self.chain.midi_chan, chan_list=chan_list, chan_all=chan_all)
 		self.zyngui.show_screen('midi_chan')
 
 	def chain_clone(self):
