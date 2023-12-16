@@ -375,7 +375,7 @@ def update_hw_midi_ports():
 			hw_dst_ports += ports
 		except:
 			pass
-	for port_name in ("QmidiNet:out", "jackrtpmidid:rtpmidi_out", "RtMidiOut Client:TouchOSC Bridge", "aubio"):
+	for port_name in ("QmidiNet:out", "jackrtpmidid:rtpmidi_out", "RtMidiOut Client:TouchOSC Bridge", "ZynMaster:midi_out", "aubio"):
 		try:
 			ports = jclient.get_ports(port_name, is_midi=True, is_output=True)
 			hw_src_ports += ports
@@ -721,8 +721,10 @@ def get_audio_capture_ports():
 
 
 def build_midi_port_name(port):
-	if port.name.startswith("ttymidi:MIDI_in"):
+	if port.name.startswith("ttymidi:MIDI"):
 		return port.name, "DIN-5 MIDI"
+	elif port.name.startswith("ZynMaster"):
+		return port.name, "CV/Gate"
 	elif port.name.endswith(": f_midi"):
 		return port.name, "USB HOST"
 	elif port.name.startswith("jackrtpmidid:rtpmidi_"):
@@ -959,10 +961,6 @@ def start(sm):
 
 	# Create Lock object (Mutex) to avoid concurrence problems
 	lock = Lock()
-
-	# Set aliases for static MIDI ports
-	set_midi_port_alias("ZynMaster:midi_in", "ZynMaster:midi_in", "CV/Gate OUT") 
-	set_midi_port_alias("ZynMaster:midi_out", "ZynMaster:midi_out", "CV/Gate IN") 
 	
 	# Start port change checking thread
 	thread = Thread(target=auto_connect_thread, args=())

@@ -86,6 +86,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
     def hide(self):
         self.disable_ble_scan()
         self.midi_scan = False
+        self.thread = None
         super().hide()
 
     def set_chain(self, chain):
