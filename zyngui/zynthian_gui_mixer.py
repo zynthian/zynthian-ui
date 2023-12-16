@@ -162,7 +162,6 @@ class zynthian_gui_mixer_strip():
 		self.balance_text = self.parent.main_canvas.create_text(int(fader_centre), int(self.balance_top + self.balance_height / 2) - 1, text="??", font=self.font_learn, state=tkinter.HIDDEN)
 		self.parent.main_canvas.tag_bind(f"balance:{self.fader_bg}", "<ButtonPress-1>", self.on_balance_press)
 
-
 		# Fader indicators
 		self.status_indicator = self.parent.main_canvas.create_text(x + 2, self.fader_top + 2, fill="#009000", anchor="nw", tags=(f"strip:{self.fader_bg}"))
 
@@ -170,7 +169,7 @@ class zynthian_gui_mixer_strip():
 		self.parent.zyngui.multitouch.tag_bind(self.parent.main_canvas, "fader:%s"%(self.fader_bg), "motion", self.on_fader_motion)
 		self.parent.main_canvas.tag_bind(f"fader:{self.fader_bg}", "<ButtonPress-1>", self.on_fader_press)
 		self.parent.main_canvas.tag_bind(f"fader:{self.fader_bg}", "<B1-Motion>", self.on_fader_motion)
-		if os.environ.get("ZYNTHIAN_UI_ENABLE_CURSOR") == "1":
+		if zynthian_gui_config.force_enable_cursor:
 			self.parent.main_canvas.tag_bind(f"fader:{self.fader_bg}", "<Button-4>", self.on_fader_wheel_up)
 			self.parent.main_canvas.tag_bind(f"fader:{self.fader_bg}", "<Button-5>", self.on_fader_wheel_down)
 			self.parent.main_canvas.tag_bind(f"balance:{self.fader_bg}", "<Button-4>", self.on_balance_wheel_up)

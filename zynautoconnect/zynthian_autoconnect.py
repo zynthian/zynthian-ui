@@ -491,7 +491,8 @@ def midi_autoconnect():
 						for dst in jclient.get_ports(processor.get_jackname(True), is_midi=True, is_input=True):
 							dests.append(dst.name)
 				else:
-					dests.append(out)
+					pass
+					#dests.append(out)
 			for processor in chain.midi_slots[-1]:
 				src = jclient.get_ports(processor.get_jackname(True), is_midi=True, is_output=True)[0]
 				for dst in dests:

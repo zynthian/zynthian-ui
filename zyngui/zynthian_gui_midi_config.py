@@ -270,16 +270,17 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
         if not self.input and self.chain:
             self.list_data.append((None, None, "Chain inputs"))
-            for chain_id, chain in self.zyngui.chain_manager.chains.items():
-                if chain.is_midi() and chain != self.chain:
+            for i, chain_id in enumerate(self.zyngui.chain_manager.ordered_chain_ids):
+                chain = self.zyngui.chain_manager.get_chain(chain_id)
+                if chain and chain.is_midi() and chain != self.chain:
                     if self.zyngui.chain_manager.will_route_howl(self.zyngui.chain_manager.active_chain_id, chain_id):
                         prefix = "∞"
                     else:
                         prefix = ""
                     if chain_id in self.chain.midi_out:
-                        self.list_data.append((chain_id, None, f"\u2612 {prefix}Chain {chain_id:02d}"))
+                        self.list_data.append((chain_id, None, f"\u2612 {prefix}{i}: {chain.get_name()}"))
                     else:
-                        self.list_data.append((chain_id, None, f"\u2610 {prefix}Chain {chain_id:02d}"))
+                        self.list_data.append((chain_id, None, f"\u2610 {prefix}{i}: {chain.get_name()}"))
 
         super().fill_list()
 
