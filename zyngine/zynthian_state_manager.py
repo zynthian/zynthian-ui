@@ -1200,7 +1200,8 @@ class zynthian_state_manager:
                 try:
                     routed_chains = state["routed_chains"]
                     for ch in range(0, 16):
-                        lib_zyncore.zmop_set_route_from(ch, zmip, routed_chains[ch])
+                        if ch not in routed_chains:
+                            lib_zyncore.zmop_set_route_from(ch, zmip, 0)
                 except:
                     pass
         else:
