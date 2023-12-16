@@ -484,7 +484,10 @@ def midi_autoconnect():
 			dests = []
 			for out in chain.midi_out:
 				if out in chain_manager.chains:
-					for processor in chain_manager.get_processors(out, "MIDI Tool", 0):
+					chain_midi_first_procs = chain_manager.get_processors(out, "MIDI Tool", 0)
+					if not chain_midi_first_procs:
+						chain_midi_first_procs = chain_manager.get_processors(out, "Synth", 0)
+					for processor in chain_midi_first_procs:
 						for dst in jclient.get_ports(processor.get_jackname(True), is_midi=True, is_input=True):
 							dests.append(dst.name)
 				else:
