@@ -246,10 +246,13 @@ class zynthian_chain_manager():
         for chain_id in chains_to_remove:
             chain = self.chains[chain_id]
             if isinstance(chain.midi_chan, int):
-                self.midi_chan_2_chain_ids[chain.midi_chan].remove(chain_id)
-                # TODO: Manage All-NOTES-OFF when a chain receives several MIDI channels or all
                 if chain.midi_chan < MAX_NUM_MIDI_CHANS:
+                    self.midi_chan_2_chain_ids[chain.midi_chan].remove(chain_id)
                     lib_zyncore.ui_send_ccontrol_change(chain.midi_chan, 120, 0)
+                elif chain.midi_chan == 0xffff:
+                    for mc in range(16):
+                        self.midi_chan_2_chain_ids[mc].remove(chain_id)
+                        lib_zyncore.ui_send_ccontrol_change(mc, 120, 0)
             if chain.mixer_chan is not None:
                 mute = self.state_manager.zynmixer.get_mute(chain.mixer_chan)
                 self.state_manager.zynmixer.set_mute(chain.mixer_chan, True, True)
