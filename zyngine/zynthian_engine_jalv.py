@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for Jalv Plugin Host
 #
-# Copyright (C) 2015-2018 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 #
@@ -48,6 +48,8 @@ def get_jalv_plugins():
 #------------------------------------------------------------------------------
 
 class zynthian_engine_jalv(zynthian_engine):
+
+	re_colour = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
 	#------------------------------------------------------------------------------
 	# Plugin List (this list is used ONLY if no config file is found)
@@ -398,6 +400,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		#Parse new controller values
 		for line in output.split("\n"):
 			try:
+				line = self.re_colour.sub('', line)
 				parts=line.split(" = ")
 				if len(parts) == 2:
 					self.lv2_zctrl_dict[parts[0]]._set_value(float(parts[1]))
