@@ -147,30 +147,42 @@ class zynthian_chain_manager():
         """
 
         self.state_manager.start_busy("add_chain")
+
+        # If not chain ID has been specified, create new unique chain ID
         if chain_id is None:
-            # Create new unique chain ID
             chain_id = 1
             while chain_id in self.chains:
                 chain_id += 1
+
+        # If Main chain ...
         if chain_id == 0:  # main
             midi_thru = False
             audio_thru = True
+            mixer_chan = 255
+
+        # If the chain already exists, update and return
         if chain_id in self.chains:
             self.chains[chain_id].midi_thru = midi_thru
             self.chains[chain_id].audio_thru = audio_thru
             self.state_manager.end_busy("add_chain")
             return self.chains[chain_id]
 
+        # Create chain instance
         chain = zynthian_chain(chain_id, midi_chan, midi_thru, audio_thru)
         if not chain:
             return None
         self.chains[chain_id] = chain
-        chain.title = title
-        if audio_thru:
-            if chain_id == 0:
-                chain.set_mixer_chan(255)
-            else:
-                chain.set_mixer_chan(self.get_next_free_mixer_chan())
+
+        # Setup chain
+        chain.set_title(title)
+        # If a mixer_chan is specified (restore from state), setup mixer_chan
+        if mixer_chan is not None:
+            chain.set_mixer_chan(mixer_chan)
+        # else, if audio_thru enabled, setup a mixer_chan
+        elif audio_thru:
+            chain.set_mixer_chan(self.get_next_free_mixer_chan())
+
+        # Setup MIDI routing
         if isinstance(midi_chan, int):
             chain.set_zmop_index(self.get_next_free_zmop_index())
         if chain.zmop_index is not None:
@@ -179,8 +191,10 @@ class zynthian_chain_manager():
             for zmip in range(MAX_NUM_MIDI_DEVS):
                 lib_zyncore.zmop_set_route_from(chain.zmop_index, zmip, 1)
 
+        # Set MIDI channel
         self.set_midi_chan(chain_id, midi_chan)
 
+        # Add to chain index (sorted!)
         if chain_pos is None:
             chain_pos = self.get_chain_index(0)
         self.ordered_chain_ids.insert(chain_pos, chain_id)
@@ -639,7 +653,7 @@ class zynthian_chain_manager():
         self.state_manager.start_busy("add_processor", None, f"adding {type} to chain {chain_id}")
         processor = zynthian_processor(type, self.engine_info[type], proc_id)
         chain = self.chains[chain_id]
-        self.processors[proc_id] = processor # Add proc early to allow engines to add more as required, e.g. Aeolus
+        self.processors[proc_id] = processor  # Add proc early to allow engines to add more as required, e.g. Aeolus
         if chain.insert_processor(processor, parallel, slot):
             if chain.mixer_chan is None and processor.type != "MIDI Tool": # TODO: Fails to detect MIDI only chains in snapshots
                 chain.mixer_chan = self.get_next_free_mixer_chan()
