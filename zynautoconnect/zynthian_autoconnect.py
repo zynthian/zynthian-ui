@@ -470,7 +470,7 @@ def midi_autoconnect():
 		# Add chain internal routes
 		routes = chain_manager.get_chain_midi_routing(chain_id)
 		for dst_name in routes:
-			dst_ports = jclient.get_ports(dst_name, is_input=True, is_midi=True)
+			dst_ports = jclient.get_ports(re.escape(dst_name), is_input=True, is_midi=True)
 		
 			for src_name in routes[dst_name]:
 				src_ports = jclient.get_ports(src_name, is_output=True, is_midi=True)

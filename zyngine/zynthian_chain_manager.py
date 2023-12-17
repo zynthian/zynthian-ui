@@ -143,6 +143,7 @@ class zynthian_chain_manager():
         mixer_chan : Mixer channel (Default: None)
         zmop_index : MIDI router output (Default: None)
         title : Chain title (Default: None)
+        chain_pos : Position to insert chain (Default: End)
         Returns : Chain ID or None if chain could not be created
         """
 
