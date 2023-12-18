@@ -270,16 +270,17 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
         if not self.input and self.chain:
             self.list_data.append((None, None, "Chain inputs"))
-            for chain_id, chain in self.zyngui.chain_manager.chains.items():
-                if chain.is_midi() and chain != self.chain:
+            for i, chain_id in enumerate(self.zyngui.chain_manager.ordered_chain_ids):
+                chain = self.zyngui.chain_manager.get_chain(chain_id)
+                if chain and chain.is_midi() and chain != self.chain:
                     if self.zyngui.chain_manager.will_route_howl(self.zyngui.chain_manager.active_chain_id, chain_id):
                         prefix = "∞"
                     else:
                         prefix = ""
                     if chain_id in self.chain.midi_out:
-                        self.list_data.append((chain_id, None, f"\u2612 {prefix}Chain {chain_id:02d}"))
+                        self.list_data.append((chain_id, None, f"\u2612 {prefix}{i}: {chain.get_name()}"))
                     else:
-                        self.list_data.append((chain_id, None, f"\u2610 {prefix}Chain {chain_id:02d}"))
+                        self.list_data.append((chain_id, None, f"\u2610 {prefix}{i}: {chain.get_name()}"))
 
         super().fill_list()
 
@@ -431,44 +432,45 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             last_fingerprint = zynautoconnect.get_hw_dst_ports()
 
         while self.midi_scan:
-            update = False
-            try:
-                # Get list of available BLE Devices
-                devices = check_output(['bluetoothctl', 'devices'], encoding='utf-8', timeout=0.1).split('\n')
-                for device in devices:
-                    if not device:
-                        continue
-                    addr = device.split()[1]
-                    name = device[25:]
-                    info = check_output(['bluetoothctl', 'info', addr], encoding='utf-8', timeout=0.1).split('\n')
-                    for line in info:
-                        if line.startswith('\tName:'):
-                            name = line[7:]
-                        if line.startswith('\tPaired:'):
-                            paired = line[9:] == "yes"
-                        if line.startswith('\tTrusted:'):
-                            trusted = line[10:] == "yes"
-                        if line.startswith('\tConnected:'):
-                            connected = line[12:] == "yes"
-                    if addr not in self.ble_devices or self.ble_devices[addr] != [name, paired, trusted, connected]:
-                        self.ble_devices[addr] = [name, paired, trusted, connected]
-                        update = True
-                    if connected and not trusted:
-                        # Do not let an untrusted device remain connected
-                        check_output(['bluetoothctl', 'disconnect', addr], encoding='utf-8', timeout=5)
-            except:
-                pass
+            if self.shown: # Avoid updates during view building (list size may change causing exception)
+                update = False
+                try:
+                    # Get list of available BLE Devices
+                    devices = check_output(['bluetoothctl', 'devices'], encoding='utf-8', timeout=0.1).split('\n')
+                    for device in devices:
+                        if not device:
+                            continue
+                        addr = device.split()[1]
+                        name = device[25:]
+                        info = check_output(['bluetoothctl', 'info', addr], encoding='utf-8', timeout=0.1).split('\n')
+                        for line in info:
+                            if line.startswith('\tName:'):
+                                name = line[7:]
+                            if line.startswith('\tPaired:'):
+                                paired = line[9:] == "yes"
+                            if line.startswith('\tTrusted:'):
+                                trusted = line[10:] == "yes"
+                            if line.startswith('\tConnected:'):
+                                connected = line[12:] == "yes"
+                        if addr not in self.ble_devices or self.ble_devices[addr] != [name, paired, trusted, connected]:
+                            self.ble_devices[addr] = [name, paired, trusted, connected]
+                            update = True
+                        if connected and not trusted:
+                            # Do not let an untrusted device remain connected
+                            check_output(['bluetoothctl', 'disconnect', addr], encoding='utf-8', timeout=5)
+                except:
+                    pass
 
-            if self.input:
-                fingerprint = zynautoconnect.get_hw_src_ports()
-            else:
-                fingerprint = zynautoconnect.get_hw_dst_ports()
-            if last_fingerprint != fingerprint:
-                self.fingerprint = fingerprint
-                update = True
+                if self.input:
+                    fingerprint = zynautoconnect.get_hw_src_ports()
+                else:
+                    fingerprint = zynautoconnect.get_hw_dst_ports()
+                if last_fingerprint != fingerprint:
+                    self.fingerprint = fingerprint
+                    update = True
 
-            if update:
-                self.fill_list()
+                if update:
+                    self.fill_list()
             
             sleep(2) # Repeat every 2s
 

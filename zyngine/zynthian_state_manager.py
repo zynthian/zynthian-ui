@@ -786,9 +786,8 @@ class zynthian_state_manager:
         self.zs3[zs3_id]["title"] = title
 
     def toggle_zs3_chain_restore_flag(self, zs3_id, chain_id):
-        #***TODO***
         zs3_state = self.zs3[zs3_id]
-        if chain_id == -1:
+        if chain_id == "mixer":
             tstate = zs3_state["mixer"]
         else:
             tstate = zs3_state["chains"][chain_id]
@@ -941,7 +940,7 @@ class zynthian_state_manager:
 
         if zs3_id is None:
             # Get next free zs3 id
-            for index in range(1, len(used_ids) + 1):
+            for index in range(1, len(used_ids) + 2):
                 if index not in used_ids:
                     zs3_id = f"zs3-{index}"
                     break
@@ -1207,7 +1206,7 @@ class zynthian_state_manager:
                 try:
                     routed_chains = state["routed_chains"]
                     for ch in range(0, 16):
-                        lib_zyncore.zmop_set_route_from(ch, zmip, routed_chains[ch])
+                        lib_zyncore.zmop_set_route_from(ch, zmip, ch in routed_chains)
                 except:
                     pass
         else:

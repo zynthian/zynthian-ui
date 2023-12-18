@@ -50,7 +50,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 		if self.zs3_id == "zs3-0":
 			self.list_data.append((self.zs3_update, 2, "Update"))
 		else:
-			self.list_data.append((self.zs3_restoring_submenu, 1, "Restoring..."))
+			self.list_data.append((self.zs3_restoring_submenu, 1, "Config..."))
 			self.list_data.append((self.zs3_update, 2, "Update"))
 			self.list_data.append((self.zs3_rename, 3, "Rename"))
 			self.list_data.append((self.zs3_delete, 4, "Delete"))
@@ -81,7 +81,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 			return
 
 		title = self.zyngui.state_manager.get_zs3_title(self.zs3_id)
-		self.zyngui.screens['option'].config(f"ZS3 Restoring: {title}", self.zs3_restoring_options_cb,
+		self.zyngui.screens['option'].config(f"ZS3 Restore: {title}", self.zs3_restoring_options_cb,
 			self.zs3_restoring_options_select_cb, close_on_select=False, click_type=True)
 		self.zyngui.show_screen('option')
 
@@ -94,32 +94,6 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 
 		options = {}
 
-		# Restoring normal chains
-		for chain_id, chain_state in state["chains"].items():
-			if chain_id == 0:
-				continue
-			chain = self.zyngui.chain_manager.get_chain(chain_id)
-			label = f"{chain_id}#{chain.get_description(2)}"
-			try:
-				restore_flag = chain_state["restore"]
-			except:
-				restore_flag = True
-			if restore_flag:
-				options[f"\u2612 {label}"] = chain_id
-			else:
-				options[f"\u2610 {label}"] = chain_id
-
-		# Restoring main chain
-		main_chain_state = state["chains"][0]
-		try:
-			restore_flag = main_chain_state["restore"]
-		except:
-			restore_flag = True
-		if restore_flag:
-			options["\u2612 Main"] = 0
-		else:
-			options["\u2610 Main"] = 0
-
 		# Restoring Audio Mixer
 		mixer_state = state["mixer"]
 		try:
@@ -130,6 +104,20 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 			options["\u2612 Mixer"] = "mixer"
 		else:
 			options["\u2610 Mixer"] = "mixer"
+
+		# Restoring chains
+		options["Chains"] = None
+		for chain_id, chain_state in state["chains"].items():
+			chain = self.zyngui.chain_manager.get_chain(chain_id)
+			label = chain.get_name()
+			try:
+				restore_flag = chain_state["restore"]
+			except:
+				restore_flag = True
+			if restore_flag:
+				options[f"\u2612 {label}"] = chain_id
+			else:
+				options[f"\u2610 {label}"] = chain_id
 
 		return options
 
@@ -143,9 +131,8 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 				logging.error("Bad ZS3 ID ({}).".format(self.zs3_id))
 				return
 			# Invert selection (toggle all elements in list)
-			for chain_id in state["chains"]:
+			for chain_id in list(state["chains"]) + ["mixer"]:
 				self.zyngui.state_manager.toggle_zs3_chain_restore_flag(self.zs3_id, chain_id)
-			self.zyngui.state_manager.toggle_zs3_chain_restore_flag(self.zs3_id, -1) # ***TODO***
 
 	def zs3_rename(self):
 		title = self.zyngui.state_manager.get_zs3_title(self.zs3_id)

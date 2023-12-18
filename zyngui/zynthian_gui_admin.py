@@ -94,11 +94,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.toggle_preset_preload_noteon, 0, "\u2610 Note-On Preset Preload"))
 
-		if zynthian_gui_config.midi_filter_output:
-			self.list_data.append((self.toggle_midi_bridge_output, 0, "\u2612 Global MIDI-THRU"))
-		else:
-			self.list_data.append((self.toggle_midi_bridge_output, 0, "\u2610 Global MIDI-THRU"))
-
 		if zynthian_gui_config.transport_clock_source == 0:
 			if zynthian_gui_config.midi_sys_enabled:
 				self.list_data.append((self.toggle_midi_sys, 0, "\u2612 MIDI System Messages"))
@@ -332,21 +327,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		zynconf.save_config({ 
 			"ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS": str(int(zynthian_gui_config.snapshot_mixer_settings))
 		})
-		self.fill_list()
-
-	def toggle_midi_bridge_output(self):
-		if zynthian_gui_config.midi_filter_output:
-			logging.info("MIDI Bridge Output OFF")
-			zynthian_gui_config.midi_filter_output = False
-		else:
-			logging.info("MIDI Bridge Output ON")
-			zynthian_gui_config.midi_filter_output = True
-
-		# Update MIDI profile
-		zynconf.update_midi_profile({ 
-			"ZYNTHIAN_MIDI_FILTER_OUTPUT": str(int(zynthian_gui_config.midi_filter_output))
-		})
-		zynautoconnect.request_midi_connect()
 		self.fill_list()
 
 	def toggle_midi_sys(self):

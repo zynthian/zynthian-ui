@@ -125,9 +125,9 @@ class zynthian_chain:
     def get_type(self):
         if self.synth_slots:
             return "MIDI Synth"
-        elif self.get_slot_count("Audio Effect"):
+        elif self.is_audio():
             return "Audio Effect"
-        elif self.get_slot_count("MIDI Tool"):
+        elif self.is_midi():
             return "MIDI Tool"
         else:
             return "Empty"
@@ -214,7 +214,7 @@ class zynthian_chain:
         Returns : User defined chain title or processor title if not set
         """
 
-        if title:
+        if self.title:
             return self.title
         else:
             return self.get_description_parts()[0]

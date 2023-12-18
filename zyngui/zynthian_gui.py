@@ -799,6 +799,11 @@ class zynthian_gui:
 				self.modify_chain_status["engine"]
 			)
 			self.modify_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
+			if processor is None:
+				# Created empty chain
+				self.chain_manager.set_active_chain_by_id(chain_id)
+				self.show_screen_reset("audio_mixer")
+				return
 			self.chain_control(chain_id, processor)
 		elif "engine" in self.modify_chain_status:
 			if "chain_id" in self.modify_chain_status:
@@ -816,7 +821,10 @@ class zynthian_gui:
 				elif "parallel" in self.modify_chain_status:
 					# Adding processor to existing chain
 					processor = self.chain_manager.add_processor(self.modify_chain_status["chain_id"], self.modify_chain_status["engine"], self.modify_chain_status["parallel"])
-					self.chain_control(self.modify_chain_status["chain_id"], processor)
+					if processor:
+						self.chain_control(self.modify_chain_status["chain_id"], processor)
+					else:
+						self.show_screen_reset("audio_mixer")
 				return
 			# Adding a new chain so select its MIDI channel
 			logging.debug(self.modify_chain_status)

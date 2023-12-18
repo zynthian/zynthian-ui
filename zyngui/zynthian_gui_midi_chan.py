@@ -66,12 +66,21 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data = []
 		if self.mode == 'ADD' or self.mode == 'SET':
+			chain = self.zyngui.chain_manager.get_active_chain()
+			list_index = 0
+			if self.chan_all:
+				self.list_data.append(("ALL", 0xffff, "ALL MIDI CHANNELS"))
+				if chain.midi_chan == 0xffff:
+					self.index = 0
+				list_index +=1
 			for i in self.zyngui.chain_manager.get_free_midi_chans():
 				if i == zynthian_gui_config.master_midi_channel:
 					continue
 				self.list_data.append((str(i + 1), i, "MIDI CH#" + str(i + 1)))
-			if self.chan_all:
-				self.list_data.append(("ALL", 0xffff, "ALL MIDI CHANNELS"))
+				if chain.midi_chan == i:
+					self.index = list_index
+				list_index += 1
+
 		elif self.mode == 'CLONE':
 			for i in self.chan_list:
 				if i in (self.midi_chan, zynthian_gui_config.master_midi_channel):
