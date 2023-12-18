@@ -51,7 +51,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 			self.list_data.append((self.zs3_update, 2, "Update"))
 		else:
 			self.list_data.append((self.zs3_restoring_submenu, 1, "Restore actions..."))
-			self.list_data.append((self.zs3_update, 2, "Update"))
+			self.list_data.append((self.zs3_update, 2, "Overwrite"))
 			self.list_data.append((self.zs3_rename, 3, "Rename"))
 			self.list_data.append((self.zs3_delete, 4, "Delete"))
 			self.preselect_last_action()
