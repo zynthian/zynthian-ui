@@ -1062,6 +1062,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		options = {}
 		options['Enter MIDI-learn'] = "enter"
 		options['Clean MIDI-learn'] = "clean"
+		options['Manage ZS3'] = "zs3"
 		self.zyngui.screens['option'].config("MIDI-learn", options, self.midi_learn_menu_cb)
 		self.zyngui.show_screen('option')
 
@@ -1073,13 +1074,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.toggle_midi_learn()
 		elif params == 'clean':
 			self.midi_unlearn_action()
+		elif params == "zs3":
+			self.zyngui.show_screen("zs3")
 
 
 	# Pre-select all controls in a chain to allow selection of actual control to MIDI learn
 	def toggle_midi_learn(self):
 		if self.midi_learning:
 			self.exit_midi_learn()
-			self.zyngui.show_screen("zs3_learn")
 		else:
 			self.midi_learning = True
 			for strip in self.visible_mixer_strips:
