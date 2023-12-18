@@ -543,6 +543,8 @@ def midi_autoconnect():
 
 	# Connect and disconnect routes
 	for dst, sources in required_routes.items():
+		if dst not in zyn_routed_midi:
+			zyn_routed_midi[dst] = []
 		try:
 			current_routes = jclient.get_all_connections(dst)
 		except Exception as e:
@@ -560,10 +562,7 @@ def midi_autoconnect():
 		for src in sources:
 			try:
 				jclient.connect(src, dst)
-				if dst not in zyn_routed_midi:
-					zyn_routed_midi[dst] = [src]
-				else:
-					zyn_routed_midi[dst].append(src)
+				zyn_routed_midi[dst].append(src)
 			except:
 				pass
 

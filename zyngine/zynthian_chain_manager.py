@@ -939,7 +939,6 @@ class zynthian_chain_manager():
             else:
                 # If processor is not inside a chain, bind to active chain
                 chan = self.active_chain_id
-        if isinstance(chan, str):
             if chan not in self.chain_midi_cc_binding:
                 self.chain_midi_cc_binding[chan] = {}
             if midi_cc not in self.chain_midi_cc_binding[chan]:
@@ -996,11 +995,11 @@ class zynthian_chain_manager():
         for midi_chan, i in self.absolute_midi_cc_binding.items():
             for midi_cc, j in i.items():
                 if zctrl in j:
-                    return([midi_chan, midi_cc])
+                    return([midi_chan, midi_cc, False])
         for chain_id, i in self.chain_midi_cc_binding.items():
             for midi_cc, j in i.items():
                 if zctrl in j:
-                    return([chain_id, midi_cc])
+                    return([chain_id, midi_cc, True])
 
     def midi_control_change(self, midi_chan, midi_cc, ccval):
         """Send MIDI CC message to relevant chain
