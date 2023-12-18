@@ -925,7 +925,7 @@ class zynthian_chain_manager():
     def add_midi_learn(self, chan, midi_cc, zctrl):
         """Adds a midi learn configuration
 
-        chan : MIDI channel of CC message or chain id for absolute mapping (None to use active chain)
+        chan : MIDI channel of CC message or None for chain binding
         midi_cc : CC number of CC message
         zctrl : Controller object
         """
@@ -934,11 +934,9 @@ class zynthian_chain_manager():
             return
         self.remove_midi_learn(zctrl.processor, zctrl.symbol)
         if chan is None:
-            if zctrl.processor.chain_id is not None:
-                chan = zctrl.processor.chain_id
-            else:
-                # If processor is not inside a chain, bind to active chain
-                chan = self.active_chain_id
+            if zctrl.processor.chain_id is None:
+                return # Can't bind chain to orphan processor
+            chan = zctrl.processor.chain_id
             if chan not in self.chain_midi_cc_binding:
                 self.chain_midi_cc_binding[chan] = {}
             if midi_cc not in self.chain_midi_cc_binding[chan]:
@@ -956,8 +954,6 @@ class zynthian_chain_manager():
                 # Add native MIDI learn #TODO: Should / can we still use native midi learn?
                 zctrl.processor.engine.set_midi_learn(zctrl, chan, midi_cc)
 
-        #TODO: Do we have to disable learn_cc here or should we rely on parent app to do that?
-        #self.state_manager.disable_learn_cc()
 
     def remove_midi_learn(self, proc, param):
         """Remove a midi learn configuration
@@ -1075,7 +1071,7 @@ class zynthian_chain_manager():
                     if proc_id in self.processors:
                         proc = self.processors[proc_id]
                         zctrl = proc.controllers_dict[symbol]
-                        self.add_midi_learn(chain_id, int(cc), zctrl)
+                        self.add_midi_learn(None, int(cc), zctrl)
                     pass
 
     def get_midi_learn_state(self):
