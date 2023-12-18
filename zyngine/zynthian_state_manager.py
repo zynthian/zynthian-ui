@@ -113,7 +113,7 @@ class zynthian_state_manager:
         self.sync = False  # True to request file system sync
         self.cuia_queue = []  # List of queues for GUI (CUIA) change messages
         self.update_available = False
-        self.update_status = False # True whilst checking for updates
+        self.update_status = False  # True whilst checking for updates
 
         self.hwmon_thermal_file = None
         self.hwmon_undervolt_file = None
@@ -132,7 +132,7 @@ class zynthian_state_manager:
         self.zynseq = zynseq.zynseq()
         self.ctrldev_manager = None
         self.audio_player = None
-        self.aubio_in = [1,2] # List of aubio inputs
+        self.aubio_in = [1, 2]  # List of aubio inputs
 
         # Initialize SMF MIDI recorder and player
         try:
@@ -175,7 +175,7 @@ class zynthian_state_manager:
             except Exception as e:
                 logging.error(f"Can't access monitoring sensors at all! => {e}")
 
-		# Start VNC as configured
+        # Start VNC as configured
         self.default_vncserver()
 
         zynautoconnect.start(self)
@@ -1147,7 +1147,10 @@ class zynthian_state_manager:
     # ----------------------------------------------------------------------------
 
     def get_midi_capture_state(self):
-        # Get zmips flags, chain routing, etc
+        """Get state related to midi input (capture): flags, chain routing, etc.
+
+        Returns : dictionary with state
+        """
         mcstate = {}
         for idev in range(24):
             if zynautoconnect.devices_in[idev] is None:
@@ -1155,7 +1158,7 @@ class zynthian_state_manager:
 
             routed_chains = []
             for ch in range(0, 16):
-                if (lib_zyncore.zmop_get_route_from(ch, idev)):
+                if lib_zyncore.zmop_get_route_from(ch, idev):
                     routed_chains.append(ch)
 
             uid = zynautoconnect.devices_in[idev].aliases[0]
@@ -1171,6 +1174,10 @@ class zynthian_state_manager:
         return mcstate
 
     def set_midi_capture_state(self, mcstate=None):
+        """Set midi input (capture) state: flags, chain routing, etc.
+
+        mcstate : dictionary with state. None for reset state to defaults.
+        """
         if mcstate:
             for uid, state in mcstate.items():
                 zmip = zynautoconnect.get_midi_in_devid_by_uid(uid)
@@ -1207,6 +1214,8 @@ class zynthian_state_manager:
             self.reset_midi_capture_state()
 
     def reset_midi_capture_state(self):
+        """Reset midi input (capture) state.
+        """
         for i in range(0, 24):
             # Set zmip flags
             lib_zyncore.zmip_set_flag_active_chan(i, 1)
