@@ -873,7 +873,7 @@ class zynthian_state_manager:
                         for proc_id, symbol in cfg:
                             if proc_id in self.chain_manager.processors:
                                 processor = self.chain_manager.processors[proc_id]
-                                self.chain_manager.add_midi_learn(processor.midi_chan, cc, processor.controllers_dict[symbol])
+                                self.chain_manager.add_midi_learn(int(processor.midi_chan), int(cc), processor.controllers_dict[symbol])
 
         if "midi_clone" in zs3_state:
             self.set_busy_details("restoring midi clone state")
