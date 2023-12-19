@@ -1170,7 +1170,7 @@ class zynthian_state_manager:
 
             uid = zynautoconnect.devices_in[idev].aliases[0]
             mcstate[uid] = {
-                "zmip_active_chan": bool(lib_zyncore.zmip_get_flag_active_chan(idev)),
+                "zmip_input_mode": bool(lib_zyncore.zmip_get_flag_active_chan(idev)),
                 "ctrldev_load": idev in self.ctrldev_manager.drivers,
                 "routed_chains": routed_chains
             }
@@ -1201,7 +1201,7 @@ class zynthian_state_manager:
                 if zmip is None:
                     continue
                 try:
-                    lib_zyncore.zmip_set_flag_active_chan(zmip, bool(state["zmip_active_chan"]))
+                    lib_zyncore.zmip_set_flag_active_chan(zmip, bool(state["zmip_input_mode"]))
                 except:
                     pass
                 try:
