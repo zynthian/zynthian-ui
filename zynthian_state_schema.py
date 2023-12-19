@@ -99,28 +99,6 @@ ZynthianState = {
                     #... Other MIDI learn configs
                 }
             },
-            "midi_learn_cc": { # Dictionary of MIDI learn / mapping configuration
-                "absolute": { # Dictionary of absolute mapping indexed by chain id
-                    "01": { # Dictionary of MIDI mapping indexed by MIDI CC
-                        "7": [ # List of controller configs
-                            ["2", "volume"], # Controller configs [proc_id, symbol]
-                            #... Other controllers mapped to this CC
-                        ],
-                        #... Other CC mapped to this chain
-                    },
-                    #... Other absolute CC mappings
-                },
-                "chain": { # Dictionary of chain specific mapping indexed by chain id
-                    "01": { # Dictionary of MIDI mapping indexed by MIDI CC
-                        "7": [ # List of controller configs
-                            ["2", "volume"], # Controller configs [proc_id, symbol]
-                            #... Other controllers mapped to this CC
-                        ],
-                        #... Other CC mapped to this chain
-                    },
-                    #... Other chain CC mappings
-                },
-            },
             "chains": { # Dictionary of chain specific ZS3 config indexed by chain ID
                 "01": { # Chain 01
                     "midi_in": ["MIDI IN"], # List of chain jack MIDI input sources (may include aliases)
@@ -133,16 +111,32 @@ ZynthianState = {
                     "note_high": 127, # Higheset MIDI note chain responds to
                     "transpose_octave": 0, # Octaves to transpose chain MIDI
                     "transpose_semitone": 0, # Semitones to transpose chain MIDI
+                    "midi_cc": { # Dictionary of MIDI mapping, indexed by CC number
+                        "7": [ # List of controller configs
+                            ["2", "volume"], # Controller configs [proc_id, symbol]
+                            #... Other controllers mapped to this CC
+                        ],
+                        #... Other CC mapped to this chain
+                    }
                 },
                 #... Other chains
             },
             "midi_capture": { # Dictionary of midi input configuration mapped by port input uid 
                 "ttymidi:MIDI_in": { # 
-                    "zmip_active_chan": 1, # 1 if active chain mode enabled (stage mode)
-                    "zmip_omni_chan": 0, # 1 if omni mode enabled
+                    "zmip_active_chan": 1, # 1 if active chain mode enabled (stage mode), 0 for multitimbral
                     "ctrldev_load": 0, # 1 to attempt loading controller device driver
                     "routed_chains": [], # List of chain zmops this input is routed to
-                    "audio_in": [0,1] # List of audio inputs, e.g. for aubio (optional)
+                    "audio_in": [0,1], # List of audio inputs, e.g. for aubio (optional)
+                    "midi_cc": { # Map of MIDI CC mapping, indexed by MIDI channel
+                        "0": { # Map of controls, indexed by CC number
+                            "121": [ # List of controller configs
+                                [1, "volume"], # Controller config [proc_id, symbol]
+                                #... Other controllers
+                            ],
+                            #... Other CCs
+                        },
+                        #... Other MIDI channels
+                    }
                 }
             },
             "midi_clone": { # Dictionary MIDI clone configs mapped by source channel

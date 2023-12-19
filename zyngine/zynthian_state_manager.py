@@ -868,6 +868,12 @@ class zynthian_state_manager:
                 if "audio_thru" in chain_state:
                     chain.audio_thru = chain_state["audio_thru"]
                 chain.rebuild_graph()
+                if "midi_cc" in chain_state:
+                    for cc, cfg in chain_state["midi_cc"].items():
+                        for proc_id, symbol in cfg:
+                            if proc_id in self.chain_manager.processors:
+                                processor = self.chain_manager.processors[proc_id]
+                                self.chain_manager.add_midi_learn(processor.midi_chan, cc, processor.controllers_dict[symbol])
 
         if "midi_clone" in zs3_state:
             self.set_busy_details("restoring midi clone state")
@@ -905,10 +911,6 @@ class zynthian_state_manager:
         if "midi_capture" in zs3_state:
             self.set_busy_details("restoring midi capture state")
             self.set_midi_capture_state(zs3_state['midi_capture'])
-
-        if "midi_learn_cc" in zs3_state:
-            self.set_busy_details("restoring midi learning state")
-            self.chain_manager.set_midi_learn_state(zs3_state["midi_learn_cc"])
 
         return True
 
@@ -994,6 +996,16 @@ class zynthian_state_manager:
                     chain_state["audio_out"].append(proc_id)                      
             if chain.audio_thru:
                 chain_state["audio_thru"] = chain.audio_thru
+            # Add chain MIDI mapping
+            for key, zctrls in self.chain_manager.chain_midi_cc_binding.items():
+                if chain_id == (key >> 16) & 0xff:
+                    cc = (key >> 8) & 0x7f
+                    #TODO: Do not save default engine mapping
+                    if "midi_cc" not in chain_state:
+                        chain_state["midi_cc"] = {}
+                    chain_state["midi_cc"][cc] = []
+                    for zctrl in zctrls:
+                        chain_state["midi_cc"][cc].append([zctrl.processor.id, zctrl.symbol])
             if chain_state:
                 chain_states[chain_id] = chain_state
         if chain_states:
@@ -1032,10 +1044,6 @@ class zynthian_state_manager:
         if mcstate:
             self.zs3[zs3_id]["midi_capture"] = mcstate
 
-        # Add MIDI learn state
-        midi_learn_state = self.chain_manager.get_midi_learn_state()
-        if midi_learn_state:
-            self.zs3[zs3_id]["midi_learn_cc"] = midi_learn_state
 
     def delete_zs3(self, zs3_index):
         """Remove a ZS3
@@ -1163,12 +1171,22 @@ class zynthian_state_manager:
             uid = zynautoconnect.devices_in[idev].aliases[0]
             mcstate[uid] = {
                 "zmip_active_chan": bool(lib_zyncore.zmip_get_flag_active_chan(idev)),
-                "zmip_omni_chan": bool(lib_zyncore.zmip_get_flag_omni_chan(idev)),
                 "ctrldev_load": idev in self.ctrldev_manager.drivers,
                 "routed_chains": routed_chains
             }
             if uid == "AUBIO:in":
                 mcstate[uid]["audio_in"] = self.aubio_in
+            # Add global / absolute MIDI mapping
+            for key, zctrls in self.chain_manager.absolute_midi_cc_binding.items():
+                if idev == (key >> 24) & 0xff:
+                    chan = (key >> 16) & 0x7f
+                    cc = (key >> 8) & 0x7f
+                    if "midi_cc" not in mcstate[uid]:
+                        mcstate[uid]["midi_cc"] = {}
+                    mcstate[uid]["midi_cc"][cc] = []
+                    for zctrl in zctrls:
+                        mcstate[uid]["midi_cc"][cc].append([zctrl.processor.id, zctrl.symbol])
+
 
         return mcstate
 
@@ -1184,10 +1202,6 @@ class zynthian_state_manager:
                     continue
                 try:
                     lib_zyncore.zmip_set_flag_active_chan(zmip, bool(state["zmip_active_chan"]))
-                except:
-                    pass
-                try:
-                    lib_zyncore.zmip_set_flag_omni_chan(zmip, bool(state["zmip_omni_chan"]))
                 except:
                     pass
                 try:
@@ -1209,6 +1223,14 @@ class zynthian_state_manager:
                         lib_zyncore.zmop_set_route_from(ch, zmip, ch in routed_chains)
                 except:
                     pass
+
+                if "midi_cc" in state:
+                    for cc, cfg in state["midi_cc"].items():
+                        for proc_id, symbol in cfg:
+                            if proc_id in self.chain_manager.processors:
+                                processor = self.chain_manager.processors[proc_id]
+                                self.chain_manager.add_midi_learn(processor.midi_chan, cc, processor.controllers_dict[symbol], zmip)
+
         else:
             self.reset_midi_capture_state()
 
@@ -1218,8 +1240,7 @@ class zynthian_state_manager:
         for i in range(0, 24):
             # Set zmip flags
             lib_zyncore.zmip_set_flag_active_chan(i, 1)
-            lib_zyncore.zmip_set_flag_omni_chan(i, 0)
-            zynautoconnect.devices_in_mode[i] = "ACTI"
+            zynautoconnect.devices_in_mode[i] = 1 #TODO: Is this working and required?
             # Route zmops (chans)
             for ch in (0, 16):
                 lib_zyncore.zmop_set_route_from(ch, i, 1)

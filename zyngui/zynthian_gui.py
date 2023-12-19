@@ -1951,11 +1951,8 @@ class zynthian_gui:
 						elif ccnum == 123:
 							self.state_manager.all_notes_off()
 
-						# QUESTION!!
-						# Is this OK? It seems we learn MASTER channel CC events to chain's zctrls,
-						# but we drive zynmixer only?
 						if self.state_manager.midi_learn_zctrl:
-							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_zctrl)
+							self.chain_manager.add_midi_learn(chan, ccnum, self.state_manager.midi_learn_zctrl, idev)
 						else:
 							self.state_manager.zynmixer.midi_control_change(chan, ccnum, ccval)
 					# Note-on/off => CUIA
@@ -1991,11 +1988,11 @@ class zynthian_gui:
 					if ccnum < 120:
 						# If MIDI learn pending...
 						if self.state_manager.midi_learn_zctrl:
-							self.screens['control'].midi_learn_bind(chan, ccnum)
+							self.screens['control'].midi_learn_bind(idev, chan, ccnum)
 							self.show_current_screen()
 						# Try processor parameter
 						else:
-							self.chain_manager.midi_control_change(chan, ccnum, ccval)
+							self.chain_manager.midi_control_change(idev, chan, ccnum, ccval)
 							self.state_manager.zynmixer.midi_control_change(chan, ccnum, ccval)
 							self.state_manager.alsa_mixer_processor.midi_control_change(chan, ccnum, ccval)
 							self.state_manager.audio_player.midi_control_change(chan, ccnum, ccval)
@@ -2034,9 +2031,9 @@ class zynthian_gui:
 					# Pattern recording
 					if self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
 						self.screens['pattern_editor'].midi_note((ev & 0x7F00) >> 8)
-					# Preload preset (note-on) => TODO: support OMNI mode!! Need to cache device->chain routes
+					# Preload preset (note-on)
 					elif self.current_screen == 'preset' and zynthian_gui_config.preset_preload_noteon and\
-							(zynautoconnect.get_midi_in_dev_mode(idev) == "ACTI" or chan == self.get_current_processor().get_midi_chan()):
+							(zynautoconnect.get_midi_in_dev_mode(idev) or chan == self.get_current_processor().get_midi_chan()):
 						self.screens['preset'].preselect_action()
 					# Note Range Learn
 					elif self.current_screen == 'midi_key_range' and self.state_manager.midi_learn_state:

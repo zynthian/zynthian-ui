@@ -59,7 +59,6 @@ class aubio_inputs():
 
 ZMIP_MODE_CONTROLLER = "⌨" #\u2328
 ZMIP_MODE_ACTIVE = "⇥" #\u21e5
-ZMIP_MODE_OMNI = "∈" #\u2208
 ZMIP_MODE_MULTI = "⇶" #\u21f6
 
 class zynthian_gui_midi_config(zynthian_gui_selector):
@@ -112,12 +111,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             """Get input mode prefix"""
             if self.input:
                 if 0 <= idev < len(zynautoconnect.devices_in_mode):
-                    mode = zynautoconnect.get_midi_in_dev_mode(idev)
-                    if mode == "ACTI":
+                    if zynautoconnect.get_midi_in_dev_mode(idev):
                         mode_str += ZMIP_MODE_ACTIVE
-                    elif mode == "OMNI":
-                        mode_str += ZMIP_MODE_OMNI
-                    elif mode == "MULTI":
+                    else:
                         mode_str += ZMIP_MODE_MULTI
                     if idev in self.zyngui.state_manager.ctrldev_manager.drivers:
                         mode_str += f" {ZMIP_MODE_CONTROLLER}"
@@ -344,19 +340,10 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 options = {}
                 if self.input:
                     options["MIDI Input Mode"] = None
-                    mode = zynautoconnect.get_midi_in_dev_mode(idev)
-                    if mode == "ACTI":
-                        options[f'\u25C9 {ZMIP_MODE_ACTIVE} Active channel'] = "ACTI"
+                    if zynautoconnect.get_midi_in_dev_mode(idev):
+                        options[f'\u2610 {ZMIP_MODE_ACTIVE} Multitimbral mode '] = "MULTI"
                     else:
-                        options[f'\u25CE {ZMIP_MODE_ACTIVE} Active channel'] = "ACTI"
-                    if mode == "OMNI":
-                        options[f'\u25C9 {ZMIP_MODE_OMNI} Omni mode'] = "OMNI"
-                    else:
-                        options[f'\u25CE {ZMIP_MODE_OMNI} Omni mode'] = "OMNI"
-                    if mode == "MULTI":
-                        options[f'\u25C9 {ZMIP_MODE_MULTI} Multitimbral mode '] = "MULTI"
-                    else:
-                        options[f'\u25CE {ZMIP_MODE_MULTI} Multitimbral mode'] = "MULTI"
+                        options[f'\u2612 {ZMIP_MODE_MULTI} Multitimbral mode '] = "ACTI"
 
                     options["Configuration"] = None
                     dev_id = zynautoconnect.get_midi_in_devid(idev)
@@ -395,10 +382,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 self.zyngui.show_screen('audio_in')
             elif self.input:
                 idev = self.list_data[self.index][1]
-                flags_acti = params == "ACTI"
-                flags_omni = params == "OMNI"
-                lib_zyncore.zmip_set_flag_active_chan(idev, flags_acti)
-                lib_zyncore.zmip_set_flag_omni_chan(idev, flags_omni)
+                lib_zyncore.zmip_set_flag_active_chan(idev, params == "ACTI")
                 zynautoconnect.update_midi_in_dev_mode(idev)
             self.fill_list()
         except:

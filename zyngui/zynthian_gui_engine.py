@@ -142,7 +142,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		path = ""
 		try:
 			path = self.zyngui.modify_chain_status["type"]
-			path = "{}#{}".format(self.zyngui.modify_chain_status["chain_id"], path)
+			chain = self.zyngui.chain_manager.chains[self.zyngui.modify_chain_status["chain_id"]]
+			path = f"{chain}#{path}"
 		except:
 			pass
 		self.select_path.set(path)

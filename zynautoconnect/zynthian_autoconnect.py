@@ -237,7 +237,7 @@ def get_midi_out_devid_by_uid(uid):
 def get_midi_in_dev_mode(idev):
 	"""Get mode for a midi input device
 
-	returns: mode (ACTI|OMNI|MULTI)
+	returns: mode (1=ACTI, 0=MULTI, None if idev out of range)
 	"""
 	if 0 <= idev < len(devices_in_mode):
 		return devices_in_mode[idev]
@@ -250,12 +250,7 @@ def update_midi_in_dev_mode(idev):
 	idev : midi input device index
 	"""
 	if 0 <= idev < len(devices_in_mode):
-		if lib_zyncore.zmip_get_flag_active_chan(idev):
-			devices_in_mode[idev] = "ACTI"
-		elif lib_zyncore.zmip_get_flag_omni_chan(idev):
-			devices_in_mode[idev] = "OMNI"
-		else:
-			devices_in_mode[idev] = "MULTI"
+			devices_in_mode[idev] = lib_zyncore.zmip_get_flag_active_chan(idev)
 
 def update_midi_in_dev_mode_all():
 	"""Update mode cache for all midi input devices
