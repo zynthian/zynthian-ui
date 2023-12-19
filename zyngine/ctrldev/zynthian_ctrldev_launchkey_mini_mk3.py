@@ -119,8 +119,12 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 				except:
 					pass
 		elif evtype == 0xB:
-			if val1 > 20 and val1 < 29:
-				self.zynmixer.set_level(val1 - 21, val2 / 127.0)
+			if val1 > 20 and val1 < 28:
+				chain = self.chain_manager.get_chain_by_index(val1 - 21)
+				if chain and chain.mixer_chan is not None and chain.mixer_chan < 17:
+					self.zynmixer.set_level(chain.mixer_chan, val2 / 127.0)
+			elif val1 == 28:
+				self.zynmixer.set_level(255, val2 / 127.0)
 			elif val1 == 0x6C:
 				# SHIFT
 				self.shift = val2 != 0
