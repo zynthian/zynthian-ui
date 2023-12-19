@@ -1048,7 +1048,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return
 			self.mixer_strip_offset -= 1
 		elif event.num == 4:
-			#***TODO***
 			if self.mixer_strip_offset +  len(self.visible_mixer_strips) >= self.zyngui.chain_manager.get_chain_count() - 1:
 				return
 			self.mixer_strip_offset += 1

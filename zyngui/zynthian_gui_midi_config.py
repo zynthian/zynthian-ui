@@ -450,7 +450,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 else:
                     fingerprint = zynautoconnect.get_hw_dst_ports()
                 if last_fingerprint != fingerprint:
-                    self.fingerprint = fingerprint
+                    last_fingerprint = fingerprint
                     update = True
 
                 if update:

@@ -48,7 +48,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data=[]
 		if self.zs3_id == "zs3-0":
-			self.list_data.append((self.zs3_update, 2, "Update"))
+			self.list_data.append((self.zs3_update, 2, "Overwrite"))
 		else:
 			self.list_data.append((self.zs3_restoring_submenu, 1, "Restore actions..."))
 			self.list_data.append((self.zs3_update, 2, "Overwrite"))

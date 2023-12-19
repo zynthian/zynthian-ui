@@ -407,7 +407,7 @@ class zynthian_legacy_snapshot:
             if "mixer" in zs3:
                 zs3["mixer"]["midi_learn"] = {}
                 for strip, config in zs3["mixer"].items():
-                    if strip == "main": #***TODO***
+                    if strip == "main":
                         strip_id = 17 #TODO: Get actual main mixer strip index
                     else:
                         try:
