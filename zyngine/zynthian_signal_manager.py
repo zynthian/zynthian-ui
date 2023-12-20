@@ -31,19 +31,22 @@ import logging
 
 class zynthian_signal_manager:
 
-    S_ALL = 0  # Clients registering for this signal, will receive all signals
-    S_STATE_MAN = 1
-    S_CHAIN_MAN = 2
-    S_CHAIN = 3
-    S_AUDIO_RECORDER = 4
-    S_AUDIO_PLAYER = 5
-    S_SMF_RECORDER = 6
-    S_ALSA_MIXER = 7
-    S_AUDIO_MIXER = 8
-    S_STEPSEQ = 9
-    S_CUIA = 10
+    S_ALL               = 0  # Clients registering for this signal, will receive all signals
+    S_STATE_MAN         = 1
+    S_CHAIN_MAN         = 2
+    S_CHAIN             = 3
+    S_AUDIO_RECORDER    = 4
+    S_AUDIO_PLAYER      = 5
+    S_SMF_RECORDER      = 6
+    S_ALSA_MIXER        = 7
+    S_AUDIO_MIXER       = 8
+    S_STEPSEQ           = 9
+    S_CUIA              = 10
 
-    last_signal = 10
+    SS_CUIA_REFRESH     = 0
+    SS_CUIA_MIDI_EVENT        = 1
+
+    last_signal = 11
     last_subsignal = 10
 
     def __init__(self):

@@ -413,7 +413,6 @@ void* file_thread_fn(void * param) {
         pSrcState = src_delete(pSrcState);
 
     DPRINTF("File reader thread ended\n");
-    fprintf(stderr, "File reader thread ended\n");
     pthread_exit(NULL);
 }
 

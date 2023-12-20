@@ -99,13 +99,19 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 				self.zyngui.close_screen()
 				return True
 			elif t == 'B':
-				self.zyngui.state_manager.disable_learn_pc()
-				self.zyngui.screens['zs3_options'].config(zs3_index)
-				self.zyngui.show_screen('zs3_options')
+				self.show_menu()
 				return True
 
 	def show_menu(self):
-		self.click_listbox(None, 'B')
+		try:
+			zs3_index = self.list_data[self.index][0]
+			if zs3_index == "SAVE_ZS3":
+				return
+			self.zyngui.state_manager.disable_learn_pc()
+			self.zyngui.screens['zs3_options'].config(zs3_index)
+			self.zyngui.show_screen('zs3_options')
+		except:
+			pass
 
 	def toggle_menu(self):
 		if self.shown:

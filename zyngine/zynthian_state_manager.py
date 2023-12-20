@@ -112,8 +112,8 @@ class zynthian_state_manager:
         self.midi_learn_zctrl = None  # zctrl currently being learned
         self.sync = False  # True to request file system sync
         self.cuia_queue = []  # List of queues for GUI (CUIA) change messages
-        self.update_available = False
-        self.update_status = False  # True whilst checking for updates
+        self.update_available = False # True when updates available from repositories
+        self.checking_for_updates = False  # True whilst checking for updates
 
         self.hwmon_thermal_file = None
         self.hwmon_undervolt_file = None
@@ -151,7 +151,8 @@ class zynthian_state_manager:
         self.zynmidi = zynthian_zcmidi()
 
         self.exit_flag = False
-        self.thread = None
+        self.slow_thread = None
+        self.fast_thread = None
         self.start()
 
         self.end_busy("zynthian_state_manager")
@@ -187,10 +188,15 @@ class zynthian_state_manager:
         zynautoconnect.request_audio_connect(True)
 
         self.exit_flag = False
-        self.thread = Thread(target=self.thread_task, args=(0.2,))
-        self.thread.name = "Status Manager MIDI"
-        self.thread.daemon = True  # thread dies with the program
-        self.thread.start()
+        self.slow_thread = Thread(target=self.slow_thread_task)
+        self.slow_thread.name = "Status Manager Slow"
+        self.slow_thread.daemon = True  # thread dies with the program
+        self.slow_thread.start()
+
+        self.fast_thread = Thread(target=self.fast_thread_task)
+        self.fast_thread.name = "Status Manager Fast"
+        self.fast_thread.daemon = True  # thread dies with the program
+        self.fast_thread.start()
 
         self.end_busy("start state")
 
@@ -200,9 +206,12 @@ class zynthian_state_manager:
         self.start_busy("stop state")
 
         self.exit_flag = True
-        if self.thread and self.thread.is_alive():
-            self.thread.join()
-        self.thread = None
+        if self.fast_thread and self.fast_thread.is_alive():
+            self.fast_thread.join()
+        self.fast_thread = None
+        if self.slow_thread and self.slow_thread.is_alive():
+            self.slow_thread.join()
+        self.slow_thread = None
 
         self.last_snapshot_fpath = ""
         self.zynseq.transport_stop("ALL")
@@ -397,11 +406,11 @@ class zynthian_state_manager:
         return res
 
     # ------------------------------------------------------------------
-    # Background task thread
+    # Background task threads
     # ------------------------------------------------------------------
 
-    def thread_task(self, tsleep=0.2):
-        """Perform background tasks"""
+    def slow_thread_task(self):
+        """Perform slow / low priority background tasks"""
 
         status_counter = 0
         xruns_status = self.status_xrun
@@ -503,7 +512,146 @@ class zynthian_state_manager:
             except Exception as e:
                 logging.exception(e)
 
-            sleep(tsleep)
+            sleep(0.2)
+
+    def fast_thread_task(self):
+        """Perform fast / high priority background tasks"""
+
+        while not self.exit_flag:
+            # MIDI
+            self.zynmidi_read()
+            sleep(0.01)
+
+    # ------------------------------------------------------------------
+    # MIDI processing
+    # ------------------------------------------------------------------
+
+    def zynmidi_read(self):
+        try:
+            n = lib_zyncore.get_zynmidi_num_pending()
+            if n <= 0:
+                return
+            midi_events = (ctypes.c_uint32 * n)()
+            n = lib_zyncore.read_zynmidi_buffer(midi_events, n)
+            for i in range(n):
+                ev = midi_events[i]
+
+                # Try to manage with configured control devices
+                if self.ctrldev_manager.midi_event(ev):
+                    self.status_midi = True
+                    self.last_event_flag = True
+                    continue
+
+                zmip = (ev & 0xFF000000) >> 24
+                evtype = (ev >> 20) & 0xf
+                chan = (ev >> 16) & 0xf
+                #logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))
+
+                # System Messages (Common & RT)
+                if evtype == 0xF:
+                    # Clock
+                    if chan == 0x8:
+                        self.status_midi_clock = True
+                        continue
+                    # Tick
+                    elif chan == 0x9:
+                        continue
+                    # Active Sense
+                    elif chan == 0xE:
+                        continue
+                    # Reset
+                    elif chan == 0xF:
+                        pass
+
+                # Master MIDI Channel...
+                elif chan == zynthian_gui_config.master_midi_channel:
+                    logging.info("MASTER MIDI MESSAGE: %s" % hex(ev))
+                    # Webconf configured messages for Snapshot Control...
+                    if ev == zynthian_gui_config.master_midi_program_change_up:
+                        logging.debug("PROGRAM CHANGE UP!")
+                        self.load_snapshot_by_prog(self.state_manager.snapshot_program + 1)
+                    elif ev == zynthian_gui_config.master_midi_program_change_down:
+                        logging.debug("PROGRAM CHANGE DOWN!")
+                        self.load_snapshot_by_prog(self.state_manager.snapshot_program - 1)
+                    elif ev == zynthian_gui_config.master_midi_bank_change_up:
+                        logging.debug("BANK CHANGE UP!")
+                        self.set_snapshot_midi_bank(self.state_manager.snapshot_bank + 1)
+                    elif ev == zynthian_gui_config.master_midi_bank_change_down:
+                        logging.debug("BANK CHANGE DOWN!")
+                        self.set_snapshot_midi_bank(self.state_manager.snapshot_bank - 1)
+                    # Program Change => Snapshot Load
+                    elif evtype == 0xC:
+                        pgm = ((ev & 0x7F00) >> 8)
+                        logging.debug("PROGRAM CHANGE %d" % pgm)
+                        self.start_busy("load_snapshot", "loading snapshot")
+                        self.load_snapshot_by_prog(pgm)
+                        self.end_busy("load_snapshot")
+                    # Control Change...
+                    elif evtype == 0xB:
+                        ccnum = (ev & 0x7F00) >> 8
+                        ccval = (ev & 0x007F)
+                        if ccnum == zynthian_gui_config.master_midi_bank_change_ccnum:
+                            bnk = (ev & 0x7F)
+                            logging.debug("BANK CHANGE %d" % bnk)
+                            self.set_snapshot_midi_bank(bnk)
+                        elif ccnum == 120:
+                            self.all_sounds_off()
+                        elif ccnum == 123:
+                            self.all_notes_off()
+
+                        if self.midi_learn_zctrl:
+                            self.chain_manager.add_midi_learn(chan, ccnum, self.midi_learn_zctrl, (ev >> 24) & 0xff)
+                        else:
+                            self.zynmixer.midi_control_change(chan, ccnum, ccval)
+
+                # Control Change...
+                elif evtype == 0xB:
+                    ccnum = (ev >> 8) & 0x7f
+                    ccval = ev & 0x7f
+                    #logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan,ccnum,ccval))
+                    if ccnum < 120:
+                        # If MIDI learn pending...
+                        if self.midi_learn_zctrl:
+                            self.screens['control'].midi_learn_bind((ev >> 24) & 0xff, chan, ccnum)
+                            self.show_current_screen()
+                        # Try processor parameter
+                        else:
+                            self.chain_manager.midi_control_change((ev >> 24) & 0xff, chan, ccnum, ccval)
+                            self.zynmixer.midi_control_change(chan, ccnum, ccval)
+                            self.alsa_mixer_processor.midi_control_change(chan, ccnum, ccval)
+                            self.audio_player.midi_control_change(chan, ccnum, ccval)
+                    # Special CCs >= Channel Mode
+                    elif ccnum == 120:
+                        self.state_manager.all_sounds_off_chan(chan)
+                    elif ccnum == 123:
+                        self.state_manager.all_notes_off_chan(chan)
+
+                # Program Change...
+                elif evtype == 0xC:
+                    pgm = (ev & 0x7F00) >> 8
+                    logging.info(f"MIDI PROGRAM CHANGE: CH#{chan}, PRG#{pgm}")
+
+                    # SubSnapShot (ZS3) MIDI learn...
+                    if self.midi_learn_pc is not None:
+                        self.save_zs3(f"{chan}/{pgm}")
+                        zynsigman.send(zynsigman.S_CUIA, zynsigman.SS_CUIA_REFRESH)
+                    else:
+                        if zynthian_gui_config.midi_prog_change_zs3:
+                            res = self.load_zs3_by_midi_prog(chan, pgm)
+                        else:
+                            chan = self.chain_manager.get_active_chain().midi_chan
+                            res = self.chain_manager.set_midi_prog_preset(chan, pgm)
+                        if res:
+                            zynsigman.send(zynsigman.S_CUIA, zynsigman.SS_CUIA_REFRESH)
+
+                zynsigman.send(zynsigman.S_CUIA, zynsigman.SS_CUIA_MIDI_EVENT, zmip=(ev>>24)&0xff, evtype=evtype, chan=chan, val1=(ev>>8)&0x7f, val2=ev&0x7f)
+
+                # Flag MIDI event
+                self.status_midi = True
+
+        except Exception as err:
+            logging.exception(err)
+
 
     # ----------------------------------------------------------------------------
     # CUIA event queues
@@ -1967,9 +2115,9 @@ class zynthian_state_manager:
             return False
 
     def check_for_updates(self):
-        if self.update_status:
+        if self.checking_for_updates:
             return
-        self.update_status = True
+        self.checking_for_updates = True
         def update_thread():
             try:
                 repos = ["/zynthian/zyncoder", "/zynthian/zynthian-ui", "/zynthian/zynthian-sys", "/zynthian/zynthian-webconf", "/zynthian/zynthian-data"]
@@ -1980,7 +2128,7 @@ class zynthian_state_manager:
                     self.update_available |= local_hash != remote_hash
             except:
                 self.update_available = False
-            self.update_status = False
+            self.checking_for_updates = False
 
         thread = Thread(target=update_thread, args=())
         thread.name = "Check update"
