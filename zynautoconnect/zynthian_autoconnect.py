@@ -545,6 +545,15 @@ def midi_autoconnect():
 	for dst in list(required_routes.keys()):
 		if dst.startswith("effect_"):
 			required_routes.pop(dst)
+	# Workaround for mod-host auto routing
+	try:
+		port = jclient.get_port_by_name("mod-host:midi_in")
+		current_routes = jclient.get_all_connections(port)
+		for src in current_routes:
+			if not src.name.startswith("ZynMidiRouter"):
+				jclient.disconnect(src, port)
+	except:
+		pass
 
 	# Connect and disconnect routes
 	for dst, sources in required_routes.items():
@@ -585,6 +594,14 @@ def audio_autoconnect():
 
 	# Get System Playback Ports
 	system_playback_ports = jclient.get_ports("system:playback", is_input=True, is_audio=True, is_physical=True)
+
+	# Workaround for mod-monitor auto routing
+	for port in system_playback_ports:
+		for i in range(1,3):
+			try:
+				jclient.disconnect(f"mod-monitor:out_{i}", port)
+			except:
+				pass
 
 	# Create graph of required chain routes as sets of sources indexed by destination
 	required_routes = {}
