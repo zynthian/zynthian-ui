@@ -1490,7 +1490,11 @@ class zynthian_gui:
 			if len(params) > 1:
 				chan = int(params[1])
 			else:
-				chan = lib_zyncore.get_midi_active_chan()
+				acti_chain = self.chain_manager.get_active_chain()
+				if acti_chain:
+					chan = acti_chain.midi_chan
+				else:
+					return
 			if 0 <= chan < 16 and 0 <= pgm < 128:
 				lib_zyncore.write_zynmidi_program_change(chan, pgm)
 

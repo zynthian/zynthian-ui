@@ -976,23 +976,23 @@ class zynthian_state_manager:
                     if chain.midi_chan and chain.midi_chan != chain_state['midi_chan']:
                         chain.set_midi_chan(chain_state['midi_chan'])
 
-                if chain.midi_chan is not None:
+                if chain.zmop_index is not None:
                     if "note_low" in chain_state:
-                        lib_zyncore.set_midi_filter_note_low(chain.midi_chan, chain_state["note_low"])
+                        lib_zyncore.zmop_set_note_low(chain.zmop_index, chain_state["note_low"])
                     else:
-                        lib_zyncore.set_midi_filter_note_low(chain.midi_chan, 0)
+                        lib_zyncore.zmop_set_note_low(chain.zmop_index, 0)
                     if "note_high" in chain_state:
-                        lib_zyncore.set_midi_filter_note_high(chain.midi_chan, chain_state["note_high"])
+                        lib_zyncore.zmop_set_note_high(chain.zmop_index, chain_state["note_high"])
                     else:
-                        lib_zyncore.set_midi_filter_note_high(chain.midi_chan, 127)
+                        lib_zyncore.zmop_set_note_high(chain.zmop_index, 127)
                     if "transpose_octave" in chain_state:
-                        lib_zyncore.set_midi_filter_transpose_octave(chain.midi_chan, chain_state["transpose_octave"])
+                        lib_zyncore.zmop_set_transpose_octave(chain.zmop_index, chain_state["transpose_octave"])
                     else:
-                        lib_zyncore.set_midi_filter_transpose_octave(chain.midi_chan, 0)
+                        lib_zyncore.zmop_set_transpose_octave(chain.zmop_index, 0)
                     if "transpose_semitone" in chain_state:
-                        lib_zyncore.set_midi_filter_transpose_semitone(chain.midi_chan, chain_state["transpose_semitone"])
+                        lib_zyncore.zmop_set_transpose_semitone(chain.zmop_index, chain_state["transpose_semitone"])
                     else:
-                        lib_zyncore.set_midi_filter_transpose_semitone(chain.midi_chan, 0)
+                        lib_zyncore.zmop_set_transpose_semitone(chain.zmop_index, 0)
                 if "midi_in" in chain_state:
                     chain.midi_in = chain_state["midi_in"]
                 if "midi_out" in chain_state:
@@ -1018,6 +1018,9 @@ class zynthian_state_manager:
                                 processor = self.chain_manager.processors[proc_id]
                                 self.chain_manager.add_midi_learn(int(processor.midi_chan), int(cc), processor.controllers_dict[symbol])
 
+        # ********************** THIS SHOULD BE REMOVED! ******************************
+        # Do we want to keep full BW compatibility or simply avoid errors when loading?
+        """
         if "midi_clone" in zs3_state:
             self.set_busy_details("restoring midi clone state")
             for src_chan in range(16):
@@ -1028,6 +1031,7 @@ class zynthian_state_manager:
                     except:
                         self.enable_clone(src_chan, dst_chan, False)
                         lib_zyncore.reset_midi_filter_clone_cc(src_chan, dst_chan)
+        """
 
         if "processors" in zs3_state:
             for proc_id, proc_state in zs3_state["processors"].items():
@@ -1111,16 +1115,16 @@ class zynthian_state_manager:
             }
             if isinstance(chain.midi_chan, int) and chain.midi_chan < 16:
                 # TODO: This is MIDI channel related, not chain specific
-                note_low = lib_zyncore.get_midi_filter_note_low(chain.midi_chan)
+                note_low = lib_zyncore.zmop_get_note_low(chain.midi_chan)
                 if note_low:
                     chain_state["note_low"] = note_low
-                note_high = lib_zyncore.get_midi_filter_note_high(chain.midi_chan)
+                note_high = lib_zyncore.zmop_get_note_high(chain.midi_chan)
                 if note_high != 127:
                     chain_state["note_high"] = note_high
-                transpose_octave = lib_zyncore.get_midi_filter_transpose_octave(chain.midi_chan)
+                transpose_octave = lib_zyncore.zmop_get_transpose_octave(chain.midi_chan)
                 if transpose_octave:
                     chain_state["transpose_octave"] = transpose_octave
-                transpose_semitone = lib_zyncore.get_midi_filter_transpose_semitone(chain.midi_chan)
+                transpose_semitone = lib_zyncore.zmop_get_transpose_semitone(chain.midi_chan)
                 if transpose_semitone:
                     chain_state["transpose_semitone"] = transpose_semitone
                 if chain.midi_in:
@@ -1153,10 +1157,6 @@ class zynthian_state_manager:
                 chain_states[chain_id] = chain_state
         if chain_states:
             self.zs3[zs3_id]["chains"] = chain_states
-
-        clone_state = self.get_clone_state()
-        if clone_state:
-            self.zs3[zs3_id]["midi_clone"] = clone_state
 
         # Add processors
         processor_states = {}
@@ -1313,7 +1313,7 @@ class zynthian_state_manager:
 
             uid = zynautoconnect.devices_in[idev].aliases[0]
             mcstate[uid] = {
-                "zmip_input_mode": bool(lib_zyncore.zmip_get_flag_active_chan(idev)),
+                "zmip_input_mode": bool(lib_zyncore.zmip_get_flag_active_chain(idev)),
                 "ctrldev_load": idev in self.ctrldev_manager.drivers,
                 "routed_chains": routed_chains
             }
@@ -1344,7 +1344,7 @@ class zynthian_state_manager:
                 if zmip is None:
                     continue
                 try:
-                    lib_zyncore.zmip_set_flag_active_chan(zmip, bool(state["zmip_input_mode"]))
+                    lib_zyncore.zmip_set_flag_active_chain(zmip, bool(state["zmip_input_mode"]))
                 except:
                     pass
                 try:
@@ -1382,7 +1382,7 @@ class zynthian_state_manager:
         """
         for i in range(0, 24):
             # Set zmip flags
-            lib_zyncore.zmip_set_flag_active_chan(i, 1)
+            lib_zyncore.zmip_set_flag_active_chain(i, 1)
             zynautoconnect.devices_in_mode[i] = 1 #TODO: Is this working and required?
             # Route zmops (chans)
             for ch in (0, 16):
@@ -1441,13 +1441,11 @@ class zynthian_state_manager:
         try:
             # Set Global Tuning
             self.fine_tuning_freq = zynthian_gui_config.midi_fine_tuning
-            lib_zyncore.set_midi_filter_tuning_freq(ctypes.c_double(self.fine_tuning_freq))
+            lib_zyncore.set_tuning_freq(ctypes.c_double(self.fine_tuning_freq))
             # Set MIDI Master Channel
             lib_zyncore.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
-            # Set MIDI CC automode
-            lib_zyncore.set_midi_filter_cc_automode(zynthian_gui_config.midi_cc_automode)
             # Set MIDI System Messages flag
-            lib_zyncore.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
+            lib_zyncore.set_midi_system_events(zynthian_gui_config.midi_sys_enabled)
             # Setup MIDI filter rules
             if self.midi_filter_script:
                 self.midi_filter_script.clean()
@@ -1657,61 +1655,6 @@ class zynthian_state_manager:
             self.start_midi_playback(fname)
         else:
             self.stop_midi_playback()
-
-    # ----------------------------------------------------------------------------
-    # Clone, Note Range & Transpose
-    # ----------------------------------------------------------------------------
-
-    def get_clone_state(self):
-        """Get MIDI clone state as list of dictionaries"""
-
-        state = {}
-        for src_chan in range(0, 16):
-            for dst_chan in range(0, 16):
-                clone_info = {
-                    "enabled": lib_zyncore.get_midi_filter_clone(src_chan, dst_chan),
-                    "cc": list(map(int, lib_zyncore.get_midi_filter_clone_cc(src_chan, dst_chan).nonzero()[0]))
-                }
-                if clone_info["enabled"] or clone_info["cc"] != [1, 2, 64, 65, 66, 67, 68]:
-                    if src_chan not in state:
-                        state[src_chan] = {}
-                    state[src_chan][dst_chan] = clone_info
-        return state
-
-    def enable_clone(self, src_chan, dst_chan, enable=True):
-        """Enable/disbale MIDI clone for a source and destination
-
-        src_chan : MIDI channel cloned from
-        dst_chan : MIDI channe cloned to
-        enable : True to enable or False to disable [Default: enable]
-        """
-
-        if src_chan < 0 or src_chan > 15 or dst_chan < 0 or dst_chan > 15:
-            return
-        if src_chan == dst_chan:
-            lib_zyncore.set_midi_filter_clone(src_chan, dst_chan, 0)
-        else:
-            lib_zyncore.set_midi_filter_clone(src_chan, dst_chan, enable)
-
-    def set_clone_cc(self, src_chan, dst_chan, cc):
-        """Set MIDI clone
-
-        src_chan : MIDI channel to clone from
-        dst_chan : MIDI channel to clone to
-        cc : List of MIDI CC numbers to clone or list of 128 flags, 1=CC enabled
-        """
-
-        cc_array = (ctypes.c_ubyte * 128)()
-        if len(cc) == 128:
-            for cc_num in range(0, 128):
-                cc_array[cc_num] = cc[cc_num]
-        else:
-            for cc_num in range(0, 128):
-                if cc_num in cc:
-                    cc_array[cc_num] = 1
-                else:
-                    cc_array[cc_num] = 0
-        lib_zyncore.set_midi_filter_clone_cc(src_chan, dst_chan, cc_array)
 
     # ---------------------------------------------------------------------------
     # Power Save Mode

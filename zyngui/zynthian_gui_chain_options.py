@@ -56,7 +56,6 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 	
 		if self.chain.is_midi():
 			self.list_data.append((self.chain_note_range, None, "Note Range & Transpose"))
-			self.list_data.append((self.chain_clone, None, "Clone MIDI to..."))
 			self.list_data.append((self.chain_midi_capture, None, "MIDI In"))
 
 		if self.chain.midi_thru:
@@ -216,10 +215,6 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		else:
 			chan_all = False
 		self.zyngui.screens['midi_chan'].set_mode("SET", self.chain.midi_chan, chan_list=chan_list, chan_all=chan_all)
-		self.zyngui.show_screen('midi_chan')
-
-	def chain_clone(self):
-		self.zyngui.screens['midi_chan'].set_mode("CLONE", self.chain.midi_chan)
 		self.zyngui.show_screen('midi_chan')
 
 	def chain_note_range(self):

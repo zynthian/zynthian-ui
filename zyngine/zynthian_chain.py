@@ -91,9 +91,8 @@ class zynthian_chain:
         else:
             self.title = ""
 
-        if isinstance(self.midi_chan, int) and 0 <= self.midi_chan < 16:
-            lib_zyncore.reset_midi_filter_note_range(self.midi_chan)
-            lib_zyncore.reset_midi_filter_clone(self.midi_chan)
+        if isinstance(self.zmop_index, int):
+            lib_zyncore.zmop_reset_note_range_transpose(self.zmop_index)
 
         self.free_zmop()
         self.midi_out = []
@@ -189,8 +188,6 @@ class zynthian_chain:
         chan : MIDI channel 0..15 or None
         """
 
-        if self.midi_chan == lib_zyncore.get_midi_active_chan():
-            lib_zyncore.set_midi_active_chan(chan)
         self.midi_chan = chan
         if isinstance(self.zmop_index, int) and self.zmop_index >= 0 and isinstance(self.midi_chan, int):
             if 0 <= self.midi_chan < 16:

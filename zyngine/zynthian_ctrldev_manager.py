@@ -80,7 +80,7 @@ class zynthian_ctrldev_manager():
             return False  # TODO: Should check if driver differs
         izmop = zynautoconnect.dev_in_2_dev_out(izmip)
         try:
-            lib_zyncore.zmip_set_route_extdev(izmip, 0)
+            lib_zyncore.zmip_set_route_chains(izmip, 0)
             self.drivers[izmip] = self.available_drivers[dev_id](self.state_manager, izmip, izmop)
             logging.info(f"Loaded ctrldev driver {dev_id}.")
             return True
@@ -99,7 +99,7 @@ class zynthian_ctrldev_manager():
             # Unload driver
             self.drivers[izmip].end()
             self.drivers.pop(izmip)
-            lib_zyncore.zmip_set_route_extdev(izmip, 1)
+            lib_zyncore.zmip_set_route_chains(izmip, 1)
             return True
 
         return False

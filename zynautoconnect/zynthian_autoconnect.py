@@ -250,13 +250,13 @@ def update_midi_in_dev_mode(idev):
 	idev : midi input device index
 	"""
 	if 0 <= idev < len(devices_in_mode):
-			devices_in_mode[idev] = lib_zyncore.zmip_get_flag_active_chan(idev)
+			devices_in_mode[idev] = lib_zyncore.zmip_get_flag_active_chain(idev)
 
 def update_midi_in_dev_mode_all():
 	"""Update mode cache for all midi input devices
 	"""
 	for idev in range(len(devices_in_mode)):
-		update_midi_in_dev_mode(idev)
+		devices_in_mode[idev] = lib_zyncore.zmip_get_flag_active_chain(idev)
 
 # ------------------------------------------------------------------------------
 

@@ -382,7 +382,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 self.zyngui.show_screen('audio_in')
             elif self.input:
                 idev = self.list_data[self.index][1]
-                lib_zyncore.zmip_set_flag_active_chan(idev, params == "ACTI")
+                lib_zyncore.zmip_set_flag_active_chain(idev, params == "ACTI")
                 zynautoconnect.update_midi_in_dev_mode(idev)
             self.fill_list()
         except:

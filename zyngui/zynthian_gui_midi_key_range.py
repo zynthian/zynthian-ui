@@ -1,13 +1,12 @@
-#!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
 # Zynthian GUI MIDI key-range config class
 # 
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,32 +20,33 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import tkinter
 import logging
 
 # Zynthian specific modules
-from zyncoder.zyncore import get_lib_zyncore
+from zyncoder.zyncore import lib_zyncore
 from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_selector import zynthian_gui_controller
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian MIDI key-range GUI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 	black_keys_pattern = (1, 0, 1, 1, 0, 1, 1)
 
-
 	def __init__(self):
-
 		super().__init__()
 
-		self.chan = None
+		self.chain = None
+		self.zmop_index = None
+
 		self.note_low = 0
 		self.note_high = 127
 		self.octave_trans = 0
@@ -101,15 +101,17 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		self.plot_piano()
 		self.plot_text()
 
-
-	def config(self, chan):
-		self.chan = chan
-		self.note_low = get_lib_zyncore().get_midi_filter_note_low(chan)
-		self.note_high = get_lib_zyncore().get_midi_filter_note_high(chan)
-		self.octave_trans = int(get_lib_zyncore().get_midi_filter_transpose_octave(chan))
-		self.halftone_trans = get_lib_zyncore().get_midi_filter_transpose_semitone(chan)
+	def config(self, chain):
+		self.chain = chain
+		if self.chain.zmop_index is not None:
+			self.zmop_index = self.chain.zmop_index
+			self.note_low = lib_zyncore.zmop_get_note_low(self.zmop_index)
+			self.note_high = lib_zyncore.zmop_get_note_high(self.zmop_index)
+			self.octave_trans = lib_zyncore.zmop_get_transpose_octave(self.zmop_index)
+			self.halftone_trans = lib_zyncore.zmop_get_transpose_semitone(self.zmop_index)
+		else:
+			self.zmop_index = None
 		self.set_select_path()
-
 
 	def plot_piano(self):
 		n_wkeys = 52
@@ -180,14 +182,12 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 			i += 1
 
-
 	@staticmethod
 	def get_midi_note_name(num):
 		note_names = ("C","C#","D","D#","E","F","F#","G","G#","A","A#","B")
 		scale = int(num / 12) - 2
 		num = int(num % 12)
 		return "{}{}".format(note_names[num], scale)
-
 
 	def plot_text(self):
 		fs = int(1.7 * zynthian_gui_config.font_size)
@@ -273,7 +273,6 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			self.octave_zgui_ctrl.grid(row=0, column=2, pady=(0, 1))
 			self.halftone_zgui_ctrl.grid(row=1, column=2, pady=(1, 0))
 
-
 	def plot_zctrls(self):
 		if self.replot:
 			for zgui_ctrl in self.zgui_ctrls:
@@ -284,7 +283,6 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			self.update_piano()
 			self.update_text()
 			self.replot = False
-
 
 	def build_view(self):
 		self.set_zctrls()
@@ -311,50 +309,46 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			self.zyngui.cuia_disable_midi_learn()
 			return True
 
-
 	def enter_midi_learn(self):
 		self.learn_mode = -1
 		self.learn_text['text'] = "learning..."
 		self.learn_text['fg'] = zynthian_gui_config.color_ml
-
 
 	def exit_midi_learn(self):
 		self.learn_mode = 0
 		self.learn_text['text'] = "not learning"
 		self.learn_text['fg'] = 'Dark Grey'
 
-
 	def send_controller_value(self, zctrl):
-		if self.shown:
-			# Send ALL-OFF to avoid stuck notes => This doesn't work with all engines!!
-			# We could use "get_lib_zyncore().ui_send_all_notes_off_chan(chan)", but it's no so nice
-			get_lib_zyncore().ui_send_ccontrol_change(self.chan, 120, 0)
+		if self.shown and self.zmop_index is not None:
+			# Send ALL-OFF to avoid stuck notes
+			lib_zyncore.ui_send_all_notes_off_chain(self.zmop_index)
 			if zctrl == self.nlow_zctrl:
 				self.note_low = zctrl.value
 				if zctrl.value > self.nhigh_zctrl.value:
 					self.nlow_zctrl.set_value(self.nhigh_zctrl.value - 1)
-				get_lib_zyncore().set_midi_filter_note_low(self.chan, zctrl.value)
-				logging.debug("SETTING FILTER NOTE_LOW: {}".format(zctrl.value))
+				lib_zyncore.zmop_set_note_low(self.zmop_index, zctrl.value)
+				logging.debug("SETTING RANGE NOTE LOW: {}".format(zctrl.value))
 				self.replot = True
 
 			elif zctrl == self.nhigh_zctrl:
 				self.note_high = zctrl.value
 				if zctrl.value < self.nlow_zctrl.value:
 					self.nhigh_zctrl.set_value(self.nlow_zctrl.value + 1)
-				get_lib_zyncore().set_midi_filter_note_high(self.chan, zctrl.value)
-				logging.debug("SETTING FILTER NOTE_HIGH: {}".format(zctrl.value))
+				lib_zyncore.zmop_set_note_high(self.zmop_index, zctrl.value)
+				logging.debug("SETTING RANGE NOTE HIGH: {}".format(zctrl.value))
 				self.replot = True
 
 			elif zctrl == self.octave_zctrl:
 				self.octave_trans = zctrl.value
-				get_lib_zyncore().set_midi_filter_transpose_octave(self.chan, zctrl.value)
-				logging.debug("SETTING FILTER OCTAVE TRANS.: {}".format(zctrl.value))
+				lib_zyncore.zmop_set_transpose_octave(self.zmop_index, zctrl.value)
+				logging.debug("SETTING OCTAVE TRANSPOSE: {}".format(zctrl.value))
 				self.replot = True
 
 			elif zctrl == self.halftone_zctrl:
 				self.halftone_trans = zctrl.value
-				get_lib_zyncore().set_midi_filter_transpose_semitone(self.chan, zctrl.value)
-				logging.debug("SETTING FILTER HALFTONE TRANS.: {}".format(zctrl.value))
+				lib_zyncore.zmop_set_transpose_semitone(self.zmop_index, zctrl.value)
+				logging.debug("SETTING SEMITONE TRANSPOSE: {}".format(zctrl.value))
 				self.replot = True
 
 

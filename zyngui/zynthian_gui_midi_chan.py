@@ -60,45 +60,31 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 		elif self.mode == 'SET':
 			self.midi_chan = chan
 			self.index = self.get_midi_chan_index(chan)
-		elif self.mode == 'CLONE':
-			self.midi_chan = chan
 
 	def fill_list(self):
 		self.list_data = []
-		if self.mode == 'ADD' or self.mode == 'SET':
-			chain = self.zyngui.chain_manager.get_active_chain()
-			list_index = 0
-			if self.chan_all:
-				self.list_data.append(("ALL", 0xffff, "ALL MIDI CHANNELS"))
-				if chain.midi_chan == 0xffff:
-					self.index = 0
-				list_index +=1
-			for i in self.zyngui.chain_manager.get_free_midi_chans():
-				if i == zynthian_gui_config.master_midi_channel:
-					continue
-				self.list_data.append((str(i + 1), i, "MIDI CH#" + str(i + 1)))
-				if chain.midi_chan == i:
-					self.index = list_index
-				list_index += 1
+		chain = self.zyngui.chain_manager.get_active_chain()
 
-		elif self.mode == 'CLONE':
-			for i in self.chan_list:
-				if i in (self.midi_chan, zynthian_gui_config.master_midi_channel):
-					continue
-				elif lib_zyncore.get_midi_filter_clone(self.midi_chan, i):
-					cc_to_clone = lib_zyncore.get_midi_filter_clone_cc(self.midi_chan, i).nonzero()[0]
-					self.list_data.append((str(i+1), i, "\u2612 CH#{}, CC {}".format(i+1, ' '.join(map(str, cc_to_clone)))))
-					logging.debug("CC TO CLONE: {}".format(cc_to_clone))
-				else:
-					self.list_data.append((str(i+1), i, "\u2610 CH#{}".format(i+1)))
+		list_index = 0
+		if self.chan_all:
+			self.list_data.append(("ALL", 0xffff, "ALL MIDI CHANNELS"))
+			if chain.midi_chan == 0xffff:
+				self.index = 0
+			list_index += 1
+		for i in self.zyngui.chain_manager.get_free_midi_chans():
+			if i == zynthian_gui_config.master_midi_channel:
+				continue
+			self.list_data.append((str(i + 1), i, "MIDI CH#" + str(i + 1)))
+			if chain.midi_chan == i:
+				self.index = list_index
+			list_index += 1
+
 		super().fill_list()
 
 	def fill_listbox(self):
 		super().fill_listbox()
-		#if self.mode=='CLONE':
-		#	self.highlight_cloned()
 
-	# Highlight current channels to which is cloned to ...
+	""" Leave this as example of highlighting code
 	def highlight_cloned(self):
 		i=0
 		for item in self.list_data:
@@ -107,6 +93,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 			else:
 				self.listbox.itemconfig(i, {'fg': zynthian_gui_config.color_panel_tx})
 			i += 1
+	"""
 
 	def get_midi_chan_index(self, chan):
 		for i, ch in enumerate(self.chan_list):
@@ -120,34 +107,14 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 		if self.mode == 'ADD':
 			self.zyngui.modify_chain_status["midi_chan"] = selchan
 			self.zyngui.modify_chain()
-
 		elif self.mode == 'SET':
 			self.zyngui.chain_manager.set_midi_chan(self.zyngui.chain_manager.active_chain_id, selchan)
 			zynautoconnect.request_midi_connect()
 			self.zyngui.screens['audio_mixer'].refresh_visible_strips()
 			self.zyngui.close_screen()
 
-		elif self.mode == 'CLONE':
-
-			if selchan != self.midi_chan:
-				if t == 'S':
-					if lib_zyncore.get_midi_filter_clone(self.midi_chan, selchan):
-						lib_zyncore.set_midi_filter_clone(self.midi_chan, selchan, 0)
-					else:
-						lib_zyncore.set_midi_filter_clone(self.midi_chan, selchan, 1)
-						
-					self.update_list()
-					logging.info("CLONE MIDI CHANNEL {} => {}".format(self.midi_chan, selchan))
-
-				elif t == 'B':
-					self.clone_config_cc()
-
-	def clone_config_cc(self):
-		self.zyngui.screens['midi_cc'].config(self.midi_chan, self.midi_chan_sel)
-		self.zyngui.show_screen('midi_cc')
-
 	def midi_chan_activity(self, chan):
-		if self.shown and self.mode != 'CLONE' and not self.zyngui.state_manager.zynseq.libseq.transportGetPlayStatus():
+		if self.shown and not self.zyngui.state_manager.zynseq.libseq.transportGetPlayStatus():
 			i = self.get_midi_chan_index(chan)
 			if i is not None and i != self.index:
 				dts = (datetime.now()-self.last_index_change_ts).total_seconds()
@@ -157,9 +124,6 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 					self.select(i)
 
 	def set_select_path(self):
-		if self.mode == 'ADD' or self.mode == 'SET':
-			self.select_path.set("MIDI Channel")
-		elif self.mode == 'CLONE':
-			self.select_path.set("Clone MIDI Channel {} to ...".format(self.midi_chan+1))
+		self.select_path.set("MIDI Channel")
 
 # ------------------------------------------------------------------------------

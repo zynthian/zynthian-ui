@@ -549,34 +549,53 @@ class zynthian_chain_manager():
 
         if chain_id is None:
             chain_id = self.active_chain_id
+
         try:
             chain = self.chains[chain_id]
-            self.active_chain_id = chain_id
-            zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain=self.active_chain_id)
-            # Update active MIDI channel
-            if chain.is_midi() and chain.midi_chan < MAX_NUM_MIDI_CHANS:
-                lib_zyncore.set_midi_active_chan(chain.midi_chan)
-                # Re-assert pedals on new active channel
-                for pedal_cc in self.held_zctrls:
-                    if self.held_zctrls[pedal_cc][0]:
-                        lib_zyncore.write_zynmidi_ccontrol_change(chain.midi_chan, pedal_cc, 127)
-                        # TODO: Check if zctrl gets added to self.held_zctrls
+            # Set active chain
+            if isinstance(chain.zmop_index, int):
+                self.active_chain_id = chain_id
+                lib_zyncore.set_active_chain(chain.zmop_index)
+                zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain=self.active_chain_id)
+                # Re-assert pedals on new active chain
+                if isinstance(chain.midi_chan, int):
+                    if 0 <= chain.midi_chan < 16:
+                        chan = chain.midi_chan
+                    else:
+                        # If chain receives *ALL CHANNELS* use channel 0 to send
+                        chan = 0
+                    for pedal_cc in self.held_zctrls:
+                        if self.held_zctrls[pedal_cc][0]:
+                            lib_zyncore.write_zynmidi_ccontrol_change(chan, pedal_cc, 127)
+                            # TODO: Check if zctrl gets added to self.held_zctrls
             else:
-                # Check if currently selected channel is valid
-                midi_chan = lib_zyncore.get_midi_active_chan()
-                if midi_chan >= 0 and midi_chan < MAX_NUM_MIDI_CHANS and len(self.midi_chan_2_chain_ids[midi_chan]) > 0:
-                    return self.active_chain_id
-                # If not, find a valid MIDI chain => first chain's MIDI channel
+                # Be sure a valid chain is active
+                first_zmop_chain = None
+                active_zmop_index = lib_zyncore.get_active_chain()
                 for chain in self.chains.values():
-                    if chain.is_midi():
-                        # This would change with MIDI 2.0
-                        if chain.midi_chan < MAX_NUM_MIDI_CHANS:
-                            lib_zyncore.set_midi_active_chan(chain.midi_chan)
-                        else:
-                            lib_zyncore.set_midi_active_chan(0)
-                        break
-        except:
-            pass
+                    if isinstance(chain.zmop_index, int):
+                        # if current active chain is valid ...
+                        if active_zmop_index == chain.zmop_index:
+                            # Reassert current active chain if needed
+                            if self.active_chain_id != active_zmop_index:
+                                self.active_chain_id = active_zmop_index
+                                zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain=self.active_chain_id)
+                            return self.active_chain_id
+                        # else, take first chain with assigned zmop
+                        elif not first_zmop_chain:
+                            first_zmop_chain = chain
+
+                if first_zmop_chain:
+                    self.active_chain_id = first_zmop_chain.chain_id
+                    lib_zyncore.set_active_chan(first_zmop_chain.zmop_index)
+                else:
+                    self.active_chain_id = None
+                    lib_zyncore.set_active_chain(-1)
+                zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain=self.active_chain_id)
+
+        except Exception as e:
+            logging.error(e)
+
         return self.active_chain_id
 
     def set_active_chain_by_object(self, chain_object):

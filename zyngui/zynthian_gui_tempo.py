@@ -162,9 +162,9 @@ class zynthian_gui_tempo(zynthian_gui_base):
 			self.libseq.setClockSource(1)
 		self.libseq.enableMidiClockOutput(val == 1)
 		if val > 0:
-			lib_zyncore.set_midi_filter_system_events(1)
+			lib_zyncore.set_midi_system_events(1)
 		else:
-			lib_zyncore.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
+			lib_zyncore.set_midi_system_events(zynthian_gui_config.midi_sys_enabled)
 
 		# Save config
 		if save_config:
