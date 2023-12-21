@@ -463,6 +463,11 @@ class zynthian_chain:
         return isinstance(self.midi_chan, int)
         # or self.midi_thru or len(self.midi_slots) > 0
 
+    def is_synth(self):
+        """Returns True if chain contains synth processor"""
+
+        return len(self.synth_slots) != 0
+
     # ---------------------------------------------------------------------------
     # Processor management
     # ---------------------------------------------------------------------------

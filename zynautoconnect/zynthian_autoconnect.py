@@ -295,11 +295,19 @@ def request_midi_connect(fast=False):
 def is_host_usb_connected():
 	"""Check if the USB host (e.g. USB-Type B connection) is connected
 
-	returns : True if connected to USB host		
+	returns : True if connected to USB host (not necessarily a MIDI port!)
 	"""
 
-	with open("/sys/class/udc/fe980000.usb/device/gadget/suspended") as f:
-		return f.read() != "1\n"
+	try:
+		with open("/sys/bus/platform/devices/fe980000.usb/udc/fe980000.usb/state") as f:
+			if f.read() != "configured\n":
+				return False
+		with open("/sys/class/udc/fe980000.usb/device/gadget/suspended") as f:
+			if f.read() == "1\n":
+				return False
+	except:
+		return False
+	return True
 
 def update_hw_midi_ports():
 	"""Update lists of external (hardware) source and destination MIDI ports
@@ -323,9 +331,7 @@ def update_hw_midi_ports():
 	hw_port_fingerprint = hw_src_ports + hw_dst_ports
 
 	# Check if connection to host USB changed
-	hms = is_host_usb_connected()
-	if host_usb_connected != hms:
-		host_usb_connected = hms
+	host_usb_connected = is_host_usb_connected()
 
 	# List of physical MIDI source ports
 	hw_src_ports = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
@@ -378,11 +384,15 @@ def update_hw_midi_ports():
 			pass
 
 	update = False
+	fingerprint = hw_port_fingerprint.copy()
 	for port in hw_src_ports + hw_dst_ports:
 		if port not in hw_port_fingerprint:
 			update_midi_port_aliases(port)
 			update = True
+		else:
+			fingerprint.remove(port)
 
+	update |= len(fingerprint) != 0
 	release_lock()
 	return update
 

@@ -120,7 +120,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 					pass
 		elif evtype == 0xB:
 			if val1 > 20 and val1 < 28:
-				chain = self.chain_manager.get_chain_by_index(val1 - 21)
+				chain = self.chain_manager.get_chain_by_position(val1 - 21, midi=False)
 				if chain and chain.mixer_chan is not None and chain.mixer_chan < 17:
 					self.zynmixer.set_level(chain.mixer_chan, val2 / 127.0)
 			elif val1 == 28:

@@ -352,6 +352,31 @@ class zynthian_chain_manager():
         except:
             return None
 
+    def get_chain_by_position(self, pos, audio=True, midi=True, synth=True):
+        """Get a chain by its (display) position
+
+        pos : Display position (0..no of chains)
+        audio_only : True to include audio chains
+        midi : True to include MIDI chains
+        synth : True to include synth chains
+        returns : Chain object or None if not found
+        """
+
+        if audio and midi and synth:
+            if pos < len(self.ordered_chain_ids):
+                return self.ordered_chain_ids[pos]
+            else:
+                return None
+
+        for chain_id in self.ordered_chain_ids:
+            chain = self.chains[chain_id]
+            if chain.is_midi() == midi or chain.is_audio() == audio or chain.is_synth == synth:
+                if pos == 0:
+                    return self.chains[chain_id]
+                pos -= 1
+
+        return None
+
     def get_chain_id_by_index(self, index):
         """Get a chain ID by the index"""
 
@@ -367,6 +392,7 @@ class zynthian_chain_manager():
             if chain.mixer_chan is not None and chain.mixer_chan == chan:
                 return chain_id
         return None
+
 
     # ------------------------------------------------------------------------
     # Chain Input/Output and Routing Management
