@@ -279,8 +279,13 @@ class MultiTouch(object):
 
         now = int(monotonic() * 1000)
         for event in self.events:
-            event.x = event.x_root - event.offset_x
-            event.y = event.y_root - event.offset_y
+            try:
+                event.x = event.x_root - event.offset_x
+                event.y = event.y_root - event.offset_y
+            except Exception as e:
+                # Sometimes root attirbutes are not set / available
+                logging.warning(e)
+                continue
             event.time = now
 
             if event._type == MultitouchTypes.MULTI_PRESS:

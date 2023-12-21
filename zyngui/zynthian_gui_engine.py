@@ -48,7 +48,22 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def __init__(self):
 		self.reset_index = True
 		super().__init__('Engine', True)
+		self.context_index = {}
 
+	def build_view(self):
+		try:
+			self.index = self.context_index[self.zyngui.modify_chain_status["type"]]
+		except:
+			self.index = 0
+			self.context_index[self.zyngui.modify_chain_status["type"]] = self.index
+		super().build_view()
+
+	def hide(self):
+		try:
+			self.context_index[self.zyngui.modify_chain_status["type"]] = self.index
+		except:
+			pass
+		super().hide()
 
 	def fill_list(self):
 		self.zyngui.chain_manager.get_engine_info() # Update the available engines
