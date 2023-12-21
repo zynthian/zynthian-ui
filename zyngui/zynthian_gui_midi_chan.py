@@ -71,7 +71,8 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 			if chain.midi_chan == 0xffff:
 				self.index = 0
 			list_index += 1
-		for i in self.zyngui.chain_manager.get_free_midi_chans():
+		#for i in self.zyngui.chain_manager.get_free_midi_chans():
+		for i in range(16):
 			if i == zynthian_gui_config.master_midi_channel:
 				continue
 			self.list_data.append((str(i + 1), i, "MIDI CH#" + str(i + 1)))
