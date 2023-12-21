@@ -1034,70 +1034,77 @@ class zynthian_chain_manager():
             if zctrl in zctrls:
                 return [key, False] #TODO: This isn't right!
 
-    def midi_control_change(self, zmip, midi_chan, midi_cc, ccval):
+    def midi_control_change(self, zmip, midi_chan, cc_num, cc_val):
         """Send MIDI CC message to relevant chain
 
         zmip : Index of MIDI input device
         midi_chan : MIDI channel
-        midi_cc : CC number
-        ccval : CC value
+        cc_num : CC number
+        cc_val : CC value
         """
 
         # Handle bank change (CC0/32)
         #TODO: Validate and optimise bank change code
         for chain_id in self.midi_chan_2_chain_ids[midi_chan]:
             chain = self.chains[chain_id]
-            if zynthian_gui_config.midi_bank_change and midi_cc == 0:
+            if zynthian_gui_config.midi_bank_change and cc_num == 0:
                 for processor in chain.get_processors():
-                    processor.midi_bank_msb(ccval)
+                    processor.midi_bank_msb(cc_val)
                     break
                 return
-            elif zynthian_gui_config.midi_bank_change and midi_cc == 32:
+            elif zynthian_gui_config.midi_bank_change and cc_num == 32:
                 for processor in chain.get_processors():
-                    processor.midi_bank_lsb(ccval)
+                    processor.midi_bank_lsb(cc_val)
                     break
                 return
 
         # Handle absolute CC binding
         try:
-            key = (zmip << 24) | (midi_chan << 16) | (midi_cc << 8)
+            key = (zmip << 24) | (midi_chan << 16) | (cc_num << 8)
             zctrls = self.absolute_midi_cc_binding[key]
             for zctrl in zctrls:
-                zctrl.midi_control_change(ccval)
+                zctrl.midi_control_change(cc_val)
         except:
             pass
-
 
         if zynautoconnect.get_midi_in_dev_mode(zmip):
             # Handle active chain CC binding
             try:
-                key = (self.active_chain_id << 16) | (midi_cc << 8)
+                key = (self.active_chain_id << 16) | (cc_num << 8)
                 zctrls = self.chain_midi_cc_binding[key]
                 for zctrl in zctrls:
-                    zctrl.midi_control_change(ccval)
+                    zctrl.midi_control_change(cc_val)
+                    self.handle_pedals(cc_num, cc_val, zctrl)
             except:
                 pass
         else:
             # Handle channel CC binding
             try:
-                key = (midi_chan << 16) | (midi_cc << 8)
+                key = (midi_chan << 16) | (cc_num << 8)
                 zctrls = self.chan_midi_cc_binding[key]
                 for zctrl in zctrls:
-                    zctrl.midi_control_change(ccval)
+                    zctrl.midi_control_change(cc_val)
+                    self.handle_pedals(cc_num, cc_val, zctrl)
             except:
                 pass
 
-        # Handle pedals
-        #TODO: Validate pedal handling
-        if midi_cc in self.held_zctrls:
-            if ccval >= 64:
-                if zctrl not in self.held_zctrls[midi_cc]:
-                    self.held_zctrls[midi_cc].append(zctrl)
-                self.held_zctrls[midi_cc][0] = True
+    def handle_pedals(self, cc_num, cc_val, zctrl):
+        """Handle pedal CC
+        
+        cc_num : CC number
+        cc_val : CC value
+        zctrl : zctrl to process
+        """
+        
+        if cc_num in self.held_zctrls:
+            if cc_val >= 64:
+                if zctrl not in self.held_zctrls[cc_num]:
+                    self.held_zctrls[cc_num].append(zctrl)
+                self.held_zctrls[cc_num][0] = True
             else:
-                self.held_zctrls[midi_cc][0] = False
-                while len(self.held_zctrls[midi_cc]) > 1:
-                    self.held_zctrls[midi_cc].pop().midi_control_change(ccval)
+                self.held_zctrls[cc_num][0] = False
+                while len(self.held_zctrls[cc_num]) > 1:
+                    self.held_zctrls[cc_num].pop().midi_control_change(cc_val)
 
     def clean_midi_learn(self, obj):
         """Clean MIDI learn from controls

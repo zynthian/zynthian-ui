@@ -133,7 +133,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.monitors_dict[processor.handle]['channels'] = 0
 		self.monitors_dict[processor.handle]['samplerate'] = 44100
 		self.monitors_dict[processor.handle]['codec'] = "UNKNOWN"
-
+		processor.refresh_controllers()
 
 	def remove_processor(self, processor):
 		self.player.remove_player(processor.handle)

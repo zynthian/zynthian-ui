@@ -369,7 +369,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 			return
 		super().add_processor(processor)
 		processor.engine = self
-		processor.refresh_controllers()
 		processor.bank_info = ("General", 0, "General")
 
 
@@ -554,7 +553,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 
 	def get_controllers_dict(self, processor):
-		logging.error("AEOLUS GET CONTROLLERS DICT!!")
 		self._ctrls = self.instrument[processor.division]['ctrls']
 		self._ctrl_screens = self.instrument[processor.division]['ctrl_screens']
 		return super().get_controllers_dict(processor)

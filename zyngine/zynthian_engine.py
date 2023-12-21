@@ -318,6 +318,7 @@ class zynthian_engine(zynthian_basic_engine):
 	def add_processor(self, processor):
 		self.processors.append(processor)
 		processor.jackname = self.jackname
+		processor.refresh_controllers()
 
 	def remove_processor(self, processor):
 		self.processors.remove(processor)

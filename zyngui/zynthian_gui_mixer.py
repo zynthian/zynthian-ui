@@ -806,7 +806,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 						strip.draw_dpm(state[0], state[1], state[2], state[3], state[4])
 						strip.refresh_status()
 					self.main_mixbus_strip.refresh_status()
-			self.highlight_active_chain()
+			#self.highlight_active_chain()
 
 	# Function to refresh display (fast)
 	def plot_zctrls(self):
@@ -831,11 +831,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def highlight_active_chain(self, refresh=False):
 		"""Higlights active chain, redrawing strips if required"""
 		try:
-			chain_keys = sorted(self.zyngui.chain_manager.chains)
-		except:
-			logging.error(f"Ordering Chains => {self.zyngui.chain_manager.chains}")
-		try:
-			active_index = chain_keys.index(self.zyngui.chain_manager.active_chain_id)
+			active_index = self.zyngui.chain_manager.ordered_chain_ids.index(self.zyngui.chain_manager.active_chain_id)
 		except:
 			active_index = 0
 		if active_index < self.mixer_strip_offset:

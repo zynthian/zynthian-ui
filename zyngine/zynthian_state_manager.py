@@ -542,7 +542,7 @@ class zynthian_state_manager:
                     self.last_event_flag = True
                     continue
 
-                zmip = (ev & 0xFF000000) >> 24
+                #zmip = (ev >> 24) & 0xff
                 evtype = (ev >> 20) & 0xf
                 chan = (ev >> 16) & 0xf
                 #logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))
@@ -610,12 +610,7 @@ class zynthian_state_manager:
                     ccval = ev & 0x7f
                     #logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan,ccnum,ccval))
                     if ccnum < 120:
-                        # If MIDI learn pending...
-                        if self.midi_learn_zctrl:
-                            self.screens['control'].midi_learn_bind((ev >> 24) & 0xff, chan, ccnum)
-                            self.show_current_screen()
-                        # Try processor parameter
-                        else:
+                        if not self.midi_learn_zctrl:
                             self.chain_manager.midi_control_change((ev >> 24) & 0xff, chan, ccnum, ccval)
                             self.zynmixer.midi_control_change(chan, ccnum, ccval)
                             self.alsa_mixer_processor.midi_control_change(chan, ccnum, ccval)

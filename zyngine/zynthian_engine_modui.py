@@ -658,7 +658,7 @@ class zynthian_engine_modui(zynthian_engine):
 			#Add to info array
 			self.plugin_info[pgraph] = pinfo
 			# Refresh controllers
-			processors[0].refresh_controllers()
+			self.processors[0].refresh_controllers()
 			self.state_manager.end_busy("mod-ui")
 
 
@@ -671,7 +671,7 @@ class zynthian_engine_modui(zynthian_engine):
 		if pgraph in self.plugin_info:
 			del self.plugin_info[pgraph]
 		# Refresh controllers
-		processors[0].refresh_controllers()
+		self.processors[0].refresh_controllers()
 		self.state_manager.end_busy("mod-ui")
 
 

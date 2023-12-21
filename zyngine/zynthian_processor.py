@@ -115,11 +115,7 @@ class zynthian_processor:
         """Set engine that this processor uses"""
         
         self.engine = engine
-        self.engine.add_processor(self)  # TODO: Refactor engine to replace processor with processor
-        if isinstance(self.midi_chan, int):
-            engine.set_midi_chan(self)  # When adding the processor to the engine, shouldn't be set the midi chan?
-        self.refresh_controllers()  # Get the controllers list from the engine.
-
+        self.engine.add_processor(self)
 
     def get_name(self):
         """Get name of processor"""

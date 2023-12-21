@@ -1941,6 +1941,10 @@ class zynthian_gui:
 			self.state_manager.status_midi = True
 			self.last_event_flag = True
 
+		elif self.state_manager.midi_learn_zctrl and evtype == 0xb and val1 < 120:
+			# Handle MIDI learn for assignable CC
+			self.screens['control'].midi_learn_bind(zmip, chan, val1)
+			self.show_current_screen()
 
 	def cuia_refresh(self):
 		if self.current_screen == 'audio_mixer':

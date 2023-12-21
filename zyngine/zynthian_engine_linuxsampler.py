@@ -226,6 +226,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		processor.ls_chan_info = None
 		self.ls_set_channel(processor)
 		self.set_midi_chan(processor)
+		processor.refresh_controllers()
 
 	def remove_processor(self, processor):
 		#self.ls_unset_channel(processor)
