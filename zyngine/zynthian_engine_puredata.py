@@ -92,9 +92,9 @@ class zynthian_engine_puredata(zynthian_engine):
 		self.preset_config = None
 
 		if self.config_remote_display():
-			self.base_command = "pd -jack -jackname \"{}\" -rt -alsamidi -mididev 1 -open \"{}\"".format(self.jackname, self.startup_patch)
+			self.base_command = "pd -jack -nojackconnect -jackname \"{}\" -rt -alsamidi -mididev 1 -open \"{}\"".format(self.jackname, self.startup_patch)
 		else:
-			self.base_command = "pd -nogui -jack  -jackname \"{}\" -rt -alsamidi -mididev 1 -open \"{}\"".format(self.jackname, self.startup_patch)
+			self.base_command = "pd -nogui -jack -nojackconnect -jackname \"{}\" -rt -alsamidi -mididev 1 -open \"{}\"".format(self.jackname, self.startup_patch)
 
 		self.reset()
 
@@ -207,6 +207,7 @@ class zynthian_engine_puredata(zynthian_engine):
 								midi_cc = options['midi_cc']
 								logging.debug("CTRL %s: %s" % (midi_cc, name))
 								title = str.replace(name, '_', ' ')
+								options['processor'] = processor
 								zctrls[name] = zynthian_controller(self, name, title, options)
 								ctrl_set.append(name)
 							except Exception as err:
