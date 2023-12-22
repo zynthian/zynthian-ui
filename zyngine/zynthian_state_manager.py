@@ -785,8 +785,6 @@ class zynthian_state_manager:
                         except Exception as e:
                             logging.info("Failed to set extended engine state for %s: %s", eid, e)
 
-                self.reset_midi_capture_state()
-
                 self.zs3 = state["zs3"]
                 self.load_zs3("zs3-0")
 
@@ -953,6 +951,7 @@ class zynthian_state_manager:
         zs3_state = self.zs3[zs3_id]
 
         restored_chains = []
+        restored_cc_mapping = []
         if "chains" in zs3_state:
             self.set_busy_details("restoring chains state")
             for chain_id, chain_state in zs3_state["chains"].items():
@@ -1015,23 +1014,7 @@ class zynthian_state_manager:
                     for cc, cfg in chain_state["midi_cc"].items():
                         for proc_id, symbol in cfg:
                             if proc_id in self.chain_manager.processors:
-                                processor = self.chain_manager.processors[proc_id]
-                                self.chain_manager.add_midi_learn(int(processor.midi_chan), int(cc), processor.controllers_dict[symbol])
-
-        # ********************** THIS SHOULD BE REMOVED! ******************************
-        # Do we want to keep full BW compatibility or simply avoid errors when loading?
-        """
-        if "midi_clone" in zs3_state:
-            self.set_busy_details("restoring midi clone state")
-            for src_chan in range(16):
-                for dst_chan in range(16):
-                    try:
-                        self.enable_clone(src_chan, dst_chan, zs3_state["midi_clone"][str(src_chan)][str(dst_chan)]["enabled"])
-                        self.set_clone_cc(src_chan, dst_chan, zs3_state["midi_clone"][str(src_chan)][str(dst_chan)]["cc"])
-                    except:
-                        self.enable_clone(src_chan, dst_chan, False)
-                        lib_zyncore.reset_midi_filter_clone_cc(src_chan, dst_chan)
-        """
+                                restored_cc_mapping.append((proc_id, int(cc), symbol))
 
         if "processors" in zs3_state:
             for proc_id, proc_state in zs3_state["processors"].items():
@@ -1042,6 +1025,10 @@ class zynthian_state_manager:
                         processor.set_state(proc_state)
                 except Exception as e:
                     logging.error(f"Failed to restore processor {proc_id} state => {e}")
+
+        for cc_map in restored_cc_mapping:
+            processor = self.chain_manager.processors[cc_map[0]]
+            self.chain_manager.add_midi_learn(processor.midi_chan, cc_map[1], processor.controllers_dict[cc_map[2]])
 
         if "active_chain" in zs3_state:
             self.chain_manager.set_active_chain_by_id(zs3_state["active_chain"])
@@ -1375,18 +1362,8 @@ class zynthian_state_manager:
                                 self.chain_manager.add_midi_learn(processor.midi_chan, cc, processor.controllers_dict[symbol], zmip)
 
         else:
-            self.reset_midi_capture_state()
+            zynautoconnect.reset_midi_in_dev_all()
 
-    def reset_midi_capture_state(self):
-        """Reset midi input (capture) state.
-        """
-        for i in range(0, 24):
-            # Set zmip flags
-            lib_zyncore.zmip_set_flag_active_chain(i, 1)
-            zynautoconnect.devices_in_mode[i] = 1 #TODO: Is this working and required?
-            # Route zmops (chans)
-            for ch in (0, 16):
-                lib_zyncore.zmop_set_route_from(ch, i, 1)
 
     # ------------------------------------------------------------------
     # MIDI learning

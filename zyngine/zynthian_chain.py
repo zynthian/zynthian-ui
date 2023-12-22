@@ -228,7 +228,7 @@ class zynthian_chain:
                 parts.append(self.title)
             elif self.chain_id == 0:
                 parts.append("Main")
-            elif self.audio_thru:
+            elif not self.synth_slots and self.audio_thru:
                 parts.append("Audio Input " + ','.join([str(i) for i in self.audio_in]))
 
             if self.synth_slots:

@@ -250,13 +250,23 @@ def update_midi_in_dev_mode(idev):
 	idev : midi input device index
 	"""
 	if 0 <= idev < len(devices_in_mode):
-			devices_in_mode[idev] = lib_zyncore.zmip_get_flag_active_chain(idev)
+		devices_in_mode[idev] = lib_zyncore.zmip_get_flag_active_chain(idev)
 
 def update_midi_in_dev_mode_all():
-	"""Update mode cache for all midi input devices
-	"""
+	"""Update mode cache for all midi input devices"""
+
 	for idev in range(len(devices_in_mode)):
 		devices_in_mode[idev] = lib_zyncore.zmip_get_flag_active_chain(idev)
+
+def reset_midi_in_dev_all():
+	"""Set all MIDI input devices to Active Chain mode and route to all chains"""
+
+	for zmip in range(len(devices_in_mode)):
+		lib_zyncore.zmip_set_flag_active_chain(zmip, 1)
+		devices_in_mode[zmip] = 1
+		for zmop in range(16):
+			lib_zyncore.zmop_set_route_from(zmop, zmip, 1)
+
 
 # ------------------------------------------------------------------------------
 

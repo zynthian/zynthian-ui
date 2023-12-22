@@ -806,7 +806,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 						strip.draw_dpm(state[0], state[1], state[2], state[3], state[4])
 						strip.refresh_status()
 					self.main_mixbus_strip.refresh_status()
-			#self.highlight_active_chain()
 
 	# Function to refresh display (fast)
 	def plot_zctrls(self):
@@ -997,7 +996,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				self.refresh_visible_strips()
 			else:
 				self.zyngui.chain_manager.next_chain(dval)
-				self.highlight_active_chain()
+			self.highlight_active_chain()
 
 
 	# Function to handle CUIA ARROW_LEFT
@@ -1007,7 +1006,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.refresh_visible_strips()
 		else:
 			self.zyngui.chain_manager.previous_chain()
-			self.highlight_active_chain()
+		self.highlight_active_chain()
 
 
 	# Function to handle CUIA ARROW_RIGHT
@@ -1017,7 +1016,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.refresh_visible_strips()
 		else:
 			self.zyngui.chain_manager.next_chain()
-			self.highlight_active_chain()
+		self.highlight_active_chain()
 
 
 	# Function to handle CUIA ARROW_UP

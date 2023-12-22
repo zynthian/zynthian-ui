@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Engine Selector Class
 # 
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -26,14 +26,12 @@
 import os
 import logging
 from time import sleep
-from collections import OrderedDict
 
 # Zynthian specific modules
 from zyngine import *
 from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_engine_pianoteq6 import *
 from zyngine.zynthian_engine_jalv import *
-from zyngine.zynthian_engine_sooperlooper import zynthian_engine_sooperlooper
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
@@ -157,7 +155,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		path = ""
 		try:
 			path = self.zyngui.modify_chain_status["type"]
-			chain = self.zyngui.chain_manager.chains[self.zyngui.modify_chain_status["chain_id"]]
+			chain = self.zyngui.chain_manager.chains[self.zyngui.modify_chain_status["chain_id"]].get_name()
 			path = f"{chain}#{path}"
 		except:
 			pass

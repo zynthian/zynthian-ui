@@ -40,66 +40,53 @@ import zynautoconnect
 class zynthian_gui_midi_chan(zynthian_gui_selector):
 
 	def __init__(self):
-		self.set_mode('ADD')
 		super().__init__('Channel', True)
+		self.chan_list = list(range(16))
+		self.set_mode('ADD')
 
-	def set_mode(self, mode, chan=None, chan_list=None, chan_all=False):
+	def set_mode(self, mode, chan=None, chan_all=False):
 		self.mode = mode
-
-		if chan_list:
-			self.chan_list = chan_list
-		else:
-			self.chan_list = list(range(16))
-
 		self.chan_all = chan_all
 		self.midi_chan_sel = None
 		self.midi_chan_act = None
+		self.midi_chan = chan
 
 		if self.mode == 'ADD':
-			pass
-		elif self.mode == 'SET':
-			self.midi_chan = chan
-			self.index = self.get_midi_chan_index(chan)
+			try:
+				self.midi_chan = self.zyngui.chain_manager.get_next_free_midi_chan(self.midi_chan)
+			except:
+				pass
+		self.index = self.get_midi_chan_index(self.midi_chan)
 
 	def fill_list(self):
 		self.list_data = []
-		chain = self.zyngui.chain_manager.get_active_chain()
+		free_chans = self.zyngui.chain_manager.get_free_midi_chans()
 
-		list_index = 0
 		if self.chan_all:
-			self.list_data.append(("ALL", 0xffff, "ALL MIDI CHANNELS"))
-			if chain.midi_chan == 0xffff:
-				self.index = 0
-			list_index += 1
+			if self.midi_chan > 15:
+				self.list_data.append(("ALL", 0xffff, ">ALL MIDI CHANNELS"))
+			else:
+				self.list_data.append(("ALL", 0xffff, "ALL MIDI CHANNELS"))
 		#for i in self.zyngui.chain_manager.get_free_midi_chans():
 		for i in range(16):
 			if i == zynthian_gui_config.master_midi_channel:
 				continue
-			self.list_data.append((str(i + 1), i, "MIDI CH#" + str(i + 1)))
-			if chain.midi_chan == i:
-				self.index = list_index
-			list_index += 1
+			if i == self.midi_chan:
+				self.list_data.append((str(i + 1), i, f">MIDI CH#{i + 1}"))
+			elif i in free_chans:
+				self.list_data.append((str(i + 1), i, f"MIDI CH#{i + 1}"))
+			else:
+				self.list_data.append((str(i + 1), i, f"*MIDI CH#{i + 1}"))
 
 		super().fill_list()
 
-	def fill_listbox(self):
-		super().fill_listbox()
-
-	""" Leave this as example of highlighting code
-	def highlight_cloned(self):
-		i=0
-		for item in self.list_data:
-			if item[2][:2] == '[x':
-				self.listbox.itemconfig(i, {'fg': zynthian_gui_config.color_hl})
-			else:
-				self.listbox.itemconfig(i, {'fg': zynthian_gui_config.color_panel_tx})
-			i += 1
-	"""
-
 	def get_midi_chan_index(self, chan):
-		for i, ch in enumerate(self.chan_list):
-			if ch == chan:
-				return i
+		if chan > 15:
+			return 0
+		if self.chan_all:
+			return chan + 1
+		else:
+			return chan
 
 	def select_action(self, i, t='S'):
 		selchan = self.list_data[i][1]

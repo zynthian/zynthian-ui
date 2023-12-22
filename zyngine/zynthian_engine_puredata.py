@@ -48,14 +48,9 @@ class zynthian_engine_puredata(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	_ctrls = [
-		['volume', 7, 96],
-		['modulation', 1, 0],
-		['ctrl 2', 2, 0],
-		['ctrl 3', 3, 0]
 	]
 
 	_ctrl_screens = [
-		['main', ['volume', 'modulation', 'ctrl 2', 'ctrl 3']]
 	]
 
 	# ----------------------------------------------------------------------------
@@ -131,6 +126,8 @@ class zynthian_engine_puredata(zynthian_engine):
 		self.stop()
 		self.start()
 		zynautoconnect.request_audio_connect()
+		for symbol in processor.controllers_dict:
+			self.state_manager.chain_manager.remove_midi_learn(processor, symbol)
 		processor.refresh_controllers()
 		sleep(0.5)
 		zynautoconnect.request_midi_connect(True)

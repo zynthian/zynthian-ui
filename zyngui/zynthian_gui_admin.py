@@ -445,8 +445,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def update_software(self):
 		logging.info("UPDATE SOFTWARE")
-		self.zyngui.show_info("UPDATE SOFTWARE")
 		self.last_state_action()
+		self.zyngui.show_info("UPDATE SOFTWARE")
 		self.start_command([self.sys_dir + "/scripts/update_zynthian.sh"])
 		self.state_manager.update_available = False
 

@@ -569,7 +569,11 @@ class zynthian_gui:
 		elif hmode == zynthian_gui.SCREEN_HMODE_RESET:
 			self.screen_history = [screen]
 
-		self.screens[screen].build_view()
+		if self.screens[screen].build_view():
+			self.screen_lock.release()
+			self.show_screen_reset("audio_mixer")
+			return
+
 		if self.current_screen != screen:
 			#logging.debug(f"SHOW_SCREEN {screen}")
 			self.screens[screen].show()
@@ -903,6 +907,8 @@ class zynthian_gui:
 			chain = self.chain_manager.get_chain(chain_id)
 			if chain and chain.is_audio():
 				self.modify_chain({"chain_id": chain_id, "type": "Audio Effect"})
+			elif chain and chain.is_midi():
+				self.modify_chain({"chain_id": chain_id, "type": "MIDI Tool"})
 
 	def show_control(self):
 		self.chain_control()

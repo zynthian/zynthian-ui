@@ -89,13 +89,6 @@ class zynthian_processor:
         self.current_screen_index = -1
         self.auto_save_bank = False
 
-    def reset(self):
-        """ Reset processor to inital state, removing engine, etc."""
-
-        # MIDI-unlearn all controllers
-        self.midi_unlearn()
-        # Delete processor from engine
-        self.engine.remove_processor(self) #TODO: Is this done elsewhere?
 
     def get_jackname(self, engine=False):
         """ Get the jackname for the processor's engine

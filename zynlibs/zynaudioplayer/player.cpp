@@ -1065,7 +1065,7 @@ int on_jack_samplerate(jack_nframes_t nFrames, void *pArgs) {
 }
  
 static void lib_init(void) { 
-    fprintf(stderr, "libzynaudioplayer initialised\n");
+    fprintf(stderr, "Started libzynaudioplayer\n");
     jack_status_t nStatus;
     jack_options_t nOptions = JackNoStartServer;
 

@@ -96,7 +96,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			super().build_view()
 			self.click_listbox()
 		else:
-			self.zyngui.close_screen()
+			return True
 
 	def hide(self):
 		self.exit_midi_learn()

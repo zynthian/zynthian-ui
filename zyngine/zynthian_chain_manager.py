@@ -1012,15 +1012,24 @@ class zynthian_chain_manager():
             return
         zctrl = proc.controllers_dict[symbol]
 
-        for zctrls in self.absolute_midi_cc_binding.values():
+        for key in list(self.absolute_midi_cc_binding):
+            zctrls = self.absolute_midi_cc_binding[key]
             if zctrl in zctrls:
                 zctrls.remove(zctrl)
-        for zctrls in self.chan_midi_cc_binding.values():
+            if not zctrls:
+                self.absolute_midi_cc_binding.pop(key)
+        for key in list(self.chan_midi_cc_binding):
+            zctrls = self.chan_midi_cc_binding[key]
             if zctrl in zctrls:
                 zctrls.remove(zctrl)
-        for zctrls in self.chain_midi_cc_binding.values():
+            if not zctrls:
+                self.chan_midi_cc_binding.pop(key)
+        for key in list(self.chain_midi_cc_binding):
+            zctrls = self.chain_midi_cc_binding[key]
             if zctrl in zctrls:
                 zctrls.remove(zctrl)
+            if not zctrls:
+                self.chain_midi_cc_binding.pop(key)
 
         """
         if proc.type_code == "MD":
@@ -1229,6 +1238,8 @@ class zynthian_chain_manager():
         """
 
         free_chans = self.get_free_midi_chans()
+        if chan is None:
+            chan = 0
         for i in range(chan, MAX_NUM_MIDI_CHANS):
             if i in free_chans:
                 return i
