@@ -216,7 +216,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		self.zyngui.show_screen('midi_chan')
 
 	def chain_note_range(self):
-		self.zyngui.screens['midi_key_range'].config(self.chain.midi_chan)
+		self.zyngui.screens['midi_key_range'].config(self.chain)
 		self.zyngui.show_screen('midi_key_range')
 
 	def midi_learn(self):
