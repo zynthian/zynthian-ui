@@ -253,37 +253,6 @@ class zynthian_controller:
 		self.midi_chan = chan
 
 
-	#TODO: I think get_ctrl_array is an unused function
-	def get_ctrl_array(self):
-		title = self.short_name
-		if self.midi_chan:
-			chan = self.midi_chan
-		else:
-			chan = 0
-		if self.midi_cc:
-			ctrl = self.midi_cc
-		elif self.osc_path:
-			ctrl = self.osc_path
-		elif self.graph_path:
-			ctrl = self.graph_path
-		else:
-			ctrl = None
-		
-		if self.labels:
-			val = self.get_value2label()
-			if self.ticks:
-				minval = [self.labels, self.ticks]
-				maxval = None
-			else:
-				minval = self.labels
-				maxval = None
-		else:
-			val = self.value
-			minval = self.value_min
-			maxval = self.value_max
-		return [title, chan, ctrl, val, minval, maxval]
-
-
 	def get_value(self):
 		return self.value
 

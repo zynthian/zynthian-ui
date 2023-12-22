@@ -141,7 +141,6 @@ class zynthian_processor:
         if isinstance(midi_chan, int) and 0 <= midi_chan < 16:
             for zctrl in self.controllers_dict.values():
                 zctrl.set_midi_chan(midi_chan)
-                #TODO: Why does zctrl have midi chan? => Because it's convenient when sending MIDI CC to the engine
             self.send_ctrlfb_midi_cc()
 
     def get_midi_chan(self):

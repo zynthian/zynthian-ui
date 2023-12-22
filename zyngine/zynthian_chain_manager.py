@@ -1155,7 +1155,6 @@ class zynthian_chain_manager():
         midi_prog : Program change value
         """
 
-        #TODO: midi_cc not used
         changed = False
         for processor in self.get_processors(type="MIDI Synth"):
             try:
@@ -1278,7 +1277,6 @@ class zynthian_chain_manager():
         """Get next unused zmop index
         """
 
-        # TODO: take max number of chain zmops from lib_zyncore!!
         busy_zmops = [0] * MAX_NUM_ZMOPS
         for chain_id in self.chains:
             try:

@@ -1100,18 +1100,17 @@ class zynthian_state_manager:
             chain_state = {
                 "midi_chan": chain.midi_chan
             }
-            if isinstance(chain.midi_chan, int) and chain.midi_chan < 16:
-                # TODO: This is MIDI channel related, not chain specific
-                note_low = lib_zyncore.zmop_get_note_low(chain.midi_chan)
+            if chain.is_midi():
+                note_low = lib_zyncore.zmop_get_note_low(chain.zmop_index)
                 if note_low:
                     chain_state["note_low"] = note_low
-                note_high = lib_zyncore.zmop_get_note_high(chain.midi_chan)
+                note_high = lib_zyncore.zmop_get_note_high(chain.zmop_index)
                 if note_high != 127:
                     chain_state["note_high"] = note_high
-                transpose_octave = lib_zyncore.zmop_get_transpose_octave(chain.midi_chan)
+                transpose_octave = lib_zyncore.zmop_get_transpose_octave(chain.zmop_index)
                 if transpose_octave:
                     chain_state["transpose_octave"] = transpose_octave
-                transpose_semitone = lib_zyncore.zmop_get_transpose_semitone(chain.midi_chan)
+                transpose_semitone = lib_zyncore.zmop_get_transpose_semitone(chain.zmop_index)
                 if transpose_semitone:
                     chain_state["transpose_semitone"] = transpose_semitone
                 if chain.midi_in:

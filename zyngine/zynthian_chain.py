@@ -91,7 +91,7 @@ class zynthian_chain:
         else:
             self.title = ""
 
-        if isinstance(self.zmop_index, int):
+        if self.is_midi():
             lib_zyncore.zmop_reset_note_range_transpose(self.zmop_index)
 
         self.free_zmop()
@@ -165,10 +165,10 @@ class zynthian_chain:
         iz : 0...16 (TODO: get maximum number of chains from lib_zyncore!)
         """
         self.free_zmop()
-        if isinstance(iz, int) and iz >= 0:
+        if iz is not None and iz >= 0:
             self.zmop_index = iz
             self.midi_in = [f"ZynMidiRouter:ch{iz}_out"]
-            if isinstance(self.midi_chan, int):
+            if self.midi_chan is not None:
                 if 0 <= self.midi_chan < 16:
                     lib_zyncore.zmop_set_midi_chan(iz, self.midi_chan)
                 elif self.midi_chan == 0xffff:
@@ -177,7 +177,7 @@ class zynthian_chain:
     def free_zmop(self):
         """If already using a zmop, release and reset it
         """
-        if isinstance(self.zmop_index, int) and self.zmop_index >= 0:
+        if self.zmop_index is not None and self.zmop_index >= 0:
             lib_zyncore.zmop_reset_midi_chans(self.zmop_index)
         self.zmop_index = None
         self.midi_in = []
@@ -185,11 +185,11 @@ class zynthian_chain:
     def set_midi_chan(self, chan):
         """Set chain (and its processors) MIDI channel
 
-        chan : MIDI channel 0..15 or None
+        chan : MIDI channel 0..15, 0xffff or None
         """
 
         self.midi_chan = chan
-        if isinstance(self.zmop_index, int) and self.zmop_index >= 0 and isinstance(self.midi_chan, int):
+        if self.zmop_index is not None and self.zmop_index >= 0 and self.midi_chan is not None:
             if 0 <= self.midi_chan < 16:
                 lib_zyncore.zmop_set_midi_chan(self.zmop_index, self.midi_chan)
             elif self.midi_chan == 0xffff:
@@ -457,8 +457,7 @@ class zynthian_chain:
     def is_midi(self):
         """Returns True if chain processes MIDI"""
 
-        return isinstance(self.midi_chan, int)
-        # or self.midi_thru or len(self.midi_slots) > 0
+        return self.zmop_index is not None
 
     def is_synth(self):
         """Returns True if chain contains synth processor"""

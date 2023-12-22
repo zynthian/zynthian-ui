@@ -205,7 +205,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 	# Config variables
 	#----------------------------------------------------------------------------
 
-	#TODO: Do not use system default files in /usr/share
 	#TODO: Use paths from global config
 	stops_fpath = "/zynthian/zynthian-data/aeolus/stops"
 	user_presets_fpath = "/zynthian/zynthian-my-data/presets/aeolus.json"
