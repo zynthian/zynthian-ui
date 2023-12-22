@@ -549,52 +549,39 @@ class zynthian_chain_manager():
 
         if chain_id is None:
             chain_id = self.active_chain_id
+            self.active_chain_id = None
 
         try:
             chain = self.chains[chain_id]
-            # Set active chain
-            if isinstance(chain.zmop_index, int):
-                self.active_chain_id = chain_id
+        except:
+            chain = None
+            logging.error(f"Chain '{chain_id}' not found!")
+
+        # If no better candidate, set active the first chain (Main)
+        if chain is None and self.active_chain_id is None:
+            chain = next(iter(self.chains.values()))
+            chain_id = chain.chain_id
+
+        self.active_chain_id = chain_id
+        zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain=self.active_chain_id)
+
+        # If chain receives MIDI, set the active chain in ZynMidiRouter (lib_zyncore)
+        if isinstance(chain.zmop_index, int):
+            try:
                 lib_zyncore.set_active_chain(chain.zmop_index)
-                zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain=self.active_chain_id)
                 # Re-assert pedals on new active chain
                 if isinstance(chain.midi_chan, int):
                     if 0 <= chain.midi_chan < 16:
                         chan = chain.midi_chan
                     else:
-                        # If chain receives *ALL CHANNELS* use channel 0 to send
+                        # If chain receives *ALL CHANNELS* use channel 0 to re-assert pedals
                         chan = 0
                     for pedal_cc in self.held_zctrls:
                         if self.held_zctrls[pedal_cc][0]:
                             lib_zyncore.write_zynmidi_ccontrol_change(chan, pedal_cc, 127)
                             # TODO: Check if zctrl gets added to self.held_zctrls
-            else:
-                # Be sure a valid chain is active
-                first_zmop_chain = None
-                active_zmop_index = lib_zyncore.get_active_chain()
-                for chain in self.chains.values():
-                    if isinstance(chain.zmop_index, int):
-                        # if current active chain is valid ...
-                        if active_zmop_index == chain.zmop_index:
-                            # Reassert current active chain if needed
-                            if self.active_chain_id != active_zmop_index:
-                                self.active_chain_id = active_zmop_index
-                                zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain=self.active_chain_id)
-                            return self.active_chain_id
-                        # else, take first chain with assigned zmop
-                        elif not first_zmop_chain:
-                            first_zmop_chain = chain
-
-                if first_zmop_chain:
-                    self.active_chain_id = first_zmop_chain.chain_id
-                    lib_zyncore.set_active_chan(first_zmop_chain.zmop_index)
-                else:
-                    self.active_chain_id = None
-                    lib_zyncore.set_active_chain(-1)
-                zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain=self.active_chain_id)
-
-        except Exception as e:
-            logging.error(e)
+            except Exception as e:
+                logging.error(e)
 
         return self.active_chain_id
 
