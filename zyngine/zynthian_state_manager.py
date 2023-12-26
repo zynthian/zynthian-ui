@@ -184,8 +184,6 @@ class zynthian_state_manager:
         self.ctrldev_manager = zynthian_ctrldev_manager(self)
         self.reload_midi_config()
         self.create_audio_player()
-        zynautoconnect.request_midi_connect(True)
-        zynautoconnect.request_audio_connect(True)
 
         self.exit_flag = False
         self.slow_thread = Thread(target=self.slow_thread_task)
@@ -819,7 +817,7 @@ class zynthian_state_manager:
             return None
 
         zynautoconnect.request_midi_connect()
-        zynautoconnect.request_audio_connect()
+        zynautoconnect.request_audio_connect(True)
 
         # Restore mute state
         self.zynmixer.set_mute(255, mute)
@@ -1000,13 +998,14 @@ class zynthian_state_manager:
                     chain.midi_thru = chain_state["midi_thru"]
                 if "audio_in" in chain_state:
                     chain.audio_in = chain_state["audio_in"]
+                chain.audio_out = []
                 if "audio_out" in chain_state:
-                    chain.audio_out = []
                     for out in chain_state["audio_out"]:
-                        if out in self.chain_manager.processors:
-                            chain.audio_out.append(self.chain_manager.processors[out])
-                        else:
+                        try:
+                            chain.audio_out.append(f"{self.chain_manager.processors[out[0]].jackname}:{out[1]}")
+                        except:
                             chain.audio_out.append(out)
+                    
                 if "audio_thru" in chain_state:
                     chain.audio_thru = chain_state["audio_thru"]
                 chain.rebuild_graph()
@@ -1064,22 +1063,22 @@ class zynthian_state_manager:
         title : ZS3 title (Default: Create new title)
         """
 
-        # Get next id and name
-        used_ids = []
-        for zid in self.zs3:
-            if zid.startswith("zs3-"):
-                try:
-                    used_ids.append(int(zid.split('-')[1]))
-                except:
-                    pass
-        used_ids.sort()
-
         if zs3_id is None:
+            # Get next id and name
+            used_ids = []
+            for zid in self.zs3:
+                if zid.startswith("zs3-"):
+                    try:
+                        used_ids.append(int(zid.split('-')[1]))
+                    except:
+                        pass
+            used_ids.sort()
             # Get next free zs3 id
             for index in range(1, len(used_ids) + 2):
                 if index not in used_ids:
                     zs3_id = f"zs3-{index}"
                     break
+
 
         if title is None:
             title = self.midi_learn_pc
@@ -1122,11 +1121,13 @@ class zynthian_state_manager:
             chain_state["audio_in"] = chain.audio_in.copy()
             chain_state["audio_out"] = []
             for out in chain.audio_out:
-                proc_id = self.chain_manager.get_processor_id(out)
-                if proc_id is None:
-                    chain_state["audio_out"].append(out)
-                else:
-                    chain_state["audio_out"].append(proc_id)                      
+                if out in zynautoconnect.get_sidechain_portnames():
+                    client_name, port_name = out.split(":", 1)
+                    for i, proc in self.chain_manager.processors.items():
+                        if proc.jackname == client_name:
+                            out = [i, port_name]
+                            break
+                chain_state["audio_out"].append(out)
             if chain.audio_thru:
                 chain_state["audio_thru"] = chain.audio_thru
             # Add chain MIDI mapping
@@ -1496,7 +1497,6 @@ class zynthian_state_manager:
             try:
                 self.audio_player = zynthian_processor("AP", self.chain_manager.engine_info["AP"])
                 self.chain_manager.start_engine(self.audio_player, "AP")
-                zynautoconnect.request_audio_connect(True)
             except Exception as e:
                 logging.error(f"Can't create global Audio Player instance => {e}")
                 return

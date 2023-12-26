@@ -252,6 +252,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		logging.debug("STARTING SETBFREE!!")
 		self.generate_config_file(self.midi_chans)
 		super().start()
+		# Need to call autoconnect because engine starts later than chain/processor autorouting
 		zynautoconnect.request_midi_connect(True)
 		zynautoconnect.request_audio_connect()
 		for processor in self.processors:

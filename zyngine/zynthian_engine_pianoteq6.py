@@ -456,6 +456,7 @@ class zynthian_engine_pianoteq6(zynthian_engine):
 			self.command += " --preset \"{}\"".format(preset[0])
 			self.stop()
 			self.start()
+			# Need to all autoconnect because restart of process
 			zynautoconnect.request_midi_connect(True)
 			zynautoconnect.request_audio_connect()
 

@@ -64,7 +64,8 @@ ZynthianState = {
                     #... more processors in this slot
                 },
                 #... More slots
-            ]
+            ],
+            "fader_pos": 1 # Index of slot where fader is (divides pre/post fader audio effects)
         }
     },
     "zs3": { # Dictionary of ZS3's indexed by chan/prog or ZS3-x
@@ -105,7 +106,7 @@ ZynthianState = {
                     "midi_out": ["MIDI OUT"], # List of chain jack MIDI output destinations (may include aliases)
                     "midi_thru": False, # True to allow MIDI pass-through when MIDI chain empty
                     "audio_in": [0,1], # List of index of physical inputs
-                    "audio_out": ["mixer"], # List of processor id, "mixer", "system" chain is routed to
+                    "audio_out": [0,"system:playback"], # Targets for chain routing: Chain id | jackport regex | [procid, input port name]
                     "audio_thru": False, # True to allow audio pass-through when audio chain empty
                     "note_low": 0, # Lowest MIDI note chain responds to
                     "note_high": 127, # Higheset MIDI note chain responds to

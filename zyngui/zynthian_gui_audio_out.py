@@ -47,29 +47,32 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 	def fill_list(self):
 		self.list_data = []
-
-		# TODO: Show chain name
-		mod_running = False
-		if self.chain.chain_id == 0:
-			port_names = [["system", "system"]]  # TODO: Get list of available system outputs
+		if self.chain.chain_id:
+			# Normal chain so add mixer / chain targets
+			port_names = [("Main mixbus", 0)]
+			for chain_id, chain in self.zyngui.chain_manager.chains.items():
+				if chain_id == 0 or chain == self.chain or not chain.is_audio() and not chain.is_synth():
+					continue
+				port_names.append((f"Chain {chain_id} ({chain.get_name()})", chain_id))
+				# Add side-chain targets
+				for processor in chain.get_processors("Audio Effect"):
+					try:
+						for port_name in zynautoconnect.get_sidechain_portnames(processor.jackname):
+							port_names.append((f"↣{port_name}", port_name))
+					except:
+						pass
 		else:
-			port_names = [["mixer", "mixer"]]
-		jack_input_ports = list(zynautoconnect.get_audio_input_ports(True).keys())
-		for chain_id, chain in self.zyngui.chain_manager.chains.items():
-			if isinstance(chain, zynthian_engine_modui):
-				mod_running = True
-			if chain == self.chain:
-				continue
-			for processor in chain.get_processors():
-				jackname = processor.get_jackname()
-				if jackname in jack_input_ports:
-					# TODO: Check for howl-round
-					port_names.append([f"{chain_id}/{processor.id}: {processor.get_basepath()}", processor])
+			# Main chain
+			port_names = []
+			ports =zynautoconnect.get_hw_audio_dst_ports()
+			port_count = len(ports)
+			for i in range(1, port_count + 1, 2):
+				if i < port_count:
+					port_names.append((f"Outputs {i}+{i + 1}", f"system:playback_[{i},{i + 1}]$"))
+				else:
+					port_names.append((f"Output {i}", f"system:playback_{i}$"))
 
-		if mod_running:
-			port_names.append([self.chain.chain_id, None, "mod-ui"])  # TODO: Should this now be handled by chain input
-
-		for title,processor in port_names:
+		for title, processor in port_names:
 			if processor in self.chain.audio_out:
 				self.list_data.append((processor, processor, "\u2612 " + title))
 			else:

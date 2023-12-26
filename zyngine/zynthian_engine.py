@@ -33,6 +33,7 @@ from os.path import isfile, isdir, ismount, join
 
 from . import zynthian_controller
 from zyngui import zynthian_gui_config
+import zynautoconnect
 
 # --------------------------------------------------------------------------------
 # Basic Engine Class: Spawn a process & manage IPC communication using pexpect
@@ -318,10 +319,12 @@ class zynthian_engine(zynthian_basic_engine):
 	def add_processor(self, processor):
 		self.processors.append(processor)
 		processor.jackname = self.jackname
+		zynautoconnect.add_no_route_ports(self.jackname)
 		processor.refresh_controllers()
 
 	def remove_processor(self, processor):
 		self.processors.remove(processor)
+		zynautoconnect.remove_not_route_ports(processor.jackname)
 		processor.jackname = None
 
 	def get_name(self, processor=None):

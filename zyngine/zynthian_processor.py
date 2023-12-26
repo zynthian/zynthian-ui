@@ -30,7 +30,6 @@ import logging
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
 
-
 class zynthian_processor:
 
     # ---------------------------------------------------------------------------

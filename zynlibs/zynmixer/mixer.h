@@ -131,6 +131,12 @@ void reset(uint8_t channel);
 */
 uint8_t isChannelRouted(uint8_t channel);
 
+/** @brief  Check if channel has output routed
+*   @param  channel Index of channel
+*   @retval uint8_t 1 if channel has output routed. 0 if not routed.
+*/
+uint8_t isChannelOutRouted(uint8_t channel);
+
 /** @brief  Get DPM level
 *   @param  channel Index of channel
 *   @param  leg 0 for A leg (left), 1 for B leg (right)

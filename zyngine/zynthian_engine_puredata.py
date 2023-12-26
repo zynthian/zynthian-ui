@@ -125,11 +125,12 @@ class zynthian_engine_puredata(zynthian_engine):
 		self.preset = preset[0]
 		self.stop()
 		self.start()
-		zynautoconnect.request_audio_connect()
 		for symbol in processor.controllers_dict:
 			self.state_manager.chain_manager.remove_midi_learn(processor, symbol)
 		processor.refresh_controllers()
 		sleep(0.5)
+		# Need to all autoconnect because restart of process
+		zynautoconnect.request_audio_connect(True)
 		zynautoconnect.request_midi_connect(True)
 		processor.send_ctrl_midi_cc()
 		return True
