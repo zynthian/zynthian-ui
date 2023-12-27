@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for sooper looper
 #
-# Copyright (C) 2022-2022 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2022-2023 Brian Walton <riban@zynthian.org>
 #
 #******************************************************************************
 #
@@ -197,6 +197,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			['substitute', 'substitute', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 106],
 			['insert', 'insert', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 107],
 			['undo/redo', 'undo/redo', {'value':1, 'labels':['<', '<>', '>']}],
+			['prev/next', 'prev/next', {'value':1, 'labels':['<', '<>', '>']}],
 			['trigger', 'trigger', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 108],
 			['mute', 'mute', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 109],
 			['oneshot', 'oneshot', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 110],
@@ -236,7 +237,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			['Sync 2',['round', 'use_feedback_play']],
 			['Quantize',['quantize','mute_quantized','overdub_quantized','replace_quantized']],
 			['Levels 1',['rec_thresh', 'feedback', 'wet', 'dry']],
-			['Levels 2',['input_gain', 'selected_loop_num', 'loop_count']]
+			['Levels 2',['input_gain', 'selected_loop_num', 'loop_count', 'prev/next']]
 		]
 
 		self.start()
@@ -416,6 +417,13 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				self.osc_server.send(self.osc_target, '/sl/-3/hit', ('s', 'undo'))
 			elif zctrl.value == 2:
 				self.osc_server.send(self.osc_target, '/sl/-3/hit', ('s', 'redo'))
+			zctrl.set_value(1, False)
+		elif zctrl.symbol == 'prev/next':
+			# Use single controller to perform prev(CCW) and next (CW)
+			if zctrl.value == 0:
+				self.select_loop(self.selected_loop - 1, True)
+			elif zctrl.value == 2:
+				self.select_loop(self.selected_loop + 1, True)
 			zctrl.set_value(1, False)
 		elif zctrl.symbol == 'selected_loop_num':
 			self.select_loop(zctrl.value - 1, True)
