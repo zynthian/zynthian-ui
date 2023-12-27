@@ -552,16 +552,14 @@ class zynthian_chain_manager():
 
         if chain_id is None:
             chain_id = self.active_chain_id
-            self.active_chain_id = None
 
         try:
             chain = self.chains[chain_id]
         except:
             chain = None
-            logging.error(f"Chain '{chain_id}' not found!")
 
         # If no better candidate, set active the first chain (Main)
-        if chain is None and self.active_chain_id is None:
+        if chain is None:
             chain = next(iter(self.chains.values()))
             chain_id = chain.chain_id
 

@@ -165,7 +165,6 @@ class zynthian_engine(zynthian_basic_engine):
 		self.processors = []
 
 		self.options = {
-			'clone': True,
 			'note_range': True,
 			'audio_capture': False,
 			'midi_capture': True,

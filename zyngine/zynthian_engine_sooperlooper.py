@@ -167,7 +167,6 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 		self.options['note_range'] = False
 		self.options['audio_capture'] = True
-		self.options['clone'] = False
 
 		self.command = ["sooperlooper", "-q", "-l 0", "-D no", f"-p {self.osc_target_port}", f"-j{self.jackname}"]
 

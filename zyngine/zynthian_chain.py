@@ -279,7 +279,6 @@ class zynthian_chain:
         """Build dictionary of lists of sources mapped by destination"""
 
         #TODO: This is called too frequently
-        #TODO: Handle side-chaining - maybe manually curate list of sidechain destinations
         if not zynautoconnect.acquire_lock():
             return
 
@@ -421,7 +420,7 @@ class zynthian_chain:
                 if self.mixer_chan < 17:
                     audio_out.append("zynmixer:input_17")
                 else:
-                    audio_out.append("system_playback")
+                    audio_out.append("system:playback_[1,2]$")
             else:
                 audio_out.append(output)
         return audio_out
@@ -605,7 +604,6 @@ class zynthian_chain:
                 if processor == old_processor:
                     self.slots[i][j] = new_processor
                     self.remove_processor(old_processor)
-                    self.rebuild_graph()
                     new_processor.set_midi_chan(self.midi_chan)
                     zynautoconnect.request_audio_connect(True)
                     zynautoconnect.request_midi_connect(True)
