@@ -36,6 +36,7 @@ from subprocess import check_output
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config
+import zynconf
 
 # -------------------------------------------------------------------------------
 # Configure logging
@@ -67,8 +68,8 @@ deferred_audio_connect = False 	# True to perform audio connect on next port che
 hw_midi_src_ports = []			# List of hardware MIDI  source ports (including network, aubionotes, etc.)
 hw_midi_dst_ports = []			# List of hardware MIDI destination ports (including network, aubionotes, etc.)
 hw_audio_dst_ports = []			# List of physical audio output ports
-no_autoroute_ports = []			# List of currently active audio destination port names not to autoroute, e.g. sidechain inputs
-no_autoroute_map = {}			# Map of port names not to autoconnect, indexed by jack client regex - these are all the possible destinations, e.g. sidechain inputs
+sidechain_map = {}				# Map of all audio target port names to use as sidechain inputs, indexed by jack client regex
+sidechain_ports = []			# List of currently active audio destination port names not to autoroute, e.g. sidechain inputs
 
 # These variables are initialized in the init() function. These are "example values".
 max_num_devs = 16     # Max number of MIDI devices
@@ -276,32 +277,30 @@ def reset_midi_in_dev_all():
 			
 #	Audio port helpers
 			
-def add_no_route_ports(jackname):
-	"""Add ports that should not be routed
+def add_sidechain_ports(jackname):
+	"""Add ports that should be treated as sidechain inputs
 	
 	jackname : Jack client name of processor
 	"""
 
-	try:
-		client_name = jackname[:-3]
-		if client_name in no_autoroute_map:
-			for port_name in no_autoroute_map[client_name]:
-				no_autoroute_ports.append(f"{jackname}:{port_name}")
-	except:
-		pass
+	client_name = jackname[:-3]
+	if client_name in sidechain_map:
+		for port_name in sidechain_map[client_name]:
+			if f"{jackname}:{port_name}" not in sidechain_ports:
+				sidechain_ports.append(f"{jackname}:{port_name}")
 
-def remove_not_route_ports(jackname):
-	"""removes ports that should not be routed
+def remove_sidechain_ports(jackname):
+	"""Removes ports that are treated as sidechain inputs
 	
 	jackname : Jack client name of processor"""
 
-	try:
-		client_name = jackname[:-3]
-		if client_name in no_autoroute_map:
-			for port_name in no_autoroute_map[client_name]:
-				no_autoroute_ports.remove(f"{jackname}:{port_name}")
-	except:
-		pass
+	client_name = jackname[:-3]
+	if client_name in sidechain_map:
+		for port_name in sidechain_map[client_name]:
+			try:
+				sidechain_ports.remove(f"{jackname}:{port_name}")
+			except:
+				pass
 
 def get_sidechain_portnames(jackname=None):
 	"""Get list of sidechain input port names for a given jack client
@@ -311,9 +310,9 @@ def get_sidechain_portnames(jackname=None):
 	"""
 
 	if jackname is None:
-		return no_autoroute_ports.copy()
+		return sidechain_ports.copy()
 	result = []
-	for portname in no_autoroute_ports:
+	for portname in sidechain_ports:
 		try:
 			if portname.split(':')[0] == jackname:
 				result.append(portname)
@@ -686,7 +685,7 @@ def audio_autoconnect():
 					else:
 						routes[f"zynmixer:input_{dst_chain.mixer_chan + 1:02d}"] = route
 		for dst in routes:
-			if dst in no_autoroute_ports:
+			if dst in sidechain_ports:
 				# This is an exact match so we do want to route exactly this
 				dst_ports = jclient.get_ports(f"^{dst}$", is_input=True, is_audio=True)
 			else:
@@ -694,7 +693,7 @@ def audio_autoconnect():
 				dst_ports = jclient.get_ports(dst, is_input=True, is_audio=True)
 				# Remove side-chain (no route) destinations
 				for port in list(dst_ports):
-					if port.name in no_autoroute_ports:
+					if port.name in sidechain_ports:
 						dst_ports.remove(port)
 			dst_count = len(dst_ports)
 
@@ -1020,7 +1019,7 @@ def start(sm):
 	sm : State manager object
 	"""
 
-	global exit_flag, jclient, aclient, thread, lock, chain_manager, state_manager, hw_audio_dst_ports, no_autoroute_map
+	global exit_flag, jclient, aclient, thread, lock, chain_manager, state_manager, hw_audio_dst_ports, sidechain_map
 
 	if jclient:
 		return  # Already started
@@ -1045,8 +1044,11 @@ def start(sm):
 	# Get System Playback Ports
 	hw_audio_dst_ports = jclient.get_ports("system:playback", is_input=True, is_audio=True, is_physical=True)
 
-	with open("/zynthian/config/no_autoroute.json", "r") as file:
-		no_autoroute_map = json.load(file)
+	try:
+		with open(f"{zynconf.config_dir}/sidechain.json", "r") as file:
+			sidechain_map = json.load(file)
+	except Exception as e:
+		logger.error(f"Cannot load sidechain map ({e})")
 
 	# Create Lock object (Mutex) to avoid concurrence problems
 	lock = Lock()

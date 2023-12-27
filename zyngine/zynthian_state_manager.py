@@ -44,7 +44,6 @@ from zynlibs.zynseq import zynseq
 from zynlibs.zynsmf import zynsmf  # Python wrapper for zynsmf (ensures initialised and wraps load() function)
 from zynlibs.zynsmf.zynsmf import libsmf  # Direct access to shared library
 
-#from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_chain_manager import *
 from zyngine.zynthian_processor import zynthian_processor 
 from zyngine import zynthian_legacy_snapshot
@@ -532,6 +531,7 @@ class zynthian_state_manager:
             midi_events = (ctypes.c_uint32 * n)()
             n = lib_zyncore.read_zynmidi_buffer(midi_events, n)
             for i in range(n):
+                send_to_cuia = False #TODO: Allow UI to register for specific messages?
                 ev = midi_events[i]
 
                 # Try to manage with configured control devices
@@ -543,7 +543,6 @@ class zynthian_state_manager:
                 #zmip = (ev >> 24) & 0xff
                 evtype = (ev >> 20) & 0xf
                 chan = (ev >> 16) & 0xf
-                #logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))
 
                 # System Messages (Common & RT)
                 if evtype == 0xF:
@@ -601,6 +600,8 @@ class zynthian_state_manager:
                             self.chain_manager.add_midi_learn(chan, ccnum, self.midi_learn_zctrl, (ev >> 24) & 0xff)
                         else:
                             self.zynmixer.midi_control_change(chan, ccnum, ccval)
+                    elif evtype == 0x8 or evtype == 0x9:
+                        send_to_cuia = True
 
                 # Control Change...
                 elif evtype == 0xB:
@@ -613,6 +614,7 @@ class zynthian_state_manager:
                             self.zynmixer.midi_control_change(chan, ccnum, ccval)
                             self.alsa_mixer_processor.midi_control_change(chan, ccnum, ccval)
                             self.audio_player.midi_control_change(chan, ccnum, ccval)
+                        send_to_cuia = True
                     # Special CCs >= Channel Mode
                     elif ccnum == 120:
                         self.state_manager.all_sounds_off_chan(chan)
@@ -627,7 +629,7 @@ class zynthian_state_manager:
                     # SubSnapShot (ZS3) MIDI learn...
                     if self.midi_learn_pc is not None:
                         self.save_zs3(f"{chan}/{pgm}")
-                        zynsigman.send(zynsigman.S_CUIA, zynsigman.SS_CUIA_REFRESH)
+                        send_to_cuia = True
                     else:
                         if zynthian_gui_config.midi_prog_change_zs3:
                             res = self.load_zs3_by_midi_prog(chan, pgm)
@@ -635,9 +637,10 @@ class zynthian_state_manager:
                             chan = self.chain_manager.get_active_chain().midi_chan
                             res = self.chain_manager.set_midi_prog_preset(chan, pgm)
                         if res:
-                            zynsigman.send(zynsigman.S_CUIA, zynsigman.SS_CUIA_REFRESH)
+                            send_to_cuia = True
 
-                zynsigman.send(zynsigman.S_CUIA, zynsigman.SS_CUIA_MIDI_EVENT, zmip=(ev>>24)&0xff, evtype=evtype, chan=chan, val1=(ev>>8)&0x7f, val2=ev&0x7f)
+                if send_to_cuia:
+                    self.send_cuia("midi_event", [(ev>>24)&0xff, evtype, chan, (ev>>8)&0x7f, ev&0x7f])
 
                 # Flag MIDI event
                 self.status_midi = True
