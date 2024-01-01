@@ -60,23 +60,22 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 
 	def fill_list(self):
 		self.list_data = []
-		free_chans = self.zyngui.chain_manager.get_free_midi_chans()
-
 		if self.chan_all:
-			if self.midi_chan > 15:
-				self.list_data.append(("ALL", 0xffff, ">ALL MIDI CHANNELS"))
+			if self.midi_chan == 0xffff:
+				self.list_data.append(("ALL", 0xffff, "\u2612 ALL MIDI CHANNELS"))
 			else:
-				self.list_data.append(("ALL", 0xffff, "ALL MIDI CHANNELS"))
-		#for i in self.zyngui.chain_manager.get_free_midi_chans():
+				self.list_data.append(("ALL", 0xffff, "\u2610 ALL MIDI CHANNELS"))
+
+		free_chans = self.zyngui.chain_manager.get_free_midi_chans()
 		for i in range(16):
 			if i == zynthian_gui_config.master_midi_channel:
 				continue
 			if i == self.midi_chan:
-				self.list_data.append((str(i + 1), i, f">MIDI CH#{i + 1}"))
+				self.list_data.append((str(i + 1), i, f"\u2612 MIDI CHANNEL {i + 1}"))
 			elif i in free_chans:
-				self.list_data.append((str(i + 1), i, f"MIDI CH#{i + 1}"))
+				self.list_data.append((str(i + 1), i, f"\u2610 MIDI CHANNEL {i + 1}"))
 			else:
-				self.list_data.append((str(i + 1), i, f"*MIDI CH#{i + 1}"))
+				self.list_data.append((str(i + 1), i, f"\u2610 MIDI CHANNEL {i + 1} \u2295"))
 
 		super().fill_list()
 
