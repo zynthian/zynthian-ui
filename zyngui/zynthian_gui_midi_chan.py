@@ -60,23 +60,31 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 
 	def fill_list(self):
 		self.list_data = []
-		free_chans = self.zyngui.chain_manager.get_free_midi_chans()
-
 		if self.chan_all:
-			if self.midi_chan > 15:
-				self.list_data.append(("ALL", 0xffff, ">ALL MIDI CHANNELS"))
+			if self.midi_chan == 0xffff:
+				self.list_data.append(("ALL", 0xffff, "\u2612 ALL MIDI CHANNELS"))
 			else:
-				self.list_data.append(("ALL", 0xffff, "ALL MIDI CHANNELS"))
-		#for i in self.zyngui.chain_manager.get_free_midi_chans():
+				self.list_data.append(("ALL", 0xffff, "\u2610 ALL MIDI CHANNELS"))
+
 		for i in range(16):
 			if i == zynthian_gui_config.master_midi_channel:
 				continue
+			used_mark = ""
+			num_chains = self.zyngui.chain_manager.get_num_chains_midi_chan(i)
+			logging.debug(f"CHANNEL {i} => {num_chains} chains")
 			if i == self.midi_chan:
-				self.list_data.append((str(i + 1), i, f">MIDI CH#{i + 1}"))
-			elif i in free_chans:
-				self.list_data.append((str(i + 1), i, f"MIDI CH#{i + 1}"))
+				check_mark = "\u2612"
+				if num_chains > 7:
+					used_mark = chr(0x267A)
+				elif num_chains > 1:
+					used_mark = chr(0x2672 + num_chains)
 			else:
-				self.list_data.append((str(i + 1), i, f"*MIDI CH#{i + 1}"))
+				check_mark = "\u2610"
+				if num_chains > 7:
+					used_mark = chr(0x267A)
+				elif num_chains > 0:
+					used_mark = chr(0x2672 + num_chains)
+			self.list_data.append((str(i + 1), i, f"{check_mark} {used_mark} MIDI CHANNEL {i + 1}"))
 
 		super().fill_list()
 

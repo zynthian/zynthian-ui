@@ -76,7 +76,7 @@ class zynthian_chain_manager():
         self.zyngines = OrderedDict()  # List of instantiated engines
         self.processors = {}  # Dictionary of processor objects indexed by UID
         self.active_chain_id = None  # Active chain id
-        self.midi_chan_2_chain_ids = [list() for _ in range(MAX_NUM_ZMOPS)]  # Chain IDs mapped by MIDI channel
+        self.midi_chan_2_chain_ids = [list() for _ in range(MAX_NUM_MIDI_CHANS)]  # Chain IDs mapped by MIDI channel
 
         self.absolute_midi_cc_binding = {}  # Map of list of zctrls indexed by 24-bit ZMOP,CHAN,CC
         self.chain_midi_cc_binding = {}  # Map of list of zctrls indexed by 16-bit CHAIN,CC
@@ -1258,6 +1258,17 @@ class zynthian_chain_manager():
             if i in free_chans:
                 return i
         raise Exception("No available free MIDI channels!")
+
+    def get_num_chains_midi_chan(self, chan):
+        """Get num of chains with MIDI channel
+
+        chan : MIDI channel to search
+        """
+
+        try:
+            return len(self.midi_chan_2_chain_ids[chan])
+        except:
+            return 0
 
     def get_free_mixer_chans(self):
         """Get list of unused mixer channels"""
