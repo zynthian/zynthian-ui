@@ -949,12 +949,22 @@ class zynthian_gui:
 				sleep(0.1)
 
 	def clean_all(self):
-		self.state_manager.zynmixer.set_mute(255, 1)
 		if self.chain_manager.get_chain_count() > 0:
 			self.state_manager.save_last_state_snapshot()
 		self.state_manager.clean_all()
-		self.state_manager.zynmixer.set_mute(255, 0)
 		self.show_screen_reset('main_menu')
+
+	def clean_chains(self):
+		if self.chain_manager.get_chain_count() > 0:
+			self.state_manager.save_last_state_snapshot()
+		self.state_manager.clean_chains()
+		self.show_screen_reset('main_menu')
+
+	def clean_sequences(self):
+		if self.chain_manager.get_chain_count() > 0:
+			self.state_manager.save_last_state_snapshot()
+		self.state_manager.clean_sequences()
+		self.show_screen_reset('zynpad')
 
 	# -------------------------------------------------------------------
 	# Callable UI Actions

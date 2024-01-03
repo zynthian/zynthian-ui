@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
 # Zynthian GUI Chain Menu Class
 #
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 import logging
 
@@ -29,24 +29,30 @@ import logging
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian App Selection GUI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_chain_menu(zynthian_gui_selector):
 
 	def __init__(self):
-		super().__init__('Chain', True)
-
+		super().__init__('Menu', True)
 
 	def fill_list(self):
 		self.list_data = []
-		self.list_data.append((self.new_synth_chain, 0, "New Synth Chain"))
-		self.list_data.append((self.new_audiofx_chain, 0, "New Audio Chain"))
-		self.list_data.append((self.new_midifx_chain, 0, "New MIDI Chain"))
-		self.list_data.append((self.new_generator_chain, 0, "New Generator Chain"))
-		self.list_data.append((self.new_special_chain, 0, "New Special Chain"))
-		self.list_data.append((self.clean_all, 0, "Clean All"))
+
+		self.list_data.append((None, 0, "> ADD CHAIN"))
+		self.list_data.append((self.add_synth_chain, 0, "Add Synth Chain"))
+		self.list_data.append((self.add_audiofx_chain, 0, "Add Audio Chain"))
+		self.list_data.append((self.add_midifx_chain, 0, "Add MIDI Chain"))
+		self.list_data.append((self.add_generator_chain, 0, "Add Generator Chain"))
+		self.list_data.append((self.add_special_chain, 0, "Add Special Chain"))
+
+		self.list_data.append((None, 0, "> REMOVE"))
+		self.list_data.append((self.remove_sequences, 0, "Remove Sequences"))
+		self.list_data.append((self.remove_chains, 0, "Remove Chains"))
+		self.list_data.append((self.remove_all, 0, "Remove All"))
 
 		# Add list of System / configuration views
 		if zynthian_gui_config.control_test_enabled:
@@ -55,48 +61,53 @@ class zynthian_gui_chain_menu(zynthian_gui_selector):
 
 		super().fill_list()
 
-
 	def select_action(self, i, t='S'):
 		if self.list_data[i][0]:
 			self.last_action = self.list_data[i][0]
 			self.last_action(t)
 
-
-	def new_synth_chain(self, t='S'):
+	def add_synth_chain(self, t='S'):
 		self.zyngui.modify_chain({"type": "MIDI Synth", "midi_thru": False, "audio_thru": False})
 
-
-	def new_audiofx_chain(self, t='S'):
+	def add_audiofx_chain(self, t='S'):
 		try:
 			chain_id = self.zyngui.chain_manager.add_chain(None, audio_thru=True)
 			self.zyngui.modify_chain({"type": "Audio Effect", "audio_thru": True, "chain_id": chain_id})
 		except Exception as e:
 			logging.error(e)
 
-
-	def new_midifx_chain(self, t='S'):
+	def add_midifx_chain(self, t='S'):
 		self.zyngui.modify_chain({"type": "MIDI Tool", "midi_thru": True, "audio_thru": False})
 
-
-	def new_generator_chain(self, t='S'):
+	def add_generator_chain(self, t='S'):
 		#chain_id = self.zyngui.chain_manager.add_chain(None, enable_audio_thru = False)
 		self.zyngui.modify_chain({"type": "Audio Generator", "midi_thru": False, "audio_thru": False})
 
-
-	def new_special_chain(self, t='S'):
+	def add_special_chain(self, t='S'):
 		self.zyngui.modify_chain({"type": "Special", "midi_thru": True, "audio_thru": True})
 
+	def remove_all(self, t='S'):
+		self.zyngui.show_confirm("Do you really want to remove ALL chains & sequences?", self.remove_all_confirmed)
 
-	def clean_all(self, t='S'):
-		self.zyngui.show_confirm("Do you really want to remove ALL chains & sequences?", self.clean_all_confirmed)
-
-
-	def clean_all_confirmed(self, params=None):
+	def remove_all_confirmed(self, params=None):
 		self.index = 0
 		self.zyngui.clean_all()
 
+	def remove_chains(self, t='S'):
+		self.zyngui.show_confirm("Do you really want to remove ALL chains?", self.remove_chains_confirmed)
+
+	def remove_chains_confirmed(self, params=None):
+		self.index = 0
+		self.zyngui.clean_chains()
+
+	def remove_sequences(self, t='S'):
+		self.zyngui.show_confirm("Do you really want to remove ALL sequences?", self.remove_sequences_confirmed)
+
+	def remove_sequences_confirmed(self, params=None):
+		self.index = 0
+		self.zyngui.clean_sequences()
 
 	def set_select_path(self):
-		self.select_path.set("Chain")
+		self.select_path.set("Menu")
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------

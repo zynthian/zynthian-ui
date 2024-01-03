@@ -242,20 +242,51 @@ class zynthian_state_manager:
         self.start()
         self.end_busy("reset state")
 
+    def clean(self, chains=True, zynseq=True):
+        """Remove Chains & Sequences.
+        chains : True for cleaning all chains
+        sequences : True for cleaning zynseq state (sequences)
+        """
+
+        self.zynmixer.set_mute(255, 1)
+        #self.zynseq.transport_stop("ALL")
+        self.zynseq.libseq.stop()
+        if zynseq:
+            self.zynseq.load("")
+        if chains:
+            zynautoconnect.pause()
+            self.chain_manager.remove_all_chains(True)
+            self.reset_zs3()
+            self.zynmixer.reset_state()
+            self.reload_midi_config()
+            zynautoconnect.request_midi_connect(True)
+            zynautoconnect.request_audio_connect(True)
+            zynautoconnect.resume()
+        self.zynmixer.set_mute(255, 0)
+
     def clean_all(self):
+        """Remove ALL Chains & Sequences."""
+
         self.start_busy("clean all", "cleaning all...")
+        self.clean(chains=True, zynseq=True)
         self.last_snapshot_fpath = ""
-        self.zynseq.transport_stop("ALL")
-        zynautoconnect.pause()
-        self.chain_manager.remove_all_chains(True)
-        self.reset_zs3()
-        self.zynseq.load("")
-        self.zynmixer.reset_state()
-        self.reload_midi_config()
-        zynautoconnect.request_midi_connect(True)
-        zynautoconnect.request_audio_connect(True)
-        zynautoconnect.resume()
         self.end_busy("clean all")
+        self.busy.clear()  # Sometimes it's needed, why??
+
+    def clean_chains(self):
+        """Remove ALL chains while keeping sequences."""
+
+        self.start_busy("clean chains", "cleaning chains...")
+        self.clean(chains=True, zynseq=False)
+        self.end_busy("clean chains")
+        self.busy.clear()  # Sometimes it's needed, why??
+
+    def clean_sequences(self):
+        """Remove ALL sequences while keeping chains."""
+
+        self.start_busy("clean sequences", "cleaning sequences...")
+        self.clean(chains=False, zynseq=True)
+        self.end_busy("clean sequences")
         self.busy.clear()  # Sometimes it's needed, why??
 
     # -------------------------------------------------------------------------
