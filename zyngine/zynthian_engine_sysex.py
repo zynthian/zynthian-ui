@@ -54,7 +54,7 @@ class zynthian_engine_sysex(zynthian_engine):
 		#('_', zynthian_engine.data_dir + "/presets/sysex")
 	]
 
-	file_exts = ["syx", "sysex", "SYX", "SYSEX"]
+	file_exts = ["syx", "SYX"]
 
 	# ----------------------------------------------------------------------------
 	# Initialization
@@ -128,17 +128,17 @@ class zynthian_engine_sysex(zynthian_engine):
 
 	def load_sysex_file(self, fpath):
 		try:
-			logging.info("Loading sysex file %s ..." % fpath)
+			logging.info("Loading SysEx file %s ..." % fpath)
 			with open(fpath, "rb") as fh:
 				self.sysex_data = fh.read()
 		except Exception as e:
-			logging.error("Can't load sysex file '%s': %s" % (fpath, e))
+			logging.error("Can't load SysEx file '%s': %s" % (fpath, e))
 			return False
 		if self.check_sysex_data():
 			return True
 		else:
 			self.sysex_data = None
-			logging.error("Wrong sysex data format")
+			logging.error("Wrong SysEx data format")
 			return False
 
 	def check_sysex_data(self):
@@ -183,10 +183,10 @@ class zynthian_engine_sysex(zynthian_engine):
 	@classmethod
 	def zynapi_get_presets(cls, bank):
 		presets = []
-		for p in cls.get_dirlist(bank['fullpath']):
+		for p in cls.get_filelist(bank['fullpath'], "syx"):
 			presets.append({
 				'text': p[4],
-				'name': p[2],
+				'name': p[4],
 				'fullpath': p[0],
 				'raw': p,
 				'readonly': False
@@ -215,7 +215,7 @@ class zynthian_engine_sysex(zynthian_engine):
 
 	@classmethod
 	def zynapi_remove_preset(cls, preset_path):
-		shutil.rmtree(preset_path)
+		os.remove(preset_path)
 
 	@classmethod
 	def zynapi_download(cls, fullpath):
@@ -226,7 +226,7 @@ class zynthian_engine_sysex(zynthian_engine):
 		if not bank_path:
 			raise Exception("You must select a destiny bank folder!")
 		if os.path.isfile(fpath):
-			fname, ext = os.path.splitext(bank_path)
+			fname, ext = os.path.splitext(fpath)
 			if ext[1:] in cls.file_exts:
 				shutil.move(fpath, bank_path)
 			else:
