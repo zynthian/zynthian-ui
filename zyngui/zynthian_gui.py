@@ -977,6 +977,7 @@ class zynthian_gui:
 			self.cuia_bank_preset()
 			self.curlayer.set_show_fav_presets(True)
 			self.show_screen("preset")
+			self.show_screen("preset")
 
 
 	def set_curlayer(self, layer, save=False, populate_screens=True):
@@ -1026,7 +1027,6 @@ class zynthian_gui:
 		lib_zyncore.set_midi_active_chan(active_chan)
 		self.wiring_midi_setup(curlayer_chan)
 
-
 	def get_curlayer_wait(self):
 		# Try until layer is ready
 		for j in range(100):
@@ -1035,17 +1035,31 @@ class zynthian_gui:
 			else:
 				sleep(0.1)
 
+	def clean(self, chains=True, zynseq=True):
+		self.zynseq.libseq.stop()
+		if len(self.screens['layer'].layers) > 0:
+			self.screens['snapshot'].save_last_state_snapshot()
+		if zynseq:
+			self.zynseq.load("")
+		if chains:
+			self.screens['layer'].reset()
+			self.screens['layer'].add_layer_engine("AI", 256)
+			self.zynmixer.reset_state()
+
+	def clean_sequences(self):
+		self.show_loading("cleaning sequences")
+		self.clean(chains=False, zynseq=True)
+		self.show_screen_reset('zynpad')
+
+	def clean_chains(self):
+		self.show_loading("cleaning chains")
+		self.clean(chains=True, zynseq=False)
+		self.show_screen_reset('main_menu')
 
 	def clean_all(self):
 		self.show_loading("cleaning all")
-		if len(self.screens['layer'].layers) > 0:
-			self.screens['snapshot'].save_last_state_snapshot()
-		self.screens['layer'].reset()
-		self.screens['layer'].add_layer_engine("AI", 256)
-		self.zynmixer.reset_state()
-		self.zynseq.load("")
+		self.clean(chains=True, zynseq=True)
 		self.show_screen_reset('main_menu')
-
 
 	def create_audio_player(self):
 		if not self.audio_player:
