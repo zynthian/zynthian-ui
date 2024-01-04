@@ -24,8 +24,11 @@
 import os
 import shutil
 import logging
+from time import sleep
 
+import zynautoconnect
 from . import zynthian_engine
+from zyncoder.zyncore import lib_zyncore
 
 # ------------------------------------------------------------------------------
 # SysEx Manager Engine Class
@@ -98,7 +101,10 @@ class zynthian_engine_sysex(zynthian_engine):
 	def set_preset(self, layer, preset, preload=False):
 		self.sysex_fpath = preset[0]
 		if self.load_sysex_file(self.sysex_fpath):
-			self.send_sysex_data()
+			end_layer = self.get_end_layer(layer)
+			for jn in end_layer.get_midi_out():
+				self.send_sysex_data(jn)
+			sleep(0.2)
 			return True
 		else:
 			return False
@@ -141,9 +147,21 @@ class zynthian_engine_sysex(zynthian_engine):
 		else:
 			return False
 
-	def send_sysex_data(self):
-		lib_zyncore.dev_send_midi_event(self.idev, self.sysex_data, len(self.sysex_data))
-		sleep(0.2)
+	def send_sysex_data(self, device_name):
+		try:
+			idev = zynautoconnect.devices_out_name.index(device_name)
+		except:
+			logging.info(f"Can't send MIDI SysEx data to {device_name}")
+			return False
+		lib_zyncore.dev_send_midi_event(idev, self.sysex_data, len(self.sysex_data))
+		logging.info(f"Sending MIDI SysEx data to {device_name} ({idev}) => {self.sysex_data}")
+		return True
+
+	def get_end_layer(self, layer):
+		try:
+			return self.zyngui.screens['layer'].get_midichain_ends(layer)[0]
+		except:
+			return None
 
 	# ---------------------------------------------------------------------------
 	# API methods
@@ -218,4 +236,4 @@ class zynthian_engine_sysex(zynthian_engine):
 	def zynapi_get_formats(cls):
 		return ",".join(cls.file_exts)
 
-# ******************************************************************************
+# -----------------------------------------------------------------------------
