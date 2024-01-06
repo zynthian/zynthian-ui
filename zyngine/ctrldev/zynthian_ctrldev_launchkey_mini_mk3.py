@@ -78,7 +78,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 			elif state == zynseq.SEQ_PLAYING:
 				chan = 2
 				vel = self.PAD_COLOURS[group]
-			elif state == zynseq.SEQ_STOPPING:
+			elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC]:
 				chan = 1
 				vel = self.STOPPING_COLOUR
 			elif state == zynseq.SEQ_STARTING:
