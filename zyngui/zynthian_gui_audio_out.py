@@ -53,7 +53,10 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 			for chain_id, chain in self.zyngui.chain_manager.chains.items():
 				if chain_id == 0 or chain == self.chain or not chain.is_audio() and not chain.is_synth():
 					continue
-				port_names.append((f"Chain {chain_id} ({chain.get_name()})", chain_id))
+				if self.zyngui.chain_manager.will_audio_howl(self.chain.chain_id, chain_id):
+					port_names.append((f"∞Chain {chain_id} ({chain.get_name()})", chain_id))
+				else:
+					port_names.append((f"Chain {chain_id} ({chain.get_name()})", chain_id))
 				# Add side-chain targets
 				for processor in chain.get_processors("Audio Effect"):
 					try:

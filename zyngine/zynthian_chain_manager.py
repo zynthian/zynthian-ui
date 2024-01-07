@@ -513,9 +513,9 @@ class zynthian_chain_manager():
             return self.chains[chain_id].midi_routes
         return{}
 
-    def will_route_howl(self, src_id, dst_id, node_list=None):
-        """Checks if adding a connection will cause a howl-round loop
-        
+    def will_midi_howl(self, src_id, dst_id, node_list=None):
+        """Checks if adding a connection will cause a MIDI howl-round loop
+
         src_id : Chain ID of the source chain
         dst_id : Chain ID of the destination chain
         node_list : Do not use - internal function parameter
@@ -524,7 +524,7 @@ class zynthian_chain_manager():
 
         if dst_id not in self.chains:
             return False
-        if src_id:
+        if src_id is not None:
             # src_id only provided on first call (not re-entrant cycles)
             if src_id not in self.chains:
                 return False
@@ -534,7 +534,33 @@ class zynthian_chain_manager():
         node_list.append(dst_id)
         for chain_id in self.chains[dst_id].midi_out:
             if chain_id in self.chains:
-                if self.will_route_howl(None, chain_id, node_list):
+                if self.will_midi_howl(None, chain_id, node_list):
+                    return True
+                node_list.append(chain_id)
+        return False
+
+    def will_audio_howl(self, src_id, dst_id, node_list=None):
+        """Checks if adding a connection will cause an audio howl-round loop
+        
+        src_id : Chain ID of the source chain
+        dst_id : Chain ID of the destination chain
+        node_list : Do not use - internal function parameter
+        Returns : True if adding the route will cause howl-round feedback loop
+        """
+
+        if dst_id not in self.chains:
+            return False
+        if src_id is not None:
+            # src_id only provided on first call (not re-entrant cycles)
+            if src_id not in self.chains:
+                return False
+            node_list = [src_id]  # Init node_list on first call
+        if dst_id in node_list:
+            return True
+        node_list.append(dst_id)
+        for chain_id in self.chains[dst_id].audio_out:
+            if chain_id in self.chains:
+                if self.will_audio_howl(None, chain_id, node_list):
                     return True
                 node_list.append(chain_id)
         return False
