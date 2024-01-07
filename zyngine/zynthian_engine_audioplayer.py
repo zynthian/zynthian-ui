@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_audioplayer)
 #
 # zynthian_engine implementation for audio player
 #
 # Copyright (C) 2021-2023 Brian Walton <riban@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -20,20 +20,20 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 import os
 import logging
 from glob import glob
-from collections import OrderedDict
 
 from zynlibs.zynaudioplayer import zynaudioplayer
-from . import zynthian_engine
 from zyngui import zynthian_gui_config
+from . import zynthian_engine
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Audio Player Engine Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_engine_audioplayer(zynthian_engine):
 
@@ -93,9 +93,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.start()
 		self.reset()
 
-
 	# ---------------------------------------------------------------------------
-	# Subproccess Management & IPC
+	# Subprocess Management & IPC
 	# ---------------------------------------------------------------------------
 
 	def start(self):
@@ -104,14 +103,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.file_exts = self.get_file_exts()
 		self.player.set_control_cb(self.control_cb)
 
-
 	def stop(self):
 		try:
 			self.player.stop()
 			self.player = None
 		except Exception as e:
 			logging.error("Failed to close audio player: %s", e)
-
 
 	# ---------------------------------------------------------------------------
 	# Process Management
@@ -126,7 +123,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		processor.jackname = self.jackname
 		processor.jackname = "{}:out_{:02d}(a|b)".format(self.jackname, self.player.get_index(handle))
 		self.set_midi_chan(processor)
-		self.monitors_dict[processor.handle] = OrderedDict()
+		self.monitors_dict[processor.handle] = {}
 		self.monitors_dict[processor.handle]["filename"] = ""
 		self.monitors_dict[processor.handle]["info"] = 0
 		self.monitors_dict[processor.handle]['frames'] = 0
@@ -139,14 +136,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.player.remove_player(processor.handle)
 		super().remove_processor(processor)
 
-
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
 	def set_midi_chan(self, processor):
 		self.player.set_midi_chan(processor.handle, processor.midi_chan)
-
 
 	# ---------------------------------------------------------------------------
 	# Bank Management
@@ -179,7 +174,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 		return banks
 
-
 	def set_bank(self, processor, bank):
 		return True
 
@@ -196,7 +190,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		file_exts += exts_upper
 		return file_exts
 
-
 	def get_preset_list(self, bank):
 		presets = []
 		for ext in self.file_exts:
@@ -206,7 +199,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			duration = self.player.get_file_duration(preset[0])
 			preset.append("{} ({:02d}:{:02d})".format(fparts[1], int(duration/60), round(duration)%60))
 		return presets
-
 
 	def set_preset(self, processor, preset, preload=False):
 		if self.player.get_filename(processor.handle) == preset[0] and self.player.get_file_duration(preset[0]) == self.player.get_duration(processor.handle):
@@ -310,14 +302,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 		return True
 
-
 	def delete_preset(self, bank, preset):
 		try:
 			os.remove(preset[0])
 			os.remove("{}.png".format(preset[0]))
 		except Exception as e:
 			logging.debug(e)
-
 
 	def rename_preset(self, bank, preset, new_preset_name):
 		src_ext = None
@@ -336,10 +326,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		except Exception as e:
 			logging.debug(e)
 
-		
 	def is_preset_user(self, preset):
 		return True
-
 
 	def load_latest(self, processor):
 		bank_dirs = [os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"]
@@ -357,16 +345,15 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			processor.load_preset_list()
 			processor.set_preset_by_id(latest_fpath)
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Controllers Management
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def get_controllers_dict(self, processor):
 		ctrls = super().get_controllers_dict(processor)
 		for zctrl in ctrls.values():
 			zctrl.handle = processor.handle
 		return ctrls
-
 
 	def control_cb(self, handle, id, value):
 		try:
@@ -411,7 +398,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					break
 		except Exception as e:
 			logging.error(e)
-
 
 	def send_controller_value(self, zctrl):
 		handle = zctrl.handle
@@ -496,18 +482,11 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		elif zctrl.symbol == "release":
 			self.player.set_release(handle, zctrl.value)
 
-
 	def get_monitors_dict(self, handle):
 		return self.monitors_dict[handle]
-
-
-	# ---------------------------------------------------------------------------
-	# Specific functions
-	# ---------------------------------------------------------------------------
-
 
 	# ---------------------------------------------------------------------------
 	# API methods
 	# ---------------------------------------------------------------------------
 
-#******************************************************************************
+# *******************************************************************************

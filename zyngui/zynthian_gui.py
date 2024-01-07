@@ -96,7 +96,10 @@ MIXER_MAIN_CHANNEL = 255  # TODO This constant should go somewhere else
 
 
 class zynthian_gui:
+	# Subsignals are defined inside each module. Here we define GUI subsignals:
+	SS_SHOW_SCREEN = 1
 
+	# Screen Modes
 	SCREEN_HMODE_NONE = 0
 	SCREEN_HMODE_ADD = 1
 	SCREEN_HMODE_REPLACE = 2
@@ -579,6 +582,7 @@ class zynthian_gui:
 			self.screens[screen].show()
 			self.current_screen = screen
 			self.hide_screens(exclude=screen)
+			zynsigman.send(zynsigman.S_GUI, self.SS_SHOW_SCREEN, screen=screen)
 
 		self.screen_lock.release()
 

@@ -42,11 +42,13 @@ class zynthian_signal_manager:
     S_AUDIO_MIXER       = 8
     S_STEPSEQ           = 9
     S_CUIA              = 10
+    S_GUI               = 11
 
-    SS_CUIA_REFRESH     = 0
-    SS_CUIA_MIDI_EVENT        = 1
+    SS_CUIA_REFRESH        = 0
+    SS_CUIA_MIDI_EVENT     = 1
+    SS_GUI_SHOW_SCREEN = 1
 
-    last_signal = 11
+    last_signal = 12
     last_subsignal = 10
 
     def __init__(self):

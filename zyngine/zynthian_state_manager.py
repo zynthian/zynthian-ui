@@ -47,10 +47,11 @@ from zynlibs.zynsmf.zynsmf import libsmf  # Direct access to shared library
 #from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_chain_manager import *
 from zyngine.zynthian_processor import zynthian_processor 
+from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
+from zyngine.zynthian_signal_manager import zynsigman
 from zyngine import zynthian_legacy_snapshot
 from zyngine import zynthian_engine_audio_mixer
 from zyngine import zynthian_midi_filter
-from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 
 from zyngui import zynthian_gui_config
 from zyngine.zynthian_ctrldev_manager import zynthian_ctrldev_manager
@@ -66,8 +67,10 @@ ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 
 class zynthian_state_manager:
 
-    # Subsignals are defined inside each module. Here we define state_manager subsignals:
-    # SS_XXX = 1
+    # Subsignals are defined inside each module. Here we define state manager subsignals:
+    SS_AUDIO_PLAYER_STATE = 1
+    SS_MIDI_PLAYER_STATE = 2
+    SS_MIDI_RECORDER_STATE = 3
 
     def __init__(self):
         """ Create an instance of a state manager
@@ -1545,10 +1548,12 @@ class zynthian_state_manager:
             self.audio_player.engine.load_latest(self.audio_player)
             self.audio_player.engine.player.start_playback(self.audio_player.handle)
         self.refresh_recording_status()
+        zynsigman.send(zynsigman.S_STATE_MAN, self.SS_AUDIO_PLAYER_STATE, state=True)
 
     def stop_audio_player(self):
         self.audio_player.engine.player.stop_playback(self.audio_player.handle)
         self.refresh_recording_status()
+        zynsigman.send(zynsigman.S_STATE_MAN, self.SS_AUDIO_PLAYER_STATE, state=False)
 
     def toggle_audio_player(self):
         """Toggle playback of global audio player"""
@@ -1577,11 +1582,13 @@ class zynthian_state_manager:
         if not libsmf.isRecording():
             libsmf.unload(self.smf_recorder)
             libsmf.startRecording()
+            zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_RECORDER_STATE, state=True)
             return True
         else:
             return False
 
     def stop_midi_record(self):
+        result = False
         if libsmf.isRecording():
             logging.info("STOPPING MIDI RECORDING ...")
             libsmf.stopRecording()
@@ -1608,8 +1615,11 @@ class zynthian_state_manager:
             if zynsmf.save(self.smf_recorder, fpath):
                 self.sync = True
                 self.last_midi_file = fpath
-                return True
-        return False
+                result = True
+
+            zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_RECORDER_STATE, state=False)
+
+        return result
 
     def toggle_midi_record(self):
         if libsmf.isRecording():
@@ -1643,7 +1653,9 @@ class zynthian_state_manager:
             self.zynseq.set_tempo(tempo)
             libsmf.startPlayback()
             self.zynseq.transport_start("zynsmf")
-            self.status_midi_player = libsmf.getPlayState() != zynsmf.PLAY_STATE_STOPPED
+            if libsmf.getPlayState() != zynsmf.PLAY_STATE_STOPPED:
+                self.status_midi_player = True
+                zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_PLAYER_STATE, state=True)
             self.last_midi_file = fpath
             #self.zynseq.libseq.transportLocate(0)
         except Exception as e:
@@ -1655,6 +1667,7 @@ class zynthian_state_manager:
         if libsmf.getPlayState() != zynsmf.PLAY_STATE_STOPPED:
             libsmf.stopPlayback()
             self.status_midi_player = False
+            zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_PLAYER_STATE, state=False)
         return self.status_midi_player
 
     def toggle_midi_playback(self, fname=None):

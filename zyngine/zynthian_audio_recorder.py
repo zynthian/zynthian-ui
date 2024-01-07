@@ -31,6 +31,7 @@ from datetime import datetime
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
+from zyngine.zynthian_signal_manager import zynsigman
 
 # ------------------------------------------------------------------------------
 # Zynthian Audio Recorder Class
@@ -38,6 +39,9 @@ from zyngui import zynthian_gui_config
 
 
 class zynthian_audio_recorder:
+
+	# Subsignals are defined inside each module. Here we define audio_recorder subsignals:
+	SS_AUDIO_RECORDER_STATE = 1
 
 	def __init__(self, state_manager):
 		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
@@ -119,8 +123,12 @@ class zynthian_audio_recorder:
 			return False
 
 		self.state_manager.status_audio_recorder = True
+		zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_AUDIO_RECORDER_STATE, state=True)
+
+		# Should this be implemented using signals?
 		if processor:
 			processor.controllers_dict['record'].set_value("recording", False)
+
 		return True
 
 	def stop_recording(self, player=None):
@@ -132,11 +140,16 @@ class zynthian_audio_recorder:
 			except Exception as e:
 				logging.error("ERROR STOPPING AUDIO RECORD: %s" % e)
 				return False
+
 			self.state_manager.status_audio_recorder = False
+			zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_AUDIO_RECORDER_STATE, state=False)
+
+			# Should this be implemented using signals?
 			if player is None:
 				self.state_manager.audio_player.engine.load_latest(self.state_manager.audio_player)
 			else:
 				self.state_manager.audio_player.engine.load_latest(player)
+
 			self.state_manager.sync = True
 			return True
 
