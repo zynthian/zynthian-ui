@@ -31,6 +31,7 @@ from datetime import datetime
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
+from zyngine.zynthian_signal_manager import zynsigman
 
 # ------------------------------------------------------------------------------
 # Zynthian Audio Recorder Class
@@ -38,6 +39,10 @@ from zyngui import zynthian_gui_config
 
 
 class zynthian_audio_recorder:
+
+	# Subsignals are defined inside each module. Here we define audio_recorder subsignals:
+	SS_ZCTRL_STATUS = 1
+	SS_ZCTRL_ARM = 2
 
 	def __init__(self, state_manager):
 		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
@@ -48,10 +53,7 @@ class zynthian_audio_recorder:
 		self.filename = None
 
 	def get_status(self):
-		# TODO: This could provide different status now that playback has been removed
-		if self.rec_proc:
-			return "REC"
-		return None
+		return self.rec_proc is not None
 
 	def get_new_filename(self):
 		exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
@@ -73,10 +75,12 @@ class zynthian_audio_recorder:
 
 	def arm(self, channel):
 		self.armed.add(channel)
+		zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_ZCTRL_ARM, chan=channel, value=True)
 
 	def unarm(self, channel):
 		try:
 			self.armed.remove(channel)
+			zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_ZCTRL_ARM, chan=channel, value=False)
 		except:
 			logging.info("Channel %d not armed", channel)
 
@@ -121,6 +125,8 @@ class zynthian_audio_recorder:
 		self.state_manager.status_audio_recorder = True
 		if processor:
 			processor.controllers_dict['record'].set_value("recording", False)
+
+		zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_ZCTRL_STATUS, value=True)
 		return True
 
 	def stop_recording(self, player=None):
@@ -138,6 +144,7 @@ class zynthian_audio_recorder:
 			else:
 				self.state_manager.audio_player.engine.load_latest(player)
 			self.state_manager.sync = True
+			zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_ZCTRL_STATUS, value=False)
 			return True
 
 		return False

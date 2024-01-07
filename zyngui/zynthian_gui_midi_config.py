@@ -263,7 +263,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                         append_service_device("aubionotes", "Aubionotes")
 
         if not self.input and self.chain:
-            self.list_data.append((None, None, "Chain inputs"))
+            self.list_data.append((None, None, "> Chain inputs"))
             for i, chain_id in enumerate(self.zyngui.chain_manager.ordered_chain_ids):
                 chain = self.zyngui.chain_manager.get_chain(chain_id)
                 if chain and chain.is_midi() and chain != self.chain:

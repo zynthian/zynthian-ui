@@ -1547,11 +1547,9 @@ class zynthian_state_manager:
         else:
             self.audio_player.engine.load_latest(self.audio_player)
             self.audio_player.engine.player.start_playback(self.audio_player.handle)
-        self.refresh_recording_status()
 
     def stop_audio_player(self):
         self.audio_player.engine.player.stop_playback(self.audio_player.handle)
-        self.refresh_recording_status()
 
     def toggle_audio_player(self):
         """Toggle playback of global audio player"""
@@ -1560,17 +1558,6 @@ class zynthian_state_manager:
             self.stop_audio_player()
         else:
             self.start_audio_player()
-
-    def refresh_recording_status(self):
-        if not self.audio_recorder.get_status():
-            for processor in self.audio_player.engine.processors:
-                if processor.controllers_dict['record'].get_value() == "recording":
-                    processor.controllers_dict['record'].set_value("stopped", False)
-                    self.audio_player.engine.load_latest(processor)
-                """TODO: Move this to GUI
-                if self.current_screen in ("audio_player", "control"):
-                    self.get_current_screen_obj().set_mode_control()
-                """
 
     # ---------------------------------------------------------------------------
     # Global MIDI Player

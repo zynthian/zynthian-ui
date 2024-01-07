@@ -580,6 +580,8 @@ class zynmixer(zynthian_engine):
 		self.midi_learn_zctrl = zctrl
 
 	def disable_midi_learn(self):
+		if self.midi_learn_zctrl is None:
+			return
 		self.midi_learn_zctrl = None
 		if self.midi_learn_cb:
 			self.midi_learn_cb()
