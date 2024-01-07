@@ -89,7 +89,7 @@ class zynthian_chain_manager():
             69: [False]
         }
         self.get_engine_info()
-        self.add_chain(0, audio_thru=True)
+        self.add_chain(0, audio_thru=True, fast_refresh=False)
 
     @classmethod
     def get_engine_info(cls):
@@ -136,7 +136,7 @@ class zynthian_chain_manager():
     # Chain Management
     # ------------------------------------------------------------------------
 
-    def add_chain(self, chain_id, midi_chan=None, midi_thru=False, audio_thru=False, mixer_chan=None, zmop_index=None, title="", chain_pos=None):
+    def add_chain(self, chain_id, midi_chan=None, midi_thru=False, audio_thru=False, mixer_chan=None, zmop_index=None, title="", chain_pos=None, fast_refresh=True):
         """Add a chain
 
         chain_id: UID of chain (None to get next available)
@@ -147,6 +147,7 @@ class zynthian_chain_manager():
         zmop_index : MIDI router output (Default: None)
         title : Chain title (Default: None)
         chain_pos : Position to insert chain (Default: End)
+        fast_refresh : False to trigger slow autoconnect (Default: Fast autoconnect)
         Returns : Chain ID or None if chain could not be created
         """
 
@@ -203,13 +204,14 @@ class zynthian_chain_manager():
             chain_pos = self.get_chain_index(0)
         self.ordered_chain_ids.insert(chain_pos, chain_id)
 
-        zynautoconnect.request_audio_connect(True)
-        zynautoconnect.request_midi_connect(True)
+        zynautoconnect.request_audio_connect(fast_refresh)
+        zynautoconnect.request_midi_connect(fast_refresh)
 
         logging.debug(f"ADDED CHAIN {chain_id} => midi_chan={chain.midi_chan}, mixer_chan={chain.mixer_chan}, zmop_index={chain.zmop_index}")
         #logging.debug(f"ordered_chain_ids = {self.ordered_chain_ids}")
         #logging.debug(f"midi_chan_2_chain_ids = {self.midi_chan_2_chain_ids}")
 
+        self.active_chain_id = chain_id
         self.state_manager.end_busy("add_chain")
         return chain_id
 
@@ -238,13 +240,14 @@ class zynthian_chain_manager():
             zmop_index = chain_state['zmop_index']
         else:
             zmop_index = None
-        self.add_chain(chain_id, midi_chan=midi_chan, midi_thru=midi_thru, audio_thru=audio_thru, mixer_chan=mixer_chan, zmop_index=zmop_index, title=title)
+        self.add_chain(chain_id, midi_chan=midi_chan, midi_thru=midi_thru, audio_thru=audio_thru, mixer_chan=mixer_chan, zmop_index=zmop_index, title=title, fast_refresh=False)
 
-    def remove_chain(self, chain_id, stop_engines=True):
+    def remove_chain(self, chain_id, stop_engines=True, fast_refresh=True):
         """Removes a chain or resets main chain
 
         chain_id : ID of chain to remove
         stop_engines : True to stop unused engines
+        fast_refresh : False to trigger slow autoconnect (Default: Fast autoconnect)
         Returns : True on success
         """
 
@@ -290,8 +293,8 @@ class zynthian_chain_manager():
             else:
                 self.state_manager.zynmixer.set_mute(chain.mixer_chan, mute, True)
 
-        zynautoconnect.request_audio_connect(True)
-        zynautoconnect.request_midi_connect(True)
+        zynautoconnect.request_audio_connect(fast_refresh)
+        zynautoconnect.request_midi_connect(fast_refresh)
         if stop_engines:
             self.stop_unused_engines()
         if self.active_chain_id not in self.chains:
@@ -311,7 +314,7 @@ class zynthian_chain_manager():
 
         success = True
         for chain in list(self.chains.keys()):
-            success &= self.remove_chain(chain, stop_engines)
+            success &= self.remove_chain(chain, stop_engines, fast_refresh=False)
         return success
 
     def move_chain(self, offset, chain_id=None):
@@ -435,7 +438,7 @@ class zynthian_chain_manager():
             if outputs:
                 self.chains[chain_id].audio_out = outputs
             else:
-                self.chains[chain_id].audio_out = ["mixer"]
+                self.chains[chain_id].audio_out = [0]
             self.chains[chain_id].rebuild_audio_graph()
 
     def enable_chain_audio_thru(self, chain_id, enable=True):
@@ -510,9 +513,9 @@ class zynthian_chain_manager():
             return self.chains[chain_id].midi_routes
         return{}
 
-    def will_route_howl(self, src_id, dst_id, node_list=None):
-        """Checks if adding a connection will cause a howl-round loop
-        
+    def will_midi_howl(self, src_id, dst_id, node_list=None):
+        """Checks if adding a connection will cause a MIDI howl-round loop
+
         src_id : Chain ID of the source chain
         dst_id : Chain ID of the destination chain
         node_list : Do not use - internal function parameter
@@ -521,7 +524,7 @@ class zynthian_chain_manager():
 
         if dst_id not in self.chains:
             return False
-        if src_id:
+        if src_id is not None:
             # src_id only provided on first call (not re-entrant cycles)
             if src_id not in self.chains:
                 return False
@@ -531,7 +534,33 @@ class zynthian_chain_manager():
         node_list.append(dst_id)
         for chain_id in self.chains[dst_id].midi_out:
             if chain_id in self.chains:
-                if self.will_route_howl(None, chain_id, node_list):
+                if self.will_midi_howl(None, chain_id, node_list):
+                    return True
+                node_list.append(chain_id)
+        return False
+
+    def will_audio_howl(self, src_id, dst_id, node_list=None):
+        """Checks if adding a connection will cause an audio howl-round loop
+        
+        src_id : Chain ID of the source chain
+        dst_id : Chain ID of the destination chain
+        node_list : Do not use - internal function parameter
+        Returns : True if adding the route will cause howl-round feedback loop
+        """
+
+        if dst_id not in self.chains:
+            return False
+        if src_id is not None:
+            # src_id only provided on first call (not re-entrant cycles)
+            if src_id not in self.chains:
+                return False
+            node_list = [src_id]  # Init node_list on first call
+        if dst_id in node_list:
+            return True
+        node_list.append(dst_id)
+        for chain_id in self.chains[dst_id].audio_out:
+            if chain_id in self.chains:
+                if self.will_audio_howl(None, chain_id, node_list):
                     return True
                 node_list.append(chain_id)
         return False
@@ -549,16 +578,14 @@ class zynthian_chain_manager():
 
         if chain_id is None:
             chain_id = self.active_chain_id
-            self.active_chain_id = None
 
         try:
             chain = self.chains[chain_id]
         except:
             chain = None
-            logging.error(f"Chain '{chain_id}' not found!")
 
         # If no better candidate, set active the first chain (Main)
-        if chain is None and self.active_chain_id is None:
+        if chain is None:
             chain = next(iter(self.chains.values()))
             chain_id = chain.chain_id
 
@@ -668,7 +695,7 @@ class zynthian_chain_manager():
         else:
             return 1
 
-    def add_processor(self, chain_id, type, parallel=False, slot=None, proc_id=None):
+    def add_processor(self, chain_id, type, parallel=False, slot=None, proc_id=None, post_fader=False, fast_refresh=True):
         """Add a processor to a chain
 
         chain : Chain ID
@@ -676,6 +703,8 @@ class zynthian_chain_manager():
         parallel : True to add in parallel (same slot) else create new slot (Default: series)
         slot : Slot (position) within subchain (0..last slot, Default: last slot)
         proc_id : Processor UID (Default: Use next available ID)
+        post_fader : True to move the fader position
+        fast_refresh : False to trigger slow autoconnect (Default: Fast autoconnect)
         Returns : processor object or None on failure
         """
 
@@ -691,13 +720,19 @@ class zynthian_chain_manager():
         chain = self.chains[chain_id]
         self.processors[proc_id] = processor  # Add proc early to allow engines to add more as required, e.g. Aeolus
         if chain.insert_processor(processor, parallel, slot):
+            if not parallel and not post_fader and processor.type == "Audio Effect":
+                chain.fader_pos += 1
             if chain.mixer_chan is None and processor.type != "MIDI Tool": # TODO: Fails to detect MIDI only chains in snapshots
                 chain.mixer_chan = self.get_next_free_mixer_chan()
             engine = self.start_engine(processor, type)
             if engine:
                 chain.rebuild_graph()
-                zynautoconnect.request_audio_connect(True)
-                zynautoconnect.request_midi_connect(True)
+                # Update group chains
+                for src_chain in self.chains.values():
+                    if chain_id in src_chain.audio_out:
+                        src_chain.rebuild_graph()
+                zynautoconnect.request_audio_connect(fast_refresh)
+                zynautoconnect.request_midi_connect(fast_refresh)
                 self.state_manager.end_busy("add_processor")
                 return processor
             else:
@@ -712,6 +747,7 @@ class zynthian_chain_manager():
         chain : Chain id
         processor : Instance of processor
         stop_engine : True to stop unused engine
+        autoroute : True to trigger immediate autoconnect (Default: No autoconnect)
         Returns : True on success
         """
 
@@ -741,8 +777,8 @@ class zynthian_chain_manager():
             if stop_engine:
                 self.stop_unused_engines()
         if autoroute:
-            zynautoconnect.request_audio_connect(True)
-            zynautoconnect.request_midi_connect(True)
+            zynautoconnect.request_audio_connect()
+            zynautoconnect.request_midi_connect()
         self.state_manager.end_busy("remove_processor")
         return success
 
@@ -941,9 +977,11 @@ class zynthian_chain_manager():
                     for index, proc_id in enumerate(slot_state):
                         # Use index to identify first proc in slot (add in series) - others are added in parallel
                         if index:
-                            self.add_processor(chain_id, slot_state[proc_id], CHAIN_MODE_PARALLEL, proc_id=int(proc_id))
+                            self.add_processor(chain_id, slot_state[proc_id], CHAIN_MODE_PARALLEL, proc_id=int(proc_id), fast_refresh=False)
                         else:
-                            self.add_processor(chain_id, slot_state[proc_id], CHAIN_MODE_SERIES, proc_id=int(proc_id))
+                            self.add_processor(chain_id, slot_state[proc_id], CHAIN_MODE_SERIES, proc_id=int(proc_id), fast_refresh=False)
+            if "fader_pos" in chain_state:
+                self.chains[chain_id].fader_pos = chain_state["fader_pos"]
 
         self.state_manager.end_busy("set_chain_state")
 

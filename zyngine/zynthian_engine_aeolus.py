@@ -291,8 +291,9 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.wait_for_ready()
 		self.set_tuning()
 		self.set_midi_chan()
+		# Need to call autoconnect because engine starts later than chain/processor autorouting
 		zynautoconnect.request_midi_connect(True)
-		zynautoconnect.request_audio_connect()
+		zynautoconnect.request_audio_connect(True)
 		self.state_manager.end_busy("Aeolus")
 
 	def stop(self):

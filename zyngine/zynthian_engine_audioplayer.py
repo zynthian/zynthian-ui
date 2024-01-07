@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for audio player
 #
-# Copyright (C) 2021-2023 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2021-2024 Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -29,6 +29,8 @@ from glob import glob
 from zynlibs.zynaudioplayer import zynaudioplayer
 from zyngui import zynthian_gui_config
 from . import zynthian_engine
+from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
+from zyngine.zynthian_signal_manager import zynsigman
 
 # ------------------------------------------------------------------------------
 # Audio Player Engine Class
@@ -36,6 +38,9 @@ from . import zynthian_engine
 
 
 class zynthian_engine_audioplayer(zynthian_engine):
+
+	# Subsignals are defined inside each module. Here we define audio_recorder subsignals:
+	SS_AUDIO_PLAYER_STATUS = 1
 
 	# ---------------------------------------------------------------------------
 	# Config variables
@@ -102,11 +107,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.jackname = self.player.get_jack_client_name()
 		self.file_exts = self.get_file_exts()
 		self.player.set_control_cb(self.control_cb)
+		zynsigman.register(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
 
 	def stop(self):
 		try:
 			self.player.stop()
 			self.player = None
+			zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
 		except Exception as e:
 			logging.error("Failed to close audio player: %s", e)
 
@@ -367,6 +374,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 						else:
 							ctrl_dict['transport'].set_value("stopped", False)
 							processor.status = ""
+						zynsigman.send(zynsigman.S_AUDIO_PLAYER, self.SS_AUDIO_PLAYER_STATUS, state=value)
 					elif id == 2:
 						ctrl_dict['position'].set_value(value, False)
 					elif id == 3:
@@ -484,6 +492,18 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 	def get_monitors_dict(self, handle):
 		return self.monitors_dict[handle]
+
+	def update_rec(self, state):
+		for processor in self.processors:
+			if state:
+				processor.controllers_dict['record'].set_value("recording", False)
+			else:
+				processor.controllers_dict['record'].set_value("stopped", False)
+
+	# ---------------------------------------------------------------------------
+	# Specific functions
+	# ---------------------------------------------------------------------------
+
 
 	# ---------------------------------------------------------------------------
 	# API methods

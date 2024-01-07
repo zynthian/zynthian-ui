@@ -71,8 +71,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		if self.chain.audio_thru and self.chain_id != 0:
 			self.list_data.append((self.chain_audio_capture, None, "Audio In"))
 
-		if self.chain.is_audio() and self.chain_id != 0:
-			# TODO: Add mixer output audio routing
+		if self.chain.is_audio():
 			self.list_data.append((self.chain_audio_routing, None, "Audio Out"))
 
 		if self.chain.is_audio():
@@ -95,6 +94,9 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		if self.chain.is_audio():
 			# Add Audio-FX options
 			self.list_data.append((self.audiofx_add, None, "Add Audio-FX"))
+			self.list_data.append((None, None, "> Fader"))
+			self.list_data += self.generate_postfader_chaintree_menu()
+			self.list_data.append((self.postfader_add, None, "Add Post-fader Audio-FX"))
 
 		if self.chain_id != 0:
 			if self.chain.get_processor_count("Synth") * self.chain.get_processor_count("MIDI Tool") + self.chain.get_processor_count("Audio Effect") == 0:
@@ -134,6 +136,8 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 				indent += 1
 		# Build audio effects chain
 		for slot in range(self.chain.get_slot_count("Audio Effect")):
+			if self.chain.fader_pos <= slot:
+				break 
 			procs = self.chain.get_processors("Audio Effect", slot)
 			num_procs = len(procs)
 			for index, processor in enumerate(procs):
@@ -143,6 +147,23 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 				else:
 					res.append((self.processor_options, processor, "  " * indent + "┣━ " + name))
 			indent += 1
+
+		return res
+
+	def generate_postfader_chaintree_menu(self):
+		res = []
+		indent = 0
+		for slot in range(self.chain.get_slot_count("Post Fader")):
+			procs = self.chain.get_processors("Audio Effect", self.chain.fader_pos + slot)
+			num_procs = len(procs)
+			for index, processor in enumerate(procs):
+				name = processor.get_name()
+				if index == num_procs - 1:
+					res.append((self.processor_options, processor, "  " * indent + "┗━ " + name))
+				else:
+					res.append((self.processor_options, processor, "  " * indent + "┣━ " + name))
+			indent += 1
+		
 		return res
 
 	def refresh_signal(self, sname):
@@ -326,6 +347,9 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 	def audiofx_add(self):
 		self.zyngui.modify_chain({"type":"Audio Effect", "chain_id":self.chain_id})
+
+	def postfader_add(self):
+		self.zyngui.modify_chain({"type":"Post Fader", "chain_id":self.chain_id})
 
 	def remove_all_audiofx(self):
 		self.zyngui.show_confirm("Do you really want to remove all audio effects from this chain?", self.remove_all_procs_cb, "Audio Effect")

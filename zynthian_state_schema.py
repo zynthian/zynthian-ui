@@ -64,7 +64,8 @@ ZynthianState = {
                     #... more processors in this slot
                 },
                 #... More slots
-            ]
+            ],
+            "fader_pos": 1 # Index of slot where fader is (divides pre/post fader audio effects)
         }
     },
     "zs3": { # Dictionary of ZS3's indexed by chan/prog or ZS3-x
@@ -104,8 +105,8 @@ ZynthianState = {
                     "midi_in": ["MIDI IN"], # List of chain jack MIDI input sources (may include aliases)
                     "midi_out": ["MIDI OUT"], # List of chain jack MIDI output destinations (may include aliases)
                     "midi_thru": False, # True to allow MIDI pass-through when MIDI chain empty
-                    "audio_in": [0,1], # List of index of physical inputs
-                    "audio_out": ["mixer"], # List of processor id, "mixer", "system" chain is routed to
+                    "audio_in": [0,1], # List of index of physical input indicies or zynmixer:send
+                    "audio_out": [0,"system:playback"], # Targets for chain routing: Chain id | jackport regex | [procid, input port name]
                     "audio_thru": False, # True to allow audio pass-through when audio chain empty
                     "note_low": 0, # Lowest MIDI note chain responds to
                     "note_high": 127, # Higheset MIDI note chain responds to
@@ -138,15 +139,6 @@ ZynthianState = {
                         #... Other MIDI channels
                     }
                 }
-            },
-            "midi_clone": { # Dictionary MIDI clone configs mapped by source channel
-                "0": { # Indexed by MIDI channel to clone from (0..15)
-                    "1": { # Index of MIDI channel to clone to (0..15) 
-                        "enabled": False, # True if chain cloned to this MIDI channel
-                        "cc": [1, 2, 64, 65, 66, 67, 68] # List of MIDI CC cloned
-                    }
-                },
-                #... Other MIDI channels
             },
         },
         "1/2": {}, # ZS3 for channel 1, program change 2

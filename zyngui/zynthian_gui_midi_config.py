@@ -25,7 +25,6 @@
 # ******************************************************************************
 
 import logging
-from collections import OrderedDict
 from threading import Thread
 from subprocess import check_output, Popen, PIPE
 from time import sleep
@@ -66,7 +65,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
     def __init__(self):
         self.chain = None      # Chain object
-        self.ble_devices = {}  # Map of BLE MIDI device configs indexed by BLE address. Config: [name, paired, trusted, connected]
+        self.ble_devices = {}  # Map of BLE device configs indexed by BLE address. Config: [name, paired, trusted, connected, is_midi]
         self.input = True      # True to process MIDI inputs, False for MIDI outputs
         self.ble_scan_proc = None
         self.thread = None
@@ -202,7 +201,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 else:
                     self.list_data.append(("stop_bluetooth", None, "\u2612 BLE MIDI"))
                     for addr, data in self.ble_devices.items():
-                        #[name, paired, trusted, connected]
+                        #[name, paired, trusted, connected, is_midi]
                         if data[2]:
                             title = "\u2612 "
                         else:
@@ -264,11 +263,11 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                         append_service_device("aubionotes", "Aubionotes")
 
         if not self.input and self.chain:
-            self.list_data.append((None, None, "Chain inputs"))
+            self.list_data.append((None, None, "> Chain inputs"))
             for i, chain_id in enumerate(self.zyngui.chain_manager.ordered_chain_ids):
                 chain = self.zyngui.chain_manager.get_chain(chain_id)
                 if chain and chain.is_midi() and chain != self.chain:
-                    if self.zyngui.chain_manager.will_route_howl(self.zyngui.chain_manager.active_chain_id, chain_id):
+                    if self.zyngui.chain_manager.will_midi_howl(self.zyngui.chain_manager.active_chain_id, chain_id):
                         prefix = "∞"
                     else:
                         prefix = ""
@@ -393,7 +392,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         if self.chain is None:
             # Start scanning and processing bluetooth
             self.ble_scan_proc = Popen('bluetoothctl', stdin=PIPE, stdout=PIPE, encoding='utf-8')
-            self.ble_scan_proc.stdin.write('menu scan\nuuids 03B80E5A-EDE8-4B33-A751-6CE34EC4C700\nback\nscan on\n')
+            self.ble_scan_proc.stdin.write('menu scan\nuuids 03B80E5A-EDE8-4B33-A751-6CE34EC4C700 00001812-0000-1000-8000-00805f9b34fb\nback\nscan on\n')
             self.ble_scan_proc.stdin.flush()
 
     def disable_ble_scan(self):
@@ -423,6 +422,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                     for device in devices:
                         if not device:
                             continue
+                        is_midi = False
                         addr = device.split()[1]
                         name = device[25:]
                         info = check_output(['bluetoothctl', 'info', addr], encoding='utf-8', timeout=0.1).split('\n')
@@ -435,8 +435,10 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                                 trusted = line[10:] == "yes"
                             if line.startswith('\tConnected:'):
                                 connected = line[12:] == "yes"
-                        if addr not in self.ble_devices or self.ble_devices[addr] != [name, paired, trusted, connected]:
-                            self.ble_devices[addr] = [name, paired, trusted, connected]
+                            if line.startswith == "UUID: Vendor specific" and line.endswith("03b80e5a-ede8-4b33-a751-6ce34ec4c700)"):
+                                is_midi = True
+                        if addr not in self.ble_devices or self.ble_devices[addr] != [name, paired, trusted, connected, is_midi]:
+                            self.ble_devices[addr] = [name, paired, trusted, connected, is_midi]
                             update = True
                         if connected and not trusted:
                             # Do not let an untrusted device remain connected

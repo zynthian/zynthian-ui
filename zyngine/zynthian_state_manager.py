@@ -44,7 +44,6 @@ from zynlibs.zynseq import zynseq
 from zynlibs.zynsmf import zynsmf  # Python wrapper for zynsmf (ensures initialised and wraps load() function)
 from zynlibs.zynsmf.zynsmf import libsmf  # Direct access to shared library
 
-#from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_chain_manager import *
 from zyngine.zynthian_processor import zynthian_processor 
 from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
@@ -187,8 +186,6 @@ class zynthian_state_manager:
         self.ctrldev_manager = zynthian_ctrldev_manager(self)
         self.reload_midi_config()
         self.create_audio_player()
-        zynautoconnect.request_midi_connect(True)
-        zynautoconnect.request_audio_connect(True)
 
         self.exit_flag = False
         self.slow_thread = Thread(target=self.slow_thread_task)
@@ -568,6 +565,7 @@ class zynthian_state_manager:
             midi_events = (ctypes.c_uint32 * n)()
             n = lib_zyncore.read_zynmidi_buffer(midi_events, n)
             for i in range(n):
+                send_to_cuia = False #TODO: Allow UI to register for specific messages?
                 ev = midi_events[i]
 
                 # Try to manage with configured control devices
@@ -579,7 +577,6 @@ class zynthian_state_manager:
                 #zmip = (ev >> 24) & 0xff
                 evtype = (ev >> 20) & 0xf
                 chan = (ev >> 16) & 0xf
-                #logging.info("MIDI_UI MESSAGE DETAILS: {}, {}".format(chan,evtype))
 
                 # System Messages (Common & RT)
                 if evtype == 0xF:
@@ -637,6 +634,8 @@ class zynthian_state_manager:
                             self.chain_manager.add_midi_learn(chan, ccnum, self.midi_learn_zctrl, (ev >> 24) & 0xff)
                         else:
                             self.zynmixer.midi_control_change(chan, ccnum, ccval)
+                    elif evtype == 0x8 or evtype == 0x9:
+                        send_to_cuia = True
 
                 # Control Change...
                 elif evtype == 0xB:
@@ -649,6 +648,7 @@ class zynthian_state_manager:
                             self.zynmixer.midi_control_change(chan, ccnum, ccval)
                             self.alsa_mixer_processor.midi_control_change(chan, ccnum, ccval)
                             self.audio_player.midi_control_change(chan, ccnum, ccval)
+                        send_to_cuia = True
                     # Special CCs >= Channel Mode
                     elif ccnum == 120:
                         self.state_manager.all_sounds_off_chan(chan)
@@ -663,7 +663,7 @@ class zynthian_state_manager:
                     # SubSnapShot (ZS3) MIDI learn...
                     if self.midi_learn_pc is not None:
                         self.save_zs3(f"{chan}/{pgm}")
-                        zynsigman.send(zynsigman.S_CUIA, zynsigman.SS_CUIA_REFRESH)
+                        send_to_cuia = True
                     else:
                         if zynthian_gui_config.midi_prog_change_zs3:
                             res = self.load_zs3_by_midi_prog(chan, pgm)
@@ -671,9 +671,10 @@ class zynthian_state_manager:
                             chan = self.chain_manager.get_active_chain().midi_chan
                             res = self.chain_manager.set_midi_prog_preset(chan, pgm)
                         if res:
-                            zynsigman.send(zynsigman.S_CUIA, zynsigman.SS_CUIA_REFRESH)
+                            send_to_cuia = True
 
-                zynsigman.send(zynsigman.S_CUIA, zynsigman.SS_CUIA_MIDI_EVENT, zmip=(ev>>24)&0xff, evtype=evtype, chan=chan, val1=(ev>>8)&0x7f, val2=ev&0x7f)
+                if send_to_cuia:
+                    self.send_cuia("midi_event", [(ev>>24)&0xff, evtype, chan, (ev>>8)&0x7f, ev&0x7f])
 
                 # Flag MIDI event
                 self.status_midi = True
@@ -853,7 +854,7 @@ class zynthian_state_manager:
             return None
 
         zynautoconnect.request_midi_connect()
-        zynautoconnect.request_audio_connect()
+        zynautoconnect.request_audio_connect(True)
 
         # Restore mute state
         self.zynmixer.set_mute(255, mute)
@@ -1034,13 +1035,14 @@ class zynthian_state_manager:
                     chain.midi_thru = chain_state["midi_thru"]
                 if "audio_in" in chain_state:
                     chain.audio_in = chain_state["audio_in"]
+                chain.audio_out = []
                 if "audio_out" in chain_state:
-                    chain.audio_out = []
                     for out in chain_state["audio_out"]:
-                        if out in self.chain_manager.processors:
-                            chain.audio_out.append(self.chain_manager.processors[out])
-                        else:
+                        try:
+                            chain.audio_out.append(f"{self.chain_manager.processors[out[0]].jackname}:{out[1]}")
+                        except:
                             chain.audio_out.append(out)
+                    
                 if "audio_thru" in chain_state:
                     chain.audio_thru = chain_state["audio_thru"]
                 chain.rebuild_graph()
@@ -1098,22 +1100,22 @@ class zynthian_state_manager:
         title : ZS3 title (Default: Create new title)
         """
 
-        # Get next id and name
-        used_ids = []
-        for zid in self.zs3:
-            if zid.startswith("zs3-"):
-                try:
-                    used_ids.append(int(zid.split('-')[1]))
-                except:
-                    pass
-        used_ids.sort()
-
         if zs3_id is None:
+            # Get next id and name
+            used_ids = []
+            for zid in self.zs3:
+                if zid.startswith("zs3-"):
+                    try:
+                        used_ids.append(int(zid.split('-')[1]))
+                    except:
+                        pass
+            used_ids.sort()
             # Get next free zs3 id
             for index in range(1, len(used_ids) + 2):
                 if index not in used_ids:
                     zs3_id = f"zs3-{index}"
                     break
+
 
         if title is None:
             title = self.midi_learn_pc
@@ -1156,11 +1158,13 @@ class zynthian_state_manager:
             chain_state["audio_in"] = chain.audio_in.copy()
             chain_state["audio_out"] = []
             for out in chain.audio_out:
-                proc_id = self.chain_manager.get_processor_id(out)
-                if proc_id is None:
-                    chain_state["audio_out"].append(out)
-                else:
-                    chain_state["audio_out"].append(proc_id)                      
+                if out in zynautoconnect.get_sidechain_portnames():
+                    client_name, port_name = out.split(":", 1)
+                    for i, proc in self.chain_manager.processors.items():
+                        if proc.jackname == client_name:
+                            out = [i, port_name]
+                            break
+                chain_state["audio_out"].append(out)
             if chain.audio_thru:
                 chain_state["audio_thru"] = chain.audio_thru
             # Add chain MIDI mapping
@@ -1530,7 +1534,6 @@ class zynthian_state_manager:
             try:
                 self.audio_player = zynthian_processor("AP", self.chain_manager.engine_info["AP"])
                 self.chain_manager.start_engine(self.audio_player, "AP")
-                zynautoconnect.request_audio_connect(True)
             except Exception as e:
                 logging.error(f"Can't create global Audio Player instance => {e}")
                 return
@@ -1547,13 +1550,9 @@ class zynthian_state_manager:
         else:
             self.audio_player.engine.load_latest(self.audio_player)
             self.audio_player.engine.player.start_playback(self.audio_player.handle)
-        self.refresh_recording_status()
-        zynsigman.send(zynsigman.S_STATE_MAN, self.SS_AUDIO_PLAYER_STATE, state=True)
 
     def stop_audio_player(self):
         self.audio_player.engine.player.stop_playback(self.audio_player.handle)
-        self.refresh_recording_status()
-        zynsigman.send(zynsigman.S_STATE_MAN, self.SS_AUDIO_PLAYER_STATE, state=False)
 
     def toggle_audio_player(self):
         """Toggle playback of global audio player"""
@@ -1562,17 +1561,6 @@ class zynthian_state_manager:
             self.stop_audio_player()
         else:
             self.start_audio_player()
-
-    def refresh_recording_status(self):
-        if not self.audio_recorder.get_status():
-            for processor in self.audio_player.engine.processors:
-                if processor.controllers_dict['record'].get_value() == "recording":
-                    processor.controllers_dict['record'].set_value("stopped", False)
-                    self.audio_player.engine.load_latest(processor)
-                """TODO: Move this to GUI
-                if self.current_screen in ("audio_player", "control"):
-                    self.get_current_screen_obj().set_mode_control()
-                """
 
     # ---------------------------------------------------------------------------
     # Global MIDI Player

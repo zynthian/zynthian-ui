@@ -28,6 +28,7 @@ import usb
 import jack
 import logging
 import alsa_midi
+import json
 from time import sleep
 from threading import Thread, Lock
 from subprocess import check_output
@@ -35,6 +36,7 @@ from subprocess import check_output
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config
+import zynconf
 
 # -------------------------------------------------------------------------------
 # Configure logging
@@ -63,8 +65,11 @@ chain_manager = None			# Chain Manager object
 xruns = 0						# Quantity of xruns since startup or last reset
 deferred_midi_connect = False 	# True to perform MIDI connect on next port check cycle
 deferred_audio_connect = False 	# True to perform audio connect on next port check cycle
-hw_src_ports = []				# List of hardware source ports (including network, aubionotes, etc.)
-hw_dst_ports = []				# List of hardware destination ports (including network, aubionotes, etc.)
+hw_midi_src_ports = []			# List of hardware MIDI  source ports (including network, aubionotes, etc.)
+hw_midi_dst_ports = []			# List of hardware MIDI destination ports (including network, aubionotes, etc.)
+hw_audio_dst_ports = []			# List of physical audio output ports
+sidechain_map = {}				# Map of all audio target port names to use as sidechain inputs, indexed by jack client regex
+sidechain_ports = []			# List of currently active audio destination port names not to autoroute, e.g. sidechain inputs
 
 # These variables are initialized in the init() function. These are "example values".
 max_num_devs = 16     # Max number of MIDI devices
@@ -149,7 +154,7 @@ def set_midi_port_names(port_names):
 	
 	global midi_port_names
 	midi_port_names = port_names.copy()
-	for port in hw_src_ports + hw_dst_ports:
+	for port in hw_midi_src_ports + hw_midi_dst_ports:
 		update_midi_port_aliases(port)
 
 
@@ -269,6 +274,53 @@ def reset_midi_in_dev_all():
 
 
 # ------------------------------------------------------------------------------
+			
+#	Audio port helpers
+			
+def add_sidechain_ports(jackname):
+	"""Add ports that should be treated as sidechain inputs
+	
+	jackname : Jack client name of processor
+	"""
+
+	client_name = jackname[:-3]
+	if client_name in sidechain_map:
+		for port_name in sidechain_map[client_name]:
+			if f"{jackname}:{port_name}" not in sidechain_ports:
+				sidechain_ports.append(f"{jackname}:{port_name}")
+
+def remove_sidechain_ports(jackname):
+	"""Removes ports that are treated as sidechain inputs
+	
+	jackname : Jack client name of processor"""
+
+	client_name = jackname[:-3]
+	if client_name in sidechain_map:
+		for port_name in sidechain_map[client_name]:
+			try:
+				sidechain_ports.remove(f"{jackname}:{port_name}")
+			except:
+				pass
+
+def get_sidechain_portnames(jackname=None):
+	"""Get list of sidechain input port names for a given jack client
+
+	jackname : Name of jack client (Default: Get sidechain inputs for all processors)
+	returns : List of jack port names
+	"""
+
+	if jackname is None:
+		return sidechain_ports.copy()
+	result = []
+	for portname in sidechain_ports:
+		try:
+			if portname.split(':')[0] == jackname:
+				result.append(portname)
+		except:
+			pass
+	return result
+
+# ------------------------------------------------------------------------------
 
 
 def request_audio_connect(fast=False):
@@ -329,7 +381,7 @@ def update_hw_midi_ports():
 	if not acquire_lock():
 		return
 
-	global hw_src_ports, hw_dst_ports
+	global hw_midi_src_ports, hw_midi_dst_ports
 	global host_usb_connected
 
 	# -----------------------------------------------------------
@@ -338,44 +390,44 @@ def update_hw_midi_ports():
 	#  - destinations including physical outputs are jack inputs
 	# -----------------------------------------------------------
 
-	hw_port_fingerprint = hw_src_ports + hw_dst_ports
+	hw_port_fingerprint = hw_midi_src_ports + hw_midi_dst_ports
 
 	# Check if connection to host USB changed
 	host_usb_connected = is_host_usb_connected()
 
 	# List of physical MIDI source ports
-	hw_src_ports = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
+	hw_midi_src_ports = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
 
 	# Remove host USB if not connected
 	if not host_usb_connected:
 		try:
 			f_midi = jclient.get_ports("^a2j:f_midi \[.*] \(capture\)", is_output=True, is_physical=True, is_midi=True)[0]
-			hw_src_ports.remove(f_midi)
+			hw_midi_src_ports.remove(f_midi)
 		except:
 			pass
 
 	# Remove a2j MIDI through (we don't currently use it but may want to enable in future)
 	try:
 		a2j_thru = jclient.get_ports("^a2j:Midi Through", is_output=True, is_physical=True, is_midi=True)[0]
-		hw_src_ports.remove(a2j_thru)
+		hw_midi_src_ports.remove(a2j_thru)
 	except:
 		pass
 
 	# List of physical MIDI destination ports
-	hw_dst_ports = jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
+	hw_midi_dst_ports = jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
 
 	# Remove host USB if not connected
 	if not host_usb_connected:
 		try:
 			f_midi = jclient.get_ports("^a2j:f_midi \[.*] \(capture\)", is_input=True, is_physical=True, is_midi=True)[0]
-			hw_dst_ports.remove(f_midi)
+			hw_midi_dst_ports.remove(f_midi)
 		except:
 			pass
 
 	# Remove a2j MIDI through (we don't want this - it can lead to howl-round)
 	try:
 		a2j_thru = jclient.get_ports("^a2j:Midi Through", is_input=True, is_physical=True, is_midi=True)[0]
-		hw_dst_ports.remove(a2j_thru)
+		hw_midi_dst_ports.remove(a2j_thru)
 	except:
 		pass
 
@@ -383,19 +435,19 @@ def update_hw_midi_ports():
 	for port_name in ("QmidiNet:in", "jackrtpmidid:rtpmidi_in", "RtMidiIn Client:TouchOSC Bridge", "ZynMaster:midi_in"):
 		try:
 			ports = jclient.get_ports(port_name, is_midi=True, is_input=True)
-			hw_dst_ports += ports
+			hw_midi_dst_ports += ports
 		except:
 			pass
 	for port_name in ("QmidiNet:out", "jackrtpmidid:rtpmidi_out", "RtMidiOut Client:TouchOSC Bridge", "ZynMaster:midi_out", "aubio"):
 		try:
 			ports = jclient.get_ports(port_name, is_midi=True, is_output=True)
-			hw_src_ports += ports
+			hw_midi_src_ports += ports
 		except:
 			pass
 
 	update = False
 	fingerprint = hw_port_fingerprint.copy()
-	for port in hw_src_ports + hw_dst_ports:
+	for port in hw_midi_src_ports + hw_midi_dst_ports:
 		if port not in hw_port_fingerprint:
 			update_midi_port_aliases(port)
 			update = True
@@ -428,7 +480,7 @@ def midi_autoconnect():
 
 	# Connect MIDI Input Devices to ZynMidiRouter ports (zmips)
 	busy_idevs = []
-	for hwsp in hw_src_ports:
+	for hwsp in hw_midi_src_ports:
 		devnum = None
 		# logger.debug("Connecting MIDI Input {}".format(hwsp))
 		try:
@@ -455,7 +507,7 @@ def midi_autoconnect():
 
 	# Connect MIDI Output Devices
 	busy_idevs = []
-	for hwdp in hw_dst_ports:
+	for hwdp in hw_midi_dst_ports:
 		devnum = None
 		# logger.debug("Connecting MIDI Output {}".format(hwdp))
 		try:
@@ -547,7 +599,7 @@ def midi_autoconnect():
 	required_routes["zynseq:input"].add("ZynMidiRouter:step_out")
 
 	# Connect ZynMidiRouter:ctrl_out to enabled MIDI-FB ports (MIDI-Controller FeedBack)
-	for port in hw_dst_ports:
+	for port in hw_midi_dst_ports:
 		if get_port_aliases(port)[0] in zynthian_gui_config.enabled_midi_fb_ports:
 			required_routes[port.name].add("ZynMidiRouter:ctrl_out")
 
@@ -602,11 +654,8 @@ def audio_autoconnect():
 	global deferred_audio_connect
 	deferred_audio_connect = False
 
-	# Get System Playback Ports
-	system_playback_ports = jclient.get_ports("system:playback", is_input=True, is_audio=True, is_physical=True)
-
 	# Workaround for mod-monitor auto routing
-	for port in system_playback_ports:
+	for port in hw_audio_dst_ports:
 		for i in range(1,3):
 			try:
 				jclient.disconnect(f"mod-monitor:out_{i}", port)
@@ -620,17 +669,37 @@ def audio_autoconnect():
 	for dst in all_audio_dst:
 		required_routes[dst.name] = set()
 
+
 	# Chain audio routing
 	for chain_id in chain_manager.chains:
 		routes = chain_manager.get_chain_audio_routing(chain_id)
-		#if "zynmixer:return" in routes and "zynmixer:send" in routes["zynmixer:return"]:
-		#	routes["zynmixer:return"].remove("zynmixer:send")
+		for dst in list(routes):
+			if isinstance(dst, int):
+				# Destination is a chain
+				route = routes.pop(dst)
+				dst_chain = chain_manager.get_chain(dst)
+				if dst_chain:
+					if dst_chain.audio_slots and dst_chain.fader_pos:
+						for proc in dst_chain.audio_slots[0]:
+							routes[proc.get_jackname()] = route
+					else:
+						routes[f"zynmixer:input_{dst_chain.mixer_chan + 1:02d}"] = route
 		for dst in routes:
-			dst_ports = jclient.get_ports(dst, is_input=True, is_audio=True)
+			if dst in sidechain_ports:
+				# This is an exact match so we do want to route exactly this
+				dst_ports = jclient.get_ports(f"^{dst}$", is_input=True, is_audio=True)
+			else:
+				# This may be a client name that will return all input ports, including side-chain inputs
+				dst_ports = jclient.get_ports(dst, is_input=True, is_audio=True)
+				# Remove side-chain (no route) destinations
+				for port in list(dst_ports):
+					if port.name in sidechain_ports:
+						dst_ports.remove(port)
 			dst_count = len(dst_ports)
 
 			for src_name in routes[dst]:
 				src_ports = jclient.get_ports(src_name, is_output=True, is_audio=True)
+				# Auto mono/stereo routing
 				source_count = len(src_ports)
 				if source_count and dst_count:
 					for i in range(max(source_count, dst_count)):
@@ -649,12 +718,14 @@ def audio_autoconnect():
 		required_routes["zynmixer:input_17b"].add(ports[1].name)
 
 	# Connect mixer to the System Output
+	"""
 	try:
 		# TODO: Support configurable output routing
-		required_routes[system_playback_ports[0].name].add("zynmixer:output_a")
-		required_routes[system_playback_ports[1].name].add("zynmixer:output_b")
+		required_routes[system_playback_ports[0].name].add("zynmixer:main_output_a")
+		required_routes[system_playback_ports[1].name].add("zynmixer:main_output_b")
 	except:
 		pass
+	"""
 
 	# Connect inputs to aubionotes
 	if zynthian_gui_config.midi_aubionotes_enabled:
@@ -674,8 +745,8 @@ def audio_autoconnect():
 	# Replicate main output to headphones
 	hp_ports = jclient.get_ports("Headphones:playback", is_input=True, is_audio=True)
 	if len(hp_ports) >= 2:
-		required_routes[hp_ports[0]] = required_routes[system_playback_ports[0].name]
-		required_routes[hp_ports[1]] = required_routes[system_playback_ports[1].name]
+		required_routes[hp_ports[0]] = required_routes[hw_audio_dst_ports[0].name]
+		required_routes[hp_ports[1]] = required_routes[hw_audio_dst_ports[1].name]
 
 	# Connect and disconnect routes
 	for dst, sources in required_routes.items():
@@ -707,33 +778,8 @@ def audio_autoconnect():
 	# Release Mutex Lock
 	release_lock()
 
-
-def get_audio_input_ports(exclude_system_playback=False):
-	"""Get list of audio destinations acceptable to be routed to
-
-	exclude_system_playback : True to exclude playback destinations
-	TODO : Used for side-chaining but could be done better
-	"""
-	res = {}
-	try:
-		for aip in jclient.get_ports(is_input=True, is_audio=True, is_physical=False):
-			parts = aip.name.split(':')
-			client_name = parts[0]
-			if client_name in ["jack_capture", "Headphones", "mod-monitor"] or client_name[:7] == "effect_":
-				continue
-			if client_name == "system" or client_name == "zynmixer":
-				if exclude_system_playback:
-					continue
-				else:
-					client_name = aip.name
-			if client_name not in res:
-				res[client_name] = [aip]
-				#logger.debug("AUDIO INPUT PORT: {}".format(client_name))
-			else:
-				res[client_name].append(aip)
-	except:
-		pass
-	return res
+def get_hw_audio_dst_ports():
+	return hw_audio_dst_ports
 
 
 # Connect mixer to the ffmpeg recorder
@@ -741,8 +787,9 @@ def audio_connect_ffmpeg(timeout=2.0):
 	t = 0
 	while t < timeout:
 		try:
-			jclient.connect("zynmixer:output_a", "ffmpeg:input_1")
-			jclient.connect("zynmixer:output_b", "ffmpeg:input_2")
+			#TODO: Do we want post fader, post effects feed?
+			jclient.connect("zynmixer:main_output_a", "ffmpeg:input_1")
+			jclient.connect("zynmixer:main_output_b", "ffmpeg:input_2")
 			return
 		except:
 			sleep(0.1)
@@ -873,10 +920,10 @@ def autoconnect():
 	audio_autoconnect()
 
 def get_hw_src_ports():
-	return hw_src_ports
+	return hw_midi_src_ports
 
 def get_hw_dst_ports():
-	return hw_dst_ports
+	return hw_midi_dst_ports
 
 def auto_connect_thread():
 	"""Thread to run autoconnect, checking if physical (hardware) interfaces have changed, e.g. USB plug"""
@@ -972,7 +1019,7 @@ def start(sm):
 	sm : State manager object
 	"""
 
-	global exit_flag, jclient, aclient, thread, lock, chain_manager, state_manager
+	global exit_flag, jclient, aclient, thread, lock, chain_manager, state_manager, hw_audio_dst_ports, sidechain_map
 
 	if jclient:
 		return  # Already started
@@ -993,6 +1040,15 @@ def start(sm):
 		aclient = alsa_midi.SequencerClient("Zynthian_autoconnect")
 	except Exception as e:
 		logger.error(f"ZynAutoConnect ERROR: Can't connect with ALSA ({e})")
+
+	# Get System Playback Ports
+	hw_audio_dst_ports = jclient.get_ports("system:playback", is_input=True, is_audio=True, is_physical=True)
+
+	try:
+		with open(f"{zynconf.config_dir}/sidechain.json", "r") as file:
+			sidechain_map = json.load(file)
+	except Exception as e:
+		logger.error(f"Cannot load sidechain map ({e})")
 
 	# Create Lock object (Mutex) to avoid concurrence problems
 	lock = Lock()
@@ -1016,6 +1072,8 @@ def stop():
 	if acquire_lock():
 		release_lock()
 		lock = None
+
+	hw_audio_dst_ports = []
 
 	if jclient:
 		jclient.deactivate()

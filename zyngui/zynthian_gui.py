@@ -171,9 +171,6 @@ class zynthian_gui:
 		self.osc_clients = {}
 		self.osc_heartbeat_timeout = 120  # Heartbeat timeout period
 
-		zynsigman.register(zynsigman.S_CUIA, zynsigman.SS_CUIA_MIDI_EVENT, self.cuia_midi_event)
-		zynsigman.register(zynsigman.S_CUIA, zynsigman.SS_CUIA_REFRESH, self.cuia_refresh)
-
 	# ---------------------------------------------------------------------------
 	# Capture Log
 	# ---------------------------------------------------------------------------
@@ -813,7 +810,7 @@ class zynthian_gui:
 			self.modify_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
 			if processor is None:
 				# Created empty chain
-				self.chain_manager.set_active_chain_by_id(chain_id)
+				#self.chain_manager.set_active_chain_by_id(chain_id)
 				self.show_screen_reset("audio_mixer")
 				return
 			self.chain_control(chain_id, processor)
@@ -830,9 +827,11 @@ class zynthian_gui:
 						if processor:
 							self.chain_manager.remove_processor(self.modify_chain_status["chain_id"], old_processor)
 							self.chain_control(self.modify_chain_status["chain_id"], processor)
-				elif "parallel" in self.modify_chain_status:
+				else:
+					parallel = "parallel" in self.modify_chain_status and self.modify_chain_status["parallel"]
+					post_fader = "type" in self.modify_chain_status and self.modify_chain_status["type"]=="Post Fader"
 					# Adding processor to existing chain
-					processor = self.chain_manager.add_processor(self.modify_chain_status["chain_id"], self.modify_chain_status["engine"], self.modify_chain_status["parallel"])
+					processor = self.chain_manager.add_processor(self.modify_chain_status["chain_id"], self.modify_chain_status["engine"], parallel=parallel, post_fader=post_fader)
 					if processor:
 						self.chain_control(self.modify_chain_status["chain_id"], processor)
 					else:
@@ -863,7 +862,7 @@ class zynthian_gui:
 			self.current_processor = processor
 		else:
 			self.current_processor = None
-			for t in ["MIDI Synth", "MIDI Tool", "Audio Effect"]:
+			for t in ["MIDI Synth", "MIDI Tool", "Audio Effect", "Post Fader"]:
 				processors = self.chain_manager.get_processors(chain_id, t)
 				if processors:
 					self.current_processor = processors[0]
@@ -1153,6 +1152,12 @@ class zynthian_gui:
 	def cuia_set_tempo(self, params=None):
 		try:
 			self.state_manager.zynseq.set_tempo(params[0])
+		except (AttributeError, TypeError):
+			pass
+
+	def cuia_toggle_seq(self, params=None):
+		try:
+			self.state_manager.zynseq.libseq.togglePlayState(self.state_manager.zynseq.bank, int(params[0]))
 		except (AttributeError, TypeError):
 			pass
 
@@ -1906,15 +1911,22 @@ class zynthian_gui:
 	# MIDI processing
 	# ------------------------------------------------------------------
 
-	def cuia_midi_event(self, zmip, evtype, chan, val1, val2):
+	def cuia_midi_event(self, event):
 		"""Handle zynmidi note-on/off events
 
-		zmip : MIDI input device index
-		evtype : MIDI message type
-		chan : MIDI channel
-		val1 : MIDI value 1
-		val2 : MIDI value 2
+		event : List of event parameters
+			zmip : MIDI input device index
+			evtype : MIDI message type
+			chan : MIDI channel
+			val1 : MIDI value 1
+			val2 : MIDI value 2
 		"""
+
+		zmip = event[0]
+		evtype = event[1]
+		chan = event[2]
+		val1 = event[3]
+		val2 = event[4]
 
 		if chan == zynthian_gui_config.master_midi_channel:
 			# MASTER CHANNEL
@@ -1965,24 +1977,26 @@ class zynthian_gui:
 			self.state_manager.status_midi = True
 			self.last_event_flag = True
 
-		elif self.state_manager.midi_learn_zctrl and evtype == 0xb and val1 < 120:
-			# Handle MIDI learn for assignable CC
-			self.screens['control'].midi_learn_bind(zmip, chan, val1)
-			self.show_current_screen()
-
-	def cuia_refresh(self):
-		if self.current_screen == 'audio_mixer':
-			self.screens['audio_mixer'].refresh_visible_strips()
-		elif self.current_screen == 'control':
-			self.chain_control()
-		elif self.current_screen == 'zs3':
-			self.screens['zs3'].update_list()
-			self.screens['zs3'].disable_midi_learn()
-		else:
-			try:
-				self.screens[self.current_screen].refresh()
-			except:
-				pass
+		elif evtype == 0xb and val1 < 120:
+			# Control change
+			if self.state_manager.midi_learn_zctrl:
+				# Handle MIDI learn for assignable CC
+				self.screens['control'].midi_learn_bind(zmip, chan, val1)
+				self.show_current_screen()
+		elif evtype == 0xc:
+			# Program change - update screen after loading ZS3
+			if self.current_screen == 'audio_mixer':
+				self.screens['audio_mixer'].refresh_visible_strips()
+			elif self.current_screen == 'control':
+				self.chain_control()
+			elif self.current_screen == 'zs3':
+				self.screens['zs3'].update_list()
+				self.screens['zs3'].disable_midi_learn()
+			else:
+				try:
+					self.screens[self.current_screen].refresh()
+				except:
+					pass
 
 
 	# ------------------------------------------------------------------

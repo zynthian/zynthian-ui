@@ -31,6 +31,8 @@ from zyngine.zynthian_signal_manager import zynsigman
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngine.zynthian_engine_modui import zynthian_engine_modui
+from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
+
 # ------------------------------------------------------------------------------
 # Zynthian Audio-Out Selection GUI Class
 # ------------------------------------------------------------------------------
@@ -42,53 +44,69 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 		self.chain = None
 		super().__init__('Audio Out', True)
 
+	def build_view(self):
+		super().build_view()
+		zynsigman.register(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
+
+	def hide(self):
+		if self.shown:
+			zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
+			super().hide()
+
+	def update_rec(self, state):
+		self.fill_list()
+
 	def set_chain(self, chain):
 		self.chain = chain
 
 	def fill_list(self):
 		self.list_data = []
-
-		# TODO: Show chain name
-		mod_running = False
-		if self.chain.chain_id == 0:
-			port_names = [["system", "system"]]  # TODO: Get list of available system outputs
+		if self.chain.chain_id:
+			# Normal chain so add mixer / chain targets
+			port_names = [("Main mixbus", 0)]
+			self.list_data.append((None, None, "> Chain inputs"))
+			for chain_id, chain in self.zyngui.chain_manager.chains.items():
+				if chain_id == 0 or chain == self.chain or not chain.is_audio() or chain.is_synth():
+					continue
+				if self.zyngui.chain_manager.will_audio_howl(self.chain.chain_id, chain_id):
+					port_names.append((f"∞Chain {chain_id} ({chain.get_name()})", chain_id))
+				else:
+					port_names.append((f"Chain {chain_id} ({chain.get_name()})", chain_id))
+				# Add side-chain targets
+				for processor in chain.get_processors("Audio Effect"):
+					try:
+						for port_name in zynautoconnect.get_sidechain_portnames(processor.jackname):
+							port_names.append((f"↣{port_name}", port_name))
+					except:
+						pass
 		else:
-			port_names = [["mixer", "mixer"]]
-		jack_input_ports = list(zynautoconnect.get_audio_input_ports(True).keys())
-		for chain_id, chain in self.zyngui.chain_manager.chains.items():
-			if isinstance(chain, zynthian_engine_modui):
-				mod_running = True
-			if chain == self.chain:
-				continue
-			for processor in chain.get_processors():
-				jackname = processor.get_jackname()
-				if jackname in jack_input_ports:
-					# TODO: Check for howl-round
-					port_names.append([f"{chain_id}/{processor.id}: {processor.get_basepath()}", processor])
+			# Main chain
+			port_names = []
+			ports =zynautoconnect.get_hw_audio_dst_ports()
+			port_count = len(ports)
+			for i in range(1, port_count + 1, 2):
+				if i < port_count:
+					port_names.append((f"Outputs {i}+{i + 1}", f"system:playback_[{i},{i + 1}]$"))
+				else:
+					port_names.append((f"Output {i}", f"system:playback_{i}$"))
 
-		if mod_running:
-			port_names.append([self.chain.chain_id, None, "mod-ui"])  # TODO: Should this now be handled by chain input
-
-		for title,processor in port_names:
+		for title, processor in port_names:
 			if processor in self.chain.audio_out:
 				self.list_data.append((processor, processor, "\u2612 " + title))
 			else:
 				self.list_data.append((processor, processor, "\u2610 " + title))
 
 		if zynthian_gui_config.multichannel_recorder:
+			self.list_data.append((None, None, "> Audio Recorder"))
 			armed = self.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan)
 			if self.zyngui.state_manager.audio_recorder.get_status():
-				# Recording so don't allow change of armed state
-				if armed:
-					self.list_data.append((None, 'record_disable', '\u2612 multitrack recorder'))
-				else:
-					self.list_data.append((None, 'record_enable', '\u2610 multitrack recorder'))
+				locked = None
 			else:
-				if armed:
-					self.list_data.append(('record', None, '\u2612 multitrack recorder'))
-				else:
-					self.list_data.append(('record', None, '\u2610 multitrack recorder'))
-			zynsigman.send(zynsigman.S_AUDIO_MIXER, self.zyngui.state_manager.zynmixer.SS_ZCTRL_SET_VALUE, chan=self.chain.mixer_chan, symbol="rec", value=armed)
+				locked = "record"
+			if armed:
+				self.list_data.append((locked, 'record_disable', '\u2612 Record chain'))
+			else:
+				self.list_data.append((locked, 'record_enable', '\u2610 Record chain'))
 
 		super().fill_list()
 

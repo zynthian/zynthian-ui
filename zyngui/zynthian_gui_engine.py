@@ -67,14 +67,17 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.zyngui.chain_manager.get_engine_info() # Update the available engines
 		self.list_data=[]
 
-		if self.zyngui.modify_chain_status["type"] in ("MIDI Tool", "Audio Effect"):
+		proc_type = self.zyngui.modify_chain_status["type"]
+		if proc_type == "Post Fader":
+			proc_type = "Audio Effect"
+		if proc_type in ("MIDI Tool", "Audio Effect"):
 			self.list_data.append(("None", 0, "None", "None"))
 		# Sort category headings, but headings starting with "Zynthian" are shown first
 
-		for cat, infos in sorted(self.zyngui.chain_manager.filtered_engines_by_cat(self.zyngui.modify_chain_status["type"]).items(), key = lambda kv:"!" if kv[0] is None else kv[0]):
+		for cat, infos in sorted(self.zyngui.chain_manager.filtered_engines_by_cat(proc_type).items(), key = lambda kv:"!" if kv[0] is None else kv[0]):
 			# Add category header...
 			if cat:
-				if self.zyngui.modify_chain_status["type"] == "MIDI Synth":
+				if proc_type == "MIDI Synth":
 					self.list_data.append((None,len(self.list_data),"> LV2 {}".format(cat)))
 				else:
 					self.list_data.append((None,len(self.list_data),"> {}".format(cat)))

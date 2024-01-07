@@ -35,7 +35,8 @@ from zyngine.zynthian_signal_manager import zynsigman
 from . import zynthian_gui_base
 from . import zynthian_gui_config
 from zyngui.zynthian_gui_dpm import zynthian_gui_dpm
-
+from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
+from zyngine.zynthian_engine_audioplayer import zynthian_engine_audioplayer
 
 # ------------------------------------------------------------------------------
 # Zynthian Mixer Strip Class
@@ -109,6 +110,7 @@ class zynthian_gui_mixer_strip():
 		self.left_color_learn = "#AAAA00"
 		self.right_color_learn = "#EEEE00"
 		self.high_color = "#CCCC00" # yellow
+		self.rec_color = "#CC0000" # red
 
 		self.mute_color = zynthian_gui_config.color_on #"#3090F0"
 		self.solo_color = "#D0D000"
@@ -163,7 +165,8 @@ class zynthian_gui_mixer_strip():
 		self.parent.main_canvas.tag_bind(f"balance:{self.fader_bg}", "<ButtonPress-1>", self.on_balance_press)
 
 		# Fader indicators
-		self.status_indicator = self.parent.main_canvas.create_text(x + 2, self.fader_top + 2, fill="#009000", anchor="nw", tags=(f"strip:{self.fader_bg}"))
+		self.record_indicator = self.parent.main_canvas.create_text(x + 2, self.height - 16, text="⚫", fill="#009000", anchor="sw", tags=(f"strip:{self.fader_bg}"), state=tkinter.HIDDEN)
+		self.play_indicator = self.parent.main_canvas.create_text(x + 2, self.height - 2, text="⏹", fill="#009000", anchor="sw", tags=(f"strip:{self.fader_bg}"), state=tkinter.HIDDEN)
 
 		self.parent.zyngui.multitouch.tag_bind(self.parent.main_canvas, "fader:%s"%(self.fader_bg), "press", self.on_fader_press)
 		self.parent.zyngui.multitouch.tag_bind(self.parent.main_canvas, "fader:%s"%(self.fader_bg), "motion", self.on_fader_motion)
@@ -215,12 +218,6 @@ class zynthian_gui_mixer_strip():
 			return f"{param[0] + 1}#{param[1]}"
 		except:
 			return "??"
-
-	def refresh_status(self):
-		if self.parent.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan):
-			self.parent.main_canvas.itemconfig(self.status_indicator, text=f"{self.chain.status}\uf111", fill=self.high_color)
-		else:
-			self.parent.main_canvas.itemconfig(self.status_indicator, text=self.chain.status, fill="#009000")
 
 	# Function to draw the DPM level meter for a mixer strip
 	def draw_dpm(self, dpm_a, dpm_b, hold_a, hold_b, mono):
@@ -416,6 +413,28 @@ class zynthian_gui_mixer_strip():
 
 		if control in [None, 'mono']:
 			self.draw_mono()
+
+		if control in [None, 'rec']:
+			if self.parent.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan):
+				if self.parent.zyngui.state_manager.audio_recorder.get_status():
+					self.parent.main_canvas.itemconfig(self.record_indicator, fill=self.rec_color, state=tkinter.NORMAL)
+				else:
+					self.parent.main_canvas.itemconfig(self.record_indicator, fill=self.high_color, state=tkinter.NORMAL)
+			else:
+				self.parent.main_canvas.itemconfig(self.record_indicator, state=tkinter.HIDDEN)
+
+		if control in [None, 'play']:
+			try:
+				processor = self.chain.synth_slots[0][0]
+				if processor.type_code == "AP":
+					engine = processor.engine
+					if engine.player.get_playback_state(processor.handle):
+						self.parent.main_canvas.itemconfig(self.play_indicator, text="▶", fill="#009000", state=tkinter.NORMAL)
+					else:
+						self.parent.main_canvas.itemconfig(self.play_indicator, text="⏹", fill="#909090", state=tkinter.NORMAL)
+			except:
+				self.parent.main_canvas.itemconfig(self.play_indicator, state=tkinter.HIDDEN)
+
 
 	# --------------------------------------------------------------------------
 	# Mixer Strip functionality
@@ -768,6 +787,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				self.zynmixer.enable_dpm(0, self.zynmixer.MAX_NUM_CHANNELS - 1, False)
 			self.zynmixer.disable_midi_learn()
 			zynsigman.unregister(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_control)
+			zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_ARM, self.update_control_arm)
+			zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
+			zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATUS, self.update_control_play)
 			super().hide()
 
 	# Function to handle showing display
@@ -783,6 +805,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.highlight_active_chain(True)
 		self.setup_zynpots()
 		zynsigman.register(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_control)
+		zynsigman.register(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_ARM, self.update_control_arm)
+		zynsigman.register(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
+		zynsigman.register(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATUS, self.update_control_play)
 
 	# Function to update display, e.g. after geometry changes
 	def update_layout(self):
@@ -804,8 +829,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 					if not strip.hidden and strip.chain.mixer_chan is not None:
 						state = states[strip.chain.mixer_chan]
 						strip.draw_dpm(state[0], state[1], state[2], state[3], state[4])
-						strip.refresh_status()
-					self.main_mixbus_strip.refresh_status()
 
 	# Function to refresh display (fast)
 	def plot_zctrls(self):
@@ -821,6 +844,20 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			return
 		self.pending_refresh_queue.add((strip, symbol))
 		#self.pending_refresh_queue.add((self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX], "solo"))
+
+	# Function to handle audio recorder arm
+	def update_control_arm(self, chan, value):
+		self.update_control(chan, "rec", value)
+
+	# Function to handle audio recorder status
+	def update_control_rec(self, state):
+		for strip in self.visible_mixer_strips:
+			self.pending_refresh_queue.add((strip, "rec"))
+
+	# Function to handle audio play status
+	def update_control_play(self, state):
+		for strip in self.visible_mixer_strips:
+			self.pending_refresh_queue.add((strip, "play"))
 
 	#--------------------------------------------------------------------------
 	# Mixer Functionality

@@ -76,6 +76,9 @@ class zynmixer(zynthian_engine):
 		self.lib_zynmixer.isChannelRouted.argtypes = [ctypes.c_uint8]
 		self.lib_zynmixer.isChannelRouted.restype = ctypes.c_uint8
 
+		self.lib_zynmixer.isChannelOutRouted.argtypes = [ctypes.c_uint8]
+		self.lib_zynmixer.isChannelOutRouted.restype = ctypes.c_uint8
+
 		self.lib_zynmixer.getDpm.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
 		self.lib_zynmixer.getDpm.restype = ctypes.c_float
 
@@ -393,6 +396,16 @@ class zynmixer(zynthian_engine):
 			channel = self.MAX_NUM_CHANNELS
 		return (self.lib_zynmixer.isChannelRouted(channel) != 0)
 
+	# Function to check if channel output is routed
+	# channel: Index of channel
+	# returns: True if routed
+	def is_channel_out_routed(self, channel):
+		if channel is None:
+			return
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS
+		return (self.lib_zynmixer.isChannelOutRouted(channel) != 0)
+
 	# Function to get peak programme level for a channel
 	# channel: Index of channel
 	# leg: 0 for A-leg (left), 1 for B-leg (right)
@@ -567,6 +580,8 @@ class zynmixer(zynthian_engine):
 		self.midi_learn_zctrl = zctrl
 
 	def disable_midi_learn(self):
+		if self.midi_learn_zctrl is None:
+			return
 		self.midi_learn_zctrl = None
 		if self.midi_learn_cb:
 			self.midi_learn_cb()

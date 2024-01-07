@@ -28,6 +28,7 @@ import logging
 # Zynthian specific modules
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui.zynthian_gui_save_preset import zynthian_gui_save_preset
+import zynautoconnect
 
 #------------------------------------------------------------------------------
 # Zynthian processor Options GUI Class
@@ -92,6 +93,8 @@ class zynthian_gui_processor_options(zynthian_gui_selector, zynthian_gui_save_pr
 			pass
 		elif self.list_data[i][1] is None:
 			self.list_data[i][0]()
+		else:
+			self.list_data[i][0](self.list_data[i][1])
 
 
 	def setup(self, chain_id, processor):
