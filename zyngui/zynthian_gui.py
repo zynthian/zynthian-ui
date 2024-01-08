@@ -2294,6 +2294,10 @@ class zynthian_gui:
 
 		self.exit_code = code
 		self.exit_flag = True
+
+		# End signal manager queue processing
+		zynsigman.stop()
+
 		# Signal zynpot thread so it can unlock and finish normally
 		self.zynpot_event.set()
 

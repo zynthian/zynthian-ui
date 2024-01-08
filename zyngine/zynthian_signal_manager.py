@@ -82,7 +82,7 @@ class zynthian_signal_manager:
         self.exit_flag = True
 
     # ----------------------------------------------------------------------------
-    # Signal handling
+    # Signal register handling
     # ----------------------------------------------------------------------------
 
     def reset_register(self):
@@ -93,43 +93,59 @@ class zynthian_signal_manager:
             for j in range(self.last_subsignal):
                 self.signal_register[i].append([])
 
-    def register(self, signal, subsignal, callback):
+    def register(self, signal, subsignal, callback, queued=False):
         if 0 <= signal <= self.last_signal and 0 <= subsignal <= self.last_subsignal:
             #logging.debug(f"Registering callback '{callback.__name__}()' for signal({signal},{subsignal})")
-            self.signal_register[signal][subsignal].append(callback)
+            self.signal_register[signal][subsignal].append((callback, queued))
 
     def unregister(self, signal, subsignal, callback):
         if 0 <= signal <= self.last_signal and 0 <= subsignal <= self.last_subsignal:
             #logging.debug(f"Unregistering callback '{callback.__name__}()' from signal({signal},{subsignal})")
-            try:
-                self.signal_register[signal][subsignal].remove(callback)
-            except:
+            n = 0
+            for k, rdata in enumerate(self.signal_register[signal][subsignal]):
+                if rdata[0] == callback:
+                    del self.signal_register[signal][subsignal][k]
+                    n += 1
+            if n == 0:
                 logging.warning(f"Callback not registered for signal({signal},{subsignal})")
 
     def unregister_all(self, callback):
+        n = 0
         for i in range(self.last_signal):
             for j in range(self.last_subsignal):
-                try:
-                    self.signal_register[i][j].remove(callback)
-                except:
-                    pass
+                for k, rdata in enumerate(self.signal_register[i][j]):
+                    if rdata[0] == callback:
+                        del self.signal_register[i][j][k]
+                        n += 1
+        if n == 0:
+            logging.warning(f"Callback not registered")
 
-    def send(self, signal, subsignal, **kwargs):
+    def process_signal(self, force_queued, signal, subsignal, **kwargs):
         if 0 <= signal <= self.last_signal and 0 <= subsignal <= self.last_subsignal:
             #logging.debug(f"Signal({signal},{subsignal}): {kwargs}")
-            for cb in self.signal_register[signal][subsignal]:
-                try:
-                    #logging.debug(f"  => calling {cb.__name__}(...)")
-                    cb(**kwargs)
-                except Exception as e:
-                    logging.error(f"Callback '{cb.__name__}(...)' for signal({signal},{subsignal}): {e}")
+            for rdata in self.signal_register[signal][subsignal]:
+                if force_queued == 1 or rdata[1]:
+                    self.queue.put_nowait((signal, subsignal, rdata[0], kwargs))
+                else:
+                    try:
+                        #logging.debug(f"  => calling {rdata[0].__name__}(...)")
+                        rdata[0](**kwargs)
+                    except Exception as e:
+                        logging.error(f"Callback '{rdata[0].__name__}(...)' for signal({signal},{subsignal}): {e}")
 
-    # ----------------------------------------------------------------------------
-    # Queued signals
-    # ----------------------------------------------------------------------------
+    def send(self, signal, subsignal, **kwargs):
+        """ Send direct call signal
+        """
+        self.process_signal(False, signal, subsignal, **kwargs)
 
     def send_queued(self, signal, subsignal, **kwargs):
-        self.queue.put_nowait((signal, subsignal, kwargs))
+        """ Send queued signal
+        """
+        self.process_signal(True, signal, subsignal, **kwargs)
+
+    # ----------------------------------------------------------------------------
+    # Queued signal handling
+    # ----------------------------------------------------------------------------
 
     def start_queue_thread(self):
         self.queue_thread = Thread(target=self.queue_thread_task, args=())
@@ -143,7 +159,11 @@ class zynthian_signal_manager:
                 data = self.queue.get(True, 1)
             except:
                 continue
-            self.send(data[0], data[1], **data[2])
+            try:
+                # logging.debug(f"  => calling {data[2].__name__}(...)")
+                data[2](**data[3])
+            except Exception as e:
+                logging.error(f"Queued callback '{data[2].__name__}(...)' for signal({data[0]},{data[1]}): {e}")
 
 # ---------------------------------------------------------------------------
 
