@@ -176,11 +176,18 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
 	def allow_rbpi_headphones(self):
 		try:
-			if not callable(lib_zyncore.set_hpvol) and self.rbpi_device_name and self.device_name != self.rbpi_device_name:
+			if not self.is_headphone_amp_interface_available() and self.rbpi_device_name and self.device_name != self.rbpi_device_name:
 				return True
 			else:
 				return False
 		except:
+			logging.error("Error loading RB Pi headphones")
+			return False
+
+	def is_headphone_amp_interface_available(self):
+		try:
+			return callable(lib_zyncore.set_hpvol)
+		except: 
 			return False
 
 
@@ -198,7 +205,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
 		# Add HP amplifier interface if available
 		try:
-			if callable(lib_zyncore.set_hpvol):
+			if is_headphone_amp_interface_available():
 				hp_zctrl = zynthian_controller(self, "Headphones", "Headphones", {
 					'graph_path': lib_zyncore.set_hpvol,
 					'value': lib_zyncore.get_hpvol(),
