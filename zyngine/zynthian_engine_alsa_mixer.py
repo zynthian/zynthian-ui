@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_alsa_mixer)
 #
 # zynthian_engine implementation for Alsa Mixer
 #
 # Copyright (C) 2015-2019 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -20,7 +20,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 import os
 import re
@@ -37,17 +37,18 @@ from . import zynthian_engine
 from . import zynthian_controller
 from zyngui import zynthian_gui_config
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # ALSA Mixer Engine Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_engine_alsa_mixer(zynthian_engine):
 
 	sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR',"/zynthian/zynthian-sys")
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Config variables
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	chan_names = ["Left", "Right"]
 
@@ -88,15 +89,15 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
 	_ctrl_screens = []
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# ZynAPI variables
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	zynapi_instance = None
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Initialization
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
@@ -122,11 +123,9 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
 		self.get_soundcard_config()
 
-
-		def stop(self):
-			self.stop_sender_poll()
-			super().stop()
-
+	def stop(self):
+		self.stop_sender_poll()
+		super().stop()
 
 	# ---------------------------------------------------------------------------
 	# Layer Management
@@ -135,7 +134,6 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 	def add_layer(self, layer):
 		super().add_layer(layer)
 
-
 	def get_path(self, layer):
 		return self.name
 
@@ -143,36 +141,38 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Bank Managament
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def get_bank_list(self, layer=None):
 		return [("", None, "", None)]
 
-
 	def set_bank(self, layer, bank):
 		return True
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Preset Managament
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
 		return [("", None, "", None)]
 
-
 	def set_preset(self, layer, preset, preload=False):
 		return True
-
 
 	def cmp_presets(self, preset1, preset2):
 		return True
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Controllers Managament
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
+
+	def is_headphone_amp_interface_available(self):
+		try:
+			return callable(lib_zyncore.set_hpvol)
+		except:
+			return False
 
 	def allow_rbpi_headphones(self):
 		try:
@@ -181,15 +181,8 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 			else:
 				return False
 		except:
-			logging.error("Error loading RB Pi headphones")
+			logging.error("Error checking RBPi headphones")
 			return False
-
-	def is_headphone_amp_interface_available(self):
-		try:
-			return callable(lib_zyncore.set_hpvol)
-		except: 
-			return False
-
 
 	def get_controllers_dict(self, layer, ctrl_list=None):
 		if ctrl_list == "*":
@@ -205,7 +198,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
 		# Add HP amplifier interface if available
 		try:
-			if is_headphone_amp_interface_available():
+			if self.is_headphone_amp_interface_available():
 				hp_zctrl = zynthian_controller(self, "Headphones", "Headphones", {
 					'graph_path': lib_zyncore.set_hpvol,
 					'value': lib_zyncore.get_hpvol(),
