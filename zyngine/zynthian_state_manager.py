@@ -634,8 +634,6 @@ class zynthian_state_manager:
                             self.chain_manager.add_midi_learn(chan, ccnum, self.midi_learn_zctrl, (ev >> 24) & 0xff)
                         else:
                             self.zynmixer.midi_control_change(chan, ccnum, ccval)
-                    elif evtype == 0x8 or evtype == 0x9:
-                        send_to_cuia = True
 
                 # Control Change...
                 elif evtype == 0xB:
@@ -672,6 +670,9 @@ class zynthian_state_manager:
                             res = self.chain_manager.set_midi_prog_preset(chan, pgm)
                         if res:
                             send_to_cuia = True
+
+                if evtype == 0x8 or evtype == 0x9:
+                    send_to_cuia = True
 
                 if send_to_cuia:
                     self.send_cuia("midi_event", [(ev>>24)&0xff, evtype, chan, (ev>>8)&0x7f, ev&0x7f])
