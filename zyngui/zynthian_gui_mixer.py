@@ -432,6 +432,8 @@ class zynthian_gui_mixer_strip():
 						self.parent.main_canvas.itemconfig(self.play_indicator, text="▶", fill="#009000", state=tkinter.NORMAL)
 					else:
 						self.parent.main_canvas.itemconfig(self.play_indicator, text="⏹", fill="#909090", state=tkinter.NORMAL)
+				else:
+					self.parent.main_canvas.itemconfig(self.play_indicator, state=tkinter.HIDDEN)
 			except:
 				self.parent.main_canvas.itemconfig(self.play_indicator, state=tkinter.HIDDEN)
 
