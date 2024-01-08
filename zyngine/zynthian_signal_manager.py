@@ -23,6 +23,8 @@
 # ****************************************************************************
 
 import logging
+from queue import SimpleQueue
+from threading import Thread
 
 # ----------------------------------------------------------------------------
 # Zynthian Signal Manager Class
@@ -31,24 +33,32 @@ import logging
 
 class zynthian_signal_manager:
 
-    S_ALL               = 0  # Clients registering for this signal, will receive all signals
-    S_STATE_MAN         = 1
-    S_CHAIN_MAN         = 2
-    S_CHAIN             = 3
-    S_AUDIO_RECORDER    = 4
-    S_AUDIO_PLAYER      = 5
-    S_SMF_RECORDER      = 6
-    S_ALSA_MIXER        = 7
-    S_AUDIO_MIXER       = 8
-    S_STEPSEQ           = 9
-    S_CUIA              = 10
-    S_GUI               = 11
+    S_ALL = 0  # Clients registering for this signal, will receive all signals
+    S_STATE_MAN = 1
+    S_CHAIN_MAN = 2
+    S_CHAIN = 3
+    S_AUDIO_RECORDER = 4
+    S_AUDIO_PLAYER = 5
+    S_SMF_RECORDER = 6
+    S_ALSA_MIXER = 7
+    S_AUDIO_MIXER = 8
+    S_STEPSEQ = 9
+    S_CUIA = 10
+    S_GUI = 11
+    S_MIDI = 12
 
-    SS_CUIA_REFRESH        = 0
-    SS_CUIA_MIDI_EVENT     = 1
-    SS_GUI_SHOW_SCREEN = 1
+    SS_CUIA_REFRESH = 0
+    SS_CUIA_MIDI_EVENT = 1
 
-    last_signal = 12
+    SS_GUI_SHOW_SCREEN = 0
+
+    SS_MIDI_SYS = 0
+    SS_MIDI_CC = 1
+    SS_MIDI_PC = 2
+    SS_MIDI_NOTE_ON = 3
+    SS_MIDI_NOTE_OFF = 4
+
+    last_signal = 13
     last_subsignal = 10
 
     def __init__(self):
@@ -57,10 +67,19 @@ class zynthian_signal_manager:
         Manages signaling. Clients register callbacks that are triggered when a given signal is received.
         """
 
+        self.exit_flag = False
+
         # List of lists of registered callback functions.
         # Indexes ar signal & subsignal numbers
         self.signal_register = None
         self.reset_register()
+
+        self.queue = SimpleQueue()
+        self.queue_thread = None
+        self.start_queue_thread()
+
+    def stop(self):
+        self.exit_flag = True
 
     # ----------------------------------------------------------------------------
     # Signal handling
@@ -104,6 +123,27 @@ class zynthian_signal_manager:
                     cb(**kwargs)
                 except Exception as e:
                     logging.error(f"Callback '{cb.__name__}(...)' for signal({signal},{subsignal}): {e}")
+
+    # ----------------------------------------------------------------------------
+    # Queued signals
+    # ----------------------------------------------------------------------------
+
+    def send_queued(self, signal, subsignal, **kwargs):
+        self.queue.put_nowait((signal, subsignal, kwargs))
+
+    def start_queue_thread(self):
+        self.queue_thread = Thread(target=self.queue_thread_task, args=())
+        self.queue_thread.name = "SIGNAL_QUEUE"
+        self.queue_thread.daemon = True  # thread dies with the program
+        self.queue_thread.start()
+
+    def queue_thread_task(self):
+        while not self.exit_flag:
+            try:
+                data = self.queue.get(True, 1)
+            except:
+                continue
+            self.send(data[0], data[1], **data[2])
 
 # ---------------------------------------------------------------------------
 

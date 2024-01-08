@@ -96,7 +96,12 @@ class zynthian_state_manager:
         self.snapshot_program = 0
         self.zs3 = {}  # Dictionary or zs3 configs indexed by "ch/pc"
 
+        # Power saving
         self.power_save_mode = False
+        self.last_event_flag = False
+        self.last_event_ts = monotonic()
+
+        # Status
         self.status_xrun = False
         self.status_undervoltage = False
         self.overtemp_warning = 75  # Temperature limit before warning overtemperature
@@ -108,14 +113,16 @@ class zynthian_state_manager:
         self.last_midi_file = None
         self.status_midi = False
         self.status_midi_clock = False
+        self.update_available = False  # True when updates available from repositories
+        self.checking_for_updates = False  # True whilst checking for updates
+
         self.midi_filter_script = None
         self.midi_learn_state = False
-        self.midi_learn_pc = None  # When ZS3 Program Change MIDI learning is enabled, the name used for creating new ZS3, empty string for auto-generating a name. None when disabled.
-        self.midi_learn_zctrl = None  # zctrl currently being learned
+        self.midi_learn_pc = None   # When ZS3 Program Change MIDI learning is enabled, the name used for creating new ZS3, empty string for auto-generating a name. None when disabled.
+        self.midi_learn_zctrl = None   # zctrl currently being learned
         self.sync = False  # True to request file system sync
-        self.cuia_queue = []  # List of queues for GUI (CUIA) change messages
-        self.update_available = False # True when updates available from repositories
-        self.checking_for_updates = False  # True whilst checking for updates
+
+        self.cuia_queue = SimpleQueue()  # Queue for CUIA calls
 
         self.hwmon_thermal_file = None
         self.hwmon_undervolt_file = None
@@ -436,6 +443,22 @@ class zynthian_state_manager:
         self.busy_details = None
         return res
 
+    # ----------------------------------------------------------------------------
+    # CUIA Queue
+    # ----------------------------------------------------------------------------
+
+    def send_cuia(self, cuia, params=None):
+       self.cuia_queue.put_nowait((cuia, params))
+
+    def parse_cuia_params(self, params_str):
+        params = []
+        for i, p in enumerate(params_str.split(",")):
+            try:
+                params.append(int(p))
+            except:
+                params.append(p.strip())
+        return params
+
     # ------------------------------------------------------------------
     # Background task threads
     # ------------------------------------------------------------------
@@ -549,7 +572,7 @@ class zynthian_state_manager:
         """Perform fast / high priority background tasks"""
 
         while not self.exit_flag:
-            # MIDI
+            # Process MIDI events
             self.zynmidi_read()
             sleep(0.01)
 
@@ -565,16 +588,15 @@ class zynthian_state_manager:
             midi_events = (ctypes.c_uint32 * n)()
             n = lib_zyncore.read_zynmidi_buffer(midi_events, n)
             for i in range(n):
-                send_to_cuia = False #TODO: Allow UI to register for specific messages?
                 ev = midi_events[i]
 
-                # Try to manage with configured control devices
+                # Try to manage with a control device driver
                 if self.ctrldev_manager.midi_event(ev):
                     self.status_midi = True
                     self.last_event_flag = True
                     continue
 
-                #zmip = (ev >> 24) & 0xff
+                izmip = (ev >> 24) & 0xff
                 evtype = (ev >> 20) & 0xf
                 chan = (ev >> 16) & 0xf
 
@@ -629,11 +651,33 @@ class zynthian_state_manager:
                             self.all_sounds_off()
                         elif ccnum == 123:
                             self.all_notes_off()
-
-                        if self.midi_learn_zctrl:
-                            self.chain_manager.add_midi_learn(chan, ccnum, self.midi_learn_zctrl, (ev >> 24) & 0xff)
                         else:
-                            self.zynmixer.midi_control_change(chan, ccnum, ccval)
+                            if self.midi_learn_zctrl:
+                                self.chain_manager.add_midi_learn(chan, ccnum, self.midi_learn_zctrl, (ev >> 24) & 0xff)
+                            else:
+                                self.zynmixer.midi_control_change(chan, ccnum, ccval)
+                    # Master Note CUIA with ZynSwitch emulation
+                    elif evtype == 0x8 or evtype == 0x9:
+                        note = str((ev >> 8) & 0x7f)
+                        vel = ev & 0x7f
+                        if note in zynthian_gui_config.master_midi_note_cuia:
+                            cuia_str = zynthian_gui_config.master_midi_note_cuia[note]
+                            parts = cuia_str.split(" ", 2)
+                            cuia = parts[0].lower()
+                            if len(parts) > 1:
+                                params = self.parse_cuia_params(parts[1])
+                            else:
+                                params = None
+                            # Emulate Zynswitch Push/Release with Note On/Off
+                            if cuia == "zynswitch" and len(params) == 1:
+                                if evtype == 0x8 or vel == 0:
+                                    params.append('R')
+                                else:
+                                    params.append('P')
+                                self.cuia_queue.put_nowait((cuia, params))
+                            # Or normal CUIA
+                            elif evtype == 0x9 and vel > 0:
+                                self.cuia_queue.put_nowait((cuia, params))
 
                 # Control Change...
                 elif evtype == 0xB:
@@ -646,7 +690,7 @@ class zynthian_state_manager:
                             self.zynmixer.midi_control_change(chan, ccnum, ccval)
                             self.alsa_mixer_processor.midi_control_change(chan, ccnum, ccval)
                             self.audio_player.midi_control_change(chan, ccnum, ccval)
-                        send_to_cuia = True
+                        zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, izmip=izmip, chan=chan, num=ccnum, val=ccval)
                     # Special CCs >= Channel Mode
                     elif ccnum == 120:
                         self.state_manager.all_sounds_off_chan(chan)
@@ -657,51 +701,67 @@ class zynthian_state_manager:
                 elif evtype == 0xC:
                     pgm = (ev & 0x7F00) >> 8
                     logging.info(f"MIDI PROGRAM CHANGE: CH#{chan}, PRG#{pgm}")
-
-                    # SubSnapShot (ZS3) MIDI learn...
+                    # MIDI learn SubSnapShot (ZS3)
                     if self.midi_learn_pc is not None:
                         self.save_zs3(f"{chan}/{pgm}")
-                        send_to_cuia = True
+                        send_signal = True
                     else:
+                        # select SubSnapShot (ZS3)
                         if zynthian_gui_config.midi_prog_change_zs3:
-                            res = self.load_zs3_by_midi_prog(chan, pgm)
+                            send_signal = self.load_zs3_by_midi_prog(chan, pgm)
+                        # or select preset
                         else:
                             chan = self.chain_manager.get_active_chain().midi_chan
-                            res = self.chain_manager.set_midi_prog_preset(chan, pgm)
-                        if res:
-                            send_to_cuia = True
+                            send_signal = self.chain_manager.set_midi_prog_preset(chan, pgm)
+                    if send_signal:
+                        zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, izmip=izmip, chan=chan, num=pgm)
 
-                if evtype == 0x8 or evtype == 0x9:
-                    send_to_cuia = True
+                # Note Off
+                elif evtype == 0x8:
+                    zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_OFF, izmip=izmip, chan=chan, note=(ev >> 8) & 0x7f, vel=ev & 0x7f)
 
-                if send_to_cuia:
-                    self.send_cuia("midi_event", [(ev>>24)&0xff, evtype, chan, (ev>>8)&0x7f, ev&0x7f])
+                # Note On
+                elif evtype == 0x9:
+                    zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_ON, izmip=izmip, chan=chan, note=(ev >> 8) & 0x7f, vel=ev & 0x7f)
 
                 # Flag MIDI event
                 self.status_midi = True
+                self.last_event_flag = True
 
         except Exception as err:
             logging.exception(err)
 
+    # ---------------------------------------------------------------------------
+    # Power Saving
+    # ---------------------------------------------------------------------------
 
-    # ----------------------------------------------------------------------------
-    # CUIA event queues
-    # ----------------------------------------------------------------------------
+    def power_save_check(self):
+        if zynthian_gui_config.power_save_secs <= 0:
+            return
+        if self.last_event_flag:
+            self.last_event_ts = monotonic()
+            self.last_event_flag = False
+            if self.power_save_mode:
+                self.set_power_save_mode(False)
+        elif not self.power_save_mode and (monotonic() - self.last_event_ts) > zynthian_gui_config.power_save_secs:
+            self.set_power_save_mode(True)
 
-    def register_cuia(self):
-        queue = SimpleQueue()
-        self.cuia_queue.append(queue)
-        return queue
+    def set_power_save_mode(self, psm=True):
+        self.power_save_mode = psm
+        if psm:
+            logging.info("Power Save Mode: ON")
+            self.ctrldev_manager.sleep_on()
+            check_output("powersave_control.sh on", shell=True)
+        else:
+            logging.info("Power Save Mode: OFF")
+            check_output("powersave_control.sh off", shell=True)
+            self.ctrldev_manager.sleep_off()
 
-    def unregister_cuia(self, queue):
-        try:
-            self.cuia_queue.remove(queue)
-        except:
-            pass
+    def set_event_flag(self):
+        self.last_event_flag = True
 
-    def send_cuia(self, cuia, params=None):
-        for q in self.cuia_queue:
-            q.put_nowait((cuia, params))
+    def reset_event_flag(self):
+        self.last_event_flag = False
 
     # ----------------------------------------------------------------------------
     # Snapshot Save & Load
@@ -1664,21 +1724,6 @@ class zynthian_state_manager:
             self.start_midi_playback(fname)
         else:
             self.stop_midi_playback()
-
-    # ---------------------------------------------------------------------------
-    # Power Save Mode
-    # ---------------------------------------------------------------------------
-
-    def set_power_save_mode(self, psm=True):
-        self.power_save_mode = psm
-        if psm:
-            logging.info("Power Save Mode: ON")
-            self.ctrldev_manager.sleep_on()
-            check_output("powersave_control.sh on", shell=True)
-        else:
-            logging.info("Power Save Mode: OFF")
-            check_output("powersave_control.sh off", shell=True)
-            self.ctrldev_manager.sleep_off()
 
     # ---------------------------------------------------------------------------
     # Core Network Services

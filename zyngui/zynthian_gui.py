@@ -97,7 +97,7 @@ MIXER_MAIN_CHANNEL = 255  # TODO This constant should go somewhere else
 
 class zynthian_gui:
 	# Subsignals are defined inside each module. Here we define GUI subsignals:
-	SS_SHOW_SCREEN = 1
+	SS_SHOW_SCREEN = 0
 
 	# Screen Modes
 	SCREEN_HMODE_NONE = 0
@@ -111,8 +111,6 @@ class zynthian_gui:
 
 		self.test_mode = False
 		self.alt_mode = False
-		self.last_event_flag = False
-		self.last_event_ts = monotonic()
 		self.ignore_next_touch_release = False
 
 		self.screens = {}
@@ -131,7 +129,7 @@ class zynthian_gui:
 		self.control_thread = None
 		self.status_thread = None
 		self.cuia_thread = None
-		self.cuia_queue = self.state_manager.register_cuia()
+		self.cuia_queue = self.state_manager.cuia_queue
 		self.zynread_wait_flag = False
 		self.zynpot_thread = None
 		self.zynpot_event = Event()
@@ -353,7 +351,7 @@ class zynthian_gui:
 		parts = path.upper().split("/", 2)
 		# TODO: message may have fewer parts than expected
 		if parts[0] == "" and parts[1] == "CUIA":
-			self.set_event_flag()
+			self.state_manager.set_event_flag()
 			# Execute action
 			cuia = parts[2].upper()
 			if self.state_manager.is_busy():
@@ -364,7 +362,7 @@ class zynthian_gui:
 			zynautoconnect.request_audio_connect()
 			zynautoconnect.request_midi_connect()
 		elif parts[1] in ("MIXER", "DAWOSC"):
-			self.set_event_flag()
+			self.state_manager.set_event_flag()
 			part2 = parts[2]
 			if part2 in ("HEARTBEAT", "SETUP"):
 				if src.hostname not in self.osc_clients:
@@ -471,7 +469,8 @@ class zynthian_gui:
 		# Initial loading screen. We need "current_screen" from here ...
 		self.show_loading("Starting User Interface")
 
-		# Start polling & threads
+		# Start processing signals, threads & polling
+		self.register_signals()
 		self.start_busy_thread()
 		self.start_control_thread()
 		self.start_status_thread()
@@ -519,7 +518,6 @@ class zynthian_gui:
 
 		# Show initial screen
 		self.show_screen(init_screen, self.SCREEN_HMODE_RESET)
-
 
 	def hide_screens(self, exclude=None):
 		if not exclude:
@@ -988,20 +986,11 @@ class zynthian_gui:
 		else:
 			logging.error("Unknown CUIA '{}'".format(cuia))
 
-	def parse_cuia_params(self, params_str):
-		params = []
-		for i, p in enumerate(params_str.split(",")):
-			try:
-				params.append(int(p))
-			except:
-				params.append(p.strip())
-		return params
-
 	def callable_ui_action_params(self, cuia_str):
 		parts = cuia_str.split(" ", 2)
 		cuia = parts[0]
 		if len(parts) > 1:
-			params = self.parse_cuia_params(parts[1])
+			params = self.state_manager.parse_cuia_params(parts[1])
 		else:
 			params = None
 		self.callable_ui_action(cuia, params)
@@ -1753,7 +1742,7 @@ class zynthian_gui:
 			return "S"
 
 	def zynswitch_push(self, i):
-		self.set_event_flag()
+		self.state_manager.set_event_flag()
 
 		if self.capture_log_fname:
 			self.write_capture_log("ZYNSWITCH:P,{}".format(i))
@@ -1908,96 +1897,91 @@ class zynthian_gui:
 			logging.exception(err)
 
 	# ------------------------------------------------------------------
-	# MIDI processing
+	# Signal processing
 	# ------------------------------------------------------------------
 
-	def cuia_midi_event(self, event):
-		"""Handle zynmidi note-on/off events
+	def register_signals(self):
+		zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.cb_midi_cc)
+		zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.cb_midi_pc)
+		zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_ON, self.cb_midi_note_on)
+		zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_OFF, self.cb_midi_note_off)
 
-		event : List of event parameters
-			zmip : MIDI input device index
-			evtype : MIDI message type
-			chan : MIDI channel
-			val1 : MIDI value 1
-			val2 : MIDI value 2
+	def unregister_signals(self):
+		zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.cb_midi_cc)
+		zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.cb_midi_pc)
+		zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_ON, self.cb_midi_note_on)
+		zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_OFF, self.cb_midi_note_off)
+
+	def cb_midi_cc(self, izmip, chan, num, val):
+		"""Handle MIDI_CC signal
+
+		izmip : MIDI input device index
+		chan : MIDI channel
+		num : CC number
+		val : CC value
 		"""
 
-		zmip = event[0]
-		evtype = event[1]
-		chan = event[2]
-		val1 = event[3]
-		val2 = event[4]
+		if self.state_manager.midi_learn_zctrl and num < 120:
+			# Handle MIDI learn for assignable CC
+			self.screens['control'].midi_learn_bind(izmip, chan, num)
+			self.show_current_screen()
 
-		if chan == zynthian_gui_config.master_midi_channel:
-			# MASTER CHANNEL
-			if evtype == 0x8 or evtype == 0x9:
-				note = str(val1)
-				vel = val2
-				if note in zynthian_gui_config.master_midi_note_cuia:
-					cuia_str = zynthian_gui_config.master_midi_note_cuia[note]
-					parts = cuia_str.split(" ", 2)
-					cuia = parts[0].lower()
-					if len(parts) > 1:
-						params = self.parse_cuia_params(parts[1])
-					else:
-						params = None
+	def cb_midi_pc(self, izmip, chan, num):
+		"""Handle MIDI_PC signal
 
-					# Emulate Zynswitch Push/Release with Note On/Off
-					if cuia == "zynswitch" and len(params) == 1:
-						if evtype == 0x8 or vel == 0:
-							params.append('R')
-						else:
-							params.append('P')
-						self.cuia_queue.put_nowait((cuia, params))
-					# Or normal CUIA
-					elif evtype == 0x9 and vel > 0:
-						self.cuia_queue.put_nowait((cuia, params))
+		izmip : MIDI input device index
+		chan : MIDI channel
+		num : CC number
+		"""
 
-		elif evtype == 0x9:
-			# NOTE-ON
-			# Pattern recording
-			if self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
-				self.screens['pattern_editor'].midi_note(val1)
-			# Preload preset (note-on)
-			elif self.current_screen == 'preset' and zynthian_gui_config.preset_preload_noteon and\
-					(zynautoconnect.get_midi_in_dev_mode(zmip) or chan == self.get_current_processor().get_midi_chan()):
-				self.screens['preset'].preselect_action()
-			# Note Range Learn
-			elif self.current_screen == 'midi_key_range' and self.state_manager.midi_learn_state:
-				self.screens['midi_key_range'].learn_note_range(val1)
-			self.screens['midi_chan'].midi_chan_activity(chan)
+		# Refresh screen after loading ZS3 => Buffff!
+		if self.current_screen == 'audio_mixer':
+			self.screens['audio_mixer'].refresh_visible_strips()
+		elif self.current_screen == 'control':
+			self.chain_control()
+		elif self.current_screen == 'zs3':
+			self.screens['zs3'].update_list()
+			self.screens['zs3'].disable_midi_learn()
+		else:
+			try:
+				self.screens[self.current_screen].refresh()
+			except:
+				pass
 
-		elif evtype == 0x8:
-			# NOTE-OFF
-			# Pattern recording
-			if self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
-				self.screens['pattern_editor'].midi_note(val1)
+	def cb_midi_note_on(self, izmip, chan, note, vel):
+		"""Handle MIDI_NOTE_ON signal
 
-			# Flag MIDI event
-			self.state_manager.status_midi = True
-			self.last_event_flag = True
+		izmip : MIDI input device index
+		chan : MIDI channel
+		note : Note number
+		vel : Velocity value
+		"""
 
-		elif evtype == 0xb and val1 < 120:
-			# Control change
-			if self.state_manager.midi_learn_zctrl:
-				# Handle MIDI learn for assignable CC
-				self.screens['control'].midi_learn_bind(zmip, chan, val1)
-				self.show_current_screen()
-		elif evtype == 0xc:
-			# Program change - update screen after loading ZS3
-			if self.current_screen == 'audio_mixer':
-				self.screens['audio_mixer'].refresh_visible_strips()
-			elif self.current_screen == 'control':
-				self.chain_control()
-			elif self.current_screen == 'zs3':
-				self.screens['zs3'].update_list()
-				self.screens['zs3'].disable_midi_learn()
-			else:
-				try:
-					self.screens[self.current_screen].refresh()
-				except:
-					pass
+		# Pattern recording
+		if self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
+			self.screens['pattern_editor'].midi_note(note)
+		# Preload preset (note-on)
+		elif self.current_screen == 'preset' and zynthian_gui_config.preset_preload_noteon and \
+			(zynautoconnect.get_midi_in_dev_mode(izmip) or chan == self.get_current_processor().get_midi_chan()):
+			self.screens['preset'].preselect_action()
+		# Note Range Learn
+		elif self.current_screen == 'midi_key_range' and self.state_manager.midi_learn_state:
+			self.screens['midi_key_range'].learn_note_range(note)
+		# Channel activity
+		self.screens['midi_chan'].midi_chan_activity(chan)
 
+	def cb_midi_note_off(self, izmip, chan, note, vel):
+		"""Handle MIDI_NOTE_OFF signal
+
+		izmip : MIDI input device index
+		chan : MIDI channel
+		note : Note number
+		vel : Velocity value
+		"""
+
+		# Pattern recording
+		if self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
+			self.screens['pattern_editor'].midi_note(note)
 
 	# ------------------------------------------------------------------
 	# Zynpot Thread
@@ -2021,7 +2005,7 @@ class zynthian_gui:
 						self.zynpot_dval[i] = 0
 						self.zynpot_lock.release()
 						self.screens[self.current_screen].zynpot_cb(i, dval)
-						self.last_event_flag = True
+						self.state_manager.set_event_flag()
 						if self.capture_log_fname:
 							self.write_capture_log("ZYNPOT:{},{}".format(i, dval))
 					except Exception as err:
@@ -2057,15 +2041,8 @@ class zynthian_gui:
 				except Exception as e:
 					logging.error(e)
 
-				# Power Save Mode
-				if zynthian_gui_config.power_save_secs > 0:
-					if self.last_event_flag:
-						self.last_event_ts = monotonic()
-						self.last_event_flag = False
-						if self.state_manager.power_save_mode:
-							self.state_manager.set_power_save_mode(False)
-					elif not self.state_manager.power_save_mode and (monotonic() - self.last_event_ts) > zynthian_gui_config.power_save_secs:
-						self.state_manager.set_power_save_mode(True)
+				# Power Save Check
+				self.state_manager.power_save_check()
 			else:
 				j += 1
 
@@ -2075,23 +2052,18 @@ class zynthian_gui:
 		# End Thread task
 		self.osc_end()
 
-	def set_event_flag(self):
-		self.last_event_flag = True
-
-	def reset_event_flag(self):
-		self.last_event_flag = False
 
 	def cb_touch(self, event):
 		#logging.debug("CB EVENT TOUCH!!!")
 		if self.state_manager.power_save_mode:
-			self.set_event_flag()
+			self.state_manager.set_event_flag()
 			self.ignore_next_touch_release = True
 			return "break"
-		self.set_event_flag()
+		self.state_manager.set_event_flag()
 
 	def cb_touch_release(self, event):
 		#logging.debug("CB EVENT TOUCH RELEASE!!!")
-		self.set_event_flag()
+		self.state_manager.set_event_flag()
 		if self.ignore_next_touch_release:
 			#logging.debug("IGNORING EVENT TOUCH RELEASE!!!")
 			self.ignore_next_touch_release = False
@@ -2293,7 +2265,7 @@ class zynthian_gui:
 					except AttributeError:
 						logging.error(f"Unknown or faulty CUIA '{cuia}' with params {params}")
 
-				self.set_event_flag()
+				self.state_manager.set_event_flag()
 
 			except Empty:
 				for i in zynswitch_repeat:
