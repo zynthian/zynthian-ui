@@ -80,6 +80,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data = []
 		self.list_data.append((None, 0, "> MIDI"))
 
+		self.list_data.append((self.zyngui.midi_in_config, 0, "MIDI Input Devices"))
+		self.list_data.append((self.zyngui.midi_out_config, 0, "MIDI Output Devices"))
+		#self.list_data.append((self.midi_profile, 0, "MIDI Profile"))
+
 		if zynthian_gui_config.midi_prog_change_zs3:
 			self.list_data.append((self.toggle_prog_change_zs3, 0, "\u2612 Program Change for ZS3"))
 		else:
@@ -99,10 +103,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 				self.list_data.append((self.toggle_midi_sys, 0, "\u2612 MIDI System Messages"))
 			else:
 				self.list_data.append((self.toggle_midi_sys, 0, "\u2610 MIDI System Messages"))
-
-		self.list_data.append((self.zyngui.midi_in_config, 0, "MIDI Input Devices"))
-		self.list_data.append((self.zyngui.midi_out_config, 0, "MIDI Output Devices"))
-		self.list_data.append((self.midi_profile, 0, "MIDI Profile"))
 
 		self.list_data.append((None, 0, "> AUDIO"))
 
