@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Audio-Out Selector Class
 # 
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 # 
@@ -54,6 +54,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 			super().hide()
 
 	def update_rec(self, state):
+		# Lock multitrack record config when recorder is recording
 		self.fill_list()
 
 	def set_chain(self, chain):

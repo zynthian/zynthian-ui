@@ -494,10 +494,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		return self.monitors_dict[handle]
 
 	def update_rec(self, state):
-		for processor in self.processors:
-			if state:
-				processor.controllers_dict['record'].set_value("recording", False)
-			else:
+		if not state:
+			for processor in self.processors:
 				processor.controllers_dict['record'].set_value("stopped", False)
 
 	# ---------------------------------------------------------------------------
