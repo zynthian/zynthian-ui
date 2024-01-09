@@ -90,7 +90,7 @@ class zynthian_chain:
         if self.chain_id == 0:
             # Main mix bus
             self.title = "Main"
-            self.audio_in = ["zynmixer:output_17"]
+            self.audio_in = []
             self.audio_out = ["system:playback_[1,2]$"] # Default use first two physical audio outputs
             self.audio_thru = True
         else:
@@ -330,10 +330,7 @@ class zynthian_chain:
                 # Routing from capture ports or main chain
                 mixer_source = self.get_input_pairs()
             # Connect end of pre-fader chain
-            if self.chain_id == 0:
-                self.audio_routes["zynmixer:input_18"] = mixer_source
-            else:
-                self.audio_routes[f"zynmixer:input_{self.mixer_chan + 1:02d}"] = mixer_source
+            self.audio_routes[f"zynmixer:input_{self.mixer_chan + 1:02d}"] = mixer_source
 
             # Connect end of post-fader chain
             if self.fader_pos < len(self.audio_slots):
@@ -408,11 +405,12 @@ class zynthian_chain:
     def get_audio_out(self):
         """Get list of audio playback port names"""
 
+        return self.audio_out.copy()
         audio_out = []
         for output in self.audio_out:
             if output == 0:
                 if self.mixer_chan < 17:
-                    audio_out.append("zynmixer:input_17")
+                    audio_out.append("zynmixer:input_18")
                 else:
                     audio_out.append("system:playback_[1,2]$")
             else:

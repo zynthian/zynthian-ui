@@ -4,7 +4,7 @@
 # 
 # Autoconnect Jack clients
 # 
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ********************************************************************
 # 
@@ -683,7 +683,10 @@ def audio_autoconnect():
 						for proc in dst_chain.audio_slots[0]:
 							routes[proc.get_jackname()] = route
 					else:
-						routes[f"zynmixer:input_{dst_chain.mixer_chan + 1:02d}"] = route
+						try:
+							routes[f"zynmixer:input_{dst_chain.mixer_chan + 1:02d}"].add(route)
+						except:
+							routes[f"zynmixer:input_{dst_chain.mixer_chan + 1:02d}"] = route
 		for dst in routes:
 			if dst in sidechain_ports:
 				# This is an exact match so we do want to route exactly this
@@ -717,6 +720,17 @@ def audio_autoconnect():
 		required_routes["zynmixer:input_17a"].add(ports[0].name)
 		required_routes["zynmixer:input_17b"].add(ports[1].name)
 
+	# Connect aux to first two main outputs
+	try:
+		aux = 17 #TODO: Get aux channel from mixer lib 
+		main = 18 #TODO: Get main channel from mixer lib 
+		#TODO: Allow direct output / routing and fader control of aux
+		#required_routes["system:playback_1"].append(f"zynmixer:output_{aux}a")
+		#required_routes["system:playback_2"].append(f"zynmixer:output_{aux}b")
+		required_routes[f"zynmixer:input_{main}a"].add(f"zynmixer:output_{aux}a")
+		required_routes[f"zynmixer:input_{main}b"].add(f"zynmixer:output_{aux}b")
+	except:
+		pass
 
 	# Connect inputs to aubionotes
 	if zynthian_gui_config.midi_aubionotes_enabled:
