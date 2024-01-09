@@ -98,6 +98,11 @@ class zynthian_signal_manager:
             #logging.debug(f"Registering callback '{callback.__name__}()' for signal({signal},{subsignal})")
             self.signal_register[signal][subsignal].append((callback, queued))
 
+    def register_queued(self, signal, subsignal, callback):
+        if 0 <= signal <= self.last_signal and 0 <= subsignal <= self.last_subsignal:
+            #logging.debug(f"Registering queued callback '{callback.__name__}()' for signal({signal},{subsignal})")
+            self.signal_register[signal][subsignal].append((callback, True))
+
     def unregister(self, signal, subsignal, callback):
         if 0 <= signal <= self.last_signal and 0 <= subsignal <= self.last_subsignal:
             #logging.debug(f"Unregistering callback '{callback.__name__}()' from signal({signal},{subsignal})")
