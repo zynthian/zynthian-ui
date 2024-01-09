@@ -182,9 +182,11 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.nickname = "BF"
 		self.jackname = "setBfree"
 
-		self.options['midi_chan'] = False
-		self.options['replace'] = False
-		
+		self.options = {
+			'midi_chan': False,
+			'replace': False
+		}
+
 		self.manuals_config = None
 		self.tonewheel_model = None
 		self.show_favs_bank = False

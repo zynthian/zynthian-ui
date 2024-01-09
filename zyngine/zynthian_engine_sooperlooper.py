@@ -165,9 +165,6 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 		self.osc_target_port = self.SL_PORT
 
-		self.options['note_range'] = False
-		self.options['audio_capture'] = True
-
 		self.command = ["sooperlooper", "-q", "-l 0", "-D no", f"-p {self.osc_target_port}", f"-j{self.jackname}"]
 
 		self.state = [-1] * self.MAX_LOOPS # Current SL state for each loop

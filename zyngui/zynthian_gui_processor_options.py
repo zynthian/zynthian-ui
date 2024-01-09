@@ -64,7 +64,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector, zynthian_gui_save_pr
 
 		if self.processor.type == "MIDI Synth":
 			eng_options = self.processor.engine.get_options()
-			if eng_options['replace'] and eng_options['midi_chan']:
+			if eng_options['replace']:
 				self.list_data.append((self.replace, None, "Replace"))
 		else:
 			self.list_data.append((self.replace, None, "Replace"))

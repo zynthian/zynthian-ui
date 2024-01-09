@@ -182,14 +182,6 @@ class zynthian_engine_jalv(zynthian_engine):
 				#if not self.native_gui:
 				#	self.native_gui = "AUTO"
 
-		if plugin_type == "MIDI Tool":
-			self.options['midi_route'] = True
-			self.options['audio_route'] = False
-		elif plugin_type == "Audio Effect":
-			self.options['audio_capture'] = True
-			self.options['midi_capture'] = False
-			self.options['note_range'] = False
-
 		if not dryrun:
 			if jackname:
 				self.jackname = jackname

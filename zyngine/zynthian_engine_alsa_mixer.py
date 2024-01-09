@@ -115,8 +115,6 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
 		self.audio_out = []
 		self.options = {
-			'note_range': False,
-			'audio_route': False,
 			'midi_chan': False,
 			'replace': False
 		}
