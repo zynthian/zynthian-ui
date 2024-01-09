@@ -44,6 +44,8 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 	PAD_COLOURS = [6, 29, 17, 49, 66, 41, 23, 13, 96, 2, 81, 82, 83, 84, 85, 86, 87]
 	STARTING_COLOUR = 21
 	STOPPING_COLOUR = 5
+	SELECTED_BANK_COLOUR = 29
+	STOP_ALL_COLOUR = 5
 
 	def send_sysex(self, data):
 		if self.idev_out > 0:
@@ -76,12 +78,14 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 		if self.idev_out <= 0:
 			return
 		#logging.debug("Updating Launchpad MINI MK3 bank leds")
-		for row in range(0, 8):
+		for row in range(0, 7):
 			note = 89 - 10 * row
 			if row == self.zynseq.bank - 1:
-				lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, note, 29)
+				lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, note, self.SELECTED_BANK_COLOUR)
 			else:
 				lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, note, 0)
+		# Stop All button => Solid Red
+		lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 19, self.STOP_ALL_COLOUR)
 
 	def update_seq_state(self, bank, seq, state, mode, group):
 		if self.idev_out <= 0 or bank != self.zynseq.bank:
@@ -134,7 +138,7 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 				if pad >= 0:
 					self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
 			return True
-		# CC => scene change
+		# CC => arrows, scene change, stop all
 		elif evtype == 0xB:
 			ccnum = (ev >> 8) & 0x7F
 			val = ev & 0x7F
@@ -150,7 +154,10 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 				else:
 					col, row = self.get_note_xy(ccnum)
 					if col == 8:
-						self.zynseq.select_bank(row + 1)
+						if row < 7:
+							self.zynseq.select_bank(row + 1)
+						elif row == 7:
+							self.zynseq.libseq.stop()
 			return True
 
 	# Light-Off LEDs
