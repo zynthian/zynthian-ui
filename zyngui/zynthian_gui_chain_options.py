@@ -103,7 +103,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 				self.list_data.append((self.remove_chain, None, "Remove Chain"))
 			else:
 				self.list_data.append((self.remove_cb, None, "Remove..."))
-		elif self.chain.get_processor_count("Audio Effect") > 1:
+		elif self.chain.get_processor_count("Audio Effect") > 0:
 			self.list_data.append((self.remove_all_audiofx, None, "Remove all Audio-FX"))
 
 		self.list_data.append((None, None, "> GUI"))
