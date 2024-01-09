@@ -272,9 +272,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                     else:
                         prefix = ""
                     if chain_id in self.chain.midi_out:
-                        self.list_data.append((chain_id, None, f"\u2612 {prefix}{i}: {chain.get_name()}"))
+                        self.list_data.append((chain_id, None, f"\u2612 {prefix} {chain.get_name()}"))
                     else:
-                        self.list_data.append((chain_id, None, f"\u2610 {prefix}{i}: {chain.get_name()}"))
+                        self.list_data.append((chain_id, None, f"\u2610 {prefix} {chain.get_name()}"))
 
         super().fill_list()
 
