@@ -40,7 +40,7 @@ from zyngine.zynthian_signal_manager import zynsigman
 class zynthian_engine_audioplayer(zynthian_engine):
 
 	# Subsignals are defined inside each module. Here we define audio_recorder subsignals:
-	SS_AUDIO_PLAYER_STATUS = 1
+	SS_AUDIO_PLAYER_STATE = 1
 
 	# ---------------------------------------------------------------------------
 	# Config variables
@@ -374,7 +374,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 						else:
 							ctrl_dict['transport'].set_value("stopped", False)
 							processor.status = ""
-						zynsigman.send(zynsigman.S_AUDIO_PLAYER, self.SS_AUDIO_PLAYER_STATUS, state=value)
+						zynsigman.send(zynsigman.S_AUDIO_PLAYER, self.SS_AUDIO_PLAYER_STATE, state=value)
 					elif id == 2:
 						ctrl_dict['position'].set_value(value, False)
 					elif id == 3:

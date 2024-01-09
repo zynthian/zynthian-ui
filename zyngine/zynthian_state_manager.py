@@ -67,7 +67,6 @@ ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 class zynthian_state_manager:
 
     # Subsignals are defined inside each module. Here we define state manager subsignals:
-    SS_AUDIO_PLAYER_STATE = 1
     SS_MIDI_PLAYER_STATE = 2
     SS_MIDI_RECORDER_STATE = 3
 
@@ -1611,11 +1610,9 @@ class zynthian_state_manager:
         else:
             self.audio_player.engine.load_latest(self.audio_player)
             self.audio_player.engine.player.start_playback(self.audio_player.handle)
-        zynsigman.send(zynsigman.S_STATE_MAN, self.SS_AUDIO_PLAYER_STATE, state=True)
 
     def stop_audio_player(self):
         self.audio_player.engine.player.stop_playback(self.audio_player.handle)
-        zynsigman.send(zynsigman.S_STATE_MAN, self.SS_AUDIO_PLAYER_STATE, state=False)
 
     def toggle_audio_player(self):
         """Toggle playback of global audio player"""
