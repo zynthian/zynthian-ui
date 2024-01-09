@@ -374,7 +374,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 						else:
 							ctrl_dict['transport'].set_value("stopped", False)
 							processor.status = ""
-						zynsigman.send(zynsigman.S_AUDIO_PLAYER, self.SS_AUDIO_PLAYER_STATE, state=value)
+						zynsigman.send(zynsigman.S_AUDIO_PLAYER, self.SS_AUDIO_PLAYER_STATE, handle=handle, state=value)
 					elif id == 2:
 						ctrl_dict['position'].set_value(value, False)
 					elif id == 3:

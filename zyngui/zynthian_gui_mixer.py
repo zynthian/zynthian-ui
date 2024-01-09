@@ -856,7 +856,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.pending_refresh_queue.add((strip, "rec"))
 
 	# Function to handle audio play status
-	def update_control_play(self, state):
+	def update_control_play(self, handle, state):
 		for strip in self.visible_mixer_strips:
 			self.pending_refresh_queue.add((strip, "play"))
 
