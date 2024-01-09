@@ -71,7 +71,7 @@ class zynthian_gui_midi_chan(zynthian_gui_selector):
 				continue
 			used_mark = ""
 			num_chains = self.zyngui.chain_manager.get_num_chains_midi_chan(i)
-			logging.debug(f"CHANNEL {i} => {num_chains} chains")
+			#logging.debug(f"CHANNEL {i} => {num_chains} chains")
 			if i == self.midi_chan:
 				check_mark = "\u2612"
 				if num_chains > 7:
