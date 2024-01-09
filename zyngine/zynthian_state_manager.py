@@ -527,7 +527,11 @@ class zynthian_state_manager:
                 # Audio Recorder Status => Implemented in zyngine/zynthian_audio_recorder.py
 
                 # MIDI Player
-                self.status_midi_player = libsmf.getPlayState()
+                status_midi_player = libsmf.getPlayState()
+                if self.status_midi_player != status_midi_player:
+                    #TODO: Add callback from MIDI player to avoid polling (and regular access to c-lib)
+                    self.status_midi_player = libsmf.getPlayState()
+                    zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_PLAYER_STATE, state=False)
 
                 # MIDI Recorder
                 self.status_midi_recorder = libsmf.isRecording()
@@ -1704,6 +1708,7 @@ class zynthian_state_manager:
             if libsmf.getPlayState() != zynsmf.PLAY_STATE_STOPPED:
                 self.status_midi_player = True
                 zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_PLAYER_STATE, state=True)
+                self.status_midi_player = False
             self.last_midi_file = fpath
             #self.zynseq.libseq.transportLocate(0)
         except Exception as e:
