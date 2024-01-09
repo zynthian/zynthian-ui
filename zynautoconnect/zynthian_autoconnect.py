@@ -536,9 +536,28 @@ def midi_autoconnect():
 	for chain_id, chain in chain_manager.chains.items():
 		# Add chain internal routes
 		routes = chain_manager.get_chain_midi_routing(chain_id)
+		for dst in list(routes):
+			if isinstance(dst, int):
+				# Destination is a chain
+				route = routes.pop(dst)
+				dst_chain = chain_manager.get_chain(dst)
+				if dst_chain:
+					if dst_chain.midi_slots:
+						for proc in dst_chain.midi_slots[0]:
+							try: #TODO: Do we need to try to add or is this always new? (Same in audio_autoconnect)
+								routes[proc.engine.get_jackname()].add(route)
+							except:
+								routes[proc.engine.get_jackname()] = route
+					elif dst_chain.synth_slots:
+						try:
+							proc = dst_chain.synth_slots[0][0]
+							routes[proc.engine.get_jackname()].add(route)
+						except:
+							routes[proc.engine.get_jackname()] = route
+						
+
 		for dst_name in routes:
-			dst_ports = jclient.get_ports(re.escape(dst_name), is_input=True, is_midi=True)
-		
+			dst_ports = jclient.get_ports(re.escape(dst_name), is_input=True, is_midi=True)		
 			for src_name in routes[dst_name]:
 				src_ports = jclient.get_ports(src_name, is_output=True, is_midi=True)
 				if src_ports and dst_ports:
@@ -681,7 +700,10 @@ def audio_autoconnect():
 				if dst_chain:
 					if dst_chain.audio_slots and dst_chain.fader_pos:
 						for proc in dst_chain.audio_slots[0]:
-							routes[proc.get_jackname()] = route
+							try:
+								routes[proc.get_jackname()].add(route)
+							except:
+								routes[proc.get_jackname()] = route
 					else:
 						try:
 							routes[f"zynmixer:input_{dst_chain.mixer_chan + 1:02d}"].add(route)

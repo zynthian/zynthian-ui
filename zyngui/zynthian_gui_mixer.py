@@ -390,6 +390,8 @@ class zynthian_gui_mixer_strip():
 
 		try:
 			if not self.chain.is_audio():
+				self.parent.main_canvas.itemconfig(self.record_indicator, state=tkinter.HIDDEN)
+				self.parent.main_canvas.itemconfig(self.play_indicator, state=tkinter.HIDDEN)
 				return
 		except Exception as e:
 			logging.error(e)
@@ -414,7 +416,7 @@ class zynthian_gui_mixer_strip():
 			self.draw_mono()
 
 		if control in [None, 'rec']:
-			if self.parent.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan):
+			if self.chain.is_audio() and self.parent.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan):
 				if self.parent.zyngui.state_manager.audio_recorder.get_status():
 					self.parent.main_canvas.itemconfig(self.record_indicator, fill=self.rec_color, state=tkinter.NORMAL)
 				else:
