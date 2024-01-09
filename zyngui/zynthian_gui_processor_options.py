@@ -143,7 +143,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector, zynthian_gui_save_pr
 
 
 	def move_upchain(self):
-		self.chain.nudge_processor(self.processor, True)
+		self.zyngui.chain_manager.nudge_processor(self.chain_id, self.processor, True)
 		self.zyngui.close_screen()
 
 
@@ -158,7 +158,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector, zynthian_gui_save_pr
 
 
 	def move_downchain(self):
-		self.chain.nudge_processor(self.processor, False)
+		self.zyngui.chain_manager.nudge_processor(self.chain_id, self.processor, False)
 		self.zyngui.close_screen()
 
 

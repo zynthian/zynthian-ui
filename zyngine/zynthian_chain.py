@@ -676,7 +676,7 @@ class zynthian_chain:
                     if is_audio and cur_slot < self.fader_pos:
                         self.fader_pos -= 1
                 else:
-                    return
+                    return False
             else:
                 if parallel:
                     slots[cur_slot].remove(processor)
@@ -691,13 +691,12 @@ class zynthian_chain:
                     if is_audio and cur_slot < self.fader_pos:
                         self.fader_pos -= 1
                 else:
-                    return
+                    return False
 
             self.rebuild_graph()
-            zynautoconnect.request_audio_connect(True)
-            zynautoconnect.request_midi_connect(True)
         except:
             logging.error("Failed to move processor")
+        return True
 
     def swap_processors(self, processor1, processor2):
         """Swap two processors in chain

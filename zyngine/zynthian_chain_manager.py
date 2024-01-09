@@ -741,6 +741,17 @@ class zynthian_chain_manager():
         self.state_manager.end_busy("add_processor")
         return None
 
+    def nudge_processor(self, chain_id, processor, up):
+        if (chain_id not in self.chains):
+            return None
+        chain = self.chains[chain_id]
+        if chain.nudge_processor(processor, up):
+            for src_chain in self.chains.values():
+                if chain_id in src_chain.audio_out:
+                    src_chain.rebuild_graph()
+        zynautoconnect.request_audio_connect(True)
+        zynautoconnect.request_midi_connect(True)
+
     def remove_processor(self, chain_id, processor, stop_engine=True, autoroute=True):
         """Remove a processor from a chain
 
