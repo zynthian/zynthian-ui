@@ -310,7 +310,7 @@ class zynthian_legacy_snapshot:
                 state["zs3"]["zs3-0"]["chains"][chain_id]["audio_thru"] = True
                 chain["midi_chan"] = None
                 if chain["mixer_chan"] > 17:
-                    chain["mixer_chan"] = 255
+                    chain["mixer_chan"] = 17 #TODO: Get max channels from mixer
 
             # Fix-up audio outputs
             if chain_id == 0:

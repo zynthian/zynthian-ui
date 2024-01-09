@@ -136,12 +136,14 @@ class zynthian_gui_processor_options(zynthian_gui_selector, zynthian_gui_save_pr
 		slot = self.chain.get_slot(self.processor)
 		if slot == 0:
 			slots = self.chain.get_slots_by_type(self.processor.type)
+			if self.processor.type == "Audio Effect" and slot >= self.chain.fader_pos:
+				return True
 			return len(slots[0]) > 1
 		return (slot is not None and slot > 0)
 
 
 	def move_upchain(self):
-		self.chain.move_processor(self.processor, self.chain.get_slot(self.processor) - 1)
+		self.chain.nudge_processor(self.processor, True)
 		self.zyngui.close_screen()
 
 
@@ -149,12 +151,14 @@ class zynthian_gui_processor_options(zynthian_gui_selector, zynthian_gui_save_pr
 		slot = self.chain.get_slot(self.processor)
 		slots = self.chain.get_slots_by_type(self.processor.type)
 		if slot >= len(slots) - 1:
+			if self.processor.type == "Audio Effect" and slot < self.chain.fader_pos:
+				return True
 			return len(slots[0]) > 1
 		return (slot is not None and slot + 1 < self.chain.get_slot_count(self.processor.type))
 
 
 	def move_downchain(self):
-		self.chain.move_processor(self.processor, self.chain.get_slot(self.processor) + 1)
+		self.chain.nudge_processor(self.processor, False)
 		self.zyngui.close_screen()
 
 

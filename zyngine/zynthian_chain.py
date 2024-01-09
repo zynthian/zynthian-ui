@@ -4,7 +4,7 @@
 #
 # zynthian chain
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 # *****************************************************************************
@@ -90,7 +90,7 @@ class zynthian_chain:
         if self.chain_id == 0:
             # Main mix bus
             self.title = "Main"
-            self.audio_in = ["zynmixer:send"]
+            self.audio_in = ["zynmixer:output_17"]
             self.audio_out = ["system:playback_[1,2]$"] # Default use first two physical audio outputs
             self.audio_thru = True
         else:
@@ -137,7 +137,7 @@ class zynthian_chain:
     def set_mixer_chan(self, chan):
         """Set chain mixer channel
 
-        chan : Mixer channel 0..15, 255 or None
+        chan : Mixer channel 0..Max Channels or None
         """
 
         self.mixer_chan = chan
@@ -303,10 +303,7 @@ class zynthian_chain:
                 else:
                     # Post fader
                     if i == self.fader_pos:
-                        if self.chain_id:
-                            self.audio_routes[processor.get_jackname()] = [f"zynmixer:output_{self.mixer_chan + 1:02d}"]
-                        else:
-                            self.audio_routes[processor.get_jackname()] = [f"zynmixer:main_output"]
+                        self.audio_routes[processor.get_jackname()] = [f"zynmixer:output_{self.mixer_chan + 1:02d}"]
                     else:
                         for prev_proc in self.audio_slots[i - 1]:
                             sources.append(prev_proc.get_jackname())
@@ -330,11 +327,11 @@ class zynthian_chain:
                 for proc in self.synth_slots[0]:
                     mixer_source.append(proc.get_jackname())
             elif self.audio_thru:
-                # Routing from capture ports
+                # Routing from capture ports or main chain
                 mixer_source = self.get_input_pairs()
             # Connect end of pre-fader chain
             if self.chain_id == 0:
-                self.audio_routes["zynmixer:return"] = mixer_source
+                self.audio_routes["zynmixer:input_18"] = mixer_source
             else:
                 self.audio_routes[f"zynmixer:input_{self.mixer_chan + 1:02d}"] = mixer_source
 
@@ -345,9 +342,6 @@ class zynthian_chain:
                 sources = []
                 for processor in slot:
                     sources.append(processor.get_jackname())
-            elif self.chain_id == 0:
-                # Use main mixbus output
-                sources = ["zynmixer:main_output"]
             else:
                 # Use mixer channel output
                 #sources = [] # Do not route - zynmixer will normalise outputs to main mix bus
@@ -363,7 +357,7 @@ class zynthian_chain:
         Returns : List of regexps
         """
         
-        if self.audio_in == ["zynmixer:send"]:
+        if self.chain_id == 0:
             return self.audio_in.copy()
         sources = []
         for i in range(0, len(self.audio_in), 2):
@@ -664,26 +658,43 @@ class zynthian_chain:
         for processor in self.get_processors():
             self.remove_processor(processor)
 
-    def move_processor(self, processor, slot):
-        """Move processor to different slot
-
-        processor : Processor object
-        slot : Index of slot to move process to
-        Fails if slot does not exist
-        """
-
+    def nudge_processor(self, processor, up):
         try:
             slots = self.get_slots_by_type(processor.type)
-            if slot < 0:
-                slots.insert(0, [])
-                slot = 0
-            elif slot >= len(slots):
-                slots.append([])
             cur_slot = self.get_slot(processor)
-            slots[cur_slot].remove(processor)
-            slots[slot].append(processor)
-            while [] in slots:
-                slots.remove([])
+            parallel = len(slots[cur_slot]) > 1
+            is_audio = processor.type == "Audio Effect"
+            if up:
+                if parallel:
+                    slots[cur_slot].remove(processor)
+                    slots.insert(cur_slot, [processor])
+                    if is_audio and cur_slot < self.fader_pos:
+                        self.fader_pos += 1
+                elif is_audio and cur_slot == self.fader_pos:
+                    self.fader_pos += 1
+                elif cur_slot > 0:
+                    slots.pop(cur_slot)
+                    slots[cur_slot - 1].append(processor)
+                    if is_audio and cur_slot < self.fader_pos:
+                        self.fader_pos -= 1
+                else:
+                    return
+            else:
+                if parallel:
+                    slots[cur_slot].remove(processor)
+                    slots.insert(cur_slot + 1, [processor])
+                    if is_audio and cur_slot < self.fader_pos:
+                        self.fader_pos += 1
+                elif is_audio and cur_slot + 1 == self.fader_pos:
+                    self.fader_pos -= 1
+                elif cur_slot + 1 < len(slots):
+                    slots.pop(cur_slot)
+                    slots[cur_slot].append(processor)
+                    if is_audio and cur_slot < self.fader_pos:
+                        self.fader_pos -= 1
+                else:
+                    return
+
             self.rebuild_graph()
             zynautoconnect.request_audio_connect(True)
             zynautoconnect.request_midi_connect(True)

@@ -5,7 +5,7 @@
 #
 # Main Class for Zynthian GUI
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -88,7 +88,7 @@ from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen
 from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
 
-MIXER_MAIN_CHANNEL = 255  # TODO This constant should go somewhere else
+MIXER_MAIN_CHANNEL = 17  # TODO This constant should go somewhere else
 
 # -------------------------------------------------------------------------------
 # Zynthian Main GUI Class
@@ -374,7 +374,7 @@ class zynthian_gui:
 						logging.warning("Error trying to add OSC client registration {}".format(src.hostname))
 						return
 				self.osc_clients[src.hostname] = monotonic()
-				for chan in range(self.state_manager.zynmixer.MAX_NUM_CHANNELS):
+				for chan in range(self.state_manager.zynmixer.MAX_NUM_CHANNELS - 1):
 					self.state_manager.zynmixer.enable_dpm(chan, True)
 			else:
 				if part2[:6] == "VOLUME":
@@ -2363,7 +2363,7 @@ class zynthian_gui:
 						pass
 
 			if not self.osc_clients and self.current_screen != "audio_mixer":
-				self.state_manager.zynmixer.enable_dpm(0, self.state_manager.zynmixer.MAX_NUM_CHANNELS, False)
+				self.state_manager.zynmixer.enable_dpm(0, self.state_manager.zynmixer.MAX_NUM_CHANNELS - 1, False)
 
 			# Poll
 			zynthian_gui_config.top.after(self.osc_heartbeat_timeout * 1000, self.osc_timeout)

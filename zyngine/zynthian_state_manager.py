@@ -4,7 +4,7 @@
 #
 # zynthian state manager
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 # ****************************************************************************
@@ -129,6 +129,7 @@ class zynthian_state_manager:
         self.hwmon_undervolt_file = None
         self.get_throttled_file = None
 
+        self.zynmixer = zynthian_engine_audio_mixer.zynmixer()
         self.chain_manager = zynthian_chain_manager(self)
         self.reset_zs3()
 
@@ -137,7 +138,6 @@ class zynthian_state_manager:
         self.alsa_mixer_processor.refresh_controllers()
 
         self.audio_recorder = zynthian_audio_recorder(self)
-        self.zynmixer = zynthian_engine_audio_mixer.zynmixer()
         self.zynseq = zynseq.zynseq()
         self.ctrldev_manager = None
         self.audio_player = None
@@ -258,7 +258,7 @@ class zynthian_state_manager:
         sequences : True for cleaning zynseq state (sequences)
         """
 
-        self.zynmixer.set_mute(255, 1)
+        self.zynmixer.set_mute(self.zynmixer.MAX_NUM_CHANNELS - 1, 1)
         #self.zynseq.transport_stop("ALL")
         self.zynseq.libseq.stop()
         if zynseq:
@@ -272,7 +272,7 @@ class zynthian_state_manager:
             zynautoconnect.request_midi_connect(True)
             zynautoconnect.request_audio_connect(True)
             zynautoconnect.resume()
-        self.zynmixer.set_mute(255, 0)
+        self.zynmixer.set_mute(self.zynmixer.MAX_NUM_CHANNELS - 1, 0)
 
     def clean_all(self):
         """Remove ALL Chains & Sequences."""
@@ -794,7 +794,7 @@ class zynthian_state_manager:
 
         # Audio Recorder Armed
         armed_state = []
-        for midi_chan in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255]:
+        for midi_chan in range(self.zynmixer.MAX_NUM_CHANNELS):
             if self.audio_recorder.is_armed(midi_chan):
                 armed_state.append(midi_chan)
         if armed_state:
@@ -858,14 +858,14 @@ class zynthian_state_manager:
             self.end_busy("load snapshot")
             return None
 
-        mute = self.zynmixer.get_mute(255)
+        mute = self.zynmixer.get_mute(self.zynmixer.MAX_NUM_CHANNELS - 1)
         try:
             snapshot = JSONDecoder().decode(json)
             state = self.fix_snapshot(snapshot)
 
             if load_chains:
                 # Mute output to avoid unwanted noises
-                self.zynmixer.set_mute(255, True)
+                self.zynmixer.set_mute(self.zynmixer.MAX_NUM_CHANNELS - 1, True)
 
                 zynautoconnect.pause()
                 if "chains" in state:
@@ -888,7 +888,7 @@ class zynthian_state_manager:
                     self.alsa_mixer_processor.set_state(state["alsa_mixer"])
 
                 if "audio_recorder_armed" in state:
-                    for midi_chan in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 255]:
+                    for midi_chan in range(self.zynmixer.MAX_NUM_CHANNELS):
                         if midi_chan in state["audio_recorder_armed"]:
                             self.audio_recorder.arm(midi_chan)
                         else:
@@ -918,7 +918,7 @@ class zynthian_state_manager:
         zynautoconnect.request_audio_connect(True)
 
         # Restore mute state
-        self.zynmixer.set_mute(255, mute)
+        self.zynmixer.set_mute(self.zynmixer.MAX_NUM_CHANNELS - 1, mute)
 
         self.last_snapshot_count += 1
         try:

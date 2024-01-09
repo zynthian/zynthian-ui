@@ -163,7 +163,7 @@ class zynthian_chain_manager():
         if chain_id == 0:  # main
             midi_thru = False
             audio_thru = True
-            mixer_chan = 255
+            mixer_chan = self.state_manager.zynmixer.MAX_NUM_CHANNELS - 1
 
         # If the chain already exists, update and return
         if chain_id in self.chains:

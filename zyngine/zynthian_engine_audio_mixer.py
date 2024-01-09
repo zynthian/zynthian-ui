@@ -97,7 +97,7 @@ class zynmixer(zynthian_engine):
 
 		# List of {symbol:zctrl,...} indexed by mixer strip index
 		self.zctrls = []
-		for i in range(self.MAX_NUM_CHANNELS + 1):
+		for i in range(self.MAX_NUM_CHANNELS):
 			strip_dict = {
 				'level': zynthian_controller(self, 'level', None, {
 					'is_integer': False,
@@ -175,7 +175,7 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		self.lib_zynmixer.setLevel(channel, ctypes.c_float(level))
 		if update:
 			self.zctrls[channel]['level'].set_value(level, False)
@@ -189,7 +189,7 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		self.lib_zynmixer.setBalance(channel, ctypes.c_float(balance))
 		if update:
 			self.zctrls[channel]['balance'].set_value(balance, False)
@@ -202,7 +202,7 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		return self.lib_zynmixer.getLevel(channel)
 
 	# Function to get balance for a channel
@@ -212,7 +212,7 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		return self.lib_zynmixer.getBalance(channel)
 
 	# Function to set mute for a channel
@@ -223,7 +223,7 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		self.lib_zynmixer.setMute(channel, mute)
 		if update:
 			self.zctrls[channel]['mute'].set_value(mute, False)
@@ -236,7 +236,7 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		return self.lib_zynmixer.getMute(channel)
 
 	# Function to toggle mute of a channel
@@ -244,7 +244,7 @@ class zynmixer(zynthian_engine):
 	# update: True for update controller
 	def toggle_mute(self, channel, update=False):
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		self.lib_zynmixer.toggleMute(channel)
 		mute = self.lib_zynmixer.getMute(channel)
 		if update:
@@ -259,7 +259,7 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		self.lib_zynmixer.setPhase(channel, phase)
 		if update:
 			self.zctrls[channel]['phase'].set_value(phase, False)
@@ -272,7 +272,7 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		return self.lib_zynmixer.getPhase(channel)
 
 	# Function to toggle phase reversal of a channel
@@ -282,7 +282,7 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		self.lib_zynmixer.togglePhase(channel)
 		phase = self.lib_zynmixer.getPhase(channel)
 		if update:
@@ -297,19 +297,19 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		self.lib_zynmixer.setSolo(channel, solo)
 		if update:
 			self.zctrls[channel]['solo'].set_value(solo, False)
 		zynsigman.send(zynsigman.S_AUDIO_MIXER, self.SS_ZCTRL_SET_VALUE, chan=channel, symbol="solo", value=solo)
 
-		if channel < self.MAX_NUM_CHANNELS:
-			main_solo = self.lib_zynmixer.getSolo(self.MAX_NUM_CHANNELS)
+		if channel + 1 < self.MAX_NUM_CHANNELS:
+			main_solo = self.lib_zynmixer.getSolo(self.MAX_NUM_CHANNELS - 1)
 			if update:
-				self.zctrls[self.MAX_NUM_CHANNELS]['solo'].set_value(main_solo, False)
-			zynsigman.send(zynsigman.S_AUDIO_MIXER, self.SS_ZCTRL_SET_VALUE, chan=self.MAX_NUM_CHANNELS, symbol="solo", value=main_solo)
+				self.zctrls[self.MAX_NUM_CHANNELS - 1]['solo'].set_value(main_solo, False)
+			zynsigman.send(zynsigman.S_AUDIO_MIXER, self.SS_ZCTRL_SET_VALUE, chan=self.MAX_NUM_CHANNELS - 1, symbol="solo", value=main_solo)
 		elif not solo:
-			for i in range(0, self.MAX_NUM_CHANNELS - 1):
+			for i in range(0, self.MAX_NUM_CHANNELS - 2):
 				if update:
 					self.zctrls[i]['solo'].set_value(solo, False)
 				zynsigman.send(zynsigman.S_AUDIO_MIXER, self.SS_ZCTRL_SET_VALUE, chan=i, symbol="solo", value=solo)
@@ -321,7 +321,7 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		return self.lib_zynmixer.getSolo(channel) == 1
 
 	# Function to toggle mute of a channel
@@ -331,7 +331,7 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		if self.get_solo(channel):
 			self.set_solo(channel, False)
 		else:
@@ -345,7 +345,7 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		self.lib_zynmixer.setMono(channel, mono)
 		if update:
 			self.zctrls[channel]['mono'].set_value(mono, False)
@@ -358,13 +358,13 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		return self.lib_zynmixer.getMono(channel) == 1
 
 	# Function to get all mono
 	# returns: List of mono states (True if mono)
 	def get_all_monos(self):
-		monos = (ctypes.c_bool * (self.MAX_NUM_CHANNELS + 1))()
+		monos = (ctypes.c_bool * (self.MAX_NUM_CHANNELS))()
 		self.lib_zynmixer.getAllMono(monos)
 		result = []
 		for i in monos:
@@ -378,7 +378,7 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		if self.get_mono(channel):
 			self.set_mono(channel, False)
 		else:
@@ -393,7 +393,7 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		return (self.lib_zynmixer.isChannelRouted(channel) != 0)
 
 	# Function to check if channel output is routed
@@ -403,7 +403,7 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		return (self.lib_zynmixer.isChannelOutRouted(channel) != 0)
 
 	# Function to get peak programme level for a channel
@@ -414,7 +414,7 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		return self.lib_zynmixer.getDpm(channel, leg)
 
 	# Function to get peak programme hold level for a channel
@@ -425,7 +425,7 @@ class zynmixer(zynthian_engine):
 		if channel is None:
 			return
 		if channel >= self.MAX_NUM_CHANNELS:
-			channel = self.MAX_NUM_CHANNELS
+			channel = self.MAX_NUM_CHANNELS - 1
 		return self.lib_zynmixer.getDpmHold(channel, leg)
 
 	# Function to get the dpm states for a set of channels
@@ -449,8 +449,8 @@ class zynmixer(zynthian_engine):
 
 
 	# Function to enable or disable digital peak meters
-	# start: First mixer channel (255 for main mix bus)
-	# end: Last mixer channel (255 for main mix bus)
+	# start: First mixer channel
+	# end: Last mixer channel
 	# enable: True to enable
 	def enable_dpm(self, start, end, enable):
 		if start is None or end is None:
@@ -479,7 +479,7 @@ class zynmixer(zynthian_engine):
 		if not isinstance(strip, int):
 			return
 		if strip >= self.MAX_NUM_CHANNELS:
-			strip = self.MAX_NUM_CHANNELS
+			strip = self.MAX_NUM_CHANNELS - 1
 		self.zctrls[strip]['level'].reset_value()
 		self.zctrls[strip]['balance'].reset_value()
 		self.zctrls[strip]['mute'].reset_value()
@@ -491,7 +491,7 @@ class zynmixer(zynthian_engine):
 
 	# Reset mixer to default state
 	def reset_state(self):
-		for channel in range(self.MAX_NUM_CHANNELS + 1):
+		for channel in range(self.MAX_NUM_CHANNELS):
 			self.reset(channel)
 
 	def get_state(self, full=True):
@@ -501,11 +501,8 @@ class zynmixer(zynthian_engine):
 		Returns : List of dictionaries describing parameter states
 		"""
 		state = {}
-		for chan in range(self.MAX_NUM_CHANNELS + 1):
-			if chan < self.MAX_NUM_CHANNELS:
-				key = 'chan_{:02d}'.format(chan)
-			else:
-				key = 'main'
+		for chan in range(self.MAX_NUM_CHANNELS):
+			key = 'chan_{:02d}'.format(chan)
 			chan_state = {}
 			for symbol in self.zctrls[chan]:
 				zctrl = self.zctrls[chan][symbol]
@@ -527,10 +524,7 @@ class zynmixer(zynthian_engine):
 		"""
 
 		for chan, zctrls in enumerate(self.zctrls):
-			if chan < self.MAX_NUM_CHANNELS:
-				key = 'chan_{:02d}'.format(chan)
-			else:
-				key = 'main'
+			key = 'chan_{:02d}'.format(chan)
 			for symbol, zctrl in zctrls.items():
 				try:
 					zctrl.set_value(state[key][symbol], True)

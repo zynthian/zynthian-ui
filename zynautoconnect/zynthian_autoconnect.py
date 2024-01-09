@@ -717,15 +717,6 @@ def audio_autoconnect():
 		required_routes["zynmixer:input_17a"].add(ports[0].name)
 		required_routes["zynmixer:input_17b"].add(ports[1].name)
 
-	# Connect mixer to the System Output
-	"""
-	try:
-		# TODO: Support configurable output routing
-		required_routes[system_playback_ports[0].name].add("zynmixer:main_output_a")
-		required_routes[system_playback_ports[1].name].add("zynmixer:main_output_b")
-	except:
-		pass
-	"""
 
 	# Connect inputs to aubionotes
 	if zynthian_gui_config.midi_aubionotes_enabled:
@@ -788,8 +779,8 @@ def audio_connect_ffmpeg(timeout=2.0):
 	while t < timeout:
 		try:
 			#TODO: Do we want post fader, post effects feed?
-			jclient.connect("zynmixer:main_output_a", "ffmpeg:input_1")
-			jclient.connect("zynmixer:main_output_b", "ffmpeg:input_2")
+			jclient.connect(f"zynmixer:output_18a", "ffmpeg:input_1")
+			jclient.connect(f"zynmixer:output_18b", "ffmpeg:input_2")
 			return
 		except:
 			sleep(0.1)
