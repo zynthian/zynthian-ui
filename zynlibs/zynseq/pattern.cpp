@@ -68,6 +68,8 @@ StepEvent* Pattern::addEvent(StepEvent* pEvent)
     StepEvent* pNewEvent = addEvent(pEvent->getPosition(), pEvent->getCommand(), pEvent->getValue1start(), pEvent->getValue2start(), pEvent->getDuration());
     pNewEvent->setValue1end(pEvent->getValue1end());
     pNewEvent->setValue2end(pEvent->getValue2end());
+    pNewEvent->setStutterCount(pEvent->getStutterCount());
+    pNewEvent->setStutterDur(pEvent->getStutterDur());
     return pNewEvent;
 }
 
