@@ -2363,7 +2363,7 @@ class zynthian_gui:
 						pass
 
 			if not self.osc_clients and self.current_screen != "audio_mixer":
-				self.state_manager.zynmixer.enable_dpm(0, self.state_manager.zynmixer.MAX_NUM_CHANNELS - 1, False)
+				self.state_manager.zynmixer.enable_dpm(0, self.state_manager.zynmixer.MAX_NUM_CHANNELS - 2, False)
 
 			# Poll
 			zynthian_gui_config.top.after(self.osc_heartbeat_timeout * 1000, self.osc_timeout)

@@ -597,6 +597,7 @@ class zynthian_chain:
                     self.slots[i][j] = new_processor
                     self.remove_processor(old_processor)
                     new_processor.set_midi_chan(self.midi_chan)
+                    #TODO: Should we rebuild graph?
                     zynautoconnect.request_audio_connect(True)
                     zynautoconnect.request_midi_connect(True)
                     if self.current_processor == old_processor:

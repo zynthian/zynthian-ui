@@ -901,7 +901,7 @@ class zynthian_chain_manager():
         """Stop JALV engines that are not used by any processors"""
         for engine in list(self.zyngines.keys()):
             if len(self.zyngines[engine].processors) == 0 and engine[0:3] in ("JV/"):
-                logging.debug(f"Stopping Unused Jalv Engine '{engine}' ...")
+                logging.debug(f"Stopping Unused Jalv Engine '{engine}'...")
                 self.state_manager.set_busy_details(f"stopping engine {self.zyngines[engine].get_name()}")
                 self.zyngines[engine].stop()
                 del self.zyngines[engine]

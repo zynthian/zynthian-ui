@@ -547,7 +547,7 @@ class zynthian_gui_base(tkinter.Frame):
 		height = int(self.status_h / 4 - 2)
 		self.dpm_a = zynthian_gui_dpm(self.zyngui.state_manager.zynmixer, self.zyngui.state_manager.zynmixer.MAX_NUM_CHANNELS - 1, 0, self.status_canvas, 0, 0, width, height, False, ("status_dpm"))
 		self.dpm_b = zynthian_gui_dpm(self.zyngui.state_manager.zynmixer, self.zyngui.state_manager.zynmixer.MAX_NUM_CHANNELS - 1, 1, self.status_canvas, 0, height + 2, width, height, False, ("status_dpm"))
-	
+
 
 	def refresh_status(self):
 		if self.shown:

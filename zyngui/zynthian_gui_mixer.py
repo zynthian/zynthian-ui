@@ -787,7 +787,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def hide(self):
 		if self.shown:
 			if not self.zyngui.osc_clients:
-				self.zynmixer.enable_dpm(0, self.MAIN_MIXBUS_STRIP_INDEX, False)
+				self.zynmixer.enable_dpm(0, self.MAIN_MIXBUS_STRIP_INDEX - 1, False)
 			self.zynmixer.disable_midi_learn()
 			zynsigman.unregister(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_control)
 			zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.zyngui.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
