@@ -787,9 +787,14 @@ class zynthian_chain_manager():
                 pass
             if stop_engine:
                 self.stop_unused_engines()
-        if autoroute:
-            zynautoconnect.request_audio_connect()
-            zynautoconnect.request_midi_connect()
+
+            if autoroute:
+                # Update chain routing (may have effected lots of chains)
+                for chain in self.chains.values():
+                    chain.rebuild_graph()
+                zynautoconnect.request_audio_connect()
+                zynautoconnect.request_midi_connect()
+ 
         self.state_manager.end_busy("remove_processor")
         return success
 
