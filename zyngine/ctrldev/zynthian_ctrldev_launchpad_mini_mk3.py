@@ -93,7 +93,6 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 		#logging.debug(f"Updating Launchpad MINI MK3 bank {bank} pad {seq} => state {state}, mode {mode}")
 		col, row = self.zynseq.get_xy_from_pad(seq)
 		note = 10 * (8 - row) + col + 1
-
 		try:
 			if mode == 0:
 				chan = 0
@@ -116,7 +115,6 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 		except:
 			chan = 0
 			vel = 0
-
 		#logging.debug("Lighting PAD {}, group {} => {}, {}, {}".format(seq, group, chan, note, vel))
 		lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
 

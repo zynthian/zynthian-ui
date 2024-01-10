@@ -3,7 +3,7 @@
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
-# Zynthian Control Device Driver for "Novation Launchpad Mini Mk1 & MK2"
+# Zynthian Control Device Driver for "Novation Launchpad Mini MK1"
 #
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
@@ -33,7 +33,7 @@ from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 
 # ------------------------------------------------------------------------------------------------------------------
-# Novation Launchpad Mini MK1 & MK2
+# Novation Launchpad Mini MK1
 # ------------------------------------------------------------------------------------------------------------------
 
 
@@ -74,20 +74,20 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 			return
 		if active_chain is None:
 			active_chain = self.chain_manager.active_chain_id
-		for i in range(0, 8):
-			chain_id = self.chain_manager.get_chain_id_by_index(i)
+		for col in range(self.cols):
+			chain_id = self.chain_manager.get_chain_id_by_index(col)
 			if chain_id and chain_id == active_chain:
 				light = self.ACTIVE_COLOUR
 			else:
 				light = self.OFF_COLOUR
-			lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 104 + i, light)
+			lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 104 + col, light)
 
 	def update_seq_bank(self):
 		if self.idev_out <= 0:
 			return
 		#logging.debug("Updating Launchpad MINI bank leds")
 		col = 8
-		for row in range(0, 8):
+		for row in range(self.rows):
 			note = 16 * row + col
 			if row == self.zynseq.bank - 1:
 				lib_zyncore.dev_send_note_on(self.idev_out, 0, note, self.ACTIVE_COLOUR)
@@ -148,7 +148,9 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 		for row in range(self.rows):
 			for col in range(self.cols + 1):
 				note = 16 * row + col
-				lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0xC)
+				lib_zyncore.dev_send_note_on(self.idev_out, 0, note, self.OFF_COLOUR)
+		for col in range(self.cols):
+			lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 104 + col, self.OFF_COLOUR)
 
 	def sleep_on(self):
 		self.light_off()
