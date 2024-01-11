@@ -424,8 +424,8 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_banks(cls):
-		banks=[]
-		for b in cls.get_filelist(cls.soundfont_dirs,"sf2") + cls.get_filelist(cls.soundfont_dirs,"sf3"):
+		banks = []
+		for b in cls.get_filelist(cls.bank_dirs, "sf2") + cls.get_filelist(cls.bank_dirs, "sf3"):
 			head, tail = os.path.split(b[0])
 			fname, fext = os.path.splitext(tail)
 			banks.append({
