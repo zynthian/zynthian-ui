@@ -544,16 +544,10 @@ def midi_autoconnect():
 				if dst_chain:
 					if dst_chain.midi_slots:
 						for proc in dst_chain.midi_slots[0]:
-							try: #TODO: Do we need to try to add or is this always new? (Same in audio_autoconnect)
-								routes[proc.engine.get_jackname()].add(route)
-							except:
-								routes[proc.engine.get_jackname()] = route
-					elif dst_chain.synth_slots:
-						try:
-							proc = dst_chain.synth_slots[0][0]
-							routes[proc.engine.get_jackname()].add(route)
-						except:
 							routes[proc.engine.get_jackname()] = route
+					elif dst_chain.synth_slots:
+						proc = dst_chain.synth_slots[0][0]
+						routes[proc.engine.get_jackname()] = route
 						
 
 		for dst_name in routes:
@@ -700,15 +694,9 @@ def audio_autoconnect():
 				if dst_chain:
 					if dst_chain.audio_slots and dst_chain.fader_pos:
 						for proc in dst_chain.audio_slots[0]:
-							try:
-								routes[proc.get_jackname()].add(route)
-							except:
-								routes[proc.get_jackname()] = route
+							routes[proc.get_jackname()] = route
 					else:
-						try:
-							routes[f"zynmixer:input_{dst_chain.mixer_chan + 1:02d}"].add(route)
-						except:
-							routes[f"zynmixer:input_{dst_chain.mixer_chan + 1:02d}"] = route
+						routes[f"zynmixer:input_{dst_chain.mixer_chan + 1:02d}"] = route
 		for dst in routes:
 			if dst in sidechain_ports:
 				# This is an exact match so we do want to route exactly this

@@ -171,14 +171,15 @@ class zynthian_engine_aeolus(zynthian_engine):
 				['Trumpet', 27, 'off', 'off|on', [2, 13]],
 				['I+II', 28, 'off', 'off|on', [2, 14]],
 				['I+III', 29, 'off', 'off|on', [2, 15]],
-				['Sustain', 64, "off", "off|on"]
+				['Sustain', 64, "off", "off|on"],
+				['Reverb', 91, 64]
 			],
 			"ctrl_screens": [
 				['Manual I (1)', ['Principal 8', 'Principal 4', 'Octave 2', 'Octave 1']],
 				['Manual I (2)', ['Quint 5 1/3', 'Quint 2 2/3', 'Tibia 8', 'Celesta 8']],
 				['Manual I (3)', ['Flöte 8', 'Flöte 4', 'Flöte 2', 'Cymbel VI']],
 				['Manual I (4)', ['Mixtur', 'Trumpet', 'I+II', 'I+III']],
-				['Manual I (5)', ['Sustain']]
+				['Manual I (5)', ['Sustain', 'Reverb']]
 			]
 		},
 		{
@@ -271,7 +272,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 		chain_manager = self.state_manager.chain_manager
 		midi_chan = self.processors[0].midi_chan
 		proc_i = 0
-		for i in range(4):
+		for i in range(3, -1, -1):
 			if (1 << i) & self.keyboard_config:
 				if proc_i >= len(self.processors):
 					# First chain is already added
@@ -400,6 +401,20 @@ class zynthian_engine_aeolus(zynthian_engine):
 		"""Update the MIDI channels that aeolus listens to
 
 		processor : Processor (not used - always updates all)
+
+		MIDI configuration is set by sending osc command to /store_midi_config with 17 integer values
+		First value defines the MIDI preset configuration to store (0..7)
+		The next 16 values define each MIDI channel configuration as bitwise flags:
+			0x1000: Enable keyboards - bits 0..1 define which keyboard:
+				0x1000: Keyboard III
+				0x1001: Keyboard II
+				0x1002: Keyboard I
+				0x1003: Pedals
+			0x2000: Enable divisions - bit 2 defines which division:
+				0x2000: Division III
+				0x2010: Division II
+			0x4000: Enable control
+		Note: There are other bit combinations that produce other results but this looks like software bug
 		"""
 
 		if self.osc_server is None:
@@ -407,11 +422,11 @@ class zynthian_engine_aeolus(zynthian_engine):
 		midi_config = []
 		for chan in range(16):
 			val = 0
-			for i, processor in enumerate(self.processors):
+			for processor in self.processors:
 				if processor.midi_chan == chan:
 					val = 0x5000 | processor.division
-					if processor.division > 1:
-						# Last two keyboards (III,II) are swell manuals
+					if processor.division < 2:
+						# Keyboards II & III are swell manuals
 						val |= 0x2000 + (processor.division << 4)
 					break
 			midi_config.append(("i", val))
