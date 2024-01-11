@@ -517,7 +517,6 @@ class zynthian_gui:
 		self.screens['layer'] = zynthian_gui_layer()
 		self.screens['layer_options'] = zynthian_gui_layer_options()
 		self.screens['sublayer_options'] = zynthian_gui_sublayer_options()
-		self.screens['snapshot'] = zynthian_gui_snapshot()
 		self.screens['midi_chan'] = zynthian_gui_midi_chan()
 		self.screens['midi_cc'] = zynthian_gui_midi_cc()
 		self.screens['midi_prog'] = zynthian_gui_midi_prog()
@@ -529,13 +528,24 @@ class zynthian_gui:
 		self.screens['bank'] = zynthian_gui_bank()
 		self.screens['preset'] = zynthian_gui_preset()
 		self.screens['control'] = zynthian_gui_control()
-		self.screens['control_xy'] = zynthian_gui_control_xy()
-		self.screens['midi_profile'] = zynthian_gui_midi_profile()
+		self.screens['snapshot'] = zynthian_gui_snapshot()
 		self.screens['zs3'] = zynthian_gui_zs3()
 		self.screens['zs3_options'] = zynthian_gui_zs3_options()
-		self.screens['tempo'] = zynthian_gui_tempo()
-		self.screens['admin'] = zynthian_gui_admin()
+		self.create_audio_player()
+		self.screens['audio_player'] = self.screens['control']
+		self.screens['alsa_mixer'] = self.screens['control']
+		self.screens['control_xy'] = zynthian_gui_control_xy()
 		self.screens['audio_mixer'] = zynthian_gui_mixer()
+		self.screens['tempo'] = zynthian_gui_tempo()
+		self.screens['pattern_editor'] = zynthian_gui_patterneditor()
+		self.screens['zynpad'] = zynthian_gui_zynpad()
+		self.screens['arranger'] = zynthian_gui_arranger()
+		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
+		self.screens['brightness_config'] = zynthian_gui_brightness_config()
+		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
+		self.screens['midi_profile'] = zynthian_gui_midi_profile()
+		self.screens['control_test'] = zynthian_gui_control_test()
+		self.screens['admin'] = zynthian_gui_admin()
 
 		# Create the right main menu screen
 		if zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
@@ -543,24 +553,14 @@ class zynthian_gui:
 		else:
 			self.screens['main_menu'] = zynthian_gui_main_menu()
 
-		# Create UI Apps Screens
-		self.create_audio_player()
-		self.screens['audio_player'] = self.screens['control']
-		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
-		self.screens['alsa_mixer'] = self.screens['control']
-		self.screens['zynpad'] = zynthian_gui_zynpad()
-		self.screens['arranger'] = zynthian_gui_arranger()
-		self.screens['pattern_editor'] = zynthian_gui_patterneditor()
-		self.screens['brightness_config'] = zynthian_gui_brightness_config()
-		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
-		self.screens['control_test'] = zynthian_gui_control_test()
-
-		# Create Zynaptik-related screens
+		# Create Zynaptik-dependant screens
 		try:
 			if callable(lib_zyncore.init_zynaptik):
 				self.screens['cv_config'] = zynthian_gui_cv_config()
 		except:
 			pass
+
+		# Create extra UI Screens
 
 		# Initialize Control Device Manager
 		self.ctrldev_manager = zynthian_ctrldev_manager()
