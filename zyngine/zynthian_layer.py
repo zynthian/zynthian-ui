@@ -520,11 +520,11 @@ class zynthian_layer:
 	# MIDI processing
 	# ----------------------------------------------------------------------------
 
-	def midi_control_change(self, chan, ccnum, ccval):
+	def midi_control_change(self, idev, chan, ccnum, ccval):
 		if self.engine:
 			#logging.debug("Receving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
 			try:
-				self.engine.midi_control_change(chan, ccnum, ccval)
+				self.engine.midi_control_change(idev, chan, ccnum, ccval)
 			except:
 				pass
 

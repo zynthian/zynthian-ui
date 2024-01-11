@@ -609,17 +609,17 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				if self.zyngui.curlayer:
 					for layer in self.layers:
 						if layer.midi_chan == self.zyngui.curlayer.midi_chan or ccnum in (64, 66, 67, 69):
-							layer.midi_control_change(None, ccnum, ccval)
+							layer.midi_control_change(idev, None, ccnum, ccval)
 			elif mode == "OMNI":
 				for layer in self.layers:
-					layer.midi_control_change(None, ccnum, ccval)
+					layer.midi_control_change(idev, None, ccnum, ccval)
 			# MULTI mode: Global MIDI-learning (MIDI channel + CC)
 			else:  # mode == "MULTI":
 				for layer in self.layers:
-					layer.midi_control_change(chan, ccnum, ccval)
+					layer.midi_control_change(idev, chan, ccnum, ccval)
 
 			# Audio Levels "chain"
-			self.amixer_layer.midi_control_change(chan, ccnum, ccval)
+			self.amixer_layer.midi_control_change(idev, chan, ccnum, ccval)
 
 	def set_midi_prog_preset(self, midich, prognum):
 		changed = False

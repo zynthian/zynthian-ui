@@ -703,20 +703,20 @@ class zynthian_engine(zynthian_basic_engine):
 	# MIDI CC processing
 	# ----------------------------------------------------------------------------
 
-	def midi_control_change(self, chan, ccnum, val):
+	def midi_control_change(self, idev, chan, ccnum, val):
 		# ACTI mode: Ignore MIDI channel
 		if chan is None:
 			for ch in range(0, 15):
 				if self.learned_cc[ch][ccnum]:
-					self.learned_cc[ch][ccnum].midi_control_change(val)
+					self.learned_cc[ch][ccnum].midi_control_change(idev, val)
 		# MULTI mode: Global MIDI learning chan+ccnum
 		else:
-			self.learned_cc[chan][ccnum].midi_control_change(val)
+			self.learned_cc[chan][ccnum].midi_control_change(idev, val)
 
 	def midi_zctrl_change(self, zctrl, val):
 		if val != zctrl.get_ctrl_midi_val():
 			try:
-				zctrl.midi_control_change(val)
+				zctrl.midi_control_change(-1, val)
 			except Exception as e:
 				logging.debug(e)
 

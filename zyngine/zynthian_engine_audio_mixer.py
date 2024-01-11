@@ -359,10 +359,10 @@ class zynmixer(zynthian_engine):
 	# MIDI Learn
 	#--------------------------------------------------------------------------
 
-	def midi_control_change(self, chan, ccnum, val):
+	def midi_control_change(self, idev, chan, ccnum, val):
 		for ch in range(16):
 			try:
-				self.learned_cc[ch][ccnum].midi_control_change(val)
+				self.learned_cc[ch][ccnum].midi_control_change(idev, val)
 			except:
 				pass
 

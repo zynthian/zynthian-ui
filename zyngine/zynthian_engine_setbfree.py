@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_setbfree)
 # 
 # zynthian_engine implementation for setBfree Hammond Emulator
 # 
 # Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -20,7 +20,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import re
 import logging
@@ -28,9 +28,10 @@ import pexpect
 
 from . import zynthian_engine
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # setBfree Engine Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_engine_setbfree(zynthian_engine):
 
@@ -48,15 +49,13 @@ class zynthian_engine_setbfree(zynthian_engine):
 		['Split: Pedals + Lower + Upper', 6, 'Split Pedals + Lower + Upper', '_', [True, True, 57]]
 	]
 
-
 	bank_twmodels_list = [
 		['Sin', 0, 'Sine', '_'],
 		['Sqr', 1, 'Square', '_'],
 		['Tri', 2, 'Triangle', '_']
 	]
 
-
-	tonewheel_config = { 
+	tonewheel_config = {
 		"Sin": "",
 
 		"Sqr": """
@@ -163,9 +162,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 		'overdrive_ogain': 'overdrive outputgain'
 	}
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Config variables
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	base_dir = zynthian_engine.data_dir + "/setbfree"
 	presets_fpath = base_dir + "/pgm/all.pgm"
@@ -173,9 +172,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 	config_my_fpath = zynthian_engine.config_dir + "/setbfree/zynthian.cfg"
 	config_autogen_fpath = zynthian_engine.config_dir + "/setbfree/.autogen.cfg"
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Initialization
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def __init__(self, zyngui=None):
 		super().__init__(zyngui)
@@ -201,7 +200,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.command_prompt = "\nAll systems go."
 
 		self.reset()
-
 
 	def generate_config_file(self, midi_chans):
 		# Get user's config
@@ -234,7 +232,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 			res = res + '/' + chan_name
 		return res
 
-
 	def get_path(self, layer):
 		path = self.name
 		if not self.manuals_config:
@@ -259,9 +256,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 		except:
 			return None
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Bank Managament
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def get_bank_list(self, layer):
 		if not self.manuals_config:
@@ -359,16 +356,13 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 			return True
 
-
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Preset Managament
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
 		logging.debug("Preset List for Bank {}".format(bank[0]))
 		return self.load_program_list(bank[0])
-
 
 	def set_preset(self, layer, preset, preload=False):
 		if super().set_preset(layer, preset):
@@ -376,7 +370,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 			return True
 		else:
 			return False
-
 
 	def cmp_presets(self, preset1, preset2):
 		try:
@@ -387,10 +380,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 		except:
 			return False
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Controller Managament
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def update_controller_values(self, layer, preset):
 		#Get values from preset params and set them into controllers
@@ -422,19 +414,17 @@ class zynthian_engine_setbfree(zynthian_engine):
 			except Exception as e:
 				logging.debug("Can't update controller '{}' => {}".format(zcsymbol, e))
 
-
 	def midi_zctrl_change(self, zctrl, val):
 		try:
 			if val != zctrl.get_value():
 				zctrl.set_value(val)
 				#logging.debug("MIDI CC {} -> '{}' = {}".format(zctrl.midi_cc, zctrl.name, val))
-
 		except Exception as e:
 			logging.debug(e)
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Specific functionality
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def get_bank_dir(self, layer):
 		bank_dir = self.base_dir+"/pgm-banks"
@@ -442,7 +432,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 		if chan_name:
 			bank_dir = bank_dir+'/'+chan_name
 		return bank_dir
-
 
 	def load_program_list(self,fpath):
 		pgm_list = None
@@ -516,7 +505,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 		}
 		return xconfig
 
-
 	def set_extended_config(self, xconfig):
 		try:
 			self.manuals_config = xconfig['manuals_config']
@@ -524,4 +512,4 @@ class zynthian_engine_setbfree(zynthian_engine):
 		except Exception as e:
 			logging.error("Can't setup extended config => {}".format(e))
 
-#******************************************************************************
+# ******************************************************************************

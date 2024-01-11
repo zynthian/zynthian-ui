@@ -2158,7 +2158,7 @@ class zynthian_gui:
 					self.screens['midi_chan'].midi_chan_activity(chan)
 					ccnum = (ev & 0x7F00) >> 8
 					ccval = (ev & 0x007F)
-					#logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan,ccnum,ccval))
+					#logging.debug("MIDI CONTROL CHANGE: IDEV{}, CH{}, CC{} => {}".format(idev, chan, ccnum, ccval))
 					if ccnum < 120:
 						# If MIDI learn pending ...
 						if self.midi_learn_zctrl:
@@ -2167,8 +2167,8 @@ class zynthian_gui:
 						# Try layer's zctrls
 						else:
 							self.screens['layer'].midi_control_change(idev, chan, ccnum, ccval)
-							self.zynmixer.midi_control_change(chan, ccnum, ccval)
-							self.audio_player.midi_control_change(chan, ccnum, ccval)
+							self.zynmixer.midi_control_change(idev, chan, ccnum, ccval)
+							self.audio_player.midi_control_change(idev, chan, ccnum, ccval)
 					# Special CCs >= Channel Mode
 					elif ccnum == 120:
 						self.all_sounds_off_chan(chan)

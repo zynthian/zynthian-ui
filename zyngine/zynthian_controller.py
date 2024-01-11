@@ -568,15 +568,19 @@ class zynthian_controller:
 	# MIDI CC processing
 	#----------------------------------------------------------------------------
 
-	def midi_control_change(self, val):
+	def midi_control_change(self, idev, val):
 		#if self.ticks:
 		#	self.set_value(val)
 		if self.is_logarithmic:
 			value = self.value_min + self.value_range * (math.pow(10, val/127) - 1) / 9
 		else:
 			value = self.value_min + val * self.value_range / 127
-		self.set_value(value)
 
-
+		# The MIDI message comes from the ctrl_in zmip (engine feedback!!!)
+		# This should be improved. Using a hardcoded "20" value is not very maintainable
+		if idev == 20:
+			self.set_value(value, False)
+		else:
+			self.set_value(value, True)
 
 #******************************************************************************
