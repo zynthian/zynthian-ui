@@ -54,7 +54,7 @@ class zynthian_ctrldev_base:
 	# Initialize control device: setup, regisater signals, etc
 	# It *SHOULD* be implemented by child class
 	def init(self):
-		logging.debug("Init() for {}: NOT IMPLEMENTED!".format(type(self).__name__))
+		self.refresh()
 
 	# End control device: restore initial state, unregister signals, etc
 	# It *SHOULD* be implemented by child class
@@ -102,10 +102,10 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 		super().__init__(state_manager, idev_in, idev_out)
 
 	def init(self):
-		self.refresh()
 		# Register for zynseq updates
 		zynsigman.register_queued(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
 		zynsigman.register_queued(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_REFRESH, self.refresh)
+		super().init()
 
 	def end(self):
 		# Unregister from zynseq updates
@@ -170,10 +170,10 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
 		super().__init__(state_manager, idev_in, idev_out)
 
 	def init(self):
-		self.refresh()
 		zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_mixer_active_chain)
 		zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
 		zynsigman.register_queued(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_mixer_strip)
+		super().init()
 
 	def end(self):
 		zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_mixer_active_chain)
