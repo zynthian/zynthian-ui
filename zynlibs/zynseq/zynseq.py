@@ -105,7 +105,7 @@ class zynseq(zynthian_engine):
 		except Exception as e:
 			self.libseq = None
 			print("Can't initialise zynseq library: %s" % str(e))
-		
+
 		self.zctrl_tempo = zynthian_controller(self, 'tempo', None, {
 			'is_integer': False,
 			'value_min': 20.0,
@@ -113,7 +113,7 @@ class zynseq(zynthian_engine):
 			'value': self.libseq.getTempo(),
 			'nudge_factor': 0.1
 			})
-		
+
 		self.bank = None
 		self.select_bank(1, True)
 
@@ -126,7 +126,7 @@ class zynseq(zynthian_engine):
 	def update_state(self):
 		num_seq = self.col_in_bank ** 2
 		states = (ctypes.c_uint32 * num_seq)()
-		count = self.libseq.getStateChange(self.bank, 0, num_seq - 1, states)
+		count = self.libseq.getStateChange(self.bank, 0, num_seq, states)
 		for i in range(count):
 			state = states[i] & 0xff
 			mode = (states[i] >> 8) & 0xff
@@ -138,7 +138,7 @@ class zynseq(zynthian_engine):
 	def update_progress(self):
 		num_seq = self.col_in_bank ** 2
 		progress = (ctypes.c_uint16 * num_seq)()
-		count = self.libseq.getProgress(self.bank, 0, num_seq - 1, progress)
+		count = self.libseq.getProgress(self.bank, 0, num_seq, progress)
 		for i in range(count):
 			seq = (progress[i] >> 8) & 0xff
 			prog = progress[i] & 0xff
@@ -298,7 +298,7 @@ class zynseq(zynthian_engine):
 
 	def set_tempo(self, tempo):
 		self.zctrl_tempo.set_value(tempo)
-	
+
 	def get_tempo(self):
 		return self.libseq.getTempo()
 
