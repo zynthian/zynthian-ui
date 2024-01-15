@@ -217,7 +217,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.mode_icon[columns] = lst.copy()
 			iconsize = (int(row_height * 0.18), int(row_height * 0.18))
 			lst = []
-			for f in ["stopped", "playing", "stopping", "starting"]:
+			for f in ["stopped", "playing", "stopping", "starting", "restarting", "stopping_sync"]:
 				img = Image.open(f"/zynthian/zynthian-ui/icons/{f}.png")
 				lst.append(ImageTk.PhotoImage(img.resize(iconsize)))
 			self.state_icon[columns] = lst.copy()
