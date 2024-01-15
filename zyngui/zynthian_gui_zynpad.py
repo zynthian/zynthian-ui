@@ -273,10 +273,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			mode = (state >> 8) & 0xFF
 			group = (state >> 16) & 0xFF
 			state &= 0xFF
-			if state == zynseq.SEQ_RESTARTING:
-				state = zynseq.SEQ_PLAYING
-			elif state == zynseq.SEQ_STOPPINGSYNC:
-				state = zynseq.SEQ_STOPPING
+		if state == zynseq.SEQ_RESTARTING:
+			state = zynseq.SEQ_PLAYING
+		elif state == zynseq.SEQ_STOPPINGSYNC:
+			state = zynseq.SEQ_STOPPING
 
 		foreground = "white"
 		cellh = self.pads[pad]["header"]
