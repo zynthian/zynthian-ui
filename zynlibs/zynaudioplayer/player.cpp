@@ -22,6 +22,7 @@
 #include <string> // provides std:string
 #include <cstring> // provides strcmp, memset
 #include <vector>
+#include <algorithm> // provides find
 
 using namespace RubberBand;
 using namespace std;
@@ -412,6 +413,7 @@ void* file_thread_fn(void * param) {
         pSrcState = src_delete(pSrcState);
 
     DPRINTF("File reader thread ended\n");
+    fprintf(stderr, "File reader thread ended\n");
     pthread_exit(NULL);
 }
 
@@ -424,12 +426,9 @@ uint8_t load(AUDIO_PLAYER * pPlayer, const char* filename, void* cb_object, cb_f
     pPlayer->track_a = 0;
     pPlayer->track_b = 0;
     pPlayer->filename = filename;
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    //pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     pPlayer->file_open = FILE_OPENING;
-    if(pthread_create(&pPlayer->file_thread, &attr, file_thread_fn, pPlayer)) {
+    if(pthread_create(&(pPlayer->file_thread), 0, file_thread_fn, pPlayer)) {
         fprintf(stderr, "libzynaudioplayer error: failed to create file reading thread\n");
         unload(pPlayer);
         return 0;
@@ -1098,12 +1097,8 @@ static void lib_exit(void) {
 }
 
 void lib_stop() {
-    auto it = g_vPlayers.begin();
-    while(it != g_vPlayers.end()) {
-        auto pPlayer = *it;
-        remove_player(*it);
-        it = g_vPlayers.begin();
-    }
+   while (!g_vPlayers.empty())
+        remove_player(g_vPlayers.front());
     jack_deactivate(g_jack_client);
     //jack_client_close(g_jack_client);
     g_jack_client = NULL;
@@ -1161,13 +1156,9 @@ void remove_player(AUDIO_PLAYER * pPlayer) {
     if (jack_port_unregister(g_jack_client, pPlayer->jack_out_b)) {
         fprintf(stderr, "libaudioplayer error: cannot unregister audio output port %02dB\n", pPlayer + 1);
     }
-    for(auto it = g_vPlayers.begin(); it != g_vPlayers.end(); ++it) {
-        if(pPlayer != *it)
-            continue;
+    auto it = find(g_vPlayers.begin(), g_vPlayers.end(), pPlayer);
+    if (it != g_vPlayers.end())
         g_vPlayers.erase(it);
-        delete pPlayer;
-        break;
-    }
 }
 
 void set_midi_chan(AUDIO_PLAYER * pPlayer, uint8_t midi_chan) {
@@ -1280,8 +1271,6 @@ uint8_t get_pitchbend_range(AUDIO_PLAYER * pPlayer) {
         return 0;
     return pPlayer->pitch_bend_range;
 }
-
-
 
 void set_buffer_size(AUDIO_PLAYER * pPlayer, unsigned int size) {
     if(pPlayer && pPlayer->file_open == FILE_CLOSED) {
