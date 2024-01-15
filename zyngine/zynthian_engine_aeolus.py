@@ -102,6 +102,20 @@ class zynthian_engine_aeolus(zynthian_engine):
 		['Trem Amp', 13, 64],
 	]
 
+	common_ctrls = [
+		['Sustain', 64, "off", "off|on"],
+		['Azimuth', 14, 64], # TODO: -0.5..+0.5
+		['Width', 15, 64], #TODO: 0..1
+		['Direct', 16, 64], #TODO: 0..1
+		['Reflect', 17, 64], #TODO: 0..1
+		['Reverb', 18, 64] #TODO: 0..1
+	]
+
+	common_ctrl_screens = [
+			["Audio (1)", ['Azimuth', 'Width', 'Direct', 'Reflect']],
+			["Audio (2)", ['Reverb', 'Sustain']]
+	]
+
 	instrument = [
 		{
 			# Manual III
@@ -118,14 +132,13 @@ class zynthian_engine_aeolus(zynthian_engine):
 				['Cymbel VI', 52, 'off', 'off|on', [0, 9]],
 				['Oboe', 53, 'off', 'off|on', [0, 10]],
 				['Tremulant', 54, 'off', 'off|on', [0, 11]],
-				['Sustain', 64, "off", "off|on"]
-			] + swell_ctrls,
+			] + swell_ctrls + common_ctrls,
 			"ctrl_screens": [
-				['Manual III (1)', ['Principal 8', 'Gemshorn 8', 'Quinta-dena 8', 'Suabile 8']],
-				['Manual III (2)', ['Rohrflöte 4', 'Dulzflöte 4', 'Quintflöte 2 2/3', 'Super-octave 2']],
-				['Manual III (3)', ['Sifflet 1', 'Cymbel VI', 'Oboe', 'Tremulant']],
-				['Manual III (4)', ['Swell', 'Trem Freq', 'Trem Amp', 'Sustain']]
-			]
+				['Stops (1)', ['Principal 8', 'Gemshorn 8', 'Quinta-dena 8', 'Suabile 8']],
+				['Stops (2)', ['Rohrflöte 4', 'Dulzflöte 4', 'Quintflöte 2 2/3', 'Super-octave 2']],
+				['Stops (3)', ['Sifflet 1', 'Cymbel VI', 'Oboe', 'Tremulant']],
+				['Swell', ['Swell', 'Trem Freq', 'Trem Amp']]
+			] + common_ctrl_screens
 		},
 		{
 			# Manual II
@@ -143,14 +156,15 @@ class zynthian_engine_aeolus(zynthian_engine):
 				['Melodia', 40, 'off', 'off|on', [1, 10]],
 				['Tremulant', 41, 'off', 'off|on', [1, 11]],
 				['II+III', 42, 'off', 'off|on', [1, 12]],
-				['Sustain', 64, "off", "off|on"]
-			] + swell_ctrls,
+				['Sustain', 64, "off", "off|on"],
+				['Reverb', 91, 64]
+			] + swell_ctrls + common_ctrls,
 			"ctrl_screens": [
-				['Manual II (1)', ['Rohrflöte 8', 'Harmonic Flute 4', 'Flauto Dolce 4', 'Nasard 2 2/3']],
-				['Manual II (2)', ['Ottavina 2', 'Tertia 1 3/5', 'Sesqui-altera', 'Septime']],
-				['Manual II (3)', ['Krumhorn', 'Melodia', 'Tremulant', 'II+III']],
-				['Manual II (4)', ['Swell', 'Trem Freq', 'Trem Amp', 'Sustain']]
-			]
+				['Stops (1)', ['Rohrflöte 8', 'Harmonic Flute 4', 'Flauto Dolce 4', 'Nasard 2 2/3']],
+				['Stops (2)', ['Ottavina 2', 'Tertia 1 3/5', 'Sesqui-altera', 'Septime']],
+				['Stops (3)', ['Krumhorn', 'Melodia', 'Tremulant', 'II+III']],
+				['Swell', ['Swell', 'Trem Freq', 'Trem Amp']]
+			] + common_ctrl_screens
 		},
 		{
 			# Manual I
@@ -173,14 +187,13 @@ class zynthian_engine_aeolus(zynthian_engine):
 				['I+III', 29, 'off', 'off|on', [2, 15]],
 				['Sustain', 64, "off", "off|on"],
 				['Reverb', 91, 64]
-			],
+			] + common_ctrls,
 			"ctrl_screens": [
-				['Manual I (1)', ['Principal 8', 'Principal 4', 'Octave 2', 'Octave 1']],
-				['Manual I (2)', ['Quint 5 1/3', 'Quint 2 2/3', 'Tibia 8', 'Celesta 8']],
-				['Manual I (3)', ['Flöte 8', 'Flöte 4', 'Flöte 2', 'Cymbel VI']],
-				['Manual I (4)', ['Mixtur', 'Trumpet', 'I+II', 'I+III']],
-				['Manual I (5)', ['Sustain', 'Reverb']]
-			]
+				['Stops (1)', ['Principal 8', 'Principal 4', 'Octave 2', 'Octave 1']],
+				['Stops (2)', ['Quint 5 1/3', 'Quint 2 2/3', 'Tibia 8', 'Celesta 8']],
+				['Stops (3)', ['Flöte 8', 'Flöte 4', 'Flöte 2', 'Cymbel VI']],
+				['Stops (4)', ['Mixtur', 'Trumpet', 'I+II', 'I+III']]
+			] + common_ctrl_screens
 		},
 		{
 			# Pedals
@@ -201,15 +214,15 @@ class zynthian_engine_aeolus(zynthian_engine):
 				['P+I', 68, 'off', 'off|on', [3, 13]],
 				['P+II', 69, 'off', 'off|on', [3, 14]],
 				['P+III', 70, 'off', 'off|on', [3, 15]],
-				['Sustain', 64, "off", "off|on"]
-			],
+				['Sustain', 64, "off", "off|on"],
+				['Reverb', 91, 64]
+			] + common_ctrls,
 			"ctrl_screens": [
-				['Pedals (1)', ['Subbass 16', 'Principal 16', 'Principal 8', 'Principal 4']],
-				['Pedals (2)', ['Octave 2', 'Octave 1', 'Quint 5 1/3', 'Quint 2 2/3']],
-				['Pedals (3)', ['Mixtur', 'Fagott 16', 'Trombone 16', 'Bombarde 32']],
-				['Pedals (4)', ['Trumpet', 'P+I', 'P+II', 'P+III']],
-				['Pedals (5)', ['Sustain']]
-			]
+				['Stops (1)', ['Subbass 16', 'Principal 16', 'Principal 8', 'Principal 4']],
+				['Stops (2)', ['Octave 2', 'Octave 1', 'Quint 5 1/3', 'Quint 2 2/3']],
+				['Stops (3)', ['Mixtur', 'Fagott 16', 'Trombone 16', 'Bombarde 32']],
+				['Stops (4)', ['Trumpet', 'P+I', 'P+II', 'P+III']]
+			] + common_ctrl_screens
 		}
 	]
 
@@ -525,7 +538,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 						value = preset[l.division][zctrl.symbol]
 						zctrl.set_value(value, True)
 					except:
-						pass
+						zctrl.set_value(zctrl.value, True)
 
 				if not preload:
 					l.preset_name = preset_info[2]
@@ -592,7 +605,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 
 
 	def send_controller_value(self, zctrl):
-		for c in self.swell_ctrls + ["Sustain"]:
+		for c in self.swell_ctrls + self.common_ctrls:
 			if zctrl.symbol == c[0]:
 				self.state_manager.zynmidi.set_midi_control(zctrl.midi_chan, zctrl.midi_cc, zctrl.value)
 				return
