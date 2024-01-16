@@ -1855,6 +1855,54 @@ class zynthian_state_manager:
     # MIDI Network Services
     # ---------------------------------------------------------------------------
 
+    # Start/Stop NetUMP-MIDI-2.0 depending on configuration
+    def default_netump(self):
+        if zynthian_gui_config.midi_netump_enabled:
+            self.start_netump(False)
+        else:
+            self.stop_netump(False)
+
+    def start_netump(self, save_config=True, wait=0):
+        self.start_busy("start_netump", "starting NetUMP MIDI 2.0")
+        logging.info("STARTING NetUMP MIDI 2.0")
+        try:
+            check_output("systemctl start jacknetumpd", shell=True)
+            zynthian_gui_config.midi_netump_enabled = 1
+            # Update MIDI profile
+            if save_config:
+                zynconf.update_midi_profile({
+                    "ZYNTHIAN_MIDI_NETUMP_ENABLED": str(zynthian_gui_config.midi_netump_enabled)
+                })
+            # Call autoconnect after a little time
+            sleep(wait)
+            zynautoconnect.request_midi_connect(True)
+        except Exception as e:
+            logging.error(e)
+            self.set_busy_error("ERROR STARTING NetUMP MIDI 2.0", e)
+            sleep(2.0)
+
+        self.end_busy("start_netump")
+
+    def stop_rtpmidi(self, save_config=True, wait=0):
+        self.start_busy("stop_netump", "stopping NetUMP MIDI 2.0")
+        logging.info("STOPPING NetUMP MIDI 2.0")
+        try:
+            check_output("systemctl stop jacknetumpd", shell=True)
+            zynthian_gui_config.midi_netump_enabled = 0
+            # Update MIDI profile
+            if save_config:
+                zynconf.update_midi_profile({
+                    "ZYNTHIAN_MIDI_NETUMP_ENABLED": str(zynthian_gui_config.midi_netump_enabled)
+                })
+            sleep(wait)
+
+        except Exception as e:
+            logging.error(e)
+            self.set_busy_error("ERROR STOPPING NetUMP MIDI 2.0", e)
+            sleep(2.0)
+
+        self.end_busy("stop_netump")
+
     # Start/Stop RTP-MIDI depending on configuration
     def default_rtpmidi(self):
         if zynthian_gui_config.midi_rtpmidi_enabled:

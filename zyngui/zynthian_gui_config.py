@@ -356,8 +356,9 @@ def set_midi_config():
 	global preset_preload_noteon, midi_prog_change_zs3
 	global midi_bank_change, midi_fine_tuning
 	global midi_filter_rules, midi_filter_output
-	global midi_sys_enabled, midi_cc_automode, midi_aubionotes_enabled
-	global midi_network_enabled, midi_rtpmidi_enabled, midi_touchosc_enabled, bluetooth_enabled
+	global midi_sys_enabled, midi_cc_automode
+	global midi_network_enabled, midi_rtpmidi_enabled, midi_netump_enabled
+	global midi_touchosc_enabled, bluetooth_enabled, midi_aubionotes_enabled
 	global master_midi_channel, master_midi_change_type
 	global master_midi_program_change_up, master_midi_program_change_down
 	global master_midi_program_base, master_midi_bank_change_ccnum
@@ -375,6 +376,7 @@ def set_midi_config():
 	midi_sys_enabled = int(os.environ.get('ZYNTHIAN_MIDI_SYS_ENABLED', 1))
 	midi_cc_automode = int(os.environ.get('ZYNTHIAN_MIDI_CC_AUTOMODE', 0))
 	midi_network_enabled = int(os.environ.get('ZYNTHIAN_MIDI_NETWORK_ENABLED', 0))
+	midi_netump_enabled = int(os.environ.get('ZYNTHIAN_MIDI_NETUMP_ENABLED', 0))
 	midi_rtpmidi_enabled = int(os.environ.get('ZYNTHIAN_MIDI_RTPMIDI_ENABLED', 0))
 	midi_touchosc_enabled = int(os.environ.get('ZYNTHIAN_MIDI_TOUCHOSC_ENABLED', 0))
 	bluetooth_enabled = int(os.environ.get('ZYNTHIAN_MIDI_BLE_ENABLED', 0))

@@ -292,7 +292,11 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         if t == 'S':
             action = self.list_data[i][0]
             wait = 2  # Delay after starting service to allow jack ports to update
-            if action == "stop_jackrtpmidid":
+            if action == "stop_jacknetumpd":
+                self.zyngui.state_manager.stop_netump(wait=wait)
+            elif action == "start_jacknetumpd":
+                self.zyngui.state_manager.start_netump(wait=wait)
+            elif action == "stop_jackrtpmidid":
                 self.zyngui.state_manager.stop_rtpmidi(wait=wait)
             elif action == "start_jackrtpmidid":
                 self.zyngui.state_manager.start_rtpmidi(wait=wait)

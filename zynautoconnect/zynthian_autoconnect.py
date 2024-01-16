@@ -432,13 +432,13 @@ def update_hw_midi_ports():
 		pass
 
 	# Treat some virtual MIDI ports as hardware
-	for port_name in ("QmidiNet:in", "jackrtpmidid:rtpmidi_in", "RtMidiIn Client:TouchOSC Bridge", "ZynMaster:midi_in"):
+	for port_name in ("QmidiNet:in", "jackrtpmidid:rtpmidi_in", "jacknetumpd:netump_in", "RtMidiIn Client:TouchOSC Bridge", "ZynMaster:midi_in"):
 		try:
 			ports = jclient.get_ports(port_name, is_midi=True, is_input=True)
 			hw_midi_dst_ports += ports
 		except:
 			pass
-	for port_name in ("QmidiNet:out", "jackrtpmidid:rtpmidi_out", "RtMidiOut Client:TouchOSC Bridge", "ZynMaster:midi_out", "aubio"):
+	for port_name in ("QmidiNet:out", "jackrtpmidid:rtpmidi_out", "jacknetumpd:netump_out", "RtMidiOut Client:TouchOSC Bridge", "ZynMaster:midi_out", "aubio"):
 		try:
 			ports = jclient.get_ports(port_name, is_midi=True, is_output=True)
 			hw_midi_src_ports += ports
@@ -824,6 +824,8 @@ def build_midi_port_name(port):
 		return port.name, "CV/Gate"
 	elif port.name.endswith(": f_midi"):
 		return port.name, "USB HOST"
+	elif port.name.startswith("jacknetumpd:netump_"):
+		return f"NET:ump_{port.name[19:]}", "NetUMP"
 	elif port.name.startswith("jackrtpmidid:rtpmidi_"):
 		return f"NET:rtp_{port.name[21:]}", "RTP MIDI"
 	elif port.name.startswith("QmidiNet:"):
