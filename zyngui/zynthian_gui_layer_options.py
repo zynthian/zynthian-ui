@@ -100,10 +100,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.list_data.append((self.layer_note_range, None, "Note Range & Transpose"))
 
 		if 'midi_capture' in eng_options and eng_options['midi_capture']:
-			self.list_data.append((self.layer_midi_capture, None, "MIDI Capture"))
+			self.list_data.append((self.layer_midi_capture, None, "MIDI In"))
 
 		if 'midi_route' in eng_options and eng_options['midi_route']:
-			self.list_data.append((self.layer_midi_routing, None, "MIDI Routing"))
+			self.list_data.append((self.layer_midi_routing, None, "MIDI Out"))
 
 		if 'midi_chan' in eng_options and eng_options['midi_chan']:
 			self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
@@ -118,10 +118,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.list_data.append((self.audio_options, None, "Audio Options..."))
 
 		if 'audio_capture' in eng_options and eng_options['audio_capture']:
-			self.list_data.append((self.layer_audio_capture, None, "Audio Capture"))
+			self.list_data.append((self.layer_audio_capture, None, "Audio In"))
 
 		if 'audio_route' in eng_options and eng_options['audio_route']:
-			self.list_data.append((self.layer_audio_routing, None, "Audio Routing..."))
+			self.list_data.append((self.layer_audio_routing, None, "Audio Out"))
 
 		if 'audio_rec' in eng_options and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
 			if self.zyngui.audio_recorder.get_status():
