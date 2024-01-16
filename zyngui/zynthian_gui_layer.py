@@ -33,6 +33,7 @@ from collections import OrderedDict
 from json import JSONEncoder, JSONDecoder
 
 # Zynthian specific modules
+import zynautoconnect
 from zyncoder.zyncore import lib_zyncore
 from zyngine import zynthian_layer
 from zyngui import zynthian_gui_config
@@ -102,6 +103,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.zyngui.set_curlayer(self.root_layers[0], populate_screens=False)
 			except:
 				self.zyngui.set_curlayer(None, populate_screens=False)
+
+
+	def update_index(self):
+		try:
+			self.index = self.root_layers.index(self.get_chain_root(self.zyngui.curlayer))
+		except:
+			self.index = 0
 
 
 	def select_action(self, i, t='S'):
@@ -177,8 +185,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	def get_root_layers(self):
-		self.root_layers = self.get_fxchain_roots()
-		return self.root_layers
+		return self.get_fxchain_roots()
 
 
 	def get_root_layer_index(self, layer=None):
@@ -367,6 +374,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				self.layers.append(layer)
 
 			self.root_layers = self.get_fxchain_roots()
+			self.setup_zmop_options_layer(layer)
 			self.zyngui.zynautoconnect()
 
 			if select:
@@ -553,23 +561,25 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 	def set_transpose(self, tr_status):
 		for i in range(0,16):
-			lib_zyncore.set_midi_filter_halftone_trans(i, tr_status[i])
+			lib_zyncore.set_midi_filter_transpose_semitone(i, tr_status[i])
 
 
-	def set_note_range(self, nr_status):
+	def set_note_range(self, nr_state):
 		for i in range(0,16):
-			if nr_status[i]:
-				lib_zyncore.set_midi_filter_note_range(i, nr_status[i]['note_low'], nr_status[i]['note_high'], nr_status[i]['octave_trans'], nr_status[i]['halftone_trans'])
+			if nr_state[i]:
+				lib_zyncore.set_midi_filter_note_low(i, nr_state[i]['note_low'])
+				lib_zyncore.set_midi_filter_note_high(i, nr_state[i]['note_high'])
+				lib_zyncore.set_midi_filter_transpose_octave(i, nr_state[i]['octave_trans'])
+				lib_zyncore.set_midi_filter_transpose_semitone(i, nr_state[i]['halftone_trans'])
 
 
 	def reset_note_range(self):
 		for i in range(0,16):
 			lib_zyncore.reset_midi_filter_note_range(i)
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# MIDI learn management
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def midi_unlearn(self, root_layer=None):
 		if root_layer is None:
@@ -578,25 +588,38 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			for layer in self.get_chain_layers(root_layer):
 				layer.midi_unlearn()
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# MIDI CC & Program Change (when ZS3 is disabled!)
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
-	def midi_control_change(self, chan, ccnum, ccval):
-		if zynthian_gui_config.midi_bank_change and ccnum==0:
+	def midi_control_change(self, idev, chan, ccnum, ccval):
+		if (ccnum == 0 or ccnum == 32) and zynthian_gui_config.midi_bank_change:
 			for layer in self.root_layers:
-				if layer.midi_chan==chan:
-					layer.midi_bank_msb(ccval)
-		elif zynthian_gui_config.midi_bank_change and ccnum==32:
-			for layer in self.root_layers:
-				if layer.midi_chan==chan:
-					layer.midi_bank_lsb(ccval)
+				if layer.midi_chan == chan:
+					if ccnum == 0:
+						layer.midi_bank_msb(ccval)
+					elif ccnum == 32:
+						layer.midi_bank_lsb(ccval)
 		else:
-			for layer in self.layers:
-				layer.midi_control_change(chan, ccnum, ccval)
-			self.amixer_layer.midi_control_change(chan, ccnum, ccval)
+			mode = zynautoconnect.get_midi_in_dev_mode(idev-1)
+			# All this should be limited to chains with the device (idev) enabled!!
 
+			# ACTI mode: Only active chain gets MIDI-CC. Pedals are received by all chains. MIDI channel is ignored.
+			if mode == "ACTI":
+				if self.zyngui.curlayer:
+					for layer in self.layers:
+						if layer.midi_chan == self.zyngui.curlayer.midi_chan or ccnum in (64, 66, 67, 69):
+							layer.midi_control_change(idev, None, ccnum, ccval)
+			elif mode == "OMNI":
+				for layer in self.layers:
+					layer.midi_control_change(idev, None, ccnum, ccval)
+			# MULTI mode: Global MIDI-learning (MIDI channel + CC)
+			else:  # mode == "MULTI":
+				for layer in self.layers:
+					layer.midi_control_change(idev, chan, ccnum, ccval)
+
+			# Audio Levels "chain"
+			self.amixer_layer.midi_control_change(idev, chan, ccnum, ccval)
 
 	def set_midi_prog_preset(self, midich, prognum):
 		changed = False
@@ -613,16 +636,13 @@ class zynthian_gui_layer(zynthian_gui_selector):
 				logging.error("Can't set preset for CH#{}:PC#{} => {}".format(midich, prognum, e))
 		return changed
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# ZS3 management
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def set_midi_prog_zs3(self, midich, prognum):
-		if zynthian_gui_config.midi_single_active_channel:
-			i = self.get_zs3_index_by_prognum(prognum)
-		else:
-			i = self.get_zs3_index_by_midich_prognum(midich, prognum)
+		i = self.get_zs3_index_by_prognum(prognum)
+		#i = self.get_zs3_index_by_midich_prognum(midich, prognum)
 
 		if i is not None:
 			return self.restore_zs3(i)
@@ -634,10 +654,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def save_midi_prog_zs3(self, midich, prognum):
 		# Look for a matching zs3 
 		if midich is not None and prognum is not None:
-			if zynthian_gui_config.midi_single_active_channel:
-				i = self.get_zs3_index_by_prognum(prognum)
-			else:
-				i = self.get_zs3_index_by_midich_prognum(midich, prognum)
+			i = self.get_zs3_index_by_prognum(prognum)
+			#i = self.get_zs3_index_by_midich_prognum(midich, prognum)
 		else:
 			i = None
 		
@@ -881,6 +899,86 @@ class zynthian_gui_layer(zynthian_gui_selector):
 
 
 	#----------------------------------------------------------------------------
+	# MIDI Capture
+	#----------------------------------------------------------------------------
+
+	def get_midi_capture(self):
+		# Get UI managed devices
+		ctrldev_ids = []
+		for idev in range(1, 17):
+			driver = self.zyngui.ctrldev_manager.get_device_driver(idev)
+			if driver:
+				ctrldev_ids.append(driver.dev_id)
+
+		# Get zmips flags and chain routing
+		zmip_acti_flags = []
+		zmip_omni_flags = []
+		zmip_routed_chans = []
+		for i in range(0, 17):
+			zmip_acti_flags.append(bool(lib_zyncore.zmip_get_flag_active_chan(i)))
+			zmip_omni_flags.append(bool(lib_zyncore.zmip_get_flag_omni_chan(i)))
+			zmip_routed_chans.append([])
+			for ch in range(0, 16):
+				zmip_routed_chans[i].append(bool(lib_zyncore.zmop_get_route_from(ch, i)))
+
+		# Return dictionary with results
+		res = {
+			"dev_ids": zynautoconnect.devices_in,
+			"ctrldev_ids": ctrldev_ids,
+			"zmip_acti_flags": zmip_acti_flags,
+			"zmip_omni_flags": zmip_omni_flags,
+			"zmip_routed_chans": zmip_routed_chans
+		}
+		return res
+
+
+	def set_midi_capture(self, midi_capture=None):
+		if midi_capture:
+			for dev_id in midi_capture["ctrldev_ids"]:
+				self.zyngui.ctrldev_manager.init_device_by_id(dev_id)
+
+			dev_ids = midi_capture["dev_ids"]
+			zmip_acti_flags = midi_capture["zmip_acti_flags"]
+			zmip_omni_flags = midi_capture["zmip_omni_flags"]
+			zmip_routed_chans = midi_capture["zmip_routed_chans"]
+			for i in range(0, 17):
+				# MIDI-input devices
+				if i < 16:
+					# If no device, continue with next device
+					dev_id = dev_ids[i]
+					if not dev_id:
+						continue
+					# Find a matching device (j) currently connected
+					try:
+						j = zynautoconnect.devices_in.index(dev_id)
+					except:
+						continue
+				# Network MIDI-input
+				else:
+					j = i
+
+				# Set zmip flags
+				lib_zyncore.zmip_set_flag_active_chan(j, int(zmip_acti_flags[i]))
+				lib_zyncore.zmip_set_flag_omni_chan(j, int(zmip_omni_flags[i]))
+
+				# Route zmops (chans)
+				for ch in range(0, 16):
+					lib_zyncore.zmop_set_route_from(ch, j, int(zmip_routed_chans[i][ch]))
+
+		else:
+			self.reset_midi_capture()
+
+
+	def reset_midi_capture(self):
+		for i in range(0, 17):
+			# Set zmip flags
+			lib_zyncore.zmip_set_flag_active_chan(i, 1)
+			lib_zyncore.zmip_set_flag_omni_chan(i, 0)
+			# Route zmops (chans)
+			for ch in (0, 16):
+				lib_zyncore.zmop_set_route_from(ch, i, 1)
+
+	#----------------------------------------------------------------------------
 	# Jackname managing
 	#----------------------------------------------------------------------------
 
@@ -923,6 +1021,29 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					layers.append(l)
 		return layers
 
+
+	def setup_zmop_options_layer(self, layer):
+		layer = self.get_chain_root(layer)
+		if layer.engine.type == "MIDI Tool" or layer.engine.type == "Special":
+			#logging.info(f"Routing MIDI CC & PC to chain {layer.midi_chan}")
+			lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, 0)
+			lib_zyncore.zmop_chain_set_flag_dropcc(layer.midi_chan, 0)
+		else:
+			#logging.info(f"Dropping MIDI CC & PC from chain {layer.midi_chan}")
+			lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, 1)
+			lib_zyncore.zmop_chain_set_flag_dropcc(layer.midi_chan, 1)
+
+
+	def setup_zmop_options_all(self):
+		for layer in self.root_layers:
+			if layer.engine.type == "MIDI Tool" or layer.engine.type == "Special":
+				# logging.info(f"Routing MIDI CC & PC to chain {layer.midi_chan}")
+				lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, 0)
+				lib_zyncore.zmop_chain_set_flag_dropcc(layer.midi_chan, 0)
+			else:
+				# logging.info(f"Dropping MIDI CC & PC from chain {layer.midi_chan}")
+				lib_zyncore.zmop_chain_set_flag_droppc(layer.midi_chan, 1)
+				lib_zyncore.zmop_chain_set_flag_dropcc(layer.midi_chan, 1)
 
 	# ---------------------------------------------------------------------------
 	# Synth node
@@ -1383,6 +1504,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			'layers': [],
 			'clone': [],
 			'note_range': [],
+			'midi_capture': self.get_midi_capture(),
 			'audio_capture': self.get_audio_capture(),
 			'last_snapshot_fpath': self.last_snapshot_fpath
 		}
@@ -1410,8 +1532,8 @@ class zynthian_gui_layer(zynthian_gui_selector):
 			info = {
 				'note_low': lib_zyncore.get_midi_filter_note_low(i),
 				'note_high': lib_zyncore.get_midi_filter_note_high(i),
-				'octave_trans': lib_zyncore.get_midi_filter_octave_trans(i),
-				'halftone_trans': lib_zyncore.get_midi_filter_halftone_trans(i)
+				'octave_trans': lib_zyncore.get_midi_filter_transpose_octave(i),
+				'halftone_trans': lib_zyncore.get_midi_filter_transpose_semitone(i)
 			}
 			state['note_range'].append(info)
 
@@ -1446,6 +1568,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		# Calculate root_layers
 		self.root_layers = self.get_fxchain_roots()
 
+		# Setup Router Options
+		self.setup_zmop_options_all()
+
 		# Autoconnect MIDI
 		self.zyngui.zynautoconnect_midi(True)
 
@@ -1465,6 +1590,14 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		# Restore layer state, step 2 => Restore Controllers Status
 		for i, lss in enumerate(state['layers']):
 			self.layers[i].restore_state_2(lss)
+
+		# Set MIDI Capture
+		if 'midi_capture' in state:
+			self.set_midi_capture(state['midi_capture'])
+		else:
+			self.reset_midi_capture()
+		# Refresh MIDI-IN device mode state
+		zynautoconnect.update_midi_in_dev_mode_all()
 
 		# Set Audio Routing
 		if 'audio_routing' in state:
@@ -1582,7 +1715,7 @@ class zynthian_gui_layer(zynthian_gui_selector):
 	def restore_state_zs3(self, state):
 
 		# Get restored active layer index
-		if state['index']<len(self.root_layers):
+		if state['index'] < len(self.root_layers):
 			index = state['index']
 			restore_midi_chan = self.root_layers[index].midi_chan
 		else:
@@ -1602,15 +1735,11 @@ class zynthian_gui_layer(zynthian_gui_selector):
 					pass
 				# Ensure layer's engine matches
 				elif lss["engine_nick"] == self.layers[i].engine.nickname:
-					# Omni-On (stege) mode, only retore zs3's active chain & main chain
-					if zynthian_gui_config.midi_single_active_channel:
-						if lss['midi_chan'] == 256 or restore_midi_chan is not None and lss['midi_chan'] == restore_midi_chan:
-							l2r = True
-					# Multi-timbral mode
-					elif "restore" in lss:
-						if lss["restore"]:
-							l2r = True
-					else:
+					# If restore flag is set, honor it!
+					if "restore" in lss:
+						l2r = lss["restore"]
+					# else retore zs3's active chain & main chain
+					elif lss['midi_chan'] == 256 or restore_midi_chan is not None and lss['midi_chan'] == restore_midi_chan:
 						l2r = True
 			layer2restore.append(l2r)
 
@@ -1623,6 +1752,12 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		for i, lss in enumerate(slayers):
 			if layer2restore[i]:
 				self.layers[i].restore_state_2(slayers[i], restore_midi_learn=False)
+
+		# Restore MIDI Capture state
+		if 'midi_capture' in state:
+			self.set_midi_capture(state['midi_capture'])
+			# Refresh MIDI-IN device mode state
+			zynautoconnect.update_midi_in_dev_mode_all()
 
 		# Restore Audio Capture state
 		if "audio_capture" in state:
@@ -1659,8 +1794,9 @@ class zynthian_gui_layer(zynthian_gui_selector):
 		#	self.amixer_layer.restore_state_1(state['amixer_layer'])
 		#	self.amixer_layer.restore_state_2(state['amixer_layer'])
 
-		# ONLY when Omni-On (stage) mode is enabled, set active layer
-		if zynthian_gui_config.midi_single_active_channel and index is not None and index != self.index:
+		# Set active layer
+		logging.info("Setting curlayer to {} (from {})".format(index, self.index))
+		if index is not None and index != self.index:
 			logging.info("Setting curlayer to {}".format(index))
 			self.index = index
 			self.zyngui.set_curlayer(self.root_layers[index])

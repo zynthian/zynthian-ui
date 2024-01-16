@@ -81,9 +81,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 		if self.layer.midi_chan == 256:
 			eng_options = {
 				'audio_capture': False,
+				'midi_capture': False,
 				'indelible': True,
 				'audio_rec': True,
 				'audio_route': True,
+				'midi_route': False,
 				'midi_learn': True
 			}
 		else:
@@ -94,36 +96,38 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			else:
 				eng_options['midi_learn'] = True
 
-		if self.layer.midi_chan is not None:
-			if 'note_range' in eng_options and eng_options['note_range']:
-				self.list_data.append((self.layer_note_range, None, "Note Range & Transpose"))
+		if 'note_range' in eng_options and eng_options['note_range']:
+			self.list_data.append((self.layer_note_range, None, "Note Range & Transpose"))
 
-			if 'clone' in eng_options and eng_options['clone']:
-				self.list_data.append((self.layer_clone, None, "Clone MIDI to..."))
+		if 'midi_capture' in eng_options and eng_options['midi_capture']:
+			self.list_data.append((self.layer_midi_capture, None, "MIDI In"))
 
+		if 'midi_route' in eng_options and eng_options['midi_route']:
+			self.list_data.append((self.layer_midi_routing, None, "MIDI Out"))
+
+		if 'midi_chan' in eng_options and eng_options['midi_chan']:
+			self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
+
+		if 'clone' in eng_options and eng_options['clone']:
+			self.list_data.append((self.layer_clone, None, "Clone MIDI to..."))
+
+		if 'midi_learn' in eng_options and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
+			self.list_data.append((self.midi_learn, None, "MIDI Learn"))
+
+		if self.layer.engine.type != 'MIDI Tool':
 			self.list_data.append((self.audio_options, None, "Audio Options..."))
 
 		if 'audio_capture' in eng_options and eng_options['audio_capture']:
-			self.list_data.append((self.layer_audio_capture, None, "Audio Capture"))
+			self.list_data.append((self.layer_audio_capture, None, "Audio In"))
 
 		if 'audio_route' in eng_options and eng_options['audio_route']:
-			self.list_data.append((self.layer_audio_routing, None, "Audio Output..."))
+			self.list_data.append((self.layer_audio_routing, None, "Audio Out"))
 
 		if 'audio_rec' in eng_options and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
 			if self.zyngui.audio_recorder.get_status():
 				self.list_data.append((self.toggle_recording, None, "■ Stop Audio Recording"))
 			else:
 				self.list_data.append((self.toggle_recording, None, "⬤ Start Audio Recording"))
-
-		if 'midi_route' in eng_options and eng_options['midi_route']:
-			self.list_data.append((self.layer_midi_routing, None, "MIDI Routing"))
-
-		if 'midi_chan' in eng_options and eng_options['midi_chan']:
-			self.list_data.append((self.layer_midi_chan, None, "MIDI Channel"))
-
-		if 'midi_learn' in eng_options:
-			self.list_data.append((self.midi_learn, None, "MIDI Learn"))
-
 
 		self.list_data.append((None, None, "> Chain"))
 
@@ -218,14 +222,10 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 
 		if self.layer is not None and self.layer in self.zyngui.screens['layer'].root_layers:
 			super().build_view()
-			if self.index>=len(self.list_data):
+			if self.index >= len(self.list_data):
 				self.index = len(self.list_data)-1
 		else:
 			self.zyngui.close_screen()
-
-
-	def topbar_bold_touch_action(self):
-		self.zyngui.zynswitch_defered('B', 1)
 
 
 	def select_action(self, i, t='S'):
@@ -243,6 +243,22 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 			self.zyngui.show_screen_reset('audio_mixer')
 			return True
 		return False
+
+
+	def arrow_right(self):
+		next_index = self.layer_index + 1
+		if next_index < self.zyngui.screens['layer'].get_num_root_layers():
+			self.setup(next_index)
+			self.set_select_path()
+			self.fill_list()
+
+
+	def arrow_left(self):
+		prev_index = self.layer_index - 1
+		if prev_index >= 0:
+			self.setup(prev_index)
+			self.set_select_path()
+			self.fill_list()
 
 
 	def sublayer_options(self, sublayer, t='S'):
@@ -305,13 +321,13 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def audio_options(self):
 		options = OrderedDict()
 		if self.zyngui.zynmixer.get_mono(self.layer.midi_chan):
-			options['[x] Mono'] = 'mono'
+			options['\u2612 Mono'] = 'mono'
 		else:
-			options['[  ] Mono'] = 'mono'
+			options['\u2610 Mono'] = 'mono'
 		if self.zyngui.zynmixer.get_phase(self.layer.midi_chan):
-			options['[x] Phase reverse'] = 'phase'
+			options['\u2612 Phase reverse'] = 'phase'
 		else:
-			options['[  ] Phase reverse'] = 'phase'
+			options['\u2610 Phase reverse'] = 'phase'
 
 		self.zyngui.screens['option'].config("Audio options", options, self.audio_menu_cb)
 		self.zyngui.show_screen('option')
@@ -328,6 +344,11 @@ class zynthian_gui_layer_options(zynthian_gui_selector):
 	def layer_audio_capture(self):
 		self.zyngui.screens['audio_in'].set_layer(self.layer)
 		self.zyngui.show_screen('audio_in')
+
+
+	def layer_midi_capture(self):
+		self.zyngui.screens['midi_in'].set_layer(self.layer)
+		self.zyngui.show_screen('midi_in')
 
 
 	def toggle_recording(self):

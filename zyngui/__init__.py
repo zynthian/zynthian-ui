@@ -15,6 +15,7 @@ __all__ = [
 	"zynthian_gui_audio_out",
 	"zynthian_gui_midi_out",
 	"zynthian_gui_audio_in",
+	"zynthian_gui_midi_in",
 	"zynthian_gui_bank",
 	"zynthian_gui_preset",
 	"zynthian_gui_control",
@@ -31,6 +32,7 @@ __all__ = [
 	"zynthian_gui_control_test",
 	"zynthian_gui_splash",
 	"zynthian_gui_loading",
+	"zynthian_gui_brightness_config",
 	"zynthian_gui_cv_config"
 ]
 

@@ -48,8 +48,7 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 
 	def fill_list(self):
 		self.list_data = []
-		if not zynthian_gui_config.midi_single_active_channel:
-			self.list_data.append((self.zs3_restoring_submenu, 1, "Restoring..."))
+		self.list_data.append((self.zs3_restoring_submenu, 1, "Restoring..."))
 		self.list_data.append((self.zs3_rename, 2, "Rename"))
 		self.list_data.append((self.zs3_update, 3, "Update"))
 		self.list_data.append((self.zs3_delete, 4, "Delete"))
@@ -93,9 +92,15 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 			logging.error("Bad ZS3 index ({}).".format(self.zs3_index))
 			return
 
-		options = {}
+		# Get restored active layer index
+		root_layers = self.zyngui.screens["layer"].root_layers
+		if state['index'] < len(root_layers):
+			restore_midi_chan = root_layers[state['index']].midi_chan
+		else:
+			restore_midi_chan = None
 
 		# Restoring Chains (layers)
+		options = {}
 		slayers = state["layers"]
 		for i, lss in enumerate(sorted(slayers, key=lambda lss: lss["midi_chan"])):
 			if lss["midi_chan"] == 256:
@@ -103,17 +108,24 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 			else:
 				chan = lss["midi_chan"] + 1
 			label = "{}#{} > {}".format(chan, lss["engine_name"], lss["preset_name"])
-			if "restore" in lss and not lss["restore"]:
-				options["[  ] {}".format(label)] = slayers.index(lss)
+			if "restore" in lss:
+				restore_flag = lss["restore"]
+			elif lss['midi_chan'] == 256 or restore_midi_chan is not None and lss['midi_chan'] == restore_midi_chan:
+				restore_flag = True
 			else:
-				options["[x] {}".format(label)] = slayers.index(lss)
+				restore_flag = False
+			if restore_flag:
+				options["\u2612 {}".format(label)] = slayers.index(lss)
+			else:
+				options["\u2610 {}".format(label)] = slayers.index(lss)
+
 
 		# Restoring Audio Mixer
 		smixer = state["mixer"]
 		if "restore" in smixer and not smixer["restore"]:
-			options["[  ] Mixer"] = -1
+			options["\u2610 Mixer"] = -1
 		else:
-			options["[x] Mixer"] = -1
+			options["\u2612 Mixer"] = -1
 
 		return options
 

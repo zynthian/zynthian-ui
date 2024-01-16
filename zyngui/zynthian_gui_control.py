@@ -71,13 +71,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 		else:
 			super().__init__(selcap, True, False)
 
-
 		# xyselect mode vars
 		self.xyselect_mode = False
 		self.x_zctrl = None
 		self.y_zctrl = None
-
-		self.topbar_bold_touch_action = lambda: self.zyngui.zynswitch_defered('B', 1)
 
 		# Configure layout
 		for ctrl_pos in zynthian_gui_config.layout['ctrl_pos']:
@@ -165,13 +162,15 @@ class zynthian_gui_control(zynthian_gui_selector):
 					self.screen_info = self.list_data[self.index]
 				else:
 					self.screen_info = None
-			if len(self.screen_info) == 5:
+			if self.screen_info and len(self.screen_info) == 5:
 				self.screen_title = self.screen_info[2]
 				self.screen_layer = self.screen_info[3]
 				return True
 			else:
 				logging.error("Can't get screen info!!")
-				return False
+
+		self.screen_title = ""
+		self.screen_layer = self.zyngui.curlayer
 		return False
 
 
@@ -492,9 +491,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 			elif self.mode == 'select':
 				self.click_listbox()
 		elif t == 'B':
-			if not self.zyngui.is_shown_alsa_mixer():
-				self.zyngui.screens['layer_options'].reset()
-				self.zyngui.show_screen('layer_options')
+			self.zyngui.cuia_chain_options()
+
 		return True
 
 

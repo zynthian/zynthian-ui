@@ -51,6 +51,9 @@ from zyngine import zynthian_layer
 
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_gui_keyboard
+from zyngui import zynthian_gui_keybinding
+from zyngui.multitouch import MultiTouch
+from zyngui.zynthian_ctrldev_manager import zynthian_ctrldev_manager
 from zyngui.zynthian_gui_info import zynthian_gui_info
 from zyngui.zynthian_gui_splash import zynthian_gui_splash
 from zyngui.zynthian_gui_loading import zynthian_gui_loading
@@ -68,6 +71,7 @@ from zyngui.zynthian_gui_midi_key_range import zynthian_gui_midi_key_range
 from zyngui.zynthian_gui_audio_out import zynthian_gui_audio_out
 from zyngui.zynthian_gui_midi_out import zynthian_gui_midi_out
 from zyngui.zynthian_gui_audio_in import zynthian_gui_audio_in
+from zyngui.zynthian_gui_midi_in import zynthian_gui_midi_in
 from zyngui.zynthian_gui_bank import zynthian_gui_bank
 from zyngui.zynthian_gui_preset import zynthian_gui_preset
 from zyngui.zynthian_gui_control import zynthian_gui_control
@@ -85,11 +89,10 @@ from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
 from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
 from zyngui.zynthian_gui_mixer import zynthian_gui_mixer
 from zyngui.zynthian_gui_tempo import zynthian_gui_tempo
-from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
+from zyngui.zynthian_gui_brightness_config import zynthian_gui_brightness_config
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
+from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
-from zyngui import zynthian_gui_keybinding
-from zyngui.multitouch import MultiTouch
 
 MIXER_MAIN_CHANNEL = 256 #TODO This constant should go somewhere else
 
@@ -224,19 +227,22 @@ class zynthian_gui:
 			self.wsleds.reset_last_state()
 		self.write_capture_log("LAYOUT: {}".format(zynthian_gui_config.wiring_layout))
 		self.write_capture_log("TITLE: {}".format(self.capture_log_fname))
+		# Capture video + jack audio is not working yet
+		#zynautoconnect.audio_connect_ffmpeg(timeout=2.0)
 
 
 	def start_capture_ffmpeg(self):
 		fbdev = os.environ.get("FRAMEBUFFER", "/dev/fb0")
 		fpath = "{}/{}.mp4".format(self.capture_dir_sdc, self.capture_log_fname)
-		self.capture_ffmpeg_proc = ffmpeg\
-			.output(ffmpeg.input(fbdev, r=30, f="fbdev"),
-				#ffmpeg.input("sine=frequency=500", f="lavfi"),\
-				#ffmpeg.input("ffmpeg", f="jack"),\ , acodec="aac"
-				fpath, vcodec="libx264", preset="fast", pix_fmt="yuv420p")\
-			.global_args('-nostdin', '-hide_banner', '-nostats')\
+		self.capture_ffmpeg_proc = ffmpeg.output(
+				# ffmpeg.input(":0", r=25, f="x11grab"),
+				ffmpeg.input(fbdev, r=20, f="fbdev"),
+				#ffmpeg.input("sine=frequency=500", f="lavfi"),
+				#ffmpeg.input("ffmpeg", f="jack"),
+				# fpath, vcodec="h264_v4l2m2m", acodec="aac", preset="ultrafast", pix_fmt="nv21", sample_fmt="s16") \
+				fpath, vcodec="libx264", acodec="aac", preset="ultrafast", pix_fmt="yuv420p") \
+			.global_args('-nostdin', '-hide_banner', '-nostats') \
 			.run_async(quiet=True, overwrite_output=True)
-
 
 	def stop_capture_ffmpeg(self):
 		if self.capture_ffmpeg_proc:
@@ -511,7 +517,6 @@ class zynthian_gui:
 		self.screens['layer'] = zynthian_gui_layer()
 		self.screens['layer_options'] = zynthian_gui_layer_options()
 		self.screens['sublayer_options'] = zynthian_gui_sublayer_options()
-		self.screens['snapshot'] = zynthian_gui_snapshot()
 		self.screens['midi_chan'] = zynthian_gui_midi_chan()
 		self.screens['midi_cc'] = zynthian_gui_midi_cc()
 		self.screens['midi_prog'] = zynthian_gui_midi_prog()
@@ -519,16 +524,28 @@ class zynthian_gui:
 		self.screens['audio_out'] = zynthian_gui_audio_out()
 		self.screens['midi_out'] = zynthian_gui_midi_out()
 		self.screens['audio_in'] = zynthian_gui_audio_in()
+		self.screens['midi_in'] = zynthian_gui_midi_in()
 		self.screens['bank'] = zynthian_gui_bank()
 		self.screens['preset'] = zynthian_gui_preset()
 		self.screens['control'] = zynthian_gui_control()
-		self.screens['control_xy'] = zynthian_gui_control_xy()
-		self.screens['midi_profile'] = zynthian_gui_midi_profile()
+		self.screens['snapshot'] = zynthian_gui_snapshot()
 		self.screens['zs3'] = zynthian_gui_zs3()
 		self.screens['zs3_options'] = zynthian_gui_zs3_options()
-		self.screens['tempo'] = zynthian_gui_tempo()
-		self.screens['admin'] = zynthian_gui_admin()
+		self.create_audio_player()
+		self.screens['audio_player'] = self.screens['control']
+		self.screens['alsa_mixer'] = self.screens['control']
+		self.screens['control_xy'] = zynthian_gui_control_xy()
 		self.screens['audio_mixer'] = zynthian_gui_mixer()
+		self.screens['tempo'] = zynthian_gui_tempo()
+		self.screens['pattern_editor'] = zynthian_gui_patterneditor()
+		self.screens['zynpad'] = zynthian_gui_zynpad()
+		self.screens['arranger'] = zynthian_gui_arranger()
+		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
+		self.screens['brightness_config'] = zynthian_gui_brightness_config()
+		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
+		self.screens['midi_profile'] = zynthian_gui_midi_profile()
+		self.screens['control_test'] = zynthian_gui_control_test()
+		self.screens['admin'] = zynthian_gui_admin()
 
 		# Create the right main menu screen
 		if zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
@@ -536,23 +553,17 @@ class zynthian_gui:
 		else:
 			self.screens['main_menu'] = zynthian_gui_main_menu()
 
-		# Create UI Apps Screens
-		self.create_audio_player()
-		self.screens['audio_player'] = self.screens['control']
-		self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
-		self.screens['alsa_mixer'] = self.screens['control']
-		self.screens['zynpad'] = zynthian_gui_zynpad()
-		self.screens['arranger'] = zynthian_gui_arranger()
-		self.screens['pattern_editor'] = zynthian_gui_patterneditor()
-		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
-		self.screens['control_test'] = zynthian_gui_control_test()
-
-		# Create Zynaptik-related screens
+		# Create Zynaptik-dependant screens
 		try:
 			if callable(lib_zyncore.init_zynaptik):
 				self.screens['cv_config'] = zynthian_gui_cv_config()
 		except:
 			pass
+
+		# Create extra UI Screens
+
+		# Initialize Control Device Manager
+		self.ctrldev_manager = zynthian_ctrldev_manager()
 
 		# Initialize OSC
 		self.osc_init()
@@ -701,7 +712,11 @@ class zynthian_gui:
 	def is_shown_alsa_mixer(self):
 		return self.curlayer == self.screens['layer'].amixer_layer
 
+	
+	def is_shown_audio_player(self):
+		return self.curlayer == self.audio_player
 
+	
 	def close_screen(self):
 		logging.debug("SCREEN HISTORY => {}".format(self.screen_history))
 		while True:
@@ -879,6 +894,10 @@ class zynthian_gui:
 		self.show_screen('touchscreen_calibration')
 
 
+	def brightness_config(self):
+		self.show_screen('brightness_config')
+
+
 	def layer_control(self, layer=None):
 		if layer is not None:
 			if layer in self.screens['layer'].root_layers:
@@ -958,6 +977,7 @@ class zynthian_gui:
 			self.cuia_bank_preset()
 			self.curlayer.set_show_fav_presets(True)
 			self.show_screen("preset")
+			self.show_screen("preset")
 
 
 	def set_curlayer(self, layer, save=False, populate_screens=True):
@@ -969,6 +989,8 @@ class zynthian_gui:
 				self.curlayer = layer
 			if populate_screens:
 				self.screens['layer'].refresh_index()
+			else:
+				self.screens['layer'].update_index()
 			self.screens['audio_mixer'].select_chain_by_layer(layer, set_curlayer=False)
 			self.set_active_channel()
 		else:
@@ -981,7 +1003,7 @@ class zynthian_gui:
 			self._curlayer = None
 
 
-	#If "MIDI Single Active Channel" mode is enabled, set MIDI Active Channel to layer's one
+	# Set MIDI Active Channel to layer's one
 	def set_active_channel(self):
 		curlayer_chan = None
 		active_chan = -1
@@ -991,7 +1013,7 @@ class zynthian_gui:
 			if self.curlayer.engine.nickname == 'MX':
 				return
 			curlayer_chan = self.curlayer.get_midi_chan()
-			if zynthian_gui_config.midi_single_active_channel and curlayer_chan is not None:
+			if curlayer_chan is not None:
 				if curlayer_chan >= 16:
 					return
 				active_chan = curlayer_chan
@@ -1005,7 +1027,6 @@ class zynthian_gui:
 		lib_zyncore.set_midi_active_chan(active_chan)
 		self.wiring_midi_setup(curlayer_chan)
 
-
 	def get_curlayer_wait(self):
 		# Try until layer is ready
 		for j in range(100):
@@ -1014,21 +1035,31 @@ class zynthian_gui:
 			else:
 				sleep(0.1)
 
+	def clean(self, chains=True, zynseq=True):
+		self.zynseq.libseq.stop()
+		if len(self.screens['layer'].layers) > 0:
+			self.screens['snapshot'].save_last_state_snapshot()
+		if zynseq:
+			self.zynseq.load("")
+		if chains:
+			self.screens['layer'].reset()
+			self.screens['layer'].add_layer_engine("AI", 256)
+			self.zynmixer.reset_state()
 
-	def is_single_active_channel(self):
-		return zynthian_gui_config.midi_single_active_channel
+	def clean_sequences(self):
+		self.show_loading("cleaning sequences")
+		self.clean(chains=False, zynseq=True)
+		self.show_screen_reset('zynpad')
 
+	def clean_chains(self):
+		self.show_loading("cleaning chains")
+		self.clean(chains=True, zynseq=False)
+		self.show_screen_reset('main_menu')
 
 	def clean_all(self):
 		self.show_loading("cleaning all")
-		if len(self.screens['layer'].layers) > 0:
-			self.screens['snapshot'].save_last_state_snapshot()
-		self.screens['layer'].reset()
-		self.screens['layer'].add_layer_engine("AI", 256)
-		self.zynmixer.reset_state()
-		self.zynseq.load("")
+		self.clean(chains=True, zynseq=True)
 		self.show_screen_reset('main_menu')
-
 
 	def create_audio_player(self):
 		if not self.audio_player:
@@ -1428,44 +1459,44 @@ class zynthian_gui:
 			self.show_screen_reset(params[0])
 
 	def cuia_screen_main_menu(self, params=None):
-		self.toggle_screen("main_menu")
+		self.show_screen("main_menu")
 
 	def cuia_screen_admin(self, params=None):
-		self.toggle_screen("admin")
+		self.show_screen("admin")
 
 	def cuia_screen_audio_mixer(self, params=None):
-		self.toggle_screen("audio_mixer")
+		self.show_screen("audio_mixer")
 
 	def cuia_screen_snapshot(self, params=None):
-		self.toggle_screen("snapshot")
+		self.show_screen("snapshot")
 
 	def cuia_screen_zs3(self, params=None):
-		self.toggle_screen("zs3")
+		self.show_screen("zs3")
 
 	def cuia_screen_midi_recorder(self, params=None):
-		self.toggle_screen("midi_recorder")
+		self.show_screen("midi_recorder")
 
 	def cuia_screen_alsa_mixer(self, params):
-		self.toggle_screen("alsa_mixer", hmode=zynthian_gui.SCREEN_HMODE_RESET)
+		self.show_screen("alsa_mixer", hmode=zynthian_gui.SCREEN_HMODE_RESET)
 
 	def cuia_screen_zynpad(self, params=None):
-		self.toggle_screen("zynpad")
+		self.show_screen("zynpad")
 
 	def cuia_screen_pattern_editor(self, params=None):
 		success = False
 		if self.current_screen in ["arranger", "zynpad"]:
 			success = self.screens[self.current_screen].show_pattern_editor()
 		if not success:
-			self.toggle_screen("pattern_editor")
+			self.show_screen("pattern_editor")
 
 	def cuia_screen_arranger(self, params=None):
-		self.toggle_screen("arranger")
+		self.show_screen("arranger")
 
 	def cuia_screen_bank(self, params=None):
-		self.toggle_screen("bank")
+		self.show_screen("bank")
 
 	def cuia_screen_preset(self, params=None):
-		self.toggle_screen("preset")
+		self.show_screen("preset")
 
 	def cuia_screen_calibrate(self, params=None):
 		self.calibrate_touchscreen()
@@ -1491,7 +1522,14 @@ class zynthian_gui:
 	cuia_screen_control = cuia_chain_control
 
 	def cuia_chain_options(self, params=None):
+		if self.is_shown_alsa_mixer():
+			return
+		if self.is_shown_audio_player():
+			self.cuia_bank_preset()
+			self.cuia_menu()
+			return
 		try:
+			self.screens['layer_options'].reset()
 			if params:
 				i = params[0] - 1
 				n = self.screens['layer'].get_num_root_layers()
@@ -1499,11 +1537,10 @@ class zynthian_gui:
 				if main_fxchain:
 					n -= 1
 				if i >= 0 and i < n:
-					self.screens['layer'].select(i)
+					self.screens['layer_options'].setup(i)
 				elif i < 0 and main_fxchain:
-					self.screens['layer'].select(n)
-			self.screens['layer_options'].reset()
-			self.toggle_screen('layer_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
+					self.screens['layer_options'].setup(n)
+			self.show_screen('layer_options', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 		except Exception as e:
 			logging.warning("Can't show options for layer ({})! => {}".format(params, e))
 
@@ -1518,6 +1555,8 @@ class zynthian_gui:
 		self.toggle_screen("main_menu", hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 	def cuia_bank_preset(self, params=None):
+		if self.is_shown_alsa_mixer():
+			return
 		if params:
 			try:
 				self.set_curlayer(params, True)
@@ -1616,7 +1655,7 @@ class zynthian_gui:
 		i = params[0]
 		t = params[1].upper()
 
-		if self.current_screen in ("control", "alsa_mixer"):
+		if self.current_screen in ("control", "alsa_mixer", "audio_player"):
 			#if i < 3 and t == 'S':
 			if t == 'S':
 				self.screens[self.current_screen].midi_learn(i)
@@ -2022,11 +2061,13 @@ class zynthian_gui:
 
 				#logging.info("MIDI_UI MESSAGE: {}".format(hex(ev)))
 
-				if self.screens['zynpad'].midi_event(ev):
+				# Try to manage with configured control devices
+				if self.ctrldev_manager.midi_event(ev):
 					self.status_info['midi'] = True
 					self.last_event_flag = True
 					continue
 
+				idev = (ev & 0xFF000000) >> 24
 				evtype = (ev & 0xF00000) >> 20
 				chan = (ev & 0x0F0000) >> 16
 				#logging.info("UI-MIDI MESSAGE: DEV#{} CH#{} => {}".format(idev, chan, evtype))
@@ -2117,7 +2158,7 @@ class zynthian_gui:
 					self.screens['midi_chan'].midi_chan_activity(chan)
 					ccnum = (ev & 0x7F00) >> 8
 					ccval = (ev & 0x007F)
-					#logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan,ccnum,ccval))
+					#logging.debug("MIDI CONTROL CHANGE: IDEV{}, CH{}, CC{} => {}".format(idev, chan, ccnum, ccval))
 					if ccnum < 120:
 						# If MIDI learn pending ...
 						if self.midi_learn_zctrl:
@@ -2125,8 +2166,9 @@ class zynthian_gui:
 							self.show_current_screen()
 						# Try layer's zctrls
 						else:
-							self.screens['layer'].midi_control_change(chan, ccnum, ccval)
-							self.zynmixer.midi_control_change(chan, ccnum, ccval)
+							self.screens['layer'].midi_control_change(idev, chan, ccnum, ccval)
+							self.zynmixer.midi_control_change(idev, chan, ccnum, ccval)
+							self.audio_player.midi_control_change(idev, chan, ccnum, ccval)
 					# Special CCs >= Channel Mode
 					elif ccnum == 120:
 						self.all_sounds_off_chan(chan)
@@ -2267,12 +2309,12 @@ class zynthian_gui:
 		self.power_save_mode = psm
 		if psm:
 			logging.info("Power Save Mode: ON")
-			self.screens["zynpad"].light_off_trigger_device()
+			self.ctrldev_manager.sleep_on()
 			check_output("powersave_control.sh on", shell=True)
 		else:
 			logging.info("Power Save Mode: OFF")
 			check_output("powersave_control.sh off", shell=True)
-			self.screens["zynpad"].refresh_trigger_device(force=True)
+			self.ctrldev_manager.sleep_off()
 
 
 	def set_event_flag(self):
@@ -2367,8 +2409,8 @@ class zynthian_gui:
 					self.wsleds.update()
 				sleep(0.2)
 		# On exit ...
-		# Release zynpad trigger device
-		self.screens["zynpad"].end_trigger_device()
+		# Release control devices
+		self.ctrldev_manager.end_all()
 		# Light-off LEDs
 		if self.wsleds:
 			self.wsleds.end()
@@ -2442,9 +2484,17 @@ class zynthian_gui:
 			except AttributeError:
 				pass
 
-			# Refresh status of external controllers
+			# Refresh control device list
+			if zynautoconnect.get_mididev_changed():
+				zynautoconnect.set_mididev_changed(False)
+				try:
+					self.ctrldev_manager.refresh_device_list()
+				except Exception as err:
+					logging.error(err)
+
+			# Refresh status of control devices
 			try:
-				self.screens["zynpad"].refresh_trigger_device()
+				self.ctrldev_manager.refresh_all()
 			except Exception as err:
 				logging.error(err)
 

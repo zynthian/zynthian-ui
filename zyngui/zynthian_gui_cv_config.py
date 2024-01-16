@@ -33,7 +33,7 @@ from zyncoder.zyncore import lib_zyncore
 from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
-from zyngui.zynthian_gui_selector import zynthian_gui_controller
+from zyngui.zynthian_gui_controller import zynthian_gui_controller
 
 #------------------------------------------------------------------------------
 # Zynthian CV config GUI Class

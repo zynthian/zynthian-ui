@@ -70,7 +70,7 @@ class zynthian_layer:
 		else:
 			self.audio_in = [] # Only AI uses audio_in
 
-		self.midi_out = ["MIDI-OUT", "NET-OUT"]
+		self.midi_out = []
 
 		self.bank_list = []
 		self.bank_index = 0
@@ -516,25 +516,22 @@ class zynthian_layer:
 		for k, zctrl in self.controllers_dict.items():
 			zctrl.midi_unlearn()
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# MIDI processing
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
-	def midi_control_change(self, chan, ccnum, ccval):
+	def midi_control_change(self, idev, chan, ccnum, ccval):
 		if self.engine:
 			#logging.debug("Receving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
 			try:
-				self.engine.midi_control_change(chan, ccnum, ccval)
+				self.engine.midi_control_change(idev, chan, ccnum, ccval)
 			except:
 				pass
-
 
 	def midi_bank_msb(self, i):
 		logging.debug("Received Bank MSB for CH#{}: {}".format(self.midi_chan, i))
 		if i>=0 and i<=2:
 			self.bank_msb = i
-
 
 	def midi_bank_lsb(self, i):
 		info = self.bank_msb_info[self.bank_msb]
@@ -546,7 +543,6 @@ class zynthian_layer:
 			self.load_preset_list()
 		else:
 			logging.warning("Bank index {} doesn't exist for MSB {} on CH#{}".format(i, self.bank_msb, self.midi_chan))
-
 
 	# ---------------------------------------------------------------------------
 	# State Management
@@ -643,9 +639,11 @@ class zynthian_layer:
 	def restore_state_legacy(self, state):
 		# Set legacy Note Range (BW compatibility)
 		if self.midi_chan is not None and self.midi_chan >= 0 and 'note_range' in state:
-			nr = state['note_range']
-			lib_zyncore.set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
-
+			nr_state = state['note_range']
+			lib_zyncore.set_midi_filter_note_low(self.midi_chan, nr_state['note_low'])
+			lib_zyncore.set_midi_filter_note_high(self.midi_chan, nr_state['note_high'])
+			lib_zyncore.set_midi_filter_transpose_octave(self.midi_chan, nr_state['octave_trans'])
+			lib_zyncore.set_midi_filter_transpose_semitone(self.midi_chan, nr_state['halftone_trans'])
 
 	def wait_stop_loading(self):
 		while self.engine.loading>0:

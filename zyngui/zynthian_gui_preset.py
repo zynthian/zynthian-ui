@@ -80,19 +80,15 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			self.zyngui.screens['layer'].prev(True)
 
 
-	def topbar_bold_touch_action(self):
-		self.zyngui.zynswitch_defered('B', 1)
-
-
 	def show_preset_options(self):
 		preset = copy.deepcopy(self.list_data[self.index])
 		if preset[2][0] == "❤": preset[2] = preset[2][1:]
 		preset_name = preset[2]
 		options = {}
 		if self.zyngui.curlayer.engine.is_preset_fav(preset):
-			options["[x] Favourite"] = preset
+			options["\u2612 Favourite"] = preset
 		else:
-			options["[  ] Favourite"] = preset
+			options["\u2610 Favourite"] = preset
 		if self.zyngui.curlayer.engine.is_preset_user(preset):
 			if hasattr(self.zyngui.curlayer.engine, "rename_preset"):
 				options["Rename"] = preset

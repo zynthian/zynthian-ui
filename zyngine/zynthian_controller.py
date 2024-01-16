@@ -246,13 +246,8 @@ class zynthian_controller:
 
 	def set_midi_chan(self, chan):
 		self.midi_chan = chan
-		if zynthian_gui_config.midi_single_active_channel:
-			if self.midi_learn_cc:
-				self.midi_learn_chan = chan
-		else:
-			if self.midi_cc is not None:
-				if self.midi_learn_cc == self.midi_cc:
-					self.midi_learn_chan = chan
+		if self.midi_learn_cc:
+			self.midi_learn_chan = chan
 
 
 	#TODO: I think get_ctrl_array is an unused function
@@ -393,7 +388,7 @@ class zynthian_controller:
 				dval = abs(self.ticks[0] - val)
 				for i in range(1, len(self.ticks)):
 					ndval = abs(self.ticks[i] - val)
-					if  ndval < dval:
+					if ndval < dval:
 						dval = ndval
 						index = i
 					else:
@@ -573,15 +568,19 @@ class zynthian_controller:
 	# MIDI CC processing
 	#----------------------------------------------------------------------------
 
-	def midi_control_change(self, val):
+	def midi_control_change(self, idev, val):
 		#if self.ticks:
 		#	self.set_value(val)
 		if self.is_logarithmic:
 			value = self.value_min + self.value_range * (math.pow(10, val/127) - 1) / 9
 		else:
 			value = self.value_min + val * self.value_range / 127
-		self.set_value(value)
 
-
+		# The MIDI message comes from the ctrl_in zmip (engine feedback!!!)
+		# This should be improved. Using a hardcoded "20" value is not very maintainable
+		if idev == 20:
+			self.set_value(value, False)
+		else:
+			self.set_value(value, True)
 
 #******************************************************************************

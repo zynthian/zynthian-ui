@@ -99,7 +99,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def build_view(self):
 		super().build_view()
-		if zynthian_gui_config.transport_clock_source == 0 and libsmf.getPlayState():
+		if zynthian_gui_config.transport_clock_source <= 1 and libsmf.getPlayState():
 			self.show_playing_bpm()
 
 
@@ -205,10 +205,10 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def update_status_loop(self, fill=False):
 		if zynthian_gui_config.midi_play_loop:
-			self.list_data[1] = ("LOOP", 0, "[x] Loop Play")
+			self.list_data[1] = ("LOOP", 0, "\u2612 Loop Play")
 			libsmf.setLoop(True)
 		else:
-			self.list_data[1] = ("LOOP", 0, "[  ] Loop Play")
+			self.list_data[1] = ("LOOP", 0, "\u2610 Loop Play")
 			libsmf.setLoop(False)
 		if fill:
 			self.listbox.delete(1)

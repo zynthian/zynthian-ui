@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Engine Selector Class
 # 
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -67,7 +67,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			["AP", ("AudioPlayer", "Audio File Player", "Special", None, zynthian_engine_audioplayer, True)],
 			['PD', ("PureData", "PureData - Visual Programming", "Special", None, zynthian_engine_puredata, True)],
 			#['CS', ("CSound", "CSound Audio Language", "Special", None, zynthian_engine_csound, False)],
-			['MD', ("MOD-UI", "MOD-UI - Plugin Host", "Special", None, zynthian_engine_modui, True)]
+			['MD', ("MOD-UI", "MOD-UI - Plugin Host", "Special", None, zynthian_engine_modui, True)],
+			['SX', ("SysEx", "SysEx Manager", "Special", None, zynthian_engine_sysex, True)]
 		])
 
 		pt_info = get_pianoteq_binary_info()
