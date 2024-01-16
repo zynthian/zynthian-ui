@@ -24,10 +24,11 @@
 # 
 # ******************************************************************************
 
+import os
 import logging
+from time import sleep
 from threading import Thread
 from subprocess import check_output, Popen, PIPE
-from time import sleep
 
 # Zynthian specific modules
 import zynautoconnect
@@ -229,6 +230,14 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 for i in net_devices.values():
                     append_port(i)
             else:
+                if os.path.isfile("/usr/local/bin/jacknetumpd"):
+                    if "jacknetumpd:netump_in" in net_devices:
+                        append_service_device("jacknetumpd", net_devices["jacknetumpd:netump_in"])
+                    elif "jacknetumpd:netump_out" in net_devices:
+                        append_service_device("jacknetumpd", net_devices["jacknetumpd:netump_out"])
+                    else:
+                        append_service_device("jacknetumpd", "NetUMP: MIDI 2.0")
+
                 if "jackrtpmidid:rtpmidi_in" in net_devices:
                     append_service_device("jackrtpmidid", net_devices["jackrtpmidid:rtpmidi_in"])
                 elif "jackrtpmidid:rtpmidi_out" in net_devices:
