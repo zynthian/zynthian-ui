@@ -26,7 +26,7 @@
 #include <stdio.h>   //provides printf
 #include <stdlib.h>  //provides exit
 #include <string.h>  // provides memset
-#include <math.h>    //provides fabs
+#include <math.h>    //provides fabs isinf
 #include <unistd.h>  // provides sleep
 #include <pthread.h> //provides multithreading
 
@@ -86,6 +86,7 @@ static float convertToDBFS(float raw) {
     if (raw <= 0)
         return -200;
     float fValue = 20 * log10f(raw);
+
     if (fValue < -200)
         fValue = -200;
     return fValue;
@@ -201,6 +202,10 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
                         fSampleM += pInB[frame];
                     fSampleA = fSampleM * curLevelA / 2;
                     fSampleB = fSampleM * curLevelB / 2;
+                    if (isinf(fSampleA))
+                        fSampleA = 1.0;
+                    if (isinf(fSampleB))
+                        fSampleB = 1.0;
                     if (isChannelOutRouted(chan)) {
                         pChanOutA[frame] = fSampleA;
                         pChanOutB[frame] = fSampleB;
@@ -229,10 +234,14 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
             } else {
                 for (frame = 0; frame < nFrames; frame++) {
                     fSampleA = pInA[frame] * curLevelA;
+                    if (isinf(fSampleA))
+                        fSampleA = 1.0;
                     if (g_dynamic[chan].phase)
                         fSampleB = -pInB[frame] * curLevelB;
                     else
                         fSampleB = pInB[frame] * curLevelB;
+                    if (isinf(fSampleB))
+                        fSampleB = 1.0;
                     if (isChannelOutRouted(chan)) {
                         pChanOutA[frame] = fSampleA;
                         pChanOutB[frame] = fSampleB;
