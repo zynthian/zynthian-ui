@@ -356,7 +356,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     {
         if(jack_midi_event_get(&midiEvent, pInputBuffer, i))
             continue;
-        if(g_nClockSource & (TRANSPORT_CLOCK_MIDI |  TRANSPORT_CLOCK_ANALOG))
+        if(g_nClockSource & (TRANSPORT_CLOCK_MIDI | TRANSPORT_CLOCK_ANALOG))
         {
             switch(midiEvent.buffer[0])
             {
@@ -377,6 +377,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                 case MIDI_CLOCK:
                     if(g_nClockSource & TRANSPORT_CLOCK_MIDI)
                     {
+                    	//DPRINTF("MIDI CLOCK %d => %f\n", g_nClock, midiEvent.time);
                         if(g_nClock == 0)
                         {
                             // Update tempo on each beat
