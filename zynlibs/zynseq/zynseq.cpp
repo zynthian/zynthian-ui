@@ -95,6 +95,7 @@ jack_nframes_t g_nTransportStartFrame = 0; // Quantity of frames from JACK epoch
 std::queue <std::pair<double,double>> g_qClockPos; // Queue of pending clock positions relative to JACK epoch and clock duration in frames at this time
 double g_dFramesPerClock = getFramesPerClock(g_dTempo); //!@todo Change to integer will have 0.1% jitter at 1920 PPQN and much better jitter (0.01%) at current 24PPQN
 uint8_t g_nClock = 0; // Quantity of MIDI clocks since start of beat
+uint8_t g_nMidiClock = 0; // Quantity of *RECEIVED* MIDI clocks since start of beat
 uint8_t g_nClockSource = TRANSPORT_CLOCK_INTERNAL; // Source of clock that progresses playback
 bool g_bSendMidiClock = false; // True to send MIDI clock
 jack_nframes_t g_nFramesSinceLastBeat = 0; // Quantity of frames since last beat
@@ -371,22 +372,28 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                         transportStart("zynseq");
                     nState = JackTransportRolling;
                     g_nClock = 0;
+                    g_nMidiClock == 0;
                     nLastBeatFrame = 0;
                     g_nBeat = 1; //!@todo This should be reset with START, not CONTINUE but currently used for bar sync
                     break;
                 case MIDI_CLOCK:
                     if(g_nClockSource & TRANSPORT_CLOCK_MIDI)
                     {
-                        if(g_nClock == 0)
-                        {
-                            // Update tempo on each beat
-                            if(nLastBeatFrame)
-                                setTempo(60.0 * (double)g_nSampleRate / (nNow + midiEvent.time - nLastBeatFrame));
-                            nLastBeatFrame = nNow + midiEvent.time;
-                        }
-                        if(nState == JackTransportRolling)
-                            g_qClockPos.push(std::pair<double,double>(nNow + midiEvent.time, g_dFramesPerClock));
-                    }
+						//DPRINTF("MIDI CLOCK %u, %u => %u\n", g_nMidiClock, g_nClock, midiEvent.time);
+						if(g_nMidiClock == 0)
+						{
+							// Update tempo on each beat
+							if(nLastBeatFrame)
+								setTempo(60.0 * (double)g_nSampleRate / (nNow + midiEvent.time - nLastBeatFrame));
+								//DPRINTF("BPM = 60 * %u / (%u + %u - %u) = %f\n", g_nSampleRate, nNow, midiEvent.time, nLastBeatFrame, 60.0 * (double)g_nSampleRate / (nNow + midiEvent.time - nLastBeatFrame));
+							nLastBeatFrame = nNow + midiEvent.time;
+						}
+						if(nState == JackTransportRolling)
+							g_qClockPos.push(std::pair<double,double>(nNow + midiEvent.time, g_dFramesPerClock));
+						// PPQN is fixed to 24 in MIDI 1.0
+						if (g_nMidiClock < 23) g_nMidiClock++;
+						else g_nMidiClock = 0;
+					}
                     break;
                 /*
                 case MIDI_POSITION:
