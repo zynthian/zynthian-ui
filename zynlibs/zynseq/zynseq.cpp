@@ -372,14 +372,15 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
                         transportStart("zynseq");
                     nState = JackTransportRolling;
                     g_nClock = 0;
+                    g_nMidiClock = 0;
                     nLastBeatFrame = 0;
                     g_nBeat = 1; //!@todo This should be reset with START, not CONTINUE but currently used for bar sync
                     break;
                 case MIDI_CLOCK:
                     if(g_nClockSource & TRANSPORT_CLOCK_MIDI)
                     {
-						DPRINTF("MIDI CLOCK %u, %u => %u\n", g_nMidiClock, g_nClock, midiEvent.time);
-						if((nState == JackTransportRolling && g_nClock == 0) || (g_nMidiClock == 0))
+						//DPRINTF("MIDI CLOCK %u, %u => %u\n", g_nMidiClock, g_nClock, midiEvent.time);
+						if(g_nMidiClock == 0)
 						{
 							// Update tempo on each beat
 							if(nLastBeatFrame)
@@ -389,6 +390,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 						}
 						if(nState == JackTransportRolling)
 							g_qClockPos.push(std::pair<double,double>(nNow + midiEvent.time, g_dFramesPerClock));
+						// PPQN is fixed to 24 in MIDI 1.0!
 						if (g_nMidiClock < 23) g_nMidiClock++;
 						else g_nMidiClock = 0;
                     }
