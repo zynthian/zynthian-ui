@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_fluidsynth)
 # 
 # zynthian_engine implementation for FluidSynth Sampler
 # 
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -20,7 +20,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import os
 import re
@@ -34,9 +34,10 @@ from . import zynthian_engine
 from . import zynthian_controller
 import zynautoconnect
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # FluidSynth Engine Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_engine_fluidsynth(zynthian_engine):
 
@@ -106,13 +107,11 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		self.start()
 		self.reset()
 
-
 	def reset(self):
 		super().reset()
 		self.soundfont_index={}
 		self.clear_midi_routes()
 		self.unload_unused_soundfonts()
-
 
 	# ---------------------------------------------------------------------------
 	# Subproccess Management & IPC
@@ -163,14 +162,12 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		else:
 			return []
 
-
 	def set_bank(self, processor, bank):
 		if self.load_bank(bank[0]):
 			processor.refresh_controllers()
 			return True
 		else:
 			return False
-
 
 	def load_bank(self, bank_fpath, unload_unused_sf=True):
 		if bank_fpath in self.soundfont_index:
@@ -183,7 +180,6 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			return True
 		else:
 			return False
-
 
 	def load_bank_config(self, bank_fpath):
 		config_fpath = bank_fpath[0:-3] + "yml"
@@ -200,7 +196,6 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		except Exception as e:
 			logging.error(f"Bad yaml config file for soundfont '{bank_fpath}' => {e}")
 			return False
-
 
 	# ---------------------------------------------------------------------------
 	# Preset Management
@@ -230,7 +225,6 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 		return preset_list
 
-
 	def set_preset(self, processor, preset, preload=False):
 		try:
 			sfi = self.soundfont_index[preset[3]]
@@ -247,7 +241,6 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		processor.send_ctrl_midi_cc()
 		return True
 
-
 	def cmp_presets(self, preset1, preset2):
 		try:
 			if preset1[3]==preset2[3] and preset1[1][0]==preset2[1][0] and preset1[1][1]==preset2[1][1] and preset1[1][2]==preset2[1][2]:
@@ -257,10 +250,9 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		except:
 			return False
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Controllers Management
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def get_controllers_dict(self, processor):
 		zctrls = super().get_controllers_dict(processor)
@@ -308,7 +300,6 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 		return zctrls
 
-
 	# ---------------------------------------------------------------------------
 	# Specific functions
 	# ---------------------------------------------------------------------------
@@ -321,7 +312,6 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			except:
 				pass
 		return free_parts
-
 
 	def load_soundfont(self, sf):
 		if sf not in self.soundfont_index:
@@ -375,7 +365,6 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			if processor.preset_info:
 				self.set_preset(processor, processor.preset_info)
 
-
 	def setup_router(self, processor):
 		if processor.part_i is not None:
 			# Clear and recreate all routes if the routes for this processor were set already
@@ -394,7 +383,6 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 			self.set_processor_midi_routes(processor)
 
-
 	def set_processor_midi_routes(self, processor):
 		if processor.part_i is not None:
 			midich = processor.get_midi_chan()
@@ -412,16 +400,13 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			self.proc_cmd(router_chan_cmd)
 			self.proc_cmd("router_end")
 
-
 	def set_all_midi_routes(self):
 		self.clear_midi_routes()
 		for processor in self.processors:
 			self.set_processor_midi_routes(processor)
 
-
 	def clear_midi_routes(self):
 		self.proc_cmd("router_clear")
-
 
 	# ---------------------------------------------------------------------------
 	# API methods
@@ -429,8 +414,8 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_banks(cls):
-		banks=[]
-		for b in cls.get_filelist(cls.soundfont_dirs,"sf2") + cls.get_filelist(cls.soundfont_dirs,"sf3"):
+		banks = []
+		for b in cls.get_filelist(cls.bank_dirs, "sf2") + cls.get_filelist(cls.bank_dirs,"sf3"):
 			head, tail = os.path.split(b[0])
 			fname, fext = os.path.splitext(tail)
 			banks.append({
@@ -442,11 +427,9 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			})
 		return banks
 
-
 	@classmethod
 	def zynapi_get_presets(cls, bank):
 		return []
-
 
 	@classmethod
 	def zynapi_rename_bank(cls, bank_path, new_bank_name):
@@ -455,16 +438,13 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		new_bank_path = head + "/" + new_bank_name + ext
 		os.rename(bank_path, new_bank_path)
 
-
 	@classmethod
 	def zynapi_remove_bank(cls, bank_path):
 		os.remove(bank_path)
 
-
 	@classmethod
 	def zynapi_download(cls, fullpath):
 		return fullpath
-
 
 	@classmethod
 	def zynapi_install(cls, dpath, bank_path):
@@ -491,15 +471,13 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			else:
 				raise Exception("File doesn't look like a SF2/SF3 soundfont")
 
-
 	@classmethod
 	def zynapi_get_formats(cls):
 		return "sf2,sf3,zip,tgz,tar.gz,tar.bz2"
-
 
 	@classmethod
 	def zynapi_martifact_formats(cls):
 		return "sf2,sf3"
 
 
-#******************************************************************************
+# ******************************************************************************
