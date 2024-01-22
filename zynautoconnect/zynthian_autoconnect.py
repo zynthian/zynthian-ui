@@ -294,6 +294,8 @@ def remove_sidechain_ports(jackname):
 	
 	jackname : Jack client name of processor"""
 
+	if not jackname:
+		return
 	client_name = jackname[:-3]
 	if client_name in sidechain_map:
 		for port_name in sidechain_map[client_name]:
