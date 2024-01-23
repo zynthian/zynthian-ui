@@ -82,6 +82,9 @@ devices_out = []      # List of MIDI output devices
 zyn_routed_audio = {}			# Map of lists of audio sources routed by zynautoconnect, indexed by destination
 zyn_routed_midi = {}			# Map of lists of MIDI sources routed by zynautoconnect, indexed by destination
 
+# Processors sending control feedback (connected to zynmidirouter:ctrl_in)
+ctrl_fb_procs = []
+
 midi_port_names = {}			# Map of user friendly names indexed by device uid (alias[0])
 host_usb_connected = False		# True if connected to host USB
 
@@ -601,14 +604,22 @@ def midi_autoconnect():
 	for i in range(max_num_chains):
 		required_routes["zynsmf:midi_in"].add(f"ZynMidiRouter:ch{i}_out")
 
-	# Add MIDI synth engine's controller-feedback to ZynMidiRouter:ctrl_in
-	for processor in chain_manager.processors.values():
-		if processor.type == "MIDI Synth":
+	# Add engine's controller-feedback to ZynMidiRouter:ctrl_in
+	# Each engine sending controller feedback should use a different zmip
+	# Only setBfree is using this, so we have just one: "ctrl_in"
+	for proc in chain_manager.processors.values():
+		if proc.engine.options["ctrl_fb"]:
 			try:
-				ports = jclient.get_ports(processor.get_jackname(True), is_midi=True, is_output=True)
+				ports = jclient.get_ports(proc.get_jackname(True), is_midi=True, is_output=True)
 				required_routes["ZynMidiRouter:ctrl_in"].add(ports[0].name)
+				ctrl_fb_procs.append(proc)
 			except:
 				pass
+
+	# Remove from control feedback list those processors removed from chains
+	for i, proc in enumerate(ctrl_fb_procs):
+		if proc not in chain_manager.processors:
+			del ctrl_fb_procs[i]
 
 	# Connect ZynMidiRouter:step_out to ZynthStep input
 	required_routes["zynseq:input"].add("ZynMidiRouter:step_out")

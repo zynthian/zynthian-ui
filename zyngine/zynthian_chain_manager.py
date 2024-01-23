@@ -47,6 +47,8 @@ MAX_NUM_MIXER_CHANS = 16
 # TODO: Get this from lib_zyncore
 MAX_NUM_ZMOPS = 16
 MAX_NUM_MIDI_DEVS = 24
+ZMIP_CTRL_INDEX = 26
+
 
 class zynthian_chain_manager():
 
@@ -1113,19 +1115,35 @@ class zynthian_chain_manager():
         """
 
         # Handle bank change (CC0/32)
-        #TODO: Validate and optimise bank change code
-        for chain_id in self.midi_chan_2_chain_ids[midi_chan]:
-            chain = self.chains[chain_id]
-            if zynthian_gui_config.midi_bank_change and cc_num == 0:
-                for processor in chain.get_processors():
-                    processor.midi_bank_msb(cc_val)
-                    break
-                return
-            elif zynthian_gui_config.midi_bank_change and cc_num == 32:
-                for processor in chain.get_processors():
-                    processor.midi_bank_lsb(cc_val)
-                    break
-                return
+        # TODO: Validate and optimise bank change code
+        if zynthian_gui_config.midi_bank_change:
+            for chain_id in self.midi_chan_2_chain_ids[midi_chan]:
+                chain = self.chains[chain_id]
+                if cc_num == 0:
+                    for processor in chain.get_processors():
+                        processor.midi_bank_msb(cc_val)
+                        break
+                    return
+                elif cc_num == 32:
+                    for processor in chain.get_processors():
+                        processor.midi_bank_lsb(cc_val)
+                        break
+                    return
+
+        # Handle controller feedback from setBfree engine => setBfree sends feedback in channel 0
+        # Each engine sending feedback should use a separated zmip, currently only setBfree does.
+        if zmip == ZMIP_CTRL_INDEX:
+            #logging.debug(f"MIDI CONTROL FEEDBACK {midi_chan}, {cc_num} => {cc_val}")
+            try:
+                for proc in zynautoconnect.ctrl_fb_procs:
+                    key = (proc.midi_chan << 16) | (cc_num << 8)
+                    zctrls = self.chan_midi_cc_binding[key]
+                    for zctrl in zctrls:
+                        #logging.debug(f"CONTROLLER FEEDBACK {zctrl.symbol} ({proc.midi_chan}) => {cc_val}")
+                        zctrl.midi_control_change(cc_val, send=False)
+            except:
+                pass
+            return
 
         # Handle absolute CC binding
         try:
@@ -1136,8 +1154,8 @@ class zynthian_chain_manager():
         except:
             pass
 
+        # Handle active chain CC binding
         if zynautoconnect.get_midi_in_dev_mode(zmip):
-            # Handle active chain CC binding
             try:
                 key = (self.active_chain_id << 16) | (cc_num << 8)
                 zctrls = self.chain_midi_cc_binding[key]
@@ -1146,8 +1164,8 @@ class zynthian_chain_manager():
                     self.handle_pedals(cc_num, cc_val, zctrl)
             except:
                 pass
+        # Handle channel CC binding
         else:
-            # Handle channel CC binding
             try:
                 key = (midi_chan << 16) | (cc_num << 8)
                 zctrls = self.chan_midi_cc_binding[key]

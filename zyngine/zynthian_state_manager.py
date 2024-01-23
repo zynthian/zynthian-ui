@@ -689,7 +689,7 @@ class zynthian_state_manager:
                     #logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan,ccnum,ccval))
                     if ccnum < 120:
                         if not self.midi_learn_zctrl:
-                            self.chain_manager.midi_control_change((ev >> 24) & 0xff, chan, ccnum, ccval)
+                            self.chain_manager.midi_control_change(izmip, chan, ccnum, ccval)
                             self.zynmixer.midi_control_change(chan, ccnum, ccval)
                             self.alsa_mixer_processor.midi_control_change(chan, ccnum, ccval)
                             self.audio_player.midi_control_change(chan, ccnum, ccval)

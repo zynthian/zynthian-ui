@@ -114,10 +114,8 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 		self.processor = proc
 
 		self.audio_out = []
-		self.options = {
-			'midi_chan': False,
-			'replace': False
-		}
+		self.options['midi_chan'] = False
+		self.options['replace'] = False
 
 		self.zctrls = None
 		self.sender_poll_state = 0

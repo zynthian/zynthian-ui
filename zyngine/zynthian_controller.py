@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Controller (zynthian_controller)
 # 
 # zynthian controller
 # 
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -20,7 +20,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import math
 import liblo
@@ -29,6 +29,7 @@ import logging
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config
+
 
 class zynthian_controller:
 
@@ -45,7 +46,6 @@ class zynthian_controller:
 
 		if options:
 			self.set_options(options)
-
 
 	def reset(self):
 		self.group_symbol = None
@@ -78,7 +78,6 @@ class zynthian_controller:
 
 		self.label2value = None # Dictionary for fast conversion from discrete label to value
 		self.value2label = None # Dictionary for fast conversion from discrete value to label
-
 
 	def set_options(self, options):
 		if 'processor' in options:
@@ -129,12 +128,11 @@ class zynthian_controller:
 			self.display_priority = options['display_priority']
 		self._configure()
 
-
 	def _configure(self):
-		#Configure Selector Controller
+		# Configure Selector Controller
 		self.range = None
 		if self.labels:
-			#Generate ticks if needed ...
+			# Generate ticks if needed ...
 			if not self.ticks:
 				n = len(self.labels)
 				self.ticks = []
@@ -152,7 +150,7 @@ class zynthian_controller:
 					for i in range(n):
 						self.ticks.append(self.value_min + i * value_range / (n - 1))
 
-			#Calculate min, max
+			# Calculate min, max
 			if self.ticks[0] <= self.ticks[-1]:
 				if self.value_min == None:
 					self.value_min = self.ticks[0]
@@ -164,14 +162,14 @@ class zynthian_controller:
 				self.value_max = self.ticks[0]
 				self.range_reversed = True
 
-			#Generate dictionary for fast conversion labels=>values
+			# Generate dictionary for fast conversion labels=>values
 			self.label2value = {}
 			self.value2label = {}
 			for i in range(len(self.labels)):
 				self.label2value[str(self.labels[i])] = self.ticks[i]
 				self.value2label[str(self.ticks[i])] = self.labels[i]
 
-		#Common configuration
+		# Common configuration
 		if self.value_min == None:
 			self.value_min = 0
 		if self.value_max == None:
@@ -237,7 +235,6 @@ class zynthian_controller:
 
 		self._configure()
 
-
 	def get_path(self):
 		if self.osc_path:
 			return str(self.osc_path)
@@ -248,22 +245,21 @@ class zynthian_controller:
 		else:
 			return None
 
-
 	def set_midi_chan(self, chan):
 		self.midi_chan = chan
 
-
 	def get_value(self):
 		return self.value
-
 
 	def nudge(self, val, send=True):
 		if self.nudge_factor is None:
 			return False
 		if self.ticks:
 			index = self.get_value2index() + val
-			if index < 0: index = 0
-			if index >= len(self.ticks) : index = len(self.ticks) - 1
+			if index < 0:
+				index = 0
+			if index >= len(self.ticks):
+				index = len(self.ticks) - 1
 			self.set_value(self.ticks[index], send)
 		elif self.is_logarithmic and self.value_range:
 			log_val = math.log10((9 * self.value - (10 * self.value_min - self.value_max)) / self.value_range)
@@ -273,12 +269,10 @@ class zynthian_controller:
 			self.set_value(self.value + val * self.nudge_factor, send)
 		return True
 
-
 	def _set_value(self, val):
 		if isinstance(val, str):
 			self.value = self.get_label2value(val)
 			return
-
 		elif self.is_toggle:
 			if val == self.value_min or val == self.value_max:
 				if self.is_integer:
@@ -291,11 +285,9 @@ class zynthian_controller:
 				else:
 					self.value = self.value_max
 			return
-
 		elif self.ticks:
-			#TODO Do something here?
+			# TODO Do something here?
 			pass
-
 		elif self.is_integer:
 			val = int(val)
 
@@ -305,7 +297,6 @@ class zynthian_controller:
 			self.value = self.value_min
 		else:
 			self.value = val
-
 
 	def set_value(self, val, send=True):
 		old_val = self.value
@@ -318,15 +309,15 @@ class zynthian_controller:
 				mval = self.get_ctrl_midi_val()
 
 			if send:
-				try:
 				# Send value using engine method...
+				try:
 					self.engine.send_controller_value(self)
+				# Send value using OSC/MIDI ...
 				except:
 					try:
-						# Send value using OSC/MIDI ...
 						if self.osc_path:
 							#logging.debug("Sending OSC Controller '{}', {} => {}".format(self.symbol, self.osc_path, self.get_ctrl_osc_val()))
-							liblo.send(self.engine.osc_target,self.osc_path, self.get_ctrl_osc_val())
+							liblo.send(self.engine.osc_target, self.osc_path, self.get_ctrl_osc_val())
 
 						elif self.midi_cc:
 							#logging.debug("Sending MIDI Controller '{}', CH{}#CC{}={}".format(self.symbol, self.midi_chan, self.midi_cc, mval))
@@ -335,10 +326,9 @@ class zynthian_controller:
 					except Exception as e:
 						logging.warning("Can't send controller '{}' => {}".format(self.symbol, e))
 
-
+		# Send feedback to MIDI controllers
+		# TODO: Set midi_feeback to MIDI learn
 		if self.midi_feedback:
-			# Send feedback to MIDI controllers
-			#TODO: Set midi_feeback to MIDI learn
 			try:
 				lib_zyncore.ctrlfb_send_ccontrol_change(self.midi_feedback[0], self.midi_feedback[1], mval)
 
@@ -346,7 +336,6 @@ class zynthian_controller:
 				logging.warning("Can't send controller feedback '{}' => Val={}".format(self.symbol, e))
 			
 		self.is_dirty = True
-
 
 	# Get index of list entry closest to given value
 	def get_value2index(self, val=None):
@@ -369,7 +358,6 @@ class zynthian_controller:
 		except Exception as e:
 			logging.error(e)
 
-
 	def get_value2label(self, val=None):
 		if val == None:
 			val = self.value
@@ -378,7 +366,6 @@ class zynthian_controller:
 			return self.labels[i]
 		else:
 			return val
-
 
 	def get_label2value(self, label):
 		try:
@@ -389,7 +376,6 @@ class zynthian_controller:
 
 		except Exception as e:
 			logging.error(e)
-
 
 	def get_ctrl_midi_val(self):
 		try:
@@ -405,20 +391,18 @@ class zynthian_controller:
 
 		return val
 
-
 	def get_ctrl_osc_val(self):
 		if self.is_toggle:
 			return self.value > 0
 		return self.value
 
-
 	def reset_value(self):
 		"""Reset value to default"""
 		self.set_value(self.value_default)
 
-	#--------------------------------------------------------------------------
+	# --------------------------------------------------------------------------
 	# State management functions
-	#--------------------------------------------------------------------------
+	# --------------------------------------------------------------------------
 
 	def get_state(self, full=True):
 		"""Get controller state as dictionary
@@ -426,7 +410,7 @@ class zynthian_controller:
 		full : True to get state of all parameters or false for off-default values
 		"""
 
-		#TODO: Move this to processor (used by processor and audio mixer)
+		# TODO: Move this to processor (used by processor and audio mixer)
 		state = {}
 		
 		# Value
@@ -440,20 +424,17 @@ class zynthian_controller:
 
 		return state
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# MIDI CC processing
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
-	def midi_control_change(self, val):
+	def midi_control_change(self, val, send=True):
 		#if self.ticks:
 		#	self.set_value(val)
 		if self.is_logarithmic:
 			value = self.value_min + self.value_range * (math.pow(10, val/127) - 1) / 9
 		else:
 			value = self.value_min + val * self.value_range / 127
-		self.set_value(value)
+		self.set_value(value, send)
 
-
-
-#******************************************************************************
+# ******************************************************************************

@@ -88,7 +88,6 @@ class zynthian_processor:
         self.current_screen_index = -1
         self.auto_save_bank = False
 
-
     def get_jackname(self, engine=False):
         """ Get the jackname for the processor's engine
         
@@ -443,7 +442,6 @@ class zynthian_processor:
     def get_preset_index(self):
         """Get index of current preset"""
         return self.preset_index
-
 
     def get_preset_bank_index(self):
         """Get current preset's bank index"""

@@ -166,7 +166,8 @@ class zynthian_engine(zynthian_basic_engine):
 
 		self.options = {
 			'midi_chan': True,
-			'replace': True
+			'replace': True,
+			'ctrl_fb': False
 		}
 
 		self.osc_proto = liblo.UDP

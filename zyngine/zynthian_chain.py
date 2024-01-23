@@ -269,8 +269,6 @@ class zynthian_chain:
         else:
             return ""
 
-
-
     # ----------------------------------------------------------------------------
     # Routing Graph
     # ----------------------------------------------------------------------------
@@ -366,7 +364,6 @@ class zynthian_chain:
                 sources.append(f"system:capture_({a})$")
         return sources
 
-
     def rebuild_midi_graph(self):
         """Build dictionary of lists of sources mapped by destination"""
 
@@ -421,7 +418,6 @@ class zynthian_chain:
             else:
                 audio_out.append(output)
         return audio_out
-
 
     def toggle_audio_out(self, out):
         """Toggle chain audio output
