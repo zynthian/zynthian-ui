@@ -277,13 +277,13 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 chain = self.zyngui.chain_manager.get_chain(chain_id)
                 if chain and chain.is_midi() and chain != self.chain:
                     if self.zyngui.chain_manager.will_midi_howl(self.zyngui.chain_manager.active_chain_id, chain_id):
-                        prefix = "∞"
+                        prefix = "∞ "
                     else:
                         prefix = ""
                     if chain_id in self.chain.midi_out:
-                        self.list_data.append((chain_id, None, f"\u2612 {prefix} {chain.get_name()}"))
+                        self.list_data.append((chain_id, None, f"\u2612 {prefix}{chain.get_name()}"))
                     else:
-                        self.list_data.append((chain_id, None, f"\u2610 {prefix} {chain.get_name()}"))
+                        self.list_data.append((chain_id, None, f"\u2610 {prefix}{chain.get_name()}"))
 
         super().fill_list()
 

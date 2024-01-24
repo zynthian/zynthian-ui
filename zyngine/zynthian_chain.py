@@ -308,7 +308,7 @@ class zynthian_chain:
                         self.audio_routes[processor.get_jackname()] = sources
 
         # Add special processor inputs
-        if self.synth_slots and self.synth_slots[0]:
+        if self.is_synth():
             processor = self.synth_slots[0][0]
             if processor.type == "Special":
                 sources = self.get_input_pairs()

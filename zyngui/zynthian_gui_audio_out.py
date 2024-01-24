@@ -67,17 +67,20 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 			port_names = [("Main mixbus", 0)]
 			self.list_data.append((None, None, "> Chain inputs"))
 			for chain_id, chain in self.zyngui.chain_manager.chains.items():
-				if chain_id == 0 or chain == self.chain or not chain.is_audio() or chain.is_synth():
+				if chain_id == 0 or chain == self.chain or not chain.is_audio():
+					continue
+				if chain.is_synth() and chain.synth_slots[0][0].type != "Special":
 					continue
 				if self.zyngui.chain_manager.will_audio_howl(self.chain.chain_id, chain_id):
-					port_names.append((f"∞Chain {chain_id} ({chain.get_name()})", chain_id))
+					prefix = "∞ "
 				else:
-					port_names.append((f"Chain {chain_id} ({chain.get_name()})", chain_id))
+					prefix = ""
+				port_names.append((f"{prefix}{chain.get_name()}", chain_id))
 				# Add side-chain targets
 				for processor in chain.get_processors("Audio Effect"):
 					try:
 						for port_name in zynautoconnect.get_sidechain_portnames(processor.jackname):
-							port_names.append((f"↣{port_name}", port_name))
+							port_names.append((f"↣ side {port_name}", port_name))
 					except:
 						pass
 		else:

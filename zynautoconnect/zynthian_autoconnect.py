@@ -708,6 +708,10 @@ def audio_autoconnect():
 					if dst_chain.audio_slots and dst_chain.fader_pos:
 						for proc in dst_chain.audio_slots[0]:
 							routes[proc.get_jackname()] = route
+					elif dst_chain.is_synth():
+						proc = dst_chain.synth_slots[0][0]
+						if proc.type == "Special":
+							routes[proc.get_jackname()] = route
 					else:
 						routes[f"zynmixer:input_{dst_chain.mixer_chan + 1:02d}"] = route
 		for dst in routes:
