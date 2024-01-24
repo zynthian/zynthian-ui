@@ -235,9 +235,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if self.last_play_mode not in (zynseq.SEQ_LOOP,zynseq.SEQ_LOOPALL):
 			self.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynseq.SEQ_LOOP)
 
-		# Set active the chain with pattern's MIDI chan
+		# Set active the first chain with pattern's MIDI chan
 		try:
-			chain_id = self.zyngui.chain_manager.midi_chan_2_chain_id[self.channel]
+			chain_id = self.zyngui.chain_manager.midi_chan_2_chain_ids[self.channel][0]
 			self.zyngui.chain_manager.set_active_chain_by_id(chain_id)
 		except:
 			logging.error(f"Couldn't set active chain to channel {self.channel}.")
