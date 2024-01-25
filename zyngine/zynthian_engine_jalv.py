@@ -22,9 +22,9 @@
 #
 #******************************************************************************
 
+import copy
 import os
 import re
-import json
 import shutil
 import logging
 from os.path import isfile
@@ -67,15 +67,22 @@ class zynthian_engine_jalv(zynthian_engine):
 		("Raffo MiniMoog", {'TYPE': "MIDI Synth",'URL': "http://example.org/raffo"})
 	])
 
-	broken_ui = [
-			'http://calf.sourceforge.net/plugins/Monosynth',
-			'http://calf.sourceforge.net/plugins/Organ',
-			'http://nickbailey.co.nr/triceratops',
-			'http://code.google.com/p/amsynth/amsynth',
-			'http://gareus.org/oss/lv2/tuna#one'
-		]
-	if "Raspberry Pi 4" not in os.environ.get('RBPI_VERSION'):
-		broken_ui.append('http://tytel.org/helm')
+
+	# Plugins that required different GUI toolkit to that advertised or cannot run native GUI on Zynthian
+	broken_ui = {
+			#'http://calf.sourceforge.net/plugins/Monosynth': {"RPi4:":True, "RPi3": False, "RPi2": False },
+			#'http://calf.sourceforge.net/plugins/Organ': {"RPi4:":True, "RPi3": False, "RPi2": False },
+			#'http://nickbailey.co.nr/triceratops': {"RPi4:":True, "RPi3": False, "RPi2": False },
+			#'http://code.google.com/p/amsynth/amsynth': {"RPi4:":True, "RPi3": False, "RPi2": False },
+			'http://gareus.org/oss/lv2/tuna#one': {"RPi4": False, "RPi3": False, "RPi2": False }, # Disable because CPU usage and widget implemented in main UI
+			"http://tytel.org/helm": {"RPi4": False, "RPi3": True, "RPi2": False } # Better CPU with gtk but only qt4 works on RPi4
+	}
+	if "Raspberry Pi 4" in os.environ.get('RBPI_VERSION'):
+		rpi = "RPi4"
+	elif "Raspberry Pi 3" in os.environ.get('RBPI_VERSION'):
+		rpi = "RPi3"
+	else:
+		rpi = "RPi2"
 
 	plugins_custom_gui = {
 		'http://gareus.org/oss/lv2/meters#spectr30mono': "/zynthian/zynthian-ui/zyngui/zynthian_widget_spectr30.py",
@@ -109,57 +116,37 @@ class zynthian_engine_jalv(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	plugin_ctrl_info = {
-		"Dexed": {
+		"ctrls": {
+			'modulation wheel': [1, 0],
+			'volume': [7, 98],
+			'sustain pedal': [64, 'off', 'off|on']
 		},
-		"Helm": {
-		},
-		"MDA DX10": {
-			"ctrls": [
-				['volume',7,96],
-				['mod-wheel',1,0],
-				['sustain on/off',64,'off','off|on']
-			],
-			"ctrl_screens": [['MIDI Controllers',['volume','mod-wheel','sustain on/off']]]
-		},
-		"MDA JX10": {
-			"ctrls": [
-				['volume',7,96],
-				['mod-wheel',1,0],
-			],
-			"ctrl_screens": [['MIDI Controllers',['volume','mod-wheel']]]
-		},
-		"MDA ePiano": {
-			"ctrls": [
-				['volume',7,96],
-				['mod-wheel',1,0],
-				['sustain on/off',64,'off','off|on']
-			],
-			"ctrl_screens": [['MIDI Controllers',['volume','mod-wheel','sustain on/off']]]
-		},
-		"MDA Piano": {
-			"ctrls": [
-				['volume',7,96],
-				['mod-wheel',1,0],
-				['sustain on/off',64,'off','off|on']
-			],
-			"ctrl_screens": [['MIDI Controllers',['volume','mod-wheel','sustain on/off']]]
-		},
-		"Noize Mak3r": {
-		},
-		"Obxd": {
-		},
-		"synthv1": {
-		},
-		"reMID": {
-			"ctrls": [
-				['volume',7,96],
-			],
-			"ctrl_screens": [['MIDI Controllers',['volume']]]
+		"ctrl_screens": {
+			'_default_synth': ['modulation wheel', 'sustain pedal'],
+			'Calf Monosynth': ['modulation wheel'],
+			'Dexed': ['sustain pedal'],
+			'Fabla': [],
+			'Foo YC20 Organ': [],
+			'Helm': ['sustain pedal'],
+			'MDA DX10': ['volume', 'modulation wheel', 'sustain pedal'],
+			'MDA JX10': ['volume', 'modulation wheel', 'sustain pedal'],
+			'MDA ePiano': ['volume', 'modulation wheel', 'sustain pedal'],
+			'MDA Piano': ['volume', 'modulation wheel', 'sustain pedal'],
+			'Nekobi': ['sustain pedal'],
+			'Noize Mak3r': [],
+			'Obxd': ['modulation wheel', 'sustain pedal'],
+			'Pianoteq 7 Stage': ['sustain pedal'],
+			'Raffo Synth': [],
+			'Red Zeppelin 5': [],
+			'reMID': ['volume'],
+			'String machine': [],
+			'synthv1': [],
+			'Surge': ['modulation wheel', 'sustain pedal'],
+			'padthv1': [],
+			'Vex': [],
+			'amsynth': ['modulation wheel', 'sustain pedal']
 		}
 	}
-
-	_ctrls = None
-	_ctrl_screens = None
 
 	#----------------------------------------------------------------------------
 	# ZynAPI variables
@@ -171,7 +158,7 @@ class zynthian_engine_jalv(zynthian_engine):
 	# Initialization
 	#----------------------------------------------------------------------------
 
-	def __init__(self, plugin_name, plugin_type, zyngui=None, dryrun=False):
+	def __init__(self, plugin_name, plugin_type, zyngui=None, dryrun=False, jackname=None):
 		super().__init__(zyngui)
 
 		self.type = plugin_type
@@ -180,27 +167,51 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.plugin_name = plugin_name
 		self.plugin_url = self.plugins_dict[plugin_name]['URL']
 
-		self.native_gui = False
-		if self.plugin_url not in self.broken_ui and 'UI' in self.plugins_dict[plugin_name]:
-			self.native_gui = self.plugins_dict[plugin_name]['UI']
+		# WARNING Show all controllers for Gareus Meters, as they seem to be wrongly marked with property "not_on_gui"
+		if self.plugin_url.startswith("http://gareus.org/oss/lv2/meters"):
+			self.ignore_not_on_gui = True
+		else:
+			self.ignore_not_on_gui = False
 
-		if plugin_type=="MIDI Tool":
+		self.native_gui = False
+		if 'UI' in self.plugins_dict[plugin_name]:
+			if self.plugin_url in self.broken_ui:
+				self.native_gui = self.broken_ui[self.plugin_url][self.rpi]
+			else:
+				self.native_gui = self.plugins_dict[plugin_name]['UI']
+				#if not self.native_gui:
+				#	self.native_gui = "AUTO"
+
+		if plugin_type == "MIDI Tool":
 			self.options['midi_route'] = True
 			self.options['audio_route'] = False
-		elif plugin_type=="Audio Effect":
+		elif plugin_type == "Audio Effect":
 			self.options['audio_capture'] = True
+			self.options['midi_capture'] = False
 			self.options['note_range'] = False
 
 		if not dryrun:
+			if jackname:
+				self.jackname = jackname
+			else:
+				self.jackname = self.get_next_jackname(self.plugin_name, True)
+
+			logging.debug("CREATING JALV ENGINE => {}".format(self.jackname))
+
 			if self.config_remote_display() and self.native_gui:
-				if self.native_gui=="Qt5UI":
+				if self.native_gui == "Qt5UI":
 					jalv_bin = "jalv.qt5"
+				elif self.native_gui == "Qt4UI":
+					jalv_bin = "jalv.qt4"
 				else: #  elif self.native_gui=="X11UI":
 					jalv_bin = "jalv.gtk"
-				self.command = ("{} --jack-name {} {}".format(jalv_bin, self.get_jalv_jackname(), self.plugin_url))
+				self.command = ("{} --jack-name {} {}".format(jalv_bin, self.jackname, self.plugin_url))
 			else:
-				self.command = ("jalv -n {} {}".format(self.get_jalv_jackname(), self.plugin_url))
-				self.command_env['DISPLAY'] = "X"
+				self.command = ("jalv -n {} {}".format(self.jackname, self.plugin_url))
+				# Some plugins need a X11 display for running headless (QT5, QT6),
+				# but some others can't run headless if there is a valid DISPLAY defined
+				if not self.plugin_name.endswith("v1"):
+					self.command_env['DISPLAY'] = "X"
 
 			self.command_prompt = "\n> "
 
@@ -210,20 +221,34 @@ class zynthian_engine_jalv(zynthian_engine):
 			output = self.start()
 
 			# Get Plugin & Jack names from Jalv starting text ...
-			self.jackname = None
 			if output:
 				for line in output.split("\n"):
-					if line[0:10]=="JACK Name:":
+					if line[0:10] == "JACK Name:":
 						self.jackname = line[11:].strip()
 						logging.debug("Jack Name => {}".format(self.jackname))
 						break
 
-			# Set static MIDI Controllers from hardcoded plugin info
+			# Set MIDI Controllers from hardcoded plugin info
 			try:
-				self._ctrls = self.plugin_ctrl_info[self.plugin_name]['ctrls']
-				self._ctrl_screens = self.plugin_ctrl_info[self.plugin_name]['ctrl_screens']
+				if self.plugin_name in self.plugin_ctrl_info['ctrl_screens']:
+					ctrl_screen = self.plugin_ctrl_info['ctrl_screens'][self.plugin_name]
+				elif self.type == 'MIDI Synth':
+					logging.info("Using default MIDI controllers for '{}'.".format(self.plugin_name))
+					ctrl_screen = self.plugin_ctrl_info['ctrl_screens']['_default_synth']
+				else:
+					ctrl_screen = None
+				if ctrl_screen:
+					self._ctrl_screens = [['MIDI Controllers', copy.copy(ctrl_screen)]]
+					self._ctrls = []
+					for ctrl_name in ctrl_screen:
+						self._ctrls.append([ctrl_name] + self.plugin_ctrl_info['ctrls'][ctrl_name])
+				else:
+					self._ctrls = []
+					self._ctrl_screens = []
 			except:
-				logging.info("No defined MIDI controllers for '{}'.".format(self.plugin_name))
+				logging.error("Error setting MIDI controllers for '{}'.".format(self.plugin_name))
+				self._ctrls = []
+				self._ctrl_screens = []
 
 			# Generate LV2-Plugin Controllers
 			self.lv2_monitors_dict = OrderedDict()
@@ -242,16 +267,11 @@ class zynthian_engine_jalv(zynthian_engine):
 		self.reset()
 
 
-	def get_jalv_jackname(self):
-		return self.get_next_jackname(self.plugin_name, True)
-
-
 	# ---------------------------------------------------------------------------
 	# Layer Management
 	# ---------------------------------------------------------------------------
 
 	def add_layer(self, layer):
-		layer.listen_midi_cc = False
 		super().add_layer(layer)
 		self.set_midi_chan(layer)
 
@@ -402,7 +422,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	def preset_exists(self, bank, preset_name):
 		#TODO: This would be more robust using URI but that is created dynamically by save_preset()
-		if bank[2] not in self.preset_info:
+		if not bank or bank[2] not in self.preset_info:
 			return False
 		try:
 			for preset in self.preset_info[bank[2]]['presets']:
@@ -415,6 +435,8 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	def save_preset(self, bank, preset_name):
 		# Save preset (jalv)
+		if not bank:
+			bank = ["", None, "", None]
 		res = self.proc_cmd("save preset %s,%s" % (bank[0], preset_name)).split("\n")
 		
 		if res[-1].startswith("ERROR"):
@@ -494,7 +516,7 @@ class zynthian_engine_jalv(zynthian_engine):
 			#logging.debug("Controller {} info =>\n{}!".format(symbol, info))
 			try:
 				#If there is points info ...
-				if len(info['scale_points'])>1:
+				if len(info['scale_points']) > 1:
 					labels = []
 					values = []
 					for p in info['scale_points']:
@@ -511,7 +533,9 @@ class zynthian_engine_jalv(zynthian_engine):
 						'value_min': values[0],
 						'value_max': values[-1],
 						'is_toggle': info['is_toggled'],
-						'is_integer': info['is_integer']
+						'is_integer': info['is_integer'],
+						'not_on_gui': info['not_on_gui'],
+						'display_priority': info['display_priority']
 					})
 
 				#If it's a numeric controller ...
@@ -519,7 +543,7 @@ class zynthian_engine_jalv(zynthian_engine):
 					r = info['range']['max'] - info['range']['min']
 					if info['is_integer']:
 						if info['is_toggled']:
-							if info['value']==0:
+							if info['value'] == 0:
 								val = 'off'
 							else:
 								val = 'on'
@@ -534,7 +558,9 @@ class zynthian_engine_jalv(zynthian_engine):
 								'value_min': int(info['range']['min']),
 								'value_max': int(info['range']['max']),
 								'is_toggle': True,
-								'is_integer': True
+								'is_integer': True,
+								'not_on_gui': info['not_on_gui'],
+								'display_priority': info['display_priority']
 							})
 						else:
 							zctrls[symbol] = zynthian_controller(self, symbol, info['name'], {
@@ -547,11 +573,13 @@ class zynthian_engine_jalv(zynthian_engine):
 								'value_max': int(info['range']['max']),
 								'is_toggle': False,
 								'is_integer': True,
-								'is_logarithmic': info['is_logarithmic']
+								'is_logarithmic': info['is_logarithmic'],
+								'not_on_gui': info['not_on_gui'],
+								'display_priority': info['display_priority']
 							})
 					else:
 						if info['is_toggled']:
-							if info['value']==0:
+							if info['value'] == 0:
 								val = 'off'
 							else:
 								val = 'on'
@@ -566,7 +594,9 @@ class zynthian_engine_jalv(zynthian_engine):
 								'value_min': info['range']['min'],
 								'value_max': info['range']['max'],
 								'is_toggle': True,
-								'is_integer': False
+								'is_integer': False,
+								'not_on_gui': info['not_on_gui'],
+								'display_priority': info['display_priority']
 							})
 						else:
 							zctrls[symbol] = zynthian_controller(self, symbol, info['name'], {
@@ -579,12 +609,18 @@ class zynthian_engine_jalv(zynthian_engine):
 								'value_max': info['range']['max'],
 								'is_toggle': False,
 								'is_integer': False,
-								'is_logarithmic': info['is_logarithmic']
+								'is_logarithmic': info['is_logarithmic'],
+								'not_on_gui': info['not_on_gui'],
+								'display_priority': info['display_priority']
 							})
 
 			#If control info is not OK
 			except Exception as e:
 				logging.error(e)
+
+		# Sort by suggested display_priority
+		new_index = sorted(zctrls, key=lambda x: zctrls[x].display_priority, reverse=True)
+		zctrls = {k: zctrls[k] for k in new_index}
 
 		return zctrls
 
@@ -594,7 +630,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		for line in self.proc_cmd("monitors").split("\n"):
 			try:
 				parts=line.split(" = ")
-				if len(parts)==2:
+				if len(parts) == 2:
 					self.lv2_monitors_dict[parts[0]] = float(parts[1])
 			except Exception as e:
 				logging.error(e)
@@ -602,64 +638,9 @@ class zynthian_engine_jalv(zynthian_engine):
 		return self.lv2_monitors_dict
 
 
-	def get_ctrl_screen_name(self, gname, i):
-		if i>0:
-			gname = "{}#{}".format(gname, i)
-		return gname
-
-
-	def generate_ctrl_screens(self, zctrl_dict=None):
-		if zctrl_dict is None:
-			zctrl_dict=self.zctrl_dict
-
-		if self._ctrl_screens is None:
-			self._ctrl_screens=[]
-
-		# Get zctrls by group
-		zctrl_group = OrderedDict()
-		for symbol, zctrl in zctrl_dict.items():
-			gsymbol = zctrl.group_symbol
-			if gsymbol is None:
-				gsymbol = "_"
-			if gsymbol not in zctrl_group:
-				zctrl_group[gsymbol] = [zctrl.group_name, OrderedDict()]
-			zctrl_group[gsymbol][1][symbol] = zctrl
-		if "_" in zctrl_group:
-			last_group = zctrl_group["_"]
-			del zctrl_group["_"]
-			if len(zctrl_group)==0:
-				last_group[0] = "Ctrls"
-			else:
-				last_group[0] = "Ungroup"
-			zctrl_group["_"] = last_group
-
-		for gsymbol, gdata in zctrl_group.items():
-			ctrl_set=[]
-			gname = gdata[0]
-			if len(gdata[1])<=4:
-				c=0
-			else:
-				c=1
-			for symbol, zctrl in gdata[1].items():
-				try:
-					#logging.debug("CTRL {}".format(symbol))
-					ctrl_set.append(symbol)
-					if len(ctrl_set)>=4:
-						#logging.debug("ADDING CONTROLLER SCREEN {}".format(self.get_ctrl_screen_name(gname,c)))
-						self._ctrl_screens.append([self.get_ctrl_screen_name(gname,c),ctrl_set])
-						ctrl_set=[]
-						c=c+1
-				except Exception as err:
-					logging.error("Generating Controller Screens => {}".format(err))
-
-			if len(ctrl_set)>=1:
-				#logging.debug("ADDING CONTROLLER SCREEN {}",format(self.get_ctrl_screen_name(gname,c)))
-				self._ctrl_screens.append([self.get_ctrl_screen_name(gname,c),ctrl_set])
-
-
 	def get_controllers_dict(self, layer):
 		# Get plugin static controllers
-		zctrls=super().get_controllers_dict(layer)
+		zctrls = super().get_controllers_dict(layer)
 		# Add plugin native controllers
 		zctrls.update(self.lv2_zctrl_dict)
 		return zctrls
@@ -688,6 +669,7 @@ class zynthian_engine_jalv(zynthian_engine):
 	@classmethod
 	def refresh_zynapi_instance(cls):
 		if cls.zynapi_instance:
+			zynthian_lv2.generate_presets_cache_workaround()
 			zynthian_lv2.generate_plugin_presets_cache(cls.zynapi_instance.plugin_url)
 			plugin_name = cls.zynapi_instance.plugin_name
 			plugin_type = cls.zynapi_instance.type
@@ -697,7 +679,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_banks(cls):
-		banks=[]
+		banks = []
 		for b in cls.zynapi_instance.get_bank_list():
 			if b[2]:
 				banks.append({
@@ -712,7 +694,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_presets(cls, bank):
-		presets=[]
+		presets = []
 		for p in cls.zynapi_instance.get_preset_list(bank['raw']):
 			if p[2]:
 				presets.append({

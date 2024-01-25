@@ -200,6 +200,5 @@ class Smf
         uint32_t m_nDurationInTicks = 0; // Duration of song in ticks
         size_t m_nPosition = 0; // Event cursor position in ticks
         size_t m_nCurrentTrack = 0; // Index of track that last event was retrieved 
-        double m_fTickDuration = 500.0 / 96; // Duration of tick in milliseconds at event cursor position
         double m_fDuration = 0; // Duration of song in seconds
 };

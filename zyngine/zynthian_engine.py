@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine)
 # 
 # zynthian_engine is the base class for the Zynthian Synth Engine
 # 
 # Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -20,26 +20,28 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 #import sys
 import os
 import re
-import copy
 import json
 import liblo
 import logging
 import pexpect
 from time import sleep
-from os.path import isfile, isdir, join
 from string import Template
 from collections import OrderedDict
+from os.path import isfile, isdir, ismount, join
 
 from . import zynthian_controller
+from zyngui import zynthian_gui_config
 
-#--------------------------------------------------------------------------------
-# Basic Engine Class: Spawn a proccess & manage IPC communication using pexpect
-#--------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------
+# Basic Engine Class: Spawn a process & manage IPC communication using pexpect
+# --------------------------------------------------------------------------------
+
 
 class zynthian_basic_engine:
 
@@ -47,10 +49,10 @@ class zynthian_basic_engine:
 	# Data dirs 
 	# ---------------------------------------------------------------------------
 
-	config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
-	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR',"/zynthian/zynthian-data")
-	my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data")
-	ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
+	config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR', "/zynthian/config")
+	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data")
+	my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data")
+	ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 
 	# ---------------------------------------------------------------------------
 	# Initialization
@@ -67,14 +69,10 @@ class zynthian_basic_engine:
 		self.command_env = os.environ.copy()
 		self.command_prompt = prompt
 		self.command_cwd = cwd
-
-
-	def __del__(self):
-		self.stop()
-
+		self.ignore_not_on_gui = False
 
 	# ---------------------------------------------------------------------------
-	# Subproccess Management & IPC
+	# Subprocess Management & IPC
 	# ---------------------------------------------------------------------------
 
 	def start(self):
@@ -90,7 +88,7 @@ class zynthian_basic_engine:
 				# Setting cwd is because we've set PWD above. Some engines doesn't
 				# care about the process's cwd, but it is more consistent to set 
 				# cwd when PWD has been set.
-				self.proc=pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env, cwd=self.command_cwd)
+				self.proc = pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env, cwd=self.command_cwd)
 
 				self.proc.delaybeforesend = 0
 
@@ -104,18 +102,16 @@ class zynthian_basic_engine:
 			except Exception as err:
 				logging.error("Can't start engine {} => {}".format(self.name, err))
 
-
 	def stop(self):
 		if self.proc:
 			try:
-				logging.info("Stoping Engine " + self.name)
+				logging.info("Stopping Engine " + self.name)
 				self.proc.terminate()
 				sleep(0.2)
 				self.proc.terminate(True)
-				self.proc=None
+				self.proc = None
 			except Exception as err:
 				logging.error("Can't stop engine {} => {}".format(self.name, err))
-
 
 	def proc_get_output(self):
 		if self.command_prompt:
@@ -124,7 +120,6 @@ class zynthian_basic_engine:
 		else:
 			logging.warning("Command Prompt is not defined!")
 			return None
-
 
 	def proc_cmd(self, cmd):
 		if self.proc:
@@ -138,10 +133,10 @@ class zynthian_basic_engine:
 				logging.error("Can't exec engine command: {} => {}".format(cmd, err))
 			return out
 
-
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Synth Engine Base Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_engine(zynthian_basic_engine):
 
@@ -150,21 +145,16 @@ class zynthian_engine(zynthian_basic_engine):
 	# ---------------------------------------------------------------------------
 
 	# Standard MIDI Controllers
-	_ctrls=[
-		['volume',7,96],
-		['modulation',1,0],
-		['pan',10,64],
-		['sustain',64,'off',['off','on']]
-	]
+	_ctrls = []
 
 	# Controller Screens
-	_ctrl_screens=[
-		['main',['volume','modulation','pan','sustain']]
-	]
+	_ctrl_screens = []
 
 	# ---------------------------------------------------------------------------
 	# Config variables
 	# ---------------------------------------------------------------------------
+
+	bank_dirs = None
 
 	# ---------------------------------------------------------------------------
 	# Initialization
@@ -186,13 +176,18 @@ class zynthian_engine(zynthian_basic_engine):
 		self.options = {
 			'clone': True,
 			'note_range': True,
+			'audio_capture': False,
+			'midi_capture': True,
 			'audio_route': True,
+			'midi_route': False,
 			'midi_chan': True,
 			'replace': True,
 			'drop_pc': False,
+			'drop_cc': True,
 			'layer_audio_out': True
 		}
 
+		self.osc_proto = liblo.UDP
 		self.osc_target = None
 		self.osc_target_port = None
 		self.osc_server = None
@@ -206,17 +201,11 @@ class zynthian_engine(zynthian_basic_engine):
 		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 		self.learned_zctrls = {}
 
-
-	def __del__(self):
-		self.stop()
-
-
 	def reset(self):
-		#Reset Vars
+		# Reset Vars
 		self.loading=0
 		self.loading_snapshot=False
-		#TODO: OSC, IPC, ...
-
+		# TODO: OSC, IPC, ...
 
 	def config_remote_display(self):
 		if 'ZYNTHIAN_X11_SSH' in os.environ and 'SSH_CLIENT' in os.environ and 'DISPLAY' in os.environ:
@@ -227,39 +216,36 @@ class zynthian_engine(zynthian_basic_engine):
 			self.command_env['DISPLAY'] = ':1'
 			return True
 
-
 	def get_next_jackname(self, jname, sanitize=False):
 		try:
 			# Jack, when listing ports, accepts regular expressions as the jack name.
 			# So, for avoiding problems, jack names shouldn't contain regex characters.
 			if sanitize:
-				jname = re.sub("[\_]{2,}","_",re.sub("[\s\'\*\(\)\[\]]","_",jname))
-			jname_count = self.zyngui.screens['layer'].get_jackname_count(jname)
+				jname = re.sub("[\_]{2,}", "_", re.sub("[\s\'\*\(\)\[\]]", "_", jname))
+			jname = self.zyngui.screens['layer'].get_next_jackname(jname)
 		except Exception as e:
-			jname_count = 0
 			logging.error(e)
-
-		return "{}-{:02d}".format(jname, jname_count)
-
+			return "{}-00".format(jname)
+		return jname
 
 	# ---------------------------------------------------------------------------
 	# Loading GUI signalization
 	# ---------------------------------------------------------------------------
 
 	def start_loading(self):
-		self.loading=self.loading+1
-		if self.loading<1: self.loading=1
+		self.loading = self.loading + 1
+		if self.loading < 1: self.loading = 1
 		if self.zyngui:
 			self.zyngui.start_loading()
 
 	def stop_loading(self):
-		self.loading=self.loading-1
-		if self.loading<0: self.loading=0
+		self.loading = self.loading - 1
+		if self.loading<0: self.loading = 0
 		if self.zyngui:
 			self.zyngui.stop_loading()
 
 	def reset_loading(self):
-		self.loading=0
+		self.loading = 0
 		if self.zyngui:
 			self.zyngui.stop_loading()
 
@@ -269,46 +255,59 @@ class zynthian_engine(zynthian_basic_engine):
 
 	def refresh_all(self, refresh=True):
 		for layer in self.layers:
-			layer.refresh_flag=refresh
+			layer.refresh_flag = refresh
+
+	def refresh(self):
+		raise NotImplementedError
 
 	# ---------------------------------------------------------------------------
 	# OSC Management
 	# ---------------------------------------------------------------------------
 
-	def osc_init(self, target_port=None, proto=liblo.UDP):
-		if target_port:
-			self.osc_target_port=target_port
-		try:
-			self.osc_target=liblo.Address('localhost',self.osc_target_port,proto)
-			logging.info("OSC target in port %s" % str(self.osc_target_port))
-			self.osc_server=liblo.ServerThread(None,proto)
-			self.osc_server_port=self.osc_server.get_port()
-			self.osc_server_url=liblo.Address('localhost',self.osc_server_port,proto).get_url()
-			logging.info("OSC server running in port %s" % str(self.osc_server_port))
-			self.osc_add_methods()
-			self.osc_server.start()
-		except liblo.AddressError as err:
-			logging.error("OSC Server can't be initialized (%s). Running without OSC feedback." % err)
-
+	def osc_init(self):
+		if self.osc_server is None and self.osc_target_port:
+			try:
+				self.osc_target = liblo.Address('localhost', self.osc_target_port, self.osc_proto)
+				logging.info("OSC target in port {}".format(self.osc_target_port))
+				self.osc_server = liblo.ServerThread(None, self.osc_proto, reg_methods=False)
+				#self.osc_server = liblo.Server(None, self.osc_proto, reg_methods=False)
+				self.osc_server_port = self.osc_server.get_port()
+				self.osc_server_url = liblo.Address('localhost', self.osc_server_port, self.osc_proto).get_url()
+				logging.info("OSC server running in port {}".format(self.osc_server_port))
+				self.osc_add_methods()
+				self.osc_server.start()
+			except liblo.AddressError as err:
+				logging.error("OSC Server can't be started ({}). Running without OSC feedback.".format(err))
 
 	def osc_end(self):
 		if self.osc_server:
 			try:
-				#self.osc_server.stop()
+				self.osc_server.stop()
+				self.osc_server = None
 				logging.info("OSC server stopped")
 			except Exception as err:
-				logging.error("Can't stop OSC server => %s" % err)
-
+				logging.error("OSC server can't be stopped => {}".format(err))
 
 	def osc_add_methods(self):
-		self.osc_server.add_method(None, None, self.cb_osc_all)
-
+		if self.osc_server:
+			self.osc_server.add_method(None, None, self.cb_osc_all)
 
 	def cb_osc_all(self, path, args, types, src):
-		logging.info("OSC MESSAGE '%s' from '%s'" % (path, src.url))
+		logging.info("OSC MESSAGE '{}' from '{}'".format(path, src.url))
 		for a, t in zip(args, types):
-			logging.debug("argument of type '%s': %s" % (t, a))
+			logging.debug("argument of type '{}': {}".format(t, a))
 
+	# ---------------------------------------------------------------------------
+	# Subprocess Management & IPC
+	# ---------------------------------------------------------------------------
+
+	def start(self):
+		self.osc_init()
+		super().start()
+
+	def stop(self):
+		super().stop()
+		self.osc_end()
 
 	# ---------------------------------------------------------------------------
 	# Generating list from different sources
@@ -316,48 +315,47 @@ class zynthian_engine(zynthian_basic_engine):
 
 	@staticmethod
 	def get_filelist(dpath, fext):
-		res=[]
-		if isinstance(dpath, str): dpath=[('_', dpath)]
-		fext='.'+fext
-		xlen=len(fext)
-		i=0
+		res = []
+		if isinstance(dpath, str): dpath = [('_', dpath)]
+		fext = '.' + fext
+		xlen = len(fext)
+		i = 0
 		for dpd in dpath:
-			dp=dpd[1]
-			dn=dpd[0]
+			dp = dpd[1]
+			dn = dpd[0]
 			try:
 				for f in sorted(os.listdir(dp)):
-					if not f.startswith('.') and isfile(join(dp,f)) and f[-xlen:].lower()==fext:
-						title=str.replace(f[:-xlen], '_', ' ')
-						if dn!='_': title=dn+'/'+title
-						#print("filelist => "+title)
-						res.append([join(dp,f),i,title,dn,f])
-						i=i+1
+					if not f.startswith('.') and isfile(join(dp, f)) and f[-xlen:].lower() == fext:
+						title = str.replace(f[:-xlen], '_', ' ')
+						if dn != '_': title = dn + '/' + title
+						#print("filelist => " + title)
+						res.append([join(dp, f), i, title, dn, f])
+						i = i + 1
 			except Exception as e:
 				#logging.warning("Can't access directory '{}' => {}".format(dp,e))
 				pass
-
 		return res
-
 
 	@staticmethod
 	def get_dirlist(dpath, exclude_empty=True):
-		res=[]
-		if isinstance(dpath, str): dpath=[('_', dpath)]
-		i=0
+		res = []
+		if isinstance(dpath, str):
+			dpath = [('_', dpath)]
+		i = 0
 		for dpd in dpath:
-			dp=dpd[1]
-			dn=dpd[0]
+			dp = dpd[1]
+			dn = dpd[0]
 			try:
 				for f in sorted(os.listdir(dp)):
 					dpath = join(dp,f)
 					if not os.path.isdir(dpath) or (exclude_empty and next(os.scandir(dpath), None) is None):
 						continue
 					if not f.startswith('.') and isdir(dpath):
-						title,ext=os.path.splitext(f)
-						title=str.replace(title, '_', ' ')
-						if dn!='_': title=dn+'/'+title
-						res.append([dpath,i,title,dn,f])
-						i=i+1
+						title, ext = os.path.splitext(f)
+						title = str.replace(title, '_', ' ')
+						if dn != '_': title = dn + '/' + title
+						res.append([dpath, i, title, dn, f])
+						i = i + 1
 			except Exception as e:
 				#logging.warning("Can't access directory '{}' => {}".format(dp,e))
 				pass
@@ -372,20 +370,16 @@ class zynthian_engine(zynthian_basic_engine):
 		self.layers.append(layer)
 		layer.jackname = self.jackname
 
-
 	def del_layer(self, layer):
 		self.layers.remove(layer)
 		layer.jackname = None
-
 
 	def del_all_layers(self):
 		for layer in self.layers:
 			self.del_layer(layer)
 
-
 	def get_name(self, layer):
 		return self.name
-
 
 	def get_path(self, layer):
 		return self.name
@@ -397,30 +391,44 @@ class zynthian_engine(zynthian_basic_engine):
 	def set_midi_chan(self, layer):
 		pass
 
-
 	def get_active_midi_channels(self):
-		chans=[]
+		chans = []
 		for layer in self.layers:
 			if layer.midi_chan is None:
 				return None
-			elif layer.midi_chan>=0 and layer.midi_chan<=15:
+			elif 0 <= layer.midi_chan <= 15:
 				chans.append(layer.midi_chan)
 		return chans
-
 
 	# ---------------------------------------------------------------------------
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
+	def get_bank_dirs(self):
+		if self.bank_dirs is not None:
+			exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
+			xbank_dirs = []
+			for bd in self.bank_dirs:
+				if bd[1].startswith(self.ex_data_dir):
+					for exd in exdirs:
+						xbank_dirs.append((bd[0], bd[1].replace(self.ex_data_dir, exd)))
+				else:
+					xbank_dirs.append(bd)
+			return xbank_dirs
+		else:
+			return None
 
 	def get_bank_list(self, layer=None):
-		logging.info('Getting Bank List for %s: NOT IMPLEMENTED!' % self.name)
-
+		xbank_dirs = self.get_bank_dirs()
+		if xbank_dirs is not None:
+			return self.get_dirlist(xbank_dirs)
+		else:
+			logging.info('Getting Bank List for %s: NOT IMPLEMENTED!' % self.name)
+			return []
 
 	def set_bank(self, layer, bank):
 		self.zyngui.zynmidi.set_midi_bank_msb(layer.get_midi_chan(), bank[1])
 		return True
-
 
 	# ---------------------------------------------------------------------------
 	# Preset Management
@@ -429,18 +437,16 @@ class zynthian_engine(zynthian_basic_engine):
 	def get_preset_list(self, bank):
 		logging.info('Getting Preset List for %s: NOT IMPLEMENTED!', self.name)
 
-
 	def set_preset(self, layer, preset, preload=False):
-		if isinstance(preset[1],int):
+		if isinstance(preset[1], int):
 			self.zyngui.zynmidi.set_midi_prg(layer.get_midi_chan(), preset[1])
 		else:
 			self.zyngui.zynmidi.set_midi_preset(layer.get_midi_chan(), preset[1][0], preset[1][1], preset[1][2])
 		return True
 
-
 	def cmp_presets(self, preset1, preset2):
 		try:
-			if preset1[1][0]==preset2[1][0] and preset1[1][1]==preset2[1][1] and preset1[1][2]==preset2[1][2]:
+			if preset1[1][0] == preset2[1][0] and preset1[1][1] == preset2[1][1] and preset1[1][2] == preset2[1][2]:
 				return True
 			else:
 				return False
@@ -450,11 +456,13 @@ class zynthian_engine(zynthian_basic_engine):
 	def is_preset_user(self, preset):
 		return isinstance(preset[0], str) and preset[0].startswith(self.my_data_dir)
 
+	def preset_exists(self, bank_info, preset_name):
+		logging.error("Not implemented!!!")
 
-	# To implement in derived classes
+	# Implement in derived classes to enable features in GUI
 	#def save_preset(self, bank_name, preset_name):
-	#def delete_preset(self, preset):
-	#def rename_preset(self, preset, new_name):
+	#def delete_preset(self, bank_info, preset):
+	#def rename_preset(self, bank_info, preset, new_name):
 
 	# ---------------------------------------------------------------------------
 	# Preset Favorites Management
@@ -468,7 +476,7 @@ class zynthian_engine(zynthian_basic_engine):
 			del self.preset_favs[str(preset[0])]
 			fav_status = False
 		except:
-			self.preset_favs[str(preset[0])]=[layer.bank_info, preset]
+			self.preset_favs[str(preset[0])] = [layer.bank_info, preset]
 			fav_status = True
 
 		try:
@@ -479,24 +487,21 @@ class zynthian_engine(zynthian_basic_engine):
 
 		return fav_status
 
-
 	def remove_preset_fav(self, preset):
 		if self.preset_favs is None:
 			self.load_preset_favs()
 		try:
 			del self.preset_favs[str(preset[0])]
-			with open(self.preset_favs_path, 'w') as f:
+			with open(self.preset_favs_fpath, 'w') as f:
 				json.dump(self.preset_favs, f)
 		except:
-			pass # Don't care if preset not in favs
-
+			pass  # Don't care if preset not in favs
 
 	def get_preset_favs(self, layer):
 		if self.preset_favs is None:
 			self.load_preset_favs()
 
 		return self.preset_favs
-
 
 	def is_preset_fav(self, preset):
 		if self.preset_favs is None:
@@ -508,10 +513,9 @@ class zynthian_engine(zynthian_basic_engine):
 		else:
 			return False
 
-
 	def load_preset_favs(self):
 		if self.nickname:
-			fname = self.nickname.replace("/","_")
+			fname = self.nickname.replace("/", "_")
 			self.preset_favs_fpath = self.my_data_dir + "/preset-favorites/" + fname + ".json"
 
 			try:
@@ -520,11 +524,10 @@ class zynthian_engine(zynthian_basic_engine):
 			except:
 				self.preset_favs = OrderedDict()
 
-			#TODO: Remove invalid presets from favourite's list
+			# TODO: Remove invalid presets from favourite's list
 
 		else:
 			logging.warning("Can't load preset favorites until the engine have a nickname!")
-
 
 	# ---------------------------------------------------------------------------
 	# Controllers Management
@@ -533,99 +536,116 @@ class zynthian_engine(zynthian_basic_engine):
 	def set_ctrl_update_cb(self, cb):
 		self.layer_cb = cb
 
-
 	# Get zynthian controllers dictionary:
 	# + Default implementation uses a static controller definition array
 	def get_controllers_dict(self, layer):
-		midich=layer.get_midi_chan()
-		zctrls=OrderedDict()
+		midich = layer.get_midi_chan()
+		zctrls = OrderedDict()
 
 		if self._ctrls is not None:
 			for ctrl in self._ctrls:
-				options={}
+				options = {}
 
-				#OSC control =>
-				if isinstance(ctrl[1],str):
-					#replace variables ...
-					tpl=Template(ctrl[1])
-					cc=tpl.safe_substitute(ch=midich)
+				# OSC control =>
+				if isinstance(ctrl[1], str):
+					# replace variables ...
+					tpl = Template(ctrl[1])
+					cc = tpl.safe_substitute(ch = midich)
 					try:
-						cc=tpl.safe_substitute(i=layer.part_i)
+						cc = tpl.safe_substitute(i = layer.part_i)
 					except:
 						pass
-					#set osc_port option ...
-					if self.osc_target_port>0:
-						options['osc_port']=self.osc_target_port
-					#debug message
+					# set osc_port option ...
+					if self.osc_target_port > 0:
+						options['osc_port'] = self.osc_target_port
+					# debug message
 					logging.debug('CONTROLLER %s OSC PATH => %s' % (ctrl[0],cc))
-				#MIDI Control =>
+				# MIDI Control =>
 				else:
-					cc=ctrl[1]
+					cc = ctrl[1]
 
-				#Build controller depending on array length ...
-				if len(ctrl)>4:
-					if isinstance(ctrl[4],str):
-						zctrl=zynthian_controller(self,ctrl[4],ctrl[0])
+				# Build controller depending on array length ...
+				if len(ctrl) > 4:
+					if isinstance(ctrl[4], str):
+						zctrl = zynthian_controller(self, ctrl[4], ctrl[0])
 					else:
-						zctrl=zynthian_controller(self,ctrl[0])
-						zctrl.graph_path=ctrl[4]
-					zctrl.setup_controller(midich,cc,ctrl[2],ctrl[3])
-				elif len(ctrl)>3:
-					zctrl=zynthian_controller(self,ctrl[0])
-					zctrl.setup_controller(midich,cc,ctrl[2],ctrl[3])
+						zctrl = zynthian_controller(self, ctrl[0])
+						zctrl.graph_path = ctrl[4]
+					zctrl.setup_controller(midich, cc, ctrl[2], ctrl[3])
+				elif len(ctrl) > 3:
+					zctrl = zynthian_controller(self, ctrl[0])
+					zctrl.setup_controller(midich, cc, ctrl[2], ctrl[3])
 				else:
-					zctrl=zynthian_controller(self,ctrl[0])
-					zctrl.setup_controller(midich,cc,ctrl[2])
+					zctrl = zynthian_controller(self, ctrl[0])
+					zctrl.setup_controller(midich, cc, ctrl[2])
 
-				#Set controller extra options
-				if len(options)>0:
+				# Set controller extra options
+				if len(options) > 0:
 					zctrl.set_options(options)
 
-				zctrls[zctrl.symbol]=zctrl
+				zctrls[zctrl.symbol] = zctrl
 		return zctrls
 
+	def get_ctrl_screen_name(self, gname, i):
+		if i > 0:
+			gname = "{}#{}".format(gname, i)
+		return gname
 
-	def generate_ctrl_screens(self, zctrl_dict=None):
-		if zctrl_dict is None:
-			zctrl_dict=self.zctrl_dict
-
+	def generate_ctrl_screens(self, zctrl_dict):
 		if self._ctrl_screens is None:
-			self._ctrl_screens=[]
+			self._ctrl_screens = []
 
-		c=1
-		ctrl_set=[]
+		# Get zctrls by group
+		zctrl_group = OrderedDict()
 		for symbol, zctrl in zctrl_dict.items():
-			try:
-				#logging.debug("CTRL {}".format(symbol))
-				ctrl_set.append(symbol)
-				if len(ctrl_set)>=4:
-					#logging.debug("ADDING CONTROLLER SCREEN {}#{}".format(self.nickname,c))
-					self._ctrl_screens.append(["{}#{}".format(self.nickname,c),ctrl_set])
-					ctrl_set=[]
-					c=c+1
-			except Exception as err:
-				logging.error("Generating Controller Screens => {}".format(err))
+			gsymbol = zctrl.group_symbol
+			if gsymbol not in zctrl_group:
+				if zctrl.group_name:
+					zctrl_group[gsymbol] = [zctrl.group_name, OrderedDict()]
+				else:
+					zctrl_group[gsymbol] = [zctrl.group_symbol, OrderedDict()]
+			zctrl_group[gsymbol][1][symbol] = zctrl
+		if None in zctrl_group:
+			zctrl_group[None][0] = "Ctrls"
 
-		if len(ctrl_set)>=1:
-			#logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
-			self._ctrl_screens.append(["{}#{}".format(self.nickname,c),ctrl_set])
+		for gsymbol, gdata in zctrl_group.items():
+			ctrl_set = []
+			gname = gdata[0]
+			if len(gdata[1]) <= 4:
+				c = 0
+			else:
+				c = 1
+			for symbol, zctrl in gdata[1].items():
+				try:
+					if not self.ignore_not_on_gui and zctrl.not_on_gui:
+						continue
+					#logging.debug("CTRL {}".format(symbol))
+					ctrl_set.append(symbol)
+					if len(ctrl_set) >= 4:
+						#logging.debug("ADDING CONTROLLER SCREEN {}".format(self.get_ctrl_screen_name(gname,c)))
+						self._ctrl_screens.append([self.get_ctrl_screen_name(gname,c),ctrl_set])
+						ctrl_set = []
+						c = c + 1
+				except Exception as err:
+					logging.error("Generating Controller Screens => {}".format(err))
 
+			if len(ctrl_set) >= 1:
+				#logging.debug("ADDING CONTROLLER SCREEN {}",format(self.get_ctrl_screen_name(gname,c)))
+				self._ctrl_screens.append([self.get_ctrl_screen_name(gname,c),ctrl_set])
 
 	def send_controller_value(self, zctrl):
 		raise Exception("NOT IMPLEMENTED!")
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# MIDI learning
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def init_midi_learn(self, zctrl):
-		logging.info("Learning '{}' ({}) ...".format(zctrl.symbol,zctrl.get_path()))
-
+		logging.info("Learning '{}' ({}) ...".format(zctrl.symbol, zctrl.get_path()))
 
 	def midi_unlearn(self, zctrl):
-		if zctrl.get_path() in self.learned_zctrls:
-			logging.info("Unlearning '{}' ...".format(zctrl.symbol))
+		if zctrl.midi_learn_chan is not None and zctrl.midi_learn_chan < 16 and zctrl.get_path() in self.learned_zctrls:
+			#logging.info("Unlearning '{}' ...".format(zctrl.symbol))
 			try:
 				self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = None
 				del self.learned_zctrls[zctrl.get_path()]
@@ -633,21 +653,25 @@ class zynthian_engine(zynthian_basic_engine):
 			except Exception as e:
 				logging.warning("Can't unlearn => {}".format(e))
 
-
-	def set_midi_learn(self, zctrl ,chan, cc):
-		try:
-			# Clean current binding if any ...
+	def set_midi_learn(self, zctrl, chan, cc):
+		if chan is not None and chan < 16:
+			# Clean implied CC bindings if any ...
 			try:
 				self.learned_cc[chan][cc].midi_unlearn()
 			except:
 				pass
-			# Add midi learning info
-			self.learned_zctrls[zctrl.get_path()] = zctrl
-			self.learned_cc[chan][cc] = zctrl
-			return zctrl._set_midi_learn(chan, cc)
-		except Exception as e:
-			logging.error("Can't learn {} => {}".format(zctrl.symbol, e))
+			try:
+				self.midi_unlearn(zctrl)
+			except:
+				pass
 
+			try:
+				# Add midi learning info
+				self.learned_zctrls[zctrl.get_path()] = zctrl
+				self.learned_cc[chan][cc] = zctrl
+				return zctrl._set_midi_learn(chan, cc)
+			except Exception as e:
+				logging.error("Can't learn {} ({}) for CH{}#CC{} => {}".format(zctrl.symbol, zctrl.get_path(), chan, cc, e))
 
 	def keep_midi_learn(self, zctrl):
 		try:
@@ -661,35 +685,40 @@ class zynthian_engine(zynthian_basic_engine):
 		except:
 			pass
 
+	def refresh_midi_learn(self):
+		logging.info("Refresh MIDI-learn ...")
+		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
+		for zctrl in self.learned_zctrls.values():
+			self.learned_cc[zctrl.midi_learn_chan][zctrl.midi_learn_cc] = zctrl
 
 	def reset_midi_learn(self):
 		logging.info("Reset MIDI-learn ...")
 		self.learned_zctrls = {}
-		self.learned_cc = [[None for chan in range(16)] for cc in range(128)]
-
+		self.learned_cc = [[None for c in range(128)] for chan in range(16)]
 
 	def cb_midi_learn(self, zctrl, chan, cc):
 		return self.set_midi_learn(zctrl, chan, cc)
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# MIDI CC processing
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
-	def midi_control_change(self, chan, ccnum, val):
-		try:
-			self.learned_cc[chan][ccnum].midi_control_change(val)
-		except:
-			pass
-
+	def midi_control_change(self, idev, chan, ccnum, val):
+		# ACTI mode: Ignore MIDI channel
+		if chan is None:
+			for ch in range(0, 15):
+				if self.learned_cc[ch][ccnum]:
+					self.learned_cc[ch][ccnum].midi_control_change(idev, val)
+		# MULTI mode: Global MIDI learning chan+ccnum
+		else:
+			self.learned_cc[chan][ccnum].midi_control_change(idev, val)
 
 	def midi_zctrl_change(self, zctrl, val):
 		if val != zctrl.get_ctrl_midi_val():
 			try:
-				zctrl.midi_control_change(val)
+				zctrl.midi_control_change(-1, val)
 			except Exception as e:
 				logging.debug(e)
-
 
 	# ---------------------------------------------------------------------------
 	# Options and Extended Config
@@ -698,10 +727,8 @@ class zynthian_engine(zynthian_basic_engine):
 	def get_options(self):
 		return self.options
 
-
 	def get_extended_config(self):
 		return None
-
 
 	def set_extended_config(self, xconfig):
 		pass
@@ -715,7 +742,6 @@ class zynthian_engine(zynthian_basic_engine):
 		return [f for f in dir(cls) if f.startswith('zynapi_')]
 		#callable(f) and
 
-
 	# Remove double spacing
 	@classmethod
 	def remove_double_spacing(cls, lines):
@@ -727,5 +753,4 @@ class zynthian_engine(zynthian_basic_engine):
 		for line in double_line:
 			del lines[line]
 
-
-#******************************************************************************
+# ******************************************************************************

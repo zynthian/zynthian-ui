@@ -44,7 +44,7 @@ bool Sequence::removeTrack(size_t track)
     return true;
 }
 
-size_t Sequence::getTracks()
+uint32_t Sequence::getTracks()
 {
     return m_vTracks.size();
 }
@@ -60,8 +60,9 @@ void Sequence::clear()
 
 Track* Sequence::getTrack(size_t index)
 {
-    if(index < m_vTracks.size())
+    if(index < m_vTracks.size()) {
         return &(m_vTracks[index]);
+    }
     return NULL;
 }
 
@@ -127,7 +128,7 @@ void Sequence::setPlayState(uint8_t state)
         state = STOPPED;
     if(state == m_nState)
         return;
-    if(m_nMode == ONESHOT && (state == STOPPING || state == STOPPING_SYNC))
+    if((m_nMode == ONESHOT || m_nMode == LOOP) && (state == STOPPING || state == STOPPING_SYNC))
         state = STOPPED;
     m_nState = state;
     if(m_nState == STOPPED)
@@ -264,11 +265,16 @@ uint32_t Sequence::getPlayPosition()
     return m_nPosition;
 }
 
-bool Sequence::hasChanged()
+void Sequence::setModified()
+{
+    m_bChanged = true;
+}
+
+bool Sequence::isModified()
 {
     bool bChanged = m_bChanged;
     for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
-        bChanged |= (*it).hasChanged();
+        bChanged |= (*it).isModified();
     m_bChanged = false;
     return bChanged;
 }

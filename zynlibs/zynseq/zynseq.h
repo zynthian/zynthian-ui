@@ -48,6 +48,7 @@
 #include "constants.h"
 #include "timebase.h"
 #include <cstdint>
+#include "pattern.h"
 
 //-----------------------------------------------------------------------------
 // Library Initialization
@@ -57,6 +58,12 @@ extern "C"
 {
 #endif
 
+enum TRANSPORT_CLOCK
+{
+    TRANSPORT_CLOCK_INTERNAL = 1,
+    TRANSPORT_CLOCK_MIDI = 2,
+    TRANSPORT_CLOCK_ANALOG = 4
+};
 
 // ** Library management functions **
 
@@ -83,10 +90,32 @@ void enableDebug(bool bEnable);
 */
 bool load(const char* filename);
 
-/** @brief  Save sequences and patterns from file
+/** @brief  Load pattern from file
+*   @param  nPattern Pattern number
+*   @param  filename Full path and filename
+*/
+bool load_pattern(uint32_t nPattern, const char* filename);
+
+/** @brief  Save sequences and patterns to file
 *   @param  filename Full path and filename
 */
 void save(const char* filename);
+
+/** @brief  Save pattern to file
+*   @param  nPattern Pattern number
+*   @param  filename Full path and filename
+*/
+void save_pattern(uint32_t nPattern, const char* filename);
+
+/** Clear pattern undo queue */
+void resetPatternSnapshot();
+
+/** Restore previous state of pattern */
+void undoPattern();
+
+/** @brief  Store current pattern on undo queue
+*/
+void snapshotPattern();
 
 /** @brief  Get vertical zoom
 *   @retval uint16_t Vertical zoom
@@ -107,7 +136,6 @@ uint16_t getHorizontalZoom();
 *   @param uint16_t Horizontal zoom
 */
 void setHorizontalZoom(uint16_t zoom);
-
 
 // ** Direct MIDI interface **
 //!@todo Should direct MIDI output be removed because JACK clients can do that themselves?
@@ -151,7 +179,21 @@ void sendMidiClock();
 */
 void sendMidiCommand(uint8_t status, uint8_t value1, uint8_t value2);
 
-// ** Status **
+/** @brief  Enable or disable sending MIDI clock to output
+*   @param  enable True to enable MIDI clock output (Default: true)
+*/
+void enableMidiClockOutput(bool enable=true);
+
+/** @brief  Get MIDI device used for external trigger of sequences
+*   @retval uint8_t MIDI device index
+*/
+uint8_t getTriggerDevice();
+
+/** @brief  Set MIDI device used for external trigger of sequences
+*   @param idev MIDI device index [0..15 or other value to disable MIDI trigger]
+*/
+void setTriggerDevice(uint8_t idev);
+
 /** @brief  Get MIDI channel used for external trigger of sequences
 *   @retval uint8_t MIDI channel
 */
@@ -176,13 +218,24 @@ uint8_t getTriggerNote(uint8_t bank, uint8_t sequence);
 */
 void setTriggerNote(uint8_t bank, uint8_t sequence, uint8_t note);
 
+/** @brief  Get the sequence triggered by a MIDI note
+*   @param  note MIDI note number
+*   @retval uint16_t Bank and sequence id encoded as 16-bit
+*/
+uint16_t getTriggerSequence(uint8_t note);
+
 // ** Pattern management functions - pattern events are quantized to steps **
 //!@todo Current implementation selects a pattern then operates on it. API may be simpler to comprehend if patterns were acted on directly by passing the pattern index, e.g. clearPattern(index)
 
-/** @brief  Enable MIDI input to add notes to current pattern
+/** @brief  Enable record from MIDI input to add notes to current pattern
 *   @param  enable True to enable MIDI input
 */
-void enableMidiInput(bool enable);
+void enableMidiRecord(bool enable);
+
+/** @brief  Get MIDI record enable state
+*   @retval bool True if MIDI record enabled
+*/
+bool isMidiRecord();
 
 /** @brief  Create a new pattern
 *   @retval uint32_t Index of new pattern
@@ -221,6 +274,12 @@ uint32_t getPatternAt(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t p
 *   @param  pattern Index of pattern to select
 */
 void selectPattern(uint32_t pattern);
+
+/** @brief  Check if selected pattern is empty
+*   @param  pattern Pattern index
+*   @retval bool True if pattern is empty
+*/
+bool isPatternEmpty(uint32_t pattern);
 
 /** @brief  Get the index of the selected pattern
 *   @retval uint32_t Index of pattern or -1 if not found
@@ -280,6 +339,13 @@ bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration);
 */
 void removeNote(uint32_t step, uint8_t note);
 
+/** @brief  Get step that note starts
+*   @param  position Quantity of steps from start of pattern at which to check for note
+*   @param  note MIDI note number
+*   @retval int32_t Quantity of steps from start of pattern that note starts or -1 if note not found
+*/
+int32_t getNoteStart(uint32_t step, uint8_t note);
+
 /** @brief  Get velocity of note in selected pattern
 *   @param  step Index of step at which note resides
 *   @param  note MIDI note number
@@ -293,6 +359,34 @@ uint8_t getNoteVelocity(uint32_t step, uint8_t note);
 *   @param  velocity MIDI velocity
 */
 void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity);
+
+/** @brief  Get stutter count of note in selected pattern
+*   @param  step Index of step at which note resides
+*   @param  note MIDI note number
+*   @retval uint8_t Stutter count
+*/
+uint8_t getStutterCount(uint32_t step, uint8_t note);
+
+/** @brief  Set stutter count of note in selected pattern
+*   @param  step Index of step at which note resides
+*   @param  note MIDI note number
+*   @param  count Stutter count
+*/
+void setStutterCount(uint32_t step, uint8_t note, uint8_t count);
+
+/** @brief  Get stutter duration of note in selected pattern
+*   @param  step Index of step at which note resides
+*   @param  note MIDI note number
+*   @retval uint8_t Stutter duration in clock cycles
+*/
+uint8_t getStutterDur(uint32_t step, uint8_t note);
+
+/** @brief  Set stutter duration of note in selected pattern
+*   @param  step Index of step at which note resides
+*   @param  note MIDI note number
+*   @param  dur Stutter duration in clock cycles
+*/
+void setStutterDur(uint32_t step, uint8_t note, uint8_t dur);
 
 /** @brief  Get duration of note in selected pattern
 *   @param  position Index of step at which note starts
@@ -334,6 +428,16 @@ void changeVelocityAll(int value);
 */
 void changeDurationAll(float value);
 
+/** @brief  Change stutter count of all notes in patterm
+*   @param  value Offset to adjust +/-100 or whatever
+*/
+void changeStutterCountAll(int value);
+
+/** @brief  Change stutter duration of all notes in patterm
+*   @param  value Offset to adjust +/-100 or whatever
+*/
+void changeStutterDurAll(int value);
+
 /** @brief  Clears events from selected pattern
 *   @note   Does not change other parameters such as pattern length
 */
@@ -344,17 +448,6 @@ void clear();
 *   @param  destination Index of pattern to which to copy
 */
 void copyPattern(uint32_t source, uint32_t destination);
-
-/** @brief  Set MIDI input channel
-*   @param  channel MIDI channel [0..16]
-*   @note   >16 to disable MIDI input
-*/
-void setInputChannel(uint8_t channel);
-
-/** @brief  Get MIDI input channel
-*   @retval uint8_t MIDI channel [0..15, 0xFF if disabled]
-*/
-uint8_t getInputChannel();
 
 /** @brief  Set note used as rest when using MIDI input for pattern editing
 *   @param  note MIDI note number [0..127]
@@ -387,6 +480,10 @@ void setTonic(uint8_t tonic);
 */
 uint8_t getTonic();
 
+/** @brief  Flag pattern as modified - also sets flags in relevant sequences and tracks
+*/
+void setPatternModified(Pattern* pPattern, bool bModified = true);
+
 /** @brief  Check if selected pattern has changed since last check
 *   @retval bool True if pattern has changed
 */
@@ -410,16 +507,12 @@ void setRefNote(uint8_t note);
 */
 uint32_t getLastStep();
 
-// ** Track management functions **
-
 /** @brief  Get position of playhead within pattern in steps
-*   @param  bank Index of bank
-*   @param  sequence Index of sequence
-*   @param  track Index of track
 *   @retval uint32_t Quantity of steps from start of pattern to playhead
-*   @todo   Function names confusing getPatternPlayhead / getStep (within Track)
 */
-uint32_t getPatternPlayhead(uint8_t bank, uint8_t sequence, uint32_t track);
+uint32_t getPatternPlayhead();
+
+// ** Track management functions **
 
 /** @brief  Add pattern to a track
 *   @param  bank Index of bank
@@ -509,7 +602,7 @@ bool isEmpty(uint8_t bank, uint8_t sequence);
 /** @brief  Set play state
 *   @param  bank Index of bank containing sequence
 *   @param  sequence Index (sequence) of sequence within bank
-*   @param  uint8_t Play state [STOPPED | STARTING | PLAYING | STOPPING]
+*   @param  state Play state [STOPPED | STARTING | PLAYING | STOPPING]
 *   @note   STARTING will reset to start of sequence. PLAYING resumes at last played position.
 *   @note   If all sequences have stopped and no external clients have registered for transport then transport is stopped.
 */
@@ -524,8 +617,9 @@ void togglePlayState(uint8_t bank, uint8_t sequence);
 /** @brief  Get quantity of tracks in a sequence
 *   @param  bank Index of bank
 *   @param  sequence Index of sequence
+*   @retval uint32_t Quantity of tracks in sequence
 */
-size_t getTracksInSequence(uint8_t bank, uint8_t sequence);
+uint32_t getTracksInSequence(uint8_t bank, uint8_t sequence);
 
 /** @brief  Stops all sequences
 */
@@ -557,6 +651,11 @@ uint32_t getSequenceLength(uint8_t bank, uint8_t sequence);
 *   @param  sequence Sequence number
 */
 void clearSequence(uint8_t bank, uint8_t sequence);
+
+/** @brief  Get the quantity of playing sequences
+*   @retval size_t Quantity of playing sequences
+*/
+size_t getPlayingSequences();
 
 /** @brief  Get sequence group
 *   @param  bank Index of bank
@@ -631,13 +730,6 @@ void addTimeSigEvent(uint8_t bank, uint8_t sequence, uint8_t beats, uint8_t type
 */
 uint16_t getTimeSigAt(uint8_t bank, uint8_t sequence, uint16_t bar);
 
-/** @brief  Enable MIDI learn for a sequence trigger
-*   @param  bank Index of bank or 0 to disable learning
-*   @param  sequence Sequence index or 0 to disable learning
-*   @note   Whilst in learn mode the next MIDI note-on event received on trigger channel will set the pad's trigger note
-*/
-void enableMidiLearn(uint8_t bank, uint8_t sequence);
-
 /** @brief  Get bank currently in MIDI learn mode
 *   @retval uint8_t Bank index or 0 if disabled
 */
@@ -647,6 +739,12 @@ uint8_t getMidiLearnBank();
 *   @retval uint8_t Sequence index
 */
 uint8_t getMidiLearnSequence();
+
+/** @brief  Set the pattern editor sequence
+*   @param  bank Bank index
+*   @param  sequence Sequence index
+*/
+void setSequence(uint8_t bank, uint8_t sequence);
 
 /** @brief  Set sequence name
 *   @param  bank Index of bank
@@ -800,8 +898,41 @@ uint32_t getBeatsPerBar();
 */
 void transportSetSyncTimeout(uint32_t timeout);
 
+/** @brief  Enable or disable metronome
+*   @param  enable True to enable [Default: true]
+*/
+void enableMetronome(bool enable = true);
+
+/** @brief  Check of metronome enabled
+*   @retval bool True if enabled
+*/
+bool isMetronomeEnabled();
+
+/** @brief  Set level of metronome
+*   @param  level Level [0.0 - 1.0]
+*/
+void setMetronomeVolume(float level);
+
+/** @brief  Set level of metronome
+*   @retval float Level [0.0 - 1.0]
+*/
+float getMetronomeVolume();
+
+/** @brief Get clock source
+*   @retval uint8_t Clock source [0:Internal 1:MIDI]
+*/
+uint8_t getClockSource();
+
+/** @brief Set clock source
+*   @param source uint8_t Clock source [0:Internal 1:MIDI]
+*/
+void setClockSource(uint8_t source);
+
+/** @brief  Get quantity of frames in each clock cycle
+*   @retval double Quantity of frames
+*/
+double getFramesPerClock(double dTempo);
 
 #ifdef __cplusplus
 }
 #endif
-

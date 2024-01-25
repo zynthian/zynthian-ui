@@ -126,6 +126,8 @@ def	is_plugin_ui(plugin):
 				ttl = f.read()
 				if ttl.find("a ui:Qt5UI")>0 or ttl.find("a lv2ui:Qt5UI")>0:
 					return "Qt5UI"
+				if ttl.find("a ui:Qt4UI")>0 or ttl.find("a lv2ui:Qt4UI")>0:
+					return "Qt4UI"
 				if ttl.find("a ui:X11UI")>0 or ttl.find("a lv2ui:X11UI")>0:
 					return "X11UI"
 		except:
@@ -219,9 +221,9 @@ def convert_from_all_plugins():
 def get_plugin_type(plugin):
 	global world
 	lv2_plugin_classes = {
-		"MIDI_SYNTH" : ("Instrument"),
+		"MIDI_SYNTH": ("Instrument"),
 
-		"AUDIO_EFFECT" : ("Analyser", "Spectral", "Delay", "Compressor", "Distortion", "Filter", "Equaliser",
+		"AUDIO_EFFECT": ("Analyser", "Spectral", "Delay", "Compressor", "Distortion", "Filter", "Equaliser",
 			"Modulator", "Expander", "Spatial", "Limiter", "Pitch Shifter", "Reverb", "Simulator", "Envelope",
 			"Gate", "Amplifier", "Chorus", "Flanger", "Phaser", "Highpass", "Lowpass", "Dynamics"),
 
@@ -252,16 +254,16 @@ def get_plugin_type(plugin):
 	n_midi_in += plugin.get_num_ports_of_class(world.ns.lv2.InputPort, world.ns.atom.AtomPort)
 	n_midi_out += plugin.get_num_ports_of_class(world.ns.lv2.OutputPort, world.ns.atom.AtomPort)
 
-	if n_audio_out>0 and n_audio_in==0:
-		if n_midi_in>0:
+	if n_audio_out > 0 and n_audio_in == 0:
+		if n_midi_in > 0:
 			return PluginType.MIDI_SYNTH
 		else:
 			return PluginType.AUDIO_GENERATOR
 
-	if n_audio_out>0 and n_audio_in>0 and n_midi_out==0:
+	if n_audio_out > 0 and n_audio_in > 0 and n_midi_out == 0:
 		return PluginType.AUDIO_EFFECT
 
-	if n_midi_in>0 and n_midi_out>0 and n_audio_in==n_audio_out==0:
+	if n_midi_in > 0 and n_midi_out > 0 and n_audio_in == n_audio_out == 0:
 		return PluginType.MIDI_TOOL
 
 	#return PluginType.UNKNOWN
@@ -271,6 +273,16 @@ def get_plugin_type(plugin):
 #------------------------------------------------------------------------------
 # LV2 Bank/Preset management
 #------------------------------------------------------------------------------
+
+
+# workaround to fix segfault:
+def generate_presets_cache_workaround():
+	global world
+	start = int(round(time.time()))
+	for plugin in world.get_all_plugins():
+		plugin.get_name()
+	logging.info('Workaround took {}s'.format(int(round(time.time())) - start))
+
 
 def generate_all_presets_cache(refresh=True):
 	global world
@@ -439,6 +451,12 @@ def get_plugin_ports(plugin_url):
 			is_integer = port.has_property(world.ns.lv2.integer)
 			is_enumeration = port.has_property(world.ns.lv2.enumeration)
 			is_logarithmic = port.has_property(world.ns.portprops.logarithmic)
+			not_on_gui = port.has_property(world.ns.portprops.notOnGUI)
+			display_priority = port.get(world.ns.lv2.displayPriority)
+			if display_priority is None:
+				display_priority = 0
+			else:
+				display_priority = int(display_priority)
 
 			#logging.debug("PORT {} properties =>".format(port.get_symbol()))
 			#for node in port.get_properties():
@@ -453,15 +471,17 @@ def get_plugin_ports(plugin_url):
 				pgroup_index = world.get(pgroup, world.ns.lv2.index, None)
 				if pgroup_index is not None:
 					pgroup_index = int(pgroup_index)
-					#logging.warning("Port group <{}> has not index.".format(pgroup_key))
+					#logging.warning("Port group <{}> has no index.".format(pgroup_key))
 				pgroup_name = world.get(pgroup, world.ns.lv2.name, None)
+				if pgroup_name is None:
+					pgroup_name = world.get(pgroup, world.ns.rdfs.label, None)
 				if pgroup_name is not None:
 					pgroup_name = str(pgroup_name)
-					#logging.warning("Port group <{}> has not name.".format(pgroup_key))
+					#logging.warning("Port group <{}> has no name.".format(pgroup_key))
 				pgroup_symbol = world.get(pgroup, world.ns.lv2.symbol, None)
 				if pgroup_symbol is not None:
 					pgroup_symbol = str(pgroup_symbol)
-					#logging.warning("Port group <{}> has not symbol.".format(pgroup_key))
+					#logging.warning("Port group <{}> has no symbol.".format(pgroup_key))
 			#else:
 				#logging.debug("Port <{}> has no group.".format(port_symbol))
 
@@ -504,6 +524,8 @@ def get_plugin_ports(plugin_url):
 				'is_integer': is_integer,
 				'is_enumeration': is_enumeration,
 				'is_logarithmic': is_logarithmic,
+				'not_on_gui': not_on_gui,
+				'display_priority': display_priority,
 				'scale_points': sp
 			}
 			ports_info[i] = info
@@ -522,15 +544,18 @@ def get_node_value(node):
 
 #------------------------------------------------------------------------------
 
-# Init Lilv
 world = lilv.World()
-init_lilv()
 
+# Disable language filtering
+#world.set_option(lilv.OPTION_FILTER_LANG, world.new_bool(False))
+
+# Init Lilv
+init_lilv()
 # Load presets from cache
 load_plugins()
 
 if __name__ == '__main__':
-
+	# Init logging
 	#log_level=logging.DEBUG
 	#log_level=logging.WARNING
 	log_level=logging.INFO
@@ -543,11 +568,7 @@ if __name__ == '__main__':
 			generate_plugins_config_file(False)
 
 		elif sys.argv[1]=="presets":
-			#workaround to fix segfault:
-			for plugin in world.get_all_plugins():
-				plugin.get_name()
-			logging.info('Workaround took {}s'.format(int(round(time.time())) - start))
-
+			generate_presets_cache_workaround()
 			if len(sys.argv)>2:
 				plugin_url = sys.argv[2]
 				generate_plugin_presets_cache(plugin_url, False)

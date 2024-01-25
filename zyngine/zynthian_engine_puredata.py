@@ -81,7 +81,6 @@ class zynthian_engine_puredata(zynthian_engine):
 		self.jackname = "pure_data"
 
 		self.options['midi_route'] = True
-		self.options['replace'] = False
 
 		self.preset = ""
 		self.preset_config = None
@@ -104,10 +103,6 @@ class zynthian_engine_puredata(zynthian_engine):
 	#----------------------------------------------------------------------------
 	# Bank Managament
 	#----------------------------------------------------------------------------
-
-	def get_bank_list(self, layer=None):
-		return self.get_dirlist(self.bank_dirs)
-
 
 	def set_bank(self, layer, bank):
 		return True
@@ -166,7 +161,13 @@ class zynthian_engine_puredata(zynthian_engine):
 
 
 	def cmp_presets(self, preset1, preset2):
-		return True
+		try:
+			if preset1[0]==preset2[0] and preset1[2]==preset2[2]:
+				return True
+			else:
+				return False
+		except:
+			return False
 
 	#----------------------------------------------------------------------------
 	# Controllers Managament

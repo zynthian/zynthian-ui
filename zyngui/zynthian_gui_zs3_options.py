@@ -26,6 +26,7 @@
 import logging
 
 # Zynthian specific modules
+from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 #------------------------------------------------------------------------------
@@ -35,46 +36,143 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 class zynthian_gui_zs3_options(zynthian_gui_selector):
 
 	def __init__(self):
-		self.midi_chan = None
+		self.last_action = None
 		self.zs3_index = None
 		super().__init__('Option', True)
 
 
-	def config(self, midich, i):
-		self.midi_chan = midich
+	def config(self, i):
+		self.last_action = None
 		self.zs3_index = i
 
 
 	def fill_list(self):
-		self.list_data=[]
-
-		self.list_data.append((self.zs3_update,0,"Update"))
-		self.list_data.append((self.zs3_delete,0,"Delete"))
-
+		self.list_data = []
+		self.list_data.append((self.zs3_restoring_submenu, 1, "Restoring..."))
+		self.list_data.append((self.zs3_rename, 2, "Rename"))
+		self.list_data.append((self.zs3_update, 3, "Update"))
+		self.list_data.append((self.zs3_delete, 4, "Delete"))
+		self.preselect_last_action()
 		super().fill_list()
 
 
+	def preselect_last_action(self, force_select=False):
+		for i, data in enumerate(self.list_data):
+			if self.last_action and self.last_action == data[0]:
+				if force_select:
+					self.select_listbox(i)
+				else:
+					self.index = i
+				return i
+		return 0
+
+
 	def select_action(self, i, t='S'):
+		self.index = i
 		if self.list_data[i][0]:
-			self.last_action=self.list_data[i][0]
+			self.last_action = self.list_data[i][0]
 			self.last_action()
 
 
-	def zs3_update(self):
-		logging.info("Updating ZS3 CH#{}".format(self.midi_chan, self.zs3_index))
-		self.zyngui.screens['layer'].save_midi_chan_zs3(self.midi_chan, self.zs3_index)
+	def zs3_restoring_submenu(self):
+		try:
+			state = self.zyngui.screens['layer'].learned_zs3[self.zs3_index]
+		except:
+			logging.error("Bad ZS3 index ({}).".format(self.zs3_index))
+			return
+
+		self.zyngui.screens['option'].config("ZS3 restoring: {}".format(state["zs3_title"]), self.zs3_restoring_options_cb, self.zs3_restoring_options_select_cb, close_on_select=False, click_type=True)
+		self.zyngui.show_screen('option')
+
+
+	def zs3_restoring_options_cb(self):
+		try:
+			state = self.zyngui.screens["layer"].learned_zs3[self.zs3_index]
+		except:
+			logging.error("Bad ZS3 index ({}).".format(self.zs3_index))
+			return
+
+		# Get restored active layer index
+		root_layers = self.zyngui.screens["layer"].root_layers
+		if state['index'] < len(root_layers):
+			restore_midi_chan = root_layers[state['index']].midi_chan
+		else:
+			restore_midi_chan = None
+
+		# Restoring Chains (layers)
+		options = {}
+		slayers = state["layers"]
+		for i, lss in enumerate(sorted(slayers, key=lambda lss: lss["midi_chan"])):
+			if lss["midi_chan"] == 256:
+				chan = "Main"
+			else:
+				chan = lss["midi_chan"] + 1
+			label = "{}#{} > {}".format(chan, lss["engine_name"], lss["preset_name"])
+			if "restore" in lss:
+				restore_flag = lss["restore"]
+			elif lss['midi_chan'] == 256 or restore_midi_chan is not None and lss['midi_chan'] == restore_midi_chan:
+				restore_flag = True
+			else:
+				restore_flag = False
+			if restore_flag:
+				options["\u2612 {}".format(label)] = slayers.index(lss)
+			else:
+				options["\u2610 {}".format(label)] = slayers.index(lss)
+
+
+		# Restoring Audio Mixer
+		smixer = state["mixer"]
+		if "restore" in smixer and not smixer["restore"]:
+			options["\u2610 Mixer"] = -1
+		else:
+			options["\u2612 Mixer"] = -1
+
+		return options
+
+
+	def	zs3_restoring_options_select_cb(self, label, index, ct):
+		if ct == "S":
+			if index >= 0:
+				self.zyngui.screens["layer"].toggle_zs3_layer_restore_flag(self.zs3_index, index)
+			elif index == -1:
+				self.zyngui.screens["layer"].toggle_zs3_mixer_restore_flag(self.zs3_index)
+		elif ct == "B":
+			try:
+				state = self.zyngui.screens["layer"].learned_zs3[self.zs3_index]
+			except:
+				logging.error("Bad ZS3 index ({}).".format(self.zs3_index))
+				return
+			# Invert selection (toggle all elements in list)
+			for i in range(0, len(state["layers"])):
+				self.zyngui.screens["layer"].toggle_zs3_layer_restore_flag(self.zs3_index, i)
+			self.zyngui.screens["layer"].toggle_zs3_mixer_restore_flag(self.zs3_index)
+
+
+	def zs3_rename(self):
+		title = self.zyngui.screens['layer'].get_zs3_title(self.zs3_index)
+		self.zyngui.show_keyboard(self.zs3_rename_cb, title)
+
+
+	def zs3_rename_cb(self, title):
+		logging.info("Renaming ZS3#{}".format(self.zs3_index))
+		self.zyngui.screens['layer'].set_zs3_title(self.zs3_index, title)
 		self.zyngui.close_screen()
-		self.zyngui.exit_midi_learn_mode()
+
+
+	def zs3_update(self):
+		logging.info("Updating ZS3#{}".format(self.zs3_index))
+		self.zyngui.screens['layer'].save_zs3(self.zs3_index)
+		self.zyngui.close_screen()
 
 
 	def zs3_delete(self):
-		logging.info("Deleting ZS3 CH#{} {}".format(self.midi_chan, self.zs3_index))
-		self.zyngui.screens['layer'].delete_midi_chan_zs3(self.midi_chan, self.zs3_index)
+		logging.info("Deleting ZS3#{}".format(self.zs3_index))
+		self.zyngui.screens['layer'].delete_zs3(self.zs3_index)
 		self.zyngui.close_screen()
 
 
 	def set_select_path(self):
-		self.select_path.set("PROG Options")
+		self.select_path.set("ZS3 Options")
 
 
 #------------------------------------------------------------------------------

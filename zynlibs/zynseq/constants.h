@@ -24,16 +24,25 @@
 #define LASTPLAYSTATUS  5
 
 // MIDI commands
-#define MIDI_POSITION   0xF2
-#define MIDI_SONG       0xF3
-#define MIDI_CLOCK      0xF8
-#define MIDI_START      0xFA
-#define MIDI_CONTINUE   0xFB
-#define MIDI_STOP       0xFC
-#define MIDI_NOTE_OFF   0x80
-#define MIDI_NOTE_ON    0x90
-#define MIDI_CONTROL    0xB0
-#define MIDI_PROGRAM    0xC0
+#define MIDI_NOTE_OFF       0x80
+#define MIDI_NOTE_ON        0x90
+#define MIDI_POLY_PRESSURE  0xA0
+#define MIDI_CONTROL        0xB0
+#define MIDI_PROGRAM        0xC0
+#define MIDI_CHAN_PRESSURE  0xD0
+#define MIDI_PITCHBEND      0xE0
+#define MIDI_SYSEX_START    0xF0
+#define MIDI_TIMECODE       0xF1
+#define MIDI_POSITION       0xF2
+#define MIDI_SONG           0xF3
+#define MIDI_TUNE           0xF6
+#define MIDI_SYSEX_END      0xF7
+#define MIDI_CLOCK          0xF8
+#define MIDI_START          0xFA
+#define MIDI_CONTINUE       0xFB
+#define MIDI_STOP           0xFC
+#define MIDI_ACTIVE_SENSE   0xFE
+#define MIDI_RESET          0xFF
 
 struct MIDI_MESSAGE {
     uint8_t command = 0;

@@ -31,48 +31,17 @@
 #------------------------------------------------------------------------------
 
 function load_config_env() {
-	if [ -d "$ZYNTHIAN_CONFIG_DIR" ]; then
-		source "$ZYNTHIAN_CONFIG_DIR/zynthian_envars.sh"
-	else
-		source "$ZYNTHIAN_SYS_DIR/scripts/zynthian_envars.sh"
-	fi
+	source "$ZYNTHIAN_SYS_DIR/scripts/zynthian_envars_extended.sh"
 
-	if [ ! -z "$ZYNTHIAN_SCRIPT_MIDI_PROFILE" ]; then
-		source "$ZYNTHIAN_SCRIPT_MIDI_PROFILE"
-	else
+	if [ -z "$ZYNTHIAN_SCRIPT_MIDI_PROFILE" ]; then
 		source "$ZYNTHIAN_MY_DATA_DIR/midi-profiles/default.sh"
+	else
+		source "$ZYNTHIAN_SCRIPT_MIDI_PROFILE"
 	fi
 
 	if [ -f "$ZYNTHIAN_CONFIG_DIR/zynthian_custom_config.sh" ]; then
 		source "$ZYNTHIAN_CONFIG_DIR/zynthian_custom_config.sh"
 	fi
-}
-
-function backlight_on() {
-	# Turn On Display Backlight
-	#echo 0 > /sys/class/backlight/soc:backlight/bl_power
-	#echo 0 > /sys/class/backlight/fb_ili9486/bl_power
-	if [ -f /sys/class/backlight/*/bl_power ]; then
-		echo 0 > /sys/class/backlight/*/bl_power
-	fi
-}
-
-function backlight_off() {
-	# Turn Off Display Backlight
-	#echo 1 > /sys/class/backlight/soc:backlight/bl_power
-	#echo 1 > /sys/class/backlight/fb_ili9486/bl_power
-	if [ -f /sys/class/backlight/*/bl_power ]; then
-		echo 1 > /sys/class/backlight/*/bl_power
-	fi
-}
-
-function screensaver_off() {
-	# Don't activate screensaver
-	xset s off
-	# Disable DPMS (Energy Star) features.
-	xset -dpms
-	# Don't blank the video device
-	xset s noblank
 }
 
 
@@ -95,69 +64,162 @@ function splash_zynthian() {
 }
 
 
+function splash_zynthian_message() {
+	zynthian_message=$1
+
+	img_fpath=$2
+	[ "$img_fpath" ] || img_fpath="$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.png"
+
+	# Generate a splash image with the message ...
+	img_w=`identify -format '%w' $img_fpath`
+	img_h=`identify -format '%h' $img_fpath`
+	if [[ "${#zynthian_message}" > "40" ]]; then
+			font_size=$(expr $img_w / 36)
+	else
+			font_size=$(expr $img_w / 28)
+	fi
+	strlen=$(expr ${#zynthian_message} \* $font_size / 2)
+	pos_x=$(expr $img_w / 2 - $strlen / 2)
+	pos_y=$(expr $img_h \* 10 / 100)
+	[[ "$pos_x" > "0" ]] || pos_x=5
+	convert -strip -family \"$ZYNTHIAN_UI_FONT_FAMILY\" -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"$zynthian_message\"" $img_fpath $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+
+	# Display error image
+	xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+}
+
+
 function splash_zynthian_error() {
-	#Grab exit code if set
+	# Generate an error splash image ...
+	splash_zynthian_message "$1" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"
+}
+
+
+function splash_zynthian_error_exit_ip() {
+	# Grab exit code if set
 	zynthian_error=$1
 	[ "$zynthian_error" ] || zynthian_error="???"
-	#Get the IP
+
+	# Get the IP
 	#zynthian_ip=`ip route get 1 | awk '{print $NF;exit}'`
 	zynthian_ip=`ip route get 1 | sed 's/^.*src \([^ ]*\).*$/\1/;q'`
 
-	#Generate an error image with the IP ...
-	img_fpath="$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"
-	img_w=`identify -format '%w' $img_fpath`
-	img_h=`identify -format '%h' $img_fpath`
-	pos_x=$(expr $img_w \* 100 / 350)
-	pos_y=$(expr $img_h \* 100 / 110)
-	font_size=$(expr $img_w / 24)
-	convert -strip -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"Exit:$zynthian_error     IP:$zynthian_ip\"" $img_fpath $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error_ip.png
-	
-	#Display error image
-	xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error_ip.png
+	# Format the message
+	zynthian_message="IP:$zynthian_ip    Exit:$zynthian_error"
+
+	# Generate an error splash image with the IP & exit code ...
+	splash_zynthian_message "$zynthian_message" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"
 }
 
+function splash_zynthian_last_message() {
+	xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+}
+
+powersave_control.sh off
+
 #------------------------------------------------------------------------------
-# Main Program
+# Run Hardware Test
 #------------------------------------------------------------------------------
 
-cd $ZYNTHIAN_UI_DIR
+export ZYNTHIAN_HW_TEST=""
+if [ -n "${ZYNTHIAN_HW_TEST}" ]; then
+	echo "Running hardware test:  $ZYNTHIAN_HW_TEST"
+	result=$($ZYNTHIAN_SYS_DIR/sbin/zynthian_hw_test.py $ZYNTHIAN_HW_TEST | tail -1)
+	res=${result%:*}
+	message=${result#*:}
+	if [[ "$res" == "OK" ]]; then
+		splash_zynthian_message "$result"
+	else
+		splash_zynthian_error "$message"
+	fi
+	sleep 3600
+	exit
+fi
 
-backlight_on
+#------------------------------------------------------------------------------
+# Test splash screen generator
+#------------------------------------------------------------------------------
+
+#splash_zynthian_message "Testing Splash Screen Generator..."
+#sleep 10
+#exit
+
+#------------------------------------------------------------------------------
+# If needed, generate splash screen images
+#------------------------------------------------------------------------------
+
+if [ ! -d $ZYNTHIAN_CONFIG_DIR/img ]; then
+	$ZYNTHIAN_SYS_DIR/sbin/generate_fb_splash.sh
+fi
+
+#------------------------------------------------------------------------------
+# Build zyncore if needed
+#------------------------------------------------------------------------------
+
+if [ ! -f "$ZYNTHIAN_DIR/zyncoder/build/libzyncore.so" ]; then
+	splash_zynthian_message "Building zyncore. Please wait..."
+	load_config_env
+	$ZYNTHIAN_DIR/zyncoder/build.sh
+fi
+
+#------------------------------------------------------------------------------
+# Detect first boot
+#------------------------------------------------------------------------------
+
+if [[ "$(systemctl is-enabled first_boot)" == "enabled" ]]; then
+	echo "Running first boot ..."
+	splash_zynthian_message "Configuring your zynthian. Time to relax before the waves..."
+	sleep 1800
+	splash_zynthian_error "It takes too long! Bad sdcard/image, poor power supply..."
+	sleep 3600000
+	exit
+fi
+
+#------------------------------------------------------------------------------
+# Run Zynthian-UI
+#------------------------------------------------------------------------------
+
 splash_zynthian
-screensaver_off
+load_config_env
 
 while true; do
-	#Load Config Environment
-	load_config_env
 
 	# Start Zynthian GUI & Synth Engine
-	./zynthian_gui.py
+	cd $ZYNTHIAN_UI_DIR
+	./zynthian_main.py
 	status=$?
 
 	# Proccess output status
 	case $status in
 		0)
-			splash_zynthian
+			#splash_zynthian_message "Powering Off"
+			splash_zynthian_last_message
 			poweroff
+			backlight_control.sh off
 			break
 		;;
 		100)
-			splash_zynthian
+			#splash_zynthian_message "Rebooting"
+			splash_zynthian_last_message
 			reboot
 			break
 		;;
 		101)
-			splash_zynthian
-			backlight_off
+			#splash_zynthian_message "Exiting"
+			splash_zynthian_last_message
+			backlight_control.sh off
 			break
 		;;
 		102)
-			splash_zynthian
-			sleep 1
+			#splash_zynthian_message "Restarting UI"
+			splash_zynthian_last_message
+			load_config_env
+			sleep 10
 		;;
 		*)
-			splash_zynthian_error $status
-			sleep 3
+			splash_zynthian_error_exit_ip $status
+			load_config_env
+			sleep 10
 		;;
 	esac
 done

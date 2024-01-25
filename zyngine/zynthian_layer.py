@@ -39,10 +39,10 @@ class zynthian_layer:
 	# Data dirs
 	# ---------------------------------------------------------------------------
 
-	config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR',"/zynthian/config")
-	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR',"/zynthian/zynthian-data")
-	my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data")
-	ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
+	config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR', "/zynthian/config")
+	data_dir = os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data")
+	my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data")
+	ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 
 	# ---------------------------------------------------------------------------
 	# Initialization
@@ -61,12 +61,16 @@ class zynthian_layer:
 		else:
 			self.audio_out = ["mixer"]
 
-		if self.midi_chan is None or self.midi_chan<16:
-			self.audio_in = ["system:capture_1", "system:capture_2"]
+		if engine.nickname == "AI":
+			if self.midi_chan == 256:
+				self.audio_in = ["zynmixer:send_a", "zynmixer:send_b"]
+				self.audio_out = ["zynmixer:return_a", "zynmixer:return_b"]
+			else:
+				self.audio_in = ["system:capture_1", "system:capture_2"]
 		else:
-			self.audio_in = []
+			self.audio_in = [] # Only AI uses audio_in
 
-		self.midi_out = ["MIDI-OUT", "NET-OUT"]
+		self.midi_out = []
 
 		self.bank_list = []
 		self.bank_index = 0
@@ -74,6 +78,7 @@ class zynthian_layer:
 		self.bank_info = None
 		self.bank_msb = 0
 		self.bank_msb_info = [[0,0], [0,0], [0,0]] # system, user, external => [offset, n]
+		self.auto_save_bank = False # True to skip bank selection when saving preset
 
 		self.show_fav_presets = False
 		self.preset_list = []
@@ -90,13 +95,9 @@ class zynthian_layer:
 		self.controllers_dict = None
 		self.ctrl_screens_dict = None
 		self.current_screen_index = -1
-
-		self.listen_midi_cc = True
 		self.refresh_flag = False
 
 		self.status = "" # Allows indication of arbitary status text
-
-		self.reset_zs3()
 
 		if engine is not None:
 			self.set_engine(engine)
@@ -113,22 +114,17 @@ class zynthian_layer:
 			self.refresh_flag=False
 			self.refresh_controllers()
 
-			#TODO: Improve this Dirty Hack!!
-			if self.engine.nickname=='MD':
-				self.zyngui.screens['preset'].fill_list()
-				if self.zyngui.current_screen=='bank':
-					if self.preset_name:
-						self.zyngui.show_screen('control')
-					else:
-						self.zyngui.show_screen('preset')
+			try:
+				self.engine.refresh()
+			except NotImplementedError:
+				pass
 
 			self.zyngui.refresh_screen()
 
 
 	def reset(self):
 		# MIDI-unlearn all controllers
-		for k,zctrl in self.controllers_dict.items():
-			zctrl.midi_unlearn()
+		self.midi_unlearn()
 		# Delete layer from engine
 		self.engine.del_layer(self)
 		# Clear refresh flag
@@ -139,12 +135,13 @@ class zynthian_layer:
 	# MIDI chan Management
 	# ---------------------------------------------------------------------------
 
-
 	def set_midi_chan(self, midi_chan):
-		self.midi_chan=midi_chan
+		self.midi_chan = midi_chan
 		self.engine.set_midi_chan(self)
 		for zctrl in self.controllers_dict.values():
 			zctrl.set_midi_chan(midi_chan)
+		self.engine.refresh_midi_learn()
+		self.send_ctrlfb_midi_cc()
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -161,8 +158,10 @@ class zynthian_layer:
 
 		# Calculate info for bank_msb
 		i = 0
-		self.bank_msb_info = [[0,0], [0,0], [0,0]] # system, user, external => [offset, n]
+		self.bank_msb_info = [[0, 0], [0, 0], [0, 0]]  # system, user, external => [offset, n]
 		for bank in self.bank_list:
+			if bank[0] is None:
+				continue
 			if bank[0].startswith(self.ex_data_dir):
 				self.bank_msb_info[0][0] += 1
 				self.bank_msb_info[1][0] += 1
@@ -174,11 +173,11 @@ class zynthian_layer:
 				i += 1
 			else:
 				break
-		self.bank_msb_info[0][1] = len(self.bank_list)-i
+		self.bank_msb_info[0][1] = len(self.bank_list) - i
 
 		# Add favourites virtual bank if there is some preset marked as favourite
 		if self.engine.show_favs_bank and len(self.engine.get_preset_favs(self))>0:
-			self.bank_list = [["*FAVS*",0,"*** Favorites ***"]] + self.bank_list
+			self.bank_list = [["*FAVS*", 0, "*** Favorites ***"]] + self.bank_list
 			for i in range(3):
 				self.bank_msb_info[i][0] += 1
 
@@ -192,35 +191,49 @@ class zynthian_layer:
 		self.bank_info=None
 
 
+	# Set bank of layer's engine by index
+	# i: Index of the bank to select
+	# set_engine: True to set engine's bank
+	# returns: True if bank selected, None if more bank selection steps required or False on failure
 	def set_bank(self, i, set_engine=True):
 		if i < len(self.bank_list):
-			last_bank_index=self.bank_index
-			last_bank_name=self.bank_name
-			self.bank_index=i
-			self.bank_name=self.bank_list[i][2]
-			self.bank_info=copy.deepcopy(self.bank_list[i])
-			logging.info("Bank Selected: %s (%d)" % (self.bank_name,i))
+			bank_name = self.bank_list[i][2]
 
-			if set_engine and (last_bank_index!=i or not last_bank_name):
+			if bank_name is None:
+				return False
+
+			if i != self.bank_index or self.bank_name != bank_name:
+				set_engine_needed = True
+				logging.info("Bank selected: %s (%d)" % (self.bank_name, i))
+			else:
+				set_engine_needed = False
+				logging.info("Bank already selected: %s (%d)" % (self.bank_name, i))
+
+			last_bank_index = self.bank_index
+			last_bank_name = self.bank_name
+			self.bank_index = i
+			self.bank_name = bank_name
+			self.bank_info = copy.deepcopy(self.bank_list[i])
+
+			if set_engine and set_engine_needed:
 				return self.engine.set_bank(self, self.bank_info)
 
-			return True
 		return False
 
 
 	#TODO Optimize search!!
 	def set_bank_by_name(self, bank_name, set_engine=True):
 		for i in range(len(self.bank_list)):
-			if bank_name==self.bank_list[i][2]:
-				return self.set_bank(i,set_engine)
+			if bank_name == self.bank_list[i][2]:
+				return self.set_bank(i, set_engine)
 		return False
 
 
 	#TODO Optimize search!!
 	def set_bank_by_id(self, bank_id, set_engine=True):
 		for i in range(len(self.bank_list)):
-			if bank_id==self.bank_list[i][0]:
-				return self.set_bank(i,set_engine)
+			if bank_id == self.bank_list[i][0]:
+				return self.set_bank(i, set_engine)
 		return False
 
 
@@ -264,59 +277,67 @@ class zynthian_layer:
 		self.preset_info=None
 
 
-	def set_preset(self, i, set_engine=True):
+	def set_preset(self, i, set_engine=True, force_set_engine=True):
 		if i < len(self.preset_list):
-			last_preset_index=self.preset_index
-			last_preset_name=self.preset_name
-
 			preset_id = str(self.preset_list[i][0])
 			preset_name = self.preset_list[i][2]
+			preset_info = copy.deepcopy(self.preset_list[i])
+
 			if not preset_name:
 				return False
-			if preset_name[0]=='❤':
+
+			# Remove favorite marker char
+			if preset_name[0] == '❤':
 				preset_name=preset_name[1:]
 
+			# Check if preset is in favorites pseudo-bank and set real bank if needed
 			if preset_id in self.engine.preset_favs:
 				bank_name = self.engine.preset_favs[preset_id][0][2]
 				if bank_name!=self.bank_name:
 					self.set_bank_by_name(bank_name)
 
-			self.preset_index=i
-			self.preset_name=preset_name
-			self.preset_info=copy.deepcopy(self.preset_list[i])
-			self.preset_bank_index=self.bank_index
-
-			logging.info("Preset Selected: %s (%d)" % (self.preset_name,i))
-
-			if self.preload_info:
-				if not self.engine.cmp_presets(self.preload_info,self.preset_info):
+			# Check if preset is already loaded
+			if not force_set_engine and self.engine.cmp_presets(preset_info, self.preset_info):
+				logging.info("Preset already selected: %s (%d)" % (preset_name,i))
+				# Check if some other preset is preloaded
+				if self.preload_info and not self.engine.cmp_presets(self.preload_info,self.preset_info):
 					set_engine_needed = True
-					self.preload_index = None
-					self.preload_name = None
-					self.preload_info = None
 				else:
 					set_engine_needed = False
 			else:
 				set_engine_needed = True
+				logging.info("Preset selected: %s (%d)" % (preset_name,i))
 
-			if set_engine and set_engine_needed:
-				#TODO => Review this!!
-				#self.load_ctrl_config()
-				return self.engine.set_preset(self, self.preset_info)
+			self.preset_index = i
+			self.preset_name = preset_name
+			self.preset_info = preset_info
+			self.preset_bank_index = self.bank_index
+
+			# Clean preload info
+			self.preload_index = None
+			self.preload_name = None
+			self.preload_info = None
+
+			if set_engine:
+				if set_engine_needed:
+					#self.load_ctrl_config()
+					return self.engine.set_preset(self, self.preset_info)
+				else:
+					return False
 
 			return True
 		return False
 
 
 	#TODO Optimize search!!
-	def set_preset_by_name(self, preset_name, set_engine=True):
+	def set_preset_by_name(self, preset_name, set_engine=True, force_set_engine=True):
 		for i in range(len(self.preset_list)):
-			name_i=self.preset_list[i][2]
+			name_i = self.preset_list[i][2]
 			try:
-				if name_i[0]=='❤':
-					name_i=name_i[1:]
-				if preset_name==name_i:
-					return self.set_preset(i,set_engine)
+				if name_i[0] == '❤':
+					name_i = name_i[1:]
+				if preset_name == name_i:
+					return self.set_preset(i, set_engine, force_set_engine)
 			except:
 				pass
 
@@ -324,34 +345,37 @@ class zynthian_layer:
 
 
 	#TODO Optimize search!!
-	def set_preset_by_id(self, preset_id, set_engine=True):
+	def set_preset_by_id(self, preset_id, set_engine=True, force_set_engine=True):
 		for i in range(len(self.preset_list)):
-			if preset_id==self.preset_list[i][0]:
-				return self.set_preset(i,set_engine)
+			if preset_id == self.preset_list[i][0]:
+				return self.set_preset(i, set_engine, force_set_engine)
 		return False
 
 
 	def preload_preset(self, i):
+		# Avoid preload on engines that take excessive time to load presets
+		if self.engine.nickname in ['PD','MD']:
+			return True
 		if i < len(self.preset_list):
 			if (not self.preload_info and not self.engine.cmp_presets(self.preset_list[i], self.preset_info)) or (self.preload_info and not self.engine.cmp_presets(self.preset_list[i], self.preload_info)):
 				self.preload_index = i
 				self.preload_name = self.preset_list[i][2]
 				self.preload_info = copy.deepcopy(self.preset_list[i])
 				logging.info("Preset Preloaded: %s (%d)" % (self.preload_name,i))
-				self.engine.set_preset(self,self.preload_info,True)
+				self.engine.set_preset(self, self.preload_info,True)
 				return True
 		return False
 
 
 	def restore_preset(self):
 		if self.preset_name is not None and self.preload_info is not None and not self.engine.cmp_presets(self.preload_info,self.preset_info):
-			if self.preset_bank_index is not None and self.bank_index!=self.preset_bank_index:
-				self.set_bank(self.preset_bank_index,False)
-			self.preload_index=None
-			self.preload_name=None
-			self.preload_info=None
-			logging.info("Restore Preset: %s (%d)" % (self.preset_name,self.preset_index))
-			self.engine.set_preset(self,self.preset_info)
+			if self.preset_bank_index is not None and self.bank_index != self.preset_bank_index:
+				self.set_bank(self.preset_bank_index, False)
+			self.preload_index = None
+			self.preload_name = None
+			self.preload_info = None
+			logging.info("Restore Preset: %s (%d)" % (self.preset_name, self.preset_index))
+			self.engine.set_preset(self, self.preset_info)
 			return True
 		return False
 
@@ -392,7 +416,7 @@ class zynthian_layer:
 
 
 	def set_show_fav_presets(self, flag=True):
-		if flag:
+		if flag and len(self.engine.get_preset_favs(self)):
 			self.show_fav_presets = True
 			#self.reset_preset()
 		else:
@@ -421,22 +445,22 @@ class zynthian_layer:
 
 
 	def init_controllers(self):
-		self.controllers_dict=self.engine.get_controllers_dict(self)
+		self.controllers_dict = self.engine.get_controllers_dict(self)
 
 
 	# Create controller screens from zynthian controller keys
 	def init_ctrl_screens(self):
 		#Build control screens ...
-		self.ctrl_screens_dict=OrderedDict()
+		self.ctrl_screens_dict = OrderedDict()
 		for cscr in self.engine._ctrl_screens:
 			self.ctrl_screens_dict[cscr[0]]=self.build_ctrl_screen(cscr[1])
 
 		#Set active the first screen
-		if len(self.ctrl_screens_dict)>0:
-			if self.current_screen_index==-1:
-				self.current_screen_index=0
+		if len(self.ctrl_screens_dict) > 0:
+			if self.current_screen_index == -1:
+				self.current_screen_index = 0
 		else:
-			self.current_screen_index=-1
+			self.current_screen_index = -1
 
 
 	def get_ctrl_screens(self):
@@ -451,10 +475,7 @@ class zynthian_layer:
 
 
 	def get_current_screen_index(self):
-		if self.current_screen_index>=len(self.ctrl_screens_dict):
-			self.current_screen_index = len(self.ctrl_screens_dict)-1
 		return self.current_screen_index
-
 
 
 	def set_current_screen_index(self, i):
@@ -476,66 +497,41 @@ class zynthian_layer:
 	def send_ctrl_midi_cc(self):
 		for k, zctrl in self.controllers_dict.items():
 			if zctrl.midi_cc:
-				self.zyngui.zynmidi.set_midi_control(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value))
-				logging.debug("Sending MIDI CC{}={} for {}".format(zctrl.midi_cc, zctrl.value, k))
+				lib_zyncore.ui_send_ccontrol_change(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value))
+				logging.debug("Sending MIDI CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value), k))
+		self.send_ctrlfb_midi_cc()
 
 
-	def midi_unlearn(self):
+	def send_ctrlfb_midi_cc(self):
+		for k, zctrl in self.controllers_dict.items():
+			if zctrl.midi_learn_cc:
+				lib_zyncore.ctrlfb_send_ccontrol_change(zctrl.midi_learn_chan, zctrl.midi_learn_cc, int(zctrl.value))
+				logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_learn_chan, zctrl.midi_learn_cc, int(zctrl.value), k))
+			elif zctrl.midi_cc:
+				lib_zyncore.ctrlfb_send_ccontrol_change(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value))
+				logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value), k))
+
+
+	def midi_unlearn(self, unused=None):
 		for k, zctrl in self.controllers_dict.items():
 			zctrl.midi_unlearn()
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# MIDI processing
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
-	def midi_control_change(self, chan, ccnum, ccval):
+	def midi_control_change(self, idev, chan, ccnum, ccval):
 		if self.engine:
 			#logging.debug("Receving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
-
-			# Engine MIDI-Learn zctrls
 			try:
-				self.engine.midi_control_change(chan, ccnum, ccval)
+				self.engine.midi_control_change(idev, chan, ccnum, ccval)
 			except:
 				pass
-
-			# MIDI-CC zctrls (also router MIDI-learn, aka CC-swaps)
-			#TODO => Optimize!! Use the MIDI learning mechanism for caching this ...
-			if self.listen_midi_cc:
-    			#TODO: What is this bit of code for? 
-				swap_info = lib_zyncore.get_midi_filter_cc_swap(chan, ccnum)
-				midi_chan = swap_info >> 8
-				midi_cc = swap_info & 0xFF
-
-				if self.zyngui.is_single_active_channel():
-					for k, zctrl in self.controllers_dict.items():
-						try:
-							if zctrl.midi_learn_cc:
-								if self.midi_chan==chan and zctrl.midi_learn_cc==ccnum:
-									self.engine.midi_zctrl_change(zctrl, ccval)
-							else:
-								if self.midi_chan==midi_chan and zctrl.midi_cc==midi_cc:
-									self.engine.midi_zctrl_change(zctrl, ccval)
-						except:
-							pass
-				else:
-					for k, zctrl in self.controllers_dict.items():
-						try:
-							if zctrl.midi_learn_cc:
-								if zctrl.midi_learn_chan == chan and zctrl.midi_learn_cc == ccnum:
-									self.engine.midi_zctrl_change(zctrl, ccval)
-							else:
-								if zctrl.midi_chan == midi_chan and zctrl.midi_cc == midi_cc:
-									self.engine.midi_zctrl_change(zctrl, ccval)
-						except:
-							pass
-
 
 	def midi_bank_msb(self, i):
 		logging.debug("Received Bank MSB for CH#{}: {}".format(self.midi_chan, i))
 		if i>=0 and i<=2:
 			self.bank_msb = i
-
 
 	def midi_bank_lsb(self, i):
 		info = self.bank_msb_info[self.bank_msb]
@@ -548,16 +544,15 @@ class zynthian_layer:
 		else:
 			logging.warning("Bank index {} doesn't exist for MSB {} on CH#{}".format(i, self.bank_msb, self.midi_chan))
 
-
 	# ---------------------------------------------------------------------------
-	# Snapshot Management
+	# State Management
 	# ---------------------------------------------------------------------------
 
-
-	def get_snapshot(self):
-		snapshot={
+	def get_state(self):
+		state = {
 			'engine_name': self.engine.name,
 			'engine_nick': self.engine.nickname,
+			'engine_jackname': self.engine.jackname,
 			'midi_chan': self.midi_chan,
 			'bank_index': self.bank_index,
 			'bank_name': self.bank_name,
@@ -567,178 +562,98 @@ class zynthian_layer:
 			'preset_info': self.preset_info,
 			'show_fav_presets': self.show_fav_presets,
 			'controllers_dict': {},
-			'zs3_list': self.zs3_list,
-			'current_screen_index': self.current_screen_index
+			'current_screen_index': self.current_screen_index,
 		}
+
 		for k in self.controllers_dict:
-			snapshot['controllers_dict'][k] = self.controllers_dict[k].get_snapshot()
-		return snapshot
+			state['controllers_dict'][k] = self.controllers_dict[k].get_state()
+
+		return state
 
 
-	def restore_snapshot_1(self, snapshot):
-		#Constructor, including engine and midi_chan info, is called before
+	def restore_state_0(self, state):
+		# Load bank list
+		try:
+			self.bank_name = state['bank_name']	#tweak for working with setbfree extended config!! => TODO improve it!!
+			self.load_bank_list()
+			self.bank_name = None
+		except Exception as e:
+			logging.warning("Error loading bank list on layer {}: {}".format(self.get_basepath(), e))
 
+
+	def restore_state_1(self, state):
 		self.wait_stop_loading()
 
-		if 'show_fav_presets' in snapshot:
-			self.set_show_fav_presets(snapshot['show_fav_presets'])
+		if 'show_fav_presets' in state:
+			self.set_show_fav_presets(state['show_fav_presets'])
 
-		#Load bank list and set bank
+		# Set bank and load preset_list
 		try:
-			self.bank_name=snapshot['bank_name']	#tweak for working with setbfree extended config!! => TODO improve it!!
-			self.load_bank_list()
-			self.bank_name=None
-			self.set_bank_by_name(snapshot['bank_name'])
-
+			if self.set_bank_by_name(state['bank_name']):
+				self.wait_stop_loading()
+				self.load_preset_list()
 		except Exception as e:
 			logging.warning("Invalid Bank on layer {}: {}".format(self.get_basepath(), e))
 
-		self.wait_stop_loading()
-
-		#Load preset list and set preset
+		#  and set preset
 		try:
-			self.load_preset_list()
-			self.preset_loaded=self.set_preset_by_name(snapshot['preset_name'])
+			if(state['preset_info']):
+				self.preset_loaded = self.set_preset_by_id(state['preset_info'][0], True, False)
+			else:
+				self.preset_loaded = self.set_preset_by_name(state['preset_name'], True, False)
+			self.wait_stop_loading()
 		except Exception as e:
 			logging.warning("Invalid Preset on layer {}: {}".format(self.get_basepath(), e))
 
-		self.wait_stop_loading()
-
-		#Refresh controller config
+		# Refresh controller config
 		if self.refresh_flag:
-			self.refresh_flag=False
+			self.refresh_flag = False
 			self.refresh_controllers()
 
-		#Set zs3 list
-		if 'zs3_list' in snapshot:
-			self.zs3_list = snapshot['zs3_list']
+		# Set active controller page
+		if 'current_screen_index' in state:
+			self.current_screen_index = state['current_screen_index']
 
-		#Set active screen
-		if 'current_screen_index' in snapshot:
-			self.current_screen_index=snapshot['current_screen_index']
+		self.restore_state_legacy(state)
 
 
-	def restore_snapshot_2(self, snapshot):
+	def restore_state_2(self, state, restore_midi_learn=True):
 
-		# Wait a little bit if a preset has been loaded
-		if self.preset_loaded:
+		# WARNING => This is really UGLY!
+		# For non-LV2 engines, bank and preset can affect what controllers do.
+		# In case of LV2, just restoring the controllers ought to be enough, which is nice
+		# since it saves the delay between setting a preset and updating controllers.
+		if self.preset_loaded and not self.engine.nickname.startswith('JV'):
 			sleep(0.2)
 
 		self.wait_stop_loading()
 
 		#Set controller values
-		for k in snapshot['controllers_dict']:
+		for k in state['controllers_dict']:
 			try:
-				self.controllers_dict[k].restore_snapshot(snapshot['controllers_dict'][k])
+				self.controllers_dict[k].restore_state(state['controllers_dict'][k], restore_midi_learn=restore_midi_learn)
 			except Exception as e:
 				logging.warning("Invalid Controller on layer {}: {}".format(self.get_basepath(), e))
 
 
+	def restore_state_legacy(self, state):
+		# Set legacy Note Range (BW compatibility)
+		if self.midi_chan is not None and self.midi_chan >= 0 and 'note_range' in state:
+			nr_state = state['note_range']
+			lib_zyncore.set_midi_filter_note_low(self.midi_chan, nr_state['note_low'])
+			lib_zyncore.set_midi_filter_note_high(self.midi_chan, nr_state['note_high'])
+			lib_zyncore.set_midi_filter_transpose_octave(self.midi_chan, nr_state['octave_trans'])
+			lib_zyncore.set_midi_filter_transpose_semitone(self.midi_chan, nr_state['halftone_trans'])
+
 	def wait_stop_loading(self):
 		while self.engine.loading>0:
-			logging.debug("WAITING FOR STOP LOADING ...")
+			logging.debug("WAITING FOR STOP LOADING ({}) ... => {}".format(self.engine.name,self.engine.loading))
 			sleep(0.1)
-
-
-	# ---------------------------------------------------------------------------
-	# ZS3 Management (Zynthian SubSnapShots)
-	# ---------------------------------------------------------------------------
-
-
-	def reset_zs3(self):
-		self.zs3_list = [None]*128
-
-
-	def delete_zs3(self, i):
-		self.zs3_list[i] = None
-
-
-	def get_zs3(self, i):
-		return self.zs3_list[i]
-
-
-	def save_zs3(self, i):
-		logging.info("Save ZS3: CH{} => {}".format(self.midi_chan, i))
-		try:
-			zs3 = {
-				'bank_index': self.bank_index,
-				'bank_name': self.bank_name,
-				'bank_info': self.bank_info,
-				'preset_index': self.preset_index,
-				'preset_name': self.preset_name,
-				'preset_info': self.preset_info,
-				'current_screen_index': self.current_screen_index,
-				'controllers_dict': {},
-				'note_range': {}
-			}
-
-			for k in self.controllers_dict:
-				logging.debug("Saving {}".format(k))
-				zs3['controllers_dict'][k] = self.controllers_dict[k].get_snapshot()
-
-			if self.midi_chan>=0:
-				zs3['note_range'] = {
-					'note_low': lib_zyncore.get_midi_filter_note_low(self.midi_chan),
-					'note_high': lib_zyncore.get_midi_filter_note_high(self.midi_chan),
-					'octave_trans': lib_zyncore.get_midi_filter_octave_trans(self.midi_chan),
-					'halftone_trans': lib_zyncore.get_midi_filter_halftone_trans(self.midi_chan)
-				}
-
-			self.zs3_list[i] = zs3
-
-		except Exception as e:
-			logging.error(e)
-
-
-	def restore_zs3(self, i):
-		zs3 = self.zs3_list[i]
-
-		if zs3:
-			# Set bank and load preset list if needed
-			if zs3['bank_name'] and zs3['bank_name']!=self.bank_name:
-				self.set_bank_by_name(zs3['bank_name'])
-				self.load_preset_list()
-				self.wait_stop_loading()
-
-			# Set preset if needed
-			if zs3['preset_name'] and zs3['preset_name']!=self.preset_name:
-				self.set_preset_by_name(zs3['preset_name'])
-				self.wait_stop_loading()
-
-			# Refresh controller config
-			if self.refresh_flag:
-				self.refresh_flag=False
-				self.refresh_controllers()
-
-			# For non-LV2 engines, bank and preset can affect what controllers do.
-			# In case of LV2, just restoring the controllers ought to be enough, which is nice
-			# since it saves the 0.3 second delay between setting a preset and updating controllers.
-			if not self.engine.nickname.startswith('JV'):
-				sleep(0.3)
-
-			# Set active screen
-			if 'current_screen_index' in zs3:
-				self.current_screen_index=zs3['current_screen_index']
-
-			# Set controller values
-			for k in zs3['controllers_dict']:
-				self.controllers_dict[k].restore_snapshot(zs3['controllers_dict'][k])
-
-			# Set Note Range
-			if self.midi_chan>=0 and 'note_range' in zs3:
-				nr = zs3['note_range']
-				lib_zyncore.set_midi_filter_note_range(self.midi_chan, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
-
-			return True
-
-		else:
-			return False
 
 
 	# ---------------------------------------------------------------------------
 	# Audio Output Routing:
 	# ---------------------------------------------------------------------------
-
 
 	def get_jackname(self):
 		return self.jackname
@@ -816,6 +731,8 @@ class zynthian_layer:
 	def reset_audio_out(self):
 		if self.midi_chan is None:
 			self.audio_out = ["system"]
+		elif self.midi_chan == 256:
+			self.audio_out = ["zynmixer:return_a", "zynmixer:return_b"]
 		else:
 			self.audio_out = ["mixer"]
 			
@@ -832,7 +749,7 @@ class zynthian_layer:
 	def pair_audio_out(self):
 		if not self.engine.options['layer_audio_out']:
 			for l in self.engine.layers:
-				if l!=self:
+				if l != self:
 					l.audio_out = self.audio_out
 					#logging.debug("Pairing CH#{} => {}".format(l.midi_chan,l.audio_out))
 
@@ -847,7 +764,10 @@ class zynthian_layer:
 
 
 	def set_audio_in(self, ai):
-		self.audio_in = copy.copy(ai)
+		if self.midi_chan == 256 and self.engine.nickname == 'AI':
+			self.audio_in = ["zynmixer:send_a", "zynmixer:send_b"]
+		else:
+			self.audio_in = copy.copy(ai)
 		self.zyngui.zynautoconnect_audio()
 
 
@@ -881,8 +801,10 @@ class zynthian_layer:
 
 
 	def reset_audio_in(self):
-		if self.midi_chan is None or self.midi_chan<16:
+		if self.midi_chan is None or self.midi_chan < 16:
 			self.audio_in = ["system:capture_1", "system:capture_2"]
+		elif self.midi_chan == 256 and self.engine.nickname == 'AI':
+			self.audio_in = ["zynmixer:send_a", "zynmixer:send_b"]
 		else:
 			self.audio_in = []
 		self.zyngui.zynautoconnect_audio()
@@ -894,7 +816,7 @@ class zynthian_layer:
 
 
 	def is_parallel_audio_routed(self, layer):
-		if isinstance(layer, zynthian_layer) and layer!=self and layer.midi_chan==self.midi_chan and collections.Counter(layer.audio_out)==collections.Counter(self.audio_out):
+		if isinstance(layer, zynthian_layer) and layer != self and layer.midi_chan == self.midi_chan and collections.Counter(layer.audio_out) == collections.Counter(self.audio_out):
 			return True
 		else:
 			return False
@@ -961,7 +883,7 @@ class zynthian_layer:
 
 
 	def is_parallel_midi_routed(self, layer):
-		if isinstance(layer, zynthian_layer) and layer!=self and layer.midi_chan==self.midi_chan and collections.Counter(layer.midi_out)==collections.Counter(self.midi_out):
+		if isinstance(layer, zynthian_layer) and layer != self and layer.midi_chan == self.midi_chan and collections.Counter(layer.midi_out) == collections.Counter(self.midi_out):
 			return True
 		else:
 			return False
@@ -986,7 +908,10 @@ class zynthian_layer:
 	def get_basepath(self):
 		path = self.engine.get_path(self)
 		if self.midi_chan is not None:
-			path = "{}#{}".format(self.midi_chan+1, path)
+			if self.midi_chan<16:
+				path = "{}#{}".format(self.midi_chan+1, path)
+			elif self.midi_chan==256:
+				path = "Main#{}".format(path)
 		return path
 
 
@@ -1002,7 +927,7 @@ class zynthian_layer:
 
 		subpath = None
 		bank_name = self.get_preset_bank_name()
-		if bank_name and bank_name!="None":
+		if bank_name and bank_name != "None" and not path.endswith(bank_name):
 			subpath = bank_name
 			if self.preset_name:
 				subpath += "/" + self.preset_name

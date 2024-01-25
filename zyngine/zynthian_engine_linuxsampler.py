@@ -29,12 +29,10 @@ import logging
 import socket
 import shutil
 from time import sleep
-from os.path import isfile, isdir
 from subprocess import check_output
 from collections import OrderedDict
 
 from . import zynthian_engine
-from . import zynthian_controller
 
 #------------------------------------------------------------------------------
 # Linuxsampler Exception Classes
@@ -54,21 +52,34 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	# LS Hardcoded MIDI Controllers
-	_ctrls=[
-		['volume',7,96],
-		['pan',10,64],
-		['sustain',64,'off',['off','on']],
-		['sostenuto',66,'off',['off','on']],
-		['legato on/off',68,'off',['off','on']],
-		['portamento on/off',65,'off',['off','on']],
-		['portamento time-coarse',5,0],
-		['portamento time-fine',37,0]
+	_ctrls = [
+		['modulation wheel', 1, 0],
+		['volume', 7, 96],
+		['pan', 10, 64],
+		['expression', 11, 127],
+
+		['sustain', 64, 'off', ['off', 'on']],
+		['sostenuto', 66, 'off', ['off', 'on']],
+		['legato', 68, 'off', ['off', 'on']],
+		['breath', 2, 127],
+
+		['portamento on/off', 65, 'off', ['off', 'on']],
+		['portamento time-coarse', 5, 0],
+		['portamento time-fine', 37, 0],
+
+		# ['expr. pedal', 4, 127],
+		['filter cutoff', 74, 64],
+		['filter resonance', 71, 64],
+		['env. attack', 73, 64],
+		['env. release', 72, 64]
 	]
 
 	# Controller Screens
-	_ctrl_screens=[
-		['main',['volume','pan','sostenuto','sustain']],
-		['portamento',['legato on/off','portamento on/off','portamento time-coarse','portamento time-fine']]
+	_ctrl_screens = [
+		['main', ['volume', 'pan', 'modulation wheel', 'expression']],
+		['pedals', ['legato', 'breath', 'sostenuto', 'sustain']],
+		['portamento', ['portamento on/off', 'portamento time-coarse', 'portamento time-fine']],
+		['envelope/filter', ['env. attack', 'env. release', 'filter cutoff', 'filter resonance']]
 	]
 
 	# ---------------------------------------------------------------------------
@@ -111,7 +122,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	def reset(self):
 		super().reset()
-		self.ls_chans={}
+		self.ls_chans = {}
 		self.ls_init()
 
 	# ---------------------------------------------------------------------------
@@ -120,41 +131,41 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	def lscp_connect(self):
 		logging.info("Connecting with LinuxSampler Server...")
-		self.sock=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-		self.sock.setblocking(0)
+		self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		self.sock.setblocking(False)
 		self.sock.settimeout(1)
-		i=0
-		while i<20:
+		i = 0
+		while i < 20:
 			try:
-				self.sock.connect(("127.0.0.1",self.lscp_port))
+				self.sock.connect(("127.0.0.1", self.lscp_port))
 				break
 			except:
 				sleep(0.25)
-				i+=1
+				i += 1
 		return self.sock
 
 
 	def lscp_get_version(self):
-		sv_info=self.lscp_send_multi("GET SERVER INFO")
+		sv_info = self.lscp_send_multi("GET SERVER INFO")
 		if 'PROTOCOL_VERSION' in sv_info:
-			match=re.match(r"(?P<major>\d+)\.(?P<minor>\d+).*",sv_info['PROTOCOL_VERSION'])
+			match = re.match(r"(?P<major>\d+)\.(?P<minor>\d+).*", sv_info['PROTOCOL_VERSION'])
 			if match:
-				version_major=int(match['major'])
-				version_minor=int(match['minor'])
-				if version_major>1 or (version_major==1 and version_minor>=6):
-					self.lscp_v1_6_supported=True
+				version_major = int(match['major'])
+				version_minor = int(match['minor'])
+				if version_major > 1 or (version_major == 1 and version_minor >= 6):
+					self.lscp_v1_6_supported = True
 
 
-	def lscp_send(self, data):
-		command=command+"\r\n"
+	def lscp_send(self, command):
+		command = command+"\r\n"
 		try:
-			self.sock.send(data.encode())
+			self.sock.send(command.encode())
 		except Exception as err:
 			logging.error("FAILED lscp_send: %s" % err)
 
 
 	def lscp_get_result_index(self, result):
-		parts=result.split('[')
+		parts = result.split('[')
 		if len(parts)>1:
 			parts=parts[1].split(']')
 			return int(parts[0])
@@ -162,56 +173,56 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	def lscp_send_single(self, command):
 		#logging.debug("LSCP SEND => %s" % command)
-		command=command+"\r\n"
+		command = command + "\r\n"
 		try:
 			self.sock.send(command.encode())
-			line=self.sock.recv(4096)
+			line = self.sock.recv(4096)
 		except Exception as err:
 			logging.error("FAILED lscp_send_single(%s): %s" % (command,err))
 			self.stop_loading()
 			return None
-		line=line.decode()
+		line = line.decode()
 		#logging.debug("LSCP RECEIVE => %s" % line)
-		if line[0:2]=="OK":
-			result=self.lscp_get_result_index(line)
-		elif line[0:3]=="ERR":
-			parts=line.split(':')
+		if line[0:2] == "OK":
+			result = self.lscp_get_result_index(line)
+			return result
+		elif line[0:3] == "ERR":
+			parts = line.split(':')
 			self.stop_loading()
-			raise zyngine_lscp_error("{} ({} {})".format(parts[2],parts[0],parts[1]))
-		elif line[0:3]=="WRN":
-			parts=line.split(':')
+			raise zyngine_lscp_error("{} ({} {})".format(parts[2], parts[0], parts[1]))
+		elif line[0:3] == "WRN":
+			parts = line.split(':')
 			self.stop_loading()
-			raise zyngine_lscp_warning("{} ({} {})".format(parts[2],parts[0],parts[1]))
-		return result
+			raise zyngine_lscp_warning("{} ({} {})".format(parts[2], parts[0], parts[1]))
 
 
 	def lscp_send_multi(self, command):
 		#logging.debug("LSCP SEND => %s" % command)
-		command=command+"\r\n"
+		command = command + "\r\n"
 		try:
 			self.sock.send(command.encode())
-			result=self.sock.recv(4096)
+			result = self.sock.recv(4096)
 		except Exception as err:
 			logging.error("FAILED lscp_send_multi(%s): %s" % (command,err))
 			self.stop_loading()
 			return None
-		lines=result.decode().split("\r\n")
-		result=OrderedDict()
+		lines = result.decode().split("\r\n")
+		result = OrderedDict()
 		for line in lines:
 			#logging.debug("LSCP RECEIVE => %s" % line)
-			if line[0:2]=="OK":
-				result=self.lscp_get_result_index(line)
-			elif line[0:3]=="ERR":
-				parts=line.split(':')
+			if line[0:2] == "OK":
+				result = self.lscp_get_result_index(line)
+			elif line[0:3] == "ERR":
+				parts = line.split(':')
 				self.stop_loading()
-				raise zyngine_lscp_error("{} ({} {})".format(parts[2],parts[0],parts[1]))
-			elif line[0:3]=="WRN":
-				parts=line.split(':')
+				raise zyngine_lscp_error("{} ({} {})".format(parts[2], parts[0], parts[1]))
+			elif line[0:3] == "WRN":
+				parts = line.split(':')
 				self.stop_loading()
-				raise zyngine_lscp_warning("{} ({} {})" % (parts[2],parts[0],parts[1]))
-			elif len(line)>3:
-				parts=line.split(':')
-				result[parts[0]]=parts[1]
+				raise zyngine_lscp_warning("{} ({} {})".format(parts[2], parts[0], parts[1]))
+			elif len(line) > 3:
+				parts = line.split(':')
+				result[parts[0]] = parts[1]
 		return result
 
 	# ---------------------------------------------------------------------------
@@ -250,10 +261,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
-	def get_bank_list(self, layer=None):
-		return self.get_dirlist(self.bank_dirs)
-
-
 	def set_bank(self, layer, bank):
 		return True
 
@@ -264,26 +271,61 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	@staticmethod
 	def _get_preset_list(bank):
 		logging.info("Getting Preset List for %s" % bank[2])
-		i=0
-		preset_list=[]
-		preset_dpath=bank[0]
+		i = 0
+		preset_list = []
+		preset_dpath = bank[0]
 		if os.path.isdir(preset_dpath):
+			# Get SFZ file list
 			exclude_sfz = re.compile(r"[MOPRSTV][1-9]?l?\.sfz")
-			cmd="find '"+preset_dpath+"' -maxdepth 3 -type f -name '*.sfz'"
-			output=check_output(cmd, shell=True).decode('utf8')
-			cmd="find '"+preset_dpath+"' -maxdepth 2 -type f -name '*.gig'"
-			output=output+"\n"+check_output(cmd, shell=True).decode('utf8')
-			lines=output.split('\n')
+			cmd = "find '" + preset_dpath + "' -maxdepth 3 -type f -name '*.sfz'"
+			output = check_output(cmd, shell=True).decode('utf8')
+			# Get GIG file list
+			cmd = "find '" + preset_dpath + "' -maxdepth 2 -type f -name '*.gig'"
+			output += "\n" + check_output(cmd, shell=True).decode('utf8')
+			lines = output.split('\n')
 			for f in lines:
 				if f:
-					filehead,filetail=os.path.split(f)
+					filehead, filetail = os.path.split(f)
 					if not exclude_sfz.fullmatch(filetail):
-						filename,filext=os.path.splitext(f)
-						filename = filename[len(preset_dpath)+1:]
-						title=filename.replace('_', ' ')
-						engine=filext[1:].lower()
-						preset_list.append([f,i,title,engine,"{}{}".format(filename,filext)])
-						i=i+1
+						filename, filext = os.path.splitext(f)
+						filename = filename[len(preset_dpath) + 1:]
+						title = filename.replace('_', ' ')
+						engine = filext[1:].lower()
+						if engine == "gig":
+							# Get instrument list inside each GIG file
+							inslist = ""
+							# Try getting from cache file
+							icache_fpath = f + ".ins"
+							if os.path.isfile(icache_fpath):
+								try:
+									with open(icache_fpath, "r") as fh:
+										inslist = fh.read()
+								except Exception as e:
+									logging.error(f"Can't load instrument cache '{icache_fpath}'")
+							# If not cache, parse soundfont and cache info
+							if not inslist:
+								cmd = f"gigdump --instrument-names \"{f}\""
+								inslist = check_output(cmd, shell=True).decode('utf8')
+								try:
+									with open(icache_fpath, "w") as fh:
+										fh.write(inslist)
+								except Exception as e:
+									logging.error(f"Can't save instrument cache '{icache_fpath}'")
+							#logging.debug(f"INSTRUMENTS IN {f} =>\n{inslist}")
+							ilines = inslist.split('\n')
+							ii = 0
+							for iline in ilines:
+								try:
+									parts = iline.split(")")
+									ititle = title + "/" + parts[1].replace('"', '').strip()
+								except:
+									continue
+								preset_list.append([f"{f}#{ii}", i, ititle, engine, f"{filename}{filext}#{ii}"])
+								ii += 1
+								i += 1
+						else:
+							preset_list.append([f, i, title, engine, f"{filename}{filext}"])
+							i += 1
 		return preset_list
 
 
@@ -292,12 +334,19 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 
 	def set_preset(self, layer, preset, preload=False):
-		if self.ls_set_preset(layer, preset[3], preset[0]):
+		# Search for an instrument index, if any
+		parts = preset[0].split("#")
+		sfpath = parts[0]
+		try:
+			ii = int(parts[1])
+		except:
+			ii = 0
+		# Load instrument from soundfont
+		if self.ls_set_preset(layer, preset[3], sfpath, ii):
 			layer.send_ctrl_midi_cc()
 			return True
 		else:
 			return False
-
 
 	def cmp_presets(self, preset1, preset2):
 		try:
@@ -375,7 +424,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			}
 
 
-	def ls_set_preset(self, layer, ls_engine, fpath):
+	def ls_set_preset(self, layer, ls_engine, fpath, ii=0):
 		res=False
 		if layer.ls_chan_info:
 			ls_chan_id=layer.ls_chan_info['chan_id']
@@ -402,7 +451,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			# Load instument
 			try:
 				self.sock.settimeout(10)
-				self.lscp_send_single("LOAD INSTRUMENT '{}' 0 {}".format(fpath, ls_chan_id))
+				self.lscp_send_single(f"LOAD INSTRUMENT '{fpath}' {ii} {ls_chan_id}")
 				res=True
 			except zyngine_lscp_error as err:
 				logging.error(err)

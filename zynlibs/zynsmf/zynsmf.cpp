@@ -11,7 +11,7 @@
 #include <jack/midiport.h> //provides interface to JACK MIDI ports
 #include <map> //provides std::map
 
-#define DPRINTF(fmt, args...) if(g_bDebug) printf(fmt, ## args)
+#define DPRINTF(fmt, args...) if(g_bDebug) fprintf(stderr, fmt, ## args)
 
 enum playState
 {
@@ -35,7 +35,10 @@ double g_dPlayerTicksPerFrame; // Current tempo
 double g_dRecorderTicksPerFrame; // Current tempo
 double g_dPosition = 0.0; // Position within song in ticks
 uint32_t g_nRecordStartPosition = 0; // Jack frame location when recording started
-std::map<uint16_t,uint8_t> m_mHangingMidi; // Map of played (not released) notes indexed by 16-bit word (MIDI channel << 8) | note value
+std::map<uint16_t,uint8_t> m_mHangingMidi; // Map of played (not released) notes or pitchbend indexed by 16-bit word (MIDI channel << 8) | note/controller number
+bool g_aRecNotes[16][128];
+int8_t g_nTranspose = 0; // +/- notes to transpose playback
+bool g_bClearHanging = false; // True to request hanging notes are cleared in next process cycle
 
 Smf* g_pPlayerSmf = NULL; // Pointer to the SMF object that is attached to player
 Smf* g_pRecorderSmf = NULL; // Pointer to the SMF object that is attached to recorder
@@ -93,6 +96,15 @@ Smf* addSmf()
 
 void removeSmf(Smf* pSmf)
 {
+	if(pSmf == g_pPlayerSmf)
+		removePlayer();
+	if(pSmf == g_pRecorderSmf)
+		removeRecorder();
+	if(pSmf == g_pSmf)
+	{
+		g_pSmf = NULL;
+		g_pEvent = NULL;
+	}
 	for(auto it = g_pvSmf->begin(); it != g_pvSmf->end(); ++it)
 	{
 		if(*it != pSmf)
@@ -110,7 +122,7 @@ size_t getSmfCount()
 
 void enableDebug(bool bEnable)
 {
-    printf("libsmf setting debug mode %s\n", bEnable?"on":"off");
+    fprintf(stderr, "libsmf setting debug mode %s\n", bEnable?"on":"off");
     g_bDebug = bEnable;
 	for(auto it = g_pvSmf->begin(); it != g_pvSmf->end(); ++it)
 		(*it)->enableDebug(bEnable);
@@ -282,19 +294,24 @@ uint8_t getEventValue2()
 // Handle JACK samplerate change (also used to recalculate ticks per frame)
 static int onJackSamplerate(jack_nframes_t nFrames, void* args)
 {
+	if(nFrames == 0)
+		return 0; // Avoid divide by zero errors - better to have wrong samplerate than crash
 	g_nSamplerate = nFrames;
 	//!@todo This is a nasty use of double precision floating point where we should be able to do most of this with integer maths
 	if(g_pPlayerSmf)
 		g_dPlayerTicksPerFrame = double(g_pPlayerSmf->getTicksPerQuarterNote()) / ((double(g_nMicrosecondsPerQuarterNote) / 1000000) * double(g_nSamplerate));
 	if(g_pRecorderSmf)
-		g_dRecorderTicksPerFrame = 2.0 * double(g_pRecorderSmf->getTicksPerQuarterNote()) / g_nSamplerate;
-		//g_dRecorderTicksPerFrame = double(g_pRecorderSmf->getTicksPerQuarterNote()) / ((double(g_nMicrosecondsPerQuarterNote) / 1000000) * double(g_nSamplerate));
+		g_dRecorderTicksPerFrame = double(g_pRecorderSmf->getTicksPerQuarterNote()) / ((double(g_nMicrosecondsPerQuarterNote) / 1000000) * double(g_nSamplerate));
 	return 0;
 }
 
 // Handle JACK process callback
 static int onJackProcess(jack_nframes_t nFrames, void *notused)
 {
+	static uint8_t nCommand;
+	static uint8_t nData1;
+	static uint8_t nData2;
+
 	if(g_pMidiInputPort == NULL && g_pMidiOutputPort == NULL)
 		return 0;
 	static jack_transport_state_t nPreviousTransportState = JackTransportStopped;
@@ -310,7 +327,8 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 	if(nPreviousTransportState != nTransportState || transport_position.beats_per_minute != dBeatsPerMinute && transport_position.beats_per_minute > 0)
 	{
 		dBeatsPerMinute = transport_position.beats_per_minute;
-		g_nMicrosecondsPerQuarterNote = 60000000.0 / dBeatsPerMinute;
+		if(dBeatsPerMinute)
+			g_nMicrosecondsPerQuarterNote = 60000000.0 / dBeatsPerMinute;
 		onJackSamplerate(g_nSamplerate, 0);
 	}
 	// Handle change of transport state
@@ -348,8 +366,10 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 				jack_midi_event_get(&midiEvent, pMidiBuffer, i);
 				switch(midiEvent.buffer[0] & 0xF0)
 				{
-					case MIDI_NOTE_ON:
 					case MIDI_NOTE_OFF:
+						g_aRecNotes[midiEvent.buffer[0] & 0x0f][midiEvent.buffer[1]] = false;
+					case MIDI_NOTE_ON:
+						g_aRecNotes[midiEvent.buffer[0] & 0x0f][midiEvent.buffer[1]] = true;
 					case MIDI_POLY_PRESSURE:
 					case MIDI_CONTROLLER:
 					case MIDI_PITCH_BEND:
@@ -360,7 +380,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 						pData[1] = midiEvent.buffer[2];
 						break;
 					case MIDI_PROGRAM_CHANGE:
-					case CHANNEL_PRESSURE:
+					case MIDI_CHANNEL_PRESSURE:
 						// 2 byte messages
 						nSize = 1;
 						pData = new uint8_t[nSize];
@@ -394,22 +414,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 			if(g_nPlayState == STOPPED || g_nPlayState == STOPPING)
 			{
 				g_nPlayState = STOPPED;
-				// Clear hanging notes and controllers set during playback
-				for(auto it = m_mHangingMidi.begin(); it != m_mHangingMidi.end(); ++it)
-				{
-					if(it->second)
-					{
-						jack_midi_data_t* pBuffer = jack_midi_event_reserve(pMidiBuffer, 0, 3);
-						if(!pBuffer)
-							break;
-						uint8_t nStatus = it->first >> 8;
-						uint8_t nValue1 = it->first & 0x00FF;
-						*pBuffer = nStatus;
-						*(pBuffer + 1) = nValue1;
-						*(pBuffer + 2) = 0;
-					}
-				}
-				m_mHangingMidi.clear();
+				g_bClearHanging = true;
 			}
 		}
 		if(g_nPlayState == STARTING and nTransportState == JackTransportRolling)
@@ -429,7 +434,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 				
 				if(pEvent->getType() == EVENT_TYPE_META)
 				{
-					if(pEvent->getSubtype() == META_TYPE_TEMPO)
+					if(pEvent->getSubtype() == META_TYPE_TEMPO && pEvent->getInt32())
 					{
 						g_nMicrosecondsPerQuarterNote = pEvent->getInt32();
 						onJackSamplerate(g_nSamplerate, 0);
@@ -442,20 +447,53 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 					jack_midi_data_t* pBuffer = jack_midi_event_reserve(pMidiBuffer, nOffset, pEvent->getSize() + 1);
 					if(!pBuffer)
 						break;
-					*pBuffer = pEvent->getSubtype();
-					memcpy(pBuffer + 1, pEvent->getData(), pEvent->getSize());
+					nCommand = pEvent->getSubtype();
 
 					// Store note and some controller values to allow reset when stopped
-					switch(pEvent->getSubtype() & 0xF0)
-					{
-						case MIDI_CONTROLLER:
-							if(*(pEvent->getData()) < 0x64 || *(pEvent->getData()) > 0x69)
+					if(pEvent->getSize() == 2) {
+						nData1 = *(pEvent->getData());
+						nData2 = *(pEvent->getData() + 1);
+						switch(nCommand & 0xF0)
+						{
+							case MIDI_NOTE_ON:
+								nData1 += g_nTranspose;
+								if(nData1 > 127)
+									continue;
+								if(nData2 == 0) {
+									nCommand = nCommand & 0x8f;
+									m_mHangingMidi.erase(nCommand << 8 | nData1);
+								}
+								else
+									m_mHangingMidi[(nCommand & 0x8f) << 8 | nData1] = nData2;
 								break;
-						case MIDI_NOTE_ON:
-						case MIDI_PITCH_BEND:
-							m_mHangingMidi[pEvent->getSubtype() << 8 | *(pEvent->getData())] = *(pEvent->getData() + 1); //key= 0xSSNN SS=status, NN=note/controller. Value is MIDI value
+							case MIDI_NOTE_OFF:
+								nData1 += g_nTranspose;
+								if(nData1 > 127)
+									continue;
+								m_mHangingMidi.erase(nCommand << 8 | nData1);
+								break;
+							case MIDI_CONTROLLER:
+								if(nData1 < 64 || nData1 > 69)
+									break; // Only handle sustain type CC
+							case MIDI_POLY_PRESSURE:
+							case MIDI_CHANNEL_PRESSURE:
+								if(nData2 == 0)
+									m_mHangingMidi.erase(nCommand << 8 | nData1);
+								else
+									m_mHangingMidi[nCommand << 8 | nData1] = 0;
+								break;
+							case MIDI_PITCH_BEND:
+								m_mHangingMidi[nCommand << 8] = 0x40;
+								break;
+						}
+						*pBuffer = nCommand;
+						*(pBuffer + 1) = nData1;
+						*(pBuffer + 2) = nData2;
+					} else {
+						*pBuffer = nCommand;
+						memcpy(pBuffer + 1, pEvent->getData(), pEvent->getSize());
 					}
-					
+
 				}
 			}
 			if(!g_pPlayerSmf->getEvent(false))
@@ -465,6 +503,22 @@ static int onJackProcess(jack_nframes_t nFrames, void *notused)
 				if(g_bLoop)
 					startPlayback();
 			}
+		}
+		if(g_bClearHanging) {
+			// Reset any hanging events (held notes, pitchbend, sustain, etc.)
+			for(auto it = m_mHangingMidi.begin(); it != m_mHangingMidi.end(); ++it)
+			{
+				jack_midi_data_t* pBuffer = jack_midi_event_reserve(pMidiBuffer, 0, 3);
+				if(!pBuffer)
+					break;
+				uint8_t nStatus = it->first >> 8;
+				uint8_t nValue1 = it->first & 0x00FF;
+				*pBuffer = nStatus;
+				*(pBuffer + 1) = nValue1;
+				*(pBuffer + 2) = it->second;
+			}
+			m_mHangingMidi.clear();
+			g_bClearHanging = false;
 		}
 	}
 
@@ -487,8 +541,10 @@ bool createJackClient()
 		if(g_pJackClient
 			&& !jack_set_process_callback(g_pJackClient, onJackProcess, 0)
 			&& !jack_set_sample_rate_callback(g_pJackClient, onJackSamplerate, 0)
-			&& !jack_activate(g_pJackClient))
-		return true;
+			&& !jack_activate(g_pJackClient)) {
+			fprintf(stderr, "Started libzynsmf\n");
+			return true;
+		}
 		removeJackClient();
 		return false;
 	}
@@ -590,12 +646,40 @@ void startRecording()
 	if(!g_pMidiInputPort || !g_pRecorderSmf)
 		return;
 	g_nRecordStartPosition = 0; // Set start time to 0 so that first MIDI event will update and mark actual start of recording
+	if(g_bRecording)
+		return;
+	// Reset held-note array
+	for(int ch = 0; ch < 16; ++ch)
+		for(int note = 0; note < 128; ++note)
+			g_aRecNotes[ch][note] = false;
+
+	jack_position_t transport_position;
+	jack_transport_state_t nTransportState = jack_transport_query(g_pJackClient, &transport_position);
+	double dBeatsPerMinute = transport_position.beats_per_minute;
+	g_nMicrosecondsPerQuarterNote = 60000000.0 / dBeatsPerMinute;
+	g_dRecorderTicksPerFrame = double(g_pRecorderSmf->getTicksPerQuarterNote()) / ((double(g_nMicrosecondsPerQuarterNote) / 1000000) * double(g_nSamplerate));
+	addTempo(g_pRecorderSmf, 0, 60000000.0 / g_nMicrosecondsPerQuarterNote);
 	g_bRecording = true;
 }
 
 void stopRecording()
 {
+	if(!g_bRecording)
+		return;
 	g_bRecording = false;
+	// Add note-off for any currently held notes
+	for(int chan = 0; chan < 16; ++chan) {
+		for(int note = 0; note < 128; ++note) {
+			if(g_aRecNotes[chan][note]) {
+				uint8_t* pData = new uint8_t[2];
+				*pData = note;
+				*(pData + 1) = 0;
+				uint32_t nPosition = jack_frame_time(g_pJackClient) - g_nRecordStartPosition; // Time of event in samples since start of recording
+				Event* pEvent = new Event(g_dRecorderTicksPerFrame * nPosition, EVENT_TYPE_MIDI, MIDI_NOTE_OFF, 2, pData);
+				g_pRecorderSmf->addEvent(chan, pEvent); // Add event to a track based on its MIDI channel
+			}
+		}
+	}
 }
 
 bool isRecording()
@@ -641,7 +725,7 @@ void muteTrack(Smf* pSmf, size_t nTrack, bool bMute)
 	if(!isSmfValid(pSmf))
 		return;
 	pSmf->muteTrack(nTrack, bMute);
-	//!@todo Clear hanging notes after muting track
+	g_bClearHanging = true;
 }
 
 bool isTrackMuted(Smf* pSmf, size_t nTrack)
@@ -649,4 +733,16 @@ bool isTrackMuted(Smf* pSmf, size_t nTrack)
 	if(!isSmfValid(pSmf))
 		return false;
 	return pSmf->isTrackMuted(nTrack);
+}
+
+
+void setTranspose(int8_t nTranspose)
+{
+	g_bClearHanging = true;
+	g_nTranspose = nTranspose;
+}
+
+uint8_t getTranspose()
+{
+	return g_nTranspose;
 }

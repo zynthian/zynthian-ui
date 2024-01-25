@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI MIDI Recorder Class
 # 
-# Copyright (C) 2015-2018 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -29,15 +29,13 @@ from threading import Timer
 from time import sleep
 from os.path import isfile, join, basename
 import ctypes
+import tkinter
 
 # Zynthian specific modules
 import zynconf
-from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
-from zynlibs.zynseq import zynseq
-from zynlibs.zynseq.zynseq import libseq
 from zynlibs.zynsmf import zynsmf # Python wrapper for zynsmf (ensures initialised and wraps load() function)
 from zynlibs.zynsmf.zynsmf import libsmf # Direct access to shared library 
 
@@ -48,8 +46,9 @@ from zynlibs.zynsmf.zynsmf import libsmf # Direct access to shared library
 class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def __init__(self):
-		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data") + "/capture"
-		self.capture_dir_usb = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
+		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
+		self.ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
+
 		self.current_playback_fpath = None # Filename of currently playing SMF
 
 		self.smf_player = None # Pointer to SMF player
@@ -58,14 +57,6 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		super().__init__('MIDI Recorder', True)
 
-		self.bpm_zctrl = zynthian_controller(self, "bpm", "BPM", {
-			'value': 120,
-			'value_min': 20,
-			'value_max': 400,
-			'is_toggle': False,
-			'is_integer': False,
-			'nudge_factor': 0.1
-		})
 		self.bpm_zgui_ctrl = None
 
 		try:
@@ -98,7 +89,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			status = "REC"
 
 		if libsmf.getPlayState():
-			if status=="REC":
+			if status == "REC":
 				status = "PLAY+REC"
 			else:
 				status = "PLAY"
@@ -106,9 +97,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		return status
 
 
-	def show(self):
-		super().show()
-		if libsmf.getPlayState():
+	def build_view(self):
+		super().build_view()
+		if zynthian_gui_config.transport_clock_source <= 1 and libsmf.getPlayState():
 			self.show_playing_bpm()
 
 
@@ -127,15 +118,16 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		self.list_data.append(None)
 		self.update_status_loop()
 
-		self.list_data.append((None,0,"-----------------------------"))
+		self.list_data.append((None, 0, "> MIDI Tracks"))
 
-		# Add file list, sorted by mtime
+		# Generate file list, sorted by mtime
 		flist = self.get_filelist(self.capture_dir_sdc, "SD")
-		flist += self.get_filelist(self.capture_dir_usb, "USB")
-		i=1
+		for exd in zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
+			flist += self.get_filelist(exd, "USB")
+		i = 1
 		for finfo in sorted(flist, key=lambda d: d['mtime'], reverse=True) :
 			self.list_data.append((finfo['fpath'], i, finfo['title']))
-			i+=1
+			i += 1
 
 		super().fill_list()
 
@@ -161,14 +153,14 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 					logging.warning(e)
 
 				# Generate title
-				title = "{}[{}:{:02d}] {}".format(src_name, int(length/60), int(length%60), fname.replace(";",">",1).replace(";","/"))
+				title = "{}[{}:{:02d}] {}".format(src_name, int(length/60), int(length % 60), fname.replace(";", ">", 1).replace(";", "/"))
 
 				res.append({
 					'fpath': fpath,
 					'fname': fname,
 					'ext': fext,
-					'length' : length,
-					'mtime' : mtime,
+					'length': length,
+					'mtime': mtime,
 					'title': title
 				})
 
@@ -178,53 +170,65 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def fill_listbox(self):
 		super().fill_listbox()
-		self.highlight()
+		self.update_status_playback()
 
 
-	# Highlight command and current record played, if any ...
-	def highlight(self):
+	def update_status_playback(self):
 		if libsmf.getPlayState() == 0:
-			self.current_playback_fpath=None
+			self.current_playback_fpath = None
 
+		item_labels = self.listbox.get(0, tkinter.END)
 		for i, row in enumerate(self.list_data):
-			if row[0] is not None and row[0]==self.current_playback_fpath:
-				self.listbox.itemconfig(i, { 'bg': zynthian_gui_config.color_hl })
+			if row[0] and row[0] == self.current_playback_fpath:
+				item_label = '▶ ' + row[2]
 			else:
-				self.listbox.itemconfig(i, { 'bg': zynthian_gui_config.color_panel_bg })
+				item_label = row[2]
+
+			if item_labels[i] != item_label:
+				self.listbox.delete(i)
+				self.listbox.insert(i, item_label)
+
+		self.select_listbox(self.index)
 
 
 	def update_status_recording(self, fill=False):
-		if libsmf.isRecording():
-			self.list_data[0] = ("STOP_RECORDING",0,"Stop Recording")
-		else:
-			self.list_data[0] = ("START_RECORDING",0,"Start Recording")
-		if fill:
-			super().fill_list()
+		if self.list_data:
+			if libsmf.isRecording():
+				self.list_data[0] = ("STOP_RECORDING", 0, "■ Stop MIDI Recording")
+			else:
+				self.list_data[0] = ("START_RECORDING", 0, "⬤ Start MIDI Recording")
+			if fill:
+				self.listbox.delete(0)
+				self.listbox.insert(0, self.list_data[0][2])
+				self.select_listbox(self.index)
+
 
 	def update_status_loop(self, fill=False):
 		if zynthian_gui_config.midi_play_loop:
-			self.list_data[1] = ("LOOP",0,"[x] Loop Play")
+			self.list_data[1] = ("LOOP", 0, "\u2612 Loop Play")
 			libsmf.setLoop(True)
 		else:
-			self.list_data[1] = ("LOOP",0,"[  ] Loop Play")
+			self.list_data[1] = ("LOOP", 0, "\u2610 Loop Play")
 			libsmf.setLoop(False)
 		if fill:
-			super().fill_list()
+			self.listbox.delete(1)
+			self.listbox.insert(1, self.list_data[1][2])
+			self.select_listbox(self.index)
 
 
 	def select_action(self, i, t='S'):
 		fpath = self.list_data[i][0]
 
-		if fpath=="START_RECORDING":
+		if fpath == "START_RECORDING":
 			self.start_recording()
-		elif fpath=="STOP_PLAYING":
+		elif fpath == "STOP_PLAYING":
 			self.stop_playing()
-		elif fpath=="STOP_RECORDING":
+		elif fpath == "STOP_RECORDING":
 			self.stop_recording()
-		elif fpath=="LOOP":
+		elif fpath == "LOOP":
 			self.toggle_loop()
 		elif fpath:
-			if t=='S':
+			if t == 'S':
 				self.toggle_playing(fpath)
 			else:
 				self.zyngui.show_confirm("Do you really want to delete '{}'?".format(self.list_data[i][2]), self.delete_confirmed, fpath)
@@ -237,7 +241,6 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def switch(self, swi, t='S'):
 		if swi == 0:
 			if t == 'S':
-				self.zyngui.replace_screen('audio_recorder')
 				return True
 
 
@@ -252,7 +255,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def get_new_filename(self):
 		try:
 			parts = self.zyngui.curlayer.get_presetpath().split('#',2)
-			file_name = parts[1].replace("/",";").replace(">",";").replace(" ; ",";")
+			file_name = parts[1].replace("/", ";").replace(">", ";").replace(" ; ", ";")
 		except:
 			file_name = "jack_capture"
 		return self.get_next_filenum() + '-' + file_name + '.mid'
@@ -262,6 +265,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		logging.info("DELETE MIDI RECORDING: {}".format(fpath))
 		try:
 			os.remove(fpath)
+			self.fill_list()
 		except Exception as e:
 			logging.error(e)
 
@@ -281,11 +285,13 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		if libsmf.isRecording():
 			logging.info("STOPPING MIDI RECORDING ...")
 			libsmf.stopRecording()
-			if os.path.ismount(self.capture_dir_usb):
-				filename = "{}/{}".format(self.capture_dir_usb, self.get_new_filename())
+			exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
+			if exdirs:
+				filename = "{}/{}".format(exdirs[0], self.get_new_filename())
 			else:
 				filename = "{}/{}".format(self.capture_dir_sdc, self.get_new_filename())
 			zynsmf.save(self.smf_recorder, filename)
+			os.sync()
 
 			self.update_list()
 			return True
@@ -311,16 +317,17 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			return
 
 		try:
-			zynsmf.load(self.smf_player,fpath)
+			zynsmf.load(self.smf_player, fpath)
 			tempo = libsmf.getTempo(self.smf_player, 0)
 			logging.info("STARTING MIDI PLAY '{}' => {}BPM".format(fpath, tempo))
-			libseq.setTempo(ctypes.c_double(tempo)) # TODO This doesn't work!!
+			self.zyngui.zynseq.set_tempo(tempo)
 			libsmf.startPlayback()
-			zynseq.transport_start("zynsmf")
-#			libseq.transportLocate(0)
+			self.zyngui.zynseq.transport_start("zynsmf")
+#			self.zyngui.zynseq.libseq.transportLocate(0)
 			self.current_playback_fpath=fpath
-			self.show_playing_bpm()
-			self.smf_timer = Timer(interval = 1, function=self.check_playback)
+			if zynthian_gui_config.transport_clock_source == 0:
+				self.show_playing_bpm()
+			self.smf_timer = Timer(interval=1, function=self.check_playback)
 			self.smf_timer.start()
 		except Exception as e:
 			logging.error("ERROR STARTING MIDI PLAY: %s" % e)
@@ -328,24 +335,24 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.zyngui.hide_info_timer(5000)
 
 		#self.update_list()
-		self.highlight()
+		self.update_status_playback()
 		return True
 
 
 	def end_playing(self):
 		logging.info("ENDING MIDI PLAY ...")
-		zynseq.transport_stop("zynsmf")
+		self.zyngui.zynseq.transport_stop("zynsmf")
 		if self.smf_timer:
 			self.smf_timer.cancel()
 			self.smf_timer = None
-		self.current_playback_fpath=None
+		self.current_playback_fpath = None
 		self.hide_playing_bpm()
 		#self.update_list()
-		self.highlight()
+		self.update_status_playback()
 
 
 	def stop_playing(self):
-		if libsmf.getPlayState()!=zynsmf.PLAY_STATE_STOPPED:
+		if libsmf.getPlayState() != zynsmf.PLAY_STATE_STOPPED:
 			logging.info("STOPPING MIDI PLAY ...")
 			libsmf.stopPlayback()
 			sleep(0.1)
@@ -362,30 +369,48 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		if fpath is None:
 			fpath = self.get_current_track_fpath()
 
-		if fpath and fpath!=self.current_playback_fpath:
+		if fpath and fpath != self.current_playback_fpath:
 			self.start_playing(fpath)
 		else:
 			self.stop_playing()
 
+	# Setup CUIA methods
+	cuia_toggle_record = toggle_recording
+	cuia_stop = stop_playing
+	cuia_toggle_play = toggle_playing
 
 	def show_playing_bpm(self):
-		self.bpm_zctrl.set_value(libseq.getTempo())
 		if self.bpm_zgui_ctrl:
-			self.bpm_zgui_ctrl.config(self.bpm_zctrl)
+			self.bpm_zgui_ctrl.config(self.zyngui.zynseq.zctrl_tempo)
 			self.bpm_zgui_ctrl.show()
+			self.bpm_zgui_ctrl.grid()
+			self.loading_canvas.grid_remove()
 		else:
-			self.bpm_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.bpm_zctrl)
+			if zynthian_gui_config.layout['name'] == 'Z2':
+				bmp_ctrl_index = 0
+			else:
+				bmp_ctrl_index = 2
+			self.bpm_zgui_ctrl = zynthian_gui_controller(bmp_ctrl_index, self.main_frame, self.zyngui.zynseq.zctrl_tempo)
+			self.loading_canvas.grid_remove()
+			self.bpm_zgui_ctrl.grid(
+				row=zynthian_gui_config.layout['ctrl_pos'][bmp_ctrl_index][0],
+				column=zynthian_gui_config.layout['ctrl_pos'][bmp_ctrl_index][1],
+				sticky='news'
+			)
+		self.zyngui.zynseq.update_tempo()
 
 
 	def hide_playing_bpm(self):
 		if self.bpm_zgui_ctrl:
 			self.bpm_zgui_ctrl.hide()
+			self.bpm_zgui_ctrl.grid_remove()
+			self.loading_canvas.grid()
 
 
 	# Implement engine's method
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol=="bpm":
-			libseq.setTempo(ctypes.c_double(zctrl.value))
+			self.zyngui.zynseq.set_tempo(zctrl.value)
 			logging.debug("SET PLAYING BPM => {}".format(zctrl.value))
 
 
@@ -403,7 +428,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 	def plot_zctrls(self, force=False):
 		super().plot_zctrls()
 		if self.bpm_zgui_ctrl:
-			if self.bpm_zctrl.is_dirty or force:
+			if self.zyngui.zynseq.zctrl_tempo.is_dirty or force:
 				self.bpm_zgui_ctrl.calculate_plot_values()
 			self.bpm_zgui_ctrl.plot_value()
 
@@ -425,7 +450,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def get_first_track_index(self):
 		for i, row in enumerate(self.list_data):
-			if row[1]>0:
+			if row[1] > 0:
 				return i
 		return None
 
@@ -439,6 +464,22 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			zynthian_gui_config.midi_play_loop=True
 		zynconf.save_config({"ZYNTHIAN_MIDI_PLAY_LOOP": str(int(zynthian_gui_config.midi_play_loop))})
 		self.update_status_loop(True)
+
+
+	def update_wsleds(self, wsleds):
+		wsl = self.zyngui.wsleds
+		# REC button
+		if self.zyngui.status_info['midi_recorder'] and "REC" in self.zyngui.status_info['midi_recorder']:
+			wsl.wsleds.setPixelColor(wsleds[0], wsl.wscolor_red)
+		else:
+			wsl.wsleds.setPixelColor(wsleds[0], wsl.wscolor_alt)
+		# STOP button
+		wsl.wsleds.setPixelColor(wsleds[1], wsl.wscolor_alt)
+		# PLAY button:
+		if self.zyngui.status_info['midi_recorder'] and "PLAY" in self.zyngui.status_info['midi_recorder']:
+			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_green)
+		else:
+			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_alt)
 
 
 	def set_select_path(self):

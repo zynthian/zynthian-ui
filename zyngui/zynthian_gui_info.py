@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Info Class
 # 
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -89,6 +89,8 @@ class zynthian_gui_info:
 
 
 	def show(self, text):
+		if self.zyngui.test_mode:
+			logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
 		self.set(text)
 		if not self.shown:
 			self.shown=True

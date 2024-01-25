@@ -61,9 +61,9 @@ class Sequence
         bool removeTrack(size_t track);
 
         /** @brief  Get quantity of tracks in sequence
-        *   @retval size_t  Quantity of tracks
+        *   @retval uint32_t Quantity of tracks
         */
-        size_t getTracks();
+        uint32_t getTracks();
 
         /** @brief  Clear all tracks from sequence
         */
@@ -113,7 +113,7 @@ class Sequence
         *   @param  bSync True to indicate sync pulse, e.g. to sync tracks
         *   @param  dSamplesPerClock Samples per clock
         *   @retval uint8_t Bitwise flag of what clock triggers [1=track step | 2=change of state]
-        *     @note    Sequences are clocked syncronously but not locked to absolute time so depend on start time for absolute timing
+        *   @note   Sequences are clocked syncronously but not locked to absolute time so depend on start time for absolute timing
         *   @note   Will clock each track
         */
         uint8_t clock(uint32_t nTime, bool bSync, double dSamplesPerClock);
@@ -148,11 +148,15 @@ class Sequence
         */
         uint32_t getPlayPosition();
 
+        /** @brief Flag sequence as modified
+        */
+        void setModified();
+
         /** @brief  Check if sequence state has changed since last call
         *   @retval bool True if changed
         *   @note   Monitors group, mode, tracks, playstate
         */
-        bool hasChanged();
+        bool isModified();
 
         /** @brief  Set sequence name
         *   @param  std::string Sequence name (will be truncated at 16 characters)
@@ -180,4 +184,3 @@ class Sequence
         bool m_bEmpty = true; // True if all patterns are emtpy (no events)
         std::string m_sName; // Sequence name
 };
-

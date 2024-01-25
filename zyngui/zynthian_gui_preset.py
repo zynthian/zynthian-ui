@@ -38,12 +38,6 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 class zynthian_gui_preset(zynthian_gui_selector):
 
 	def __init__(self):
-		self.buttonbar_config = [
-			(1, 'BANKS\n[mixer]'),
-			(0, '\n[menu]'),
-			(2, 'FAVORITES\n[snapshot]'),
-			(3, 'SELECT\n[options]')
-		]
 		super().__init__('Preset', True)
 
 
@@ -53,25 +47,37 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			return
 
 		self.zyngui.curlayer.load_preset_list()
-		self.list_data=self.zyngui.curlayer.preset_list
+		self.list_data = self.zyngui.curlayer.preset_list
 		super().fill_list()
 
 
-	def show(self):
+	def build_view(self):
 		if self.zyngui.curlayer:
-			if len(self.zyngui.curlayer.bank_list) > 1:
-				self.set_buttonbar_label(0, 'BANKS\n[mixer]')
-			else:
-				self.set_buttonbar_label(0, 'CONTROL\n[mixer]')
-			super().show()
+			super().build_view()
 		else:
 			self.zyngui.close_screen()
 
 
+	def show(self):
+		if len(self.list_data) > 0:
+			super().show()
+
+
 	def select_action(self, i, t='S'):
-		if t=='S':
+		if t == 'S':
 			self.zyngui.curlayer.set_preset(i)
-			self.zyngui.show_screen_reset('control')
+			self.zyngui.purge_screen_history("bank")
+			self.zyngui.close_screen()
+
+
+	def arrow_right(self):
+		if self.zyngui.screens['layer'].get_num_root_layers() > 1:
+			self.zyngui.screens['layer'].next(True)
+
+
+	def arrow_left(self):
+		if self.zyngui.screens['layer'].get_num_root_layers() > 1:
+			self.zyngui.screens['layer'].prev(True)
 
 
 	def show_preset_options(self):
@@ -80,9 +86,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		preset_name = preset[2]
 		options = {}
 		if self.zyngui.curlayer.engine.is_preset_fav(preset):
-			options["[x] Favourite"] = preset
+			options["\u2612 Favourite"] = preset
 		else:
-			options["[  ] Favourite"] = preset
+			options["\u2610 Favourite"] = preset
 		if self.zyngui.curlayer.engine.is_preset_user(preset):
 			if hasattr(self.zyngui.curlayer.engine, "rename_preset"):
 				options["Rename"] = preset
@@ -92,12 +98,21 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		self.zyngui.show_screen('option')
 
 
+	def show_menu(self):
+		self.show_preset_options()
+
+
+	def toggle_menu(self):
+		if self.shown:
+			self.show_menu()
+		elif self.zyngui.current_screen == "option":
+			self.close_screen()
+
+
 	def preset_options_cb(self, option, preset):
 		if option.endswith("Favourite"):
 			self.zyngui.curlayer.toggle_preset_fav(preset)
 			self.zyngui.curlayer.load_preset_list()
-			# Clumsey way to repopulate options screen by hide then show
-			self.zyngui.close_screen()
 			self.show_preset_options()
 		elif option == "Rename":
 			self.zyngui.show_keyboard(self.rename_preset, preset[2])
@@ -111,9 +126,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		if new_name != preset[2]:
 			try:
 				self.zyngui.curlayer.engine.rename_preset(self.zyngui.curlayer.bank_info, preset, new_name)
-				self.zyngui.close_screen()
-				if preset[0]==self.zyngui.curlayer.preset_info[0]:
+				if preset[0] == self.zyngui.curlayer.preset_info[0]:
 					self.zyngui.curlayer.set_preset_by_id(preset[0])
+				self.fill_list()
 			except Exception as e:
 				logging.error("Failed to rename preset => {}".format(e))
 
@@ -126,7 +141,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		try:
 			count = self.zyngui.curlayer.engine.delete_preset(self.zyngui.curlayer.bank_info, preset)
 			self.zyngui.curlayer.remove_preset_fav(preset)
-			self.zyngui.close_screen()
+			self.fill_list()
 			if count == 0:
 				self.zyngui.close_screen()
 		except Exception as e:
@@ -138,7 +153,11 @@ class zynthian_gui_preset(zynthian_gui_selector):
 	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, swi, t='S'):
-		if swi == 1:
+		if swi == 0:
+			if t == 'S':
+				self.arrow_right()
+				return True
+		elif swi == 1:
 			if t == 'S':
 				if len(self.zyngui.curlayer.bank_list) > 1:
 					self.zyngui.replace_screen('bank')
@@ -151,9 +170,12 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			if t == 'B':
 				self.show_preset_options()
 				return True
-
-		self.restore_preset()
 		return False
+
+
+	def cuia_toggle_play(self):
+		if self.zyngui.curlayer.engine.nickname == "AP":
+			self.click_listbox()
 
 
 	def set_selector(self, zs_hiden=False):

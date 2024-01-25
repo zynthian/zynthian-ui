@@ -23,10 +23,7 @@
 # 
 #******************************************************************************
 
-import sys
-import tkinter
 import logging
-from collections import OrderedDict
 
 # Zynthian specific modules
 import zynautoconnect
@@ -51,24 +48,30 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 			self.end_layer = None
 
 
-
 	def fill_list(self):
 		self.list_data = []
 
 		if self.end_layer:
-			midi_outs = OrderedDict([
-				["MIDI-OUT", "Hardware MIDI Out"],
-				["NET-OUT", "Network MIDI Out" ]
-			])
-			for layer in zynthian_gui_config.zyngui.screens["layer"].get_midichain_roots():
-				if layer.midi_chan!=self.end_layer.midi_chan:
+			midi_outs = {}
+			# USB connected device ports
+			for i in range(zynautoconnect.max_num_devs):
+				dev_id = zynautoconnect.devices_out[i]
+				if dev_id:
+					dev_name = zynautoconnect.devices_out_name[i]
+					midi_outs[dev_name] = dev_id.replace("_", " ")
+			# Hardcoded ports
+			midi_outs["NET-OUT"] = "Network MIDI-OUT"
+			midi_outs["CVGate-OUT"] = "CV/Gate"
+			# Internal Chain ports
+			for layer in zynthian_gui_config.zyngui.screens['layer'].get_midichain_roots():
+				if layer.midi_chan != self.end_layer.midi_chan:
 					midi_outs[layer.get_midi_jackname()] = layer.get_presetpath()
 				
 			for jn, title in midi_outs.items():
 				if jn in self.end_layer.get_midi_out():
-					self.list_data.append((jn, jn, "[x] " + title))
+					self.list_data.append((jn, jn, "\u2612 " + title))
 				else:
-					self.list_data.append((jn, jn, "[  ] " + title))
+					self.list_data.append((jn, jn, "\u2610 " + title))
 
 		super().fill_list()
 
@@ -81,7 +84,7 @@ class zynthian_gui_midi_out(zynthian_gui_selector):
 	# Highlight current engine assigned outputs ...
 	def highlight(self):
 		for i in range(len(self.list_data)):
-			if self.list_data[i][2][:2]=='[x':
+			if self.list_data[i][2][:2] == '[x':
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_hl})
 			else:
 				self.listbox.itemconfig(i, {'fg':zynthian_gui_config.color_panel_tx})

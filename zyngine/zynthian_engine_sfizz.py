@@ -27,13 +27,9 @@ import re
 import glob
 import logging
 import shutil
-from time import sleep
-from os.path import isfile, isdir
 from subprocess import check_output
-from collections import OrderedDict
 
 from . import zynthian_engine
-from . import zynthian_controller
 
 #------------------------------------------------------------------------------
 # Sfizz Engine Class
@@ -46,21 +42,34 @@ class zynthian_engine_sfizz(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	# SFZ Default MIDI Controllers (modulators)
-	_ctrls=[
-		['volume',7,96],
-		['pan',10,64],
-		['sustain',64,'off',['off','on']],
-		['sostenuto',66,'off',['off','on']],
-		['legato on/off',68,'off',['off','on']],
-		['portamento on/off',65,'off',['off','on']],
-		['portamento time-coarse',5,0],
-		['portamento time-fine',37,0]
+	_ctrls = [
+		['modulation wheel', 1, 0],
+		['volume', 7, 96],
+		['pan', 10, 64],
+		['expression', 11, 127],
+
+		['sustain', 64, 'off', ['off', 'on']],
+		['sostenuto', 66, 'off', ['off', 'on']],
+		['legato', 68, 'off', ['off', 'on']],
+		['breath', 2, 127],
+
+		['portamento on/off', 65, 'off', ['off', 'on']],
+		['portamento time-coarse', 5, 0],
+		['portamento time-fine', 37, 0],
+
+		# ['expr. pedal', 4, 127],
+		['filter cutoff', 74, 64],
+		['filter resonance', 71, 64],
+		['env. attack', 73, 64],
+		['env. release', 72, 64]
 	]
 
 	# Controller Screens
-	_ctrl_screens=[
-		['main',['volume','pan','sostenuto','sustain']],
-		['portamento',['legato on/off','portamento on/off','portamento time-coarse','portamento time-fine']]
+	_ctrl_screens = [
+		['main', ['volume', 'pan', 'modulation wheel', 'expression']],
+		['pedals', ['legato', 'breath', 'sostenuto', 'sustain']],
+		['portamento', ['portamento on/off', 'portamento time-coarse', 'portamento time-fine']],
+		['envelope/filter', ['env. attack', 'env. release', 'filter cutoff', 'filter resonance']]
 	]
 
 	# ---------------------------------------------------------------------------
@@ -77,11 +86,14 @@ class zynthian_engine_sfizz(zynthian_engine):
 	# Initialization
 	# ---------------------------------------------------------------------------
 
-	def __init__(self, zyngui=None):
+	def __init__(self, zyngui=None, jackname=None):
 		super().__init__(zyngui)
 		self.name = "Sfizz"
 		self.nickname = "SF"
-		self.jackname = self.get_next_jackname("sfizz")
+		if jackname:
+			self.jackname = jackname
+		else:
+			self.jackname = self.get_next_jackname("sfizz")
 
 		self.preload_size = 32768 #8192, 16384, 32768, 65536
 		self.num_voices = 40
@@ -107,10 +119,6 @@ class zynthian_engine_sfizz(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# Bank Management
 	# ---------------------------------------------------------------------------
-
-	def get_bank_list(self, layer=None):
-		return self.get_dirlist(self.bank_dirs)
-
 
 	def set_bank(self, layer, bank):
 		return True
