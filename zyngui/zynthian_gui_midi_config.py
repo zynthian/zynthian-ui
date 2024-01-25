@@ -525,9 +525,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
     def set_select_path(self):
         if self.chain:
             if self.input:
-                self.select_path.set(f"Chain {self.chain.chain_id:02d} MIDI Input")
+                self.select_path.set(f"Capture MIDI from...")
             else:
-                self.select_path.set(f"Chain {self.chain.chain_id:02d} MIDI Output")
+                self.select_path.set(f"Send MIDI to ...")
         else:
             if self.input:
                 self.select_path.set(f"MIDI Input Devices")
