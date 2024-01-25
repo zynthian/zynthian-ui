@@ -132,12 +132,16 @@ LED_BLINKING_2                       = 0x0F
 FN_VOLUME                            = 0x01
 FN_PAN                               = 0x02
 
-FN_CLIP_STOP                         = 0x01
-FN_SOLO                              = 0x02
-FN_MUTE                              = 0x03
-FN_REC_ARM                           = 0x04
-FN_SELECT                            = 0x05
-FN_SCENE                             = 0x06
+FN_SOLO                              = 0x03
+FN_MUTE                              = 0x04
+FN_REC_ARM                           = 0x05
+FN_SELECT                            = 0x06
+FN_SCENE                             = 0x07
+
+FN_PATTERN_MANAGER                   = 0x08
+FN_PATTERN_COPY                      = 0x09
+FN_PATTERN_MOVE                      = 0x0a
+FN_PATTERN_CLEAR                     = 0x0b
 
 PT_SHORT                             = "short"
 PT_BOLD                              = "bold"
@@ -209,12 +213,21 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
             note = (ev >> 8) & 0x7F
             if note == BTN_SHIFT:
                 return self._on_shift_changed(True)
+
             if self._is_shifted:
+                # Change global mode here
                 if note == BTN_KNOB_CTRL_DEVICE:
                     self._current_handler = self._device_handler
                 elif note in [BTN_KNOB_CTRL_PAN, BTN_KNOB_CTRL_VOLUME]:
                     self._current_handler = self._mixer_handler
                     self._padmatrix_handler.refresh()
+
+                # Change sub-modes here
+                elif note == BTN_SOFT_KEY_CLIP_STOP:
+                    if self._current_handler == self._mixer_handler:
+                        self._padmatrix_handler.enable_pattman(True)
+                elif BTN_SOFT_KEY_CLIP_STOP < note <= BTN_SOFT_KEY_END:
+                    self._padmatrix_handler.enable_pattman(False)
 
             # Padmatrix related events
             if self._current_handler == self._mixer_handler:
@@ -246,7 +259,8 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                 if note == BTN_RECORD:
                     return self._padmatrix_handler.on_record_changed(False)
                 elif BTN_TRACK_1 <= note <= BTN_TRACK_8:
-                    self._padmatrix_handler.on_track_changed(note, False)
+                    track = note - BTN_TRACK_1
+                    self._padmatrix_handler.on_track_changed(track, False)
                 elif note == BTN_STOP_ALL_CLIPS:
                     self._padmatrix_handler.note_off(note, self._is_shifted)
 
@@ -653,7 +667,7 @@ class MixerHandler(BaseHandler):
 
             # Soft Keys buttons
             btn = {
-                FN_CLIP_STOP: BTN_SOFT_KEY_CLIP_STOP,
+                FN_PATTERN_MANAGER: BTN_SOFT_KEY_CLIP_STOP,
                 FN_MUTE: BTN_SOFT_KEY_MUTE,
                 FN_SOLO: BTN_SOFT_KEY_SOLO,
                 FN_SELECT: BTN_SOFT_KEY_SELECT,
@@ -674,20 +688,25 @@ class MixerHandler(BaseHandler):
                     self._leds.led_state(BTN_TRACK_1 + i, state)
                 return
 
+            if self._track_buttons_function == FN_PATTERN_MANAGER:
+                # FIXME: update pattman function buttons too!
+                self._leds.led_blink(BTN_SOFT_KEY_CLIP_STOP)
+                return
+
             query = {
                 FN_MUTE: self._zynmixer.get_mute,
                 FN_SOLO: self._zynmixer.get_solo,
                 FN_SELECT: lambda c: c == (self._active_chain - 1),
             }[self._track_buttons_function]
             for i in range(8):
-                scene = i + (8 if self._chains_bank == 1 else 0)
-                chain = self._chain_manager.get_chain_by_index(scene)
+                index = i + (8 if self._chains_bank == 1 else 0)
+                chain = self._chain_manager.get_chain_by_index(index)
                 if not chain:
                     break
                 # Main channel ignored
                 if chain.chain_id == 0:
                     continue
-                self._leds.led_state(BTN_TRACK_1 + i, query(scene))
+                self._leds.led_state(BTN_TRACK_1 + i, query(index))
 
     def on_shift_changed(self, state):
         retval = super().on_shift_changed(state)
@@ -709,6 +728,8 @@ class MixerHandler(BaseHandler):
                 self._track_buttons_function = FN_SOLO
             elif note == BTN_SOFT_KEY_REC_ARM:
                 self._track_buttons_function = FN_SCENE
+            elif note == BTN_SOFT_KEY_CLIP_STOP:
+                self._track_buttons_function = FN_PATTERN_MANAGER
             elif note == BTN_LEFT:
                 self._chains_bank = 0
             elif note == BTN_RIGHT:
@@ -861,10 +882,14 @@ class PadMatrixHandler(BaseHandler):
         self._cols = 8
         self._rows = 5
         self._is_record_pressed = False
-        self._is_track_ressed = None
+        self._track_btn_pressed = None
         self._current_screen = None
         self._playing_seqs = set()
         self._btn_timer = ButtonTimer(self._handle_timed_button)
+
+        # Pattman sub-mode
+        self._pattman_func = None
+        self._pattman_src_seq = None
 
         # FIXME: this value should be updated by a signal, to be in sync with UI state
         self._recording_seq = None
@@ -884,6 +909,9 @@ class PadMatrixHandler(BaseHandler):
         self._state_manager.send_cuia("TOGGLE_PLAY")
 
     def on_toggle_play_row(self, row):
+        # If pattman is enabled, ignore row functions
+        if self._pattman_func is not None:
+            return False
         if row >= self._zynseq.col_in_bank:
             return True
 
@@ -910,17 +938,51 @@ class PadMatrixHandler(BaseHandler):
             self._libseq.togglePlayState(self._zynseq.bank, seq)
 
     def on_track_changed(self, track, state):
-        self._is_track_ressed = track if state else None
+        self._track_btn_pressed = track if state else None
+
+        # Switch pattman function (if pattman enabled and SHIFT is not pressed)
+        if state and self._pattman_func is not None and not self._is_shifted:
+            btn = BTN_TRACK_1 + track
+
+            if btn == BTN_LEFT:
+                return self._change_scene(-1)
+            if btn == BTN_RIGHT:
+                return self._change_scene(1)
+
+            func = {
+                BTN_KNOB_CTRL_VOLUME: FN_PATTERN_COPY,
+                BTN_KNOB_CTRL_PAN: FN_PATTERN_MOVE,
+                BTN_KNOB_CTRL_SEND: FN_PATTERN_CLEAR,
+            }.get(btn)
+            if func is not None:
+                self._pattman_func = func
+                self._refresh_tool_buttons()
+
+                # Function CLEAR does not have source sequence, remove it
+                if func == FN_PATTERN_CLEAR and self._pattman_src_seq is not None:
+                    scene, seq = self._pattman_src_seq
+                    self._pattman_src_seq = None
+                    if scene == self._zynseq.bank:
+                        self._update_pad(seq)
 
     def on_screen_change(self, screen):
         self._current_screen = screen
 
     def on_shift_changed(self, state):
         retval = super().on_shift_changed(state)
-        # Update row launchers only when SHIFT is not pressed
+        # Update tool buttons only when SHIFT is not pressed
         if not state:
-            self._refresh_row_launchers()
+            self._refresh_tool_buttons()
         return retval
+
+    def enable_pattman(self, state):
+        if state:
+            if self._pattman_func is None:
+                self._pattman_func = FN_PATTERN_COPY
+        else:
+            self._pattman_func = None
+            self._pattman_src_seq = None
+        self.refresh()
 
     def refresh(self):
         if not self._libseq.isMidiRecord():
@@ -936,7 +998,7 @@ class PadMatrixHandler(BaseHandler):
                 seq = c * self._zynseq.col_in_bank + r
                 self._update_pad(seq, False)
 
-        self._refresh_row_launchers()
+        self._refresh_tool_buttons()
 
     def note_on(self, note, shifted_override=None):
         self._on_shifted_override(shifted_override)
@@ -958,8 +1020,10 @@ class PadMatrixHandler(BaseHandler):
             return True
 
         seq = col * self._zynseq.col_in_bank + row
-        if self._is_track_ressed is not None:
-            self._clear_pattern(seq)
+        if self._pattman_func is not None:
+            self._pattman_handle_pad_press(seq)
+        elif self._track_btn_pressed is not None:
+            self._clear_pattern((self._zynseq.bank, seq))
         elif self._is_shifted:
             self._show_pattern_editor(seq)
         elif self._is_record_pressed:
@@ -982,20 +1046,32 @@ class PadMatrixHandler(BaseHandler):
         is_empty = self._zynseq.is_pattern_empty(pattern)
         color = self.GROUP_COLORS[group]
 
-        if self._recording_seq == seq:
-            led_mode = LED_BLINKING_16
-        elif state == zynseq.SEQ_PLAYING:
-            led_mode = LED_BLINKING_8
-            self._playing_seqs.add(seq)
-        elif state in (zynseq.SEQ_STOPPING, zynseq.SEQ_STARTING):
-            led_mode = LED_PULSING_2
-        else:
+        # If pattman is enabled, update according to it's function
+        if self._pattman_func is not None:
             led_mode = LED_BRIGHT_25 if is_empty else LED_BRIGHT_100
-            self._playing_seqs.discard(seq)
+            if (self._pattman_func in (FN_PATTERN_COPY, FN_PATTERN_MOVE)
+                    and self._pattman_src_seq is not None):
+                src_scene, src_seq = self._pattman_src_seq
+                if src_scene == self._zynseq.bank and src_seq == seq:
+                    led_mode = LED_BLINKING_24
+
+        # Otherwise, update according to sequence state
+        else:
+            if self._recording_seq == seq:
+                led_mode = LED_BLINKING_16
+            elif state == zynseq.SEQ_PLAYING:
+                led_mode = LED_BLINKING_8
+                self._playing_seqs.add(seq)
+            elif state in (zynseq.SEQ_STOPPING, zynseq.SEQ_STARTING):
+                led_mode = LED_PULSING_2
+            else:
+                led_mode = LED_BRIGHT_25 if is_empty else LED_BRIGHT_100
+                self._playing_seqs.discard(seq)
 
         self._leds.led_on(btn, color, led_mode)
+
         if refresh:
-            self._refresh_row_launchers()
+            self._refresh_tool_buttons()
 
     def _handle_timed_button(self, btn, ptype):
         if btn == BTN_STOP_ALL_CLIPS:
@@ -1010,6 +1086,44 @@ class PadMatrixHandler(BaseHandler):
                 in_all_banks = ptype == PT_BOLD
                 self._stop_all_seqs(in_all_banks)
 
+    def _pattman_handle_pad_press(self, seq):
+        if self._pattman_func is None:
+            return
+
+        # FIXME: if pattern editor is open, and showing affected seq, update it!
+        # FIXME: if Zynpad is open, also update it!
+
+        seq_is_empty = self._libseq.isEmpty(self._zynseq.bank, seq)
+        if self._pattman_func == FN_PATTERN_CLEAR:
+            if not seq_is_empty:
+                self._clear_pattern((self._zynseq.bank, seq))
+            return
+
+        # Set selected sequence as source
+        if self._pattman_src_seq is None:
+            if not seq_is_empty:
+                self._pattman_src_seq = (self._zynseq.bank, seq)
+        else:
+            # Clear source sequence
+            if self._pattman_src_seq == (self._zynseq.bank, seq):
+                self._pattman_src_seq = None
+            # Copy/Move source to selected sequence (will be overwritten)
+            else:
+                if self._pattman_func == FN_PATTERN_COPY:
+                    self._copy_pattern(self._pattman_src_seq, seq)
+                elif self._pattman_func == FN_PATTERN_MOVE:
+                    self._copy_pattern(self._pattman_src_seq, seq)
+                    self._clear_pattern(self._pattman_src_seq)
+                    self._pattman_src_seq = None
+
+        self._update_pad(seq)
+
+    def _change_scene(self, offset):
+        scene = min(64, max(1, self._zynseq.bank + offset))
+        if scene != self._zynseq.bank:
+            self._zynseq.select_bank(scene)
+            self._state_manager.send_cuia("SCREEN_ZYNPAD")
+
     def _update_pad(self, seq, refresh=True):
         state = self._libseq.getSequenceState(self._zynseq.bank, seq)
         mode = (state >> 8) & 0xFF
@@ -1019,7 +1133,20 @@ class PadMatrixHandler(BaseHandler):
             bank=self._zynseq.bank, seq=seq, state=state, mode=mode, group=group,
             refresh=refresh)
 
-    def _refresh_row_launchers(self):
+    def _refresh_tool_buttons(self):
+        # Switch on pattman active function
+        if self._pattman_func is not None:
+            active = {
+                FN_PATTERN_COPY: BTN_KNOB_CTRL_VOLUME,
+                FN_PATTERN_MOVE: BTN_KNOB_CTRL_PAN,
+                FN_PATTERN_CLEAR: BTN_KNOB_CTRL_SEND,
+            }[self._pattman_func]
+            for idx in range(8):
+                btn = BTN_TRACK_1 + idx
+                self._leds.led_state(btn, btn == active)
+            return
+
+        # If pattman is disabled, show playing status in row launchers
         playing_rows = {seq % self._zynseq.col_in_bank for seq in self._playing_seqs}
         for row in range(5):
             state = row in playing_rows
@@ -1065,10 +1192,19 @@ class PadMatrixHandler(BaseHandler):
         self.refresh()
 
     def _clear_pattern(self, seq):
-        pattern = self._libseq.getPattern(self._zynseq.bank, seq, 0, 0)
+        scene, seq = seq
+        pattern = self._libseq.getPattern(scene, seq, 0, 0)
         self._libseq.selectPattern(pattern)
         self._libseq.clear()
+        self._libseq.updateSequenceInfo()
         self._update_pad(seq)
+
+    def _copy_pattern(self, src, dst):
+        scene_src, seq_src = src
+        patt_src = self._libseq.getPattern(scene_src, seq_src, 0, 0)
+        patt_dst = self._libseq.getPattern(self._zynseq.bank, dst, 0, 0)
+        self._libseq.copyPattern(patt_src, patt_dst)
+        self._libseq.updateSequenceInfo()
 
     def _show_pattern_editor(self, seq):
         # This way shows Zynpad everytime you change the sequuence (but is decoupled from UI)
