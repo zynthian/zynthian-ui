@@ -856,7 +856,9 @@ class zynthian_gui:
 		else:
 			self.chain_manager.set_active_chain_by_id(chain_id)
 
-		if processor in self.chain_manager.get_processors(chain_id):
+		if processor is None:
+			self.current_processor = self.chain_manager.get_active_chain().current_processor
+		elif processor in self.chain_manager.get_processors(chain_id):
 			self.current_processor = processor
 		else:
 			self.current_processor = None
@@ -1353,8 +1355,9 @@ class zynthian_gui:
 			self.screens["control"].fill_list()
 			try:
 				self.chain_manager.get_active_chain().set_current_processor(self.screens['control'].screen_processor)
+				self.set_current
 			except:
-				logging.warning("Can't set control screen layer! ")
+				logging.warning("Can't set control screen processor! ")
 
 		if self.current_screen == 'preset':
 			if len(self.get_current_processor().get_bank_list()) > 1:

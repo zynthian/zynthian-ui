@@ -240,6 +240,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if self.get_screen_info():
 			try:
 				self.zyngui.chain_manager.get_active_chain().set_current_processor(self.screen_processor)
+				self.zyngui.current_processor = self.screen_processor
 			except:
 				pass
 
