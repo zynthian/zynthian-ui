@@ -84,11 +84,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector):
 		self.zyngui.modify_chain({"type": "MIDI Synth", "midi_thru": False, "audio_thru": False})
 
 	def add_audiofx_chain(self, t='S'):
-		try:
-			chain_id = self.zyngui.chain_manager.add_chain(None, audio_thru = True)
-			self.zyngui.modify_chain({"type": "Audio Effect", "audio_thru": True, "chain_id": chain_id})
-		except Exception as e:
-			logging.error(e)
+		self.zyngui.modify_chain({"type": "Audio Effect", "midi_thru": False, "audio_thru": True})
 
 	def add_midifx_chain(self, t='S'):
 		self.zyngui.modify_chain({"type": "MIDI Tool", "midi_thru": True, "audio_thru": False})
@@ -97,7 +93,6 @@ class zynthian_gui_main_menu(zynthian_gui_selector):
 		self.zyngui.modify_chain({"type": "Audio Effect", "midi_thru": True, "audio_thru": True})
 
 	def add_generator_chain(self, t='S'):
-		#chain_id = self.zyngui.chain_manager.add_chain(None, audio_thru = False)
 		self.zyngui.modify_chain({"type": "Audio Generator", "midi_thru": False, "audio_thru": False})
 
 	def add_special_chain(self, t='S'):

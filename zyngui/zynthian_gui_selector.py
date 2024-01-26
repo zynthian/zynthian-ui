@@ -101,6 +101,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.listbox.bind("<B1-Motion>",self.cb_listbox_motion)
 		self.listbox.bind("<Button-4>",self.cb_listbox_wheel)
 		self.listbox.bind("<Button-5>",self.cb_listbox_wheel)
+		#self.listbox.bind('<<ListboxSelect>>', cb_select)
 
 		if loading_anim:
 			# Canvas for loading image animation
@@ -293,7 +294,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		if index >= 0 and index < len(self.list_data) and self.list_data[index][0] is None:
 			# Request to select a blank list entry
 			if self.index <= index:
-    			# Request is higher than current entry so try to move down list
+				# Request is higher than current entry so try to move down list
 				for i in range(index, len(self.list_data)):
 					if self.list_data[i][0] is not None:
 						return i

@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
 # Zynthian GUI Engine Selector Class
 # 
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,11 +21,12 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import os
+import tkinter
 import logging
-from time import sleep
+from random import randrange
 
 # Zynthian specific modules
 from zyngine import *
@@ -35,9 +36,10 @@ from zyngine.zynthian_engine_jalv import *
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian Engine Selection GUI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_engine(zynthian_gui_selector):
 
@@ -47,6 +49,112 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.reset_index = True
 		super().__init__('Engine', True)
 		self.context_index = {}
+
+		# Canvas for engine info
+		self.info_canvas = tkinter.Canvas(
+			self.main_frame,
+			width=1,  # zynthian_gui_config.fw2, #self.width // 4 - 2,
+			height=1,  # zynthian_gui_config.fh2, #self.height // 2 - 1,
+			bd=0,
+			highlightthickness=0,
+			bg=zynthian_gui_config.color_bg)
+		# Position at top of column containing selector
+		self.info_canvas.grid(row=2, column=zynthian_gui_config.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
+
+		# Info layout
+		star_fs = int(1.4 * zynthian_gui_config.font_size)
+		#color_star = zynthian_gui_config.color_ml
+		color_star = zynthian_gui_config.color_on
+		color_star_off = zynthian_gui_config.color_off
+		xpos = int(0.5 * zynthian_gui_config.font_size)
+		ypos = 0
+		info_width = 0.25 * self.width - xpos
+		"""
+		self.quality_label = self.info_canvas.create_text(
+			xpos,
+			ypos,
+			anchor=tkinter.NW,
+			justify=tkinter.LEFT,
+			width=info_width,
+			text="Quality:",
+			font=(zynthian_gui_config.font_family, zynthian_gui_config.font_size),
+			fill=zynthian_gui_config.color_panel_tx)
+		ypos += int(1.2 * zynthian_gui_config.font_size)
+		"""
+		self.quality_stars_bg_label = self.info_canvas.create_text(
+			xpos,
+			ypos,
+			anchor=tkinter.NW,
+			justify=tkinter.CENTER,
+			width=info_width,
+			text="★★★★★",
+			#text="✱✱✱✱✱",
+			font=(zynthian_gui_config.font_family, star_fs),
+			fill=color_star_off)
+		self.quality_stars_label = self.info_canvas.create_text(
+			xpos,
+			ypos,
+			anchor=tkinter.NW,
+			justify=tkinter.CENTER,
+			width=info_width,
+			text="",
+			font=(zynthian_gui_config.font_family, star_fs),
+			fill=color_star)
+		ypos += int(1.4 * star_fs)
+		"""
+		self.complexity_label = self.info_canvas.create_text(
+			xpos,
+			ypos,
+			anchor=tkinter.NW,
+			justify=tkinter.LEFT,
+			width=info_width,
+			text="Complex:",
+			font=(zynthian_gui_config.font_family, zynthian_gui_config.font_size),
+			fill=zynthian_gui_config.color_panel_tx)
+		ypos += int(1.2 * zynthian_gui_config.font_size)
+		"""
+		self.complexity_stars_bg_label = self.info_canvas.create_text(
+			xpos,
+			ypos,
+			anchor=tkinter.NW,
+			justify=tkinter.CENTER,
+			width=info_width,
+			text="⚈⚈⚈⚈⚈",
+			font=(zynthian_gui_config.font_family, star_fs),
+			fill=color_star_off)
+		self.complexity_stars_label = self.info_canvas.create_text(
+			xpos,
+			ypos,
+			anchor=tkinter.NW,
+			justify=tkinter.CENTER,
+			width=info_width,
+			text="",
+			font=(zynthian_gui_config.font_family, star_fs),
+			fill=color_star)
+		ypos += int(2 * star_fs)
+		self.description_label = self.info_canvas.create_text(
+			xpos,
+			ypos,
+			anchor=tkinter.NW,
+			justify=tkinter.LEFT,
+			width=info_width,
+			text="",
+			font=(zynthian_gui_config.font_family, int(0.8 * zynthian_gui_config.font_size)),
+			fill=zynthian_gui_config.color_panel_tx)
+
+	def update_layout(self):
+		super().update_layout()
+
+	def update_info(self):
+		quality_stars = "★" * randrange(5)
+		self.info_canvas.itemconfigure(self.quality_stars_label, text=quality_stars)
+		complexity_stars = "⚈" * randrange(5)
+		self.info_canvas.itemconfigure(self.complexity_stars_label, text=complexity_stars)
+		description = ["Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+			"Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+			"Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
+			"Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."]
+		self.info_canvas.itemconfigure(self.description_label, text=description[randrange(4)])
 
 	def build_view(self):
 		try:
@@ -97,17 +205,20 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 		super().fill_list()
 
-
 	def fill_listbox(self):
 		super().fill_listbox()
 		for i, val in enumerate(self.list_data):
 			if val[0]==None:
 				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_panel_hl,'fg':zynthian_gui_config.color_tx_off})
 
+	def select(self, index=None):
+		super().select(index)
+		self.update_info()
 
 	def select_action(self, i, t='S'):
 		if i is not None and self.list_data[i][0]:
-			self.zyngui.modify_chain_status["engine"] = self.list_data[i][0]
+			engine = self.list_data[i][0]
+			self.zyngui.modify_chain_status["engine"] = engine
 			if "chain_id" in self.zyngui.modify_chain_status:
 				# Modifying existing chain
 				if "processor" in self.zyngui.modify_chain_status:
@@ -123,36 +234,31 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			else:
 				# Adding engine to new chain
 				self.zyngui.modify_chain_status["parallel"] = False
-				if self.zyngui.modify_chain_status["engine"] == "AP":
+				if engine == "AP":
 					self.zyngui.modify_chain_status["audio_thru"] = False #TODO: Better done with engine flag
-			if self.zyngui.modify_chain_status["type"] == "Audio Generator":
-				self.zyngui.modify_chain_status["midi_chan"] = None
+				if self.zyngui.modify_chain_status["type"] in ("Audio Effect", "Audio Generator") and not self.zyngui.modify_chain_status["midi_thru"]:
+					self.zyngui.modify_chain_status["midi_chan"] = None
 			self.zyngui.modify_chain()
-
 
 	def arrow_right(self):
 		if "chain_id" in self.zyngui.modify_chain_status:
 			self.zyngui.chain_manager.next_chain()
 			self.zyngui.chain_control()
 
-
 	def arrow_left(self):
 		if "chain_id" in self.zyngui.modify_chain_status:
 			self.zyngui.chain_manager.previous_chain()
 			self.zyngui.chain_control()
-		
 
 	def cb_add_parallel(self, option, value):
 		self.zyngui.modify_chain_status['parallel'] = value
 		self.zyngui.modify_chain()
-
 
 	def switch(self, swi, t='S'):
 		if swi == 0:
 			if t == 'S':
 				self.arrow_right()
 				return True
-
 
 	def set_select_path(self):
 		path = ""
@@ -164,4 +270,4 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			pass
 		self.select_path.set(path)
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------

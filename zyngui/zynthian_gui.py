@@ -125,6 +125,7 @@ class zynthian_gui:
 		self.state_manager = zynthian_state_manager.zynthian_state_manager()
 		self.chain_manager = self.state_manager.chain_manager
 
+		self.debug_thread = None
 		self.busy_thread = None
 		self.control_thread = None
 		self.status_thread = None
@@ -466,6 +467,10 @@ class zynthian_gui:
 		# Initialize OSC
 		self.osc_init()
 
+		# Run debug thread
+		if zynthian_gui_config.log_level >= 10:
+			self.start_debug_thread()
+
 		# Initial loading screen. We need "current_screen" from here ...
 		self.show_loading("Starting User Interface")
 
@@ -479,8 +484,22 @@ class zynthian_gui:
 		self.start_polling()
 
 	# --------------------------------------------------------------------------
+	# Debug thread: set a breakpoint and exit when continue
+	# --------------------------------------------------------------------------
+
+	def start_debug_thread(self):
+		self.debug_thread = Thread(target=self.debug_task, args=())
+		self.debug_thread.name = "debug"
+		self.debug_thread.daemon = True  # thread dies with the program
+		self.debug_thread.start()
+
+	def debug_task(self):
+		breakpoint()
+		self.screens['admin'].exit_to_console()
+
+	# --------------------------------------------------------------------------
 	# Start task => Must run as a thread, so we can go into tkinter loop
-	# **************************************************************************
+	# --------------------------------------------------------------------------
 
 	def run_start_thread(self):
 		self.start_thread = Thread(target=self.start_task, args=())
@@ -790,29 +809,8 @@ class zynthian_gui:
 		if status:
 			self.modify_chain_status = status
 
-		# We know the MIDI channel so create a new chain and processor
-		if "midi_chan" in self.modify_chain_status:
-			if "midi_thru" not in self.modify_chain_status:
-				self.modify_chain_status["midi_thru"] = False
-			if "audio_thru" not in self.modify_chain_status:
-				self.modify_chain_status["audio_thru"] = False
-			chain_id = self.chain_manager.add_chain(
-				None,
-				self.modify_chain_status["midi_chan"],
-				self.modify_chain_status["midi_thru"],
-				self.modify_chain_status["audio_thru"])
-			processor = self.chain_manager.add_processor(
-				chain_id,
-				self.modify_chain_status["engine"]
-			)
-			self.modify_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
-			if processor is None:
-				# Created empty chain
-				#self.chain_manager.set_active_chain_by_id(chain_id)
-				self.show_screen_reset("audio_mixer")
-				return
-			self.chain_control(chain_id, processor)
-		elif "engine" in self.modify_chain_status:
+		if "engine" in self.modify_chain_status:
+			# We always need an engine for creating or modifying a chain!
 			if "chain_id" in self.modify_chain_status:
 				# Modifying an existing chain
 				if "processor" in self.modify_chain_status:
@@ -826,23 +824,48 @@ class zynthian_gui:
 							self.chain_manager.remove_processor(self.modify_chain_status["chain_id"], old_processor)
 							self.chain_control(self.modify_chain_status["chain_id"], processor)
 				else:
-					parallel = "parallel" in self.modify_chain_status and self.modify_chain_status["parallel"]
-					post_fader = "type" in self.modify_chain_status and self.modify_chain_status["type"]=="Post Fader"
 					# Adding processor to existing chain
+					parallel = "parallel" in self.modify_chain_status and self.modify_chain_status["parallel"]
+					post_fader = "type" in self.modify_chain_status and self.modify_chain_status["type"] == "Post Fader"
 					processor = self.chain_manager.add_processor(self.modify_chain_status["chain_id"], self.modify_chain_status["engine"], parallel=parallel, post_fader=post_fader)
 					if processor:
 						self.chain_control(self.modify_chain_status["chain_id"], processor)
 					else:
 						self.show_screen_reset("audio_mixer")
-				return
-			# Adding a new chain so select its MIDI channel
-			logging.debug(self.modify_chain_status)
-			if self.modify_chain_status["type"] == "MIDI Tool":
-				chan_all = True
 			else:
-				chan_all = False
-			self.screens["midi_chan"].set_mode("ADD", chan_all=chan_all)
-			self.show_screen("midi_chan")
+				# Creating a new chain
+				if "midi_chan" in self.modify_chain_status:
+					# We know the MIDI channel so create a new chain and processor
+					if "midi_thru" not in self.modify_chain_status:
+						self.modify_chain_status["midi_thru"] = False
+					if "audio_thru" not in self.modify_chain_status:
+						self.modify_chain_status["audio_thru"] = False
+					chain_id = self.chain_manager.add_chain(
+						None,
+						self.modify_chain_status["midi_chan"],
+						self.modify_chain_status["midi_thru"],
+						self.modify_chain_status["audio_thru"])
+					processor = self.chain_manager.add_processor(
+						chain_id,
+						self.modify_chain_status["engine"]
+					)
+					self.modify_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
+					if processor is None:
+						# Created empty chain
+						# self.chain_manager.set_active_chain_by_id(chain_id)
+						self.show_screen_reset("audio_mixer")
+						return
+					self.chain_control(chain_id, processor)
+				else:
+					# Select MIDI channel
+					logging.debug(self.modify_chain_status)
+					if self.modify_chain_status["type"] == "MIDI Tool":
+						# Enable "ALl Channels" option for MIDI chains
+						chan_all = True
+					else:
+						chan_all = False
+					self.screens["midi_chan"].set_mode("ADD", chan_all=chan_all)
+					self.show_screen("midi_chan")
 		elif "type" in self.modify_chain_status:
 			# We know the type so select the engine
 			self.show_screen("engine")
