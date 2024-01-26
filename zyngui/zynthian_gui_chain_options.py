@@ -93,9 +93,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 		if self.chain.is_audio():
 			# Add Audio-FX options
-			self.list_data.append((self.audiofx_add, None, "Add Audio-FX"))
-			self.list_data.append((None, None, "> Fader"))
-			self.list_data += self.generate_postfader_chaintree_menu()
+			self.list_data.append((self.audiofx_add, None, "Add Pre-fader Audio-FX"))
 			self.list_data.append((self.postfader_add, None, "Add Post-fader Audio-FX"))
 
 		if self.chain_id != 0:
@@ -134,7 +132,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			for proc in slot:
 				res.append((self.processor_options, proc, "  " * indent + "╰━ " + proc.get_name()))
 				indent += 1
-		# Build audio effects chain
+		# Build pre-fader audio effects chain
 		for slot in range(self.chain.get_slot_count("Audio Effect")):
 			if self.chain.fader_pos <= slot:
 				break 
@@ -148,11 +146,10 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 					res.append((self.processor_options, processor, "  " * indent + "┣━ " + name))
 			indent += 1
 
-		return res
+		res.append((None, None, "  " * indent + "┗━ FADER"))
+		indent += 1
 
-	def generate_postfader_chaintree_menu(self):
-		res = []
-		indent = 0
+		# Build post-fader audio effects chain
 		for slot in range(self.chain.get_slot_count("Post Fader")):
 			procs = self.chain.get_processors("Audio Effect", self.chain.fader_pos + slot)
 			num_procs = len(procs)
@@ -163,7 +160,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 				else:
 					res.append((self.processor_options, processor, "  " * indent + "┣━ " + name))
 			indent += 1
-		
+
 		return res
 
 	def refresh_signal(self, sname):
