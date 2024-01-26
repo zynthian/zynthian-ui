@@ -109,7 +109,7 @@ class zynthian_basic_engine:
 			self.proc.expect(self.command_prompt)
 			return self.proc.before.decode()
 		else:
-			logging.warning("Command Prompt is not defined!")
+			#logging.info("Command Prompt is not defined.")
 			return None
 
 	def proc_cmd(self, cmd):
