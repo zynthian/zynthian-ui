@@ -32,7 +32,7 @@ from threading import Thread
 from queue import SimpleQueue
 from datetime import datetime
 from json import JSONEncoder, JSONDecoder
-from subprocess import check_output, DEVNULL, STDOUT
+from subprocess import check_output, STDOUT
 from os.path import basename, isdir, isfile, join, dirname, splitext
 
 # Zynthian specific modules
@@ -2166,9 +2166,9 @@ class zynthian_state_manager:
             try:
                 repos = ["/zynthian/zyncoder", "/zynthian/zynthian-ui", "/zynthian/zynthian-sys", "/zynthian/zynthian-webconf", "/zynthian/zynthian-data"]
                 for path in repos:
-                    branch = check_output(["git", "-C", path, "rev-parse", "--abbrev-ref", "HEAD"], encoding="utf-8", stdout=DEVNULL, stderr=STDOUT).strip()
-                    local_hash = check_output(["git", "-C", path, "rev-parse", "HEAD"], encoding="utf-8", stdout=DEVNULL, stderr=STDOUT).strip()
-                    remote_hash = check_output(["git", "-C", path, "ls-remote", "origin", branch], encoding="utf-8", stdout=DEVNULL, stderr=STDOUT).strip().split('\t')[0]
+                    branch = check_output(["git", "-C", path, "rev-parse", "--abbrev-ref", "HEAD"], encoding="utf-8", stderr=STDOUT).strip()
+                    local_hash = check_output(["git", "-C", path, "rev-parse", "HEAD"], encoding="utf-8", stderr=STDOUT).strip()
+                    remote_hash = check_output(["git", "-C", path, "ls-remote", "origin", branch], encoding="utf-8", stderr=STDOUT).strip().split('\t')[0]
                     self.update_available |= local_hash != remote_hash
             except:
                 self.update_available = False
