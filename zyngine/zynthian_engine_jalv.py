@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_jalv)
 #
 # zynthian_engine implementation for Jalv Plugin Host
 #
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -20,7 +20,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 import copy
 import os
@@ -28,45 +28,29 @@ import re
 import shutil
 import logging
 from os.path import isfile
-from collections import OrderedDict
 from subprocess import check_output, STDOUT
 
 from . import zynthian_lv2
 from . import zynthian_engine
 from . import zynthian_controller
 
-#------------------------------------------------------------------------------
-# Module methods
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# Jalv Engine Class => Engine for LV2 plugins
+# ------------------------------------------------------------------------------
 
-def get_jalv_plugins():
-	zynthian_engine_jalv.plugins_dict = zynthian_lv2.get_plugins()
-	return zynthian_engine_jalv.plugins_dict
-
-#------------------------------------------------------------------------------
-# Jalv Engine Class
-#------------------------------------------------------------------------------
 
 class zynthian_engine_jalv(zynthian_engine):
 
-	#------------------------------------------------------------------------------
-	# Plugin List (this list is used ONLY if no config file is found)
-	#------------------------------------------------------------------------------
+	# ------------------------------------------------------------------------------
+	# Custom plugin info
+	# ------------------------------------------------------------------------------
 
-	plugins_dict = OrderedDict([
-		("Dexed", {'TYPE': "MIDI Synth",'URL': "https://github.com/dcoredump/dexed.lv2"}),
-		("Helm", {'TYPE': "MIDI Synth",'URL': "http://tytel.org/helm"}),
-		("MDA ePiano", {'TYPE': "MIDI Synth",'URL': "http://moddevices.com/plugins/mda/EPiano"}),
-		("MDA Piano", {'TYPE': "MIDI Synth",'URL': "http://moddevices.com/plugins/mda/Piano"}),
-		("MDA JX10", {'TYPE': "MIDI Synth",'URL': "http://moddevices.com/plugins/mda/JX10"}),
-		("MDA DX10", {'TYPE': "MIDI Synth",'URL': "http://moddevices.com/plugins/mda/DX10"}),
-		("Obxd", {'TYPE': "MIDI Synth",'URL': "https://obxd.wordpress.com"}),
-		("SynthV1", {'TYPE': "MIDI Synth",'URL': "http://synthv1.sourceforge.net/lv2"}),
-		("Noize Mak3r", {'TYPE': "MIDI Synth",'URL': "http://kunz.corrupt.ch/products/tal-noisemaker"}),
-		("Triceratops", {'TYPE': "MIDI Synth",'URL': "http://nickbailey.co.nr/triceratops"}),
-		("Raffo MiniMoog", {'TYPE': "MIDI Synth",'URL': "http://example.org/raffo"})
-	])
-
+	if "Raspberry Pi 4" in os.environ.get('RBPI_VERSION'):
+		rpi = "RPi4"
+	elif "Raspberry Pi 3" in os.environ.get('RBPI_VERSION'):
+		rpi = "RPi3"
+	else:
+		rpi = "RPi2"
 
 	# Plugins that required different GUI toolkit to that advertised or cannot run native GUI on Zynthian
 	broken_ui = {
@@ -74,15 +58,9 @@ class zynthian_engine_jalv(zynthian_engine):
 			#'http://calf.sourceforge.net/plugins/Organ': {"RPi4:":True, "RPi3": False, "RPi2": False },
 			#'http://nickbailey.co.nr/triceratops': {"RPi4:":True, "RPi3": False, "RPi2": False },
 			#'http://code.google.com/p/amsynth/amsynth': {"RPi4:":True, "RPi3": False, "RPi2": False },
-			'http://gareus.org/oss/lv2/tuna#one': {"RPi4": False, "RPi3": False, "RPi2": False }, # Disable because CPU usage and widget implemented in main UI
-			"http://tytel.org/helm": {"RPi4": False, "RPi3": True, "RPi2": False } # Better CPU with gtk but only qt4 works on RPi4
+			'http://gareus.org/oss/lv2/tuna#one': {"RPi4": False, "RPi3": False, "RPi2": False},  # Disable because CPU usage and widget implemented in main UI
+			"http://tytel.org/helm": {"RPi4": False, "RPi3": True, "RPi2": False}  # Better CPU with gtk but only qt4 works on RPi4
 	}
-	if "Raspberry Pi 4" in os.environ.get('RBPI_VERSION'):
-		rpi = "RPi4"
-	elif "Raspberry Pi 3" in os.environ.get('RBPI_VERSION'):
-		rpi = "RPi3"
-	else:
-		rpi = "RPi2"
 
 	plugins_custom_gui = {
 		'http://gareus.org/oss/lv2/meters#spectr30mono': "/zynthian/zynthian-ui/zyngui/zynthian_widget_spectr30.py",
@@ -91,9 +69,9 @@ class zynthian_engine_jalv(zynthian_engine):
 		'http://looperlative.com/plugins/lp3-basic': "/zynthian/zynthian-ui/zyngui/zynthian_widget_looper.py"
 	}
 
-	#------------------------------------------------------------------------------
+	# ------------------------------------------------------------------------------
 	# Native formats configuration (used by zynapi_install, preset converter, etc.)
-	#------------------------------------------------------------------------------
+	# ------------------------------------------------------------------------------
 
 	plugin2native_ext = {
 		"Dexed": "syx",
@@ -112,7 +90,7 @@ class zynthian_engine_jalv(zynthian_engine):
 	}
 
 	# ---------------------------------------------------------------------------
-	# Controllers & Screens
+	# Custom controller pages
 	# ---------------------------------------------------------------------------
 
 	plugin_ctrl_info = {
@@ -148,24 +126,29 @@ class zynthian_engine_jalv(zynthian_engine):
 		}
 	}
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# ZynAPI variables
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	zynapi_instance = None
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Initialization
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
-	def __init__(self, plugin_name, plugin_type, state_manager, dryrun=False, jackname=None):
+	def __init__(self, eng_code, state_manager, dryrun=False, jackname=None):
 		super().__init__(state_manager)
 
-		self.type = plugin_type
-		self.name = "Jalv/" + plugin_name
-		self.nickname = "JV/" + plugin_name
-		self.plugin_name = plugin_name
-		self.plugin_url = self.plugins_dict[plugin_name]['URL']
+		if state_manager:
+			self.eng_info = self.state_manager.chain_manager.engine_info[eng_code]
+		else:
+			self.eng_info = zynthian_lv2.get_engines()[eng_code]
+
+		self.type = self.eng_info["TYPE"]
+		self.name = "Jalv/" + self.eng_info["NAME"]
+		self.nickname = eng_code
+		self.plugin_name = self.eng_info["NAME"]
+		self.plugin_url = self.eng_info['URL']
 
 		# WARNING Show all controllers for Gareus Meters, as they seem to be wrongly marked with property "not_on_gui"
 		if self.plugin_url.startswith("http://gareus.org/oss/lv2/meters"):
@@ -174,11 +157,11 @@ class zynthian_engine_jalv(zynthian_engine):
 			self.ignore_not_on_gui = False
 
 		self.native_gui = False
-		if 'UI' in self.plugins_dict[plugin_name]:
+		if 'UI' in self.eng_info:
 			if self.plugin_url in self.broken_ui:
 				self.native_gui = self.broken_ui[self.plugin_url][self.rpi]
 			else:
-				self.native_gui = self.plugins_dict[plugin_name]['UI']
+				self.native_gui = self.eng_info['UI']
 				#if not self.native_gui:
 				#	self.native_gui = "AUTO"
 
@@ -195,7 +178,7 @@ class zynthian_engine_jalv(zynthian_engine):
 					jalv_bin = "jalv.qt5"
 				elif self.native_gui == "Qt4UI":
 					jalv_bin = "jalv.qt4"
-				else: #  elif self.native_gui=="X11UI":
+				else:  #  elif self.native_gui=="X11UI":
 					jalv_bin = "jalv.gtk"
 				self.command = ("{} --jack-name {} {}".format(jalv_bin, self.jackname, self.plugin_url))
 			else:
@@ -243,7 +226,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				self._ctrl_screens = []
 
 			# Generate LV2-Plugin Controllers
-			self.lv2_monitors_dict = OrderedDict()
+			self.lv2_monitors_dict = {}
 			self.lv2_zctrl_dict = self.get_lv2_controllers_dict()
 			self.generate_ctrl_screens(self.lv2_zctrl_dict)
 
@@ -254,10 +237,9 @@ class zynthian_engine_jalv(zynthian_engine):
 				self.custom_gui_fpath = None
 
 		# Get bank & presets info
-		self.preset_info = zynthian_lv2.get_plugin_presets_cache(plugin_name)
+		self.preset_info = zynthian_lv2.get_plugin_presets_cache(self.plugin_name)
 
 		self.reset()
-
 
 	# ---------------------------------------------------------------------------
 	# Processor Management
@@ -267,10 +249,8 @@ class zynthian_engine_jalv(zynthian_engine):
 		super().add_processor(processor)
 		self.set_midi_chan(processor)
 
-
 	def get_name(self, processor=None):
 		return self.plugin_name
-
 
 	def get_path(self, processor=None):
 		return self.plugin_name
@@ -285,26 +265,23 @@ class zynthian_engine_jalv(zynthian_engine):
 		elif self.plugin_name.startswith("SO-"):
 			self.lv2_zctrl_dict["channel"].set_value(processor.midi_chan)
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Bank Managament
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def get_bank_list(self, processor=None):
 		bank_list = []
 		for bank_label, info in self.preset_info.items():
 			bank_list.append((str(info['bank_url']), None, bank_label, None))
-		if len(bank_list)==0:
+		if len(bank_list) == 0:
 			bank_list.append(("", None, "", None))
 		return bank_list
-
 
 	def set_bank(self, processor, bank):
 		return True
 
-
 	def get_user_bank_urid(self, bank_name):
 		return "file://{}/presets/lv2/{}.presets.lv2/{}".format(self.my_data_dir, zynthian_engine_jalv.sanitize_text(self.plugin_name), zynthian_engine_jalv.sanitize_text(bank_name))
-
 
 	def create_user_bank(self, bank_name):
 		bundle_path = "{}/presets/lv2/{}.presets.lv2".format(self.my_data_dir, zynthian_engine_jalv.sanitize_text(self.plugin_name))
@@ -321,11 +298,10 @@ class zynthian_engine_jalv(zynthian_engine):
 			
 		# Cache is updated when saving the preset
 
-
 	def rename_user_bank(self, bank, new_bank_name):
 		if self.is_preset_user(bank):
 			try:
-				#TODO: This changes position of bank in list - Suggest using bank URI as key in preset_info
+				# TODO: This changes position of bank in list - Suggest using bank URI as key in preset_info
 				zynthian_engine_jalv.lv2_rename_bank(bank[0], new_bank_name)
 			except Exception as e:
 				logging.error(e)
@@ -336,7 +312,6 @@ class zynthian_engine_jalv(zynthian_engine):
 				zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
 			except Exception as e:
 				logging.error(e)
-
 
 	def remove_user_bank(self, bank):
 		if self.is_preset_user(bank):
@@ -353,22 +328,19 @@ class zynthian_engine_jalv(zynthian_engine):
 				except Exception as e:
 					logging.error(e)
 
-
 	def delete_user_bank(self, bank):
 		if self.is_preset_user(bank):
 			try:
 				for preset in list(self.preset_info[bank[2]]['presets']):
 					self.delete_preset(bank, preset['url'])
 				self.remove_user_bank(bank)
-				#TODO: self.zyngui.curprocessor.load_preset_list()
+				# TODO: self.zyngui.curprocessor.load_preset_list()
 			except Exception as e:
 				logging.error(e)
 
-
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Preset Managament
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
 		preset_list = []
@@ -381,23 +353,21 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		return preset_list
 
-
 	def set_preset(self, processor, preset, preload=False):
 		if not preset[0]:
 			return
 		output = self.proc_cmd("preset {}".format(preset[0]))
 
-		#Parse new controller values
+		# Parse new controller values
 		for line in output.split("\n"):
 			try:
-				parts=line.split(" = ")
+				parts = line.split(" = ")
 				if len(parts) == 2:
 					self.lv2_zctrl_dict[parts[0]]._set_value(float(parts[1]))
 			except Exception as e:
 				logging.error(e)
 
 		return True
-
 
 	def cmp_presets(self, preset1, preset2):
 		try:
@@ -408,13 +378,11 @@ class zynthian_engine_jalv(zynthian_engine):
 		except:
 			return False
 
-
 	def is_preset_user(self, preset):
 		return isinstance(preset[0], str) and preset[0].startswith("file://{}/presets/lv2/".format(self.my_data_dir))
 
-
 	def preset_exists(self, bank, preset_name):
-		#TODO: This would be more robust using URI but that is created dynamically by save_preset()
+		# TODO: This would be more robust using URI but that is created dynamically by save_preset()
 		if not bank or bank[2] not in self.preset_info:
 			return False
 		try:
@@ -424,7 +392,6 @@ class zynthian_engine_jalv(zynthian_engine):
 		except Exception as e:
 			logging.error(e)
 		return False
-
 
 	def save_preset(self, bank, preset_name):
 		# Save preset (jalv)
@@ -448,14 +415,13 @@ class zynthian_engine_jalv(zynthian_engine):
 					}
 				# Add preset
 				if not self.preset_exists(bank, preset_name):
-					self.preset_info[bank[2]]['presets'].append(OrderedDict({'label': preset_name,  "url": preset_uri}))
+					self.preset_info[bank[2]]['presets'].append({'label': preset_name,  "url": preset_uri})
 					# Save presets cache
 					zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
 				# Return preset uri
 				return preset_uri
 			except Exception as e:
 				logging.error(e)
-
 
 	def delete_preset(self, bank, preset):
 		if self.is_preset_user(preset):
@@ -464,7 +430,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				zynthian_engine_jalv.lv2_remove_preset(preset[0])
 
 				# Remove from  cache
-				for i,p in enumerate(self.preset_info[bank[2]]['presets']):
+				for i, p in enumerate(self.preset_info[bank[2]]['presets']):
 					if p['url'] == preset[0]:
 						del self.preset_info[bank[2]]['presets'][i]
 						zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
@@ -487,7 +453,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				zynthian_engine_jalv.lv2_rename_preset(preset[0], new_preset_name)
 
 				# Update cache
-				for i,p in enumerate(self.preset_info[bank[2]]['presets']):
+				for i, p in enumerate(self.preset_info[bank[2]]['presets']):
 					if p['url'] == preset[0]:
 						self.preset_info[bank[2]]['presets'][i]['label'] = new_preset_name
 						zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
@@ -503,7 +469,7 @@ class zynthian_engine_jalv(zynthian_engine):
 	def get_lv2_controllers_dict(self):
 		logging.info("Getting Controller List from LV2 Plugin ...")
 
-		zctrls = OrderedDict()
+		zctrls = {}
 		for i, info in zynthian_lv2.get_plugin_ports(self.plugin_url).items():
 			symbol = info['symbol']
 			#logging.debug("Controller {} info =>\n{}!".format(symbol, info))
@@ -533,7 +499,6 @@ class zynthian_engine_jalv(zynthian_engine):
 
 				# If it's a numeric controller ...
 				else:
-					r = info['range']['max'] - info['range']['min']
 					if info['is_integer']:
 						if info['is_toggled']:
 							if info['value'] == 0:
@@ -546,7 +511,7 @@ class zynthian_engine_jalv(zynthian_engine):
 								'group_name': info['group_name'],
 								'graph_path': info['index'],
 								'value': val,
-								'labels': ['off','on'],
+								'labels': ['off', 'on'],
 								'ticks': [int(info['range']['min']), int(info['range']['max'])],
 								'value_min': int(info['range']['min']),
 								'value_max': int(info['range']['max']),
@@ -582,7 +547,7 @@ class zynthian_engine_jalv(zynthian_engine):
 								'group_name': info['group_name'],
 								'graph_path': info['index'],
 								'value': val,
-								'labels': ['off','on'],
+								'labels': ['off', 'on'],
 								'ticks': [info['range']['min'], info['range']['max']],
 								'value_min': info['range']['min'],
 								'value_max': info['range']['max'],
@@ -617,9 +582,8 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		return zctrls
 
-
 	def get_monitors_dict(self):
-		self.lv2_monitors_dict = OrderedDict()
+		self.lv2_monitors_dict = {}
 		for line in self.proc_cmd("monitors").split("\n"):
 			try:
 				parts=line.split(" = ")
@@ -630,7 +594,6 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		return self.lv2_monitors_dict
 
-
 	def get_controllers_dict(self, processor):
 		# Get plugin static controllers
 		zctrls = super().get_controllers_dict(processor)
@@ -640,37 +603,32 @@ class zynthian_engine_jalv(zynthian_engine):
 		zctrls.update(self.lv2_zctrl_dict)
 		return zctrls
 
-
 	def send_controller_value(self, zctrl):
 		self.proc_cmd("set %d %.6f" % (zctrl.graph_path, zctrl.value))
-
 
 	# ---------------------------------------------------------------------------
 	# API methods
 	# ---------------------------------------------------------------------------
 
 	@classmethod
-	def init_zynapi_instance(cls, plugin_name, plugin_type):
-		if cls.zynapi_instance and cls.zynapi_instance.plugin_name!=plugin_name:
+	def init_zynapi_instance(cls, eng_code):
+		if cls.zynapi_instance and cls.zynapi_instance.nickname != eng_code:
 			cls.zynapi_instance.stop()
 			cls.zynapi_instance = None
 
 		if not cls.zynapi_instance:
-			cls.zynapi_instance = cls(plugin_name, plugin_type, None, True)
+			cls.zynapi_instance = cls(eng_code, None, True)
 		else:
-			logging.debug("\n\n********** REUSING INSTANCE for '{}'***********".format(plugin_name))
-
+			logging.debug("\n\n********** REUSING INSTANCE for '{}'***********".format(eng_code))
 
 	@classmethod
 	def refresh_zynapi_instance(cls):
 		if cls.zynapi_instance:
 			zynthian_lv2.generate_presets_cache_workaround()
 			zynthian_lv2.generate_plugin_presets_cache(cls.zynapi_instance.plugin_url)
-			plugin_name = cls.zynapi_instance.plugin_name
-			plugin_type = cls.zynapi_instance.type
+			eng_code = cls.zynapi_instance.nickname
 			cls.zynapi_instance.stop()
-			cls.zynapi_instance = cls(plugin_name, plugin_type, None, True)
-
+			cls.zynapi_instance = cls(eng_code, None, True)
 
 	@classmethod
 	def zynapi_get_banks(cls):
@@ -686,7 +644,6 @@ class zynthian_engine_jalv(zynthian_engine):
 				})
 		return banks
 
-
 	@classmethod
 	def zynapi_get_presets(cls, bank):
 		presets = []
@@ -701,7 +658,6 @@ class zynthian_engine_jalv(zynthian_engine):
 				})
 		return presets
 
-
 	@classmethod
 	def zynapi_rename_bank(cls, bank_path, new_bank_name):
 		if bank_path.startswith("file:///"):
@@ -709,7 +665,6 @@ class zynthian_engine_jalv(zynthian_engine):
 			cls.refresh_zynapi_instance()
 		else:
 			raise Exception("Bank is read-only!")
-
 
 	@classmethod
 	def zynapi_remove_bank(cls, bank_path):
@@ -721,7 +676,6 @@ class zynthian_engine_jalv(zynthian_engine):
 		else:
 			raise Exception("Bank is read-only")
 
-
 	@classmethod
 	def zynapi_rename_preset(cls, preset_path, new_preset_name):
 		if preset_path.startswith("file:///"):
@@ -729,7 +683,6 @@ class zynthian_engine_jalv(zynthian_engine):
 			cls.refresh_zynapi_instance()
 		else:
 			raise Exception("Preset is read-only!")
-
 
 	@classmethod
 	def zynapi_remove_preset(cls, preset_path):
@@ -739,7 +692,6 @@ class zynthian_engine_jalv(zynthian_engine):
 		else:
 			raise Exception("Preset is read-only")
 
-
 	@classmethod
 	def zynapi_download(cls, fullpath):
 		if fullpath.startswith("file:///"):
@@ -748,7 +700,6 @@ class zynthian_engine_jalv(zynthian_engine):
 			return bundle_path
 		else:
 			raise Exception("Bank is not downloadable!")
-
 
 	@classmethod
 	def zynapi_install(cls, dpath, bank_path):
@@ -768,7 +719,7 @@ class zynthian_engine_jalv(zynthian_engine):
 					shutil.rmtree(zynthian_engine.my_data_dir + "/presets/lv2/" + bname, ignore_errors=True)
 					shutil.move(bpath, zynthian_engine.my_data_dir + "/presets/lv2/")
 					count += 1
-			if count>0:
+			if count > 0:
 				cls.refresh_zynapi_instance()
 				return
 
@@ -791,7 +742,6 @@ class zynthian_engine_jalv(zynthian_engine):
 		else:
 			raise Exception("Unknown preset format: {}".format(native_ext))
 
-
 	@classmethod
 	def zynapi_get_formats(cls):
 		formats = "zip,tgz,tar.gz,tar.bz2"
@@ -801,7 +751,6 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		return formats
 
-
 	@classmethod
 	def zynapi_martifact_formats(cls):
 		fmt = cls.zynapi_get_native_ext()
@@ -810,14 +759,12 @@ class zynthian_engine_jalv(zynthian_engine):
 		else:
 			return "lv2"
 
-
 	@classmethod
 	def zynapi_get_native_ext(cls):
 		try:
 			return cls.plugin2native_ext[cls.zynapi_instance.plugin_name]
 		except:
 			return None
-
 
 	@classmethod
 	def zynapi_get_preset2lv2_format(cls):
@@ -826,10 +773,9 @@ class zynthian_engine_jalv(zynthian_engine):
 		except:
 			return None
 
-
-	#--------------------------------------------------------------------------
+	# --------------------------------------------------------------------------
 	# LV2 Bundle TTL file manipulations
-	#--------------------------------------------------------------------------
+	# --------------------------------------------------------------------------
 
 	@staticmethod
 	def ttl_read_parts(fpath):
@@ -838,14 +784,12 @@ class zynthian_engine_jalv(zynthian_engine):
 			parts = data.split(".\n")
 		return parts
 
-
 	@staticmethod
 	def ttl_write_parts(fpath, parts):
 		with open(fpath, 'w') as f:
 			data = ".\n".join(parts)
 			f.write(data)
 			#logging.debug(data)
-
 
 	@staticmethod
 	def lv2_rename_bank(bank_path, new_bank_name):
@@ -858,7 +802,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		bmre1 = re.compile(r"<{}>".format(bank_dname))
 		bmre2 = re.compile(r"(.*)a pset:Bank ;")
 		brre = re.compile(r"([\s]+rdfs:label[\s]+\").*(\" )")
-		for i,p in enumerate(parts):
+		for i, p in enumerate(parts):
 			if bmre1.search(p) and bmre2.search(p):
 				new_bank_name = zynthian_engine_jalv.sanitize_text(new_bank_name)
 				parts[i] = brre.sub(lambda m: m.group(1)+new_bank_name+m.group(2), p)
@@ -866,7 +810,6 @@ class zynthian_engine_jalv(zynthian_engine):
 				return
 
 		raise Exception("Format doesn't match!")
-
 
 	@staticmethod
 	def lv2_rename_preset(preset_path, new_preset_name):
@@ -882,7 +825,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		brre = re.compile("([\s]+rdfs:label[\s]+\").*(\" )")
 
 		renamed = False
-		for i,p in enumerate(man_parts):
+		for i, p in enumerate(man_parts):
 			if bmre1.search(p) and bmre2.search(p):
 				new_preset_name = zynthian_engine_jalv.sanitize_text(new_preset_name)
 				man_parts[i] = brre.sub(lambda m: m.group(1) + new_preset_name + m.group(2), p)
@@ -890,7 +833,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				renamed = True #TODO: This overrides subsequent assertion in prs_parts
 				break
 
-		for i,p in enumerate(prs_parts):
+		for i, p in enumerate(prs_parts):
 			if bmre2.search(p):
 				#new_preset_name = zynthian_engine_jalv.sanitize_text(new_preset_name)
 				prs_parts[i] = brre.sub(lambda m: m.group(1) + new_preset_name + m.group(2), p)
@@ -900,7 +843,6 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		if not renamed:
 			raise Exception("Format doesn't match!")
-
 
 	@staticmethod
 	def lv2_remove_preset(preset_path):
@@ -912,13 +854,12 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		bmre1 = re.compile(r"<{}>".format(preset_fname))
 		bmre2 = re.compile(r"(.*)a pset:Preset ;")
-		for i,p in enumerate(parts):
+		for i, p in enumerate(parts):
 			if bmre1.search(p) and bmre2.search(p):
 				del parts[i]
 				zynthian_engine_jalv.ttl_write_parts(man_fpath, parts)
 				os.remove(preset_path)
 				return
-
 
 	@staticmethod
 	#   Remove a preset bank
@@ -938,12 +879,12 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		bank_first_line = None
 		bank_last_line = None
-		for index,line in enumerate(lines): #TODO: Use regexp to parse file
+		for index, line in enumerate(lines):  # TODO: Use regexp to parse file
 			if line.strip() == "<{}>".format(bank[2]):
 				bank_first_line = index
-			if bank_first_line != None and line.strip()[-1:] == ".":
+			if bank_first_line is not None and line.strip()[-1:] == ".":
 				bank_last_line = index
-			if bank_last_line != None:
+			if bank_last_line is not None:
 				del lines[bank_first_line:bank_last_line + 1]
 				break
 		zynthian_engine.remove_double_spacing(lines)
@@ -955,11 +896,11 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		# Remove bank reference from presets
 		for file in os.listdir(path):
-			if(file[-4:] == ".ttl" and file != "manifest.ttl"):
+			if file[-4:] == ".ttl" and file != "manifest.ttl":
 				bank_lines = []
 				with open("{}/{}".format(path, file)) as ttl:
 					lines = ttl.readlines()
-				for index,line in enumerate(lines):
+				for index, line in enumerate(lines):
 					if line.strip().startswith("pset:bank") and line.find("<{}>".format(bank[2])) > 0:
 						bank_lines.append(index)
 				if len(bank_lines):
@@ -967,11 +908,10 @@ class zynthian_engine_jalv(zynthian_engine):
 					for line in bank_lines:
 						del lines[line]
 					zynthian_engine.remove_double_spacing(lines)
-					with open("{}/{}".format(path,file), "w") as ttl:
+					with open("{}/{}".format(path, file), "w") as ttl:
 						ttl.writelines(lines)
 
 		return True
-
 
 	@staticmethod
 	def sanitize_text(text):
@@ -982,9 +922,8 @@ class zynthian_engine_jalv(zynthian_engine):
 
 		# Strip and replace (multi)spaces by single underscore
 		text = '_'.join(text.split())
-		text = '_'.join(filter(None,text.split('_')))
+		text = '_'.join(filter(None, text.split('_')))
 
 		return text
 
-
-#******************************************************************************
+# ******************************************************************************

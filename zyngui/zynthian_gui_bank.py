@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
 # Zynthian GUI Bank Selector Class
 # 
 # Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import sys
 import logging
@@ -31,23 +31,22 @@ import copy
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian Bank Selection GUI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_bank(zynthian_gui_selector):
 
 	def __init__(self):
 		super().__init__('Bank', True)
 
-    
 	def fill_list(self):
 		if not self.zyngui.get_current_processor():
 			logging.error("Can't fill bank list for None processor!")
 			return
 		self.list_data = self.zyngui.get_current_processor().get_bank_list()
 		super().fill_list()
-
 
 	def build_view(self):
 		processor = self.zyngui.get_current_processor()
@@ -63,11 +62,9 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		else:
 			self.zyngui.close_screen()
 
-
 	def show(self):
 		if len(self.list_data) > 0:
 			super().show()
-
 
 	def select_action(self, i, t='S'):
 		if self.list_data and self.list_data[i][0] == '*FAVS*':
@@ -89,20 +86,16 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		if len(self.zyngui.get_current_processor().preset_list) == 0 or self.zyngui.get_current_processor().preset_list[0][0] == "":
 			self.zyngui.screens['preset'].select_action(0)
 
-
 	def arrow_right(self):
 		self.zyngui.chain_manager.next_chain()
 		self.build_view()
-
 
 	def arrow_left(self):
 		self.zyngui.chain_manager.previous_chain()
 		self.build_view()
 
-
 	def topbar_bold_touch_action(self):
 		self.zyngui.zynswitch_defered('B', 1)
-
 
 	def show_bank_options(self):
 		bank = copy.deepcopy(self.list_data[self.index])
@@ -117,17 +110,14 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		if len(options):
 			self.zyngui.show_screen('option')
 
-
 	def show_menu(self):
 		self.show_bank_options()
-
 
 	def toggle_menu(self):
 		if self.shown:
 			self.show_menu()
 		elif self.zyngui.current_screen == "option":
 			self.close_screen()
-
 
 	def bank_options_cb(self, option, bank):
 		self.options_bank_index = self.index
@@ -136,21 +126,18 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		elif option == "Delete":
 			self.zyngui.show_confirm("Do you really want to remove bank '{}' and delete all of its presets?".format(bank[2]), self.delete_bank, bank)
 
-
 	def rename_bank(self, bank_name):
 		self.zyngui.get_current_processor().engine.rename_user_bank(self.list_data[self.options_bank_index], bank_name)
 		self.zyngui.close_screen()
-
 
 	def delete_bank(self, bank):
 		self.zyngui.get_current_processor().engine.delete_user_bank(bank)
 		self.zyngui.close_screen()
 
-
 	# Function to handle *all* switch presses.
-	#	swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
-	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
-	#	returns True if action fully handled or False if parent action should be triggered
+	# swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	# t: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	# returns True if action fully handled or False if parent action should be triggered
 	def switch(self, swi, t='S'):
 		if swi == 0:
 			if t == 'S':
@@ -166,14 +153,11 @@ class zynthian_gui_bank(zynthian_gui_selector):
 				return True
 		return False
 
-
 	def set_selector(self, zs_hiden=False):
 		super().set_selector(zs_hiden)
-
 
 	def set_select_path(self):
 		if self.zyngui.get_current_processor():
 			self.select_path.set(self.zyngui.get_current_processor().get_basepath())
 
-
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------

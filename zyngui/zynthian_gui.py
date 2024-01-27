@@ -826,7 +826,7 @@ class zynthian_gui:
 				else:
 					# Adding processor to existing chain
 					parallel = "parallel" in self.modify_chain_status and self.modify_chain_status["parallel"]
-					post_fader = "type" in self.modify_chain_status and self.modify_chain_status["type"] == "Post Fader"
+					post_fader = "post_fader" in self.modify_chain_status and self.modify_chain_status["post_fader"]
 					processor = self.chain_manager.add_processor(self.modify_chain_status["chain_id"], self.modify_chain_status["engine"], parallel=parallel, post_fader=post_fader)
 					if processor:
 						self.chain_control(self.modify_chain_status["chain_id"], processor)
@@ -885,7 +885,7 @@ class zynthian_gui:
 			self.current_processor = processor
 		else:
 			self.current_processor = None
-			for t in ["MIDI Synth", "MIDI Tool", "Audio Effect", "Post Fader"]:
+			for t in ["MIDI Synth", "MIDI Tool", "Audio Effect", "Special"]:
 				processors = self.chain_manager.get_processors(chain_id, t)
 				if processors:
 					self.current_processor = processors[0]

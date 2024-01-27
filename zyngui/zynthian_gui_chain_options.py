@@ -133,7 +133,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 				res.append((self.processor_options, proc, "  " * indent + "╰━ " + proc.get_name()))
 				indent += 1
 		# Build pre-fader audio effects chain
-		for slot in range(self.chain.get_slot_count("Audio Effect")):
+		for slot in range(self.chain.fader_pos):
 			if self.chain.fader_pos <= slot:
 				break 
 			procs = self.chain.get_processors("Audio Effect", slot)
@@ -145,13 +145,12 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 				else:
 					res.append((self.processor_options, processor, "  " * indent + "┣━ " + name))
 			indent += 1
-
+		# Add FADER mark
 		res.append((None, None, "  " * indent + "┗━ FADER"))
 		indent += 1
-
 		# Build post-fader audio effects chain
-		for slot in range(self.chain.get_slot_count("Post Fader")):
-			procs = self.chain.get_processors("Audio Effect", self.chain.fader_pos + slot)
+		for slot in range(self.chain.fader_pos, len(self.chain.audio_slots)):
+			procs = self.chain.get_processors("Audio Effect", slot)
 			num_procs = len(procs)
 			for index, processor in enumerate(procs):
 				name = processor.get_name()
@@ -160,7 +159,6 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 				else:
 					res.append((self.processor_options, processor, "  " * indent + "┣━ " + name))
 			indent += 1
-
 		return res
 
 	def refresh_signal(self, sname):
@@ -343,10 +341,10 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 	# FX-Chain management
 
 	def audiofx_add(self):
-		self.zyngui.modify_chain({"type":"Audio Effect", "chain_id":self.chain_id})
+		self.zyngui.modify_chain({"type": "Audio Effect", "chain_id": self.chain_id, "post_fader": False})
 
 	def postfader_add(self):
-		self.zyngui.modify_chain({"type":"Post Fader", "chain_id":self.chain_id})
+		self.zyngui.modify_chain({"type": "Audio Effect", "chain_id": self.chain_id, "post_fader": True})
 
 	def remove_all_audiofx(self):
 		self.zyngui.show_confirm("Do you really want to remove all audio effects from this chain?", self.remove_all_procs_cb, "Audio Effect")

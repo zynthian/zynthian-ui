@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian LV2-plugin management
 # 
 # zynthian LV2
 # 
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,114 +21,283 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import os
+import re
 import sys
 import json
 import lilv
+import copy
 import time
 import string
 import logging
 import contextlib
-import re
 import urllib.parse
-
 from enum import Enum
-from collections import OrderedDict
+from random import randrange
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# Some variables & definitions
+# ------------------------------------------------------------------------------
+
+
+class EngineType(Enum):
+	MIDI_SYNTH = "MIDI Synth"
+	MIDI_TOOL = "MIDI Tool"
+	AUDIO_EFFECT = "Audio Effect"
+	AUDIO_GENERATOR = "Audio Generator"
+	SPECIAL = "Special"
+	#UNKNOWN = "Unknown"
+
+
+lv2_plugin_classes = {
+	"MIDI_SYNTH": ("Instrument"),
+	"AUDIO_EFFECT": ("Analyser", "Spectral", "Delay", "Compressor", "Distortion", "Filter", "Equaliser",
+		"Modulator", "Expander", "Spatial", "Limiter", "Pitch Shifter", "Reverb", "Simulator", "Envelope",
+		"Gate", "Amplifier", "Chorus", "Flanger", "Phaser", "Highpass", "Lowpass", "Dynamics"),
+	"AUDIO_GENERATOR": ("Oscillator", "Generator"),
+	"UNKNOWN": ("Utility", "Plugin")
+}
+
+engine_categories = {
+	"MIDI_SYNTH": ("Simulator", "Soundfont Player", "Virtual Analog"),
+	"AUDIO_EFFECT": ("Analyser", "Spectral", "Delay", "Compressor", "Distortion", "Filter", "Equaliser",
+		"Modulator", "Expander", "Spatial", "Limiter", "Pitch Shifter", "Reverb", "Simulator", "Envelope",
+		"Gate", "Amplifier", "Chorus", "Flanger", "Phaser", "Highpass", "Lowpass", "Dynamics", "Looper",
+		"Granulator", "Vocoder", "Autotune", "Utility"),
+	"MIDI_TOOL": ("Sequencer", "Arpeggiator", "Chorder", "Automation", "Filter", "Mapper", "Utility"),
+	"AUDIO_GENERATOR": ("Oscillator", "Generator"),
+	"SPECIAL": ("Sampler", "Language"),
+	"UNKNOWN": ("Utility", "Plugin")
+}
+
+standalone_engine_info = {
+	"SL": ["SooperLooper", "SooperLooper", "Audio Effect", "Looper", True],
+	"ZY": ["ZynAddSubFX", "ZynAddSubFX - Synthesizer", "MIDI Synth", "Virtual Analog", True],
+	"FS": ["FluidSynth", "FluidSynth: SF2, SF3", "MIDI Synth", "Soundfont Player", True],
+	"SF": ["Sfizz", "Sfizz: SFZ", "MIDI Synth", "Soundfont Player", True],
+	"LS": ["LinuxSampler", "LinuxSampler: SFZ, GIG", "MIDI Synth", "Soundfont Player", True],
+	"BF": ["setBfree", "setBfree - Hammond Emulator", "MIDI Synth", "Simulator", True],
+	"AE": ["Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", "Simulator", True],
+	"PT": ['Pianoteq', "Pianoteq", "MIDI Synth", "Simulator", True],
+	"AP": ["AudioPlayer", "Audio File Player", "Special", "Sampler", True],
+	'PD': ["PureData", "PureData - Visual Programming", "Special", "Language", True],
+	'MD': ["MOD-UI", "MOD-UI - Plugin Host", "Special", "Language", True]
+}
+
+ENGINE_CONFIG_FILE = "{}/engine_config.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
+JALV_LV2_CONFIG_FILE = "{}/jalv/plugins.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
+
+engines = None
+engines_by_type = None
+engines_mtime = None
+
+# ------------------------------------------------------------------------------
+# Lilv LV2 library initialization
+# ------------------------------------------------------------------------------
+
 
 def init_lilv():
-	global world
-
 	world.load_all()
-
 	world.ns.ev = lilv.Namespace(world, "http://lv2plug.in/ns/ext/event#")
 	world.ns.presets = lilv.Namespace(world, "http://lv2plug.in/ns/ext/presets#")
 	world.ns.portprops = lilv.Namespace(world, "http://lv2plug.in/ns/ext/port-props#")
 	world.ns.portgroups = lilv.Namespace(world, "http://lv2plug.in/ns/ext/port-groups#")
 
 
-#------------------------------------------------------------------------------
-# LV2 Plugin management
-#------------------------------------------------------------------------------
-
-class PluginType(Enum):
-	MIDI_SYNTH = "MIDI Synth"
-	MIDI_TOOL = "MIDI Tool"
-	AUDIO_EFFECT = "Audio Effect"
-	AUDIO_GENERATOR = "Audio Generator"
-	#UNKNOWN = "Unknown"
-
-JALV_LV2_CONFIG_FILE = "{}/jalv/plugins.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
-JALV_LV2_CONFIG_FILE_ALL = "{}/jalv/all_plugins.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
-
-plugins = None
-plugin_by_type = None
-plugins_mtime = None
+# ------------------------------------------------------------------------------
+# Engines management
+# ------------------------------------------------------------------------------
 
 
-def get_plugins():
-	global plugins, plugins_mtime
-	mtime = os.stat(JALV_LV2_CONFIG_FILE).st_mtime
-	if mtime != plugins_mtime:
-		plugins_mtime = mtime
-		return load_plugins()
-	else:
-		return plugins
-
-
-def load_plugins():
-	global plugins, plugins_mtime
-	plugins = OrderedDict()
-
+def get_engines():
+	global engines_mtime
 	try:
-		with open(JALV_LV2_CONFIG_FILE) as f:
-			plugins = json.load(f, object_pairs_hook=OrderedDict)
-
-		plugins_mtime = os.stat(JALV_LV2_CONFIG_FILE).st_mtime
-		convert_from_all_plugins()
-
-	except Exception as e:
-		logging.debug('Loading list of LV2-Plugins failed: {}'.format(e))
-		generate_plugins_config_file()
-
-	get_plugins_by_type()
-	return plugins
-
-
-def save_plugins():
-	global plugins, plugins_mtime
-
-	try:
-		with open(JALV_LV2_CONFIG_FILE, 'w') as f:
-			json.dump(plugins, f)
-
-		plugins_mtime = os.stat(JALV_LV2_CONFIG_FILE).st_mtime
-	
-	except Exception as e:
-		logging.error('Saving list of LV2-Plugins failed: {}'.format(e))
-
-
-def is_plugin_enabled(plugin_name):
-	global plugins
-	try:
-		return plugins[plugin_name]['ENABLED']
+		mtime = os.stat(ENGINE_CONFIG_FILE).st_mtime
 	except:
-		return False
+		mtime = None
+	if not mtime or not engines_mtime or engines_mtime != mtime:
+		return load_engines()
+	else:
+		return engines
 
 
-def	is_plugin_ui(plugin):
+def load_engines():
+	global engines, engines_mtime
+	engines = {}
+
+	if os.path.exists(ENGINE_CONFIG_FILE):
+		fpath = ENGINE_CONFIG_FILE
+	else:
+		fpath = JALV_LV2_CONFIG_FILE
+
+	try:
+		with open(fpath) as f:
+			engines = json.load(f)
+		engines_mtime = os.stat(fpath).st_mtime
+	except Exception as e:
+		logging.debug('Loading engine config failed: {}'.format(e))
+
+	if not os.path.exists(ENGINE_CONFIG_FILE):
+		generate_engines_config_file()
+
+	get_engines_by_type()
+	return engines
+
+
+def save_engines():
+	global engines_mtime
+
+	# Make a deep copy and remove not serializable objects (ENGINE)
+	sengines = copy.deepcopy(engines)
+	for key, info in sengines.items():
+		del info['ENGINE']
+
+	# Save to file
+	try:
+		with open(ENGINE_CONFIG_FILE, 'w') as f:
+			json.dump(sengines, f)
+		engines_mtime = os.stat(ENGINE_CONFIG_FILE).st_mtime
+	except Exception as e:
+		logging.error('Saving engine config file failed: {}'.format(e))
+
+
+def is_engine_enabled(key, default=False):
+	try:
+		return engines[key]['ENABLED']
+	except:
+		key = key[3:]
+		try:
+			return engines[key]['ENABLED']
+		except:
+			return default
+
+
+def get_engine_description(key):
+	description = [
+		"Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+		"Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+		"Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
+		"Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."]
+	return description[randrange(4)]
+
+
+def generate_engines_config_file(refresh=True):
+	global engines, engines_mtime
+	genengines = {}
+
+	start = int(round(time.time()))
+	try:
+		if refresh:
+			init_lilv()
+
+		# Add standalone engines
+		i = 0
+		for key, engine_info in standalone_engine_info.items():
+			try:
+				engine_class = engines[key]['CLASS']
+				engine_index = engines[plugin_name]['INDEX']
+				engine_descr = engines[plugin_name]['DESCR']
+				engine_quality = engines[plugin_name]['QUALITY']
+				engine_complex = engines[plugin_name]['COMPLEX']
+			except:
+				engine_class = engine_info[3]
+				engine_index = i
+				engine_descr = get_engine_description(key)
+				engine_quality = randrange(5)
+				engine_complex = randrange(5)
+			genengines[key] = {
+				'NAME': engine_info[0],
+				'TITLE': engine_info[1],
+				'TYPE': engine_info[2],
+				'CLASS': engine_class,
+				'ENABLED': is_engine_enabled(key, True),
+				'INDEX': engine_index,
+				'URL': "",
+				'UI': "",
+				'DESCR': engine_descr,
+				"QUALITY": engine_quality,
+				"COMPLEX": engine_complex
+			}
+			logging.debug("Standalone Engine '{}' => {}".format(key, genengines[key]))
+			i += 1
+
+		# Add LV2 plugins
+		for plugin in world.get_all_plugins():
+			name = str(plugin.get_name())
+			key = f"JV/{name}"
+			try:
+				engine_type = engines[plugin_name]['TYPE']
+				engine_class = engines[plugin_name]['CLASS']
+				engine_index = engines[plugin_name]['INDEX']
+				engine_descr = engines[plugin_name]['DESCR']
+				engine_quality = engines[plugin_name]['QUALITY']
+				engine_complex = engines[plugin_name]['COMPLEX']
+			except:
+				engine_type = get_plugin_type(plugin).value
+				engine_class = re.sub(' Plugin', '', str(plugin.get_class().get_label()))
+				engine_index = 9999
+				engine_descr = get_engine_description(key)
+				engine_quality = randrange(5)
+				engine_complex = randrange(5)
+			genengines[key] = {
+				'NAME': name,
+				'TITLE': name,
+				'TYPE': engine_type,
+				'CLASS': engine_class,
+				'ENABLED': is_engine_enabled(key, False),
+				'INDEX': engine_index,
+				'URL': str(plugin.get_uri()),
+				'UI': is_plugin_ui(plugin),
+				'DESCR': engine_descr,
+				"QUALITY": engine_quality,
+				"COMPLEX": engine_complex
+				#'UI': plugin.get_uis()
+				# get_binary_uri()
+			}
+			logging.debug("LV2 Plugin '{}' => {}".format(name, genengines[key]))
+
+		engines = dict(sorted(genengines.items()))
+
+		with open(ENGINE_CONFIG_FILE, 'w') as f:
+			json.dump(engines, f)
+		engines_mtime = os.stat(ENGINE_CONFIG_FILE).st_mtime
+
+	except Exception as e:
+		logging.error(e)
+
+	dt = int(round(time.time())) - start
+	logging.debug('Generating engine config file took {}s'.format(dt))
+
+
+def get_engines_by_type():
+	global engines_by_type
+	engines_by_type = {}
+
+	for t in EngineType:
+		engines_by_type[t.value] = {}
+
+	for key, info in engines.items():
+		engines_by_type[info['TYPE']][key] = info
+
+	return engines_by_type
+
+# ------------------------------------------------------------------------------
+# LV2 plugin info functions
+# ------------------------------------------------------------------------------
+
+
+def is_plugin_ui(plugin):
 	for uri in plugin.get_data_uris():
 		try:
 			with open(urllib.parse.unquote(str(uri)[7:])) as f:
 				ttl = f.read()
-				if ttl.find("a ui:Qt5UI")>0 or ttl.find("a lv2ui:Qt5UI")>0:
+				if ttl.find("a ui:Qt5UI") > 0 or ttl.find("a lv2ui:Qt5UI") > 0:
 					return "Qt5UI"
-				if ttl.find("a ui:Qt4UI")>0 or ttl.find("a lv2ui:Qt4UI")>0:
+				if ttl.find("a ui:Qt4UI") > 0 or ttl.find("a lv2ui:Qt4UI") > 0:
 					return "Qt4UI"
-				if ttl.find("a ui:X11UI")>0 or ttl.find("a lv2ui:X11UI")>0:
+				if ttl.find("a ui:X11UI") > 0 or ttl.find("a lv2ui:X11UI") > 0:
 					return "X11UI"
 		except:
 			logging.debug("Can't find UI for plugin %s", str(plugin.get_name()))
@@ -136,113 +305,18 @@ def	is_plugin_ui(plugin):
 	return None
 
 
-def generate_plugins_config_file(refresh=True):
-	global world, plugins, plugins_mtime
-	genplugins = OrderedDict()
-
-	start = int(round(time.time()))
-	try:
-		if refresh:
-			init_lilv()
-
-		for plugin in world.get_all_plugins():
-			name = str(plugin.get_name())
-			genplugins[name] = {
-				'URL': str(plugin.get_uri()),
-				'TYPE': get_plugin_type(plugin).value,
-				'CLASS': re.sub(' Plugin', '', str(plugin.get_class().get_label())),
-				'ENABLED': is_plugin_enabled(name),
-				'UI': is_plugin_ui(plugin)
-				#'UI': plugin.get_uis()
-				# get_binary_uri()
-			}
-			logging.debug("Plugin '{}' => {}".format(name, genplugins[name]))
-
-		plugins = OrderedDict(sorted(genplugins.items()))
-
-		with open(JALV_LV2_CONFIG_FILE, 'w') as f:
-			json.dump(plugins, f)
-
-		plugins_mtime = os.stat(JALV_LV2_CONFIG_FILE).st_mtime
-
-	except Exception as e:
-		logging.error('Generating list of LV2-Plugins failed: {}'.format(e))
-
-	dt = int(round(time.time())) - start
-	logging.debug('LV2 plugin list generation took {}s'.format(dt))
-
-
-def get_plugins_by_type():
-	global plugins_by_type
-	plugins_by_type = OrderedDict()
-	for t in PluginType:
-		plugins_by_type[t.value] = OrderedDict()
-
-	for name, properties in plugins.items():
-		plugins_by_type[properties['TYPE']][name] = properties
-
-	return plugins_by_type
-
-
-def convert_from_all_plugins():
-	global plugins, plugins_mtime
-	try:
-		name, prop = next(iter(plugins.items()))
-		if 'ENABLED' not in prop:
-			enplugins = plugins
-			try:
-				with open(JALV_LV2_CONFIG_FILE_ALL) as f:
-					plugins = json.load(f, object_pairs_hook=OrderedDict)
-			except:
-				generate_plugins_config_file()
-
-			logging.debug("Converting LV2 config files ...")
-
-			for name, properties in plugins.items():
-				if name in enplugins:
-					plugins[name]['ENABLED'] = True
-				else:
-					plugins[name]['ENABLED'] = False
-
-			with open(JALV_LV2_CONFIG_FILE,'w') as f:
-				json.dump(plugins, f)
-
-			plugins_mtime = os.stat(JALV_LV2_CONFIG_FILE).st_mtime
-
-			try:
-				os.remove(JALV_LV2_CONFIG_FILE_ALL)
-			except OSError:
-				pass
-
-	except Exception as e:
-		logging.error("Converting from old config format failed: {}".format(e))
-
-
 def get_plugin_type(plugin):
-	global world
-	lv2_plugin_classes = {
-		"MIDI_SYNTH": ("Instrument"),
-
-		"AUDIO_EFFECT": ("Analyser", "Spectral", "Delay", "Compressor", "Distortion", "Filter", "Equaliser",
-			"Modulator", "Expander", "Spatial", "Limiter", "Pitch Shifter", "Reverb", "Simulator", "Envelope",
-			"Gate", "Amplifier", "Chorus", "Flanger", "Phaser", "Highpass", "Lowpass", "Dynamics"),
-
-		"AUDIO_GENERATOR": ("Oscillator", "Generator"),
-
-		"UNKNOWN": ("Utility", "Plugin")
-	}
-
 	# Try to determine the plugin type from the LV2 class ...
 	plugin_class = re.sub(' Plugin', '', str(plugin.get_class().get_label()))
 	
 	if plugin_class in lv2_plugin_classes["MIDI_SYNTH"]:
-		return PluginType.MIDI_SYNTH
+		return EngineType.MIDI_SYNTH
 
 	elif plugin_class in lv2_plugin_classes["AUDIO_EFFECT"]:
-		return PluginType.AUDIO_EFFECT
+		return EngineType.AUDIO_EFFECT
 
 	elif plugin_class in lv2_plugin_classes["AUDIO_GENERATOR"]:
-		return PluginType.AUDIO_GENERATOR
+		return EngineType.AUDIO_GENERATOR
 
 	# If failed to determine the plugin type using the LV2 class, 
 	# inspect the input/output ports ...
@@ -256,27 +330,26 @@ def get_plugin_type(plugin):
 
 	if n_audio_out > 0 and n_audio_in == 0:
 		if n_midi_in > 0:
-			return PluginType.MIDI_SYNTH
+			return EngineType.MIDI_SYNTH
 		else:
-			return PluginType.AUDIO_GENERATOR
+			return EngineType.AUDIO_GENERATOR
 
 	if n_audio_out > 0 and n_audio_in > 0 and n_midi_out == 0:
-		return PluginType.AUDIO_EFFECT
+		return EngineType.AUDIO_EFFECT
 
 	if n_midi_in > 0 and n_midi_out > 0 and n_audio_in == n_audio_out == 0:
-		return PluginType.MIDI_TOOL
+		return EngineType.MIDI_TOOL
 
-	#return PluginType.UNKNOWN
-	return PluginType.AUDIO_EFFECT
+	#return EngineType.UNKNOWN
+	return EngineType.AUDIO_EFFECT
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # LV2 Bank/Preset management
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 # workaround to fix segfault:
 def generate_presets_cache_workaround():
-	global world
 	start = int(round(time.time()))
 	for plugin in world.get_all_plugins():
 		plugin.get_name()
@@ -284,8 +357,6 @@ def generate_presets_cache_workaround():
 
 
 def generate_all_presets_cache(refresh=True):
-	global world
-
 	if refresh:
 		init_lilv()
 
@@ -294,8 +365,6 @@ def generate_all_presets_cache(refresh=True):
 
 
 def generate_plugin_presets_cache(plugin_url, refresh=True):
-	global world
-
 	if refresh:
 		init_lilv()
 
@@ -304,18 +373,16 @@ def generate_plugin_presets_cache(plugin_url, refresh=True):
 
 
 def _get_plugin_preset_cache_fpath(plugin_name):
-	return  "{}/jalv/presets_{}.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'), sanitize_fname(plugin_name))
+	return "{}/jalv/presets_{}.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'), sanitize_fname(plugin_name))
 
 
 def _generate_plugin_presets_cache(plugin):
-	global world
-
 	plugin_name = str(plugin.get_name())
 	plugin_url = str(plugin.get_uri())
 	logging.debug("Generating Bank/Presets cache for '{}' <{}>".format(plugin_name, plugin_url))
 
 	banks_dict = {}
-	presets_info = OrderedDict()
+	presets_info = {}
 
 	# Get banks
 	banks = plugin.get_related(world.ns.presets.Bank)
@@ -331,7 +398,7 @@ def _generate_plugin_presets_cache(plugin):
 		}
 		logging.debug("Bank {} <{}>".format(label, bank))
 
-	presets_info = OrderedDict(sorted(presets_info.items()))
+	presets_info = dict(sorted(presets_info.items()))
 	presets_info['None'] = {
 			'bank_url': None,
 			'presets': []
@@ -376,15 +443,14 @@ def get_plugin_presets_cache(plugin_name):
 	fpath_cache = _get_plugin_preset_cache_fpath(plugin_name)
 	try:
 		with open(fpath_cache) as f:
-			presets_info = json.load(f, object_pairs_hook=OrderedDict)
+			presets_info = json.load(f)
 	except Exception as e:
 		logging.error("Can't load presets cache file '{}': {}".format(fpath_cache, e))
 		try:
-			global plugins
-			return generate_plugin_presets_cache(plugins[plugin_name]['URL'])
+			return generate_plugin_presets_cache(engines["JV/" + plugin_name]['URL'])
 		except Exception as e:
 			logging.error("Error generating presets cache for '{}': {}".format(plugin_name, e))
-			presets_info = OrderedDict()
+			presets_info = {}
 
 	return presets_info
 
@@ -397,7 +463,7 @@ def save_plugin_presets_cache(plugin_name, presets_info):
 	# Sort and Remove empty banks 
 	keys = list(presets_info.keys())
 	for k in keys:
-		if len(presets_info[k]['presets'])==0:
+		if len(presets_info[k]['presets']) == 0:
 			del(presets_info[k])
 		else:
 			presets_info[k]['presets'] = sorted(presets_info[k]['presets'], key=lambda k: k['label'])
@@ -405,7 +471,7 @@ def save_plugin_presets_cache(plugin_name, presets_info):
 	# Dump json to file
 	fpath_cache = _get_plugin_preset_cache_fpath(plugin_name)
 	try:
-		with open(fpath_cache,'w') as f:
+		with open(fpath_cache, 'w') as f:
 			json.dump(presets_info, f)
 	except Exception as e:
 		logging.error("Can't save presets cache file '{}': {}".format(fpath_cache, e))
@@ -424,22 +490,20 @@ def sanitize_fname(s):
 
 	valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
 	filename = ''.join(c for c in s if c in valid_chars)
-	filename = filename.replace(' ','_') # I don't like spaces in filenames.
+	filename = filename.replace(' ', '_')  # I don't like spaces in filenames.
 	return filename
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # LV2 Port management
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 
 def get_plugin_ports(plugin_url):
-	global world
-
 	wplugins = world.get_all_plugins()
 	plugin = wplugins[plugin_url]
 
-	ports_info = OrderedDict()
+	ports_info = {}
 	for i in range(plugin.get_num_ports()):
 		port = plugin.get_port_by_index(i)
 		if port.is_a(lilv.LILV_URI_INPUT_PORT) and port.is_a(lilv.LILV_URI_CONTROL_PORT):
@@ -496,11 +560,11 @@ def get_plugin_ports(plugin_url):
 			try:
 				vmin = get_node_value(r[1])
 			except:
-				vmin = min(sp, key=lambda x:x['value'])
+				vmin = min(sp, key=lambda x: x['value'])
 			try:
 				vmax = get_node_value(r[2])
 			except:
-				vmax = max(sp, key=lambda x:x['value'])
+				vmax = max(sp, key=lambda x: x['value'])
 			try:
 				vdef = get_node_value(r[0])
 			except:
@@ -541,52 +605,53 @@ def get_node_value(node):
 	else:
 		return str(node)
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# Main program
+# ------------------------------------------------------------------------------
+
 
 world = lilv.World()
-
 # Disable language filtering
 #world.set_option(lilv.OPTION_FILTER_LANG, world.new_bool(False))
-
 # Init Lilv
 init_lilv()
-# Load presets from cache
-load_plugins()
+# Load engine info from cache
+load_engines()
 
 if __name__ == '__main__':
 	# Init logging
-	#log_level=logging.DEBUG
-	#log_level=logging.WARNING
-	log_level=logging.INFO
+	#log_level = logging.DEBUG
+	#log_level = logging.WARNING
+	log_level = logging.INFO
 	logging.basicConfig(format='%(levelname)s:%(module)s: %(message)s', stream=sys.stderr, level=log_level)
 	logging.getLogger().setLevel(level=log_level)
 
 	start = int(round(time.time()))
-	if len(sys.argv)>1:
-		if sys.argv[1]=="plugins":
-			generate_plugins_config_file(False)
+	if len(sys.argv) > 1:
+		if sys.argv[1] == "engines":
+			generate_engines_config_file(False)
 
-		elif sys.argv[1]=="presets":
+		elif sys.argv[1] == "presets":
 			generate_presets_cache_workaround()
 
-			if len(sys.argv)>2:
+			if len(sys.argv) > 2:
 				plugin_url = sys.argv[2]
 				generate_plugin_presets_cache(plugin_url, False)
 			else:
 				generate_all_presets_cache(False)
 
-		elif sys.argv[1]=="ports":
-			if len(sys.argv)>2:
+		elif sys.argv[1] == "ports":
+			if len(sys.argv) > 2:
 				print(get_plugin_ports(sys.argv[2]))
 			else:
 				pass
 
-		elif sys.argv[1]=="all":
-			generate_plugins_config_file(False)
+		elif sys.argv[1] == "all":
+			generate_engines_config_file(False)
 			generate_all_presets_cache(False)
 
 	else:
-		generate_plugins_config_file(False)
+		generate_engines_config_file(False)
 		generate_all_presets_cache(False)
 
 	#get_plugin_ports("https://github.com/dcoredump/dexed.lv2")
@@ -601,4 +666,4 @@ if __name__ == '__main__':
 
 	logging.info('Command took {}s'.format(int(round(time.time())) - start))
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------

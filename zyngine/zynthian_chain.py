@@ -494,11 +494,15 @@ class zynthian_chain:
         elif type == "MIDI Tool":
             return len(self.midi_slots)
         elif type == "Audio Effect":
+            return len(self.audio_slots)
+        elif type == "Pre Fader":
             return self.fader_pos
         elif type == "Post Fader":
             return len(self.audio_slots) - self.fader_pos
-        else:
+        elif type == "MIDI Synth":
             return len(self.synth_slots)
+        else:
+            return 0
 
     def get_processor_count(self, type=None, slot=None):
         """Get quantity of processors in chain (slot)
@@ -759,7 +763,7 @@ class zynthian_chain:
         for slot in self.midi_slots + self.synth_slots + self.audio_slots:
             slot_state = {}
             for processor in slot:
-                slot_state[processor.id] = processor.type_code
+                slot_state[processor.id] = processor.eng_code
             if slot_state:
                 slots_states.append(slot_state)
 

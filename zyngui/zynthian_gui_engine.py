@@ -49,6 +49,9 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.reset_index = True
 		super().__init__('Engine', True)
 		self.context_index = {}
+		self.engine_info = self.zyngui.chain_manager.engine_info
+		self.engine_info_dirty = False
+		self.show_all = False
 
 		# Canvas for engine info
 		self.info_canvas = tkinter.Canvas(
@@ -146,17 +149,21 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		super().update_layout()
 
 	def update_info(self):
-		quality_stars = "★" * randrange(5)
+		eng_code = self.list_data[self.index][0]
+		try:
+			eng_info = self.engine_info[eng_code]
+		except:
+			logging.error(f"Can't get info for engine '{eng_code}'")
+			eng_info = {"QUALITY": 0, "COMPLEX": 0, "DESCR": ""}
+
+		quality_stars = "★" * eng_info["QUALITY"]
 		self.info_canvas.itemconfigure(self.quality_stars_label, text=quality_stars)
-		complexity_stars = "⚈" * randrange(5)
+		complexity_stars = "⚈" * eng_info["COMPLEX"]
 		self.info_canvas.itemconfigure(self.complexity_stars_label, text=complexity_stars)
-		description = ["Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-			"Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
-			"Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
-			"Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."]
-		self.info_canvas.itemconfigure(self.description_label, text=description[randrange(4)])
+		self.info_canvas.itemconfigure(self.description_label, text=eng_info["DESCR"])
 
 	def build_view(self):
+		self.show_all = False
 		try:
 			self.index = self.context_index[self.zyngui.modify_chain_status["type"]]
 		except:
@@ -172,73 +179,93 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		super().hide()
 
 	def fill_list(self):
-		self.zyngui.chain_manager.get_engine_info() # Update the available engines
-		self.list_data=[]
+		self.list_data = []
 
 		proc_type = self.zyngui.modify_chain_status["type"]
-		if proc_type == "Post Fader":
-			proc_type = "Audio Effect"
 		if proc_type in ("MIDI Tool", "Audio Effect"):
 			self.list_data.append(("None", 0, "None", "None"))
-		# Sort category headings, but headings starting with "Zynthian" are shown first
 
-		for cat, infos in sorted(self.zyngui.chain_manager.filtered_engines_by_cat(proc_type).items(), key = lambda kv:"!" if kv[0] is None else kv[0]):
+		# Sort category headings, but headings starting with "Zynthian" are shown first
+		for cat, infos in sorted(self.zyngui.chain_manager.filtered_engines_by_cat(proc_type, all=self.show_all).items(), key=lambda kv:"!" if kv[0] is None else kv[0]):
 			# Add category header...
 			if cat:
-				if proc_type == "MIDI Synth":
-					self.list_data.append((None,len(self.list_data),"> LV2 {}".format(cat)))
-				else:
-					self.list_data.append((None,len(self.list_data),"> {}".format(cat)))
+				self.list_data.append((None, len(self.list_data), "> {}".format(cat)))
 
 			# Add engines on this category...
-			for eng, info in infos.items():
-				i = len(self.list_data)
-				self.list_data.append((eng, i, info[1], info[0]))
-					
+			if self.show_all:
+				for eng, info in infos.items():
+					i = len(self.list_data)
+					if info["ENABLED"]:
+						self.list_data.append((eng, i, "\u2612 " + info["TITLE"], info["NAME"]))
+					else:
+						self.list_data.append((eng, i, "\u2610 " + info["TITLE"], info["NAME"]))
+			else:
+				for eng, info in infos.items():
+					i = len(self.list_data)
+					self.list_data.append((eng, i, info["TITLE"], info["NAME"]))
+
 		# Display help if no engines are enabled ...
 		if len(self.list_data) == 0:
-			self.list_data.append((None,len(self.list_data),"Enable LV2-plugins on webconf".format(os.uname().nodename)))
+			self.list_data.append((None, len(self.list_data), "Bold-push to enable some LV2-plugins".format(os.uname().nodename)))
 
 		if self.reset_index:
 			self.index = 0
 			self.reset_index = False
 
-		super().fill_list()
+		if not self.show_all:
+			self.engine_info_dirty = False
 
-	def fill_listbox(self):
-		super().fill_listbox()
-		for i, val in enumerate(self.list_data):
-			if val[0]==None:
-				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_panel_hl,'fg':zynthian_gui_config.color_tx_off})
+		super().fill_list()
 
 	def select(self, index=None):
 		super().select(index)
 		self.update_info()
 
 	def select_action(self, i, t='S'):
-		if i is not None and self.list_data[i][0]:
-			engine = self.list_data[i][0]
-			self.zyngui.modify_chain_status["engine"] = engine
-			if "chain_id" in self.zyngui.modify_chain_status:
-				# Modifying existing chain
-				if "processor" in self.zyngui.modify_chain_status:
-					# Replacing processor
-					pass
-				elif self.zyngui.chain_manager.get_slot_count(self.zyngui.modify_chain_status["chain_id"], self.zyngui.modify_chain_status["type"]):
-					# Adding to slot with existing processor - choose parallel/series
-					self.zyngui.screens['option'].config("Chain Mode", {"Series": False, "Parallel": True}, self.cb_add_parallel)
-					self.zyngui.show_screen('option')
-					return
+		if t == 'S':
+			if i is not None and self.list_data[i][0]:
+				engine = self.list_data[i][0]
+				if self.show_all:
+					self.engine_info[engine]['ENABLED'] = not self.engine_info[engine]['ENABLED']
+					self.engine_info_dirty = True
+					self.update_list()
 				else:
-					self.zyngui.modify_chain_status["parallel"] = False
-			else:
-				# Adding engine to new chain
-				self.zyngui.modify_chain_status["parallel"] = False
-				if engine == "AP":
-					self.zyngui.modify_chain_status["audio_thru"] = False #TODO: Better done with engine flag
-				if self.zyngui.modify_chain_status["type"] in ("Audio Effect", "Audio Generator") and not self.zyngui.modify_chain_status["midi_thru"]:
-					self.zyngui.modify_chain_status["midi_chan"] = None
-			self.zyngui.modify_chain()
+					self.zyngui.modify_chain_status["engine"] = engine
+					if "chain_id" in self.zyngui.modify_chain_status:
+						# Modifying existing chain
+						if "processor" in self.zyngui.modify_chain_status:
+							# Replacing processor
+							pass
+						elif self.zyngui.chain_manager.get_slot_count(self.zyngui.modify_chain_status["chain_id"], self.zyngui.modify_chain_status["type"]):
+							# Adding to slot with existing processor - choose parallel/series
+							self.zyngui.screens['option'].config("Chain Mode", {"Series": False, "Parallel": True}, self.cb_add_parallel)
+							self.zyngui.show_screen('option')
+							return
+						else:
+							self.zyngui.modify_chain_status["parallel"] = False
+					else:
+						# Adding engine to new chain
+						self.zyngui.modify_chain_status["parallel"] = False
+						if engine == "AP":
+							self.zyngui.modify_chain_status["audio_thru"] = False #TODO: Better done with engine flag
+						if self.zyngui.modify_chain_status["type"] in ("Audio Effect", "Audio Generator") and not self.zyngui.modify_chain_status["midi_thru"]:
+							self.zyngui.modify_chain_status["midi_chan"] = None
+					self.zyngui.modify_chain()
+		elif t == 'B':
+			if not self.back_action():
+				self.show_all = True
+				self.update_list()
+
+	def back_action(self):
+		if self.show_all:
+			if self.engine_info_dirty:
+				self.zyngui.chain_manager.save_engine_info()
+				self.engine_info_dirty = False
+			self.show_all = False
+			self.update_list()
+			return True
+		else:
+			return False
 
 	def arrow_right(self):
 		if "chain_id" in self.zyngui.modify_chain_status:

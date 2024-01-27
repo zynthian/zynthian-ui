@@ -26,6 +26,7 @@
 import base64
 import ctypes
 import logging
+import traceback
 from glob import glob
 from time import monotonic
 from threading import Thread
@@ -132,7 +133,7 @@ class zynthian_state_manager:
         self.chain_manager = zynthian_chain_manager(self)
         self.reset_zs3()
 
-        self.alsa_mixer_processor = zynthian_processor("MX", ("Mixer", "ALSA Mixer", "MIXER", None, zynthian_engine_alsa_mixer, True))
+        self.alsa_mixer_processor = zynthian_processor("MX", {"NAME": "Mixer", "TITLE": "ALSA Mixer", "TYPE": "MIXER", "CLASS": None, "ENGINE": zynthian_engine_alsa_mixer, "ENABLED": True})
         self.alsa_mixer_processor.engine = zynthian_engine_alsa_mixer(self, self.alsa_mixer_processor)
         self.alsa_mixer_processor.refresh_controllers()
 
@@ -1599,8 +1600,7 @@ class zynthian_state_manager:
                 self.audio_player = zynthian_processor("AP", self.chain_manager.engine_info["AP"])
                 self.chain_manager.start_engine(self.audio_player, "AP")
             except Exception as e:
-                logging.error(f"Can't create global Audio Player instance => {e}")
-                return
+                logging.error(f"Can't create global Audio Player instance => {e}\n{traceback.format_exc()}")
 
     def destroy_audio_player(self):
         if self.audio_player:

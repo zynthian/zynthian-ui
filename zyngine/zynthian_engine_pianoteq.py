@@ -27,13 +27,13 @@
 import os
 import re
 import shutil
+import struct
 import logging
 import requests
 from time import sleep
 from xml.etree import ElementTree
 from collections import OrderedDict
 from subprocess import Popen, DEVNULL, PIPE, check_output, run
-import struct
 
 from . import zynthian_engine
 from . import zynthian_controller

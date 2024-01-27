@@ -44,22 +44,22 @@ class zynthian_processor:
     # Initialization
     # ------------------------------------------------------------------------
 
-    def __init__(self, type, type_info, id=None):
+    def __init__(self, eng_code, eng_info, id=None):
         """ Create an instance of a processor
 
         A processor represents a block within a chain.
         It provides access to a worker engine
-        type : Short-code processor type
-        type_info : List of type info [short name, name, type, None, engine class, Bool]
+        eng_code : Short-code processor type
+        eng_info : Dictionary with engine's info
         id : UID for processor (Default: None)
         """
 
-        self.type_code = type
         self.id = id
-        self.type_info = type_info
-        self.type = type_info[2]
+        self.eng_code = eng_code
+        self.eng_info = eng_info
+        self.type = eng_info["TYPE"]
         self.engine = None
-        self.name = type_info[0]
+        self.name = eng_info["NAME"]
         self.midi_chan = None
         self.jackname = None
         self.chain_id = None
