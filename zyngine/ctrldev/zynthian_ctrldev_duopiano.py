@@ -42,6 +42,11 @@ class zynthian_ctrldev_duopiano(zynthian_ctrldev_base):
 	def init(self):
 		self.counter = 0
 		self.keep_alive()
+		self.state_manager.add_slow_update_callback(60, self.keep_alive)
+
+	def end(self):
+		super().end()
+		self.state_manager.remove_slow_update_callback(self.keep_alive)
 
 	""" Call regularly to keep piano alive
 		TODO: Set period. Set caller. Enable only when driver enabled (default?).
