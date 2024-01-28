@@ -153,7 +153,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		try:
 			eng_info = self.engine_info[eng_code]
 		except:
-			logging.error(f"Can't get info for engine '{eng_code}'")
+			logging.info(f"Can't get info for engine '{eng_code}'")
 			eng_info = {"QUALITY": 0, "COMPLEX": 0, "DESCR": ""}
 
 		quality_stars = "★" * eng_info["QUALITY"]
@@ -207,6 +207,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		# Display help if no engines are enabled ...
 		if len(self.list_data) == 0:
 			self.list_data.append((None, len(self.list_data), "Bold-push to enable some LV2-plugins".format(os.uname().nodename)))
+			self.index = 0
 
 		if self.reset_index:
 			self.index = 0

@@ -2228,7 +2228,7 @@ class zynthian_gui:
 				if cuia == "zynswitch":
 					# zynswitch has parameters: [switch, action] where action is P(ressed), R(eleased), S(hort), B(old), L(ong), X or Y
 					try:
-						self.state_manager.start_busy("cuia_zynswitch")
+						#self.state_manager.start_busy("cuia_zynswitch")
 						i = int(params[0])
 						t = params[1]
 						if t == 'R':
@@ -2265,7 +2265,7 @@ class zynthian_gui:
 								logging.warning("Unknown Action Type: {}".format(t))
 							if i in zynswitch_repeat:
 								del zynswitch_repeat[i]
-						self.state_manager.end_busy("cuia_zynswitch")
+						#self.state_manager.end_busy("cuia_zynswitch")
 					except Exception as e:
 						logging.error(f"CUIA zynswitch failed with params: {params}\n{traceback.format_exc()}")
 						self.state_manager.set_busy_error(f"ERROR CUIA zynswitch: {params}", e)
