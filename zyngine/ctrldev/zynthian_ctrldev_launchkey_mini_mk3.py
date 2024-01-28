@@ -5,7 +5,7 @@
 #
 # Zynthian Control Device Driver for "Novation Launchkey Mini MK3"
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************

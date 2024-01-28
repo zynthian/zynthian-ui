@@ -9,4 +9,5 @@ __all__ = [
     "zynthian_ctrldev_launchpad_x",
     "zynthian_ctrldev_riband",
     "zynthian_ctrldev_akai_apc_key25_mk2",
+    "zynthian_ctrldev_duopiano",
 ]

@@ -52,6 +52,7 @@ class zynthian_ctrldev_manager():
         self.state_manager = state_manager
         self.available_drivers = {}  # Map of driver classes indexed by device type name
         self.drivers = {}  # Map of device driver objects indexed by zmip
+        self.disabled_devices = [] # List of device uid disabled from loading driver
         self.update_available_drivers()
 
     def update_available_drivers(self):
@@ -66,17 +67,21 @@ class zynthian_ctrldev_manager():
                     logging.info(f"Ctrldev driver '{class_name}' for devices with ID '{dev_id}'")
                     self.available_drivers[dev_id] = dev_class
 
-    def load_driver(self, izmip):
+    def load_driver(self, izmip, enable=False):
         """Loads a device driver
         
         izmip : Index of zmip to attach driver
+        enable : Enable driver for this input
         returns : True if new driver loaded
         """
 
         dev_id = zynautoconnect.get_midi_in_devid(izmip)
         if dev_id not in self.available_drivers:
             return False
-        if izmip in self.drivers:
+        uid = zynautoconnect.get_midi_in_uid(izmip)
+        if enable and uid in self.disabled_devices:
+            self.disabled_devices.remove(uid)
+        if izmip in self.drivers or uid in self.disabled_devices:
             return False  # TODO: Should check if driver differs
         izmop = zynautoconnect.dev_in_2_dev_out(izmip)
         try:
@@ -88,13 +93,18 @@ class zynthian_ctrldev_manager():
             logging.error(f"Can't load ctrldev driver {dev_id} => {e}")
             return False
 
-    def unload_driver(self, izmip):
+    def unload_driver(self, izmip, disable=False):
         """Unloads a device driver
         
         izmip : Index of zmip to detach driver
+        disable : True to disable device from loading driver (Default: False)
         returns : True if existing driver detached
         """
 
+        if disable and zynautoconnect.get_midi_in_devid(izmip) in self.available_drivers:
+            uid = zynautoconnect.get_midi_in_uid(izmip)
+            if uid is not None and uid not in self.disabled_devices:
+                self.disabled_devices.append(uid)
         if izmip in self.drivers:
             # Unload driver
             self.drivers[izmip].end()

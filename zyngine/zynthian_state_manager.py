@@ -1403,7 +1403,7 @@ class zynthian_state_manager:
             uid = zynautoconnect.devices_in[idev].aliases[0]
             mcstate[uid] = {
                 "zmip_input_mode": bool(lib_zyncore.zmip_get_flag_active_chain(idev)),
-                "ctrldev_load": idev in self.ctrldev_manager.drivers,
+                "disable_ctrldev": uid in self.ctrldev_manager.disabled_devices,
                 "routed_chains": routed_chains
             }
             if uid == "AUBIO:in":
@@ -1442,10 +1442,10 @@ class zynthian_state_manager:
                     pass
                 zynautoconnect.update_midi_in_dev_mode(zmip)
                 try:
-                    if state["ctrldev_load"]:
-                        self.ctrldev_manager.load_driver(zmip)
+                    if state["disable_ctrldev"]:
+                        self.ctrldev_manager.unload_driver(zmip, True)
                     else:
-                        self.ctrldev_manager.unload_driver(zmip)
+                        self.ctrldev_manager.load_driver(zmip, True)
                 except:
                     pass
                 # Route chain zmops
