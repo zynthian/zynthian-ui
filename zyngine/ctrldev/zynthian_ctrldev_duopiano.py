@@ -37,6 +37,7 @@ from zyncoder.zyncore import lib_zyncore
 class zynthian_ctrldev_duopiano(zynthian_ctrldev_base):
 
 	dev_ids = ["GENERAL MIDI 1"]
+	unroute_from_chains = False		# Keep the input device routed to chains when driver is loaded
 
 	def init(self):
 		self.state_manager.add_slow_update_callback(60, self.keep_alive)

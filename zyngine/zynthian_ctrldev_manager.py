@@ -52,7 +52,7 @@ class zynthian_ctrldev_manager():
         self.state_manager = state_manager
         self.available_drivers = {}  # Map of driver classes indexed by device type name
         self.drivers = {}  # Map of device driver objects indexed by zmip
-        self.disabled_devices = [] # List of device uid disabled from loading driver
+        self.disabled_devices = []  # List of device uid disabled from loading driver
         self.update_available_drivers()
 
     def update_available_drivers(self):
@@ -85,8 +85,11 @@ class zynthian_ctrldev_manager():
             return False  # TODO: Should check if driver differs
         izmop = zynautoconnect.dev_in_2_dev_out(izmip)
         try:
-            lib_zyncore.zmip_set_route_chains(izmip, 0)
+            # Load driver
             self.drivers[izmip] = self.available_drivers[dev_id](self.state_manager, izmip, izmop)
+            # Unroute from chains if driver want it
+            if self.drivers[izmip].unroute_from_chains:
+                lib_zyncore.zmip_set_route_chains(izmip, 0)
             logging.info(f"Loaded ctrldev driver {dev_id}.")
             return True
         except Exception as e:
@@ -106,10 +109,12 @@ class zynthian_ctrldev_manager():
             if uid is not None and uid not in self.disabled_devices:
                 self.disabled_devices.append(uid)
         if izmip in self.drivers:
+            # Restore route to chains
+            if self.drivers[izmip].unroute_from_chains:
+                lib_zyncore.zmip_set_route_chains(izmip, 1)
             # Unload driver
             self.drivers[izmip].end()
             self.drivers.pop(izmip)
-            lib_zyncore.zmip_set_route_chains(izmip, 1)
             return True
 
         return False

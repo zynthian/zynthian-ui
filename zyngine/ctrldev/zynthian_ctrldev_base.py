@@ -42,6 +42,7 @@ class zynthian_ctrldev_base:
 	dev_zynmixer = False    # Can act as an audio mixer controller device
 	dev_pated = False		# Can act as a pattern editor device
 	enabled = False			# True if device driver is enabled
+	unroute_from_chains = True		# True if input device must be unrouted from chains when driver is loaded
 
 	# Function to initialise class
 	def __init__(self, state_manager, idev_in, idev_out=None):
