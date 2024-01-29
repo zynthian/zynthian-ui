@@ -946,7 +946,7 @@ class zynthian_chain_manager:
         result = {}
         for eng_code, info in self.engine_info.items():
             eng_type = info["TYPE"]
-            eng_cat = info["CLASS"]
+            eng_cat = info["CAT"]
             eng_enabled = info["ENABLED"]
             if (eng_enabled or all) and (filter_type == eng_type or filter_type is None) and (eng_code not in self.single_processor_engines or eng_code not in self.zyngines):
                 if eng_cat not in result:

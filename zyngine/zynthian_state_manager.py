@@ -133,7 +133,7 @@ class zynthian_state_manager:
         self.chain_manager = zynthian_chain_manager(self)
         self.reset_zs3()
 
-        self.alsa_mixer_processor = zynthian_processor("MX", {"NAME": "Mixer", "TITLE": "ALSA Mixer", "TYPE": "MIXER", "CLASS": None, "ENGINE": zynthian_engine_alsa_mixer, "ENABLED": True})
+        self.alsa_mixer_processor = zynthian_processor("MX", {"NAME": "Mixer", "TITLE": "ALSA Mixer", "TYPE": "MIXER", "CAT": None, "ENGINE": zynthian_engine_alsa_mixer, "ENABLED": True})
         self.alsa_mixer_processor.engine = zynthian_engine_alsa_mixer(self, self.alsa_mixer_processor)
         self.alsa_mixer_processor.refresh_controllers()
 

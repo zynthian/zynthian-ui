@@ -61,7 +61,7 @@ lv2_plugin_classes = {
 }
 
 engine_categories = {
-	"MIDI_SYNTH": ("Simulator", "Soundfont Player", "Virtual Analog"),
+	"MIDI_SYNTH": ("Simulator", "Soundfont", "Analog"),
 	"AUDIO_EFFECT": ("Analyser", "Spectral", "Delay", "Compressor", "Distortion", "Filter", "Equaliser",
 		"Modulator", "Expander", "Spatial", "Limiter", "Pitch Shifter", "Reverb", "Simulator", "Envelope",
 		"Gate", "Amplifier", "Chorus", "Flanger", "Phaser", "Highpass", "Lowpass", "Dynamics", "Looper",
@@ -74,10 +74,10 @@ engine_categories = {
 
 standalone_engine_info = {
 	"SL": ["SooperLooper", "SooperLooper", "Audio Effect", "Looper", True],
-	"ZY": ["ZynAddSubFX", "ZynAddSubFX - Synthesizer", "MIDI Synth", "Virtual Analog", True],
-	"FS": ["FluidSynth", "FluidSynth: SF2, SF3", "MIDI Synth", "Soundfont Player", True],
-	"SF": ["Sfizz", "Sfizz: SFZ", "MIDI Synth", "Soundfont Player", True],
-	"LS": ["LinuxSampler", "LinuxSampler: SFZ, GIG", "MIDI Synth", "Soundfont Player", True],
+	"ZY": ["ZynAddSubFX", "ZynAddSubFX", "MIDI Synth", "Analog", True],
+	"FS": ["FluidSynth", "FluidSynth: SF2, SF3", "MIDI Synth", "Soundfont", True],
+	"SF": ["Sfizz", "Sfizz: SFZ", "MIDI Synth", "Soundfont", True],
+	"LS": ["LinuxSampler", "LinuxSampler: SFZ, GIG", "MIDI Synth", "Soundfont", True],
 	"BF": ["setBfree", "setBfree - Hammond Emulator", "MIDI Synth", "Simulator", True],
 	"AE": ["Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", "Simulator", True],
 	"PT": ['Pianoteq', "Pianoteq", "MIDI Synth", "Simulator", True],
@@ -196,13 +196,13 @@ def generate_engines_config_file(refresh=True):
 		i = 0
 		for key, engine_info in standalone_engine_info.items():
 			try:
-				engine_class = engines[key]['CLASS']
+				engine_cat = engines[key]['CAT']
 				engine_index = engines[plugin_name]['INDEX']
 				engine_descr = engines[plugin_name]['DESCR']
 				engine_quality = engines[plugin_name]['QUALITY']
 				engine_complex = engines[plugin_name]['COMPLEX']
 			except:
-				engine_class = engine_info[3]
+				engine_cat = engine_info[3]
 				engine_index = i
 				engine_descr = get_engine_description(key)
 				engine_quality = randrange(5)
@@ -211,7 +211,7 @@ def generate_engines_config_file(refresh=True):
 				'NAME': engine_info[0],
 				'TITLE': engine_info[1],
 				'TYPE': engine_info[2],
-				'CLASS': engine_class,
+				'CAT': engine_cat,
 				'ENABLED': is_engine_enabled(key, True),
 				'INDEX': engine_index,
 				'URL': "",
@@ -229,14 +229,14 @@ def generate_engines_config_file(refresh=True):
 			key = f"JV/{name}"
 			try:
 				engine_type = engines[plugin_name]['TYPE']
-				engine_class = engines[plugin_name]['CLASS']
+				engine_cat = engines[plugin_name]['CAT']
 				engine_index = engines[plugin_name]['INDEX']
 				engine_descr = engines[plugin_name]['DESCR']
 				engine_quality = engines[plugin_name]['QUALITY']
 				engine_complex = engines[plugin_name]['COMPLEX']
 			except:
 				engine_type = get_plugin_type(plugin).value
-				engine_class = re.sub(' Plugin', '', str(plugin.get_class().get_label()))
+				engine_cat = re.sub(' Plugin', '', str(plugin.get_class().get_label()))
 				engine_index = 9999
 				engine_descr = get_engine_description(key)
 				engine_quality = randrange(5)
@@ -245,7 +245,7 @@ def generate_engines_config_file(refresh=True):
 				'NAME': name,
 				'TITLE': name,
 				'TYPE': engine_type,
-				'CLASS': engine_class,
+				'CAT': engine_cat,
 				'ENABLED': is_engine_enabled(key, False),
 				'INDEX': engine_index,
 				'URL': str(plugin.get_uri()),
