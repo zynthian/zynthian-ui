@@ -468,7 +468,7 @@ class zynthian_gui:
 		self.osc_init()
 
 		# Run debug thread
-		if zynthian_gui_config.log_level <= 10:
+		if zynthian_gui_config.debug_thread:
 			self.start_debug_thread()
 
 		# Initial loading screen. We need "current_screen" from here ...

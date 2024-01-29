@@ -161,7 +161,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		#self.list_data.append((self.update_system, 0, "Update Operating System"))
 		#self.list_data.append((None, 0, "> POWER"))
 		#self.list_data.append((self.restart_gui, 0, "Restart UI"))
-		if zynthian_gui_config.log_level >= 10:
+		if zynthian_gui_config.debug_thread:
 			self.list_data.append((self.exit_to_console, 0, "Exit"))
 		self.list_data.append((self.reboot, 0, "Reboot"))
 		self.list_data.append((self.power_off, 0, "Power Off"))

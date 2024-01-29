@@ -36,6 +36,8 @@ import zynconf
 # Log level and debuging
 # ------------------------------------------------------------------------------
 
+debug_thread = int(os.environ.get('ZYNTHIAN_DEBUG_THREAD', "0"))
+
 log_level = int(os.environ.get('ZYNTHIAN_LOG_LEVEL', logging.WARNING))
 #log_level = logging.DEBUG
 
