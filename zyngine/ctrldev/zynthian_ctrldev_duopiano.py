@@ -35,26 +35,17 @@ from zyncoder.zyncore import lib_zyncore
 # ------------------------------------------------------------------------------------------------------------------
 
 class zynthian_ctrldev_duopiano(zynthian_ctrldev_base):
-	counter = 0
 
 	dev_ids = ["GENERAL MIDI 1"]
 
 	def init(self):
-		self.counter = 0
-		self.keep_alive()
 		self.state_manager.add_slow_update_callback(60, self.keep_alive)
 
 	def end(self):
-		super().end()
 		self.state_manager.remove_slow_update_callback(self.keep_alive)
+		super().end()
 
-	""" Call regularly to keep piano alive
-		TODO: Set period. Set caller. Enable only when driver enabled (default?).
-	"""
 	def keep_alive(self):
-		if self.counter == 0:
-			lib_zyncore.dev_send_note_on(self.idev_out, 0, 0, 0)
-			self.counter = 10000
-		self.counter -= 1
+		lib_zyncore.dev_send_note_on(self.idev_out, 0, 0, 0)
 
 # ------------------------------------------------------------------------------
