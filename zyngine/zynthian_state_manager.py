@@ -143,6 +143,8 @@ class zynthian_state_manager:
         self.audio_player = None
         self.aubio_in = [1, 2]  # List of aubio inputs
 
+        self.slow_update_callbacks = [] # List of lists [rate, cb, schedule] for registered regularly repeating callbacks
+
         # Initialize SMF MIDI recorder and player
         try:
             self.smf_player = libsmf.addSmf()
@@ -470,7 +472,9 @@ class zynthian_state_manager:
         xruns_status = self.status_xrun
         midi_status = self.status_midi
         midi_clock_status = self.status_midi_clock
-        next_update_check = monotonic() + 2 # Short delay after startup before first check for updates
+        next_second_check = monotonic() + 2 # Short delay after startup before first slow update
+        self.add_slow_update_callback(3600, self.check_for_updates)
+
         while not self.exit_flag:
             # Get CPU Load
             #self.status_cpu_load = max(psutil.cpu_percent(None, True))
@@ -562,10 +566,16 @@ class zynthian_state_manager:
                 if self.sync:
                     self.sync = False
                     os.sync()
-
-                if now > next_update_check:
-                    self.check_for_updates()
-                    next_update_check = now + 3600 #TODO: Add update frequency config
+                
+                if now > next_second_check:
+                    for cb in self.slow_update_callbacks:
+                        if now > cb[2]:
+                            try:
+                                cb[1]()
+                                cb[2] = now + cb[0]
+                            except e as exception:
+                                logging.error(e)
+                    next_second_check = now + 1
 
             except Exception as e:
                 logging.exception(e)
@@ -579,6 +589,28 @@ class zynthian_state_manager:
             # Process MIDI events
             self.zynmidi_read()
             sleep(0.01)
+
+    def add_slow_update_callback(self, rate, cb):
+        """Add a callback to be called every "rate" seconds
+        
+        rate - time in seconds between callbacks
+        cb - Callback function
+        """
+
+        self.remove_slow_update_callback(cb)
+        self.slow_update_callbacks.append([rate, cb, 0])
+
+    def remove_slow_update_callback(self, cb):
+        """Add a callback to be called every "rate" seconds
+        
+        rate - time in seconds between callbacks
+        cb - Callback function
+        """
+
+        for cb in self.slow_update_callbacks:
+            if cb[1] == cb:
+                cb.remove(cb)
+                break
 
     # ------------------------------------------------------------------
     # MIDI processing
@@ -1403,7 +1435,7 @@ class zynthian_state_manager:
             uid = zynautoconnect.devices_in[idev].aliases[0]
             mcstate[uid] = {
                 "zmip_input_mode": bool(lib_zyncore.zmip_get_flag_active_chain(idev)),
-                "ctrldev_load": idev in self.ctrldev_manager.drivers,
+                "disable_ctrldev": uid in self.ctrldev_manager.disabled_devices,
                 "routed_chains": routed_chains
             }
             if uid == "AUBIO:in":
@@ -1442,10 +1474,10 @@ class zynthian_state_manager:
                     pass
                 zynautoconnect.update_midi_in_dev_mode(zmip)
                 try:
-                    if state["ctrldev_load"]:
-                        self.ctrldev_manager.load_driver(zmip)
+                    if state["disable_ctrldev"]:
+                        self.ctrldev_manager.unload_driver(zmip, True)
                     else:
-                        self.ctrldev_manager.unload_driver(zmip)
+                        self.ctrldev_manager.load_driver(zmip, True)
                 except:
                     pass
                 # Route chain zmops
@@ -2164,6 +2196,7 @@ class zynthian_state_manager:
         self.checking_for_updates = True
         def update_thread():
             try:
+                self.update_available = False
                 repos = ["/zynthian/zyncoder", "/zynthian/zynthian-ui", "/zynthian/zynthian-sys", "/zynthian/zynthian-webconf", "/zynthian/zynthian-data"]
                 for path in repos:
                     branch = check_output(["git", "-C", path, "rev-parse", "--abbrev-ref", "HEAD"], encoding="utf-8", stderr=STDOUT).strip()
@@ -2171,7 +2204,7 @@ class zynthian_state_manager:
                     remote_hash = check_output(["git", "-C", path, "ls-remote", "origin", branch], encoding="utf-8", stderr=STDOUT).strip().split('\t')[0]
                     self.update_available |= local_hash != remote_hash
             except:
-                self.update_available = False
+                pass
             self.checking_for_updates = False
 
         thread = Thread(target=update_thread, args=())

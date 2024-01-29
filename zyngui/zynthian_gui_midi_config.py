@@ -384,9 +384,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             elif option.startswith("Reset name"):
                 zynautoconnect.set_port_friendly_name(params)
             elif params == "LOAD_DRIVER":
-                self.zyngui.state_manager.ctrldev_manager.load_driver(self.list_data[self.index][1])
+                self.zyngui.state_manager.ctrldev_manager.load_driver(self.list_data[self.index][1], True)
             elif params == "UNLOAD_DRIVER":
-                self.zyngui.state_manager.ctrldev_manager.unload_driver(self.list_data[self.index][1])
+                self.zyngui.state_manager.ctrldev_manager.unload_driver(self.list_data[self.index][1], True)
             elif params == "AUBIO_INPUTS":
                 ain = aubio_inputs(self.zyngui.state_manager)
                 self.zyngui.screens['audio_in'].set_chain(ain)

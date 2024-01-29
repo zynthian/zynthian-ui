@@ -186,6 +186,16 @@ def get_port_from_name(name):
 	except:
 		return None
 
+def get_midi_in_uid(idev):
+	"""Get the UID of an input port
+	idev - Index of ZMIP port
+	returns - Port UID (aliases[0]) or None if not connected
+	"""
+
+	try:
+		return devices_in[idev].aliases[0]
+	except:
+		return None
 
 def get_midi_in_devid(idev):
 	"""Get the ALSA name of the port connected to ZMIP port
@@ -511,7 +521,7 @@ def midi_autoconnect():
 			state_manager.ctrldev_manager.unload_driver(i)
 
 	# Connect MIDI Output Devices
-	busy_idevs = []
+	busy_odevs = []
 	for hwdp in hw_midi_dst_ports:
 		devnum = None
 		# logger.debug("Connecting MIDI Output {}".format(hwdp))
@@ -528,11 +538,11 @@ def midi_autoconnect():
 					break
 		if devnum is not None:
 			required_routes[hwdp.name].add(f"ZynMidiRouter:dev{devnum}_out")
-			busy_idevs.append(devnum)
+			busy_odevs.append(devnum)
 
 	# Delete disconnected output devices from list
 	for i in range(0, max_num_devs):
-		if i not in busy_idevs and devices_out[i] is not None:
+		if i not in busy_odevs and devices_out[i] is not None:
 			logger.debug(f"Disconnected MIDI-out device {i}: {devices_out[i].name}")
 			devices_out[i] = None
 
@@ -667,6 +677,13 @@ def midi_autoconnect():
 				zyn_routed_midi[dst].append(src)
 			except:
 				pass
+
+	# Handle control device drivers
+	for i in range(0, max_num_devs):
+		if i not in busy_idevs and devices_in[i] is not None:
+			state_manager.ctrldev_manager.unload_driver(i)
+		else:
+			state_manager.ctrldev_manager.load_driver(i)
 
 	# Release Mutex Lock
 	release_lock()
@@ -904,10 +921,13 @@ def update_midi_port_aliases(port):
 	"""Set the uid and friendly name of port in aliases 0 & 1
 
 	port - JACK port object
+	returns - True if port aliases have changed
 	"""
 
 	try:
 		alias1, alias2 = (build_midi_port_name(port))
+		if len(port.aliases) == 2 and port.aliases[0] == alias1 and port.aliases[1] == alias2:
+			return False
 
 		# Clear current aliases - blunt!
 		for alias in port.aliases:
@@ -924,6 +944,8 @@ def update_midi_port_aliases(port):
 				port.set_alias(alias1)
 	except:
 		logging.warning(f"Unable to set alias for port {port.name}")
+		return False
+	return True
 
 
 def set_midi_port_alias(port_name, alias1, alias2=None, force=False):

@@ -51,7 +51,7 @@ class zynthian_ctrldev_base:
 		self.idev_out = idev_out       # Slot index where the output device (feedback), if any, is connected, starting from 1 (0 = None)
 		self.init()
 
-	# Initialize control device: setup, regisater signals, etc
+	# Initialize control device: setup, register signals, etc
 	# It *SHOULD* be implemented by child class
 	def init(self):
 		self.refresh()
@@ -81,7 +81,7 @@ class zynthian_ctrldev_base:
 	def sleep_on(self):
 		self.light_off()
 
-	# Sleep On
+	# Sleep Off
 	# *COULD* be improved by child class
 	def sleep_off(self):
 		self.refresh()

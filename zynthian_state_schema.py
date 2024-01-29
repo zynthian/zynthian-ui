@@ -125,7 +125,7 @@ ZynthianState = {
             "midi_capture": { # Dictionary of midi input configuration mapped by port input uid 
                 "ttymidi:MIDI_in": { # 
                     "zmip_input_mode": 1, # 1 if active chain mode enabled (stage mode), 0 for multitimbral
-                    "ctrldev_load": 0, # 1 to attempt loading controller device driver
+                    "disable_ctrldev": 0, # 1 to disable loading of controller device driver
                     "routed_chains": [], # List of chain zmops this input is routed to
                     "audio_in": [0,1], # List of audio inputs, e.g. for aubio (optional)
                     "midi_cc": { # Map of MIDI CC mapping, indexed by MIDI channel

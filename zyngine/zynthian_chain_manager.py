@@ -170,13 +170,14 @@ class zynthian_chain_manager:
         Returns : Chain ID or None if chain could not be created
         """
 
-        self.state_manager.start_busy("add_chain")
+        self.state_manager.start_busy("add_chain", "Adding Chain")
 
         # If not chain ID has been specified, create new unique chain ID
         if chain_id is None:
             chain_id = 1
             while chain_id in self.chains:
                 chain_id += 1
+
 
         # If Main chain ...
         if chain_id == 0:  # main
@@ -272,7 +273,7 @@ class zynthian_chain_manager:
 
         if chain_id not in self.chains:
             return False
-        self.state_manager.start_busy("remove_chain", None, f"removing chain {chain_id}")
+        self.state_manager.start_busy("remove_chain", "Removing Chain")
         chain_pos = self.get_chain_index(chain_id)
         chains_to_remove = [chain_id]  # List of associated chains that shold be removed simultaneously
         chain = self.chains[chain_id]
@@ -736,7 +737,10 @@ class zynthian_chain_manager:
             proc_id = self.get_available_processor_id() # TODO: Derive next available processor id from self.processors
         elif proc_id in self.processors:
             return None
-        self.state_manager.start_busy("add_processor", None, f"adding {eng_code} to chain {chain_id}")
+        if self.state_manager.is_busy():
+            self.state_manager.start_busy("add_processor", None, f"adding {eng_code} to chain {chain_id}")
+        else:
+            self.state_manager.start_busy("add_processor", "Adding Processor", f"adding {eng_code} to chain {chain_id}")
         processor = zynthian_processor(eng_code, self.engine_info[eng_code], proc_id)
         chain = self.chains[chain_id]
         self.processors[proc_id] = processor  # Add proc early to allow engines to add more as required, e.g. Aeolus
@@ -791,7 +795,10 @@ class zynthian_chain_manager:
             logging.error(f"Invalid processor instance '{processor}' can't be removed from chain {chain_id}!")
             return False
 
-        self.state_manager.start_busy("remove_processor", None, f"removing {processor.get_basepath()} from chain {chain_id}")
+        if self.state_manager.is_busy():
+            self.state_manager.start_busy("remove_processor", None, f"removing {processor.get_basepath()} from chain {chain_id}")
+        else:
+            self.state_manager.start_busy("remove_processor", "Removing Processor", f"removing {processor.get_basepath()} from chain {chain_id}")
         for param in processor.controllers_dict:
             self.remove_midi_learn(processor, param)
 
