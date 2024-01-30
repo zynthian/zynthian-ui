@@ -636,6 +636,8 @@ class zynthian_state_manager:
                 evtype = (ev >> 20) & 0xf
                 chan = (ev >> 16) & 0xf
 
+                #logging.info(f"MIDI EVENT: IZMIP={izmip}, TYPE={evtype}, CHAN={chan}")
+
                 # System Messages (Common & RT)
                 if evtype == 0xF:
                     # Clock
@@ -739,8 +741,8 @@ class zynthian_state_manager:
                     logging.info(f"MIDI PROGRAM CHANGE: CH#{chan}, PRG#{pgm}")
                     # MIDI learn SubSnapShot (ZS3)
                     if self.midi_learn_pc is not None:
-                        # When using ACTI mode, MIDI channel doesn't care.  Internal PC is managed as ACTI.
-                        if izmip == ZMIP_INT_INDEX or zynautoconnect.get_midi_in_dev_mode(izmip):
+                        # When using internal PC, ignore MIDI channel
+                        if izmip == 0xFF:
                             self.save_zs3(f"*/{pgm}")
                         else:
                             self.save_zs3(f"{chan}/{pgm}")
@@ -748,14 +750,16 @@ class zynthian_state_manager:
                     else:
                         # select SubSnapShot (ZS3)
                         if zynthian_gui_config.midi_prog_change_zs3:
-                            # When using ACTI mode, MIDI channel doesn't care. Internal PC is managed as ACTI.
-                            if izmip == ZMIP_INT_INDEX or zynautoconnect.get_midi_in_dev_mode(izmip):
+                            # When using internal PC, ignore MIDI channel
+                            if izmip == 0xFF:
                                 send_signal = self.load_zs3(f"*/{pgm}")
                             else:
                                 send_signal = self.load_zs3(f"{chan}/{pgm}")
                         # or select preset
                         else:
-                            #chan = self.chain_manager.get_active_chain().midi_chan  # This shouldn't be needed!!
+                            # Sends to active chain's MIDI channel when device uses ACTI mode
+                            if zynautoconnect.get_midi_in_dev_mode(izmip):
+                                chan = self.chain_manager.get_active_chain().midi_chan
                             send_signal = self.chain_manager.set_midi_prog_preset(chan, pgm)
                     if send_signal:
                         zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, izmip=izmip, chan=chan, num=pgm)
