@@ -77,7 +77,10 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 			else:
 				parts = id.split('/')
 				if len(parts) > 1:
-					title = f"{state['title']} -> CH#{parts[0]}:PR#{parts[1]}"
+					if parts[0] == "*":
+						title = f"{state['title']} -> PR#{parts[1]}"
+					else:
+						title = f"{state['title']} -> CH#{parts[0]}:PR#{parts[1]}"
 				else:
 					title = f"{state['title']} ({id})"
 			self.list_data.append((id, state, title))

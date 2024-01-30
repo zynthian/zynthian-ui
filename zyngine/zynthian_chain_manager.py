@@ -49,6 +49,7 @@ MAX_NUM_MIXER_CHANS = 16
 MAX_NUM_ZMOPS = 16
 MAX_NUM_MIDI_DEVS = 24
 ZMIP_CTRL_INDEX = 26
+ZMIP_INT_INDEX = 27
 
 engine2class = {
     "SL": zynthian_engine_sooperlooper,
