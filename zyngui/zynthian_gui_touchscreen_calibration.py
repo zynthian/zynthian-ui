@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
 # Zynthian GUI Touchscreen Calibration Class
 # 
 # Copyright (C) 2022 Brian Walton <brian@riban.co.uk>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import tkinter
 import logging
@@ -37,22 +37,24 @@ import glob
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 
+
 # Little class to represent x,y coordinates
 class point:
 	x = 0.0
 	y = 0.0
+
 	def __init__(self, x=0, y=0):
 		self.x = x
 		self.y = y
 
-#------------------------------------------------------------------------------
-# Zynthian Touchscreen Calibration GUI Class
-#------------------------------------------------------------------------------
 
+# ------------------------------------------------------------------------------
+# Zynthian Touchscreen Calibration GUI Class
+# ------------------------------------------------------------------------------
 
 # Class implements zynthian touchscreen calibration
+# TODO: Derive touchscreen calibration from gui base class
 
-#TODO: Derive touchscreen calibration from gui base class
 
 class zynthian_gui_touchscreen_calibration:
 
@@ -128,11 +130,10 @@ class zynthian_gui_touchscreen_calibration:
 
 		self.device_id = None # libinput name of selected device
 		
-
-	#	Run xinput
-	#	args: List of arguments to pass to xinput
-	#	Returns: Output of xinput as string
-	#	Credit: https://github.com/reinderien/xcalibrate
+	# Run xinput
+	# args: List of arguments to pass to xinput
+	# Returns: Output of xinput as string
+	# Credit: https://github.com/reinderien/xcalibrate
 	def xinput(self, *args):
 		try:
 			return run(args=('/usr/bin/xinput', *args),
@@ -141,8 +142,7 @@ class zynthian_gui_touchscreen_calibration:
 		except:
 			return ""
 
-
-	#	Thread waiting for first touch to detect touch interface
+	# Thread waiting for first touch to detect touch interface
 	def detectDevice(self):
 		# Populate list of absolute x/y devices
 		devices = []
@@ -179,11 +179,10 @@ class zynthian_gui_touchscreen_calibration:
 									self.canvas.bind('<ButtonRelease-1>', self.onRelease)
 									self.running = False
 
-
-	#	Set the device to configure
-	#	name: evdev device name
-	#	path: Path to device, e.g. '/dev/input/event0'
-	#	Returns: True on success
+	# Set the device to configure
+	# name: evdev device name
+	# path: Path to device, e.g. '/dev/input/event0'
+	# Returns: True on success
 	def setDevice(self, name, path):
 		# Transform evdev name to libinput id
 		props = None
@@ -217,18 +216,16 @@ class zynthian_gui_touchscreen_calibration:
 		self.setCalibration(self.device_id, [1,0,0,0,1,0,0,0,1]) # Reset calibration to allow absolute acquisition
 		return True
 
-
-	#	Handle touch press event
-	#	event: Event including x,y coordinates (optional)
+	# Handle touch press event
+	# event: Event including x,y coordinates (optional)
 	def onPress(self, event=None):
 		if self.device_id and not self.pressed:
 			self.canvas.itemconfig("crosshairs_lines", fill="red")
 			self.canvas.itemconfig("crosshairs_circles", outline="red")
 			self.pressed = True
 
-
-	#	Handle touch release event
-	#	event: Event including x,y coordinates
+	# Handle touch release event
+	# event: Event including x,y coordinates
 	def onRelease(self, event):
 		self.canvas.itemconfig("crosshairs_lines", fill="white")
 		self.canvas.itemconfig("crosshairs_circles", outline="white")
@@ -301,15 +298,14 @@ class zynthian_gui_touchscreen_calibration:
 				self.ctm = [a, b, c, d, e, f, 0, 0, 1]
 				self.setCalibration(self.device_id, self.ctm, True)
 
-				#TODO: Allow user to check calibration
+				# TODO: Allow user to check calibration
 
 				self.zyngui.zynswitch_defered('S',1)
 				return
 
 		self.drawCross()
 
-	
-	#	Draws the crosshairs for touch registration for current index (0=NW,1=SE,2=CENTRE)
+	# Draws the crosshairs for touch registration for current index (0=NW,1=SE,2=CENTRE)
 	def drawCross(self):
 		if self.index > 2:
 			return
@@ -326,11 +322,10 @@ class zynthian_gui_touchscreen_calibration:
 			self.display_points[self.index].x - self.crosshair_size * 0.2, self.display_points[self.index].y - self.crosshair_size * 0.2,
 			self.display_points[self.index].x + self.crosshair_size * 0.2, self.display_points[self.index].y + self.crosshair_size * 0.2)
 
-
-	#	Apply screen calibration
-	#	device: libinput name or ID of device to calibrate
-	#	matrix: Transform matrix as 9 element array (3x3)
-	#	write_file: True to write configuration to file (default: false)
+	# Apply screen calibration
+	# device: libinput name or ID of device to calibrate
+	# matrix: Transform matrix as 9 element array (3x3)
+	# write_file: True to write configuration to file (default: false)
 	def setCalibration(self, device, matrix, write_file=False):
 		try:
 			logging.debug("Calibration touchscreen '%s' with matrix [%f %f %f %f %f %f %f %f %f]", 
@@ -391,8 +386,7 @@ class zynthian_gui_touchscreen_calibration:
 		except Exception as e:
 			logging.warning("Failed to set touchscreen calibration", e)
 
-
-	#	Hide display
+	# Hide display
 	def hide(self):
 		if self.shown:
 			self.timer.cancel()
@@ -401,8 +395,7 @@ class zynthian_gui_touchscreen_calibration:
 			self.main_frame.grid_forget()
 			self.shown=False
 
-
-	# 	Build display
+	# Build display
 	def build_view(self):
 		if self.zyngui.test_mode:
 			logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
@@ -416,9 +409,9 @@ class zynthian_gui_touchscreen_calibration:
 		self.countdown = self.timeout
 		self.index = 2
 		self.drawCross()
+		return True
 
-
-	#	Show display
+	# Show display
 	def show(self):
 		self.main_frame.grid()
 		self.onTimer()
@@ -426,8 +419,7 @@ class zynthian_gui_touchscreen_calibration:
 		self.detect_thread.name = "touchscreen calibrate"
 		self.detect_thread.start()
 
-
-	#	Handle one second timer trigger
+	# Handle one second timer trigger
 	def onTimer(self):
 		if self.shown:
 			self.canvas.itemconfig(self.countdown_text, text="Closing in %ds" % (self.countdown))
@@ -439,21 +431,17 @@ class zynthian_gui_touchscreen_calibration:
 			self.timer = Timer(interval=1, function=self.onTimer)
 			self.timer.start()
 
-
-	#	Handle zyncoder read - called by parent when zyncoders updated
+	# Handle zyncoder read - called by parent when zyncoders updated
 	def zynpot_cb(self, i, dval):
 		pass
 
-
-	#	Handle refresh loading - called by parent during screen load
+	# Handle refresh loading - called by parent during screen load
 	def refresh_loading(self):
 		pass
 
-	
-	#	Handle physical switch press
-	#	type: Switch duration type (default: short)
+	# Handle physical switch press
+	# type: Switch duration type (default: short)
 	def switch_select(self, type='S'):
 		pass
 
-
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------

@@ -109,6 +109,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.set_title(f"Scene {self.bank}")
 		zynsigman.register(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_play_state)
 		zynsigman.register(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PROGRESS, self.update_progress)
+		return True
 
 	# Function to hide GUI
 	def hide(self):

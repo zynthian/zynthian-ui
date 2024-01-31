@@ -246,6 +246,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if zoom != self.zoom:
 			self.set_vzoom(zoom)
 
+		return True
+
 	# Function to enable note duration/velocity direct edit mode
 	# mode: Edit mode to enable [EDIT_MODE_NONE | EDIT_MODE_SINGLE | EDIT_MODE_ALL]
 	def enable_edit(self, mode):

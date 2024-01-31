@@ -70,7 +70,7 @@ class zynthian_gui_loading:
 		self.loading_item = self.canvas.create_image(self.width//2, self.height//2, image=zynthian_gui_config.loading_imgs[0], anchor=tkinter.CENTER)
 
 	def build_view(self):
-		pass
+		return True
 
 	def hide(self):
 		if self.shown:

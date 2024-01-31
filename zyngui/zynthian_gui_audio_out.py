@@ -45,8 +45,11 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 		super().__init__('Audio Out', True)
 
 	def build_view(self):
-		super().build_view()
-		zynsigman.register(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
+		if super().build_view():
+			zynsigman.register(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
+			return True
+		else:
+			return False
 
 	def hide(self):
 		if self.shown:

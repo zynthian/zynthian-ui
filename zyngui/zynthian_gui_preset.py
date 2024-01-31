@@ -52,9 +52,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def build_view(self):
 		if self.zyngui.get_current_processor():
-			super().build_view()
+			return super().build_view()
 		else:
-			self.zyngui.close_screen()
+			return False
 
 	def show(self):
 		if len(self.list_data) > 0:

@@ -94,7 +94,7 @@ class zynthian_gui_confirm():
 
 
 	def build_view(self):
-		pass
+		return True
 
 	def show(self, text, callback=None, cb_params=None):
 		if self.zyngui.test_mode:

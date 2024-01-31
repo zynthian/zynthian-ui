@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
 # Zynthian GUI MIDI Recorder Class
 # 
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import os
 import logging
@@ -36,9 +36,10 @@ from zyngui.zynthian_gui_controller import zynthian_gui_controller
 from zynlibs.zynsmf import zynsmf # Python wrapper for zynsmf (ensures initialised and wraps load() function)
 from zynlibs.zynsmf.zynsmf import libsmf # Direct access to shared library 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian MIDI Recorder GUI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
@@ -59,7 +60,6 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		self.cuia_stop = self.zyngui.state_manager.stop_midi_playback
 		self.cuia_toggle_play = self.zyngui.state_manager.toggle_midi_playback
 
-
 	def refresh_status(self):
 		super().refresh_status()
 		if self.recording != self.zyngui.state_manager.status_midi_recorder:
@@ -70,16 +70,16 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.fill_list()
 			self.update_status_playback()
 
-
 	def build_view(self):
-		super().build_view()
-		self.update_status_playback()
-
+		if super().build_view():
+			self.update_status_playback()
+			return True
+		else:
+			return False
 
 	def hide(self):
 		self.hide_playing_bpm()
 		super().hide()
-
 
 	def fill_list(self):
 		#self.index = 0
@@ -103,7 +103,6 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			i += 1
 
 		super().fill_list()
-
 
 	def get_filelist(self, src_dir, src_name):
 		res = []
@@ -140,11 +139,9 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		libsmf.removeSmf(smf)
 		return res
 
-
 	def fill_listbox(self):
 		super().fill_listbox()
 		self.update_status_playback()
-
 
 	def update_status_playback(self):
 		item_labels = self.listbox.get(0, tkinter.END)
@@ -166,7 +163,6 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		self.select_listbox(self.index)
 
-
 	def update_status_recording(self, fill=False):
 		if self.list_data:
 			if self.zyngui.state_manager.status_midi_recorder:
@@ -177,7 +173,6 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 				self.listbox.delete(0)
 				self.listbox.insert(0, self.list_data[0][2])
 				self.select_listbox(self.index)
-
 
 	def update_status_loop(self, fill=False):
 		if zynthian_gui_config.midi_play_loop:
@@ -190,7 +185,6 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.listbox.delete(1)
 			self.listbox.insert(1, self.list_data[1][2])
 			self.select_listbox(self.index)
-
 
 	def select_action(self, i, t='S'):
 		fpath = self.list_data[i][0]
@@ -209,16 +203,14 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			else:
 				self.zyngui.show_confirm(f"Do you really want to delete '{self.list_data[i][2]}'?", self.delete_confirmed, fpath)
 
-
 	# Function to handle *all* switch presses.
-	#	swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
-	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
-	#	returns True if action fully handled or False if parent action should be triggered
+	# swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	# t: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	# returns True if action fully handled or False if parent action should be triggered
 	def switch(self, swi, t='S'):
 		if swi == 0:
 			if t == 'S':
 				return True # Block short layer press
-
 
 	def delete_confirmed(self, fpath):
 		logging.info("DELETE MIDI RECORDING: {}".format(fpath))
@@ -228,10 +220,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		except Exception as e:
 			logging.error(e)
 
-
 	def toggle_recording(self):
 		self.zyngui.state_manager.toggle_midi_record()
-
 
 	def show_playing_bpm(self):
 		if self.bpm_zgui_ctrl:
@@ -253,20 +243,17 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			)
 		self.zyngui.state_manager.zynseq.update_tempo()
 
-
 	def hide_playing_bpm(self):
 		if self.bpm_zgui_ctrl:
 			self.bpm_zgui_ctrl.hide()
 			self.bpm_zgui_ctrl.grid_remove()
 			self.loading_canvas.grid()
 
-
 	# Implement engine's method
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol=="bpm":
 			self.zyngui.state_manager.zynseq.set_tempo(zctrl.value)
 			logging.debug("SET PLAYING BPM => {}".format(zctrl.value))
-
 
 	def zynpot_cb(self, i ,dval):
 		if not self.shown:
@@ -278,14 +265,12 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		else:
 			return super().zynpot_cb(i, dval)
 
-
 	def plot_zctrls(self, force=False):
 		super().plot_zctrls()
 		if self.bpm_zgui_ctrl:
 			if self.zyngui.state_manager.zynseq.zctrl_tempo.is_dirty or force:
 				self.bpm_zgui_ctrl.calculate_plot_values()
 			self.bpm_zgui_ctrl.plot_value()
-
 
 	def toggle_loop(self):
 		if zynthian_gui_config.midi_play_loop:
@@ -296,7 +281,6 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			zynthian_gui_config.midi_play_loop = True
 		zynconf.save_config({"ZYNTHIAN_MIDI_PLAY_LOOP": str(int(zynthian_gui_config.midi_play_loop))})
 		self.update_status_loop(True)
-
 
 	def update_wsleds(self, wsleds):
 		wsl = self.zyngui.wsleds
@@ -313,8 +297,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		else:
 			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_alt)
 
-
 	def set_select_path(self):
 		self.select_path.set("MIDI Recorder")
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------

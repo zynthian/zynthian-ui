@@ -58,9 +58,9 @@ class zynthian_gui_bank(zynthian_gui_selector):
 					self.index = 0
 				else:
 					self.current_processor.set_show_fav_presets(False)
-			super().build_view()
+			return super().build_view()
 		else:
-			self.zyngui.close_screen()
+			return False
 
 	def show(self):
 		if len(self.list_data) > 0:

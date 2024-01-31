@@ -115,6 +115,7 @@ class zynthian_gui_cv_config(zynthian_gui_base):
 
 	def build_view(self):
 		self.set_zctrls()
+		return True
 
 
 	def zynpot_cb(self, i, dval):

@@ -288,6 +288,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 		self.set_zctrls()
 		self.update_piano()
 		self.replot = True
+		return True
 
 	def hide(self):
 		if self.shown:

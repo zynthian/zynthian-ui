@@ -179,8 +179,9 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			super().build_view()
 			if self.index >= len(self.list_data):
 				self.index = len(self.list_data) - 1
+			return True
 		else:
-			self.zyngui.close_screen()
+			return False
 
 	def select_action(self, i, t='S'):
 		self.index = i

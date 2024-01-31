@@ -80,7 +80,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         # Only scan for new BLE devices in admin view
         if self.chain is None:
             self.enable_ble_scan()
-        super().build_view()
+        return super().build_view()
 
     def hide(self):
         self.disable_ble_scan()

@@ -813,6 +813,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_ARM, self.update_control_arm)
 		zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
 		zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.update_control_play)
+		return True
 
 	# Function to update display, e.g. after geometry changes
 	def update_layout(self):

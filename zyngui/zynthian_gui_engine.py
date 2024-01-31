@@ -169,7 +169,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		except:
 			self.index = 0
 			self.context_index[self.zyngui.modify_chain_status["type"]] = self.index
-		super().build_view()
+		return super().build_view()
 
 	def hide(self):
 		try:

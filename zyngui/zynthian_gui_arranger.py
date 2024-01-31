@@ -464,6 +464,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		self.update_sequence_tracks()
 		self.redraw_pending = 4
 		self.select_position()
+		return True
 
 
 	# Function to hide GUI

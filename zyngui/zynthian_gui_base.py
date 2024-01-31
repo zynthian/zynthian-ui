@@ -399,7 +399,7 @@ class zynthian_gui_base(tkinter.Frame):
 
 	# Draw screen ready to display (like double buffer) - Override in subclass
 	def build_view(self):
-		pass
+		return True
 
 
 	# Show the view

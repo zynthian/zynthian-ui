@@ -73,7 +73,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def build_view(self):
 		self.state_manager.check_for_updates()
-		super().build_view()
+		return super().build_view()
 
 
 	def fill_list(self):

@@ -736,7 +736,7 @@ class zynthian_chain:
         return True
 
     def get_slot(self, processor):
-        """Returns the slot which contains processor or None if processor is not in chain"""
+        """Returns the slot index which contains processor or None if processor is not in chain"""
 
         slots = self.get_slots_by_type(processor.type)
         for i, slot in enumerate(slots):

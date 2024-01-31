@@ -195,6 +195,7 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
 
 	def build_view(self):
 		self.setup_zctrls()
+		return True
 
 
 	def zynpot_cb(self, i, dval):

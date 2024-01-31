@@ -98,7 +98,7 @@ class zynthian_gui_control_xy():
 
 
 	def build_view(self):
-		pass
+		return True
 
 	def show(self):
 		if not self.shown:

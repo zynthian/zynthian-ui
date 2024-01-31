@@ -95,8 +95,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if self.zyngui.get_current_processor():
 			super().build_view()
 			self.click_listbox()
-		else:
 			return True
+		else:
+			return False
 
 	def hide(self):
 		self.exit_midi_learn()

@@ -568,12 +568,19 @@ class zynthian_gui:
 				#self.state_manager.audio_player.refresh_controllers()
 			else:
 				logging.error("Audio Player not created!")
+				self.screen_lock.release()
 				return
 		else:
 			self.current_processor = self.get_current_processor()
 
 		if screen not in ("bank", "preset", "option"):
 			self.chain_manager.restore_presets()
+
+		if not self.screens[screen].build_view():
+			self.screen_lock.release()
+			#self.show_screen_reset("audio_mixer")
+			self.close_screen()
+			return
 
 		if hmode == zynthian_gui.SCREEN_HMODE_ADD:
 			if len(self.screen_history) == 0 or self.screen_history[-1] != screen:
@@ -585,11 +592,6 @@ class zynthian_gui:
 			self.screen_history.append(screen)
 		elif hmode == zynthian_gui.SCREEN_HMODE_RESET:
 			self.screen_history = [screen]
-
-		if self.screens[screen].build_view():
-			self.screen_lock.release()
-			self.show_screen_reset("audio_mixer")
-			return
 
 		if self.current_screen != screen:
 			#logging.debug(f"SHOW_SCREEN {screen}")
