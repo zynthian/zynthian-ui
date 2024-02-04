@@ -977,7 +977,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 }
             } else if(cmd == 0x90) {
                 // Note on
-                if(pPlayer->play_state == STOPPED || pPlayer->play_state == STOPPING) {
+                if(pPlayer->play_state == STOPPED || pPlayer->play_state == STOPPING || pPlayer->last_note_played == midiEvent.buffer[1]) {
                     pPlayer->play_pos_frames = pPlayer->crop_start_src;
                     pPlayer->play_state = STARTING;
                 }
