@@ -63,7 +63,8 @@ engine2class = {
     'PD': zynthian_engine_puredata,
     'MD': zynthian_engine_modui,
     'JV': zynthian_engine_jalv,
-    'PT': zynthian_engine_pianoteq
+    'PT': zynthian_engine_pianoteq,
+    'IR': zynthian_engine_inet_radio
 }
 
 # ----------------------------------------------------------------------------

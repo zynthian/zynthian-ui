@@ -247,7 +247,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 	def start(self):
 		self.osc_init()
-		super().start()
+		return super().start()
 
 	def stop(self):
 		super().stop()
