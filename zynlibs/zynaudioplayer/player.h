@@ -1,5 +1,5 @@
 /*  Audio file player library for Zynthian
-    Copyright (C) 2021-2023 Brian Walton <brian@riban.co.uk>
+    Copyright (C) 2021-2024 Brian Walton <brian@riban.co.uk>
     License: LGPL V3
 */
 
@@ -404,6 +404,17 @@ void set_env_target_ratio_dr(AUDIO_PLAYER * pPlayer, float ratio);
 *   @retval <float> Target ratio
 */
 float get_env_target_ratio_dr(AUDIO_PLAYER * pPlayer);
+
+/** @brief Set the quantity of beats in a loop
+*   @param  player_handle Handle of player provided by init_player()
+*   @param beats Quantity of beats or 0 for no loop behaviour
+*/
+void set_beats(AUDIO_PLAYER * pPlayer, uint8_t beats);
+
+/** @brief  Set tempo for loop play
+*   @param  tempo Tempo in beats per minute
+*/
+void set_tempo(float tempo);
 
 /**** Global functions ****/
 

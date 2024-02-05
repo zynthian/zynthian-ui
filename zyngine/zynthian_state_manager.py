@@ -138,7 +138,7 @@ class zynthian_state_manager:
         self.alsa_mixer_processor.refresh_controllers()
 
         self.audio_recorder = zynthian_audio_recorder(self)
-        self.zynseq = zynseq.zynseq()
+        self.zynseq = zynseq.zynseq(self)
         self.ctrldev_manager = None
         self.audio_player = None
         self.aubio_in = [1, 2]  # List of aubio inputs
@@ -1714,6 +1714,10 @@ class zynthian_state_manager:
         else:
             self.start_midi_record()
 
+    def set_tempo(self, tempo):
+        self.zynseq.set_tempo(tempo)
+        self.audio_player.engine.player.set_tempo(tempo)
+
     def start_midi_playback(self, fpath):
         self.stop_midi_playback()
         if fpath is None:
@@ -1737,7 +1741,7 @@ class zynthian_state_manager:
             zynsmf.load(self.smf_player, fpath)
             tempo = libsmf.getTempo(self.smf_player, 0)
             logging.info(f"STARTING MIDI PLAY '{fpath}' => {tempo}BPM")
-            self.zynseq.set_tempo(tempo)
+            self.set_tempo(tempo)
             libsmf.startPlayback()
             self.zynseq.transport_start("zynsmf")
             if libsmf.getPlayState() != zynsmf.PLAY_STATE_STOPPED:

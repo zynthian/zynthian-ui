@@ -125,6 +125,9 @@ class AUDIO_PLAYER {
     uint8_t held_note = 0; // 1 if any MIDI notes held
     uint8_t sustain = 0; // True when sustain pedal held
     uint8_t last_sustain = -1;
+    uint8_t beats = 0; // Quantity of beats in audio clip (used for stetching loops) 0 if not stretching
+    bool time_ratio_dirty = false; // True if time stretch ratio changed
+    double time_ratio = 1.0; // Time stretch ratio
     float src_ratio = 1.0; // Samplerate ratio of file
     float pitch_bend = 0.0; // Amount of MIDI pitch bend applied +/-range
     uint8_t pitch_bend_range = 2; // Pitchbend range in semitones

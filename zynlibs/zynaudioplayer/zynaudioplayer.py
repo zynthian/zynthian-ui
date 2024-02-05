@@ -5,7 +5,7 @@
 #
 # A Python wrapper for zynaudioplayer library
 #
-# Copyright (C) 2021-2023 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2021-2024 Brian Walton <brian@riban.co.uk>
 # License: LGPL V3
 #
 #********************************************************************
@@ -78,6 +78,7 @@ class zynaudioplayer():
 			self.libaudioplayer.set_env_sustain.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_env_release.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_env_release.argtypes = [ctypes.c_void_p, ctypes.c_float]
+			self.libaudioplayer.set_tempo.argtypes = [ctypes.c_float]
 			self.control_cb = None
 		except Exception as e:
 			self.libaudioplayer=None
@@ -450,6 +451,17 @@ class zynaudioplayer():
 	def get_release(self, handle):
 		return self.libaudioplayer.get_env_release(handle)
 
+
+	#	Set beats in clip
+	#	handle: Index of player
+	#	beats: Quantity of beats or zero for non-beat based sample
+	def set_beats(self, handle, beats):
+		return self.libaudioplayer.set_beats(handle, beats)
+
+	#	Set tempo for loop
+	#	tempo : Tempo in BPM
+	def set_tempo(self, tempo):
+		self.libaudioplayer.set_tempo(tempo)
 
 	#	Set file read buffer size
 	#	handle: Index of player

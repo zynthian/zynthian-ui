@@ -311,6 +311,7 @@ class zynseq(zynthian_engine):
 	def send_controller_value(self, zctrl):
 		if zctrl == self.zctrl_tempo:
 			self.libseq.setTempo(zctrl.value)
+			self.state_manager.audio_player.engine.player.set_tempo(zctrl.value)
 
 	def set_midi_channel(self, bank, sequence, track, channel):
 		self.libseq.setChannel(bank, sequence, track, channel)
