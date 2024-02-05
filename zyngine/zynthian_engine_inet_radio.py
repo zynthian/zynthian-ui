@@ -53,7 +53,7 @@ class zynthian_engine_inet_radio(zynthian_engine):
 		self.name = "InternetRadio"
 		self.nickname = "IR"
 		self.jackname = "inetradio"
-		self.type = "MIDI Synth" # TODO: Should we override this? With what value?
+		self.type = "Audio Generator"
 		self.uri = None
 
 		self.monitors_dict = OrderedDict()
