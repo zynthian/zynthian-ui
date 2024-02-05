@@ -851,7 +851,7 @@ class zynthian_gui:
 						chain_id,
 						self.modify_chain_status["engine"]
 					)
-					self.modify_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
+					#self.modify_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
 					if processor is None:
 						# Created empty chain
 						# self.chain_manager.set_active_chain_by_id(chain_id)
