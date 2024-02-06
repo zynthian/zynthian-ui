@@ -63,7 +63,8 @@ engine2class = {
     'PD': zynthian_engine_puredata,
     'MD': zynthian_engine_modui,
     'JV': zynthian_engine_jalv,
-    'PT': zynthian_engine_pianoteq
+    'PT': zynthian_engine_pianoteq,
+    'IR': zynthian_engine_inet_radio
 }
 
 # ----------------------------------------------------------------------------
@@ -215,7 +216,8 @@ class zynthian_chain_manager:
             # Enable all MIDI inputs by default
             # TODO: Should we allow user to define default routing?
             for zmip in range(MAX_NUM_MIDI_DEVS):
-                lib_zyncore.zmop_set_route_from(chain.zmop_index, zmip, 1)
+                unroute = zmip in self.state_manager.ctrldev_manager.drivers and self.state_manager.ctrldev_manager.drivers[zmip].unroute_from_chains
+                lib_zyncore.zmop_set_route_from(chain.zmop_index, zmip, not unroute)
 
         # Set MIDI channel
         self.set_midi_chan(chain_id, midi_chan)

@@ -5,7 +5,7 @@
 #
 # A Python wrapper for zynseq library
 #
-# Copyright (C) 2021-2022 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2021-2024 Brian Walton <brian@riban.co.uk>
 #
 # ********************************************************************
 #
@@ -87,6 +87,7 @@ class zynseq(zynthian_engine):
 	def __init__(self, state_manager=None):
 		self.state_manager = state_manager
 		self.changing_bank = False
+		self.audio_loops = [] # List of [group,seq] pairs that are configured as audio loops
 		try:
 			self.libseq = ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynseq.so")
 			self.libseq.getSequenceName.restype = ctypes.c_char_p
@@ -291,7 +292,7 @@ class zynseq(zynthian_engine):
 
 
 	# Toggle JACK transport
-	# client: Nameto register or was previously registered with transport when started
+	# client: Name to register or was previously registered with transport when started
 	def transport_toggle(self, client):
 		if self.libseq:
 			self.libseq.transportToggle(bytes(client, "utf-8"))
@@ -311,6 +312,7 @@ class zynseq(zynthian_engine):
 	def send_controller_value(self, zctrl):
 		if zctrl == self.zctrl_tempo:
 			self.libseq.setTempo(zctrl.value)
+			self.state_manager.audio_player.engine.player.set_tempo(zctrl.value)
 
 	def set_midi_channel(self, bank, sequence, track, channel):
 		self.libseq.setChannel(bank, sequence, track, channel)
@@ -390,5 +392,17 @@ class zynseq(zynthian_engine):
 			return col * self.col_in_bank + row
 		else:
 			return -1
+
+	def is_audio(self, bank, sequence):
+		return (bank,sequence) in self.audio_loops
+
+	def set_audio_loop(self, bank, sequence, audio=True):
+		if audio:
+			if (bank, sequence) in self.audio_loops:
+				return
+			self.audio_loops.append((bank, sequence))
+		else:
+			if (bank, sequence) in self.audio_loops:
+				self.audio_loops.remove((bank, sequence))
 
 # -------------------------------------------------------------------------------

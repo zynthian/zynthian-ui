@@ -1,5 +1,5 @@
 /*  Audio file player library for Zynthian
-    Copyright (C) 2021-2023 Brian Walton <brian@riban.co.uk>
+    Copyright (C) 2021-2024 Brian Walton <brian@riban.co.uk>
     License: LGPL V3
     Envelope generator based on code by EarLevel Engineering <https://www.earlevel.com/main/2013/06/03/envelope-generators-adsr-code/>
 */
@@ -37,6 +37,7 @@ uint8_t g_last_debug = 0;
 char g_supported_codecs[1024];
 uint8_t g_mutex = 0;
 uint32_t g_nextIndex = 1;
+float g_tempo = 2.0; // Tempo in beats per second
 
 // Declare local functions
 void set_env_gate(AUDIO_PLAYER * pPlayer, uint8_t gate);
@@ -68,6 +69,21 @@ int is_codec_supported(const char* codec) {
             return 1;
     }
     return 0;
+}
+
+void updateTempo(AUDIO_PLAYER * pPlayer) {
+    getMutex();
+    if (!pPlayer)
+        return;
+    if(pPlayer->beats) {
+        float div = g_tempo * (pPlayer->crop_end_src - pPlayer->crop_start_src);
+        if (div > 0.0)
+            pPlayer->time_ratio = g_samplerate * pPlayer->beats / div;
+    } else {
+        pPlayer->time_ratio = 1.0;
+    }
+    pPlayer->time_ratio_dirty = true;
+    releaseMutex();
 }
 
 char* get_supported_codecs() {
@@ -393,10 +409,10 @@ void* file_thread_fn(void * param) {
                     pPlayer->file_read_status = WAITING;
                 }
             }
-            if(pPlayer->file_read_status != LOOPING) {
+            //if(pPlayer->file_read_status != LOOPING) {
                 send_notifications(pPlayer, NOTIFY_ALL);
                 usleep(10000); // Reduce CPU load by waiting until next file read operation
-            }
+            //}
         }
     }
     if(pFile) {
@@ -577,6 +593,7 @@ void set_crop_start_time(AUDIO_PLAYER * pPlayer, float time) {
     if(pPlayer->play_pos_frames < frames)
         set_position(pPlayer, time);
     pPlayer->last_crop_start = -1;
+    updateTempo(pPlayer);
     send_notifications(pPlayer, NOTIFY_CROP_START);
 }
 
@@ -612,6 +629,7 @@ void set_crop_end_time(AUDIO_PLAYER * pPlayer, float time) {
         pPlayer->file_read_status = WAITING;
     releaseMutex();
     pPlayer->last_crop_end = -1;
+    updateTempo(pPlayer);
     send_notifications(pPlayer, NOTIFY_CROP_END);
 }
 
@@ -829,6 +847,7 @@ inline float process_env(AUDIO_PLAYER * pPlayer) {
 }
 
 inline void set_env_gate(AUDIO_PLAYER * pPlayer, uint8_t gate) {
+    DPRINTF("set_env_gate: was: %d req: %d current env phase: %d\n", pPlayer->env_gate, gate, pPlayer->env_state);
     if (gate) {
         pPlayer->env_state = ENV_ATTACK;
         // fprintf(stderr, "Envelope: ATTACK\n");
@@ -864,7 +883,11 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         if(pPlayer->play_state == STARTING && pPlayer->file_read_status != SEEKING)
             pPlayer->play_state = PLAYING;
 
-        if(pPlayer->play_state == PLAYING || pPlayer->play_state == STOPPING || pPlayer->play_state == STOPPING) {
+        if(pPlayer->play_state == PLAYING || pPlayer->play_state == STOPPING) {
+            if (pPlayer->time_ratio_dirty) {
+                pPlayer->stretcher->setTimeRatio(pPlayer->time_ratio);
+                pPlayer->time_ratio_dirty = false;
+            }
             while(pPlayer->stretcher->available() < nFrames) {
                 size_t sampsReq = min((size_t)256, pPlayer->stretcher->getSamplesRequired());
                 size_t nBytes = min(jack_ringbuffer_read_space(pPlayer->ringbuffer_a), jack_ringbuffer_read_space(pPlayer->ringbuffer_b));
@@ -977,7 +1000,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 }
             } else if(cmd == 0x90) {
                 // Note on
-                if(pPlayer->play_state == STOPPED) {
+                if(pPlayer->play_state == STOPPED || pPlayer->play_state == STOPPING || pPlayer->last_note_played == midiEvent.buffer[1]) {
                     pPlayer->play_pos_frames = pPlayer->crop_start_src;
                     pPlayer->play_state = STARTING;
                 }
@@ -1306,6 +1329,27 @@ void set_pos_notify_delta(AUDIO_PLAYER * pPlayer, float time) {
         pPlayer->pos_notify_delta = time;
         releaseMutex();
     }
+}
+
+void set_beats(AUDIO_PLAYER * pPlayer, uint8_t beats) {
+    if(pPlayer) {
+        pPlayer->beats = beats;
+        updateTempo(pPlayer);
+    }
+}
+
+uint8_t get_beats(AUDIO_PLAYER * pPlayer) {
+    if(!pPlayer)
+        return 0;
+    return pPlayer->beats;
+}
+
+void set_tempo(float tempo) {
+    if (tempo < 10.0)
+        return;
+    g_tempo = tempo / 60;
+    for (auto it = g_vPlayers.begin(); it != g_vPlayers.end(); ++it)
+        updateTempo(*it);
 }
 
 /**** Global functions ***/

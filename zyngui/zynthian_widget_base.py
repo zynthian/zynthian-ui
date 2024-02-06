@@ -52,9 +52,14 @@ class zynthian_widget_base(tkinter.Frame):
 
 
 	def on_size(self, event):
+		if event.width == self.width and event.height == self.height:
+			return
 		self.width = event.width
 		self.height = event.height
-
+		try:
+			self.widget_canvas.configure(width=self.width, height=self.height)
+		except:
+			pass
 
 	def show(self):
 		if not self.shown:

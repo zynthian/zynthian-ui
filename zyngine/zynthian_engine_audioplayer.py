@@ -86,7 +86,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['info', None, 1, ["None", "Duration", "Position", "Remaining", "Loop length", "Samplerate", "CODEC", "Filename"]],
 			['bend range', None, 2, 24],
 			['view offset', None, 0, 1],
-			['amp zoom', None, 1.0, 10.0]
+			['amp zoom', None, 1.0, 10.0],
+			['beats', None, 0, 16]
 		]
 
 		# Controller Screens
@@ -138,6 +139,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.monitors_dict[processor.handle]['samplerate'] = 44100
 		self.monitors_dict[processor.handle]['codec'] = "UNKNOWN"
 		processor.refresh_controllers()
+		processor.engine.player.set_tempo(self.state_manager.zynseq.get_tempo())
 
 	def remove_processor(self, processor):
 		self.player.remove_player(processor.handle)
@@ -265,7 +267,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['crop', ['crop start', 'crop end', 'position', 'zoom']],
 				['loop', ['loop start', 'loop end', 'loop', 'zoom']],
 				['config', ['left track', 'right track', 'bend range', 'sustain pedal']],
-				['info', ['info', 'zoom range', 'amp zoom', 'view offset']]
+				['info', ['info', 'zoom range', 'amp zoom', 'view offset']],
+				['misc', ['beats']]
 			]
 			if processor.handle == self.state_manager.audio_player.handle:
 				self._ctrl_screens[3][1][2] = None
@@ -300,7 +303,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['attack', None, attack, 20.0],
 			['decay', None, decay, 20.0],
 			['sustain', None, sustain, 1.0],
-			['release', None, release, 20.0]
+			['release', None, release, 20.0],
+			['beats', None, processor.engine.player.get_beats(processor.handle), 16]
 		]
 
 		processor.refresh_controllers()
@@ -489,6 +493,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.player.set_sustain(handle, zctrl.value)
 		elif zctrl.symbol == "release":
 			self.player.set_release(handle, zctrl.value)
+		elif zctrl.symbol == "beats":
+			self.player.set_beats(handle, zctrl.value)
 
 	def get_monitors_dict(self, handle):
 		return self.monitors_dict[handle]
