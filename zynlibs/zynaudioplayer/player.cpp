@@ -71,6 +71,21 @@ int is_codec_supported(const char* codec) {
     return 0;
 }
 
+void updateTempo(AUDIO_PLAYER * pPlayer) {
+    getMutex();
+    if (!pPlayer)
+        return;
+    if(pPlayer->beats) {
+        float div = g_tempo * (pPlayer->crop_end_src - pPlayer->crop_start_src);
+        if (div > 0.0)
+            pPlayer->time_ratio = g_samplerate * pPlayer->beats / div;
+    } else {
+        pPlayer->time_ratio = 1.0;
+    }
+    pPlayer->time_ratio_dirty = true;
+    releaseMutex();
+}
+
 char* get_supported_codecs() {
     g_supported_codecs[0] = '\0';
     SF_FORMAT_INFO  format_info ;
@@ -578,6 +593,7 @@ void set_crop_start_time(AUDIO_PLAYER * pPlayer, float time) {
     if(pPlayer->play_pos_frames < frames)
         set_position(pPlayer, time);
     pPlayer->last_crop_start = -1;
+    updateTempo(pPlayer);
     send_notifications(pPlayer, NOTIFY_CROP_START);
 }
 
@@ -613,6 +629,7 @@ void set_crop_end_time(AUDIO_PLAYER * pPlayer, float time) {
         pPlayer->file_read_status = WAITING;
     releaseMutex();
     pPlayer->last_crop_end = -1;
+    updateTempo(pPlayer);
     send_notifications(pPlayer, NOTIFY_CROP_END);
 }
 
@@ -1315,36 +1332,24 @@ void set_pos_notify_delta(AUDIO_PLAYER * pPlayer, float time) {
 }
 
 void set_beats(AUDIO_PLAYER * pPlayer, uint8_t beats) {
-    if(!pPlayer)
-        return;
-    pPlayer->beats = beats;
-    getMutex();
-    if(beats) {
-        float div = g_tempo * (pPlayer->loop_end_src - pPlayer->loop_start_src);
-        if (div > 0.0)
-            pPlayer->time_ratio = g_samplerate * pPlayer->beats / div;
-    } else {
-        pPlayer->time_ratio = 1.0;
+    if(pPlayer) {
+        pPlayer->beats = beats;
+        updateTempo(pPlayer);
     }
-    pPlayer->time_ratio_dirty = true;
-    releaseMutex();
+}
+
+uint8_t get_beats(AUDIO_PLAYER * pPlayer) {
+    if(!pPlayer)
+        return 0;
+    return pPlayer->beats;
 }
 
 void set_tempo(float tempo) {
     if (tempo < 10.0)
         return;
     g_tempo = tempo / 60;
-    getMutex();
-    for (auto it = g_vPlayers.begin(); it != g_vPlayers.end(); ++it) {
-        AUDIO_PLAYER * pPlayer = *it;
-        if (pPlayer->beats) {
-            double div = g_tempo * (pPlayer->loop_end_src - pPlayer->loop_start_src);
-            if (div > 0.0)
-                pPlayer->time_ratio = g_samplerate * pPlayer->beats / div;
-            pPlayer->time_ratio_dirty = true;
-        }
-    }
-    releaseMutex();
+    for (auto it = g_vPlayers.begin(); it != g_vPlayers.end(); ++it)
+        updateTempo(*it);
 }
 
 /**** Global functions ***/

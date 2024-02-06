@@ -139,6 +139,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.monitors_dict[processor.handle]['samplerate'] = 44100
 		self.monitors_dict[processor.handle]['codec'] = "UNKNOWN"
 		processor.refresh_controllers()
+		processor.engine.player.set_tempo(self.state_manager.zynseq.get_tempo())
 
 	def remove_processor(self, processor):
 		self.player.remove_player(processor.handle)
@@ -303,7 +304,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['decay', None, decay, 20.0],
 			['sustain', None, sustain, 1.0],
 			['release', None, release, 20.0],
-			['beats', None, 0, 16]
+			['beats', None, processor.engine.player.get_beats(processor.handle), 16]
 		]
 
 		processor.refresh_controllers()

@@ -406,10 +406,16 @@ void set_env_target_ratio_dr(AUDIO_PLAYER * pPlayer, float ratio);
 float get_env_target_ratio_dr(AUDIO_PLAYER * pPlayer);
 
 /** @brief Set the quantity of beats in a loop
-*   @param  player_handle Handle of player provided by init_player()
+*   @param player_handle Handle of player provided by init_player()
 *   @param beats Quantity of beats or 0 for no loop behaviour
 */
 void set_beats(AUDIO_PLAYER * pPlayer, uint8_t beats);
+
+/** @brief Get the quantity of beats in a loop
+*   @param player_handle Handle of player provided by init_player()
+*   @retval uint8_t Quantity of beats
+*/
+uint8_t get_beats(AUDIO_PLAYER * pPlayer);
 
 /** @brief  Set tempo for loop play
 *   @param  tempo Tempo in beats per minute

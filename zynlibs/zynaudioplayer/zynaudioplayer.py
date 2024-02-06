@@ -451,14 +451,19 @@ class zynaudioplayer():
 	def get_release(self, handle):
 		return self.libaudioplayer.get_env_release(handle)
 
-
 	#	Set beats in clip
 	#	handle: Index of player
 	#	beats: Quantity of beats or zero for non-beat based sample
 	def set_beats(self, handle, beats):
-		return self.libaudioplayer.set_beats(handle, beats)
+		self.libaudioplayer.set_beats(handle, beats)
 
-	#	Set tempo for loop
+	#	Set beats in clip
+	#	handle: Index of player
+	#	Returns: Quantity of beats or zero for non-beat based sample
+	def get_beats(self, handle):
+		return self.libaudioplayer.get_beats(handle)
+
+	#	Set tempo for playback
 	#	tempo : Tempo in BPM
 	def set_tempo(self, tempo):
 		self.libaudioplayer.set_tempo(tempo)
@@ -469,7 +474,6 @@ class zynaudioplayer():
 	#	Cannot change size whilst file is open
 	def set_buffer_size(self, handle, size):
 		self.libaudioplayer.set_buffer_size(handle, size)
-
 
 	#	Get file read buffer size
 	#	handle: Index of player

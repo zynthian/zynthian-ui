@@ -398,7 +398,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		options[f'Play mode ({zynseq.PLAY_MODES[self.zynseq.libseq.getPlayMode(self.bank, self.selected_pad)]})'] = 'Play mode'
 		options[f'MIDI channel ({1 + self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)})'] = 'MIDI channel'
 		options['Trigger learn'] = 'Trigger learn'
-
+		if self.zynseq.is_audio(self.bank, self.selected_pad):
+			options[f'Pad type (Audio)'] = 'Pad type'
+		else:
+			options[f'Pad type (MIDI)'] = 'Pad type'
 		#options['> MISC'] = None
 		options['Rename sequence'] = 'Rename sequence'
 
@@ -427,6 +430,30 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.enable_param_editor(self, 'grid_size', 'Grid size', {'labels': labels, 'value': self.zynseq.col_in_bank - 1, 'value_default': 3}, self.set_grid_size)
 		elif params == 'Trigger learn':
 			self.zyngui.cuia_enable_midi_learn()
+		elif params == 'Pad type':
+			pattern = self.zynseq.libseq.getPattern(self.bank, self.selected_pad, 0, 0)
+			self.zynseq.libseq.selectPattern(pattern)
+			#self.zynseq.libseq.setSequence(self.bank, self.selected_pad)
+			if self.zynseq.is_audio(self.bank, self.selected_pad):
+				self.zynseq.set_audio_loop(self.bank, self.selected_pad, False)
+				self.zynseq.libseq.clear()
+			else:
+				self.zynseq.set_audio_loop(self.bank, self.selected_pad, True)
+				self.zynseq.libseq.clear()
+				self.zynseq.libseq.addNote(0, 60, 100, self.zynseq.libseq.getSteps())
+				chain_id = self.chain_manager.add_chain(None, self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0), True, False)
+				processor = self.chain_manager.add_processor(chain_id, "AP")
+				self.zyngui.current_processor = processor
+				processor.controllers_dict['beats'].set_value(self.zynseq.libseq.getBeatsInPattern())
+				if len(processor.get_bank_list()) > 1:
+					self.zyngui.show_screen_reset('bank')
+				else:
+					processor.set_bank(0)
+					processor.load_preset_list()
+					if len(processor.preset_list) > 1:
+						self.zyngui.show_screen_reset('preset')
+				pass
+			#TODO Send signal to refresh zynpad
 		elif params == 'Play mode':
 			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynseq.PLAY_MODES, 'value':self.zynseq.libseq.getPlayMode(self.zynseq.bank, self.selected_pad), 'value_default':zynseq.SEQ_LOOPALL}, self.set_play_mode)
 		elif params == 'MIDI channel':
