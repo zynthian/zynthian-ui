@@ -141,7 +141,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.state_manager.start_vncserver, 0, "\u2610 VNC Server"))
 
 		self.list_data.append((None, 0, "> SETTINGS"))
-		if self.zyngui.screens["brightness_config"].get_num_zctrls() > 0:
+		if "brightness_config" in self.zyngui.screens and self.zyngui.screens["brightness_config"].get_num_zctrls() > 0:
 			self.list_data.append((self.zyngui.brightness_config, 0, "Brightness"))
 		if "cv_config" in self.zyngui.screens:
 			self.list_data.append((self.show_cv_config, 0, "CV Settings"))
