@@ -446,12 +446,12 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				self.zyngui.current_processor = processor
 				processor.controllers_dict['beats'].set_value(self.zynseq.libseq.getBeatsInPattern())
 				if len(processor.get_bank_list()) > 1:
-					self.zyngui.show_screen_reset('bank')
+					self.zyngui.show_screen('bank')
 				else:
 					processor.set_bank(0)
 					processor.load_preset_list()
 					if len(processor.preset_list) > 1:
-						self.zyngui.show_screen_reset('preset')
+						self.zyngui.show_screen('preset')
 				pass
 			#TODO Send signal to refresh zynpad
 		elif params == 'Play mode':
@@ -576,7 +576,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if type == 'S':
 			self.toggle_pad()
 		elif type == "B":
-			self.show_pattern_editor()
+			if self.zynseq.is_audio(self.bank, self.selected_pad):
+				self.zyngui.chain_control()
+			else:
+				self.show_pattern_editor()
 
 	def back_action(self):
 		if self.midi_learn:
