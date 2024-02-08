@@ -79,6 +79,7 @@ class zynaudioplayer():
 			self.libaudioplayer.set_env_release.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_env_release.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_tempo.argtypes = [ctypes.c_float]
+			self.libaudioplayer.crop_file.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint32, ctypes.c_uint32]
 			self.control_cb = None
 		except Exception as e:
 			self.libaudioplayer=None
@@ -467,6 +468,15 @@ class zynaudioplayer():
 	#	tempo : Tempo in BPM
 	def set_tempo(self, tempo):
 		self.libaudioplayer.set_tempo(tempo)
+
+	#	Crop an audio file and save to new file
+	#	src_filename: Filename of file to edit
+	#	dst_filename: Filename to save results to
+	#	start: Offset of crop start (in samples)
+	#	end: Offset of crop end (in samples)
+	#	Returns: True on success
+	def crop_file(self, src_filename, dst_filename, start, end):
+		return self.libaudioplayer.crop_file(bytes(src_filename, "utf-8"), bytes(dst_filename, "utf-8"), start, end)
 
 	#	Set file read buffer size
 	#	handle: Index of player
