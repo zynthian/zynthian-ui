@@ -422,6 +422,15 @@ uint8_t get_beats(AUDIO_PLAYER * pPlayer);
 */
 void set_tempo(float tempo);
 
+/** @brief  Save part of audio file
+*   @param  srcFilename Filename of file to edit
+*   @param  dstFilename Filename to save result to
+*   @param  start Start of crop (in samples)
+*   @param  end End of crop (in samples)
+*   @retval bool True on success
+*/
+bool crop_file(const char* srcFilename, const char* dstFilename, uint32_t start, uint32_t end);
+
 /**** Global functions ****/
 
 /** @brief  Enable debug output

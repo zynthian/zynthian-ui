@@ -474,6 +474,53 @@ uint8_t save(AUDIO_PLAYER * pPlayer, const char* filename) {
     return 0;
 }
 
+bool crop_file(const char* srcFilename, const char* dstFilename, uint32_t cropStart, uint32_t cropEnd) {
+    if (cropEnd <= cropStart)
+        return false;
+    SF_INFO sfinfo;
+    memset (&sfinfo, 0, sizeof (sfinfo)); // This triggers sf_open to populate info structure
+
+    SNDFILE* infile = sf_open(srcFilename, SFM_READ, &sfinfo);
+    if(!infile || sfinfo.channels < 1) {
+        fprintf(stderr, "libaudioplayer error: failed to open file %s: %s\n", srcFilename, sf_strerror(infile));
+        return false;
+    }
+
+	sfinfo.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
+
+	if (!sf_format_check (&sfinfo)) {
+        sf_close (infile) ;
+		fprintf(stderr, "Invalid encoding\n") ;
+		return false;
+	};
+
+    SNDFILE* outfile = sf_open(dstFilename, SFM_WRITE, &sfinfo);
+    if(!outfile) {
+        fprintf(stderr, "libaudioplayer error: failed to open file %s: %s\n", srcFilename, sf_strerror(outfile));
+        sf_close(infile);
+        return false;
+    }
+
+    float buffer[1024 * sfinfo.channels];
+    sf_count_t pos = sf_seek(infile, cropStart, SEEK_SET);
+    uint32_t duration = cropEnd - cropStart;
+    while(duration) {
+        uint32_t frames = sf_readf_float(infile, buffer, 1024);
+        if (duration > frames) {
+            sf_writef_float(outfile, buffer, frames);
+            duration -= frames;
+        }
+        else {
+            sf_writef_float(outfile, buffer, duration);
+            duration = 0;
+        }
+
+    }
+    sf_close(infile);
+    sf_close(outfile);
+    return true;
+}
+
 const char* get_filename(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return "";
