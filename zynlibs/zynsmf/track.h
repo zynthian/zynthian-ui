@@ -1,8 +1,9 @@
 #pragma once
 
-#include "event.h"
+#include <stddef.h>
 #include <vector>
 #include <cstdint>
+#include "event.h"
 
 class Track
 {
