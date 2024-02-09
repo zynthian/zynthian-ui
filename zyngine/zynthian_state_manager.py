@@ -1173,7 +1173,11 @@ class zynthian_state_manager:
 
         for cc_map in restored_cc_mapping:
             processor = self.chain_manager.processors[cc_map[0]]
-            self.chain_manager.add_midi_learn(processor.midi_chan, cc_map[1], processor.controllers_dict[cc_map[2]])
+            try:
+                zctrl = processor.controllers_dict[cc_map[2]]
+                self.chain_manager.add_midi_learn(processor.midi_chan, cc_map[1], zctrl)
+            except:
+                logging.warning(f"Failed to restore MIDI learning {cc_map[1]} => {cc_map[2]}")
 
         if "active_chain" in zs3_state:
             self.chain_manager.set_active_chain_by_id(zs3_state["active_chain"])
