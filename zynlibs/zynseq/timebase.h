@@ -21,6 +21,7 @@
 
 #include "constants.h"
 #include <cstdint> //provides uint data types
+#include <cstddef>
 #include <vector>
 
 // Timebase event types

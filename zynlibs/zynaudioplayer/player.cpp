@@ -334,9 +334,9 @@ void* file_thread_fn(void * param) {
                             nUnusedFrames = nFramesRead - srcData.input_frames_used;
                             nFramesRead = srcData.output_frames_gen;
                             if(rc) {
-                                DPRINTF("SRC failed with error %d, %u frames generated\n", nFramesRead, srcData.output_frames_gen);
+                                DPRINTF("SRC failed with error %d, %lu frames generated\n", nFramesRead, srcData.output_frames_gen);
                             } else {
-                                DPRINTF("SRC suceeded - %u frames generated, %u frames used, %u frames unused\n", srcData.output_frames_gen, srcData.input_frames_used, nUnusedFrames);
+                                DPRINTF("SRC suceeded - %lu frames generated, %lu frames used, %lu frames unused\n", srcData.output_frames_gen, srcData.input_frames_used, nUnusedFrames);
                             }
                             // Shift unused samples to start of buffer
                             memcpy(pBufferIn, pBufferIn + srcData.input_frames_used * sizeof(float) * pPlayer->sf_info.channels, nUnusedFrames * sizeof(float) * pPlayer->sf_info.channels);
@@ -1151,10 +1151,10 @@ void remove_player(AUDIO_PLAYER * pPlayer) {
         return;
     unload(pPlayer);
     if (jack_port_unregister(g_jack_client, pPlayer->jack_out_a)) {
-        fprintf(stderr, "libaudioplayer error: cannot unregister audio output port %02dA\n", pPlayer + 1);
+        fprintf(stderr, "libaudioplayer error: cannot unregister audio output port %02dA\n", pPlayer->index);
     }
     if (jack_port_unregister(g_jack_client, pPlayer->jack_out_b)) {
-        fprintf(stderr, "libaudioplayer error: cannot unregister audio output port %02dB\n", pPlayer + 1);
+        fprintf(stderr, "libaudioplayer error: cannot unregister audio output port %02dB\n", pPlayer->index);
     }
     auto it = find(g_vPlayers.begin(), g_vPlayers.end(), pPlayer);
     if (it != g_vPlayers.end())
