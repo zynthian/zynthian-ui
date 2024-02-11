@@ -131,6 +131,7 @@ class zynthian_chain_manager:
         for key, info in cls.engine_info.items():
             try:
                 info['ENGINE'] = engine2class[key[0:2]]
+                #logging.debug(f"Found engine class for {key}")
             except:
                 logging.error(f"Engine {key} has been disabled. Can't find an engine class for it.")
                 info['ENGINE'] = None
@@ -733,24 +734,32 @@ class zynthian_chain_manager:
         Returns : processor object or None on failure
         """
 
-        if (chain_id not in self.chains or eng_code not in self.engine_info
-            or proc_id is not None and proc_id in self.processors):
+        if chain_id not in self.chains:
+            logging.error(f"Chain '{chain_id}' doesn't exist!")
+            return None
+        if eng_code not in self.engine_info:
+            logging.error(f"Engine '{eng_code}' not found!")
             return None
         if proc_id is None:
-            proc_id = self.get_available_processor_id() # TODO: Derive next available processor id from self.processors
+            proc_id = self.get_available_processor_id()  # TODO: Derive next available processor id from self.processors
         elif proc_id in self.processors:
+            logging.error(f"Processor '{proc_id}' already exist!")
             return None
+
         if self.state_manager.is_busy():
             self.state_manager.start_busy("add_processor", None, f"adding {eng_code} to chain {chain_id}")
         else:
             self.state_manager.start_busy("add_processor", "Adding Processor", f"adding {eng_code} to chain {chain_id}")
+
+        logging.debug(f"Adding processor '{eng_code}' with ID '{proc_id}'")
         processor = zynthian_processor(eng_code, self.engine_info[eng_code], proc_id)
         chain = self.chains[chain_id]
         self.processors[proc_id] = processor  # Add proc early to allow engines to add more as required, e.g. Aeolus
         if chain.insert_processor(processor, parallel, slot):
             if not parallel and not post_fader and processor.type == "Audio Effect":
                 chain.fader_pos += 1
-            if chain.mixer_chan is None and processor.type != "MIDI Tool": # TODO: Fails to detect MIDI only chains in snapshots
+            # TODO: Fails to detect MIDI only chains in snapshots
+            if chain.mixer_chan is None and processor.type != "MIDI Tool":
                 chain.mixer_chan = self.get_next_free_mixer_chan()
             engine = self.start_engine(processor, eng_code)
             if engine:
@@ -761,11 +770,16 @@ class zynthian_chain_manager:
                         src_chain.rebuild_graph()
                 zynautoconnect.request_audio_connect(fast_refresh)
                 zynautoconnect.request_midi_connect(fast_refresh)
+                # Success!! => Return processor
                 self.state_manager.end_busy("add_processor")
                 return processor
             else:
                 chain.remove_processor(processor)
-        del self.processors[proc_id] # Failed so remove processor from list
+                logging.error(f"Failed to start engine '{eng_code}'!")
+        else:
+            logging.error(f"Failed to insert processor '{proc_id}' in chain '{chain_id}', slot '{slot}'!")
+        # Failed!! => Remove processor from list
+        del self.processors[proc_id]
         self.state_manager.end_busy("add_processor")
         return None
 
@@ -1027,7 +1041,7 @@ class zynthian_chain_manager:
 
         # Reusing Jalv engine instances raise problems (audio routing & jack names, etc..),
         # so we stop Jalv engines!
-        self.stop_unused_jalv_engines() #TODO: Can we factor this out? => Not yet!!
+        self.stop_unused_jalv_engines()  # TODO: Can we factor this out? => Not yet!!
 
         for chain_id, chain_state in state.items():
             chain_id = int(chain_id)

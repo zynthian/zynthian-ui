@@ -315,7 +315,8 @@ class zynthian_state_manager:
             self.busy_message = message
         if details:
             self.busy_details = details
-        #logging.debug(f"Start busy for {clid}. Current busy clients: {self.busy}")
+
+        #logging.debug(f"Start busy for {clid}. Message: '{message}', Details: '{details}', Current clients: {self.busy})")
 
     def end_busy(self, clid):
         """Remove client from list of busy clients
@@ -332,7 +333,8 @@ class zynthian_state_manager:
             self.busy_warning = None
             self.busy_success = None
             self.busy_details = None
-        #logging.debug(f"End busy for {clid}: {self.busy}")
+
+        #logging.debug(f"End busy for {clid}. Remaining clients: {self.busy}")
 
     def clear_busy(self):
         self.busy.clear()
@@ -955,24 +957,23 @@ class zynthian_state_manager:
             else:
                 self.last_snapshot_fpath = fpath
 
+            self.last_snapshot_count += 1
+            try:
+                self.snapshot_program = int(basename(fpath[:3]))
+            except:
+                pass
+
         except Exception as e:
+            state = None
             logging.exception("Invalid snapshot: %s" % e)
             self.set_busy_error("ERROR: Invalid snapshot", e)
             sleep(2)
-            self.end_busy("load snapshot")
-            return None
 
         zynautoconnect.request_midi_connect()
         zynautoconnect.request_audio_connect(True)
 
         # Restore mute state
         self.zynmixer.set_mute(self.zynmixer.MAX_NUM_CHANNELS - 1, mute)
-
-        self.last_snapshot_count += 1
-        try:
-            self.snapshot_program = int(basename(fpath[:3]))
-        except:
-            pass
 
         self.end_busy("load snapshot")
         return state
@@ -1013,6 +1014,7 @@ class zynthian_state_manager:
             self.set_busy_details("fixing legacy snapshot")
             converter = zynthian_legacy_snapshot.zynthian_legacy_snapshot()
             state = converter.convert_state(snapshot)
+            logging.debug(f"Fixed Snapshot: {state}")
         else:
             state = snapshot
             if state["schema_version"] < SNAPSHOT_SCHEMA_VERSION:

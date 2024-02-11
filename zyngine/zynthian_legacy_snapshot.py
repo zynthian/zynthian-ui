@@ -1,3 +1,28 @@
+# -*- coding: utf-8 -*-
+# ****************************************************************************
+# ZYNTHIAN PROJECT: Zynthian Legacy Snapshots
+#
+# Legacy snapshots convertion
+#
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+#                         Brian Walton <riban@zynthian.org>
+#
+# ****************************************************************************
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# For a full copy of the GNU General Public License see the LICENSE.txt file.
+#
+# ****************************************************************************
+
 from json import JSONDecoder
 from zyngine.zynthian_chain_manager import zynthian_chain_manager
 import logging
@@ -415,7 +440,7 @@ class zynthian_legacy_snapshot:
                 zs3["mixer"]["midi_learn"] = {}
                 for strip, config in zs3["mixer"].items():
                     if strip == "main":
-                        strip_id = 17 #TODO: Get actual main mixer strip index
+                        strip_id = 17  # TODO: Get actual main mixer strip index
                     else:
                         try:
                             strip_id = int(strip.split('_')[1])
@@ -571,7 +596,7 @@ class zynthian_legacy_snapshot:
                             lstate['current_screen_index'] = lstate['active_screen_index']
                             del lstate['active_screen_index']
                         if 'note_range' in lstate:
-                            #TODO: Move to ZS3
+                            # TODO: Move to ZS3
                             if lstate['note_range']:
                                 note_range[midi_chan] = lstate['note_range']
                             del lstate['note_range']
