@@ -56,6 +56,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.nickname = "AP"
 		self.type = "MIDI Synth"
 		self.options['replace'] = False
+		self.processor = None # Last processor edited
 
 		if jackname:
 			self.jackname = jackname
@@ -64,36 +65,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 		self.file_exts = []
 		self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
-
-		# MIDI Controllers
-		self._ctrls = [
-			['gain', None, 1.0, 2.0],
-			['record', None, 'stopped', ['stopped', 'recording']],
-			['loop', None, 'one-shot', ['one-shot', 'looping']],
-			['transport', None, 'stopped', ['stopped', 'playing']],
-			['position', None, 0.0, 0.0],
-			['left track', None, 0, [['mixdown'], [0]]],
-			['right track', None, 0, [['mixdown'], [0]]],
-			['loop start', None, 0.0, 0.0],
-			['loop end', None, 0.0, 0.0],
-			['crop start', None, 0.0, 0.0],
-			['crop end', None, 0.0, 0.0],
-			['attack', None, 0.1, 20.0],
-			['decay', None, 0.1, 20.0],
-			['sustain', None, 0.8, 1.0],
-			['release', None, 0.1, 20.0],
-			['zoom', None, 1, ["x1"],[1]],
-			['info', None, 1, ["None", "Duration", "Position", "Remaining", "Loop length", "Samplerate", "CODEC", "Filename"]],
-			['bend range', None, 2, 24],
-			['view offset', None, 0, 1],
-			['amp zoom', None, 1.0, 10.0],
-			['beats', None, 0, 16]
-		]
-
-		# Controller Screens
-		self._ctrl_screens = [
-			['main', ['record', 'gain']],
-		]
 
 		self.monitors_dict = {}
 		self.start()
@@ -140,10 +111,16 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.monitors_dict[processor.handle]['codec'] = "UNKNOWN"
 		processor.refresh_controllers()
 		processor.engine.player.set_tempo(self.state_manager.zynseq.get_tempo())
+		self.processor = processor
 
 	def remove_processor(self, processor):
 		self.player.remove_player(processor.handle)
 		super().remove_processor(processor)
+		if processor == self.processor:
+			if self.processors:
+				self.processor = self.processors[0]
+			else:
+				self.processor = None
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
@@ -201,12 +178,21 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 	def get_preset_list(self, bank):
 		presets = []
+		"""
+		presets = [[None, 0, "Presets", None, None]]
+		presets += self.get_filelist(bank[0], "zap")
+		if len(presets) == 1:
+			presets = []
+		presets += [[None, 0, "Audio Files", None, None]]
+		"""
+		file_presets = []
 		for ext in self.file_exts:
-			presets += self.get_filelist(bank[0], ext)
-		for preset in presets:
+			file_presets += self.get_filelist(bank[0], ext)
+		for preset in file_presets:
 			fparts = os.path.splitext(preset[4])
 			duration = self.player.get_file_duration(preset[0])
 			preset.append("{} ({:02d}:{:02d})".format(fparts[1], int(duration/60), round(duration)%60))
+		presets += file_presets
 		return presets
 
 	def set_preset(self, processor, preset, preload=False):
@@ -268,7 +254,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['loop', ['loop start', 'loop end', 'loop', 'zoom']],
 				['config', ['left track', 'right track', 'bend range', 'sustain pedal']],
 				['info', ['info', 'zoom range', 'amp zoom', 'view offset']],
-				['misc', ['beats']]
+				['misc', ['beats', 'cue', 'cue pos']]
 			]
 			if processor.handle == self.state_manager.audio_player.handle:
 				self._ctrl_screens[3][1][2] = None
@@ -304,14 +290,26 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['decay', None, decay, 20.0],
 			['sustain', None, sustain, 1.0],
 			['release', None, release, 20.0],
-			['beats', None, processor.engine.player.get_beats(processor.handle), 16]
+			['beats', None, processor.engine.player.get_beats(processor.handle), 64],
+			['cue', None, 0, 0],
+			['cue pos', None, 0.0, dur]
 		]
 
 		processor.refresh_controllers()
 		self.player.set_track_a(processor.handle, default_a)
 		self.player.set_track_b(processor.handle, default_b)
+		self.processor = processor
 
 		return True
+
+	def save_preset(self, bank_name, preset_name):
+		if self.processor is None:
+			return
+		if bank_name is None:
+			bank_name = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
+		path = f"{bank_name}/{preset_name}.wav"
+		self.player.save(self.processor.handle, path)
+		return path
 
 	def delete_preset(self, bank, preset):
 		try:
@@ -355,6 +353,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			processor.set_bank_by_id(bank_fpath)
 			processor.load_preset_list()
 			processor.set_preset_by_id(latest_fpath)
+		self.processor = processor
 
 	# ----------------------------------------------------------------------------
 	# Controllers Management
@@ -415,7 +414,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		handle = zctrl.handle
 		if zctrl.symbol == "position":
 			self.player.set_position(handle, zctrl.value)
-			self.monitors_dict[handle]['offset'] = None
 		elif zctrl.symbol == "gain":
 			self.player.set_gain(handle, zctrl.value)
 		elif zctrl.symbol == "loop":
@@ -460,7 +458,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					processor.controllers_dict['loop end'].nudge_factor = pos_zctrl.nudge_factor
 					processor.controllers_dict['crop start'].nudge_factor = pos_zctrl.nudge_factor
 					processor.controllers_dict['crop end'].nudge_factor = pos_zctrl.nudge_factor
-					self.monitors_dict[handle]['offset'] = None
+					processor.controllers_dict['cue pos'].nudge_factor = pos_zctrl.nudge_factor
 					return
 		elif zctrl.symbol == "zoom range":
 			for processor in self.processors:
@@ -495,6 +493,16 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.player.set_release(handle, zctrl.value)
 		elif zctrl.symbol == "beats":
 			self.player.set_beats(handle, zctrl.value)
+		elif zctrl.symbol == "cue":
+			for processor in self.processors:
+				if processor.handle == handle:
+					processor.controllers_dict['cue pos'].set_value(self.player.get_cue_point_position(handle, zctrl.value - 1), False)
+		elif zctrl.symbol == "cue pos":
+			for processor in self.processors:
+				if processor.handle == handle:
+					if self.player.get_cue_point_count(handle):
+						self.player.set_cue_point_position(handle, processor.controllers_dict['cue'].value - 1, zctrl.value)
+					break
 
 	def get_monitors_dict(self, handle):
 		return self.monitors_dict[handle]

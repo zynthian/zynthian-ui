@@ -5,7 +5,7 @@
 # 
 # Zynthian Widget Class for "Zynthian Audio Player" (zynaudioplayer#one)
 # 
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 #******************************************************************************
@@ -53,6 +53,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.loop_end = 1.0
 		self.crop_start = 0.0
 		self.crop_end = 1.0
+		self.cue_pos = 0.0
 		self.filename = "?"
 		self.duration = 0.0
 		self.bg_color = "black"
@@ -66,7 +67,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.limit_factor = 1500000 # Used to limit the quantity of frames processed in large data sets
 		self.info = None
 		self.images=[]
-		self.zoom_height = 0.94 # ratio of height for y offset of zoom overview display
+		self.waveform_height = 1 # ratio of height for y offset of zoom overview display
 		self.tap_time = 0
 
 		self.widget_canvas = tkinter.Canvas(self,
@@ -166,6 +167,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.widget_canvas.bind("<Button-5>",self.cb_canvas_wheel)
 		self.zyngui.multitouch.tag_bind(self.widget_canvas, None, "gesture", self.on_gesture)
 
+		self.cue_points = [] # List of cue points [pos, name] indexed by lib's list
+
 
 	def show(self):
 		super().show()
@@ -215,6 +218,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.widget_canvas.coords(self.loading_text, self.width // 2, self.height // 2)
 		self.widget_canvas.coords(self.info_text, self.width - zynthian_gui_config.font_size // 2, self.height)
 		self.widget_canvas.itemconfig(self.info_text, width=self.width)
+
+		font = tkinter.font.Font(family="DejaVu Sans Mono", size=int(1.5 * zynthian_gui_config.font_size))
+		self.waveform_height =self.height - font.metrics("linespace")
 		self.refresh_waveform = True
 
 
@@ -236,6 +242,13 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			for symbol in ['position', 'loop start', 'loop end', 'crop start', 'crop end']:
 				if abs(pos - self.processor.controllers_dict[symbol].value) < max_delta:
 					self.drag_marker = symbol
+					break
+			if self.drag_marker is None:
+				for i, cue in enumerate(self.cue_points):
+					if abs(pos - cue[0]) < max_delta:
+						self.processor.controllers_dict['cue'].set_value(i+1)
+						self.drag_marker = 'cue pos'
+						break
 		self.tap_time = event.time
 
 
@@ -247,13 +260,68 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		options['--CROP--'] = None
 		options['Crop start'] = event
 		options['Crop end'] = event
-		self.zyngui.screens['option'].config('Add marker', options, self.add_marker)
+		options['--CUE POINTS--'] = None
+		f = self.width / self.frames * self.zoom
+		pos = (event.x / f + self.offset) / self.samplerate
+		options[f'Add cue marker at {pos:.3f}'] = event
+		for cue in self.cue_points:
+			options[f"Remove marker {cue[1]} at {cue[0]:.3f}"] = cue
+		self.zyngui.screens['option'].config('Add marker', options, self.update_marker)
 		self.zyngui.show_screen('option')
 
 
-	def add_marker(self, option, event):
-		self.drag_marker = option.lower()
-		self.on_canvas_drag(event)
+	def update_cue_markers(self):
+		# Remove visual markers
+		for i in range(len(self.cue_points)):
+			self.widget_canvas.delete(f"cueline{i+1}")
+			self.widget_canvas.delete(f"cuetxt{i+1}")
+		# Rebuild list of markers
+		self.cue_points = []
+		i = 0
+		while True:
+			pos = self.processor.engine.player.get_cue_point_position(self.processor.handle, i)
+			if pos < 0:
+				break
+			name = self.processor.engine.player.get_cue_point_name(self.processor.handle, i)
+			self.widget_canvas.create_line(
+				0,
+				0,
+				0,
+				self.height,
+				fill=zynthian_gui_config.color_info,
+				tags=["overlay", f"cueline{i+1}"]
+			)
+			self.widget_canvas.create_text(
+				0,
+				0,
+				anchor = tkinter.NE,
+				justify=tkinter.RIGHT,
+				font=("DejaVu Sans Mono", int(0.8 * zynthian_gui_config.font_size)),
+				fill=zynthian_gui_config.color_panel_tx,
+				text=f"{i+1}",
+				tags = ["overlay", f"cuetxt{i+1}"]
+			)
+			self.cue_points.append([pos, name])
+			i += 1
+		self.cue_pos = None
+
+
+	def update_marker(self, option, event):
+		if isinstance(event, list):
+			# Event is a cue marker to be removed
+			id = self.processor.engine.player.remove_cue_point(self.processor.handle, event[0])
+			if id < 0:
+				return
+			count = self.processor.engine.player.get_cue_point_count(self.processor.handle)
+			self.processor.controllers_dict['cue'].value_max = count
+			if count == 0:
+				self.processor.controllers_dict['cue'].value_min = 0
+			if self.processor.controllers_dict['cue'].value >= count:
+				self.processor.controllers_dict['cue'].set_value(count - 1)
+			self.update_cue_markers()
+		else:
+			self.drag_marker = option.lower()
+			self.on_canvas_drag(event)
 
 
 	def on_canvas_drag(self, event):
@@ -263,7 +331,16 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			else:
 				f = self.width / self.frames * self.zoom
 				pos = (event.x / f + self.offset) / self.samplerate
-			self.processor.controllers_dict[self.drag_marker].set_value(pos)
+			if self.drag_marker in self.processor.controllers_dict:
+				self.processor.controllers_dict[self.drag_marker].set_value(pos)
+			else:
+				id = self.processor.engine.player.add_cue_point(self.processor.handle, pos) + 1
+				if id > 0:
+					self.processor.controllers_dict['cue'].value_min = 1
+					self.processor.controllers_dict['cue'].value_max = id
+					self.processor.controllers_dict['cue'].set_value(id)
+					self.processor.controllers_dict['cue pos'].set_value(pos)
+					self.update_cue_markers()
 
 
 	def get_monitors(self):
@@ -285,7 +362,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 					self.duration = self.frames / self.samplerate
 				else:
 					self.duration = 0.0
-			y0 = self.zoom_height * self.height // self.channels
+			y0 = self.waveform_height // self.channels
 			for chan in range(self.channels):
 				v_offset = chan * y0
 				self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=zynthian_gui_config.PAD_COLOUR_GROUP[chan // 2 % len(zynthian_gui_config.PAD_COLOUR_GROUP)], tags="waveform", state=tkinter.HIDDEN)
@@ -293,6 +370,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.widget_canvas.create_line(0,0,0,0, fill=self.waveform_color, tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
 			self.widget_canvas.tag_raise("waveform")
 			self.widget_canvas.tag_raise("overlay")
+			self.update_cue_markers()
 		except Exception as e:
 			self.widget_canvas.itemconfig(self.loading_text, text="No file\nloaded")
 		self.refreshing = False
@@ -310,7 +388,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		
 		frames_per_pixel = length / self.width
 		step = frames_per_pixel / limit
-		y0 = self.height * self.zoom_height // self.channels
+		y0 = self.waveform_height // self.channels
 
 		for chan in range(self.channels):
 			pos = start
@@ -370,6 +448,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			loop_end = int(self.samplerate * self.processor.controllers_dict['loop end'].value)
 			crop_start = int(self.samplerate * self.processor.controllers_dict['crop start'].value)
 			crop_end = int(self.samplerate * self.processor.controllers_dict['crop end'].value)
+			cue_pos = int(self.samplerate * self.processor.controllers_dict['cue pos'].value)
 			pos_time = self.processor.controllers_dict['position'].value
 			pos = int(pos_time * self.samplerate)
 			refresh_info = False
@@ -414,6 +493,14 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 					offset = max(0, pos)
 				refresh_markers = True
 
+			if self.cue_pos != cue_pos:
+				self.cue_pos = cue_pos
+				if cue_pos < offset  or cue_pos > offset + self.frames // self.zoom:
+					offset = max(0, cue_pos)
+				if self.cue_points:
+					self.cue_points[self.processor.controllers_dict['cue'].value - 1][0] = self.processor.controllers_dict['cue pos'].value
+				refresh_markers = True
+
 			offset = max(0, offset)
 			offset = min(self.frames - self.frames // self.zoom, offset)
 			if offset != self.offset:
@@ -427,7 +514,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				refresh_markers = True
 
 			if refresh_markers and self.frames:
-				h = int(self.zoom_height * self.height)
+				h = self.waveform_height
 				f = self.width / self.frames * self.zoom
 				x = int(f * (self.loop_start - self.offset))
 				self.widget_canvas.coords(self.loop_start_line, x, 0, x, h)
@@ -439,8 +526,11 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.widget_canvas.coords(self.crop_end_rect, x, 0, self.width, h)
 				x = int(f * (pos - self.offset))
 				self.widget_canvas.coords(self.play_line, x, 0, x, h)
+				for i, cue in enumerate(self.cue_points):
+					x = int(f * (self.samplerate * cue[0] - self.offset))
+					self.widget_canvas.coords(f"cueline{i+1}", x, 0, x, h)
+					self.widget_canvas.coords(f"cuetxt{i+1}", x, 0)
 				refresh_info = True
-
 
 			if self.info != self.processor.controllers_dict['info'].value:
 				self.widget_canvas.itemconfig("waveform", state=tkinter.NORMAL)
@@ -450,7 +540,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 			if refresh_info:
 				zoom_offset = self.width * offset // self.frames
-				self.widget_canvas.coords(self.zoom_rect, zoom_offset, int(self.zoom_height * self.height), zoom_offset + max(1, self.width // self.zoom), self.height)
+				self.widget_canvas.coords(self.zoom_rect, zoom_offset, self.waveform_height, zoom_offset + max(1, self.width // self.zoom), self.height)
 				if self.info == 1:
 					time = (self.crop_end - self.crop_start) / self.samplerate
 					self.widget_canvas.itemconfigure(self.info_text, text=f"Duration: {self.format_time(time)}", state=tkinter.NORMAL)

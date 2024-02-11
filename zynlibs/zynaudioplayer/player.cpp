@@ -225,6 +225,9 @@ void* file_thread_fn(void * param) {
             fprintf(stderr, "libaudioplayer error: failed to close file with error code %d\n", nError);
     }
 
+    uint32_t cueCount;
+    sf_command(pFile, SFC_GET_CUE_COUNT, &cueCount, sizeof(cueCount));
+
     if(pPlayer->file_open) {
         pPlayer->stretcher = new RubberBandStretcher(g_samplerate, 2, 
             RubberBandStretcher::OptionProcessRealTime
@@ -464,25 +467,20 @@ void unload(AUDIO_PLAYER * pPlayer) {
         return;
     stop_playback(pPlayer);
     pPlayer->file_open = FILE_CLOSED;
+    pPlayer->cue_points.clear();
     pthread_join(pPlayer->file_thread, NULL);
 }
 
 uint8_t save(AUDIO_PLAYER * pPlayer, const char* filename) {
-    //!@todo Implement save
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
-    return 0;
-}
 
-bool crop_file(const char* srcFilename, const char* dstFilename, uint32_t cropStart, uint32_t cropEnd) {
-    if (cropEnd <= cropStart)
-        return false;
     SF_INFO sfinfo;
-    memset (&sfinfo, 0, sizeof (sfinfo)); // This triggers sf_open to populate info structure
+    memset(&sfinfo, 0, sizeof (sfinfo)); // This triggers sf_open to populate info structure
 
-    SNDFILE* infile = sf_open(srcFilename, SFM_READ, &sfinfo);
+    SNDFILE* infile = sf_open(pPlayer->filename.c_str(), SFM_READ, &sfinfo);
     if(!infile || sfinfo.channels < 1) {
-        fprintf(stderr, "libaudioplayer error: failed to open file %s: %s\n", srcFilename, sf_strerror(infile));
+        fprintf(stderr, "libaudioplayer error: failed to open file %s: %s\n", pPlayer->filename.c_str(), sf_strerror(infile));
         return false;
     }
 
@@ -494,16 +492,35 @@ bool crop_file(const char* srcFilename, const char* dstFilename, uint32_t cropSt
 		return false;
 	};
 
-    SNDFILE* outfile = sf_open(dstFilename, SFM_WRITE, &sfinfo);
+    SNDFILE* outfile = sf_open(filename, SFM_WRITE, &sfinfo);
     if(!outfile) {
-        fprintf(stderr, "libaudioplayer error: failed to open file %s: %s\n", srcFilename, sf_strerror(outfile));
+        fprintf(stderr, "libaudioplayer error: failed to open file %s: %s\n", filename, sf_strerror(outfile));
         sf_close(infile);
         return false;
     }
 
+    // sndfile cue points are a structure of quantity of points (uint32) + n x SF_CUE_POINT structs 
+    size_t cue_size = sizeof(uint32_t) + pPlayer->cue_points.size() * sizeof(SF_CUE_POINT);
+    void* cues = malloc(cue_size);
+    *((uint32_t*)cues) = pPlayer->cue_points.size();
+    for (size_t i = 0; i < pPlayer->cue_points.size(); ++i) {
+        SF_CUE_POINT* cue = (SF_CUE_POINT*)((uint8_t*)cues + sizeof(uint32_t) + i * sizeof(SF_CUE_POINT));
+        cue->indx = i;
+        cue->position = 0;
+        cue->fcc_chunk = 0;
+        cue->chunk_start = 0;
+        cue->block_start = 0;
+        cue->sample_offset = pPlayer->cue_points[i].offset;
+        memcpy(cue->name, pPlayer->cue_points[i].name, 256);
+    }
+
+    if (SF_TRUE != sf_command(outfile, SFC_SET_CUE, cues, cue_size))
+        fprintf(stderr, "Failed to set cue points: %s\n", sf_strerror(outfile));
+    free(cues);
+
     float buffer[1024 * sfinfo.channels];
-    sf_count_t pos = sf_seek(infile, cropStart, SEEK_SET);
-    uint32_t duration = cropEnd - cropStart;
+    sf_count_t pos = sf_seek(infile, pPlayer->crop_start, SEEK_SET);
+    uint32_t duration = pPlayer->crop_end - pPlayer->crop_start;
     while(duration) {
         uint32_t frames = sf_readf_float(infile, buffer, 1024);
         if (duration > frames) {
@@ -684,6 +701,83 @@ float get_crop_end_time(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->sf_info.samplerate == 0)
         return 0.0;
     return (float)(pPlayer->crop_end) / pPlayer->sf_info.samplerate;
+}
+
+int32_t add_cue_point(AUDIO_PLAYER * pPlayer, float position, const char* name) {
+    if(!pPlayer || position < 0.0)
+        return -1;
+    
+    uint32_t frames = position * pPlayer->sf_info.samplerate;
+    if (frames >= pPlayer->sf_info.frames)
+        return -1;
+    for (size_t i = 0; i < pPlayer->cue_points.size(); ++i) {
+        if (pPlayer->cue_points[i].offset == frames)
+            return -1;
+        if (pPlayer->cue_points[i].offset > frames) {
+            pPlayer->cue_points.insert(pPlayer->cue_points.begin() + i, cue_point(frames, name));
+            return i;
+        }
+    }
+    pPlayer->cue_points.push_back(cue_point(frames, name));
+    return pPlayer->cue_points.size() - 1;
+}
+
+int32_t remove_cue_point(AUDIO_PLAYER * pPlayer, float position) {
+    if(!pPlayer || position < 0.0)
+        return -1;
+    int32_t minOffset = 0.5 * pPlayer->sf_info.samplerate;
+    int32_t markerOffset = minOffset;
+    int32_t frames = position * pPlayer->sf_info.samplerate;
+    int32_t result = -1;
+    for (int32_t i = 0; i < pPlayer->cue_points.size(); ++i) {
+        int32_t dT = abs(int32_t(pPlayer->cue_points[i].offset) - frames);
+        if (dT < markerOffset) {
+            result = i;
+            markerOffset = dT;
+        }
+    }
+    if (markerOffset < minOffset) {
+        pPlayer->cue_points.erase(pPlayer->cue_points.begin() + result);
+        return result;
+    }
+    return -1;
+}
+
+uint32_t get_cue_point_count(AUDIO_PLAYER * pPlayer) {
+    if(!pPlayer)
+        return 0;
+    return pPlayer->cue_points.size();
+}
+
+float get_cue_point_position(AUDIO_PLAYER * pPlayer, uint32_t index) {
+    if (!pPlayer || index >= pPlayer->cue_points.size() || pPlayer->sf_info.samplerate < 1000)
+        return -1.0;
+    return float(pPlayer->cue_points[index].offset) / pPlayer->sf_info.samplerate;
+}
+
+bool set_cue_point_position(AUDIO_PLAYER * pPlayer, uint32_t index, float position) {
+    if (!pPlayer || index >= pPlayer->cue_points.size() || position < 0.0)
+        return false;
+    uint32_t frames = position * pPlayer->sf_info.samplerate;
+    if (frames >= pPlayer->sf_info.frames)
+        return false;
+    pPlayer->cue_points[index].offset = frames;
+    return true;
+}
+
+const char* get_cue_point_name(AUDIO_PLAYER * pPlayer, uint32_t index) {
+    if (!pPlayer || index >= pPlayer->cue_points.size())
+        return "";
+    return pPlayer->cue_points[index].name;
+}
+
+bool set_cue_point_name(AUDIO_PLAYER * pPlayer, uint32_t index, const char* name) {
+    if (!pPlayer || index >= pPlayer->cue_points.size())
+        return false;
+    if (strlen(name) > 255)
+        return false;
+    strcpy(pPlayer->cue_points[index].name, name);
+    return true;
 }
 
 void start_playback(AUDIO_PLAYER * pPlayer) {
@@ -918,6 +1012,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         if(pPlayer->file_open != FILE_OPEN)
             continue;
 
+        uint32_t cue_point_play = pPlayer->cue_points.size();
         size_t r_count = 0; // Quantity of frames removed from queue, i.e. how far advanced through the audio
         size_t a_count = 0; // Quantity of frames added to playback (non silent audio)
         auto pOutA = (jack_default_audio_sample_t*)jack_port_get_buffer(pPlayer->jack_out_a, nFrames);
@@ -969,13 +1064,28 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 }
             }
             pPlayer->play_pos_frames += r_count;
-            if(pPlayer->loop) {
-                if(pPlayer->play_pos_frames >= pPlayer->loop_end_src) {
-                    pPlayer->play_pos_frames %= pPlayer->loop_end_src;
-                    pPlayer->play_pos_frames += pPlayer->loop_start_src;
+
+            if(cue_point_play) {
+                uint8_t cue = pPlayer->last_note_played - 59;
+                if(cue_point_play > cue && pPlayer->play_pos_frames > pPlayer->cue_points[cue].offset) {
+                    pPlayer->play_pos_frames = pPlayer->cue_points[cue - 1].offset;
+                    pPlayer->env_state = ENV_RELEASE; //!@todo This looks wrong
+                    if(pPlayer->loop)
+                        pPlayer->file_read_status = SEEKING;
+                    else
+                        pPlayer->play_state = STOPPING;
+                } else if(r_count < nFrames && pPlayer->file_read_status == IDLE) {
+                        // Reached end of file
+                        pPlayer->play_pos_frames = pPlayer->crop_start_src;
+                        pPlayer->play_state = STOPPING;
                 }
             } else {
-                if(r_count < nFrames && pPlayer->file_read_status == IDLE) {
+                if(pPlayer->loop) {
+                    if(pPlayer->play_pos_frames >= pPlayer->loop_end_src) {
+                        pPlayer->play_pos_frames %= pPlayer->loop_end_src;
+                        pPlayer->play_pos_frames += pPlayer->loop_start_src;
+                    }
+                } else if(r_count < nFrames && pPlayer->file_read_status == IDLE) {
                     // Reached end of file
                     pPlayer->play_pos_frames = pPlayer->crop_start_src;
                     pPlayer->play_state = STOPPING;
@@ -1005,11 +1115,6 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         if(pPlayer->env_state != ENV_IDLE)
             for(int i = 0; i < nFrames-a_count; ++i)
                 process_env(pPlayer);
-
-        if(pPlayer->play_pos_frames > pPlayer->crop_end_src) {
-            pPlayer->play_pos_frames = pPlayer->crop_end_src;
-            pPlayer->file_read_status = SEEKING;
-        }
     }
 
     // Process MIDI input
@@ -1024,6 +1129,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
             AUDIO_PLAYER * pPlayer = *it;
             if(!pPlayer->file_open || pPlayer->midi_chan != chan)
                 continue;
+            uint32_t cue_point_play = pPlayer->cue_points.size();
             uint8_t cmd = midiEvent.buffer[0] & 0xF0;
             if(cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) {
                 // Note off
@@ -1034,7 +1140,17 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                         if(pPlayer->held_notes[i]) {
                             pPlayer->last_note_played = i;
                             pPlayer->stretcher->reset();
-                            pPlayer->stretcher->setPitchScale(pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12));
+                            if(cue_point_play) {
+                                uint8_t cue = pPlayer->last_note_played - 60;
+                                if (cue < cue_point_play) {
+                                    pPlayer->play_pos_frames = pPlayer->cue_points[cue].offset;
+                                    pPlayer->play_state = STARTING;
+                                    pPlayer->file_read_status = SEEKING;
+                                }
+                            } else {
+                                 // legato
+                                pPlayer->stretcher->setPitchScale(pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12));
+                            }
                             pPlayer->held_note = 1;
                             break;
                         }
@@ -1047,7 +1163,13 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 }
             } else if(cmd == 0x90) {
                 // Note on
-                if(pPlayer->play_state == STOPPED || pPlayer->play_state == STOPPING || pPlayer->last_note_played == midiEvent.buffer[1]) {
+                if(cue_point_play) {
+                    uint8_t cue = midiEvent.buffer[1] - 60;
+                    if (cue < pPlayer->cue_points.size()) {
+                        pPlayer->play_pos_frames = pPlayer->cue_points[cue].offset;
+                        pPlayer->play_state = STARTING;
+                    }
+                } else if(pPlayer->play_state == STOPPED || pPlayer->play_state == STOPPING || pPlayer->last_note_played == midiEvent.buffer[1]) {
                     pPlayer->play_pos_frames = pPlayer->crop_start_src;
                     pPlayer->play_state = STARTING;
                 }
@@ -1055,7 +1177,8 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 pPlayer->held_notes[pPlayer->last_note_played] = 1;
                 pPlayer->held_note = 1;
                 pPlayer->stretcher->reset();
-                pPlayer->stretcher->setPitchScale(pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12));
+                if(!cue_point_play)
+                    pPlayer->stretcher->setPitchScale(pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12));
                 pPlayer->file_read_status = SEEKING;
                 jack_ringbuffer_reset(pPlayer->ringbuffer_a);
                 jack_ringbuffer_reset(pPlayer->ringbuffer_b);

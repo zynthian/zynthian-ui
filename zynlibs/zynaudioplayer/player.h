@@ -103,6 +103,7 @@ uint8_t load(AUDIO_PLAYER * pPlayer, const char* filename, void* ptr, cb_fn_t cb
 *   @param  player_handle Handle of player provided by init_player()
 *   @param  filename Full path and name of file to create or overwrite
 *   @retval uint8_t True on success
+*   @note   Crops file by crop markers and saves cue points as metadata
 */
 uint8_t save(AUDIO_PLAYER * pPlayer, const char* filename);
 
@@ -194,6 +195,58 @@ void set_crop_end_time(AUDIO_PLAYER * pPlayer, float time);
 *   @retval float End of crop in seconds since end of file
 */
 float get_crop_end_time(AUDIO_PLAYER * pPlayer);
+
+/** @brief  Add a cue marker
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  position Position within file (in seconds) to add marker
+*   @param  name Cue point name
+*   @retval int32_t Index of marker or -1 on failure
+*/
+int32_t add_cue_point(AUDIO_PLAYER * pPlayer, float position, const char* name=nullptr);
+
+/** @brief  Remove a cue marker
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  position Position within file (in secondes) of marker to remove
+*   @retval int32_t Index of removed maker or -1 on failure
+*   @note   The closest marker within +/-0.5s will be removed
+*/
+int32_t remove_cue_point(AUDIO_PLAYER * pPlayer, float position);
+
+/** @brief  Get quantity of cue points
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval uint32_t Quantity of cue points
+*/
+uint32_t get_cue_point_count(AUDIO_PLAYER * pPlayer);
+
+/** @brief  Get a cue point's position
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  index Index of cue point
+*   @retval float Position (in seconds) of cue point or -1.0 if not found
+*/
+float get_cue_point_position(AUDIO_PLAYER * pPlayer, uint32_t index);
+
+/** @brief  Set a cue point's position
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  index Index of cue point
+*   @param  position Position (in seconds) of cue point
+*   @retval bool True on success
+*/
+bool set_cue_point_position(AUDIO_PLAYER * pPlayer, uint32_t index, float position);
+
+/** @brief  Get a cue point's name
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  index Index of cue point
+*   @retval char* Name of cue point or "" if not found
+*/
+const char* get_cue_point_name(AUDIO_PLAYER * pPlayer, uint32_t index);
+
+/** @brief  Set a cue point's name
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  index Index of cue point
+*   @param  name Name of cue point (as c-string) - max 255 characters
+*   @retval bool True on success
+*/
+bool set_cue_point_name(AUDIO_PLAYER * pPlayer, uint32_t index, const char* name);
 
 /** @brief  Start playback
 *   @param  player_handle Handle of player provided by init_player()
@@ -421,15 +474,6 @@ uint8_t get_beats(AUDIO_PLAYER * pPlayer);
 *   @param  tempo Tempo in beats per minute
 */
 void set_tempo(float tempo);
-
-/** @brief  Save part of audio file
-*   @param  srcFilename Filename of file to edit
-*   @param  dstFilename Filename to save result to
-*   @param  start Start of crop (in samples)
-*   @param  end End of crop (in samples)
-*   @retval bool True on success
-*/
-bool crop_file(const char* srcFilename, const char* dstFilename, uint32_t start, uint32_t end);
 
 /**** Global functions ****/
 

@@ -72,6 +72,17 @@ class zynaudioplayer():
 			self.libaudioplayer.set_loop_end_time.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_crop_start_time.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_crop_end_time.argtypes = [ctypes.c_void_p, ctypes.c_float]
+			self.libaudioplayer.add_cue_point.argtypes = [ctypes.c_void_p, ctypes.c_float, ctypes.c_char_p]
+			self.libaudioplayer.add_cue_point.restype = ctypes.c_int32
+			self.libaudioplayer.remove_cue_point.argtypes = [ctypes.c_void_p, ctypes.c_float]
+			self.libaudioplayer.remove_cue_point.restype = ctypes.c_int32
+			self.libaudioplayer.get_cue_point_count.argtypes = [ctypes.c_void_p]
+			self.libaudioplayer.get_cue_point_position.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
+			self.libaudioplayer.get_cue_point_position.restype = ctypes.c_float
+			self.libaudioplayer.set_cue_point_position.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_float]
+			self.libaudioplayer.get_cue_point_name.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
+			self.libaudioplayer.get_cue_point_name.restype = ctypes.c_char_p
+			self.libaudioplayer.set_cue_point_name.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_char_p]
 			self.libaudioplayer.set_pos_notify_delta.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_env_attack.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_env_decay.argtypes = [ctypes.c_void_p, ctypes.c_float]
@@ -79,7 +90,6 @@ class zynaudioplayer():
 			self.libaudioplayer.set_env_release.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_env_release.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_tempo.argtypes = [ctypes.c_float]
-			self.libaudioplayer.crop_file.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint32, ctypes.c_uint32]
 			self.control_cb = None
 		except Exception as e:
 			self.libaudioplayer=None
@@ -268,6 +278,59 @@ class zynaudioplayer():
 	def set_crop_end(self, handle, time):
 		self.libaudioplayer.set_crop_end_time(handle, time)
 
+
+	#	Add a cue point marker
+	#	handle: Index of player
+	#	pos: Marker position in seconds
+	#	name: Marker name (max 255 chars)
+	#  	Returns: Index of cue point or -1 on failure
+	def add_cue_point(self, handle, pos, name=None):
+		if name is None:
+			name = ""
+		return self.libaudioplayer.add_cue_point(handle, pos, bytes(name, "utf-8"))
+
+	#	Remove a cue point marker
+	#	handle: Index of player
+	#	frames: Marker position in frames
+	#	Returns: True on success
+	def remove_cue_point(self, handle, frames):
+		return self.libaudioplayer.remove_cue_point(handle, frames)
+
+	#	Get quantity of cue point markers
+	#	handle: Index of player
+	#	Returns: Quantity of cue point markers
+	def get_cue_point_count(self, handle):
+		return self.libaudioplayer.get_cue_point_count(handle)
+
+	#	Get a cue point's position
+	#	handle: Index of player
+	#	index Index of cue point
+	# 	Returns: Position (in seconds) of cue point or -1.0 if not found
+	def get_cue_point_position(self, handle, index):
+		return self.libaudioplayer.get_cue_point_position(handle, index)
+
+	#	Set a cue point's position
+	#	handle: Index of player
+	#	index Index of cue point
+	# 	position: Position (in seconds) of cue point or -1.0 if not found
+	#	Returns: True on success
+	def set_cue_point_position(self, handle, index, position):
+		return self.libaudioplayer.set_cue_point_position(handle, index, position)
+
+	#	Get a cue point's name
+	#	handle: Index of player
+	#	index Index of cue point
+	# 	Returns: Cue point name  or "" if not found
+	def get_cue_point_name(self, handle, index):
+		return self.libaudioplayer.get_cue_point_name(handle, index).decode("utf-8")
+
+	#	Set a cue point's name
+	#	handle: Index of player
+	#	index Index of cue point
+	# 	name: New name for cue point (max 255 chars)
+	#	Returns: True on success
+	def set_cue_point_name(self, handle, index, name):
+		return self.libaudioplayer.set_cue_point_name(handle, index, bytes(name[:255], "utf-8"))
 
 	#	Start playback
 	#	handle: Index of player
@@ -468,15 +531,6 @@ class zynaudioplayer():
 	#	tempo : Tempo in BPM
 	def set_tempo(self, tempo):
 		self.libaudioplayer.set_tempo(tempo)
-
-	#	Crop an audio file and save to new file
-	#	src_filename: Filename of file to edit
-	#	dst_filename: Filename to save results to
-	#	start: Offset of crop start (in samples)
-	#	end: Offset of crop end (in samples)
-	#	Returns: True on success
-	def crop_file(self, src_filename, dst_filename, start, end):
-		return self.libaudioplayer.crop_file(bytes(src_filename, "utf-8"), bytes(dst_filename, "utf-8"), start, end)
 
 	#	Set file read buffer size
 	#	handle: Index of player
