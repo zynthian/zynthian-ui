@@ -152,8 +152,10 @@ def save_engines():
 	# Make a deep copy and remove not serializable objects (ENGINE)
 	sengines = copy.deepcopy(engines)
 	for key, info in sengines.items():
-		del info['ENGINE']
-
+		try:
+			del info['ENGINE']
+		except:
+			pass
 	# Save to file
 	try:
 		with open(ENGINE_CONFIG_FILE, 'w') as f:
