@@ -352,6 +352,18 @@ void set_pitchbend_range(AUDIO_PLAYER * pPlayer, uint8_t range);
 */
 uint8_t get_pitchbend_range(AUDIO_PLAYER * pPlayer);
 
+/** @brief  Set varispeed
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  ratio Ratio of speed:pitch (1.0 for no varispeed)
+*/
+void set_varispeed(AUDIO_PLAYER * pPlayer, float ratio);
+
+/** @brief  Get varispeed
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval float Ratio of speed:pitch (1.0 for no varispeed)
+*/
+float get_varispeed(AUDIO_PLAYER * pPlayer);
+
 /** @brief  Set size of file read buffers
 *   @param  player_handle Handle of player provided by init_player()
 *   @param  size Size of buffers in frames

@@ -90,6 +90,8 @@ class zynaudioplayer():
 			self.libaudioplayer.set_env_release.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_env_release.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_tempo.argtypes = [ctypes.c_float]
+			self.libaudioplayer.set_varispeed.argtypes = [ctypes.c_void_p, ctypes.c_float]
+			self.libaudioplayer.get_varispeed.restype = ctypes.c_float
 			self.control_cb = None
 		except Exception as e:
 			self.libaudioplayer=None
@@ -459,6 +461,17 @@ class zynaudioplayer():
 	def get_pitchbend_range(self, handle):
 		return self.libaudioplayer.get_pitchbend_range(handle)
 
+	#	Set varispeed ratio
+	#	handle: Index of player
+	#	ratio: Ratio of playback speed : pitch shift
+	def set_varispeed(self, handle, ratio):
+		self.libaudioplayer.set_varispeed(handle, ratio)
+
+	#	Get varispeed ratio
+	#	handle: Index of player
+	#	Returns: Ratio of playback speed : pitch shift
+	def get_varispeed(self, handle):
+		return self.libaudioplayer.get_varispeed(handle)
 
 	#	Set envelope attack
 	#	handle: Index of player

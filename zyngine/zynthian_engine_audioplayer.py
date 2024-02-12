@@ -254,7 +254,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['loop', ['loop start', 'loop end', 'loop', 'zoom']],
 				['config', ['left track', 'right track', 'bend range', 'sustain pedal']],
 				['info', ['info', 'zoom range', 'amp zoom', 'view offset']],
-				['misc', ['beats', 'cue', 'cue pos']]
+				['misc', ['beats', 'cue', 'cue pos', 'varispeed']]
 			]
 			if processor.handle == self.state_manager.audio_player.handle:
 				self._ctrl_screens[3][1][2] = None
@@ -292,7 +292,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['release', None, release, 20.0],
 			['beats', None, processor.engine.player.get_beats(processor.handle), 64],
 			['cue', None, 0, 0],
-			['cue pos', None, 0.0, dur]
+			['cue pos', None, 0.0, dur],
+			['varispeed', {'value': 1.0, 'value_min':0.5, 'value_max':4.0, 'is_integer':False, 'is_logarithmic':True}]
 		]
 
 		processor.refresh_controllers()
@@ -503,6 +504,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					if self.player.get_cue_point_count(handle):
 						self.player.set_cue_point_position(handle, processor.controllers_dict['cue'].value - 1, zctrl.value)
 					break
+		elif zctrl.symbol == "varispeed":
+			self.player.set_varispeed(handle, zctrl.value)
 
 	def get_monitors_dict(self, handle):
 		return self.monitors_dict[handle]

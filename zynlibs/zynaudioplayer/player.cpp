@@ -225,8 +225,6 @@ void* file_thread_fn(void * param) {
             fprintf(stderr, "libaudioplayer error: failed to close file with error code %d\n", nError);
     }
 
-    uint32_t cueCount;
-    sf_command(pFile, SFC_GET_CUE_COUNT, &cueCount, sizeof(cueCount));
 
     if(pPlayer->file_open) {
         pPlayer->stretcher = new RubberBandStretcher(g_samplerate, 2, 
@@ -236,6 +234,13 @@ void* file_thread_fn(void * param) {
             | RubberBandStretcher::OptionFormantPreserved);
         pPlayer->stretcher->setMaxProcessSize(256);
 
+        {
+            // Scope to avoid extra memory usage
+            SF_CUES cues ;
+            sf_command (pFile, SFC_GET_CUE, &cues, sizeof (cues));
+            for (uint32_t i = 0; i < cues.cue_count; ++i)
+                add_cue_point(pPlayer, float(cues.cue_points[i].sample_offset) / pPlayer->sf_info.samplerate, cues.cue_points[i].name);
+        }
         pPlayer->loop_start = 0;
         pPlayer->loop_end = pPlayer->sf_info.frames;
         pPlayer->crop_start = 0;
@@ -502,17 +507,22 @@ uint8_t save(AUDIO_PLAYER * pPlayer, const char* filename) {
     // sndfile cue points are a structure of quantity of points (uint32) + n x SF_CUE_POINT structs 
     size_t cue_size = sizeof(uint32_t) + pPlayer->cue_points.size() * sizeof(SF_CUE_POINT);
     void* cues = malloc(cue_size);
-    *((uint32_t*)cues) = pPlayer->cue_points.size();
+    uint32_t count = 0;
     for (size_t i = 0; i < pPlayer->cue_points.size(); ++i) {
+        int64_t offset = pPlayer->cue_points[i].offset - pPlayer->crop_start;
+        if (offset < 0)
+            continue;
         SF_CUE_POINT* cue = (SF_CUE_POINT*)((uint8_t*)cues + sizeof(uint32_t) + i * sizeof(SF_CUE_POINT));
-        cue->indx = i;
+        cue->indx = count;
         cue->position = 0;
         cue->fcc_chunk = 0;
         cue->chunk_start = 0;
         cue->block_start = 0;
-        cue->sample_offset = pPlayer->cue_points[i].offset;
+        cue->sample_offset = offset;
         memcpy(cue->name, pPlayer->cue_points[i].name, 256);
+        ++count;
     }
+    *((uint32_t*)cues) = count;
 
     if (SF_TRUE != sf_command(outfile, SFC_SET_CUE, cues, cue_size))
         fprintf(stderr, "Failed to set cue points: %s\n", sf_strerror(outfile));
@@ -1027,7 +1037,8 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
 
         if(pPlayer->play_state == PLAYING || pPlayer->play_state == STOPPING) {
             if (pPlayer->time_ratio_dirty) {
-                pPlayer->stretcher->setTimeRatio(pPlayer->time_ratio);
+                pPlayer->stretcher->setTimeRatio(pPlayer->time_ratio / pPlayer->varispeed);
+                pPlayer->stretcher->setPitchScale(pPlayer->pitchshift * pPlayer->varispeed);
                 pPlayer->time_ratio_dirty = false;
             }
             while(pPlayer->stretcher->available() < nFrames) {
@@ -1127,6 +1138,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         uint8_t chan = midiEvent.buffer[0] & 0x0F;
         for(auto it = g_vPlayers.begin(); it != g_vPlayers.end(); ++it) {
             AUDIO_PLAYER * pPlayer = *it;
+            pPlayer->pitchshift = 1.0;
             if(!pPlayer->file_open || pPlayer->midi_chan != chan)
                 continue;
             uint32_t cue_point_play = pPlayer->cue_points.size();
@@ -1149,7 +1161,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                                 }
                             } else {
                                  // legato
-                                pPlayer->stretcher->setPitchScale(pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12));
+                                pPlayer->pitchshift = pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12);
                             }
                             pPlayer->held_note = 1;
                             break;
@@ -1178,7 +1190,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 pPlayer->held_note = 1;
                 pPlayer->stretcher->reset();
                 if(!cue_point_play)
-                    pPlayer->stretcher->setPitchScale(pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12));
+                    pPlayer->pitchshift = pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12);
                 pPlayer->file_read_status = SEEKING;
                 jack_ringbuffer_reset(pPlayer->ringbuffer_a);
                 jack_ringbuffer_reset(pPlayer->ringbuffer_b);
@@ -1186,7 +1198,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 // Pitchbend
                 pPlayer->pitch_bend =  pPlayer->pitch_bend_range * ((midiEvent.buffer[1] + 128 * midiEvent.buffer[2]) / 8192.0 - 1.0);
                 if(pPlayer->play_state != STOPPED) {
-                    pPlayer->stretcher->setPitchScale(pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12));
+                    pPlayer->pitchshift = pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12);
                 }
             } else if(cmd == 0xB0) {
                 if(midiEvent.buffer[1] == 64) {
@@ -1210,7 +1222,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                         pPlayer->held_notes[i] = 0;
                     pPlayer->held_note = 0;
                     stop_playback(pPlayer);
-                    pPlayer->stretcher->setPitchScale(1.0);
+                    pPlayer->pitchshift = 1.0;
                 }
             }
             #ifdef ENABLE_MIDI
@@ -1242,7 +1254,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 }
             }
             #endif //ENABLE_MIDI
-
+            pPlayer->time_ratio_dirty = true;
         }
      }
     releaseMutex();
@@ -1463,6 +1475,19 @@ uint8_t get_pitchbend_range(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer)
         return 0;
     return pPlayer->pitch_bend_range;
+}
+
+void set_varispeed(AUDIO_PLAYER * pPlayer, float ratio) {
+    if(!pPlayer || ratio < 0.03125 || ratio > 32.0)
+        return;
+    pPlayer->varispeed = ratio;
+    pPlayer->time_ratio_dirty = true;
+}
+
+float get_varispeed(AUDIO_PLAYER * pPlayer) {
+    if(!pPlayer)
+        return 1.0;
+    return pPlayer->varispeed;
 }
 
 void set_buffer_size(AUDIO_PLAYER * pPlayer, unsigned int size) {

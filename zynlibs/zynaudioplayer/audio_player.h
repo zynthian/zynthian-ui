@@ -145,6 +145,8 @@ class AUDIO_PLAYER {
     void * cb_object = nullptr; // Pointer to the object hosting the callback function
     cb_fn_t * cb_fn = nullptr; // Pointer to function to receive notification of change
     float pos_notify_delta; // Position time difference to trigger notification
+    float varispeed = 1.0; // Ratio to adjust speed and pitch
+    float pitchshift = 1.0; // Ratio of MIDI pitch shift (note, bend, etc.)
 
     RubberBand::RubberBandStretcher * stretcher = nullptr; // Time/pitch warp
 };
