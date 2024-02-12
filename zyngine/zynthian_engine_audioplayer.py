@@ -78,7 +78,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.player = zynaudioplayer.zynaudioplayer(self.jackname)
 		self.jackname = self.player.get_jack_client_name()
 		self.file_exts = self.get_file_exts()
-		self.player.set_control_cb(self.control_cb)
 		zynsigman.register(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
 
 	def stop(self):
@@ -112,6 +111,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		processor.refresh_controllers()
 		processor.engine.player.set_tempo(self.state_manager.zynseq.get_tempo())
 		self.processor = processor
+
 
 	def remove_processor(self, processor):
 		self.player.remove_player(processor.handle)
@@ -293,13 +293,14 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['beats', None, processor.engine.player.get_beats(processor.handle), 64],
 			['cue', None, 0, 0],
 			['cue pos', None, 0.0, dur],
-			['varispeed', {'value': 1.0, 'value_min':0.5, 'value_max':4.0, 'is_integer':False, 'is_logarithmic':True}]
+			['varispeed', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False, 'is_logarithmic':False}]
 		]
 
 		processor.refresh_controllers()
 		self.player.set_track_a(processor.handle, default_a)
 		self.player.set_track_b(processor.handle, default_b)
 		self.processor = processor
+		self.player.set_control_cb(self.control_cb)
 
 		return True
 
@@ -505,7 +506,10 @@ class zynthian_engine_audioplayer(zynthian_engine):
 						self.player.set_cue_point_position(handle, processor.controllers_dict['cue'].value - 1, zctrl.value)
 					break
 		elif zctrl.symbol == "varispeed":
-			self.player.set_varispeed(handle, zctrl.value)
+			if zctrl.value >= 0:
+				self.player.set_varispeed(handle, 1 + zctrl.value)
+			else:
+				self.player.set_varispeed(handle, 1 / (1 - zctrl.value))
 
 	def get_monitors_dict(self, handle):
 		return self.monitors_dict[handle]
