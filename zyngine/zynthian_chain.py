@@ -339,8 +339,10 @@ class zynthian_chain:
                     sources.append(processor.get_jackname())
             else:
                 # Use mixer channel output
-                #sources = [] # Do not route - zynmixer will normalise outputs to main mix bus
-                sources = [f"zynmixer:output_{self.mixer_chan + 1:02d}"]
+                #if self.mixer_chan < 16: #TODO: Get main mixbus channel from zynmixer
+                #    sources = [] # Do not route - zynmixer will normalise outputs to main mix bus
+                #else:
+                    sources = [f"zynmixer:output_{self.mixer_chan + 1:02d}"]
             for output in self.get_audio_out():
                 self.audio_routes[output] = sources
 

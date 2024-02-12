@@ -730,6 +730,10 @@ def audio_autoconnect():
 						if proc.type == "Special":
 							routes[proc.get_jackname()] = route
 					else:
+						for name in list(route):
+							if name.startswith('zynmixer:output'):
+								# Use mixer internal normalisation
+								route.remove(name)
 						routes[f"zynmixer:input_{dst_chain.mixer_chan + 1:02d}"] = route
 		for dst in routes:
 			if dst in sidechain_ports:
@@ -771,8 +775,8 @@ def audio_autoconnect():
 		#TODO: Allow direct output / routing and fader control of aux
 		#required_routes["system:playback_1"].append(f"zynmixer:output_{aux}a")
 		#required_routes["system:playback_2"].append(f"zynmixer:output_{aux}b")
-		required_routes[f"zynmixer:input_{main}a"].add(f"zynmixer:output_{aux}a")
-		required_routes[f"zynmixer:input_{main}b"].add(f"zynmixer:output_{aux}b")
+		#required_routes[f"zynmixer:input_{main}a"].add(f"zynmixer:output_{aux}a")
+		#required_routes[f"zynmixer:input_{main}b"].add(f"zynmixer:output_{aux}b")
 	except:
 		pass
 

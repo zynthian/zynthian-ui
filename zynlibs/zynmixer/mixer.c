@@ -45,7 +45,7 @@ int g_solo = 0;          // True if any channel solo enabled
 
 // #define DEBUG
 
-#define MAX_CHANNELS 18
+#define MAX_CHANNELS 17
 #define MAX_OSC_CLIENTS 5
 
 struct dynamic {
@@ -68,6 +68,7 @@ struct dynamic {
     uint8_t inRouted;      // 1 if source routed to channel
     uint8_t outRouted;     // 1 if output routed
     uint8_t enable_dpm;    // 1 to enable calculation of peak meter
+    uint8_t normalised;    // 1 to route main mix bus
 };
 
 jack_client_t *g_pJackClient;
@@ -81,6 +82,8 @@ struct sockaddr_in g_oscClient[MAX_OSC_CLIENTS]; // Array of registered OSC clie
 char g_oscdpm[20];
 jack_nframes_t g_samplerate = 44100; // Jack samplerate used to calculate damping factor
 jack_nframes_t g_buffersize = 1024;  // Jack buffer size used to calculate damping factor
+jack_default_audio_sample_t* pAuxA = NULL; // Pointer to buffer for normalised audio
+jack_default_audio_sample_t* pAuxB = NULL; // Pointer to buffer for normalised audio
 
 static float convertToDBFS(float raw) {
     if (raw <= 0)
@@ -146,13 +149,17 @@ void *eventThreadFn(void *param) {
 }
 
 static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
-    jack_default_audio_sample_t *pInA, *pInB, *pOutA, *pOutB, *pChanOutA, *pChanOutB, *pSendA, *pSendB, *pReturnA, *pReturnB;
+    jack_default_audio_sample_t *pInA, *pInB, *pOutA, *pOutB, *pChanOutA, *pChanOutB;
 
     unsigned int frame, chan;
     float curLevelA, curLevelB, reqLevelA, reqLevelB, fDeltaA, fDeltaB, fSampleA, fSampleB, fSampleM;
+
+    memset(pAuxA, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
+    memset(pAuxB, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
+
     // Apply gain adjustment to each channel
     for (chan = 0; chan < MAX_CHANNELS; chan++) {
-        if (isChannelRouted(chan)) {
+        if (isChannelRouted(chan) || (chan >= (MAX_CHANNELS - 1))) {
             if (g_dynamic[chan].balance > 0.0)
                 curLevelA = g_dynamic[chan].level * (1 - g_dynamic[chan].balance);
             else
@@ -162,8 +169,8 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
             else
                 curLevelB = g_dynamic[chan].level;
 
-            if (g_dynamic[chan].mute || g_solo && (chan < MAX_CHANNELS - 2) && g_dynamic[chan].solo != 1) {
-                // Do not mute aux or main output return if solo enabled
+            if (g_dynamic[chan].mute || g_solo && (chan < MAX_CHANNELS - 1) && g_dynamic[chan].solo != 1) {
+                // Do not mute aux if solo enabled
                 g_dynamic[chan].level = 0; // We can set this here because we have the data and will iterate towards 0 over this frame
                 reqLevelA = 0.0;
                 reqLevelB = 0.0;
@@ -187,34 +194,41 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
             pInA = jack_port_get_buffer(g_dynamic[chan].inPortA, nFrames);
             pInB = jack_port_get_buffer(g_dynamic[chan].inPortB, nFrames);
 
-            pChanOutA = jack_port_get_buffer(g_dynamic[chan].outPortA, nFrames);
-            pChanOutB = jack_port_get_buffer(g_dynamic[chan].outPortB, nFrames);
-            memset(pChanOutA, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
-            memset(pChanOutB, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
+            if(isChannelOutRouted(chan)) {
+                pChanOutA = jack_port_get_buffer(g_dynamic[chan].outPortA, nFrames);
+                pChanOutB = jack_port_get_buffer(g_dynamic[chan].outPortB, nFrames);
+                memset(pChanOutA, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
+                memset(pChanOutB, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
+            } else if (chan < MAX_CHANNELS - 1) {
+                pChanOutA = pAuxA;
+                pChanOutB = pAuxB;
+            } else {
+                return 0;
+            }
 
             // Iterate samples scaling each and adding to output and set DPM if any samples louder than current DPM
             if (g_dynamic[chan].mono) {
                 for (frame = 0; frame < nFrames; frame++) {
-                    fSampleM = pInA[frame];
+                    if (chan == MAX_CHANNELS - 1) {
+                        // Mix aux channel input and normalised channels mix
+                        fSampleM = pInA[frame] + pAuxA[frame];
+                        fSampleB = pInB[frame] + pAuxB[frame];
+                    } else {
+                        fSampleM = pInA[frame];
+                        fSampleB = pInB[frame];
+                    }
                     if (g_dynamic[chan].phase)
-                        fSampleM -= pInB[frame];
+                        fSampleM -= fSampleB;
                     else
-                        fSampleM += pInB[frame];
+                        fSampleM += fSampleB;
                     fSampleA = fSampleM * curLevelA / 2;
                     fSampleB = fSampleM * curLevelB / 2;
                     if (isinf(fSampleA))
                         fSampleA = 1.0;
                     if (isinf(fSampleB))
                         fSampleB = 1.0;
-                    if (isChannelOutRouted(chan)) {
-                        pChanOutA[frame] = fSampleA;
-                        pChanOutB[frame] = fSampleB;
-                    /*
-                    } else {
-                        pSendA[frame] += fSampleA;
-                        pSendB[frame] += fSampleB;
-                    */
-                    }
+                    pChanOutA[frame] = fSampleA;
+                    pChanOutB[frame] = fSampleB;
                     curLevelA += fDeltaA;
                     curLevelB += fDeltaB;
                     if (g_dynamic[chan].enable_dpm) {
@@ -233,24 +247,25 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
                 }
             } else {
                 for (frame = 0; frame < nFrames; frame++) {
-                    fSampleA = pInA[frame] * curLevelA;
+                    if (chan == MAX_CHANNELS - 1) {
+                        // Mix aux channel input and normalised channels mix
+                        fSampleA = (pInA[frame] + pAuxA[frame]) * curLevelA;
+                        fSampleB = (pInB[frame] + pAuxB[frame]) * curLevelB;
+                    } else {
+                        fSampleA = pInA[frame] * curLevelA;
+                        fSampleB = pInB[frame] * curLevelB;
+                    }
+                    // Check for error
                     if (isinf(fSampleA))
                         fSampleA = 1.0;
-                    if (g_dynamic[chan].phase)
-                        fSampleB = -pInB[frame] * curLevelB;
-                    else
-                        fSampleB = pInB[frame] * curLevelB;
                     if (isinf(fSampleB))
                         fSampleB = 1.0;
-                    if (isChannelOutRouted(chan)) {
-                        pChanOutA[frame] = fSampleA;
-                        pChanOutB[frame] = fSampleB;
-                    /*
-                    } else {
-                        pSendA[frame] += fSampleA;
-                        pSendB[frame] += fSampleB;
-                    */
-                    }
+                    // Handle channel phase reverse
+                    if (g_dynamic[chan].phase)
+                        fSampleB = -fSampleB;
+
+                    pChanOutA[frame] += fSampleA;
+                    pChanOutB[frame] += fSampleB;
                     curLevelA += fDeltaA;
                     curLevelB += fDeltaB;
                     if (g_dynamic[chan].enable_dpm) {
@@ -313,6 +328,10 @@ int onJackBuffersize(jack_nframes_t nBuffersize, void *arg) {
         return 0;
     g_buffersize = nBuffersize;
     g_nDampingPeriod = g_fDpmDecay * g_samplerate / g_buffersize / 15;
+    free(pAuxA);
+    free(pAuxB);
+    pAuxA = malloc(nBuffersize * sizeof(jack_default_audio_sample_t));
+    pAuxB = malloc(nBuffersize * sizeof(jack_default_audio_sample_t));
     return 0;
 }
 
@@ -419,6 +438,9 @@ void end() {
         // jack_client_close(g_pJackClient);
     }
     g_sendEvents = 0;
+    free(pAuxA);
+    free(pAuxB);
+
     void *status;
     pthread_join(g_eventThread, &status);
 }
