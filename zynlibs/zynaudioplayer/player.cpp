@@ -1138,7 +1138,6 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         uint8_t chan = midiEvent.buffer[0] & 0x0F;
         for(auto it = g_vPlayers.begin(); it != g_vPlayers.end(); ++it) {
             AUDIO_PLAYER * pPlayer = *it;
-            pPlayer->pitchshift = 1.0;
             if(!pPlayer->file_open || pPlayer->midi_chan != chan)
                 continue;
             uint32_t cue_point_play = pPlayer->cue_points.size();
@@ -1162,6 +1161,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                             } else {
                                  // legato
                                 pPlayer->pitchshift = pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12);
+                                pPlayer->time_ratio_dirty = true;
                             }
                             pPlayer->held_note = 1;
                             break;
@@ -1189,8 +1189,10 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 pPlayer->held_notes[pPlayer->last_note_played] = 1;
                 pPlayer->held_note = 1;
                 pPlayer->stretcher->reset();
-                if(!cue_point_play)
+                if(!cue_point_play){
                     pPlayer->pitchshift = pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12);
+                    pPlayer->time_ratio_dirty = true;
+                }
                 pPlayer->file_read_status = SEEKING;
                 jack_ringbuffer_reset(pPlayer->ringbuffer_a);
                 jack_ringbuffer_reset(pPlayer->ringbuffer_b);
@@ -1199,6 +1201,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 pPlayer->pitch_bend =  pPlayer->pitch_bend_range * ((midiEvent.buffer[1] + 128 * midiEvent.buffer[2]) / 8192.0 - 1.0);
                 if(pPlayer->play_state != STOPPED) {
                     pPlayer->pitchshift = pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12);
+                    pPlayer->time_ratio_dirty = true;
                 }
             } else if(cmd == 0xB0) {
                 if(midiEvent.buffer[1] == 64) {
@@ -1223,6 +1226,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                     pPlayer->held_note = 0;
                     stop_playback(pPlayer);
                     pPlayer->pitchshift = 1.0;
+                    pPlayer->time_ratio_dirty = true;
                 }
             }
             #ifdef ENABLE_MIDI
@@ -1254,7 +1258,6 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 }
             }
             #endif //ENABLE_MIDI
-            pPlayer->time_ratio_dirty = true;
         }
      }
     releaseMutex();
