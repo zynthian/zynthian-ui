@@ -93,6 +93,7 @@ class zynthian_gui_save_preset():
 
 	def do_save_preset(self, preset_name):
 		preset_name = preset_name.strip()
+		self.zyngui.state_manager.start_busy("Save Preset", f"Saving preset {preset_name}")
 
 		try:
 			# Save preset
@@ -115,6 +116,7 @@ class zynthian_gui_save_preset():
 
 		self.save_preset_create_bank_name = None
 		self.zyngui.close_screen()
+		self.zyngui.state_manager.end_busy("Save Preset")
 
 
 #------------------------------------------------------------------------------

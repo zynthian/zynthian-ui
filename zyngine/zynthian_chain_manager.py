@@ -213,7 +213,7 @@ class zynthian_chain_manager:
         # Setup MIDI routing
         if isinstance(midi_chan, int):
             chain.set_zmop_index(self.get_next_free_zmop_index())
-        if chain.zmop_index is not None:
+        if chain.zmop_index is not None and self.state_manager.ctrldev_manager is not None:
             # Enable all MIDI inputs by default
             # TODO: Should we allow user to define default routing?
             for zmip in range(MAX_NUM_MIDI_DEVS):

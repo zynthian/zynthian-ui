@@ -41,6 +41,16 @@ enum envState {
     ENV_END
 };
 
+struct cue_point {
+    uint32_t offset;
+    char name[256] = {'\0'};
+    cue_point(uint32_t pos, const char* nm) {
+        offset = pos;
+        if (nm)
+            sprintf(name, nm);
+    };
+};
+
 class AUDIO_PLAYER {
 
     public:
@@ -70,6 +80,7 @@ class AUDIO_PLAYER {
     unsigned int output_buffer_size; // Quantity of frames that may be SRC
     unsigned int buffer_count = 5; // Factor by which ring buffer is larger than input / SRC buffer
     unsigned int src_quality = SRC_SINC_FASTEST; // SRC quality [0..4]
+    std::vector<cue_point> cue_points; // List of cue point markers
 
     // Value of data at last notification
     uint8_t last_play_state = -1;
@@ -134,6 +145,8 @@ class AUDIO_PLAYER {
     void * cb_object = nullptr; // Pointer to the object hosting the callback function
     cb_fn_t * cb_fn = nullptr; // Pointer to function to receive notification of change
     float pos_notify_delta; // Position time difference to trigger notification
+    float varispeed = 1.0; // Ratio to adjust speed and pitch
+    float pitchshift = 1.0; // Ratio of MIDI pitch shift (note, bend, etc.)
 
     RubberBand::RubberBandStretcher * stretcher = nullptr; // Time/pitch warp
 };

@@ -759,7 +759,7 @@ def audio_autoconnect():
 	required_routes["zynmixer:input_17b"].add("zynseq:metronome")
 
 	# Connect global audio player to aux
-	if state_manager.audio_player:
+	if state_manager.audio_player and state_manager.audio_player.jackname:
 		ports = jclient.get_ports(state_manager.audio_player.jackname, is_output=True, is_audio=True)
 		required_routes["zynmixer:input_17a"].add(ports[0].name)
 		required_routes["zynmixer:input_17b"].add(ports[1].name)

@@ -497,10 +497,13 @@ class zynthian_engine(zynthian_basic_engine):
 					processor.controllers_dict[name].reset()
 
 			for ctrl in self._ctrls:
-				options = {"processor": processor}
-
+				options = {}
+				build_from_options = False
+				if isinstance(ctrl[1], dict):
+					options = ctrl[1]
+					build_from_options = True
 				# OSC control =>
-				if isinstance(ctrl[1], str):
+				elif isinstance(ctrl[1], str):
 					#replace variables ...
 					tpl = Template(ctrl[1])
 					cc = tpl.safe_substitute(ch=midich)
@@ -517,31 +520,31 @@ class zynthian_engine(zynthian_basic_engine):
 				else:
 					cc = ctrl[1]
 
+				options["processor"] = processor
+
 				# Build controller depending on array length ...
 				if ctrl[0] in processor.controllers_dict:
 					if len(ctrl) > 3:
 						processor.controllers_dict[ctrl[0]].setup_controller(midich, cc, ctrl[2], ctrl[3])
-					else:
+					elif len(ctrl) > 2:
 						processor.controllers_dict[ctrl[0]].setup_controller(midich, cc, ctrl[2])
 					continue
 
+				elif build_from_options:
+					zctrl = zynthian_controller(self, ctrl[0], ctrl[0], options)
 				elif len(ctrl) > 4:
 					if isinstance(ctrl[4], str):
-						zctrl = zynthian_controller(self, ctrl[4], ctrl[0])
+						zctrl = zynthian_controller(self, ctrl[4], ctrl[0], options)
 					else:
-						zctrl = zynthian_controller(self, ctrl[0])
+						zctrl = zynthian_controller(self, ctrl[0], None, options)
 						zctrl.graph_path = ctrl[4]
 					zctrl.setup_controller(midich, cc, ctrl[2], ctrl[3])
 				elif len(ctrl) > 3:
-					zctrl = zynthian_controller(self, ctrl[0])
+					zctrl = zynthian_controller(self, ctrl[0], None, options)
 					zctrl.setup_controller(midich, cc, ctrl[2], ctrl[3])
 				else:
-					zctrl = zynthian_controller(self, ctrl[0])
+					zctrl = zynthian_controller(self, ctrl[0], None, options)
 					zctrl.setup_controller(midich, cc, ctrl[2])
-
-				# Set controller extra options
-				if len(options) > 0:
-					zctrl.set_options(options)
 
 				if zctrl.midi_cc is not None:
 					self.state_manager.chain_manager.add_midi_learn(zctrl.midi_chan, zctrl.midi_cc, zctrl)
