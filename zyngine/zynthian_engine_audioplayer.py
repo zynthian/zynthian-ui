@@ -506,10 +506,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
 						self.player.set_cue_point_position(handle, processor.controllers_dict['cue'].value - 1, zctrl.value)
 					break
 		elif zctrl.symbol == "varispeed":
-			if zctrl.value >= 0:
-				self.player.set_varispeed(handle, 1 + zctrl.value)
+			if abs(zctrl.value) < 0.01:
+				zctrl.value = 0.0
+				self.player.set_varispeed(handle, 1.0)
+			elif zctrl.value > 0:
+				self.player.set_varispeed(handle, 1.0 + zctrl.value)
 			else:
-				self.player.set_varispeed(handle, 1 / (1 - zctrl.value))
+				self.player.set_varispeed(handle, 1.0 / (1.0 - zctrl.value))
 
 	def get_monitors_dict(self, handle):
 		return self.monitors_dict[handle]
