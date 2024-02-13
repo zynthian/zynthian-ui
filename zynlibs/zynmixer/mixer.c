@@ -68,7 +68,6 @@ struct dynamic {
     uint8_t inRouted;      // 1 if source routed to channel
     uint8_t outRouted;     // 1 if output routed
     uint8_t enable_dpm;    // 1 to enable calculation of peak meter
-    uint8_t normalised;    // 1 to route main mix bus
 };
 
 jack_client_t *g_pJackClient;

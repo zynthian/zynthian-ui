@@ -46,6 +46,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# Config variables
 	# ---------------------------------------------------------------------------
 
+	# Must assign here to avoid common (zynthian_engine class) instances being used
+	# Standard MIDI Controllers
+	_ctrls = []
+
+	# Controller Screens
+	_ctrl_screens = []
+
 	# ---------------------------------------------------------------------------
 	# Initialization
 	# ---------------------------------------------------------------------------
@@ -108,6 +115,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.monitors_dict[processor.handle]['channels'] = 0
 		self.monitors_dict[processor.handle]['samplerate'] = 44100
 		self.monitors_dict[processor.handle]['codec'] = "UNKNOWN"
+		self.monitors_dict[processor.handle]['speed'] = 1.0
 		processor.refresh_controllers()
 		processor.engine.player.set_tempo(self.state_manager.zynseq.get_tempo())
 		self.processor = processor
@@ -205,6 +213,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.monitors_dict[processor.handle]['channels'] = self.player.get_frames(processor.handle)
 		self.monitors_dict[processor.handle]['samplerate'] = self.player.get_samplerate(processor.handle)
 		self.monitors_dict[processor.handle]['codec'] = self.player.get_codec(processor.handle)
+		self.monitors_dict[processor.handle]['speed'] = self.player.get_speed(processor.handle)
 
 		dur = self.player.get_duration(processor.handle)
 		self.player.set_position(processor.handle, 0)
@@ -254,7 +263,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['loop', ['loop start', 'loop end', 'loop', 'zoom']],
 				['config', ['left track', 'right track', 'bend range', 'sustain pedal']],
 				['info', ['info', 'zoom range', 'amp zoom', 'view offset']],
-				['misc', ['beats', 'cue', 'cue pos', 'varispeed']]
+				['misc', ['beats', 'cue', 'cue pos']],
+				['speed', ['speed', 'pitch', 'varispeed']]
 			]
 			if processor.handle == self.state_manager.audio_player.handle:
 				self._ctrl_screens[3][1][2] = None
@@ -293,9 +303,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['beats', None, processor.engine.player.get_beats(processor.handle), 64],
 			['cue', None, 0, 0],
 			['cue pos', None, 0.0, dur],
-			['varispeed', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False, 'is_logarithmic':False}]
+			['speed', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}],
+			['pitch', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}],
+			['varispeed', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}]
 		]
 
+		self.player.set_control_cb(None)
 		processor.refresh_controllers()
 		self.player.set_track_a(processor.handle, default_a)
 		self.player.set_track_b(processor.handle, default_b)
@@ -505,14 +518,41 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					if self.player.get_cue_point_count(handle):
 						self.player.set_cue_point_position(handle, processor.controllers_dict['cue'].value - 1, zctrl.value)
 					break
+		elif zctrl.symbol == "speed":
+			if abs(zctrl.value) < 0.01:
+				zctrl.value = 0.0
+				speed = 1.0
+			else:
+				speed = self.num2factor(zctrl.value)
+			self.player.set_speed(handle, speed)
+			self.monitors_dict[handle]['speed'] = speed
+			"""
+			for processor in self.processors:
+				if processor.handle == handle:
+					processor.controllers_dict['duration'].value
+					break
+			"""
+		elif zctrl.symbol == "pitch":
+			if abs(zctrl.value) < 0.01:
+				zctrl.value = 0.0
+				self.player.set_pitch(handle, 1.0)
+			else:
+				self.player.set_pitch(handle, self.num2factor(zctrl.value))
 		elif zctrl.symbol == "varispeed":
 			if abs(zctrl.value) < 0.01:
 				zctrl.value = 0.0
 				self.player.set_varispeed(handle, 1.0)
-			elif zctrl.value > 0:
-				self.player.set_varispeed(handle, 1.0 + zctrl.value)
 			else:
-				self.player.set_varispeed(handle, 1.0 / (1.0 - zctrl.value))
+				self.player.set_varispeed(handle, self.num2factor(zctrl.value))
+
+	def num2factor(self, num):
+		if abs(num) < 0.01:
+			return 1.0
+		elif num > 0:
+			return 1.0 + num
+		else:
+			return 1.0 / (1.0 - num)
+
 
 	def get_monitors_dict(self, handle):
 		return self.monitors_dict[handle]

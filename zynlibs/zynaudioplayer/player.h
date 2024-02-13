@@ -352,6 +352,30 @@ void set_pitchbend_range(AUDIO_PLAYER * pPlayer, uint8_t range);
 */
 uint8_t get_pitchbend_range(AUDIO_PLAYER * pPlayer);
 
+/** @brief  Set base speed
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  factor Speed factor (0.25..4.0)
+*/
+void set_speed(AUDIO_PLAYER * pPlayer, float factor);
+
+/** @brief  Get base speed
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval float Speed factor
+*/
+float get_speed(AUDIO_PLAYER * pPlayer);
+
+/** @brief  Set base pitch
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  factor Pitch factor (0.25..4.0)
+*/
+void set_pitch(AUDIO_PLAYER * pPlayer, float factor);
+
+/** @brief  Get base pitch
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval float Pitch factor
+*/
+float get_pitch(AUDIO_PLAYER * pPlayer);
+
 /** @brief  Set varispeed
 *   @param  player_handle Handle of player provided by init_player()
 *   @param  ratio Ratio of speed:pitch (1.0 for no varispeed)

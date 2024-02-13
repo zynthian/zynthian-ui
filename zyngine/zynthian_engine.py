@@ -524,7 +524,9 @@ class zynthian_engine(zynthian_basic_engine):
 
 				# Build controller depending on array length ...
 				if ctrl[0] in processor.controllers_dict:
-					if len(ctrl) > 3:
+					if build_from_options:
+						processor.controllers_dict[ctrl[0]].set_options(options)
+					elif len(ctrl) > 3:
 						processor.controllers_dict[ctrl[0]].setup_controller(midich, cc, ctrl[2], ctrl[3])
 					elif len(ctrl) > 2:
 						processor.controllers_dict[ctrl[0]].setup_controller(midich, cc, ctrl[2])

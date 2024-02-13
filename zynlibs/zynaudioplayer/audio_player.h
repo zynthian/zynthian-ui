@@ -147,6 +147,8 @@ class AUDIO_PLAYER {
     float pos_notify_delta; // Position time difference to trigger notification
     float varispeed = 1.0; // Ratio to adjust speed and pitch
     float pitchshift = 1.0; // Ratio of MIDI pitch shift (note, bend, etc.)
+    float speed = 1.0; // Base speed factor
+    float pitch = 1.0; // Base pitch factor
 
     RubberBand::RubberBandStretcher * stretcher = nullptr; // Time/pitch warp
 };

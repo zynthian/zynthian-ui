@@ -90,6 +90,10 @@ class zynaudioplayer():
 			self.libaudioplayer.set_env_release.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_env_release.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_tempo.argtypes = [ctypes.c_float]
+			self.libaudioplayer.set_speed.argtypes = [ctypes.c_void_p, ctypes.c_float]
+			self.libaudioplayer.get_speed.restype = ctypes.c_float
+			self.libaudioplayer.set_pitch.argtypes = [ctypes.c_void_p, ctypes.c_float]
+			self.libaudioplayer.get_pitch.restype = ctypes.c_float
 			self.libaudioplayer.set_varispeed.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.get_varispeed.restype = ctypes.c_float
 			self.control_cb = None
@@ -460,6 +464,30 @@ class zynaudioplayer():
 	#	Returns: Pitchbend range in semitones
 	def get_pitchbend_range(self, handle):
 		return self.libaudioplayer.get_pitchbend_range(handle)
+
+	#	Set base speed factor
+	#	handle: Index of player
+	#	factor: Playback speed factor
+	def set_speed(self, handle, factor):
+		self.libaudioplayer.set_speed(handle, factor)
+
+	#	Get base speed factor
+	#	handle: Index of player
+	#	Returns: Playback speed factor
+	def get_speed(self, handle):
+		return self.libaudioplayer.get_speed(handle)
+
+	#	Set base pitch factor
+	#	handle: Index of player
+	#	factor: Pitch factor
+	def set_pitch(self, handle, factor):
+		self.libaudioplayer.set_pitch(handle, factor)
+
+	#	Get base pitch factor
+	#	handle: Index of player
+	#	Returns: Pitch factor
+	def get_pitch(self, handle):
+		return self.libaudioplayer.get_pitch(handle)
 
 	#	Set varispeed ratio
 	#	handle: Index of player

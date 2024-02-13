@@ -556,14 +556,14 @@ const char* get_filename(AUDIO_PLAYER * pPlayer) {
 
 float get_duration(AUDIO_PLAYER * pPlayer) {
     if(pPlayer && pPlayer->file_open == FILE_OPEN && pPlayer->sf_info.samplerate)
-        return (float)pPlayer->sf_info.frames / pPlayer->sf_info.samplerate;
+        return (float)pPlayer->sf_info.frames / pPlayer->sf_info.samplerate / pPlayer->speed;
     return 0.0f;
 }
 
 void set_position(AUDIO_PLAYER * pPlayer, float time) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return;
-    sf_count_t frames = time * g_samplerate;
+    sf_count_t frames = time * g_samplerate * pPlayer->speed;
     if(frames > pPlayer->crop_end_src)
         frames = pPlayer->crop_end_src;
     else if(frames < pPlayer->crop_start_src)
@@ -578,7 +578,7 @@ void set_position(AUDIO_PLAYER * pPlayer, float time) {
 
 float get_position(AUDIO_PLAYER * pPlayer) {
     if(pPlayer && pPlayer->file_open == FILE_OPEN)
-        return (float)(pPlayer->play_pos_frames) / g_samplerate;
+        return (float)(pPlayer->play_pos_frames) / g_samplerate / pPlayer->speed;
     return 0.0;
 }
 
@@ -1037,8 +1037,8 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
 
         if(pPlayer->play_state == PLAYING || pPlayer->play_state == STOPPING) {
             if (pPlayer->time_ratio_dirty) {
-                pPlayer->stretcher->setTimeRatio(pPlayer->time_ratio / pPlayer->varispeed);
-                pPlayer->stretcher->setPitchScale(pPlayer->pitchshift * pPlayer->varispeed);
+                pPlayer->stretcher->setTimeRatio(pPlayer->time_ratio / pPlayer->varispeed / pPlayer->speed);
+                pPlayer->stretcher->setPitchScale(pPlayer->pitch * pPlayer->pitchshift * pPlayer->varispeed);
                 pPlayer->time_ratio_dirty = false;
             }
             while(pPlayer->stretcher->available() < nFrames) {
@@ -1478,6 +1478,32 @@ uint8_t get_pitchbend_range(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer)
         return 0;
     return pPlayer->pitch_bend_range;
+}
+
+void set_speed(AUDIO_PLAYER * pPlayer, float factor) {
+    if (!pPlayer || factor < 0.25 || factor > 4.0)
+        return;
+    pPlayer->speed = factor;
+    pPlayer->time_ratio_dirty = true;
+}
+
+float get_speed(AUDIO_PLAYER * pPlayer) {
+    if (!pPlayer)
+        return 0.0;
+    return pPlayer->speed;
+}
+
+void set_pitch(AUDIO_PLAYER * pPlayer, float factor) {
+    if (!pPlayer || factor < 0.25 || factor > 4.0)
+        return;
+    pPlayer->pitch = factor;
+    pPlayer->time_ratio_dirty = true;
+}
+
+float get_pitch(AUDIO_PLAYER * pPlayer) {
+    if (!pPlayer)
+        return 0.0;
+    return pPlayer->pitch;
 }
 
 void set_varispeed(AUDIO_PLAYER * pPlayer, float ratio) {
