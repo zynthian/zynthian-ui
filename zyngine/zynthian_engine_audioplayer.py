@@ -213,7 +213,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.monitors_dict[processor.handle]['channels'] = self.player.get_frames(processor.handle)
 		self.monitors_dict[processor.handle]['samplerate'] = self.player.get_samplerate(processor.handle)
 		self.monitors_dict[processor.handle]['codec'] = self.player.get_codec(processor.handle)
-		self.monitors_dict[processor.handle]['speed'] = self.player.get_speed(processor.handle)
+		self.player.set_speed(processor.handle, 1.0)
 
 		dur = self.player.get_duration(processor.handle)
 		self.player.set_position(processor.handle, 0)
@@ -464,37 +464,34 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.player.set_damper(handle, zctrl.value)
 		elif zctrl.symbol == "zoom":
 			self.monitors_dict[handle]['zoom'] = zctrl.value
-			for processor in self.processors:
-				if processor.handle == handle:
-					processor.controllers_dict['zoom range'].set_value(0)
-					pos_zctrl = processor.controllers_dict['position']
-					pos_zctrl.nudge_factor = pos_zctrl.value_max / 400 / zctrl.value
-					processor.controllers_dict['loop start'].nudge_factor = pos_zctrl.nudge_factor
-					processor.controllers_dict['loop end'].nudge_factor = pos_zctrl.nudge_factor
-					processor.controllers_dict['crop start'].nudge_factor = pos_zctrl.nudge_factor
-					processor.controllers_dict['crop end'].nudge_factor = pos_zctrl.nudge_factor
-					processor.controllers_dict['cue pos'].nudge_factor = pos_zctrl.nudge_factor
-					return
+			if self.processor:
+				self.processor.controllers_dict['zoom range'].set_value(0)
+				pos_zctrl = self.processor.controllers_dict['position']
+				pos_zctrl.nudge_factor = pos_zctrl.value_max / 400 / zctrl.value
+				self.processor.controllers_dict['loop start'].nudge_factor = pos_zctrl.nudge_factor
+				self.processor.controllers_dict['loop end'].nudge_factor = pos_zctrl.nudge_factor
+				self.processor.controllers_dict['crop start'].nudge_factor = pos_zctrl.nudge_factor
+				self.processor.controllers_dict['crop end'].nudge_factor = pos_zctrl.nudge_factor
+				self.processor.controllers_dict['cue pos'].nudge_factor = pos_zctrl.nudge_factor
 		elif zctrl.symbol == "zoom range":
-			for processor in self.processors:
-				if processor.handle == handle:
-					if zctrl.value == 1:
-						# Show whole file
-						processor.controllers_dict['zoom'].set_value(1, False)
-						processor.controllers_dict['view offset'].set_value(0)
-						range = self.player.get_duration(handle)
-					elif zctrl.value == 2:
-						# Show cropped region
-						start = self.player.get_crop_start(handle)
-						range = self.player.get_crop_end(handle) - start
-						processor.controllers_dict['view offset'].set_value(start)
-						processor.controllers_dict['zoom'].set_value(self.player.get_duration(handle) / range, False)
-					elif zctrl.value == 3:
-						# Show loop region
-						start = self.player.get_loop_start(handle)
-						range = self.player.get_loop_end(handle) - start
-						processor.controllers_dict['view offset'].set_value(start)
-						processor.controllers_dict['zoom'].set_value(self.player.get_duration(handle) / range, False)
+			if self.processor:
+				if zctrl.value == 1:
+					# Show whole file
+					self.processor.controllers_dict['zoom'].set_value(1, False)
+					self.processor.controllers_dict['view offset'].set_value(0)
+					range = self.player.get_duration(handle)
+				elif zctrl.value == 2:
+					# Show cropped region
+					start = self.player.get_crop_start(handle)
+					range = self.player.get_crop_end(handle) - start
+					self.processor.controllers_dict['view offset'].set_value(start)
+					self.processor.controllers_dict['zoom'].set_value(self.player.get_duration(handle) / range, False)
+				elif zctrl.value == 3:
+					# Show loop region
+					start = self.player.get_loop_start(handle)
+					range = self.player.get_loop_end(handle) - start
+					self.processor.controllers_dict['view offset'].set_value(start)
+					self.processor.controllers_dict['zoom'].set_value(self.player.get_duration(handle) / range, False)
 
 		elif zctrl.symbol == "info":
 			self.monitors_dict[handle]['info'] = zctrl.value
@@ -509,15 +506,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		elif zctrl.symbol == "beats":
 			self.player.set_beats(handle, zctrl.value)
 		elif zctrl.symbol == "cue":
-			for processor in self.processors:
-				if processor.handle == handle:
-					processor.controllers_dict['cue pos'].set_value(self.player.get_cue_point_position(handle, zctrl.value - 1), False)
+			if self.processor:
+				self.processor.controllers_dict['cue pos'].set_value(self.player.get_cue_point_position(handle, zctrl.value - 1), False)
 		elif zctrl.symbol == "cue pos":
-			for processor in self.processors:
-				if processor.handle == handle:
-					if self.player.get_cue_point_count(handle):
-						self.player.set_cue_point_position(handle, processor.controllers_dict['cue'].value - 1, zctrl.value)
-					break
+			if self.processor:
+				if self.player.get_cue_point_count(handle):
+					self.player.set_cue_point_position(handle, self.processor.controllers_dict['cue'].value - 1, zctrl.value)
 		elif zctrl.symbol == "speed":
 			if abs(zctrl.value) < 0.01:
 				zctrl.value = 0.0
@@ -526,12 +520,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				speed = self.num2factor(zctrl.value)
 			self.player.set_speed(handle, speed)
 			self.monitors_dict[handle]['speed'] = speed
-			"""
-			for processor in self.processors:
-				if processor.handle == handle:
-					processor.controllers_dict['duration'].value
-					break
-			"""
+			if self.processor:
+				self.processor.controllers_dict['position'].value_max = self.player.get_duration(handle)
+				self.processor.controllers_dict['crop end'].value_max = self.player.get_duration(handle)
 		elif zctrl.symbol == "pitch":
 			if abs(zctrl.value) < 0.01:
 				zctrl.value = 0.0
