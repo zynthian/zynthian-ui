@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for sooper looper
 #
-# Copyright (C) 2022-2023 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2022-2024 Brian Walton <riban@zynthian.org>
 #
 #******************************************************************************
 #
@@ -187,41 +187,41 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			loop_labels.append(str(i + 1))
 		self._ctrls=[
 			#symbol, name, {options}, midi_cc
-			['record', 'record', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True, 'is_toggle':True}, 102],
-			['overdub', 'overdub', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 103],
-			['multiply', 'multiply', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 104],
-			['replace', 'replace', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 105],
-			['substitute', 'substitute', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 106],
-			['insert', 'insert', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 107],
-			['undo/redo', 'undo/redo', {'value':1, 'labels':['<', '<>', '>']}],
-			['prev/next', 'prev/next', {'value':1, 'labels':['<', '<>', '>']}],
-			['trigger', 'trigger', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 108],
-			['mute', 'mute', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 109],
-			['oneshot', 'oneshot', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 110],
-			['pause', 'pause', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 111],
-			['reverse', 'direction', {'value':0, 'labels':['reverse', 'forward'], 'ticks':[1, 0], 'is_toggle':True}],
-			['rate', 'speed', {'value':1.0, 'value_min':0.25, 'value_max':4.0, 'is_integer':False, 'nudge_factor':0.01}],
-			['stretch_ratio', 'stretch', {'value':1.0, 'value_min':0.5, 'value_max':4.0, 'is_integer':False, 'nudge_factor':0.01}],
-			['pitch_shift', 'pitch', {'value':0.0, 'value_min':-12, 'value_max':12, 'is_integer':False, 'nudge_factor':0.1}],
-			['sync_source', 'sync to', {'value':1, 'value_min':-3, 'value_max':1, 'labels':['Internal','MidiClock','Jack/Host','None','Loop1'], 'is_integer':True}],
-			['sync', 'enable sync', {'value':1, 'value_max':1, 'labels':['off', 'on']}],
-            ['eighth_per_cycle', '8th/cycle', {'value':16, 'value_min':1, 'value_max':600}], #TODO: What makes sense for max val?
-            ['quantize', 'quantize', {'value':1, 'value_max':3, 'labels':['off', 'cycle', '8th', 'loop']}],
-            ['mute_quantized', 'mute quant', {'value':0, 'value_max':1, 'labels':['off', 'on'],}],
-            ['overdub_quantized', 'overdub quant', {'value':0, 'value_max':1, 'labels':['off', 'on']}],
-            ['replace_quantized', 'replace quant', {'value':0, 'value_max':1, 'labels':['off', 'on']}],
-            ['round', 'round', {'value':0, 'value_max':1, 'labels':['off', 'on']}],
-            ['relative_sync', 'relative sync', {'value':0, 'value_max':1, 'labels':['off', 'on']}],
-            ['smart_eighths', 'auto 8th', {'value':1, 'value_max':1, 'labels':['off', 'on']}],
-            ['playback_sync', 'playback sync', {'value':0, 'value_max':1, 'labels':['off', 'on']}],
-            ['use_feedback_play', 'play feedback', {'value':0, 'value_max':1, 'labels':['off', 'on']}],
-            ['rec_thresh', 'threshold', {'value':0.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
-			['feedback', 'feedback', {'value':1.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
-			['dry', 'dry', {'value':1.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
-			['wet', 'wet', {'value':1.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
-			['input_gain', 'input gain', {'value':1.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
-			['loop_count', 'loop count', {'value':1, 'value_min':1, 'value_max':self.MAX_LOOPS}],
-			['selected_loop_num', 'selected loop', {'value':1, 'value_min':1, 'value_max': 6}]
+			['record', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True, 'is_toggle':True}, 102],
+			['overdub', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 103],
+			['multiply', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 104],
+			['replace', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 105],
+			['substitute', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 106],
+			['insert', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 107],
+			['undo/redo', {'value':1, 'labels':['<', '<>', '>']}],
+			['prev/next', {'value':1, 'labels':['<', '<>', '>']}],
+			['trigger', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 108],
+			['mute',  {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 109],
+			['oneshot', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 110],
+			['pause', {'value':0, 'value_max':1, 'labels':['off', 'on'], 'is_toggle':True}, 111],
+			['reverse', {'name':'direction', 'value':0, 'labels':['reverse', 'forward'], 'ticks':[1, 0], 'is_toggle':True}],
+			['rate', {'name':'speed', 'value':1.0, 'value_min':0.25, 'value_max':4.0, 'is_integer':False, 'nudge_factor':0.01}],
+			['stretch_ratio', {'name':'stretch', 'value':1.0, 'value_min':0.5, 'value_max':4.0, 'is_integer':False, 'nudge_factor':0.01}],
+			['pitch_shift', {'name':'pitch', 'value':0.0, 'value_min':-12, 'value_max':12, 'is_integer':False, 'nudge_factor':0.1}],
+			['sync_source', {'name':'sync to', 'value':1, 'value_min':-3, 'value_max':1, 'labels':['Internal','MidiClock','Jack/Host','None','Loop1'], 'is_integer':True}],
+			['sync', {'name':'enable sync', 'value':1, 'value_max':1, 'labels':['off', 'on']}],
+            ['eighth_per_cycle', {'name':'8th/cycle', 'value':16, 'value_min':1, 'value_max':600}], #TODO: What makes sense for max val?
+            ['quantize', {'value':1, 'value_max':3, 'labels':['off', 'cycle', '8th', 'loop']}],
+            ['mute_quantized', {'name':'mute quant', 'value':0, 'value_max':1, 'labels':['off', 'on'],}],
+            ['overdub_quantized', {'name':'overdub quant', 'value':0, 'value_max':1, 'labels':['off', 'on']}],
+            ['replace_quantized', {'name':'replace quant', 'value':0, 'value_max':1, 'labels':['off', 'on']}],
+            ['round', {'value':0, 'value_max':1, 'labels':['off', 'on']}],
+            ['relative_sync', {'value':0, 'value_max':1, 'labels':['off', 'on']}],
+            ['smart_eighths', {'name':'auto 8th', 'value':1, 'value_max':1, 'labels':['off', 'on']}],
+            ['playback_sync', {'value':0, 'value_max':1, 'labels':['off', 'on']}],
+            ['use_feedback_play', {'name':'play feedback', 'value':0, 'value_max':1, 'labels':['off', 'on']}],
+            ['rec_thresh', {'name':'threshold', 'value':0.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
+			['feedback', {'value':1.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
+			['dry', {'value':1.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
+			['wet', {'value':1.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
+			['input_gain', {'name':'input gain', 'value':1.0, 'value_max':1.0, 'is_integer':False, 'is_logarithmic': True}],
+			['loop_count', {'name':'loop count', 'value':1, 'value_min':1, 'value_max':self.MAX_LOOPS}],
+			['selected_loop_num', {'name':'selected loop', 'value':1, 'value_min':1, 'value_max': 6}]
 		]
 
 		# Controller Screens
@@ -385,13 +385,12 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			if midi_chan < 0 or midi_chan > 15:
 				midi_chan = None
 			for ctrl in self._ctrls:
-				zctrl = zynthian_controller(self, ctrl[0], ctrl[1], ctrl[2])
-				zctrl.set_options({"processor": processor})
+				ctrl[1]['processor'] = processor
+				zctrl = zynthian_controller(self, ctrl[0], ctrl[1])
 				processor.controllers_dict[zctrl.symbol] = zctrl
 				if midi_chan is not None and len(ctrl) > 3:
 					self.state_manager.chain_manager.add_midi_learn(midi_chan, ctrl[3], zctrl)
 		return processor.controllers_dict
-	
 
 
 	def send_controller_value(self, zctrl):

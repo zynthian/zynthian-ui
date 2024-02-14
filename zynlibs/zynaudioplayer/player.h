@@ -29,10 +29,11 @@ enum {
     NOTIFY_CROP_END     = 14,
     NOTIFY_SUSTAIN      = 15,
     NOTIFY_ENV_ATTACK   = 16,
-    NOTIFY_ENV_DECAY    = 17,
-    NOTIFY_ENV_SUSTAIN  = 18,
-    NOTIFY_ENV_RELEASE  = 19,
-    NOTIFY_ENV_ATTACK_CURVE = 20,
+    NOTIFY_ENV_HOLD     = 17,
+    NOTIFY_ENV_DECAY    = 18,
+    NOTIFY_ENV_SUSTAIN  = 19,
+    NOTIFY_ENV_RELEASE  = 20,
+    NOTIFY_ENV_ATTACK_CURVE = 21,
     NOTIFY_ENV_DECAY_CURVE = 21
 };
 
@@ -433,6 +434,18 @@ void set_env_attack(AUDIO_PLAYER * pPlayer, float rate);
 *   @retval <float> Attack rate
 */
 float get_env_attack(AUDIO_PLAYER * pPlayer);
+
+/** @brief  Set envelope hold time
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  hold Time in seconds to hold between attack and decay phases
+*/
+void set_env_hold(AUDIO_PLAYER * pPlayer, float hold);
+
+/** @brief  Get envelope hold time
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval <float> Time in seconds between attack and decay phases
+*/
+float get_env_hold(AUDIO_PLAYER * pPlayer);
 
 /** @brief  Set envelope decay rate
 *   @param  player_handle Handle of player provided by init_player()

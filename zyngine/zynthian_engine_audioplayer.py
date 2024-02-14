@@ -233,6 +233,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		gain = self.player.get_gain(processor.handle)
 		bend_range = self.player.get_pitchbend_range(processor.handle)
 		attack = self.player.get_attack(processor.handle)
+		hold = self.player.get_hold(processor.handle)
 		decay = self.player.get_decay(processor.handle)
 		sustain = self.player.get_sustain(processor.handle)
 		release = self.player.get_release(processor.handle)
@@ -270,7 +271,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				self._ctrl_screens[3][1][2] = None
 				self._ctrl_screens[3][1][3] = None
 			else:
-				self._ctrl_screens.insert(-2, ['envelope', ['attack', 'decay', 'sustain', 'release']])
+				self._ctrl_screens.insert(-2, ['envelope 1', ['attack', 'hold', 'decay', 'sustain']])
+				self._ctrl_screens.insert(-2, ['envelope 2', ['release']])
 
 		else:
 			self._ctrl_screens = [
@@ -297,6 +299,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['sustain pedal', 64, 'off', ['off', 'on']],
 			['bend range', None, bend_range, 24],
 			['attack', None, attack, 20.0],
+			['hold', None, hold, 20.0],
 			['decay', None, decay, 20.0],
 			['sustain', None, sustain, 1.0],
 			['release', None, release, 20.0],
@@ -416,10 +419,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					elif id == 16:
 						ctrl_dict['attack'].set_value(value, False)
 					elif id == 17:
-						ctrl_dict['decay'].set_value(value, False)
+						ctrl_dict['hold'].set_value(value, False)
 					elif id == 18:
-						ctrl_dict['sustain'].set_value(value, False)
+						ctrl_dict['decay'].set_value(value, False)
 					elif id == 19:
+						ctrl_dict['sustain'].set_value(value, False)
+					elif id == 20:
 						ctrl_dict['release'].set_value(value, False)
 					break
 		except Exception as e:
@@ -497,6 +502,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.monitors_dict[handle]['info'] = zctrl.value
 		elif zctrl.symbol == "attack":
 			self.player.set_attack(handle, zctrl.value)
+		elif zctrl.symbol == "hold":
+			self.player.set_hold(handle, zctrl.value)
 		elif zctrl.symbol == "decay":
 			self.player.set_decay(handle, zctrl.value)
 		elif zctrl.symbol == "sustain":

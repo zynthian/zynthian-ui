@@ -56,6 +56,7 @@ class zynaudioplayer():
 			self.libaudioplayer.get_crop_end_time.restype = ctypes.c_float
 			self.libaudioplayer.get_file_duration.restype = ctypes.c_float
 			self.libaudioplayer.get_env_attack.restype = ctypes.c_float
+			self.libaudioplayer.get_env_hold.restype = ctypes.c_float
 			self.libaudioplayer.get_env_decay.restype = ctypes.c_float
 			self.libaudioplayer.get_env_sustain.restype = ctypes.c_float
 			self.libaudioplayer.get_env_release.restype = ctypes.c_float
@@ -85,6 +86,7 @@ class zynaudioplayer():
 			self.libaudioplayer.set_cue_point_name.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_char_p]
 			self.libaudioplayer.set_pos_notify_delta.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_env_attack.argtypes = [ctypes.c_void_p, ctypes.c_float]
+			self.libaudioplayer.set_env_hold.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_env_decay.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_env_sustain.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_env_release.argtypes = [ctypes.c_void_p, ctypes.c_float]
@@ -513,6 +515,20 @@ class zynaudioplayer():
 	#	Returns: Attack time in seconds
 	def get_attack(self, handle):
 		return self.libaudioplayer.get_env_attack(handle)
+
+
+	#	Set envelope hold
+	#	handle: Index of player
+	#	attack: Time in seconds between attack and decay phase
+	def set_hold(self, handle, hold):
+		self.libaudioplayer.set_env_hold(handle, hold)
+
+
+	#	Get envelope hold
+	#	handle: Index of player
+	#	Returns: Time in seconds between attack and decay phase
+	def get_hold(self, handle):
+		return self.libaudioplayer.get_env_hold(handle)
 
 
 	#	Set envelope decay

@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Brightness config
 # 
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -83,7 +83,7 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
 			logging.info("Setting display brightness to {}.".format(val))
 			# Create display brightness control
 			if not self.display_brightness_gui_ctrl:
-				self.display_brightness_zctrl = zynthian_controller(self, 'display_brightness', 'Display', {'value_min': 0, 'value_max': 100, 'is_integer': True, 'nudge_factor': 1, 'value': val})
+				self.display_brightness_zctrl = zynthian_controller(self, 'display_brightness', {'name':'Display', 'value_min': 0, 'value_max': 100, 'is_integer': True, 'nudge_factor': 1, 'value': val})
 				self.display_brightness_gui_ctrl = zynthian_gui_controller(0, self.main_frame, self.display_brightness_zctrl)
 				self.zgui_ctrls.append(self.display_brightness_gui_ctrl)
 		except:
@@ -100,7 +100,7 @@ class zynthian_gui_brightness_config(zynthian_gui_base):
 			logging.info("Setting LED brightness to {}.".format(val))
 			# Create LEDs brightness control
 			if not self.wsleds_brightness_gui_ctrl:
-				self.wsleds_brightness_zctrl = zynthian_controller(self, 'wsleds_brightness', 'LEDs', {'value_min': 0, 'value_max': 100, 'is_integer': True, 'nudge_factor': 1, 'value':  val})
+				self.wsleds_brightness_zctrl = zynthian_controller(self, 'wsleds_brightness', {'name':'LEDs', 'value_min': 0, 'value_max': 100, 'is_integer': True, 'nudge_factor': 1, 'value':  val})
 				self.wsleds_brightness_gui_ctrl = zynthian_gui_controller(1, self.main_frame, self.wsleds_brightness_zctrl)
 				self.zgui_ctrls.append(self.wsleds_brightness_gui_ctrl)
 

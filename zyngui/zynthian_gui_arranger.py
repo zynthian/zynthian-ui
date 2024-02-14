@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Step-Sequencer Arranger Class
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
@@ -194,9 +194,9 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		if params == 'Tempo':
 			self.zyngui.show_screen('tempo')
 		elif params == 'Beats per bar':
-			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zynseq.libseq.getBeatsPerBar()})
+			self.enable_param_editor(self, 'bpb', {'name':'Beats per bar', 'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zynseq.libseq.getBeatsPerBar()})
 		elif params == 'Scene':
-			self.enable_param_editor(self, 'scene', 'Scene', {'value_min':1, 'value_max':64, 'value':self.zynseq.bank})
+			self.enable_param_editor(self, 'scene', {'name':'Scene', 'value_min':1, 'value_max':64, 'value':self.zynseq.bank})
 		elif 'ute track' in params:
 			self.toggle_mute()
 		elif params == 'MIDI channel':
@@ -207,17 +207,17 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 					labels.append(f"{midi_chan + 1} ({preset_name})")
 				else:
 					labels.append(f"{midi_chan + 1}")
-			self.enable_param_editor(self, 'midi_chan', 'MIDI channel', {'labels':labels, 'value_default':self.zynseq.libseq.getChannel(self.zynseq.bank, self.sequence, self.track), 'value':self.zynseq.libseq.getChannel(self.zynseq.bank, self.sequence, self.track)})
+			self.enable_param_editor(self, 'midi_chan', {'name':'MIDI channel', 'labels':labels, 'value_default':self.zynseq.libseq.getChannel(self.zynseq.bank, self.sequence, self.track), 'value':self.zynseq.libseq.getChannel(self.zynseq.bank, self.sequence, self.track)})
 		elif params == 'Play mode':
-			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynseq.PLAY_MODES, 'value':self.zynseq.libseq.getPlayMode(self.zynseq.bank, self.sequence), 'value_default':zynseq.SEQ_LOOPALL})
+			self.enable_param_editor(self, 'playmode', {'name':'Play mode', 'labels':zynseq.PLAY_MODES, 'value':self.zynseq.libseq.getPlayMode(self.zynseq.bank, self.sequence), 'value_default':zynseq.SEQ_LOOPALL})
 		elif params == 'Vertical zoom':
-			self.enable_param_editor(self, 'vzoom', 'Vertical zoom', {'value_min':1, 'value_max':127, 'value_default':8, 'value':self.vertical_zoom})
+			self.enable_param_editor(self, 'vzoom', {'name':'Vertical zoom', 'value_min':1, 'value_max':127, 'value_default':8, 'value':self.vertical_zoom})
 		elif params == 'Horizontal zoom':
-			self.enable_param_editor(self, 'hzoom', 'Horizontal zoom', {'value_min':1, 'value_max':64, 'value_default':16, 'value':self.horizontal_zoom})
+			self.enable_param_editor(self, 'hzoom', {'name':'Horizontal zoom', 'value_min':1, 'value_max':64, 'value_default':16, 'value':self.horizontal_zoom})
 		elif params == 'Group':
-			self.enable_param_editor(self, 'group', 'Group', {'labels':list(map(chr, range(65, 91))), 'default':self.zynseq.libseq.getGroup(self.zynseq.bank, self.sequence), 'value':self.zynseq.libseq.getGroup(self.zynseq.bank, self.sequence)})
+			self.enable_param_editor(self, 'group', {'name':'Group', 'labels':list(map(chr, range(65, 91))), 'default':self.zynseq.libseq.getGroup(self.zynseq.bank, self.sequence), 'value':self.zynseq.libseq.getGroup(self.zynseq.bank, self.sequence)})
 		elif params == 'Pattern':
-			self.enable_param_editor(self, 'pattern', 'Pattern', {'value_min':1, 'value_max':zynseq.SEQ_MAX_PATTERNS, 'value_default':self.pattern, 'value':self.pattern})
+			self.enable_param_editor(self, 'pattern', {'name':'Pattern', 'value_min':1, 'value_max':zynseq.SEQ_MAX_PATTERNS, 'value_default':self.pattern, 'value':self.pattern})
 		elif params == 'Add track':
 			self.add_track()
 		elif params == 'Remove track':

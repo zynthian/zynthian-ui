@@ -4,7 +4,7 @@
 # 
 # zynthian_engine is the base class for the Zynthian Synth Engine
 # 
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 # 
@@ -485,16 +485,16 @@ class zynthian_engine(zynthian_basic_engine):
 
 		if self._ctrls is not None:
 			# Remove controls that are no longer used
-			for name in list(processor.controllers_dict):
+			for symbol in list(processor.controllers_dict):
 				d = True
 				for i in self._ctrls:
-					if name == i[0]:
+					if symbol == i[0]:
 						d = False
 						break
 				if d:
-					del processor.controllers_dict[name]
+					del processor.controllers_dict[symbol]
 				else:
-					processor.controllers_dict[name].reset()
+					processor.controllers_dict[symbol].reset(self, symbol)
 
 			for ctrl in self._ctrls:
 				options = {}
@@ -521,32 +521,36 @@ class zynthian_engine(zynthian_basic_engine):
 					cc = ctrl[1]
 
 				options["processor"] = processor
+				options["midi_chan"] = midich
+				options["midi_cc"] = cc
 
 				# Build controller depending on array length ...
 				if ctrl[0] in processor.controllers_dict:
+					# Controller already exists so reconfigure with new settings
 					if build_from_options:
 						processor.controllers_dict[ctrl[0]].set_options(options)
 					elif len(ctrl) > 3:
-						processor.controllers_dict[ctrl[0]].setup_controller(midich, cc, ctrl[2], ctrl[3])
+						options['value'] = ctrl[2]
+						options['value_max'] = ctrl[3]
+						processor.controllers_dict[ctrl[0]].set_options(options)
 					elif len(ctrl) > 2:
-						processor.controllers_dict[ctrl[0]].setup_controller(midich, cc, ctrl[2])
+						options['value'] = ctrl[2]
+						processor.controllers_dict[ctrl[0]].set_options(options)
 					continue
 
-				elif build_from_options:
-					zctrl = zynthian_controller(self, ctrl[0], ctrl[0], options)
-				elif len(ctrl) > 4:
-					if isinstance(ctrl[4], str):
-						zctrl = zynthian_controller(self, ctrl[4], ctrl[0], options)
-					else:
-						zctrl = zynthian_controller(self, ctrl[0], None, options)
-						zctrl.graph_path = ctrl[4]
-					zctrl.setup_controller(midich, cc, ctrl[2], ctrl[3])
-				elif len(ctrl) > 3:
-					zctrl = zynthian_controller(self, ctrl[0], None, options)
-					zctrl.setup_controller(midich, cc, ctrl[2], ctrl[3])
 				else:
-					zctrl = zynthian_controller(self, ctrl[0], None, options)
-					zctrl.setup_controller(midich, cc, ctrl[2])
+					if not build_from_options:
+						if len(ctrl) > 4:
+							# optional param 4 is graph path
+							options['graph_path'] = ctrl[4]
+						if len(ctrl) > 3:
+							# optional param 3 is called value_max but actually could be a configuration object 
+							options['value_max'] = ctrl[3]
+						if len(ctrl) > 2:
+							# param 2 is zctrl value
+							options['value'] = ctrl[2]
+					# param 0 is symbol string, param 1 is options or midi cc or osc path
+					zctrl = zynthian_controller(self, ctrl[0], options)
 
 				if zctrl.midi_cc is not None:
 					self.state_manager.chain_manager.add_midi_learn(zctrl.midi_chan, zctrl.midi_cc, zctrl)

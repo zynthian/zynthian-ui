@@ -5,7 +5,7 @@
 #
 # A Python wrapper for zynmixer library
 #
-# Copyright (C) 2019-2023 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2019-2024 Brian Walton <riban@zynthian.org>
 #
 # ********************************************************************
 #
@@ -99,14 +99,14 @@ class zynmixer(zynthian_engine):
 		self.zctrls = []
 		for i in range(self.MAX_NUM_CHANNELS):
 			strip_dict = {
-				'level': zynthian_controller(self, 'level', None, {
+				'level': zynthian_controller(self, 'level', {
 					'is_integer': False,
 					'value_max': 1.0,
 					'value_default': 0.8,
 					'value': self.get_level(i),
 					'graph_path': [i, 'level']
 					}),
-				'balance': zynthian_controller(self, 'balance', None, {
+				'balance': zynthian_controller(self, 'balance', {
 					'is_integer': False,
 					'value_min': -1.0,
 					'value_max': 1.0,
@@ -114,28 +114,28 @@ class zynmixer(zynthian_engine):
 					'value': self.get_balance(i),
 					'graph_path': [i, 'balance']
 				}),
-				'mute': zynthian_controller(self, 'mute', None, {
+				'mute': zynthian_controller(self, 'mute', {
 					'is_toggle': True,
 					'value_max': 1,
 					'value_default': 0,
 					'value': self.get_mute(i),
 					'graph_path': [i, 'mute']
 				}),
-				'solo': zynthian_controller(self, 'solo', None, {
+				'solo': zynthian_controller(self, 'solo', {
 					'is_toggle': True,
 					'value_max': 1,
 					'value_default': 0,
 					'value': self.get_solo(i),
 					'graph_path': [i, 'solo']
 				}),
-				'mono': zynthian_controller(self, 'mono', None, {
+				'mono': zynthian_controller(self, 'mono', {
 					'is_toggle': True,
 					'value_max': 1,
 					'value_default': 0,
 					'value': self.get_mono(i),
 					'graph_path': [i, 'mono']
 				}),
-				'phase': zynthian_controller(self, 'phase', None, {
+				'phase': zynthian_controller(self, 'phase',{
 					'is_toggle': True,
 					'value_max': 1,
 					'value_default': 0,

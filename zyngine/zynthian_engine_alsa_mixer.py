@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for Alsa Mixer
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -197,7 +197,8 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 		# Add HP amplifier interface if available
 		try:
 			if self.is_headphone_amp_interface_available():
-				ctrls.append(["Headphone", "Headphone", {
+				ctrls.append(["Headphone", {
+					'name': "Headphone",
 					'graph_path': lib_zyncore.set_hpvol,
 					'value': lib_zyncore.get_hpvol(),
 					'value_min': 0,
@@ -216,7 +217,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 					ctrls.append(hp_ctrls["Headphone"])
 					logging.debug("Added RBPi Headphones Amplifier volume control")
 				elif "PCM" in hp_ctrls:
-					ctrls.append(["Headphone", "Headphone", hp_ctrls["PCM"][2]])
+					ctrls.append(["Headphone", hp_ctrls["PCM"][1]])
 					logging.debug("Added RBPi Headphones Amplifier volume control")
 				else:
 					raise Exception("RBPi Headphone volume control not found!")
@@ -253,8 +254,8 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 		# Add new controllers or reconfigure existing ones
 		for ctrl in ctrls:
 			if ctrl[0] in self.zctrls:
-				self.zctrls[ctrl[0]].set_options(ctrl[2])
-			self.zctrls[ctrl[0]] = zynthian_controller(self, ctrl[0], ctrl[1], ctrl[2])
+				self.zctrls[ctrl[0]].set_options(ctrl[1])
+			self.zctrls[ctrl[0]] = zynthian_controller(self, ctrl[0], ctrl[1])
 			self.zctrls[ctrl[0]].last_value_sent = None
 
 		# Generate control screens
@@ -360,7 +361,8 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 							# ctrl_labels = ctrl_items
 							ctrl_value = self.translate(ctrl_item0)
 							logging.debug("ADDING ZCTRL SELECTOR: {} ({}) => {}".format(ctrl_name_trans, ctrl_symbol, ctrl_item0))
-							_ctrls.append([ctrl_symbol, ctrl_name_trans, {
+							_ctrls.append([ctrl_symbol, {
+								'name': ctrl_name_trans,
 								'graph_path': [ctrl_name, ctrl_type, ctrl_items],
 								'labels': ctrl_labels,
 								'ticks': ctrl_ticks,
@@ -389,7 +391,8 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 							if not ctrl_list or zctrl_symbol in ctrl_list:
 								zctrl_name_trans = self.translate(zctrl_name)
 								logging.debug("ADDING ZCTRL LEVEL: {} ({}) => {}".format(zctrl_name_trans, zctrl_symbol, ctrl_values[i]))
-								_ctrls.append([zctrl_symbol, zctrl_name_trans, {
+								_ctrls.append([zctrl_symbol, {
+									'name': zctrl_name_trans,
 									'graph_path': graph_path,
 									'value': ctrl_values[i],
 									'value_min': ctrl_minval,

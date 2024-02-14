@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI CV config
 # 
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -72,12 +72,12 @@ class zynthian_gui_cv_config(zynthian_gui_base):
 			lib_zyncore.zynaptik_cvin_get_volts_octave.restype = c_float
 			val = lib_zyncore.zynaptik_cvin_get_volts_octave()
 			logging.debug("CVIN SCALE => {}".format(val))
-			self.cvin_scale_zctrl = zynthian_controller(self, 'cvin_scale', 'CVin Volts/Octave', {'value_min': 0.1, 'value_max': 5.0, 'is_integer': False, 'nudge_factor': 0.01, 'value':  val})
+			self.cvin_scale_zctrl = zynthian_controller(self, 'cvin_scale', {'name':'CVin Volts/Octave', 'value_min': 0.1, 'value_max': 5.0, 'is_integer': False, 'nudge_factor': 0.01, 'value':  val})
 			self.cvin_scale_gui_ctrl = zynthian_gui_controller(0, self.main_frame, self.cvin_scale_zctrl)
 			self.zgui_ctrls.append(self.cvin_scale_gui_ctrl)
 
 		if not self.cvin_offset_gui_ctrl:
-			self.cvin_offset_zctrl = zynthian_controller(self, 'cvin_offset', 'CVin Offset', {'value_min': 0, 'value_max': 127, 'is_integer': True, 'nudge_factor': 1, 'value':  lib_zyncore.zynaptik_cvin_get_note0()})
+			self.cvin_offset_zctrl = zynthian_controller(self, 'cvin_offset', {'name':'CVin Offset', 'value_min': 0, 'value_max': 127, 'is_integer': True, 'nudge_factor': 1, 'value':  lib_zyncore.zynaptik_cvin_get_note0()})
 			self.cvin_offset_gui_ctrl = zynthian_gui_controller(1, self.main_frame, self.cvin_offset_zctrl)
 			self.zgui_ctrls.append(self.cvin_offset_gui_ctrl)
 
@@ -85,12 +85,12 @@ class zynthian_gui_cv_config(zynthian_gui_base):
 			lib_zyncore.zynaptik_cvout_get_volts_octave.restype = c_float
 			val = lib_zyncore.zynaptik_cvout_get_volts_octave()
 			logging.debug("CVOUT SCALE => {}".format(val))
-			self.cvout_scale_zctrl = zynthian_controller(self, 'cvout_scale', 'CVout Volts/Octave', {'value_min': 0.1, 'value_max': 5.0, 'is_integer': False, 'nudge_factor': 0.01, 'value':  val})
+			self.cvout_scale_zctrl = zynthian_controller(self, 'cvout_scale', {'name':'CVout Volts/Octave', 'value_min': 0.1, 'value_max': 5.0, 'is_integer': False, 'nudge_factor': 0.01, 'value':  val})
 			self.cvout_scale_gui_ctrl = zynthian_gui_controller(2, self.main_frame, self.cvout_scale_zctrl)
 			self.zgui_ctrls.append(self.cvout_scale_gui_ctrl)
 
 		if not self.cvout_offset_gui_ctrl:
-			self.cvout_offset_zctrl = zynthian_controller(self, 'cvout_offset', 'CVout Offset', {'value_min': 0, 'value_max': 127, 'is_integer': True, 'nudge_factor': 1, 'value':  lib_zyncore.zynaptik_cvout_get_note0()})
+			self.cvout_offset_zctrl = zynthian_controller(self, 'cvout_offset', {'name':'CVout Offset', 'value_min': 0, 'value_max': 127, 'is_integer': True, 'nudge_factor': 1, 'value':  lib_zyncore.zynaptik_cvout_get_note0()})
 			self.cvout_offset_gui_ctrl = zynthian_gui_controller(3, self.main_frame, self.cvout_offset_zctrl)
 			self.zgui_ctrls.append(self.cvout_offset_gui_ctrl)
 

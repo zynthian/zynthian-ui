@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for internet radio streamer
 #
-# Copyright (C) 2022 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2022-2024 Brian Walton <riban@zynthian.org>
 #
 #******************************************************************************
 #
@@ -31,7 +31,6 @@ from threading  import Thread
 from time import sleep
 
 from . import zynthian_engine
-from . import zynthian_controller
 import zynautoconnect
 
 #------------------------------------------------------------------------------

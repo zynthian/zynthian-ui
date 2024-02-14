@@ -809,7 +809,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			if param in processor.controllers_dict:
 				processor.controllers_dict[param].set_options(options)
 			else:
-				zctrl = zynthian_controller(self, param, None, options)
+				zctrl = zynthian_controller(self, param, options)
 				processor.controllers_dict[param] = zctrl
 				# Default MIDI CC mapping
 				if param in default_cc:

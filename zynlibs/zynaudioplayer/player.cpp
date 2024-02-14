@@ -157,6 +157,11 @@ void send_notifications(AUDIO_PLAYER * pPlayer, int param) {
         if(pPlayer->cb_fn)
             ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_ENV_ATTACK, pPlayer->env_attack_rate);
     }
+    if((param == NOTIFY_ALL || param == NOTIFY_ENV_HOLD) && pPlayer->env_hold != pPlayer->last_env_hold) {
+        pPlayer->last_env_hold = pPlayer->env_hold;
+        if(pPlayer->cb_fn)
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_ENV_HOLD, float(pPlayer->env_hold) / g_samplerate);
+    }
     if((param == NOTIFY_ALL || param == NOTIFY_ENV_DECAY) && pPlayer->env_decay_rate != pPlayer->last_env_decay_rate) {
         pPlayer->last_env_decay_rate = pPlayer->env_decay_rate;
         if(pPlayer->cb_fn)
@@ -870,6 +875,20 @@ float get_env_attack(AUDIO_PLAYER * pPlayer) {
     return pPlayer->env_attack_rate;
 }
 
+void set_env_hold(AUDIO_PLAYER * pPlayer, float hold) {
+    if(!pPlayer)
+        return;
+    getMutex();
+    pPlayer->env_hold = hold * g_samplerate;
+    releaseMutex();
+}
+
+float get_env_hold(AUDIO_PLAYER * pPlayer) {
+    if(!pPlayer)
+        return 0.0;
+    return float(pPlayer->env_hold) / g_samplerate;
+}
+
 void set_env_decay(AUDIO_PLAYER * pPlayer, float rate) {
     if(!pPlayer)
         return;
@@ -971,6 +990,13 @@ inline float process_env(AUDIO_PLAYER * pPlayer) {
             pPlayer->env_level = pPlayer->env_attack_base + pPlayer->env_level * pPlayer->env_attack_coef;
             if (pPlayer->env_level >= 1.0) {
                 pPlayer->env_level = 1.0;
+                pPlayer->env_hold_count = pPlayer->env_hold;
+                pPlayer->env_state = ENV_HOLD;
+                //fprintf(stderr, "Envelope: HOLD\n");
+            }
+            break;
+        case ENV_HOLD:
+            if (pPlayer->env_hold_count-- == 0) {
                 pPlayer->env_state = ENV_DECAY;
                 //fprintf(stderr, "Envelope: DECAY\n");
             }

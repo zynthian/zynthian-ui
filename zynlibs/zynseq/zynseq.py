@@ -107,7 +107,7 @@ class zynseq(zynthian_engine):
 			self.libseq = None
 			print("Can't initialise zynseq library: %s" % str(e))
 
-		self.zctrl_tempo = zynthian_controller(self, 'tempo', None, {
+		self.zctrl_tempo = zynthian_controller(self, 'tempo', {
 			'is_integer': False,
 			'value_min': 20.0,
 			'value_max': 420,
