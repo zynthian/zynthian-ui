@@ -497,6 +497,7 @@ class zynthian_engine(zynthian_basic_engine):
 					processor.controllers_dict[symbol].reset(self, symbol)
 
 			for ctrl in self._ctrls:
+				cc = None
 				options = {}
 				build_from_options = False
 				if isinstance(ctrl[1], dict):
@@ -522,7 +523,8 @@ class zynthian_engine(zynthian_basic_engine):
 
 				options["processor"] = processor
 				options["midi_chan"] = midich
-				options["midi_cc"] = cc
+				if cc is not None:
+					options["midi_cc"] = cc
 
 				# Build controller depending on array length ...
 				if ctrl[0] in processor.controllers_dict:
