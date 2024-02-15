@@ -103,17 +103,29 @@ class zynthian_engine_aeolus(zynthian_engine):
 	]
 
 	common_ctrls = [
-		['Sustain', 64, "off", "off|on"],
-		['Azimuth', 14, 64], # TODO: -0.5..+0.5
-		['Width', 15, 64], #TODO: 0..1
-		['Direct', 16, 64], #TODO: 0..1
-		['Reflect', 17, 64], #TODO: 0..1
-		['Reverb', 18, 64] #TODO: 0..1
+		['Sustain', 64, 'off', 'off|on'],
+		['Azimuth', {'midi_cc': 14, 'value_min':-0.5, 'value_max':0.5}],
+		['Width', {'midi_cc': 15, 'value':0.8, 'value_max':1.0}],
+		['Direct', {'midi_cc': 16, 'value':-9.5, 'value_min':-22.0, 'value_max':0.0}],
+		['Reflect', {'midi_cc': 17, 'value':-16.5, 'value_min':-22.0, 'value_max':0.0}],
+		['Reverb', {'midi_cc': 18, 'value':-15, 'value_min':-22.0, 'value_max':0.0}]
+	]
+
+		#TODO: The following controls are common to all so shoudl ideally only be in the "main" chain
+	audio_ctrls = [
+		['Delay', {'midi_cc': 20, 'value':60, 'value_min':0, 'value_max':150}],
+		['Rev Time', {'midi_cc': 21, 'value':4.0, 'value_min':2.0, 'value_max':7.0}],
+		['Rev Pos', {'midi_cc': 22, 'value':0.5, 'value_min':-1.0, 'value_max':1.0}],
+		['Volume', {'midi_cc': 23, 'value':-15, 'value_min':-22, 'value_max':0.0}]
 	]
 
 	common_ctrl_screens = [
 			["Audio (1)", ['Azimuth', 'Width', 'Direct', 'Reflect']],
 			["Audio (2)", ['Reverb', 'Sustain']]
+	]
+
+	audio_ctrl_screens = [
+		['Audio (3)', ['Delay', 'Rev Time', 'Rev Pos', 'Volume']]
 	]
 
 	instrument = [
@@ -601,14 +613,17 @@ class zynthian_engine_aeolus(zynthian_engine):
 	def get_controllers_dict(self, processor):
 		self._ctrls = self.instrument[processor.division]['ctrls']
 		self._ctrl_screens = self.instrument[processor.division]['ctrl_screens']
+		if processor == self.processors[0]:
+			self._ctrls += self.audio_ctrls
+			self._ctrl_screens += self.audio_ctrl_screens
 		return super().get_controllers_dict(processor)
 
 
 	def send_controller_value(self, zctrl):
-		for c in self.swell_ctrls + self.common_ctrls:
+		for c in self.swell_ctrls + self.common_ctrls + self.audio_ctrls:
 			if zctrl.symbol == c[0]:
-				self.state_manager.zynmidi.set_midi_control(zctrl.midi_chan, zctrl.midi_cc, zctrl.value)
-				return
+				#self.state_manager.zynmidi.set_midi_control(zctrl.midi_chan, zctrl.midi_cc, zctrl.value)
+				raise Exception("MIDI handler")
 		if zctrl.value:
 			mm = "10"
 		else:
