@@ -795,6 +795,11 @@ bool set_cue_point_name(AUDIO_PLAYER * pPlayer, uint32_t index, const char* name
     return true;
 }
 
+void clear_cue_points(AUDIO_PLAYER * pPlayer) {
+    if(pPlayer)
+        pPlayer->cue_points.clear();
+}
+
 void start_playback(AUDIO_PLAYER * pPlayer) {
     if(pPlayer && g_jack_client && pPlayer->file_open == FILE_OPEN && pPlayer->play_state != PLAYING)
         pPlayer->play_state = STARTING;

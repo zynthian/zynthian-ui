@@ -29,6 +29,7 @@ import logging
 from time import sleep
 from threading import Thread
 from subprocess import check_output, Popen, PIPE
+import re
 
 # Zynthian specific modules
 import zynautoconnect
@@ -157,6 +158,13 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             else:
                 self.list_data.append((f"start_{dev_name}", None, f"\u2610 {obj}"))
 
+        def atoi(text):
+            return int(text) if text.isdigit() else text
+
+        def natural_keys(t):
+            text = t[0].lower()
+            return [ atoi(c) for c in re.split(r'(\d+)', text) ]
+
         # Lists of zmop/zmip indicies
         int_devices = []    # Internal MIDI ports
         usb_devices = []    # USB MIDI ports
@@ -190,7 +198,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
         if usb_devices:
             self.list_data.append((None, None, "USB Devices"))
-            for x in sorted(usb_devices):
+            for x in sorted(usb_devices, key=natural_keys):
                 append_port(x[1])
 
         if not self.chain or zynthian_gui_config.bluetooth_enabled and ble_devices:

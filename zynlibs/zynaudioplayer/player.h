@@ -249,6 +249,11 @@ const char* get_cue_point_name(AUDIO_PLAYER * pPlayer, uint32_t index);
 */
 bool set_cue_point_name(AUDIO_PLAYER * pPlayer, uint32_t index, const char* name);
 
+/** @brief  Clear all cue points
+*   @param  player_handle Handle of player provided by init_player()
+*/
+void clear_cue_points(AUDIO_PLAYER * pPlayer);
+
 /** @brief  Start playback
 *   @param  player_handle Handle of player provided by init_player()
 */

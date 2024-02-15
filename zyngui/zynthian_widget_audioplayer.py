@@ -265,6 +265,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		f = self.width / self.frames * self.zoom
 		pos = (event.x / f + self.offset) / self.samplerate
 		options[f'Add cue marker at {pos:.3f}'] = event
+		x = self.processor.controllers_dict['beats'].value
+		if x:
+			options[f'Add {x} evently distributed cue markers'] = ['beats', x]
 		options['--EXISTING CUES--'] = None
 		for i, cue in enumerate(self.cue_points):
 			if cue[1]:
@@ -313,16 +316,27 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 	def update_marker(self, option, event):
 		if isinstance(event, list):
-			# Event is a cue marker to be removed
-			id = self.processor.engine.player.remove_cue_point(self.processor.handle, event[0])
-			if id < 0:
-				return
-			count = self.processor.engine.player.get_cue_point_count(self.processor.handle)
-			self.processor.controllers_dict['cue'].value_max = count
-			if count == 0:
-				self.processor.controllers_dict['cue'].value_min = 0
-			if self.processor.controllers_dict['cue'].value >= count:
-				self.processor.controllers_dict['cue'].set_value(count - 1)
+			if event[0] == 'beats':
+				self.processor.engine.player.clear_cue_points(self.processor.handle)
+				for i in range(event[1]):
+					pos = self.duration / event[1] * i
+					id = self.processor.engine.player.add_cue_point(self.processor.handle, pos) + 1
+					if id > 0:
+						self.processor.controllers_dict['cue'].value_min = 1
+						self.processor.controllers_dict['cue'].value_max = id
+						self.processor.controllers_dict['cue'].set_value(id)
+						self.processor.controllers_dict['cue pos'].set_value(pos)
+			else:
+				# Event is a cue marker to be removed
+				id = self.processor.engine.player.remove_cue_point(self.processor.handle, event[0])
+				if id < 0:
+					return
+				count = self.processor.engine.player.get_cue_point_count(self.processor.handle)
+				self.processor.controllers_dict['cue'].value_max = count
+				if count == 0:
+					self.processor.controllers_dict['cue'].value_min = 0
+				if self.processor.controllers_dict['cue'].value >= count:
+					self.processor.controllers_dict['cue'].set_value(count - 1)
 			self.update_cue_markers()
 		else:
 			self.drag_marker = option.lower()

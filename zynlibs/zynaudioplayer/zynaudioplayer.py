@@ -84,6 +84,7 @@ class zynaudioplayer():
 			self.libaudioplayer.get_cue_point_name.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
 			self.libaudioplayer.get_cue_point_name.restype = ctypes.c_char_p
 			self.libaudioplayer.set_cue_point_name.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_char_p]
+			self.libaudioplayer.clear_cue_points.argtypes = [ctypes.c_void_p]
 			self.libaudioplayer.set_pos_notify_delta.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_env_attack.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.set_env_hold.argtypes = [ctypes.c_void_p, ctypes.c_float]
@@ -339,6 +340,11 @@ class zynaudioplayer():
 	#	Returns: True on success
 	def set_cue_point_name(self, handle, index, name):
 		return self.libaudioplayer.set_cue_point_name(handle, index, bytes(name[:255], "utf-8"))
+
+	#	Remove all cue points
+	#	handle: Index of player
+	def clear_cue_points(self, handle):
+		self.libaudioplayer.clear_cue_points(handle)
 
 	#	Start playback
 	#	handle: Index of player
