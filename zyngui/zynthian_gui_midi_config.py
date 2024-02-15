@@ -170,7 +170,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 dev = zynautoconnect.devices_out[i]
             if dev and dev.aliases:
                 if dev.aliases[0].startswith("USB:"):
-                    usb_devices.append(i)
+                    usb_devices.append((dev.aliases[1], i))
                 elif dev.aliases[0].startswith("BLE:"):
                     if self.input:
                         key = dev.aliases[0][4:-3]
@@ -190,8 +190,8 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
         if usb_devices:
             self.list_data.append((None, None, "USB Devices"))
-            for i in usb_devices:
-                append_port(i)
+            for x in sorted(usb_devices):
+                append_port(x[1])
 
         if not self.chain or zynthian_gui_config.bluetooth_enabled and ble_devices:
             self.list_data.append((None, None, "Bluetooth Devices"))
