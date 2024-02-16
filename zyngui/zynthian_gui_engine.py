@@ -30,9 +30,10 @@ from random import randrange
 
 # Zynthian specific modules
 from zyngine import *
+from zyngine import zynthian_lv2
+from zyngine.zynthian_engine_jalv import *
 from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_engine_pianoteq6 import *
-from zyngine.zynthian_engine_jalv import *
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
@@ -186,6 +187,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			self.list_data.append(("None", 0, "None", "None"))
 
 		# Sort category headings, but headings starting with "Zynthian" are shown first
+		self.zyngui.chain_manager.get_engine_info()
 		for cat, infos in sorted(self.zyngui.chain_manager.filtered_engines_by_cat(proc_type, all=self.show_all).items(), key=lambda kv:"!" if kv[0] is None else kv[0]):
 			# Add category header...
 			if cat:

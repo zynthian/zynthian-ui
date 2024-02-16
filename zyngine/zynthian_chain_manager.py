@@ -78,6 +78,7 @@ class zynthian_chain_manager:
     SS_SET_ACTIVE_CHAIN = 1
     SS_MOVE_CHAIN = 2
 
+    engine_info = None
     single_processor_engines = ["BF", "MD", "PT", "PD", "AE", "CS", "SL"]
 
     def __init__(self, state_manager):
@@ -125,8 +126,12 @@ class zynthian_chain_manager:
 
         # Get engines info from file, including standalone engines.
         # Yes, names aren't good. They should be refactored!
-        cls.engine_info = zynthian_lv2.get_engines()
+        eng_info = zynthian_lv2.get_engines()
 
+        # Don't recalculate if info not changed
+        if eng_info == cls.engine_info:
+            return cls.engine_info
+        cls.engine_info = eng_info
         # Look for an engine class for each one
         for key, info in cls.engine_info.items():
             try:
