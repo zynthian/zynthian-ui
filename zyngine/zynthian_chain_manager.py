@@ -350,7 +350,7 @@ class zynthian_chain_manager:
 
     def move_chain(self, offset, chain_id=None):
         """Move a chain's position
-        
+
         chain_id - Chain id
         offset - Position to move to relative to current position (+/-)
         """
@@ -398,7 +398,7 @@ class zynthian_chain_manager:
 
         if audio and midi and synth:
             if pos < len(self.ordered_chain_ids):
-                return self.ordered_chain_ids[pos]
+                return self.chains[self.ordered_chain_ids[pos]]
             else:
                 return None
 
@@ -441,7 +441,7 @@ class zynthian_chain_manager:
 
     def set_chain_audio_inputs(self, chain_id, inputs):
         """Set chain's audio inputs
-        
+
         chain_id : Chain id
         inputs : List of jack sources or aliases (None to reset)
         """
@@ -461,7 +461,7 @@ class zynthian_chain_manager:
 
     def set_chain_audio_outputs(self, chain_id, outputs):
         """Set chain's audio outputs
-        
+
         chain_id : Chain id
         outputs : List of jack destinations or aliases (None to reset)
         """
@@ -474,8 +474,8 @@ class zynthian_chain_manager:
 
     def enable_chain_audio_thru(self, chain_id, enable=True):
         """Enable/disable audio pass-through
-        
-        enable : True to pass chain's audio input to output when chain is empty 
+
+        enable : True to pass chain's audio input to output when chain is empty
         """
         if chain_id in self.chains and self.chains[chain_id].audio_thru != enable:
             self.chains[chain_id].audio_thru = enable
@@ -497,7 +497,7 @@ class zynthian_chain_manager:
 
     def set_chain_midi_inputs(self, chain_id, inputs):
         """Set chain's MIDI inputs
-        
+
         chain_id : Chain id
         inputs : List of jack sources or aliases (None to reset)
         """
@@ -517,7 +517,7 @@ class zynthian_chain_manager:
 
     def set_chain_midi_outputs(self, chain_id, outputs):
         """Set chain's MIDI outputs
-        
+
         chain_id : Chain id
         outputs : List of jack destinations or aliases (None to reset)
         """
@@ -530,8 +530,8 @@ class zynthian_chain_manager:
 
     def enable_chain_midi_thru(self, chain_id, enable=True):
         """Enable/disable MIDI pass-through
-        
-        enable : True to pass chain's MIDI input to output when chain is empty 
+
+        enable : True to pass chain's MIDI input to output when chain is empty
         """
         if chain_id in self.chains and self.chains[chain_id].midi_thru != enable:
             self.chains[chain_id].midi_thru = enable
@@ -572,7 +572,7 @@ class zynthian_chain_manager:
 
     def will_audio_howl(self, src_id, dst_id, node_list=None):
         """Checks if adding a connection will cause an audio howl-round loop
-        
+
         src_id : Chain ID of the source chain
         dst_id : Chain ID of the destination chain
         node_list : Do not use - internal function parameter
@@ -645,7 +645,7 @@ class zynthian_chain_manager:
 
     def set_active_chain_by_object(self, chain_object):
         """Select the active chain
-        
+
         chain_object : Chain object
         Returns : ID of active chain
         """
@@ -700,11 +700,11 @@ class zynthian_chain_manager:
 
     def get_chain_index(self, chain_id):
         """Get the index of a chain from its displayed order
-        
+
         chain_id : Chain id
         returns : Index or 0 if not found
         """
-        
+
         if chain_id in self.ordered_chain_ids:
             return self.ordered_chain_ids.index(chain_id)
         return 0
@@ -845,13 +845,13 @@ class zynthian_chain_manager:
                     chain.rebuild_graph()
                 zynautoconnect.request_audio_connect()
                 zynautoconnect.request_midi_connect()
- 
+
         self.state_manager.end_busy("remove_processor")
         return success
 
     def get_slot_count(self, chain_id, type=None):
         """Get the quantity of slots in a chain
-        
+
         id : Chain id
         type : Processor type to filter result (Default: all types)
         Returns : Quantity of slots in chain or subchain
@@ -863,7 +863,7 @@ class zynthian_chain_manager:
 
     def get_processor_count(self, chain_id=None, type=None, slot=None):
         """Get the quantity of processors in a slot
-        
+
         chain_id : Chain id (Default: all processors in all chains)
         type : Processor type to filter result (Default: all types)
         slot : Index of slot or None for whole chain (Default: whole chain)
@@ -882,7 +882,7 @@ class zynthian_chain_manager:
 
     def get_processor_id(self, processor):
         """Get processor uid from processor object
-        
+
         processor : Processor object
         Returns : Processor UID or None if not found
         """
@@ -986,7 +986,7 @@ class zynthian_chain_manager:
 
     def get_next_jackname(self, jackname, sanitize=True):
         """Get the next available jackname
-        
+
         jackname : stub of jackname
         """
 
@@ -1122,7 +1122,7 @@ class zynthian_chain_manager:
 
     def remove_midi_learn(self, proc, symbol):
         """Remove a midi learn configuration
-        
+
         proc : Processor object
         symbol : Control symbol
         """
@@ -1240,12 +1240,12 @@ class zynthian_chain_manager:
 
     def handle_pedals(self, cc_num, cc_val, zctrl):
         """Handle pedal CC
-        
+
         cc_num : CC number
         cc_val : CC value
         zctrl : zctrl to process
         """
-        
+
         if cc_num in self.held_zctrls:
             if cc_val >= 64:
                 if zctrl not in self.held_zctrls[cc_num]:
@@ -1258,7 +1258,7 @@ class zynthian_chain_manager:
 
     def clean_midi_learn(self, obj):
         """Clean MIDI learn from controls
-        
+
         obj : Object to clean [chain_id, processor, zctrl] (Default: active chain)
         """
 
@@ -1269,11 +1269,11 @@ class zynthian_chain_manager:
 
         if isinstance(obj, zynthian_controller):
             self.remove_midi_learn(obj.processor, obj.symbol)
-        
+
         elif isinstance(obj, zynthian_processor):
             for symbol in obj.controllers_dict:
                 self.remove_midi_learn(obj, symbol)
-                
+
         elif isinstance(obj, str):
             for proc in self.get_processors(obj):
                 for symbol in proc.controllers_dict:
@@ -1406,7 +1406,7 @@ class zynthian_chain_manager:
 
     def get_next_free_mixer_chan(self, chan=0):
         """Get next unused mixer channel
-        
+
         chan : mixer channel to search from (Default: 0)
         """
 
@@ -1437,7 +1437,7 @@ class zynthian_chain_manager:
     def get_synth_processor(self, midi_chan):
         """Get a synth processor on MIDI channel
            If several synth chains in the same MIDI channel, take the first one.
-        
+
         chan : MIDI channel
         Returns : Processor or None on failure
         """
