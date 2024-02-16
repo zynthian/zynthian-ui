@@ -98,6 +98,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.toggle_preset_preload_noteon, 0, "\u2610 Note-On Preset Preload"))
 
+		if os.environ.get("ZYNTHIAN_USB_MIDI_BY_PORT", "0") == "1":
+			self.list_data.append((self.toggle_usbmidi_by_port, 0, "\u2612 USB MIDI mapped by port"))
+		else:
+			self.list_data.append((self.toggle_usbmidi_by_port, 0, "\u2610 USB MIDI mapped by port"))
+
 		if zynthian_gui_config.transport_clock_source == 0:
 			if zynthian_gui_config.midi_sys_enabled:
 				self.list_data.append((self.toggle_midi_sys, 0, "\u2612 MIDI System Messages"))
@@ -344,6 +349,14 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		})
 
 		lib_zyncore.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
+		self.fill_list()
+
+	def toggle_usbmidi_by_port(self):
+		if os.environ.get("ZYNTHIAN_USB_MIDI_BY_PORT", "0") == "1":
+			os.environ["ZYNTHIAN_USB_MIDI_BY_PORT"] = "0"
+		else:
+			os.environ["ZYNTHIAN_USB_MIDI_BY_PORT"] = "1"
+		zynautoconnect.update_hw_midi_ports(True)
 		self.fill_list()
 
 	def toggle_prog_change_zs3(self):

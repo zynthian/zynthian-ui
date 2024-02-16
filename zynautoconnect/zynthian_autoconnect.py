@@ -87,6 +87,7 @@ ctrl_fb_procs = []
 
 midi_port_names = {}			# Map of user friendly names indexed by device uid (alias[0])
 host_usb_connected = False		# True if connected to host USB
+usb_midi_by_port = False		# True to use physical USB port mapping for USB MIDI devices
 
 # ------------------------------------------------------------------------------
 
@@ -386,9 +387,10 @@ def is_host_usb_connected():
 		return False
 	return True
 
-def update_hw_midi_ports():
+def update_hw_midi_ports(force=False):
 	"""Update lists of external (hardware) source and destination MIDI ports
 
+	force - True to force update of port names / aliases
 	returns - True if changed since last call
 	"""
 
@@ -397,7 +399,10 @@ def update_hw_midi_ports():
 		return
 
 	global hw_midi_src_ports, hw_midi_dst_ports
-	global host_usb_connected
+	global host_usb_connected, usb_midi_by_port
+
+	if force:
+		usb_midi_by_port = os.environ.get("ZYNTHIAN_USB_MIDI_BY_PORT", "0") == "1"
 
 	# -----------------------------------------------------------
 	# Get Input/Output MIDI Ports: 
@@ -463,7 +468,7 @@ def update_hw_midi_ports():
 	update = False
 	fingerprint = hw_port_fingerprint.copy()
 	for port in hw_midi_src_ports + hw_midi_dst_ports:
-		if port not in hw_port_fingerprint:
+		if port not in hw_port_fingerprint or force:
 			update_midi_port_aliases(port)
 			update = True
 		else:
@@ -730,6 +735,10 @@ def audio_autoconnect():
 						if proc.type == "Special":
 							routes[proc.get_jackname()] = route
 					else:
+						for name in list(route):
+							if name.startswith('zynmixer:output'):
+								# Use mixer internal normalisation
+								route.remove(name)
 						routes[f"zynmixer:input_{dst_chain.mixer_chan + 1:02d}"] = route
 		for dst in routes:
 			if dst in sidechain_ports:
@@ -771,8 +780,8 @@ def audio_autoconnect():
 		#TODO: Allow direct output / routing and fader control of aux
 		#required_routes["system:playback_1"].append(f"zynmixer:output_{aux}a")
 		#required_routes["system:playback_2"].append(f"zynmixer:output_{aux}b")
-		required_routes[f"zynmixer:input_{main}a"].add(f"zynmixer:output_{aux}a")
-		required_routes[f"zynmixer:input_{main}b"].add(f"zynmixer:output_{aux}b")
+		#required_routes[f"zynmixer:input_{main}a"].add(f"zynmixer:output_{aux}a")
+		#required_routes[f"zynmixer:input_{main}b"].add(f"zynmixer:output_{aux}b")
 	except:
 		pass
 
@@ -894,17 +903,20 @@ def build_midi_port_name(port):
 		else:
 			alsa_client_id = int(port.shortname.split('[')[1].split(']')[0])
 			# USB ports
-			card_id = aclient.get_client_info(alsa_client_id).card_id
-			with open(f"/proc/asound/card{card_id}/usbbus", "r") as f:
-				usbbus = f.readline()
-			tmp = re.findall(r'\d+', usbbus)
-			bus = int(tmp[0])
-			address = int(tmp[1])
-			usb_port_nos = usb.core.find(bus=bus, address=address).port_numbers
-			uid = f"{bus}"
-			for i in usb_port_nos:
-				uid += f".{i}"
-			uid = f"USB:{uid} {name}"
+			if usb_midi_by_port:
+				card_id = aclient.get_client_info(alsa_client_id).card_id
+				with open(f"/proc/asound/card{card_id}/usbbus", "r") as f:
+					usbbus = f.readline()
+				tmp = re.findall(r'\d+', usbbus)
+				bus = int(tmp[0])
+				address = int(tmp[1])
+				usb_port_nos = usb.core.find(bus=bus, address=address).port_numbers
+				uid = f"{bus}"
+				for i in usb_port_nos:
+					uid += f".{i}"
+				uid = f"USB:{uid} {name}"
+			else:
+				uid = f"USB:{name}"
 	except:
 		uid = name
 	if port.is_input:
@@ -984,6 +996,7 @@ def get_hw_dst_ports():
 def auto_connect_thread():
 	"""Thread to run autoconnect, checking if physical (hardware) interfaces have changed, e.g. USB plug"""
 
+	global usb_midi_by_port
 	deferred_timeout = 2  # Period to run deferred connect (in seconds)
 	deferred_inc = 0.1  # Delay between loop cycles (in seconds) - allows faster exit from thread
 	deferred_count = 5  # Run at startup

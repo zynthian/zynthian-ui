@@ -46,6 +46,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# Config variables
 	# ---------------------------------------------------------------------------
 
+	# Must assign here to avoid common (zynthian_engine class) instances being used
+	# Standard MIDI Controllers
+	_ctrls = []
+
+	# Controller Screens
+	_ctrl_screens = []
+
 	# ---------------------------------------------------------------------------
 	# Initialization
 	# ---------------------------------------------------------------------------
@@ -108,6 +115,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.monitors_dict[processor.handle]['channels'] = 0
 		self.monitors_dict[processor.handle]['samplerate'] = 44100
 		self.monitors_dict[processor.handle]['codec'] = "UNKNOWN"
+		self.monitors_dict[processor.handle]['speed'] = 1.0
 		processor.refresh_controllers()
 		processor.engine.player.set_tempo(self.state_manager.zynseq.get_tempo())
 		self.processor = processor
@@ -205,6 +213,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.monitors_dict[processor.handle]['channels'] = self.player.get_frames(processor.handle)
 		self.monitors_dict[processor.handle]['samplerate'] = self.player.get_samplerate(processor.handle)
 		self.monitors_dict[processor.handle]['codec'] = self.player.get_codec(processor.handle)
+		self.player.set_speed(processor.handle, 1.0)
 
 		dur = self.player.get_duration(processor.handle)
 		self.player.set_position(processor.handle, 0)
@@ -224,6 +233,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		gain = self.player.get_gain(processor.handle)
 		bend_range = self.player.get_pitchbend_range(processor.handle)
 		attack = self.player.get_attack(processor.handle)
+		hold = self.player.get_hold(processor.handle)
 		decay = self.player.get_decay(processor.handle)
 		sustain = self.player.get_sustain(processor.handle)
 		release = self.player.get_release(processor.handle)
@@ -254,13 +264,15 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['loop', ['loop start', 'loop end', 'loop', 'zoom']],
 				['config', ['left track', 'right track', 'bend range', 'sustain pedal']],
 				['info', ['info', 'zoom range', 'amp zoom', 'view offset']],
-				['misc', ['beats', 'cue', 'cue pos', 'varispeed']]
+				['misc', ['beats', 'cue', 'cue pos']],
+				['speed', ['speed', 'pitch', 'varispeed']]
 			]
 			if processor.handle == self.state_manager.audio_player.handle:
 				self._ctrl_screens[3][1][2] = None
 				self._ctrl_screens[3][1][3] = None
 			else:
-				self._ctrl_screens.insert(-2, ['envelope', ['attack', 'decay', 'sustain', 'release']])
+				self._ctrl_screens.insert(-2, ['envelope 1', ['attack', 'hold', 'decay', 'sustain']])
+				self._ctrl_screens.insert(-2, ['envelope 2', ['release']])
 
 		else:
 			self._ctrl_screens = [
@@ -287,15 +299,19 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['sustain pedal', 64, 'off', ['off', 'on']],
 			['bend range', None, bend_range, 24],
 			['attack', None, attack, 20.0],
+			['hold', None, hold, 20.0],
 			['decay', None, decay, 20.0],
 			['sustain', None, sustain, 1.0],
 			['release', None, release, 20.0],
 			['beats', None, processor.engine.player.get_beats(processor.handle), 64],
 			['cue', None, 0, 0],
 			['cue pos', None, 0.0, dur],
-			['varispeed', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False, 'is_logarithmic':False}]
+			['speed', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}],
+			['pitch', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}],
+			['varispeed', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}]
 		]
 
+		self.player.set_control_cb(None)
 		processor.refresh_controllers()
 		self.player.set_track_a(processor.handle, default_a)
 		self.player.set_track_b(processor.handle, default_b)
@@ -403,10 +419,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					elif id == 16:
 						ctrl_dict['attack'].set_value(value, False)
 					elif id == 17:
-						ctrl_dict['decay'].set_value(value, False)
+						ctrl_dict['hold'].set_value(value, False)
 					elif id == 18:
-						ctrl_dict['sustain'].set_value(value, False)
+						ctrl_dict['decay'].set_value(value, False)
 					elif id == 19:
+						ctrl_dict['sustain'].set_value(value, False)
+					elif id == 20:
 						ctrl_dict['release'].set_value(value, False)
 					break
 		except Exception as e:
@@ -451,42 +469,41 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			self.player.set_damper(handle, zctrl.value)
 		elif zctrl.symbol == "zoom":
 			self.monitors_dict[handle]['zoom'] = zctrl.value
-			for processor in self.processors:
-				if processor.handle == handle:
-					processor.controllers_dict['zoom range'].set_value(0)
-					pos_zctrl = processor.controllers_dict['position']
-					pos_zctrl.nudge_factor = pos_zctrl.value_max / 400 / zctrl.value
-					processor.controllers_dict['loop start'].nudge_factor = pos_zctrl.nudge_factor
-					processor.controllers_dict['loop end'].nudge_factor = pos_zctrl.nudge_factor
-					processor.controllers_dict['crop start'].nudge_factor = pos_zctrl.nudge_factor
-					processor.controllers_dict['crop end'].nudge_factor = pos_zctrl.nudge_factor
-					processor.controllers_dict['cue pos'].nudge_factor = pos_zctrl.nudge_factor
-					return
+			if self.processor:
+				self.processor.controllers_dict['zoom range'].set_value(0)
+				pos_zctrl = self.processor.controllers_dict['position']
+				pos_zctrl.nudge_factor = pos_zctrl.value_max / 400 / zctrl.value
+				self.processor.controllers_dict['loop start'].nudge_factor = pos_zctrl.nudge_factor
+				self.processor.controllers_dict['loop end'].nudge_factor = pos_zctrl.nudge_factor
+				self.processor.controllers_dict['crop start'].nudge_factor = pos_zctrl.nudge_factor
+				self.processor.controllers_dict['crop end'].nudge_factor = pos_zctrl.nudge_factor
+				self.processor.controllers_dict['cue pos'].nudge_factor = pos_zctrl.nudge_factor
 		elif zctrl.symbol == "zoom range":
-			for processor in self.processors:
-				if processor.handle == handle:
-					if zctrl.value == 1:
-						# Show whole file
-						processor.controllers_dict['zoom'].set_value(1, False)
-						processor.controllers_dict['view offset'].set_value(0)
-						range = self.player.get_duration(handle)
-					elif zctrl.value == 2:
-						# Show cropped region
-						start = self.player.get_crop_start(handle)
-						range = self.player.get_crop_end(handle) - start
-						processor.controllers_dict['view offset'].set_value(start)
-						processor.controllers_dict['zoom'].set_value(self.player.get_duration(handle) / range, False)
-					elif zctrl.value == 3:
-						# Show loop region
-						start = self.player.get_loop_start(handle)
-						range = self.player.get_loop_end(handle) - start
-						processor.controllers_dict['view offset'].set_value(start)
-						processor.controllers_dict['zoom'].set_value(self.player.get_duration(handle) / range, False)
+			if self.processor:
+				if zctrl.value == 1:
+					# Show whole file
+					self.processor.controllers_dict['zoom'].set_value(1, False)
+					self.processor.controllers_dict['view offset'].set_value(0)
+					range = self.player.get_duration(handle)
+				elif zctrl.value == 2:
+					# Show cropped region
+					start = self.player.get_crop_start(handle)
+					range = self.player.get_crop_end(handle) - start
+					self.processor.controllers_dict['view offset'].set_value(start)
+					self.processor.controllers_dict['zoom'].set_value(self.player.get_duration(handle) / range, False)
+				elif zctrl.value == 3:
+					# Show loop region
+					start = self.player.get_loop_start(handle)
+					range = self.player.get_loop_end(handle) - start
+					self.processor.controllers_dict['view offset'].set_value(start)
+					self.processor.controllers_dict['zoom'].set_value(self.player.get_duration(handle) / range, False)
 
 		elif zctrl.symbol == "info":
 			self.monitors_dict[handle]['info'] = zctrl.value
 		elif zctrl.symbol == "attack":
 			self.player.set_attack(handle, zctrl.value)
+		elif zctrl.symbol == "hold":
+			self.player.set_hold(handle, zctrl.value)
 		elif zctrl.symbol == "decay":
 			self.player.set_decay(handle, zctrl.value)
 		elif zctrl.symbol == "sustain":
@@ -496,23 +513,44 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		elif zctrl.symbol == "beats":
 			self.player.set_beats(handle, zctrl.value)
 		elif zctrl.symbol == "cue":
-			for processor in self.processors:
-				if processor.handle == handle:
-					processor.controllers_dict['cue pos'].set_value(self.player.get_cue_point_position(handle, zctrl.value - 1), False)
+			if self.processor:
+				self.processor.controllers_dict['cue pos'].set_value(self.player.get_cue_point_position(handle, zctrl.value - 1), False)
 		elif zctrl.symbol == "cue pos":
-			for processor in self.processors:
-				if processor.handle == handle:
-					if self.player.get_cue_point_count(handle):
-						self.player.set_cue_point_position(handle, processor.controllers_dict['cue'].value - 1, zctrl.value)
-					break
+			if self.processor:
+				if self.player.get_cue_point_count(handle):
+					self.player.set_cue_point_position(handle, self.processor.controllers_dict['cue'].value - 1, zctrl.value)
+		elif zctrl.symbol == "speed":
+			if abs(zctrl.value) < 0.01:
+				zctrl.value = 0.0
+				speed = 1.0
+			else:
+				speed = self.num2factor(zctrl.value)
+			self.player.set_speed(handle, speed)
+			self.monitors_dict[handle]['speed'] = speed
+			if self.processor:
+				self.processor.controllers_dict['position'].value_max = self.player.get_duration(handle)
+				self.processor.controllers_dict['crop end'].value_max = self.player.get_duration(handle)
+		elif zctrl.symbol == "pitch":
+			if abs(zctrl.value) < 0.01:
+				zctrl.value = 0.0
+				self.player.set_pitch(handle, 1.0)
+			else:
+				self.player.set_pitch(handle, self.num2factor(zctrl.value))
 		elif zctrl.symbol == "varispeed":
 			if abs(zctrl.value) < 0.01:
 				zctrl.value = 0.0
 				self.player.set_varispeed(handle, 1.0)
-			elif zctrl.value > 0:
-				self.player.set_varispeed(handle, 1.0 + zctrl.value)
 			else:
-				self.player.set_varispeed(handle, 1.0 / (1.0 - zctrl.value))
+				self.player.set_varispeed(handle, self.num2factor(zctrl.value))
+
+	def num2factor(self, num):
+		if abs(num) < 0.01:
+			return 1.0
+		elif num > 0:
+			return 1.0 + num
+		else:
+			return 1.0 / (1.0 - num)
+
 
 	def get_monitors_dict(self, handle):
 		return self.monitors_dict[handle]

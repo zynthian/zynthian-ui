@@ -54,6 +54,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.crop_start = 0.0
 		self.crop_end = 1.0
 		self.cue_pos = 0.0
+		self.speed = 1.0
 		self.filename = "?"
 		self.duration = 0.0
 		self.bg_color = "black"
@@ -264,8 +265,15 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		f = self.width / self.frames * self.zoom
 		pos = (event.x / f + self.offset) / self.samplerate
 		options[f'Add cue marker at {pos:.3f}'] = event
-		for cue in self.cue_points:
-			options[f"Remove marker {cue[1]} at {cue[0]:.3f}"] = cue
+		x = self.processor.controllers_dict['beats'].value
+		if x:
+			options[f'Add {x} evently distributed cue markers'] = ['beats', x]
+		options['--EXISTING CUES--'] = None
+		for i, cue in enumerate(self.cue_points):
+			if cue[1]:
+				options[f"Remove marker {cue[1]} at {cue[0]:.3f}"] = cue
+			else:
+				options[f"Remove marker {i} at {cue[0]:.3f}"] = cue
 		self.zyngui.screens['option'].config('Add marker', options, self.update_marker)
 		self.zyngui.show_screen('option')
 
@@ -280,7 +288,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		i = 0
 		while True:
 			pos = self.processor.engine.player.get_cue_point_position(self.processor.handle, i)
-			if pos < 0:
+			if pos < 0.0:
 				break
 			name = self.processor.engine.player.get_cue_point_name(self.processor.handle, i)
 			self.widget_canvas.create_line(
@@ -308,16 +316,27 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 	def update_marker(self, option, event):
 		if isinstance(event, list):
-			# Event is a cue marker to be removed
-			id = self.processor.engine.player.remove_cue_point(self.processor.handle, event[0])
-			if id < 0:
-				return
-			count = self.processor.engine.player.get_cue_point_count(self.processor.handle)
-			self.processor.controllers_dict['cue'].value_max = count
-			if count == 0:
-				self.processor.controllers_dict['cue'].value_min = 0
-			if self.processor.controllers_dict['cue'].value >= count:
-				self.processor.controllers_dict['cue'].set_value(count - 1)
+			if event[0] == 'beats':
+				self.processor.engine.player.clear_cue_points(self.processor.handle)
+				for i in range(event[1]):
+					pos = self.duration / event[1] * i
+					id = self.processor.engine.player.add_cue_point(self.processor.handle, pos) + 1
+					if id > 0:
+						self.processor.controllers_dict['cue'].value_min = 1
+						self.processor.controllers_dict['cue'].value_max = id
+						self.processor.controllers_dict['cue'].set_value(id)
+						self.processor.controllers_dict['cue pos'].set_value(pos)
+			else:
+				# Event is a cue marker to be removed
+				id = self.processor.engine.player.remove_cue_point(self.processor.handle, event[0])
+				if id < 0:
+					return
+				count = self.processor.engine.player.get_cue_point_count(self.processor.handle)
+				self.processor.controllers_dict['cue'].value_max = count
+				if count == 0:
+					self.processor.controllers_dict['cue'].value_min = 0
+				if self.processor.controllers_dict['cue'].value >= count:
+					self.processor.controllers_dict['cue'].set_value(count - 1)
 			self.update_cue_markers()
 		else:
 			self.drag_marker = option.lower()
@@ -450,7 +469,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			crop_end = int(self.samplerate * self.processor.controllers_dict['crop end'].value)
 			cue_pos = int(self.samplerate * self.processor.controllers_dict['cue pos'].value)
 			pos_time = self.processor.controllers_dict['position'].value
-			pos = int(pos_time * self.samplerate)
+			pos = int(pos_time * self.samplerate * self.speed)
 			refresh_info = False
 
 			offset = int(self.samplerate * self.processor.controllers_dict['view offset'].value)
@@ -486,6 +505,10 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				if self.crop_end < offset or self.crop_end > offset + self.frames // self.zoom:
 					offset = int(self.crop_end - 0.75 * self.frames / self.zoom)
 				refresh_markers = True
+
+			if self.speed != self.monitors['speed']:
+				self.speed = self.monitors['speed']
+				refresh_info = True
 
 			if self.play_pos != pos:
 				self.play_pos = pos
@@ -542,16 +565,16 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				zoom_offset = self.width * offset // self.frames
 				self.widget_canvas.coords(self.zoom_rect, zoom_offset, self.waveform_height, zoom_offset + max(1, self.width // self.zoom), self.height)
 				if self.info == 1:
-					time = (self.crop_end - self.crop_start) / self.samplerate
+					time = (self.crop_end - self.crop_start) / self.samplerate / self.speed
 					self.widget_canvas.itemconfigure(self.info_text, text=f"Duration: {self.format_time(time)}", state=tkinter.NORMAL)
 				elif self.info == 2:
-					time = max(0, pos - self.crop_start) / self.samplerate
+					time = max(0, pos - self.crop_start) / self.samplerate / self.speed
 					self.widget_canvas.itemconfigure(self.info_text, text=f"Position: {self.format_time(time)}", state=tkinter.NORMAL)
 				elif self.info == 3:
-					time = max(0, self.crop_end - pos) / self.samplerate
+					time = max(0, self.crop_end - pos) / self.samplerate / self.speed
 					self.widget_canvas.itemconfigure(self.info_text, text=f"Remaining: {self.format_time(time)}", state=tkinter.NORMAL)
 				elif self.info == 4:
-					time = (self.loop_end - self.loop_start) / self.samplerate
+					time = (self.loop_end - self.loop_start) / self.samplerate / self.speed
 					self.widget_canvas.itemconfigure(self.info_text, text=f"Loop length: {self.format_time(time)}", state=tkinter.NORMAL)
 				elif self.info == 5:
 					self.widget_canvas.itemconfig(self.info_text, text=f"Samplerate: {self.samplerate}", state=tkinter.NORMAL)

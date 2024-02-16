@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Step-Sequencer Pad Trigger Class
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 #******************************************************************************
@@ -420,14 +420,14 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'Arranger':
 			self.zyngui.show_screen('arranger')
 		elif params == 'Beats per bar':
-			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zynseq.libseq.getBeatsPerBar()})
+			self.enable_param_editor(self, 'bpb', {'name':'Beats per bar', 'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zynseq.libseq.getBeatsPerBar()})
 		elif params == 'Scene':
-			self.enable_param_editor(self, 'bank', 'Scene', {'value_min':1, 'value_max':64, 'value':self.bank})
+			self.enable_param_editor(self, 'bank', {'name':'Scene', 'value_min':1, 'value_max':64, 'value':self.bank})
 		elif params == 'Grid size':
 			labels = []
 			for i in range(1, 9):
 				labels.append(f'{i}x{i}')
-			self.enable_param_editor(self, 'grid_size', 'Grid size', {'labels': labels, 'value': self.zynseq.col_in_bank - 1, 'value_default': 3}, self.set_grid_size)
+			self.enable_param_editor(self, 'grid_size', {'name':'Grid size', 'labels': labels, 'value': self.zynseq.col_in_bank - 1, 'value_default': 3}, self.set_grid_size)
 		elif params == 'Trigger learn':
 			self.zyngui.cuia_enable_midi_learn()
 		elif params == 'Pad type':
@@ -455,7 +455,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				pass
 			#TODO Send signal to refresh zynpad
 		elif params == 'Play mode':
-			self.enable_param_editor(self, 'playmode', 'Play mode', {'labels':zynseq.PLAY_MODES, 'value':self.zynseq.libseq.getPlayMode(self.zynseq.bank, self.selected_pad), 'value_default':zynseq.SEQ_LOOPALL}, self.set_play_mode)
+			self.enable_param_editor(self, 'playmode', {'name':'Play mode', 'labels':zynseq.PLAY_MODES, 'value':self.zynseq.libseq.getPlayMode(self.zynseq.bank, self.selected_pad), 'value_default':zynseq.SEQ_LOOPALL}, self.set_play_mode)
 		elif params == 'MIDI channel':
 			labels = []
 			for midi_chan in range(16):
@@ -464,7 +464,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 					labels.append(f"{midi_chan + 1} ({preset_name})")
 				else:
 					labels.append(f"{midi_chan + 1}")
-			self.enable_param_editor(self, 'midi_chan', 'MIDI channel', {'labels': labels, 'value_default': self.zyngui.state_manager.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0), 'value':self.zyngui.state_manager.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)})
+			self.enable_param_editor(self, 'midi_chan', {'name':'MIDI channel', 'labels': labels, 'value_default': self.zyngui.state_manager.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0), 'value':self.zyngui.state_manager.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)})
 		elif params == 'Rename sequence':
 			self.rename_sequence()
 
@@ -636,7 +636,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		value = self.zyngui.state_manager.zynseq.libseq.getTriggerNote(self.bank, self.selected_pad) + 1
 		if value > 128:
 			value = 0
-		self.enable_param_editor(self, 'trigger_note', 'Trigger note', {'labels': labels, 'value': value})
+		self.enable_param_editor(self, 'trigger_note', {'name':'Trigger note', 'labels': labels, 'value': value})
 
 	def exit_midi_learn(self):
 		self.midi_learn = False

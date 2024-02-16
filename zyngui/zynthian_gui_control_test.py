@@ -135,7 +135,7 @@ class zynthian_gui_control_test(zynthian_gui_base):
 		self.zgui_controllers = []
 		for i in range(4):
 			ctrl_name = "CTRL#{}".format(i)
-			self.zcontrollers.append(zynthian_controller(None, ctrl_name, ctrl_name, { 'value_min':-100, 'value_max':100, 'value':0 }))
+			self.zcontrollers.append(zynthian_controller(None, ctrl_name, {'value_min':-100, 'value_max':100, 'value':0 }))
 			self.zgui_controllers.append(zynthian_gui_controller(i, self.main_frame, self.zcontrollers[i]))
 			pos = zynthian_gui_config.layout['ctrl_pos'][i]
 			self.zgui_controllers[i].grid(row=pos[0], column=pos[1], pady=(0, 1), sticky='news')

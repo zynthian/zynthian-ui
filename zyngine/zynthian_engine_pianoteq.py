@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for Pianoteq (>=v7.5)
 #
-# Copyright (C) 2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2023-2024 Fernando Moyano <jofemodo@zynthian.org>
 # 			  Holger Wirtz <holger@zynthian.org>
 #             Brian Walton <riban@zynthian.org>
 #
@@ -435,6 +435,18 @@ PIANOTEQ_MIDIMAPPINGS_DIR = PIANOTEQ_DATA_DIR + '/MidiMappings'
 
 class zynthian_engine_pianoteq(zynthian_engine):
 
+
+	# ---------------------------------------------------------------------------
+	# Config variables
+	# ---------------------------------------------------------------------------
+
+	# Must assign here to avoid common (zynthian_engine class) instances being used
+	# Standard MIDI Controllers
+	_ctrls = []
+
+	# Controller Screens
+	_ctrl_screens = []
+
 	# ----------------------------------------------------------------------------
 	# Initialization
 	# ----------------------------------------------------------------------------
@@ -613,8 +625,8 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 	def add_processor(self, processor):
 		super().add_processor(processor)
-		self.generate_ctrl_screens(self.get_controllers_dict(processor)) #TODO: This takes too long and appends to end of existing list
 		processor.auto_save_bank = True
+
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
@@ -698,6 +710,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			return False
 		if self.load_preset(preset[0], preset[1]):
 			self.preset = preset
+			# Rebuild controls because each preset may use different controls
+			self.generate_ctrl_screens(self.get_controllers_dict(processor))
+			processor.init_ctrl_screens()
 			if preset[3] in ['CP-80', 'Vintage Tines MKI', 'Vintage Tines MKII', 'Vintage Reeds W1', 'Clavinet D6', 'Pianet N', 'Pianet T', 'Electra-Piano']:
 				processor.controllers_dict['Output Mode'].set_options({'labels': ['Line out (stereo)',  'Line out (mono)', 'Room mic', 'Binaural']})
 			else:
@@ -763,6 +778,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			processor.controllers_dict = {}
 
 		params = self.get_params()
+		default_cc = {'Sustain Pedal': 64, 'Sostenuto Pedal': 66, 'Soft Pedal': 67, 'Harmonic Pedal': 69}
 		for param in params:
 			options = {
 				'processor': processor,
@@ -793,10 +809,9 @@ class zynthian_engine_pianoteq(zynthian_engine):
 			if param in processor.controllers_dict:
 				processor.controllers_dict[param].set_options(options)
 			else:
-				zctrl = zynthian_controller(self, param, params[param]['name'], options)
+				zctrl = zynthian_controller(self, param, options)
 				processor.controllers_dict[param] = zctrl
 				# Default MIDI CC mapping
-				default_cc = {'Sustain Pedal': 64, 'Sostenuto Pedal': 66, 'Soft Pedal': 67, 'Harmonic Pedal': 69}
 				if param in default_cc:
 					self.state_manager.chain_manager.add_midi_learn(processor.midi_chan, default_cc[param], zctrl)
 

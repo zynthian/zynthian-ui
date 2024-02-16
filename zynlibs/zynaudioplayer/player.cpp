@@ -157,6 +157,11 @@ void send_notifications(AUDIO_PLAYER * pPlayer, int param) {
         if(pPlayer->cb_fn)
             ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_ENV_ATTACK, pPlayer->env_attack_rate);
     }
+    if((param == NOTIFY_ALL || param == NOTIFY_ENV_HOLD) && pPlayer->env_hold != pPlayer->last_env_hold) {
+        pPlayer->last_env_hold = pPlayer->env_hold;
+        if(pPlayer->cb_fn)
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_ENV_HOLD, float(pPlayer->env_hold) / g_samplerate);
+    }
     if((param == NOTIFY_ALL || param == NOTIFY_ENV_DECAY) && pPlayer->env_decay_rate != pPlayer->last_env_decay_rate) {
         pPlayer->last_env_decay_rate = pPlayer->env_decay_rate;
         if(pPlayer->cb_fn)
@@ -556,14 +561,14 @@ const char* get_filename(AUDIO_PLAYER * pPlayer) {
 
 float get_duration(AUDIO_PLAYER * pPlayer) {
     if(pPlayer && pPlayer->file_open == FILE_OPEN && pPlayer->sf_info.samplerate)
-        return (float)pPlayer->sf_info.frames / pPlayer->sf_info.samplerate;
+        return (float)pPlayer->sf_info.frames / pPlayer->sf_info.samplerate / pPlayer->speed;
     return 0.0f;
 }
 
 void set_position(AUDIO_PLAYER * pPlayer, float time) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return;
-    sf_count_t frames = time * g_samplerate;
+    sf_count_t frames = time * g_samplerate * pPlayer->speed;
     if(frames > pPlayer->crop_end_src)
         frames = pPlayer->crop_end_src;
     else if(frames < pPlayer->crop_start_src)
@@ -578,7 +583,7 @@ void set_position(AUDIO_PLAYER * pPlayer, float time) {
 
 float get_position(AUDIO_PLAYER * pPlayer) {
     if(pPlayer && pPlayer->file_open == FILE_OPEN)
-        return (float)(pPlayer->play_pos_frames) / g_samplerate;
+        return (float)(pPlayer->play_pos_frames) / g_samplerate / pPlayer->speed;
     return 0.0;
 }
 
@@ -790,6 +795,11 @@ bool set_cue_point_name(AUDIO_PLAYER * pPlayer, uint32_t index, const char* name
     return true;
 }
 
+void clear_cue_points(AUDIO_PLAYER * pPlayer) {
+    if(pPlayer)
+        pPlayer->cue_points.clear();
+}
+
 void start_playback(AUDIO_PLAYER * pPlayer) {
     if(pPlayer && g_jack_client && pPlayer->file_open == FILE_OPEN && pPlayer->play_state != PLAYING)
         pPlayer->play_state = STARTING;
@@ -868,6 +878,20 @@ float get_env_attack(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer)
         return 0.0;
     return pPlayer->env_attack_rate;
+}
+
+void set_env_hold(AUDIO_PLAYER * pPlayer, float hold) {
+    if(!pPlayer)
+        return;
+    getMutex();
+    pPlayer->env_hold = hold * g_samplerate;
+    releaseMutex();
+}
+
+float get_env_hold(AUDIO_PLAYER * pPlayer) {
+    if(!pPlayer)
+        return 0.0;
+    return float(pPlayer->env_hold) / g_samplerate;
 }
 
 void set_env_decay(AUDIO_PLAYER * pPlayer, float rate) {
@@ -971,6 +995,13 @@ inline float process_env(AUDIO_PLAYER * pPlayer) {
             pPlayer->env_level = pPlayer->env_attack_base + pPlayer->env_level * pPlayer->env_attack_coef;
             if (pPlayer->env_level >= 1.0) {
                 pPlayer->env_level = 1.0;
+                pPlayer->env_hold_count = pPlayer->env_hold;
+                pPlayer->env_state = ENV_HOLD;
+                //fprintf(stderr, "Envelope: HOLD\n");
+            }
+            break;
+        case ENV_HOLD:
+            if (pPlayer->env_hold_count-- == 0) {
                 pPlayer->env_state = ENV_DECAY;
                 //fprintf(stderr, "Envelope: DECAY\n");
             }
@@ -1037,8 +1068,8 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
 
         if(pPlayer->play_state == PLAYING || pPlayer->play_state == STOPPING) {
             if (pPlayer->time_ratio_dirty) {
-                pPlayer->stretcher->setTimeRatio(pPlayer->time_ratio / pPlayer->varispeed);
-                pPlayer->stretcher->setPitchScale(pPlayer->pitchshift * pPlayer->varispeed);
+                pPlayer->stretcher->setTimeRatio(pPlayer->time_ratio / pPlayer->varispeed / pPlayer->speed);
+                pPlayer->stretcher->setPitchScale(pPlayer->pitch * pPlayer->pitchshift * pPlayer->varispeed);
                 pPlayer->time_ratio_dirty = false;
             }
             while(pPlayer->stretcher->available() < nFrames) {
@@ -1478,6 +1509,32 @@ uint8_t get_pitchbend_range(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer)
         return 0;
     return pPlayer->pitch_bend_range;
+}
+
+void set_speed(AUDIO_PLAYER * pPlayer, float factor) {
+    if (!pPlayer || factor < 0.25 || factor > 4.0)
+        return;
+    pPlayer->speed = factor;
+    pPlayer->time_ratio_dirty = true;
+}
+
+float get_speed(AUDIO_PLAYER * pPlayer) {
+    if (!pPlayer)
+        return 0.0;
+    return pPlayer->speed;
+}
+
+void set_pitch(AUDIO_PLAYER * pPlayer, float factor) {
+    if (!pPlayer || factor < 0.25 || factor > 4.0)
+        return;
+    pPlayer->pitch = factor;
+    pPlayer->time_ratio_dirty = true;
+}
+
+float get_pitch(AUDIO_PLAYER * pPlayer) {
+    if (!pPlayer)
+        return 0.0;
+    return pPlayer->pitch;
 }
 
 void set_varispeed(AUDIO_PLAYER * pPlayer, float ratio) {

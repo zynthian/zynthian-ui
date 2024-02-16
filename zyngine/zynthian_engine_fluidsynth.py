@@ -4,7 +4,7 @@
 # 
 # zynthian_engine implementation for FluidSynth Sampler
 # 
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 # 
@@ -278,8 +278,8 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 							options['midi_chan'] = processor.midi_chan
 						midi_cc=options['midi_cc']
 						logging.debug("CTRL %s: %s" % (midi_cc, name))
-						title = str.replace(name, '_', ' ')
-						zctrls_extra[name] = zynthian_controller(self,name,title,options)
+						options['name'] = str.replace(name, '_', ' ')
+						zctrls_extra[name] = zynthian_controller(self, name, options)
 						ctrl_set.append(name)
 						if len(ctrl_set) >= 4:
 							logging.debug("ADDING CONTROLLER SCREEN #"+str(c))

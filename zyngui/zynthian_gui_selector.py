@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Selector Base Class
 # 
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -202,11 +202,11 @@ class zynthian_gui_selector(zynthian_gui_base):
 	def set_selector(self, zs_hidden=True):
 		self.zselector_hidden = zs_hidden
 		if self.zselector:
-			self.zselector.zctrl.set_options({ 'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'value_min':0, 'value_max':len(self.list_data), 'value':self.index })
+			self.zselector.zctrl.set_options({'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'value_min':0, 'value_max':len(self.list_data), 'value':self.index })
 			self.zselector.config(self.zselector.zctrl)
 			self.zselector.show()
 		else:
-			zselector_ctrl = zynthian_controller(None ,self.selector_caption, self.selector_caption, { 'value_max':len(self.list_data), 'value':self.index })
+			zselector_ctrl = zynthian_controller(None ,self.selector_caption, { 'value_max':len(self.list_data), 'value':self.index })
 			self.zselector = zynthian_gui_controller(zynthian_gui_config.select_ctrl, self.main_frame, zselector_ctrl, zs_hidden, selcounter=True)
 		if not self.zselector_hidden:
 			self.zselector.grid(row=zynthian_gui_config.layout['ctrl_pos'][3][0], column=zynthian_gui_config.layout['ctrl_pos'][3][1], sticky="news")

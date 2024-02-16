@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI Tempo class
 # 
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -86,22 +86,22 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
 	def set_zctrls(self):
 		if not self.bpm_zgui_ctrl:
-			self.bpm_zctrl = zynthian_controller(self, 'bpm', 'BPM', {'value_min': 10, 'value_max': 420, 'is_integer': False, 'nudge_factor': 0.1, 'value': self.libseq.getTempo()})
+			self.bpm_zctrl = zynthian_controller(self, 'bpm', {'name':'BPM', 'value_min': 10, 'value_max': 420, 'is_integer': False, 'nudge_factor': 0.1, 'value': self.libseq.getTempo()})
 			self.bpm_zgui_ctrl = zynthian_gui_controller(0, self.main_frame, self.bpm_zctrl)
 			self.zgui_ctrls.append(self.bpm_zgui_ctrl)
 
 		if not self.clk_source_zgui_ctrl:
-			self.clk_source_zctrl = zynthian_controller(self, 'clock_source', 'Clock Source', {'labels': ['Internal', 'Internal Send', 'MIDI', 'Analogue'], 'ticks': [0, 1, 2, 3], 'value': zynthian_gui_config.transport_clock_source})
+			self.clk_source_zctrl = zynthian_controller(self, 'clock_source', {'name':'Clock Source', 'labels': ['Internal', 'Internal Send', 'MIDI', 'Analogue'], 'ticks': [0, 1, 2, 3], 'value': zynthian_gui_config.transport_clock_source})
 			self.clk_source_zgui_ctrl = zynthian_gui_controller(1, self.main_frame, self.clk_source_zctrl)
 			self.zgui_ctrls.append(self.clk_source_zgui_ctrl)
 
 		if not self.mtr_enable_zgui_ctrl:
-			self.mtr_enable_zctrl = zynthian_controller(self, 'metronome_enable', 'Metronome On/Off', {'labels': ['Off', 'On'], 'ticks': [0, 1], 'is_toggle': True, 'value': self.libseq.isMetronomeEnabled()})
+			self.mtr_enable_zctrl = zynthian_controller(self, 'metronome_enable', {'name':'Metronome On/Off', 'labels': ['Off', 'On'], 'ticks': [0, 1], 'is_toggle': True, 'value': self.libseq.isMetronomeEnabled()})
 			self.mtr_enable_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.mtr_enable_zctrl)
 			self.zgui_ctrls.append(self.mtr_enable_zgui_ctrl)
 
 		if not self.mtr_volume_zgui_ctrl:
-			self.mtr_volume_zctrl = zynthian_controller(self, 'metronome_volume', 'Metronome Volume', {'value_min': 0, 'value_max': 100, 'value': int(100 * self.libseq.getMetronomeVolume())})
+			self.mtr_volume_zctrl = zynthian_controller(self, 'metronome_volume', {'name':'Metronome Volume', 'value_min': 0, 'value_max': 100, 'value': int(100 * self.libseq.getMetronomeVolume())})
 			self.mtr_volume_zgui_ctrl = zynthian_gui_controller(3, self.main_frame, self.mtr_volume_zctrl)
 			self.zgui_ctrls.append(self.mtr_volume_zgui_ctrl)
 

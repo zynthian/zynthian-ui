@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Base Class: Status Bar + Basic layout & events
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 #
@@ -778,13 +778,15 @@ class zynthian_gui_base(tkinter.Frame):
 	# Function to enable the top-bar parameter editor
 	#	engine: Object to recieve send_controller_value callback
 	#	symbol: String identifying the parameter
-	#	name: Parameter human-friendly name
 	#	options: zctrl options dictionary
 	#	assert_cb: Optional function to call when editor closed with assert: fn(self,value)
 	#	Populates button bar with up/down buttons
-	def enable_param_editor(self, engine, symbol, name, options, assert_cb=None):
+	def enable_param_editor(self, engine, symbol, options, assert_cb=None):
 		self.disable_param_editor()
-		self.param_editor_zctrl = zynthian_controller(engine, symbol, name, options)
+		if self.param_editor_zctrl:
+			self.param_editor_zctrl.reset(engine, symbol, options)
+		else:
+			self.param_editor_zctrl = zynthian_controller(engine, symbol, options)
 		self.param_editor_assert_cb = assert_cb
 		if not self.param_editor_zctrl.is_integer:
 			if self.param_editor_zctrl.nudge_factor < 0.1:

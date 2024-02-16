@@ -4,7 +4,7 @@
 # 
 # zynthian controller
 # 
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 # 
@@ -33,21 +33,28 @@ from zyngui import zynthian_gui_config
 
 class zynthian_controller:
 
-	def __init__(self, engine, symbol, name=None, options=None):
+	def __init__(self, engine, symbol, options=None):
+		""" Instantiate a new zynthian controller
+		
+		engine - Engine object containing parameter to control
+		symbol - String identifying the control
+		options - Optional dictionary of controller {parameter:value} pairs
+		"""
+
+		self.reset(engine, symbol, options)
+
+	def reset(self, engine, symbol, options=None):
+		""" Reset to default settings
+		
+		engine - Engine object containing parameter to control
+		symbol - String identifying the control
+		options - Optional dictionary of controller {parameter:value} pairs
+		"""
+		
 		self.engine = engine
 		self.symbol = symbol
-		if name:
-			self.name = self.short_name = name
-		else:
-			self.name = self.short_name = symbol
-
 		self.processor = None
-		self.reset()
-
-		if options:
-			self.set_options(options)
-
-	def reset(self):
+		self.name = self.short_name = symbol
 		self.group_symbol = None
 		self.group_name = None
 
@@ -56,7 +63,7 @@ class zynthian_controller:
 		self.value_min = None # Minimum value of control range
 		self.value_mid = None # Mid-point value of control range (used for toggle controls)
 		self.value_max = None # Maximum value of control range
-		self.value_range = None # Span of permissible values 
+		self.value_range = 0 # Span of permissible values 
 		self.nudge_factor = None # Factor to scale each up/down nudge #TODO: This is not set if configure is not called or options not passed
 		self.labels = None # List of discrete value labels
 		self.ticks = None # List of discrete value labels
@@ -78,14 +85,20 @@ class zynthian_controller:
 
 		self.label2value = None # Dictionary for fast conversion from discrete label to value
 		self.value2label = None # Dictionary for fast conversion from discrete value to label
+		if options:
+			self.set_options(options)
 
 	def set_options(self, options):
+		""" Set individual parameters - updating behaviour as appropriate"""
+
 		if 'processor' in options:
 			self.processor = options['processor']
 		if 'symbol' in options:
 			self.symbol = options['symbol']
 		if 'name' in options:
 			self.name = options['name']
+			if self.short_name == self.symbol:
+				self.short_name = self.name
 		if 'short_name' in options:
 			self.short_name = options['short_name']
 		if 'group_name' in options:
@@ -99,7 +112,22 @@ class zynthian_controller:
 		if 'value_min' in options:
 			self.value_min = options['value_min']
 		if 'value_max' in options:
-			self.value_max = options['value_max']
+			value_max = options['value_max']
+			# Numeric
+			if isinstance(value_max, int):
+				self.value_max = value_max
+			elif isinstance(value_max, float):
+				self.value_max = value_max
+				self.is_integer = False
+			# Selector
+			elif isinstance(value_max, str):
+				self.labels = value_max.split('|')
+			elif isinstance(value_max, list):
+				if isinstance(value_max[0], list):
+					self.labels = value_max[0]
+					self.ticks = value_max[1]
+				else:
+					self.labels = value_max
 		if 'labels' in options:
 			self.labels = options['labels']
 		if 'ticks' in options:
@@ -115,7 +143,11 @@ class zynthian_controller:
 		if 'midi_chan' in options:
 			self.midi_chan = options['midi_chan']
 		if 'midi_cc' in options:
-			self.midi_cc = options['midi_cc']
+			cc = options['midi_cc']
+			if isinstance(cc, str):
+				self.osc_path = cc
+			else:
+				self.midi_cc = cc
 		if 'osc_port' in options:
 			self.osc_port = options['osc_port']
 		if 'osc_path' in options:
@@ -129,9 +161,16 @@ class zynthian_controller:
 		self._configure()
 
 	def _configure(self):
-		# Configure Selector Controller
+		"""Reconfigure based on current parameters"""
+
 		self.range = None
 		if self.labels:
+			# Detect toggle (on/off)
+			if  len(self.labels) == 2:
+				self.is_toggle = True
+				if not self.ticks:
+					self.value_max = 127
+
 			# Generate ticks if needed ...
 			if not self.ticks:
 				n = len(self.labels)
@@ -196,44 +235,6 @@ class zynthian_controller:
 
 		if self.midi_feedback is None and self.midi_chan is not None and self.midi_cc is not None:
 			self.midi_feedback = [self.midi_chan, self.midi_cc]
-
-	def setup_controller(self, chan, cc, val, maxval=127):
-		self.midi_chan = chan
-
-		# OSC Path / MIDI CC
-		if isinstance(cc, str):
-			self.osc_path = cc
-		else:
-			self.midi_cc = cc
-
-		self.value = val
-		self.is_toggle = False
-		self.is_integer = True
-		self.is_logarithmic = False
-
-		# Numeric
-		if isinstance(maxval, int):
-			self.value_max = maxval
-		elif isinstance(maxval, float):
-			self.value_max = maxval
-			self.is_integer = False
-		# Selector
-		elif isinstance(maxval, str):
-			self.labels = maxval.split('|')
-		elif isinstance(maxval, list):
-			if isinstance(maxval[0], list):
-				self.labels = maxval[0]
-				self.ticks = maxval[1]
-			else:
-				self.labels = maxval
-
-		# Detect toggle (on/off)
-		if self.labels and len(self.labels) == 2:
-			self.is_toggle = True
-			if not self.ticks:
-				self.value_max = 127
-
-		self._configure()
 
 	def get_path(self):
 		if self.osc_path:
@@ -372,7 +373,7 @@ class zynthian_controller:
 			if self.ticks:
 				return self.label2value[str(label)]
 			else:
-				logging.error("No labels/ticks defined")
+				logging.error(f"No labels/ticks defined for {label}")
 
 		except Exception as e:
 			logging.error(e)

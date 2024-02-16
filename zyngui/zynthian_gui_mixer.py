@@ -667,18 +667,20 @@ class zynthian_gui_mixer_strip():
 	def on_strip_motion(self, event):
 		if self.strip_drag_start:
 			delta = event.x - self.strip_drag_start.x
-			if delta < -self.width and self.parent.mixer_strip_offset + len(self.parent.visible_mixer_strips) < self.parent.number_chains:
+			if delta < -self.width and self.parent.mixer_strip_offset + len(self.parent.visible_mixer_strips) < len(self.parent.zyngui.chain_manager.chains):
 				# Dragged more than one strip width to left
 				self.parent.mixer_strip_offset += 1
 				self.parent.highlight_active_chain()
 				self.dragging = True
 				self.strip_drag_start.x = event.x
+				self.parent.refresh_visible_strips()
 			elif delta > self.width and self.parent.mixer_strip_offset > 0:
 				# Dragged more than one strip width to right
 				self.parent.mixer_strip_offset -= 1
 				self.parent.highlight_active_chain()
 				self.dragging = True
 				self.strip_drag_start.x = event.x
+				self.parent.refresh_visible_strips()
 
 	# Function to handle mute button release
 	#	event: Mouse event

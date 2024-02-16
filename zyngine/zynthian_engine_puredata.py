@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for PureData
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -199,9 +199,9 @@ class zynthian_engine_puredata(zynthian_engine):
 									options['midi_chan'] = processor.midi_chan
 								midi_cc = options['midi_cc']
 								logging.debug("CTRL %s: %s" % (midi_cc, name))
-								title = str.replace(name, '_', ' ')
+								options['name'] = str.replace(name, '_', ' ')
 								options['processor'] = processor
-								zctrls[name] = zynthian_controller(self, name, title, options)
+								zctrls[name] = zynthian_controller(self, name, options)
 								ctrl_set.append(name)
 							except Exception as err:
 								logging.error("Generating Controller Screens: %s" % err)

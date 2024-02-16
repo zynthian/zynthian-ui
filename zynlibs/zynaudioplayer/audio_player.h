@@ -35,6 +35,7 @@ enum fileState {
 enum envState {
     ENV_IDLE = 0,
     ENV_ATTACK,
+    ENV_HOLD,
     ENV_DECAY,
     ENV_SUSTAIN,
     ENV_RELEASE,
@@ -101,6 +102,9 @@ class AUDIO_PLAYER {
     // ADSR envelope
     int env_state = ENV_IDLE; // Phase of envelope (A,D,S,R,etc.)
     uint8_t env_gate = 0; // True when gate asserted
+    uint32_t env_hold = 0; // Quantity of samples between attack and decay
+    uint32_t last_env_hold = 0;
+    uint32_t env_hold_count = 0; // Quantity of samples remaining until decay
     float env_level; // Amplitude factor (0..1)
     float env_attack_rate; // Duration of attack phase in seconds
     float last_env_attack_rate; 
@@ -147,6 +151,8 @@ class AUDIO_PLAYER {
     float pos_notify_delta; // Position time difference to trigger notification
     float varispeed = 1.0; // Ratio to adjust speed and pitch
     float pitchshift = 1.0; // Ratio of MIDI pitch shift (note, bend, etc.)
+    float speed = 1.0; // Base speed factor
+    float pitch = 1.0; // Base pitch factor
 
     RubberBand::RubberBandStretcher * stretcher = nullptr; // Time/pitch warp
 };

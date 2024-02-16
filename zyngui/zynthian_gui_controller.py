@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Controller Class
 #
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 #******************************************************************************
 #

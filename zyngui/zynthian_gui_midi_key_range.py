@@ -4,7 +4,7 @@
 # 
 # Zynthian GUI MIDI key-range config class
 # 
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 # 
@@ -230,7 +230,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 	def set_zctrls(self):
 		if not self.octave_zgui_ctrl:
 			i = zynthian_gui_config.layout['ctrl_order'][0]
-			self.octave_zctrl = zynthian_controller(self, 'octave transpose', 'octave transpose', {'value_min': -5, 'value_max': 6})
+			self.octave_zctrl = zynthian_controller(self, 'octave transpose', {'value_min': -5, 'value_max': 6})
 			self.octave_zgui_ctrl = zynthian_gui_controller(i, self.main_frame, self.octave_zctrl)
 			self.zgui_ctrls[i] = self.octave_zgui_ctrl
 		self.octave_zgui_ctrl.setup_zynpot()
@@ -239,7 +239,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 		if not self.halftone_zgui_ctrl:
 			i = zynthian_gui_config.layout['ctrl_order'][1]
-			self.halftone_zctrl = zynthian_controller(self, 'semitone transpose', 'semitone transpose', {'value_min': -12, 'value_max': 12})
+			self.halftone_zctrl = zynthian_controller(self, 'semitone transpose', {'value_min': -12, 'value_max': 12})
 			self.halftone_zgui_ctrl = zynthian_gui_controller(i, self.main_frame, self.halftone_zctrl)
 			self.zgui_ctrls[i] = self.halftone_zgui_ctrl
 		self.halftone_zgui_ctrl.setup_zynpot()
@@ -248,7 +248,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 		if not self.nlow_zgui_ctrl:
 			i = zynthian_gui_config.layout['ctrl_order'][2]
-			self.nlow_zctrl = zynthian_controller(self, 'note low', 'note low', {'nudge_factor': 1})
+			self.nlow_zctrl = zynthian_controller(self, 'note low', {'nudge_factor': 1})
 			self.nlow_zgui_ctrl = zynthian_gui_controller(i, self.main_frame, self.nlow_zctrl, hidden=True)
 			self.zgui_ctrls[i] = self.nlow_zgui_ctrl
 		self.nlow_zgui_ctrl.setup_zynpot()
@@ -256,7 +256,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 
 		if not self.nhigh_zgui_ctrl:
 			i = zynthian_gui_config.layout['ctrl_order'][3]
-			self.nhigh_zctrl = zynthian_controller(self, 'note high', 'note high', {'nudge_factor': 1})
+			self.nhigh_zctrl = zynthian_controller(self, 'note high', {'nudge_factor': 1})
 			self.nhigh_zgui_ctrl = zynthian_gui_controller(i, self.main_frame, self.nhigh_zctrl, hidden=True)
 			self.zgui_ctrls[i] = self.nhigh_zgui_ctrl
 		self.nhigh_zgui_ctrl.setup_zynpot()

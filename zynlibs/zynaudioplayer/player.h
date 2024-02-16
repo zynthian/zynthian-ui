@@ -29,10 +29,11 @@ enum {
     NOTIFY_CROP_END     = 14,
     NOTIFY_SUSTAIN      = 15,
     NOTIFY_ENV_ATTACK   = 16,
-    NOTIFY_ENV_DECAY    = 17,
-    NOTIFY_ENV_SUSTAIN  = 18,
-    NOTIFY_ENV_RELEASE  = 19,
-    NOTIFY_ENV_ATTACK_CURVE = 20,
+    NOTIFY_ENV_HOLD     = 17,
+    NOTIFY_ENV_DECAY    = 18,
+    NOTIFY_ENV_SUSTAIN  = 19,
+    NOTIFY_ENV_RELEASE  = 20,
+    NOTIFY_ENV_ATTACK_CURVE = 21,
     NOTIFY_ENV_DECAY_CURVE = 21
 };
 
@@ -248,6 +249,11 @@ const char* get_cue_point_name(AUDIO_PLAYER * pPlayer, uint32_t index);
 */
 bool set_cue_point_name(AUDIO_PLAYER * pPlayer, uint32_t index, const char* name);
 
+/** @brief  Clear all cue points
+*   @param  player_handle Handle of player provided by init_player()
+*/
+void clear_cue_points(AUDIO_PLAYER * pPlayer);
+
 /** @brief  Start playback
 *   @param  player_handle Handle of player provided by init_player()
 */
@@ -352,6 +358,30 @@ void set_pitchbend_range(AUDIO_PLAYER * pPlayer, uint8_t range);
 */
 uint8_t get_pitchbend_range(AUDIO_PLAYER * pPlayer);
 
+/** @brief  Set base speed
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  factor Speed factor (0.25..4.0)
+*/
+void set_speed(AUDIO_PLAYER * pPlayer, float factor);
+
+/** @brief  Get base speed
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval float Speed factor
+*/
+float get_speed(AUDIO_PLAYER * pPlayer);
+
+/** @brief  Set base pitch
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  factor Pitch factor (0.25..4.0)
+*/
+void set_pitch(AUDIO_PLAYER * pPlayer, float factor);
+
+/** @brief  Get base pitch
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval float Pitch factor
+*/
+float get_pitch(AUDIO_PLAYER * pPlayer);
+
 /** @brief  Set varispeed
 *   @param  player_handle Handle of player provided by init_player()
 *   @param  ratio Ratio of speed:pitch (1.0 for no varispeed)
@@ -409,6 +439,18 @@ void set_env_attack(AUDIO_PLAYER * pPlayer, float rate);
 *   @retval <float> Attack rate
 */
 float get_env_attack(AUDIO_PLAYER * pPlayer);
+
+/** @brief  Set envelope hold time
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  hold Time in seconds to hold between attack and decay phases
+*/
+void set_env_hold(AUDIO_PLAYER * pPlayer, float hold);
+
+/** @brief  Get envelope hold time
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval <float> Time in seconds between attack and decay phases
+*/
+float get_env_hold(AUDIO_PLAYER * pPlayer);
 
 /** @brief  Set envelope decay rate
 *   @param  player_handle Handle of player provided by init_player()

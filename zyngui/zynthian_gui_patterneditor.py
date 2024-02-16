@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Step-Sequencer Pattern Editor Class
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
@@ -335,14 +335,14 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'Arranger':
 			self.zyngui.show_screen('arranger')
 		elif params == 'Beats per bar':
-			self.enable_param_editor(self, 'bpb', 'Beats per bar', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zynseq.libseq.getBeatsPerBar()})
+			self.enable_param_editor(self, 'bpb', {'name':'Beats per bar', 'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zynseq.libseq.getBeatsPerBar()})
 		elif params == 'Beats in pattern':
-			self.enable_param_editor(self, 'bip', 'Beats in pattern', {'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zynseq.libseq.getBeatsInPattern()}, self.assert_beats_in_pattern)
+			self.enable_param_editor(self, 'bip', {'name':'Beats in pattern', 'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zynseq.libseq.getBeatsInPattern()}, self.assert_beats_in_pattern)
 		elif params == 'Steps per beat':
-			self.enable_param_editor(self, 'spb', 'Steps per beat', {'ticks': STEPS_PER_BEAT, 'value_default': 3, 'value': self.n_steps_beat}, self.assert_steps_per_beat)
+			self.enable_param_editor(self, 'spb', {'name':'Steps per beat', 'ticks': STEPS_PER_BEAT, 'value_default': 3, 'value': self.n_steps_beat}, self.assert_steps_per_beat)
 		elif params == 'Copy pattern':
 			self.copy_source = self.pattern
-			self.enable_param_editor(self, 'copy', 'Copy pattern to', {'value_min':1, 'value_max':zynseq.SEQ_MAX_PATTERNS, 'value':self.pattern}, self.copy_pattern)
+			self.enable_param_editor(self, 'copy', {'name':'Copy pattern to', 'value_min':1, 'value_max':zynseq.SEQ_MAX_PATTERNS, 'value':self.pattern}, self.copy_pattern)
 		elif params == 'Load pattern':
 			self.zyngui.screens['option'].config_file_list("Load pattern", [self.patterns_dpath, self.my_patterns_dpath], "*.zpat", self.load_pattern_file)
 			self.zyngui.show_screen('option')
@@ -351,13 +351,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'Clear pattern':
 			self.clear_pattern()
 		elif params == 'Transpose pattern':
-			self.enable_param_editor(self, 'transpose', 'Transpose', {'value_min':-1, 'value_max':1, 'labels':['down','down/up','up'], 'value':0})
+			self.enable_param_editor(self, 'transpose', {'name':'Transpose', 'value_min':-1, 'value_max':1, 'labels':['down','down/up','up'], 'value':0})
 		elif params == 'Vertical zoom':
-			self.enable_param_editor(self, 'vzoom', 'Vertical zoom', {'value_min':1, 'value_max':127, 'value_default':16, 'value':self.zoom})
+			self.enable_param_editor(self, 'vzoom', {'name':'Vertical zoom', 'value_min':1, 'value_max':127, 'value_default':16, 'value':self.zoom})
 		elif params == 'Scale':
-			self.enable_param_editor(self, 'scale', 'Scale', {'labels':self.get_scales(), 'value':self.zynseq.libseq.getScale()})
+			self.enable_param_editor(self, 'scale', {'name':'Scale', 'labels':self.get_scales(), 'value':self.zynseq.libseq.getScale()})
 		elif params == 'Tonic':
-			self.enable_param_editor(self, 'tonic', 'Tonic', {'labels':NOTE_NAMES, 'value':self.zynseq.libseq.getTonic()})
+			self.enable_param_editor(self, 'tonic', {'name':'Tonic', 'labels':NOTE_NAMES, 'value':self.zynseq.libseq.getTonic()})
 		elif params == 'Rest note':
 			labels = ['None']
 			for note in range(128):
@@ -365,10 +365,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			value = self.zynseq.libseq.getInputRest() + 1
 			if value > 128:
 				value = 0
-			options = {'labels':labels, 'value':value}
-			self.enable_param_editor(self, 'rest', 'Rest', options)
+			self.enable_param_editor(self, 'rest', {'name':'Rest', 'labels':labels, 'value':value})
 		elif params == 'Add program change':
-			self.enable_param_editor(self, 'prog_change', 'Program', {'value_max':128, 'value':self.get_program_change()}, self.add_program_change)
+			self.enable_param_editor(self, 'prog_change', {'name':'Program', 'value_max':128, 'value':self.get_program_change()}, self.add_program_change)
 		elif params == 'midi_record':
 			self.toggle_midi_record()
 		elif params == 'Export to SMF':

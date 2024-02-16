@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for Jalv Plugin Host
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -482,7 +482,8 @@ class zynthian_engine_jalv(zynthian_engine):
 						labels.append(p['label'])
 						values.append(p['value'])
 
-					zctrls[symbol] = zynthian_controller(self, symbol, info['name'], {
+					zctrls[symbol] = zynthian_controller(self, symbol, {
+						'name': info['name'],
 						'group_symbol': info['group_symbol'],
 						'group_name': info['group_name'],
 						'graph_path': info['index'],
@@ -506,7 +507,8 @@ class zynthian_engine_jalv(zynthian_engine):
 							else:
 								val = 'on'
 
-							zctrls[symbol] = zynthian_controller(self, symbol, info['name'], {
+							zctrls[symbol] = zynthian_controller(self, symbol, {
+								'name': info['name'],
 								'group_symbol': info['group_symbol'],
 								'group_name': info['group_name'],
 								'graph_path': info['index'],
@@ -521,7 +523,8 @@ class zynthian_engine_jalv(zynthian_engine):
 								'display_priority': info['display_priority']
 							})
 						else:
-							zctrls[symbol] = zynthian_controller(self, symbol, info['name'], {
+							zctrls[symbol] = zynthian_controller(self, symbol, {
+								'name': info['name'],
 								'group_symbol': info['group_symbol'],
 								'group_name': info['group_name'],
 								'graph_path': info['index'],
@@ -542,7 +545,8 @@ class zynthian_engine_jalv(zynthian_engine):
 							else:
 								val = 'on'
 
-							zctrls[symbol] = zynthian_controller(self, symbol, info['name'], {
+							zctrls[symbol] = zynthian_controller(self, symbol, {
+								'name': info['name'],
 								'group_symbol': info['group_symbol'],
 								'group_name': info['group_name'],
 								'graph_path': info['index'],
@@ -557,7 +561,8 @@ class zynthian_engine_jalv(zynthian_engine):
 								'display_priority': info['display_priority']
 							})
 						else:
-							zctrls[symbol] = zynthian_controller(self, symbol, info['name'], {
+							zctrls[symbol] = zynthian_controller(self, symbol, {
+								'name': info['name'],
 								'group_symbol': info['group_symbol'],
 								'group_name': info['group_name'],
 								'graph_path': info['index'],

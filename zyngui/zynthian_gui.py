@@ -1082,7 +1082,7 @@ class zynthian_gui:
 		self.state_manager.audio_recorder.stop_recording()
 
 	def cuia_toggle_audio_record(self, params=None):
-		if self.current_screen == 'control' and self.current_processor.engine.name == 'AudioPlayer':
+		if self.current_screen == 'control' and self.is_shown_audio_player():
 			self.state_manager.audio_recorder.toggle_recording(self.current_processor)
 			self.get_current_screen_obj().set_mode_control()
 		else:
@@ -1376,11 +1376,11 @@ class zynthian_gui:
 				self.chain_manager.get_active_chain().set_current_processor(params)
 			except:
 				logging.error("Can't set chain passed as CUIA parameter!")
-		elif self.current_screen != 'audio_player':
+		elif not self.is_shown_audio_player():
 			self.screens["control"].fill_list()
 			try:
 				self.chain_manager.get_active_chain().set_current_processor(self.screens['control'].screen_processor)
-				self.set_current
+				self.current_processor = None
 			except:
 				logging.warning("Can't set control screen processor! ")
 

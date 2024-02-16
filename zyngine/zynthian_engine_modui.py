@@ -4,7 +4,7 @@
 # 
 # zynthian_engine implementation for MOD-UI (LV2 plugin host)
 # 
-# Copyright (C) 2015-2016 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 # 
@@ -543,7 +543,8 @@ class zynthian_engine_modui(zynthian_engine):
 							except:
 								val = values[0]
 
-							param['ctrl'] = zynthian_controller(self, param['symbol'], param['shortName'], {
+							param['ctrl'] = zynthian_controller(self, param['symbol'], {
+								'name': param['shortName'],
 								'graph_path': ctrl_graph,
 								'value': val,
 								'labels': labels,
@@ -561,7 +562,8 @@ class zynthian_engine_modui(zynthian_engine):
 							if is_integer:
 								if r == 1:
 									val = pranges['default']
-									param['ctrl'] = zynthian_controller(self, param['symbol'], param['shortName'], {
+									param['ctrl'] = zynthian_controller(self, param['symbol'], {
+										'name': param['shortName'],
 										'graph_path': ctrl_graph,
 										'value': val,
 										'labels': ['off', 'on'],
@@ -572,7 +574,8 @@ class zynthian_engine_modui(zynthian_engine):
 										'is_integer': True
 									})
 								else:
-									param['ctrl'] = zynthian_controller(self, param['symbol'], param['shortName'], {
+									param['ctrl'] = zynthian_controller(self, param['symbol'], {
+										'name': param['shortName'],
 										'graph_path': ctrl_graph,
 										'value': int(pranges['default']),
 										'value_default': int(pranges['default']),
@@ -582,7 +585,8 @@ class zynthian_engine_modui(zynthian_engine):
 										'is_integer': True
 									})
 							else:
-								param['ctrl'] = zynthian_controller(self, param['symbol'], param['shortName'], {
+								param['ctrl'] = zynthian_controller(self, param['symbol'], {
+									'name': param['shortName'],
 									'graph_path': ctrl_graph,
 									'value': pranges['default'],
 									'value_default': pranges['default'],
@@ -594,7 +598,8 @@ class zynthian_engine_modui(zynthian_engine):
 
 					#If there is no range info (should be!!) => Default MIDI CC controller with 0-127 range
 					else:
-						param['ctrl'] = zynthian_controller(self, param['symbol'], param['shortName'], {
+						param['ctrl'] = zynthian_controller(self, param['symbol'], {
+							'name': param['shortName'],
 							'graph_path': ctrl_graph,
 							'value': 0,
 							'value_default': 0,
@@ -611,7 +616,7 @@ class zynthian_engine_modui(zynthian_engine):
 					logging.error("Configuring Controllers: "+pgraph+" => "+str(err))
 
 			# Add bypass Zcontroller
-			bypass_zctrl = zynthian_controller(self, 'bypass', 'bypass', {
+			bypass_zctrl = zynthian_controller(self, 'bypass', {
 				'graph_path': pgraph+'/:bypass',
 				'value': 0,
 				'labels': ['off', 'on'],
