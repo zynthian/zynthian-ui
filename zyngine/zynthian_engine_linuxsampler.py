@@ -32,6 +32,7 @@ from time import sleep
 from os.path import isfile
 from subprocess import check_output
 from collections import OrderedDict
+from Levenshtein import distance
 
 from . import zynthian_engine
 
@@ -264,56 +265,74 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		preset_list = []
 		preset_dpath = bank[0]
 		if os.path.isdir(preset_dpath):
-			# Get SFZ file list
 			exclude_sfz = re.compile(r"[MOPRSTV][1-9]?l?\.sfz")
-			cmd = "find '" + preset_dpath + "' -maxdepth 3 -type f -name '*.sfz'"
-			output = check_output(cmd, shell=True).decode('utf8')
-			# Get GIG file list
-			cmd = "find '" + preset_dpath + "' -maxdepth 2 -type f -name '*.gig'"
-			output += "\n" + check_output(cmd, shell=True).decode('utf8')
-			lines = output.split('\n')
-			for f in lines:
-				if f:
+			for sd in glob.glob(preset_dpath + "/*"):
+				if os.path.isdir(sd):
+					cmd = f"find '{sd}' -maxdepth 2 -type f -name '*.sfz'"
+					output = check_output(cmd, shell=True).decode('utf8')
+					flist = list(filter(None, output.split('\n')))
+					for f in flist:
+						filehead, filetail = os.path.split(f)
+						if not exclude_sfz.fullmatch(filetail):
+							filename, filext = os.path.splitext(f)
+							filename = filename[len(preset_dpath)+1:]
+							if len(flist) == 1:
+								dirname = filehead.split("/")[-1]
+								if dirname[-4:].lower() == ".sfz":
+									dirname = dirname[:-4]
+								title = dirname.replace('_', ' ')
+							else:
+								title = filename.replace('_', ' ')
+							engine = filext[1:].lower()
+							preset_list.append([f, i, title, engine, "{}{}".format(filename, filext)])
+							i += 1
+				else:
+					f = sd
 					filehead, filetail = os.path.split(f)
-					if not exclude_sfz.fullmatch(filetail):
-						filename, filext = os.path.splitext(f)
+					filename, filext = os.path.splitext(f)
+					if filext.lower() == ".sfz" and not exclude_sfz.fullmatch(filetail):
 						filename = filename[len(preset_dpath) + 1:]
 						title = filename.replace('_', ' ')
 						engine = filext[1:].lower()
-						if engine == "gig":
-							# Get instrument list inside each GIG file
-							inslist = ""
-							# Try getting from cache file
-							icache_fpath = f + ".ins"
-							if isfile(icache_fpath):
-								try:
-									with open(icache_fpath, "r") as fh:
-										inslist = fh.read()
-								except Exception as e:
-									logging.error(f"Can't load instrument cache '{icache_fpath}'")
-							# If not cache, parse soundfont and cache info
-							if not inslist:
-								cmd = f"gigdump --instrument-names \"{f}\""
-								inslist = check_output(cmd, shell=True).decode('utf8')
-								try:
-									with open(icache_fpath, "w") as fh:
-										fh.write(inslist)
-								except Exception as e:
-									logging.error(f"Can't save instrument cache '{icache_fpath}'")
-							#logging.debug(f"INSTRUMENTS IN {f} =>\n{inslist}")
-							ilines = inslist.split('\n')
-							ii = 0
-							for iline in ilines:
-								try:
-									parts = iline.split(")")
-									ititle = title + "/" + parts[1].replace('"', '').strip()
-								except:
-									continue
-								preset_list.append([f"{f}#{ii}", i, ititle, engine, f"{filename}{filext}#{ii}"])
-								ii += 1
-								i += 1
-						else:
-							preset_list.append([f, i, title, engine, f"{filename}{filext}"])
+						preset_list.append([f, i, title, engine, "{}{}".format(filename, filext)])
+						i += 1
+					elif filext.lower() == ".gig":
+						filename = filename[len(preset_dpath) + 1:]
+						title = filename.replace('_', ' ')
+						engine = filext[1:].lower()
+						# Get instrument list inside each GIG file
+						inslist = ""
+						# Try getting from cache file
+						icache_fpath = f + ".ins"
+						if isfile(icache_fpath):
+							try:
+								with open(icache_fpath, "r") as fh:
+									inslist = fh.read()
+							except Exception as e:
+								logging.error(f"Can't load instrument cache '{icache_fpath}'")
+						# If not cache, parse soundfont and cache info
+						if not inslist:
+							cmd = f"gigdump --instrument-names \"{f}\""
+							inslist = check_output(cmd, shell=True).decode('utf8')
+							try:
+								with open(icache_fpath, "w") as fh:
+									fh.write(inslist)
+							except Exception as e:
+								logging.error(f"Can't save instrument cache '{icache_fpath}'")
+						#logging.debug(f"INSTRUMENTS IN {f} =>\n{inslist}")
+						ilines = inslist.split('\n')
+						ii = 0
+						for iline in ilines:
+							try:
+								parts = iline.split(")")
+								ititle = parts[1].replace('"', '').strip()
+								l = len(title)
+								if distance(title.lower(), ititle.lower()[0:l]) > int(l/3):
+									ititle = title + "/" + ititle
+							except:
+								continue
+							preset_list.append([f"{f}#{ii}", i, ititle, engine, f"{filename}{filext}#{ii}"])
+							ii += 1
 							i += 1
 		return preset_list
 

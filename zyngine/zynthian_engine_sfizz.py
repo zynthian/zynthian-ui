@@ -1,12 +1,12 @@
 ﻿# -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_sfizz)
 # 
 # zynthian_engine implementation for Sfizz
 # 
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -20,7 +20,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import os
 import re
@@ -31,9 +31,10 @@ from subprocess import check_output
 
 from . import zynthian_engine
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Sfizz Engine Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_engine_sfizz(zynthian_engine):
 
@@ -95,7 +96,7 @@ class zynthian_engine_sfizz(zynthian_engine):
 		else:
 			self.jackname = self.state_manager.chain_manager.get_next_jackname("sfizz")
 
-		self.preload_size = 32768 #8192, 16384, 32768, 65536
+		self.preload_size = 32768  #8192, 16384, 32768, 65536
 		self.num_voices = 40
 		self.sfzpath = None
 
@@ -135,19 +136,37 @@ class zynthian_engine_sfizz(zynthian_engine):
 		preset_dpath = bank[0]
 		if os.path.isdir(preset_dpath):
 			exclude_sfz = re.compile(r"[MOPRSTV][1-9]?l?\.sfz")
-			cmd = "find '"+preset_dpath+"' -maxdepth 3 -type f -name '*.sfz'"
-			output = check_output(cmd, shell=True).decode('utf8')
-			lines = output.split('\n')
-			for f in lines:
-				if f:
-					filehead,filetail = os.path.split(f)
-					if not exclude_sfz.fullmatch(filetail):
-						filename,filext = os.path.splitext(f)
-						filename = filename[len(preset_dpath)+1:]
+			for sd in glob.glob(preset_dpath + "/*"):
+				if os.path.isdir(sd):
+					cmd = f"find '{sd}' -maxdepth 2 -type f -name '*.sfz'"
+					output = check_output(cmd, shell=True).decode('utf8')
+					flist = list(filter(None, output.split('\n')))
+					for f in flist:
+						filehead, filetail = os.path.split(f)
+						if not exclude_sfz.fullmatch(filetail):
+							filename, filext = os.path.splitext(f)
+							filename = filename[len(preset_dpath)+1:]
+							if len(flist) == 1:
+								dirname = filehead.split("/")[-1]
+								if dirname[-4:].lower() == ".sfz":
+									dirname = dirname[:-4]
+								title = dirname.replace('_', ' ')
+							else:
+								title = filename.replace('_', ' ')
+							engine = filext[1:].lower()
+							preset_list.append([f, i, title, engine, "{}{}".format(filename, filext)])
+							i += 1
+				else:
+					f = sd
+					filehead, filetail = os.path.split(f)
+					filename, filext = os.path.splitext(f)
+					if filext.lower() == ".sfz" and not exclude_sfz.fullmatch(filetail):
+						filename = filename[len(preset_dpath) + 1:]
 						title = filename.replace('_', ' ')
 						engine = filext[1:].lower()
-						preset_list.append([f,i,title,engine,"{}{}".format(filename,filext)])
+						preset_list.append([f, i, title, engine, "{}{}".format(filename, filext)])
 						i += 1
+
 		return preset_list
 
 
@@ -177,7 +196,6 @@ class zynthian_engine_sfizz(zynthian_engine):
 	# Controllers Management
 	# ---------------------------------------------------------------------------
 
-
 	# ---------------------------------------------------------------------------
 	# API methods
 	# ---------------------------------------------------------------------------
@@ -197,7 +215,6 @@ class zynthian_engine_sfizz(zynthian_engine):
 				'readonly': False
 			})
 		return banks
-
 
 	@classmethod
 	def zynapi_get_presets(cls, bank):
@@ -223,18 +240,15 @@ class zynthian_engine_sfizz(zynthian_engine):
 			bank_type = "sfz"
 		os.mkdir(zynthian_engine.my_data_dir + "/soundfonts/{}/{}".format(bank_type, bank_name))
 
-
 	@classmethod
 	def zynapi_rename_bank(cls, bank_path, new_bank_name):
 		head, tail = os.path.split(bank_path)
 		new_bank_path = head + "/" + new_bank_name
 		os.rename(bank_path, new_bank_path)
 
-
 	@classmethod
 	def zynapi_remove_bank(cls, bank_path):
 		shutil.rmtree(bank_path)
-
 
 	@classmethod
 	def zynapi_rename_preset(cls, preset_path, new_preset_name):
@@ -243,12 +257,10 @@ class zynthian_engine_sfizz(zynthian_engine):
 		new_preset_path = head + "/" + new_preset_name + ext
 		os.rename(preset_path, new_preset_path)
 
-
 	@classmethod
 	def zynapi_remove_preset(cls, preset_path):
 		os.remove(preset_path)
 		#TODO => If last preset in SFZ dir, delete it too!
-
 
 	@classmethod
 	def zynapi_download(cls, fullpath):
@@ -259,30 +271,33 @@ class zynthian_engine_sfizz(zynthian_engine):
 		else:
 			return fullpath
 
-
 	@classmethod
 	def zynapi_install(cls, dpath, bank_path):
-		#TODO: Test that bank_path fits preset type (sfz/gig)
-		 
+		#TODO: Test that bank_path fits preset type (sfz)
 		fname, ext = os.path.splitext(dpath)
 		if os.path.isdir(dpath):
 			# Locate sfz files and move all them to first level directory
 			try:
-				cmd = "find \"{}\" -type f -iname *.sfz".format(dpath)
+				cmd = f"find \"{dpath}\" -type f -iname *.sfz"
 				sfz_files = check_output(cmd, shell=True).decode("utf-8").split("\n")
-				# Find the "shallower" SFZ file 
+				# Find the "shallower" SFZ file
 				shallower_sfz_file = sfz_files[0]
+				shallower_sfz_deep = shallower_sfz_file.count('/')
 				for f in sfz_files:
-					if f and (f.count('/') < shallower_sfz_file.count('/')):
+					deep = f.count('/')
+					if f and deep < shallower_sfz_deep:
 						shallower_sfz_file = f
+						shallower_sfz_deep = deep
 				head, tail = os.path.split(shallower_sfz_file)
+				logging.debug(f"Shallower SFZ => {head} / {tail}")
 				# Move SFZ stuff to the top level
-				if head and head!=dpath:
+				if head and head != dpath:
 					for f in glob.glob(head + "/*"):
 						shutil.move(f, dpath)
 					shutil.rmtree(head)
-			except:
-				raise Exception("Directory doesn't contain any SFZ file")
+			except Exception as e:
+				logging.debug(f"Directory doesn't contain any SFZ file: {e}")
+				raise Exception(f"Directory doesn't contain any SFZ file")
 
 			# Move directory to destiny bank
 			if "/sfz/" in bank_path:
@@ -293,14 +308,12 @@ class zynthian_engine_sfizz(zynthian_engine):
 		else:
 			raise Exception("File doesn't look like a SFZ soundfont")
 
-
 	@classmethod
 	def zynapi_get_formats(cls):
 		return "zip,tgz,tar.gz,tar.bz2"
-
 
 	@classmethod
 	def zynapi_martifact_formats(cls):
 		return "sfz"
 
-#******************************************************************************
+# ******************************************************************************

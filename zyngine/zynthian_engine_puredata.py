@@ -294,7 +294,7 @@ class zynthian_engine_puredata(zynthian_engine):
 			#TODO Test if it's a PD bundle
 		else:
 			fname, ext = os.path.splitext(dpath)
-			if ext=='.pd':
+			if ext == '.pd':
 				bank_path += "/" + fname
 				os.mkdir(bank_path)
 				shutil.move(dpath, bank_path)
