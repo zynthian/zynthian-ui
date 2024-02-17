@@ -149,7 +149,9 @@ class AUDIO_PLAYER {
     void * cb_object = nullptr; // Pointer to the object hosting the callback function
     cb_fn_t * cb_fn = nullptr; // Pointer to function to receive notification of change
     float pos_notify_delta; // Position time difference to trigger notification
-    float varispeed = 1.0; // Ratio to adjust speed and pitch
+    float varispeed = 1.0; // Ratio to adjust speed and pitch - goes to zero when stopped to allow scrubbing
+    float last_varispeed = 1.0;
+    float play_varispeed = 1.0; // Used to restore varispeed when starting playback
     float pitchshift = 1.0; // Ratio of MIDI pitch shift (note, bend, etc.)
     float speed = 1.0; // Base speed factor
     float pitch = 1.0; // Base pitch factor

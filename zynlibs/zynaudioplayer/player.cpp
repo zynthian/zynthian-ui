@@ -4,10 +4,6 @@
     Envelope generator based on code by EarLevel Engineering <https://www.earlevel.com/main/2013/06/03/envelope-generators-adsr-code/>
 */
 
-/**
-    @todo   Add 'slate' markers- general purpose markers that can be jumpped to
-*/
-
 #include "player.h"
 
 #include <stdio.h> // provides printf
@@ -202,6 +198,11 @@ void send_notifications(AUDIO_PLAYER * pPlayer, int param) {
         if(pPlayer->cb_fn)
             ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_QUALITY, (float)(pPlayer->src_quality));
     }
+    if((param == NOTIFY_ALL || param == NOTIFY_VARISPEED) && pPlayer->varispeed != pPlayer->last_varispeed) {
+        pPlayer->last_varispeed = pPlayer->varispeed;
+        if(pPlayer->cb_fn)
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_VARISPEED, (float)(pPlayer->varispeed));
+    }
     if((param == NOTIFY_ALL || param == NOTIFY_DEBUG) && g_debug != g_last_debug) {
         g_last_debug = g_debug;
         if(pPlayer->cb_fn)
@@ -266,6 +267,7 @@ void* file_thread_fn(void * param) {
         // Initialise samplerate converter
         float pBufferIn[pPlayer->input_buffer_size * pPlayer->sf_info.channels]; // Buffer used to read sample data from file
         float pBufferOut[pPlayer->output_buffer_size * pPlayer->sf_info.channels]; // Buffer used to write converted sample data to
+        float pBufferRev[pPlayer->output_buffer_size * pPlayer->sf_info.channels]; // Buffer used to write reverse playback sample data to
         srcData.data_in = pBufferIn;
         srcData.data_out = pBufferOut;
         srcData.output_frames = pPlayer->output_buffer_size;
@@ -289,8 +291,7 @@ void* file_thread_fn(void * param) {
                 getMutex();
                 jack_ringbuffer_reset(pPlayer->ringbuffer_a);
                 jack_ringbuffer_reset(pPlayer->ringbuffer_b);
-                size_t nNewPos = pPlayer->play_pos_frames / pPlayer->src_ratio;
-                sf_count_t pos = sf_seek(pFile, nNewPos, SEEK_SET);
+                sf_count_t pos = sf_seek(pFile, pPlayer->play_pos_frames / pPlayer->src_ratio, SEEK_SET);
                 if(pos >= 0)
                     pPlayer->file_read_pos = pos;
                 //DPRINTF("Seeking to %u frames (%fs) src ratio=%f\n", nNewPos, get_position(pPlayer), srcData.src_ratio);
@@ -302,8 +303,12 @@ void* file_thread_fn(void * param) {
                 srcData.end_of_input = 0;
                 pPlayer->stretcher->reset();
             } else if(pPlayer->file_read_status == LOOPING) {
-                // Reached loop end point and need to read from loop start point
-                sf_count_t pos = sf_seek(pFile, pPlayer->loop_start, SEEK_SET);
+                // Reached loop end point and need to read from loop marker
+                sf_count_t pos;
+                if(pPlayer->varispeed < 0.0)
+                    pos = sf_seek(pFile, pPlayer->loop_end, SEEK_SET);
+                else
+                    pos = sf_seek(pFile, pPlayer->loop_start, SEEK_SET);
                 getMutex();
                 if(pos >= 0)
                     pPlayer->file_read_pos = pos;
@@ -327,29 +332,84 @@ void* file_thread_fn(void * param) {
                 if(jack_ringbuffer_write_space(pPlayer->ringbuffer_a) >= nMaxFrames * sizeof(float) * pPlayer->src_ratio
                     && jack_ringbuffer_write_space(pPlayer->ringbuffer_b) >= nMaxFrames * sizeof(float)  * pPlayer->src_ratio) {
 
-                    if(pPlayer->loop) {
-                        // Limit read to loop range
-                        if(pPlayer->file_read_pos >= pPlayer->loop_end)
-                            nMaxFrames = 0;
-                        else if(pPlayer->file_read_pos + nMaxFrames > pPlayer->loop_end)
-                            nMaxFrames = pPlayer->loop_end - pPlayer->file_read_pos;
-                    } else if(pPlayer->file_read_pos >= pPlayer->crop_end) {
-                        nMaxFrames = 0;
-                    } else if(pPlayer->file_read_pos + nMaxFrames > pPlayer->crop_end) {
-                        // Limit read to crop range
-                        nMaxFrames = pPlayer->crop_end - pPlayer->file_read_pos;
+                    bool bReverse = (pPlayer->varispeed < 0.0);
+                    if(bReverse) {
+                        if(pPlayer->loop) {
+                            // Limit read to loop range
+                            if(pPlayer->file_read_pos <= pPlayer->loop_start)
+                                nMaxFrames = 0;
+                            else if(pPlayer->file_read_pos - nMaxFrames < pPlayer->loop_start)
+                                nMaxFrames = pPlayer->file_read_pos - pPlayer->loop_start;
+                        } else if(pPlayer->file_read_pos - nMaxFrames < pPlayer->crop_start) {
+                            // Limit read to crop range
+                            nMaxFrames = pPlayer->file_read_pos - pPlayer->crop_start;
+                        }
+                    } else {
+                        if(pPlayer->loop) {
+                            // Limit read to loop range
+                            if(pPlayer->file_read_pos >= pPlayer->loop_end)
+                                nMaxFrames = 0;
+                            else if(pPlayer->file_read_pos + nMaxFrames > pPlayer->loop_end)
+                                nMaxFrames = pPlayer->loop_end - pPlayer->file_read_pos;
+                        } else if(pPlayer->file_read_pos + nMaxFrames > pPlayer->crop_end) {
+                            // Limit read to crop range
+                            nMaxFrames = pPlayer->crop_end - pPlayer->file_read_pos;
+                        }
                     }
 
                     if(srcData.src_ratio == 1.0) {
                         // No SRC required so populate SRC output buffer directly
-                        nFramesRead = sf_readf_float(pFile, pBufferOut, nMaxFrames);
+                        if(bReverse) {
+                            if(pPlayer->file_read_pos > nMaxFrames)
+                                pPlayer->file_read_pos -= nMaxFrames;
+                            else {
+                                nMaxFrames = pPlayer->file_read_pos;
+                                pPlayer->file_read_pos = 0;
+                            }
+                            // Move to start of audio chunk
+                            sf_count_t pos = sf_seek(pFile, pPlayer->file_read_pos, SEEK_SET);
+                            if(pos >= 0) {
+                                // Read audio chunk
+                                nFramesRead = sf_readf_float(pFile, pBufferRev, nMaxFrames);
+                                size_t wOffset = 0;
+                                // Reverse audio chunk
+                                for(int i = nFramesRead; i > 0; --i) {
+                                    for (size_t j = 0; j < pPlayer->sf_info.channels; ++j) {
+                                        pBufferOut[wOffset] = pBufferRev[(i - 1) * pPlayer->sf_info.channels + j];
+                                        ++wOffset;
+                                    }
+                                }
+                                // Move to start of audio chunk again for next cycle (we have processed this chunk)
+                                sf_seek(pFile, pos, SEEK_SET);
+                            }
+                        }
+                        else
+                            pPlayer->file_read_pos += nFramesRead = sf_readf_float(pFile, pBufferOut, nMaxFrames);
                     } else {
                         // Populate SRC input buffer before SRC process
-                        nFramesRead = sf_readf_float(pFile, pBufferIn + nUnusedFrames * pPlayer->sf_info.channels, nMaxFrames);
+                        if(bReverse) {
+                            if(pPlayer->file_read_pos > nMaxFrames)
+                                pPlayer->file_read_pos -= nMaxFrames;
+                            else
+                                pPlayer->file_read_pos = 0;
+                            sf_count_t pos = sf_seek(pFile, pPlayer->file_read_pos, SEEK_SET);
+                            if(pos >= 0) {
+                                nFramesRead = sf_readf_float(pFile, pBufferRev, nMaxFrames);
+                                size_t wPos = nUnusedFrames;
+                                for(size_t i = nFramesRead; i == 0; --i) {
+                                    for (size_t j = 0; j < pPlayer->sf_info.channels; ++j) {
+                                        pBufferIn[wPos] = pBufferRev[(i - 1) * pPlayer->sf_info.channels + j];
+                                        ++wPos;
+                                    }
+                                }
+                                sf_seek(pFile, pos, SEEK_SET);
+                            }
+                        }
+                        else
+                            pPlayer->file_read_pos += nFramesRead = sf_readf_float(pFile, pBufferIn + nUnusedFrames * pPlayer->sf_info.channels, nMaxFrames);
                     }
-                    getMutex();
-                    pPlayer->file_read_pos += nFramesRead;
 
+                    getMutex();
                     if(nFramesRead) {
                         // Got some audio data to process...
                         // Remain in LOADING state to trigger next file read when FIFO has sufficient space
@@ -659,10 +719,10 @@ void set_crop_start_time(AUDIO_PLAYER * pPlayer, float time) {
     if(time < 0.0)
         time = 0.0;
     jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
-    //if(frames >= pPlayer->crop_end)
-    //    frames = pPlayer->crop_end - 1;
+    if(frames >= pPlayer->crop_end)
+        frames = pPlayer->crop_end - 1;
     if(frames > pPlayer->loop_end)
-        frames = pPlayer->loop_end - 1;
+        set_loop_end_time(pPlayer, time);
     if(frames > pPlayer->loop_start)
         set_loop_start_time(pPlayer, time);
     getMutex();
@@ -686,14 +746,14 @@ void set_crop_end_time(AUDIO_PLAYER * pPlayer, float time) {
     if(!pPlayer)
         return;
     jack_nframes_t frames = pPlayer->sf_info.samplerate * time;
-    //if(frames < pPlayer->crop_start)
-    //    frames = pPlayer->crop_start + 1;
-    if(frames < pPlayer->loop_start)
-        frames = pPlayer->loop_start + 1;
+    if(frames < pPlayer->crop_start)
+        frames = pPlayer->crop_start + 1;
     if(frames > pPlayer->sf_info.frames)
         frames = pPlayer->sf_info.frames;
     if(frames < pPlayer->loop_end)
         set_loop_end_time(pPlayer, time);
+    if(frames < pPlayer->loop_start)
+        set_loop_start_time(pPlayer, time);
     getMutex();
     pPlayer->crop_end = frames;
     pPlayer->crop_end_src = frames * pPlayer->src_ratio;
@@ -801,14 +861,19 @@ void clear_cue_points(AUDIO_PLAYER * pPlayer) {
 }
 
 void start_playback(AUDIO_PLAYER * pPlayer) {
-    if(pPlayer && g_jack_client && pPlayer->file_open == FILE_OPEN && pPlayer->play_state != PLAYING)
+    if(pPlayer && g_jack_client && pPlayer->file_open == FILE_OPEN && pPlayer->play_state != PLAYING) {
+        pPlayer->varispeed = pPlayer->play_varispeed;
         pPlayer->play_state = STARTING;
+        pPlayer->time_ratio_dirty = true;
+    }
     send_notifications(pPlayer, NOTIFY_TRANSPORT);
 }
 
 void stop_playback(AUDIO_PLAYER * pPlayer) {
-    if(pPlayer && pPlayer->play_state != STOPPED)
+    if(pPlayer && pPlayer->play_state != STOPPED) {
         pPlayer->play_state = STOPPING;
+        pPlayer->play_varispeed = pPlayer->varispeed;
+    }
     send_notifications(pPlayer, NOTIFY_TRANSPORT);
 }
 
@@ -1062,14 +1127,21 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         float pInB[256];
         float* stretch_input_buffers[] = {pInA, pInB};
         float* output_buffers[] = {pOutA, pOutB};
+        bool bReverse = pPlayer->varispeed < 0.0;
 
         if(pPlayer->play_state == STARTING && pPlayer->file_read_status != SEEKING)
             pPlayer->play_state = PLAYING;
 
         if(pPlayer->play_state == PLAYING || pPlayer->play_state == STOPPING) {
             if (pPlayer->time_ratio_dirty) {
-                pPlayer->stretcher->setTimeRatio(pPlayer->time_ratio / pPlayer->varispeed / pPlayer->speed);
-                pPlayer->stretcher->setPitchScale(pPlayer->pitch * pPlayer->pitchshift * pPlayer->varispeed);
+                if (fabs(pPlayer->varispeed) < 0.1) {
+                    // Much lower than this and the stretcher starts auto-resizing its buffers
+                    //!@todo Pause playback
+                    //pPlayer->stretcher->setTimeRatio(0.0);
+                } else {
+                    pPlayer->stretcher->setTimeRatio(pPlayer->time_ratio / fabs(pPlayer->varispeed) / pPlayer->speed);
+                    pPlayer->stretcher->setPitchScale(pPlayer->pitch * pPlayer->pitchshift * fabs(pPlayer->varispeed));
+                }
                 pPlayer->time_ratio_dirty = false;
             }
             while(pPlayer->stretcher->available() < nFrames) {
@@ -1105,10 +1177,14 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                     pOutB[offset] *= pPlayer->gain;
                 }
             }
-            pPlayer->play_pos_frames += r_count;
+            if(bReverse)
+                pPlayer->play_pos_frames -= r_count;
+            else
+                pPlayer->play_pos_frames += r_count;
 
             if(cue_point_play) {
                 uint8_t cue = pPlayer->last_note_played - 59;
+                //!@todo Handle cue play reverse
                 if(cue_point_play > cue && pPlayer->play_pos_frames > pPlayer->cue_points[cue].offset) {
                     pPlayer->play_pos_frames = pPlayer->cue_points[cue - 1].offset;
                     pPlayer->env_state = ENV_RELEASE; //!@todo This looks wrong
@@ -1116,20 +1192,31 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                         pPlayer->file_read_status = SEEKING;
                     else
                         pPlayer->play_state = STOPPING;
-                } else if(r_count < nFrames && pPlayer->file_read_status == IDLE) {
+                } else if(a_count < nFrames && pPlayer->file_read_status == IDLE) {
                         // Reached end of file
                         pPlayer->play_pos_frames = pPlayer->crop_start_src;
                         pPlayer->play_state = STOPPING;
                 }
             } else {
                 if(pPlayer->loop) {
-                    if(pPlayer->play_pos_frames >= pPlayer->loop_end_src) {
-                        pPlayer->play_pos_frames %= pPlayer->loop_end_src;
-                        pPlayer->play_pos_frames += pPlayer->loop_start_src;
+                    if(bReverse) {
+                        if(pPlayer->play_pos_frames <= pPlayer->loop_start_src) {
+                            size_t i = pPlayer->loop_start_src - pPlayer->play_pos_frames;
+                            i %= pPlayer->loop_end_src - pPlayer->loop_start_src;
+                            pPlayer->play_pos_frames = pPlayer->loop_end_src - i;
+                        }
+                    } else {
+                        if(pPlayer->play_pos_frames >= pPlayer->loop_end_src) {
+                            pPlayer->play_pos_frames %= pPlayer->loop_end_src;
+                            pPlayer->play_pos_frames += pPlayer->loop_start_src;
+                        }
                     }
-                } else if(r_count < nFrames && pPlayer->file_read_status == IDLE) {
+                } else if(a_count < nFrames && pPlayer->file_read_status == IDLE) {
                     // Reached end of file
-                    pPlayer->play_pos_frames = pPlayer->crop_start_src;
+                    if(bReverse)
+                        pPlayer->play_pos_frames = pPlayer->crop_end_src;
+                    else
+                        pPlayer->play_pos_frames = pPlayer->crop_start_src;
                     pPlayer->play_state = STOPPING;
                 }
             }
@@ -1146,6 +1233,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
             }
             
             pPlayer->play_state = STOPPED;
+            pPlayer->varispeed = 0.0;
             pPlayer->file_read_status = SEEKING;
 
             //DPRINTF("libzynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", a_count, nFrames, nFrames - a_count, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
@@ -1183,6 +1271,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                             pPlayer->last_note_played = i;
                             pPlayer->stretcher->reset();
                             if(cue_point_play) {
+                                //!@todo Handle cue play reverse
                                 uint8_t cue = pPlayer->last_note_played - 60;
                                 if (cue < cue_point_play) {
                                     pPlayer->play_pos_frames = pPlayer->cue_points[cue].offset;
@@ -1207,13 +1296,17 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
             } else if(cmd == 0x90) {
                 // Note on
                 if(cue_point_play) {
+                    //!@todo Handle cue play reverse
                     uint8_t cue = midiEvent.buffer[1] - 60;
                     if (cue < pPlayer->cue_points.size()) {
                         pPlayer->play_pos_frames = pPlayer->cue_points[cue].offset;
                         pPlayer->play_state = STARTING;
                     }
                 } else if(pPlayer->play_state == STOPPED || pPlayer->play_state == STOPPING || pPlayer->last_note_played == midiEvent.buffer[1]) {
-                    pPlayer->play_pos_frames = pPlayer->crop_start_src;
+                    if(pPlayer->varispeed < 0.0)
+                        pPlayer->play_pos_frames = pPlayer->crop_end_src;
+                    else
+                        pPlayer->play_pos_frames = pPlayer->crop_start_src;
                     pPlayer->play_state = STARTING;
                 }
                 pPlayer->last_note_played = midiEvent.buffer[1];
@@ -1538,10 +1631,30 @@ float get_pitch(AUDIO_PLAYER * pPlayer) {
 }
 
 void set_varispeed(AUDIO_PLAYER * pPlayer, float ratio) {
-    if(!pPlayer || ratio < 0.03125 || ratio > 32.0)
+    if(!pPlayer || ratio < -32.0 || ratio > 32.0)
         return;
+
+    // Check if moving into or through zone too small to reliably varispeed
+    bool stop = ((pPlayer->varispeed >= 0.1 && ratio < 0.1) || pPlayer->varispeed <= -0.1 && ratio > -0.1);
+    // Check for scrubbing
+    bool start = (pPlayer->play_state != PLAYING && fabs(pPlayer->varispeed) < 0.1 && fabs(ratio) >= 0.1);
+
+    getMutex();
     pPlayer->varispeed = ratio;
     pPlayer->time_ratio_dirty = true;
+    pPlayer->file_read_status = SEEKING;
+    releaseMutex();
+
+    if(stop && pPlayer->play_state != STOPPED) {
+        pPlayer->play_state = STOPPING;
+        send_notifications(pPlayer, NOTIFY_TRANSPORT);
+    }
+    if(start && g_jack_client && pPlayer->file_open == FILE_OPEN && pPlayer->play_state != PLAYING) {
+        pPlayer->play_state = STARTING;
+        send_notifications(pPlayer, NOTIFY_TRANSPORT);
+    }
+
+    send_notifications(pPlayer, NOTIFY_VARISPEED);
 }
 
 float get_varispeed(AUDIO_PLAYER * pPlayer) {
