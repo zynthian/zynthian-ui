@@ -100,7 +100,7 @@ class zynthian_engine_sfizz(zynthian_engine):
 		self.num_voices = 40
 		self.sfzpath = None
 
-		self.command = "sfizz_jack --client_name '{}' --preload_size {} --num_voices {}".format(self.jackname, self.preload_size, self.num_voices, self.sfzpath)
+		self.command = f"sfizz_jack --client_name '{self.jackname}' --preload_size {self.preload_size} --num_voices {self.num_voices}"
 		self.command_prompt = "> "
 
 		self.reset()
@@ -177,7 +177,9 @@ class zynthian_engine_sfizz(zynthian_engine):
 	def set_preset(self, processor, preset, preload=False):
 		try:
 			self.sfzpath = preset[0]
-			return "Instrument loaded" in self.proc_cmd("load_instrument \"{}\"".format(self.sfzpath))
+			res = self.proc_cmd(f"load_instrument \"{self.sfzpath}\"")
+			logging.debug(res)
+			return "Instrument loaded" in res
 			#processor.send_ctrl_midi_cc()
 		except:
 			return False
@@ -185,7 +187,7 @@ class zynthian_engine_sfizz(zynthian_engine):
 
 	def cmp_presets(self, preset1, preset2):
 		try:
-			if preset1[0]==preset2[0] and preset1[3]==preset2[3]:
+			if preset1[0] == preset2[0] and preset1[3] == preset2[3]:
 				return True
 			else:
 				return False
