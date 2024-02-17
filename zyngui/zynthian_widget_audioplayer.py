@@ -513,7 +513,10 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			if self.play_pos != pos:
 				self.play_pos = pos
 				if pos < offset  or pos > offset + self.frames // self.zoom:
-					offset = max(0, pos)
+					if self.processor.controllers_dict['varispeed'].value < 0.0:
+						offset = pos - self.frames // self.zoom
+					else:
+						offset = max(0, pos)
 				refresh_markers = True
 
 			if self.cue_pos != cue_pos:

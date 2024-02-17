@@ -308,7 +308,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['cue pos', None, 0.0, dur],
 			['speed', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}],
 			['pitch', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}],
-			['varispeed', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}]
+			['varispeed', {'value': 1.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}] #TODO: Offer different varispeed range
 		]
 
 		self.player.set_control_cb(None)
@@ -426,6 +426,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 						ctrl_dict['sustain'].set_value(value, False)
 					elif id == 20:
 						ctrl_dict['release'].set_value(value, False)
+					elif id == 23:
+						ctrl_dict['varispeed'].set_value(value, False)
 					break
 		except Exception as e:
 			logging.error(e)
@@ -539,9 +541,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		elif zctrl.symbol == "varispeed":
 			if abs(zctrl.value) < 0.01:
 				zctrl.value = 0.0
-				self.player.set_varispeed(handle, 1.0)
+				self.player.set_varispeed(handle, 0.0)
 			else:
-				self.player.set_varispeed(handle, self.num2factor(zctrl.value))
+				self.player.set_varispeed(handle, zctrl.value)
 
 	def num2factor(self, num):
 		if abs(num) < 0.01:

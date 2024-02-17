@@ -34,7 +34,8 @@ enum {
     NOTIFY_ENV_SUSTAIN  = 19,
     NOTIFY_ENV_RELEASE  = 20,
     NOTIFY_ENV_ATTACK_CURVE = 21,
-    NOTIFY_ENV_DECAY_CURVE = 21
+    NOTIFY_ENV_DECAY_CURVE = 22,
+    NOTIFY_VARISPEED    = 23
 };
 
 /** @brief  Library constructor (initalisation) */
@@ -384,7 +385,7 @@ float get_pitch(AUDIO_PLAYER * pPlayer);
 
 /** @brief  Set varispeed
 *   @param  player_handle Handle of player provided by init_player()
-*   @param  ratio Ratio of speed:pitch (1.0 for no varispeed)
+*   @param  ratio Ratio of speed:pitch (1.0 for no varispeed, -1.0 for reverse, 0.0 for stopped)
 */
 void set_varispeed(AUDIO_PLAYER * pPlayer, float ratio);
 
