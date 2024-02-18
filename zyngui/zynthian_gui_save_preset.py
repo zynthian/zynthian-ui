@@ -115,8 +115,8 @@ class zynthian_gui_save_preset():
 			logging.error(e)
 
 		self.save_preset_create_bank_name = None
-		self.zyngui.close_screen()
 		self.zyngui.state_manager.end_busy("Save Preset")
+		self.zyngui.close_screen()
 
 
 #------------------------------------------------------------------------------

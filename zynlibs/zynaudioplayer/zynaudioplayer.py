@@ -99,6 +99,9 @@ class zynaudioplayer():
 			self.libaudioplayer.get_pitch.restype = ctypes.c_float
 			self.libaudioplayer.set_varispeed.argtypes = [ctypes.c_void_p, ctypes.c_float]
 			self.libaudioplayer.get_varispeed.restype = ctypes.c_float
+			self.libaudioplayer.save.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+			self.libaudioplayer.set_base_note.argtypes = [ctypes.c_void_p, ctypes.c_uint8]
+			self.libaudioplayer.get_base_note.restype = ctypes.c_uint8
 			self.control_cb = None
 		except Exception as e:
 			self.libaudioplayer=None
@@ -139,6 +142,20 @@ class zynaudioplayer():
 	#	Remove a player
 	def remove_player(self, handle):
 		return self.libaudioplayer.remove_player(handle)
+
+
+	#	Set a player's MIDI base note;
+	#	handle: Index of player
+	#	base_note: MIDI note to playback at normal speed
+	def set_base_note(self, handle, base_note):
+		self.libaudioplayer.set_base_note(handle, base_note)
+
+
+	#	Get a player's MIDI base note;
+	#	handle: Index of player
+	#	Returns: MIDI note to playback at normal speed
+	def get_base_note(self, handle):
+		return self.libaudioplayer.get_base_note(handle)
 
 
 	#	Set a player's MIDI channel;

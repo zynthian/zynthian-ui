@@ -134,6 +134,7 @@ class AUDIO_PLAYER {
     jack_nframes_t play_pos_frames = 0; // Current playback position in frames since start of audio at play samplerate
     size_t frames = 0; // Quanity of frames after samplerate conversion
     std::string filename;
+    uint8_t base_note = 60; // MIDI note to play at normal pitch
     uint8_t midi_chan = -1; // MIDI channel to listen
     uint8_t last_note_played = 0; // MIDI note number of last note that triggered playback
     uint8_t held_notes[128]; // MIDI notes numbers that have been pressed but not released

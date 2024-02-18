@@ -240,13 +240,6 @@ void* file_thread_fn(void * param) {
             | RubberBandStretcher::OptionFormantPreserved);
         pPlayer->stretcher->setMaxProcessSize(256);
 
-        {
-            // Scope to avoid extra memory usage
-            SF_CUES cues ;
-            sf_command (pFile, SFC_GET_CUE, &cues, sizeof (cues));
-            for (uint32_t i = 0; i < cues.cue_count; ++i)
-                add_cue_point(pPlayer, float(cues.cue_points[i].sample_offset) / pPlayer->sf_info.samplerate, cues.cue_points[i].name);
-        }
         pPlayer->loop_start = 0;
         pPlayer->loop_end = pPlayer->sf_info.frames;
         pPlayer->crop_start = 0;
@@ -263,6 +256,62 @@ void* file_thread_fn(void * param) {
         pPlayer->ringbuffer_b = jack_ringbuffer_create(pPlayer->output_buffer_size * pPlayer->buffer_count * sizeof(float));
         jack_ringbuffer_mlock(pPlayer->ringbuffer_b);
         pPlayer->file_open = FILE_OPEN;
+
+        {
+            // Scope to avoid extra memory usage
+            const char* loopModes[] = {"None", "Forward", "Backward", "Alternating"};
+            SF_CUES cues ;
+            sf_command (pFile, SFC_GET_CUE, &cues, sizeof (cues));
+            for (uint32_t i = 0; i < cues.cue_count; ++i)
+                add_cue_point(pPlayer, float(cues.cue_points[i].sample_offset) / pPlayer->sf_info.samplerate, cues.cue_points[i].name);
+            
+            SF_LOOP_INFO loopInfo;
+            if(sf_command(pFile, SFC_GET_LOOP_INFO, &loopInfo, sizeof(loopInfo)) == SF_TRUE) {
+                fprintf(stderr, "File loop info: Sig:%d/%d, %0.2fBPM, %d beats, Mode: %s, Root key: %d\n",
+                    loopInfo.time_sig_num,
+                    loopInfo.time_sig_den,
+                    loopInfo.bpm,
+                    loopInfo.num_beats,
+                    loopModes[loopInfo.loop_mode - 800],
+                    loopInfo.root_key);
+                pPlayer->loop = loopInfo.loop_mode == SF_LOOP_FORWARD;
+            }
+
+            SF_INSTRUMENT inst ;
+            if (sf_command (pFile, SFC_GET_INSTRUMENT, &inst, sizeof (inst)) == SF_TRUE) {
+                fprintf(stderr, "File instrument info: gain: %d, detune:%d, velocity: %d-%d, basenote: %d, detune: %d, keyrange: %d-%d\n",
+                    inst.gain,
+                    inst.detune,
+                    inst.velocity_lo,
+                    inst.velocity_hi,
+                    inst.basenote,
+                    inst.detune,
+                    inst.key_lo,
+                    inst.key_hi
+                );
+                //pPlayer->gain = inst.gain;
+                for (int i =0; i < inst.loop_count; ++i) {
+                    fprintf(stderr, "\tLoop %d: mode:%s, start: %d, end:%d, count:%u\n",
+                        i,
+                        loopModes[inst.loops[i].mode-800],
+                        inst.loops[i].start,
+                        inst.loops[i].end,
+                        inst.loops[i].count
+                        );
+                }
+                if(inst.basenote >=0)
+                    pPlayer->base_note = inst.basenote;
+                if (inst.loop_count) {
+                    pPlayer->loop_start = inst.loops[0].start;
+                    pPlayer->loop_start_src = pPlayer->loop_start * pPlayer->src_ratio;
+                    pPlayer->loop_end = inst.loops[0].end;
+                    pPlayer->loop_end_src = pPlayer->loop_end * pPlayer->src_ratio;
+                }
+            } else {
+                pPlayer->gain = 1.0;
+                pPlayer->base_note = 60;
+            }
+        }
 
         // Initialise samplerate converter
         float pBufferIn[pPlayer->input_buffer_size * pPlayer->sf_info.channels]; // Buffer used to read sample data from file
@@ -592,6 +641,22 @@ uint8_t save(AUDIO_PLAYER * pPlayer, const char* filename) {
     if (SF_TRUE != sf_command(outfile, SFC_SET_CUE, cues, cue_size))
         fprintf(stderr, "Failed to set cue points: %s\n", sf_strerror(outfile));
     free(cues);
+
+    // loop points
+    SF_INSTRUMENT inst;
+    inst.basenote = pPlayer->base_note;
+    inst.detune = 0;
+    inst.gain = 1,
+    inst.key_lo = 0,
+    inst.key_hi = 127,
+    inst.velocity_lo = 0,
+    inst.velocity_hi = 127,
+    inst.loop_count = 1;
+    inst.loops[0].mode = pPlayer->loop?SF_LOOP_FORWARD:SF_LOOP_NONE;
+    inst.loops[0].start = pPlayer->loop_start;
+    inst.loops[0].end = pPlayer->loop_end;
+    inst.loops[0].count = 0;
+    sf_command(outfile, SFC_SET_INSTRUMENT, &inst, sizeof(inst));
 
     float buffer[1024 * sfinfo.channels];
     sf_count_t pos = sf_seek(infile, pPlayer->crop_start, SEEK_SET);
@@ -1272,7 +1337,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                             pPlayer->stretcher->reset();
                             if(cue_point_play) {
                                 //!@todo Handle cue play reverse
-                                uint8_t cue = pPlayer->last_note_played - 60;
+                                uint8_t cue = pPlayer->last_note_played - pPlayer->base_note;
                                 if (cue < cue_point_play) {
                                     pPlayer->play_pos_frames = pPlayer->cue_points[cue].offset;
                                     pPlayer->play_state = STARTING;
@@ -1280,7 +1345,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                                 }
                             } else {
                                  // legato
-                                pPlayer->pitchshift = pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12);
+                                pPlayer->pitchshift = pow(2.0, (pPlayer->last_note_played - pPlayer->base_note + pPlayer->pitch_bend) / 12);
                                 pPlayer->time_ratio_dirty = true;
                             }
                             pPlayer->held_note = 1;
@@ -1297,7 +1362,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 // Note on
                 if(cue_point_play) {
                     //!@todo Handle cue play reverse
-                    uint8_t cue = midiEvent.buffer[1] - 60;
+                    uint8_t cue = midiEvent.buffer[1] - pPlayer->base_note;
                     if (cue < pPlayer->cue_points.size()) {
                         pPlayer->play_pos_frames = pPlayer->cue_points[cue].offset;
                         pPlayer->play_state = STARTING;
@@ -1313,8 +1378,9 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 pPlayer->held_notes[pPlayer->last_note_played] = 1;
                 pPlayer->held_note = 1;
                 pPlayer->stretcher->reset();
+                pPlayer->varispeed = pPlayer->play_varispeed;
                 if(!cue_point_play){
-                    pPlayer->pitchshift = pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12);
+                    pPlayer->pitchshift = pow(2.0, (pPlayer->last_note_played - pPlayer->base_note + pPlayer->pitch_bend) / 12);
                     pPlayer->time_ratio_dirty = true;
                 }
                 pPlayer->file_read_status = SEEKING;
@@ -1324,7 +1390,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 // Pitchbend
                 pPlayer->pitch_bend =  pPlayer->pitch_bend_range * ((midiEvent.buffer[1] + 128 * midiEvent.buffer[2]) / 8192.0 - 1.0);
                 if(pPlayer->play_state != STOPPED) {
-                    pPlayer->pitchshift = pow(2.0, (pPlayer->last_note_played - 60 + pPlayer->pitch_bend) / 12);
+                    pPlayer->pitchshift = pow(2.0, (pPlayer->last_note_played - pPlayer->base_note + pPlayer->pitch_bend) / 12);
                     pPlayer->time_ratio_dirty = true;
                 }
             } else if(cmd == 0xB0) {
@@ -1491,6 +1557,17 @@ void remove_player(AUDIO_PLAYER * pPlayer) {
     auto it = find(g_vPlayers.begin(), g_vPlayers.end(), pPlayer);
     if (it != g_vPlayers.end())
         g_vPlayers.erase(it);
+}
+
+void set_base_note(AUDIO_PLAYER * pPlayer, uint8_t base_note) {
+    if(pPlayer && base_note < 128)
+        pPlayer->base_note = base_note;
+}
+
+uint8_t get_base_note(AUDIO_PLAYER * pPlayer) {
+    if(pPlayer)
+        return pPlayer->base_note;
+    return 60;
 }
 
 void set_midi_chan(AUDIO_PLAYER * pPlayer, uint8_t midi_chan) {

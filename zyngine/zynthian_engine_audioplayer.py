@@ -203,6 +203,12 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		presets += file_presets
 		return presets
 
+	def preset_exists(self, bank_info, preset_name):
+		if not bank_info or bank_info[0] is None:
+			bank_name = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
+		path = f"{bank_name}/{preset_name}.wav"
+		return glob(path) != []
+
 	def set_preset(self, processor, preset, preload=False):
 		if self.player.get_filename(processor.handle) == preset[0] and self.player.get_file_duration(preset[0]) == self.player.get_duration(processor.handle):
 			return False
@@ -237,6 +243,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		decay = self.player.get_decay(processor.handle)
 		sustain = self.player.get_sustain(processor.handle)
 		release = self.player.get_release(processor.handle)
+		base_note = self.player.get_base_note(processor.handle)
 		default_a = 0
 		default_b = 0
 		track_labels = ['mixdown']
@@ -264,7 +271,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['loop', ['loop start', 'loop end', 'loop', 'zoom']],
 				['config', ['left track', 'right track', 'bend range', 'sustain pedal']],
 				['info', ['info', 'zoom range', 'amp zoom', 'view offset']],
-				['misc', ['beats', 'cue', 'cue pos']],
+				['misc', ['beats', 'base note', 'cue', 'cue pos']],
 				['speed', ['speed', 'pitch', 'varispeed']]
 			]
 			if processor.handle == self.state_manager.audio_player.handle:
@@ -279,6 +286,10 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				['main', ['record', 'gain']],
 			]
 
+		midi_notes = []
+		for oct in range(8):
+			for key in ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]:
+				midi_notes.append(f"{key}{oct-1}")
 		self._ctrls = [
 			['gain', None, gain, 2.0],
 			['record', None, record, ['stopped', 'recording']],
@@ -308,7 +319,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['cue pos', None, 0.0, dur],
 			['speed', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}],
 			['pitch', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}],
-			['varispeed', {'value': 1.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}] #TODO: Offer different varispeed range
+			['varispeed', {'value': 1.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}], #TODO: Offer different varispeed range
+			['base note', None, base_note, midi_notes]
 		]
 
 		self.player.set_control_cb(None)
@@ -544,6 +556,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				self.player.set_varispeed(handle, 0.0)
 			else:
 				self.player.set_varispeed(handle, zctrl.value)
+		elif zctrl.symbol == "base note":
+			self.player.set_base_note(handle, zctrl.value)
 
 	def num2factor(self, num):
 		if abs(num) < 0.01:

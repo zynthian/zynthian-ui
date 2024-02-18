@@ -75,6 +75,18 @@ AUDIO_PLAYER* add_player();
 */
 void remove_player(AUDIO_PLAYER * pPlayer);
 
+/** @brief  Set the MIDI base note
+*   @param  player_handle Handle of player provided by init_player()
+*   @param  base_note MIDI note that will trigger playback at normal speed
+*/
+void set_base_note(AUDIO_PLAYER * pPlayer, uint8_t base_note);
+
+/** @brief  Get the MIDI base note
+*   @param  player_handle Handle of player provided by init_player()
+*   @retval uint8_t MIDI note that will trigger playback at normal speed
+*/
+uint8_t get_base_note(AUDIO_PLAYER * pPlayer);
+
 /** @brief  Set player MIDI channel
 *   @param  player_handle Handle of player provided by init_player()
 *   @param  midi_chan MIDI channel (0..15 or other value to disable MIDI listen)
