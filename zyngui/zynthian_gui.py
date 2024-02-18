@@ -2279,10 +2279,10 @@ class zynthian_gui:
 						self.state_manager.clear_busy()
 
 				elif cuia == "zynpot":
-					# zynpot has parameters: [pot, delta, 'P'|'R'] 'P','R' is only used for keybinding to zynpot
+					# zynpot has parameters: [pot, delta, 'P'|'R']. 'P'&'R' are only used for keybinding to zynpot
 					if len(params) > 2:
 						i = int(params[0])
-						if params[2] == 'R':
+						if params[2] == 'R' and i in zynpot_repeat:
 							del zynpot_repeat[i]
 						elif params[2] == 'P':
 							self.cuia_zynpot(params[:2])
