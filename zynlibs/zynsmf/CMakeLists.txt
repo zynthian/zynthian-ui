@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 # set(CMAKE_VERBOSE_MAKEFILE ON)
 
+
 project(zynsmf)
 
 include(CheckIncludeFiles)
@@ -12,3 +13,5 @@ add_library(zynsmf SHARED zynsmf.cpp event.cpp track.cpp smf.cpp)
 	target_link_libraries(zynsmf jack)
 
 install(TARGETS zynsmf LIBRARY DESTINATION lib)
+
+set_property(TARGET zynsmf PROPERTY COMPILE_WARNING_AS_ERROR ON)

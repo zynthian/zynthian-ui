@@ -22,3 +22,5 @@ else()
 endif()
 
 install(TARGETS zynaudioplayer LIBRARY DESTINATION lib)
+
+set_property(TARGET zynaudioplayer PROPERTY COMPILE_WARNING_AS_ERROR ON)

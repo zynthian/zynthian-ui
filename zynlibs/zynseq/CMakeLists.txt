@@ -10,3 +10,5 @@ add_library(zynseq SHARED zynseq.h zynseq.cpp sequencemanager.cpp pattern.cpp se
 	target_link_libraries(zynseq jack)
 
 install(TARGETS zynseq LIBRARY DESTINATION lib)
+
+set_property(TARGET zynseq PROPERTY COMPILE_WARNING_AS_ERROR ON)

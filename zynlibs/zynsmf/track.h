@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <vector>
 #include <cstdint>
+#include <cstddef>
 #include "event.h"
 
 class Track

@@ -309,8 +309,8 @@ void tosc_printMessage(tosc_message *osc) {
       case 'f': printf(" %g", tosc_getNextFloat(osc)); break;
       case 'd': printf(" %g", tosc_getNextDouble(osc)); break;
       case 'i': printf(" %d", tosc_getNextInt32(osc)); break;
-      case 'h': printf(" %lld", tosc_getNextInt64(osc)); break;
-      case 't': printf(" %lld", tosc_getNextTimetag(osc)); break;
+      case 'h': printf(" %ld", tosc_getNextInt64(osc)); break;
+      case 't': printf(" %ld", tosc_getNextTimetag(osc)); break;
       case 's': printf(" %s", tosc_getNextString(osc)); break;
       case 'F': printf(" false"); break;
       case 'I': printf(" inf"); break;

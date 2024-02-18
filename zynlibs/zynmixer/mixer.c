@@ -367,22 +367,22 @@ int init() {
         g_dynamic[chan].phase = 0;
         g_dynamic[chan].enable_dpm = 1;
         char sName[10];
-        sprintf(sName, "input_%02da", chan + 1);
+        sprintf(sName, "input_%02lda", chan + 1);
         if (!(g_dynamic[chan].inPortA = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0))) {
             fprintf(stderr, "libzynmixer: Cannot register %s\n", sName);
             exit(1);
         }
-        sprintf(sName, "input_%02db", chan + 1);
+        sprintf(sName, "input_%02ldb", chan + 1);
         if (!(g_dynamic[chan].inPortB = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0))) {
             fprintf(stderr, "libzynmixer: Cannot register %s\n", sName);
             exit(1);
         }
-        sprintf(sName, "output_%02da", chan + 1);
+        sprintf(sName, "output_%02lda", chan + 1);
         if (!(g_dynamic[chan].outPortA = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
             fprintf(stderr, "libzynmixer: Cannot register %s\n", sName);
             exit(1);
         }
-        sprintf(sName, "output_%02db", chan + 1);
+        sprintf(sName, "output_%02ldb", chan + 1);
         if (!(g_dynamic[chan].outPortB = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsOutput, 0))) {
             fprintf(stderr, "libzynmixer: Cannot register %s\n", sName);
             exit(1);
