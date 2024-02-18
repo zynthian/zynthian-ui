@@ -10,8 +10,7 @@ include(CheckLibraryExists)
 link_directories(/usr/local/lib)
 
 add_library(zynsmf SHARED zynsmf.cpp event.cpp track.cpp smf.cpp)
-	target_link_libraries(zynsmf jack)
+add_definitions(-Werror)
+target_link_libraries(zynsmf jack)
 
 install(TARGETS zynsmf LIBRARY DESTINATION lib)
-
-set_property(TARGET zynsmf PROPERTY COMPILE_WARNING_AS_ERROR ON)

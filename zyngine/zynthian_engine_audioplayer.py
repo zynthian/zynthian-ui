@@ -244,6 +244,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		sustain = self.player.get_sustain(processor.handle)
 		release = self.player.get_release(processor.handle)
 		base_note = self.player.get_base_note(processor.handle)
+		beats = self.player.get_beats(processor.handle)
 		default_a = 0
 		default_b = 0
 		track_labels = ['mixdown']
@@ -314,7 +315,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['decay', None, decay, 20.0],
 			['sustain', None, sustain, 1.0],
 			['release', None, release, 20.0],
-			['beats', None, processor.engine.player.get_beats(processor.handle), 64],
+			['beats', None, beats, 64],
 			['cue', None, 0, 0],
 			['cue pos', None, 0.0, dur],
 			['speed', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}],

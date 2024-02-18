@@ -273,7 +273,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			if cue[1]:
 				options[f"Remove marker {cue[1]} at {cue[0]:.3f}"] = cue
 			else:
-				options[f"Remove marker {i} at {cue[0]:.3f}"] = cue
+				options[f"Remove marker {i+1} at {cue[0]:.3f}"] = cue
 		self.zyngui.screens['option'].config('Add marker', options, self.update_marker)
 		self.zyngui.show_screen('option')
 
@@ -319,7 +319,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			if event[0] == 'beats':
 				self.processor.engine.player.clear_cue_points(self.processor.handle)
 				for i in range(event[1]):
-					pos = self.duration / event[1] * i
+					pos = self.processor.controllers_dict['crop start'].value + (self.crop_end - self.crop_start) / self.samplerate / event[1] * i
 					id = self.processor.engine.player.add_cue_point(self.processor.handle, pos) + 1
 					if id > 0:
 						self.processor.controllers_dict['cue'].value_min = 1

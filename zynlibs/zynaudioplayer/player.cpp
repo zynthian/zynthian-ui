@@ -274,7 +274,11 @@ void* file_thread_fn(void * param) {
                     loopInfo.num_beats,
                     loopModes[loopInfo.loop_mode - 800],
                     loopInfo.root_key);
-                pPlayer->loop = loopInfo.loop_mode == SF_LOOP_FORWARD;
+                enable_loop(pPlayer, loopInfo.loop_mode == SF_LOOP_FORWARD);
+                set_beats(pPlayer, loopInfo.num_beats);
+            } else {
+                enable_loop(pPlayer, true);
+                set_beats(pPlayer, 0);
             }
 
             SF_INSTRUMENT inst ;
@@ -299,7 +303,7 @@ void* file_thread_fn(void * param) {
                         inst.loops[i].count
                         );
                 }
-                if(inst.basenote >=0)
+                if(inst.basenote >= 0)
                     pPlayer->base_note = inst.basenote;
                 if (inst.loop_count) {
                     pPlayer->loop_start = inst.loops[0].start;
