@@ -74,7 +74,7 @@ class AUDIO_PLAYER {
     sf_count_t crop_start_src = -1; // Start of audio (crop) in frames from start after SRC
     sf_count_t crop_end; // End of audio (crop) in frames from start of file
     sf_count_t crop_end_src; // End of audio (crop) in frames from start after SRC
-    float gain = 1.0; // Audio level (volume) 0..1
+    float gain = 1.0; // Audio level (volume) 0.00001..10000 (-100db..+100dB)
     int track_a = -1; // Which track to playback to left output (-1 to mix all stereo pairs)
     int track_b = -1; // Which track to playback to right output (-1 to mix all stereo pairs)
     unsigned int input_buffer_size = 48000; // Quantity of frames that may be read from file
@@ -91,7 +91,7 @@ class AUDIO_PLAYER {
     sf_count_t last_crop_start = -1;
     sf_count_t last_crop_end = -1;
     float last_position = -1;
-    float last_gain = -1.0;
+    float last_gain = 0;
     int last_track_a = -1;
     int last_track_b = -1;
     unsigned int last_input_buffer_size = -1;

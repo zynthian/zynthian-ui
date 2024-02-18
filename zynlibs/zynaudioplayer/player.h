@@ -325,7 +325,7 @@ unsigned int get_src_quality(AUDIO_PLAYER * pPlayer);
 
 /** @brief  Set gain
 *   @param  player_handle Handle of player provided by init_player()
-*   @param  gain Gain factor (0..2)
+*   @param  gain Gain factor (0.01..2.0)
 */
 void set_gain(AUDIO_PLAYER * pPlayer, float gain);
 

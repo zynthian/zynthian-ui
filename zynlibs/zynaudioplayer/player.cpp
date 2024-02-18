@@ -14,7 +14,7 @@
 #include <stdlib.h> // provides exit
 #include <arpa/inet.h> // provides inet_pton
 #include <fcntl.h> // provides fcntl
-#include <math.h> // provides pow
+#include <math.h> // provides pow, log, fabs, isinf
 #include <string> // provides std:string
 #include <cstring> // provides strcmp, memset
 #include <vector>
@@ -289,7 +289,7 @@ void* file_thread_fn(void * param) {
                     inst.key_lo,
                     inst.key_hi
                 );
-                //pPlayer->gain = inst.gain;
+                pPlayer->gain = pow(10, (float(inst.gain) / 20));
                 for (int i =0; i < inst.loop_count; ++i) {
                     fprintf(stderr, "\tLoop %d: mode:%s, start: %d, end:%d, count:%u\n",
                         i,
@@ -642,11 +642,23 @@ uint8_t save(AUDIO_PLAYER * pPlayer, const char* filename) {
         fprintf(stderr, "Failed to set cue points: %s\n", sf_strerror(outfile));
     free(cues);
 
+    if(pPlayer->beats) {
+        SF_LOOP_INFO loopInfo;
+        loopInfo.time_sig_num = 4; //!@todo Get time signature
+        loopInfo.time_sig_den = 4;
+        loopInfo.bpm = g_tempo;
+        loopInfo.num_beats = pPlayer->beats;
+        loopInfo.loop_mode = pPlayer->loop?SF_LOOP_FORWARD:SF_LOOP_NONE;
+        loopInfo.root_key = pPlayer->base_note;
+        //!@todo sf_command does not support SFC_SET_LOOP_INFO
+        //sf_command(outfile, SFC_SET_LOOP_INFO, &loopInfo, sizeof(loopInfo));
+    }
+
     // loop points
     SF_INSTRUMENT inst;
     inst.basenote = pPlayer->base_note;
     inst.detune = 0;
-    inst.gain = 1,
+    inst.gain = (int8_t)log10f(pPlayer->gain) * 20,
     inst.key_lo = 0,
     inst.key_hi = 127,
     inst.velocity_lo = 0,
@@ -1611,8 +1623,10 @@ unsigned int get_src_quality(AUDIO_PLAYER * pPlayer) {
 void set_gain(AUDIO_PLAYER * pPlayer, float gain) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return;
-    if(gain < 0 || gain > 2)
-        return;
+    if(gain <= 0.00001)
+        gain = 0.00001;
+    if (gain > 100000)
+        gain = 100000;
     getMutex();
     pPlayer->gain = gain;
     releaseMutex();
@@ -1621,7 +1635,7 @@ void set_gain(AUDIO_PLAYER * pPlayer, float gain) {
 
 float get_gain(AUDIO_PLAYER * pPlayer) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
-        return 0.0;
+        return 1.0;
     return pPlayer->gain;
 }
 
