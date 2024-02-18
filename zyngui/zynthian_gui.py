@@ -620,12 +620,16 @@ class zynthian_gui:
 	def is_shown_audio_player(self):
 		return self.current_processor == self.state_manager.audio_player
 
-	def close_screen(self):
+	def close_screen(self, screen=None):
+		""" Closes the current screen or optionally the sepcified screen """
+
 		logging.debug("SCREEN HISTORY => {}".format(self.screen_history))
+		if screen is None:
+			screen = self.current_screen
 		while True:
 			try:
-				last_screen = self.screen_history.pop()
-				if last_screen != self.current_screen:
+				if self.screen_history.pop() == screen:
+					last_screen = self.screen_history.pop()
 					break
 			except:
 				last_screen = "audio_mixer"
@@ -2137,7 +2141,7 @@ class zynthian_gui:
 			else:
 				busy_timeout = 0
 				if self.current_screen == "loading":
-					self.close_screen()
+					self.close_screen("loading")
 
 			try:
 				if self.current_screen:
