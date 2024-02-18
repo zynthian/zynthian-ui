@@ -268,6 +268,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		x = self.processor.controllers_dict['beats'].value
 		if x:
 			options[f'Add {x} evently distributed cue markers'] = ['beats', x]
+		if self.cue_points:
+			options[f'Remove all cue markers'] = ['remove']
 		options['--EXISTING CUES--'] = None
 		for i, cue in enumerate(self.cue_points):
 			if cue[1]:
@@ -316,7 +318,11 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 	def update_marker(self, option, event):
 		if isinstance(event, list):
-			if event[0] == 'beats':
+			if event[0] == 'remove':
+				self.processor.engine.player.clear_cue_points(self.processor.handle)
+				self.update_cue_markers()
+
+			elif event[0] == 'beats':
 				self.processor.engine.player.clear_cue_points(self.processor.handle)
 				for i in range(event[1]):
 					pos = self.processor.controllers_dict['crop start'].value + (self.crop_end - self.crop_start) / self.samplerate / event[1] * i
