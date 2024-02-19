@@ -142,7 +142,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def get_bank_list(self, processor=None):
-		banks = [[self.my_data_dir + "/capture", None, "Internal", None]]
+		banks = [[None, None, "Internal", None],[self.my_data_dir + "/capture", None, "Capture", None]]
 
 		walk = next(os.walk(self.my_data_dir + "/capture"))
 		walk[1].sort()
@@ -156,7 +156,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			dname = os.path.basename(exd)
 			for ext in self.file_exts:
 				if glob(exd + "/*." + ext) or glob(exd + "/*/*." + ext):
-					banks.append([exd, None, "USB> {}".format(dname), None])
+					banks.append([None, None, "USB> {}".format(dname), None])
 					walk = next(os.walk(exd))
 					walk[1].sort()
 					for dir in walk[1]:
