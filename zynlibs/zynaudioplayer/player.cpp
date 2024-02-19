@@ -598,13 +598,23 @@ uint8_t save(AUDIO_PLAYER * pPlayer, const char* filename) {
     if(!pPlayer || pPlayer->file_open != FILE_OPEN)
         return 0;
 
+    AUDIO_PLAYER* overwrite = NULL;
+    for(auto it = g_vPlayers.begin(); it != g_vPlayers.end(); ++it) {
+        if(strcmp((*it)->filename.c_str(), filename) == 0) {
+            // Trying to overwrite an open file
+            unload(*it);
+            overwrite = *it;
+            break;
+        }
+    }
+
     SF_INFO sfinfo;
     memset(&sfinfo, 0, sizeof (sfinfo)); // This triggers sf_open to populate info structure
 
     SNDFILE* infile = sf_open(pPlayer->filename.c_str(), SFM_READ, &sfinfo);
     if(!infile || sfinfo.channels < 1) {
         fprintf(stderr, "libaudioplayer error: failed to open file %s: %s\n", pPlayer->filename.c_str(), sf_strerror(infile));
-        return false;
+        return 0;
     }
 
 	sfinfo.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT;
@@ -612,39 +622,38 @@ uint8_t save(AUDIO_PLAYER * pPlayer, const char* filename) {
 	if (!sf_format_check (&sfinfo)) {
         sf_close (infile) ;
 		fprintf(stderr, "Invalid encoding\n") ;
-		return false;
+		return 0;
 	};
 
     SNDFILE* outfile = sf_open(filename, SFM_WRITE, &sfinfo);
     if(!outfile) {
         fprintf(stderr, "libaudioplayer error: failed to open file %s: %s\n", filename, sf_strerror(outfile));
         sf_close(infile);
-        return false;
+        return 0;
     }
 
-    // sndfile cue points are a structure of quantity of points (uint32) + n x SF_CUE_POINT structs 
-    size_t cue_size = sizeof(uint32_t) + pPlayer->cue_points.size() * sizeof(SF_CUE_POINT);
-    void* cues = malloc(cue_size);
+    // sndfile cue points are a structure of {quantity of points (uint32) + n x SF_CUE_POINT structs} 
     uint32_t count = 0;
+    SF_CUES cues;
     for (size_t i = 0; i < pPlayer->cue_points.size(); ++i) {
         int64_t offset = pPlayer->cue_points[i].offset - pPlayer->crop_start;
         if (offset < 0)
             continue;
-        SF_CUE_POINT* cue = (SF_CUE_POINT*)((uint8_t*)cues + sizeof(uint32_t) + i * sizeof(SF_CUE_POINT));
-        cue->indx = count;
-        cue->position = 0;
-        cue->fcc_chunk = 0;
-        cue->chunk_start = 0;
-        cue->block_start = 0;
-        cue->sample_offset = offset;
-        memcpy(cue->name, pPlayer->cue_points[i].name, 256);
-        ++count;
+        cues.cue_points[i].indx = count;
+        cues.cue_points[i].position = 0;
+        cues.cue_points[i].fcc_chunk = 0;
+        cues.cue_points[i].chunk_start = 0;
+        cues.cue_points[i].block_start = 0;
+        cues.cue_points[i].sample_offset = offset;
+        memcpy(cues.cue_points[i].name, pPlayer->cue_points[i].name, 256);
+        if(++count > 99)
+            break;
     }
-    *((uint32_t*)cues) = count;
+    cues.cue_count = count;
+    size_t cue_size = sizeof(uint32_t) + count * sizeof(SF_CUE_POINT);
 
-    if (SF_TRUE != sf_command(outfile, SFC_SET_CUE, cues, cue_size))
+    if (SF_TRUE != sf_command(outfile, SFC_SET_CUE, &cues, cue_size))
         fprintf(stderr, "Failed to set cue points: %s\n", sf_strerror(outfile));
-    free(cues);
 
     if(pPlayer->beats) {
         SF_LOOP_INFO loopInfo;
@@ -691,7 +700,9 @@ uint8_t save(AUDIO_PLAYER * pPlayer, const char* filename) {
     }
     sf_close(infile);
     sf_close(outfile);
-    return true;
+    if(overwrite)
+        load(overwrite, overwrite->filename.c_str(), overwrite->cb_object, overwrite->cb_fn);
+    return 1;
 }
 
 const char* get_filename(AUDIO_PLAYER * pPlayer) {

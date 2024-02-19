@@ -54,6 +54,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.crop_start = 0.0
 		self.crop_end = 1.0
 		self.cue_pos = 0.0
+		self.cue = None
 		self.speed = 1.0
 		self.filename = "?"
 		self.duration = 0.0
@@ -299,7 +300,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				0,
 				self.height,
 				fill=zynthian_gui_config.color_info,
-				tags=["overlay", f"cueline{i+1}"]
+				tags=["overlay", "cues", f"cueline{i+1}", f"cue{i+1}"]
 			)
 			self.widget_canvas.create_text(
 				0,
@@ -309,11 +310,12 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				font=("DejaVu Sans Mono", int(0.8 * zynthian_gui_config.font_size)),
 				fill=zynthian_gui_config.color_panel_tx,
 				text=f"{i+1}",
-				tags = ["overlay", f"cuetxt{i+1}"]
+				tags=["overlay", "cues", f"cuetxt{i+1}", f"cue{i+1}"]
 			)
 			self.cue_points.append([pos, name])
 			i += 1
 		self.cue_pos = None
+		self.cue = None
 
 
 	def update_marker(self, option, event):
@@ -474,6 +476,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			crop_start = int(self.samplerate * self.processor.controllers_dict['crop start'].value)
 			crop_end = int(self.samplerate * self.processor.controllers_dict['crop end'].value)
 			cue_pos = int(self.samplerate * self.processor.controllers_dict['cue pos'].value)
+			selected_cue = self.processor.controllers_dict['cue'].value
 			pos_time = self.processor.controllers_dict['position'].value
 			pos = int(pos_time * self.samplerate * self.speed)
 			refresh_info = False
@@ -525,12 +528,16 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 						offset = max(0, pos)
 				refresh_markers = True
 
+			if self.cue != selected_cue:
+				self.cue = selected_cue
+				refresh_markers = True
+
 			if self.cue_pos != cue_pos:
 				self.cue_pos = cue_pos
 				if cue_pos < offset  or cue_pos > offset + self.frames // self.zoom:
 					offset = max(0, cue_pos)
-				if self.cue_points:
-					self.cue_points[self.processor.controllers_dict['cue'].value - 1][0] = self.processor.controllers_dict['cue pos'].value
+				if self.cue_points and self.cue:
+					self.cue_points[self.cue - 1][0] = self.processor.controllers_dict['cue pos'].value
 				refresh_markers = True
 
 			offset = max(0, offset)
@@ -558,10 +565,14 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.widget_canvas.coords(self.crop_end_rect, x, 0, self.width, h)
 				x = int(f * (pos - self.offset))
 				self.widget_canvas.coords(self.play_line, x, 0, x, h)
+
+				self.widget_canvas.itemconfig(f"cues", fill="white")
 				for i, cue in enumerate(self.cue_points):
 					x = int(f * (self.samplerate * cue[0] - self.offset))
 					self.widget_canvas.coords(f"cueline{i+1}", x, 0, x, h)
 					self.widget_canvas.coords(f"cuetxt{i+1}", x, 0)
+					if i + 1 == self.cue:
+						self.widget_canvas.itemconfig(f"cue{i+1}", fill=zynthian_gui_config.color_info)
 				refresh_info = True
 
 			if self.info != self.processor.controllers_dict['info'].value:

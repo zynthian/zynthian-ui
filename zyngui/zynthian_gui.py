@@ -621,28 +621,22 @@ class zynthian_gui:
 		return self.current_processor == self.state_manager.audio_player
 
 	def close_screen(self, screen=None):
-		""" Closes the current screen or optionally the sepcified screen """
+		""" Closes the current screen or optionally the specified screen """
 
 		logging.debug("SCREEN HISTORY => {}".format(self.screen_history))
 		if screen is None:
 			screen = self.current_screen
-		while True:
-			try:
-				if self.screen_history.pop() == screen:
-					last_screen = self.screen_history.pop()
-					break
-			except:
-				last_screen = "audio_mixer"
-				break
+		self.purge_screen_history(screen)
+		try:
+			last_screen = self.screen_history.pop()
+		except:
+			last_screen = "audio_mixer"
 
 		if last_screen not in self.screens:
 			logging.error(f"Can't back to screen '{last_screen}'. It doesn't exist!")
 			last_screen = "audio_mixer"
 		logging.debug(f"CLOSE SCREEN '{self.current_screen}' => Back to '{last_screen}'")
 		self.show_screen(last_screen)
-
-	def close_modal(self):
-		self.close_screen()
 
 	def purge_screen_history(self, screen):
 		self.screen_history = list(filter(lambda i: i != screen, self.screen_history))
@@ -656,10 +650,6 @@ class zynthian_gui:
 		if not res:
 			self.close_screen()
 
-	def close_screen_timer(self, tms=3000):
-		self.cancel_screen_timer()
-		self.screen_timer_id = zynthian_gui_config.top.after(tms, self.close_screen)
-
 	def cancel_screen_timer(self):
 		if self.screen_timer_id:
 			zynthian_gui_config.top.after_cancel(self.screen_timer_id)
@@ -671,22 +661,11 @@ class zynthian_gui:
 		else:
 			self.close_screen()
 
-	def refresh_screen(self):
-		screen = self.current_screen
-		if screen == 'preset' and len(self.get_current_processor().preset_list) <= 1:
-			screen = 'control'
-		self.show_screen(screen)
-
 	def get_current_screen_obj(self):
 		try:
 			return self.screens[self.current_screen]
 		except:
 			return None
-
-	def refresh_current_screen(self):
-		self.screen_lock.acquire()
-		self.screens[self.current_screen].show()
-		self.screen_lock.release()
 
 	def show_confirm(self, text, callback=None, cb_params=None):
 		self.screen_lock.acquire()

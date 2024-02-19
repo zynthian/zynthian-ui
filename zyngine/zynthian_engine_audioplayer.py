@@ -245,6 +245,13 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		release = self.player.get_release(processor.handle)
 		base_note = self.player.get_base_note(processor.handle)
 		beats = self.player.get_beats(processor.handle)
+		cues = self.player.get_cue_point_count(processor.handle)
+		if cues:
+			cue_min = 1
+			cue_pos = self.player.get_cue_point_position(processor.handle, 0)
+		else:
+			cue_min = 0
+			cue_pos = 0.0
 		default_a = 0
 		default_b = 0
 		track_labels = ['mixdown']
@@ -316,8 +323,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['sustain', None, sustain, 1.0],
 			['release', None, release, 20.0],
 			['beats', None, beats, 64],
-			['cue', None, 0, 0],
-			['cue pos', None, 0.0, dur],
+			['cue', {'value': cue_min, 'value_min': cue_min, 'value_max': cues}],
+			['cue pos', None, cue_pos, dur],
 			['speed', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}],
 			['pitch', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}],
 			['varispeed', {'value': 1.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}], #TODO: Offer different varispeed range
