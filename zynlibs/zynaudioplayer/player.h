@@ -107,11 +107,10 @@ const char* get_jack_client_name();
 /** @brief  Open audio file
 *   @param  player_handle Handle of player provided by init_player()
 *   @param  filename Full path and name of file to load
-*   @param  cb_object Pointer to the object hosting the callback function
 *   @param  cb_fn Pointer to callback function with template void(float)
 *   @retval uint8_t True on success
 */
-uint8_t load(AUDIO_PLAYER * pPlayer, const char* filename, void* ptr, cb_fn_t cb_fn);
+uint8_t load(AUDIO_PLAYER * pPlayer, const char* filename, cb_fn_t cb_fn);
 
 /** @brief  Save audio file
 *   @param  player_handle Handle of player provided by init_player()

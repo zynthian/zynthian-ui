@@ -25,11 +25,12 @@
 import os
 import re
 import glob
-import logging
 import shutil
+import logging
 from subprocess import check_output
 
 from . import zynthian_engine
+from zyngui import zynthian_gui_config
 
 # ------------------------------------------------------------------------------
 # Sfizz Engine Class
@@ -77,10 +78,10 @@ class zynthian_engine_sfizz(zynthian_engine):
 	# Config variables
 	# ---------------------------------------------------------------------------
 
-	bank_dirs = [
-		('ExSFZ', zynthian_engine.ex_data_dir + "/soundfonts/sfz"),
-		('MySFZ', zynthian_engine.my_data_dir + "/soundfonts/sfz"),
-		('SFZ', zynthian_engine.data_dir + "/soundfonts/sfz")
+	preset_fexts = ["sfz"]
+	root_bank_dirs = [
+		('User', zynthian_engine.my_data_dir + "/soundfonts/sfz"),
+		('System', zynthian_engine.data_dir + "/soundfonts/sfz")
 	]
 
 	# ---------------------------------------------------------------------------
@@ -121,6 +122,9 @@ class zynthian_engine_sfizz(zynthian_engine):
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
+	def get_bank_list(self, processor=None):
+		return self.get_bank_dirlist(recursion=2)
+
 	def set_bank(self, processor, bank):
 		return True
 
@@ -128,19 +132,17 @@ class zynthian_engine_sfizz(zynthian_engine):
 	# Preset Management
 	# ---------------------------------------------------------------------------
 
-	@staticmethod
-	def _get_preset_list(bank):
+	@classmethod
+	def _get_preset_list(cls, bank):
 		logging.info("Getting Preset List for %s" % bank[2])
 		i = 0
 		preset_list = []
 		preset_dpath = bank[0]
 		if os.path.isdir(preset_dpath):
 			exclude_sfz = re.compile(r"[MOPRSTV][1-9]?l?\.sfz")
-			for sd in glob.glob(preset_dpath + "/*"):
+			for sd in glob.iglob(preset_dpath + "/*"):
 				if os.path.isdir(sd):
-					cmd = f"find '{sd}' -maxdepth 2 -type f -name '*.sfz'"
-					output = check_output(cmd, shell=True).decode('utf8')
-					flist = list(filter(None, output.split('\n')))
+					flist = cls.find_all_preset_files(sd, recursion=2)
 					for f in flist:
 						filehead, filetail = os.path.split(f)
 						if not exclude_sfz.fullmatch(filetail):
@@ -220,7 +222,7 @@ class zynthian_engine_sfizz(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_presets(cls, bank):
-		presets=[]
+		presets = []
 		for p in cls._get_preset_list(bank['raw']):
 			head, tail = os.path.split(p[2])
 			presets.append({

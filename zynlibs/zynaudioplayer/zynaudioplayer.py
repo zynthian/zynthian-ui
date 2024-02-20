@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#********************************************************************
+# ********************************************************************
 # ZYNTHIAN PROJECT: Zynaudioplayer Python Wrapper
 #
 # A Python wrapper for zynaudioplayer library
@@ -8,7 +8,7 @@
 # Copyright (C) 2021-2024 Brian Walton <brian@riban.co.uk>
 # License: LGPL V3
 #
-#********************************************************************
+# ********************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -22,681 +22,694 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#********************************************************************
+# ********************************************************************
 
 import ctypes
+import logging
 from _ctypes import dlclose
 from os.path import dirname, realpath
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Zynthian audio file player Library Wrapper
 #
-#	Most library functions are accessible directly by calling libzynaudioplayer.functionName(parameters)
-#	Following function wrappers provide simple access for complex data types. Access with zynaudioplayer.function_name(parameters)
+# Most library functions are accessible directly by calling libzynaudioplayer.functionName(parameters)
+# Module function wrappers provide simple access for complex data types: zynaudioplayer.function_name(parameters)
 #
-#	Include the following imports to access these two library objects:
-# 		from zynlibs.zynaudioplayer import zynaudioplayer
-#		from zynlibs.zynaudioplayer.zynaudioplayer import libaudioplayer
+# Include the following imports to access these two library objects:
+# 	import zynlibs.zynaudioplayer
+# 	from zynlibs.zynaudioplayer import libaudioplayer
 #
-#-------------------------------------------------------------------------------
-
-
-class zynaudioplayer():
-    
-	#	Initiate library
-	def __init__(self, jackname = None):
-		try:
-			# Load or increment ref to lib
-			self.libaudioplayer = ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynaudioplayer.so")
-			self.libaudioplayer.get_duration.restype = ctypes.c_float
-			self.libaudioplayer.get_position.restype = ctypes.c_float
-			self.libaudioplayer.get_loop_start_time.restype = ctypes.c_float
-			self.libaudioplayer.get_loop_end_time.restype = ctypes.c_float
-			self.libaudioplayer.get_crop_start_time.restype = ctypes.c_float
-			self.libaudioplayer.get_crop_end_time.restype = ctypes.c_float
-			self.libaudioplayer.get_file_duration.restype = ctypes.c_float
-			self.libaudioplayer.get_env_attack.restype = ctypes.c_float
-			self.libaudioplayer.get_env_hold.restype = ctypes.c_float
-			self.libaudioplayer.get_env_decay.restype = ctypes.c_float
-			self.libaudioplayer.get_env_sustain.restype = ctypes.c_float
-			self.libaudioplayer.get_env_release.restype = ctypes.c_float
-			self.libaudioplayer.get_file_info.restype = ctypes.c_char_p
-			self.libaudioplayer.get_filename.restype = ctypes.c_char_p
-			self.libaudioplayer.get_supported_codecs.restype = ctypes.c_char_p
-			self.libaudioplayer.get_codec.restype = ctypes.c_char_p
-			self.libaudioplayer.get_jack_client_name.restype = ctypes.c_char_p
-			self.libaudioplayer.get_gain.restype = ctypes.c_float
-			self.libaudioplayer.add_player.restype = ctypes.c_void_p
-			self.libaudioplayer.set_gain.argtypes = [ctypes.c_void_p, ctypes.c_float]
-			self.libaudioplayer.set_position.argtypes = [ctypes.c_void_p, ctypes.c_float]
-			self.libaudioplayer.set_loop_start_time.argtypes = [ctypes.c_void_p, ctypes.c_float]
-			self.libaudioplayer.set_loop_end_time.argtypes = [ctypes.c_void_p, ctypes.c_float]
-			self.libaudioplayer.set_crop_start_time.argtypes = [ctypes.c_void_p, ctypes.c_float]
-			self.libaudioplayer.set_crop_end_time.argtypes = [ctypes.c_void_p, ctypes.c_float]
-			self.libaudioplayer.add_cue_point.argtypes = [ctypes.c_void_p, ctypes.c_float, ctypes.c_char_p]
-			self.libaudioplayer.add_cue_point.restype = ctypes.c_int32
-			self.libaudioplayer.remove_cue_point.argtypes = [ctypes.c_void_p, ctypes.c_float]
-			self.libaudioplayer.remove_cue_point.restype = ctypes.c_int32
-			self.libaudioplayer.get_cue_point_count.argtypes = [ctypes.c_void_p]
-			self.libaudioplayer.get_cue_point_position.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
-			self.libaudioplayer.get_cue_point_position.restype = ctypes.c_float
-			self.libaudioplayer.set_cue_point_position.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_float]
-			self.libaudioplayer.get_cue_point_name.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
-			self.libaudioplayer.get_cue_point_name.restype = ctypes.c_char_p
-			self.libaudioplayer.set_cue_point_name.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_char_p]
-			self.libaudioplayer.clear_cue_points.argtypes = [ctypes.c_void_p]
-			self.libaudioplayer.set_pos_notify_delta.argtypes = [ctypes.c_void_p, ctypes.c_float]
-			self.libaudioplayer.set_env_attack.argtypes = [ctypes.c_void_p, ctypes.c_float]
-			self.libaudioplayer.set_env_hold.argtypes = [ctypes.c_void_p, ctypes.c_float]
-			self.libaudioplayer.set_env_decay.argtypes = [ctypes.c_void_p, ctypes.c_float]
-			self.libaudioplayer.set_env_sustain.argtypes = [ctypes.c_void_p, ctypes.c_float]
-			self.libaudioplayer.set_env_release.argtypes = [ctypes.c_void_p, ctypes.c_float]
-			self.libaudioplayer.set_env_release.argtypes = [ctypes.c_void_p, ctypes.c_float]
-			self.libaudioplayer.set_tempo.argtypes = [ctypes.c_float]
-			self.libaudioplayer.set_speed.argtypes = [ctypes.c_void_p, ctypes.c_float]
-			self.libaudioplayer.get_speed.restype = ctypes.c_float
-			self.libaudioplayer.set_pitch.argtypes = [ctypes.c_void_p, ctypes.c_float]
-			self.libaudioplayer.get_pitch.restype = ctypes.c_float
-			self.libaudioplayer.set_varispeed.argtypes = [ctypes.c_void_p, ctypes.c_float]
-			self.libaudioplayer.get_varispeed.restype = ctypes.c_float
-			self.libaudioplayer.save.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
-			self.libaudioplayer.set_base_note.argtypes = [ctypes.c_void_p, ctypes.c_uint8]
-			self.libaudioplayer.get_base_note.restype = ctypes.c_uint8
-			self.control_cb = None
-		except Exception as e:
-			self.libaudioplayer=None
-			print("Can't initialise zynaudioplayer library: %s" % str(e))
-
-
-	#	Destoy instance of shared library
-	def __del__(self):
-		if self.libaudioplayer:
-			#self.stop()
-			# Decrement ref to lib - when all ref removed shared lib will be unloaded
-			dlclose(self.libaudioplayer._handle)
-
-
-	def stop(self):
-		self.libaudioplayer.lib_stop()
-		self.set_control_cb(None)
-
-
-	def is_codec_supported(self, codec):
-		return self.libaudioplayer.is_codec_supported(bytes(codec, "utf-8")) == 1
-
-
-	def get_supported_codecs(self):
-		return self.libaudioplayer.get_supported_codecs().decode("utf-8").lower().split(',')
-
-
-	#	Get jack client name
-	def get_jack_client_name(self):
-		return self.libaudioplayer.get_jack_client_name().decode("utf-8")
-
-
-	#	Add a player
-	def add_player(self):
-		return self.libaudioplayer.add_player()
-
-
-	#	Remove a player
-	def remove_player(self, handle):
-		return self.libaudioplayer.remove_player(handle)
+# -------------------------------------------------------------------------------
+
+control_cb = None
+
+try:
+	# Load or increment ref to lib
+	libaudioplayer = ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynaudioplayer.so")
+	libaudioplayer.get_duration.restype = ctypes.c_float
+	libaudioplayer.get_position.restype = ctypes.c_float
+	libaudioplayer.get_loop_start_time.restype = ctypes.c_float
+	libaudioplayer.get_loop_end_time.restype = ctypes.c_float
+	libaudioplayer.get_crop_start_time.restype = ctypes.c_float
+	libaudioplayer.get_crop_end_time.restype = ctypes.c_float
+	libaudioplayer.get_file_duration.restype = ctypes.c_float
+	libaudioplayer.get_env_attack.restype = ctypes.c_float
+	libaudioplayer.get_env_hold.restype = ctypes.c_float
+	libaudioplayer.get_env_decay.restype = ctypes.c_float
+	libaudioplayer.get_env_sustain.restype = ctypes.c_float
+	libaudioplayer.get_env_release.restype = ctypes.c_float
+	libaudioplayer.get_file_info.restype = ctypes.c_char_p
+	libaudioplayer.get_filename.restype = ctypes.c_char_p
+	libaudioplayer.get_supported_codecs.restype = ctypes.c_char_p
+	libaudioplayer.get_codec.restype = ctypes.c_char_p
+	libaudioplayer.get_jack_client_name.restype = ctypes.c_char_p
+	libaudioplayer.get_gain.restype = ctypes.c_float
+	libaudioplayer.add_player.restype = ctypes.c_void_p
+	libaudioplayer.set_gain.argtypes = [ctypes.c_void_p, ctypes.c_float]
+	libaudioplayer.set_position.argtypes = [ctypes.c_void_p, ctypes.c_float]
+	libaudioplayer.set_loop_start_time.argtypes = [ctypes.c_void_p, ctypes.c_float]
+	libaudioplayer.set_loop_end_time.argtypes = [ctypes.c_void_p, ctypes.c_float]
+	libaudioplayer.set_crop_start_time.argtypes = [ctypes.c_void_p, ctypes.c_float]
+	libaudioplayer.set_crop_end_time.argtypes = [ctypes.c_void_p, ctypes.c_float]
+	libaudioplayer.add_cue_point.argtypes = [ctypes.c_void_p, ctypes.c_float, ctypes.c_char_p]
+	libaudioplayer.add_cue_point.restype = ctypes.c_int32
+	libaudioplayer.remove_cue_point.argtypes = [ctypes.c_void_p, ctypes.c_float]
+	libaudioplayer.remove_cue_point.restype = ctypes.c_int32
+	libaudioplayer.get_cue_point_count.argtypes = [ctypes.c_void_p]
+	libaudioplayer.get_cue_point_position.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
+	libaudioplayer.get_cue_point_position.restype = ctypes.c_float
+	libaudioplayer.set_cue_point_position.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_float]
+	libaudioplayer.get_cue_point_name.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
+	libaudioplayer.get_cue_point_name.restype = ctypes.c_char_p
+	libaudioplayer.set_cue_point_name.argtypes = [ctypes.c_void_p, ctypes.c_uint32, ctypes.c_char_p]
+	libaudioplayer.clear_cue_points.argtypes = [ctypes.c_void_p]
+	libaudioplayer.set_pos_notify_delta.argtypes = [ctypes.c_void_p, ctypes.c_float]
+	libaudioplayer.set_env_attack.argtypes = [ctypes.c_void_p, ctypes.c_float]
+	libaudioplayer.set_env_hold.argtypes = [ctypes.c_void_p, ctypes.c_float]
+	libaudioplayer.set_env_decay.argtypes = [ctypes.c_void_p, ctypes.c_float]
+	libaudioplayer.set_env_sustain.argtypes = [ctypes.c_void_p, ctypes.c_float]
+	libaudioplayer.set_env_release.argtypes = [ctypes.c_void_p, ctypes.c_float]
+	libaudioplayer.set_env_release.argtypes = [ctypes.c_void_p, ctypes.c_float]
+	libaudioplayer.set_tempo.argtypes = [ctypes.c_float]
+	libaudioplayer.set_speed.argtypes = [ctypes.c_void_p, ctypes.c_float]
+	libaudioplayer.get_speed.restype = ctypes.c_float
+	libaudioplayer.set_pitch.argtypes = [ctypes.c_void_p, ctypes.c_float]
+	libaudioplayer.get_pitch.restype = ctypes.c_float
+	libaudioplayer.set_varispeed.argtypes = [ctypes.c_void_p, ctypes.c_float]
+	libaudioplayer.get_varispeed.restype = ctypes.c_float
+	libaudioplayer.save.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+	libaudioplayer.set_base_note.argtypes = [ctypes.c_void_p, ctypes.c_uint8]
+	libaudioplayer.get_base_note.restype = ctypes.c_uint8
+except Exception as e:
+	libaudioplayer = None
+	logging.error(f"Can't initialise zynaudioplayer library: {e}")
+
+
+def stop():
+	libaudioplayer.lib_stop()
+	set_control_cb(None)
+	#dlclose(libaudioplayer._handle)
+
+
+def is_codec_supported(codec):
+	return libaudioplayer.is_codec_supported(bytes(codec, "utf-8")) == 1
+
+
+def get_supported_codecs():
+	return libaudioplayer.get_supported_codecs().decode("utf-8").lower().split(',')
+
+
+# Get jack client name
+def get_jack_client_name():
+	return libaudioplayer.get_jack_client_name().decode("utf-8")
+
+
+# Add a player
+def add_player():
+	return libaudioplayer.add_player()
+
+
+# Remove a player
+def remove_player(handle):
+	return libaudioplayer.remove_player(handle)
+
+
+# Set a player's MIDI base note;
+# handle: Index of player
+# base_note: MIDI note to playback at normal speed
+def set_base_note(handle, base_note):
+	libaudioplayer.set_base_note(handle, base_note)
+
 
+# Get a player's MIDI base note;
+# handle: Index of player
+# Returns: MIDI note to playback at normal speed
+def get_base_note(handle):
+	return libaudioplayer.get_base_note(handle)
 
-	#	Set a player's MIDI base note;
-	#	handle: Index of player
-	#	base_note: MIDI note to playback at normal speed
-	def set_base_note(self, handle, base_note):
-		self.libaudioplayer.set_base_note(handle, base_note)
 
+# Set a player's MIDI channel;
+# handle: Index of player
+# midi_chan: MIDI channel (0..15 or other value to disable MIDI)
+def set_midi_chan(handle, midi_chan):
+	if isinstance(midi_chan, int) and 0 <= midi_chan < 16:
+		libaudioplayer.set_midi_chan(handle, midi_chan)
+	else:
+		libaudioplayer.set_midi_chan(handle, -1)
 
-	#	Get a player's MIDI base note;
-	#	handle: Index of player
-	#	Returns: MIDI note to playback at normal speed
-	def get_base_note(self, handle):
-		return self.libaudioplayer.get_base_note(handle)
 
+# Get a player's index;
+# handle: Index of player
+# Returns: Index
+def get_index(handle):
+	return libaudioplayer.get_index(handle)
 
-	#	Set a player's MIDI channel;
-	#	handle: Index of player
-	#	midi_chan: MIDI channel (0..15 or other value to disable MIDI)
-	def set_midi_chan(self, handle, midi_chan):
-		if isinstance(midi_chan, int) and midi_chan < 16 and midi_chan >= 0:
-			self.libaudioplayer.set_midi_chan(handle, midi_chan)
-		else:
-			self.libaudioplayer.set_midi_chan(handle, -1)
 
+# Load an audio file
+# filename: Full path and filename
+# handle: Index of player
+# Returns: True on success
+def load(handle, filename):
+	return libaudioplayer.load(handle, bytes(filename, "utf-8"), value_cb)
 
-	#	Get a player's index;
-	#	handle: Index of player
-	#	Returns: Index
-	def get_index(self, handle):
-		return self.libaudioplayer.get_index(handle)
 
+# Unload the currently loaded audio file
+# handle: Index of player
+def unload(handle):
+	libaudioplayer.unload(handle)
 
-	#	Load an audio file
-	#	filename: Full path and filename
-	#	handle: Index of player
-	#	Returns: True on success
-	def load(self, handle, filename):
-		return self.libaudioplayer.load(handle, bytes(filename, "utf-8"), ctypes.py_object(self), self.value_cb)
 
+def set_control_cb(cb):
+	global control_cb
+	control_cb = cb
 
-	#	Unload the currently loaded audio file
-	#	handle: Index of player
-	def unload(self, handle):
-		self.libaudioplayer.unload(handle)
 
+@ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_int, ctypes.c_float)
+def value_cb(handle, vtype, value):
+	if callable(control_cb):
+		control_cb(handle, vtype, value)
 
-	def set_control_cb(self, cb):
-		self.control_cb = cb
 
+# Get the full path and name of the currently loaded file
+# handle: Index of player
+# Returns: Filename
+def get_filename(handle):
+	return libaudioplayer.get_filename(handle).decode("utf-8")
 
-	@ctypes.CFUNCTYPE(None, ctypes.py_object, ctypes.c_void_p, ctypes.c_int, ctypes.c_float)
-	def value_cb(self, handle, type, value):
-		if self.control_cb:
-			self.control_cb(handle, type, value)
 
+# Get duration of loaded file
+# handle: Index of player
+# Returns: Duration in seconds or zero if file cannot be opened or invalid format
+def get_duration(handle):
+	return libaudioplayer.get_duration(handle)
 
-	#	Get the full path and name of the currently loaded file
-	#	handle: Index of player
-	#	Returns: Filename
-	def get_filename(self, handle):
-		return self.libaudioplayer.get_filename(handle).decode("utf-8")
 
+# Save an audio file
+# handle: Index of player
+# filename: Full path and filename
+# Returns: True on success
+def save(handle, filename):
+	return libaudioplayer.save(handle, bytes(filename, "utf-8"))
 
-	#	Get duration of loaded file
-	#	handle: Index of player
-	#	Returns: Duration in seconds or zero if file cannot be opened or invalid format
-	def get_duration(self, handle):
-		return self.libaudioplayer.get_duration(handle)
 
+# Set playback position
+# handle: Index of player
+# time: Position in seconds from start of file
+def set_position(handle, time):
+	libaudioplayer.set_position(handle, time)
 
-	#	Save an audio file
-	#	handle: Index of player
-	#	filename: Full path and filename
-	#	Returns: True on success
-	def save(self, handle, filename):
-		return self.libaudioplayer.save(handle, bytes(filename, "utf-8"))
 
+# Get playback position
+# handle: Index of player
+# Returns: Position in seconds from start of file
+def get_position(handle):
+	return libaudioplayer.get_position(handle)
 
-	#	Set playback position
-	#	handle: Index of player
-	#	time: Position in seconds from start of file
-	def set_position(self, handle, time):
-		self.libaudioplayer.set_position(handle, time)
 
+# Enable looping of playback
+# handle: Index of player
+# enable: True to enable looping
+def enable_loop(handle, enable):
+	libaudioplayer.enable_loop(handle, enable)
 
-	#	Get playback position
-	#	handle: Index of player
-	#	Returns: Position in seconds from start of file
-	def get_position(self, handle):
-		return self.libaudioplayer.get_position(handle)
 
+# Get playback looping state
+# handle: Index of player
+# Returns: True looping enabled
+def is_loop(handle):
+	return libaudioplayer.is_loop(handle) > 0
 
-	#	Enable looping of playback
-	#	handle: Index of player
-	#	enable: True to enable looping
-	def enable_loop(self, handle, enable):
-		self.libaudioplayer.enable_loop(handle, enable)
 
+# Get start of loop in seconds from start of file
+# handle: Index of player
+# Returns: Loop start
+def get_loop_start(handle):
+	return libaudioplayer.get_loop_start_time(handle)
 
-	#	Get playback looping state
-	#	handle: Index of player
-	#	Returns: True looping enabled
-	def is_loop(self, handle):
-		return (self.libaudioplayer.is_loop(handle) > 0)
 
+# Set start of loop in seconds from start of file
+# handle: Index of player
+# time: Loop start
+def set_loop_start(handle, time):
+	libaudioplayer.set_loop_start_time(handle, time)
 
-	#	Get start of loop in seconds from start of file
-	#	handle: Index of player
-	#	Returns: Loop start
-	def get_loop_start(self, handle):
-		return self.libaudioplayer.get_loop_start_time(handle)
 
+# Get end of loop in seconds from end of file
+# handle: Index of player
+# Returns: Loop end
+def get_loop_end(handle):
+	return libaudioplayer.get_loop_end_time(handle)
 
-	#	Set start of loop in seconds from start of file
-	#	handle: Index of player
-	#	time: Loop start
-	def set_loop_start(self, handle, time):
-		self.libaudioplayer.set_loop_start_time(handle, time)
 
+# Set end of loop in seconds from end of file
+# handle: Index of player
+# time: Loop end
+def set_loop_end(handle, time):
+	libaudioplayer.set_loop_end_time(handle, time)
 
-	#	Get end of loop in seconds from end of file
-	#	handle: Index of player
-	#	Returns: Loop end
-	def get_loop_end(self, handle):
-		return self.libaudioplayer.get_loop_end_time(handle)
 
+# Get start of audio (crop) in seconds from start of file
+# handle: Index of player
+# Returns: Crop start
+def get_crop_start(handle):
+	return libaudioplayer.get_crop_start_time(handle)
 
-	#	Set end of loop in seconds from end of file
-	#	handle: Index of player
-	#	time: Loop end
-	def set_loop_end(self, handle, time):
-		self.libaudioplayer.set_loop_end_time(handle, time)
 
+# Set start of audio (crop) in seconds from start of file
+# handle: Index of player
+# time: Crop start
+def set_crop_start(handle, time):
+	libaudioplayer.set_crop_start_time(handle, time)
 
-	#	Get start of audio (crop) in seconds from start of file
-	#	handle: Index of player
-	#	Returns: Crop start
-	def get_crop_start(self, handle):
-		return self.libaudioplayer.get_crop_start_time(handle)
 
+# Get end of audio (crop) in seconds from end of file
+# handle: Index of player
+# Returns: Crop end
+def get_crop_end(handle):
+	return libaudioplayer.get_crop_end_time(handle)
 
-	#	Set start of audio (crop) in seconds from start of file
-	#	handle: Index of player
-	#	time: Crop start
-	def set_crop_start(self, handle, time):
-		self.libaudioplayer.set_crop_start_time(handle, time)
 
+# Set end of audio (crop) in seconds from end of file
+# handle: Index of player
+# time: Crop end
+def set_crop_end(handle, time):
+	libaudioplayer.set_crop_end_time(handle, time)
 
-	#	Get end of audio (crop) in seconds from end of file
-	#	handle: Index of player
-	#	Returns: Crop end
-	def get_crop_end(self, handle):
-		return self.libaudioplayer.get_crop_end_time(handle)
 
+# Add a cue point marker
+# handle: Index of player
+# pos: Marker position in seconds
+# name: Marker name (max 255 chars)
+# Returns: Index of cue point or -1 on failure
+def add_cue_point(handle, pos, name=None):
+	if name is None:
+		name = ""
+	return libaudioplayer.add_cue_point(handle, pos, bytes(name, "utf-8"))
 
-	#	Set end of audio (crop) in seconds from end of file
-	#	handle: Index of player
-	#	time: Crop end
-	def set_crop_end(self, handle, time):
-		self.libaudioplayer.set_crop_end_time(handle, time)
 
+# Remove a cue point marker
+# handle: Index of player
+# frames: Marker position in frames
+# Returns: True on success
+def remove_cue_point(handle, frames):
+	return libaudioplayer.remove_cue_point(handle, frames)
 
-	#	Add a cue point marker
-	#	handle: Index of player
-	#	pos: Marker position in seconds
-	#	name: Marker name (max 255 chars)
-	#  	Returns: Index of cue point or -1 on failure
-	def add_cue_point(self, handle, pos, name=None):
-		if name is None:
-			name = ""
-		return self.libaudioplayer.add_cue_point(handle, pos, bytes(name, "utf-8"))
 
-	#	Remove a cue point marker
-	#	handle: Index of player
-	#	frames: Marker position in frames
-	#	Returns: True on success
-	def remove_cue_point(self, handle, frames):
-		return self.libaudioplayer.remove_cue_point(handle, frames)
+# Get quantity of cue point markers
+# handle: Index of player
+# Returns: Quantity of cue point markers
+def get_cue_point_count(handle):
+	return libaudioplayer.get_cue_point_count(handle)
 
-	#	Get quantity of cue point markers
-	#	handle: Index of player
-	#	Returns: Quantity of cue point markers
-	def get_cue_point_count(self, handle):
-		return self.libaudioplayer.get_cue_point_count(handle)
 
-	#	Get a cue point's position
-	#	handle: Index of player
-	#	index Index of cue point
-	# 	Returns: Position (in seconds) of cue point or -1.0 if not found
-	def get_cue_point_position(self, handle, index):
-		return self.libaudioplayer.get_cue_point_position(handle, index)
+# Get a cue point's position
+# handle: Index of player
+# index Index of cue point
+# Returns: Position (in seconds) of cue point or -1.0 if not found
+def get_cue_point_position(handle, index):
+	return libaudioplayer.get_cue_point_position(handle, index)
 
-	#	Set a cue point's position
-	#	handle: Index of player
-	#	index Index of cue point
-	# 	position: Position (in seconds) of cue point or -1.0 if not found
-	#	Returns: True on success
-	def set_cue_point_position(self, handle, index, position):
-		return self.libaudioplayer.set_cue_point_position(handle, index, position)
 
-	#	Get a cue point's name
-	#	handle: Index of player
-	#	index Index of cue point
-	# 	Returns: Cue point name  or "" if not found
-	def get_cue_point_name(self, handle, index):
-		return self.libaudioplayer.get_cue_point_name(handle, index).decode("utf-8")
+# Set a cue point's position
+# handle: Index of player
+# index Index of cue point
+# position: Position (in seconds) of cue point or -1.0 if not found
+# Returns: True on success
+def set_cue_point_position(handle, index, position):
+	return libaudioplayer.set_cue_point_position(handle, index, position)
 
-	#	Set a cue point's name
-	#	handle: Index of player
-	#	index Index of cue point
-	# 	name: New name for cue point (max 255 chars)
-	#	Returns: True on success
-	def set_cue_point_name(self, handle, index, name):
-		return self.libaudioplayer.set_cue_point_name(handle, index, bytes(name[:255], "utf-8"))
 
-	#	Remove all cue points
-	#	handle: Index of player
-	def clear_cue_points(self, handle):
-		self.libaudioplayer.clear_cue_points(handle)
+# Get a cue point's name
+# handle: Index of player
+# index Index of cue point
+# Returns: Cue point name  or "" if not found
+def get_cue_point_name(handle, index):
+	return libaudioplayer.get_cue_point_name(handle, index).decode("utf-8")
 
-	#	Start playback
-	#	handle: Index of player
-	def start_playback(self, handle):
-		self.libaudioplayer.start_playback(handle)
 
+# Set a cue point's name
+# handle: Index of player
+# index Index of cue point
+# name: New name for cue point (max 255 chars)
+# Returns: True on success
+def set_cue_point_name(handle, index, name):
+	return libaudioplayer.set_cue_point_name(handle, index, bytes(name[:255], "utf-8"))
 
- 	#	Stop playback
-	#	handle: Index of player
-	def stop_playback(self, handle):
-		self.libaudioplayer.stop_playback(handle)
 
+# Remove all cue points
+# handle: Index of player
+def clear_cue_points(handle):
+	libaudioplayer.clear_cue_points(handle)
 
- 	#	Get playback state
-	#	handle: Index of player
-	def get_playback_state(self, handle):
-		return self.libaudioplayer.get_playback_state(handle)
 
+# Start playback
+# handle: Index of player
+def start_playback(handle):
+	libaudioplayer.start_playback(handle)
 
- 	#	Get samplerate of loaded file
-	#	handle: Index of player
-	#	Returns: Samplerate of loaded file
-	def get_samplerate(self, handle):
-		return self.libaudioplayer.get_samplerate(handle)
 
+# Stop playback
+# handle: Index of player
+def stop_playback(handle):
+	libaudioplayer.stop_playback(handle)
 
-	#	Get CODEC of loaded file
-	#	handle: Index of player
-	#	Returns: Name of CODEC (WAV|FLAC|OGG|MP3)
-	def get_codec(self, handle):
-		return self.libaudioplayer.get_codec(handle).decode("utf-8")
 
+# Get playback state
+# handle: Index of player
+def get_playback_state(handle):
+	return libaudioplayer.get_playback_state(handle)
 
- 	#	Get quantity of channels in loaded file
-	#	handle: Index of player
-	#	Returns: Quantity of channels in loaded file
-	def get_channels(self, handle):
-		return self.libaudioplayer.get_channels(handle)
 
+# Get samplerate of loaded file
+# handle: Index of player
+# Returns: Samplerate of loaded file
+def get_samplerate(handle):
+	return libaudioplayer.get_samplerate(handle)
 
- 	#	Get quantity of frames in loaded file
-	#	handle: Index of player
-	#	Returns: Quantity of frames in loaded file
-	def get_frames(self, handle):
-		return self.libaudioplayer.get_frames(handle)
 
+# Get CODEC of loaded file
+# handle: Index of player
+# Returns: Name of CODEC (WAV|FLAC|OGG|MP3)
+def get_codec(handle):
+	return libaudioplayer.get_codec(handle).decode("utf-8")
 
- 	#	Get format of channels in loaded file
-	#	handle: Index of player
-	#	Returns: Bitwise OR of major and minor format type and optional endianness value
-	#   See sndfile.h for supported formats
-	def get_format(self, handle):
-		return self.libaudioplayer.get_format(handle)
 
+# Get quantity of channels in loaded file
+# handle: Index of player
+# Returns: Quantity of channels in loaded file
+def get_channels(handle):
+	return libaudioplayer.get_channels(handle)
 
- 	#	Set quality of samplerate converion
-	#	handle: Index of player
-	#	quality: Samplerate conversion quality [SRC_SINC_BEST_QUALITY | SRC_SINC_MEDIUM_QUALITY | SRC_SINC_FASTEST | SRC_ZERO_ORDER_HOLD | SRC_LINEAR]
-	#	Returns: True on success, i.e. the quality parameter is valid
-	def set_src_quality(self, handle, quality):
-		return (self.libaudioplayer.set_src_quality(handle, quality) == 1)
 
+# Get quantity of frames in loaded file
+# handle: Index of player
+# Returns: Quantity of frames in loaded file
+def get_frames(handle):
+	return libaudioplayer.get_frames(handle)
 
- 	#	Get quality of samplerate converion
-	#	handle: Index of player
-	#	Returns: Samplerate conversion quality [SRC_SINC_BEST_QUALITY | SRC_SINC_MEDIUM_QUALITY | SRC_SINC_FASTEST | SRC_ZERO_ORDER_HOLD | SRC_LINEAR]
-	def get_src_quality(self, handle):
-		return self.libaudioplayer.get_src_quality(handle)
 
-
- 	#	Set playback gain
-	#	handle: Index of player
-	#	gain: Playback gain factor [0..2]
-	def set_gain(self, handle, gain):
-		self.libaudioplayer.set_gain(handle, gain)
+# Get format of channels in loaded file
+# handle: Index of player
+# Returns: Bitwise OR of major and minor format type and optional endianness value
+# See sndfile.h for supported formats
+def get_format(handle):
+	return libaudioplayer.get_format(handle)
 
 
- 	#	Get playback gain
-	#	handle: Index of player
-	#	Returns: Playback gain factor [0..2]
-	#	TODO: error in float means get differs to set, e.g. set(0.2), get()=0.20000000298023224
-	def get_gain(self, handle):
-		return self.libaudioplayer.get_gain(handle)
+# Set quality of samplerate converion
+# handle: Index of player
+# quality: Samplerate conversion quality
+# [SRC_SINC_BEST_QUALITY | SRC_SINC_MEDIUM_QUALITY | SRC_SINC_FASTEST | SRC_ZERO_ORDER_HOLD | SRC_LINEAR]
+# Returns: True on success, i.e. the quality parameter is valid
+def set_src_quality(handle, quality):
+	return libaudioplayer.set_src_quality(handle, quality) == 1
 
 
-	#	Set playback track for left output
-	#	handle: Index of player
-	#	track: Index of track to playback to left channel, -1 to mix odd tracks
-	#	Mono files are played to both outputs
-	def set_track_a(self, handle, track):
-		self.libaudioplayer.set_track_a(handle, track)
+# Get quality of samplerate converion
+# handle: Index of player
+# Returns: Samplerate conversion quality
+# [SRC_SINC_BEST_QUALITY | SRC_SINC_MEDIUM_QUALITY | SRC_SINC_FASTEST | SRC_ZERO_ORDER_HOLD | SRC_LINEAR]
+def get_src_quality(handle):
+	return libaudioplayer.get_src_quality(handle)
 
 
-	#	Set playback track for right output
-	#	handle: Index of player
-	#	track: Index of track to playback to right channel, -1 to mix even tracks
-	#	Mono files are played to both outputs
-	def set_track_b(self, handle, track):
-		self.libaudioplayer.set_track_b(handle, track)
+# Set playback gain
+# handle: Index of player
+# gain: Playback gain factor [0..2]
+def set_gain(handle, gain):
+	libaudioplayer.set_gain(handle, gain)
 
 
-	#	Get playback track for left output
-	#	handle: Index of player
-	#	Returns: Index of track to playback to left channel, -1 to mix odd to left
-	def get_track_a(self, handle):
-		return self.libaudioplayer.get_track_a(handle)
+# Get playback gain
+# handle: Index of player
+# Returns: Playback gain factor [0..2]
+# TODO: error in float means get differs to set, e.g. set(0.2), get()=0.20000000298023224
+def get_gain(handle):
+	return libaudioplayer.get_gain(handle)
 
 
-	#	Get playback track for right output
-	#	handle: Index of player
-	#	Returns: Index of track to playback to right channel, -1 to mix even to left
-	def get_track_b(self, handle):
-		return self.libaudioplayer.get_track_b(handle)
+# Set playback track for left output
+# handle: Index of player
+# track: Index of track to playback to left channel, -1 to mix odd tracks
+# Mono files are played to both outputs
+def set_track_a(handle, track):
+	libaudioplayer.set_track_a(handle, track)
 
 
-	#	Set pitchbend range
-	#	handle: Index of player
-	#	range: Pitchbend range in semitones
-	def set_pitchbend_range(self, handle, range):
-		return self.libaudioplayer.set_pitchbend_range(handle, range)
+# Set playback track for right output
+# handle: Index of player
+# track: Index of track to playback to right channel, -1 to mix even tracks
+# Mono files are played to both outputs
+def set_track_b(handle, track):
+	libaudioplayer.set_track_b(handle, track)
 
 
-	#	Get pitchbend range
-	#	handle: Index of player
-	#	Returns: Pitchbend range in semitones
-	def get_pitchbend_range(self, handle):
-		return self.libaudioplayer.get_pitchbend_range(handle)
+# Get playback track for left output
+# handle: Index of player
+# Returns: Index of track to playback to left channel, -1 to mix odd to left
+def get_track_a(handle):
+	return libaudioplayer.get_track_a(handle)
 
-	#	Set base speed factor
-	#	handle: Index of player
-	#	factor: Playback speed factor
-	def set_speed(self, handle, factor):
-		self.libaudioplayer.set_speed(handle, factor)
 
-	#	Get base speed factor
-	#	handle: Index of player
-	#	Returns: Playback speed factor
-	def get_speed(self, handle):
-		return self.libaudioplayer.get_speed(handle)
+# Get playback track for right output
+# handle: Index of player
+# Returns: Index of track to playback to right channel, -1 to mix even to left
+def get_track_b(handle):
+	return libaudioplayer.get_track_b(handle)
 
-	#	Set base pitch factor
-	#	handle: Index of player
-	#	factor: Pitch factor
-	def set_pitch(self, handle, factor):
-		self.libaudioplayer.set_pitch(handle, factor)
 
-	#	Get base pitch factor
-	#	handle: Index of player
-	#	Returns: Pitch factor
-	def get_pitch(self, handle):
-		return self.libaudioplayer.get_pitch(handle)
+# Set pitchbend range
+# handle: Index of player
+# range: Pitchbend range in semitones
+def set_pitchbend_range(handle, pbrange):
+	return libaudioplayer.set_pitchbend_range(handle, pbrange)
 
-	#	Set varispeed ratio
-	#	handle: Index of player
-	#	ratio: Ratio of playback speed : pitch shift
-	def set_varispeed(self, handle, ratio):
-		self.libaudioplayer.set_varispeed(handle, ratio)
 
-	#	Get varispeed ratio
-	#	handle: Index of player
-	#	Returns: Ratio of playback speed : pitch shift
-	def get_varispeed(self, handle):
-		return self.libaudioplayer.get_varispeed(handle)
+# Get pitchbend range
+# handle: Index of player
+# Returns: Pitchbend range in semitones
+def get_pitchbend_range(handle):
+	return libaudioplayer.get_pitchbend_range(handle)
 
-	#	Set envelope attack
-	#	handle: Index of player
-	#	attack: Attack time in seconds
-	def set_attack(self, handle, attack):
-		self.libaudioplayer.set_env_attack(handle, attack)
-
 
-	#	Get envelope attack
-	#	handle: Index of player
-	#	Returns: Attack time in seconds
-	def get_attack(self, handle):
-		return self.libaudioplayer.get_env_attack(handle)
+# Set base speed factor
+# handle: Index of player
+# factor: Playback speed factor
+def set_speed(handle, factor):
+	libaudioplayer.set_speed(handle, factor)
 
 
-	#	Set envelope hold
-	#	handle: Index of player
-	#	attack: Time in seconds between attack and decay phase
-	def set_hold(self, handle, hold):
-		self.libaudioplayer.set_env_hold(handle, hold)
+# Get base speed factor
+# handle: Index of player
+# Returns: Playback speed factor
+def get_speed(handle):
+	return libaudioplayer.get_speed(handle)
 
 
-	#	Get envelope hold
-	#	handle: Index of player
-	#	Returns: Time in seconds between attack and decay phase
-	def get_hold(self, handle):
-		return self.libaudioplayer.get_env_hold(handle)
+# Set base pitch factor
+# handle: Index of player
+# factor: Pitch factor
+def set_pitch(handle, factor):
+	libaudioplayer.set_pitch(handle, factor)
 
 
-	#	Set envelope decay
-	#	handle: Index of player
-	#	decay: Decay time in seconds
-	def set_decay(self, handle, decay):
-		self.libaudioplayer.set_env_decay(handle, decay)
+# Get base pitch factor
+# handle: Index of player
+# Returns: Pitch factor
+def get_pitch(handle):
+	return libaudioplayer.get_pitch(handle)
 
 
-	#	Get envelope decay
-	#	handle: Index of player
-	#	Returns: Decay time in seconds
-	def get_decay(self, handle):
-		return self.libaudioplayer.get_env_decay(handle)
+# Set varispeed ratio
+# handle: Index of player
+# ratio: Ratio of playback speed : pitch shift
+def set_varispeed(handle, ratio):
+	libaudioplayer.set_varispeed(handle, ratio)
 
 
-	#	Set envelope sustain
-	#	handle: Index of player
-	#	sustain: Sustain time in seconds
-	def set_sustain(self, handle, sustain):
-		self.libaudioplayer.set_env_sustain(handle, sustain)
+# Get varispeed ratio
+# handle: Index of player
+# Returns: Ratio of playback speed : pitch shift
+def get_varispeed(handle):
+	return libaudioplayer.get_varispeed(handle)
 
 
-	#	Get envelope sustain
-	#	handle: Index of player
-	#	Returns: Sustain time in seconds
-	def get_sustain(self, handle):
-		return self.libaudioplayer.get_env_sustain(handle)
+# Set envelope attack
+# handle: Index of player
+# attack: Attack time in seconds
+def set_attack(handle, attack):
+	libaudioplayer.set_env_attack(handle, attack)
 
 
-	#	Set envelope release
-	#	handle: Index of player
-	#	release: Release time in seconds
-	def set_release(self, handle, release):
-		self.libaudioplayer.set_env_release(handle, release)
-
-
-	#	Get envelope release
-	#	handle: Index of player
-	#	Returns: Release time in seconds
-	def get_release(self, handle):
-		return self.libaudioplayer.get_env_release(handle)
-
-	#	Set beats in clip
-	#	handle: Index of player
-	#	beats: Quantity of beats or zero for non-beat based sample
-	def set_beats(self, handle, beats):
-		self.libaudioplayer.set_beats(handle, beats)
-
-	#	Set beats in clip
-	#	handle: Index of player
-	#	Returns: Quantity of beats or zero for non-beat based sample
-	def get_beats(self, handle):
-		return self.libaudioplayer.get_beats(handle)
-
-	#	Set tempo for playback
-	#	tempo : Tempo in BPM
-	def set_tempo(self, tempo):
-		self.libaudioplayer.set_tempo(tempo)
-
-	#	Set file read buffer size
-	#	handle: Index of player
-	#	count: Buffer size in frames
-	#	Cannot change size whilst file is open
-	def set_buffer_size(self, handle, size):
-		self.libaudioplayer.set_buffer_size(handle, size)
-
-	#	Get file read buffer size
-	#	handle: Index of player
-	#	Returns: Buffers size in frames
-	def get_buffer_size(self, handle):
-		return self.libaudioplayer.get_buffer_size(handle)
-
-
-	#	Set quantity of file read buffers
-	#	handle: Index of player
-	#	count: Quantity of buffers
-	def set_buffer_count(self, handle, count):
-		self.libaudioplayer.set_buffer_count(handle, count)
-
-
-	#	Get quantity of file read buffers
-	#	handle: Index of player
-	#	Returns: Quantity of buffers
-	def get_buffer_count(self, handle):
-		return self.libaudioplayer.get_buffer_count(handle)
-
-
-	#	Set difference in postion that will trigger notificaton 
-	#	handle: Index of player
-	#	time: Time difference in seconds
-	def set_pos_notify_delta(self, handle, time):
-		self.libaudioplayer.set_pos_notify_delta(handle, time)
-
-
- 	#	Enable debug output
-	#	enable: True to enable debug
-	def enable_debug(self, enable=True):
-		self.libaudioplayer.enable_debug(enable)
-
-
- 	#	Get debug state
-	#	Returns: True if debug enabled
-	def is_debug(self):
-		return(self.libaudioplayer.is_debug() == 1);
-
-
-	#	Get duration of an audio file
-	#	filename: Full path and filename
-	#	Returns: Duration in seconds or zero if file cannot be opened or invalid format
-	def get_file_duration(self, filename):
-		return self.libaudioplayer.get_file_duration(bytes(filename, "utf-8"))
-
-
-	#	Get info from file metadata
-	#	filename: Full path and filename
-	#	type: Info type [1:Title, 2:Copyright, 3:Software, 4:Artist, 5:Comment, 6:Date, 7:Album, 8:License, 9:Track number, 10:Genre]
-	#	Returns: Info
-	def get_info(self, filename, type):
-		try:
-			return self.libaudioplayer.get_file_info(bytes(filename, "utf-8"), type).decode("utf-8")
-		except:
-			print("self.get_info failed for type", type)
-			return ""
-
-
-	#	Get info from file metadata
-	#	filename: Full path and filename
-	#	Returns: Dictionary of info
-	def get_file_info(self, filename):
-		data = {}
-		try:
-			data["Title"] = self.get_info(filename, 1)
-			data["Copyright"] = self.get_info(filename, 2)
-			data["Software"] = self.get_info(filename, 3)
-			data["Artist"] = self.get_info(filename, 4)
-			data["Comment"] = self.get_info(filename, 5)
-			data["Date"] = self.get_info(filename, 6)
-			data["Album"] = self.get_info(filename, 7)
-			data["License"] = self.get_info(filename, 8)
-			data["Track"] = self.get_info(filename, 9)
-			data["Genre"] = self.get_info(filename, 10)
-		except:
-			pass
-		return data
-
-
-#-------------------------------------------------------------------------------
+# Get envelope attack
+# handle: Index of player
+# Returns: Attack time in seconds
+def get_attack(handle):
+	return libaudioplayer.get_env_attack(handle)
+
+
+# Set envelope hold
+# handle: Index of player
+# attack: Time in seconds between attack and decay phase
+def set_hold(handle, hold):
+	libaudioplayer.set_env_hold(handle, hold)
+
+
+# Get envelope hold
+# handle: Index of player
+# Returns: Time in seconds between attack and decay phase
+def get_hold(handle):
+	return libaudioplayer.get_env_hold(handle)
+
+
+# Set envelope decay
+# handle: Index of player
+# decay: Decay time in seconds
+def set_decay(handle, decay):
+	libaudioplayer.set_env_decay(handle, decay)
+
+
+# Get envelope decay
+# handle: Index of player
+# Returns: Decay time in seconds
+def get_decay(handle):
+	return libaudioplayer.get_env_decay(handle)
+
+
+# Set envelope sustain
+# handle: Index of player
+# sustain: Sustain time in seconds
+def set_sustain(handle, sustain):
+	libaudioplayer.set_env_sustain(handle, sustain)
+
+
+# Get envelope sustain
+# handle: Index of player
+# Returns: Sustain time in seconds
+def get_sustain(handle):
+	return libaudioplayer.get_env_sustain(handle)
+
+
+# Set envelope release
+# handle: Index of player
+# release: Release time in seconds
+def set_release(handle, release):
+	libaudioplayer.set_env_release(handle, release)
+
+
+# Get envelope release
+# handle: Index of player
+# Returns: Release time in seconds
+def get_release(handle):
+	return libaudioplayer.get_env_release(handle)
+
+
+# Set beats in clip
+# handle: Index of player
+# beats: Quantity of beats or zero for non-beat based sample
+def set_beats(handle, beats):
+	libaudioplayer.set_beats(handle, beats)
+
+
+# Set beats in clip
+# handle: Index of player
+# Returns: Quantity of beats or zero for non-beat based sample
+def get_beats(handle):
+	return libaudioplayer.get_beats(handle)
+
+
+# Set tempo for playback
+# tempo : Tempo in BPM
+def set_tempo(tempo):
+	libaudioplayer.set_tempo(tempo)
+
+
+# Set file read buffer size
+# handle: Index of player
+# count: Buffer size in frames
+# Cannot change size whilst file is open
+def set_buffer_size(handle, size):
+	libaudioplayer.set_buffer_size(handle, size)
+
+
+# Get file read buffer size
+# handle: Index of player
+# Returns: Buffers size in frames
+def get_buffer_size(handle):
+	return libaudioplayer.get_buffer_size(handle)
+
+
+# Set quantity of file read buffers
+# handle: Index of player
+# count: Quantity of buffers
+def set_buffer_count(handle, count):
+	libaudioplayer.set_buffer_count(handle, count)
+
+
+# Get quantity of file read buffers
+# handle: Index of player
+# Returns: Quantity of buffers
+def get_buffer_count(handle):
+	return libaudioplayer.get_buffer_count(handle)
+
+
+# Set difference in postion that will trigger notificaton 
+# handle: Index of player
+# time: Time difference in seconds
+def set_pos_notify_delta(handle, time):
+	libaudioplayer.set_pos_notify_delta(handle, time)
+
+
+# Enable debug output
+# enable: True to enable debug
+def enable_debug(enable=True):
+	libaudioplayer.enable_debug(enable)
+
+
+# Get debug state
+# Returns: True if debug enabled
+def is_debug():
+	return libaudioplayer.is_debug() == 1
+
+
+# Get duration of an audio file
+# filename: Full path and filename
+# Returns: Duration in seconds or zero if file cannot be opened or invalid format
+def get_file_duration(filename):
+	return libaudioplayer.get_file_duration(bytes(filename, "utf-8"))
+
+
+# Get info from file metadata
+# filename: Full path and filename
+# itype: Info type [1:Title, 2:Copyright, 3:Software, 4:Artist, 5:Comment, 6:Date, 7:Album, 8:License, 9:Track number, 10:Genre]
+# Returns: Info
+def get_info(filename, itype):
+	try:
+		return libaudioplayer.get_file_info(bytes(filename, "utf-8"), itype).decode("utf-8")
+	except:
+		loggin.error("get_info failed for type", itype)
+		return ""
+
+
+# Get info from file metadata
+# filename: Full path and filename
+# Returns: Dictionary of info
+def get_file_info(filename):
+	data = {}
+	try:
+		data["Title"] = get_info(filename, 1)
+		data["Copyright"] = get_info(filename, 2)
+		data["Software"] = get_info(filename, 3)
+		data["Artist"] = get_info(filename, 4)
+		data["Comment"] = get_info(filename, 5)
+		data["Date"] = get_info(filename, 6)
+		data["Album"] = get_info(filename, 7)
+		data["License"] = get_info(filename, 8)
+		data["Track"] = get_info(filename, 9)
+		data["Genre"] = get_info(filename, 10)
+	except:
+		pass
+	return data
+
+
+# -------------------------------------------------------------------------------

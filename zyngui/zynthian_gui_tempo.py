@@ -30,6 +30,7 @@ from collections import deque
 
 # Zynthian specific modules
 import zynconf
+from zynlibs.zynaudioplayer import *
 from zyncoder.zyncore import lib_zyncore
 from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
@@ -179,7 +180,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
 		if self.shown:
 			if zctrl == self.bpm_zctrl:
 				self.libseq.setTempo(zctrl.value)
-				self.zyngui.state_manager.audio_player.engine.player.set_tempo(zctrl.value)
+				zynaudioplayer.set_tempo(zctrl.value)
 				logging.debug("SETTING TEMPO BPM: {}".format(zctrl.value))
 				self.replot = True
 

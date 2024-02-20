@@ -59,10 +59,10 @@ class zynthian_engine_puredata(zynthian_engine):
 
 	startup_patch = zynthian_engine.data_dir + "/presets/puredata/zynthian_startup.pd"
 
-	bank_dirs = [
-		('EX', zynthian_engine.ex_data_dir + "/presets/puredata"),
-		('MY', zynthian_engine.my_data_dir + "/presets/puredata"),
-		('_', zynthian_engine.data_dir + "/presets/puredata")
+	preset_fexts = ["pd"]
+	root_bank_dirs = [
+		('User', zynthian_engine.my_data_dir + "/presets/puredata"),
+		('System', zynthian_engine.data_dir + "/presets/puredata")
 	]
 
 	# ----------------------------------------------------------------------------
@@ -102,6 +102,9 @@ class zynthian_engine_puredata(zynthian_engine):
 	# ----------------------------------------------------------------------------
 	# Bank Managament
 	# ----------------------------------------------------------------------------
+
+	def get_bank_list(self, processor=None):
+		return self.get_bank_dirlist(recursion=2)
 
 	def set_bank(self, processor, bank):
 		return True

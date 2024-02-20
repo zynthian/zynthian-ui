@@ -1078,8 +1078,7 @@ class zynthian_gui:
 		if self.current_screen == "pattern_editor":
 			self.screens["pattern_editor"].stop_playback()
 		else:
-			self.state_manager.stop_audio_player()
-			self.state_manager.audio_player.engine.player.set_position(self.state_manager.audio_player.handle, 0.0)
+			self.state_manager.stop_audio_player(reset_pos=True)
 
 	def cuia_toggle_audio_play(self, params=None):
 		# TODO: This logic should not be here

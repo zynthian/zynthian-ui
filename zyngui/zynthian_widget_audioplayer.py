@@ -33,6 +33,7 @@ from os.path import basename
 from collections import OrderedDict
 
 # Zynthian specific modules
+from zynlibs.zynaudioplayer import *
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_widget_base
 from zyngui import zynthian_gui_config
@@ -290,10 +291,10 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.cue_points = []
 		i = 0
 		while True:
-			pos = self.processor.engine.player.get_cue_point_position(self.processor.handle, i)
+			pos = zynaudioplayer.get_cue_point_position(self.processor.handle, i)
 			if pos < 0.0:
 				break
-			name = self.processor.engine.player.get_cue_point_name(self.processor.handle, i)
+			name = zynaudioplayer.get_cue_point_name(self.processor.handle, i)
 			self.widget_canvas.create_line(
 				0,
 				0,
@@ -321,14 +322,14 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 	def update_marker(self, option, event):
 		if isinstance(event, list):
 			if event[0] == 'remove':
-				self.processor.engine.player.clear_cue_points(self.processor.handle)
+				zynaudioplayer.clear_cue_points(self.processor.handle)
 				self.update_cue_markers()
 
 			elif event[0] == 'beats':
-				self.processor.engine.player.clear_cue_points(self.processor.handle)
+				zynaudioplayer.clear_cue_points(self.processor.handle)
 				for i in range(event[1]):
 					pos = self.processor.controllers_dict['crop start'].value + (self.crop_end - self.crop_start) / self.samplerate / event[1] * i
-					id = self.processor.engine.player.add_cue_point(self.processor.handle, pos) + 1
+					id = zynaudioplayer.add_cue_point(self.processor.handle, pos) + 1
 					if id > 0:
 						self.processor.controllers_dict['cue'].value_min = 1
 						self.processor.controllers_dict['cue'].value_max = id
@@ -336,10 +337,10 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 						self.processor.controllers_dict['cue pos'].set_value(pos)
 			else:
 				# Event is a cue marker to be removed
-				id = self.processor.engine.player.remove_cue_point(self.processor.handle, event[0])
+				id = zynaudioplayer.remove_cue_point(self.processor.handle, event[0])
 				if id < 0:
 					return
-				count = self.processor.engine.player.get_cue_point_count(self.processor.handle)
+				count = zynaudioplayer.get_cue_point_count(self.processor.handle)
 				self.processor.controllers_dict['cue'].value_max = count
 				if count == 0:
 					self.processor.controllers_dict['cue'].value_min = 0
@@ -361,7 +362,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			if self.drag_marker in self.processor.controllers_dict:
 				self.processor.controllers_dict[self.drag_marker].set_value(pos)
 			else:
-				id = self.processor.engine.player.add_cue_point(self.processor.handle, pos) + 1
+				id = zynaudioplayer.add_cue_point(self.processor.handle, pos) + 1
 				if id > 0:
 					self.processor.controllers_dict['cue'].value_min = 1
 					self.processor.controllers_dict['cue'].value_max = id
@@ -646,15 +647,15 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 
 	def cuia_stop(self):
-		self.processor.engine.player.stop_playback(self.processor.handle)
-		self.processor.engine.player.set_position(self.processor.handle, 0.0)
+		zynaudioplayer.stop_playback(self.processor.handle)
+		zynaudioplayer.set_position(self.processor.handle, 0.0)
 
 
 	def cuia_toggle_play(self):
-		if self.processor.engine.player.get_playback_state(self.processor.handle):
-			self.processor.engine.player.stop_playback(self.processor.handle)
+		if zynaudioplayer.get_playback_state(self.processor.handle):
+			zynaudioplayer.stop_playback(self.processor.handle)
 		else:
-			self.processor.engine.player.start_playback(self.processor.handle)
+			zynaudioplayer.start_playback(self.processor.handle)
 
 
 	def update_wsleds(self, wsleds):
@@ -671,7 +672,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		# STOP button
 		wsl.wsleds.setPixelColor(wsleds[1], color_default)
 		# PLAY button:
-		if self.processor.engine.player.get_playback_state(self.processor.handle):
+		if zynaudioplayer.get_playback_state(self.processor.handle):
 			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_green)
 		else:
 			wsl.wsleds.setPixelColor(wsleds[2], color_default)

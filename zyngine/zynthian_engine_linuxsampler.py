@@ -97,13 +97,12 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	lscp_port = 6688
 
-	bank_dirs = [
-		('ExSFZ', zynthian_engine.ex_data_dir + "/soundfonts/sfz"),
-		('ExGIG', zynthian_engine.ex_data_dir + "/soundfonts/gig"),
-		('MySFZ', zynthian_engine.my_data_dir + "/soundfonts/sfz"),
-		('MyGIG', zynthian_engine.my_data_dir + "/soundfonts/gig"),
-		('SFZ', zynthian_engine.data_dir + "/soundfonts/sfz"),
-		('GIG', zynthian_engine.data_dir + "/soundfonts/gig")
+	preset_fexts = ["sfz", "gig"]
+	root_bank_dirs = [
+		('User GIG', zynthian_engine.my_data_dir + "/soundfonts/gig"),
+		('User SFZ', zynthian_engine.my_data_dir + "/soundfonts/sfz"),
+		('System GIG', zynthian_engine.data_dir + "/soundfonts/gig"),
+		('System SFZ', zynthian_engine.data_dir + "/soundfonts/sfz")
 	]
 
 	# ---------------------------------------------------------------------------
@@ -250,6 +249,9 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# Bank Management
 	# ---------------------------------------------------------------------------
+
+	def get_bank_list(self, processor=None):
+		return self.get_bank_dirlist(recursion=2)
 
 	def set_bank(self, processor, bank):
 		return True

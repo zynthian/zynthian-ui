@@ -30,6 +30,7 @@ import logging
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
+from zynlibs.zynaudioplayer import *
 from zyngine.zynthian_signal_manager import zynsigman
 
 from . import zynthian_gui_base
@@ -428,8 +429,7 @@ class zynthian_gui_mixer_strip():
 			try:
 				processor = self.chain.synth_slots[0][0]
 				if processor.eng_code == "AP":
-					engine = processor.engine
-					if engine.player.get_playback_state(processor.handle):
+					if zynaudioplayer.get_playback_state(processor.handle):
 						self.parent.main_canvas.itemconfig(self.play_indicator, text="▶", fill="#009000", state=tkinter.NORMAL)
 					else:
 						self.parent.main_canvas.itemconfig(self.play_indicator, text="⏹", fill="#909090", state=tkinter.NORMAL)

@@ -9,7 +9,7 @@
 
 class AUDIO_PLAYER; // Have to declare audio player class to allow typdef to work that uses the class...
 
-typedef void cb_fn_t(void*, AUDIO_PLAYER*, int, float);
+typedef void cb_fn_t(AUDIO_PLAYER*, int, float);
 
 enum playState {
     STOPPED		= 0,
@@ -147,7 +147,6 @@ class AUDIO_PLAYER {
     float src_ratio = 1.0; // Samplerate ratio of file
     float pitch_bend = 0.0; // Amount of MIDI pitch bend applied +/-range
     uint8_t pitch_bend_range = 2; // Pitchbend range in semitones
-    void * cb_object = nullptr; // Pointer to the object hosting the callback function
     cb_fn_t * cb_fn = nullptr; // Pointer to function to receive notification of change
     float pos_notify_delta; // Position time difference to trigger notification
     float varispeed = 1.0; // Ratio to adjust speed and pitch - goes to zero when stopped to allow scrubbing

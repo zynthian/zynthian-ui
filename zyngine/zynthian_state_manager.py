@@ -41,6 +41,7 @@ import zynconf
 import zynautoconnect
 
 from zyncoder.zyncore import lib_zyncore
+from zynlibs.zynaudioplayer import *
 from zynlibs.zynseq import zynseq
 from zynlibs.zynsmf import zynsmf  # Python wrapper for zynsmf (ensures initialised and wraps load() function)
 from zynlibs.zynsmf.zynsmf import libsmf  # Direct access to shared library
@@ -529,7 +530,7 @@ class zynthian_state_manager:
 
                 # Audio Player Status
                 # TODO: Update audio player status with callback
-                self.status_audio_player = self.audio_player.engine.player.get_playback_state(self.audio_player.handle)
+                self.status_audio_player = zynaudioplayer.get_playback_state(self.audio_player.handle)
 
                 # Audio Recorder Status => Implemented in zyngine/zynthian_audio_recorder.py
 
@@ -1650,19 +1651,21 @@ class zynthian_state_manager:
             self.status_audio_player = False
 
     def start_audio_player(self):
-        if (self.audio_player.preset_name and os.path.exists(self.audio_player.preset_info[0])) or self.audio_player.engine.player.get_filename(self.audio_player.handle):
-            self.audio_player.engine.player.start_playback(self.audio_player.handle)
+        if (self.audio_player.preset_name and os.path.exists(self.audio_player.preset_info[0])) or zynaudioplayer.get_filename(self.audio_player.handle):
+            zynaudioplayer.start_playback(self.audio_player.handle)
         else:
             self.audio_player.engine.load_latest(self.audio_player)
-            self.audio_player.engine.player.start_playback(self.audio_player.handle)
+            zynaudioplayer.start_playback(self.audio_player.handle)
 
-    def stop_audio_player(self):
-        self.audio_player.engine.player.stop_playback(self.audio_player.handle)
+    def stop_audio_player(self, reset_pos=False):
+        zynaudioplayer.stop_playback(self.audio_player.handle)
+        if reset_pos:
+            zynaudioplayer.set_position(self.audio_player.handle, 0.0)
 
     def toggle_audio_player(self):
         """Toggle playback of global audio player"""
 
-        if self.audio_player.engine.player.get_playback_state(self.audio_player.handle):
+        if zynaudioplayer.get_playback_state(self.audio_player.handle):
             self.stop_audio_player()
         else:
             self.start_audio_player()
@@ -1722,7 +1725,7 @@ class zynthian_state_manager:
 
     def set_tempo(self, tempo):
         self.zynseq.set_tempo(tempo)
-        self.audio_player.engine.player.set_tempo(tempo)
+        zynaudioplayer.set_tempo(tempo)
 
     def start_midi_playback(self, fpath):
         self.stop_midi_playback()

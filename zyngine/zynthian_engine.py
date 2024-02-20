@@ -23,17 +23,20 @@
 # ******************************************************************************
 
 import os
+import re
 import json
+import glob
 import liblo
 import logging
 import pexpect
+import fnmatch
 from time import sleep
 from string import Template
 from os.path import isfile, isdir, ismount, join
 
+import zynautoconnect
 from . import zynthian_controller
 from zyngui import zynthian_gui_config
-import zynautoconnect
 
 # --------------------------------------------------------------------------------
 # Basic Engine Class: Spawn a process & manage IPC communication using pexpect
@@ -146,7 +149,8 @@ class zynthian_engine(zynthian_basic_engine):
 	# Config variables
 	# ---------------------------------------------------------------------------
 
-	bank_dirs = None
+	preset_fexts = []
+	root_bank_dirs = []
 
 	# ---------------------------------------------------------------------------
 	# Initialization
@@ -254,8 +258,41 @@ class zynthian_engine(zynthian_basic_engine):
 		self.osc_end()
 
 	# ---------------------------------------------------------------------------
-	# Generating list from different sources
+	# Auxiliary functions for bank & preset management
 	# ---------------------------------------------------------------------------
+
+	@classmethod
+	def find_some_preset_file(cls, path, recursion=1):
+		rules = []
+		for ext in cls.preset_fexts:
+			rules.append(fnmatch.translate("*." + ext))
+		logging.debug("EXTENSION MATCHING RULE => {}".format("|".join(rules)))
+		rerule = re.compile("(" + "|".join(rules) + ")", re.IGNORECASE)
+		if recursion:
+			glob_pat = "/".join(["**"] * recursion)
+		else:
+			glob_pat = "*"
+		for item in glob.iglob(os.path.join(path, glob_pat), recursive=True):
+			if rerule.match(item):
+				return True
+		return False
+
+	@classmethod
+	def find_all_preset_files(cls, path, recursion=1):
+		rules = []
+		for ext in cls.preset_fexts:
+			rules.append(fnmatch.translate("*." + ext))
+		rerule = re.compile("(" + "|".join(rules) + ")", re.IGNORECASE)
+		if recursion:
+			glob_pat = "/".join(["**"] * recursion)
+		else:
+			glob_pat = "*"
+		res = []
+		for item in glob.iglob(os.path.join(path, glob_pat), recursive=True):
+			if rerule.match(item):
+				res.append(item)
+		return res
+
 
 	@staticmethod
 	def get_filelist(dpath, fext):
@@ -307,6 +344,53 @@ class zynthian_engine(zynthian_basic_engine):
 
 		return res
 
+	# Get bank dir list
+	@classmethod
+	def get_bank_dirlist(cls, recursion=1, exclude_empty=True):
+		banks = []
+
+		logging.debug(f"LOADING BANK DIRS ...")
+
+		# Internal storage banks
+		for root_bank_dir in cls.root_bank_dirs:
+			sbanks = []
+			walk = next(os.walk(root_bank_dir[1]))
+			walk[1].sort()
+			for bank_dir in walk[1]:
+				bank_path = walk[0] + "/" + bank_dir
+				if not exclude_empty or cls.find_some_preset_file(bank_path, recursion):
+					sbanks.append([bank_path, None, bank_dir, None])
+			if len(sbanks):
+				banks.append([None, None, root_bank_dir[0], None])
+				banks += sbanks
+
+		# External storage banks
+		for exd in zynthian_gui_config.get_external_storage_dirs(cls.ex_data_dir):
+			sbanks = []
+			walk = next(os.walk(exd))
+			walk[1].sort()
+			for root_bank_dir in walk[1]:
+				root_bank_path = walk[0] + "/" + root_bank_dir
+				if not exclude_empty or cls.find_some_preset_file(root_bank_path, recursion + 1):
+					walk = next(os.walk(root_bank_path))
+					walk[1].sort()
+					count = 0
+					for bank_dir in walk[1]:
+						bank_path = walk[0] + "/" + bank_dir
+						if not exclude_empty or cls.find_some_preset_file(bank_path, recursion):
+							sbanks.append([bank_path, None, root_bank_dir + "/" + bank_dir, None])
+							count += 1
+					# If there is no banks inside, the root is the bank
+					if count == 0:
+						sbanks.append([root_bank_path, None, root_bank_dir, None])
+
+			# Add root's header and banks
+			if len(sbanks):
+				banks.append([None, None, f"USB> {os.path.basename(exd)}", None])
+				banks += sbanks
+
+		return banks
+
 	# ---------------------------------------------------------------------------
 	# Processor Management
 	# ---------------------------------------------------------------------------
@@ -348,27 +432,8 @@ class zynthian_engine(zynthian_basic_engine):
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
-	def get_bank_dirs(self):
-		if self.bank_dirs is not None:
-			exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
-			xbank_dirs = []
-			for bd in self.bank_dirs:
-				if bd[1].startswith(self.ex_data_dir):
-					for exd in exdirs:
-						xbank_dirs.append((bd[0], bd[1].replace(self.ex_data_dir, exd)))
-				else:
-					xbank_dirs.append(bd)
-			return xbank_dirs
-		else:
-			return None
-
-	def get_bank_list(self, layer=None):
-		xbank_dirs = self.get_bank_dirs()
-		if xbank_dirs is not None:
-			return self.get_dirlist(xbank_dirs)
-		else:
-			logging.info('Getting Bank List for %s: NOT IMPLEMENTED!' % self.name)
-			return []
+	def get_bank_list(self, processor=None):
+		return self.get_bank_dirlist()
 
 	def set_bank(self, processor, bank):
 		self.state_manager.zynmidi.set_midi_bank_msb(processor.get_midi_chan(), bank[1])

@@ -118,10 +118,10 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	# Config variables
 	#----------------------------------------------------------------------------
 
-	bank_dirs = [
-		('EX', zynthian_engine.ex_data_dir + "/presets/zynaddsubfx/banks"),
-		('MY', zynthian_engine.my_data_dir + "/presets/zynaddsubfx/banks"),
-		('_', zynthian_engine.data_dir + "/zynbanks")
+	preset_fexts = ['xiz', 'xmz', 'xsz', 'xlz']
+	root_bank_dirs = [
+		('User', zynthian_engine.my_data_dir + "/presets/zynaddsubfx/banks"),
+		('System', zynthian_engine.data_dir + "/zynbanks")
 	]
 
 	#----------------------------------------------------------------------------
@@ -205,24 +205,24 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	@staticmethod
 	def _get_preset_list(bank):
-		preset_list=[]
-		preset_dir=bank[0]
-		index=0
+		preset_list = []
+		preset_dir = bank[0]
+		index = 0
 		logging.info("Getting Preset List for %s" % bank[2])
 		for f in sorted(os.listdir(preset_dir)):
-			preset_fpath=join(preset_dir,f)
-			ext=f[-3:].lower()
+			preset_fpath = join(preset_dir, f)
+			ext = f[-3:].lower()
 			if (isfile(preset_fpath) and (ext=='xiz' or ext=='xmz' or ext=='xsz' or ext=='xlz')):
 				try:
-					index=int(f[0:4])-1
-					title=str.replace(f[5:-4], '_', ' ')
+					index = int(f[0:4])-1
+					title = str.replace(f[5:-4], '_', ' ')
 				except:
-					index+=1
-					title=str.replace(f[0:-4], '_', ' ')
-				bank_lsb=int(index/128)
-				bank_msb=bank[1]
-				prg=index%128
-				preset_list.append([preset_fpath,[bank_msb,bank_lsb,prg],title,ext,f])
+					index += 1
+					title = str.replace(f[0:-4], '_', ' ')
+				bank_lsb = int(index/128)
+				bank_msb = bank[1]
+				prg = index % 128
+				preset_list.append([preset_fpath, [bank_msb, bank_lsb, prg], title, ext, f])
 		return preset_list
 
 
@@ -234,22 +234,22 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		if self.osc_server is None:
 			return
 		self.state_manager.start_busy("zynaddsubfx")
-		if preset[3]=='xiz':
+		if preset[3] == 'xiz':
 			self.enable_part(processor)
-			self.osc_server.send(self.osc_target, "/load-part",processor.part_i,preset[0])
+			self.osc_server.send(self.osc_target, "/load-part", processor.part_i, preset[0])
 			#logging.debug("OSC => /load-part %s, %s" % (processor.part_i,preset[0]))
-		elif preset[3]=='xmz':
+		elif preset[3] == 'xmz':
 			self.enable_part(processor)
-			self.osc_server.send(self.osc_target, "/load_xmz",preset[0])
+			self.osc_server.send(self.osc_target, "/load_xmz", preset[0])
 			logging.debug("OSC => /load_xmz %s" % preset[0])
-		elif preset[3]=='xsz':
-			self.osc_server.send(self.osc_target, "/load_xsz",preset[0])
+		elif preset[3] == 'xsz':
+			self.osc_server.send(self.osc_target, "/load_xsz", preset[0])
 			logging.debug("OSC => /load_xsz %s" % preset[0])
-		elif preset[3]=='xlz':
-			self.osc_server.send(self.osc_target, "/load_xlz",preset[0])
+		elif preset[3] == 'xlz':
+			self.osc_server.send(self.osc_target, "/load_xlz", preset[0])
 			logging.debug("OSC => /load_xlz %s" % preset[0])
 		self.osc_server.send(self.osc_target, "/volume")
-		i=0
+		i = 0
 		while self.state_manager.is_busy("zynaddsubfx"):
 			sleep(0.1)
 			if i > 100:
@@ -263,7 +263,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	def cmp_presets(self, preset1, preset2):
 		try:
-			if preset1[0]==preset2[0]:
+			if preset1[0] == preset2[0]:
 				return True
 			else:
 				return False
@@ -275,7 +275,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def get_free_parts(self):
-		free_parts=list(range(0,16))
+		free_parts = list(range(0,16))
 		for processor in self.processors:
 			try:
 				free_parts.remove(processor.part_i)
@@ -304,7 +304,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 
 	def disable_all_parts(self):
-		for i in range(0,16):
+		for i in range(0, 16):
 			self.disable_part(i)
 
 	#----------------------------------------------------------------------------
@@ -323,7 +323,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	def send_controller_value(self, zctrl):
 		if self.osc_server and zctrl.osc_path:
-			self.osc_server.send(self.osc_target,zctrl.osc_path, zctrl.get_ctrl_osc_val())
+			self.osc_server.send(self.osc_target, zctrl.osc_path, zctrl.get_ctrl_osc_val())
 		else:
 			raise Exception("NO OSC CONTROLLER")
 

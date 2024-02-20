@@ -106,107 +106,107 @@ void send_notifications(AUDIO_PLAYER * pPlayer, int param) {
     if((param == NOTIFY_ALL || param == NOTIFY_TRANSPORT) && pPlayer->last_play_state != pPlayer->play_state) {
         pPlayer->last_play_state = pPlayer->play_state;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_TRANSPORT, (float)(pPlayer->play_state));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_TRANSPORT, (float)(pPlayer->play_state));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_POSITION) && fabs(get_position(pPlayer) - pPlayer->last_position) >= pPlayer->pos_notify_delta) {
         pPlayer->last_position = get_position(pPlayer);
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_POSITION, pPlayer->last_position);
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_POSITION, pPlayer->last_position);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_GAIN) && fabs(pPlayer->gain - pPlayer->last_gain) >= 0.01) {
         pPlayer->last_gain = pPlayer->gain;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_GAIN, (float)(pPlayer->gain));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_GAIN, (float)(pPlayer->gain));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_LOOP) && pPlayer->loop != pPlayer->last_loop) {
         pPlayer->last_loop = pPlayer->loop;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_LOOP, (float)(pPlayer->loop));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_LOOP, (float)(pPlayer->loop));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_LOOP_START) && pPlayer->loop_start != pPlayer->last_loop_start) {
         pPlayer->last_loop_start = pPlayer->loop_start;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_LOOP_START, get_loop_start_time(pPlayer));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_LOOP_START, get_loop_start_time(pPlayer));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_LOOP_END) && pPlayer->loop_end != pPlayer->last_loop_end) {
         pPlayer->last_loop_end = pPlayer->loop_end;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_LOOP_END, get_loop_end_time(pPlayer));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_LOOP_END, get_loop_end_time(pPlayer));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_CROP_START) && pPlayer->crop_start != pPlayer->last_crop_start) {
         pPlayer->last_crop_start = pPlayer->crop_start;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_CROP_START, get_crop_start_time(pPlayer));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_CROP_START, get_crop_start_time(pPlayer));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_CROP_END) && pPlayer->crop_end != pPlayer->last_crop_end) {
         pPlayer->last_crop_end = pPlayer->crop_end;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_CROP_END, get_crop_end_time(pPlayer));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_CROP_END, get_crop_end_time(pPlayer));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_SUSTAIN) && pPlayer->sustain != pPlayer->last_sustain) {
         pPlayer->last_sustain = pPlayer->sustain;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_SUSTAIN, pPlayer->sustain);
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_SUSTAIN, pPlayer->sustain);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_ENV_ATTACK) && pPlayer->env_attack_rate != pPlayer->last_env_attack_rate) {
         pPlayer->last_env_attack_rate = pPlayer->env_attack_rate;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_ENV_ATTACK, pPlayer->env_attack_rate);
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_ENV_ATTACK, pPlayer->env_attack_rate);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_ENV_HOLD) && pPlayer->env_hold != pPlayer->last_env_hold) {
         pPlayer->last_env_hold = pPlayer->env_hold;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_ENV_HOLD, float(pPlayer->env_hold) / g_samplerate);
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_ENV_HOLD, float(pPlayer->env_hold) / g_samplerate);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_ENV_DECAY) && pPlayer->env_decay_rate != pPlayer->last_env_decay_rate) {
         pPlayer->last_env_decay_rate = pPlayer->env_decay_rate;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_ENV_DECAY, pPlayer->env_decay_rate);
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_ENV_DECAY, pPlayer->env_decay_rate);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_ENV_SUSTAIN) && pPlayer->env_sustain_level != pPlayer->last_env_sustain_level) {
         pPlayer->last_env_sustain_level = pPlayer->env_sustain_level;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_ENV_SUSTAIN, pPlayer->env_sustain_level);
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_ENV_SUSTAIN, pPlayer->env_sustain_level);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_ENV_RELEASE) && pPlayer->env_release_rate != pPlayer->last_env_release_rate) {
         pPlayer->last_env_release_rate = pPlayer->env_release_rate;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_ENV_RELEASE, pPlayer->env_release_rate);
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_ENV_RELEASE, pPlayer->env_release_rate);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_ENV_ATTACK_CURVE) && pPlayer->env_target_ratio_a != pPlayer->last_env_target_ratio_a) {
         pPlayer->last_env_target_ratio_a = pPlayer->env_target_ratio_a;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_ENV_ATTACK_CURVE, pPlayer->env_target_ratio_a);
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_ENV_ATTACK_CURVE, pPlayer->env_target_ratio_a);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_ENV_DECAY_CURVE) && pPlayer->env_target_ratio_dr != pPlayer->last_env_target_ratio_dr) {
         pPlayer->last_env_target_ratio_dr = pPlayer->env_target_ratio_dr;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_ENV_DECAY_CURVE, pPlayer->env_target_ratio_dr);
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_ENV_DECAY_CURVE, pPlayer->env_target_ratio_dr);
     }
     if((param == NOTIFY_ALL || param == NOTIFY_TRACK_A) && pPlayer->track_a != pPlayer->last_track_a) {
         pPlayer->last_track_a = pPlayer->track_a;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_TRACK_A, (float)(pPlayer->track_a));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_TRACK_A, (float)(pPlayer->track_a));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_TRACK_B) && pPlayer->track_b != pPlayer->last_track_b) {
         pPlayer->last_track_b = pPlayer->track_b;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_TRACK_B, (float)(pPlayer->track_b));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_TRACK_B, (float)(pPlayer->track_b));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_QUALITY) && pPlayer->src_quality != pPlayer->last_src_quality) {
         pPlayer->last_src_quality = pPlayer->src_quality;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_QUALITY, (float)(pPlayer->src_quality));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_QUALITY, (float)(pPlayer->src_quality));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_VARISPEED) && pPlayer->varispeed != pPlayer->last_varispeed) {
         pPlayer->last_varispeed = pPlayer->varispeed;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_VARISPEED, (float)(pPlayer->varispeed));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_VARISPEED, (float)(pPlayer->varispeed));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_DEBUG) && g_debug != g_last_debug) {
         g_last_debug = g_debug;
         if(pPlayer->cb_fn)
-            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer->cb_object, pPlayer, NOTIFY_DEBUG, (float)(g_debug));
+            ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_DEBUG, (float)(g_debug));
     }
 }
 
@@ -550,7 +550,6 @@ void* file_thread_fn(void * param) {
     }
     pPlayer->play_pos_frames = 0;
     pPlayer->cb_fn = NULL;
-    pPlayer->cb_object = NULL;
     if(pSrcState)
         pSrcState = src_delete(pSrcState);
 
@@ -560,10 +559,9 @@ void* file_thread_fn(void * param) {
 
 /**** player instance functions take 'handle' param to identify player instance****/
 
-uint8_t load(AUDIO_PLAYER * pPlayer, const char* filename, void* cb_object, cb_fn_t cb_fn) {
+uint8_t load(AUDIO_PLAYER * pPlayer, const char* filename, cb_fn_t cb_fn) {
     unload(pPlayer);
     pPlayer->cb_fn;
-    pPlayer->cb_object = NULL;
     pPlayer->track_a = 0;
     pPlayer->track_b = 0;
     pPlayer->filename = filename;
@@ -579,7 +577,6 @@ uint8_t load(AUDIO_PLAYER * pPlayer, const char* filename, void* cb_object, cb_f
     }
 
     if(pPlayer->file_open) {
-        pPlayer->cb_object = cb_object;
         pPlayer->cb_fn = cb_fn;
     }
     return (pPlayer->file_open == FILE_OPEN);
@@ -701,7 +698,7 @@ uint8_t save(AUDIO_PLAYER * pPlayer, const char* filename) {
     sf_close(infile);
     sf_close(outfile);
     if(overwrite)
-        load(overwrite, overwrite->filename.c_str(), overwrite->cb_object, overwrite->cb_fn);
+        load(overwrite, overwrite->filename.c_str(), overwrite->cb_fn);
     return 1;
 }
 
