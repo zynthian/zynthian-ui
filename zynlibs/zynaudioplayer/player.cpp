@@ -387,7 +387,7 @@ void* file_thread_fn(void * param) {
 
                     bool bReverse = (pPlayer->varispeed < 0.0);
                     if(bReverse) {
-                        if(pPlayer->loop) {
+                        if(pPlayer->loop == 1) {
                             // Limit read to loop range
                             if(pPlayer->file_read_pos <= pPlayer->loop_start)
                                 nMaxFrames = 0;
@@ -398,7 +398,7 @@ void* file_thread_fn(void * param) {
                             nMaxFrames = pPlayer->file_read_pos - pPlayer->crop_start;
                         }
                     } else {
-                        if(pPlayer->loop) {
+                        if(pPlayer->loop == 1) {
                             // Limit read to loop range
                             if(pPlayer->file_read_pos >= pPlayer->loop_end)
                                 nMaxFrames = 0;
@@ -437,7 +437,7 @@ void* file_thread_fn(void * param) {
                             }
                         }
                         else
-                            pPlayer->file_read_pos += nFramesRead = sf_readf_float(pFile, pBufferOut, nMaxFrames);
+                            pPlayer->file_read_pos += (nFramesRead = sf_readf_float(pFile, pBufferOut, nMaxFrames));
                     } else {
                         // Populate SRC input buffer before SRC process
                         if(bReverse) {
@@ -459,7 +459,7 @@ void* file_thread_fn(void * param) {
                             }
                         }
                         else
-                            pPlayer->file_read_pos += nFramesRead = sf_readf_float(pFile, pBufferIn + nUnusedFrames * pPlayer->sf_info.channels, nMaxFrames);
+                            pPlayer->file_read_pos += (nFramesRead = sf_readf_float(pFile, pBufferIn + nUnusedFrames * pPlayer->sf_info.channels, nMaxFrames));
                     }
 
                     getMutex();
@@ -473,15 +473,15 @@ void* file_thread_fn(void * param) {
                             // We need to perform SRC on this block of code
                             srcData.input_frames = nFramesRead;
                             int rc = src_process(pSrcState, &srcData);
-                            nUnusedFrames = nFramesRead - srcData.input_frames_used;
-                            nFramesRead = srcData.output_frames_gen;
                             if(rc) {
                                 DPRINTF("SRC failed with error %d, %lu frames generated\n", nFramesRead, srcData.output_frames_gen);
                             } else {
                                 DPRINTF("SRC suceeded - %lu frames generated, %lu frames used, %lu frames unused\n", srcData.output_frames_gen, srcData.input_frames_used, nUnusedFrames);
+                                nUnusedFrames = nFramesRead - srcData.input_frames_used;
+                                nFramesRead = srcData.output_frames_gen;
+                                // Shift unused samples to start of buffer
+                                memcpy(pBufferIn, pBufferIn + srcData.input_frames_used * sizeof(float) * pPlayer->sf_info.channels, nUnusedFrames * sizeof(float) * pPlayer->sf_info.channels);
                             }
-                            // Shift unused samples to start of buffer
-                            memcpy(pBufferIn, pBufferIn + srcData.input_frames_used * sizeof(float) * pPlayer->sf_info.channels, nUnusedFrames * sizeof(float) * pPlayer->sf_info.channels);
                         } else {
                             //DPRINTF("No SRC, read %u frames\n", nFramesRead);
                         }
@@ -518,7 +518,7 @@ void* file_thread_fn(void * param) {
                                 break;
                             }
                         }
-                    } else if(pPlayer->loop) {
+                    } else if(pPlayer->loop == 1) {
                         // Short read - looping so fill from loop start point in file
                         pPlayer->file_read_status = LOOPING;
                         //srcData.end_of_input = 1;
@@ -739,12 +739,12 @@ float get_position(AUDIO_PLAYER * pPlayer) {
     return 0.0;
 }
 
-void enable_loop(AUDIO_PLAYER * pPlayer, uint8_t bLoop) {
+void enable_loop(AUDIO_PLAYER * pPlayer, uint8_t nLoop) {
     if(!pPlayer)
         return;
     getMutex();
-    pPlayer->loop = bLoop;
-    if(bLoop && pPlayer->play_pos_frames > pPlayer->loop_end_src)
+    pPlayer->loop = nLoop;
+    if(nLoop && pPlayer->play_pos_frames > pPlayer->loop_end_src)
         pPlayer->play_pos_frames = pPlayer->loop_start_src;
     pPlayer->file_read_status = SEEKING;
     releaseMutex();
@@ -762,7 +762,7 @@ void set_loop_start_time(AUDIO_PLAYER * pPlayer, float time) {
     getMutex();
     pPlayer->loop_start = frames;
     pPlayer->loop_start_src = pPlayer->loop_start * pPlayer->src_ratio;
-    if(pPlayer->loop && pPlayer->looped)
+    if(pPlayer->loop == 1 && pPlayer->looped)
         pPlayer->file_read_status = SEEKING;
     releaseMutex();
     pPlayer->last_loop_start = -1;
@@ -786,7 +786,7 @@ void set_loop_end_time(AUDIO_PLAYER * pPlayer, float time) {
     getMutex();
     pPlayer->loop_end = frames;
     pPlayer->loop_end_src = pPlayer->loop_end * pPlayer->src_ratio;
-    if(pPlayer->loop && pPlayer->looped)
+    if(pPlayer->loop == 1 && pPlayer->looped)
         pPlayer->file_read_status = SEEKING;
     releaseMutex();
     pPlayer->last_loop_end = -1;
@@ -1221,8 +1221,9 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
         float* output_buffers[] = {pOutA, pOutB};
         bool bReverse = pPlayer->varispeed < 0.0;
 
-        if(pPlayer->play_state == STARTING && pPlayer->file_read_status != SEEKING)
+        if(pPlayer->play_state == STARTING && pPlayer->file_read_status != SEEKING) {
             pPlayer->play_state = PLAYING;
+        }
 
         if(pPlayer->play_state == PLAYING || pPlayer->play_state == STOPPING) {
             if (pPlayer->time_ratio_dirty) {
@@ -1237,6 +1238,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 pPlayer->time_ratio_dirty = false;
             }
             while(pPlayer->stretcher->available() < nFrames) {
+                // Process data from fifo until sufficient to populate this frame (first attempt may give -1 but that's okay as we will repeat)
                 size_t sampsReq = min((size_t)256, pPlayer->stretcher->getSamplesRequired());
                 size_t nBytes = min(jack_ringbuffer_read_space(pPlayer->ringbuffer_a), jack_ringbuffer_read_space(pPlayer->ringbuffer_b));
                 nBytes = min(nBytes, sampsReq * sizeof(float));
@@ -1247,11 +1249,11 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 // stretch
                 pPlayer->stretcher->process(stretch_input_buffers, nRead / sizeof(float), nRead != nBytes);
                 if(nRead == 0)
-                    break;
+                    break; // fifo buffers run dry
             }
             a_count = min(pPlayer->stretcher->available(), (int)nFrames);
             if(a_count < 0)
-                a_count = 0; 
+                a_count = 0; // If stretcher gives fault it will respond with -1
             a_count = pPlayer->stretcher->retrieve(output_buffers, a_count);
             if(pPlayer->held_note != pPlayer->env_gate)
                 set_env_gate(pPlayer, pPlayer->held_note);
@@ -1269,6 +1271,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                     pOutB[offset] *= pPlayer->gain;
                 }
             }
+            // Advance play position based on the raw (SRC'd) frames
             if(bReverse)
                 pPlayer->play_pos_frames -= r_count;
             else
@@ -1280,17 +1283,18 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 if(cue_point_play > cue && pPlayer->play_pos_frames > pPlayer->cue_points[cue].offset) {
                     pPlayer->play_pos_frames = pPlayer->cue_points[cue - 1].offset;
                     pPlayer->env_state = ENV_RELEASE; //!@todo This looks wrong
-                    if(pPlayer->loop)
+                    if(pPlayer->loop == 1)
                         pPlayer->file_read_status = SEEKING;
-                    else
+                    else {
                         pPlayer->play_state = STOPPING;
+                    }
                 } else if(a_count < nFrames && pPlayer->file_read_status == IDLE) {
                         // Reached end of file
                         pPlayer->play_pos_frames = pPlayer->crop_start_src;
                         pPlayer->play_state = STOPPING;
                 }
             } else {
-                if(pPlayer->loop) {
+                if(pPlayer->loop == 1) {
                     if(bReverse) {
                         if(pPlayer->play_pos_frames <= pPlayer->loop_start_src) {
                             size_t i = pPlayer->loop_start_src - pPlayer->play_pos_frames;
@@ -1304,38 +1308,46 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                         }
                     }
                 } else if(a_count < nFrames && pPlayer->file_read_status == IDLE) {
-                    // Reached end of file
+                    // No more data from file reader, e.g. reached end of file
                     if(bReverse)
                         pPlayer->play_pos_frames = pPlayer->crop_end_src;
                     else
                         pPlayer->play_pos_frames = pPlayer->crop_start_src;
                     pPlayer->play_state = STOPPING;
+                    pPlayer->env_state = ENV_IDLE;
+                    DPRINTF("libzynaudioplayer: Short read (%lu) and IDLE so STOPPING\n", a_count);
                 }
             }
         }
 
         if(pPlayer->env_state == ENV_END)
             pPlayer->env_state = ENV_IDLE;
-        if(pPlayer->play_state == STOPPING && pPlayer->env_state == ENV_IDLE) {
-            // Soft mute (not perfect for short last period of file but better than nowt)
-            
+        if(pPlayer->play_state == STOPPING) {
+            // Soft mute (not perfect for short last period of file but better than nowt). Adds a few ms of delay.
             for(size_t offset = 0; offset < a_count; ++offset) {
                 pOutA[offset] *= 1.0 - ((jack_default_audio_sample_t)offset / a_count);
                 pOutB[offset] *= 1.0 - ((jack_default_audio_sample_t)offset / a_count);
             }
-            
-            pPlayer->play_state = STOPPED;
-            pPlayer->varispeed = 0.0;
-            pPlayer->file_read_status = SEEKING;
 
-            //DPRINTF("libzynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", a_count, nFrames, nFrames - a_count, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
+            if(pPlayer->env_state == ENV_IDLE) {
+                pPlayer->play_state = STOPPED;
+                pPlayer->varispeed = 0.0;
+                pPlayer->file_read_status = SEEKING;
+
+                // Reset MIDI triggers, e.g. held notes that are no longer valid
+                for(uint8_t i = 0; i < 128; ++i)
+                    pPlayer->held_notes[i] = 0;
+                pPlayer->held_note = 0;
+            }
+
+            DPRINTF("libzynaudioplayer: Stopped. Used %u frames from %u in buffer to soft mute (fade). Silencing remaining %u frames (%u bytes)\n", a_count, nFrames, nFrames - a_count, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
         }
 
         // Silence remainder of frame
         memset(pOutA + a_count, 0, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
         memset(pOutB + a_count, 0, (nFrames - a_count) * sizeof(jack_default_audio_sample_t));
         if(pPlayer->env_state != ENV_IDLE)
-            for(int i = 0; i < nFrames-a_count; ++i)
+            for(int i = 0; i < nFrames - a_count; ++i)
                 process_env(pPlayer);
     }
 
@@ -1357,6 +1369,8 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 // Note off
                 pPlayer->held_notes[midiEvent.buffer[1]] = 0;
                 if(pPlayer->last_note_played == midiEvent.buffer[1]) {
+                    if(pPlayer->loop == 3)
+                        continue; //!@todo This is bluntly ignoring note-off but maybe we want to include envelope
                     pPlayer->held_note = pPlayer->sustain;
                     for (uint8_t i = 0; i < 128; ++i) {
                         if(pPlayer->held_notes[i]) {
@@ -1381,7 +1395,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                     }
                     if(pPlayer->held_note)
                         continue;
-                    if(pPlayer->sustain == 0) {
+                    if(pPlayer->loop < 2 && pPlayer->sustain == 0) {
                         stop_playback(pPlayer);
                     }
                 }
@@ -1402,8 +1416,23 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                     pPlayer->play_state = STARTING;
                 }
                 pPlayer->last_note_played = midiEvent.buffer[1];
-                pPlayer->held_notes[pPlayer->last_note_played] = 1;
-                pPlayer->held_note = 1;
+                if(pPlayer->loop == 3) {
+                    if(pPlayer->held_note) {
+                        pPlayer->held_notes[pPlayer->last_note_played] = 0;
+                        pPlayer->held_note = 0;
+                        stop_playback(pPlayer);
+                        DPRINTF("TOGGLE OFF\n");
+                    } else {
+                        pPlayer->held_notes[pPlayer->last_note_played] = 1;
+                        pPlayer->held_note = 1;
+                        DPRINTF("TOGGLE ON\n");
+                    }
+                    continue;
+                }
+                else {
+                    pPlayer->held_notes[pPlayer->last_note_played] = 1;
+                    pPlayer->held_note = 1;
+                }
                 pPlayer->stretcher->reset();
                 pPlayer->varispeed = pPlayer->play_varispeed;
                 if(!cue_point_play){

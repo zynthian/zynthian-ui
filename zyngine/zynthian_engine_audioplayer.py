@@ -301,7 +301,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self._ctrls = [
 			['gain', None, gain, 2.0],
 			['record', None, record, ['stopped', 'recording']],
-			['loop', None, loop, ['one-shot', 'looping']],
+			['loop', None, loop, ['one-shot', 'looping', 'play-all', 'toggle']],
 			['transport', None, transport, ['stopped', 'playing']],
 			['position', None, 0.0, dur],
 			['left track', None, default_a, [track_labels, track_values]],
@@ -421,7 +421,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					elif id == 3:
 						ctrl_dict['gain'].set_value(value, False)
 					elif id == 4:
-						ctrl_dict['loop'].set_value(int(value) * 64, False)
+						ctrl_dict['loop'].set_value(int(value), False)
 					elif id == 5:
 						ctrl_dict['left track'].set_value(int(value), False)
 					elif id == 6:
