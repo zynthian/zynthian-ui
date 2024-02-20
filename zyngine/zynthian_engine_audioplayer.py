@@ -94,7 +94,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	def stop(self):
 		try:
 			zynaudioplayer.stop()
-			zynaudioplayer = None
 			zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
 		except Exception as e:
 			logging.error("Failed to close audio player: %s", e)
@@ -271,7 +270,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self._ctrls = [
 			['gain', None, gain, 2.0],
 			['record', None, record, ['stopped', 'recording']],
-			['loop', None, loop, ['one-shot', 'looping']],
+			['loop', None, loop, ['one-shot', 'looping', 'play-all', 'toggle']],
 			['transport', None, transport, ['stopped', 'playing']],
 			['position', None, 0.0, dur],
 			['left track', None, default_a, [track_labels, track_values]],
@@ -391,7 +390,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					elif id == 3:
 						ctrl_dict['gain'].set_value(value, False)
 					elif id == 4:
-						ctrl_dict['loop'].set_value(int(value) * 64, False)
+						ctrl_dict['loop'].set_value(int(value), False)
 					elif id == 5:
 						ctrl_dict['left track'].set_value(int(value), False)
 					elif id == 6:
@@ -557,7 +556,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# Specific functions
 	# ---------------------------------------------------------------------------
-
 
 	# ---------------------------------------------------------------------------
 	# API methods

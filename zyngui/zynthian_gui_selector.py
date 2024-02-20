@@ -349,6 +349,8 @@ class zynthian_gui_selector(zynthian_gui_base):
 	#--------------------------------------------------------------------------
 
 	def zynpot_cb(self, i, dval):
+		if super().zynpot_cb(i, dval):
+			return
 		if self.shown and self.zselector and self.zselector.index == i:
 			self.zselector.zynpot_cb(dval)
 			if self.index != self.zselector.zctrl.value:

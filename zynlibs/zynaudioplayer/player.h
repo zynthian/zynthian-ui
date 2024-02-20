@@ -151,9 +151,9 @@ float get_position(AUDIO_PLAYER * pPlayer);
 
 /** @brief  Set loop mode
 *   @param  player_handle Handle of player provided by init_player()
-*   @param  bLoop True to loop at end of audio
+*   @param  nLoop 1 to loop at end of audio, 2 to play to end (ignore MIDI note-off)
 */
-void enable_loop(AUDIO_PLAYER * pPlayer, uint8_t bLoop);
+void enable_loop(AUDIO_PLAYER * pPlayer, uint8_t nLoop);
 
 /*  @brief  Get loop mode
 *   @param  player_handle Handle of player provided by init_player()
