@@ -109,6 +109,12 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			else:
 				self.list_data.append((self.toggle_midi_sys, 0, "\u2610 MIDI System Messages"))
 
+		transpose = lib_zyncore.get_global_transpose()
+		if transpose > 0:
+			self.list_data.append((self.global_transpose, transpose, f"[+{transpose}] Global Transpose"))
+		else:
+			self.list_data.append((self.global_transpose, transpose, f"[{transpose}] Global Transpose"))
+
 		self.list_data.append((None, 0, "> AUDIO"))
 
 		if self.state_manager.allow_rbpi_headphones():
@@ -179,6 +185,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def set_select_path(self):
 		self.select_path.set("Admin")
+		self.set_title("Admin") #TODO: Should not need to set title and select_path!
 
 	def execute_commands(self):
 		self.state_manager.start_busy("admin_commands")
@@ -350,6 +357,15 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		lib_zyncore.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
 		self.fill_list()
+
+	def global_transpose(self):
+		self.enable_param_editor(self, "Global Transpose", {'value_min':-24, 'value_max':24, 'value':lib_zyncore.get_global_transpose()})
+
+	def send_controller_value(self, zctrl):
+		""" Handle param editor"""
+		if zctrl.symbol == "Global Transpose":
+			lib_zyncore.set_global_transpose(zctrl.value)
+			self.fill_list()
 
 	def toggle_usbmidi_by_port(self):
 		if os.environ.get("ZYNTHIAN_USB_MIDI_BY_PORT", "0") == "1":

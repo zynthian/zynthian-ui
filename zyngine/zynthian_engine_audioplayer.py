@@ -83,6 +83,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 	def start(self):
 		self.player = zynaudioplayer.zynaudioplayer(self.jackname)
+		logging.warning(f"{self.player}")
 		self.jackname = self.player.get_jack_client_name()
 		self.file_exts = self.get_file_exts()
 		zynsigman.register(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
