@@ -30,9 +30,10 @@ import logging
 import oyaml as yaml
 from subprocess import check_output
 
+import zynautoconnect
 from . import zynthian_engine
 from . import zynthian_controller
-import zynautoconnect
+from zyngui import zynthian_gui_config
 
 # ------------------------------------------------------------------------------
 # FluidSynth Engine Class
@@ -81,10 +82,10 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# Config variables
 	# ---------------------------------------------------------------------------
 
-	bank_dirs = [
-		('EX', zynthian_engine.ex_data_dir + "/soundfonts/sf2"),
-		('MY', zynthian_engine.my_data_dir + "/soundfonts/sf2"),
-		('_', zynthian_engine.data_dir + "/soundfonts/sf2")
+	preset_fexts = ["sf2", "sf3"]
+	root_bank_dirs = [
+		('User', zynthian_engine.my_data_dir + "/soundfonts/sf2"),
+		('System', zynthian_engine.data_dir + "/soundfonts/sf2")
 	]
 
 	# ---------------------------------------------------------------------------
@@ -155,12 +156,36 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
+	@classmethod
+	def get_bank_filelist(cls, recursion=1, exclude_empty=True):
+		banks = []
+		logging.debug(f"LOADING BANK FILES ...")
+		# Internal storage banks
+		for root_bank_dir in cls.root_bank_dirs:
+			flist = cls.find_all_preset_files(root_bank_dir[1], recursion=2)
+			if not exclude_empty or len(flist) > 0:
+				banks.append([None, None, root_bank_dir[0], None])
+			for fpath in flist:
+				fname = os.path.basename(fpath)
+				title, filext = os.path.splitext(fname)
+				title = title.replace('_', ' ')
+				banks.append([fpath, None, title, None])
+
+		# External storage banks
+		for exd in zynthian_gui_config.get_external_storage_dirs(cls.ex_data_dir):
+			flist = cls.find_all_preset_files(exd, recursion=2)
+			if not exclude_empty or len(flist) > 0:
+				banks.append([None, None, f"USB> {os.path.basename(exd)}", None])
+			for fpath in flist:
+				fname = os.path.basename(fpath)
+				title, filext = os.path.splitext(fname)
+				title = title.replace('_', ' ')
+				banks.append([fpath, None, title, None])
+
+		return banks
+
 	def get_bank_list(self, processor=None):
-		xbank_dirs = self.get_bank_dirs()
-		if xbank_dirs is not None:
-			return self.get_filelist(xbank_dirs, "sf2") + self.get_filelist(xbank_dirs, "sf3")
-		else:
-			return []
+		return self.get_bank_filelist(recursion=2)
 
 	def set_bank(self, processor, bank):
 		if self.load_bank(bank[0]):
@@ -203,23 +228,22 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	def get_preset_list(self, bank):
 		logging.info("Getting Preset List for {}".format(bank[2]))
-		preset_list=[]
-
+		preset_list = []
 		try:
 			sfi = self.soundfont_index[bank[0]]
 		except:
 			sfi = self.load_bank(bank[0], False)
 
 		if sfi:
-			output=self.proc_cmd("inst {}".format(sfi))
+			output = self.proc_cmd("inst {}".format(sfi))
 			for f in output.split("\n"):
 				try:
-					prg=int(f[4:7])
-					bank_msb=int(f[0:3])
-					bank_lsb=int(bank_msb/128)
-					bank_msb=bank_msb%128
-					title=str.replace(f[8:-1], '_', ' ')
-					preset_list.append([bank[0] + '/' + f.strip(),[bank_msb,bank_lsb,prg],title,bank[0]])
+					prg = int(f[4:7])
+					bank_msb = int(f[0:3])
+					bank_lsb = int(bank_msb/128)
+					bank_msb = bank_msb%128
+					title = str.replace(f[8:-1], '_', ' ')
+					preset_list.append([bank[0] + '/' + f.strip(), [bank_msb, bank_lsb, prg], title, bank[0]])
 				except:
 					pass
 
@@ -234,8 +258,8 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			else:
 				return False
 
-		midi_bank=preset[1][0]+preset[1][1]*128
-		midi_prg=preset[1][2]
+		midi_bank = preset[1][0]+preset[1][1]*128
+		midi_prg = preset[1][2]
 		logging.debug("Set Preset => Processor: {}, SoundFont: {}, Bank: {}, Program: {}".format(processor.part_i, sfi, midi_bank, midi_prg))
 		self.proc_cmd("select {} {} {} {}".format(processor.part_i, sfi, midi_bank, midi_prg))
 		processor.send_ctrl_midi_cc()
@@ -276,7 +300,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 							options = { 'midi_cc': options }
 						if 'midi_chan' not in options:
 							options['midi_chan'] = processor.midi_chan
-						midi_cc=options['midi_cc']
+						midi_cc = options['midi_cc']
 						logging.debug("CTRL %s: %s" % (midi_cc, name))
 						options['name'] = str.replace(name, '_', ' ')
 						zctrls_extra[name] = zynthian_controller(self, name, options)
@@ -315,20 +339,20 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	def load_soundfont(self, sf):
 		if sf not in self.soundfont_index:
-			logging.info("Loading SoundFont '{}' ...".format(sf))
+			logging.info(f"Loading SoundFont '{sf}' ...")
 			# Send command to FluidSynth
-			output = self.proc_cmd("load \"{}\"".format(sf))
+			output = self.proc_cmd(f"load \"{sf}\"")
 			# Parse ouput ...
 			sfi = None
 			cre = re.compile(r"loaded SoundFont has ID (\d+)")
 			for line in output.split("\n"):
-				#logging.debug(" => {}".format(line))
-				res=cre.match(line)
+				#logging.debug(f" => {line}")
+				res = cre.match(line)
 				if res:
-					sfi=int(res.group(1))
+					sfi = int(res.group(1))
 			# If soundfont was loaded succesfully ...
 			if sfi is not None:
-				logging.info("Loaded SoundFont '{}' => {}".format(sf,sfi))
+				logging.info(f"Loaded SoundFont '{sf}' => {sfi}")
 				# Insert ID in soundfont_index dictionary
 				self.soundfont_index[sf] = sfi
 				# Return soundfont ID

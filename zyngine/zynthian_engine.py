@@ -78,7 +78,8 @@ class zynthian_basic_engine:
 			logging.info("Starting Engine {}".format(self.name))
 			try:
 				logging.debug("Command: {}".format(self.command))
-				# Turns out that environment's PWD is not set automatically 
+
+				# Turns out that environment's PWD is not set automatically
 				# when cwd is specified for pexpect.spawn(), so do it here.
 				if self.command_cwd:
 					self.command_env['PWD'] = self.command_cwd
@@ -348,9 +349,7 @@ class zynthian_engine(zynthian_basic_engine):
 	@classmethod
 	def get_bank_dirlist(cls, recursion=1, exclude_empty=True):
 		banks = []
-
 		logging.debug(f"LOADING BANK DIRS ...")
-
 		# Internal storage banks
 		for root_bank_dir in cls.root_bank_dirs:
 			sbanks = []
