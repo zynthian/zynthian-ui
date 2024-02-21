@@ -169,7 +169,7 @@ def load_engines():
 		logging.debug('Loading engine config failed: {}'.format(e))
 
 	# Regenerate config file if it doesn't exist or is an older version
-	if not os.path.exists(ENGINE_CONFIG_FILE) or "ID" not in engines['AE']:
+	if not os.path.exists(ENGINE_CONFIG_FILE) or 'AE' in engines and "ID" not in engines['AE']:
 		generate_engines_config_file(reset_rankings=1)
 
 	get_engines_by_type()
