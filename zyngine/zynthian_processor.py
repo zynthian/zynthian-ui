@@ -153,15 +153,12 @@ class zynthian_processor:
     # ---------------------------------------------------------------------------
 
     def get_bank_list(self):
-        #TODO: Ensure this is efficient
-        bank_list = self.engine.get_bank_list(self)
-        if self.bank_list == bank_list:
-            return self.bank_list
-        self.bank_list = bank_list
+        self.bank_list = self.engine.get_bank_list(self)
+        logging.debug("BANK LIST => \n%s" % str(self.bank_list))
 
-        # Calculate info for bank_msb
+        # Calculate info for bank_msb => Is this used by someone?
         i = 0
-        self.bank_msb_info = [[0,0], [0,0], [0,0]] # system, user, external => [offset, n]
+        self.bank_msb_info = [[0, 0], [0, 0], [0, 0]]  # system, user, external => [offset, n]
         for bank in self.bank_list:
             if bank[0] is None:
                 continue
@@ -180,11 +177,10 @@ class zynthian_processor:
 
         # Add favourites virtual bank if there is some preset marked as favourite
         if self.engine.show_favs_bank and len(self.engine.get_preset_favs(self))>0:
-            self.bank_list = [["*FAVS*",0,"*** Favorites ***"]] + self.bank_list
+            self.bank_list = [["*FAVS*", 0, "*** Favorites ***"]] + self.bank_list
             for i in range(3):
                 self.bank_msb_info[i][0] += 1
 
-        logging.debug("BANK LIST => \n%s" % str(self.bank_list))
         logging.debug("BANK MSB INFO => \n{}".format(self.bank_msb_info))
         return self.bank_list
 

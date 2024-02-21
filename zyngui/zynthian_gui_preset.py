@@ -42,10 +42,10 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		super().__init__('Preset', True)
 
 	def fill_list(self):
-		if not self.zyngui.get_current_processor():
+		proc = self.zyngui.get_current_processor()
+		if not proc:
 			logging.error("Can't fill preset list for None processor!")
 			return
-		proc = self.zyngui.get_current_processor()
 		proc.load_preset_list()
 		self.list_data = proc.preset_list
 		super().fill_list()
@@ -108,8 +108,9 @@ class zynthian_gui_preset(zynthian_gui_selector):
 
 	def preset_options_cb(self, option, preset):
 		if option.endswith("Favourite"):
-			self.zyngui.get_current_processor().toggle_preset_fav(preset)
-			self.zyngui.get_current_processor().load_preset_list()
+			proc = self.zyngui.get_current_processor()
+			proc.toggle_preset_fav(preset)
+			proc.load_preset_list()
 			self.show_preset_options()
 		elif option == "Rename":
 			self.zyngui.show_keyboard(self.rename_preset, preset[2])
@@ -190,11 +191,11 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		return self.zyngui.get_current_processor().restore_preset()
 
 	def set_select_path(self):
-		processor = self.zyngui.get_current_processor()
-		if processor:
-			if processor.show_fav_presets:
-				self.select_path.set(processor.get_basepath() + " > Favorites")
+		proc = self.zyngui.get_current_processor()
+		if proc:
+			if proc.show_fav_presets:
+				self.select_path.set(proc.get_basepath() + " > Favorites")
 			else:
-				self.select_path.set(processor.get_bankpath())
+				self.select_path.set(proc.get_bankpath())
 
 # ------------------------------------------------------------------------------

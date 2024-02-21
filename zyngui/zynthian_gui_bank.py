@@ -42,22 +42,22 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		super().__init__('Bank', True)
 
 	def fill_list(self):
-		if not self.zyngui.get_current_processor():
+		proc = self.zyngui.get_current_processor()
+		if not proc:
 			logging.error("Can't fill bank list for None processor!")
 			return
-		self.list_data = self.zyngui.get_current_processor().get_bank_list()
+		self.list_data = proc.bank_list
 		super().fill_list()
 
 	def build_view(self):
-		processor = self.zyngui.get_current_processor()
-		if processor:
-			processor.get_bank_list()
-			self.index = processor.get_bank_index()
-			if self.zyngui.get_current_processor().get_show_fav_presets():
-				if len(self.zyngui.get_current_processor().get_preset_favs()) > 0:
+		proc = self.zyngui.get_current_processor()
+		if proc:
+			self.index = proc.get_bank_index()
+			if proc.get_show_fav_presets():
+				if len(proc.get_preset_favs()) > 0:
 					self.index = 0
 				else:
-					self.current_processor.set_show_fav_presets(False)
+					proc.set_show_fav_presets(False)
 			return super().build_view()
 		else:
 			return False
@@ -67,14 +67,15 @@ class zynthian_gui_bank(zynthian_gui_selector):
 			super().show()
 
 	def select_action(self, i, t='S'):
+		proc = self.zyngui.get_current_processor()
 		if self.list_data and self.list_data[i][0] == '*FAVS*':
-			self.zyngui.get_current_processor().set_show_fav_presets(True)
+			proc.set_show_fav_presets(True)
 		else:
-			if self.zyngui.get_current_processor().set_bank(i) is None:
+			if proc.set_bank(i) is None:
 				# More setup stages to progess
 				self.build_view()
 				return
-			self.zyngui.get_current_processor().set_show_fav_presets(False)
+			proc.set_show_fav_presets(False)
 
 		# If only one bank, show to preset list
 		if len(self.list_data) <= 1:
@@ -83,7 +84,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 			self.zyngui.show_screen('preset')
 
 		# If bank is empty (no presets), show instrument control
-		if len(self.zyngui.get_current_processor().preset_list) == 0 or self.zyngui.get_current_processor().preset_list[0][0] == "":
+		if len(proc.preset_list) == 0 or proc.preset_list[0][0] == "":
 			self.zyngui.screens['preset'].select_action(0)
 
 	def arrow_right(self):
@@ -98,13 +99,14 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		self.zyngui.zynswitch_defered('B', 1)
 
 	def show_bank_options(self):
+		proc = self.zyngui.get_current_processor()
 		bank = copy.deepcopy(self.list_data[self.index])
 		bank_name = bank[2]
 		options = {}
-		if self.zyngui.get_current_processor().engine.is_preset_user(bank):
-			if hasattr(self.zyngui.get_current_processor().engine, "rename_user_bank"):
+		if proc.engine.is_preset_user(bank):
+			if hasattr(proc.engine, "rename_user_bank"):
 				options["Rename"] = bank
-			if hasattr(self.zyngui.get_current_processor().engine, "delete_user_bank"):
+			if hasattr(proc.engine, "delete_user_bank"):
 				options["Delete"] = bank
 		self.zyngui.screens['option'].config("Bank: {}".format(bank_name), options, self.bank_options_cb)
 		if len(options):
@@ -157,7 +159,8 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		super().set_selector(zs_hiden)
 
 	def set_select_path(self):
-		if self.zyngui.get_current_processor():
-			self.select_path.set(self.zyngui.get_current_processor().get_basepath())
+		proc = self.zyngui.get_current_processor()
+		if proc:
+			self.select_path.set(proc.get_basepath())
 
 # -------------------------------------------------------------------------------

@@ -267,7 +267,6 @@ class zynthian_engine(zynthian_basic_engine):
 		rules = []
 		for ext in cls.preset_fexts:
 			rules.append(fnmatch.translate("*." + ext))
-		logging.debug("EXTENSION MATCHING RULE => {}".format("|".join(rules)))
 		rerule = re.compile("(" + "|".join(rules) + ")", re.IGNORECASE)
 		if recursion:
 			glob_pat = "/".join(["**"] * recursion)
@@ -349,7 +348,6 @@ class zynthian_engine(zynthian_basic_engine):
 	@classmethod
 	def get_bank_dirlist(cls, recursion=1, exclude_empty=True):
 		banks = []
-		logging.debug(f"LOADING BANK DIRS ...")
 		# Internal storage banks
 		for root_bank_dir in cls.root_bank_dirs:
 			sbanks = []

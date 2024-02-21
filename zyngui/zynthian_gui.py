@@ -1366,20 +1366,24 @@ class zynthian_gui:
 			except:
 				logging.warning("Can't set control screen processor! ")
 
-		if self.current_screen == 'preset':
-			if len(self.get_current_processor().get_bank_list()) > 1:
-				self.replace_screen('bank')
-			else:
-				self.close_screen()
-		elif self.current_screen == 'bank':
+		if self.current_screen == 'bank':
 			#self.replace_screen('preset')
 			self.close_screen()
-		elif self.get_current_processor():
-			if len(self.get_current_processor().preset_list) > 0 and self.get_current_processor().preset_list[0][0] != '':
-				self.screens['preset'].index = self.get_current_processor().get_preset_index()
-				self.show_screen('preset', hmode=zynthian_gui.SCREEN_HMODE_ADD)
-			elif len(self.get_current_processor().get_bank_list()) > 0 and self.get_current_processor().get_bank_list()[0][0] != '':
-				self.show_screen('bank', hmode=zynthian_gui.SCREEN_HMODE_ADD)
+		else:
+			curproc = self.get_current_processor()
+			if curproc:
+				bank_list = curproc.get_bank_list()
+				if self.current_screen == 'preset':
+					if len(bank_list) > 1:
+						self.replace_screen('bank')
+					else:
+						self.close_screen()
+				else:
+					if len(curproc.preset_list) > 0 and curproc.preset_list[0][0] != '':
+						self.screens['preset'].index = curproc.get_preset_index()
+						self.show_screen('preset', hmode=zynthian_gui.SCREEN_HMODE_ADD)
+					elif len(bank_list) > 0 and bank_list[0][0] != '':
+						self.show_screen('bank', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 	cuia_preset = cuia_bank_preset
 
