@@ -59,6 +59,10 @@ class zynmixer(zynthian_engine):
 		self.lib_zynmixer.getMute.argtypes = [ctypes.c_uint8]
 		self.lib_zynmixer.getMute.restype = ctypes.c_uint8
 
+		self.lib_zynmixer.setMS.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
+		self.lib_zynmixer.getMS.argtypes = [ctypes.c_uint8]
+		self.lib_zynmixer.getMS.restypes = ctypes.c_uint8
+
 		self.lib_zynmixer.setSolo.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
 		self.lib_zynmixer.getSolo.argtypes = [ctypes.c_uint8]
 		self.lib_zynmixer.getSolo.restype = ctypes.c_uint8
@@ -134,6 +138,13 @@ class zynmixer(zynthian_engine):
 					'value_default': 0,
 					'value': self.get_mono(i),
 					'graph_path': [i, 'mono']
+				}),
+				'ms': zynthian_controller(self, 'm+s', {
+					'is_toggle': True,
+					'value_max': 1,
+					'value_default': 0,
+					'value': self.get_ms(i),
+					'graph_path': [i, 'ms']
 				}),
 				'phase': zynthian_controller(self, 'phase',{
 					'is_toggle': True,
@@ -385,6 +396,47 @@ class zynmixer(zynthian_engine):
 			self.set_mono(channel, True)
 		if update:
 			self.zctrls[channel]['mono'].set_value(self.lib_zynmixer.getMono(channel), False)
+
+
+
+	# Function to enable M+S mode
+	# channel: Index of channel
+	# enable: M+S state (True to enable)
+	# update: True for update controller
+	def set_ms(self, channel, enable, update=True):
+		if channel is None:
+			return
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS - 1
+		self.lib_zynmixer.setMS(channel, enable)
+		if update:
+			self.zctrls[channel]['ms'].set_value(enable, False)
+		zynsigman.send(zynsigman.S_AUDIO_MIXER, self.SS_ZCTRL_SET_VALUE, chan=channel, symbol="ms", value=enable)
+
+	# Function to get M+S mode
+	# channel: Index of channel
+	# returns: M+S mode (True if enabled)
+	def get_ms(self, channel):
+		if channel is None:
+			return
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS - 1
+		return self.lib_zynmixer.getMS(channel) == 1
+
+	# Function to toggle M+S mode
+	# channel: Index of channel
+	# update: True for update controller
+	def toggle_ms(self, channel, update=True):
+		if channel is None:
+			return
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS - 1
+		if self.get_ms(channel):
+			self.set_ms(channel, False)
+		else:
+			self.set_ms(channel, True)
+		if update:
+			self.zctrls[channel]['ms'].set_value(self.lib_zynmixer.getMS(channel), False)
 
 	# Function to check if channel has audio routed to its input
 	# channel: Index of channel

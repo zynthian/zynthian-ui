@@ -606,7 +606,7 @@ uint8_t save(AUDIO_PLAYER * pPlayer, const char* filename) {
     }
 
     SF_INFO sfinfo;
-    memset(&sfinfo, 0, sizeof (sfinfo)); // This triggers sf_open to populate info structure
+    sfinfo.format = 0; // This triggers sf_open to populate info structure
 
     SNDFILE* infile = sf_open(pPlayer->filename.c_str(), SFM_READ, &sfinfo);
     if(!infile || sfinfo.channels < 1) {
@@ -661,7 +661,7 @@ uint8_t save(AUDIO_PLAYER * pPlayer, const char* filename) {
         loopInfo.loop_mode = pPlayer->loop?SF_LOOP_FORWARD:SF_LOOP_NONE;
         loopInfo.root_key = pPlayer->base_note;
         //!@todo sf_command does not support SFC_SET_LOOP_INFO
-        //sf_command(outfile, SFC_SET_LOOP_INFO, &loopInfo, sizeof(loopInfo));
+        sf_command(outfile, SFC_SET_LOOP_INFO, &loopInfo, sizeof(loopInfo));
     }
 
     // loop points
@@ -1516,7 +1516,7 @@ int on_jack_samplerate(jack_nframes_t nFrames, void *pArgs) {
 }
  
 static void lib_init(void) { 
-    fprintf(stderr, "Started libzynaudioplayer\n");
+    fprintf(stderr, "Started libzynaudioplayer using %s\n", sf_version_string());
     jack_status_t nStatus;
     jack_options_t nOptions = JackNoStartServer;
 
