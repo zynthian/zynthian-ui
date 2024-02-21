@@ -114,7 +114,6 @@ class zynthian_chain_manager:
             67: [False],
             69: [False]
         }
-        self.add_chain(0, audio_thru=True, fast_refresh=False)
 
     # ------------------------------------------------------------------------
     # Engine Management

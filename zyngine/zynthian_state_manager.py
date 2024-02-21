@@ -196,6 +196,7 @@ class zynthian_state_manager:
         self.ctrldev_manager = zynthian_ctrldev_manager(self)
         self.reload_midi_config()
         self.create_audio_player()
+        self.chain_manager.add_chain(0)
 
         self.exit_flag = False
         self.slow_thread = Thread(target=self.slow_thread_task)
