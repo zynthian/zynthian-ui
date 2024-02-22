@@ -28,10 +28,10 @@ import ctypes
 import logging
 import traceback
 from glob import glob
-from time import monotonic
 from threading import Thread
 from queue import SimpleQueue
 from datetime import datetime
+from time import sleep, monotonic
 from json import JSONEncoder, JSONDecoder
 from subprocess import check_output, STDOUT
 from os.path import basename, isdir, isfile, join, dirname, splitext
