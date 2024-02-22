@@ -27,6 +27,7 @@ import tkinter
 import logging
 
 # Zynthian specific modules
+from zyngine.zynthian_signal_manager import zynsigman
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
@@ -57,9 +58,19 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 	def hide_waiting_label(self):
 		self.zs3_waiting_label.grid_forget()
 
+	def build_view(self):
+		if super().build_view():
+			zynsigman.register_queued(zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
+			zynsigman.register_queued(zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_SAVE_ZS3, self.cb_save_zs3)
+			return True
+		else:
+			return False
+
 	def hide(self):
 		if self.shown:
 			self.disable_midi_learn()
+			zynsigman.unregister(zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
+			zynsigman.unregister(zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_SAVE_ZS3, self.cb_save_zs3)
 			super().hide()
 
 	def fill_list(self):
@@ -87,13 +98,24 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 
 		super().fill_list()
 
+	def cb_load_zs3(self, zs3_id):
+		if self.shown:
+			for i, row in enumerate(self.list_data):
+				if row[0] == zs3_id:
+					self.select(i)
+					break
+
+	def cb_save_zs3(self, zs3_id):
+		if self.shown:
+			self.update_list()
+			self.disable_midi_learn()
+			self.cb_load_zs3(zs3_id)
+
 	def select_action(self, i, t='S'):
 		zs3_index = self.list_data[i][0]
 		if zs3_index == "SAVE_ZS3":
 			self.zyngui.state_manager.disable_learn_pc()
 			self.zyngui.state_manager.save_zs3()
-			self.update_list()
-			self.disable_midi_learn()
 			return True
 		else:
 			if t == 'S':
@@ -130,11 +152,11 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 		self.zyngui.state_manager.disable_learn_pc()
 		self.hide_waiting_label()
 
-	def set_select_path(self):
-		self.select_path.set("ZS3 (SubSnapShots)")
-
 	def back_action(self):
 		self.zyngui.state_manager.disable_learn_pc()
 		return False
+
+	def set_select_path(self):
+		self.select_path.set("ZS3 (SubSnapShots)")
 
 # -------------------------------------------------------------------------------

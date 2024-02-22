@@ -71,6 +71,8 @@ class zynthian_state_manager:
     # Subsignals are defined inside each module. Here we define state manager subsignals:
     SS_MIDI_PLAYER_STATE = 2
     SS_MIDI_RECORDER_STATE = 3
+    SS_LOAD_ZS3 = 4
+    SS_SAVE_ZS3 = 5
 
     def __init__(self):
         """ Create an instance of a state manager
@@ -1199,6 +1201,7 @@ class zynthian_state_manager:
             self.set_busy_details("restoring midi capture state")
             self.set_midi_capture_state(zs3_state['midi_capture'])
 
+        zynsigman.send(zynsigman.S_STATE_MAN, self.SS_LOAD_ZS3, zs3_id=zs3_id)
         return True
 
     def save_zs3(self, zs3_id=None, title=None):
@@ -1298,13 +1301,12 @@ class zynthian_state_manager:
                 "preset_info": processor.preset_info,
                 "controllers": {}
             }
-            # Add controllers that differ to their default (preset) values
+            # Add controllers
             for symbol, zctrl in processor.controllers_dict.items():
-                ctrl_state = {}
-                if zctrl.value != zctrl.value_default:
-                    ctrl_state["value"] = zctrl.value
-                if ctrl_state:
-                    processor_state["controllers"][symbol] = ctrl_state
+                # that differ to their default (preset) values?? =>
+                # It doesn't work like this! Presets are not always reloaded, etc.
+                # if zctrl.value != zctrl.value_default:
+                processor_state["controllers"][symbol] = {"value": zctrl.value}
             processor_states[id] = processor_state
         if processor_states:
             self.zs3[zs3_id]["processors"] = processor_states
@@ -1318,6 +1320,8 @@ class zynthian_state_manager:
         mcstate = self.get_midi_capture_state()
         if mcstate:
             self.zs3[zs3_id]["midi_capture"] = mcstate
+
+        zynsigman.send(zynsigman.S_STATE_MAN, self.SS_SAVE_ZS3, zs3_id=zs3_id)
 
 
     def delete_zs3(self, zs3_index):

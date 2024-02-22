@@ -792,6 +792,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				self.zynmixer.enable_dpm(0, self.MAIN_MIXBUS_STRIP_INDEX - 1, False)
 			self.zynmixer.disable_midi_learn()
 			zynsigman.unregister(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_control)
+			zynsigman.unregister(zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
 			zynsigman.unregister(zynsigman.S_CHAIN_MAN, self.zyngui.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
 			zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_ARM, self.update_control_arm)
 			zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
@@ -811,6 +812,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		self.highlight_active_chain(True)
 		self.setup_zynpots()
 		zynsigman.register(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_control)
+		zynsigman.register_queued(zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
 		zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.zyngui.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
 		zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_ARM, self.update_control_arm)
 		zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
@@ -869,6 +871,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Funtion to handle active chain changes
 	def update_active_chain(self, active_chain):
 		self.highlight_active_chain()
+
+	def cb_load_zs3(self, zs3_id):
+		self.refresh_visible_strips()
 
 	# --------------------------------------------------------------------------
 	# Mixer Functionality

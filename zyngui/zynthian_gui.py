@@ -1955,19 +1955,10 @@ class zynthian_gui:
 		num : CC number
 		"""
 
-		# Refresh screen after loading ZS3 => Buffff!
-		if self.current_screen == 'audio_mixer':
-			self.screens['audio_mixer'].refresh_visible_strips()
-		elif self.current_screen == 'control':
+		# Refresh control screen after loading ZS3 => Buffff!
+		if self.current_screen == 'control':
 			self.chain_control()
-		elif self.current_screen == 'zs3':
-			self.screens['zs3'].update_list()
-			self.screens['zs3'].disable_midi_learn()
-		else:
-			try:
-				self.screens[self.current_screen].refresh()
-			except:
-				pass
+
 
 	def cb_midi_note_on(self, izmip, chan, note, vel):
 		"""Handle MIDI_NOTE_ON signal
