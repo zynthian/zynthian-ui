@@ -547,6 +547,9 @@ class zynthian_gui:
 			if screen_obj != exclude_obj:
 				screen_obj.hide()
 
+	def reset_screen_history(self):
+		self.screen_history = []
+
 	def show_screen(self, screen=None, hmode=SCREEN_HMODE_ADD):
 		self.screen_lock.acquire()
 		self.cancel_screen_timer()
@@ -807,6 +810,7 @@ class zynthian_gui:
 						processor = self.chain_manager.add_processor(self.modify_chain_status["chain_id"], self.modify_chain_status["engine"], True, slot)
 						if processor:
 							self.chain_manager.remove_processor(self.modify_chain_status["chain_id"], old_processor)
+							self.close_screen("loading")
 							self.chain_control(self.modify_chain_status["chain_id"], processor)
 				else:
 					# Adding processor to existing chain
@@ -814,6 +818,7 @@ class zynthian_gui:
 					post_fader = "post_fader" in self.modify_chain_status and self.modify_chain_status["post_fader"]
 					processor = self.chain_manager.add_processor(self.modify_chain_status["chain_id"], self.modify_chain_status["engine"], parallel=parallel, post_fader=post_fader)
 					if processor:
+						self.close_screen("loading")
 						self.chain_control(self.modify_chain_status["chain_id"], processor)
 					else:
 						self.show_screen_reset("audio_mixer")
@@ -835,12 +840,13 @@ class zynthian_gui:
 						self.modify_chain_status["engine"]
 					)
 					#self.modify_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
-					if processor is None:
+					if processor:
+						self.close_screen("loading")
+						self.chain_control(chain_id, processor)
+					else:
 						# Created empty chain
 						# self.chain_manager.set_active_chain_by_id(chain_id)
 						self.show_screen_reset("audio_mixer")
-						return
-					self.chain_control(chain_id, processor)
 				else:
 					# Select MIDI channel
 					logging.debug(self.modify_chain_status)
@@ -851,6 +857,7 @@ class zynthian_gui:
 						chan_all = False
 					self.screens["midi_chan"].set_mode("ADD", chan_all=chan_all)
 					self.show_screen("midi_chan")
+
 		elif "type" in self.modify_chain_status:
 			# We know the type so select the engine
 			self.show_screen("engine")
@@ -2108,16 +2115,18 @@ class zynthian_gui:
 						self.show_loading(busy_message, busy_details)
 				else:
 					busy_error = self.state_manager.get_busy_error()
-					busy_warning = self.state_manager.get_busy_warning()
-					busy_success = self.state_manager.get_busy_success()
 					if busy_error:
 						self.screens['loading'].set_error(busy_error)
-					elif busy_warning:
-						self.screens['loading'].set_warning(busy_warning)
-					elif busy_success:
-						self.screens['loading'].set_success(busy_success)
-					elif busy_message:
-						self.screens['loading'].set_title(busy_message)
+					else:
+						busy_warning = self.state_manager.get_busy_warning()
+						if busy_warning:
+							self.screens['loading'].set_warning(busy_warning)
+						else:
+							busy_success = self.state_manager.get_busy_success()
+							if busy_success:
+								self.screens['loading'].set_success(busy_success)
+							elif busy_message:
+								self.screens['loading'].set_title(busy_message)
 					if busy_details:
 						self.screens['loading'].set_details(busy_details)
 			else:
