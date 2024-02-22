@@ -64,6 +64,7 @@ struct dynamic {
     uint8_t mute;          // 1 if muted
     uint8_t solo;          // 1 if solo
     uint8_t mono;          // 1 if mono
+    uint8_t ms;            // 1 if MS decoding
     uint8_t phase;         // 1 if channel B phase reversed
     uint8_t inRouted;      // 1 if source routed to channel
     uint8_t outRouted;     // 1 if output routed
@@ -206,77 +207,53 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
             }
 
             // Iterate samples scaling each and adding to output and set DPM if any samples louder than current DPM
-            if (g_dynamic[chan].mono) {
-                for (frame = 0; frame < nFrames; frame++) {
-                    if (chan == MAX_CHANNELS - 1) {
-                        // Mix aux channel input and normalised channels mix
-                        fSampleM = pInA[frame] + pAuxA[frame];
-                        fSampleB = pInB[frame] + pAuxB[frame];
-                    } else {
-                        fSampleM = pInA[frame];
-                        fSampleB = pInB[frame];
-                    }
-                    if (g_dynamic[chan].phase)
-                        fSampleM -= fSampleB;
-                    else
-                        fSampleM += fSampleB;
-                    fSampleA = fSampleM * curLevelA / 2;
-                    fSampleB = fSampleM * curLevelB / 2;
-                    if (isinf(fSampleA))
-                        fSampleA = 1.0;
-                    if (isinf(fSampleB))
-                        fSampleB = 1.0;
-                    pChanOutA[frame] = fSampleA;
-                    pChanOutB[frame] = fSampleB;
-                    curLevelA += fDeltaA;
-                    curLevelB += fDeltaB;
-                    if (g_dynamic[chan].enable_dpm) {
-                        fSampleA = fabs(fSampleA);
-                        if (fSampleA > g_dynamic[chan].dpmA)
-                            if (g_dynamic[chan].dpmA > 1.0)
-                                g_dynamic[chan].dpmA = 1.0;
-                            else
-                                g_dynamic[chan].dpmA = fSampleA;
-                        if (fSampleB > g_dynamic[chan].dpmB)
-                            if (g_dynamic[chan].dpmB > 1.0)
-                                g_dynamic[chan].dpmB = 1.0;
-                            else
-                                g_dynamic[chan].dpmB = fSampleB;
-                    }
+            for (frame = 0; frame < nFrames; frame++) {
+                if (chan == MAX_CHANNELS - 1) {
+                    // Mix aux channel input and normalised channels mix
+                    fSampleA = (pInA[frame] + pAuxA[frame]);
+                    fSampleB = (pInB[frame] + pAuxB[frame]);
+                } else {
+                    fSampleA = pInA[frame];
+                    fSampleB = pInB[frame];
                 }
-            } else {
-                for (frame = 0; frame < nFrames; frame++) {
-                    if (chan == MAX_CHANNELS - 1) {
-                        // Mix aux channel input and normalised channels mix
-                        fSampleA = (pInA[frame] + pAuxA[frame]) * curLevelA;
-                        fSampleB = (pInB[frame] + pAuxB[frame]) * curLevelB;
-                    } else {
-                        fSampleA = pInA[frame] * curLevelA;
-                        fSampleB = pInB[frame] * curLevelB;
-                    }
-                    // Check for error
-                    if (isinf(fSampleA))
-                        fSampleA = 1.0;
-                    if (isinf(fSampleB))
-                        fSampleB = 1.0;
-                    // Handle channel phase reverse
-                    if (g_dynamic[chan].phase)
-                        fSampleB = -fSampleB;
+                // Handle channel phase reverse
+                if (g_dynamic[chan].phase)
+                    fSampleB = -fSampleB;
 
-                    pChanOutA[frame] += fSampleA;
-                    pChanOutB[frame] += fSampleB;
-                    curLevelA += fDeltaA;
-                    curLevelB += fDeltaB;
-                    if (g_dynamic[chan].enable_dpm) {
-                        fSampleA = fabs(fSampleA);
-                        if (fSampleA > g_dynamic[chan].dpmA)
-                            g_dynamic[chan].dpmA = fSampleA;
-                        fSampleB = fabs(fSampleB);
-                        if (fSampleB > g_dynamic[chan].dpmB)
-                            g_dynamic[chan].dpmB = fSampleB;
-                    }
+                // Decode M+S
+                if (g_dynamic[chan].ms) {
+                    fSampleM = fSampleA + fSampleB;
+                    fSampleB = fSampleA - fSampleB;
+                    fSampleA = fSampleM;
+                }
+
+                // Handle mono
+                if (g_dynamic[chan].mono) {
+                    fSampleA = (fSampleA + fSampleB) / 2.0;
+                    fSampleB = fSampleA;
+                }
+
+                pChanOutA[frame] += fSampleA * curLevelA;
+                pChanOutB[frame] += fSampleB * curLevelB;
+
+                // Check for error
+                if (isinf(pChanOutA[frame]))
+                    pChanOutA[frame] = 1.0;
+                if (isinf(pChanOutB[frame]))
+                    pChanOutB[frame] = 1.0;
+
+                curLevelA += fDeltaA;
+                curLevelB += fDeltaB;
+                if (g_dynamic[chan].enable_dpm) {
+                    fSampleA = fabs(pChanOutA[frame]);
+                    if (fSampleA > g_dynamic[chan].dpmA)
+                        g_dynamic[chan].dpmA = fSampleA;
+                    fSampleB = fabs(pChanOutB[frame]);
+                    if (fSampleB > g_dynamic[chan].dpmB)
+                        g_dynamic[chan].dpmB = fSampleB;
                 }
             }
+
             // Update peak hold and scale DPM for damped release
             if (g_dynamic[chan].enable_dpm) {
                 if (g_dynamic[chan].dpmA > g_dynamic[chan].holdA)
@@ -364,6 +341,7 @@ int init() {
         g_dynamic[chan].balance = 0.0;
         g_dynamic[chan].reqbalance = 0.0;
         g_dynamic[chan].mute = 0;
+        g_dynamic[chan].ms = 0;
         g_dynamic[chan].phase = 0;
         g_dynamic[chan].enable_dpm = 1;
         char sName[10];
@@ -564,6 +542,18 @@ uint8_t getMono(uint8_t channel) {
     if (channel >= MAX_CHANNELS)
         channel = MAX_CHANNELS - 1;
     return g_dynamic[channel].mono;
+}
+
+void setMS(uint8_t channel, uint8_t enable) {
+    if (channel >= MAX_CHANNELS)
+        channel = MAX_CHANNELS - 1;
+    g_dynamic[channel].ms = enable != 0;
+}
+
+uint8_t getMS(uint8_t channel) {
+    if (channel >= MAX_CHANNELS)
+        channel = MAX_CHANNELS - 1;
+    return g_dynamic[channel].ms;
 }
 
 void reset(uint8_t channel) {

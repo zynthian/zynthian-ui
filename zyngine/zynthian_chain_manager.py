@@ -796,7 +796,13 @@ class zynthian_chain_manager:
             for src_chain in self.chains.values():
                 if chain_id in src_chain.audio_out:
                     src_chain.rebuild_graph()
-        zynautoconnect.request_audio_connect(True)
+
+        if chain.mixer_chan is not None:
+            # Audio chain so mute main output whilst making change (blunt but effective)
+            mute = self.state_manager.zynmixer.get_mute(255)
+            self.state_manager.zynmixer.set_mute(255, True, False)
+            zynautoconnect.request_audio_connect(True)
+            self.state_manager.zynmixer.set_mute(255, mute, False)
         zynautoconnect.request_midi_connect(True)
 
     def remove_processor(self, chain_id, processor, stop_engine=True, autoroute=True):

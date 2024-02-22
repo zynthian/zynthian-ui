@@ -273,6 +273,10 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			options['\u2612 Phase reverse'] = 'phase'
 		else:
 			options['\u2610 Phase reverse'] = 'phase'
+		if self.zyngui.state_manager.zynmixer.get_ms(self.chain.mixer_chan):
+			options['\u2612 M+S'] = 'ms'
+		else:
+			options['\u2610 M+S'] = 'ms'
 
 		self.zyngui.screens['option'].config("Audio options", options, self.audio_menu_cb)
 		self.zyngui.show_screen('option')
@@ -280,6 +284,8 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 	def audio_menu_cb(self, options, params):
 		if params == 'mono':
 			self.zyngui.state_manager.zynmixer.toggle_mono(self.chain.mixer_chan)
+		elif params == 'ms':
+			self.zyngui.state_manager.zynmixer.toggle_ms(self.chain.mixer_chan)
 		elif params == 'phase':
 			self.zyngui.state_manager.zynmixer.toggle_phase(self.chain.mixer_chan)
 		self.audio_options()

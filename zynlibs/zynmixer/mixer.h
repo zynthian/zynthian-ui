@@ -108,6 +108,18 @@ void setMono(uint8_t channel, uint8_t mono);
 */
 uint8_t getMono(uint8_t channel);
 
+/** @brief  Enable MS decode mode
+*   @param  channel Index of channel
+*   @param  enable (0: Stereo, 1: MS decode)
+*/
+void setMS(uint8_t channel, uint8_t enable);
+
+/** @brief  Get MS decode mode
+*   @param  channel Index of channel
+*   @retval uint8_t MS decode mode (0: Stereo, 1: MS decode)
+*/
+uint8_t getMS(uint8_t channel);
+
 /** @brief  Set phase state of channel
 *   @param  channel Index of channel
 *   @param  phase (0: in phase, 1: phase reversed)
