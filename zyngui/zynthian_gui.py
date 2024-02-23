@@ -1308,15 +1308,12 @@ class zynthian_gui:
 
 	def cuia_chain_control(self, params=None):
 		try:
-			# Select chain by ID
-			chain_id = params[0]
 			# Select chain by index
-			if isinstance(chain_id, int):
-				index = params[0]
-				if index == 0:
-					chain_id = 0
-				else:
-					chain_id = self.chain_manager.get_chain_id_by_index(params[0] - 1)
+			index = int(params[0])
+			if index == 0:
+				chain_id = 0
+			else:
+				chain_id = self.chain_manager.get_chain_id_by_index(index - 1)
 		except:
 			chain_id = self.chain_manager.active_chain_id
 		self.chain_control(chain_id)
