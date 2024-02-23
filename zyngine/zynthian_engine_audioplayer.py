@@ -109,7 +109,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.processors.append(processor)
 		processor.handle = handle
 		processor.jackname = self.jackname
-		processor.jackname = "{}:out_{:02d}(a|b)".format(self.jackname, zynaudioplayer.get_index(handle))
+		processor.jackname = f"{self.jackname}:out_{zynaudioplayer.get_index(handle):02d}(a|b)"
 		self.set_midi_chan(processor)
 		self.monitors_dict[processor.handle] = {}
 		self.monitors_dict[processor.handle]["filename"] = ""
@@ -166,7 +166,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		for preset in file_presets:
 			fparts = os.path.splitext(preset[4])
 			duration = zynaudioplayer.get_file_duration(preset[0])
-			preset.append("{} ({:02d}:{:02d})".format(fparts[1], int(duration/60), round(duration)%60))
+			preset.append(f"{fparts[1]} ({int(duration/60):02d}:{round(duration)%60:02d})")
 		presets += file_presets
 		return presets
 
@@ -196,7 +196,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			loop = 'looping'
 		else:
 			loop = 'one-shot'
-		logging.debug("Loading Audio Track '{}' in player {}".format(preset[0], processor.handle))
+		logging.debug(f"Loading Audio Track '{preset[0]}' in player {processor.handle}")
 		if zynaudioplayer.get_playback_state(processor.handle):
 			transport = 'playing'
 		else:
@@ -240,7 +240,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			elif channels > 1:
 				default_b = 1
 			for track in range(channels):
-				track_labels.append('{}'.format(track + 1))
+				track_labels.append(f'{track + 1}')
 				track_values.append(track)
 			self._ctrl_screens = [
 				['main', ['record', 'transport', 'position', 'gain']],
@@ -321,7 +321,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	def delete_preset(self, bank, preset):
 		try:
 			os.remove(preset[0])
-			os.remove("{}.png".format(preset[0]))
+			os.remove(f"{preset[0]}.png")
 		except Exception as e:
 			logging.debug(e)
 
@@ -338,7 +338,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		if src_ext != dest_ext:
 			new_preset_name += "." + src_ext
 		try:
-			os.rename(preset[0], "{}/{}".format(bank[0], new_preset_name))
+			os.rename(preset[0], f"{bank[0]}/{new_preset_name}")
 		except Exception as e:
 			logging.debug(e)
 
