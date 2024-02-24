@@ -108,7 +108,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			return
 		self.processors.append(processor)
 		processor.handle = handle
-		processor.jackname = self.jackname
+		self.jackname = zynaudioplayer.get_jack_client_name()
 		processor.jackname = f"{self.jackname}:out_{zynaudioplayer.get_index(handle):02d}(a|b)"
 		self.set_midi_chan(processor)
 		self.monitors_dict[processor.handle] = {}
