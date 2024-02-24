@@ -70,7 +70,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 			port_names = [("Main mixbus", 0)]
 			self.list_data.append((None, None, "> Chain inputs"))
 			for chain_id, chain in self.zyngui.chain_manager.chains.items():
-				if chain_id == 0 or chain == self.chain or not chain.is_audio():
+				if chain_id == 0 or chain == self.chain or not chain.audio_thru:
 					continue
 				if chain.is_synth() and chain.synth_slots[0][0].type != "Special":
 					continue
