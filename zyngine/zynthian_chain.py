@@ -344,7 +344,7 @@ class zynthian_chain:
                 #else:
                     sources = [f"zynmixer:output_{self.mixer_chan + 1:02d}"]
             for output in self.get_audio_out():
-                self.audio_routes[output] = sources
+                self.audio_routes[output] = sources.copy()
 
         zynautoconnect.release_lock()
 

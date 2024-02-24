@@ -75,6 +75,10 @@ class zynmixer(zynthian_engine):
 		self.lib_zynmixer.getPhase.argtypes = [ctypes.c_uint8]
 		self.lib_zynmixer.getPhase.restype = ctypes.c_uint8
 
+		self.lib_zynmixer.setNormalise.argtypes = [ctypes.c_uint8, ctypes.c_uint8]
+		self.lib_zynmixer.getNormalise.argtypes = [ctypes.c_uint8]
+		self.lib_zynmixer.getNormalise.restype = ctypes.c_uint8
+
 		self.lib_zynmixer.reset.argtypes = [ctypes.c_uint8]
 
 		self.lib_zynmixer.isChannelRouted.argtypes = [ctypes.c_uint8]
@@ -437,6 +441,27 @@ class zynmixer(zynthian_engine):
 			self.set_ms(channel, True)
 		if update:
 			self.zctrls[channel]['ms'].set_value(self.lib_zynmixer.getMS(channel), False)
+
+	# Function to set internal normalisation of a channel when its direct output is not routed
+	# channel: Index of channel
+	# enable: True to enable internal normalisation
+	def normalise(self, channel, enable):
+		if channel is None:
+			return
+		if channel >= self.MAX_NUM_CHANNELS - 1:
+			return # Don't allow normalisation of main mixbus (to itself)
+		self.lib_zynmixer.setNormalise(channel, enable)
+
+	# Function to get the internal normalisation state of s channel
+	# channel: Index of channel
+	# enable: True to enable internal normalisation
+	# update: True for update controller
+	def is_normalised(self, channel):
+		if channel is None:
+			return False
+		if channel >= self.MAX_NUM_CHANNELS:
+			channel = self.MAX_NUM_CHANNELS - 1
+		return self.lib_zynmixer.getNormalise(channel)
 
 	# Function to check if channel has audio routed to its input
 	# channel: Index of channel

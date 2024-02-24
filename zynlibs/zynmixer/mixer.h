@@ -132,6 +132,18 @@ void setPhase(uint8_t channel, uint8_t phase);
 */
 uint8_t getPhase(uint8_t channel);
 
+/** @brief  Set internal normalisation of channel
+*   @param  channel Index of channel
+*   @param  enable 1 to enable internal normalisation when channel direct output not routed 
+*/
+void setNormalise(uint8_t channel, uint8_t enable);
+
+/** @brief  Get internal normalisation of channel
+*   @param  channel Index of channel
+*   @retval uint8_t 1 if channel normalised
+*/
+uint8_t getNormalise(uint8_t channel, uint8_t enable);
+
 /** @brief  Reset a channel to default settings
 *   @param  channel Index of channel
 */

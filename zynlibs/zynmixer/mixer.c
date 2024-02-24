@@ -66,6 +66,7 @@ struct dynamic {
     uint8_t mono;          // 1 if mono
     uint8_t ms;            // 1 if MS decoding
     uint8_t phase;         // 1 if channel B phase reversed
+    uint8_t normalise;     // 1 if channel normalised to main output (when output not routed)
     uint8_t inRouted;      // 1 if source routed to channel
     uint8_t outRouted;     // 1 if output routed
     uint8_t enable_dpm;    // 1 to enable calculation of peak meter
@@ -201,11 +202,11 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
                 pChanOutB = jack_port_get_buffer(g_dynamic[chan].outPortB, nFrames);
                 memset(pChanOutA, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
                 memset(pChanOutB, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
-            } else if (chan < MAX_CHANNELS - 1) {
+            } else if (chan < MAX_CHANNELS - 1 && g_dynamic[chan].normalise) {
                 pChanOutA = pAuxA;
                 pChanOutB = pAuxB;
             } else {
-                return 0; //!@todo This looks wrong. If main output is not routed we don't process any audio
+                pChanOutA = pChanOutB = NULL;
             }
 
             // Iterate samples, scaling each and adding to output and set DPM if any samples louder than current DPM
@@ -246,9 +247,10 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
                     fSampleB = 1.0;
 
                 // Write sample to output buffer
-                pChanOutA[frame] += fSampleA;
-                pChanOutB[frame] += fSampleB;
-
+                if(pChanOutA) {
+                    pChanOutA[frame] += fSampleA;
+                    pChanOutB[frame] += fSampleB;
+                }
                 curLevelA += fDeltaA;
                 curLevelB += fDeltaB;
 
@@ -365,6 +367,7 @@ int init() {
         g_dynamic[chan].ms = 0;
         g_dynamic[chan].phase = 0;
         g_dynamic[chan].enable_dpm = 1;
+        g_dynamic[chan].normalise = 1;
         char sName[10];
         sprintf(sName, "input_%02lda", chan + 1);
         if (!(g_dynamic[chan].inPortA = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0))) {
@@ -498,8 +501,26 @@ void setPhase(uint8_t channel, uint8_t phase) {
 
 uint8_t getPhase(uint8_t channel) {
     if (channel >= MAX_CHANNELS)
-        return channel = MAX_CHANNELS - 1;
+        return 0;
+    if (channel >= MAX_CHANNELS)
+        channel = MAX_CHANNELS - 1;
     return g_dynamic[channel].phase;
+}
+
+void setNormalise(uint8_t channel, uint8_t enable) {
+    if (channel >= MAX_CHANNELS)
+        channel = MAX_CHANNELS - 1;
+    g_dynamic[channel].normalise = enable;
+    sprintf(g_oscpath, "/mixer/normalise%d", channel);
+    sendOscInt(g_oscpath, enable);
+}
+
+uint8_t getNormalise(uint8_t channel, uint8_t enable) {
+    if (channel >= MAX_CHANNELS)
+        return 0;
+    if (channel >= MAX_CHANNELS)
+         channel = MAX_CHANNELS - 1;
+    return g_dynamic[channel].normalise;
 }
 
 void setSolo(uint8_t channel, uint8_t solo) {

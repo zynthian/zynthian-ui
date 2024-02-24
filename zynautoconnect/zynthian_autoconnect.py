@@ -721,6 +721,7 @@ def audio_autoconnect():
 	# Chain audio routing
 	for chain_id in chain_manager.chains:
 		routes = chain_manager.get_chain_audio_routing(chain_id)
+		state_manager.zynmixer.normalise(chain_manager.chains[chain_id].mixer_chan, 0 in chain_manager.chains[chain_id].audio_out)
 		for dst in list(routes):
 			if isinstance(dst, int):
 				# Destination is a chain
@@ -735,10 +736,11 @@ def audio_autoconnect():
 						if proc.type == "Special":
 							routes[proc.get_jackname()] = route
 					else:
-						for name in list(route):
-							if name.startswith('zynmixer:output'):
-								# Use mixer internal normalisation
-								route.remove(name)
+						if dst == 0:
+							for name in list(route):
+								if name.startswith('zynmixer:output'):
+									# Use mixer internal normalisation
+									route.remove(name)
 						routes[f"zynmixer:input_{dst_chain.mixer_chan + 1:02d}"] = route
 		for dst in routes:
 			if dst in sidechain_ports:

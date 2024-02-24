@@ -232,6 +232,7 @@ class zynthian_chain_manager:
             chain_pos = self.get_chain_index(0)
         self.ordered_chain_ids.insert(chain_pos, chain_id)
 
+        chain.rebuild_graph()
         zynautoconnect.request_audio_connect(fast_refresh)
         zynautoconnect.request_midi_connect(fast_refresh)
 
