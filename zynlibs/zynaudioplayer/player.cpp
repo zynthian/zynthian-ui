@@ -1517,45 +1517,58 @@ int on_jack_samplerate(jack_nframes_t nFrames, void *pArgs) {
  
 static void lib_init(void) { 
     fprintf(stderr, "Started libzynaudioplayer using %s\n", sf_version_string());
+}
+
+bool init_jack() {
+    if (g_jack_client)
+        return true;
     jack_status_t nStatus;
     jack_options_t nOptions = JackNoStartServer;
 
-    if((g_jack_client = jack_client_open("audioplayer", nOptions, &nStatus)) == 0)
+    if((g_jack_client = jack_client_open("audioplayer", nOptions, &nStatus)) == 0) {
         fprintf(stderr, "libaudioplayer error: failed to start jack client: %d\n", nStatus);
+        return false;
+    }
 
     // Create MIDI input port
-    if(!(g_jack_midi_in = jack_port_register(g_jack_client, "in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0)))
+    if(!(g_jack_midi_in = jack_port_register(g_jack_client, "in", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput, 0))) {
         fprintf(stderr, "libzynaudioplayer error: cannot register MIDI input port\n");
+        return false;
+    }
 
     // Register the callback to process audio and MIDI
     jack_set_process_callback(g_jack_client, on_jack_process, 0);
     jack_set_sample_rate_callback(g_jack_client, on_jack_samplerate, 0);
 
-    if(jack_activate(g_jack_client))
+    if(jack_activate(g_jack_client)) {
         fprintf(stderr, "libaudioplayer error: cannot activate client\n");
+        return false;
+    }
 
     g_samplerate = jack_get_sample_rate(g_jack_client);
     if(g_samplerate < 10)
         g_samplerate = 44100;
+    return true;
+}
+
+void stop_jack() {
+    if(g_jack_client)
+        jack_deactivate(g_jack_client);
+    jack_client_close(g_jack_client);
+    g_jack_client = NULL;
 }
 
 static void lib_exit(void) {
     fprintf(stderr, "libzynaudioplayer exiting...  ");
-    if(g_jack_client)
-        lib_stop();
-    fprintf(stderr, "done!\n");
-}
-
-void lib_stop() {
     while (!g_vPlayers.empty()) {
         remove_player(g_vPlayers.front());
     }
-    jack_deactivate(g_jack_client);
-    //jack_client_close(g_jack_client);
-    g_jack_client = NULL;
+    fprintf(stderr, "done!\n");
 }
 
 AUDIO_PLAYER* add_player() {
+    if (!init_jack())
+        return nullptr;
     AUDIO_PLAYER * pPlayer = new AUDIO_PLAYER();
     if(!pPlayer)
         return nullptr;
@@ -1610,6 +1623,8 @@ void remove_player(AUDIO_PLAYER * pPlayer) {
     auto it = find(g_vPlayers.begin(), g_vPlayers.end(), pPlayer);
     if (it != g_vPlayers.end())
         g_vPlayers.erase(it);
+    if (g_vPlayers.size() == 0)
+        stop_jack();
 }
 
 void set_base_note(AUDIO_PLAYER * pPlayer, uint8_t base_note) {
@@ -1640,7 +1655,9 @@ int get_index(AUDIO_PLAYER * pPlayer) {
 
 
 const char* get_jack_client_name() {
-    return jack_get_client_name(g_jack_client);
+    if (g_jack_client)
+        return jack_get_client_name(g_jack_client);
+    return "";
 }
 
 uint8_t set_src_quality(AUDIO_PLAYER * pPlayer, unsigned int quality) {
