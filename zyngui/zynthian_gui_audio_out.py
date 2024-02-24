@@ -100,6 +100,8 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 			port_count = len(ports)
 			for i in range(1, port_count + 1, 2):
 				if i < port_count:
+					port_names.append((f"Output {i}", f"system:playback_{i}$"))
+					port_names.append((f"Output {i + 1}", f"system:playback_{i + 1}$"))
 					port_names.append((f"Outputs {i}+{i + 1}", f"system:playback_[{i},{i + 1}]$"))
 				else:
 					port_names.append((f"Output {i}", f"system:playback_{i}$"))
