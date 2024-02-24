@@ -145,6 +145,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			text="",
 			font=(zynthian_gui_config.font_family, int(0.8 * zynthian_gui_config.font_size)),
 			fill=zynthian_gui_config.color_panel_tx)
+		self.info_canvas.create_rectangle(0, 0, 0, 0, fill="blue", tags="page_indicator")
 
 	def update_layout(self):
 		super().update_layout()
@@ -333,6 +334,11 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			pass
 		if self.cat_index >= 0:
 			path = path + "/" + self.engine_cats[self.cat_index]
+			w = int(0.25 * self.width / len(self.engine_cats))
+			x = w * self.cat_index
+			self.info_canvas.coords("page_indicator", x, 0, x+w, 4)
+			self.info_canvas.tag_raise("page_indicator")
+
 		self.select_path.set(path)
 
 # ------------------------------------------------------------------------------
