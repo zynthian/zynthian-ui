@@ -833,7 +833,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.main_mixbus_strip.draw_dpm(state[0], state[1], state[2], state[3], state[4])
 			# Update other chains DPM
 			if zynthian_gui_config.enable_dpm:
-				states = self.zynmixer.get_dpm_states(0, self.MAIN_MIXBUS_STRIP_INDEX)
+				states = self.zynmixer.get_dpm_states(0, self.MAIN_MIXBUS_STRIP_INDEX - 1)
 				for strip in self.visible_mixer_strips:
 					if not strip.hidden and strip.chain.mixer_chan is not None:
 						state = states[strip.chain.mixer_chan]

@@ -157,9 +157,10 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
     memset(pAuxA, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
     memset(pAuxB, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
 
-    // Apply gain adjustment to each channel
+    // Process each channel
     for (chan = 0; chan < MAX_CHANNELS; chan++) {
-        if (isChannelRouted(chan) || (chan >= (MAX_CHANNELS - 1))) {
+        if (isChannelRouted(chan) || (chan == (MAX_CHANNELS - 1))) {
+            // Process current (last set) balance
             if (g_dynamic[chan].balance > 0.0)
                 curLevelA = g_dynamic[chan].level * (1 - g_dynamic[chan].balance);
             else
@@ -169,6 +170,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
             else
                 curLevelB = g_dynamic[chan].level;
 
+            // Process mute and target level and balance (that we will fade to over this cycle period to avoid abrupt change clicks)
             if (g_dynamic[chan].mute || g_solo && (chan < MAX_CHANNELS - 1) && g_dynamic[chan].solo != 1) {
                 // Do not mute aux if solo enabled
                 g_dynamic[chan].level = 0; // We can set this here because we have the data and will iterate towards 0 over this frame
@@ -187,7 +189,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
                 g_dynamic[chan].balance = g_dynamic[chan].reqbalance;
             }
 
-            // Calculate the step change for each leg to apply on each sample in buffer
+            // Calculate the step change for each leg to apply on each sample in buffer for fade between last and this period's level
             fDeltaA = (reqLevelA - curLevelA) / nFrames;
             fDeltaB = (reqLevelB - curLevelB) / nFrames;
 
@@ -203,10 +205,10 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
                 pChanOutA = pAuxA;
                 pChanOutB = pAuxB;
             } else {
-                return 0;
+                return 0; //!@todo This looks wrong. If main output is not routed we don't process any audio
             }
 
-            // Iterate samples scaling each and adding to output and set DPM if any samples louder than current DPM
+            // Iterate samples, scaling each and adding to output and set DPM if any samples louder than current DPM
             for (frame = 0; frame < nFrames; frame++) {
                 if (chan == MAX_CHANNELS - 1) {
                     // Mix aux channel input and normalised channels mix
@@ -233,46 +235,65 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
                     fSampleB = fSampleA;
                 }
 
-                pChanOutA[frame] += fSampleA * curLevelA;
-                pChanOutB[frame] += fSampleB * curLevelB;
+                // Apply level adjustment
+                fSampleA *= curLevelA;
+                fSampleB *= curLevelB;
 
                 // Check for error
-                if (isinf(pChanOutA[frame]))
-                    pChanOutA[frame] = 1.0;
-                if (isinf(pChanOutB[frame]))
-                    pChanOutB[frame] = 1.0;
+                if (isinf(fSampleA))
+                    fSampleA = 1.0;
+                if (isinf(fSampleB))
+                    fSampleB = 1.0;
+
+                // Write sample to output buffer
+                pChanOutA[frame] += fSampleA;
+                pChanOutB[frame] += fSampleB;
 
                 curLevelA += fDeltaA;
                 curLevelB += fDeltaB;
+
+                // Process DPM
                 if (g_dynamic[chan].enable_dpm) {
-                    fSampleA = fabs(pChanOutA[frame]);
+                    fSampleA = fabs(fSampleA);
                     if (fSampleA > g_dynamic[chan].dpmA)
                         g_dynamic[chan].dpmA = fSampleA;
-                    fSampleB = fabs(pChanOutB[frame]);
+                    fSampleB = fabs(fSampleB);
                     if (fSampleB > g_dynamic[chan].dpmB)
                         g_dynamic[chan].dpmB = fSampleB;
-                }
-            }
 
-            // Update peak hold and scale DPM for damped release
-            if (g_dynamic[chan].enable_dpm) {
-                if (g_dynamic[chan].dpmA > g_dynamic[chan].holdA)
-                    g_dynamic[chan].holdA = g_dynamic[chan].dpmA;
-                if (g_dynamic[chan].dpmB > g_dynamic[chan].holdB)
-                    g_dynamic[chan].holdB = g_dynamic[chan].dpmB;
-                if (g_nHoldCount == 0) {
-                    // Only update peak hold each g_nHoldCount cycles
-                    g_dynamic[chan].holdA = g_dynamic[chan].dpmA;
-                    g_dynamic[chan].holdB = g_dynamic[chan].dpmB;
-                }
-                if (g_nDampingCount == 0) {
-                    // Only update damping release each g_nDampingCount cycles
-                    g_dynamic[chan].dpmA *= g_fDpmDecay;
-                    g_dynamic[chan].dpmB *= g_fDpmDecay;
+                    // Update peak hold and scale DPM for damped release
+                    if (g_dynamic[chan].dpmA > g_dynamic[chan].holdA)
+                        g_dynamic[chan].holdA = g_dynamic[chan].dpmA;
+                    if (g_dynamic[chan].dpmB > g_dynamic[chan].holdB)
+                        g_dynamic[chan].holdB = g_dynamic[chan].dpmB;
                 }
             }
+            if (g_nHoldCount == 0) {
+                // Only update peak hold each g_nHoldCount cycles
+                g_dynamic[chan].holdA = g_dynamic[chan].dpmA;
+                g_dynamic[chan].holdB = g_dynamic[chan].dpmB;
+            }
+            if (g_nDampingCount == 0) {
+                // Only update damping release each g_nDampingCount cycles
+                g_dynamic[chan].dpmA *= g_fDpmDecay;
+                g_dynamic[chan].dpmB *= g_fDpmDecay;
+            }
+        } else if (g_dynamic[chan].enable_dpm) {
+            g_dynamic[chan].dpmA = -200.0;
+            g_dynamic[chan].dpmB = -200.0;
+            g_dynamic[chan].holdA = -200.0;
+            g_dynamic[chan].holdB = -200.0;
         }
     }
+
+    if (g_nDampingCount == 0)
+        g_nDampingCount = g_nDampingPeriod;
+     else
+        --g_nDampingCount;
+    if (g_nHoldCount == 0)
+        g_nHoldCount = g_nDampingPeriod * 20;
+    else
+        --g_nHoldCount;
 
     return 0;
 }
