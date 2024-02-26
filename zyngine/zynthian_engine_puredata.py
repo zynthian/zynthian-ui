@@ -240,7 +240,7 @@ class zynthian_engine_puredata(zynthian_engine):
 	@classmethod
 	def zynapi_get_banks(cls):
 		banks = []
-		for b in cls.get_bank_dirlist(recursion=2):
+		for b in cls.get_bank_dirlist(recursion=2, exclude_empty=False):
 			banks.append({
 				'text': b[2],
 				'name': b[4],

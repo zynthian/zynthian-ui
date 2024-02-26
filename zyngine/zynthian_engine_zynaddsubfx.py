@@ -334,7 +334,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	@classmethod
 	def zynapi_get_banks(cls):
 		banks = []
-		for b in cls.get_bank_dirlist():
+		for b in cls.get_bank_dirlist(recursion=1, exclude_empty=False):
 			banks.append({
 				'text': b[2],
 				'name': b[4],
