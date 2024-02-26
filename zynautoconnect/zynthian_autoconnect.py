@@ -211,7 +211,7 @@ def get_midi_in_devid(idev):
 	"""
 
 	try:
-		return devices_in[idev].aliases[0].split('/', 1)[1]
+		return devices_in[idev].aliases[1]
 	except:
 		return None
 
@@ -224,7 +224,7 @@ def get_midi_out_devid(idev):
 	"""
 
 	try:
-		return devices_out[idev].name.split(' (playback): ')[1]
+		return devices_out[idev].aliases[1]
 	except:
 		return None
 
@@ -896,10 +896,11 @@ def build_midi_port_name(port):
 		try:
 			if port.name.endswith(" Bluetooth"):
 				# Found BLE MIDI device
-				name = name[:-10]
+				port_name = port.name[:-10]
+				# TODO: I'm not sure this is OK
 				if len(port.aliases):
 					# UID already assigned
-					return port.aliases[0], name
+					return port.aliases[0], port_name
 				# Get BLE address
 				devices = check_output(['bluetoothctl', 'devices'], encoding='utf-8', timeout=0.1).split('\n')
 				for device in devices:
@@ -907,23 +908,22 @@ def build_midi_port_name(port):
 						continue
 					addr = device.split()[1]
 					dev_name = device[25:]
-					if dev_name == name:
+					if dev_name == port_name:
 						if port.is_input:
-							return f"BLE:{addr}_OUT", name
+							return f"BLE:{addr}_OUT", port_name
 						else:
-							return f"BLE:{addr}_IN", name
+							return f"BLE:{addr}_IN", port_name
 			else:
 				# USB ports
-				io, hw, card, slot, idx, name = port.aliases[0].split('-', 5)
-				with open(f"/proc/asound/card{card}/midi0", "r") as f:
-					name = f.readline().strip()
-				if name == "f_midi":
-					name = "USB HOST"
+				io, hw, card, slot, idx, port_name = port.aliases[0].split('-', 5)
+				if port_name == "f-midi":
+					port_name = "USB HOST"
 					if port.is_output:
 						uid = "USB:f_midi OUT 1"
 					else:
 						uid = "USB:f_midi IN 1"
 				else:
+					port_name = port_name.replace("-", " ")
 					with open(f"/proc/asound/card{card}/usbbus", "r") as f:
 						usbbus = f.readline()
 					tmp = re.findall(r'\d+', usbbus)
@@ -933,14 +933,14 @@ def build_midi_port_name(port):
 					uid = f"{bus}"
 					for i in usb_port_nos:
 						uid += f".{i}"
-					uid = f"USB:{uid}/{name}"
+					uid = f"USB:{uid}/{port_name}"
 		except:
-			uid = name
+			uid = port.name
 		if port.is_input:
 			uid += f" OUT {int(idx) + 1}"
 		else:
 			uid += f" IN {int(idx) + 1}"
-		return uid, name
+		return uid, port_name
 	elif len(port.aliases) > 1:
 		return port.aliases[0], port.aliases[1]
 	elif len(port.aliases) > 0:
