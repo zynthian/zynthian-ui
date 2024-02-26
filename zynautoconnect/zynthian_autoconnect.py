@@ -654,9 +654,10 @@ def midi_autoconnect():
 	required_routes["zynseq:input"].add("ZynMidiRouter:step_out")
 
 	# Connect ZynMidiRouter:ctrl_out to enabled MIDI-FB ports (MIDI-Controller FeedBack)
-	for port in hw_midi_dst_ports:
-		if get_port_aliases(port)[0] in zynthian_gui_config.enabled_midi_fb_ports:
-			required_routes[port.name].add("ZynMidiRouter:ctrl_out")
+	# TODO => We need a new mechanism for this!! Or simply use the ctrldev drivers
+	#for port in hw_midi_dst_ports:
+		#if get_port_aliases(port)[0] in zynthian_gui_config.enabled_midi_fb_ports:
+		#	required_routes[port.name].add("ZynMidiRouter:ctrl_out")
 
 	# Remove mod-ui routes
 	for dst in list(required_routes.keys()):

@@ -60,6 +60,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		self.state_manager = self.zyngui.state_manager
 
+		self.default_global_transpose()
 		if self.state_manager.allow_rbpi_headphones():
 			self.default_rbpi_headphones()
 
@@ -98,10 +99,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		else:
 			self.list_data.append((self.toggle_preset_preload_noteon, 0, "\u2610 Note-On Preset Preload"))
 
-		if os.environ.get("ZYNTHIAN_USB_MIDI_BY_PORT", "0") == "1":
-			self.list_data.append((self.toggle_usbmidi_by_port, 0, "\u2612 USB MIDI mapped by port"))
+		if zynthian_gui_config.midi_usb_by_port:
+			self.list_data.append((self.toggle_usbmidi_by_port, 0, "\u2612 MIDI-USB mapped by port"))
 		else:
-			self.list_data.append((self.toggle_usbmidi_by_port, 0, "\u2610 USB MIDI mapped by port"))
+			self.list_data.append((self.toggle_usbmidi_by_port, 0, "\u2610 MIDI-USB mapped by port"))
 
 		if zynthian_gui_config.transport_clock_source == 0:
 			if zynthian_gui_config.midi_sys_enabled:
@@ -109,11 +110,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			else:
 				self.list_data.append((self.toggle_midi_sys, 0, "\u2610 MIDI System Messages"))
 
-		transpose = lib_zyncore.get_global_transpose()
-		if transpose > 0:
-			self.list_data.append((self.global_transpose, transpose, f"[+{transpose}] Global Transpose"))
+		if zynthian_gui_config.midi_global_transpose > 0:
+			display_val = f"+{zynthian_gui_config.midi_global_transpose}"
 		else:
-			self.list_data.append((self.global_transpose, transpose, f"[{transpose}] Global Transpose"))
+			display_val = f"{zynthian_gui_config.midi_global_transpose}"
+		self.list_data.append((self.edit_global_transpose, 0, f"[{display_val}] Global Transpose"))
 
 		self.list_data.append((None, 0, "> AUDIO"))
 
@@ -179,6 +180,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		super().fill_list()
 
 	def select_action(self, i, t='S'):
+		self.last_selected_index = i
 		if self.list_data[i][0]:
 			self.last_action = self.list_data[i][0]
 			self.last_action()
@@ -358,21 +360,56 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		lib_zyncore.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
 		self.fill_list()
 
-	def global_transpose(self):
-		self.enable_param_editor(self, "Global Transpose", {'value_min':-24, 'value_max':24, 'value':lib_zyncore.get_global_transpose()})
+	# -------------------------------------------------------------------------
+	# Global Transpose editing
+	# -------------------------------------------------------------------------
+
+	def default_global_transpose(self):
+		lib_zyncore.set_global_transpose(zynthian_gui_config.midi_global_transpose)
+
+	def edit_global_transpose(self):
+		self.enable_param_editor(self, "Global Transpose",
+			{'value_min': -24, 'value_max': 24, 'value': zynthian_gui_config.midi_global_transpose},
+			self.edit_global_transpose_assert_cb)
 
 	def send_controller_value(self, zctrl):
-		""" Handle param editor"""
+		""" Handle param editor value change """
 		if zctrl.symbol == "Global Transpose":
-			lib_zyncore.set_global_transpose(zctrl.value)
-			self.fill_list()
+			transpose = zctrl.value
+			lib_zyncore.set_global_transpose(transpose)
+
+	def disable_param_editor(self):
+		""" Handle disabling param editor """
+		if self.param_editor_zctrl and self.param_editor_zctrl.symbol == "Global Transpose":
+			self.default_global_transpose()
+		super().disable_param_editor()
+
+	def edit_global_transpose_assert_cb(self, val):
+		""" Handle param editor value assertion """
+		zynthian_gui_config.midi_global_transpose = val
+		# Save config
+		zynconf.update_midi_profile({
+			"ZYNTHIAN_MIDI_GLOBAL_TRANSPOSE": str(int(zynthian_gui_config.midi_global_transpose))
+		})
+		self.update_list()
+
+	# -------------------------------------------------------------------------
 
 	def toggle_usbmidi_by_port(self):
-		if os.environ.get("ZYNTHIAN_USB_MIDI_BY_PORT", "0") == "1":
-			os.environ["ZYNTHIAN_USB_MIDI_BY_PORT"] = "0"
+		if zynthian_gui_config.midi_usb_by_port:
+			logging.info("MIDI-USB devices by port OFF")
+			zynthian_gui_config.midi_usb_by_port = False
 		else:
-			os.environ["ZYNTHIAN_USB_MIDI_BY_PORT"] = "1"
+			logging.info("MIDI-USB devices by port ON")
+			zynthian_gui_config.midi_usb_by_port = True
+
 		zynautoconnect.update_hw_midi_ports(True)
+
+		# Save config
+		zynconf.update_midi_profile({
+			"ZYNTHIAN_MIDI_USB_BY_PORT": str(int(zynthian_gui_config.midi_usb_by_port))
+		})
+
 		self.fill_list()
 
 	def toggle_prog_change_zs3(self):

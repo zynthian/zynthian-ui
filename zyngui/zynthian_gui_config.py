@@ -336,63 +336,39 @@ def config_zyntof():
 # MIDI Configuration
 # ------------------------------------------------------------------------------
 
-#TODO: Why are these defined global here, in global scope?
-global preset_preload_noteon, midi_prog_change_zs3
-global midi_bank_change, midi_fine_tuning
-global midi_filter_rules, midi_filter_output
-global midi_sys_enabled, midi_cc_automode, midi_aubionotes_enabled
-global midi_network_enabled, midi_rtpmidi_enabled, midi_touchosc_enabled, bluetooth_enabled
-global master_midi_channel, master_midi_change_type
-global master_midi_program_change_up, master_midi_program_change_down
-global master_midi_program_base, master_midi_bank_change_ccnum
-global master_midi_bank_change_up, master_midi_bank_change_down
-global master_midi_bank_change_down_ccnum, master_midi_bank_base
-global disabled_midi_in_ports, enabled_midi_out_ports, enabled_midi_fb_ports
-global transport_clock_source, master_midi_note_cuia
-
 
 def set_midi_config():
 	global preset_preload_noteon, midi_prog_change_zs3
-	global midi_bank_change, midi_fine_tuning
-	global midi_filter_rules, midi_filter_output
-	global midi_sys_enabled, midi_cc_automode
+	global midi_bank_change, midi_fine_tuning, midi_global_transpose
+	global midi_filter_rules, midi_sys_enabled, midi_usb_by_port
 	global midi_network_enabled, midi_rtpmidi_enabled, midi_netump_enabled
 	global midi_touchosc_enabled, bluetooth_enabled, midi_aubionotes_enabled
-	global master_midi_channel, master_midi_change_type
+	global transport_clock_source
+	global master_midi_channel, master_midi_change_type, master_midi_note_cuia
 	global master_midi_program_change_up, master_midi_program_change_down
 	global master_midi_program_base, master_midi_bank_change_ccnum
 	global master_midi_bank_change_up, master_midi_bank_change_down
 	global master_midi_bank_change_down_ccnum, master_midi_bank_base
-	global disabled_midi_in_ports, enabled_midi_out_ports, enabled_midi_fb_ports
-	global transport_clock_source, master_midi_note_cuia
 
 	# MIDI options
-	midi_fine_tuning = float(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING', 440.0))
-	midi_prog_change_zs3 = int(os.environ.get('ZYNTHIAN_MIDI_PROG_CHANGE_ZS3', 1))
-	midi_bank_change = int(os.environ.get('ZYNTHIAN_MIDI_BANK_CHANGE', 0))
-	preset_preload_noteon = int(os.environ.get('ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON', 1))
-	midi_filter_output = int(os.environ.get('ZYNTHIAN_MIDI_FILTER_OUTPUT', 0))
-	midi_sys_enabled = int(os.environ.get('ZYNTHIAN_MIDI_SYS_ENABLED', 1))
-	midi_cc_automode = int(os.environ.get('ZYNTHIAN_MIDI_CC_AUTOMODE', 0))
-	midi_network_enabled = int(os.environ.get('ZYNTHIAN_MIDI_NETWORK_ENABLED', 0))
-	midi_netump_enabled = int(os.environ.get('ZYNTHIAN_MIDI_NETUMP_ENABLED', 0))
-	midi_rtpmidi_enabled = int(os.environ.get('ZYNTHIAN_MIDI_RTPMIDI_ENABLED', 0))
-	midi_touchosc_enabled = int(os.environ.get('ZYNTHIAN_MIDI_TOUCHOSC_ENABLED', 0))
-	bluetooth_enabled = int(os.environ.get('ZYNTHIAN_MIDI_BLE_ENABLED', 0))
-	midi_aubionotes_enabled = int(os.environ.get('ZYNTHIAN_MIDI_AUBIONOTES_ENABLED', 0))
-	transport_clock_source = int(os.environ.get('ZYNTHIAN_MIDI_TRANSPORT_CLOCK_SOURCE', 0))
-	transport_clock_source = int(os.environ.get('ZYNTHIAN_MIDI_TRANSPORT_CLOCK_SOURCE', 0))
+	midi_fine_tuning = float(os.environ.get('ZYNTHIAN_MIDI_FINE_TUNING', "440.0"))
+	midi_global_transpose = int(os.environ.get('ZYNTHIAN_MIDI_GLOBAL_TRANSPOSE', "0"))
+	midi_prog_change_zs3 = int(os.environ.get('ZYNTHIAN_MIDI_PROG_CHANGE_ZS3', "1"))
+	midi_bank_change = int(os.environ.get('ZYNTHIAN_MIDI_BANK_CHANGE', "0"))
+	preset_preload_noteon = int(os.environ.get('ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON', "1"))
+	midi_sys_enabled = int(os.environ.get('ZYNTHIAN_MIDI_SYS_ENABLED', "1"))
+	midi_usb_by_port = int(os.environ.get("ZYNTHIAN_MIDI_USB_BY_PORT", "0"))
+	midi_network_enabled = int(os.environ.get('ZYNTHIAN_MIDI_NETWORK_ENABLED', "0"))
+	midi_netump_enabled = int(os.environ.get('ZYNTHIAN_MIDI_NETUMP_ENABLED', "0"))
+	midi_rtpmidi_enabled = int(os.environ.get('ZYNTHIAN_MIDI_RTPMIDI_ENABLED', "0"))
+	midi_touchosc_enabled = int(os.environ.get('ZYNTHIAN_MIDI_TOUCHOSC_ENABLED', "0"))
+	bluetooth_enabled = int(os.environ.get('ZYNTHIAN_MIDI_BLE_ENABLED', "0"))
+	midi_aubionotes_enabled = int(os.environ.get('ZYNTHIAN_MIDI_AUBIONOTES_ENABLED', "0"))
+	transport_clock_source = int(os.environ.get('ZYNTHIAN_MIDI_TRANSPORT_CLOCK_SOURCE', "0"))
 
 	# Filter Rules
 	midi_filter_rules = os.environ.get('ZYNTHIAN_MIDI_FILTER_RULES', "")
 	midi_filter_rules = midi_filter_rules.replace("\\n", "\n")
-
-	# MIDI Ports
-	midi_ports = os.environ.get('ZYNTHIAN_MIDI_PORTS', "DISABLED_IN=\nENABLED_OUT=ttymidi:MIDI_out\nENABLED_FB=")
-	midi_ports = midi_ports.replace("\\n", "\n")
-	disabled_midi_in_ports = zynconf.get_disabled_midi_in_ports(midi_ports)
-	enabled_midi_out_ports = zynconf.get_enabled_midi_out_ports(midi_ports)
-	enabled_midi_fb_ports = zynconf.get_enabled_midi_fb_ports(midi_ports)
 
 	# Master Channel Features
 	master_midi_channel = int(os. environ.get("ZYNTHIAN_MIDI_MASTER_CHANNEL", 0))

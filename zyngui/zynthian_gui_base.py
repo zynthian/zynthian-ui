@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
 # Zynthian GUI Base Class: Status Bar + Basic layout & events
 #
 # Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 import time
 import logging
@@ -34,9 +34,10 @@ from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_dpm import zynthian_gui_dpm
 from zyngine import zynthian_controller
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian Base GUI Class: Status Bar + Basic layout & events
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_base(tkinter.Frame):
 	#Default buttonbar config (touchwidget)
@@ -197,12 +198,11 @@ class zynthian_gui_base(tkinter.Frame):
 		self.disable_param_editor() #TODO: Consolidate set_title and set_select_path, etc.
 		self.bind("<Configure>", self.on_size)
 
-
 	# Function to update title
-	#	title: Title to display in topbar
-	#	fg: Title foreground colour [Default: Do not change]
-	#	bg: Title background colour [Default: Do not change]
-	#	timeout: If set, title is shown for this period (seconds) then reverts to previous title
+	# title: Title to display in topbar
+	# fg: Title foreground colour [Default: Do not change]
+	# bg: Title background colour [Default: Do not change]
+	# timeout: If set, title is shown for this period (seconds) then reverts to previous title
 	def set_title(self, title, fg=None, bg=None, timeout = None):
 		if self.title_timer:
 			self.title_timer.cancel()
@@ -229,13 +229,11 @@ class zynthian_gui_base(tkinter.Frame):
 			self.title_canvas.configure(bg=self.title_bg)
 			self.label_select_path.config(bg=self.title_bg)
 
-
 	# Function called when frame resized
 	def on_size(self, event):
 		self.update_layout()
 		#self.width = self.main_frame.winfo_width()
 		#self.height = self.main_frame.winfo_height()
-
 
 	# Function to revert title after toast
 	def on_title_timeout(self):
@@ -244,9 +242,8 @@ class zynthian_gui_base(tkinter.Frame):
 			self.title_timer = None
 		self.set_title(self.title)
 
-
 	# Initialise button bar
-	#	config: Buttonbar config (default is None to use default configuration hardcoded per view)
+	# config: Buttonbar config (default is None to use default configuration hardcoded per view)
 	def init_buttonbar(self, config=None):
 		if self.buttonbar_frame:
 			self.buttonbar_frame.grid_forget()
@@ -273,19 +270,17 @@ class zynthian_gui_base(tkinter.Frame):
 			except:
 				pass
 
-
 	# Set the label for a button in the buttonbar
-	#	column: Column / button index
-	#	label: Text to show on label
+	# column: Column / button index
+	# label: Text to show on label
 	def set_buttonbar_label(self, column, label):
 		if len(self.buttonbar_button) > column and self.buttonbar_button[column]:
 			self.buttonbar_button[column]['text'] = label
 
-
 	# Add a button to the buttonbar
-	#	column: Column / button index
-	#	cuia: Action to trigger when button pressed
-	#	label: Text to show on button
+	# column: Column / button index
+	# cuia: Action to trigger when button pressed
+	# label: Text to show on button
 	def add_button(self, column, cuia, label):
 		# Touchbar frame
 		padx = (0,0)
@@ -313,15 +308,14 @@ class zynthian_gui_base(tkinter.Frame):
 		select_button.bind('<ButtonPress-1>', lambda e: self.cb_button_push(e))
 		select_button.bind('<ButtonRelease-1>', lambda e: self.cb_button_release(cuia, e))
 
-
 	# Handle buttonbar button press
-	#	event: Button event (not used)
+	# event: Button event (not used)
 	def cb_button_push(self, event):
 		self.button_push_ts = time.monotonic()
 
 	# Handle buttonbar button release
-	#	cuia: Action to trigger
-	#	event: Button event (not used)
+	# cuia: Action to trigger
+	# event: Button event (not used)
 	def cb_button_release(self, cuia, event):
 		if isinstance(cuia, int):
 			t = 'S'
@@ -366,7 +360,7 @@ class zynthian_gui_base(tkinter.Frame):
 		self.zyngui.show_screen_reset('audio_mixer')
 
 	# ---------------------------------
-	# backbutton touch event management
+	# Backbutton touch event management
 	# ---------------------------------
 
 	# Default menu button touch callback
@@ -396,11 +390,9 @@ class zynthian_gui_base(tkinter.Frame):
 	def backbutton_bold_touch_action(self):
 		self.zyngui.zynswitch_defered('B', 1)
 
-
 	# Draw screen ready to display (like double buffer) - Override in subclass
 	def build_view(self):
 		return True
-
 
 	# Show the view
 	def show(self):
@@ -413,7 +405,6 @@ class zynthian_gui_base(tkinter.Frame):
 			self.propagate(False)
 		self.main_frame.focus()
 
-
 	# Hide the view
 	def hide(self):
 		if self.shown:
@@ -421,7 +412,6 @@ class zynthian_gui_base(tkinter.Frame):
 				self.disable_param_editor()
 			self.shown = False
 			self.grid_remove()
-
 
 	# Show topbar (if allowed)
 	# show: True to show, False to hide
@@ -435,7 +425,6 @@ class zynthian_gui_base(tkinter.Frame):
 				self.tb_frame.grid_remove()
 			self.update_layout()
 
-
 	# Show buttonbar (if configured)
 	# show: True to show, False to hide
 	def show_buttonbar(self, show):
@@ -445,12 +434,10 @@ class zynthian_gui_base(tkinter.Frame):
 			self.buttonbar_frame.grid_remove()
 		self.update_layout()
 
-
 	# Show sidebar (override in derived classes if required)
 	# show: True to show, False to hide
 	def show_sidebar(self, show):
 		pass
-
 
 	def init_status(self):
 		self.status_mute = self.status_canvas.create_text(
@@ -459,7 +446,7 @@ class zynthian_gui_base(tkinter.Frame):
 			fill=zynthian_gui_config.color_status_error,
 			font=("forkawesome", self.status_fs),
 			text="\uf32f",
-			state = tkinter.HIDDEN)
+			state=tkinter.HIDDEN)
 
 		self.status_error = self.status_canvas.create_text(
 			self.status_l, 0,
@@ -541,13 +528,11 @@ class zynthian_gui_base(tkinter.Frame):
 			fill=zynthian_gui_config.color_status_midi,
 			state=tkinter.HIDDEN)
 
-
 	def init_dpmeter(self):
 		width = int(self.status_l - 2 * self.status_rh - 1)
 		height = int(self.status_h / 4 - 2)
 		self.dpm_a = zynthian_gui_dpm(self.zyngui.state_manager.zynmixer, self.zyngui.state_manager.zynmixer.MAX_NUM_CHANNELS - 1, 0, self.status_canvas, 0, 0, width, height, False, ("status_dpm"))
 		self.dpm_b = zynthian_gui_dpm(self.zyngui.state_manager.zynmixer, self.zyngui.state_manager.zynmixer.MAX_NUM_CHANNELS - 1, 1, self.status_canvas, 0, height + 2, width, height, False, ("status_dpm"))
-
 
 	def refresh_status(self):
 		if self.shown:
@@ -654,14 +639,12 @@ class zynthian_gui_base(tkinter.Frame):
 			else:
 				self.status_canvas.itemconfig(self.status_midi_clock, state=tkinter.HIDDEN)
 
-
 	def refresh_loading(self):
 		pass
 
-
-	#--------------------------------------------------------------------------
+	# --------------------------------------------------------------------------
 	# Zynpot Callbacks (rotaries!) & CUIA
-	#--------------------------------------------------------------------------
+	# --------------------------------------------------------------------------
 
 	def zynpot_cb(self, i, dval):
 		if self.param_editor_zctrl:
@@ -674,33 +657,30 @@ class zynthian_gui_base(tkinter.Frame):
 			self.update_param_editor()
 			return True
 
-
 	def zctrl_touch(self, switch):
 		pass
 
-
 	# Function to handle switch press
 	#   switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
-	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	#   typ: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#   returns True if action fully handled or False if parent action should be triggered
 	# Default implementation does nothing. Override to implement bespoke behaviour for legacy switches
-	def switch(self, switch, type):
+	def switch(self, switch, typ):
 		return False
 
-
 	# Function to handle SELECT button press
-	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
-	def switch_select(self, type='S'):
+	#	typ: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
+	def switch_select(self, typ='S'):
 		if self.param_editor_zctrl:
-			if type == 'S':
+			if typ == 'S':
 				if self.param_editor_assert_cb:
 					self.param_editor_assert_cb(self.param_editor_zctrl.value)
 				self.disable_param_editor()
-			elif type == 'B':
+				return True
+			elif typ == 'B':
 				self.param_editor_zctrl.set_value(self.param_editor_zctrl.value_default)
 			self.update_param_editor()
 			return True
-
 
 	def back_action(self):
 		if self.param_editor_zctrl:
@@ -708,10 +688,9 @@ class zynthian_gui_base(tkinter.Frame):
 			return True
 		return False
 
-
-	#--------------------------------------------------------------------------
+	# --------------------------------------------------------------------------
 	# MIDI learning
-	#--------------------------------------------------------------------------
+	# --------------------------------------------------------------------------
 
 	def enter_midi_learn(self):
 		pass
@@ -719,17 +698,15 @@ class zynthian_gui_base(tkinter.Frame):
 	def exit_midi_learn(self):
 		pass
 
-
-	#--------------------------------------------------------------------------
+	# --------------------------------------------------------------------------
 	# Mouse/Touch Callbacks
-	#--------------------------------------------------------------------------
+	# --------------------------------------------------------------------------
 
 	def cb_select_path(self, *args):
 		self.select_path_width = self.select_path_font.measure(self.select_path.get())
 		self.select_path_offset = 0
 		self.select_path_dir = 2
 		self.label_select_path.place(x=0, rely=0.5, anchor='w')
-
 
 	def cb_scroll_select_path(self):
 		if self.shown:
@@ -738,7 +715,6 @@ class zynthian_gui_base(tkinter.Frame):
 				return
 
 		zynthian_gui_config.top.after(100, self.cb_scroll_select_path)
-
 
 	def dscroll_select_path(self):
 		if self.select_path_width > self.title_canvas_width:
@@ -761,10 +737,8 @@ class zynthian_gui_base(tkinter.Frame):
 
 		return False
 
-
 	def set_select_path(self):
 		pass
-
 
 	# Function to update display, e.g. after geometry changes
 	# Override if required
@@ -774,13 +748,12 @@ class zynthian_gui_base(tkinter.Frame):
 		else:
 			self.height = zynthian_gui_config.display_height - self.topbar_height
 
-
 	# Function to enable the top-bar parameter editor
-	#	engine: Object to recieve send_controller_value callback
-	#	symbol: String identifying the parameter
-	#	options: zctrl options dictionary
-	#	assert_cb: Optional function to call when editor closed with assert: fn(self,value)
-	#	Populates button bar with up/down buttons
+	#  engine: Object to recieve send_controller_value callback
+	#  symbol: String identifying the parameter
+	#  options: zctrl options dictionary
+	#  assert_cb: Optional function to call when editor closed with assert: fn(self,value)
+	#  Populates button bar with up/down buttons
 	def enable_param_editor(self, engine, symbol, options, assert_cb=None):
 		self.disable_param_editor()
 		if self.param_editor_zctrl:
@@ -800,7 +773,6 @@ class zynthian_gui_base(tkinter.Frame):
 		self.init_buttonbar([("ZYNPOT 3,-1", "-1"),("ZYNPOT 3,+1", "+1"),("ZYNPOT 3,-10", "-10"),("ZYNPOT 3,+10", "+10"),(3,"OK")])
 		self.update_param_editor()
 		self.update_layout()
-	
 
 	# Function to disable paramter editor
 	def disable_param_editor(self):
@@ -815,7 +787,6 @@ class zynthian_gui_base(tkinter.Frame):
 			self.update_layout()
 		except:
 			pass
-
 	
 	# Function to display label in parameter editor
 	def update_param_editor(self):
@@ -825,4 +796,4 @@ class zynthian_gui_base(tkinter.Frame):
 			else:
 				self.select_path.set(self.format_print.format(self.param_editor_zctrl.name, self.param_editor_zctrl.value))
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------

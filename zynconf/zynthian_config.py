@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-#********************************************************************
+# ********************************************************************
 # ZYNTHIAN PROJECT: Zynthian Config Library
 #
 # Zynthian Config library and tools
 #
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#********************************************************************
+# ********************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -20,7 +20,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#********************************************************************
+# ********************************************************************
 
 import os
 import re
@@ -32,15 +32,15 @@ from shutil import copyfile
 from subprocess import check_output
 from collections import OrderedDict
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Configure logging
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 #logging.getLogger(__name__).setLevel(logging.ERROR)
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # UI Definitions
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 CustomSwitchActionType = [
 	"NONE",
@@ -150,17 +150,18 @@ NoteCuiaDefault = {
 	"127": "ZYNSWITCH 37"
 }
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Global variables
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR', "/zynthian/zynthian-sys")
 config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR', '/zynthian/config')
 config_fpath = config_dir + "/zynthian_envars.sh"
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Config related functions
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
+
 
 def get_midi_config_fpath(fpath=None):
 	if not fpath:
@@ -272,53 +273,13 @@ def update_sys():
 	except Exception as e:
 		logging.error("Updating Sytem Config: %s" % e)
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # MIDI Config related functions
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 
 def load_midi_config(set_env=True, fpath=None):
 	return load_config(set_env, get_midi_config_fpath(fpath))
-
-
-def get_disabled_midi_in_ports(midi_ports):
-	#Parse DISABLED_IN ports
-	disabled_in_re = re.compile("^DISABLED_IN=(.*)$", re.MULTILINE)
-	m = disabled_in_re.search(midi_ports)
-	if m:
-		disabled_midi_in_ports = m.group(1).split(",")
-		logging.debug("DISABLED_MIDI_IN = %s" % disabled_midi_in_ports)
-	else:
-		disabled_midi_in_ports = ""
-		logging.warning("Using default DISABLED MIDI IN ports")
-	return disabled_midi_in_ports
-
-
-def get_enabled_midi_out_ports(midi_ports):
-	#Parse ENABLED_OUT ports
-	enabled_out_re = re.compile("^ENABLED_OUT=(.*)$", re.MULTILINE)
-	m=enabled_out_re.search(midi_ports)
-	if m:
-		enabled_midi_out_ports = m.group(1).split(",")
-		logging.debug("ENABLED_MIDI_OUT = %s" % enabled_midi_out_ports)
-	else:
-		enabled_midi_out_ports = ["ttymidi:MIDI_out"]
-		logging.warning("Using default ENABLED MIDI OUT ports")
-	return enabled_midi_out_ports
-
-
-def get_enabled_midi_fb_ports(midi_ports):
-	#Parse ENABLED_FeedBack ports
-	enabled_fb_re = re.compile("^ENABLED_FB=(.*)$", re.MULTILINE)
-	m=enabled_fb_re.search(midi_ports)
-	if m:
-		enabled_midi_fb_ports=m.group(1).split(",")
-		logging.debug("ENABLED_MIDI_FB = %s" % enabled_midi_fb_ports)
-	else:
-		enabled_midi_fb_ports = []
-		logging.warning("Using default ENABLED MIDI FB ports")
-	return enabled_midi_fb_ports
-
 
 def update_midi_profile(params, fpath=None):
 	if not fpath:
@@ -338,9 +299,9 @@ def update_midi_profile(params, fpath=None):
 		del params[k]
 
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Network Config related functions
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 
 def get_netinfo(exclude_down=True):
@@ -502,14 +463,14 @@ def get_external_storage_dirs(exdpath):
 	return exdirs
 
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Utility functions
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
 def is_process_running(procname):
 	cmd="ps -e | grep %s" % procname
 	try:
-		result=check_output(cmd, shell=True).decode('utf-8', 'ignore')
+		result = check_output(cmd, shell=True).decode('utf-8', 'ignore')
 		if len(result) > 3:
 			return True
 		else:
@@ -530,9 +491,10 @@ def is_service_active(service):
 	else:
 		return False
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Jackd configuration
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 def get_jackd_options():
 	jackd_options = {}
@@ -545,4 +507,4 @@ def get_jackd_options():
 
 	return jackd_options
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
