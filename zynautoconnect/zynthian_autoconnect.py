@@ -493,6 +493,7 @@ def update_hw_midi_ports(force=False):
 	release_lock()
 	return update
 
+
 def midi_autoconnect():
 	"""Connect all expected MIDI routes"""
 
@@ -872,7 +873,7 @@ def build_midi_port_name(port):
 	port - Jack port object
 	returns - Tuple (uid, name)
 	"""
-	
+
 	if port.name.startswith("ttymidi:MIDI"):
 		return port.name, "DIN-5 MIDI"
 	elif port.name.startswith("ZynMaster"):
@@ -891,7 +892,7 @@ def build_midi_port_name(port):
 	idx = 0
 	
 	if port.aliases and (port.aliases[0].startswith("in-hw-") or port.aliases[0].startswith("out-hw-")):
-		# Uninitiated input port
+		# Uninitiated port
 		try:
 			if port.name.endswith(" Bluetooth"):
 				# Found BLE MIDI device
@@ -951,6 +952,7 @@ def build_midi_port_name(port):
 def get_port_friendly_names():
 	return midi_port_names
 
+
 def update_midi_port_aliases(port):
 	"""Set the uid and friendly name of port in aliases 0 & 1
 
@@ -981,17 +983,21 @@ def update_midi_port_aliases(port):
 		return False
 	return True
 
+
 def autoconnect():
 	"""Connect expected routes and disconnect unexpected routes"""
 	update_hw_midi_ports()
 	midi_autoconnect()
 	audio_autoconnect()
 
+
 def get_hw_src_ports():
 	return hw_midi_src_ports
 
+
 def get_hw_dst_ports():
 	return hw_midi_dst_ports
+
 
 def auto_connect_thread():
 	"""Thread to run autoconnect, checking if physical (hardware) interfaces have changed, e.g. USB plug"""
