@@ -333,8 +333,8 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_banks(cls):
-		banks=[]
-		for b in cls.get_dirlist(cls.bank_dirs, False):
+		banks = []
+		for b in cls.get_bank_dirlist():
 			banks.append({
 				'text': b[2],
 				'name': b[4],
@@ -347,7 +347,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_presets(cls, bank):
-		presets=[]
+		presets = []
 		for p in cls._get_preset_list(bank['raw']):
 			presets.append({
 				'text': p[4],

@@ -29,7 +29,7 @@ import subprocess
 import oyaml as yaml
 from time import sleep
 from collections import OrderedDict
-from os.path import isfile,isdir,join
+from os.path import isfile, isdir, join
 
 from . import zynthian_engine
 from . import zynthian_controller
@@ -235,8 +235,8 @@ class zynthian_engine_puredata(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_banks(cls):
-		banks=[]
-		for b in cls.get_dirlist(cls.bank_dirs, False):
+		banks = []
+		for b in cls.get_bank_dirlist(recursion=2):
 			banks.append({
 				'text': b[2],
 				'name': b[4],
@@ -248,7 +248,7 @@ class zynthian_engine_puredata(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_presets(cls, bank):
-		presets=[]
+		presets = []
 		for p in cls.get_dirlist(bank['fullpath']):
 			presets.append({
 				'text': p[4],

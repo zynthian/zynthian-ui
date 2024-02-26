@@ -356,9 +356,9 @@ class zynthian_engine(zynthian_basic_engine):
 			for bank_dir in walk[1]:
 				bank_path = walk[0] + "/" + bank_dir
 				if not exclude_empty or cls.find_some_preset_file(bank_path, recursion):
-					sbanks.append([bank_path, None, bank_dir, None])
+					sbanks.append([bank_path, None, bank_dir, None, bank_dir])
 			if len(sbanks):
-				banks.append([None, None, root_bank_dir[0], None])
+				banks.append([None, None, root_bank_dir[0], None, None])
 				banks += sbanks
 
 		# External storage banks
@@ -375,15 +375,15 @@ class zynthian_engine(zynthian_basic_engine):
 					for bank_dir in walk[1]:
 						bank_path = walk[0] + "/" + bank_dir
 						if not exclude_empty or cls.find_some_preset_file(bank_path, recursion):
-							sbanks.append([bank_path, None, root_bank_dir + "/" + bank_dir, None])
+							sbanks.append([bank_path, None, root_bank_dir + "/" + bank_dir, None, bank_dir])
 							count += 1
 					# If there is no banks inside, the root is the bank
 					if count == 0:
-						sbanks.append([root_bank_path, None, root_bank_dir, None])
+						sbanks.append([root_bank_path, None, root_bank_dir, None, root_bank_dir])
 
 			# Add root's header and banks
 			if len(sbanks):
-				banks.append([None, None, f"USB> {os.path.basename(exd)}", None])
+				banks.append([None, None, f"USB> {os.path.basename(exd)}", None, None])
 				banks += sbanks
 
 		return banks

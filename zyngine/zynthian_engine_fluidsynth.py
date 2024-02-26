@@ -164,23 +164,23 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		for root_bank_dir in cls.root_bank_dirs:
 			flist = cls.find_all_preset_files(root_bank_dir[1], recursion=2)
 			if not exclude_empty or len(flist) > 0:
-				banks.append([None, None, root_bank_dir[0], None])
+				banks.append([None, None, root_bank_dir[0], None, None])
 			for fpath in flist:
 				fname = os.path.basename(fpath)
 				title, filext = os.path.splitext(fname)
 				title = title.replace('_', ' ')
-				banks.append([fpath, None, title, None])
+				banks.append([fpath, None, title, None, fname])
 
 		# External storage banks
 		for exd in zynthian_gui_config.get_external_storage_dirs(cls.ex_data_dir):
 			flist = cls.find_all_preset_files(exd, recursion=2)
 			if not exclude_empty or len(flist) > 0:
-				banks.append([None, None, f"USB> {os.path.basename(exd)}", None])
+				banks.append([None, None, f"USB> {os.path.basename(exd)}", None, None])
 			for fpath in flist:
 				fname = os.path.basename(fpath)
 				title, filext = os.path.splitext(fname)
 				title = title.replace('_', ' ')
-				banks.append([fpath, None, title, None])
+				banks.append([fpath, None, title, None, fname])
 
 		return banks
 
@@ -439,12 +439,10 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	@classmethod
 	def zynapi_get_banks(cls):
 		banks = []
-		for b in cls.get_filelist(cls.bank_dirs, "sf2") + cls.get_filelist(cls.bank_dirs,"sf3"):
-			head, tail = os.path.split(b[0])
-			fname, fext = os.path.splitext(tail)
+		for b in cls.get_bank_filelist(recursion=2):
 			banks.append({
-				'text': tail,
-				'name': fname,
+				'text': b[2],
+				'name': b[4],
 				'fullpath': b[0],
 				'raw': b,
 				'readonly': False

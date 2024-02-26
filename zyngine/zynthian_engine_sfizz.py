@@ -206,11 +206,8 @@ class zynthian_engine_sfizz(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_banks(cls):
-		bank_dirs = [
-			('SFZ', zynthian_engine.my_data_dir + "/soundfonts/sfz")
-		]
-		banks=[]
-		for b in cls.get_dirlist(cls.bank_dirs, False):
+		banks = []
+		for b in cls.get_bank_dirlist(recursion=2):
 			banks.append({
 				'text': b[2],
 				'name': b[4],
