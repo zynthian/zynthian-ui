@@ -128,6 +128,10 @@ class zynthian_engine_puredata(zynthian_engine):
 		processor.refresh_controllers()
 		sleep(0.5)
 		# Need to all autoconnect because restart of process
+		try:
+			self.state_manager.chain_manager.chain[processor.chain_id].rebuild_graph()
+		except:
+			pass
 		zynautoconnect.request_audio_connect(True)
 		zynautoconnect.request_midi_connect(True)
 		processor.send_ctrl_midi_cc()
