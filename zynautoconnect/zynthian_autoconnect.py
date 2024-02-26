@@ -54,6 +54,7 @@ logger.setLevel(log_level)
 # Define some Constants and Global Variables
 # -------------------------------------------------------------------------------
 
+MAIN_MIX_CHAN = 17 				# TODO: Get this from mixer
 jclient = None					# JACK client
 aclient = None					# ALSA client
 thread = None					# Thread to check for changed MIDI ports
@@ -142,8 +143,11 @@ def dev_in_2_dev_out(zmip):
 	returns : Output port index or None if not found
 	"""
 	
-	try: #TODO: This needs fixing
-		return devices_out.index(jclient.get_port_by_name(devices_in[zmip].name.replace("capture", "playback")))
+	try:
+		name = devices_in[zmip].aliases[0].replace("IN", "OUT")
+		for i, port in enumerate(devices_out):
+			if port.aliases[0] == name:
+				return i
 	except:
 		return None
 
@@ -390,6 +394,39 @@ def is_host_usb_connected():
 		return False
 	return True
 
+def add_hw_port(port):
+	"""Add a hardware port to the global list
+	
+	port - Jack port object to add
+	returns - True if added, i.e. list has changed
+	"""
+
+	global hw_midi_src_ports, hw_midi_dst_ports
+	if port.is_input and port not in hw_midi_dst_ports:
+		hw_midi_dst_ports.append(port)
+		return True
+	elif port.is_output and port not in hw_midi_src_ports:
+		hw_midi_src_ports.append(port)
+		return True
+	return False
+
+def remove_hw_port(port):
+	"""Remove a hardware port from the global list
+	
+	port - Jack port object to remove
+	returns - True if removed, i.e. list has changed
+	"""
+
+	global hw_midi_src_ports, hw_midi_dst_ports
+	if port.is_input and port not in hw_midi_dst_ports:
+		hw_midi_dst_ports.remove(port)
+		return True
+	elif port.is_output and port not in hw_midi_src_ports:
+		hw_midi_src_ports.remove(port)
+		return True
+	return False
+
+
 def update_hw_midi_ports(force=False):
 	"""Update lists of external (hardware) source and destination MIDI ports
 
@@ -413,9 +450,6 @@ def update_hw_midi_ports(force=False):
 
 	# List of physical MIDI source ports
 	hw_midi_src_ports = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
-
-	# Remove a2j MIDI through (we don't currently use it but may want to enable in future)
-	#TODO: Reimplement
 
 	# List of physical MIDI destination ports
 	hw_midi_dst_ports = jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
@@ -446,24 +480,13 @@ def update_hw_midi_ports(force=False):
 
 		if port.aliases[0].startswith("USB:f_midi"):
 			if host_usb_connected:
-				if port.is_input and port not in hw_midi_dst_ports:
-					hw_midi_dst_ports.append(port)
-					update = True
-				elif port.is_output and port not in hw_midi_src_ports:
-					hw_midi_src_ports.append(port)
-					update = True
+				update |= add_hw_port(port)
 			else:
-				if port.is_input and port in hw_midi_dst_ports:
-					hw_midi_dst_ports.remove(port)
-					update = True
-				elif port.is_output and port in hw_midi_src_ports:
-					hw_midi_src_ports.remove(port)
-					update = True
-
+				update |= remove_hw_port(port)
+		
 	update |= len(fingerprint) != 0
 	release_lock()
 	return update
-
 
 def midi_autoconnect():
 	"""Connect all expected MIDI routes"""
@@ -655,6 +678,7 @@ def midi_autoconnect():
 			logging.warning(e)
 		for src in current_routes:
 			if src.name in sources:
+				sources.remove(src.name)
 				continue
 			if src.name in zyn_routed_midi[dst]:
 				try:
@@ -752,26 +776,14 @@ def audio_autoconnect():
 						required_routes[dst.name].add(src.name)
 
 	# Connect metronome to aux
-	required_routes["zynmixer:input_17a"].add("zynseq:metronome")
-	required_routes["zynmixer:input_17b"].add("zynseq:metronome")
+	required_routes[f"zynmixer:input_{MAIN_MIX_CHAN}a"].add("zynseq:metronome")
+	required_routes[f"zynmixer:input_{MAIN_MIX_CHAN}b"].add("zynseq:metronome")
 
 	# Connect global audio player to aux
 	if state_manager.audio_player and state_manager.audio_player.jackname:
 		ports = jclient.get_ports(state_manager.audio_player.jackname, is_output=True, is_audio=True)
-		required_routes["zynmixer:input_17a"].add(ports[0].name)
-		required_routes["zynmixer:input_17b"].add(ports[1].name)
-
-	# Connect aux to first two main outputs
-	try:
-		aux = 17 #TODO: Get aux channel from mixer lib 
-		main = 18 #TODO: Get main channel from mixer lib 
-		#TODO: Allow direct output / routing and fader control of aux
-		#required_routes["system:playback_1"].append(f"zynmixer:output_{aux}a")
-		#required_routes["system:playback_2"].append(f"zynmixer:output_{aux}b")
-		#required_routes[f"zynmixer:input_{main}a"].add(f"zynmixer:output_{aux}a")
-		#required_routes[f"zynmixer:input_{main}b"].add(f"zynmixer:output_{aux}b")
-	except:
-		pass
+		required_routes[f"zynmixer:input_{MAIN_MIX_CHAN}a"].add(ports[0].name)
+		required_routes[f"zynmixer:input_{MAIN_MIX_CHAN}b"].add(ports[1].name)
 
 	# Connect inputs to aubionotes
 	if zynthian_gui_config.midi_aubionotes_enabled:
@@ -834,8 +846,8 @@ def audio_connect_ffmpeg(timeout=2.0):
 	while t < timeout:
 		try:
 			#TODO: Do we want post fader, post effects feed?
-			jclient.connect(f"zynmixer:output_18a", "ffmpeg:input_1")
-			jclient.connect(f"zynmixer:output_18b", "ffmpeg:input_2")
+			jclient.connect(f"zynmixer:output_{MAIN_MIX_CHAN}a", "ffmpeg:input_1")
+			jclient.connect(f"zynmixer:output_{MAIN_MIX_CHAN}b", "ffmpeg:input_2")
 			return
 		except:
 			sleep(0.1)
