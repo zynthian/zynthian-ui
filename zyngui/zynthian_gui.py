@@ -1024,10 +1024,16 @@ class zynthian_gui:
 			self.alt_mode = True
 
 	def cuia_power_off(self, params=None):
-		self.screens['admin'].power_off_confirmed()
+		if params == ['CONFIRM']:
+			self.screens['admin'].power_off_confirmed()
+		else:
+			self.screens['admin'].power_off()
 
 	def cuia_reboot(self, params=None):
-		self.screens['admin'].reboot_confirmed()
+		if params == ['CONFIRM']:
+			self.screens['admin'].reboot_confirmed()
+		else:
+			self.screens['admin'].reboot()
 
 	def cuia_restart_ui(self, params=None):
 		self.screens['admin'].restart_gui()
@@ -1793,7 +1799,7 @@ class zynthian_gui:
 			self.cuia_all_sounds_off()
 
 		elif i == 2:
-			self.show_screen("snapshot")
+			self.cuia_screen_snapshot()
 			#self.show_screen_reset("zynpad")
 
 		elif i == 3:
@@ -1827,8 +1833,8 @@ class zynthian_gui:
 			self.show_screen_reset('audio_mixer')
 
 		elif i == 2:
-			self.show_screen('zs3')
-			#self.show_screen('snapshot')
+			self.cuia_screen_zs3()
+			#self.cuia_screen_snapshot()
 
 		elif i == 3:
 			self.screens[self.current_screen].switch_select('B')
