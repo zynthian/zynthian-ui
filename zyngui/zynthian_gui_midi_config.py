@@ -378,7 +378,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 if self.list_data[i][0].startswith("AUBIO:") or self.list_data[i][0].endswith("aubionotes"):
                     options["Select aubio inputs"] = "AUBIO_INPUTS"
                 options[f"Rename port '{port.aliases[0]}'"] = port
-                options[f"Reset name to '{zynautoconnect.build_midi_port_name(port)[1]}'"] = port
+                #options[f"Reset name to '{zynautoconnect.build_midi_port_name(port)[1]}'"] = port
                 self.zyngui.screens['option'].config("MIDI Input Device", options, self.menu_cb)
                 self.zyngui.show_screen('option')
             except:

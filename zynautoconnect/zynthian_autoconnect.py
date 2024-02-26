@@ -157,11 +157,14 @@ def set_midi_port_names(port_names):
 	
 	port_names - Map of friendly names indexed by uid
 	"""
-	
+
 	global midi_port_names
 	midi_port_names = port_names.copy()
 	for port in hw_midi_src_ports + hw_midi_dst_ports:
-		update_midi_port_aliases(port)
+		try:
+			port.aliases[1] = port_names[port.aliases[0]]
+		except:
+			pass
 
 
 def get_port_aliases(midi_port):
@@ -418,10 +421,10 @@ def remove_hw_port(port):
 	"""
 
 	global hw_midi_src_ports, hw_midi_dst_ports
-	if port.is_input and port not in hw_midi_dst_ports:
+	if port.is_input and port in hw_midi_dst_ports:
 		hw_midi_dst_ports.remove(port)
 		return True
-	elif port.is_output and port not in hw_midi_src_ports:
+	elif port.is_output and port in hw_midi_src_ports:
 		hw_midi_src_ports.remove(port)
 		return True
 	return False
@@ -472,18 +475,20 @@ def update_hw_midi_ports(force=False):
 	host_usb_connected = is_host_usb_connected()
 	fingerprint = hw_port_fingerprint.copy()
 	for port in hw_midi_src_ports + hw_midi_dst_ports:
-		if port not in hw_port_fingerprint or force:
+		if port.name.startswith("a2j:Midi Through"):
+			remove_hw_port(port)
+		elif port not in hw_port_fingerprint or force:
 			update_midi_port_aliases(port)
-			update = True
+			if port.aliases[0].startswith("USB:f_midi"):
+				if host_usb_connected:
+					add_hw_port(port)
+				else:
+					remove_hw_port(port)
+			else:
+				update = True
 		else:
 			fingerprint.remove(port)
 
-		if port.aliases[0].startswith("USB:f_midi"):
-			if host_usb_connected:
-				update |= add_hw_port(port)
-			else:
-				update |= remove_hw_port(port)
-		
 	update |= len(fingerprint) != 0
 	release_lock()
 	return update
@@ -861,9 +866,10 @@ def get_audio_capture_ports():
 
 
 def build_midi_port_name(port):
-	"""Populate the aliases for a jack port
+	"""Get default uid and friendly name for a port
 	
 	port - Jack port object
+	returns - Tuple (uid, name)
 	"""
 	
 	if port.name.startswith("ttymidi:MIDI"):
@@ -881,7 +887,6 @@ def build_midi_port_name(port):
 	elif port.name.startswith("aubio:midi_out"):
 		return f"AUBIO:in", "Audio\u2794MIDI"
 
-	name = port.shortname.split(':')[-1].strip()
 	idx = 0
 	
 	if port.aliases and (port.aliases[0].startswith("in-hw-") or port.aliases[0].startswith("out-hw-")):
@@ -912,7 +917,10 @@ def build_midi_port_name(port):
 					name = f.readline().strip()
 				if name == "f_midi":
 					name = "USB HOST"
-					uid = "USB:f_midi"
+					if port.is_output:
+						uid = "USB:f_midi OUT 1"
+					else:
+						uid = "USB:f_midi IN 1"
 				else:
 					with open(f"/proc/asound/card{card}/usbbus", "r") as f:
 						usbbus = f.readline()
@@ -933,6 +941,10 @@ def build_midi_port_name(port):
 		return uid, name
 	elif len(port.aliases) > 1:
 		return port.aliases[0], port.aliases[1]
+	elif len(port.aliases) > 0:
+		return port.aliases[0], port.shortname
+	else:
+		return port.name, port.shortname
 
 
 def get_port_friendly_names():
