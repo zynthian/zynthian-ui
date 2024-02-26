@@ -1793,7 +1793,8 @@ class zynthian_gui:
 			self.cuia_all_sounds_off()
 
 		elif i == 2:
-			self.show_screen_reset("zynpad")
+			self.show_screen("snapshot")
+			#self.show_screen_reset("zynpad")
 
 		elif i == 3:
 			self.screens['admin'].power_off()
@@ -1826,7 +1827,8 @@ class zynthian_gui:
 			self.show_screen_reset('audio_mixer')
 
 		elif i == 2:
-			self.show_screen('snapshot')
+			self.show_screen('zs3')
+			#self.show_screen('snapshot')
 
 		elif i == 3:
 			self.screens[self.current_screen].switch_select('B')
