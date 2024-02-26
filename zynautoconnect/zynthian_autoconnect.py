@@ -86,8 +86,6 @@ zyn_routed_midi = {}			# Map of lists of MIDI sources routed by zynautoconnect, 
 ctrl_fb_procs = []
 
 midi_port_names = {}			# Map of user friendly names indexed by device uid (alias[0])
-host_usb_connected = False		# True if connected to host USB
-usb_midi_by_port = False		# True to use physical USB port mapping for USB MIDI devices
 
 # ------------------------------------------------------------------------------
 
@@ -144,7 +142,7 @@ def dev_in_2_dev_out(zmip):
 	returns : Output port index or None if not found
 	"""
 	
-	try:
+	try: #TODO: This needs fixing
 		return devices_out.index(jclient.get_port_by_name(devices_in[zmip].name.replace("capture", "playback")))
 	except:
 		return None
@@ -206,7 +204,7 @@ def get_midi_in_devid(idev):
 	"""
 
 	try:
-		return devices_in[idev].name.split(' (capture): ')[1]
+		return devices_in[idev].aliases[0].split('/', 1)[1]
 	except:
 		return None
 
@@ -224,16 +222,21 @@ def get_midi_out_devid(idev):
 		return None
 
 
-def get_midi_in_devid_by_uid(uid):
+def get_midi_in_devid_by_uid(uid, mapped=False):
 	"""Get the index of the ZMIP connected to physical input
 	
-	name : The uid name of the port (jack alias [0])
+	uid : The uid name of the port (jack alias [0])
+	mapped : True to use physical port mapping
 	"""
 
 	for i, port in enumerate(devices_in):
 		try:
-			if port.aliases[0] == uid:
-				return i
+			if mapped:
+				if port.aliases[0] == uid:
+					return i
+			else:
+				if port.aliases[0].split('/', 1)[1] == uid.split('/', 1)[1]:
+					return i
 		except:
 			pass
 	return None
@@ -399,10 +402,6 @@ def update_hw_midi_ports(force=False):
 		return
 
 	global hw_midi_src_ports, hw_midi_dst_ports
-	global host_usb_connected, usb_midi_by_port
-
-	if force:
-		usb_midi_by_port = os.environ.get("ZYNTHIAN_USB_MIDI_BY_PORT", "0") == "1"
 
 	# -----------------------------------------------------------
 	# Get Input/Output MIDI Ports: 
@@ -412,44 +411,14 @@ def update_hw_midi_ports(force=False):
 
 	hw_port_fingerprint = hw_midi_src_ports + hw_midi_dst_ports
 
-	# Check if connection to host USB changed
-	host_usb_connected = is_host_usb_connected()
-
 	# List of physical MIDI source ports
 	hw_midi_src_ports = jclient.get_ports(is_output=True, is_physical=True, is_midi=True)
 
-	# Remove host USB if not connected
-	if not host_usb_connected:
-		try:
-			f_midi = jclient.get_ports("^a2j:f_midi \[.*] \(capture\)", is_output=True, is_physical=True, is_midi=True)[0]
-			hw_midi_src_ports.remove(f_midi)
-		except:
-			pass
-
 	# Remove a2j MIDI through (we don't currently use it but may want to enable in future)
-	try:
-		a2j_thru = jclient.get_ports("^a2j:Midi Through", is_output=True, is_physical=True, is_midi=True)[0]
-		hw_midi_src_ports.remove(a2j_thru)
-	except:
-		pass
+	#TODO: Reimplement
 
 	# List of physical MIDI destination ports
 	hw_midi_dst_ports = jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
-
-	# Remove host USB if not connected
-	if not host_usb_connected:
-		try:
-			f_midi = jclient.get_ports("^a2j:f_midi \[.*] \(capture\)", is_input=True, is_physical=True, is_midi=True)[0]
-			hw_midi_dst_ports.remove(f_midi)
-		except:
-			pass
-
-	# Remove a2j MIDI through (we don't want this - it can lead to howl-round)
-	try:
-		a2j_thru = jclient.get_ports("^a2j:Midi Through", is_input=True, is_physical=True, is_midi=True)[0]
-		hw_midi_dst_ports.remove(a2j_thru)
-	except:
-		pass
 
 	# Treat some virtual MIDI ports as hardware
 	for port_name in ("QmidiNet:in", "jackrtpmidid:rtpmidi_in", "jacknetumpd:netump_in", "RtMidiIn Client:TouchOSC Bridge", "ZynMaster:midi_in"):
@@ -466,6 +435,7 @@ def update_hw_midi_ports(force=False):
 			pass
 
 	update = False
+	host_usb_connected = is_host_usb_connected()
 	fingerprint = hw_port_fingerprint.copy()
 	for port in hw_midi_src_ports + hw_midi_dst_ports:
 		if port not in hw_port_fingerprint or force:
@@ -473,6 +443,22 @@ def update_hw_midi_ports(force=False):
 			update = True
 		else:
 			fingerprint.remove(port)
+
+		if port.aliases[0].startswith("USB:f_midi"):
+			if host_usb_connected:
+				if port.is_input and port not in hw_midi_dst_ports:
+					hw_midi_dst_ports.append(port)
+					update = True
+				elif port.is_output and port not in hw_midi_src_ports:
+					hw_midi_src_ports.append(port)
+					update = True
+			else:
+				if port.is_input and port in hw_midi_dst_ports:
+					hw_midi_dst_ports.remove(port)
+					update = True
+				elif port.is_output and port in hw_midi_src_ports:
+					hw_midi_src_ports.remove(port)
+					update = True
 
 	update |= len(fingerprint) != 0
 	release_lock()
@@ -863,12 +849,15 @@ def get_audio_capture_ports():
 
 
 def build_midi_port_name(port):
+	"""Populate the aliases for a jack port
+	
+	port - Jack port object
+	"""
+	
 	if port.name.startswith("ttymidi:MIDI"):
 		return port.name, "DIN-5 MIDI"
 	elif port.name.startswith("ZynMaster"):
 		return port.name, "CV/Gate"
-	elif port.name.endswith(": f_midi"):
-		return port.name, "USB HOST"
 	elif port.name.startswith("jacknetumpd:netump_"):
 		return f"NET:ump_{port.name[19:]}", "NetUMP"
 	elif port.name.startswith("jackrtpmidid:rtpmidi_"):
@@ -880,52 +869,58 @@ def build_midi_port_name(port):
 	elif port.name.startswith("aubio:midi_out"):
 		return f"AUBIO:in", "Audio\u2794MIDI"
 
-	# Dynamic ports
-
 	name = port.shortname.split(':')[-1].strip()
-	try:
-		if port.name.endswith(" Bluetooth"):
-			# Found BLE MIDI device
-			name = name[:-10]
-			if len(port.aliases):
-				# UID already assigned
-				return port.aliases[0], name
-			# Get BLE address
-			devices = check_output(['bluetoothctl', 'devices'], encoding='utf-8', timeout=0.1).split('\n')
-			for device in devices:
-				if not device:
-					continue
-				addr = device.split()[1]
-				dev_name = device[25:]
-				if dev_name == name:
-					if port.is_input:
-						return f"BLE:{addr}_OUT", name
-					else:
-						return f"BLE:{addr}_IN", name
-		else:
-			alsa_client_id = int(port.shortname.split('[')[1].split(']')[0])
-			# USB ports
-			if usb_midi_by_port:
-				card_id = aclient.get_client_info(alsa_client_id).card_id
-				with open(f"/proc/asound/card{card_id}/usbbus", "r") as f:
-					usbbus = f.readline()
-				tmp = re.findall(r'\d+', usbbus)
-				bus = int(tmp[0])
-				address = int(tmp[1])
-				usb_port_nos = usb.core.find(bus=bus, address=address).port_numbers
-				uid = f"{bus}"
-				for i in usb_port_nos:
-					uid += f".{i}"
-				uid = f"USB:{uid} {name}"
+	idx = 0
+	
+	if port.aliases and (port.aliases[0].startswith("in-hw-") or port.aliases[0].startswith("out-hw-")):
+		# Uninitiated input port
+		try:
+			if port.name.endswith(" Bluetooth"):
+				# Found BLE MIDI device
+				name = name[:-10]
+				if len(port.aliases):
+					# UID already assigned
+					return port.aliases[0], name
+				# Get BLE address
+				devices = check_output(['bluetoothctl', 'devices'], encoding='utf-8', timeout=0.1).split('\n')
+				for device in devices:
+					if not device:
+						continue
+					addr = device.split()[1]
+					dev_name = device[25:]
+					if dev_name == name:
+						if port.is_input:
+							return f"BLE:{addr}_OUT", name
+						else:
+							return f"BLE:{addr}_IN", name
 			else:
-				uid = f"USB:{name}"
-	except:
-		uid = name
-	if port.is_input:
-		uid += " OUT"
-	else:
-		uid += " IN"
-	return uid, name
+				# USB ports
+				io, hw, card, slot, idx, name = port.aliases[0].split('-', 5)
+				with open(f"/proc/asound/card{card}/midi0", "r") as f:
+					name = f.readline().strip()
+				if name == "f_midi":
+					name = "USB HOST"
+					uid = "USB:f_midi"
+				else:
+					with open(f"/proc/asound/card{card}/usbbus", "r") as f:
+						usbbus = f.readline()
+					tmp = re.findall(r'\d+', usbbus)
+					bus = int(tmp[0])
+					address = int(tmp[1])
+					usb_port_nos = usb.core.find(bus=bus, address=address).port_numbers
+					uid = f"{bus}"
+					for i in usb_port_nos:
+						uid += f".{i}"
+					uid = f"USB:{uid}/{name}"
+		except:
+			uid = name
+		if port.is_input:
+			uid += f" OUT {int(idx) + 1}"
+		else:
+			uid += f" IN {int(idx) + 1}"
+		return uid, name
+	elif len(port.aliases) > 1:
+		return port.aliases[0], port.aliases[1]
 
 
 def get_port_friendly_names():
@@ -961,28 +956,6 @@ def update_midi_port_aliases(port):
 		return False
 	return True
 
-
-def set_midi_port_alias(port_name, alias1, alias2=None, force=False):
-	global midi_port_names
-
-	try:
-		port = jclient.get_port_by_name(port_name)
-		if len(port.aliases) > 1 and not force:
-			return
-		for a in port.aliases:
-			port.unset_alias(a)
-		port.set_alias(alias1)
-		if alias2 is None:
-			if alias1 in midi_port_names:
-				alias2 = midi_port_names[alias1]
-			else:
-				alias2 = alias1
-		port.set_alias(alias2)
-		midi_port_names[alias1] = alias2
-	except:
-		pass
-
-
 def autoconnect():
 	"""Connect expected routes and disconnect unexpected routes"""
 	update_hw_midi_ports()
@@ -998,7 +971,6 @@ def get_hw_dst_ports():
 def auto_connect_thread():
 	"""Thread to run autoconnect, checking if physical (hardware) interfaces have changed, e.g. USB plug"""
 
-	global usb_midi_by_port
 	deferred_timeout = 2  # Period to run deferred connect (in seconds)
 	deferred_inc = 0.1  # Delay between loop cycles (in seconds) - allows faster exit from thread
 	deferred_count = 5  # Run at startup
