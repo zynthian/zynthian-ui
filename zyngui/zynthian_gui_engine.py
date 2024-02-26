@@ -36,6 +36,7 @@ from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_engine_pianoteq6 import *
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zyngui.zynthian_gui_controller import zynthian_gui_controller
 
 # ------------------------------------------------------------------------------
 # Zynthian Engine Selection GUI Class
@@ -48,7 +49,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.reset_index = True
 		self.proc_type = None
 		self.cat_index = -1
-		super().__init__('Engine', True)
+		self.zsel2 = None
+		super().__init__('Engine', True, False)
 		self.context_index = {}
 		self.engine_info = self.zyngui.chain_manager.engine_info
 		self.engine_info_dirty = False
@@ -63,15 +65,19 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			highlightthickness=0,
 			bg=zynthian_gui_config.color_bg)
 		# Position at top of column containing selector
-		self.info_canvas.grid(row=2, column=zynthian_gui_config.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
+		self.info_canvas.grid(row=0, column=zynthian_gui_config.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
+
+		# Marker for category page
+		#self.cat_marker_greyline = self.info_canvas.create_rectangle(0, 2, 0.25 * self.width, 4, fill=zynthian_gui_config.color_off)
+		#self.cat_marker_marker = self.info_canvas.create_rectangle(0, 0, 0, 0, fill=zynthian_gui_config.color_on)
 
 		# Info layout
-		star_fs = int(1.4 * zynthian_gui_config.font_size)
+		star_fs = int(1.95 * zynthian_gui_config.font_size)
 		#color_star = zynthian_gui_config.color_ml
 		color_star = zynthian_gui_config.color_on
 		color_star_off = zynthian_gui_config.color_off
 		xpos = int(0.5 * zynthian_gui_config.font_size)
-		ypos = 0
+		ypos = int(-0.3 * star_fs)
 		info_width = 0.25 * self.width - xpos
 		"""
 		self.quality_label = self.info_canvas.create_text(
@@ -104,7 +110,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			text="",
 			font=(zynthian_gui_config.font_family, star_fs),
 			fill=color_star)
-		ypos += int(1.4 * star_fs)
+		ypos += int(1.2 * star_fs)
 		"""
 		self.complexity_label = self.info_canvas.create_text(
 			xpos,
@@ -135,7 +141,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			text="",
 			font=(zynthian_gui_config.font_family, star_fs),
 			fill=color_star)
-		ypos += int(2 * star_fs)
+		ypos += int(1.6 * star_fs)
 		self.description_label = self.info_canvas.create_text(
 			xpos,
 			ypos,
@@ -145,7 +151,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			text="",
 			font=(zynthian_gui_config.font_family, int(0.8 * zynthian_gui_config.font_size)),
 			fill=zynthian_gui_config.color_panel_tx)
-		self.info_canvas.create_rectangle(0, 0, 0, 0, fill="blue", tags="page_indicator")
 
 	def update_layout(self):
 		super().update_layout()
@@ -205,9 +210,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			# Add category header...
 			if len(cats) > 1:
 				self.list_data.append((None, len(self.list_data), "> {}".format(cat)))
-			# Or set category on title bar
-			else:
-				self.set_select_path()
 
 			infos = self.engines_by_cat[cat]
 			# Add engines on this category...
@@ -235,7 +237,15 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		if not self.show_all:
 			self.engine_info_dirty = False
 
+		#self.update_marker()
 		super().fill_list()
+
+	def update_marker(self):
+		w = int(0.25 * self.width / len(self.engine_cats))
+		x = w * self.cat_index
+		self.info_canvas.coords(self.cat_marker_marker, x, 0, x + w, 6)
+		self.info_canvas.tag_raise(self.cat_marker_greyline)
+		self.info_canvas.tag_raise(self.cat_marker_marker)
 
 	def select(self, index=None):
 		super().select(index)
@@ -274,6 +284,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		elif t == 'B':
 			if not self.back_action():
 				self.show_all = True
+				self.get_engines_by_cat()
 				self.update_list()
 
 	def back_action(self):
@@ -282,20 +293,17 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				self.zyngui.chain_manager.save_engine_info()
 				self.engine_info_dirty = False
 			self.show_all = False
+			self.get_engines_by_cat()
 			self.update_list()
 			return True
 		else:
 			return False
 
 	def arrow_right(self):
-		if "chain_id" in self.zyngui.modify_chain_status:
-			self.zyngui.chain_manager.next_chain()
-			self.zyngui.chain_control()
+		self.zynpot_cb(2, 1)
 
 	def arrow_left(self):
-		if "chain_id" in self.zyngui.modify_chain_status:
-			self.zyngui.chain_manager.previous_chain()
-			self.zyngui.chain_control()
+		self.zynpot_cb(2, -1)
 
 	def cb_add_parallel(self, option, value):
 		self.zyngui.modify_chain_status['parallel'] = value
@@ -307,22 +315,38 @@ class zynthian_gui_engine(zynthian_gui_selector):
 				self.arrow_right()
 				return True
 
+	def set_selector(self, zs_hidden=False):
+		super().set_selector(zs_hidden)
+
+		if self.zsel2:
+			self.zsel2.zctrl.set_options({'symbol': "cat_index", 'name': "Category", 'short_name': "Category", 'value_min': 0, 'value_max': len(self.engine_cats) - 1, 'value': self.cat_index})
+			self.zsel2.config(self.zsel2.zctrl)
+			self.zsel2.show()
+		else:
+			zsel2_ctrl = zynthian_controller(None, "cat_index", {'name': "Category", 'short_name': "Category", 'value_min': 0, 'value_max': len(self.engine_cats) - 1, 'value': self.cat_index})
+			self.zsel2 = zynthian_gui_controller(zynthian_gui_config.select_ctrl - 1, self.main_frame, zsel2_ctrl, zs_hidden, selcounter=True)
+		if not self.zselector_hidden:
+			self.zsel2.grid(row=zynthian_gui_config.layout['ctrl_pos'][2][0], column=zynthian_gui_config.layout['ctrl_pos'][2][1], sticky="news")
+
+	def plot_zctrls(self):
+		super().plot_zctrls()
+		if self.zsel2.zctrl.is_dirty:
+			self.zsel2.calculate_plot_values()
+		self.zsel2.plot_value()
+
 	def zynpot_cb(self, i, dval):
 		if not self.shown:
-			return
-
-		# Use 3rd encoder to move across categories
-		if i == 2:
-			cati = self.cat_index + dval
-			if cati >= len(self.engine_cats):
-				cati = len(self.engine_cats) - 1
-			elif cati < 0:
-				cati = 0
-			if cati != self.cat_index:
-				self.cat_index = cati
+			return False
+		# Use secondary selector to move across categories
+		if self.zsel2 and self.zsel2.index == i:
+			self.zsel2.zynpot_cb(dval)
+			if self.cat_index != self.zsel2.zctrl.value:
+				self.cat_index = self.zsel2.zctrl.value
 				self.update_list()
+				self.set_select_path()
+			return True
 		else:
-			super().zynpot_cb(i, dval)
+			return super().zynpot_cb(i, dval)
 
 	def set_select_path(self):
 		path = ""
@@ -334,10 +358,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			pass
 		if self.cat_index >= 0:
 			path = path + "/" + self.engine_cats[self.cat_index]
-			w = int(0.25 * self.width / len(self.engine_cats))
-			x = w * self.cat_index
-			self.info_canvas.coords("page_indicator", x, 0, x+w, 4)
-			self.info_canvas.tag_raise("page_indicator")
 
 		self.select_path.set(path)
 

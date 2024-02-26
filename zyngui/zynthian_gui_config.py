@@ -64,10 +64,7 @@ if wiring_layout == "DUMMIES":
 else:
 	logging.info("Wiring Layout %s" % wiring_layout)
 
-if wiring_layout == "PROTOTYPE-1":
-	select_ctrl = 2
-else:
-	select_ctrl = 3
+select_ctrl = 3
 
 
 def check_wiring_layout(wls):

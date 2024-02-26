@@ -155,8 +155,8 @@ class zynthian_gui_bank(zynthian_gui_selector):
 				return True
 		return False
 
-	def set_selector(self, zs_hiden=False):
-		super().set_selector(zs_hiden)
+	def set_selector(self, zs_hidden=False):
+		super().set_selector(zs_hidden)
 
 	def set_select_path(self):
 		proc = self.zyngui.get_current_processor()

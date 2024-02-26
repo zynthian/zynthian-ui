@@ -178,8 +178,8 @@ class zynthian_gui_preset(zynthian_gui_selector):
 		except:
 			pass
 
-	def set_selector(self, zs_hiden=False):
-		super().set_selector(zs_hiden)
+	def set_selector(self, zs_hidden=False):
+		super().set_selector(zs_hidden)
 
 	def preselect_action(self):
 		self.zyngui.state_manager.start_busy("preselect preset")
