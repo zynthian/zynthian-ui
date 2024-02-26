@@ -1475,8 +1475,9 @@ class zynthian_state_manager:
         mcstate : dictionary with state. None for reset state to defaults.
         """
         if mcstate:
+            mapped = os.environ["ZYNTHIAN_USB_MIDI_BY_PORT"] == "1"
             for uid, state in mcstate.items():
-                zmip = zynautoconnect.get_midi_in_devid_by_uid(uid)
+                zmip = zynautoconnect.get_midi_in_devid_by_uid(uid, mapped)
                 if zmip is None:
                     continue
                 try:

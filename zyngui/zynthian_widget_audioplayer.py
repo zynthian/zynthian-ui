@@ -399,6 +399,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			self.widget_canvas.tag_raise("waveform")
 			self.widget_canvas.tag_raise("overlay")
 			self.update_cue_markers()
+		except MemoryError:
+			logging.warning(f"Failed to show waveform - file too large")
+			self.widget_canvas.itemconfig(self.loading_text, text="Cannot display\nwaveform")
 		except Exception as e:
 			self.widget_canvas.itemconfig(self.loading_text, text="No file\nloaded")
 		self.refreshing = False

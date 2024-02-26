@@ -38,7 +38,7 @@ from zynlibs.zynseq import zynseq
 
 class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer):
 
-	dev_ids = ["Launchkey Mini MK3 MIDI 2"]
+	dev_ids = ["Launchkey Mini MK3 MIDI 2", "Launchkey Mini MK3 IN 2"]
 
 	PAD_COLOURS = [71, 104, 76, 51, 104, 41, 64, 12, 11, 71, 4, 67, 42, 9, 105, 15]
 	STARTING_COLOUR = 123
@@ -46,14 +46,14 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 
 	# Function to initialise class
 	def __init__(self, state_manager, idev_in, idev_out=None):
-		self.cols = 8
-		self.rows = 2
 		self.shift = False
 		super().__init__(state_manager, idev_in, idev_out)
 
 	def init(self):
 		# Enable session mode on launchkey
 		lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 127)
+		self.cols = 8
+		self.rows = 2
 		super().init()
 
 	def end(self):

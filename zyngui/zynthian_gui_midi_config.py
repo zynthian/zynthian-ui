@@ -5,7 +5,7 @@
 # 
 # Zynthian GUI MIDI config Class
 # 
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
@@ -176,7 +176,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 dev = zynautoconnect.devices_in[i]
             else:
                 dev = zynautoconnect.devices_out[i]
-            if dev and dev.aliases:
+            if dev and len(dev.aliases) > 1:
                 if dev.aliases[0].startswith("USB:"):
                     usb_devices.append((dev.aliases[1], i))
                 elif dev.aliases[0].startswith("BLE:"):
