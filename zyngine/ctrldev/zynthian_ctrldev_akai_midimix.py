@@ -37,7 +37,7 @@ from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer
 
 class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 
-	dev_ids = ["MIDI Mix MIDI 1"]
+	dev_ids = ["MIDI Mix IN 1"]
 
 	rec_mode = 0
 

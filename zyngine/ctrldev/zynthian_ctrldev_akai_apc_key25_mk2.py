@@ -155,7 +155,7 @@ PT_LONG_TIME                         = 2.0
 # --------------------------------------------------------------------------
 class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ctrldev_zynpad):
 
-    dev_ids = ["APC Key 25 mk2 MIDI 2"]
+    dev_ids = ["APC Key 25 mk2 IN 2"]
 
     def __init__(self, state_manager, idev_in, idev_out=None):
         self._leds = FeedbackLEDs(idev_out)
