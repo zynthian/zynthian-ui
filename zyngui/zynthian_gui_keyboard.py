@@ -265,8 +265,10 @@ class zynthian_gui_keyboard():
 		self.text_canvas.itemconfig(self.text_label, text=self.text)
 		if not self.shown:
 			self.selected_button = self.btn_enter
+			self.shift = 0
 			self.highlight(self.selected_button)
 			self.setup_zynpots()
+			self.refresh_keys()
 			self.main_frame.grid()
 			self.shown=True
 

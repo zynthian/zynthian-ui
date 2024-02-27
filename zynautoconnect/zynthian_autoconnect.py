@@ -115,8 +115,6 @@ def set_port_friendly_name(port, friendly_name=None):
 
 	if len(port.aliases) < 1:
 		return
-	while len(port.aliases) > 1:
-		port.unset_alias(port.aliases[1])
 
 	try:
 		alias1 = port.aliases[0]
@@ -127,6 +125,8 @@ def set_port_friendly_name(port, friendly_name=None):
 			alias1, friendly_name = build_midi_port_name(port)
 		else:
 			midi_port_names[alias1] = friendly_name
+		while len(port.aliases) > 1:
+			port.unset_alias(port.aliases[1])
 		port.set_alias(friendly_name)
 	except:
 		pass
@@ -211,7 +211,7 @@ def get_midi_in_devid(idev):
 	"""
 
 	try:
-		return devices_in[idev].aliases[1]
+		return devices_in[idev].aliases[0].split('/', 1)[1]
 	except:
 		return None
 
@@ -224,7 +224,7 @@ def get_midi_out_devid(idev):
 	"""
 
 	try:
-		return devices_out[idev].aliases[1]
+		return devices_out[idev].aliases[0].split('/', 1)[1]
 	except:
 		return None
 
@@ -257,8 +257,12 @@ def get_midi_out_devid_by_uid(uid):
 
 	for i, port in enumerate(devices_out):
 		try:
-			if port.aliases[0] == uid:
-				return i
+			if mapped:
+				if port.aliases[0] == uid:
+					return i
+			else:
+				if port.aliases[0].split('/', 1)[1] == uid.split('/', 1)[1]:
+					return i
 		except:
 			pass
 	return None
@@ -916,14 +920,23 @@ def build_midi_port_name(port):
 			else:
 				# USB ports
 				io, hw, card, slot, idx, port_name = port.aliases[0].split('-', 5)
-				if port_name == "f-midi":
+				with open(f"/proc/asound/card{card}/midi0", "r") as f:
+					config = f.readlines()
+					port_name = config[0].strip()
+					n_inputs = 0
+					n_outputs = 0
+					for line in config:
+						if line.startswith("Input"):
+							n_inputs += 1
+						elif line.startswith("Output"):
+							n_outputs += 1
+				if port_name == "f_midi":
 					port_name = "USB HOST"
 					if port.is_output:
 						uid = "USB:f_midi OUT 1"
 					else:
 						uid = "USB:f_midi IN 1"
 				else:
-					port_name = port_name.replace("-", " ")
 					with open(f"/proc/asound/card{card}/usbbus", "r") as f:
 						usbbus = f.readline()
 					tmp = re.findall(r'\d+', usbbus)
@@ -934,6 +947,11 @@ def build_midi_port_name(port):
 					for i in usb_port_nos:
 						uid += f".{i}"
 					uid = f"USB:{uid}/{port_name}"
+					if port.is_input and n_inputs > 1:
+						port_name = f"{port_name} {int(idx) + 1}"
+					elif port.is_output and n_outputs > 1:
+						port_name = f"{port_name} {int(idx) + 1}"
+
 		except:
 			uid = port.name
 		if port.is_input:
