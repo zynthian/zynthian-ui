@@ -27,8 +27,8 @@ import tkinter
 import logging
 import tkinter.font as tkFont
 from threading import Timer, Thread
-from subprocess import run,PIPE
-from datetime import datetime # Only to timestamp config file updates
+from subprocess import run, PIPE
+from datetime import datetime  # Only to timestamp config file updates
 from evdev import InputDevice, ecodes
 from select import select
 import os
@@ -156,10 +156,10 @@ class zynthian_gui_touchscreen_calibration:
 		# Loop until we get a touch button event or the view hides
 		self.running = True
 		while self.running and self.shown:
-			r, w, x = select(devices, [], []) # Wait for any of the devices to trigger an event
+			r, w, x = select(devices, [], [])  # Wait for any of the devices to trigger an event
 			if self.running:
-				for device in r: # Iterate through all devices that have triggered events
-					for event in device.read(): # Iterate through all events from each device
+				for device in r:  # Iterate through all devices that have triggered events
+					for event in device.read():  # Iterate through all events from each device
 						if event.code == ecodes.BTN_TOUCH:
 							if event.value:
 								self.canvas.itemconfig("crosshairs_lines", fill="red")
@@ -212,8 +212,8 @@ class zynthian_gui_touchscreen_calibration:
 		self.ctm = []
 		for value in props[ctm_start:ctm_end].split(", "):
 			self.ctm.append(float(value))
-		self.node = props[node_start:node_end] # Get node name to allow mapping between evdev and xinput names
-		self.setCalibration(self.device_id, [1,0,0,0,1,0,0,0,1]) # Reset calibration to allow absolute acquisition
+		self.node = props[node_start:node_end]  # Get node name to allow mapping between evdev and xinput names
+		self.setCalibration(self.device_id, [1, 0, 0, 0, 1, 0, 0, 0, 1])  # Reset calibration to allow absolute acquisition
 		return True
 
 	# Handle touch press event
@@ -300,7 +300,7 @@ class zynthian_gui_touchscreen_calibration:
 
 				# TODO: Allow user to check calibration
 
-				self.zyngui.zynswitch_defered('S',1)
+				self.zyngui.zynswitch_defered('S', 1)
 				return
 
 		self.drawCross()
@@ -370,17 +370,17 @@ class zynthian_gui_touchscreen_calibration:
 				try:
 					os.mkdir(os.environ.get("ZYNTHIAN_CONFIG_DIR") + "/touchscreen/")
 				except:
-					pass # directory already exists
+					pass  # directory already exists
 				with open(os.environ.get("ZYNTHIAN_CONFIG_DIR") + "/touchscreen/" + os.environ.get("DISPLAY_NAME"), "w") as f:
-					f.write('Section "InputClass" # Created %s\n'%(datetime.now()))
+					f.write('Section "InputClass" # Created %s\n' % (datetime.now()))
 					f.write('	Identifier "calibration"\n')
-					f.write('	MatchProduct "%s"\n'%(device))
+					f.write('	MatchProduct "%s"\n' % (device))
 					f.write('	Option "TransformationMatrix" "%f %f %f %f %f %f %f %f %f"\n' % (matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8]))
 					f.write('EndSection\n')
 				with open("/etc/X11/xorg.conf.d/99-calibration.conf", "w") as f:
-					f.write('Section "InputClass" # Created %s\n'%(datetime.now()))
+					f.write('Section "InputClass" # Created %s\n' % (datetime.now()))
 					f.write('	Identifier "calibration"\n')
-					f.write('	MatchProduct "%s"\n'%(device))
+					f.write('	MatchProduct "%s"\n' % (device))
 					f.write('	Option "TransformationMatrix" "%f %f %f %f %f %f %f %f %f"\n' % (matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8]))
 					f.write('EndSection\n')
 		except Exception as e:
@@ -399,9 +399,9 @@ class zynthian_gui_touchscreen_calibration:
 	def build_view(self):
 		if self.zyngui.test_mode:
 			logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
-		self.shown=True
+		self.shown = True
 		self.device_id = None
-		self.ctm = [1,0,0,0,1,0,0,0,1]
+		self.ctm = [1, 0, 0, 0, 1, 0, 0, 0, 1]
 		self.canvas.unbind('<Button-1>')
 		self.canvas.unbind('<ButtonRelease-1>')
 		self.canvas.itemconfig(self.countdown_text, text="Closing in %ds" % (self.timeout))
@@ -424,7 +424,7 @@ class zynthian_gui_touchscreen_calibration:
 		if self.shown:
 			self.canvas.itemconfig(self.countdown_text, text="Closing in %ds" % (self.countdown))
 			if self.countdown <= 0:
-				self.zyngui.zynswitch_defered('S',1)
+				self.zyngui.zynswitch_defered('S', 1)
 				return
 			if not self.pressed:
 				self.countdown -= 1
@@ -440,8 +440,8 @@ class zynthian_gui_touchscreen_calibration:
 		pass
 
 	# Handle physical switch press
-	# type: Switch duration type (default: short)
-	def switch_select(self, type='S'):
+	# t: Switch duration type (default: short)
+	def switch_select(self, t='S'):
 		pass
 
 # -------------------------------------------------------------------------------

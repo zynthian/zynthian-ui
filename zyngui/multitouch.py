@@ -1,22 +1,48 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+# ******************************************************************************
+# ZYNTHIAN PROJECT: Zynthian GUI
+#
+# Zynthian GUI Touchscreen Calibration Class
+#
+# Copyright (C) 2023 Brian Walton <brian@riban.co.uk>
+#
+# ******************************************************************************
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of
+# the License, or any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# For a full copy of the GNU General Public License see the LICENSE.txt file.
+#
+# ******************************************************************************
+
 # Based on code from https://github.com/pimoroni/python-multitouch
 
-from glob import glob
 import struct
-from collections import namedtuple
-from threading import Thread
-from select import select
-from queue import Queue
-from evdev import ecodes, InputDevice
 import logging
-from time import monotonic
-from dataclasses import dataclass
-from subprocess import run,PIPE
 from enum import Enum
+from glob import glob
+from queue import Queue
+from select import select
+from time import monotonic
+from threading import Thread
+from subprocess import run, PIPE
+from dataclasses import dataclass
+from collections import namedtuple
+from evdev import ecodes, InputDevice
 
 from zyngui import zynthian_gui_config
 
 """A multitouch event"""
 TouchEvent = namedtuple('TouchEvent', ('timestamp', 'type', 'code', 'value'))
+
 
 class MultitouchTypes(Enum):
     # Touch event types
@@ -35,12 +61,12 @@ class MultitouchTypes(Enum):
     GESTURE_H_PINCH = 26
     GESTURE_V_PINCH = 27
 
-"""Class representing a touch slot (one slot per touch point)"""
+
 class Touch(object):
-    
+    """Class representing a touch slot (one slot per touch point)"""
+
     def __init__(self, slot):
         """Instantiate a Touch object
-        
         slot - Touch point slot index
         """
 
@@ -60,8 +86,8 @@ class Touch(object):
         
     @property
     def position(self):
-        
         """Current position of touch event  as tuple (x,y)"""
+
         return (self.x, self.y)
     
     @property
@@ -86,7 +112,6 @@ class Touch(object):
 
     def set_id(self, id):
         """Set event tracking identifier
-        
         id - Event id
         """
 
@@ -146,7 +171,8 @@ class TouchCallback:
     widget: object
     tag: int
     function: object
-    
+
+
 class MultiTouch(object):
     """Class representing a multitouch interface driver"""
     
@@ -163,14 +189,14 @@ class MultiTouch(object):
         invert_y_axis - True to invert y axis (optional)
         """
 
-        self._running = False # True when thread is running
-        self.thread = None # Background thread processing touch events
+        self._running = False  # True when thread is running
+        self.thread = None  # Background thread processing touch events
         self._invert_x = invert_x_axis
         self._invert_y = invert_y_axis
-        self.events = [] # List of pending multipoint events (not yet sent)
-        self.gesture_events = [] #List of events currently active as gestures
-        self._g_pending = None # Event that is pending multiple touch gesture start
-        self._g_timeout = None # Timer used to detect multiple touch gesture start
+        self.events = []  # List of pending multipoint events (not yet sent)
+        self.gesture_events = []  # List of events currently active as gestures
+        self._g_pending = None  # Event that is pending multiple touch gesture start
+        self._g_timeout = None  # Timer used to detect multiple touch gesture start
 
         # Event callback functions - lists of TouchCallback objects
         self._on_motion = []
@@ -186,9 +212,11 @@ class MultiTouch(object):
         for device in devices:
             try:
                 idev = InputDevice(device)
-                if ecodes.ABS_MT_SLOT in idev.capabilities()[ecodes.EV_ABS][ecodes.ABS_Z]:
-                    self.max_x = InputDevice(device).capabilities()[ecodes.EV_ABS][ecodes.ABS_X][1].max
-                    self.max_y = InputDevice(device).capabilities()[ecodes.EV_ABS][ecodes.ABS_Y][1].max
+                idev_caps = idev.capabilities()
+                # Look for the first device supporting multi-touch
+                if idev_caps[ecodes.EV_ABS][ecodes.ABS_Z][0] == ecodes.ABS_MT_SLOT:
+                    self.max_x = idev_caps[ecodes.EV_ABS][ecodes.ABS_X][1].max
+                    self.max_y = idev_caps[ecodes.EV_ABS][ecodes.ABS_Y][1].max
                     self._f_device = open(device, 'rb', self.EVENT_SIZE)
                     for libinput in self.xinput("--list").split("\n"):
                         if idev.name in libinput and "slave  pointer" in libinput:
@@ -199,12 +227,11 @@ class MultiTouch(object):
             except:
                 pass
 
-
-        self.touches = [Touch(x) for x in range(10)] # 10 touch slot objects
-        self._evdev_event_queue = Queue() # Used to store evdev events before processing into touch events
-        self._current_touch = self.touches[0] # Current touch object being processed
+        self.touches = [Touch(x) for x in range(10)]  # 10 touch slot objects
+        self._evdev_event_queue = Queue()  # Used to store evdev events before processing into touch events
+        self._current_touch = self.touches[0]  # Current touch object being processed
                 
-        self.touch_count = 0 # Quantity of currently pressed slots
+        self.touch_count = 0  # Quantity of currently pressed slots
         if self._f_device:
             self.thread = Thread(target=self._run, name="Multitouch")
             self.thread.start()
