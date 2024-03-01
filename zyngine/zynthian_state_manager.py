@@ -1679,6 +1679,23 @@ class zynthian_state_manager:
     # Global MIDI Player
     # ---------------------------------------------------------------------------
 
+    def get_new_midi_record_fpath(self):
+        exdirs = zynthian_gui_config.get_external_storage_dirs(ex_data_dir)
+        if exdirs:
+            path = exdirs[0]
+        else:
+            path = capture_dir_sdc
+        filename = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+        if self.last_snapshot_fpath and len(self.last_snapshot_fpath) > 4:
+            filename += "_" + os.path.basename(self.last_snapshot_fpath[:-4])
+
+        filename = filename.replace("/", ";").replace(">", ";").replace(" ; ", ";")
+        # Append index to file to make unique
+        index = 1
+        while "{}.{:03d}.mid".format(filename, index) in os.listdir(path):
+            index += 1
+        return "{}/{}.{:03d}.mid".format(path, filename, index)
+
     def start_midi_record(self):
         if not libsmf.isRecording():
             libsmf.unload(self.smf_recorder)
@@ -1693,26 +1710,8 @@ class zynthian_state_manager:
         if libsmf.isRecording():
             logging.info("STOPPING MIDI RECORDING ...")
             libsmf.stopRecording()
-            try:
-                parts = self.chain_manager.get_processors(self.chain_manager.active_chain_id, "SYNTH")[0].get_presetpath().split('#', 2)
-                filename = parts[1].replace("/", ";").replace(">", ";").replace(" ; ", ";")
-            except:
-                filename = "jack_capture"
 
-            exdirs = zynthian_gui_config.get_external_storage_dirs(ex_data_dir)
-            if exdirs:
-                midir = exdirs[0]
-            else:
-                midir = capture_dir_sdc
-
-            n = 1
-            for fn in glob(f"{midir}/*mid"):
-                try:
-                    n = int(fn[:3]) + 1
-                except:
-                    pass
-            fpath = f"{midir}/{n:03}-{filename}.mid"
-
+            fpath = self.get_new_midi_record_fpath()
             if zynsmf.save(self.smf_recorder, fpath):
                 self.sync = True
                 self.last_midi_file = fpath

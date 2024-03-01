@@ -346,7 +346,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		return True
 
 	def load_latest(self, processor):
-		bank_dirs = [zynthian_engine.my_data_dir + "/capture"]
+		bank_dirs = [zynthian_engine.my_data_dir + "/audio/capture"]
 		bank_dirs += zynthian_gui_config.get_external_storage_dirs(zynthian_engine.ex_data_dir)
 		
 		wav_fpaths = []

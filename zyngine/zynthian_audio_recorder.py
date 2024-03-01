@@ -61,15 +61,14 @@ class zynthian_audio_recorder:
 			path = exdirs[0]
 		else:
 			path = self.capture_dir_sdc
+		filename = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 		if self.state_manager.last_snapshot_fpath and len(self.state_manager.last_snapshot_fpath) > 4:
-			filename = os.path.basename(self.state_manager.last_snapshot_fpath[:-4])
-		else:
-			filename = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+			filename += "_" + os.path.basename(self.state_manager.last_snapshot_fpath[:-4])
+
 		filename = filename.replace("/", ";").replace(">", ";").replace(" ; ", ";")
 		# Append index to file to make unique
 		index = 1
-		files = os.listdir(path)
-		while "{}.{:03d}.wav".format(filename, index) in files:
+		while "{}.{:03d}.wav".format(filename, index) in os.listdir(path):
 			index += 1
 		return "{}/{}.{:03d}.wav".format(path, filename, index)
 

@@ -28,9 +28,9 @@ import socket
 import psutil
 import logging
 from time import sleep
+from stat import S_IWUSR
 from shutil import copyfile
 from subprocess import check_output
-from collections import OrderedDict
 
 # -------------------------------------------------------------------------------
 # Configure logging
@@ -286,7 +286,7 @@ def update_midi_profile(params, fpath=None):
 	if not fpath:
 		fpath = get_midi_config_fpath()
 
-	midi_params = OrderedDict()
+	midi_params = {}
 	for k, v in params.items():
 		if k.startswith('ZYNTHIAN_MIDI'):
 			if isinstance(v, list):
@@ -441,7 +441,8 @@ def get_external_storage_dirs(exdpath):
 	if os.path.isdir(exdpath):
 		for dname in sorted(os.listdir(exdpath)):
 			dpath = os.path.join(exdpath, dname)
-			if os.path.isdir(dpath) and os.path.ismount(dpath):
+			mode = os.lstat(dpath).st_mode
+			if os.path.isdir(dpath) and os.path.ismount(dpath) and (S_IWUSR & mode):
 				exdirs.append(dpath)
 	return exdirs
 

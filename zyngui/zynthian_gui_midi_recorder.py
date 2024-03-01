@@ -70,7 +70,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 			self.fill_list()
 			self.update_status_playback()
 
-	def build_view(self):
+	def XXX_build_view(self):
 		if super().build_view():
 			self.update_status_playback()
 			return True
@@ -251,7 +251,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	# Implement engine's method
 	def send_controller_value(self, zctrl):
-		if zctrl.symbol=="bpm":
+		if zctrl.symbol == "bpm":
 			self.zyngui.state_manager.zynseq.set_tempo(zctrl.value)
 			logging.debug("SET PLAYING BPM => {}".format(zctrl.value))
 

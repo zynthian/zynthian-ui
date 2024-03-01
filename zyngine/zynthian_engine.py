@@ -364,6 +364,10 @@ class zynthian_engine(zynthian_basic_engine):
 		# External storage banks
 		for exd in zynthian_gui_config.get_external_storage_dirs(cls.ex_data_dir):
 			sbanks = []
+			# Add root directory in external storage
+			if not exclude_empty or cls.find_some_preset_file(exd, 0):
+				sbanks.append([exd, None, "/", None, "/"])
+			# Walk directories inside root
 			walk = next(os.walk(exd))
 			walk[1].sort()
 			for root_bank_dir in walk[1]:
