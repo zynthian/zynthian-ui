@@ -320,7 +320,7 @@ def get_wifi_list():
 	# and create it if needed
 	if "zynthian-ap" not in configured_wifi:
 		logging.info("Creating Wi-Fi Access Point connection 'zynthian'...")
-		check_output(f"{self.sys_dir}/sbin/create_wifi_access_point.sh", encoding='utf-8')
+		check_output(f"{sys_dir}/sbin/create_wifi_access_point.sh", encoding='utf-8')
 
 	# Get list of available networks
 	wifi_data = []
