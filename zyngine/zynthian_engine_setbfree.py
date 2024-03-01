@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_setbfree)
 # 
 # zynthian_engine implementation for setBfree Hammond Emulator
 # 
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -20,7 +20,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import re
 import logging
@@ -29,9 +29,10 @@ from zyngine.zynthian_processor import zynthian_processor
 from . import zynthian_engine
 import zynautoconnect
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # setBfree Engine Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_engine_setbfree(zynthian_engine):
 
@@ -46,15 +47,13 @@ class zynthian_engine_setbfree(zynthian_engine):
 		['Upper + Lower + Pedals', 3, 'Upper + Lower + Pedals', '_', [True, True]]
 	]
 
-
 	bank_twmodels_list = [
 		['Sin', 0, 'Sine', '_'],
 		['Sqr', 1, 'Square', '_'],
 		['Tri', 2, 'Triangle', '_']
 	]
 
-
-	tonewheel_config = { 
+	tonewheel_config = {
 		"Sin": "",
 
 		"Sqr": """
@@ -79,60 +78,59 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	drawbar_ticks = [['0', '1', '2', '3', '4', '5', '6', '7', '8'], [127, 119, 103, 87, 71, 55, 39, 23, 7]]
- 
 
 	# MIDI Controllers
 	_ctrls = [
 		['volume', 7, 96, 127],
-#              ['swellpedal 2', 11, 96],
-               ['reverb', 91, 4, 127],
-               ['convol. mix', 94, 64, 127],
+		#['swellpedal 2', 11, 96],
+		['reverb', 91, 4, 127],
+		['convol. mix', 94, 64, 127],
 
-               ['rotary toggle', 64, 'off', 'off|on'],
-#              ['rotary speed', 1, 64, 127],
-#              ['rotary speed', 1, 'off', 'slow|off|fast'],
-               ['rotary speed', 1, 'off', [['slow', 'off', 'fast'], [0, 43, 86]]],
-#              ['rotary select', 67, 0, 127],
-#              ['rotary select', 67, 'off/off', 'off/off|slow/off|fast/off|off/slow|slow/slow|fast/slow|off/fast|slow/fast|fast/fast'],
-               ['rotary select', 67, 'off/off', [['off/off', 'slow/off', 'fast/off', 'off/slow', 'slow/slow', 'fast/slow', 'off/fast', 'slow/fast', 'fast/fast'], [0, 15, 30, 45, 60, 75, 90, 105, 120]]],
-               ['DB 16', 70, '8', drawbar_ticks],
-               ['DB 5 1/3', 71, '8', drawbar_ticks],
-               ['DB 8', 72, '8', drawbar_ticks],
-               ['DB 4', 73, '0', drawbar_ticks],
-               ['DB 2 2/3', 74, '0', drawbar_ticks],
-               ['DB 2', 75, '0', drawbar_ticks],
-               ['DB 1 3/5', 76, '0', drawbar_ticks],
-               ['DB 1 1/3', 77, '0', drawbar_ticks],
-               ['DB 1', 78, '0', drawbar_ticks],
+		['rotary toggle', 64, 'off', 'off|on'],
+		#['rotary speed', 1, 64, 127],
+		#['rotary speed', 1, 'off', 'slow|off|fast'],
+		['rotary speed', 1, 'off', [['slow', 'off', 'fast'], [0, 43, 86]]],
+		#['rotary select', 67, 0, 127],
+		#['rotary select', 67, 'off/off', 'off/off|slow/off|fast/off|off/slow|slow/slow|fast/slow|off/fast|slow/fast|fast/fast'],
+		['rotary select', 67, 'off/off', [['off/off', 'slow/off', 'fast/off', 'off/slow', 'slow/slow', 'fast/slow', 'off/fast', 'slow/fast', 'fast/fast'], [0, 15, 30, 45, 60, 75, 90, 105, 120]]],
+		['DB 16', 70, '8', drawbar_ticks],
+		['DB 5 1/3', 71, '8', drawbar_ticks],
+		['DB 8', 72, '8', drawbar_ticks],
+		['DB 4', 73, '0', drawbar_ticks],
+		['DB 2 2/3', 74, '0', drawbar_ticks],
+		['DB 2', 75, '0', drawbar_ticks],
+		['DB 1 3/5', 76, '0', drawbar_ticks],
+		['DB 1 1/3', 77, '0', drawbar_ticks],
+		['DB 1', 78, '0', drawbar_ticks],
 
-               ['vibrato upper', 31, 'off', 'off|on'],
-               ['vibrato lower', 30, 'off', 'off|on'],
-               ['vibrato routing', 95, 'off', 'off|lower|upper|both'],
-               #['vibrato selector', 92, 'c3', 'v1|v2|v3|c1|c2|c3'],
-               ['vibrato selector', 92, 'c3', [['v1', 'v2', 'v3', 'c1', 'c2', 'c3'], [0, 23, 46, 69, 92, 115]]],
+		['vibrato upper', 31, 'off', 'off|on'],
+		['vibrato lower', 30, 'off', 'off|on'],
+		['vibrato routing', 95, 'off', 'off|lower|upper|both'],
+		#['vibrato selector', 92, 'c3', 'v1|v2|v3|c1|c2|c3'],
+		['vibrato selector', 92, 'c3', [['v1', 'v2', 'v3', 'c1', 'c2', 'c3'], [0, 23, 46, 69, 92, 115]]],
 
-               #['percussion', 66, 'off' ,'off|on'],
-               ['percussion', 80, 'off', 'off|on'],
-               ['percussion volume', 81, 'soft', 'soft|hard'],
-               ['percussion decay', 82, 'slow', 'slow|fast'],
-               ['percussion harmonic', 83, '2nd', '2nd|3rd'],
+		#['percussion', 66, 'off' ,'off|on'],
+		['percussion', 80, 'off', 'off|on'],
+		['percussion volume', 81, 'soft', 'soft|hard'],
+		['percussion decay', 82, 'slow', 'slow|fast'],
+		['percussion harmonic', 83, '2nd', '2nd|3rd'],
 
-               ['overdrive', 65, 'off', 'off|on'],
-               ['overdrive character', 93, 0, 127],
-               ['overdrive inputgain', 21, 45, 127],
-               ['overdrive outputgain', 22, 10, 127]
+		['overdrive', 65, 'off', 'off|on'],
+		['overdrive character', 93, 0, 127],
+		['overdrive inputgain', 21, 45, 127],
+		['overdrive outputgain', 22, 10, 127]
 	]
 
 	# Controller Screens
 	_ctrl_screens = [
 		['main', ['volume', 'percussion', 'rotary speed', 'vibrato routing']],
-               ['drawbars 1', ['DB 16', 'DB 5 1/3', 'DB 8', 'DB 4']],
-               ['drawbars 2', ['DB 2 2/3', 'DB 2', 'DB 1 3/5', 'DB 1 1/3']],
-               ['drawbars 3 & reverb', ['DB 1', 'reverb', 'convol. mix']],
-               ['rotary', ['rotary toggle', 'rotary select', 'rotary speed']],
-               ['vibrato', ['vibrato upper', 'vibrato lower', 'vibrato routing', 'vibrato selector']],
-               ['percussion', ['percussion', 'percussion decay', 'percussion harmonic', 'percussion volume']],
-               ['overdrive', ['overdrive', 'overdrive character', 'overdrive inputgain', 'overdrive outputgain']]
+		['drawbars 1', ['DB 16', 'DB 5 1/3', 'DB 8', 'DB 4']],
+		['drawbars 2', ['DB 2 2/3', 'DB 2', 'DB 1 3/5', 'DB 1 1/3']],
+		['drawbars 3 & reverb', ['DB 1', 'reverb', 'convol. mix']],
+		['rotary', ['rotary toggle', 'rotary select', 'rotary speed']],
+		['vibrato', ['vibrato upper', 'vibrato lower', 'vibrato routing', 'vibrato selector']],
+		['percussion', ['percussion', 'percussion decay', 'percussion harmonic', 'percussion volume']],
+		['overdrive', ['overdrive', 'overdrive character', 'overdrive inputgain', 'overdrive outputgain']]
 	]
 
 	# setBfree preset params => controllers
@@ -162,9 +160,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 		'overdrive_ogain': 'overdrive outputgain'
 	}
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Config variables
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	base_dir = zynthian_engine.data_dir + "/setbfree"
 	presets_fpath = base_dir + "/pgm/all.pgm"
@@ -172,9 +170,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 	config_my_fpath = zynthian_engine.config_dir + "/setbfree/zynthian.cfg"
 	config_autogen_fpath = zynthian_engine.config_dir + "/setbfree/.autogen.cfg"
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Initialization
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def __init__(self, state_manager=None):
 		super().__init__(state_manager)
@@ -199,7 +197,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.command_prompt = "\nAll systems go."
 
 		self.reset()
-
 
 	def start(self):
 		self.state_manager.start_busy("setBfree")
@@ -264,7 +261,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 		chain_manager.set_active_chain_by_id(self.processors[0].chain_id)
 		self.state_manager.end_busy("setBfree")
 
-
 	def generate_config_file(self, chans):
 		midi_chans = chans.copy()
 		# Get user's config
@@ -306,7 +302,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 				res = res + '/' + chan_name
 		return res
 
-
 	def get_path(self, processor=None):
 		path = self.name
 		if not self.manuals_config:
@@ -320,7 +315,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 			pass
 			#path += "/" + self.tonewheel_model
 		return path
-
 
 	def remove_processor(self, processor):
 		try:
@@ -337,7 +331,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 			pass
 		super().remove_processor(processor)
 
-
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
@@ -348,9 +341,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 		except:
 			return None
 
-	#----------------------------------------------------------------------------
-	# Bank Managament
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
+	# Bank Management
+	# ----------------------------------------------------------------------------
 
 	def get_bank_list(self, processor):
 		if not self.manuals_config:
@@ -375,7 +368,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 		#return self.get_filelist(self.get_bank_dir(processor), "pgm")
 
-
 	def set_bank(self, processor, bank):
 		if not self.manuals_config:
 			self.manuals_config = bank
@@ -390,15 +382,13 @@ class zynthian_engine_setbfree(zynthian_engine):
 
 		return True
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Preset Managament
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def get_preset_list(self, bank):
 		logging.debug(f"Preset List for Bank {bank[0]}")
 		return self.load_program_list(bank[0])
-
 
 	def set_preset(self, processor, preset, preload=False):
 		if super().set_preset(processor, preset):
@@ -407,20 +397,18 @@ class zynthian_engine_setbfree(zynthian_engine):
 		else:
 			return False
 
-
 	def cmp_presets(self, preset1, preset2):
 		try:
-			if preset1[1][2]==preset2[1][2]:
+			if preset1[1][2] == preset2[1][2]:
 				return True
 			else:
 				return False
 		except:
 			return False
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Controller Managament
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def update_controller_values(self, processor, preset):
 		#Get values from preset params and set them into controllers
@@ -452,7 +440,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 			except Exception as e:
 				logging.debug(f"Can't update controller '{zcsymbol}' => {e}")
 
-
 	def midi_zctrl_change(self, zctrl, val):
 		try:
 			if val != zctrl.get_value():
@@ -462,9 +449,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 		except Exception as e:
 			logging.debug(e)
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Specific functionality
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def get_bank_dir(self, processor):
 		bank_dir = self.base_dir+"/pgm-banks"
@@ -473,9 +460,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 			bank_dir = bank_dir + '/' + chan_name
 		return bank_dir
 
-
-	def load_program_list(self,fpath):
-		pgm_list = None
+	def load_program_list(self, fpath):
 		try:
 			with open(fpath) as f:
 				pgm_list = []
@@ -484,19 +469,19 @@ class zynthian_engine_setbfree(zynthian_engine):
 				ptrn2 = re.compile("[\s]*[\{\}\,]+[\s]*")
 				i=0
 				for line in lines:
-					#Test with first pattern
+					# Test with first pattern
 					m = ptrn1.match(line)
 					if not m: continue
 
-					#Get line parts...
+					# Get line parts...
 					fragments = ptrn2.split(line)
 
 					params = {}
 					try:
-						#Get program MIDI number
+						# Get program MIDI number
 						prg = int(fragments[0]) - 1
 						if prg >= 0:
-							#Get params from line parts ...
+							# Get params from line parts ...
 							for frg in fragments[1:]:
 								parts = frg.split('=')
 								try:
@@ -504,16 +489,16 @@ class zynthian_engine_setbfree(zynthian_engine):
 								except:
 									pass
 
-							#Extract program name
+							# Extract program name
 							title = params['name']
 							del params['name']
 
-							#Complete program params ...
+							# Complete program params ...
 							#if 'vibrato' in params:
 							#	params['vibratoupper'] = 'on'
 							#	params['vibratorouting'] = 'upper'
 
-							#Extract drawbars values
+							# Extract drawbars values
 							if 'drawbars' in params:
 								j = 1
 								for v in params['drawbars']:
@@ -522,7 +507,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 										j = j + 1
 								del params['drawbars']
 
-							#Add program to list
+							# Add program to list
 							pgm_list.append([i, [0, 0, prg], title, params])
 							i = i + 1
 					except:
@@ -546,7 +531,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 		}
 		return engine_state
 
-
 	def set_extended_config(self, engine_state):
 		try:
 			self.manuals_config = engine_state['manuals_config']
@@ -558,4 +542,4 @@ class zynthian_engine_setbfree(zynthian_engine):
 		except Exception as e:
 			logging.error(f"Can't setup extended config => {e}")
 
-#******************************************************************************
+# -------------------------------------------------------------------------------

@@ -46,7 +46,9 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		if not proc:
 			logging.error("Can't fill bank list for None processor!")
 			return
-		self.list_data = proc.bank_list
+		#self.list_data = proc.bank_list
+		# TODO: Can't optimize because of setBfree / Aeolus "bank anomaly"
+		self.list_data = proc.get_bank_list()
 		super().fill_list()
 
 	def build_view(self):
