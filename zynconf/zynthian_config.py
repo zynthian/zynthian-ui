@@ -159,7 +159,7 @@ config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR', '/zynthian/config')
 config_fpath = config_dir + "/zynthian_envars.sh"
 
 # -------------------------------------------------------------------------------
-# Config related functions
+# Config management
 # -------------------------------------------------------------------------------
 
 
@@ -274,12 +274,13 @@ def update_sys():
 		logging.error("Updating Sytem Config: %s" % e)
 
 # -------------------------------------------------------------------------------
-# MIDI Config related functions
+# MIDI Config
 # -------------------------------------------------------------------------------
 
 
 def load_midi_config(set_env=True, fpath=None):
 	return load_config(set_env, get_midi_config_fpath(fpath))
+
 
 def update_midi_profile(params, fpath=None):
 	if not fpath:
@@ -300,8 +301,101 @@ def update_midi_profile(params, fpath=None):
 
 
 # -------------------------------------------------------------------------------
-# Network Config related functions
+# Network Info
 # -------------------------------------------------------------------------------
+
+def get_wifi_list():
+	# Get list of configured networks
+	configured_wifi = []
+	rows = check_output(["nmcli", "--terse", "con", "show"], encoding='utf-8').split("\n")
+	for row in rows:
+		parts = row.split(":")
+		if len(parts) > 3:
+			nw_type = parts[-2]
+			name = parts[-4]
+			if nw_type == "802-11-wireless":
+				configured_wifi.append(name)
+
+	# Check if access point connection does exist,
+	# and create it if needed
+	if "zynthian-ap" not in configured_wifi:
+		logging.info("Creating Wi-Fi Access Point connection 'zynthian'...")
+		check_output(f"{self.sys_dir}/sbin/create_wifi_access_point.sh", encoding='utf-8')
+
+	# Get list of available networks
+	wifi_data = []
+	ap_enabled = False
+	rows = check_output(["nmcli", "--terse", "dev", "wifi", "list"], encoding='utf-8').split("\n")
+	for row in rows:
+		parts = row.split(":")
+		if len(parts) > 8:
+			signal = parts[-3]
+			bars = parts[-2]
+			ssid = parts[-7]
+			if signal == "0":
+				ap_enabled = True
+				continue
+			if ssid in configured_wifi:
+				configured = True
+			else:
+				configured = False
+			rate = parts[-4].replace("Mbit/s", "Mbs")
+			if parts[0] == "*":
+				enabled = True
+				bullet = "\u2612"
+			else:
+				enabled = False
+				bullet = "\u2610"
+			title = f"{bullet} {bars} {ssid} ({rate})"
+			wifi_data.append((ssid, 0, title, configured, enabled))
+
+	# Add Access Point
+	if ap_enabled:
+		bullet = "\u2612"
+	else:
+		bullet = "\u2610"
+	title = f"{bullet} Wi-Fi Access Point zynthian"
+	wifi_data.append(("zynthian-ap", 0, title, True, ap_enabled))
+
+	return wifi_data
+
+
+def get_nwdev_all_status(devname):
+	status = {}
+	try:
+		rows = check_output(["nmcli", "--terse", "dev", "show", devname], encoding='utf-8').split("\n")
+		for row in rows:
+			parts = row.split(":", 2)
+			if len(parts) > 1:
+				status[parts[0]] = parts[1]
+	except Exception as e:
+		logging.error(f"Can't get status for '{devname}': {e}")
+	return status
+
+
+def get_nwdev_status_code(devname):
+	try:
+		return int(get_nwdev_all_status(devname)["GENERAL.STATE"].split(" ")[0])
+	except:
+		return -1
+
+
+def get_nwdev_status_string(devname):
+	try:
+		status = get_nwdev_all_status(devname)
+		code = int(status["GENERAL.STATE"].split(" ")[0])
+		if code == 20:
+			return "OFF"
+		elif code == 30:
+			return "ON"
+		elif code == 50:
+			return "Connecting"
+		elif code == 100:
+			return status['GENERAL.CONNECTION']
+		else:
+			return status["GENERAL.STATE"]
+	except:
+		return "ERR"
 
 
 def get_netinfo(exclude_down=True):
@@ -325,133 +419,22 @@ def get_netinfo(exclude_down=True):
 	return netinfo
 
 
-def is_wifi_active():
-	for ifc in get_netinfo():
-		if ifc.startswith("wlan"):
-			return True
-
-
 def network_info():
 	logging.info("NETWORK INFO")
-
-	res = OrderedDict()
-	res["Link-Local Name"] = ["{}.local".format(os.uname().nodename), "SUCCESS"]
+	res = {
+		"Link-Local Name": ["{}.local".format(os.uname().nodename), "SUCCESS"]
+	}
 	for ifc, snic in get_netinfo().items():
 		if snic.family == socket.AF_INET and snic.address:
 			res[ifc] = [str(snic.address), "SUCCESS"]
 		else:
 			res[ifc] = ["connecting...", "WARNING"]
-
 	return res
 
 
-def start_wifi():
-	logging.info("STARTING WIFI")
-
-	check_output(sys_dir + "/sbin/set_wifi.sh on", shell=True)
-	sleep(2)
-
-	counter = 0
-	success = False
-	while True:
-		counter += 1
-		for ifc, snic in get_netinfo().items():
-			#logging.debug("{} => {}, {}".format(ifc,snic.family,snic.address))
-			if ifc.startswith("wlan") and snic.family == socket.AF_INET and snic.address:
-				success = True
-				break
-
-		if success:
-			save_config({
-					"ZYNTHIAN_WIFI_MODE": 'on'
-			})
-			return True
-
-		elif counter > 20:
-			return False
-
-		sleep(1)
-
-
-def start_wifi_hotspot():
-	logging.info("STARTING WIFI HOTSPOT")
-
-	check_output(sys_dir + "/sbin/set_wifi.sh hotspot", shell=True)
-	sleep(2)
-
-	counter = 0
-	success = False
-	while True:
-		counter += 1
-		for ifc, snic in get_netinfo().items():
-			#logging.debug("{} => {}, {}".format(ifc,snic.family,snic.address))
-			if ifc.startswith("wlan") and snic.family == socket.AF_INET and snic.address:
-				success = True
-				break
-
-		if success:
-			save_config({
-					"ZYNTHIAN_WIFI_MODE": 'hotspot'
-			})
-			return True
-
-		elif counter > 20:
-			return False
-
-		sleep(1)
-
-
-def stop_wifi():
-	logging.info("STOPPING WIFI")
-
-	check_output(sys_dir + "/sbin/set_wifi.sh off", shell=True)
-
-	counter = 0
-	success = False
-	while not success:
-		counter += 1
-		success = True
-		for ifc in get_netinfo():
-			#logging.debug("{} is UP".format(ifc))
-			if ifc.startswith("wlan"):
-				success = False
-				break
-
-		if success:
-			save_config({
-					"ZYNTHIAN_WIFI_MODE": 'off'
-			})
-			return True
-
-		elif counter > 10:
-			return False
-
-		sleep(1)
-
-
-def wifi_up():
-	logging.info("WIFI UP")
-	check_output(sys_dir + "/sbin/set_wifi.sh up", shell=True)
-
-
-def wifi_down():
-	logging.info("WIFI DOWN")
-	check_output(sys_dir + "/sbin/set_wifi.sh down", shell=True)
-
-
-def get_current_wifi_mode():
-	if is_wifi_active():
-		if is_service_active("hostapd"):
-			return "hotspot"
-		else:
-			return "on"
-
-	return "off"
-
-
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # External storage (removable disks)
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 def get_external_storage_dirs(exdpath):
 	exdirs = []

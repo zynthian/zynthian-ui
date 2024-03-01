@@ -229,10 +229,11 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.last_index_change_ts = datetime.min
 
 	def update_list(self):
-		yv = self.listbox.yview()
-		self.fill_list()
-		self.set_selector()
-		self.listbox.yview_moveto(yv[0])
+		if self.shown:
+			yv = self.listbox.yview()
+			self.fill_list()
+			self.set_selector()
+			self.listbox.yview_moveto(yv[0])
 
 	def get_cursel(self):
 		cursel = self.listbox.curselection()

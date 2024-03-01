@@ -86,6 +86,7 @@ from zyngui.zynthian_gui_tempo import zynthian_gui_tempo
 from zyngui.zynthian_gui_brightness_config import zynthian_gui_brightness_config
 from zyngui.zynthian_gui_touchscreen_calibration import zynthian_gui_touchscreen_calibration
 from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
+from zyngui.zynthian_gui_wifi import zynthian_gui_wifi
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
 
 MIXER_MAIN_CHANNEL = 17  # TODO This constant should go somewhere else
@@ -445,6 +446,7 @@ class zynthian_gui:
 		self.screens['zynpad'] = zynthian_gui_zynpad()
 		self.screens['arranger'] = zynthian_gui_arranger()
 		self.screens['pattern_editor'] = zynthian_gui_patterneditor()
+		self.screens['wifi'] = zynthian_gui_wifi()
 		self.screens['brightness_config'] = zynthian_gui_brightness_config()
 		self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
 		self.screens['control_test'] = zynthian_gui_control_test()

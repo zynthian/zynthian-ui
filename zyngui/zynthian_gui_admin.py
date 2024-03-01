@@ -53,8 +53,14 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.commands = None
 		self.thread = None
 		self.child_pid = None
+
 		self.last_action = None
 		self.update_available = False
+		self.refresh_wifi_thread = None
+		self.refresh_wifi = False
+		self.wifi_index = -1
+		self.wifi_status = "???"
+		self.filling_list = False
 
 		super().__init__('Action', True)
 
@@ -64,23 +70,45 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		if self.state_manager.allow_rbpi_headphones():
 			self.default_rbpi_headphones()
 
-
 	def refresh_status(self):
-		super().refresh_status()
-		if self.update_available != self.state_manager.update_available:
-			self.update_available = self.state_manager.update_available
-			self.fill_list()
+		if self.shown:
+			super().refresh_status()
+			if not self.filling_list and self.update_available != self.state_manager.update_available:
+				self.update_available = self.state_manager.update_available
+				self.update_list()
 
+	def refresh_wifi_task(self):
+		while self.refresh_wifi:
+			self.wifi_status = zynconf.get_nwdev_status_string("wlan0")
+			if self.wifi_index > 0:
+				wifi_item = f"Wi-Fi Config ({self.wifi_status})"
+				if self.listbox.get(self.wifi_index) != wifi_item:
+					self.listbox.delete(self.wifi_index)
+					self.listbox.insert(self.wifi_index, wifi_item)
+			sleep(2)
 
 	def build_view(self):
 		self.state_manager.check_for_updates()
-		return super().build_view()
+		if not self.refresh_wifi_thread:
+			self.refresh_wifi = True
+			self.refresh_wifi_thread = Thread(target=self.refresh_wifi_task, name="wifi_refresh")
+			self.refresh_wifi_thread.start()
+		res = super().build_view()
+		return res
 
+	def hide(self):
+		self.refresh_wifi = False
+		self.refresh_wifi_thread = None
+		super().hide()
 
 	def fill_list(self):
-		self.list_data = []
-		self.list_data.append((None, 0, "> MIDI"))
+		if self.filling_list:
+			return
 
+		self.filling_list = True
+		self.list_data = []
+
+		self.list_data.append((None, 0, "> MIDI"))
 		self.list_data.append((self.zyngui.midi_in_config, 0, "MIDI Input Devices"))
 		self.list_data.append((self.zyngui.midi_out_config, 0, "MIDI Output Devices"))
 		#self.list_data.append((self.midi_profile, 0, "MIDI Profile"))
@@ -135,18 +163,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.toggle_dpm, 0, "\u2610 Mixer Peak Meters"))
 
 		self.list_data.append((None, 0, "> NETWORK"))
-
 		self.list_data.append((self.network_info, 0, "Network Info"))
-
-		if zynconf.is_wifi_active():
-			if zynconf.is_service_active("hostapd"):
-				self.list_data.append((self.state_manager.stop_wifi, 0, "\u2612 Wi-Fi Hotspot"))
-			else:
-				self.list_data.append((self.state_manager.stop_wifi, 0, "\u2612 Wi-Fi"))
-		else:
-			self.list_data.append((self.state_manager.start_wifi, 0, "\u2610 Wi-Fi"))
-			self.list_data.append((self.state_manager.start_wifi_hotspot, 0, "\u2610 Wi-Fi Hotspot"))
-
+		self.list_data.append((self.wifi_config, 0, f"Wi-Fi Config ({self.wifi_status})"))
+		self.wifi_index = len(self.list_data) - 1
 		if zynconf.is_service_active("vncserver0"):
 			self.list_data.append((self.state_manager.stop_vncserver, 0, "\u2612 VNC Server"))
 		else:
@@ -177,7 +196,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.exit_to_console, 0, "Exit"))
 		self.list_data.append((self.reboot, 0, "Reboot"))
 		self.list_data.append((self.power_off, 0, "Power Off"))
+
 		super().fill_list()
+		self.filling_list = False
 
 	def select_action(self, i, t='S'):
 		self.last_selected_index = i
@@ -300,7 +321,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		except Exception as e:
 			logging.error(e)
 
-		self.fill_list()
+		self.update_list()
 
 	def stop_rbpi_headphones(self, save_config=True):
 		logging.info("STOPPING RBPI HEADPHONES")
@@ -317,7 +338,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		except Exception as e:
 			logging.error(e)
 
-		self.fill_list()
+		self.update_list()
 
 	# Start/Stop RBPI Headphones depending on configuration
 	def default_rbpi_headphones(self):
@@ -328,7 +349,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def toggle_dpm(self):
 		zynthian_gui_config.enable_dpm = not zynthian_gui_config.enable_dpm
-		self.fill_list()
+		self.update_list()
 
 	def toggle_snapshot_mixer_settings(self):
 		if zynthian_gui_config.snapshot_mixer_settings:
@@ -342,7 +363,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		zynconf.save_config({ 
 			"ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS": str(int(zynthian_gui_config.snapshot_mixer_settings))
 		})
-		self.fill_list()
+		self.update_list()
 
 	def toggle_midi_sys(self):
 		if zynthian_gui_config.midi_sys_enabled:
@@ -358,7 +379,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		})
 
 		lib_zyncore.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
-		self.fill_list()
+		self.update_list()
 
 	# -------------------------------------------------------------------------
 	# Global Transpose editing
@@ -410,7 +431,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			"ZYNTHIAN_MIDI_USB_BY_PORT": str(int(zynthian_gui_config.midi_usb_by_port))
 		})
 
-		self.fill_list()
+		self.update_list()
 
 	def toggle_prog_change_zs3(self):
 		if zynthian_gui_config.midi_prog_change_zs3:
@@ -425,7 +446,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			"ZYNTHIAN_MIDI_PROG_CHANGE_ZS3": str(int(zynthian_gui_config.midi_prog_change_zs3))
 		})
 
-		self.fill_list()
+		self.update_list()
 
 	def toggle_bank_change(self):
 		if zynthian_gui_config.midi_bank_change:
@@ -440,7 +461,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			"ZYNTHIAN_MIDI_BANK_CHANGE": str(int(zynthian_gui_config.midi_bank_change))
 		})
 
-		self.fill_list()
+		self.update_list()
 
 	def toggle_preset_preload_noteon(self):
 		if zynthian_gui_config.preset_preload_noteon:
@@ -454,7 +475,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		zynconf.update_midi_profile({ 
 			"ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON": str(int(zynthian_gui_config.preset_preload_noteon))
 		})
-		self.fill_list()
+		self.update_list()
 
 	def show_cv_config(self):
 		self.zyngui.show_screen("cv_config")
@@ -466,6 +487,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	# ------------------------------------------------------------------------------
 	# NETWORK INFO
 	# ------------------------------------------------------------------------------
+
+	def wifi_config(self):
+		self.zyngui.show_screen("wifi")
 
 	def network_info(self):
 		self.zyngui.show_info("NETWORK INFO\n")
@@ -511,7 +535,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def workflow_capture_stop(self):
 		self.zyngui.stop_capture_log()
-		self.fill_list()
+		self.update_list()
 
 	def update_software(self):
 		logging.info("UPDATE SOFTWARE")

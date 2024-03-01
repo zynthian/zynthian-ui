@@ -25,11 +25,11 @@
 # ******************************************************************************
 
 import os
+import re
 import logging
 from time import sleep
 from threading import Thread
 from subprocess import check_output, Popen, PIPE
-import re
 
 # Zynthian specific modules
 import zynautoconnect
@@ -37,10 +37,11 @@ from zyncoder.zyncore import lib_zyncore
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui import zynthian_gui_config
 
-
 # ------------------------------------------------------------------------------
 # Mini class to allow use of audio_in gui
 # ------------------------------------------------------------------------------
+
+
 class aubio_inputs():
     def __init__(self, state_manager):
         self.state_manager = state_manager
@@ -62,8 +63,8 @@ ZMIP_MODE_CONTROLLER = "⌨" #\u2328
 ZMIP_MODE_ACTIVE = "⇥" #\u21e5
 ZMIP_MODE_MULTI = "⇶" #\u21f6
 
-class zynthian_gui_midi_config(zynthian_gui_selector):
 
+class zynthian_gui_midi_config(zynthian_gui_selector):
 
     def __init__(self):
         self.chain = None      # Chain object
@@ -294,7 +295,6 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                         self.list_data.append((chain_id, None, f"\u2610 {prefix}{chain.get_name()}"))
 
         super().fill_list()
-
 
     def select_action(self, i, t='S'):
         if t == 'S':
