@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#********************************************************************
+# ********************************************************************
 # ZYNTHIAN PROJECT: Zynsfm Python Wrapper
 #
 # A Python wrapper for zynsmf library
 #
 # Copyright (C) 2021 Brian Walton <brian@riban.co.uk>
 #
-#********************************************************************
+# ********************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#********************************************************************
+# ********************************************************************
 
 import ctypes
 from _ctypes import dlclose
@@ -68,32 +68,50 @@ PLAY_STATE_PLAYING			= 2
 PLAY_STATE_STOPPING			= 3
 
 
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Zynthian Standard MIDI File Library Wrapper
 #
-#	Most library functions are accessible directly by calling libsmf.functionName(parameters)
-#	Following function wrappers provide simple access for complex data types. Access with zynsmf.function_name(parameters)
+# Most library functions are accessible directly by calling libsmf.functionName(parameters)
+# Following function wrappers provide simple access for complex data types. Access with zynsmf.function_name(parameters)
 #
-#	Include the following imports to access these two library objects:
-# 		from zynlibs.zynsmf import zynsmf
-#		from zynlibs.zynsmf.zynsmf import libsmf
+# Include the following imports to access these two library objects:
+#  	from zynlibs.zynsmf import zynsmf
+# 	from zynlibs.zynsmf.zynsmf import libsmf
 #
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 
-#	Initiate library - performed by zynsmf module
+# Initiate library - performed by zynsmf module
 def init():
 	global libsmf
 	try:
-		libsmf=ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynsmf.so")
+		libsmf = ctypes.cdll.LoadLibrary(dirname(realpath(__file__)) + "/build/libzynsmf.so")
+		libsmf.addSmf.restype = ctypes.c_ulong
+		libsmf.unload.argtypes = [ctypes.c_ulong]
+		libsmf.removeSmf.argtypes = [ctypes.c_ulong]
+		libsmf.getDuration.argtypes = [ctypes.c_ulong]
 		libsmf.getDuration.restype = ctypes.c_double
+		libsmf.setPosition.argtypes = [ctypes.c_ulong, ctypes.c_uint]
+		libsmf.getTracks.argtypes = [ctypes.c_ulong]
+		libsmf.getFormat.argtypes = [ctypes.c_ulong]
+		libsmf.getEvents.argtypes = [ctypes.c_ulong, ctypes.c_ulong]
+		libsmf.addNote.argtypes = [ctypes.c_ulong, ctypes.c_uint, ctypes.c_uint, ctypes.c_uint, ctypes.c_ubyte, ctypes.c_ubyte, ctypes.c_ubyte]
+		libsmf.addTempo.argtypes = [ctypes.c_ulong, ctypes.c_uint, ctypes.c_double]
+		libsmf.setEndOfTrack.argtypes = [ctypes.c_ulong, ctypes.c_uint, ctypes.c_uint]
+		libsmf.getTicksPerQuarterNote.argtypes = [ctypes.c_ulong]
+		libsmf.getEvent.argtypes = [ctypes.c_ulong, ctypes.c_ubyte]
+		libsmf.attachPlayer.argtypes = [ctypes.c_ulong]
+		libsmf.attachRecorder.argtypes = [ctypes.c_ulong]
+		libsmf.getTempo.argtypes = [ctypes.c_ulong, ctypes.c_uint]
 		libsmf.getTempo.restype = ctypes.c_double
-		libsmf.addTempo.argtypes = [ctypes.c_ulong , ctypes.c_uint, ctypes.c_double]
+		libsmf.printEvents.argtypes = [ctypes.c_ulong, ctypes.c_uint]
+		libsmf.muteTrack.argtypes = [ctypes.c_ulong, ctypes.c_uint, ctypes.c_ubyte]
+		libsmf.isTrackMuted.argtypes = [ctypes.c_ulong, ctypes.c_uint]
 	except Exception as e:
-		libsmf=None
-		print("Can't initialise zynsmf library: %s" % str(e))
+		libsmf = None
+		print(f"Can't initialise zynsmf library: {e}")
 
 
-#	Destoy instance of shared library
+# Destroy instance of shared library
 def destroy():
 	global libsmf
 	if libsmf:
@@ -101,24 +119,23 @@ def destroy():
 	libsmf = None
 
 
-#	Load a MIDI file
-#	smf: Pointer to smf object to populate
-#	filename: Full path and filename
-#	Returns: True on success
+# Load a MIDI file
+#  smf: Pointer to smf object to populate
+#  filename: Full path and filename
+#  Returns: True on success
 def load(smf, filename):
 	if libsmf:
-		return libsmf.load(smf, bytes(filename, "utf-8"))
+		return libsmf.load(ctypes.c_ulong(smf), bytes(filename, "utf-8"))
 	return False
 
 
-#	Save a MIDI file
-#	smf: Pointer to smf object to save
-#	filename: Full path and filename
-#	Returns: True on success
+# Save a MIDI file
+#  smf: Pointer to smf object to save
+#  filename: Full path and filename
+#  Returns: True on success
 def save(smf, filename):
 	if libsmf:
-		return libsmf.save(smf, bytes(filename, "utf-8"))
+		return libsmf.save(ctypes.c_ulong(smf), bytes(filename, "utf-8"))
 	return False
 
-
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------

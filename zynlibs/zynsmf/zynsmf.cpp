@@ -77,10 +77,11 @@ auto g_pvSmf = g_Smf.getVector();
 // return true if pointer is in list
 bool isSmfValid(Smf* pSmf)
 {
-	for(auto it = g_pvSmf->begin(); it != g_pvSmf->end(); ++it)
+	for (auto it = g_pvSmf->begin(); it != g_pvSmf->end(); ++it)
 	{
-		if(*it == pSmf)
+		if (*it == pSmf) {
 			return true;
+		}
 	}
 	return false;
 }
@@ -151,7 +152,7 @@ void unload(Smf* pSmf)
 
 double getDuration(Smf* pSmf)
 {
-	if(!isSmfValid)
+	if (!isSmfValid(pSmf))
 		return 0.0;
 	return pSmf->getDuration();
 }
