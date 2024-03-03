@@ -45,6 +45,7 @@ from zyngui.multitouch import MultitouchTypes
 
 class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
+	MAX_FRAMES = 2880000
 
 	def __init__(self, parent):
 		super().__init__(parent)
@@ -67,7 +68,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.offset = 0 # Frames from start of file that waveform display starts
 		self.channels = 0 # Quantity of channels in audio
 		self.frames = 0 # Quantity of frames in audio
-		self.limit_factor = 1500000 # Used to limit the quantity of frames processed in large data sets
 		self.info = None
 		self.images=[]
 		self.waveform_height = 1 # ratio of height for y offset of zoom overview display
@@ -174,6 +174,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 
 	def show(self):
+		self.refreshing = False
 		super().show()
 
 
@@ -376,20 +377,20 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 
 	def load_file(self):
-		self.info = None
-		self.widget_canvas.delete("waveform")
-		self.widget_canvas.itemconfig("overlay", state=tkinter.HIDDEN)
-		self.widget_canvas.itemconfig(self.loading_text, text="Creating\nwaveform...")
 		try:
-			with soundfile.SoundFile(self.filename) as snd:
-				self.audio_data = snd.read()
-				self.channels = snd.channels
-				self.samplerate = snd.samplerate
-				self.frames = len(self.audio_data)
-				if self.samplerate:
-					self.duration = self.frames / self.samplerate
-				else:
-					self.duration = 0.0
+			self.refreshing = True
+			self.info = None
+			self.widget_canvas.delete("waveform")
+			self.widget_canvas.itemconfig("overlay", state=tkinter.HIDDEN)
+			self.widget_canvas.itemconfig(self.loading_text, text="Creating\nwaveform...")
+			self.sf = soundfile.SoundFile(self.filename)
+			self.channels = self.sf.channels
+			self.samplerate = self.sf.samplerate
+			self.frames = self.sf.seek(0, soundfile.SEEK_END)
+			if self.samplerate:
+				self.duration = self.frames / self.samplerate
+			else:
+				self.duration = 0.0
 			y0 = self.waveform_height // self.channels
 			for chan in range(self.channels):
 				v_offset = chan * y0
@@ -399,6 +400,18 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			self.widget_canvas.tag_raise("waveform")
 			self.widget_canvas.tag_raise("overlay")
 			self.update_cue_markers()
+			frames = self.frames / 2
+			labels = ['x1']
+			values = [1]
+			z = 1
+			while frames > self.width:
+				z *= 2
+				labels.append(f"x{z}")
+				values.append(z)
+				frames /= 2
+			zctrl = self.processor.controllers_dict['zoom']
+			zctrl.set_options({'labels':labels, 'ticks':values, 'value_max':values[-1]})
+
 		except MemoryError:
 			logging.warning(f"Failed to show waveform - file too large")
 			self.widget_canvas.itemconfig(self.loading_text, text="Cannot display\nwaveform")
@@ -408,50 +421,62 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.refresh_waveform = True
 		self.update()
 
-
 	def draw_waveform(self, start, length):
 		if not self.channels:
 			return
 		start = max(0, start)
 		start = min(self.frames, start)
 		length = min(self.frames - start, length)
-		limit = max(1, length // self.limit_factor)
+		steps_per_peak = 16
 		
-		frames_per_pixel = length / self.width
-		step = frames_per_pixel / limit
 		y0 = self.waveform_height // self.channels
+		y_offsets = []
+		for i in range(self.channels):
+			y_offsets.append(y0 * (i + 0.5))
+		y0 //= 2
+
+		frames_per_pixel = length // self.width
+		block_size = min(frames_per_pixel, 1024) # Limit large file read blocks
+		if frames_per_pixel < 1:
+			self.refresh_waveform = False
+			return
+		data = [[] for i in range(self.channels)]
+
+		large_file = self.frames * self.channels > 24000000
+		if large_file:
+			offset1 = 0
+			offset2 = block_size
+			step = max(1, block_size // steps_per_peak)
+		else:
+			self.sf.seek(start)
+			a = self.sf.read(length)
+
+		v1 = [0.0 for i in range(self.channels)]
+		v2 = [0.0 for i in range(self.channels)]
+
+		for x in range(self.width):
+			if large_file:
+				self.sf.seek(start + x * frames_per_pixel)
+				a = self.sf.read(block_size)
+				if len(a) == 0:
+					break
+			else:
+				offset1 = x * frames_per_pixel
+				offset2 = offset1 + frames_per_pixel
+				step = max(1, frames_per_pixel // steps_per_peak)
+			for channel in range(self.channels):
+				v1[0:] = [0.0] * self.channels
+				v2[0:] = [0.0] * self.channels
+				for frame in range(offset1, offset2, step):
+					if a[frame][channel] < v1[channel]:
+						v1[channel] = a[frame][channel]
+					if a[frame][channel] > v2[channel]:
+						v2[channel] = a[frame][channel]
+				data[channel] += (x, y_offsets[channel] + int(v1[channel] * y0), x, y_offsets[channel] + int(v2[channel] * y0))
 
 		for chan in range(self.channels):
-			pos = start
-			data = []
-			v_offset = chan * y0
-			for x in range(self.width):
-				offset = pos
-				if self.channels == 1:
-					v1 = v2 = self.audio_data[int(offset)]
-				else:
-					v1 = v2 = self.audio_data[int(offset)][chan]
-				while offset < pos + frames_per_pixel and offset < len(self.audio_data):
-					if self.channels == 1:
-						sample = self.audio_data[int(offset)]
-					else:
-						sample = self.audio_data[int(offset)][chan]
-					if v1 < sample:
-						v1 = sample
-					if v2 > sample:
-						v2 = sample
-					offset += step
-				v1 *= self.processor.controllers_dict['amp zoom'].value
-				v1 = min(1.0, v1)
-				v1 = max(-1.0, v1)
-				v2 *= self.processor.controllers_dict['amp zoom'].value
-				v2 = min(1.0, v2)
-				v2 = max(-1.0, v2)
-				y1 = v_offset + int((y0 * (1 + v1)) / 2)
-				y2 = v_offset + int((y0 * (1 + v2)) / 2)
-				data += [x, y1, x, y2]
-				pos += frames_per_pixel
-			self.widget_canvas.coords(f"waveform{chan}", data)
+			self.widget_canvas.coords(f"waveform{chan}", data[chan])
+
 		self.refresh_waveform = False
 
 
@@ -468,6 +493,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.filename = self.monitors["filename"]
 				waveform_thread = Thread(target=self.load_file, name="waveform image")
 				waveform_thread.start()
+				self.refreshing = False
 				return
 
 			if self.duration == 0.0:
