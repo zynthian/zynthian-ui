@@ -185,7 +185,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		good_file = zynaudioplayer.load(processor.handle, preset[0])
 		self.monitors_dict[processor.handle]['filename'] = zynaudioplayer.get_filename(processor.handle)
 		self.monitors_dict[processor.handle]['frames'] = zynaudioplayer.get_frames(processor.handle)
-		self.monitors_dict[processor.handle]['channels'] = zynaudioplayer.get_frames(processor.handle)
+		self.monitors_dict[processor.handle]['channels'] = zynaudioplayer.get_channels(processor.handle)
 		self.monitors_dict[processor.handle]['samplerate'] = zynaudioplayer.get_samplerate(processor.handle)
 		self.monitors_dict[processor.handle]['codec'] = zynaudioplayer.get_codec(processor.handle)
 		zynaudioplayer.set_speed(processor.handle, 1.0)
@@ -227,11 +227,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		track_values = [-1]
 		zoom_labels = ['x1']
 		zoom_values = [1]
-		z = 1
-		while z < dur * 250:
-			z *= 2
-			zoom_labels.append(f"x{z}")
-			zoom_values.append(z)
 		if dur:
 			channels = zynaudioplayer.get_channels(processor.handle)
 			if channels > 2:
