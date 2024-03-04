@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
 # Zynthian WSLeds Class for Z2
 #
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 # Zynthian specific modules
 from zyngui.zynthian_wsleds_base import zynthian_wsleds_base
@@ -30,6 +30,8 @@ from zyngui import zynthian_gui_config
 # ---------------------------------------------------------------------------
 # Zynthian WSLeds class for Z2
 # ---------------------------------------------------------------------------
+
+
 class zynthian_wsleds_z2(zynthian_wsleds_base):
 	
 	def __init__(self, zyngui):
@@ -46,7 +48,6 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 			self.pin = 10
 			self.chan = 0
 			self.num_leds = 25
-
 
 	def update_wsleds(self):
 		curscreen = self.zyngui.current_screen
@@ -188,4 +189,4 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
 		except:
 			pass
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------

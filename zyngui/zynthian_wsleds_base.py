@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
 # Zynthian GUI Base Class for WS281X LEDs Management
 #
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 import logging
 import rpi_ws281x
@@ -32,6 +32,8 @@ from zyngui import zynthian_gui_config
 # ---------------------------------------------------------------------------
 # Zynthian GUI Base Class for WS281X LEDs Management
 # ---------------------------------------------------------------------------
+
+
 class zynthian_wsleds_base:
 	
 	def __init__(self, zyngui):
@@ -48,7 +50,6 @@ class zynthian_wsleds_base:
 		self.last_wsled_state = ""
 		self.brightness = 1
 		self.setup_colors()
-
 
 	def setup_colors(self):
 		# Predefined colors
@@ -78,10 +79,8 @@ class zynthian_wsleds_base:
 			str(self.wscolor_purple): "P"
 		}
 
-
 	def create_color(self, r, g, b):
 		return rpi_ws281x.Color(int(self.brightness * r), int(self.brightness * g), int(self.brightness * b))
-
 
 	def set_brightness(self, brightness):
 		if brightness < 0:
@@ -92,30 +91,28 @@ class zynthian_wsleds_base:
 			self.brightness = brightness
 		self.setup_colors()
 
-
 	def get_brightness(self):
 		return self.brightness
 
-
 	def start(self):
 		if self.num_leds > 0 and self.pin is not None:
-			self.wsleds = rpi_ws281x.PixelStrip(self.num_leds, self.pin, dma=self.dma, channel=self.chan,
-												strip_type=rpi_ws281x.ws.WS2811_STRIP_GRB)
-			self.wsleds.begin()
-			self.light_on_all()
-
+			try:
+				self.wsleds = rpi_ws281x.PixelStrip(self.num_leds, self.pin, dma=self.dma, channel=self.chan,
+													strip_type=rpi_ws281x.ws.WS2811_STRIP_GRB)
+				self.wsleds.begin()
+				self.light_on_all()
+			except Exception as e:
+				self.wsleds = None
+				logging.error(f"Can't start ws281x LEDs => {e}")
 
 	def end(self):
 		self.light_off_all()
 
-
 	def get_num(self):
 		return self.num_leds
 
-
 	def setPixelColor(self, i , wscolor):
 		self.wsleds.setPixelColor(i, wscolor)
-
 
 	def light_on_all(self):
 		if self.num_leds > 0:
@@ -124,7 +121,6 @@ class zynthian_wsleds_base:
 				self.wsleds.setPixelColor(i, self.wscolor_default)
 			self.wsleds.show()
 
-
 	def light_off_all(self):
 		if self.num_leds > 0:
 			# Light-off all LEDs
@@ -132,13 +128,11 @@ class zynthian_wsleds_base:
 				self.wsleds.setPixelColor(i, self.wscolor_off)
 			self.wsleds.show()
 
-
 	def blink(self, i, color):
 		if self.blink_state:
 			self.wsleds.setPixelColor(i, color)
 		else:
 			self.wsleds.setPixelColor(i, self.wscolor_off)
-
 
 	def pulse(self, i):
 		if self.blink_state:
@@ -195,13 +189,10 @@ class zynthian_wsleds_base:
 
 		self.blink_count += 1
 
-
 	def reset_last_state(self):
 		self.last_wsled_state = ""
-
 
 	def update_wsleds(self):
 		pass
 
-
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
