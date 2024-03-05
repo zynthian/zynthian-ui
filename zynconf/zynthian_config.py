@@ -354,7 +354,7 @@ def get_wifi_list():
 		bullet = "\u2612"
 	else:
 		bullet = "\u2610"
-	title = f"{bullet} Wi-Fi Access Point zynthian"
+	title = f"{bullet} ACCESS POINT zynthian"
 	wifi_data.append(("zynthian-ap", 0, title, True, ap_enabled))
 
 	return wifi_data

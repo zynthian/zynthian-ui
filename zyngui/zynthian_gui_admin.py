@@ -80,7 +80,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	def refresh_wifi_task(self):
 		while self.refresh_wifi:
 			self.wifi_status = zynconf.get_nwdev_status_string("wlan0")
-			if self.wifi_index > 0:
+			if not self.filling_list and self.wifi_index > 0:
 				wifi_item = f"Wi-Fi Config ({self.wifi_status})"
 				if self.listbox.get(self.wifi_index) != wifi_item:
 					self.listbox.delete(self.wifi_index)
@@ -112,6 +112,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data.append((self.zyngui.midi_in_config, 0, "MIDI Input Devices"))
 		self.list_data.append((self.zyngui.midi_out_config, 0, "MIDI Output Devices"))
 		#self.list_data.append((self.midi_profile, 0, "MIDI Profile"))
+
+		if zynthian_gui_config.active_midi_channel:
+			self.list_data.append((self.toggle_active_midi_channel, 0, "\u2612 Active MIDI channel"))
+		else:
+			self.list_data.append((self.toggle_active_midi_channel, 0, "\u2610 Active MIDI channel"))
 
 		if zynthian_gui_config.midi_prog_change_zs3:
 			self.list_data.append((self.toggle_prog_change_zs3, 0, "\u2612 Program Change for ZS3"))
@@ -416,6 +421,22 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	# -------------------------------------------------------------------------
 
+	def toggle_active_midi_channel(self):
+		if zynthian_gui_config.active_midi_channel:
+			logging.info("Active MIDI channel OFF")
+			zynthian_gui_config.active_midi_channel = False
+		else:
+			logging.info("Active MIDI channel ON")
+			zynthian_gui_config.active_midi_channel = True
+
+		lib_zyncore.set_active_midi_chan(zynthian_gui_config.active_midi_channel)
+
+		# Save config
+		zynconf.update_midi_profile({
+			"ZYNTHIAN_MIDI_ACTIVE_CHANNEL": str(int(zynthian_gui_config.active_midi_channel))
+		})
+		self.update_list()
+
 	def toggle_usbmidi_by_port(self):
 		if zynthian_gui_config.midi_usb_by_port:
 			logging.info("MIDI-USB devices by port OFF")
@@ -430,7 +451,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		zynconf.update_midi_profile({
 			"ZYNTHIAN_MIDI_USB_BY_PORT": str(int(zynthian_gui_config.midi_usb_by_port))
 		})
-
 		self.update_list()
 
 	def toggle_prog_change_zs3(self):
@@ -445,7 +465,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		zynconf.update_midi_profile({ 
 			"ZYNTHIAN_MIDI_PROG_CHANGE_ZS3": str(int(zynthian_gui_config.midi_prog_change_zs3))
 		})
-
 		self.update_list()
 
 	def toggle_bank_change(self):
@@ -460,7 +479,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		zynconf.update_midi_profile({ 
 			"ZYNTHIAN_MIDI_BANK_CHANGE": str(int(zynthian_gui_config.midi_bank_change))
 		})
-
 		self.update_list()
 
 	def toggle_preset_preload_noteon(self):
