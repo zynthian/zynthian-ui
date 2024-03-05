@@ -62,6 +62,7 @@ class zynthian_processor:
         self.name = eng_info["NAME"]
         self.midi_chan = None
         self.jackname = None
+        self.chain = None
         self.chain_id = None
 
         self.bank_list = []
@@ -114,13 +115,24 @@ class zynthian_processor:
         if self.engine:
             return self.engine.get_name(self)
 
-    def set_chain_id(self, chain_id):
-        """Set the ID of the chain to which the processor belongs"""
+    def set_chain(self, chain):
+        """Set the chain to which the processor belongs"""
 
-        self.chain_id = chain_id
+        try:
+            self.chain = chain
+            self.chain_id = chain.chain_id
+        except:
+            self.chain = None
+            self.chain_id = None
+
+    def get_chain(self):
+        """Get the chain to which the processor belongs, if any"""
+
+        return self.chain
 
     def get_chain_id(self):
         """Get ID of the chain to which the processor belongs, if any"""
+
         return self.chain_id
 
     # ---------------------------------------------------------------------------
@@ -587,24 +599,27 @@ class zynthian_processor:
     def send_ctrl_midi_cc(self):
         """Send MIDI CC for all controllers
         
-        TODO: When is this required? Fluidsynth calls this during set_preset
+        TODO: When is this required? Fluidsynth, linuxsampler and others calls this during set_preset
         """
 
         for k, zctrl in self.controllers_dict.items():
+            mval = None
             if zctrl.midi_cc:
-                lib_zyncore.ui_send_ccontrol_change(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value))
-                #logging.debug("Sending MIDI CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(zctrl.value), k))
-        self.send_ctrlfb_midi_cc()
+                mval = self.get_ctrl_midi_val()
+                zctrl.send_midi_cc(mval)
+                #logging.debug("Sending MIDI CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(mval), k))
+            if zctrl.midi_feedback:
+                zctrl.send_midi_feedback(mval)
 
     def send_ctrlfb_midi_cc(self):
         """Send MIDI CC for all feeback controllers
-        
+
         TODO: When is this required? Called by send_ctrl_midi_cc. Fluidsynth calls this during set_preset
         """
 
         for k, zctrl in self.controllers_dict.items():
             if zctrl.midi_feedback:
-                lib_zyncore.ctrlfb_send_ccontrol_change(zctrl.midi_feedback[0], zctrl.midi_feedback[1], int(zctrl.value))
+                zctrl.send_midi_feedback()
                 #logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_feedback[0], zctrl.midi_feedback[1], int(zctrl.value), k))
 
     # ----------------------------------------------------------------------------

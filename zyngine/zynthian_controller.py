@@ -305,38 +305,56 @@ class zynthian_controller:
 		if old_val == self.value:
 			return
 
-		if self.engine:
-			if self.midi_cc:
-				mval = self.get_ctrl_midi_val()
-
-			if send:
-				# Send value using engine method...
+		mval = None
+		if self.engine and send:
+			# Send value using engine method...
+			try:
+				self.engine.send_controller_value(self)
+			# Send value using OSC/MIDI ...
+			except:
 				try:
-					self.engine.send_controller_value(self)
-				# Send value using OSC/MIDI ...
-				except:
-					try:
-						if self.osc_path:
-							#logging.debug("Sending OSC Controller '{}', {} => {}".format(self.symbol, self.osc_path, self.get_ctrl_osc_val()))
-							liblo.send(self.engine.osc_target, self.osc_path, self.get_ctrl_osc_val())
+					if self.osc_path:
+						#logging.debug("Sending OSC Controller '{}', {} => {}".format(self.symbol, self.osc_path, self.get_ctrl_osc_val()))
+						liblo.send(self.engine.osc_target, self.osc_path, self.get_ctrl_osc_val())
+					elif self.midi_cc:
+						mval = self.get_ctrl_midi_val()
+						#logging.debug("Sending MIDI Controller '{}', CH{}#CC{}={}".format(self.symbol, self.midi_chan, self.midi_cc, mval))
+						self.send_midi_cc(mval)
+				except Exception as e:
+					logging.warning("Can't send controller '{}' => {}".format(self.symbol, e))
 
-						elif self.midi_cc:
-							#logging.debug("Sending MIDI Controller '{}', CH{}#CC{}={}".format(self.symbol, self.midi_chan, self.midi_cc, mval))
-							lib_zyncore.ui_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
-
-					except Exception as e:
-						logging.warning("Can't send controller '{}' => {}".format(self.symbol, e))
-
-		# Send feedback to MIDI controllers
+		# Send feedback to MIDI controllers => What MIDI controllers? Those selected as MIDI-out?
 		# TODO: Set midi_feeback to MIDI learn
 		if self.midi_feedback:
-			try:
-				lib_zyncore.ctrlfb_send_ccontrol_change(self.midi_feedback[0], self.midi_feedback[1], mval)
+			self.send_midi_feedback(mval)
 
-			except Exception as e:
-				logging.warning("Can't send controller feedback '{}' => Val={}".format(self.symbol, e))
-			
 		self.is_dirty = True
+
+
+	def send_midi_cc(self, mval=None):
+		if mval is None:
+			mval = self.get_ctrl_midi_val()
+		try:
+			izmop = self.processor.chain.zmop_index
+		except:
+			izmop = None
+
+		# Try sending directly to chain's zmop
+		if izmop is not None and izmop >= 0:
+			lib_zyncore.zmop_send_ccontrol_change(izmop, self.midi_chan, self.midi_cc, mval)
+		# If not possible, send to fake-UI zmip,
+		# but if active MIDI channel is enabled, this would reach all chains in the MIDI channel
+		# what generates issues when combining some engines (for instance, fluidsynth + pianoteq)
+		else:
+			lib_zyncore.ui_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
+
+	def send_midi_feedback(self, mval=None):
+		if mval is None:
+			mval = self.get_ctrl_midi_val()
+		try:
+			lib_zyncore.ctrlfb_send_ccontrol_change(self.midi_feedback[0], self.midi_feedback[1], mval)
+		except Exception as e:
+			logging.warning("Can't send controller feedback '{}' => Val={}".format(self.symbol, e))
 
 	# Get index of list entry closest to given value
 	def get_value2index(self, val=None):

@@ -582,7 +582,7 @@ class zynthian_chain:
             else:
                 slots.insert(slot + 1, [processor])
 
-        processor.set_chain_id(self.chain_id)
+        processor.set_chain(self)
         processor.set_midi_chan(self.midi_chan)
 
         self.set_zmop_options()
@@ -633,7 +633,7 @@ class zynthian_chain:
             if processor.type == "Audio Effect" and slot < self.fader_pos:
                 self.fader_pos -= 1
 
-        processor.set_chain_id(None)
+        processor.set_chain(None)
         if processor.engine:
             processor.engine.remove_processor(processor)
 
