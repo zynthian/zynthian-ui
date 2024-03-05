@@ -1565,6 +1565,8 @@ class zynthian_state_manager:
     def init_midi(self):
         """Initialise MIDI configuration"""
         try:
+            # Set active MIDI channel
+            lib_zyncore.set_active_midi_chan(zynthian_gui_config.active_midi_channel)
             # Set Global Tuning
             self.fine_tuning_freq = zynthian_gui_config.midi_fine_tuning
             lib_zyncore.set_tuning_freq(ctypes.c_double(self.fine_tuning_freq))
@@ -1624,7 +1626,7 @@ class zynthian_state_manager:
             for key in state:
                 if key == "port_names":
                     zynautoconnect.set_midi_port_names(state[key])
-                elif not key.startswith("MASTER_"): # Drop Master Channel config, as it's global
+                elif not key.startswith("MASTER_"):  # Drop Master Channel config, as it's global
                     os.environ["ZYNTHIAN_MIDI_" + key] = state[key]
             zynthian_gui_config.set_midi_config()
             self.init_midi()

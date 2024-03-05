@@ -383,7 +383,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			"ZYNTHIAN_MIDI_SYS_ENABLED": str(int(zynthian_gui_config.midi_sys_enabled))
 		})
 
-		lib_zyncore.set_midi_filter_system_events(zynthian_gui_config.midi_sys_enabled)
+		lib_zyncore.set_midi_system_events(zynthian_gui_config.midi_sys_enabled)
 		self.update_list()
 
 	# -------------------------------------------------------------------------
