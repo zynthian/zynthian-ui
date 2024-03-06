@@ -307,6 +307,7 @@ class zynthian_state_manager:
 
     # -------------------------------------------------------------------------
     # Busy state management
+    # Busy state management
     # -------------------------------------------------------------------------
 
     def start_busy(self, clid, message=None, details=None):

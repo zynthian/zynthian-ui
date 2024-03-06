@@ -605,7 +605,7 @@ class zynthian_processor:
         for k, zctrl in self.controllers_dict.items():
             mval = None
             if zctrl.midi_cc:
-                mval = self.get_ctrl_midi_val()
+                mval = zctrl.get_ctrl_midi_val()
                 zctrl.send_midi_cc(mval)
                 #logging.debug("Sending MIDI CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(mval), k))
             if zctrl.midi_feedback:

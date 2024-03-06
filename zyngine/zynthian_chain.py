@@ -23,6 +23,7 @@
 #
 # *****************************************************************************
 
+import ctypes
 import logging
 
 # Zynthian specific modules
@@ -144,11 +145,13 @@ class zynthian_chain:
         self.rebuild_audio_graph()
 
     def set_zmop_options(self):
-        if self.zmop_index is not None and (len(self.synth_slots) > 0 or len(self.audio_slots) > 0):
+        if self.zmop_index is not None and len(self.synth_slots) > 0:
+            # IMPORTANT!!! Synth chains drop CC & PC messages
             #logging.info(f"Dropping MIDI CC & PC from chain {self.chain_id}")
             lib_zyncore.zmop_set_flag_droppc(self.zmop_index, 1)
             lib_zyncore.zmop_set_flag_dropcc(self.zmop_index, 1)
         else:
+            # Audio & MIDI chains doesn't drop CC & PC messages
             #logging.info(f"Routing MIDI CC & PC to chain {self.chain_id}")
             lib_zyncore.zmop_set_flag_droppc(self.zmop_index, 0)
             lib_zyncore.zmop_set_flag_dropcc(self.zmop_index, 0)
@@ -162,6 +165,7 @@ class zynthian_chain:
         if iz is not None and iz >= 0:
             self.zmop_index = iz
             self.midi_in = [f"ZynMidiRouter:ch{iz}_out"]
+            lib_zyncore.zmop_reset_cc_route(iz)
             if self.midi_chan is not None:
                 if 0 <= self.midi_chan < 16:
                     lib_zyncore.zmop_set_midi_chan(iz, self.midi_chan)
@@ -769,6 +773,14 @@ class zynthian_chain:
             if slot_state:
                 slots_states.append(slot_state)
 
+        # Get ZMOP CC route state
+        cc_route_ct = (ctypes.c_uint8 * 128)()
+        if self.zmop_index is not None and self.zmop_index >= 0:
+            lib_zyncore.zmop_get_cc_route(self.zmop_index, cc_route_ct)
+        cc_route = []
+        for ccr in cc_route_ct:
+            cc_route.append(ccr)
+
         state = {
             "title": self.title,
             "midi_chan": self.midi_chan,
@@ -776,6 +788,7 @@ class zynthian_chain:
             "audio_thru": self.audio_thru,
             "mixer_chan": self.mixer_chan,
             "zmop_index": self.zmop_index,
+            "cc_route": cc_route,
             "slots": slots_states,
             "fader_pos": self.fader_pos
         }

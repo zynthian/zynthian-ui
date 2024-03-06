@@ -162,7 +162,7 @@ class zynthian_chain_manager:
     # Chain Management
     # ------------------------------------------------------------------------
 
-    def add_chain(self, chain_id, midi_chan=None, midi_thru=False, audio_thru=False, mixer_chan=None, zmop_index=None, title="", chain_pos=None, fast_refresh=True):
+    def add_chain(self, chain_id, midi_chan=None, midi_thru=False, audio_thru=False, mixer_chan=None, title="", chain_pos=None, fast_refresh=True):
         """Add a chain
 
         chain_id: UID of chain (None to get next available)
@@ -265,11 +265,22 @@ class zynthian_chain_manager:
             mixer_chan = chain_state['mixer_chan']
         else:
             mixer_chan = None
-        if 'zmop_index' in chain_state:
-            zmop_index = chain_state['zmop_index']
-        else:
-            zmop_index = None
-        self.add_chain(chain_id, midi_chan=midi_chan, midi_thru=midi_thru, audio_thru=audio_thru, mixer_chan=mixer_chan, zmop_index=zmop_index, title=title, fast_refresh=False)
+
+        # This doen't have any effect because zmop_index is not restored
+        #if 'zmop_index' in chain_state:
+        #    zmop_index = chain_state['zmop_index']
+        #else:
+        #    zmop_index = None
+
+        self.add_chain(chain_id, midi_chan=midi_chan, midi_thru=midi_thru, audio_thru=audio_thru, mixer_chan=mixer_chan, title=title, fast_refresh=False)
+
+        # Set CC route state
+        zmop_index = self.chains[chain_id].zmop_index
+        if 'cc_route' in chain_state and zmop_index is not None and zmop_index >= 0:
+            cc_route_ct = (ctypes.c_uint8 * 128)()
+            for ccnum, ccr in enumerate(chain_state['cc_route']):
+                cc_route_ct[ccnum] = ccr
+            lib_zyncore.zmop_set_cc_route(zmop_index, cc_route_ct)
 
     def remove_chain(self, chain_id, stop_engines=True, fast_refresh=True):
         """Removes a chain or resets main chain

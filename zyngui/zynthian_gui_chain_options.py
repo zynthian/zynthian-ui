@@ -53,7 +53,11 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 	def fill_list(self):
 		self.list_data = []
-	
+
+		synth_proc_count = self.chain.get_processor_count("Synth")
+		midi_proc_count = self.chain.get_processor_count("MIDI Tool")
+		audio_proc_count = self.chain.get_processor_count("Audio Effect")
+
 		if self.chain.is_midi():
 			self.list_data.append((self.chain_note_range, None, "Note Range & Transpose"))
 			self.list_data.append((self.chain_midi_capture, None, "MIDI In"))
@@ -63,6 +67,9 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 		if self.chain.is_midi():
 			self.list_data.append((self.chain_midi_chan, None, "MIDI Channel"))
+
+		if synth_proc_count:
+			self.list_data.append((self.chain_midi_cc, None, "MIDI CC"))
 
 		if self.chain.get_processor_count() and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
 			# TODO Disable midi learn for some chains???
@@ -97,11 +104,11 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			self.list_data.append((self.postfader_add, None, "Add Post-fader Audio-FX"))
 
 		if self.chain_id != 0:
-			if self.chain.get_processor_count("Synth") * self.chain.get_processor_count("MIDI Tool") + self.chain.get_processor_count("Audio Effect") == 0:
+			if synth_proc_count * midi_proc_count + audio_proc_count == 0:
 				self.list_data.append((self.remove_chain, None, "Remove Chain"))
 			else:
 				self.list_data.append((self.remove_cb, None, "Remove..."))
-		elif self.chain.get_processor_count("Audio Effect") > 0:
+		elif audio_proc_count > 0:
 			self.list_data.append((self.remove_all_audiofx, None, "Remove all Audio-FX"))
 
 		self.list_data.append((None, None, "> GUI"))
@@ -231,6 +238,10 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			chan_all = False
 		self.zyngui.screens['midi_chan'].set_mode("SET", self.chain.midi_chan, chan_all=chan_all)
 		self.zyngui.show_screen('midi_chan')
+
+	def chain_midi_cc(self):
+		self.zyngui.screens['midi_cc'].set_chain(self.chain)
+		self.zyngui.show_screen('midi_cc')
 
 	def chain_note_range(self):
 		self.zyngui.screens['midi_key_range'].config(self.chain)

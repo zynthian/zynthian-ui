@@ -4,7 +4,7 @@
 # 
 # Zynthian GUI Midi-CC Selector Class
 # 
-# Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 # 
@@ -22,9 +22,11 @@
 # 
 # ******************************************************************************
 
+import ctypes
 import logging
 
 # Zynthian specific modules
+from zyncoder.zyncore import lib_zyncore
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 # ------------------------------------------------------------------------------
@@ -35,31 +37,55 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 class zynthian_gui_midi_cc(zynthian_gui_selector):
 
 	def __init__(self):
-		self.cc = [0] * 16
+		self.chain = None
+		self.zmop_index = None
+		self.cc_route = None
 		super().__init__('CC', True)
+
+	def set_chain(self, chain):
+		if chain.zmop_index is not None and chain.zmop_index >= 0:
+			self.chain = chain
+			self.zmop_index = chain.zmop_index
+		else:
+			self.chain = None
+			self.zmop_index = None
+
+	def build_layout(self):
+		if self.chain:
+			return super().build_layout()
+		else:
+			return False
 
 	def fill_list(self):
 		self.list_data = []
-		for i, ccnum in enumerate(self.cc):
-			if ccnum:
-				self.list_data.append((str(i), i, "\u2612 CC {}".format(str(i).zfill(2))))
+
+		self.cc_route = (ctypes.c_uint8 * 128)()
+		lib_zyncore.zmop_get_cc_route(self.zmop_index, self.cc_route)
+
+		for ccnum, enabled in enumerate(self.cc_route):
+			if enabled:
+				self.list_data.append((str(ccnum), ccnum, "\u2612 CC {}".format(str(ccnum).zfill(2))))
 			else:
-				self.list_data.append((str(i), i, "\u2610 CC {}".format(str(i).zfill(2))))
+				self.list_data.append((str(ccnum), ccnum, "\u2610 CC {}".format(str(ccnum).zfill(2))))
 		super().fill_list()
 
 	def select_action(self, i, t='S'):
-		cc_num = self.list_data[i][1]
-
-		if self.cc[cc_num]:
-			self.cc[cc_num] = 0
+		ccnum = self.list_data[i][1]
+		if self.cc_route[ccnum]:
+			self.cc_route[ccnum] = 0
+			bullet = "\u2610"
 		else:
-			self.cc[cc_num] = 1
-			
-		# TODO: ACTION CALLBACK! => On close?
-
-		self.update_list()
+			self.cc_route[ccnum] = 1
+			bullet = "\u2612"
+		cctext = f"{bullet} CC {str(ccnum).zfill(2)}"
+		self.list_data[i] = (str(ccnum), ccnum, cctext)
+		self.listbox.delete(i)
+		self.listbox.insert(i, cctext)
+		self.select(i)
+		# Set CC route state in zyncore
+		lib_zyncore.zmop_set_cc_route(self.zmop_index, self.cc_route)
 
 	def set_select_path(self):
-		self.select_path.set("Select CC number...")
+		self.select_path.set("Routed CCs")
 
 # ------------------------------------------------------------------------------
