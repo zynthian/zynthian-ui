@@ -667,16 +667,16 @@ class zynthian_state_manager:
                     # Webconf configured messages for Snapshot Control...
                     if ev == zynthian_gui_config.master_midi_program_change_up:
                         logging.debug("PROGRAM CHANGE UP!")
-                        self.load_snapshot_by_prog(self.state_manager.snapshot_program + 1)
+                        self.load_snapshot_by_prog(self.snapshot_program + 1)
                     elif ev == zynthian_gui_config.master_midi_program_change_down:
                         logging.debug("PROGRAM CHANGE DOWN!")
-                        self.load_snapshot_by_prog(self.state_manager.snapshot_program - 1)
+                        self.load_snapshot_by_prog(self.snapshot_program - 1)
                     elif ev == zynthian_gui_config.master_midi_bank_change_up:
                         logging.debug("BANK CHANGE UP!")
-                        self.set_snapshot_midi_bank(self.state_manager.snapshot_bank + 1)
+                        self.set_snapshot_midi_bank(self.snapshot_bank + 1)
                     elif ev == zynthian_gui_config.master_midi_bank_change_down:
                         logging.debug("BANK CHANGE DOWN!")
-                        self.set_snapshot_midi_bank(self.state_manager.snapshot_bank - 1)
+                        self.set_snapshot_midi_bank(self.snapshot_bank - 1)
                     # Program Change => Snapshot Load
                     elif evtype == 0xC:
                         pgm = ((ev & 0x7F00) >> 8)
@@ -738,9 +738,9 @@ class zynthian_state_manager:
                         zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, izmip=izmip, chan=chan, num=ccnum, val=ccval)
                     # Special CCs >= Channel Mode
                     elif ccnum == 120:
-                        self.state_manager.all_sounds_off_chan(chan)
+                        self.all_sounds_off_chan(chan)
                     elif ccnum == 123:
-                        self.state_manager.all_notes_off_chan(chan)
+                        self.all_notes_off_chan(chan)
 
                 # Program Change...
                 elif evtype == 0xC:
