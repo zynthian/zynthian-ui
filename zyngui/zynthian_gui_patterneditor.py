@@ -25,15 +25,14 @@
 # ******************************************************************************
 
 import os
-from queue import Queue
+import json
 import tkinter
 import logging
-import tkinter.font as tkFont
-import json
+from math import ceil
+from queue import Queue
 from xml.dom import minidom
 from datetime import datetime
-from math import ceil
-from collections import OrderedDict
+import tkinter.font as tkFont
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -278,7 +277,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to add menus
 	def show_menu(self):
 		self.disable_param_editor()
-		options = OrderedDict()
+		options = {}
 		extra_options = not zynthian_gui_config.check_wiring_layout(["Z2", "V5"])
 
 		# Global Options
@@ -504,20 +503,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				return index
 		return index
 
-	# Function to get list of scales
-	# returns: List of available scales
-	def get_scales(self):
-		data = []
-		try:
-			with open(CONFIG_ROOT + "/scales.json") as json_file:
-				data = json.load(json_file)
-		except:
-			logging.warning("Unable to open scales.json")
-		res = []
-		for scale in data:
-			res.append(scale['name'])
-		return res
-
 	# Function to set vertical zoom
 	def set_vzoom(self, value):
 		self.zoom = value
@@ -526,81 +511,111 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.redraw_pending = 4
 		self.select_cell()
 
+	# Function to get list of scales
+	# returns: List of available scales
+	def get_scales(self):
+		# Load scales
+		data = []
+		try:
+			with open(CONFIG_ROOT + "/scales.json") as json_file:
+				data = json.load(json_file)
+		except:
+			logging.warning("Unable to open scales.json")
+		res = []
+		# Look for a custom keymap, defaults to chromatic
+		custom_keymap = self.get_custom_keymap()
+		if custom_keymap:
+			res.append(f"Custom - {custom_keymap}")
+		else:
+			res.append(f"Custom - None")
+		for scale in data:
+			res.append(scale['name'])
+		return res
+
+	# Search for a custom map
+	def get_custom_keymap(self):
+		synth_proc = self.zyngui.chain_manager.get_synth_processor(self.channel)
+		if synth_proc:
+			map_name = None
+			preset_path = synth_proc.get_presetpath()
+			try:
+				with open(CONFIG_ROOT + "/keymaps.json") as json_file:
+					data = json.load(json_file)
+					for pat in data:
+						if pat in preset_path:
+							map_name = data[pat]
+							break
+				if map_name:
+					keymap_fpath = CONFIG_ROOT + f"/{map_name}.midnam"
+					if os.path.isfile(keymap_fpath):
+						return map_name
+					else:
+						logging.warning(f"Keymap file {keymap_fpath} doesn't exist.")
+			except:
+				logging.warning("Unable to load keymaps.json")
+		else:
+			logging.info(f"MIDI channel {self.channel} has not synth processors.")
+
+
 	# Function to populate keymap array
 	# returns Name of scale / map
 	def load_keymap(self):
-		map_name = None
 		self.keymap = []
 		scale = self.zynseq.libseq.getScale()
 		tonic = self.zynseq.libseq.getTonic()
 
+		# Try to load custom keymap
 		if scale == 0:
-			# Search for a map
-			synth_proc = self.zyngui.chain_manager.get_synth_processor(self.channel)
-			if synth_proc:
-				path = synth_proc.get_presetpath()
-			else:
-				path = None
-
-			if path:
+			map_name = self.get_custom_keymap()
+			if map_name:
+				keymap_fpath = CONFIG_ROOT + f"/{map_name}.midnam"
+				logging.info(f"Loading keymap {map_name} for MIDI channel {self.channel}...")
 				try:
-					with open(CONFIG_ROOT + "/keymaps.json") as json_file:
-						data = json.load(json_file)
-						for pat in data:
-							if pat in path:
-								map_name = data[pat]
-								break
-				except:
-					logging.warning("Unable to load keymaps.json")
+					xml = minidom.parse(keymap_fpath)
+					notes = xml.getElementsByTagName('Note')
+					for note in notes:
+						self.keymap.append({'note':int(note.attributes['Number'].value), 'name':note.attributes['Name'].value})
+					return map_name
+				except Exception as e:
+					logging.error(f"Can't load '{keymap_fpath}' => {e}")
 
-				if map_name:
-					logging.info("Loading keymap {} for MIDI channel {}...".format(map_name, self.channel))
-					try:
-						xml = minidom.parse(CONFIG_ROOT + f"/{map_name}.midnam")
-						notes = xml.getElementsByTagName('Note')
-						for note in notes:
-							self.keymap.append({'note':int(note.attributes['Number'].value), 'name':note.attributes['Name'].value})
-					except Exception as e:
-						logging.error("Can't load midnam file => {}".format(e))
+		# Not custom map loaded => Load scale
+		# WARNING => base note is not being used!!!
+		try:
+			base_note = int(self.keymap[self.keymap_offset]['note'])
+		except:
+			base_note = 60
 
-			else:
-				logging.info("MIDI channel {} has not synth processors.".format(self.channel))
-
-		# Not found map
-		if map_name is None:
+		# Load specific scale
+		if scale > 1:
 			try:
-				base_note = int(self.keymap[self.keymap_offset]['note'])
-			except:
-				base_note = 60
-
-			# Scale
-			self.zynseq.libseq.setScale(scale) # Use chromatic scale if map not found
-			if scale == 0:
-				for note in range(0,128):
-					new_entry = {"note":note}
-					key = note % 12
-					if key in (1,3,6,8,10): # Black notes
-						new_entry.update({"colour":"black"})
-					else:
-						new_entry.update({"colour":"white"})
-					if key == 0: # 'C'
-						new_entry.update({"name":"C{}".format(note // 12 - 1)})
-					self.keymap.append(new_entry)
-				map_name = "Chromatic"
-			else:
 				with open(CONFIG_ROOT + "/scales.json") as json_file:
 					data = json.load(json_file)
-				if len(data) <= scale:
-					scale = 0
-				for octave in range(0,9):
-					for offset in data[scale]['scale']:
-						note = tonic + offset + octave * 12
-						if note > 127:
-							break
-						self.keymap.append({"note":note, "name":"{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1)})
-				map_name = data[scale]['name']
+				if scale <= len(data):
+					scale -= 1  # Offset by -1 because the 0 is used for custom keymap
+					for octave in range(0, 9):
+						for offset in data[scale]['scale']:
+							note = tonic + offset + octave * 12
+							if note > 127:
+								break
+							self.keymap.append({"note": note, "name": "{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1)})
+					return data[scale]['name']
+			except Exception as e:
+				logging.error(f"Can't load 'scales.json' => {e}")
 
-		return map_name
+		# Load chromatic scale
+		for note in range(0, 128):
+			new_entry = {"note": note}
+			key = note % 12
+			if key in (1, 3, 6, 8, 10):  # Black notes
+				new_entry.update({"colour": "black"})
+			else:
+				new_entry.update({"colour": "white"})
+			if key == 0:  # 'C'
+				new_entry.update({"name": "C{}".format(note // 12 - 1)})
+			self.keymap.append(new_entry)
+		return "Chromatic"
+
 
 	# Function to handle start of pianoroll drag
 	def on_pianoroll_press(self, event):
