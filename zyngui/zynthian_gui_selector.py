@@ -364,6 +364,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.listbox_push_ts = datetime.now() # Timestamp of initial touch
 		#logging.debug("LISTBOX PUSH => %s" % (self.listbox_push_ts))
 		self.listbox_y0 = event.y # Touch y-coord of initial touch
+		self.listbox_x0 = event.x  # Touch x-coord of initial touch
 		self.swiping = False # True if swipe action in progress (disables press action)
 		self.swipe_speed = 0 # Speed of swipe used for rolling after release
 		return "break" # Don't select entry on push
@@ -380,21 +381,21 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.swipe_nudge(dts)
 		else:
 			if rdts < 0.03:
-				return # Debounce
+				return  # Debounce
 			cursel = self.listbox.nearest(event.y)
 			if self.index != cursel:
 				self.select(cursel)
 			if dts < zynthian_gui_config.zynswitch_bold_seconds:
-				self.zyngui.zynswitch_defered('S',3)
-			elif dts >= zynthian_gui_config.zynswitch_bold_seconds and dts < zynthian_gui_config.zynswitch_long_seconds:
-				self.zyngui.zynswitch_defered('B',3)
+				self.zyngui.zynswitch_defered('S', 3)
+			elif zynthian_gui_config.zynswitch_long_seconds > dts >= zynthian_gui_config.zynswitch_bold_seconds:
+				self.zyngui.zynswitch_defered('B', 3)
 
 	def cb_listbox_motion(self, event):
 		dy = self.listbox_y0 - event.y
-		offset = int(dy / self.list_entry_height)
-		if offset:
+		offset_y = int(dy / self.list_entry_height)
+		if offset_y:
 			self.swiping = True
-			self.listbox.yview_scroll(offset, tkinter.UNITS)
+			self.listbox.yview_scroll(offset_y, tkinter.UNITS)
 			self.swipe_dir = abs(dy) // dy
 			self.listbox_y0 = event.y + self.swipe_dir * (abs(dy) % self.list_entry_height)
 			self.listbox_push_ts = datetime.now()  # Use time delta between last motion and release to determine speed of swipe

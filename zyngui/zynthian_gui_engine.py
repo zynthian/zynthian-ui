@@ -55,6 +55,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.engine_info = self.zyngui.chain_manager.engine_info
 		self.engine_info_dirty = False
 		self.show_all = False
+		self.xswipe_sens = 10
 
 		# Canvas for engine info
 		self.info_canvas = tkinter.Canvas(
@@ -355,6 +356,19 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			return True
 		else:
 			return super().zynpot_cb(i, dval)
+
+	def cb_listbox_motion(self, event):
+		super().cb_listbox_motion(event)
+		dx = self.listbox_x0 - event.x
+		offset_x = int(self.xswipe_sens * dx / self.width)
+		if offset_x:
+			self.swiping = True
+			self.listbox_x0 = event.x
+			cat_index = self.cat_index + offset_x
+			if 0 <= cat_index < len(self.engine_cats):
+				self.cat_index = cat_index
+				self.update_list()
+				self.set_select_path()
 
 	def set_select_path(self):
 		path = ""
