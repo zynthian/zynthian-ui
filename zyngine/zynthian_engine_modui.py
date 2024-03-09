@@ -119,23 +119,24 @@ class zynthian_engine_modui(zynthian_engine):
 			return False
 
 	# TODO: Refact this to separate engine & UI code
-	def refresh(self):
-		if self.state_manager.current_screen=='bank':
+	def XXX_refresh(self):
+		if self.zyngui.current_screen == 'bank':
 			if self.preset_name:
-				self.state_manager.show_screen('control')
+				self.zyngui.show_screen('control')
 			else:
-				self.state_manager.show_screen('preset')
+				self.zyngui.show_screen('preset')
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
 
 	def set_midi_chan(self, processor):
-		for ch in range(0, 16):
-			if ch == processor.midi_chan:
-				lib_zyncore.zmop_set_midi_chan(ZMOP_MOD_INDEX, ch)
-			else:
-				lib_zyncore.zmop_set_midi_chan_all(ZMOP_MOD_INDEX)
+		if 0 <= processor.midi_chan < 16:
+			lib_zyncore.zmop_set_midi_chan(ZMOP_MOD_INDEX, processor.midi_chan)
+		elif processor.midi_chan == 0xffff:
+			lib_zyncore.zmop_set_midi_chan_all(ZMOP_MOD_INDEX)
+		else:
+			lib_zyncore.zmop_set_midi_chan_all(ZMOP_MOD_INDEX)
 
 	# ---------------------------------------------------------------------------
 	# Processor Management
@@ -206,14 +207,14 @@ class zynthian_engine_modui(zynthian_engine):
 		# Get Plugins Presets ...
 		for pgraph in self.plugin_info:
 			if len(self.plugin_info[pgraph]['presets']) > 0:
-				preset_dict = OrderedDict()
+				preset_dict = {}
 				preset_list.append((None, 0, "> {}".format(self.plugin_info[pgraph]['name'])))
 				for prs in self.plugin_info[pgraph]['presets']:
 					title = prs['label']
 					#logging.debug("Add effect preset " + title)
 					preset_dict[prs['uri']] = len(preset_list)
 					preset_list.append([prs['uri'], [0, 0, 0], title, pgraph])
-					self.plugin_info[pgraph]['presets_dict'] = preset_dict
+				self.plugin_info[pgraph]['presets_dict'] = preset_dict
 
 		return preset_list
 
@@ -236,7 +237,7 @@ class zynthian_engine_modui(zynthian_engine):
 		self.ws_preset_loaded = False
 		res = self.api_get_request("/%s/load" % self.pedal_preset_noun, data={'id': preset})
 		i = 0
-		while not self.ws_preset_loaded and i<100: 
+		while not self.ws_preset_loaded and i < 100:
 			sleep(0.1)
 			i = i+1
 
