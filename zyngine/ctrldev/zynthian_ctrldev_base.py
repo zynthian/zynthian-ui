@@ -94,6 +94,15 @@ class zynthian_ctrldev_base:
 	def sleep_off(self):
 		self.refresh()
 
+	# Return driver's state dictionary
+	# *COULD* be implemented by child class
+	def get_state(self):
+		return None
+
+	# Restore driver's state
+	# *COULD* be implemented by child class
+	def set_state(self, state):
+		pass
 
 # ------------------------------------------------------------------------------------------------------------------
 # Zynpad control device base class
