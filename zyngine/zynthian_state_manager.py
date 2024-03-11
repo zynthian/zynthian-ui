@@ -1289,7 +1289,7 @@ class zynthian_state_manager:
                     chain_state["transpose_semitone"] = transpose_semitone
                 if chain.midi_in:
                     chain_state["midi_in"] = chain.midi_in.copy()
-                if chain.midi_out != ["MIDI-OUT", "NET-OUT"]:
+                if chain.midi_out:
                     chain_state["midi_out"] = chain.midi_out.copy()
                 if chain.midi_thru:
                     chain_state["midi_thru"] = chain.midi_thru
@@ -1309,7 +1309,7 @@ class zynthian_state_manager:
             for key, zctrls in self.chain_manager.chain_midi_cc_binding.items():
                 if chain_id == (key >> 16) & 0xff:
                     cc = (key >> 8) & 0x7f
-                    #TODO: Do not save default engine mapping
+                    # TODO: Do not save default engine mapping
                     if "midi_cc" not in chain_state:
                         chain_state["midi_cc"] = {}
                     chain_state["midi_cc"][cc] = []
@@ -1465,6 +1465,7 @@ class zynthian_state_manager:
         Returns : dictionary with state
         """
         mcstate = {}
+        ctrldev_state_drivers = self.ctrldev_manager.get_state_drivers()
         for idev in range(24):
             if zynautoconnect.devices_in[idev] is None:
                 continue
@@ -1480,6 +1481,10 @@ class zynthian_state_manager:
                 "disable_ctrldev": uid in self.ctrldev_manager.disabled_devices,
                 "routed_chains": routed_chains
             }
+            # Ctrldev driver state
+            if uid in ctrldev_state_drivers:
+                mcstate[uid]["ctrldev_state"] = ctrldev_state_drivers[uid]
+            # Aubio state
             if uid == "AUBIO:in":
                 mcstate[uid]["audio_in"] = self.aubio_in
             # Add global / absolute MIDI mapping
@@ -1493,7 +1498,6 @@ class zynthian_state_manager:
                     for zctrl in zctrls:
                         mcstate[uid]["midi_cc"][cc].append([zctrl.processor.id, zctrl.symbol])
 
-
         return mcstate
 
     def set_midi_capture_state(self, mcstate=None):
@@ -1502,6 +1506,7 @@ class zynthian_state_manager:
         mcstate : dictionary with state. None for reset state to defaults.
         """
         if mcstate:
+            ctrldev_state_drivers = {}
             for uid, state in mcstate.items():
                 zmip = zynautoconnect.get_midi_in_devid_by_uid(uid, zynthian_gui_config.midi_usb_by_port)
                 if zmip is None:
@@ -1522,6 +1527,10 @@ class zynthian_state_manager:
                         self.ctrldev_manager.load_driver(zmip, True)
                 except:
                     pass
+                try:
+                    ctrldev_state_drivers[uid] = state["ctrldev_state"]
+                except:
+                    pass
                 # Route chain zmops
                 try:
                     routed_chains = state["routed_chains"]
@@ -1537,9 +1546,10 @@ class zynthian_state_manager:
                                 processor = self.chain_manager.processors[proc_id]
                                 self.chain_manager.add_midi_learn(processor.midi_chan, cc, processor.controllers_dict[symbol], zmip)
 
+            self.ctrldev_manager.set_state_drivers(ctrldev_state_drivers)
+
         else:
             zynautoconnect.reset_midi_in_dev_all()
-
 
     # ------------------------------------------------------------------
     # MIDI learning

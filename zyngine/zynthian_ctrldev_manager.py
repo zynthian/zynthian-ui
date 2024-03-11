@@ -30,7 +30,7 @@ import sys
 
 # Zynthian specific modules
 import zynautoconnect
-from zyngine.ctrldev import *
+from zyngui import zynthian_gui_config
 from zyncoder.zyncore import lib_zyncore
 
 # ------------------------------------------------------------------------------
@@ -122,8 +122,30 @@ class zynthian_ctrldev_manager():
         return False
 
     def unload_all_drivers(self):
-        for izmip in list(self.drivers):
+        for izmip in self.drivers:
             self.unload_driver(izmip)
+
+    def get_state_drivers(self):
+        state = {}
+        for izmip in self.drivers:
+            if callable(self.drivers[izmip].get_state):
+                uid = zynautoconnect.get_midi_in_uid(izmip)
+                try:
+                    state[uid] = self.drivers[izmip].get_state()
+                except Exception as e:
+                    logging.error(f"Driver error while getting state for '{uid}' => {e}")
+        return state
+
+    def set_state_drivers(self, state):
+        for uid, dstate in state.items():
+            izmip = zynautoconnect.get_midi_in_devid_by_uid(uid, zynthian_gui_config.midi_usb_by_port)
+            if zmip is not None and izmip in self.drivers:
+                try:
+                    self.drivers[izmip].set_state(dstate)
+                except Exceptions as e:
+                    logging.error(f"Driver error while restoring state for '{uid}' => {e}")
+            else:
+                logging.warning(f"Can't restore state for '{uid}'. Device not connected or driver not loaded.")
 
     def sleep_on(self):
         """Enable sleep state"""
