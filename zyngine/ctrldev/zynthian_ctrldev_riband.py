@@ -31,9 +31,9 @@ from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad, zynth
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 
-# ------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # riban wearable MIDI controller
-# ------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 
 class zynthian_ctrldev_riband(zynthian_ctrldev_zynpad):
@@ -45,9 +45,6 @@ class zynthian_ctrldev_riband(zynthian_ctrldev_zynpad):
 		self.cols = 4
 		self.rows = 4
 		super().__init__(state_manager, idev_in, idev_out)
-
-	def init(self):
-		super().init()
 
 	def end(self):
 		for note in range(16):
@@ -61,7 +58,7 @@ class zynthian_ctrldev_riband(zynthian_ctrldev_zynpad):
 		if row > 3 or col > 3:
 			return
 		note = col * 4 + row
-		if (note > 15):
+		if note > 15:
 			return
 		try:
 			if mode == 0 or group > 25:
@@ -87,14 +84,14 @@ class zynthian_ctrldev_riband(zynthian_ctrldev_zynpad):
 		lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
 
 	def midi_event(self, ev):
-		cmd = (ev >> 16) & 0xFF
-		if cmd == 0x90:
-			note = (ev >> 8) & 0x7F
-			if note < self.zynseq.seq_in_bank:
+		evtype = (ev[0] >> 4) & 0x0F
+		if evtype == 0x9:
+			note = ev[1] & 0x7F
+			vel = ev[2] & 0x7F
+			if vel > 0 and note < self.zynseq.seq_in_bank:
 				# Toggle pad
 				self.zynseq.libseq.togglePlayState(self.zynseq.bank, note)
 				return True
-
 		return False
 
 # ------------------------------------------------------------------------------

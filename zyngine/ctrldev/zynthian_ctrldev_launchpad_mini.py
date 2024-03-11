@@ -122,9 +122,9 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 
 	def midi_event(self, ev):
 		#logging.debug("Launchpad MINI MIDI handler => {}".format(ev))
-		evtype = (ev & 0xF00000) >> 20
+		evtype = (ev[0] >> 4) & 0x0F
 		if evtype == 0x9:
-			note = (ev >> 8) & 0x7F
+			note = ev[1] & 0x7F
 			col, row = self.get_note_xy(note)
 			# scene change
 			if col == 8:
@@ -136,10 +136,10 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 				self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
 				return True
 		elif evtype == 0xB:
-			ccnum = (ev >> 8) & 0x7F
-			val = ev & 0x7F
+			ccnum = ev[1] & 0x7F
+			ccval = ev[2] & 0x7F
 			if 104 <= ccnum <= 111:
-				if val > 0:
+				if ccval > 0:
 					self.chain_manager.set_active_chain_by_index(ccnum-104)
 				return True
 

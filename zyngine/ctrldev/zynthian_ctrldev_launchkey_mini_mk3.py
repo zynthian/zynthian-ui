@@ -99,62 +99,63 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 		lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
 
 	def midi_event(self, ev):
-		evtype = (ev & 0xF00000) >> 20
-		cmd = (ev & 0xFF0000) >> 16
-		val1 = (ev & 0xFF00) >> 8
-		val2 = (ev & 0xFF)
+		evtype = (ev[0] >> 4) & 0x0F
 		if evtype == 0x9:
-			note = (ev >> 8) & 0x7F
-			# Entered session mode so set pad LEDs => This shouldn't work because message size is fixed to 3 bytes!
-			if ev == 0x90900C7F:
-				self.update_seq_bank()
-			else:
-				# Toggle pad
-				try:
-					col = (note - 96) // 16
-					row = (note - 96) % 16
-					pad = row * self.zynseq.col_in_bank + col
-					if pad < self.zynseq.seq_in_bank:
-						self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
-				except:
-					pass
+			note = ev[1] & 0x7F
+			# Entered session mode so set pad LEDs
+			# QUESTION: What kind of message is this? Only SysEx messages can be bigger than 3 bytes.
+			#if ev == b'\x90\x90\x0C\x7F':
+			#	self.update_seq_bank()
+
+			# Toggle pad
+			try:
+				col = (note - 96) // 16
+				row = (note - 96) % 16
+				pad = row * self.zynseq.col_in_bank + col
+				if pad < self.zynseq.seq_in_bank:
+					self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
+			except:
+				pass
 		elif evtype == 0xB:
-			if val1 > 20 and val1 < 28:
-				chain = self.chain_manager.get_chain_by_position(val1 - 21, midi=False)
-				if chain and chain.mixer_chan is not None and chain.mixer_chan < 17:
-					self.zynmixer.set_level(chain.mixer_chan, val2 / 127.0)
-			elif val1 == 28:
-				self.zynmixer.set_level(255, val2 / 127.0)
-			elif val1 == 0x6C:
-				# SHIFT
-				self.shift = val2 != 0
-			elif val2 == 0:
+			ccnum = ev[1] & 0x7F
+			ccval = ev[2] & 0x7F
+			if ccnum == 0:
 				return True
-			if val1 == 0x68:
+			elif 20 < ccnum < 28:
+				chain = self.chain_manager.get_chain_by_position(ccnum - 21, midi=False)
+				if chain and chain.mixer_chan is not None and chain.mixer_chan < 17:
+					self.zynmixer.set_level(chain.mixer_chan, ccval / 127.0)
+			elif ccnum == 28:
+				self.zynmixer.set_level(255, ccval / 127.0)
+			elif ccnum == 0x66:
+				# TRACK RIGHT
+				self.state_manager.send_cuia("ARROW_RIGHT")
+			elif ccnum == 0x67:
+				# TRACK LEFT
+				self.state_manager.send_cuia("ARROW_LEFT")
+			elif ccnum == 0x68:
 				# UP
 				self.state_manager.send_cuia("ARROW_UP")
-			elif val1 == 0x69:
+			elif ccnum == 0x69:
 				# DOWN
 				self.state_manager.send_cuia("ARROW_DOWN")
-			elif val1 == 0x73:
+			elif ccnum == 0x6C:
+				# SHIFT
+				self.shift = ccval != 0
+			elif ccnum == 0x73:
 				# PLAY
 				if self.shift:
 					self.state_manager.send_cuia("TOGGLE_MIDI_PLAY")
 				else:
 					self.state_manager.send_cuia("TOGGLE_AUDIO_PLAY")
-			elif val1 == 0x75:
+			elif ccnum == 0x75:
 				# RECORD
 				if self.shift:
 					self.state_manager.send_cuia("TOGGLE_MIDI_RECORD")
 				else:
 					self.state_manager.send_cuia("TOGGLE_AUDIO_RECORD")
-			elif val1 == 0x66:
-				# TRACK RIGHT
-				self.state_manager.send_cuia("ARROW_RIGHT")
-			elif val1 == 0x67:
-				# TRACK LEFT
-				self.state_manager.send_cuia("ARROW_LEFT")
 		elif evtype == 0xC:
+			val1 = ev[1] & 0x7F
 			self.zynseq.select_bank(val1 + 1)
 
 		return True

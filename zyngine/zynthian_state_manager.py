@@ -630,25 +630,52 @@ class zynthian_state_manager:
                 return
             midi_events = (ctypes.c_uint32 * n)()
             n = lib_zyncore.read_zynmidi_buffer(midi_events, n)
-            for i in range(n):
-                ev = midi_events[i]
+            i = 0
+            while i < n:
+                ev = midi_events[i].to_bytes(4, 'big')
+                i += 1
+                izmip = ev[0]
+                evhead = ev[1]
+                ev = ev[1:]
+
+                # Process SysEx
+                if evhead == 0xF0:
+                    #logging.debug(f"RECEIVED SYSEX FROM {izmip}...")
+                    sysex_data = bytearray(ev)
+                    while i < n:
+                        chunk = midi_events[i].to_bytes(4, 'big')
+                        sysex_data.extend(chunk)
+                        if 0xF7 in chunk:
+                            break
+                        i += 1
+                    # This is probably not correct and we should continue reading in the next period
+                    if i == n:
+                        logging.error(f"SysEx message from device {izmip} is not terminated")
+                        continue
+                    # Crop data until find the 0xF7 mark
+                    while sysex_data[-1] != 0xF7:
+                        del sysex_data[-1]
+                    #logging.debug(f"  SYSEX DATA => {sysex_data}")
+                    ev = bytes(sysex_data)
 
                 # Try to manage with a control device driver
-                if self.ctrldev_manager.midi_event(ev):
+                if self.ctrldev_manager.midi_event(izmip, ev):
                     self.status_midi = True
                     self.last_event_flag = True
                     continue
 
-                izmip = (ev >> 24) & 0xff
-                evtype = (ev >> 20) & 0xf
-                chan = (ev >> 16) & 0xf
+                evtype = (evhead >> 4) & 0x0F
+                chan = evhead & 0x0F
 
                 #logging.info(f"MIDI EVENT: IZMIP={izmip}, TYPE={evtype}, CHAN={chan}")
 
                 # System Messages (Common & RT)
                 if evtype == 0xF:
+                    # SysEx
+                    if chan == 0x0:
+                        continue
                     # Clock
-                    if chan == 0x8:
+                    elif chan == 0x8:
                         self.status_midi_clock = True
                         continue
                     # Tick
@@ -679,32 +706,31 @@ class zynthian_state_manager:
                         self.set_snapshot_midi_bank(self.snapshot_bank - 1)
                     # Program Change => Snapshot Load
                     elif evtype == 0xC:
-                        pgm = ((ev & 0x7F00) >> 8)
+                        pgm = ev[1] & 0x7F
                         logging.debug("PROGRAM CHANGE %d" % pgm)
                         self.start_busy("load_snapshot", "loading snapshot")
                         self.load_snapshot_by_prog(pgm)
                         self.end_busy("load_snapshot")
                     # Control Change...
                     elif evtype == 0xB:
-                        ccnum = (ev & 0x7F00) >> 8
-                        ccval = (ev & 0x007F)
+                        ccnum = ev[1] & 0x7F
+                        ccval = ev[2] & 0x7F
                         if ccnum == zynthian_gui_config.master_midi_bank_change_ccnum:
-                            bnk = (ev & 0x7F)
-                            logging.debug("BANK CHANGE %d" % bnk)
-                            self.set_snapshot_midi_bank(bnk)
+                            logging.debug(f"BANK CHANGE {ccval}")
+                            self.set_snapshot_midi_bank(ccval)
                         elif ccnum == 120:
                             self.all_sounds_off()
                         elif ccnum == 123:
                             self.all_notes_off()
                         else:
                             if self.midi_learn_zctrl:
-                                self.chain_manager.add_midi_learn(chan, ccnum, self.midi_learn_zctrl, (ev >> 24) & 0xff)
+                                self.chain_manager.add_midi_learn(chan, ccnum, self.midi_learn_zctrl, izmip)
                             else:
                                 self.zynmixer.midi_control_change(chan, ccnum, ccval)
                     # Master Note CUIA with ZynSwitch emulation
                     elif evtype == 0x8 or evtype == 0x9:
-                        note = str((ev >> 8) & 0x7f)
-                        vel = ev & 0x7f
+                        note = str(ev[1] & 0x7F)
+                        vel = ev[2] & 0x7F
                         if note in zynthian_gui_config.master_midi_note_cuia:
                             cuia_str = zynthian_gui_config.master_midi_note_cuia[note]
                             parts = cuia_str.split(" ", 2)
@@ -726,9 +752,9 @@ class zynthian_state_manager:
 
                 # Control Change...
                 elif evtype == 0xB:
-                    ccnum = (ev >> 8) & 0x7f
-                    ccval = ev & 0x7f
-                    #logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan,ccnum,ccval))
+                    ccnum = ev[1] & 0x7F
+                    ccval = ev[2] & 0x7F
+                    #logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan, ccnum, ccval))
                     if ccnum < 120:
                         if not self.midi_learn_zctrl:
                             self.chain_manager.midi_control_change(izmip, chan, ccnum, ccval)
@@ -744,7 +770,7 @@ class zynthian_state_manager:
 
                 # Program Change...
                 elif evtype == 0xC:
-                    pgm = (ev & 0x7F00) >> 8
+                    pgm = ev[1] & 0x7F
                     logging.info(f"MIDI PROGRAM CHANGE: CH#{chan}, PRG#{pgm}")
                     # MIDI learn SubSnapShot (ZS3)
                     if self.midi_learn_pc is not None:
@@ -773,11 +799,11 @@ class zynthian_state_manager:
 
                 # Note Off
                 elif evtype == 0x8:
-                    zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_OFF, izmip=izmip, chan=chan, note=(ev >> 8) & 0x7f, vel=ev & 0x7f)
+                    zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_OFF, izmip=izmip, chan=chan, note=ev[1] & 0x7f, vel=ev[2] & 0x7f)
 
                 # Note On
                 elif evtype == 0x9:
-                    zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_ON, izmip=izmip, chan=chan, note=(ev >> 8) & 0x7f, vel=ev & 0x7f)
+                    zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_ON, izmip=izmip, chan=chan, note=ev[1] & 0x7f, vel=ev[2] & 0x7f)
 
                 # Flag MIDI event
                 self.status_midi = True

@@ -144,9 +144,9 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 			return None
 
 	def midi_event(self, ev):
-		evtype = (ev & 0xF00000) >> 20
+		evtype = (ev[0] >> 4) & 0x0F
 		if evtype == 0x9:
-			note = (ev >> 8) & 0x7F
+			note = ev[1] & 0x7F
 			if note == self.solo_note:
 				return True
 			elif note == self.bank_left_note:
@@ -207,8 +207,8 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 						lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
 				return True
 		elif evtype == 0xB:
-			ccnum = (ev & 0x7F00) >> 8
-			ccval = (ev & 0x007F)
+			ccnum = ev[1] & 0x7F
+			ccval = ev[2] & 0x7F
 			if ccnum == self.master_ccnum:
 				self.zynmixer.set_level(255, ccval / 127.0)
 				return True

@@ -26,6 +26,7 @@
 
 import logging
 
+from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_signal_manager import zynsigman
 
 # ------------------------------------------------------------------------------------------------------------------
@@ -50,7 +51,13 @@ class zynthian_ctrldev_base:
 		self.chain_manager = state_manager.chain_manager
 		self.idev = idev_in		       # Slot index where the input device is connected, starting from 1 (0 = None)
 		self.idev_out = idev_out       # Slot index where the output device (feedback), if any, is connected, starting from 1 (0 = None)
-		self.init()
+
+	# Send SysEx universal inquiry.
+	# It's answered by some devices with a SysEx message.
+	def send_sysex_universal_inquiry(self):
+		if self.idev_out > 0:
+			msg = bytes.fromhex("F0 7E 7F 06 01 F7")
+			lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
 
 	# Initialize control device: setup, register signals, etc
 	# It *SHOULD* be implemented by child class

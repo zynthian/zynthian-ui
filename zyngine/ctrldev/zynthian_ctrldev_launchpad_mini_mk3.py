@@ -61,6 +61,7 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 	def init(self):
 		# Awake
 		self.sleep_off()
+		#self.send_sysex_universal_inquiry()
 		# Enter DAW session mode
 		self.send_sysex("10 01")
 		# Select session layout (session = 0x00, faders = 0x0D)
@@ -124,13 +125,13 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 		lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
 
 	def midi_event(self, ev):
-		#logging.debug("Launchpad MINI MK3 MIDI handler => {}".format(ev))
-		evtype = (ev & 0xF00000) >> 20
+		#logging.debug(f"Launchpad MINI MK3 MIDI handler => {ev}")
+		evtype = (ev[0] >> 4) & 0x0F
 		# Note ON => launch/stop sequence
 		if evtype == 0x9:
-			note = (ev >> 8) & 0x7F
-			val = ev & 0x7F
-			if val > 0:
+			note = ev[1] & 0x7F
+			vel = ev[2] & 0x7F
+			if vel > 0:
 				col, row = self.get_note_xy(note)
 				pad = self.zynseq.get_pad_from_xy(col, row)
 				if pad >= 0:
@@ -138,9 +139,9 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 			return True
 		# CC => arrows, scene change, stop all
 		elif evtype == 0xB:
-			ccnum = (ev >> 8) & 0x7F
-			val = ev & 0x7F
-			if val > 0:
+			ccnum = ev[1] & 0x7F
+			ccval = ev[2] & 0x7F
+			if ccval > 0:
 				if ccnum == 0x5B:
 					self.state_manager.send_cuia("ARROW_UP")
 				elif ccnum == 0x5C:
@@ -156,6 +157,10 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 							self.zynseq.select_bank(row + 1)
 						elif row == 7:
 							self.zynseq.libseq.stop()
+			return True
+		# SysEx
+		elif ev[0] == 0xF0:
+			logging.info(f"Received SysEx => {ev}")
 			return True
 
 	# Light-Off LEDs

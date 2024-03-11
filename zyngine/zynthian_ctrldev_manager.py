@@ -90,6 +90,8 @@ class zynthian_ctrldev_manager():
             # Unroute from chains if driver want it
             if self.drivers[izmip].unroute_from_chains:
                 lib_zyncore.zmip_set_route_chains(izmip, 0)
+            # Initialize the driver after creating the instance, so MIDI answer messages can be processed
+            self.drivers[izmip].init()
             logging.info(f"Loaded ctrldev driver {dev_id}.")
             return True
         except Exception as e:
@@ -135,14 +137,13 @@ class zynthian_ctrldev_manager():
         for dev in self.drivers.values():
             dev.sleep_off()
 
-    def midi_event(self, ev):
+    def midi_event(self, idev, ev):
         """Process MIDI event from zynmidirouter
-        
-        ev - 32-bit MIDI event: [device] [cmd] [val1] [val2]
+
+        idev - device index
+        ev - bytes with MIDI message data
         """
         
-        idev = (ev & 0xFF000000) >> 24
-
         # Try device driver ...
         if idev in self.drivers:
             return self.drivers[idev].midi_event(ev)

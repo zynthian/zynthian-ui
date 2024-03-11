@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Control Device Driver
 #
 # Zynthian Control Device Driver for "Novation Launchpad Pro MK3"
@@ -8,7 +8,7 @@
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -22,7 +22,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 import logging
 from time import sleep
@@ -35,6 +35,7 @@ from zynlibs.zynseq import zynseq
 # ------------------------------------------------------------------------------------------------------------------
 # Novation Launchpad Pro MK3
 # ------------------------------------------------------------------------------------------------------------------
+
 
 class zynthian_ctrldev_launchpad_pro_mk3(zynthian_ctrldev_zynpad):
 
@@ -50,12 +51,10 @@ class zynthian_ctrldev_launchpad_pro_mk3(zynthian_ctrldev_zynpad):
 			lib_zyncore.dev_send_midi_event(self.idev, msg, len(msg))
 			sleep(0.05)
 
-
 	def get_note_xy(self, note):
 		row = 8 - (note // 10)
 		col = (note % 10) - 1
 		return col, row
-
 
 	def init(self):
 		# Awake
@@ -67,7 +66,6 @@ class zynthian_ctrldev_launchpad_pro_mk3(zynthian_ctrldev_zynpad):
 		# Light off
 		#self.light_off()
 
-
 	def end(self):
 		# Light off
 		self.light_off()
@@ -75,7 +73,6 @@ class zynthian_ctrldev_launchpad_pro_mk3(zynthian_ctrldev_zynpad):
 		self.send_sysex("10 00")
 		# Select Notes/Drum layout, page 0 (Chord = 0x2, Note/Drum = 0x4, Scale Settings = 0x5, ...)
 		self.send_sysex("04 00 00")
-
 
 	# Zynpad Scene LED feedback
 	def refresh_zynpad_bank(self):
@@ -88,7 +85,6 @@ class zynthian_ctrldev_launchpad_pro_mk3(zynthian_ctrldev_zynpad):
 				lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, note, 29)
 			else:
 				lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, note, 0)
-
 
 	# Zynpad Pad LED feedback
 	def update_pad(self, pad, state, mode):
@@ -121,19 +117,17 @@ class zynthian_ctrldev_launchpad_pro_mk3(zynthian_ctrldev_zynpad):
 		except:
 			chan = 0
 			vel = 0
-
 		#logging.debug("Lighting PAD {}, group {} => {}, {}, {}".format(pad, group, chan, note, vel))
 		lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
 
-
 	def midi_event(self, ev):
 		#logging.debug("Launchpad MINI MK3 MIDI handler => {}".format(ev))
-		evtype = (ev & 0xF00000) >> 20
+		evtype = (ev[0] >> 4) & 0x0F
 		# Note ON => launch/stop sequence
 		if evtype == 0x9:
-			note = (ev >> 8) & 0x7F
-			val = ev & 0x7F
-			if val > 0:
+			note = ev[1] & 0x7F
+			vel = ev[2] & 0x7F
+			if vel > 0:
 				col, row = self.get_note_xy(note)
 				pad = self.zynzynseqpad.get_pad_from_xy(col, row)
 				if pad >= 0:
@@ -141,9 +135,9 @@ class zynthian_ctrldev_launchpad_pro_mk3(zynthian_ctrldev_zynpad):
 			return True
 		# CC => scene change
 		elif evtype == 0xB:
-			ccnum = (ev >> 8) & 0x7F
-			val = ev & 0x7F
-			if val > 0:
+			ccnum = ev[1] & 0x7F
+			ccval = ev[2] & 0x7F
+			if ccval > 0:
 				if ccnum == 80:
 					self.zyngui.cuia_arrow_up()
 				elif ccnum == 70:
@@ -158,24 +152,20 @@ class zynthian_ctrldev_launchpad_pro_mk3(zynthian_ctrldev_zynpad):
 						self.zynseq.set_bank(row + 1)
 			return True
 
-
 	# Light-Off LEDs
 	def light_off(self):
 		#logging.debug("Lighting Off LEDs Launchpad MINI MK3")
 		# Clean state of notes & CCs
 		self.send_sysex("12 01 00 01")
 
-
 	# Sleep On
 	def sleep_on(self):
 		# Sleep Mode (0 = sleep, 1 = awake)
 		self.send_sysex("09 00")
-
 
 	# Sleep On
 	def sleep_off(self):
 		# Sleep Mode (0 = sleep, 1 = awake)
 		self.send_sysex("09 01")
 
-
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------

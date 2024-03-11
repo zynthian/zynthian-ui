@@ -50,10 +50,13 @@ from zynlibs.zynseq import zynseq
 MAX_STUTTER_COUNT = 32
 MAX_STUTTER_DURATION = 96
 
-# Some MIDI event constants
+# MIDI channel events (first 4 bits), next 4 bits is the channel!
 EV_NOTE_ON                           = 0x09
 EV_NOTE_OFF                          = 0x08
 EV_CC                                = 0x0B
+
+# MIDI system events (first 8 bits)
+EV_SYSEX                             = 0xF0
 EV_CLOCK                             = 0xF8
 EV_CONTINUE                          = 0xFB
 
@@ -259,11 +262,12 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         return False
 
     def _on_midi_event(self, ev):
-        evtype = (ev & 0xF00000) >> 20
-        value = ev & 0x7F
+        evtype = (ev[0] >> 4) & 0x0F
 
         if evtype == EV_NOTE_ON:
-            note = (ev >> 8) & 0x7F
+            note = ev[1] & 0x7F
+            vel = ev[2] & 0x7F
+
             if note == BTN_SHIFT:
                 return self._on_shift_changed(True)
 
@@ -314,7 +318,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                 elif note == BTN_PLAY:
                     if not self._is_shifted:
                         return self._padmatrix_handler.on_toggle_play()
-                    self._padmatrix_handler.note_on(note, value, self._is_shifted)
+                    self._padmatrix_handler.note_on(note, vel, self._is_shifted)
                 elif (BTN_SOFT_KEY_START <= note <= BTN_SOFT_KEY_END
                       and not self._is_shifted):
                     row = note - BTN_SOFT_KEY_START
@@ -322,16 +326,17 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
                 elif BTN_TRACK_1 <= note <= BTN_TRACK_8:
                     track = note - BTN_TRACK_1
                     self._padmatrix_handler.on_track_changed(track, True)
-                    self._current_handler.note_on(note, value, self._is_shifted)
+                    self._current_handler.note_on(note, vel, self._is_shifted)
                     self._padmatrix_handler.refresh()
                     return True
                 elif note == BTN_STOP_ALL_CLIPS:
-                    self._padmatrix_handler.note_on(note, value, self._is_shifted)
+                    self._padmatrix_handler.note_on(note, vel, self._is_shifted)
 
-            return self._current_handler.note_on(note, value, self._is_shifted)
+            return self._current_handler.note_on(note, vel, self._is_shifted)
 
         elif evtype == EV_NOTE_OFF:
-            note = (ev >> 8) & 0x7F
+            note = ev[1] & 0x7F
+
             if note == BTN_SHIFT:
                 return self._on_shift_changed(False)
 
@@ -348,9 +353,14 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
             return self._current_handler.note_off(note, self._is_shifted)
 
         elif evtype == EV_CC:
-            ccnum = (ev & 0x7F00) >> 8
-            ccval = (ev & 0x007F)
+            ccnum = ev[1] & 0x7F
+            ccval = ev[2] & 0x7F
             return self._current_handler.cc_change(ccnum, ccval)
+
+        # SysEx
+        elif ev[0] == EV_SYSEX:
+            logging.info(f"Received SysEx => {ev}")
+            return True
 
     def light_off(self):
         self._leds.all_off()
