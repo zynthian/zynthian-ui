@@ -61,7 +61,7 @@ from zyngine.zynthian_ctrldev_manager import zynthian_ctrldev_manager
 # Zynthian State Manager Class
 # ----------------------------------------------------------------------------
 
-SNAPSHOT_SCHEMA_VERSION = 1
+SNAPSHOT_SCHEMA_VERSION = 2
 capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
 ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 
@@ -1049,8 +1049,21 @@ class zynthian_state_manager:
         else:
             state = snapshot
             if state["schema_version"] < SNAPSHOT_SCHEMA_VERSION:
-                #self.set_busy_details("nothing to fix yet")
-                pass
+                if state["schema_version"] < 2:
+                    # R2: ZS3 audio_out format changed
+                    for zs3 in state["zs3"].values():
+                        for chain in zs3["chains"].values():
+                            new_aout = []
+                            for aout in chain["audio_out"]:
+                                if isinstance(aout, str) and aout.startswith("system:playback_["):
+                                    a = ""
+                                    for s in aout[17:].split("]")[0].split(","):
+                                        a += f"^system:playback_{s}$|"
+                                    new_aout.append(a[:-1])
+                                else:
+                                    new_aout.append(aout)
+                            chain["audio_out"] = new_aout
+                        logging.warning(chain)
         return state
 
     def backup_snapshot(self, path):

@@ -30,7 +30,6 @@ import zynautoconnect
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
-from zyngine.zynthian_engine_modui import zynthian_engine_modui
 from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 
 # ------------------------------------------------------------------------------
@@ -96,15 +95,19 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 			port_names = []
 			# Direct physical outputs
 			self.list_data.append((None, None, "> Direct Outputs"))
-			ports =zynautoconnect.get_hw_audio_dst_ports()
+			ports = zynautoconnect.get_hw_audio_dst_ports()
 			port_count = len(ports)
-			for i in range(1, port_count + 1, 2):
-				if i < port_count:
-					port_names.append((f"Output {i}", f"system:playback_{i}$"))
-					port_names.append((f"Output {i + 1}", f"system:playback_{i + 1}$"))
-					port_names.append((f"Outputs {i}+{i + 1}", f"system:playback_[{i},{i + 1}]$"))
+			for i in range(0, port_count, 2):
+				if ports[i].name.startswith("system"):
+					suffix = ""
 				else:
-					port_names.append((f"Output {i}", f"system:playback_{i}$"))
+					suffix = " (Net)"
+				if i < port_count:
+					port_names.append((f"Output {i + 1}{suffix}", f"^{ports[i].name}$"))
+					port_names.append((f"Output {i + 2}{suffix}", f"^{ports[i + 1].name}$"))
+					port_names.append((f"Outputs {i + 1}+{i + 2}{suffix}", f"^{ports[i].name}$|^{ports[i + 1].name}$"))
+				else:
+					port_names.append((f"Output {i + 1}{suffix}", f"^{ports[i].name}$"))
 			for title, processor in port_names:
 				if processor in self.chain.audio_out:
 					self.list_data.append((processor, processor, "\u2612 " + title))

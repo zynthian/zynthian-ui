@@ -92,12 +92,12 @@ class zynthian_chain:
             # Main mix bus
             self.title = "Main"
             self.audio_in = []
-            self.audio_out = ["system:playback_[1,2]$"] # Default use first two physical audio outputs
+            self.audio_out = ["system:playback_1$|system:playback_2$"] # Default use first two physical audio outputs
             self.audio_thru = True
         else:
             self.title = ""
-            self.audio_in = [1, 2]
-            self.audio_out = [0]
+            self.audio_in = [0, 1] # Default route first 2 hardware audio inputs
+            self.audio_out = [0] # Default route audio to main mixbus chain
 
         if self.is_midi():
             lib_zyncore.zmop_reset_note_range_transpose(self.zmop_index)
@@ -227,7 +227,7 @@ class zynthian_chain:
             elif self.chain_id == 0:
                 parts.append("Main")
             elif not self.synth_slots and self.audio_thru:
-                parts.append("Audio Input " + ','.join([str(i) for i in self.audio_in]))
+                parts.append("Audio Input " + ','.join([str(i + 1) for i in self.audio_in]))
 
             if self.synth_slots:
                 proc = self.synth_slots[0][0]
@@ -361,13 +361,13 @@ class zynthian_chain:
         if self.chain_id == 0:
             return self.audio_in.copy()
         sources = []
+        jack_sources = zynautoconnect.get_audio_capture_ports()
         for i in range(0, len(self.audio_in), 2):
             a = self.audio_in[i]
-            if i < len(self.audio_in) - 1:
-                b = self.audio_in[i + 1]
-                sources.append(f"system:capture_({a}|{b})$")
-            else:
-                sources.append(f"system:capture_({a})$")
+            if a < len(jack_sources) - 1:
+                sources.append(f"{jack_sources[a].name}$|{jack_sources[a + 1].name}$")
+            elif a < len(jack_sources):
+                sources.append(f"{jack_sources[a].name}$")
         return sources
 
     def rebuild_midi_graph(self):
@@ -413,17 +413,12 @@ class zynthian_chain:
     def get_audio_out(self):
         """Get list of audio playback port names"""
 
+        #TODO: Temporary fix for change of format - remove when test users have fixed their snapshots
+        for s in self.audio_out:
+            if s == "system:playback_[1|2]$":
+                self.audio_out = "system:playback_1$|system:playback_2$"
+
         return self.audio_out.copy()
-        audio_out = []
-        for output in self.audio_out:
-            if output == 0:
-                if self.mixer_chan < 17:
-                    audio_out.append("zynmixer:input_18")
-                else:
-                    audio_out.append("system:playback_[1,2]$")
-            else:
-                audio_out.append(output)
-        return audio_out
 
     def toggle_audio_out(self, out):
         """Toggle chain audio output

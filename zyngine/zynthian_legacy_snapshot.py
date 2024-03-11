@@ -483,7 +483,7 @@ class zynthian_legacy_snapshot:
                     """
                     if chain_id == 0:
                         if state["chains"][0]["slots"]:
-                            chain["audio_in"] = ["zynmixer:send"]
+                            chain["audio_in"] = ["zynmixer:send"] #TODO: This has changed
                         else:
                             chain["audio_in"] = []
 
@@ -491,6 +491,7 @@ class zynthian_legacy_snapshot:
 
         # Emulate clone by setting destination midi channel to source midi channel
         if "clone" in snapshot:
+            #TODO: This has changed
             for clone_from_chan, clone_cfg in enumerate(snapshot["clone"]):
                 for clone_to_chan, cfg in enumerate(clone_cfg):
                     try:

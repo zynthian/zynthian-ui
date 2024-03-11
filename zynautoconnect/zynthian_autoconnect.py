@@ -68,6 +68,7 @@ deferred_midi_connect = False 	# True to perform MIDI connect on next port check
 deferred_audio_connect = False 	# True to perform audio connect on next port check cycle
 hw_midi_src_ports = []			# List of hardware MIDI  source ports (including network, aubionotes, etc.)
 hw_midi_dst_ports = []			# List of hardware MIDI destination ports (including network, aubionotes, etc.)
+hw_audio_src_ports = []			# List of physical audio input ports
 hw_audio_dst_ports = []			# List of physical audio output ports
 sidechain_map = {}				# Map of all audio target port names to use as sidechain inputs, indexed by jack client regex
 sidechain_ports = []			# List of currently active audio destination port names not to autoroute, e.g. sidechain inputs
@@ -362,6 +363,7 @@ def request_audio_connect(fast=False):
 	#if paused_flag:
 	#	return
 	if fast:
+		update_hw_audio_ports()
 		audio_autoconnect()
 	else:
 		global deferred_audio_connect
@@ -715,6 +717,47 @@ def midi_autoconnect():
 	release_lock()
 
 
+def update_hw_audio_ports(force=False):
+	"""Update lists of external (hardware) source and destination Audio ports
+
+	force - True to force update of port names / aliases
+	returns - True if changed since last call
+	"""
+
+	# Get Mutex Lock
+	if not acquire_lock():
+		return
+
+	global hw_audio_src_ports, hw_audio_dst_ports
+
+	# -----------------------------------------------------------
+	# Get Input/Output Audio Ports:
+	#  - sources including physical inputs are jack outputs
+	#  - destinations including physical outputs are jack inputs
+	# -----------------------------------------------------------
+
+	hw_port_fingerprint = hw_audio_src_ports + hw_audio_dst_ports
+
+	# List of physical audio source ports
+	hw_audio_src_ports = jclient.get_ports(is_output=True, is_physical=True, is_audio=True)
+
+	# List of physical audio destination ports
+	hw_audio_dst_ports = jclient.get_ports(is_input=True, is_physical=True, is_audio=True)
+
+	update = False
+	fingerprint = hw_port_fingerprint.copy()
+	for port in hw_audio_src_ports + hw_audio_dst_ports:
+		if port not in hw_port_fingerprint or force:
+			#update_audio_port_aliases(port)
+			update = True
+		else:
+			fingerprint.remove(port)
+
+	update |= len(fingerprint) != 0
+	release_lock()
+	return update
+
+
 def audio_autoconnect():
 	# Get Mutex Lock
 	if not acquire_lock():
@@ -868,7 +911,7 @@ def audio_connect_ffmpeg(timeout=2.0):
 def get_audio_capture_ports():
 	"""Get list of hardware audio inputs"""
 
-	return jclient.get_ports("system", is_output=True, is_audio=True, is_physical=True)
+	return hw_audio_src_ports
 
 
 def build_midi_port_name(port):
@@ -1006,6 +1049,7 @@ def autoconnect():
 	"""Connect expected routes and disconnect unexpected routes"""
 	update_hw_midi_ports()
 	midi_autoconnect()
+	update_hw_audio_ports()
 	audio_autoconnect()
 
 
@@ -1016,6 +1060,8 @@ def get_hw_src_ports():
 def get_hw_dst_ports():
 	return hw_midi_dst_ports
 
+def convert_port_regex(exp):
+	ports = jclient.get_ports(exp)
 
 def auto_connect_thread():
 	"""Thread to run autoconnect, checking if physical (hardware) interfaces have changed, e.g. USB plug"""
@@ -1037,6 +1083,9 @@ def auto_connect_thread():
 					# Check if requested to run midi connect (slow)
 					if deferred_midi_connect:
 						do_midi = True
+					# Check if hardware Audio ports changed, e.g. network connections changed
+					if update_hw_audio_ports():
+						do_audio = True
 					# Check if requested to run audio connect (slow)
 					if deferred_audio_connect:
 						do_audio = True
@@ -1133,9 +1182,6 @@ def start(sm):
 	except Exception as e:
 		logger.error(f"ZynAutoConnect ERROR: Can't connect with ALSA ({e})")
 
-	# Get System Playback Ports
-	hw_audio_dst_ports = jclient.get_ports("system:playback", is_input=True, is_audio=True, is_physical=True)
-
 	try:
 		with open(f"{zynconf.config_dir}/sidechain.json", "r") as file:
 			sidechain_map = json.load(file)
@@ -1164,8 +1210,6 @@ def stop():
 	if acquire_lock():
 		release_lock()
 		lock = None
-
-	hw_audio_dst_ports = []
 
 	if jclient:
 		jclient.deactivate()
