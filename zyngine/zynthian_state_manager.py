@@ -1228,6 +1228,10 @@ class zynthian_state_manager:
             self.set_busy_details("restoring midi capture state")
             self.set_midi_capture_state(zs3_state['midi_capture'])
 
+        if "global" in zs3_state:
+            if "midi_transpose" in zs3_state["global"]:
+                lib_zyncore.set_global_transpose(int(zs3_state["global"]["midi_transpose"]))
+
         zynsigman.send(zynsigman.S_STATE_MAN, self.SS_LOAD_ZS3, zs3_id=zs3_id)
         return True
 
@@ -1267,7 +1271,8 @@ class zynthian_state_manager:
         # Initialise zs3
         self.zs3[zs3_id] = {
             "title": title,
-            "active_chain": self.chain_manager.active_chain_id
+            "active_chain": self.chain_manager.active_chain_id,
+            "global": {}
         }
         chain_states = {}
         for chain_id, chain in self.chain_manager.chains.items():
@@ -1347,6 +1352,9 @@ class zynthian_state_manager:
         mcstate = self.get_midi_capture_state()
         if mcstate:
             self.zs3[zs3_id]["midi_capture"] = mcstate
+
+        # Add global parameters
+        self.zs3[zs3_id]["global"]["midi_transpose"] = lib_zyncore.get_global_transpose()
 
         zynsigman.send(zynsigman.S_STATE_MAN, self.SS_SAVE_ZS3, zs3_id=zs3_id)
 

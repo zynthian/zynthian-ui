@@ -140,6 +140,9 @@ ZynthianState = {
                     }
                 }
             },
+            "global": { # Dictionary of global params settable by zs3 indexed by param name
+                "midi_transpose": 0, # Semitones to globally transpose
+            }
         },
         "1/2": {}, # ZS3 for channel 1, program change 2
         "zs3-1": {}, # Manually saved ZS3 without assigned program change

@@ -66,7 +66,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		self.state_manager = self.zyngui.state_manager
 
-		self.default_global_transpose()
 		if self.state_manager.allow_rbpi_headphones():
 			self.default_rbpi_headphones()
 
@@ -143,10 +142,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			else:
 				self.list_data.append((self.toggle_midi_sys, 0, "\u2610 MIDI System Messages"))
 
-		if zynthian_gui_config.midi_global_transpose > 0:
-			display_val = f"+{zynthian_gui_config.midi_global_transpose}"
+		gtrans = lib_zyncore.get_global_transpose()
+		if gtrans > 0:
+			display_val = f"+{gtrans}"
 		else:
-			display_val = f"{zynthian_gui_config.midi_global_transpose}"
+			display_val = f"{gtrans}"
 		self.list_data.append((self.edit_global_transpose, 0, f"[{display_val}] Global Transpose"))
 
 		self.list_data.append((None, 0, "> AUDIO"))
@@ -390,34 +390,17 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	# Global Transpose editing
 	# -------------------------------------------------------------------------
 
-	def default_global_transpose(self):
-		lib_zyncore.set_global_transpose(zynthian_gui_config.midi_global_transpose)
-
 	def edit_global_transpose(self):
 		self.enable_param_editor(self, "Global Transpose",
-			{'value_min': -24, 'value_max': 24, 'value': zynthian_gui_config.midi_global_transpose},
-			self.edit_global_transpose_assert_cb)
+			{'value_min': -24, 'value_max': 24, 'value': lib_zyncore.get_global_transpose()})
 
 	def send_controller_value(self, zctrl):
 		""" Handle param editor value change """
+
 		if zctrl.symbol == "Global Transpose":
 			transpose = zctrl.value
 			lib_zyncore.set_global_transpose(transpose)
-
-	def disable_param_editor(self):
-		""" Handle disabling param editor """
-		if self.param_editor_zctrl and self.param_editor_zctrl.symbol == "Global Transpose":
-			self.default_global_transpose()
-		super().disable_param_editor()
-
-	def edit_global_transpose_assert_cb(self, val):
-		""" Handle param editor value assertion """
-		zynthian_gui_config.midi_global_transpose = val
-		# Save config
-		zynconf.update_midi_profile({
-			"ZYNTHIAN_MIDI_GLOBAL_TRANSPOSE": str(int(zynthian_gui_config.midi_global_transpose))
-		})
-		self.update_list()
+			self.update_list()
 
 	# -------------------------------------------------------------------------
 
