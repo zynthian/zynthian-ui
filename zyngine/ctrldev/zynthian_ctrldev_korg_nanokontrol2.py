@@ -292,6 +292,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
 			elif ccnum == self.cycle_ccnum:
 				if ccval > 0:
 					self.shift = not self.shift
+					self.rec_mode = self.shift
 					self.refresh()
 				return True
 			elif ccnum == self.marker_left_ccnum:
@@ -347,7 +348,11 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
 				return True
 			elif ccnum in self.mute_ccnums:
 				if ccval > 0:
-					mixer_chan = self.get_mixer_chan_from_device_col(self.mute_ccnums.index(ccnum))
+					col = self.mute_ccnums.index(ccnum)
+					if self.shift and col == 7:
+						mixer_chan = 255
+					else:
+						mixer_chan = self.get_mixer_chan_from_device_col(col)
 					if mixer_chan is not None:
 						if self.zynmixer.get_mute(mixer_chan):
 							val = 0
@@ -363,7 +368,11 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
 				return True
 			elif ccnum in self.solo_ccnums:
 				if ccval > 0:
-					mixer_chan = self.get_mixer_chan_from_device_col(self.solo_ccnums.index(ccnum))
+					col = self.solo_ccnums.index(ccnum)
+					if self.shift and col == 7:
+						mixer_chan = 255
+					else:
+						mixer_chan = self.get_mixer_chan_from_device_col(col)
 					if mixer_chan is not None:
 						if self.zynmixer.get_solo(mixer_chan):
 							val = 0
