@@ -74,6 +74,13 @@ class zynthian_state_manager:
     SS_LOAD_ZS3 = 4
     SS_SAVE_ZS3 = 5
 
+    # Subsignals from other modules. Just to simplify access.
+    # From S_AUDIO_PLAYER
+    SS_AUDIO_PLAYER_STATE = 1
+    # From S_AUDIO_RECORDER
+    SS_AUDIO_RECORDER_STATE = 1
+    SS_AUDIO_RECORDER_ARM = 2
+
     def __init__(self):
         """ Create an instance of a state manager
 
@@ -211,12 +218,16 @@ class zynthian_state_manager:
         self.fast_thread.daemon = True  # thread dies with the program
         self.fast_thread.start()
 
+        zynsigman.register(zynsigman.S_AUDIO_PLAYER, self.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
+
         self.end_busy("start state")
 
     def stop(self):
         """Stop state manager"""
 
         self.start_busy("stop state")
+
+        zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, self.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
 
         self.exit_flag = True
         if self.fast_thread and self.fast_thread.is_alive():
@@ -532,21 +543,19 @@ class zynthian_state_manager:
                 else:
                     status_counter += 1
 
-                # Audio Player Status
-                # TODO: Update audio player status with callback
-                self.status_audio_player = zynaudioplayer.get_playback_state(self.audio_player.handle)
-
-                # Audio Recorder Status => Implemented in zyngine/zynthian_audio_recorder.py
-
                 # MIDI Player
+                # TODO: Add callback from MIDI player to avoid polling (and regular access to c-lib)
                 status_midi_player = libsmf.getPlayState()
                 if self.status_midi_player != status_midi_player:
-                    #TODO: Add callback from MIDI player to avoid polling (and regular access to c-lib)
-                    self.status_midi_player = libsmf.getPlayState()
-                    zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_PLAYER_STATE, state=False)
+                    self.status_midi_player = status_midi_player
+                    zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_PLAYER_STATE, state=status_midi_player)
 
                 # MIDI Recorder
-                self.status_midi_recorder = libsmf.isRecording()
+                # TODO: Add callback from MIDI recorder to avoid polling (and regular access to c-lib)
+                status_midi_recorder = libsmf.isRecording()
+                if self.status_midi_recorder != status_midi_recorder:
+                    self.status_midi_recorder = status_midi_recorder
+                    zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_RECORDER_STATE, state=status_midi_recorder)
 
                 # Sequencer Status => It must be improved using callbacks
                 self.zynseq.update_state()
@@ -580,7 +589,7 @@ class zynthian_state_manager:
                             try:
                                 cb[1]()
                                 cb[2] = now + cb[0]
-                            except e as exception:
+                            except Exception as e:
                                 logging.error(e)
                     next_second_check = now + 1
 
@@ -588,6 +597,10 @@ class zynthian_state_manager:
                 logging.exception(e)
 
             sleep(0.2)
+
+    def cb_status_audio_player(self, handle, state):
+        if handle == self.audio_player.handle:
+            self.status_audio_player = state
 
     def fast_thread_task(self):
         """Perform fast / high priority background tasks"""

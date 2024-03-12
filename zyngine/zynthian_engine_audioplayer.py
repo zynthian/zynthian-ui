@@ -373,6 +373,8 @@ class zynthian_engine_audioplayer(zynthian_engine):
 				if processor.handle == handle:
 					ctrl_dict = processor.controllers_dict
 					if id == 1:
+						#logging.debug(f"handle => {handle}, id => {id}, value => {value}")
+						# QUESTION: What do mean the different values?
 						if value:
 							ctrl_dict['transport'].set_value("playing", False)
 							processor.status = "\uf04b"

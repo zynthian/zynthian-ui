@@ -49,7 +49,7 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 
 	def send_sysex(self, data):
 		if self.idev_out > 0:
-			msg = bytes.fromhex("F0 00 20 29 02 0D {} F7".format(data))
+			msg = bytes.fromhex(f"F0 00 20 29 02 0D {data} F7")
 			lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
 			sleep(0.05)
 
@@ -160,7 +160,7 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 			return True
 		# SysEx
 		elif ev[0] == 0xF0:
-			logging.info(f"Received SysEx => {ev}")
+			logging.info(f"Received SysEx => {ev.hex(' ')}")
 			return True
 
 	# Light-Off LEDs

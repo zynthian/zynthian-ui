@@ -22,7 +22,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#* *****************************************************************************
+# ******************************************************************************
 
 import logging
 
@@ -231,4 +231,3 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
 			lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
 
 # ------------------------------------------------------------------------------
-
