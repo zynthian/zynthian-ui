@@ -754,7 +754,7 @@ class zynthian_chain_manager:
             logging.error(f"Chain '{chain_id}' doesn't exist!")
             return None
         if eng_code not in self.engine_info:
-            if eng_code is not 'None':
+            if eng_code != 'None':
                 logging.error(f"Engine '{eng_code}' not found!")
             return None
         if proc_id is None:
