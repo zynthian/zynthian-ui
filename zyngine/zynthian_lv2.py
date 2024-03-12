@@ -5,7 +5,7 @@
 # 
 # zynthian LV2
 # 
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 # 
@@ -33,7 +33,6 @@ import time
 import string
 import hashlib
 import logging
-import contextlib
 import urllib.parse
 from enum import Enum
 from random import randrange
@@ -113,7 +112,8 @@ standalone_engine_info = {
 	"PT": ['Pianoteq', "Pianoteq", "MIDI Synth", "Modeler", True],
 	"AP": ["AudioPlayer", "Audio File Player", "Special", "Sampler", True],
 	'PD': ["PureData", "PureData - Visual Programming", "Special", "Language", True],
-	'MD': ["MOD-UI", "MOD-UI - Plugin Host", "Special", "Language", True]
+	'MD': ["MOD-UI", "MOD-UI - Plugin Host", "Special", "Language", True],
+	'IR': ["InternetRadio", "Internet Radio", "Audio Generator", "Other", True]
 }
 
 ENGINE_CONFIG_FILE = "{}/engine_config.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
@@ -234,12 +234,12 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
 		i = 0
 		for key, engine_info in standalone_engine_info.items():
 			try:
-				engine_id = engines[plugin_name]['ID']
+				engine_id = engines[key]['ID']
 				engine_cat = engines[key]['CAT']
-				engine_index = engines[plugin_name]['INDEX']
-				engine_descr = engines[plugin_name]['DESCR']
-				engine_quality = engines[plugin_name]['QUALITY']
-				engine_complex = engines[plugin_name]['COMPLEX']
+				engine_index = engines[key]['INDEX']
+				engine_descr = engines[key]['DESCR']
+				engine_quality = engines[key]['QUALITY']
+				engine_complex = engines[key]['COMPLEX']
 			except:
 				hash.update(key.encode())
 				engine_id = hash.hexdigest()[:10]
@@ -275,15 +275,15 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
 			name = str(plugin.get_name())
 			key = f"JV/{name}"
 			try:
-				engine_id = engines[plugin_name]['ID']
-				engine_type = engines[plugin_name]['TYPE']
-				engine_cat = engines[plugin_name]['CAT']
+				engine_id = engines[key]['ID']
+				engine_type = engines[key]['TYPE']
+				engine_cat = engines[key]['CAT']
 				if engine_cat not in engine_categories[engine_type]:
 					engine_cat = get_plugin_cat(plugin)
-				engine_index = engines[plugin_name]['INDEX']
-				engine_descr = engines[plugin_name]['DESCR']
-				engine_quality = engines[plugin_name]['QUALITY']
-				engine_complex = engines[plugin_name]['COMPLEX']
+				engine_index = engines[key]['INDEX']
+				engine_descr = engines[key]['DESCR']
+				engine_quality = engines[key]['QUALITY']
+				engine_complex = engines[key]['COMPLEX']
 			except:
 				hash.update(key.encode())
 				engine_id = hash.hexdigest()[:10]
