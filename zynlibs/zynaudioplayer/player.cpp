@@ -249,7 +249,7 @@ void* file_thread_fn(void * param) {
         if(pPlayer->src_ratio < 0.1)
             pPlayer->src_ratio = 1;
         srcData.src_ratio = pPlayer->src_ratio;
-        pPlayer->pos_notify_delta = pPlayer->sf_info.frames / g_samplerate / 400;
+        pPlayer->pos_notify_delta = float(pPlayer->sf_info.frames) / g_samplerate / 400;
         pPlayer->output_buffer_size = pPlayer->src_ratio * pPlayer->input_buffer_size;
         pPlayer->ringbuffer_a = jack_ringbuffer_create(pPlayer->output_buffer_size * pPlayer->buffer_count * sizeof(float));
         jack_ringbuffer_mlock(pPlayer->ringbuffer_a);
