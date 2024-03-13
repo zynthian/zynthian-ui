@@ -85,7 +85,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			self.list_data.append((self.audio_options, None, "Audio Options"))
 
 		if self.chain_id == 0 and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
-			if self.zyngui.state_manager.audio_recorder.get_status():
+			if self.zyngui.state_manager.audio_recorder.status:
 				self.list_data.append((self.toggle_recording, None, "■ Stop Audio Recording"))
 			else:
 				self.list_data.append((self.toggle_recording, None, "⬤ Start Audio Recording"))

@@ -44,9 +44,6 @@ static void __attribute__ ((constructor)) lib_init(void);
 /** @brief  Library destructor (initalisation) */
 static void __attribute__ ((destructor)) lib_exit(void);
 
-/** @brief  Cleanup */
-void lib_stop();
-
 /** @brief  Check if a codec is supported
 *   @param  codec name of codec (file extension, e.g. wav)
 *   @retval int 1 if supported
