@@ -5,7 +5,7 @@
 # 
 # Zynthian Audio Recorder Class
 # 
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
@@ -28,6 +28,8 @@ import os
 import logging
 from subprocess import Popen
 from datetime import datetime
+from time import sleep
+import liblo
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -44,14 +46,19 @@ class zynthian_audio_recorder:
 	SS_AUDIO_RECORDER_STATE = 1
 	SS_AUDIO_RECORDER_ARM = 2
 
+	OSC_PORT = 9003
+	OSC_ADDR = f"osc.udp://localhost:{OSC_PORT}"
+
 	def __init__(self, state_manager):
 		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
 		self.ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 		self.rec_proc = None
-		self.status = False
 		self.armed = set()  # List of chains armed to record
 		self.state_manager = state_manager
 		self.filename = None
+		self.prerec_time = 10
+		self.status = False
+		self.init_recorder()
 
 	def get_new_filename(self):
 		exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
@@ -64,6 +71,7 @@ class zynthian_audio_recorder:
 			filename += "_" + os.path.basename(self.state_manager.last_snapshot_fpath[:-4])
 
 		filename = filename.replace("/", ";").replace(">", ";").replace(" ; ", ";")
+		return f"{path}/{filename}"
 		# Append index to file to make unique
 		index = 1
 		while "{}.{:03d}.wav".format(filename, index) in os.listdir(path):
@@ -71,12 +79,16 @@ class zynthian_audio_recorder:
 		return "{}/{}.{:03d}.wav".format(path, filename, index)
 
 	def arm(self, channel):
+		if channel in self.armed:
+			return
 		self.armed.add(channel)
+		self.init_recorder()
 		zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_AUDIO_RECORDER_ARM, chan=channel, value=True)
 
 	def unarm(self, channel):
 		try:
 			self.armed.remove(channel)
+			self.init_recorder()
 			zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_AUDIO_RECORDER_ARM, chan=channel, value=False)
 		except:
 			logging.info("Channel %d not armed", channel)
@@ -91,19 +103,40 @@ class zynthian_audio_recorder:
 		return channel in self.armed
 
 	def start_recording(self, processor=None):
-		if self.rec_proc:
-			# Already recording
-			return False
+		liblo.send(self.OSC_ADDR, "/jack_capture/tm/start")
+		self.status = True
+		zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_AUDIO_RECORDER_STATE, state=True)
 
-		cmd = ["/usr/local/bin/jack_capture", "--daemon", "--bitdepth", "16", "--bufsize", "30", "--maxbufsize", "120"]
+		# Should this be implemented using signals? YES!!!
+		if processor:
+			processor.controllers_dict['record'].set_value("recording", False)
+
+	def init_recorder(self):
+		if self.rec_proc:
+			self.kill_recorder()
+
+		self.filename = self.get_new_filename()
+		cmd = [
+			"/usr/local/bin/jack_capture",
+			"--daemon",
+			"--bitdepth", "16",
+			"--osc", str(self.OSC_PORT),
+			"--timemachine",
+			"--timemachine-prebuffer", str(self.prerec_time),
+			"--bufsize", "30",
+			"--maxbufsize", "120",
+			"--filename-prefix", self.filename,
+			"--leading-zeros", "2",
+			"--timestamp"
+		]
 		for port in sorted(self.armed):
 			cmd.append("--port")
 			cmd.append("zynmixer:input_{:02d}a".format(port + 1))
 			cmd.append("--port")
 			cmd.append("zynmixer:input_{:02d}b".format(port + 1))
 
-		self.filename = self.get_new_filename()
-		cmd.append(self.filename)
+		#self.filename = self.get_new_filename()
+		#cmd.append(self.filename)
 
 		logging.info(f"STARTING NEW AUDIO RECORD '{self.filename}'...")
 		try:
@@ -112,39 +145,34 @@ class zynthian_audio_recorder:
 			logging.error("ERROR STARTING AUDIO RECORD: %s" % e)
 			self.rec_proc = None
 			return False
-
-		self.status = True
-		zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_AUDIO_RECORDER_STATE, state=True)
-
-		# Should this be implemented using signals?
-		if processor:
-			processor.controllers_dict['record'].set_value("recording", False)
-
 		return True
 
 	def stop_recording(self, player=None):
+		logging.info("STOPPING AUDIO RECORD ...")
+		liblo.send(self.OSC_ADDR, "/jack_capture/tm/stop")
+		self.status = False
+		zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_AUDIO_RECORDER_STATE, state=False)
+
+		# Should this be implemented using signals?
+		if player is None:
+			self.state_manager.audio_player.engine.load_latest(self.state_manager.audio_player)
+		else:
+			self.state_manager.audio_player.engine.load_latest(player)
+
+		self.state_manager.sync = True
+		return True
+
+	def kill_recorder(self):
 		if self.rec_proc:
-			logging.info("STOPPING AUDIO RECORD ...")
+			self.stop_recording()
+			liblo.send(self.OSC_ADDR, "/jack_capture/stop")
+			sleep(1)
 			try:
 				self.rec_proc.terminate()
 				self.rec_proc = None
 			except Exception as e:
 				logging.error("ERROR STOPPING AUDIO RECORD: %s" % e)
 				return False
-
-			self.status = False
-			zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_AUDIO_RECORDER_STATE, state=False)
-
-			# Should this be implemented using signals?
-			if player is None:
-				self.state_manager.audio_player.engine.load_latest(self.state_manager.audio_player)
-			else:
-				self.state_manager.audio_player.engine.load_latest(player)
-
-			self.state_manager.sync = True
-			return True
-
-		return False
 
 	def toggle_recording(self, player=None):
 		logging.info("TOGGLING AUDIO RECORDING ...")
