@@ -105,7 +105,7 @@ void send_notifications(AUDIO_PLAYER * pPlayer, int param) {
         return;
     if((param == NOTIFY_ALL || param == NOTIFY_TRANSPORT) && pPlayer->last_play_state != pPlayer->play_state) {
         pPlayer->last_play_state = pPlayer->play_state;
-        if(pPlayer->cb_fn)
+        if(pPlayer->cb_fn && pPlayer->play_state <= PLAYING)
             ((cb_fn_t*)pPlayer->cb_fn)(pPlayer, NOTIFY_TRANSPORT, (float)(pPlayer->play_state));
     }
     if((param == NOTIFY_ALL || param == NOTIFY_POSITION) && fabs(get_position(pPlayer) - pPlayer->last_position) >= pPlayer->pos_notify_delta) {
@@ -955,7 +955,7 @@ void start_playback(AUDIO_PLAYER * pPlayer) {
         pPlayer->play_state = STARTING;
         pPlayer->time_ratio_dirty = true;
     }
-    send_notifications(pPlayer, NOTIFY_TRANSPORT);
+    //send_notifications(pPlayer, NOTIFY_TRANSPORT);
 }
 
 void stop_playback(AUDIO_PLAYER * pPlayer) {
@@ -963,7 +963,7 @@ void stop_playback(AUDIO_PLAYER * pPlayer) {
         pPlayer->play_state = STOPPING;
         pPlayer->play_varispeed = pPlayer->varispeed;
     }
-    send_notifications(pPlayer, NOTIFY_TRANSPORT);
+    //send_notifications(pPlayer, NOTIFY_TRANSPORT);
 }
 
 uint8_t get_playback_state(AUDIO_PLAYER * pPlayer) {
@@ -1796,11 +1796,11 @@ void set_varispeed(AUDIO_PLAYER * pPlayer, float ratio) {
 
     if(stop && pPlayer->play_state != STOPPED) {
         pPlayer->play_state = STOPPING;
-        send_notifications(pPlayer, NOTIFY_TRANSPORT);
+        //send_notifications(pPlayer, NOTIFY_TRANSPORT);
     }
     if(start && g_jack_client && pPlayer->file_open == FILE_OPEN && pPlayer->play_state != PLAYING) {
         pPlayer->play_state = STARTING;
-        send_notifications(pPlayer, NOTIFY_TRANSPORT);
+        //send_notifications(pPlayer, NOTIFY_TRANSPORT);
     }
 
     send_notifications(pPlayer, NOTIFY_VARISPEED);

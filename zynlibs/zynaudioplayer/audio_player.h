@@ -12,10 +12,10 @@ class AUDIO_PLAYER; // Have to declare audio player class to allow typdef to wor
 typedef void cb_fn_t(AUDIO_PLAYER*, int, float);
 
 enum playState {
-    STOPPED		= 0,
-    STARTING	= 1,
-    PLAYING		= 2,
-    STOPPING	= 3
+    STOPPED  = 0,
+    PLAYING  = 1,
+    STARTING = 2,
+    STOPPING = 3
 };
 
 enum seekState {
