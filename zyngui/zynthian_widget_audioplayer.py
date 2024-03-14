@@ -664,7 +664,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		else:
 			color_default = wsl.wscolor_active2
 		# REC Button
-		if self.zyngui.state_manager.audio_recorder.get_status():
+		if self.zyngui.state_manager.audio_recorder.status:
 			wsl.wsleds.setPixelColor(wsleds[0], wsl.wscolor_red)
 		else:
 			wsl.wsleds.setPixelColor(wsleds[0], color_default)

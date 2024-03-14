@@ -418,7 +418,7 @@ class zynthian_gui_mixer_strip():
 
 		if control in [None, 'rec']:
 			if self.chain.is_audio() and self.parent.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan):
-				if self.parent.zyngui.state_manager.audio_recorder.get_status():
+				if self.parent.zyngui.state_manager.audio_recorder.status:
 					self.parent.main_canvas.itemconfig(self.record_indicator, fill=self.rec_color, state=tkinter.NORMAL)
 				else:
 					self.parent.main_canvas.itemconfig(self.record_indicator, fill=self.high_color, state=tkinter.NORMAL)

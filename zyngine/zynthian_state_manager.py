@@ -1162,8 +1162,8 @@ class zynthian_state_manager:
                     continue
 
                 if "midi_chan" in chain_state:
-                    if chain.midi_chan and chain.midi_chan != chain_state['midi_chan']:
-                        chain.set_midi_chan(chain_state['midi_chan'])
+                    if chain.midi_chan is not None and chain.midi_chan != chain_state['midi_chan']:
+                        self.chain_manager.set_midi_chan(chain_id, chain_state['midi_chan'])
 
                 if chain.zmop_index is not None:
                     if "note_low" in chain_state:

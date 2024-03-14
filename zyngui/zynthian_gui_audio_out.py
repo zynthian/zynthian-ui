@@ -114,7 +114,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 		if zynthian_gui_config.multichannel_recorder:
 			self.list_data.append((None, None, "> Audio Recorder"))
 			armed = self.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan)
-			if self.zyngui.state_manager.audio_recorder.get_status():
+			if self.zyngui.state_manager.audio_recorder.status:
 				locked = None
 			else:
 				locked = "record"

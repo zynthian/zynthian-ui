@@ -201,7 +201,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			transport = 'playing'
 		else:
 			transport = 'stopped'
-		if self.state_manager.audio_recorder.get_status():
+		if self.state_manager.audio_recorder.status:
 			record = 'recording'
 		else:
 			record = 'stopped'

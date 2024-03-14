@@ -48,12 +48,10 @@ class zynthian_audio_recorder:
 		self.capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
 		self.ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 		self.rec_proc = None
+		self.status = False
 		self.armed = set()  # List of chains armed to record
 		self.state_manager = state_manager
 		self.filename = None
-
-	def get_status(self):
-		return self.rec_proc is not None
 
 	def get_new_filename(self):
 		exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
@@ -115,7 +113,7 @@ class zynthian_audio_recorder:
 			self.rec_proc = None
 			return False
 
-		self.state_manager.status_audio_recorder = True
+		self.status = True
 		zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_AUDIO_RECORDER_STATE, state=True)
 
 		# Should this be implemented using signals?
@@ -134,7 +132,7 @@ class zynthian_audio_recorder:
 				logging.error("ERROR STOPPING AUDIO RECORD: %s" % e)
 				return False
 
-			self.state_manager.status_audio_recorder = False
+			self.status = False
 			zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_AUDIO_RECORDER_STATE, state=False)
 
 			# Should this be implemented using signals?
@@ -150,7 +148,7 @@ class zynthian_audio_recorder:
 
 	def toggle_recording(self, player=None):
 		logging.info("TOGGLING AUDIO RECORDING ...")
-		if self.get_status():
+		if self.status():
 			self.stop_recording(player)
 			return False
 		else:
