@@ -150,6 +150,19 @@ NoteCuiaDefault = {
 	"127": "ZYNSWITCH 37"
 }
 
+ServerPort = {
+	"webconf": 80,
+	"webconf_ssl": 443,
+	"cuia_osc": 1370,
+	"vnc_ui": 5900,
+	"vnc_desktop": 5901,
+	"linuxsampler_osc": 6688,
+	"zynsubaddfx_osc": 6693,
+	"aeolus_osc": 9000,
+	"pianoteq_rpc": 9001,
+	"sooperlooper_osc": 9951
+}
+
 # -------------------------------------------------------------------------------
 # Global variables
 # -------------------------------------------------------------------------------

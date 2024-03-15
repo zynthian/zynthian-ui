@@ -33,6 +33,7 @@ from os.path import isfile
 from subprocess import check_output
 from collections import OrderedDict
 from Levenshtein import distance
+from zynconf import ServerPort
 
 from . import zynthian_engine
 
@@ -95,7 +96,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	# Config variables
 	# ---------------------------------------------------------------------------
 
-	lscp_port = 6688
+	lscp_port = ServerPort["linuxsampler_osc"]
 
 	preset_fexts = ["sfz", "gig"]
 	root_bank_dirs = [

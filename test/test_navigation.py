@@ -30,14 +30,16 @@
 
 import liblo
 import pexpect
+import zynconf
 
 zynthian_addr = 'localhost'
+cuia_port = zynconf.ServerPort["cuia_osc"]
 
 #   Send a CUIA command via OSC
 #   cmd: OSC path for CUIA command, e.g. /cuia/reboot
 #   params: Optional parameters to send via OSC
 def cuia(cmd, params=None):
-    liblo.send('osc.udp://{}:1370'.format(zynthian_addr), cmd, params)
+    liblo.send(f'osc.udp://{zynthian_addr}:{cuia_port}'), cmd, params)
 
 
 #   Flush journal buffer

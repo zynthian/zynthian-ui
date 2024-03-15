@@ -165,7 +165,7 @@ class zynthian_gui:
 
 		# OSC config values
 		self.osc_proto = liblo.UDP
-		self.osc_server_port = 1370
+		self.osc_server_port = zynconf.ServerPort["cuia_osc"]
 
 		# Dictionary of {OSC clients, last heartbeat} registered for mixer feedback
 		self.osc_clients = {}

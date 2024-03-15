@@ -31,6 +31,7 @@ from time import sleep
 from os.path import isfile, join
 from subprocess import check_output
 from . import zynthian_engine
+from zynconf import ServerPort
 
 #------------------------------------------------------------------------------
 # ZynAddSubFX Engine Class
@@ -134,7 +135,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		self.nickname = "ZY"
 		self.jackname = "zynaddsubfx"
 
-		self.osc_target_port = 6693
+		self.osc_target_port = ServerPort["zynaddsunfx_osc"]
 
 		try:
 			self.sr = int(self.state_manager.get_jackd_samplerate())
