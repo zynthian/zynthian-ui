@@ -37,6 +37,7 @@ from subprocess import Popen, DEVNULL, PIPE, check_output, run
 
 from . import zynthian_engine
 from . import zynthian_controller
+from zynconf import ServerPort
 
 pt_ctrl_map = OrderedDict((
 	("Condition", "Cond"),
@@ -469,7 +470,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
 		self.command = f"{PIANOTEQ_BINARY} --prefs {PIANOTEQ_CONFIG_FILE} --midimapping zynthian"
 		if self.info['api']:
-			self.command += " --serve 9001"
+			self.command += f" --serve {ServerPort['pianoteq_rpc']}"
 		if not self.config_remote_display():
 			self.command += " --headless"
 
@@ -510,7 +511,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 	#   method: API method call
 	#   params: List of parameters required by API method
 	def rpc(self, method, params=None, id=0):
-		url = 'http://127.0.0.1:9001/jsonrpc'
+		url = f"http://127.0.0.1:{ServerPort['pianoteq_rpc']}/jsonrpc"
 		if params is None:
 			params = []
 		payload = {
