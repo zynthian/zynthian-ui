@@ -151,8 +151,8 @@ NoteCuiaDefault = {
 }
 
 ServerPort = {
-	"webconf": 80,
-	"webconf_ssl": 443,
+	"webconf_http": 80,
+	"webconf_https": 443,
 	"cuia_osc": 1370,
 	"vnc_ui": 5900,
 	"vnc_desktop": 5901,
