@@ -170,15 +170,15 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
         if "mute" in self.monitors:
             for mute in self.monitors["mute"]:
                 if mute[1]:
-                    self.widget_canvas.itemconfig(f"mute_{mute[0]}", fill="grey")
-                else:
                     self.widget_canvas.itemconfig(f"mute_{mute[0]}", fill="red")
+                else:
+                    self.widget_canvas.itemconfig(f"mute_{mute[0]}", fill="grey")
         if "solo" in self.monitors:
             for solo in self.monitors["solo"]:
                 if solo[1]:
-                    self.widget_canvas.itemconfig(f"solo_{solo[0]}", fill="grey")
-                else:
                     self.widget_canvas.itemconfig(f"solo_{solo[0]}", fill="blue")
+                else:
+                    self.widget_canvas.itemconfig(f"solo_{solo[0]}", fill="grey")
         # Update client levels
         for client, level in enumerate(self.levels):
             if level != self.processor.engine.levels[client]:
