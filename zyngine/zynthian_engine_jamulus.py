@@ -27,6 +27,7 @@ import socket
 from time import sleep
 import threading
 import json
+import random, string
 from subprocess import Popen, PIPE
 
 from . import zynthian_engine
@@ -45,7 +46,6 @@ class zynthian_engine_jamulus(zynthian_engine):
     # ---------------------------------------------------------------------------
     RPC_PORT = ServerPort["jamulus_rpc"]
     RPC_SECRET_FILE = "/tmp/jamulus.secret"
-    RPC_SECRET = "jamulus_api_secret"
 
     # ---------------------------------------------------------------------------
     # Initialization
@@ -53,30 +53,30 @@ class zynthian_engine_jamulus(zynthian_engine):
 
     def __init__(self, state_manager=None):
         super().__init__(state_manager)
+        letters = string.ascii_lowercase + string.digits
+        self.RPC_SECRET = ''.join(random.choice(letters) for i in range(16))
         self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_jamulus.py"
         self.name = "Jamulus"
         self.nickname = "JA"
         self.jackname = "jamulus"
         self.type = "Audio Effect"
         self.user_name = socket.gethostname() # TODO: Get from global Zynthian user name
-        self.server = "localhost:22124" #TODO: Get from preset
         self.clients = [] # List of connected client info
         self.levels = [] # List of each client's audio level (0..10)
         self.own_channel = None # Own channel or None if not connected
         self.server_proc = None # Process object for jamulus server running on this device
         self.monitors = {} # Populate with changed values
         self.build_ctrls()
+        # List: [uid, url, name, None]
+        self.presets = [
+            ["Local", "localhost", "Local"]
+        ]
         try:
             with open(self.my_data_dir + "/presets/jamulus/presets.json", "r") as f:
-                self.presets = json.load(f)
-        except:
+                self.presets += json.load(f)
+        except Exception as e:
             # Preset file missing or corrupt
-            # List: [uid, url, name, None]
-            self.presets = [
-                ["Local", "localhost", "Local", None]
-            ]
-
-        self.start()
+            logging.error(e)
 
     def build_ctrls(self):
         if self.server_proc is None:
@@ -125,7 +125,8 @@ class zynthian_engine_jamulus(zynthian_engine):
             "--jsonrpcport", str(self.RPC_PORT),
             "--jsonrpcsecretfile", self.RPC_SECRET_FILE,
             "--ctrlmidich", "'1;f1*16;p17*16;m33*16;s49*16;o100'",
-            "--connect", self.server
+            "--inifile", f"{self.data_dir}/jamulus/Jamulus.ini",
+            "--connect", self.preset[1]
         ]
         if not self.config_remote_display():
             self.command.append("--nogui")
@@ -156,13 +157,16 @@ class zynthian_engine_jamulus(zynthian_engine):
         self.thread.start()
         self.set_name(self.user_name)
 
-    def stop(self):
+    def stop(self, term_server=True):
         if self.proc:
             self.running = False
             self.rpc_socket.close()
             self.thread.join()
             self.proc.terminate()
             self.proc = None
+        if term_server and self.server_proc:
+            self.server_proc.terminate()
+            self.server_proc = None
 
     def monitor(self):
         while self.running:
@@ -171,21 +175,23 @@ class zynthian_engine_jamulus(zynthian_engine):
                     if "method" in jsn:
                         msg = json.loads(jsn)
                         method = msg["method"]
-                        if method == "jamulusclient/clientListReceived":
+                        if method == "jamulusclient/channelLevelListReceived":
+                            self.levels = msg["params"]["channelLevelList"]
+                        elif method == "jamulusclient/clientListReceived":
                             self.clients = msg["params"]["clients"]
                             self.build_ctrls()
                             self.processors[0].refresh_controllers()
                             self.monitors["clients"] = self.clients
-                        elif method == "jamulusclient/channelLevelListReceived":
-                            self.levels = msg["params"]["channelLevelList"]
                         elif method == "jamulusclient/connected":
                             self.own_channel = msg["params"]["id"]
                             self.build_ctrls()
                             self.processors[0].refresh_controllers()
+                            self.monitors["connected"] = True
                         elif method == "jamulusclient/disconnected":
                             self.own_channel = None
                             self.build_ctrls()
                             self.processors[0].refresh_controllers()
+                            self.monitors["connected"] = False
             except TimeoutError:
                 pass # We expect socket to timeout when no data available
             except Exception as e:
@@ -238,8 +244,8 @@ class zynthian_engine_jamulus(zynthian_engine):
         preload - True to allow preload (not used)
         """
 
-        self.stop()
-        self.server = preset[1]
+        self.stop(False)
+        self.preset = preset
         self.start()
         zynautoconnect.request_midi_connect(True)
         zynautoconnect.request_audio_connect(True)
@@ -251,20 +257,24 @@ class zynthian_engine_jamulus(zynthian_engine):
 
     def send_controller_value(self, zctrl):
         if zctrl.symbol == "Local Server":
-            logging.warning(zctrl.value)
             if zctrl.value:
                 # Start local server
                 if self.server_proc is None:
-                    if self.config_remote_display():
-                        self.server_proc = Popen(["/usr/bin/jamulus","--server"], env=self.command_env, cwd=self.command_cwd)
-                    else:
-                        self.server_proc = Popen(["/usr/bin/jamulus","--server", "--nogui"], env=self.command_env, cwd=self.command_cwd)
+                    cmd = ["/usr/bin/jamulus","--server", "--inifile", f"{self.data_dir}/jamulus/Jamulusserver.ini"]
+                    if not self.config_remote_display():
+                        cmd.append("--nogui")
+                    self.server_proc = Popen(cmd, env=self.command_env, cwd=self.command_cwd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
             else:
                 # Stop local server
                 if self.server_proc:
                     self.server_proc.terminate()
                     self.server_proc = None
         else:
+            if zctrl.symbol.startswith("Fader"):
+                if "fader" in self.monitors:
+                    self.monitors["fader"].append((int(zctrl.symbol[6:]), zctrl.value))
+                else:
+                    self.monitors["fader"] = [(int(zctrl.symbol[6:]), zctrl.value)]
             raise("Use MIDI CC control")
 
     def get_monitors_dict(self):

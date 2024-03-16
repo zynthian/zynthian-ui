@@ -41,32 +41,99 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
             highlightthickness=0,
             relief='flat',
             bg=zynthian_gui_config.color_bg)
+        self.widget_canvas.create_text(
+            0, 0,
+            text="Disconnected",
+            font=("DejaVu Sans Mono", int(0.8 * zynthian_gui_config.font_size)),
+            fill="grey",
+            anchor=tkinter.NW,
+            tags=["connection"]
+        )
+
         self.widget_canvas.grid(sticky='news')
 
+    def on_size(self, event):
+        super().on_size(event)
+        self.legend_height = self.height // 10
+        self.fader_height = self.height // 2
+        self.channel_width = self.width // 8
+
+    def update_fader_pos(self, channel, value):
+        channel_width = self.width // 8
+        x0 = int(channel_width * 0.4)
+        x1 = int(channel_width * 0.9)
+        y0 = int(self.height - self.legend_height - self.fader_height * value / 127)
+        y1 = int(y0 - self.fader_height / 5)
+        self.widget_canvas.coords(f"fader_{channel}", x0, y0, x1, y1)
+        for i in range(1,4):
+            y0 -= self.fader_height // 20
+            self.widget_canvas.coords(f"fader_line{i}_{channel}", x0+2, y0, x1-2, y0)
+
     def refresh_gui(self):
+        if "connected" in self.monitors:
+            if self.monitors["connected"]:
+                self.widget_canvas.itemconfig("connection", text="Connected", fill="white")
+            else:
+                self.widget_canvas.itemconfig("connection", text="Disconnected", fill="grey")
         if "clients" in self.monitors:
+            # Update received from server for client config so redraw all client data
+            self.levels = []
             self.widget_canvas.delete("clients")
+            led_width = self.channel_width // 3
             for i, client in enumerate(self.monitors["clients"]):
-                x = int(self.width / 9 * (i + 0.5))
-                y = self.height - 20
+                self.levels.append(0)
+                x = int(self.channel_width * i)
+                y = self.height - self.legend_height
                 self.widget_canvas.create_text(
                     x, y,
                     text=client["name"],
                     font=("DejaVu Sans Mono", int(0.8 * zynthian_gui_config.font_size)),
                     fill=zynthian_gui_config.color_panel_tx,
-                    width=self.width // 9 - 4,
+                    width=self.channel_width - 4,
+                    anchor=tkinter.NW,
                     tags=["clients", f"client_name_{i}"]
-            )
-        if len(self.processor.engine.levels) != len(self.levels):
-            num_clients = len(self.processor.engine.levels)
-            self.levels = [0 for i in range(num_clients)]
-            self.widget_canvas.delete("level_led")
-            for i in range(num_clients):
-                x = int(self.width / 9 * (i + 0.5))
+                )
+                # Fader
+                self.widget_canvas.create_line(
+                    x + self.channel_width // 3 * 2,
+                    y,
+                    x + self.channel_width // 3 * 2,
+                    y - int(self.fader_height * 1.2),
+                    width = 4,
+                    fill="grey"
+                )
+                self.widget_canvas.create_rectangle(
+                    0,0,0,0,
+                    fill="grey",
+                    tags=["clients", f"fader_{i+1}"]
+                )
+                self.widget_canvas.create_line(
+                    0,0,0,0,
+                    width=1,
+                    fill="white",
+                    tags=["clients", f"fader_line1_{i+1}"]
+                )
+                self.widget_canvas.create_line(
+                    0,0,0,0,
+                    width=1,
+                    fill="black",
+                    tags=["clients", f"fader_line2_{i+1}"]
+                )
+                self.widget_canvas.create_line(
+                    0,0,0,0,
+                    width=1,
+                    fill="white",
+                    tags=["clients", f"fader_line3_{i+1}"]
+                )
+                self.update_fader_pos(i+1, 127) #TODO: Get actual fader position
                 for j in range(10):
-                    y = self.height - 40 - int((self.height - 40) / 9 * (j + 0.5)) 
-                    self.widget_canvas.create_oval(x-10, y-5, x+10, y+5, fill="grey", tags=["level_led", f"client{i}", f"led_{i}_{j}"])
+                    y = self.height - self.legend_height - int(self.fader_height / 9 * (j + 0.5)) 
+                    self.widget_canvas.create_oval(x, y-5, x + led_width, y + self.fader_height // 20, fill="grey", tags=["clients", f"client{i}", f"led_{i}_{j}"])
                     pass
+        if "fader" in self.monitors:
+            for fader in self.monitors["fader"]:
+                self.update_fader_pos(fader[0], fader[1])
+        # Update client levels
         for client, level in enumerate(self.levels):
             if level != self.processor.engine.levels[client]:
                 self.levels[client] = self.processor.engine.levels[client]
