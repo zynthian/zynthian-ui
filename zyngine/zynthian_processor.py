@@ -292,7 +292,7 @@ class zynthian_processor:
     # ---------------------------------------------------------------------------
 
     def load_preset_list(self):
-        """Load bank list for processor"""
+        """Load preset list for processor"""
 
         preset_list = []
 

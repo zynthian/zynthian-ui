@@ -281,6 +281,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 							self.zyngui.modify_chain_status["audio_thru"] = False #TODO: Better done with engine flag
 						if self.zyngui.modify_chain_status["type"] in ("Audio Effect", "Audio Generator") and not self.zyngui.modify_chain_status["midi_thru"]:
 							self.zyngui.modify_chain_status["midi_chan"] = None
+						if self.zyngui.modify_chain_status["engine"] == "JA":
+							self.zyngui.modify_chain_status["midi_chan"] = 0
 					self.zyngui.modify_chain()
 		elif t == 'B':
 			if not self.back_action():

@@ -19,7 +19,8 @@ __all__ = [
 	"zynthian_engine_sooperlooper",
 	"zynthian_midi_filter",
 	"zynthian_zcmidi",
-    "zynthian_engine_inet_radio"
+    "zynthian_engine_inet_radio",
+    "zynthian_engine_jamulus"
 ]
 from zyngine.zynthian_controller import *
 from zyngine.zynthian_lv2 import *
@@ -41,3 +42,4 @@ from zyngine.zynthian_engine_sooperlooper import *
 from zyngine.zynthian_midi_filter import *
 from zyngine.zynthian_zcmidi import *
 from zyngine.zynthian_engine_inet_radio import *
+from zyngine.zynthian_engine_jamulus import *

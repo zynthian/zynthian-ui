@@ -3,9 +3,9 @@
 #******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
-# Zynthian Widget Class for "Zynthian Audio Player" (zynaudioplayer#one)
+# Zynthian Widget Class for "Sooperlooper"
 # 
-# Copyright (C) 2022 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2022-2024 Brian Walton <riban@zynthian.org>
 #
 #******************************************************************************
 # 

@@ -160,6 +160,7 @@ ServerPort = {
 	"zynsubaddfx_osc": 6693,
 	"aeolus_osc": 9000,
 	"pianoteq_rpc": 9001,
+	"jamulus_rpc": 9002,
 	"sooperlooper_osc": 9951
 }
 
