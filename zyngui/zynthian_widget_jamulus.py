@@ -130,9 +130,55 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
                     y = self.height - self.legend_height - int(self.fader_height / 9 * (j + 0.5)) 
                     self.widget_canvas.create_oval(x, y-5, x + led_width, y + self.fader_height // 20, fill="grey", tags=["clients", f"client{i}", f"led_{i}_{j}"])
                     pass
+                # Mute button
+                button_height = self.height // 10
+                self.widget_canvas.create_rectangle(
+                    x + 2,
+                    20,
+                    x + self.channel_width - 2,
+                    20 + button_height,
+                    fill="grey",
+                    tags=["clients", f"mute_{i+1}"]
+                )
+                self.widget_canvas.create_text(
+                    x + self.channel_width // 2,
+                    20 + button_height // 2,
+                    text="Mute",
+                    fill="white",
+                    tags=["clients"]
+                )
+                # Solo button
+                self.widget_canvas.create_rectangle(
+                    x + 2,
+                    22 + button_height,
+                    x + self.channel_width - 2,
+                    22 + 2 * button_height,
+                    fill="grey",
+                    tags=["clients", f"solo_{i+1}"]
+                )
+                self.widget_canvas.create_text(
+                    x + self.channel_width // 2,
+                    22 + int(1.5 * button_height),
+                    text="Solo",
+                    fill="white",
+                    tags=["clients"]
+                )
+
         if "fader" in self.monitors:
             for fader in self.monitors["fader"]:
                 self.update_fader_pos(fader[0], fader[1])
+        if "mute" in self.monitors:
+            for mute in self.monitors["mute"]:
+                if mute[1]:
+                    self.widget_canvas.itemconfig(f"mute_{mute[0]}", fill="grey")
+                else:
+                    self.widget_canvas.itemconfig(f"mute_{mute[0]}", fill="red")
+        if "solo" in self.monitors:
+            for solo in self.monitors["solo"]:
+                if solo[1]:
+                    self.widget_canvas.itemconfig(f"solo_{solo[0]}", fill="grey")
+                else:
+                    self.widget_canvas.itemconfig(f"solo_{solo[0]}", fill="blue")
         # Update client levels
         for client, level in enumerate(self.levels):
             if level != self.processor.engine.levels[client]:

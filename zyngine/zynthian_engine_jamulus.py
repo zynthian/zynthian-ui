@@ -182,6 +182,7 @@ class zynthian_engine_jamulus(zynthian_engine):
                             self.build_ctrls()
                             self.processors[0].refresh_controllers()
                             self.monitors["clients"] = self.clients
+                            self.monitors["connected"] = True
                         elif method == "jamulusclient/connected":
                             self.own_channel = msg["params"]["id"]
                             self.build_ctrls()
@@ -275,6 +276,16 @@ class zynthian_engine_jamulus(zynthian_engine):
                     self.monitors["fader"].append((int(zctrl.symbol[6:]), zctrl.value))
                 else:
                     self.monitors["fader"] = [(int(zctrl.symbol[6:]), zctrl.value)]
+            elif zctrl.symbol.startswith("Mute"):
+                if "mute" in self.monitors:
+                    self.monitors["mute"].append((int(zctrl.symbol[5:]), zctrl.value))
+                else:
+                    self.monitors["mute"] = [(int(zctrl.symbol[5:]), zctrl.value)]
+            elif zctrl.symbol.startswith("Solo"):
+                if "solo" in self.monitors:
+                    self.monitors["solo"].append((int(zctrl.symbol[5:]), zctrl.value))
+                else:
+                    self.monitors["solo"] = [(int(zctrl.symbol[5:]), zctrl.value)]
             raise("Use MIDI CC control")
 
     def get_monitors_dict(self):
