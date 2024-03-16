@@ -119,7 +119,7 @@ class zynthian_engine_jamulus(zynthian_engine):
         logging.info(f"Starting Engine {self.name}")
 
         self.command = [
-            "/usr/bin/jamulus",
+            "jamulus",
             "--nojackconnect",
             "--clientname", self.jackname,
             "--jsonrpcport", str(self.RPC_PORT),
@@ -261,7 +261,7 @@ class zynthian_engine_jamulus(zynthian_engine):
             if zctrl.value:
                 # Start local server
                 if self.server_proc is None:
-                    cmd = ["/usr/bin/jamulus","--server", "--inifile", f"{self.data_dir}/jamulus/Jamulusserver.ini"]
+                    cmd = ["jamulus","--server", "--inifile", f"{self.data_dir}/jamulus/Jamulusserver.ini"]
                     if not self.config_remote_display():
                         cmd.append("--nogui")
                     self.server_proc = Popen(cmd, env=self.command_env, cwd=self.command_cwd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
