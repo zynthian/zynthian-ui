@@ -157,7 +157,7 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
                 self.update_fader_pos(i+1, zctrl.value)
                 # Meter LEDs
                 for j in range(10):
-                    y = self.height - self.legend_height - int(self.fader_height / 8 * (j + 0.5)) 
+                    y = self.height - self.legend_height - 2 - int((self.fader_height - 10) / 8 * (j + 0.5))
                     self.widget_canvas.create_oval(x + 2, y, x + 2 + led_size, y + led_size, fill="grey", tags=["strip", f"client{i}", f"led_{i}_{j}"])
                     pass
                 # Mute button

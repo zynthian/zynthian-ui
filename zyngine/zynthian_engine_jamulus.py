@@ -181,7 +181,9 @@ class zynthian_engine_jamulus(zynthian_engine):
         self.running = True
         self.thread.start()
         self.set_name(self.user_name)
-        
+        zynautoconnect.request_midi_connect(True)
+        zynautoconnect.request_audio_connect(True)
+
     def stop(self, term_server=True):
         if self.proc:
             self.running = False
@@ -275,8 +277,6 @@ class zynthian_engine_jamulus(zynthian_engine):
         self.stop(False)
         self.preset = preset
         self.start()
-        zynautoconnect.request_midi_connect(True)
-        zynautoconnect.request_audio_connect(True)
 
 
     #----------------------------------------------------------------------------
