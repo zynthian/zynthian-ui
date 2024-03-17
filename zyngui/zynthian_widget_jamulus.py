@@ -26,7 +26,6 @@
 import tkinter
 import logging
 
-from zyngine.zynthian_engine_jamulus import zynthian_engine_jamulus
 from zyngui import zynthian_widget_base
 from zyngui import zynthian_gui_config
 
@@ -49,6 +48,14 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
             anchor=tkinter.NW,
             tags=["connection"]
         )
+        self.widget_canvas.bind('<ButtonPress-1>', self.on_press)
+        self.widget_canvas.bind('<ButtonRelease-1>', self.on_release)
+        self.widget_canvas.bind('<B1-Motion>', self.on_motion)
+        self.button_map = {}
+        self.fader_map = {}
+        self.pan_map = {}
+        self.fader_zctrl = None
+        self.pan_zctrl = None
 
         self.widget_canvas.grid(sticky='news')
 
@@ -57,11 +64,11 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
         self.legend_height = self.height // 10
         self.fader_height = self.height // 2
         self.channel_width = self.width // 8
+        self.button_height = self.height // 12
 
     def update_fader_pos(self, channel, value):
-        channel_width = self.width // 8
-        x0 = int(channel_width * 0.4)
-        x1 = int(channel_width * 0.9)
+        x0 = int(self.channel_width * (channel - 0.6))
+        x1 = int(self.channel_width * (channel - 0.1))
         y0 = int(self.height - self.legend_height - self.fader_height * value / 127)
         y1 = int(y0 - self.fader_height / 5)
         self.widget_canvas.coords(f"fader_{channel}", x0, y0, x1, y1)
@@ -69,29 +76,49 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
             y0 -= self.fader_height // 20
             self.widget_canvas.coords(f"fader_line{i}_{channel}", x0+2, y0, x1-2, y0)
 
+    def update_pan_pos(self, channel, value):
+        x = int(2 + (self.channel_width - 4) * (channel - 1 + value / 127)),
+        y0= 24 + 2 * self.button_height,
+        y1 = int(self.height - self.legend_height - 1.2 * self.fader_height - 2),
+        self.widget_canvas.coords(f"pan_{channel}", x, y0, x, y1)
+
     def refresh_gui(self):
-        if "connected" in self.monitors:
-            if self.monitors["connected"]:
-                self.widget_canvas.itemconfig("connection", text="Connected", fill="white")
-            else:
+        if "status" in self.monitors:
+            if self.monitors["status"] == "Disconnected":
                 self.widget_canvas.itemconfig("connection", text="Disconnected", fill="grey")
+                self.monitors["clients"] = []
+            else:
+                self.widget_canvas.itemconfig("connection", text=self.monitors["status"], fill="white")
         if "clients" in self.monitors:
             # Update received from server for client config so redraw all client data
             self.levels = []
-            self.widget_canvas.delete("clients")
-            led_width = self.channel_width // 3
+            self.fader_map = {}
+            self.widget_canvas.delete("strip")
+            led_size = self.fader_height // 20
             for i, client in enumerate(self.monitors["clients"]):
                 self.levels.append(0)
                 x = int(self.channel_width * i)
                 y = self.height - self.legend_height
+                # Divider
+                self.widget_canvas.create_line(
+                    x + self.channel_width, 20, x + self.channel_width, self.height,
+                    fill="white",
+                    tags=["strip"]
+                )
+                # Legend strip
+                self.widget_canvas.create_rectangle(
+                    x, y, x + self.channel_width, y + self.legend_height,
+                    fill=zynthian_gui_config.color_panel_tx,
+                    tags=["strip"]
+                )
                 self.widget_canvas.create_text(
                     x, y,
                     text=client["name"],
                     font=("DejaVu Sans Mono", int(0.8 * zynthian_gui_config.font_size)),
-                    fill=zynthian_gui_config.color_panel_tx,
+                    #fill=zynthian_gui_config.color_panel_tx,
                     width=self.channel_width - 4,
                     anchor=tkinter.NW,
-                    tags=["clients", f"client_name_{i}"]
+                    tags=["strip"]
                 )
                 # Fader
                 self.widget_canvas.create_line(
@@ -100,73 +127,106 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
                     x + self.channel_width // 3 * 2,
                     y - int(self.fader_height * 1.2),
                     width = 4,
-                    fill="grey"
+                    fill="grey",
+                    tags = ["strip"]
                 )
-                self.widget_canvas.create_rectangle(
+                zctrl = self.processor.controllers_dict[f"Fader {i+1}"]
+                self.fader_map[self.widget_canvas.create_rectangle(
                     0,0,0,0,
                     fill="grey",
-                    tags=["clients", f"fader_{i+1}"]
-                )
+                    tags=["strip", f"fader_{i+1}"]
+                )] = zctrl
                 self.widget_canvas.create_line(
                     0,0,0,0,
                     width=1,
                     fill="white",
-                    tags=["clients", f"fader_line1_{i+1}"]
+                    tags=["strip", f"fader_line1_{i+1}"]
                 )
                 self.widget_canvas.create_line(
                     0,0,0,0,
                     width=1,
                     fill="black",
-                    tags=["clients", f"fader_line2_{i+1}"]
+                    tags=["strip", f"fader_line2_{i+1}"]
                 )
                 self.widget_canvas.create_line(
                     0,0,0,0,
                     width=1,
                     fill="white",
-                    tags=["clients", f"fader_line3_{i+1}"]
+                    tags=["strip", f"fader_line3_{i+1}"]
                 )
-                self.update_fader_pos(i+1, 127) #TODO: Get actual fader position
+                self.update_fader_pos(i+1, zctrl.value)
+                # Meter LEDs
                 for j in range(10):
-                    y = self.height - self.legend_height - int(self.fader_height / 9 * (j + 0.5)) 
-                    self.widget_canvas.create_oval(x, y-5, x + led_width, y + self.fader_height // 20, fill="grey", tags=["clients", f"client{i}", f"led_{i}_{j}"])
+                    y = self.height - self.legend_height - int(self.fader_height / 8 * (j + 0.5)) 
+                    self.widget_canvas.create_oval(x + 2, y, x + 2 + led_size, y + led_size, fill="grey", tags=["strip", f"client{i}", f"led_{i}_{j}"])
                     pass
                 # Mute button
-                button_height = self.height // 10
-                self.widget_canvas.create_rectangle(
+                zctrl = self.processor.controllers_dict[f"Mute {i+1}"]
+                if zctrl.value:
+                    fill = "red"
+                else:
+                    fill = "grey"
+                self.button_map[self.widget_canvas.create_rectangle(
                     x + 2,
                     20,
                     x + self.channel_width - 2,
-                    20 + button_height,
-                    fill="grey",
-                    tags=["clients", f"mute_{i+1}"]
-                )
+                    20 + self.button_height,
+                    fill=fill,
+                    tags=["strip", f"mute_{i+1}"]
+                )] = zctrl
                 self.widget_canvas.create_text(
                     x + self.channel_width // 2,
-                    20 + button_height // 2,
+                    20 + self.button_height // 2,
                     text="Mute",
                     fill="white",
-                    tags=["clients"]
+                    tags=["strip"]
                 )
                 # Solo button
-                self.widget_canvas.create_rectangle(
+                zctrl = self.processor.controllers_dict[f"Solo {i+1}"]
+                if zctrl.value:
+                    fill = "blue"
+                else:
+                    fill = "grey"
+                self.button_map[self.widget_canvas.create_rectangle(
                     x + 2,
-                    22 + button_height,
+                    22 + self.button_height,
                     x + self.channel_width - 2,
-                    22 + 2 * button_height,
-                    fill="grey",
-                    tags=["clients", f"solo_{i+1}"]
-                )
+                    22 + 2 * self.button_height,
+                    fill=fill,
+                    tags=["strip", f"solo_{i+1}"]
+                )] = zctrl
                 self.widget_canvas.create_text(
                     x + self.channel_width // 2,
-                    22 + int(1.5 * button_height),
+                    22 + int(1.5 * self.button_height),
                     text="Solo",
                     fill="white",
-                    tags=["clients"]
+                    tags=["strip"]
                 )
+                # Pan
+                zctrl = self.processor.controllers_dict[f"Pan {i+1}"]
+                self.pan_map[self.widget_canvas.create_rectangle(
+                    x + 2,
+                    24 + 2 * self.button_height,
+                    x + self.channel_width - 2,
+                    int(self.height - self.legend_height - 1.2 * self.fader_height - 2),
+                    fill="grey",
+                    tags=["strip"]
+                )] = zctrl
+                self.widget_canvas.create_line(
+                    0,0,0,0,
+                    fill="white",
+                    width=3,
+                    tags = ["strip", f"pan_{i+1}"]
+                )
+                self.update_pan_pos(i+1, zctrl.value)
+
 
         if "fader" in self.monitors:
             for fader in self.monitors["fader"]:
                 self.update_fader_pos(fader[0], fader[1])
+        if "pan" in self.monitors:
+            for pan in self.monitors["pan"]:
+                self.update_pan_pos(pan[0], pan[1])
         if "mute" in self.monitors:
             for mute in self.monitors["mute"]:
                 if mute[1]:
@@ -187,3 +247,50 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
                     self.widget_canvas.itemconfig(f"led_{client}_{i}", fill=self.LED_COLOUR[i])
                 for i in range(self.levels[client], 10):
                     self.widget_canvas.itemconfig(f"led_{client}_{i}", fill="grey")
+
+    def on_press(self, event):
+        self.press_event = event
+        if (ids := self.widget_canvas.find_overlapping(event.x, event.y, event.x, event.y)):
+            for id in ids:
+                if id in self.button_map:
+                    if self.button_map[id].get_value():
+                        self.button_map[id].set_value(0)
+                    else:
+                        self.button_map[id].set_value(127)
+                    return
+                elif id in self.fader_map:
+                    self.fader_zctrl = self.fader_map[id]
+                    self.value = self.fader_zctrl.value
+                    self.factor = 127
+                    return
+                elif id in self.pan_map:
+                    self.pan_zctrl = self.pan_map[id]
+                    self.value = self.pan_zctrl.value
+                    self.factor = 127
+                    return
+
+    def on_release(self, event):
+        self.fader_zctrl = None
+        self.pan_zctrl = None
+
+    def on_motion(self, event):
+        if self.fader_zctrl:
+            factor = max(20, int((1 - abs((self.press_event.x - event.x) * 2 / self.width)) * 127))
+            value = self.value + int((self.press_event.y - event.y) / self.fader_height * factor)
+            value = max(min(value, 127), 0)
+            self.fader_zctrl.set_value(value)
+            # Reset event values to allow dynamic change of factor
+            if self.factor != factor:
+                self.value = value
+                self.press_event.y = event.y
+                self.factor = factor
+        elif self.pan_zctrl:
+            factor = max(20, int((1 - abs((self.press_event.y - event.y) * 2 / self.height)) * 127))
+            value = self.value + int((event.x - self.press_event.x) / (self.channel_width - 4) * factor)
+            value = max(min(value, 127), 0)
+            self.pan_zctrl.set_value(value)
+            if self.factor != factor:
+                # Reset event values to allow dynamic change of factor
+                self.value = value
+                self.press_event.x = event.x
+                self.factor = factor

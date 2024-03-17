@@ -79,25 +79,37 @@ class zynthian_engine_jamulus(zynthian_engine):
             logging.error(e)
 
     def build_ctrls(self):
+        try:
+            zctrls = self.processors[0].controllers_dict
+        except:
+            zctrls = []
         if self.server_proc is None:
             local_server = "Off"
         else:
             local_server = "On"
-        self._ctrls = [
-            ["Mute Self", 100, "Off", ["Off","On"]],
+        if self.proc:
+            connect = "On"
+        else:
+            connect = "Off"
+        if "Mute Self" in zctrls:
+            mute_self = zctrls["Mute Self"].value
+        else:
+            mute_self = "Off"
+        existing_names = []
+        for scrn in self._ctrl_screens:
+            existing_names.append(scrn[0])
+        ctrls = [
+            ["Connect", None, connect, ["Off","On"]],
+            ["Mute Self", 100, mute_self, ["Off","On"]],
             ["Local Server", None, local_server, ["Off", "On"]]
         ]
         self._ctrl_screens = [
-            ["Local", ["Mute Self", "Local Server"]]
+            ["Local", ["Connect", "Mute Self", "Local Server"]]
         ]
         channels = range(1, len(self.clients) + 1)
         names = []
         for i in channels:
             suffix = 1
-            self._ctrls += [[f"Fader {i}", i, 127, 127]]
-            self._ctrls += [[f"Pan {i}", i + 16, 64, 127]]
-            self._ctrls += [[f"Mute {i}", i + 32, "Off", ["Off","On"]]]
-            self._ctrls += [[f"Solo {i}", i + 48, "Off", ["Off","On"]]]
             name = self.clients[i - 1]["name"]
             if not name:
                 name = f"User {i}"
@@ -107,8 +119,20 @@ class zynthian_engine_jamulus(zynthian_engine):
                     suffix += 1
             if self.own_channel == i - 1:
                 name += " (me)"
+            if name in existing_names:
+                j = existing_names.index(name)
+                ctrls += [[f"Fader {i}", i, zctrls[f"Fader {j}"].value, 127]]
+                ctrls += [[f"Pan {i}", i + 16, zctrls[f"Pan {j}"].value, 127]]
+                ctrls += [[f"Mute {i}", i + 32, zctrls[f"Mute {j}"].value, ["Off","On"]]]
+                ctrls += [[f"Solo {i}", i + 48, zctrls[f"Solo {j}"].value, ["Off","On"]]]
+            else:
+                ctrls += [[f"Fader {i}", i, 127, 127]]
+                ctrls += [[f"Pan {i}", i + 16, 64, 127]]
+                ctrls += [[f"Mute {i}", i + 32, "Off", ["Off","On"]]]
+                ctrls += [[f"Solo {i}", i + 48, "Off", ["Off","On"]]]
             self._ctrl_screens += [[name, [f"Fader {i}", f"Pan {i}", f"Mute {i}", f"Solo {i}"]]]
             names.append(name)
+        self._ctrls = ctrls
 
 
     def start(self):
@@ -117,9 +141,10 @@ class zynthian_engine_jamulus(zynthian_engine):
         if self.proc:
             return
         logging.info(f"Starting Engine {self.name}")
+        self.monitors["status"] = "Connecting..."
 
         self.command = [
-            "jamulus",
+            "Jamulus",
             "--nojackconnect",
             "--clientname", self.jackname,
             "--jsonrpcport", str(self.RPC_PORT),
@@ -156,7 +181,7 @@ class zynthian_engine_jamulus(zynthian_engine):
         self.running = True
         self.thread.start()
         self.set_name(self.user_name)
-
+        
     def stop(self, term_server=True):
         if self.proc:
             self.running = False
@@ -164,6 +189,7 @@ class zynthian_engine_jamulus(zynthian_engine):
             self.thread.join()
             self.proc.terminate()
             self.proc = None
+            self.monitors["status"] = "Disconnected"
         if term_server and self.server_proc:
             self.server_proc.terminate()
             self.server_proc = None
@@ -182,17 +208,18 @@ class zynthian_engine_jamulus(zynthian_engine):
                             self.build_ctrls()
                             self.processors[0].refresh_controllers()
                             self.monitors["clients"] = self.clients
-                            self.monitors["connected"] = True
+                            self.monitors["status"] = "Connected"
+                            #self.processors[0].preset_name = f"{self.preset[0]} ({len(self.clients)})"
                         elif method == "jamulusclient/connected":
                             self.own_channel = msg["params"]["id"]
                             self.build_ctrls()
                             self.processors[0].refresh_controllers()
-                            self.monitors["connected"] = True
+                            self.monitors["status"] = "Connected"
                         elif method == "jamulusclient/disconnected":
                             self.own_channel = None
                             self.build_ctrls()
                             self.processors[0].refresh_controllers()
-                            self.monitors["connected"] = False
+                            self.monitors["status"] = "Disconnected"
             except TimeoutError:
                 pass # We expect socket to timeout when no data available
             except Exception as e:
@@ -261,7 +288,7 @@ class zynthian_engine_jamulus(zynthian_engine):
             if zctrl.value:
                 # Start local server
                 if self.server_proc is None:
-                    cmd = ["jamulus","--server", "--inifile", f"{self.data_dir}/jamulus/Jamulusserver.ini"]
+                    cmd = ["Jamulus","--server", "--inifile", f"{self.data_dir}/jamulus/Jamulusserver.ini"]
                     if not self.config_remote_display():
                         cmd.append("--nogui")
                     self.server_proc = Popen(cmd, env=self.command_env, cwd=self.command_cwd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
@@ -270,12 +297,22 @@ class zynthian_engine_jamulus(zynthian_engine):
                 if self.server_proc:
                     self.server_proc.terminate()
                     self.server_proc = None
+        elif zctrl.symbol == "Connect":
+            if zctrl.value:
+                self.start()
+            else:
+                self.stop(False)
         else:
             if zctrl.symbol.startswith("Fader"):
                 if "fader" in self.monitors:
                     self.monitors["fader"].append((int(zctrl.symbol[6:]), zctrl.value))
                 else:
                     self.monitors["fader"] = [(int(zctrl.symbol[6:]), zctrl.value)]
+            if zctrl.symbol.startswith("Pan"):
+                if "pan" in self.monitors:
+                    self.monitors["pan"].append((int(zctrl.symbol[4:]), zctrl.value))
+                else:
+                    self.monitors["pan"] = [(int(zctrl.symbol[4:]), zctrl.value)]
             elif zctrl.symbol.startswith("Mute"):
                 if "mute" in self.monitors:
                     self.monitors["mute"].append((int(zctrl.symbol[5:]), zctrl.value))
