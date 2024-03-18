@@ -174,11 +174,6 @@ class zynthian_engine_jamulus(zynthian_engine):
         self.running = True
         self.thread.start()
         self.set_name(self.user_name)
-        try:
-            # Mute self (should be first channel due to ini config)
-            self.processors[0].controllers_dict["Mute 1"].set_value(127)
-        except:
-            pass # controllers may not yet be configured
 
         zynautoconnect.request_midi_connect(True)
         zynautoconnect.request_audio_connect(True)
@@ -222,7 +217,7 @@ class zynthian_engine_jamulus(zynthian_engine):
                             self.processors[0].controllers_dict["Connect"].set_value("Off")
                             self.build_ctrls()
                             self.monitors["status"] = "Disconnected"
-                            self.stop(False, False)
+                            self.stop(False, False) # Unsolicited disconnect so stop server (can't restart here because of thread safety)
             except TimeoutError:
                 pass # We expect socket to timeout when no data available
             except Exception as e:
