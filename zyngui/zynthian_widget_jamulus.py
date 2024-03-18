@@ -184,7 +184,7 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
                 # Solo button
                 zctrl = self.processor.controllers_dict[f"Solo {i+1}"]
                 if zctrl.value:
-                    fill = "blue"
+                    fill = "#D0D000"
                 else:
                     fill = "grey"
                 self.button_map[self.widget_canvas.create_rectangle(
@@ -236,7 +236,7 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
         if "solo" in self.monitors:
             for solo in self.monitors["solo"]:
                 if solo[1]:
-                    self.widget_canvas.itemconfig(f"solo_{solo[0]}", fill="blue")
+                    self.widget_canvas.itemconfig(f"solo_{solo[0]}", fill="#D0D000")
                 else:
                     self.widget_canvas.itemconfig(f"solo_{solo[0]}", fill="grey")
         # Update client levels

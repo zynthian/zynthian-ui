@@ -37,15 +37,16 @@ class zynthian_signal_manager:
     S_STATE_MAN = 1
     S_CHAIN_MAN = 2
     S_CHAIN = 3
-    S_AUDIO_RECORDER = 4
-    S_AUDIO_PLAYER = 5
-    S_SMF_RECORDER = 6
-    S_ALSA_MIXER = 7
-    S_AUDIO_MIXER = 8
-    S_STEPSEQ = 9
-    S_CUIA = 10
-    S_GUI = 11
-    S_MIDI = 12
+    S_PROCESSOR = 4
+    S_AUDIO_RECORDER = 5
+    S_AUDIO_PLAYER = 6
+    S_SMF_RECORDER = 7
+    S_ALSA_MIXER = 8
+    S_AUDIO_MIXER = 9
+    S_STEPSEQ = 10
+    S_CUIA = 11
+    S_GUI = 12
+    S_MIDI = 13
 
     SS_CUIA_REFRESH = 0
     SS_CUIA_MIDI_EVENT = 1
@@ -58,7 +59,7 @@ class zynthian_signal_manager:
     SS_MIDI_NOTE_ON = 3
     SS_MIDI_NOTE_OFF = 4
 
-    last_signal = 13
+    last_signal = 14
     last_subsignal = 10
 
     def __init__(self):

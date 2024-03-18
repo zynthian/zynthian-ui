@@ -32,6 +32,8 @@ from datetime import datetime
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zyngine.zynthian_signal_manager import zynsigman
+from zyngine import zynthian_processor
 import zynautoconnect
 
 # ------------------------------------------------------------------------------
@@ -92,6 +94,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.main_frame.columnconfigure(pos[1], minsize=int((self.width * 0.25 - 1) * self.sidebar_shown), weight=self.sidebar_shown)
 		
 	def build_view(self):
+		zynsigman.register(zynsigman.S_PROCESSOR, zynthian_processor.SS_ZCTRL_REFRESH, self.on_zctrl_refresh)
 		if self.zyngui.get_current_processor():
 			super().build_view()
 			self.click_listbox()
@@ -101,6 +104,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def hide(self):
 		self.exit_midi_learn()
+		if self.shown:
+			zynsigman.unregister(zynsigman.S_PROCESSOR, zynthian_processor.SS_ZCTRL_REFRESH, self.on_zctrl_refresh)
 		super().hide()
 
 	def show_sidebar(self, show):
@@ -111,6 +116,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 			else:
 				zctrl.grid_remove()
 		self.update_layout()
+
+	def on_zctrl_refresh(self, processor):
+		if processor == self.zyngui.get_current_processor():
+			self.fill_list()
 
 	def fill_list(self):
 		self.list_data = []
