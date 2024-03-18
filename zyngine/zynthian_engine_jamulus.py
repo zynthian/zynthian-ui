@@ -399,11 +399,13 @@ class zynthian_engine_jamulus(zynthian_engine):
                 try:
                     filename = f'/tmp/{preset[0]}.jamulus'
                     with open(filename, 'w') as f:
-                        json.dump(preset, f)
+                        f.write(f"uid={preset[0]}\n")
+                        f.write(f"url={preset[1]}\n")
+                        f.write(f"name={preset[2]}\n")
                     return filename
                 except Exception as e:
                     logging.warning(e)
-            break
+                break
 
     @classmethod
     def zynapi_get_formats(cls):
@@ -412,7 +414,20 @@ class zynthian_engine_jamulus(zynthian_engine):
     @classmethod
     def zynapi_install(cls, dpath, bank_path):
         with open(dpath, 'r') as f:
-            new_preset = json.load(f)
+            lines = f.readlines()
+        for line in lines:
+            key, value = line.strip().split("=", 1)
+            if key.lower() == "uid":
+               uid = value
+            elif key.lower() == "url":
+               url = value
+            elif key.lower() == "name":
+               name = value
+        try:
+            new_preset = [uid, url, name]
+        except:
+            logging.warning("Bad jamulus preset file format")
+            return
         presets = cls.get_preset_list(cls, None)
         update = False
         for i, preset in enumerate (presets):
@@ -432,7 +447,7 @@ class zynthian_engine_jamulus(zynthian_engine):
         try:
             for i, preset in enumerate(presets):
                 if preset[0] == preset_id:
-                    presets.remove(i)
+                    presets.pop(i)
                     with open(zynthian_engine_jamulus.PRESET_FILE, 'w') as f:
                         json.dump(presets, f)
                     break
