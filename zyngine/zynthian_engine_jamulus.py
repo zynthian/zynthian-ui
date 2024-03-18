@@ -197,6 +197,7 @@ class zynthian_engine_jamulus(zynthian_engine):
         if term_server and self.server_proc:
             self.server_proc.terminate()
             self.server_proc = None
+            self.monitors["local_server_status"] = False
 
     def monitor(self):
         while self.running:
@@ -322,11 +323,14 @@ class zynthian_engine_jamulus(zynthian_engine):
                     if not self.config_remote_display():
                         cmd.append("--nogui")
                     self.server_proc = Popen(cmd, env=self.command_env, cwd=self.command_cwd, stdout=DEVNULL, stderr=DEVNULL)
+                    self.monitors["local_server_status"] = True
+
             else:
                 # Stop local server
                 if self.server_proc:
                     self.server_proc.terminate()
                     self.server_proc = None
+                    self.monitors["local_server_status"] = False
         elif zctrl.symbol == "Connect":
             if zctrl.value:
                 self.start()

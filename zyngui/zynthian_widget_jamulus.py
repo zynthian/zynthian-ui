@@ -48,6 +48,15 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
             anchor=tkinter.NW,
             tags=["connection"]
         )
+        self.widget_canvas.create_text(
+            self.width, 0,
+            text="Local Server",
+            font=("DejaVu Sans Mono", int(0.8 * zynthian_gui_config.font_size)),
+            fill="green",
+            anchor=tkinter.NE,
+            state=tkinter.HIDDEN,
+            tags=["local_server"]
+        )
         self.widget_canvas.bind('<ButtonPress-1>', self.on_press)
         self.widget_canvas.bind('<ButtonRelease-1>', self.on_release)
         self.widget_canvas.bind('<B1-Motion>', self.on_motion)
@@ -65,6 +74,7 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
         self.fader_height = self.height // 2
         self.channel_width = self.width // 8
         self.button_height = self.height // 12
+        self.widget_canvas.coords("local_server", self.width, 0)
 
     def update_fader_pos(self, channel, value):
         x0 = int(self.channel_width * (channel - 0.6))
@@ -89,6 +99,8 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
                 self.monitors["clients"] = []
             else:
                 self.widget_canvas.itemconfig("connection", text=self.monitors["status"], fill="white")
+        if "local_server_status" in self.monitors:
+            self.widget_canvas.itemconfig("local_server", state=tkinter.NORMAL if self.monitors["local_server_status"] else tkinter.HIDDEN)
         if "clients" in self.monitors:
             # Update received from server for client config so redraw all client data
             self.levels = []
