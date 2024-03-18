@@ -33,6 +33,7 @@ from subprocess import Popen, DEVNULL
 from time import sleep
 
 from . import zynthian_controller
+from zynconf import ServerPort
 
 # ------------------------------------------------------------------------------
 # Sooper Looper State Codes
@@ -70,7 +71,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# Config variables
 	# ---------------------------------------------------------------------------
-	SL_PORT = 9951
+	SL_PORT = ServerPort["sooperlooper_osc"]
 	MAX_LOOPS = 6
 
 	# SL_LOOP_PARAMS act on individual loops - sent with osc command /sl/#/set

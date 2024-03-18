@@ -33,6 +33,7 @@ from os.path import exists as file_exists
 import zynautoconnect
 from . import zynthian_engine
 from zyngine.zynthian_processor import zynthian_processor
+from zynconf import ServerPort
 
 #------------------------------------------------------------------------------
 # Aeolus Engine Class
@@ -262,7 +263,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.name = "Aeolus"
 		self.nickname = "AE"
 		self.jackname = "aeolus"
-		self.osc_target_port = 9000
+		self.osc_target_port = ServerPort["aeolus_osc"]
 
 		self.options['replace'] = False
 		self.ready = True
