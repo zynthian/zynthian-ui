@@ -55,11 +55,6 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 		self.bpm_zgui_ctrl = None
 
-		# Setup CUIA methods
-		self.cuia_toggle_record = self.zyngui.state_manager.toggle_midi_record
-		self.cuia_stop = self.zyngui.state_manager.stop_midi_playback
-		self.cuia_toggle_play = self.zyngui.state_manager.toggle_midi_playback
-
 	def refresh_status(self):
 		super().refresh_status()
 		if self.recording != self.zyngui.state_manager.status_midi_recorder:
@@ -282,20 +277,38 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		zynconf.save_config({"ZYNTHIAN_MIDI_PLAY_LOOP": str(int(zynthian_gui_config.midi_play_loop))})
 		self.update_status_loop(True)
 
+	# -------------------------------------------------------------------------
+	# CUIA & LEDs methods
+	# -------------------------------------------------------------------------
+
+	def cuia_toggle_record(self, params=None):
+		self.zyngui.state_manager.toggle_midi_record()
+		return True
+
+	def cuia_stop(self, params=None):
+		self.zyngui.state_manager.stop_midi_playback()
+		return True
+
+	def cuia_toggle_play(self, params=None):
+		self.zyngui.state_manager.toggle_midi_playback()
+		return True
+
 	def update_wsleds(self, wsleds):
 		wsl = self.zyngui.wsleds
 		# REC button
 		if self.zyngui.state_manager.status_midi_recorder:
-			wsl.wsleds.setPixelColor(wsleds[0], wsl.wscolor_red)
+			wsl.wsleds.setPixelColor(wsleds[1], wsl.wscolor_red)
 		else:
-			wsl.wsleds.setPixelColor(wsleds[0], wsl.wscolor_alt)
+			wsl.wsleds.setPixelColor(wsleds[1], wsl.wscolor_alt)
 		# STOP button
-		wsl.wsleds.setPixelColor(wsleds[1], wsl.wscolor_alt)
+		wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_alt)
 		# PLAY button:
 		if self.zyngui.state_manager.status_midi_player:
-			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_green)
+			wsl.wsleds.setPixelColor(wsleds[3], wsl.wscolor_green)
 		else:
-			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_alt)
+			wsl.wsleds.setPixelColor(wsleds[3], wsl.wscolor_alt)
+
+	# -------------------------------------------------------------------------
 
 	def set_select_path(self):
 		self.select_path.set("MIDI Recorder")

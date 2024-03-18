@@ -31,11 +31,11 @@ import logging
 import traceback
 import importlib
 from time import sleep
+from queue import Empty
 from pathlib import Path
 from time import monotonic
 from datetime import datetime
 from threading import Thread, Lock, Event
-from queue import Empty
 
 # Zynthian specific modules
 import zynconf
@@ -997,13 +997,23 @@ class zynthian_gui:
 
 	def callable_ui_action(self, cuia, params=None):
 		logging.debug("CUIA '{}' => {}".format(cuia, params))
-		cuia_func = getattr(self, "cuia_" + cuia.lower(), None)
+		cuia_func_name = "cuia_" + cuia.lower()
+		# First try screen defined cuia function
+		done = False
+		cuia_func = getattr(self.get_current_screen_obj(), cuia_func_name, None)
 		if callable(cuia_func):
-			cuia_func(params)
-			if self.capture_log_fname:
-				self.write_capture_log("CUIA:{},{}".format(cuia, str(params)))
-		else:
-			logging.error("Unknown CUIA '{}'".format(cuia))
+			if cuia_func(params):
+				done = True
+		if not done:
+			# else, call global function
+			cuia_func = getattr(self, cuia_func_name, None)
+			if callable(cuia_func):
+				cuia_func(params)
+			else:
+				logging.error("Unknown CUIA '{}'".format(cuia))
+		# Capture CUIA for UI log
+		if self.capture_log_fname:
+			self.write_capture_log("CUIA:{},{}".format(cuia, str(params)))
 
 	def callable_ui_action_params(self, cuia_str):
 		parts = cuia_str.split(" ", 2)
@@ -1131,28 +1141,19 @@ class zynthian_gui:
 		self.state_manager.toggle_midi_playback()
 
 	def cuia_toggle_record(self, params=None):
-		cuia_func = getattr(self.get_current_screen_obj(), "cuia_toggle_record", None)
-		if callable(cuia_func):
-			cuia_func()
-		elif self.alt_mode:
+		if self.alt_mode:
 			self.cuia_toggle_midi_record()
 		else:
 			self.cuia_toggle_audio_record()
 
 	def cuia_stop(self, params=None):
-		cuia_func = getattr(self.get_current_screen_obj(), "cuia_stop", None)
-		if callable(cuia_func):
-			cuia_func()
-		elif self.alt_mode:
+		if self.alt_mode:
 			self.cuia_stop_midi_play()
 		else:
 			self.cuia_stop_audio_play()
 
 	def cuia_toggle_play(self, params=None):
-		cuia_func = getattr(self.get_current_screen_obj(), "cuia_toggle_play", None)
-		if callable(cuia_func):
-			cuia_func()
-		elif self.alt_mode:
+		if self.alt_mode:
 			self.cuia_toggle_midi_play()
 		else:
 			self.cuia_toggle_audio_play()
@@ -1530,11 +1531,12 @@ class zynthian_gui:
 			if len(params) > 1:
 				chan = int(params[1])
 			else:
-				acti_chain = self.chain_manager.get_active_chain()
-				if acti_chain:
-					chan = acti_chain.midi_chan
-				else:
-					return
+				try:
+					chan = int(self.chain_manager.get_active_chain().midi_chan)
+					if chan >= 16:
+						chan = 0
+				except:
+					chan = 0
 			if 0 <= chan < 16 and 0 <= pgm < 128:
 				lib_zyncore.write_zynmidi_program_change(chan, pgm)
 
@@ -2169,15 +2171,13 @@ class zynthian_gui:
 				sleep(0.2)
 
 	def refresh_status(self):
+		# Refresh on-screen status
 		try:
-			# Refresh on-screen status
-			try:
-				self.screens[self.current_screen].refresh_status()
-			except AttributeError:
-				pass
-
+			self.screens[self.current_screen].refresh_status()
+		except AttributeError:
+			pass
 		except Exception as e:
-			logging.exception(e)
+			logging.exception(traceback.format_exc())
 
 	# ------------------------------------------------------------------
 	# CUIA Thread

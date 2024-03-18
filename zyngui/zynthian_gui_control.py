@@ -54,9 +54,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		self.widgets = {}
 		self.current_widget = None
-		self.cuia_toggle_record = None
-		self.cuia_stop = None
-		self.cuia_toggle_play = None
 		self.ctrl_screens = {}
 		self.zcontrollers = []
 		self.screen_name = None
@@ -216,25 +213,22 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.listbox.grid()
 
 	def set_current_widget(self, widget):
+		if widget == self.current_widget:
+			return
 		self.current_widget = widget
-		if self.current_widget is not None:
-			func = getattr(self.current_widget, "cuia_toggle_record", None)
-			if callable(func):
-				self.cuia_toggle_record = func
-			func = getattr(self.current_widget, "cuia_stop", None)
-			if callable(func):
-				self.cuia_stop = func
-			func = getattr(self.current_widget, "cuia_toggle_play", None)
-			if callable(func):
-				self.cuia_toggle_play = func
-			func = getattr(self.current_widget, "update_wsleds", None)
-			if callable(func):
-				self.update_wsleds = func
-		else:
-			self.cuia_toggle_record = None
-			self.cuia_stop = None
-			self.cuia_toggle_play = None
-			self.update_wsleds = None
+		# Clean dynamic CUIA methods from widgets
+		for fn in dir(self):
+			if fn.startswith('cuia_') or fn == 'update_wsleds':
+				delattr(self, fn)
+				logging.debug(f"DELATTR {fn}")
+		# Create new dynamix CUIA methods
+		if self.current_widget:
+			for fn in dir(self.current_widget):
+				if fn.startswith('cuia_') or fn == 'update_wsleds':
+					func = getattr(self.current_widget, fn)
+					if callable(func):
+						setattr(self, fn, func)
+						logging.debug(f"SETATTR {fn}")
 
 	def set_controller_screen(self):
 		# Get screen info

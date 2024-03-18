@@ -24,6 +24,7 @@
 # ******************************************************************************
 
 import logging
+import traceback
 import rpi_ws281x
 
 # Zynthian specific modules
@@ -97,8 +98,7 @@ class zynthian_wsleds_base:
 	def start(self):
 		if self.num_leds > 0 and self.pin is not None:
 			try:
-				self.wsleds = rpi_ws281x.PixelStrip(self.num_leds, self.pin, dma=self.dma, channel=self.chan,
-													strip_type=rpi_ws281x.ws.WS2811_STRIP_GRB)
+				self.wsleds = rpi_ws281x.PixelStrip(self.num_leds, self.pin, dma=self.dma, channel=self.chan, strip_type=rpi_ws281x.ws.WS2811_STRIP_GRB)
 				self.wsleds.begin()
 				self.light_on_all()
 			except Exception as e:
@@ -111,7 +111,7 @@ class zynthian_wsleds_base:
 	def get_num(self):
 		return self.num_leds
 
-	def setPixelColor(self, i , wscolor):
+	def setPixelColor(self, i, wscolor):
 		self.wsleds.setPixelColor(i, wscolor)
 
 	def light_on_all(self):
@@ -169,7 +169,7 @@ class zynthian_wsleds_base:
 			try:
 				self.update_wsleds()
 			except Exception as e:
-				logging.error(e)
+				logging.exception(traceback.format_exc())
 
 			self.wsleds.show()
 
@@ -185,7 +185,7 @@ class zynthian_wsleds_base:
 						self.last_wsled_state = wsled_state
 						self.zyngui.write_capture_log("LEDSTATE:" + wsled_state)
 				except Exception as e:
-					logging.error(e)
+					logging.error(f"Capturing LED state log => {e}")
 
 		self.blink_count += 1
 

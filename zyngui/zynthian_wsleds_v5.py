@@ -41,6 +41,13 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		self.chan = 0
 		self.num_leds = 20
 
+		# Per-screen customizable LEDs (12 LEDs):
+		# + ALT => 7 => NOS QUEDAMOS AQUÍ!!!  Update screen's update_wsleds functions ...
+		# + transport => 8, 9, 10
+		# + arrow => 14, 16, 17, 18
+		# + F1-F4 => 4, 11, 12, 19
+		self.custom_wsleds = [7, 8, 9, 10, 14, 16, 17, 18, 4, 11, 12, 19]
+
 	def update_wsleds(self):
 		curscreen = self.zyngui.current_screen
 		curscreen_obj = self.zyngui.get_current_screen_obj()
@@ -99,26 +106,21 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		else:
 			self.wsleds.setPixelColor(7, self.wscolor_default)
 
-		wsleds = [8, 9, 10]
-		update_wsleds_func = getattr(curscreen_obj, "update_wsleds", None)
-		if callable(update_wsleds_func):
-			update_wsleds_func(wsleds)
+		if self.zyngui.alt_mode and curscreen != "midi_recorder":
+			self.zyngui.screens["midi_recorder"].update_wsleds(self.custom_wsleds)
 		else:
-			if self.zyngui.alt_mode:
-				self.zyngui.screens["midi_recorder"].update_wsleds(wsleds)
+			# REC Button
+			if self.zyngui.state_manager.audio_recorder.rec_proc:
+				self.wsleds.setPixelColor(8, self.wscolor_red)
 			else:
-				# REC Button
-				if self.zyngui.state_manager.audio_recorder.rec_proc:
-					self.wsleds.setPixelColor(wsleds[0], self.wscolor_red)
-				else:
-					self.wsleds.setPixelColor(wsleds[0], self.wscolor_default)
-				# STOP button
-				self.wsleds.setPixelColor(wsleds[1], self.wscolor_default)
-				# PLAY button:
-				if self.zyngui.state_manager.status_audio_player:
-					self.wsleds.setPixelColor(wsleds[2], self.wscolor_green)
-				else:
-					self.wsleds.setPixelColor(wsleds[2], self.wscolor_default)
+				self.wsleds.setPixelColor(8, self.wscolor_default)
+			# STOP button
+			self.wsleds.setPixelColor(9, self.wscolor_default)
+			# PLAY button:
+			if self.zyngui.state_manager.status_audio_player:
+				self.wsleds.setPixelColor(10, self.wscolor_green)
+			else:
+				self.wsleds.setPixelColor(10, self.wscolor_default)
 
 		# Select/Yes button
 		self.wsleds.setPixelColor(13, self.wscolor_green)
@@ -142,6 +144,12 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		self.wsleds.setPixelColor(12, wscolor_fx)
 		self.wsleds.setPixelColor(19, wscolor_fx)
 
+		# Call current screen's update_wsleds() function to update the customizable LEDs
+		update_wsleds_func = getattr(curscreen_obj, "update_wsleds", None)
+		if callable(update_wsleds_func):
+			update_wsleds_func(self.custom_wsleds)
+
+		# Refresh LED strip
 		try:
 			self.zyngui.screens[curscreen].update_wsleds()
 		except:

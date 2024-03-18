@@ -647,15 +647,21 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		except Exception as e:
 			logging.debug("Failed to change value")
 
-	def cuia_stop(self):
+	# -------------------------------------------------------------------------
+	# CUIA & LEDs methods
+	# -------------------------------------------------------------------------
+
+	def cuia_stop(self, param=None):
 		zynaudioplayer.stop_playback(self.processor.handle)
 		zynaudioplayer.set_position(self.processor.handle, 0.0)
+		return True
 
-	def cuia_toggle_play(self):
+	def cuia_toggle_play(self, param=None):
 		if zynaudioplayer.get_playback_state(self.processor.handle):
 			zynaudioplayer.stop_playback(self.processor.handle)
 		else:
 			zynaudioplayer.start_playback(self.processor.handle)
+		return True
 
 	def update_wsleds(self, wsleds):
 		wsl = self.zyngui.wsleds
@@ -665,15 +671,15 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			color_default = wsl.wscolor_active2
 		# REC Button
 		if self.zyngui.state_manager.audio_recorder.status:
-			wsl.wsleds.setPixelColor(wsleds[0], wsl.wscolor_red)
+			wsl.wsleds.setPixelColor(wsleds[1], wsl.wscolor_red)
 		else:
-			wsl.wsleds.setPixelColor(wsleds[0], color_default)
+			wsl.wsleds.setPixelColor(wsleds[1], color_default)
 		# STOP button
-		wsl.wsleds.setPixelColor(wsleds[1], color_default)
+		wsl.wsleds.setPixelColor(wsleds[2], color_default)
 		# PLAY button:
 		if zynaudioplayer.get_playback_state(self.processor.handle):
-			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_green)
+			wsl.wsleds.setPixelColor(wsleds[3], wsl.wscolor_green)
 		else:
-			wsl.wsleds.setPixelColor(wsleds[2], color_default)
+			wsl.wsleds.setPixelColor(wsleds[3], color_default)
 
 # ------------------------------------------------------------------------------
