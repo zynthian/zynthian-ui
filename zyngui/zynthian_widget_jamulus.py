@@ -28,6 +28,7 @@ import logging
 
 from zyngui import zynthian_widget_base
 from zyngui import zynthian_gui_config
+from zyngine import zynthian_engine_jamulus
 
 class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
 
@@ -94,11 +95,14 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
 
     def refresh_gui(self):
         if "status" in self.monitors:
-            if self.monitors["status"] == "Disconnected":
+            if self.monitors["status"] == zynthian_engine_jamulus.STATE_DISCONNECTED:
                 self.widget_canvas.itemconfig("connection", text="Disconnected", fill="grey")
                 self.monitors["clients"] = []
-            else:
-                self.widget_canvas.itemconfig("connection", text=self.monitors["status"], fill="white")
+            elif self.monitors["status"] == zynthian_engine_jamulus.STATE_CONNECTING:
+                self.monitors["clients"] = []
+                self.widget_canvas.itemconfig("connection", text="Connecting", fill="yellow")
+            elif self.monitors["status"] == zynthian_engine_jamulus.STATE_CONNECTED:
+                self.widget_canvas.itemconfig("connection", text="Connected", fill="white")
         if "local_server_status" in self.monitors:
             self.widget_canvas.itemconfig("local_server", state=tkinter.NORMAL if self.monitors["local_server_status"] else tkinter.HIDDEN)
         if "clients" in self.monitors:

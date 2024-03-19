@@ -56,6 +56,9 @@ class zynthian_engine_jamulus(zynthian_engine):
     RPC_PORT = ServerPort["jamulus_rpc"]
     RPC_SECRET_FILE = "/tmp/jamulus.secret"
     PRESET_FILE = "/zynthian/zynthian-my-data/presets/jamulus.json"
+    STATE_DISCONNECTED = 0
+    STATE_CONNECTING = 1
+    STATE_CONNECTED = 2
 
     # ---------------------------------------------------------------------------
     # Initialization
@@ -66,7 +69,6 @@ class zynthian_engine_jamulus(zynthian_engine):
 
         self._ctrls = [
             ["Connect", None, "On", ["Off","On"]],
-            ["Mute Self", 100, "Off", ["Off","On"]],
             ["Local Server", None, "Off", ["Off", "On"]]
         ]
         for i in range(1,9):
@@ -77,7 +79,7 @@ class zynthian_engine_jamulus(zynthian_engine):
                 [f"Solo {i}", i + 48, "Off", ["Off","On"]]
             ]
 
-        self._ctrl_screens = [["Main", ["Connect", "Mute Self", "Local Server"]]]
+        self._ctrl_screens = [["Main", ["Connect", "Local Server"]]]
 
         letters = string.ascii_lowercase + string.digits
         self.RPC_SECRET = ''.join(random.choice(letters) for i in range(16))
@@ -99,7 +101,7 @@ class zynthian_engine_jamulus(zynthian_engine):
             existing_names.append(scrn[0])
         channels = range(1, len(self.clients) + 1)
         names = []
-        self._ctrl_screens = [["Main", ["Connect", "Mute Self", "Local Server"]]]
+        self._ctrl_screens = [["Main", ["Connect", "Local Server"]]]
         for i in channels:
             suffix = 1
             name = self.clients[i - 1]["name"]
@@ -121,7 +123,7 @@ class zynthian_engine_jamulus(zynthian_engine):
         if self.proc:
             return
         logging.info(f"Starting Engine {self.name}")
-        self.monitors["status"] = "Connecting..."
+        self.monitors["status"] = self.STATE_CONNECTING
 
         self.command = [
             "Jamulus",
@@ -129,7 +131,7 @@ class zynthian_engine_jamulus(zynthian_engine):
             "--clientname", self.jackname,
             "--jsonrpcport", str(self.RPC_PORT),
             "--jsonrpcsecretfile", self.RPC_SECRET_FILE,
-            "--ctrlmidich", "'1;f1*16;p17*16;m33*16;s49*16;o100'",
+            "--ctrlmidich", '"1;f1*16;p17*16;m33*16;s49*16;o100"',
             "--inifile", f"{self.data_dir}/jamulus/Jamulus.ini",
             "--connect", self.preset[1]
         ]
@@ -154,7 +156,7 @@ class zynthian_engine_jamulus(zynthian_engine):
                 self.rpc_id += 1
                 break
             except Exception as e:
-                sleep(0.5)
+                sleep(0.2)
         if self.processors:
             self.processors[0].controllers_dict["Connect"].set_value("On", False)
         self.update_ctrl_screen()
@@ -174,9 +176,13 @@ class zynthian_engine_jamulus(zynthian_engine):
                 pass # May be stopping before thread is started???
             self.rpc_socket.close()
             self.proc.terminate()
+            for i in range(10):
+                if self.proc.poll() is not None:
+                    break
+                sleep(0.2)
             self.proc = None
             self.clients = []
-            self.monitors["status"] = "Disconnected"
+            self.monitors["status"] = self.STATE_DISCONNECTED
             self.update_ctrl_screen()
         if term_server and self.server_proc:
             self.server_proc.terminate()
@@ -185,7 +191,6 @@ class zynthian_engine_jamulus(zynthian_engine):
 
     def restart(self):
         self.stop(False)
-        sleep(1)
         self.start()
 
     def monitor(self):
@@ -195,31 +200,37 @@ class zynthian_engine_jamulus(zynthian_engine):
                     if "method" in jsn:
                         msg = json.loads(jsn)
                         method = msg["method"]
+                        update_zctrls = False
                         if method == "jamulusclient/channelLevelListReceived":
                             self.levels = msg["params"]["channelLevelList"]
                         elif method == "jamulusclient/clientListReceived":
                             self.clients = msg["params"]["clients"]
                             self.update_ctrl_screen()
                             self.monitors["clients"] = self.clients
-                            self.monitors["status"] = "Connected"
+                            self.monitors["status"] = self.STATE_CONNECTED
+                            for zctrl in self.processors[0].controllers_dict.values():
+                                if zctrl.midi_cc:
+                                    zctrl.send_midi_cc(zctrl.value)
                         elif method == "jamulusclient/connected":
                             self.own_channel = msg["params"]["id"]
                             self.update_ctrl_screen()
-                            self.monitors["status"] = "Connected"
+                            self.monitors["status"] = self.STATE_CONNECTED
                         elif method == "jamulusclient/disconnected":
                             self.own_channel = None
                             self.processors[0].controllers_dict["Connect"].set_value("Off")
                             self.update_ctrl_screen()
-                            self.monitors["status"] = "Disconnected"
+                            self.monitors["status"] = self.STATE_DISCONNECTED
                             self.running = False
                             # Jamulus stops trying to reconnect 30s after last handshake but we want it to continue to reconnect
                             # May be influenced by https://github.com/jamulussoftware/jamulus/issues/2519
                             threading.Timer(0.5, self.restart).start()
             except TimeoutError:
                 pass # We expect socket to timeout when no data available
+            except OSError:
+                logging.warning("Socket disconnected", e)
+                break
             except Exception as e:
                 logging.error(e)
-                break
             sleep(0.1)
 
 
