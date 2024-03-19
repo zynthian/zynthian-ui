@@ -148,7 +148,7 @@ class zynthian_audio_recorder:
 
 	def toggle_recording(self, player=None):
 		logging.info("TOGGLING AUDIO RECORDING ...")
-		if self.status():
+		if self.status:
 			self.stop_recording(player)
 			return False
 		else:
