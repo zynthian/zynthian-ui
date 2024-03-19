@@ -168,7 +168,7 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
                 )
                 self.update_fader_pos(i+1, zctrl.value)
                 # Meter LEDs
-                for j in range(10):
+                for j in range(9):
                     y = self.height - self.legend_height - 2 - int((self.fader_height - 10) / 8 * (j + 0.5))
                     self.widget_canvas.create_oval(x + 2, y, x + 2 + led_size, y + led_size, fill="grey", tags=["strip", f"client{i}", f"led_{i}_{j}"])
                     pass
@@ -257,7 +257,7 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
                 self.levels[client] = self.processor.engine.levels[client]
                 for i in range(self.levels[client]):
                     self.widget_canvas.itemconfig(f"led_{client}_{i}", fill=self.LED_COLOUR[i])
-                for i in range(self.levels[client], 10):
+                for i in range(self.levels[client], 9):
                     self.widget_canvas.itemconfig(f"led_{client}_{i}", fill="grey")
 
     def on_press(self, event):

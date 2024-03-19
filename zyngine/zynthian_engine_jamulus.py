@@ -128,7 +128,8 @@ class zynthian_engine_jamulus(zynthian_engine):
             self._ctrl_screens += [[name, [f"Fader {i}", f"Pan {i}", f"Mute {i}", f"Solo {i}"]]]
             names.append(name)
         self._ctrls = ctrls
-        self.processors[0].refresh_controllers()
+        if self.processors:
+            self.processors[0].refresh_controllers()
 
     def start(self):
         if self.state_manager.get_jackd_samplerate() != 48000:
