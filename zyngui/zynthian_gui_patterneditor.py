@@ -1378,36 +1378,47 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		else:
 			self.stop_playback()
 
-	# Setup CUIA methods
-	cuia_toggle_record = toggle_midi_record
-	cuia_stop = stop_playback
-	cuia_toggle_play = toggle_playback
-
 	def get_playback_status(self):
 		return self.zynseq.libseq.getPlayState(self.bank, self.sequence)
+
+	# Default status area release callback
+	def cb_status_release(self, params=None):
+		self.toggle_playback()
+
+	# -------------------------------------------------------------------------
+	# CUIA & LEDs methods
+	# -------------------------------------------------------------------------
+
+	def cuia_toggle_record(self, params=None):
+		self.toggle_midi_record()
+		return True
+
+	def cuia_stop(self, params=None):
+		self.stop_playback()
+		return True
+
+	def cuia_toggle_play(self, params=None):
+		self.toggle_playback()
+		return True
 
 	def update_wsleds(self, wsleds):
 		wsl = self.zyngui.wsleds
 		# REC button:
 		if self.zynseq.libseq.isMidiRecord():
-			wsl.wsleds.setPixelColor(wsleds[0], wsl.wscolor_red)
+			wsl.wsleds.setPixelColor(wsleds[1], wsl.wscolor_red)
 		else:
-			wsl.wsleds.setPixelColor(wsleds[0], wsl.wscolor_active2)
+			wsl.wsleds.setPixelColor(wsleds[1], wsl.wscolor_active2)
 		# STOP button
-		wsl.wsleds.setPixelColor(wsleds[1], wsl.wscolor_active2)
+		wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_active2)
 		# PLAY button:
 		pb_status = self.zyngui.screens['pattern_editor'].get_playback_status()
 		if pb_status == zynseq.SEQ_PLAYING:
-			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_green)
+			wsl.wsleds.setPixelColor(wsleds[3], wsl.wscolor_green)
 		elif pb_status in (zynseq.SEQ_STARTING, zynseq.SEQ_RESTARTING):
-			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_yellow)
+			wsl.wsleds.setPixelColor(wsleds[3], wsl.wscolor_yellow)
 		elif pb_status in (zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC):
-			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_red)
+			wsl.wsleds.setPixelColor(wsleds[3], wsl.wscolor_red)
 		elif pb_status == zynseq.SEQ_STOPPED:
-			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_active2)
-
-	# Default status area release callback
-	def cb_status_release(self, params=None):
-		self.toggle_playback()
+			wsl.wsleds.setPixelColor(wsleds[3], wsl.wscolor_active2)
 
 # ------------------------------------------------------------------------------

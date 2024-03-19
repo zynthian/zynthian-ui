@@ -1,6 +1,5 @@
-#!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
 # Zynthian Widget Class for "Zynthian Audio Player" (zynaudioplayer#one)
@@ -8,7 +7,7 @@
 # Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -22,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 from threading import Thread
 import tkinter
@@ -39,9 +38,10 @@ from zyngui import zynthian_widget_base
 from zyngui import zynthian_gui_config
 from zyngui.multitouch import MultitouchTypes
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian Widget Class for "zynaudioplayer"
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
@@ -79,7 +79,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			relief='flat',
 			bg=zynthian_gui_config.color_bg)
 		self.widget_canvas.grid(sticky='news')
-
 		self.widget_canvas.bind('<ButtonPress-1>', self.on_canvas_press)
 		self.widget_canvas.bind('<B1-Motion>', self.on_canvas_drag)
 
@@ -95,7 +94,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			fill=zynthian_gui_config.color_tx_off,
 			text="Creating\nwaveform..."
 		)
-
 		self.play_line = self.widget_canvas.create_line(
 			0,
 			0,
@@ -104,7 +102,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			fill=zynthian_gui_config.color_on,
 			tags="overlay"
 		)
-
 		self.loop_start_line = self.widget_canvas.create_line(
 			0,
 			0,
@@ -113,7 +110,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			fill=zynthian_gui_config.color_ml,
 			tags="overlay"
 		)
-
 		self.loop_end_line = self.widget_canvas.create_line(
 			self.width,
 			0,
@@ -122,8 +118,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			fill=zynthian_gui_config.color_ml,
 			tags="overlay"
 		)
-
-
 		self.crop_start_rect = self.widget_canvas.create_rectangle(
 			0,
 			0,
@@ -133,7 +127,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			stipple="gray50",
 			tags="overlay"
 		)
-
 		self.crop_end_rect = self.widget_canvas.create_rectangle(
 			self.width,
 			0,
@@ -143,7 +136,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			stipple="gray50",
 			tags="overlay"
 		)
-
 		self.zoom_rect = self.widget_canvas.create_rectangle(
 			0,
 			self.height,
@@ -153,7 +145,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			fill="dark grey",
 			tags="overlay"
 		)
-
 		self.info_text = self.widget_canvas.create_text(
 			self.width - int(0.5 * zynthian_gui_config.font_size),
 			self.height,
@@ -169,18 +160,14 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.widget_canvas.bind("<Button-4>",self.cb_canvas_wheel)
 		self.widget_canvas.bind("<Button-5>",self.cb_canvas_wheel)
 		self.zyngui.multitouch.tag_bind(self.widget_canvas, None, "gesture", self.on_gesture)
-
 		self.cue_points = [] # List of cue points [pos, name] indexed by lib's list
-
 
 	def show(self):
 		self.refreshing = False
 		super().show()
 
-
 	def hide(self):
 		super().hide()
-
 
 	def on_gesture(self, type, value):
 		if type == MultitouchTypes.GESTURE_H_DRAG:
@@ -190,7 +177,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		elif type == MultitouchTypes.GESTURE_V_PINCH:
 			self.on_vertical_pinch(value)
 
-
 	def on_horizontal_drag(self, value):
 		offset = self.processor.controllers_dict['view offset'].value - self.duration * value / self.width / self.zoom
 		offset = max(0, offset)
@@ -198,12 +184,10 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.processor.controllers_dict['view offset'].set_value(offset, False)
 		self.refresh_waveform = True
 
-
 	def on_horizontal_pinch(self, value):
 		zctrl = self.processor.controllers_dict['zoom']
 		zctrl.set_value(zctrl.value + 4 * value / self.width * zctrl.value)
 		self.refresh_waveform = True
-
 
 	def on_vertical_pinch(self, value):
 		v_zoom = self.processor.controllers_dict['amp zoom'].value + value / self.height
@@ -211,7 +195,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		v_zoom = max(v_zoom, 0.1)
 		self.processor.controllers_dict['amp zoom'].set_value(v_zoom)
 		self.refresh_waveform = True
-
 
 	def on_size(self, event):
 		if event.width == self.width and event.height == self.height:
@@ -226,7 +209,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		font = tkinter.font.Font(family="DejaVu Sans Mono", size=int(1.5 * zynthian_gui_config.font_size))
 		self.waveform_height =self.height - font.metrics("linespace")
 		self.refresh_waveform = True
-
 
 	def on_canvas_press(self, event):
 		if self.frames == 0:
@@ -255,7 +237,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 						break
 		self.tap_time = event.time
 
-
 	def on_canvas_double_tap(self, event):
 		options = OrderedDict()
 		options['--LOOP--'] = None
@@ -281,7 +262,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				options[f"Remove marker {i+1} at {cue[0]:.3f}"] = cue
 		self.zyngui.screens['option'].config('Add marker', options, self.update_marker)
 		self.zyngui.show_screen('option')
-
 
 	def update_cue_markers(self):
 		# Remove visual markers
@@ -319,7 +299,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.cue_pos = None
 		self.cue = None
 
-
 	def update_marker(self, option, event):
 		if isinstance(event, list):
 			if event[0] == 'remove':
@@ -352,7 +331,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			self.drag_marker = option.lower()
 			self.on_canvas_drag(event)
 
-
 	def on_canvas_drag(self, event):
 		if self.drag_marker and self.frames:
 			if self.drag_marker == "view offset":
@@ -371,10 +349,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 					self.processor.controllers_dict['cue pos'].set_value(pos)
 					self.update_cue_markers()
 
-
 	def get_monitors(self):
 		self.monitors = self.processor.engine.get_monitors_dict(self.processor.handle)
-
 
 	def load_file(self):
 		try:
@@ -478,7 +454,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			self.widget_canvas.coords(f"waveform{chan}", data[chan])
 
 		self.refresh_waveform = False
-
 
 	def refresh_gui(self):
 		if self.refreshing:
@@ -640,10 +615,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		
 		self.refreshing = False
 
-
 	def format_time(self, time):
 		return f"{int(time / 60):02d}:{int(time % 60):02d}.{int(modf(time)[0] * 1000):03}"
-
 
 	def cb_canvas_wheel(self, event):
 		try:
@@ -674,18 +647,21 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		except Exception as e:
 			logging.debug("Failed to change value")
 
+	# -------------------------------------------------------------------------
+	# CUIA & LEDs methods
+	# -------------------------------------------------------------------------
 
-	def cuia_stop(self):
+	def cuia_stop(self, param=None):
 		zynaudioplayer.stop_playback(self.processor.handle)
 		zynaudioplayer.set_position(self.processor.handle, 0.0)
+		return True
 
-
-	def cuia_toggle_play(self):
+	def cuia_toggle_play(self, param=None):
 		if zynaudioplayer.get_playback_state(self.processor.handle):
 			zynaudioplayer.stop_playback(self.processor.handle)
 		else:
 			zynaudioplayer.start_playback(self.processor.handle)
-
+		return True
 
 	def update_wsleds(self, wsleds):
 		wsl = self.zyngui.wsleds
@@ -695,16 +671,15 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			color_default = wsl.wscolor_active2
 		# REC Button
 		if self.zyngui.state_manager.audio_recorder.status:
-			wsl.wsleds.setPixelColor(wsleds[0], wsl.wscolor_red)
+			wsl.wsleds.setPixelColor(wsleds[1], wsl.wscolor_red)
 		else:
-			wsl.wsleds.setPixelColor(wsleds[0], color_default)
+			wsl.wsleds.setPixelColor(wsleds[1], color_default)
 		# STOP button
-		wsl.wsleds.setPixelColor(wsleds[1], color_default)
+		wsl.wsleds.setPixelColor(wsleds[2], color_default)
 		# PLAY button:
 		if zynaudioplayer.get_playback_state(self.processor.handle):
-			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_green)
+			wsl.wsleds.setPixelColor(wsleds[3], wsl.wscolor_green)
 		else:
-			wsl.wsleds.setPixelColor(wsleds[2], color_default)
+			wsl.wsleds.setPixelColor(wsleds[3], color_default)
 
-
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------

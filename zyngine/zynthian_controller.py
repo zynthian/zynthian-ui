@@ -270,6 +270,13 @@ class zynthian_controller:
 			self.set_value(self.value + val * self.nudge_factor, send)
 		return True
 
+	def toggle(self):
+		if self.is_toggle:
+			if self.value == self.value_min:
+				self.set_value(self.value_max, send=True)
+			else:
+				self.set_value(self.value_min, send=True)
+
 	def _set_value(self, val):
 		if isinstance(val, str):
 			self.value = self.get_label2value(val)

@@ -54,6 +54,7 @@ class zynthian_gui_keyboard():
 		self.buttons = []  # Array of [rectangle id, label id] for buttons in keyboard layout
 		self.selected_button = 45  # Index of highlighted button
 		self.mode = OSK_QWERTY  # Keyboard layout mode
+		self.ctrl_order = zynthian_gui_config.layout['ctrl_order']
 
 		# Geometry vars
 		self.width = zynthian_gui_config.display_width
@@ -280,10 +281,10 @@ class zynthian_gui_keyboard():
 		if not self.shown:
 			return
 		if get_lib_zyncore():
-			if i == zynthian_gui_config.ENC_SELECT:
-				self.cursor_hmove(dval)
-			elif i == zynthian_gui_config.ENC_BACK:
+			if i == self.ctrl_order[2]:
 				self.cursor_vmove(dval)
+			elif i == self.ctrl_order[3]:
+				self.cursor_hmove(dval)
 
 	def cursor_hmove(self, dval):
 		key = self.selected_button + dval
