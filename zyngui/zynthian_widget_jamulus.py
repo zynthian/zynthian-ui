@@ -252,13 +252,16 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
                 else:
                     self.widget_canvas.itemconfig(f"solo_{solo[0]}", fill="grey")
         # Update client levels
-        for client, level in enumerate(self.levels):
-            if level != self.processor.engine.levels[client]:
-                self.levels[client] = self.processor.engine.levels[client]
-                for i in range(self.levels[client]):
-                    self.widget_canvas.itemconfig(f"led_{client}_{i}", fill=self.LED_COLOUR[i])
-                for i in range(self.levels[client], 9):
-                    self.widget_canvas.itemconfig(f"led_{client}_{i}", fill="grey")
+        try:
+            for client, level in enumerate(self.levels):
+                if level != self.processor.engine.levels[client]:
+                    self.levels[client] = self.processor.engine.levels[client]
+                    for i in range(self.levels[client]):
+                        self.widget_canvas.itemconfig(f"led_{client}_{i}", fill=self.LED_COLOUR[i])
+                    for i in range(self.levels[client], 9):
+                        self.widget_canvas.itemconfig(f"led_{client}_{i}", fill="grey")
+        except:
+            pass # There may be a temporary difference between levels and clients
 
     def on_press(self, event):
         self.press_event = event

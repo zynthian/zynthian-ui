@@ -29,7 +29,6 @@ import logging
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
-from zyngine.zynthian_signal_manager import zynsigman
 
 class zynthian_processor:
 
@@ -526,7 +525,6 @@ class zynthian_processor:
 
         self.engine.get_controllers_dict(self)
         self.init_ctrl_screens()
-        zynsigman.send_queued(zynsigman.S_PROCESSOR, zynthian_processor.SS_ZCTRL_REFRESH, processor=self)
 
     def init_ctrl_screens(self):
         """Create controller screens from zynthian controller keys

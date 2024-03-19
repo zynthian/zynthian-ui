@@ -41,6 +41,8 @@ from subprocess import Popen, DEVNULL
 from . import zynthian_engine
 from zynconf import ServerPort
 import zynautoconnect
+from zyngine.zynthian_signal_manager import zynsigman
+from zyngine import zynthian_processor
 
 #------------------------------------------------------------------------------
 # Jamulus Engine Class
@@ -61,6 +63,22 @@ class zynthian_engine_jamulus(zynthian_engine):
 
     def __init__(self, state_manager=None):
         super().__init__(state_manager)
+
+        self._ctrls = [
+            ["Connect", None, "On", ["Off","On"]],
+            ["Mute Self", 100, "Off", ["Off","On"]],
+            ["Local Server", None, "Off", ["Off", "On"]]
+        ]
+        for i in range(1,9):
+            self._ctrls += [
+                [f"Fader {i}", i, 127, 127],
+                [f"Pan {i}", i + 16, 64, 127],
+                [f"Mute {i}", i + 32, "Off", ["Off","On"]],
+                [f"Solo {i}", i + 48, "Off", ["Off","On"]]
+            ]
+
+        self._ctrl_screens = [["Main", ["Connect", "Mute Self", "Local Server"]]]
+
         letters = string.ascii_lowercase + string.digits
         self.RPC_SECRET = ''.join(random.choice(letters) for i in range(16))
         self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_jamulus.py"
@@ -75,36 +93,13 @@ class zynthian_engine_jamulus(zynthian_engine):
         self.server_proc = None # Process object for jamulus server running on this device
         self.monitors = {} # Populate with changed values
 
-    def build_ctrls(self):
-        try:
-            zctrls = self.processors[0].controllers_dict
-        except:
-            zctrls = []
-        if self.server_proc is None:
-            local_server = "Off"
-        else:
-            local_server = "On"
-        if self.proc:
-            connect = "On"
-        else:
-            connect = "Off"
-        if "Mute Self" in zctrls:
-            mute_self = zctrls["Mute Self"].value
-        else:
-            mute_self = "Off"
+    def update_ctrl_screen(self):
         existing_names = []
         for scrn in self._ctrl_screens:
             existing_names.append(scrn[0])
-        ctrls = [
-            ["Connect", None, connect, ["Off","On"]],
-            ["Mute Self", 100, mute_self, ["Off","On"]],
-            ["Local Server", None, local_server, ["Off", "On"]]
-        ]
-        self._ctrl_screens = [
-            ["Local", ["Connect", "Mute Self", "Local Server"]]
-        ]
         channels = range(1, len(self.clients) + 1)
         names = []
+        self._ctrl_screens = [["Main", ["Connect", "Mute Self", "Local Server"]]]
         for i in channels:
             suffix = 1
             name = self.clients[i - 1]["name"]
@@ -114,22 +109,11 @@ class zynthian_engine_jamulus(zynthian_engine):
                 while name in names:
                     name = self.clients[i - 1]["name"] + f" ({suffix})"
                     suffix += 1
-            if name in existing_names:
-                j = existing_names.index(name)
-                ctrls += [[f"Fader {i}", i, zctrls[f"Fader {j}"].value, 127]]
-                ctrls += [[f"Pan {i}", i + 16, zctrls[f"Pan {j}"].value, 127]]
-                ctrls += [[f"Mute {i}", i + 32, zctrls[f"Mute {j}"].value, ["Off","On"]]]
-                ctrls += [[f"Solo {i}", i + 48, zctrls[f"Solo {j}"].value, ["Off","On"]]]
-            else:
-                ctrls += [[f"Fader {i}", i, 127, 127]]
-                ctrls += [[f"Pan {i}", i + 16, 64, 127]]
-                ctrls += [[f"Mute {i}", i + 32, "Off", ["Off","On"]]]
-                ctrls += [[f"Solo {i}", i + 48, "Off", ["Off","On"]]]
             self._ctrl_screens += [[name, [f"Fader {i}", f"Pan {i}", f"Mute {i}", f"Solo {i}"]]]
             names.append(name)
-        self._ctrls = ctrls
         if self.processors:
-            self.processors[0].refresh_controllers()
+            self.processors[0].init_ctrl_screens()
+            zynsigman.send_queued(zynsigman.S_PROCESSOR, zynthian_processor.SS_ZCTRL_REFRESH, processor=self.processors[0])
 
     def start(self):
         if self.state_manager.get_jackd_samplerate() != 48000:
@@ -160,6 +144,7 @@ class zynthian_engine_jamulus(zynthian_engine):
         # Wait for rpc-json server to be available indicating process is ready
         self.rpc_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.rpc_socket.settimeout(0.5)
+        self.running=True
         success = False
         for i in range(10):
             try:
@@ -170,30 +155,38 @@ class zynthian_engine_jamulus(zynthian_engine):
                 break
             except Exception as e:
                 sleep(0.5)
-        self.build_ctrls()
+        if self.processors:
+            self.processors[0].controllers_dict["Connect"].set_value("On", False)
+        self.update_ctrl_screen()
         self.thread = threading.Thread(target=self.monitor)
-        self.running = True
         self.thread.start()
         self.set_name(self.user_name)
 
         zynautoconnect.request_midi_connect(True)
         zynautoconnect.request_audio_connect(True)
 
-    def stop(self, term_server=True, join_thread=True):
+    def stop(self, term_server=True):
         if self.proc:
             self.running = False
-            self.rpc_socket.close()
-            if join_thread:
+            try:
                 self.thread.join()
+            except:
+                pass # May be stopping before thread is started???
+            self.rpc_socket.close()
             self.proc.terminate()
             self.proc = None
             self.clients = []
             self.monitors["status"] = "Disconnected"
-            self.build_ctrls()
+            self.update_ctrl_screen()
         if term_server and self.server_proc:
             self.server_proc.terminate()
             self.server_proc = None
             self.monitors["local_server_status"] = False
+
+    def restart(self):
+        self.stop(False)
+        sleep(1)
+        self.start()
 
     def monitor(self):
         while self.running:
@@ -206,23 +199,27 @@ class zynthian_engine_jamulus(zynthian_engine):
                             self.levels = msg["params"]["channelLevelList"]
                         elif method == "jamulusclient/clientListReceived":
                             self.clients = msg["params"]["clients"]
-                            self.build_ctrls()
+                            self.update_ctrl_screen()
                             self.monitors["clients"] = self.clients
                             self.monitors["status"] = "Connected"
                         elif method == "jamulusclient/connected":
                             self.own_channel = msg["params"]["id"]
-                            self.build_ctrls()
+                            self.update_ctrl_screen()
                             self.monitors["status"] = "Connected"
                         elif method == "jamulusclient/disconnected":
                             self.own_channel = None
                             self.processors[0].controllers_dict["Connect"].set_value("Off")
-                            self.build_ctrls()
+                            self.update_ctrl_screen()
                             self.monitors["status"] = "Disconnected"
-                            self.stop(False, False) # Unsolicited disconnect so stop server (can't restart here because of thread safety)
+                            self.running = False
+                            # Jamulus stops trying to reconnect 30s after last handshake but we want it to continue to reconnect
+                            # May be influenced by https://github.com/jamulussoftware/jamulus/issues/2519
+                            threading.Timer(0.5, self.restart).start()
             except TimeoutError:
                 pass # We expect socket to timeout when no data available
             except Exception as e:
                 logging.error(e)
+                break
             sleep(0.1)
 
 
