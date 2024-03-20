@@ -224,6 +224,8 @@ class zynthian_engine_jamulus(zynthian_engine):
                             # Jamulus stops trying to reconnect 30s after last handshake but we want it to continue to reconnect
                             # May be influenced by https://github.com/jamulussoftware/jamulus/issues/2519
                             threading.Timer(0.5, self.restart).start()
+                        elif method == "jamulusclient/chatTextReceived":
+                            self.monitors["chatText"] = msg["params"]["chatText"]
             except TimeoutError:
                 pass # We expect socket to timeout when no data available
             except OSError:
