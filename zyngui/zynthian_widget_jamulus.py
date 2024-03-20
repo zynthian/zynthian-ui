@@ -101,8 +101,8 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
             self.widget_canvas.coords(f"fader_line{i}_{channel}", x0+2, y0, x1-2, y0)
 
     def update_pan_pos(self, channel, value):
-        x = int(2 + (self.channel_width - 4) * (channel - 1 + value / 127)),
-        y0= 24 + 2 * self.button_height,
+        x = int(self.channel_width * (channel - 1) + 2 + (self.channel_width - 5) * value / 127)
+        y0 = 24 + 2 * self.button_height,
         y1 = int(self.height - self.legend_height - 1.2 * self.fader_height - 2),
         self.widget_canvas.coords(f"pan_{channel}", x, y0, x, y1)
 
