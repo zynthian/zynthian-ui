@@ -30,6 +30,7 @@ from html2text import HTML2Text
 from zyngui import zynthian_widget_base
 from zyngui import zynthian_gui_config
 from zyngine import zynthian_engine_jamulus
+from zynautoconnect import get_jackd_samplerate
 
 class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
 
@@ -51,10 +52,11 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.create_text(
             0,0,
             fill="grey",
-            text="Disconnected",
+            text="Disconnected" if get_jackd_samplerate() == 48000 else "Change samplerate\nto 48000\nto use Jamulus",
             font=("DejaVu Sans Mono", int(2 * zynthian_gui_config.font_size)),
             tags="connection_status"
         )
+
         self.widget_canvas.create_text(
             0, 0,
             font=("DejaVu Sans Mono", int(0.8 * zynthian_gui_config.font_size)),
@@ -127,7 +129,7 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
             elif self.monitors["status"] == zynthian_engine_jamulus.STATE_CONNECTING:
                 self.monitors["clients"] = []
                 self.widget_canvas.itemconfig("chatText", text="")
-                self.widget_canvas.itemconfig("connection_status", fill="yellow", text="Connecting", state=tkinter.NORMAL)
+                self.widget_canvas.itemconfig("connection_status", fill="white", text="Connecting", state=tkinter.NORMAL)
             elif self.monitors["status"] == zynthian_engine_jamulus.STATE_CONNECTED:
                 self.widget_canvas.itemconfig("connection_status", state=tkinter.HIDDEN)
         if "local_server_status" in self.monitors:

@@ -997,6 +997,8 @@ class zynthian_chain_manager:
             eng_cat = info["CAT"]
             eng_enabled = info["ENABLED"]
             if (eng_enabled or all) and (filter_type == eng_type or filter_type is None) and (eng_code not in self.single_processor_engines or eng_code not in self.zyngines):
+                if eng_code == 'JA' and zynautoconnect.get_jackd_samplerate() != 48000:
+                    continue # Jamulus only works at 48000 fps
                 if eng_cat not in result:
                     result[eng_cat] = {}
                 result[eng_cat][eng_code] = info
