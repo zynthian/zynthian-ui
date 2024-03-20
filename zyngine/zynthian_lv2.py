@@ -114,7 +114,7 @@ standalone_engine_info = {
 	'PD': ["PureData", "PureData - Visual Programming", "Special", "Language", True],
 	'MD': ["MOD-UI", "MOD-UI - Plugin Host", "Special", "Language", True],
 	'IR': ["InternetRadio", "Internet Radio", "Audio Generator", "Other", True],
-	'JA': ["Jamulus", "Jamulus - Online Jam Session", "Special", "Sampler", True]
+	'JA': ["Jamulus", "Jamulus - Online Jam Session", "Special", "Patchbay", True]
 }
 
 ENGINE_CONFIG_FILE = "{}/engine_config.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))

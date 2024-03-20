@@ -228,7 +228,7 @@ class zynthian_engine_jamulus(zynthian_engine):
                             self.monitors["chatText"] = msg["params"]["chatText"]
             except TimeoutError:
                 pass # We expect socket to timeout when no data available
-            except OSError:
+            except OSError as e:
                 logging.warning("Socket disconnected", e)
                 break
             except Exception as e:
@@ -465,3 +465,6 @@ class zynthian_engine_jamulus(zynthian_engine):
         except Exception as e:
             logging.warning(e)
 
+    @classmethod
+    def zynapi_get_description(cls):
+        return "Low latency online audio collaboration."

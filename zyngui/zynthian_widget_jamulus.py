@@ -52,7 +52,7 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.create_text(
             0,0,
             fill="grey",
-            text="Disconnected" if get_jackd_samplerate() == 48000 else "Change samplerate\nto 48000\nto use Jamulus",
+            text="Disconnected" if get_jackd_samplerate() == 48000 else "Change samplerate\nto 48000",
             font=("DejaVu Sans Mono", int(2 * zynthian_gui_config.font_size)),
             tags="connection_status"
         )
