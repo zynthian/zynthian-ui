@@ -69,6 +69,7 @@ class zynthian_engine_jamulus(zynthian_engine):
 
         self._ctrls = [
             ["Connect", None, "On", ["Off","On"]],
+            ["Mute Self", 100, "Off", ["Off", "On"]],
             ["Local Server", None, "Off", ["Off", "On"]]
         ]
         for i in range(1,9):
@@ -78,8 +79,6 @@ class zynthian_engine_jamulus(zynthian_engine):
                 [f"Mute {i}", i + 32, "Off", ["Off","On"]],
                 [f"Solo {i}", i + 48, "Off", ["Off","On"]]
             ]
-
-        self._ctrl_screens = [["Main", ["Connect", "Local Server"]]]
 
         letters = string.ascii_lowercase + string.digits
         self.RPC_SECRET = ''.join(random.choice(letters) for i in range(16))
@@ -94,6 +93,7 @@ class zynthian_engine_jamulus(zynthian_engine):
         self.own_channel = None # Own channel or None if not connected
         self.server_proc = None # Process object for jamulus server running on this device
         self.monitors = {} # Populate with changed values
+        self.update_ctrl_screen()
 
     def update_ctrl_screen(self):
         existing_names = []
@@ -101,7 +101,7 @@ class zynthian_engine_jamulus(zynthian_engine):
             existing_names.append(scrn[0])
         channels = range(1, len(self.clients) + 1)
         names = []
-        self._ctrl_screens = [["Main", ["Connect", "Local Server"]]]
+        self._ctrl_screens = [["Main", ["Connect", "Mute Self", "Local Server"]]]
         for i in channels:
             suffix = 1
             name = self.clients[i - 1]["name"]
@@ -131,7 +131,7 @@ class zynthian_engine_jamulus(zynthian_engine):
             "--clientname", self.jackname,
             "--jsonrpcport", str(self.RPC_PORT),
             "--jsonrpcsecretfile", self.RPC_SECRET_FILE,
-            "--ctrlmidich", '"1;f1*16;p17*16;m33*16;s49*16;o100"',
+            "--ctrlmidich", "'1;f1*16;p17*16;m33*16;s49*16;o100;o100'", # bug in jamulus r3.9 does not parse last parameter correctly so repeat ;o100
             "--inifile", f"{self.data_dir}/jamulus/Jamulus.ini",
             "--connect", self.preset[1]
         ]
@@ -348,7 +348,7 @@ class zynthian_engine_jamulus(zynthian_engine):
                     self.monitors["fader"].append((int(zctrl.symbol[6:]), zctrl.value))
                 else:
                     self.monitors["fader"] = [(int(zctrl.symbol[6:]), zctrl.value)]
-            if zctrl.symbol.startswith("Pan"):
+            elif zctrl.symbol.startswith("Pan"):
                 if "pan" in self.monitors:
                     self.monitors["pan"].append((int(zctrl.symbol[4:]), zctrl.value))
                 else:
@@ -363,6 +363,8 @@ class zynthian_engine_jamulus(zynthian_engine):
                     self.monitors["solo"].append((int(zctrl.symbol[5:]), zctrl.value))
                 else:
                     self.monitors["solo"] = [(int(zctrl.symbol[5:]), zctrl.value)]
+            elif zctrl.symbol == "Mute Self":
+                self.monitors["muteSelf"] = zctrl.value
             raise("Use MIDI CC control")
 
     def get_monitors_dict(self):

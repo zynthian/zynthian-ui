@@ -122,6 +122,7 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
             self.widget_canvas.itemconfig("chatText", fill="grey")
 
     def refresh_gui(self):
+        #TODO: Show self muted indication
         if "status" in self.monitors:
             if self.monitors["status"] == zynthian_engine_jamulus.STATE_DISCONNECTED:
                 self.monitors["clients"] = []
