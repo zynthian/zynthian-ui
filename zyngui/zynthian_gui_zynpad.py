@@ -70,8 +70,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.bank = self.zynseq.bank  # The last successfully selected bank - used to update stale views
 		self.columns = self.zynseq.col_in_bank  # Columns used during last layout - used to update stale views
 		self.midi_learn = False
-		self.trigger_channel = 0
-		self.ctrldev = None
+		self.trigger_channel = None
+		self.trigger_device = None
 
 		# Geometry vars
 		self.select_thickness = 1 + int(self.width / 400) # Scale thickness of select border based on screen
@@ -109,6 +109,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.set_title(f"Scene {self.bank}")
 		zynsigman.register(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_play_state)
 		zynsigman.register(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PROGRESS, self.update_progress)
+		zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_ON, self.cb_midi_note_on)
 		return True
 
 	# Function to hide GUI
@@ -116,6 +117,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if self.shown:
 			zynsigman.unregister(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_play_state)
 			zynsigman.unregister(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PROGRESS, self.update_progress)
+			zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_ON, self.cb_midi_note_on)
 			super().hide()
 
 	# Function to set quantity of pads
@@ -627,30 +629,37 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	# **************************************************************************
 
 	def enter_midi_learn(self):
-		if self.ctrldev:
-			return
 		self.midi_learn = True
 		labels = ['None']
 		for note in range(128):
 			labels.append(f"{NOTE_NAMES[note % 12]}{note // 12 - 1}")
 		value = self.zyngui.state_manager.zynseq.libseq.getTriggerNote(self.bank, self.selected_pad) + 1
-		if value > 128:
+		if value > 127:
 			value = 0
-		self.enable_param_editor(self, 'trigger_note', {'name':'Trigger note', 'labels': labels, 'value': value})
+		self.enable_param_editor(self, 'trigger_note', {'name': 'Trigger note', 'labels': labels, 'value': value})
 
 	def exit_midi_learn(self):
 		self.midi_learn = False
 		self.disable_param_editor()
 
-	# Zynpad's default midi learn mechanism
-	def midi_event(self, ev):
-		evtype = (ev & 0xF00000) >> 20
-		if evtype == 9:
-			# If trigger channel is set, filter events from other channels
-			note = (ev >> 8) & 0x7F
+	def cb_midi_note_on(self, izmip, chan, note, vel):
+		"""Handle MIDI_NOTE_ON signal
+
+		izmip : MIDI input device index
+		chan : MIDI channel
+		note : Note number
+		vel : Velocity value
+		"""
+		# TODO: Trigger device & channel
+		if vel > 0:
 			if self.midi_learn:
 				self.zynseq.libseq.setTriggerNote(self.bank, self.selected_pad, note)
-				self.zyngui.exit_midi_learn()
+				self.exit_midi_learn()
 				return True
+			else:
+				sequence = self.zynseq.libseq.getTriggerSequence(note)
+				if sequence > 0:
+					self.zynseq.libseq.togglePlayState(self.bank, sequence)
+					return True
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
