@@ -69,6 +69,7 @@ ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 class zynthian_state_manager:
 
     # Subsignals are defined inside each module. Here we define state manager subsignals:
+    SS_LOAD_SNAPSHOT = 1
     SS_MIDI_PLAYER_STATE = 2
     SS_MIDI_RECORDER_STATE = 3
     SS_LOAD_ZS3 = 4
@@ -1018,6 +1019,9 @@ class zynthian_state_manager:
 
         # Restore mute state
         self.zynmixer.set_mute(self.zynmixer.MAX_NUM_CHANNELS - 1, mute)
+
+        # Signal snapshot loading
+        zynsigman.send_queued(zynsigman.S_STATE_MAN, self.SS_LOAD_SNAPSHOT)
 
         self.end_busy("load snapshot")
         return state
