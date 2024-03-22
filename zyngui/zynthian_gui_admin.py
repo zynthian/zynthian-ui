@@ -515,13 +515,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def test_midi(self):
 		logging.info("TESTING MIDI")
-		self.zyngui.show_info("TEST MIDI")
-		self.killable_start_command(["aplaymidi -p 14 {}/mid/test.mid".format(self.data_dir)])
-
-		if self.zyngui.capture_log_fname:
-			self.list_data.append((self.workflow_capture_stop, 0, "\u2612 Workflow Capture"))
-		else:
-			self.list_data.append((self.workflow_capture_start, 0, "\u2610 Workflow Capture"))
+		self.state_manager.start_midi_playback(f"{self.data_dir}/mid/test.mid")
+		self.zyngui.alt_mode = True
 
 	# ------------------------------------------------------------------------------
 	# SYSTEM FUNCTIONS
