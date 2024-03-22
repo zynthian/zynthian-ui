@@ -129,6 +129,10 @@ engines_mtime = None
 
 
 def init_lilv():
+	global world
+	world = lilv.World()
+	# Disable language filtering
+	# world.set_option(lilv.OPTION_FILTER_LANG, world.new_bool(False))
 	world.load_all()
 	world.ns.ev = lilv.Namespace(world, "http://lv2plug.in/ns/ext/event#")
 	world.ns.presets = lilv.Namespace(world, "http://lv2plug.in/ns/ext/presets#")
@@ -165,6 +169,7 @@ def load_engines():
 		with open(fpath) as f:
 			engines = json.load(f)
 		engines_mtime = os.stat(fpath).st_mtime
+		logging.debug(f'Loaded engine config with timestamp: {engines_mtime}')
 	except Exception as e:
 		logging.debug('Loading engine config failed: {}'.format(e))
 
@@ -175,11 +180,13 @@ def load_engines():
 	get_engines_by_type()
 	return engines
 
+
 def sanitize_engines():
 	for key, info in engines.items():
 		info['ENABLED'] = bool(info['ENABLED'])
 		info['QUALITY'] = int(info['QUALITY'])
 		info['COMPLEX'] = int(info['COMPLEX'])
+
 
 def save_engines():
 	global engines_mtime
@@ -674,10 +681,6 @@ def get_node_value(node):
 # Main program
 # ------------------------------------------------------------------------------
 
-
-world = lilv.World()
-# Disable language filtering
-#world.set_option(lilv.OPTION_FILTER_LANG, world.new_bool(False))
 # Init Lilv
 init_lilv()
 # Load engine info from cache

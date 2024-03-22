@@ -130,6 +130,7 @@ class zynthian_chain_manager:
         # Don't recalculate if info not changed
         if eng_info == cls.engine_info:
             return cls.engine_info
+
         cls.engine_info = eng_info
         # Look for an engine class for each one
         for key, info in cls.engine_info.items():
