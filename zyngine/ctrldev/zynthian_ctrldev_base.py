@@ -31,7 +31,6 @@ from threading import Thread, RLock, Event
 from bisect import bisect
 
 from zyncoder.zyncore import lib_zyncore
-from zyngui import zynthian_gui_config
 from zyngine.zynthian_signal_manager import zynsigman
 
 
@@ -124,6 +123,7 @@ class zynthian_ctrldev_base:
 	# *COULD* be implemented by child class
 	def set_state(self, state):
 		pass
+
 
 # ------------------------------------------------------------------------------------------------------------------
 # Zynpad control device base class
@@ -406,7 +406,7 @@ class ButtonTimer(Thread):
 
 
 # --------------------------------------------------------------------------
-#  Helper class to handle knobs speed
+#  Helper class to handle knobs' speed
 # --------------------------------------------------------------------------
 class KnobSpeedControl:
 	def __init__(self, steps_normal=3, steps_shifted=8):
@@ -466,34 +466,35 @@ class ModeHandlerBase:
 		self._is_active = False
 
 	def refresh(self):
-		pass
-
-	def set_active(self, active):
-		self._is_active = active
+		"""Overwrite in derived class if needed."""
 
 	def note_on(self, note, velocity, shifted_override=None):
-		pass
+		"""Overwrite in derived class if needed."""
 
 	def note_off(self, note, shifted_override=None):
-		pass
+		"""Overwrite in derived class if needed."""
 
 	def cc_change(self, ccnum, ccval):
-		pass
+		"""Overwrite in derived class if needed."""
 
 	def pg_change(self, program):
-		pass
+		"""Overwrite in derived class if needed."""
 
 	def sysex_message(self, payload):
-		pass
+		"""Overwrite in derived class if needed."""
 
 	def get_state(self):
 		return {}
 
 	def set_state(self, state):
-		pass
+		"""Overwrite in derived class if needed."""
 
 	def on_media_change(self, media, kind, state):
-		pass
+		"""Overwrite in derived class if needed."""
+
+	def set_active(self, active):
+		"""Overwrite in derived class if needed."""
+		self._is_active = active
 
 	def on_shift_changed(self, state):
 		self._is_shifted = state
@@ -537,7 +538,7 @@ class ModeHandlerBase:
 			None
 		)
 
-	# FIXME: Could this (or part of this) be in zynseq?
+	# FIXME: Could this (or part of this) be in libseq?
 	def _get_sequence_patterns(self, bank, seq, create=False):
 		seq_len = self._libseq.getSequenceLength(bank, seq)
 		pattern = -1
@@ -587,7 +588,7 @@ class ModeHandlerBase:
 
 		return self._libseq.addPattern(bank, seq, track, pos, pattern)
 
-	# FIXME: Could this be in zynseq?
+	# FIXME: Could this be in libseq?
 	def _set_note_duration(self, step, note, duration):
 		velocity = self._libseq.getNoteVelocity(step, note)
 		stutt_count = self._libseq.getStutterCount(step, note)
@@ -597,51 +598,6 @@ class ModeHandlerBase:
 		self._libseq.setStutterCount(step, note, stutt_count)
 		self._libseq.setStutterDur(step, note, stutt_duration)
 
-	# FIXME: This way avoids to show Zynpad every time, BUT is coupled to UI!
-	def _show_pattern_editor(self, seq=None, skip_arranger=False):
-		if self._current_screen != 'pattern_editor':
-			self._state_manager.send_cuia("SCREEN_ZYNPAD")
-		if seq is not None:
-			self._select_pad(seq)
-		if not skip_arranger:
-			zynthian_gui_config.zyngui.screens["zynpad"].show_pattern_editor()
-		else:
-			zynthian_gui_config.zyngui.show_screen("pattern_editor")
-
-	# FIXME: This is coupled to UI!
-	def force_show_pattern_editor(self):
-		self._refresh_pattern_editor()
-		zynthian_gui_config.zyngui.show_screen("pattern_editor")
-
-	# FIXME: This SHOULD be a CUIA, not this hack! (is coupled with UI)
-	def _select_pad(self, pad):
-		zynthian_gui_config.zyngui.screens["zynpad"].select_pad(pad)
-
-	# This SHOULD not be coupled to UI! This is needed because when the pattern is changed in
-	# zynseq, it is not reflected in pattern editor.
-	def _refresh_pattern_editor(self):
-		index = self._zynseq.libseq.getPatternIndex()
-		zynthian_gui_config.zyngui.screens["pattern_editor"].load_pattern(index)
-
-	# FIXME: This SHOULD not be coupled to UI!
-	def _get_selected_sequence(self):
-		return zynthian_gui_config.zyngui.screens["zynpad"].selected_pad
-
-	# FIXME: This SHOULD not be coupled to UI!
-	def _get_selected_step(self):
-		pe = zynthian_gui_config.zyngui.screens["pattern_editor"]
-		return pe.keymap[pe.selected_cell[1]]['note'], pe.selected_cell[0]
-
-	# FIXME: This SHOULD be a CUIA, not this hack! (is coupled with UI)
-	# NOTE: It runs in a thread to avoid lagging the hardware interface
-	def _update_ui_arranger(self, cell_selected=(None, None)):
-		def run():
-			arranger = zynthian_gui_config.zyngui.screens["arranger"]
-			arranger.select_cell(*cell_selected)
-			if cell_selected[1] is not None:
-				arranger.draw_row(cell_selected[1])
-		Thread(target=run, daemon=True).start()
-
 	def _show_screen_briefly(self, screen, cuia, timeout):
 		# Only created when/if needed
 		if self._timer is None:
@@ -650,7 +606,7 @@ class ModeHandlerBase:
 		timer_name = "change-screen"
 		prev_screen = "BACK"
 
-		# If brief screen is audio mixer, there is no back, so try to get the screen
+		# If screen is audio mixer, there is no 'back', so try to get the screen
 		# name. Not all screens may be mapped, so it will fail there (only corner-cases).
 		if screen == "audio_mixer":
 			prev_screen = self.SCREEN_CUIA_MAP.get(self._current_screen, "BACK")

@@ -28,10 +28,11 @@ import logging
 from bisect import bisect
 from zyngine.zynthian_signal_manager import zynsigman
 from zyncoder.zyncore import lib_zyncore
-from zyngine.ctrldev.zynthian_ctrldev_base import (
-    zynthian_ctrldev_zynmixer, ModeHandlerBase, CONST,
-    KnobSpeedControl, IntervalTimer, ButtonTimer
+
+from .zynthian_ctrldev_base import (
+    zynthian_ctrldev_zynmixer, CONST, KnobSpeedControl, IntervalTimer, ButtonTimer
 )
+from .zynthian_ctrldev_base_ui import ModeHandlerBase
 
 
 # NOTE: some of these constants are taken from:
