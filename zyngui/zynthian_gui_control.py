@@ -604,10 +604,17 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.zyngui.chain_manager.clean_midi_learn(self.zyngui.get_current_processor())
 		self.refresh_midi_bind()
 
-
 	def midi_unlearn_action(self):
-		if self.zyngui.get_current_processor() and self.zyngui.get_current_processor().engine:
-			self.zyngui.show_confirm(f"Do you want to clean MIDI-learn for ALL controls in {self.zyngui.get_current_processor().engine.name} on MIDI channel {self.zyngui.get_current_processor().midi_chan + 1}?", self.midi_unlearn)
+		curproc = self.zyngui.get_current_processor()
+		if curproc:
+			engine_name = curproc.get_name()
+			if engine_name:
+				question_str = f"Do you want to clean MIDI-learn for ALL controls in {engine_name}"
+				if curproc.midi_chan is not None and 0 <= curproc.midi_chan < 16:
+					question_str += f"on MIDI channel {curproc.midi_chan + 1}"
+				self.zyngui.show_confirm(question_str + "?", self.midi_unlearn)
+			else:
+				logging.error("Can't get processor name.")
 
 	def midi_learn_options(self, i, unlearn_only=False):
 		self.exit_midi_learn()

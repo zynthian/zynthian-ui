@@ -431,7 +431,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 				chan = (midi_learn_params[0] >> 16) & 0xff
 				cc = (midi_learn_params[0] >> 8) & 0xff
 				if midi_learn_params[1]:
-					self.plot_midi_bind(f"[{cc}]")
+					self.plot_midi_bind(f"{chan}#{cc}")
 				else:
 					self.plot_midi_bind(f"{cc}")
 			else:
