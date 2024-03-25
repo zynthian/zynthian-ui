@@ -213,16 +213,14 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 		if self.allow_rbpi_headphones() and self.state_manager and self.state_manager.get_zynthian_config("rbpi_headphones"):
 			try:
 				hp_ctrls = self.get_mixer_zctrls(self.rbpi_device_name, ["Headphone", "PCM"])
-				if "Headphone" in hp_ctrls:
-					ctrls.append(hp_ctrls["Headphone"])
-					logging.debug("Added RBPi Headphones Amplifier volume control")
-				elif "PCM" in hp_ctrls:
-					ctrls.append(["Headphone", hp_ctrls["PCM"][1]])
-					logging.debug("Added RBPi Headphones Amplifier volume control")
+				if len(hp_ctrls) > 0:
+					for ctrl in hp_ctrls:
+						ctrls.append(ctrl)
+						logging.debug(f"Added RBPi {ctrl[0]} volume control")
 				else:
 					raise Exception("RBPi Headphone volume control not found!")
 			except Exception as e:
-				logging.error(f"Can't configure RBPi  headphones volume control: {e}")
+				logging.error(f"Can't configure RBPi headphones volume control: {e}")
 
 		# Sort ctrls to match the configured mixer control list
 		if ctrl_list and len(ctrl_list) > 0:
