@@ -349,6 +349,10 @@ class zynthian_gui_controller(tkinter.Canvas):
 	def plot_value(self):
 		if self.shown and self.zctrl and (self.zctrl.is_dirty or self.refresh_plot_value):
 			if not self.hidden:
+				if self.zctrl.readonly:
+					self.set_hl(zynthian_gui_config.color_ctrl_bg_off)
+				else:
+					self.unset_hl()
 				self.plot_value_func()
 			self.refresh_plot_value = False
 			self.zctrl.is_dirty = False

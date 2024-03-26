@@ -714,6 +714,8 @@ class zynthian_processor:
                     zctrl = self.controllers_dict[symbol]
                     if "value" in ctrl_state:
                         zctrl.set_value(ctrl_state["value"], True)
+                    if "midi_cc_momentary_switch" in ctrl_state:
+                        zctrl.midi_cc_momentary_switch = state['midi_cc_momentary_switch']
                 except Exception as e:
                     logging.warning("Invalid Controller for processor {}: {}".format(self.get_basepath(), e))
 

@@ -623,13 +623,17 @@ class zynthian_gui_control(zynthian_gui_selector):
 			zctrl = self.zgui_controllers[i].zctrl
 			if zctrl is None:
 				return
-			title = "Control Options"
+			title = "Control options"
 			if not unlearn_only:
-				options["X-Y Touch-Pad"] = i
-				options[f"Chain Learn '{zctrl.name}'..."] = i
-				options[f"Global Learn '{zctrl.name}'..."] = i
+				if zctrl.midi_cc_momentary_switch:
+					options[f"\u2612 Momentary switch"] = i
+				else:
+					options[f"\u2610 Momentary switch"] = i
+				options["X-Y touchpad"] = i
+				options[f"Chain learn '{zctrl.name}'..."] = i
+				options[f"Global learn '{zctrl.name}'..."] = i
 			else:
-				title = "Control Unlearn"
+				title = "Control unlearn"
 			params = self.zyngui.chain_manager.get_midi_learn_from_zctrl(zctrl)
 			if params:
 				if params[1]:
@@ -637,12 +641,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 					options[f"Unlearn '{zctrl.name}' from {dev_name}"] = zctrl
 				else:
 					options[f"Unlearn '{zctrl.name}'"] = zctrl
-			options["Unlearn All"] = ""
+			options["Unlearn all controls"] = ""
 			self.zyngui.screens['option'].config(title, options, self.midi_learn_options_cb)
-			self.zyngui.screens['option'].config("Control MIDI-learn", options, self.midi_learn_options_cb)
 			self.zyngui.show_screen('option')
 		except Exception as e:
-			logging.error(f"Can't show Control MIDI-learn options => {e}")
+			logging.error(f"Can't show control options => {e}")
 
 	def midi_learn_options_cb(self, option, param):
 		parts = option.split(" ")
@@ -659,6 +662,12 @@ class zynthian_gui_control(zynthian_gui_selector):
 			if param > 2:
 				param = 2
 			self.set_xyselect_mode(param, param + 1)
+		elif parts[1] == "Momentary":
+			if parts[0] == '\u2612':
+				self.zgui_controllers[param].zctrl.midi_cc_momentary_switch = 0
+			else:
+				self.zgui_controllers[param].zctrl.midi_cc_momentary_switch = 1
+			self.midi_learn_options(param)
 
 	# -------------------------------------------------------------------------
 	# GUI Callback function
