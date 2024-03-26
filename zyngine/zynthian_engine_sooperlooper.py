@@ -155,28 +155,159 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	]
 
 	SL_STATES = {
-		SL_STATE_UNKNOWN: {'name': 'unknown', 'symbol': None, 'icon': ''},
-		SL_STATE_OFF: {'name': 'off', 'symbol': None, 'icon': ''},
-		SL_STATE_REC_STARTING: {'name': 'rec starting...', 'symbol': None, 'icon': '\u23EF'},
-		SL_STATE_RECORDING: {'name': 'recording', 'symbol': 'record', 'icon': '\u26ab'},
-		SL_STATE_REC_STOPPING: {'name': 'rec stopping...', 'symbol': None, 'icon': '\u23EF'},
-		SL_STATE_PLAYING: {'name': 'playing', 'symbol': None, 'icon': '\uf04b'},
-		SL_STATE_OVERDUBBING: {'name': 'overdubbing', 'symbol': 'overdub', 'icon': '\u26ab'},
-		SL_STATE_MULTIPLYING: {'name': 'multiplying', 'symbol': 'multiply', 'icon': '\u26abx'},
-		SL_STATE_INSERTING: {'name': 'inserting', 'symbol': 'insert', 'icon': '\u26ab'},
-		SL_STATE_REPLACING: {'name': 'replacing', 'symbol': 'replace', 'icon': '\u26ab'},
-		SL_STATE_DELAYING: {'name': 'delaying', 'symbol': None, 'icon': 'delay'},
-		SL_STATE_MUTED: {'name': 'muted', 'symbol': None, 'icon': 'mute'},
-		SL_STATE_SCRATCHING: {'name': 'scratching', 'symbol': None, 'icon': 'scratch'},
-		SL_STATE_PLAYING_ONCE: {'name': 'playing once', 'symbol': 'oneshot', 'icon': '\uf04b'},
-		SL_STATE_SUBSTITUTING: {'name': 'substituting', 'symbol': 'substitute', 'icon': '\u26ab'},
-		SL_STATE_PAUSED: {'name': 'paused', 'symbol': None, 'icon': '\u23F8'},
-		SL_STATE_UNDO_ALL: {'name': 'undo all', 'symbol': None, 'icon': ''},
-		SL_STATE_TRIGGER_PLAY: {'name': 'trigger play...', 'symbol': None, 'icon': ''},
-		SL_STATE_UNDO: {'name': 'undo', 'symbol': None, 'icon': ''},
-		SL_STATE_REDO: {'name': 'redo', 'symbol': None, 'icon': ''},
-		SL_STATE_REDO_ALL: {'name': 'redo all', 'symbol': None, 'icon': ''},
-		SL_STATE_OFF_MUTED: {'name': 'off muted', 'symbol': None, 'icon': 'mute'},
+		SL_STATE_UNKNOWN: {
+			'name': 'unknown',
+			'ctrl_off': [],
+			'ctrl_on': [],
+			'next_state': False,
+			'icon': ''
+		},
+		SL_STATE_OFF: {
+			'name': 'off',
+			'ctrl_off': [],
+			'ctrl_on': [],
+			'next_state': False,
+			'icon': ''
+		},
+		SL_STATE_REC_STARTING: {
+			'name': 'rec starting...',
+			'ctrl_off': ['overdub', 'multiply', 'insert', 'replace', 'substitute', 'pause', 'mute', 'trigger', 'oneshot'],
+			'ctrl_on': ['record'],
+			'next_state': False,
+			'icon': '\u23EF'
+		},
+		SL_STATE_RECORDING: {
+			'name': 'recording',
+			'ctrl_off': ['overdub', 'multiply', 'insert', 'replace', 'substitute', 'pause', 'mute', 'trigger', 'oneshot'],
+			'ctrl_on': ['record'],
+			'next_state': False,
+			'icon': '\u26AB'
+		},
+		SL_STATE_REC_STOPPING: {
+			'name': 'rec stopping...',
+			'ctrl_off': ['overdub', 'multiply', 'insert', 'replace', 'substitute', 'pause', 'mute', 'trigger', 'oneshot'],
+			'ctrl_on': ['record'],
+			'next_state': False,
+			'icon': '\u23EF'
+		},
+		SL_STATE_PLAYING: {
+			'name': 'playing',
+			'ctrl_off': ['record','overdub', 'multiply', 'insert', 'replace', 'substitute', 'pause', 'mute', 'trigger', 'oneshot'],
+			'ctrl_on': [],
+			'next_state': False,
+			'icon': '\uF04B'
+		},
+		SL_STATE_OVERDUBBING: {
+			'name': 'overdubbing',
+			'ctrl_off': ['record', 'multiply', 'insert', 'replace', 'substitute', 'pause', 'mute', 'trigger', 'oneshot'],
+			'ctrl_on': ['overdub'],
+			'next_state': False,
+			'icon': '\u26AB'
+		},
+		SL_STATE_MULTIPLYING: {
+			'name': 'multiplying',
+			'ctrl_off': ['record', 'overdub', 'insert', 'replace', 'substitute', 'pause', 'mute', 'trigger', 'oneshot'],
+			'ctrl_on': ['multiply'],
+			'next_state': True,
+			'icon': '\u26AB'
+		},
+		SL_STATE_INSERTING: {
+			'name': 'inserting',
+			'ctrl_off': ['record', 'overdub', 'multiply', 'replace', 'substitute', 'pause', 'mute', 'trigger', 'oneshot'],
+			'ctrl_on': ['insert'],
+			'next_state': True,
+			'icon': '\u26AB'
+		},
+		SL_STATE_REPLACING: {
+			'name': 'replacing',
+			'ctrl_off': ['record', 'overdub', 'insert', 'multiply', 'substitute', 'pause', 'mute', 'trigger', 'oneshot'],
+			'ctrl_on': ['replace'],
+			'next_state': True,
+			'icon': '\u26AB'
+		},
+		SL_STATE_DELAYING: {
+			'name': 'delaying',
+			'ctrl_off': [],
+			'ctrl_on': [],
+			'next_state': False,
+			'icon': 'delay'
+		},
+		SL_STATE_MUTED: {
+			'name': 'muted',
+			'ctrl_off': ['record', 'overdub', 'insert', 'multiply', 'replace', 'substitute', 'pause', 'trigger', 'oneshot'],
+			'ctrl_on': ['mute'],
+			'next_state': False,
+			'icon': 'mute'
+		},
+		SL_STATE_SCRATCHING: {
+			'name': 'scratching',
+			'ctrl_off': ['record', 'overdub', 'multiply', 'insert', 'replace', 'substitute', 'pause', 'mute', 'trigger', 'oneshot'],
+			'ctrl_on': [],
+			'next_state': False,
+			'icon': 'scratch'
+		},
+		SL_STATE_PLAYING_ONCE: {
+			'name': 'playing once',
+			'ctrl_off': ['record', 'overdub', 'multiply', 'insert', 'replace', 'substitute', 'pause', 'mute', 'trigger'],
+			'ctrl_on': ['oneshot'],
+			'next_state': True,
+			'icon': '\uF04B'
+		},
+		SL_STATE_SUBSTITUTING: {
+			'name': 'substituting',
+			'ctrl_off': ['record', 'overdub', 'multiply', 'insert', 'replace', 'pause', 'mute', 'trigger','oneshot'],
+			'ctrl_on': ['substitute'],
+			'next_state': True,
+			'icon': '\u26AB'
+		},
+		SL_STATE_PAUSED: {
+			'name': 'paused',
+			'ctrl_off': ['record', 'overdub', 'insert', 'multiply', 'replace', 'substitute', 'mute', 'trigger', 'oneshot'],
+			'ctrl_on': ['pause'],
+			'next_state': False,
+			'icon': '\u23F8'},
+		SL_STATE_UNDO_ALL: {
+			'name': 'undo all',
+			'ctrl_off': [],
+			'ctrl_on': [],
+			'next_state': False,
+			'icon': ''
+		},
+		SL_STATE_TRIGGER_PLAY: {
+			'name': 'trigger play...',
+			'ctrl_off': ['record', 'overdub', 'multiply', 'insert', 'replace', 'substitute', 'pause', 'mute', 'oneshot'],
+			'ctrl_on': ['trigger'],
+			'next_state': False,
+			'icon': ''
+		},
+		SL_STATE_UNDO: {
+			'name': 'undo',
+			'ctrl_off': [],
+			'ctrl_on': [],
+			'next_state': False,
+			'icon': ''
+		},
+		SL_STATE_REDO: {
+			'name': 'redo',
+			'ctrl_off': [],
+			'ctrl_on': [],
+			'next_state': False,
+			'icon': ''
+		},
+		SL_STATE_REDO_ALL: {
+			'name': 'redo all',
+			'ctrl_off': [],
+			'ctrl_on': [],
+			'next_state': False,
+			'icon': ''
+		},
+		SL_STATE_OFF_MUTED: {
+			'name': 'off muted',
+			'ctrl_off': ['record', 'overdub', 'insert', 'multiply', 'replace', 'substitute', 'pause', 'trigger', 'oneshot'],
+			'ctrl_on': ['mute'],
+			'next_state': False,
+			'icon': 'mute'
+		}
 	}
 
 	# ---------------------------------------------------------------------------
@@ -213,18 +344,18 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		for i in range(self.MAX_LOOPS):
 			loop_labels.append(str(i + 1))
 		self._ctrls = [
-			#symbol, name, {options}, midi_cc
-			['record', {'value': 0, 'value_max': 1, 'labels': ['>', '...'], 'is_toggle': True}, 102],
-			['overdub', {'value': 0, 'value_max': 1, 'labels': ['>', '...'], 'is_toggle': True}, 103],
-			['multiply', {'value': 0, 'value_max': 1, 'labels': ['>', '...'], 'is_toggle': True}, 104],
-			['replace', {'value': 0, 'value_max': 1, 'labels': ['>', '...'], 'is_toggle': True}, 105],
-			['substitute', {'value': 0, 'value_max': 1, 'labels': ['>', '...'], 'is_toggle': True}, 106],
-			['insert', {'value': 0, 'value_max': 1, 'labels': ['>', '...'], 'is_toggle': True}, 107],
+			#symbol, {options}, midi_cc
+			['record', {'value': 0, 'value_max': 1, 'labels': ['off', 'on'], 'is_toggle': True}, 102],
+			['overdub', {'value': 0, 'value_max': 1, 'labels': ['off', 'on'], 'is_toggle': True}, 103],
+			['multiply', {'value': 0, 'value_max': 1, 'labels': ['off', 'on'], 'is_toggle': True}, 104],
+			['replace', {'value': 0, 'value_max': 1, 'labels': ['off', 'on'], 'is_toggle': True}, 105],
+			['substitute', {'value': 0, 'value_max': 1, 'labels': ['off', 'on'], 'is_toggle': True}, 106],
+			['insert', {'value': 0, 'value_max': 1, 'labels': ['off', 'on'], 'is_toggle': True}, 107],
 			['undo/redo', {'value': 1, 'labels': ['<', '<>', '>']}],
 			['prev/next', {'value': 1, 'labels': ['<', '<>', '>']}],
-			['trigger', {'value': 0, 'value_max': 1, 'labels': ['>', '...'], 'is_toggle': True}, 108],
+			['trigger', {'value': 0, 'value_max': 1, 'labels': ['off', 'on'], 'is_toggle': True}, 108],
 			['mute', {'value': 0, 'value_max': 1, 'labels': ['off', 'on'], 'is_toggle': True}, 109],
-			['oneshot', {'value': 0, 'value_max': 1, 'labels': ['>', '...'], 'is_toggle': True}, 110],
+			['oneshot', {'value': 0, 'value_max': 1, 'labels': ['off', 'on'], 'is_toggle': True}, 110],
 			['pause', {'value': 0, 'value_max': 1, 'labels': ['off', 'on'], 'is_toggle': True}, 111],
 			['reverse', {'name': 'direction', 'value': 0, 'labels': ['reverse', 'forward'], 'ticks':[1, 0], 'is_toggle': True}],
 			['rate', {'name': 'speed', 'value': 1.0, 'value_min': 0.25, 'value_max': 4.0, 'is_integer': False, 'nudge_factor': 0.01}],
@@ -404,8 +535,8 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				ctrl[1]['processor'] = processor
 				zctrl = zynthian_controller(self, ctrl[0], ctrl[1])
 				processor.controllers_dict[zctrl.symbol] = zctrl
-				if midi_chan is not None and len(ctrl) > 3:
-					self.state_manager.chain_manager.add_midi_learn(midi_chan, ctrl[3], zctrl)
+				if midi_chan is not None and len(ctrl) > 2:
+					self.state_manager.chain_manager.add_midi_learn(midi_chan, ctrl[2], zctrl)
 		return processor.controllers_dict
 
 	def send_controller_value(self, zctrl):
@@ -414,17 +545,16 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			# Ignore off signals
 			return
 		elif zctrl.symbol in ("mute", "pause"):
-			logging.warning(f"SENDING SIN TONTADAS {zctrl.symbol} {zctrl.value}")
 			self.osc_server.send(self.osc_target, '/sl/-3/hit', ('s', zctrl.symbol))
 		elif zctrl.is_toggle:
 			# Use is_toggle to indicate the SL function is a toggle, i.e. press to engage, press to release
-			if zctrl.symbol == 'record' and zctrl.value == 0 and self.state[self.selected_loop] == 1:
+			if zctrl.symbol == 'record' and zctrl.value == 0 and self.state[self.selected_loop] == SL_STATE_REC_STARTING:
 				# TODO: Implement better toggle of pending state
 				self.osc_server.send(self.osc_target, '/sl/-3/hit', ('s', 'undo'))
 				return
 			self.osc_server.send(self.osc_target, '/sl/-3/hit', ('s', zctrl.symbol))
 			#if zctrl.symbol == 'trigger':
-			zctrl.set_value(0, False)  # Make trigger a pulse
+			#zctrl.set_value(0, False)  # Make trigger a pulse
 		elif zctrl.symbol == 'undo/redo':
 			# Use single controller to perform undo (CCW) and redo (CW)
 			if zctrl.value == 0:
@@ -471,7 +601,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			#logging.debug(f"Rx OSC => {path} {args}")
 			if path == '/state':
 				# args: i:Loop index, s:control, f:value
-				#logging.warning("Loop State: %d %s=%0.1f", args[0], args[1], args[2])
+				logging.debug("Loop State: %d %s=%0.1f", args[0], args[1], args[2])
 				if args[0] < 0 or args[0] >= self.MAX_LOOPS:
 					return
 				state = int(args[2])
@@ -499,7 +629,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 			elif path == '/info':
 				# args: s:hosturl  s:version  i:loopcount
-				#logging.warning("Info: from %s ver: %s loops: %d", args[0], args[1], args[2])
+				#logging.debug("Info: from %s ver: %s loops: %d", args[0], args[1], args[2])
 				self.sl_version = args[1]
 				loop_count_changed = int(args[2]) - self.loop_count  # +/- quantity of added/removed loops
 				self.loop_count = int(args[2])
@@ -535,7 +665,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				self.monitors_dict['version'] = self.sl_version
 			elif path == '/control':
 				# args: i:Loop index, s:control, f:value
-				#logging.warning("Control: Loop %d %s=%0.2f", args[0], args[1], args[2])
+				#logging.debug("Control: Loop %d %s=%0.2f", args[0], args[1], args[2])
 				self.monitors_dict[args[1]] = args[2]
 				if args[1] == 'selected_loop_num':
 					self.select_loop(args[2])
@@ -548,7 +678,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			elif path == '/monitor':
 				# args: i:Loop index, s:control, f:value
 				# Handle events registered for selected loop
-				#logging.warning("Monitor: Loop %d %s=%0.2f", args[0], args[1], args[2])
+				#logging.debug("Monitor: Loop %d %s=%0.2f", args[0], args[1], args[2])
 				if args[0] == -3:
 					if args[1] == 'rate_output':
 						try:
@@ -564,7 +694,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 					#if args[1] in ['loop_len', 'rate_output', 'mute']:
 					#	logging.warning("Monitor: Loop %d %s=%0.2f", args[0], args[1], args[2])
 			elif path == 'error':
-				logging.warning(f"SooperLooper daemon error: {args[0]}")
+				logging.error(f"SooperLooper daemon error: {args[0]}")
 		except Exception as e:
 			logging.warning(e)
 
@@ -578,24 +708,21 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			processor = self.processors[0]
 		except:
 			return
-		current_state = self.state[self.selected_loop]
-		# Pause & mute
-		if current_state == SL_STATE_MUTED:
-			processor.controllers_dict['mute'].set_value(127, False)
-		elif current_state == SL_STATE_PAUSED:
-			processor.controllers_dict['pause'].set_value(127, False)
-		else:
-			processor.controllers_dict['mute'].set_value(0, False)
-			processor.controllers_dict['pause'].set_value(0, False)
-		# Update mutually exclusive 'state' controllers
-		for state in self.SL_STATES:
-			if state < 0:
-				continue
-			if self.SL_STATES[state]['symbol']:
-				if state == current_state:
-					processor.controllers_dict[self.SL_STATES[state]['symbol']].set_value(1, False)
-				else:
-					processor.controllers_dict[self.SL_STATES[state]['symbol']].set_value(0, False)
+		try:
+			current_state = self.state[self.selected_loop]
+			for symbol in self.SL_STATES[current_state]['ctrl_off']:
+				processor.controllers_dict[symbol].set_readonly(False)
+				processor.controllers_dict[symbol].set_value(0, False)
+			for symbol in self.SL_STATES[current_state]['ctrl_on']:
+				processor.controllers_dict[symbol].set_readonly(False)
+				processor.controllers_dict[symbol].set_value(1, False)
+			next_state = self.next_state[self.selected_loop]
+			if self.SL_STATES[next_state]['next_state']:
+				for symbol in self.SL_STATES[next_state]['ctrl_on']:
+					processor.controllers_dict[symbol].set_value(1, False)
+					processor.controllers_dict[symbol].set_readonly(True)
+		except Exception as e:
+			logging.error(e)
 		#self.processors[0].status = self.SL_STATES[self.state]['icon']
 
 	def select_loop(self, loop, send=False):

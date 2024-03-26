@@ -557,7 +557,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			if state == SL_STATE_MUTED:
 				self.processor.controllers_dict['mute'].set_value(0, True)
 			elif state in (SL_STATE_PLAYING, SL_STATE_TRIGGER_PLAY, SL_STATE_PLAYING_ONCE):
-				self.processor.controllers_dict['mute'].set_value(127, True)
+				self.processor.controllers_dict['mute'].set_value(1, True)
 			if state == SL_STATE_PAUSED:
 				self.processor.controllers_dict['pause'].set_value(0, True)
 			return True
@@ -608,9 +608,11 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		#logging.debug(f"STATE: {state}, NEXT: {next_state}, WAITING: {waiting}")
 
 		# REC Button
-		if state in (SL_STATE_REC_STARTING, SL_STATE_REC_STOPPING) or next_state in (SL_STATE_RECORDING, SL_STATE_OVERDUBBING, SL_STATE_MULTIPLYING, SL_STATE_INSERTING, SL_STATE_REPLACING):
+		if state in (SL_STATE_REC_STARTING, SL_STATE_REC_STOPPING) or next_state in (SL_STATE_RECORDING,
+			SL_STATE_OVERDUBBING, SL_STATE_MULTIPLYING, SL_STATE_INSERTING, SL_STATE_REPLACING):
 			wsl.blink(wsleds[1], wsl.wscolor_red)
-		elif state in (SL_STATE_RECORDING, SL_STATE_OVERDUBBING, SL_STATE_MULTIPLYING, SL_STATE_INSERTING, SL_STATE_REPLACING):
+		elif state in (SL_STATE_RECORDING, SL_STATE_OVERDUBBING, SL_STATE_MULTIPLYING, SL_STATE_INSERTING,
+			SL_STATE_REPLACING):
 			if next_state == 'SL_STATE_PLAYING':
 				wsl.blink(wsleds[1], wsl.wscolor_red)
 			else:
@@ -627,7 +629,8 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		# PLAY button:
 		if next_state in (SL_STATE_PAUSED, SL_STATE_MUTED, SL_STATE_TRIGGER_PLAY, SL_STATE_PLAYING_ONCE):
 			wsl.blink(wsleds[3], wsl.wscolor_green)
-		elif state not in (SL_STATE_UNKNOWN, SL_STATE_OFF, SL_STATE_PAUSED, SL_STATE_MUTED):
+		elif state in (SL_STATE_PLAYING, SL_STATE_OVERDUBBING, SL_STATE_MULTIPLYING, SL_STATE_INSERTING,
+			SL_STATE_REPLACING, SL_STATE_PLAYING_ONCE, SL_STATE_SUBSTITUTING):
 			wsl.wsleds.setPixelColor(wsleds[3], wsl.wscolor_green)
 		else:
 			wsl.wsleds.setPixelColor(wsleds[3], color_default)
