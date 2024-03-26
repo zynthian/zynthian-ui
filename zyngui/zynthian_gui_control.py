@@ -220,7 +220,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		for fn in dir(self):
 			if fn.startswith('cuia_') or fn == 'update_wsleds':
 				delattr(self, fn)
-				logging.debug(f"DELATTR {fn}")
+				#logging.debug(f"DELATTR {fn}")
 		# Create new dynamix CUIA methods
 		if self.current_widget:
 			for fn in dir(self.current_widget):
@@ -228,7 +228,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 					func = getattr(self.current_widget, fn)
 					if callable(func):
 						setattr(self, fn, func)
-						logging.debug(f"SETATTR {fn}")
+						#logging.debug(f"SETATTR {fn}")
 
 	def set_controller_screen(self):
 		# Get screen info

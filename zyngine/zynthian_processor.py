@@ -675,9 +675,9 @@ class zynthian_processor:
             "processor_type": self.engine.nickname,
             "bank_info": self.bank_info,
             "preset_info": self.preset_info,
-            "show_fav_presets": self.show_fav_presets, #TODO: GUI
+            "show_fav_presets": self.show_fav_presets,  # TODO: GUI
             "controllers": {},
-            "current_screen_index": self.current_screen_index #TODO: GUI
+            "current_screen_index": self.current_screen_index  # TODO: GUI
         }
         # Get controller values
         for symbol in self.controllers_dict:
@@ -715,7 +715,7 @@ class zynthian_processor:
                     if "value" in ctrl_state:
                         zctrl.set_value(ctrl_state["value"], True)
                     if "midi_cc_momentary_switch" in ctrl_state:
-                        zctrl.midi_cc_momentary_switch = state['midi_cc_momentary_switch']
+                        zctrl.midi_cc_momentary_switch = ctrl_state['midi_cc_momentary_switch']
                 except Exception as e:
                     logging.warning("Invalid Controller for processor {}: {}".format(self.get_basepath(), e))
 
