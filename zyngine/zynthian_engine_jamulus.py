@@ -24,10 +24,8 @@
 
 """ TODO:
     Save presets / servers
-    Update control view with controllers when users connect/disconnect
     Send and display text messages
     Touch drag fader should be full width of channel, not just fader knob
-    Default mute own channel (not mute self) is probably most common workflow
 """
 
 import logging
@@ -40,7 +38,6 @@ from subprocess import Popen, DEVNULL
 
 from . import zynthian_engine
 from zynconf import ServerPort
-import zynautoconnect
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngine import zynthian_processor
 
@@ -60,6 +57,44 @@ class zynthian_engine_jamulus(zynthian_engine):
     STATE_CONNECTING = 1
     STATE_CONNECTED = 2
 
+    directories = [
+        {
+            "name": "Any Genre 1",
+            "address": "anygenre1.jamulus.io:22124",
+            "servers": []
+        },
+        {
+            "name": "Any Genre 2",
+            "address": "anygenre2.jamulus.io:22224",
+            "servers": []
+        },
+        {
+            "name": "Any Genre 3",
+            "address": "anygenre3.jamulus.io:22624",
+            "servers": []
+        },
+        {
+            "name": "Rock",
+            "address": "rock.jamulus.io:22424",
+            "servers": []
+        },
+        {
+            "name": "Jazz",
+            "address": "jazz.jamulus.io:22324",
+            "servers": []
+        },
+        {
+            "name": "Classical/Folk",
+            "address": "classical.jamulus.io:22524",
+            "servers": []
+        },
+        {
+            "name": "Choral/Barbershop",
+            "address": "choral.jamulus.io:22724",
+            "servers": []
+        }
+    ]
+
     # ---------------------------------------------------------------------------
     # Initialization
     # ---------------------------------------------------------------------------
@@ -69,7 +104,7 @@ class zynthian_engine_jamulus(zynthian_engine):
 
         self._ctrls = [
             ["Connect", None, "On", ["Off","On"]],
-            ["Mute Self", 100, "Off", ["Off", "On"]],
+            ["Mute Self", 100, "On", ["Off", "On"]],
             ["Local Server", None, "Off", ["Off", "On"]]
         ]
         for i in range(1,9):
@@ -80,6 +115,7 @@ class zynthian_engine_jamulus(zynthian_engine):
                 [f"Solo {i}", i + 48, "Off", ["Off","On"]]
             ]
 
+        self.directory_index = 0
         letters = string.ascii_lowercase + string.digits
         self.RPC_SECRET = ''.join(random.choice(letters) for i in range(16))
         self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_jamulus.py"
@@ -93,7 +129,10 @@ class zynthian_engine_jamulus(zynthian_engine):
         self.own_channel = None # Own channel or None if not connected
         self.server_proc = None # Process object for jamulus server running on this device
         self.monitors = {} # Populate with changed values
-        self.update_ctrl_screen()
+        self.preset = ["localhost", False, "Local Server"]
+        self.server_info = {} # List of [pingTime, numClients]for each server, indexed by server socket address
+        #self.update_ctrl_screen()
+        self.start()
 
     def update_ctrl_screen(self):
         existing_names = []
@@ -123,17 +162,16 @@ class zynthian_engine_jamulus(zynthian_engine):
         if self.proc:
             return
         logging.info(f"Starting Engine {self.name}")
-        self.monitors["status"] = self.STATE_CONNECTING
 
         self.command = [
-            "Jamulus",
+            "jamulus",
             "--nojackconnect",
             "--clientname", self.jackname,
             "--jsonrpcport", str(self.RPC_PORT),
             "--jsonrpcsecretfile", self.RPC_SECRET_FILE,
-            "--ctrlmidich", "'1;f1*16;p17*16;m33*16;s49*16;o100;o100'", # bug in jamulus r3.9 does not parse last parameter correctly so repeat ;o100
+            "--ctrlmidich", "'1;f1*16;p17*16;m33*16;s49*16;o100;o100'", # bug in jamulus (r3.10) does not parse last parameter correctly so repeat ;o100
             "--inifile", f"{self.data_dir}/jamulus/Jamulus.ini",
-            "--connect", self.preset[1]
+            "--mutestream"
         ]
         if not self.config_remote_display():
             self.command.append("--nogui")
@@ -152,20 +190,15 @@ class zynthian_engine_jamulus(zynthian_engine):
             try:
                 self.rpc_socket.connect(("localhost", self.RPC_PORT))
                 self.rpc_socket.send(bytes(f'{{"id":{self.rpc_id},"jsonrpc":"2.0","method":"jamulus/apiAuth","params":{{"secret":"{self.RPC_SECRET}"}}}}\r\n', "utf-8"))
-                success = True
                 self.rpc_id += 1
+                success = True
                 break
             except Exception as e:
                 sleep(0.2)
-        if self.processors:
-            self.processors[0].controllers_dict["Connect"].set_value("On", False)
         self.update_ctrl_screen()
         self.thread = threading.Thread(target=self.monitor)
         self.thread.start()
         self.set_name(self.user_name)
-
-        zynautoconnect.request_midi_connect(True)
-        zynautoconnect.request_audio_connect(True)
 
     def stop(self, term_server=True):
         if self.proc:
@@ -182,12 +215,12 @@ class zynthian_engine_jamulus(zynthian_engine):
                 sleep(0.2)
             self.proc = None
             self.clients = []
-            self.monitors["status"] = self.STATE_DISCONNECTED
+            self.monitors["connectionState"] = self.STATE_DISCONNECTED
             self.update_ctrl_screen()
         if term_server and self.server_proc:
             self.server_proc.terminate()
             self.server_proc = None
-            self.monitors["local_server_status"] = False
+            self.monitors["localServerState"] = False
 
     def restart(self):
         self.stop(False)
@@ -195,45 +228,55 @@ class zynthian_engine_jamulus(zynthian_engine):
 
     def monitor(self):
         while self.running:
+            if self.parse_rpc():
+                break
+            sleep(0.1)
+
+    def parse_rpc(self):
             try:
-                for jsn in self.rpc_socket.recv(4096).decode("utf-8").split("\n"):
+                for jsn in self.rpc_socket.recv(65507).decode("utf-8").split("\n"):
                     if "method" in jsn:
                         msg = json.loads(jsn)
                         method = msg["method"]
-                        update_zctrls = False
+                        #logging.debug(method)
                         if method == "jamulusclient/channelLevelListReceived":
                             self.levels = msg["params"]["channelLevelList"]
                         elif method == "jamulusclient/clientListReceived":
                             self.clients = msg["params"]["clients"]
                             self.update_ctrl_screen()
                             self.monitors["clients"] = self.clients
-                            self.monitors["status"] = self.STATE_CONNECTED
+                            self.monitors["connectionState"] = self.STATE_CONNECTED
                             for zctrl in self.processors[0].controllers_dict.values():
                                 if zctrl.midi_cc:
                                     zctrl.send_midi_cc(zctrl.value)
                         elif method == "jamulusclient/connected":
                             self.own_channel = msg["params"]["id"]
                             self.update_ctrl_screen()
-                            self.monitors["status"] = self.STATE_CONNECTED
+                            self.monitors["connectionState"] = self.STATE_CONNECTED
                         elif method == "jamulusclient/disconnected":
                             self.own_channel = None
                             self.processors[0].controllers_dict["Connect"].set_value("Off")
                             self.update_ctrl_screen()
-                            self.monitors["status"] = self.STATE_DISCONNECTED
+                            self.monitors["connectionState"] = self.STATE_DISCONNECTED
                             self.running = False
                             # Jamulus stops trying to reconnect 30s after last handshake but we want it to continue to reconnect
                             # May be influenced by https://github.com/jamulussoftware/jamulus/issues/2519
                             threading.Timer(0.5, self.restart).start()
                         elif method == "jamulusclient/chatTextReceived":
                             self.monitors["chatText"] = msg["params"]["chatText"]
+                        elif method == "jamulusclient/serverListReceived":
+                            self.directories[self.directory_index]["servers"] += msg["params"]["servers"]
+                        elif method == "jamulusclient/serverInfoReceived":
+                            self.server_info[msg["params"]["address"]] = (msg["params"]["pingTime"], msg["params"]["numClients"])
+                        elif method == "jamulusclient/recorderState":
+                            self.monitors["recorderState"] = msg["params"]["state"]
             except TimeoutError:
                 pass # We expect socket to timeout when no data available
             except OSError as e:
                 logging.warning("Socket disconnected", e)
-                break
+                return True
             except Exception as e:
                 logging.error(e)
-            sleep(0.1)
 
 
     # ----------------------------------------------------------------------------
@@ -254,13 +297,56 @@ class zynthian_engine_jamulus(zynthian_engine):
         except:
             logging.warning("Failed to set skll level")
 
+    def connect(self, address):
+        self.disconnect()
+        try:
+            self.rpc_socket.send(bytes(f'{{"id":{self.rpc_id},"jsonrpc":"2.0","method":"jamulusclient/connect","params":{{"address":"{address}"}}}}\r\n', "utf-8"))
+            self.rpc_id += 1
+            self.monitors["connectionState"] = self.STATE_CONNECTING
+            if self.processors:
+                self.processors[0].controllers_dict["Connect"].set_value("On", False)
+
+        except:
+            logging.warning("Failed to connect")
+
+    def disconnect(self):
+        try:
+            self.rpc_socket.send(bytes(f'{{"id":{self.rpc_id},"jsonrpc":"2.0","method":"jamulusclient/disconnect","params":{{}}}}\r\n', "utf-8"))
+            self.rpc_id += 1
+            self.monitors["connectionState"] = self.STATE_DISCONNECTED
+            self.update_ctrl_screen()
+        except:
+            logging.warning("Failed to disconnect")
+
     # ---------------------------------------------------------------------------
     # Bank Management
     # ---------------------------------------------------------------------------
 
-    # No bank support for jamulus
     def get_bank_list(self, processor=None):
-        return [("", None, "", None)]
+        """ Get list of banks
+
+        processor - Not used
+        returns - List of banks [uid (str), index (int) or None if user bank, name (str), is user bank (bool)]
+        """
+
+        try:
+            with open(self.PRESET_FILE, "r") as f:
+                user_presets = json.load(f)
+        except:
+            user_presets = {"Default"} # Create a default bank if no user presets / banks saved
+
+        banks = [(None, None, "User Banks", None)]
+        for i, bank in enumerate(user_presets):
+            banks.append((bank, None, bank, True))
+
+        try:
+            if self.proc:
+                banks.append((None, None, "Public Directories", None))
+                for i, directory in enumerate(self.directories):
+                    banks += [(directory["address"], i, directory["name"], False)]
+        except:
+            pass # api cannot return public servers
+        return banks
 
     # ----------------------------------------------------------------------------
     # Preset Management
@@ -269,52 +355,119 @@ class zynthian_engine_jamulus(zynthian_engine):
     def get_preset_list(self, bank):
         """ Get list of presets (remote servers) in a bank
         
-        bank - Name of bank (ignored)
-        returns - list of preset config: [uri, url, name]
+        bank - Bank config list [uid (str), index (int), name (str), is user bank (bool)]
+        returns - list of preset config: [server socket address (str), is user preset (bool), name (str)]
         """
         
-        try:
-            with open(self.PRESET_FILE, "r") as f:
-                presets = json.load(f)
-        except Exception as e:
-            # Preset file missing or corrupt
-            presets = [["DefaultLocalHost", "localhost", "Local Server"]]
-        
+        if bank[3]:
+            if bank[0] == "Default":
+                presets = [["localhost", False, "Local Server"]] # Default bank always has local server
+            else:
+                presets = []
+            try:
+                with open(self.PRESET_FILE, "r") as f:
+                    user_presets = json.load(f)
+                for server, name in user_presets[bank[0]].items():
+                    presets.append([server, True, name])
+            except Exception as e:
+                # Preset file missing or corrupt
+                pass
+        else:
+            try:
+                self.directory_index = bank[1]
+                self.directories[self.directory_index]["servers"] = []
+                self.server_info = {}
+                self.rpc_socket.send(bytes(f'{{"id":{self.rpc_id},"jsonrpc":"2.0","method":"jamulusclient/pollServerList","params":{{"directory":"{self.directories[self.directory_index]["address"]}"}}}}\r\n', "utf-8"))
+                self.rpc_id += 1
+                sleep(1) # Wait for response (handled by background task)
+            except Exception as e:
+                logging.warning("Failed to get directory listing", e)
+
+            presets = []
+            preset_dict = {}
+            for server in self.directories[self.directory_index]['servers']:
+                if server["address"] != "0.0.0.0:0" and server["name"] and server["address"]:
+                    preset_dict[server["address"]] = server
+            max_ping_time = 0
+            for addr, info in sorted(self.server_info.items(), key=lambda x:(x[1][0],-x[1][1])):
+                try:
+                    server = preset_dict[addr]
+                    ping_time = info[0]
+                    if ping_time > max_ping_time:
+                        presets.append((None, None, f"Latency {max_ping_time - 0} - {max_ping_time + 40} ms"))
+                        max_ping_time += 40
+                    title = f"[{ping_time}ms {info[1]}] {server['name']}".strip()
+                    if server['city']:
+                        title += f" ({server['city']}"
+                        if server['country']:
+                            country = server['country']
+                            parts = server['country'].split()
+                            if len(parts) > 1:
+                                country = '.'.join(t[0] for t in parts)
+                            title += f",{country}"
+                        title += ")"
+                    else:
+                        if server['country']:
+                            title += f"({server['country']})"
+                    presets.append([server["address"], False, title])
+                except Exception as e:
+                    logging.warning(e)
+
         return presets
 
     def set_preset(self, processor, preset, preload=False):
         """ Connect to remote server
         processor - Processor object (not used - only one processor allowed for jamulus)
-        preset - Preset config
+        preset - Preset config is list [server socket address (str), is user preset (bool), name (str)]
         preload - True to allow preload (not used)
         """
 
-        self.stop(False)
         self.preset = preset
-        self.start()
+        if self.processors and self.processors[0].controllers_dict["Connect"].value:
+            self.connect(self.preset[0])
 
     def is_preset_user(self, preset):
-        return preset[0] != "DefaultLocalHost"
+        return preset[1]
 
     def rename_preset(self, bank, preset, name):
-        with open(self.PRESET_FILE, "r") as f:
-            presets = json.load(f)
-        for p in presets:
-            if p[1] == preset[1]:
-                p[2] = name
-                with open(self.PRESET_FILE, 'w') as f:
-                    json.dump(presets, f)
-                return
+        try:
+            with open(self.PRESET_FILE, "r") as f:
+                presets = json.load(f)
+            presets[bank[0]][preset[0]] = name
+            with open(self.PRESET_FILE, 'w') as f:
+                json.dump(presets, f)
+        except:
+            pass
 
     def delete_preset(self, bank, preset):
-        with open(self.PRESET_FILE, "r") as f:
-            presets = json.load(f)
         try:
-            presets.pop(preset)
+            with open(self.PRESET_FILE, "r") as f:
+                presets = json.load(f)
+            presets[bank[0]].pop(preset[0])
             with open(self.PRESET_FILE, 'w') as f:
                 json.dump(presets, f)
         except Exception as e:
             logging.warning(e)
+
+    def toggle_preset_fav(self, processor, preset):
+        if self.preset_favs is None:
+            self.load_preset_favs()
+        try:
+            del self.preset_favs[str(preset[0])]
+            fav_status = False
+        except:
+            self.preset_favs[str(preset[0])] = [processor.bank_info, preset]
+            if ']' in self.preset_favs[str(preset[0])][1][2]:
+                self.preset_favs[str(preset[0])][1][2] = self.preset_favs[str(preset[0])][1][2].split('] ', 1)[1]
+            fav_status = True
+
+        try:
+            with open(self.preset_favs_fpath, 'w') as f:
+                json.dump(self.preset_favs, f)
+        except Exception as e:
+            logging.error("Can't save preset favorites! => {}".format(e))
+
+        return fav_status
 
     #----------------------------------------------------------------------------
     # Controllers Management
@@ -325,23 +478,27 @@ class zynthian_engine_jamulus(zynthian_engine):
             if zctrl.value:
                 # Start local server
                 if self.server_proc is None:
-                    cmd = ["Jamulus","--server", "--inifile", f"{self.data_dir}/jamulus/Jamulusserver.ini"]
+                    cmd = [
+                        "jamulus",
+                        "--server",
+                        "--inifile", f"{self.data_dir}/jamulus/Jamulusserver.ini"
+                    ]
                     if not self.config_remote_display():
                         cmd.append("--nogui")
                     self.server_proc = Popen(cmd, env=self.command_env, cwd=self.command_cwd, stdout=DEVNULL, stderr=DEVNULL)
-                    self.monitors["local_server_status"] = True
+                    self.monitors["localServerState"] = True
 
             else:
                 # Stop local server
                 if self.server_proc:
                     self.server_proc.terminate()
                     self.server_proc = None
-                    self.monitors["local_server_status"] = False
+                    self.monitors["localServerState"] = False
         elif zctrl.symbol == "Connect":
             if zctrl.value:
-                self.start()
+                self.connect(self.preset[0])
             else:
-                self.stop(False)
+                self.disconnect()
         else:
             if zctrl.symbol.startswith("Fader"):
                 if "fader" in self.monitors:
@@ -378,47 +535,55 @@ class zynthian_engine_jamulus(zynthian_engine):
 
     @classmethod
     def zynapi_get_banks(cls):
-        return [
-            {
-                "text": "Servers",
-                "name": "Servers",
-                "fullpath": "/zynthian/zynthian-my-data/presets/jamulus",
-                "readonly": False
-            }
-        ]
+        banks = []
+        for b in cls.get_bank_list(cls):
+            if b[2]:
+                banks.append({
+                    'text': b[2],
+                    'name': b[2],
+                    'fullpath': b[0],
+                    'raw': b,
+                    'readonly': False
+                })
+        return banks
 
     @classmethod
     def zynapi_get_presets(cls, bank):
         presets = []
-        for preset in cls.get_preset_list(cls, bank):
-            presets.append({
-                    'text': preset[2],
-                    'name': preset[2],
-                    'fullpath': preset[0],
-                    'raw': preset,
-                    'readonly': True if preset[0] == 'DefaultLocalHost' else False
+        try:
+            with open(cls.PRESET_FILE, "r") as f:
+                user_presets = json.load(f)
+            for server, name in user_presets[bank["name"]].items():
+                presets.append({
+                    'text': name,
+                    'name': name,
+                    'fullpath': f'{bank["name"]}/{server}',
+                    'raw': [bank["name"], server, name],
+                    'readonly': False
                 })
+        except Exception as e:
+            logging.warning(e)
         return presets
 
     @classmethod
     def zynapi_rename_preset(cls, preset_id, name):
-        cls.rename_preset(preset_id, name)
+        bank, server = preset_id.split('/', 1)
+        cls.rename_preset(cls, [bank], [server], name)
 
     @classmethod
     def zynapi_download(cls, preset_id):
-        presets = cls.get_preset_list(cls, None)
-        for preset in presets:
-            if preset[0] == preset_id:
-                try:
-                    filename = f'/tmp/{preset[0]}.jamulus'
-                    with open(filename, 'w') as f:
-                        f.write(f"uid={preset[0]}\n")
-                        f.write(f"url={preset[1]}\n")
-                        f.write(f"name={preset[2]}\n")
-                    return filename
-                except Exception as e:
-                    logging.warning(e)
-                break
+        bank, server = preset_id.split('/', 1)
+        try:
+            with open(cls.PRESET_FILE, "r") as f:
+                user_presets = json.load(f)
+            name = user_presets[bank][server]
+            filename = f'/tmp/{name}.jamulus'
+            with open(filename, 'w') as f:
+                f.write(f"server={server}\n")
+                f.write(f"name={name}\n")
+            return filename
+        except Exception as e:
+            logging.warning(e)
 
     @classmethod
     def zynapi_get_formats(cls):
@@ -426,44 +591,38 @@ class zynthian_engine_jamulus(zynthian_engine):
 
     @classmethod
     def zynapi_install(cls, dpath, bank_path):
+        if bank_path == "":
+            bank_path = "Default"
         with open(dpath, 'r') as f:
             lines = f.readlines()
         for line in lines:
             key, value = line.strip().split("=", 1)
-            if key.lower() == "uid":
-               uid = value
-            elif key.lower() == "url":
-               url = value
+            if key.lower() == "server":
+               server = value
             elif key.lower() == "name":
                name = value
         try:
-            new_preset = [uid, url, name]
+            new_preset = [server, True, name]
         except:
             logging.warning("Bad jamulus preset file format")
             return
-        presets = cls.get_preset_list(cls, None)
-        update = False
-        for i, preset in enumerate (presets):
-            if preset[0] == new_preset[0]:
-                presets[i] = new_preset
-                update = True
-                break
-        if not update:
-            presets.append(new_preset)
+
+        try:
+            with open(cls.PRESET_FILE, "r") as f:
+                user_presets = json.load(f)
+        except Exception as e:
+            user_presets = {} #"Default":{"server":"localhost", "name": "Local Server"}}
+        if bank_path not in user_presets:
+            user_presets[bank_path] = {}
+        user_presets[bank_path][new_preset[0]] = new_preset[2]
         with open(zynthian_engine_jamulus.PRESET_FILE, 'w') as f:
-            json.dump(presets, f)
+            json.dump(user_presets, f)
 
     @classmethod
     def zynapi_remove_preset(cls, preset_id):
-        with open(zynthian_engine_jamulus.PRESET_FILE, "r") as f:
-            presets = json.load(f)
         try:
-            for i, preset in enumerate(presets):
-                if preset[0] == preset_id:
-                    presets.pop(i)
-                    with open(zynthian_engine_jamulus.PRESET_FILE, 'w') as f:
-                        json.dump(presets, f)
-                    break
+            bank, server = preset_id.split('/', 1)
+            cls.delete_preset(cls, [bank], [server])
         except Exception as e:
             logging.warning(e)
 

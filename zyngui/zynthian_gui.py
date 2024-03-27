@@ -578,6 +578,7 @@ class zynthian_gui:
 		else:
 			self.current_processor = self.get_current_processor()
 
+		self.state_manager.start_busy(f"{screen}...")
 		if screen not in ("bank", "preset", "option"):
 			self.chain_manager.restore_presets()
 
@@ -605,6 +606,7 @@ class zynthian_gui:
 			self.hide_screens(exclude=screen)
 			zynsigman.send(zynsigman.S_GUI, self.SS_SHOW_SCREEN, screen=screen)
 
+		self.state_manager.end_busy(f"{screen}...")
 		self.screen_lock.release()
 
 	def show_modal(self, screen=None):

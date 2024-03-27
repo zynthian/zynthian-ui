@@ -44,6 +44,7 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
         self.html2text.ignore_links=True
         self.html2text.ignore_tables=True
         self.html2text.body_width=0
+        self.recording = False
         self.widget_canvas = tkinter.Canvas(self,
             bd=0,
             highlightthickness=0,
@@ -54,7 +55,7 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
             fill="grey",
             text="Disconnected" if get_jackd_samplerate() == 48000 else "Change samplerate\nto 48000",
             font=("DejaVu Sans Mono", int(2 * zynthian_gui_config.font_size)),
-            tags="connection_status"
+            tags="connection_state"
         )
 
         self.widget_canvas.create_text(
@@ -67,7 +68,13 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.create_rectangle(
             self.width - 10, 0, self.width, 20,
             fill="grey",
-            tags="local_server_status"
+            tags="local_server_state"
+        )
+        self.widget_canvas.create_rectangle(
+            self.width - 20, 0, self.width - 10, 20,
+            fill="red",
+            tags="recorder_state",
+            state=tkinter.HIDDEN
         )
 
         self.widget_canvas.bind('<ButtonPress-1>', self.on_press)
@@ -87,8 +94,9 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
         self.fader_height = self.height // 2
         self.channel_width = self.width // 8
         self.button_height = self.height // 12
-        self.widget_canvas.coords("local_server_status", self.width - 10, 0, self.width, 20)
-        self.widget_canvas.coords("connection_status", self.width //2, self.height // 2)
+        self.widget_canvas.coords("local_server_state", self.width - 10, 0, self.width, 20)
+        self.widget_canvas.coords("recorder_state", self.width - 20, 0, self.width - 10, 20)
+        self.widget_canvas.coords("connection_state", self.width //2, self.height // 2)
 
     def update_fader_pos(self, channel, value):
         x0 = int(self.channel_width * (channel - 0.6))
@@ -107,7 +115,8 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.coords(f"pan_{channel}", x, y0, x, y1)
 
     def cb_scroll_chat(self):
-        if self.chat_width + self.chat_pos > self.width - 10:
+        status_width = 20 if self.recording else 10 
+        if self.chat_width + self.chat_pos > self.width - status_width:
             self.scrolling_chat = True
             self.chat_pos -= 1
             self.widget_canvas.coords("chatText", self.chat_pos, 0)
@@ -123,18 +132,22 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
 
     def refresh_gui(self):
         #TODO: Show self muted indication
-        if "status" in self.monitors:
-            if self.monitors["status"] == zynthian_engine_jamulus.STATE_DISCONNECTED:
+        if "connectionState" in self.monitors:
+            if self.monitors["connectionState"] == zynthian_engine_jamulus.STATE_DISCONNECTED:
                 self.monitors["clients"] = []
-                self.widget_canvas.itemconfig("connection_status", fill="grey", text="Disconnected", state=tkinter.NORMAL)
-            elif self.monitors["status"] == zynthian_engine_jamulus.STATE_CONNECTING:
-                self.monitors["clients"] = []
+                self.widget_canvas.itemconfig("connection_state", fill="grey", text="Disconnected", state=tkinter.NORMAL)
                 self.widget_canvas.itemconfig("chatText", text="")
-                self.widget_canvas.itemconfig("connection_status", fill="white", text="Connecting", state=tkinter.NORMAL)
-            elif self.monitors["status"] == zynthian_engine_jamulus.STATE_CONNECTED:
-                self.widget_canvas.itemconfig("connection_status", state=tkinter.HIDDEN)
-        if "local_server_status" in self.monitors:
-            self.widget_canvas.itemconfig("local_server_status", fill="green" if self.monitors["local_server_status"] else "grey")
+            elif self.monitors["connectionState"] == zynthian_engine_jamulus.STATE_CONNECTING:
+                self.monitors["clients"] = []
+                self.widget_canvas.itemconfig("connection_state", fill="white", text="Connecting...", state=tkinter.NORMAL)
+                self.widget_canvas.itemconfig("chatText", text="")
+            elif self.monitors["connectionState"] == zynthian_engine_jamulus.STATE_CONNECTED:
+                self.widget_canvas.itemconfig("connection_state", fill="white", text="Connected", state=tkinter.NORMAL)
+        if "localServerState" in self.monitors:
+            self.widget_canvas.itemconfig("local_server_state", fill="green" if self.monitors["localServerState"] else "grey")
+        if "recorderState" in self.monitors:
+            self.recording = self.monitors["recorderState"] == 3
+            self.widget_canvas.itemconfig("recorder_state", state=tkinter.NORMAL if self.recording else tkinter.HIDDEN)
         if "chatText" in self.monitors:
             if self.monitors["chatText"].startswith("<font color"):
                 self.monitors["chatText"] = self.monitors["chatText"].replace("</font>", "</font>:", 1)
@@ -145,6 +158,8 @@ class zynthian_widget_jamulus(zynthian_widget_base.zynthian_widget_base):
             zynthian_gui_config.top.after(1000, self.cb_scroll_chat)
         if "clients" in self.monitors:
             # Update received from server for client config so redraw all client data
+            if self.monitors["clients"]:
+                self.widget_canvas.itemconfig("connection_state", state=tkinter.HIDDEN)
             self.levels = []
             self.fader_map = {}
             self.widget_canvas.delete("strip")
