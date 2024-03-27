@@ -278,7 +278,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 						# Adding engine to new chain
 						self.zyngui.modify_chain_status["parallel"] = False
 						if engine == "AP":
-							self.zyngui.modify_chain_status["audio_thru"] = False #TODO: Better done with engine flag
+							self.zyngui.modify_chain_status["audio_thru"] = False  # TODO: Better done with engine flag
 						if self.zyngui.modify_chain_status["type"] in ("Audio Effect", "Audio Generator") and not self.zyngui.modify_chain_status["midi_thru"]:
 							self.zyngui.modify_chain_status["midi_chan"] = None
 						if self.zyngui.modify_chain_status["engine"] == "JA":
@@ -328,7 +328,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 	def set_selector(self, zs_hidden=False):
 		super().set_selector(zs_hidden)
-
 		if self.zsel2:
 			self.zsel2.zctrl.set_options({'symbol': "cat_index", 'name': "Category", 'short_name': "Category", 'value_min': 0, 'value_max': len(self.engine_cats) - 1, 'value': self.cat_index})
 			self.zsel2.config(self.zsel2.zctrl)
@@ -382,7 +381,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			pass
 		if self.cat_index >= 0:
 			path = path + "/" + self.engine_cats[self.cat_index]
-
 		self.select_path.set(path)
 
 # ------------------------------------------------------------------------------

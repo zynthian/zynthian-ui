@@ -229,7 +229,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		for fn in dir(self):
 			if fn.startswith('cuia_') or fn == 'update_wsleds':
 				delattr(self, fn)
-				logging.debug(f"DELATTR {fn}")
+				#logging.debug(f"DELATTR {fn}")
 		# Create new dynamix CUIA methods
 		if self.current_widget:
 			for fn in dir(self.current_widget):
@@ -237,7 +237,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 					func = getattr(self.current_widget, fn)
 					if callable(func):
 						setattr(self, fn, func)
-						logging.debug(f"SETATTR {fn}")
+						#logging.debug(f"SETATTR {fn}")
 
 	def set_controller_screen(self):
 		# Get screen info
@@ -613,10 +613,17 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.zyngui.chain_manager.clean_midi_learn(self.zyngui.get_current_processor())
 		self.refresh_midi_bind()
 
-
 	def midi_unlearn_action(self):
-		if self.zyngui.get_current_processor() and self.zyngui.get_current_processor().engine:
-			self.zyngui.show_confirm(f"Do you want to clean MIDI-learn for ALL controls in {self.zyngui.get_current_processor().engine.name} on MIDI channel {self.zyngui.get_current_processor().midi_chan + 1}?", self.midi_unlearn)
+		curproc = self.zyngui.get_current_processor()
+		if curproc:
+			engine_name = curproc.get_name()
+			if engine_name:
+				question_str = f"Do you want to clean MIDI-learn for ALL controls in {engine_name}"
+				if curproc.midi_chan is not None and 0 <= curproc.midi_chan < 16:
+					question_str += f"on MIDI channel {curproc.midi_chan + 1}"
+				self.zyngui.show_confirm(question_str + "?", self.midi_unlearn)
+			else:
+				logging.error("Can't get processor name.")
 
 	def midi_learn_options(self, i, unlearn_only=False):
 		self.exit_midi_learn()
@@ -625,13 +632,17 @@ class zynthian_gui_control(zynthian_gui_selector):
 			zctrl = self.zgui_controllers[i].zctrl
 			if zctrl is None:
 				return
-			title = "Control Options"
+			title = "Control options"
 			if not unlearn_only:
-				options["X-Y Touch-Pad"] = i
-				options[f"Chain Learn '{zctrl.name}'..."] = i
-				options[f"Global Learn '{zctrl.name}'..."] = i
+				if zctrl.midi_cc_momentary_switch:
+					options[f"\u2612 Momentary switch"] = i
+				else:
+					options[f"\u2610 Momentary switch"] = i
+				options["X-Y touchpad"] = i
+				options[f"Chain learn '{zctrl.name}'..."] = i
+				options[f"Global learn '{zctrl.name}'..."] = i
 			else:
-				title = "Control Unlearn"
+				title = "Control unlearn"
 			params = self.zyngui.chain_manager.get_midi_learn_from_zctrl(zctrl)
 			if params:
 				if params[1]:
@@ -639,12 +650,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 					options[f"Unlearn '{zctrl.name}' from {dev_name}"] = zctrl
 				else:
 					options[f"Unlearn '{zctrl.name}'"] = zctrl
-			options["Unlearn All"] = ""
+			options["Unlearn all controls"] = ""
 			self.zyngui.screens['option'].config(title, options, self.midi_learn_options_cb)
-			self.zyngui.screens['option'].config("Control MIDI-learn", options, self.midi_learn_options_cb)
 			self.zyngui.show_screen('option')
 		except Exception as e:
-			logging.error(f"Can't show Control MIDI-learn options => {e}")
+			logging.error(f"Can't show control options => {e}")
 
 	def midi_learn_options_cb(self, option, param):
 		parts = option.split(" ")
@@ -661,6 +671,12 @@ class zynthian_gui_control(zynthian_gui_selector):
 			if param > 2:
 				param = 2
 			self.set_xyselect_mode(param, param + 1)
+		elif parts[1] == "Momentary":
+			if parts[0] == '\u2612':
+				self.zgui_controllers[param].zctrl.midi_cc_momentary_switch = 0
+			else:
+				self.zgui_controllers[param].zctrl.midi_cc_momentary_switch = 1
+			self.midi_learn_options(param)
 
 	# -------------------------------------------------------------------------
 	# GUI Callback function

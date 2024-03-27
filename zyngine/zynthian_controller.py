@@ -57,6 +57,7 @@ class zynthian_controller:
 		self.name = self.short_name = symbol
 		self.group_symbol = None
 		self.group_name = None
+		self.readonly = False
 
 		self.value = 0 # Absolute value of the control
 		self.value_default = None # Default value to use when reset control
@@ -79,6 +80,7 @@ class zynthian_controller:
 		self.midi_chan = None # MIDI channel to send CC messages from control
 		self.midi_cc = None # MIDI CC number to send CC messages from control
 		self.midi_feedback = None # [chan,cc] for MIDI control feedback
+		self.midi_cc_momentary_switch = False
 		self.osc_port = None # OSC destination port
 		self.osc_path = None # OSC path to send value to
 		self.graph_path = None # Complex map of control to engine parameter
@@ -134,6 +136,8 @@ class zynthian_controller:
 			self.ticks = options['ticks']
 		if 'is_toggle' in options:
 			self.is_toggle = options['is_toggle']
+		if 'midi_cc_momentary_switch' in options:
+			self.midi_cc_momentary_switch = options['midi_cc_momentary_switch']
 		if 'is_integer' in options:
 			self.is_integer = options['is_integer']
 		if 'nudge_factor' in options:
@@ -166,21 +170,26 @@ class zynthian_controller:
 		self.range = None
 		if self.labels:
 			# Detect toggle (on/off)
-			if  len(self.labels) == 2:
+			if len(self.labels) == 2:
 				self.is_toggle = True
 				if not self.ticks:
-					self.value_max = 127
+					if self.value_min is None:
+						self.value_min = 0
+					if self.value_max is None:
+						self.value_max = 127
 
 			# Generate ticks if needed ...
 			if not self.ticks:
 				n = len(self.labels)
 				self.ticks = []
-				if self.value_min == None:
+				if self.value_min is None:
 					self.value_min = 0
-				if self.value_max == None:
+				if self.value_max is None:
 					self.value_max = n - 1
 				value_range = self.value_max - self.value_min
 				if n == 1:
+					# This shouldn't happen!
+					self.value_max = self.value_min
 					self.ticks.append(self.value_min)
 				elif self.is_integer:
 					for i in range(n):
@@ -191,9 +200,9 @@ class zynthian_controller:
 
 			# Calculate min, max
 			if self.ticks[0] <= self.ticks[-1]:
-				if self.value_min == None:
+				if self.value_min is None:
 					self.value_min = self.ticks[0]
-				if self.value_max == None:
+				if self.value_max is None:
 					self.value_max = self.ticks[-1]
 				self.range_reversed = False
 			else:
@@ -209,13 +218,13 @@ class zynthian_controller:
 				self.value2label[str(self.ticks[i])] = self.labels[i]
 
 		# Common configuration
-		if self.value_min == None:
+		if self.value_min is None:
 			self.value_min = 0
-		if self.value_max == None:
+		if self.value_max is None:
 			self.value_max = 127
 		self.value_range = self.value_max - self.value_min
 
-		if self.value_mid == None:
+		if self.value_mid is None:
 			if self.is_integer:
 				self.value_mid = self.value_min + int(self.value_range / 2)
 			else:
@@ -235,6 +244,11 @@ class zynthian_controller:
 
 		if self.midi_feedback is None and self.midi_chan is not None and self.midi_cc is not None:
 			self.midi_feedback = [self.midi_chan, self.midi_cc]
+
+	def set_readonly(self, flag=True):
+		if flag != self.readonly:
+			self.readonly = flag
+			self.is_dirty = True
 
 	def get_path(self):
 		if self.osc_path:
@@ -307,6 +321,8 @@ class zynthian_controller:
 			self.value = val
 
 	def set_value(self, val, send=True):
+		if self.readonly:
+			return
 		old_val = self.value
 		self._set_value(val)
 		if old_val == self.value:
@@ -385,7 +401,7 @@ class zynthian_controller:
 			logging.error(e)
 
 	def get_value2label(self, val=None):
-		if val == None:
+		if val is None:
 			val = self.value
 		i = self.get_value2index(val)
 		if i is not None:
@@ -435,11 +451,7 @@ class zynthian_controller:
 
 		full : True to get state of all parameters or false for off-default values
 		"""
-
-		# TODO: Move this to processor (used by processor and audio mixer)
 		state = {}
-		
-		# Value
 		if full:
 			if math.isnan(self.value):
 				state['value'] = None
@@ -447,7 +459,8 @@ class zynthian_controller:
 				state['value'] = self.value
 		elif self.value != self.value_default:
 			state['value'] = self.value
-
+		if self.midi_cc_momentary_switch:
+			state['midi_cc_momentary_switch'] = self.midi_cc_momentary_switch
 		return state
 
 	# ----------------------------------------------------------------------------
@@ -459,6 +472,17 @@ class zynthian_controller:
 		#	self.set_value(val)
 		if self.is_logarithmic:
 			value = self.value_min + self.value_range * (math.pow(10, val/127) - 1) / 9
+		elif self.is_toggle:
+			if self.midi_cc_momentary_switch:
+				if val >= 64:
+					self.toggle()
+				else:
+					return
+			else:
+				if val >= 64:
+					value = self.value_max
+				else:
+					value = self.value_min
 		else:
 			value = self.value_min + val * self.value_range / 127
 		self.set_value(value, send)

@@ -349,6 +349,10 @@ class zynthian_gui_controller(tkinter.Canvas):
 	def plot_value(self):
 		if self.shown and self.zctrl and (self.zctrl.is_dirty or self.refresh_plot_value):
 			if not self.hidden:
+				if self.zctrl.readonly:
+					self.set_hl(zynthian_gui_config.color_ctrl_bg_off)
+				else:
+					self.unset_hl()
 				self.plot_value_func()
 			self.refresh_plot_value = False
 			self.zctrl.is_dirty = False
@@ -431,7 +435,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 				chan = (midi_learn_params[0] >> 16) & 0xff
 				cc = (midi_learn_params[0] >> 8) & 0xff
 				if midi_learn_params[1]:
-					self.plot_midi_bind(f"[{cc}]")
+					self.plot_midi_bind(f"{chan}#{cc}")
 				else:
 					self.plot_midi_bind(f"{cc}")
 			else:

@@ -69,6 +69,7 @@ ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 class zynthian_state_manager:
 
     # Subsignals are defined inside each module. Here we define state manager subsignals:
+    SS_LOAD_SNAPSHOT = 1
     SS_MIDI_PLAYER_STATE = 2
     SS_MIDI_RECORDER_STATE = 3
     SS_LOAD_ZS3 = 4
@@ -1019,6 +1020,9 @@ class zynthian_state_manager:
         # Restore mute state
         self.zynmixer.set_mute(self.zynmixer.MAX_NUM_CHANNELS - 1, mute)
 
+        # Signal snapshot loading
+        zynsigman.send_queued(zynsigman.S_STATE_MAN, self.SS_LOAD_SNAPSHOT)
+
         self.end_busy("load snapshot")
         return state
 
@@ -1348,10 +1352,7 @@ class zynthian_state_manager:
             }
             # Add controllers
             for symbol, zctrl in processor.controllers_dict.items():
-                # that differ to their default (preset) values?? =>
-                # It doesn't work like this! Presets are not always reloaded, etc.
-                # if zctrl.value != zctrl.value_default:
-                processor_state["controllers"][symbol] = {"value": zctrl.value}
+                processor_state["controllers"][symbol] = zctrl.get_state()
             processor_states[id] = processor_state
         if processor_states:
             self.zs3[zs3_id]["processors"] = processor_states
@@ -1511,13 +1512,12 @@ class zynthian_state_manager:
             # Add global / absolute MIDI mapping
             for key, zctrls in self.chain_manager.absolute_midi_cc_binding.items():
                 if idev == (key >> 24) & 0xff:
-                    chan = (key >> 16) & 0x7f
-                    cc = (key >> 8) & 0x7f
+                    chan_cc = (key >> 8) & 0x7f7f
                     if "midi_cc" not in mcstate[uid]:
                         mcstate[uid]["midi_cc"] = {}
-                    mcstate[uid]["midi_cc"][cc] = []
+                    mcstate[uid]["midi_cc"][chan_cc] = []
                     for zctrl in zctrls:
-                        mcstate[uid]["midi_cc"][cc].append([zctrl.processor.id, zctrl.symbol])
+                        mcstate[uid]["midi_cc"][chan_cc].append([zctrl.processor.id, zctrl.symbol])
 
         return mcstate
 
@@ -1561,11 +1561,14 @@ class zynthian_state_manager:
                     pass
 
                 if "midi_cc" in state:
-                    for cc, cfg in state["midi_cc"].items():
+                    for chan_cc, cfg in state["midi_cc"].items():
                         for proc_id, symbol in cfg:
                             if proc_id in self.chain_manager.processors:
                                 processor = self.chain_manager.processors[proc_id]
-                                self.chain_manager.add_midi_learn(processor.midi_chan, cc, processor.controllers_dict[symbol], zmip)
+                                chan_cc = int(chan_cc)
+                                chan = (chan_cc >> 8) & 0x7f
+                                cc = chan_cc & 0x7f
+                                self.chain_manager.add_midi_learn(chan, cc, processor.controllers_dict[symbol], zmip)
 
             self.ctrldev_manager.set_state_drivers(ctrldev_state_drivers)
 

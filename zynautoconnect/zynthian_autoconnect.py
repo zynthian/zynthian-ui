@@ -814,8 +814,8 @@ def audio_autoconnect():
 	# Replicate main output to headphones
 	hp_ports = jclient.get_ports("Headphones:playback", is_input=True, is_audio=True)
 	if len(hp_ports) >= 2:
-		required_routes[hp_ports[0]] = required_routes[hw_audio_dst_ports[0].name]
-		required_routes[hp_ports[1]] = required_routes[hw_audio_dst_ports[1].name]
+		required_routes[hp_ports[0].name] = required_routes[hw_audio_dst_ports[0].name]
+		required_routes[hp_ports[1].name] = required_routes[hw_audio_dst_ports[1].name]
 
 	# Connect and disconnect routes
 	for dst, sources in required_routes.items():

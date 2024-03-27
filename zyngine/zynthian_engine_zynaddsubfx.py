@@ -135,7 +135,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		self.nickname = "ZY"
 		self.jackname = "zynaddsubfx"
 
-		self.osc_target_port = ServerPort["zynaddsunfx_osc"]
+		self.osc_target_port = ServerPort["zynaddsubfx_osc"]
 
 		try:
 			self.sr = int(self.state_manager.get_jackd_samplerate())
