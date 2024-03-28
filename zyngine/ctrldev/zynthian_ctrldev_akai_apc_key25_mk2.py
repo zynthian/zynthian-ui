@@ -23,32 +23,31 @@
 #
 #******************************************************************************
 
-# FIXME: Add support for:
-# - sequences with more than one track
-# - sequences with more thant one pattern
-# - patterns that has offsets
 
 import time
 import multiprocessing as mp
 import signal
 import jack
+import logging
 from bisect import bisect
 from functools import partial
 from copy import deepcopy
 from threading import Thread, RLock, Event
-from zyngine.ctrldev.zynthian_ctrldev_base import (
-    zynthian_ctrldev_zynmixer, zynthian_ctrldev_zynpad
-)
 from zyngine.zynthian_engine_audioplayer import zynthian_engine_audioplayer
 from zyngine.zynthian_signal_manager import zynsigman
-from zyngui import zynthian_gui_config
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
 
+from .zynthian_ctrldev_base import (
+    zynthian_ctrldev_zynmixer, zynthian_ctrldev_zynpad, RunTimer,
+    KnobSpeedControl, ButtonTimer, CONST
+)
+from .zynthian_ctrldev_base_ui import ModeHandlerBase
+
 
 # FIXME: these defines should be taken from where they are defined (zynseq.h)
-MAX_STUTTER_COUNT = 32
-MAX_STUTTER_DURATION = 96
+MAX_STUTTER_COUNT                    = 32
+MAX_STUTTER_DURATION                 = 96
 
 # MIDI channel events (first 4 bits), next 4 bits is the channel!
 EV_NOTE_ON                           = 0x09
@@ -170,12 +169,6 @@ FN_REMOVE_PATTERN                    = 0x0F
 FN_SELECT_PATTERN                    = 0x10
 FN_CLEAR_PATTERN                     = 0x11
 
-PT_SHORT                             = "short"
-PT_BOLD                              = "bold"
-PT_LONG                              = "long"
-PT_BOLD_TIME                         = 0.3
-PT_LONG_TIME                         = 2.0
-
 
 # --------------------------------------------------------------------------
 # 'Akai APC Key 25 mk2' device controller class
@@ -224,23 +217,10 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         for signal, subsignal, callback in self._signals:
             zynsigman.register(signal, subsignal, callback)
 
-        #!FIXME: just for developing, remove!
-        from pathlib import Path
-        import json
-        saved = Path("/root/step-seq-save-test.json")
-        if saved.exists():
-            self.set_state(json.load(saved.open()))
-
     def end(self):
         for signal, subsignal, callback in self._signals:
             zynsigman.unregister(signal, subsignal, callback)
         super().end()
-
-        #!FIXME: just for developing, remove!
-        from pathlib import Path
-        import json
-        with Path("/root/step-seq-save-test.json").open("w") as dst:
-            json.dump(self.get_state(), dst, indent=4)
 
     def refresh(self):
         # PadMatrix is handled in volume/pan modes (when mixer handler is active)
@@ -357,9 +337,8 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
             ccval = ev[2] & 0x7F
             return self._current_handler.cc_change(ccnum, ccval)
 
-        # SysEx
         elif ev[0] == EV_SYSEX:
-            logging.info(f"Received SysEx => {ev}")
+            logging.info(f" received SysEx => {ev}")
             return True
 
     def light_off(self):
@@ -381,16 +360,10 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
 
     def get_state(self):
         state = {}
-        state.update(self._device_handler.get_state())
-        state.update(self._mixer_handler.get_state())
-        state.update(self._padmatrix_handler.get_state())
         state.update(self._stepseq_handler.get_state())
         return state
 
     def set_state(self, state):
-        self._device_handler.set_state(state)
-        self._mixer_handler.set_state(state)
-        self._padmatrix_handler.set_state(state)
         self._stepseq_handler.set_state(state)
 
     def _on_shift_changed(self, state):
@@ -411,131 +384,6 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         self._current_handler.on_media_change(media, kind, state)
         if self._current_handler == self._device_handler:
             self._current_handler.refresh()
-
-
-# --------------------------------------------------------------------------
-# A handy timer for triggering short/bold/long push actions
-# --------------------------------------------------------------------------
-class ButtonTimer(Thread):
-    def __init__(self, callback):
-        super().__init__()
-        self._callback = callback
-        self._lock = RLock()
-        self._awake = Event()
-        self._pressed = {}
-
-        self.daemon = True
-        self.start()
-
-    def is_pressed(self, btn, ts):
-        with self._lock:
-            self._pressed[btn] = ts
-        self._awake.set()
-
-    def is_released(self, btn):
-        with self._lock:
-            ts = self._pressed.pop(btn, None)
-        if ts is not None:
-            elapsed = time.time() - ts
-            self._run_callback(btn, elapsed)
-
-    def run(self):
-        while True:
-            with self._lock:
-                expired, elapsed = self._get_expired()
-            if expired is not None:
-                self._run_callback(expired, elapsed)
-
-            time.sleep(0.1)
-            if not self._pressed:
-                self._awake.wait()
-            self._awake.clear()
-
-    def _get_expired(self):
-        now = time.time()
-        retval = None
-        for btn, ts in self._pressed.items():
-            elapsed = now - ts
-            if elapsed > PT_LONG_TIME:
-                retval = btn
-                break
-        if retval:
-            self._pressed.pop(btn, None)
-        return retval, elapsed if retval else 0
-
-    def _run_callback(self, note, elapsed):
-        ptype = [PT_SHORT, PT_BOLD, PT_LONG][bisect([PT_BOLD_TIME, PT_LONG_TIME], elapsed)]
-        try:
-            self._callback(note, ptype)
-        except Exception as ex:
-            print(f"ERROR in handler: {ex}")
-            from traceback import print_exc
-            print_exc()
-
-
-# --------------------------------------------------------------------------
-# A timer for running delayed actions (mostly used for feedback LEDs)
-# --------------------------------------------------------------------------
-class RunTimer(Thread):
-    def __init__(self):
-        super().__init__()
-        self._lock = RLock()
-        self._awake = Event()
-        self._actions = {}
-
-        self.daemon = True
-        self.start()
-
-    def add(self, name, timeout, callback, *args, **kwargs):
-        with self._lock:
-            self._actions[name] = [timeout, callback, name, args, kwargs]
-        self._awake.set()
-
-    def update(self, name, timeout):
-        with self._lock:
-            action = self._actions.get(name)
-            if action is None:
-                return
-            action[0] = timeout
-
-    def remove(self, name):
-        with self._lock:
-            self._actions.pop(name, None)
-
-    def run(self):
-        while True:
-            if not self._actions:
-                self._awake.wait()
-            self._awake.clear()
-            for action in self._get_expired():
-                self._run_action(*action[1:])
-            time.sleep(0.1)
-            self._update_timeouts(-0.1)
-
-    def _update_timeouts(self, delta):
-        delta *= 1000
-        with self._lock:
-            for action in self._actions.values():
-                action[0] += delta
-
-    def _get_expired(self):
-        retval = []
-        with self._lock:
-            to_remove = []
-            for name, spec in self._actions.items():
-                if spec[0] > 0:
-                    continue
-                to_remove.append(name)
-                retval.append(spec)
-            for name in to_remove:
-                self._actions.pop(name, None)
-        return retval
-
-    def _run_action(self, callback, name, args, kwargs):
-        try:
-            callback(name, *args, **kwargs)
-        except Exception as ex:
-            print(f" error in handler: {ex}")
 
 
 # --------------------------------------------------------------------------
@@ -602,190 +450,12 @@ class FeedbackLEDs:
 
 
 # --------------------------------------------------------------------------
-#  Helper class to handle knobs speed (mostly to reduce it)
-# --------------------------------------------------------------------------
-class KnobSpeedControl:
-    def __init__(self, steps_normal=3, steps_shifted=8):
-        self._steps_normal = steps_normal
-        self._steps_shifted = steps_shifted
-        self._knobs_ease = {}
-
-    def feed(self, ccnum, ccval, is_shifted=False):
-        delta = ccval if ccval < 64 else (ccval - 128)
-        count = self._knobs_ease.get(ccnum, 0)
-        steps = self._steps_shifted if is_shifted else self._steps_normal
-
-        if (delta < 0 and count > 0) or (delta > 0 and count < 0):
-            count = 0
-        count += delta
-
-        if abs(count) < steps:
-            self._knobs_ease[ccnum] = count
-            return
-
-        self._knobs_ease[ccnum] = 0
-        return delta
-
-
-# --------------------------------------------------------------------------
-#  Base class for handlers
-# --------------------------------------------------------------------------
-class BaseHandler:
-
-    SCREEN_CUIA_MAP = {
-        "option":         "MENU",
-        "main_menu":      "MENU",
-        "admin":          "SCREEN_ADMIN",
-        "audio_mixer":    "SCREEN_AUDIO_MIXER",
-        "alsa_mixer":     "SCREEN_ALSA_MIXER",
-        "control":        "SCREEN_CONTROL",
-        "preset":         "PRESET",
-        "zs3":            "SCREEN_ZS3",
-        "snapshot":       "SCREEN_SNAPSHOT",
-        "zynpad":         "SCREEN_ZYNPAD",
-        "pattern_editor": "SCREEN_PATTERN_EDITOR",
-        "tempo":          "TEMPO",
-    }
-
-    # These are actions requested to other handlers (shared between everyone)
-    _pending_actions = []
-
-    def __init__(self, state_manager, leds: FeedbackLEDs):
-        self._leds = leds
-        self._state_manager = state_manager
-        self._chain_manager = state_manager.chain_manager
-        self._zynmixer = state_manager.zynmixer
-        self._zynseq = state_manager.zynseq
-
-        self._timer = None
-        self._current_screen = None
-        self._is_shifted = False
-        self._is_active = False
-
-    def refresh(self):
-        pass
-
-    def set_active(self, active):
-        self._is_active = active
-
-    def note_on(self, note, velocity, shifted_override=None):
-        pass
-
-    def note_off(self, note, shifted_override=None):
-        pass
-
-    def cc_change(self, ccnum, ccval):
-        pass
-
-    def get_state(self):
-        return {}
-
-    def set_state(self, state):
-        pass
-
-    def on_media_change(self, media, kind, state):
-        pass
-
-    def on_shift_changed(self, state):
-        self._is_shifted = state
-        return True
-
-    def on_screen_change(self, screen):
-        self._current_screen = screen
-
-    def pop_action_request(self):
-        if not self._pending_actions:
-            return None
-        return self._pending_actions.pop(0)
-
-    def run_action(self, action, args, kwargs):
-        action = "_action_" + action.replace("-", "_")
-        action = getattr(self, action, None)
-        if callable(action):
-            try:
-                action(*args, **kwargs)
-            except Exception as ex:
-                print(f" error in handler: {ex}")
-
-    def _request_action(self, receiver, action, *args, **kwargs):
-        self._pending_actions.append((receiver, action, args, kwargs))
-
-    def _stop_all_sounds(self):
-        self._state_manager.send_cuia("ALL_SOUNDS_OFF")
-        self._state_manager.stop_midi_playback()
-        self._state_manager.stop_audio_player()
-
-    def _on_shifted_override(self, override=None):
-        if override is not None:
-            self._is_shifted = override
-
-    # FIXME: Could this be in chain_manager?
-    def _get_chain_id_by_sequence(self, bank, seq):
-        channel = self._libseq.getChannel(bank, seq, 0)
-        return next(
-            (id for id, c in self._chain_manager.chains.items()
-                if c.midi_chan == channel),
-            None
-        )
-
-    # FIXME: Could this be in zynseq?
-    def _set_note_duration(self, step, note, duration):
-        velocity = self._libseq.getNoteVelocity(step, note)
-        stutt_count = self._libseq.getStutterCount(step, note)
-        stutt_duration = self._libseq.getStutterDur(step, note)
-        self._libseq.removeNote(step, note)
-        self._libseq.addNote(step, note, velocity, duration)
-        self._libseq.setStutterCount(step, note, stutt_count)
-        self._libseq.setStutterDur(step, note, stutt_duration)
-
-    # FIXME: This way avoids to show Zynpad every time, BUT is coupled to UI!
-    def _show_pattern_editor(self, seq):
-        if self._current_screen != 'pattern_editor':
-            self._state_manager.send_cuia("SCREEN_ZYNPAD")
-        self._select_pad(seq)
-        zynthian_gui_config.zyngui.screens["zynpad"].show_pattern_editor()
-
-    # FIXME: This SHOULD be a CUIA, not this hack! (is coupled with UI)
-    def _select_pad(self, pad):
-        zynthian_gui_config.zyngui.screens["zynpad"].select_pad(pad)
-
-    # FIXME: This SHOULD be a CUIA, not this hack! (is coupled with UI)
-    # NOTE: It runs in a thread to avoid lagging the hardware interface
-    def _update_ui_arranger(self, cell_selected=(None, None)):
-        def run():
-            arranger = zynthian_gui_config.zyngui.screens["arranger"]
-            arranger.select_cell(*cell_selected)
-            if cell_selected[1] is not None:
-                arranger.draw_row(cell_selected[1])
-        Thread(target=run, daemon=True).start()
-
-    def _show_screen_briefly(self, screen, cuia, timeout):
-        # Only created when/if needed
-        if self._timer is None:
-            self._timer = RunTimer()
-
-        timer_name = "change-screen"
-        prev_screen = "BACK"
-
-        # If brief screen is audio mixer, there is no back, so try to get the screen
-        # name. Not all screens may be mapped, so it will fail there (only corner-cases).
-        if screen == "audio_mixer":
-            prev_screen = self.SCREEN_CUIA_MAP.get(self._current_screen, "BACK")
-
-        if screen != self._current_screen:
-            self._state_manager.send_cuia(cuia)
-            self._timer.add(timer_name, timeout,
-                lambda _: self._state_manager.send_cuia(prev_screen))
-        else:
-            self._timer.update(timer_name, timeout)
-
-
-# --------------------------------------------------------------------------
 # Handle GUI (device mode)
 # --------------------------------------------------------------------------
-class DeviceHandler(BaseHandler):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class DeviceHandler(ModeHandlerBase):
+    def __init__(self, state_manager, leds: FeedbackLEDs):
+        super().__init__(state_manager)
+        self._leds = leds
         self._knobs_ease = KnobSpeedControl()
         self._is_alt_active = False
         self._is_playing = set()
@@ -795,7 +465,7 @@ class DeviceHandler(BaseHandler):
         self._btn_actions = {
             BTN_OPT_ADMIN:      ("MENU", "SCREEN_ADMIN"),
             BTN_MIX_LEVEL:      ("SCREEN_AUDIO_MIXER", "SCREEN_ALSA_MIXER"),
-            BTN_CTRL_PRESET:    ("SCREEN_CONTROL", "PRESET"),
+            BTN_CTRL_PRESET:    ("SCREEN_CONTROL", "PRESET", "SCREEN_BANK"),
             BTN_ZS3_SHOT:       ("SCREEN_ZS3", "SCREEN_SNAPSHOT"),
             BTN_PAD_STEP:       ("SCREEN_ZYNPAD", "SCREEN_PATTERN_EDITOR"),
             BTN_METRONOME:      ("TEMPO",),
@@ -810,10 +480,10 @@ class DeviceHandler(BaseHandler):
                     "ALL_SOUNDS_OFF" if is_bold else "STOP"
                 ]
             ),
-            BTN_KNOB_1: (lambda is_bold: [f"ZYNSWITCH:0,{'B' if is_bold else 'S'}"]),
-            BTN_KNOB_2: (lambda is_bold: [f"ZYNSWITCH:1,{'B' if is_bold else 'S'}"]),
-            BTN_KNOB_3: (lambda is_bold: [f"ZYNSWITCH:2,{'B' if is_bold else 'S'}"]),
-            BTN_KNOB_4: (lambda is_bold: [f"ZYNSWITCH:3,{'B' if is_bold else 'S'}"]),
+            BTN_KNOB_1: (lambda is_bold: [f"V5_ZYNPOT_SWITCH:0,{'B' if is_bold else 'S'}"]),
+            BTN_KNOB_2: (lambda is_bold: [f"V5_ZYNPOT_SWITCH:1,{'B' if is_bold else 'S'}"]),
+            BTN_KNOB_3: (lambda is_bold: [f"V5_ZYNPOT_SWITCH:2,{'B' if is_bold else 'S'}"]),
+            BTN_KNOB_4: (lambda is_bold: [f"V5_ZYNPOT_SWITCH:3,{'B' if is_bold else 'S'}"]),
         }
 
         self._btn_states = {k:-1 for k in self._btn_actions}
@@ -864,7 +534,7 @@ class DeviceHandler(BaseHandler):
             elif note in (BTN_RIGHT, BTN_PAD_RIGHT):
                 self._state_manager.send_cuia("ARROW_RIGHT")
             elif note == BTN_SEL_YES:
-                self._state_manager.send_cuia("ZYNSWITCH", [3, 'S'])
+                self._state_manager.send_cuia("V5_ZYNPOT_SWITCH", [3, 'S'])
             elif note == BTN_BACK_NO:
                 self._state_manager.send_cuia("BACK")
             elif note == BTN_ALT:
@@ -935,7 +605,7 @@ class DeviceHandler(BaseHandler):
         flags.add(media) if state else flags.discard(media)
 
     def _handle_timed_button(self, btn, press_type):
-        if press_type == PT_LONG:
+        if press_type == CONST.PT_LONG:
             cuia = {
                 BTN_OPT_ADMIN:   "POWER_OFF",
                 BTN_CTRL_PRESET: "PRESET_FAV",
@@ -949,14 +619,14 @@ class DeviceHandler(BaseHandler):
         if actions is None:
             return
         if callable(actions):
-            actions = actions(press_type == PT_BOLD)
+            actions = actions(press_type == CONST.PT_BOLD)
 
         idx = -1
-        if press_type == PT_SHORT:
+        if press_type == CONST.PT_SHORT:
             idx = self._btn_states[btn]
             idx = (idx + 1) % len(actions)
             cuia = actions[idx]
-        elif press_type == PT_BOLD:
+        elif press_type == CONST.PT_BOLD:
             # In buttons with 2 functions, the default on bold press is the second
             idx = 1 if len(actions) > 1 else 0
             cuia = actions[idx]
@@ -974,13 +644,14 @@ class DeviceHandler(BaseHandler):
 # --------------------------------------------------------------------------
 # Handle Mixer (Mixpad mode)
 # --------------------------------------------------------------------------
-class MixerHandler(BaseHandler):
+class MixerHandler(ModeHandlerBase):
 
     # To control main level, use SHIFT + K1
     main_chain_knob = KNOB_1
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, state_manager, leds: FeedbackLEDs):
+        super().__init__(state_manager)
+        self._leds = leds
         self._is_shifted = False
         self._knobs_function = FN_VOLUME
         self._track_buttons_function = FN_SELECT
@@ -1202,7 +873,7 @@ class MixerHandler(BaseHandler):
 # --------------------------------------------------------------------------
 #  Handle pad matrix for Zynseq (in Mixpad mode)
 # --------------------------------------------------------------------------
-class PadMatrixHandler(BaseHandler):
+class PadMatrixHandler(ModeHandlerBase):
 
     # NOTE: use this tool to help you getting the right colors:
     # https://github.com/oscaracena/mdevtk/blob/main/examples/apc_key25_mk2/09-pad-tool.py
@@ -1225,8 +896,9 @@ class PadMatrixHandler(BaseHandler):
         0x56,   # #72FF15, Light Green
     ]
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, state_manager, leds: FeedbackLEDs):
+        super().__init__(state_manager)
+        self._leds = leds
         self._libseq = self._zynseq.libseq
         self._cols = 8
         self._rows = 5
@@ -1364,7 +1036,7 @@ class PadMatrixHandler(BaseHandler):
         if self._seqman_func is not None:
             self._seqman_handle_pad_press(seq)
         elif self._track_btn_pressed is not None:
-            self._clear_pattern((self._zynseq.bank, seq))
+            self._clear_sequence(self._zynseq.bank, seq)
         elif self._is_record_pressed:
             self._start_pattern_record(seq)
         elif self._recording_seq == seq:
@@ -1384,8 +1056,10 @@ class PadMatrixHandler(BaseHandler):
         if idx >= len(self._pads):
             return
         btn = self._pads[idx]
-        pattern = self._libseq.getPattern(bank, seq, 0, 0)
-        is_empty = self._zynseq.is_pattern_empty(pattern)
+
+        is_empty = all(
+            self._zynseq.is_pattern_empty(pattern)
+            for pattern in self._get_sequence_patterns(bank, seq))
         color = self.GROUP_COLORS[group]
 
         # If seqman is enabled, update according to it's function
@@ -1427,10 +1101,10 @@ class PadMatrixHandler(BaseHandler):
 
     def _handle_timed_button(self, btn, ptype):
         if btn == BTN_STOP_ALL_CLIPS:
-            if ptype == PT_LONG:
+            if ptype == CONST.PT_LONG:
                 self._stop_all_sounds()
             else:
-                in_all_banks = ptype == PT_BOLD
+                in_all_banks = ptype == CONST.PT_BOLD
                 self._stop_all_seqs(in_all_banks)
 
     def _seqman_handle_pad_press(self, seq):
@@ -1444,7 +1118,7 @@ class PadMatrixHandler(BaseHandler):
         seq_is_empty = self._libseq.isEmpty(self._zynseq.bank, seq)
         if self._seqman_func == FN_CLEAR_SEQUENCE:
             if not seq_is_empty:
-                self._clear_pattern((self._zynseq.bank, seq))
+                self._clear_sequence(self._zynseq.bank, seq)
             return
 
         # Set selected sequence as source
@@ -1458,10 +1132,10 @@ class PadMatrixHandler(BaseHandler):
             # Copy/Move source to selected sequence (will be overwritten)
             else:
                 if self._seqman_func == FN_COPY_SEQUENCE:
-                    self._copy_pattern(self._seqman_src_seq, seq)
+                    self._copy_sequence(*self._seqman_src_seq, self._zynseq.bank, seq)
                 elif self._seqman_func == FN_MOVE_SEQUENCE:
-                    self._copy_pattern(self._seqman_src_seq, seq)
-                    self._clear_pattern(self._seqman_src_seq)
+                    self._copy_sequence(*self._seqman_src_seq, self._zynseq.bank, seq)
+                    self._clear_sequence(*self._seqman_src_seq)
                     self._seqman_src_seq = None
 
         self._update_pad(seq)
@@ -1539,24 +1213,62 @@ class PadMatrixHandler(BaseHandler):
         self._recording_seq = None
         self.refresh()
 
-    def _clear_pattern(self, seq):
-        scene, seq = seq
-        pattern = self._libseq.getPattern(scene, seq, 0, 0)
-        self._libseq.selectPattern(pattern)
-        self._libseq.clear()
-        self._libseq.updateSequenceInfo()
-        self._update_pad(seq)
+    def _clear_sequence(self, scene, seq, create_empty=True):
+        # Remove all patterns in all tracks
+        seq_len = self._libseq.getSequenceLength(scene, seq)
+        if seq_len != 0:
+            n_tracks = self._libseq.getTracksInSequence(scene, seq)
+            for track in range(n_tracks):
+                n_patts = self._libseq.getPatternsInTrack(scene, seq, track)
+                if n_patts == 0:
+                    continue
+                pos = 0
+                while pos < seq_len:
+                    pattern = self._libseq.getPatternAt(scene, seq, track, pos)
+                    if pattern != -1:
+                        self._libseq.removePattern(scene, seq, track, pos)
+                        pos += self._libseq.getPatternLength(pattern)
+                    else:
+                        # Arranger's offset step is a quarter note (24 clocks)
+                        pos += 24
 
-    def _copy_pattern(self, src, dst):
-        scene_src, seq_src = src
-        patt_src = self._libseq.getPattern(scene_src, seq_src, 0, 0)
-        patt_dst = self._libseq.getPattern(self._zynseq.bank, dst, 0, 0)
-        self._libseq.copyPattern(patt_src, patt_dst)
-        self._libseq.updateSequenceInfo()
+            if n_tracks > 0:
+                for track in range(n_tracks-1):
+                    self._libseq.removeTrackFromSequence(scene, seq, track)
+
+        # Add a new empty pattern at the beginning of first track
+        if create_empty:
+            pattern = self._libseq.createPattern()
+            self._libseq.addPattern(scene, seq, 0, 0, pattern)
+
+    def _copy_sequence(self, src_scene, src_seq, dst_scene, dst_seq):
+        self._clear_sequence(dst_scene, dst_seq, create_empty=False)
+
+        # Copy all patterns in all tracks
+        seq_len = self._libseq.getSequenceLength(src_scene, src_seq)
+        if seq_len != 0:
+            n_tracks = self._libseq.getTracksInSequence(src_scene, src_seq)
+            for track in range(n_tracks):
+                if track >= self._libseq.getTracksInSequence(dst_scene, dst_seq):
+                    self._libseq.addTrackToSequence(dst_scene, dst_seq)
+                n_patts = self._libseq.getPatternsInTrack(src_scene, src_seq, track)
+                if n_patts == 0:
+                    continue
+                pos = 0
+                while pos < seq_len:
+                    pattern = self._libseq.getPatternAt(src_scene, src_seq, track, pos)
+                    if pattern != -1:
+                        new_pattern = self._libseq.createPattern()
+                        self._libseq.copyPattern(pattern, new_pattern)
+                        self._libseq.addPattern(dst_scene, dst_seq, track, pos, new_pattern)
+                        pos += self._libseq.getPatternLength(pattern)
+                    else:
+                        # Arranger's offset step is a quarter note (24 clocks)
+                        pos += 24
 
         # Also copy StepSeq instrument pages
         self._request_action("stepseq", "sync-sequences",
-            scene_src, seq_src, self._zynseq.bank, dst)
+            src_scene, src_seq, dst_scene, dst_seq)
 
 
 # --------------------------------------------------------------------------
@@ -1689,8 +1401,8 @@ class NotePad(dict):
     def __getattr__(self, name):
         try:
             return self[name]
-        except IndexError as err:
-            raise AttributeError(err.args[0]) from None
+        except (IndexError, KeyError):
+            return super().__getattr__(name)
 
     def __setattr__(self, name, value):
         self[name] = value
@@ -1822,7 +1534,7 @@ class NotePlayer(Thread):
             try:
                 self._tick()
             except Exception as ex:
-                print(f"ERROR: on note player: {ex}")
+                logging.error(f" error on note player: {ex}")
             time.sleep(self._clock_cycles_to_ms(1) / 1000)
 
     def stop(self, note, channel):
@@ -1881,7 +1593,7 @@ class NotePlayer(Thread):
 # --------------------------------------------------------------------------
 #  Step Sequencer mode (StepSeq)
 # --------------------------------------------------------------------------
-class StepSeqHandler(BaseHandler):
+class StepSeqHandler(ModeHandlerBase):
     PAD_COLS = 8
     PAD_ROWS = 5
 
@@ -1893,7 +1605,8 @@ class StepSeqHandler(BaseHandler):
     ]
 
     def __init__(self, state_manager, leds: FeedbackLEDs, dev_idx):
-        super().__init__(state_manager, leds)
+        super().__init__(state_manager)
+        self._leds = leds
         self._libseq = self._zynseq.libseq
         self._own_device_id = dev_idx
         self._cursor = 0
@@ -1958,6 +1671,7 @@ class StepSeqHandler(BaseHandler):
             if self._is_arranger_mode:
                 self._enable_arranger_mode(False)
             self._clock.disable()
+            self._is_stage_play = False
         self._pressed_pads_action = "activation"
 
     def _refresh_status_leds(self):
@@ -2051,9 +1765,13 @@ class StepSeqHandler(BaseHandler):
             self.refresh()
 
         if self._is_shifted:
-            # Just changed to this mode, perform a refresh
+            # Events that will run independently of note_config
             if note == BTN_KNOB_CTRL_SEND:
                 self.refresh()
+            elif note == BTN_STOP_ALL_CLIPS:
+                self._stop_all_sounds()
+
+            # Events that depends on note_config
             if self._note_config is not None:
                 if BTN_PAD_START <= note <= BTN_PAD_END:
                     return self._note_config.note_on(note, velocity, self._is_shifted)
@@ -2064,8 +1782,6 @@ class StepSeqHandler(BaseHandler):
                 self._change_to_previous_pattern()
             elif note == BTN_RIGHT:
                 self._change_to_next_pattern()
-            elif note == BTN_STOP_ALL_CLIPS:
-                self._stop_all_sounds()
             elif note == BTN_SOFT_KEY_SELECT:
                 self._is_select_pressed = True
                 self._enable_arranger_mode(True)
@@ -2173,8 +1889,7 @@ class StepSeqHandler(BaseHandler):
         self._on_shifted_override(shifted_override)
 
         if BTN_PAD_START <= note <= BTN_PAD_END:
-            if note in self._pressed_pads:
-                self._pressed_pads.pop(note, None)
+            self._pressed_pads.pop(note, None)
 
             if self._note_config is not None:
                 self._pressed_pads_action = "note-config"
@@ -2616,7 +2331,7 @@ class StepSeqHandler(BaseHandler):
                     return
                 pattern = self._libseq.createPattern()
                 if not self._add_pattern_to_end_of_track(bank, seq, track, pattern):
-                    print("error: could not add a new pattern!")
+                    logging.error(" could not add a new pattern!")
                     return
                 self._sequence_patterns.append(pattern)
 
@@ -2689,53 +2404,6 @@ class StepSeqHandler(BaseHandler):
                     color = COLOR_RED
             self._leds.led_on(pad, color, mode, overlay=overlay)
 
-    def _add_pattern_to_end_of_track(self, bank, seq, track, pattern):
-        pos = 0
-        if self._libseq.getTracksInSequence(bank, seq) != 0:
-            pos = self._libseq.getSequenceLength(bank, seq)
-            while pos > 0:
-                # Arranger's offset step is a quarter note (24 clocks)
-                if self._libseq.getPatternAt(bank, seq, track, pos - 24) != -1:
-                    break
-                pos -= 24
-
-        return self._libseq.addPattern(bank, seq, track, pos, pattern)
-
-    def _get_sequence_patterns(self, bank, seq, create=False):
-        seq_len = self._libseq.getSequenceLength(bank, seq)
-        pattern = -1
-        retval = []
-
-        if seq_len == 0:
-            if create:
-                pattern = self._libseq.createPattern()
-                self._libseq.addPattern(bank, seq, 0, 0, pattern)
-                retval.append(pattern)
-            return retval
-
-        n_tracks = self._libseq.getTracksInSequence(bank, seq)
-        for track in range(n_tracks):
-            retval.extend(self._get_patterns_in_track(bank, seq, track))
-        return retval
-
-    def _get_patterns_in_track(self, bank, seq, track):
-        retval = []
-        n_patts = self._libseq.getPatternsInTrack(bank, seq, track)
-        if n_patts == 0:
-            return retval
-
-        seq_len = self._libseq.getSequenceLength(bank, seq)
-        pos = 0
-        while pos < seq_len:
-            pattern = self._libseq.getPatternAt(bank, seq, track, pos)
-            if pattern != -1:
-                retval.append(pattern)
-                pos += self._libseq.getPatternLength(pattern)
-            else:
-                # Arranger's offset step is a quarter note (24 clocks)
-                pos += 24
-        return retval
-
     def _get_step_colors(self):
         retval = []
         if self._selected_note is None:
@@ -2770,7 +2438,7 @@ class StepSeqHandler(BaseHandler):
             if Control.KIND == kind:
                 break
         else:
-            print(f"ERROR: Control kind not supported: {kind}")
+            logging.error(f" control kind not supported: {kind}")
             return False
 
         notes = {}
