@@ -110,6 +110,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 				options["Rename"] = bank
 			if hasattr(proc.engine, "delete_user_bank"):
 				options["Delete"] = bank
+		self.options_bank_index = self.index
 		self.zyngui.screens['option'].config("Bank: {}".format(bank_name), options, self.bank_options_cb)
 		if len(options):
 			self.zyngui.show_screen('option')
@@ -124,7 +125,6 @@ class zynthian_gui_bank(zynthian_gui_selector):
 			self.close_screen()
 
 	def bank_options_cb(self, option, bank):
-		self.options_bank_index = self.index
 		if option == "Rename":
 			self.zyngui.show_keyboard(self.rename_bank, bank[2])
 		elif option == "Delete":

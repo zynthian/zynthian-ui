@@ -185,7 +185,6 @@ class zynthian_engine_jamulus(zynthian_engine):
         self.rpc_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.rpc_socket.settimeout(0.5)
         self.running=True
-        success = False
         for i in range(10):
             try:
                 self.rpc_socket.connect(("localhost", self.RPC_PORT))
@@ -326,19 +325,22 @@ class zynthian_engine_jamulus(zynthian_engine):
         """ Get list of banks
 
         processor - Not used
-        returns - List of banks [uid (str), index (int) or None if user bank, name (str), is user bank (bool)]
+        returns - List of banks [uid (str), index (int) or None if user bank, name (str)]
         """
 
         try:
             with open(self.PRESET_FILE, "r") as f:
                 user_presets = json.load(f)
         except:
-            user_presets = {"Default"} # Create a default bank if no user presets / banks saved
+            # Preset file missing or corrupt
+            user_presets = {"Default": {"localhost": "Local Server"}}
+            with open(self.PRESET_FILE, "w") as f:
+                json.dump(user_presets, f)
 
         if user_presets:
             banks = [(None, None, "User Banks", None)]
             for i, bank in enumerate(user_presets):
-                banks.append((bank, None, bank, True))
+                banks.append((bank, None, bank))
         else:
             banks = []
 
@@ -346,10 +348,16 @@ class zynthian_engine_jamulus(zynthian_engine):
             if self.proc:
                 banks.append((None, None, "Public Directories", None))
                 for i, directory in enumerate(self.directories):
-                    banks += [(directory["address"], i, directory["name"], False)]
+                    banks += [(directory["address"], i, directory["name"])]
         except:
             pass # api cannot return public servers because jamulus client is required which may not be running
         return banks
+
+    def rename_user_bank(self, bank, new_bank_name):
+        self.zynapi_rename_bank(bank[0], new_bank_name)
+
+    def delete_user_bank(self, bank):
+        self.zynapi_remove_bank(bank[0])
 
     # ----------------------------------------------------------------------------
     # Preset Management
@@ -358,22 +366,18 @@ class zynthian_engine_jamulus(zynthian_engine):
     def get_preset_list(self, bank):
         """ Get list of presets (remote servers) in a bank
         
-        bank - Bank config list [uid (str), index (int), name (str), is user bank (bool)]
+        bank - Bank config list [uid (str), index (int) or None if user bank, name (str)]
         returns - list of preset config: [server socket address (str), is user preset (bool), name (str)]
         """
-        
-        if bank[3]:
-            if bank[0] == "Default":
-                presets = [["localhost", False, "Local Server"]] # Default bank always has local server
-            else:
-                presets = []
+
+        presets = []
+        if bank[1] is None:
             try:
                 with open(self.PRESET_FILE, "r") as f:
                     user_presets = json.load(f)
                 for server, name in user_presets[bank[0]].items():
-                    presets.append([server, True, name])
+                    presets.append([server, None, name])
             except Exception as e:
-                # Preset file missing or corrupt
                 pass
         else:
             try:
@@ -386,7 +390,6 @@ class zynthian_engine_jamulus(zynthian_engine):
             except Exception as e:
                 logging.warning("Failed to get directory listing", e)
 
-            presets = []
             preset_dict = {}
             for server in self.directories[self.directory_index]['servers']:
                 if server["address"] != "0.0.0.0:0" and server["name"] and server["address"]:
@@ -431,7 +434,7 @@ class zynthian_engine_jamulus(zynthian_engine):
             self.connect(self.preset[0])
 
     def is_preset_user(self, preset):
-        return preset[1]
+        return preset[1] is None
 
     def rename_preset(self, bank, preset, name):
         try:
