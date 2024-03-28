@@ -335,9 +335,12 @@ class zynthian_engine_jamulus(zynthian_engine):
         except:
             user_presets = {"Default"} # Create a default bank if no user presets / banks saved
 
-        banks = [(None, None, "User Banks", None)]
-        for i, bank in enumerate(user_presets):
-            banks.append((bank, None, bank, True))
+        if user_presets:
+            banks = [(None, None, "User Banks", None)]
+            for i, bank in enumerate(user_presets):
+                banks.append((bank, None, bank, True))
+        else:
+            banks = []
 
         try:
             if self.proc:
@@ -345,7 +348,7 @@ class zynthian_engine_jamulus(zynthian_engine):
                 for i, directory in enumerate(self.directories):
                     banks += [(directory["address"], i, directory["name"], False)]
         except:
-            pass # api cannot return public servers
+            pass # api cannot return public servers because jamulus client is required which may not be running
         return banks
 
     # ----------------------------------------------------------------------------
@@ -411,7 +414,8 @@ class zynthian_engine_jamulus(zynthian_engine):
                             title += f"({server['country']})"
                     presets.append([server["address"], False, title])
                 except Exception as e:
-                    logging.warning(e)
+                    #logging.debug(e)
+                    pass # May reach here if servers unavailable - that's fine!
 
         return presets
 
@@ -566,6 +570,43 @@ class zynthian_engine_jamulus(zynthian_engine):
         return presets
 
     @classmethod
+    def zynapi_new_bank(cls, bank_name):
+        try:
+            with open(cls.PRESET_FILE, "r") as f:
+                user_presets = json.load(f)
+            if bank_name in user_presets:
+                return
+            user_presets[bank_name] = {}
+        except:
+            user_presets = {bank_name:{}}
+        with open(cls.PRESET_FILE, 'w') as f:
+            json.dump(user_presets, f)
+
+    @classmethod
+    def zynapi_rename_bank(cls, bank_name, new_bank_name):
+        try:
+            with open(cls.PRESET_FILE, "r") as f:
+                user_presets = json.load(f)
+            if bank_name in user_presets:
+                user_presets[new_bank_name] = user_presets.pop(bank_name)
+            with open(cls.PRESET_FILE, 'w') as f:
+                json.dump(user_presets, f)
+        except:
+            pass
+
+    @classmethod
+    def zynapi_remove_bank(cls, bank_name):
+        try:
+            with open(cls.PRESET_FILE, "r") as f:
+                user_presets = json.load(f)
+            if bank_name in user_presets:
+                user_presets.pop(bank_name)
+            with open(cls.PRESET_FILE, 'w') as f:
+                json.dump(user_presets, f)
+        except:
+            pass
+
+    @classmethod
     def zynapi_rename_preset(cls, preset_id, name):
         bank, server = preset_id.split('/', 1)
         cls.rename_preset(cls, [bank], [server], name)
@@ -590,9 +631,7 @@ class zynthian_engine_jamulus(zynthian_engine):
         return "jamulus"
 
     @classmethod
-    def zynapi_install(cls, dpath, bank_path):
-        if bank_path == "":
-            bank_path = "Default"
+    def zynapi_install(cls, dpath, bank_name):
         with open(dpath, 'r') as f:
             lines = f.readlines()
         for line in lines:
@@ -611,10 +650,15 @@ class zynthian_engine_jamulus(zynthian_engine):
             with open(cls.PRESET_FILE, "r") as f:
                 user_presets = json.load(f)
         except Exception as e:
-            user_presets = {} #"Default":{"server":"localhost", "name": "Local Server"}}
-        if bank_path not in user_presets:
-            user_presets[bank_path] = {}
-        user_presets[bank_path][new_preset[0]] = new_preset[2]
+            user_presets = {}
+        if not bank_name:
+            try:
+                bank_name = list(user_presets)[0]
+            except:
+                bank_name = "Default"
+        if bank_name not in user_presets:
+            user_presets[bank_name] = {}
+        user_presets[bank_name][new_preset[0]] = new_preset[2]
         with open(zynthian_engine_jamulus.PRESET_FILE, 'w') as f:
             json.dump(user_presets, f)
 
