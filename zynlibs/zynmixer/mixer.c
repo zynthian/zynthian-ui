@@ -83,8 +83,8 @@ struct sockaddr_in g_oscClient[MAX_OSC_CLIENTS]; // Array of registered OSC clie
 char g_oscdpm[20];
 jack_nframes_t g_samplerate = 44100; // Jack samplerate used to calculate damping factor
 jack_nframes_t g_buffersize = 1024;  // Jack buffer size used to calculate damping factor
-jack_default_audio_sample_t* pAuxA = NULL; // Pointer to buffer for normalised audio
-jack_default_audio_sample_t* pAuxB = NULL; // Pointer to buffer for normalised audio
+jack_default_audio_sample_t* pNormalisedBufferA = NULL; // Pointer to buffer for normalised audio
+jack_default_audio_sample_t* pNormalisedBufferB = NULL; // Pointer to buffer for normalised audio
 
 static float convertToDBFS(float raw) {
     if (raw <= 0)
@@ -155,13 +155,16 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
     unsigned int frame, chan;
     float curLevelA, curLevelB, reqLevelA, reqLevelB, fDeltaA, fDeltaB, fSampleA, fSampleB, fSampleM;
 
-    memset(pAuxA, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
-    memset(pAuxB, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
+    // Clear the normalisation buffer. This will be populated by each channel then used in final channel iteration
+    memset(pNormalisedBufferA, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
+    memset(pNormalisedBufferB, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
 
     // Process each channel
     for (chan = 0; chan < MAX_CHANNELS; chan++) {
         if (isChannelRouted(chan) || (chan == (MAX_CHANNELS - 1))) {
-            // Process current (last set) balance
+            //**Calculate processing levels**
+
+            // Calculate current (last set) balance
             if (g_dynamic[chan].balance > 0.0)
                 curLevelA = g_dynamic[chan].level * (1 - g_dynamic[chan].balance);
             else
@@ -171,7 +174,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
             else
                 curLevelB = g_dynamic[chan].level;
 
-            // Process mute and target level and balance (that we will fade to over this cycle period to avoid abrupt change clicks)
+            // Calculate mute and target level and balance (that we will fade to over this cycle period to avoid abrupt change clicks)
             if (g_dynamic[chan].mute || g_solo && (chan < MAX_CHANNELS - 1) && g_dynamic[chan].solo != 1) {
                 // Do not mute aux if solo enabled
                 g_dynamic[chan].level = 0; // We can set this here because we have the data and will iterate towards 0 over this frame
@@ -194,17 +197,17 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
             fDeltaA = (reqLevelA - curLevelA) / nFrames;
             fDeltaB = (reqLevelB - curLevelB) / nFrames;
 
+            // **Apply processing to audio samples**
+
             pInA = jack_port_get_buffer(g_dynamic[chan].inPortA, nFrames);
             pInB = jack_port_get_buffer(g_dynamic[chan].inPortB, nFrames);
 
             if(isChannelOutRouted(chan)) {
+                // Direct output so create audio buffers
                 pChanOutA = jack_port_get_buffer(g_dynamic[chan].outPortA, nFrames);
                 pChanOutB = jack_port_get_buffer(g_dynamic[chan].outPortB, nFrames);
                 memset(pChanOutA, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
                 memset(pChanOutB, 0.0, nFrames * sizeof(jack_default_audio_sample_t));
-            } else if (chan < MAX_CHANNELS - 1 && g_dynamic[chan].normalise) {
-                pChanOutA = pAuxA;
-                pChanOutB = pAuxB;
             } else {
                 pChanOutA = pChanOutB = NULL;
             }
@@ -212,9 +215,9 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
             // Iterate samples, scaling each and adding to output and set DPM if any samples louder than current DPM
             for (frame = 0; frame < nFrames; frame++) {
                 if (chan == MAX_CHANNELS - 1) {
-                    // Mix aux channel input and normalised channels mix
-                    fSampleA = (pInA[frame] + pAuxA[frame]);
-                    fSampleB = (pInB[frame] + pAuxB[frame]);
+                    // Mix channel input and normalised channels mix
+                    fSampleA = (pInA[frame] + pNormalisedBufferA[frame]);
+                    fSampleB = (pInB[frame] + pNormalisedBufferB[frame]);
                 } else {
                     fSampleA = pInA[frame];
                     fSampleB = pInB[frame];
@@ -251,6 +254,12 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
                     pChanOutA[frame] += fSampleA;
                     pChanOutB[frame] += fSampleB;
                 }
+                // Write normalised samples
+                if (chan < MAX_CHANNELS - 1 && g_dynamic[chan].normalise) {
+                    pNormalisedBufferA[frame] += fSampleA;
+                    pNormalisedBufferB[frame] += fSampleB;
+                }
+
                 curLevelA += fDeltaA;
                 curLevelB += fDeltaB;
 
@@ -327,10 +336,10 @@ int onJackBuffersize(jack_nframes_t nBuffersize, void *arg) {
         return 0;
     g_buffersize = nBuffersize;
     g_nDampingPeriod = g_fDpmDecay * g_samplerate / g_buffersize / 15;
-    free(pAuxA);
-    free(pAuxB);
-    pAuxA = malloc(nBuffersize * sizeof(jack_default_audio_sample_t));
-    pAuxB = malloc(nBuffersize * sizeof(jack_default_audio_sample_t));
+    free(pNormalisedBufferA);
+    free(pNormalisedBufferB);
+    pNormalisedBufferA = malloc(nBuffersize * sizeof(jack_default_audio_sample_t));
+    pNormalisedBufferB = malloc(nBuffersize * sizeof(jack_default_audio_sample_t));
     return 0;
 }
 
@@ -439,8 +448,8 @@ void end() {
         // jack_client_close(g_pJackClient);
     }
     g_sendEvents = 0;
-    free(pAuxA);
-    free(pAuxB);
+    free(pNormalisedBufferA);
+    free(pNormalisedBufferB);
 
     void *status;
     pthread_join(g_eventThread, &status);
