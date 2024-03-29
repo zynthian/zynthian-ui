@@ -111,17 +111,16 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 				else:
 					self.list_data.append((processor, processor, "\u2610 " + title))
 
-		if zynthian_gui_config.multichannel_recorder:
-			self.list_data.append((None, None, "> Audio Recorder"))
-			armed = self.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan)
-			if self.zyngui.state_manager.audio_recorder.status:
-				locked = None
-			else:
-				locked = "record"
-			if armed:
-				self.list_data.append((locked, 'record_disable', '\u2612 Record chain'))
-			else:
-				self.list_data.append((locked, 'record_enable', '\u2610 Record chain'))
+		self.list_data.append((None, None, "> Audio Recorder"))
+		armed = self.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan)
+		if self.zyngui.state_manager.audio_recorder.status:
+			locked = None
+		else:
+			locked = "record"
+		if armed:
+			self.list_data.append((locked, 'record_disable', '\u2612 Record chain'))
+		else:
+			self.list_data.append((locked, 'record_enable', '\u2610 Record chain'))
 
 		super().fill_list()
 

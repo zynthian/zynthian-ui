@@ -704,7 +704,7 @@ class zynthian_state_manager:
 
                 # Master MIDI Channel...
                 elif chan == zynthian_gui_config.master_midi_channel:
-                    logging.info("MASTER MIDI MESSAGE: %s" % hex(ev))
+                    logging.info(f"MASTER MIDI MESSAGE: {ev.hex()}")
                     # Webconf configured messages for Snapshot Control...
                     if ev == zynthian_gui_config.master_midi_program_change_up:
                         logging.debug("PROGRAM CHANGE UP!")
