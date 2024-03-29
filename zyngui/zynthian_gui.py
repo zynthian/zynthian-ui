@@ -1395,6 +1395,9 @@ class zynthian_gui:
 					if len(curproc.preset_list) > 0 and curproc.preset_list[0][0] != '':
 						self.screens['preset'].index = curproc.get_preset_index()
 						self.show_screen('preset', hmode=zynthian_gui.SCREEN_HMODE_ADD)
+						if len(curproc.preset_list) == 0 or curproc.preset_list[0][0] == '':
+							# Handle change of bank name, e.g. via webconf
+							self.replace_screen('bank')
 					elif len(bank_list) > 0 and bank_list[0][0] != '':
 						self.show_screen('bank', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
