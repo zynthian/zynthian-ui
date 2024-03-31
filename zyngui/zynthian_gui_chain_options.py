@@ -249,7 +249,8 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 
 	def midi_learn(self):
 		options = OrderedDict()
-		options['Enable MIDI-learn'] = "enable_midi_learn"
+		options['Enter MIDI-learn'] = "enable_midi_learn"
+		options['Enter Global MIDI-learn'] = "enable_global_midi_learn"
 		if self.processor:
 			options[f'Clear {self.processor.name} MIDI-learn'] = "clean_proc"
 		options['Clear chain MIDI-learn'] = "clean_chain"
@@ -259,6 +260,10 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 	def midi_learn_menu_cb(self, options, params):
 		if params == 'enable_midi_learn':
 			self.zyngui.close_screen()
+			self.zyngui.cuia_toggle_midi_learn()
+		elif params == 'enable_global_midi_learn':
+			self.zyngui.close_screen()
+			self.zyngui.cuia_toggle_midi_learn()
 			self.zyngui.cuia_toggle_midi_learn()
 		elif params == 'clean_proc':
 			self.zyngui.show_confirm(f"Do you want to clean MIDI-learn for ALL controls in processor {self.processor.name}?", self.zyngui.chain_manager.clean_midi_learn, self.processor)
