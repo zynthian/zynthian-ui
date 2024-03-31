@@ -324,7 +324,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 				val = self.zctrl.value + 1
 			else:
 				val = self.zctrl.value
-			if self.format_print and -1000 > val < 1000:
+			if self.format_print and -1000 < val < 1000:
 				self.value_print = self.format_print.format(val)
 			else:
 				self.value_print = str(int(val))
