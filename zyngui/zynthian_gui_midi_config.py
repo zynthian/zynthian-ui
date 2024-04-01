@@ -456,7 +456,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                                 trusted = line[10:] == "yes"
                             if line.startswith('\tConnected:'):
                                 connected = line[12:] == "yes"
-                            if line.startswith == "UUID: Vendor specific" and line.endswith("03b80e5a-ede8-4b33-a751-6ce34ec4c700)"):
+                            if line.startswith("\tUUID: Vendor specific") and line.endswith("03b80e5a-ede8-4b33-a751-6ce34ec4c700)"):
                                 is_midi = True
                         if addr not in self.ble_devices or self.ble_devices[addr] != [name, paired, trusted, connected, is_midi]:
                             self.ble_devices[addr] = [name, paired, trusted, connected, is_midi]
