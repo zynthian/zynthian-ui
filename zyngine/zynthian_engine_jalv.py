@@ -468,7 +468,6 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	def get_lv2_controllers_dict(self):
 		logging.info("Getting Controller List from LV2 Plugin ...")
-
 		zctrls = {}
 		for i, info in zynthian_lv2.get_plugin_ports(self.plugin_url).items():
 			symbol = info['symbol']
@@ -567,9 +566,9 @@ class zynthian_engine_jalv(zynthian_engine):
 								'group_name': info['group_name'],
 								'graph_path': info['index'],
 								'value': info['value'],
-								'value_default': info['range']['default'],
-								'value_min': info['range']['min'],
-								'value_max': info['range']['max'],
+								'value_default': float(info['range']['default']),
+								'value_min': float(info['range']['min']),
+								'value_max': float(info['range']['max']),
 								'is_toggle': False,
 								'is_integer': False,
 								'is_logarithmic': info['is_logarithmic'],
