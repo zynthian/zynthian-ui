@@ -26,11 +26,15 @@
 import time
 import logging
 from bisect import bisect
-from zyngine.zynthian_signal_manager import zynsigman
+
 from zyncoder.zyncore import lib_zyncore
+from zyngine.zynthian_signal_manager import zynsigman
 
 from .zynthian_ctrldev_base import (
-    zynthian_ctrldev_zynmixer, CONST, KnobSpeedControl, IntervalTimer, ButtonTimer
+    zynthian_ctrldev_zynmixer
+)
+from .zynthian_ctrldev_base_extended import (
+    CONST, KnobSpeedControl, IntervalTimer, ButtonTimer
 )
 from .zynthian_ctrldev_base_ui import ModeHandlerBase
 
@@ -414,6 +418,15 @@ class zynthian_ctrldev_akai_mpk_mini_mk3(zynthian_ctrldev_zynmixer):
         elif ev[0] == CONST.MIDI_SYSEX:
             self._current_handler.sysex_message(ev[1:-1])
 
+    def refresh(self):
+        pass
+
+    def update_mixer_strip(self, chan, symbol, value):
+        pass
+
+    def update_mixer_active_chain(self, active_chain):
+        pass
+
     def _change_handler(self, new_handler):
         if new_handler == self._current_handler:
             return
@@ -425,7 +438,6 @@ class zynthian_ctrldev_akai_mpk_mini_mk3(zynthian_ctrldev_zynmixer):
         self._current_screen = screen
         for handler in [self._device_handler, self._mixer_handler, self._pattern_handler]:
             handler.on_screen_change(screen)
-
 
 # --------------------------------------------------------------------------
 # Audio mixer and (a sort of) Zynpad handler (Mixer mode)
@@ -535,36 +547,35 @@ class MixerHandler(ModeHandlerBase):
 
     def _upload_mode_layout_to_device(self):
         cmd = SysExSetProgram(
-            name = "Zynthian MIXER",
-            tempo = self._saved_state.tempo,
-            arp = self._saved_state.arpeggiator,
-            tempo_taps = self._saved_state.tempo_taps,
-            aftertouch = self._saved_state.aftertouch,
-            keybed_octave = self._saved_state.keybed_octave,
-            channels = {
-                "pads":  self._saved_state.pads_channel,
-                "keybed": self._saved_state.keybed_channel,
+            name="Zynthian MIXER",
+            tempo=self._saved_state.tempo,
+            arp=self._saved_state.arpeggiator,
+            tempo_taps=self._saved_state.tempo_taps,
+            aftertouch=self._saved_state.aftertouch,
+            keybed_octave=self._saved_state.keybed_octave,
+            channels={
+                "pads": self._saved_state.pads_channel,
+                "keybed": self._saved_state.keybed_channel
             },
-            pads = {
+            pads={
                 "note": self._saved_state.pad_notes,
                 "pc": range(16),
-                "cc": range(self.CC_PAD_START_A, self.CC_PAD_END_B + 1),
+                "cc": range(self.CC_PAD_START_A, self.CC_PAD_END_B + 1)
             },
-            knobs = {
+            knobs={
                 "mode": [KNOB_MODE_REL] * 8,
                 "cc": range(self.CC_KNOBS_START, self.CC_KNOBS_END + 1),
                 "min": [0] * 8,
                 "max": [127] * 8,
-                "name": [f"Chain {i}/{i+8}" for i in range(1, 9)],
+                "name": [f"Chain {i}/{i+8}" for i in range(1, 9)]
             },
-            joy = {
+            joy={
                 "x-mode": JOY_MODE_DUAL,
                 "x-neg-ch": self.CC_JOY_X_NEG,
                 "x-pos-ch": self.CC_JOY_X_POS,
-                "y-mode": JOY_MODE_PITCHBEND,
-            },
+                "y-mode": JOY_MODE_PITCHBEND
+            }
         )
-
         msg = bytes.fromhex("F0 {} F7".format(cmd))
         lib_zyncore.dev_send_midi_event(self._idev_out, msg, len(msg))
 
@@ -807,22 +818,22 @@ class DeviceHandler(ModeHandlerBase):
 
     def _upload_mode_layout_to_device(self):
         cmd = SysExSetProgram(
-            name = "Zynthian DEVICE",
-            tempo = self._saved_state.tempo,
-            arp = self._saved_state.arpeggiator,
-            tempo_taps = self._saved_state.tempo_taps,
-            aftertouch = self._saved_state.aftertouch,
-            keybed_octave = self._saved_state.keybed_octave,
-            channels = {
-                "pads":  self._saved_state.pads_channel,
-                "keybed": self._saved_state.keybed_channel,
+            name="Zynthian DEVICE",
+            tempo=self._saved_state.tempo,
+            arp=self._saved_state.arpeggiator,
+            tempo_taps=self._saved_state.tempo_taps,
+            aftertouch=self._saved_state.aftertouch,
+            keybed_octave=self._saved_state.keybed_octave,
+            channels={
+                "pads": self._saved_state.pads_channel,
+                "keybed": self._saved_state.keybed_channel
             },
-            pads = {
+            pads={
                 "note": self._saved_state.pad_notes,
                 "pc": range(16),
-                "cc": range(self.CC_PAD_START, self.CC_PAD_END + 1),
+                "cc": range(self.CC_PAD_START, self.CC_PAD_END + 1)
             },
-            knobs = {
+            knobs={
                 "mode": [KNOB_MODE_REL] * 3 + [KNOB_MODE_ABS, KNOB_MODE_REL,
                     KNOB_MODE_REL, KNOB_MODE_ABS, KNOB_MODE_ABS],
                 "cc": range(self.CC_KNOB_START, self.CC_KNOB_END + 1),
@@ -830,19 +841,18 @@ class DeviceHandler(ModeHandlerBase):
                 "max": [127] * 8,
                 "name": [
                     "Knob#1", "Knob#3", "Tempo", "K4",
-                    "Knob#2", "Knob#4", "K7", "K8",
+                    "Knob#2", "Knob#4", "K7", "K8"
                 ]
             },
-            joy = {
+            joy={
                 "x-mode": JOY_MODE_DUAL,
                 "x-neg-ch": self.CC_JOY_X_NEG,
                 "x-pos-ch": self.CC_JOY_X_POS,
                 "y-mode": JOY_MODE_DUAL,
                 "y-neg-ch": self.CC_JOY_Y_NEG,
-                "y-pos-ch": self.CC_JOY_Y_POS,
+                "y-pos-ch": self.CC_JOY_Y_POS
             }
         )
-
         msg = bytes.fromhex("F0 {} F7".format(cmd))
         lib_zyncore.dev_send_midi_event(self._idev_out, msg, len(msg))
 
@@ -1023,28 +1033,28 @@ class PatternHandler(ModeHandlerBase):
 
     def _upload_mode_layout_to_device(self):
         cmd = SysExSetProgram(
-            name = "Zynthian PATTERN",
-            tempo = self._saved_state.tempo,
-            arp = self._saved_state.arpeggiator,
-            tempo_taps = self._saved_state.tempo_taps,
-            aftertouch = self._saved_state.aftertouch,
-            keybed_octave = self._saved_state.keybed_octave,
-            channels = {
+            name="Zynthian PATTERN",
+            tempo=self._saved_state.tempo,
+            arp=self._saved_state.arpeggiator,
+            tempo_taps=self._saved_state.tempo_taps,
+            aftertouch=self._saved_state.aftertouch,
+            keybed_octave=self._saved_state.keybed_octave,
+            channels={
                 "pads":  self._saved_state.pads_channel,
-                "keybed": self._saved_state.keybed_channel,
+                "keybed": self._saved_state.keybed_channel
             },
-            pads = {
+            pads={
                 "note": self._saved_state.pad_notes,
                 "pc": range(16),
                 # "cc": range(self.CC_PAD_START, self.CC_PAD_END + 1),
                 # "cc": [1, 5, 9, 13, 0, 4, 8, 12, 3, 7, 11, 15, 2, 6, 10, 14],
                 # This order is the same as pads in Zynpad
-                "cc": [9, 13, 17, 21, 8, 12, 16, 20, 11, 15, 19, 23, 10, 14, 18, 22],
+                "cc": [9, 13, 17, 21, 8, 12, 16, 20, 11, 15, 19, 23, 10, 14, 18, 22]
             },
-            knobs = {
+            knobs={
                 "mode": [
                     KNOB_MODE_ABS, KNOB_MODE_REL, KNOB_MODE_ABS, KNOB_MODE_ABS,
-                    KNOB_MODE_ABS, KNOB_MODE_REL, KNOB_MODE_REL, KNOB_MODE_ABS,
+                    KNOB_MODE_ABS, KNOB_MODE_REL, KNOB_MODE_REL, KNOB_MODE_ABS
                 ],
                 "cc": range(self.CC_KNOB_START, self.CC_KNOB_END + 1),
                 "min": [0, 0, 0, 1, 0, 0, 0, 0],
@@ -1054,16 +1064,15 @@ class PatternHandler(ModeHandlerBase):
                     "k5", "Cursor H", "Duration", "Velocity"
                 ],
             },
-            joy = {
+            joy={
                 "x-mode": JOY_MODE_DUAL,
                 "x-neg-ch": self.CC_JOY_X_NEG,
                 "x-pos-ch": self.CC_JOY_X_POS,
                 "y-mode": JOY_MODE_DUAL,
                 "y-neg-ch": self.CC_JOY_Y_NEG,
-                "y-pos-ch": self.CC_JOY_Y_POS,
+                "y-pos-ch": self.CC_JOY_Y_POS
             }
         )
-
         msg = bytes.fromhex("F0 {} F7".format(cmd))
         lib_zyncore.dev_send_midi_event(self._idev_out, msg, len(msg))
 
@@ -1208,38 +1217,37 @@ class NotePadHandler(ModeHandlerBase):
 
     def _upload_mode_layout_to_device(self):
         cmd = SysExSetProgram(
-            name = "Zynthian NOTEPAD",
-            tempo = self._saved_state.tempo,
-            arp = self._saved_state.arpeggiator,
-            tempo_taps = self._saved_state.tempo_taps,
-            aftertouch = self._saved_state.aftertouch,
-            keybed_octave = self._saved_state.keybed_octave,
-            channels = {
-                "pads":  self._saved_state.pads_channel,
-                "keybed": self._saved_state.keybed_channel,
+            name="Zynthian NOTEPAD",
+            tempo=self._saved_state.tempo,
+            arp=self._saved_state.arpeggiator,
+            tempo_taps=self._saved_state.tempo_taps,
+            aftertouch=self._saved_state.aftertouch,
+            keybed_octave=self._saved_state.keybed_octave,
+            channels={
+                "pads": self._saved_state.pads_channel,
+                "keybed": self._saved_state.keybed_channel
             },
-            pads = {
+            pads={
                 "note": self._saved_state.pad_notes,
                 "pc": range(16),
-                "cc": range(self.CC_PAD_START, self.CC_PAD_END + 1),
+                "cc": range(self.CC_PAD_START, self.CC_PAD_END + 1)
             },
-            knobs = {
+            knobs={
                 "mode": [KNOB_MODE_ABS] + [KNOB_MODE_REL] * 7,
                 "cc": range(self.CC_KNOB_START, self.CC_KNOB_END + 1),
                 "min": [1] + [0] * 7,
                 "max": [16] + [127] * 7,
-                "name": [f"K{i}" for i in range(1, 7)] + ["Adjust Note", "Remove Note"],
+                "name": [f"K{i}" for i in range(1, 7)] + ["Adjust Note", "Remove Note"]
             },
-            joy = {
+            joy={
                 "x-mode": JOY_MODE_DUAL,
                 "x-neg-ch": self.CC_JOY_X_NEG,
                 "x-pos-ch": self.CC_JOY_X_POS,
                 "y-mode": JOY_MODE_DUAL,
                 "y-neg-ch": self.CC_JOY_Y_NEG,
                 "y-pos-ch": self.CC_JOY_Y_POS,
-            },
+            }
         )
-
         msg = bytes.fromhex("F0 {} F7".format(cmd))
         lib_zyncore.dev_send_midi_event(self._idev_out, msg, len(msg))
 
@@ -1264,36 +1272,35 @@ class UserHandler(ModeHandlerBase):
 
     def _upload_mode_layout_to_device(self):
         cmd = SysExSetProgram(
-            name = "Zynthian USER",
-            tempo = self._saved_state.tempo,
-            arp = self._saved_state.arpeggiator,
-            tempo_taps = self._saved_state.tempo_taps,
-            aftertouch = self._saved_state.aftertouch,
-            keybed_octave = self._saved_state.keybed_octave,
-            channels = {
+            name="Zynthian USER",
+            tempo=self._saved_state.tempo,
+            arp=self._saved_state.arpeggiator,
+            tempo_taps=self._saved_state.tempo_taps,
+            aftertouch=self._saved_state.aftertouch,
+            keybed_octave=self._saved_state.keybed_octave,
+            channels={
                 "pads": self._saved_state.pads_channel,
-                "keybed": self._saved_state.keybed_channel,
+                "keybed": self._saved_state.keybed_channel
             },
-            pads = {
+            pads={
                 "note": self._saved_state.pad_notes,
                 "pc": range(16),
-                "cc": range(40, 56),
+                "cc": range(40, 56)
             },
-            knobs = {
+            knobs={
                 "mode": [KNOB_MODE_ABS] * 8,
                 "cc": range(56, 64),
                 "min": [0] * 8,
                 "max": [127] * 8,
-                "name": [f"K{i}" for i in range(1, 9)],
+                "name": [f"K{i}" for i in range(1, 9)]
             },
-            joy = {
+            joy={
                 "x-mode": JOY_MODE_DUAL,
                 "x-neg-ch": self.CC_JOY_X_NEG,
                 "x-pos-ch": self.CC_JOY_X_POS,
-                "y-mode": JOY_MODE_PITCHBEND,
-            },
+                "y-mode": JOY_MODE_PITCHBEND
+            }
         )
-
         msg = bytes.fromhex("F0 {} F7".format(cmd))
         lib_zyncore.dev_send_midi_event(self._idev_out, msg, len(msg))
 
@@ -1409,41 +1416,40 @@ class ConfigHandler(ModeHandlerBase):
 
     def _upload_mode_layout_to_device(self):
         cmd = SysExSetProgram(
-            name = "Zynthian CONFIG",
-            tempo = self._saved_state.tempo,
-            arp = self._saved_state.arpeggiator,
-            tempo_taps = self._saved_state.tempo_taps,
-            aftertouch = self._saved_state.aftertouch,
-            keybed_octave = self._saved_state.keybed_octave,
-            channels = {
+            name="Zynthian CONFIG",
+            tempo=self._saved_state.tempo,
+            arp=self._saved_state.arpeggiator,
+            tempo_taps=self._saved_state.tempo_taps,
+            aftertouch=self._saved_state.aftertouch,
+            keybed_octave=self._saved_state.keybed_octave,
+            channels={
                 "pads": self._saved_state.pads_channel,
-                "keybed": self._saved_state.keybed_channel,
+                "keybed": self._saved_state.keybed_channel
             },
-            pads = {
+            pads={
                 "note": self._saved_state.pad_notes,
                 "pc": range(16),
-                "cc": range(self.CC_PAD_START, self.CC_PAD_END + 1),
+                "cc": range(self.CC_PAD_START, self.CC_PAD_END + 1)
             },
-            knobs = {
+            knobs={
                 "cc": range(self.CC_KNOB_START, self.CC_KNOB_END + 1),
                 "mode": [
                     KNOB_MODE_ABS, KNOB_MODE_ABS, KNOB_MODE_ABS, KNOB_MODE_ABS,
-                    KNOB_MODE_REL, KNOB_MODE_ABS, KNOB_MODE_ABS, KNOB_MODE_ABS,
+                    KNOB_MODE_REL, KNOB_MODE_ABS, KNOB_MODE_ABS, KNOB_MODE_ABS
                 ],
                 "min": [
                     TEMPO_TAPS_MIN, 50 + ARP_SWING_MIN, AFTERTOUCH_OFF, KEY_OCTAVE_MIN,
-                    0, 0, 1, 1,
+                    0, 0, 1, 1
                 ],
                 "max": [
                     TEMPO_TAPS_MAX, 50 + ARP_SWING_MAX, AFTERTOUCH_POLYPHONIC, KEY_OCTAVE_MAX,
-                    1, 1, 16, 16,
+                    1, 1, 16, 16
                 ],
                 "name": [
                     "Tempo Taps", "Swing", "Aftertouch", "KeyBed Octave",
                     "K5", "Ext Clock", "PADs Channel", "KeyBed Channel"
-                ],
-            },
+                ]
+            }
         )
-
         msg = bytes.fromhex("F0 {} F7".format(cmd))
         lib_zyncore.dev_send_midi_event(self._idev_out, msg, len(msg))
