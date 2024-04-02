@@ -51,6 +51,7 @@ class zynthian_gui_keyboard():
 		self.columns = 10  # Quantity of columns in keyboard grid
 		self.rows = 5  # Quantity of rows in keyboard grid
 		self.shift = 0  # 0=Normal, 1=Shift, 2=Shift lock
+		self.alt = False  # False=Normal, True=alternante char table (symbols)
 		self.buttons = []  # Array of [rectangle id, label id] for buttons in keyboard layout
 		self.selected_button = 45  # Index of highlighted button
 		self.mode = OSK_QWERTY  # Keyboard layout mode
@@ -116,7 +117,8 @@ class zynthian_gui_keyboard():
 			self.btn_enter = self.add_button('Enter', 5, row, 1)
 		else:
 			self.btn_shift = self.add_button('⬆️', 2, row, 1)
-			self.btn_space = self.add_button(' ', 3, row, 4)
+			self.btn_alt = self.add_button('Alt', 3, row, 1)
+			self.btn_space = self.add_button(' ', 4, row, 3)
 			self.btn_delete = self.add_button('Del', 7, row, 1)
 			self.btn_enter = self.add_button('Enter', 8, row, 2)
 		self.highlight_box = self.key_canvas.create_rectangle(0, 0, self.key_width, self.key_height, outline="red", width=2)
@@ -128,16 +130,28 @@ class zynthian_gui_keyboard():
 			self.keys = ['1', '2', '3',
 						'4', '5', '6',
 						'7', '8', '9']
-		elif self.shift:
-			self.keys = ['!', '£', '$', '€', '%', '&', '(', ')', '+', '-',
-						'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P',
-						'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', '[',
-						'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', ']']
+		elif self.alt:
+			if self.shift:
+				self.keys = ['\\', '|', '@', '/', '*', '=', '\"', '\'', '?', '¡',
+							'Ä', 'Ë', 'Ï', 'Ö', 'Ü', 'Â', 'Ê', 'Î', 'Ô', 'Û',
+							'Ñ', 'Ç', 'Ẅ', 'Ŵ', 'Ĉ', 'Ÿ', 'Ŷ', 'Ŝ', 'Ĝ', 'Ḧ',
+							'Ĥ', 'Ĵ', 'Ẑ', 'Ẍ', '{', '}', '~', '^', ':', '_']
+			else:
+				self.keys = ['á', 'é', 'í', 'ó', 'ú', 'à', 'è', 'ì', 'ò', 'ù',
+							'ä', 'ë', 'ï', 'ö', 'ü', 'â', 'ê', 'î', 'ô', 'û',
+							'ñ', 'ç', 'ẅ', 'ŵ', 'ẗ', 'ÿ', 'ŷ', 'ŝ', 'ĝ', 'ḧ',
+							'ĥ', 'ĵ', 'ẑ', 'ẍ', 'ĉ', '}', '~', '^', ':', '_']
 		else:
-			self.keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
-						'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p',
-						'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';',
-						'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '#']
+			if self.shift:
+				self.keys = ['!', '£', '$', '€', '%', '&', '(', ')', '+', '-',
+							'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P',
+							'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', '[',
+							'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', ']']
+			else:
+				self.keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
+							'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p',
+							'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';',
+							'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '#']
 		self.key_canvas.itemconfig("keycaps", text="")
 		for index in range(len(self.keys)):
 			self.key_canvas.itemconfig(self.buttons[index][1], text=self.keys[index], tags=("key:%d"%(index), "keycaps"))
@@ -214,14 +228,24 @@ class zynthian_gui_keyboard():
 				self.text = self.text + "0"
 			else:
 				self.text = self.text + " "
+		elif key == self.btn_alt:
+			self.alt = not self.alt
+			if self.alt:
+				self.key_canvas.itemconfig(self.buttons[self.btn_alt][0], fill="red")
+			else:
+				self.key_canvas.itemconfig(self.buttons[self.btn_alt][0], fill="black")
+			self.refresh_keys()
+
 		if key == self.btn_shift:
 			self.shift += 1
 			if self.shift > 2:
 				self.shift = 0
 		elif self.shift == 1:
 			self.shift = 0
+
 		if self.max_len:
 			self.text = self.text[:self.max_len]
+
 		if shift != self.shift:
 			if self.shift == 1:
 				self.key_canvas.itemconfig(self.buttons[self.btn_shift][0], fill="grey")
@@ -230,6 +254,7 @@ class zynthian_gui_keyboard():
 			else:
 				self.key_canvas.itemconfig(self.buttons[self.btn_shift][0], fill="black")
 			self.refresh_keys()
+
 		self.text_canvas.itemconfig(self.text_label, text=self.text)
 		self.highlight(key)
 
