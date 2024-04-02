@@ -46,7 +46,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector):
 
 	def build_view(self):
 		if super().build_view():
-			zynsigman.register(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
+			zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
 			return True
 		else:
 			return False
