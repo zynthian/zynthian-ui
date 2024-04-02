@@ -46,7 +46,7 @@ class zynthian_ctrldev_launchpad_pro_mk3(zynthian_ctrldev_zynpad):
 	STOPPING_COLOUR = 5
 
 	def send_sysex(self, data):
-		if self.idev_out > 0:
+		if self.idev_out is not None:
 			msg = bytes.fromhex("F0 00 20 29 02 0E {} F7".format(data))
 			lib_zyncore.dev_send_midi_event(self.idev, msg, len(msg))
 			sleep(0.05)
@@ -76,7 +76,7 @@ class zynthian_ctrldev_launchpad_pro_mk3(zynthian_ctrldev_zynpad):
 
 	# Zynpad Scene LED feedback
 	def refresh_zynpad_bank(self):
-		if self.idev_out <= 0:
+		if self.idev_out is None:
 			return
 		#logging.debug("Updating Launchpad MINI MK3 bank leds")
 		for row in range(0, 8):
@@ -88,7 +88,7 @@ class zynthian_ctrldev_launchpad_pro_mk3(zynthian_ctrldev_zynpad):
 
 	# Zynpad Pad LED feedback
 	def update_pad(self, pad, state, mode):
-		if self.idev_out <= 0:
+		if self.idev_out is None:
 			return
 		#logging.debug("Updating Launchpad MINI MK3 pad {}".format(pad))
 		col, row = self.zynseq.get_xy_from_pad(pad)

@@ -48,7 +48,7 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 	STOP_ALL_COLOUR = 5
 
 	def send_sysex(self, data):
-		if self.idev_out > 0:
+		if self.idev_out is not None:
 			msg = bytes.fromhex(f"F0 00 20 29 02 0D {data} F7")
 			lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
 			sleep(0.05)
@@ -76,7 +76,7 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 		self.send_sysex("00 05")
 
 	def update_seq_bank(self):
-		if self.idev_out <= 0:
+		if self.idev_out is None:
 			return
 		#logging.debug("Updating Launchpad MINI MK3 bank leds")
 		for row in range(0, 7):
@@ -89,7 +89,7 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 		lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 19, self.STOP_ALL_COLOUR)
 
 	def update_seq_state(self, bank, seq, state, mode, group):
-		if self.idev_out <= 0 or bank != self.zynseq.bank:
+		if self.idev_out is None or bank != self.zynseq.bank:
 			return
 		#logging.debug(f"Updating Launchpad MINI MK3 bank {bank} pad {seq} => state {state}, mode {mode}")
 		col, row = self.zynseq.get_xy_from_pad(seq)

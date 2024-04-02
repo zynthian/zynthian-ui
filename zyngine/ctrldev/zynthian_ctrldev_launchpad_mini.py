@@ -83,7 +83,7 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 			lib_zyncore.dev_send_ccontrol_change(self.idev_out, 0, 104 + col, light)
 
 	def update_seq_bank(self):
-		if self.idev_out <= 0:
+		if self.idev_out is None:
 			return
 		#logging.debug("Updating Launchpad MINI bank leds")
 		col = 8
@@ -95,7 +95,7 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
 				lib_zyncore.dev_send_note_on(self.idev_out, 0, note, self.OFF_COLOUR)
 
 	def update_seq_state(self, bank, seq, state, mode, group):
-		if self.idev_out <= 0 or bank != self.zynseq.bank:
+		if self.idev_out is None or bank != self.zynseq.bank:
 			return
 		#logging.debug("Updating Launchpad MINI pad {}".format(seq))
 		col, row = self.zynseq.get_xy_from_pad(seq)

@@ -62,7 +62,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 		lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 0)
 
 	def update_seq_state(self, bank, seq, state, mode, group):
-		if self.idev_out <= 0 or bank != self.zynseq.bank:
+		if self.idev_out is None or bank != self.zynseq.bank:
 			return
 		col, row = self.zynseq.get_xy_from_pad(seq)
 		if row > 1:

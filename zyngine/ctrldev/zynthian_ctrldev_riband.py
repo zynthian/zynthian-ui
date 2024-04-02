@@ -52,7 +52,7 @@ class zynthian_ctrldev_riband(zynthian_ctrldev_zynpad):
 		super().end()
 
 	def update_seq_state(self, bank, seq, state, mode, group):
-		if self.idev_out <= 0 or bank != self.zynseq.bank:
+		if self.idev_out is None or bank != self.zynseq.bank:
 			return
 		col, row = self.zynseq.get_xy_from_pad(seq)
 		if row > 3 or col > 3:
