@@ -63,7 +63,9 @@ class zynthian_ctrldev_manager():
         for module_name in list(sys.modules):
             if module_name.startswith("zyngine.ctrldev.zynthian_ctrldev_"):
                 class_name = module_name[16:]
-                dev_class = getattr(sys.modules[module_name], class_name)
+                dev_class = getattr(sys.modules[module_name], class_name, None)
+                if dev_class is None:
+                    continue
                 for dev_id in dev_class.dev_ids:
                     logging.info(f"Ctrldev driver '{class_name}' for devices with ID '{dev_id}'")
                     self.available_drivers[dev_id] = dev_class
