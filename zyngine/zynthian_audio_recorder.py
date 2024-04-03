@@ -57,9 +57,10 @@ class zynthian_audio_recorder:
 		exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
 		if exdirs:
 			path = exdirs[0]
+			filename = datetime.now().strftime("%Y-%m-%d_%H%M%S")
 		else:
 			path = self.capture_dir_sdc
-		filename = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+			filename = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
 		if self.state_manager.last_snapshot_fpath and len(self.state_manager.last_snapshot_fpath) > 4:
 			filename += "_" + os.path.basename(self.state_manager.last_snapshot_fpath[:-4])
 
@@ -106,10 +107,12 @@ class zynthian_audio_recorder:
 		cmd.append(self.filename)
 
 		logging.info(f"STARTING NEW AUDIO RECORD '{self.filename}'...")
+		#logging.debug(f"COMMAND => {cmd}")
 		try:
 			self.rec_proc = Popen(cmd)
 		except Exception as e:
-			logging.error("ERROR STARTING AUDIO RECORD: %s" % e)
+			logging.error(f"ERROR STARTING AUDIO RECORD => {e}")
+			logging.error(f"COMMAND => {cmd}")
 			self.rec_proc = None
 			return False
 

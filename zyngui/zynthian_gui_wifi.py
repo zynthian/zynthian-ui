@@ -124,12 +124,14 @@ class zynthian_gui_wifi(zynthian_gui_selector):
 				res = False
 				logging.debug(f"{output}")
 				self.state_manager.set_busy_error(output)
-				sleep(3)
+				sleep(2)
 		except Exception as e:
 			res = False
 			self.state_manager.set_busy_error(f"Can't enable network {name}", str(e))
-			sleep(3)
+			sleep(2)
 		self.state_manager.end_busy("wifi_enable_nw")
+		if not res:
+			self.reconfigure_wifi_nw(name)
 		return res
 
 	def disable_wifi_nw(self, name):
@@ -169,13 +171,33 @@ class zynthian_gui_wifi(zynthian_gui_selector):
 				res = False
 				logging.debug(f"{output}")
 				self.state_manager.set_busy_error(output)
-				sleep(3)
+				sleep(2)
 		except Exception as e:
 			res = False
+			logging.debug(f"{e}")
 			self.state_manager.set_busy_error(f"Can't configure network {self.config_wifi_name}", str(e))
-			sleep(3)
+			sleep(2)
 		self.state_manager.end_busy("wifi_config_nw")
+		if not res:
+			self.reconfigure_wifi_nw(self.config_wifi_name)
 		return res
+
+	def delete_wifi_nw(self, name):
+		try:
+			output = check_output(["nmcli", "con", "del", name], encoding='utf-8')
+			res = True
+		except Exception as e:
+			res = False
+			logging.error(f"Can't delete connection {name}")
+		return res
+
+	def reconfigure_wifi_nw(self, name):
+		self.config_wifi_name = name
+		self.zyngui.show_keyboard(self.reconfigure_wifi_nw_cb, "")
+
+	def reconfigure_wifi_nw_cb(self, passwd):
+		if self.delete_wifi_nw(self.config_wifi_name):
+			self.configure_wifi_nw_cb(passwd)
 
 	def select_action(self, i, t='S'):
 		if callable(self.list_data[i][0]):

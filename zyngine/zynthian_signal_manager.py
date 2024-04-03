@@ -23,6 +23,7 @@
 # ****************************************************************************
 
 import logging
+import traceback
 from queue import SimpleQueue
 from threading import Thread
 
@@ -137,6 +138,7 @@ class zynthian_signal_manager:
                         rdata[0](**kwargs)
                     except Exception as e:
                         logging.error(f"Callback '{rdata[0].__name__}(...)' for signal({signal},{subsignal}): {e}")
+                        logging.exception(traceback.format_exc())
 
     def send(self, signal, subsignal, **kwargs):
         """ Send direct call signal
@@ -169,6 +171,7 @@ class zynthian_signal_manager:
                 data[2](**data[3])
             except Exception as e:
                 logging.error(f"Queued callback '{data[2].__name__}(...)' for signal({data[0]},{data[1]}): {e}")
+                logging.exception(traceback.format_exc())
 
 # ---------------------------------------------------------------------------
 

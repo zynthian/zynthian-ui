@@ -89,7 +89,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 	def start(self):
 		self.jackname = zynaudioplayer.get_jack_client_name()
-		zynsigman.register(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
+		zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
 
 	def stop(self):
 		try:
@@ -548,7 +548,10 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	def update_rec(self, state):
 		if not state:
 			for processor in self.processors:
-				processor.controllers_dict['record'].set_value("stopped", False)
+				try:
+					processor.controllers_dict['record'].set_value("stopped", False)
+				except:
+					pass
 
 	# ---------------------------------------------------------------------------
 	# Specific functions

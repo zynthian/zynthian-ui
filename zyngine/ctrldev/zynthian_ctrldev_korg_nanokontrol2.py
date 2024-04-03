@@ -70,7 +70,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
 		super().__init__(state_manager, idev_in, idev_out)
 
 	def send_sysex(self, data):
-		if self.idev_out > 0:
+		if self.idev_out is not None:
 			msg = bytes.fromhex(f"F0 42 4{hex(self.midi_chan)[2:]} 00 01 13 00 {data} F7")
 			lib_zyncore.dev_send_midi_event(self.idev_out, msg, len(msg))
 

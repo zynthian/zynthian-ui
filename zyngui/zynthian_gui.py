@@ -1927,7 +1927,8 @@ class zynthian_gui:
 		try:
 			self.zynswitches()
 		except Exception as err:
-			logging.exception(err)
+			#logging.exception(err)
+			logging.exception(traceback.format_exc())
 
 	# ------------------------------------------------------------------
 	# Signal processing
