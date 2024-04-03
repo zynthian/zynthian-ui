@@ -382,7 +382,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			['input_gain', {'name': 'input gain', 'value': 1.0, 'value_max': 1.0, 'is_integer': False, 'is_logarithmic': True}],
 			['loop_count', {'name': 'loop count', 'value': 1, 'value_min': 1, 'value_max': self.MAX_LOOPS}],
 			['selected_loop_num', {'name': 'selected loop', 'value': 1, 'value_min': 1, 'value_max': 6}],
-			['single_pedal', {'name':'single pedal', 'value':0, 'labels': ['off', 'on']}]
+			['single_pedal', {'name': 'single pedal', 'value': 0, 'value_max': 1, 'labels': ['>', '<'], 'is_toggle': True}]
 		]
 
 		# Controller Screens
@@ -392,7 +392,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			['Loop control', ['trigger', 'oneshot', 'mute', 'pause']],
 			['Loop time/pitch', ['reverse', 'rate', 'stretch_ratio', 'pitch_shift']],
 			['Loop levels', ['wet', 'dry', 'feedback']],
-			['Global loops', ['selected_loop_num', 'loop_count', 'prev/next', 'single_pedal']],
+			['Global loop', ['selected_loop_num', 'loop_count', 'prev/next', 'single_pedal']],
 			['Global levels', ['rec_thresh', 'input_gain']],
 			['Global quantize', ['quantize', 'mute_quantized', 'overdub_quantized', 'replace_quantized']],
 			['Global sync 1', ['sync_source', 'sync', 'playback_sync', 'relative_sync']],
