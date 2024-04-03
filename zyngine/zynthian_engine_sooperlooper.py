@@ -338,8 +338,8 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			"next_state": -1,
 			"loop_count": 0
 		})
-		self.pedal_time = 0 # Time single pedal was asserted
-		self.pedal_taps = 0 # Quantity of taps on single pedal
+		self.pedal_time = 0  # Time single pedal was asserted
+		self.pedal_taps = 0  # Quantity of taps on single pedal
 
 		# MIDI Controllers
 		loop_labels = []
@@ -558,17 +558,23 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				Double press: pause
 				Double press and hold: Clear
 			"""
-			pedal_dur = monotonic() - self.pedal_time
+			ts = monotonic()
+			pedal_dur = ts - self.pedal_time
+
+			# Pedal push
 			if zctrl.value:
-				pedal_dur = monotonic() - self.pedal_time
-				self.pedal_time = monotonic()
+				self.pedal_time = ts
 				if 0 < pedal_dur < 0.5:
 					self.pedal_taps += 1
 				else:
 					self.pedal_taps = 0
-				if self.pedal_taps == 1:
-					# Double press
+				# Triple tap
+				if self.pedal_taps == 2:
+					self.osc_server.send(self.osc_target, '/sl/-3/hit', ('s', 'undo_all'))
+				# Double tap
+				elif self.pedal_taps == 1:
 					self.osc_server.send(self.osc_target, '/sl/-3/hit', ('s', 'pause'))
+				# Single tap
 				elif self.state[self.selected_loop] in (SL_STATE_UNKNOWN, SL_STATE_OFF, SL_STATE_OFF_MUTED):
 					self.osc_server.send(self.osc_target, '/sl/-3/hit', ('s', 'record'))
 				elif self.state[self.selected_loop] == SL_STATE_RECORDING:
@@ -577,11 +583,10 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 					self.osc_server.send(self.osc_target, '/sl/-3/hit', ('s', 'overdub'))
 				elif self.state[self.selected_loop] == SL_STATE_PAUSED:
 					self.osc_server.send(self.osc_target, '/sl/-3/hit', ('s', 'trigger'))
+			# Pedal release: so check loop state, pedal press duration, etc.
 			else:
-				# Pedal release so check loop state, pedal press duration, etc.
-				pedal_dur = monotonic() - self.pedal_time
+				# Long press
 				if pedal_dur > 1.5:
-					# Long press
 					if self.pedal_taps:
 						self.osc_server.send(self.osc_target, '/sl/-3/hit', ('s', 'undo_all'))
 		elif zctrl.is_toggle:
