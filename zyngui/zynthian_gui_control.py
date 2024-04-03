@@ -633,10 +633,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 				return
 			title = "Control options"
 			if not unlearn_only:
-				if zctrl.midi_cc_momentary_switch:
-					options[f"\u2612 Momentary switch"] = i
-				else:
-					options[f"\u2610 Momentary switch"] = i
+				if zctrl.is_toggle:
+					if zctrl.midi_cc_momentary_switch:
+						options[f"\u2612 Momentary => Latch"] = i
+					else:
+						options[f"\u2610 Momentary => Latch"] = i
 				options["X-Y touchpad"] = i
 				options[f"Chain learn '{zctrl.name}'..."] = i
 				options[f"Global learn '{zctrl.name}'..."] = i
