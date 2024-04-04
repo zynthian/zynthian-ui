@@ -663,7 +663,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			zynaudioplayer.start_playback(self.processor.handle)
 		return True
 
-	def update_wsleds(self, wsleds):
+	def update_wsleds(self, leds):
 		wsl = self.zyngui.wsleds
 		if self.processor.handle == self.zyngui.state_manager.audio_player.handle:
 			color_default = wsl.wscolor_default
@@ -671,15 +671,15 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			color_default = wsl.wscolor_active2
 		# REC Button
 		if self.zyngui.state_manager.audio_recorder.status:
-			wsl.wsleds.setPixelColor(wsleds[1], wsl.wscolor_red)
+			wsl.set_led(leds[1], wsl.wscolor_red)
 		else:
-			wsl.wsleds.setPixelColor(wsleds[1], color_default)
+			wsl.set_led(leds[1], color_default)
 		# STOP button
-		wsl.wsleds.setPixelColor(wsleds[2], color_default)
+		wsl.set_led(leds[2], color_default)
 		# PLAY button:
 		if zynaudioplayer.get_playback_state(self.processor.handle):
-			wsl.wsleds.setPixelColor(wsleds[3], wsl.wscolor_green)
+			wsl.set_led(leds[3], wsl.wscolor_green)
 		else:
-			wsl.wsleds.setPixelColor(wsleds[3], color_default)
+			wsl.set_led(leds[3], color_default)
 
 # ------------------------------------------------------------------------------

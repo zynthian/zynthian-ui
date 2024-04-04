@@ -596,7 +596,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 					self.processor.controllers_dict['loop_count'].nudge(1)
 			return True
 
-	def update_wsleds(self, wsleds):
+	def update_wsleds(self, leds):
 		# ALT mode only!
 		if not self.zyngui.alt_mode:
 			return
@@ -610,34 +610,34 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		# REC Button
 		if state in (SL_STATE_REC_STARTING, SL_STATE_REC_STOPPING) or next_state in (SL_STATE_RECORDING,
 			SL_STATE_OVERDUBBING, SL_STATE_MULTIPLYING, SL_STATE_INSERTING, SL_STATE_REPLACING):
-			wsl.blink(wsleds[1], wsl.wscolor_red)
+			wsl.blink(leds[1], wsl.wscolor_red)
 		elif state in (SL_STATE_RECORDING, SL_STATE_OVERDUBBING, SL_STATE_MULTIPLYING, SL_STATE_INSERTING,
 			SL_STATE_REPLACING):
 			if next_state == 'SL_STATE_PLAYING':
-				wsl.blink(wsleds[1], wsl.wscolor_red)
+				wsl.blink(leds[1], wsl.wscolor_red)
 			else:
-				wsl.wsleds.setPixelColor(wsleds[1], wsl.wscolor_red)
+				wsl.set_led(leds[1], wsl.wscolor_red)
 		else:
-			wsl.wsleds.setPixelColor(wsleds[1], color_default)
+			wsl.set_led(leds[1], color_default)
 		# STOP button
 		if next_state == SL_STATE_MULTIPLYING:
-			wsl.blink(wsleds[2], wsl.wscolor_red)
+			wsl.blink(leds[2], wsl.wscolor_red)
 		elif state == SL_STATE_MULTIPLYING:
-			wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_red)
+			wsl.set_led(leds[2], wsl.wscolor_red)
 		else:
-			wsl.wsleds.setPixelColor(wsleds[2], color_default)
+			wsl.set_led(leds[2], color_default)
 		# PLAY button:
 		if next_state in (SL_STATE_PAUSED, SL_STATE_MUTED, SL_STATE_TRIGGER_PLAY, SL_STATE_PLAYING_ONCE):
-			wsl.blink(wsleds[3], wsl.wscolor_green)
+			wsl.blink(leds[3], wsl.wscolor_green)
 		elif state in (SL_STATE_PLAYING, SL_STATE_OVERDUBBING, SL_STATE_MULTIPLYING, SL_STATE_INSERTING,
 			SL_STATE_REPLACING, SL_STATE_PLAYING_ONCE, SL_STATE_SUBSTITUTING):
-			wsl.wsleds.setPixelColor(wsleds[3], wsl.wscolor_green)
+			wsl.set_led(leds[3], wsl.wscolor_green)
 		else:
-			wsl.wsleds.setPixelColor(wsleds[3], color_default)
+			wsl.set_led(leds[3], color_default)
 		# ALT button
-		wsl.wsleds.setPixelColor(wsleds[0], color_default)
+		wsl.set_led(leds[0], color_default)
 		# Arrows and F1-F4
-		for i in range(4, len(wsleds)):
-			wsl.wsleds.setPixelColor(wsleds[i], color_default)
+		for i in range(4, len(leds)):
+			wsl.set_led(leds[i], color_default)
 
 # *******************************************************************************

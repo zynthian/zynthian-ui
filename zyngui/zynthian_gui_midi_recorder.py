@@ -293,20 +293,20 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		self.zyngui.state_manager.toggle_midi_playback()
 		return True
 
-	def update_wsleds(self, wsleds):
+	def update_wsleds(self, leds):
 		wsl = self.zyngui.wsleds
 		# REC button
 		if self.zyngui.state_manager.status_midi_recorder:
-			wsl.wsleds.setPixelColor(wsleds[1], wsl.wscolor_red)
+			wsl.set_led(leds[1], wsl.wscolor_red)
 		else:
-			wsl.wsleds.setPixelColor(wsleds[1], wsl.wscolor_alt)
+			wsl.set_led(leds[1], wsl.wscolor_alt)
 		# STOP button
-		wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_alt)
+		wsl.set_led(leds[2], wsl.wscolor_alt)
 		# PLAY button:
 		if self.zyngui.state_manager.status_midi_player:
-			wsl.wsleds.setPixelColor(wsleds[3], wsl.wscolor_green)
+			wsl.set_led(leds[3], wsl.wscolor_green)
 		else:
-			wsl.wsleds.setPixelColor(wsleds[3], wsl.wscolor_alt)
+			wsl.set_led(leds[3], wsl.wscolor_alt)
 
 	# -------------------------------------------------------------------------
 

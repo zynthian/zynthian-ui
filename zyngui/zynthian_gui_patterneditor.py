@@ -1401,24 +1401,24 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.toggle_playback()
 		return True
 
-	def update_wsleds(self, wsleds):
+	def update_wsleds(self, leds):
 		wsl = self.zyngui.wsleds
 		# REC button:
 		if self.zynseq.libseq.isMidiRecord():
-			wsl.wsleds.setPixelColor(wsleds[1], wsl.wscolor_red)
+			wsl.set_led(leds[1], wsl.wscolor_red)
 		else:
-			wsl.wsleds.setPixelColor(wsleds[1], wsl.wscolor_active2)
+			wsl.set_led(leds[1], wsl.wscolor_active2)
 		# STOP button
-		wsl.wsleds.setPixelColor(wsleds[2], wsl.wscolor_active2)
+		wsl.set_led(leds[2], wsl.wscolor_active2)
 		# PLAY button:
 		pb_status = self.zyngui.screens['pattern_editor'].get_playback_status()
 		if pb_status == zynseq.SEQ_PLAYING:
-			wsl.wsleds.setPixelColor(wsleds[3], wsl.wscolor_green)
+			wsl.set_led(leds[3], wsl.wscolor_green)
 		elif pb_status in (zynseq.SEQ_STARTING, zynseq.SEQ_RESTARTING):
-			wsl.wsleds.setPixelColor(wsleds[3], wsl.wscolor_yellow)
+			wsl.set_led(leds[3], wsl.wscolor_yellow)
 		elif pb_status in (zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC):
-			wsl.wsleds.setPixelColor(wsleds[3], wsl.wscolor_red)
+			wsl.set_led(leds[3], wsl.wscolor_red)
 		elif pb_status == zynseq.SEQ_STOPPED:
-			wsl.wsleds.setPixelColor(wsleds[3], wsl.wscolor_active2)
+			wsl.set_led(leds[3], wsl.wscolor_active2)
 
 # ------------------------------------------------------------------------------

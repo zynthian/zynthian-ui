@@ -23,9 +23,10 @@
 #
 # ******************************************************************************
 
+import board
 import logging
 import traceback
-import rpi_ws281x
+import neopixel_spi as neopixel
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -39,12 +40,13 @@ class zynthian_wsleds_base:
 	
 	def __init__(self, zyngui):
 		self.zyngui = zyngui
+
 		# LED strip variables
-		self.dma = None
-		self.pin = None
-		self.chan = None
+		self.spi_board = None
 		self.wsleds = None
 		self.num_leds = 0
+
+		# LED state variables
 		self.blink_count = 0
 		self.blink_state = False
 		self.pulse_step = 0
@@ -81,13 +83,22 @@ class zynthian_wsleds_base:
 		}
 
 	def create_color(self, r, g, b):
-		return rpi_ws281x.Color(int(self.brightness * r), int(self.brightness * g), int(self.brightness * b))
+		r = int(r * self.brightness)
+		g = int(g * self.brightness)
+		b = int(b * self.brightness)
+		return (r << 16) | (g << 8) | b
+
+	def create_color_from_hex(self, hexcolor):
+		r = int(self.brightness * ((hexcolor >> 16) & 0xFF))
+		g = int(self.brightness * ((hexcolor >> 8) & 0xFF))
+		b = int(self.brightness * (hexcolor & 0xFF))
+		return (r << 16) | (g << 8) | b
 
 	def set_brightness(self, brightness):
 		if brightness < 0:
 			self.brightness = 0
 		elif brightness > 1:
-			self.brightness = 0
+			self.brightness = 1
 		else:
 			self.brightness = brightness
 		self.setup_colors()
@@ -96,14 +107,14 @@ class zynthian_wsleds_base:
 		return self.brightness
 
 	def start(self):
-		if self.num_leds > 0 and self.pin is not None:
+		if self.num_leds > 0:
 			try:
-				self.wsleds = rpi_ws281x.PixelStrip(self.num_leds, self.pin, dma=self.dma, channel=self.chan, strip_type=rpi_ws281x.ws.WS2811_STRIP_GRB)
-				self.wsleds.begin()
+				self.spi_board = board.SPI()
+				self.wsleds = neopixel.NeoPixel_SPI(self.spi_board, self.num_leds, pixel_order=neopixel.GRB, auto_write=False)
 				self.light_on_all()
 			except Exception as e:
 				self.wsleds = None
-				logging.error(f"Can't start ws281x LEDs => {e}")
+				logging.error(f"Can't start RGB LEDs => {e}")
 
 	def end(self):
 		self.light_off_all()
@@ -111,41 +122,41 @@ class zynthian_wsleds_base:
 	def get_num(self):
 		return self.num_leds
 
-	def setPixelColor(self, i, wscolor):
-		self.wsleds.setPixelColor(i, wscolor)
+	def set_led(self, i, wscolor):
+		self.wsleds[i] = wscolor
 
 	def light_on_all(self):
 		if self.num_leds > 0:
 			# Light all LEDs
 			for i in range(0, self.num_leds):
-				self.wsleds.setPixelColor(i, self.wscolor_default)
+				self.wsleds[i] = self.wscolor_default
 			self.wsleds.show()
 
 	def light_off_all(self):
 		if self.num_leds > 0:
 			# Light-off all LEDs
 			for i in range(0, self.num_leds):
-				self.wsleds.setPixelColor(i, self.wscolor_off)
+				self.wsleds[i] = self.wscolor_off
 			self.wsleds.show()
 
 	def blink(self, i, color):
 		if self.blink_state:
-			self.wsleds.setPixelColor(i, color)
+			self.wsleds[i] = color
 		else:
-			self.wsleds.setPixelColor(i, self.wscolor_off)
+			self.wsleds[i] = self.wscolor_off
 
 	def pulse(self, i):
 		if self.blink_state:
-			color = rpi_ws281x.Color(0, int(self.brightness * self.pulse_step * 6), 0)
+			color = self.create_color(0, int(self.brightness * self.pulse_step * 6), 0)
 			self.pulse_step += 1
 		elif self.pulse_step > 0:
-			color = rpi_ws281x.Color(0, int(self.brightness * self.pulse_step * 6), 0)
+			color = self.create_color(0, int(self.brightness * self.pulse_step * 6), 0)
 			self.pulse_step -= 1
 		else:
 			color = self.wscolor_off
 			self.pulse_step = 0
 
-		self.wsleds.setPixelColor(i, color)
+		self.wsleds[i] = color
 
 	def update(self):
 		# Power Save Mode
@@ -155,7 +166,7 @@ class zynthian_wsleds_base:
 			else:
 				self.blink_state = False
 			for i in range(0, self.num_leds):
-				self.wsleds.setPixelColor(i, self.wscolor_off)
+				self.wsleds[i] = self.wscolor_off
 			self.pulse(0)
 			self.wsleds.show()
 
@@ -165,12 +176,10 @@ class zynthian_wsleds_base:
 				self.blink_state = True
 			else:
 				self.blink_state = False
-
 			try:
 				self.update_wsleds()
 			except Exception as e:
 				logging.exception(traceback.format_exc())
-
 			self.wsleds.show()
 
 			if self.zyngui.capture_log_fname:

@@ -233,14 +233,14 @@ class zynthian_gui_control_test(zynthian_gui_base):
 			zgui_ctrl.plot_value()
 
 
-	def update_wsleds(self):
+	def update_wsleds(self, leds=None):
 		# Switch off all LEDS
 		for i in range(0, self.zyngui.wsleds.get_num()):
-			self.zyngui.wsleds.setPixelColor(i, self.zyngui.wscolor_off)
+			self.zyngui.wsleds.set_led(i, self.zyngui.wsleds.wscolor_off)
 		# Light test button LED
 		led_num = self.zynswitch_info[self.test_button_index][2]
 		if led_num is not None and led_num < self.zyngui.wsleds.get_num():
-			self.zyngui.wsleds.setPixelColor(led_num, self.zyngui.wscolor_active)
+			self.zyngui.wsled.set_led(led_num, self.zyngui.wsleds.wscolor_active)
 
 
 	def set_select_path(self):
