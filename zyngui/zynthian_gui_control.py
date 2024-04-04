@@ -315,6 +315,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.set_selector()
 
 	def set_mode_select(self):
+		self.exit_midi_learn()
 		self.mode = 'select'
 		self.hide_widgets()
 		self.set_selector_screen()
@@ -477,8 +478,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def zynpot_cb(self, i, dval):
 		if self.mode == 'control' and self.zcontrollers:
 			if self.zgui_controllers[i].zynpot_cb(dval):
-				self.zctrl_touch(i)
-				if self.xyselect_mode:
+				if self.midi_learning:
+					self.midi_learn(i, self.midi_learning)
+				elif self.xyselect_mode:
 					self.zynpot_read_xyselect(i)
 		elif self.mode == 'select':
 			super().zynpot_cb(i, dval)
@@ -561,10 +563,13 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.set_buttonbar_label(0, "PRESETS\n[mixer]")
 
 	def toggle_midi_learn(self, i=None):
-		if i >= 0:
-			learn_zctrl = self.zgui_controllers[i].zctrl
-			if learn_zctrl != self.zyngui.state_manager.get_midi_learn_zctrl():
-				self.midi_learn(i)
+		if self.mode != 'control':
+			return
+
+		if i is not None:
+			# Restart MIDI learn with a new controller
+			if self.zgui_controllers[i].zctrl != self.zyngui.state_manager.get_midi_learn_zctrl():
+				self.midi_learn(i, MIDI_LEARNING_CHAIN)
 				return self.midi_learning
 
 		# TODO: Handle alsa mixer
@@ -572,12 +577,15 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		if self.midi_learning == MIDI_LEARNING_CHAIN:
 			self.midi_learning = MIDI_LEARNING_GLOBAL
-			self.refresh_midi_bind()
+			if i is not None:
+				self.refresh_midi_bind(False)
+			else:
+				self.refresh_midi_bind(True)
 			self.set_select_path()
 		elif self.midi_learning == MIDI_LEARNING_GLOBAL:
 			self.exit_midi_learn()
 		else:
-			if i >= 0:
+			if i is not None:
 				self.enter_midi_learn(MIDI_LEARNING_CHAIN, False)
 			else:
 				self.enter_midi_learn(MIDI_LEARNING_CHAIN, True)
@@ -589,7 +597,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def zctrl_touch(self, i):
 		if self.midi_learning:
-			self.midi_learn(i)
+			self.midi_learn(i, self.midi_learning)
 
 	def midi_learn(self, i, mlmode=MIDI_LEARNING_CHAIN):
 		if self.mode == 'control' and mlmode > MIDI_LEARNING_DISABLED:
@@ -634,10 +642,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 				return
 			title = "Control options"
 			if not unlearn_only:
-				if zctrl.midi_cc_momentary_switch:
-					options[f"\u2612 Momentary switch"] = i
-				else:
-					options[f"\u2610 Momentary switch"] = i
+				if zctrl.is_toggle:
+					if zctrl.midi_cc_momentary_switch:
+						options[f"\u2612 Momentary => Latch"] = i
+					else:
+						options[f"\u2610 Momentary => Latch"] = i
 				options["X-Y touchpad"] = i
 				options[f"Chain learn '{zctrl.name}'..."] = i
 				options[f"Global learn '{zctrl.name}'..."] = i

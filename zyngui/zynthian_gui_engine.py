@@ -303,18 +303,10 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			return False
 
 	def arrow_right(self):
-		if "chain_id" in self.zyngui.modify_chain_status and self.zyngui.modify_chain_status['chain_id'] == 0:
-			self.zyngui.chain_manager.next_chain()
-			self.zyngui.chain_control()
-		else:
-			self.zynpot_cb(2, 1)
+		self.zynpot_cb(2, 1)
 
 	def arrow_left(self):
-		if "chain_id" in self.zyngui.modify_chain_status and self.zyngui.modify_chain_status['chain_id'] == 0:
-			self.zyngui.chain_manager.previous_chain()
-			self.zyngui.chain_control()
-		else:
-			self.zynpot_cb(2, -1)
+		self.zynpot_cb(2, -1)
 
 	def cb_add_parallel(self, option, value):
 		self.zyngui.modify_chain_status['parallel'] = value

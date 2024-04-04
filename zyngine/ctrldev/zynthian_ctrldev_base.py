@@ -5,8 +5,9 @@
 #
 # Zynthian Control Device Manager Class
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
+#                         Oscar Acena <oscaracena@gmail.com>
 #
 # ******************************************************************************
 #
@@ -32,8 +33,6 @@ from zyngine.zynthian_signal_manager import zynsigman
 # ------------------------------------------------------------------------------------------------------------------
 # Control device base class
 # ------------------------------------------------------------------------------------------------------------------
-
-
 class zynthian_ctrldev_base:
 
 	dev_ids = []			# String list that could identify the device
@@ -104,10 +103,10 @@ class zynthian_ctrldev_base:
 	def set_state(self, state):
 		pass
 
+
 # ------------------------------------------------------------------------------------------------------------------
 # Zynpad control device base class
 # ------------------------------------------------------------------------------------------------------------------
-
 class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 
 	dev_zynpad = True		# Can act as a zynpad trigger device
@@ -173,11 +172,10 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
 					state &= 0xFF
 					self.update_seq_state(bank=self.zynseq.bank, seq=seq, state=state, mode=mode, group=group)
 
+
 # ------------------------------------------------------------------------------------------------------------------
 # Zynmixer control device base class
 # ------------------------------------------------------------------------------------------------------------------
-
-
 class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
 
 	dev_zynmixer = True		# Can act as a zynmixer trigger device
@@ -216,4 +214,5 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
 		"""
 		logging.debug(f"Update mixer active chain for {type(self).__name__}: NOT IMPLEMENTED!")
 
-# -----------------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------
