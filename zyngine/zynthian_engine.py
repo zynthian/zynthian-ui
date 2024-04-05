@@ -297,7 +297,8 @@ class zynthian_engine(zynthian_basic_engine):
 	@staticmethod
 	def get_filelist(dpath, fext):
 		res = []
-		if isinstance(dpath, str): dpath = [('_', dpath)]
+		if isinstance(dpath, str):
+			dpath = [('_', dpath)]
 		fext = '.' + fext
 		xlen = len(fext)
 		i = 0
