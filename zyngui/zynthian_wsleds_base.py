@@ -43,8 +43,9 @@ class zynthian_wsleds_base:
 
 		# LED strip variables
 		self.spi_board = None
-		self.wsleds = None
+		self.spi_freq = 6400000
 		self.num_leds = 0
+		self.wsleds = None
 
 		# LED state variables
 		self.blink_count = 0
@@ -110,7 +111,7 @@ class zynthian_wsleds_base:
 		if self.num_leds > 0:
 			try:
 				self.spi_board = board.SPI()
-				self.wsleds = neopixel.NeoPixel_SPI(self.spi_board, self.num_leds, pixel_order=neopixel.GRB, auto_write=False)
+				self.wsleds = neopixel.NeoPixel_SPI(self.spi_board, self.num_leds, pixel_order=neopixel.GRB, auto_write=False, frequency=self.spi_freq)
 				self.light_on_all()
 			except Exception as e:
 				self.wsleds = None
