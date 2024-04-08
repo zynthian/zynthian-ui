@@ -293,7 +293,6 @@ class zynthian_engine(zynthian_basic_engine):
 				res.append(item)
 		return res
 
-
 	@staticmethod
 	def get_filelist(dpath, fext):
 		res = []

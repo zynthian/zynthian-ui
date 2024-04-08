@@ -50,6 +50,23 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.proc_type = None
 		self.cat_index = -1
 		self.zsel2 = None
+
+		# Custom layout for GUI engine
+		self.layout = {
+			'name': 'gui_engine',
+			'columns': 2,
+			'rows': 4,
+			'ctrl_pos': [
+				(0, 1),
+				(1, 1),
+				(2, 1),
+				(3, 1)
+			],
+			'list_pos': (0, 0),
+			'ctrl_orientation': zynthian_gui_config.layout['ctrl_orientation'],
+			'ctrl_order': (0, 1, 2, 3),
+		}
+
 		super().__init__('Engine', True, False)
 		self.context_index = {}
 		self.engine_info = self.zyngui.chain_manager.engine_info
@@ -66,18 +83,18 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			highlightthickness=0,
 			bg=zynthian_gui_config.color_bg)
 		# Position at top of column containing selector
-		self.info_canvas.grid(row=0, column=zynthian_gui_config.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
+		self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
 
 		# Marker for category page
 		#self.cat_marker_greyline = self.info_canvas.create_rectangle(0, 2, 0.25 * self.width, 4, fill=zynthian_gui_config.color_off)
 		#self.cat_marker_marker = self.info_canvas.create_rectangle(0, 0, 0, 0, fill=zynthian_gui_config.color_on)
 
 		# Info layout
-		star_fs = int(1.95 * zynthian_gui_config.font_size)
+		star_fs = int(self.width * 0.04)
 		#color_star = zynthian_gui_config.color_ml
 		color_star = zynthian_gui_config.color_on
 		color_star_off = zynthian_gui_config.color_off
-		xpos = int(0.5 * zynthian_gui_config.font_size)
+		xpos = int(0.1 * star_fs)
 		ypos = int(-0.3 * star_fs)
 		info_width = 0.25 * self.width - xpos
 		"""
@@ -175,6 +192,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.proc_type = self.zyngui.modify_chain_status["type"]
 		self.engines_by_cat = self.zyngui.chain_manager.filtered_engines_by_cat(self.proc_type, all=self.show_all)
 		self.engine_cats = sorted(self.engines_by_cat.keys())
+		logging.debug(f"CATEGORIES => {self.engine_cats}")
 		#self.engines_by_cat = sorted(self.engines_by_cat.items(), key=lambda kv: "!" if kv[0] is None else kv[0])
 		self.cat_index = 0
 
@@ -326,7 +344,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			zsel2_ctrl = zynthian_controller(None, "cat_index", {'name': "Category", 'short_name': "Category", 'value_min': 0, 'value_max': len(self.engine_cats) - 1, 'value': self.cat_index})
 			self.zsel2 = zynthian_gui_controller(zynthian_gui_config.select_ctrl - 1, self.main_frame, zsel2_ctrl, zs_hidden, selcounter=True)
 		if not self.zselector_hidden:
-			self.zsel2.grid(row=zynthian_gui_config.layout['ctrl_pos'][2][0], column=zynthian_gui_config.layout['ctrl_pos'][2][1], sticky="news")
+			self.zsel2.grid(row=self.layout['ctrl_pos'][2][0], column=self.layout['ctrl_pos'][2][1], sticky="news", pady=(0, 1))
 
 	def plot_zctrls(self):
 		super().plot_zctrls()

@@ -62,8 +62,8 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.value_print = None
 		self.value_font_size = zynthian_gui_config.font_size
 
-		self.hidden = hidden # Always hidden => in such a case, self.shown means "enabled"
-		self.shown = False # Currently shown/enabled
+		self.hidden = hidden  # Always hidden => in such a case, self.shown means "enabled"
+		self.shown = False  # Currently shown/enabled
 		self.selector_counter = selcounter
 		self.refresh_plot_value = False
 		self.title = ""
@@ -95,13 +95,13 @@ class zynthian_gui_controller(tkinter.Canvas):
 			elif graph == self.GUI_CTRL_RECTANGLE:
 				self.rectangle_bg = self.create_rectangle(
 					(0, 0, 0, 0),
-					fill = zynthian_gui_config.color_ctrl_bg_off,
-					width = 0
+					fill=zynthian_gui_config.color_ctrl_bg_off,
+					width=0
 				)
 				self.rectangle = self.create_rectangle(
 					(0, 0, 0, 0),
 					fill=zynthian_gui_config.color_ctrl_bg_on,
-					width = 0
+					width=0
 				)
 				self.plot_value_func = self.plot_value_rectangle
 				self.on_size_graph = self.on_size_rectangle
@@ -400,7 +400,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 			midi_learn_params = self.zyngui.chain_manager.get_midi_learn_from_zctrl(self.zctrl)
 			if self.selector_counter:
 				#self.erase_midi_bind()
-				self.plot_midi_bind(f"/{self.zctrl.value_range}")
+				self.plot_midi_bind(f"/{self.zctrl.value_range + 1}")
 			elif preselection is not None or self.zctrl == self.zyngui.state_manager.get_midi_learn_zctrl():
 				if self.zyngui.screens["control"].get_midi_learn() > 1:
 					self.plot_midi_bind("??#??", zynthian_gui_config.color_ml)
@@ -461,7 +461,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 			#print("LONGEST VALUE: %d" % maxlen)
 			if maxlen > 100:
 				font_scale = 0.7
-			elif maxlen>85:
+			elif maxlen > 85:
 				font_scale = 0.8
 			elif maxlen > 70:
 				font_scale = 0.9
@@ -509,7 +509,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.set_title(zctrl.short_name)
 		self.set_midi_bind()
 
-		logging.debug("ZCTRL '%s': %s (%s -> %s), %s, %s" % (zctrl.short_name, zctrl.value, zctrl.value_min, zctrl.value_max, zctrl.labels, zctrl.ticks))
+		#logging.debug("ZCTRL '%s': %s (%s -> %s), %s, %s" % (zctrl.short_name, zctrl.value, zctrl.value_min, zctrl.value_max, zctrl.labels, zctrl.ticks))
 
 		# List of values => Selector
 		if isinstance(zctrl.ticks, list):

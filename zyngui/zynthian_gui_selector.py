@@ -47,6 +47,10 @@ class zynthian_gui_selector(zynthian_gui_base):
 	def __init__(self, selcap='Select', wide=False, loading_anim=True):
 		super().__init__()
 
+		# If the children class has not defined a custom GUI layout, use the default from config
+		if not hasattr(self, 'layout'):
+			self.layout = zynthian_gui_config.layout
+
 		self.index = 0
 		self.scroll_y = 0
 		self.list_data = []
@@ -72,27 +76,27 @@ class zynthian_gui_selector(zynthian_gui_base):
 			selectmode=tkinter.SINGLE)
 
 		# Configure layout
-		for ctrl_pos in zynthian_gui_config.layout['ctrl_pos']:
+		for ctrl_pos in self.layout['ctrl_pos']:
 			self.main_frame.rowconfigure(ctrl_pos[0], weight=1, uniform='btn_row')
-		self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1], weight=3)
-		self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1] + 1, weight=1)
+		self.main_frame.columnconfigure(self.layout['list_pos'][1], weight=3)
+		self.main_frame.columnconfigure(self.layout['list_pos'][1] + 1, weight=1)
 
 		# Row 4 expands to fill unused space
 		#self.main_frame.rowconfigure(4, weight=1) #TODO: Validate row 4 is still required after chagnes to layout implementation (BW)
 
-		if zynthian_gui_config.layout['columns'] == 3:
+		if self.layout['columns'] == 3:
 			self.wide = wide
 		else:
 			self.wide = True
 		if self.wide:
-			padx = (0,2)
+			padx = (0, 2)
 		else:
-			padx = (2,2)
+			padx = (2, 2)
 		if self.buttonbar_config:
-			pady = (0,1)
+			pady = (0, 1)
 		else:
-			pady = (0,0)
-		self.listbox.grid(row=zynthian_gui_config.layout['list_pos'][0], column=zynthian_gui_config.layout['list_pos'][1], rowspan=4, padx=padx, pady=pady, sticky="news")
+			pady = (0, 0)
+		self.listbox.grid(row=self.layout['list_pos'][0], column=self.layout['list_pos'][1], rowspan=4, padx=padx, pady=pady, sticky="news")
 
 		# Bind listbox events
 		self.listbox_push_ts = datetime.now()
@@ -112,14 +116,14 @@ class zynthian_gui_selector(zynthian_gui_base):
 				highlightthickness=0,
 				bg = zynthian_gui_config.color_bg)
 			# Position at top of column containing selector
-			self.loading_canvas.grid(row=0, column=zynthian_gui_config.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
+			self.loading_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
 			self.loading_push_ts = None
-			self.loading_canvas.bind("<Button-1>",self.cb_loading_push)
-			self.loading_canvas.bind("<ButtonRelease-1>",self.cb_loading_release)
+			self.loading_canvas.bind("<Button-1>", self.cb_loading_push)
+			self.loading_canvas.bind("<ButtonRelease-1>", self.cb_loading_release)
 
 			# Setup Loading Logo Animation
 			self.loading_index = 0
-			self.loading_item = self.loading_canvas.create_image(3, 3, image = zynthian_gui_config.loading_imgs[0], anchor=tkinter.NW)
+			self.loading_item = self.loading_canvas.create_image(3, 3, image=zynthian_gui_config.loading_imgs[0], anchor=tkinter.NW)
 		else:
 			self.loading_canvas = None
 			self.loading_index = 0
@@ -132,12 +136,12 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 	def update_layout(self):
 		super().update_layout()
-		if zynthian_gui_config.layout['columns'] == 2:
-			self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1], minsize=int(self.width * 0.75), weight=3)
-			self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1] + 1, minsize=int(self.width * 0.25 * self.sidebar_shown), weight=self.sidebar_shown)
+		if self.layout['columns'] == 2:
+			self.main_frame.columnconfigure(self.layout['list_pos'][1], minsize=int(self.width * 0.75), weight=3)
+			self.main_frame.columnconfigure(self.layout['list_pos'][1] + 1, minsize=int(self.width * 0.25 * self.sidebar_shown), weight=self.sidebar_shown)
 		else:
-			self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1], minsize=int(self.width * 0.50), weight=2)
-			self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1] + 1, minsize=int(self.width * 0.25 * self.sidebar_shown), weight=self.sidebar_shown)
+			self.main_frame.columnconfigure(self.layout['list_pos'][1], minsize=int(self.width * 0.50), weight=2)
+			self.main_frame.columnconfigure(self.layout['list_pos'][1] + 1, minsize=int(self.width * 0.25 * self.sidebar_shown), weight=self.sidebar_shown)
 
 	def build_view(self):
 		self.fill_list()
@@ -180,7 +184,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 	def fill_listbox(self):
 		self.listbox.delete(0, tkinter.END)
 		if not self.list_data:
-			self.list_data=[]
+			self.list_data = []
 		for i, item in enumerate(self.list_data):
 			label = item[2]
 			if len(item) > 5 and isinstance(item[5], str):
@@ -196,14 +200,14 @@ class zynthian_gui_selector(zynthian_gui_base):
 	def set_selector(self, zs_hidden=True):
 		self.zselector_hidden = zs_hidden
 		if self.zselector:
-			self.zselector.zctrl.set_options({'symbol':self.selector_caption, 'name':self.selector_caption, 'short_name':self.selector_caption, 'value_min':0, 'value_max':len(self.list_data), 'value':self.index })
+			self.zselector.zctrl.set_options({'symbol': self.selector_caption, 'name': self.selector_caption, 'short_name': self.selector_caption, 'value_min': 0, 'value_max': len(self.list_data) - 1, 'value': self.index })
 			self.zselector.config(self.zselector.zctrl)
 			self.zselector.show()
 		else:
-			zselector_ctrl = zynthian_controller(None ,self.selector_caption, { 'value_max':len(self.list_data), 'value':self.index })
+			zselector_ctrl = zynthian_controller(None ,self.selector_caption, {'value_min': 0, 'value_max': len(self.list_data) - 1, 'value': self.index})
 			self.zselector = zynthian_gui_controller(zynthian_gui_config.select_ctrl, self.main_frame, zselector_ctrl, zs_hidden, selcounter=True)
 		if not self.zselector_hidden:
-			self.zselector.grid(row=zynthian_gui_config.layout['ctrl_pos'][3][0], column=zynthian_gui_config.layout['ctrl_pos'][3][1], sticky="news")
+			self.zselector.grid(row=self.layout['ctrl_pos'][3][0], column=self.layout['ctrl_pos'][3][1], sticky="news")
 
 	def plot_zctrls(self):
 		self.swipe_update()
