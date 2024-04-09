@@ -61,38 +61,40 @@ lv2_plugin_classes = {
 }
 
 engine_categories = {
-	"MIDI Synth": ("Analog", "FM", "Modeler", "Soundfont", "Wavetable", "Other"),
-	"Audio Effect": ("Analyzer", "Delay", "Distortion", "Dynamics", "EQ", "Filter", "Looper",
-					"Modulation", "Panning", "Pitch", "Reverb", "Simulator", "Other"),
-	"MIDI Tool": ("Arpeggiator", "Automation", "Chorder", "Filter", "Mapper", "Sequencer", "Other"),
+	"MIDI Synth": ("Analogue", "Emulator", "Hybrid", "Piano", "Organ", "Percussion", "Soundfont", "Sampler & Wavetable", "Other"),
+	"Audio Effect": ("Amplifier", "Analyzer", "Delay", "Distortion", "Dynamics", "Filter & EQ", "Looper",
+					"Modulation", "Panning & Spatial", "Pitch", "Reverb", "Other"),
+	"MIDI Tool": ("Arpeggiator", "Automation", "Filter", "Mapper", "Sequencer", "Other"),
 	"Audio Generator": ("Generator", "Oscillator", "Other"),
 	"Special": ("Language", "Patchbay", "Sampler", "Other")
 }
 
 lv2class2engcat = {
-	"Instrument": "Analog",
+	"Instrument": "Analogue",
 	"Analyser": "Analyzer",
 	"Spectral": "Filter",
 	"Delay": "Delay",
 	"Compressor": "Dynamics",
 	"Distortion": "Distortion",
-	"Filter": "Modulation",
-	"Equaliser": "EQ",
+	"Filter": "Filter & EQ",
+	"EQ": "Filter & EQ",
+	"Equaliser": "Filter & EQ",
 	"Modulator": "Modulation",
 	"Expander": "Dynamics",
-	"Spatial": "Panning",
+	"Spatial": "Panning & Spatial",
+	"Panning": "Panning & Spatial",
 	"Limiter": "Dynamics",
 	"Pitch Shifter": "Pitch",
 	"Reverb": "Reverb",
-	"Simulator": "Simulator",
+	"Simulator": "Amplifier",
 	"Envelope": "Modulation",
 	"Gate": "Dynamics",
-	"Amplifier": "Simulator",
+	"Amplifier": "Amplifier",
 	"Chorus": "Modulation",
 	"Flanger": "Modulation",
 	"Phaser": "Modulation",
-	"Highpass": "Filter",
-	"Lowpass": "Filter",
+	"Highpass": "Filter & EQ",
+	"Lowpass": "Filter & EQ",
 	"Dynamics": "Dynamics",
 	"Oscillator": "Oscillator",
 	"Generator": "Generator",
@@ -103,14 +105,14 @@ lv2class2engcat = {
 
 standalone_engine_info = {
 	"SL": ["SooperLooper", "SooperLooper", "Audio Effect", "Looper", True],
-	"ZY": ["ZynAddSubFX", "ZynAddSubFX", "MIDI Synth", "Analog", True],
+	"ZY": ["ZynAddSubFX", "ZynAddSubFX", "MIDI Synth", "Analogue", True],
 	"FS": ["FluidSynth", "FluidSynth: SF2, SF3", "MIDI Synth", "Soundfont", True],
 	"SF": ["Sfizz", "Sfizz: SFZ", "MIDI Synth", "Soundfont", True],
 	"LS": ["LinuxSampler", "LinuxSampler: SFZ, GIG", "MIDI Synth", "Soundfont", True],
-	"BF": ["setBfree", "setBfree - Hammond Emulator", "MIDI Synth", "Modeler", True],
-	"AE": ["Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", "Modeler", True],
-	"PT": ['Pianoteq', "Pianoteq", "MIDI Synth", "Modeler", True],
-	"AP": ["AudioPlayer", "Audio File Player", "Special", "Sampler", True],
+	"BF": ["setBfree", "setBfree - Hammond Emulator", "MIDI Synth", "Organ", True],
+	"AE": ["Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", "Organ", True],
+	"PT": ['Pianoteq', "Pianoteq", "MIDI Synth", "Piano", True],
+	"AP": ["AudioPlayer", "Audio File Player", "Special", "Sampler & Wavetable", True],
 	'PD': ["PureData", "PureData - Visual Programming", "Special", "Language", True],
 	'MD': ["MOD-UI", "MOD-UI - Plugin Host", "Special", "Language", True],
 	'IR': ["InternetRadio", "Internet Radio", "Audio Generator", "Other", True]
@@ -240,9 +242,14 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
 		# Add standalone engines
 		i = 0
 		for key, engine_info in standalone_engine_info.items():
+			engine_name = engine_info[0]
+			engine_type = engine_info[2]
 			try:
 				engine_id = engines[key]['ID']
+				engine_title = engines[key]['TITLE']
 				engine_cat = engines[key]['CAT']
+				if engine_cat not in engine_categories[engine_type]:
+					engine_cat = engine_info[3]
 				engine_index = engines[key]['INDEX']
 				engine_descr = engines[key]['DESCR']
 				engine_quality = engines[key]['QUALITY']
@@ -250,21 +257,24 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
 			except:
 				hash.update(key.encode())
 				engine_id = hash.hexdigest()[:10]
+				engine_title = engine_info[1]
 				engine_cat = engine_info[3]
 				engine_index = i
 				engine_descr = get_engine_description(key)
 				engine_quality = 0
 				engine_complex = 0
+
 			if reset_rankings == 1:
 				engine_quality = engine_complex = 0
 			elif reset_rankings == 2:
 				engine_quality = randrange(5)
 				engine_complex = randrange(5)
+
 			genengines[key] = {
 				'ID': engine_id,
-				'NAME': engine_info[0],
-				'TITLE': engine_info[1],
-				'TYPE': engine_info[2],
+				'NAME': engine_name,
+				'TITLE': engine_title,
+				'TYPE': engine_type,
 				'CAT': engine_cat,
 				'ENABLED': is_engine_enabled(key, True),
 				'INDEX': engine_index,
@@ -279,14 +289,18 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
 
 		# Add LV2 plugins
 		for plugin in world.get_all_plugins():
-			name = str(plugin.get_name())
-			key = f"JV/{name}"
+			engine_name = str(plugin.get_name())
+			key = f"JV/{engine_name}"
 			try:
 				engine_id = engines[key]['ID']
+				engine_title = engines[key]['TITLE']
 				engine_type = engines[key]['TYPE']
 				engine_cat = engines[key]['CAT']
 				if engine_cat not in engine_categories[engine_type]:
-					engine_cat = get_plugin_cat(plugin)
+					try:
+						engine_cat = lv2class2engcat[engine_cat]
+					except:
+						engine_cat = get_plugin_cat(plugin)
 				engine_index = engines[key]['INDEX']
 				engine_descr = engines[key]['DESCR']
 				engine_quality = engines[key]['QUALITY']
@@ -294,21 +308,24 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
 			except:
 				hash.update(key.encode())
 				engine_id = hash.hexdigest()[:10]
+				engine_title = engine_name
 				engine_type = get_plugin_type(plugin).value
 				engine_cat = get_plugin_cat(plugin)
 				engine_index = 9999
 				engine_descr = get_engine_description(key)
 				engine_quality = 0
 				engine_complex = 0
+
 			if reset_rankings == 1:
 				engine_quality = engine_complex = 0
 			elif reset_rankings == 2:
 				engine_quality = randrange(5)
 				engine_complex = randrange(5)
+
 			genengines[key] = {
 				'ID': engine_id,
-				'NAME': name,
-				'TITLE': name,
+				'NAME': engine_name,
+				'TITLE': engine_title,
 				'TYPE': engine_type,
 				'CAT': engine_cat,
 				'ENABLED': is_engine_enabled(key, False),
@@ -318,10 +335,8 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
 				'DESCR': engine_descr,
 				"QUALITY": engine_quality,
 				"COMPLEX": engine_complex
-				#'UI': plugin.get_uis()
-				# get_binary_uri()
 			}
-			logging.debug("LV2 Plugin '{}' => {}".format(name, genengines[key]))
+			logging.debug("LV2 Plugin '{}' => {}".format(engine_name, genengines[key]))
 
 		engines = dict(sorted(genengines.items()))
 
@@ -407,6 +422,7 @@ def get_plugin_type(plugin):
 
 	#return EngineType.UNKNOWN
 	return EngineType.AUDIO_EFFECT
+
 
 def get_plugin_cat(plugin):
 	plugin_class = str(plugin.get_class().get_label())

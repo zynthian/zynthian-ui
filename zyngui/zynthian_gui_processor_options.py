@@ -128,6 +128,8 @@ class zynthian_gui_processor_options(zynthian_gui_selector, zynthian_gui_save_pr
 
 	def can_move_upchain(self):
 		slot = self.chain.get_slot(self.processor)
+		if slot is None:
+			return False
 		if slot == 0:
 			slots = self.chain.get_slots_by_type(self.processor.type)
 			if self.processor.type == "Audio Effect" and slot >= self.chain.fader_pos:
@@ -141,6 +143,8 @@ class zynthian_gui_processor_options(zynthian_gui_selector, zynthian_gui_save_pr
 
 	def can_move_downchain(self):
 		slot = self.chain.get_slot(self.processor)
+		if slot is None:
+			return False
 		slots = self.chain.get_slots_by_type(self.processor.type)
 		if slot >= len(slots) - 1:
 			if self.processor.type == "Audio Effect" and slot < self.chain.fader_pos:

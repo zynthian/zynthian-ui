@@ -985,21 +985,20 @@ class zynthian_chain_manager:
                 self.zyngines[eng_key].stop()
                 del self.zyngines[eng_key]
 
-    def filtered_engines_by_cat(self, filter_type, all=False):
+    def filtered_engines_by_cat(self, etype, all=False):
         """Get dictionary of engine info filtered by type and indexed by catagory
-
-            type: type of engine
+            etype: type of engine
             all: include "disabled" engine too
         """
         result = {}
-        for eng_code, info in self.engine_info.items():
-            eng_type = info["TYPE"]
-            eng_cat = info["CAT"]
-            eng_enabled = info["ENABLED"]
-            if (eng_enabled or all) and (filter_type == eng_type or filter_type is None) and (eng_code not in self.single_processor_engines or eng_code not in self.zyngines):
-                if eng_cat not in result:
-                    result[eng_cat] = {}
-                result[eng_cat][eng_code] = info
+        if etype in zynthian_lv2.engines_by_type:
+            for eng_cat in zynthian_lv2.engine_categories[etype]:
+                result[eng_cat] = {}
+            for eng_code, info in zynthian_lv2.engines_by_type[etype].items():
+                eng_cat = info["CAT"]
+                hide_if_single_proc = eng_code not in self.single_processor_engines or eng_code not in self.zyngines
+                if (info["ENABLED"] or all) and hide_if_single_proc:
+                    result[eng_cat][eng_code] = info
         return result
 
     def get_next_jackname(self, jackname, sanitize=True):

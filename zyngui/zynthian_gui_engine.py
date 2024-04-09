@@ -191,7 +191,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.zyngui.chain_manager.get_engine_info()
 		self.proc_type = self.zyngui.modify_chain_status["type"]
 		self.engines_by_cat = self.zyngui.chain_manager.filtered_engines_by_cat(self.proc_type, all=self.show_all)
-		self.engine_cats = sorted(self.engines_by_cat.keys())
+		self.engine_cats = list(self.engines_by_cat.keys())
 		logging.debug(f"CATEGORIES => {self.engine_cats}")
 		#self.engines_by_cat = sorted(self.engines_by_cat.items(), key=lambda kv: "!" if kv[0] is None else kv[0])
 		self.cat_index = 0
@@ -383,8 +383,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		path = ""
 		try:
 			path = self.zyngui.modify_chain_status["type"]
-			chain = self.zyngui.chain_manager.chains[self.zyngui.modify_chain_status["chain_id"]].get_name()
-			path = f"{chain}#{path}"
+			#chain = self.zyngui.chain_manager.chains[self.zyngui.modify_chain_status["chain_id"]].get_name()
+			#path = f"{chain}#{path}"
 		except:
 			pass
 		if self.cat_index >= 0:
