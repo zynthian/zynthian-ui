@@ -278,6 +278,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def select(self, index=None):
 		super().select(index)
 		self.update_info()
+		self.update_context_index()
 
 	def select_action(self, i, t='S'):
 		if t == 'S':
@@ -326,10 +327,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			return True
 		else:
 			return False
-
-	def select(self, index=None):
-		super().select(index)
-		self.update_context_index()
 
 	def arrow_right(self):
 		self.zynpot_cb(2, 1)
