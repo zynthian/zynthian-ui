@@ -61,12 +61,49 @@ lv2_plugin_classes = {
 }
 
 engine_categories = {
-	"MIDI Synth": ("Analogue", "Emulator", "Hybrid", "Piano", "Organ", "Percussion", "Soundfont", "Sampler & Wavetable", "Other"),
-	"Audio Effect": ("Amplifier", "Analyzer", "Delay", "Distortion", "Dynamics", "Filter & EQ", "Looper",
-					"Modulation", "Panning & Spatial", "Pitch", "Reverb", "Other"),
-	"MIDI Tool": ("Arpeggiator", "Automation", "Filter", "Mapper", "Sequencer", "Other"),
-	"Audio Generator": ("Generator", "Oscillator", "Other"),
-	"Special": ("Language", "Patchbay", "Sampler", "Other")
+	"MIDI Synth": (
+		"Analogue",
+		"Emulator",
+		"Hybrid",
+		"Piano",
+		"Organ",
+		"Percussion",
+		"Soundfont",
+		"Sampler & Wavetable",
+		"Other"
+	),
+	"Audio Effect": (
+		"Amplifier",
+		"Analyzer",
+		"Delay",
+		"Distortion",
+		"Dynamics",
+		"Filter & EQ",
+		"Modulation",
+		"Panning & Spatial",
+		"Pitch",
+		"Reverb",
+		"Other"
+	),
+	"MIDI Tool": (
+		"Arpeggiator",
+		"Automation",
+		"Filter",
+		"Mapper",
+		"Sequencer",
+		"Other"
+	),
+	"Audio Generator": (
+		"Generator",
+		"Oscillator",
+		"Other"
+	),
+	"Special": (
+		"Language",
+		"Patchbay",
+		"Sampler",
+		"Other"
+	)
 }
 
 lv2class2engcat = {
@@ -74,6 +111,7 @@ lv2class2engcat = {
 	"Analyser": "Analyzer",
 	"Spectral": "Filter",
 	"Delay": "Delay",
+	"Looper": "Delay",
 	"Compressor": "Dynamics",
 	"Distortion": "Distortion",
 	"Filter": "Filter & EQ",
@@ -338,7 +376,8 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
 			}
 			logging.debug("LV2 Plugin '{}' => {}".format(engine_name, genengines[key]))
 
-		engines = dict(sorted(genengines.items()))
+		# Sort using title, so user can customize order by changing title from webconf
+		engines = dict(sorted(genengines.items(), key=lambda r: r[1]['TITLE'].casefold()))
 
 		with open(ENGINE_CONFIG_FILE, 'w') as f:
 			json.dump(engines, f)
