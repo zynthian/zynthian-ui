@@ -156,6 +156,7 @@ standalone_engine_info = {
 	'IR': ["InternetRadio", "Internet Radio", "Audio Generator", "Other", True]
 }
 
+ENGINE_DEFAULT_CONFIG_FILE = "{}/config/engine_config.json".format(os.environ.get('ZYNTHIAN_SYS_DIR'))
 ENGINE_CONFIG_FILE = "{}/engine_config.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
 JALV_LV2_CONFIG_FILE = "{}/jalv/plugins.json".format(os.environ.get('ZYNTHIAN_CONFIG_DIR'))
 
@@ -211,7 +212,7 @@ def load_engines():
 		engines_mtime = os.stat(fpath).st_mtime
 		logging.debug(f'Loaded engine config with timestamp: {engines_mtime}')
 	except Exception as e:
-		logging.debug('Loading engine config failed: {}'.format(e))
+		logging.error('Loading engine config failed: {}'.format(e))
 
 	# Regenerate config file if it doesn't exist or is an older version
 	if not os.path.exists(ENGINE_CONFIG_FILE) or 'AE' in engines and "ID" not in engines['AE']:
@@ -243,8 +244,50 @@ def save_engines():
 		with open(ENGINE_CONFIG_FILE, 'w') as f:
 			json.dump(sengines, f)
 		engines_mtime = os.stat(ENGINE_CONFIG_FILE).st_mtime
+		logging.info(f"Saved engine config file with timestamp {engines_mtime}")
 	except Exception as e:
-		logging.error('Saving engine config file failed: {}'.format(e))
+		logging.error(f"Saving engine config file failed: {e}")
+
+
+def update_engine_defaults(refresh=True):
+	global engines
+
+	default_engines = {}
+	fpath = ENGINE_DEFAULT_CONFIG_FILE
+	try:
+		with open(fpath) as f:
+			default_engines = json.load(f)
+		mtime = os.stat(fpath).st_mtime
+		logging.debug(f'Loaded default engine config with timestamp: {mtime}')
+	except Exception as e:
+		logging.error('Loading default engine config failed: {}'.format(e))
+
+	current_engines = {}
+	fpath = ENGINE_CONFIG_FILE
+	try:
+		with open(fpath) as f:
+			current_engines = json.load(f)
+		mtime = os.stat(fpath).st_mtime
+		logging.debug(f'Loaded current engine config with timestamp: {mtime}')
+	except Exception as e:
+		logging.error('Loading current engine config failed: {}'.format(e))
+
+	# Merge default and current engine DBs
+	if default_engines and current_engines:
+		for key, info in default_engines.items():
+			info['EDIT'] = 0
+			try:
+				if current_engines[key]['EDIT'] == 1:
+					info['ENABLED'] = current_engines[key]['ENABLED']
+					info['EDIT'] = 1
+				elif current_engines[key]['EDIT'] >= 2:
+					continue
+			except:
+				pass
+			current_engines[key] = info
+
+		engines = current_engines
+		generate_engines_config_file(refresh=refresh)
 
 
 def is_engine_enabled(key, default=False):
@@ -292,6 +335,10 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
 				engine_descr = engines[key]['DESCR']
 				engine_quality = engines[key]['QUALITY']
 				engine_complex = engines[key]['COMPLEX']
+				try:
+					engine_edit = engines[key]['EDIT']
+				except:
+					engine_edit = 0
 			except:
 				hash.update(key.encode())
 				engine_id = hash.hexdigest()[:10]
@@ -301,6 +348,7 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
 				engine_descr = get_engine_description(key)
 				engine_quality = 0
 				engine_complex = 0
+				engine_edit = 0
 
 			if reset_rankings == 1:
 				engine_quality = engine_complex = 0
@@ -320,7 +368,8 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
 				'UI': "",
 				'DESCR': engine_descr,
 				"QUALITY": engine_quality,
-				"COMPLEX": engine_complex
+				"COMPLEX": engine_complex,
+				"EDIT": engine_edit
 			}
 			logging.debug("Standalone Engine '{}' => {}".format(key, genengines[key]))
 			i += 1
@@ -343,6 +392,10 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
 				engine_descr = engines[key]['DESCR']
 				engine_quality = engines[key]['QUALITY']
 				engine_complex = engines[key]['COMPLEX']
+				try:
+					engine_edit = engines[key]['EDIT']
+				except:
+					engine_edit = 0
 			except:
 				hash.update(key.encode())
 				engine_id = hash.hexdigest()[:10]
@@ -353,6 +406,7 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
 				engine_descr = get_engine_description(key)
 				engine_quality = 0
 				engine_complex = 0
+				engine_edit = 0
 
 			if reset_rankings == 1:
 				engine_quality = engine_complex = 0
@@ -372,7 +426,8 @@ def generate_engines_config_file(refresh=True, reset_rankings=None):
 				'UI': is_plugin_ui(plugin),
 				'DESCR': engine_descr,
 				"QUALITY": engine_quality,
-				"COMPLEX": engine_complex
+				"COMPLEX": engine_complex,
+				"EDIT": engine_edit
 			}
 			logging.debug("LV2 Plugin '{}' => {}".format(engine_name, genengines[key]))
 
@@ -752,7 +807,13 @@ if __name__ == '__main__':
 	start = int(round(time.time()))
 	if len(sys.argv) > 1:
 		if sys.argv[1] == "engines":
-			generate_engines_config_file(False)
+			prev_engines = engines.keys()
+			#generate_engines_config_file(refresh=False)
+			update_engine_defaults(refresh=False)
+			# Detect new LV2 plugins and generate presets cache for them
+			for key, info in engines.items():
+				if key not in prev_engines and 'URL' in info and info['URL']:
+					generate_plugin_presets_cache(info['URL'], False)
 
 		elif sys.argv[1] == "presets":
 			generate_presets_cache_workaround()
@@ -770,11 +831,11 @@ if __name__ == '__main__':
 				pass
 
 		elif sys.argv[1] == "all":
-			generate_engines_config_file(False)
+			generate_engines_config_file(refresh=False)
 			generate_all_presets_cache(False)
 
 	else:
-		generate_engines_config_file(False)
+		generate_engines_config_file(refresh=False)
 		generate_all_presets_cache(False)
 
 	#get_plugin_ports("https://github.com/dcoredump/dexed.lv2")
