@@ -142,7 +142,7 @@ lv2class2engcat = {
 
 
 standalone_engine_info = {
-	"SL": ["SooperLooper", "SooperLooper", "Audio Effect", "Looper", True],
+	"SL": ["SooperLooper", "SooperLooper", "Audio Effect", "Delay", True],
 	"ZY": ["ZynAddSubFX", "ZynAddSubFX", "MIDI Synth", "Analogue", True],
 	"FS": ["FluidSynth", "FluidSynth: SF2, SF3", "MIDI Synth", "Soundfont", True],
 	"SF": ["Sfizz", "Sfizz: SFZ", "MIDI Synth", "Soundfont", True],

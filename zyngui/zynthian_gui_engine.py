@@ -187,6 +187,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 	def get_engines_by_cat(self):
 		self.zyngui.chain_manager.get_engine_info()
+		self.engine_info = self.zyngui.chain_manager.engine_info
 		self.proc_type = self.zyngui.modify_chain_status["type"]
 		self.engines_by_cat = self.zyngui.chain_manager.filtered_engines_by_cat(self.proc_type, all=self.show_all)
 		self.engine_cats = list(self.engines_by_cat.keys())
