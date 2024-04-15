@@ -237,13 +237,13 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			infos = self.engines_by_cat[cat]
 
 			# Split engines in standalone & plugins
-			standalone = []
-			plugins = []
-			for eng in infos:
-				if eng[0:2] == "JV":
-					plugins.append(eng)
-				else:
-					standalone.append(eng)
+			#standalone = []
+			#plugins = []
+			#for eng in infos:
+			#	if eng[0:2] == "JV":
+			#		plugins.append(eng)
+			#	else:
+			#		standalone.append(eng)
 
 			# Local function to add engines to the list
 			def add_engines(engines):
@@ -258,12 +258,14 @@ class zynthian_gui_engine(zynthian_gui_selector):
 					else:
 						self.list_data.append((eng, i, info["TITLE"], info["NAME"]))
 
-			if len(standalone) > 0:
-				self.list_data.append((None, None, "> Standalone"))
-				add_engines(standalone)
-				if len(plugins) > 0:
-					self.list_data.append((None, None, "> Plugins"))
-			add_engines(plugins)
+			#if len(standalone) > 0:
+			#	self.list_data.append((None, None, "> Standalone"))
+			#	add_engines(standalone)
+			#	if len(plugins) > 0:
+			#		self.list_data.append((None, None, "> Plugins"))
+			#add_engines(plugins)
+
+			add_engines(infos)
 
 		# Display help if no engines are enabled ...
 		if len(self.list_data) == 0:

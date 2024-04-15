@@ -62,14 +62,12 @@ lv2_plugin_classes = {
 
 engine_categories = {
 	"MIDI Synth": (
-		"Analogue",
-		"Emulator",
-		"Hybrid",
-		"Piano",
+		"Acoustic",
 		"Organ",
+		"Piano",
 		"Percussion",
-		"Soundfont",
-		"Sampler & Wavetable",
+		"Sampler",
+		"Synth",
 		"Other"
 	),
 	"Audio Effect": (
@@ -107,7 +105,12 @@ engine_categories = {
 }
 
 lv2class2engcat = {
-	"Instrument": "Analogue",
+	"Analogue": "Synth",
+	"Sampler & Wavetable": "Synth",
+	"Hybrid": "Synth",
+	"Emulator": "Synth",
+	"Soundfont": "Sampler",
+	"Instrument": "Synth",
 	"Analyser": "Analyzer",
 	"Spectral": "Filter",
 	"Delay": "Delay",
@@ -143,14 +146,14 @@ lv2class2engcat = {
 
 standalone_engine_info = {
 	"SL": ["SooperLooper", "SooperLooper", "Audio Effect", "Delay", True],
-	"ZY": ["ZynAddSubFX", "ZynAddSubFX", "MIDI Synth", "Analogue", True],
-	"FS": ["FluidSynth", "FluidSynth: SF2, SF3", "MIDI Synth", "Soundfont", True],
-	"SF": ["Sfizz", "Sfizz: SFZ", "MIDI Synth", "Soundfont", True],
-	"LS": ["LinuxSampler", "LinuxSampler: SFZ, GIG", "MIDI Synth", "Soundfont", True],
+	"ZY": ["ZynAddSubFX", "ZynAddSubFX", "MIDI Synth", "Synth", True],
+	"FS": ["FluidSynth", "FluidSynth: SF2, SF3", "MIDI Synth", "Sampler", True],
+	"SF": ["Sfizz", "Sfizz: SFZ", "MIDI Synth", "Sampler", True],
+	"LS": ["LinuxSampler", "LinuxSampler: SFZ, GIG", "MIDI Synth", "Sampler", True],
 	"BF": ["setBfree", "setBfree - Hammond Emulator", "MIDI Synth", "Organ", True],
 	"AE": ["Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", "Organ", True],
 	"PT": ['Pianoteq', "Pianoteq", "MIDI Synth", "Piano", True],
-	"AP": ["AudioPlayer", "Audio File Player", "Special", "Sampler & Wavetable", True],
+	"AP": ["AudioPlayer", "Audio File Player", "Special", "Sampler", True],
 	'PD': ["PureData", "PureData - Visual Programming", "Special", "Language", True],
 	'MD': ["MOD-UI", "MOD-UI - Plugin Host", "Special", "Language", True],
 	'IR': ["InternetRadio", "Internet Radio", "Audio Generator", "Other", True]
