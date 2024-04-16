@@ -52,13 +52,15 @@ class zynthian_gui_controller(tkinter.Canvas):
 	#  hidden: True to disable GUI display (only use zynpot/zctrl interface)
 	#  selcounter: True to configure as a counter - no value graph and value is 1-based (otherwise zero-based)
 	#  graph: Type of graph to plot [GUI_CTRL_NONE, GUI_CTRL_ARC, GUI_CTRL_TRIANGLE, GUI_CTRL_RECTANGLE] Default: GUI_CTRL_ARC
-	def __init__(self, index, parent, zctrl, hidden=False, selcounter=False, graph=zynthian_gui_config.ctrl_graph):
+	def __init__(self, index, parent, zctrl, hidden=False, selcounter=False, graph=zynthian_gui_config.ctrl_graph, orientation=None):
 		self.zyngui = zynthian_gui_config.zyngui
 		self.zctrl = None
 		self.step = 0
-		self.vertical = zynthian_gui_config.layout['ctrl_orientation'] == 'vertical'
-
-		self.value_plot = 0 # Normalised position of plot start point
+		if orientation:
+			self.vertical = orientation == 'vertical'
+		else:
+			self.vertical = zynthian_gui_config.layout['ctrl_orientation'] == 'vertical'
+		self.value_plot = 0  # Normalised position of plot start point
 		self.value_print = None
 		self.value_font_size = zynthian_gui_config.font_size
 
@@ -217,7 +219,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 			self.title_width = int(ww - radius * 1.8)
 			self.coords(self.label_title, 4, 4)
 			self.itemconfigure(self.label_title, width=self.title_width, anchor='nw', justify=tkinter.LEFT)
-			
+
 		self.coords(self.value_text, x0, y0)
 		self.itemconfigure(self.value_text, font=(zynthian_gui_config.font_family, self.value_font_size), width=radius*2)
 		self.coords(self.graph, x1 + arc_width, y1 + arc_width, x2 - arc_width, y2 - arc_width)

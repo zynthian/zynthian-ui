@@ -51,6 +51,10 @@ class zynthian_gui_selector(zynthian_gui_base):
 		if not hasattr(self, 'layout'):
 			self.layout = zynthian_gui_config.layout
 
+		# Default controller width
+		if "ctrl_width" not in self.layout:
+			self.layout['ctrl_width'] = 0.25
+
 		self.index = 0
 		self.scroll_y = 0
 		self.list_data = []
@@ -136,12 +140,16 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 	def update_layout(self):
 		super().update_layout()
+		ctrl_width = self.width * self.layout['ctrl_width'] * self.sidebar_shown
 		if self.layout['columns'] == 2:
-			self.main_frame.columnconfigure(self.layout['list_pos'][1], minsize=int(self.width * 0.75), weight=3)
-			self.main_frame.columnconfigure(self.layout['list_pos'][1] + 1, minsize=int(self.width * 0.25 * self.sidebar_shown), weight=self.sidebar_shown)
+			lb_width = int(self.width - ctrl_width)
+			lb_weight = 3
 		else:
-			self.main_frame.columnconfigure(self.layout['list_pos'][1], minsize=int(self.width * 0.50), weight=2)
-			self.main_frame.columnconfigure(self.layout['list_pos'][1] + 1, minsize=int(self.width * 0.25 * self.sidebar_shown), weight=self.sidebar_shown)
+			lb_width = int(self.width - 2 * ctrl_width)
+			lb_weight = 2
+		ctrl_width = int(ctrl_width)
+		self.main_frame.columnconfigure(self.layout['list_pos'][1], minsize=lb_width, weight=lb_weight)
+		self.main_frame.columnconfigure(self.layout['list_pos'][1] + 1, minsize=ctrl_width, weight=self.sidebar_shown)
 
 	def build_view(self):
 		self.fill_list()
@@ -205,7 +213,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.zselector.show()
 		else:
 			zselector_ctrl = zynthian_controller(None ,self.selector_caption, {'value_min': 0, 'value_max': len(self.list_data) - 1, 'value': self.index})
-			self.zselector = zynthian_gui_controller(zynthian_gui_config.select_ctrl, self.main_frame, zselector_ctrl, zs_hidden, selcounter=True)
+			self.zselector = zynthian_gui_controller(zynthian_gui_config.select_ctrl, self.main_frame, zselector_ctrl, zs_hidden, selcounter=True, orientation=self.layout['ctrl_orientation'])
 		if not self.zselector_hidden:
 			self.zselector.grid(row=self.layout['ctrl_pos'][3][0], column=self.layout['ctrl_pos'][3][1], sticky="news")
 
