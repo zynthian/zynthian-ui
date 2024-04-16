@@ -67,7 +67,9 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.engine_cats = None
 		self.context_index = {}
 		self.show_all = False
+		self.info_canvas = None
 		super().__init__('Engine', True, False)
+
 		self.engine_info = self.zyngui.chain_manager.engine_info
 		self.engine_info_dirty = False
 		self.xswipe_sens = 10
@@ -170,6 +172,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 	def update_layout(self):
 		super().update_layout()
+		if self.info_canvas:
+			self.info_canvas.configure(height=int(0.5 * self.height))
 
 	def update_info(self):
 		eng_code = self.list_data[self.index][0]
