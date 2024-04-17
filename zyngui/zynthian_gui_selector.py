@@ -80,8 +80,14 @@ class zynthian_gui_selector(zynthian_gui_base):
 			selectmode=tkinter.SINGLE)
 
 		# Configure layout
-		for ctrl_pos in self.layout['ctrl_pos']:
-			self.main_frame.rowconfigure(ctrl_pos[0], weight=1, uniform='btn_row')
+		if self.layout['rows'] == 2:
+			self.main_frame.rowconfigure(0, weight=3, uniform='info_row')
+			self.main_frame.rowconfigure(1, weight=1, uniform='ctrl_row')
+		elif self.layout['rows'] == 4:
+			self.main_frame.rowconfigure(0, weight=2, uniform='info_row')
+			self.main_frame.rowconfigure(1, weight=2, uniform='info_row')
+			self.main_frame.rowconfigure(2, weight=1, uniform='ctrl_row')
+			self.main_frame.rowconfigure(3, weight=1, uniform='ctrl_row')
 		self.main_frame.columnconfigure(self.layout['list_pos'][1], weight=3)
 		self.main_frame.columnconfigure(self.layout['list_pos'][1] + 1, weight=1)
 
