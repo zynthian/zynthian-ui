@@ -781,7 +781,7 @@ def audio_autoconnect():
 				# Auto mono/stereo routing
 				source_count = len(src_ports)
 				if source_count and dst_count:
-					for i in range(max(source_count, dst_count)):
+					for i in range(min(2, max(source_count, dst_count))):
 						src = src_ports[min(i, source_count - 1)]
 						dst = dst_ports[min(i, dst_count - 1)]
 						required_routes[dst.name].add(src.name)
