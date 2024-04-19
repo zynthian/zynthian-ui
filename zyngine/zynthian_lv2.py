@@ -50,6 +50,13 @@ class EngineType(Enum):
 	SPECIAL = "Special"
 	#UNKNOWN = "Unknown"
 
+engine_type_title = {
+	"MIDI Synth": "MIDI Instrument",
+	"Audio Effect": "Audio Effect",
+	"MIDI Tool": "MIDI tool",
+	"Audio Generator": "Audio Generator",
+	"Special": "Special"
+}
 
 lv2_plugin_classes = {
 	"MIDI_SYNTH": ("Instrument"),
@@ -62,17 +69,15 @@ lv2_plugin_classes = {
 
 engine_categories = {
 	"MIDI Synth": (
-		"Acoustic",
-		"Organ",
-		"Piano",
-		"Percussion",
-		"Sampler",
 		"Synth",
+		"Sampler",
+		"Piano",
+		"Organ",
+		"Acoustic",
+		"Percussion",
 		"Other"
 	),
 	"Audio Effect": (
-		"Amplifier",
-		"Analyzer",
 		"Delay",
 		"Distortion",
 		"Dynamics",
@@ -81,6 +86,8 @@ engine_categories = {
 		"Panning & Spatial",
 		"Pitch",
 		"Reverb",
+		"Amplifier",
+		"Analyzer",
 		"Other"
 	),
 	"MIDI Tool": (

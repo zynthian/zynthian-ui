@@ -43,11 +43,11 @@ class zynthian_gui_chain_menu(zynthian_gui_selector):
 		self.list_data = []
 
 		self.list_data.append((None, 0, "> ADD CHAIN"))
-		self.list_data.append((self.add_synth_chain, 0, "Add Synth Chain"))
+		self.list_data.append((self.add_synth_chain, 0, "Add Instrument Chain"))
 		self.list_data.append((self.add_audiofx_chain, 0, "Add Audio Chain"))
 		self.list_data.append((self.add_midifx_chain, 0, "Add MIDI Chain"))
 		self.list_data.append((self.add_midiaudiofx_chain, 0, "Add MIDI+Audio Chain"))
-		self.list_data.append((self.add_generator_chain, 0, "Add Generator Chain"))
+		self.list_data.append((self.add_generator_chain, 0, "Add Audio Generator Chain"))
 		self.list_data.append((self.add_special_chain, 0, "Add Special Chain"))
 
 		self.list_data.append((None, 0, "> REMOVE"))

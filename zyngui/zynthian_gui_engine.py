@@ -45,6 +45,14 @@ from zyngui.zynthian_gui_controller import zynthian_gui_controller
 
 class zynthian_gui_engine(zynthian_gui_selector):
 
+	engine_type_title = {
+		"MIDI Synth": "MIDI Instrument",
+		"Audio Effect": "Audio Effect",
+		"MIDI Tool": "MIDI tool",
+		"Audio Generator": "Audio Generator",
+		"Special": "Special"
+	}
+
 	def __init__(self):
 		# Custom layout for GUI engine
 		self.layout = {
@@ -424,7 +432,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def set_select_path(self):
 		path = ""
 		try:
-			path = self.zyngui.modify_chain_status["type"]
+			path = zynthian_lv2.engine_type_title[self.zyngui.modify_chain_status["type"]]
 			#chain = self.zyngui.chain_manager.chains[self.zyngui.modify_chain_status["chain_id"]].get_name()
 			#path = f"{chain}#{path}"
 		except:
