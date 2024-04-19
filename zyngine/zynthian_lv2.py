@@ -283,7 +283,7 @@ def update_engine_defaults(refresh=True):
 		logging.error('Loading current engine config failed: {}'.format(e))
 
 	# Merge default and current engine DBs
-	if default_engines and current_engines:
+	if default_engines:
 		for key, info in default_engines.items():
 			info['EDIT'] = 0
 			try:
