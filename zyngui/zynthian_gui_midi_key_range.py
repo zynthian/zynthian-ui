@@ -295,14 +295,12 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			super().hide()
 			self.zyngui.cuia_disable_midi_learn()
 
-
 	def zynpot_cb(self, i, dval):
 		if i < len(self.zgui_ctrls):
 			self.zgui_ctrls[i].zynpot_cb(dval)
 			return True
 		else:
 			return False
-
 
 	# Function to back event
 	def back_action(self):

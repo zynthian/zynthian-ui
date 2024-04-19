@@ -648,9 +648,10 @@ class zynthian_gui_base(tkinter.Frame):
 
 	def zynpot_cb(self, i, dval):
 		if self.param_editor_zctrl:
-			if i == zynthian_gui_config.ENC_SELECT:
+			ctrl_order = zynthian_gui_config.layout['ctrl_order']
+			if i == ctrl_order[3]:
 				self.param_editor_zctrl.nudge(dval)
-			elif i == zynthian_gui_config.ENC_SNAPSHOT:
+			elif i == ctrl_order[2]
 				self.param_editor_zctrl.nudge(dval * 10)
 			else:
 				return True
