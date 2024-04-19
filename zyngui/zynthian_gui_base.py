@@ -651,7 +651,7 @@ class zynthian_gui_base(tkinter.Frame):
 			ctrl_order = zynthian_gui_config.layout['ctrl_order']
 			if i == ctrl_order[3]:
 				self.param_editor_zctrl.nudge(dval)
-			elif i == ctrl_order[2]
+			elif i == ctrl_order[2]:
 				self.param_editor_zctrl.nudge(dval * 10)
 			else:
 				return True
