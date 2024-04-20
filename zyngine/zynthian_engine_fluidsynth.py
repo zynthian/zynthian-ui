@@ -162,7 +162,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		logging.debug(f"LOADING BANK FILES ...")
 		# Internal storage banks
 		for root_bank_dir in cls.root_bank_dirs:
-			flist = cls.find_all_preset_files(root_bank_dir[1], recursion=2)
+			flist = sorted(cls.find_all_preset_files(root_bank_dir[1], recursion=2), key=str.casefold)
 			if not exclude_empty or len(flist) > 0:
 				banks.append([None, None, root_bank_dir[0], None, None])
 			for fpath in flist:
@@ -173,7 +173,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 		# External storage banks
 		for exd in zynthian_gui_config.get_external_storage_dirs(cls.ex_data_dir):
-			flist = cls.find_all_preset_files(exd, recursion=2)
+			flist = sorted(cls.find_all_preset_files(exd, recursion=2), key=str.casefold)
 			if not exclude_empty or len(flist) > 0:
 				banks.append([None, None, f"USB> {os.path.basename(exd)}", None, None])
 			for fpath in flist:
