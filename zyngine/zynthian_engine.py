@@ -291,7 +291,7 @@ class zynthian_engine(zynthian_basic_engine):
 		for item in glob.iglob(os.path.join(path, glob_pat), recursive=True):
 			if rerule.match(item):
 				res.append(item)
-		return res
+		return sorted(res, key=str.casefold)
 
 	@staticmethod
 	def get_filelist(dpath, fext):
