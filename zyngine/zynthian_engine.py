@@ -358,7 +358,7 @@ class zynthian_engine(zynthian_basic_engine):
 				if not exclude_empty or cls.find_some_preset_file(bank_path, recursion):
 					sbanks.append([bank_path, None, bank_dir, None, bank_dir])
 			if len(sbanks):
-				banks.append([None, None, root_bank_dir[0], None, None])
+				banks.append([None, None, "SD> " + root_bank_dir[0], None, None])
 				banks += sbanks
 
 		# External storage banks

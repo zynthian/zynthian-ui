@@ -164,7 +164,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		for root_bank_dir in cls.root_bank_dirs:
 			flist = cls.find_all_preset_files(root_bank_dir[1], recursion=2)
 			if not exclude_empty or len(flist) > 0:
-				banks.append([None, None, root_bank_dir[0], None, None])
+				banks.append([None, None, "SD> " + root_bank_dir[0], None, None])
 			for fpath in flist:
 				fname = os.path.basename(fpath)
 				title, filext = os.path.splitext(fname)
