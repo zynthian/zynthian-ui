@@ -1479,8 +1479,13 @@ class zynthian_chain_manager:
         """
         proc = self.get_synth_processor(midi_chan)
         if proc:
-            return proc.get_preset_name()
-        return None
+            res = proc.get_preset_name()
+            if not res:
+                res = proc.get_bank_name()
+            if not res:
+                res = proc.get_name()
+            return res.replace("_", " ")
+        return ""
 
     # ---------------------------------------------------------------------------
     # Extended Config

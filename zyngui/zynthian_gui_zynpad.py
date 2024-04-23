@@ -299,12 +299,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		midi_chan = self.zynseq.libseq.getChannel(self.bank, pad, 0)
 		title = self.zynseq.get_sequence_name(self.bank, pad)
 		try:
-			str(int(title)) # Test for default (integer index)
-			preset_name = self.chain_manager.get_synth_preset_name(midi_chan)
-			if preset_name:
-				title = preset_name.replace("_", " ")
-			else:
-				title = ""
+			str(int(title))  # Test for default (integer index)
+			title = self.chain_manager.get_synth_preset_name(midi_chan)
 		except:
 			pass
 		self.grid_canvas.itemconfig(self.pads[pad]["title"], text=title, fill=foreground)

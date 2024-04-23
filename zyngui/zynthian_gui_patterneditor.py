@@ -219,9 +219,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				# Get preset title from synth engine on this MIDI channel
 				midi_chan = self.zynseq.libseq.getChannel(self.bank, self.sequence, 0)
 				preset_name = self.zyngui.chain_manager.get_synth_preset_name(midi_chan)
-				if preset_name:
-					title = preset_name.replace("_", " ")
-				else:
+				if not preset_name:
 					group = chr(65 + self.zynseq.libseq.getGroup(self.bank, self.sequence))
 					title = f"{group}{title}"
 			except:

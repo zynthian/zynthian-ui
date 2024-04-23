@@ -741,8 +741,6 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
 		midi_chan = self.zynseq.libseq.getChannel(self.zynseq.bank, sequence, track)
 		track_name = self.zyngui.chain_manager.get_synth_preset_name(midi_chan)
-		if track_name is None:
-			track_name = ""
 
 		self.sequence_title_canvas.create_rectangle(0, self.row_height * row + 1, 
 				self.seq_track_title_width, (1 + row) * self.row_height - 1, tags=(f"rowback:{row}", "sequence_title"),
