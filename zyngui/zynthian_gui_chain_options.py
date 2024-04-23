@@ -23,9 +23,7 @@
 #
 # ******************************************************************************
 
-from collections import OrderedDict
 import logging
-from collections import OrderedDict
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -66,7 +64,11 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			self.list_data.append((self.chain_midi_routing, None, "MIDI Out"))
 
 		if self.chain.is_midi():
-			self.list_data.append((self.chain_midi_chan, None, "MIDI Channel"))
+			try:
+				if synth_proc_count == 0 or self.chain.synth_slots[0][0].engine.options["midi_chan"]:
+					self.list_data.append((self.chain_midi_chan, None, "MIDI Channel"))
+			except Exception as e:
+				logging.error(e)
 
 		if synth_proc_count:
 			self.list_data.append((self.chain_midi_cc, None, "MIDI CC"))
@@ -248,7 +250,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		self.zyngui.show_screen('midi_key_range')
 
 	def midi_learn(self):
-		options = OrderedDict()
+		options = {}
 		options['Enter MIDI-learn'] = "enable_midi_learn"
 		options['Enter Global MIDI-learn'] = "enable_global_midi_learn"
 		if self.processor:
@@ -280,7 +282,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		self.zyngui.show_screen('audio_out')
 
 	def audio_options(self):
-		options = OrderedDict()
+		options = {}
 		if self.zyngui.state_manager.zynmixer.get_mono(self.chain.mixer_chan):
 			options['\u2612 Mono'] = 'mono'
 		else:
@@ -336,7 +338,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 	# Remove submenu
 
 	def remove_cb(self):
-		options = OrderedDict()
+		options = {}
 		if self.chain.synth_slots and self.chain.get_processor_count("MIDI Tool"):
 			options['Remove All MIDI-FXs'] = "midifx"
 		if self.chain.get_processor_count("Audio Effect"):
