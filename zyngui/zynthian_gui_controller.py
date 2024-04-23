@@ -30,7 +30,7 @@ from datetime import datetime
 from tkinter import font as tkFont
 
 # Zynthian specific modules
-from zyncoder.zyncore import get_lib_zyncore
+from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config
 
 # ------------------------------------------------------------------------------
@@ -538,7 +538,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 
 	def setup_zynpot(self):
 		try:
-			get_lib_zyncore().setup_behaviour_zynpot(self.index, self.step)
+			lib_zyncore.setup_behaviour_zynpot(self.index, self.step)
 		except Exception as err:
 			logging.error("%s" % err)
 

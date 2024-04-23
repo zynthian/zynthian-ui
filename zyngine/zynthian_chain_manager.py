@@ -992,13 +992,19 @@ class zynthian_chain_manager:
         """
         result = {}
         if etype in zynthian_lv2.engines_by_type:
+            # Add categories in right order
             for eng_cat in zynthian_lv2.engine_categories[etype]:
                 result[eng_cat] = {}
+            # Add engines to each category
             for eng_code, info in zynthian_lv2.engines_by_type[etype].items():
                 eng_cat = info["CAT"]
                 hide_if_single_proc = eng_code not in self.single_processor_engines or eng_code not in self.zyngines
                 if (info["ENABLED"] or all) and hide_if_single_proc:
                     result[eng_cat][eng_code] = info
+            # Remove empty categories
+            for eng_cat in list(result.keys()):
+                if not result[eng_cat]:
+                    del result[eng_cat]
         return result
 
     def get_next_jackname(self, jackname, sanitize=True):

@@ -40,7 +40,6 @@ class zynthian_controller:
 		symbol - String identifying the control
 		options - Optional dictionary of controller {parameter:value} pairs
 		"""
-
 		self.reset(engine, symbol, options)
 
 	def reset(self, engine, symbol, options=None):

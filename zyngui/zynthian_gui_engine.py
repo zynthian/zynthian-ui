@@ -259,17 +259,22 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			self.list_data.append(("None", 0, "None", "None"))
 
 		# Show a single category or all
-		if self.cat_index < 0:
-			cats = self.engine_cats
+		if self.engine_cats:
+			if self.cat_index < 0:
+				cats = self.engine_cats
+			else:
+				if self.cat_index >= len(self.engine_cats):
+					self.cat_index = len(self.engine_cats) - 1
+				cats = [self.engine_cats[self.cat_index]]
 		else:
-			cats = [self.engine_cats[self.cat_index]]
+			cats = []
 
 		for cat in cats:
+			infos = self.engines_by_cat[cat]
+
 			# Add category header when showing several cats...
 			if len(cats) > 1:
 				self.list_data.append((None, len(self.list_data), "> {}".format(cat)))
-
-			infos = self.engines_by_cat[cat]
 
 			# Split engines in standalone & plugins
 			#standalone = []
@@ -389,7 +394,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			self.zsel2.config(self.zsel2.zctrl)
 			self.zsel2.show()
 		else:
-			zsel2_ctrl = zynthian_controller(None, "cat_index", {'name': "Category", 'short_name': "Category", 'value_min': 0, 'value_max': len(self.engine_cats) - 1, 'value': self.cat_index})
+			zsel2_ctrl = zynthian_controller(self, "cat_index", {'name': "Category", 'short_name': "Category", 'value_min': 0, 'value_max': len(self.engine_cats) - 1, 'value': self.cat_index})
 			self.zsel2 = zynthian_gui_controller(zynthian_gui_config.select_ctrl - 1, self.main_frame, zsel2_ctrl, zs_hidden, selcounter=True, orientation=self.layout['ctrl_orientation'])
 		if not self.zselector_hidden:
 			self.zsel2.grid(row=self.layout['ctrl_pos'][2][0], column=self.layout['ctrl_pos'][2][1], sticky="news", pady=(0, 1))
@@ -417,6 +422,13 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			return True
 		else:
 			return super().zynpot_cb(i, dval)
+
+	def send_controller_value(self, zctrl):
+		if not self.shown:
+			return
+		if zctrl.symbol == "cat_index":
+			if self.cat_index != zctrl.value:
+				self.set_cat(zctrl.value)
 
 	def cb_listbox_motion(self, event):
 		super().cb_listbox_motion(event)
