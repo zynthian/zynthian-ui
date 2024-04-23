@@ -102,7 +102,7 @@ function splash_zynthian_error_exit_ip() {
 
 	# Get the IP
 	#zynthian_ip=`ip route get 1 | awk '{print $NF;exit}'`
-	zynthian_ip=`ip route get 1 | sed 's/^.*src \([^ ]*\).*$/\1/;q'`
+	zynthian_ip=$(hostname -I)
 
 	# Format the message
 	zynthian_message="IP:$zynthian_ip    Exit:$zynthian_error"
@@ -113,6 +113,14 @@ function splash_zynthian_error_exit_ip() {
 
 function splash_zynthian_last_message() {
 	xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+}
+
+function start_wifi_ap() {
+	readarray -t connected_devices <<< $(nmcli --terse c show | cut -d : -f 4 | tr -s '\n' | tr -s 'lo\n')
+	if [[ "${#connected_devices[*]}" < "2" ]]; then
+		nmcli radio wifi on
+		nmcli con up "zynthian-ap"
+	fi
 }
 
 powersave_control.sh off
@@ -219,6 +227,7 @@ while true; do
 		*)
 			splash_zynthian_error_exit_ip $status
 			load_config_env
+			start_wifi_ap
 			sleep 10
 		;;
 	esac

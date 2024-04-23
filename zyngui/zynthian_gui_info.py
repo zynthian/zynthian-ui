@@ -50,6 +50,7 @@ class zynthian_gui_info:
 		self.textarea = tkinter.Text(self.main_frame,
 			height=int(zynthian_gui_config.display_height/(zynthian_gui_config.font_size + 8)),
 			font=(zynthian_gui_config.font_family, zynthian_gui_config.font_size, "normal"),
+			#font=("sans-serif", zynthian_gui_config.font_size, "normal"),
 			#wraplength=80,
 			#justify=tkinter.LEFT,
 			bd=0,
