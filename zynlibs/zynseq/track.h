@@ -174,22 +174,23 @@ class Track
         bool isEmpty();
 
     private:
-        uint8_t m_nChannel = 0; // MIDI channel
-        uint8_t m_nOutput = 0; // JACK output
-        uint8_t m_nMap = 0; // Map / scale index
-        uint32_t m_nClkPerStep = 1; // Clock cycles per step
-        uint32_t m_nDivCount = 0; // Current count of clock cycles within divisor
+        uint8_t m_nChannel = 0; 		// MIDI channel
+        uint8_t m_nOutput = 0; 			// JACK output
+        uint8_t m_nMap = 0; 			// Map / scale index
+        uint32_t m_nClkPerStep = 1; 	// Clock cycles per step
+        uint32_t m_nDivCount = 0; 		// Current count of clock cycles within divisor
         std::map<uint32_t,Pattern*> m_mPatterns; // Map of pointers to patterns, indexed by start position
-        int m_nCurrentPatternPos = -1; // Start position of pattern currently being played
-        int m_nNextEvent = -1; // Index of next event to process or -1 if no more events at this clock cycle
-        int8_t m_nEventValue = -1; // Value of event at current interpolation point or -1 if no event
-        uint32_t m_nLastClockTime = 0; // Time of last clock pulse (sample)
-        uint32_t m_nNextStep = 0; // Postion within pattern (step)
-        uint32_t m_nTrackLength = 0; // Quantity of clock cycles in track (last pattern start + length)
-        double m_dSamplesPerClock; // Quantity of samples per MIDI clock cycle used to schedule future events, e.g. note off / interpolation
-        bool m_bSolo = false; // True if track is solo
-        bool m_bMute = false; // True if track is muted
-        bool m_bChanged = true; // True if state changed since last hasChanged()
-        bool m_bEmpty = true; //True if all patterns in track are empty (have no events)
+        int m_nCurrentPatternPos = -1; 	// Start position of pattern currently being played
+        int m_nNextEvent = -1;		 	// Index of next event to process or -1 if no more events at this clock cycle
+        int8_t m_nEventValue = -1; 		// Value of event at current interpolation point or -1 if no event
+        float m_fEventOffset = 0;		// Offset for the currently processed Step event (getEvent)
+        uint32_t m_nLastClockTime = 0; 	// Time of last clock pulse (sample)
+        uint32_t m_nNextStep = 0; 		// Postion within pattern (step)
+        uint32_t m_nTrackLength = 0; 	// Quantity of clock cycles in track (last pattern start + length)
+        double m_dSamplesPerClock; 		// Quantity of samples per MIDI clock cycle used to schedule future events, e.g. note off / interpolation
+        bool m_bSolo = false; 			// True if track is solo
+        bool m_bMute = false; 			// True if track is muted
+        bool m_bChanged = true; 		// True if state changed since last hasChanged()
+        bool m_bEmpty = true; 			//True if all patterns in track are empty (have no events)
 };
 

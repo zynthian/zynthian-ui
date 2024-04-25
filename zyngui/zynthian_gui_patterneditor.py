@@ -63,7 +63,8 @@ EDIT_PARAM_DUR		= 0  # Edit note duration
 EDIT_PARAM_VEL		= 1  # Edit note velocity
 EDIT_PARAM_STUT_CNT	= 2  # Edit note stutter count
 EDIT_PARAM_STUT_DUR	= 3  # Edit note stutter duration
-EDIT_PARAM_LAST		= 3  # Index of last parameter
+EDIT_PARAM_CHANCE	= 4  # Edit note play chance
+EDIT_PARAM_LAST		= 4  # Index of last parameter
 
 # List of permissible steps per beat
 STEPS_PER_BEAT = [1, 2, 3, 4, 6, 8, 12, 24]
@@ -283,13 +284,18 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			options['Tempo'] = 'Tempo'
 		if not zynthian_gui_config.check_wiring_layout(["Z2"]):
 			options['Arranger'] = 'Arranger'
-		options['Beats per bar ({})'.format(self.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
+		options['Beats per Bar ({})'.format(self.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
+		options['Vertical zoom ({})'.format(self.zoom)] = 'Vertical zoom'
 
 		# Pattern Options
 		options['> PATTERN OPTIONS'] = None
 		options['Beats in pattern ({})'.format(self.zynseq.libseq.getBeatsInPattern())] = 'Beats in pattern'
-		options['Steps per beat ({})'.format(self.n_steps_beat)] = 'Steps per beat'
-		options['Vertical zoom ({})'.format(self.zoom)] = 'Vertical zoom'
+		options['Steps/Beat ({})'.format(self.n_steps_beat)] = 'Steps per beat'
+		options['Swing Divisor ({})'.format(self.zynseq.libseq.getSwingDiv())] = 'Swing Divisor'
+		options['Swing Amount ({}%)'.format(int(100.0 * self.zynseq.libseq.getSwingAmount()))] = 'Swing Amount'
+		options['Time Humanization ({})'.format(int(500.0 * self.zynseq.libseq.getHumanTime()))] = 'Time Humanization'
+		options['Velocity Humanization ({})'.format(int(self.zynseq.libseq.getHumanVelo()))] = 'Velocity Humanization'
+		options['Note Play Chance ({}%)'.format(int(100.0 * self.zynseq.libseq.getPlayChance()))] = 'Note Play Chance'
 		scales = self.get_scales()
 		options['Scale ({})'.format(scales[self.zynseq.libseq.getScale()])] = 'Scale'
 		options['Tonic ({})'.format(NOTE_NAMES[self.zynseq.libseq.getTonic()])] = 'Tonic'
@@ -304,9 +310,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		#options['Add program change'] = 'Add program change'
 		if extra_options:
 			if self.zynseq.libseq.isMidiRecord():
-				options['\u2612 Record from MIDI'] = 'midi_record'
+				options['\u2612 Record from MIDI'] = 'Record MIDI'
 			else:
-				options['\u2610 Record from MIDI'] = 'midi_record'
+				options['\u2610 Record from MIDI'] = 'Record MIDI'
+		if self.zynseq.libseq.getQuantizeNotes():
+			options['\u2612 Quantize notes'] = 'Quantize notes'
+		else:
+			options['\u2610 Quantize notes'] = 'Quantize notes'
 		options['Transpose pattern'] = 'Transpose pattern'
 		options['Copy pattern'] = 'Copy pattern'
 		options['Load pattern'] = 'Load pattern'
@@ -332,29 +342,34 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'Arranger':
 			self.zyngui.show_screen('arranger')
 		elif params == 'Beats per bar':
-			self.enable_param_editor(self, 'bpb', {'name':'Beats per bar', 'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zynseq.libseq.getBeatsPerBar()})
-		elif params == 'Beats in pattern':
-			self.enable_param_editor(self, 'bip', {'name':'Beats in pattern', 'value_min':1, 'value_max':64, 'value_default':4, 'value':self.zynseq.libseq.getBeatsInPattern()}, self.assert_beats_in_pattern)
-		elif params == 'Steps per beat':
-			self.enable_param_editor(self, 'spb', {'name':'Steps per beat', 'ticks': STEPS_PER_BEAT, 'value_default': 3, 'value': self.n_steps_beat}, self.assert_steps_per_beat)
-		elif params == 'Copy pattern':
-			self.copy_source = self.pattern
-			self.enable_param_editor(self, 'copy', {'name':'Copy pattern to', 'value_min':1, 'value_max':zynseq.SEQ_MAX_PATTERNS, 'value':self.pattern}, self.copy_pattern)
-		elif params == 'Load pattern':
-			self.zyngui.screens['option'].config_file_list("Load pattern", [self.patterns_dpath, self.my_patterns_dpath], "*.zpat", self.load_pattern_file)
-			self.zyngui.show_screen('option')
-		elif params == 'Save pattern':
-			self.zyngui.show_keyboard(self.save_pattern_file, "pat#{}".format(self.pattern))
-		elif params == 'Clear pattern':
-			self.clear_pattern()
-		elif params == 'Transpose pattern':
-			self.enable_param_editor(self, 'transpose', {'name':'Transpose', 'value_min':-1, 'value_max':1, 'labels':['down','down/up','up'], 'value':0})
+			self.enable_param_editor(self, 'bpb', {'name': 'Beats per bar', 'value_min': 1, 'value_max': 64, 'value_default': 4, 'value': self.zynseq.libseq.getBeatsPerBar()})
 		elif params == 'Vertical zoom':
-			self.enable_param_editor(self, 'vzoom', {'name':'Vertical zoom', 'value_min':1, 'value_max':127, 'value_default':16, 'value':self.zoom})
+			self.enable_param_editor(self, 'vzoom', {'name': 'Vertical zoom', 'value_min': 1, 'value_max': 127, 'value_default': 16, 'value': self.zoom})
+
+		elif params == 'Beats in pattern':
+			self.enable_param_editor(self, 'bip', {'name': 'Beats in pattern', 'value_min': 1, 'value_max': 64, 'value_default': 4, 'value': self.zynseq.libseq.getBeatsInPattern()}, self.assert_beats_in_pattern)
+		elif params == 'Steps per beat':
+			self.enable_param_editor(self, 'spb', {'name': 'Steps per beat', 'ticks': STEPS_PER_BEAT, 'value_default': 3, 'value': self.n_steps_beat}, self.assert_steps_per_beat)
+
+		elif params == 'Swing Divisor':
+			self.enable_param_editor(self, 'swing_div', {'name': 'Swing Divisor', 'value_min': 1, 'value_max': self.n_steps_beat, 'value_default': 1, 'value': self.zynseq.libseq.getSwingDiv()})
+
+		elif params == 'Swing Amount':
+			self.enable_param_editor(self, 'swing_amount', {'name': 'Swing Amount', 'value_min': 0, 'value_max': 100, 'value_default': 0, 'value': int(100.0 * self.zynseq.libseq.getSwingAmount())})
+
+		elif params == 'Time Humanization':
+			self.enable_param_editor(self, 'human_time', {'name': 'Time Humanization', 'value_min': 0, 'value_max': 100, 'value_default': 0, 'value': int(500.0 * self.zynseq.libseq.getHumanTime())})
+
+		elif params == 'Velocity Humanization':
+			self.enable_param_editor(self, 'human_velo', {'name': 'Velocity Humanization', 'value_min': 0, 'value_max': 100, 'value_default': 0, 'value': int(self.zynseq.libseq.getHumanVelo())})
+
+		elif params == 'Note Play Chance':
+			self.enable_param_editor(self, 'play_chance', {'name': 'Note Play Chance', 'value_min': 0, 'value_max': 100, 'value_default': 0, 'value': int(100.0 * self.zynseq.libseq.getPlayChance())})
+
 		elif params == 'Scale':
-			self.enable_param_editor(self, 'scale', {'name':'Scale', 'labels':self.get_scales(), 'value':self.zynseq.libseq.getScale()})
+			self.enable_param_editor(self, 'scale', {'name': 'Scale', 'labels': self.get_scales(), 'value': self.zynseq.libseq.getScale()})
 		elif params == 'Tonic':
-			self.enable_param_editor(self, 'tonic', {'name':'Tonic', 'labels':NOTE_NAMES, 'value':self.zynseq.libseq.getTonic()})
+			self.enable_param_editor(self, 'tonic', {'name': 'Tonic', 'labels': NOTE_NAMES, 'value': self.zynseq.libseq.getTonic()})
 		elif params == 'Rest note':
 			labels = ['None']
 			for note in range(128):
@@ -362,11 +377,26 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			value = self.zynseq.libseq.getInputRest() + 1
 			if value > 128:
 				value = 0
-			self.enable_param_editor(self, 'rest', {'name':'Rest', 'labels':labels, 'value':value})
+			self.enable_param_editor(self, 'rest', {'name': 'Rest', 'labels': labels, 'value': value})
 		elif params == 'Add program change':
-			self.enable_param_editor(self, 'prog_change', {'name':'Program', 'value_max':128, 'value':self.get_program_change()}, self.add_program_change)
-		elif params == 'midi_record':
+			self.enable_param_editor(self, 'prog_change', {'name': 'Program', 'value_max': 128, 'value': self.get_program_change()}, self.add_program_change)
+
+		elif params == 'Record MIDI':
 			self.toggle_midi_record()
+		elif params == 'Quantize notes':
+			self.zynseq.libseq.setQuantizeNotes(not self.zynseq.libseq.getQuantizeNotes())
+		elif params == 'Transpose pattern':
+			self.enable_param_editor(self, 'transpose', {'name': 'Transpose', 'value_min': -1, 'value_max': 1, 'labels': ['down','down/up','up'], 'value': 0})
+		elif params == 'Copy pattern':
+			self.copy_source = self.pattern
+			self.enable_param_editor(self, 'copy', {'name': 'Copy pattern to', 'value_min': 1, 'value_max': zynseq.SEQ_MAX_PATTERNS, 'value': self.pattern}, self.copy_pattern)
+		elif params == 'Load pattern':
+			self.zyngui.screens['option'].config_file_list("Load pattern", [self.patterns_dpath, self.my_patterns_dpath], "*.zpat", self.load_pattern_file)
+			self.zyngui.show_screen('option')
+		elif params == 'Save pattern':
+			self.zyngui.show_keyboard(self.save_pattern_file, "pat#{}".format(self.pattern))
+		elif params == 'Clear pattern':
+			self.clear_pattern()
 		elif params == 'Export to SMF':
 			self.zyngui.show_keyboard(self.export_smf, "pat#{}".format(self.pattern))
 
@@ -395,17 +425,26 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol == 'tempo':
 			self.zynseq.libseq.setTempo(zctrl.value)
-		elif zctrl.symbol == 'metro_vol':
-			self.zynseq.libseq.setMetronomeVolume(zctrl.value / 100.0)
+		elif zctrl.symbol == 'vzoom':
+			self.set_vzoom(zctrl.value)
 		elif zctrl.symbol == 'bpb':
 			self.zynseq.libseq.setBeatsPerBar(zctrl.value)
-		elif zctrl.symbol == 'copy':
-			self.load_pattern(zctrl.value)
+		elif zctrl.symbol == 'swing_amount':
+			self.zynseq.libseq.setSwingAmount(zctrl.value/100.0)
+		elif zctrl.symbol == 'swing_div':
+			self.zynseq.libseq.setSwingDiv(zctrl.value)
+		elif zctrl.symbol == 'human_time':
+			self.zynseq.libseq.setHumanTime(zctrl.value / 500.0)
+		elif zctrl.symbol == 'human_velo':
+			self.zynseq.libseq.setHumanVelo(1.0 * zctrl.value)
+		elif zctrl.symbol == 'play_chance':
+			self.zynseq.libseq.setPlayChance(zctrl.value / 100.0)
 		elif zctrl.symbol == 'transpose':
 			self.transpose(zctrl.value)
 			zctrl.set_value(0)
-		elif zctrl.symbol == 'vzoom':
-			self.set_vzoom(zctrl.value)
+		elif zctrl.symbol == 'copy':
+			self.load_pattern(zctrl.value)
+
 		elif zctrl.symbol == 'scale':
 			self.set_scale(zctrl.value)
 		elif zctrl.symbol == 'tonic':
@@ -1171,6 +1210,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				self.set_title(f"Stutter count: {self.zynseq.libseq.getStutterCount(step, note)}")
 			elif self.edit_param == EDIT_PARAM_STUT_DUR:
 				self.set_title(f"Stutter duration: {self.zynseq.libseq.getStutterDur(step, note)}")
+			elif self.edit_param == EDIT_PARAM_CHANCE:
+				self.set_title(f"Play chance: {self.zynseq.libseq.getNotePlayChance(step, note)}")
+
 		self.init_buttonbar([(f"ZYNPOT {zynpot},-1", f"-{delta}"),(f"ZYNPOT {zynpot},+1", f"+{delta}"),("ZYNPOT 3,-1", "PREV\nPARAM"),("ZYNPOT 3,+1", "NEXT\nPARAM"),(3,"OK")])
 
 	# Function to handle zynpots value change
@@ -1265,6 +1307,14 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					if val < 1:
 						val = 1
 					self.zynseq.libseq.setStutterDur(step, note, val)
+					self.draw_cell(step, note - self.keymap_offset)
+				elif self.edit_param == EDIT_PARAM_CHANCE:
+					val = self.zynseq.libseq.getNotePlayChance(step, note) + dval
+					if val < 0:
+						val = 0
+					elif val > 100:
+						val = 100
+					self.zynseq.libseq.setNotePlayChance(step, note, val)
 					self.draw_cell(step, note - self.keymap_offset)
 				self.set_edit_title()
 			elif self.edit_mode == EDIT_MODE_ALL:

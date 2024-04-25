@@ -21,6 +21,7 @@ class StepEvent
         StepEvent()
         {
             m_nPosition = 0;
+            m_fOffset = 0.0;
             m_fDuration = 1.0;
             m_nCommand = MIDI_NOTE_ON;
             m_nValue1start = 60;
@@ -29,13 +30,15 @@ class StepEvent
             m_nValue2end = 0;
             m_nStutterCount = 0;
             m_nStutterDur = 1;
+            m_nPlayChance = 100;
         };
 
         /** Constructor - create an instance of StepEvent object
         */
-        StepEvent(uint32_t position, uint8_t command, uint8_t value1 = 0, uint8_t value2 = 0, float duration = 1.0)
+        StepEvent(uint32_t position, uint8_t command, uint8_t value1=0, uint8_t value2=0, float duration=1.0, float offset=0.0)
         {
             m_nPosition = position;
+            m_fOffset = offset;
             m_fDuration = duration;
             m_nCommand = command;
             m_nValue1start = value1;
@@ -47,6 +50,7 @@ class StepEvent
                 m_nValue2end = value2;
             m_nStutterCount = 0;
             m_nStutterDur = 1;
+            m_nPlayChance = 100;
         };
 
         /** Copy constructor - create an copy of StepEvent object from an existing object
@@ -54,6 +58,7 @@ class StepEvent
         StepEvent(StepEvent* pEvent)
         {
             m_nPosition = pEvent->getPosition();
+            m_fOffset = pEvent->getOffset();
             m_fDuration = pEvent->getDuration();
             m_nCommand = pEvent->getCommand();
             m_nValue1start = pEvent->getValue1start();
@@ -62,37 +67,44 @@ class StepEvent
             m_nValue2end = pEvent->getValue2end();
             m_nStutterCount = pEvent->getStutterCount();
             m_nStutterDur = pEvent->getStutterDur();
+            m_nPlayChance = pEvent->getPlayChance();
         };
 
-        uint32_t getPosition() { return m_nPosition; };
-        float getDuration() { return m_fDuration; };
-        uint8_t getCommand() { return m_nCommand; };
-        uint8_t getValue1start() { return m_nValue1start; };
-        uint8_t getValue2start() { return m_nValue2start; };
-        uint8_t getValue1end() { return m_nValue1end; };
-        uint8_t getValue2end() { return m_nValue2end; };
-        uint8_t getStutterCount() { return m_nStutterCount; };
-        uint8_t getStutterDur() { return m_nStutterDur; };
-        void setPosition(uint32_t position) { m_nPosition = position; };
-        void setDuration(float duration) { m_fDuration = duration; };
-        void setValue1start(uint8_t value) { m_nValue1start = value; };
-        void setValue2start(uint8_t value) { m_nValue2start = value; };
-        void setValue1end(uint8_t value) { m_nValue1end = value; };
-        void setValue2end(uint8_t value) { m_nValue2end = value; };
-        void setStutterCount(uint8_t value) { m_nStutterCount = value; };
-        void setStutterDur(uint8_t value) { if (value) m_nStutterDur = value; };
+        uint32_t getPosition() { return m_nPosition; }
+        float getOffset() { return m_fOffset; }
+        float getDuration() { return m_fDuration; }
+        uint8_t getCommand() { return m_nCommand; }
+        uint8_t getValue1start() { return m_nValue1start; }
+        uint8_t getValue2start() { return m_nValue2start; }
+        uint8_t getValue1end() { return m_nValue1end; }
+        uint8_t getValue2end() { return m_nValue2end; }
+        uint8_t getStutterCount() { return m_nStutterCount; }
+        uint8_t getStutterDur() { return m_nStutterDur; }
+        uint8_t getPlayChance() { return m_nPlayChance; }
+        void setPosition(uint32_t position) { m_nPosition = position; }
+        void setOffset(float offset) { m_fOffset = offset; }
+        void setDuration(float duration) { m_fDuration = duration; }
+        void setValue1start(uint8_t value) { m_nValue1start = value; }
+        void setValue2start(uint8_t value) { m_nValue2start = value; }
+        void setValue1end(uint8_t value) { m_nValue1end = value; }
+        void setValue2end(uint8_t value) { m_nValue2end = value; }
+        void setStutterCount(uint8_t value) { m_nStutterCount = value; }
+        void setStutterDur(uint8_t value) { if (value) m_nStutterDur = value; }
+        void setPlayChance(uint8_t chance) { m_nPlayChance = chance; }
 
     private:
-        uint32_t m_nPosition; // Start position of event in steps
-        float m_fDuration; // Duration of event in steps
-        uint8_t m_nCommand; // MIDI command without channel
-        uint8_t m_nValue1start; // MIDI value 1 at start of event
-        uint8_t m_nValue2start; // MIDI value 2 at start of event
-        uint8_t m_nValue1end; // MIDI value 1 at end of event
-        uint8_t m_nValue2end; // MIDI value 2 at end of event
-        uint32_t m_nProgress; // Progress through event (start value to end value)
-        uint8_t m_nStutterCount; // Quantity of stutters (fast repeats) at start of event
-        uint8_t m_nStutterDur; // Duration of each stutter in clock cycles
+        uint32_t m_nPosition;		// Start position of event in steps
+        float m_fOffset;			// Offset of event position in steps
+        float m_fDuration;			// Duration of event in steps
+        uint8_t m_nCommand;			// MIDI command without channel
+        uint8_t m_nValue1start;		// MIDI value 1 at start of event
+        uint8_t m_nValue2start;		// MIDI value 2 at start of event
+        uint8_t m_nValue1end;		// MIDI value 1 at end of event
+        uint8_t m_nValue2end;		// MIDI value 2 at end of event
+        uint32_t m_nProgress;		// Progress through event (start value to end value)
+        uint8_t m_nStutterCount;	// Quantity of stutters (fast repeats) at start of event
+        uint8_t m_nStutterDur;		// Duration of each stutter in clock cycles
+        uint8_t m_nPlayChance;		// Probability of playing (0 = not played, 50 = plays with 50%, 100 = always plays)
 };
 
 /**    Pattern class provides a group of MIDI events within period of time
@@ -122,7 +134,7 @@ class Pattern
         *   @param  value2 MIDI value 2
         *   @param  duration Event duration in steps cycles
         */
-        StepEvent* addEvent(uint32_t position, uint8_t command, uint8_t value1 = 0, uint8_t value2 = 0, float duration = 1.0);
+        StepEvent* addEvent(uint32_t position, uint8_t command, uint8_t value1 = 0, uint8_t value2 = 0, float duration = 1.0, float offset = 0.0);
 
         /** @brief  Add event from existing event
         *   @param  pEvent Pointer to event to copy
@@ -137,7 +149,7 @@ class Pattern
         *   @param  duration Duration of note in steps
         *   @retval bool True on success
         */
-        bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration = 1.0);
+        bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration = 1.0, float offset = 0.0);
 
         /** @brief  Remove note from pattern
         *   @param  position Quantity of steps from start of pattern at which to remove note
@@ -208,6 +220,20 @@ class Pattern
         *   @retval uint8_t Quantity of stutter repeats at start of note
         */
         uint8_t getStutterDur(uint32_t step, uint8_t note);
+
+        /** @brief  Set note play chance
+        *   @param  position Quantity of steps from start of pattern at which note starts
+        *   @param  note MIDI note number
+        *   @param  chance Note play probability from 0% to 100%
+        */
+        void setPlayChance(uint32_t step, uint8_t note, uint8_t chance);
+
+        /** @brief  Get note play chance
+        *   @param  position Quantity of steps from start of pattern at which note starts
+        *   @param  note MIDI note number
+        *   @retval uint8_t Chance, the note play probability from 0% to 100%
+        */
+        uint8_t getPlayChance(uint32_t step, uint8_t note);
 
         /** @brief  Add program change to pattern
         *   @param  position Quantity of steps from start of pattern at which to add program change
@@ -306,6 +332,56 @@ class Pattern
         */
         uint8_t getTonic();
 
+        /** @brief  Set pattern's Swing Division
+        *   @param  div, swing amount from 0 to 1 (0.33 is perfect-triplet swing, >0.5 is not really swing)
+        */
+        void setSwingDiv(uint32_t div);
+
+        /** @brief  Get pattern's Swing Amount
+        *   @retval float
+        */
+        uint32_t getSwingDiv();
+
+        /** @brief  Set pattern's Swing Amount
+        *   @param  amount, swing amount from 0 to 1 (0.33 is perfect-triplet swing, >0.5 is not really swing)
+        */
+        void setSwingAmount(float amount);
+
+        /** @brief  Get pattern's Swing Amount
+        *   @retval float
+        */
+        float getSwingAmount();
+
+        /** @brief  Set pattern's Time Humanization amount
+        *   @param  amount, from 0 to FLOAT_MAX
+        */
+        void setHumanTime(float amount);
+
+        /** @brief  Get pattern's Time Humanization amount
+        *   @retval float
+        */
+        float getHumanTime();
+
+        /** @brief  Set pattern's Velocity Humanization amount
+        *   @param  amount, from 0 to FLOAT_MAX
+        */
+        void setHumanVelo(float amount);
+
+        /** @brief  Get pattern's Velocity Humanization amount
+        *   @retval float
+        */
+        float getHumanVelo();
+
+        /** @brief  Set pattern's PlayChance
+        *   @param  chance, probability of playing notes
+        */
+        void setPlayChance(float chance);
+
+        /** @brief  Get pattern's PlayChance
+        *   @retval float
+        */
+        float getPlayChance();
+
         /** @brief  Transpose all notes within pattern
         *   @param  value Offset to transpose
         */
@@ -364,6 +440,16 @@ class Pattern
         */
         void setRefNote(uint8_t note);
 
+        /** @brief  Get the "Quantize Notes" flag
+        *   @retval bool flag
+        */
+        bool getQuantizeNotes();
+
+        /** @brief  Set the "Quantize Notes" flag
+        *   @param  flag
+        */
+        void setQuantizeNotes(bool flag);
+
         /** @brief  Get last populated step
         *   @retval uint32_t Index of last step that contains any events or -1 if pattern is empty
         */
@@ -372,10 +458,16 @@ class Pattern
     private:
         void deleteEvent(uint32_t position, uint8_t command, uint8_t value1);
 
-        std::vector<StepEvent*> m_vEvents; // Vector of pattern events
-        uint32_t m_nBeats = 4; // Quantity of beats in pattern
-        uint32_t m_nStepsPerBeat = 6; // Steps per beat
-        uint8_t m_nScale = 0; // Index of scale
-        uint8_t m_nTonic = 0; // Scale tonic (root note)
-        uint8_t m_nRefNote = 60; // Note at which to position pattern editor
+        std::vector<StepEvent*> m_vEvents;	// Vector of pattern events
+        uint32_t m_nBeats = 4; 				// Quantity of beats in pattern
+        uint32_t m_nStepsPerBeat = 6; 		// Steps per beat
+        uint8_t m_nScale = 0; 				// Index of scale
+        uint8_t m_nTonic = 0; 				// Scale tonic (root note)
+        uint8_t m_nRefNote = 60; 			// Note at which to position pattern editor
+		bool m_bQuantizeNotes = false;		// Quantize note time so it plays in the nearest step boundary
+        uint32_t m_nSwingDiv = 1;			// Swing division, range from 1 to pPattern->getStepsPerBeat()
+        float m_fSwingAmount = 0.0;			// Swing amount, range from 0 to 1, but over 0.5 is not "MPC swing"
+        float m_fHumanTime = 0.0;			// Timing Humanization, range from 0 to FLOAT_MAX
+        float m_fHumanVelo = 0.0;			// Velocity Humanization, range from 0 to FLOAT_MAX
+        float m_fPlayChance = 1.0;			// Probability for playing notes (0 = Notes are not played, 0.5 = Notes plays with 50%, 1 = All notes play always)
 };

@@ -174,18 +174,18 @@ class Sequence
         std::string getName();
 
     private:
-        std::vector<Track> m_vTracks; // Vector of tracks within sequence
-        Timebase m_timebase; // Timebase map
-        uint8_t m_nState = STOPPED; // Play state of sequence
-        uint8_t m_nMode = LOOPALL; // Play mode of sequence
-        size_t m_nCurrentTrack = 0; // Index of track currently being queried for events
-        uint32_t m_nPosition = 0; // Play position in clock cycles
-        uint32_t m_nLastSyncPos = 0; // Position of last sync pulse in clock cycles
-        uint32_t m_nLength = 0; // Length of sequence in clock cycles (longest track)
-        uint8_t m_nGroup = 0; // Sequence's mutually exclusive group
-        uint16_t m_nTempo = 120; // Default tempo (overriden by tempo events in timebase map)
-        bool m_bChanged = false; // True if sequence content changed
-        bool m_bStateChanged = false; // True if state changed since last clock cycle
-        bool m_bEmpty = true; // True if all patterns are emtpy (no events)
-        std::string m_sName; // Sequence name
+        std::vector<Track> m_vTracks; 	// Vector of tracks within sequence
+        Timebase m_timebase; 			// Timebase map
+        uint8_t m_nState = STOPPED; 	// Play state of sequence
+        uint8_t m_nMode = LOOPALL; 		// Play mode of sequence
+        size_t m_nCurrentTrack = 0; 	// Index of track currently being queried for events
+        uint32_t m_nPosition = 0; 		// Play position in clock cycles
+        uint32_t m_nLastSyncPos = 0; 	// Position of last sync pulse in clock cycles
+        uint32_t m_nLength = 0; 		// Length of sequence in clock cycles (longest track)
+        uint8_t m_nGroup = 0; 			// Sequence's mutually exclusive group
+        uint16_t m_nTempo = 120; 		// Default tempo (overriden by tempo events in timebase map)
+        bool m_bChanged = false; 		// True if sequence content changed
+        bool m_bStateChanged = false; 	// True if state changed since last clock cycle
+        bool m_bEmpty = true; 			// True if all patterns are emtpy (no events)
+        std::string m_sName; 			// Sequence name
 };

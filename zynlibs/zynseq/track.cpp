@@ -1,6 +1,16 @@
 /**    Track class methods implementation **/
 
+#include <stdlib.h>
+#include <cmath>
+#include <random>
 #include "track.h"
+
+// Random Normal Distribution
+std::random_device rd{};
+std::mt19937 gen{rd()};
+// values near the mean are the most likely
+// standard deviation affects the dispersion of generated values from the mean
+std::normal_distribution d{0.0, 1.0};
 
 bool Track::addPattern(uint32_t position, Pattern* pattern, bool force)
 {
@@ -166,11 +176,32 @@ SEQ_EVENT* Track::getEvent()
                 return NULL;
             }
         }
+        // Have not yet started to interpolate value
         if(m_nEventValue == -1)
         {
-            // Have not yet started to interpolate value
+        	// Note Play Chance
+        	int playChance = int(RAND_MAX * pPattern->getPlayChance() * pEvent->getPlayChance() / 100.0);
+        	if (playChance < RAND_MAX && playChance < rand()) {
+        		m_nEventValue = pEvent->getValue2end();
+        		seqEvent.msg.command = 0xFE;
+        		return &seqEvent;
+        	}
+   			// Start interpolation
             m_nEventValue = pEvent->getValue2start();
-            seqEvent.time = m_nLastClockTime;
+            // Recorded Offset (fraction of step => float)
+            m_fEventOffset = pEvent->getOffset();
+            // Swing => Add to offset
+            uint32_t swingDiv = pPattern->getSwingDiv();
+            float swingAmount = pPattern->getSwingAmount();
+            if ((m_nNextStep + swingDiv) % (2 * swingDiv) == 0) {
+            	m_fEventOffset += swingAmount;
+            }
+            // Time humanization => Add to offset
+            float humanTime = pPattern->getHumanTime();
+            if (humanTime > 0.0) m_fEventOffset += humanTime*d(gen);
+            // Calculate event scheduled time
+            seqEvent.time = m_nLastClockTime + m_fEventOffset * pPattern->getClocksPerStep() * m_dSamplesPerClock;
+			// Reset Stutter
             nStutterCount = 0;
         }
         else if(pEvent->getValue2start() == m_nEventValue)
@@ -180,10 +211,10 @@ SEQ_EVENT* Track::getEvent()
             // Add note off/on for each stutter
             if(nCommand == MIDI_NOTE_ON)
                 seqEvent.msg.command = (nStutterCount % 2 ? MIDI_NOTE_ON:MIDI_NOTE_OFF) | m_nChannel;
-            seqEvent.time =  m_nLastClockTime + pEvent->getDuration() * pPattern->getClocksPerStep() * m_dSamplesPerClock - 1; // -1 to send note-off one sample before next step
+            seqEvent.time =  m_nLastClockTime + (m_fEventOffset + pEvent->getDuration()) * pPattern->getClocksPerStep() * m_dSamplesPerClock - 1; // -1 to send note-off one sample before next step
             if(pEvent->getStutterCount())
             {
-                uint32_t stutter_time = m_nLastClockTime + pEvent->getStutterDur() * ++nStutterCount * m_dSamplesPerClock;
+                uint32_t stutter_time = m_nLastClockTime + (m_fEventOffset + pEvent->getStutterDur()) * ++nStutterCount * m_dSamplesPerClock;
                 if(stutter_time < seqEvent.time && 2 * pEvent->getStutterCount() >= nStutterCount)
                     seqEvent.time = stutter_time;
                 else
@@ -194,11 +225,19 @@ SEQ_EVENT* Track::getEvent()
             //fprintf(stderr, "Scheduling note off. Event duration: %u, clocks per step: %u, samples per clock: %u\n", pEvent->getDuration(), pPattern->getClocksPerStep(), m_nSamplePerClock);
         }
         seqEvent.msg.value1 = pEvent->getValue1start();
-        seqEvent.msg.value2 = m_nEventValue;
+		// Velocity humanization
+		int8_t hval2 = m_nEventValue;
+		float humanVelo = pPattern->getHumanVelo();
+		if (humanVelo > 0.0) {
+			int16_t dvelo = int16_t(humanVelo * d(gen));
+			hval2 = int8_t(std::min(std::max(int16_t(hval2) + dvelo, 0), 127));
+		}
+        seqEvent.msg.value2 = hval2;
         //fprintf(stderr, "Track::getEvent Scheduled event %u,%u,%u at %u currentTime: %u duration: %u clkperstep: %u sampleperclock: %f event position: %u\n", seqEvent.msg.command, seqEvent.msg.value1, seqEvent.msg.value2, seqEvent.time, m_nLastClockTime, pEvent->getDuration(), pPattern->getClocksPerStep(), m_dSamplesPerClock, pEvent->getPosition());
         return &seqEvent;
     }
     m_nEventValue = -1;
+    //m_fEventOffset = 0;
 //        if(++m_nNextStep >= pPattern->getSteps())
 //            m_nNextStep = 0;
     return NULL;

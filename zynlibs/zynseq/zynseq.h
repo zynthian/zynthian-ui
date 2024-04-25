@@ -324,6 +324,57 @@ uint32_t getStepsPerBeat();
 */
 void setStepsPerBeat(uint32_t steps);
 
+
+/** @brief  Get swing division from selected pattern
+*   @retval uint32_t swing division
+*/
+uint32_t getSwingDiv();
+
+/** @brief  Set swing division in selected pattern
+*   @param  swing division, from 1 to pattern's StepsPerBeat
+*/
+void setSwingDiv(uint32_t div);
+
+/** @brief  Get swing amount from selected pattern
+*   @retval float swing division
+*/
+float getSwingAmount();
+
+/** @brief  Set swing amount in selected pattern
+*   @param  swing amount, from 0 to 1 (0.33 is perfect-triplet swing, >0.5 is not really swing)
+*/
+void setSwingAmount(float amount);
+
+/** @brief  Get Time Humanization amount from selected pattern
+*   @retval float
+*/
+float getHumanTime();
+
+/** @brief  Set Time Humanization amount in selected pattern
+*   @param  amount, from 0 to FLOAT_MAX
+*/
+void setHumanTime(float amount);
+
+/** @brief  Get Velocity Humanization amount from selected pattern
+*   @retval float
+*/
+float getHumanVelo();
+
+/** @brief  Set Velocity Humanization amount in selected pattern
+*   @param  amount, from 0 to FLOAT_MAX
+*/
+void setHumanVelo(float amount);
+
+/** @brief  Get PlayChance from selected pattern
+*   @retval float
+*/
+float getPlayChance();
+
+/** @brief  Set PlayChance in selected pattern
+*   @param  chance, probability of playing notes
+*/
+void setPlayChance(float chance);
+
 /** @brief  Add note to selected pattern
 *   @param  step Index of step at which to add note
 *   @param  note MIDI note number
@@ -387,6 +438,20 @@ uint8_t getStutterDur(uint32_t step, uint8_t note);
 *   @param  dur Stutter duration in clock cycles
 */
 void setStutterDur(uint32_t step, uint8_t note, uint8_t dur);
+
+/** @brief  Get note play chance in selected pattern
+*   @param  step Index of step at which note resides
+*   @param  note MIDI note number
+*   @retval uint8_t Note play probability from 0% to 100%
+*/
+uint8_t getNotePlayChance(uint32_t step, uint8_t note);
+
+/** @brief  Set note play chance in selected pattern
+*   @param  step Index of step at which note resides
+*   @param  note MIDI note number
+*   @param  chance Note play probability from 0% to 100%
+*/
+void setNotePlayChance(uint32_t step, uint8_t note, uint8_t chance);
 
 /** @brief  Get duration of note in selected pattern
 *   @param  position Index of step at which note starts
@@ -500,6 +565,16 @@ uint8_t getRefNote();
 *    @note    May be used for position within user interface
 */
 void setRefNote(uint8_t note);
+
+/** @brief  Get the "Quantize Notes" flag
+*   @retval bool flag
+*/
+bool getQuantizeNotes();
+
+/** @brief  Set the "Quantize Notes" flag
+*   @param  flag
+*/
+void setQuantizeNotes(bool flag);
 
 /**    @brief    Get the last populated step
 *    @retval    uint32_t Index of last populated step or -1 if empty

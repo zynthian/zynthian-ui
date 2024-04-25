@@ -13,6 +13,16 @@ Pattern::Pattern(uint32_t beats, uint32_t stepsPerBeat) :
 Pattern::Pattern(Pattern* pattern) {
     m_nBeats = pattern->getBeatsInPattern();
     setStepsPerBeat(pattern->getStepsPerBeat());
+    m_nScale = pattern->m_nScale;
+    m_nTonic = pattern->m_nTonic;
+    m_nRefNote = pattern->m_nRefNote;
+	m_bQuantizeNotes = pattern->m_bQuantizeNotes;
+    m_nSwingDiv = pattern->m_nSwingDiv;
+    m_fSwingAmount = pattern->m_fSwingAmount;
+    m_fHumanTime = pattern->m_fHumanTime;
+    m_fHumanVelo = pattern->m_fHumanVelo;
+    m_fPlayChance = pattern->m_fPlayChance;
+	// Copy Events
     uint32_t nIndex = 0;
     while(StepEvent* pEvent = pattern->getEventAt(nIndex++))
         addEvent(pEvent);
@@ -23,7 +33,7 @@ Pattern::~Pattern()
     clear();
 }
 
-StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1, uint8_t value2, float duration)
+StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1, uint8_t value2, float duration, float offset)
 {
     //Delete overlapping events
     uint8_t nStutterCount = 0;
@@ -57,7 +67,7 @@ StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1,
         if((*it)->getPosition() > position)
             break;
     }
-    auto itInserted = m_vEvents.insert(it, new StepEvent(position, command, value1, value2, duration));
+    auto itInserted = m_vEvents.insert(it, new StepEvent(position, command, value1, value2, duration, offset));
     (*itInserted)->setStutterCount(nStutterCount);
     (*itInserted)->setStutterDur(nStutterDur);
     return *itInserted;
@@ -86,12 +96,12 @@ void Pattern::deleteEvent(uint32_t position, uint8_t command, uint8_t value1)
     }
 }
 
-bool Pattern::addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration)
+bool Pattern::addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration, float offset)
 {
     //!@todo Should we limit note length to size of pattern?
     if(step >= (m_nBeats * m_nStepsPerBeat) || note > 127 || velocity > 127) // || duration > (m_nBeats * m_nStepsPerBeat))
         return false;
-    addEvent(step, MIDI_NOTE_ON, note, velocity, duration);
+    addEvent(step, MIDI_NOTE_ON, note, velocity, duration, offset);
     return true;
 }
 
@@ -199,6 +209,22 @@ void Pattern::setStutterDur(uint32_t step, uint8_t note, uint8_t dur)
         {
             //if (ev.getDuration() > dur * ev.getStutterCount())
                 ev->setStutterDur(dur);
+            return;
+        }
+}
+
+uint8_t Pattern::getPlayChance(uint32_t step, uint8_t note) {
+    for(StepEvent* ev : m_vEvents)
+        if(ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note)
+            return ev->getPlayChance();
+    return 100;
+}
+
+void Pattern::setPlayChance(uint32_t step, uint8_t note, uint8_t chance) {
+    if (chance > 100) chance = 100;
+    for (StepEvent* ev : m_vEvents)
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note) {
+            ev->setPlayChance(chance);
             return;
         }
 }
@@ -351,6 +377,46 @@ uint8_t Pattern::getTonic()
     return m_nTonic;
 }
 
+void Pattern::setSwingDiv(uint32_t div) {
+	m_nSwingDiv = div;
+}
+
+uint32_t Pattern::getSwingDiv() {
+	return m_nSwingDiv;
+}
+
+void Pattern::setSwingAmount(float amount) {
+	m_fSwingAmount = amount;
+}
+
+float Pattern::getSwingAmount() {
+	return m_fSwingAmount;
+}
+
+void Pattern::setHumanTime(float amount) {
+	m_fHumanTime = amount;
+}
+
+float Pattern::getHumanTime() {
+	return m_fHumanTime;
+}
+
+void Pattern::setHumanVelo(float amount) {
+	m_fHumanVelo = amount;
+}
+
+float Pattern::getHumanVelo() {
+	return m_fHumanVelo;
+}
+
+void Pattern::setPlayChance(float chance) {
+	m_fPlayChance = chance;
+}
+
+float Pattern::getPlayChance() {
+	return m_fPlayChance;
+}
+
 void Pattern::transpose(int value)
 {
     // Check if any notes will be transposed out of MIDI note range (0..127)
@@ -484,6 +550,13 @@ void Pattern::setRefNote(uint8_t note)
         m_nRefNote = note;
 }
 
+bool Pattern::getQuantizeNotes() {
+	return m_bQuantizeNotes;
+}
+
+void Pattern::setQuantizeNotes(bool flag) {
+	m_bQuantizeNotes = flag;
+}
 
 uint32_t Pattern::getLastStep()
 {
