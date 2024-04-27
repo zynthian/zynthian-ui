@@ -34,6 +34,7 @@ import zynautoconnect
 from . import zynthian_engine
 from . import zynthian_controller
 from zyngui import zynthian_gui_config
+from zyncoder.zyncore import lib_zyncore
 
 # ------------------------------------------------------------------------------
 # FluidSynth Engine Class
@@ -111,7 +112,6 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	def reset(self):
 		super().reset()
 		self.soundfont_index={}
-		self.clear_midi_routes()
 		self.unload_unused_soundfonts()
 
 	# ---------------------------------------------------------------------------
@@ -136,13 +136,22 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 		self.processors.append(processor)
 		processor.jackname = None
 		processor.part_i = None
-		self.setup_router(processor)
+		# Add the processor part
+		try:
+			i = self.get_free_parts()[0]
+			processor.part_i = i
+			#processor.jackname = "{}:((l|r)_{:02d}|fx_(l|r)_({:02d}|{:02d}))".format(self.jackname,i,i*2,i*2+1)
+			processor.jackname = "{}:(l|r)_{:02d}".format(self.jackname,i)
+			zynautoconnect.request_audio_connect()
+			lib_zyncore.zmop_set_midi_chan_trans(processor.chain.zmop_index, processor.get_midi_chan(), processor.part_i)
+			self.set_midi_chan(processor)
+			logging.debug("Add part {} => {}".format(i, processor.jackname))
+		except Exception as e:
+			logging.error(f"Unable to add processor to fluidsynth engine - {e}")
 
 
 	def remove_processor(self, processor):
 		super().remove_processor(processor)
-		if processor.part_i is not None:
-			self.set_all_midi_routes()
 		self.unload_unused_soundfonts()
 
 	# ---------------------------------------------------------------------------
@@ -150,7 +159,9 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def set_midi_chan(self, processor):
-		self.setup_router(processor)
+		if processor.part_i is not None:
+			lib_zyncore.zmop_set_midi_chan_trans(processor.chain.zmop_index, processor.get_midi_chan(), processor.part_i)
+
 
 	# ---------------------------------------------------------------------------
 	# Bank Management
@@ -389,48 +400,6 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			if processor.preset_info:
 				self.set_preset(processor, processor.preset_info)
 
-	def setup_router(self, processor):
-		if processor.part_i is not None:
-			# Clear and recreate all routes if the routes for this processor were set already
-			self.set_all_midi_routes()
-		else:
-			# No need to clear routes if there is the only processor to add
-			try:
-				i = self.get_free_parts()[0]
-				processor.part_i = i
-				#processor.jackname = "{}:((l|r)_{:02d}|fx_(l|r)_({:02d}|{:02d}))".format(self.jackname,i,i*2,i*2+1)
-				processor.jackname = "{}:(l|r)_{:02d}".format(self.jackname,i)
-				zynautoconnect.request_audio_connect()
-				logging.debug("Add part {} => {}".format(i, processor.jackname))
-			except Exception as e:
-				logging.error("Can't add part! => {}".format(e))
-
-			self.set_processor_midi_routes(processor)
-
-	def set_processor_midi_routes(self, processor):
-		if processor.part_i is not None:
-			midich = processor.get_midi_chan()
-			router_chan_cmd = "router_chan {0} {0} 0 {1}".format(midich, processor.part_i)
-			self.proc_cmd("router_begin note")
-			self.proc_cmd(router_chan_cmd)
-			self.proc_cmd("router_end")
-			self.proc_cmd("router_begin cc")
-			self.proc_cmd(router_chan_cmd)
-			self.proc_cmd("router_end")
-			self.proc_cmd("router_begin pbend")
-			self.proc_cmd(router_chan_cmd)
-			self.proc_cmd("router_end")
-			self.proc_cmd("router_begin prog")
-			self.proc_cmd(router_chan_cmd)
-			self.proc_cmd("router_end")
-
-	def set_all_midi_routes(self):
-		self.clear_midi_routes()
-		for processor in self.processors:
-			self.set_processor_midi_routes(processor)
-
-	def clear_midi_routes(self):
-		self.proc_cmd("router_clear")
 
 	# ---------------------------------------------------------------------------
 	# API methods
