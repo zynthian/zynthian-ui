@@ -182,10 +182,13 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	def add_processor(self, processor):
 		self.processors.append(processor)
-		processor.part_i = self.get_free_parts()[0]
-		processor.jackname = "{}:part{}/".format(self.jackname, processor.part_i)
-		processor.refresh_controllers()
-		logging.debug("ADD processor => Part {} ({})".format(processor.part_i, self.jackname))
+		try:
+			processor.part_i = self.get_free_parts()[0]
+			processor.jackname = "{}:part{}/".format(self.jackname, processor.part_i)
+			processor.refresh_controllers()
+			logging.debug("ADD processor => Part {} ({})".format(processor.part_i, self.jackname))
+		except Exception as e:
+			logging.error(f"Unable to add processor to zynadsubfx engine - {e}")
 
 
 	def remove_processor(self, processor):
