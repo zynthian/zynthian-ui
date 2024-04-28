@@ -394,7 +394,7 @@ def is_host_usb_connected():
 		with open("/sys/bus/platform/devices/fe980000.usb/udc/fe980000.usb/state") as f:
 			if f.read() != "configured\n":
 				return False
-		with open("/sys/class/udc/fe980000.usb/device/gadget/suspended") as f:
+		with open("/sys/class/udc/fe980000.usb/device/gadget.0/suspended") as f:
 			if f.read() == "1\n":
 				return False
 	except:
