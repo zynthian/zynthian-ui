@@ -892,6 +892,33 @@ def build_midi_port_name(port):
 		return f"NET:touchosc_{port.name.split()[0][6:]}", "TouchOSC"
 	elif port.name.startswith("aubio:midi_out"):
 		return f"AUBIO:in", "Audio\u2794MIDI"
+	elif port.name.startswith('a2j:') and port.name.endswith("Bluetooth"):
+		try:
+			# Found BLE MIDI device
+			parts = port.name.split(':')
+			port_name = parts[2][1:-10]
+			if len(port.aliases):
+				# UID already assigned
+				return port.aliases[0], port_name
+			# Get BLE address
+			devices = check_output(['bluetoothctl', 'devices'], encoding='utf-8', timeout=0.1).split('\n')
+			for device in devices:
+				if not device:
+					continue
+				addr = device.split()[1]
+				dev_name = device[25:]
+				if dev_name == port_name:
+					if port.is_input:
+						return f"BLE:{addr}_OUT", port_name
+					else:
+						return f"BLE:{addr}_IN", port_name
+		except:
+			uid = port.name
+		if port.is_input:
+			uid += f" OUT {int(idx) + 1}"
+		else:
+			uid += f" IN {int(idx) + 1}"
+		return uid, port_name
 
 	idx = 0
 	

@@ -80,15 +80,16 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         self.thread = Thread(target=self.process_dynamic_ports, name="MIDI port scan")
         self.thread.start()
         # Only scan for new BLE devices in admin view
-        if self.chain is None:
+        if self.chain is None and zynthian_gui_config.bluetooth_enabled:
             self.enable_ble_scan()
         return super().build_view()
 
     def hide(self):
-        self.disable_ble_scan()
-        self.midi_scan = False
-        self.thread = None
-        super().hide()
+        if self.shown:
+            self.disable_ble_scan()
+            self.midi_scan = False
+            self.thread = None
+            super().hide()
 
     def set_chain(self, chain):
         self.chain = chain
@@ -230,7 +231,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                         else:
                             title += zynautoconnect.devices_out[idev].aliases[1]
                         self.list_data.append((f"BLE:{addr}", idev, title))
-            elif not self.chain:
+            elif self.chain is None:
                 self.list_data.append(("start_bluetooth", None, "\u2610 BLE MIDI"))
 
         if not self.chain or net_devices:
@@ -325,7 +326,6 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 self.zyngui.state_manager.stop_bluetooth(wait=wait)
             elif action == "start_bluetooth":
                 self.zyngui.state_manager.start_bluetooth(wait=wait)
-                self.enable_ble_scan()
             # Route/Unroute
             elif self.chain:
                 if self.input:
@@ -410,7 +410,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
     def enable_ble_scan(self):
         """Enable scanning for BLE MIDI devices"""
 
-        if self.chain is None:
+        if self.ble_scan_proc is None:
             # Start scanning and processing bluetooth
             self.ble_scan_proc = Popen('bluetoothctl', stdin=PIPE, stdout=PIPE, encoding='utf-8')
             self.ble_scan_proc.stdin.write('menu scan\nuuids 03B80E5A-EDE8-4B33-A751-6CE34EC4C700 00001812-0000-1000-8000-00805f9b34fb\nback\nscan on\n')
