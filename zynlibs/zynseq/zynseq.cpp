@@ -73,7 +73,7 @@ bool g_bMidiRecord = false; // True to add notes to current pattern from MIDI in
 
 bool g_bSustain = false; // True if sustain pressed during note input
 uint8_t g_nInputRest = 0xFF; // MIDI note number that creates rest in pattern
-uint16_t g_nVerticalZoom = 12; // Quantity of rows to show in pattern and arranger view
+uint16_t g_nVerticalZoom = 16; // Quantity of rows to show in pattern and arranger view
 uint16_t g_nHorizontalZoom = 16; // Quantity of beats to show in arranger view
 char g_sName[16]; // Buffer to hold sequence name so that it can be sent back for Python to parse
 
@@ -336,8 +336,8 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     static double dBeatsPerMinute; // Store so that we can check for change and do less maths
     static double dBeatsPerBar; // Store so that we can check for change and do less maths
     static jack_nframes_t nFramerate; // Store so that we can check for change and do less maths
-    static uint32_t nFramesPerPulse;
     static jack_nframes_t nLastBeatFrame = 0; // Frames since jack epoch of last quarter note used to calc tempo of external clock
+	static std::pair<double,double> lastClock;
 
     // Get output buffer that will be processed in this process cycle
     void* pOutputBuffer = jack_port_get_buffer(g_pOutputPort, nFrames);
@@ -354,6 +354,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
     jack_midi_event_t midiEvent;
     jack_nframes_t nCount = jack_midi_get_event_count(pInputBuffer);
     Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
+    //Track* pTrack = g_pSequence->getTrack(g_pSequence->m_nCurrentTrack);
     while(g_bMutex)
         std::this_thread::sleep_for(std::chrono::microseconds(10));
     g_bMutex = true;
@@ -421,72 +422,77 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
         {
             uint32_t nStep = getPatternPlayhead();
             uint8_t nPlayState = g_pSequence->getPlayState();
-            bool bAdvance = false;
-            if(((midiEvent.buffer[0] & 0xF0) == 0xB0) && midiEvent.buffer[1] == 64)
-            {
-                // Sustain pedal event
-                if(midiEvent.buffer[2] > 63)
-                    g_bSustain = true;
-                else
-                {
-                    g_bSustain = false;
-                    bAdvance = true;
-                }
-            }
-            else if(((midiEvent.buffer[0] & 0xF0) == 0x90) && midiEvent.buffer[2])
-            {
-                // Note on event
-                if(nPlayState)
-                {
-                	startEvents[midiEvent.buffer[1]].start = nStep;
-                    startEvents[midiEvent.buffer[1]].velocity = midiEvent.buffer[2];
-                    float offset = double(g_pSequence->getPlayPosition())/double(pPattern->getClocksPerStep()) - double(nStep);
-                    if (pPattern->getQuantizeNotes()) {
-                    	if (offset > 0.5) startEvents[midiEvent.buffer[1]].start ++;
-                    	startEvents[midiEvent.buffer[1]].offset = 0;
+
+			// Real Time Capture (while playing)
+			if (nPlayState) {
+				// Note on event
+				if(((midiEvent.buffer[0] & 0xF0) == 0x90) && midiEvent.buffer[2]) {
+					startEvents[midiEvent.buffer[1]].start = nStep;
+					startEvents[midiEvent.buffer[1]].velocity = midiEvent.buffer[2];
+					// Calculate clock position offset, in steps (from 0.0 to 1.0)
+					float offset = double(g_pSequence->getPlayPosition()) / double(pPattern->getClocksPerStep()) - double(nStep);
+					// Subtract latency delay
+					offset -= double(nFrames) / double(pPattern->getClocksPerStep() * g_dFramesPerClock);
+					// Add event offset relative to last clock
+					//if (lastClock.first) {
+						//offset += double(midiEvent.time + nNow - lastClock.first - nFrames) / double(pPattern->getClocksPerStep() * g_dFramesPerClock);
+					//}
+					if (offset < 0.0) offset = 0;
+
+					// Quantize or not
+					if (pPattern->getQuantizeNotes()) {
+                        if (offset > 0.5) startEvents[midiEvent.buffer[1]].start ++;
+                        startEvents[midiEvent.buffer[1]].offset = 0;
                     } else {
                     	startEvents[midiEvent.buffer[1]].offset = offset;
                     }
                 }
-                else
-                {
-                    setPatternModified(pPattern, true);
-                    uint32_t nDuration = getNoteDuration(nStep, midiEvent.buffer[1]);
-                    if(g_bSustain)
-                        pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], nDuration + 1);
-                    else
-                    {
-                        bAdvance = true;
-                        if(nDuration)
-                            pPattern->removeNote(nStep, midiEvent.buffer[1]);
-                        else if(midiEvent.buffer[1] != g_nInputRest)
-                            pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], 1);
-                    }
-                }
-            }
-            else if(((midiEvent.buffer[0] & 0xF0) == 0x90) && midiEvent.buffer[2] == 0 || (midiEvent.buffer[0] & 0xF0) == 0x80)
-            {
                 // Note off event
-                if(nPlayState)
-                {
-                    if(startEvents[midiEvent.buffer[1]].start != -1)
-                    {
-                        double dDur = double(g_pSequence->getPlayPosition()) - startEvents[midiEvent.buffer[1]].start * getClocksPerStep();
-                        if(dDur < 1.0)
-                            dDur = pPattern->getLength() + dDur;
-                        pPattern->addNote(startEvents[midiEvent.buffer[1]].start, midiEvent.buffer[1], startEvents[midiEvent.buffer[1]].velocity, dDur / getClocksPerStep(), startEvents[midiEvent.buffer[1]].offset);
-                        startEvents[midiEvent.buffer[1]].start = -1;
-                        setPatternModified(pPattern, true);
-                    }
-                }
-            }
-            if(bAdvance && nPlayState != JackTransportRolling)
-            {
-                if(++nStep >= pPattern->getSteps())
-                    nStep = 0;
-                g_pSequence->setPlayPosition(nStep * getClocksPerStep());
-                //printf("libzynseq advancing to step %d\n", nStep);
-            }
+				else if(((midiEvent.buffer[0] & 0xF0) == 0x90) && midiEvent.buffer[2] == 0 || (midiEvent.buffer[0] & 0xF0) == 0x80) {
+					if(startEvents[midiEvent.buffer[1]].start != -1) {
+					    double dDur = double(g_pSequence->getPlayPosition()) - startEvents[midiEvent.buffer[1]].start * getClocksPerStep();
+					    if(dDur < 1.0)
+							dDur = pPattern->getLength() + dDur;
+						pPattern->addNote(startEvents[midiEvent.buffer[1]].start, midiEvent.buffer[1], startEvents[midiEvent.buffer[1]].velocity, dDur / getClocksPerStep(), startEvents[midiEvent.buffer[1]].offset);
+					    startEvents[midiEvent.buffer[1]].start = -1;
+					    setPatternModified(pPattern, true);
+				    }
+				}
+			}
+			// Step capture
+			else {
+				bool bAdvance = false;
+				// Use sustain pedal for advance step
+				if (((midiEvent.buffer[0] & 0xF0) == 0xB0) && midiEvent.buffer[1] == 64) {
+					if(midiEvent.buffer[2] > 63)
+						g_bSustain = true;
+					else {
+						g_bSustain = false;
+						bAdvance = true;
+					}
+				}
+			    // Note on event
+			    else if (((midiEvent.buffer[0] & 0xF0) == 0x90) && midiEvent.buffer[2]) {
+					setPatternModified(pPattern, true);
+					uint32_t nDuration = getNoteDuration(nStep, midiEvent.buffer[1]);
+					if (g_bSustain)
+						pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], nDuration + 1);
+					else {
+						bAdvance = true;
+						if (nDuration)
+							pPattern->removeNote(nStep, midiEvent.buffer[1]);
+						else if(midiEvent.buffer[1] != g_nInputRest)
+							pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], 1);
+					}
+				}
+			    // Advance step
+			    if (bAdvance && nState != JackTransportRolling) {
+					if (++nStep >= pPattern->getSteps())
+						nStep = 0;
+					g_pSequence->setPlayPosition(nStep * getClocksPerStep());
+					//printf("libzynseq advancing to step %d\n", nStep);
+				}
+			}
         }
     }
 
@@ -1786,6 +1792,20 @@ void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity)
         return;
     setPatternModified(g_seqMan.getPattern(g_nPattern), true);
     g_seqMan.getPattern(g_nPattern)->setNoteVelocity(step, note, velocity);
+    g_bDirty = true;
+}
+
+float getNoteOffset(uint32_t step, uint8_t note) {
+    if(g_seqMan.getPattern(g_nPattern))
+        return g_seqMan.getPattern(g_nPattern)->getNoteOffset(step, note);
+    return 0;
+}
+
+void setNoteOffset(uint32_t step, uint8_t note, float offset) {
+    if(!g_seqMan.getPattern(g_nPattern))
+        return;
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    g_seqMan.getPattern(g_nPattern)->setNoteOffset(step, note, offset);
     g_bDirty = true;
 }
 

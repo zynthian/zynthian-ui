@@ -61,10 +61,11 @@ EDIT_MODE_SINGLE	= 1  # Edit mode enabled for selected note
 EDIT_MODE_ALL		= 2  # Edit mode enabled for all notes
 EDIT_PARAM_DUR		= 0  # Edit note duration
 EDIT_PARAM_VEL		= 1  # Edit note velocity
-EDIT_PARAM_STUT_CNT	= 2  # Edit note stutter count
-EDIT_PARAM_STUT_DUR	= 3  # Edit note stutter duration
-EDIT_PARAM_CHANCE	= 4  # Edit note play chance
-EDIT_PARAM_LAST		= 4  # Index of last parameter
+EDIT_PARAM_OFFSET	= 2  # Edit note offset
+EDIT_PARAM_STUT_CNT	= 3  # Edit note stutter count
+EDIT_PARAM_STUT_DUR	= 4  # Edit note stutter duration
+EDIT_PARAM_CHANCE	= 5  # Edit note play chance
+EDIT_PARAM_LAST		= 5  # Index of last parameter
 
 # List of permissible steps per beat
 STEPS_PER_BEAT = [1, 2, 3, 4, 6, 8, 12, 24]
@@ -74,6 +75,7 @@ NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 # -----------------------------------------------------------------------------
 # Class implements step sequencer pattern editor
 # -----------------------------------------------------------------------------
+
 
 class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
@@ -93,26 +95,26 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 		self.ctrl_order = zynthian_gui_config.layout['ctrl_order']
 
-		self.edit_mode = EDIT_MODE_NONE # Enable encoders to adjust duration and velocity
-		self.edit_param = EDIT_PARAM_DUR # Parameter to adjust in parameter edit mode
-		self.zoom = 16 # Quantity of rows (notes) displayed in grid
-		self.duration = 1.0 # Current note entry duration
-		self.velocity = 100 # Current note entry velocity
-		self.copy_source = 1 # Index of pattern to copy
-		self.bank = None # Bank used for pattern editor sequence player
-		self.pattern = 0 # Pattern to edit
-		self.sequence = None # Sequence used for pattern editor sequence player
+		self.edit_mode = EDIT_MODE_NONE  # Enable encoders to adjust duration and velocity
+		self.edit_param = EDIT_PARAM_DUR  # Parameter to adjust in parameter edit mode
+		self.zoom = 16  # Quantity of rows (notes) displayed in grid
+		self.duration = 1.0  # Current note entry duration
+		self.velocity = 100  # Current note entry velocity
+		self.copy_source = 1  # Index of pattern to copy
+		self.bank = None  # Bank used for pattern editor sequence player
+		self.pattern = 0  # Pattern to edit
+		self.sequence = None  # Sequence used for pattern editor sequence player
 		self.last_play_mode = zynseq.SEQ_LOOP
-		self.n_steps = 0 # Number of steps in current pattern
-		self.n_steps_beat = 0 # Number of steps per beat (current pattern)
-		self.step_width = 40 # Grid column width in pixels
-		self.keymap_offset = 60 # MIDI note number of bottom row in grid
-		self.selected_cell = [0, 60] # Location of selected cell (column,row)
-		self.drag_velocity = False # True indicates drag will adjust velocity
-		self.drag_duration = False # True indicates drag will adjust duration
-		self.drag_start_velocity = None # Velocity value at start of drag
-		self.drag_note = False # True if dragging note in grid
-		self.grid_drag_start = None # Coordinates at start of grid drag
+		self.n_steps = 0  # Number of steps in current pattern
+		self.n_steps_beat = 0  # Number of steps per beat (current pattern)
+		self.step_width = 40  # Grid column width in pixels
+		self.keymap_offset = 60  # MIDI note number of bottom row in grid
+		self.selected_cell = [0, 60]  # Location of selected cell (column,row)
+		self.drag_velocity = False  # True indicates drag will adjust velocity
+		self.drag_duration = False  # True indicates drag will adjust duration
+		self.drag_start_velocity = None  # Velocity value at start of drag
+		self.drag_note = False  # True if dragging note in grid
+		self.grid_drag_start = None  # Coordinates at start of grid drag
 		self.keymap = []  # Array of {"note":MIDI_NOTE_NUMBER, "name":"key name","colour":"key colour"} name and colour are optional
 		# TODO: Get values from persistent storage
 		self.cells = []  # Array of cells indices

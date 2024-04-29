@@ -411,6 +411,20 @@ uint8_t getNoteVelocity(uint32_t step, uint8_t note);
 */
 void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity);
 
+/** @brief  Get offset of note in selected pattern
+*   @param  step Index of step at which note resides
+*   @param  note MIDI note number
+*   @retval float offset Step fraction, from 0.0 to 1.0
+*/
+float getNoteOffset(uint32_t step, uint8_t note);
+
+/** @brief  Set offset of note in selected pattern
+*   @param  step Index of step at which note resides
+*   @param  note MIDI note number
+*   @param  offset Step fraction, from 0.0 to 1.0
+*/
+void setNoteOffset(uint32_t step, uint8_t note, float offset);
+
 /** @brief  Get stutter count of note in selected pattern
 *   @param  step Index of step at which note resides
 *   @param  note MIDI note number
