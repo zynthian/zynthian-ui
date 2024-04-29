@@ -122,7 +122,7 @@ uint8_t Pattern::getNoteVelocity(uint32_t step, uint8_t note)
 {
     for(StepEvent* ev : m_vEvents)
         if(ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note)
-        return ev->getValue2start();
+        	return ev->getValue2start();
     return 0;
 }
 
@@ -149,6 +149,24 @@ float Pattern::getNoteDuration(uint32_t step, uint8_t note)
         return ev->getDuration();
     }
     return 0.0;
+}
+
+float Pattern::getNoteOffset(uint32_t step, uint8_t note) {
+    for(StepEvent* ev : m_vEvents)
+        if(ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note)
+        	return ev->getOffset();
+    return 0;
+}
+
+void Pattern::setNoteOffset(uint32_t step, uint8_t note, float offset) {
+	if (offset < 0.0) offset = 0.0;
+    else if (offset > 0.99) offset = 0.99;
+    for (StepEvent* ev : m_vEvents) {
+        if(ev->getPosition() == step && ev->getCommand() == MIDI_NOTE_ON && ev->getValue1start() == note) {
+            ev->setOffset(offset);
+            return;
+        }
+    }
 }
 
 void Pattern::setStutter(uint32_t step, uint8_t note, uint8_t count, uint8_t dur)

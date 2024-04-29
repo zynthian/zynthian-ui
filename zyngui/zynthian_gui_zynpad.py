@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
 # Zynthian GUI Step-Sequencer Pad Trigger Class
@@ -8,7 +8,7 @@
 # Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -22,7 +22,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 import tkinter
 import logging
@@ -49,7 +49,7 @@ NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 # Zynthian Step-Sequencer Sequence / Pad Trigger GUI Class
 # ------------------------------------------------------------------------------
 
-# Class implements step sequencer
+
 class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to initialise class
@@ -74,7 +74,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.trigger_device = None
 
 		# Geometry vars
-		self.select_thickness = 1 + int(self.width / 400) # Scale thickness of select border based on screen
+		self.select_thickness = 1 + int(self.width / 400)  # Scale thickness of select border based on screen
 		self.column_width = self.width / self.zynseq.col_in_bank
 		self.row_height = self.height / self.zynseq.col_in_bank
 
@@ -214,7 +214,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		for columns in range(1, 9):
 			column_width = self.width / columns
 			row_height = self.height / columns
-			lst = [self.empty_icon] # Not sure this is right - should be a ImageTk.PhotoImage
+			lst = [self.empty_icon]  # Not sure this is right - should be a ImageTk.PhotoImage
 			iconsize = (int(column_width * 0.22), int(row_height * 0.2))
 			for f in ["zynpad_mode_oneshot", "zynpad_mode_loop", "zynpad_mode_oneshotall", "zynpad_mode_loopall", "zynpad_mode_oneshotsync", "zynpad_mode_loopsync"]:
 				img = Image.open(f"/zynthian/zynthian-ui/icons/{f}.png")
@@ -271,7 +271,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	def refresh_pad(self, pad, mode=None, state=None, group=None):
 		if pad > 63:
 			return
-
 		# Get pad info if needed
 		if mode is None or state is None or group is None:
 			state = self.zynseq.libseq.getSequenceState(self.zynseq.bank, pad)
@@ -335,7 +334,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to move selection cursor
 	def update_selection_cursor(self):
-		#TODO: Was update_selection_cursor removed during refactor and replaced during merge?
+		# TODO: Was update_selection_cursor removed during refactor and replaced during merge?
 		if self.selected_pad >= self.zynseq.libseq.getSequencesInBank(self.bank):
 			self.selected_pad = self.zynseq.libseq.getSequencesInBank(self.bank) - 1
 		col = int(self.selected_pad / self.zynseq.col_in_bank)
@@ -459,7 +458,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 					if len(processor.preset_list) > 1:
 						self.zyngui.show_screen('preset')
 				pass
-			#TODO Send signal to refresh zynpad
+			# TODO Send signal to refresh zynpad
 		elif params == 'Rename':
 			self.rename_sequence()
 
@@ -497,7 +496,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif zctrl.symbol == 'trigger_note':
 			self.zynseq.libseq.setTriggerNote(self.bank, self.selected_pad, zctrl.value)
 
-	#	Function to set the playmode of the selected pad
+	# Function to set the playmode of the selected pad
 	def set_play_mode(self, mode):
 		self.zynseq.set_play_mode(self.bank, self.selected_pad, mode)
 
@@ -534,7 +533,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 				self.refresh_pad(pad)
 
 	# Function to select a pad
-	#	pad: Index of pad to select (Default: refresh existing selection)
+	#  pad: Index of pad to select (Default: refresh existing selection)
 	def select_pad(self, pad=None):
 		if pad is not None:
 			self.selected_pad = pad
@@ -548,8 +547,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		self.grid_canvas.tag_raise(self.selection)
 
 	# Function to handle zynpots value change
-	#   encoder: Zynpot index [0..n]
-	#   dval: Zynpot value change
+	#  encoder: Zynpot index [0..n]
+	#  dval: Zynpot value change
 	def zynpot_cb(self, encoder, dval):
 		if super().zynpot_cb(encoder, dval):
 			return
@@ -581,7 +580,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.set_title(f"Tempo: {self.zynseq.get_tempo():.1f}", None, None, 2)
 
 	# Function to handle SELECT button press
-	#	type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
+	#  type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, type='S'):
 		if super().switch_select(type):
 			return True
@@ -601,9 +600,9 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			return super().back_action()
 
 	# Function to handle switch press
-	#	switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
-	#	type: Press type ["S"=Short, "B"=Bold, "L"=Long]
-	#	returns True if action fully handled or False if parent action should be triggered
+	#  switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	#  type: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	#  returns True if action fully handled or False if parent action should be triggered
 	def switch(self, switch, type):
 		if switch == zynthian_gui_config.ENC_LAYER and type == 'B':
 			self.show_menu()

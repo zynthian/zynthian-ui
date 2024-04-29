@@ -726,9 +726,9 @@ class zynthian_processor:
         """
         
         # Set legacy Note Range (BW compatibility)
-        if isinstance(self.zmop_index, int) and 'note_range' in state:
+        if isinstance(self.chain.zmop_index, int) and 'note_range' in state:
             nr = state['note_range']
-            lib_zyncore.zmop_set_note_range_transpose(self.zmop_index, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
+            lib_zyncore.zmop_set_note_range_transpose(self.chain.zmop_index, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
 
     # ---------------------------------------------------------------------------
     # Path/Breadcrumb Strings

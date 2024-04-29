@@ -32,6 +32,7 @@ from os.path import isfile, join
 from subprocess import check_output
 from . import zynthian_engine
 from zynconf import ServerPort
+from zyncoder.zyncore import lib_zyncore
 
 #------------------------------------------------------------------------------
 # ZynAddSubFX Engine Class
@@ -170,8 +171,9 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		
 	def reset(self):
 		super().reset()
-		self.disable_all_parts()
-
+		for i in range(0, 16):
+			self.disable_part(i)
+			self.osc_server.send(self.osc_target, "/part%d/Prcvchn" % i, i)
 
 
 	# ---------------------------------------------------------------------------
@@ -180,10 +182,13 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	def add_processor(self, processor):
 		self.processors.append(processor)
-		processor.part_i = self.get_free_parts()[0]
-		processor.jackname = "{}:part{}/".format(self.jackname, processor.part_i)
-		processor.refresh_controllers()
-		logging.debug("ADD processor => Part {} ({})".format(processor.part_i, self.jackname))
+		try:
+			processor.part_i = self.get_free_parts()[0]
+			processor.jackname = "{}:part{}/".format(self.jackname, processor.part_i)
+			processor.refresh_controllers()
+			logging.debug("ADD processor => Part {} ({})".format(processor.part_i, self.jackname))
+		except Exception as e:
+			logging.error(f"Unable to add processor to zynadsubfx engine - {e}")
 
 
 	def remove_processor(self, processor):
@@ -197,7 +202,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	def set_midi_chan(self, processor):
 		if self.osc_server and processor.part_i is not None:
-			self.osc_server.send(self.osc_target, "/part%d/Prcvchn" % processor.part_i, processor.get_midi_chan())
+			lib_zyncore.zmop_set_midi_chan_trans(processor.chain.zmop_index, processor.get_midi_chan(), processor.part_i)
 
 
 	#----------------------------------------------------------------------------
@@ -289,7 +294,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	def enable_part(self, processor):
 		if self.osc_server and processor.part_i is not None:
 			self.osc_server.send(self.osc_target, "/part%d/Penabled" % processor.part_i, True)
-			self.osc_server.send(self.osc_target, "/part%d/Prcvchn" % processor.part_i, processor.get_midi_chan())
+			lib_zyncore.zmop_set_midi_chan_trans(processor.chain.zmop_index, processor.get_midi_chan(), processor.part_i)
 
 
 	def disable_part(self, i):
@@ -303,10 +308,6 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		for i in self.get_free_parts():
 			self.disable_part(i)
 
-
-	def disable_all_parts(self):
-		for i in range(0, 16):
-			self.disable_part(i)
 
 	#----------------------------------------------------------------------------
 	# OSC Managament

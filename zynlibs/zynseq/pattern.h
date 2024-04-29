@@ -185,6 +185,20 @@ class Pattern
         */
         float getNoteDuration(uint32_t step, uint8_t note);
 
+		/** @brief  Get offset of note
+		*   @param  position Quantity of steps from start of pattern at which note starts
+		*   @param  note MIDI note number
+		*   @retval float offset Step fraction, from 0.0 to 1.0
+		*/
+		float getNoteOffset(uint32_t step, uint8_t note);
+
+		/** @brief  Set offset of note in selected pattern
+		*   @param  position Quantity of steps from start of pattern at which note starts
+		*   @param  note MIDI note number
+		*   @param  offset Step fraction, from 0.0 to 1.0
+		*/
+		void setNoteOffset(uint32_t step, uint8_t note, float offset);
+
         /** @brief  Set note stutter
         *   @param  position Quantity of steps from start of pattern at which note starts
         *   @param  note MIDI note number
