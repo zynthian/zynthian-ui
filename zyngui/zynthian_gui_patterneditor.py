@@ -1208,12 +1208,14 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				else:
 					velocity = self.velocity
 				self.set_title(f"Velocity: {velocity}")
+			elif self.edit_param == EDIT_PARAM_OFFSET:
+				self.set_title(f"Offset: {int(100 * self.zynseq.libseq.getNoteOffset(step, note))}%")
 			elif self.edit_param == EDIT_PARAM_STUT_CNT:
 				self.set_title(f"Stutter count: {self.zynseq.libseq.getStutterCount(step, note)}")
 			elif self.edit_param == EDIT_PARAM_STUT_DUR:
 				self.set_title(f"Stutter duration: {self.zynseq.libseq.getStutterDur(step, note)}")
 			elif self.edit_param == EDIT_PARAM_CHANCE:
-				self.set_title(f"Play chance: {self.zynseq.libseq.getNotePlayChance(step, note)}")
+				self.set_title(f"Play chance: {self.zynseq.libseq.getNotePlayChance(step, note)}%")
 
 		self.init_buttonbar([(f"ZYNPOT {zynpot},-1", f"-{delta}"),(f"ZYNPOT {zynpot},+1", f"+{delta}"),("ZYNPOT 3,-1", "PREV\nPARAM"),("ZYNPOT 3,+1", "NEXT\nPARAM"),(3,"OK")])
 
@@ -1298,6 +1300,14 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					else:
 						self.velocity = velocity
 						self.select_cell()
+				elif self.edit_param == EDIT_PARAM_OFFSET:
+					val = int(100 * self.zynseq.libseq.getNoteOffset(step, note)) + dval
+					if val > 99:
+						val = 99
+					elif val < 0:
+						val = 0
+					self.zynseq.libseq.setNoteOffset(step, note, val)
+					self.draw_cell(step, note - self.keymap_offset)
 				elif self.edit_param == EDIT_PARAM_STUT_CNT:
 					val = self.zynseq.libseq.getStutterCount(step, note) + dval
 					if val < 0:
