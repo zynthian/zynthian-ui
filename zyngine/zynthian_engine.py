@@ -37,6 +37,7 @@ from os.path import isfile, isdir, ismount, join
 import zynautoconnect
 from . import zynthian_controller
 from zyngui import zynthian_gui_config
+from zyncoder.zyncore import lib_zyncore
 
 # --------------------------------------------------------------------------------
 # Basic Engine Class: Spawn a process & manage IPC communication using pexpect
@@ -418,14 +419,15 @@ class zynthian_engine(zynthian_basic_engine):
 	# ---------------------------------------------------------------------------
 
 	def set_midi_chan(self, processor):
-		pass
+		if processor:
+			lib_zyncore.zmop_set_midi_chan(processor.chain.zmop_index, processor.get_midi_chan())
 
 	def get_active_midi_channels(self):
 		chans = []
 		for processor in self.processors:
 			if processor.midi_chan is None:
 				return None
-			elif processor.midi_chan >= 0 and processor.midi_chan <= 15:
+			elif 0 <= processor.midi_chan <= 15:
 				chans.append(processor.midi_chan)
 		return chans
 

@@ -142,9 +142,8 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			processor.part_i = i
 			#processor.jackname = "{}:((l|r)_{:02d}|fx_(l|r)_({:02d}|{:02d}))".format(self.jackname,i,i*2,i*2+1)
 			processor.jackname = "{}:(l|r)_{:02d}".format(self.jackname,i)
-			zynautoconnect.request_audio_connect()
-			lib_zyncore.zmop_set_midi_chan_trans(processor.chain.zmop_index, processor.get_midi_chan(), processor.part_i)
 			self.set_midi_chan(processor)
+			zynautoconnect.request_audio_connect()
 			logging.debug("Add part {} => {}".format(i, processor.jackname))
 		except Exception as e:
 			logging.error(f"Unable to add processor to fluidsynth engine - {e}")

@@ -30,12 +30,13 @@ import socket
 import shutil
 from time import sleep
 from os.path import isfile
+from Levenshtein import distance
 from subprocess import check_output
 from collections import OrderedDict
-from Levenshtein import distance
-from zynconf import ServerPort
 
 from . import zynthian_engine
+from zynconf import ServerPort
+from zyncoder.zyncore import lib_zyncore
 
 # ------------------------------------------------------------------------------
 # Linuxsampler Exception Classes
@@ -239,13 +240,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	def set_midi_chan(self, processor):
 		if processor.ls_chan_info:
-			ls_chan_id = processor.ls_chan_info['chan_id']
-			try:
-				self.lscp_send_single(f"SET CHANNEL MIDI_INPUT_CHANNEL {ls_chan_id} {processor.get_midi_chan()}")
-			except zyngine_lscp_error as err:
-				logging.error(err)
-			except zyngine_lscp_warning as warn:
-				logging.warning(warn)
+			lib_zyncore.zmop_set_midi_chan_trans(processor.chain.zmop_index, processor.get_midi_chan(), processor.ls_chan_info['midi_chan'])
 
 	# ---------------------------------------------------------------------------
 	# Bank Management
@@ -410,21 +405,29 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			try:
 				self.lscp_send_single(f"SET CHANNEL AUDIO_OUTPUT_DEVICE {ls_chan_id} {self.ls_audio_device_id}")
 				#self.lscp_send_single("SET CHANNEL VOLUME %d 1" % ls_chan_id)
-
 				# Configure MIDI input
 				self.lscp_send_single(f"ADD CHANNEL MIDI_INPUT {ls_chan_id} {self.ls_midi_device_id} 0")
-
 			except zyngine_lscp_error as err:
 				logging.error(err)
 			except zyngine_lscp_warning as warn:
 				logging.warning(warn)
 
-			audio_out = self.ls_get_free_output_channel()
-			#Save chan info in processor
+			audio_out = self.ls_get_free_audio_output()
+
+			midi_chan = self.ls_get_free_midi_chan()
+			try:
+				self.lscp_send_single(f"SET CHANNEL MIDI_INPUT_CHANNEL {ls_chan_id} {midi_chan}")
+			except zyngine_lscp_error as err:
+				logging.error(err)
+			except zyngine_lscp_warning as warn:
+				logging.warning(warn)
+
+			# Save chan info in processor
 			processor.ls_chan_info = {
 				'chan_id': ls_chan_id,
 				'ls_engine': None,
-				'audio_output': audio_out
+				'audio_output': audio_out,
+				'midi_chan': midi_chan
 			}
 			processor.jackname = f"LinuxSampler:out{audio_out}_"
 
@@ -479,11 +482,20 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 			processor.ls_chan_info = None
 			processor.jackname = None
 
-	def ls_get_free_output_channel(self):
+	def ls_get_free_audio_output(self):
 		for i in range(16):
 			busy = False
 			for processor in self.processors:
 				if processor.ls_chan_info and i == processor.ls_chan_info['audio_output']:
+					busy = True
+			if not busy:
+				return i
+
+	def ls_get_free_midi_chan(self):
+		for i in range(16):
+			busy = False
+			for processor in self.processors:
+				if processor.ls_chan_info and i == processor.ls_chan_info['midi_chan']:
 					busy = True
 			if not busy:
 				return i

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_zynaddsubfx)
 # 
 # zynthian_engine implementation for ZynAddSubFX Synthesizer
 # 
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -20,7 +20,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import os
 import re
@@ -34,9 +34,10 @@ from . import zynthian_engine
 from zynconf import ServerPort
 from zyncoder.zyncore import lib_zyncore
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # ZynAddSubFX Engine Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_engine_zynaddsubfx(zynthian_engine):
 
@@ -44,81 +45,81 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	# Controllers & Screens
 	# ---------------------------------------------------------------------------
 
-	bend_ticks = [ [str(x) for x in range(-64,64)], [x for x in range(-6400,6400,100)] ]
+	bend_ticks = [[str(x) for x in range(-64, 64)], [x for x in range(-6400, 6400, 100)]]
 
 	# MIDI Controllers
-	_ctrls=[
-		['volume',7,115],
-		#['panning',10,64],
-		#['expression',11,127],
-		#['volume','/part$i/Pvolume',96],
-		['panning','/part$i/Ppanning',64],
-		['filter cutoff',74,64],
-		['filter resonance',71,64],
+	_ctrls = [
+		['volume', 7, 115],
+		#['panning', 10, 64],
+		#['expression', 11, 127],
+		#['volume', '/part$i/Pvolume', 96],
+		['panning', '/part$i/Ppanning', 64],
+		['filter cutoff', 74, 64],
+		['filter resonance', 71, 64],
 
-		['voice limit','/part$i/Pvoicelimit',0,60],
-		['drum mode','/part$i/Pdrummode','off','off|on'],
-		['sustain',64,'off','off|on'],
-		['assign mode','/part$i/polyType','poly',[ [ 'poly', 'mono', 'legato', 'latch'], [0, 1, 2, 3 ] ] ],
+		['voice limit', '/part$i/Pvoicelimit', 0, 60],
+		['drum mode', '/part$i/Pdrummode', 'off', 'off|on'],
+		['sustain', 64, 'off', 'off|on'],
+		['assign mode', '/part$i/polyType', 'poly', [['poly', 'mono', 'legato', 'latch'], [0, 1, 2, 3]]],
 
-		#['portamento on/off',65,'off','off|on'],
-		['portamento enable','/part$i/ctl/portamento.portamento','off','off|on'],
-		['portamento auto','/part$i/ctl/portamento.automode','on','off|on'],
-		['portamento receive','/part$i/ctl/portamento.receive','on','off|on'],
+		#['portamento on/off', 65, 'off', 'off|on'],
+		['portamento enable', '/part$i/ctl/portamento.portamento', 'off', 'off|on'],
+		['portamento auto', '/part$i/ctl/portamento.automode', 'on', 'off|on'],
+		['portamento receive', '/part$i/ctl/portamento.receive', 'on', 'off|on'],
 
-		['portamento time','/part$i/ctl/portamento.time',64],
-		['portamento up/down','/part$i/ctl/portamento.updowntimestretch',64],
-		['threshold type','/part$i/ctl/portamento.pitchthreshtype','<=',['<=','>=']],
-		['threshold','/part$i/ctl/portamento.pitchthresh',3],
+		['portamento time', '/part$i/ctl/portamento.time', 64],
+		['portamento up/down', '/part$i/ctl/portamento.updowntimestretch', 64],
+		['threshold type', '/part$i/ctl/portamento.pitchthreshtype', '<=', ['<=', '>=']],
+		['threshold', '/part$i/ctl/portamento.pitchthresh', 3],
 
-		['portaprop on/off','/part$i/ctl/portamento.proportional','off','off|on'],
-		['portaprop rate','/part$i/ctl/portamento.propRate',80],
-		['portaprop depth','/part$i/ctl/portamento.propDepth',90],
+		['portaprop on/off', '/part$i/ctl/portamento.proportional', 'off', 'off|on'],
+		['portaprop rate', '/part$i/ctl/portamento.propRate', 80],
+		['portaprop depth', '/part$i/ctl/portamento.propDepth', 90],
 
-		['modulation',1,0],
-		['modulation amplitude',76,127],
-		['modwheel depth','/part$i/ctl/modwheel.depth',80],
-		['modwheel exp','/part$i/ctl/modwheel.exponential','off','off|on'],
+		['modulation', 1, 0],
+		['modulation amplitude', 76, 127],
+		['modwheel depth', '/part$i/ctl/modwheel.depth', 80],
+		['modwheel exp', '/part$i/ctl/modwheel.exponential', 'off', 'off|on'],
 
-		['bendrange','/part$i/ctl/pitchwheel.bendrange','2',bend_ticks],
-		['bendrange split','/part$i/ctl/pitchwheel.is_split','off','off|on'],
-		['bendrange down','/part$i/ctl/pitchwheel.bendrange_down',0,bend_ticks],
+		['bendrange', '/part$i/ctl/pitchwheel.bendrange', '2', bend_ticks],
+		['bendrange split', '/part$i/ctl/pitchwheel.is_split', 'off', 'off|on'],
+		['bendrange down', '/part$i/ctl/pitchwheel.bendrange_down', 0, bend_ticks],
 
-		['resonance center',77,64],
-		['resonance bandwidth',78,64],
-		['rescenter depth','/part$i/ctl/resonancecenter.depth',64],
-		['resbw depth','/part$i/ctl/resonancebandwidth.depth',64],
+		['resonance center', 77, 64],
+		['resonance bandwidth', 78, 64],
+		['rescenter depth', '/part$i/ctl/resonancecenter.depth', 64],
+		['resbw depth', '/part$i/ctl/resonancebandwidth.depth', 64],
 
-		['bandwidth',75,64],
-		['bandwidth depth','/part$i/ctl/bandwidth.depth',64],
-		['bandwidth exp','/part$i/ctl/bandwidth.exponential','off','off|on'],
+		['bandwidth', 75, 64],
+		['bandwidth depth', '/part$i/ctl/bandwidth.depth', 64],
+		['bandwidth exp', '/part$i/ctl/bandwidth.exponential', 'off', 'off|on'],
 
-		['panning depth','/part$i/ctl/panning.depth',64],
-		['filter.cutoff depth','/part$i/ctl/filtercutoff.depth',64],
-		['filter.Q depth','/part$i/ctl/filterq.depth',64],
+		['panning depth', '/part$i/ctl/panning.depth', 64],
+		['filter.cutoff depth', '/part$i/ctl/filtercutoff.depth', 64],
+		['filter.Q depth', '/part$i/ctl/filterq.depth',64],
 
-		['velocity sens.','/part$i/Pvelsns',64],
-		['velocity offs.','/part$i/Pveloffs',64]
+		['velocity sens.', '/part$i/Pvelsns', 64],
+		['velocity offs.', '/part$i/Pveloffs', 64]
 	]
 
 	# Controller Screens
-	_ctrl_screens=[
-		['main',['volume','panning','filter cutoff','filter resonance']],
-		['mode',['drum mode','sustain','assign mode','voice limit']],
-		['portamento',['portamento enable','portamento auto','portamento receive']],
-		['portamento time',['portamento time','portamento up/down','threshold','threshold type']],
-		['portamento prop',['portaprop on/off','portaprop rate','portaprop depth']],
-		['modulation',['modulation','modulation amplitude','modwheel depth','modwheel exp']],
-		['pitchwheel',['bendrange split','bendrange down','bendrange']],
-		['resonance',['resonance center','rescenter depth','resonance bandwidth','resbw depth']],
-		['bandwidth',['bandwidth','bandwidth depth','bandwidth exp']],
-		['depth',['panning depth','filter.cutoff depth','filter.Q depth']],
-		['velocity',['velocity sens.','velocity offs.']]
+	_ctrl_screens = [
+		['main', ['volume', 'panning', 'filter cutoff', 'filter resonance']],
+		['mode', ['drum mode', 'sustain', 'assign mode', 'voice limit']],
+		['portamento', ['portamento enable', 'portamento auto', 'portamento receive']],
+		['portamento time', ['portamento time', 'portamento up/down', 'threshold', 'threshold type']],
+		['portamento prop', ['portaprop on/off', 'portaprop rate', 'portaprop depth']],
+		['modulation', ['modulation', 'modulation amplitude', 'modwheel depth', 'modwheel exp']],
+		['pitchwheel', ['bendrange split', 'bendrange down', 'bendrange']],
+		['resonance', ['resonance center', 'rescenter depth', 'resonance bandwidth', 'resbw depth']],
+		['bandwidth', ['bandwidth', 'bandwidth depth', 'bandwidth exp']],
+		['depth', ['panning depth', 'filter.cutoff depth', 'filter.Q depth']],
+		['velocity', ['velocity sens.', 'velocity offs.']]
 	]
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Config variables
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	preset_fexts = ['xiz', 'xmz', 'xsz', 'xlz']
 	root_bank_dirs = [
@@ -126,9 +127,9 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		('System', zynthian_engine.data_dir + "/zynbanks")
 	]
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Initialization
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def __init__(self, state_manager=None):
 		super().__init__(state_manager)
@@ -167,14 +168,10 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 		self.start()
 		self.reset()
-		
-		
+
 	def reset(self):
 		super().reset()
-		for i in range(0, 16):
-			self.disable_part(i)
-			self.osc_server.send(self.osc_target, "/part%d/Prcvchn" % i, i)
-
+		self.disable_all_parts()
 
 	# ---------------------------------------------------------------------------
 	# Processor Management
@@ -190,7 +187,6 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		except Exception as e:
 			logging.error(f"Unable to add processor to zynadsubfx engine - {e}")
 
-
 	def remove_processor(self, processor):
 		self.disable_part(processor.part_i)
 		processor.part_i = None
@@ -204,10 +200,9 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		if self.osc_server and processor.part_i is not None:
 			lib_zyncore.zmop_set_midi_chan_trans(processor.chain.zmop_index, processor.get_midi_chan(), processor.part_i)
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Preset Managament
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	@staticmethod
 	def _get_preset_list(bank):
@@ -231,10 +226,8 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				preset_list.append([preset_fpath, [bank_msb, bank_lsb, prg], title, ext, f])
 		return preset_list
 
-
 	def get_preset_list(self, bank):
 		return self._get_preset_list(bank)
-
 
 	def set_preset(self, processor, preset, preload=False):
 		if self.osc_server is None:
@@ -266,7 +259,6 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		processor.send_ctrl_midi_cc()
 		return True
 
-
 	def cmp_presets(self, preset1, preset2):
 		try:
 			if preset1[0] == preset2[0]:
@@ -281,26 +273,28 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def get_free_parts(self):
-		free_parts = list(range(0,16))
+		free_parts = list(range(0, 16))
 		for processor in self.processors:
 			try:
 				free_parts.remove(processor.part_i)
 			except:
 				pass
-		logging.debug("FREE PARTS => %s" % free_parts)
+		#logging.debug("FREE PARTS => %s" % free_parts)
 		return free_parts
-
 
 	def enable_part(self, processor):
 		if self.osc_server and processor.part_i is not None:
 			self.osc_server.send(self.osc_target, "/part%d/Penabled" % processor.part_i, True)
+			self.osc_server.send(self.osc_target, "/part%d/Prcvchn" % processor.part_i, processor.part_i)
 			lib_zyncore.zmop_set_midi_chan_trans(processor.chain.zmop_index, processor.get_midi_chan(), processor.part_i)
-
 
 	def disable_part(self, i):
 		if self.osc_server:
 			self.osc_server.send(self.osc_target, "/part%d/Penabled" % i, False)
 
+	def disable_all_parts(self):
+		for i in range(0, 16):
+			self.disable_part(i)
 
 	def enable_processor_parts(self):
 		for processor in self.processors:
@@ -308,11 +302,9 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		for i in self.get_free_parts():
 			self.disable_part(i)
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# OSC Managament
-	#----------------------------------------------------------------------------
-
+	# ----------------------------------------------------------------------------
 
 	def cb_osc_all(self, path, args, types, src):
 		try:
@@ -321,7 +313,6 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				self.state_manager.end_busy("zynaddsubfx")
 		except Exception as e:
 			logging.warning(e)
-
 
 	def send_controller_value(self, zctrl):
 		if self.osc_server and zctrl.osc_path:
@@ -346,7 +337,6 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 			})
 		return banks
 
-
 	@classmethod
 	def zynapi_get_presets(cls, bank):
 		presets = []
@@ -360,11 +350,9 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 			})
 		return presets
 
-
 	@classmethod
 	def zynapi_new_bank(cls, bank_name):
 		os.mkdir(zynthian_engine.my_data_dir + "/presets/zynaddsubfx/banks/" + bank_name)
-
 
 	@classmethod
 	def zynapi_rename_bank(cls, bank_path, new_bank_name):
@@ -372,11 +360,9 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		new_bank_path = head + "/" + new_bank_name
 		os.rename(bank_path, new_bank_path)
 
-
 	@classmethod
 	def zynapi_remove_bank(cls, bank_path):
 		shutil.rmtree(bank_path)
-
 
 	@classmethod
 	def zynapi_rename_preset(cls, preset_path, new_preset_name):
@@ -385,16 +371,13 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 		new_preset_path = head + "/" + new_preset_name + ext
 		os.rename(preset_path, new_preset_path)
 
-
 	@classmethod
 	def zynapi_remove_preset(cls, preset_path):
 		os.remove(preset_path)
 
-
 	@classmethod
 	def zynapi_download(cls, fullpath):
 		return fullpath
-
 
 	@classmethod
 	def zynapi_install(cls, dpath, bank_path):
@@ -425,14 +408,12 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 				raise Exception("File doesn't look like a XIZ preset!")
 
 
-
 	@classmethod
 	def zynapi_get_formats(cls):
 		return "xiz,zip,tgz,tar.gz,tar.bz2"
-
 
 	@classmethod
 	def zynapi_martifact_formats(cls):
 		return "xiz"
 
-#******************************************************************************
+# ******************************************************************************
