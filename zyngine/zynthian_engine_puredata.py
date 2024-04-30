@@ -116,7 +116,6 @@ class zynthian_engine_puredata(zynthian_engine):
 	def get_preset_list(self, bank):
 		return self.get_dirlist(bank[0])
 
-
 	def set_preset(self, processor, preset, preload=False):
 		self.load_preset_config(preset)
 		self.command = self.base_command + " " + self.get_preset_filepath(preset)
@@ -126,7 +125,7 @@ class zynthian_engine_puredata(zynthian_engine):
 		for symbol in processor.controllers_dict:
 			self.state_manager.chain_manager.remove_midi_learn(processor, symbol)
 		processor.refresh_controllers()
-		sleep(1.0)
+		sleep(2.0)
 		# Need to all autoconnect because restart of process
 		try:
 			self.state_manager.chain_manager.chains[processor.chain_id].rebuild_graph()
