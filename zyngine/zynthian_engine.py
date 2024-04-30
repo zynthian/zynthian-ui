@@ -62,7 +62,7 @@ class zynthian_basic_engine:
 	def __init__(self, name=None, command=None, prompt=None, cwd=None):
 		self.name = name
 		self.proc = None
-		self.proc_timeout = 20
+		self.proc_timeout = 30
 		self.proc_start_sleep = None
 		self.command = command
 		self.command_env = os.environ.copy()
