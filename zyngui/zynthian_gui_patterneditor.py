@@ -1306,7 +1306,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 						val = 99
 					elif val < 0:
 						val = 0
-					self.zynseq.libseq.setNoteOffset(step, note, val)
+					self.zynseq.libseq.setNoteOffset(step, note, val/100.0)
 					self.draw_cell(step, note - self.keymap_offset)
 				elif self.edit_param == EDIT_PARAM_STUT_CNT:
 					val = self.zynseq.libseq.getStutterCount(step, note) + dval
