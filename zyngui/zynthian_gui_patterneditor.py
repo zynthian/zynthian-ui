@@ -214,6 +214,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.zynseq.libseq.setGroup(self.bank, self.sequence, 0xFF)
 		self.zynseq.libseq.setSequence(self.bank, self.sequence)
 		self.copy_source = self.pattern
+
 		self.setup_zynpots()
 		if not self.param_editor_zctrl:
 			title = self.zynseq.get_sequence_name(self.bank, self.sequence)

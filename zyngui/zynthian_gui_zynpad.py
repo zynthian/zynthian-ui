@@ -505,7 +505,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		tracks_in_sequence = self.zynseq.libseq.getTracksInSequence(self.bank, self.selected_pad)
 		patterns_in_track = self.zynseq.libseq.getPatternsInTrack(self.bank, self.selected_pad, 0)
 		pattern = self.zynseq.libseq.getPattern(self.bank, self.selected_pad, 0, 0)
-		if tracks_in_sequence != 1 or patterns_in_track !=1 or pattern == -1:
+		if tracks_in_sequence != 1 or patterns_in_track != 1 or pattern == -1:
 			self.zyngui.screens["arranger"].sequence = self.selected_pad
 			self.zyngui.toggle_screen("arranger")
 			return True

@@ -1301,6 +1301,8 @@ class zynthian_gui:
 		if self.current_screen in ["arranger", "zynpad"]:
 			success = self.screens[self.current_screen].show_pattern_editor()
 		if not success:
+			success = self.screens['zynpad'].show_pattern_editor()
+		if not success:
 			self.show_screen("pattern_editor")
 
 	def cuia_screen_arranger(self, params=None):
