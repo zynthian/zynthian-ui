@@ -494,7 +494,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		elif zctrl.symbol == 'trigger_chan':
 			self.set_trigger_channel(zctrl)
 		elif zctrl.symbol == 'trigger_note':
-			self.zynseq.libseq.setTriggerNote(self.bank, self.selected_pad, zctrl.value)
+			if zctrl.value > 0:
+				self.zynseq.libseq.setTriggerNote(self.bank, self.selected_pad, zctrl.value - 1)
+			else:
+				self.zynseq.libseq.setTriggerNote(self.bank, self.selected_pad, 128)
 
 	# Function to set the playmode of the selected pad
 	def set_play_mode(self, mode):
@@ -583,6 +586,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	#  type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, type='S'):
 		if super().switch_select(type):
+			if self.midi_learn:
+				self.zyngui.cuia_disable_midi_learn()
 			return True
 		if type == 'S':
 			self.toggle_pad()
@@ -721,9 +726,11 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		labels = ['None']
 		for note in range(128):
 			labels.append(self.get_note_name(note))
-		value = self.zyngui.state_manager.zynseq.libseq.getTriggerNote(self.bank, self.selected_pad) + 1
+		value = self.zyngui.state_manager.zynseq.libseq.getTriggerNote(self.bank, self.selected_pad)
 		if value > 127:
-			value = "None"
+			value = 0
+		else:
+			value += 1
 		self.enable_param_editor(self, 'trigger_note', {'name': 'Trigger note', 'labels': labels, 'value': value})
 
 	def exit_midi_learn(self):
