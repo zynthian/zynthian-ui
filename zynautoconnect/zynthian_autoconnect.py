@@ -892,92 +892,47 @@ def build_midi_port_name(port):
 		return f"NET:touchosc_{port.name.split()[0][6:]}", "TouchOSC"
 	elif port.name.startswith("aubio:midi_out"):
 		return f"AUBIO:in", "Audio\u2794MIDI"
-	elif port.name.startswith('a2j:') and port.name.endswith("Bluetooth"):
-		try:
-			# Found BLE MIDI device
-			parts = port.name.split(':')
-			port_name = parts[2][1:-10]
-			if len(port.aliases):
-				# UID already assigned
-				return port.aliases[0], port_name
-			# Get BLE address
-			devices = check_output(['bluetoothctl', 'devices'], encoding='utf-8', timeout=0.1).split('\n')
-			for device in devices:
-				if not device:
-					continue
-				addr = device.split()[1]
-				dev_name = device[25:]
-				if dev_name == port_name:
-					if port.is_input:
-						return f"BLE:{addr}_OUT", port_name
-					else:
-						return f"BLE:{addr}_IN", port_name
-		except:
-			uid = port.name
-		if port.is_input:
-			uid += f" OUT {int(idx) + 1}"
-		else:
-			uid += f" IN {int(idx) + 1}"
-		return uid, port_name
+	elif port.name.startswith("BLE_MIDI:"):
+		return port.aliases[0], port.aliases[1]
 
 	idx = 0
 	
 	if port.aliases and (port.aliases[0].startswith("in-hw-") or port.aliases[0].startswith("out-hw-")):
 		# Uninitiated port
 		try:
-			if port.name.endswith(" Bluetooth"):
-				# Found BLE MIDI device
-				port_name = port.name[:-10]
-				# TODO: I'm not sure this is OK
-				if len(port.aliases):
-					# UID already assigned
-					return port.aliases[0], port_name
-				# Get BLE address
-				devices = check_output(['bluetoothctl', 'devices'], encoding='utf-8', timeout=0.1).split('\n')
-				for device in devices:
-					if not device:
-						continue
-					addr = device.split()[1]
-					dev_name = device[25:]
-					if dev_name == port_name:
-						if port.is_input:
-							return f"BLE:{addr}_OUT", port_name
-						else:
-							return f"BLE:{addr}_IN", port_name
-			else:
-				# USB ports
-				io, hw, card, slot, idx, port_name = port.aliases[0].split('-', 5)
-				with open(f"/proc/asound/card{card}/midi0", "r") as f:
-					config = f.readlines()
-					port_name = config[0].strip()
-					n_inputs = 0
-					n_outputs = 0
-					for line in config:
-						if line.startswith("Input"):
-							n_inputs += 1
-						elif line.startswith("Output"):
-							n_outputs += 1
-				if port_name == "f_midi":
-					port_name = "USB HOST"
-					if port.is_output:
-						uid = "USB:f_midi OUT 1"
-					else:
-						uid = "USB:f_midi IN 1"
+			# USB ports
+			io, hw, card, slot, idx, port_name = port.aliases[0].split('-', 5)
+			with open(f"/proc/asound/card{card}/midi0", "r") as f:
+				config = f.readlines()
+				port_name = config[0].strip()
+				n_inputs = 0
+				n_outputs = 0
+				for line in config:
+					if line.startswith("Input"):
+						n_inputs += 1
+					elif line.startswith("Output"):
+						n_outputs += 1
+			if port_name == "f_midi":
+				port_name = "USB HOST"
+				if port.is_output:
+					uid = "USB:f_midi OUT 1"
 				else:
-					with open(f"/proc/asound/card{card}/usbbus", "r") as f:
-						usbbus = f.readline()
-					tmp = re.findall(r'\d+', usbbus)
-					bus = int(tmp[0])
-					address = int(tmp[1])
-					usb_port_nos = usb.core.find(bus=bus, address=address).port_numbers
-					uid = f"{bus}"
-					for i in usb_port_nos:
-						uid += f".{i}"
-					uid = f"USB:{uid}/{port_name}"
-					if port.is_input and n_inputs > 1:
-						port_name = f"{port_name} {int(idx) + 1}"
-					elif port.is_output and n_outputs > 1:
-						port_name = f"{port_name} {int(idx) + 1}"
+					uid = "USB:f_midi IN 1"
+			else:
+				with open(f"/proc/asound/card{card}/usbbus", "r") as f:
+					usbbus = f.readline()
+				tmp = re.findall(r'\d+', usbbus)
+				bus = int(tmp[0])
+				address = int(tmp[1])
+				usb_port_nos = usb.core.find(bus=bus, address=address).port_numbers
+				uid = f"{bus}"
+				for i in usb_port_nos:
+					uid += f".{i}"
+				uid = f"USB:{uid}/{port_name}"
+				if port.is_input and n_inputs > 1:
+					port_name = f"{port_name} {int(idx) + 1}"
+				elif port.is_output and n_outputs > 1:
+					port_name = f"{port_name} {int(idx) + 1}"
 
 		except:
 			uid = port.name
