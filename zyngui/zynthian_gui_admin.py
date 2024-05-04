@@ -108,6 +108,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data = []
 
 		self.list_data.append((None, 0, "> MIDI"))
+		self.list_data.append((self.zyngui.midi_in_config, 0, "MIDI Input Devices"))
+		self.list_data.append((self.zyngui.midi_out_config, 0, "MIDI Output Devices"))
 		#self.list_data.append((self.midi_profile, 0, "MIDI Profile"))
 
 		if zynthian_gui_config.active_midi_channel:
@@ -147,28 +149,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			display_val = f"{gtrans}"
 		self.list_data.append((self.edit_global_transpose, 0, f"[{display_val}] Global Transpose"))
 
-		if os.path.isfile("/usr/local/bin/jacknetumpd"):
-			if zynthian_gui_config.midi_netump_enabled:
-				self.list_data.append((self.state_manager.stop_jacknetumpd, 0, f"\u2612 RTP-MIDI"))
-			else:
-				self.list_data.append((self.state_manager.start_jacknetumpd, 0, f"\u2610 RTP-MIDI"))
-		if os.path.isfile("/usr/local/bin/qmidinet"):
-			if zynthian_gui_config.midi_network_enabled:
-				self.list_data.append((self.state_manager.stop_qmidinet, 0, f"\u2612 QmidiNet"))
-			else:
-				self.list_data.append((self.state_manager.start_qmidinet, 0, f"\u2610 QmidiNet"))
-		if os.path.isfile("/usr/local/bin/touchosc2midi"):
-			if zynthian_gui_config.midi_touchosc_enabled:
-				self.list_data.append((self.state_manager.stop_touchosc2midi, 0, f"\u2612 TouchOSC Bridge"))
-			else:
-				self.list_data.append((self.state_manager.start_touchosc2midi, 0, f"\u2610 TouchOSC Bridge"))
-
-		if os.path.isfile("/usr/local/bin/aubionotes"):
-			if zynthian_gui_config.midi_aubionotes_enabled:
-				self.list_data.append((self.state_manager.stop_aubionotes, 0, f"\u2612 Audio2MIDI"))
-			else:
-				self.list_data.append((self.state_manager.start_aubionotes, 0, f"\u2610 Audio2MIDI"))
-
 		self.list_data.append((None, 0, "> AUDIO"))
 
 		if self.state_manager.allow_rbpi_headphones():
@@ -195,7 +175,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.state_manager.stop_vncserver, 0, "\u2612 VNC Server"))
 		else:
 			self.list_data.append((self.state_manager.start_vncserver, 0, "\u2610 VNC Server"))
-
 
 		self.list_data.append((None, 0, "> SETTINGS"))
 		self.list_data.append((self.bluetooth, 0, "Bluetooth"))
@@ -408,6 +387,9 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		lib_zyncore.set_midi_system_events(zynthian_gui_config.midi_sys_enabled)
 		self.update_list()
 
+	def bluetooth(self):
+			self.zyngui.show_screen("bluetooth")
+
 	# -------------------------------------------------------------------------
 	# Global Transpose editing
 	# -------------------------------------------------------------------------
@@ -523,9 +505,6 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 		self.zyngui.hide_info_timer(5000)
 		self.zyngui.state_manager.end_busy("gui_admin")
-
-	def bluetooth(self):
-		self.zyngui.show_screen("bluetooth")
 
 	# ------------------------------------------------------------------------------
 	# TEST FUNCTIONS

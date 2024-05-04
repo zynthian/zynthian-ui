@@ -24,6 +24,7 @@
 # 
 # ******************************************************************************
 
+import os
 import re
 import logging
 from time import sleep
@@ -39,6 +40,7 @@ from zyngui import zynthian_gui_config
 # ------------------------------------------------------------------------------
 # Mini class to allow use of audio_in gui
 # ------------------------------------------------------------------------------
+
 
 class aubio_inputs():
     def __init__(self, state_manager):
@@ -66,22 +68,22 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
     def __init__(self):
         self.chain = None      # Chain object
-        self.ble_devices = {}  # Map of BLE device configs indexed by BLE address. Config: [name, paired, trusted, connected, is_midi]
         self.input = True      # True to process MIDI inputs, False for MIDI outputs
-        self.ble_scan_proc = None
         self.thread = None
         super().__init__('MIDI Devices', True)
 
-    def show(self):
-        super().show()
+    def build_view(self):
         # Enable background scan for MIDI devices
+        self.midi_scan = True
         self.thread = Thread(target=self.process_dynamic_ports, name="MIDI port scan")
         self.thread.start()
+        return super().build_view()
 
     def hide(self):
         if self.shown:
-            super().hide()
+            self.midi_scan = False
             self.thread = None
+            super().hide()
 
     def set_chain(self, chain):
         self.chain = chain
@@ -89,6 +91,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
     def fill_list(self):
         """Populate data list used for display and configuration.
+        Different display mode for admin view (no chain) and chain view (i/o routing)
         List of lists, each consisting of elements based on the display mode and entry type.
         
         Elements in jack port:
@@ -119,7 +122,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             if self.input:
                 port = zynautoconnect.devices_in[idev]
                 mode = get_mode_str(idev)
-                if idev in self.zyngui.state_manager.ctrldev_manager.drivers:
+                if self.chain is None:
+                    self.list_data.append((port.aliases[0], idev, f"{mode}{port.aliases[1]}"))
+                elif idev in self.zyngui.state_manager.ctrldev_manager.drivers:
                     self.list_data.append((port.aliases[0], idev, f"    {mode}{port.aliases[1]}"))
                 else:
                     if lib_zyncore.zmop_get_route_from(self.chain.zmop_index, idev):
@@ -128,11 +133,26 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                         self.list_data.append((port.aliases[0], idev, f"\u2610 {mode}{port.aliases[1]}"))
             else:
                 port = zynautoconnect.devices_out[idev]
-                if port.name in self.chain.midi_out:
+                if self.chain is None:
+                    self.list_data.append((port.aliases[0], idev, f"{port.aliases[1]}"))
+                elif port.name in self.chain.midi_out:
                     #TODO: Why use port.name here?
                     self.list_data.append((port.name, idev, f"\u2612 {port.aliases[1]}"))
                 else:
                     self.list_data.append((port.name, idev, f"\u2610 {port.aliases[1]}"))
+
+        def append_service_device(dev_name, obj):
+            """Add service (that is also a port) to list"""
+            if isinstance(obj, int):
+                if self.input:
+                    port = zynautoconnect.devices_in[obj]
+                else:
+                    port = zynautoconnect.devices_out[obj]
+                if port:
+                    mode = get_mode_str(obj)
+                    self.list_data.append((f"stop_{dev_name}", obj, f"\u2612 {mode}{port.aliases[1]}"))
+            else:
+                self.list_data.append((f"start_{dev_name}", None, f"\u2610 {obj}"))
 
         def atoi(text):
             return int(text) if text.isdigit() else text
@@ -144,7 +164,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         # Lists of zmop/zmip indicies
         int_devices = []    # Internal MIDI ports
         usb_devices = []    # USB MIDI ports
-        ble_devices = {}    # BLE MIDI ports, indexed by BLE address
+        ble_devices = []    # BLE MIDI ports
         aubio_devices = []  # Aubio MIDI ports
         net_devices = {}    # Network MIDI ports, indexed by jack port name
         for i in range(zynautoconnect.max_num_devs):
@@ -156,11 +176,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 if dev.aliases[0].startswith("USB:"):
                     usb_devices.append((dev.aliases[1], i))
                 elif dev.aliases[0].startswith("BLE:"):
-                    if self.input:
-                        key = dev.aliases[0][4:-3]
-                    else:
-                        key = dev.aliases[0][4:-4]
-                    ble_devices[key] = i
+                    ble_devices.append((dev.aliases[1], i))
                 elif dev.aliases[0].startswith("AUBIO:"):
                     aubio_devices.append(i)
                 elif dev.aliases[0].startswith("NET:"):
@@ -177,24 +193,64 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             for x in sorted(usb_devices, key=natural_keys):
                 append_port(x[1])
 
-        if zynthian_gui_config.bluetooth_enabled and ble_devices:
+        if self.chain is None or ble_devices:
             self.list_data.append((None, None, "Bluetooth Devices"))
             if zynthian_gui_config.bluetooth_enabled:
-                for i in ble_devices.values():
-                    append_port(i)
+                if self.chain is None:
+                    self.list_data.append(("stop_bluetooth", None, "\u2612 BLE MIDI"))
+                for x in sorted(ble_devices, key=natural_keys):
+                    append_port(x[1])
+            elif self.chain is None:
+                self.list_data.append(("start_bluetooth", None, "\u2610 BLE MIDI"))
 
-        if net_devices:
+        if not self.chain or net_devices:
             self.list_data.append((None, None, "Network Devices"))
-            for i in net_devices.values():
-                append_port(i)
+            if self.chain:
+                for i in net_devices.values():
+                    append_port(i)
+            else:
+                if os.path.isfile("/usr/local/bin/jacknetumpd"):
+                    if "jacknetumpd:netump_in" in net_devices:
+                        append_service_device("jacknetumpd", net_devices["jacknetumpd:netump_in"])
+                    elif "jacknetumpd:netump_out" in net_devices:
+                        append_service_device("jacknetumpd", net_devices["jacknetumpd:netump_out"])
+                    else:
+                        append_service_device("jacknetumpd", "NetUMP: MIDI 2.0")
+
+                if "jackrtpmidid:rtpmidi_in" in net_devices:
+                    append_service_device("jackrtpmidid", net_devices["jackrtpmidid:rtpmidi_in"])
+                elif "jackrtpmidid:rtpmidi_out" in net_devices:
+                    append_service_device("jackrtpmidid", net_devices["jackrtpmidid:rtpmidi_out"])
+                else:
+                    append_service_device("jackrtpmidid", "RTP-MIDI")
+
+                if "QmidiNet:in_1" in net_devices:
+                    append_service_device("QmidiNet", net_devices["QmidiNet:in_1"])
+                elif "QmidiNet:out_1" in net_devices:
+                    append_service_device("QmidiNet", net_devices["QmidiNet:out_1"])
+                else:
+                    append_service_device("QmidiNet", "QmidiNet")
+
+                if "RtMidiIn Client:TouchOSC Bridge" in net_devices:
+                    append_service_device("touchosc", net_devices["RtMidiIn Client:TouchOSC Bridge"])
+                elif "RtMidiOut Client:TouchOSC Bridge" in net_devices:
+                    append_service_device("touchosc", net_devices["RtMidiOut Client:TouchOSC Bridge"])
+                else:
+                    append_service_device("touchosc", "TouchOSC Bridge")
 
         if self.input:
-            if zynthian_gui_config.midi_aubionotes_enabled:
+            if not self.chain or zynthian_gui_config.midi_aubionotes_enabled:
                 self.list_data.append((None, None, "Aubionotes Audio\u2794MIDI"))
-                for i in aubio_devices:
-                    append_port(i)
+                if self.chain:
+                    for i in aubio_devices:
+                        append_port(i)
+                else:
+                    if aubio_devices:
+                        append_service_device("aubionotes", aubio_devices[0])
+                    else:
+                        append_service_device("aubionotes", "Aubionotes")
 
-        if not self.input:
+        if not self.input and self.chain:
             self.list_data.append((None, None, "> Chain inputs"))
             for i, chain_id in enumerate(self.zyngui.chain_manager.ordered_chain_ids):
                 chain = self.zyngui.chain_manager.get_chain(chain_id)
@@ -212,18 +268,47 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
 
     def select_action(self, i, t='S'):
         if t == 'S':
+            action = self.list_data[i][0]
+            wait = 2  # Delay after starting service to allow jack ports to update
+            if action == "stop_jacknetumpd":
+                self.zyngui.state_manager.stop_netump(wait=wait)
+            elif action == "start_jacknetumpd":
+                self.zyngui.state_manager.start_netump(wait=wait)
+            elif action == "stop_jackrtpmidid":
+                self.zyngui.state_manager.stop_rtpmidi(wait=wait)
+            elif action == "start_jackrtpmidid":
+                self.zyngui.state_manager.start_rtpmidi(wait=wait)
+            elif action == "stop_QmidiNet":
+                self.zyngui.state_manager.stop_qmidinet(wait=wait)
+            elif action == "start_QmidiNet":
+                self.zyngui.state_manager.start_qmidinet(wait=wait)
+            elif action == "stop_touchosc":
+                self.zyngui.state_manager.stop_touchosc2midi(wait=wait)
+            elif action == "start_touchosc":
+                self.zyngui.state_manager.start_touchosc2midi(wait=wait)
+            elif action == "stop_aubionotes":
+                self.zyngui.state_manager.stop_aubionotes(wait=wait)
+            elif action == "start_aubionotes":
+                self.zyngui.state_manager.start_aubionotes(wait=wait)
+            elif action == "stop_bluetooth":
+                self.zyngui.state_manager.stop_bluetooth(wait=wait)
+            elif action == "start_bluetooth":
+                self.zyngui.state_manager.start_bluetooth(wait=wait)
             # Route/Unroute
-            if self.input:
-                idev = self.list_data[i][1]
-                if idev in self.zyngui.state_manager.ctrldev_manager.drivers:
-                    return
-                lib_zyncore.zmop_set_route_from(self.chain.zmop_index, idev, not lib_zyncore.zmop_get_route_from(self.chain.zmop_index, idev))
-            else:
-                try:
-                    self.zyngui.chain_manager.get_active_chain().toggle_midi_out(self.list_data[i][0])
-                except Exception as e:
-                    logging.error(e)
-            self.fill_list()
+            elif self.chain:
+                if self.input:
+                    idev = self.list_data[i][1]
+                    if idev in self.zyngui.state_manager.ctrldev_manager.drivers:
+                        return
+                    lib_zyncore.zmop_set_route_from(self.chain.zmop_index, idev, not lib_zyncore.zmop_get_route_from(self.chain.zmop_index, idev))
+                else:
+                    try:
+                        self.zyngui.chain_manager.get_active_chain().toggle_midi_out(self.list_data[i][0])
+                    except Exception as e:
+                        logging.error(e)
+                self.fill_list()
+            elif self.list_data[i][0].startswith("BLE:"):
+                self.toggle_ble_trust(self.list_data[i][0][4:])
 
         # Change mode
         elif t == 'B':
@@ -290,20 +375,16 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         else:
             last_fingerprint = zynautoconnect.get_hw_dst_ports()
 
-        while self.shown:
-            update = False
-
+        while self.midi_scan:
             if self.input:
                 fingerprint = zynautoconnect.get_hw_src_ports()
             else:
                 fingerprint = zynautoconnect.get_hw_dst_ports()
             if last_fingerprint != fingerprint:
                 last_fingerprint = fingerprint
-                update = True
-
-            if update:
-                self.fill_list()
-
+                if self.shown:
+                    self.fill_list()
+            
             sleep(2) # Repeat every 2s
 
     def rename_device(self, name):
@@ -320,9 +401,15 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         self.fill_list()
 
     def set_select_path(self):
-        if self.input:
-            self.select_path.set(f"Capture MIDI from...")
+        if self.chain:
+            if self.input:
+                self.select_path.set(f"Capture MIDI from...")
+            else:
+                self.select_path.set(f"Send MIDI to ...")
         else:
-            self.select_path.set(f"Send MIDI to ...")
+            if self.input:
+                self.select_path.set(f"MIDI Input Devices")
+            else:
+                self.select_path.set(f"MIDI Output Devices")
 
 # ------------------------------------------------------------------------------
