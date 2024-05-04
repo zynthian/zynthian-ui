@@ -217,26 +217,29 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                     else:
                         append_service_device("jacknetumpd", "NetUMP: MIDI 2.0")
 
-                if "jackrtpmidid:rtpmidi_in" in net_devices:
-                    append_service_device("jackrtpmidid", net_devices["jackrtpmidid:rtpmidi_in"])
-                elif "jackrtpmidid:rtpmidi_out" in net_devices:
-                    append_service_device("jackrtpmidid", net_devices["jackrtpmidid:rtpmidi_out"])
-                else:
-                    append_service_device("jackrtpmidid", "RTP-MIDI")
+                if os.path.isfile("/usr/local/bin/jackrtpmidid"):
+                    if "jackrtpmidid:rtpmidi_in" in net_devices:
+                        append_service_device("jackrtpmidid", net_devices["jackrtpmidid:rtpmidi_in"])
+                    elif "jackrtpmidid:rtpmidi_out" in net_devices:
+                        append_service_device("jackrtpmidid", net_devices["jackrtpmidid:rtpmidi_out"])
+                    else:
+                        append_service_device("jackrtpmidid", "RTP-MIDI")
 
-                if "QmidiNet:in_1" in net_devices:
-                    append_service_device("QmidiNet", net_devices["QmidiNet:in_1"])
-                elif "QmidiNet:out_1" in net_devices:
-                    append_service_device("QmidiNet", net_devices["QmidiNet:out_1"])
-                else:
-                    append_service_device("QmidiNet", "QmidiNet")
+                if os.path.isfile("/usr/local/bin/qmidinet"):
+                    if "QmidiNet:in_1" in net_devices:
+                        append_service_device("QmidiNet", net_devices["QmidiNet:in_1"])
+                    elif "QmidiNet:out_1" in net_devices:
+                        append_service_device("QmidiNet", net_devices["QmidiNet:out_1"])
+                    else:
+                        append_service_device("QmidiNet", "QmidiNet")
 
-                if "RtMidiIn Client:TouchOSC Bridge" in net_devices:
-                    append_service_device("touchosc", net_devices["RtMidiIn Client:TouchOSC Bridge"])
-                elif "RtMidiOut Client:TouchOSC Bridge" in net_devices:
-                    append_service_device("touchosc", net_devices["RtMidiOut Client:TouchOSC Bridge"])
-                else:
-                    append_service_device("touchosc", "TouchOSC Bridge")
+                if os.path.isfile("/usr/local/bin/touchosc2midi"):
+                    if "RtMidiIn Client:TouchOSC Bridge" in net_devices:
+                        append_service_device("touchosc", net_devices["RtMidiIn Client:TouchOSC Bridge"])
+                    elif "RtMidiOut Client:TouchOSC Bridge" in net_devices:
+                        append_service_device("touchosc", net_devices["RtMidiOut Client:TouchOSC Bridge"])
+                    else:
+                        append_service_device("touchosc", "TouchOSC Bridge")
 
         if self.input:
             if not self.chain or zynthian_gui_config.midi_aubionotes_enabled:
