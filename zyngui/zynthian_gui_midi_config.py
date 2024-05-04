@@ -307,8 +307,6 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                     except Exception as e:
                         logging.error(e)
                 self.fill_list()
-            elif self.list_data[i][0].startswith("BLE:"):
-                self.toggle_ble_trust(self.list_data[i][0][4:])
 
         # Change mode
         elif t == 'B':
