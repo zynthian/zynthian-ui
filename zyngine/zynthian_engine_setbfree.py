@@ -41,10 +41,13 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	bank_manuals_list = [
-		['Upper', 0, 'Upper', '_', [False, False]],
-		['Upper + Lower', 1, 'Upper + Lower', '_', [True, False]],
-		['Upper + Pedals', 2, 'Upper + Pedals', '_', [False, True]],
-		['Upper + Lower + Pedals', 3, 'Upper + Lower + Pedals', '_', [True, True]]
+		['Upper', 0, 'Upper', '_', [False, False, 59]],
+		['Upper + Lower', 1, 'Upper + Lower', '_', [True, False, 59]],
+		['Upper + Pedals', 2, 'Upper + Pedals', '_', [False, True, 59]],
+		['Upper + Lower + Pedals', 3, 'Upper + Lower + Pedals', '_', [True, True, 59]],
+		['Split Lower/Upper', 4, 'Split Lower/Upper', '_', [True, False, 56]],
+		['Split Pedals/Upper', 5, 'Split Pedals/Upper', '_', [False, True, 58]],
+		['Split Pedals/Lower/Upper', 6, 'Split Pedals/Lower/Upper', '_', [True, True, 57]]
 	]
 
 	bank_twmodels_list = [
@@ -206,15 +209,14 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.chan_names = {
 			str(midi_chan): 'Upper'
 		}
-		logging.info("Upper processor in chan %d", midi_chan)
+		logging.info("Upper manual processor in chan %d", midi_chan)
 		i = 0
 		self.processors[i].bank_name = "Upper"
 		self.processors[i].get_bank_list()
 		self.processors[i].set_bank(0, False)
 
 		# Extra processors
-		for j in range(2):
-			manual = ["Lower", "Pedals"][j]
+		for j, manual in enumerate(["Lower", "Pedals"]):
 			if self.manuals_config[4][j]:
 				i += 1
 				if len(self.processors) == i:
@@ -224,7 +226,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 							break
 						self.midi_chans[j + 1] = midi_chan
 						self.chan_names[str(midi_chan)] = manual
-						logging.info("%s Manual processor in chan %s", manual, midi_chan)
+						logging.info("%s manual processor in chan %s", manual, midi_chan)
 						chain_id = chain_manager.add_chain(None, midi_chan)
 						chain = chain_manager.get_chain(chain_id)
 						proc_id = chain_manager.get_available_processor_id()
@@ -253,6 +255,14 @@ class zynthian_engine_setbfree(zynthian_engine):
 		# Need to call autoconnect because engine starts later than chain/processor autorouting
 		zynautoconnect.request_midi_connect(True)
 		zynautoconnect.request_audio_connect()
+
+		# Load manuals configuration program
+		midi_prog = self.manuals_config[4][2]
+		if midi_prog and isinstance(midi_prog, int):
+			logging.debug("Loading manuals configuration program: {}".format(midi_prog))
+			self.state_manager.zynmidi.set_midi_prg(self.midi_chans[0], midi_prog)
+
+		# Load preset list for each manual and load preset 0
 		for processor in self.processors:
 			processor.load_preset_list()
 			processor.set_preset(0)
