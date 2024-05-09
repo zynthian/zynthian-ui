@@ -146,8 +146,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 			zynautoconnect.request_audio_connect()
 			logging.debug("Add part {} => {}".format(i, processor.jackname))
 		except Exception as e:
-			logging.error(f"Unable to add processor to fluidsynth engine - {e}")
-
+			logging.error(f"Unable to add processor to engine - {e}")
 
 	def remove_processor(self, processor):
 		super().remove_processor(processor)
@@ -337,15 +336,6 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# Specific functions
 	# ---------------------------------------------------------------------------
-
-	def get_free_parts(self):
-		free_parts = list(range(0,16))
-		for processor in self.processors:
-			try:
-				free_parts.remove(processor.part_i)
-			except:
-				pass
-		return free_parts
 
 	def load_soundfont(self, sf):
 		if sf not in self.soundfont_index:

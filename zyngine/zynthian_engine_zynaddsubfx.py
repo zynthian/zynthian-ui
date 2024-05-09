@@ -185,7 +185,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 			processor.refresh_controllers()
 			logging.debug("ADD processor => Part {} ({})".format(processor.part_i, self.jackname))
 		except Exception as e:
-			logging.error(f"Unable to add processor to zynadsubfx engine - {e}")
+			logging.error(f"Unable to add processor to engine - {e}")
 
 	def remove_processor(self, processor):
 		self.disable_part(processor.part_i)
@@ -271,16 +271,6 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 	# ---------------------------------------------------------------------------
 	# Specific functions
 	# ---------------------------------------------------------------------------
-
-	def get_free_parts(self):
-		free_parts = list(range(0, 16))
-		for processor in self.processors:
-			try:
-				free_parts.remove(processor.part_i)
-			except:
-				pass
-		#logging.debug("FREE PARTS => %s" % free_parts)
-		return free_parts
 
 	def enable_part(self, processor):
 		if self.osc_server and processor.part_i is not None:

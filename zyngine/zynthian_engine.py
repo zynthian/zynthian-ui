@@ -408,6 +408,15 @@ class zynthian_engine(zynthian_basic_engine):
 		zynautoconnect.remove_sidechain_ports(processor.jackname)
 		processor.jackname = None
 
+	def get_free_parts(self):
+		free_parts = list(range(0,16))
+		for processor in self.processors:
+			try:
+				free_parts.remove(processor.part_i)
+			except:
+				pass
+		return free_parts
+
 	def get_name(self, processor=None):
 		return self.name
 
