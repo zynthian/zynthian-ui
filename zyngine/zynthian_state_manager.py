@@ -964,17 +964,13 @@ class zynthian_state_manager:
 
                 zynautoconnect.pause()
                 if "chains" in state:
-                    self.chain_manager.set_state(state['chains'])
+                    if "engine_config" in state:
+                        engine_config = state["engine_config"]
+                    else:
+                        engine_config = None
+                    self.chain_manager.set_state(state['chains'], engine_config)
                 self.chain_manager.stop_unused_engines()
                 zynautoconnect.resume()
-
-                if "engine_config" in state:
-                    self.set_busy_details("processor engine config")
-                    for eid, engine_state in state["engine_config"].items():
-                        try:
-                            self.chain_manager.zyngines[eid].set_extended_config(engine_state)
-                        except Exception as e:
-                            logging.info("Failed to set extended engine state for %s: %s", eid, e)
 
                 self.zs3 = state["zs3"]
                 self.load_zs3("zs3-0")

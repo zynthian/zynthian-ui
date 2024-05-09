@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Engine (zynthian_engine_aeolus)
 #
 # zynthian_engine implementation for Aeolus
 #
 # Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -20,7 +20,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 import copy
 import json
@@ -35,9 +35,10 @@ from . import zynthian_engine
 from zyngine.zynthian_processor import zynthian_processor
 from zynconf import ServerPort
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Aeolus Engine Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_engine_aeolus(zynthian_engine):
 	"""
@@ -242,20 +243,20 @@ class zynthian_engine_aeolus(zynthian_engine):
 	_ctrls = []
 	_ctrl_screens = []
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Config variables
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
-	#TODO: Use paths from global config
+	# TODO: Use paths from global config
 	stops_fpath = "/zynthian/zynthian-data/aeolus/stops"
 	user_presets_fpath = "/zynthian/zynthian-my-data/presets/aeolus.json"
 	default_presets_fpath = "/zynthian/zynthian-data/presets/aeolus.json"
 
 	stop_cc_num = 98
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Initialization
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def __init__(self, state_manager=None):
 		super().__init__(state_manager)
@@ -274,7 +275,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.get_current_config()
 		self.load_presets()
 
-
 	def wait_for_ready(self, timeout=10):
 		"""Wait for aeolus to be ready
 		
@@ -291,7 +291,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 				return
 			timeout -= 0.25
 			sleep(0.25)
-
 
 	def start(self):
 		self.state_manager.start_busy("Aeolus")
@@ -324,6 +323,11 @@ class zynthian_engine_aeolus(zynthian_engine):
 				processor.refresh_controllers()
 
 				proc_i += 1
+
+		# Disable mixer strip for extra manuals
+		for i, processor in enumerate(self.processors):
+			if i:
+				chain_manager.get_chain(processor.chain_id).mixer_chan = None
 
 		# Select first chain so that preset selection is on "Grand manual"
 		chain_manager.set_active_chain_by_id(self.processors[0].chain_id)
@@ -361,7 +365,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.osc_end()
 		self.restart_flag = False
 
-
 	def get_current_config(self):
 		# Get current config ...
 		with open(f"{self.stops_fpath}/Aeolus/definition", 'r') as cfg_file:
@@ -377,7 +380,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 					self.current_temperament = int(parts[1])
 				except Exception as e:
 					self.current_temperament = None
-
 
 	def set_tuning(self):
 		"""Write fine tuning to config
@@ -396,7 +398,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.osc_server.send(self.osc_target, "/save")
 		return True
 
-
 	def get_path(self, processor):
 		path = self.name
 		if self.keyboard_config is None:
@@ -407,7 +408,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 			path = f"{self.get_name(processor)}/{self.temperament_names[self.temperament]}"
 		return path
 
-
 	# ---------------------------------------------------------------------------
 	# Processor Management
 	# ---------------------------------------------------------------------------
@@ -417,7 +417,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 		processor.jackname = self.jackname
 		processor.engine = self
 		processor.bank_info = ("General", 0, "General")
-
 
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
@@ -461,10 +460,9 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.osc_server.send(self.osc_target, "/store_midi_config", ("i", 0), *midi_config)
 		# Don't save - we configure MIDI for this session only
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Bank Managament
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def get_bank_list(self, processor=None):
 		"""Get list of bank_info structures
@@ -493,13 +491,12 @@ class zynthian_engine_aeolus(zynthian_engine):
 			processor.bank_info = res[current_sel]
 		return res
 
-
 	def set_bank(self, processor, bank_info):
 		"""Select a bank
 		
 		processor : Instance of engine (processor)
 		bank_info : Bank info structure [uri, index, name]
-        Returns - True if bank selected, None if more bank selection steps required or False on failure
+		Returns - True if bank selected, None if more bank selection steps required or False on failure
 		Before engine configured accepts keyboard layout or temperament
 		"""
 
@@ -516,19 +513,17 @@ class zynthian_engine_aeolus(zynthian_engine):
 			return None
 
 		self.state_manager.zynmidi.set_midi_bank_lsb(processor.get_midi_chan(), bank_info[1])
-
 		return True
 
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Preset Managament
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def get_preset_list(self, bank_info):
 		res = []
 		for index, preset_name in enumerate(self.presets):
 			res.append([preset_name, bank_info[0], preset_name, index])
 		return res
-
 
 	def all_stops_off(self, processor=None):
 		if processor == None:
@@ -539,11 +534,10 @@ class zynthian_engine_aeolus(zynthian_engine):
 			for zctrl in l.controllers_dict.values():
 				zctrl.set_value(0, True)
 
-
 	def set_preset(self, processor, preset_info, preload=False):
 		preset = self.presets[preset_info[2]]
 
-		#Update Controller Values
+		# Update Controller Values
 		for l in self.processors:
 			if preset_info[1] == "General" or l == processor:
 				for zctrl in l.controllers_dict.values():
@@ -568,7 +562,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 		with open(f"{self.user_presets_fpath}", "w") as file:
 			json.dump(self.presets, file)
 
-
 	def save_preset(self, bank_info, preset_name):
 		state = {}
 		for processor in self.processors:
@@ -579,7 +572,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.save_all_presets()
 		return preset_name
 
-
 	def delete_preset(self, bank_info, preset_info):
 		try:
 			self.presets.pop(preset_info[2])
@@ -588,7 +580,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.save_all_presets()
 		return len(self.presets)
 
-
 	def rename_preset(self, bank_info, preset_info, new_name):
 		try:
 			self.presets[new_name] = self.presets.pop(preset_info[2])
@@ -596,20 +587,16 @@ class zynthian_engine_aeolus(zynthian_engine):
 		except:
 			pass
 
-
 	def preset_exists(self, bank_info, preset_name):
 		return preset_name in self.presets
 
-
 	def is_preset_user(self, preset_info):
-		#TODO: Do we want some factory defaults?
+		# TODO: Do we want some factory defaults?
 		return True
 			
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# Controllers Managament
-	#----------------------------------------------------------------------------
-
+	# ----------------------------------------------------------------------------
 
 	def get_controllers_dict(self, processor):
 		self._ctrls = self.instrument[processor.division]['ctrls']
@@ -618,7 +605,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 			self._ctrls += self.audio_ctrls
 			self._ctrl_screens += self.audio_ctrl_screens
 		return super().get_controllers_dict(processor)
-
 
 	def send_controller_value(self, zctrl):
 		for c in self.swell_ctrls + self.common_ctrls + self.audio_ctrls:
@@ -635,12 +621,12 @@ class zynthian_engine_aeolus(zynthian_engine):
 		self.state_manager.zynmidi.set_midi_control(zctrl.midi_chan, self.stop_cc_num, int(v2, 2))
 		#logging.debug("Aeolus Stop ({}) => mm={}, group={}, button={})".format(val,mm,zctrl.graph_path[0],zctrl.graph_path[1]))
 
-	#--------------------------------------------------------------------------
+	# --------------------------------------------------------------------------
 	# Special
-	#--------------------------------------------------------------------------
+	# --------------------------------------------------------------------------
 
 	def load_presets(self):
-		#TODO: Ensure legacy presets are available
+		# TODO: Ensure legacy presets are available
 		# Get user presets
 		if file_exists(self.user_presets_fpath):
 			filename = self.user_presets_fpath
@@ -671,7 +657,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 			engine_state["divisions"].append(processor.division)
 		return engine_state
 
-
 	def set_extended_config(self, engine_state):
 		"""Set engine specific configuration
 		
@@ -683,10 +668,11 @@ class zynthian_engine_aeolus(zynthian_engine):
 		elif "tuning_temp" in engine_state:
 			# Legacy config
 			self.temperament = engine_state['tuning_temp'] #TODO: Retune if necessary
+
 		current_keyboard = self.keyboard_config
-		if "keyboard" in engine_state:
+		try:
 			self.keyboard_config = engine_state['keyboard']
-		else:
+		except:
 			# Legacy default is 4 keyboards
 			if self.keyboard_config != 15:
 				self.restart_flag = True
@@ -695,14 +681,10 @@ class zynthian_engine_aeolus(zynthian_engine):
 			self.restart_flag = True
 
 		for i, processor in enumerate(self.processors):
-			chain = self.state_manager.chain_manager.get_chain(processor.chain_id)
 			try:
 				processor.division = engine_state["divisions"][i]
 			except:
 				processor.division = list(self.instrument)[i]
-			if i:
-				chain.mixer_chan = None
-		
 
 	def get_name(self, processor=None):
 		try:
@@ -710,10 +692,9 @@ class zynthian_engine_aeolus(zynthian_engine):
 		except:
 			return self.name
 
-
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 	# OSC Managament
-	#----------------------------------------------------------------------------
+	# ----------------------------------------------------------------------------
 
 	def cb_osc_all(self, path, args, types, src):
 		if self.osc_server is None:
@@ -723,4 +704,4 @@ class zynthian_engine_aeolus(zynthian_engine):
 		if path == '/ready':
 			self.ready = True
 
-#******************************************************************************
+# ******************************************************************************

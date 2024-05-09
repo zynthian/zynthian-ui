@@ -738,7 +738,7 @@ class zynthian_chain_manager:
         else:
             return 1
 
-    def add_processor(self, chain_id, eng_code, parallel=False, slot=None, proc_id=None, post_fader=False, fast_refresh=True):
+    def add_processor(self, chain_id, eng_code, parallel=False, slot=None, proc_id=None, post_fader=False, fast_refresh=True, eng_config=None):
         """Add a processor to a chain
 
         chain : Chain ID
@@ -748,6 +748,7 @@ class zynthian_chain_manager:
         proc_id : Processor UID (Default: Use next available ID)
         post_fader : True to move the fader position
         fast_refresh : False to trigger slow autoconnect (Default: Fast autoconnect)
+        eng_config: Extended configuration for the engine (optional)
         Returns : processor object or None on failure
         """
 
@@ -779,7 +780,7 @@ class zynthian_chain_manager:
             # TODO: Fails to detect MIDI only chains in snapshots
             if chain.mixer_chan is None and processor.type != "MIDI Tool":
                 chain.mixer_chan = self.get_next_free_mixer_chan()
-            engine = self.start_engine(processor, eng_code)
+            engine = self.start_engine(processor, eng_code, eng_config)
             if engine:
                 chain.rebuild_graph()
                 # Update group chains
@@ -932,11 +933,12 @@ class zynthian_chain_manager:
     # Engine Management
     # ------------------------------------------------------------------------
 
-    def start_engine(self, processor, eng_code):
+    def start_engine(self, processor, eng_code, eng_config=None):
         """Starts or reuse an existing engine
 
         processor : processor owning engine
         eng_code : Engine short code
+        eng_config: Extended configuration (optional)
         Returns : engine object
         """
 
@@ -960,6 +962,10 @@ class zynthian_chain_manager:
             else:
                 eng_key = eng_code
                 zyngine = zynthian_engine_class(self.state_manager)
+
+            # Set extended configuration (optional)
+            if eng_config:
+                zyngine.set_extended_config(eng_config)
 
             self.zyngines[eng_key] = zyngine
             self.zyngine_counter += 1
@@ -1056,10 +1062,11 @@ class zynthian_chain_manager:
         #TODO: Remove superfluous parameters
         return state
 
-    def set_state(self, state):
+    def set_state(self, state, engine_config):
         """Create chains from state
 
         state : List of chain states
+        engine_config: Extended engine config
         Returns : True on success
         """
 
@@ -1079,11 +1086,17 @@ class zynthian_chain_manager:
                 for slot_state in chain_state["slots"]:
                     # slot_state is a dict of proc_id:proc_type for procs in this slot
                     for index, proc_id in enumerate(slot_state):
+                        eng_code = slot_state[proc_id]
+                        try:
+                            eng_config = engine_config[eng_code]
+                        except:
+                            eng_config = None
                         # Use index to identify first proc in slot (add in series) - others are added in parallel
                         if index:
-                            self.add_processor(chain_id, slot_state[proc_id], CHAIN_MODE_PARALLEL, proc_id=int(proc_id), fast_refresh=False)
+                            mode = CHAIN_MODE_PARALLEL
                         else:
-                            self.add_processor(chain_id, slot_state[proc_id], CHAIN_MODE_SERIES, proc_id=int(proc_id), fast_refresh=False)
+                            mode = CHAIN_MODE_SERIES
+                        self.add_processor(chain_id, eng_code, mode, proc_id=int(proc_id), fast_refresh=False, eng_config=eng_config)
             if "fader_pos" in chain_state:
                 self.chains[chain_id].fader_pos = chain_state["fader_pos"]
 

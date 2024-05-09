@@ -288,6 +288,11 @@ class zynthian_engine_setbfree(zynthian_engine):
 				self.processors[i].part_i = mchan
 				self.processors[i].refresh_controllers()
 
+		# Disable mixer strip for extra manuals
+		for i, processor in enumerate(self.processors):
+			if i:
+				chain_manager.get_chain(processor.chain_id).mixer_chan = None
+
 		# Start engine
 		logging.debug("STARTING SETBFREE!!")
 		self.generate_config_file()
@@ -336,10 +341,25 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	def add_processor(self, processor):
-		if len(self.processors) == 0:
+		n = len(self.processors)
+		if n == 0:
 			processor.part_i = 0
-		else:
-			processor.part_i = None
+		elif n == 1:
+			if self.manuals_config[4][0]:
+				processor.part_i = 1
+			elif self.manuals_config[4][1]:
+				processor.part_i = 2
+			else:
+				processor.part_i = None
+				logging.error("Manuals config don't allow creating extra processor(1)")
+				return
+		elif n == 2:
+			if self.manuals_config[4][1]:
+				processor.part_i = 2
+			else:
+				processor.part_i = None
+				logging.error("Manuals config don't allow creating extra processor(2)")
+				return
 		super().add_processor(processor)
 
 	def remove_processor(self, processor):
@@ -400,7 +420,10 @@ class zynthian_engine_setbfree(zynthian_engine):
 			if free_chans > 1:
 				return self.bank_manuals_list
 			elif free_chans > 0:
-				return self.bank_manuals_list[:3]
+				bank_list = copy.copy(self.bank_manuals_list)
+				del bank_list[3]
+				del bank_list[6]
+				return bank_list
 			else:
 				self.manuals_config = self.bank_manuals_list[0]
 				return self.bank_twmodels_list
@@ -616,10 +639,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 		try:
 			self.manuals_config = engine_state['manuals_config']
 			self.tonewheel_model = engine_state['tonewheel_model']
-			for i, processor in enumerate(self.processors):
-				if i:
-					self.state_manager.chain_manager.get_chain(processor.chain_id).mixer_chan = None
-
 		except Exception as e:
 			logging.error(f"Can't setup extended config => {e}")
 
