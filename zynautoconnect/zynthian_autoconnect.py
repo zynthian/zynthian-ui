@@ -647,12 +647,14 @@ def midi_autoconnect():
 				ports = jclient.get_ports(proc.get_jackname(True), is_midi=True, is_output=True)
 				required_routes["ZynMidiRouter:ctrl_in"].add(ports[0].name)
 				ctrl_fb_procs.append(proc)
-			except:
+				#logging.debug(f"Routed controller feedback from {proc.get_jackname(True)}")
+			except Exception as e:
+				#logging.error(f"Can't route controller feedback from {proc.get_name()} => {e}")
 				pass
 
 	# Remove from control feedback list those processors removed from chains
 	for i, proc in enumerate(ctrl_fb_procs):
-		if proc not in chain_manager.processors:
+		if proc.id not in chain_manager.processors:
 			del ctrl_fb_procs[i]
 
 	# Connect ZynMidiRouter:step_out to ZynthStep input

@@ -283,10 +283,11 @@ class zynthian_engine_setbfree(zynthian_engine):
 						chain.mixer_chan = None
 					except Exception as e:
 						logging.error("%s Manual processor can't be added! => %s", manual, e)
-			else:
-				mchan = self.manual_chans[j + 1]
-				self.processors[i].part_i = mchan
-				self.processors[i].refresh_controllers()
+				else:
+					mchan = self.manual_chans[j + 1]
+					self.processors[i].part_i = mchan
+					self.set_midi_chan(self.processors[i])
+					self.processors[i].refresh_controllers()
 
 		# Disable mixer strip for extra manuals
 		for i, processor in enumerate(self.processors):
@@ -351,27 +352,34 @@ class zynthian_engine_setbfree(zynthian_engine):
 				processor.part_i = 2
 			else:
 				processor.part_i = None
-				logging.error("Manuals config don't allow creating extra processor(1)")
+				logging.warning("Manuals config don't allow creating extra processor(1)")
 				return
 		elif n == 2:
 			if self.manuals_config[4][1]:
 				processor.part_i = 2
 			else:
 				processor.part_i = None
-				logging.error("Manuals config don't allow creating extra processor(2)")
+				logging.warning("Manuals config don't allow creating extra processor(2)")
 				return
+
+		# Disable mixer strip for extra manuals
+		if n > 0:
+			self.state_manager.chain_manager.get_chain(processor.chain_id).mixer_chan = None
+
+		self.set_midi_chan(processor)
 		super().add_processor(processor)
 
 	def remove_processor(self, processor):
 		try:
 			if processor.bank_name == "Upper":
-				pass
+				self.manuals_config = None
 			elif processor.bank_name == "Lower":
 				self.manuals_config[4][0] = False
 			elif processor.bank_name == "Pedals":
 				self.manuals_config[4][1] = False
 		except:
 			pass
+		processor.part_i = None
 		super().remove_processor(processor)
 
 	def get_name(self, processor=None):

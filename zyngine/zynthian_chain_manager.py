@@ -963,12 +963,12 @@ class zynthian_chain_manager:
                 eng_key = eng_code
                 zyngine = zynthian_engine_class(self.state_manager)
 
-            # Set extended configuration (optional)
-            if eng_config:
-                zyngine.set_extended_config(eng_config)
-
             self.zyngines[eng_key] = zyngine
             self.zyngine_counter += 1
+
+        # Set extended configuration (optional)
+        if eng_config:
+            zyngine.set_extended_config(eng_config)
 
         processor.set_engine(zyngine)
         return zyngine
@@ -1240,8 +1240,8 @@ class zynthian_chain_manager:
                     for zctrl in zctrls:
                         #logging.debug(f"CONTROLLER FEEDBACK {zctrl.symbol} ({proc.midi_chan}) => {cc_val}")
                         zctrl.midi_control_change(cc_val, send=False)
-            except:
-                pass
+            except Exception as e:
+                logging.error(e)
             return
 
         # Handle absolute CC binding
