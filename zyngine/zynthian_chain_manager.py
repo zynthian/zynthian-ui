@@ -1235,13 +1235,14 @@ class zynthian_chain_manager:
             #logging.debug(f"MIDI CONTROL FEEDBACK {midi_chan}, {cc_num} => {cc_val}")
             try:
                 for proc in zynautoconnect.ctrl_fb_procs:
-                    key = (proc.midi_chan << 16) | (cc_num << 8)
-                    zctrls = self.chan_midi_cc_binding[key]
-                    for zctrl in zctrls:
-                        #logging.debug(f"CONTROLLER FEEDBACK {zctrl.symbol} ({proc.midi_chan}) => {cc_val}")
-                        zctrl.midi_control_change(cc_val, send=False)
+                    if proc.part_i == midi_chan:
+                        key = (proc.chain_id << 16) | (cc_num << 8)
+                        zctrls = self.chain_midi_cc_binding[key]
+                        for zctrl in zctrls:
+                            #logging.debug(f"CONTROLLER FEEDBACK {zctrl.symbol} ({midi_chan}) => {cc_val}")
+                            zctrl.midi_control_change(cc_val, send=False)
             except Exception as e:
-                logging.error(e)
+                logging.warning(f"Can't manage control feedback for CH{midi_chan}:CC{cc_num} => {e}")
             return
 
         # Handle absolute CC binding

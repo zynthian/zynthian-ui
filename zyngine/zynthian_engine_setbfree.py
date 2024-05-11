@@ -45,13 +45,13 @@ class zynthian_engine_setbfree(zynthian_engine):
 	# ---------------------------------------------------------------------------
 
 	bank_manuals_list = [
-		['Upper', 0, 'Upper', '_', [False, False, 59]],
-		['Upper + Lower', 1, 'Upper + Lower', '_', [True, False, 59]],
-		['Upper + Pedals', 2, 'Upper + Pedals', '_', [False, True, 59]],
-		['Upper + Lower + Pedals', 3, 'Upper + Lower + Pedals', '_', [True, True, 59]],
-		['Split Lower/Upper', 4, 'Split Lower/Upper', '_', [True, False, 56]],
-		['Split Pedals/Upper', 5, 'Split Pedals/Upper', '_', [False, True, 58]],
-		['Split Pedals/Lower/Upper', 6, 'Split Pedals/Lower/Upper', '_', [True, True, 57]]
+		['Upper', 0, 'Upper', '_', {'manuals': [True, False, False], 'keyranges': None, 'transpose': None}],
+		['Upper + Lower', 1, 'Upper + Lower', '_', {'manuals': [True, True, False], 'keyranges': None, 'transpose': None}],
+		['Upper + Pedals', 2, 'Upper + Pedals', '_', {'manuals': [True, False, True], 'keyranges': None, 'transpose': None}],
+		['Upper + Lower + Pedals', 3, 'Upper + Lower + Pedals', '_', {'manuals': [True, True, True], 'keyranges': None, 'transpose': None}],
+		['Split Lower/Upper', 4, 'Split Lower/Upper', '_', {'manuals': [True, True, False], 'keyranges': [[58, 127], [0, 57], None], 'transpose': None}], #56
+		['Split Pedals/Upper', 5, 'Split Pedals/Upper', '_', {'manuals': [True, False, True], 'keyranges': [[54, 127], None, [0, 53]], 'transpose': [0, 0, -1]}], #58
+		['Split Pedals/Lower/Upper', 6, 'Split Pedals/Lower/Upper', '_', {'manuals': [True, True, True], 'keyranges': [[66, 127], [48, 65], [0, 47]], 'transpose': [0, 0, -1]}], #57
 	]
 
 	bank_twmodels_list = [
@@ -114,7 +114,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 			['vibrato routing', 95, 'off', 'off|lower|upper|both'],
 			# ['vibrato selector', 92, 'c3', 'v1|v2|v3|c1|c2|c3'],
 			['vibrato selector', 92, 'c3', [['v1', 'v2', 'v3', 'c1', 'c2', 'c3'], [0, 23, 46, 69, 92, 115]]],
-			# ['percussion', 66, 'off' ,'off|on'],
+			['percussion_feedback', 66, 'off', 'off|on'],
 			['percussion', 80, 'off', 'off|on'],
 			['percussion volume', 81, 'soft', 'soft|hard'],
 			['percussion decay', 82, 'slow', 'slow|fast'],
@@ -125,6 +125,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 			['overdrive outputgain', 22, 10, 127]
 		],
 		[
+			['rotary speed', 1, 'off', [['slow', 'off', 'fast'], [0, 43, 86]]],
 			['DB 16', 70, '8', drawbar_ticks],
 			['DB 5 1/3', 71, '8', drawbar_ticks],
 			['DB 8', 72, '8', drawbar_ticks],
@@ -136,6 +137,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 			['DB 1', 78, '0', drawbar_ticks]
 		],
 		[
+			['rotary speed', 1, 'off', [['slow', 'off', 'fast'], [0, 43, 86]]],
 			['DB 16', 70, '8', drawbar_ticks],
 			['DB 5 1/3', 71, '8', drawbar_ticks],
 			['DB 8', 72, '8', drawbar_ticks],
@@ -225,6 +227,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 		self.options['replace'] = False
 		self.options['ctrl_fb'] = True
 
+		self.manuals_split_config = None
 		self.manuals_config = None
 		self.tonewheel_model = None
 		self.show_favs_bank = False
@@ -249,50 +252,58 @@ class zynthian_engine_setbfree(zynthian_engine):
 		mchan = self.manual_chans[i]
 		self.processors[i].part_i = mchan
 		self.set_midi_chan(self.processors[i])
+		self.configure_manual_split(self.processors[i])
 		logging.info("Upper manual processor in chan %d", mchan)
-		self.processors[i].bank_name = "Upper"
 		self.processors[i].get_bank_list()
 		self.processors[i].set_bank(0, False)
 
 		# Extra manual processors: lower & pedals
 		for j, manual in enumerate(["Lower", "Pedals"]):
-			if self.manuals_config[4][j]:
+			if self.manuals_config[j + 1]:
 				i += 1
+				mchan = self.manual_chans[j + 1]
 				if len(self.processors) == i:
 					try:
-						midi_chan = chain_manager.get_next_free_midi_chan(midi_chan)
-						if midi_chan is None:
-							break
+						# Configure chain's MIDI channel
+						try:
+							# Same MIDI channel for all manuals (splitted config)
+							keyranges = self.manuals_split_config['keyranges'][mchan]
+						except:
+							# Try to assign different MIDI channels to each manual
+							free_midi_chan = chain_manager.get_next_free_midi_chan(midi_chan)
+							if free_midi_chan is not None:
+								midi_chan = free_midi_chan
+						# Create chain & processor
 						chain_id = chain_manager.add_chain(None, midi_chan)
 						chain = chain_manager.get_chain(chain_id)
 						proc_id = chain_manager.get_available_processor_id()
 						processor = zynthian_processor("BF", chain_manager.engine_info["BF"], proc_id)
+						processor.engine = self
+						processor.part_i = mchan
 						chain.insert_processor(processor)
 						chain_manager.processors[proc_id] = processor
 						self.processors.append(processor)
-						mchan = self.manual_chans[j + 1]
-						self.processors[i].part_i = mchan
-						self.set_midi_chan(self.processors[i])
+						# Configure processor
+						#self.set_midi_chan(self.processors[i]) # Called when inserting processor in chain
+						self.processors[i].refresh_controllers()
+						self.configure_manual_split(self.processors[i])
 						logging.info("%s manual processor in chan %s", manual, mchan)
-						self.processors[i].bank_name = manual
-						self.processors[i].engine = self
 						self.processors[i].get_bank_list()
 						self.processors[i].set_bank(0, False)
-						self.processors[i].refresh_controllers()
 						chain.audio_out = []
 						chain.mixer_chan = None
 					except Exception as e:
 						logging.error("%s Manual processor can't be added! => %s", manual, e)
 				else:
-					mchan = self.manual_chans[j + 1]
+					chain_id = self.processors[i].chain_id
+					chain = chain_manager.get_chain(chain_id)
 					self.processors[i].part_i = mchan
 					self.set_midi_chan(self.processors[i])
 					self.processors[i].refresh_controllers()
+					chain.audio_out = []
+					chain.mixer_chan = None
 
-		# Disable mixer strip for extra manuals
-		for i, processor in enumerate(self.processors):
-			if i:
-				chain_manager.get_chain(processor.chain_id).mixer_chan = None
+		self.manuals_split_config = None
 
 		# Start engine
 		logging.debug("STARTING SETBFREE!!")
@@ -301,12 +312,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 		# Need to call autoconnect because engine starts later than chain/processor autorouting
 		zynautoconnect.request_midi_connect(True)
 		zynautoconnect.request_audio_connect()
-
-		# Load manuals configuration program
-		midi_prog = self.manuals_config[4][2]
-		if midi_prog and isinstance(midi_prog, int):
-			logging.debug("Loading manuals configuration program: {}".format(midi_prog))
-			self.state_manager.zynmidi.set_midi_prg(self.manual_chans[0], midi_prog)
 
 		# Load preset list for each manual and load preset 0
 		for processor in self.processors:
@@ -337,6 +342,28 @@ class zynthian_engine_setbfree(zynthian_engine):
 			with open(self.config_autogen_fpath, 'w+') as cfg_file:
 				cfg_file.write(cfg_data)
 
+	def configure_manual_split(self, processor):
+		# Configure splits if needed (only when starting the engine from scratch!)
+		res = False
+		if self.manuals_split_config:
+			part_i = processor.part_i
+			zmop_index = processor.chain.zmop_index
+			try:
+				keyranges = self.manuals_split_config['keyranges']
+				if keyranges and keyranges[part_i]:
+					lib_zyncore.zmop_set_note_low(zmop_index, keyranges[part_i][0])
+					lib_zyncore.zmop_set_note_high(zmop_index, keyranges[part_i][1])
+					res = True
+			except Exception as e:
+				logging.error(f"Can't configure keyrange for manual {part_i}: {e}")
+			try:
+				transpose = self.manuals_split_config['transpose']
+				if transpose:
+					lib_zyncore.zmop_set_transpose_octave(zmop_index, transpose[part_i])
+			except Exception as e:
+				logging.error(f"Can't configure octave transpose for manual {part_i}: {e}")
+		return res
+
 	# ---------------------------------------------------------------------------
 	# Processor Management
 	# ---------------------------------------------------------------------------
@@ -344,22 +371,31 @@ class zynthian_engine_setbfree(zynthian_engine):
 	def add_processor(self, processor):
 		n = len(self.processors)
 		if n == 0:
-			processor.part_i = 0
-		elif n == 1:
-			if self.manuals_config[4][0]:
+			if self.manuals_config is None or self.manuals_config[0]:
+				processor.part_i = 0
+			elif self.manuals_config[1]:
 				processor.part_i = 1
-			elif self.manuals_config[4][1]:
+			elif self.manuals_config[2]:
 				processor.part_i = 2
 			else:
 				processor.part_i = None
-				logging.warning("Manuals config don't allow creating extra processor(1)")
+				logging.warning("Manuals config don't allow creating processor(0)")
+				return
+		elif n == 1:
+			if self.manuals_config[1]:
+				processor.part_i = 1
+			elif self.manuals_config[2]:
+				processor.part_i = 2
+			else:
+				processor.part_i = None
+				logging.warning("Manuals config don't allow creating processor(1)")
 				return
 		elif n == 2:
-			if self.manuals_config[4][1]:
+			if self.manuals_config[2]:
 				processor.part_i = 2
 			else:
 				processor.part_i = None
-				logging.warning("Manuals config don't allow creating extra processor(2)")
+				logging.warning("Manuals config don't allow creating processor(2)")
 				return
 
 		# Disable mixer strip for extra manuals
@@ -372,11 +408,11 @@ class zynthian_engine_setbfree(zynthian_engine):
 	def remove_processor(self, processor):
 		try:
 			if processor.bank_name == "Upper":
-				self.manuals_config = None
+				self.manuals_config[0] = False
 			elif processor.bank_name == "Lower":
-				self.manuals_config[4][0] = False
+				self.manuals_config[1] = False
 			elif processor.bank_name == "Pedals":
-				self.manuals_config[4][1] = False
+				self.manuals_config[2] = False
 		except:
 			pass
 		processor.part_i = None
@@ -430,27 +466,29 @@ class zynthian_engine_setbfree(zynthian_engine):
 			elif free_chans > 0:
 				bank_list = copy.copy(self.bank_manuals_list)
 				del bank_list[3]
-				del bank_list[6]
+				#del bank_list[6]
 				return bank_list
 			else:
-				self.manuals_config = self.bank_manuals_list[0]
+				self.manuals_split_config = self.bank_manuals_list[0]
+				self.manuals_config = self.manuals_split_config['manuals']
 				return self.bank_twmodels_list
 		elif not self.tonewheel_model:
 			return self.bank_twmodels_list
 		else:
 			#self.show_favs_bank = True
-			if processor.bank_name == "Upper":
+			if processor.part_i == 0:
 				return [[self.base_dir + "/pgm-banks/upper/most_popular.pgm", 0, "Upper", "_"]]
-			elif processor.bank_name == "Lower":
+			elif processor.part_i == 1:
 				return [[self.base_dir + "/pgm-banks/lower/lower_voices.pgm", 0, "Lower", "_"]]
-			elif processor.bank_name == "Pedals":
+			elif processor.part_i == 2:
 				return [[self.base_dir + "/pgm-banks/pedals/pedals.pgm", 0, "Pedals", "_"]]
 
 		#return self.get_filelist(self.get_bank_dir(processor), "pgm")
 
 	def set_bank(self, processor, bank):
 		if not self.manuals_config:
-			self.manuals_config = bank
+			self.manuals_split_config = bank[4]
+			self.manuals_config = bank[4]['manuals']
 			self.processors[0].reset_bank()
 			return None
 
@@ -471,11 +509,9 @@ class zynthian_engine_setbfree(zynthian_engine):
 		return self.load_program_list(bank[0])
 
 	def set_preset(self, processor, preset, preload=False):
-		if super().set_preset(processor, preset):
-			self.update_controller_values(processor, preset)
-			return True
-		else:
-			return False
+		self.state_manager.zynmidi.set_midi_prg(processor.part_i, preset[1][2])
+		self.update_controller_values(processor, preset)
+		return True
 
 	def cmp_presets(self, preset1, preset2):
 		try:
