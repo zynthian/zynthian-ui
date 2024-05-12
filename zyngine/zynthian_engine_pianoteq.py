@@ -255,15 +255,13 @@ def fix_pianoteq_config(samplerate):
 		info = get_pianoteq_binary_info()
 
 		internal_sr = samplerate
-		while internal_sr > 24000:
-			internal_sr = internal_sr / 2
+		if int(os.environ.get('ZYNTHIAN_PIANOTEQ_LIMIT_RATE', "1")):
+			while internal_sr > 24000:
+				internal_sr = internal_sr / 2
 
 		try:
 			tree = ElementTree.parse(PIANOTEQ_CONFIG_FILE)
 			root = tree.getroot()
-			audio_setup_node = None
-			midi_setup_node = None
-			crash_node = None
 			filter_nodes = []
 			audio_setup_node = None
 			midi_setup_node = None
