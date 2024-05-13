@@ -178,6 +178,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
             else:
                 self.zyngui.state_manager.start_busy("trust_ble", f"Trusting Bluetooth device\n{addr}")
                 check_output(['bluetoothctl', 'trust', addr], encoding='utf-8', timeout=1)
+                check_output(['bluetoothctl', 'pair', addr], encoding='utf-8', timeout=1)
                 check_output(['bluetoothctl', 'connect', addr], encoding='utf-8', timeout=5)
                 self.ble_devices[addr][2] = True
         except Exception as e:

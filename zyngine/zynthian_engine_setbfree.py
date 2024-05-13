@@ -24,6 +24,7 @@
 
 import re
 import logging
+import copy
 
 from zyncoder.zyncore import lib_zyncore
 from . import zynthian_engine

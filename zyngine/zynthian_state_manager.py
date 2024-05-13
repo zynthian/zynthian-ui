@@ -2161,6 +2161,10 @@ class zynthian_state_manager:
         logging.info("STARTING Bluetooth")
         try:
             check_output("systemctl start bluetooth", shell=True)
+            sleep(1)
+            check_output("bluetoothctl power on", shell=True)
+            check_output("bluetoothctl agent off", shell=True)
+            check_output("bluetoothctl agent NoInputNoOutput", shell=True)
             zynthian_gui_config.bluetooth_enabled = 1
             # Update MIDI profile
             if save_config:
@@ -2181,6 +2185,7 @@ class zynthian_state_manager:
         self.start_busy("stop_bluetooth", "stopping Bluetooth")
         logging.info("STOPPING bluetooth")
         try:
+            check_output("bluetoothctl power off", shell=True)
             check_output("systemctl stop bluetooth", shell=True)
             zynthian_gui_config.bluetooth_enabled = 0
             # Update MIDI profile
