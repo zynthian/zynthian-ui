@@ -1513,6 +1513,14 @@ class zynthian_gui:
 			if i == 2 and t == 'S':
 				self.zynswitch_short(i)
 				return
+		elif self.current_screen == "pattern_editor":
+			if i == 2:
+				if t == 'S':
+					self.screens["pattern_editor"].toggle_grid_scale()
+					return
+				elif t == 'B':
+					self.screens["pattern_editor"].reset_grid_scale()
+					return
 		if i == 3:
 			if t == 'S':
 				self.zynswitch_short(i)
