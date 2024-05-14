@@ -254,10 +254,28 @@ def fix_pianoteq_config(samplerate):
 	if os.path.isfile(PIANOTEQ_CONFIG_FILE):
 		info = get_pianoteq_binary_info()
 
+		try:
+			rate_limit_flag = int(os.environ.get('ZYNTHIAN_PIANOTEQ_LIMIT_RATE', "1"))
+		except:
+			logging.error("Bad config value for sample rate limit flag")
+			rate_limit_flag = 1
+
 		internal_sr = samplerate
-		if int(os.environ.get('ZYNTHIAN_PIANOTEQ_LIMIT_RATE', "1")):
+		if rate_limit_flag:
 			while internal_sr > 24000:
 				internal_sr = internal_sr / 2
+
+		try:
+			voice_limit = int(os.environ.get('ZYNTHIAN_PIANOTEQ_VOICE_LIMIT', "32"))
+		except:
+			logging.error("Bad config value for voice limit")
+			voice_limit = 32
+
+		try:
+			cpu_overload_detection = int(os.environ.get('ZYNTHIAN_PIANOTEQ_CPU_OVERLOAD_DETECTION', "1"))
+		except:
+			logging.error("Bad config value for CPU overload detection flag")
+			cpu_overload_detection = 1
 
 		try:
 			tree = ElementTree.parse(PIANOTEQ_CONFIG_FILE)
@@ -270,9 +288,11 @@ def fix_pianoteq_config(samplerate):
 				if xml_value.attrib['name'] == 'engine_rate':
 					xml_value.set('val', str(internal_sr))
 				elif xml_value.attrib['name'] == 'voices':
-					xml_value.set('val', str(32))
+					xml_value.set('val', str(voice_limit))
 				elif xml_value.attrib['name'] == 'multicore':
 					xml_value.set('val', info['multicore'])
+				elif xml_value.attrib['name'] == 'cpu_overload_detection':
+					xml_value.set('val', str(cpu_overload_detection))
 				elif xml_value.attrib['name'] == 'midiArchiveEnabled':
 					xml_value.set('val', '0')
 				elif xml_value.attrib['name'] == 'audio-setup':
