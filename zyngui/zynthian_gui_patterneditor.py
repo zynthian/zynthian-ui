@@ -251,10 +251,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		except:
 			logging.error(f"Couldn't set active chain to channel {self.channel}.")
 
-		zoom = self.zynseq.libseq.getVerticalZoom()
-		if zoom != self.vzoom:
-			self.set_vzoom(zoom)
-
 		return True
 
 	# Function to enable note duration/velocity direct edit mode
@@ -291,12 +287,12 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		extra_options = not zynthian_gui_config.check_wiring_layout(["Z2", "V5"])
 
 		# Global Options
+		options['Zoom grid'] = 'Zoom grid'
 		if extra_options:
 			options['Tempo'] = 'Tempo'
 		if not zynthian_gui_config.check_wiring_layout(["Z2"]):
 			options['Arranger'] = 'Arranger'
 		options['Beats per Bar ({})'.format(self.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
-		options['Vertical zoom ({})'.format(self.vzoom)] = 'Vertical zoom'
 
 		# Pattern Options
 		options['> PATTERN OPTIONS'] = None
@@ -348,14 +344,14 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		return self.keymap[row]["note"]
 
 	def menu_cb(self, option, params):
-		if params == 'Tempo':
+		if params == 'Zoom grid':
+			self.toggle_grid_scale()
+		elif params == 'Tempo':
 			self.zyngui.show_screen('tempo')
 		elif params == 'Arranger':
 			self.zyngui.show_screen('arranger')
 		elif params == 'Beats per bar':
 			self.enable_param_editor(self, 'bpb', {'name': 'Beats per bar', 'value_min': 1, 'value_max': 64, 'value_default': 4, 'value': self.zynseq.libseq.getBeatsPerBar()})
-		elif params == 'Vertical zoom':
-			self.enable_param_editor(self, 'vzoom', {'name': 'Vertical zoom', 'value_min': 1, 'value_max': 127, 'value_default': 16, 'value': self.vzoom})
 
 		elif params == 'Beats in pattern':
 			self.enable_param_editor(self, 'bip', {'name': 'Beats in pattern', 'value_min': 1, 'value_max': 64, 'value_default': 4, 'value': self.zynseq.libseq.getBeatsInPattern()}, self.assert_beats_in_pattern)
@@ -436,8 +432,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol == 'tempo':
 			self.zynseq.libseq.setTempo(zctrl.value)
-		elif zctrl.symbol == 'vzoom':
-			self.set_vzoom(zctrl.value)
 		elif zctrl.symbol == 'bpb':
 			self.zynseq.libseq.setBeatsPerBar(zctrl.value)
 		elif zctrl.symbol == 'swing_amount':
@@ -545,23 +539,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			if STEPS_PER_BEAT[index] >= steps_per_beat:
 				return index
 		return index
-
-	# Function to set vertical zoom
-	def set_vzoom(self, value):
-		self.vzoom = value
-		self.zynseq.libseq.setVerticalZoom(value)
-		self.update_geometry()
-		self.redraw_pending = 4
-		self.select_cell()
-		self.set_keymap_offset()
-
-	def set_hzoom(self, value):
-		self.hzoom = value
-		#self.zynseq.libseq.setHorizontalZoom(value)
-		self.update_geometry()
-		self.redraw_pending = 4
-		self.select_cell()
-		self.set_step_offset()
 
 	# Function to get list of scales
 	# returns: List of available scales
@@ -911,13 +888,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.drawing = True
 		redraw_pending = self.redraw_pending
 		self.redraw_pending = 0
-		if len(self.cells) != self.vzoom * self.n_steps:
-			redraw_pending = 4
+
 		if self.n_steps == 0:
 			self.drawing = False
 			return  # TODO: Should we clear grid?
-		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize_grid)
-		if redraw_pending == 4:
+
+		if len(self.cells) != len(self.keymap) * self.n_steps:
+			redraw_pending = 4
 			self.grid_canvas.delete(tkinter.ALL)
 			self.draw_pianoroll()
 			self.cells = [None] * len(self.keymap) * self.n_steps
@@ -942,6 +919,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			else:
 				row_min = self.selected_cell[1]
 				row_max = self.selected_cell[1]
+
+			font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize_grid)
 			for row in range(row_min, row_max):
 				# Create last note labels in grid
 				self.grid_canvas.create_text(self.total_width - self.select_thickness, int(self.row_height * (row - 0.5)), state="hidden", tags=(f"lastnotetext{row}", "lastnotetext", "gridcell"), font=font, anchor="e")
@@ -1280,8 +1259,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle MIDI notes (only used to refresh screen - actual MIDI input handled by lib)
 	def midi_note(self, note):
-		if note >= self.keymap_offset and note < self.keymap_offset + self.vzoom:
-			self.rows_pending.put_nowait(note)
+		self.rows_pending.put_nowait(note)
 
 	def set_edit_title(self):
 		step = self.selected_cell[0]
@@ -1518,8 +1496,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def toggle_grid_scale(self):
 		if self.edit_mode == EDIT_MODE_NONE:
 			self.edit_mode = EDIT_MODE_SCALE
+			self.set_title("Zoom grid", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
 		elif self.edit_mode == EDIT_MODE_SCALE:
 			self.edit_mode = EDIT_MODE_NONE
+			self.set_title("Pattern {}".format(self.pattern), zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
+
 
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
