@@ -49,11 +49,11 @@ from zynlibs.zynseq import zynseq
 # Local constants
 SELECT_BORDER		= zynthian_gui_config.color_on
 PLAYHEAD_CURSOR		= zynthian_gui_config.color_on
-CANVAS_BACKGROUND	= zynthian_gui_config.color_panel_bg
-CELL_BACKGROUND		= zynthian_gui_config.color_panel_bd
-CELL_FOREGROUND		= zynthian_gui_config.color_panel_tx
-GRID_LINE			= zynthian_gui_config.color_tx_off
-PLAYHEAD_LINE		= zynthian_gui_config.color_variant(GRID_LINE, -40)
+CANVAS_BACKGROUND	= zynthian_gui_config.color_panel_bd
+GRID_LINE_WEAK		= zynthian_gui_config.color_panel_bg
+GRID_LINE_STRONG	= zynthian_gui_config.color_tx_off
+PLAYHEAD_BACKGROUND	= zynthian_gui_config.color_variant(zynthian_gui_config.color_panel_bd, 40)
+PLAYHEAD_LINE 		= zynthian_gui_config.color_tx_off
 PLAYHEAD_HEIGHT		= 12
 CONFIG_ROOT			= "/zynthian/zynthian-data/zynseq"
 
@@ -158,7 +158,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.velocity_canvas = tkinter.Canvas(self.main_frame,
 			width=self.piano_roll_width,
 			height=PLAYHEAD_HEIGHT,
-			bg=CELL_BACKGROUND,
+			bg=PLAYHEAD_BACKGROUND,
 			bd=0,
 			highlightthickness=0)
 		self.velocity_canvas.create_rectangle(0, 0, self.piano_roll_width * self.velocity / 127, PLAYHEAD_HEIGHT, fill='yellow', tags="velocityIndicator", width=0)
@@ -184,7 +184,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			width=self.grid_width,
 			height=PLAYHEAD_HEIGHT,
 			scrollregion=(0, 0, self.grid_width, PLAYHEAD_HEIGHT),
-			bg=CANVAS_BACKGROUND,
+			bg=PLAYHEAD_BACKGROUND,
 			bd=0,
 			highlightthickness=0)
 		self.play_canvas.create_rectangle(0, 0, self.step_width, PLAYHEAD_HEIGHT,
@@ -859,6 +859,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			velocity_colour += 70
 			duration = self.zynseq.libseq.getNoteDuration(step, note)
 		else:
+			return
 			velocity_colour = 30 * int(white)
 			duration = 1.0
 		fill_colour = f"#{velocity_colour:02x}{velocity_colour:02x}{velocity_colour:02x}"
@@ -913,19 +914,22 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.grid_canvas.delete("gridline")
 			self.play_canvas.delete("beatnum")
 			if self.n_steps_beat:
-				for step in range(0, self.n_steps + 1, self.n_steps_beat):
-					self.grid_canvas.create_line(step * self.step_width, 0, step * self.step_width, 128 * self.row_height - 1, fill=GRID_LINE, tags="gridline")
-					if step < self.n_steps:
+				lh = 128 * self.row_height - 1
+				th = int(0.7 * PLAYHEAD_HEIGHT)
+				for step in range(0, self.n_steps + 1):
+					xpos = step * self.step_width
+					if step % self.n_steps_beat == 0:
+						self.grid_canvas.create_line(xpos, 0, xpos, lh, fill=GRID_LINE_STRONG, tags="gridline")
 						beatnum = 1 + step // self.n_steps_beat
 						if beatnum == 1:
 							anchor = "nw"
 						else:
 							anchor = "n"
-						self.play_canvas.create_text((step * self.step_width, -2), text=str(beatnum), font=bnum_font, anchor=anchor, fill=GRID_LINE, tags="beatnum")
-				lh = int(0.7 * PLAYHEAD_HEIGHT)
-				for step in range(1, self.n_steps):
-					if step % self.n_steps_beat != 0:
-						self.play_canvas.create_line(step * self.step_width, 0, step * self.step_width, lh, fill=PLAYHEAD_LINE, tags="beatnum")
+						self.play_canvas.create_text((xpos, -2), text=str(beatnum), font=bnum_font, anchor=anchor, fill=GRID_LINE_STRONG, tags="beatnum")
+
+					else:
+						self.grid_canvas.create_line(xpos, 0, xpos, lh, fill=GRID_LINE_WEAK, tags="gridline")
+						self.play_canvas.create_line(xpos, 0, xpos, th, fill=PLAYHEAD_LINE, tags="beatnum")
 
 		if redraw_pending > 1:
 			# Delete existing note names from piano roll
@@ -959,10 +963,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					fill = CANVAS_BACKGROUND
 				self.piano_roll.itemconfig(id, fill=colour)
 				#name = str(row)
+				ypos = self.total_height - row * self.row_height
 				if name:
-					self.piano_roll.create_text((2, self.total_height - self.row_height * (row + 0.5)), text=name, font=grid_font, anchor="w", fill=fill, tags="notename")
+					self.piano_roll.create_text((2, ypos - 0.5 * self.row_height), text=name, font=grid_font, anchor="w", fill=fill, tags="notename")
 				if self.keymap[row]['note'] % 12 == self.zynseq.libseq.getTonic():
-					self.grid_canvas.create_line(0, self.total_height - row * self.row_height, self.total_width, self.total_height - row * self.row_height, fill=GRID_LINE, tags=("gridline"))
+					self.grid_canvas.create_line(0, ypos, self.total_width, ypos, fill=GRID_LINE_STRONG, tags="gridline")
+				else:
+					self.grid_canvas.create_line(0, ypos, self.total_width, ypos, fill=GRID_LINE_WEAK, tags="gridline")
 				# Draw row of note cells
 				self.draw_row(row, (colour == "white"))
 
