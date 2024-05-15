@@ -858,14 +858,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if velocity_colour:
 			velocity_colour += 70
 			duration = self.zynseq.libseq.getNoteDuration(step, note)
+			fill_colour = f"#{velocity_colour:02x}{velocity_colour:02x}{velocity_colour:02x}"
 		else:
+			self.grid_canvas.delete(cell)
 			return
-			velocity_colour = 30 * int(white)
-			duration = 1.0
-		fill_colour = f"#{velocity_colour:02x}{velocity_colour:02x}{velocity_colour:02x}"
-
-		if not duration:
-			duration = 1.0
 
 		coord = self.get_cell(step, row, duration)
 		if white:
