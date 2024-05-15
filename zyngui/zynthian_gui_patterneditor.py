@@ -53,7 +53,7 @@ CANVAS_BACKGROUND	= zynthian_gui_config.color_panel_bg
 CELL_BACKGROUND		= zynthian_gui_config.color_panel_bd
 CELL_FOREGROUND		= zynthian_gui_config.color_panel_tx
 GRID_LINE			= zynthian_gui_config.color_tx_off
-PLAYHEAD_HEIGHT		= 5
+PLAYHEAD_HEIGHT		= 12
 CONFIG_ROOT			= "/zynthian/zynthian-data/zynseq"
 
 DEFAULT_VZOOM		= 16
@@ -181,6 +181,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.play_canvas = tkinter.Canvas(self.main_frame,
 			width=self.grid_width,
 			height=PLAYHEAD_HEIGHT,
+			scrollregion=(0, 0, self.grid_width, PLAYHEAD_HEIGHT),
 			bg=CANVAS_BACKGROUND,
 			bd=0,
 			highlightthickness=0)
@@ -287,7 +288,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		extra_options = not zynthian_gui_config.check_wiring_layout(["Z2", "V5"])
 
 		# Global Options
-		options['Zoom grid'] = 'Zoom grid'
+		options['Grid zoom'] = 'Grid zoom'
 		if extra_options:
 			options['Tempo'] = 'Tempo'
 		if not zynthian_gui_config.check_wiring_layout(["Z2"]):
@@ -344,7 +345,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		return self.keymap[row]["note"]
 
 	def menu_cb(self, option, params):
-		if params == 'Zoom grid':
+		if params == 'Grid zoom':
 			self.toggle_grid_scale()
 		elif params == 'Tempo':
 			self.zyngui.show_screen('tempo')
@@ -900,14 +901,25 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.cells = [None] * len(self.keymap) * self.n_steps
 			self.play_canvas.coords("playCursor", 1 + self.playhead * self.step_width, 0, 1 + self.step_width * (self.playhead + 1), PLAYHEAD_HEIGHT)
 
+		grid_font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize_grid)
+		barnum_font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=PLAYHEAD_HEIGHT-2)
+
 		# Draw cells of grid
 		#self.grid_canvas.itemconfig("gridcell", fill="black")
 		if redraw_pending > 2:
 			# Redraw gridlines
 			self.grid_canvas.delete("gridline")
+			self.play_canvas.delete("barnum")
 			if self.n_steps_beat:
 				for step in range(0, self.n_steps + 1, self.n_steps_beat):
 					self.grid_canvas.create_line(step * self.step_width, 0, step * self.step_width, 128 * self.row_height - 1, fill=GRID_LINE, tags=("gridline"))
+					if step > 0:
+						barnum = step // self.n_steps_beat
+						if step == self.n_steps:
+							anchor = "ne"
+						else:
+							anchor = "n"
+						self.play_canvas.create_text((step * self.step_width, -2), text=str(barnum), font=barnum_font, anchor=anchor, fill=GRID_LINE, tags="barnum")
 
 		if redraw_pending > 1:
 			# Delete existing note names from piano roll
@@ -920,10 +932,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				row_min = self.selected_cell[1]
 				row_max = self.selected_cell[1]
 
-			font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize_grid)
 			for row in range(row_min, row_max):
 				# Create last note labels in grid
-				self.grid_canvas.create_text(self.total_width - self.select_thickness, int(self.row_height * (row - 0.5)), state="hidden", tags=(f"lastnotetext{row}", "lastnotetext", "gridcell"), font=font, anchor="e")
+				self.grid_canvas.create_text(self.total_width - self.select_thickness, int(self.row_height * (row - 0.5)), state="hidden", tags=(f"lastnotetext{row}", "lastnotetext", "gridcell"), font=grid_font, anchor="e")
 
 				fill = "black"
 				# Update pianoroll keys
@@ -943,7 +954,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				self.piano_roll.itemconfig(id, fill=colour)
 				#name = str(row)
 				if name:
-					self.piano_roll.create_text((2, self.total_height - self.row_height * (row + 0.5)), text=name, font=font, anchor="w", fill=fill, tags="notename")
+					self.piano_roll.create_text((2, self.total_height - self.row_height * (row + 0.5)), text=name, font=grid_font, anchor="w", fill=fill, tags="notename")
 				if self.keymap[row]['note'] % 12 == self.zynseq.libseq.getTonic():
 					self.grid_canvas.create_line(0, self.total_height - row * self.row_height, self.total_width, self.total_height - row * self.row_height, fill=GRID_LINE, tags=("gridline"))
 				# Draw row of note cells
@@ -996,6 +1007,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		else:
 			xpos = 0
 		self.grid_canvas.xview_moveto(xpos)
+		self.play_canvas.xview_moveto(xpos)
 		#logging.debug(f"OFFSET: {self.step_offset} (NSTEPS: {self.n_steps}, TOTAL WIDTH: {self.total_width})")
 		#logging.debug(f"GRID X-SCROLL: {xpos}\n\n")
 
@@ -1033,6 +1045,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		yscale = self.total_height / h
 		# Scale canvas
 		self.grid_canvas.scale("all", 0, 0, xscale, yscale)
+		self.play_canvas.scale("all", 0, 0, xscale, 1.0)
 		self.piano_roll.scale("all", 0, 0, 1.0, yscale)
 		# Update grid position
 		if step_width_changed:
@@ -1053,6 +1066,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		xscale = self.total_width / w
 		yscale = self.total_height / h
 		self.grid_canvas.scale("all", 0, 0, xscale, yscale)
+		self.play_canvas.scale("all", 0, 0, xscale, 1.0)
 		self.piano_roll.scale("all", 0, 0, 1.0, yscale)
 		self.set_keymap_offset()
 		self.set_step_offset()
@@ -1078,6 +1092,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if self.total_width > 0:
 			self.grid_canvas.config(scrollregion=(0, 0, self.total_width, self.total_height))
 			self.piano_roll.config(scrollregion=(0, 0, self.piano_roll_width, self.total_height))
+			self.play_canvas.config(scrollregion=(0, 0, self.total_width, PLAYHEAD_HEIGHT))
 			#logging.debug(f"GRID SCROLLREGION: {self.total_width} x {self.total_height}")
 
 	# Function to update selectedCell
@@ -1344,10 +1359,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					self.zynseq.libseq.changeDurationAll(dval * 0.1)
 					self.redraw_pending = 3
 			else:
-				patnum = self.pattern + dval
-				if patnum > 0:
-					self.pattern = patnum
-					self.load_pattern(self.pattern)
+				#patnum = self.pattern + dval
+				#if patnum > 0:
+				#	self.pattern = patnum
+				#	self.load_pattern(self.pattern)
+				pass
 
 		elif i == self.ctrl_order[2]:
 			if self.edit_mode == EDIT_MODE_SINGLE:
@@ -1496,7 +1512,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def toggle_grid_scale(self):
 		if self.edit_mode == EDIT_MODE_NONE:
 			self.edit_mode = EDIT_MODE_SCALE
-			self.set_title("Zoom grid", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
+			self.set_title("Grid zoom", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
 		elif self.edit_mode == EDIT_MODE_SCALE:
 			self.edit_mode = EDIT_MODE_NONE
 			self.set_title("Pattern {}".format(self.pattern), zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
