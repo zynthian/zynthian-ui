@@ -1020,8 +1020,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def set_grid_scale(self, step_width_inc=0, row_height_inc=0):
 		# Check step width limits
 		step_width = self.step_width + step_width_inc
-		if step_width < max(12, self.grid_width // self.n_steps):
-			step_width = max(12, self.grid_width // self.n_steps)
+		if step_width < max(10, self.grid_width // self.n_steps):
+			step_width = max(10, self.grid_width // self.n_steps)
 		elif step_width > self.grid_width // 8:
 			step_width = self.grid_width // 8
 		# Check row height limits
