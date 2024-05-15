@@ -1969,12 +1969,12 @@ class zynthian_state_manager:
     # Start/Stop NetUMP-MIDI-2.0 depending on configuration
     def default_netump(self):
         if zynthian_gui_config.midi_netump_enabled:
-            self.start_netump(False)
+            self.start_netump(False, force=True)
         else:
-            self.stop_netump(False)
+            self.stop_netump(False, force=True)
 
-    def start_netump(self, save_config=True, wait=0):
-        if zynthian_gui_config.midi_netump_enabled:
+    def start_netump(self, save_config=True, wait=0, force=False):
+        if zynthian_gui_config.midi_netump_enabled and not force:
             return
         self.start_busy("start_netump", "starting NetUMP MIDI 2.0")
         logging.info("STARTING NetUMP MIDI 2.0")
@@ -1996,8 +1996,8 @@ class zynthian_state_manager:
 
         self.end_busy("start_netump")
 
-    def stop_rtpmidi(self, save_config=True, wait=0):
-        if not zynthian_gui_config.midi_netump_enabled:
+    def stop_rtpmidi(self, save_config=True, wait=0, force=False):
+        if not zynthian_gui_config.midi_netump_enabled and not force:
             return
         self.start_busy("stop_netump", "stopping NetUMP MIDI 2.0")
         logging.info("STOPPING NetUMP MIDI 2.0")
@@ -2021,12 +2021,12 @@ class zynthian_state_manager:
     # Start/Stop RTP-MIDI depending on configuration
     def default_rtpmidi(self):
         if zynthian_gui_config.midi_rtpmidi_enabled:
-            self.start_rtpmidi(False)
+            self.start_rtpmidi(False, force=True)
         else:
-            self.stop_rtpmidi(False)
+            self.stop_rtpmidi(False, force=True)
 
-    def start_rtpmidi(self, save_config=True, wait=0):
-        if zynthian_gui_config.midi_rtpmidi_enabled:
+    def start_rtpmidi(self, save_config=True, wait=0, force=False):
+        if zynthian_gui_config.midi_rtpmidi_enabled and not force:
             return
         self.start_busy("start_rtpmidi", "starting RTP-MIDI")
         logging.info("STARTING RTP-MIDI")
@@ -2048,8 +2048,8 @@ class zynthian_state_manager:
 
         self.end_busy("start_rtpmidi")
 
-    def stop_rtpmidi(self, save_config=True, wait=0):
-        if not zynthian_gui_config.midi_rtpmidi_enabled:
+    def stop_rtpmidi(self, save_config=True, wait=0, force=False):
+        if not zynthian_gui_config.midi_rtpmidi_enabled and not force:
             return
         self.start_busy("stop_rtpmidi", "stopping RTP-MIDI")
         logging.info("STOPPING RTP-MIDI")
@@ -2070,8 +2070,8 @@ class zynthian_state_manager:
 
         self.end_busy("stop_rtpmidi")
 
-    def start_qmidinet(self, save_config=True, wait=0):
-        if zynthian_gui_config.midi_network_enabled:
+    def start_qmidinet(self, save_config=True, wait=0, force=False):
+        if zynthian_gui_config.midi_network_enabled and not force:
             return
         self.start_busy("start_qmidinet", "starting QMidiNet")
         logging.info("STARTING QMidiNet")
@@ -2093,8 +2093,8 @@ class zynthian_state_manager:
 
         self.end_busy("start_qmidinet")
 
-    def stop_qmidinet(self, save_config=True, wait=0):
-        if not zynthian_gui_config.midi_network_enabled:
+    def stop_qmidinet(self, save_config=True, wait=0, force=False):
+        if not zynthian_gui_config.midi_network_enabled and not force:
             return
         self.start_busy("stop_qmidinet", "stopping QMidiNet")
         logging.info("STOPPING QMidiNet")
@@ -2117,12 +2117,12 @@ class zynthian_state_manager:
     # Start/Stop QMidiNet depending on configuration
     def default_qmidinet(self):
         if zynthian_gui_config.midi_network_enabled:
-            self.start_qmidinet(False)
+            self.start_qmidinet(False, force=True)
         else:
-            self.stop_qmidinet(False)
+            self.stop_qmidinet(False, force=True)
 
-    def start_touchosc2midi(self, save_config=True, wait=0):
-        if zynthian_gui_config.midi_touchosc_enabled:
+    def start_touchosc2midi(self, save_config=True, wait=0, force=False):
+        if zynthian_gui_config.midi_touchosc_enabled and not force:
             return
         self.start_busy("start_touchosc2midi", "starting Touch-OSC")
         logging.info("STARTING touchosc2midi")
@@ -2144,8 +2144,8 @@ class zynthian_state_manager:
 
         self.end_busy("start_touchosc2midi")
 
-    def stop_touchosc2midi(self, save_config=True, wait=0):
-        if not zynthian_gui_config.midi_touchosc_enabled:
+    def stop_touchosc2midi(self, save_config=True, wait=0, force=False):
+        if not zynthian_gui_config.midi_touchosc_enabled and not force:
             return
         self.start_busy("stop_touchosc2midi", "stopping Touch-OSC")
         logging.info("STOPPING touchosc2midi")
@@ -2168,12 +2168,12 @@ class zynthian_state_manager:
     # Start/Stop TouchOSC depending on configuration
     def default_touchosc(self):
         if zynthian_gui_config.midi_touchosc_enabled:
-            self.start_touchosc2midi(False)
+            self.start_touchosc2midi(False, force=True)
         else:
-            self.stop_touchosc2midi(False)
+            self.stop_touchosc2midi(False, force=True)
 
-    def start_bluetooth(self, save_config=True, wait=0):
-        if zynthian_gui_config.bluetooth_enabled:
+    def start_bluetooth(self, save_config=True, wait=0, force=False):
+        if zynthian_gui_config.bluetooth_enabled and not force:
             return
         self.start_busy("start_bluetooth", "starting Bluetooth")
         logging.info("STARTING Bluetooth")
@@ -2198,8 +2198,8 @@ class zynthian_state_manager:
 
         self.end_busy("start_bluetooth")
 
-    def stop_bluetooth(self, save_config=True, wait=0):
-        if not zynthian_gui_config.bluetooth_enabled:
+    def stop_bluetooth(self, save_config=True, wait=0, force=False):
+        if not zynthian_gui_config.bluetooth_enabled and not force:
             return
         self.start_busy("stop_bluetooth", "stopping Bluetooth")
         logging.info("STOPPING bluetooth")
@@ -2223,13 +2223,13 @@ class zynthian_state_manager:
     # Start/Stop Bluetooth depending on configuration
     def default_bluetooth(self):
         if zynthian_gui_config.bluetooth_enabled:
-            self.start_bluetooth(False)
+            self.start_bluetooth(False, force=True)
         else:
-            self.stop_bluetooth(False)
+            self.stop_bluetooth(False, force=True)
 
 
-    def start_aubionotes(self, save_config=True, wait=0):
-        if zynthian_gui_config.midi_aubionotes_enabled:
+    def start_aubionotes(self, save_config=True, wait=0, force=False):
+        if zynthian_gui_config.midi_aubionotes_enabled and not force:
             return
         self.start_busy("start_aubionotes", "starting AubioNotes")
         logging.info("STARTING aubionotes")
@@ -2253,8 +2253,8 @@ class zynthian_state_manager:
         self.end_busy("start_aubionotes")
 
 
-    def stop_aubionotes(self, save_config=True, wait=0):
-        if not zynthian_gui_config.midi_aubionotes_enabled:
+    def stop_aubionotes(self, save_config=True, wait=0, force=False):
+        if not zynthian_gui_config.midi_aubionotes_enabled and not force:
             return
 
         self.start_busy("stop_aubionotes", "stopping AubioNotes")
@@ -2278,9 +2278,9 @@ class zynthian_state_manager:
     # Start/Stop AubioNotes depending on configuration
     def default_aubionotes(self):
         if zynthian_gui_config.midi_aubionotes_enabled:
-            self.start_aubionotes(False)
+            self.start_aubionotes(False, force=True)
         else:
-            self.stop_aubionotes(False)
+            self.stop_aubionotes(False, force=True)
 
     # ---------------------------------------------------------------------------
     # Zynthian Config Info
