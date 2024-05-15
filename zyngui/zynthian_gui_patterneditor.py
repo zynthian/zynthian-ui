@@ -924,7 +924,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 						self.play_canvas.create_text((step * self.step_width, -2), text=str(beatnum), font=bnum_font, anchor=anchor, fill=GRID_LINE, tags="beatnum")
 				lh = int(0.7 * PLAYHEAD_HEIGHT)
 				for step in range(1, self.n_steps):
-					self.play_canvas.create_line(step * self.step_width, 0, step * self.step_width, lh, fill=PLAYHEAD_LINE, tags="beatnum")
+					if step % self.n_steps_beat != 0:
+						self.play_canvas.create_line(step * self.step_width, 0, step * self.step_width, lh, fill=PLAYHEAD_LINE, tags="beatnum")
 
 		if redraw_pending > 1:
 			# Delete existing note names from piano roll
