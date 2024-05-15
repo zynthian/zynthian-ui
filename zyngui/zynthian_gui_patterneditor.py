@@ -915,8 +915,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			redraw_pending = 4
 		if self.n_steps == 0:
 			self.drawing = False
-			return #TODO: Should we clear grid?
-		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
+			return  # TODO: Should we clear grid?
+		font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize_grid)
 		if redraw_pending == 4:
 			self.grid_canvas.delete(tkinter.ALL)
 			self.draw_pianoroll()
@@ -1081,6 +1081,26 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if self.edit_mode == EDIT_MODE_SCALE:
 			self.edit_mode = EDIT_MODE_NONE
 
+	# Function to calculate variable gemoetry parameters
+	def update_geometry(self):
+		# Y-axis calculations
+		self.total_height = 128 * self.row_height
+		self.scroll_height = self.total_height - self.grid_height
+
+		# X-axis calculations
+		self.total_width = self.n_steps * self.step_width
+
+		# Font size calculation
+		self.fontsize_grid = self.row_height // 2
+		if self.fontsize_grid > 20:
+			self.fontsize_grid = 20  # Ugly font scale limiting
+
+		# Update scrollregion in canvas
+		if self.total_width > 0:
+			self.grid_canvas.config(scrollregion=(0, 0, self.total_width, self.total_height))
+			self.piano_roll.config(scrollregion=(0, 0, self.piano_roll_width, self.total_height))
+			#logging.debug(f"GRID SCROLLREGION: {self.total_width} x {self.total_height}")
+
 	# Function to update selectedCell
 	# step: Step (column) of selected cell (Optional - default to reselect current column)
 	# row: Index of keymap to select (Optional - default to reselect current row) Maybe outside visible range to scroll display
@@ -1155,24 +1175,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		else:
 			self.grid_canvas.coords(cell, coord)
 		self.grid_canvas.tag_raise(cell)
-
-	# Function to calculate variable gemoetry parameters
-	def update_geometry(self):
-		# Y-axis calculations
-		self.fontsize = self.row_height // 2
-		if self.fontsize > 20:
-			self.fontsize = 20  # Ugly font scale limiting
-		self.total_height = 128 * self.row_height
-		self.scroll_height = self.total_height - self.vzoom * self.row_height
-
-		# X-axis calculations
-		self.total_width = self.n_steps * self.step_width
-
-		# Update scrollregion in canvas
-		if self.total_width > 0:
-			self.grid_canvas.config(scrollregion=(0, 0, self.total_width, self.total_height))
-			self.piano_roll.config(scrollregion=(0, 0, self.piano_roll_width, self.total_height))
-			#logging.debug(f"GRID SCROLLREGION: {self.total_width} x {self.total_height}")
 
 	# Function to clear a pattern
 	def clear_pattern(self, params=None):
