@@ -645,17 +645,14 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle start of pianoroll drag
 	def on_pianoroll_press(self, event):
 		self.piano_roll_drag_start = event
-		index = self.keymap_offset + self.vzoom - int(event.y / self.row_height) - 1
-		if index >= len(self.keymap):
-			return
-		note = self.keymap[index]['note']
-		self.play_note(note)
+		self.piano_roll_drag_count = 0
 
 	# Function to handle pianoroll drag motion
 	def on_pianoroll_motion(self, event):
 		if not self.piano_roll_drag_start:
 			return
-		offset = (event.y - self.piano_roll_drag_start.y) // self.row_height
+		self.piano_roll_drag_count += 1
+		offset = int(1.3 * (event.y - self.piano_roll_drag_start.y) / self.row_height)
 		if offset == 0:
 			return
 		self.piano_roll_drag_start = event
@@ -668,7 +665,14 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle end of pianoroll drag
 	def on_pianoroll_release(self, event):
+		# Play note if not drag action
+		if self.piano_roll_drag_count == 0:
+			index = int((self.total_height - self.piano_roll.canvasy(event.y)) / self.row_height)
+			if index < len(self.keymap):
+				note = self.keymap[index]['note']
+				self.play_note(note)
 		self.piano_roll_drag_start = None
+		self.piano_roll_drag_count = 0
 
 	# Function to handle mouse wheel over pianoroll
 	def on_pianoroll_wheel(self, event):
