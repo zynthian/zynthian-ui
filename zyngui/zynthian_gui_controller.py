@@ -320,9 +320,15 @@ class zynthian_gui_controller(tkinter.Canvas):
 			if self.zctrl.value_range == 0:
 				self.value_plot = 0
 			elif self.zctrl.is_logarithmic:
-				self.value_plot = math.log10((9 * self.zctrl.value - (10 * self.zctrl.value_min - self.zctrl.value_max)) / self.zctrl.value_range)
+				if self.zctrl.value_min < 0:
+					self.value_plot = math.log10((9 * self.zctrl.value - (10 * self.zctrl.value_min)) / self.zctrl.value_range)
+				else:
+					self.value_plot = math.log10((9 * self.zctrl.value - (10 * self.zctrl.value_min - self.zctrl.value_max)) / self.zctrl.value_range)
 			else:
-				self.value_plot = (self.zctrl.value - self.zctrl.value_min) / self.zctrl.value_range
+				if self.zctrl.value_min < 0:
+					self.value_plot = (self.zctrl.value) / self.zctrl.value_range
+				else:
+					self.value_plot = (self.zctrl.value - self.zctrl.value_min) / self.zctrl.value_range
 			if self.selector_counter:
 				val = self.zctrl.value + 1
 			else:
@@ -373,12 +379,15 @@ class zynthian_gui_controller(tkinter.Canvas):
 			degmax = 300
 			degd = -degmax * self.value_plot
 			deg0 = 90 + degmax / 2
-			if self.zctrl and isinstance(self.zctrl.labels, list):
-				n = len(self.zctrl.labels)
-				if n > 2:
-					arc_len = max(5, degmax // n)
-					deg0 += degd + arc_len
-					degd = -arc_len
+			if self.zctrl:
+				if isinstance(self.zctrl.labels, list):
+					n = len(self.zctrl.labels)
+					if n > 2:
+						arc_len = max(5, degmax // n)
+						deg0 += degd + arc_len
+						degd = -arc_len
+				elif self.zctrl.value_range and self.zctrl.value_min <= 0 and self.zctrl.value_max >= 0:
+					deg0 += degmax * self.zctrl.value_min / self.zctrl.value_range
 			self.itemconfig(self.graph, start=deg0, extent=degd)
 		self.itemconfig(self.value_text, text=self.value_print)
 
