@@ -35,11 +35,12 @@ from datetime import datetime
 import tkinter.font as tkFont
 
 # Zynthian specific modules
-from zyngui import zynthian_gui_config
-from zynlibs.zynsmf import zynsmf
-from . import zynthian_gui_base
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
+from zynlibs.zynsmf import zynsmf
+from . import zynthian_gui_base
+from zyngui import zynthian_gui_config
+from zyngui.multitouch import MultitouchTypes
 
 
 # ------------------------------------------------------------------------------
@@ -154,6 +155,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.grid_canvas.bind('<ButtonPress-1>', self.on_grid_press)
 		self.grid_canvas.bind('<ButtonRelease-1>', self.on_grid_release)
 		self.grid_canvas.bind('<B1-Motion>', self.on_grid_drag)
+		self.zyngui.multitouch.tag_bind(self.grid_canvas, None, "gesture", self.on_gesture)
 
 		# Create velocity level indicator canvas
 		self.velocity_canvas = tkinter.Canvas(self.main_frame,
@@ -829,6 +831,23 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				elif self.selected_cell[1] >= self.keymap_offset + self.vzoom:
 					self.selected_cell[1] = self.keymap_offset + self.vzoom - 1
 			self.select_cell()
+
+	def on_gesture(self, type, value):
+		if type == MultitouchTypes.GESTURE_H_DRAG:
+			self.on_horizontal_drag(value)
+		elif type == MultitouchTypes.GESTURE_H_PINCH:
+			self.on_horizontal_pinch(value)
+		elif type == MultitouchTypes.GESTURE_V_PINCH:
+			self.on_vertical_pinch(value)
+
+	def on_horizontal_drag(self, value):
+		pass
+
+	def on_horizontal_pinch(self, value):
+		self.set_grid_scale(int(0.1 * value), 0)
+
+	def on_vertical_pinch(self, value):
+		self.set_grid_scale(0, int(0.1 * value))
 
 	# Function to adjust velocity indicator
 	# velocity: Note velocity to indicate
