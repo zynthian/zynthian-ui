@@ -1542,6 +1542,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def arrow_up(self):
 		if self.param_editor_zctrl:
 			self.zynpot_cb(self.ctrl_order[3], 1)
+		elif self.edit_mode:
+			self.zynpot_cb(self.ctrl_order[2], 1)
 		else:
 			self.zynpot_cb(self.ctrl_order[2], -1)
 
@@ -1549,6 +1551,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def arrow_down(self):
 		if self.param_editor_zctrl:
 			self.zynpot_cb(self.ctrl_order[3], -1)
+		elif self.edit_mode:
+			self.zynpot_cb(self.ctrl_order[2], -1)
 		else:
 			self.zynpot_cb(self.ctrl_order[2], 1)
 
