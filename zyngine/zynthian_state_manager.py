@@ -1969,17 +1969,19 @@ class zynthian_state_manager:
     # Start/Stop NetUMP-MIDI-2.0 depending on configuration
     def default_netump(self):
         if zynthian_gui_config.midi_netump_enabled:
-            self.start_netump(False, force=True)
+            self.start_netump(False)
         else:
-            self.stop_netump(False, force=True)
+            self.stop_netump(False)
 
-    def start_netump(self, save_config=True, wait=0, force=False):
-        if zynthian_gui_config.midi_netump_enabled and not force:
+    def start_netump(self, save_config=True, wait=0):
+        service = "jacknetumpd"
+        if zynconf.is_service_active(service):
+            zynthian_gui_config.midi_netump_enabled = 1
             return
         self.start_busy("start_netump", "starting NetUMP MIDI 2.0")
         logging.info("STARTING NetUMP MIDI 2.0")
         try:
-            check_output("systemctl start jacknetumpd", shell=True)
+            check_output(f"systemctl start {service}", shell=True)
             zynthian_gui_config.midi_netump_enabled = 1
             # Update MIDI profile
             if save_config:
@@ -1996,13 +1998,15 @@ class zynthian_state_manager:
 
         self.end_busy("start_netump")
 
-    def stop_rtpmidi(self, save_config=True, wait=0, force=False):
-        if not zynthian_gui_config.midi_netump_enabled and not force:
+    def stop_rtpmidi(self, save_config=True, wait=0):
+        service = "jacknetumpd"
+        if not zynconf.is_service_active(service):
+            zynthian_gui_config.midi_netump_enabled = 0
             return
         self.start_busy("stop_netump", "stopping NetUMP MIDI 2.0")
         logging.info("STOPPING NetUMP MIDI 2.0")
         try:
-            check_output("systemctl stop jacknetumpd", shell=True)
+            check_output(f"systemctl stop {service}", shell=True)
             zynthian_gui_config.midi_netump_enabled = 0
             # Update MIDI profile
             if save_config:
@@ -2021,17 +2025,19 @@ class zynthian_state_manager:
     # Start/Stop RTP-MIDI depending on configuration
     def default_rtpmidi(self):
         if zynthian_gui_config.midi_rtpmidi_enabled:
-            self.start_rtpmidi(False, force=True)
+            self.start_rtpmidi(False)
         else:
-            self.stop_rtpmidi(False, force=True)
+            self.stop_rtpmidi(False)
 
-    def start_rtpmidi(self, save_config=True, wait=0, force=False):
-        if zynthian_gui_config.midi_rtpmidi_enabled and not force:
+    def start_rtpmidi(self, save_config=True, wait=0):
+        service = "jackrtpmidid"
+        if zynconf.is_service_active(service):
+            zynthian_gui_config.midi_rtpmidi_enabled = 1
             return
         self.start_busy("start_rtpmidi", "starting RTP-MIDI")
         logging.info("STARTING RTP-MIDI")
         try:
-            check_output("systemctl start jackrtpmidid", shell=True)
+            check_output(f"systemctl start {service}", shell=True)
             zynthian_gui_config.midi_rtpmidi_enabled = 1
             # Update MIDI profile
             if save_config:
@@ -2048,13 +2054,15 @@ class zynthian_state_manager:
 
         self.end_busy("start_rtpmidi")
 
-    def stop_rtpmidi(self, save_config=True, wait=0, force=False):
-        if not zynthian_gui_config.midi_rtpmidi_enabled and not force:
+    def stop_rtpmidi(self, save_config=True, wait=0):
+        service = "jackrtpmidid"
+        if not zynconf.is_service_active(service):
+            zynthian_gui_config.midi_rtpmidi_enabled = 0
             return
         self.start_busy("stop_rtpmidi", "stopping RTP-MIDI")
         logging.info("STOPPING RTP-MIDI")
         try:
-            check_output("systemctl stop jackrtpmidid", shell=True)
+            check_output(f"systemctl stop {service}", shell=True)
             zynthian_gui_config.midi_rtpmidi_enabled = 0
             # Update MIDI profile
             if save_config:
@@ -2070,13 +2078,15 @@ class zynthian_state_manager:
 
         self.end_busy("stop_rtpmidi")
 
-    def start_qmidinet(self, save_config=True, wait=0, force=False):
-        if zynthian_gui_config.midi_network_enabled and not force:
+    def start_qmidinet(self, save_config=True, wait=0):
+        service = "qmidinet"
+        if zynconf.is_service_active(service):
+            zynthian_gui_config.midi_network_enabled = 1
             return
         self.start_busy("start_qmidinet", "starting QMidiNet")
         logging.info("STARTING QMidiNet")
         try:
-            check_output("systemctl start qmidinet", shell=True)
+            check_output(f"systemctl start {service}", shell=True)
             zynthian_gui_config.midi_network_enabled = 1
             # Update MIDI profile
             if save_config:
@@ -2093,13 +2103,15 @@ class zynthian_state_manager:
 
         self.end_busy("start_qmidinet")
 
-    def stop_qmidinet(self, save_config=True, wait=0, force=False):
-        if not zynthian_gui_config.midi_network_enabled and not force:
+    def stop_qmidinet(self, save_config=True, wait=0):
+        service = "qmidinet"
+        if not zynconf.is_service_active(service):
+            zynthian_gui_config.midi_network_enabled = 0
             return
         self.start_busy("stop_qmidinet", "stopping QMidiNet")
         logging.info("STOPPING QMidiNet")
         try:
-            check_output("systemctl stop qmidinet", shell=True)
+            check_output(f"systemctl stop {service}", shell=True)
             zynthian_gui_config.midi_network_enabled = 0
             # Update MIDI profile
             if save_config:
@@ -2117,17 +2129,19 @@ class zynthian_state_manager:
     # Start/Stop QMidiNet depending on configuration
     def default_qmidinet(self):
         if zynthian_gui_config.midi_network_enabled:
-            self.start_qmidinet(False, force=True)
+            self.start_qmidinet(False)
         else:
-            self.stop_qmidinet(False, force=True)
+            self.stop_qmidinet(False)
 
-    def start_touchosc2midi(self, save_config=True, wait=0, force=False):
-        if zynthian_gui_config.midi_touchosc_enabled and not force:
+    def start_touchosc2midi(self, save_config=True, wait=0):
+        service = "touchosc2midi"
+        if zynconf.is_service_active(service):
+            zynthian_gui_config.midi_touchosc_enabled = 1
             return
         self.start_busy("start_touchosc2midi", "starting Touch-OSC")
         logging.info("STARTING touchosc2midi")
         try:
-            check_output("systemctl start touchosc2midi", shell=True)
+            check_output(f"systemctl start {service}", shell=True)
             zynthian_gui_config.midi_touchosc_enabled = 1
             # Update MIDI profile
             if save_config:
@@ -2144,13 +2158,15 @@ class zynthian_state_manager:
 
         self.end_busy("start_touchosc2midi")
 
-    def stop_touchosc2midi(self, save_config=True, wait=0, force=False):
-        if not zynthian_gui_config.midi_touchosc_enabled and not force:
+    def stop_touchosc2midi(self, save_config=True, wait=0):
+        service = "touchosc2midi"
+        if not zynconf.is_service_active(service):
+            zynthian_gui_config.midi_touchosc_enabled = 0
             return
         self.start_busy("stop_touchosc2midi", "stopping Touch-OSC")
         logging.info("STOPPING touchosc2midi")
         try:
-            check_output("systemctl stop touchosc2midi", shell=True)
+            check_output(f"systemctl stop {service}", shell=True)
             zynthian_gui_config.midi_touchosc_enabled = 0
             # Update MIDI profile
             if save_config:
@@ -2168,17 +2184,19 @@ class zynthian_state_manager:
     # Start/Stop TouchOSC depending on configuration
     def default_touchosc(self):
         if zynthian_gui_config.midi_touchosc_enabled:
-            self.start_touchosc2midi(False, force=True)
+            self.start_touchosc2midi(False)
         else:
-            self.stop_touchosc2midi(False, force=True)
+            self.stop_touchosc2midi(False)
 
-    def start_bluetooth(self, save_config=True, wait=0, force=False):
-        if zynthian_gui_config.bluetooth_enabled and not force:
+    def start_bluetooth(self, save_config=True, wait=0):
+        service = "bluetooth"
+        if zynconf.is_service_active(service):
+            zynthian_gui_config.bluetooth_enabled = 1
             return
         self.start_busy("start_bluetooth", "starting Bluetooth")
         logging.info("STARTING Bluetooth")
         try:
-            check_output("systemctl start bluetooth", shell=True, timeout=2)
+            check_output(f"systemctl start {service}", shell=True, timeout=2)
             sleep(wait)
             check_output("bluetoothctl power on", shell=True, timeout=1)
             check_output("bluetoothctl agent off", shell=True, timeout=1)
@@ -2198,14 +2216,16 @@ class zynthian_state_manager:
 
         self.end_busy("start_bluetooth")
 
-    def stop_bluetooth(self, save_config=True, wait=0, force=False):
-        if not zynthian_gui_config.bluetooth_enabled and not force:
+    def stop_bluetooth(self, save_config=True, wait=0):
+        service = "bluetooth"
+        if not zynconf.is_service_active(service):
+            zynthian_gui_config.bluetooth_enabled = 0
             return
         self.start_busy("stop_bluetooth", "stopping Bluetooth")
         logging.info("STOPPING bluetooth")
         try:
             check_output("bluetoothctl power off", shell=True, timeout=1)
-            check_output("systemctl stop bluetooth", shell=True, timeout=1)
+            check_output(f"systemctl stop {service}", shell=True, timeout=1)
             sleep(wait)
             zynthian_gui_config.bluetooth_enabled = 0
             # Update MIDI profile
@@ -2223,18 +2243,20 @@ class zynthian_state_manager:
     # Start/Stop Bluetooth depending on configuration
     def default_bluetooth(self):
         if zynthian_gui_config.bluetooth_enabled:
-            self.start_bluetooth(False, force=True)
+            self.start_bluetooth(False)
         else:
-            self.stop_bluetooth(False, force=True)
+            self.stop_bluetooth(False)
 
 
-    def start_aubionotes(self, save_config=True, wait=0, force=False):
-        if zynthian_gui_config.midi_aubionotes_enabled and not force:
+    def start_aubionotes(self, save_config=True, wait=0):
+        service = "aubionotes"
+        if zynconf.is_service_active(service):
+            zynthian_gui_config.midi_aubionotes_enabled = 1
             return
         self.start_busy("start_aubionotes", "starting AubioNotes")
         logging.info("STARTING aubionotes")
         try:
-            check_output("systemctl start aubionotes", shell=True)
+            check_output(f"systemctl start {service}", shell=True)
             zynthian_gui_config.midi_aubionotes_enabled = 1
             # Update MIDI profile
             if save_config:
@@ -2253,14 +2275,16 @@ class zynthian_state_manager:
         self.end_busy("start_aubionotes")
 
 
-    def stop_aubionotes(self, save_config=True, wait=0, force=False):
-        if not zynthian_gui_config.midi_aubionotes_enabled and not force:
+    def stop_aubionotes(self, save_config=True, wait=0):
+        service = "aubionotes"
+        if not zynconf.is_service_active(service):
+            zynthian_gui_config.midi_aubionotes_enabled = 0
             return
 
         self.start_busy("stop_aubionotes", "stopping AubioNotes")
         logging.info("STOPPING aubionotes")
         try:
-            check_output("systemctl stop aubionotes", shell=True)
+            check_output(f"systemctl stop {service}", shell=True)
             zynthian_gui_config.midi_aubionotes_enabled = 0
             # Update MIDI profile
             if save_config:
@@ -2278,9 +2302,9 @@ class zynthian_state_manager:
     # Start/Stop AubioNotes depending on configuration
     def default_aubionotes(self):
         if zynthian_gui_config.midi_aubionotes_enabled:
-            self.start_aubionotes(False, force=True)
+            self.start_aubionotes(False)
         else:
-            self.stop_aubionotes(False, force=True)
+            self.stop_aubionotes(False)
 
     # ---------------------------------------------------------------------------
     # Zynthian Config Info
