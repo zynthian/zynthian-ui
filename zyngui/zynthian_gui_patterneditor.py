@@ -59,6 +59,7 @@ CONFIG_ROOT			= "/zynthian/zynthian-data/zynseq"
 
 DEFAULT_VZOOM		= 16
 DEFAULT_HZOOM		= 16
+DRAG_SENSIBILITY	= 1.5
 
 EDIT_MODE_NONE		= 0  # Edit mode disabled
 EDIT_MODE_SINGLE	= 1  # Edit mode enabled for selected note
@@ -150,9 +151,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			highlightthickness=0)
 		self.update_geometry()
 		self.grid_canvas.grid(column=1, row=0)
-		self.grid_canvas.tag_bind("gridcell", '<ButtonPress-1>', self.on_grid_press)
-		self.grid_canvas.tag_bind("gridcell", '<ButtonRelease-1>', self.on_grid_release)
-		self.grid_canvas.tag_bind("gridcell", '<B1-Motion>', self.on_grid_drag)
+		self.grid_canvas.bind('<ButtonPress-1>', self.on_grid_press)
+		self.grid_canvas.bind('<ButtonRelease-1>', self.on_grid_release)
+		self.grid_canvas.bind('<B1-Motion>', self.on_grid_drag)
 
 		# Create velocity level indicator canvas
 		self.velocity_canvas = tkinter.Canvas(self.main_frame,
@@ -652,7 +653,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if not self.piano_roll_drag_start:
 			return
 		self.piano_roll_drag_count += 1
-		offset = int(1.3 * (event.y - self.piano_roll_drag_start.y) / self.row_height)
+		offset = int(DRAG_SENSIBILITY * (event.y - self.piano_roll_drag_start.y) / self.row_height)
 		if offset == 0:
 			return
 		self.piano_roll_drag_start = event
@@ -666,11 +667,12 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle end of pianoroll drag
 	def on_pianoroll_release(self, event):
 		# Play note if not drag action
-		if self.piano_roll_drag_count == 0:
-			index = int((self.total_height - self.piano_roll.canvasy(event.y)) / self.row_height)
-			if index < len(self.keymap):
-				note = self.keymap[index]['note']
+		if self.piano_roll_drag_start and self.piano_roll_drag_count == 0:
+			row = int((self.total_height - self.piano_roll.canvasy(event.y)) / self.row_height)
+			if row < len(self.keymap):
+				note = self.keymap[row]['note']
 				self.play_note(note)
+
 		self.piano_roll_drag_start = None
 		self.piano_roll_drag_count = 0
 
@@ -694,89 +696,139 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def on_grid_press(self, event):
 		if self.param_editor_zctrl:
 			self.disable_param_editor()
-		self.grid_drag_start = event
-		step = int(event.x / self.step_width)
-		row = self.vzoom - int(event.y / self.row_height) - 1
-		note = self.keymap[self.keymap_offset + int(row)]["note"]
-		if step < 0 or step >= self.n_steps:
+
+		# Select cell
+		row = int((self.total_height - self.grid_canvas.canvasy(event.y)) / self.row_height)
+		step = int(self.grid_canvas.canvasx(event.x) / self.step_width)
+		try:
+			note = self.keymap[row]['note']
+		except:
 			return
 		start_step = self.zynseq.libseq.getNoteStart(step, note)
-		self.drag_start_step = step
 		if start_step >= 0:
 			step = start_step
-		self.select_cell(step, self.keymap_offset + int(row))
+		if step < 0 or step >= self.n_steps:
+			return
+		self.select_cell(step, row)
+
+		# Start drag state variables
+		self.grid_drag_start = event
+		self.grid_drag_count = 0
+		self.drag_note = False
+		self.drag_velocity = False
+		self.drag_duration = False
+		self.drag_start_step = step
 		self.drag_start_velocity = self.zynseq.libseq.getNoteVelocity(step, note)
 		self.drag_start_duration = self.zynseq.libseq.getNoteDuration(step, note)
-		if not self.drag_start_velocity:
-			self.play_note(note)
-			self.drag_note = True
 
 	# Function to handle grid mouse release
 	# event: Mouse event
 	def on_grid_release(self, event):
-		if not self.grid_drag_start:
-			return
-		if not self.drag_note and event.time - self.grid_drag_start.time > 800:
-			# Bold click
-			if self.edit_mode == EDIT_MODE_NONE:
-				self.enable_edit(EDIT_MODE_SINGLE)
-			else:
-				self.enable_edit(EDIT_MODE_ALL)
-		else:
-			self.toggle_event(self.selected_cell[0], self.selected_cell[1])
+		# No drag actions
+		if self.grid_drag_start:
+			if self.grid_drag_count == 0:
+				# Bold click without drag
+				if (event.time - self.grid_drag_start.time) > 800:
+					if self.edit_mode == EDIT_MODE_NONE:
+						self.enable_edit(EDIT_MODE_SINGLE)
+					else:
+						self.enable_edit(EDIT_MODE_ALL)
+				# Short click without drag: Add/remove single note
+				else:
+					step = self.selected_cell[0]
+					row = self.selected_cell[1]
+					self.toggle_event(step, row)
+					if not self.drag_start_velocity:
+						note = self.keymap[row]['note']
+						self.play_note(note)
+			# End drag action
+			elif self.drag_note and not self.drag_start_velocity:
+				step = self.selected_cell[0]
+				row = self.selected_cell[1]
+				#note = self.keymap[row]['note']
+				self.add_event(step, row, self.velocity, self.duration)
+
+		# Reset drag state variables
+		self.grid_drag_start = None
+		self.grid_drag_count = 0
+		self.drag_note = False
 		self.drag_velocity = False
 		self.drag_duration = False
-		self.drag_note = False
-		self.grid_drag_start = None
+		self.drag_start_step = None
+		self.drag_start_velocity = None
+		self.drag_start_duration = None
 
 	# Function to handle grid mouse drag
 	# event: Mouse event
 	def on_grid_drag(self, event):
 		if not self.grid_drag_start:
 			return
-		step = self.selected_cell[0]
-		index = self.selected_cell[1]
-		note = self.keymap[index]['note']
-		sel_duration = self.zynseq.libseq.getNoteDuration(step, note)
-		sel_velocity = self.zynseq.libseq.getNoteVelocity(step, note)
-		if self.drag_start_velocity:
-			# Selected cell has a note so we want to adjust its velocity or duration
-			if not self.drag_velocity and not self.drag_duration and (event.x > (self.drag_start_step + 1) * self.step_width or event.x < self.drag_start_step * self.step_width):
-				self.drag_duration = True
-			if not self.drag_duration and not self.drag_velocity and (event.y > self.grid_drag_start.y + self.row_height / 2 or event.y < self.grid_drag_start.y - self.row_height / 2):
-				self.drag_velocity = True
-			if self.drag_velocity:
-				value = (self.grid_drag_start.y - event.y) / self.row_height
-				if value:
-					velocity = int(self.drag_start_velocity + value * self.height / 100)
-					if velocity >= 1 and velocity <= 127:
-						self.set_velocity_indicator(velocity)
-						if sel_duration and velocity != sel_velocity:
-							self.zynseq.libseq.setNoteVelocity(step, note, velocity)
-							self.draw_cell(step, index - self.keymap_offset)
-			if self.drag_duration:
-				duration = int(event.x / self.step_width) - self.drag_start_step
-				if duration > 0 and duration != sel_duration:
-					self.add_event(step, index, sel_velocity, duration)
-				else:
-					#self.duration = duration
-					pass
+		self.grid_drag_count += 1
+
+		if self.drag_note:
+			step = self.selected_cell[0]
+			row = self.selected_cell[1]
+			note = self.keymap[row]['note']
+			sel_duration = self.zynseq.libseq.getNoteDuration(step, note)
+			sel_velocity = self.zynseq.libseq.getNoteVelocity(step, note)
+
+			if self.drag_start_velocity:
+				# Selected cell has a note so we want to adjust its velocity or duration
+				if not self.drag_velocity and not self.drag_duration and (event.x > (self.drag_start_step + 1) * self.step_width or event.x < self.drag_start_step * self.step_width):
+					self.drag_duration = True
+				if not self.drag_duration and not self.drag_velocity and (event.y > self.grid_drag_start.y + self.row_height / 2 or event.y < self.grid_drag_start.y - self.row_height / 2):
+					self.drag_velocity = True
+				if self.drag_velocity:
+					value = (self.grid_drag_start.y - event.y) / self.row_height
+					if value:
+						velocity = int(self.drag_start_velocity + value * self.height / 100)
+						if 1 <= velocity <= 127:
+							self.set_velocity_indicator(velocity)
+							if sel_duration and velocity != sel_velocity:
+								self.zynseq.libseq.setNoteVelocity(step, note, velocity)
+								self.draw_cell(step, row)
+				if self.drag_duration:
+					duration = int(event.x / self.step_width) - self.drag_start_step
+					if duration > 0 and duration != sel_duration:
+						self.add_event(step, row, sel_velocity, duration)
+					else:
+						#self.duration = duration
+						pass
+			else:
+				# Clicked on empty cell so want to add a new note by dragging towards the desired cell
+				x1 = self.selected_cell[0] * self.step_width  # x pos of start of event
+				x2 = x1 + self.step_width  # x pos right of event's first cell
+				y1 = self.total_height - self.selected_cell[1] * self.row_height  # y pos of bottom of selected row
+				y2 = y1 - self.row_height  # y pos of top of selected row
+				event_x = self.grid_canvas.canvasx(event.x)
+				event_y = self.grid_canvas.canvasy(event.y)
+				if event_x < x1:
+					self.select_cell(self.selected_cell[0] - 1, None)
+				elif event_x > x2:
+					self.select_cell(self.selected_cell[0] + 1, None)
+				elif event_y > y1:
+					self.select_cell(None, self.selected_cell[1] - 1)
+					self.play_note(self.keymap[self.selected_cell[1]]["note"])
+				elif event_y < y2:
+					self.select_cell(None, self.selected_cell[1] + 1)
+					self.play_note(self.keymap[self.selected_cell[1]]["note"])
 		else:
-			# Clicked on empty cell so want to add a new note by dragging towards the desired cell
-			x1 = self.selected_cell[0] * self.step_width # x pos of start of event
-			x3 = (self.selected_cell[0] + 1) * self.step_width # x pos right of event's first cell
-			y1 = self.grid_height - (self.selected_cell[1] - self.keymap_offset) * self.row_height # y pos of top of selected row
-			y2 = self.grid_height - (self.selected_cell[1] - self.keymap_offset + 1) * self.row_height # y pos of bottom of selected row
-			if event.x < x1:
-				self.select_cell(self.selected_cell[0] - 1, None)
-			elif event.x > x3:
-				self.select_cell(self.selected_cell[0] + 1, None)
-			elif event.y < y2:
-				self.select_cell(None, self.selected_cell[1] + 1)
-				self.play_note(self.keymap[self.selected_cell[1]]["note"])
-			elif event.y > y1:
-				self.select_cell(None, self.selected_cell[1] - 1)
-				self.play_note(self.keymap[self.selected_cell[1]]["note"])
+			step_offset = int(DRAG_SENSIBILITY * (self.grid_drag_start.x - event.x) / self.step_width)
+			row_offset = int(DRAG_SENSIBILITY * (event.y - self.grid_drag_start.y) / self.row_height)
+			if step_offset == 0 and row_offset == 0:
+				if self.grid_drag_count < 2 and (event.time - self.grid_drag_start.time) > 800:
+					self.drag_note = True
+				return
+			self.grid_drag_start = event
+			if step_offset:
+				self.set_step_offset(self.step_offset + step_offset)
+			if row_offset:
+				self.set_keymap_offset(self.keymap_offset + row_offset)
+				if self.selected_cell[1] < self.keymap_offset:
+					self.selected_cell[1] = self.keymap_offset
+				elif self.selected_cell[1] >= self.keymap_offset + self.vzoom:
+					self.selected_cell[1] = self.keymap_offset + self.vzoom - 1
+			self.select_cell()
 
 	# Function to adjust velocity indicator
 	# velocity: Note velocity to indicate
@@ -784,45 +836,45 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.velocity_canvas.coords("velocityIndicator", 0, 0, self.piano_roll_width * velocity / 127, PLAYHEAD_HEIGHT)
 
 	# Function to toggle note event
-	# step: step (column) index
-	# index: key map index
+	# step: step number (column)
+	# row: keymap index
 	# Returns: Note if note added else None
-	def toggle_event(self, step, index):
-		if step < 0 or step >= self.n_steps or index >= len(self.keymap):
+	def toggle_event(self, step, row):
+		if step < 0 or step >= self.n_steps or row >= len(self.keymap):
 			return
-		note = self.keymap[index]['note']
+		note = self.keymap[row]['note']
 		start_step = self.zynseq.libseq.getNoteStart(step, note)
 		if start_step >= 0:
-			self.remove_event(start_step, index)
+			self.remove_event(start_step, row)
 		else:
-			self.add_event(step, index, self.velocity, self.duration)
+			self.add_event(step, row, self.velocity, self.duration)
 			return note
 
 	# Function to remove an event
-	# step: step (column) index
-	# index: keymap index
-	def remove_event(self, step, index):
-		if index >= len(self.keymap):
+	# step: step number (column)
+	# row: keymap index
+	def remove_event(self, step, row):
+		if row >= len(self.keymap):
 			return
-		note = self.keymap[index]['note']
+		note = self.keymap[row]['note']
 		self.zynseq.libseq.removeNote(step, note)
 		self.zynseq.libseq.playNote(note, 0, self.channel) # Silence note if sounding
-		self.draw_row(index)
-		self.select_cell(step, index)
+		self.draw_row(row)
+		self.select_cell(step, row)
 
 	# Function to add an event
-	# step: step (column) index
-	# index: keymap index
+	# step: step number (column)
+	# row: keymap index
 	# vel: velocity (0-127)
 	# dur: duration (in steps)
 	# offset: offset of start of event (0..0.99)
-	def add_event(self, step, index, vel, dur, offset=0.0):
-		note = self.keymap[index]["note"]
+	def add_event(self, step, row, vel, dur, offset=0.0):
+		note = self.keymap[row]["note"]
 		self.zynseq.libseq.addNote(step, note, vel, dur, offset)
 		self.drawing = True
-		self.draw_row(index)
+		self.draw_row(row)
 		self.drawing = False
-		self.select_cell(step, index)
+		self.select_cell(step, row)
 
 	# Function to draw a grid row
 	# row: Row number (keymap index)
@@ -833,8 +885,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.draw_cell(step, row, white)
 
 	# Function to get cell coordinates
-	# col: Column index
-	# row: Row number
+	# col: Column number (step)
+	# row: Row number (keymap index)
 	# duration: Duration of cell in steps
 	# offset: Factor to offset start of note
 	# return: Coordinates required to draw cell
