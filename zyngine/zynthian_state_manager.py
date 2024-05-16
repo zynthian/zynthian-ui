@@ -2172,8 +2172,9 @@ class zynthian_state_manager:
         else:
             self.stop_touchosc2midi(False, force=True)
 
-    def start_bluetooth(self, save_config=True, wait=0, force=False):
-        if zynthian_gui_config.bluetooth_enabled and not force:
+    def start_bluetooth(self, save_config=True, wait=0):
+        if zynconf.is_service_active("bluetooth"):
+            zynthian_gui_config.bluetooth_enabled = True
             return
         self.start_busy("start_bluetooth", "starting Bluetooth")
         logging.info("STARTING Bluetooth")
@@ -2198,8 +2199,9 @@ class zynthian_state_manager:
 
         self.end_busy("start_bluetooth")
 
-    def stop_bluetooth(self, save_config=True, wait=0, force=False):
-        if not zynthian_gui_config.bluetooth_enabled and not force:
+    def stop_bluetooth(self, save_config=True, wait=0):
+        if zynconf.is_service_active("bluetooth"):
+            zynthian_gui_config.bluetooth_enabled = False
             return
         self.start_busy("stop_bluetooth", "stopping Bluetooth")
         logging.info("STOPPING bluetooth")
@@ -2223,9 +2225,9 @@ class zynthian_state_manager:
     # Start/Stop Bluetooth depending on configuration
     def default_bluetooth(self):
         if zynthian_gui_config.bluetooth_enabled:
-            self.start_bluetooth(False, force=True)
+            self.start_bluetooth(False)
         else:
-            self.stop_bluetooth(False, force=True)
+            self.stop_bluetooth(False)
 
 
     def start_aubionotes(self, save_config=True, wait=0, force=False):
