@@ -922,12 +922,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					xpos = step * self.step_width
 					if step % self.n_steps_beat == 0:
 						self.grid_canvas.create_line(xpos, 0, xpos, lh, fill=GRID_LINE_STRONG, tags="gridline")
-						beatnum = 1 + step // self.n_steps_beat
-						if beatnum == 1:
-							anchor = "nw"
-						else:
-							anchor = "n"
-						self.play_canvas.create_text((xpos, -2), text=str(beatnum), font=bnum_font, anchor=anchor, fill=GRID_LINE_STRONG, tags="beatnum")
+						if step < self.n_steps:
+							beatnum = 1 + step // self.n_steps_beat
+							if beatnum == 1:
+								anchor = "nw"
+							else:
+								anchor = "n"
+							self.play_canvas.create_text((xpos, -2), text=str(beatnum), font=bnum_font, anchor=anchor, fill=GRID_LINE_STRONG, tags="beatnum")
 
 					else:
 						self.grid_canvas.create_line(xpos, 0, xpos, lh, fill=GRID_LINE_WEAK, tags="gridline")
