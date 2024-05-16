@@ -91,7 +91,7 @@ class zynseq(zynthian_engine):
 		try:
 			self.libseq = ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynseq.so")
 			self.libseq.getSequenceName.restype = ctypes.c_char_p
-			self.libseq.addNote.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float]  # , ctypes.c_float
+			self.libseq.addNote.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_float]
 			self.libseq.getNoteDuration.restype = ctypes.c_float
 			self.libseq.changeDurationAll.argtypes = [ctypes.c_float]
 			self.libseq.getNoteOffset.restype = ctypes.c_float

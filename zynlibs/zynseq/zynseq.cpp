@@ -1751,11 +1751,11 @@ void setPlayChance(float chance) {
     g_bDirty = true;
 }
 
-bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration)
+bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration, float offset)
 {
     if(!g_seqMan.getPattern(g_nPattern))
         return false;
-    if(g_seqMan.getPattern(g_nPattern)->addNote(step, note, velocity, duration)) {
+    if(g_seqMan.getPattern(g_nPattern)->addNote(step, note, velocity, duration, offset)) {
         setPatternModified(g_seqMan.getPattern(g_nPattern), true);
         g_bDirty = true;
         return true;

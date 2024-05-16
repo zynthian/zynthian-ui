@@ -380,9 +380,10 @@ void setPlayChance(float chance);
 *   @param  note MIDI note number
 *   @param  velocity MIDI velocity value
 *   @param  duration Quantity of steps note should play for
+*   @param  offset Offset factor of start of step
 *   @retval bool True on success
 */
-bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration);
+bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration, float offset = 0.0);
 
 /** @brief  Removes note from selected pattern
 *   @param  step Index of step at which to remove note
