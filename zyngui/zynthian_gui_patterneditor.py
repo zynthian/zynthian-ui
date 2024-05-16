@@ -1322,7 +1322,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					velocity = self.velocity
 				self.set_title(f"Velocity: {velocity}")
 			elif self.edit_param == EDIT_PARAM_OFFSET:
-				self.set_title(f"Offset: {int(100 * self.zynseq.libseq.getNoteOffset(step, note))}%")
+				self.set_title(f"Offset: {round(100 * self.zynseq.libseq.getNoteOffset(step, note))}%")
 			elif self.edit_param == EDIT_PARAM_STUT_CNT:
 				self.set_title(f"Stutter count: {self.zynseq.libseq.getStutterCount(step, note)}")
 			elif self.edit_param == EDIT_PARAM_STUT_DUR:
@@ -1415,7 +1415,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 						self.velocity = velocity
 						self.select_cell()
 				elif self.edit_param == EDIT_PARAM_OFFSET:
-					val = int(100 * self.zynseq.libseq.getNoteOffset(step, note)) + dval
+					val = round(100 * self.zynseq.libseq.getNoteOffset(step, note)) + dval
 					if val > 99:
 						val = 99
 					elif val < 0:
