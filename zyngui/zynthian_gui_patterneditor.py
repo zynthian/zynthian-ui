@@ -832,24 +832,22 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					self.selected_cell[1] = self.keymap_offset + self.vzoom - 1
 			self.select_cell()
 
-	def on_gesture(self, type, value):
-		if type == MultitouchTypes.GESTURE_H_DRAG:
-			self.on_horizontal_drag(value)
-		elif type == MultitouchTypes.GESTURE_H_PINCH:
-			self.on_horizontal_pinch(value)
-		elif type == MultitouchTypes.GESTURE_V_PINCH:
-			self.on_vertical_pinch(value)
-
-	def on_horizontal_drag(self, value):
-		pass
-
-	def on_horizontal_pinch(self, value):
-		value = int(0.1 * value)
-		self.set_grid_scale(value, value)
-
-	def on_vertical_pinch(self, value):
-		value = int(0.1 * value)
-		self.set_grid_scale(value, value)
+	def on_gesture(self, gtype, value):
+		if gtype == MultitouchTypes.GESTURE_H_DRAG:
+			value = int(-0.1 * value)
+			self.set_step_offset(self.step_offset + value)
+			self.select_cell()
+		elif gtype == MultitouchTypes.GESTURE_V_DRAG:
+			value = int(0.1 * value)
+			self.set_keymap_offset(self.keymap_offset + value)
+			if self.selected_cell[1] < self.keymap_offset:
+				self.selected_cell[1] = self.keymap_offset
+			elif self.selected_cell[1] >= self.keymap_offset + self.vzoom:
+				self.selected_cell[1] = self.keymap_offset + self.vzoom - 1
+			self.select_cell()
+		elif gtype in (MultitouchTypes.GESTURE_H_PINCH, MultitouchTypes.GESTURE_V_PINCH):
+			value = int(0.1 * value)
+			self.set_grid_scale(value, value)
 
 	# Function to adjust velocity indicator
 	# velocity: Note velocity to indicate
