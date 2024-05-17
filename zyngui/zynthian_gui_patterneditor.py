@@ -90,7 +90,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def __init__(self):
 
 		super().__init__()
-		os.makedirs(CONFIG_ROOT, exist_ok=True) #TODO: Do we want/need these dirs?
 		self.zynseq_dpath = os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data") + "/zynseq"
 		self.patterns_dpath = self.zynseq_dpath + "/patterns"
 		self.my_zynseq_dpath = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/zynseq"
@@ -328,9 +327,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			else:
 				options['\u2610 Record from MIDI'] = 'Record MIDI'
 		if self.zynseq.libseq.getQuantizeNotes():
-			options['\u2612 Quantize notes'] = 'Quantize notes'
+			options['\u2612 Quantized recording'] = 'Quantized recording'
 		else:
-			options['\u2610 Quantize notes'] = 'Quantize notes'
+			options['\u2610 Quantized recording'] = 'Quantized recording'
 		options['Transpose pattern'] = 'Transpose pattern'
 		options['Copy pattern'] = 'Copy pattern'
 		options['Load pattern'] = 'Load pattern'
@@ -397,7 +396,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 		elif params == 'Record MIDI':
 			self.toggle_midi_record()
-		elif params == 'Quantize notes':
+		elif params == 'Quantized recording':
 			self.zynseq.libseq.setQuantizeNotes(not self.zynseq.libseq.getQuantizeNotes())
 		elif params == 'Transpose pattern':
 			self.enable_param_editor(self, 'transpose', {'name': 'Transpose', 'value_min': -1, 'value_max': 1, 'labels': ['down','down/up','up'], 'value': 0})
@@ -1548,9 +1547,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				elif self.edit_param == EDIT_PARAM_STUT_DUR:
 					self.zynseq.libseq.changeStutterDurAll(dval)
 					self.redraw_pending = 3
-			elif self.edit_mode == EDIT_MODE_SCALE:
-				#self.set_grid_scale(0, dval)
-				pass
 			else:
 				self.select_cell(None, self.selected_cell[1] - dval)
 
