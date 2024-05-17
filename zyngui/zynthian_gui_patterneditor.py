@@ -293,7 +293,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		extra_options = not zynthian_gui_config.check_wiring_layout(["Z2", "V5"])
 
 		# Global Options
-		options['Grid zoom'] = 'Grid zoom'
+		if not zynthian_gui_config.check_wiring_layout(["V5"]):
+			options['Grid zoom'] = 'Grid zoom'
 		if extra_options:
 			options['Tempo'] = 'Tempo'
 		if not zynthian_gui_config.check_wiring_layout(["Z2"]):
@@ -844,10 +845,12 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		pass
 
 	def on_horizontal_pinch(self, value):
-		self.set_grid_scale(int(0.1 * value), 0)
+		value = int(0.1 * value)
+		self.set_grid_scale(value, value)
 
 	def on_vertical_pinch(self, value):
-		self.set_grid_scale(0, int(0.1 * value))
+		value = int(0.1 * value)
+		self.set_grid_scale(value, value)
 
 	# Function to adjust velocity indicator
 	# velocity: Note velocity to indicate
@@ -1456,11 +1459,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					self.zynseq.libseq.changeDurationAll(dval * 0.1)
 					self.redraw_pending = 3
 			else:
+				self.set_grid_scale(dval, dval)
 				#patnum = self.pattern + dval
 				#if patnum > 0:
 				#	self.pattern = patnum
 				#	self.load_pattern(self.pattern)
-				pass
 
 		elif i == self.ctrl_order[2]:
 			if self.edit_mode == EDIT_MODE_SINGLE:
@@ -1546,7 +1549,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					self.zynseq.libseq.changeStutterDurAll(dval)
 					self.redraw_pending = 3
 			elif self.edit_mode == EDIT_MODE_SCALE:
-				self.set_grid_scale(0, dval)
+				#self.set_grid_scale(0, dval)
+				pass
 			else:
 				self.select_cell(None, self.selected_cell[1] - dval)
 
@@ -1559,7 +1563,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					self.edit_param = EDIT_PARAM_LAST
 				self.set_edit_title()
 			elif self.edit_mode == EDIT_MODE_SCALE:
-				self.set_grid_scale(dval, 0)
+				self.set_grid_scale(dval, dval)
 			else:
 				self.select_cell(self.selected_cell[0] + dval, None)
 
