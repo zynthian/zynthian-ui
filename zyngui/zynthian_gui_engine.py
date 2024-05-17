@@ -79,7 +79,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.info_canvas = None
 		super().__init__('Engine', True, False)
 
-		self.engine_info = self.zyngui.chain_manager.engine_info
+		self.chain_manager = self.zyngui.chain_manager
+		self.engine_info = self.chain_manager.engine_info
 		self.engine_info_dirty = False
 		self.xswipe_sens = 10
 
@@ -221,10 +222,10 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		#self.description_label.insert("1.0", eng_info["DESCR"])
 
 	def get_engines_by_cat(self):
-		self.zyngui.chain_manager.get_engine_info()
-		self.engine_info = self.zyngui.chain_manager.engine_info
+		self.chain_manager.get_engine_info()
+		self.engine_info = self.chain_manager.engine_info
 		self.proc_type = self.zyngui.modify_chain_status["type"]
-		self.engines_by_cat = self.zyngui.chain_manager.filtered_engines_by_cat(self.proc_type, all=self.show_all)
+		self.engines_by_cat = self.chain_manager.filtered_engines_by_cat(self.proc_type, all=self.show_all)
 		self.engine_cats = list(self.engines_by_cat.keys())
 		logging.debug(f"CATEGORIES => {self.engine_cats}")
 		#self.engines_by_cat = sorted(self.engines_by_cat.items(), key=lambda kv: "!" if kv[0] is None else kv[0])
@@ -338,7 +339,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 						if "processor" in self.zyngui.modify_chain_status:
 							# Replacing processor
 							pass
-						elif self.zyngui.chain_manager.get_slot_count(self.zyngui.modify_chain_status["chain_id"], self.zyngui.modify_chain_status["type"]):
+						elif self.chain_manager.get_slot_count(self.zyngui.modify_chain_status["chain_id"], self.zyngui.modify_chain_status["type"]):
 							# Adding to slot with existing processor - choose parallel/series
 							self.zyngui.screens['option'].config("Chain Mode", {"Series": False, "Parallel": True}, self.cb_add_parallel)
 							self.zyngui.show_screen('option')
@@ -362,7 +363,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def back_action(self):
 		if self.show_all:
 			if self.engine_info_dirty:
-				self.zyngui.chain_manager.save_engine_info()
+				self.chain_manager.save_engine_info()
 				self.engine_info_dirty = False
 			self.show_all = False
 			self.get_engines_by_cat()
@@ -372,10 +373,19 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			return False
 
 	def arrow_right(self):
-		self.zynpot_cb(2, 1)
+		if self.chain_manager.active_chain_id == 0 and not self.chain_manager.get_processor_count(0):
+			self.chain_manager.next_chain()
+			self.zyngui.chain_control()
+		else:
+			self.zynpot_cb(2, 1)
 
 	def arrow_left(self):
-		self.zynpot_cb(2, -1)
+		if self.chain_manager.active_chain_id == 0 and not self.chain_manager.get_processor_count(0):
+			self.chain_manager.previous_chain()
+			self.zyngui.chain_control()
+		else:
+			self.zynpot_cb(2, -1)
+
 
 	def cb_add_parallel(self, option, value):
 		self.zyngui.modify_chain_status['parallel'] = value
@@ -445,7 +455,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		path = ""
 		try:
 			path = zynthian_lv2.engine_type_title[self.zyngui.modify_chain_status["type"]]
-			#chain = self.zyngui.chain_manager.chains[self.zyngui.modify_chain_status["chain_id"]].get_name()
+			#chain = self.chain_manager.chains[self.zyngui.modify_chain_status["chain_id"]].get_name()
 			#path = f"{chain}#{path}"
 		except:
 			pass
