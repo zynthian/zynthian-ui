@@ -110,11 +110,11 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 		# Bind listbox events
 		self.listbox_push_ts = datetime.now()
-		self.listbox.bind("<Button-1>",self.cb_listbox_push)
-		self.listbox.bind("<ButtonRelease-1>",self.cb_listbox_release)
-		self.listbox.bind("<B1-Motion>",self.cb_listbox_motion)
-		self.listbox.bind("<Button-4>",self.cb_listbox_wheel)
-		self.listbox.bind("<Button-5>",self.cb_listbox_wheel)
+		self.listbox.bind("<Button-1>", self.cb_listbox_push)
+		self.listbox.bind("<ButtonRelease-1>", self.cb_listbox_release)
+		self.listbox.bind("<B1-Motion>", self.cb_listbox_motion)
+		self.listbox.bind("<Button-4>", self.cb_listbox_wheel)
+		self.listbox.bind("<Button-5>", self.cb_listbox_wheel)
 		#self.listbox.bind('<<ListboxSelect>>', cb_select)
 
 		if loading_anim:

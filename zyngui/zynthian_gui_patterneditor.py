@@ -95,6 +95,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.my_zynseq_dpath = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/zynseq"
 		self.my_patterns_dpath = self.my_zynseq_dpath + "/patterns"
 		self.my_captures_dpath = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
+
 		self.state_manager = self.zyngui.state_manager
 		self.zynseq = self.state_manager.zynseq
 
@@ -102,6 +103,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 		self.ctrl_order = zynthian_gui_config.layout['ctrl_order']
 
+		self.title = "Pattern 0"
 		self.edit_mode = EDIT_MODE_NONE  # Enable encoders to adjust note parameters
 		self.edit_param = EDIT_PARAM_DUR  # Parameter to adjust in parameter edit mode
 		self.vzoom = DEFAULT_VZOOM  # Quantity of rows (notes) displayed in grid
@@ -118,20 +120,27 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.keymap_offset = 60  # MIDI note number of bottom row in grid
 		self.step_offset = 0  # Step number of left column in grid
 		self.selected_cell = [0, 60]  # Location of selected cell (column,row)
-		self.drag_velocity = False  # True indicates drag will adjust velocity
-		self.drag_duration = False  # True indicates drag will adjust duration
-		self.drag_start_velocity = None  # Velocity value at start of drag
-		self.drag_note = False  # True if dragging note in grid
-		self.grid_drag_start = None  # Coordinates at start of grid drag
 		self.keymap = []  # Array of {"note":MIDI_NOTE_NUMBER, "name":"key name","colour":"key colour"} name and colour are optional
-		# TODO: Get values from persistent storage
+		self.reload_keymap = False  # Signal keymap needs reloading
 		self.cells = []  # Array of cells indices
 		self.redraw_pending = 4  # What to redraw: 0=nothing, 1=selected cell, 2=selected row, 3=refresh grid, 4=rebuild grid
 		self.rows_pending = Queue()
-		self.title = "Pattern 0"
 		self.channel = 0
-		self.drawing = False  # mutex to avoid mutliple concurrent] screen draws
-		self.reload_keymap = False  # Signal keymap needs reloading
+		self.drawing = False  # mutex to avoid concurrent screen draws
+
+		self.swiping = 0
+		self.swipe_friction = 0.8
+		self.swipe_step_dir = 0
+		self.swipe_row_dir = 0
+		self.swipe_step_speed = 0
+		self.swipe_row_speed = 0
+		self.swipe_step_offset = 0
+		self.swipe_row_offset = 0
+		self.grid_drag_start = None  # Coordinates at start of grid drag
+		self.drag_start_velocity = None  # Velocity value at start of drag
+		self.drag_note = False  # True if dragging note in grid
+		self.drag_velocity = False  # True indicates drag will adjust velocity
+		self.drag_duration = False  # True indicates drag will adjust duration
 
 		# Geometry vars
 		self.select_thickness = 1 + int(self.width / 500)  # Scale thickness of select border based on screen resolution
@@ -647,6 +656,12 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle start of pianoroll drag
 	def on_pianoroll_press(self, event):
+		self.swiping = False
+		self.swipe_step_speed = 0
+		self.swipe_row_speed = 0
+		self.swipe_step_dir = 0
+		self.swipe_row_dir = 0
+		self.piano_roll_drag_ts = datetime.now()
 		self.piano_roll_drag_start = event
 		self.piano_roll_drag_count = 0
 
@@ -658,7 +673,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		offset = int(DRAG_SENSIBILITY * (event.y - self.piano_roll_drag_start.y) / self.row_height)
 		if offset == 0:
 			return
+		self.swiping = True
 		self.piano_roll_drag_start = event
+		self.swipe_step_dir = 0
+		self.swipe_row_dir = offset
 		self.set_keymap_offset(self.keymap_offset + offset)
 		if self.selected_cell[1] < self.keymap_offset:
 			self.selected_cell[1] = self.keymap_offset
@@ -674,6 +692,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			if row < len(self.keymap):
 				note = self.keymap[row]['note']
 				self.play_note(note)
+		# Swipe
+		elif self.swiping:
+			dts = (datetime.now() - self.piano_roll_drag_ts).total_seconds()
+			self.swipe_nudge(dts)
 
 		self.piano_roll_drag_start = None
 		self.piano_roll_drag_count = 0
@@ -714,51 +736,20 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.select_cell(step, row)
 
 		# Start drag state variables
+		self.swiping = False
+		self.grid_drag_ts = datetime.now()
 		self.grid_drag_start = event
 		self.grid_drag_count = 0
+		self.swipe_step_speed = 0
+		self.swipe_row_speed = 0
+		self.swipe_step_dir = 0
+		self.swipe_row_dir = 0
 		self.drag_note = False
 		self.drag_velocity = False
 		self.drag_duration = False
 		self.drag_start_step = step
 		self.drag_start_velocity = self.zynseq.libseq.getNoteVelocity(step, note)
 		self.drag_start_duration = self.zynseq.libseq.getNoteDuration(step, note)
-
-	# Function to handle grid mouse release
-	# event: Mouse event
-	def on_grid_release(self, event):
-		# No drag actions
-		if self.grid_drag_start:
-			if self.grid_drag_count == 0:
-				# Bold click without drag
-				if (event.time - self.grid_drag_start.time) > 800:
-					if self.edit_mode == EDIT_MODE_NONE:
-						self.enable_edit(EDIT_MODE_SINGLE)
-					else:
-						self.enable_edit(EDIT_MODE_ALL)
-				# Short click without drag: Add/remove single note
-				else:
-					step = self.selected_cell[0]
-					row = self.selected_cell[1]
-					self.toggle_event(step, row)
-					if not self.drag_start_velocity:
-						note = self.keymap[row]['note']
-						self.play_note(note)
-			# End drag action
-			elif self.drag_note and not self.drag_start_velocity:
-				step = self.selected_cell[0]
-				row = self.selected_cell[1]
-				#note = self.keymap[row]['note']
-				self.add_event(step, row, self.velocity, self.duration)
-
-		# Reset drag state variables
-		self.grid_drag_start = None
-		self.grid_drag_count = 0
-		self.drag_note = False
-		self.drag_velocity = False
-		self.drag_duration = False
-		self.drag_start_step = None
-		self.drag_start_velocity = None
-		self.drag_start_duration = None
 
 	# Function to handle grid mouse drag
 	# event: Mouse event
@@ -821,16 +812,62 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				if self.grid_drag_count < 2 and (event.time - self.grid_drag_start.time) > 800:
 					self.drag_note = True
 				return
+			self.swiping = True
 			self.grid_drag_start = event
+			self.grid_drag_ts = datetime.now()  # Use time delta between last motion and release to determine speed of swipe
 			if step_offset:
+				self.swipe_step_dir = step_offset
 				self.set_step_offset(self.step_offset + step_offset)
 			if row_offset:
+				self.swipe_row_dir = row_offset
 				self.set_keymap_offset(self.keymap_offset + row_offset)
 				if self.selected_cell[1] < self.keymap_offset:
 					self.selected_cell[1] = self.keymap_offset
 				elif self.selected_cell[1] >= self.keymap_offset + self.vzoom:
 					self.selected_cell[1] = self.keymap_offset + self.vzoom - 1
 			self.select_cell()
+
+	# Function to handle grid mouse release
+	# event: Mouse event
+	def on_grid_release(self, event):
+		# No drag actions
+		if self.grid_drag_start:
+			if self.grid_drag_count == 0:
+				# Bold click without drag
+				if (event.time - self.grid_drag_start.time) > 800:
+					if self.edit_mode == EDIT_MODE_NONE:
+						self.enable_edit(EDIT_MODE_SINGLE)
+					else:
+						self.enable_edit(EDIT_MODE_ALL)
+				# Short click without drag: Add/remove single note
+				else:
+					step = self.selected_cell[0]
+					row = self.selected_cell[1]
+					self.toggle_event(step, row)
+					if not self.drag_start_velocity:
+						note = self.keymap[row]['note']
+						self.play_note(note)
+			# End drag action
+			elif self.drag_note:
+				if not self.drag_start_velocity:
+					step = self.selected_cell[0]
+					row = self.selected_cell[1]
+					#note = self.keymap[row]['note']
+					self.add_event(step, row, self.velocity, self.duration)
+			# Swipe
+			elif self.swiping:
+				dts = (datetime.now() - self.grid_drag_ts).total_seconds()
+				self.swipe_nudge(dts)
+
+		# Reset drag state variables
+		self.grid_drag_start = None
+		self.grid_drag_count = 0
+		self.drag_note = False
+		self.drag_velocity = False
+		self.drag_duration = False
+		self.drag_start_step = None
+		self.drag_start_velocity = None
+		self.drag_start_duration = None
 
 	def on_gesture(self, gtype, value):
 		if gtype == MultitouchTypes.GESTURE_H_DRAG:
@@ -848,6 +885,49 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		elif gtype in (MultitouchTypes.GESTURE_H_PINCH, MultitouchTypes.GESTURE_V_PINCH):
 			value = int(0.1 * value)
 			self.set_grid_scale(value, value)
+
+	def plot_zctrls(self):
+		self.swipe_update()
+
+	def swipe_nudge(self, dts):
+		kt = 0.5 * min(0.05 * DRAG_SENSIBILITY / dts, 8)
+		self.swipe_step_speed += kt * self.swipe_step_dir
+		self.swipe_row_speed += kt * self.swipe_row_dir
+		#logging.debug(f"KT={kt} => SWIPE_STEP_SPEED = {self.swipe_step_speed}, SWIPE_ROW_SPEED = {self.swipe_row_speed}")
+
+	# Update swipe scroll
+	def swipe_update(self):
+		select_cell = False
+		if self.swipe_step_speed != 0:
+			#logging.debug(f"SWIPE_UPDATE_STEP => {self.swipe_step_speed}")
+			self.swipe_step_offset += self.swipe_step_speed
+			self.swipe_step_speed *= self.swipe_friction
+			if abs(self.swipe_step_speed) < 0.1:
+				self.swipe_step_speed = 0
+				self.swipe_step_offset = 0
+			if abs(self.swipe_step_offset) > 1:
+				self.step_offset += int(self.swipe_step_offset)
+				self.swipe_step_offset -= int(self.swipe_step_offset)
+				self.set_step_offset(self.step_offset)
+				select_cell = True
+		if self.swipe_row_speed != 0:
+			#logging.debug(f"SWIPE_UPDATE_ROW => {self.swipe_row_speed}")
+			self.swipe_row_offset += self.swipe_row_speed
+			self.swipe_row_speed *= self.swipe_friction
+			if abs(self.swipe_row_speed) < 0.1:
+				self.swipe_row_speed = 0
+				self.swipe_row_offset = 0
+			if abs(self.swipe_row_offset) > 1:
+				self.keymap_offset += int(self.swipe_row_offset)
+				self.swipe_row_offset -= int(self.swipe_row_offset)
+				self.set_keymap_offset(self.keymap_offset)
+				if self.selected_cell[1] < self.keymap_offset:
+					self.selected_cell[1] = self.keymap_offset
+				elif self.selected_cell[1] >= self.keymap_offset + self.vzoom:
+					self.selected_cell[1] = self.keymap_offset + self.vzoom - 1
+				select_cell = True
+		if select_cell:
+			self.select_cell()
 
 	# Function to adjust velocity indicator
 	# velocity: Note velocity to indicate
