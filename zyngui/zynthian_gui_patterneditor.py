@@ -661,7 +661,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.swipe_row_speed = 0
 		self.swipe_step_dir = 0
 		self.swipe_row_dir = 0
-		self.piano_roll_drag_ts = datetime.now()
 		self.piano_roll_drag_start = event
 		self.piano_roll_drag_count = 0
 
@@ -694,7 +693,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				self.play_note(note)
 		# Swipe
 		elif self.swiping:
-			dts = (datetime.now() - self.piano_roll_drag_ts).total_seconds()
+			dts = (event.time - self.piano_roll_drag_start.time)/1000
 			self.swipe_nudge(dts)
 
 		self.piano_roll_drag_start = None
@@ -737,7 +736,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 		# Start drag state variables
 		self.swiping = False
-		self.grid_drag_ts = datetime.now()
 		self.grid_drag_start = event
 		self.grid_drag_count = 0
 		self.swipe_step_speed = 0
@@ -814,7 +812,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				return
 			self.swiping = True
 			self.grid_drag_start = event
-			self.grid_drag_ts = datetime.now()  # Use time delta between last motion and release to determine speed of swipe
 			if step_offset:
 				self.swipe_step_dir = step_offset
 				self.set_step_offset(self.step_offset + step_offset)
@@ -832,9 +829,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def on_grid_release(self, event):
 		# No drag actions
 		if self.grid_drag_start:
+			dts = event.time - self.grid_drag_start.time
 			if self.grid_drag_count == 0:
 				# Bold click without drag
-				if (event.time - self.grid_drag_start.time) > 800:
+				if (dts) > 800:
 					if self.edit_mode == EDIT_MODE_NONE:
 						self.enable_edit(EDIT_MODE_SINGLE)
 					else:
@@ -856,8 +854,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					self.add_event(step, row, self.velocity, self.duration)
 			# Swipe
 			elif self.swiping:
-				dts = (datetime.now() - self.grid_drag_ts).total_seconds()
-				self.swipe_nudge(dts)
+				self.swipe_nudge(dts/1000)
 
 		# Reset drag state variables
 		self.grid_drag_start = None
@@ -898,7 +895,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Update swipe scroll
 	def swipe_update(self):
 		select_cell = False
-		if self.swipe_step_speed != 0:
+		if self.swipe_step_speed:
 			#logging.debug(f"SWIPE_UPDATE_STEP => {self.swipe_step_speed}")
 			self.swipe_step_offset += self.swipe_step_speed
 			self.swipe_step_speed *= self.swipe_friction
@@ -910,7 +907,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				self.swipe_step_offset -= int(self.swipe_step_offset)
 				self.set_step_offset(self.step_offset)
 				select_cell = True
-		if self.swipe_row_speed != 0:
+		if self.swipe_row_speed:
 			#logging.debug(f"SWIPE_UPDATE_ROW => {self.swipe_row_speed}")
 			self.swipe_row_offset += self.swipe_row_speed
 			self.swipe_row_speed *= self.swipe_friction

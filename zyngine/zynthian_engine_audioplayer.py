@@ -485,7 +485,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 					range = zynaudioplayer.get_loop_end(handle) - start
 					self.processor.controllers_dict['view offset'].set_value(start)
 					self.processor.controllers_dict['zoom'].set_value(zynaudioplayer.get_duration(handle) / range, False)
-
 		elif zctrl.symbol == "info":
 			self.monitors_dict[handle]['info'] = zctrl.value
 		elif zctrl.symbol == "attack":
@@ -540,7 +539,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			return 1.0 + num
 		else:
 			return 1.0 / (1.0 - num)
-
 
 	def get_monitors_dict(self, handle):
 		return self.monitors_dict[handle]

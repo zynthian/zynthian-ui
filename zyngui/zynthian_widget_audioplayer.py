@@ -30,7 +30,6 @@ import traceback
 from math import modf, sqrt
 from os.path import basename
 from threading import Thread
-from collections import OrderedDict
 
 # Zynthian specific modules
 from zynlibs.zynaudioplayer import *
@@ -46,7 +45,7 @@ from zyngui.multitouch import MultitouchTypes
 
 class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
-	MAX_FRAMES = 2880000
+	#MAX_FRAMES = 2880000
 
 	def __init__(self, parent):
 		super().__init__(parent)
@@ -65,14 +64,17 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.waveform_color = "white"
 		self.zoom = 1
 		self.v_zoom = 1
-		self.refresh_waveform = False # True to force redraw of waveform on next refresh
+		self.refresh_waveform = False  # True to force redraw of waveform on next refresh
 		self.offset = 0  # Frames from start of file that waveform display starts
 		self.channels = 0  # Quantity of channels in audio
 		self.frames = 0  # Quantity of frames in audio
 		self.info = None
-		self.images=[]
+		self.images = []
 		self.waveform_height = 1  # ratio of height for y offset of zoom overview display
 		self.tap_time = 0
+		self.swipe_dir = 0
+		self.swipe_speed = 0
+		self.swipe_friction = 0.75
 
 		self.widget_canvas = tkinter.Canvas(self,
 			bd=0,
@@ -80,8 +82,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			relief='flat',
 			bg=zynthian_gui_config.color_bg)
 		self.widget_canvas.grid(sticky='news')
-		self.widget_canvas.bind('<ButtonPress-1>', self.on_canvas_press)
-		self.widget_canvas.bind('<B1-Motion>', self.on_canvas_drag)
 
 		self.loading_text = self.widget_canvas.create_text(
 			0,
@@ -158,13 +158,13 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			state=tkinter.HIDDEN,
 			tags="overlay"
 		)
-		self.widget_canvas.bind("<ButtonPress-1>", self.on_mouse_press)
-		self.widget_canvas.bind("<ButtonRelease-1>", self.on_mouse_release)
-		self.widget_canvas.bind("<B1-Motion>", self.on_mouse_motion)
+		self.widget_canvas.bind('<ButtonPress-1>', self.on_canvas_press)
+		self.widget_canvas.bind('<B1-Motion>', self.on_canvas_drag)
+		self.widget_canvas.bind("<ButtonRelease-1>", self.on_canvas_release)
 		self.widget_canvas.bind("<Button-4>", self.cb_canvas_wheel)
 		self.widget_canvas.bind("<Button-5>", self.cb_canvas_wheel)
 		self.zyngui.multitouch.tag_bind(self.widget_canvas, None, "gesture", self.on_gesture)
-		self.cue_points = [] # List of cue points [pos, name] indexed by lib's list
+		self.cue_points = []  # List of cue points [pos, name] indexed by lib's list
 
 	def show(self):
 		self.refreshing = False
@@ -172,54 +172,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 	def hide(self):
 		super().hide()
-
-	# Function to handle start of mouse drag
-	def on_mouse_press(self, event):
-		self.drag_start = event
-		self.drag_count = 0
-
-	# Function to handle mouse drag motion
-	def on_mouse_motion(self, event):
-		if not self.drag_start:
-			return
-		self.drag_count += 1
-		dx = int(event.x - self.drag_start.x)
-		dy = int(event.y - self.drag_start.y)
-		self.drag_start = event
-		if dx != 0:
-			self.on_horizontal_drag(dx)
-
-	# Function to handle end of mouse drag
-	def on_mouse_release(self, event):
-		self.drag_start = None
-		self.drag_count = 0
-
-	def on_gesture(self, gtype, value):
-		if gtype == MultitouchTypes.GESTURE_H_DRAG:
-			self.on_horizontal_drag(value)
-		elif gtype == MultitouchTypes.GESTURE_H_PINCH:
-			self.on_horizontal_pinch(value)
-		elif gtype == MultitouchTypes.GESTURE_V_PINCH:
-			self.on_vertical_pinch(value)
-
-	def on_horizontal_drag(self, value):
-		offset = self.processor.controllers_dict['view offset'].value - self.duration * value / self.width / self.zoom
-		offset = max(0, offset)
-		offset = min(self.duration - self.duration / self.zoom, offset)
-		self.processor.controllers_dict['view offset'].set_value(offset, False)
-		self.refresh_waveform = True
-
-	def on_horizontal_pinch(self, value):
-		zctrl = self.processor.controllers_dict['zoom']
-		zctrl.set_value(zctrl.value + 4 * value / self.width * zctrl.value)
-		self.refresh_waveform = True
-
-	def on_vertical_pinch(self, value):
-		v_zoom = self.processor.controllers_dict['amp zoom'].value + value / self.height
-		v_zoom = min(v_zoom, 4.0)
-		v_zoom = max(v_zoom, 0.1)
-		self.processor.controllers_dict['amp zoom'].set_value(v_zoom)
-		self.refresh_waveform = True
 
 	def on_size(self, event):
 		if event.width == self.width and event.height == self.height:
@@ -235,13 +187,53 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.waveform_height = self.height - font.metrics("linespace")
 		self.refresh_waveform = True
 
+	def view_offset_delta(self, dx):
+		offset = self.processor.controllers_dict['view offset'].value - self.duration * dx / self.width / self.zoom
+		offset = max(0, offset)
+		offset = min(self.duration - self.duration / self.zoom, offset)
+		self.processor.controllers_dict['view offset'].set_value(offset, False)
+		self.refresh_waveform = True
+
+	def swipe_nudge(self, dts):
+		self.swipe_speed += max(-500, min(0.1 * self.swipe_dir / dts, 500))
+		#logging.debug(f"SWIPE NUDGE {dts} => SWIPE_SPEED = {self.swipe_speed}")
+
+	def swipe_update(self):
+		if self.swipe_speed:
+			abs_speed = abs(self.swipe_speed)
+			if abs_speed > 12:
+				self.view_offset_delta(self.swipe_speed)
+				self.swipe_speed *= self.swipe_friction
+				#logging.debug(f"SWIPE UPDATE => SWIPE_SPEED = {self.swipe_speed}")
+			else:
+				self.swipe_speed = 0
+
+	def on_gesture(self, gtype, value):
+		if gtype == MultitouchTypes.GESTURE_H_DRAG:
+			self.view_offset_delta(value)
+		elif gtype == MultitouchTypes.GESTURE_H_PINCH:
+			self.on_horizontal_pinch(value)
+		elif gtype == MultitouchTypes.GESTURE_V_PINCH:
+			self.on_vertical_pinch(value)
+
+	def on_horizontal_pinch(self, value):
+		zctrl = self.processor.controllers_dict['zoom']
+		zctrl.set_value(zctrl.value + 4 * value / self.width * zctrl.value)
+		self.refresh_waveform = True
+
+	def on_vertical_pinch(self, value):
+		v_zoom = self.processor.controllers_dict['amp zoom'].value + value / self.height
+		v_zoom = min(v_zoom, 4.0)
+		v_zoom = max(v_zoom, 0.1)
+		self.processor.controllers_dict['amp zoom'].set_value(v_zoom)
+		self.refresh_waveform = True
+
 	def on_canvas_press(self, event):
 		if self.frames == 0:
 			return
 		f = self.width / self.frames * self.zoom
 		pos = (event.x / f + self.offset) / self.samplerate
 		max_delta = 0.02 * self.duration / self.zoom
-		self.drag_marker = None
 		if event.y > 0.8 * self.height:
 			self.drag_marker = "view offset"
 			pos = self.duration * event.x / self.width
@@ -250,6 +242,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		elif event.time - self.tap_time < 200:
 			self.on_canvas_double_tap(event)
 		else:
+			self.drag_marker = None
 			for symbol in ['position', 'loop start', 'loop end', 'crop start', 'crop end']:
 				if abs(pos - self.processor.controllers_dict[symbol].value) < max_delta:
 					self.drag_marker = symbol
@@ -260,17 +253,59 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 						self.processor.controllers_dict['cue'].set_value(i+1)
 						self.drag_marker = 'cue pos'
 						break
-		self.tap_time = event.time
+			if self.drag_marker is None:
+				self.drag_marker = "drag view"
+				self.swipe_dir = 0
+				self.swipe_speed = 0
+				self.drag_start = event
+			self.tap_time = event.time
+
+	def on_canvas_drag(self, event):
+		if self.drag_marker and self.frames:
+			if self.drag_marker == "view offset":
+				pos = self.duration * event.x / self.width
+				self.processor.controllers_dict[self.drag_marker].set_value(pos)
+			elif self.drag_marker == "drag view":
+				dx = int(event.x - self.drag_start.x)
+				self.drag_start = event
+				if dx:
+					pos = self.processor.controllers_dict['view offset'].value - self.duration * dx / self.width / self.zoom
+					pos = max(0, pos)
+					pos = min(self.duration - self.duration / self.zoom, pos)
+					self.processor.controllers_dict["view offset"].set_value(pos)
+					self.swipe_dir = dx
+			else:
+				f = self.width / self.frames * self.zoom
+				pos = (event.x / f + self.offset) / self.samplerate
+				if self.drag_marker in self.processor.controllers_dict:
+					self.processor.controllers_dict[self.drag_marker].set_value(pos)
+				else:
+					id = zynaudioplayer.add_cue_point(self.processor.handle, pos) + 1
+					if id > 0:
+						self.processor.controllers_dict['cue'].value_min = 1
+						self.processor.controllers_dict['cue'].value_max = id
+						self.processor.controllers_dict['cue'].set_value(id)
+						self.processor.controllers_dict['cue pos'].set_value(pos)
+						self.update_cue_markers()
+
+	# Function to handle end of mouse drag
+	def on_canvas_release(self, event):
+		if self.drag_marker == "drag view":
+			dts = (event.time - self.drag_start.time)/1000
+			self.swipe_nudge(dts)
+		self.drag_start = None
+		self.drag_marker = None
 
 	def on_canvas_double_tap(self, event):
-		options = OrderedDict()
-		options['--LOOP--'] = None
-		options['Loop start'] = event
-		options['Loop end'] = event
-		options['--CROP--'] = None
-		options['Crop start'] = event
-		options['Crop end'] = event
-		options['--CUE POINTS--'] = None
+		options = {
+			'> LOOP': None,
+			'Loop start': event,
+			'Loop end': event,
+			'> CROP': None,
+			'Crop start': event,
+			'Crop end': event,
+			'> CUE POINTS': None
+		}
 		f = self.width / self.frames * self.zoom
 		pos = (event.x / f + self.offset) / self.samplerate
 		options[f'Add cue marker at {pos:.3f}'] = event
@@ -279,7 +314,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			options[f'Add {x} evently distributed cue markers'] = ['beats', x]
 		if self.cue_points:
 			options[f'Remove all cue markers'] = ['remove']
-		options['--EXISTING CUES--'] = None
+		options['> EXISTING CUES'] = None
 		for i, cue in enumerate(self.cue_points):
 			if cue[1]:
 				options[f"Remove marker {cue[1]} at {cue[0]:.3f}"] = cue
@@ -356,24 +391,6 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			self.drag_marker = option.lower()
 			self.on_canvas_drag(event)
 
-	def on_canvas_drag(self, event):
-		if self.drag_marker and self.frames:
-			if self.drag_marker == "view offset":
-				pos = self.duration * event.x / self.width
-			else:
-				f = self.width / self.frames * self.zoom
-				pos = (event.x / f + self.offset) / self.samplerate
-			if self.drag_marker in self.processor.controllers_dict:
-				self.processor.controllers_dict[self.drag_marker].set_value(pos)
-			else:
-				id = zynaudioplayer.add_cue_point(self.processor.handle, pos) + 1
-				if id > 0:
-					self.processor.controllers_dict['cue'].value_min = 1
-					self.processor.controllers_dict['cue'].value_max = id
-					self.processor.controllers_dict['cue'].set_value(id)
-					self.processor.controllers_dict['cue pos'].set_value(pos)
-					self.update_cue_markers()
-
 	def get_monitors(self):
 		self.monitors = self.processor.engine.get_monitors_dict(self.processor.handle)
 
@@ -397,7 +414,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				v_offset = chan * y0
 				self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=zynthian_gui_config.PAD_COLOUR_GROUP[chan // 2 % len(zynthian_gui_config.PAD_COLOUR_GROUP)], tags="waveform", state=tkinter.HIDDEN)
 				self.widget_canvas.create_line(0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags="waveform", state=tkinter.HIDDEN)
-				self.widget_canvas.create_line(0,0,0,0, fill=self.waveform_color, tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
+				self.widget_canvas.create_line(0, 0, 0, 0, fill=self.waveform_color, tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
 			self.widget_canvas.tag_raise("waveform")
 			self.widget_canvas.tag_raise("overlay")
 			self.update_cue_markers()
@@ -471,10 +488,11 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				v1[0:] = [0.0] * self.channels
 				v2[0:] = [0.0] * self.channels
 				for frame in range(offset1, offset2, step):
-					if a[frame][channel] < v1[channel]:
-						v1[channel] = a[frame][channel]
-					if a[frame][channel] > v2[channel]:
-						v2[channel] = a[frame][channel]
+					av = a[frame][channel] * self.v_zoom
+					if av < v1[channel]:
+						v1[channel] = av
+					if av > v2[channel]:
+						v2[channel] = av
 				data[channel] += (x, y_offsets[channel] + int(v1[channel] * y0), x, y_offsets[channel] + int(v2[channel] * y0))
 
 		for chan in range(self.channels):
@@ -486,6 +504,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		if self.refreshing:
 			return
 		self.refreshing = True
+		self.swipe_update()
 		try:
 			if self.v_zoom != self.processor.controllers_dict['amp zoom'].value:
 				self.v_zoom = self.processor.controllers_dict['amp zoom'].value
