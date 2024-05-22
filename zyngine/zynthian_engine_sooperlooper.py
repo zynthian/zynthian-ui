@@ -433,12 +433,13 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			try:
 				logging.info("Stoping Engine " + self.name)
 				self.proc.terminate()
-				sleep(0.2)
-				self.proc.kill()
+				try:
+					self.proc.wait(0.2)
+				except:
+					self.proc.kill()
 				self.proc = None
 			except Exception as err:
 				logging.error(f"Can't stop engine {self.name} => {err}")
-
 		self.osc_end()
 
 	# ---------------------------------------------------------------------------
