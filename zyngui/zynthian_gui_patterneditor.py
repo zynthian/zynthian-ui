@@ -899,7 +899,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			#logging.debug(f"SWIPE_UPDATE_STEP => {self.swipe_step_speed}")
 			self.swipe_step_offset += self.swipe_step_speed
 			self.swipe_step_speed *= self.swipe_friction
-			if abs(self.swipe_step_speed) < 0.1:
+			if abs(self.swipe_step_speed) < 0.2:
 				self.swipe_step_speed = 0
 				self.swipe_step_offset = 0
 			if abs(self.swipe_step_offset) > 1:
@@ -911,7 +911,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			#logging.debug(f"SWIPE_UPDATE_ROW => {self.swipe_row_speed}")
 			self.swipe_row_offset += self.swipe_row_speed
 			self.swipe_row_speed *= self.swipe_friction
-			if abs(self.swipe_row_speed) < 0.1:
+			if abs(self.swipe_row_speed) < 0.2:
 				self.swipe_row_speed = 0
 				self.swipe_row_offset = 0
 			if abs(self.swipe_row_offset) > 1:
