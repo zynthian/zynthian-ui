@@ -1277,7 +1277,7 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
             if(cue_point_play) {
                 uint8_t cue = pPlayer->last_note_played - 59;
                 //!@todo Handle cue play reverse
-                if(cue_point_play > cue && pPlayer->play_pos_frames > pPlayer->cue_points[cue].offset) {
+                if(cue_point_play > cue && pPlayer->play_pos_frames > pPlayer->cue_points[cue].offset || pPlayer->play_pos_frames > pPlayer->crop_end) {
                     pPlayer->play_pos_frames = pPlayer->cue_points[cue - 1].offset;
                     pPlayer->env_state = ENV_RELEASE; //!@todo This looks wrong
                     if(pPlayer->loop == 1)
