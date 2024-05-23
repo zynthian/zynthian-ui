@@ -111,7 +111,7 @@ void save_pattern(uint32_t nPattern, const char* filename);
 void resetPatternSnapshot();
 
 /** Restore previous state of pattern */
-void undoPattern();
+bool undoPattern();
 
 /** @brief  Store current pattern on undo queue
 */

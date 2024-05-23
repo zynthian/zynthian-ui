@@ -127,6 +127,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.rows_pending = Queue()
 		self.channel = 0
 		self.drawing = False  # mutex to avoid concurrent screen draws
+		self.changed = False
 
 		self.swiping = 0
 		self.swipe_friction = 0.8
@@ -432,7 +433,22 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.do_load_pattern_file(fpath)
 
 	def do_load_pattern_file(self, fpath):
+		self.save_pattern_snapshot()
 		self.zynseq.load_pattern(self.pattern, fpath)
+		self.redraw_pending = 3
+
+	def clean_pattern_snapshots(self):
+		self.zynseq.libseq.resetPatternSnapshot()
+		self.zynseq.libseq.snapshotPattern(self.pattern)
+
+	def save_pattern_snapshot(self, force=True):
+		if force or self.changed:
+			self.zynseq.libseq.snapshotPattern(self.pattern)
+			self.changed = False
+
+	def undo_pattern(self):
+		self.zynseq.libseq.undoPattern()
+		self.changed = False
 		self.redraw_pending = 3
 
 	def toggle_midi_record(self, midi_record=None):
@@ -440,9 +456,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			midi_record = not self.zynseq.libseq.isMidiRecord()
 		self.zynseq.libseq.enableMidiRecord(midi_record)
 		if midi_record:
-			self.zynseq.libseq.snapshotPattern(self.pattern)
-		else:
-			self.zynseq.libseq.resetPatternSnapshot()
+			self.save_pattern_snapshot(force=False)
 
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol == 'tempo':
@@ -477,6 +491,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to transpose pattern
 	def transpose(self, offset):
 		if offset != 0:
+			self.save_pattern_snapshot()
 			if self.zynseq.libseq.getScale():
 				# Change to chromatic scale to transpose
 				self.zynseq.libseq.setScale(0)
@@ -527,6 +542,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to actually change steps per beat
 	def do_steps_per_beat(self, value):
 		self.zynseq.libseq.setStepsPerBeat(value)
+		self.clean_pattern_snapshots()
 		self.n_steps_beat = self.zynseq.libseq.getStepsPerBeat()
 		self.n_steps = self.zynseq.libseq.getSteps()
 		self.update_geometry()
@@ -542,6 +558,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to assert beats in pattern
 	def set_beats_in_pattern(self, value):
 		self.zynseq.libseq.setBeatsInPattern(value)
+		self.clean_pattern_snapshots()
 		self.n_steps = self.zynseq.libseq.getSteps()
 		self.update_geometry()
 		self.redraw_pending = 4
@@ -952,10 +969,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def remove_event(self, step, row):
 		if row >= len(self.keymap):
 			return
+		self.save_pattern_snapshot()
 		note = self.keymap[row]['note']
 		self.zynseq.libseq.removeNote(step, note)
 		self.zynseq.libseq.playNote(note, 0, self.channel) # Silence note if sounding
+		self.drawing = True
 		self.draw_row(row)
+		self.drawing = False
 		self.select_cell(step, row)
 
 	# Function to add an event
@@ -965,6 +985,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# dur: duration (in steps)
 	# offset: offset of start of event (0..0.99)
 	def add_event(self, step, row, vel, dur, offset=0.0):
+		self.save_pattern_snapshot()
 		note = self.keymap[row]["note"]
 		self.zynseq.libseq.addNote(step, note, vel, dur, offset)
 		self.drawing = True
@@ -1063,7 +1084,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 		# Draw cells of grid
 		#self.grid_canvas.itemconfig("gridcell", fill="black")
-		if redraw_pending > 2:
+		if redraw_pending > 3:
 			# Redraw gridlines
 			self.grid_canvas.delete("gridline")
 			self.play_canvas.delete("beatnum")
@@ -1345,6 +1366,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to actually clear pattern
 	def do_clear_pattern(self, params=None):
+		self.save_pattern_snapshot()
 		self.zynseq.libseq.clear()
 		self.redraw_pending = 3
 		self.select_cell()
@@ -1394,6 +1416,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
 		self.zynseq.libseq.selectPattern(index)
 		self.pattern = index
+		self.clean_pattern_snapshots()
 
 		n_steps = self.zynseq.libseq.getSteps()
 		n_steps_beat = self.zynseq.libseq.getStepsPerBeat()
@@ -1447,6 +1470,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle MIDI notes (only used to refresh screen - actual MIDI input handled by lib)
 	def midi_note(self, note):
+		self.changed = True
 		self.rows_pending.put_nowait(note)
 
 	def set_edit_title(self):
@@ -1672,8 +1696,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle BACK button
 	def back_action(self):
 		if self.zynseq.libseq.isMidiRecord():
-			self.zynseq.libseq.undoPattern()
-			self.redraw_pending = 3
+			self.undo_pattern()
 		elif self.edit_mode == EDIT_MODE_NONE:
 			return super().back_action()
 		self.enable_edit(EDIT_MODE_NONE)
@@ -1759,6 +1782,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		# REC button:
 		if self.zynseq.libseq.isMidiRecord():
 			wsl.set_led(leds[1], wsl.wscolor_red)
+			# BACK button
+			wsl.set_led(leds[8], wsl.wscolor_active2)
 		else:
 			wsl.set_led(leds[1], wsl.wscolor_active2)
 		# STOP button

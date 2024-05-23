@@ -37,12 +37,13 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		super().__init__(zyngui)
 		self.num_leds = 20
 
-		# Per-screen customizable LEDs (12 LEDs):
-		# + ALT => 7 => NOS QUEDAMOS AQUÍ!!!  Update screen's update_wsleds functions ...
+		# Per-screen customizable LEDs (14 LEDs):
+		# + ALT => 7
 		# + transport => 8, 9, 10
 		# + arrow => 14, 16, 17, 18
+		# + BACK/SEL => 15, 13
 		# + F1-F4 => 4, 11, 12, 19
-		self.custom_wsleds = [7, 8, 9, 10, 14, 16, 17, 18, 4, 11, 12, 19]
+		self.custom_wsleds = [7, 8, 9, 10, 14, 16, 17, 18, 15, 13, 4, 11, 12, 19]
 
 	def update_wsleds(self):
 		curscreen = self.zyngui.current_screen

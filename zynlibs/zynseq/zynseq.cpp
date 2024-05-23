@@ -1397,15 +1397,17 @@ void resetPatternSnapshot() {
     g_vPatternSnapshots.clear();
 }
 
-void undoPattern() {
+bool undoPattern() {
     if(g_vPatternSnapshots.size()) {
         Pattern* pPattern = g_vPatternSnapshots.back();
         g_seqMan.replacePattern(g_nPattern, pPattern);
         if(g_vPatternSnapshots.size() > 1) {
             delete(pPattern);
             g_vPatternSnapshots.pop_back();
+            return true;
         }
     }
+    return false;
 }
 
 uint16_t getVerticalZoom()
