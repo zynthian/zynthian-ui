@@ -26,7 +26,7 @@
 import logging
 import importlib
 from pathlib import Path
-from datetime import datetime
+from time import monotonic
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -696,9 +696,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if self.xyselect_mode:
 			return
 		else:
-			now = datetime.now()
-			dts = (now - self.listbox_push_ts).total_seconds()
-			rdts = (now - self.last_release).total_seconds()
+			now = monotonic()
+			dts = now - self.listbox_push_ts
+			rdts = now - self.last_release
 			self.last_release = now
 			if self.swiping:
 				self.swipe_nudge(dts)

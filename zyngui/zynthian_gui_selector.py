@@ -110,6 +110,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 		# Bind listbox events
 		self.listbox_push_ts = 0
+		self.last_release = 0
 		self.listbox.bind("<Button-1>", self.cb_listbox_push)
 		self.listbox.bind("<ButtonRelease-1>", self.cb_listbox_release)
 		self.listbox.bind("<B1-Motion>", self.cb_listbox_motion)
