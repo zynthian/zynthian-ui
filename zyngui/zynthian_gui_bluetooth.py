@@ -158,7 +158,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                 logging.warning(e)
 
             if update:
-                self.fill_list()
+                self.update_list()
             
         sleep(2) # Repeat every 2s
 
@@ -184,7 +184,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
         except Exception as e:
             logging.warning(f"Failed to complete toggle BLE device action: {e}")
 
-        self.fill_list()
+        self.update_list()
         self.zyngui.state_manager.end_busy("trust_ble")
 
     def remove_ble(self, addr):

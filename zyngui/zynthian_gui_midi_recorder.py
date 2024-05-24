@@ -57,20 +57,15 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 
 	def refresh_status(self):
 		super().refresh_status()
+		update = False
 		if self.recording != self.zyngui.state_manager.status_midi_recorder:
 			self.recording = self.zyngui.state_manager.status_midi_recorder
-			self.fill_list()
+			update = True
 		if self.playing != self.zyngui.state_manager.status_midi_player:
 			self.playing = self.zyngui.state_manager.status_midi_player
-			self.fill_list()
-			self.update_status_playback()
-
-	def XXX_build_view(self):
-		if super().build_view():
-			self.update_status_playback()
-			return True
-		else:
-			return False
+			update = True
+		if update:
+			self.update_list()
 
 	def hide(self):
 		self.hide_playing_bpm()
@@ -170,16 +165,17 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 				self.select_listbox(self.index)
 
 	def update_status_loop(self, fill=False):
-		if zynthian_gui_config.midi_play_loop:
-			self.list_data[1] = ("LOOP", 0, "\u2612 Loop Play")
-			libsmf.setLoop(True)
-		else:
-			self.list_data[1] = ("LOOP", 0, "\u2610 Loop Play")
-			libsmf.setLoop(False)
-		if fill:
-			self.listbox.delete(1)
-			self.listbox.insert(1, self.list_data[1][2])
-			self.select_listbox(self.index)
+		if self.list_data:
+			if zynthian_gui_config.midi_play_loop:
+				self.list_data[1] = ("LOOP", 0, "\u2612 Loop Play")
+				libsmf.setLoop(True)
+			else:
+				self.list_data[1] = ("LOOP", 0, "\u2610 Loop Play")
+				libsmf.setLoop(False)
+			if fill:
+				self.listbox.delete(1)
+				self.listbox.insert(1, self.list_data[1][2])
+				self.select_listbox(self.index)
 
 	def select_action(self, i, t='S'):
 		fpath = self.list_data[i][0]
@@ -240,7 +236,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 				parts = os.path.split(smf[0])
 				new_fpath = f"{parts[0]}/{new_name}.mid"
 				os.rename(smf[0], new_fpath)
-				self.fill_list()
+				self.update_list()
 			except Exception as e:
 				logging.error("Failed to rename MIDI file => {}".format(e))
 
@@ -251,7 +247,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector):
 		logging.info("DELETE MIDI FILE: {}".format(smf[0]))
 		try:
 			os.remove(smf[0])
-			self.fill_list()
+			self.update_list()
 		except Exception as e:
 			logging.error(f"Failed to delete MIDI file => {e}")
 

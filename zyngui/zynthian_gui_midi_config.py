@@ -309,7 +309,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                         self.zyngui.chain_manager.get_active_chain().toggle_midi_out(self.list_data[i][0])
                     except Exception as e:
                         logging.error(e)
-                self.fill_list()
+                self.update_list()
 
         # Change mode
         elif t == 'B':
@@ -364,7 +364,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 idev = self.list_data[self.index][1]
                 lib_zyncore.zmip_set_flag_active_chain(idev, params == "ACTI")
                 zynautoconnect.update_midi_in_dev_mode(idev)
-            self.fill_list()
+            self.update_list()
         except:
             pass  # Ports may have changed since menu opened
 
@@ -383,10 +383,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 fingerprint = zynautoconnect.get_hw_dst_ports()
             if last_fingerprint != fingerprint:
                 last_fingerprint = fingerprint
-                if self.shown:
-                    self.fill_list()
+                self.update_list()
             
-            sleep(2) # Repeat every 2s
+            sleep(2)  # Repeat every 2s
 
     def rename_device(self, name):
         """Set the friendly name of selected
@@ -399,7 +398,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         else:
             port = zynautoconnect.devices_out[self.list_data[self.index][1]]
         zynautoconnect.set_port_friendly_name(port, name)
-        self.fill_list()
+        self.update_list()
 
     def set_select_path(self):
         if self.chain:

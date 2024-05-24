@@ -191,7 +191,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 				self.reset_loading()
 
 	def reset_loading(self, force=False):
-		if self.loading_canvas and (self.loading_index>0 or force):
+		if self.loading_canvas and (self.loading_index > 0 or force):
 			self.loading_index=0
 			self.loading_canvas.itemconfig(self.loading_item, image=zynthian_gui_config.loading_imgs[0])
 
@@ -218,7 +218,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.zselector.config(self.zselector.zctrl)
 			self.zselector.show()
 		else:
-			zselector_ctrl = zynthian_controller(None ,self.selector_caption, {'value_min': 0, 'value_max': len(self.list_data) - 1, 'value': self.index})
+			zselector_ctrl = zynthian_controller(None, self.selector_caption, {'value_min': 0, 'value_max': len(self.list_data) - 1, 'value': self.index})
 			self.zselector = zynthian_gui_controller(zynthian_gui_config.select_ctrl, self.main_frame, zselector_ctrl, zs_hidden, selcounter=True, orientation=self.layout['ctrl_orientation'])
 		if not self.zselector_hidden:
 			self.zselector.grid(row=self.layout['ctrl_pos'][3][0], column=self.layout['ctrl_pos'][3][1], sticky="news")
