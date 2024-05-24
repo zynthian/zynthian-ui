@@ -1844,27 +1844,6 @@ class zynthian_state_manager:
     # Core Network Services
     # ---------------------------------------------------------------------------
 
-    def start_wifi(self):
-        self.start_busy("start_wifi", "connecting to WIFI")
-        if not zynconf.start_wifi():
-            self.set_busy_error("ERROR CONNECTING TO WIFI", "Can't start WIFI network!")
-            sleep(2.0)
-        self.end_busy("start_wifi")
-
-    def start_wifi_hotspot(self):
-        self.start_busy("start_wifi_hotspot", "starting WIFI HotSpot")
-        if not zynconf.start_wifi_hotspot():
-            self.set_busy_error("ERROR STARTING WIFI HOTSPOT", "Can't start WIFI HotSpot!")
-            sleep(2.0)
-        self.end_busy("start_wifi_hotspot")
-
-    def stop_wifi(self):
-        self.start_busy("stop_wifi", "stopping WIFI")
-        if not zynconf.stop_wifi():
-            self.set_busy_error("ERROR STOPPING WIFI", "Can't stop WIFI network")
-            sleep(2.0)
-        self.end_busy("stop_wifi")
-
     def start_vncserver(self, save_config=True):
         # Start VNC for Zynthian-UI
         self.start_busy("start_vncserver", "starting VNC")
