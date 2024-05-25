@@ -1709,9 +1709,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle BACK button
 	def back_action(self):
-		if self.zynseq.libseq.isMidiRecord():
-			self.undo_pattern()
-		elif self.edit_mode == EDIT_MODE_NONE:
+		if self.edit_mode == EDIT_MODE_NONE:
 			return super().back_action()
 		self.enable_edit(EDIT_MODE_NONE)
 		return True
