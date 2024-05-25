@@ -562,7 +562,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 			if preset_info[1] == "General" or l == processor:
 				for zctrl in l.controllers_dict.values():
 					try:
-						value = preset[l.division][zctrl.symbol]
+						value = preset[str(l.division)][zctrl.symbol]
 						zctrl.set_value(value, True)
 					except:
 						zctrl.set_value(zctrl.value, True)
@@ -585,9 +585,10 @@ class zynthian_engine_aeolus(zynthian_engine):
 	def save_preset(self, bank_info, preset_name):
 		state = {}
 		for processor in self.processors:
-			state[processor.division] = {}
+			division = str(processor.division)
+			state[division] = {}
 			for symbol in processor.controllers_dict:
-				state[processor.division][symbol] = processor.controllers_dict[symbol].value
+				state[division][symbol] = processor.controllers_dict[symbol].value
 		self.presets[preset_name] = state
 		self.save_all_presets()
 		return preset_name
