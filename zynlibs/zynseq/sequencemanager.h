@@ -19,6 +19,10 @@ class SequenceManager
         */
         void init();
 
+        /** @brief  Reset banks map
+        */
+		void resetBanks();
+
         /** @brief  Get pointer to a pattern
         *   @param  index Index of pattern to retrieve
         *   @retval Pattern* Pointer to pattern
@@ -239,7 +243,7 @@ class SequenceManager
 
         // Note: Maps are used for patterns and sequences to allow addition and removal of sequences whilst maintaining consistent access to remaining instances
         std::map<uint32_t, Pattern> m_mPatterns; // Map of patterns indexed by pattern number
-        std::vector<std::pair<uint32_t,uint32_t>> m_vPlayingSequences; //Vector of <bank,sequence> pairs for currently playing seqeunces (used to optimise play control)
+        std::vector<std::pair<uint32_t,uint32_t>> m_vPlayingSequences; //Vector of <bank,sequence> pairs for currently playing sequences (used to optimise play control)
         std::map<uint8_t, uint16_t> m_mTriggers; // Map of bank<<8|sequence indexed by MIDI note triggers
         std::map<uint32_t, std::vector<Sequence*>> m_mBanks; // Map of banks: vectors of pointers to sequences indexed by bank
 };

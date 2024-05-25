@@ -107,6 +107,8 @@ class StepEvent
         uint8_t m_nPlayChance;		// Probability of playing (0 = not played, 50 = plays with 50%, 100 = always plays)
 };
 
+typedef std::vector<StepEvent*> StepEventVector;
+
 /**    Pattern class provides a group of MIDI events within period of time
 */
 class Pattern
@@ -126,6 +128,11 @@ class Pattern
         /** @brief  Destruct pattern object
         */
         ~Pattern();
+
+        /** @brief  Copy operator
+        *   @param  p Pattern Reference to copy
+        */
+		Pattern& operator=(Pattern& p);
 
         /** @brief  Add step event to pattern
         *   @param  position Quantity of steps from start of pattern
@@ -469,10 +476,22 @@ class Pattern
         */
         uint32_t getLastStep();
 
+		// Snapshot management: Undo/Redo
+		void clearStepEventVector(StepEventVector* ss);
+		void saveSnapshot();
+		void resetSnapshots();
+		bool undo();
+		bool redo();
+		bool undoAll();
+		bool redoAll();
+
     private:
         void deleteEvent(uint32_t position, uint8_t command, uint8_t value1);
 
-        std::vector<StepEvent*> m_vEvents;	// Vector of pattern events
+        StepEventVector m_vEvents;			// Vector of pattern events
+        std::vector<StepEventVector*> m_vSnapshots;		// Vector of vectors of pattern events
+        std::vector<StepEventVector*>::iterator m_vSnapshotPos = m_vSnapshots.end();		// Iterator pointing to the current snapshot
+
         uint32_t m_nBeats = 4; 				// Quantity of beats in pattern
         uint32_t m_nStepsPerBeat = 6; 		// Steps per beat
         uint8_t m_nScale = 0; 				// Index of scale

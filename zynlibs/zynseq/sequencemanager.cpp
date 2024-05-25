@@ -12,9 +12,13 @@ SequenceManager::SequenceManager()
 void SequenceManager::init()
 {
     stop();
-    m_mPatterns.clear();
     m_mTriggers.clear();
-    for(auto itBank = m_mBanks.begin(); itBank != m_mBanks.end(); ++itBank)
+    m_mPatterns.clear();
+    resetBanks();
+}
+
+void SequenceManager::resetBanks() {
+    for (auto itBank = m_mBanks.begin(); itBank != m_mBanks.end(); ++itBank)
         for(auto itSeq = itBank->second.begin(); itSeq != itBank->second.end(); ++itSeq)
             delete (*itSeq);
     m_mBanks.clear();
@@ -123,26 +127,16 @@ void SequenceManager::deletePattern(uint32_t index)
     m_mPatterns.erase(index);
 }
 
+void SequenceManager::replacePattern(uint32_t index, Pattern* pattern)
+{
+    m_mPatterns[index] = *pattern;
+}
+
 void SequenceManager::copyPattern(uint32_t source, uint32_t destination)
 {
     if(source == destination)
         return;
-    m_mPatterns[destination].clear();
-    m_mPatterns[destination].setBeatsInPattern(m_mPatterns[source].getBeatsInPattern());
-    m_mPatterns[destination].setStepsPerBeat(m_mPatterns[source].getStepsPerBeat());
-    uint32_t nIndex = 0;
-    while(StepEvent* pEvent = m_mPatterns[source].getEventAt(nIndex++))
-        m_mPatterns[destination].addEvent(pEvent);
-}
-
-void SequenceManager::replacePattern(uint32_t index, Pattern* pattern)
-{
-    m_mPatterns[index].clear();
-    m_mPatterns[index].setBeatsInPattern(pattern->getBeatsInPattern());
-    m_mPatterns[index].setStepsPerBeat(pattern->getStepsPerBeat());
-    uint32_t nIndex = 0;
-    while(StepEvent* pEvent = pattern->getEventAt(nIndex++))
-        m_mPatterns[index].addEvent(pEvent);
+    m_mPatterns[destination] = m_mPatterns[source];
 }
 
 Sequence* SequenceManager::getSequence(uint8_t bank, uint8_t sequence)

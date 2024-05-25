@@ -367,7 +367,7 @@ class zynthian_engine_jalv(zynthian_engine):
 				if len(parts) == 2:
 					self.lv2_zctrl_dict[parts[0]]._set_value(float(parts[1]))
 			except Exception as e:
-				logging.error(e)
+				logging.warning(e)
 
 		return True
 

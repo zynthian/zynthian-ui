@@ -107,11 +107,24 @@ void save(const char* filename);
 */
 void save_pattern(uint32_t nPattern, const char* filename);
 
+/** @brief  Store current pattern on undo queue
+*/
+void savePatternSnapshot();
+
 /** Clear pattern undo queue */
-void resetPatternSnapshot();
+void resetPatternSnapshots();
 
 /** Restore previous state of pattern */
 bool undoPattern();
+
+/** Restore next state of pattern */
+bool redoPattern();
+
+/** Restore first state of pattern */
+bool undoPatternAll();
+
+/** Restore last state of pattern */
+bool redoPatternAll();
 
 /** @brief  Store current pattern on undo queue
 */

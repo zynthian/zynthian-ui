@@ -23,22 +23,23 @@
  * ******************************************************************
  */
 
-#include <stdio.h> //provides printf
-#include <stdlib.h> //provides exit
-#include <thread> //provides thread for timer
-#include "sequencemanager.h" //provides management of sequences, patterns, events, etc
-#include "timebase.h" //provides timebase event map
-#include <jack/jack.h> //provides JACK interface
-#include <jack/midiport.h> //provides JACK MIDI interface
-#include "zynseq.h" //exposes library methods as c functions
 #include <set>
-#include <string>
-#include <cstring> //provides strcmp
-#include <queue> //provides queue
+#include <queue>
 #include <vector>
-#include "pattern.h"
+#include <string>
+#include <cstring>				// provides strcmp
 
-#include "metronome.h" // metronome wav data
+#include <stdio.h>				// provides printf
+#include <stdlib.h>				// provides exit
+#include <thread>				// provides thread for timer
+#include <jack/jack.h>			// provides JACK interface
+#include <jack/midiport.h>		// provides JACK MIDI interface
+
+#include "zynseq.h"				// exposes library methods as c functions
+#include "pattern.h"			// provides pattern objects
+#include "timebase.h"			// provides timebase event map
+#include "metronome.h"			// metronome wav data
+#include "sequencemanager.h"	// provides management of sequences, patterns, events, etc
 
 #define FILE_VERSION 9
 
@@ -51,33 +52,31 @@ struct ev_start {
 };
 static struct ev_start startEvents[128];
 
-SequenceManager g_seqMan; // Instance of sequence manager
-uint32_t g_nPattern = 0; // Index of currently selected pattern
-Sequence* g_pSequence = NULL; // Pattern editor sequence
-jack_port_t * g_pInputPort; // Pointer to the JACK input port
-jack_port_t * g_pOutputPort; // Pointer to the JACK output port
-jack_port_t* g_pMetronomePort; // Pointer to the JACK metronome audio output port
-
-jack_client_t *g_pJackClient = NULL; // Pointer to the JACK client
-
-jack_nframes_t g_nSampleRate = 44100; // Quantity of samples per second
-std::multimap<uint32_t,MIDI_MESSAGE*> g_mSchedule; // Schedule of MIDI events (queue for sending), indexed by scheduled play time (samples since JACK epoch)
-bool g_bDebug = false; // True to output debug info
-bool g_bPatternModified = false; // True if pattern has changed since last check
-size_t g_nPlayingSequences = 0; // Quantity of playing sequences
+jack_port_t * g_pInputPort;				// Pointer to the JACK input port
+jack_port_t * g_pOutputPort;			// Pointer to the JACK output port
+jack_port_t* g_pMetronomePort;			// Pointer to the JACK metronome audio output port
+jack_client_t *g_pJackClient = NULL;	// Pointer to the JACK client
+jack_nframes_t g_nSampleRate = 44100;	// Quantity of samples per second
 uint32_t g_nXruns = 0;
-bool g_bDirty = false; // True if anything has been modified
-std::set<std::string> g_setTransportClient; // Set of timebase clients having requested transport play
-bool g_bClientPlaying = false; // True if any external client has requested transport play
-bool g_bMidiRecord = false; // True to add notes to current pattern from MIDI input
 
-bool g_bSustain = false; // True if sustain pressed during note input
-uint8_t g_nInputRest = 0xFF; // MIDI note number that creates rest in pattern
-uint16_t g_nVerticalZoom = 16; // Quantity of rows to show in pattern and arranger view
-uint16_t g_nHorizontalZoom = 16; // Quantity of beats to show in arranger view
-char g_sName[16]; // Buffer to hold sequence name so that it can be sent back for Python to parse
+SequenceManager g_seqMan; 							// Instance of sequence manager
+uint32_t g_nPattern = 0;							// Index of currently edited pattern
+Sequence* g_pSequence = NULL;						// Pattern editor sequence
+std::multimap<uint32_t,MIDI_MESSAGE*> g_mSchedule;	// Schedule of MIDI events (queue for sending), indexed by scheduled play time (samples since JACK epoch)
+bool g_bMutex = false;								// Mutex lock for access to g_mSchedule
+bool g_bDebug = false;								// True to output debug info
+bool g_bPatternModified = false;					// True if pattern has changed since last check
+bool g_bDirty = false;								// True if anything has been modified
+size_t g_nPlayingSequences = 0;						// Quantity of playing sequences
+std::set<std::string> g_setTransportClient;			// Set of timebase clients having requested transport play
+bool g_bClientPlaying = false;						// True if any external client has requested transport play
+bool g_bMidiRecord = false;							// True to add notes to current pattern from MIDI input
+bool g_bSustain = false;							// True if sustain pressed during note input
 
-bool g_bMutex = false; // Mutex lock for access to g_mSchedule
+char g_sName[16];									// Buffer to hold sequence name so that it can be sent back for Python to parse
+uint8_t g_nInputRest = 0xFF;						// MIDI note number that creates rest in pattern
+uint16_t g_nVerticalZoom = 16;						// Quantity of rows to show in pattern and arranger view
+uint16_t g_nHorizontalZoom = 16;					// Quantity of beats to show in arranger view
 
 // Transport variables apply to next period
 uint32_t g_nBeatsPerBar = 4;
@@ -85,25 +84,26 @@ float g_fBeatType = 4.0;
 double g_dTicksPerBeat = 1920.0;
 double g_dTicksPerClock = g_dTicksPerBeat / PPQN;
 double g_dTempo = 120.0;
-float g_fSwingAmount = 0.0;		// Swing amount, range from 0 to 1, but values over 0.5 are not "MPC swing"
-float g_fHumanTime = 0.0;		// Timing Humanization, range from 0 to FLOAT_MAX
-float g_fHumanVelo = 0.0;		// Velocity Humanization, range from 0 to FLOAT_MAX
-float g_fPlayChance = 1.0;		// Probability for playing notes (0 = Notes are not played, 0.5 = Notes plays with prob.50%, 1 = All notes play always)
-bool g_bTimebaseChanged = false; // True to trigger recalculation of timebase parameters
-Timebase* g_pTimebase = NULL; // Pointer to the timebase object for selected song
-TimebaseEvent* g_pNextTimebaseEvent = NULL; // Pointer to the next timebase event or NULL if no more events in this song
-uint32_t g_nBar = 1; // Current bar
-uint32_t g_nBeat = 1; // Current beat within bar
-uint32_t g_nTick = 0; // Current tick within bar
-double g_dBarStartTick = 0; // Quantity of ticks from start of song to start of current bar
-jack_nframes_t g_nTransportStartFrame = 0; // Quantity of frames from JACK epoch to transport start
-std::queue <std::pair<double,double>> g_qClockPos; // Queue of pending clock positions relative to JACK epoch and clock duration in frames at this time
+bool g_bTimebaseChanged = false; 					// True to trigger recalculation of timebase parameters
+Timebase* g_pTimebase = NULL; 						// Pointer to the timebase object for selected song
+TimebaseEvent* g_pNextTimebaseEvent = NULL;			// Pointer to the next timebase event or NULL if no more events in this song
+uint32_t g_nBar = 1;								// Current bar
+uint32_t g_nBeat = 1;								// Current beat within bar
+uint32_t g_nTick = 0; 								// Current tick within bar
+double g_dBarStartTick = 0;							// Quantity of ticks from start of song to start of current bar
+jack_nframes_t g_nTransportStartFrame = 0;			// Quantity of frames from JACK epoch to transport start
+std::queue <std::pair<double,double>> g_qClockPos;	// Queue of pending clock positions relative to JACK epoch and clock duration in frames at this time
 double g_dFramesPerClock = getFramesPerClock(g_dTempo); //!@todo Change to integer will have 0.1% jitter at 1920 PPQN and much better jitter (0.01%) at current 24PPQN
-uint8_t g_nClock = 0; // Quantity of MIDI clocks since start of beat
-uint8_t g_nMidiClock = 0; // Quantity of *RECEIVED* MIDI clocks since start of beat
-uint8_t g_nClockSource = TRANSPORT_CLOCK_INTERNAL; // Source of clock that progresses playback
-bool g_bSendMidiClock = false; // True to send MIDI clock
-jack_nframes_t g_nFramesSinceLastBeat = 0; // Quantity of frames since last beat
+uint8_t g_nClock = 0;								// Quantity of MIDI clocks since start of beat
+uint8_t g_nMidiClock = 0;							// Quantity of *RECEIVED* MIDI clocks since start of beat
+uint8_t g_nClockSource = TRANSPORT_CLOCK_INTERNAL;	// Source of clock that progresses playback
+bool g_bSendMidiClock = false;						// True to send MIDI clock
+jack_nframes_t g_nFramesSinceLastBeat = 0;			// Quantity of frames since last beat
+
+float g_fSwingAmount = 0.0;							// Swing amount, range from 0 to 1, but values over 0.5 are not "MPC swing"
+float g_fHumanTime = 0.0;							// Timing Humanization, range from 0 to FLOAT_MAX
+float g_fHumanVelo = 0.0;							// Velocity Humanization, range from 0 to FLOAT_MAX
+float g_fPlayChance = 1.0;							// Probability for playing notes (0 = Notes are not played, 0.5 = Notes plays with prob.50%, 1 = All notes play always)
 
 size_t g_nMetronomePtr = -1; // Position within metronome click wav data
 float g_fMetronomeLevel = 1.0; // Factor to scale metronome level (volume)
@@ -111,7 +111,6 @@ bool g_bMetronome = false; // True to enable metronome
 struct metro_wav_t g_metro_pip;
 struct metro_wav_t g_metro_peep;
 struct metro_wav_t * g_pMetro = &g_metro_pip; // Pointer to the current metronome sound (pip/peep)
-std::vector<Pattern*> g_vPatternSnapshots; // Vector of patterns in undo queue
 
 // ** Internal (non-public) functions  (not delcared in header so need to be in correct order in source file) **
 
@@ -676,7 +675,6 @@ void init(char* name) {
     g_metro_peep.data = metronome_peep;
     g_metro_peep.size = sizeof(metronome_peep) / sizeof(float);
 
-
     // Register with Jack server
     //fprintf(stderr, "**zynseq initialising as %s**\n", name);
     char *sServerName = NULL;
@@ -872,6 +870,8 @@ bool load(const char* filename)
             }
             uint32_t nPattern = fileRead32(pFile);
             Pattern* pPattern = g_seqMan.getPattern(nPattern);
+            pPattern->clear();
+            pPattern->resetSnapshots();
             pPattern->setBeatsInPattern(fileRead32(pFile));
             pPattern->setStepsPerBeat(fileRead16(pFile));
             pPattern->setScale(fileRead8(pFile));
@@ -1060,9 +1060,11 @@ bool load_pattern(uint32_t nPattern, const char* filename)
                 DPRINTF("Unsupported pattern file version %d. Not loading file.\n", nVersion);
                 return false;
             }
-            g_nBeatsPerBar = fileRead16(pFile);
-            g_nVerticalZoom = fileRead16(pFile);
-            g_nHorizontalZoom = fileRead16(pFile);
+            // Loaded from file but not used!
+            // g_nBeatsPerBar, g_nVerticalZoom, g_nHorizontalZoom
+            fileRead16(pFile);
+            fileRead16(pFile);
+            fileRead16(pFile);
             //printf("Version:%u Beats per bar:%u Zoom V:%u H:%u\n", nVersion, g_nBeatsPerBar, g_nVerticalZoom, g_nHorizontalZoom);
         }
         else if(memcmp(sHeader, "patn", 4) == 0)
@@ -1081,6 +1083,7 @@ bool load_pattern(uint32_t nPattern, const char* filename)
             }
             Pattern* pPattern = g_seqMan.getPattern(nPattern);
             pPattern->clear();
+            pPattern->resetSnapshots();
             pPattern->setBeatsInPattern(fileRead32(pFile));
             pPattern->setStepsPerBeat(fileRead16(pFile));
             pPattern->setScale(fileRead8(pFile));
@@ -1386,28 +1389,28 @@ void save_pattern(uint32_t nPattern, const char* filename)
     fclose(pFile);
 }
 
-void snapshotPattern() {
-    Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
-    g_vPatternSnapshots.push_back(pPattern = new Pattern(pPattern));
+void savePatternSnapshot() {
+    g_seqMan.getPattern(g_nPattern)->saveSnapshot();
 }
 
-void resetPatternSnapshot() {
-    for(auto it = g_vPatternSnapshots.begin(); it != g_vPatternSnapshots.end(); ++it)
-        delete(*it);
-    g_vPatternSnapshots.clear();
+void resetPatternSnapshots() {
+	g_seqMan.getPattern(g_nPattern)->resetSnapshots();
 }
 
 bool undoPattern() {
-    if(g_vPatternSnapshots.size()) {
-        Pattern* pPattern = g_vPatternSnapshots.back();
-        g_seqMan.replacePattern(g_nPattern, pPattern);
-        if(g_vPatternSnapshots.size() > 1) {
-            delete(pPattern);
-            g_vPatternSnapshots.pop_back();
-            return true;
-        }
-    }
-    return false;
+	return g_seqMan.getPattern(g_nPattern)->undo();
+}
+
+bool redoPattern() {
+	return g_seqMan.getPattern(g_nPattern)->redo();
+}
+
+bool undoPatternAll() {
+	return g_seqMan.getPattern(g_nPattern)->undoAll();
+}
+
+bool redoPatternAll() {
+	return g_seqMan.getPattern(g_nPattern)->redoAll();
 }
 
 uint16_t getVerticalZoom()
@@ -1942,10 +1945,11 @@ void changeStutterDurAll(int value)
 
 void clear()
 {
-    if(!g_seqMan.getPattern(g_nPattern))
+    if (!g_seqMan.getPattern(g_nPattern))
         return;
     setPatternModified(g_seqMan.getPattern(g_nPattern), true);
     g_seqMan.getPattern(g_nPattern)->clear();
+    //g_seqMan.getPattern(g_nPattern)->resetSnapshots();
     g_bDirty = true;
 }
 

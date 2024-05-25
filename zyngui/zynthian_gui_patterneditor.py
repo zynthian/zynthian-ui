@@ -294,6 +294,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.zynseq.libseq.setRefNote(self.keymap_offset)
 		self.zynseq.libseq.setPlayMode(self.bank, self.sequence, self.last_play_mode)
 		self.zynseq.libseq.enableMidiRecord(False)
+		self.zyngui.alt_mode = False
 
 	# Function to add menus
 	def show_menu(self):
@@ -433,23 +434,37 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.do_load_pattern_file(fpath)
 
 	def do_load_pattern_file(self, fpath):
-		self.save_pattern_snapshot()
+		self.save_pattern_snapshot(force=True)
 		self.zynseq.load_pattern(self.pattern, fpath)
 		self.redraw_pending = 3
 
 	def clean_pattern_snapshots(self):
-		self.zynseq.libseq.resetPatternSnapshot()
-		self.zynseq.libseq.snapshotPattern(self.pattern)
+		self.zynseq.libseq.resetPatternSnapshots()
 
 	def save_pattern_snapshot(self, force=True):
 		if force or self.changed:
-			self.zynseq.libseq.snapshotPattern(self.pattern)
+			self.zynseq.libseq.savePatternSnapshot()
 			self.changed = False
 
 	def undo_pattern(self):
-		self.zynseq.libseq.undoPattern()
-		self.changed = False
-		self.redraw_pending = 3
+		if self.zynseq.libseq.undoPattern():
+			self.changed = False
+			self.redraw_pending = 3
+
+	def redo_pattern(self):
+		if self.zynseq.libseq.redoPattern():
+			self.changed = False
+			self.redraw_pending = 3
+
+	def undo_pattern_all(self):
+		if self.zynseq.libseq.undoPatternAll():
+			self.changed = False
+			self.redraw_pending = 3
+
+	def redo_pattern_all(self):
+		if self.zynseq.libseq.redoPatternAll():
+			self.changed = False
+			self.redraw_pending = 3
 
 	def toggle_midi_record(self, midi_record=None):
 		if midi_record is None:
@@ -491,7 +506,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to transpose pattern
 	def transpose(self, offset):
 		if offset != 0:
-			self.save_pattern_snapshot()
+			self.save_pattern_snapshot(force=True)
 			if self.zynseq.libseq.getScale():
 				# Change to chromatic scale to transpose
 				self.zynseq.libseq.setScale(0)
@@ -969,7 +984,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def remove_event(self, step, row):
 		if row >= len(self.keymap):
 			return
-		self.save_pattern_snapshot()
+		self.save_pattern_snapshot(force=True)
 		note = self.keymap[row]['note']
 		self.zynseq.libseq.removeNote(step, note)
 		self.zynseq.libseq.playNote(note, 0, self.channel) # Silence note if sounding
@@ -985,7 +1000,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# dur: duration (in steps)
 	# offset: offset of start of event (0..0.99)
 	def add_event(self, step, row, vel, dur, offset=0.0):
-		self.save_pattern_snapshot()
+		self.save_pattern_snapshot(force=True)
 		note = self.keymap[row]["note"]
 		self.zynseq.libseq.addNote(step, note, vel, dur, offset)
 		self.drawing = True
@@ -1366,7 +1381,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to actually clear pattern
 	def do_clear_pattern(self, params=None):
-		self.save_pattern_snapshot()
+		self.save_pattern_snapshot(force=True)
 		self.zynseq.libseq.clear()
 		self.redraw_pending = 3
 		self.select_cell()
@@ -1416,7 +1431,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
 		self.zynseq.libseq.selectPattern(index)
 		self.pattern = index
-		self.clean_pattern_snapshots()
 
 		n_steps = self.zynseq.libseq.getSteps()
 		n_steps_beat = self.zynseq.libseq.getStepsPerBeat()
@@ -1716,11 +1730,17 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
-		self.zynpot_cb(self.ctrl_order[3], 1)
+		if self.zyngui.alt_mode:
+			self.redo_pattern()
+		else:
+			self.zynpot_cb(self.ctrl_order[3], 1)
 
 	# Function to handle CUIA ARROW_LEFT
 	def arrow_left(self):
-		self.zynpot_cb(self.ctrl_order[3], -1)
+		if self.zyngui.alt_mode:
+			self.undo_pattern()
+		else:
+			self.zynpot_cb(self.ctrl_order[3], -1)
 
 	# Function to handle CUIA ARROW_UP
 	def arrow_up(self):
@@ -1728,6 +1748,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.zynpot_cb(self.ctrl_order[3], 1)
 		elif self.edit_mode:
 			self.zynpot_cb(self.ctrl_order[2], 1)
+		elif self.zyngui.alt_mode:
+			self.redo_pattern_all()
 		else:
 			self.zynpot_cb(self.ctrl_order[2], -1)
 
@@ -1737,6 +1759,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.zynpot_cb(self.ctrl_order[3], -1)
 		elif self.edit_mode:
 			self.zynpot_cb(self.ctrl_order[2], -1)
+		elif self.zyngui.alt_mode:
+			self.undo_pattern_all()
 		else:
 			self.zynpot_cb(self.ctrl_order[2], 1)
 
@@ -1798,5 +1822,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			wsl.set_led(leds[3], wsl.wscolor_red)
 		elif pb_status == zynseq.SEQ_STOPPED:
 			wsl.set_led(leds[3], wsl.wscolor_active2)
+		# Arrow buttons
+		if self.zyngui.alt_mode and not (self.param_editor_zctrl or self.edit_mode):
+			wsl.set_led(leds[4], wsl.wscolor_active2)
+			wsl.set_led(leds[5], wsl.wscolor_active2)
+			wsl.set_led(leds[6], wsl.wscolor_active2)
+			wsl.set_led(leds[7], wsl.wscolor_active2)
 
 # ------------------------------------------------------------------------------
