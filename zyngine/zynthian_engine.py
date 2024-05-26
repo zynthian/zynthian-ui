@@ -269,11 +269,7 @@ class zynthian_engine(zynthian_basic_engine):
 		for ext in cls.preset_fexts:
 			rules.append(fnmatch.translate("*." + ext))
 		rerule = re.compile("(" + "|".join(rules) + ")", re.IGNORECASE)
-		if recursion:
-			glob_pat = "/".join(["**"] * recursion)
-		else:
-			glob_pat = "*"
-		for item in glob.iglob(os.path.join(path, glob_pat), recursive=True):
+		for item in glob.iglob(os.path.join(path, "**"), recursive=True):
 			if rerule.match(item):
 				return True
 		return False
@@ -284,12 +280,8 @@ class zynthian_engine(zynthian_basic_engine):
 		for ext in cls.preset_fexts:
 			rules.append(fnmatch.translate("*." + ext))
 		rerule = re.compile("(" + "|".join(rules) + ")", re.IGNORECASE)
-		if recursion:
-			glob_pat = "/".join(["**"] * recursion)
-		else:
-			glob_pat = "*"
 		res = []
-		for item in glob.iglob(os.path.join(path, glob_pat), recursive=True):
+		for item in glob.iglob(os.path.join(path, "**"), recursive=True):
 			if rerule.match(item):
 				res.append(item)
 		return sorted(res, key=str.casefold)
@@ -349,18 +341,6 @@ class zynthian_engine(zynthian_basic_engine):
 	@classmethod
 	def get_bank_dirlist(cls, recursion=1, exclude_empty=True):
 		banks = []
-		# Internal storage banks
-		for root_bank_dir in cls.root_bank_dirs:
-			sbanks = []
-			walk = next(os.walk(root_bank_dir[1]))
-			walk[1].sort()
-			for bank_dir in walk[1]:
-				bank_path = walk[0] + "/" + bank_dir
-				if not exclude_empty or cls.find_some_preset_file(bank_path, recursion):
-					sbanks.append([bank_path, None, bank_dir, None, bank_dir])
-			if len(sbanks):
-				banks.append([None, None, "SD> " + root_bank_dir[0], None, None])
-				banks += sbanks
 
 		# External storage banks
 		for exd in zynthian_gui_config.get_external_storage_dirs(cls.ex_data_dir):
@@ -389,6 +369,19 @@ class zynthian_engine(zynthian_basic_engine):
 			# Add root's header and banks
 			if len(sbanks):
 				banks.append([None, None, f"USB> {os.path.basename(exd)}", None, None])
+				banks += sbanks
+
+		# Internal storage banks
+		for root_bank_dir in cls.root_bank_dirs:
+			sbanks = []
+			walk = next(os.walk(root_bank_dir[1]))
+			walk[1].sort()
+			for bank_dir in walk[1]:
+				bank_path = walk[0] + "/" + bank_dir
+				if not exclude_empty or cls.find_some_preset_file(bank_path, recursion):
+					sbanks.append([bank_path, None, bank_dir, None, bank_dir])
+			if len(sbanks):
+				banks.append([None, None, "SD> " + root_bank_dir[0], None, None])
 				banks += sbanks
 
 		return banks

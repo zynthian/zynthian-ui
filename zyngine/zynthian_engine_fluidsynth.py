@@ -169,22 +169,23 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 	def get_bank_filelist(cls, recursion=1, exclude_empty=True):
 		banks = []
 		logging.debug(f"LOADING BANK FILES ...")
-		# Internal storage banks
-		for root_bank_dir in cls.root_bank_dirs:
-			flist = cls.find_all_preset_files(root_bank_dir[1], recursion=2)
-			if not exclude_empty or len(flist) > 0:
-				banks.append([None, None, "SD> " + root_bank_dir[0], None, None])
-			for fpath in flist:
-				fname = os.path.basename(fpath)
-				title, filext = os.path.splitext(fname)
-				title = title.replace('_', ' ')
-				banks.append([fpath, None, title, None, fname])
 
 		# External storage banks
 		for exd in zynthian_gui_config.get_external_storage_dirs(cls.ex_data_dir):
 			flist = cls.find_all_preset_files(exd, recursion=2)
 			if not exclude_empty or len(flist) > 0:
 				banks.append([None, None, f"USB> {os.path.basename(exd)}", None, None])
+			for fpath in flist:
+				fname = os.path.basename(fpath)
+				title, filext = os.path.splitext(fname)
+				title = title.replace('_', ' ')
+				banks.append([fpath, None, title, None, fname])
+
+		# Internal storage banks
+		for root_bank_dir in cls.root_bank_dirs:
+			flist = cls.find_all_preset_files(root_bank_dir[1], recursion=2)
+			if not exclude_empty or len(flist) > 0:
+				banks.append([None, None, "SD> " + root_bank_dir[0], None, None])
 			for fpath in flist:
 				fname = os.path.basename(fpath)
 				title, filext = os.path.splitext(fname)
