@@ -255,9 +255,9 @@ static uint32_t tosc_vwrite(char *buffer, const int len,
 
 uint32_t tosc_writeNextMessage(tosc_bundle *b,
     const char *address, const char *format, ...) {
+  if (b->bundleLen >= b->bufLen) return 0;
   va_list ap;
   va_start(ap, format);
-  if (b->bundleLen >= b->bufLen) return 0;
   const uint32_t i = tosc_vwrite(
       b->marker+4, b->bufLen-b->bundleLen-4, address, format, ap);
   va_end(ap);

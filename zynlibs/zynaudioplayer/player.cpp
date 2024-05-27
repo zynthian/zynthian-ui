@@ -378,7 +378,7 @@ void* file_thread_fn(void * param) {
 
             while(pPlayer->file_read_status == LOADING)
             {
-                int nFramesRead;
+                int nFramesRead = 0;
                 // Load block of data from file to SRC or output buffer
                 nMaxFrames = pPlayer->input_buffer_size - nUnusedFrames;
 
