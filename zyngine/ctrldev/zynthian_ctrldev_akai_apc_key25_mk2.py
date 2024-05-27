@@ -2222,7 +2222,7 @@ class StepSeqHandler(ModeHandlerBase):
             velocity = spec.velocity
             velocity = velocity if not self._is_shifted else velocity // 2
             self._libseq.addNote(
-                step, spec.note, velocity, spec.duration)
+                step, spec.note, velocity, spec.duration, 0)
             self._libseq.setStutterCount(step, spec.note, spec.stutter_count)
             self._libseq.setStutterDur(step, spec.note, spec.stutter_duration)
         else:
