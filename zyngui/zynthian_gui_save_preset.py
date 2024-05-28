@@ -39,7 +39,8 @@ class zynthian_gui_save_preset():
 			self.save_preset_create_bank_name = None
 			self.save_preset_bank_info = None
 			bank_list = self.processor.get_bank_list()
-			if not bank_list or not bank_list[0][0] or self.processor.auto_save_bank:
+			#if not bank_list or not bank_list[0][0] or self.processor.auto_save_bank:
+			if not bank_list or self.processor.auto_save_bank:
 				self.save_preset_select_name_cb()
 				return
 			options = {}
@@ -50,8 +51,10 @@ class zynthian_gui_save_preset():
 			for bank in bank_list:
 				if bank[0] == "*FAVS*":
 					index -= 1
-				else:
+				elif bank[0]:
 					options[bank[2]] = bank
+				else:
+					options["None"] = ["", None, "None", None]
 			if len(options) > 0:
 				self.zyngui.screens['option'].config("Select bank...", options, self.save_preset_select_bank_cb)
 				self.zyngui.show_screen('option')

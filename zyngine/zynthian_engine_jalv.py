@@ -276,7 +276,7 @@ class zynthian_engine_jalv(zynthian_engine):
 		for bank_label, info in self.preset_info.items():
 			bank_list.append((str(info['bank_url']), None, bank_label, None))
 		if len(bank_list) == 0:
-			bank_list.append(("", None, "", None))
+			bank_list.append(("", None, "None", None))
 		return bank_list
 
 	def set_bank(self, processor, bank):
@@ -398,7 +398,7 @@ class zynthian_engine_jalv(zynthian_engine):
 	def save_preset(self, bank, preset_name):
 		# Save preset (jalv)
 		if not bank:
-			bank = ["", None, "", None]
+			bank = ["", None, "None", None]
 		res = self.proc_cmd("save preset %s,%s" % (bank[0], preset_name)).split("\n")
 		
 		if res[-1].startswith("ERROR"):
