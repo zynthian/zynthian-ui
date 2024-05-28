@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
 # Zynthian GUI Save Preset helper Class
 #
 # Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,15 +21,16 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
-#******************************************************************************
+# ******************************************************************************
 
 import logging
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian Save Preset GUI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # This helper class must be inheritated by a GUI selector class!!
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_save_preset():
 
@@ -43,23 +44,20 @@ class zynthian_gui_save_preset():
 				return
 			options = {}
 			index = self.processor.get_bank_index()
-			if hasattr(self.processor.engine, "new_bank"):
-				#TODO: Implement new_bank in engine
+			if callable(getattr(self.processor.engine, "create_user_bank", None)):
 				options["***New bank***"] = "NEW_BANK"
 				index += 1
 			for bank in bank_list:
-				if bank[0]=="*FAVS*":
+				if bank[0] == "*FAVS*":
 					index -= 1
 				else:
-					if bank[1] is not None:
-						options[bank[2]] = bank
-			if len(options) > 1:
+					options[bank[2]] = bank
+			if len(options) > 0:
 				self.zyngui.screens['option'].config("Select bank...", options, self.save_preset_select_bank_cb)
 				self.zyngui.show_screen('option')
 				self.zyngui.screens['option'].select(index)
 			else:
 				self.save_preset_select_name_cb()
-
 
 	def save_preset_select_bank_cb(self, bank_name, bank_info):
 		self.save_preset_bank_info = bank_info
@@ -67,7 +65,6 @@ class zynthian_gui_save_preset():
 			self.zyngui.show_keyboard(self.save_preset_select_name_cb, "NewBank")
 		else:
 			self.save_preset_select_name_cb()
-
 
 	def save_preset_select_name_cb(self, create_bank_name=None):
 		if create_bank_name is not None:
@@ -77,7 +74,6 @@ class zynthian_gui_save_preset():
 			self.zyngui.show_keyboard(self.save_preset_cb, self.processor.preset_name + " COPY")
 		else:
 			self.zyngui.show_keyboard(self.save_preset_cb, "New Preset")
-
 
 	def save_preset_cb(self, preset_name):
 		preset_name = preset_name.strip()
@@ -89,7 +85,6 @@ class zynthian_gui_save_preset():
 			self.zyngui.show_confirm("Do you want to overwrite preset '{}'?".format(preset_name), self.do_save_preset, preset_name)
 		else:
 			self.do_save_preset(preset_name)
-
 
 	def do_save_preset(self, preset_name):
 		preset_name = preset_name.strip()
@@ -118,5 +113,4 @@ class zynthian_gui_save_preset():
 		self.zyngui.state_manager.end_busy("Save Preset")
 		self.zyngui.close_screen()
 
-
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
