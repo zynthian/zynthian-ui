@@ -1787,7 +1787,7 @@ class zynthian_gui:
 		
 		dtus : Duration switch has been pressed
 		Return : Letter indicating the action to take
-		#TODO: Does not support Release which means that press and hold expires when Long press is reached
+		# TODO: Does not support Release which means that press and hold expires when Long press is reached
 		"""
 		if dtus == 0:
 			return "P"
@@ -1804,11 +1804,9 @@ class zynthian_gui:
 		if self.capture_log_fname:
 			self.write_capture_log("ZYNSWITCH:P,{}".format(i))
 
-		try:
+		if callable(getattr(self.screens[self.current_screen], "switch", None)):
 			if self.screens[self.current_screen].switch(i, 'P'):
-				return
-		except AttributeError:
-			pass
+				return True
 
 		# Standard 4 ZynSwitches
 		if 0 <= i <= 3:
@@ -1827,16 +1825,20 @@ class zynthian_gui:
 		# Standard 4 ZynSwitches
 		if i == 0:
 			self.show_screen_reset("admin")
+			return True
 
 		elif i == 1:
 			self.cuia_all_sounds_off()
+			return True
 
 		elif i == 2:
 			self.cuia_screen_snapshot()
 			#self.show_screen_reset("zynpad")
+			return True
 
 		elif i == 3:
 			self.screens['admin'].power_off()
+			return True
 
 		# Custom ZynSwitches
 		elif i >= 4:
@@ -1848,15 +1850,14 @@ class zynthian_gui:
 		if self.capture_log_fname:
 			self.write_capture_log("ZYNSWITCH:B,{}".format(i))
 
-		try:
+		if callable(getattr(self.screens[self.current_screen], "switch", None)):
 			if self.screens[self.current_screen].switch(i, 'B'):
-				return
-		except AttributeError:
-			pass
+				return True
 
 		# Default actions for the 4 standard ZynSwitches
 		if i == 0:
 			self.show_screen('main_menu')
+			return True
 
 		elif i == 1:
 			try:
@@ -1864,13 +1865,16 @@ class zynthian_gui:
 			except:
 				pass
 			self.show_screen_reset('audio_mixer')
+			return True
 
 		elif i == 2:
 			self.cuia_screen_zs3()
 			#self.cuia_screen_snapshot()
+			return True
 
 		elif i == 3:
 			self.screens[self.current_screen].switch_select('B')
+			return True
 
 		# Custom ZynSwitches
 		elif i >= 4:
@@ -1882,24 +1886,26 @@ class zynthian_gui:
 		if self.capture_log_fname:
 			self.write_capture_log("ZYNSWITCH:S,{}".format(i))
 
-		try:
+		if callable(getattr(self.screens[self.current_screen], "switch", None)):
 			if self.screens[self.current_screen].switch(i, 'S'):
-				return
-		except AttributeError:
-			pass
+				return True
 
 		# Default actions for the standard 4 ZynSwitches
 		if i == 0:
 			self.cuia_menu()
+			return True
 
 		elif i == 1:
 			self.back_screen()
+			return True
 
 		elif i == 2:
 			self.cuia_toggle_midi_learn()
+			return True
 
 		elif i == 3:
 			self.screens[self.current_screen].switch_select('S')
+			return True
 
 		# Custom ZynSwitches
 		elif i >= 4:
@@ -1945,11 +1951,11 @@ class zynthian_gui:
 	# ------------------------------------------------------------------
 
 	def zynswitch_read(self):
-		#TODO: Block control when busy but avoid ui lock-up
+		# TODO: Block control when busy but avoid ui lock-up
 		#if self.state_manager.is_busy():
 		#	return
 
-		#Read Zynswitches
+		# Read Zynswitches
 		try:
 			self.zynswitches()
 		except Exception as err:
@@ -2080,7 +2086,7 @@ class zynthian_gui:
 	def control_thread_task(self):
 		j = 0
 		while not self.exit_flag:
-			# Read zynswitches, MIDI & OSC events
+			# Read zynswitches & OSC events
 			self.zynswitch_read()
 			self.osc_receive()
 
