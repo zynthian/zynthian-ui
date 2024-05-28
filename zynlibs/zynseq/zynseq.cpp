@@ -454,7 +454,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 							dDur = pPattern->getLength() + dDur;
 						pPattern->addNote(startEvents[midiEvent.buffer[1]].start, midiEvent.buffer[1], startEvents[midiEvent.buffer[1]].velocity, dDur / getClocksPerStep(), startEvents[midiEvent.buffer[1]].offset);
 					    startEvents[midiEvent.buffer[1]].start = -1;
-					    setPatternModified(pPattern, true);
+					    setPatternModified(pPattern, true, false);
 				    }
 				}
 			}
@@ -472,7 +472,7 @@ int onJackProcess(jack_nframes_t nFrames, void *pArgs)
 				}
 			    // Note on event
 			    else if (((midiEvent.buffer[0] & 0xF0) == 0x90) && midiEvent.buffer[2]) {
-					setPatternModified(pPattern, true);
+					setPatternModified(pPattern, true, false);
 					uint32_t nDuration = getNoteDuration(nStep, midiEvent.buffer[1]);
 					if (g_bSustain)
 						pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], nDuration + 1);
@@ -942,6 +942,7 @@ bool load(const char* filename)
                 nBlockSize -= 14;
                 //printf(" Step:%u Duration:%u Command:%02X, Value1:%u..%u, Value2:%u..%u\n", nTime, nDuration, nCommand, nValue1start, nValue2end, nValue2start, nValue2end);
             }
+            pPattern->resetSnapshots();
         }
         else if(memcmp(sHeader, "bank", 4) == 0)
         {
@@ -1083,7 +1084,6 @@ bool load_pattern(uint32_t nPattern, const char* filename)
             }
             Pattern* pPattern = g_seqMan.getPattern(nPattern);
             pPattern->clear();
-            pPattern->resetSnapshots();
             pPattern->setBeatsInPattern(fileRead32(pFile));
             pPattern->setStepsPerBeat(fileRead16(pFile));
             pPattern->setScale(fileRead8(pFile));
@@ -1153,6 +1153,7 @@ bool load_pattern(uint32_t nPattern, const char* filename)
                 nBlockSize -= 14;
                 //printf(" Step:%u Duration:%u Command:%02X, Value1:%u..%u, Value2:%u..%u\n", nTime, nDuration, nCommand, nValue1start, nValue2end, nValue2start, nValue2end);
             }
+            pPattern->resetSnapshots();
         }
     }
     fclose(pFile);
@@ -1616,7 +1617,7 @@ bool isMidiRecord()
 void selectPattern(uint32_t pattern)
 {
     g_nPattern = pattern;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, true);
     addPattern(0, 0, 0, 0, g_nPattern, true);
 }
 
@@ -1659,7 +1660,7 @@ void setBeatsInPattern(uint32_t beats)
         return;
     g_seqMan.getPattern(g_nPattern)->setBeatsInPattern(beats);
     g_seqMan.updateAllSequenceLengths();
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, true);
     g_bDirty = true;
 }
 
@@ -1682,7 +1683,7 @@ void setStepsPerBeat(uint32_t steps)
     if(!g_seqMan.getPattern(g_nPattern))
         return;
     g_seqMan.getPattern(g_nPattern)->setStepsPerBeat(steps);
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, true);
     g_bDirty = true;
 }
 
@@ -1696,7 +1697,7 @@ void setSwingDiv(uint32_t div) {
     if(!g_seqMan.getPattern(g_nPattern))
         return;
     g_seqMan.getPattern(g_nPattern)->setSwingDiv(div);
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    //setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
     g_bDirty = true;
 }
 
@@ -1710,7 +1711,7 @@ void setSwingAmount(float amount) {
     if(!g_seqMan.getPattern(g_nPattern))
         return;
     g_seqMan.getPattern(g_nPattern)->setSwingAmount(amount);
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    //setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
     g_bDirty = true;
 }
 
@@ -1724,7 +1725,7 @@ void setHumanTime(float amount) {
     if(!g_seqMan.getPattern(g_nPattern))
         return;
     g_seqMan.getPattern(g_nPattern)->setHumanTime(amount);
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    //setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
     g_bDirty = true;
 }
 
@@ -1738,7 +1739,7 @@ void setHumanVelo(float amount) {
     if(!g_seqMan.getPattern(g_nPattern))
         return;
     g_seqMan.getPattern(g_nPattern)->setHumanVelo(amount);
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    //setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
     g_bDirty = true;
 }
 
@@ -1752,7 +1753,7 @@ void setPlayChance(float chance) {
     if(!g_seqMan.getPattern(g_nPattern))
         return;
     g_seqMan.getPattern(g_nPattern)->setPlayChance(chance);
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    //setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
     g_bDirty = true;
 }
 
@@ -1761,7 +1762,7 @@ bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration, floa
     if(!g_seqMan.getPattern(g_nPattern))
         return false;
     if(g_seqMan.getPattern(g_nPattern)->addNote(step, note, velocity, duration, offset)) {
-        setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+        setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
         g_bDirty = true;
         return true;
     }
@@ -1772,7 +1773,7 @@ void removeNote(uint32_t step, uint8_t note)
 {
     if(!g_seqMan.getPattern(g_nPattern))
         return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
     g_seqMan.getPattern(g_nPattern)->removeNote(step, note);
     g_bDirty = true;
 }
@@ -1795,7 +1796,7 @@ void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity)
 {
     if(!g_seqMan.getPattern(g_nPattern))
         return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
     g_seqMan.getPattern(g_nPattern)->setNoteVelocity(step, note, velocity);
     g_bDirty = true;
 }
@@ -1809,7 +1810,7 @@ float getNoteOffset(uint32_t step, uint8_t note) {
 void setNoteOffset(uint32_t step, uint8_t note, float offset) {
     if(!g_seqMan.getPattern(g_nPattern))
         return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
     g_seqMan.getPattern(g_nPattern)->setNoteOffset(step, note, offset);
     g_bDirty = true;
 }
@@ -1825,7 +1826,7 @@ void setStutterCount(uint32_t step, uint8_t note, uint8_t count)
 {
     if(!g_seqMan.getPattern(g_nPattern))
         return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
     g_seqMan.getPattern(g_nPattern)->setStutterCount(step, note, count);
     g_bDirty = true;
 }
@@ -1841,7 +1842,7 @@ void setStutterDur(uint32_t step, uint8_t note, uint8_t dur)
 {
     if(!g_seqMan.getPattern(g_nPattern))
         return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
     g_seqMan.getPattern(g_nPattern)->setStutterDur(step, note, dur);
     g_bDirty = true;
 }
@@ -1857,7 +1858,7 @@ void setNotePlayChance(uint32_t step, uint8_t note, uint8_t chance)
 {
     if(!g_seqMan.getPattern(g_nPattern))
         return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
     g_seqMan.getPattern(g_nPattern)->setPlayChance(step, note, chance);
     g_bDirty = true;
 }
@@ -1874,7 +1875,7 @@ bool addProgramChange(uint32_t step, uint8_t program)
     if(!g_seqMan.getPattern(g_nPattern))
         return false;
     if(g_seqMan.getPattern(g_nPattern)->addProgramChange(step, program)) {
-        setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+        setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
         g_bDirty = true;
         return true;
     }
@@ -1887,7 +1888,7 @@ void removeProgramChange(uint32_t step, uint8_t program)
         return;
     if(g_seqMan.getPattern(g_nPattern)->removeProgramChange(step))
         return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
     g_bDirty = true;
 }
 
@@ -1902,7 +1903,7 @@ void transpose(int8_t value)
 {
     if(!g_seqMan.getPattern(g_nPattern))
         return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
     g_seqMan.getPattern(g_nPattern)->transpose(value);
     g_bDirty = true;
 }
@@ -1911,7 +1912,7 @@ void changeVelocityAll(int value)
 {
     if(!g_seqMan.getPattern(g_nPattern))
         return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
     g_seqMan.getPattern(g_nPattern)->changeVelocityAll(value);
     g_bDirty = true;
 }
@@ -1920,7 +1921,7 @@ void changeDurationAll(float value)
 {
     if(!g_seqMan.getPattern(g_nPattern))
         return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
     g_seqMan.getPattern(g_nPattern)->changeDurationAll(value);
     g_bDirty = true;
 }
@@ -1929,7 +1930,7 @@ void changeStutterCountAll(int value)
 {
     if(!g_seqMan.getPattern(g_nPattern))
         return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
     g_seqMan.getPattern(g_nPattern)->changeStutterCountAll(value);
     g_bDirty = true;
 }
@@ -1938,7 +1939,7 @@ void changeStutterDurAll(int value)
 {
     if(!g_seqMan.getPattern(g_nPattern))
         return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
     g_seqMan.getPattern(g_nPattern)->changeStutterDurAll(value);
     g_bDirty = true;
 }
@@ -1947,7 +1948,7 @@ void clear()
 {
     if (!g_seqMan.getPattern(g_nPattern))
         return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true);
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
     g_seqMan.getPattern(g_nPattern)->clear();
     //g_seqMan.getPattern(g_nPattern)->resetSnapshots();
     g_bDirty = true;
@@ -2003,9 +2004,9 @@ uint8_t getTonic()
     return 0;
 }
 
-void setPatternModified(Pattern* pPattern, bool bModified)
+void setPatternModified(Pattern* pPattern, bool bModified, bool bModifiedTracks)
 {
-    if(bModified)
+    if(bModified && bModifiedTracks)
     {
         for(uint32_t nBank = 1; nBank < g_seqMan.getBanks(); ++nBank)
         {

@@ -575,7 +575,7 @@ uint8_t getTonic();
 
 /** @brief  Flag pattern as modified - also sets flags in relevant sequences and tracks
 */
-void setPatternModified(Pattern* pPattern, bool bModified = true);
+void setPatternModified(Pattern* pPattern, bool bModified = true, bool bModifiedTracks = false);
 
 /** @brief  Check if selected pattern has changed since last check
 *   @retval bool True if pattern has changed

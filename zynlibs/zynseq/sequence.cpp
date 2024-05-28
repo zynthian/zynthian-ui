@@ -278,7 +278,7 @@ void Sequence::setModified()
 bool Sequence::isModified()
 {
     bool bChanged = m_bChanged;
-    for(auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
+    for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
         bChanged |= (*it).isModified();
     m_bChanged = false;
     return bChanged;

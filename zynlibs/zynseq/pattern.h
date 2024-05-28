@@ -477,9 +477,10 @@ class Pattern
         uint32_t getLastStep();
 
 		// Snapshot management: Undo/Redo
-		void clearStepEventVector(StepEventVector* ss);
-		void saveSnapshot();
+		void clearStepEventVector(StepEventVector* sev);
+		bool restoreSnapshot(StepEventVector* sev);
 		void resetSnapshots();
+		void saveSnapshot();
 		bool undo();
 		bool redo();
 		bool undoAll();

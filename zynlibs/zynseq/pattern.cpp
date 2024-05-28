@@ -8,6 +8,7 @@ Pattern::Pattern(uint32_t beats, uint32_t stepsPerBeat) :
     m_nStepsPerBeat(stepsPerBeat)
 {
     setStepsPerBeat(stepsPerBeat);
+    resetSnapshots();
 }
 
 Pattern::Pattern(Pattern* pattern) {
@@ -17,7 +18,10 @@ Pattern::Pattern(Pattern* pattern) {
 Pattern::~Pattern()
 {
     clear();
-    resetSnapshots();
+	for (StepEventVector* sev : m_vSnapshots) {
+		clearStepEventVector(sev);
+        delete(sev);
+    }
 }
 
 // copy assignment
@@ -44,6 +48,7 @@ Pattern& Pattern::operator=(Pattern& p)
         addEvent(ev);
         i++;
     }
+    resetSnapshots();
     return *this;
 }
 
@@ -603,12 +608,34 @@ uint32_t Pattern::getLastStep()
 
 // Pattern Snapshots => Undo/Redo
 
-void Pattern::clearStepEventVector(StepEventVector* ss) {
-	if (ss->size() > 0) {
-    	for (StepEvent* ev : *ss)
+void Pattern::clearStepEventVector(StepEventVector* sev) {
+	if (sev && sev->size() > 0) {
+    	for (StepEvent* ev : *sev)
         	delete ev;
-    	ss->clear();
+    	sev->clear();
    	}
+}
+
+bool Pattern::restoreSnapshot(StepEventVector* sev) {
+	if (sev) {
+		clear();
+		for(StepEvent* ev : *sev) {
+			m_vEvents.push_back(new StepEvent(ev));
+		}
+		return true;
+	}
+	return false;
+}
+
+void Pattern::resetSnapshots() {
+	// Destroy events
+	for (StepEventVector* sev : m_vSnapshots) {
+		clearStepEventVector(sev);
+        delete(sev);
+    }
+    m_vSnapshots.clear();
+    //m_vSnapshotPos = m_vSnapshots.end();
+    saveSnapshot();
 }
 
 void Pattern::saveSnapshot() {
@@ -626,47 +653,23 @@ void Pattern::saveSnapshot() {
     	ss->push_back(new StepEvent(ev));
     }
     m_vSnapshots.push_back(ss);
-    m_vSnapshotPos = m_vSnapshots.end();
-}
-
-void Pattern::resetSnapshots() {
-	// Destroy events
-	for (StepEventVector* sev : m_vSnapshots) {
-		clearStepEventVector(sev);
-        delete(sev);
-    }
-    m_vSnapshots.clear();
-    m_vSnapshotPos = m_vSnapshots.end();
+    m_vSnapshotPos = m_vSnapshots.end() - 1;
 }
 
 bool Pattern::undo() {
 	if (m_vSnapshotPos > m_vSnapshots.begin()) {
 		// Undo one position
 		m_vSnapshotPos--;
-		StepEventVector* ss = *m_vSnapshotPos;
-		if (ss) {
-			clear();
-			for(StepEvent* ev : *ss) {
-        		m_vEvents.push_back(new StepEvent(ev));
-        	}
-			return true;
-		}
+		return restoreSnapshot(*m_vSnapshotPos);
     }
     return false;
 }
 
 bool Pattern::redo() {
-    if (m_vSnapshotPos < m_vSnapshots.end() - 1) {
-    	// Undo one position
+    if (m_vSnapshots.size() > 1 && m_vSnapshotPos < m_vSnapshots.end() - 1) {
+    	// Redo one position
     	m_vSnapshotPos++;
-		StepEventVector* ss = *m_vSnapshotPos;
-		if (ss) {
-			clear();
-			for(StepEvent* ev : *ss) {
-        		m_vEvents.push_back(new StepEvent(ev));
-        	}
-			return true;
-		}
+		return restoreSnapshot(*m_vSnapshotPos);
     }
     return false;
 }
@@ -675,30 +678,16 @@ bool Pattern::undoAll() {
 	if (m_vSnapshotPos > m_vSnapshots.begin()) {
 		// Undo one position
 		m_vSnapshotPos = m_vSnapshots.begin();
-		StepEventVector* ss = *m_vSnapshotPos;
-		if (ss) {
-			clear();
-			for(StepEvent* ev : *ss) {
-        		m_vEvents.push_back(new StepEvent(ev));
-        	}
-			return true;
-		}
+		return restoreSnapshot(*m_vSnapshotPos);
     }
     return false;
 }
 
 bool Pattern::redoAll() {
-    if (m_vSnapshotPos < m_vSnapshots.end() - 1) {
+    if (m_vSnapshots.size() > 1 && m_vSnapshotPos < m_vSnapshots.end() - 1) {
     	// Undo one position
     	m_vSnapshotPos = m_vSnapshots.end() - 1;
-		StepEventVector* ss = *m_vSnapshotPos;
-		if (ss) {
-			clear();
-			for(StepEvent* ev : *ss) {
-        		m_vEvents.push_back(new StepEvent(ev));
-        	}
-			return true;
-		}
+    	return restoreSnapshot(*m_vSnapshotPos);
     }
     return false;
 }

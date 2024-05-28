@@ -349,9 +349,12 @@ void Track::setModified()
 
 bool Track::isModified()
 {
-    bool bState = m_bChanged;
-    m_bChanged = false;
-    return bState;
+    if (m_bChanged)
+    {
+        m_bChanged = false;
+        return true;
+    }
+    return false;
 }
 
 Pattern* Track::getPatternByIndex(size_t index)

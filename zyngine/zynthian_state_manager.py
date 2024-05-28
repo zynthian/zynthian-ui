@@ -318,7 +318,25 @@ class zynthian_state_manager:
         self.busy.clear()  # Sometimes it's needed, why??
 
     # -------------------------------------------------------------------------
-    # Busy state management
+    # Internal parameters and core limits
+    # -------------------------------------------------------------------------
+
+    def get_max_num_mixer_chans(self):
+        return MAX_NUM_MIXER_CHANS
+
+    def get_max_num_zmops(self):
+        return MAX_NUM_ZMOPS
+
+    def get_max_num_midi_devs(self):
+        return MAX_NUM_MIDI_DEVS
+
+    def get_zmip_ctrl_index(self):
+        return ZMIP_CTRL_INDEX
+
+    def get_zmip_int_index(self):
+        return ZMIP_INT_INDEX
+
+    # -------------------------------------------------------------------------
     # Busy state management
     # -------------------------------------------------------------------------
 
