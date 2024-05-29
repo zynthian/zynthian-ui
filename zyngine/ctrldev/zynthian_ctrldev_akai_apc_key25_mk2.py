@@ -638,6 +638,7 @@ class DeviceHandler(ModeHandlerBase):
         if ":" in cuia:
             cuia, params = cuia.split(":")
             params = params.split(",")
+            params[0] = int(params[0])
 
         self._state_manager.send_cuia(cuia, params)
         return True
