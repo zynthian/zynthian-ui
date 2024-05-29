@@ -124,7 +124,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 mode = get_mode_str(idev)
                 if self.chain is None:
                     self.list_data.append((port.aliases[0], idev, f"{mode}{port.aliases[1]}"))
-                elif idev in self.zyngui.state_manager.ctrldev_manager.drivers:
+                elif not self.zyngui.state_manager.ctrldev_manager.is_input_device_available_to_chains(idev):
                     self.list_data.append((port.aliases[0], idev, f"    {mode}{port.aliases[1]}"))
                 else:
                     if lib_zyncore.zmop_get_route_from(self.chain.zmop_index, idev):
@@ -136,10 +136,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 if self.chain is None:
                     self.list_data.append((port.aliases[0], idev, f"{port.aliases[1]}"))
                 elif port.name in self.chain.midi_out:
-                    #TODO: Why use port.name here?
-                    self.list_data.append((port.name, idev, f"\u2612 {port.aliases[1]}"))
+                    self.list_data.append((port.aliases[0], idev, f"\u2612 {port.aliases[1]}"))
                 else:
-                    self.list_data.append((port.name, idev, f"\u2610 {port.aliases[1]}"))
+                    self.list_data.append((port.aliases[0], idev, f"\u2610 {port.aliases[1]}"))
 
         def append_service_device(dev_name, obj):
             """Add service (that is also a port) to list"""
@@ -301,7 +300,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             elif self.chain:
                 if self.input:
                     idev = self.list_data[i][1]
-                    if idev in self.zyngui.state_manager.ctrldev_manager.drivers:
+                    if not self.zyngui.state_manager.ctrldev_manager.is_input_device_available_to_chains(idev):
                         return
                     lib_zyncore.zmop_set_route_from(self.chain.zmop_index, idev, not lib_zyncore.zmop_get_route_from(self.chain.zmop_index, idev))
                 else:

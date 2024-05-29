@@ -128,6 +128,12 @@ class zynthian_ctrldev_manager():
         for izmip in list(self.drivers):
             self.unload_driver(izmip)
 
+    def is_input_device_available_to_chains(self, idev):
+        if idev in self.drivers and self.drivers[idev].unroute_from_chains:
+            return False
+        else:
+            return True
+
     def get_state_drivers(self):
         state = {}
         for izmip in self.drivers:
