@@ -404,7 +404,7 @@ class ModeHandlerBase:
 		stutt_count = self._libseq.getStutterCount(step, note)
 		stutt_duration = self._libseq.getStutterDur(step, note)
 		self._libseq.removeNote(step, note)
-		self._libseq.addNote(step, note, velocity, duration)
+		self._libseq.addNote(step, note, velocity, duration, 0)
 		self._libseq.setStutterCount(step, note, stutt_count)
 		self._libseq.setStutterDur(step, note, stutt_duration)
 
