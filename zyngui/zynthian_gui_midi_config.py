@@ -157,8 +157,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
             return int(text) if text.isdigit() else text
 
         def natural_keys(t):
-            text = t[0].lower()
-            return [ atoi(c) for c in re.split(r'(\d+)', text) ]
+            return [atoi(c) for c in re.split(r'(\d+)', t[0].lower())]
 
         # Lists of zmop/zmip indicies
         int_devices = []    # Internal MIDI ports
@@ -232,7 +231,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                     else:
                         append_service_device("QmidiNet", "QmidiNet")
 
-                if os.path.isfile("/usr/local/bin/touchosc2midi"):
+                if os.path.isfile("/zynthian/venv/bin/touchosc2midi"):
                     if "RtMidiIn Client:TouchOSC Bridge" in net_devices:
                         append_service_device("touchosc", net_devices["RtMidiIn Client:TouchOSC Bridge"])
                     elif "RtMidiOut Client:TouchOSC Bridge" in net_devices:

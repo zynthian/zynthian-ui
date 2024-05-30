@@ -55,6 +55,7 @@ logger.setLevel(log_level)
 # -------------------------------------------------------------------------------
 
 MAIN_MIX_CHAN = 17 				# TODO: Get this from mixer
+
 jclient = None					# JACK client
 aclient = None					# ALSA client
 thread = None					# Thread to check for changed MIDI ports
@@ -73,11 +74,12 @@ sidechain_map = {}				# Map of all audio target port names to use as sidechain i
 sidechain_ports = []			# List of currently active audio destination port names not to autoroute, e.g. sidechain inputs
 
 # These variables are initialized in the init() function. These are "example values".
-max_num_devs = 16     # Max number of MIDI devices
-max_num_chains = 16   # Max number of chains
-devices_in = []       # List of MIDI input devices
-devices_in_mode = []  # List of MIDI input devices modes
-devices_out = []      # List of MIDI output devices
+max_num_devs = 16     			# Max number of MIDI devices
+max_num_chains = 16  		 	# Max number of chains
+devices_in = []       			# List of MIDI input devices
+devices_in_mode = []  			# List of MIDI input devices modes
+devices_out = []      			# List of MIDI output devices
+usb_gadget_devid = None			# Device ID of USB-HOST device (usb gadget)
 
 # zyn_routed_* are used to avoid changing routes made by other jack clients
 zyn_routed_audio = {}			# Map of lists of audio sources routed by zynautoconnect, indexed by destination
@@ -384,21 +386,34 @@ def request_midi_connect(fast=False):
 		deferred_midi_connect = True
 
 
+def find_usb_gadget_device():
+	global usb_gadget_devid
+	candidates = ["fe980000", "1000480000"]
+	for devid in candidates:
+		if os.path.isdir(f"/sys/bus/platform/devices/{devid}.usb/gadget.0"):
+			usb_gadget_devid = devid
+			return
+	usb_gadget_devid = None
+
 def is_host_usb_connected():
 	"""Check if the USB host (e.g. USB-Type B connection) is connected
 
 	returns : True if connected to USB host (not necessarily a MIDI port!)
 	"""
 
-	try:
-		with open("/sys/bus/platform/devices/fe980000.usb/udc/fe980000.usb/state") as f:
-			if f.read() != "configured\n":
-				return False
-		with open("/sys/class/udc/fe980000.usb/device/gadget.0/suspended") as f:
-			if f.read() == "1\n":
-				return False
-	except:
-		return False
+	if usb_gadget_devid is None:
+		find_usb_gadget_device()
+
+	if usb_gadget_devid:
+		try:
+			with open(f"/sys/bus/platform/devices/{usb_gadget_devid}.usb/udc/{usb_gadget_devid}.usb/state") as f:
+				if f.read() != "configured\n":
+					return False
+			with open(f"/sys/class/udc/{usb_gadget_devid}.usb/device/gadget.0/suspended") as f:
+				if f.read() == "1\n":
+					return False
+		except:
+			return False
 	return True
 
 def add_hw_port(port):
