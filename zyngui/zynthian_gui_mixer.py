@@ -964,6 +964,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			# Chain Options
 			self.zyngui.screens['chain_options'].setup(self.zyngui.chain_manager.active_chain_id)
 			self.zyngui.show_screen('chain_options')
+		else:
+			return False
+		return True
 
 	# Function to handle BACK action
 	def back_action(self):
@@ -1006,8 +1009,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return True
 
 		elif swi == 3:
-			self.switch_select(t)
-			return True
+			return self.switch_select(t)
 
 		return False
 
