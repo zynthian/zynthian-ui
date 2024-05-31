@@ -689,6 +689,7 @@ if "zynthian_main.py" in sys.argv[0]:
 	# Initialize ZynCore low-level library
 	# ------------------------------------------------------------------------------
 
+	#TODO: This should be moved to zynthian_main (or similar), out of gui code
 	from zyncoder.zyncore import lib_zyncore_init
 
 	# ------------------------------------------------------------------------------
@@ -704,7 +705,9 @@ if "zynthian_main.py" in sys.argv[0]:
 		config_zynaptik()
 		config_zyntof()
 	except Exception as e:
-		logging.error("ERROR configuring control I/O subsytem: {}".format(e))
+		logging.error(f"ERROR configuring control I/O subsytem: {e}")
+		raise Exception("Fatal error!")
+
 
 	# ------------------------------------------------------------------------------
 	# Load MIDI config
