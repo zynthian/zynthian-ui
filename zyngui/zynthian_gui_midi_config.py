@@ -135,7 +135,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 port = zynautoconnect.devices_out[idev]
                 if self.chain is None:
                     self.list_data.append((port.aliases[0], idev, f"{port.aliases[1]}"))
-                elif port.name in self.chain.midi_out:
+                elif port.aliases[0] in self.chain.midi_out:
                     self.list_data.append((port.aliases[0], idev, f"\u2612 {port.aliases[1]}"))
                 else:
                     self.list_data.append((port.aliases[0], idev, f"\u2610 {port.aliases[1]}"))

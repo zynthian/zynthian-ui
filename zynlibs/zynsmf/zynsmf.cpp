@@ -538,7 +538,7 @@ bool createJackClient()
 	if(!g_pJackClient)
 	{
 		// Initialise JACK client
-		g_pJackClient = jack_client_open("zynsmf", JackNullOption, NULL);
+		g_pJackClient = jack_client_open("zynsmf", JackNoStartServer, NULL);
 		if(g_pJackClient
 			&& !jack_set_process_callback(g_pJackClient, onJackProcess, 0)
 			&& !jack_set_sample_rate_callback(g_pJackClient, onJackSamplerate, 0)
