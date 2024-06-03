@@ -264,22 +264,31 @@ class zynthian_legacy_snapshot:
                             proc_count -= 1
                     else:
                         logging.warning(f"No audio routing info for processor {proc} in chain {chain_id}!")
+
                 if slot:
                     chain["slots"].insert(0, slot)
+
+                # Populate rest of slots
                 while proc_count > 0:
                     slot = []
                     for proc in chain["audio_processors"]:
-                        route = snapshot["audio_routing"][proc]
-                        for dst in route:
-                            if dst in chain["slots"][0]:
-                                slot.append(proc)
-                                if not audio_out:
-                                    audio_out = route
-                                proc_count -= 1
-                                if proc_count < 1:
-                                    break
+                        if proc in snapshot["audio_routing"]:
+                            route = snapshot["audio_routing"][proc]
+                            for dst in route:
+                                if dst in chain["slots"][0]:
+                                    slot.append(proc)
+                                    if not audio_out:
+                                        audio_out = route
+                                    proc_count -= 1
+                                    if proc_count < 1:
+                                        break
+                        else:
+                            proc_count -= 1
+                            logging.warning(f"No audio routing info for processor {proc} in chain {chain_id}!")
+
                         if proc_count < 1:
                             break
+
                     if slot:
                         chain["slots"].insert(0, slot)
 
