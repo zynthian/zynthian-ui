@@ -218,15 +218,15 @@ def get_midi_in_devid(idev):
 		return None
 
 
-def get_midi_out_devid(idev):
-	"""Get the ALSA name of the port connected from ZMOP port
+def get_midi_out_dev(idev):
+	"""Get the jack port connected from ZMOP port
 	
 	idev : Index of ZMOP port
-	returns : ALSA name or None if not found
+	returns : Jack port or None if not found
 	"""
 
 	try:
-		return devices_out[idev].aliases[0].split('/', 1)[1]
+		return devices_out[idev]
 	except:
 		return None
 
@@ -250,24 +250,6 @@ def get_midi_in_devid_by_uid(uid, mapped=False):
 			pass
 	return None
 
-
-def get_midi_out_devid_by_uid(uid):
-	"""Get the index of the ZMOP connected to physical output
-	
-	name : The uid name of the port (jack alias [0])
-	"""
-
-	for i, port in enumerate(devices_out):
-		try:
-			if mapped:
-				if port.aliases[0] == uid:
-					return i
-			else:
-				if port.aliases[0].split('/', 1)[1] == uid.split('/', 1)[1]:
-					return i
-		except:
-			pass
-	return None
 
 def get_midi_in_dev_mode(idev):
 	"""Get mode for a midi input device
@@ -605,7 +587,9 @@ def midi_autoconnect():
 						
 
 		for dst_name in routes:
-			dst_ports = jclient.get_ports(re.escape(dst_name), is_input=True, is_midi=True)		
+			dst_ports = jclient.get_ports(re.escape(dst_name), is_input=True, is_midi=True)
+			if not dst_ports:
+				dst_ports = [jclient.get_port_by_name(re.escape(dst_name))]
 			for src_name in routes[dst_name]:
 				src_ports = jclient.get_ports(src_name, is_output=True, is_midi=True)
 				if src_ports and dst_ports:

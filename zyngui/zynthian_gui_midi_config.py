@@ -297,14 +297,15 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                 self.zyngui.state_manager.start_bluetooth(wait=wait)
             # Route/Unroute
             elif self.chain:
+                idev = self.list_data[i][1]
                 if self.input:
-                    idev = self.list_data[i][1]
                     if not self.zyngui.state_manager.ctrldev_manager.is_input_device_available_to_chains(idev):
                         return
                     lib_zyncore.zmop_set_route_from(self.chain.zmop_index, idev, not lib_zyncore.zmop_get_route_from(self.chain.zmop_index, idev))
                 else:
                     try:
-                        self.zyngui.chain_manager.get_active_chain().toggle_midi_out(self.list_data[i][0])
+                        dev_id = zynautoconnect.get_midi_out_dev(idev).aliases[0]
+                        self.zyngui.chain_manager.get_active_chain().toggle_midi_out(dev_id)
                     except Exception as e:
                         logging.error(e)
                 self.update_list()
