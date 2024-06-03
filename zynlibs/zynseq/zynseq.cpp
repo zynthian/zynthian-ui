@@ -848,7 +848,7 @@ bool load(const char* filename)
             g_nBeatsPerBar = fileRead16(pFile);
             g_seqMan.setTriggerChannel(fileRead8(pFile));
             g_seqMan.setTriggerDevice(fileRead8(pFile));
-            fileRead8(pFile); // !@todo Set JACK output
+            fileRead8(pFile); //!@todo Set JACK output
             fileRead8(pFile); // padding
             g_nVerticalZoom = fileRead16(pFile);
             g_nHorizontalZoom = fileRead16(pFile);
@@ -956,9 +956,9 @@ bool load(const char* filename)
             //printf("Bank %u with %u sequences\n", nBank, nSequences);
             for(uint32_t nSequence = 0; nSequence < nSequences; ++nSequence)
             {
-                if(checkBlock(pFile, nBlockSize, 8))
+                if(nVersion > 5 && checkBlock(pFile, nBlockSize, 24))
                     continue;
-                if(nVersion > 7 && checkBlock(pFile, nBlockSize, 24))
+                else if(checkBlock(pFile, nBlockSize, 8))
                     continue;
                 Sequence* pSequence = g_seqMan.getSequence(nBank, nSequence);
                 pSequence->setPlayMode(fileRead8(pFile));
@@ -968,7 +968,7 @@ bool load(const char* filename)
                 fileRead8(pFile); //Padding
                 char sName[17];
                 memset(sName, '\0', 17);
-                if(nVersion > 7)
+                if(nVersion > 5)
                 {
                     if(checkBlock(pFile, nBlockSize, 24))
                         continue;
