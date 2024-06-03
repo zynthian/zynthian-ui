@@ -849,7 +849,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to add control to be updated (fast)
 	def update_control(self, chan, symbol, value):
 		strip = self.chan2strip[chan]
-		if not strip or strip.chain.mixer_chan is None:
+		if not strip or not strip.chain or strip.chain.mixer_chan is None:
 			return
 		self.pending_refresh_queue.add((strip, symbol))
 		#self.pending_refresh_queue.add((self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX], "solo"))
