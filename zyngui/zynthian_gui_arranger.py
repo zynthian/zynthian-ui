@@ -399,7 +399,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 					step = int((time - pattern_position[channel]) / ticks_per_step)
 					note_on_info[channel][note] = [pattern[channel], time, velocity, step]
 					self.zynseq.libseq.selectPattern(pattern[channel])
-					self.zynseq.libseq.addNote(step, note, velocity, 1)  # Add short event, may overwrite later when note-off detected
+					self.zynseq.libseq.addNote(step, note, velocity, 1, 0)  # Add short event, may overwrite later when note-off detected
 				elif status in note_off or status in note_on and velocity == 0:
 					# Found note-off event
 					if note_on_info[channel][note][0] is None:
@@ -413,7 +413,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 					duration = int((time - trigger_time) / ticks_per_step)
 					if duration < 1:
 						duration = 1
-					self.zynseq.libseq.addNote(step, note, velocity, duration)
+					self.zynseq.libseq.addNote(step, note, velocity, duration, 0)
 					note_on_info[channel][note] = [None, None, None, None]
 					pattern[channel] = current_pattern
 					self.zynseq.libseq.selectPattern(pattern[channel])

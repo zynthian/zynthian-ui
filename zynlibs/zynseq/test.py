@@ -44,8 +44,8 @@ def testTransport():
 	#client.transport_stop()
 	#client.transport_start()
 
-	libzynseq.addNote(0, 60, 100, 2)
-	libzynseq.addNote(2, 62, 127, 1)
+	libzynseq.addNote(0, 60, 100, 2, 0)
+	libzynseq.addNote(2, 62, 127, 1, 0)
 	libzynseq.addPattern(0, 0, 0)
 
 	libzynseq.setTempo(60)

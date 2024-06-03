@@ -445,7 +445,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			else:
 				self.zynseq.set_audio_loop(self.bank, self.selected_pad, True)
 				self.zynseq.libseq.clear()
-				self.zynseq.libseq.addNote(0, 60, 100, self.zynseq.libseq.getSteps())
+				self.zynseq.libseq.addNote(0, 60, 100, self.zynseq.libseq.getSteps(), 0)
 				chain_id = self.chain_manager.add_chain(None, self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0), True, False)
 				processor = self.chain_manager.add_processor(chain_id, "AP")
 				self.zyngui.current_processor = processor

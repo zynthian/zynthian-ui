@@ -93,38 +93,38 @@ class TestLibZynSeq(unittest.TestCase):
     #
     def test_ac03_add_note(self):
         libseq.selectPattern(999)
-        self.assertTrue(libseq.addNote(0,60,100,4))
+        self.assertTrue(libseq.addNote(0,60,100,4,0))
         self.assertEqual(libseq.getNoteVelocity(0,60), 100)
         self.assertEqual(libseq.getNoteDuration(0,60), 4)
     #
     def test_ac04_add_note_too_long(self):
         libseq.selectPattern(999)
-        self.assertTrue(libseq.addNote(0,60,100,4))
-        self.assertFalse(libseq.addNote(0,60,100,200))
+        self.assertTrue(libseq.addNote(0,60,100,4,0))
+        self.assertFalse(libseq.addNote(0,60,100,200,0))
         self.assertEqual(libseq.getNoteVelocity(0,60), 100)
         self.assertEqual(libseq.getNoteDuration(0,60), 4)
     #
     def test_ac05_set_note_velocity(self):
         libseq.selectPattern(999)
-        self.assertTrue(libseq.addNote(0,60,100,4))
+        self.assertTrue(libseq.addNote(0,60,100,4,0))
         libseq.setNoteVelocity(0,60,123)
         self.assertEqual(libseq.getNoteVelocity(0,60), 123)
     #
     def test_ac06_set_note_duration(self):
         libseq.selectPattern(999)
-        libseq.addNote(0,60,123,2)
+        libseq.addNote(0,60,123,2,0)
         self.assertEqual(libseq.getNoteDuration(0,60), 2)
     #
     def test_ac07_transpose(self):
         libseq.selectPattern(999)
-        libseq.addNote(0,60,123,2)
+        libseq.addNote(0,60,123,2,0)
         libseq.transpose(5)
         self.assertEqual(libseq.getNoteDuration(0,65), 2)
         self.assertEqual(libseq.getNoteVelocity(0,65), 123)
     #
     def test_ac08_copy_pattern(self):
         libseq.selectPattern(999)
-        libseq.addNote(0,60,123,2)
+        libseq.addNote(0,60,123,2,0)
         libseq.copyPattern(999, 998)
         libseq.selectPattern(998)
         self.assertEqual(libseq.getNoteDuration(0,60), 2)
@@ -136,7 +136,7 @@ class TestLibZynSeq(unittest.TestCase):
     #
     def test_ac10_is_pattern_modified(self):
         libseq.selectPattern(999)
-        libseq.addNote(0,60,100,4)
+        libseq.addNote(0,60,100,4,0)
         self.assertTrue(libseq.isPatternModified())
         self.assertFalse(libseq.isPatternModified())
 
@@ -480,10 +480,10 @@ class TestLibZynSeq(unittest.TestCase):
         libseq.setBeatsInPattern(4)
         libseq.setStepsPerBeat(4)
         libseq.clear()
-        libseq.addNote(0, 0x40, 101, 1)
-        libseq.addNote(4, 0x41, 102, 1)
-        libseq.addNote(8, 0x42, 103, 1)
-        libseq.addNote(12, 0x43, 104, 1)
+        libseq.addNote(0, 0x40, 101, 1, 0)
+        libseq.addNote(4, 0x41, 102, 1, 0)
+        libseq.addNote(8, 0x42, 103, 1, 0)
+        libseq.addNote(12, 0x43, 104, 1, 0)
         libseq.addPattern(sequence,0,999,True)
         libseq.setPlayMode(sequence, play_mode["ONESHOT"])
         step_duration = (60 / 120) / 4
@@ -506,7 +506,7 @@ class TestLibZynSeq(unittest.TestCase):
         libseq.selectPattern(100)
         libseq.setBeatsInPattern(1)
         libseq.setStepsPerBeat(4)
-        libseq.addNote(0, 60, 100, 4)
+        libseq.addNote(0, 60, 100, 4, 0)
         for channel in range(0, 16, 4): #TODO: Test out of bounds channels <0, >15
             libseq.setChannel(sequence, channel)
             libseq.setPlayState(sequence, play_state["STARTING"])
@@ -525,10 +525,10 @@ class TestLibZynSeq(unittest.TestCase):
         libseq.setBeatsInPattern(4)
         libseq.setStepsPerBeat(4)
         libseq.clear()
-        libseq.addNote(0, 60, 101, 1)
-        libseq.addNote(4, 61, 102, 1)
-        libseq.addNote(8, 62, 103, 1)
-        libseq.addNote(12, 63, 104, 1)
+        libseq.addNote(0, 60, 101, 1, 0)
+        libseq.addNote(4, 61, 102, 1, 0)
+        libseq.addNote(8, 62, 103, 1, 0)
+        libseq.addNote(12, 63, 104, 1, 0)
         libseq.addPattern(sequence,0,999,True)
         libseq.setPlayMode(sequence, play_mode["ONESHOTSYNC"])
         libseq.setTriggerChannel(5)
@@ -635,10 +635,10 @@ class TestLibZynSeq(unittest.TestCase):
         libseq.setBeatsInPattern(4)
         libseq.setStepsPerBeat(4)
         libseq.clear()
-        libseq.addNote(0, 0x41, 0x64, 1)
-        libseq.addNote(4, 0x42, 0x64, 1)
-        libseq.addNote(8, 0x43, 0x64, 1)
-        libseq.addNote(12, 0x44, 0x64, 1)
+        libseq.addNote(0, 0x41, 0x64, 1, 0)
+        libseq.addNote(4, 0x42, 0x64, 1, 0)
+        libseq.addNote(8, 0x43, 0x64, 1, 0)
+        libseq.addNote(12, 0x44, 0x64, 1, 0)
         libseq.addPattern(sequence,0,999,True)
         libseq.setPlayMode(sequence, play_mode["LOOPSYNC"])
         step_duration = (60 / 120) / 4
@@ -717,10 +717,10 @@ class TestLibZynSeq(unittest.TestCase):
         libseq.setBeatsInPattern(4)
         libseq.setStepsPerBeat(4)
         libseq.clear()
-        libseq.addNote(0, 0x41, 0x64, 1)
-        libseq.addNote(4, 0x42, 0x64, 1)
-        libseq.addNote(8, 0x43, 0x64, 1)
-        libseq.addNote(12, 0x44, 0x64, 1)
+        libseq.addNote(0, 0x41, 0x64, 1, 0)
+        libseq.addNote(4, 0x42, 0x64, 1, 0)
+        libseq.addNote(8, 0x43, 0x64, 1, 0)
+        libseq.addNote(12, 0x44, 0x64, 1, 0)
         libseq.addPattern(sequence,0,999,True)
         libseq.setPlayMode(sequence, play_mode["ONESHOTSYNC"])
         step_duration = (60 / 120) / 4
@@ -774,7 +774,7 @@ class TestLibZynSeq(unittest.TestCase):
         libseq.setBeatsInPattern(1)
         libseq.setStepsPerBeat(4)
         libseq.clear()
-        libseq.addNote(0, 0x41, 0x64, 1)
+        libseq.addNote(0, 0x41, 0x64, 1, 0)
         libseq.addPattern(sequence,0,999,True)
         libseq.setPlayMode(sequence, play_mode["LOOPSYNC"])
         libseq.addTimeSigEvent(1, 1, 4, 1)
