@@ -97,6 +97,8 @@ class zynthian_gui_loading:
 		if color is None:
 			color = zynthian_gui_config.color_header_tx
 		self.canvas.itemconfig(self.title_text, text=txt, fill=color)
+		# Clear details - must be explicitly set after changing title
+		self.set_details("")
 
 	def set_details(self, txt, color=None):
 		if txt is None:
