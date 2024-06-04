@@ -588,8 +588,9 @@ def midi_autoconnect():
 
 		for dst_name in routes:
 			dst_ports = jclient.get_ports(re.escape(dst_name), is_input=True, is_midi=True)
-			if not dst_ports:
-				dst_ports = [jclient.get_port_by_name(re.escape(dst_name))]
+			# Why this?
+			#if not dst_ports:
+			#	dst_ports = [jclient.get_port_by_name(dst_name)]
 			for src_name in routes[dst_name]:
 				src_ports = jclient.get_ports(src_name, is_output=True, is_midi=True)
 				if src_ports and dst_ports:
