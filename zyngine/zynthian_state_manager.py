@@ -185,28 +185,29 @@ class zynthian_state_manager:
         self.start_busy("start state")
         # Initialize SOC sensors monitoring
 
-        # RBPi native sensors monitoring interface
+        # Sysfs->hwmon monitoring interface
         try:
-            self.get_throttled_file = open('/sys/devices/platform/soc/soc:firmware/get_throttled')
+            self.hwmon_thermal_file = open('/sys/class/hwmon/hwmon0/temp1_input')
         except:
-            self.get_throttled_file = None
+            self.hwmon_thermal_file = None
+            logging.error("Can't access temperature sensor.")
 
-            # Alternate monitoring interface
+        try:
+            self.hwmon_undervolt_file = open('/sys/class/hwmon/hwmon1/in0_lcrit_alarm')
+        except:
             try:
-                self.hwmon_thermal_file = open('/sys/class/hwmon/hwmon0/temp1_input')
+                self.hwmon_undervolt_file = open(
+                    '/sys/devices/platform/soc/soc:firmware/raspberrypi-hwmon/hwmon/hwmon2/in0_lcrit_alarm')
             except:
-                self.hwmon_thermal_file = None
-                logging.error("Can't access temperature sensor.")
+                self.hwmon_undervolt_file = None
+                logging.error("Can't access undervoltage sensor.")
 
+        # RBPi native sensors monitoring interface
+        if self.hwmon_thermal_file is None or self.hwmon_undervolt_file is None:
             try:
-                self.hwmon_undervolt_file = open('/sys/class/hwmon/hwmon1/in0_lcrit_alarm')
+                self.get_throttled_file = open('/sys/devices/platform/soc/soc:firmware/get_throttled')
             except:
-                try:
-                    self.hwmon_undervolt_file = open('/sys/devices/platform/soc/soc:firmware/raspberrypi-hwmon/hwmon/hwmon2/in0_lcrit_alarm')
-                except:
-                    self.hwmon_undervolt_file = None
-                    logging.error("Can't access undervoltage sensor.")
-
+                self.get_throttled_file = None
 
         # Start VNC as configured
         self.default_vncserver()
