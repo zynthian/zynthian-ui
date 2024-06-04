@@ -584,18 +584,20 @@ def midi_autoconnect():
 					elif dst_chain.synth_slots:
 						proc = dst_chain.synth_slots[0][0]
 						routes[proc.engine.get_jackname()] = route
-						
 
 		for dst_name in routes:
 			dst_ports = jclient.get_ports(re.escape(dst_name), is_input=True, is_midi=True)
 			if not dst_ports:
-				dst_ports = [jclient.get_port_by_name(dst_name)]
-			for src_name in routes[dst_name]:
-				src_ports = jclient.get_ports(src_name, is_output=True, is_midi=True)
-				if src_ports and dst_ports:
-					src = src_ports[0]
-					dst = dst_ports[0]
-					required_routes[dst.name].add(src.name)
+				# Try to get destiny port by alias
+				try:
+					dst_ports = [jclient.get_port_by_name(dst_name)]
+				except:
+					pass
+			if dst_ports:
+				for src_name in routes[dst_name]:
+					src_ports = jclient.get_ports(src_name, is_output=True, is_midi=True)
+					if src_ports:
+						required_routes[dst_ports[0].name].add(src_ports[0].name)
 
 		# Add chain MIDI outputs
 		if chain.midi_slots and chain.midi_thru:
