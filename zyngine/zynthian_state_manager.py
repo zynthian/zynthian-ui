@@ -29,7 +29,6 @@ import logging
 import traceback
 from glob import glob
 from threading import Thread
-from vcgencmd import Vcgencmd
 from queue import SimpleQueue
 from datetime import datetime
 from time import sleep, monotonic
