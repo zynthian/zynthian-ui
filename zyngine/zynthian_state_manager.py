@@ -29,6 +29,7 @@ import logging
 import traceback
 from glob import glob
 from threading import Thread
+from vcgencmd import Vcgencmd
 from queue import SimpleQueue
 from datetime import datetime
 from time import sleep, monotonic
@@ -135,10 +136,9 @@ class zynthian_state_manager:
 
         self.cuia_queue = SimpleQueue()  # Queue for CUIA calls
 
+        self.get_throttled_file = None
         self.hwmon_thermal_file = None
         self.hwmon_undervolt_file = None
-        self.hwmon_undervolt_file = None
-        self.get_throttled_file = None
 
         self.zynmixer = zynthian_engine_audio_mixer.zynmixer()
         self.chain_manager = zynthian_chain_manager(self)
@@ -184,19 +184,29 @@ class zynthian_state_manager:
 
         self.start_busy("start state")
         # Initialize SOC sensors monitoring
+
+        # RBPi native sensors monitoring interface
         try:
-            self.hwmon_thermal_file = open('/sys/class/hwmon/hwmon0/temp1_input')
-            self.hwmon_undervolt_file = open('/sys/class/hwmon/hwmon1/in0_lcrit_alarm')
-            self.get_throttled_file = None
+            self.get_throttled_file = open('/sys/devices/platform/soc/soc:firmware/get_throttled')
         except:
-            logging.warning("Can't access sensors. Trying legacy interface...")
-            self.hwmon_thermal_file = None
-            self.hwmon_undervolt_file = None
+            self.get_throttled_file = None
+
+            # Alternate monitoring interface
             try:
-                self.get_throttled_file = open('/sys/devices/platform/soc/soc:firmware/get_throttled')
-                logging.debug("Accessing sensors using legacy interface!")
-            except Exception as e:
-                logging.error(f"Can't access monitoring sensors at all! => {e}")
+                self.hwmon_thermal_file = open('/sys/class/hwmon/hwmon0/temp1_input')
+            except:
+                self.hwmon_thermal_file = None
+                logging.error("Can't access temperature sensor.")
+
+            try:
+                self.hwmon_undervolt_file = open('/sys/class/hwmon/hwmon1/in0_lcrit_alarm')
+            except:
+                try:
+                    self.hwmon_undervolt_file = open('/sys/devices/platform/soc/soc:firmware/raspberrypi-hwmon/hwmon/hwmon2/in0_lcrit_alarm')
+                except:
+                    self.hwmon_undervolt_file = None
+                    logging.error("Can't access undervoltage sensor.")
+
 
         # Start VNC as configured
         self.default_vncserver()
@@ -526,7 +536,20 @@ class zynthian_state_manager:
                     self.status_overtemp = False
                     self.status_undervoltage = False
 
-                    if self.hwmon_thermal_file and self.hwmon_undervolt_file:
+                    # RBPi native sensors interface
+                    if self.get_throttled_file:
+                        try:
+                            self.get_throttled_file.seek(0)
+                            thr = int('0x%s' % self.get_throttled_file.read(), 16)
+                            if thr & 0x1:
+                                self.status_undervoltage = True
+                            elif thr & (0x4 | 0x2):
+                                self.status_overtemp = True
+                        except Exception as e:
+                            logging.error(e)
+
+                    # Alternate sensor interface
+                    elif self.hwmon_thermal_file and self.hwmon_undervolt_file:
                         try:
                             self.hwmon_thermal_file.seek(0)
                             res = int(self.hwmon_thermal_file.read())/1000
@@ -541,17 +564,6 @@ class zynthian_state_manager:
                             res = self.hwmon_undervolt_file.read()
                             if res == "1":
                                 self.status_undervoltage = True
-                        except Exception as e:
-                            logging.error(e)
-
-                    elif self.get_throttled_file:
-                        try:
-                            self.get_throttled_file.seek(0)
-                            thr = int('0x%s' % self.get_throttled_file.read(), 16)
-                            if thr & 0x1:
-                                self.status_undervoltage = True
-                            elif thr & (0x4 | 0x2):
-                                self.status_overtemp = True
                         except Exception as e:
                             logging.error(e)
 
