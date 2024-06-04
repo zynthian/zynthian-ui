@@ -100,12 +100,33 @@ function splash_zynthian_error_exit_ip() {
 	zynthian_error=$1
 	[ "$zynthian_error" ] || zynthian_error="???"
 
+	case $zynthian_error in
+		1)
+			message="Software"
+		;;
+		200)
+			message="Zyncore"
+		;;
+		201)
+			message="Control I/O"
+		;;
+		202)
+			message="Audio/MIDI"
+		;;
+		203)
+			message="CV/Gate"
+		;;
+		*)
+			message="ErrCode $zynthian_error"
+		;;
+	esac
+
 	# Get the IP
 	#zynthian_ip=`ip route get 1 | awk '{print $NF;exit}'`
-	zynthian_ip=$(hostname -I)
+	zynthian_ip=$(hostname -I | cut -d " " -f1)
 
 	# Format the message
-	zynthian_message="IP:$zynthian_ip    Exit:$zynthian_error"
+	zynthian_message="IP:$zynthian_ip    $message"
 
 	# Generate an error splash image with the IP & exit code...
 	splash_zynthian_message "$zynthian_message" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"

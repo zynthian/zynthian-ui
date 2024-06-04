@@ -30,8 +30,6 @@ import logging
 # Zynthian specific modules
 import zynconf
 
-# ******************************************************************************
-
 # ------------------------------------------------------------------------------
 # Log level and debuging
 # ------------------------------------------------------------------------------
@@ -696,6 +694,11 @@ if "zynthian_main.py" in sys.argv[0]:
 	# ------------------------------------------------------------------------------
 	try:
 		lib_zyncore = lib_zyncore_init()
+	except Exception as e:
+		logging.error(f"lib_zyncore: {e.args[0]} ({e.args[1]})")
+		exit(200 + e.args[1])
+
+	try:
 		num_zynswitches = lib_zyncore.get_num_zynswitches()
 		last_zynswitch_index = lib_zyncore.get_last_zynswitch_index()
 		num_zynpots = lib_zyncore.get_num_zynpots()
@@ -704,7 +707,8 @@ if "zynthian_main.py" in sys.argv[0]:
 		config_zynaptik()
 		config_zyntof()
 	except Exception as e:
-		logging.error("ERROR configuring control I/O subsytem: {}".format(e))
+		logging.error(f"Can't init control I/O subsytem: {e}")
+		exit(200)
 
 	# ------------------------------------------------------------------------------
 	# Load MIDI config
