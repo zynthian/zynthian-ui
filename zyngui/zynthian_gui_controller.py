@@ -508,17 +508,17 @@ class zynthian_gui_controller(tkinter.Canvas):
 
 	def config(self, zctrl):
 		#logging.debug("CONFIG CONTROLLER %s => %s" % (self.index,zctrl.name))
-		self.step = 0 # By default, use adaptative step size based on rotary speed
+
+		self.step = 0  # By default, use adaptative step size based on rotary speed
 		self.format_print = None
 		self.zctrl = zctrl
 		if zctrl is None:
 			self.set_title("")
 			self.erase_midi_bind()
 			return
+
 		self.set_title(zctrl.short_name)
 		self.set_midi_bind()
-
-		#logging.debug("ZCTRL '%s': %s (%s -> %s), %s, %s" % (zctrl.short_name, zctrl.value, zctrl.value_min, zctrl.value_max, zctrl.labels, zctrl.ticks))
 
 		# List of values => Selector
 		if isinstance(zctrl.ticks, list):
@@ -539,6 +539,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 				else:
 					self.format_print = "{:.1f}"
 
+		#logging.debug(f"ZCTRL '{zctrl.short_name}' = {zctrl.value} ({zctrl.value_min} -> {zctrl.value_max}, {self.step}); {zctrl.labels}; {zctrl.ticks}")
 		self.setup_zynpot()
 
 	# --------------------------------------------------------------------------

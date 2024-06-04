@@ -114,14 +114,8 @@ class zynthian_controller:
 			self.value_min = options['value_min']
 		if 'value_max' in options:
 			value_max = options['value_max']
-			# Numeric
-			if isinstance(value_max, int):
-				self.value_max = value_max
-			elif isinstance(value_max, float):
-				self.value_max = value_max
-				self.is_integer = False
 			# Selector
-			elif isinstance(value_max, str):
+			if isinstance(value_max, str):
 				self.labels = value_max.split('|')
 			elif isinstance(value_max, list):
 				if isinstance(value_max[0], list):
@@ -129,6 +123,13 @@ class zynthian_controller:
 					self.ticks = value_max[1]
 				else:
 					self.labels = value_max
+			# Numeric
+			elif isinstance(value_max, int):
+				self.value_max = value_max
+				self.is_integer = True
+			elif isinstance(value_max, float):
+				self.value_max = value_max
+				self.is_integer = False
 		if 'labels' in options:
 			self.labels = options['labels']
 		if 'ticks' in options:
@@ -222,6 +223,10 @@ class zynthian_controller:
 		if self.value_max is None:
 			self.value_max = 127
 		self.value_range = self.value_max - self.value_min
+
+		# Fix some 0.0 => 1.0 controllers
+		if not self.labels and self.value_range < 3:
+			self.is_integer = False
 
 		if self.value_mid is None:
 			if self.is_integer:
