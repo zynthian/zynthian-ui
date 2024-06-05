@@ -225,8 +225,10 @@ class zynthian_controller:
 		self.value_range = self.value_max - self.value_min
 
 		# Fix some 0.0 => 1.0 controllers
-		if not self.labels and self.value_range < 1:
+		""" TODO:  This breaks integer controllers with dynamic range and small initial value
+		if not self.labels and self.value_range < 3:
 			self.is_integer = False
+		"""
 
 		if self.value_mid is None:
 			if self.is_integer:
