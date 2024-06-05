@@ -61,7 +61,7 @@ CONFIG_ROOT			= "/zynthian/zynthian-data/zynseq"
 DEFAULT_VZOOM		= 16
 DEFAULT_HZOOM		= 16
 DRAG_SENSIBILITY	= 1.5
-SAVE_SNAPSHOT_DELAY	= 5
+SAVE_SNAPSHOT_DELAY	= 1
 
 EDIT_MODE_NONE		= 0  # Edit mode disabled
 EDIT_MODE_SINGLE	= 1  # Edit mode enabled for selected note
