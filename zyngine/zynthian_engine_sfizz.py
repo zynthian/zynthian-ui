@@ -266,7 +266,7 @@ class zynthian_engine_sfizz(zynthian_engine):
 	@classmethod
 	def zynapi_download(cls, fullpath):
 		fname, ext = os.path.splitext(fullpath)
-		if ext and ext[0]=='.':
+		if ext and ext[0] == '.':
 			head, tail = os.path.split(fullpath)
 			return head
 		else:
@@ -275,7 +275,8 @@ class zynthian_engine_sfizz(zynthian_engine):
 	@classmethod
 	def zynapi_install(cls, dpath, bank_path):
 		#TODO: Test that bank_path fits preset type (sfz)
-		fname, ext = os.path.splitext(dpath)
+		if not os.path.isdir(bank_path):
+			raise Exception("Destiny is not a directory!")
 		if os.path.isdir(dpath):
 			# Locate sfz files and move all them to first level directory
 			try:
@@ -297,21 +298,18 @@ class zynthian_engine_sfizz(zynthian_engine):
 						shutil.move(f, dpath)
 					shutil.rmtree(head)
 			except Exception as e:
-				logging.debug(f"Directory doesn't contain any SFZ file: {e}")
 				raise Exception(f"Directory doesn't contain any SFZ file")
 
-			# Move directory to destiny bank
 			if "/sfz/" in bank_path:
 				shutil.move(dpath, bank_path)
 			else:
 				raise Exception("Destiny is not a SFZ bank!")
-
 		else:
-			raise Exception("File doesn't look like a SFZ soundfont")
+			raise Exception("Doesn't look like a SFZ soundfont")
 
 	@classmethod
 	def zynapi_get_formats(cls):
-		return "zip,tgz,tar.gz,tar.bz2"
+		return "zip,tgz,tar.gz,tar.bz2,tar.xz"
 
 	@classmethod
 	def zynapi_martifact_formats(cls):

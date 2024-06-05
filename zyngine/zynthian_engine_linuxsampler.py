@@ -577,7 +577,9 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	@classmethod
 	def zynapi_install(cls, dpath, bank_path):
 		# TODO: Test that bank_path fits preset type (sfz/gig)
-		 
+		if not os.path.isdir(bank_path):
+			raise Exception("Destiny is not a directory!")
+
 		fname, ext = os.path.splitext(dpath)
 		if os.path.isdir(dpath):
 			# Locate sfz files and move all them to first level directory
@@ -605,7 +607,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 				raise Exception("Destiny is not a SFZ bank!")
 
 		elif ext.lower() == '.gig':
-
 			# Move directory to destiny bank
 			if "/gig/" in bank_path:
 				shutil.move(dpath, bank_path)
@@ -617,7 +618,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_formats(cls):
-		return "gig,zip,tgz,tar.gz,tar.bz2"
+		return "gig,zip,tgz,tar.gz,tar.bz2,tar.xz"
 
 	@classmethod
 	def zynapi_martifact_formats(cls):

@@ -454,7 +454,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_formats(cls):
-		return "sf2,sf3,zip,tgz,tar.gz,tar.bz2"
+		return "sf2,sf3,zip,tgz,tar.gz,tar.bz2,tar.xz"
 
 	@classmethod
 	def zynapi_martifact_formats(cls):

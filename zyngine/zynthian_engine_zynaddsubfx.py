@@ -400,7 +400,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_formats(cls):
-		return "xiz,zip,tgz,tar.gz,tar.bz2"
+		return "xiz,zip,tgz,tar.gz,tar.bz2,tar.xz"
 
 	@classmethod
 	def zynapi_martifact_formats(cls):

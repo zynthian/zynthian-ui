@@ -830,6 +830,6 @@ class zynthian_engine_modui(zynthian_engine):
 
 	@classmethod
 	def zynapi_get_formats(cls):
-		return "zip,tgz,tar.gz,tar.bz2"
+		return "zip,tgz,tar.gz,tar.bz2,tar.xz"
 
 # ******************************************************************************
