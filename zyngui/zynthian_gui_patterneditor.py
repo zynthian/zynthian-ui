@@ -802,6 +802,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def on_grid_drag(self, event):
 		if not self.grid_drag_start:
 			return
+		if self.grid_drag_count == 0 and abs(event.x - self.grid_drag_start.x) < 2 or abs(event.y - self.grid_drag_start.y) < 2:
+			return # Avoid interpretting tap as drag (especially on V4 touchscreen)
 		self.grid_drag_count += 1
 
 		if self.drag_note:
