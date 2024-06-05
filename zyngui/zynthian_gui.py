@@ -1027,6 +1027,9 @@ class zynthian_gui:
 		self.callable_ui_action(cuia, params)
 
 	# System actions CUIA
+	def cuia_nop(self, params):
+		pass
+
 	def cuia_test_mode(self, params):
 		self.test_mode = params
 		logging.warning('TEST_MODE: {}'.format(params))
