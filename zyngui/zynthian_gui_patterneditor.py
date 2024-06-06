@@ -938,7 +938,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.swipe_update()
 
 	def swipe_nudge(self, dts):
-		kt = 0.5 * min(0.05 * DRAG_SENSIBILITY / dts, 8)
+		try:
+			kt = 0.5 * min(0.05 * DRAG_SENSIBILITY / dts, 8)
+		except:
+			return
 		self.swipe_step_speed += kt * self.swipe_step_dir
 		self.swipe_row_speed += kt * self.swipe_row_dir
 		#logging.debug(f"KT={kt} => SWIPE_STEP_SPEED = {self.swipe_step_speed}, SWIPE_ROW_SPEED = {self.swipe_row_speed}")
