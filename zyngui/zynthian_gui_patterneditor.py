@@ -1507,8 +1507,14 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.save_pattern_snapshot(now=False, force=False)
 
 	# Function to handle MIDI notes (only used to refresh screen - actual MIDI input handled by lib)
-	def midi_note(self, note):
-		self.changed = True
+	def midi_note_on(self, note):
+		self.rows_pending.put_nowait(note)
+
+	def midi_note_off(self, note):
+		if self.playstate == zynseq.SEQ_STOPPED:
+			self.save_pattern_snapshot(now=True, force=True)
+		else:
+			self.changed = True
 		self.rows_pending.put_nowait(note)
 
 	def set_edit_title(self):

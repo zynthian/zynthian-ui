@@ -2021,7 +2021,7 @@ class zynthian_gui:
 		if izmip < self.state_manager.get_max_num_midi_devs():
 			# Pattern recording
 			if self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
-				self.screens['pattern_editor'].midi_note(note)
+				self.screens['pattern_editor'].midi_note_on(note)
 			# Preload preset (note-on)
 			elif self.current_screen == 'preset' and zynthian_gui_config.preset_preload_noteon and \
 				(zynautoconnect.get_midi_in_dev_mode(izmip) or chan == self.get_current_processor().get_midi_chan()):
@@ -2045,7 +2045,7 @@ class zynthian_gui:
 		if izmip < self.state_manager.get_max_num_midi_devs():
 			# Pattern recording
 			if self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
-				self.screens['pattern_editor'].midi_note(note)
+				self.screens['pattern_editor'].midi_note_off(note)
 
 	# ------------------------------------------------------------------
 	# Zynpot Thread
