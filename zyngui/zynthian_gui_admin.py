@@ -87,12 +87,13 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			sleep(2)
 
 	def build_view(self):
-		self.state_manager.check_for_updates()
+		self.update_available = self.state_manager.update_available
 		if not self.refresh_wifi_thread:
 			self.refresh_wifi = True
 			self.refresh_wifi_thread = Thread(target=self.refresh_wifi_task, name="wifi_refresh")
 			self.refresh_wifi_thread.start()
 		res = super().build_view()
+		self.state_manager.check_for_updates()
 		return res
 
 	def hide(self):
@@ -543,6 +544,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.zyngui.show_info("UPDATE SOFTWARE")
 		self.start_command([self.sys_dir + "/scripts/update_zynthian.sh"])
 		self.state_manager.update_available = False
+		self.update_available = False
 
 	def update_system(self):
 		logging.info("UPDATE SYSTEM")
