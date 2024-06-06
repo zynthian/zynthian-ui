@@ -1725,6 +1725,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				self.cuia_toggle_play()
 			elif type == 'B':
 				self.cuia_toggle_record()
+			elif type == "P":
+				return False
 			return True
 		return False
 
