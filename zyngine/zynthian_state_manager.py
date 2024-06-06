@@ -2336,16 +2336,17 @@ class zynthian_state_manager:
             return
         self.checking_for_updates = True
         def update_thread():
+            update_available = False
             try:
-                self.update_available = False
                 repos = ["/zynthian/zyncoder", "/zynthian/zynthian-ui", "/zynthian/zynthian-sys", "/zynthian/zynthian-webconf", "/zynthian/zynthian-data"]
                 for path in repos:
                     branch = check_output(["git", "-C", path, "rev-parse", "--abbrev-ref", "HEAD"], encoding="utf-8", stderr=STDOUT).strip()
                     local_hash = check_output(["git", "-C", path, "rev-parse", "HEAD"], encoding="utf-8", stderr=STDOUT).strip()
                     remote_hash = check_output(["git", "-C", path, "ls-remote", "origin", branch], encoding="utf-8", stderr=STDOUT).strip().split('\t')[0]
-                    self.update_available |= local_hash != remote_hash
+                    update_available |= local_hash != remote_hash
             except:
                 pass
+            self.update_available = update_available
             self.checking_for_updates = False
 
         thread = Thread(target=update_thread, args=())
