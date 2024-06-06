@@ -61,7 +61,7 @@ CONFIG_ROOT			= "/zynthian/zynthian-data/zynseq"
 DEFAULT_VZOOM		= 16
 DEFAULT_HZOOM		= 16
 DRAG_SENSIBILITY	= 1.5
-SAVE_SNAPSHOT_DELAY	= 1
+SAVE_SNAPSHOT_DELAY	= 10
 
 EDIT_MODE_NONE		= 0  # Edit mode disabled
 EDIT_MODE_SINGLE	= 1  # Edit mode enabled for selected note
@@ -445,12 +445,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.zynseq.libseq.resetPatternSnapshots()
 
 	# If changed, save snapshot:
-	#  + right now, if force=True
+	#  + right now, if now=True
+	#  + force saving ignoring changed flag
 	#  + each loop, if playing
 	#  + each SAVE_SNAPSHOT_DELAY seconds, if stopped
-	def save_pattern_snapshot(self, force=True):
-		if self.changed:
-			if force or (self.playstate != zynseq.SEQ_STOPPED and self.playhead == 0):
+	def save_pattern_snapshot(self, now=True, force=False):
+		if force or self.changed:
+			if now or (self.playstate != zynseq.SEQ_STOPPED and self.playhead == 0):
 				self.zynseq.libseq.savePatternSnapshot()
 				self.changed = False
 				self.changed_ts = 0
@@ -465,7 +466,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					self.changed_ts = ts
 
 	def undo_pattern(self):
-		self.save_pattern_snapshot()
+		self.save_pattern_snapshot(now=True, force=False)
 		if self.zynseq.libseq.undoPattern():
 			self.redraw_pending = 3
 
@@ -474,7 +475,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.redraw_pending = 3
 
 	def undo_pattern_all(self):
-		self.save_pattern_snapshot()
+		self.save_pattern_snapshot(now=True, force=False)
 		if self.zynseq.libseq.undoPatternAll():
 			self.redraw_pending = 3
 
@@ -486,7 +487,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if midi_record is None:
 			midi_record = not self.zynseq.libseq.isMidiRecord()
 		self.zynseq.libseq.enableMidiRecord(midi_record)
-		self.save_pattern_snapshot()
+		self.save_pattern_snapshot(now=True, force=False)
 
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol == 'tempo':
@@ -521,13 +522,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to transpose pattern
 	def transpose(self, offset):
 		if offset != 0:
-			self.save_pattern_snapshot()
+			self.save_pattern_snapshot(now=True, force=False)
 			if self.zynseq.libseq.getScale():
 				# Change to chromatic scale to transpose
 				self.zynseq.libseq.setScale(0)
 				self.load_keymap()
 			self.zynseq.libseq.transpose(offset)
-			self.changed = True
+			self.save_pattern_snapshot(now=True, force=True)
 			self.set_keymap_offset(self.keymap_offset + offset)
 			self.selected_cell[1] = self.selected_cell[1] + offset
 			self.redraw_pending = 3
@@ -1000,10 +1001,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	def remove_event(self, step, row):
 		if row >= len(self.keymap):
 			return
+		self.save_pattern_snapshot(now=True, force=False)
 		note = self.keymap[row]['note']
 		self.zynseq.libseq.removeNote(step, note)
 		self.zynseq.libseq.playNote(note, 0, self.channel) # Silence note if sounding
-		self.changed = True
+		self.save_pattern_snapshot(now=True, force=True)
 		self.drawing = True
 		self.draw_row(row)
 		self.drawing = False
@@ -1016,9 +1018,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# dur: duration (in steps)
 	# offset: offset of start of event (0..0.99)
 	def add_event(self, step, row, vel, dur, offset=0.0):
+		self.save_pattern_snapshot(now=True, force=False)
 		note = self.keymap[row]["note"]
 		self.zynseq.libseq.addNote(step, note, vel, dur, offset)
-		self.changed = True
+		self.save_pattern_snapshot(now=True, force=True)
 		self.drawing = True
 		self.draw_row(row)
 		self.drawing = False
@@ -1397,9 +1400,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to actually clear pattern
 	def do_clear_pattern(self, params=None):
-		self.save_pattern_snapshot()
+		self.save_pattern_snapshot(now=True, force=False)
 		self.zynseq.libseq.clear()
-		self.changed = True
+		self.save_pattern_snapshot(now=True, force=True)
 		self.redraw_pending = 3
 		self.select_cell()
 		if self.zynseq.libseq.getPlayState(self.bank, self.sequence, 0) != zynseq.SEQ_STOPPED:
@@ -1499,7 +1502,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				pending_rows.add(self.rows_pending.get_nowait())
 			while len(pending_rows):
 				self.draw_row(pending_rows.pop(), None)
-		self.save_pattern_snapshot(force=False)
+		self.save_pattern_snapshot(now=False, force=False)
 
 	# Function to handle MIDI notes (only used to refresh screen - actual MIDI input handled by lib)
 	def midi_note(self, note):
