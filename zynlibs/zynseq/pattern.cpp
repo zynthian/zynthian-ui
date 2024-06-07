@@ -42,6 +42,7 @@ Pattern& Pattern::operator=(Pattern& p)
     m_fHumanTime = p.m_fHumanTime;
     m_fHumanVelo = p.m_fHumanVelo;
     m_fPlayChance = p.m_fPlayChance;
+    m_nZoom = p.m_nZoom;
 	// Copy Events
     uint32_t i = 0;
     while (StepEvent* ev = p.getEventAt(i)) {

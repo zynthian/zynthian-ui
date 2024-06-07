@@ -486,6 +486,11 @@ class Pattern
 		bool undoAll();
 		bool redoAll();
 
+		// Grid zoom management
+		void setZoom(int16_t zoom) { m_nZoom = zoom; }
+		int16_t getZoom() { return m_nZoom; }
+		// TODO => Implement saving/restore of zoom value
+
     private:
         void deleteEvent(uint32_t position, uint8_t command, uint8_t value1);
 
@@ -504,4 +509,5 @@ class Pattern
         float m_fHumanTime = 0.0;			// Timing Humanization, range from 0 to FLOAT_MAX
         float m_fHumanVelo = 0.0;			// Velocity Humanization, range from 0 to FLOAT_MAX
         float m_fPlayChance = 1.0;			// Probability for playing notes (0 = Notes are not played, 0.5 = Notes plays with 50%, 1 = All notes play always)
+        int16_t m_nZoom = 0;				// Grid Zoom (pattern editor)
 };

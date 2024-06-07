@@ -126,9 +126,13 @@ bool undoPatternAll();
 /** Restore last state of pattern */
 bool redoPatternAll();
 
-/** @brief  Store current pattern on undo queue
-*/
-void snapshotPattern();
+/** Set pattern zoom */
+void setPatternZoom(int16_t zoom);
+
+/** Set pattern zoom */
+int16_t getPatternZoom();
+
+// ** This is not user by Pattern editor anymore. Is this used by arranger? **
 
 /** @brief  Get vertical zoom
 *   @retval uint16_t Vertical zoom

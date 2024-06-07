@@ -1414,6 +1414,16 @@ bool redoPatternAll() {
 	return g_seqMan.getPattern(g_nPattern)->redoAll();
 }
 
+void setPatternZoom(int16_t zoom) {
+	g_seqMan.getPattern(g_nPattern)->setZoom(zoom);
+}
+
+int16_t getPatternZoom() {
+	return g_seqMan.getPattern(g_nPattern)->getZoom();
+}
+
+// ** This is not user by Pattern editor anymore. Is this used by arranger? **
+
 uint16_t getVerticalZoom()
 {
     return g_nVerticalZoom;

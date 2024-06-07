@@ -1523,7 +1523,7 @@ class zynthian_gui:
 					return
 			elif i == 1:
 				if t == 'S' or t == 'B':
-					self.screens["pattern_editor"].reset_grid_scale()
+					self.screens["pattern_editor"].reset_grid_zoom()
 					return
 			elif i == 2:
 				if t == 'S' or t == 'B':

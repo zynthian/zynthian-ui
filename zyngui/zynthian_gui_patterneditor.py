@@ -66,7 +66,7 @@ SAVE_SNAPSHOT_DELAY	= 10
 EDIT_MODE_NONE		= 0  # Edit mode disabled
 EDIT_MODE_SINGLE	= 1  # Edit mode enabled for selected note
 EDIT_MODE_ALL		= 2  # Edit mode enabled for all notes
-EDIT_MODE_SCALE		= 3  # Edit mode enabled for all notes
+EDIT_MODE_ZOOM		= 3  # Zoom mode
 EDIT_PARAM_DUR		= 0  # Edit note duration
 EDIT_PARAM_VEL		= 1  # Edit note velocity
 EDIT_PARAM_OFFSET	= 2  # Edit note offset
@@ -149,8 +149,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		# Geometry contants
 		self.grid_height = self.height - PLAYHEAD_HEIGHT
 		self.grid_width = int(self.width * 0.91)
-		self.base_row_height = (self.grid_height - 2) // DEFAULT_VIEW_ROWS
-		self.base_step_width = (self.grid_width - 2) // DEFAULT_VIEW_STEPS
+		self.base_row_height = self.grid_height // DEFAULT_VIEW_ROWS
+		self.base_step_width = self.grid_width // DEFAULT_VIEW_STEPS
 		self.piano_roll_width = self.width - self.grid_width
 		self.select_thickness = 1 + int(self.width / 500)  # Scale thickness of select border based on screen resolution
 		# Geometry variables => Change with zoom
@@ -300,6 +300,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.toggle_midi_record(False)
 		self.enable_edit(EDIT_MODE_NONE)
 		self.zynseq.libseq.setRefNote(self.keymap_offset)
+		self.zynseq.libseq.setPatternZoom(self.zoom)
 		self.zynseq.libseq.setPlayMode(self.bank, self.sequence, self.last_play_mode)
 		self.zynseq.libseq.enableMidiRecord(False)
 		self.zyngui.alt_mode = False
@@ -370,7 +371,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	def menu_cb(self, option, params):
 		if params == 'Grid zoom':
-			self.toggle_grid_scale()
+			self.toggle_grid_zoom()
 		elif params == 'Tempo':
 			self.zyngui.show_screen('tempo')
 		elif params == 'Arranger':
@@ -937,7 +938,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.select_cell()
 		elif gtype in (MultitouchTypes.GESTURE_H_PINCH, MultitouchTypes.GESTURE_V_PINCH):
 			value = int(0.1 * value)
-			self.set_grid_scale(self.zoom + value)
+			self.set_grid_zoom(self.zoom + value)
 
 	def plot_zctrls(self):
 		self.swipe_update()
@@ -1214,10 +1215,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to set kaymap offset and move grid view accordingly
 	# offset: Keymap Offset (note at bottom row)
 	def set_keymap_offset(self, offset=None):
+		max_keymap_offset = max(0, len(self.keymap) - self.view_rows)
 		if offset is not None:
 			self.keymap_offset = offset
-		if self.keymap_offset > len(self.keymap) - self.view_rows:
-			self.keymap_offset = len(self.keymap) - self.view_rows
+		if self.keymap_offset > max_keymap_offset:
+			self.keymap_offset = max_keymap_offset
 		elif self.keymap_offset < 0:
 			self.keymap_offset = 0
 		ypos = (self.scroll_height - self.keymap_offset * self.row_height) / self.total_height
@@ -1244,7 +1246,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		#logging.debug(f"OFFSET: {self.step_offset} (NSTEPS: {self.n_steps}, TOTAL WIDTH: {self.total_width})")
 		#logging.debug(f"GRID X-SCROLL: {xpos}\n\n")
 
-	def set_grid_scale(self, new_zoom=0):
+	def set_grid_zoom(self, new_zoom=0):
+		#self.selected_cell
 		# Calculate new cell size
 		step_width = self.base_step_width + new_zoom
 		row_height = self.base_row_height + new_zoom
@@ -1293,11 +1296,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.set_step_offset()
 		if row_height_changed:
 			self.set_keymap_offset()
-		self.view_rows = (self.grid_height - 2) / self.row_height
-		self.view_steps = (self.grid_width - 2) / self.step_width
+		self.view_rows = self.grid_height / self.row_height
+		self.view_steps = self.grid_width / self.step_width
 		return True
 
-	def reset_grid_scale(self):
+	def reset_grid_zoom(self):
 		self.zoom = 0
 		self.view_rows = DEFAULT_VIEW_ROWS
 		self.view_steps = DEFAULT_VIEW_STEPS
@@ -1313,7 +1316,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.piano_roll.scale("all", 0, 0, 1.0, yscale)
 		self.set_keymap_offset()
 		self.set_step_offset()
-		#if self.edit_mode == EDIT_MODE_SCALE:
+		#if self.edit_mode == EDIT_MODE_ZOOM:
 		#	self.edit_mode = EDIT_MODE_NONE
 
 	# Function to calculate variable gemoetry parameters
@@ -1473,7 +1476,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# Function to load new pattern
 	# index: Pattern index
 	def load_pattern(self, index):
+		# Save zoom value and vertical position in pattern object
 		self.zynseq.libseq.setRefNote(self.keymap_offset)
+		self.zynseq.libseq.setPatternZoom(self.zoom)
+
+		# Load requested pattern
 		if self.bank == 0 and self.sequence == 0:
 			self.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
 		self.zynseq.libseq.selectPattern(index)
@@ -1497,7 +1504,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.selected_cell[0] = int(n_steps) - 1
 		self.keymap_offset = self.zynseq.libseq.getRefNote()
 		if self.keymap_offset >= keymap_len:
-			self.keymap_offset = (keymap_len - self.view_rows) // 2
+			self.keymap_offset = max(0, (keymap_len - self.view_rows) // 2)
 			self.selected_cell[1] = self.keymap_offset + self.view_rows // 2
 		if self.duration > n_steps:
 			self.duration = 1
@@ -1506,6 +1513,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.set_keymap_offset()
 		self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
 		self.set_title("Pattern {}".format(self.pattern))
+		self.set_grid_zoom(self.zynseq.libseq.getPatternZoom())
 
 	# Function to refresh status
 	def refresh_status(self):
@@ -1626,7 +1634,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 					self.zynseq.libseq.changeDurationAll(dval * 0.1)
 					self.redraw_pending = 3
 			else:
-				self.set_grid_scale(self.zoom + dval)
+				self.set_grid_zoom(self.zoom + dval)
 				#patnum = self.pattern + dval
 				#if patnum > 0:
 				#	self.pattern = patnum
@@ -1726,8 +1734,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				if self.edit_param > EDIT_PARAM_LAST:
 					self.edit_param = EDIT_PARAM_LAST
 				self.set_edit_title()
-			elif self.edit_mode == EDIT_MODE_SCALE:
-				self.set_grid_scale(self.zoom + dval)
+			elif self.edit_mode == EDIT_MODE_ZOOM:
+				self.set_grid_zoom(self.zoom + dval)
 			else:
 				self.select_cell(self.selected_cell[0] + dval, None)
 
@@ -1773,12 +1781,12 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	# CUIA Actions
 
-	# Function to toggle grid scale mode
-	def toggle_grid_scale(self):
+	# Function to toggle grid zoom mode
+	def toggle_grid_zoom(self):
 		if self.edit_mode == EDIT_MODE_NONE:
-			self.edit_mode = EDIT_MODE_SCALE
+			self.edit_mode = EDIT_MODE_ZOOM
 			self.set_title("Grid zoom", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
-		elif self.edit_mode == EDIT_MODE_SCALE:
+		elif self.edit_mode == EDIT_MODE_ZOOM:
 			self.edit_mode = EDIT_MODE_NONE
 			self.set_title("Pattern {}".format(self.pattern), zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
 
