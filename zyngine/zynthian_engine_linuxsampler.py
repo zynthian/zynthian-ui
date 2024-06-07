@@ -562,6 +562,11 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
 	@classmethod
 	def zynapi_remove_preset(cls, preset_path):
+		parts = preset_path.split("#")
+		if len(parts) > 1:
+			fname, ext = os.path.splitext(parts[0])
+			if ext == ".gig":
+				preset_path = parts[0]
 		os.remove(preset_path)
 		# TODO => If last preset in SFZ dir, delete it too!
 
