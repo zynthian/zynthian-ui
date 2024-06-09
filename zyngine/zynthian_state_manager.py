@@ -949,7 +949,8 @@ class zynthian_state_manager:
             # JSON Encode
             json = JSONEncoder().encode(state)
             with open(fpath, "w") as fh:
-                logging.info("Saving snapshot %s => \n%s" % (fpath, json))
+                logging.info(f"Saving snapshot {fpath} ...")
+                #logging.debug(f"Snapshot JSON Data =>\n{json}")
                 fh.write(json)
                 fh.flush()
                 os.fsync(fh.fileno())
@@ -978,7 +979,7 @@ class zynthian_state_manager:
             with open(fpath, "r") as fh:
                 json = fh.read()
                 logging.info(f"Loading snapshot '{fpath}' ...")
-                #logging.debug(f"Snapshot JSON Data:\n{json}")
+                #logging.debug(f"Snapshot JSON Data =>\n{json}")
         except Exception as e:
             logging.error("Can't load snapshot '%s': %s" % (fpath, e))
             self.end_busy("load snapshot")
@@ -1089,7 +1090,7 @@ class zynthian_state_manager:
             self.set_busy_details("fixing legacy snapshot")
             converter = zynthian_legacy_snapshot.zynthian_legacy_snapshot()
             state = converter.convert_state(snapshot)
-            logging.debug(f"Fixed Snapshot: {state}")
+            #logging.debug(f"Fixed Snapshot: {state}")
         else:
             state = snapshot
             if state["schema_version"] < SNAPSHOT_SCHEMA_VERSION:

@@ -166,7 +166,8 @@ class zynthian_processor:
 
     def get_bank_list(self):
         self.bank_list = self.engine.get_bank_list(self)
-        logging.debug("BANK LIST => \n%s" % str(self.bank_list))
+        logging.info(f"Loaded {len(self.bank_list)} banks")
+        #logging.debug(f"BANK LIST => \n{self.bank_list}")
 
         # Calculate info for bank_msb => Is this used by someone?
         i = 0
@@ -193,7 +194,7 @@ class zynthian_processor:
             for i in range(3):
                 self.bank_msb_info[i][0] += 1
 
-        logging.debug("BANK MSB INFO => \n{}".format(self.bank_msb_info))
+        #logging.debug(f"BANK MSB INFO => \n{self.bank_msb_info}")
         return self.bank_list
 
     def reset_bank(self):
@@ -307,7 +308,8 @@ class zynthian_processor:
         else:
             return
         self.preset_list = preset_list
-        logging.debug("PRESET LIST => \n%s" % str(self.preset_list))
+        logging.info(f"Loaded {len(self.preset_list)} presets")
+        #logging.debug(f"PRESET LIST => \n{self.preset_list}")
 
     def reset_preset(self):
         """Reset preset to default (empty)"""
