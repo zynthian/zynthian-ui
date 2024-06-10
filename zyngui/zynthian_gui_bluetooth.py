@@ -196,7 +196,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                 if result[0] == "Controller":
                     cur_ctrl = result[1]
                     if cur_ctrl not in self.ble_controllers:
-                        self.ble_controllers[cur_ctrl] = False
+                        self.ble_controllers[cur_ctrl] = None
                         self.send_ble_cmd(f"show {cur_ctrl}")
                     if result[2] == "Powered:":
                         enabled = result[3] == "yes"
