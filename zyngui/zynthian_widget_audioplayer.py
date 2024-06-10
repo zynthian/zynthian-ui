@@ -311,7 +311,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		options[f'Add cue marker at {pos:.3f}'] = event
 		x = self.processor.controllers_dict['beats'].value
 		if x:
-			options[f'Add {x} evently distributed cue markers'] = ['beats', x]
+			options[f'Add {x} evenly distributed cue markers'] = ['beats', x]
 		if self.cue_points:
 			options[f'Remove all cue markers'] = ['remove']
 		options['> EXISTING CUES'] = None

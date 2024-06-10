@@ -2209,9 +2209,6 @@ class zynthian_state_manager:
         try:
             check_output(f"systemctl start {service}", shell=True, timeout=2)
             sleep(wait)
-            check_output("bluetoothctl power on", shell=True, timeout=1)
-            check_output("bluetoothctl agent off", shell=True, timeout=1)
-            check_output("bluetoothctl agent NoInputNoOutput", shell=True, timeout=1)
             zynthian_gui_config.bluetooth_enabled = 1
             # Update MIDI profile
             if save_config:
@@ -2235,7 +2232,6 @@ class zynthian_state_manager:
         self.start_busy("stop_bluetooth", "stopping Bluetooth")
         logging.info("STOPPING bluetooth")
         try:
-            check_output("bluetoothctl power off", shell=True, timeout=1)
             check_output(f"systemctl stop {service}", shell=True, timeout=1)
             sleep(wait)
             zynthian_gui_config.bluetooth_enabled = 0
