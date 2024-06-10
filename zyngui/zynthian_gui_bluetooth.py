@@ -45,7 +45,8 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
         self.ble_devices = {} # Map of BLE devices, indexed by device address
         self.update = False
         self.pending_actions = [] # List of BLE commands to queue
-        super().__init__('Bluetooth Devices', True)
+        super().__init__('Bluetooth', True)
+        self.select_path.set("Bluetooth")
 
     def build_view(self):
         if zynthian_gui_config.bluetooth_enabled:
@@ -73,7 +74,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                     self.list_data.append(("enable_controller", ctrl, f"  \u2612 Controller {ctrl}"))
                 else:
                     self.list_data.append(("enable_controller", ctrl, f"  \u2610 Controller {ctrl}"))
-            self.list_data.append((None, None, "Bluetooth Controllers"))
+            self.list_data.append((None, None, "Devices"))
             for addr, data in self.ble_devices.items():
                 #[name, paired, trusted, connected, is_midi]
                 if data[2]:
@@ -124,7 +125,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                 return
 
     def enable_bg_task(self):
-        """Enable scanning for Bluetooth devices"""
+        """Start background task"""
 
         self.scan_paused = False
         if self.proc is None:
@@ -137,7 +138,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
             self.send_ble_cmd('list')
 
     def disable_bg_task(self):
-        """Stop scanning for Bluetooth devices"""
+        """Stop background taks"""
 
         self.ble_controllers = {}
         self.ble_devices = {}
@@ -285,10 +286,5 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
             self.pending_actions.insert(0, f"remove {addr}")
         except:
             pass
-
-
-    def set_select_path(self):
-        self.select_path.set("Bluetooth Devices")
-        self.set_title("Bluetooth Devices") #TODO: Should not need to set title and select_path!
 
 # ------------------------------------------------------------------------------
