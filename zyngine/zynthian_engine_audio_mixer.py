@@ -614,9 +614,10 @@ class zynmixer(zynthian_engine):
 			for ml, graph_path in state["midi_learn"].items():
 				try:
 					chan, cc = ml.split(',')
-					self.learned_cc[int(chan)][int(cc)] = self.zctrls[graph_path[0]][graph_path[1]]
-				except:
-					logging.warning("Failed to parse mixer midi learn parameter")
+					zctrl = self.zctrls[graph_path[0]][graph_path[1]]
+					self.learned_cc[int(chan)][int(cc)] = zctrl
+				except Exception as e:
+					logging.warning(f"Failed to restore mixer midi learn: {ml} => {graph_path} ({e})")
 
 	# --------------------------------------------------------------------------
 	# MIDI Learn

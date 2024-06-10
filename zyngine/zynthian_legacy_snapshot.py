@@ -87,7 +87,7 @@ class zynthian_legacy_snapshot:
         }
 
         try:
-            state["zs3"]["zs3-0"]["active_chain"] = int(f"{snapshot['index']:02d}")
+            state["zs3"]["zs3-0"]["active_chain"] = int(f"{snapshot['index']:02d}") + 1
         except:
             pass
 
@@ -350,8 +350,8 @@ class zynthian_legacy_snapshot:
             if not chain["midi_processors"] and not chain["synth_processors"]:
                 state["zs3"]["zs3-0"]["chains"][chain_id]["audio_thru"] = True
                 chain["midi_chan"] = None
-                if chain["mixer_chan"] > 17:
-                    chain["mixer_chan"] = 17 #TODO: Get max channels from mixer
+                if chain["mixer_chan"] > 16:
+                    chain["mixer_chan"] = 16 #TODO: Get max channels from mixer
 
             # Fix-up audio outputs
             if chain_id == 0:
@@ -422,7 +422,7 @@ class zynthian_legacy_snapshot:
                 
                 state["zs3"][zs3_id] = {
                     "title": zs3["zs3_title"],
-                    "active_chain": zs3["index"],
+                    "active_chain": int(zs3['index']) + 1,
                     "processors": {},
                     "midi_learn_cc": {
                         "absolute": {},
@@ -452,10 +452,12 @@ class zynthian_legacy_snapshot:
                 zs3["mixer"]["midi_learn"] = {}
                 for strip, config in zs3["mixer"].items():
                     if strip == "main":
-                        strip_id = 17  # TODO: Get actual main mixer strip index
+                        strip_id = 16  # TODO: Get actual main mixer strip index
                     else:
                         try:
                             strip_id = int(strip.split('_')[1])
+                            if strip_id > 16:
+                                strip_id = 16
                         except:
                             continue
                     for symbol, params in config.items():
