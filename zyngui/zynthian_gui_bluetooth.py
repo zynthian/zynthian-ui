@@ -70,10 +70,8 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
         if zynthian_gui_config.bluetooth_enabled:
             self.list_data.append(("stop_bluetooth", None, "\u2612 Enable Bluetooth"))
             for ctrl in sorted(self.ble_controllers.keys()):
-                if self.ble_controllers[ctrl]:
-                    self.list_data.append(("enable_controller", ctrl, f"  \u2612 Controller {ctrl}"))
-                else:
-                    self.list_data.append(("enable_controller", ctrl, f"  \u2610 Controller {ctrl}"))
+                chk = "\u2612" if self.ble_controllers[ctrl]["enabled"] else "\u2610"
+                self.list_data.append(("enable_controller", ctrl, f"  {chk} {self.ble_controllers[ctrl]['alias']}"))
             self.list_data.append((None, None, "Devices"))
             for addr, data in self.ble_devices.items():
                 #[name, paired, trusted, connected, is_midi]
@@ -122,7 +120,15 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
             if self.list_data[i][0].startswith("BLE:"):
                 # Bluetooth device
                 self.zyngui.show_confirm(f"Remove Bluetooth device?\n{self.list_data[i][2][2:]}\n{self.list_data[i][0]}", self.remove_ble, self.list_data[i][0][4:])
-                return
+            elif self.list_data[i][0] == "enable_controller":
+                self.rename_ctrl = self.list_data[i][1]
+                self.zyngui.show_keyboard(self.rename_controller, self.list_data[i][2][4:])
+
+    def rename_controller(self, title):
+        self.send_ble_cmd(f"select {self.rename_ctrl}")
+        self.send_ble_cmd(f'system-alias "{title}"')
+        sleep(1)
+        self.send_ble_cmd(f'show {self.rename_ctrl}')
 
     def enable_bg_task(self):
         """Start background task"""
@@ -155,9 +161,9 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
             self.proc.stdin.flush()
 
     def update_controller_power(self, ctrl, enable):
-        changed = self.ble_controllers[ctrl] != enable
+        changed = self.ble_controllers[ctrl]["enabled"] != enable
         if changed:
-            self.ble_controllers[ctrl] = enable
+            self.ble_controllers[ctrl]["enabled"] = enable
             if enable:
                 self.send_ble_cmd(f"select {ctrl}")
                 self.send_ble_cmd("agent off")
@@ -196,12 +202,12 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                 if result[0] == "Controller":
                     cur_ctrl = result[1]
                     if cur_ctrl not in self.ble_controllers:
-                        self.ble_controllers[cur_ctrl] = None
+                        self.ble_controllers[cur_ctrl] = {"enabled":None, "alias":f"Controller {cur_ctrl}"}
                         self.send_ble_cmd(f"show {cur_ctrl}")
                     if result[2] == "Powered:":
                         enabled = result[3] == "yes"
                         if cur_ctrl not in self.ble_controllers:
-                            self.ble_controllers[cur_ctrl] = None
+                            self.ble_controllers[cur_ctrl] = {"enabled":None, "alias":f"Controller {cur_ctrl}"}
                         self.update_controller_power(cur_ctrl, enabled)
                 elif result[0] == "Device":
                     addr = result[1]
@@ -237,6 +243,9 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                     if result[0] == "Powered:":
                         enabled = result[1] == "yes"
                         self.update_controller_power(cur_ctrl, enabled)
+                    if result[0] == "Alias:" and self.ble_controllers[cur_ctrl] != result[1]:
+                        self.ble_controllers[cur_ctrl]["alias"] = " ".join(result[1:])
+                        self.update = True
                 elif parsing and cur_dev:
                     config = self.ble_devices[cur_dev]
                     if result[0] == "Name:":
