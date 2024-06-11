@@ -27,7 +27,7 @@
 import logging
 from time import sleep
 from threading import Thread
-from subprocess import check_output, Popen, PIPE
+from subprocess import Popen, PIPE
 
 # Zynthian specific modules
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
@@ -37,14 +37,16 @@ from zyngui import zynthian_gui_config
 # Zynthian hotplug hardware config GUI Class
 # ------------------------------------------------------------------------------
 
+
 class zynthian_gui_bluetooth(zynthian_gui_selector):
 
     def __init__(self):
         self.proc = None
-        self.ble_controllers = {} # Map of Bluetooth controllers, indexed by controller address
-        self.ble_devices = {} # Map of BLE devices, indexed by device address
         self.update = False
-        self.pending_actions = [] # List of BLE commands to queue
+        self.scan_paused = False
+        self.ble_controllers = {}       # Map of Bluetooth controllers, indexed by controller address
+        self.ble_devices = {}           # Map of BLE devices, indexed by device address
+        self.pending_actions = []       # List of BLE commands to queue
         super().__init__('Bluetooth', True)
         self.select_path.set("Bluetooth")
 
@@ -99,7 +101,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                 self.zyngui.state_manager.start_bluetooth(wait=wait)
                 self.enable_bg_task()
             elif action == "enable_controller":
-                self.scan_paused = True # Avoid updates and interference from scan thread
+                self.scan_paused = True  # Avoid updates and interference from scan thread
                 # Disable all unselected devices
                 for ctrl in self.ble_controllers:
                     if ctrl != self.list_data[i][1]:
@@ -175,12 +177,12 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
             self.update = True
 
     def process_dynamic_ports(self):
-        """Process dynamically added/removed BLE devices"""
-		
-        # Device config: [name, paired, trusted, connected, is_midi]
+        """Process dynamically added/removed BLE devices
+
+        Device config: [name, paired, trusted, connected, is_midi]
+        """
         cur_ctrl = None
         cur_dev = None
-        parsing = False
 
         while self.proc:
             try:
@@ -212,7 +214,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                 elif result[0] == "Device":
                     addr = result[1]
                     if result[2] == "RSSI:":
-                        #TODO: Do we want to display RSSI? (I don't think so)
+                        # TODO: Do we want to display RSSI? (I don't think so)
                         continue
                     elif "91mDEL\x1b" in line:
                         # Device has been removed
@@ -271,7 +273,6 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
         
         addr - BLE address
         """
-
         try:
             if self.ble_devices[addr][2]:
                 #self.send_ble_cmd(f"remove {addr}")
@@ -289,7 +290,6 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
         
         addr : BLE address
         """
-
         try:
             #self.ble_devices.pop(addr)
             self.pending_actions.insert(0, f"remove {addr}")
