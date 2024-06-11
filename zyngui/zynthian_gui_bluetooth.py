@@ -108,10 +108,11 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                         self.send_ble_cmd(f"select {ctrl}")
                         self.send_ble_cmd("power off")
                 # Enable selected device
-                self.send_ble_cmd(f"select {self.list_data[i][1]}")
-                self.send_ble_cmd("power on")
-                self.ble_devices = {}
-                self.scan_paused = False
+                if self.list_data[i][2].startswith("  \u2610"):
+                    self.send_ble_cmd(f"select {self.list_data[i][1]}")
+                    self.send_ble_cmd("power on")
+                    self.ble_devices = {}
+                    self.scan_paused = False
                 for ctrl in self.ble_controllers:
                     self.send_ble_cmd(f"show {ctrl}")
             else:
