@@ -98,8 +98,9 @@ class zynthian_legacy_snapshot:
 
         try:
             state["midi_profile_state"] = snapshot["midi_profile_state"]
+            single_active_channel = state["midi_profile_state"]["SINGLE_ACTIVE_CHANNEL"]
         except:
-            pass
+            single_active_channel = True
 
         try:
             for id, value in snapshot["extended_config"].items():
@@ -307,7 +308,7 @@ class zynthian_legacy_snapshot:
                             if proc_name == "setBfree":
                                 setBfree_done = True
                     except:
-                        pass # MIDI only chains for synth engines should be ignored
+                        pass  # MIDI only chains for synth engines should be ignored
 
             # Add MIDI slots
             proc_count = len(chain["midi_processors"])
@@ -320,7 +321,7 @@ class zynthian_legacy_snapshot:
                     for dst in route:
                         if dst in chain["midi_processors"]:
                             last_slot = False
-                            break # processor feeds another processor so not in last slot
+                            break  # processor feeds another processor so not in last slot
                     if last_slot:
                         slot.append(proc)
                         if not chain["synth_processors"]:
@@ -351,7 +352,7 @@ class zynthian_legacy_snapshot:
                 state["zs3"]["zs3-0"]["chains"][chain_id]["audio_thru"] = True
                 chain["midi_chan"] = None
                 if chain["mixer_chan"] > 16:
-                    chain["mixer_chan"] = 16 #TODO: Get max channels from mixer
+                    chain["mixer_chan"] = 16  # TODO: Get max channels from mixer
 
             # Fix-up audio outputs
             if chain_id == 0:
@@ -406,22 +407,30 @@ class zynthian_legacy_snapshot:
         next_id = 1
         if "learned_zs3" in snapshot:
             for zs3 in snapshot["learned_zs3"]:
-                if "midi_learn_chan" in zs3:
+                # Ignore channel if "stage mode" is enabled
+                if not single_active_channel and "midi_learn_chan" in zs3:
                     midi_chan = zs3["midi_learn_chan"]
                 else:
                     midi_chan = None
                 if "midi_learn_prognum" in zs3:
                     midi_pgm = zs3["midi_learn_prognum"]
                 else:
+                    midi_chan = None
                     midi_pgm = None
-                if midi_chan is None or midi_pgm is None:
+                if midi_pgm is None:
                     zs3_id = f"zs3-{next_id}"
                     next_id += 1
+                elif midi_chan is None:
+                    zs3_id = f"*/{midi_pgm}"
                 else:
                     zs3_id = f"{midi_chan}/{midi_pgm}"
-                
+
+                zs3_title = zs3["zs3_title"]
+                if zs3_title == "New ZS3":
+                    zs3_title = zs3_id
+
                 state["zs3"][zs3_id] = {
-                    "title": zs3["zs3_title"],
+                    "title": zs3_title,
                     "active_chain": int(zs3['index']) + 1,
                     "processors": {},
                     "midi_learn_cc": {
@@ -501,7 +510,7 @@ class zynthian_legacy_snapshot:
                         else:
                             chain["audio_in"] = []
 
-                    #TODO: Handle multiple outputs... Identify single common processor chain to move to main chain.
+                    # TODO: Handle multiple outputs... Identify single common processor chain to move to main chain.
 
         # Emulate clone by setting destination midi channel to source midi channel
         if "clone" in snapshot:

@@ -1166,11 +1166,17 @@ class zynthian_state_manager:
         Returns : True on success
         """
 
-        if zs3_id not in self.zs3:
-            logging.info("Attepmted to load non-existant ZS3")
-            return False
-
-        zs3_state = self.zs3[zs3_id]
+        # Try loading exact match
+        try:
+            zs3_state = self.zs3[zs3_id]
+        except:
+            # else ignore MIDI channel => try loading "program change" match
+            try:
+                zs3_id = f"*/{zs3_id.split('/')[1]}"
+                zs3_state = self.zs3[zs3_id]
+            except:
+                logging.info(f"Not found ZS3 matching '{zs3_id}'")
+                return False
 
         restored_chains = []
         restored_cc_mapping = []
@@ -1303,7 +1309,6 @@ class zynthian_state_manager:
                     zs3_id = f"zs3-{index}"
                     break
 
-
         if title is None:
             title = self.midi_learn_pc
 
@@ -1326,10 +1331,10 @@ class zynthian_state_manager:
             }
             if chain.is_midi():
                 note_low = lib_zyncore.zmop_get_note_low(chain.zmop_index)
-                if note_low:
+                if note_low > 0:
                     chain_state["note_low"] = note_low
                 note_high = lib_zyncore.zmop_get_note_high(chain.zmop_index)
-                if note_high != 127:
+                if note_high < 127:
                     chain_state["note_high"] = note_high
                 transpose_octave = lib_zyncore.zmop_get_transpose_octave(chain.zmop_index)
                 if transpose_octave:
