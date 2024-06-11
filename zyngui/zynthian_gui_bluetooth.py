@@ -177,10 +177,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
             self.update = True
 
     def process_dynamic_ports(self):
-        """Process dynamically added/removed BLE devices
-
-        Device config: [name, paired, trusted, connected, is_midi]
-        """
+        """Process dynamically added/removed BLE devices"""
         cur_ctrl = None
         cur_dev = None
 
@@ -222,10 +219,9 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                         self.refresh = True
                     elif result[2] in ("(random)", "(public)"):
                         cur_dev = addr
-                    elif len(result) == 3:
-                        if addr not in self.ble_devices:
-                            self.ble_devices[addr] = [result[2], False, False, False, False]
-                            self.update = True
+                    elif addr not in self.ble_devices:
+                        self.ble_devices[addr] = [addr, None, None, None, None]
+                        self.update = True
                         self.send_ble_cmd(f"info {result[1]}")
                     
                     if addr in self.ble_devices:
@@ -239,6 +235,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                             self.ble_devices[addr][3] = result[3] == "yes"
                             self.update = True
                         elif result[2] == "UUID:" and result[3] == "Vendor" and result[4] == "specific" and result[-1] == "03b80e5a-ede8-4b33-a751-6ce34ec4c700)":
+                            # BLE MIDI device has "Vender specific" UUID with value 03b80e5a-ede8-4b33-a751-6ce34ec4c700
                             self.ble_devices[addr][4] = True
                             self.update = True
                 elif parsing and cur_ctrl:
@@ -249,8 +246,9 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                         self.ble_controllers[cur_ctrl]["alias"] = " ".join(result[1:])
                         self.update = True
                 elif parsing and cur_dev:
+                    # self.ble_devices[addr] is a list: [alias, paired, trusted, connected, is_midi]
                     config = self.ble_devices[cur_dev]
-                    if result[0] == "Name:":
+                    if result[0] == "Alias:":
                         name = " ".join(result[1:])
                         self.ble_devices[cur_dev][0] = name
                     elif result[0] == "Paired:":
@@ -266,7 +264,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                         #self.send_ble_cmd(f"disconnect {cur_dev}")
                     self.update |=  config != self.ble_devices[cur_dev]
             except Exception as e:
-                logging.warning(e)
+                pass # Accept occasional error instead of checking length of result many times.
 
     def toggle_ble_trust(self, addr):
         """Toggle trust of BLE device
