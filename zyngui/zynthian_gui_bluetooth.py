@@ -32,6 +32,7 @@ from subprocess import Popen, PIPE
 # Zynthian specific modules
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui import zynthian_gui_config
+import zynconf
 
 # ------------------------------------------------------------------------------
 # Zynthian hotplug hardware config GUI Class
@@ -101,18 +102,16 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                 self.zyngui.state_manager.start_bluetooth(wait=wait)
                 self.enable_bg_task()
             elif action == "enable_controller":
-                self.scan_paused = True  # Avoid updates and interference from scan thread
-                # Disable all unselected devices
-                for ctrl in self.ble_controllers:
-                    if ctrl != self.list_data[i][1]:
-                        self.send_ble_cmd(f"select {ctrl}")
-                        self.send_ble_cmd("power off")
-                # Enable selected device
-                if self.list_data[i][2].startswith("  \u2610"):
-                    self.send_ble_cmd(f"select {self.list_data[i][1]}")
-                    self.send_ble_cmd("power on")
-                    self.ble_devices = {}
-                    self.scan_paused = False
+                self.zyngui.state_manager.start_busy("Enabling BLE Controller")
+                if self.list_data[i][1] == zynthian_gui_config.ble_controller:
+                    return
+                self.send_ble_cmd("scan off")
+                self.zyngui.state_manager.select_bluetooth_controller(self.list_data[i][1])
+                self.send_ble_cmd(f"select {zynthian_gui_config.ble_controller}")
+                self.ble_devices = {}
+                sleep(1)
+                self.send_ble_cmd("scan on")
+                self.zyngui.state_manager.end_busy("Enabling BLE Controller")
                 for ctrl in self.ble_controllers:
                     self.send_ble_cmd(f"show {ctrl}")
             else:
@@ -139,7 +138,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
         self.scan_paused = False
         if self.proc is None:
             # Start scanning and processing bluetooth
-            self.proc = Popen('bluetoothctl', stdin=PIPE, stdout=PIPE, stderr=PIPE, encoding='utf-8')
+            self.proc = Popen(["bluetoothctl", "--agent", "DisplayOnly"], stdin=PIPE, stdout=PIPE, stderr=PIPE, encoding='utf-8')
             # Enable background scan for MIDI devices
             Thread(target=self.process_dynamic_ports, name="BLE scan").start()
             self.ble_controllers = {}
@@ -168,9 +167,6 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
         if changed:
             self.ble_controllers[ctrl]["enabled"] = enable
             if enable:
-                self.send_ble_cmd(f"select {ctrl}")
-                self.send_ble_cmd("agent off")
-                self.send_ble_cmd("agent NoInputNoOutput")
                 self.send_ble_cmd("scan on")
                 self.send_ble_cmd("devices")
                 while self.pending_actions:
@@ -200,6 +196,8 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                     continue
 
                 if result[0] == "Controller":
+                    if result[1].count(":") != 5:
+                        continue
                     cur_ctrl = result[1]
                     if cur_ctrl not in self.ble_controllers:
                         self.ble_controllers[cur_ctrl] = {"enabled":None, "alias":f"Controller {cur_ctrl}"}
@@ -210,17 +208,19 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                             self.ble_controllers[cur_ctrl] = {"enabled":None, "alias":f"Controller {cur_ctrl}"}
                         self.update_controller_power(cur_ctrl, enabled)
                 elif result[0] == "Device":
+                    if result[1].count(":") != 5:
+                        continue
                     addr = result[1]
                     if result[2] == "RSSI:":
                         # TODO: Do we want to display RSSI? (I don't think so)
                         continue
-                    elif "91mDEL\x1b" in line:
+                    elif "91mDEL\x1b" in line or line.endswith("not available"):
                         # Device has been removed
                         self.ble_devices.pop(addr)
                         self.refresh = True
                     elif result[2] in ("(random)", "(public)"):
                         cur_dev = addr
-                    elif addr not in self.ble_devices:
+                    elif addr not in self.ble_devices and result[2] not in ("Trusted:", "Connected:", "Paired:"):
                         self.ble_devices[addr] = [addr, None, None, None, None]
                         self.update = True
                         self.send_ble_cmd(f"info {result[1]}")
@@ -260,6 +260,9 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                         self.ble_devices[cur_dev][3] = result[1] == "yes"
                     elif result[0] == "UUID:" and result[1] == "Vendor" and result[2] == "specific" and result[-1] == "03b80e5a-ede8-4b33-a751-6ce34ec4c700)":
                         self.ble_devices[cur_dev][4] = True
+                    elif result[0] == "Battery" and result[2] == "Percentage":
+                        battery_value = int(result[2], 16)
+                        # TODO: Do we want to record battery level
                     #if cur_dev and self.ble_devices[cur_dev][3] == "yes" and self.ble_devices[cur_dev][2] != "yes":
                         # Do not let an untrusted device remain connected
                         #self.send_ble_cmd(f"disconnect {cur_dev}")
@@ -272,17 +275,29 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
         
         addr - BLE address
         """
+        self.zyngui.state_manager.start_busy("Toggle BLE Device")
         try:
-            if self.ble_devices[addr][2]:
-                #self.send_ble_cmd(f"remove {addr}")
+            """
+            If a device is paired, it needs to be removed but that will also remove it from the list until it is detected again
+            If a device is trusted and connected, it may ask for pairing and authentication.
+            """
+            if self.ble_devices[addr][1] or self.ble_devices[addr][2]:
+                self.send_ble_cmd(f"untrust {addr}")
+                self.send_ble_cmd(f"disconnect {addr}")
+                self.send_ble_cmd(f"remove {addr}")
+                self.ble_devices.pop(addr)
+                self.update_list()
+            elif self.ble_devices[addr][2]:
                 self.send_ble_cmd(f"untrust {addr}")
                 self.send_ble_cmd(f"disconnect {addr}")
             else:
                 self.send_ble_cmd(f"trust {addr}")
                 self.send_ble_cmd(f"pair {addr}")
-                self.send_ble_cmd(f"connect {addr}")
         except Exception as e:
             logging.warning(f"Failed to complete toggle BLE device action: {e}")
+            self.update = True
+        sleep(2)
+        self.zyngui.state_manager.end_busy("Toggle BLE Device")
 
     def remove_ble(self, addr):
         """Remove the Bluetooth device

@@ -647,7 +647,6 @@ class zynthian_engine_aeolus(zynthian_engine):
 	# --------------------------------------------------------------------------
 
 	def load_presets(self):
-		# TODO: Ensure legacy presets are available
 		# Get user presets
 		if file_exists(self.user_presets_fpath):
 			filename = self.user_presets_fpath
@@ -656,6 +655,13 @@ class zynthian_engine_aeolus(zynthian_engine):
 		try:
 			with open(filename, "r") as file:
 				self.presets = json.load(file)
+			# Fix legacy presets
+			for name, data in self.presets.items():
+				if type(data) is list:
+					self.presets.pop(name)
+					self.presets[name] = {}
+					for i in range(len(data)):
+						self.presets[name][str(i)] = data[i]
 		except:
 			self.presets = {}
 
