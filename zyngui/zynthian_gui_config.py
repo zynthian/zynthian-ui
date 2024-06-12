@@ -340,7 +340,7 @@ def set_midi_config():
 	global midi_bank_change, midi_fine_tuning
 	global midi_filter_rules, midi_sys_enabled, midi_usb_by_port
 	global midi_network_enabled, midi_rtpmidi_enabled, midi_netump_enabled
-	global midi_touchosc_enabled, bluetooth_enabled, midi_aubionotes_enabled
+	global midi_touchosc_enabled, bluetooth_enabled, ble_controller, midi_aubionotes_enabled
 	global transport_clock_source
 	global master_midi_channel, master_midi_change_type, master_midi_note_cuia
 	global master_midi_program_change_up, master_midi_program_change_down
@@ -361,6 +361,7 @@ def set_midi_config():
 	midi_rtpmidi_enabled = int(os.environ.get('ZYNTHIAN_MIDI_RTPMIDI_ENABLED', "0"))
 	midi_touchosc_enabled = int(os.environ.get('ZYNTHIAN_MIDI_TOUCHOSC_ENABLED', "0"))
 	bluetooth_enabled = int(os.environ.get('ZYNTHIAN_MIDI_BLE_ENABLED', "0"))
+	ble_controller = os.environ.get('ZYNTHIAN_MIDI_BLE_CONTROLLER', "")
 	midi_aubionotes_enabled = int(os.environ.get('ZYNTHIAN_MIDI_AUBIONOTES_ENABLED', "0"))
 	transport_clock_source = int(os.environ.get('ZYNTHIAN_MIDI_TRANSPORT_CLOCK_SOURCE', "0"))
 

@@ -33,7 +33,7 @@ from queue import SimpleQueue
 from datetime import datetime
 from time import sleep, monotonic
 from json import JSONEncoder, JSONDecoder
-from subprocess import check_output, STDOUT
+from subprocess import check_output, Popen, STDOUT, PIPE
 from os.path import basename, isdir, isfile, join, dirname, splitext
 
 # Zynthian specific modules
@@ -2204,10 +2204,30 @@ class zynthian_state_manager:
         else:
             self.stop_touchosc2midi(False)
 
+    def select_bluetooth_controller(self, controller):
+        if controller.count(":") != 5:
+            return
+        proc = Popen('bluetoothctl', stdin=PIPE, stdout=PIPE, stderr=PIPE, encoding='utf-8')
+        for addr in check_output("bluetoothctl list", shell=True, timeout=1, encoding="utf-8").split():
+            if addr.count(":") == 5:
+                proc.stdin.write(f"select {addr}\n")
+                if controller == addr:
+                    proc.stdin.write(f"power on\n")
+                else:
+                    proc.stdin.write(f"power off\n")
+                proc.stdin.flush()
+        proc.stdin.write(f"exit\n")
+        proc.stdin.flush()
+        zynthian_gui_config.ble_controller = controller
+        zynconf.update_midi_profile({
+            "ZYNTHIAN_MIDI_BLE_CONTROLLER": zynthian_gui_config.ble_controller
+        })
+
     def start_bluetooth(self, save_config=True, wait=0):
         service = "bluetooth"
         if zynconf.is_service_active(service):
             zynthian_gui_config.bluetooth_enabled = 1
+            self.select_bluetooth_controller(zynthian_gui_config.ble_controller)
             return
         self.start_busy("start_bluetooth", "starting Bluetooth")
         logging.info("STARTING Bluetooth")
@@ -2215,6 +2235,7 @@ class zynthian_state_manager:
             check_output(f"systemctl start {service}", shell=True, timeout=2)
             sleep(wait)
             zynthian_gui_config.bluetooth_enabled = 1
+            self.select_bluetooth_controller(zynthian_gui_config.ble_controller)
             # Update MIDI profile
             if save_config:
                 zynconf.update_midi_profile({
