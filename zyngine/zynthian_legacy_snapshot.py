@@ -128,8 +128,10 @@ class zynthian_legacy_snapshot:
         processors = {}
         chains = {}
         global_midi_cc = {}
-        proc_id = 1
-        for layer in snapshot["layers"]:
+
+        for proc_id, layer in enumerate(snapshot["layers"]):
+            if layer['engine_nick'] == "AI":
+                continue
             if layer['engine_nick'] == "MX":
                 try:
                     state["alsa_mixer"]["controllers"] = layer["controllers_dict"]
@@ -231,8 +233,6 @@ class zynthian_legacy_snapshot:
                     state["zyngui"]["processors"][proc_id]["show_fav_presets"] = layer["show_fav_presets"]
                 if "active_screen_index" in layer and layer["active_screen_index"] >= 0:
                     state["zyngui"]["processors"][proc_id]["active_screen_index"] = layer["active_screen_index"]
-
-                proc_id += 1
 
         # Create map of audio only channels for 'sidechaining'
         audio_only_chains = {}
@@ -432,6 +432,7 @@ class zynthian_legacy_snapshot:
                 state["zs3"][zs3_id] = {
                     "title": zs3_title,
                     "active_chain": int(zs3['index']) + 1,
+                    "chains": {},
                     "processors": {},
                     "midi_learn_cc": {
                         "absolute": {},
@@ -454,6 +455,23 @@ class zynthian_legacy_snapshot:
                             "preset_info": layer["preset_info"],
                             "controllers": layer["controllers_dict"]
                         }
+
+                for chain_id, chain in chains.items():
+                    chain_state = {
+                        #"audio_out": [],
+                        #"midi_thru": False,
+                        #"audio_in": [],
+                        #"audio_thru": False,
+                        #"midi_cc": {}
+                    }
+                    midi_chan = chain["midi_chan"]
+                    if midi_chan < 16:
+                        chain_state["note_low"] = note_range_state[midi_chan]["note_low"]
+                        chain_state["note_high"] = note_range_state[midi_chan]["note_high"]
+                        chain_state["transpose_octave"] = note_range_state[midi_chan]["octave_trans"]
+                        chain_state["transpose_semitone"] = note_range_state[midi_chan]["halftone_trans"]
+                    # Save chain_state in state data struct
+                    state["zs3"][zs3_id]["chains"][chain_id] = chain_state
 
         # Fix ZS3 mixer MIDI learn
         for zs3 in state["zs3"].values():
@@ -514,13 +532,17 @@ class zynthian_legacy_snapshot:
 
         # Emulate clone by setting destination midi channel to source midi channel
         if "clone" in snapshot:
+            active_midi_channel = "0"
             for clone_from_chan, clone_cfg in enumerate(snapshot["clone"]):
                 for clone_to_chan, cfg in enumerate(clone_cfg):
                     try:
                         if cfg["enabled"]:
                             state["chains"][clone_to_chan + 1]["midi_chan"] = state["chains"][clone_from_chan + 1]["midi_chan"]
+                            active_midi_channel = "1"
                     except Exception as e:
                         logging.warning("Failed to emulate cloning from {clone_from_chan} to {clone_to_chan}")
+
+            state["midi_profile_state"]["ACTIVE_CHANNEL"] = active_midi_channel
 
         return state
 
