@@ -186,7 +186,9 @@ class zynthian_state_manager:
 
         # Sysfs->hwmon monitoring interface
         try:
-            self.hwmon_thermal_file = open('/sys/class/hwmon/hwmon0/temp1_input')
+            sfpath = '/sys/class/hwmon/hwmon0/temp1_input'
+            self.hwmon_thermal_file = open(sfpath)
+            logging.debug(f"Opened temperature sensor '{sfpath}'")
         except:
             self.hwmon_thermal_file = None
             logging.error("Can't access temperature sensor.")
@@ -195,12 +197,12 @@ class zynthian_state_manager:
         try:
             result = glob("/sys/class/hwmon/**/in0_lcrit_alarm")
             self.hwmon_undervolt_file = open(result[0])
-            logging.warning(f"Opened {result[0]}")
+            logging.debug(f"Opened undervoltage sensor '{result[0]}'")
         except:
             try:
                 result = glob("/sys/devices/platform/soc/soc:firmware/raspberrypi-hwmon/hwmon/**/in0_lcrit_alarm')")
                 self.hwmon_undervolt_file = open(result[0])
-                logging.warning(f"Opened {result[0]}")
+                logging.debug(f"Opened undervoltage sensor '{result[0]}'")
             except:
                 self.hwmon_undervolt_file = None
                 logging.error("Can't access undervoltage sensor.")
