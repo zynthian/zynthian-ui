@@ -72,6 +72,10 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
 
         if zynthian_gui_config.bluetooth_enabled:
             self.list_data.append(("stop_bluetooth", None, "\u2612 Enable Bluetooth"))
+            if len(self.ble_controllers) == 0:
+                self.list_data.append((None, None, "No Bluetooth controllers detected!"))
+                super().fill_list()
+                return
             for ctrl in sorted(self.ble_controllers.keys()):
                 chk = "\u2612" if self.ble_controllers[ctrl]["enabled"] else "\u2610"
                 self.list_data.append(("enable_controller", ctrl, f"  {chk} {self.ble_controllers[ctrl]['alias']}"))
@@ -102,9 +106,9 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                 self.zyngui.state_manager.start_bluetooth(wait=wait)
                 self.enable_bg_task()
             elif action == "enable_controller":
-                self.zyngui.state_manager.start_busy("Enabling BLE Controller")
                 if self.list_data[i][1] == zynthian_gui_config.ble_controller:
                     return
+                self.zyngui.state_manager.start_busy("Enabling BLE Controller")
                 self.send_ble_cmd("scan off")
                 self.zyngui.state_manager.select_bluetooth_controller(self.list_data[i][1])
                 self.send_ble_cmd(f"select {zynthian_gui_config.ble_controller}")
