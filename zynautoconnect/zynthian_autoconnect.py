@@ -745,7 +745,8 @@ def audio_autoconnect():
 	# Chain audio routing
 	for chain_id in chain_manager.chains:
 		routes = chain_manager.get_chain_audio_routing(chain_id)
-		state_manager.zynmixer.normalise(chain_manager.chains[chain_id].mixer_chan, 0 in chain_manager.chains[chain_id].audio_out)
+		normalise = 0 in chain_manager.chains[chain_id].audio_out and chain_manager.chains[0].fader_pos == 0 and len(chain_manager.chains[chain_id].audio_slots) == chain_manager.chains[chain_id].fader_pos
+		state_manager.zynmixer.normalise(chain_manager.chains[chain_id].mixer_chan, normalise)
 		for dst in list(routes):
 			if isinstance(dst, int):
 				# Destination is a chain
