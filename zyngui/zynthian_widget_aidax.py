@@ -5,7 +5,7 @@
 # 
 # Zynthian Widget Class for "x42 Instrument Tuner" (tuna#one)
 # 
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Brian Walton <riban@zynthian.org>
 #
 #******************************************************************************
 # 
@@ -54,31 +54,43 @@ class zynthian_widget_aidax(zynthian_widget_base.zynthian_widget_base):
 
 		# Create custom GUI elements (position and size set when canvas is grid and size applied)
 
-		self.input_level_bg = self.widget_canvas.create_rectangle(
+		self.input_level_bg_low = self.widget_canvas.create_rectangle(
 			0, 0, 0, 0,
-			fill="grey")
+			fill="green")
+		self.input_level_bg_mid = self.widget_canvas.create_rectangle(
+			0, 0, 0, 0,
+			fill="yellow")
+		self.input_level_bg_high = self.widget_canvas.create_rectangle(
+			0, 0, 0, 0,
+			fill="red")
 		self.input_level = self.widget_canvas.create_rectangle(
 			0, 0, 0, 0,
-			fill="green")
-		self.output_level_bg = self.widget_canvas.create_rectangle(
-			0, 0, 0, 0,
 			fill="grey")
-		self.output_level = self.widget_canvas.create_rectangle(
-			0, 0, 0, 0,
-			fill="green")
 		self.input_label = self.widget_canvas.create_text(
 			0, 0,
 			fill="white",
 			text='Input',
 			anchor="w"
 			)
+
+		self.output_level_bg_low = self.widget_canvas.create_rectangle(
+			0, 0, 0, 0,
+			fill="green")
+		self.output_level_bg_mid = self.widget_canvas.create_rectangle(
+			0, 0, 0, 0,
+			fill="yellow")
+		self.output_level_bg_high = self.widget_canvas.create_rectangle(
+			0, 0, 0, 0,
+			fill="red")
+		self.output_level = self.widget_canvas.create_rectangle(
+			0, 0, 0, 0,
+			fill="grey")
 		self.output_label = self.widget_canvas.create_text(
 			0, 0,
 			fill="white",
 			text='Output',
 			anchor="w"
 			)
-
 
 	def on_size(self, event):
 		if event.width == self.width and event.height == self.height:
@@ -89,33 +101,30 @@ class zynthian_widget_aidax(zynthian_widget_base.zynthian_widget_base):
 		self.bar_height = round(0.1 * self.height)
 		self.x0 = round(0.1 * self.width)
 		self.y0 = round(0.2 * self.height)
-		self.widget_canvas.coords(self.input_level_bg, self.x0, self.y0, self.x0 + self.bar_width, self.y0 + self.bar_height)
-		self.widget_canvas.coords(self.output_level_bg, self.x0, self.y0 + self.bar_height + 2, self.x0 + self.bar_width, self.y0 + self.bar_height * 2 + 2)
+
+		self.widget_canvas.coords(self.input_level_bg_low, self.x0, self.y0, self.x0 + int(0.7 * self.bar_width), self.y0 + self.bar_height)
+		self.widget_canvas.coords(self.input_level_bg_mid, self.x0 + int(0.7 * self.bar_width), self.y0, self.x0 + int(0.9 * self.bar_width), self.y0 + self.bar_height)
+		self.widget_canvas.coords(self.input_level_bg_high, self.x0 + int(0.9 * self.bar_width), self.y0, self.x0 + self.bar_width, self.y0 + self.bar_height)
+		self.widget_canvas.coords(self.input_level, self.x0, self.y0, self.x0 + self.bar_width, self.y0 + self.bar_height)
 		self.widget_canvas.coords(self.input_label, self.x0 + 2, self.y0 + self.bar_height // 2)
-		self.widget_canvas.coords(self.output_label, self.x0 + 2, self.y0 + round(1.5 * self.bar_height))
 		self.widget_canvas.itemconfig(self.input_label, font=(zynthian_gui_config.font_family, self.bar_height // 2))
+
+		self.widget_canvas.coords(self.output_level_bg_low, self.x0, self.y0 + self.bar_height + 2, self.x0 + int(0.7 * self.bar_width), self.y0 + self.bar_height * 2 + 2)
+		self.widget_canvas.coords(self.output_level_bg_mid, self.x0 + int(0.7 * self.bar_width), self.y0 + self.bar_height + 2, self.x0 + int(0.9 * self.bar_width), self.y0 + self.bar_height * 2 + 2)
+		self.widget_canvas.coords(self.output_level_bg_high, self.x0 + int(0.9 * self.bar_width), self.y0 + self.bar_height + 2, self.x0 + self.bar_width, self.y0 + self.bar_height * 2 + 2)
+		self.widget_canvas.coords(self.output_level, self.x0, self.y0 + self.bar_height + 2, self.x0 + self.bar_width, self.y0 + self.bar_height * 2 + 2)
+		self.widget_canvas.coords(self.output_label, self.x0 + 2, self.y0 + self.bar_height + 2 + self.bar_height // 2)
 		self.widget_canvas.itemconfig(self.output_label, font=(zynthian_gui_config.font_family, self.bar_height // 2))
+
 		self.widget_canvas.grid(row=0, column=0, sticky='news')
 
 	def refresh_gui(self):
 		if 'MeterIn' in self.monitors:
 			x = int(self.x0 + self.bar_width * min(1, self.monitors['MeterIn']))
-			self.widget_canvas.coords(self.input_level, self.x0, self.y0, x, self.y0 + self.bar_height)
-			if self.monitors['MeterIn'] > 1:
-				self.widget_canvas.itemconfig(self.input_level, fill="red")
-			elif self.monitors['MeterIn'] > 0.85:
-				self.widget_canvas.itemconfig(self.input_level, fill="orange")
-			else:
-				self.widget_canvas.itemconfig(self.input_level, fill="green")
+			self.widget_canvas.coords(self.input_level, x, self.y0, self.x0 + self.bar_width, self.y0 + self.bar_height)
 		if 'MeterOut' in self.monitors:
 			x = int(self.x0 + self.bar_width * min(1, self.monitors['MeterOut']))
-			self.widget_canvas.coords(self.output_level, self.x0, self.y0 + self.bar_height + 2, x, self.y0 + self.bar_height * 2 + 2)
-			if self.monitors['MeterOut'] > 1:
-				self.widget_canvas.itemconfig(self.output_level, fill="red")
-			elif self.monitors['MeterOut'] > 0.85:
-				self.widget_canvas.itemconfig(self.output_level, fill="orange")
-			else:
-				self.widget_canvas.itemconfig(self.output_level, fill="green")
+			self.widget_canvas.coords(self.output_level, x, self.y0 + self.bar_height + 2, self.x0 + self.bar_width, self.y0 + self.bar_height * 2 + 2)
 		if 'ModelInSize' in self.monitors:
 			pass
 
