@@ -82,6 +82,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 
 		# Create Canvas
 		if not hidden:
+			self.color_graph = zynthian_gui_config.color_ctrl_bg_on
 			super().__init__(parent,
 				width=1,
 				height=1,
@@ -91,7 +92,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 			if graph == self.GUI_CTRL_ARC:
 				self.graph = self.create_arc(0, 0, 1, 1,
 					style=tkinter.ARC,
-					outline=zynthian_gui_config.color_ctrl_bg_on,
+					outline=self.color_graph,
 					tags='gui')
 				self.plot_value_func = self.plot_value_arc
 				self.on_size_graph = self.on_size_arc
@@ -103,7 +104,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 				)
 				self.rectangle = self.create_rectangle(
 					(0, 0, 0, 0),
-					fill=zynthian_gui_config.color_ctrl_bg_on,
+					fill=self.color_graph,
 					width=0
 				)
 				self.plot_value_func = self.plot_value_rectangle
@@ -115,7 +116,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 				)
 				self.triangle = self.create_polygon(
 					(0, 0, 0, 0),
-					fill=zynthian_gui_config.color_ctrl_bg_on
+					fill=self.color_graph
 				)
 				self.plot_value_func = self.plot_value_triangle
 				self.on_size_graph = self.on_size_triangle
@@ -284,9 +285,23 @@ class zynthian_gui_controller(tkinter.Canvas):
 		if self.hidden:
 			return
 
+	def set_color_graph(self, color):
+		try:
+			self.color_graph = color
+			self.itemconfig(self.graph, outline=self.color_graph)
+		except:
+			pass
+
+	def restore_color_graph(self):
+		self.itemconfig(self.graph, outline=self.color_graph)
+
+	def set_color_readonly(self):
+		self.itemconfig(self.graph, outline=zynthian_gui_config.color_ctrl_bg_off)
+
 	def set_hl(self, color=zynthian_gui_config.color_hl):
 		try:
-			self.itemconfig(self.graph, outline=color)
+			self.color_graph = color
+			self.itemconfig(self.graph, outline=self.color_graph)
 			#self.itemconfig(self.label_title, fill=color)
 			#self.itemconfig(self.value_text, fill=color)
 		except:
@@ -294,7 +309,8 @@ class zynthian_gui_controller(tkinter.Canvas):
 
 	def unset_hl(self):
 		try:
-			self.itemconfig(self.graph, outline=zynthian_gui_config.color_ctrl_bg_on)
+			self.color_graph = zynthian_gui_config.color_ctrl_bg_on
+			self.itemconfig(self.graph, outline=self.color_graph)
 			#self.itemconfig(self.label_title, fill=zynthian_gui_config.color_panel_tx)
 			#self.itemconfig(self.value_text, fill=zynthian_gui_config.color_panel_tx)
 		except:
@@ -343,9 +359,9 @@ class zynthian_gui_controller(tkinter.Canvas):
 		if self.shown and self.zctrl and (self.zctrl.is_dirty or self.refresh_plot_value):
 			if not self.hidden:
 				if self.zctrl.readonly:
-					self.set_hl(zynthian_gui_config.color_ctrl_bg_off)
+					self.set_color_readonly()
 				else:
-					self.unset_hl()
+					self.restore_color_graph()
 				self.plot_value_func()
 			self.refresh_plot_value = False
 			self.zctrl.is_dirty = False
