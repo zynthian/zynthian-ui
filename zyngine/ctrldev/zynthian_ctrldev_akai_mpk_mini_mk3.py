@@ -324,6 +324,10 @@ class zynthian_ctrldev_akai_mpk_mini_mk3(zynthian_ctrldev_zynmixer):
     dev_ids = ["MPK mini 3 IN 1"]
     unroute_from_chains = False
 
+    @classmethod
+    def get_autoload_flag(cls):
+        return False
+
     def __init__(self, state_manager, idev_in, idev_out):
         self._saved_state = SavedState(state_manager.zynseq)
         self._mixer_handler = MixerHandler(state_manager, idev_out, self._saved_state)

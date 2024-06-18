@@ -84,7 +84,8 @@ class zynthian_ctrldev_manager():
         uid = zynautoconnect.get_midi_in_uid(izmip)
         if enable and uid in self.disabled_devices:
             self.disabled_devices.remove(uid)
-        if izmip in self.drivers or uid in self.disabled_devices:
+        autoload_flag = self.available_drivers[dev_id].get_autoload_flag()
+        if izmip in self.drivers or uid in self.disabled_devices or (not enable and not autoload_flag):
             return False  # TODO: Should check if driver differs
         izmop = zynautoconnect.dev_in_2_dev_out(izmip)
         try:

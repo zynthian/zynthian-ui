@@ -179,6 +179,10 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
 
     dev_ids = ["APC Key 25 mk2 MIDI 2", "APC Key 25 mk2 IN 2"]
 
+    @classmethod
+    def get_autoload_flag(cls):
+        return True
+
     def __init__(self, state_manager, idev_in, idev_out=None):
         self._leds = FeedbackLEDs(idev_out)
         self._device_handler = DeviceHandler(state_manager, self._leds)

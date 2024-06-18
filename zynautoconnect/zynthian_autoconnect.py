@@ -534,7 +534,7 @@ def midi_autoconnect():
 			required_routes[f"ZynMidiRouter:dev{devnum}_in"].add(hwsp.name)
 			busy_idevs.append(devnum)
 
-	# Delete disconnected input devices from list
+	# Delete disconnected input devices from list and unload driver
 	for i in range(0, max_num_devs):
 		if i not in busy_idevs and devices_in[i] is not None:
 			logger.debug(f"Disconnected MIDI-in device {i}: {devices_in[i].name}")
@@ -707,11 +707,9 @@ def midi_autoconnect():
 			except:
 				pass
 
-	# Handle control device drivers
+	# Load driver if driver has autoload flag set
 	for i in range(0, max_num_devs):
-		if i not in busy_idevs and devices_in[i] is not None:
-			state_manager.ctrldev_manager.unload_driver(i)
-		else:
+		if i in busy_idevs and devices_in[i] is not None:
 			state_manager.ctrldev_manager.load_driver(i)
 
 	# Release Mutex Lock

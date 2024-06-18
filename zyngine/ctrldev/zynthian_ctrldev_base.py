@@ -44,6 +44,10 @@ class zynthian_ctrldev_base:
 	enabled = False			# True if device driver is enabled
 	unroute_from_chains = True		# True if input device must be unrouted from chains when driver is loaded
 
+	@classmethod
+	def get_autoload_flag(cls):
+		return True
+
 	# Function to initialise class
 	def __init__(self, state_manager, idev_in, idev_out=None):
 		self.state_manager = state_manager
