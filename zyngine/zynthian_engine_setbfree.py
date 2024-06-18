@@ -91,6 +91,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 	manual_ctrls = [
 		[
 			['volume', 7, 96, 127],
+			['expression', 11, 127, 127],
 			# ['swellpedal 2', 11, 96],
 			['reverb', 91, 4, 127],
 			['convol. mix', 94, 64, 127],
