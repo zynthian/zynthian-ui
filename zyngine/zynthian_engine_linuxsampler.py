@@ -365,6 +365,16 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 	# Controllers Management
 	# ---------------------------------------------------------------------------
 
+	def send_controller_value(self, zctrl):
+		try:
+			izmop = zctrl.processor.chain.zmop_index
+			if izmop is not None and izmop >= 0:
+				mchan = zctrl.processor.ls_chan_info['midi_chan']
+				mval = zctrl.get_ctrl_midi_val()
+				lib_zyncore.zmop_send_ccontrol_change(izmop, mchan, zctrl.midi_cc, mval)
+		except Exception as err:
+			logging.error(err)
+
 	# ---------------------------------------------------------------------------
 	# Specific functions
 	# ---------------------------------------------------------------------------

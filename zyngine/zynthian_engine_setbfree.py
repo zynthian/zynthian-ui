@@ -577,15 +577,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 		except Exception as err:
 			logging.error(err)
 
-	def midi_zctrl_change(self, zctrl, val):
-		try:
-			if val != zctrl.get_value():
-				zctrl.set_value(val)
-				#logging.debug(f"MIDI CC {zctrl.midi_cc} -> '{zctrl.name}' = {val}")
-
-		except Exception as e:
-			logging.debug(e)
-
 	# ----------------------------------------------------------------------------
 	# Specific functionality
 	# ----------------------------------------------------------------------------
