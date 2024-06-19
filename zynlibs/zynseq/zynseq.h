@@ -196,10 +196,14 @@ void sendMidiClock();
 */
 void sendMidiCommand(uint8_t status, uint8_t value1, uint8_t value2);
 
+/** @brief  Return MIDI clock output flag
+*/
+uint8_t getMidiClockOutput();
+
 /** @brief  Enable or disable sending MIDI clock to output
 *   @param  enable True to enable MIDI clock output (Default: true)
 */
-void enableMidiClockOutput(bool enable=true);
+void setMidiClockOutput(bool enable=true);
 
 /** @brief  Get MIDI device used for external trigger of sequences
 *   @retval uint8_t MIDI device index

@@ -1544,7 +1544,12 @@ void sendMidiCommand(uint8_t status, uint8_t value1, uint8_t value2)
     sendMidiMsg(pMsg);
 }
 
-void enableMidiClockOutput(bool enable)
+uint8_t getMidiClockOutput()
+{
+    return g_bSendMidiClock;
+}
+
+void setMidiClockOutput(bool enable)
 {
     g_bSendMidiClock = enable;
 }
