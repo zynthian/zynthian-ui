@@ -997,7 +997,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 					self.highlighted_strip.toggle_mute()
 				return True
 			elif t == "B":
-				self.zyngui.cuia_screen_zynpad()
+				self.zyngui.cuia_screen_admin()
 				return True
 
 		elif swi == 2:
