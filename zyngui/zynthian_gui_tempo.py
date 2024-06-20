@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
 # Zynthian GUI Tempo class
 # 
 # Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import tkinter
 import logging
@@ -37,18 +37,21 @@ from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_selector import zynthian_gui_controller
 
-#------------------------------------------------------------------------------
-# Zynthian Tempo GUI Class
-#------------------------------------------------------------------------------
 
-NUM_TAPS = 4
+# ------------------------------------------------------------------------------
+# Zynthian Tempo GUI Class
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_tempo(zynthian_gui_base):
+
+	NUM_TAPS = 4
 
 	def __init__(self):
 		super().__init__()
 
-		self.libseq = self.zyngui.state_manager.zynseq.libseq
+		self.state_manager = self.zyngui.state_manager
+		self.libseq = self.state_manager.zynseq.libseq
 
 		self.tap_buf = None
 		self.last_tap_ts = 0
@@ -84,25 +87,24 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
 		self.replot = True
 
-
 	def set_zctrls(self):
 		if not self.bpm_zgui_ctrl:
-			self.bpm_zctrl = zynthian_controller(self, 'bpm', {'name':'BPM', 'value_min': 10, 'value_max': 420, 'is_integer': False, 'nudge_factor': 0.1, 'value': self.libseq.getTempo()})
+			self.bpm_zctrl = zynthian_controller(self, 'bpm', {'name': 'BPM', 'value_min': 10, 'value_max': 420, 'is_integer': False, 'nudge_factor': 0.1, 'value': self.libseq.getTempo()})
 			self.bpm_zgui_ctrl = zynthian_gui_controller(0, self.main_frame, self.bpm_zctrl)
 			self.zgui_ctrls.append(self.bpm_zgui_ctrl)
 
 		if not self.clk_source_zgui_ctrl:
-			self.clk_source_zctrl = zynthian_controller(self, 'clock_source', {'name':'Clock Source', 'labels': ['Internal', 'Internal Send', 'MIDI', 'Analogue'], 'ticks': [0, 1, 2, 3], 'value': zynthian_gui_config.transport_clock_source})
+			self.clk_source_zctrl = zynthian_controller(self, 'clock_source', {'name': 'Clock Source', 'labels': ['Internal', 'Internal Send', 'MIDI', 'Analogue'], 'ticks': [0, 1, 2, 3], 'value': self.state_manager.get_transport_clock_source()})
 			self.clk_source_zgui_ctrl = zynthian_gui_controller(1, self.main_frame, self.clk_source_zctrl)
 			self.zgui_ctrls.append(self.clk_source_zgui_ctrl)
 
 		if not self.mtr_enable_zgui_ctrl:
-			self.mtr_enable_zctrl = zynthian_controller(self, 'metronome_enable', {'name':'Metronome On/Off', 'labels': ['Off', 'On'], 'ticks': [0, 1], 'is_toggle': True, 'value': self.libseq.isMetronomeEnabled()})
+			self.mtr_enable_zctrl = zynthian_controller(self, 'metronome_enable', {'name': 'Metronome On/Off', 'labels': ['Off', 'On'], 'ticks': [0, 1], 'is_toggle': True, 'value': self.libseq.isMetronomeEnabled()})
 			self.mtr_enable_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.mtr_enable_zctrl)
 			self.zgui_ctrls.append(self.mtr_enable_zgui_ctrl)
 
 		if not self.mtr_volume_zgui_ctrl:
-			self.mtr_volume_zctrl = zynthian_controller(self, 'metronome_volume', {'name':'Metronome Volume', 'value_min': 0, 'value_max': 100, 'value': int(100 * self.libseq.getMetronomeVolume())})
+			self.mtr_volume_zctrl = zynthian_controller(self, 'metronome_volume', {'name': 'Metronome Volume', 'value_min': 0, 'value_max': 100, 'value': int(100 * self.libseq.getMetronomeVolume())})
 			self.mtr_volume_zgui_ctrl = zynthian_gui_controller(3, self.main_frame, self.mtr_volume_zctrl)
 			self.zgui_ctrls.append(self.mtr_volume_zgui_ctrl)
 
@@ -114,10 +116,8 @@ class zynthian_gui_tempo(zynthian_gui_base):
 			zgui_ctrl.configure(height=self.height // layout['rows'], width=self.width // 4)
 			zgui_ctrl.grid(row=layout['ctrl_pos'][i][0], column=layout['ctrl_pos'][i][1])
 
-
 	def update_text(self):
 		self.info_canvas.itemconfigure(self.bpm_text, text="{:.1f} BPM".format(self.bpm_zctrl.get_value()))
-
 
 	def update_layout(self):
 		super().update_layout()
@@ -127,7 +127,6 @@ class zynthian_gui_tempo(zynthian_gui_base):
 		else:
 			self.info_canvas.coords(self.bpm_text, int(0.375*self.width), int(0.375*self.height))
 		self.info_canvas.itemconfigure(self.bpm_text, width=9*fs, font=(zynthian_gui_config.font_family, fs))
-
 
 	def plot_zctrls(self):
 		self.refresh_bpm_value()
@@ -140,12 +139,10 @@ class zynthian_gui_tempo(zynthian_gui_base):
 			self.update_text()
 			self.replot = False
 
-
 	def build_view(self):
 		self.set_zctrls()
 		self.last_tap_ts = 0
 		return True
-
 
 	def zynpot_cb(self, i, dval):
 		if i < 4:
@@ -153,28 +150,6 @@ class zynthian_gui_tempo(zynthian_gui_base):
 			return True
 		else:
 			return False
-
-
-	def set_transport_clock_source(self, val, save_config=False):
-		if val == 2:
-			self.libseq.setClockSource(2)
-		elif val == 3:
-			self.libseq.setClockSource(5)
-		else:
-			self.libseq.setClockSource(1)
-		self.libseq.enableMidiClockOutput(val == 1)
-		if val > 0:
-			lib_zyncore.set_midi_system_events(1)
-		else:
-			lib_zyncore.set_midi_system_events(zynthian_gui_config.midi_sys_enabled)
-
-		# Save config
-		if save_config:
-			zynthian_gui_config.transport_clock_source = val
-			zynconf.update_midi_profile({
-				"ZYNTHIAN_MIDI_TRANSPORT_CLOCK_SOURCE": str(int(val))
-			})
-
 
 	def send_controller_value(self, zctrl):
 		if self.shown:
@@ -185,7 +160,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
 				self.replot = True
 
 			elif zctrl == self.clk_source_zctrl:
-				self.set_transport_clock_source(zctrl.value, save_config=True)
+				self.state_manager.set_transport_clock_source(zctrl.value, save_config=True)
 				logging.debug("SETTING CLOCK SOURCE: {}".format(zctrl.value))
 				self.replot = True
 
@@ -204,7 +179,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
 		tap_dur = now - self.last_tap_ts
 		if self.last_tap_ts == 0 or tap_dur < 0.14285 or tap_dur > 2:
 			self.last_tap_ts = now
-			self.tap_buf = deque(maxlen=NUM_TAPS)
+			self.tap_buf = deque(maxlen=self.NUM_TAPS)
 		else:
 			self.last_tap_ts = now
 			self.tap_buf.append(tap_dur)
@@ -213,19 +188,16 @@ class zynthian_gui_tempo(zynthian_gui_base):
 			self.libseq.setTempo(bpm)
 			logging.debug("SETTING TAP TEMPO BPM: {}".format(bpm))
 
-
 	def refresh_bpm_value(self):
 		self.bpm_zctrl.set_value(self.libseq.getTempo(), send=False)
 		if self.bpm_zctrl.is_dirty:
 			self.replot = True
 
-
 	def switch_select(self, t='S'):
 		self.zyngui.close_screen()
-
 
 	def set_select_path(self):
 		self.select_path.set("Tempo Settings")
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
