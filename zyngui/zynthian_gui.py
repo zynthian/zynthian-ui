@@ -1827,7 +1827,7 @@ class zynthian_gui:
 
 		# Standard 4 ZynSwitches
 		if i == 0:
-			self.show_screen_reset("admin")
+			self.cuia_screen_admin()
 			return True
 
 		elif i == 1:
@@ -1836,11 +1836,10 @@ class zynthian_gui:
 
 		elif i == 2:
 			self.cuia_screen_snapshot()
-			#self.show_screen_reset("zynpad")
 			return True
 
 		elif i == 3:
-			self.screens['admin'].power_off()
+			self.cuia_power_off()
 			return True
 
 		# Custom ZynSwitches

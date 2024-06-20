@@ -61,9 +61,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.midi_learning = MIDI_LEARNING_DISABLED
 
 		self.buttonbar_config = [
-			(1, 'PRESETS\n[mixer]'),
 			(0, 'NEXT CHAIN\n[menu]'),
-			(2, 'LEARN\n[snapshot]'),
+			(1, 'PRESETS\n[mixer]'),
+			(2, 'LEARN\n[zs3]'),
 			(3, 'PAGE\n[options]')
 		]
 
@@ -416,14 +416,19 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.zyngui.chain_manager.previous_chain()
 		self.zyngui.chain_control()
 
+	def rotate_chain(self):
+		self.exit_midi_learn()
+		self.zyngui.chain_manager.rotate_chain()
+		self.zyngui.chain_control()
+
 	# Function to handle *all* switch presses.
-	#	swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
-	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
-	#	returns True if action fully handled or False if parent action should be triggered
+	#  swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
+	#  t: Press type ["S"=Short, "B"=Bold, "L"=Long]
+	#  returns True if action fully handled or False if parent action should be triggered
 	def switch(self, swi, t='S'):
 		if swi == 0:
 			if t == 'S':
-				self.arrow_right()
+				self.rotate_chain()
 				return True
 
 		elif swi == 1:

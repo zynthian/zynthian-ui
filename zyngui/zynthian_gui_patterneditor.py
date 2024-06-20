@@ -67,6 +67,8 @@ EDIT_MODE_NONE		= 0  # Edit mode disabled
 EDIT_MODE_SINGLE	= 1  # Edit mode enabled for selected note
 EDIT_MODE_ALL		= 2  # Edit mode enabled for all notes
 EDIT_MODE_ZOOM		= 3  # Zoom mode
+EDIT_MODE_HISTORY	= 4  # Edit history mode (undo/redo)
+
 EDIT_PARAM_DUR		= 0  # Edit note duration
 EDIT_PARAM_VEL		= 1  # Edit note velocity
 EDIT_PARAM_OFFSET	= 2  # Edit note offset
@@ -276,20 +278,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 		return True
 
-	# Function to enable note duration/velocity direct edit mode
-	# mode: Edit mode to enable [EDIT_MODE_NONE | EDIT_MODE_SINGLE | EDIT_MODE_ALL]
-	def enable_edit(self, mode):
-		self.edit_mode = mode
-		if mode == EDIT_MODE_SINGLE:
-			self.set_title("Note Parameters", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
-			self.set_edit_title()
-		elif mode == EDIT_MODE_ALL:
-			self.set_title("Note Parameters ALL", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
-			self.set_edit_title()
-		else:
-			self.set_title("Pattern {}".format(self.pattern), zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
-			self.init_buttonbar()
-
 	# Function to hide GUI
 	def hide(self):
 		if not self.shown:
@@ -298,8 +286,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if self.bank == 0 and self.sequence == 0:
 			self.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STOPPED)
 		self.toggle_midi_record(False)
-		self.enable_edit(EDIT_MODE_NONE)
-		self.zynseq.libseq.setRefNote(self.keymap_offset)
+		self.set_edit_mode(EDIT_MODE_NONE)
+		self.zynseq.libseq.setRefNote(int(self.keymap_offset))
 		self.zynseq.libseq.setPatternZoom(self.zoom)
 		self.zynseq.libseq.setPlayMode(self.bank, self.sequence, self.last_play_mode)
 		self.zynseq.libseq.enableMidiRecord(False)
@@ -891,9 +879,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				# Bold click without drag
 				if (dts) > 800:
 					if self.edit_mode == EDIT_MODE_NONE:
-						self.enable_edit(EDIT_MODE_SINGLE)
+						self.set_edit_mode(EDIT_MODE_SINGLE)
 					else:
-						self.enable_edit(EDIT_MODE_ALL)
+						self.set_edit_mode(EDIT_MODE_ALL)
 				# Short click without drag: Add/remove single note
 				else:
 					step = self.selected_cell[0]
@@ -1477,7 +1465,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	# index: Pattern index
 	def load_pattern(self, index):
 		# Save zoom value and vertical position in pattern object
-		self.zynseq.libseq.setRefNote(self.keymap_offset)
+		self.zynseq.libseq.setRefNote(int(self.keymap_offset))
 		self.zynseq.libseq.setPatternZoom(self.zoom)
 
 		# Load requested pattern
@@ -1550,6 +1538,25 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			self.changed = True
 		self.rows_pending.put_nowait(note)
 
+	# Function to enable note duration/velocity direct edit mode
+	# mode: Edit mode to enable [EDIT_MODE_NONE | EDIT_MODE_SINGLE | EDIT_MODE_ALL]
+	def set_edit_mode(self, mode):
+		self.edit_mode = mode
+		if mode == EDIT_MODE_SINGLE:
+			self.set_title("Note Parameters", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
+			self.set_edit_title()
+		elif mode == EDIT_MODE_ALL:
+			self.set_title("Note Parameters ALL", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
+			self.set_edit_title()
+		elif self.edit_mode == EDIT_MODE_ZOOM:
+			self.set_title("Grid zoom", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
+		elif self.edit_mode == EDIT_MODE_HISTORY:
+			self.set_title("Undo/Redo", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
+			self.init_buttonbar([("ARROW_LEFT", "<< undo"), ("ARROW_RIGHT", "redo >>")])
+		else:
+			self.set_title("Pattern {}".format(self.pattern), zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
+			self.init_buttonbar()
+
 	def set_edit_title(self):
 		step = self.selected_cell[0]
 		note = self.get_note_from_row(self.selected_cell[1])
@@ -1592,7 +1599,21 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 			elif self.edit_param == EDIT_PARAM_CHANCE:
 				self.set_title(f"Play chance: {self.zynseq.libseq.getNotePlayChance(step, note)}%")
 
-		self.init_buttonbar([(f"ZYNPOT {zynpot},-1", f"-{delta}"),(f"ZYNPOT {zynpot},+1", f"+{delta}"),("ZYNPOT 3,-1", "PREV\nPARAM"),("ZYNPOT 3,+1", "NEXT\nPARAM"),(3,"OK")])
+		self.init_buttonbar([(f"ZYNPOT {zynpot},-1", f"-{delta}"), (f"ZYNPOT {zynpot},+1", f"+{delta}"), ("ZYNPOT 3,-1", "PREV\nPARAM"), ("ZYNPOT 3,+1", "NEXT\nPARAM"), (3, "OK")])
+
+	# Toggle grid zoom mode
+	def toggle_grid_zoom(self):
+		if self.edit_mode == EDIT_MODE_NONE:
+			self.set_edit_mode(EDIT_MODE_ZOOM)
+		elif self.edit_mode == EDIT_MODE_ZOOM:
+			self.set_edit_mode(EDIT_MODE_NONE)
+
+	# Toggle history edit mode (undo/redo)
+	def toggle_edit_history(self):
+		if self.edit_mode == EDIT_MODE_NONE:
+			self.set_edit_mode(EDIT_MODE_HISTORY)
+		elif self.edit_mode == EDIT_MODE_HISTORY:
+			self.set_edit_mode(EDIT_MODE_NONE)
 
 	# Function to handle zynpots value change
 	#   i: Zynpot index [0..n]
@@ -1736,6 +1757,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				self.set_edit_title()
 			elif self.edit_mode == EDIT_MODE_ZOOM:
 				self.set_grid_zoom(self.zoom + dval)
+			elif self.edit_mode == EDIT_MODE_HISTORY:
+				if dval > 0:
+					self.redo_pattern()
+				else:
+					self.undo_pattern()
 			else:
 				self.select_cell(self.selected_cell[0] + dval, None)
 
@@ -1750,57 +1776,52 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 				if note:
 					self.play_note(note)
 			else:
-				self.enable_edit(EDIT_MODE_NONE)
+				self.set_edit_mode(EDIT_MODE_NONE)
 		elif type == "B":
 			if self.edit_mode == EDIT_MODE_NONE:
-				self.enable_edit(EDIT_MODE_SINGLE)
+				self.set_edit_mode(EDIT_MODE_SINGLE)
 			elif self.edit_mode == EDIT_MODE_SINGLE:
-				self.enable_edit(EDIT_MODE_ALL)
+				self.set_edit_mode(EDIT_MODE_ALL)
 
 	# Function to handle switch press
 	#   i: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
 	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#   returns True if action fully handled or False if parent action should be triggered
 	def switch(self, i, type):
-		if i == 2:
+		if i == 1:
+			if type == 'B':
+				self.set_edit_mode(EDIT_MODE_HISTORY)
+				return True
+		elif i == 2:
 			if type == 'S':
 				self.cuia_toggle_play()
+				return True
 			elif type == 'B':
 				self.cuia_toggle_record()
+				return True
 			elif type == "P":
 				return False
-			return True
 		return False
 
 	# Function to handle BACK button
 	def back_action(self):
 		if self.edit_mode == EDIT_MODE_NONE:
 			return super().back_action()
-		self.enable_edit(EDIT_MODE_NONE)
+		self.set_edit_mode(EDIT_MODE_NONE)
 		return True
 
 	# CUIA Actions
 
-	# Function to toggle grid zoom mode
-	def toggle_grid_zoom(self):
-		if self.edit_mode == EDIT_MODE_NONE:
-			self.edit_mode = EDIT_MODE_ZOOM
-			self.set_title("Grid zoom", zynthian_gui_config.color_header_bg, zynthian_gui_config.color_panel_tx)
-		elif self.edit_mode == EDIT_MODE_ZOOM:
-			self.edit_mode = EDIT_MODE_NONE
-			self.set_title("Pattern {}".format(self.pattern), zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
-
-
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
-		if self.zyngui.alt_mode:
+		if self.zyngui.alt_mode or self.edit_mode == EDIT_MODE_HISTORY:
 			self.redo_pattern()
 		else:
 			self.zynpot_cb(self.ctrl_order[3], 1)
 
 	# Function to handle CUIA ARROW_LEFT
 	def arrow_left(self):
-		if self.zyngui.alt_mode:
+		if self.zyngui.alt_mode or self.edit_mode == EDIT_MODE_HISTORY:
 			self.undo_pattern()
 		else:
 			self.zynpot_cb(self.ctrl_order[3], -1)

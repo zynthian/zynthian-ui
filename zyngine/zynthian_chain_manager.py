@@ -703,6 +703,12 @@ class zynthian_chain_manager:
 
         return self.next_chain(-nudge)
 
+    def rotate_chain(self):
+        if self.active_chain_id > 0:
+            return self.next_chain()
+        else:
+            return self.set_active_chain_by_index(0)
+
     def get_active_chain(self):
         """Get the active chain object or None if no active chain"""
 
