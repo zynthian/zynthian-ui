@@ -106,7 +106,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                 self.zyngui.state_manager.start_bluetooth(wait=wait)
                 self.enable_bg_task()
             elif action == "enable_controller":
-                if self.list_data[i][1] == zynthian_gui_config.ble_controller:
+                if self.list_data[i][1] == zynthian_gui_config.ble_controller and self.list_data[i][2].startswith("  ☒"):
                     return
                 self.zyngui.state_manager.start_busy("Enabling BLE Controller")
                 self.send_ble_cmd("scan off")
