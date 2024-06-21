@@ -339,7 +339,7 @@ class zynthian_engine(zynthian_basic_engine):
 
 	# Get bank dir list
 	@classmethod
-	def get_bank_dirlist(cls, recursion=1, exclude_empty=True):
+	def get_bank_dirlist(cls, recursion=1, exclude_empty=True, internal_include_empty=False):
 		banks = []
 
 		# External storage banks
@@ -378,7 +378,7 @@ class zynthian_engine(zynthian_basic_engine):
 			walk[1].sort()
 			for bank_dir in walk[1]:
 				bank_path = walk[0] + "/" + bank_dir
-				if not exclude_empty or cls.find_some_preset_file(bank_path, recursion):
+				if (not exclude_empty or internal_include_empty) or cls.find_some_preset_file(bank_path, recursion):
 					sbanks.append([bank_path, None, bank_dir, None, bank_dir])
 			if len(sbanks):
 				banks.append([None, None, "SD> " + root_bank_dir[0], None, None])
