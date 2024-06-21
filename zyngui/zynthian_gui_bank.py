@@ -104,15 +104,25 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		proc = self.zyngui.get_current_processor()
 		bank = copy.deepcopy(self.list_data[self.index])
 		bank_name = bank[2]
+		title_user = False
 		options = {}
+		if hasattr(proc.engine, "create_user_bank"):
+			options["New"] = "new bank"
 		if proc.engine.is_preset_user(bank):
 			if hasattr(proc.engine, "rename_user_bank"):
 				options["Rename"] = bank
+				title_user = True
 			if hasattr(proc.engine, "delete_user_bank"):
 				options["Delete"] = bank
-		self.zyngui.screens['option'].config("User bank: {}".format(bank_name), options, self.bank_options_cb)
-		if len(options):
-			self.zyngui.show_screen('option')
+				title_user = True
+		if not options:
+			options["No bank options!"] = None
+		if title_user:
+			title = f"Bank options: {bank_name}"
+		else:
+			title = "Bank options"
+		self.zyngui.screens['option'].config(title, options, self.bank_options_cb)
+		self.zyngui.show_screen('option')
 
 	def show_menu(self):
 		self.show_bank_options()
@@ -125,10 +135,16 @@ class zynthian_gui_bank(zynthian_gui_selector):
 
 	def bank_options_cb(self, option, bank):
 		self.options_bank_index = self.index
-		if option == "Rename":
+		if option == "New":
+			self.zyngui.show_keyboard(self.create_bank, bank)
+		elif option == "Rename":
 			self.zyngui.show_keyboard(self.rename_bank, bank[2])
 		elif option == "Delete":
 			self.zyngui.show_confirm("Do you really want to remove bank '{}' and delete all of its presets?".format(bank[2]), self.delete_bank, bank)
+
+	def create_bank(self, bank_name):
+		self.zyngui.get_current_processor().engine.create_user_bank(bank_name)
+		self.zyngui.close_screen()
 
 	def rename_bank(self, bank_name):
 		self.zyngui.get_current_processor().engine.rename_user_bank(self.list_data[self.options_bank_index], bank_name)

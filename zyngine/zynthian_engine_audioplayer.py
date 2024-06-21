@@ -23,13 +23,14 @@
 # ******************************************************************************
 
 import os
+import shutil
 import logging
 from glob import glob
 
-from zynlibs.zynaudioplayer import *
 from . import zynthian_engine
-from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
+from zynlibs.zynaudioplayer import *
 from zyngine.zynthian_signal_manager import zynsigman
+from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngui import zynthian_gui_config
 
 # ------------------------------------------------------------------------------
@@ -144,8 +145,26 @@ class zynthian_engine_audioplayer(zynthian_engine):
 	# Bank Management
 	# ---------------------------------------------------------------------------
 
+	def get_bank_list(self, processor=None):
+		return self.get_bank_dirlist(recursion=1, internal_include_empty=True)
+
 	def set_bank(self, processor, bank):
 		return True
+
+	def create_user_bank(self, bank_name):
+		base_path = self.root_bank_dirs[0][1]
+		bank_path = base_path + "/" + bank_name
+		os.mkdir(bank_path)
+
+	def rename_user_bank(self, bank, new_bank_name):
+		if self.is_preset_user(bank):
+			base_path, bank_name = os.path.split(bank[0])
+			new_bank_path = base_path + "/" + new_bank_name
+			os.rename(bank[0], new_bank_path)
+
+	def delete_user_bank(self, bank):
+		if self.is_preset_user(bank):
+			shutil.rmtree(bank[0])
 
 	# ---------------------------------------------------------------------------
 	# Preset Management
@@ -172,7 +191,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 	def preset_exists(self, bank_info, preset_name):
 		if not bank_info or bank_info[0] is None:
-			bank_name = zynthian_engine.my_data_dir + "/capture"
+			bank_name = self.root_bank_dirs[0][1] + "/capture"
 		else:
 			bank_name = bank_info[0]
 		path = f"{bank_name}/{preset_name}.wav"
@@ -182,7 +201,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		if zynaudioplayer.get_filename(processor.handle) == preset[0] and zynaudioplayer.get_file_duration(preset[0]) == zynaudioplayer.get_duration(processor.handle):
 			return False
 
-		good_file = zynaudioplayer.load(processor.handle, preset[0])
+		zynaudioplayer.load(processor.handle, preset[0])
 		self.monitors_dict[processor.handle]['filename'] = zynaudioplayer.get_filename(processor.handle)
 		self.monitors_dict[processor.handle]['frames'] = zynaudioplayer.get_frames(processor.handle)
 		self.monitors_dict[processor.handle]['channels'] = zynaudioplayer.get_channels(processor.handle)
@@ -252,7 +271,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			else:
 				self._ctrl_screens.insert(-2, ['envelope 1', ['attack', 'hold', 'decay', 'sustain']])
 				self._ctrl_screens.insert(-2, ['envelope 2', ['release']])
-
 		else:
 			self._ctrl_screens = [
 				['main', ['record', 'gain']],
@@ -260,8 +278,9 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 		midi_notes = []
 		for oct in range(8):
-			for key in ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"]:
+			for key in ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]:
 				midi_notes.append(f"{key}{oct-1}")
+
 		self._ctrls = [
 			['gain', None, gain, 2.0],
 			['record', None, record, ['stopped', 'recording']],
@@ -289,12 +308,11 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['beats', None, beats, 64],
 			['cue', {'value': cue_min, 'value_min': cue_min, 'value_max': cues}],
 			['cue pos', None, cue_pos, dur],
-			['speed', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}],
-			['pitch', {'value': 0.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}],
-			['varispeed', {'value': 1.0, 'value_min':-2.0, 'value_max':2.0, 'is_integer':False}], #TODO: Offer different varispeed range
+			['speed', {'value': 0.0, 'value_min': -2.0, 'value_max': 2.0, 'is_integer': False}],
+			['pitch', {'value': 0.0, 'value_min': -2.0, 'value_max': 2.0, 'is_integer': False}],
+			['varispeed', {'value': 1.0, 'value_min': -2.0, 'value_max': 2.0, 'is_integer': False}],  #TODO: Offer different varispeed range
 			['base note', None, base_note, midi_notes]
 		]
-
 		zynaudioplayer.set_control_cb(None)
 		processor.refresh_controllers()
 		zynaudioplayer.set_track_a(processor.handle, default_a)
@@ -308,7 +326,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		if self.processor is None:
 			return
 		if bank_name is None:
-			bank_name = zynthian_engine.my_data_dir + "/capture"
+			bank_name = self.root_bank_dirs[0][1] + "/capture"
 		path = f"{bank_name}/{preset_name}.wav"
 		zynaudioplayer.save(self.processor.handle, path)
 		return path
@@ -338,10 +356,14 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			logging.debug(e)
 
 	def is_preset_user(self, preset):
-		return True
+		if preset[2] != "capture":
+			return True
+		else:
+			return False
 
 	def load_latest(self, processor):
-		bank_dirs = [zynthian_engine.my_data_dir + "/audio/capture"]
+
+		bank_dirs = [self.root_bank_dirs[0][1] + "/capture"]
 		bank_dirs += zynthian_gui_config.get_external_storage_dirs(zynthian_engine.ex_data_dir)
 		
 		wav_fpaths = []
