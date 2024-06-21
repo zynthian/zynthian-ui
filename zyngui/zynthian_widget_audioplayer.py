@@ -93,7 +93,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			),
 			justify=tkinter.CENTER,
 			fill=zynthian_gui_config.color_tx_off,
-			text="Creating\nwaveform..."
+			text="No file loaded"
 		)
 		self.play_line = self.widget_canvas.create_line(
 			0,
@@ -400,7 +400,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			self.info = None
 			self.widget_canvas.delete("waveform")
 			self.widget_canvas.itemconfig("overlay", state=tkinter.HIDDEN)
-			self.widget_canvas.itemconfig(self.loading_text, text="Creating\nwaveform...")
+			self.widget_canvas.itemconfig(self.loading_text, text="Creating waveform...")
 			self.sf = soundfile.SoundFile(self.filename)
 			self.channels = self.sf.channels
 			self.samplerate = self.sf.samplerate
@@ -432,9 +432,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 		except MemoryError:
 			logging.warning(f"Failed to show waveform - file too large")
-			self.widget_canvas.itemconfig(self.loading_text, text="Cannot display\nwaveform")
+			self.widget_canvas.itemconfig(self.loading_text, text="Can't display waveform")
 		except Exception as e:
-			self.widget_canvas.itemconfig(self.loading_text, text="No file\nloaded")
+			self.widget_canvas.itemconfig(self.loading_text, text="No file loaded")
 		self.refreshing = False
 		self.refresh_waveform = True
 		self.update()
@@ -510,7 +510,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.v_zoom = self.processor.controllers_dict['amp zoom'].value
 				self.refresh_waveform = True
 
-			if self.filename != self.monitors["filename"] or self.frames != self.frames:
+			if self.filename != self.monitors["filename"]:  #  or self.frames != self.frames: => This is wrong!
 				self.filename = self.monitors["filename"]
 				waveform_thread = Thread(target=self.load_file, name="waveform image")
 				waveform_thread.start()
