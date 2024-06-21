@@ -1120,8 +1120,12 @@ class zynthian_gui:
 	def cuia_audio_file_list(self, params=None):
 		self.show_screen("audio_player")
 		self.show_screen('bank')
-		if len(self.state_manager.audio_player.bank_list) == 1 or self.state_manager.audio_player.bank_name:
+		n_banks = len(self.state_manager.audio_player.bank_list)
+		if n_banks == 1 or self.state_manager.audio_player.bank_name:
 			self.screens['bank'].click_listbox()
+		elif n_banks == 0:
+			self.close_screen()
+			self.close_screen()
 
 	def cuia_start_midi_record(self, params=None):
 		self.state_manager.start_midi_record()
