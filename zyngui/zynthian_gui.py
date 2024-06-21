@@ -2250,6 +2250,12 @@ class zynthian_gui:
 		while not self.exit_flag:
 			cuia = "unknown"
 			try:
+				# Check for long press before release
+				long_ts = monotonic() - zynthian_gui_config.zynswitch_long_seconds
+				for i,ts in enumerate(zynswitch_cuia_ts):
+					if ts is not None and ts < long_ts:
+						zynswitch_cuia_ts[i] = None
+						self.zynswitch_long(i)
 				event = self.cuia_queue.get(True, repeat_interval)
 				params = None
 				if isinstance(event, str):
@@ -2274,7 +2280,8 @@ class zynthian_gui:
 						t = params[1]
 						if t == 'R':
 							if zynswitch_cuia_ts[i] is None:
-								del zynswitch_repeat[i]
+								if i in zynswitch_repeat:
+									del zynswitch_repeat[i]
 								continue
 							else:
 								dtus = int(1000000 * (monotonic() - zynswitch_cuia_ts[i]))
