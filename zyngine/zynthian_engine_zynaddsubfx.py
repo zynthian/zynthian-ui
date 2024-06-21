@@ -23,13 +23,12 @@
 # ******************************************************************************
 
 import os
-import re
-import logging
-import liblo
 import shutil
+import logging
 from time import sleep
 from os.path import isfile, join
 from subprocess import check_output
+
 from . import zynthian_engine
 from zynconf import ServerPort
 from zyncoder.zyncore import lib_zyncore
