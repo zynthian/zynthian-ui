@@ -87,7 +87,6 @@ class zynseq(zynthian_engine):
 	def __init__(self, state_manager=None):
 		self.state_manager = state_manager
 		self.changing_bank = False
-		self.audio_loops = [] # List of [group,seq] pairs that are configured as audio loops
 		try:
 			self.libseq = ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynseq.so")
 			self.libseq.getSequenceName.restype = ctypes.c_char_p
@@ -399,17 +398,5 @@ class zynseq(zynthian_engine):
 			return col * self.col_in_bank + row
 		else:
 			return -1
-
-	def is_audio(self, bank, sequence):
-		return (bank,sequence) in self.audio_loops
-
-	def set_audio_loop(self, bank, sequence, audio=True):
-		if audio:
-			if (bank, sequence) in self.audio_loops:
-				return
-			self.audio_loops.append((bank, sequence))
-		else:
-			if (bank, sequence) in self.audio_loops:
-				self.audio_loops.remove((bank, sequence))
 
 # -------------------------------------------------------------------------------

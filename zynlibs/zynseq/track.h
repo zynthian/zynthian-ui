@@ -42,6 +42,26 @@ class Track
         */
         Pattern* getPatternAt(uint32_t position);
 
+        /** @brief  Get type
+        *   @retval uint8_t type
+        */
+        uint8_t getType();
+
+        /** @brief  Set type
+        *   @param  type Track type
+        */
+        void setType(uint8_t type);
+
+        /** @brief  Get Chain ID
+        *   @retval uint8_t Chain ID
+        */
+        uint8_t getChainID();
+
+        /** @brief  Set Chain ID
+        *   @param  chain_id Chain ID
+        */
+        void setChainID(uint8_t chain_id);
+
         /** @brief  Get MIDI channel
         *   @retval uint8_t MIDI channel
         */
@@ -174,6 +194,8 @@ class Track
         bool isEmpty();
 
     private:
+    	uint8_t m_nType = 0; 			// 0 = MIDI Track, 1 = Audio, 2 = MIDI Program
+    	uint8_t m_nChainID = 0; 		// Associated Chain ID. 0 for none.
         uint8_t m_nChannel = 0; 		// MIDI channel
         uint8_t m_nOutput = 0; 			// JACK output
         uint8_t m_nMap = 0; 			// Map / scale index

@@ -41,7 +41,7 @@
 #include "metronome.h"			// metronome wav data
 #include "sequencemanager.h"	// provides management of sequences, patterns, events, etc
 
-#define FILE_VERSION 9
+#define FILE_VERSION 10
 
 #define DPRINTF(fmt, args...) if(g_bDebug) fprintf(stderr, fmt, ## args)
 
@@ -825,6 +825,7 @@ bool load(const char* filename)
     if(pFile == NULL)
         return false;
     char sHeader[4];
+    int bs;
     // Iterate each block within IFF file
     while(fread(sHeader, 4, 1, pFile) == 1)
     {
@@ -985,19 +986,25 @@ bool load(const char* filename)
                 uint32_t nTracks = fileRead32(pFile);
                 nBlockSize -= 8;
                 //printf("  Mode:%u Group:%u Tracks:%u\n", pSequence->getPlayMode(), pSequence->getGroup(), nTracks);
+                if (nVersion > 9) bs = 8;
+                else bs = 6;
                 for(uint32_t nTrack = 0; nTrack < nTracks; ++nTrack)
                 {
-                    if(checkBlock(pFile, nBlockSize, 6))
-                        break;
+                    if(checkBlock(pFile, nBlockSize, bs))
+                    	break;
                     if(pSequence->getTracks() <= nTrack)
                         pSequence->addTrack(nTrack);
                     Track* pTrack = pSequence->getTrack(nTrack);
+                    if(nVersion > 9) {
+                    	pTrack->setType(fileRead8(pFile));
+                    	pTrack->setChainID(fileRead8(pFile));
+                    }
                     pTrack->setChannel(fileRead8(pFile));
                     pTrack->setOutput(fileRead8(pFile));
                     pTrack->setMap(fileRead8(pFile));
                     fileRead8(pFile); // Padding
                     uint16_t nPatterns = fileRead16(pFile);
-                    nBlockSize -= 6;
+                    nBlockSize -= bs;
                     //printf("    Track:%u Channel:%u Output:%u Map:%u\n", nTrack, pTrack->getChannel(), pTrack->getOutput(), pTrack->getMap());
                     for(uint16_t nPattern = 0; nPattern < nPatterns; ++nPattern)
                     {
@@ -1268,6 +1275,8 @@ void save(const char* filename)
                 Track* pTrack = pSequence->getTrack(nTrack);
                 if(pTrack)
                 {
+                    nPos += fileWrite8(pTrack->getType(), pFile);
+                    nPos += fileWrite8(pTrack->getChainID(), pFile);
                     nPos += fileWrite8(pTrack->getChannel(), pFile);
                     nPos += fileWrite8(pTrack->getOutput(), pFile);
                     nPos += fileWrite8(pTrack->getMap(), pFile);
@@ -2415,6 +2424,44 @@ uint32_t getPatternsInTrack(uint8_t bank, uint8_t sequence, uint32_t track)
     if(!pTrack)
         return 0;
     return pTrack->getPatterns();
+}
+
+void setTrackType(uint8_t bank, uint8_t sequence, uint32_t track, uint8_t type)
+{
+    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+    Track* pTrack = pSequence->getTrack(track);
+    if(!pTrack)
+        return;
+    pTrack->setType(type);
+    if(bank + sequence)
+        g_bDirty = true;
+}
+
+uint8_t getTrackType(uint8_t bank, uint8_t sequence, uint32_t track)
+{
+    Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
+    if(!pTrack)
+        return 0xFF;
+    return pTrack->getType();
+}
+
+void setChainID(uint8_t bank, uint8_t sequence, uint32_t track, uint8_t chain_id)
+{
+    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+    Track* pTrack = pSequence->getTrack(track);
+    if(!pTrack)
+        return;
+    pTrack->setChainID(chain_id);
+    if(bank + sequence)
+        g_bDirty = true;
+}
+
+uint8_t getChainID(uint8_t bank, uint8_t sequence, uint32_t track)
+{
+    Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
+    if(!pTrack)
+        return 0xFF;
+    return pTrack->getChainID();
 }
 
 void setChannel(uint8_t bank, uint8_t sequence, uint32_t track, uint8_t channel)

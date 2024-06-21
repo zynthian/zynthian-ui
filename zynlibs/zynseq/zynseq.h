@@ -663,10 +663,41 @@ void toggleMute(uint8_t bank, uint8_t sequence, uint32_t track);
 */
 bool isMuted(uint8_t bank, uint8_t sequence, uint32_t track);
 
+// ** Sequence & Track management functions **
 
-// ** Sequence management functions **
+/** @brief  Set track type
+*   @param  bank Index of bank
+*   @param  sequence Sequence ID
+*   @param  track Index of track
+*   @param  type Track type: 0 = MIDI Track, 1 = Audio, 2 = MIDI Program
+*/
+void setTrackType(uint8_t bank, uint8_t sequence, uint32_t track, uint8_t type);
 
-/** @brief  Set sequence MIDI channel
+/** @brief  Get track type
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*   @param  track Index of track
+*   @retval uint8_t Track type
+*/
+uint8_t getTrackType(uint8_t bank, uint8_t sequence, uint32_t track);
+
+/** @brief  Set track's associated chain ID
+*   @param  bank Index of bank
+*   @param  sequence Sequence ID
+*   @param  track Index of track
+*   @param  chain_id Chain ID
+*/
+void setChainID(uint8_t bank, uint8_t sequence, uint32_t track, uint8_t chain_id);
+
+/** @brief  Get track's associated chain ID
+*   @param  bank Index of bank
+*   @param  sequence Index of sequence
+*   @param  track Index of track
+*   @retval uint8_t Chain ID
+*/
+uint8_t getChainID(uint8_t bank, uint8_t sequence, uint32_t track);
+
+/** @brief  Set track MIDI channel
 *   @param  bank Index of bank
 *   @param  sequence Sequence ID
 *   @param  track Index of track

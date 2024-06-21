@@ -386,10 +386,13 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		options['> PAD OPTIONS'] = None
 		options[f'Play mode ({zynseq.PLAY_MODES[self.zynseq.libseq.getPlayMode(self.bank, self.selected_pad)]})'] = 'Play mode'
 		options[f'MIDI channel ({1 + self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)})'] = 'MIDI channel'
-		if self.zynseq.is_audio(self.bank, self.selected_pad):
-			options[f'Pad type (Audio)'] = 'Pad type'
+		track_type = self.zynseq.libseq.getTrackType(self.bank, self.selected_pad, 0)
+		if track_type == 0:
+			options[f'Track type (MIDI)'] = 'Track type'
+		elif track_type == 1:
+			options[f'Track type (Audio)'] = 'Track type'
 		else:
-			options[f'Pad type (MIDI)'] = 'Pad type'
+			options[f'Track type (Unknown)'] = 'Track type'
 		#options['> Misc'] = None
 		options['Rename'] = 'Rename'
 		# Trigger Options
@@ -423,7 +426,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			for i in range(1, 9):
 				labels.append(f'{i}x{i}')
 			self.enable_param_editor(self, 'grid_size', {'name': 'Grid size', 'labels': labels, 'value': self.zynseq.col_in_bank - 1, 'value_default': 3}, self.set_grid_size)
-
 		elif params == 'Play mode':
 			self.enable_param_editor(self, 'playmode', {'name': 'Play mode', 'labels': zynseq.PLAY_MODES, 'value': self.zynseq.libseq.getPlayMode(self.zynseq.bank, self.selected_pad), 'value_default': zynseq.SEQ_LOOPALL}, self.set_play_mode)
 		elif params == 'MIDI channel':
@@ -434,34 +436,15 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 					labels.append(f"{midi_chan + 1} ({preset_name})")
 				else:
 					labels.append(f"{midi_chan + 1}")
-			self.enable_param_editor(self, 'midi_chan', {'name': 'MIDI channel', 'labels': labels, 'value_default': self.zyngui.state_manager.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0), 'value': self.zyngui.state_manager.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)})
-		elif params == 'Pad type':
-			pattern = self.zynseq.libseq.getPattern(self.bank, self.selected_pad, 0, 0)
-			self.zynseq.libseq.selectPattern(pattern)
-			#self.zynseq.libseq.setSequence(self.bank, self.selected_pad)
-			if self.zynseq.is_audio(self.bank, self.selected_pad):
-				self.zynseq.set_audio_loop(self.bank, self.selected_pad, False)
-				self.zynseq.libseq.clear()
-			else:
-				self.zynseq.set_audio_loop(self.bank, self.selected_pad, True)
-				self.zynseq.libseq.clear()
-				self.zynseq.libseq.addNote(0, 60, 100, self.zynseq.libseq.getSteps(), 0)
-				chain_id = self.chain_manager.add_chain(None, self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0), True, False)
-				processor = self.chain_manager.add_processor(chain_id, "AP")
-				self.zyngui.current_processor = processor
-				processor.controllers_dict['beats'].set_value(self.zynseq.libseq.getBeatsInPattern())
-				if len(processor.get_bank_list()) > 1:
-					self.zyngui.show_screen('bank')
-				else:
-					processor.set_bank(0)
-					processor.load_preset_list()
-					if len(processor.preset_list) > 1:
-						self.zyngui.show_screen('preset')
-				pass
-			# TODO Send signal to refresh zynpad
+			self.enable_param_editor(self, 'midi_chan', {'name': 'MIDI channel', 'labels': labels, 'value_default': self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0), 'value': self.zyngui.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)})
+		elif params == 'Track type':
+			track_type = self.zynseq.libseq.getTrackType(self.bank, self.selected_pad, 0)
+			if track_type >= 1:
+				self.set_track_type(0)
+			elif track_type == 0:
+				self.set_track_type(1)
 		elif params == 'Rename':
 			self.rename_sequence()
-
 		elif params == 'Trigger device':
 			labels = ["None"] + self.get_trigger_devices() + ["All"]
 			val = 0 if self.trigger_device is None else self.trigger_device + 1
@@ -472,6 +455,36 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 			self.enable_param_editor(self, 'trigger_chan', {'name': 'Trigger channel', 'labels': labels, 'value': val})
 		elif params == 'Trigger note':
 			self.zyngui.cuia_enable_midi_learn()
+
+	def set_track_type(self, track_type):
+		pattern = self.zynseq.libseq.getPattern(self.bank, self.selected_pad, 0, 0)
+		self.zynseq.libseq.selectPattern(pattern)
+		# self.zynseq.libseq.setSequence(self.bank, self.selected_pad)
+		self.zynseq.libseq.setTrackType(self.bank, self.selected_pad, 0, track_type)
+		if track_type == 0:
+			# Set to MIDI track
+			logging.debug("Setting track type to MIDI")
+			self.zynseq.libseq.setChainID(self.bank, self.selected_pad, 0, 0)
+			self.zynseq.libseq.clear()
+		elif track_type == 1:
+			# Set to Audio track
+			logging.debug("Setting track type to Audio")
+			self.zynseq.libseq.clear()
+			self.zynseq.libseq.addNote(0, 60, 100, self.zynseq.libseq.getSteps(), 0)
+			# Add a new audio player (zynsampler) chain => IMPROVE! We could choose an existing one...
+			chain_id = self.chain_manager.add_chain(None, self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0), True, False)
+			self.zynseq.libseq.setChainID(self.bank, self.selected_pad, 0, chain_id)
+			processor = self.chain_manager.add_processor(chain_id, "AP")
+			self.zyngui.current_processor = processor
+			processor.controllers_dict['beats'].set_value(self.zynseq.libseq.getBeatsInPattern())
+			if len(processor.get_bank_list()) > 1:
+				self.zyngui.show_screen('bank')
+			else:
+				processor.set_bank(0)
+				processor.load_preset_list()
+				if len(processor.preset_list) > 1:
+					self.zyngui.show_screen('preset')
+		# TODO Send signal to refresh zynpad
 
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol == 'bank':
@@ -594,10 +607,19 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		if type == 'S':
 			self.toggle_pad()
 		elif type == "B":
-			if self.zynseq.is_audio(self.bank, self.selected_pad):
-				self.zyngui.chain_control()
-			else:
+			track_type = self.zynseq.libseq.getTrackType(self.bank, self.selected_pad, 0)
+			if track_type == 0:
 				self.show_pattern_editor()
+			elif track_type == 1:
+				chain_id = self.zynseq.libseq.getChainID(self.bank, self.selected_pad, 0)
+				self.zyngui.chain_control(chain_id=chain_id, hmode=self.zyngui.SCREEN_HMODE_ADD)
+				# Sync number of beats => This is not the right place. This should be reviewed with care!!
+				try:
+					self.zyngui.get_current_processor().controllers_dict['beats'].set_value(self.zynseq.libseq.getBeatsInPattern())
+				except Exception as e:
+					logging.error(f"Can't sync sampler number of beats! => {e}")
+			else:
+				logging.error(f"Unknown track type {track_type}")
 
 	def back_action(self):
 		if self.midi_learn:

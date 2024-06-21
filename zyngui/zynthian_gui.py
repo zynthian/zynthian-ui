@@ -540,7 +540,7 @@ class zynthian_gui:
 		self.state_manager.end_busy("ui startup")
 
 		# Show initial screen
-		self.show_screen(init_screen, self.SCREEN_HMODE_RESET)
+		self.show_screen(init_screen, zynthian_gui.SCREEN_HMODE_RESET)
 
 	def hide_screens(self, exclude=None):
 		if not exclude:
@@ -869,7 +869,7 @@ class zynthian_gui:
 			# TODO: Offer type selection
 			pass
 
-	def chain_control(self, chain_id=None, processor=None):
+	def chain_control(self, chain_id=None, processor=None, hmode=SCREEN_HMODE_RESET):
 		if chain_id is None:
 			chain_id = self.chain_manager.active_chain_id
 		else:
@@ -911,20 +911,20 @@ class zynthian_gui:
 
 			# If a preset is selected => control screen
 			if self.current_processor.get_preset_name():
-				self.show_screen_reset(control_screen_name)
+				self.show_screen(control_screen_name, hmode)
 			# If not => bank/preset selector screen
 			else:
 				if len(self.current_processor.get_bank_list()) > 1:
-					self.show_screen_reset('bank')
+					self.show_screen('bank', hmode)
 				else:
 					self.current_processor.set_bank(0)
 					self.current_processor.load_preset_list()
 					if len(self.current_processor.preset_list) > 1:
-						self.show_screen_reset('preset')
+						self.show_screen('preset', hmode)
 					else:
 						if len(self.current_processor.preset_list):
 							self.current_processor.set_preset(0)
-						self.show_screen_reset(control_screen_name)
+						self.show_screen(control_screen_name, hmode)
 		else:
 			chain = self.chain_manager.get_chain(chain_id)
 			if chain and chain.is_audio():
@@ -2252,7 +2252,7 @@ class zynthian_gui:
 			try:
 				# Check for long press before release
 				long_ts = monotonic() - zynthian_gui_config.zynswitch_long_seconds
-				for i,ts in enumerate(zynswitch_cuia_ts):
+				for i, ts in enumerate(zynswitch_cuia_ts):
 					if ts is not None and ts < long_ts:
 						zynswitch_cuia_ts[i] = None
 						self.zynswitch_long(i)
