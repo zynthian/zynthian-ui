@@ -1710,7 +1710,7 @@ class zynthian_gui:
 	# Init Standard Zynswitches
 	def zynswitches_init(self):
 		logging.info(f"INIT {zynthian_gui_config.num_zynswitches} ZYNSWITCHES ...")
-		self.dtsw = [datetime.now()] * (zynthian_gui_config.num_zynswitches + 4)
+		self.dtsw = [datetime.now()] * zynthian_gui_config.num_zynswitches
 
 	# Initialize custom switches, analog I/O, TOF sensors, etc.
 	def zynswitches_midi_setup(self, current_chain_chan=None):
@@ -2241,7 +2241,7 @@ class zynthian_gui:
 		Events are passed via cuia_queue and may be a space separated list:'cuia, param, param...' or list: [cuia, [params]]
 		"""
 
-		zynswitch_cuia_ts = [None] * (zynthian_gui_config.num_zynswitches + 4)
+		zynswitch_cuia_ts = [None] * zynthian_gui_config.num_zynswitches
 		zynswitch_repeat = {}
 		zynpot_repeat = {}
 		repeat_delay = 3  # Quantity of repeat intervals to delay before triggering auto repeat

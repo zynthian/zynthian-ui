@@ -331,7 +331,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		state = self.sm.load_snapshot(fpath)
 		if state is None:
 			self.zyngui.clean_all()
-		if state and "zyngui" in state:
+		elif "zyngui" in state:
 			if self.load_zyngui(state["zyngui"]):
 				return
 		self.zyngui.show_screen('audio_mixer', self.zyngui.SCREEN_HMODE_RESET)
@@ -483,7 +483,8 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
 		try:
 			self.zyngui.show_screen(state["current_screen"], self.zyngui.SCREEN_HMODE_RESET)
+			return True
 		except:
-			return None
+			return False
 
 # ------------------------------------------------------------------------------
