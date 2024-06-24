@@ -151,14 +151,13 @@ def get_env_switch_action(varname):
 
 
 def config_custom_switches():
-	global num_zynswitches
 	global custom_switch_ui_actions
 	global custom_switch_midi_events
 
 	custom_switch_ui_actions = []
 	custom_switch_midi_events = []
 
-	for i in range(num_zynswitches):
+	for i in range(num_zynswitches - 4):
 		cuias = None
 		midi_event = None
 
