@@ -66,7 +66,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			self.zyngui.get_current_processor().set_preset(i)
 			self.zyngui.state_manager.end_busy("set preset")
 			self.zyngui.purge_screen_history("bank")
-			self.zyngui.close_screen()
+			self.zyngui.replace_screen("control")
 
 	def arrow_right(self):
 		active = self.zyngui.chain_manager.active_chain_id

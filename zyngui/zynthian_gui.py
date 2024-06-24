@@ -1119,7 +1119,7 @@ class zynthian_gui:
 
 	def cuia_audio_file_list(self, params=None):
 		self.show_screen("audio_player")
-		self.show_screen('bank')
+		self.replace_screen('bank')
 		n_banks = len(self.state_manager.audio_player.bank_list)
 		if n_banks == 1 or self.state_manager.audio_player.bank_name:
 			self.screens['bank'].click_listbox()
