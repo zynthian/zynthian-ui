@@ -1432,13 +1432,17 @@ class zynthian_state_manager:
     def clean_zs3(self):
         """Remove non-existant processors from ZS3 state"""
         
-        for state in self.zs3:
-            if self.zs3[state]["active_chain"] not in self.chain_manager.chains:
-                self.zs3[state]["active_chain"] = self.chain_manager.active_chain_id
-            if "processors" in self.zs3:
-                for processor_id in list(self.zs3[state]["processors"]):
+        for state in self.zs3.values():
+            if state["active_chain"] not in self.chain_manager.chains:
+                state["active_chain"] = self.chain_manager.active_chain_id
+            if "processors" in state:
+                for processor_id in list(state["processors"]):
                     if processor_id not in self.chain_manager.processors:
-                        del self.zs3[state]["process"][processor_id]
+                        del state["processors"][processor_id]
+            if "chains" in state:
+                for chain_id in list(state["chains"]):
+                    if chain_id not in self.chain_manager.chains:
+                        del state["chains"][chain_id]
 
     # ------------------------------------------------------------------
     # Jackd Info
