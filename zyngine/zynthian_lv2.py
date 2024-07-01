@@ -477,11 +477,11 @@ def is_plugin_ui(plugin):
 		try:
 			with open(urllib.parse.unquote(str(uri)[7:])) as f:
 				ttl = f.read()
-				if ttl.find("a ui:Qt5UI") > 0 or ttl.find("a lv2ui:Qt5UI") > 0:
+				if ttl.find("a ui:Qt5UI") > 0 or ttl.find("a lv2ui:Qt5UI") > 0 or ttl.find("a guiext:Qt5UI") > 0:
 					return "Qt5UI"
-				if ttl.find("a ui:Qt4UI") > 0 or ttl.find("a lv2ui:Qt4UI") > 0:
+				if ttl.find("a ui:Qt4UI") > 0 or ttl.find("a lv2ui:Qt4UI") > 0 or ttl.find("a guiext:Qt4UI") > 0:
 					return "Qt4UI"
-				if ttl.find("a ui:X11UI") > 0 or ttl.find("a lv2ui:X11UI") > 0:
+				if ttl.find("a ui:X11UI") > 0 or ttl.find("a lv2ui:X11UI") > 0 or ttl.find("a guiext:X11") > 0:
 					return "X11UI"
 		except:
 			logging.debug("Can't find UI for plugin %s", str(plugin.get_name()))
