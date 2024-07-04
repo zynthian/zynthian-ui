@@ -643,8 +643,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle pattern click
 	#  event: Mouse event
 	def on_pattern_click(self, event):
-		if zynthian_gui_config.enable_touch_widgets:
-			self.enable_param_editor('Pattern')  # TODO: Populate parameters
+		self.enable_param_editor(self, 'pattern', {'name': 'Pattern', 'value_min': 1, 'value_max': 999, 'value_default': self.pattern, 'value': self.pattern})
 
 	# Toggle playback of selected sequence
 	def toggle_play(self):
