@@ -1104,8 +1104,10 @@ class zynthian_chain_manager:
                         else:
                             mode = CHAIN_MODE_SERIES
                         self.add_processor(chain_id, eng_code, mode, proc_id=int(proc_id), fast_refresh=False, eng_config=eng_config)
-            if "fader_pos" in chain_state:
+            if "fader_pos" in chain_state and self.get_slot_count(chain_id, "Audio Effect") > chain_state["fader_pos"]:
                 self.chains[chain_id].fader_pos = chain_state["fader_pos"]
+            else:
+                self.chains[chain_id].fader_pos = 0
 
         self.state_manager.end_busy("set_chain_state")
 
