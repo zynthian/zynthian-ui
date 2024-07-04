@@ -155,8 +155,9 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 					res.append((self.processor_options, processor, "  " * indent + "┣━ " + name))
 			indent += 1
 		# Add FADER mark
-		res.append((None, None, "  " * indent + "┗━ FADER"))
-		indent += 1
+		if self.chain.audio_thru or self.chain.synth_slots:
+			res.append((None, None, "  " * indent + "┗━ FADER"))
+			indent += 1
 		# Build post-fader audio effects chain
 		for slot in range(self.chain.fader_pos, len(self.chain.audio_slots)):
 			procs = self.chain.get_processors("Audio Effect", slot)
