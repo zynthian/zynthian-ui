@@ -1505,7 +1505,8 @@ class zynthian_chain_manager:
                 res = proc.get_bank_name()
             if not res:
                 res = proc.get_name()
-            return res.replace("_", " ")
+            if res:
+                return res.replace("_", " ")
         return ""
 
     # ---------------------------------------------------------------------------
