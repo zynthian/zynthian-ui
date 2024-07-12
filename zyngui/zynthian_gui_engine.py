@@ -339,13 +339,25 @@ class zynthian_gui_engine(zynthian_gui_selector):
 						if "processor" in self.zyngui.modify_chain_status:
 							# Replacing processor
 							pass
-						elif self.chain_manager.get_slot_count(self.zyngui.modify_chain_status["chain_id"], self.zyngui.modify_chain_status["type"]):
-							# Adding to slot with existing processor - choose parallel/series
-							self.zyngui.screens['option'].config("Chain Mode", {"Series": False, "Parallel": True}, self.cb_add_parallel)
-							self.zyngui.show_screen('option')
-							return
 						else:
-							self.zyngui.modify_chain_status["parallel"] = False
+							slot_count = self.chain_manager.get_slot_count(self.zyngui.modify_chain_status["chain_id"], self.zyngui.modify_chain_status["type"])
+							if self.zyngui.modify_chain_status["type"] == "Audio Effect":
+								# Check for fader position
+								post_fader = "post_fader" in self.zyngui.modify_chain_status and self.zyngui.modify_chain_status["post_fader"]
+								fader_pos = self.chain_manager.get_chain(self.zyngui.modify_chain_status["chain_id"]).fader_pos
+								if post_fader and slot_count > fader_pos or not post_fader and slot_count > 0:
+									ask_parallel = True
+								else:
+									ask_parallel = False
+							else:
+								ask_parallel = slot_count > 0
+							if ask_parallel:
+								# Adding to slot with existing processor - choose parallel/series
+								self.zyngui.screens['option'].config("Chain Mode", {"Series": False, "Parallel": True}, self.cb_add_parallel)
+								self.zyngui.show_screen('option')
+								return
+							else:
+								self.zyngui.modify_chain_status["parallel"] = False
 					else:
 						# Adding engine to new chain
 						self.zyngui.modify_chain_status["parallel"] = False

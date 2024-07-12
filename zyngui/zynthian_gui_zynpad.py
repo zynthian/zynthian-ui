@@ -436,7 +436,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 					labels.append(f"{midi_chan + 1} ({preset_name})")
 				else:
 					labels.append(f"{midi_chan + 1}")
-			self.enable_param_editor(self, 'midi_chan', {'name': 'MIDI channel', 'labels': labels, 'value_default': self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0), 'value': self.zyngui.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)})
+			self.enable_param_editor(self, 'midi_chan', {'name': 'MIDI channel', 'labels': labels, 'value_default': self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0), 'value': self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)})
 		elif params == 'Track type':
 			track_type = self.zynseq.libseq.getTrackType(self.bank, self.selected_pad, 0)
 			if track_type >= 1:

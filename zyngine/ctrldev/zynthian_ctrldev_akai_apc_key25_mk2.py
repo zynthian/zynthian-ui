@@ -1640,7 +1640,7 @@ class StepSeqHandler(ModeHandlerBase):
         self._is_arranger_mode = False
 
         # We need to receive clock though MIDI
-        self._libseq.enableMidiClockOutput(True)
+        self._state_manager.set_transport_clock_source(1) #TODO: Changing clock source from user preference seems wrong!
 
         # Pads ordered for cursor sliding + note pads
         self._pads = []
