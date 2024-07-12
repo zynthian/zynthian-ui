@@ -56,6 +56,8 @@ class zynthian_gui_splash:
 		if self.shown:
 			self.shown = False
 			self.canvas.grid_forget()
+			if self.zyngui.touch_keypad:
+				self.zyngui.touch_keypad.show()
 
 
 	def show(self, text):
@@ -79,6 +81,8 @@ class zynthian_gui_splash:
 		except:
 			pass
 		if not self.shown:
+			if self.zyngui.touch_keypad:
+				self.zyngui.touch_keypad.hide()
 			self.shown = True
 			self.canvas.grid()
 

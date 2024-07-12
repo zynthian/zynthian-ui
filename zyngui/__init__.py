@@ -32,7 +32,8 @@ __all__ = [
 	"zynthian_gui_brightness_config",
 	"zynthian_gui_cv_config",
 	"zynthian_gui_wifi",
-    "zynthian_gui_bluetooth"
+    "zynthian_gui_bluetooth",
+    "zynthian_gui_touchkeypad_v5"
 ]
 
 import zyngui.zynthian_gui_config as zynthian_gui_config

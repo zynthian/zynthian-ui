@@ -49,7 +49,7 @@ class zynthian_gui_control_xy():
 
 		# Init X vars
 		self.padx = 24
-		self.width = zynthian_gui_config.display_width - 2 * self.padx
+		self.width = zynthian_gui_config.display_width  - zynthian_gui_config.zyngui.touch_keypad_side_width - 2 * self.padx
 		self.x = self.width / 2
 		self.x_zctrl = None
 		self.xvalue = 64
@@ -65,8 +65,8 @@ class zynthian_gui_control_xy():
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
-			width=zynthian_gui_config.display_width,
-			height=zynthian_gui_config.display_height,
+			width=zynthian_gui_config.display_width - zynthian_gui_config.zyngui.touch_keypad_side_width,
+			height=zynthian_gui_config.display_height - zynthian_gui_config.zyngui.touch_keypad_bottom_height,
 			bg=zynthian_gui_config.color_panel_bg)
 
 		# Create Canvas
@@ -105,7 +105,7 @@ class zynthian_gui_control_xy():
 			if self.zyngui.test_mode:
 				logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
 			self.shown= True
-			self.main_frame.grid()
+			self.main_frame.grid(row=0, column=self.zyngui.main_screen_column)
 			self.refresh()
 
 

@@ -42,13 +42,13 @@ class zynthian_gui_info:
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
-			width=zynthian_gui_config.display_width,
-			height=zynthian_gui_config.display_height,
+			width=zynthian_gui_config.display_width - zynthian_gui_config.zyngui.touch_keypad_side_width,
+			height=zynthian_gui_config.display_height - zynthian_gui_config.zyngui.touch_keypad_bottom_height,
 			bg=zynthian_gui_config.color_bg)
 
 		#Textarea
 		self.textarea = tkinter.Text(self.main_frame,
-			height=int(zynthian_gui_config.display_height/(zynthian_gui_config.font_size + 8)),
+			height=int((zynthian_gui_config.display_height - zynthian_gui_config.zyngui.touch_keypad_bottom_height)/(zynthian_gui_config.font_size + 8)),
 			font=(zynthian_gui_config.font_family, zynthian_gui_config.font_size, "normal"),
 			#font=("sans-serif", zynthian_gui_config.font_size, "normal"),
 			#wraplength=80,
@@ -90,7 +90,7 @@ class zynthian_gui_info:
 		self.set(text)
 		if not self.shown:
 			self.shown = True
-			self.main_frame.grid()
+			self.main_frame.grid(row=0, column=self.zyngui.main_screen_column)
 
 	def zynpot_cb(self, i, dval):
 		return True

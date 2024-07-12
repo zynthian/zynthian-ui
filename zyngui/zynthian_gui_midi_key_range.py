@@ -66,7 +66,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			bg=zynthian_gui_config.color_panel_bg,
 			bd=0,
 			highlightthickness=0)
-		self.piano_canvas_width = zynthian_gui_config.display_width
+		self.piano_canvas_width = zynthian_gui_config.display_width - zynthian_gui_config.zyngui.touch_keypad_side_width
 
 		self.piano_canvas_height = self.height // 4
 		self.main_frame.rowconfigure(2, weight=1)

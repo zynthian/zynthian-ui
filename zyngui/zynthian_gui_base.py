@@ -46,8 +46,8 @@ class zynthian_gui_base(tkinter.Frame):
 	def __init__(self, has_backbutton = True):
 		tkinter.Frame.__init__(self,
 			zynthian_gui_config.top,
-			width=zynthian_gui_config.display_width,
-			height=zynthian_gui_config.display_height)
+			width=zynthian_gui_config.display_width - zynthian_gui_config.zyngui.touch_keypad_side_width,
+			height=zynthian_gui_config.display_height - zynthian_gui_config.zyngui.touch_keypad_bottom_height)
 		self.grid_propagate(False)
 		self.rowconfigure(1, weight=1)
 		self.columnconfigure(0, weight=1)
@@ -60,13 +60,14 @@ class zynthian_gui_base(tkinter.Frame):
 		self.buttonbar_button = []
 
 		# Geometry vars
-		self.buttonbar_height = zynthian_gui_config.display_height // 7
-		self.width = zynthian_gui_config.display_width
+		self.buttonbar_height = (zynthian_gui_config.display_height - zynthian_gui_config.zyngui.touch_keypad_bottom_height) // 7
+		self.width = zynthian_gui_config.display_width - zynthian_gui_config.zyngui.touch_keypad_side_width
 		#TODO: Views should use current height if they need dynamic changes else grow rows to fill main_frame
 		if zynthian_gui_config.enable_onscreen_buttons and self.buttonbar_config:
 			self.height = zynthian_gui_config.display_height - self.topbar_height - self.buttonbar_height
 		else:
 			self.height = zynthian_gui_config.display_height - self.topbar_height
+		self.height -= self.zyngui.touch_keypad_bottom_height
 
 		# Status Area Parameters
 		self.status_l = int(self.width * 0.25)
@@ -84,7 +85,7 @@ class zynthian_gui_base(tkinter.Frame):
 			self.backbutton_height = 0
 
 		# Title Area parameters
-		self.title_canvas_width = zynthian_gui_config.display_width - self.backbutton_width - self.status_l - self.status_lpad - 2
+		self.title_canvas_width = self.width - self.backbutton_width - self.status_l - self.status_lpad - 2
 		self.select_path_font = tkFont.Font(family=zynthian_gui_config.font_topbar[0], size=zynthian_gui_config.font_topbar[1])
 		self.select_path_width = 0
 		self.select_path_offset = 0
@@ -97,7 +98,7 @@ class zynthian_gui_base(tkinter.Frame):
 
 		# Topbar's frame
 		self.tb_frame = tkinter.Frame(self,
-			width=zynthian_gui_config.display_width,
+			width=self.width,
 			height=self.topbar_height,
 			bg=zynthian_gui_config.color_bg)
 		self.tb_frame.grid_propagate(False)
@@ -253,7 +254,7 @@ class zynthian_gui_base(tkinter.Frame):
 			return
 
 		self.buttonbar_frame = tkinter.Frame(self,
-			width=zynthian_gui_config.display_width,
+			width=self.width,
 			height=self.buttonbar_height,
 			bg=zynthian_gui_config.color_bg)
 		self.buttonbar_frame.grid(row=2, padx=(0,0), pady=(0,0))
@@ -401,7 +402,7 @@ class zynthian_gui_base(tkinter.Frame):
 				logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
 			self.shown = True
 			self.refresh_status()
-			self.grid(row=0, column=0, sticky='nsew')
+			self.grid(row=0, column=self.zyngui.main_screen_column, sticky='nsew')
 			self.propagate(False)
 		self.main_frame.focus()
 
@@ -748,6 +749,7 @@ class zynthian_gui_base(tkinter.Frame):
 			self.height = zynthian_gui_config.display_height - self.topbar_height - self.buttonbar_height
 		else:
 			self.height = zynthian_gui_config.display_height - self.topbar_height
+		self.height -= self.zyngui.touch_keypad_bottom_height
 
 	# Function to enable the top-bar parameter editor
 	#  engine: Object to recieve send_controller_value callback

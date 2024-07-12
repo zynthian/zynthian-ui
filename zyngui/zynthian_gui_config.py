@@ -515,6 +515,9 @@ ctrl_graph = int(os.environ.get('ZYNTHIAN_UI_CTRL_GRAPH', 1))
 control_test_enabled = int(os.environ.get('ZYNTHIAN_UI_CONTROL_TEST_ENABLED', 0))
 power_save_secs = 60 * int(os.environ.get('ZYNTHIAN_UI_POWER_SAVE_MINUTES', 60))
 
+touch_keypad = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD', "")
+touch_keypad_side_left = int(os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_SIDE_LEFT', True))
+
 # ------------------------------------------------------------------------------
 # Audio Options
 # ------------------------------------------------------------------------------
