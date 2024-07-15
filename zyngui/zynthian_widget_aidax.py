@@ -45,6 +45,8 @@ class zynthian_widget_aidax(zynthian_widget_base.zynthian_widget_base):
 		self.bar_height = 1
 		self.x0 = 0
 		self.y0 = 0
+		self.level_in = 0.0
+		self.level_out = 0.0
 
 		self.widget_canvas = tkinter.Canvas(self,
 			highlightthickness=0,
@@ -120,10 +122,18 @@ class zynthian_widget_aidax(zynthian_widget_base.zynthian_widget_base):
 
 	def refresh_gui(self):
 		if 'MeterIn' in self.monitors:
-			x = int(self.x0 + self.bar_width * min(1, self.monitors['MeterIn']))
+			if self.monitors['MeterIn'] >= self.level_in:
+				self.level_in = self.monitors['MeterIn']
+			elif self.level_in:
+				self.level_in = max(self.level_in - 0.1 * self.level_in, 0)
+			x = int(self.x0 + self.bar_width * min(1, self.level_in))
 			self.widget_canvas.coords(self.input_level, x, self.y0, self.x0 + self.bar_width, self.y0 + self.bar_height)
 		if 'MeterOut' in self.monitors:
-			x = int(self.x0 + self.bar_width * min(1, self.monitors['MeterOut']))
+			if self.monitors['MeterOut'] >= self.level_out:
+				self.level_out = self.monitors['MeterOut']
+			elif self.level_out:
+				self.level_out = max(self.level_out - 0.1 * self.level_out, 0)
+			x = int(self.x0 + self.bar_width * min(1, self.level_out))
 			self.widget_canvas.coords(self.output_level, x, self.y0 + self.bar_height + 2, self.x0 + self.bar_width, self.y0 + self.bar_height * 2 + 2)
 		if 'ModelInSize' in self.monitors:
 			pass

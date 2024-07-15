@@ -344,6 +344,7 @@ class zynthian_chain_manager:
             if chain_pos + 1 >= len(self.ordered_chain_ids):
                 chain_pos -= 1
             self.set_active_chain_by_index(chain_pos)
+        self.state_manager.clean_zs3()
         self.state_manager.end_busy("remove_chain")
         return True
 
@@ -1103,8 +1104,10 @@ class zynthian_chain_manager:
                         else:
                             mode = CHAIN_MODE_SERIES
                         self.add_processor(chain_id, eng_code, mode, proc_id=int(proc_id), fast_refresh=False, eng_config=eng_config)
-            if "fader_pos" in chain_state:
+            if "fader_pos" in chain_state and self.get_slot_count(chain_id, "Audio Effect") > chain_state["fader_pos"]:
                 self.chains[chain_id].fader_pos = chain_state["fader_pos"]
+            else:
+                self.chains[chain_id].fader_pos = 0
 
         self.state_manager.end_busy("set_chain_state")
 
@@ -1504,7 +1507,8 @@ class zynthian_chain_manager:
                 res = proc.get_bank_name()
             if not res:
                 res = proc.get_name()
-            return res.replace("_", " ")
+            if res:
+                return res.replace("_", " ")
         return ""
 
     # ---------------------------------------------------------------------------

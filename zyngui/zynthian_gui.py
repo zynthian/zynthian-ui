@@ -1587,6 +1587,18 @@ class zynthian_gui:
 				lib_zyncore.write_zynmidi_ccontrol_change(chan, cc, int(params[2]))
 
 	# Common methods to control views derived from zynthian_gui_base
+	def cuia_show_cursor(self, params=None):
+		try:
+			zynthian_gui_config.top.config(cursor="arrow")
+		except (AttributeError, TypeError):
+			pass
+
+	def cuia_hide_cursor(self, params=None):
+		try:
+			zynthian_gui_config.top.config(cursor="none")
+		except (AttributeError, TypeError):
+			pass
+
 	def cuia_show_topbar(self, params=None):
 		try:
 			self.screens[self.current_screen].show_topbar(True)

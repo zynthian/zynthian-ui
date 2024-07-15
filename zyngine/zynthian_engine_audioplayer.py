@@ -67,7 +67,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 
 	def __init__(self, state_manager=None, jackname=None):
 		super().__init__(state_manager)
-		self.name = "AudioPlayer"
+		self.name = "ZynSampler"
 		self.nickname = "AP"
 		self.type = "MIDI Synth"
 		self.options['replace'] = False

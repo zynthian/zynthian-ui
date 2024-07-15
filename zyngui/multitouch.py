@@ -241,7 +241,7 @@ class MultiTouch(object):
         self._running = True
         while self._running:
             r,w,x = select([self._f_device],[],[], 1)
-            if r:
+            if r and r[0]:
                 event = self._f_device.read(self.EVENT_SIZE)
                 (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
                 self._evdev_event_queue.put(TouchEvent(tv_sec + (tv_usec / 1000000), type, code, value))
@@ -264,6 +264,7 @@ class MultiTouch(object):
             self.thread = None
         if self._f_device:
             self._f_device.close()
+        self._f_device = None
 
     def _process_evdev_events(self):
         """Process pending evdev events"""
