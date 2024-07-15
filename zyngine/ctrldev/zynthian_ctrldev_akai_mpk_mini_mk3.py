@@ -338,6 +338,7 @@ class zynthian_ctrldev_akai_mpk_mini_mk3(zynthian_ctrldev_zynmixer):
         self._config_handler = ConfigHandler(state_manager, idev_out, self._saved_state)
         self._current_handler = self._mixer_handler
         self._current_screen = None
+        self._saved_mpk_program = None
 
         self._signals = [
             (zynsigman.S_GUI,
@@ -352,11 +353,12 @@ class zynthian_ctrldev_akai_mpk_mini_mk3(zynthian_ctrldev_zynmixer):
         super().init()
         for signal, subsignal, callback in self._signals:
             zynsigman.register(signal, subsignal, callback)
-        self._current_handler.set_active(True)
+        self._save_mpk_program()
 
     def end(self):
         for signal, subsignal, callback in self._signals:
             zynsigman.unregister(signal, subsignal, callback)
+        self._restore_mpk_program()
         super().end()
 
     def get_state(self):
@@ -364,7 +366,10 @@ class zynthian_ctrldev_akai_mpk_mini_mk3(zynthian_ctrldev_zynmixer):
 
     def set_state(self, state):
         self._saved_state.load(state)
-        self._current_handler.set_active(True)
+
+        # Change to active handler only if MPK program is saved
+        if self._saved_mpk_program is not None:
+            self._current_handler.set_active(True)
 
     def midi_event(self, ev: bytes):
         evtype = (ev[0] >> 4) & 0x0F
@@ -420,6 +425,13 @@ class zynthian_ctrldev_akai_mpk_mini_mk3(zynthian_ctrldev_zynmixer):
             self._current_handler.cc_change(ccnum, ccval)
 
         elif ev[0] == CONST.MIDI_SYSEX:
+            if len(ev) == 254 and self._saved_mpk_program is None:
+                self._saved_mpk_program = ev[1:-1]
+
+                # Now, we can change the device program
+                self._current_handler.set_active(True)
+                return
+
             self._current_handler.sysex_message(ev[1:-1])
 
     def refresh(self):
@@ -442,6 +454,23 @@ class zynthian_ctrldev_akai_mpk_mini_mk3(zynthian_ctrldev_zynmixer):
         self._current_screen = screen
         for handler in [self._device_handler, self._mixer_handler, self._pattern_handler]:
             handler.on_screen_change(screen)
+
+    def _save_mpk_program(self):
+        cmd = SysExQueryProgram(program=0)
+        query = bytes.fromhex("F0 {} F7".format(cmd))
+        lib_zyncore.dev_send_midi_event(self.idev_out, query, len(query))
+
+    def _restore_mpk_program(self):
+        if self._saved_mpk_program is None:
+            return
+
+        query = [0xF0]
+        query.extend(list(self._saved_mpk_program))
+        query[2] = MSG_DIRECTION_OUT
+        query[4] = CMD_WRITE_DATA
+        query.append(0xF7)
+        lib_zyncore.dev_send_midi_event(self.idev_out, bytes(query), len(query))
+
 
 # --------------------------------------------------------------------------
 # Audio mixer and (a sort of) Zynpad handler (Mixer mode)
@@ -582,11 +611,6 @@ class MixerHandler(ModeHandlerBase):
         )
         msg = bytes.fromhex("F0 {} F7".format(cmd))
         lib_zyncore.dev_send_midi_event(self._idev_out, msg, len(msg))
-
-    def _query_mode_layout_from_device(self):
-        cmd = SysExQueryProgram()
-        query = bytes.fromhex("F0 {} F7".format(cmd))
-        lib_zyncore.dev_send_midi_event(self._idev_out, query, len(query))
 
     def _change_chain(self, ccnum, ccval):
         # CCNUM is a PAD, but we expect a KNOB; offset it
