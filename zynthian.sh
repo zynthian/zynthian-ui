@@ -150,7 +150,6 @@ powersave_control.sh off
 # Run Hardware Test
 #------------------------------------------------------------------------------
 
-export ZYNTHIAN_HW_TEST=""
 if [ -n "${ZYNTHIAN_HW_TEST}" ]; then
 	echo "Running hardware test:  $ZYNTHIAN_HW_TEST"
 	result=$($ZYNTHIAN_SYS_DIR/sbin/zynthian_hw_test.py $ZYNTHIAN_HW_TEST | tail -1)
@@ -161,8 +160,21 @@ if [ -n "${ZYNTHIAN_HW_TEST}" ]; then
 	else
 		splash_zynthian_error "$message"
 	fi
-	sleep 3600
-	exit
+
+	run_control_test="0"
+	if [[ "${ZYNTHIAN_UI_CONTROL_TEST_ENABLED}" == "1" ]]; then
+		result=$($ZYNTHIAN_SYS_DIR/sbin/zynthian_hw_test.py V5_CONTROL | tail -1)
+		res=${result%:*}
+		message=${result#*:}
+		if [[ "$res" == "OK" ]]; then
+			run_control_test="1"
+		fi
+	fi
+
+	if [[ "${run_control_test}" == "0" ]]; then
+		sleep 3600
+		exit
+	fi
 fi
 
 #------------------------------------------------------------------------------

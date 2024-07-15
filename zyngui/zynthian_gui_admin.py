@@ -188,6 +188,8 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data.append((None, 0, "> TEST"))
 		self.list_data.append((self.test_audio, 0, "Test Audio"))
 		self.list_data.append((self.test_midi, 0, "Test MIDI"))
+		if zynthian_gui_config.control_test_enabled:
+			self.list_data.append((self.control_test, 0, "Test control HW"))
 
 		self.list_data.append((None, 0, "> SYSTEM"))
 		if self.zyngui.capture_log_fname:
@@ -522,6 +524,10 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		logging.info("TESTING MIDI")
 		self.state_manager.start_midi_playback(f"{self.data_dir}/mid/test.mid")
 		self.zyngui.alt_mode = True
+
+	def control_test(self, t='S'):
+		logging.info("TEST CONTROL HARDWARE")
+		self.zyngui.show_screen_reset("control_test")
 
 	# ------------------------------------------------------------------------------
 	# SYSTEM FUNCTIONS
