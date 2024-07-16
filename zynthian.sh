@@ -165,7 +165,6 @@ if [ -n "${ZYNTHIAN_HW_TEST}" ]; then
 	if [[ "${ZYNTHIAN_UI_CONTROL_TEST_ENABLED}" == "1" ]]; then
 		result=$($ZYNTHIAN_SYS_DIR/sbin/zynthian_hw_test.py V5_CONTROL | tail -1)
 		res=${result%:*}
-		message=${result#*:}
 		if [[ "$res" == "OK" ]]; then
 			run_control_test="1"
 		fi

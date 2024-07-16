@@ -40,6 +40,8 @@ from zyngui.zynthian_gui_controller import zynthian_gui_controller
 
 class zynthian_gui_control_test(zynthian_gui_base):
 
+	REQUIRED_NUM_PUSHES = 3
+
 	def __init__(self):
 		super().__init__()
 
@@ -93,7 +95,7 @@ class zynthian_gui_control_test(zynthian_gui_base):
 		if event.width == self.width and event.height == self.height:
 			return
 		super().on_size(event)
-		text_fs = round(self.canvas_width / 26)
+		text_fs = round(self.canvas_width / 22)
 		self.test_canvas.coords(self.text_info, self.canvas_width // 2, self.height // 2 - text_fs * 1)
 		self.test_canvas.itemconfigure(self.text_info, width=self.canvas_width, font=(zynthian_gui_config.font_family, text_fs))
 		self.test_canvas.coords(self.text_error, self.canvas_width // 2, self.height // 2 + text_fs * 2)
@@ -218,12 +220,13 @@ class zynthian_gui_control_test(zynthian_gui_base):
 			else:
 				self.test_button_name += "\n\nPush to exit test tool..."
 		else:
-			self.test_button_name = "{}".format(self.zynswitch_info[self.test_button_index][0])
+			self.test_button_name = f"{self.zynswitch_info[self.test_button_index][0]}\n{self.test_button_counter} / {self.REQUIRED_NUM_PUSHES}"
 		self.test_canvas.itemconfigure(self.text_info, text=self.test_button_name)
 		self.test_canvas.itemconfigure(self.text_error, text="")
 
 	def reset_button_test(self):
 		self.test_button_index = 0
+		self.test_button_counter = 0
 		self.wsleds_color_base = self.zyngui.wsleds.wscolor_off
 		self.test_color_name = "RED"
 		self.update_button_test()
@@ -237,7 +240,10 @@ class zynthian_gui_control_test(zynthian_gui_base):
 			# Test push buttons & switches
 			if self.test_button_index < len(self.zynswitch_info):
 				if swi == self.zynswitch_info[self.test_button_index][1]:
-					self.test_button_index += 1
+					self.test_button_counter += 1
+					if self.test_button_counter >= self.REQUIRED_NUM_PUSHES:
+						self.test_button_index += 1
+						self.test_button_counter = 0
 					self.update_button_test()
 				else:
 					self.test_canvas.itemconfigure(self.text_error, text="WRONG BUTTON: {}".format(swi))
@@ -258,6 +264,7 @@ class zynthian_gui_control_test(zynthian_gui_base):
 				else:
 					#self.zyngui.close_screen()
 					self.zyngui.exit(101)
+					#self.zyngui.exit(0)
 		return True
 
 	def zynpot_cb(self, i, dval):
