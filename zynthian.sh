@@ -163,13 +163,17 @@ if [ -n "${ZYNTHIAN_HW_TEST}" ]; then
 
 	run_control_test="0"
 	if [[ "${ZYNTHIAN_UI_CONTROL_TEST_ENABLED}" == "1" ]]; then
-		result=$($ZYNTHIAN_SYS_DIR/sbin/zynthian_hw_test.py V5_CONTROL | tail -1)
+		control_board_name="V5_CONTROL"
+		echo "Testing control board '$control_board_name'..."
+		result=$($ZYNTHIAN_SYS_DIR/sbin/zynthian_hw_test.py $control_board_name | tail -1)
 		res=${result%:*}
+		#echo "RESULT => $result => $res"
 		if [[ "$res" == "OK" ]]; then
 			run_control_test="1"
 		fi
 	fi
 
+	echo "RUN_CONTROL_TEST => $run_control_test"
 	if [[ "${run_control_test}" == "0" ]]; then
 		sleep 3600
 		exit
