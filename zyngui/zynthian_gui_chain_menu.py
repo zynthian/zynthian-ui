@@ -55,11 +55,6 @@ class zynthian_gui_chain_menu(zynthian_gui_selector):
 		self.list_data.append((self.remove_chains, 0, "Remove Chains"))
 		self.list_data.append((self.remove_all, 0, "Remove All"))
 
-		# Add list of System / configuration views
-		if zynthian_gui_config.control_test_enabled:
-			self.list_data.append((None, 0, "> SYSTEM"))
-			self.list_data.append((self.control_test, 0, "Control Test"))
-
 		super().fill_list()
 
 	def select_action(self, i, t='S'):

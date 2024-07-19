@@ -145,25 +145,7 @@ function start_wifi_ap() {
 }
 
 powersave_control.sh off
-
-#------------------------------------------------------------------------------
-# Run Hardware Test
-#------------------------------------------------------------------------------
-
-export ZYNTHIAN_HW_TEST=""
-if [ -n "${ZYNTHIAN_HW_TEST}" ]; then
-	echo "Running hardware test:  $ZYNTHIAN_HW_TEST"
-	result=$($ZYNTHIAN_SYS_DIR/sbin/zynthian_hw_test.py $ZYNTHIAN_HW_TEST | tail -1)
-	res=${result%:*}
-	message=${result#*:}
-	if [[ "$res" == "OK" ]]; then
-		splash_zynthian_message "$result"
-	else
-		splash_zynthian_error "$message"
-	fi
-	sleep 3600
-	exit
-fi
+load_config_env
 
 #------------------------------------------------------------------------------
 # Test splash screen generator
@@ -182,12 +164,46 @@ if [ ! -d $ZYNTHIAN_CONFIG_DIR/img ]; then
 fi
 
 #------------------------------------------------------------------------------
+# Run Hardware Test
+#------------------------------------------------------------------------------
+
+if [[ -n "$ZYNTHIAN_HW_TEST" ]]; then
+	echo "Running HW test:  $ZYNTHIAN_HW_TEST"
+	result=$($ZYNTHIAN_SYS_DIR/sbin/zynthian_hw_test.py $ZYNTHIAN_HW_TEST | tail -1)
+	res=${result%:*}
+	message=${result#*:}
+
+	if [[ "$res" == "OK" ]]; then
+		splash_zynthian_message "$result"
+	else
+		splash_zynthian_error "$message"
+	fi
+
+	run_control_test="0"
+	if [[ "$ZYNTHIAN_UI_CONTROL_TEST_ENABLED" == "1" ]]; then
+		control_board_name="V5_CONTROL"
+		echo "Testing control board '$control_board_name'..."
+		result=$($ZYNTHIAN_SYS_DIR/sbin/zynthian_hw_test.py $control_board_name | tail -1)
+		res=${result%:*}
+		#echo "RESULT => $result => $res"
+		if [[ "$res" == "OK" ]]; then
+			run_control_test="1"
+		fi
+	fi
+
+	echo "Running HW control test => $run_control_test"
+	if [[ "$run_control_test" == "0" ]]; then
+		sleep 3600
+		exit
+	fi
+fi
+
+#------------------------------------------------------------------------------
 # Build zyncore if needed
 #------------------------------------------------------------------------------
 
 if [ ! -f "$ZYNTHIAN_DIR/zyncoder/build/libzyncore.so" ]; then
 	splash_zynthian_message "Building zyncore. Please wait..."
-	load_config_env
 	$ZYNTHIAN_DIR/zyncoder/build.sh
 fi
 
@@ -209,7 +225,6 @@ fi
 #------------------------------------------------------------------------------
 
 splash_zynthian
-load_config_env
 
 while true; do
 
