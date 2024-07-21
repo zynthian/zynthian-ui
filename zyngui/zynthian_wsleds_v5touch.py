@@ -9,6 +9,7 @@ class touchkeypad_button_colors:
     """
 	
     def __init__(self, wsleds):
+        self.wsleds = wsleds
         self.zyngui = wsleds.zyngui
         # A wanna-be abstraction: reverse derive a named "mode" from the requested colors
         self.mode_map = {}
@@ -16,14 +17,43 @@ class touchkeypad_button_colors:
         self.mode_map[wsleds.wscolor_active] = 'active'
         self.mode_map[wsleds.wscolor_active2] = 'active2'
 
-    def __setitem__(self, index, value):
-        mode = self.mode_map.get(value, None)
+    def __setitem__(self, index, color):
+        mode = self.mode_map.get(color, None)
         # request color change on the onscreen touchkeypad
-        self.zyngui.touch_keypad.set_button_color(index, value, mode)
+        if isinstance(color, int):
+            color = f"#{color:06x}" # conversion to the hex code of the color
+			# color = ((color >> 16) & 255, (color >> 8) & 255, color & 255) # conversion to (r, g, b) tuple
+		# tkinter is not able to set RGBA/alpha color, we need to blend the foreground color with the backgroudn color
+        if zynthian_gui_config.zyngui:
+            fgcolor = self.hex_to_rgb(color)
+            bgcolor = self.hex_to_rgb(self.wsleds.wscolor_off)
+            blended = self.ablend(1-self.wsleds.brightness, fgcolor, bgcolor)
+            color = self.rgb_to_hex(blended)
+        self.zyngui.touch_keypad.set_button_color(index, color, mode)
 
     def show(self):
         # nothing to do here
         pass
+
+    def ablend(self, a, fg, bg):
+        """
+        Bland foregground and background color to imitate alpha transparency
+        """
+        return (int((1-a)*fg[0]+a*bg[0]),
+                int((1-a)*fg[1]+a*bg[1]),
+                int((1-a)*fg[2]+a*bg[2]))
+
+    def hex_to_rgb(self, hexstr):
+        rgb = []
+        hex = hexstr[1:]
+        for i in (0, 2, 4):
+            decimal = int(hex[i:i+2], 16)
+            rgb.append(decimal)
+        return tuple(rgb)
+
+    def rgb_to_hex(self, rgb):
+        r, g, b = rgb
+        return '#{:02x}{:02x}{:02x}'.format(r, g, b)
 
 
 class zynthian_wsleds_v5touch(zynthian_wsleds_v5):
@@ -37,7 +67,7 @@ class zynthian_wsleds_v5touch(zynthian_wsleds_v5):
 
     def setup_colors(self):
 		# Predefined colors
-        self.wscolor_off = zynthian_gui_config.color_panel_bg
+        self.wscolor_off = zynthian_gui_config.color_bg
         self.wscolor_white = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_COLOR_WHITE', "#FCFCFC")
         self.wscolor_red = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_COLOR_RED', "#FE2C2F") # #FF8A92
         self.wscolor_green = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_COLOR_GREEN', "#00FA00")

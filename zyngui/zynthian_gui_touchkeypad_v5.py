@@ -265,9 +265,6 @@ class zynthian_gui_touchkeypad_v5:
 			return
 		self.btnstate[n] = color
 		# in case the color is still the original wsled integer number, convert it
-		if isinstance(color, int):
-			color = f"#{color:06x}" # conversion to the hex code of the color
-			# color = ((color >> 16) & 255, (color >> 8) & 255, color & 255) # conversion to (r, g, b) tuple
 		label = self.btndefs[n][0]
 		# twostate = self.btndefs[n][4]
 		if  label.startswith('_'): # self.buttons[n].config()['image'][4]=='':
