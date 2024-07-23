@@ -251,7 +251,6 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                     else:
                         append_service_device("aubionotes", "Aubionotes")
 
-        """
         if not self.input and self.chain:
             self.list_data.append((None, None, "> Chain inputs"))
             for i, chain_id in enumerate(self.zyngui.chain_manager.ordered_chain_ids):
@@ -265,7 +264,6 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                         self.list_data.append((chain_id, None, f"\u2612 {prefix}{chain.get_name()}"))
                     else:
                         self.list_data.append((chain_id, None, f"\u2610 {prefix}{chain.get_name()}"))
-        """
 
         super().fill_list()
 
