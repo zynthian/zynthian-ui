@@ -106,6 +106,7 @@ def get_port_friendly_name(uid):
 		return midi_port_names[uid]
 	return None
 
+
 def set_port_friendly_name(port, friendly_name=None):
 	"""Set the friendly name for a JACK port
 	
@@ -194,6 +195,7 @@ def get_port_from_name(name):
 	except:
 		return None
 
+
 def get_midi_in_uid(idev):
 	"""Get the UID of an input port
 	idev - Index of ZMIP port
@@ -204,6 +206,7 @@ def get_midi_in_uid(idev):
 		return devices_in[idev].aliases[0]
 	except:
 		return None
+
 
 def get_midi_in_devid(idev):
 	"""Get the ALSA name of the port connected to ZMIP port
@@ -261,6 +264,7 @@ def get_midi_in_dev_mode(idev):
 	else:
 		return None
 
+
 def update_midi_in_dev_mode(idev):
 	"""Update mode cache for a midi input device
 
@@ -269,11 +273,13 @@ def update_midi_in_dev_mode(idev):
 	if 0 <= idev < len(devices_in_mode):
 		devices_in_mode[idev] = lib_zyncore.zmip_get_flag_active_chain(idev)
 
+
 def update_midi_in_dev_mode_all():
 	"""Update mode cache for all midi input devices"""
 
 	for idev in range(len(devices_in_mode)):
 		devices_in_mode[idev] = lib_zyncore.zmip_get_flag_active_chain(idev)
+
 
 def reset_midi_in_dev_all():
 	"""Set all MIDI input devices to Active Chain mode and route to all chains"""
@@ -286,8 +292,7 @@ def reset_midi_in_dev_all():
 
 
 # ------------------------------------------------------------------------------
-			
-#	Audio port helpers
+# Audio port helpers
 			
 def add_sidechain_ports(jackname):
 	"""Add ports that should be treated as sidechain inputs
@@ -300,6 +305,7 @@ def add_sidechain_ports(jackname):
 		for port_name in sidechain_map[client_name]:
 			if f"{jackname}:{port_name}" not in sidechain_ports:
 				sidechain_ports.append(f"{jackname}:{port_name}")
+
 
 def remove_sidechain_ports(jackname):
 	"""Removes ports that are treated as sidechain inputs
@@ -315,6 +321,7 @@ def remove_sidechain_ports(jackname):
 				sidechain_ports.remove(f"{jackname}:{port_name}")
 			except:
 				pass
+
 
 def get_sidechain_portnames(jackname=None):
 	"""Get list of sidechain input port names for a given jack client
@@ -333,6 +340,7 @@ def get_sidechain_portnames(jackname=None):
 		except:
 			pass
 	return result
+
 
 # ------------------------------------------------------------------------------
 
@@ -377,6 +385,7 @@ def find_usb_gadget_device():
 			return
 	usb_gadget_devid = None
 
+
 def is_host_usb_connected():
 	"""Check if the USB host (e.g. USB-Type B connection) is connected
 
@@ -398,6 +407,7 @@ def is_host_usb_connected():
 			return False
 	return True
 
+
 def add_hw_port(port):
 	"""Add a hardware port to the global list
 	
@@ -413,6 +423,7 @@ def add_hw_port(port):
 		hw_midi_src_ports.append(port)
 		return True
 	return False
+
 
 def remove_hw_port(port):
 	"""Remove a hardware port from the global list
@@ -739,7 +750,6 @@ def audio_autoconnect():
 	for dst in all_audio_dst:
 		required_routes[dst.name] = set()
 
-
 	# Chain audio routing
 	for chain_id in chain_manager.chains:
 		routes = chain_manager.get_chain_audio_routing(chain_id)
@@ -848,6 +858,7 @@ def audio_autoconnect():
 
 	# Release Mutex Lock
 	release_lock()
+
 
 def get_hw_audio_dst_ports():
 	return hw_audio_dst_ports

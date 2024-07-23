@@ -461,11 +461,15 @@ class zynthian_chain:
     def get_midi_out(self):
         return self.midi_out
 
-    def toggle_midi_out(self, jackname):
-        if jackname not in self.midi_out:
-            self.midi_out.append(jackname)
+    def toggle_midi_out(self, dest):
+        """ Set/unset a MIDI output route
+        dest : destination ID. A jack port name/alias (string) or a chain ID (integer)
+        """
+
+        if dest not in self.midi_out:
+            self.midi_out.append(dest)
         else:
-            self.midi_out.remove(jackname)
+            self.midi_out.remove(dest)
 
         self.rebuild_midi_graph()
         zynautoconnect.request_midi_connect(True)
