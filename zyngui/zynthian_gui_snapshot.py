@@ -120,7 +120,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.index = 0
 
 	def check_bankless_mode(self):
-		bank_dirs = [d for d in os.listdir(self.sm.snapshot_dir) if os.path.isdir(join(self.sm.snapshot_dir, d))]
+		bank_dirs = [d for d in os.listdir(self.sm.snapshot_dir) if d[0] != "." and os.path.isdir(join(self.sm.snapshot_dir, d))]
 		n_banks = len(bank_dirs)
 		# If no banks, create the first one and choose it.
 		if n_banks == 0:
@@ -174,6 +174,9 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			# TODO: Add better validation of populated state, e.g. sequences
 			self.list_data.append(("SAVE", i, "Save as new snapshot"))
 		if self.bankless_mode:
+			self.list_data.append(("NEW_BANK", i, "New Bank"))
+			i = i + 1
+			self.list_data.append((None, None, "> Saved snapshots:"))
 			if isfile(self.sm.default_snapshot_fpath):
 				self.list_data.append((self.sm.default_snapshot_fpath, i, "Default"))
 				i += 1
@@ -217,6 +220,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 					self.show_options(i, self.list_data[i][2] == "Last State")
 
 	def new_bank(self, title):
+		self.load_bank_list()
 		full_title = f"{max(map(lambda item: int(item[2].split('-')[0]) if item[2].split('-')[0].isdigit() else 0, self.list_data)) + 1:03d}"
 		if title:
 			full_title = f"{full_title}-{title}"
@@ -225,7 +229,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			self.sm.snapshot_bank = full_title
 		except:
 			logging.warning("Failed to create new snapshot bank")
-		self.build_view()
+		self.update_list()
 
 	def show_bank_options(self, bank):
 		if not isdir(f"{self.sm.snapshot_dir}/{bank}"):
@@ -257,7 +261,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			shutil.rmtree(f"{self.sm.snapshot_dir}/{bank}")
 			if self.sm.snapshot_bank == bank:
 				self.sm.snapshot_dir = None
-			self.fill_list()
+			self.update_list()
 		except:
 			pass
 
@@ -268,7 +272,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			new_path = f"{self.sm.snapshot_dir}/{self.old_prog}"
 		try:
 			os.rename(self.old_path, new_path)
-			self.fill_list()
+			self.update_list()
 		except:
 			logging.warning("Failed to rename snapshot")
 
@@ -373,7 +377,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 	def do_rename(self, data):
 		try:
 			os.rename(data[0], data[1])
-			self.fill_list()
+			self.update_list()
 		except Exception as e:
 			logging.warning("Failed to rename snapshot '{}' to '{}' => {}".format(data[0], data[1], e))
 
@@ -442,7 +446,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 			name = format(program, "03") + "-" + name
 		path = self.get_snapshot_fpath(name.replace('>', ';').replace('/', ';')) + '.zss'
 		self.save_snapshot(path)
-		self.fill_list()
+		self.update_list()
 
 	def save_snapshot(self, path):
 		self.sm.backup_snapshot(path)
@@ -453,7 +457,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 		logging.info("DELETE SNAPSHOT: {}".format(fpath))
 		try:
 			os.remove(fpath)
-			self.fill_list()
+			self.update_list()
 		except Exception as e:
 			logging.error(e)
 		self.zyngui.close_screen()
