@@ -246,7 +246,11 @@ def get_midi_in_devid_by_uid(uid, mapped=False):
 				if port.aliases[0] == uid:
 					return i
 			else:
-				if port.aliases[0].split('/', 1)[1] == uid.split('/', 1)[1]:
+				uid_parts = uid.split('/', 1)
+				if len(uid_parts) > 1:
+					if uid_parts[1] == port.aliases[0].split('/', 1)[1]:
+						return i
+				elif port.aliases[0] == uid:
 					return i
 		except:
 			pass
