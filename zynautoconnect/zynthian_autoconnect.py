@@ -79,7 +79,6 @@ max_num_chains = 16  		 	# Max number of chains
 devices_in = []       			# List of MIDI input devices
 devices_in_mode = []  			# List of MIDI input devices modes
 devices_out = []      			# List of MIDI output devices
-usb_gadget_devid = None			# Device ID of USB-HOST device (usb gadget)
 
 # zyn_routed_* are used to avoid changing routes made by other jack clients
 zyn_routed_audio = {}			# Map of lists of audio sources routed by zynautoconnect, indexed by destination
@@ -377,13 +376,10 @@ def request_midi_connect(fast=False):
 
 
 def find_usb_gadget_device():
-	global usb_gadget_devid
-	candidates = ["fe980000", "1000480000"]
-	for devid in candidates:
+	for devid in ["fe980000", "1000480000"]:
 		if os.path.isdir(f"/sys/bus/platform/devices/{devid}.usb/gadget.0"):
-			usb_gadget_devid = devid
-			return
-	usb_gadget_devid = None
+			return devid
+	return None
 
 
 def is_host_usb_connected():
@@ -392,9 +388,7 @@ def is_host_usb_connected():
 	returns : True if connected to USB host (not necessarily a MIDI port!)
 	"""
 
-	if usb_gadget_devid is None:
-		find_usb_gadget_device()
-
+	usb_gadget_devid = find_usb_gadget_device()
 	if usb_gadget_devid:
 		try:
 			with open(f"/sys/bus/platform/devices/{usb_gadget_devid}.usb/udc/{usb_gadget_devid}.usb/state") as f:
@@ -405,8 +399,8 @@ def is_host_usb_connected():
 					return False
 		except:
 			return False
-	return True
-
+		return True
+	return False
 
 def add_hw_port(port):
 	"""Add a hardware port to the global list
@@ -489,18 +483,13 @@ def update_hw_midi_ports(force=False):
 	for port in hw_midi_src_ports + hw_midi_dst_ports:
 		if port.name.startswith("a2j:Midi Through"):
 			remove_hw_port(port)
+		elif len(port.aliases) > 0 and port.aliases[0].startswith("USB:f_midi") and not host_usb_connected:
+			remove_hw_port(port)
 		elif port not in hw_port_fingerprint or force:
 			update_midi_port_aliases(port)
-			if port.aliases[0].startswith("USB:f_midi"):
-				if host_usb_connected:
-					add_hw_port(port)
-				else:
-					remove_hw_port(port)
-			else:
-				update = True
+			update = True
 		else:
 			fingerprint.remove(port)
-
 	update |= len(fingerprint) != 0
 	release_lock()
 	return update
