@@ -1788,7 +1788,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#   returns True if action fully handled or False if parent action should be triggered
 	def switch(self, i, type):
-		if i == 1:
+		if i == 0:
+			self.show_menu()
+			return True
+		elif i == 1:
 			if type == 'B':
 				self.set_edit_mode(EDIT_MODE_HISTORY)
 				return True
