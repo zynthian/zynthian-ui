@@ -1161,14 +1161,14 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 		if self.param_editor_zctrl:
 			self.zynpot_cb(3, 1)
 		else:
-			self.zynpot_cb(1, -1)
+			self.zynpot_cb(2, -1)
 
 	# Function to handle CUIA ARROW_DOWN
 	def arrow_down(self):
 		if self.param_editor_zctrl:
 			self.zynpot_cb(3, -1)
 		else:
-			self.zynpot_cb(1, 1)
+			self.zynpot_cb(2, 1)
 
 	def start_playback(self):
 		self.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STARTING)
