@@ -51,11 +51,6 @@ logging.info("ZYNTHIAN-UI CONFIG ...")
 # Wiring layout
 # ------------------------------------------------------------------------------
 
-ENC_LAYER = 0
-ENC_BACK = 1
-ENC_SNAPSHOT = 2
-ENC_SELECT = 3
-
 wiring_layout = os.environ.get('ZYNTHIAN_WIRING_LAYOUT', "DUMMIES")
 if wiring_layout == "DUMMIES":
 	logging.info("No Wiring Layout configured. Only touch interface is available.")

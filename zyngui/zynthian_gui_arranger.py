@@ -153,10 +153,10 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to set values of encoders
 	def setup_zynpots(self):
-		get_lib_zyncore().setup_behaviour_zynpot(zynthian_gui_config.ENC_LAYER, 0)
-		get_lib_zyncore().setup_behaviour_zynpot(zynthian_gui_config.ENC_BACK, 0)
-		get_lib_zyncore().setup_behaviour_zynpot(zynthian_gui_config.ENC_SNAPSHOT, 0)
-		get_lib_zyncore().setup_behaviour_zynpot(zynthian_gui_config.ENC_SELECT, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(0, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(1, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(2, 0)
+		get_lib_zyncore().setup_behaviour_zynpot(3, 0)
 
 	# Function to add menus
 	def show_menu(self):
@@ -1132,7 +1132,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	#  t: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#  returns True if action fully handled or False if parent action should be triggered
 	def switch(self, i, t):
-		if i == 0:
+		if i == 0 and t == "S":
 			self.show_menu()
 			return True
 		elif i == 1 and t == 'B':
@@ -1150,25 +1150,25 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	# CUIA Actions
 	# Function to handle CUIA ARROW_RIGHT
 	def arrow_right(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+		self.zynpot_cb(3, 1)
 
 	# Function to handle CUIA ARROW_LEFT
 	def arrow_left(self):
-		self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+		self.zynpot_cb(3, -1)
 
 	# Function to handle CUIA ARROW_UP
 	def arrow_up(self):
 		if self.param_editor_zctrl:
-			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, 1)
+			self.zynpot_cb(3, 1)
 		else:
-			self.zynpot_cb(zynthian_gui_config.ENC_BACK, -1)
+			self.zynpot_cb(1, -1)
 
 	# Function to handle CUIA ARROW_DOWN
 	def arrow_down(self):
 		if self.param_editor_zctrl:
-			self.zynpot_cb(zynthian_gui_config.ENC_SELECT, -1)
+			self.zynpot_cb(3, -1)
 		else:
-			self.zynpot_cb(zynthian_gui_config.ENC_BACK, 1)
+			self.zynpot_cb(1, 1)
 
 	def start_playback(self):
 		self.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STARTING)
