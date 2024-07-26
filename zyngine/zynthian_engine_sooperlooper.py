@@ -103,9 +103,9 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		#'output_latency',			# range 0 -> ...
 		#'trigger_latency',			# range 0 -> ...
 		#'autoset_latency',			# 0 = off, not 0 = on
-		'mute_quantized',			# 0 = off, not 0 = on
-		'overdub_quantized',		# 0 == off, not 0 = on
-		'replace_quantized',		# 0 == off, not 0 = on (undocumented)
+		#'mute_quantized',			# 0 = off, not 0 = on
+		#'overdub_quantized',		# 0 == off, not 0 = on
+		#'replace_quantized',		# 0 == off, not 0 = on (undocumented)
 		#'discrete_prefader',		# 0 == off, not 0 = on
 		#'next_state,'				# same as state
 		'stretch_ratio',			# 0.5 -> 4.0 (undocumented)
@@ -119,9 +119,9 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		'round',					# 0 = off,  not 0 = on
 		'relative_sync',			# 0 = off, not 0 = on
 		'quantize',					# 0 = off, 1 = cycle, 2 = 8th, 3 = loop
-		#'mute_quantized',			# 0 = off, not 0 = on
-		#'overdub_quantized',		# 0 == off, not 0 = on
-		#'replace_quantized',		# 0 == off, not 0 = on (undocumented)
+		'mute_quantized',			# 0 = off, not 0 = on
+		'overdub_quantized',		# 0 == off, not 0 = on
+		'replace_quantized',		# 0 == off, not 0 = on (undocumented)
 	]
 
 	# SL_GLOBAL_PARAMS act on whole engine - sent with osc command /set
@@ -590,6 +590,13 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				if pedal_dur > 1.5:
 					if self.pedal_taps:
 						self.osc_server.send(self.osc_target, '/sl/-3/hit', ('s', 'undo_all'))
+		elif zctrl.symbol in self.SL_LOOP_PARAMS:  # Selected loop
+			self.osc_server.send(self.osc_target, '/sl/-3/set', ('s', zctrl.symbol), ('f', zctrl.value))
+		elif zctrl.symbol in self.SL_LOOP_GLOBAL_PARAMS:  # All loops
+			self.osc_server.send(self.osc_target, '/sl/-1/set', ('s', zctrl.symbol), ('f', zctrl.value))
+		elif zctrl.symbol in self.SL_GLOBAL_PARAMS:  # Global params
+			self.osc_server.send(self.osc_target, '/set', ('s', zctrl.symbol), ('f', zctrl.value))
+
 		elif zctrl.is_toggle:
 			# Use is_toggle to indicate the SL function is a toggle, i.e. press to engage, press to release
 			if zctrl.symbol == 'record' and zctrl.value == 0 and self.state[self.selected_loop] == SL_STATE_REC_STARTING:
@@ -622,13 +629,6 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				# Don't remove loops - let GUI offer option to (confirm and) remove
 				zctrl.set_value(self.loop_count, False)
 				self.monitors_dict['loop_del'] = True
-		else:
-			if zctrl.symbol in self.SL_LOOP_PARAMS:  # Selected loop
-				self.osc_server.send(self.osc_target, '/sl/-3/set', ('s', zctrl.symbol), ('f', zctrl.value))
-			if zctrl.symbol in self.SL_LOOP_GLOBAL_PARAMS:  # All loops
-				self.osc_server.send(self.osc_target, '/sl/-1/set', ('s', zctrl.symbol), ('f', zctrl.value))
-			if zctrl.symbol in self.SL_GLOBAL_PARAMS:  # Global params
-				self.osc_server.send(self.osc_target, '/set', ('s', zctrl.symbol), ('f', zctrl.value))
 
 	def get_monitors_dict(self):
 		return self.monitors_dict
