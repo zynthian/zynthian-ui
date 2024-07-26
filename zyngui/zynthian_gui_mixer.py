@@ -992,19 +992,20 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		elif swi == 1:
 			# This is ugly, but it's the only way i figured for MIDI-learning "mute" without touch.
 			# Moving the "learn" button to back is not an option. It's a labeled button on V4!!
-			if t == "S" and not self.midi_learning and not self.moving_chain:
+			if t == "S" and not self.moving_chain:
 				if self.highlighted_strip is not None:
 					self.highlighted_strip.toggle_mute()
 				return True
 			elif t == "B":
-				self.zyngui.cuia_screen_zynpad()
+				if self.midi_learning:
+					self.exit_midi_learn()
+				else:
+					self.zyngui.cuia_screen_zynpad()
 				return True
 
 		elif swi == 2:
 			if t == 'S':
-				if self.midi_learning:
-					self.midi_unlearn_action()
-				else:
+				if not self.midi_learning:
 					self.midi_learn_menu()
 				return True
 
