@@ -1132,7 +1132,10 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	#  t: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#  returns True if action fully handled or False if parent action should be triggered
 	def switch(self, i, t):
-		if i == 1 and t == 'B':
+		if i == 0:
+			self.show_menu()
+			return True
+		elif i == 1 and t == 'B':
 			self.show_pattern_editor()
 			return True
 		elif i == 2:

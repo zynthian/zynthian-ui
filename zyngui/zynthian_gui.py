@@ -1910,7 +1910,7 @@ class zynthian_gui:
 
 		# Default actions for the standard 4 ZynSwitches
 		if i == 0:
-			self.cuia_menu()
+			#self.cuia_menu()
 			return True
 
 		elif i == 1:
