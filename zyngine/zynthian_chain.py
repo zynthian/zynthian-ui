@@ -221,36 +221,45 @@ class zynthian_chain:
             - preset: include the selected preset
         """
         parts = []
-        try:
-            if self.title:
-                parts.append(self.title)
-            elif self.chain_id == 0:
-                parts.append("Main")
-            elif not self.synth_slots and self.audio_thru:
-                parts.append("Audio Input " + ','.join([str(i) for i in self.audio_in]))
 
-            if self.synth_slots:
-                proc = self.synth_slots[0][0]
-            elif self.get_slot_count("Audio Effect"):
-                proc = self.get_processors("Audio Effect")[0]
-            elif self.get_slot_count("MIDI Tool"):
-                proc = self.get_processors("MIDI Tool")[0]
+        if self.title:
+            parts.append(self.title)
+        elif self.chain_id == 0:
+            parts.append("Main")
+        elif not self.synth_slots and self.audio_thru:
+            parts.append("Audio Input " + ','.join([str(i) for i in self.audio_in]))
 
-            if proc:
-                if basepath:
-                    parts.append(proc.get_basepath())
+        if self.synth_slots:
+            proc = self.synth_slots[0][0]
+        elif self.get_slot_count("Audio Effect"):
+            proc = self.get_processors("Audio Effect")[0]
+        elif self.get_slot_count("MIDI Tool"):
+            proc = self.get_processors("MIDI Tool")[0]
+        else:
+            proc = None
+
+        if proc:
+            if basepath:
+                parts.append(proc.get_basepath())
+            else:
+                name = proc.get_name()
+                if name:
+                    parts.append(name)
+            if preset:
+                preset_name = proc.get_preset_name()
+                if preset_name:
+                    parts.append(preset_name)
+
+        if not parts:
+            if self.is_audio():
+                if self.is_midi():
+                    chain_type = "Synth"
                 else:
-                    name = proc.get_name()
-                    if name:
-                        parts.append(name)
-                if preset:
-                    preset_name = proc.get_preset_name()
-                    if preset_name:
-                        parts.append(preset_name)
-            elif not parts:
-                parts.append(f"Chain {self.chain_id}")
-        except:
-            pass
+                    chain_type = "Audio"
+            elif self.is_midi():
+                chain_type = "MIDI"
+            parts.append(f"{chain_type} Chain {self.chain_id}")
+
         return parts
 
     def get_description(self, n_lines=None):

@@ -89,12 +89,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.main_frame.columnconfigure(pos[1], minsize=int((self.width * 0.25 - 1) * self.sidebar_shown), weight=self.sidebar_shown)
 		
 	def build_view(self):
-		if self.zyngui.get_current_processor():
-			super().build_view()
-			self.click_listbox()
-			return True
-		else:
-			return False
+		super().build_view()
+		self.click_listbox()
+		return True
 
 	def hide(self):
 		self.exit_midi_learn()
@@ -111,13 +108,12 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def fill_list(self):
 		self.list_data = []
+
 		curproc = self.zyngui.get_current_processor()
-
 		if not curproc:
-			logging.error("Can't fill control screen list for None processor!")
-			return
-
-		if curproc in (self.zyngui.state_manager.alsa_mixer_processor, self.zyngui.state_manager.audio_player):
+			self.processors = []
+			self.list_data.append((None, None, "NO PROCESSORS!"))
+		elif curproc in (self.zyngui.state_manager.alsa_mixer_processor, self.zyngui.state_manager.audio_player):
 			self.processors = [curproc]
 		else:
 			self.processors = self.zyngui.chain_manager.get_processors(curproc.chain_id)
@@ -126,16 +122,16 @@ class zynthian_gui_control(zynthian_gui_selector):
 		for processor in self.processors:
 			j = 0
 			screen_list = processor.get_ctrl_screens()
-			if len(screen_list) > 0:
-				if len(self.processors) > 1:
-					self.list_data.append((None, None, f"> {processor.engine.name.split('/')[-1]}"))
-				for cscr in screen_list:
-					self.list_data.append((cscr, i, cscr, processor, j))
-					i += 1
-					j += 1
+			#if len(self.processors) > 1:
+			self.list_data.append((None, None, f"> {processor.engine.name.split('/')[-1]}"))
+			for cscr in screen_list:
+				self.list_data.append((cscr, i, cscr, processor, j))
+				i += 1
+				j += 1
 
-		self.index = curproc.get_current_screen_index()
-		self.get_screen_info()
+			self.index = curproc.get_current_screen_index()
+			self.get_screen_info()
+
 		super().fill_list()
 
 	def get_screen_info(self):
@@ -736,5 +732,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 					self.select_path.set(processor.get_basepath() + "/GLOBAL Control MIDI-Learn")
 			else:
 				self.select_path.set(processor.get_presetpath())
+		else:
+			self.select_path.set(self.zyngui.chain_manager.get_active_chain().get_title())
 
 # ------------------------------------------------------------------------------

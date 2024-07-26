@@ -68,16 +68,6 @@ class zynthian_gui_preset(zynthian_gui_selector):
 			self.zyngui.purge_screen_history("bank")
 			self.zyngui.replace_screen("control")
 
-	def arrow_right(self):
-		active = self.zyngui.chain_manager.active_chain_id
-		if active != self.zyngui.chain_manager.next_chain():
-			self.zyngui.chain_control()
-
-	def arrow_left(self):
-		active = self.zyngui.chain_manager.active_chain_id
-		if active != self.zyngui.chain_manager.previous_chain():
-			self.zyngui.chain_control()
-
 	def show_preset_options(self):
 		preset = copy.deepcopy(self.list_data[self.index])
 		if preset[2][0] == "❤":
@@ -152,11 +142,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 	#	t: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#	returns True if action fully handled or False if parent action should be triggered
 	def switch(self, swi, t='S'):
-		if swi == 0:
-			if t == 'S':
-				self.arrow_right()
-				return True
-		elif swi == 1:
+		if swi == 1:
 			if t == 'S':
 				if len(self.zyngui.get_current_processor().get_bank_list()) > 1:
 					self.zyngui.replace_screen('bank')
