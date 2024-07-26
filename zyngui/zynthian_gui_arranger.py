@@ -1125,7 +1125,10 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	def switch_select(self, t='S'):
 		if super().switch_select(t):
 			return True
-		self.toggle_event(self.selected_cell[0], self.selected_cell[1])
+		if t == "S":
+			self.toggle_event(self.selected_cell[0], self.selected_cell[1])
+		elif t == "B":
+			self.show_pattern_editor()
 
 	# Function to handle switch press
 	#  i: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
@@ -1134,9 +1137,6 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 	def switch(self, i, t):
 		if i == 0 and t == "S":
 			self.show_menu()
-			return True
-		elif i == 1 and t == 'B':
-			self.show_pattern_editor()
 			return True
 		elif i == 2:
 			if t == 'S':
