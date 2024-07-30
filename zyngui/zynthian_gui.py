@@ -185,7 +185,6 @@ class zynthian_gui:
 			self.wsleds.reset_last_state()
 		self.write_capture_log("LAYOUT: {}".format(zynthian_gui_config.wiring_layout))
 		self.write_capture_log("TITLE: {}".format(self.capture_log_fname))
-		# Capture video + jack audio is not working yet
 		zynautoconnect.audio_connect_ffmpeg(timeout=2.0)
 
 	def start_capture_ffmpeg(self):
@@ -196,8 +195,8 @@ class zynthian_gui:
 			# ffmpeg.input(fbdev, r=20, f="fbdev"),
 			# ffmpeg.input("sine=frequency=500", f="lavfi"),
 			ffmpeg.input("ffmpeg", f="jack"),
-			# fpath, vcodec="h264_v4l2m2m", acodec="aac", preset="ultrafast", pix_fmt="nv21", sample_fmt="s16") \
-			fpath, vcodec="libx264", acodec="aac", preset="ultrafast", pix_fmt="yuv420p") \
+			# fpath, vcodec="h264_v4l2m2m", acodec="aac") \
+			fpath, vcodec="libx264", pix_fmt="yuv420p", acodec="aac", preset="ultrafast", tune="zerolatency", movflags="faststart") \
 			.global_args('-nostdin', '-hide_banner', '-nostats') \
 			.run_async(quiet=True, overwrite_output=True)
 
