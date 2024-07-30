@@ -202,6 +202,24 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		else:
 			self.list_data[i][0](self.list_data[i][1], t)
 
+	# Function to handle zynpots value change
+	#   i: Zynpot index [0..n]
+	#   dval: Current value of zyncoder
+	def zynpot_cb(self, i, dval):
+		if i == 2:
+			try:
+				processor = self.list_data[self.index][1]
+				if processor is not None and self.zyngui.chain_manager.nudge_processor(self.chain_id, processor, dval < 0):
+					self.fill_list()
+					for index, data in enumerate(self.list_data):
+						if processor == data[1]:
+							self.select(index)
+							break
+			except:
+				pass # Ignore failure to move processor
+		else:
+			super().zynpot_cb(i, dval)
+
 	def arrow_right(self):
 		chain_keys = self.zyngui.chain_manager.ordered_chain_ids
 		try:
