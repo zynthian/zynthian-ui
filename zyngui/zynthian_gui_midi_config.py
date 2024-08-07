@@ -304,8 +304,11 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                     lib_zyncore.zmop_set_route_from(self.chain.zmop_index, idev, not lib_zyncore.zmop_get_route_from(self.chain.zmop_index, idev))
                 else:
                     try:
-                        dev_id = zynautoconnect.get_midi_out_dev(idev).aliases[0]
-                        self.zyngui.chain_manager.get_active_chain().toggle_midi_out(dev_id)
+                        if idev is not None:
+                            dev_id = zynautoconnect.get_midi_out_dev(idev).aliases[0]
+                            self.chain.toggle_midi_out(dev_id)
+                        elif isinstance(action, int):
+                            self.chain.toggle_midi_out(action)
                     except Exception as e:
                         logging.error(e)
                 self.update_list()

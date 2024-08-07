@@ -390,16 +390,9 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def arrow_left(self):
 		self.zynpot_cb(2, -1)
 
-
 	def cb_add_parallel(self, option, value):
 		self.zyngui.modify_chain_status['parallel'] = value
 		self.zyngui.modify_chain()
-
-	def switch(self, swi, t='S'):
-		if swi == 0:
-			if t == 'S':
-				self.arrow_right()
-				return True
 
 	def set_selector(self, zs_hidden=False):
 		super().set_selector(zs_hidden)

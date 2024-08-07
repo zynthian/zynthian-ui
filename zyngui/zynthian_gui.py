@@ -193,19 +193,18 @@ class zynthian_gui:
 			self.wsleds.reset_last_state()
 		self.write_capture_log("LAYOUT: {}".format(zynthian_gui_config.wiring_layout))
 		self.write_capture_log("TITLE: {}".format(self.capture_log_fname))
-		# Capture video + jack audio is not working yet
-		# zynautoconnect.audio_connect_ffmpeg(timeout=2.0)
+		zynautoconnect.audio_connect_ffmpeg(timeout=2.0)
 
 	def start_capture_ffmpeg(self):
 		fbdev = os.environ.get("FRAMEBUFFER", "/dev/fb0")
 		fpath = "{}/{}.mp4".format(self.capture_dir_sdc, self.capture_log_fname)
 		self.capture_ffmpeg_proc = ffmpeg.output(
-			# ffmpeg.input(":0", r=25, f="x11grab"),
-			ffmpeg.input(fbdev, r=20, f="fbdev"),
+			ffmpeg.input(":0", r=20, f="x11grab"),
+			# ffmpeg.input(fbdev, r=20, f="fbdev"),
 			# ffmpeg.input("sine=frequency=500", f="lavfi"),
-			# ffmpeg.input("ffmpeg", f="jack"),
-			# fpath, vcodec="h264_v4l2m2m", acodec="aac", preset="ultrafast", pix_fmt="nv21", sample_fmt="s16") \
-			fpath, vcodec="libx264", acodec="aac", preset="ultrafast", pix_fmt="yuv420p") \
+			ffmpeg.input("ffmpeg", f="jack"),
+			# fpath, vcodec="h264_v4l2m2m", acodec="aac") \
+			fpath, vcodec="libx264", pix_fmt="yuv420p", acodec="aac", preset="ultrafast", tune="zerolatency", movflags="faststart") \
 			.global_args('-nostdin', '-hide_banner', '-nostats') \
 			.run_async(quiet=True, overwrite_output=True)
 
@@ -838,7 +837,7 @@ class zynthian_gui:
 						if processor:
 							self.chain_manager.remove_processor(self.modify_chain_status["chain_id"], old_processor)
 							self.close_screen("loading")
-							self.chain_control(self.modify_chain_status["chain_id"], processor)
+							self.chain_control(self.modify_chain_status["chain_id"], processor, force_bank_preset=True)
 				else:
 					# Adding processor to existing chain
 					parallel = "parallel" in self.modify_chain_status and self.modify_chain_status["parallel"]
@@ -846,7 +845,7 @@ class zynthian_gui:
 					processor = self.chain_manager.add_processor(self.modify_chain_status["chain_id"], self.modify_chain_status["engine"], parallel=parallel, post_fader=post_fader)
 					if processor:
 						self.close_screen("loading")
-						self.chain_control(self.modify_chain_status["chain_id"], processor)
+						self.chain_control(self.modify_chain_status["chain_id"], processor, force_bank_preset=True)
 					else:
 						self.show_screen_reset("audio_mixer")
 			else:
@@ -869,7 +868,7 @@ class zynthian_gui:
 					#self.modify_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
 					if processor:
 						self.close_screen("loading")
-						self.chain_control(chain_id, processor)
+						self.chain_control(chain_id, processor, force_bank_preset=True)
 					else:
 						# Created empty chain
 						# self.chain_manager.set_active_chain_by_id(chain_id)
@@ -892,7 +891,7 @@ class zynthian_gui:
 			# TODO: Offer type selection
 			pass
 
-	def chain_control(self, chain_id=None, processor=None, hmode=SCREEN_HMODE_RESET):
+	def chain_control(self, chain_id=None, processor=None, hmode=SCREEN_HMODE_RESET, force_bank_preset=False):
 		if chain_id is None:
 			chain_id = self.chain_manager.active_chain_id
 		else:
@@ -910,9 +909,8 @@ class zynthian_gui:
 					self.current_processor = processors[0]
 					break
 
+		control_screen_name = 'control'
 		if self.current_processor:
-			control_screen_name = 'control'
-
 			# Check for a custom GUI
 			module_path = self.current_processor.engine.custom_gui_fpath
 			if module_path:
@@ -932,28 +930,33 @@ class zynthian_gui:
 					if custom_screen_name in self.screens:
 						control_screen_name = custom_screen_name
 
-			# If a preset is selected => control screen
-			if self.current_processor.get_preset_name():
-				self.show_screen(control_screen_name, hmode)
-			# If not => bank/preset selector screen
-			else:
-				if len(self.current_processor.get_bank_list()) > 1:
-					self.show_screen('bank', hmode)
+			if force_bank_preset:
+				# If a preset is selected => control screen
+				if self.current_processor.get_preset_name():
+					self.show_screen(control_screen_name, hmode)
+
+				# If not => bank/preset selector screen
 				else:
-					self.current_processor.set_bank(0)
-					self.current_processor.load_preset_list()
-					if len(self.current_processor.preset_list) > 1:
-						self.show_screen('preset', hmode)
+					if len(self.current_processor.get_bank_list()) > 1:
+						self.show_screen('bank', hmode)
 					else:
-						if len(self.current_processor.preset_list):
-							self.current_processor.set_preset(0)
-						self.show_screen(control_screen_name, hmode)
+						self.current_processor.set_bank(0)
+						self.current_processor.load_preset_list()
+						if len(self.current_processor.preset_list) > 1:
+							self.show_screen('preset', hmode)
+						else:
+							if len(self.current_processor.preset_list):
+								self.current_processor.set_preset(0)
+							self.show_screen(control_screen_name, hmode)
+			else:
+				self.show_screen(control_screen_name, hmode)
 		else:
-			chain = self.chain_manager.get_chain(chain_id)
-			if chain and chain.is_audio():
-				self.modify_chain({"chain_id": chain_id, "type": "Audio Effect"})
-			elif chain and chain.is_midi():
-				self.modify_chain({"chain_id": chain_id, "type": "MIDI Tool"})
+			self.show_screen(control_screen_name, hmode)
+			#chain = self.chain_manager.get_chain(chain_id)
+			#if chain and chain.is_audio():
+			#	self.modify_chain({"chain_id": chain_id, "type": "Audio Effect"})
+			#elif chain and chain.is_midi():
+			#	self.modify_chain({"chain_id": chain_id, "type": "MIDI Tool"})
 
 	def show_control(self):
 		self.chain_control()
@@ -1933,7 +1936,7 @@ class zynthian_gui:
 
 		# Default actions for the standard 4 ZynSwitches
 		if i == 0:
-			self.cuia_menu()
+			#self.cuia_menu()
 			return True
 
 		elif i == 1:
