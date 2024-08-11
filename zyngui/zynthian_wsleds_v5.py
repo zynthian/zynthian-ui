@@ -52,7 +52,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
 		# Menu / Admin
 		if self.zyngui.is_current_screen_menu():
 			self.wsleds[0] = self.wscolor_active
-		elif curscreen == "admin":
+		elif self.zyngui.is_current_screen_admin():
 			self.wsleds[0] = self.wscolor_active2
 		else:
 			self.wsleds[0] = self.wscolor_default

@@ -1721,11 +1721,31 @@ class zynthian_gui:
 				return True
 
 	def is_current_screen_menu(self):
-		if self.current_screen in ("main_menu", "engine", "midi_cc", "midi_chan", "midi_key_range", "audio_in", "audio_out", "midi_prog") or \
-				self.current_screen.endswith("_options"):
+		if self.current_screen in ("main_menu", "engine", "midi_cc", "midi_chan", "midi_key_range", "audio_in",
+								"audio_out", "midi_prog") or self.current_screen.endswith("_options"):
 			return True
-		if self.current_screen == "option" and len(self.screen_history) > 1 and self.screen_history[-2] in ("zynpad", "pattern_editor", "preset", "bank"):
+		if len(self.screen_history) > 1:
+			if self.current_screen == "midi_config" and self.screen_history[-2] != "admin":
+				return True
+			if self.current_screen in ("option", "confirm", "keyboard"):
+				parent_views = ("arranger", "zynpad", "pattern_editor", "preset", "bank", "main_menu", "chain_options", "processor_options")
+				if self.screen_history[-1] in parent_views or self.screen_history[-2] in parent_views:
+					return True
+				elif self.screen_history[-2] == "midi_config" and len(self.screen_history) > 2 and self.screen_history[-3] != "admin":
+					return True
+		return False
+
+	def is_current_screen_admin(self):
+		if self.current_screen in ("admin", "info", "wifi", "bluetooth", "brightness_config", "touchscreen_calibration", "cv_config"):
 			return True
+		if len(self.screen_history) > 1:
+			if self.current_screen == "midi_config" and self.screen_history[-2] == "admin":
+				return True
+			if self.current_screen in ("option", "confirm", "keyboard"):
+				if self.screen_history[-1] == "admin" or self.screen_history[-2] == "admin":
+					return True
+				elif self.screen_history[-2] == "midi_config" and len(self.screen_history) > 2 and self.screen_history[-3] == "admin":
+					return True
 		return False
 
 	def check_current_screen_switch(self, action_config):

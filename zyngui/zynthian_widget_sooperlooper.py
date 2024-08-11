@@ -607,6 +607,9 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 		waiting = self.monitors['waiting']
 		#logging.debug(f"STATE: {state}, NEXT: {next_state}, WAITING: {waiting}")
 
+		# ALT button
+		wsl.set_led(leds[0], color_default)
+
 		# REC Button
 		if state in (SL_STATE_REC_STARTING, SL_STATE_REC_STOPPING) or next_state in (SL_STATE_RECORDING,
 			SL_STATE_OVERDUBBING, SL_STATE_MULTIPLYING, SL_STATE_INSERTING, SL_STATE_REPLACING):
@@ -634,10 +637,9 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
 			wsl.set_led(leds[3], wsl.wscolor_green)
 		else:
 			wsl.set_led(leds[3], color_default)
-		# ALT button
-		wsl.set_led(leds[0], color_default)
-		# Arrows and F1-F4
-		for i in range(4, len(leds)):
+
+		# Arrows & F1-F4
+		for i in (4, 5, 6, 7, 10, 11, 12, 13):
 			wsl.set_led(leds[i], color_default)
 
 # *******************************************************************************
