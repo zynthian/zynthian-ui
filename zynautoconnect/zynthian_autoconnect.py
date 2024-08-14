@@ -28,10 +28,12 @@ import usb
 import jack
 import logging
 import alsa_midi
+import alsaaudio
 import json
 from time import sleep
 from threading import Thread, Lock
 from subprocess import check_output
+import pexpect
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
@@ -72,6 +74,8 @@ hw_midi_dst_ports = []			# List of hardware MIDI destination ports (including ne
 hw_audio_dst_ports = []			# List of physical audio output ports
 sidechain_map = {}				# Map of all audio target port names to use as sidechain inputs, indexed by jack client regex
 sidechain_ports = []			# List of currently active audio destination port names not to autoroute, e.g. sidechain inputs
+alsa_audio_srcs = {}			# Map of alsa_in processes, indexed by alsa device name
+alsa_audio_dests = {}			# Map of alsa_out processes, indexed by alsa device name
 
 # These variables are initialized in the init() function. These are "example values".
 max_num_devs = 16     			# Max number of MIDI devices
@@ -857,6 +861,104 @@ def get_hw_audio_dst_ports():
 	return hw_audio_dst_ports
 
 
+def update_hw_audio_ports():
+	global alsa_audio_srcs, alsa_audio_dests
+
+	dirty = False
+	if zynthian_gui_config.hotplug_audio:
+		# Add new devices
+		for device in get_alsa_audio_devices(False):
+			dirty |= start_alsa_in(device)
+		for device in get_alsa_audio_devices(True):
+			dirty |= start_alsa_out(device)
+
+		# Remove disconnected devices
+		for device in list(alsa_audio_srcs):
+			try:
+				while True:
+					proc = alsa_audio_srcs[device]
+					line = proc.readline()
+					if line.startswith("err"):
+						proc.terminate()
+						alsa_audio_srcs.pop(device)
+						dirty = True
+						break
+					elif not line:
+						break
+			except:
+				continue
+		for device in list(alsa_audio_dests):
+			try:
+				while True:
+					proc = alsa_audio_dests[device]
+					line = proc.readline()
+					if line.startswith("err"):
+						proc.terminate()
+						alsa_audio_dests.pop(device)
+						dirty = True
+						break
+					elif not line:
+						break
+			except:
+				continue
+
+		return dirty
+
+
+def get_alsa_audio_devices(playback=True):
+	devices = []
+	for card in alsaaudio.pcms(alsaaudio.PCM_PLAYBACK if playback else alsaaudio.PCM_CAPTURE):
+		if card.startswith("hw:"):
+			devices.append(card[8:card.find(",")])
+	return devices
+
+
+def start_alsa_in(device):
+	global alsa_audio_srcs
+	if device in alsa_audio_srcs:
+		return False
+	proc = pexpect.spawn(f"alsa_in -d hw:{device} -j zynain_{device}", encoding="utf-8", timeout=0.1)
+	if proc.exitstatus:
+		return False
+	alsa_audio_srcs[device] = proc
+	return True
+
+
+def stop_alsa_in(device):
+	global alsa_audio_srcs
+	if device not in alsa_audio_srcs:
+		return False
+	alsa_audio_srcs[device].terminate()
+	alsa_audio_srcs.pop(device)
+	return True
+
+
+def stop_all_alsa_in():
+	for device in get_alsa_audio_devices(False):
+		stop_alsa_in(device)
+
+
+def start_alsa_out(device):
+	return False # TODO Disabled whilst getting hotplug audio inputs working.
+	global alsa_audio_dests
+	if device in alsa_audio_dests:
+		return False
+	proc = pexpect.spawn(f"alsa_out -d hw:{device} -j zynaout_{device}", encoding="utf-8", timeout=0.1)
+	if proc.exitstatus:
+		return False
+	alsa_audio_dests[device] = proc
+	return True
+
+
+def stop_alsa_out(device):
+	global alsa_audio_dests
+	if device not in alsa_audio_dests:
+		return False
+	alsa_audio_dests[device].terminate()
+	alsa_audio_dests.pop(device)
+	return True
+
+
 # Connect mixer to the ffmpeg recorder
 def audio_connect_ffmpeg(timeout=2.0):
 	t = 0
@@ -874,7 +976,7 @@ def audio_connect_ffmpeg(timeout=2.0):
 def get_audio_capture_ports():
 	"""Get list of hardware audio inputs"""
 
-	return jclient.get_ports("system", is_output=True, is_audio=True, is_physical=True)
+	return jclient.get_ports("system", is_output=True, is_audio=True, is_physical=True) + jclient.get_ports("zynain", is_output=True, is_audio=True)
 
 
 def build_midi_port_name(port):
@@ -1025,6 +1127,9 @@ def auto_connect_thread():
 					# Check if requested to run midi connect (slow)
 					if deferred_midi_connect:
 						do_midi = True
+					# Check if dynamic (hot-plug) audio changed
+					if update_hw_audio_ports():
+						do_audio = True
 					# Check if requested to run audio connect (slow)
 					if deferred_audio_connect:
 						do_audio = True
@@ -1154,6 +1259,13 @@ def stop():
 		lock = None
 
 	hw_audio_dst_ports = []
+
+	for process in alsa_audio_srcs.values():
+		process.terminate()
+	alsa_audio_srcs = {}
+	for process in alsa_audio_dests.values():
+		process.terminate()
+	alsa_audio_dests = {}
 
 	if jclient:
 		jclient.deactivate()

@@ -516,6 +516,7 @@ power_save_secs = 60 * int(os.environ.get('ZYNTHIAN_UI_POWER_SAVE_MINUTES', 60))
 
 rbpi_headphones = int(os.environ.get('ZYNTHIAN_RBPI_HEADPHONES', False))
 enable_dpm = int(os.environ.get('ZYNTHIAN_DPM', True))
+hotplug_audio = int(os.environ.get('ZYNTHIAN_HOTPLUG_AUDIO', False))
 
 # ------------------------------------------------------------------------------
 # Networking Options

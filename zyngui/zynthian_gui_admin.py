@@ -158,6 +158,11 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			else:
 				self.list_data.append((self.start_rbpi_headphones, 0, "\u2610 RBPi Headphones"))
 
+		if zynthian_gui_config.hotplug_audio:
+			self.list_data.append((self.stop_hotplug_audio, 0, "\u2612 Hotplug USB Audio"))
+		else:
+			self.list_data.append((self.start_hotplug_audio, 0, "\u2610 Hotplug USB Audio"))
+
 		if zynthian_gui_config.snapshot_mixer_settings:
 			self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2612 Audio Levels on Snapshots"))
 		else:
@@ -355,6 +360,39 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.start_rbpi_headphones(False)
 		else:
 			self.stop_rbpi_headphones(False)
+
+	def start_hotplug_audio(self, save_config=True):
+		logging.info("STARTING HOTPLUG AUDIO")
+		zynthian_gui_config.hotplug_audio = 1
+		# Update Config
+		if save_config:
+			zynconf.save_config({
+				"ZYNTHIAN_HOTPLUG_AUDIO": str(zynthian_gui_config.hotplug_audio)
+			})
+		# Call autoconnect after a little time
+		zynautoconnect.request_audio_connect()
+
+		self.update_list()
+
+	def stop_hotplug_audio(self, save_config=True):
+		logging.info("STOPPING HOTPLUG AUDIO")
+
+		zynthian_gui_config.hotplug_audio = 0
+		zynautoconnect.stop_all_alsa_in()
+		# Update Config
+		if save_config:
+			zynconf.save_config({
+				"ZYNTHIAN_HOTPLUG_AUDIO": str(int(zynthian_gui_config.hotplug_audio))
+			})
+
+		self.update_list()
+
+	# Start/Stop Hotplug Audio depending on configuration
+	def default_hotplug_audio(self):
+		if zynthian_gui_config.hotplug_audio:
+			self.start_hotplug_audio(False)
+		else:
+			self.stop_hotplug_audio(False)
 
 	def toggle_dpm(self):
 		zynthian_gui_config.enable_dpm = not zynthian_gui_config.enable_dpm

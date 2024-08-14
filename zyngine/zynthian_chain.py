@@ -370,13 +370,16 @@ class zynthian_chain:
         if self.chain_id == 0:
             return self.audio_in.copy()
         sources = []
+        input_ports = zynautoconnect.get_audio_capture_ports()
         for i in range(0, len(self.audio_in), 2):
             a = self.audio_in[i]
+            if a > len(input_ports):
+                continue
             if i < len(self.audio_in) - 1:
                 b = self.audio_in[i + 1]
-                sources.append(f"system:capture_({a}|{b})$")
+                sources.append(f"{input_ports[a-1].name}|{input_ports[b-1].name}")
             else:
-                sources.append(f"system:capture_({a})$")
+                sources.append(input_ports[a-1].name)
         return sources
 
     def rebuild_midi_graph(self):
