@@ -2212,8 +2212,12 @@ class zynthian_gui:
 						self.screens['loading'].set_details(busy_details)
 			else:
 				busy_timeout = 0
+				self.screen_lock.acquire()
 				if self.current_screen == "loading":
+					self.screen_lock.release()
 					self.close_screen("loading")
+				else:
+					self.screen_lock.release()
 
 			try:
 				if self.current_screen:
