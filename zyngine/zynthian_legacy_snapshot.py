@@ -470,7 +470,7 @@ class zynthian_legacy_snapshot:
                         #"midi_cc": {}
                     }
                     midi_chan = chain["midi_chan"]
-                    if midi_chan < 16:
+                    if isinstance(midi_chan, int) and midi_chan < 16:
                         chain_state["note_low"] = note_range_state[midi_chan]["note_low"]
                         chain_state["note_high"] = note_range_state[midi_chan]["note_high"]
                         chain_state["transpose_octave"] = note_range_state[midi_chan]["octave_trans"]
