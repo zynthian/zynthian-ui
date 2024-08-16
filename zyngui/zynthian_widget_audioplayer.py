@@ -440,7 +440,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.update()
 
 	def draw_waveform(self, start, length):
+		self.widget_canvas.itemconfig(self.loading_text, text="Creating waveform...")
 		if not self.channels:
+			self.widget_canvas.itemconfig(self.loading_text, text="No audio in file")
 			return
 		start = max(0, start)
 		start = min(self.frames, start)
@@ -457,6 +459,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		block_size = min(frames_per_pixel, 1024)  # Limit large file read blocks
 		if frames_per_pixel < 1:
 			self.refresh_waveform = False
+			self.widget_canvas.itemconfig(self.loading_text, text="Audio too short")
 			return
 		data = [[] for i in range(self.channels)]
 
@@ -470,7 +473,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			offset2 = frames_per_pixel
 			step = max(1, frames_per_pixel // steps_per_peak)
 			self.sf.seek(start)
-			a = self.sf.read(length)
+			a = self.sf.read(length, always_2d=True)
 
 		v1 = [0.0 for i in range(self.channels)]
 		v2 = [0.0 for i in range(self.channels)]
@@ -478,7 +481,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		for x in range(self.width):
 			if large_file:
 				self.sf.seek(start + x * frames_per_pixel)
-				a = self.sf.read(block_size)
+				a = self.sf.read(block_size, always_2d=True)
 				if len(a) == 0:
 					break
 			else:
@@ -519,6 +522,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 			if self.duration == 0.0:
 				self.refreshing = False
+				self.widget_canvas.itemconfig(self.loading_text, text="No audio in file")
 				return
 
 			refresh_markers = False
