@@ -928,9 +928,10 @@ class PadMatrixHandler(ModeHandlerBase):
                 self._pads.append(BTN_PAD_END - (r * self._cols + c))
 
     def on_record_changed(self, state):
+        # State is True when pressed, False on release
         self._is_record_pressed = state
-        if state and self._recording_seq:
-            self._stop_pattern_record()
+        if state:
+            self._pe_toggle_midi_record()
 
     def on_toggle_play(self):
         self._state_manager.send_cuia("TOGGLE_PLAY")
@@ -1188,14 +1189,14 @@ class PadMatrixHandler(ModeHandlerBase):
             return
 
         if self._libseq.isMidiRecord():
-            self._state_manager.send_cuia("TOGGLE_RECORD")
+            self._pe_toggle_midi_record(False)
         self._chain_manager.set_active_chain_by_id(chain_id)
 
         self._show_pattern_editor(seq)
         if self._libseq.getPlayState(self._zynseq.bank, seq) == zynseq.SEQ_STOPPED:
             self._libseq.togglePlayState(self._zynseq.bank, seq)
         if not self._libseq.isMidiRecord():
-            self._state_manager.send_cuia("TOGGLE_RECORD")
+            self._pe_toggle_midi_record(True)
 
         self._recording_seq = seq
         self._update_pad(seq)
@@ -1216,7 +1217,7 @@ class PadMatrixHandler(ModeHandlerBase):
 
     def _stop_pattern_record(self):
         if self._libseq.isMidiRecord():
-            self._state_manager.send_cuia("TOGGLE_RECORD")
+            self._pe_toggle_midi_record(False)
         self._recording_seq = None
         self.refresh()
 

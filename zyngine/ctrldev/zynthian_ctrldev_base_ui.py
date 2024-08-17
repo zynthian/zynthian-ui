@@ -64,6 +64,11 @@ class ModeHandlerBase(zynthian_ctrldev_base_extended.ModeHandlerBase):
 		return zynthian_gui_config.zyngui.screens["zynpad"].selected_pad
 
 	# FIXME: This SHOULD not be coupled to UI!
+	def _pe_toggle_midi_record(self, state=None):
+		pe = zynthian_gui_config.zyngui.screens["pattern_editor"]
+		pe.toggle_midi_record(state)
+
+	# FIXME: This SHOULD not be coupled to UI!
 	def _get_selected_step(self):
 		pe = zynthian_gui_config.zyngui.screens["pattern_editor"]
 		return pe.keymap[pe.selected_cell[1]]['note'], pe.selected_cell[0]
