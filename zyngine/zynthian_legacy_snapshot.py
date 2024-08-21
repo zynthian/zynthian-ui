@@ -392,8 +392,13 @@ class zynthian_legacy_snapshot:
         state["chains"] = chains
 
         # ZS3
+        state["zs3"]["zs3-0"]["mixer"] = {}
         try:
-            state["zs3"]["zs3-0"]["mixer"] = snapshot["mixer"]
+            if isinstance(snapshot["mixer"], dict):
+                state["zs3"]["zs3-0"]["mixer"] = snapshot["mixer"]
+            else:
+                for i,mixer_ch in enumerate(snapshot["mixer"]):
+                    state["zs3"]["zs3-0"]["mixer"][f"chan_{i:02d}"] = mixer_ch
         except:
             pass
 
@@ -465,7 +470,7 @@ class zynthian_legacy_snapshot:
                         #"midi_cc": {}
                     }
                     midi_chan = chain["midi_chan"]
-                    if midi_chan < 16:
+                    if isinstance(midi_chan, int) and midi_chan < 16:
                         chain_state["note_low"] = note_range_state[midi_chan]["note_low"]
                         chain_state["note_high"] = note_range_state[midi_chan]["note_high"]
                         chain_state["transpose_octave"] = note_range_state[midi_chan]["octave_trans"]
@@ -488,16 +493,19 @@ class zynthian_legacy_snapshot:
                         except:
                             continue
                     for symbol, params in config.items():
-                        if 'midi_learn_chan' in params:
-                            chan = params.pop('midi_learn_chan')
-                        else:
-                            chan = None
-                        if 'midi_learn_cc' in params:
-                            cc = params.pop('midi_learn_cc')
-                        else:
-                            cc = None
-                        if cc is not None and chan is not None:
-                            zs3["mixer"]["midi_learn"][f"{chan},{cc}"] = [strip_id, symbol]
+                        try:
+                            if 'midi_learn_chan' in params:
+                                chan = params.pop('midi_learn_chan')
+                            else:
+                                chan = None
+                            if 'midi_learn_cc' in params:
+                                cc = params.pop('midi_learn_cc')
+                            else:
+                                cc = None
+                            if cc is not None and chan is not None:
+                                zs3["mixer"]["midi_learn"][f"{chan},{cc}"] = [strip_id, symbol]
+                        except:
+                            pass
                         try:
                             config[symbol] = config[symbol]["value"]
                         except:
