@@ -2235,8 +2235,12 @@ class zynthian_gui:
 						self.screens['loading'].set_details(busy_details)
 			else:
 				busy_timeout = 0
+				self.screen_lock.acquire()
 				if self.current_screen == "loading":
+					self.screen_lock.release()
 					self.close_screen("loading")
+				else:
+					self.screen_lock.release()
 
 			try:
 				if self.current_screen:
@@ -2332,51 +2336,43 @@ class zynthian_gui:
 
 				if cuia == "zynswitch":
 					# zynswitch has parameters: [switch, action] where action is P(ressed), R(eleased), S(hort), B(old), L(ong), X or Y
-					try:
-						#self.state_manager.start_busy("cuia_zynswitch")
-						i = int(params[0])
-						t = params[1]
-						if t == 'R':
-							if zynswitch_cuia_ts[i] is None:
-								if i in zynswitch_repeat:
-									del zynswitch_repeat[i]
-								continue
-							else:
-								dtus = int(1000000 * (monotonic() - zynswitch_cuia_ts[i]))
-								zynswitch_cuia_ts[i] = None
-								t = self.zynswitch_timing(dtus)
-						if t == 'P':
-							if self.zynswitch_push(i):
-								zynswitch_repeat[i] = repeat_delay
-							else:
-								zynswitch_cuia_ts[i] = monotonic()
-						else:
-							if t == 'S':
-								zynswitch_cuia_ts[i] = None
-								self.zynswitch_short(i)
-							elif t == 'B':
-								zynswitch_cuia_ts[i] = None
-								# Double switches must be bold
-								if not self.zynswitch_double(i):
-									self.zynswitch_bold(i)
-							elif t == 'L':
-								zynswitch_cuia_ts[i] = None
-								self.zynswitch_long(i)
-							elif t == 'X':
-								self.zynswitch_X(i)
-							elif t == 'Y':
-								self.zynswitch_Y(i)
-							else:
-								zynswitch_cuia_ts[i] = None
-								logging.warning("Unknown Action Type: {}".format(t))
+					i = int(params[0])
+					t = params[1]
+					if t == 'R':
+						if zynswitch_cuia_ts[i] is None:
 							if i in zynswitch_repeat:
 								del zynswitch_repeat[i]
-						#self.state_manager.end_busy("cuia_zynswitch")
-					except Exception as e:
-						logging.error(f"CUIA zynswitch failed with params: {params}\n{traceback.format_exc()}")
-						self.state_manager.set_busy_error(f"ERROR CUIA zynswitch: {params}", e)
-						sleep(3)
-						self.state_manager.clear_busy()
+							continue
+						else:
+							dtus = int(1000000 * (monotonic() - zynswitch_cuia_ts[i]))
+							zynswitch_cuia_ts[i] = None
+							t = self.zynswitch_timing(dtus)
+					if t == 'P':
+						if self.zynswitch_push(i):
+							zynswitch_repeat[i] = repeat_delay
+						else:
+							zynswitch_cuia_ts[i] = monotonic()
+					else:
+						if t == 'S':
+							zynswitch_cuia_ts[i] = None
+							self.zynswitch_short(i)
+						elif t == 'B':
+							zynswitch_cuia_ts[i] = None
+							# Double switches must be bold
+							if not self.zynswitch_double(i):
+								self.zynswitch_bold(i)
+						elif t == 'L':
+							zynswitch_cuia_ts[i] = None
+							self.zynswitch_long(i)
+						elif t == 'X':
+							self.zynswitch_X(i)
+						elif t == 'Y':
+							self.zynswitch_Y(i)
+						else:
+							zynswitch_cuia_ts[i] = None
+							logging.warning("Unknown Action Type: {}".format(t))
+						if i in zynswitch_repeat:
+							del zynswitch_repeat[i]
 
 				elif cuia == "zynpot":
 					# zynpot has parameters: [pot, delta, 'P'|'R']. 'P'&'R' are only used for keybinding to zynpot
@@ -2391,11 +2387,7 @@ class zynthian_gui:
 						self.cuia_zynpot(params)
 
 				else:
-					try:
-						cuia_func = getattr(self, "cuia_" + cuia)
-						cuia_func(params)
-					except AttributeError:
-						logging.error(f"Unknown or faulty CUIA '{cuia}' with params {params}")
+					self.callable_ui_action(cuia, params)
 
 				self.state_manager.set_event_flag()
 
@@ -2410,9 +2402,10 @@ class zynthian_gui:
 						zynpot_repeat[i][0] -= 1
 					else:
 						self.cuia_zynpot(zynpot_repeat[i][1])
+
 			except Exception as e:
-				logging.error(traceback.format_exc())
-				self.state_manager.set_busy_error(f"ERROR CUIA {cuia}", e)
+				logging.error(f"CUIA '{cuia}' failed with params: {params}\n{traceback.format_exc()}")
+				self.state_manager.set_busy_error(f"ERROR CUIA {cuia}: {params}", e)
 				sleep(3)
 				self.state_manager.clear_busy()
 
