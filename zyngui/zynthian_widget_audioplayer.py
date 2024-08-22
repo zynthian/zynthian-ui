@@ -518,7 +518,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.v_zoom = self.processor.controllers_dict['amp zoom'].value
 				self.refresh_waveform = True
 
-			if self.filename != self.monitors["filename"]:  #  or self.frames != self.frames: => This is wrong!
+			if self.filename != self.monitors["filename"]:
 				self.filename = self.monitors["filename"]
 				waveform_thread = Thread(target=self.load_file, name="waveform image")
 				waveform_thread.start()
@@ -635,7 +635,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 						self.widget_canvas.itemconfig(f"cue{i+1}", fill=zynthian_gui_config.color_info)
 				refresh_info = True
 
-			if self.info != self.processor.controllers_dict['info'].value:
+			if self.info is None or self.info != self.processor.controllers_dict['info'].value:
 				self.widget_canvas.itemconfig("waveform", state=tkinter.NORMAL)
 				self.widget_canvas.itemconfig("overlay", state=tkinter.NORMAL)
 				self.info = self.processor.controllers_dict['info'].value
