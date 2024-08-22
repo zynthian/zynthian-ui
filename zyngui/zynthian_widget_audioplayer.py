@@ -448,6 +448,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		start = min(self.frames, start)
 		length = min(self.frames - start, length)
 		steps_per_peak = 16
+		data = [[] for i in range(self.channels)]
+		large_file = self.frames * self.channels > 24000000
 		
 		y0 = self.waveform_height // self.channels
 		y_offsets = []
@@ -455,43 +457,44 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			y_offsets.append(y0 * (i + 0.5))
 		y0 //= 2
 
-		frames_per_pixel = length // self.width
-		block_size = min(frames_per_pixel, 1024)  # Limit large file read blocks
-		if frames_per_pixel < 1:
-			self.refresh_waveform = False
-			self.widget_canvas.itemconfig(self.loading_text, text="Audio too short")
-			return
-		data = [[] for i in range(self.channels)]
-
-		large_file = self.frames * self.channels > 24000000
 		if large_file:
+			frames_per_pixel = length // self.width
+			block_size = min(frames_per_pixel, 1024)  # Limit read blocks for larger files
 			offset1 = 0
 			offset2 = block_size
 			step = max(1, block_size // steps_per_peak)
 		else:
-			offset1 = 0
-			offset2 = frames_per_pixel
-			step = max(1, frames_per_pixel // steps_per_peak)
 			self.sf.seek(start)
-			a = self.sf.read(length, always_2d=True)
+			a_data = self.sf.read(length, always_2d=True)
+			frames_per_pixel = len(a_data) // self.width
+			step = max(1, frames_per_pixel // steps_per_peak)
+			block_size = min(frames_per_pixel, 1024)  # Limit read blocks for larger files
+
+		if frames_per_pixel < 1:
+			self.refresh_waveform = False
+			self.widget_canvas.itemconfig(self.loading_text, text="Audio too short")
+			return
 
 		v1 = [0.0 for i in range(self.channels)]
 		v2 = [0.0 for i in range(self.channels)]
 
 		for x in range(self.width):
+			# For each x-axis pixel
 			if large_file:
 				self.sf.seek(start + x * frames_per_pixel)
-				a = self.sf.read(block_size, always_2d=True)
-				if len(a) == 0:
+				a_data = self.sf.read(block_size, always_2d=True)
+				if len(a_data) == 0:
 					break
 			else:
 				offset1 = x * frames_per_pixel
 				offset2 = offset1 + frames_per_pixel
 			for channel in range(self.channels):
+				# For each audio channel
 				v1[0:] = [0.0] * self.channels
 				v2[0:] = [0.0] * self.channels
 				for frame in range(offset1, offset2, step):
-					av = a[frame][channel] * self.v_zoom
+					# Find peak audio within block of audio represented by this x-axis pixel 
+					av = a_data[frame][channel] * self.v_zoom
 					if av < v1[channel]:
 						v1[channel] = av
 					if av > v2[channel]:
@@ -499,6 +502,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				data[channel] += (x, y_offsets[channel] + int(v1[channel] * y0), x, y_offsets[channel] + int(v2[channel] * y0))
 
 		for chan in range(self.channels):
+			# Plot each point on the graph as series of vertical lines spanning max and min peaks of audio represented by each x-axis pixel
 			self.widget_canvas.coords(f"waveform{chan}", data[chan])
 
 		self.refresh_waveform = False
