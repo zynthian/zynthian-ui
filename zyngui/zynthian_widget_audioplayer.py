@@ -195,7 +195,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.refresh_waveform = True
 
 	def swipe_nudge(self, dts):
-		self.swipe_speed += max(-500, min(0.1 * self.swipe_dir / dts, 500))
+		if dts:
+			self.swipe_speed += max(-500, min(0.1 * self.swipe_dir / dts, 500))
 		#logging.debug(f"SWIPE NUDGE {dts} => SWIPE_SPEED = {self.swipe_speed}")
 
 	def swipe_update(self):
