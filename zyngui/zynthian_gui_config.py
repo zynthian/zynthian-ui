@@ -490,7 +490,9 @@ font_family = os.environ.get('ZYNTHIAN_UI_FONT_FAMILY', "Audiowide")
 # ------------------------------------------------------------------------------
 
 enable_touch_widgets = int(os.environ.get('ZYNTHIAN_UI_TOUCH_WIDGETS', False))
-enable_touch_navigation = int(os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION', False))
+# TODO: Deprecate old use of onscreen buttons so that we avoid confusion
+enable_onscreen_buttons = int(os.environ.get('ZYNTHIAN_UI_ONSCREEN_BUTTONS', False))
+enable_touch_navigation = int(os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION', enable_onscreen_buttons))
 force_enable_cursor = int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR', False))
 
 if enable_touch_navigation or check_wiring_layout(["Z2", "V5"]):
