@@ -69,7 +69,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector):
 		# Add list of System / configuration views
 		self.list_data.append((None, 0, "> SYSTEM"))
 		self.list_data.append((self.admin, 0, "Admin"))
-		self.list_data.append((self.all_notes_off, 0, "PANIC! All Notes Off"))
+		self.list_data.append((self.all_sounds_off, 0, "PANIC! All Sounds Off"))
 
 		super().fill_list()
 
@@ -98,7 +98,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector):
 
 	def snapshots(self, t='S'):
 		logging.info("Snapshots")
-		self.zyngui.show_screen_reset("snapshot")
+		self.zyngui.show_screen("snapshot")
 
 	def remove_all(self, t='S'):
 		self.zyngui.show_confirm("Do you really want to remove ALL chains & sequences?", self.remove_all_confirmed)
@@ -149,9 +149,9 @@ class zynthian_gui_main_menu(zynthian_gui_selector):
 		logging.info("Admin")
 		self.zyngui.show_screen("admin")
 
-	def all_notes_off(self, t='S'):
-		logging.info("All Notes Off")
-		self.zyngui.callable_ui_action("ALL_NOTES_OFF")
+	def all_sounds_off(self, t='S'):
+		logging.info("All Sounds Off")
+		self.zyngui.callable_ui_action("all_sounds_off")
 
 	def set_select_path(self):
 		self.select_path.set("Main")

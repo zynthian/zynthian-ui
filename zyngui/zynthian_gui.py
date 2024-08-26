@@ -590,11 +590,11 @@ class zynthian_gui:
 
 		if hmode == zynthian_gui.SCREEN_HMODE_ADD:
 			if len(self.screen_history) == 0 or self.screen_history[-1] != screen:
-				self.purge_screen_history(screen)
+				self.prune_screen_history(screen)
 				self.screen_history.append(screen)
 		elif hmode == zynthian_gui.SCREEN_HMODE_REPLACE:
 			self.screen_history.pop()
-			self.purge_screen_history(screen)
+			self.prune_screen_history(screen)
 			self.screen_history.append(screen)
 		elif hmode == zynthian_gui.SCREEN_HMODE_RESET:
 			self.screen_history = [screen]
@@ -629,10 +629,9 @@ class zynthian_gui:
 	def close_screen(self, screen=None):
 		""" Closes the current screen or optionally the specified screen """
 
-		logging.debug("SCREEN HISTORY => {}".format(self.screen_history))
 		if screen is None:
 			screen = self.current_screen
-		self.purge_screen_history(screen)
+		self.prune_screen_history(screen, soft=False)
 		try:
 			last_screen = self.screen_history.pop()
 		except:
@@ -646,6 +645,18 @@ class zynthian_gui:
 
 	def purge_screen_history(self, screen):
 		self.screen_history = list(filter(lambda i: i != screen, self.screen_history))
+
+	def prune_screen_history(self, screen, soft=True):
+		logging.debug(f"SCREEN HISTORY => {self.screen_history}")
+		try:
+			i = self.screen_history.index(screen)
+			last_screen = self.screen_history[-1]
+			self.screen_history = self.screen_history[0:i]
+			if soft and screen == last_screen:
+				self.screen_history.append(screen)
+		except:
+			pass
+		logging.debug(f"PRUNE '{screen}' FROM SCREEN HISTORY => {self.screen_history}")
 
 	def back_screen(self):
 		try:
