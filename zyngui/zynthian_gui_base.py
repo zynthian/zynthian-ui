@@ -43,7 +43,7 @@ class zynthian_gui_base(tkinter.Frame):
 	#Default buttonbar config (touchwidget)
 	buttonbar_config = []
 
-	def __init__(self, has_backbutton = True):
+	def __init__(self, has_backbutton=True):
 		tkinter.Frame.__init__(self,
 			zynthian_gui_config.top,
 			width=zynthian_gui_config.display_width,
@@ -143,8 +143,9 @@ class zynthian_gui_base(tkinter.Frame):
 		self.title_canvas.grid(row=0, column=col, sticky='ew')
 		self.title_canvas.grid_propagate(False)
 		# Setup Topbar's Callback
-		self.title_canvas.bind("<Button-1>", self.cb_topbar_press)
-		self.title_canvas.bind("<ButtonRelease-1>", self.cb_topbar_release)
+		if zynthian_gui_config.enable_touch_navigation:
+			self.title_canvas.bind("<Button-1>", self.cb_topbar_press)
+			self.title_canvas.bind("<ButtonRelease-1>", self.cb_topbar_release)
 		self.path_canvas = self.title_canvas
 		self.topbar_timer = None
 		self.title_timer = None
@@ -161,8 +162,9 @@ class zynthian_gui_base(tkinter.Frame):
 			fg=zynthian_gui_config.color_header_tx)
 		self.label_select_path.place(x=0, rely=0.5, anchor='w')
 		# Setup Topbar's Callback
-		self.label_select_path.bind('<Button-1>', self.cb_topbar_press)
-		self.label_select_path.bind('<ButtonRelease-1>', self.cb_topbar_release)
+		if zynthian_gui_config.enable_touch_navigation:
+			self.label_select_path.bind('<Button-1>', self.cb_topbar_press)
+			self.label_select_path.bind('<ButtonRelease-1>', self.cb_topbar_release)
 
 		# Canvas for displaying status
 		self.status_canvas = tkinter.Canvas(self.tb_frame,
@@ -173,10 +175,10 @@ class zynthian_gui_base(tkinter.Frame):
 			relief='flat',
 			bg=zynthian_gui_config.color_bg)
 		self.status_canvas.grid(row=0, column=col, sticky="ens", padx=(self.status_lpad, 0))
-		# Set Status Callabck
-		self.status_canvas.bind('<Button-1>', self.cb_status_press)
-		self.status_canvas.bind('<ButtonRelease-1>', self.cb_status_release)
-
+		# Set Status Callaback
+		if zynthian_gui_config.enable_touch_navigation:
+			self.status_canvas.bind('<Button-1>', self.cb_status_press)
+			self.status_canvas.bind('<ButtonRelease-1>', self.cb_status_release)
 
 		# Topbar parameter editor
 		self.param_editor_zctrl = None
@@ -360,7 +362,7 @@ class zynthian_gui_base(tkinter.Frame):
 			self.topbar_long_touch_action()
 
 	# Default topbar short touch action
-	def topbar_touch_action(self):
+	def topbar_short_touch_action(self):
 		#self.zyngui.cuia_menu()
 		self.zyngui.callable_ui_action("menu")
 
@@ -386,7 +388,7 @@ class zynthian_gui_base(tkinter.Frame):
 			if time.monotonic() - self.status_press_time > zynthian_gui_config.zynswitch_bold_seconds:
 				self.status_bold_touch_action()
 			else:
-				self.status_touch_action()
+				self.status_short_touch_action()
 
 	# Default status long press callback
 	def cb_status_long(self, params=None):
@@ -396,7 +398,7 @@ class zynthian_gui_base(tkinter.Frame):
 			self.status_long_touch_action()
 
 	# Default status short touch action
-	def status_touch_action(self):
+	def status_short_touch_action(self):
 		self.zyngui.cuia_tempo()
 
 	# Default status bold touch action
@@ -413,30 +415,42 @@ class zynthian_gui_base(tkinter.Frame):
 
 	# Default menu button touch callback
 	def cb_backbutton(self, params=None):
-		self.backbutton_timer = Timer(zynthian_gui_config.zynswitch_bold_seconds, self.cb_backbutton_bold)
+		self.backbutton_timer = Timer(zynthian_gui_config.zynswitch_long_seconds, self.cb_backbutton_long)
 		self.backbutton_timer.start()
+		self.backbutton_press_time = time.monotonic()
 
 	# Default menu button release callback
 	def cb_backbutton_release(self, params=None):
 		if self.backbutton_timer:
 			self.backbutton_timer.cancel()
 			self.backbutton_timer = None
-			self.backbutton_touch_action()
+			if time.monotonic() - self.backbutton_press_time > zynthian_gui_config.zynswitch_bold_seconds:
+				self.backbutton_bold_touch_action()
+			else:
+				self.backbutton_short_touch_action()
 
-	# Default backbutton bold press callback
-	def cb_backbutton_bold(self, params=None):
+	# Default backbutton long press callback
+	def cb_backbutton_long(self, params=None):
 		if self.backbutton_timer:
 			self.backbutton_timer.cancel()
 			self.backbutton_timer = None
-			self.backbutton_bold_touch_action()
+			self.backbutton_long_touch_action()
 
 	# Default backbutton short touch action
-	def backbutton_touch_action(self):
+	def backbutton_short_touch_action(self):
 		self.zyngui.zynswitch_defered('S', 1)
 
 	# Default backbutton bold touch action
 	def backbutton_bold_touch_action(self):
 		self.zyngui.zynswitch_defered('B', 1)
+
+	# Default backbutton long touch action
+	def backbutton_long_touch_action(self):
+		self.zyngui.zynswitch_defered('L', 1)
+
+	# ---------------------------------
+	# Layout managing methods
+	# ---------------------------------
 
 	# Draw screen ready to display (like double buffer) - Override in subclass
 	def build_view(self):
