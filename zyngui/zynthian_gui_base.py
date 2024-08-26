@@ -330,7 +330,7 @@ class zynthian_gui_base(tkinter.Frame):
 				dts = (time.monotonic() - self.button_push_ts)
 				if dts < zynthian_gui_config.zynswitch_bold_seconds:
 					t = 'S'
-				elif dts >= zynthian_gui_config.zynswitch_bold_seconds and dts < zynthian_gui_config.zynswitch_long_seconds:
+				elif zynthian_gui_config.zynswitch_bold_seconds <= dts < zynthian_gui_config.zynswitch_long_seconds:
 					t = 'B'
 				elif dts >= zynthian_gui_config.zynswitch_long_seconds:
 					t = 'L'
@@ -340,7 +340,7 @@ class zynthian_gui_base(tkinter.Frame):
 
 	# Default topbar touch callback
 	def cb_topbar_press(self, params=None):
-		self.topbar_timer = Timer(zynthian_gui_config.zynswitch_bold_seconds, self.cb_topbar_long)
+		self.topbar_timer = Timer(zynthian_gui_config.zynswitch_long_seconds, self.cb_topbar_long)
 		self.topbar_timer.start()
 		self.topbar_press_time = time.monotonic()
 
@@ -368,11 +368,11 @@ class zynthian_gui_base(tkinter.Frame):
 
 	# Default topbar bold touch action
 	def topbar_bold_touch_action(self):
-		self.zyngui.show_screen_reset('zynpad')
+		self.zyngui.callable_ui_action('screen_zynpad')
 
 	# Default topbar long touch action
 	def topbar_long_touch_action(self):
-		self.zyngui.show_screen_reset('zynpad')
+		self.zyngui.callable_ui_action('screen_admin')
 
 	# Default status touch callback
 	def cb_status_press(self, params=None):
@@ -399,15 +399,15 @@ class zynthian_gui_base(tkinter.Frame):
 
 	# Default status short touch action
 	def status_short_touch_action(self):
-		self.zyngui.cuia_tempo()
+		self.zyngui.callable_ui_action('tempo')
 
 	# Default status bold touch action
 	def status_bold_touch_action(self):
-		self.zyngui.cuia_screen_zs3()
+		self.zyngui.callable_ui_action('screen_zs3')
 
 	# Default status long touch action
 	def status_long_touch_action(self):
-		self.zyngui.cuia_all_notes_off()
+		self.zyngui.callable_ui_action('screen_snapshot')
 
 	# ---------------------------------
 	# Backbutton touch event management
@@ -438,15 +438,15 @@ class zynthian_gui_base(tkinter.Frame):
 
 	# Default backbutton short touch action
 	def backbutton_short_touch_action(self):
-		self.zyngui.zynswitch_defered('S', 1)
+		self.zyngui.callable_ui_action('zynswitch', (1, 'S'))
 
 	# Default backbutton bold touch action
 	def backbutton_bold_touch_action(self):
-		self.zyngui.zynswitch_defered('B', 1)
+		self.zyngui.callable_ui_action('zynswitch', (1, 'B'))
 
 	# Default backbutton long touch action
 	def backbutton_long_touch_action(self):
-		self.zyngui.zynswitch_defered('L', 1)
+		self.zyngui.callable_ui_action('zynswitch', (1, 'L'))
 
 	# ---------------------------------
 	# Layout managing methods
