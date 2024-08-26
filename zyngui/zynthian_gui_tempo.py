@@ -36,7 +36,7 @@ from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_selector import zynthian_gui_controller
-
+from zyngine.zynthian_signal_manager import zynsigman
 
 # ------------------------------------------------------------------------------
 # Zynthian Tempo GUI Class
@@ -49,10 +49,10 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
 	def __init__(self):
 		self.buttonbar_config = [
-			("toggle_audio_play", "Audio Play"),
-			("toggle_audio_record", "Audio Record"),
-			("toggle_midi_play", "MIDI Play"),
-			("toggle_midi_record", "MIDI Record")
+			("toggle_audio_play", "Play\nAudio"),
+			("toggle_audio_record", "Record\nAudio"),
+			("toggle_midi_play", "Play\nMIDI"),
+			("toggle_midi_record", "Record\nMIDI")
 		]
 
 		super().__init__()
@@ -149,7 +149,22 @@ class zynthian_gui_tempo(zynthian_gui_base):
 	def build_view(self):
 		self.set_zctrls()
 		self.last_tap_ts = 0
+		if zynthian_gui_config.enable_touch_navigation:
+			zynsigman.register(zynsigman.S_AUDIO_PLAYER, self.zyngui.state_manager.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
+			zynsigman.register(zynsigman.S_AUDIO_RECORDER, self.zyngui.state_manager.SS_AUDIO_RECORDER_STATE, self.cb_status_audio_recorder)
+			zynsigman.register(zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_MIDI_PLAYER_STATE, self.cb_status_midi_player)
+			zynsigman.register(zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_MIDI_RECORDER_STATE, self.cb_status_midi_recorder)
+			self.cb_status_audio_player()
+			self.cb_status_audio_recorder()
+			self.cb_status_midi_player()
+			self.cb_status_midi_recorder()
 		return True
+
+	def hide(self):
+		if self.shown:
+			zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, self.zyngui.state_manager.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
+			zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, self.zyngui.state_manager.SS_AUDIO_RECORDER_STATE, self.cb_status_audio_recorder)
+		return super().hide()
 
 	def zynpot_cb(self, i, dval):
 		if i < 4:
@@ -206,4 +221,37 @@ class zynthian_gui_tempo(zynthian_gui_base):
 	def set_select_path(self):
 		self.select_path.set("Tempo Settings")
 
+	def cb_status_audio_player(self, handle=None, state=None):
+		if self.zyngui.state_manager.status_audio_player:
+			self.buttonbar_button[0]['text'] = "Stop\nAudio Player"
+		else:
+			self.buttonbar_button[0]['text'] = "Play\nAudio"
+
+	def cb_status_audio_recorder(self, chan=None, state=None):
+		if self.zyngui.state_manager.audio_recorder.status:
+			self.buttonbar_button[1]['text'] = "Stop\nAudio Recorder"
+		else:
+			self.buttonbar_button[1]['text'] = "Record\nAudio"
+
+	def cb_status_midi_player(self, handle=None, state=None):
+		if self.zyngui.state_manager.status_midi_player:
+			self.buttonbar_button[2]['text'] = "Stop\nMIDI Player"
+		else:
+			self.buttonbar_button[2]['text'] = "Play\nMIDI"
+
+	def cb_status_midi_recorder(self, chan=None, state=None):
+		if self.zyngui.state_manager.status_midi_recorder:
+			self.buttonbar_button[3]['text'] = "Stop\nMIDI Recorder"
+		else:
+			self.buttonbar_button[3]['text'] = "Record\nMIDI"
+
+	def cb_button_release(self, action, event):
+		if action == "toggle_audio_play":
+			self.zyngui.cuia_toggle_audio_play()
+		if action == "toggle_audio_record":
+			self.zyngui.cuia_toggle_audio_record()
+		if action == "toggle_midi_play":
+			self.zyngui.cuia_toggle_midi_play()
+		if action == "toggle_midi_record":
+			self.zyngui.cuia_toggle_midi_record()
 # ------------------------------------------------------------------------------
