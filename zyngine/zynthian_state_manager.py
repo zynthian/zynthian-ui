@@ -1924,9 +1924,9 @@ class zynthian_state_manager:
 
     def toggle_midi_playback(self, fname=None):
         if libsmf.getPlayState() == zynsmf.PLAY_STATE_STOPPED:
-            self.start_midi_playback(fname)
+            return self.start_midi_playback(fname)
         else:
-            self.stop_midi_playback()
+            return self.stop_midi_playback()
 
     # ---------------------------------------------------------------------------
     # Core Network Services

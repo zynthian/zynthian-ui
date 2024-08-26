@@ -22,7 +22,6 @@
 # 
 # ******************************************************************************
 
-import sys
 import tkinter
 import logging
 
@@ -59,7 +58,7 @@ class zynthian_gui_info:
 			cursor="none",
 			bg=zynthian_gui_config.color_bg,
 			fg=zynthian_gui_config.color_tx)
-		self.textarea.bind("<Button-1>", self.cb_push)
+		self.textarea.bind("<ButtonRelease-1>", self.cb_push)
 		#self.textarea.pack(fill="both", expand=True)
 		self.textarea.place(x=0, y=0)
 

@@ -1375,7 +1375,7 @@ class zynthian_gui:
 			if callable(toggle_menu_func):
 				toggle_menu_func()
 				return
-		self.toggle_screen("main_menu", hmode=zynthian_gui.SCREEN_HMODE_ADD)
+		#self.toggle_screen("main_menu", hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
 	def cuia_bank_preset(self, params=None):
 		if self.is_shown_alsa_mixer():
