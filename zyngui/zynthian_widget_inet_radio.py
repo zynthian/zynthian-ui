@@ -76,6 +76,13 @@ class zynthian_widget_inet_radio(zynthian_widget_base.zynthian_widget_base):
             ),
             fill=zynthian_gui_config.color_tx_off,
         )
+        self.refresh_count = 0
+        self.info_page = 0
+
+    def show(self):
+        self.refresh_count = 0
+        self.info_page = 3
+        super().show()
 
     def on_size(self, event):
         if event.width == self.width and event.height == self.height:
@@ -85,13 +92,33 @@ class zynthian_widget_inet_radio(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.itemconfigure(self.lbl_audio, width= self.width - 30)
         self.widget_canvas.itemconfigure(self.lbl_codec, width= self.width - 30)
         self.widget_canvas.itemconfigure(self.lbl_bitrate, width= self.width - 30)
-    
+        if self.height >= 400:
+            self.widget_canvas.coords(self.lbl_audio, 20, self.height - 100)
+            self.widget_canvas.coords(self.lbl_codec, 20, self.height - 40)
+            self.widget_canvas.coords(self.lbl_bitrate, 20, self.height - 10)
 
     def refresh_gui(self):
-        self.widget_canvas.itemconfigure(self.lbl_info, text=self.monitors["info"])
-        self.widget_canvas.itemconfigure(self.lbl_audio, text=self.monitors["audio"])
-        self.widget_canvas.coords(self.lbl_audio, 20, self.height - 100)
-        self.widget_canvas.itemconfigure(self.lbl_codec, text=self.monitors["codec"])
-        self.widget_canvas.coords(self.lbl_codec, 20, self.height - 40)
-        self.widget_canvas.itemconfigure(self.lbl_bitrate, text=self.monitors["bitrate"])
-        self.widget_canvas.coords(self.lbl_bitrate, 20, self.height - 10)
+        self.refresh_count += 1
+        if self.refresh_count > 50:
+            # Update every 2s
+            self.refresh_count = 0
+            self.info_page += 1
+        if self.height < 400:
+            # Use one field for smaller displays
+            if self.monitors["info"] in ["stream unavailable", "waiting for stream..."]:
+                self.info_page = 4
+            if self.info_page == 1:
+                self.widget_canvas.itemconfigure(self.lbl_info, text=self.monitors["audio"])
+            elif self.info_page == 2:
+                self.widget_canvas.itemconfigure(self.lbl_info, text=self.monitors["codec"])
+            elif self.info_page == 3:
+                self.widget_canvas.itemconfigure(self.lbl_info, text=self.monitors["bitrate"])
+            else:
+                self.widget_canvas.itemconfigure(self.lbl_info, text=self.monitors["info"])
+                if self.info_page > 4:
+                    self.info_page = 0
+        else:
+            self.widget_canvas.itemconfigure(self.lbl_info, text=self.monitors["info"])
+            self.widget_canvas.itemconfigure(self.lbl_audio, text=self.monitors["audio"])
+            self.widget_canvas.itemconfigure(self.lbl_codec, text=self.monitors["codec"])
+            self.widget_canvas.itemconfigure(self.lbl_bitrate, text=self.monitors["bitrate"])
