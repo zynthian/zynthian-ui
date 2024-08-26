@@ -49,10 +49,10 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
 	def __init__(self):
 		self.buttonbar_config = [
-			("toggle_audio_play", "Audio Play"),
-			("toggle_audio_record", "Audio Record"),
-			("toggle_midi_play", "MIDI Play"),
-			("toggle_midi_record", "MIDI Record")
+			("toggle_audio_play", "Play\nAudio"),
+			("toggle_audio_record", "Record\nAudio"),
+			("toggle_midi_play", "Play\nMIDI"),
+			("toggle_midi_record", "Record\nMIDI")
 		]
 
 		super().__init__()
@@ -223,27 +223,27 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
 	def cb_status_audio_player(self, handle=None, state=None):
 		if self.zyngui.state_manager.status_audio_player:
-			self.buttonbar_button[0]['text'] = "Stop Audio Player"
+			self.buttonbar_button[0]['text'] = "Stop\nAudio Player"
 		else:
-			self.buttonbar_button[0]['text'] = "Play Audio"
+			self.buttonbar_button[0]['text'] = "Play\nAudio"
 
 	def cb_status_audio_recorder(self, chan=None, state=None):
 		if self.zyngui.state_manager.audio_recorder.status:
-			self.buttonbar_button[1]['text'] = "Stop Audio Recorder"
+			self.buttonbar_button[1]['text'] = "Stop\nAudio Recorder"
 		else:
-			self.buttonbar_button[1]['text'] = "Record Audio"
+			self.buttonbar_button[1]['text'] = "Record\nAudio"
 
 	def cb_status_midi_player(self, handle=None, state=None):
 		if self.zyngui.state_manager.status_midi_player:
-			self.buttonbar_button[2]['text'] = "Stop MIDI Player"
+			self.buttonbar_button[2]['text'] = "Stop\nMIDI Player"
 		else:
-			self.buttonbar_button[2]['text'] = "Play MIDI"
+			self.buttonbar_button[2]['text'] = "Play\nMIDI"
 
 	def cb_status_midi_recorder(self, chan=None, state=None):
 		if self.zyngui.state_manager.status_midi_recorder:
-			self.buttonbar_button[3]['text'] = "Stop MIDI Recorder"
+			self.buttonbar_button[3]['text'] = "Stop\nMIDI Recorder"
 		else:
-			self.buttonbar_button[3]['text'] = "Record MIDI"
+			self.buttonbar_button[3]['text'] = "Record\nMIDI"
 
 	def cb_button_release(self, action, event):
 		if action == "toggle_audio_play":
