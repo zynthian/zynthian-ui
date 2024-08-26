@@ -407,7 +407,8 @@ class zynthian_gui_base(tkinter.Frame):
 
 	# Default status long touch action
 	def status_long_touch_action(self):
-		self.zyngui.callable_ui_action('screen_snapshot')
+		#self.zyngui.callable_ui_action('screen_snapshot')
+		self.zyngui.callable_ui_action('all_sounds_off')
 
 	# ---------------------------------
 	# Backbutton touch event management
