@@ -1093,6 +1093,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.mixer_strip_offset += 1
 		self.highlight_active_chain()
 
+	def toggle_menu(self):
+		self.zyngui.toggle_screen("main_menu", hmode=self.zyngui.SCREEN_HMODE_ADD)
+
 	# --------------------------------------------------------------------------
 	# MIDI learning management
 	# --------------------------------------------------------------------------

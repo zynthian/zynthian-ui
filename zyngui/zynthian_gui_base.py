@@ -63,7 +63,7 @@ class zynthian_gui_base(tkinter.Frame):
 		self.buttonbar_height = zynthian_gui_config.display_height // 7
 		self.width = zynthian_gui_config.display_width
 		#TODO: Views should use current height if they need dynamic changes else grow rows to fill main_frame
-		if zynthian_gui_config.enable_onscreen_buttons and self.buttonbar_config:
+		if zynthian_gui_config.enable_touch_navigation and self.buttonbar_config:
 			self.height = zynthian_gui_config.display_height - self.topbar_height - self.buttonbar_height
 		else:
 			self.height = zynthian_gui_config.display_height - self.topbar_height
@@ -76,7 +76,7 @@ class zynthian_gui_base(tkinter.Frame):
 		self.status_lpad = self.status_fs
 
 		# Backbutton parameters
-		if has_backbutton and zynthian_gui_config.enable_onscreen_buttons:
+		if has_backbutton and zynthian_gui_config.enable_touch_navigation:
 			self.backbutton_width = self.topbar_height
 			self.backbutton_height = self.topbar_height - 1
 		else:
@@ -143,11 +143,12 @@ class zynthian_gui_base(tkinter.Frame):
 		self.title_canvas.grid(row=0, column=col, sticky='ew')
 		self.title_canvas.grid_propagate(False)
 		# Setup Topbar's Callback
-		self.title_canvas.bind("<Button-1>", self.cb_topbar)
+		self.title_canvas.bind("<Button-1>", self.cb_topbar_press)
 		self.title_canvas.bind("<ButtonRelease-1>", self.cb_topbar_release)
 		self.path_canvas = self.title_canvas
 		self.topbar_timer = None
 		self.title_timer = None
+		self.status_timer = None
 		col += 1
 
 		# Topbar's Select Path
@@ -160,7 +161,7 @@ class zynthian_gui_base(tkinter.Frame):
 			fg=zynthian_gui_config.color_header_tx)
 		self.label_select_path.place(x=0, rely=0.5, anchor='w')
 		# Setup Topbar's Callback
-		self.label_select_path.bind('<Button-1>', self.cb_topbar)
+		self.label_select_path.bind('<Button-1>', self.cb_topbar_press)
 		self.label_select_path.bind('<ButtonRelease-1>', self.cb_topbar_release)
 
 		# Canvas for displaying status
@@ -172,6 +173,10 @@ class zynthian_gui_base(tkinter.Frame):
 			relief='flat',
 			bg=zynthian_gui_config.color_bg)
 		self.status_canvas.grid(row=0, column=col, sticky="ens", padx=(self.status_lpad, 0))
+		# Set Status Callabck
+		self.status_canvas.bind('<Button-1>', self.cb_status_press)
+		self.status_canvas.bind('<ButtonRelease-1>', self.cb_status_release)
+
 
 		# Topbar parameter editor
 		self.param_editor_zctrl = None
@@ -249,7 +254,7 @@ class zynthian_gui_base(tkinter.Frame):
 			self.buttonbar_frame.grid_forget()
 		if config is None:
 			config = self.buttonbar_config    			
-		if not zynthian_gui_config.enable_onscreen_buttons or not config:
+		if not zynthian_gui_config.enable_touch_navigation or not config:
 			return
 
 		self.buttonbar_frame = tkinter.Frame(self,
@@ -332,32 +337,74 @@ class zynthian_gui_base(tkinter.Frame):
 			self.zyngui.callable_ui_action_params(cuia)
 
 	# Default topbar touch callback
-	def cb_topbar(self, params=None):
-		self.topbar_timer = Timer(zynthian_gui_config.zynswitch_bold_seconds, self.cb_topbar_bold)
+	def cb_topbar_press(self, params=None):
+		self.topbar_timer = Timer(zynthian_gui_config.zynswitch_bold_seconds, self.cb_topbar_long)
 		self.topbar_timer.start()
+		self.topbar_press_time = time.monotonic()
 
 	# Default topbar release callback
 	def cb_topbar_release(self, params=None):
 		if self.topbar_timer:
 			self.topbar_timer.cancel()
 			self.topbar_timer = None
-			self.topbar_touch_action()
+			if time.monotonic() - self.topbar_press_time > zynthian_gui_config.zynswitch_bold_seconds:
+				self.topbar_bold_touch_action()
+			else:
+				self.topbar_short_touch_action()
 
-	# Default topbar bold press callback
-	def cb_topbar_bold(self, params=None):
+	# Default topbar long press callback
+	def cb_topbar_long(self, params=None):
 		if self.topbar_timer:
 			self.topbar_timer.cancel()
 			self.topbar_timer = None
-			self.topbar_bold_touch_action()
+			self.topbar_long_touch_action()
 
 	# Default topbar short touch action
-	def topbar_touch_action(self):
+	def topbar_short_touch_action(self):
 		self.zyngui.cuia_menu()
 
 	# Default topbar bold touch action
 	def topbar_bold_touch_action(self):
-		#self.zyngui.show_screen("admin")
-		self.zyngui.show_screen_reset('audio_mixer')
+		self.zyngui.show_screen_reset('zynpad')
+
+	# Default topbar long touch action
+	def topbar_long_touch_action(self):
+		self.zyngui.show_screen_reset('zynpad')
+
+	# Default status touch callback
+	def cb_status_press(self, params=None):
+		self.status_timer = Timer(zynthian_gui_config.zynswitch_long_seconds, self.cb_status_long)
+		self.status_timer.start()
+		self.status_press_time = time.monotonic()
+
+	# Default status release callback
+	def cb_status_release(self, params=None):
+		if self.status_timer:
+			self.status_timer.cancel()
+			self.status_timer = None
+			if time.monotonic() - self.status_press_time > zynthian_gui_config.zynswitch_bold_seconds:
+				self.status_bold_touch_action()
+			else:
+				self.status_touch_action()
+
+	# Default status long press callback
+	def cb_status_long(self, params=None):
+		if self.status_timer:
+			self.status_timer.cancel()
+			self.status_timer = None
+			self.status_long_touch_action()
+
+	# Default status short touch action
+	def status_touch_action(self):
+		self.zyngui.cuia_tempo()
+
+	# Default status bold touch action
+	def status_bold_touch_action(self):
+		self.zyngui.cuia_screen_zs3()
+
+	# Default status long touch action
+	def status_long_touch_action(self):
+		self.zyngui.cuia_all_notes_off()
 
 	# ---------------------------------
 	# Backbutton touch event management
@@ -744,7 +791,7 @@ class zynthian_gui_base(tkinter.Frame):
 	# Function to update display, e.g. after geometry changes
 	# Override if required
 	def update_layout(self):
-		if zynthian_gui_config.enable_onscreen_buttons and self.buttonbar_config:
+		if zynthian_gui_config.enable_touch_navigation and self.buttonbar_config:
 			self.height = zynthian_gui_config.display_height - self.topbar_height - self.buttonbar_height
 		else:
 			self.height = zynthian_gui_config.display_height - self.topbar_height

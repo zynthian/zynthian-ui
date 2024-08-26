@@ -48,6 +48,13 @@ class zynthian_gui_tempo(zynthian_gui_base):
 	NUM_TAPS = 4
 
 	def __init__(self):
+		self.buttonbar_config = [
+			("toggle_audio_play", "Audio Play"),
+			("toggle_audio_record", "Audio Record"),
+			("toggle_midi_play", "MIDI Play"),
+			("toggle_midi_record", "MIDI Record")
+		]
+
 		super().__init__()
 
 		self.state_manager = self.zyngui.state_manager
@@ -198,6 +205,5 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
 	def set_select_path(self):
 		self.select_path.set("Tempo Settings")
-
 
 # ------------------------------------------------------------------------------
