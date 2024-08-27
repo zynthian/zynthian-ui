@@ -1985,7 +1985,7 @@ class zynthian_gui:
 	def zynswitch_X(self, i):
 		logging.debug('X Switch %d' % i)
 		if self.current_screen in ("control", "alsa_mixer") and self.screens[self.current_screen].mode == 'control':
-			self.screens['control'].midi_learn(i)  # TODO: Check zynswitch_X/Y learn
+			self.screens['control'].toggle_midi_learn(i)
 
 	def zynswitch_Y(self, i):
 		logging.debug('Y Switch %d' % i)

@@ -543,7 +543,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def enter_midi_learn(self, mlmode=MIDI_LEARNING_CHAIN, preselect=True):
 		if mlmode > MIDI_LEARNING_DISABLED:
 			self.midi_learning = mlmode
-			self.set_buttonbar_label(0, "CANCEL")
 			self.refresh_midi_bind(preselect)
 			self.set_select_path()
 
@@ -553,7 +552,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.zyngui.state_manager.disable_learn_cc()
 			self.refresh_midi_bind()
 			self.set_select_path()
-			self.set_buttonbar_label(0, "PRESETS\n[mixer]")
 
 	def toggle_midi_learn(self, i=None):
 		if self.mode != 'control':
