@@ -603,11 +603,11 @@ class zynthian_gui_controller(tkinter.Canvas):
 			if self.active_motion_axis == 0:
 				if zynthian_gui_config.enable_touch_controller_switches:
 					if dts < zynthian_gui_config.zynswitch_bold_seconds:
-						self.zyngui.zynswitch_defered('S', self.index)
+						self.zyngui.cuia_v5_zynpot_switch((self.index, 'S'))
 					elif zynthian_gui_config.zynswitch_bold_seconds <= dts < zynthian_gui_config.zynswitch_long_seconds:
-						self.zyngui.zynswitch_defered('B', self.index)
+						self.zyngui.cuia_v5_zynpot_switch((self.index, 'B'))
 					elif dts >= zynthian_gui_config.zynswitch_long_seconds:
-						self.zyngui.zynswitch_defered('L', self.index)
+						self.zyngui.cuia_v5_zynpot_switch((self.index, 'L')) # TODO: This should trigger before release
 			elif self.canvas_motion_dx > self.winfo_width() // 2:
 				self.zyngui.zynswitch_defered('X', self.index)
 			elif self.canvas_motion_dx < -self.winfo_width() // 2:
