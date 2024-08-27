@@ -61,10 +61,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.midi_learning = MIDI_LEARNING_DISABLED
 
 		self.buttonbar_config = [
-			(0, 'NEXT CHAIN\n[menu]'),
-			(1, 'PRESETS\n[mixer]'),
-			(2, 'LEARN\n[zs3]'),
-			(3, 'PAGE\n[options]')
+			("arrow_left", 'Previous\nChain'),
+			("zynswitch 3,S", 'Show\nPages'),
+			("toggle_sidebar", 'Toggle\nSidebar'),
+			("arrow_right", 'Next\nChain')
 		]
 
 		if zynthian_gui_config.layout['columns'] == 3:

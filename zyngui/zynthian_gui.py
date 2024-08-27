@@ -1649,6 +1649,13 @@ class zynthian_gui:
 		except (AttributeError, TypeError):
 			pass
 
+	def cuia_toggle_sidebar(self, params=None):
+		try:
+			show = not self.screens[self.current_screen].sidebar_shown
+			self.screens[self.current_screen].show_sidebar(show)
+		except (AttributeError, TypeError):
+			pass
+
 	def cuia_zynaptik_cvin_set_volts_octave(self, params):
 		try:
 			lib_zyncore.zynaptik_cvin_set_volts_octave(float(params[0]))
