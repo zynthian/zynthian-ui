@@ -349,10 +349,23 @@ class zynthian_gui_controller(tkinter.Canvas):
 				val = self.zctrl.value + 1
 			else:
 				val = self.zctrl.value
-			if self.format_print and -1000 < val < 1000:
+
+			if self.zctrl.is_logarithmic:
+				absval = abs(val)
+				if absval < 10.0:
+					self.format_print = "{:.3f}"
+				elif absval < 100.0:
+					self.format_print = "{:.2f}"
+				elif absval < 1000.0:
+					self.format_print = "{:.1f}"
+				else:
+					self.format_print = "{:.0f}"
+				self.value_print = self.format_print.format(val)
+			elif self.format_print and -1000 < val < 1000:
 				self.value_print = self.format_print.format(val)
 			else:
 				self.value_print = str(int(val))
+
 		self.refresh_plot_value = True
 
 	def plot_value(self):
@@ -548,12 +561,15 @@ class zynthian_gui_controller(tkinter.Canvas):
 				# If few values => use fixed step=1 (no adaptative step size!)
 				if zctrl.value_range <= 32:
 					self.step = 1
-			# Float
-			else:
-				if zctrl.nudge_factor < 0.1:
+			# Linear Float
+			elif not zctrl.is_logarithmic:
+				if zctrl.nudge_factor_fine < 0.01:
+					self.format_print = "{:.3f}"
+				elif zctrl.nudge_factor_fine < 0.1:
 					self.format_print = "{:.2f}"
 				else:
 					self.format_print = "{:.1f}"
+			# Logarithmic float => It's calculated on-the-fly depending of the displayed value
 
 		#logging.debug(f"ZCTRL '{zctrl.short_name}' = {zctrl.value} ({zctrl.value_min} -> {zctrl.value_max}, {self.step}); {zctrl.labels}; {zctrl.ticks}")
 		self.setup_zynpot()
@@ -570,7 +586,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 
 	def zynpot_cb(self, dval):
 		if self.zctrl:
-			return self.zctrl.nudge(dval)
+			return self.zctrl.nudge(dval, fine=self.zyngui.alt_mode)
 		else:
 			return False
 
@@ -579,7 +595,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		if self.preselection is not None:
 			self.zyngui.screens["control"].zctrl_touch(self.preselection)
 		if self.zctrl:
-			return self.zctrl.nudge(dval)
+			return self.zctrl.nudge(dval, fine=self.zyngui.alt_mode)
 		else:
 			return False
 
