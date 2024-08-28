@@ -190,6 +190,8 @@ class zynthian_gui_base(tkinter.Frame):
 
 		# Init touchbar
 		self.buttonbar_frame = None
+		self.bg_color = zynthian_gui_config.color_panel_bg
+		self.fg_color = zynthian_gui_config.color_header_tx
 		self.init_buttonbar()
 
 		self.button_push_ts = 0
@@ -281,9 +283,12 @@ class zynthian_gui_base(tkinter.Frame):
 				uniform='buttonbar',
 				pad=0)
 			try:
-				self.add_button(i, config[i][0], config[i][1])
-			except:
-				pass
+				if len(config[i]) > 2:
+					self.add_button(i, config[i][0], config[i][1], config[i][2])
+				else:
+					self.add_button(i, config[i][0], config[i][1])
+			except Exception as e:
+				logging.error(e)
 
 	# Set the label for a button in the buttonbar
 	# column: Column / button index
@@ -296,32 +301,34 @@ class zynthian_gui_base(tkinter.Frame):
 	# column: Column / button index
 	# cuia: Action to trigger when button pressed
 	# label: Text to show on button
-	def add_button(self, column, cuia, label):
+	def add_button(self, column, cuia, label, get_status_func=None):
 		# Touchbar frame
-		padx = (0,0)
+		padx = (0, 0)
 		for col in range(column):
 			if col == 0:
 				self.buttonbar_button[col].grid(row=0, column=col, padx=(0,1))
 			elif col < len(self.buttonbar_button):
 				self.buttonbar_button[col].grid(row=0, column=col, padx=(1,1))
-			padx = (1,0)
+			padx = (1, 0)
 		self.buttonbar_button.append(None)
 		self.buttonbar_button[column] = select_button = tkinter.Button(
 			self.buttonbar_frame,
-			bg=zynthian_gui_config.color_panel_bg,
-			fg=zynthian_gui_config.color_header_tx,
-			activebackground=zynthian_gui_config.color_panel_bg,
-			activeforeground=zynthian_gui_config.color_header_tx,
-			highlightbackground=zynthian_gui_config.color_bg,
-			highlightcolor=zynthian_gui_config.color_bg,
+			bg=self.bg_color,
+			fg=self.fg_color,
+			activebackground=self.bg_color,
+			activeforeground=self.fg_color,
+			highlightbackground=self.bg_color,
+			highlightcolor=self.bg_color,
 			highlightthickness=0,
 			bd=0,
 			relief='flat',
 			font=zynthian_gui_config.font_buttonbar,
 			text=label)
+		select_button.cuia = cuia
+		select_button.get_status_func = get_status_func
 		select_button.grid(row=0, column=column, sticky='nswe', padx=padx)
-		select_button.bind('<ButtonPress-1>', lambda e: self.cb_button_push(e))
-		select_button.bind('<ButtonRelease-1>', lambda e: self.cb_button_release(cuia, e))
+		select_button.bind('<ButtonPress-1>', self.cb_button_push)
+		select_button.bind('<ButtonRelease-1>', self.cb_button_release)
 
 	# Handle buttonbar button press
 	# event: Button event (not used)
@@ -331,7 +338,8 @@ class zynthian_gui_base(tkinter.Frame):
 	# Handle buttonbar button release
 	# cuia: Action to trigger
 	# event: Button event (not used)
-	def cb_button_release(self, cuia, event):
+	def cb_button_release(self, event):
+		cuia = event.widget.cuia
 		if isinstance(cuia, int):
 			t = 'S'
 			if self.button_push_ts:
@@ -342,9 +350,35 @@ class zynthian_gui_base(tkinter.Frame):
 					t = 'B'
 				elif dts >= zynthian_gui_config.zynswitch_long_seconds:
 					t = 'L'
-			self.zyngui.zynswitch_defered(t, cuia)
+			self.zyngui.callable_ui_action("zynswitch", (cuia, t))
 		else:
 			self.zyngui.callable_ui_action_params(cuia)
+
+		# Invert BG & FG colors depending of returned status
+		def update_button_status():
+			try:
+				if callable(event.widget.get_status_func):
+					if event.widget.get_status_func():
+						event.widget.config(bg=self.fg_color,
+							fg=self.bg_color,
+							activebackground=self.fg_color,
+							activeforeground=self.bg_color,
+							highlightbackground=self.fg_color,
+							highlightcolor=self.fg_color)
+					else:
+						event.widget.config(bg=self.bg_color,
+							fg=self.fg_color,
+							activebackground=self.bg_color,
+							activeforeground=self.fg_color,
+							highlightbackground=self.bg_color,
+							highlightcolor=self.bg_color)
+			except Exception as e:
+				logging.error(e)
+
+		# We need to wait a little bit so the queued CUIA is executed!!!
+		# THIS DOESN'T WORK VERY NICELY! We need a better way!
+		zynthian_gui_config.top.after(100, update_button_status)
+
 
 	# Default topbar touch callback
 	def cb_topbar_press(self, params=None):

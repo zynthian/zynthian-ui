@@ -985,6 +985,9 @@ class zynthian_gui:
 			else:
 				sleep(0.1)
 
+	def get_alt_mode(self):
+		return self.alt_mode
+
 	def clean_all(self):
 		if self.chain_manager.get_chain_count() > 0:
 			self.state_manager.save_last_state_snapshot()

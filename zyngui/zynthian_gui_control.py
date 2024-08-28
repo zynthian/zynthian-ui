@@ -61,10 +61,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.midi_learning = MIDI_LEARNING_DISABLED
 
 		self.buttonbar_config = [
-			("arrow_left", 'Previous\nChain'),
-			("zynswitch 3,S", 'Show\nPages'),
-			("toggle_sidebar", 'Toggle\nSidebar'),
-			("arrow_right", 'Next\nChain')
+			("arrow_left", '<< Prev'),
+			("toggle_alt_mode", 'ALT', self.get_alt_mode),
+			("zynswitch 3,S", 'Pages', self.get_select_mode),
+			("arrow_right", 'Next >>')
 		]
 
 		if zynthian_gui_config.layout['columns'] == 3:
@@ -96,6 +96,15 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def hide(self):
 		self.exit_midi_learn()
 		super().hide()
+
+	def get_alt_mode(self):
+		return self.zyngui.alt_mode
+
+	def get_select_mode(self):
+		if self.mode == "select":
+			return True
+		else:
+			return False
 
 	def show_sidebar(self, show):
 		self.sidebar_shown = show
