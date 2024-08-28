@@ -636,51 +636,52 @@ class zynthian_gui_mixer_strip():
 	# Function to handle mixer strip press
 	#	event: Mouse event
 	def on_strip_press(self, event):
-		self.strip_drag_start = event
-		self.dragging = False
-
 		if zynthian_gui_config.zyngui.cb_touch(event):
 			return "break"
+
+		self.strip_drag_start = event
+		self.dragging = False
+		if self.chain:
+			self.parent.zyngui.chain_manager.set_active_chain_by_object(self.chain)
 
 	# Function to handle legend strip release
 	def on_strip_release(self, event):
 		if zynthian_gui_config.zyngui.cb_touch_release(event):
 			return "break"
 
-		if self.dragging:
-			self.dragging = False
-		elif self.midi_learning:
+		if self.midi_learning:
 			return
-		else:
-			if self.chain:
-				self.parent.zyngui.chain_manager.set_active_chain_by_object(self.chain)
-			if self.strip_drag_start:
-				delta = event.time - self.strip_drag_start.time
-				self.strip_drag_start = None
-				if delta > 400:
-					zynthian_gui_config.zyngui.screens['chain_options'].setup(self.chain_id)
-					zynthian_gui_config.zyngui.show_screen('chain_options')
-				else:
-					zynthian_gui_config.zyngui.chain_control(self.chain_id)
+		if self.strip_drag_start and not self.dragging:
+			delta = event.time - self.strip_drag_start.time
+			if delta > 400:
+				zynthian_gui_config.zyngui.screens['chain_options'].setup(self.chain_id)
+				zynthian_gui_config.zyngui.show_screen('chain_options')
+			else:
+				zynthian_gui_config.zyngui.chain_control(self.chain_id)
+		self.dragging = False
+		self.parent.moving_chain = False
+		self.strip_drag_start = None
+		self.parent.refresh_visible_strips()
 
 	# Function to handle legend strip drag
 	def on_strip_motion(self, event):
 		if self.strip_drag_start:
 			delta = event.x - self.strip_drag_start.x
-			if delta < -self.width and self.parent.mixer_strip_offset + len(self.parent.visible_mixer_strips) < len(self.parent.zyngui.chain_manager.chains):
-				# Dragged more than one strip width to left
-				self.parent.mixer_strip_offset += 1
-				self.parent.highlight_active_chain()
-				self.dragging = True
-				self.strip_drag_start.x = event.x
-				self.parent.refresh_visible_strips()
-			elif delta > self.width and self.parent.mixer_strip_offset > 0:
-				# Dragged more than one strip width to right
-				self.parent.mixer_strip_offset -= 1
-				self.parent.highlight_active_chain()
-				self.dragging = True
-				self.strip_drag_start.x = event.x
-				self.parent.refresh_visible_strips()
+			if delta > self.width:
+				offset = +1
+			elif delta < -self.width:
+				offset = -1
+			else:
+				return
+			# Dragged more than one strip width
+			self.dragging = True
+			if self.parent.moving_chain:
+				self.parent.zyngui.chain_manager.move_chain(offset)
+			elif self.parent.mixer_strip_offset - offset >= 0 and self.parent.mixer_strip_offset - offset + len(self.parent.visible_mixer_strips) <= len(self.parent.zyngui.chain_manager.chains):
+				self.parent.mixer_strip_offset -= offset
+			self.strip_drag_start.x = event.x
+			self.parent.refresh_visible_strips()
+			self.parent.highlight_active_chain()
 
 	# Function to handle mute button release
 	#	event: Mouse event
@@ -801,6 +802,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle showing display
 	def build_view(self):
+		if zynthian_gui_config.enable_touch_navigation and self.moving_chain or self.midi_learning:
+			self.show_back_button()
+
 		self.set_title()
 		if zynthian_gui_config.enable_dpm:
 			self.zynmixer.enable_dpm(0, self.MAIN_MIXBUS_STRIP_INDEX, True)
@@ -990,6 +994,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return True
 
 		elif swi == 1:
+			if zynthian_gui_config.enable_touch_navigation and self.midi_learning:
+				self.exit_midi_learn()
+				return True
 			# This is ugly, but it's the only way i figured for MIDI-learning "mute" without touch.
 			# Moving the "learn" button to back is not an option. It's a labeled button on V4!!
 			if t == "S" and not self.moving_chain:
@@ -1112,16 +1119,29 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		elif params == 'clean':
 			self.midi_unlearn_action()
 
+	def enter_midi_learn(self):
+		self.midi_learning = True
+		for strip in self.visible_mixer_strips:
+			if strip.chain:
+				strip.enable_midi_learn(self.midi_learning)
+		self.main_mixbus_strip.enable_midi_learn(self.midi_learning)
+		if zynthian_gui_config.enable_touch_navigation:
+			self.show_back_button(True)
+
+	def exit_midi_learn(self):
+		for strip in self.visible_mixer_strips:
+			strip.enable_midi_learn(False)
+		self.main_mixbus_strip.enable_midi_learn(False)
+		self.midi_learning = False
+		if zynthian_gui_config.enable_touch_navigation:
+			self.show_back_button(False)
+
 	# Pre-select all controls in a chain to allow selection of actual control to MIDI learn
 	def toggle_midi_learn(self):
 		if self.midi_learning:
 			self.exit_midi_learn()
 		else:
-			self.midi_learning = True
-			for strip in self.visible_mixer_strips:
-				if strip.chain:
-					strip.enable_midi_learn(self.midi_learning)
-			self.main_mixbus_strip.enable_midi_learn(self.midi_learning)
+			self.enter_midi_learn()
 		return self.midi_learning
 
 	# Respond to a strip being configured to midi learn
@@ -1131,12 +1151,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				strip.enable_midi_learn(False)
 		if modified_strip != self.main_mixbus_strip:
 			self.main_mixbus_strip.enable_midi_learn(False)
-
-	def exit_midi_learn(self):
-		for strip in self.visible_mixer_strips:
-			strip.enable_midi_learn(False)
-		self.main_mixbus_strip.enable_midi_learn(False)
-		self.midi_learning = False
 
 	def midi_unlearn_action(self):
 		self.zynmixer.disable_midi_learn()

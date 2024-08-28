@@ -23,11 +23,11 @@
 # 
 #******************************************************************************
 
-import sys
 import math
 import tkinter
 import logging
 from datetime import datetime
+from time import monotonic
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -79,8 +79,12 @@ class zynthian_gui_control_xy():
 			bg=zynthian_gui_config.color_bg)
 		self.canvas.grid(padx=(self.padx, self.padx), pady=(self.pady, self.pady))
 
-		# Setup Canvas Callback
+		# Setup Canvas Callbacks
 		self.canvas.bind("<B1-Motion>", self.cb_canvas)
+		if zynthian_gui_config.enable_touch_navigation:
+			self.last_tap = 0
+			self.tap_count = 0
+			self.canvas.bind("<Button-1>", self.cb_press)
 
 		# Create Cursor
 		self.hline=self.canvas.create_line(
@@ -189,6 +193,16 @@ class zynthian_gui_control_xy():
 		self.refresh()
 		self.last_motion_ts = datetime.now()
 
+	def cb_press(self, event):
+		now = monotonic()
+		if now > self.last_tap + 0.05 and now < self.last_tap + 0.5:
+			self.tap_count += 1
+			if self.tap_count > 1:
+				self.tap_count = 0
+				self.zyngui.cuia_back()
+		else:
+			self.tap_count = 0
+		self.last_tap = now
 
 	def zynpot_cb(self, i, dval):
 		# Wait 0.1 seconds after last motion for start reading encoders again

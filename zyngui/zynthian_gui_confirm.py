@@ -71,7 +71,7 @@ class zynthian_gui_confirm():
 			pady=zynthian_gui_config.font_size,
 			bg=zynthian_gui_config.color_ctrl_bg_off,
 			fg=zynthian_gui_config.color_tx)
-		self.yes_text_label.bind("<Button-1>",self.cb_yes_push)
+		self.yes_text_label.bind("<ButtonRelease-1>",self.cb_yes_push)
 		self.yes_text_label.place(x=zynthian_gui_config.display_width, y=zynthian_gui_config.display_height, anchor=tkinter.SE)
 
 		self.no_text_label=tkinter.Label(self.main_frame,
@@ -83,7 +83,7 @@ class zynthian_gui_confirm():
 			pady=zynthian_gui_config.font_size,
 			bg=zynthian_gui_config.color_ctrl_bg_off,
 			fg=zynthian_gui_config.color_tx)
-		self.no_text_label.bind("<Button-1>",self.cb_no_push)
+		self.no_text_label.bind("<ButtonRelease-1>",self.cb_no_push)
 		self.no_text_label.place(x=0, y=zynthian_gui_config.display_height, anchor=tkinter.SW)
 
 

@@ -493,7 +493,8 @@ enable_touch_widgets = int(os.environ.get('ZYNTHIAN_UI_TOUCH_WIDGETS', 0))
 enable_touch_navigation = int(os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION', 0))
 force_enable_cursor = int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR', 0))
 
-if enable_touch_navigation or check_wiring_layout(["Z2", "V5"]):
+if check_wiring_layout(["Z2", "V5"]):
+	# TODO: BW: Do we need to inhibit touch mimic of V5 encoders?
 	enable_touch_controller_switches = 0
 else:
 	enable_touch_controller_switches = 1

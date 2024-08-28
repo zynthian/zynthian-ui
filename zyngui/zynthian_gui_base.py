@@ -76,7 +76,7 @@ class zynthian_gui_base(tkinter.Frame):
 		self.status_lpad = self.status_fs
 
 		# Backbutton parameters
-		if has_backbutton and zynthian_gui_config.enable_touch_navigation:
+		if zynthian_gui_config.enable_touch_navigation:
 			self.backbutton_width = self.topbar_height
 			self.backbutton_height = self.topbar_height - 1
 		else:
@@ -105,29 +105,29 @@ class zynthian_gui_base(tkinter.Frame):
 		col = 0
 
 		# Canvas for menu button
-		if self.backbutton_width:
-			self.backbutton_canvas = tkinter.Canvas(self.tb_frame,
-				width=self.backbutton_width,
-				height=self.backbutton_height,
-				bd=0,
-				highlightthickness=0,
-				relief='flat',
-				bg=zynthian_gui_config.color_panel_bg)
+		self.backbutton_canvas = tkinter.Canvas(self.tb_frame,
+			width=self.backbutton_width,
+			height=self.backbutton_height,
+			bd=0,
+			highlightthickness=0,
+			relief='flat',
+			bg=zynthian_gui_config.color_panel_bg)
+		if has_backbutton:
 			self.backbutton_canvas.grid(row=0, column=col, sticky="wn", padx=(0, self.status_lpad))
 			self.backbutton_canvas.grid_propagate(False)
-			self.backbutton_canvas.bind('<Button-1>', self.cb_backbutton)
-			self.backbutton_canvas.bind('<ButtonRelease-1>', self.cb_backbutton_release)
-			self.backbutton_timer = None
-			col += 1
-			# Add back-arrow symbol
-			self.label_backbutton = tkinter.Label(self.backbutton_canvas,
-				font=zynthian_gui_config.font_topbar,
-				text="<",
-				bg=zynthian_gui_config.color_panel_bg,
-				fg=zynthian_gui_config.color_tx)
-			self.label_backbutton.place(relx=0.3, rely=0.5, anchor='w')
-			self.label_backbutton.bind('<Button-1>', self.cb_backbutton)
-			self.label_backbutton.bind('<ButtonRelease-1>', self.cb_backbutton_release)
+		self.backbutton_canvas.bind('<Button-1>', self.cb_backbutton)
+		self.backbutton_canvas.bind('<ButtonRelease-1>', self.cb_backbutton_release)
+		self.backbutton_timer = None
+		col += 1
+		# Add back-arrow symbol
+		self.label_backbutton = tkinter.Label(self.backbutton_canvas,
+			font=zynthian_gui_config.font_topbar,
+			text="<",
+			bg=zynthian_gui_config.color_panel_bg,
+			fg=zynthian_gui_config.color_tx)
+		self.label_backbutton.place(relx=0.3, rely=0.5, anchor='w')
+		self.label_backbutton.bind('<Button-1>', self.cb_backbutton)
+		self.label_backbutton.bind('<ButtonRelease-1>', self.cb_backbutton_release)
 
 		# Title
 		self.title = ""
@@ -204,6 +204,14 @@ class zynthian_gui_base(tkinter.Frame):
 
 		self.disable_param_editor() #TODO: Consolidate set_title and set_select_path, etc.
 		self.bind("<Configure>", self.on_size)
+
+	def show_back_button(self, show=True):
+		if show:
+			self.backbutton_canvas.grid(row=0, column=0, sticky="wn", padx=(0, self.status_lpad))
+			self.backbutton_canvas.grid_propagate(False)
+		else:
+			self.backbutton_canvas.grid_remove()
+
 
 	# Function to update title
 	# title: Title to display in topbar
