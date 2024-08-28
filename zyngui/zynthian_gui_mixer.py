@@ -581,6 +581,7 @@ class zynthian_gui_mixer_strip():
 	# event: Mouse event
 	def on_fader_press(self, event):
 		self.touch_y = event.y
+		self.touch_x = event.x
 		if zynthian_gui_config.zyngui.cb_touch(event):
 			return "break"
 
@@ -598,6 +599,9 @@ class zynthian_gui_mixer_strip():
 			self.set_volume(self.zctrls['level'].value + (self.touch_y - event.y) / self.fader_height)
 			self.touch_y = event.y
 			self.draw_fader()
+			self.set_balance(self.zctrls['balance'].value - (self.touch_x - event.x) / self.fader_width)
+			self.touch_x = event.x
+			self.draw_balance()
 
 	# Function to handle mouse wheel down over fader
 	#	event: Mouse event
