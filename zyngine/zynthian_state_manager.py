@@ -132,6 +132,8 @@ class zynthian_state_manager:
         self.midi_learn_pc = None   # When ZS3 Program Change MIDI learning is enabled, the name used for creating new ZS3, empty string for auto-generating a name. None when disabled.
         self.midi_learn_zctrl = None   # zctrl currently being learned
         self.sync = False  # True to request file system sync
+        self.zctrl_x = None
+        self.zctrl_y = None
 
         self.cuia_queue = SimpleQueue()  # Queue for CUIA calls
 
@@ -1288,6 +1290,18 @@ class zynthian_state_manager:
         if "global" in zs3_state:
             if "midi_transpose" in zs3_state["global"]:
                 lib_zyncore.set_global_transpose(int(zs3_state["global"]["midi_transpose"]))
+            if "zctrl_x" in zs3_state["global"]:
+                try:
+                    processor = self.chain_manager.processors[zs3_state["global"]["zctrl_x"][0]]
+                    self.zctrl_x = processor.controllers_dict[zs3_state["global"]["zctrl_x"][1]]
+                except:
+                    self.zctrl_x = None
+            if "zctrl_y" in zs3_state["global"]:
+                try:
+                    processor = self.chain_manager.processors[zs3_state["global"]["zctrl_y"][0]]
+                    self.zctrl_y = processor.controllers_dict[zs3_state["global"]["zctrl_y"][1]]
+                except:
+                    self.zctrl_y = None
 
         zynsigman.send(zynsigman.S_STATE_MAN, self.SS_LOAD_ZS3, zs3_id=zs3_id)
         return True
@@ -1408,6 +1422,18 @@ class zynthian_state_manager:
 
         # Add global parameters
         self.zs3[zs3_id]["global"]["midi_transpose"] = lib_zyncore.get_global_transpose()
+        try:
+            processor_id = self.zctrl_x.processor.id
+            symbol = self.zctrl_x.symbol
+            self.zs3[zs3_id]["global"]["zctrl_x"] = [processor_id, symbol]
+        except:
+            pass
+        try:
+            processor_id = self.zctrl_y.processor.id
+            symbol = self.zctrl_y.symbol
+            self.zs3[zs3_id]["global"]["zctrl_y"] = [processor_id, symbol]
+        except:
+            pass
 
         zynsigman.send(zynsigman.S_STATE_MAN, self.SS_SAVE_ZS3, zs3_id=zs3_id)
 

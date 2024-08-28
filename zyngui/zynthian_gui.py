@@ -949,14 +949,6 @@ class zynthian_gui:
 	def show_control(self):
 		self.chain_control()
 
-	def show_control_xy(self, xctrl, yctrl):
-		self.screens['control_xy'].set_controllers(xctrl, yctrl)
-		self.screens['control_xy'].show()
-		self.current_screen = 'control'
-		self.hide_screens(exclude='control_xy')
-		self.screens['control'].set_mode_control()
-		logging.debug("SHOW CONTROL-XY => %s, %s" % (xctrl.symbol, yctrl.symbol))
-
 	def toggle_favorites(self):
 		if self.get_current_processor():
 			self.get_current_processor().toggle_show_fav_presets()
@@ -1973,28 +1965,6 @@ class zynthian_gui:
 		elif i >= 4:
 			return self.custom_switch_ui_action(i - 4, "S")
 
-	def zynswitch_double(self, i):
-		self.dtsw[i] = datetime.now()
-		for j in range(4):
-			if j == i: continue
-			if abs((self.dtsw[i] - self.dtsw[j]).total_seconds()) < 0.3:
-				dswstr = str(i) + '+' + str(j)
-				logging.debug('Double Switch ' + dswstr)
-				#self.show_control_xy(i, j)
-				self.show_screen('control')
-				self.screens['control'].set_xyselect_mode(i, j)
-				return True
-
-	def zynswitch_X(self, i):
-		logging.debug('X Switch %d' % i)
-		if self.current_screen in ("control", "alsa_mixer") and self.screens[self.current_screen].mode == 'control':
-			self.screens['control'].toggle_midi_learn(i)
-
-	def zynswitch_Y(self, i):
-		logging.debug('Y Switch %d' % i)
-		if self.current_screen in ("control", "alsa_mixer") and self.screens[self.current_screen].mode == 'control':
-			self.screens['control'].midi_learn_options(i, unlearn_only=True)
-
 	def midi_unlearn_options_cb(self, option, param):
 		if param:
 			self.screens['control'].midi_unlearn(param)
@@ -2356,16 +2326,10 @@ class zynthian_gui:
 							self.zynswitch_short(i)
 						elif t == 'B':
 							zynswitch_cuia_ts[i] = None
-							# Double switches must be bold
-							if not self.zynswitch_double(i):
-								self.zynswitch_bold(i)
+							self.zynswitch_bold(i)
 						elif t == 'L':
 							zynswitch_cuia_ts[i] = None
 							self.zynswitch_long(i)
-						elif t == 'X':
-							self.zynswitch_X(i)
-						elif t == 'Y':
-							self.zynswitch_Y(i)
 						else:
 							zynswitch_cuia_ts[i] = None
 							logging.warning("Unknown Action Type: {}".format(t))

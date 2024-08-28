@@ -142,6 +142,8 @@ ZynthianState = {
             },
             "global": { # Dictionary of global params settable by zs3 indexed by param name
                 "midi_transpose": 0, # Semitones to globally transpose
+                "zctrl_x": [0,"volume"], # Mapping of x-axis controller [proc_id, symbol]
+                "zctrl_y": [0,"cutoff"], # Mapping of y-axis controller [proc_id, symbol]
             }
         },
         "1/2": {}, # ZS3 for channel 1, program change 2

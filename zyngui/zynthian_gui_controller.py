@@ -624,10 +624,6 @@ class zynthian_gui_controller(tkinter.Canvas):
 						self.zyngui.cuia_v5_zynpot_switch((self.index, 'B'))
 					elif dts >= zynthian_gui_config.zynswitch_long_seconds:
 						self.zyngui.cuia_v5_zynpot_switch((self.index, 'L')) # TODO: This should trigger before release
-			elif self.canvas_motion_dx > self.winfo_width() // 2:
-				self.zyngui.zynswitch_defered('X', self.index)
-			elif self.canvas_motion_dx < -self.winfo_width() // 2:
-				self.zyngui.zynswitch_defered('Y', self.index)
 
 	def cb_canvas_motion(self, event):
 		if self.canvas_push_ts:
@@ -643,14 +639,18 @@ class zynthian_gui_controller(tkinter.Canvas):
 					elif abs(dx) > self.pixels_per_div:
 						self.active_motion_axis = -1
 
-				if self.zctrl and self.active_motion_axis == 1:
+				if self.zctrl:
+					if self.active_motion_axis == 1:
 					# Y-axis drag active
-					if abs(dy) >= self.pixels_per_div:
-						if self.zctrl.range_reversed:
-							self.nudge(-dy // self.pixels_per_div)
-						else:
-							self.nudge(dy // self.pixels_per_div)
-						self.canvas_motion_y0 = event.y + dy % self.pixels_per_div
+						if abs(dy) >= self.pixels_per_div:
+							if self.zctrl.range_reversed:
+								self.nudge(-dy // self.pixels_per_div)
+							else:
+								self.nudge(dy // self.pixels_per_div)
+							self.canvas_motion_y0 = event.y + dy % self.pixels_per_div
+					elif self.active_motion_axis == -1:
+					# X-axis drag active
+						pass # TODO: Handle x-axis drag of controllers
 
 				elif self.active_motion_axis == -1:
 					# X-axis drag active

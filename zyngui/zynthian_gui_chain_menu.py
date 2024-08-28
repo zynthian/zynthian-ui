@@ -55,6 +55,16 @@ class zynthian_gui_chain_menu(zynthian_gui_selector):
 		self.list_data.append((self.remove_chains, 0, "Remove Chains"))
 		self.list_data.append((self.remove_all, 0, "Remove All"))
 
+		try:
+			# Only show X-Y if both zctrl are valid
+			self.zyngui.state_manager.zctrl_x.symbol
+			self.zyngui.state_manager.zctrl_y.symbol
+			self.list_data.append((None, 0, "> MAIN"))
+			self.list_data.append((self.show_xy, 0, "X-Y Control"))
+		except:
+			pass
+
+
 		super().fill_list()
 
 	def select_action(self, i, t='S'):
@@ -103,5 +113,8 @@ class zynthian_gui_chain_menu(zynthian_gui_selector):
 
 	def set_select_path(self):
 		self.select_path.set("Menu")
+
+	def show_xy(self, params=None):
+		self.zyngui.replace_screen("control_xy")
 
 # ------------------------------------------------------------------------------
