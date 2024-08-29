@@ -498,7 +498,6 @@ if check_wiring_layout(["Z2", "V5"]):
 	enable_touch_controller_switches = 0
 else:
 	enable_touch_controller_switches = 1
-enable_touch_controller_switches = 1
 
 # ------------------------------------------------------------------------------
 # UI Options
