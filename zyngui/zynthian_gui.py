@@ -1638,12 +1638,14 @@ class zynthian_gui:
 	def cuia_show_sidebar(self, params=None):
 		try:
 			self.screens[self.current_screen].show_sidebar(True)
+			zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SIDEBAR, shown=True)
 		except (AttributeError, TypeError):
 			pass
 
 	def cuia_hide_sidebar(self, params=None):
 		try:
 			self.screens[self.current_screen].show_sidebar(False)
+			zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SIDEBAR, shown=False)
 		except (AttributeError, TypeError):
 			pass
 
@@ -1651,6 +1653,7 @@ class zynthian_gui:
 		try:
 			show = not self.screens[self.current_screen].sidebar_shown
 			self.screens[self.current_screen].show_sidebar(show)
+			zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SIDEBAR, shown=show)
 		except (AttributeError, TypeError):
 			pass
 

@@ -162,8 +162,11 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
 	def hide(self):
 		if self.shown:
-			zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, self.zyngui.state_manager.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
-			zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, self.zyngui.state_manager.SS_AUDIO_RECORDER_STATE, self.cb_status_audio_recorder)
+			if zynthian_gui_config.enable_touch_navigation:
+				zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, self.zyngui.state_manager.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
+				zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, self.zyngui.state_manager.SS_AUDIO_RECORDER_STATE, self.cb_status_audio_recorder)
+				zynsigman.unregister(zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_MIDI_PLAYER_STATE, self.cb_status_midi_player)
+				zynsigman.unregister(zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_MIDI_RECORDER_STATE, self.cb_status_midi_recorder)
 		return super().hide()
 
 	def zynpot_cb(self, i, dval):

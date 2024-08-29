@@ -29,10 +29,12 @@ from pathlib import Path
 from time import monotonic
 
 # Zynthian specific modules
+import zynautoconnect
+from zyngine.zynthian_signal_manager import zynsigman
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
-import zynautoconnect
+
 
 # ------------------------------------------------------------------------------
 # Zynthian Instrument Controller GUI Class
@@ -44,6 +46,7 @@ MIDI_LEARNING_GLOBAL = 2
 
 
 class zynthian_gui_control(zynthian_gui_selector):
+	SS_GUI_CONTROL_MODE = 2
 
 	def __init__(self, selcap='Controllers'):
 		self.mode = None
@@ -62,8 +65,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		self.buttonbar_config = [
 			("arrow_left", '<< Prev'),
-			("zynswitch 3,S", 'Pages', self.get_select_mode),
-			("toggle_sidebar", 'Hide\nControls', self.is_hidden_sidebar),
+			("zynswitch 3,S", 'Pages'),
+			("toggle_sidebar", 'Hide\nControls'),
 			("arrow_right", 'Next >>')
 		]
 
@@ -85,21 +88,19 @@ class zynthian_gui_control(zynthian_gui_selector):
 		
 	def build_view(self):
 		super().build_view()
+		if zynthian_gui_config.enable_touch_navigation:
+			zynsigman.register(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SIDEBAR, self.cb_show_sidebar)
+			zynsigman.register(zynsigman.S_GUI, self.SS_GUI_CONTROL_MODE, self.cb_control_mode)
 		self.click_listbox()
 		return True
 
 	def hide(self):
-		self.exit_midi_learn()
+		if self.shown:
+			self.exit_midi_learn()
+			if zynthian_gui_config.enable_touch_navigation:
+				zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SIDEBAR, self.cb_show_sidebar)
+				zynsigman.unregister(zynsigman.S_GUI, self.SS_GUI_CONTROL_MODE, self.cb_control_mode)
 		super().hide()
-
-	def get_alt_mode(self):
-		return self.zyngui.alt_mode
-
-	def get_select_mode(self):
-		if self.mode == "select":
-			return True
-		else:
-			return False
 
 	def show_sidebar(self, show):
 		self.sidebar_shown = show
@@ -110,8 +111,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 				zctrl.grid_remove()
 		self.update_layout()
 
-	def is_hidden_sidebar(self):
-		return not self.sidebar_shown
+	def cb_show_sidebar(self, shown):
+		self.set_button_status(2, not shown)
+
+	def cb_control_mode(self, mode):
+		self.set_button_status(1, (mode == "select"))
 
 	def fill_list(self):
 		self.list_data = []
@@ -304,6 +308,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 							fg=zynthian_gui_config.color_ctrl_tx_off)
 		self.select(self.index)
 		self.set_select_path()
+		zynsigman.send_queued(zynsigman.S_GUI, self.SS_GUI_CONTROL_MODE, mode=self.mode)
 
 	def set_mode_control(self):
 		self.mode = 'control'
@@ -316,6 +321,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 		for i in range(0, len(self.zgui_controllers)):
 			self.zgui_controllers[i].unset_hl()
 		self.set_select_path()
+		zynsigman.send_queued(zynsigman.S_GUI, self.SS_GUI_CONTROL_MODE, mode=self.mode)
 
 	def previous_page(self, wrap=False):
 		i = self.index - 1

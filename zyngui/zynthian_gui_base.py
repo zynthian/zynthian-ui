@@ -283,10 +283,7 @@ class zynthian_gui_base(tkinter.Frame):
 				uniform='buttonbar',
 				pad=0)
 			try:
-				if len(config[i]) > 2:
-					self.add_button(i, config[i][0], config[i][1], config[i][2])
-				else:
-					self.add_button(i, config[i][0], config[i][1])
+				self.add_button(i, config[i][0], config[i][1])
 			except Exception as e:
 				logging.error(e)
 
@@ -301,7 +298,7 @@ class zynthian_gui_base(tkinter.Frame):
 	# column: Column / button index
 	# cuia: Action to trigger when button pressed
 	# label: Text to show on button
-	def add_button(self, column, cuia, label, get_status_func=None):
+	def add_button(self, column, cuia, label):
 		# Touchbar frame
 		padx = (0, 0)
 		for col in range(column):
@@ -325,7 +322,6 @@ class zynthian_gui_base(tkinter.Frame):
 			font=zynthian_gui_config.font_buttonbar,
 			text=label)
 		select_button.cuia = cuia
-		select_button.get_status_func = get_status_func
 		select_button.grid(row=0, column=column, sticky='nswe', padx=padx)
 		select_button.bind('<ButtonPress-1>', self.cb_button_push)
 		select_button.bind('<ButtonRelease-1>', self.cb_button_release)
@@ -354,31 +350,23 @@ class zynthian_gui_base(tkinter.Frame):
 		else:
 			self.zyngui.callable_ui_action_params(cuia)
 
-		# Invert BG & FG colors depending of returned status
-		def update_button_status():
-			try:
-				if callable(event.widget.get_status_func):
-					if event.widget.get_status_func():
-						event.widget.config(bg=self.fg_color,
-							fg=self.bg_color,
-							activebackground=self.fg_color,
-							activeforeground=self.bg_color,
-							highlightbackground=self.fg_color,
-							highlightcolor=self.fg_color)
-					else:
-						event.widget.config(bg=self.bg_color,
-							fg=self.fg_color,
-							activebackground=self.bg_color,
-							activeforeground=self.fg_color,
-							highlightbackground=self.bg_color,
-							highlightcolor=self.bg_color)
-			except Exception as e:
-				logging.error(e)
-
-		# We need to wait a little bit so the queued CUIA is executed!!!
-		# THIS DOESN'T WORK VERY NICELY! We need a better way!
-		zynthian_gui_config.top.after(100, update_button_status)
-
+	# Invert BG & FG colors depending of returned status
+	def set_button_status(self, column, status=False):
+		if 0 <= column < len(self.buttonbar_button):
+			if status:
+				self.buttonbar_button[column].config(bg=self.fg_color,
+					fg=self.bg_color,
+					activebackground=self.fg_color,
+					activeforeground=self.bg_color,
+					highlightbackground=self.fg_color,
+					highlightcolor=self.fg_color)
+			else:
+				self.buttonbar_button[column].config(bg=self.bg_color,
+					fg=self.fg_color,
+					activebackground=self.bg_color,
+					activeforeground=self.fg_color,
+					highlightbackground=self.bg_color,
+					highlightcolor=self.bg_color)
 
 	# Default topbar touch callback
 	def cb_topbar_press(self, params=None):
