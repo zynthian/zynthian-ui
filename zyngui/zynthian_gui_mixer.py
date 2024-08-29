@@ -27,6 +27,7 @@
 import os
 import tkinter
 import logging
+from time import monotonic
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
@@ -171,6 +172,7 @@ class zynthian_gui_mixer_strip():
 		self.parent.zyngui.multitouch.tag_bind(self.parent.main_canvas, "fader:%s"%(self.fader_bg), "press", self.on_fader_press)
 		self.parent.zyngui.multitouch.tag_bind(self.parent.main_canvas, "fader:%s"%(self.fader_bg), "motion", self.on_fader_motion)
 		self.parent.main_canvas.tag_bind(f"fader:{self.fader_bg}", "<ButtonPress-1>", self.on_fader_press)
+		self.parent.main_canvas.tag_bind(f"fader:{self.fader_bg}", "<ButtonRelease-1>", self.on_fader_release)
 		self.parent.main_canvas.tag_bind(f"fader:{self.fader_bg}", "<B1-Motion>", self.on_fader_motion)
 		if zynthian_gui_config.force_enable_cursor:
 			self.parent.main_canvas.tag_bind(f"fader:{self.fader_bg}", "<Button-4>", self.on_fader_wheel_up)
@@ -582,6 +584,8 @@ class zynthian_gui_mixer_strip():
 	def on_fader_press(self, event):
 		self.touch_y = event.y
 		self.touch_x = event.x
+		self.drag_axis = None  # +1=dragging in y-axis, -1=dragging in x-axis
+		self.touch_ts = monotonic()
 		if zynthian_gui_config.zyngui.cb_touch(event):
 			return "break"
 
@@ -592,13 +596,32 @@ class zynthian_gui_mixer_strip():
 			self.parent.zyngui.chain_manager.set_active_chain_by_object(self.chain)
 			self.parent.highlight_active_chain()
 
+	# Function to handle fader press
+	# event: Mouse event
+	def on_fader_release(self, event):
+		self.touch_ts = None
+
 	# Function to handle fader drag
 	#	event: Mouse event
 	def on_fader_motion(self, event):
-		if self.zctrls:
+		if self.touch_ts:
+			dts = monotonic() - self.touch_ts
+		if dts > 0.1:  # debounce initial touch
+			dy = self.touch_y - event.y
+			dx = event.x - self.touch_x
+
+		# Lock drag to x or y axis only after one has been started
+		if self.drag_axis is None:
+			if abs(dy) > 2:
+				self.drag_axis = "y"
+			elif abs(dx) > 2:
+				self.drag_axis = "x"
+
+		if self.drag_axis == "y":
 			self.set_volume(self.zctrls['level'].value + (self.touch_y - event.y) / self.fader_height)
 			self.touch_y = event.y
 			self.draw_fader()
+		elif self.drag_axis == "x":
 			self.set_balance(self.zctrls['balance'].value - (self.touch_x - event.x) / self.fader_width)
 			self.touch_x = event.x
 			self.draw_balance()
