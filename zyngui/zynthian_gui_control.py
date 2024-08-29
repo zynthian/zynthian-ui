@@ -62,8 +62,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		self.buttonbar_config = [
 			("arrow_left", '<< Prev'),
-			("toggle_alt_mode", 'ALT', self.get_alt_mode),
 			("zynswitch 3,S", 'Pages', self.get_select_mode),
+			("toggle_sidebar", 'Hide\nControls', self.is_hidden_sidebar),
 			("arrow_right", 'Next >>')
 		]
 
@@ -109,6 +109,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 			else:
 				zctrl.grid_remove()
 		self.update_layout()
+
+	def is_hidden_sidebar(self):
+		return not self.sidebar_shown
 
 	def fill_list(self):
 		self.list_data = []
