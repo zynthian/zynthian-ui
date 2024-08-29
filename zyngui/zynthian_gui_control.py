@@ -573,12 +573,16 @@ class zynthian_gui_control(zynthian_gui_selector):
 					options["Control"] = True
 				if self.zyngui.state_manager.zctrl_x:
 					xinfo = f" => {self.zyngui.state_manager.zctrl_x.name}"
+				else:
+					xinfo = ""
 				if zctrl == self.zyngui.state_manager.zctrl_x:
 					options[f"\u2612 X-axis{xinfo}"] = False
 				else:
 					options[f"\u2610 X-axis{xinfo}"] = zctrl
 				if self.zyngui.state_manager.zctrl_y:
 					yinfo = f" => {self.zyngui.state_manager.zctrl_y.name}"
+				else:
+					yinfo = ""
 				if zctrl == self.zyngui.state_manager.zctrl_y:
 					options[f"\u2612 Y-axis{yinfo}"] = False
 				else:
