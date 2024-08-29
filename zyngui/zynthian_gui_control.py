@@ -568,14 +568,18 @@ class zynthian_gui_control(zynthian_gui_selector):
 				# Only show X-Y if both zctrl are valid
 				if self.zyngui.state_manager.zctrl_x and self.zyngui.state_manager.zctrl_y:
 					options["Control"] = True
+				if self.zyngui.state_manager.zctrl_x:
+					xinfo = f" => {self.zyngui.state_manager.zctrl_x.name}"
 				if zctrl == self.zyngui.state_manager.zctrl_x:
-					options["\u2612 X-axis"] = False
+					options[f"\u2612 X-axis{xinfo}"] = False
 				else:
-					options["\u2610 X-axis"] = zctrl
+					options[f"\u2610 X-axis{xinfo}"] = zctrl
+				if self.zyngui.state_manager.zctrl_y:
+					yinfo = f" => {self.zyngui.state_manager.zctrl_y.name}"
 				if zctrl == self.zyngui.state_manager.zctrl_y:
-					options["\u2612 Y-axis"] = False
+					options[f"\u2612 Y-axis{yinfo}"] = False
 				else:
-					options["\u2610 Y-axis"] = zctrl
+					options[f"\u2610 Y-axis{yinfo}"] = zctrl
 
 				options["MIDI learn"] = None
 				options[f"Chain learn '{zctrl.name}'..."] = i

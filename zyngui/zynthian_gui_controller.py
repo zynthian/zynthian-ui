@@ -435,7 +435,6 @@ class zynthian_gui_controller(tkinter.Canvas):
 		if self.hidden:
 			return
 		if self.zctrl:
-			midi_learn_params = self.zyngui.chain_manager.get_midi_learn_from_zctrl(self.zctrl)
 			if self.selector_counter:
 				#self.erase_midi_bind()
 				self.plot_midi_bind(f"/{self.zctrl.value_range + 1}")
@@ -444,7 +443,11 @@ class zynthian_gui_controller(tkinter.Canvas):
 					self.plot_midi_bind("??#??", zynthian_gui_config.color_ml)
 				else:
 					self.plot_midi_bind("??", zynthian_gui_config.color_hl)
-			elif midi_learn_params:
+			elif self.zctrl == self.zyngui.state_manager.zctrl_x:
+				self.plot_midi_bind("X")
+			elif self.zctrl == self.zyngui.state_manager.zctrl_y:
+				self.plot_midi_bind("Y")
+			elif midi_learn_params := self.zyngui.chain_manager.get_midi_learn_from_zctrl(self.zctrl):
 				zmip = (midi_learn_params[0] >> 24) & 0xff
 				chan = (midi_learn_params[0] >> 16) & 0xff
 				cc = (midi_learn_params[0] >> 8) & 0xff
