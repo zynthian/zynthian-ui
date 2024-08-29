@@ -40,7 +40,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector):
 		super().__init__('Menu', True)
 
 	def fill_list(self):
-		self.list_data=[]
+		self.list_data = []
 
 		# Chain & Sequence Management
 		self.list_data.append((None, 0, "> ADD CHAIN"))
@@ -60,14 +60,6 @@ class zynthian_gui_main_menu(zynthian_gui_selector):
 		self.list_data.append((None, 0, "> MAIN"))
 		self.list_data.append((self.snapshots, 0, "Snapshots"))
 		self.list_data.append((self.step_sequencer, 0, "Sequencer"))
-		try:
-			# Only show X-Y if both zctrl are valid
-			self.zyngui.state_manager.zctrl_x.symbol
-			self.zyngui.state_manager.zctrl_y.symbol
-			self.list_data.append((self.show_xy, 0, "X-Y Control"))
-		except:
-			pass
-
 		self.list_data.append((self.audio_recorder, 0, "Audio Recorder"))
 		self.list_data.append((self.midi_recorder, 0, "MIDI Recorder"))
 		self.list_data.append((self.tempo_settings, 0, "Tempo Settings"))
@@ -132,9 +124,6 @@ class zynthian_gui_main_menu(zynthian_gui_selector):
 	def step_sequencer(self, t='S'):
 		logging.info("Step Sequencer")
 		self.zyngui.show_screen('zynpad')
-
-	def show_xy(self, params=None):
-		self.zyngui.replace_screen("control_xy")
 
 	def audio_recorder(self, t='S'):
 		logging.info("Audio Recorder/Player")

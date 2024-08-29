@@ -562,19 +562,27 @@ class zynthian_gui_control(zynthian_gui_selector):
 			zctrl = self.zgui_controllers[i].zctrl
 			if zctrl is None:
 				return
-			title = "Control options"
 			if not unlearn_only:
-				if zctrl.is_toggle:
-					if zctrl.midi_cc_momentary_switch:
-						options[f"\u2612 Momentary => Latch"] = i
-					else:
-						options[f"\u2610 Momentary => Latch"] = i
-				options["Set touchpad x-axis"] = i
-				options["Set touchpad y-axis"] = i
+				title = "Control options"
+				options["X-Y touchpad"] = None
+				# Only show X-Y if both zctrl are valid
+				if self.zyngui.state_manager.zctrl_x and self.zyngui.state_manager.zctrl_y:
+					options["Control"] = True
+				if zctrl == self.zyngui.state_manager.zctrl_x:
+					options["\u2612 X-axis"] = False
+				else:
+					options["\u2610 X-axis"] = zctrl
+				if zctrl == self.zyngui.state_manager.zctrl_y:
+					options["\u2612 Y-axis"] = False
+				else:
+					options["\u2610 Y-axis"] = zctrl
+
+				options["MIDI learn"] = None
 				options[f"Chain learn '{zctrl.name}'..."] = i
 				options[f"Global learn '{zctrl.name}'..."] = i
 			else:
 				title = "Control unlearn"
+
 			params = self.zyngui.chain_manager.get_midi_learn_from_zctrl(zctrl)
 			if params:
 				if params[1]:
@@ -583,6 +591,15 @@ class zynthian_gui_control(zynthian_gui_selector):
 				else:
 					options[f"Unlearn '{zctrl.name}'"] = zctrl
 			options["Unlearn all controls"] = ""
+
+			if not unlearn_only:
+				if zctrl.is_toggle:
+					options["Behavior"] = None
+					if zctrl.midi_cc_momentary_switch:
+						options["\u2612 Momentary => Latch"] = i
+					else:
+						options["\u2610 Momentary => Latch"] = i
+
 			self.zyngui.screens['option'].config(title, options, self.midi_learn_options_cb)
 			self.zyngui.show_screen('option')
 		except Exception as e:
@@ -590,10 +607,16 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def midi_learn_options_cb(self, option, param):
 		parts = option.split(" ")
-		if option == "Set touchpad x-axis":
-			self.zyngui.state_manager.zctrl_x = self.zgui_controllers[param].zctrl
-		elif option == "Set touchpad y-axis":
-			self.zyngui.state_manager.zctrl_y = self.zgui_controllers[param].zctrl
+		if option == "Control":
+			self.show_xy()
+		elif parts[1] == "X-axis":
+			self.zyngui.state_manager.zctrl_x = param
+			if self.zyngui.state_manager.zctrl_y == param:
+				self.zyngui.state_manager.zctrl_y = None
+		elif parts[1] == "Y-axis":
+			self.zyngui.state_manager.zctrl_y = param
+			if self.zyngui.state_manager.zctrl_x == param:
+				self.zyngui.state_manager.zctrl_x = None
 		elif parts[0] == "Chain":
 			self.midi_learn(param, MIDI_LEARNING_CHAIN)
 		elif parts[0] == "Global":
@@ -609,6 +632,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 			else:
 				self.zgui_controllers[param].zctrl.midi_cc_momentary_switch = 1
 			self.midi_learn_options(param)
+
+	def show_xy(self, params=None):
+		self.zyngui.show_screen("control_xy")
 
 	# -------------------------------------------------------------------------
 	# GUI Callback function
