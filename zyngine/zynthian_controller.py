@@ -257,10 +257,10 @@ class zynthian_controller:
 					self.nudge_factor_fine = 1.0
 			else:
 				self.nudge_factor = 1
-
-		# Default to fine = coarse
-		if not self.nudge_factor_fine:
-			self.nudge_factor_fine = self.nudge_factor
+				self.nudge_factor_fine = 1
+		# Set a good default for fine adjustment if coarse factor was specified
+		elif not self.nudge_factor_fine:
+			self.nudge_factor_fine = 0.1 * self.nudge_factor
 
 		#logging.debug(f"CTRL '{self.name}' => NUDGE FACTOR={self.nudge_factor}, FINE={self.nudge_factor_fine}, LOGARITHMIC={self.is_logarithmic}")
 
