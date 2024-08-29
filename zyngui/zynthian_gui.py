@@ -1507,7 +1507,10 @@ class zynthian_gui:
 		i = params[0]
 		t = params[1].upper()
 
-		if self.current_screen in ("control", "alsa_mixer", "audio_player"):
+		if t == "L":
+			if self.state_manager.zctrl_x and self.state_manager.zctrl_y:
+				self.show_screen("control_xy")
+		elif self.current_screen in ("control", "alsa_mixer", "audio_player"):
 			#if i < 3 and t == 'S':
 			if t == 'S':
 				if self.screens[self.current_screen].mode == 'select':
