@@ -591,11 +591,11 @@ class zynthian_gui_controller(tkinter.Canvas):
 			return False
 
 	# This is used by touch interface
-	def nudge(self, dval):
+	def nudge(self, dval, fine=False):
 		if self.preselection is not None:
 			self.zyngui.screens["control"].zctrl_touch(self.preselection)
 		if self.zctrl:
-			return self.zctrl.nudge(dval, fine=self.zyngui.alt_mode)
+			return self.zctrl.nudge(dval, fine=fine)
 		else:
 			return False
 
@@ -644,13 +644,18 @@ class zynthian_gui_controller(tkinter.Canvas):
 					# Y-axis drag active
 						if abs(dy) >= self.pixels_per_div:
 							if self.zctrl.range_reversed:
-								self.nudge(-dy // self.pixels_per_div)
+								self.nudge(-dy // self.pixels_per_div, self.zyngui.alt_mode)
 							else:
-								self.nudge(dy // self.pixels_per_div)
+								self.nudge(dy // self.pixels_per_div, self.zyngui.alt_mode)
 							self.canvas_motion_y0 = event.y + dy % self.pixels_per_div
 					elif self.active_motion_axis == -1:
 					# X-axis drag active
-						pass # TODO: Handle x-axis drag of controllers
+						if abs(dx) >= self.pixels_per_div:
+							if self.zctrl.range_reversed:
+								self.nudge(-dx // self.pixels_per_div, True)
+							else:
+								self.nudge(dx // self.pixels_per_div, True)
+							self.canvas_motion_x0 = event.x + dx % self.pixels_per_div
 
 				elif self.active_motion_axis == -1:
 					# X-axis drag active
