@@ -96,8 +96,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
 	def set_zctrls(self):
 		if not self.bpm_zgui_ctrl:
-			#self.bpm_zctrl = zynthian_controller(self, 'bpm', {'name': 'BPM', 'value_min': 10, 'value_max': 420, 'nudge_factor' : 1.0, 'is_integer': False, 'value': self.libseq.getTempo()})
-			self.bpm_zctrl = self.state_manager.zynseq.zctrl_tempo
+			self.bpm_zctrl = zynthian_controller(self, 'bpm', {'name': 'BPM', 'value_min': 10, 'value_max': 420, 'nudge_factor': 1.0, 'is_integer': False, 'value': self.libseq.getTempo()})
 			self.bpm_zgui_ctrl = zynthian_gui_controller(0, self.main_frame, self.bpm_zctrl)
 			self.zgui_ctrls.append(self.bpm_zgui_ctrl)
 

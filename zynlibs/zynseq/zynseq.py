@@ -116,13 +116,12 @@ class zynseq(zynthian_engine):
 			self.libseq = None
 			print("Can't initialise zynseq library: %s" % str(e))
 
-		self.zctrl_tempo = zynthian_controller(self, 'bpm', {
-			'name': 'BPM',
+		self.zctrl_tempo = zynthian_controller(self, 'tempo', {
 			'is_integer': False,
 			'value_min': 10.0,
 			'value_max': 420,
 			'value': self.libseq.getTempo(),
-			'nudge_factor' : 1.0
+			'nudge_factor': 1.0
 			})
 
 		self.bank = None
