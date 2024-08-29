@@ -245,13 +245,15 @@ class zynthian_gui_tempo(zynthian_gui_base):
 		else:
 			self.buttonbar_button[3]['text'] = "Record\nMIDI"
 
-	def cb_button_release(self, action):
-		if action.widget.cuia == "toggle_audio_play":
-			self.zyngui.cuia_toggle_audio_play()
-		if action.widget.cuia == "toggle_audio_record":
-			self.zyngui.cuia_toggle_audio_record()
-		if action.widget.cuia == "toggle_midi_play":
-			self.zyngui.cuia_toggle_midi_play()
-		if action.widget.cuia == "toggle_midi_record":
-			self.zyngui.cuia_toggle_midi_record()
+	def cb_button_release(self, event):
+		match event.widget.cuia:
+			case "toggle_audio_play":
+				self.zyngui.cuia_toggle_audio_play()
+			case "toggle_audio_record":
+				self.zyngui.cuia_toggle_audio_record()
+			case "toggle_midi_play":
+				self.zyngui.cuia_toggle_midi_play()
+			case "toggle_midi_record":
+				self.zyngui.cuia_toggle_midi_record()
+
 # ------------------------------------------------------------------------------
