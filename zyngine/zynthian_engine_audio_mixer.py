@@ -625,8 +625,14 @@ class zynmixer(zynthian_engine):
 
 	def midi_control_change(self, chan, ccnum, val):
 		if self.midi_learn_zctrl:
+			for midi_chan in range(16):
+				for midi_cc in self.learned_cc[midi_chan]:
+					if self.learned_cc[midi_chan][midi_cc] == self.midi_learn_zctrl:
+						self.learned_cc[midi_chan].pop(midi_cc)
+						break
 			self.learned_cc[chan][ccnum] = self.midi_learn_zctrl
-			self.disable_midi_learn()
+			if self.midi_learn_cb:
+				self.midi_learn_cb()
 		else:
 			for ch in range(16):
 				try:
@@ -655,8 +661,6 @@ class zynmixer(zynthian_engine):
 		#if self.midi_learn_zctrl is None:
 		#	return
 		self.midi_learn_zctrl = None
-		if self.midi_learn_cb:
-			self.midi_learn_cb()
 
 	def set_midi_learn_cb(self, cb):
 		self.midi_learn_cb = cb
