@@ -310,6 +310,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_on,
 			selectforeground=zynthian_gui_config.color_ctrl_tx,
 			fg=zynthian_gui_config.color_ctrl_tx)
+		for i in range(0, len(self.zgui_controllers)):
+			self.zgui_controllers[i].unset_hl()
+			#self.zgui_controllers[i].set_hl(zynthian_gui_config.color_ctrl_bg_off)
 		self.set_select_path()
 
 	def previous_page(self, wrap=False):
