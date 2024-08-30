@@ -183,6 +183,11 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.widget_canvas.coords(self.info_text, self.width - zynthian_gui_config.font_size // 2, self.height)
 		self.widget_canvas.itemconfig(self.info_text, width=self.width)
 
+		for chan in range(self.channels):
+			coords = self.widget_canvas.coords(f"waveform_bg_{chan}")
+			coords[2] = self.width
+			self.widget_canvas.coords(f"waveform_bg_{chan}", coords)
+
 		font = tkinter.font.Font(family="DejaVu Sans Mono", size=int(1.5 * zynthian_gui_config.font_size))
 		self.waveform_height = self.height - font.metrics("linespace")
 		self.refresh_waveform = True
@@ -413,11 +418,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			y0 = self.waveform_height // self.channels
 			for chan in range(self.channels):
 				v_offset = chan * y0
-				self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=zynthian_gui_config.PAD_COLOUR_GROUP[chan // 2 % len(zynthian_gui_config.PAD_COLOUR_GROUP)], tags="waveform", state=tkinter.HIDDEN)
+				self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=zynthian_gui_config.PAD_COLOUR_GROUP[chan // 2 % len(zynthian_gui_config.PAD_COLOUR_GROUP)], tags=("waveform",f"waveform_bg_{chan}"), state=tkinter.HIDDEN)
 				self.widget_canvas.create_line(0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags="waveform", state=tkinter.HIDDEN)
 				self.widget_canvas.create_line(0, 0, 0, 0, fill=self.waveform_color, tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
-			self.widget_canvas.tag_raise("waveform")
-			self.widget_canvas.tag_raise("overlay")
 			self.update_cue_markers()
 			frames = self.frames / 2
 			labels = ['x1']
@@ -505,6 +508,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		for chan in range(self.channels):
 			# Plot each point on the graph as series of vertical lines spanning max and min peaks of audio represented by each x-axis pixel
 			self.widget_canvas.coords(f"waveform{chan}", data[chan])
+		self.widget_canvas.tag_lower(self.loading_text)
 
 		self.refresh_waveform = False
 
