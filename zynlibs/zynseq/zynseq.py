@@ -118,10 +118,10 @@ class zynseq(zynthian_engine):
 
 		self.zctrl_tempo = zynthian_controller(self, 'tempo', {
 			'is_integer': False,
-			'value_min': 20.0,
+			'value_min': 10.0,
 			'value_max': 420,
 			'value': self.libseq.getTempo(),
-			'nudge_factor': 0.1
+			'nudge_factor': 1.0
 			})
 
 		self.bank = None

@@ -96,7 +96,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
 	def set_zctrls(self):
 		if not self.bpm_zgui_ctrl:
-			self.bpm_zctrl = zynthian_controller(self, 'bpm', {'name': 'BPM', 'value_min': 10, 'value_max': 420, 'is_integer': False, 'nudge_factor': 0.1, 'value': self.libseq.getTempo()})
+			self.bpm_zctrl = zynthian_controller(self, 'bpm', {'name': 'BPM', 'value_min': 10, 'value_max': 420, 'nudge_factor': 1.0, 'is_integer': False, 'value': self.libseq.getTempo()})
 			self.bpm_zgui_ctrl = zynthian_gui_controller(0, self.main_frame, self.bpm_zctrl)
 			self.zgui_ctrls.append(self.bpm_zgui_ctrl)
 
@@ -162,8 +162,11 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
 	def hide(self):
 		if self.shown:
-			zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, self.zyngui.state_manager.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
-			zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, self.zyngui.state_manager.SS_AUDIO_RECORDER_STATE, self.cb_status_audio_recorder)
+			if zynthian_gui_config.enable_touch_navigation:
+				zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, self.zyngui.state_manager.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
+				zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, self.zyngui.state_manager.SS_AUDIO_RECORDER_STATE, self.cb_status_audio_recorder)
+				zynsigman.unregister(zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_MIDI_PLAYER_STATE, self.cb_status_midi_player)
+				zynsigman.unregister(zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_MIDI_RECORDER_STATE, self.cb_status_midi_recorder)
 		return super().hide()
 
 	def zynpot_cb(self, i, dval):
@@ -222,28 +225,16 @@ class zynthian_gui_tempo(zynthian_gui_base):
 		self.select_path.set("Tempo Settings")
 
 	def cb_status_audio_player(self, handle=None, state=None):
-		if self.zyngui.state_manager.status_audio_player:
-			self.buttonbar_button[0]['text'] = "Stop\nAudio Player"
-		else:
-			self.buttonbar_button[0]['text'] = "Play\nAudio"
+		self.set_button_status(0, (self.zyngui.state_manager.status_audio_player))
 
 	def cb_status_audio_recorder(self, chan=None, state=None):
-		if self.zyngui.state_manager.audio_recorder.status:
-			self.buttonbar_button[1]['text'] = "Stop\nAudio Recorder"
-		else:
-			self.buttonbar_button[1]['text'] = "Record\nAudio"
+		self.set_button_status(1, self.zyngui.state_manager.audio_recorder.status)
 
 	def cb_status_midi_player(self, handle=None, state=None):
-		if self.zyngui.state_manager.status_midi_player:
-			self.buttonbar_button[2]['text'] = "Stop\nMIDI Player"
-		else:
-			self.buttonbar_button[2]['text'] = "Play\nMIDI"
+		self.set_button_status(2, self.zyngui.state_manager.status_midi_player)
 
 	def cb_status_midi_recorder(self, chan=None, state=None):
-		if self.zyngui.state_manager.status_midi_recorder:
-			self.buttonbar_button[3]['text'] = "Stop\nMIDI Recorder"
-		else:
-			self.buttonbar_button[3]['text'] = "Record\nMIDI"
+		self.set_button_status(3, self.zyngui.state_manager.status_midi_recorder)
 
 	def cb_button_release(self, event):
 		match event.widget.cuia:

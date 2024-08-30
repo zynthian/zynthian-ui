@@ -609,6 +609,7 @@ class zynthian_gui_mixer_strip():
 	def on_fader_motion(self, event):
 		if self.touch_ts:
 			dts = monotonic() - self.touch_ts
+
 		if dts < 0.1:  # debounce initial touch
 			return
 		dy = self.touch_y - event.y
