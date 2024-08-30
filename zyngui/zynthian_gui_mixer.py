@@ -108,8 +108,8 @@ class zynthian_gui_mixer_strip():
 		self.button_txcol = zynthian_gui_config.color_tx
 		self.left_color = "#00AA00"
 		self.right_color = "#00EE00"
-		self.left_color_learn = "#AAAA00"
-		self.right_color_learn = "#EEEE00"
+		self.left_color_learn = "#999999"
+		self.right_color_learn = "#777777"
 		self.high_color = "#CCCC00" # yellow
 		self.rec_color = "#CC0000" # red
 
@@ -253,10 +253,10 @@ class zynthian_gui_mixer_strip():
 			rcolor = self.right_color_learn
 			txcolor = zynthian_gui_config.color_ml
 			txstate = tkinter.NORMAL
-			text = ""
+			text = "??"
 		elif self.parent.midi_learning:
-			lcolor = self.fader_bg_color
-			rcolor = self.fader_bg_color
+			lcolor = self.left_color_learn
+			rcolor = self.right_color_learn
 			txcolor = zynthian_gui_config.color_hl
 			txstate = tkinter.NORMAL
 			text = f"<-> {self.get_ctrl_learn_text('balance')}"
@@ -280,12 +280,8 @@ class zynthian_gui_mixer_strip():
 		self.draw_fader()
 
 		if self.midi_learning == 'level':
-			if self.get_legend_text():
-				self.parent.main_canvas.itemconfig(self.fader_text, state=tkinter.HIDDEN)
-				self.parent.main_canvas.itemconfig(self.legend, state=tkinter.NORMAL, fill=zynthian_gui_config.color_ml)
-			else:
-				self.parent.main_canvas.itemconfig(self.fader_text, state=tkinter.NORMAL, text="Learning...", fill=zynthian_gui_config.color_ml)
-				self.parent.main_canvas.itemconfig(self.legend, state=tkinter.HIDDEN)
+			self.parent.main_canvas.itemconfig(self.fader_text, state=tkinter.NORMAL, text="??", fill=zynthian_gui_config.color_ml)
+			self.parent.main_canvas.itemconfig(self.legend, state=tkinter.HIDDEN)
 		elif self.parent.midi_learning:
 			text = self.get_ctrl_learn_text('level')
 			self.parent.main_canvas.itemconfig(self.fader_text, fill=zynthian_gui_config.color_hl, text=text, state=tkinter.NORMAL)
@@ -306,7 +302,6 @@ class zynthian_gui_mixer_strip():
 		if self.midi_learning == 'solo':
 			txcolor = zynthian_gui_config.color_ml
 		elif self.parent.midi_learning:
-			bgcolor = self.button_bgcol
 			txcolor = zynthian_gui_config.color_hl
 			font = self.font_learn
 			text = f"S {self.get_ctrl_learn_text('solo')}"
@@ -327,7 +322,6 @@ class zynthian_gui_mixer_strip():
 		if self.midi_learning == 'mute':
 			txcolor = zynthian_gui_config.color_ml
 		elif self.parent.midi_learning:
-			bgcolor = self.button_bgcol
 			txcolor = zynthian_gui_config.color_hl
 			font = self.font_learn
 			text = f"\uf32f {self.get_ctrl_learn_text('mute')}"
@@ -1003,6 +997,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.refresh_visible_strips()
 
 		if self.midi_learning:
+			for strip in self.visible_mixer_strips:
+				if strip.midi_learning:
+					strip.midi_learning = ""
+					strip.draw_control()
+					return True
 			self.exit_midi_learn()
 		return True
 
@@ -1018,9 +1017,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return True
 
 		elif swi == 1:
-			if zynthian_gui_config.enable_touch_navigation and self.midi_learning:
-				self.exit_midi_learn()
-				return True
+			#if zynthian_gui_config.enable_touch_navigation and self.midi_learning:
+			#	return False
 			# This is ugly, but it's the only way i figured for MIDI-learning "mute" without touch.
 			# Moving the "learn" button to back is not an option. It's a labeled button on V4!!
 			if t == "S" and not self.moving_chain:
@@ -1029,7 +1027,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				return True
 			elif t == "B":
 				if self.midi_learning:
-					self.exit_midi_learn()
+					self.back_action()
 				else:
 					self.zyngui.cuia_screen_zynpad()
 				return True
