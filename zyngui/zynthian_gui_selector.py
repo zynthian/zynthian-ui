@@ -121,11 +121,11 @@ class zynthian_gui_selector(zynthian_gui_base):
 		if loading_anim:
 			# Canvas for loading image animation
 			self.loading_canvas = tkinter.Canvas(self.main_frame,
-				width=1, #zynthian_gui_config.fw2, #self.width // 4 - 2,
-				height=1, #zynthian_gui_config.fh2, #self.height // 2 - 1,
+				width=1,  #zynthian_gui_config.fw2, #self.width // 4 - 2,
+				height=1,  #zynthian_gui_config.fh2, #self.height // 2 - 1,
 				bd=0,
 				highlightthickness=0,
-				bg = zynthian_gui_config.color_bg)
+				bg=zynthian_gui_config.color_bg)
 			# Position at top of column containing selector
 			self.loading_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
 			self.loading_push_ts = None
@@ -193,7 +193,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 	def reset_loading(self, force=False):
 		if self.loading_canvas and (self.loading_index > 0 or force):
-			self.loading_index=0
+			self.loading_index = 0
 			self.loading_canvas.itemconfig(self.loading_item, image=zynthian_gui_config.loading_imgs[0])
 
 	def fill_listbox(self):
@@ -214,12 +214,14 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 	def set_selector(self, zs_hidden=True):
 		self.zselector_hidden = zs_hidden
+		val = self.get_counter_from_index(self.index)
+		vmax = self.get_counter_from_index(len(self.list_data) - 1)
 		if self.zselector:
-			self.zselector.zctrl.set_options({'symbol': self.selector_caption, 'name': self.selector_caption, 'short_name': self.selector_caption, 'value_min': 0, 'value_max': len(self.list_data) - 1, 'value': self.index })
+			self.zselector.zctrl.set_options({'symbol': self.selector_caption, 'name': self.selector_caption, 'short_name': self.selector_caption, 'value_min': 0, 'value_max': vmax, 'value': val})
 			self.zselector.config(self.zselector.zctrl)
 			self.zselector.show()
 		else:
-			zselector_ctrl = zynthian_controller(None, self.selector_caption, {'value_min': 0, 'value_max': len(self.list_data) - 1, 'value': self.index})
+			zselector_ctrl = zynthian_controller(None, self.selector_caption, {'value_min': 0, 'value_max': vmax, 'value': val})
 			self.zselector = zynthian_gui_controller(zynthian_gui_config.select_ctrl, self.main_frame, zselector_ctrl, zs_hidden, selcounter=True, orientation=self.layout['ctrl_orientation'])
 		if not self.zselector_hidden:
 			self.zselector.grid(row=self.layout['ctrl_pos'][3][0], column=self.layout['ctrl_pos'][3][1], sticky="news")
@@ -256,7 +258,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 	def get_cursel(self):
 		cursel = self.listbox.curselection()
-		if (len(cursel) > 0):
+		if len(cursel) > 0:
 			index = int(cursel[0])
 		else:
 			index = 0
@@ -268,6 +270,9 @@ class zynthian_gui_selector(zynthian_gui_base):
 		elif index >= len(self.list_data):
 			index = len(self.list_data) - 1
 		index = self.skip_separators(index)
+		self._select_listbox(index, see=see)
+
+	def _select_listbox(self, index, see=True):
 		# Set selection
 		self.listbox.selection_clear(0, tkinter.END)
 		if index is None:
@@ -275,12 +280,12 @@ class zynthian_gui_selector(zynthian_gui_base):
 		self.listbox.selection_set(index)
 		# Set window
 		if see:
-			self.listbox.yview_moveto(self.scroll_y) # Restore vertical position
+			self.listbox.yview_moveto(self.scroll_y)  # Restore vertical position
 			# Show next/previous item when scrolling but ensure selected item is in view
 			self.listbox.see(index + 1)
 			self.listbox.see(index - 1)
 			self.listbox.see(index)
-			self.scroll_y = self.listbox.yview()[0] # Save vertical position
+			self.scroll_y = self.listbox.yview()[0]  # Save vertical position
 			if self.listbox.bbox(index):
 				self.list_entry_height = self.listbox.bbox(index)[3]
 		# Set index value
@@ -297,7 +302,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 
 	def skip_separators(self, index):
 		# Separators have 'None' as  first data element
-		if index >= 0 and index < len(self.list_data) and self.list_data[index][0] is None:
+		if 0 <= index < len(self.list_data) and self.list_data[index][0] is None:
 			# Request to select a blank list entry
 			if self.index <= index:
 				# Request is higher than current entry so try to move down list
@@ -313,39 +318,63 @@ class zynthian_gui_selector(zynthian_gui_base):
 				for i in range(index, -1, -1):
 					if self.list_data[i][0] is not None:
 						return i
-				# No entires up list so let's search back down
+				# No entries up list so let's search back down
 				for i in range(index, len(self.list_data)):
 					if self.list_data[i][0] is not None:
 						return i
-			return None # No valid entries in the listbox - must all be titles
+			return None  # No valid entries in the listbox - must all be titles
 		return index
+
+	def get_index_from_counter(self, counter):
+		if counter < 0:
+			counter = 0
+		elif counter > self.zselector.zctrl.value_max:
+			counter = self.zselector.zctrl.value_max
+		index = 0
+		while index < len(self.list_data):  # counter >= 0 ??
+			if self.list_data[index][0] is not None:
+				counter -= 1
+				if counter < 0:
+					break
+			index += 1
+		return index
+
+	def get_counter_from_index(self, index):
+		n = len(self.list_data) - 1
+		if index < 0:
+			index = 0
+		elif index > n:
+			index = n
+		counter = index
+		for i in range(0, index):
+			if self.list_data[i][0] is None:
+				counter -= 1
+		return counter
 
 	def select(self, index=None):
 		if index is None:
 			index = self.index
 		self.select_listbox(index)
-		if self.shown and self.zselector and self.zselector.zctrl.value != self.index:
-			self.zselector.zctrl.set_value(self.index, False)
-			self.last_index_change_ts = datetime.now()
+		if self.shown and self.zselector:
+			val = self.get_counter_from_index(self.index)
+			if val != self.zselector.zctrl.value:
+				self.zselector.zctrl.set_value(val, False)
 
 	def click_listbox(self, index=None, t='S'):
 		if index is not None:
 			self.select(index)
 		else:
 			self.select(self.get_cursel())
-
 		self.select_action(self.index, t)
 
 	# Function to handle select switch press
 	# t: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, t='S'):
-		# This is SUPERUGLY!!! I really don't like parameter editor implemented in the base class.
+		# Parameter editor implemented in base class!
 		if super().switch_select(t):
 			return True
-
 		self.click_listbox(None, t)
 		return True
-
 
 	def select_action(self, index, t='S'):
 		self.last_selected_index = index
@@ -355,14 +384,15 @@ class zynthian_gui_selector(zynthian_gui_base):
 	# --------------------------------------------------------------------------
 
 	def zynpot_cb(self, i, dval):
-		# This is SUPERUGLY!!! I really don't like parameter editor implemented in the base class.
+		# Parameter editor implemented in base class!
 		if super().zynpot_cb(i, dval):
 			return True
 
 		if self.shown and self.zselector and self.zselector.index == i:
 			self.zselector.zynpot_cb(dval)
-			if self.index != self.zselector.zctrl.value:
-				self.select(self.zselector.zctrl.value)
+			index = self.get_index_from_counter(self.zselector.zctrl.value)
+			if index != self.index:
+				self._select_listbox(index)
 			return True
 		return False
 
@@ -379,7 +409,6 @@ class zynthian_gui_selector(zynthian_gui_base):
 	def cb_listbox_push(self,event):
 		if self.zyngui.cb_touch(event):
 			return "break"
-
 		self.listbox_push_ts = event.time  # Timestamp of initial touch
 		#logging.debug("LISTBOX PUSH => %s" % (self.listbox_push_ts))
 		self.listbox_y0 = event.y  # Touch y-coord of initial touch
