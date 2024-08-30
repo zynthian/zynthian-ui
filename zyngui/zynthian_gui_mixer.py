@@ -138,8 +138,7 @@ class zynthian_gui_mixer_strip():
 		self.fader_bg = self.parent.main_canvas.create_rectangle(x, self.fader_top, x + self.width, self.fader_bottom, fill=self.fader_bg_color, width=0)
 		self.parent.main_canvas.itemconfig(self.fader_bg, tags=(f"fader:{self.fader_bg}", f"strip:{self.fader_bg}"))
 		self.fader = self.parent.main_canvas.create_rectangle(x, self.fader_top, x + self.width, self.fader_bottom, fill=self.fader_color, width=0, tags=(f"fader:{self.fader_bg}", f"strip:{self.fader_bg}", f"audio_strip:{self.fader_bg}"))
-		self.fader_text = self.parent.main_canvas.create_text(int(fader_centre), int(self.fader_top + self.fader_height / 2), text="??", font=self.font_learn, angle=90, state=tkinter.HIDDEN)
-		self.legend = self.parent.main_canvas.create_text(x, self.fader_bottom - 2, fill=self.legend_txt_color, text="", tags=(f"fader:{self.fader_bg}", f"strip:{self.fader_bg}"), angle=90, anchor="nw", font=self.font_fader)
+		self.fader_text = self.parent.main_canvas.create_text(int(fader_centre), int(self.fader_top + self.fader_height / 2), font=self.font_fader, angle=90, state=tkinter.HIDDEN, tags=(f"fader:{self.fader_bg}", f"strip:{self.fader_bg}", f"audio_strip:{self.fader_bg}"))
 
 		# DPM
 		self.dpm_a = zynthian_gui_dpm(self.zynmixer, None, 0, self.parent.main_canvas, self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.fader_height, True, (f"strip:{self.fader_bg}",f"audio_strip:{self.fader_bg}"))
@@ -280,15 +279,12 @@ class zynthian_gui_mixer_strip():
 		self.draw_fader()
 
 		if self.midi_learning == 'level':
-			self.parent.main_canvas.itemconfig(self.fader_text, state=tkinter.NORMAL, text="??", fill=zynthian_gui_config.color_ml)
-			self.parent.main_canvas.itemconfig(self.legend, state=tkinter.HIDDEN)
+			self.parent.main_canvas.itemconfig(self.fader_text, state=tkinter.NORMAL, text="??", font=self.font_learn, fill=zynthian_gui_config.color_ml)
 		elif self.parent.midi_learning:
 			text = self.get_ctrl_learn_text('level')
-			self.parent.main_canvas.itemconfig(self.fader_text, fill=zynthian_gui_config.color_hl, text=text, state=tkinter.NORMAL)
-			self.parent.main_canvas.itemconfig(self.legend, state=tkinter.HIDDEN)
+			self.parent.main_canvas.itemconfig(self.fader_text, state=tkinter.NORMAL, text=text, font=self.font_learn, fill=zynthian_gui_config.color_hl)
 		else:
-			self.parent.main_canvas.itemconfig(self.fader_text, state=tkinter.HIDDEN)
-			self.parent.main_canvas.itemconfig(self.legend, state=tkinter.NORMAL, fill=self.legend_txt_color)
+			self.parent.main_canvas.itemconfig(self.fader_text, state=tkinter.NORMAL, text=self.get_legend_text(), font=self.font_fader, fill=self.legend_txt_color)
 
 	def draw_solo(self):
 		txcolor = self.button_txcol
@@ -348,10 +344,8 @@ class zynthian_gui_mixer_strip():
 			return
 
 		if control == None:
-			self.parent.main_canvas.itemconfig(self.legend, text="")
 			if self.chain_id == 0:
 				self.parent.main_canvas.itemconfig(self.legend_strip_txt, text="Main", font=self.font)
-				self.parent.main_canvas.itemconfig(self.legend, text=self.get_legend_text(), state=tkinter.NORMAL)
 			else:
 				font = self.font
 				if self.parent.moving_chain and self.chain_id == self.parent.zyngui.chain_manager.active_chain_id:
@@ -374,15 +368,15 @@ class zynthian_gui_mixer_strip():
 
 				label_parts = self.get_legend_text().split("\n")
 				for i, label in enumerate(label_parts):
-					self.parent.main_canvas.itemconfig(self.legend, text=label, state=tkinter.NORMAL)
-					bounds = self.parent.main_canvas.bbox(self.legend)
+					self.parent.main_canvas.itemconfig(self.fader_text, text=label, state=tkinter.NORMAL)
+					bounds = self.parent.main_canvas.bbox(self.fader_text)
 					if bounds[1] < self.fader_text_limit:
 						while bounds and bounds[1] < self.fader_text_limit:
 							label = label[:-1]
-							self.parent.main_canvas.itemconfig(self.legend, text=label)
-							bounds = self.parent.main_canvas.bbox(self.legend)
+							self.parent.main_canvas.itemconfig(self.fader_text, text=label)
+							bounds = self.parent.main_canvas.bbox(self.fader_text)
 						label_parts[i] = label + "..."
-				self.parent.main_canvas.itemconfig(self.legend, text="\n".join(label_parts))
+				self.parent.main_canvas.itemconfig(self.fader_text, text="\n".join(label_parts))
 
 		try:
 			if not self.chain.is_audio():
