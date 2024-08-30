@@ -607,24 +607,22 @@ class zynthian_gui_mixer_strip():
 		if self.touch_ts:
 			dts = monotonic() - self.touch_ts
 		if dts > 0.1:  # debounce initial touch
-			dy = self.touch_y - event.y
-			dx = event.x - self.touch_x
-
-		# Lock drag to x or y axis only after one has been started
-		if self.drag_axis is None:
-			if abs(dy) > 2:
-				self.drag_axis = "y"
-			elif abs(dx) > 2:
-				self.drag_axis = "x"
-
-		if self.drag_axis == "y":
-			self.set_volume(self.zctrls['level'].value + (self.touch_y - event.y) / self.fader_height)
-			self.touch_y = event.y
-			self.draw_fader()
-		elif self.drag_axis == "x":
-			self.set_balance(self.zctrls['balance'].value - (self.touch_x - event.x) / self.fader_width)
-			self.touch_x = event.x
-			self.draw_balance()
+			# Lock drag to x or y axis only after one has been started
+			if self.drag_axis is None:
+				dy = self.touch_y - event.y
+				dx = event.x - self.touch_x
+				if abs(dy) > 2:
+					self.drag_axis = "y"
+				elif abs(dx) > 2:
+					self.drag_axis = "x"
+			if self.drag_axis == "y":
+				self.set_volume(self.zctrls['level'].value + (self.touch_y - event.y) / self.fader_height)
+				self.touch_y = event.y
+				self.draw_fader()
+			elif self.drag_axis == "x":
+				self.set_balance(self.zctrls['balance'].value - (self.touch_x - event.x) / self.fader_width)
+				self.touch_x = event.x
+				self.draw_balance()
 
 	# Function to handle mouse wheel down over fader
 	#	event: Mouse event
