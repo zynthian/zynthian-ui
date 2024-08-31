@@ -595,6 +595,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 					options[f"\u2610 Y-axis{yinfo}"] = zctrl
 
 				options["MIDI learn"] = None
+				if zctrl.is_toggle:
+					if zctrl.midi_cc_momentary_switch:
+						options["\u2612 Momentary => Latch"] = i
+					else:
+						options["\u2610 Momentary => Latch"] = i
 				options[f"Chain learn '{zctrl.name}'..."] = i
 				options[f"Global learn '{zctrl.name}'..."] = i
 			else:
@@ -608,14 +613,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 				else:
 					options[f"Unlearn '{zctrl.name}'"] = zctrl
 			options["Unlearn all controls"] = ""
-
-			if not unlearn_only:
-				if zctrl.is_toggle:
-					options["Behavior"] = None
-					if zctrl.midi_cc_momentary_switch:
-						options["\u2612 Momentary => Latch"] = i
-					else:
-						options["\u2610 Momentary => Latch"] = i
 
 			self.zyngui.screens['option'].config(title, options, self.midi_learn_options_cb)
 			self.zyngui.show_screen('option')
