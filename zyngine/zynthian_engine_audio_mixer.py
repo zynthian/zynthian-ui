@@ -325,8 +325,7 @@ class zynmixer(zynthian_engine):
 			zynsigman.send(zynsigman.S_AUDIO_MIXER, self.SS_ZCTRL_SET_VALUE, chan=self.MAX_NUM_CHANNELS - 1, symbol="solo", value=main_solo)
 		elif not solo:
 			for i in range(0, self.MAX_NUM_CHANNELS - 2):
-				if update:
-					self.zctrls[i]['solo'].set_value(solo, False)
+				self.zctrls[i]['solo'].set_value(solo, False)
 				zynsigman.send(zynsigman.S_AUDIO_MIXER, self.SS_ZCTRL_SET_VALUE, chan=i, symbol="solo", value=solo)
 
 	# Function to get solo for a channel
