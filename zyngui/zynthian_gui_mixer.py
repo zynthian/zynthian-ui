@@ -272,9 +272,7 @@ class zynthian_gui_mixer_strip():
 			self.parent.main_canvas.coords(self.fader, self.x, self.fader_top + self.fader_height * (1 - level), self.x + self.fader_width, self.fader_bottom)
 
 	def draw_fader(self):
-		if self.zctrls is None:
-			return
-		if self.parent.zynmixer.midi_learn_zctrl == self.zctrls["level"]:
+		if self.zctrls and self.parent.zynmixer.midi_learn_zctrl == self.zctrls["level"]:
 			self.parent.main_canvas.coords(self.fader_text, self.fader_centre_x, self.fader_centre_y - 2)
 			self.parent.main_canvas.itemconfig(self.fader_text, text="??", font=self.font_learn, angle=0, fill=zynthian_gui_config.color_ml, justify=tkinter.CENTER, anchor=tkinter.CENTER)
 		elif self.parent.zynmixer.midi_learn_zctrl:
@@ -366,7 +364,7 @@ class zynthian_gui_mixer_strip():
 	# Function to draw a mixer strip UI control
 	# control: Name of control or None to redraw all controls in the strip
 	def draw_control(self, control=None):
-		if self.hidden or self.chain is None or self.zctrls is None:
+		if self.hidden or self.chain is None: # or self.zctrls is None:
 			return
 
 		if control == None:
@@ -400,24 +398,21 @@ class zynthian_gui_mixer_strip():
 		except Exception as e:
 			logging.error(e)
 
-		#if control == None:
-			#self.draw_dpm()
-			#self.refresh_status()
+		if self.zctrls:
+			if control in [None, 'level']:
+				self.draw_level()
 
-		if control in [None, 'level']:
-			self.draw_level()
+			if control in [None, 'solo']:
+				self.draw_solo()
 
-		if control in [None, 'solo']:
-			self.draw_solo()
+			if control in [None, 'mute']:
+				self.draw_mute()
 
-		if control in [None, 'mute']:
-			self.draw_mute()
+			if control in [None, 'balance']:
+				self.draw_balance()
 
-		if control in [None, 'balance']:
-			self.draw_balance()
-
-		if control in [None, 'mono']:
-			self.draw_mono()
+			if control in [None, 'mono']:
+				self.draw_mono()
 
 		if control in [None, 'rec']:
 			if self.chain.is_audio() and self.parent.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan):
@@ -949,7 +944,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			strip.set_chain(chain_id)
 			if strip.chain.mixer_chan is not None and strip.chain.mixer_chan < len(self.zynmixer.zctrls):
 				strip.zctrls = self.zynmixer.zctrls[strip.chain.mixer_chan]
-			strip.draw_control()
+			#strip.draw_control()
 			if strip.chain.mixer_chan is not None and strip.chain.mixer_chan < len(self.chan2strip):
 				self.chan2strip[strip.chain.mixer_chan] = strip
 			if chain_id == self.zyngui.chain_manager.active_chain_id:
