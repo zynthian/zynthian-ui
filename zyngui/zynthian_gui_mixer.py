@@ -297,7 +297,6 @@ class zynthian_gui_mixer_strip():
 			self.parent.main_canvas.itemconfig(self.fader_text, text="\n".join(label_parts), font=self.font_fader, angle=90, fill=self.legend_txt_color, justify=tkinter.LEFT, anchor=tkinter.NW)
 			self.parent.main_canvas.coords(self.fader_text, self.x, self.fader_bottom - 2)
 
-
 	def draw_solo(self):
 		txcolor = self.button_txcol
 		font = self.font
@@ -469,6 +468,8 @@ class zynthian_gui_mixer_strip():
 			self.dpm_a.set_strip(None)
 			self.dpm_b.set_strip(None)
 		else:
+			if self.chain.mixer_chan is not None and self.chain.mixer_chan < len(self.parent.zynmixer.zctrls):
+				self.zctrls = self.parent.zynmixer.zctrls[self.chain.mixer_chan]
 			self.show()
 
 	# Function to set volume value
@@ -942,8 +943,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		for chain_id in self.zyngui.chain_manager.ordered_chain_ids[:-1][self.mixer_strip_offset:self.mixer_strip_offset + len(self.visible_mixer_strips)]:
 			strip = self.visible_mixer_strips[strip_index]
 			strip.set_chain(chain_id)
-			if strip.chain.mixer_chan is not None and strip.chain.mixer_chan < len(self.zynmixer.zctrls):
-				strip.zctrls = self.zynmixer.zctrls[strip.chain.mixer_chan]
 			#strip.draw_control()
 			if strip.chain.mixer_chan is not None and strip.chain.mixer_chan < len(self.chan2strip):
 				self.chan2strip[strip.chain.mixer_chan] = strip
@@ -955,7 +954,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		for strip in self.visible_mixer_strips[strip_index:len(self.visible_mixer_strips)]:
 			strip.set_chain(None)
 			strip.zctrls = None
-			strip.draw_control()
 
 		self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX] = self.main_mixbus_strip
 		self.main_mixbus_strip.draw_control()
