@@ -578,8 +578,11 @@ class zynmixer(zynthian_engine):
 			chan_state = {}
 			for symbol in self.zctrls[chan]:
 				zctrl = self.zctrls[chan][symbol]
-				if zctrl.value != zctrl.value_default:
-					chan_state[zctrl.symbol] = zctrl.value
+				value = zctrl.value
+				if zctrl.is_toggle:
+					value |= (zctrl.midi_cc_momentary_switch << 1)
+				if value != zctrl.value_default:
+					chan_state[zctrl.symbol] = value
 			if chan_state:
 				state[key] = chan_state
 			state["midi_learn"] = {}
@@ -599,7 +602,11 @@ class zynmixer(zynthian_engine):
 			key = 'chan_{:02d}'.format(chan)
 			for symbol, zctrl in zctrls.items():
 				try:
-					zctrl.set_value(state[key][symbol], True)
+					if zctrl.is_toggle:
+						zctrl.set_value(state[key][symbol] & 1, True)
+						zctrl.midi_cc_momentary_switch = state[key][symbol] >> 1
+					else:
+						zctrl.set_value(state[key][symbol], True)
 				except:
 					if full:
 						zctrl.reset_value()
