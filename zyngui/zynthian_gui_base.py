@@ -393,7 +393,6 @@ class zynthian_gui_base(tkinter.Frame):
 
 	# Default topbar short touch action
 	def topbar_short_touch_action(self):
-		#self.zyngui.cuia_menu()
 		self.zyngui.callable_ui_action("menu")
 
 	# Default topbar bold touch action

@@ -509,6 +509,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			# Plot each point on the graph as series of vertical lines spanning max and min peaks of audio represented by each x-axis pixel
 			self.widget_canvas.coords(f"waveform{chan}", data[chan])
 		self.widget_canvas.tag_lower(self.loading_text)
+		self.widget_canvas.tag_raise("overlay")
 
 		self.refresh_waveform = False
 
