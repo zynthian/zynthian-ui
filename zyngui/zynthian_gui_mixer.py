@@ -1125,7 +1125,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	def midi_learn_menu(self):
 		options = {}
-		title = f"MIDI Learn Options"
+		try:
+			strip_id = self.zynmixer.midi_learn_zctrl.graph_path[0] + 1
+			if strip_id == 17:
+				strip_id = "Main"
+			title = f"MIDI Learn Options ({strip_id})"
+		except:
+			title = f"MIDI Learn Options"
 
 		if isinstance(self.zynmixer.midi_learn_zctrl, zynthian_controller):
 			if self.zynmixer.midi_learn_zctrl.is_toggle:
