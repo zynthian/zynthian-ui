@@ -243,13 +243,13 @@ class zynthian_gui_mixer_strip():
 				self.x + self.width / 2, self.balance_top,
 				self.x + self.width * balance / 2 + self.width, self.balance_top + self.balance_height)
 
-		if self.parent.midi_learning == self.zctrls["balance"]:
+		if self.parent.zynmixer.midi_learn_zctrl == self.zctrls["balance"]:
 			lcolor = self.learn_color_hl
 			rcolor = self.learn_color
 			txcolor = zynthian_gui_config.color_ml
 			txstate = tkinter.NORMAL
 			text = "??"
-		elif self.parent.midi_learning:
+		elif self.parent.zynmixer.midi_learn_zctrl:
 			lcolor = self.learn_color_hl
 			rcolor = self.learn_color
 			txcolor = zynthian_gui_config.color_hl
@@ -274,10 +274,10 @@ class zynthian_gui_mixer_strip():
 	def draw_fader(self):
 		if self.zctrls is None:
 			return
-		if self.parent.midi_learning == self.zctrls["level"]:
+		if self.parent.zynmixer.midi_learn_zctrl == self.zctrls["level"]:
 			self.parent.main_canvas.coords(self.fader_text, self.fader_centre_x, self.fader_centre_y - 2)
 			self.parent.main_canvas.itemconfig(self.fader_text, text="??", font=self.font_learn, angle=0, fill=zynthian_gui_config.color_ml, justify=tkinter.CENTER, anchor=tkinter.CENTER)
-		elif self.parent.midi_learning:
+		elif self.parent.zynmixer.midi_learn_zctrl:
 			text = self.get_ctrl_learn_text('level')
 			self.parent.main_canvas.coords(self.fader_text, self.fader_centre_x, self.fader_centre_y - 2)
 			self.parent.main_canvas.itemconfig(self.fader_text, text=text, font=self.font_learn, angle=0, fill=zynthian_gui_config.color_hl, justify=tkinter.CENTER, anchor=tkinter.CENTER)
@@ -305,19 +305,19 @@ class zynthian_gui_mixer_strip():
 		font = self.font
 		text = "S"
 		if self.zynmixer.get_solo(self.chain.mixer_chan):
-			if self.parent.midi_learning:
+			if self.parent.zynmixer.midi_learn_zctrl:
 				bgcolor = self.learn_color_hl
 			else:
 				bgcolor = self.solo_color
 		else:
-			if self.parent.midi_learning:
+			if self.parent.zynmixer.midi_learn_zctrl:
 				bgcolor = self.learn_color
 			else:
 				bgcolor = self.button_bgcol
 
-		if self.parent.midi_learning == self.zctrls["solo"]:
+		if self.parent.zynmixer.midi_learn_zctrl == self.zctrls["solo"]:
 			txcolor = zynthian_gui_config.color_ml
-		elif self.parent.midi_learning:
+		elif self.parent.zynmixer.midi_learn_zctrl:
 			txcolor = zynthian_gui_config.color_hl
 			font = self.font_learn
 			text = f"S {self.get_ctrl_learn_text('solo')}"
@@ -329,21 +329,21 @@ class zynthian_gui_mixer_strip():
 		txcolor = self.button_txcol
 		font = self.font_icons
 		if self.zynmixer.get_mute(self.chain.mixer_chan):
-			if self.parent.midi_learning:
+			if self.parent.zynmixer.midi_learn_zctrl:
 				bgcolor = self.learn_color_hl
 			else:
 				bgcolor = self.mute_color
 			text = "\uf32f"
 		else:
-			if self.parent.midi_learning:
+			if self.parent.zynmixer.midi_learn_zctrl:
 				bgcolor = self.learn_color
 			else:
 				bgcolor = self.button_bgcol
 			text = "\uf028"
 
-		if self.parent.midi_learning == self.zctrls["mute"]:
+		if self.parent.zynmixer.midi_learn_zctrl == self.zctrls["mute"]:
 			txcolor = zynthian_gui_config.color_ml
-		elif self.parent.midi_learning:
+		elif self.parent.zynmixer.midi_learn_zctrl:
 			txcolor = zynthian_gui_config.color_hl
 			font = self.font_learn
 			text = f"\uf32f {self.get_ctrl_learn_text('mute')}"
@@ -479,7 +479,7 @@ class zynthian_gui_mixer_strip():
 	# Function to set volume value
 	#	value: Volume value (0..1)
 	def set_volume(self, value):
-		if self.parent.midi_learning:
+		if self.parent.zynmixer.midi_learn_zctrl:
 			self.parent.enter_midi_learn(self.zctrls["level"])
 		elif self.zctrls:
 			self.zctrls['level'].set_value(value)
@@ -491,7 +491,7 @@ class zynthian_gui_mixer_strip():
 
 	# Function to nudge volume
 	def nudge_volume(self, dval):
-		if self.parent.midi_learning:
+		if self.parent.zynmixer.midi_learn_zctrl:
 			self.parent.enter_midi_learn(self.zctrls["level"])
 		elif self.zctrls:
 			self.zctrls['level'].nudge(dval)
@@ -500,7 +500,7 @@ class zynthian_gui_mixer_strip():
 	# Function to set balance value
 	#	value: Balance value (-1..1)
 	def set_balance(self, value):
-		if self.parent.midi_learning:
+		if self.parent.zynmixer.midi_learn_zctrl:
 			self.parent.enter_midi_learn(self.zctrls["balance"])
 		elif self.zctrls:
 			self.zctrls['balance'].set_value(value)
@@ -513,7 +513,7 @@ class zynthian_gui_mixer_strip():
 
 	# Function to nudge balance
 	def nudge_balance(self, dval):
-		if self.parent.midi_learning:
+		if self.parent.zynmixer.midi_learn_zctrl:
 			self.parent.enter_midi_learn(self.zctrls["balance"])
 			self.parent.refresh_visible_strips()
 		elif self.zctrls:
@@ -531,7 +531,7 @@ class zynthian_gui_mixer_strip():
 	# Function to set mute
 	#	value: Mute value (True/False)
 	def set_mute(self, value):
-		if self.parent.midi_learning:
+		if self.parent.zynmixer.midi_learn_zctrl:
 			self.parent.enter_midi_learn(self.zctrls["mute"])
 		elif self.zctrls:
 			self.zctrls['mute'].set_value(value)
@@ -540,7 +540,7 @@ class zynthian_gui_mixer_strip():
 	# Function to set solo
 	#	value: Solo value (True/False)
 	def set_solo(self, value):
-		if self.parent.midi_learning:
+		if self.parent.zynmixer.midi_learn_zctrl:
 			self.parent.enter_midi_learn(self.zctrls["solo"])
 		elif self.zctrls:
 			self.zctrls['solo'].set_value(value)
@@ -550,7 +550,7 @@ class zynthian_gui_mixer_strip():
 	# Function to toggle mono
 	#	value: Mono value (True/False)
 	def set_mono(self, value):
-		if self.parent.midi_learning:
+		if self.parent.zynmixer.midi_learn_zctrl:
 			self.parent.enter_midi_learn(self.zctrls["mono"])
 		elif self.zctrls:
 			self.zctrls['mono'].set_value(value)
@@ -635,9 +635,9 @@ class zynthian_gui_mixer_strip():
 	# Function to handle mouse click / touch of balance
 	#	event: Mouse event
 	def on_balance_press(self, event):
-		if self.parent.midi_learning:
-			if self.parent.midi_learning != self.zctrls["balance"]:
-				self.parent.midi_learning = self.zctrls["balance"]
+		if self.parent.zynmixer.midi_learn_zctrl:
+			if self.parent.zynmixer.midi_learn_zctrl != self.zctrls["balance"]:
+				self.parent.zynmixer.midi_learn_zctrl = self.zctrls["balance"]
 
 	# Function to handle mouse wheel down over balance
 	#	event: Mouse event
@@ -665,7 +665,7 @@ class zynthian_gui_mixer_strip():
 		if zynthian_gui_config.zyngui.cb_touch_release(event):
 			return "break"
 
-		if self.parent.midi_learning:
+		if self.parent.zynmixer.midi_learn_zctrl:
 			return
 		if self.strip_drag_start and not self.dragging:
 			delta = event.time - self.strip_drag_start.time
@@ -728,7 +728,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.pending_refresh_queue = set()  # List of (strip,control) requiring gui refresh (control=None for whole strip refresh)
 		# TODO: Should avoid duplicating midi_learn_zctrl from zynmixer but would need more safeguards to make change.
-		self.midi_learning = None # Mixer strip parameter object, True when pre-learing or None when not learning
 		self.midi_learn_sticky = None
 
 		visible_chains = zynthian_gui_config.visible_mixer_strips  # Maximum quantity of mixer strips to display (Defines strip width. Main always displayed.)
@@ -812,7 +811,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to handle showing display
 	def build_view(self):
-		if zynthian_gui_config.enable_touch_navigation and self.moving_chain or self.midi_learning:
+		if zynthian_gui_config.enable_touch_navigation and self.moving_chain or self.zynmixer.midi_learn_zctrl:
 			self.show_back_button()
 
 		self.set_title()
@@ -978,8 +977,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.moving_chain = False
 			self.refresh_visible_strips()
 		elif type == "S":
-			if self.midi_learning:
-				self.midi_learning_menu(self.midi_learning)
+			if self.zynmixer.midi_learn_zctrl:
+				self.zynmixer.midi_learn_zctrl_menu(self.zynmixer.midi_learn_zctrl)
 			else:
 				self.zyngui.chain_control()
 		elif type == "B":
@@ -999,7 +998,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if self.moving_chain:
 			self.moving_chain = False
 			self.refresh_visible_strips()
-		elif self.midi_learning == True:
+		elif self.zynmixer.midi_learn_zctrl == True:
 			self.exit_midi_learn()
 		else:
 			self.enter_midi_learn()
@@ -1015,12 +1014,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				if self.highlighted_strip is not None:
 					self.highlighted_strip.toggle_solo()
 				return True
-			elif t == "B" and self.midi_learning:
+			elif t == "B" and self.zynmixer.midi_learn_zctrl:
 				self.midi_learn_menu()
 				return True
 
 		elif swi == 1:
-			#if zynthian_gui_config.enable_touch_navigation and self.midi_learning:
+			#if zynthian_gui_config.enable_touch_navigation and self.zynmixer.midi_learn_zctrl:
 			#	return False
 			# This is ugly, but it's the only way i figured for MIDI-learning "mute" without touch.
 			# Moving the "learn" button to back is not an option. It's a labeled button on V4!!
@@ -1029,7 +1028,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 					self.highlighted_strip.toggle_mute()
 				return True
 			elif t == "B":
-				if self.midi_learning:
+				if self.zynmixer.midi_learn_zctrl:
 					self.back_action()
 				else:
 					self.zyngui.cuia_screen_zynpad()
@@ -1124,7 +1123,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# --------------------------------------------------------------------------
 
 	def toggle_menu(self):
-		if self.midi_learning:
+		if self.zynmixer.midi_learn_zctrl:
 			self.midi_learn_menu()
 		else:
 			self.zyngui.toggle_screen("main_menu")
@@ -1133,18 +1132,18 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		options = {}
 		title = f"MIDI Learn Options"
 
-		if isinstance(self.midi_learning, zynthian_controller):
-			if self.midi_learning.is_toggle:
-				if self.midi_learning.midi_cc_momentary_switch:
+		if isinstance(self.zynmixer.midi_learn_zctrl, zynthian_controller):
+			if self.zynmixer.midi_learn_zctrl.is_toggle:
+				if self.zynmixer.midi_learn_zctrl.midi_cc_momentary_switch:
 					options["\u2612 Momentary => Latch"] = "latched"
 				else:
 					options["\u2610 Momentary => Latch"] = "momentary"
-		if isinstance(self.midi_learning, zynthian_controller):
-			options[f"Clean MIDI-learn ({self.midi_learning.symbol})"] = "clean"
+		if isinstance(self.zynmixer.midi_learn_zctrl, zynthian_controller):
+			options[f"Clean MIDI-learn ({self.zynmixer.midi_learn_zctrl.symbol})"] = "clean"
 		else:
 			options["Clean MIDI-learn (ALL)"] = "clean"
 
-		self.midi_learn_sticky = self.midi_learning
+		self.midi_learn_sticky = self.zynmixer.midi_learn_zctrl
 		self.zyngui.screens['option'].config(title, options, self.midi_learn_menu_cb)
 		self.zyngui.show_screen('option')
 
@@ -1152,15 +1151,15 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		if params == 'clean':
 			self.midi_unlearn_action()
 		elif params == "latched":
-			self.midi_learning.midi_cc_momentary_switch = 0
+			self.zynmixer.midi_learn_zctrl.midi_cc_momentary_switch = 0
 		elif params == "momentary":
-			self.midi_learning.midi_cc_momentary_switch = 1
+			self.zynmixer.midi_learn_zctrl.midi_cc_momentary_switch = 1
 
 	def enter_midi_learn(self, zctrl=True):
 		self.midi_learn_sticky = None
-		if self.midi_learning == zctrl:
+		if self.zynmixer.midi_learn_zctrl == zctrl:
 			return
-		self.midi_learning = zctrl
+		self.zynmixer.midi_learn_zctrl = zctrl
 		if zctrl != True:
 			self.zynmixer.enable_midi_learn(zctrl)
 		self.refresh_visible_strips()
@@ -1168,7 +1167,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.show_back_button(True)
 
 	def exit_midi_learn(self):
-		self.midi_learning = None
+		self.zynmixer.midi_learn_zctrl = None
 		self.zynmixer.disable_midi_learn()
 		self.refresh_visible_strips()
 		if zynthian_gui_config.enable_touch_navigation:
@@ -1176,7 +1175,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Pre-select all controls in a chain to allow selection of actual control to MIDI learn
 	def toggle_midi_learn(self):
-		match self.midi_learning:
+		match self.zynmixer.midi_learn_zctrl:
 			case True:
 				self.exit_midi_learn()
 			case None:
@@ -1185,8 +1184,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 				self.enter_midi_learn()
 
 	def midi_unlearn_action(self):
-		self.midi_learn_sticky = self.midi_learning
-		if isinstance(self.midi_learning, zynthian_controller):
+		self.midi_learn_sticky = self.zynmixer.midi_learn_zctrl
+		if isinstance(self.zynmixer.midi_learn_zctrl, zynthian_controller):
 			self.zyngui.show_confirm(f"Do you want to clear MIDI-learn for '{self.zynmixer.midi_learn_zctrl.name}' control?", self.midi_unlearn_cb, self.zynmixer.midi_learn_zctrl)
 		else:
 			self.zyngui.show_confirm("Do you want to clean MIDI-learn for ALL mixer controls?", self.midi_unlearn_cb)
@@ -1196,7 +1195,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.zynmixer.midi_unlearn(zctrl)
 		else:
 			self.zynmixer.midi_unlearn_all()
-		self.midi_learning = True
+		self.zynmixer.midi_learn_zctrl = True
 		self.refresh_visible_strips()
 
 # --------------------------------------------------------------------------
