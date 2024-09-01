@@ -1167,11 +1167,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.show_back_button(True)
 
 	def exit_midi_learn(self):
-		self.zynmixer.midi_learn_zctrl = None
-		self.zynmixer.disable_midi_learn()
-		self.refresh_visible_strips()
-		if zynthian_gui_config.enable_touch_navigation:
-			self.show_back_button(False)
+		if self.zynmixer.midi_learn_zctrl:
+			self.zynmixer.midi_learn_zctrl = None
+			self.zynmixer.disable_midi_learn()
+			self.refresh_visible_strips()
+			if zynthian_gui_config.enable_touch_navigation:
+				self.show_back_button(False)
 
 	# Pre-select all controls in a chain to allow selection of actual control to MIDI learn
 	def toggle_midi_learn(self):
