@@ -209,6 +209,8 @@ class zynthian_gui_mixer_strip():
 
 
 	def get_ctrl_learn_text(self, ctrl):
+		if not self.chain.is_audio():
+			return ""
 		try:
 			param = self.zynmixer.get_learned_cc(self.zctrls[ctrl])
 			return f"{param[0] + 1}#{param[1]}"

@@ -1525,9 +1525,6 @@ class zynthian_gui:
 			if t == 'S':
 				self.zynswitch_short(i)
 				return
-			elif i == 2 and t == 'B':
-				self.screens["audio_mixer"].midi_learn_menu()
-				return
 		elif self.current_screen == "zynpad":
 			if i == 2 and t == 'S':
 				self.zynswitch_short(i)
