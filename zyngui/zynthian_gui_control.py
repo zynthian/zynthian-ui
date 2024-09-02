@@ -115,8 +115,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 		self.set_button_status(2, not shown)
 
 	def backbutton_short_touch_action(self):
-		self.back_action()
-		self.zyngui.back_screen()
+		if not self.back_action():
+			self.zyngui.back_screen()
 
 	def cb_control_mode(self, mode):
 		self.set_button_status(2, (mode == "select"))
