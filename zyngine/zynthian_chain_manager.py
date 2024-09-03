@@ -1013,9 +1013,12 @@ class zynthian_chain_manager:
             # Add engines to each category
             for eng_code, info in zynthian_lv2.engines_by_type[etype].items():
                 eng_cat = info["CAT"]
-                hide_if_single_proc = eng_code not in self.single_processor_engines or eng_code not in self.zyngines
-                if (info["ENABLED"] or all) and hide_if_single_proc:
-                    result[eng_cat][eng_code] = info
+                if eng_cat in result:
+                    hide_if_single_proc = eng_code not in self.single_processor_engines or eng_code not in self.zyngines
+                    if (info["ENABLED"] or all) and hide_if_single_proc:
+                        result[eng_cat][eng_code] = info
+                else:
+                    logging.error(f"Engine '{eng_code}' has invalid category '{eng_cat}'!")
             # Remove empty categories
             for eng_cat in list(result.keys()):
                 if not result[eng_cat]:
