@@ -425,8 +425,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		return True
 
-	def select(self, index=None):
-		super().select(index)
+	def select(self, index=None, set_zctrl=True):
+		super().select(index, set_zctrl)
 		if self.mode == 'select':
 			self.set_controller_screen()
 			self.set_selector_screen()

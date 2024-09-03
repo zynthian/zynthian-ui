@@ -319,8 +319,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 		super().fill_list()
 
-	def select(self, index=None):
-		super().select(index)
+	def select(self, index=None, set_zctrl=True):
+		super().select(index, set_zctrl)
 		self.update_info()
 		self.update_context_index()
 

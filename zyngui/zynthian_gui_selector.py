@@ -331,7 +331,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 		elif counter > self.zselector.zctrl.value_max:
 			counter = self.zselector.zctrl.value_max
 		index = 0
-		while index < len(self.list_data):  # counter >= 0 ??
+		while index < len(self.list_data):
 			if self.list_data[index][0] is not None:
 				counter -= 1
 				if counter < 0:
@@ -351,11 +351,11 @@ class zynthian_gui_selector(zynthian_gui_base):
 				counter -= 1
 		return counter
 
-	def select(self, index=None):
+	def select(self, index=None, set_zctrl=True):
 		if index is None:
 			index = self.index
 		self.select_listbox(index)
-		if self.shown and self.zselector:
+		if set_zctrl and self.shown and self.zselector:
 			val = self.get_counter_from_index(self.index)
 			if val != self.zselector.zctrl.value:
 				self.zselector.zctrl.set_value(val, False)
@@ -392,7 +392,8 @@ class zynthian_gui_selector(zynthian_gui_base):
 			self.zselector.zynpot_cb(dval)
 			index = self.get_index_from_counter(self.zselector.zctrl.value)
 			if index != self.index:
-				self._select_listbox(index)
+				#self._select_listbox(index)
+				self.select(index, set_zctrl=True)
 			return True
 		return False
 
