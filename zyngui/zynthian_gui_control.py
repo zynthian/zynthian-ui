@@ -65,8 +65,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		self.buttonbar_config = [
 			("arrow_left", '<< Prev'),
+			("zynswitch 1,S", 'Preset'),
 			("zynswitch 3,S", 'Pages'),
-			("toggle_sidebar", 'Hide\nControls'),
 			("arrow_right", 'Next >>')
 		]
 
@@ -114,8 +114,12 @@ class zynthian_gui_control(zynthian_gui_selector):
 	def cb_show_sidebar(self, shown):
 		self.set_button_status(2, not shown)
 
+	def backbutton_short_touch_action(self):
+		if not self.back_action():
+			self.zyngui.back_screen()
+
 	def cb_control_mode(self, mode):
-		self.set_button_status(1, (mode == "select"))
+		self.set_button_status(2, (mode == "select"))
 
 	def fill_list(self):
 		self.list_data = []

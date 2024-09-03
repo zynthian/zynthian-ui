@@ -28,6 +28,7 @@ import os
 import tkinter
 import logging
 from time import monotonic
+from math import log10
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
@@ -267,11 +268,17 @@ class zynthian_gui_mixer_strip():
 		self.parent.main_canvas.itemconfig(self.balance_left, fill=lcolor)
 		self.parent.main_canvas.itemconfig(self.balance_right, fill=rcolor)
 		self.parent.main_canvas.itemconfig(self.balance_text, state=txstate, text=text, fill=txcolor)
+		if self.parent.shown:
+			self.parent.set_title(f"Balance: {int(balance * 100)}%", None, None, 1)
+
 
 	def draw_level(self):
 		level = self.zynmixer.get_level(self.chain.mixer_chan)
 		if level is not None:
 			self.parent.main_canvas.coords(self.fader, self.x, self.fader_top + self.fader_height * (1 - level), self.x + self.fader_width, self.fader_bottom)
+			if self.parent.shown:
+				level_db = 20 * log10(level) + 2
+				self.parent.set_title(f"Volume: {level_db:.2f}dB", None, None, 1)
 
 	def draw_fader(self):
 		if self.zctrls and self.parent.zynmixer.midi_learn_zctrl == self.zctrls["level"]:
@@ -782,7 +789,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Redefine set_title
 	def set_title(self, title="Mixer", fg=None, bg=None, timeout = None):
-		if self.zyngui.state_manager.last_snapshot_fpath:
+		if not timeout and self.zyngui.state_manager.last_snapshot_fpath:
 			fparts = os.path.splitext(self.zyngui.state_manager.last_snapshot_fpath)
 			if self.zyngui.screens['snapshot'].bankless_mode:
 				ssname = os.path.basename(fparts[0])

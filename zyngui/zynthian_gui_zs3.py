@@ -127,6 +127,9 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 				self.show_menu()
 				return True
 
+	def status_bold_touch_action(self):
+		self.zyngui.callable_ui_action('screen_snapshot')
+
 	def show_menu(self):
 		try:
 			zs3_index = self.list_data[self.index][0]

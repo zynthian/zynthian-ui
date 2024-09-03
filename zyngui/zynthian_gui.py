@@ -1079,6 +1079,13 @@ class zynthian_gui:
 	def cuia_last_state_action(self, params=None):
 		self.screens['admin'].last_state_action()
 
+	def cuia_start_workflow_capture(self, params=None):
+		self.start_capture_log()
+
+	def cuia_stop_workflow_capture(self, params=None):
+		self.stop_capture_log()
+
+
 	# Panic Actions
 	def cuia_all_notes_off(self, params=None):
 		self.state_manager.all_notes_off()

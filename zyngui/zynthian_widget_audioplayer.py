@@ -185,8 +185,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 		for chan in range(self.channels):
 			coords = self.widget_canvas.coords(f"waveform_bg_{chan}")
-			coords[2] = self.width
-			self.widget_canvas.coords(f"waveform_bg_{chan}", coords)
+			if len(coords > 2):
+				coords[2] = self.width
+				self.widget_canvas.coords(f"waveform_bg_{chan}", coords)
 
 		font = tkinter.font.Font(family="DejaVu Sans Mono", size=int(1.5 * zynthian_gui_config.font_size))
 		self.waveform_height = self.height - font.metrics("linespace")
