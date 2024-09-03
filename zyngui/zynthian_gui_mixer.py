@@ -268,17 +268,11 @@ class zynthian_gui_mixer_strip():
 		self.parent.main_canvas.itemconfig(self.balance_left, fill=lcolor)
 		self.parent.main_canvas.itemconfig(self.balance_right, fill=rcolor)
 		self.parent.main_canvas.itemconfig(self.balance_text, state=txstate, text=text, fill=txcolor)
-		if self.parent.shown:
-			self.parent.set_title(f"Balance: {int(balance * 100)}%", None, None, 1)
-
 
 	def draw_level(self):
 		level = self.zynmixer.get_level(self.chain.mixer_chan)
 		if level is not None:
 			self.parent.main_canvas.coords(self.fader, self.x, self.fader_top + self.fader_height * (1 - level), self.x + self.fader_width, self.fader_bottom)
-			if self.parent.shown:
-				level_db = 20 * log10(level) + 2
-				self.parent.set_title(f"Volume: {level_db:.2f}dB", None, None, 1)
 
 	def draw_fader(self):
 		if self.zctrls and self.parent.zynmixer.midi_learn_zctrl == self.zctrls["level"]:
@@ -488,6 +482,8 @@ class zynthian_gui_mixer_strip():
 			self.parent.enter_midi_learn(self.zctrls["level"])
 		elif self.zctrls:
 			self.zctrls['level'].set_value(value)
+			level_db = 20 * log10(value) + 2
+			self.parent.set_title(f"Volume: {level_db:.2f}dB", None, None, 1)
 
 	# Function to get volume value
 	def get_volume(self):
@@ -499,8 +495,9 @@ class zynthian_gui_mixer_strip():
 		if self.parent.zynmixer.midi_learn_zctrl:
 			self.parent.enter_midi_learn(self.zctrls["level"])
 		elif self.zctrls:
-			self.zctrls['level'].nudge(dval)
-		self.draw_level()
+			self.zctrls["level"].nudge(dval)
+			level_db = 20 * log10(self.zctrls["level"].value) + 2
+			self.parent.set_title(f"Volume: {level_db:.2f}dB", None, None, 1)
 
 	# Function to set balance value
 	#	value: Balance value (-1..1)
@@ -508,8 +505,8 @@ class zynthian_gui_mixer_strip():
 		if self.parent.zynmixer.midi_learn_zctrl:
 			self.parent.enter_midi_learn(self.zctrls["balance"])
 		elif self.zctrls:
-			self.zctrls['balance'].set_value(value)
-		self.draw_balance()
+			self.zctrls["balance"].set_value(value)
+			self.parent.set_title(f"Balance: {int(value * 100)}%", None, None, 1)
 
 	# Function to get balance value
 	def get_balance(self):
@@ -523,7 +520,7 @@ class zynthian_gui_mixer_strip():
 			self.parent.refresh_visible_strips()
 		elif self.zctrls:
 			self.zctrls['balance'].nudge(dval)
-		self.draw_balance()
+			self.parent.set_title(f"Balance: {int(self.zctrls['balance'].value * 100)}%", None, None, 1)
 
 	# Function to reset volume
 	def reset_volume(self):
@@ -621,11 +618,9 @@ class zynthian_gui_mixer_strip():
 		if self.drag_axis == "y":
 			self.set_volume(self.zctrls['level'].value + (self.touch_y - event.y) / self.fader_height)
 			self.touch_y = event.y
-			self.draw_level()
 		elif self.drag_axis == "x":
 			self.set_balance(self.zctrls['balance'].value - (self.touch_x - event.x) / self.fader_width)
 			self.touch_x = event.x
-			self.draw_balance()
 
 	# Function to handle mouse wheel down over fader
 	#	event: Mouse event
@@ -789,7 +784,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 	# Redefine set_title
 	def set_title(self, title="Mixer", fg=None, bg=None, timeout = None):
-		if not timeout and self.zyngui.state_manager.last_snapshot_fpath:
+		if title == "Mixer" and self.zyngui.state_manager.last_snapshot_fpath:
 			fparts = os.path.splitext(self.zyngui.state_manager.last_snapshot_fpath)
 			if self.zyngui.screens['snapshot'].bankless_mode:
 				ssname = os.path.basename(fparts[0])
