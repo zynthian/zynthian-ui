@@ -286,10 +286,6 @@ class zynthian_engine_inet_radio(zynthian_engine):
 					["http://stream.radiotime.com/listen.m3u?streamId=10555650", 0, "FIP", "auto", ""],
 					["http://icecast.radiofrance.fr/fipgroove-hifi.aac", 0, "FIP Groove", "aac", ""],
 					["http://direct.fipradio.fr/live/fip-webradio4.mp3", 0, "FIP Radio 4", "auto", ""],
-				],
-				"Culture & News (speech)": [
-					["http://direct.franceculture.fr/ts/franceculture-midfi.mp3", 0, "France Culture", "auto", ""],
-					["http://wsdownload.bbc.co.uk/worldservice/meta/live/shoutcast/mp3/eieuk.pls", 0, "BBC Radio World Service (English)", "auto", ""]
 				]
 			}
 		self.banks = []
