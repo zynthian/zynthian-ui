@@ -2,9 +2,9 @@
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
-# Zynthian GUI Info Class
+# Zynthian GUI Details Class
 # 
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 # 
@@ -27,30 +27,25 @@ import logging
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
+from zyngui.zynthian_gui_base import zynthian_gui_base
 
 # ------------------------------------------------------------------------------
-# Zynthian Info GUI Class
+# Zynthian Details GUI Class
 # ------------------------------------------------------------------------------
 
 
-class zynthian_gui_info:
+class zynthian_gui_details(zynthian_gui_base):
 
 	def __init__(self):
-		self.shown = False
-		self.zyngui = zynthian_gui_config.zyngui
-
-		# Main Frame
-		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
-			width=zynthian_gui_config.display_width,
-			height=zynthian_gui_config.display_height,
-			bg=zynthian_gui_config.color_bg)
+		super().__init__()
+		self.title = ""
 
 		# Textarea
 		self.textarea = tkinter.Text(self.main_frame,
+			width=int(zynthian_gui_config.display_width/(zynthian_gui_config.font_size + 8)),
 			height=int(zynthian_gui_config.display_height/(zynthian_gui_config.font_size + 8)),
 			font=(zynthian_gui_config.font_family, zynthian_gui_config.font_size, "normal"),
-			#font=("sans-serif", zynthian_gui_config.font_size, "normal"),
-			#wraplength=80,
+			wrap='word',
 			#justify=tkinter.LEFT,
 			bd=0,
 			highlightthickness=0,
@@ -59,53 +54,33 @@ class zynthian_gui_info:
 			bg=zynthian_gui_config.color_bg,
 			fg=zynthian_gui_config.color_tx)
 		self.textarea.bind("<ButtonRelease-1>", self.cb_push)
-		#self.textarea.pack(fill="both", expand=True)
-		self.textarea.place(x=0, y=0)
+		self.textarea.grid(row=0, column=0, padx=zynthian_gui_config.font_size, pady=zynthian_gui_config.font_size // 2)
 
-		self.textarea.tag_config("ERROR", foreground="#C00000")
-		self.textarea.tag_config("WARNING", foreground="#FF9000")
-		self.textarea.tag_config("SUCCESS", foreground="#009000")
-		self.textarea.tag_config("EMPHASIS", foreground="#0000C0")
-
-	def clean(self):
+	def set(self, title, text):
+		self.title = title
+		self.set_select_path()
 		self.textarea.delete(1.0, tkinter.END)
-
-	def add(self, text, tags=None):
-		self.textarea.insert(tkinter.END, text, tags)
+		self.textarea.insert(tkinter.END, text)
 		self.textarea.see(tkinter.END)
 
-	def set(self, text, tags=None):
-		self.clean()
-		self.add(text + "\n", tags)
-
-	def hide(self):
-		if self.shown:
-			self.shown = False
-			self.main_frame.grid_forget()
-
-	def show(self, text):
-		if self.zyngui.test_mode:
-			logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
-		self.set(text)
-		if not self.shown:
-			self.shown = True
-			self.main_frame.grid()
-
 	def zynpot_cb(self, i, dval):
+		# TODO: Scroll textarea
 		return True
 
-	def refresh_loading(self):
-		pass
-
 	def switch_select(self, t='S'):
-		pass
+		self.zyngui.back_screen()
 
 	def back_action(self):
-		self.zyngui.cancel_screen_timer()
-		self.zyngui.screens['admin'].kill_command()
 		return False
 
 	def cb_push(self, event):
 		self.zyngui.cuia_back()
+
+	def cb_motion(self, event):
+		# TODO: Scroll textarea
+		pass
+
+	def set_select_path(self):
+		self.select_path.set(self.title)
 
 # -------------------------------------------------------------------------------

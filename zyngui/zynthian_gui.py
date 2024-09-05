@@ -55,6 +55,7 @@ from zyngui.zynthian_gui_info import zynthian_gui_info
 from zyngui.zynthian_gui_splash import zynthian_gui_splash
 from zyngui.zynthian_gui_loading import zynthian_gui_loading
 from zyngui.zynthian_gui_option import zynthian_gui_option
+from zyngui.zynthian_gui_details import zynthian_gui_details
 from zyngui.zynthian_gui_admin import zynthian_gui_admin
 from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
 from zyngui.zynthian_gui_chain_options import zynthian_gui_chain_options
@@ -411,6 +412,7 @@ class zynthian_gui:
 		self.screens['confirm'] = zynthian_gui_confirm()
 		self.screens['keyboard'] = zynthian_gui_keyboard.zynthian_gui_keyboard()
 		self.screens['option'] = zynthian_gui_option()
+		self.screens['details'] = zynthian_gui_details()
 		self.screens['engine'] = zynthian_gui_engine()
 		self.screens['chain_options'] = zynthian_gui_chain_options()
 		self.screens['processor_options'] = zynthian_gui_processor_options()
@@ -1527,6 +1529,10 @@ class zynthian_gui:
 				return
 			elif t == 'B':
 				self.screens[self.current_screen].midi_learn_options(i)
+				return
+		elif self.current_screen == "engine":
+			if i == 2 and t == 'S':
+				self.zynswitch_short(i)
 				return
 		elif self.current_screen == "audio_mixer":
 			if t == 'S':

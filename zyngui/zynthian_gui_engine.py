@@ -92,6 +92,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			bd=0,
 			highlightthickness=0,
 			bg=zynthian_gui_config.color_bg)
+		self.info_canvas.bind('<Button-1>', self.cb_info_press)
 		# Position at top of column containing selector
 		self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
 
@@ -205,14 +206,16 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			self.info_canvas.configure(height=int(0.5 * self.height))
 			#self.description_label.configure(height=int(0.35 * self.height))
 
-	def update_info(self):
+	def get_info(self):
 		eng_code = self.list_data[self.index][0]
 		try:
-			eng_info = self.engine_info[eng_code]
+			return self.engine_info[eng_code]
 		except:
 			logging.info(f"Can't get info for engine '{eng_code}'")
-			eng_info = {"QUALITY": 0, "COMPLEX": 0, "DESCR": ""}
+			return {"QUALITY": 0, "COMPLEX": 0, "DESCR": ""}
 
+	def update_info(self):
+		eng_info = self.get_info()
 		quality_stars = "★" * eng_info["QUALITY"]
 		self.info_canvas.itemconfigure(self.quality_stars_label, text=quality_stars)
 		complexity_stars = "⚈" * eng_info["COMPLEX"]
@@ -220,6 +223,15 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.info_canvas.itemconfigure(self.description_label, text=eng_info["DESCR"])
 		#self.description_label.delete("1.0", tkinter.END)
 		#self.description_label.insert("1.0", eng_info["DESCR"])
+
+	def show_details(self):
+		eng_info = self.get_info()
+		text = self.select_path.get() + "\n"
+		text += "Quality: " + "★" * eng_info["QUALITY"] + "\n"
+		text += "Complexity: " + "⚈" * eng_info["COMPLEX"] + "\n\n"
+		text += eng_info["DESCR"]
+		self.zyngui.screens["details"].set(self.list_data[self.index][2], text)
+		self.zyngui.show_screen("details")
 
 	def get_engines_by_cat(self):
 		self.chain_manager.get_engine_info()
@@ -390,6 +402,12 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def arrow_left(self):
 		self.zynpot_cb(2, -1)
 
+	def switch(self, swi, t='S'):
+		if swi == 2:
+			if t == 'S':
+				self.show_details()
+				return True
+
 	def cb_add_parallel(self, option, value):
 		self.zyngui.modify_chain_status['parallel'] = value
 		self.zyngui.modify_chain()
@@ -447,6 +465,9 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			cat_index = self.cat_index + offset_x
 			if 0 <= cat_index < len(self.engine_cats):
 				self.set_cat(cat_index)
+
+	def cb_info_press(self, event):
+		self.show_details()
 
 	def set_select_path(self):
 		path = ""
