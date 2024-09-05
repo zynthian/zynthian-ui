@@ -822,17 +822,19 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			for strip in self.visible_mixer_strips:
 				strip.draw_dpm([-200, -200, -200, -200, False])
 
-		self.highlight_active_chain(True)
 		self.setup_zynpots()
 		if self.midi_learn_sticky:
 			self.enter_midi_learn(self.midi_learn_sticky)
 		else:
+			self.zynmixer.disable_midi_learn()
 			zynsigman.register(zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_control)
 			zynsigman.register_queued(zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_LOAD_ZS3, self.cb_load_zs3)
 			zynsigman.register_queued(zynsigman.S_CHAIN_MAN, self.zyngui.chain_manager.SS_SET_ACTIVE_CHAIN, self.update_active_chain)
 			zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_ARM, self.update_control_arm)
 			zynsigman.register_queued(zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_control_rec)
 			zynsigman.register_queued(zynsigman.S_AUDIO_PLAYER, zynthian_engine_audioplayer.SS_AUDIO_PLAYER_STATE, self.update_control_play)
+
+		self.highlight_active_chain(True)
 		return True
 
 	# Function to update display, e.g. after geometry changes

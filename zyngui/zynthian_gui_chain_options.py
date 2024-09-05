@@ -28,6 +28,7 @@ import logging
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zyngine.zynthian_signal_manager import zynsigman
 
 # ------------------------------------------------------------------------------
 # Zynthian Chain Options GUI Class
@@ -193,6 +194,10 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		else:
 			return False
 
+	def hide(self):
+		zynsigman.unregister(zynsigman.S_AUDIO_MIXER, self.zyngui.state_manager.zynmixer.SS_ZCTRL_SET_VALUE, self.on_midi_cc)
+		super().hide()
+
 	def select_action(self, i, t='S'):
 		self.index = i
 		if self.list_data[i][0] is None:
@@ -275,15 +280,13 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		if self.processor:
 			options[f'Clear {self.processor.name} MIDI-learn'] = "clean_proc"
 		options['Clear chain MIDI-learn'] = "clean_chain"
-		self.zyngui.screens['option'].config("MIDI-learn", options, self.midi_learn_menu_cb)
+		self.zyngui.screens['option'].config("MIDI-learn", options, self.midi_learn_menu_cb, False)
 		self.zyngui.show_screen('option')
 
 	def midi_learn_menu_cb(self, options, params):
 		if params == 'enable_midi_learn':
-			self.zyngui.close_screen()
 			self.zyngui.cuia_toggle_midi_learn()
 		elif params == 'enable_global_midi_learn':
-			self.zyngui.close_screen()
 			self.zyngui.cuia_toggle_midi_learn()
 			self.zyngui.cuia_toggle_midi_learn()
 		elif params == 'clean_proc':
@@ -300,6 +303,10 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		self.zyngui.screens['audio_out'].set_chain(self.chain)
 		self.zyngui.show_screen('audio_out')
 
+	def on_midi_cc(self, chan, symbol, value):
+		if symbol in ["mono", "phase", "ms"] and self.zyngui.current_screen == "option" and self.zyngui.screens['option'].title == "Audio options":
+			self.audio_options()
+
 	def audio_options(self):
 		options = {}
 		if self.zyngui.state_manager.zynmixer.get_mono(self.chain.mixer_chan):
@@ -315,17 +322,68 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		else:
 			options['\u2610 M+S'] = 'ms'
 
-		self.zyngui.screens['option'].config("Audio options", options, self.audio_menu_cb)
+		zynsigman.unregister(zynsigman.S_AUDIO_MIXER, self.zyngui.state_manager.zynmixer.SS_ZCTRL_SET_VALUE, self.on_midi_cc)
+		self.zyngui.screens['option'].config("Audio options", options, self.audio_menu_cb, False, True)
+		self.zyngui.show_screen('option')
+		zynsigman.register(zynsigman.S_AUDIO_MIXER, self.zyngui.state_manager.zynmixer.SS_ZCTRL_SET_VALUE, self.on_midi_cc)
+
+	def audio_menu_cb(self, options, params, t):
+		if t == "B":
+			self.audio_midi_learn_menu(params)
+			return
+		if params == 'mono':
+			if t == "S":
+				self.zyngui.state_manager.zynmixer.toggle_mono(self.chain.mixer_chan)
+		elif params == 'ms':
+			if t == "S":
+				self.zyngui.state_manager.zynmixer.toggle_ms(self.chain.mixer_chan)
+		elif params == 'phase':
+			if t == "S":
+				self.zyngui.state_manager.zynmixer.toggle_phase(self.chain.mixer_chan)
+		#self.audio_options()
+
+	def audio_midi_learn_menu(self, symbol):
+		options = {}
+		try:
+			zctrl = self.zyngui.screens["audio_mixer"].highlighted_strip.zctrls[symbol]
+			strip_id = zctrl.graph_path[0] + 1
+			if strip_id == 17:
+				strip_id = "Main"
+			title = f"{zctrl.symbol} options ({strip_id})"
+			if zctrl.is_toggle:
+				if zctrl.midi_cc_momentary_switch:
+					options["\u2612 Momentary => Latch"] = ["latched", zctrl]
+				else:
+					options["\u2610 Momentary => Latch"] = ["momentary", zctrl]
+			if self.zyngui.state_manager.zynmixer.midi_learn_zctrl:
+				options["Listening for MIDI learn"] = ["learning", zctrl]
+			else:
+				ml = self.zyngui.state_manager.zynmixer.get_learned_cc(zctrl)
+				try:
+					txt = f" ({ml[0]+1}#{ml[1]})"
+				except:
+					txt = ""
+				options[f"Enable MIDI learn{txt}"] = ["learn", zctrl]
+			options[f"Clean MIDI learn"] = ["clean", zctrl]
+		except:
+			title = f"MIDI Learn Options"
+		self.zyngui.screens['option'].config(title, options, self.audio_midi_learn_menu_cb, False)
 		self.zyngui.show_screen('option')
 
-	def audio_menu_cb(self, options, params):
-		if params == 'mono':
-			self.zyngui.state_manager.zynmixer.toggle_mono(self.chain.mixer_chan)
-		elif params == 'ms':
-			self.zyngui.state_manager.zynmixer.toggle_ms(self.chain.mixer_chan)
-		elif params == 'phase':
-			self.zyngui.state_manager.zynmixer.toggle_phase(self.chain.mixer_chan)
-		self.audio_options()
+	def audio_midi_learn_menu_cb(self, options, params):
+		zctrl = params[1]
+		if params[0] == "clean":
+			self.zyngui.state_manager.zynmixer.midi_unlearn(zctrl)
+		elif params[0] == "learn":
+			self.zyngui.state_manager.zynmixer.set_midi_learn_cb(self.audio_options)
+			self.zyngui.state_manager.zynmixer.enable_midi_learn(zctrl)
+		elif params[0] == "learning":
+			self.zyngui.state_manager.zynmixer.disable_midi_learn()
+		elif params[0] == "latched":
+			zctrl.midi_cc_momentary_switch = 0
+		elif params[0] == "momentary":
+			zctrl.midi_cc_momentary_switch = 1
+		self.audio_midi_learn_menu(zctrl.symbol)
 
 	def chain_audio_capture(self):
 		self.zyngui.screens['audio_in'].set_chain(self.chain)

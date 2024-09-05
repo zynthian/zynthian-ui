@@ -143,7 +143,7 @@ class zynmixer(zynthian_engine):
 					'value': self.get_mono(i),
 					'graph_path': [i, 'mono']
 				}),
-				'ms': zynthian_controller(self, 'm+s', {
+				'ms': zynthian_controller(self, 'ms', {
 					'is_toggle': True,
 					'value_max': 1,
 					'value_default': 0,
@@ -410,7 +410,7 @@ class zynmixer(zynthian_engine):
 		self.lib_zynmixer.setMS(channel, enable)
 		if update:
 			self.zctrls[channel]['ms'].set_value(enable, False)
-		zynsigman.send(zynsigman.S_AUDIO_MIXER, self.SS_ZCTRL_SET_VALUE, chan=channel, symbol="ms", value=enable)
+		zynsigman.send(zynsigman.S_AUDIO_MIXER, self.SS_ZCTRL_SET_VALUE, chan=channel, symbol='ms', value=enable)
 
 	# Function to get M+S mode
 	# channel: Index of channel
