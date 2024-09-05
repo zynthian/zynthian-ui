@@ -47,7 +47,7 @@ class zynthian_gui_option(zynthian_gui_selector):
 		self.close_on_select = True
 		super().__init__("Option", True)
 
-	def config(self, title, options, cb_select, close_on_select=True, click_type=False):
+	def config(self, title, options, cb_select, close_on_select=True, click_type=False, back_cb=None):
 		self.title = title
 		if callable(options):
 			self.options_cb = options
@@ -55,6 +55,10 @@ class zynthian_gui_option(zynthian_gui_selector):
 		else:
 			self.options_cb = None
 			self.options = options
+		if callable(back_cb):
+			self.back_action = back_cb
+		else:
+			self.back_action = super().back_action
 		self.cb_select = cb_select
 		self.close_on_select = close_on_select
 		self.click_type = click_type
@@ -99,7 +103,7 @@ class zynthian_gui_option(zynthian_gui_selector):
 	def select_action(self, i, t='S'):
 		if self.close_on_select:
 			self.zyngui.close_screen()
-		if self.cb_select and i < len(self.list_data):
+		if self.cb_select and i < len(self.list_data) and i > -1:
 			if self.click_type:
 				self.cb_select(self.list_data[i][2], self.list_data[i][0], t)
 			else:
