@@ -92,7 +92,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			bd=0,
 			highlightthickness=0,
 			bg=zynthian_gui_config.color_bg)
-		self.info_canvas.bind('<Button-1>', self.cb_info_press)
+		self.info_canvas.bind('<ButtonRelease-1>', self.cb_info_press)
 		# Position at top of column containing selector
 		self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
 
