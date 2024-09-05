@@ -42,7 +42,7 @@ class zynthian_gui_details(zynthian_gui_base):
 
 		# Textarea
 		self.textarea = tkinter.Text(self.main_frame,
-			width=int(zynthian_gui_config.display_width/(zynthian_gui_config.font_size + 8)),
+			width=int(zynthian_gui_config.display_width/(zynthian_gui_config.font_size + 6)),
 			height=int(zynthian_gui_config.display_height/(zynthian_gui_config.font_size + 8)),
 			font=(zynthian_gui_config.font_family, zynthian_gui_config.font_size, "normal"),
 			wrap='word',
