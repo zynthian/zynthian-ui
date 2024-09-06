@@ -414,6 +414,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 	def set_selector(self, zs_hidden=False):
 		super().set_selector(zs_hidden)
+		self.zselector.zctrl.engine = self
 		if self.zsel2:
 			self.zsel2.zctrl.set_options({'symbol': "cat_index", 'name': "Category", 'short_name': "Category", 'value_min': 0, 'value_max': len(self.engine_cats) - 1, 'value': self.cat_index})
 			self.zsel2.config(self.zsel2.zctrl)
@@ -454,6 +455,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		if zctrl.symbol == "cat_index":
 			if self.cat_index != zctrl.value:
 				self.set_cat(zctrl.value)
+		if zctrl.symbol == "Engine":
+			self.select(zctrl.value)
 
 	def cb_listbox_motion(self, event):
 		super().cb_listbox_motion(event)
