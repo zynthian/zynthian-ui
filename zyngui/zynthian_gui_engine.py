@@ -188,7 +188,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.description_label = tkinter.Text(self.main_frame,
 			width=info_width,
 			height=1,
-          	wrap=tkinter.CHAR,
+			wrap=tkinter.CHAR,
 			font=(zynthian_gui_config.font_family, int(0.8 * zynthian_gui_config.font_size)),
 			fg=zynthian_gui_config.color_panel_tx,
 			bd=0,
@@ -206,8 +206,9 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			self.info_canvas.configure(height=int(0.5 * self.height))
 			#self.description_label.configure(height=int(0.35 * self.height))
 
-	def get_info(self):
-		eng_code = self.list_data[self.index][0]
+	def get_info(self, eng_code=None):
+		if not eng_code:
+			eng_code = self.list_data[self.index][0]
 		try:
 			return self.engine_info[eng_code]
 		except:
@@ -224,13 +225,19 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		#self.description_label.delete("1.0", tkinter.END)
 		#self.description_label.insert("1.0", eng_info["DESCR"])
 
-	def show_details(self):
-		eng_info = self.get_info()
-		text = self.select_path.get() + "\n"
+	def show_details(self, eng_code=None):
+		eng_info = self.get_info(eng_code)
+		try:
+			path = zynthian_lv2.engine_type_title[eng_info["TYPE"]]
+		except:
+			path = eng_info["TYPE"]
+		if self.engine_cats:
+			path = path + "/" + eng_info["CAT"]
+		text = path + "\n"
 		text += "Quality: " + "★" * eng_info["QUALITY"] + "\n"
 		text += "Complexity: " + "⚈" * eng_info["COMPLEX"] + "\n\n"
 		text += eng_info["DESCR"]
-		self.zyngui.screens["details"].set(self.list_data[self.index][2], text)
+		self.zyngui.screens["details"].setup(eng_info["TITLE"], text)
 		self.zyngui.show_screen("details")
 
 	def get_engines_by_cat(self):

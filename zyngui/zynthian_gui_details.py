@@ -56,7 +56,7 @@ class zynthian_gui_details(zynthian_gui_base):
 		self.textarea.bind("<ButtonRelease-1>", self.cb_push)
 		self.textarea.grid(row=0, column=0, padx=zynthian_gui_config.font_size, pady=zynthian_gui_config.font_size // 2)
 
-	def set(self, title, text):
+	def setup(self, title, text):
 		self.title = title
 		self.set_select_path()
 		self.textarea.delete(1.0, tkinter.END)
