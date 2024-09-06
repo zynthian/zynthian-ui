@@ -1397,7 +1397,8 @@ class zynthian_gui:
 			return
 		if params:
 			try:
-				self.chain_manager.get_active_chain().set_current_processor(params)
+				self.current_processor = params
+				self.chain_manager.get_active_chain().set_current_processor(self.current_processor)
 			except:
 				logging.error("Can't set chain passed as CUIA parameter!")
 		elif not self.is_shown_audio_player():
