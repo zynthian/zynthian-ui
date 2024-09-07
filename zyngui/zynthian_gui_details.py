@@ -50,7 +50,6 @@ class zynthian_gui_details(zynthian_gui_base):
 			bd=0,
 			highlightthickness=0,
 			relief=tkinter.FLAT,
-			cursor="none",
 			bg=zynthian_gui_config.color_bg,
 			fg=zynthian_gui_config.color_tx)
 		self.textarea.bind("<ButtonRelease-1>", self.cb_push)
