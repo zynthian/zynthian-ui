@@ -633,7 +633,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 	#  type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#  returns True if action fully handled or False if parent action should be triggered
 	def switch(self, switch, type):
-		if switch == zynthian_gui_config.ENC_LAYER and type == 'B':
+		if switch == 0 and type == "S":
 			self.show_menu()
 			return True
 		return False

@@ -52,6 +52,7 @@ class zynthian_signal_manager:
     SS_CUIA_MIDI_EVENT = 1
 
     SS_GUI_SHOW_SCREEN = 0
+    SS_GUI_SHOW_SIDEBAR = 1
 
     SS_MIDI_SYS = 0
     SS_MIDI_CC = 1

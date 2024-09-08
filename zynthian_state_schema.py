@@ -80,19 +80,20 @@ ZynthianState = {
                         "volume": { # Indexed by controller symbol
                             "value": 96, # Controller value
                         },
+                        #... Other parameters
                     },
                     #... Other controllers
                 }
+                #... Other processors
             },
-            #... Other processors
             "mixer": { # Dictionary of audio mixer configuration (optional, overrides base value)
                 "chan_00": { # Indexed by mixer channel / strip (or "main")
                     "level": 0.800000011920929, # Fader value (optional, overrides base value)
                     "balance": 0.5, # Balance/pan state (optional, overrides base value)
-                    "mute": 0, # Mute state (optional, overrides base value)
-                    "solo": 0, # Solo state (optional, overrides base value)
-                    "mono": 0, # Mono state (optional, overrides base value)
-                    "phase": 0, # Phase reverse state (optional, overrides base value)
+                    "mute": 0, # Mute state (optional bitwise flag, overrides base value) b0:state, b1:momentary
+                    "solo": 0, # Solo state (optional bitwise flag, overrides base value) b0:state, b1:momentary
+                    "mono": 0, # Mono state (optional bitwise flag, overrides base value) b0:state, b1:momentary
+                    "phase": 0, # Phase reverse state (optional bitwise flag, overrides base value) b0:state, b1:momentary
                 },
                 #... Other mixer strips
                 "midi_learn": { # Mixer MIDI learn
@@ -142,6 +143,8 @@ ZynthianState = {
             },
             "global": { # Dictionary of global params settable by zs3 indexed by param name
                 "midi_transpose": 0, # Semitones to globally transpose
+                "zctrl_x": [0,"volume"], # Mapping of x-axis controller [proc_id, symbol]
+                "zctrl_y": [0,"cutoff"], # Mapping of y-axis controller [proc_id, symbol]
             }
         },
         "1/2": {}, # ZS3 for channel 1, program change 2

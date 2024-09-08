@@ -183,6 +183,12 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.widget_canvas.coords(self.info_text, self.width - zynthian_gui_config.font_size // 2, self.height)
 		self.widget_canvas.itemconfig(self.info_text, width=self.width)
 
+		for chan in range(self.channels):
+			coords = self.widget_canvas.coords(f"waveform_bg_{chan}")
+			if len(coords > 2):
+				coords[2] = self.width
+				self.widget_canvas.coords(f"waveform_bg_{chan}", coords)
+
 		font = tkinter.font.Font(family="DejaVu Sans Mono", size=int(1.5 * zynthian_gui_config.font_size))
 		self.waveform_height = self.height - font.metrics("linespace")
 		self.refresh_waveform = True
@@ -195,7 +201,8 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.refresh_waveform = True
 
 	def swipe_nudge(self, dts):
-		self.swipe_speed += max(-500, min(0.1 * self.swipe_dir / dts, 500))
+		if dts:
+			self.swipe_speed += max(-500, min(0.1 * self.swipe_dir / dts, 500))
 		#logging.debug(f"SWIPE NUDGE {dts} => SWIPE_SPEED = {self.swipe_speed}")
 
 	def swipe_update(self):
@@ -412,11 +419,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			y0 = self.waveform_height // self.channels
 			for chan in range(self.channels):
 				v_offset = chan * y0
-				self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=zynthian_gui_config.PAD_COLOUR_GROUP[chan // 2 % len(zynthian_gui_config.PAD_COLOUR_GROUP)], tags="waveform", state=tkinter.HIDDEN)
+				self.widget_canvas.create_rectangle(0, v_offset, self.width, v_offset + y0, fill=zynthian_gui_config.PAD_COLOUR_GROUP[chan // 2 % len(zynthian_gui_config.PAD_COLOUR_GROUP)], tags=("waveform",f"waveform_bg_{chan}"), state=tkinter.HIDDEN)
 				self.widget_canvas.create_line(0, v_offset + y0 // 2, self.width, v_offset + y0 // 2, fill="grey", tags="waveform", state=tkinter.HIDDEN)
 				self.widget_canvas.create_line(0, 0, 0, 0, fill=self.waveform_color, tags=("waveform", f"waveform{chan}"), state=tkinter.HIDDEN)
-			self.widget_canvas.tag_raise("waveform")
-			self.widget_canvas.tag_raise("overlay")
 			self.update_cue_markers()
 			frames = self.frames / 2
 			labels = ['x1']
@@ -440,12 +445,16 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 		self.update()
 
 	def draw_waveform(self, start, length):
+		self.widget_canvas.itemconfig(self.loading_text, text="Creating waveform...")
 		if not self.channels:
+			self.widget_canvas.itemconfig(self.loading_text, text="No audio in file")
 			return
 		start = max(0, start)
 		start = min(self.frames, start)
 		length = min(self.frames - start, length)
 		steps_per_peak = 16
+		data = [[] for i in range(self.channels)]
+		large_file = self.frames * self.channels > 24000000
 		
 		y0 = self.waveform_height // self.channels
 		y_offsets = []
@@ -453,42 +462,44 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 			y_offsets.append(y0 * (i + 0.5))
 		y0 //= 2
 
-		frames_per_pixel = length // self.width
-		block_size = min(frames_per_pixel, 1024)  # Limit large file read blocks
-		if frames_per_pixel < 1:
-			self.refresh_waveform = False
-			return
-		data = [[] for i in range(self.channels)]
-
-		large_file = self.frames * self.channels > 24000000
 		if large_file:
+			frames_per_pixel = length // self.width
+			block_size = min(frames_per_pixel, 1024)  # Limit read blocks for larger files
 			offset1 = 0
 			offset2 = block_size
 			step = max(1, block_size // steps_per_peak)
 		else:
-			offset1 = 0
-			offset2 = frames_per_pixel
-			step = max(1, frames_per_pixel // steps_per_peak)
 			self.sf.seek(start)
-			a = self.sf.read(length)
+			a_data = self.sf.read(length, always_2d=True)
+			frames_per_pixel = len(a_data) // self.width
+			step = max(1, frames_per_pixel // steps_per_peak)
+			block_size = min(frames_per_pixel, 1024)  # Limit read blocks for larger files
+
+		if frames_per_pixel < 1:
+			self.refresh_waveform = False
+			self.widget_canvas.itemconfig(self.loading_text, text="Audio too short")
+			return
 
 		v1 = [0.0 for i in range(self.channels)]
 		v2 = [0.0 for i in range(self.channels)]
 
 		for x in range(self.width):
+			# For each x-axis pixel
 			if large_file:
 				self.sf.seek(start + x * frames_per_pixel)
-				a = self.sf.read(block_size)
-				if len(a) == 0:
+				a_data = self.sf.read(block_size, always_2d=True)
+				if len(a_data) == 0:
 					break
 			else:
 				offset1 = x * frames_per_pixel
 				offset2 = offset1 + frames_per_pixel
 			for channel in range(self.channels):
+				# For each audio channel
 				v1[0:] = [0.0] * self.channels
 				v2[0:] = [0.0] * self.channels
 				for frame in range(offset1, offset2, step):
-					av = a[frame][channel] * self.v_zoom
+					# Find peak audio within block of audio represented by this x-axis pixel 
+					av = a_data[frame][channel] * self.v_zoom
 					if av < v1[channel]:
 						v1[channel] = av
 					if av > v2[channel]:
@@ -496,7 +507,10 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				data[channel] += (x, y_offsets[channel] + int(v1[channel] * y0), x, y_offsets[channel] + int(v2[channel] * y0))
 
 		for chan in range(self.channels):
+			# Plot each point on the graph as series of vertical lines spanning max and min peaks of audio represented by each x-axis pixel
 			self.widget_canvas.coords(f"waveform{chan}", data[chan])
+		self.widget_canvas.tag_lower(self.loading_text)
+		self.widget_canvas.tag_raise("overlay")
 
 		self.refresh_waveform = False
 
@@ -510,7 +524,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 				self.v_zoom = self.processor.controllers_dict['amp zoom'].value
 				self.refresh_waveform = True
 
-			if self.filename != self.monitors["filename"]:  #  or self.frames != self.frames: => This is wrong!
+			if self.filename != self.monitors["filename"]:
 				self.filename = self.monitors["filename"]
 				waveform_thread = Thread(target=self.load_file, name="waveform image")
 				waveform_thread.start()
@@ -519,6 +533,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 			if self.duration == 0.0:
 				self.refreshing = False
+				self.widget_canvas.itemconfig(self.loading_text, text="No audio in file")
 				return
 
 			refresh_markers = False
@@ -626,7 +641,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 						self.widget_canvas.itemconfig(f"cue{i+1}", fill=zynthian_gui_config.color_info)
 				refresh_info = True
 
-			if self.info != self.processor.controllers_dict['info'].value:
+			if self.info is None or self.info != self.processor.controllers_dict['info'].value:
 				self.widget_canvas.itemconfig("waveform", state=tkinter.NORMAL)
 				self.widget_canvas.itemconfig("overlay", state=tkinter.NORMAL)
 				self.info = self.processor.controllers_dict['info'].value

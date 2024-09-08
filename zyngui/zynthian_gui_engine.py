@@ -92,6 +92,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			bd=0,
 			highlightthickness=0,
 			bg=zynthian_gui_config.color_bg)
+		self.info_canvas.bind('<ButtonRelease-1>', self.cb_info_press)
 		# Position at top of column containing selector
 		self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
 
@@ -187,7 +188,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.description_label = tkinter.Text(self.main_frame,
 			width=info_width,
 			height=1,
-          	wrap=tkinter.CHAR,
+			wrap=tkinter.CHAR,
 			font=(zynthian_gui_config.font_family, int(0.8 * zynthian_gui_config.font_size)),
 			fg=zynthian_gui_config.color_panel_tx,
 			bd=0,
@@ -205,14 +206,17 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			self.info_canvas.configure(height=int(0.5 * self.height))
 			#self.description_label.configure(height=int(0.35 * self.height))
 
-	def update_info(self):
-		eng_code = self.list_data[self.index][0]
+	def get_info(self, eng_code=None):
+		if not eng_code:
+			eng_code = self.list_data[self.index][0]
 		try:
-			eng_info = self.engine_info[eng_code]
+			return self.engine_info[eng_code]
 		except:
 			logging.info(f"Can't get info for engine '{eng_code}'")
-			eng_info = {"QUALITY": 0, "COMPLEX": 0, "DESCR": ""}
+			return {"QUALITY": 0, "COMPLEX": 0, "DESCR": ""}
 
+	def update_info(self):
+		eng_info = self.get_info()
 		quality_stars = "★" * eng_info["QUALITY"]
 		self.info_canvas.itemconfigure(self.quality_stars_label, text=quality_stars)
 		complexity_stars = "⚈" * eng_info["COMPLEX"]
@@ -220,6 +224,21 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		self.info_canvas.itemconfigure(self.description_label, text=eng_info["DESCR"])
 		#self.description_label.delete("1.0", tkinter.END)
 		#self.description_label.insert("1.0", eng_info["DESCR"])
+
+	def show_details(self, eng_code=None):
+		eng_info = self.get_info(eng_code)
+		try:
+			path = zynthian_lv2.engine_type_title[eng_info["TYPE"]]
+		except:
+			path = eng_info["TYPE"]
+		if self.engine_cats:
+			path = path + "/" + eng_info["CAT"]
+		text = path + "\n"
+		text += "Quality: " + "★" * eng_info["QUALITY"] + "\n"
+		text += "Complexity: " + "⚈" * eng_info["COMPLEX"] + "\n\n"
+		text += eng_info["DESCR"]
+		self.zyngui.screens["details"].setup(eng_info["TITLE"], text)
+		self.zyngui.show_screen("details")
 
 	def get_engines_by_cat(self):
 		self.chain_manager.get_engine_info()
@@ -319,8 +338,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 		super().fill_list()
 
-	def select(self, index=None):
-		super().select(index)
+	def select(self, index=None, set_zctrl=True):
+		super().select(index, set_zctrl)
 		self.update_info()
 		self.update_context_index()
 
@@ -390,19 +409,19 @@ class zynthian_gui_engine(zynthian_gui_selector):
 	def arrow_left(self):
 		self.zynpot_cb(2, -1)
 
+	def switch(self, swi, t='S'):
+		if swi == 2:
+			if t == 'S':
+				self.show_details()
+				return True
 
 	def cb_add_parallel(self, option, value):
 		self.zyngui.modify_chain_status['parallel'] = value
 		self.zyngui.modify_chain()
 
-	def switch(self, swi, t='S'):
-		if swi == 0:
-			if t == 'S':
-				self.arrow_right()
-				return True
-
 	def set_selector(self, zs_hidden=False):
 		super().set_selector(zs_hidden)
+		self.zselector.zctrl.engine = self
 		if self.zsel2:
 			self.zsel2.zctrl.set_options({'symbol': "cat_index", 'name': "Category", 'short_name': "Category", 'value_min': 0, 'value_max': len(self.engine_cats) - 1, 'value': self.cat_index})
 			self.zsel2.config(self.zsel2.zctrl)
@@ -443,6 +462,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
 		if zctrl.symbol == "cat_index":
 			if self.cat_index != zctrl.value:
 				self.set_cat(zctrl.value)
+		if zctrl.symbol == "Engine":
+			self.select(zctrl.value)
 
 	def cb_listbox_motion(self, event):
 		super().cb_listbox_motion(event)
@@ -454,6 +475,9 @@ class zynthian_gui_engine(zynthian_gui_selector):
 			cat_index = self.cat_index + offset_x
 			if 0 <= cat_index < len(self.engine_cats):
 				self.set_cat(cat_index)
+
+	def cb_info_press(self, event):
+		self.show_details()
 
 	def set_select_path(self):
 		path = ""

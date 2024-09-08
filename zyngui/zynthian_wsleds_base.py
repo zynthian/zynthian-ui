@@ -126,6 +126,10 @@ class zynthian_wsleds_base:
 	def set_led(self, i, wscolor):
 		self.wsleds[i] = wscolor
 
+	def get_led(self, i):
+		color = self.wsleds[i]
+		return (int(color[0]) << 16) | (int(color[1]) << 8) | int(color[2])
+
 	def light_on_all(self):
 		if self.num_leds > 0:
 			# Light all LEDs
@@ -187,13 +191,14 @@ class zynthian_wsleds_base:
 				try:
 					wsled_state = []
 					for i in range(self.num_leds):
-						c = str(self.wsleds.getPixelColor(i))
+						c = str(self.get_led(i))
 						if c in self.wscolors_dict:
 							wsled_state.append(self.wscolors_dict[c])
 					wsled_state = ",".join(wsled_state)
 					if wsled_state != self.last_wsled_state:
 						self.last_wsled_state = wsled_state
 						self.zyngui.write_capture_log("LEDSTATE:" + wsled_state)
+						#logging.debug(f"Capturing LED state log => {wsled_state}")
 				except Exception as e:
 					logging.error(f"Capturing LED state log => {e}")
 

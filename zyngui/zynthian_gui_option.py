@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
 # Zynthian GUI Option Selector Class
 # 
 # Copyright (C) 2015-2020 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import os
 import glob
@@ -31,9 +31,10 @@ from os.path import basename, splitext
 # Zynthian specific modules
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian Option Selection GUI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_option(zynthian_gui_selector):
 
@@ -45,7 +46,6 @@ class zynthian_gui_option(zynthian_gui_selector):
 		self.click_type = False
 		self.close_on_select = True
 		super().__init__("Option", True)
-
 
 	def config(self, title, options, cb_select, close_on_select=True, click_type=False):
 		self.title = title
@@ -59,7 +59,6 @@ class zynthian_gui_option(zynthian_gui_selector):
 		self.close_on_select = close_on_select
 		self.click_type = click_type
 		self.index = 0
-
 
 	def config_file_list(self, title, dpaths, fpat, cb_select, close_on_select=True, click_type=False):
 		self.title = title
@@ -87,7 +86,6 @@ class zynthian_gui_option(zynthian_gui_selector):
 				except Exception as err:
 					logging.warning("Can't get file list for {}/{}: {}".format(dpath, fpat, err))
 
-
 	def fill_list(self):
 		i = 0
 		self.list_data = []
@@ -97,7 +95,6 @@ class zynthian_gui_option(zynthian_gui_selector):
 			self.list_data.append((v, i, k))
 			i += 1
 		super().fill_list()
-
 
 	def select_action(self, i, t='S'):
 		if self.close_on_select:
@@ -110,8 +107,7 @@ class zynthian_gui_option(zynthian_gui_selector):
 			if not self.close_on_select:
 				self.fill_list()
 
-
 	def set_select_path(self):
 		self.select_path.set(self.title)
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------

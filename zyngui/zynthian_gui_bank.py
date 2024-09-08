@@ -89,14 +89,6 @@ class zynthian_gui_bank(zynthian_gui_selector):
 		if len(proc.preset_list) == 0 or proc.preset_list[0][0] == "":
 			self.zyngui.screens['preset'].select_action(0)
 
-	def arrow_right(self):
-		self.zyngui.chain_manager.next_chain()
-		self.build_view()
-
-	def arrow_left(self):
-		self.zyngui.chain_manager.previous_chain()
-		self.build_view()
-
 	def topbar_bold_touch_action(self):
 		self.zyngui.zynswitch_defered('B', 1)
 
@@ -159,11 +151,7 @@ class zynthian_gui_bank(zynthian_gui_selector):
 	# t: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	# returns True if action fully handled or False if parent action should be triggered
 	def switch(self, swi, t='S'):
-		if swi == 0:
-			if t == 'S':
-				self.arrow_right()
-				return True
-		elif swi == 2:
+		if swi == 2:
 			if t == 'S':
 				self.zyngui.show_favorites()
 				return True

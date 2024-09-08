@@ -349,10 +349,23 @@ class zynthian_gui_controller(tkinter.Canvas):
 				val = self.zctrl.value + 1
 			else:
 				val = self.zctrl.value
-			if self.format_print and -1000 < val < 1000:
+
+			if self.zctrl.is_logarithmic:
+				absval = abs(val)
+				if absval < 10.0:
+					self.format_print = "{:.3f}"
+				elif absval < 100.0:
+					self.format_print = "{:.2f}"
+				elif absval < 1000.0:
+					self.format_print = "{:.1f}"
+				else:
+					self.format_print = "{:.0f}"
+				self.value_print = self.format_print.format(val)
+			elif self.format_print and -1000 < val < 1000:
 				self.value_print = self.format_print.format(val)
 			else:
 				self.value_print = str(int(val))
+
 		self.refresh_plot_value = True
 
 	def plot_value(self):
@@ -422,7 +435,6 @@ class zynthian_gui_controller(tkinter.Canvas):
 		if self.hidden:
 			return
 		if self.zctrl:
-			midi_learn_params = self.zyngui.chain_manager.get_midi_learn_from_zctrl(self.zctrl)
 			if self.selector_counter:
 				#self.erase_midi_bind()
 				self.plot_midi_bind(f"/{self.zctrl.value_range + 1}")
@@ -431,7 +443,11 @@ class zynthian_gui_controller(tkinter.Canvas):
 					self.plot_midi_bind("??#??", zynthian_gui_config.color_ml)
 				else:
 					self.plot_midi_bind("??", zynthian_gui_config.color_hl)
-			elif midi_learn_params:
+			elif self.zctrl == self.zyngui.state_manager.zctrl_x:
+				self.plot_midi_bind("X")
+			elif self.zctrl == self.zyngui.state_manager.zctrl_y:
+				self.plot_midi_bind("Y")
+			elif midi_learn_params := self.zyngui.chain_manager.get_midi_learn_from_zctrl(self.zctrl):
 				zmip = (midi_learn_params[0] >> 24) & 0xff
 				chan = (midi_learn_params[0] >> 16) & 0xff
 				cc = (midi_learn_params[0] >> 8) & 0xff
@@ -548,12 +564,15 @@ class zynthian_gui_controller(tkinter.Canvas):
 				# If few values => use fixed step=1 (no adaptative step size!)
 				if zctrl.value_range <= 32:
 					self.step = 1
-			# Float
-			else:
-				if zctrl.nudge_factor < 0.1:
+			# Linear Float
+			elif not zctrl.is_logarithmic:
+				if zctrl.nudge_factor_fine < 0.01:
+					self.format_print = "{:.3f}"
+				elif zctrl.nudge_factor_fine < 0.1:
 					self.format_print = "{:.2f}"
 				else:
 					self.format_print = "{:.1f}"
+			# Logarithmic float => It's calculated on-the-fly depending of the displayed value
 
 		#logging.debug(f"ZCTRL '{zctrl.short_name}' = {zctrl.value} ({zctrl.value_min} -> {zctrl.value_max}, {self.step}); {zctrl.labels}; {zctrl.ticks}")
 		self.setup_zynpot()
@@ -570,16 +589,16 @@ class zynthian_gui_controller(tkinter.Canvas):
 
 	def zynpot_cb(self, dval):
 		if self.zctrl:
-			return self.zctrl.nudge(dval)
+			return self.zctrl.nudge(dval, fine=self.zyngui.alt_mode)
 		else:
 			return False
 
 	# This is used by touch interface
-	def nudge(self, dval):
+	def nudge(self, dval, fine=False):
 		if self.preselection is not None:
 			self.zyngui.screens["control"].zctrl_touch(self.preselection)
 		if self.zctrl:
-			return self.zctrl.nudge(dval)
+			return self.zctrl.nudge(dval, fine=fine)
 		else:
 			return False
 
@@ -603,15 +622,11 @@ class zynthian_gui_controller(tkinter.Canvas):
 			if self.active_motion_axis == 0:
 				if zynthian_gui_config.enable_touch_controller_switches:
 					if dts < zynthian_gui_config.zynswitch_bold_seconds:
-						self.zyngui.zynswitch_defered('S', self.index)
+						self.zyngui.cuia_v5_zynpot_switch((self.index, 'S'))
 					elif zynthian_gui_config.zynswitch_bold_seconds <= dts < zynthian_gui_config.zynswitch_long_seconds:
-						self.zyngui.zynswitch_defered('B', self.index)
+						self.zyngui.cuia_v5_zynpot_switch((self.index, 'B'))
 					elif dts >= zynthian_gui_config.zynswitch_long_seconds:
-						self.zyngui.zynswitch_defered('L', self.index)
-			elif self.canvas_motion_dx > self.winfo_width() // 2:
-				self.zyngui.zynswitch_defered('X', self.index)
-			elif self.canvas_motion_dx < -self.winfo_width() // 2:
-				self.zyngui.zynswitch_defered('Y', self.index)
+						self.zyngui.cuia_v5_zynpot_switch((self.index, 'L')) # TODO: This should trigger before release
 
 	def cb_canvas_motion(self, event):
 		if self.canvas_push_ts:
@@ -627,14 +642,23 @@ class zynthian_gui_controller(tkinter.Canvas):
 					elif abs(dx) > self.pixels_per_div:
 						self.active_motion_axis = -1
 
-				if self.zctrl and self.active_motion_axis == 1:
+				if self.zctrl:
+					if self.active_motion_axis == 1:
 					# Y-axis drag active
-					if abs(dy) >= self.pixels_per_div:
-						if self.zctrl.range_reversed:
-							self.nudge(-dy // self.pixels_per_div)
-						else:
-							self.nudge(dy // self.pixels_per_div)
-						self.canvas_motion_y0 = event.y + dy % self.pixels_per_div
+						if abs(dy) >= self.pixels_per_div:
+							if self.zctrl.range_reversed:
+								self.nudge(-dy // self.pixels_per_div, self.zyngui.alt_mode)
+							else:
+								self.nudge(dy // self.pixels_per_div, self.zyngui.alt_mode)
+							self.canvas_motion_y0 = event.y + dy % self.pixels_per_div
+					elif self.active_motion_axis == -1:
+					# X-axis drag active
+						if abs(dx) >= self.pixels_per_div:
+							if self.zctrl.range_reversed:
+								self.nudge(-dx // self.pixels_per_div, True)
+							else:
+								self.nudge(dx // self.pixels_per_div, True)
+							self.canvas_motion_x0 = event.x + dx % self.pixels_per_div
 
 				elif self.active_motion_axis == -1:
 					# X-axis drag active

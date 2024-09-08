@@ -318,16 +318,11 @@ class zynmixer(zynthian_engine):
 			self.zctrls[channel]['solo'].set_value(solo, False)
 		zynsigman.send(zynsigman.S_AUDIO_MIXER, self.SS_ZCTRL_SET_VALUE, chan=channel, symbol="solo", value=solo)
 
-		if channel + 1 < self.MAX_NUM_CHANNELS:
-			main_solo = self.lib_zynmixer.getSolo(self.MAX_NUM_CHANNELS - 1)
-			if update:
-				self.zctrls[self.MAX_NUM_CHANNELS - 1]['solo'].set_value(main_solo, False)
-			zynsigman.send(zynsigman.S_AUDIO_MIXER, self.SS_ZCTRL_SET_VALUE, chan=self.MAX_NUM_CHANNELS - 1, symbol="solo", value=main_solo)
-		elif not solo:
+		if channel == self.MAX_NUM_CHANNELS - 1:
+			# Main strip solo clears all chain solo
 			for i in range(0, self.MAX_NUM_CHANNELS - 2):
-				if update:
-					self.zctrls[i]['solo'].set_value(solo, False)
-				zynsigman.send(zynsigman.S_AUDIO_MIXER, self.SS_ZCTRL_SET_VALUE, chan=i, symbol="solo", value=solo)
+				self.zctrls[i]['solo'].set_value(solo, 0)
+				zynsigman.send(zynsigman.S_AUDIO_MIXER, self.SS_ZCTRL_SET_VALUE, chan=i, symbol="solo", value=0)
 
 	# Function to get solo for a channel
 	# channel: Index of channel
@@ -583,8 +578,11 @@ class zynmixer(zynthian_engine):
 			chan_state = {}
 			for symbol in self.zctrls[chan]:
 				zctrl = self.zctrls[chan][symbol]
-				if zctrl.value != zctrl.value_default:
-					chan_state[zctrl.symbol] = zctrl.value
+				value = zctrl.value
+				if zctrl.is_toggle:
+					value |= (zctrl.midi_cc_momentary_switch << 1)
+				if value != zctrl.value_default:
+					chan_state[zctrl.symbol] = value
 			if chan_state:
 				state[key] = chan_state
 			state["midi_learn"] = {}
@@ -604,7 +602,11 @@ class zynmixer(zynthian_engine):
 			key = 'chan_{:02d}'.format(chan)
 			for symbol, zctrl in zctrls.items():
 				try:
-					zctrl.set_value(state[key][symbol], True)
+					if zctrl.is_toggle:
+						zctrl.set_value(state[key][symbol] & 1, True)
+						zctrl.midi_cc_momentary_switch = state[key][symbol] >> 1
+					else:
+						zctrl.set_value(state[key][symbol], True)
 				except:
 					if full:
 						zctrl.reset_value()
@@ -624,13 +626,21 @@ class zynmixer(zynthian_engine):
 	# --------------------------------------------------------------------------
 
 	def midi_control_change(self, chan, ccnum, val):
-		if self.midi_learn_zctrl:
+		if self.midi_learn_zctrl and self.midi_learn_zctrl != True:
+			for midi_chan in range(16):
+				for midi_cc in self.learned_cc[midi_chan]:
+					if self.learned_cc[midi_chan][midi_cc] == self.midi_learn_zctrl:
+						self.learned_cc[midi_chan].pop(midi_cc)
+						break
 			self.learned_cc[chan][ccnum] = self.midi_learn_zctrl
 			self.disable_midi_learn()
+			if self.midi_learn_cb:
+				self.midi_learn_cb()
 		else:
 			for ch in range(16):
 				try:
 					self.learned_cc[ch][ccnum].midi_control_change(val)
+					break
 				except:
 					pass
 
@@ -652,11 +662,7 @@ class zynmixer(zynthian_engine):
 		self.midi_learn_zctrl = zctrl
 
 	def disable_midi_learn(self):
-		#if self.midi_learn_zctrl is None:
-		#	return
 		self.midi_learn_zctrl = None
-		if self.midi_learn_cb:
-			self.midi_learn_cb()
 
 	def set_midi_learn_cb(self, cb):
 		self.midi_learn_cb = cb

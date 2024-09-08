@@ -705,10 +705,10 @@ class zynthian_processor:
 
         if "preset_info" in state:
             try:
-                self.set_preset_by_id(state["preset_info"][0])
+                self.set_preset_by_id(state["preset_info"][0], force_set_engine=False)
             except:
                 # Legacy snapshots without preset_info
-                self.set_preset(state["preset_info"])
+                self.set_preset(state["preset_info"], force_set_engine=False)
         # Set controller values
         if "controllers" in state:
             for symbol, ctrl_state in state["controllers"].items():

@@ -23,11 +23,11 @@
 # 
 #******************************************************************************
 
-import sys
 import math
 import tkinter
 import logging
 from datetime import datetime
+from time import monotonic
 
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
@@ -51,14 +51,12 @@ class zynthian_gui_control_xy():
 		self.padx = 24
 		self.width = zynthian_gui_config.display_width  - zynthian_gui_config.zyngui.touch_keypad_side_width - 2 * self.padx
 		self.x = self.width / 2
-		self.x_zctrl = None
 		self.xvalue = 64
 
 		# Init Y vars
 		self.pady = 18
 		self.height = zynthian_gui_config.display_height - 2 * self.pady
 		self.y = self.height / 2
-		self.y_zctrl = None
 		self.yvalue = 64
 
 		self.last_motion_ts = None
@@ -79,8 +77,12 @@ class zynthian_gui_control_xy():
 			bg=zynthian_gui_config.color_bg)
 		self.canvas.grid(padx=(self.padx, self.padx), pady=(self.pady, self.pady))
 
-		# Setup Canvas Callback
+		# Setup Canvas Callbacks
 		self.canvas.bind("<B1-Motion>", self.cb_canvas)
+		if zynthian_gui_config.enable_touch_navigation:
+			self.last_tap = 0
+			self.tap_count = 0
+			self.canvas.bind("<Button-1>", self.cb_press)
 
 		# Create Cursor
 		self.hline=self.canvas.create_line(
@@ -98,6 +100,13 @@ class zynthian_gui_control_xy():
 
 
 	def build_view(self):
+		try:
+			# Check zctrl are valid
+			# TODO: Could use these values to show info of which parameters are being contolled
+			self.zyngui.state_manager.zctrl_x.symbol
+			self.zyngui.state_manager.zctrl_y.symbol
+		except:
+			return False
 		return True
 
 	def show(self):
@@ -115,41 +124,25 @@ class zynthian_gui_control_xy():
 			self.main_frame.grid_forget()
 
 
-	def set_controllers(self, x_zctrl, y_zctrl):
-		self.x_zctrl = x_zctrl
-		self.y_zctrl = y_zctrl
-		self.get_controller_values()
-
-
-	def set_x_controller(self, x_zctrl):
-		self.x_zctrl = x_zctrl
-		self.get_controller_values()
-
-
-	def set_y_controller(self, y_zctrl):
-		self.y_zctrl = y_zctrl
-		self.get_controller_values()
-
-
 	def get_controller_values(self):
-		if self.x_zctrl.value != self.xvalue:
-			self.xvalue = self.x_zctrl.value
-			if self.x_zctrl.value_range == 0:
+		if self.zyngui.state_manager.zctrl_x.value != self.xvalue:
+			self.xvalue = self.zyngui.state_manager.zctrl_x.value
+			if self.zyngui.state_manager.zctrl_x.value_range == 0:
 				self.x = 0
-			elif self.x_zctrl.is_logarithmic:
-				self.x = int(self.width * math.log10((9 * self.x_zctrl.value - (10 * self.x_zctrl.value_min - self.x_zctrl.value_max)) / self.x_zctrl.value_range))
+			elif self.zyngui.state_manager.zctrl_x.is_logarithmic:
+				self.x = int(self.width * math.log10((9 * self.zyngui.state_manager.zctrl_x.value - (10 * self.zyngui.state_manager.zctrl_x.value_min - self.zyngui.state_manager.zctrl_x.value_max)) / self.zyngui.state_manager.zctrl_x.value_range))
 			else:
-				self.x = int(self.width * (self.xvalue - self.x_zctrl.value_min) / self.x_zctrl.value_range)
+				self.x = int(self.width * (self.xvalue - self.zyngui.state_manager.zctrl_x.value_min) / self.zyngui.state_manager.zctrl_x.value_range)
 			self.canvas.coords(self.vline, self.x, 0, self.x, self.height)
 
-		if self.y_zctrl.value != self.yvalue:
-			self.yvalue = self.y_zctrl.value
-			if self.y_zctrl.value_range == 0:
+		if self.zyngui.state_manager.zctrl_y.value != self.yvalue:
+			self.yvalue = self.zyngui.state_manager.zctrl_y.value
+			if self.zyngui.state_manager.zctrl_y.value_range == 0:
 				self.y = 0
-			elif self.y_zctrl.is_logarithmic:
-				self.y = int(self.width * math.log10((9 * self.y_zctrl.value - (10 * self.y_zctrl.value_min - self.y_zctrl.value_max)) / self.y_zctrl.value_range))
+			elif self.zyngui.state_manager.zctrl_y.is_logarithmic:
+				self.y = int(self.width * math.log10((9 * self.zyngui.state_manager.zctrl_y.value - (10 * self.zyngui.state_manager.zctrl_y.value_min - self.zyngui.state_manager.zctrl_y.value_max)) / self.zyngui.state_manager.zctrl_y.value_range))
 			else:
-				self.y = int(self.height * (self.yvalue - self.y_zctrl.value_min) / self.y_zctrl.value_range)
+				self.y = int(self.height * (self.yvalue - self.zyngui.state_manager.zctrl_y.value_min) / self.zyngui.state_manager.zctrl_y.value_range)
 			self.canvas.coords(self.hline, 0, self.y, self.width, self.y)
 
 
@@ -157,29 +150,29 @@ class zynthian_gui_control_xy():
 		self.canvas.coords(self.hline, 0, self.y, self.width, self.y)
 		self.canvas.coords(self.vline, self.x, 0, self.x, self.height)
 
-		if self.x_zctrl.is_logarithmic:
-			xv = (math.pow(10, self.x / self.width) * self.x_zctrl.value_range + (10 * self.x_zctrl.value_min - self.x_zctrl.value_max)) / 9
+		if self.zyngui.state_manager.zctrl_x.is_logarithmic:
+			xv = (math.pow(10, self.x / self.width) * self.zyngui.state_manager.zctrl_x.value_range + (10 * self.zyngui.state_manager.zctrl_x.value_min - self.zyngui.state_manager.zctrl_x.value_max)) / 9
 		else:
-			xv = self.x_zctrl.value_min + self.x * self.x_zctrl.value_range / self.width
+			xv = self.zyngui.state_manager.zctrl_x.value_min + self.x * self.zyngui.state_manager.zctrl_x.value_range / self.width
 
-		if self.x_zctrl.is_integer:
+		if self.zyngui.state_manager.zctrl_x.is_integer:
 			xv = int(xv)
 
 		if xv != self.xvalue:
 			self.xvalue = xv
-			self.x_zctrl.set_value(self.xvalue, True)
+			self.zyngui.state_manager.zctrl_x.set_value(self.xvalue, True)
 
-		if self.y_zctrl.is_logarithmic:
-			yv = (math.pow(10, self.y / self.height) * self.y_zctrl.value_range + (10 * self.y_zctrl.value_min - self.y_zctrl.value_max)) / 9
+		if self.zyngui.state_manager.zctrl_y.is_logarithmic:
+			yv = (math.pow(10, self.y / self.height) * self.zyngui.state_manager.zctrl_y.value_range + (10 * self.zyngui.state_manager.zctrl_y.value_min - self.zyngui.state_manager.zctrl_y.value_max)) / 9
 		else:	
-			yv = self.y_zctrl.value_min + self.y * self.y_zctrl.value_range / self.height
+			yv = self.zyngui.state_manager.zctrl_y.value_min + self.y * self.zyngui.state_manager.zctrl_y.value_range / self.height
 
-		if self.y_zctrl.is_integer:
+		if self.zyngui.state_manager.zctrl_y.is_integer:
 			yv = int(yv)
 
 		if yv != self.yvalue:
 			self.yvalue = yv
-			self.y_zctrl.set_value(self.yvalue, True)
+			self.zyngui.state_manager.zctrl_y.set_value(self.yvalue, True)
 
 
 	def cb_canvas(self, event):
@@ -189,6 +182,16 @@ class zynthian_gui_control_xy():
 		self.refresh()
 		self.last_motion_ts = datetime.now()
 
+	def cb_press(self, event):
+		now = monotonic()
+		if now > self.last_tap + 0.05 and now < self.last_tap + 0.5:
+			self.tap_count += 1
+			if self.tap_count > 1:
+				self.tap_count = 0
+				self.zyngui.cuia_back()
+		else:
+			self.tap_count = 0
+		self.last_tap = now
 
 	def zynpot_cb(self, i, dval):
 		# Wait 0.1 seconds after last motion for start reading encoders again

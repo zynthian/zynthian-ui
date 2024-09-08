@@ -522,8 +522,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def test_midi(self):
 		logging.info("TESTING MIDI")
-		self.state_manager.start_midi_playback(f"{self.data_dir}/mid/test.mid")
-		self.zyngui.alt_mode = True
+		self.zyngui.alt_mode = self.state_manager.toggle_midi_playback(f"{self.data_dir}/mid/test.mid")
 
 	def control_test(self, t='S'):
 		logging.info("TEST CONTROL HARDWARE")

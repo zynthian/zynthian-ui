@@ -65,6 +65,7 @@ class zynthian_controller:
 		self.value_max = None # Maximum value of control range
 		self.value_range = 0 # Span of permissible values 
 		self.nudge_factor = None # Factor to scale each up/down nudge #TODO: This is not set if configure is not called or options not passed
+		self.nudge_factor_fine = None # Fine factor to scale
 		self.labels = None # List of discrete value labels
 		self.ticks = None # List of discrete value labels
 		self.range_reversed = False # Flag if ticks order is reversed
@@ -236,11 +237,32 @@ class zynthian_controller:
 
 		if not self.nudge_factor:
 			if self.is_logarithmic:
-				self.nudge_factor = 1 / 200 #TODO: Use number of divisions
+				self.nudge_factor = 0.01  # TODO: Use number of divisions
+				self.nudge_factor_fine = 0.003 * self.nudge_factor
 			elif not self.is_integer and not self.is_toggle:
-				self.nudge_factor = self.value_range / 200 # This overrides specified nudge_factor but mostly okay
+				if self.value_range <= 1.0:
+					self.nudge_factor = 0.01
+					self.nudge_factor_fine = 0.001
+				elif self.value_range <= 10:
+					self.nudge_factor = 0.1
+					self.nudge_factor_fine = 0.01
+				elif self.value_range <= 100:
+					self.nudge_factor = 1
+					self.nudge_factor_fine = 0.1
+				elif self.value_range <= 1000:
+					self.nudge_factor = self.value_range / 200
+					self.nudge_factor_fine = 0.1
+				else:
+					self.nudge_factor = self.value_range / 200
+					self.nudge_factor_fine = 1.0
 			else:
 				self.nudge_factor = 1
+				self.nudge_factor_fine = 1
+		# Set a good default for fine adjustment if coarse factor was specified
+		elif not self.nudge_factor_fine:
+			self.nudge_factor_fine = 0.1 * self.nudge_factor
+
+		#logging.debug(f"CTRL '{self.name}' => NUDGE FACTOR={self.nudge_factor}, FINE={self.nudge_factor_fine}, LOGARITHMIC={self.is_logarithmic}")
 
 		if self.midi_feedback is None and self.midi_chan is not None and self.midi_cc is not None:
 			self.midi_feedback = [self.midi_chan, self.midi_cc]
@@ -266,9 +288,7 @@ class zynthian_controller:
 	def get_value(self):
 		return self.value
 
-	def nudge(self, val, send=True):
-		if self.nudge_factor is None:
-			return False
+	def nudge(self, val, send=True, fine=False):
 		if self.ticks:
 			index = self.get_value2index() + val
 			if index < 0:
@@ -276,12 +296,21 @@ class zynthian_controller:
 			if index >= len(self.ticks):
 				index = len(self.ticks) - 1
 			self.set_value(self.ticks[index], send)
-		elif self.is_logarithmic and self.value_range:
+			return True
+
+		if fine:
+			factor = self.nudge_factor_fine
+		else:
+			factor = self.nudge_factor
+		if factor is None:
+			return False
+
+		if self.is_logarithmic and self.value_range:
 			log_val = math.log10((9 * self.value - (10 * self.value_min - self.value_max)) / self.value_range)
-			log_val = min(1, max(0, log_val + val * self.nudge_factor))
+			log_val = min(1, max(0, log_val + val * factor))
 			self.set_value((math.pow(10, log_val) * self.value_range + (10 * self.value_min - self.value_max)) / 9)
 		else:
-			self.set_value(self.value + val * self.nudge_factor, send)
+			self.set_value(self.value + val * factor, send)
 		return True
 
 	def toggle(self):
@@ -352,7 +381,6 @@ class zynthian_controller:
 			self.send_midi_feedback(mval)
 
 		self.is_dirty = True
-
 
 	def send_midi_cc(self, mval=None):
 		if mval is None:

@@ -132,6 +132,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.drawing = False  # mutex to avoid concurrent screen draws
 		self.changed = False
 		self.changed_ts = 0
+		self.midi_record = False # True when record from MIDI enabled
 
 		# Touch control variables
 		self.swiping = 0
@@ -276,6 +277,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		except:
 			logging.error(f"Couldn't set active chain to channel {self.channel}.")
 
+		self.toggle_midi_record(self.midi_record)
+
 		return True
 
 	# Function to hide GUI
@@ -290,7 +293,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		self.zynseq.libseq.setRefNote(int(self.keymap_offset))
 		self.zynseq.libseq.setPatternZoom(self.zoom)
 		self.zynseq.libseq.setPlayMode(self.bank, self.sequence, self.last_play_mode)
-		self.zynseq.libseq.enableMidiRecord(False)
 		self.zyngui.alt_mode = False
 
 	# Function to add menus
@@ -479,7 +481,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
 	def toggle_midi_record(self, midi_record=None):
 		if midi_record is None:
-			midi_record = not self.zynseq.libseq.isMidiRecord()
+			midi_record = not self.midi_record
+			self.midi_record = midi_record
 		self.zynseq.libseq.enableMidiRecord(midi_record)
 		self.save_pattern_snapshot(now=True, force=False)
 
@@ -1788,7 +1791,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 	#   type: Press type ["S"=Short, "B"=Bold, "L"=Long]
 	#   returns True if action fully handled or False if parent action should be triggered
 	def switch(self, i, type):
-		if i == 1:
+		if i == 0 and type == "S":
+			self.show_menu()
+			return True
+		elif i == 1:
 			if type == 'B':
 				self.set_edit_mode(EDIT_MODE_HISTORY)
 				return True

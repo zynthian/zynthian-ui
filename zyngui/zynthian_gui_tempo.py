@@ -36,7 +36,7 @@ from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_selector import zynthian_gui_controller
-
+from zyngine.zynthian_signal_manager import zynsigman
 
 # ------------------------------------------------------------------------------
 # Zynthian Tempo GUI Class
@@ -48,6 +48,13 @@ class zynthian_gui_tempo(zynthian_gui_base):
 	NUM_TAPS = 4
 
 	def __init__(self):
+		self.buttonbar_config = [
+			("toggle_audio_play", "Play\nAudio"),
+			("toggle_audio_record", "Record\nAudio"),
+			("toggle_midi_play", "Play\nMIDI"),
+			("toggle_midi_record", "Record\nMIDI")
+		]
+
 		super().__init__()
 
 		self.state_manager = self.zyngui.state_manager
@@ -89,7 +96,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
 	def set_zctrls(self):
 		if not self.bpm_zgui_ctrl:
-			self.bpm_zctrl = zynthian_controller(self, 'bpm', {'name': 'BPM', 'value_min': 10, 'value_max': 420, 'is_integer': False, 'nudge_factor': 0.1, 'value': self.libseq.getTempo()})
+			self.bpm_zctrl = zynthian_controller(self, 'bpm', {'name': 'BPM', 'value_min': 10, 'value_max': 420, 'nudge_factor': 1.0, 'is_integer': False, 'value': self.libseq.getTempo()})
 			self.bpm_zgui_ctrl = zynthian_gui_controller(0, self.main_frame, self.bpm_zctrl)
 			self.zgui_ctrls.append(self.bpm_zgui_ctrl)
 
@@ -142,7 +149,25 @@ class zynthian_gui_tempo(zynthian_gui_base):
 	def build_view(self):
 		self.set_zctrls()
 		self.last_tap_ts = 0
+		if zynthian_gui_config.enable_touch_navigation:
+			zynsigman.register(zynsigman.S_AUDIO_PLAYER, self.zyngui.state_manager.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
+			zynsigman.register(zynsigman.S_AUDIO_RECORDER, self.zyngui.state_manager.SS_AUDIO_RECORDER_STATE, self.cb_status_audio_recorder)
+			zynsigman.register(zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_MIDI_PLAYER_STATE, self.cb_status_midi_player)
+			zynsigman.register(zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_MIDI_RECORDER_STATE, self.cb_status_midi_recorder)
+			self.cb_status_audio_player()
+			self.cb_status_audio_recorder()
+			self.cb_status_midi_player()
+			self.cb_status_midi_recorder()
 		return True
+
+	def hide(self):
+		if self.shown:
+			if zynthian_gui_config.enable_touch_navigation:
+				zynsigman.unregister(zynsigman.S_AUDIO_PLAYER, self.zyngui.state_manager.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
+				zynsigman.unregister(zynsigman.S_AUDIO_RECORDER, self.zyngui.state_manager.SS_AUDIO_RECORDER_STATE, self.cb_status_audio_recorder)
+				zynsigman.unregister(zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_MIDI_PLAYER_STATE, self.cb_status_midi_player)
+				zynsigman.unregister(zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_MIDI_RECORDER_STATE, self.cb_status_midi_recorder)
+		return super().hide()
 
 	def zynpot_cb(self, i, dval):
 		if i < 4:
@@ -199,5 +224,27 @@ class zynthian_gui_tempo(zynthian_gui_base):
 	def set_select_path(self):
 		self.select_path.set("Tempo Settings")
 
+	def cb_status_audio_player(self, handle=None, state=None):
+		self.set_button_status(0, (self.zyngui.state_manager.status_audio_player))
+
+	def cb_status_audio_recorder(self, chan=None, state=None):
+		self.set_button_status(1, self.zyngui.state_manager.audio_recorder.status)
+
+	def cb_status_midi_player(self, handle=None, state=None):
+		self.set_button_status(2, self.zyngui.state_manager.status_midi_player)
+
+	def cb_status_midi_recorder(self, chan=None, state=None):
+		self.set_button_status(3, self.zyngui.state_manager.status_midi_recorder)
+
+	def cb_button_release(self, event):
+		match event.widget.cuia:
+			case "toggle_audio_play":
+				self.zyngui.cuia_toggle_audio_play()
+			case "toggle_audio_record":
+				self.zyngui.cuia_toggle_audio_record()
+			case "toggle_midi_play":
+				self.zyngui.cuia_toggle_midi_play()
+			case "toggle_midi_record":
+				self.zyngui.cuia_toggle_midi_record()
 
 # ------------------------------------------------------------------------------

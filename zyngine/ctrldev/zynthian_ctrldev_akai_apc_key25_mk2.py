@@ -1247,6 +1247,7 @@ class PadMatrixHandler(ModeHandlerBase):
         if create_empty:
             pattern = self._libseq.createPattern()
             self._libseq.addPattern(scene, seq, 0, 0, pattern)
+            self._libseq.selectPattern(pattern)
 
     def _copy_sequence(self, src_scene, src_seq, dst_scene, dst_seq):
         self._clear_sequence(dst_scene, dst_seq, create_empty=False)

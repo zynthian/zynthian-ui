@@ -51,11 +51,6 @@ logging.info("ZYNTHIAN-UI CONFIG ...")
 # Wiring layout
 # ------------------------------------------------------------------------------
 
-ENC_LAYER = 0
-ENC_BACK = 1
-ENC_SNAPSHOT = 2
-ENC_SELECT = 3
-
 wiring_layout = os.environ.get('ZYNTHIAN_WIRING_LAYOUT', "DUMMIES")
 if wiring_layout == "DUMMIES":
 	logging.info("No Wiring Layout configured. Only touch interface is available.")
@@ -494,11 +489,12 @@ font_family = os.environ.get('ZYNTHIAN_UI_FONT_FAMILY', "Audiowide")
 # Touch Options
 # ------------------------------------------------------------------------------
 
-enable_touch_widgets = int(os.environ.get('ZYNTHIAN_UI_TOUCH_WIDGETS', False))
-enable_onscreen_buttons = int(os.environ.get('ZYNTHIAN_UI_ONSCREEN_BUTTONS', False))
-force_enable_cursor = int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR', False))
+enable_touch_widgets = int(os.environ.get('ZYNTHIAN_UI_TOUCH_WIDGETS', 0))
+enable_touch_navigation = int(os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION', 0))
+force_enable_cursor = int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR', 0))
 
-if enable_onscreen_buttons or check_wiring_layout(["Z2", "V5"]):
+if check_wiring_layout(["Z2", "V5"]):
+	# TODO: BW: Do we need to inhibit touch mimic of V5 encoders?
 	enable_touch_controller_switches = 0
 else:
 	enable_touch_controller_switches = 1
@@ -507,9 +503,9 @@ else:
 # UI Options
 # ------------------------------------------------------------------------------
 
-restore_last_state = int(os.environ.get('ZYNTHIAN_UI_RESTORE_LAST_STATE', False))
-snapshot_mixer_settings = int(os.environ.get('ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS', False))
-show_cpu_status = int(os.environ.get('ZYNTHIAN_UI_SHOW_CPU_STATUS', False))
+restore_last_state = int(os.environ.get('ZYNTHIAN_UI_RESTORE_LAST_STATE', 0))
+snapshot_mixer_settings = int(os.environ.get('ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS', 0))
+show_cpu_status = int(os.environ.get('ZYNTHIAN_UI_SHOW_CPU_STATUS', 0))
 visible_mixer_strips = int(os.environ.get('ZYNTHIAN_UI_VISIBLE_MIXER_STRIPS', 0))
 ctrl_graph = int(os.environ.get('ZYNTHIAN_UI_CTRL_GRAPH', 1))
 control_test_enabled = int(os.environ.get('ZYNTHIAN_UI_CONTROL_TEST_ENABLED', 0))
@@ -522,14 +518,14 @@ touch_keypad_side_left = int(os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_SIDE_LEFT', T
 # Audio Options
 # ------------------------------------------------------------------------------
 
-rbpi_headphones = int(os.environ.get('ZYNTHIAN_RBPI_HEADPHONES', False))
+rbpi_headphones = int(os.environ.get('ZYNTHIAN_RBPI_HEADPHONES', 0))
 enable_dpm = int(os.environ.get('ZYNTHIAN_DPM', True))
 
 # ------------------------------------------------------------------------------
 # Networking Options
 # ------------------------------------------------------------------------------
 
-vncserver_enabled = int(os.environ.get('ZYNTHIAN_VNCSERVER_ENABLED', False))
+vncserver_enabled = int(os.environ.get('ZYNTHIAN_VNCSERVER_ENABLED', 0))
 
 # ------------------------------------------------------------------------------
 # Player configuration

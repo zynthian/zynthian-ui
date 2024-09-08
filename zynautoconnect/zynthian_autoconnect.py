@@ -79,7 +79,6 @@ max_num_chains = 16  		 	# Max number of chains
 devices_in = []       			# List of MIDI input devices
 devices_in_mode = []  			# List of MIDI input devices modes
 devices_out = []      			# List of MIDI output devices
-usb_gadget_devid = None			# Device ID of USB-HOST device (usb gadget)
 
 # zyn_routed_* are used to avoid changing routes made by other jack clients
 zyn_routed_audio = {}			# Map of lists of audio sources routed by zynautoconnect, indexed by destination
@@ -105,6 +104,7 @@ def get_port_friendly_name(uid):
 	if uid in midi_port_names:
 		return midi_port_names[uid]
 	return None
+
 
 def set_port_friendly_name(port, friendly_name=None):
 	"""Set the friendly name for a JACK port
@@ -194,6 +194,7 @@ def get_port_from_name(name):
 	except:
 		return None
 
+
 def get_midi_in_uid(idev):
 	"""Get the UID of an input port
 	idev - Index of ZMIP port
@@ -204,6 +205,7 @@ def get_midi_in_uid(idev):
 		return devices_in[idev].aliases[0]
 	except:
 		return None
+
 
 def get_midi_in_devid(idev):
 	"""Get the ALSA name of the port connected to ZMIP port
@@ -244,7 +246,11 @@ def get_midi_in_devid_by_uid(uid, mapped=False):
 				if port.aliases[0] == uid:
 					return i
 			else:
-				if port.aliases[0].split('/', 1)[1] == uid.split('/', 1)[1]:
+				uid_parts = uid.split('/', 1)
+				if len(uid_parts) > 1:
+					if uid_parts[1] == port.aliases[0].split('/', 1)[1]:
+						return i
+				elif port.aliases[0] == uid:
 					return i
 		except:
 			pass
@@ -261,6 +267,7 @@ def get_midi_in_dev_mode(idev):
 	else:
 		return None
 
+
 def update_midi_in_dev_mode(idev):
 	"""Update mode cache for a midi input device
 
@@ -269,11 +276,13 @@ def update_midi_in_dev_mode(idev):
 	if 0 <= idev < len(devices_in_mode):
 		devices_in_mode[idev] = lib_zyncore.zmip_get_flag_active_chain(idev)
 
+
 def update_midi_in_dev_mode_all():
 	"""Update mode cache for all midi input devices"""
 
 	for idev in range(len(devices_in_mode)):
 		devices_in_mode[idev] = lib_zyncore.zmip_get_flag_active_chain(idev)
+
 
 def reset_midi_in_dev_all():
 	"""Set all MIDI input devices to Active Chain mode and route to all chains"""
@@ -286,8 +295,7 @@ def reset_midi_in_dev_all():
 
 
 # ------------------------------------------------------------------------------
-			
-#	Audio port helpers
+# Audio port helpers
 			
 def add_sidechain_ports(jackname):
 	"""Add ports that should be treated as sidechain inputs
@@ -300,6 +308,7 @@ def add_sidechain_ports(jackname):
 		for port_name in sidechain_map[client_name]:
 			if f"{jackname}:{port_name}" not in sidechain_ports:
 				sidechain_ports.append(f"{jackname}:{port_name}")
+
 
 def remove_sidechain_ports(jackname):
 	"""Removes ports that are treated as sidechain inputs
@@ -315,6 +324,7 @@ def remove_sidechain_ports(jackname):
 				sidechain_ports.remove(f"{jackname}:{port_name}")
 			except:
 				pass
+
 
 def get_sidechain_portnames(jackname=None):
 	"""Get list of sidechain input port names for a given jack client
@@ -333,6 +343,7 @@ def get_sidechain_portnames(jackname=None):
 		except:
 			pass
 	return result
+
 
 # ------------------------------------------------------------------------------
 
@@ -369,13 +380,11 @@ def request_midi_connect(fast=False):
 
 
 def find_usb_gadget_device():
-	global usb_gadget_devid
-	candidates = ["fe980000", "1000480000"]
-	for devid in candidates:
+	for devid in ["fe980000", "1000480000"]:
 		if os.path.isdir(f"/sys/bus/platform/devices/{devid}.usb/gadget.0"):
-			usb_gadget_devid = devid
-			return
-	usb_gadget_devid = None
+			return devid
+	return None
+
 
 def is_host_usb_connected():
 	"""Check if the USB host (e.g. USB-Type B connection) is connected
@@ -383,9 +392,7 @@ def is_host_usb_connected():
 	returns : True if connected to USB host (not necessarily a MIDI port!)
 	"""
 
-	if usb_gadget_devid is None:
-		find_usb_gadget_device()
-
+	usb_gadget_devid = find_usb_gadget_device()
 	if usb_gadget_devid:
 		try:
 			with open(f"/sys/bus/platform/devices/{usb_gadget_devid}.usb/udc/{usb_gadget_devid}.usb/state") as f:
@@ -396,7 +403,8 @@ def is_host_usb_connected():
 					return False
 		except:
 			return False
-	return True
+		return True
+	return False
 
 def add_hw_port(port):
 	"""Add a hardware port to the global list
@@ -413,6 +421,7 @@ def add_hw_port(port):
 		hw_midi_src_ports.append(port)
 		return True
 	return False
+
 
 def remove_hw_port(port):
 	"""Remove a hardware port from the global list
@@ -478,18 +487,13 @@ def update_hw_midi_ports(force=False):
 	for port in hw_midi_src_ports + hw_midi_dst_ports:
 		if port.name.startswith("a2j:Midi Through"):
 			remove_hw_port(port)
+		elif len(port.aliases) > 0 and port.aliases[0].startswith("USB:f_midi") and not host_usb_connected:
+			remove_hw_port(port)
 		elif port not in hw_port_fingerprint or force:
 			update_midi_port_aliases(port)
-			if port.aliases[0].startswith("USB:f_midi"):
-				if host_usb_connected:
-					add_hw_port(port)
-				else:
-					remove_hw_port(port)
-			else:
-				update = True
+			update = True
 		else:
 			fingerprint.remove(port)
-
 	update |= len(fingerprint) != 0
 	release_lock()
 	return update
@@ -739,7 +743,6 @@ def audio_autoconnect():
 	for dst in all_audio_dst:
 		required_routes[dst.name] = set()
 
-
 	# Chain audio routing
 	for chain_id in chain_manager.chains:
 		routes = chain_manager.get_chain_audio_routing(chain_id)
@@ -848,6 +851,7 @@ def audio_autoconnect():
 
 	# Release Mutex Lock
 	release_lock()
+
 
 def get_hw_audio_dst_ports():
 	return hw_audio_dst_ports

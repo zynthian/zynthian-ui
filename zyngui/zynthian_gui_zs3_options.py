@@ -109,7 +109,10 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 		options["Chains"] = None
 		if "chains" in state:
 			for chain_id, chain_state in state["chains"].items():
+				chain_id = int(chain_id)
 				chain = self.zyngui.chain_manager.get_chain(chain_id)
+				if chain is None:
+					continue
 				label = chain.get_name()
 				try:
 					restore_flag = chain_state["restore"]

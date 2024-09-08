@@ -86,7 +86,7 @@ engine_categories = {
 		"Panning & Spatial",
 		"Pitch",
 		"Reverb",
-		"Amplifier",
+		"Simulator",
 		"Analyzer",
 		"Other"
 	),
@@ -134,10 +134,10 @@ lv2class2engcat = {
 	"Limiter": "Dynamics",
 	"Pitch Shifter": "Pitch",
 	"Reverb": "Reverb",
-	"Simulator": "Amplifier",
+	"Simulator": "Simulator",
 	"Envelope": "Modulation",
 	"Gate": "Dynamics",
-	"Amplifier": "Amplifier",
+	"Amplifier": "Simulator",
 	"Chorus": "Modulation",
 	"Flanger": "Modulation",
 	"Phaser": "Modulation",
@@ -752,11 +752,17 @@ def get_plugin_ports(plugin_url):
 			try:
 				vmin = get_node_value(r[1])
 			except:
-				vmin = min(sp, key=lambda x: x['value'])
+				if sp:
+					vmin = min(sp, key=lambda x: x['value'])
+				else:
+					vmin = 0.0
 			try:
 				vmax = get_node_value(r[2])
 			except:
-				vmax = max(sp, key=lambda x: x['value'])
+				if sp:
+					vmax = max(sp, key=lambda x: x['value'])
+				else:
+					vmax = 1.0
 			try:
 				vdef = get_node_value(r[0])
 			except:

@@ -811,12 +811,13 @@ class zynthian_chain_manager:
 
     def nudge_processor(self, chain_id, processor, up):
         if (chain_id not in self.chains):
-            return None
+            return False
         chain = self.chains[chain_id]
-        if chain.nudge_processor(processor, up):
-            for src_chain in self.chains.values():
-                if chain_id in src_chain.audio_out:
-                    src_chain.rebuild_graph()
+        if not chain.nudge_processor(processor, up):
+            return False
+        for src_chain in self.chains.values():
+            if chain_id in src_chain.audio_out:
+                src_chain.rebuild_graph()
 
         if chain.mixer_chan is not None:
             # Audio chain so mute main output whilst making change (blunt but effective)
@@ -825,6 +826,7 @@ class zynthian_chain_manager:
             zynautoconnect.request_audio_connect(True)
             self.state_manager.zynmixer.set_mute(255, mute, False)
         zynautoconnect.request_midi_connect(True)
+        return True
 
     def remove_processor(self, chain_id, processor, stop_engine=True, autoroute=True):
         """Remove a processor from a chain
@@ -1011,9 +1013,12 @@ class zynthian_chain_manager:
             # Add engines to each category
             for eng_code, info in zynthian_lv2.engines_by_type[etype].items():
                 eng_cat = info["CAT"]
-                hide_if_single_proc = eng_code not in self.single_processor_engines or eng_code not in self.zyngines
-                if (info["ENABLED"] or all) and hide_if_single_proc:
-                    result[eng_cat][eng_code] = info
+                if eng_cat in result:
+                    hide_if_single_proc = eng_code not in self.single_processor_engines or eng_code not in self.zyngines
+                    if (info["ENABLED"] or all) and hide_if_single_proc:
+                        result[eng_cat][eng_code] = info
+                else:
+                    logging.error(f"Engine '{eng_code}' has invalid category '{eng_cat}'!")
             # Remove empty categories
             for eng_cat in list(result.keys()):
                 if not result[eng_cat]:
