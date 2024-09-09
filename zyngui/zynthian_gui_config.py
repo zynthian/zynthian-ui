@@ -685,7 +685,7 @@ if "zynthian_main.py" in sys.argv[0]:
 		loading_imgs = []
 		pil_frame = Image.open("./img/zynthian_gui_loading.gif")
 		fw, fh = pil_frame.size
-		fw2 = display_width // 4 - 8
+		fw2 = screen_width // 4 - 8
 		fh2 = int(fh * fw2 / fw)
 		nframes = 0
 		while pil_frame:
