@@ -63,26 +63,28 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 
 	if zynthian_gui_config.gui_layout == "Z2":
 		chan_trans = ["1", "2"]
+		sr_order = [1, 2]
 	else:
 		chan_trans = chan_names
+		sr_order = [2, 1]
 
 	translations_by_device = {
 		"sndrpihifiberry": {
-			"Digital Left": "Output {} Level".format(chan_trans[0]),
-			"Digital Right": "Output {} Level".format(chan_trans[1]),
-			"ADC Left": "Input {} Level".format(chan_trans[0]),
-			"ADC Right": "Input {} Level".format(chan_trans[1]),
-			"PGA Gain Left": "Input {} Gain".format(chan_trans[0]),
-			"PGA Gain Right": "Input {} Gain".format(chan_trans[1]),
-			"ADC Left Input": "Input {} Mode".format(chan_trans[0]),
-			"ADC Right Input": "Input {} Mode".format(chan_trans[1]),
+			"Digital Left": f"Output {chan_trans[0]} Level",
+			"Digital Right": f"Output {chan_trans[1]} Level",
+			"ADC Left": f"Input {chan_trans[0]} Level",
+			"ADC Right": f"Input {chan_trans[1]} Level",
+			"PGA Gain Left": f"Input {chan_trans[0]} Gain",
+			"PGA Gain Right": f"Input {chan_trans[1]} Gain",
+			"ADC Left Input": f"Input {chan_trans[0]} Mode",
+			"ADC Right Input": f"Input {chan_trans[1]} Mode",
 			"No Select": "Disabled",
-			"VINL1[SE]": "Unbalanced Mono TS",
-			"VINL2[SE]": "Unbalanced Mono TR",
+			f"VINL{sr_order[0]}[SE]": "Unbalanced Mono TS",
+			f"VINL{sr_order[1]}[SE]": "Unbalanced Mono TR",
 			"VINL2[SE] + VINL1[SE]": "Stereo TRS to Mono",
 			"{VIN1P, VIN1M}[DIFF]": "Balanced Mono TRS",
-			"VINR1[SE]": "Unbalanced Mono TS",
-			"VINR2[SE]": "Unbalanced Mono TR",
+			f"VINR{sr_order[0]}[SE]": "Unbalanced Mono TS",
+			f"VINR{sr_order[1]}[SE]": "Unbalanced Mono TR",
 			"VINR2[SE] + VINR1[SE]": "Stereo TRS to Mono",
 			"{VIN2P, VIN2M}[DIFF]": "Balanced Mono TRS"
 		}

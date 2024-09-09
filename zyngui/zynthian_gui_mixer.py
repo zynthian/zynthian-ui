@@ -482,8 +482,11 @@ class zynthian_gui_mixer_strip():
 			self.parent.enter_midi_learn(self.zctrls["level"])
 		elif self.zctrls:
 			self.zctrls['level'].set_value(value)
-			level_db = 20 * log10(value) + 2
-			self.parent.set_title(f"Volume: {level_db:.2f}dB", None, None, 1)
+			if value > 0:
+				level_db = 20 * log10(value)
+				self.parent.set_title(f"Volume: {level_db:.2f}dB", None, None, 1)
+			else:
+				self.parent.set_title("Volume: -∞dB", None, None, 1)
 
 	# Function to get volume value
 	def get_volume(self):
