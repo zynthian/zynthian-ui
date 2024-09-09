@@ -90,7 +90,6 @@ from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
 from zyngui.zynthian_gui_wifi import zynthian_gui_wifi
 from zyngui.zynthian_gui_bluetooth import zynthian_gui_bluetooth
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
-from zyngui.zynthian_gui_touchkeypad_v5 import zynthian_gui_touchkeypad_v5
 
 MIXER_MAIN_CHANNEL = 17  # TODO This constant should go somewhere else
 
@@ -153,12 +152,7 @@ class zynthian_gui:
 		self.capture_log_fname = None
 		self.capture_ffmpeg_proc = None
 
-		# Init Touch keypad
-		self.touch_keypad = None
 		self.main_screen_column = 1 if zynthian_gui_config.touch_keypad_side_left else 0
-		self.touch_keypad_side_width = 0
-		self.touch_keypad_bottom_height = 0
-		self.init_touchkeypad()
 
 		# Init LEDs
 		self.wsleds = None
@@ -230,22 +224,11 @@ class zynthian_gui:
 				logging.error("Can't write to capture log: {}".format(e))
 
 	# ---------------------------------------------------------------------------
-	# Touch keypad
-	# ---------------------------------------------------------------------------
-
-	def init_touchkeypad(self):
-		if zynthian_gui_config.touch_keypad == 'V5':
-			self.touch_keypad_side_width = zynthian_gui_config.display_height // 3
-			self.touch_keypad_bottom_height = zynthian_gui_config.display_height // 6
-			self.touch_keypad = zynthian_gui_touchkeypad_v5(zynthian_gui_config.top, side_width=self.touch_keypad_side_width, left_side=zynthian_gui_config.touch_keypad_side_left)
-			self.touch_keypad.show()
-
-	# ---------------------------------------------------------------------------
 	# WSLeds Init
 	# ---------------------------------------------------------------------------
 
 	def init_wsleds(self):
-		if self.touch_keypad:
+		if zynthian_gui_config.touch_keypad:
 			from zyngui.zynthian_wsleds_v5touch import zynthian_wsleds_v5touch
 			self.wsleds = zynthian_wsleds_v5touch(self)
 			self.wsleds.start()

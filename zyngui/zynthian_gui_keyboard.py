@@ -58,16 +58,16 @@ class zynthian_gui_keyboard():
 		self.ctrl_order = zynthian_gui_config.layout['ctrl_order']
 
 		# Geometry vars
-		self.width = zynthian_gui_config.display_width - zynthian_gui_config.zyngui.touch_keypad_side_width
-		self.height = zynthian_gui_config.display_height - zynthian_gui_config.topbar_height - zynthian_gui_config.zyngui.touch_keypad_bottom_height
+		self.width = zynthian_gui_config.screen_width
+		self.height = zynthian_gui_config.screen_height - zynthian_gui_config.topbar_height
 
 		# Fonts
 		self.font_button = (zynthian_gui_config.font_family, int(1.2*zynthian_gui_config.font_size))
 
 		# Create main frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
-			width=zynthian_gui_config.display_width - zynthian_gui_config.zyngui.touch_keypad_side_width,
-			height=zynthian_gui_config.display_height - zynthian_gui_config.zyngui.touch_keypad_bottom_height,
+			width=zynthian_gui_config.screen_width,
+			height=zynthian_gui_config.screen_height,
 			bg=zynthian_gui_config.color_bg)
 		self.main_frame.grid_propagate(False)
 

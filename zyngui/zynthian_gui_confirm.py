@@ -43,8 +43,8 @@ class zynthian_gui_confirm():
 		self.callback = None
 		self.callback_params = None
 		self.zyngui = zynthian_gui_config.zyngui
-		self.width = zynthian_gui_config.display_width - zynthian_gui_config.zyngui.touch_keypad_side_width
-		self.height = zynthian_gui_config.display_height - zynthian_gui_config.zyngui.touch_keypad_bottom_height
+		self.width = zynthian_gui_config.screen_width
+		self.height = zynthian_gui_config.screen_height
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,

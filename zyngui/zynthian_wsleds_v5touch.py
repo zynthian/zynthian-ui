@@ -29,7 +29,7 @@ class touchkeypad_button_colors:
             bgcolor = self.hex_to_rgb(self.wsleds.wscolor_off)
             blended = self.ablend(1-self.wsleds.brightness, fgcolor, bgcolor)
             color = self.rgb_to_hex(blended)
-        self.zyngui.touch_keypad.set_button_color(index, color, mode)
+        zynthian_gui_config.touch_keypad.set_button_color(index, color, mode)
 
     def show(self):
         # nothing to do here

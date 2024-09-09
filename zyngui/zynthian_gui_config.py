@@ -511,8 +511,10 @@ ctrl_graph = int(os.environ.get('ZYNTHIAN_UI_CTRL_GRAPH', 1))
 control_test_enabled = int(os.environ.get('ZYNTHIAN_UI_CONTROL_TEST_ENABLED', 0))
 power_save_secs = 60 * int(os.environ.get('ZYNTHIAN_UI_POWER_SAVE_MINUTES', 60))
 
-touch_keypad = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD', "")
+touch_keypad_option = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD', "")
 touch_keypad_side_left = int(os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_SIDE_LEFT', True))
+
+touch_keypad = None
 
 # ------------------------------------------------------------------------------
 # Audio Options
@@ -626,18 +628,37 @@ if "zynthian_main.py" in sys.argv[0]:
 				logging.warning("Can't get screen height. Using default 240!")
 				display_height = 240
 
+		touch_keypad_side_width = 0
+		touch_keypad_bottom_height = 0
+
+		# Reduce screen dimensions if touch keypad active
+		if touch_keypad_option == 'V5':
+			touch_keypad_side_width = display_height // 3
+			touch_keypad_bottom_height = display_height // 6
+			screen_width = display_width - touch_keypad_side_width
+			screen_height = display_height - touch_keypad_bottom_height
+		else:
+			screen_width = display_width
+			screen_height = display_height
+
 		# Global font size
 		font_size = int(os.environ.get('ZYNTHIAN_UI_FONT_SIZE', None))
 		if not font_size:
 			font_size = int(display_width / 40)
 
+		# Activate touch keypad (font size must be set first)
+		if touch_keypad_option == 'V5':
+			from zyngui.zynthian_gui_touchkeypad_v5 import zynthian_gui_touchkeypad_v5
+			touch_keypad = zynthian_gui_touchkeypad_v5(top, side_width=touch_keypad_side_width, left_side=touch_keypad_side_left)
+			touch_keypad.show()
+
 		# Geometric params
-		button_width = display_width // 4
-		if display_width >= 800:
-			topbar_height = display_height // 12
+		button_width = screen_width // 4
+		if screen_width >= 800:
+			topbar_height = screen_height // 12
 			topbar_fs = int(1.5*font_size)
 		else:
-			topbar_height = display_height // 10
+			topbar_height = screen_height // 10
 			topbar_fs = int(1.1*font_size)
 
 		# Adjust Root Window Geometry

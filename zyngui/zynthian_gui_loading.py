@@ -39,8 +39,8 @@ class zynthian_gui_loading:
 	def __init__(self):
 		self.shown = False
 		self.zyngui = zynthian_gui_config.zyngui
-		self.width = zynthian_gui_config.display_width - zynthian_gui_config.zyngui.touch_keypad_side_width
-		self.height = zynthian_gui_config.display_height - zynthian_gui_config.zyngui.touch_keypad_bottom_height
+		self.width = zynthian_gui_config.screen_width
+		self.height = zynthian_gui_config.screen_height
 		# Canvas for loading image animation
 		self.canvas = tkinter.Canvas(
 			zynthian_gui_config.top,

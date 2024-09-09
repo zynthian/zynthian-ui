@@ -46,8 +46,8 @@ class zynthian_gui_base(tkinter.Frame):
 	def __init__(self, has_backbutton=True):
 		tkinter.Frame.__init__(self,
 			zynthian_gui_config.top,
-			width=zynthian_gui_config.display_width - zynthian_gui_config.zyngui.touch_keypad_side_width,
-			height=zynthian_gui_config.display_height - zynthian_gui_config.zyngui.touch_keypad_bottom_height)
+			width=zynthian_gui_config.screen_width ,
+			height=zynthian_gui_config.screen_height)
 		self.grid_propagate(False)
 		self.rowconfigure(1, weight=1)
 		self.columnconfigure(0, weight=1)
@@ -60,14 +60,13 @@ class zynthian_gui_base(tkinter.Frame):
 		self.buttonbar_button = []
 
 		# Geometry vars
-		self.buttonbar_height = (zynthian_gui_config.display_height - zynthian_gui_config.zyngui.touch_keypad_bottom_height) // 7
-		self.width = zynthian_gui_config.display_width - zynthian_gui_config.zyngui.touch_keypad_side_width
+		self.buttonbar_height = zynthian_gui_config.screen_height // 7
+		self.width = zynthian_gui_config.screen_width
 		#TODO: Views should use current height if they need dynamic changes else grow rows to fill main_frame
 		if zynthian_gui_config.enable_touch_navigation and self.buttonbar_config:
-			self.height = zynthian_gui_config.display_height - self.topbar_height - self.buttonbar_height
+			self.height = zynthian_gui_config.screen_height - self.topbar_height - self.buttonbar_height
 		else:
-			self.height = zynthian_gui_config.display_height - self.topbar_height
-		self.height -= self.zyngui.touch_keypad_bottom_height
+			self.height = zynthian_gui_config.screen_height - self.topbar_height
 
 		# Status Area Parameters
 		self.status_l = int(self.width * 0.25)
@@ -838,10 +837,9 @@ class zynthian_gui_base(tkinter.Frame):
 	# Override if required
 	def update_layout(self):
 		if zynthian_gui_config.enable_touch_navigation and self.buttonbar_config:
-			self.height = zynthian_gui_config.display_height - self.topbar_height - self.buttonbar_height
+			self.height = zynthian_gui_config.screen_height - self.topbar_height - self.buttonbar_height
 		else:
-			self.height = zynthian_gui_config.display_height - self.topbar_height
-		self.height -= self.zyngui.touch_keypad_bottom_height
+			self.height = zynthian_gui_config.screen_height - self.topbar_height
 
 	# Function to enable the top-bar parameter editor
 	#  engine: Object to recieve send_controller_value callback

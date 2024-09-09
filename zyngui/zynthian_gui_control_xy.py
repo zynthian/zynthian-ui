@@ -49,13 +49,13 @@ class zynthian_gui_control_xy():
 
 		# Init X vars
 		self.padx = 24
-		self.width = zynthian_gui_config.display_width  - zynthian_gui_config.zyngui.touch_keypad_side_width - 2 * self.padx
+		self.width = zynthian_gui_config.screen_width - 2 * self.padx
 		self.x = self.width / 2
 		self.xvalue = 64
 
 		# Init Y vars
 		self.pady = 18
-		self.height = zynthian_gui_config.display_height - 2 * self.pady
+		self.height = zynthian_gui_config.screen_height - 2 * self.pady
 		self.y = self.height / 2
 		self.yvalue = 64
 
@@ -63,8 +63,8 @@ class zynthian_gui_control_xy():
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
-			width=zynthian_gui_config.display_width - zynthian_gui_config.zyngui.touch_keypad_side_width,
-			height=zynthian_gui_config.display_height - zynthian_gui_config.zyngui.touch_keypad_bottom_height,
+			width=zynthian_gui_config.screen_width,
+			height=zynthian_gui_config.screen_height,
 			bg=zynthian_gui_config.color_panel_bg)
 
 		# Create Canvas
@@ -88,14 +88,14 @@ class zynthian_gui_control_xy():
 		self.hline=self.canvas.create_line(
 			0,
 			self.y,
-			zynthian_gui_config.display_width,
+			zynthian_gui_config.screen_width,
 			self.y,
 			fill=zynthian_gui_config.color_on)
 		self.vline=self.canvas.create_line(
 			self.x,
 			0,
 			self.x,
-			zynthian_gui_config.display_width,
+			zynthian_gui_config.screen_width,
 			fill=zynthian_gui_config.color_on)
 
 
