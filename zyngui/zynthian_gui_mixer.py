@@ -895,7 +895,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def cb_load_zs3(self, zs3_id):
 		self.refresh_visible_strips()
 
-
 	# --------------------------------------------------------------------------
 	# Mixer Functionality
 	# --------------------------------------------------------------------------
@@ -989,20 +988,22 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			return False
 		return True
 
-	# Handle onscreen back button press
-	def backbutton_short_touch_action(self):
-		self.back_action()
+	# Handle onscreen back button press => Should we use it for entering MIDI learn?
+	#def backbutton_short_touch_action(self):
+	#	if not self.back_action():
+	#		self.enter_midi_learn()
 
 	# Function to handle BACK action
 	def back_action(self):
 		if self.moving_chain:
 			self.moving_chain = False
 			self.refresh_visible_strips()
+			return True
 		elif self.zynmixer.midi_learn_zctrl == True:
 			self.exit_midi_learn()
+			return True
 		else:
-			self.enter_midi_learn()
-		return True
+			return super().back_action()
 
 	# Function to handle switches press
 	# swi: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
