@@ -1460,25 +1460,26 @@ class zynthian_state_manager:
         """Fix chain & processor ID keys in ZS3 data decoded from JSON"""
 
         for zs3_key, state in zs3_state.items():
-            fixed_chains = {}
-            for chain_id, chain_state in state['chains'].items():
-                try:
-                    chain_id = int(chain_id)
-                except:
-                    logging.error(f"Chain in ZS3 {zs3_key} has an invalid ID: {chain_id}")
-                    continue
-                fixed_chains[chain_id] = chain_state
-            state['chains'] = fixed_chains
-
-            fixed_processors = {}
-            for processor_id, processor_state in state['processors'].items():
-                try:
-                    processor_id = int(processor_id)
-                except:
-                    logging.error(f"Processor in ZS3 {zs3_key} has an invalid ID: {processor_id}")
-                    continue
-                fixed_processors[processor_id] = processor_state
-            state['processors'] = fixed_processors
+            if 'chains' in state:
+                fixed_chains = {}
+                for chain_id, chain_state in state['chains'].items():
+                    try:
+                        chain_id = int(chain_id)
+                    except:
+                        logging.error(f"Chain in ZS3 {zs3_key} has an invalid ID: {chain_id}")
+                        continue
+                    fixed_chains[chain_id] = chain_state
+                state['chains'] = fixed_chains
+            if 'processors' in state:
+                fixed_processors = {}
+                for processor_id, processor_state in state['processors'].items():
+                    try:
+                        processor_id = int(processor_id)
+                    except:
+                        logging.error(f"Processor in ZS3 {zs3_key} has an invalid ID: {processor_id}")
+                        continue
+                    fixed_processors[processor_id] = processor_state
+                state['processors'] = fixed_processors
         return zs3_state
 
     def purge_zs3(self):
