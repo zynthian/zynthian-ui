@@ -904,7 +904,7 @@ class zynthian_state_manager:
         """Get a dictionary describing the full state model"""
 
         self.save_zs3("zs3-0", "Last state")
-        self.clean_zs3()
+        self.purge_zs3()
         state = {
             'schema_version': SNAPSHOT_SCHEMA_VERSION,
             'last_snapshot_fpath': self.last_snapshot_fpath,
@@ -956,6 +956,7 @@ class zynthian_state_manager:
                 state = {**state, **extra_data}
             # JSON Encode
             json = JSONEncoder().encode(state)
+            logging.debug(f"SIZE SNAPSHOT: {len(json)}")
             with open(fpath, "w") as fh:
                 logging.info(f"Saving snapshot {fpath} ...")
                 #logging.debug(f"Snapshot JSON Data =>\n{json}")
@@ -1012,7 +1013,7 @@ class zynthian_state_manager:
                 self.chain_manager.stop_unused_engines()
                 zynautoconnect.resume()
 
-                self.zs3 = state["zs3"]
+                self.zs3 = self.sanitize_zs3_from_json(state["zs3"])
                 self.load_zs3("zs3-0")
 
                 if "alsa_mixer" in state:
@@ -1455,19 +1456,47 @@ class zynthian_state_manager:
         self.zs3 = {}
         # Last selected ZS3 subsnapshot
 
-    def clean_zs3(self):
-        """Remove non-existant processors from ZS3 state"""
+    def sanitize_zs3_from_json(self, zs3_state):
+        """Fix chain & processor ID keys in ZS3 data decoded from JSON"""
+
+        for zs3_key, state in zs3_state.items():
+            if 'chains' in state:
+                fixed_chains = {}
+                for chain_id, chain_state in state['chains'].items():
+                    try:
+                        chain_id = int(chain_id)
+                    except:
+                        logging.error(f"Chain in ZS3 {zs3_key} has an invalid ID: {chain_id}")
+                        continue
+                    fixed_chains[chain_id] = chain_state
+                state['chains'] = fixed_chains
+            if 'processors' in state:
+                fixed_processors = {}
+                for processor_id, processor_state in state['processors'].items():
+                    try:
+                        processor_id = int(processor_id)
+                    except:
+                        logging.error(f"Processor in ZS3 {zs3_key} has an invalid ID: {processor_id}")
+                        continue
+                    fixed_processors[processor_id] = processor_state
+                state['processors'] = fixed_processors
+        return zs3_state
+
+    def purge_zs3(self):
+        """Remove non-existant chains and processors from ZS3 state"""
         
-        for state in self.zs3.values():
+        for key, state in self.zs3.items():
             if state["active_chain"] not in self.chain_manager.chains:
                 state["active_chain"] = self.chain_manager.active_chain_id
             if "processors" in state:
                 for processor_id in list(state["processors"]):
-                    if processor_id not in self.chain_manager.processors:
+                    if int(processor_id) not in self.chain_manager.processors:
+                        logging.debug(f"Purging processor {processor_id} from ZS3 {key}")
                         del state["processors"][processor_id]
             if "chains" in state:
                 for chain_id in list(state["chains"]):
-                    if chain_id not in self.chain_manager.chains:
+                    if int(chain_id) not in self.chain_manager.chains:
+                        logging.debug(f"Purging chain {chain_id} from ZS3 {key}")
                         del state["chains"][chain_id]
 
     # ------------------------------------------------------------------

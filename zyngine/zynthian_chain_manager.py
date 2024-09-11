@@ -344,7 +344,7 @@ class zynthian_chain_manager:
             if chain_pos + 1 >= len(self.ordered_chain_ids):
                 chain_pos -= 1
             self.set_active_chain_by_index(chain_pos)
-        self.state_manager.clean_zs3()
+        self.state_manager.purge_zs3()
         self.state_manager.end_busy("remove_chain")
         return True
 

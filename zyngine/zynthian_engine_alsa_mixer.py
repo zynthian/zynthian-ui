@@ -43,7 +43,8 @@ from zyngui import zynthian_gui_config
 
 class zynthian_engine_alsa_mixer(zynthian_engine):
 
-	sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR',"/zynthian/zynthian-sys")
+	sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR', "/zynthian/zynthian-sys")
+	soundcard_name = os.environ.get('SOUNDCARD_NAME', "Unknown")
 
 	# ---------------------------------------------------------------------------
 	# Controllers & Screens
@@ -61,12 +62,12 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
 	# Translations by device
 	# ---------------------------------------------------------------------------
 
-	if zynthian_gui_config.gui_layout == "Z2":
-		chan_trans = ["1", "2"]
-		sr_order = [1, 2]
-	else:
+	if soundcard_name == "ZynADAC":
 		chan_trans = chan_names
 		sr_order = [2, 1]
+	else:
+		chan_trans = ["1", "2"]
+		sr_order = [1, 2]
 
 	translations_by_device = {
 		"sndrpihifiberry": {
