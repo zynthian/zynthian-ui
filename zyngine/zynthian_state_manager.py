@@ -963,6 +963,7 @@ class zynthian_state_manager:
                 fh.flush()
                 os.fsync(fh.fileno())
         except Exception as e:
+            logging.exception(traceback.format_exc())
             logging.error("Can't save snapshot file '%s': %s" % (fpath, e))
             self.set_busy_error("ERROR saving snapshot", e)
             sleep(2)
@@ -1594,7 +1595,11 @@ class zynthian_state_manager:
                 if lib_zyncore.zmop_get_route_from(ch, idev):
                     routed_chains.append(ch)
 
-            uid = zynautoconnect.devices_in[idev].aliases[0]
+            try:
+                uid = zynautoconnect.devices_in[idev].aliases[0]
+            except:
+                logging.error(f"No aliases for idev {idev} => Skipping!")
+                continue
             mcstate[uid] = {
                 "zmip_input_mode": bool(lib_zyncore.zmip_get_flag_active_chain(idev)),
                 "disable_ctrldev": uid in self.ctrldev_manager.disabled_devices,
@@ -2385,7 +2390,6 @@ class zynthian_state_manager:
         else:
             self.stop_bluetooth(False)
 
-
     def start_aubionotes(self, save_config=True, wait=0):
         service = "aubionotes"
         if zynconf.is_service_active(service):
@@ -2411,7 +2415,6 @@ class zynthian_state_manager:
             sleep(2.0)
 
         self.end_busy("start_aubionotes")
-
 
     def stop_aubionotes(self, save_config=True, wait=0):
         service = "aubionotes"
