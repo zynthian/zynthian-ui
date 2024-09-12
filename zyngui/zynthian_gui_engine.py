@@ -23,17 +23,12 @@
 # 
 # ******************************************************************************
 
-import os
 import tkinter
 import logging
-from random import randrange
 
 # Zynthian specific modules
 from zyngine import *
 from zyngine import zynthian_lv2
-from zyngine.zynthian_engine_jalv import *
-from zyngine.zynthian_engine_pianoteq import *
-from zyngine.zynthian_engine_pianoteq6 import *
 from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector import zynthian_gui_selector
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
@@ -329,7 +324,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
 		# Display help if no engines are enabled ...
 		if len(self.list_data) == 0:
-			self.list_data.append((None, len(self.list_data), "Bold-push to enable some engines".format(os.uname().nodename)))
+			self.list_data.append((None, len(self.list_data), "Bold-push to enable some engines"))
 			self.index = 0
 			self.update_context_index()
 

@@ -956,7 +956,6 @@ class zynthian_state_manager:
                 state = {**state, **extra_data}
             # JSON Encode
             json = JSONEncoder().encode(state)
-            logging.debug(f"SIZE SNAPSHOT: {len(json)}")
             with open(fpath, "w") as fh:
                 logging.info(f"Saving snapshot {fpath} ...")
                 #logging.debug(f"Snapshot JSON Data =>\n{json}")

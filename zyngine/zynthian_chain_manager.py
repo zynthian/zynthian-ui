@@ -144,12 +144,11 @@ class zynthian_chain_manager:
 
         # Complete Pianoteq config
         pt_info = get_pianoteq_binary_info()
-        if pt_info:
+        if pt_info and pt_info['api']:
             cls.engine_info['PT']['TITLE'] = pt_info['name']
-            if pt_info['api']:
-                cls.engine_info['PT']['ENGINE'] = zynthian_engine_pianoteq
-            else:
-                cls.engine_info['PT']['ENGINE'] = zynthian_engine_pianoteq6
+        else:
+            cls.engine_info['PT']['ENGINE'] = None
+            cls.engine_info['PT']['ENABLED'] = False
 
         return cls.engine_info
 
