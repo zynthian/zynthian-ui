@@ -161,7 +161,7 @@ def check_pianoteq_binary():
 def get_pianoteq_binary_info():
 	info = {
 		'version_str': '',
-		'version': [0,0,0],
+		'version': [0, 0, 0],
 		'api': False,
 		'multicore': '1',
 		'trial': True,
@@ -247,7 +247,7 @@ def create_pianoteq_config():
 			try:
 				shutil.copy("{}/Pianoteq{}{}.prefs".format(PIANOTEQ_CONFIG_DIR, info['version'][0], info['version'][1]), PIANOTEQ_CONFIG_FILE)
 			except:
-				shutil.copy(os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data") + "/pianoteq6/Pianoteq6.prefs", PIANOTEQ_CONFIG_FILE)
+				shutil.copy(os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data") + "/pianoteq/Pianoteq.prefs", PIANOTEQ_CONFIG_FILE)
 
 
 def fix_pianoteq_config(samplerate):
@@ -438,7 +438,7 @@ def save_midi_mapping(file):
 # Pianoteq module constants & parameter configuration/initialization
 # ------------------------------------------------------------------------------
 
-PIANOTEQ_SW_DIR = os.environ.get('ZYNTHIAN_SW_DIR', '/zynthian/zynthian-sw') + '/pianoteq6'
+PIANOTEQ_SW_DIR = os.environ.get('ZYNTHIAN_SW_DIR', '/zynthian/zynthian-sw') + '/pianoteq'
 PIANOTEQ_BINARY = PIANOTEQ_SW_DIR + '/pianoteq'
 PIANOTEQ_CONFIG_DIR = os.path.expanduser('~') + '/.config/Modartt'
 PIANOTEQ_DATA_DIR = os.path.expanduser('~') + '/.local/share/Modartt/Pianoteq'
