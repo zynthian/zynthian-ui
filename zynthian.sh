@@ -44,7 +44,6 @@ function load_config_env() {
 	fi
 }
 
-
 function raw_splash_zynthian() {
 	if [ -c $FRAMEBUFFER ]; then
 		cat $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.raw > $FRAMEBUFFER
@@ -239,7 +238,7 @@ while true; do
 			#splash_zynthian_message "Powering Off..."
 			splash_zynthian_last_message
 			poweroff
-			backlight_control.sh off
+			#backlight_control.sh off
 			break
 		;;
 		100)
@@ -251,7 +250,6 @@ while true; do
 		101)
 			#splash_zynthian_message "Exiting..."
 			splash_zynthian_last_message
-			backlight_control.sh off
 			break
 		;;
 		102)
