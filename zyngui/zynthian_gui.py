@@ -2429,7 +2429,7 @@ class zynthian_gui:
 			if t and t.is_alive():
 				running_thread_names.append(t.name)
 		if zynautoconnect.is_running():
-			running_thread_names.append("Autoconect")
+			running_thread_names.append("Autoconnect")
 
 		# Clean End
 		if not running_thread_names:
