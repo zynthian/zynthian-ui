@@ -157,7 +157,7 @@ class zynthian_gui_preset(zynthian_gui_selector):
 				return True
 		return False
 
-	def cuia_toggle_play(self):
+	def cuia_toggle_play(self, params=None):
 		try:
 			if self.zyngui.get_current_processor().engine.nickname == "AP":
 				self.click_listbox()
