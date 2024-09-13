@@ -589,7 +589,12 @@ class zynthian_gui_controller(tkinter.Canvas):
 
 	def zynpot_cb(self, dval):
 		if self.zctrl:
-			return self.zctrl.nudge(dval, fine=self.zyngui.alt_mode)
+			if self.zyngui.zynpot_pr_state[self.index] > 0:
+				self.zyngui.zynpot_pr_state[self.index] += 1
+				fine = True
+			else:
+				fine = self.zyngui.alt_mode
+			return self.zctrl.nudge(dval, fine=fine)
 		else:
 			return False
 

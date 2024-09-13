@@ -139,6 +139,7 @@ class zynthian_gui:
 		self.zynpot_event = Event()
 		self.zynpot_lock = Lock()
 		self.zynpot_dval = zynthian_gui_config.num_zynpots * [0]
+		self.zynpot_pr_state = zynthian_gui_config.num_zynpots * [0]
 		self.dtsw = []
 
 		self.exit_code = 0
@@ -1848,9 +1849,14 @@ class zynthian_gui:
 
 		i = 0
 		while i <= zynthian_gui_config.last_zynswitch_index:
-			# dtus is 0 if switched pressed, dur of last press or -1 if already processed
 			if i < 4 or zynthian_gui_config.custom_switch_ui_actions[i - 4]:
-				dtus = lib_zyncore.get_zynswitch(i, zynthian_gui_config.zynswitch_long_us)
+				# Increase the long push limit when push-rotating
+				if i < 4 and self.zynpot_pr_state[i] > 1:
+					zs_long_us = 1000 * 20000
+				else:
+					zs_long_us = zynthian_gui_config.zynswitch_long_us
+				# dtus is 0 if switched pressed, dur of last press or -1 if already processed
+				dtus = lib_zyncore.get_zynswitch(i, zs_long_us)
 				if dtus >= 0:
 					self.cuia_queue.put_nowait(("zynswitch", (i, self.zynswitch_timing(dtus))))
 			i += 1
@@ -2334,11 +2340,17 @@ class zynthian_gui:
 							zynswitch_cuia_ts[i] = None
 							t = self.zynswitch_timing(dtus)
 					if t == 'P':
-						if self.zynswitch_push(i):
+						if i < 4:
+							self.zynpot_pr_state[i] = 1
+						elif self.zynswitch_push(i):
 							zynswitch_repeat[i] = repeat_delay
 						else:
 							zynswitch_cuia_ts[i] = monotonic()
 					else:
+						if i < 4:
+							if self.zynpot_pr_state[i] > 1:
+								t = 'PR'
+							self.zynpot_pr_state[i] = 0
 						if t == 'S':
 							zynswitch_cuia_ts[i] = None
 							self.zynswitch_short(i)
@@ -2348,6 +2360,8 @@ class zynthian_gui:
 						elif t == 'L':
 							zynswitch_cuia_ts[i] = None
 							self.zynswitch_long(i)
+						elif t == 'PR':
+							zynswitch_cuia_ts[i] = None
 						else:
 							zynswitch_cuia_ts[i] = None
 							logging.warning("Unknown Action Type: {}".format(t))
