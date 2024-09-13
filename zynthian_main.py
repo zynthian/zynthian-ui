@@ -179,7 +179,15 @@ zynthian_gui_config.top.bind("<ButtonRelease-1>", zyngui.cb_touch_release)
 #import cProfile
 #cProfile.run('zynthian_gui_config.top.mainloop()')
 
-zynthian_gui_config.top.mainloop()
+try:
+	zynthian_gui_config.top.mainloop()
+except Exception as e:
+	logging.error(f"Main Loop Exception: {e}")
+
+if 0 <= zyngui.exit_wait_count <= 10:
+	logging.error("Forced exit! Trying to terminate properly...")
+	zyngui.exit()
+	sleep(2)
 
 # ------------------------------------------------------------------------------
 # Exit

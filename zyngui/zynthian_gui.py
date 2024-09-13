@@ -141,8 +141,9 @@ class zynthian_gui:
 		self.zynpot_dval = zynthian_gui_config.num_zynpots * [0]
 		self.dtsw = []
 
-		self.exit_flag = False
 		self.exit_code = 0
+		self.exit_flag = False
+		self.exit_wait_count = 0
 
 		self.status_counter = 0
 
@@ -2404,6 +2405,7 @@ class zynthian_gui:
 
 		self.exit_code = code
 		self.exit_flag = True
+		self.exit_wait_count = 0
 
 		# End signal manager queue processing
 		zynsigman.stop()
@@ -2425,7 +2427,6 @@ class zynthian_gui:
 		self.cuia_queue.put_nowait("__EXIT__")
 
 		# Ends UI
-		self.exit_wait_count = 0
 		self.stop()
 
 	def stop(self):
@@ -2439,6 +2440,7 @@ class zynthian_gui:
 
 		# Clean End
 		if not running_thread_names:
+			self.exit_wait_count = -1
 			logging.info(f"All threads finished normally")
 			zynthian_gui_config.top.quit()
 		# End with running threads
