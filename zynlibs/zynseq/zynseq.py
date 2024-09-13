@@ -169,7 +169,8 @@ class zynseq(zynthian_engine):
 		if self.libseq.getSequencesInBank(bank) == 0:
 			self.build_default_bank(bank)
 		self.seq_in_bank = self.libseq.getSequencesInBank(bank)
-		self.col_in_bank = int(sqrt(self.seq_in_bank))
+		# WARNING!!! Limited to 8 to avoid issues with GUI zynpad that have 8x8 = 64 pads
+		self.col_in_bank = min(8, int(sqrt(self.seq_in_bank)))
 		self.bank = bank
 		zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_REFRESH)
 		self.changing_bank = False
@@ -230,7 +231,7 @@ class zynseq(zynthian_engine):
 					offset = self.col_in_bank * col + row
 					self.libseq.removeSequence(self.bank, offset)
 		self.seq_in_bank = self.libseq.getSequencesInBank(self.bank)
-		self.col_in_bank = int(sqrt(self.seq_in_bank))
+		self.col_in_bank = min(8, int(sqrt(self.seq_in_bank)))
 		zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_REFRESH)
 
 	# Load a zynseq file
