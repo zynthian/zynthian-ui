@@ -27,10 +27,10 @@
 import tkinter
 import logging
 from threading import Timer
-import tkinter.font as tkFont
+#import tkinter.font as tkFont
 
 # Zynthian specific modules
-from zyncoder.zyncore import get_lib_zyncore
+from zyncoder.zyncore import lib_zyncore
 from zyngui import zynthian_gui_config
 
 # ------------------------------------------------------------------------------
@@ -297,19 +297,18 @@ class zynthian_gui_keyboard():
 
 	# Function to register encoders
 	def setup_zynpots(self):
-		if get_lib_zyncore():
-			get_lib_zyncore().setup_behaviour_zynpot(3, 1)
-			get_lib_zyncore().setup_behaviour_zynpot(1, 1)
+		if zynthian_gui_config.num_zynpots > 3:
+			lib_zyncore.setup_behaviour_zynpot(3, 1)
+			lib_zyncore.setup_behaviour_zynpot(1, 1)
 
 	# Function to handle zynpots events
 	def zynpot_cb(self, i, dval):
 		if not self.shown:
 			return
-		if get_lib_zyncore():
-			if i == self.ctrl_order[2]:
-				self.cursor_vmove(dval)
-			elif i == self.ctrl_order[3]:
-				self.cursor_hmove(dval)
+		if i == self.ctrl_order[2]:
+			self.cursor_vmove(dval)
+		elif i == self.ctrl_order[3]:
+			self.cursor_hmove(dval)
 
 	def cursor_hmove(self, dval):
 		key = self.selected_button + dval

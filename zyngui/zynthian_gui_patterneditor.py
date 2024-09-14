@@ -231,12 +231,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 		if self.zynseq.libseq.getPlayState(self.bank, self.sequence) == zynseq.SEQ_STOPPED:
 			self.zynseq.libseq.playNote(note, self.velocity, self.channel, int(200 * self.duration))
 
-	# Function to set values of encoders
+	# Function to setup behaviour of encoders
 	def setup_zynpots(self):
-		lib_zyncore.setup_behaviour_zynpot(0, 0)
-		lib_zyncore.setup_behaviour_zynpot(1, 0)
-		lib_zyncore.setup_behaviour_zynpot(2, 0)
-		lib_zyncore.setup_behaviour_zynpot(3, 0)
+		for i in range(zynthian_gui_config.num_zynpots):
+			lib_zyncore.setup_behaviour_zynpot(i, 0)
 
 	# Function to show GUI
 	def build_view(self):

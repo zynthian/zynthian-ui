@@ -519,7 +519,6 @@ class zynmixer(zynthian_engine):
 			result.append(l)
 		return result
 
-
 	# Function to enable or disable digital peak meters
 	# start: First mixer channel
 	# end: Last mixer channel

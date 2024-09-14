@@ -153,10 +153,8 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
 	# Function to set values of encoders
 	def setup_zynpots(self):
-		get_lib_zyncore().setup_behaviour_zynpot(0, 0)
-		get_lib_zyncore().setup_behaviour_zynpot(1, 0)
-		get_lib_zyncore().setup_behaviour_zynpot(2, 0)
-		get_lib_zyncore().setup_behaviour_zynpot(3, 0)
+		for i in range(zynthian_gui_config.num_zynpots):
+			get_lib_zyncore().setup_behaviour_zynpot(i, 0)
 
 	# Function to add menus
 	def show_menu(self):
