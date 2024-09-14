@@ -1046,10 +1046,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 		return False
 
 	def setup_zynpots(self):
-		lib_zyncore.setup_behaviour_zynpot(0, 0)
-		lib_zyncore.setup_behaviour_zynpot(1, 0)
-		lib_zyncore.setup_behaviour_zynpot(2, 0)
-		lib_zyncore.setup_behaviour_zynpot(3, 1)
+		for i in range(zynthian_gui_config.num_zynpots):
+			lib_zyncore.setup_behaviour_zynpot(i, 0)
 
 	# Function to handle zynpot CB
 	def zynpot_cb(self, i, dval):

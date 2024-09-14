@@ -582,10 +582,11 @@ class zynthian_gui_controller(tkinter.Canvas):
 	# --------------------------------------------------------------------------
 
 	def setup_zynpot(self):
-		try:
-			lib_zyncore.setup_behaviour_zynpot(self.index, self.step)
-		except Exception as err:
-			logging.error("%s" % err)
+		if self.index < zynthian_gui_config.num_zynpots:
+			try:
+				lib_zyncore.setup_behaviour_zynpot(self.index, self.step)
+			except Exception as err:
+				logging.error(f"{err}")
 
 	def zynpot_cb(self, dval):
 		if self.zctrl:

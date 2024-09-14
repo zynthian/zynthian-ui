@@ -26,7 +26,6 @@
 
 import tkinter
 import logging
-from time import sleep
 from PIL import Image, ImageTk
 from threading import Timer
 
@@ -96,12 +95,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 		zynsigman.register(zynsigman.S_STATE_MAN, self.state_manager.SS_LOAD_SNAPSHOT, self.refresh_trigger_params)
 		zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_ON, self.cb_midi_note_on)
 
-	# Function to set values of encoders
+	# Function to setup encoder's behaviour
 	def setup_zynpots(self):
-		lib_zyncore.setup_behaviour_zynpot(0, 0)
-		lib_zyncore.setup_behaviour_zynpot(1, 0)
-		lib_zyncore.setup_behaviour_zynpot(2, 0)
-		lib_zyncore.setup_behaviour_zynpot(3, 0)
+		for i in range(zynthian_gui_config.num_zynpots):
+			lib_zyncore.setup_behaviour_zynpot(i, 0)
 
 	# Function to show GUI
 	#   params: Misc parameters
