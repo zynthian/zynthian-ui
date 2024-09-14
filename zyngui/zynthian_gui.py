@@ -1851,7 +1851,7 @@ class zynthian_gui:
 		while i <= zynthian_gui_config.last_zynswitch_index:
 			if i < 4 or zynthian_gui_config.custom_switch_ui_actions[i - 4]:
 				# Increase the long push limit when push-rotating
-				if i < 4 and self.zynpot_pr_state[i] > 1:
+				if i < zynthian_gui_config.num_zynpots and self.zynpot_pr_state[i] > 1:
 					zs_long_us = 1000 * 20000
 				else:
 					zs_long_us = zynthian_gui_config.zynswitch_long_us
@@ -2340,14 +2340,14 @@ class zynthian_gui:
 							zynswitch_cuia_ts[i] = None
 							t = self.zynswitch_timing(dtus)
 					if t == 'P':
-						if i < 4:
+						if i < zynthian_gui_config.num_zynpots:
 							self.zynpot_pr_state[i] = 1
 						elif self.zynswitch_push(i):
 							zynswitch_repeat[i] = repeat_delay
 						else:
 							zynswitch_cuia_ts[i] = monotonic()
 					else:
-						if i < 4:
+						if i < zynthian_gui_config.num_zynpots:
 							if self.zynpot_pr_state[i] > 1:
 								t = 'PR'
 							self.zynpot_pr_state[i] = 0
