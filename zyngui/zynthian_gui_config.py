@@ -243,6 +243,24 @@ def config_custom_switches():
 		custom_switch_midi_events.append(midi_event)
 
 
+def config_zynpot2switch():
+	global zynpot2switch
+	zynpot2switch = []
+
+	if num_zynpots > 0:
+		# Detect zynpot switches configuration (V5)
+		for i, cuias in enumerate(custom_switch_ui_actions):
+			# WARNING!! It assumes the zynpot switches are sorted!! => It should parse the indexes from CUIAs!
+			if cuias['S'] and cuias['S'].startswith("V5_ZYNPOT_SWITCH"):
+				zynpot2switch.append(4 + i)
+
+		# Default configuration for "classic layouts" => It discards V5 partial configurations!
+		if len(zynpot2switch) < num_zynpots:
+			zynpot2switch = [0, 1, 2, 3]
+
+		logging.info(f"zynpot2switch => {zynpot2switch}")
+
+
 # ------------------------------------------------------------------------------
 # Zynaptik & Zyntof configuration
 # ------------------------------------------------------------------------------
@@ -700,6 +718,7 @@ if "zynthian_main.py" in sys.argv[0]:
 		num_zynpots = lib_zyncore.get_num_zynpots()
 		config_zynswitch_timing()
 		config_custom_switches()
+		config_zynpot2switch()
 		config_zynaptik()
 		config_zyntof()
 	except Exception as e:
