@@ -590,7 +590,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 
 	def zynpot_cb(self, dval):
 		if self.zctrl:
-			if self.zyngui.zynpot_pr_state[self.index] > 0:
+			if self.index < zynthian_gui_config.num_zynpots and self.zyngui.zynpot_pr_state[self.index] > 0:
 				self.zyngui.zynpot_pr_state[self.index] += 1
 				fine = True
 			else:
