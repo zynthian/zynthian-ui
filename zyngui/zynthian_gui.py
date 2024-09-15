@@ -1849,6 +1849,15 @@ class zynthian_gui:
 					lib_zyncore.disable_zyntof(i)
 					logging.info(f"ZYNTOF {i}: DISABLED!")
 
+	def get_zynswitch_pr_state(self, i):
+		if zynthian_gui_config.num_zynpots == 0:
+			return 0
+		try:
+			zpi = zynthian_gui_config.zynpot2switch.index(i)
+			return self.zynpot_pr_state[zpi]
+		except:
+			return 0
+
 	def zynswitches(self):
 		"""Process physical switch triggers"""
 
@@ -1856,7 +1865,7 @@ class zynthian_gui:
 		while i <= zynthian_gui_config.last_zynswitch_index:
 			if i < 4 or zynthian_gui_config.custom_switch_ui_actions[i - 4]:
 				# Increase the long push limit when push-rotating
-				if i < zynthian_gui_config.num_zynpots and self.zynpot_pr_state[i] > 1:
+				if self.get_zynswitch_pr_state(i) > 1:
 					zs_long_us = 1000 * 20000
 				else:
 					zs_long_us = zynthian_gui_config.zynswitch_long_us
@@ -2345,17 +2354,28 @@ class zynthian_gui:
 							zynswitch_cuia_ts[i] = None
 							t = self.zynswitch_timing(dtus)
 					if t == 'P':
-						if i < zynthian_gui_config.num_zynpots:
-							self.zynpot_pr_state[i] = 1
-						elif self.zynswitch_push(i):
-							zynswitch_repeat[i] = repeat_delay
-						else:
-							zynswitch_cuia_ts[i] = monotonic()
+						pr = 0
+						if zynthian_gui_config.num_zynpots > 0:
+							try:
+								zpi = zynthian_gui_config.zynpot2switch.index(i)
+								self.zynpot_pr_state[zpi] = 1
+								pr = 1
+							except:
+								pass
+						if not pr:
+							if self.zynswitch_push(i):
+								zynswitch_repeat[i] = repeat_delay
+							else:
+								zynswitch_cuia_ts[i] = monotonic()
 					else:
-						if i < zynthian_gui_config.num_zynpots:
-							if self.zynpot_pr_state[i] > 1:
-								t = 'PR'
-							self.zynpot_pr_state[i] = 0
+						if zynthian_gui_config.num_zynpots > 0:
+							try:
+								zpi = zynthian_gui_config.zynpot2switch.index(i)
+								if self.zynpot_pr_state[zpi] > 1:
+									t = 'PR'
+								self.zynpot_pr_state[zpi] = 0
+							except:
+								pass
 						if t == 'S':
 							zynswitch_cuia_ts[i] = None
 							self.zynswitch_short(i)
