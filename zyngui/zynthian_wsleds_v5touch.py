@@ -37,7 +37,7 @@ class touchkeypad_button_colors:
 
     def ablend(self, a, fg, bg):
         """
-        Bland foregground and background color to imitate alpha transparency
+        Blend foreground and background color to imitate alpha transparency
         """
         return (int((1-a)*fg[0]+a*bg[0]),
                 int((1-a)*fg[1]+a*bg[1]),
@@ -67,7 +67,7 @@ class zynthian_wsleds_v5touch(zynthian_wsleds_v5):
 
     def setup_colors(self):
 		# Predefined colors
-        self.wscolor_off = zynthian_gui_config.color_bg
+        self.wscolor_off = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_COLOR_OFF', zynthian_gui_config.color_bg)
         self.wscolor_white = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_COLOR_WHITE', "#FCFCFC")
         self.wscolor_red = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_COLOR_RED', "#FE2C2F") # #FF8A92
         self.wscolor_green = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_COLOR_GREEN', "#00FA00")
@@ -76,11 +76,11 @@ class zynthian_wsleds_v5touch(zynthian_wsleds_v5):
         self.wscolor_blue = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_COLOR_BLUE', "#1070FE") # lighter: #5397FE, #38EBFF
         self.wscolor_blue_light = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_COLOR_LIGHTBLUE', "#05FDFF")
         self.wscolor_purple = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_COLOR_PURPLE', "#D662FE") # #FF80EB
-        self.wscolor_default = self.wscolor_blue
-        self.wscolor_alt = self.wscolor_purple
-        self.wscolor_active = self.wscolor_green
-        self.wscolor_active2 = self.wscolor_orange
-        self.wscolor_admin = self.wscolor_red
+        self.wscolor_default = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_COLOR_DEFAULT', self.wscolor_blue)
+        self.wscolor_alt = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_COLOR_ALT', self.wscolor_purple)
+        self.wscolor_active = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_COLOR_ACTIVE', self.wscolor_green)
+        self.wscolor_active2 = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_COLOR_ACTIVE2', self.wscolor_orange)
+        self.wscolor_admin = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_COLOR_ADMIN', self.wscolor_red)
         self.wscolor_low = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_COLOR_LOW', "#D9EB37")
         # Color Codes
         self.wscolors_dict = {
