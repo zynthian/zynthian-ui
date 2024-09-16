@@ -11,30 +11,30 @@ except:
 from zyngui import zynthian_gui_config
 
 BUTTONS = {
-	# primary label, ZYNSWITCH number, wsLED number, alternate labels, two state button (not used)
-	'OPT_ADMIN': ('OPT/ADMIN', 4, 0, {}, True),
-	'MIX_LEVEL': ('MIX/LEVEL', 5, 1, {}, True),
-	'CTRL_PRESET': ('CTRL/PRESET', 6, 2, {}, True),
-	'ZS3_SHOT': ('ZS3/SHOT', 7, 3, {}, True),
-	'METRONOME': ('_icons/metronome.svg', 9, 6, {}, False),
-	'PAD_STEP': ('PAD/STEP', 10, 5, {}, True),
-	'ALT': ('Alt', 8, 4, {}, False),
+	# labels, ZYNSWITCH number, wsLED number, two state button (not used)
+	'OPT_ADMIN': ({'default': 'OPT/ADMIN'}, 4, 0, True),
+	'MIX_LEVEL': ({'default': 'MIX/LEVEL'}, 5, 1, True),
+	'CTRL_PRESET': ({'default': 'CTRL/PRESET'}, 6, 2, True),
+	'ZS3_SHOT': ({'default': 'ZS3/SHOT'}, 7, 3, True),
+	'METRONOME': ({'default': '_icons/metronome.svg'}, 9, 6, False),
+	'PAD_STEP': ({'default': 'PAD/STEP'}, 10, 5, True),
+	'ALT': ({'default': 'Alt'}, 8, 4, False),
 
-	'REC': ('\uf111', 12, 8, {}, False),
-	'STOP': ('\uf04d', 13, 9, {}, False),
-	'PLAY': ('\uf04b', 14, 10, {'active': '\uf04c'}, False),
+	'REC': ({'default': '\uf111'}, 12, 8, False),
+	'STOP': ({'default': '\uf04d'}, 13, 9, False),
+	'PLAY': ({'default': '\uf04b', 'active': '\uf04c'}, 14, 10, False),
 
-	'UP': ('\uf077', 17, 14, {}, False),
-	'DOWN': ('\uf078', 21, 17, {}, False),
-	'LEFT': ('\uf053', 20, 16, {}, False),
-	'RIGHT': ('\uf054', 22, 18, {}, False),
-	'SEL_YES': ('SEL/YES', 18, 13, {}, False),
-	'BACK_NO': ('BACK/NO', 16, 15, {}, False),
+	'UP': ({'default': '\uf077'}, 17, 14, False),
+	'DOWN': ({'default': '\uf078'}, 21, 17, False),
+	'LEFT': ({'default': '\uf053'}, 20, 16, False),
+	'RIGHT': ({'default': '\uf054'}, 22, 18, False),
+	'SEL_YES': ({'default': 'SEL/YES'}, 18, 13, False),
+	'BACK_NO': ({'default': 'BACK/NO'}, 16, 15, False),
 
-	'F1': ('F1', 11, 7, {'alt': 'F5'}, False),
-	'F2': ('F2', 15, 11, {'alt': 'F6'}, False),
-	'F3': ('F3', 19, 12, {'alt': 'F7'}, False),
-	'F4': ('F4', 23, 19, {'alt': 'F8'}, False)
+	'F1': ({'default': 'F1', 'alt': 'F5'}, 11, 7, False),
+	'F2': ({'default': 'F2', 'alt': 'F6'}, 15, 11, False),
+	'F3': ({'default': 'F3', 'alt': 'F7'}, 19, 12, False),
+	'F4': ({'default': 'F4', 'alt': 'F8'}, 23, 19, False)
 }
 
 LED2BUTTON = {btn[2]: btn[1]-4 for btn in BUTTONS.values()}
@@ -127,7 +127,7 @@ class zynthian_gui_touchkeypad_v5:
 				btn = BUTTONS[layout['SIDE'][row][col]]
 				zynswitch = btn[1]
 				n = zynswitch - 4
-				label = btn[0]
+				label = btn[0]['default']
 				pady = (1,0) if row == 5 else (0,0) if row == 4 else (0,1)
 				padx = (0,1) if left_side else (1,0)
 				self.btndefs[n] = btn
@@ -137,7 +137,7 @@ class zynthian_gui_touchkeypad_v5:
 			btn = BUTTONS[layout['BOTTOM'][col]]
 			zynswitch = btn[1]
 			n = zynswitch - 4
-			label = btn[0]
+			label = btn[0]['default']
 			padx = (0,0) if col == 7 else (0,1)
 			self.btndefs[n] = btn
 			self.buttons[n] = self.add_button(n, self.bottom_frame, 0, col, zynswitch, label, padx, (1,0))
@@ -269,7 +269,7 @@ class zynthian_gui_touchkeypad_v5:
 			return
 		self.btnstate[n] = mode or color
 		# in case the color is still the original wsled integer number, convert it
-		label = self.btndefs[n][0]
+		label = self.btndefs[n][0]['default']
 		# twostate = self.btndefs[n][4]
 		if  label.startswith('_'): # self.buttons[n].config()['image'][4]=='':
 			# image buttons must be recomposed to change the foreground color
@@ -301,7 +301,7 @@ class zynthian_gui_touchkeypad_v5:
 			self.buttons[n].config(fg=color)
 
 	def refresh_button_label(self, n, mode):
-			text = self.btndefs[n][3].get(mode, self.btndefs[n][0]).replace('/', "\n")
+			text = self.btndefs[n][0].get(mode, self.btndefs[n][0]['default']).replace('/', "\n")
 			self.buttons[n].config(text=text)
 
 	def show(self):
@@ -320,16 +320,22 @@ class zynthian_gui_touchkeypad_v5:
 
 	def apply_user_config(self):
 		for n in range(0, 20):
-			default = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_LABEL_'+str(n)+'_DEFAULT', None)
-			alt = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_LABEL_'+str(n)+'_ALT', None)
-			active = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_LABEL_'+str(n)+'_ACTIVE', None)
-			active2 = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_LABEL_'+str(n)+'_ACTIVE2', None)
+			default = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_LABEL_{:02d}_DEFAULT'.format(n+1), None)
+			alt = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_LABEL_{:02d}_ALT'.format(n+1), None)
+			active = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_LABEL_{:02d}_ACTIVE'.format(n+1), None)
+			active2 = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_LABEL_{:02d}_ACTIVE2'.format(n+1), None)
 			if default:
-				self.btndefs[n][3]['default'] = default
+				self.btndefs[n][0]['default'] = default
 			if alt:
-				self.btndefs[n][3]['alt'] = alt
+				self.btndefs[n][0]['alt'] = alt
 			if active:
-				self.btndefs[n][3]['active'] = active
+				self.btndefs[n][0]['active'] = active
 			if active2:
-				self.btndefs[n][3]['active2'] = active2
-			#self.refresh_button_label(n, self.btnstate[n])q
+				self.btndefs[n][0]['active2'] = active2
+
+	# def set_button_label(self, n, mode, label):
+	# 	"""
+	# 	Dynamic label updates
+	# 	"""
+	# 	self.btndefs[n][mode] = label
+	# 	self.refresh_button_label(n, self.btnstate[n])
