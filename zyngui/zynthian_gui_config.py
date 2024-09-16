@@ -251,8 +251,11 @@ def config_zynpot2switch():
 		# Detect zynpot switches configuration (V5)
 		for i, cuias in enumerate(custom_switch_ui_actions):
 			# WARNING!! It assumes the zynpot switches are sorted!! => It should parse the indexes from CUIAs!
-			if cuias['S'] and cuias['S'].startswith("V5_ZYNPOT_SWITCH"):
-				zynpot2switch.append(4 + i)
+			try:
+				if cuias['S'].startswith("V5_ZYNPOT_SWITCH"):
+					zynpot2switch.append(4 + i)
+			except:
+				pass
 
 		# Default configuration for "classic layouts" => It discards V5 partial configurations!
 		if len(zynpot2switch) < num_zynpots:
