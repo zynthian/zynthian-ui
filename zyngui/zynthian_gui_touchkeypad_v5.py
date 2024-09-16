@@ -1,4 +1,5 @@
 
+import os
 import tkinter
 from PIL import Image, ImageTk #, ImageDraw, ImageFont
 from io import BytesIO
@@ -141,6 +142,9 @@ class zynthian_gui_touchkeypad_v5:
 			self.btndefs[n] = btn
 			self.buttons[n] = self.add_button(n, self.bottom_frame, 0, col, zynswitch, label, padx, (1,0))
 
+		# update with user settings from the environment
+		self.apply_user_config()
+
 
 	def add_button(self, n, parent, row, column, zynswitch, label, padx, pady):
 		"""
@@ -261,9 +265,9 @@ class zynthian_gui_touchkeypad_v5:
 		# get the button number associated with the wsled number
 		n = LED2BUTTON[led_num]
 		# don't bother with update if nothing has really changed (redrawing images causes visible blinking!)
-		if self.btnstate[n] == color:
+		if self.btnstate[n] == (mode or color):
 			return
-		self.btnstate[n] = color
+		self.btnstate[n] = mode or color
 		# in case the color is still the original wsled integer number, convert it
 		label = self.btndefs[n][0]
 		# twostate = self.btndefs[n][4]
@@ -293,8 +297,12 @@ class zynthian_gui_touchkeypad_v5:
 		else:
 			# plain text labels may just change the color and possibly also its label if a special label 
 			# is associated with the requested mode (<=color) in the button definition
+			self.refresh_button_label(n, mode)
+			self.buttons[n].config(fg=color)
+
+	def refresh_button_label(self, n, mode):
 			text = self.btndefs[n][3].get(mode, self.btndefs[n][0]).replace('/', "\n")
-			self.buttons[n].config(fg=color, text=text)
+			self.buttons[n].config(text=text)
 
 	def show(self):
 		if not self.shown:
@@ -309,3 +317,19 @@ class zynthian_gui_touchkeypad_v5:
 			self.side_frame.grid_remove()
 			self.bottom_frame.grid_remove()
 			self.shown = False
+
+	def apply_user_config(self):
+		for n in range(0, 20):
+			default = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_LABEL_'+str(n)+'_DEFAULT', None)
+			alt = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_LABEL_'+str(n)+'_ALT', None)
+			active = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_LABEL_'+str(n)+'_ACTIVE', None)
+			active2 = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD_LABEL_'+str(n)+'_ACTIVE2', None)
+			if default:
+				self.btndefs[n][3]['default'] = default
+			if alt:
+				self.btndefs[n][3]['alt'] = alt
+			if active:
+				self.btndefs[n][3]['active'] = active
+			if active2:
+				self.btndefs[n][3]['active2'] = active2
+			#self.refresh_button_label(n, self.btnstate[n])q

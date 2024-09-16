@@ -13,6 +13,7 @@ class touchkeypad_button_colors:
         self.zyngui = wsleds.zyngui
         # A wanna-be abstraction: reverse derive a named "mode" from the requested colors
         self.mode_map = {}
+        self.mode_map[wsleds.wscolor_default] = 'default'
         self.mode_map[wsleds.wscolor_alt] = 'alt'
         self.mode_map[wsleds.wscolor_active] = 'active'
         self.mode_map[wsleds.wscolor_active2] = 'active2'
