@@ -158,7 +158,7 @@ load_config_env
 # If needed, generate splash screen images
 #------------------------------------------------------------------------------
 
-if [ ! -d $ZYNTHIAN_CONFIG_DIR/img ]; then
+if [[ ! -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png" ]]; then
 	$ZYNTHIAN_SYS_DIR/sbin/generate_fb_splash.sh
 fi
 
@@ -201,7 +201,7 @@ fi
 # Build zyncore if needed
 #------------------------------------------------------------------------------
 
-if [ ! -f "$ZYNTHIAN_DIR/zyncoder/build/libzyncore.so" ]; then
+if [[ ! -f "$ZYNTHIAN_DIR/zyncoder/build/libzyncore.so" ]]; then
 	splash_zynthian_message "Building zyncore. Please wait..."
 	$ZYNTHIAN_DIR/zyncoder/build.sh
 fi
