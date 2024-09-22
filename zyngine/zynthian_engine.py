@@ -424,8 +424,7 @@ class zynthian_engine(zynthian_basic_engine):
 	# ---------------------------------------------------------------------------
 
 	def set_midi_chan(self, processor):
-		if processor:
-			lib_zyncore.zmop_set_midi_chan(processor.chain.zmop_index, processor.get_midi_chan())
+		pass
 
 	def get_active_midi_channels(self):
 		chans = []

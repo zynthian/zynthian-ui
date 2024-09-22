@@ -42,8 +42,6 @@ from zyncoder.zyncore import lib_zyncore
 # MOD-UI Engine Class
 # ------------------------------------------------------------------------------
 
-ZMOP_MOD_INDEX = 17
-
 
 class zynthian_engine_modui(zynthian_engine):
 
@@ -117,18 +115,6 @@ class zynthian_engine_modui(zynthian_engine):
 			return True
 		else:
 			return False
-
-	# ---------------------------------------------------------------------------
-	# MIDI Channel Management
-	# ---------------------------------------------------------------------------
-
-	def set_midi_chan(self, processor):
-		if 0 <= processor.midi_chan < 16:
-			lib_zyncore.zmop_set_midi_chan(ZMOP_MOD_INDEX, processor.midi_chan)
-		elif processor.midi_chan == 0xffff:
-			lib_zyncore.zmop_set_midi_chan_all(ZMOP_MOD_INDEX)
-		else:
-			lib_zyncore.zmop_set_midi_chan_all(ZMOP_MOD_INDEX)
 
 	# ---------------------------------------------------------------------------
 	# Processor Management

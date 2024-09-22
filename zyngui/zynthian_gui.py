@@ -91,7 +91,9 @@ from zyngui.zynthian_gui_wifi import zynthian_gui_wifi
 from zyngui.zynthian_gui_bluetooth import zynthian_gui_bluetooth
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
 
-MIXER_MAIN_CHANNEL = 17  # TODO This constant should go somewhere else
+# TODO This constants should go somewhere else
+MIXER_MAIN_CHANNEL = 17
+ZMOP_MOD_INDEX = 16   # Dedicated zmop for MOD-UI
 
 # -------------------------------------------------------------------------------
 # Zynthian Main GUI Class
@@ -847,11 +849,18 @@ class zynthian_gui:
 						self.modify_chain_status["midi_thru"] = False
 					if "audio_thru" not in self.modify_chain_status:
 						self.modify_chain_status["audio_thru"] = False
+					# Detect MOD-UI special chain and assign dedicated zmop index
+					if self.modify_chain_status["engine"] == "MD":
+						zmop_index = ZMOP_MOD_INDEX
+					else:
+						zmop_index = None
 					chain_id = self.chain_manager.add_chain(
 						None,
 						self.modify_chain_status["midi_chan"],
 						self.modify_chain_status["midi_thru"],
-						self.modify_chain_status["audio_thru"])
+						self.modify_chain_status["audio_thru"],
+						zmop_index=zmop_index
+					)
 					processor = self.chain_manager.add_processor(
 						chain_id,
 						self.modify_chain_status["engine"]

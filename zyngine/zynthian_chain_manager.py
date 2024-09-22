@@ -162,7 +162,7 @@ class zynthian_chain_manager:
     # Chain Management
     # ------------------------------------------------------------------------
 
-    def add_chain(self, chain_id, midi_chan=None, midi_thru=False, audio_thru=False, mixer_chan=None, title="", chain_pos=None, fast_refresh=True):
+    def add_chain(self, chain_id, midi_chan=None, midi_thru=False, audio_thru=False, mixer_chan=None, zmop_index=None, title="", chain_pos=None, fast_refresh=True):
         """Add a chain
 
         chain_id: UID of chain (None to get next available)
@@ -216,7 +216,10 @@ class zynthian_chain_manager:
 
         # Setup MIDI routing
         if isinstance(midi_chan, int):
-            chain.set_zmop_index(self.get_next_free_zmop_index())
+            # Restore zmop_index if it's free for assignment
+            if zmop_index is None or not self.is_free_zmop_index(zmop_index):
+                zmop_index = self.get_next_free_zmop_index()
+            chain.set_zmop_index(zmop_index)
         if chain.zmop_index is not None and self.state_manager.ctrldev_manager is not None:
             # Enable all MIDI inputs by default
             # TODO: Should we allow user to define default routing?
@@ -265,14 +268,12 @@ class zynthian_chain_manager:
             mixer_chan = chain_state['mixer_chan']
         else:
             mixer_chan = None
+        if 'zmop_index' in chain_state:
+            zmop_index = chain_state['zmop_index']
+        else:
+            zmop_index = None
 
-        # This doen't have any effect because zmop_index is not restored
-        #if 'zmop_index' in chain_state:
-        #    zmop_index = chain_state['zmop_index']
-        #else:
-        #    zmop_index = None
-
-        self.add_chain(chain_id, midi_chan=midi_chan, midi_thru=midi_thru, audio_thru=audio_thru, mixer_chan=mixer_chan, title=title, fast_refresh=False)
+        self.add_chain(chain_id, midi_chan=midi_chan, midi_thru=midi_thru, audio_thru=audio_thru, mixer_chan=mixer_chan, zmop_index=zmop_index, title=title, fast_refresh=False)
 
         # Set CC route state
         zmop_index = self.chains[chain_id].zmop_index
@@ -1469,6 +1470,15 @@ class zynthian_chain_manager:
             if i in free_chans:
                 return i
         raise Exception("No available free mixer channels!")
+
+    def is_free_zmop_index(self, zmop_index):
+        """Get next unused zmop index
+        """
+
+        for chain in self.chains.values():
+            if chain.zmop_index is not None and chain.zmop_index == zmop_index:
+                return False
+        return True
 
     def get_next_free_zmop_index(self):
         """Get next unused zmop index
