@@ -113,7 +113,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		self.list_data.append((self.zyngui.midi_out_config, 0, "MIDI Output Devices"))
 		#self.list_data.append((self.midi_profile, 0, "MIDI Profile"))
 
-		if zynthian_gui_config.active_midi_channel:
+		if lib_zyncore.get_active_midi_chan():
 			self.list_data.append((self.toggle_active_midi_channel, 0, "\u2612 Active MIDI channel"))
 		else:
 			self.list_data.append((self.toggle_active_midi_channel, 0, "\u2610 Active MIDI channel"))
@@ -412,7 +412,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	# -------------------------------------------------------------------------
 
 	def toggle_active_midi_channel(self):
-		if zynthian_gui_config.active_midi_channel:
+		if lib_zyncore.set_active_midi_chan():
 			logging.info("Active MIDI channel OFF")
 			zynthian_gui_config.active_midi_channel = False
 		else:
