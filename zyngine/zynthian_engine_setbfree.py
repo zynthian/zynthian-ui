@@ -305,11 +305,11 @@ class zynthian_engine_setbfree(zynthian_engine):
 					chain.audio_out = []
 					chain.mixer_chan = None
 
-		# Enable Active MIDI Channel for splitted configurations
-		if self.manuals_split_config['keyranges']:
-			lib_zyncore.set_active_midi_chan(1)
-
-		self.manuals_split_config = None
+		if self.manuals_split_config:
+			# Enable Active MIDI Channel for splitted configurations
+			if self.manuals_split_config['keyranges']:
+				lib_zyncore.set_active_midi_chan(1)
+			self.manuals_split_config = None
 
 		# Start engine
 		logging.debug("STARTING SETBFREE!!")

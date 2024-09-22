@@ -26,6 +26,7 @@
 import os
 import copy
 import logging
+import traceback
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
@@ -697,7 +698,10 @@ class zynthian_processor:
         except:
             pass
         if "bank_info" in state and state["bank_info"]:
-            self.set_bank_by_info(state["bank_info"])
+            try:
+                self.set_bank_by_info(state["bank_info"])
+            except:
+                logging.exception(traceback.format_exc())
         try:
             self.load_preset_list()
         except:
