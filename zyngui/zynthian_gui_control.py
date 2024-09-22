@@ -631,10 +631,12 @@ class zynthian_gui_control(zynthian_gui_selector):
 			self.zyngui.state_manager.zctrl_x = param
 			if self.zyngui.state_manager.zctrl_y == param:
 				self.zyngui.state_manager.zctrl_y = None
+			self.refresh_midi_bind()
 		elif parts[1] == "Y-axis":
 			self.zyngui.state_manager.zctrl_y = param
 			if self.zyngui.state_manager.zctrl_x == param:
 				self.zyngui.state_manager.zctrl_x = None
+			self.refresh_midi_bind()
 		elif parts[0] == "Chain":
 			self.midi_learn(param, MIDI_LEARNING_CHAIN)
 		elif parts[0] == "Global":

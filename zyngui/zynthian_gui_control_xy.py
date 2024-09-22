@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
 # Zynthian GUI XY-Controller Class
 # 
 # Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import math
 import tkinter
@@ -32,11 +32,12 @@ from time import monotonic
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian X-Y Controller GUI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
-#TODO: Derive control_xy from gui base class
+#TODO: Derive control_xy from gui base class?
+
 
 class zynthian_gui_control_xy():
 
@@ -98,11 +99,10 @@ class zynthian_gui_control_xy():
 			zynthian_gui_config.display_width,
 			fill=zynthian_gui_config.color_on)
 
-
 	def build_view(self):
 		try:
 			# Check zctrl are valid
-			# TODO: Could use these values to show info of which parameters are being contolled
+			# TODO: Could use these values to show info of which parameters are being controlled
 			self.zyngui.state_manager.zctrl_x.symbol
 			self.zyngui.state_manager.zctrl_y.symbol
 		except:
@@ -113,16 +113,15 @@ class zynthian_gui_control_xy():
 		if not self.shown:
 			if self.zyngui.test_mode:
 				logging.warning("TEST_MODE: {}".format(self.__class__.__module__))
-			self.shown= True
+			self.shown = True
 			self.main_frame.grid()
+			self.get_controller_values()
 			self.refresh()
-
 
 	def hide(self):
 		if self.shown:
 			self.shown = False
 			self.main_frame.grid_forget()
-
 
 	def get_controller_values(self):
 		if self.zyngui.state_manager.zctrl_x.value != self.xvalue:
@@ -144,7 +143,6 @@ class zynthian_gui_control_xy():
 			else:
 				self.y = int(self.height * (self.yvalue - self.zyngui.state_manager.zctrl_y.value_min) / self.zyngui.state_manager.zctrl_y.value_range)
 			self.canvas.coords(self.hline, 0, self.y, self.width, self.y)
-
 
 	def refresh(self):
 		self.canvas.coords(self.hline, 0, self.y, self.width, self.y)
@@ -174,7 +172,6 @@ class zynthian_gui_control_xy():
 			self.yvalue = yv
 			self.zyngui.state_manager.zctrl_y.set_value(self.yvalue, True)
 
-
 	def cb_canvas(self, event):
 		#logging.debug("XY controller => %s, %s" % (event.x, event.y))
 		self.x = event.x
@@ -197,16 +194,29 @@ class zynthian_gui_control_xy():
 		# Wait 0.1 seconds after last motion for start reading encoders again
 		if self.last_motion_ts is None or (datetime.now() - self.last_motion_ts).total_seconds() > 0.1:
 			self.last_motion_ts = None
-			self.zyngui.screens['control'].zynpot_cb(i, dval)
-			self.get_controller_values()
+			if i == 2:
+				zctrl = self.zyngui.state_manager.zctrl_y
+			elif i == 3:
+				zctrl = self.zyngui.state_manager.zctrl_x
+			else:
+				return False
+			if i < zynthian_gui_config.num_zynpots and self.zyngui.zynpot_pr_state[i] > 0:
+				self.zyngui.zynpot_pr_state[i] += 1
+				fine = True
+			else:
+				fine = self.zyngui.alt_mode
+			res = zctrl.nudge(dval, fine=fine)
+			if res:
+				self.get_controller_values()
+				return res
+		return False
 
 
 	def refresh_loading(self):
 		pass
 
-
 	def switch_select(self, t='S'):
 		pass
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
