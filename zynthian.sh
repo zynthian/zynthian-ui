@@ -70,8 +70,8 @@ function splash_zynthian_message() {
 	[ "$img_fpath" ] || img_fpath="$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.png"
 
 	# Generate a splash image with the message...
-	img_w=`identify -format '%w' $img_fpath`
-	img_h=`identify -format '%h' $img_fpath`
+	img_w=$(identify -format '%w' $img_fpath)
+	img_h=$(identify -format '%h' $img_fpath)
 	if [[ "${#zynthian_message}" > "40" ]]; then
 			font_size=$(expr $img_w / 36)
 	else
@@ -132,7 +132,17 @@ function splash_zynthian_error_exit_ip() {
 }
 
 function splash_zynthian_last_message() {
-	xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+	if [ -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png" ]; then
+		xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+	else
+		xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.png
+	fi
+}
+
+function clean_zynthian_last_message() {
+	if [ -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png" ]; then
+		rm -f $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+	fi
 }
 
 function start_wifi_ap() {
@@ -158,7 +168,7 @@ load_config_env
 # If needed, generate splash screen images
 #------------------------------------------------------------------------------
 
-if [[ ! -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png" ]]; then
+if [ ! -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png" ]; then
 	$ZYNTHIAN_SYS_DIR/sbin/generate_fb_splash.sh
 fi
 
@@ -166,7 +176,7 @@ fi
 # Run Hardware Test
 #------------------------------------------------------------------------------
 
-if [[ -n "$ZYNTHIAN_HW_TEST" ]]; then
+if [ -n "$ZYNTHIAN_HW_TEST" ]; then
 	echo "Running HW test:  $ZYNTHIAN_HW_TEST"
 	result=$($ZYNTHIAN_SYS_DIR/sbin/zynthian_hw_test.py $ZYNTHIAN_HW_TEST | tail -1)
 	res=${result%:*}
@@ -201,7 +211,7 @@ fi
 # Build zyncore if needed
 #------------------------------------------------------------------------------
 
-if [[ ! -f "$ZYNTHIAN_DIR/zyncoder/build/libzyncore.so" ]]; then
+if [ ! -f "$ZYNTHIAN_DIR/zyncoder/build/libzyncore.so" ]; then
 	splash_zynthian_message "Building zyncore. Please wait..."
 	$ZYNTHIAN_DIR/zyncoder/build.sh
 fi
@@ -226,11 +236,14 @@ fi
 splash_zynthian
 
 while true; do
+	clean_zynthian_last_message
 
 	# Start Zynthian GUI & Synth Engine
 	cd $ZYNTHIAN_UI_DIR
 	./zynthian_main.py
 	status=$?
+
+	echo -e "\n*******************\nEXIT STATUS => $status\n*******************\n"
 
 	# Proccess output status
 	case $status in
