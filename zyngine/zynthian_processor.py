@@ -220,7 +220,7 @@ class zynthian_processor:
 
             if bank_index != self.bank_index or self.bank_name != bank_name:
                 set_engine_needed = True
-                logging.info("Bank selected: %s (%d)" % (self.bank_name, bank_index))
+                logging.info("Bank selected: %s (%d)" % (bank_name, bank_index))
             else:
                 set_engine_needed = False
                 logging.info("Bank already selected: %s (%d)" % (self.bank_name, bank_index))
@@ -719,7 +719,7 @@ class zynthian_processor:
                     if "midi_cc_momentary_switch" in ctrl_state:
                         zctrl.midi_cc_momentary_switch = ctrl_state['midi_cc_momentary_switch']
                 except Exception as e:
-                    logging.warning("Invalid Controller for processor {}: {}".format(self.get_basepath(), e))
+                    logging.warning("Invalid controller for processor {}: {}".format(self.get_basepath(), e))
 
     def restore_state_legacy(self, state):
         """Restore legacy states from state

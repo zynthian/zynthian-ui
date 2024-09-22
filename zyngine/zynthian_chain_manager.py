@@ -1136,6 +1136,8 @@ class zynthian_chain_manager:
 
         if zctrl is None:
             return
+
+        logging.debug(f"(chan={chan}, midi_cc={midi_cc}, zctrl={zctrl.symbol}, zmip={zmip})")
         self.remove_midi_learn(zctrl.processor, zctrl.symbol)
         if zmip is None:
             if zctrl.processor:
@@ -1168,7 +1170,6 @@ class zynthian_chain_manager:
                 zctrl.processor.engine.set_midi_learn(zctrl, chan, midi_cc)
             """
 
-
     def remove_midi_learn(self, proc, symbol):
         """Remove a midi learn configuration
 
@@ -1179,7 +1180,7 @@ class zynthian_chain_manager:
         if not proc or symbol not in proc.controllers_dict:
             return
         zctrl = proc.controllers_dict[symbol]
-
+        logging.debug(f"(symbol={symbol} => zctrl={zctrl.symbol})")
         for key in list(self.absolute_midi_cc_binding):
             zctrls = self.absolute_midi_cc_binding[key]
             if zctrl in zctrls:

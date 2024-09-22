@@ -118,14 +118,6 @@ class zynthian_engine_modui(zynthian_engine):
 		else:
 			return False
 
-	# TODO: Refact this to separate engine & UI code
-	def XXX_refresh(self):
-		if self.zyngui.current_screen == 'bank':
-			if self.preset_name:
-				self.zyngui.show_screen('control')
-			else:
-				self.zyngui.show_screen('preset')
-
 	# ---------------------------------------------------------------------------
 	# MIDI Channel Management
 	# ---------------------------------------------------------------------------
@@ -166,15 +158,17 @@ class zynthian_engine_modui(zynthian_engine):
 	def load_bundle(self, path):
 		self.graph_reset()
 		self.ws_bundle_loaded = False
-		res = self.api_post_request("/pedalboard/load_bundle/", data={'bundlepath':path})
+		res = self.api_post_request("/pedalboard/load_bundle/", data={'bundlepath': path})
 		if not res or not res['ok']:
-			logging.error("Loading Bundle "+path)
+			logging.error(f"Can't load bundle {path}")
 		else:
+			i = 0
+			while not self.ws_bundle_loaded and i < 101:
+				logging.debug(f"Waiting for bundle to load ...")
+				sleep(0.1)
+				i += 2
+			logging.debug(f"Bundle {path} is loaded!!")
 			return res['name']
-		i = 0
-		while not self.ws_bundle_loaded and i<101: 
-			sleep(0.1)
-			i = i+2
 
 	# ----------------------------------------------------------------------------
 	# Preset Managament
@@ -270,7 +264,7 @@ class zynthian_engine_modui(zynthian_engine):
 		self._ctrl_screens = []
 		try:
 			for pgraph in sorted(self.plugin_info, key=lambda k: self.plugin_info[k]['posx']):
-				logging.debug("PLUGIN %s => X=%s" % (pgraph, self.plugin_info[pgraph]['posx']))
+				logging.debug(f"Plugin {pgraph} => X={self.plugin_info[pgraph]['posx']}")
 				c = 1
 				ctrl_set = []
 
@@ -282,31 +276,32 @@ class zynthian_engine_modui(zynthian_engine):
 						pgname = pgname + "/" + str(pgi)
 					except:
 						pass
-				logging.debug("PGRAPH NAME => {}".format(pgname))
+				logging.debug(f"Pgraph name => {pgname}")
 
 				for param in self.plugin_info[pgraph]['ports']['control']['input']:
 					try:
-						logging.debug("CTRL LIST PLUGIN %s PARAM %s" % (pgraph, param['ctrl']))
-						processor.controllers_dict[param['ctrl'].graph_path] = param['ctrl']
-						ctrl_set.append(param['ctrl'].graph_path)
+						zctrl = param['ctrl']
+						logging.debug(f"Plugin {pgraph}, controller {zctrl.symbol} => {zctrl.name}")
+						zctrl.set_options({"processor": processor})
+						processor.controllers_dict[zctrl.symbol] = zctrl
+						ctrl_set.append(zctrl.symbol)
 						if len(ctrl_set) >= 4:
-							logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
+							logging.debug(f"Adding control screen #{c}")
 							self._ctrl_screens.append([pgname+'#'+str(c), ctrl_set])
 							ctrl_set = []
 							c = c+1
 					except Exception as err:
-						logging.error("Generating Controller Screens: %s => %s" % (pgraph, err))
+						logging.error(f"Generating control screens for plugin {pgraph} => {err}")
 				if len(ctrl_set) >= 1:
-					logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
+					logging.debug(f"Adding control screen #{c}")
 					self._ctrl_screens.append([pgname+'#'+str(c), ctrl_set])
 		except Exception as err:
-			logging.error("Generating Controller List: %s" % err)
+			logging.error(f"Generating controller list => {err}")
 		return processor.controllers_dict
 
-
 	def send_controller_value(self, zctrl):
-		self.websocket.send("param_set %s %.6f" % (zctrl.graph_path, zctrl.value))
-		logging.debug("WS << param_set %s %.6f" % (zctrl.graph_path, zctrl.value))
+		self.websocket.send("param_set %s %.6f" % (zctrl.symbol, zctrl.value))
+		logging.debug("WS << param_set %s %.6f" % (zctrl.symbol, zctrl.value))
 
 	# ----------------------------------------------------------------------------
 	# Websocket & MOD-UI API Management
@@ -324,20 +319,20 @@ class zynthian_engine_modui(zynthian_engine):
 				i += 1
 				sleep(0.5)
 
-		if i<100:
+		if i < 100:
 			self.ws_thread = Thread(target=self.task_websocket, args=())
 			self.ws_thread.name = "modui"
 			self.ws_thread.daemon = True # thread dies with the program
 			self.ws_thread.start()
 			
-			j=0
+			j = 0
 			while j < 100:
 				if self.ws_bundle_loaded:
 					break
 				j += 1
 				sleep(0.1)
 				
-			if j<100:
+			if j < 100:
 				return True
 			else:
 				self.stop_websocket()
@@ -522,7 +517,7 @@ class zynthian_engine_modui(zynthian_engine):
 						continue
 
 				try:
-					ctrl_graph = pgraph+'/'+param['symbol']
+					ctrl_symbol = pgraph+'/'+param['symbol']
 					#If there is range info (should be!!) ...
 					if param['valid'] and param['ranges'] and len(param['ranges']) > 2:
 
@@ -544,9 +539,9 @@ class zynthian_engine_modui(zynthian_engine):
 							except:
 								val = values[0]
 
-							param['ctrl'] = zynthian_controller(self, param['symbol'], {
+							param['ctrl'] = zynthian_controller(self, ctrl_symbol, {
 								'name': param['shortName'],
-								'graph_path': ctrl_graph,
+								'graph_path': param['symbol'],
 								'value': val,
 								'labels': labels,
 								'ticks': values,
@@ -563,9 +558,9 @@ class zynthian_engine_modui(zynthian_engine):
 							if is_integer:
 								if r == 1:
 									val = pranges['default']
-									param['ctrl'] = zynthian_controller(self, param['symbol'], {
+									param['ctrl'] = zynthian_controller(self, ctrl_symbol, {
 										'name': param['shortName'],
-										'graph_path': ctrl_graph,
+										'graph_path': param['symbol'],
 										'value': val,
 										'labels': ['off', 'on'],
 										'ticks': [0, 1],
@@ -575,9 +570,9 @@ class zynthian_engine_modui(zynthian_engine):
 										'is_integer': True
 									})
 								else:
-									param['ctrl'] = zynthian_controller(self, param['symbol'], {
+									param['ctrl'] = zynthian_controller(self, ctrl_symbol, {
 										'name': param['shortName'],
-										'graph_path': ctrl_graph,
+										'graph_path': param['symbol'],
 										'value': int(pranges['default']),
 										'value_default': int(pranges['default']),
 										'value_min': int(pranges['minimum']),
@@ -586,9 +581,9 @@ class zynthian_engine_modui(zynthian_engine):
 										'is_integer': True
 									})
 							else:
-								param['ctrl'] = zynthian_controller(self, param['symbol'], {
+								param['ctrl'] = zynthian_controller(self, ctrl_symbol, {
 									'name': param['shortName'],
-									'graph_path': ctrl_graph,
+									'graph_path': param['symbol'],
 									'value': pranges['default'],
 									'value_default': pranges['default'],
 									'value_min': pranges['minimum'],
@@ -599,9 +594,9 @@ class zynthian_engine_modui(zynthian_engine):
 
 					#If there is no range info (should be!!) => Default MIDI CC controller with 0-127 range
 					else:
-						param['ctrl'] = zynthian_controller(self, param['symbol'], {
+						param['ctrl'] = zynthian_controller(self, ctrl_symbol, {
 							'name': param['shortName'],
-							'graph_path': ctrl_graph,
+							'graph_path': param['symbol'],
 							'value': 0,
 							'value_default': 0,
 							'value_min': 0,
@@ -617,8 +612,10 @@ class zynthian_engine_modui(zynthian_engine):
 					logging.error("Configuring Controllers: "+pgraph+" => "+str(err))
 
 			# Add bypass Zcontroller
-			bypass_zctrl = zynthian_controller(self, 'bypass', {
-				'graph_path': pgraph+'/:bypass',
+
+			bypass_zctrl = zynthian_controller(self, pgraph+'/:bypass', {
+				'name': 'bypass',
+				'graph_path': 'bypass',
 				'value': 0,
 				'labels': ['off', 'on'],
 				'values': [0, 1],
@@ -629,7 +626,7 @@ class zynthian_engine_modui(zynthian_engine):
 			})
 
 			self.plugin_zctrls[pgraph][':bypass'] = bypass_zctrl
-			pinfo['ports']['control']['input'].insert(0, {'symbol': ':bypass', 'ctrl': bypass_zctrl})
+			pinfo['ports']['control']['input'].insert(0, {'symbol': pgraph + '/:bypass', 'ctrl': bypass_zctrl})
 			# Add position info
 			pinfo['posx'] = int(round(float(posx)))
 			pinfo['posy'] = int(round(float(posy)))
@@ -736,26 +733,27 @@ class zynthian_engine_modui(zynthian_engine):
 	# MIDI learning
 	# ----------------------------------------------------------------------------
 
+	# These MOD-UI native functions are not used!
+
 	def init_midi_learn(self, zctrl):
-		#TODO: This isn't used!
-		logging.info("Learning '{}' ...".format(zctrl.graph_path))
-		res = self.api_post_request("/effect/parameter/address/"+zctrl.graph_path, json=self.get_parameter_address_data(zctrl, "/midi-learn"))
+		logging.info("Learning '{}' ...".format(zctrl.symbol))
+		res = self.api_post_request("/effect/parameter/address/"+zctrl.symbol, json=self.get_parameter_address_data(zctrl, "/midi-learn"))
 
 	def midi_unlearn(self, zctrl):
-		logging.info("Unlearning '{}' ...".format(zctrl.graph_path))
+		logging.info("Unlearning '{}' ...".format(zctrl.symbol))
 		try:
 			pad = self.get_parameter_address_data(zctrl,"null")
-			return self.api_post_request("/effect/parameter/address/"+zctrl.graph_path, json=pad)
+			return self.api_post_request("/effect/parameter/address/"+zctrl.symbol, json=pad)
 		except Exception as e:
 			logging.warning("Can't unlearn => {}".format(e))
 
 	def set_midi_learn(self, zctrl, chan, cc):
 		try:
-			if zctrl.graph_path and chan is not None and cc is not None:
-				logging.info("Set MIDI map '{}' => {}, {}".format(zctrl.graph_path, chan, cc))
+			if zctrl.symbol and chan is not None and cc is not None:
+				logging.info("Set MIDI map '{}' => {}, {}".format(zctrl.symbol, chan, cc))
 				uri = "/midi-custom_Ch.{}_CC#{}".format(chan+1, cc)
 				pad = self.get_parameter_address_data(zctrl, uri)
-				return self.api_post_request("/effect/parameter/address/"+zctrl.graph_path, json=pad)
+				return self.api_post_request("/effect/parameter/address/"+zctrl.symbol, json=pad)
 		except Exception as e:
 				logging.warning("Can't learn => {}".format(e))
 
