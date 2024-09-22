@@ -164,19 +164,29 @@ load_config_env
 #sleep 10
 #exit
 
+if [[ "$(systemctl is-enabled first_boot)" == "enabled" ]]; then
+	is_first_boot=1
+else
+	is_first_boot=0
+fi
+
 #------------------------------------------------------------------------------
 # If needed, generate splash screen images
 #------------------------------------------------------------------------------
 
-if [ ! -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png" ]; then
-	$ZYNTHIAN_SYS_DIR/sbin/generate_fb_splash.sh
+if [[ ! -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png" ]]; then
+	if [[ "$is_first_boot" == "1" ]]; then
+		$ZYNTHIAN_SYS_DIR/sbin/generate_fb_splash.sh >> /root/first_boot.log
+	else
+		$ZYNTHIAN_SYS_DIR/sbin/generate_fb_splash.sh
+	fi
 fi
 
 #------------------------------------------------------------------------------
 # Run Hardware Test
 #------------------------------------------------------------------------------
 
-if [ -n "$ZYNTHIAN_HW_TEST" ]; then
+if [[ -n "$ZYNTHIAN_HW_TEST" ]]; then
 	echo "Running HW test:  $ZYNTHIAN_HW_TEST"
 	result=$($ZYNTHIAN_SYS_DIR/sbin/zynthian_hw_test.py $ZYNTHIAN_HW_TEST | tail -1)
 	res=${result%:*}
@@ -211,7 +221,7 @@ fi
 # Build zyncore if needed
 #------------------------------------------------------------------------------
 
-if [ ! -f "$ZYNTHIAN_DIR/zyncoder/build/libzyncore.so" ]; then
+if [[ ! -f "$ZYNTHIAN_DIR/zyncoder/build/libzyncore.so" ]]; then
 	splash_zynthian_message "Building zyncore. Please wait..."
 	$ZYNTHIAN_DIR/zyncoder/build.sh
 fi
@@ -220,7 +230,7 @@ fi
 # Detect first boot
 #------------------------------------------------------------------------------
 
-if [[ "$(systemctl is-enabled first_boot)" == "enabled" ]]; then
+if [[ "$is_first_boot" == "1" ]]; then
 	echo "Running first boot..."
 	splash_zynthian_message "Configuring your zynthian. Time to relax before the waves..."
 	sleep 1800
