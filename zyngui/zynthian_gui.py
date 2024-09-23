@@ -1702,11 +1702,12 @@ class zynthian_gui:
 		except Exception as err:
 			logging.debug(err)
 
-	def refresh_signal(self, sname):
-		try:
-			self.screens[self.current_screen].refresh_signal(sname)
-		except (AttributeError, TypeError):
-			pass
+	def cuia_refresh_screen(self, params=None):
+		if params is None or self.current_screen in params:
+			self.screen_lock.acquire()
+			self.screens[self.current_screen].build_view()
+			self.screens[self.current_screen].show()
+			self.screen_lock.release()
 
 	# -------------------------------------------------------------------
 	# Zynswitch Event Management
