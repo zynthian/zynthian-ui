@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
 # Zynthian GUI Splash Class
 # 
-# Copyright (C) 2015-2022 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import tkinter
 import logging
@@ -30,9 +30,10 @@ import os
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian Splash GUI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_splash:
 
@@ -51,12 +52,10 @@ class zynthian_gui_splash:
 
 		self.image = None
 
-
 	def hide(self):
 		if self.shown:
 			self.shown = False
 			self.canvas.grid_forget()
-
 
 	def show(self, text):
 		if self.zyngui.test_mode:
@@ -69,9 +68,9 @@ class zynthian_gui_splash:
 		pos_x =  self.width / 2 - strlen / 2
 		pos_y = int(self.height / 10)
 		try:
-			os.system('convert -strip -family \\"{}\\" -pointsize {} -fill white -draw "text {},{} \\"{}\\"" {}/img/fb_zynthian_boot.png {}/img/fb_zynthian_message.png'.format(
+			os.system('convert -strip -family \\"{}\\" -pointsize {} -fill white -draw "text {},{} \\"{}\\"" {}/img/fb_zynthian_boot.jpg {}/img/fb_zynthian_message.jpg'.format(
 				zynthian_gui_config.font_family, font_size, pos_x, pos_y, text, os.environ.get("ZYNTHIAN_CONFIG_DIR"), os.environ.get("ZYNTHIAN_CONFIG_DIR")))
-			self.img = tkinter.PhotoImage(file="/zynthian/config/img/fb_zynthian_message.png")
+			self.img = tkinter.PhotoImage(file="/zynthian/config/img/fb_zynthian_message.jpg")
 			if self.image is None:
 				self.image = self.canvas.create_image(0, 0, anchor='nw', image=self.img)
 			else:
@@ -82,25 +81,19 @@ class zynthian_gui_splash:
 			self.shown = True
 			self.canvas.grid()
 
-
 	def zynpot_cb(self, i, dval):
 		pass
-
 
 	def zyncoder_read(self):
 		pass
 
-
 	def refresh_loading(self):
 		pass
-
 
 	def switch_select(self, t='S'):
 		pass
 
-
 	def back_action(self):
 		return False
 
-
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------

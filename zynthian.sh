@@ -59,7 +59,7 @@ function raw_splash_zynthian_error() {
 
 
 function splash_zynthian() {
-	xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.png
+	xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.jpg
 }
 
 
@@ -67,7 +67,7 @@ function splash_zynthian_message() {
 	zynthian_message=$1
 
 	img_fpath=$2
-	[ "$img_fpath" ] || img_fpath="$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.png"
+	[ "$img_fpath" ] || img_fpath="$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.jpg"
 
 	# Generate a splash image with the message...
 	img_w=$(identify -format '%w' $img_fpath)
@@ -81,16 +81,16 @@ function splash_zynthian_message() {
 	pos_x=$(expr $img_w / 2 - $strlen / 2)
 	pos_y=$(expr $img_h \* 10 / 100)
 	[[ "$pos_x" > "0" ]] || pos_x=5
-	convert -strip -family \"$ZYNTHIAN_UI_FONT_FAMILY\" -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"$zynthian_message\"" $img_fpath $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+	convert -strip -family \"$ZYNTHIAN_UI_FONT_FAMILY\" -pointsize $font_size -fill white -draw "text $pos_x,$pos_y \"$zynthian_message\"" $img_fpath $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.jpg
 
 	# Display error image
-	xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+	xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.jpg
 }
 
 
 function splash_zynthian_error() {
 	# Generate an error splash image...
-	splash_zynthian_message "$1" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"
+	splash_zynthian_message "$1" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.jpg"
 }
 
 
@@ -128,20 +128,20 @@ function splash_zynthian_error_exit_ip() {
 	zynthian_message="IP:$zynthian_ip    $message"
 
 	# Generate an error splash image with the IP & exit code...
-	splash_zynthian_message "$zynthian_message" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png"
+	splash_zynthian_message "$zynthian_message" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.jpg"
 }
 
 function splash_zynthian_last_message() {
-	if [ -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png" ]; then
-		xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+	if [ -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.jpg" ]; then
+		xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.jpg
 	else
-		xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.png
+		xloadimage -fullscreen -onroot $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_boot.jpg
 	fi
 }
 
 function clean_zynthian_last_message() {
-	if [ -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png" ]; then
-		rm -f $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.png
+	if [ -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.jpg" ]; then
+		rm -f $ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_message.jpg
 	fi
 }
 
@@ -174,7 +174,7 @@ fi
 # If needed, generate splash screen images
 #------------------------------------------------------------------------------
 
-if [[ ! -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.png" ]]; then
+if [[ ! -f "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.jpg" ]]; then
 	if [[ "$is_first_boot" == "1" ]]; then
 		$ZYNTHIAN_SYS_DIR/sbin/generate_fb_splash.sh >> /root/first_boot.log
 	else
