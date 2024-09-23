@@ -367,7 +367,7 @@ class zynthian_engine_modui(zynthian_engine):
 				elif command == "remove":
 					if args[1] == ":all":
 						logging.info("REMOVE ALL PLUGINS")
-						self.reset()
+						self.remove_all_plugins_cb()
 					elif args[1]:
 						logging.info("REMOVE PLUGIN: "+args[1])
 						self.remove_plugin_cb(args[1])
@@ -469,26 +469,25 @@ class zynthian_engine_modui(zynthian_engine):
 
 	def bundlepath_cb(self, bpath):
 		bdirname = bpath.split('/')[-1]
-		if bdirname != 'default.pedalboard':
-			# Find bundle_path in bank list ...
-			processor = self.processors[0]
-			bank_list = processor.get_bank_list()
-			for i in range(len(bank_list)):
-				#logging.debug("BUNDLE PATH SEARCH => %s <=> %s" % (bank_list[i][0].split('/')[-1], bdirname))
-				if bank_list[i][0].split('/')[-1] == bdirname:
-					bank_name = bank_list[i][2]
-					# Set Bank in GUI, processor and engine without reloading the bundle
-					logging.info('Bank Selected from Bundlepath: ' + bank_name + ' (' + str(i)+')')
-					processor.set_bank(i, False)
-					self.state_manager.send_cuia("refresh_screen", ["control"])
-					break
+		# Find bundle_path in bank list ...
+		processor = self.processors[0]
+		bank_list = processor.get_bank_list()
+		for i in range(len(bank_list)):
+			#logging.debug("BUNDLE PATH SEARCH => %s <=> %s" % (bank_list[i][0].split('/')[-1], bdirname))
+			if bank_list[i][0].split('/')[-1] == bdirname:
+				bank_name = bank_list[i][2]
+				# Set Bank in GUI, processor and engine without reloading the bundle
+				logging.info('Bank Selected from Bundlepath: ' + bank_name + ' (' + str(i)+')')
+				processor.set_bank(i, False)
+				self.state_manager.send_cuia("refresh_screen", ["control"])
+				break
 
 	def add_hw_port_cb(self, ptype, pdir, pgraph, pname, pnum):
 		if ptype not in self.hw_ports:
 			self.hw_ports[ptype] = {}
 		if pdir not in self.hw_ports[ptype]:
 			self.hw_ports[ptype][pdir] = {}
-		self.hw_ports[ptype][pdir][pgraph] = {'name':pname,'num':pnum}
+		self.hw_ports[ptype][pdir][pgraph] = {'name': pname, 'num': pnum}
 		self.graph_autoconnect_midi_input()
 		logging.debug("ADD_HW_PORT => "+pgraph+", "+ptype+", "+pdir)
 
@@ -636,6 +635,13 @@ class zynthian_engine_modui(zynthian_engine):
 		if pgraph in self.plugin_info:
 			del self.plugin_info[pgraph]
 		# Refresh controllers
+		self.processors[0].refresh_controllers()
+		self.state_manager.send_cuia("refresh_screen", ["control"])
+		self.state_manager.end_busy("mod-ui")
+
+	def remove_all_plugins_cb(self):
+		self.state_manager.start_busy("mod-ui")
+		self.reset()
 		self.processors[0].refresh_controllers()
 		self.state_manager.send_cuia("refresh_screen", ["control"])
 		self.state_manager.end_busy("mod-ui")
