@@ -468,7 +468,7 @@ def update_hw_midi_ports(force=False):
 	hw_midi_dst_ports = jclient.get_ports(is_input=True, is_physical=True, is_midi=True)
 
 	# Treat some virtual MIDI ports as hardware
-	for port_name in ("QmidiNet:in", "jackrtpmidid:rtpmidi_in", "jacknetumpd:netump_in", "RtMidiIn Client:TouchOSC Bridge", "ZynMaster:midi_in"):
+	for port_name in ("QmidiNet:in", "jackrtpmidid:rtpmidi_in", "jacknetumpd:netump_in", "RtMidiIn Client:TouchOSC Bridge", "ZynMaster:midi_in", "ZynMidiRouter:seq_in"):
 		try:
 			ports = jclient.get_ports(port_name, is_midi=True, is_input=True)
 			hw_midi_dst_ports += ports
@@ -888,6 +888,8 @@ def build_midi_port_name(port):
 		return port.name, "DIN-5 MIDI"
 	elif port.name.startswith("ZynMaster"):
 		return port.name, "CV/Gate"
+	elif port.name.startswith("ZynMidiRouter:seq_in"):
+		return port.name, "Router Feedbak"
 	elif port.name.startswith("jacknetumpd:netump_"):
 		return f"NET:ump_{port.name[19:]}", "NetUMP"
 	elif port.name.startswith("jackrtpmidid:rtpmidi_"):
