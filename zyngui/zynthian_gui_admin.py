@@ -412,7 +412,7 @@ class zynthian_gui_admin(zynthian_gui_selector):
 	# -------------------------------------------------------------------------
 
 	def toggle_active_midi_channel(self):
-		if lib_zyncore.set_active_midi_chan():
+		if lib_zyncore.get_active_midi_chan():
 			logging.info("Active MIDI channel OFF")
 			zynthian_gui_config.active_midi_channel = False
 		else:
