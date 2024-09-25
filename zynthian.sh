@@ -103,6 +103,9 @@ function splash_zynthian_error_exit_ip() {
 		1)
 			message="Software"
 		;;
+		139)
+			message="SegFault"
+		;;
 		200)
 			message="Zyncore"
 		;;
