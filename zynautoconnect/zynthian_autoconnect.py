@@ -889,7 +889,7 @@ def build_midi_port_name(port):
 	elif port.name.startswith("ZynMaster"):
 		return port.name, "CV/Gate"
 	elif port.name.startswith("ZynMidiRouter:seq_in"):
-		return port.name, "Router Feedbak"
+		return port.name, "Router Feedback"
 	elif port.name.startswith("jacknetumpd:netump_"):
 		return f"NET:ump_{port.name[19:]}", "NetUMP"
 	elif port.name.startswith("jackrtpmidid:rtpmidi_"):
