@@ -2579,9 +2579,11 @@ void transportStart(const char* client)
     jack_position_t pos;
     if(jack_transport_query(g_pJackClient, &pos) != JackTransportRolling)
         jack_transport_start(g_pJackClient);
-    	// Send MIDI stop message
-		jack_nframes_t nClockTime = g_qClockPos.front().first - jack_last_frame_time(g_pJackClient);
-		g_mSchedule.insert(std::pair<uint32_t,MIDI_MESSAGE*>(nClockTime, new MIDI_MESSAGE({MIDI_START, 0, 0})));
+        if (g_nClockSource & TRANSPORT_CLOCK_INTERNAL) {
+            // Send MIDI start message
+            jack_nframes_t nClockTime = g_qClockPos.front().first - jack_last_frame_time(g_pJackClient);
+            g_mSchedule.insert(std::pair<uint32_t,MIDI_MESSAGE*>(nClockTime, new MIDI_MESSAGE({MIDI_START, 0, 0})));
+        }
 }
 
 void transportStop(const char* client)
@@ -2598,9 +2600,11 @@ void transportStop(const char* client)
     g_bClientPlaying = (g_setTransportClient.size() != 0);
     if(!g_bClientPlaying && g_nPlayingSequences == 0)
         jack_transport_stop(g_pJackClient);
-	    // Send MIDI stop message
-	    jack_nframes_t nClockTime = g_qClockPos.front().first - jack_last_frame_time(g_pJackClient);
-		g_mSchedule.insert(std::pair<uint32_t,MIDI_MESSAGE*>(nClockTime, new MIDI_MESSAGE({MIDI_STOP, 0, 0})));
+        if (g_nClockSource & TRANSPORT_CLOCK_INTERNAL) {
+            // Send MIDI stop message
+            jack_nframes_t nClockTime = g_qClockPos.front().first - jack_last_frame_time(g_pJackClient);
+            g_mSchedule.insert(std::pair<uint32_t,MIDI_MESSAGE*>(nClockTime, new MIDI_MESSAGE({MIDI_STOP, 0, 0})));
+        }
 
 }
 
