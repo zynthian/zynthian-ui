@@ -71,7 +71,7 @@ class zynthian_processor:
         self.bank_name = None
         self.bank_info = None
         self.bank_msb = 0
-        self.bank_msb_info = [[0,0], [0,0], [0,0]] # system, user, external => [offset, n]
+        self.bank_msb_info = [[0, 0], [0, 0], [0, 0]]  # system, user, external => [offset, n]
 
         self.show_fav_presets = False
         self.preset_list = []

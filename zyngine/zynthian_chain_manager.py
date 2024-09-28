@@ -79,7 +79,7 @@ class zynthian_chain_manager:
     SS_MOVE_CHAIN = 2
 
     engine_info = None
-    single_processor_engines = ["BF", "MD", "PT", "PD", "AE", "CS", "SL"]
+    single_processor_engines = ["BF", "MD", "PT", "PD", "AE", "SL", "IR"]
 
     def __init__(self, state_manager):
         """ Create an instance of a chain manager
@@ -439,7 +439,6 @@ class zynthian_chain_manager:
             if chain.mixer_chan is not None and chain.mixer_chan == chan:
                 return chain_id
         return None
-
 
     # ------------------------------------------------------------------------
     # Chain Input/Output and Routing Management
