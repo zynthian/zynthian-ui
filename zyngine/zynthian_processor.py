@@ -26,6 +26,7 @@
 import os
 import copy
 import logging
+import traceback
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
@@ -70,7 +71,7 @@ class zynthian_processor:
         self.bank_name = None
         self.bank_info = None
         self.bank_msb = 0
-        self.bank_msb_info = [[0,0], [0,0], [0,0]] # system, user, external => [offset, n]
+        self.bank_msb_info = [[0, 0], [0, 0], [0, 0]]  # system, user, external => [offset, n]
 
         self.show_fav_presets = False
         self.preset_list = []
@@ -220,7 +221,7 @@ class zynthian_processor:
 
             if bank_index != self.bank_index or self.bank_name != bank_name:
                 set_engine_needed = True
-                logging.info("Bank selected: %s (%d)" % (self.bank_name, bank_index))
+                logging.info("Bank selected: %s (%d)" % (bank_name, bank_index))
             else:
                 set_engine_needed = False
                 logging.info("Bank already selected: %s (%d)" % (self.bank_name, bank_index))
@@ -697,7 +698,10 @@ class zynthian_processor:
         except:
             pass
         if "bank_info" in state and state["bank_info"]:
-            self.set_bank_by_info(state["bank_info"])
+            try:
+                self.set_bank_by_info(state["bank_info"])
+            except:
+                logging.exception(traceback.format_exc())
         try:
             self.load_preset_list()
         except:
@@ -719,7 +723,7 @@ class zynthian_processor:
                     if "midi_cc_momentary_switch" in ctrl_state:
                         zctrl.midi_cc_momentary_switch = ctrl_state['midi_cc_momentary_switch']
                 except Exception as e:
-                    logging.warning("Invalid Controller for processor {}: {}".format(self.get_basepath(), e))
+                    logging.warning("Invalid controller for processor {}: {}".format(self.get_basepath(), e))
 
     def restore_state_legacy(self, state):
         """Restore legacy states from state

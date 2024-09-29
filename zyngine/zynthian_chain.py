@@ -388,7 +388,7 @@ class zynthian_chain:
         self.midi_routes = {}
         for i, slot in enumerate(self.midi_slots):
             if i == 0:
-                continue # Chain inputs are handled by autoconnect
+                continue  # Chain inputs are handled by autoconnect
             for processor in slot:
                 sources = []
                 for prev_proc in self.midi_slots[i - 1]:
@@ -401,13 +401,18 @@ class zynthian_chain:
                 sources.append(prev_proc.get_jackname())
         if self.synth_slots:
             for proc in self.synth_slots[0]:
-                self.midi_routes[proc.engine.jackname] = sources
+                # TODO: Should always use engine's get_jackname? => proc.get_jackname(True)
+                dst_jackname = proc.engine.get_jackname()
+                self.midi_routes[dst_jackname] = sources
+                # Special Engines can generate MIDI output too!!
+                if proc.type == "Special":
+                    sources = [dst_jackname]
         elif len(self.midi_slots) == 0 and self.midi_thru:
             sources = self.midi_in
         for output in self.midi_out:
             self.midi_routes[output] = sources
-        
-        # Feed output of MIDI chain to all audio processors - ideally this should only feed processors with MIDI inputs but it is probably as simple to let autoconnect deal with that.
+        # Feed output of MIDI chain to all audio processors - ideally this should only feed processors with
+        # MIDI inputs but it is probably as simple to let autoconnect deal with that.
         for slot in self.audio_slots:
             for proc in slot:
                 self.midi_routes[proc.engine.jackname] = sources

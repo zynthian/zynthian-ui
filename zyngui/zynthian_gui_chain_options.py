@@ -86,6 +86,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 		if self.chain.is_audio():
 			self.list_data.append((self.audio_options, None, "Audio Options"))
 
+		# TODO: Catch signal for Audio Recording status change
 		if self.chain_id == 0 and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
 			if self.zyngui.state_manager.audio_recorder.status:
 				self.list_data.append((self.toggle_recording, None, "■ Stop Audio Recording"))
@@ -171,15 +172,11 @@ class zynthian_gui_chain_options(zynthian_gui_selector):
 			indent += 1
 		return res
 
-	def refresh_signal(self, sname):
-		if sname == "AUDIO_RECORD":
-			self.fill_list()
-
 	def fill_listbox(self):
 		super().fill_listbox()
 		for i, val in enumerate(self.list_data):
 			if val[0]==None:
-				self.listbox.itemconfig(i, {'bg':zynthian_gui_config.color_panel_hl,'fg':zynthian_gui_config.color_tx_off})
+				self.listbox.itemconfig(i, {'bg': zynthian_gui_config.color_panel_hl, 'fg': zynthian_gui_config.color_tx_off})
 
 	def build_view(self):
 		if self.chain is None:
