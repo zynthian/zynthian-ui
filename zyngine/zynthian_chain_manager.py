@@ -43,13 +43,20 @@ from zyngui import zynthian_gui_config
 # ----------------------------------------------------------------------------
 
 MAX_NUM_MIDI_CHANS = 16
+
 # TODO: Get this from zynmixer
 MAX_NUM_MIXER_CHANS = 16
-# TODO: Get this from lib_zyncore
-MAX_NUM_ZMOPS = 16
-MAX_NUM_MIDI_DEVS = 24
-ZMIP_CTRL_INDEX = 26
-ZMIP_INT_INDEX = 27
+
+# Get ZYnMidiRouter parameters and limits from lib_zyncore
+NUM_ZMOP_CHAINS = lib_zyncore.zmop_get_num_chains()
+MAX_NUM_ZMOPS = NUM_ZMOP_CHAINS - 1
+NUM_MIDI_DEVS_IN = lib_zyncore.zmip_get_num_devs() + 3
+NUM_MIDI_DEVS_OUT = lib_zyncore.zmop_get_num_devs()
+MAX_NUM_MIDI_DEVS = min(NUM_MIDI_DEVS_IN, NUM_MIDI_DEVS_OUT)
+ZMIP_SEQ_INDEX = lib_zyncore.zmip_get_seq_index()
+ZMIP_STEP_INDEX = lib_zyncore.zmip_get_step_index()
+ZMIP_INT_INDEX = lib_zyncore.zmip_get_int_index()
+ZMIP_CTRL_INDEX = lib_zyncore.zmip_get_ctrl_index()
 
 engine2class = {
     "SL": zynthian_engine_sooperlooper,
@@ -220,12 +227,21 @@ class zynthian_chain_manager:
             if zmop_index is None or not self.is_free_zmop_index(zmop_index):
                 zmop_index = self.get_next_free_zmop_index()
             chain.set_zmop_index(zmop_index)
-        if chain.zmop_index is not None and self.state_manager.ctrldev_manager is not None:
-            # Enable all MIDI inputs by default
-            # TODO: Should we allow user to define default routing?
+        if chain.zmop_index is not None:
+            # Enable all MIDI input devices by default => TODO: Should we allow user to define default routing?
             for zmip in range(MAX_NUM_MIDI_DEVS):
-                unroute = zmip in self.state_manager.ctrldev_manager.drivers and self.state_manager.ctrldev_manager.drivers[zmip].unroute_from_chains
+                try:
+                    unroute = zmip in self.state_manager.ctrldev_manager.drivers and self.state_manager.ctrldev_manager.drivers[zmip].unroute_from_chains
+                except Exception as e:
+                    unroute = False
+                    logging.warning(f"ctrldev_manager => {e}")
                 lib_zyncore.zmop_set_route_from(chain.zmop_index, zmip, not unroute)
+            # Enable StepSeq MIDI intput
+            lib_zyncore.zmop_set_route_from(chain.zmop_index, ZMIP_STEP_INDEX, True)
+            # Enable SMF sequencer MIDI intput
+            lib_zyncore.zmop_set_route_from(chain.zmop_index, ZMIP_SEQ_INDEX, True)
+            # Enable CV/Gate MIDI intput (fake port zmip)
+            lib_zyncore.zmop_set_route_from(chain.zmop_index, ZMIP_INT_INDEX, True)
 
         # Set MIDI channel
         self.set_midi_chan(chain_id, midi_chan)

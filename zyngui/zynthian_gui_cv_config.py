@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
 # Zynthian GUI CV config
 # 
 # Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import tkinter
 import logging
@@ -35,9 +35,10 @@ from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Zynthian CV config GUI Class
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_cv_config(zynthian_gui_base):
 
@@ -65,7 +66,6 @@ class zynthian_gui_cv_config(zynthian_gui_base):
 			self.main_frame.columnconfigure(0, weight=1)
 
 		self.replot = True
-
 
 	def set_zctrls(self):
 		if not self.cvin_scale_gui_ctrl:
@@ -102,7 +102,6 @@ class zynthian_gui_cv_config(zynthian_gui_base):
 			zgui_ctrl.configure(height=self.height // layout['rows'], width=self.width // 4)
 			zgui_ctrl.grid(row=layout['ctrl_pos'][i][0], column=layout['ctrl_pos'][i][1])
 
-
 	def plot_zctrls(self):
 		if self.replot:
 			for zgui_ctrl in self.zgui_ctrls:
@@ -112,11 +111,9 @@ class zynthian_gui_cv_config(zynthian_gui_base):
 					zgui_ctrl.zctrl.is_dirty = False
 			self.replot = False
 
-
 	def build_view(self):
 		self.set_zctrls()
 		return True
-
 
 	def zynpot_cb(self, i, dval):
 		if i < 4:
@@ -124,7 +121,6 @@ class zynthian_gui_cv_config(zynthian_gui_base):
 			return True
 		else:
 			return False
-
 
 	def send_controller_value(self, zctrl):
 		if self.shown:
@@ -154,13 +150,11 @@ class zynthian_gui_cv_config(zynthian_gui_base):
 				lib_zyncore.zynaptik_cvout_set_note0(zctrl.value)
 				self.replot = True
 
-
 	def switch_select(self, t='S'):
 		self.zyngui.close_screen()
-
 
 	def set_select_path(self):
 		self.select_path.set("CV Settings")
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------

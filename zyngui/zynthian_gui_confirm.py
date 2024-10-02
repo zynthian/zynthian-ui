@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
 # Zynthian GUI Confirm Class
@@ -8,7 +8,7 @@
 # Copyright (C) 2023 Markus Heidt <markus@heidt-tech.com>
 #                    Fernando Moyano <jofemodo@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -22,7 +22,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import tkinter
 import logging
@@ -30,11 +30,12 @@ import logging
 # Zynthian specific modules
 from zyngui import zynthian_gui_config
 
-#------------------------------------------------------------------------------
-# Zynthian Info GUI Class
-#------------------------------------------------------------------------------
+# TODO: Derive confirm from gui base class
 
-#TODO: Derive confirm from gui base class
+# ------------------------------------------------------------------------------
+# Zynthian Info GUI Class
+# ------------------------------------------------------------------------------
+
 
 class zynthian_gui_confirm():
 
@@ -46,9 +47,9 @@ class zynthian_gui_confirm():
 
 		# Main Frame
 		self.main_frame = tkinter.Frame(zynthian_gui_config.top,
-			width = zynthian_gui_config.display_width,
-			height = zynthian_gui_config.display_height,
-			bg = zynthian_gui_config.color_bg)
+			width=zynthian_gui_config.display_width,
+			height=zynthian_gui_config.display_height,
+			bg=zynthian_gui_config.color_bg)
 
 		self.text = tkinter.StringVar()
 		self.label_text = tkinter.Label(self.main_frame,
@@ -86,12 +87,10 @@ class zynthian_gui_confirm():
 		self.no_text_label.bind("<ButtonRelease-1>",self.cb_no_push)
 		self.no_text_label.place(x=0, y=zynthian_gui_config.display_height, anchor=tkinter.SW)
 
-
 	def hide(self):
 		if self.shown:
 			self.shown=False
 			self.main_frame.grid_forget()
-
 
 	def build_view(self):
 		return True
@@ -106,14 +105,11 @@ class zynthian_gui_confirm():
 			self.shown=True
 			self.main_frame.grid()
 
-
 	def zynpot_cb(self, i, dval):
 		pass
 
-
 	def refresh_loading(self):
 		pass
-
 
 	def switch_select(self, t='S'):
 		logging.info("callback %s", self.callback_params)
@@ -121,20 +117,14 @@ class zynthian_gui_confirm():
 		if self.callback:
 			self.callback(self.callback_params)
 
-
 	def switch(self, i, t):
 		if i in [0,2]:
 			return True
 
-
 	def cb_yes_push(self, event):
 		self.zyngui.zynswitch_defered('S',3)
-
 
 	def cb_no_push(self, event):
 		self.zyngui.zynswitch_defered('S',1)
 
-
-	def zynpot_cb(self, enc, dval):
-		pass # TODO: Derive gui_confirm from gui_base
-#-------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------

@@ -27,11 +27,9 @@ import re
 import usb
 import jack
 import logging
-import alsa_midi
 import json
 from time import sleep
 from threading import Thread, Lock
-from subprocess import check_output
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
@@ -51,13 +49,30 @@ logger.setLevel(log_level)
 #	import inspect
 
 # -------------------------------------------------------------------------------
+# Fake port class
+# -------------------------------------------------------------------------------
+
+
+class fake_port:
+	def __init__(self, name):
+		self.name = name
+		self.short_name = name
+		self.aliases = [name, name]
+
+	def set_alias(self, alias):
+		pass
+
+	def unset_alias(self, alias):
+		pass
+
+
+# -------------------------------------------------------------------------------
 # Define some Constants and Global Variables
 # -------------------------------------------------------------------------------
 
 MAIN_MIX_CHAN = 17 				# TODO: Get this from mixer
 
 jclient = None					# JACK client
-aclient = None					# ALSA client
 thread = None					# Thread to check for changed MIDI ports
 lock = None						# Manage concurrence
 exit_flag = False				# True to exit thread
@@ -474,7 +489,7 @@ def update_hw_midi_ports(force=False):
 			hw_midi_dst_ports += ports
 		except:
 			pass
-	for port_name in ("QmidiNet:out", "jackrtpmidid:rtpmidi_out", "jacknetumpd:netump_out", "RtMidiOut Client:TouchOSC Bridge", "ZynMaster:midi_out", "aubio"):
+	for port_name in ("QmidiNet:out", "jackrtpmidid:rtpmidi_out", "jacknetumpd:netump_out", "RtMidiOut Client:TouchOSC Bridge", "aubio"):
 		try:
 			ports = jclient.get_ports(port_name, is_midi=True, is_output=True)
 			hw_midi_src_ports += ports
@@ -495,6 +510,7 @@ def update_hw_midi_ports(force=False):
 		else:
 			fingerprint.remove(port)
 	update |= len(fingerprint) != 0
+
 	release_lock()
 	return update
 
@@ -633,15 +649,34 @@ def midi_autoconnect():
 						dst = dst_ports[0]
 						required_routes[dst.name].add(src.name)
 
+	# Add zynseq to MIDI input devices
+	idev = state_manager.get_zmip_step_index()
+	if devices_in[idev] is None:
+		src_ports = jclient.get_ports("zynseq:output", is_midi=True, is_output=True)
+		if src_ports:
+			devices_in[idev] = src_ports[0]
+			update_midi_port_aliases(src_ports[0])
 	# Connect zynseq output to ZynMidiRouter:step_in
 	required_routes["ZynMidiRouter:step_in"].add("zynseq:output")
 
+	# Add SMF player to MIDI input devices
+	idev = state_manager.get_zmip_seq_index()
+	if devices_in[idev] is None:
+		src_ports = jclient.get_ports("zynsmf:midi_out", is_midi=True, is_output=True)
+		if src_ports:
+			devices_in[idev] = src_ports[0]
+			update_midi_port_aliases(src_ports[0])
 	# Connect zynsmf output to ZynMidiRouter:seq_in
 	required_routes["ZynMidiRouter:seq_in"].add("zynsmf:midi_out")
 
 	# Connect chain's MIDI output to zynsmf input => Implement chain selection to record from zynsmf?
 	for i in range(max_num_chains):
 		required_routes["zynsmf:midi_in"].add(f"ZynMidiRouter:ch{i}_out")
+
+	# Add CV/Gate to MIDI input devices
+	idev = state_manager.get_zmip_int_index()
+	if devices_in[idev] is None:
+		devices_in[idev] = fake_port("CV/Gate")
 
 	# Add engine's controller-feedback to ZynMidiRouter:ctrl_in
 	# Each engine sending controller feedback should use a different zmip
@@ -888,6 +923,10 @@ def build_midi_port_name(port):
 		return port.name, "DIN-5 MIDI"
 	elif port.name.startswith("ZynMaster"):
 		return port.name, "CV/Gate"
+	elif port.name.startswith("zynseq"):
+		return port.name, "Step-Sequencer"
+	elif port.name.startswith("zynsmf"):
+		return port.name, "MIDI player"
 	elif port.name.startswith("ZynMidiRouter:seq_in"):
 		return port.name, "Router Feedback"
 	elif port.name.startswith("jacknetumpd:netump_"):
@@ -1076,20 +1115,21 @@ def release_lock():
 
 
 def init():
-	global max_num_devs, max_num_chains
+	global num_devs_in, num_devs_out, max_num_devs, max_num_chains
 	global devices_in, devices_out
 
-	num_devs_in = lib_zyncore.zmip_get_num_devs()
-	num_devs_out = lib_zyncore.zmop_get_num_devs()
-	max_num_devs = min(num_devs_in, num_devs_out)
-	max_num_chains = lib_zyncore.zmop_get_num_chains()
+	num_devs_in = state_manager.get_num_midi_devs_in()
+	num_devs_out = state_manager.get_num_midi_devs_out()
+	max_num_devs = state_manager.get_max_num_midi_devs()
+	max_num_chains = state_manager.get_num_zmop_chains()
 
-	logging.info(f"Initializing {max_num_devs} slots for MIDI devices")
-	while len(devices_in) < max_num_devs:
+	logging.info(f"Initializing {num_devs_in} slots for MIDI input devices")
+	while len(devices_in) < num_devs_in:
 		devices_in.append(None)
-	while len(devices_in_mode) < max_num_devs:
+	while len(devices_in_mode) < num_devs_in:
 		devices_in_mode.append(None)
-	while len(devices_out) < max_num_devs:
+	logging.info(f"Initializing {num_devs_out} slots for MIDI output devices")
+	while len(devices_out) < num_devs_out:
 		devices_out.append(None)
 
 	update_midi_in_dev_mode_all()
@@ -1101,7 +1141,7 @@ def start(sm):
 	sm : State manager object
 	"""
 
-	global exit_flag, jclient, aclient, thread, lock, chain_manager, state_manager, hw_audio_dst_ports, sidechain_map
+	global exit_flag, jclient, thread, lock, chain_manager, state_manager, hw_audio_dst_ports, sidechain_map
 
 	if jclient:
 		return  # Already started
@@ -1109,7 +1149,6 @@ def start(sm):
 	exit_flag = False
 	state_manager = sm
 	chain_manager = sm.chain_manager
-	init()
 
 	try:
 		jclient = jack.Client("Zynthian_autoconnect")
@@ -1118,10 +1157,7 @@ def start(sm):
 	except Exception as e:
 		logger.error(f"ZynAutoConnect ERROR: Can't connect with Jack Audio Server ({e})")
 	
-	try:
-		aclient = alsa_midi.SequencerClient("Zynthian_autoconnect")
-	except Exception as e:
-		logger.error(f"ZynAutoConnect ERROR: Can't connect with ALSA ({e})")
+	init()
 
 	# Get System Playback Ports
 	hw_audio_dst_ports = jclient.get_ports("system:playback", is_input=True, is_audio=True, is_physical=True)

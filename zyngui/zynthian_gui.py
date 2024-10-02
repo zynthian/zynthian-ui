@@ -1794,6 +1794,7 @@ class zynthian_gui:
 
 		# Configure Custom Switches
 		for i, event in enumerate(zynthian_gui_config.custom_switch_midi_events):
+			#logging.debug(f"\tSWITCH MIDI EVENT {i} => {event}")
 			if event is not None:
 				swi = 4 + i
 				if event['chan'] is not None:
@@ -1810,6 +1811,7 @@ class zynthian_gui:
 
 		# Configure Zynaptik Analog Inputs (CV-IN)
 		for i, event in enumerate(zynthian_gui_config.zynaptik_ad_midi_events):
+			#logging.debug(f"\tCV-IN MIDI EVENT {i} => {event}")
 			if event is not None:
 				if event['chan'] is not None:
 					midi_chan = event['chan']
@@ -1825,6 +1827,7 @@ class zynthian_gui:
 
 		# Configure Zynaptik Analog Outputs (CV-OUT)
 		for i, event in enumerate(zynthian_gui_config.zynaptik_da_midi_events):
+			#logging.debug(f"\tCV-OUT MIDI EVENT {i} => {event}")
 			if event is not None:
 				if event['chan'] is not None:
 					midi_chan = event['chan']
@@ -1867,16 +1870,22 @@ class zynthian_gui:
 
 		i = 0
 		while i <= zynthian_gui_config.last_zynswitch_index:
-			if i < 4 or zynthian_gui_config.custom_switch_ui_actions[i - 4]:
-				# Increase the long push limit when push-rotating
-				if self.get_zynswitch_pr_state(i) > 1:
-					zs_long_us = 1000 * 20000
-				else:
-					zs_long_us = zynthian_gui_config.zynswitch_long_us
-				# dtus is 0 if switched pressed, dur of last press or -1 if already processed
-				dtus = lib_zyncore.get_zynswitch(i, zs_long_us)
-				if dtus >= 0:
-					self.cuia_queue.put_nowait(("zynswitch", (i, self.zynswitch_timing(dtus))))
+			try:
+				if i >= 4 and not zynthian_gui_config.custom_switch_ui_actions[i - 4]:
+					i += 1
+					continue
+			except:
+				i += 1
+				continue
+			# Increase the long push limit when push-rotating
+			if self.get_zynswitch_pr_state(i) > 1:
+				zs_long_us = 1000 * 20000
+			else:
+				zs_long_us = zynthian_gui_config.zynswitch_long_us
+			# dtus is 0 if switched pressed, dur of last press or -1 if already processed
+			dtus = lib_zyncore.get_zynswitch(i, zs_long_us)
+			if dtus >= 0:
+				self.cuia_queue.put_nowait(("zynswitch", (i, self.zynswitch_timing(dtus))))
 			i += 1
 
 	def zynswitch_timing(self, dtus):

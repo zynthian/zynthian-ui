@@ -342,17 +342,32 @@ class zynthian_state_manager:
     def get_max_num_mixer_chans(self):
         return MAX_NUM_MIXER_CHANS
 
+    def get_num_zmop_chains(self):
+        return NUM_ZMOP_CHAINS
+
     def get_max_num_zmops(self):
         return MAX_NUM_ZMOPS
+
+    def get_num_midi_devs_in(self):
+        return NUM_MIDI_DEVS_IN
+
+    def get_num_midi_devs_out(self):
+        return NUM_MIDI_DEVS_OUT
 
     def get_max_num_midi_devs(self):
         return MAX_NUM_MIDI_DEVS
 
-    def get_zmip_ctrl_index(self):
-        return ZMIP_CTRL_INDEX
+    def get_zmip_seq_index(self):
+        return ZMIP_SEQ_INDEX
+
+    def get_zmip_step_index(self):
+        return ZMIP_STEP_INDEX
 
     def get_zmip_int_index(self):
         return ZMIP_INT_INDEX
+
+    def get_zmip_ctrl_index(self):
+        return ZMIP_CTRL_INDEX
 
     # -------------------------------------------------------------------------
     # Busy state management
@@ -1303,6 +1318,15 @@ class zynthian_state_manager:
                     self.zctrl_y = processor.controllers_dict[zs3_state["global"]["zctrl_y"][1]]
                 except:
                     self.zctrl_y = None
+            if "zynaptik" in zs3_state["global"]:
+                try:
+                    zynaptik_config = zs3_state["global"]["zynaptik"]
+                    lib_zyncore.zynaptik_cvin_set_volts_octave(ctypes.c_float(zynaptik_config["cvin_volts_octave"]))
+                    lib_zyncore.zynaptik_cvin_set_note0(zynaptik_config["cvin_note0"])
+                    lib_zyncore.zynaptik_cvout_set_volts_octave(ctypes.c_float(zynaptik_config["cvout_volts_octave"]))
+                    lib_zyncore.zynaptik_cvout_set_note0(zynaptik_config["cvout_note0"])
+                except:
+                    pass
 
         zynsigman.send(zynsigman.S_STATE_MAN, self.SS_LOAD_ZS3, zs3_id=zs3_id)
         return True
@@ -1433,6 +1457,19 @@ class zynthian_state_manager:
             processor_id = self.zctrl_y.processor.id
             symbol = self.zctrl_y.symbol
             self.zs3[zs3_id]["global"]["zctrl_y"] = [processor_id, symbol]
+        except:
+            pass
+        try:
+            if callable(lib_zyncore.init_zynaptik):
+                lib_zyncore.zynaptik_cvin_get_volts_octave.restype = ctypes.c_float
+                lib_zyncore.zynaptik_cvout_get_volts_octave.restype = ctypes.c_float
+                zynaptik_config = {
+                    "cvin_volts_octave": lib_zyncore.zynaptik_cvin_get_volts_octave(),
+                    "cvin_note0": lib_zyncore.zynaptik_cvin_get_note0(),
+                    "cvout_volts_octave": lib_zyncore.zynaptik_cvout_get_volts_octave(),
+                    "cvout_note0": lib_zyncore.zynaptik_cvout_get_note0()
+                }
+                self.zs3[zs3_id]["global"]["zynaptik"] = zynaptik_config
         except:
             pass
 
@@ -1586,12 +1623,12 @@ class zynthian_state_manager:
         """
         mcstate = {}
         ctrldev_state_drivers = self.ctrldev_manager.get_state_drivers()
-        for idev in range(24):
+        for idev in range(NUM_MIDI_DEVS_IN):
             if zynautoconnect.devices_in[idev] is None:
                 continue
 
             routed_chains = []
-            for ch in range(0, 16):
+            for ch in range(MAX_NUM_ZMOPS):
                 if lib_zyncore.zmop_get_route_from(ch, idev):
                     routed_chains.append(ch)
 

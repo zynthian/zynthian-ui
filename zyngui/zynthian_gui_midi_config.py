@@ -165,11 +165,11 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
         ble_devices = []    # BLE MIDI ports
         aubio_devices = []  # Aubio MIDI ports
         net_devices = {}    # Network MIDI ports, indexed by jack port name
-        for i in range(zynautoconnect.max_num_devs):
-            if self.input:
-                dev = zynautoconnect.devices_in[i]
-            else:
-                dev = zynautoconnect.devices_out[i]
+        if self.input:
+            devs = zynautoconnect.devices_in
+        else:
+            devs = zynautoconnect.devices_out
+        for i, dev in enumerate(devs):
             if dev and len(dev.aliases) > 1:
                 if dev.aliases[0].startswith("USB:"):
                     usb_devices.append((dev.aliases[1], i))
@@ -181,10 +181,27 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                     net_devices[dev.name] = i
                 else:
                     int_devices.append(i)
-        if int_devices:
-            self.list_data.append((None, None, "Internal Devices"))
-            for i in int_devices:
-                append_port(i)
+
+        self.list_data.append((None, None, "Internal Devices"))
+        nint = len(self.list_data)
+
+        for i in int_devices:
+            append_port(i)
+
+        if self.input:
+            if not self.chain or zynthian_gui_config.midi_aubionotes_enabled:
+                if self.chain:
+                    for i in aubio_devices:
+                        append_port(i)
+                else:
+                    if aubio_devices:
+                        append_service_device("aubionotes", aubio_devices[0])
+                    else:
+                        append_service_device("aubionotes", "Aubionotes (Audio \u2794 MIDI)")
+
+        # Remove "Internal Devices" title if section is empty
+        if len(self.list_data) == nint:
+            self.list_data.pop()
 
         if usb_devices:
             self.list_data.append((None, None, "USB Devices"))
@@ -238,18 +255,6 @@ class zynthian_gui_midi_config(zynthian_gui_selector):
                         append_service_device("touchosc", net_devices["RtMidiOut Client:TouchOSC Bridge"])
                     else:
                         append_service_device("touchosc", "TouchOSC Bridge")
-
-        if self.input:
-            if not self.chain or zynthian_gui_config.midi_aubionotes_enabled:
-                self.list_data.append((None, None, "Aubionotes Audio\u2794MIDI"))
-                if self.chain:
-                    for i in aubio_devices:
-                        append_port(i)
-                else:
-                    if aubio_devices:
-                        append_service_device("aubionotes", aubio_devices[0])
-                    else:
-                        append_service_device("aubionotes", "Aubionotes")
 
         if not self.input and self.chain:
             self.list_data.append((None, None, "> Chain inputs"))
