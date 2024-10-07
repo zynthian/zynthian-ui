@@ -1004,7 +1004,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.moving_chain = False
 			self.refresh_visible_strips()
 			return True
-		elif self.zynmixer.midi_learn_zctrl == True:
+		elif self.zynmixer.midi_learn_zctrl:
 			self.exit_midi_learn()
 			return True
 		else:
