@@ -605,7 +605,7 @@ def color_variant(hex_color, brightness_offset=1):
 	new_rgb_int = [int(hex_value, 16) + brightness_offset for hex_value in rgb_hex]
 	new_rgb_int = [min([255, max([0, i])]) for i in new_rgb_int]  # make sure new values are between 0 and 255
 	# hex() produces "0x88", we want just "88"
-	return "#" + "".join([hex(i)[2:] for i in new_rgb_int])
+	return "#" + "".join([hex(i)[2:].zfill(2) for i in new_rgb_int])
 
 
 PAD_COLOUR_GROUP_LIGHT = [color_variant(c, 40) for c in PAD_COLOUR_GROUP]
