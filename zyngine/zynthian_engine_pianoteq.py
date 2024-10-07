@@ -230,8 +230,11 @@ def get_pianoteq_config_value(key):
 	if os.path.isfile(PIANOTEQ_CONFIG_FILE):
 		root = ElementTree.parse(PIANOTEQ_CONFIG_FILE)
 		for xml_value in root.iter("VALUE"):
-			if xml_value.attrib['name'] == key:
-				values = xml_value.attrib['val'].split(';')
+			try:
+				if xml_value.attrib['name'] == key:
+					values = xml_value.attrib['val'].split(';')
+			except Exception as e:
+				logging.warning(f"Can't parse value for '{key}' from pianoteq config file '{PIANOTEQ_CONFIG_FILE}' => {e}")
 	return values
 
 
