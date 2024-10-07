@@ -76,12 +76,16 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 	def fill_list(self):
 		self.list_data = []
 		self.list_data.append(("SAVE_ZS3", None, "Save as new ZS3"))
-		self.list_data.append(("zs3-0", self.zyngui.state_manager.zs3["zs3-0"], "Undo changes to current ZS3"))
+		idx = 2
+		try:
+			self.list_data.append(("zs3-0", self.zyngui.state_manager.zs3["zs3-0"], "Undo changes to current ZS3"))
+			idx += 1
+		except:
+			pass
 
 		# Add list of programs
 		if len(self.zyngui.state_manager.zs3) > 1:
 			self.list_data.append((None, None, "> SAVED ZS3s"))
-		idx = 3
 		for id, state in self.zyngui.state_manager.zs3.items():
 			if id in ["last_zs3", "zs3-0"]:
 				continue
