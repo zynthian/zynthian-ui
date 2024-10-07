@@ -1030,6 +1030,10 @@ class zynthian_state_manager:
 
                 self.zs3 = self.sanitize_zs3_from_json(state["zs3"])
                 self.load_zs3("zs3-0")
+                try:
+                    mute |= self.zs3["zs3-0"]["mixer"]["chan_16"]["mute"]
+                except:
+                    pass
 
                 if "alsa_mixer" in state:
                     self.alsa_mixer_processor.set_state(state["alsa_mixer"])
