@@ -34,6 +34,7 @@ from zyngui import zynthian_gui_config
 # Base Class for Control Widgets
 # ------------------------------------------------------------------------------
 
+
 class zynthian_widget_base(tkinter.Frame):
 
 	def __init__(self, parent):
@@ -43,6 +44,7 @@ class zynthian_widget_base(tkinter.Frame):
 		self.width = 1
 		self.height = 1
 		self.wide = self.zyngui_control.wide
+		self.rows = self.zyngui_control.layout['rows']
 		self.shown = False
 
 		self.processor = None

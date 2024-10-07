@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-#******************************************************************************
+# ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
-# Zynthian Widget Class for "x42 Instrument Tuner" (tuna#one)
+# Zynthian Widget Class for "AidaX" neural emulator plugin
 # 
 # Copyright (C) 2015-2024 Brian Walton <riban@zynthian.org>
 #
-#******************************************************************************
+# ******************************************************************************
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -21,7 +21,7 @@
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # 
-#******************************************************************************
+# ******************************************************************************
 
 import tkinter
 import logging
@@ -30,12 +30,12 @@ import logging
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_widget_base
 
-#------------------------------------------------------------------------------
-# Zynthian Widget Class for "x42 Instrument Tuner"
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# Zynthian Widget Class for "AidaX" neural emulator plugin
+# ------------------------------------------------------------------------------
+
 
 class zynthian_widget_aidax(zynthian_widget_base.zynthian_widget_base):
-
 
 	def __init__(self, parent):
 		super().__init__(parent)
@@ -138,5 +138,4 @@ class zynthian_widget_aidax(zynthian_widget_base.zynthian_widget_base):
 		if 'ModelInSize' in self.monitors:
 			pass
 
-
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------

@@ -44,7 +44,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 	# Scale for listbox swipe action after-roll
 	swipe_roll_scale = [1, 0, 1, 1, 2, 2, 2, 4, 4, 4, 4, 4] #1, 0, 1, 0, 1, 0, 1, 0,
 
-	def __init__(self, selcap='Select', wide=False, loading_anim=True):
+	def __init__(self, selcap='Select', wide=False, loading_anim=True, info=True):
 		super().__init__()
 
 		# If the children class has not defined a custom GUI layout, use the default from config
@@ -80,14 +80,18 @@ class zynthian_gui_selector(zynthian_gui_base):
 			selectmode=tkinter.SINGLE)
 
 		# Configure layout
-		if self.layout['rows'] == 2:
-			self.main_frame.rowconfigure(0, weight=3, uniform='info_row')
-			self.main_frame.rowconfigure(1, weight=1, uniform='ctrl_row')
-		elif self.layout['rows'] == 4:
-			self.main_frame.rowconfigure(0, weight=2, uniform='info_row')
-			self.main_frame.rowconfigure(1, weight=2, uniform='info_row')
-			self.main_frame.rowconfigure(2, weight=1, uniform='ctrl_row')
-			self.main_frame.rowconfigure(3, weight=1, uniform='ctrl_row')
+		if info:
+			if self.layout['rows'] == 2:
+				self.main_frame.rowconfigure(0, weight=3, uniform='info_row')
+				self.main_frame.rowconfigure(1, weight=1, uniform='ctrl_row')
+			elif self.layout['rows'] == 4:
+				self.main_frame.rowconfigure(0, weight=2, uniform='info_row')
+				self.main_frame.rowconfigure(1, weight=2, uniform='info_row')
+				self.main_frame.rowconfigure(2, weight=1, uniform='ctrl_row')
+				self.main_frame.rowconfigure(3, weight=1, uniform='ctrl_row')
+		else:
+			for i in range(self.layout['rows']):
+				self.main_frame.rowconfigure(i, weight=1, uniform='ctrl_row')
 		self.main_frame.columnconfigure(self.layout['list_pos'][1], weight=3)
 		self.main_frame.columnconfigure(self.layout['list_pos'][1] + 1, weight=1)
 
@@ -106,7 +110,7 @@ class zynthian_gui_selector(zynthian_gui_base):
 			pady = (0, 1)
 		else:
 			pady = (0, 0)
-		self.listbox.grid(row=self.layout['list_pos'][0], column=self.layout['list_pos'][1], rowspan=4, padx=padx, pady=pady, sticky="news")
+		self.listbox.grid(row=self.layout['list_pos'][0], column=self.layout['list_pos'][1], rowspan=self.layout['rows'], padx=padx, pady=pady, sticky="news")
 
 		# Bind listbox events
 		self.listbox_push_ts = 0

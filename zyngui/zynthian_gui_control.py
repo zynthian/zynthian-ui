@@ -53,6 +53,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 		self.screen_info = None
 		self.screen_title = None
+		self.screen_type = None
 		self.screen_processor = None  # TODO: Refactor
 
 		self.widgets = {}
@@ -70,21 +71,20 @@ class zynthian_gui_control(zynthian_gui_selector):
 			("arrow_right", 'Next >>')
 		]
 
-		if zynthian_gui_config.layout['columns'] == 3:
-			super().__init__(selcap, False, False)
-		else:
-			super().__init__(selcap, True, False)
+		super().__init__(selcap, wide=False, loading_anim=False, info=False)
 
 		# Configure layout
-		for ctrl_pos in zynthian_gui_config.layout['ctrl_pos']:
+		for ctrl_pos in self.layout['ctrl_pos']:
 			self.main_frame.columnconfigure(ctrl_pos[1], weight=1, uniform='ctrl_col')
-			self.main_frame.rowconfigure(ctrl_pos[0], weight=1, uniform='ctrl_row')
-		self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1], weight=2)
+		self.main_frame.columnconfigure(self.layout['list_pos'][1], weight=2)
 
 	def update_layout(self):
 		super().update_layout()
-		for pos in zynthian_gui_config.layout['ctrl_pos']:
-			self.main_frame.columnconfigure(pos[1], minsize=int((self.width * 0.25 - 1) * self.sidebar_shown), weight=self.sidebar_shown)
+		minheight = self.height // self.layout['rows']
+		minwidth = int((self.width * 0.25 - 1) * self.sidebar_shown)
+		for pos in self.layout['ctrl_pos']:
+			self.main_frame.rowconfigure(pos[0], minsize=minheight, weight=1)
+			self.main_frame.columnconfigure(pos[1], minsize=minwidth, weight=self.sidebar_shown)
 		
 	def build_view(self):
 		super().build_view()
@@ -161,13 +161,29 @@ class zynthian_gui_control(zynthian_gui_selector):
 			if self.screen_info and len(self.screen_info) == 5:
 				self.screen_title = self.screen_info[2]
 				self.screen_processor = self.screen_info[3]
+				self.screen_type = None
 				return True
 			else:
 				pass
 				#logging.info("Can't get screen info!!")
 		self.screen_title = ""
+		self.screen_type = None
 		self.screen_processor = self.zyngui.get_current_processor()
 		return False
+
+	def get_screen_type(self):
+		if self.screen_title:
+			# Some heuristics to detect ADSR control screens ...
+			# TODO: This should be improved by marking ADSR groups!!
+			if " Env" in self.screen_title or " ADSR" in self.screen_title or\
+					("attack" in self.zcontrollers[0].name.lower() and
+					"decay" in self.zcontrollers[1].name.lower() and
+					"sustain" in self.zcontrollers[2].name.lower() and
+					"release" in self.zcontrollers[3].name.lower()):
+				self.screen_type = "adsr"
+			else:
+				self.screen_type = None
+		return self.screen_type
 
 	def fill_listbox(self):
 		super().fill_listbox()
@@ -182,6 +198,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def show_widget(self, processor):
 		module_path = processor.engine.custom_gui_fpath
+		if not module_path and self.screen_type:
+				module_path = f"/zynthian/zynthian-ui/zyngui/zynthian_widget_{self.screen_type}.py"
 		if module_path:
 			module_name = Path(module_path).stem
 			if module_name.startswith("zynthian_widget_"):
@@ -208,7 +226,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 				for k, widget in self.widgets.items():
 					if k == widget_name:
 						self.listbox.grid_remove()
-						widget.grid(row=zynthian_gui_config.layout['list_pos'][0], column=zynthian_gui_config.layout['list_pos'][1], rowspan=4, padx=padx, sticky="news")
+						lb_rows = self.layout['rows'] - widget.rows
+						if lb_rows > 0:
+							self.listbox.grid(rowspan=lb_rows)
+							self._select_listbox(self.index, see=True)
+						widget.grid(row=self.layout['list_pos'][0] + lb_rows, column=self.layout['list_pos'][1], rowspan=widget.rows, padx=padx, sticky="news")
 						widget.show()
 						self.set_current_widget(widget)
 					else:
@@ -222,7 +244,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 			widget.grid_remove()
 			widget.hide()
 		self.set_current_widget(None)
-		self.listbox.grid()
+		self.listbox.grid_remove()
+		self.listbox.grid(rowspan=4)
 
 	def set_current_widget(self, widget):
 		if widget == self.current_widget:
@@ -251,17 +274,19 @@ class zynthian_gui_control(zynthian_gui_selector):
 			except:
 				pass
 
-			# Show the widget for the current processor
-			if self.mode == 'control':
-				self.show_widget(self.screen_processor)
-
 			# Get controllers for the current screen
 			self.zyngui.get_current_processor().set_current_screen_index(self.index)
 			self.zcontrollers = self.screen_processor.get_ctrl_screen(self.screen_title)
 
+			# Show the widget for the current processor
+			if self.mode == 'control':
+				self.get_screen_type()
+				self.show_widget(self.screen_processor)
+
 		else:
 			self.zcontrollers = []
 			self.screen_title = ""
+			self.screen_type = None
 			self.hide_widgets()
 
 		# Setup GUI Controllers
@@ -278,9 +303,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 					self.zgui_controllers[i].hide()
 			else:
 				self.set_zcontroller(i, None)
-			pos = zynthian_gui_config.layout['ctrl_pos'][i]
+			pos = self.layout['ctrl_pos'][i]
 			self.zgui_controllers[i].grid(row=pos[0], column=pos[1], pady=(0, 1), sticky='news')
-
 
 		self.update_layout()
 
@@ -472,7 +496,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def show_menu(self):
 		self.zyngui.cuia_chain_options()
-
 
 	def toggle_menu(self):
 		if self.shown:
