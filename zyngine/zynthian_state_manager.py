@@ -1333,6 +1333,7 @@ class zynthian_state_manager:
 
         if zs3_id != 'zs3-0':
             self.zs3['last_zs3'] = zs3_id
+            self.zs3['zs3-0'] = self.zs3[zs3_id].copy()
         zynsigman.send(zynsigman.S_STATE_MAN, self.SS_LOAD_ZS3, zs3_id=zs3_id)
         return True
 
@@ -1480,16 +1481,17 @@ class zynthian_state_manager:
 
         if zs3_id != 'zs3-0':
             self.zs3['last_zs3'] = zs3_id
+            self.zs3['zs3-0'] = self.zs3[zs3_id].copy()
         zynsigman.send(zynsigman.S_STATE_MAN, self.SS_SAVE_ZS3, zs3_id=zs3_id)
 
 
-    def delete_zs3(self, zs3_index):
+    def delete_zs3(self, zs3_id):
         """Remove a ZS3
         
-        zs3_index : Index of ZS3 to remove
+        zs3_id : Index of ZS3 to remove
         """
         try:
-            del(self.zs3[zs3_index])
+            del(self.zs3[zs3_id])
             if self.zs3['last_zs3'] == zs3_id:
                 self.zs3['last_zs3'] = None
 
