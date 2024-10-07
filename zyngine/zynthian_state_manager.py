@@ -1158,13 +1158,16 @@ class zynthian_state_manager:
     # ZS3 management
     # ----------------------------------------------------------------------------
 
-    def get_zs3_title(self, zs3_id):
+    def get_zs3_title(self, zs3_id=None):
         """Get ZS3 title
         
-        zs3_id : ZS3 ID
+        zs3_id : ZS3 ID (default: Use last loaded zs3)
         Returns : Title as string
         """
+
         try:
+            if zs3_id is None:
+                zs3_id = self.zs3['last_zs3']
             return self.zs3[zs3_id]["title"]
         except:
             return zs3_id
@@ -1328,6 +1331,8 @@ class zynthian_state_manager:
                 except:
                     pass
 
+        if zs3_id != 'zs3-0':
+            self.zs3['last_zs3'] = zs3_id
         zynsigman.send(zynsigman.S_STATE_MAN, self.SS_LOAD_ZS3, zs3_id=zs3_id)
         return True
 
@@ -1473,6 +1478,8 @@ class zynthian_state_manager:
         except:
             pass
 
+        if zs3_id != 'zs3-0':
+            self.zs3['last_zs3'] = zs3_id
         zynsigman.send(zynsigman.S_STATE_MAN, self.SS_SAVE_ZS3, zs3_id=zs3_id)
 
 
@@ -1483,6 +1490,9 @@ class zynthian_state_manager:
         """
         try:
             del(self.zs3[zs3_index])
+            if self.zs3['last_zs3'] == zs3_id:
+                self.zs3['last_zs3'] = None
+
         except:
             logging.info("Tried to remove non-existant ZS3")
 
@@ -1490,13 +1500,15 @@ class zynthian_state_manager:
         """Remove all ZS3"""
 
         # ZS3 list (subsnapshots)
-        self.zs3 = {}
+        self.zs3 = {'last_zs3': None}
         # Last selected ZS3 subsnapshot
 
     def sanitize_zs3_from_json(self, zs3_state):
         """Fix chain & processor ID keys in ZS3 data decoded from JSON"""
 
         for zs3_key, state in zs3_state.items():
+            if zs3_key == 'last_zs3':
+                continue
             if 'chains' in state:
                 fixed_chains = {}
                 for chain_id, chain_state in state['chains'].items():
@@ -1517,12 +1529,16 @@ class zynthian_state_manager:
                         continue
                     fixed_processors[processor_id] = processor_state
                 state['processors'] = fixed_processors
+        if 'last_zs3' not in zs3_state:
+            self.zs3['last_zs3'] = None
         return zs3_state
 
     def purge_zs3(self):
         """Remove non-existant chains and processors from ZS3 state"""
         
         for key, state in self.zs3.items():
+            if key == 'last_zs3':
+                continue
             if state["active_chain"] not in self.chain_manager.chains:
                 state["active_chain"] = self.chain_manager.active_chain_id
             if "processors" in state:

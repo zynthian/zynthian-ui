@@ -784,21 +784,23 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
 		self.zynmixer.enable_dpm(0, self.MAIN_MIXBUS_STRIP_INDEX, False)
 
-		self.set_title()
 		self.refresh_visible_strips()
 
 	def init_dpmeter(self):
 		self.dpm_a = self.dpm_b = None
 
 	# Redefine set_title
-	def set_title(self, title="Mixer", fg=None, bg=None, timeout = None):
-		if title == "Mixer" and self.zyngui.state_manager.last_snapshot_fpath:
+	def set_title(self, title="", fg=None, bg=None, timeout = None):
+		if title == "" and self.zyngui.state_manager.last_snapshot_fpath:
 			fparts = os.path.splitext(self.zyngui.state_manager.last_snapshot_fpath)
 			if self.zyngui.screens['snapshot'].bankless_mode:
 				ssname = os.path.basename(fparts[0])
 			else:
 				ssname = fparts[0].rsplit("/", 1)[-1]
-			title += ": " + ssname.replace("last_state", "Last State")
+			title = ssname.replace("last_state", "Last State")
+			zs3_name = self.zyngui.state_manager.get_zs3_title()
+			if zs3_name and zs3_name != "Last state":
+				title += f": {zs3_name}"
 
 		super().set_title(title, fg, bg, timeout)
 
