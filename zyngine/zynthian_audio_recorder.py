@@ -97,11 +97,17 @@ class zynthian_audio_recorder:
 			return False
 
 		cmd = ["/usr/local/bin/jack_capture", "--daemon", "--bitdepth", "16", "--bufsize", "30", "--maxbufsize", "120"]
-		for port in sorted(self.armed):
+		if self.armed:
+			for port in sorted(self.armed):
+				cmd.append("--port")
+				cmd.append(f"zynmixer:output_{port + 1:02d}a")
+				cmd.append("--port")
+				cmd.append(f"zynmixer:output_{port + 1:02d}b")
+		else:
 			cmd.append("--port")
-			cmd.append("zynmixer:input_{:02d}a".format(port + 1))
+			cmd.append("zynmixer:output_17a")
 			cmd.append("--port")
-			cmd.append("zynmixer:input_{:02d}b".format(port + 1))
+			cmd.append("zynmixer:output_17b")
 
 		self.filename = self.get_new_filename()
 		cmd.append(self.filename)
