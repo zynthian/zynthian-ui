@@ -59,7 +59,7 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 		self.adsr_polygon = self.widget_canvas.create_polygon([0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 															outline=adsr_outline_color, fill=adsr_color, width=3)
 		self.drag_polygon = self.widget_canvas.create_polygon([0, 0, 0, 0, 0, 0, 0, 0],
-															outline=adsr_outline_color, fill=drag_color, width=3, state='hidden')
+															outline=adsr_outline_color, fill=adsr_outline_color, width=3, state='hidden')
 		self.widget_canvas.bind('<ButtonPress-1>', self.on_canvas_press)
 		self.widget_canvas.bind('<B1-Motion>', self.on_canvas_drag)
 		self.widget_canvas.bind("<ButtonRelease-1>", self.on_canvas_release)
