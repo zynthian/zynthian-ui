@@ -50,12 +50,19 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 		self.widget_canvas.grid(sticky='news')
 
 		self.last_adsr_values = []
+		self.drag_zctrl = None
 
 		# Create custom GUI elements (position and size set when canvas is grid and size applied)
 		adsr_outline_color = zynthian_gui_config.color_low_on
 		adsr_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_low_on, -70)
+		drag_color = zynthian_gui_config.color_hl
 		self.adsr_polygon = self.widget_canvas.create_polygon([0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 															outline=adsr_outline_color, fill=adsr_color, width=3)
+		self.drag_polygon = self.widget_canvas.create_polygon([0, 0, 0, 0, 0, 0, 0, 0],
+															outline=adsr_outline_color, fill=drag_color, width=3, state='hidden')
+		self.widget_canvas.bind('<ButtonPress-1>', self.on_canvas_press)
+		self.widget_canvas.bind('<B1-Motion>', self.on_canvas_drag)
+		self.widget_canvas.bind("<ButtonRelease-1>", self.on_canvas_release)
 
 	def on_size(self, event):
 		if event.width == self.width and event.height == self.height:
@@ -69,7 +76,7 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 		zctrls = self.zyngui_control.zcontrollers
 		adsr_values = [zctrls[0].value, zctrls[1].value, zctrls[2].value, zctrls[3].value]
 		# TODO => Normalize (0.0 to 1.0) ADSR values if needed
-		if adsr_values != self.last_adsr_values:
+		if adsr_values != self.last_adsr_values or self.drag_zctrl:
 			dx = self.width // 4
 			dy = int(0.95 * self.height)
 			x0 = 0
@@ -84,6 +91,61 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 			y4 = y0
 			self.widget_canvas.coords(self.adsr_polygon, x0, y0, x1, y1, x2, y2, x3, y3, x4, y4)
 			self.last_adsr_values = adsr_values
+			# Highlight dragged section
+			if self.drag_zctrl:
+				self.widget_canvas.itemconfig(self.drag_polygon, state="normal")
+			if self.drag_zctrl == self.zyngui_control.zcontrollers[0]:
+				self.widget_canvas.coords(self.drag_polygon, x0, y0, x1, y1, x1, y0, x0, y0)
+			elif self.drag_zctrl == self.zyngui_control.zcontrollers[1]:
+				self.widget_canvas.coords(self.drag_polygon, x1, y0, x1, y1, x2, y2, x2, y0)
+			elif self.drag_zctrl == self.zyngui_control.zcontrollers[2]:
+				self.widget_canvas.coords(self.drag_polygon, x2, y0, x2, y2, x3, y3, x3, y0)
+			elif self.drag_zctrl == self.zyngui_control.zcontrollers[3]:
+				self.widget_canvas.coords(self.drag_polygon, x3, y0, x3, y3, x4, y4, x4, y0)
+
+
+	def on_canvas_press(self, event):
+		dx = self.width // 4
+		dy = int(0.95 * self.height)
+		zctrls = self.zyngui_control.zcontrollers
+		self.last_click = event
+		self.adsr_click_values = [zctrls[0].value, zctrls[1].value, zctrls[2].value, zctrls[3].value]
+		x1 = self.adsr_click_values[0] * dx
+		x2 = x1 + self.adsr_click_values[1] * dx
+		x3 = self.width - self.adsr_click_values[3] * dx
+		if event.x > x3 - dx / 4:
+			# Release - up to a 1/4 into the sustain range
+			self.drag_zctrl = zctrls[3]
+
+		elif event.x > x2 + dx / 4:
+			# Sustain - within the centre 1/2 of the sustain range
+			self.drag_zctrl = zctrls[2]
+		elif event.x > x1 + (x2 - x1) / 2:
+			# Decay - from 1/2 way through the decay slope
+			self.drag_zctrl = zctrls[1]
+		else:
+			#Attack - up to 1/4 way through the decay slop
+			self.drag_zctrl = zctrls[0]
+
+	def on_canvas_drag(self, event):
+		if self.drag_zctrl == None:
+			return
+		dx = (event.x - self.last_click.x) / (self.width / 4)
+		dy = (event.y - self.last_click.y) / int(0.95 * self.height)
+		if self.drag_zctrl == self.zyngui_control.zcontrollers[0]:
+			self.drag_zctrl.set_value(self.adsr_click_values[0] + dx)
+		elif self.drag_zctrl == self.zyngui_control.zcontrollers[1]:
+			self.drag_zctrl.set_value(self.adsr_click_values[1] + dx)
+		elif self.drag_zctrl == self.zyngui_control.zcontrollers[2]:
+			self.drag_zctrl.set_value(self.adsr_click_values[2] - dy)
+		elif self.drag_zctrl == self.zyngui_control.zcontrollers[3]:
+			self.drag_zctrl.set_value(self.adsr_click_values[3] - dx)
+		else:
+			return
+
+	def on_canvas_release(self, event):
+		self.drag_zctrl = None
+		self.widget_canvas.itemconfig(self.drag_polygon, state="hidden")
 
 	def get_monitors(self):
 		pass
