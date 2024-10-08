@@ -55,7 +55,7 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 		# Create custom GUI elements (position and size set when canvas is grid and size applied)
 		adsr_outline_color = zynthian_gui_config.color_low_on
 		adsr_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_low_on, -70)
-		drag_color = zynthian_gui_config.color_hl
+		#drag_color = zynthian_gui_config.color_hl
 		self.adsr_polygon = self.widget_canvas.create_polygon([0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 															outline=adsr_outline_color, fill=adsr_color, width=3)
 		self.drag_polygon = self.widget_canvas.create_polygon([0, 0, 0, 0, 0, 0, 0, 0],
@@ -74,7 +74,8 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 
 	def refresh_gui(self):
 		zctrls = self.zyngui_control.zcontrollers
-		adsr_values = [zctrls[0].value, zctrls[1].value, zctrls[2].value, zctrls[3].value]
+		adsr_values = [zctrls[0].value/zctrls[0].value_range, zctrls[1].value/zctrls[1].value_range,
+					zctrls[2].value/zctrls[2].value_range, zctrls[3].value/zctrls[3].value_range]
 		# TODO => Normalize (0.0 to 1.0) ADSR values if needed
 		if adsr_values != self.last_adsr_values or self.drag_zctrl:
 			dx = self.width // 4
@@ -103,20 +104,19 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 			elif self.drag_zctrl == self.zyngui_control.zcontrollers[3]:
 				self.widget_canvas.coords(self.drag_polygon, x3, y0, x3, y3, x4, y4, x4, y0)
 
-
 	def on_canvas_press(self, event):
 		dx = self.width // 4
 		dy = int(0.95 * self.height)
 		zctrls = self.zyngui_control.zcontrollers
 		self.last_click = event
-		self.adsr_click_values = [zctrls[0].value, zctrls[1].value, zctrls[2].value, zctrls[3].value]
+		self.adsr_click_values = [zctrls[0].value/zctrls[0].value_range, zctrls[1].value/zctrls[1].value_range,
+					zctrls[2].value/zctrls[2].value_range, zctrls[3].value/zctrls[3].value_range]
 		x1 = self.adsr_click_values[0] * dx
 		x2 = x1 + self.adsr_click_values[1] * dx
 		x3 = self.width - self.adsr_click_values[3] * dx
 		if event.x > x3 - dx / 4:
 			# Release - up to a 1/4 into the sustain range
 			self.drag_zctrl = zctrls[3]
-
 		elif event.x > x2 + dx / 4:
 			# Sustain - within the centre 1/2 of the sustain range
 			self.drag_zctrl = zctrls[2]
@@ -124,7 +124,7 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 			# Decay - from 1/2 way through the decay slope
 			self.drag_zctrl = zctrls[1]
 		else:
-			#Attack - up to 1/4 way through the decay slop
+			# Attack - up to 1/4 way through the decay slop
 			self.drag_zctrl = zctrls[0]
 
 	def on_canvas_drag(self, event):
@@ -133,13 +133,13 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 		dx = (event.x - self.last_click.x) / (self.width / 4)
 		dy = (event.y - self.last_click.y) / int(0.95 * self.height)
 		if self.drag_zctrl == self.zyngui_control.zcontrollers[0]:
-			self.drag_zctrl.set_value(self.adsr_click_values[0] + dx)
+			self.drag_zctrl.set_value(self.drag_zctrl.value_range * (self.adsr_click_values[0] + dx))
 		elif self.drag_zctrl == self.zyngui_control.zcontrollers[1]:
-			self.drag_zctrl.set_value(self.adsr_click_values[1] + dx)
+			self.drag_zctrl.set_value(self.drag_zctrl.value_range * (self.adsr_click_values[1] + dx))
 		elif self.drag_zctrl == self.zyngui_control.zcontrollers[2]:
-			self.drag_zctrl.set_value(self.adsr_click_values[2] - dy)
+			self.drag_zctrl.set_value(self.drag_zctrl.value_range * (self.adsr_click_values[2] - dy))
 		elif self.drag_zctrl == self.zyngui_control.zcontrollers[3]:
-			self.drag_zctrl.set_value(self.adsr_click_values[3] - dx)
+			self.drag_zctrl.set_value(self.drag_zctrl.value_range * (self.adsr_click_values[3] - dx))
 		else:
 			return
 
