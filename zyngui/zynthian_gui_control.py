@@ -140,7 +140,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 			#if len(self.processors) > 1:
 			self.list_data.append((None, None, f"> {processor.engine.name.split('/')[-1]}"))
 			for cscr in screen_list:
-				self.list_data.append((cscr, i, cscr, processor, j))
+				self.list_data.append((screen_list[cscr][0].group_symbol, i, cscr, processor, j))
 				i += 1
 				j += 1
 
@@ -175,11 +175,15 @@ class zynthian_gui_control(zynthian_gui_selector):
 		if self.screen_title:
 			# Some heuristics to detect ADSR control screens ...
 			# TODO: This should be improved by marking ADSR groups!!
+			"""
 			if " Env" in self.screen_title or " ADSR" in self.screen_title or\
 					("attack" in self.zcontrollers[0].name.lower() and
 					"decay" in self.zcontrollers[1].name.lower() and
 					"sustain" in self.zcontrollers[2].name.lower() and
 					"release" in self.zcontrollers[3].name.lower()):
+				self.screen_type = "adsr"
+			"""
+			if hasattr(self.zcontrollers[0], "envelope"):
 				self.screen_type = "adsr"
 			else:
 				self.screen_type = None
@@ -198,8 +202,8 @@ class zynthian_gui_control(zynthian_gui_selector):
 
 	def show_widget(self, processor):
 		module_path = processor.engine.custom_gui_fpath
-		if not module_path and self.screen_type:
-				module_path = f"/zynthian/zynthian-ui/zyngui/zynthian_widget_{self.screen_type}.py"
+		if self.screen_type: #and not module_path:
+			module_path = f"/zynthian/zynthian-ui/zyngui/zynthian_widget_{self.screen_type}.py"
 		if module_path:
 			module_name = Path(module_path).stem
 			if module_name.startswith("zynthian_widget_"):

@@ -53,13 +53,12 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 		self.drag_zctrl = None
 
 		# Create custom GUI elements (position and size set when canvas is grid and size applied)
-		adsr_outline_color = zynthian_gui_config.color_low_on
-		adsr_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_low_on, -70)
-		#drag_color = zynthian_gui_config.color_hl
-		self.adsr_polygon = self.widget_canvas.create_polygon([0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-															outline=adsr_outline_color, fill=adsr_color, width=3)
-		self.drag_polygon = self.widget_canvas.create_polygon([0, 0, 0, 0, 0, 0, 0, 0],
-															outline=adsr_outline_color, fill=adsr_outline_color, width=3, state='hidden')
+		self.adsr_outline_color = zynthian_gui_config.color_low_on
+		self.adsr_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_low_on, -70)
+		self.adsr_polygon = self.widget_canvas.create_polygon(0, 0,
+															outline=self.adsr_outline_color, fill=self.adsr_color, width=3)
+		self.drag_polygon = self.widget_canvas.create_polygon(0, 0,
+															outline=self.adsr_outline_color, fill=self.adsr_outline_color, width=3, state='hidden')
 		self.widget_canvas.bind('<ButtonPress-1>', self.on_canvas_press)
 		self.widget_canvas.bind('<B1-Motion>', self.on_canvas_drag)
 		self.widget_canvas.bind("<ButtonRelease-1>", self.on_canvas_release)
@@ -70,78 +69,113 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 		super().on_size(event)
 		self.widget_canvas.grid(row=0, column=0, sticky='news')
 		self.last_adsr_values = []
+		self.dy = int(0.95 * self.height)
+		if self.zctrls:
+			self.dx = self.width // len(self.zctrls)
 		self.refresh_gui()
 
+	def show(self):
+		zctrls = {}
+		self.zctrls =[]
+		for zctrl in self.processor.get_group_zctrls(self.zyngui_control.screen_info[0]): #TODO Ensure correct group
+			zctrls[zctrl.envelope] = zctrl
+		for symbol in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
+			if symbol in zctrls:
+				self.zctrls.append(zctrls[symbol])
+		self.dx = self.width // len(self.zctrls)
+		super().show()
+
 	def refresh_gui(self):
-		zctrls = self.zyngui_control.zcontrollers
-		adsr_values = [zctrls[0].value/zctrls[0].value_range, zctrls[1].value/zctrls[1].value_range,
-					zctrls[2].value/zctrls[2].value_range, zctrls[3].value/zctrls[3].value_range]
-		# TODO => Normalize (0.0 to 1.0) ADSR values if needed
+		adsr_values = []
+		y_sustain = self.height
+		x_release = self.width
+		y_fade = self.height
+		for zctrl in self.zctrls:
+			adsr_values.append(zctrl.value / zctrl.value_range)
+			match zctrl.envelope:
+				case "sustain":
+					y_sustain = self.height - zctrl.value / zctrl.value_range * self.dy
+				case "release":
+					x_release = self.width - zctrl.value / zctrl.value_range * self.dx
+				case "fade":
+					y_fade = self.height - (1 + zctrl.value / zctrl.value_range) * (self.height - y_sustain) / 2
+
 		if adsr_values != self.last_adsr_values or self.drag_zctrl:
-			dx = self.width // 4
-			dy = int(0.95 * self.height)
-			x0 = 0
-			y0 = self.height
-			x1 = adsr_values[0] * dx
-			y1 = y0 - dy
-			x2 = x1 + adsr_values[1] * dx
-			y2 = y0 - adsr_values[2] * dy
-			x3 = self.width - adsr_values[3] * dx
-			y3 = y2
-			x4 = self.width
-			y4 = y0
-			self.widget_canvas.coords(self.adsr_polygon, x0, y0, x1, y1, x2, y2, x3, y3, x4, y4)
+			x = 0
+			y = y0 = self.height
+			coords = [x, y0]
+			self.adsr_click_ranges = []
+
+			for zctrl in self.zctrls:
+				match zctrl.envelope:
+					case "release":
+						x = self.width - zctrl.value / zctrl.value_range * self.dx
+						drag_window = [x, y, self.width, self.height, x, self.height]
+						self.adsr_click_ranges.append(x)
+						if coords[-2] == self.width:
+							coords[-2] = x # Fix fade if it exists
+					case "sustain":
+						y = y0 - zctrl.value / zctrl.value_range * self.dy
+						drag_window = [x, y0, x, y, x_release, y_fade, x_release, y0]
+					case "fade":
+						y_offset = (y0 - y) / 2
+						drag_window = [x, y, x, y + y_offset]
+						y = y_fade
+						self.adsr_click_ranges.append(x + (x_release - x) * 0.75)
+						x = x_release
+						drag_window += [x, drag_window[-1], x, y]
+					case _:
+						_x = x
+						drag_window = [x, y]
+						x += zctrl.value / zctrl.value_range * self.dx
+						if zctrl.envelope == "attack":
+							y = y0 - self.dy
+						elif zctrl.envelope == "decay":
+							y = y_sustain
+						drag_window += [x, y, x, self.height, _x, self.height]
+						self.adsr_click_ranges.append(x)
+				coords.append(x)
+				coords.append(y)
+				if self.drag_zctrl == zctrl:
+					self.widget_canvas.coords(self.drag_polygon, drag_window)
+
+			coords.append(self.width)
+			coords.append(y0)
+			self.adsr_click_ranges.append(self.width)
+			self.widget_canvas.coords(self.adsr_polygon, coords)
 			self.last_adsr_values = adsr_values
 			# Highlight dragged section
 			if self.drag_zctrl:
 				self.widget_canvas.itemconfig(self.drag_polygon, state="normal")
-			if self.drag_zctrl == self.zyngui_control.zcontrollers[0]:
-				self.widget_canvas.coords(self.drag_polygon, x0, y0, x1, y1, x1, y0, x0, y0)
-			elif self.drag_zctrl == self.zyngui_control.zcontrollers[1]:
-				self.widget_canvas.coords(self.drag_polygon, x1, y0, x1, y1, x2, y2, x2, y0)
-			elif self.drag_zctrl == self.zyngui_control.zcontrollers[2]:
-				self.widget_canvas.coords(self.drag_polygon, x2, y0, x2, y2, x3, y3, x3, y0)
-			elif self.drag_zctrl == self.zyngui_control.zcontrollers[3]:
-				self.widget_canvas.coords(self.drag_polygon, x3, y0, x3, y3, x4, y4, x4, y0)
 
 	def on_canvas_press(self, event):
-		dx = self.width // 4
-		dy = int(0.95 * self.height)
-		zctrls = self.zyngui_control.zcontrollers
 		self.last_click = event
-		self.adsr_click_values = [zctrls[0].value/zctrls[0].value_range, zctrls[1].value/zctrls[1].value_range,
-					zctrls[2].value/zctrls[2].value_range, zctrls[3].value/zctrls[3].value_range]
-		x1 = self.adsr_click_values[0] * dx
-		x2 = x1 + self.adsr_click_values[1] * dx
-		x3 = self.width - self.adsr_click_values[3] * dx
-		if event.x > x3 - dx / 4:
-			# Release - up to a 1/4 into the sustain range
-			self.drag_zctrl = zctrls[3]
-		elif event.x > x2 + dx / 4:
-			# Sustain - within the centre 1/2 of the sustain range
-			self.drag_zctrl = zctrls[2]
-		elif event.x > x1 + (x2 - x1) / 2:
-			# Decay - from 1/2 way through the decay slope
-			self.drag_zctrl = zctrls[1]
-		else:
-			# Attack - up to 1/4 way through the decay slop
-			self.drag_zctrl = zctrls[0]
+
+		# Identify the envelope phase clicked
+		for i in range(len(self.adsr_click_ranges) - 1):
+			if self.zctrls[i].envelope == "sustain":
+				x = self.adsr_click_ranges[i] - (self.adsr_click_ranges[i] - self.adsr_click_ranges[i - 1]) / 4
+			else:
+				x = self.adsr_click_ranges[i] + (self.adsr_click_ranges[i + 1] - self.adsr_click_ranges[i]) / 4
+			if event.x < x:
+				self.drag_zctrl = self.zctrls[i]
+				self.adsr_click_value = self.drag_zctrl.value
+				return
+		self.drag_zctrl = self.zctrls[-1]
+		self.adsr_click_value = self.drag_zctrl.value
 
 	def on_canvas_drag(self, event):
 		if self.drag_zctrl == None:
 			return
-		dx = (event.x - self.last_click.x) / (self.width / 4)
-		dy = (event.y - self.last_click.y) / int(0.95 * self.height)
-		if self.drag_zctrl == self.zyngui_control.zcontrollers[0]:
-			self.drag_zctrl.set_value(self.drag_zctrl.value_range * (self.adsr_click_values[0] + dx))
-		elif self.drag_zctrl == self.zyngui_control.zcontrollers[1]:
-			self.drag_zctrl.set_value(self.drag_zctrl.value_range * (self.adsr_click_values[1] + dx))
-		elif self.drag_zctrl == self.zyngui_control.zcontrollers[2]:
-			self.drag_zctrl.set_value(self.drag_zctrl.value_range * (self.adsr_click_values[2] - dy))
-		elif self.drag_zctrl == self.zyngui_control.zcontrollers[3]:
-			self.drag_zctrl.set_value(self.drag_zctrl.value_range * (self.adsr_click_values[3] - dx))
-		else:
-			return
+		dx = (event.x - self.last_click.x) / self.dx
+		dy = (event.y - self.last_click.y) / self.dy
+		match self.drag_zctrl.envelope:
+			case "release":
+				self.drag_zctrl.set_value(self.adsr_click_value - self.drag_zctrl.value_range * dx)
+			case "sustain" | "fade":
+				self.drag_zctrl.set_value(self.adsr_click_value - self.drag_zctrl.value_range * dy)
+			case _:
+				self.drag_zctrl.set_value(self.adsr_click_value + self.drag_zctrl.value_range * dx)
 
 	def on_canvas_release(self, event):
 		self.drag_zctrl = None

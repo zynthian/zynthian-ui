@@ -117,7 +117,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
 		self.monitors_dict[processor.handle]["info"] = 0
 		self.monitors_dict[processor.handle]['frames'] = 0
 		self.monitors_dict[processor.handle]['channels'] = 0
-		self.monitors_dict[processor.handle]['samplerate'] = 44100
+		self.monitors_dict[processor.handle]['samplerate'] = 48000
 		self.monitors_dict[processor.handle]['codec'] = "UNKNOWN"
 		self.monitors_dict[processor.handle]['speed'] = 1.0
 		processor.refresh_controllers()
@@ -300,11 +300,11 @@ class zynthian_engine_audioplayer(zynthian_engine):
 			['amp zoom', None, 1.0, 4.0],
 			['sustain pedal', 64, 'off', ['off', 'on']],
 			['bend range', None, bend_range, 24],
-			['attack', None, attack, 20.0],
-			['hold', None, hold, 20.0],
-			['decay', None, decay, 20.0],
-			['sustain', None, sustain, 1.0],
-			['release', None, release, 20.0],
+			['attack',{'group_name':'Envelope', 'group_symbol':'envelope', 'value_max':20.0, 'envelope':'attack'}],
+			['hold',{'group_name':'Envelope', 'group_symbol':'envelope', 'value_max':20.0, 'envelope':'hold'}],
+			['decay',{'group_name':'Envelope', 'group_symbol':'envelope', 'value_max':20.0, 'envelope':'decay'}],
+			['sustain',{'group_name':'Envelope', 'group_symbol':'envelope', 'value_max':1.0, 'envelope':'sustain'}],
+			['release',{'group_name':'Envelope', 'group_symbol':'envelope', 'value_max':20.0, 'envelope':'release'}],
 			['beats', None, beats, 64],
 			['cue', {'value': cue_min, 'value_min': cue_min, 'value_max': cues}],
 			['cue pos', None, cue_pos, dur],

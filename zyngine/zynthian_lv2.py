@@ -706,6 +706,22 @@ def get_plugin_ports(plugin_url):
 			is_integer = port.has_property(world.ns.lv2.integer)
 			is_enumeration = port.has_property(world.ns.lv2.enumeration)
 			is_logarithmic = port.has_property(world.ns.portprops.logarithmic)
+			if port.has_property('http://lv2plug.in/ns/ext/parameters#delay'):
+				envelope = "delay"
+			elif port.has_property('http://lv2plug.in/ns/ext/parameters#attack'):
+				envelope = "attack"
+			elif port.has_property('http://lv2plug.in/ns/ext/parameters#hold'):
+				envelope = "hold"
+			elif port.has_property('http://lv2plug.in/ns/ext/parameters#decay'):
+				envelope = "decay"
+			elif port.has_property('http://lv2plug.in/ns/ext/parameters#sustain'):
+				envelope = "sustain"
+			elif port.has_property('http://lv2plug.in/ns/ext/parameters#fade'):
+				envelope = "fade"
+			elif port.has_property('http://lv2plug.in/ns/ext/parameters#release'):
+				envelope = "release"
+			else:
+				envelope = None
 			not_on_gui = port.has_property(world.ns.portprops.notOnGUI)
 			display_priority = port.get(world.ns.lv2.displayPriority)
 			if display_priority is None:
@@ -785,6 +801,7 @@ def get_plugin_ports(plugin_url):
 				'is_integer': is_integer,
 				'is_enumeration': is_enumeration,
 				'is_logarithmic': is_logarithmic,
+				'envelope': envelope,
 				'not_on_gui': not_on_gui,
 				'display_priority': display_priority,
 				'scale_points': sp

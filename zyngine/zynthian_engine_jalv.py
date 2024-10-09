@@ -497,7 +497,7 @@ class zynthian_engine_jalv(zynthian_engine):
 						'is_toggle': info['is_toggled'],
 						'is_integer': info['is_integer'],
 						'not_on_gui': info['not_on_gui'],
-						'display_priority': info['display_priority']
+						'display_priority': info['display_priority'],
 					})
 
 				# If it's a numeric controller ...
@@ -576,7 +576,8 @@ class zynthian_engine_jalv(zynthian_engine):
 								'is_integer': False,
 								'is_logarithmic': info['is_logarithmic'],
 								'not_on_gui': info['not_on_gui'],
-								'display_priority': info['display_priority']
+								'display_priority': info['display_priority'],
+								'envelope': info['envelope']
 							})
 
 			# If control info is not OK

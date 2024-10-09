@@ -185,7 +185,7 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
 
 		for chan in range(self.channels):
 			coords = self.widget_canvas.coords(f"waveform_bg_{chan}")
-			if len(coords > 2):
+			if len(coords) > 2:
 				coords[2] = self.width
 				self.widget_canvas.coords(f"waveform_bg_{chan}", coords)
 
