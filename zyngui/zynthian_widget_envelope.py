@@ -59,6 +59,10 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
 															outline=self.envelope_outline_color, fill=self.envelope_color, width=3)
 		self.drag_polygon = self.widget_canvas.create_polygon(0, 0,
 															outline=self.envelope_outline_color, fill=self.envelope_outline_color, width=3, state='hidden')
+		self.release_line = self.widget_canvas.create_line(0, 0, 0, 0,
+													 fill=zynthian_gui_config.color_hl, state="hidden")
+		self.release_label = self.widget_canvas.create_text(0, 0, text="R", anchor="s",
+													 fill=zynthian_gui_config.color_hl, state="hidden")
 		self.widget_canvas.bind('<ButtonPress-1>', self.on_canvas_press)
 		self.widget_canvas.bind('<B1-Motion>', self.on_canvas_drag)
 		self.widget_canvas.bind("<ButtonRelease-1>", self.on_canvas_release)
@@ -86,6 +90,8 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
 			if symbol in zctrls:
 				self.zctrls.append(zctrls[symbol])
 		self.dx = self.width // len(self.zctrls)
+		self.widget_canvas.itemconfig(self.release_line, state="hidden")
+		self.widget_canvas.itemconfig(self.release_label, state="hidden")
 		super().show()
 
 	def refresh_gui(self):
@@ -119,6 +125,10 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
 						self.envelope_click_ranges.append(x)
 						if coords[-2] == self.width:
 							coords[-2] = x # Fix fade if it exists
+						self.widget_canvas.coords(self.release_line, x, y, x, y0)
+						self.widget_canvas.itemconfig(self.release_line, state="normal")
+						self.widget_canvas.coords(self.release_label, x, y)
+						self.widget_canvas.itemconfig(self.release_label, state="normal")
 					case "sustain":
 						y = y0 - zctrl.value / zctrl.value_range * self.dy
 						drag_window = [x, y0, x, y, x_release, y_fade, x_release, y0]
