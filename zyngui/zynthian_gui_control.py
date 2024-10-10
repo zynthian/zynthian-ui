@@ -181,10 +181,10 @@ class zynthian_gui_control(zynthian_gui_selector):
 					"decay" in self.zcontrollers[1].name.lower() and
 					"sustain" in self.zcontrollers[2].name.lower() and
 					"release" in self.zcontrollers[3].name.lower()):
-				self.screen_type = "adsr"
+				self.screen_type = "envelope"
 			"""
-			if hasattr(self.zcontrollers[0], "envelope"):
-				self.screen_type = "adsr"
+			if hasattr(self.zcontrollers[0], "envelope"): #TODO: Should we detect envelope in any control, not just first?
+				self.screen_type = "envelope"
 			else:
 				self.screen_type = None
 		return self.screen_type

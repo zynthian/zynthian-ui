@@ -628,7 +628,7 @@ class zynthian_processor:
     def get_group_zctrls(self, group):
         zctrls = []
         for zctrl in self.controllers_dict.values():
-            if zctrl.group_symbol == group: #TODO: This should be group_symbol so add group_symbol to zyngui_control.screen_info
+            if zctrl.group_symbol == group:
                 zctrls.append(zctrl)
         return zctrls
 

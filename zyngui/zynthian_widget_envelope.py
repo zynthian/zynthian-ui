@@ -3,7 +3,7 @@
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 # 
-# Zynthian Widget Class for ADSR screen type
+# Zynthian Widget Class for envelope screen type
 # 
 # Copyright (C) 2015-2024 Fernando Moyano <fernando@zynthian.org>
 #
@@ -31,11 +31,11 @@ from zyngui import zynthian_gui_config
 from zyngui import zynthian_widget_base
 
 # ------------------------------------------------------------------------------
-# Zynthian Widget Class for ADSR screen type
+# Zynthian Widget Class for envelope screen type
 # ------------------------------------------------------------------------------
 
 
-class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
+class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
 
 	def __init__(self, parent):
 		super().__init__(parent)
@@ -49,16 +49,16 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 			bg=zynthian_gui_config.color_bg)
 		self.widget_canvas.grid(sticky='news')
 
-		self.last_adsr_values = []
+		self.last_envelope_values = []
 		self.drag_zctrl = None
 
 		# Create custom GUI elements (position and size set when canvas is grid and size applied)
-		self.adsr_outline_color = zynthian_gui_config.color_low_on
-		self.adsr_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_low_on, -70)
-		self.adsr_polygon = self.widget_canvas.create_polygon(0, 0,
-															outline=self.adsr_outline_color, fill=self.adsr_color, width=3)
+		self.envelope_outline_color = zynthian_gui_config.color_low_on
+		self.envelope_color = zynthian_gui_config.color_variant(zynthian_gui_config.color_low_on, -70)
+		self.envelope_polygon = self.widget_canvas.create_polygon(0, 0,
+															outline=self.envelope_outline_color, fill=self.envelope_color, width=3)
 		self.drag_polygon = self.widget_canvas.create_polygon(0, 0,
-															outline=self.adsr_outline_color, fill=self.adsr_outline_color, width=3, state='hidden')
+															outline=self.envelope_outline_color, fill=self.envelope_outline_color, width=3, state='hidden')
 		self.widget_canvas.bind('<ButtonPress-1>', self.on_canvas_press)
 		self.widget_canvas.bind('<B1-Motion>', self.on_canvas_drag)
 		self.widget_canvas.bind("<ButtonRelease-1>", self.on_canvas_release)
@@ -68,7 +68,7 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 			return
 		super().on_size(event)
 		self.widget_canvas.grid(row=0, column=0, sticky='news')
-		self.last_adsr_values = []
+		self.last_envelope_values = []
 		self.dy = int(0.95 * self.height)
 		if self.zctrls:
 			self.dx = self.width // len(self.zctrls)
@@ -86,12 +86,12 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 		super().show()
 
 	def refresh_gui(self):
-		adsr_values = []
+		envelope_values = []
 		y_sustain = self.height
 		x_release = self.width
-		y_fade = self.height
+		y_fade = None
 		for zctrl in self.zctrls:
-			adsr_values.append(zctrl.value / zctrl.value_range)
+			envelope_values.append(zctrl.value / zctrl.value_range)
 			match zctrl.envelope:
 				case "sustain":
 					y_sustain = self.height - zctrl.value / zctrl.value_range * self.dy
@@ -99,19 +99,21 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 					x_release = self.width - zctrl.value / zctrl.value_range * self.dx
 				case "fade":
 					y_fade = self.height - (1 + zctrl.value / zctrl.value_range) * (self.height - y_sustain) / 2
+		if y_fade is None:
+			y_fade = y_sustain
 
-		if adsr_values != self.last_adsr_values or self.drag_zctrl:
+		if envelope_values != self.last_envelope_values or self.drag_zctrl:
 			x = 0
 			y = y0 = self.height
 			coords = [x, y0]
-			self.adsr_click_ranges = []
+			self.envelope_click_ranges = []
 
 			for zctrl in self.zctrls:
 				match zctrl.envelope:
 					case "release":
 						x = self.width - zctrl.value / zctrl.value_range * self.dx
 						drag_window = [x, y, self.width, self.height, x, self.height]
-						self.adsr_click_ranges.append(x)
+						self.envelope_click_ranges.append(x)
 						if coords[-2] == self.width:
 							coords[-2] = x # Fix fade if it exists
 					case "sustain":
@@ -121,7 +123,7 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 						y_offset = (y0 - y) / 2
 						drag_window = [x, y, x, y + y_offset]
 						y = y_fade
-						self.adsr_click_ranges.append(x + (x_release - x) * 0.75)
+						self.envelope_click_ranges.append(x + (x_release - x) * 0.75)
 						x = x_release
 						drag_window += [x, drag_window[-1], x, y]
 					case _:
@@ -133,7 +135,7 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 						elif zctrl.envelope == "decay":
 							y = y_sustain
 						drag_window += [x, y, x, self.height, _x, self.height]
-						self.adsr_click_ranges.append(x)
+						self.envelope_click_ranges.append(x)
 				coords.append(x)
 				coords.append(y)
 				if self.drag_zctrl == zctrl:
@@ -141,9 +143,9 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 
 			coords.append(self.width)
 			coords.append(y0)
-			self.adsr_click_ranges.append(self.width)
-			self.widget_canvas.coords(self.adsr_polygon, coords)
-			self.last_adsr_values = adsr_values
+			self.envelope_click_ranges.append(self.width)
+			self.widget_canvas.coords(self.envelope_polygon, coords)
+			self.last_envelope_values = envelope_values
 			# Highlight dragged section
 			if self.drag_zctrl:
 				self.widget_canvas.itemconfig(self.drag_polygon, state="normal")
@@ -152,17 +154,17 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 		self.last_click = event
 
 		# Identify the envelope phase clicked
-		for i in range(len(self.adsr_click_ranges) - 1):
-			if self.zctrls[i].envelope == "sustain":
-				x = self.adsr_click_ranges[i] - (self.adsr_click_ranges[i] - self.adsr_click_ranges[i - 1]) / 4
+		for i in range(len(self.envelope_click_ranges) - 1):
+			if i == len(self.envelope_click_ranges) - 2: # Allow selection of last phase, near end of penultimate phase
+				x = self.envelope_click_ranges[i] - (self.envelope_click_ranges[i] - self.envelope_click_ranges[i - 1]) / 4
 			else:
-				x = self.adsr_click_ranges[i] + (self.adsr_click_ranges[i + 1] - self.adsr_click_ranges[i]) / 4
+				x = self.envelope_click_ranges[i] + (self.envelope_click_ranges[i + 1] - self.envelope_click_ranges[i]) / 4
 			if event.x < x:
 				self.drag_zctrl = self.zctrls[i]
-				self.adsr_click_value = self.drag_zctrl.value
+				self.envelope_click_value = self.drag_zctrl.value
 				return
 		self.drag_zctrl = self.zctrls[-1]
-		self.adsr_click_value = self.drag_zctrl.value
+		self.envelope_click_value = self.drag_zctrl.value
 
 	def on_canvas_drag(self, event):
 		if self.drag_zctrl == None:
@@ -171,11 +173,11 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 		dy = (event.y - self.last_click.y) / self.dy
 		match self.drag_zctrl.envelope:
 			case "release":
-				self.drag_zctrl.set_value(self.adsr_click_value - self.drag_zctrl.value_range * dx)
+				self.drag_zctrl.set_value(self.envelope_click_value - self.drag_zctrl.value_range * dx)
 			case "sustain" | "fade":
-				self.drag_zctrl.set_value(self.adsr_click_value - self.drag_zctrl.value_range * dy)
+				self.drag_zctrl.set_value(self.envelope_click_value - self.drag_zctrl.value_range * dy)
 			case _:
-				self.drag_zctrl.set_value(self.adsr_click_value + self.drag_zctrl.value_range * dx)
+				self.drag_zctrl.set_value(self.envelope_click_value + self.drag_zctrl.value_range * dx)
 
 	def on_canvas_release(self, event):
 		self.drag_zctrl = None
