@@ -81,8 +81,8 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 		# ['expr. pedal', 4, 127],
 		['filter cutoff', 74, 64],
 		['filter resonance', 71, 64],
-		['env. attack', 73, 64],
-		['env. release', 72, 64]
+		['env. attack', {'value':64, 'midi_cc':73, 'envelope':'attack'}],
+		['env. release', {'value':64, 'midi_cc':72, 'envelope':'release'}]
 	]
 
 	# Controller Screens

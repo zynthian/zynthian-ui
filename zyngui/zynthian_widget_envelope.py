@@ -61,7 +61,7 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
 															outline=self.envelope_outline_color, fill=self.envelope_outline_color, width=3, state='hidden')
 		self.release_line = self.widget_canvas.create_line(0, 0, 0, 0,
 													 fill=zynthian_gui_config.color_tx, state="hidden")
-		self.release_label = self.widget_canvas.create_text(0, 0, text="R", anchor="s",
+		self.release_label = self.widget_canvas.create_text(0, 0, text="R", anchor="ne",
 													 fill=zynthian_gui_config.color_tx, state="hidden")
 		self.widget_canvas.bind('<ButtonPress-1>', self.on_canvas_press)
 		self.widget_canvas.bind('<B1-Motion>', self.on_canvas_drag)
