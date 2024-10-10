@@ -172,21 +172,23 @@ class zynthian_gui_control(zynthian_gui_selector):
 		return False
 
 	def get_screen_type(self):
+		"""
 		if self.screen_title:
 			# Some heuristics to detect ADSR control screens ...
 			# TODO: This should be improved by marking ADSR groups!!
-			"""
 			if " Env" in self.screen_title or " ADSR" in self.screen_title or\
 					("attack" in self.zcontrollers[0].name.lower() and
 					"decay" in self.zcontrollers[1].name.lower() and
 					"sustain" in self.zcontrollers[2].name.lower() and
 					"release" in self.zcontrollers[3].name.lower()):
 				self.screen_type = "envelope"
-			"""
-			if hasattr(self.zcontrollers[0], "envelope"): #TODO: Should we detect envelope in any control, not just first?
+		"""
+		for zctrl in self.zcontrollers:
+			if hasattr(zctrl, "envelope"):
 				self.screen_type = "envelope"
-			else:
-				self.screen_type = None
+				break
+		else:
+			self.screen_type = None
 		return self.screen_type
 
 	def fill_listbox(self):

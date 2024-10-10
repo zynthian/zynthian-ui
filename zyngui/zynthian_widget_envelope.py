@@ -77,8 +77,11 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
 	def show(self):
 		zctrls = {}
 		self.zctrls =[]
-		for zctrl in self.processor.get_group_zctrls(self.zyngui_control.screen_info[0]): #TODO Ensure correct group
-			zctrls[zctrl.envelope] = zctrl
+		for zctrl in self.processor.get_group_zctrls(self.zyngui_control.screen_info[0]):
+			try:
+				zctrls[zctrl.envelope] = zctrl
+			except:
+				pass
 		for symbol in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
 			if symbol in zctrls:
 				self.zctrls.append(zctrls[symbol])
@@ -87,7 +90,7 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
 
 	def refresh_gui(self):
 		envelope_values = []
-		y_sustain = self.height
+		y_sustain = self.height // 2
 		x_release = self.width
 		y_fade = None
 		for zctrl in self.zctrls:
