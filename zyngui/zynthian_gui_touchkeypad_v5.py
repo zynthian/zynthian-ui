@@ -37,6 +37,8 @@ BUTTONS = {
 	'F4': ({'default': 'F4', 'alt': 'F8'}, 23, 19, False)
 }
 
+FKEY2SWITCH = [ BUTTONS['F1'][1], BUTTONS['F2'][1], BUTTONS['F3'][1], BUTTONS['F4'][1]]
+
 LED2BUTTON = {btn[2]: btn[1]-4 for btn in BUTTONS.values()}
 
 LAYOUT_RIGHT = {
@@ -332,6 +334,23 @@ class zynthian_gui_touchkeypad_v5:
 				self.btndefs[n][0]['active'] = active
 			if active2:
 				self.btndefs[n][0]['active2'] = active2
+
+	def _fkey2btn(self, n):
+		mode = 'default'
+		if n >= 4:
+			mode = 'alt'
+			n -= 4
+		return (FKEY2SWITCH[n]-4, mode)
+
+	def set_fkey_label(self, n, label):
+		btn, mode = self._fkey2btn(n)
+		self.btndefs[btn][0][mode] = label
+		self.refresh_button_label(btn, label)
+
+	def get_fkey_label(self, n):
+		btn, mode = self._fkey2btn(n)
+		return self.btndefs[btn][0][mode]
+
 
 	# def set_button_label(self, n, mode, label):
 	# 	"""

@@ -90,6 +90,7 @@ from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
 from zyngui.zynthian_gui_wifi import zynthian_gui_wifi
 from zyngui.zynthian_gui_bluetooth import zynthian_gui_bluetooth
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
+from zyngui.zynthian_gui_touchkeypad_labels import zynthian_gui_touchkeypad_labels
 
 # TODO This constants should go somewhere else
 MIXER_MAIN_CHANNEL = 17
@@ -443,6 +444,7 @@ class zynthian_gui:
 		self.screens['tempo'] = zynthian_gui_tempo()
 		self.screens['admin'] = zynthian_gui_admin()
 		self.screens['audio_mixer'] = zynthian_gui_mixer()
+		self.screens['touchkeypad_labels'] = zynthian_gui_touchkeypad_labels()
 
 		# Create the right main menu screen
 		if zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
