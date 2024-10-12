@@ -185,6 +185,13 @@ class zynthian_gui_admin(zynthian_gui_selector):
 			self.list_data.append((self.show_cv_config, 0, "CV Settings"))
 		self.list_data.append((self.zyngui.calibrate_touchscreen, 0, "Calibrate Touchscreen"))
 
+		self.list_data.append((None, 0, "> TOUCH KEYPAD"))
+		if zynthian_gui_config.touch_keypad:
+			self.list_data.append((self.toggle_touchkeypad, 0, "\u2612 V5 Touch Keypad"))
+			self.list_data.append((self.touchkeypad_labels, 0, "F-key labels"))
+		else:
+			self.list_data.append((self.toggle_touchkeypad, 0, "\u2610 V5 Touch Keypad"))
+
 		self.list_data.append((None, 0, "> TEST"))
 		self.list_data.append((self.test_audio, 0, "Test Audio"))
 		self.list_data.append((self.test_midi, 0, "Test MIDI"))
@@ -392,6 +399,16 @@ class zynthian_gui_admin(zynthian_gui_selector):
 
 	def bluetooth(self):
 			self.zyngui.show_screen("bluetooth")
+
+	def touchkeypad_labels(self):
+		self.zyngui.show_screen("touchkeypad_labels")
+
+	def toggle_touchkeypad(self):
+		if zynthian_gui_config.touch_keypad:
+			zynconf.save_config({'ZYNTHIAN_TOUCH_KEYPAD': ''})
+		else:
+			zynconf.save_config({'ZYNTHIAN_TOUCH_KEYPAD': 'V5'})
+		self.restart_gui()
 
 	# -------------------------------------------------------------------------
 	# Global Transpose editing

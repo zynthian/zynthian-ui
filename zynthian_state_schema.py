@@ -172,5 +172,8 @@ ZynthianState = {
                 "current_screen_index": 8 # Index of last selected controller view page
             }
         }
+    },
+    "touckeypad": { # Optional configuration if UI Touch keypad (onscreen touch buttons)
+        "flabels": ["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8"] # Array of 8 custom string labels for F1-F8 keys
     }
 }

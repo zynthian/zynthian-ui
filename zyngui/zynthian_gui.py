@@ -90,6 +90,7 @@ from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
 from zyngui.zynthian_gui_wifi import zynthian_gui_wifi
 from zyngui.zynthian_gui_bluetooth import zynthian_gui_bluetooth
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
+from zyngui.zynthian_gui_touchkeypad_labels import zynthian_gui_touchkeypad_labels
 
 # TODO This constants should go somewhere else
 MIXER_MAIN_CHANNEL = 17
@@ -155,6 +156,8 @@ class zynthian_gui:
 		self.capture_log_ts0 = None
 		self.capture_log_fname = None
 		self.capture_ffmpeg_proc = None
+
+		self.main_screen_column = 1 if zynthian_gui_config.touch_keypad_side_left else 0
 
 		# Init LEDs
 		self.wsleds = None
@@ -230,7 +233,11 @@ class zynthian_gui:
 	# ---------------------------------------------------------------------------
 
 	def init_wsleds(self):
-		if zynthian_gui_config.check_wiring_layout("Z2"):
+		if zynthian_gui_config.touch_keypad:
+			from zyngui.zynthian_wsleds_v5touch import zynthian_wsleds_v5touch
+			self.wsleds = zynthian_wsleds_v5touch(self)
+			self.wsleds.start()
+		elif zynthian_gui_config.check_wiring_layout("Z2"):
 			from zyngui.zynthian_wsleds_z2 import zynthian_wsleds_z2
 			self.wsleds = zynthian_wsleds_z2(self)
 			self.wsleds.start()
@@ -437,6 +444,7 @@ class zynthian_gui:
 		self.screens['tempo'] = zynthian_gui_tempo()
 		self.screens['admin'] = zynthian_gui_admin()
 		self.screens['audio_mixer'] = zynthian_gui_mixer()
+		self.screens['touchkeypad_labels'] = zynthian_gui_touchkeypad_labels()
 
 		# Create the right main menu screen
 		if zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):

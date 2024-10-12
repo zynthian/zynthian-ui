@@ -66,7 +66,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			bg=zynthian_gui_config.color_panel_bg,
 			bd=0,
 			highlightthickness=0)
-		self.piano_canvas_width = zynthian_gui_config.display_width
+		self.piano_canvas_width = self.width
 
 		self.piano_canvas_height = self.height // 4
 		self.main_frame.rowconfigure(2, weight=1)
@@ -170,7 +170,7 @@ class zynthian_gui_midi_key_range(zynthian_gui_base):
 			j += 1
 			midi_note += 1
 
-			if self.black_keys_pattern[i % 7]:
+			if self.black_keys_pattern[i % 7] and j < len(self.piano_keys):
 				if self.note_low > midi_note or self.note_high < midi_note:
 					bgcolor = "#707070"
 				else:

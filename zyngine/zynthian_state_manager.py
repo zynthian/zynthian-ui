@@ -938,6 +938,14 @@ class zynthian_state_manager:
         b64_data = base64.b64encode(binary_riff_data)
         state['zynseq_riff_b64'] = b64_data.decode('utf-8')
 
+        # TouchKeypad config
+        if zynthian_gui_config.touch_keypad:
+            tk = { 'flabels': [] }
+            for i in range(8):
+                label = zynthian_gui_config.touch_keypad.get_fkey_label(i)
+                tk['flabels'].append(label)
+            state['touchkeypad'] = tk
+
         return state
 
     def save_snapshot(self, fpath, extra_data=None):
@@ -1033,6 +1041,13 @@ class zynthian_state_manager:
                 b64_bytes = state["zynseq_riff_b64"].encode("utf-8")
                 binary_riff_data = base64.decodebytes(b64_bytes)
                 self.zynseq.restore_riff_data(binary_riff_data)
+
+            # TouchKeypad config
+            if zynthian_gui_config.touch_keypad and 'touchkeypad' in state:
+                tk = state['touchkeypad']
+                for i in range(8):
+                    label = tk['flabels'][i]
+                    zynthian_gui_config.touch_keypad.set_fkey_label(i, label)
 
             if fpath == self.last_snapshot_fpath and "last_state_fpath" in state:
                 self.last_snapshot_fpath = state["last_snapshot_fpath"]
