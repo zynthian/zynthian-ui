@@ -1233,8 +1233,8 @@ class zynthian_state_manager:
                     continue
 
                 try:
-                    if zs3_state["mixer"][f"chan_{chain_id:02}"]["mute"]:
-                        self.zynmixer.set_mute(chain_id, 1) # Avoid subsequent config changes from being heard on muted chains
+                    if zs3_state["mixer"][f"chan_{chain.mixer_chan:02}"]["mute"]:
+                        self.zynmixer.set_mute(chain.mixer_chan, 1) # Avoid subsequent config changes from being heard on muted chains
                         mute_pause = True
                 except:
                     pass
