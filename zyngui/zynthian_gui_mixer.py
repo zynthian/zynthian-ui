@@ -984,7 +984,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 			self.refresh_visible_strips()
 		elif type == "S":
 			if self.zynmixer.midi_learn_zctrl:
-				self.zynmixer.midi_learn_zctrl_menu(self.zynmixer.midi_learn_zctrl)
+				self.midi_learn_menu()
 			else:
 				self.zyngui.chain_control()
 		elif type == "B":
