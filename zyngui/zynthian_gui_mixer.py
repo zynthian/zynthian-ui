@@ -485,9 +485,9 @@ class zynthian_gui_mixer_strip():
 			value = self.zctrls["level"].value
 			if value > 0:
 				level_db = 20 * log10(value)
-				self.parent.set_title(f"Volume: {level_db:.2f}dB", None, None, 1)
+				self.parent.set_title(f"Volume: {level_db:.2f}dB ({self.chain.get_description(1)})", None, None, 1)
 			else:
-				self.parent.set_title("Volume: -∞dB", None, None, 1)
+				self.parent.set_title("Volume: -∞dB ({self.chain.get_description(1)})", None, None, 1)
 
 	# Function to get volume value
 	def get_volume(self):
@@ -514,7 +514,7 @@ class zynthian_gui_mixer_strip():
 			self.parent.enter_midi_learn(self.zctrls["balance"])
 		elif self.zctrls:
 			self.zctrls["balance"].set_value(value)
-			self.parent.set_title(f"Balance: {int(value * 100)}%", None, None, 1)
+			self.parent.set_title(f"Balance: {int(value * 100)}% ({self.chain.get_description(1)})", None, None, 1)
 
 	# Function to get balance value
 	def get_balance(self):
