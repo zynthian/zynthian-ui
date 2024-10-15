@@ -54,13 +54,16 @@ class zynthian_engine_jalv(zynthian_engine):
 
 	# Plugins that required different GUI toolkit to that advertised or cannot run native GUI on Zynthian
 	broken_ui = {
-			#'http://calf.sourceforge.net/plugins/Monosynth': {"RPi4:":True, "RPi3": False, "RPi2": False },
-			#'http://calf.sourceforge.net/plugins/Organ': {"RPi4:":True, "RPi3": False, "RPi2": False },
-			#'http://nickbailey.co.nr/triceratops': {"RPi4:":True, "RPi3": False, "RPi2": False },
-			#'http://code.google.com/p/amsynth/amsynth': {"RPi4:":True, "RPi3": False, "RPi2": False },
-			'http://gareus.org/oss/lv2/tuna#one': {"RPi5": False, "RPi4": False, "RPi3": False, "RPi2": False},  # Disable because CPU usage and widget implemented in main UI
-			'http://gareus.org/oss/lv2/tuna#mod': {"RPi5": False, "RPi4": False, "RPi3": False, "RPi2": False},  # Disable because CPU usage and widget implemented in main UI
-			#"http://tytel.org/helm": {"RPi5": False, "RPi4": False, "RPi3": True, "RPi2": False}  # Better CPU with gtk but only qt4 works on RPi4
+		#'http://calf.sourceforge.net/plugins/Monosynth': {"RPi4:":True, "RPi3": False, "RPi2": False },
+		#'http://calf.sourceforge.net/plugins/Organ': {"RPi4:":True, "RPi3": False, "RPi2": False },
+		#'http://nickbailey.co.nr/triceratops': {"RPi4:":True, "RPi3": False, "RPi2": False },
+		#'http://code.google.com/p/amsynth/amsynth': {"RPi4:":True, "RPi3": False, "RPi2": False },
+		'http://gareus.org/oss/lv2/tuna#one': {"RPi5": False, "RPi4": False, "RPi3": False, "RPi2": False},  # Disable because CPU usage and widget implemented in main UI
+		'http://gareus.org/oss/lv2/tuna#mod': {"RPi5": False, "RPi4": False, "RPi3": False, "RPi2": False},  # Disable because CPU usage and widget implemented in main UI
+		#"http://tytel.org/helm": {"RPi5": False, "RPi4": False, "RPi3": True, "RPi2": False},				 # Better CPU with gtk but only qt4 works on RPi4
+		'https://git.code.sf.net/p/qmidiarp/arp': {"RPi5": "X11UI", "RPi4": "X11UI", "RPi3": "X11UI", "RPi2": "X11UI"},
+		'https://git.code.sf.net/p/qmidiarp/lfo': {"RPi5": "X11UI", "RPi4": "X11UI", "RPi3": "X11UI", "RPi2": "X11UI"},
+		'https://git.code.sf.net/p/qmidiarp/seq': {"RPi5": "X11UI", "RPi4": "X11UI", "RPi3": "X11UI", "RPi2": "X11UI"}
 	}
 
 	plugins_custom_gui = {
@@ -180,7 +183,8 @@ class zynthian_engine_jalv(zynthian_engine):
 				if self.native_gui == "Qt5UI":
 					jalv_bin = "jalv.qt5"
 				elif self.native_gui == "Qt4UI":
-					jalv_bin = "jalv.qt4"
+					#jalv_bin = "jalv.qt4"
+					jalv_bin = "jalv.gtk"
 				else:  #  elif self.native_gui=="X11UI":
 					jalv_bin = "jalv.gtk"
 				self.command = ("{} --jack-name {} {}".format(jalv_bin, self.jackname, self.plugin_url))
