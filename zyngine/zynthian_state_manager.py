@@ -220,6 +220,7 @@ class zynthian_state_manager:
         self.default_vncserver()
 
         zynautoconnect.start(self)
+        self.jack_period = self.get_jackd_blocksize() / self.get_jackd_samplerate()
         self.zynmixer.reset_state()
         self.ctrldev_manager = zynthian_ctrldev_manager(self)
         self.reload_midi_config()
@@ -1211,6 +1212,7 @@ class zynthian_state_manager:
 
         restored_chains = []
         restored_cc_mapping = []
+        mute_pause = False
         if "chains" in zs3_state:
             self.set_busy_details("restoring chains state")
             for chain_id, chain_state in zs3_state["chains"].items():
@@ -1229,6 +1231,14 @@ class zynthian_state_manager:
                     restored_chains.append(chain_id)
                 else:
                     continue
+
+                try:
+                    if zs3_state["mixer"][f"chan_{chain.mixer_chan:02}"]["mute"]:
+                        self.zynmixer.set_mute(chain.mixer_chan, 1) # Avoid subsequent config changes from being heard on muted chains
+                        mute_pause = True
+                except:
+                    pass
+
 
                 if "midi_chan" in chain_state:
                     if chain.midi_chan is not None and chain.midi_chan != chain_state['midi_chan']:
@@ -1275,6 +1285,8 @@ class zynthian_state_manager:
                         for proc_id, symbol in cfg:
                             if proc_id in self.chain_manager.processors:
                                 restored_cc_mapping.append((proc_id, int(cc), symbol))
+        if mute_pause:
+            sleep(self.jack_period) # Wait for soft mutes to apply before changing settings
 
         if "processors" in zs3_state:
             for proc_id, proc_state in zs3_state["processors"].items():
