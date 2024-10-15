@@ -76,7 +76,6 @@ class zynthian_widget_adsr(zynthian_widget_base.zynthian_widget_base):
 		zctrls = self.zyngui_control.zcontrollers
 		adsr_values = [zctrls[0].value/zctrls[0].value_range, zctrls[1].value/zctrls[1].value_range,
 					zctrls[2].value/zctrls[2].value_range, zctrls[3].value/zctrls[3].value_range]
-		# TODO => Normalize (0.0 to 1.0) ADSR values if needed
 		if adsr_values != self.last_adsr_values or self.drag_zctrl:
 			dx = self.width // 4
 			dy = int(0.95 * self.height)
