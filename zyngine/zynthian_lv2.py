@@ -706,6 +706,10 @@ def get_plugin_ports(plugin_url):
 			is_integer = port.has_property(world.ns.lv2.integer)
 			is_enumeration = port.has_property(world.ns.lv2.enumeration)
 			is_logarithmic = port.has_property(world.ns.portprops.logarithmic)
+			envelope = None
+			for env_type in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
+				if str(port.get("http://lv2plug.in/ns/lv2core#designation")) == f"http://lv2plug.in/ns/ext/parameters#{env_type}":
+					envelope = env_type
 			not_on_gui = port.has_property(world.ns.portprops.notOnGUI)
 			display_priority = port.get(world.ns.lv2.displayPriority)
 			if display_priority is None:
@@ -785,6 +789,7 @@ def get_plugin_ports(plugin_url):
 				'is_integer': is_integer,
 				'is_enumeration': is_enumeration,
 				'is_logarithmic': is_logarithmic,
+				'envelope': envelope,
 				'not_on_gui': not_on_gui,
 				'display_priority': display_priority,
 				'scale_points': sp

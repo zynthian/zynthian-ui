@@ -54,8 +54,8 @@ class zynthian_controller:
 		self.symbol = symbol
 		self.processor = None
 		self.name = self.short_name = symbol
-		self.group_symbol = None
-		self.group_name = None
+		self.group_symbol = "ctrls"
+		self.group_name = "Ctrls"
 		self.readonly = False
 
 		self.value = 0 # Absolute value of the control
@@ -105,7 +105,7 @@ class zynthian_controller:
 			self.short_name = options['short_name']
 		if 'group_name' in options:
 			self.group_name = options['group_name']
-		if 'group_symbol' in options:
+		if 'group_symbol' in options and options['group_symbol'] is not None:
 			self.group_symbol = options['group_symbol']
 		if 'value' in options:
 			self.value = options['value']
@@ -163,6 +163,8 @@ class zynthian_controller:
 			self.not_on_gui = options['not_on_gui']
 		if 'display_priority' in options:
 			self.display_priority = options['display_priority']
+		if 'envelope' in options and options['envelope'] is not None:
+			self.envelope = options['envelope']
 		self._configure()
 
 	def _configure(self):

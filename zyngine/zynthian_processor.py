@@ -625,6 +625,13 @@ class zynthian_processor:
                 zctrl.send_midi_feedback()
                 #logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_feedback[0], zctrl.midi_feedback[1], int(zctrl.value), k))
 
+    def get_group_zctrls(self, group):
+        zctrls = []
+        for zctrl in self.controllers_dict.values():
+            if zctrl.group_symbol == group:
+                zctrls.append(zctrl)
+        return zctrls
+
     # ----------------------------------------------------------------------------
     # MIDI processing
     # ----------------------------------------------------------------------------

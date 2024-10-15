@@ -485,9 +485,9 @@ class zynthian_gui_mixer_strip():
 			value = self.zctrls["level"].value
 			if value > 0:
 				level_db = 20 * log10(value)
-				self.parent.set_title(f"Volume: {level_db:.2f}dB", None, None, 1)
+				self.parent.set_title(f"Volume: {level_db:.2f}dB ({self.chain.get_description(1)})", None, None, 1)
 			else:
-				self.parent.set_title("Volume: -∞dB", None, None, 1)
+				self.parent.set_title("Volume: -∞dB ({self.chain.get_description(1)})", None, None, 1)
 
 	# Function to get volume value
 	def get_volume(self):
@@ -514,7 +514,7 @@ class zynthian_gui_mixer_strip():
 			self.parent.enter_midi_learn(self.zctrls["balance"])
 		elif self.zctrls:
 			self.zctrls["balance"].set_value(value)
-			self.parent.set_title(f"Balance: {int(value * 100)}%", None, None, 1)
+			self.parent.set_title(f"Balance: {int(value * 100)}% ({self.chain.get_description(1)})", None, None, 1)
 
 	# Function to get balance value
 	def get_balance(self):
@@ -683,9 +683,8 @@ class zynthian_gui_mixer_strip():
 			else:
 				zynthian_gui_config.zyngui.chain_control(self.chain_id)
 		self.dragging = False
-		self.parent.moving_chain = False
-		self.strip_drag_start = None
-		self.parent.refresh_visible_strips()
+		self.parent.end_moving_chain()
+
 
 	# Function to handle legend strip drag
 	def on_strip_motion(self, event):
@@ -980,11 +979,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
 	def switch_select(self, type='S'):
 		if self.moving_chain:
-			self.moving_chain = False
-			self.refresh_visible_strips()
+			self.end_moving_chain()
 		elif type == "S":
 			if self.zynmixer.midi_learn_zctrl:
-				self.zynmixer.midi_learn_zctrl_menu(self.zynmixer.midi_learn_zctrl)
+				self.midi_learn_menu()
 			else:
 				self.zyngui.chain_control()
 		elif type == "B":
@@ -1003,8 +1001,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	# Function to handle BACK action
 	def back_action(self):
 		if self.moving_chain:
-			self.moving_chain = False
-			self.refresh_visible_strips()
+			self.end_moving_chain()
 			return True
 		elif self.zynmixer.midi_learn_zctrl:
 			self.exit_midi_learn()
@@ -1106,6 +1103,20 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 	def arrow_down(self):
 		if self.highlighted_strip is not None:
 			self.highlighted_strip.nudge_volume(-1)
+
+
+	def backbutton_short_touch_action(self):
+		if not self.back_action():
+			self.zyngui.back_screen()
+
+
+	def end_moving_chain(self):
+		if zynthian_gui_config.enable_touch_navigation:
+			self.show_back_button(False)
+		self.moving_chain = False
+		self.strip_drag_start = None
+		self.refresh_visible_strips()
+
 
 	# --------------------------------------------------------------------------
 	# GUI Event Management

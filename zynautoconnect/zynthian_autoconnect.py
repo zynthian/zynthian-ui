@@ -1176,7 +1176,6 @@ def start(sm):
 	thread.daemon = True  # thread dies with the program
 	thread.name = "Autoconnect"
 	thread.start()
-	
 
 def stop():
 	"""Reset state and stop autoconnect thread"""
