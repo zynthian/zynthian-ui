@@ -1202,6 +1202,136 @@ inline void reset_env(AUDIO_PLAYER * pPlayer) {
 // Handle JACK process callback
 int on_jack_process(jack_nframes_t nFrames, void * arg) {
     getMutex();
+
+    // Process MIDI input
+    void* pMidiBuffer = jack_port_get_buffer(g_jack_midi_in, nFrames);
+    jack_midi_event_t midiEvent;
+    jack_nframes_t nCount = jack_midi_get_event_count(pMidiBuffer);
+    for(jack_nframes_t i = 0; i < nCount; i++)
+    {
+        jack_midi_event_get(&midiEvent, pMidiBuffer, i);
+        uint8_t chan = midiEvent.buffer[0] & 0x0F;
+        for(auto it = g_vPlayers.begin(); it != g_vPlayers.end(); ++it) {
+            AUDIO_PLAYER * pPlayer = *it;
+            if(!pPlayer->file_open || pPlayer->midi_chan != chan)
+                continue;
+            uint32_t cue_point_play = pPlayer->cue_points.size();
+            uint8_t cmd = midiEvent.buffer[0] & 0xF0;
+            if(cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) {
+                // Note off
+                pPlayer->held_notes[midiEvent.buffer[1]] = 0;
+                if(pPlayer->last_note_played == midiEvent.buffer[1]) {
+                    if(pPlayer->loop == 3)
+                        continue; //!@todo This is bluntly ignoring note-off but maybe we want to include envelope
+                    pPlayer->held_note = pPlayer->sustain;
+                    for (uint8_t i = 0; i < 128; ++i) {
+                        if(pPlayer->held_notes[i]) {
+                            // Handle note-off when other key still pressed
+                            pPlayer->last_note_played = i;
+                            pPlayer->stretcher->reset();
+                            if(cue_point_play) {
+                                //!@todo Handle cue play reverse
+                                uint8_t cue = pPlayer->last_note_played - pPlayer->base_note;
+                                if (cue < cue_point_play) {
+                                    pPlayer->play_pos_frames = pPlayer->cue_points[cue].offset;
+                                    pPlayer->play_state = STARTING;
+                                    pPlayer->file_read_status = SEEKING;
+                                }
+                            } else {
+                                 // legato
+                                pPlayer->pitchshift = pow(2.0, (pPlayer->last_note_played - pPlayer->base_note + pPlayer->pitch_bend) / 12);
+                                pPlayer->time_ratio_dirty = true;
+                            }
+                            pPlayer->held_note = 1;
+                            break;
+                        }
+                    }
+                    if(pPlayer->held_note)
+                        continue;
+                    if(pPlayer->loop < 2 && pPlayer->sustain == 0) {
+                        stop_playback(pPlayer);
+                    }
+                }
+            } else if(cmd == 0x90) {
+                // Note on
+                if(cue_point_play) {
+                    //!@todo Handle cue play reverse
+                    uint8_t cue = midiEvent.buffer[1] - pPlayer->base_note;
+                    if (cue < cue_point_play) {
+                        pPlayer->play_pos_frames = pPlayer->cue_points[cue].offset;
+                        pPlayer->play_state = STARTING;
+                    }
+                } else if(pPlayer->play_state == STOPPED || pPlayer->play_state == STOPPING || pPlayer->last_note_played == midiEvent.buffer[1]) {
+                    if(pPlayer->varispeed < 0.0)
+                        pPlayer->play_pos_frames = pPlayer->crop_end_src;
+                    else
+                        pPlayer->play_pos_frames = pPlayer->crop_start_src;
+                    pPlayer->play_state = STARTING;
+                }
+                pPlayer->last_note_played = midiEvent.buffer[1];
+                if(pPlayer->loop == 3) {
+                    if(pPlayer->held_note) {
+                        pPlayer->held_notes[pPlayer->last_note_played] = 0;
+                        pPlayer->held_note = 0;
+                        stop_playback(pPlayer);
+                        DPRINTF("TOGGLE OFF\n");
+                    } else {
+                        pPlayer->held_notes[pPlayer->last_note_played] = 1;
+                        pPlayer->held_note = 1;
+                        DPRINTF("TOGGLE ON\n");
+                    }
+                    continue;
+                }
+                else {
+                    pPlayer->held_notes[pPlayer->last_note_played] = 1;
+                    pPlayer->held_note = 1;
+                }
+                pPlayer->stretcher->reset();
+                pPlayer->varispeed = pPlayer->play_varispeed;
+                if(!cue_point_play){
+                    pPlayer->pitchshift = pow(2.0, (pPlayer->last_note_played - pPlayer->base_note + pPlayer->pitch_bend) / 12);
+                    pPlayer->time_ratio_dirty = true;
+                }
+                pPlayer->file_read_status = SEEKING;
+                jack_ringbuffer_reset(pPlayer->ringbuffer_a);
+                jack_ringbuffer_reset(pPlayer->ringbuffer_b);
+            } else if(cmd == 0xE0) {
+                // Pitchbend
+                pPlayer->pitch_bend =  pPlayer->pitch_bend_range * ((midiEvent.buffer[1] + 128 * midiEvent.buffer[2]) / 8192.0 - 1.0);
+                if(pPlayer->play_state != STOPPED) {
+                    //!@todo Pitchbend is ignored if not playing!
+                    pPlayer->pitchshift = pow(2.0, (pPlayer->last_note_played - pPlayer->base_note + pPlayer->pitch_bend) / 12);
+                    pPlayer->time_ratio_dirty = true;
+                }
+            } else if(cmd == 0xB0) {
+                if(midiEvent.buffer[1] == 64) {
+                    // Sustain pedal
+                    pPlayer->sustain = midiEvent.buffer[2];
+                    if(!pPlayer->sustain) {
+                        pPlayer->held_note = 0;
+                        for(uint8_t i = 0; i < 128; ++i) {
+                            if(pPlayer->held_notes[i]) {
+                                pPlayer->held_note = 1;
+                                break;
+                            }
+                        }
+                        if(!pPlayer->held_note) {
+                            stop_playback(pPlayer);
+                        }
+                    }
+                } else if (midiEvent.buffer[1] == 120 || midiEvent.buffer[1] == 123) {
+                    // All off
+                    for(uint8_t i = 0; i < 128; ++i)
+                        pPlayer->held_notes[i] = 0;
+                    pPlayer->held_note = 0;
+                    stop_playback(pPlayer);
+                    pPlayer->pitchshift = 1.0;
+                    pPlayer->time_ratio_dirty = true;
+                }
+            }
+        }
+     }
+
     for(auto it = g_vPlayers.begin(); it != g_vPlayers.end(); ++it) {
         AUDIO_PLAYER * pPlayer = *it;
         if(pPlayer->file_open != FILE_OPEN)
@@ -1348,161 +1478,6 @@ int on_jack_process(jack_nframes_t nFrames, void * arg) {
                 process_env(pPlayer);
     }
 
-    // Process MIDI input
-    void* pMidiBuffer = jack_port_get_buffer(g_jack_midi_in, nFrames);
-    jack_midi_event_t midiEvent;
-    jack_nframes_t nCount = jack_midi_get_event_count(pMidiBuffer);
-    for(jack_nframes_t i = 0; i < nCount; i++)
-    {
-        jack_midi_event_get(&midiEvent, pMidiBuffer, i);
-        uint8_t chan = midiEvent.buffer[0] & 0x0F;
-        for(auto it = g_vPlayers.begin(); it != g_vPlayers.end(); ++it) {
-            AUDIO_PLAYER * pPlayer = *it;
-            if(!pPlayer->file_open || pPlayer->midi_chan != chan)
-                continue;
-            uint32_t cue_point_play = pPlayer->cue_points.size();
-            uint8_t cmd = midiEvent.buffer[0] & 0xF0;
-            if(cmd == 0x80 || cmd == 0x90 && midiEvent.buffer[2] == 0) {
-                // Note off
-                pPlayer->held_notes[midiEvent.buffer[1]] = 0;
-                if(pPlayer->last_note_played == midiEvent.buffer[1]) {
-                    if(pPlayer->loop == 3)
-                        continue; //!@todo This is bluntly ignoring note-off but maybe we want to include envelope
-                    pPlayer->held_note = pPlayer->sustain;
-                    for (uint8_t i = 0; i < 128; ++i) {
-                        if(pPlayer->held_notes[i]) {
-                            pPlayer->last_note_played = i;
-                            pPlayer->stretcher->reset();
-                            if(cue_point_play) {
-                                //!@todo Handle cue play reverse
-                                uint8_t cue = pPlayer->last_note_played - pPlayer->base_note;
-                                if (cue < cue_point_play) {
-                                    pPlayer->play_pos_frames = pPlayer->cue_points[cue].offset;
-                                    pPlayer->play_state = STARTING;
-                                    pPlayer->file_read_status = SEEKING;
-                                }
-                            } else {
-                                 // legato
-                                pPlayer->pitchshift = pow(2.0, (pPlayer->last_note_played - pPlayer->base_note + pPlayer->pitch_bend) / 12);
-                                pPlayer->time_ratio_dirty = true;
-                            }
-                            pPlayer->held_note = 1;
-                            break;
-                        }
-                    }
-                    if(pPlayer->held_note)
-                        continue;
-                    if(pPlayer->loop < 2 && pPlayer->sustain == 0) {
-                        stop_playback(pPlayer);
-                    }
-                }
-            } else if(cmd == 0x90) {
-                // Note on
-                if(cue_point_play) {
-                    //!@todo Handle cue play reverse
-                    uint8_t cue = midiEvent.buffer[1] - pPlayer->base_note;
-                    if (cue < pPlayer->cue_points.size()) {
-                        pPlayer->play_pos_frames = pPlayer->cue_points[cue].offset;
-                        pPlayer->play_state = STARTING;
-                    }
-                } else if(pPlayer->play_state == STOPPED || pPlayer->play_state == STOPPING || pPlayer->last_note_played == midiEvent.buffer[1]) {
-                    if(pPlayer->varispeed < 0.0)
-                        pPlayer->play_pos_frames = pPlayer->crop_end_src;
-                    else
-                        pPlayer->play_pos_frames = pPlayer->crop_start_src;
-                    pPlayer->play_state = STARTING;
-                }
-                pPlayer->last_note_played = midiEvent.buffer[1];
-                if(pPlayer->loop == 3) {
-                    if(pPlayer->held_note) {
-                        pPlayer->held_notes[pPlayer->last_note_played] = 0;
-                        pPlayer->held_note = 0;
-                        stop_playback(pPlayer);
-                        DPRINTF("TOGGLE OFF\n");
-                    } else {
-                        pPlayer->held_notes[pPlayer->last_note_played] = 1;
-                        pPlayer->held_note = 1;
-                        DPRINTF("TOGGLE ON\n");
-                    }
-                    continue;
-                }
-                else {
-                    pPlayer->held_notes[pPlayer->last_note_played] = 1;
-                    pPlayer->held_note = 1;
-                }
-                pPlayer->stretcher->reset();
-                pPlayer->varispeed = pPlayer->play_varispeed;
-                if(!cue_point_play){
-                    pPlayer->pitchshift = pow(2.0, (pPlayer->last_note_played - pPlayer->base_note + pPlayer->pitch_bend) / 12);
-                    pPlayer->time_ratio_dirty = true;
-                }
-                pPlayer->file_read_status = SEEKING;
-                jack_ringbuffer_reset(pPlayer->ringbuffer_a);
-                jack_ringbuffer_reset(pPlayer->ringbuffer_b);
-            } else if(cmd == 0xE0) {
-                // Pitchbend
-                pPlayer->pitch_bend =  pPlayer->pitch_bend_range * ((midiEvent.buffer[1] + 128 * midiEvent.buffer[2]) / 8192.0 - 1.0);
-                if(pPlayer->play_state != STOPPED) {
-                    pPlayer->pitchshift = pow(2.0, (pPlayer->last_note_played - pPlayer->base_note + pPlayer->pitch_bend) / 12);
-                    pPlayer->time_ratio_dirty = true;
-                }
-            } else if(cmd == 0xB0) {
-                if(midiEvent.buffer[1] == 64) {
-                    // Sustain pedal
-                    pPlayer->sustain = midiEvent.buffer[2];
-                    if(!pPlayer->sustain) {
-                        pPlayer->held_note = 0;
-                        for(uint8_t i = 0; i < 128; ++i) {
-                            if(pPlayer->held_notes[i]) {
-                                pPlayer->held_note = 1;
-                                break;
-                            }
-                        }
-                        if(!pPlayer->held_note) {
-                            stop_playback(pPlayer);
-                        }
-                    }
-                } else if (midiEvent.buffer[1] == 120 || midiEvent.buffer[1] == 123) {
-                    // All off
-                    for(uint8_t i = 0; i < 128; ++i)
-                        pPlayer->held_notes[i] = 0;
-                    pPlayer->held_note = 0;
-                    stop_playback(pPlayer);
-                    pPlayer->pitchshift = 1.0;
-                    pPlayer->time_ratio_dirty = true;
-                }
-            }
-            #ifdef ENABLE_MIDI
-            else if(cmd == 0xB0) {
-                // CC
-                switch(midiEvent.buffer[1])
-                {
-                    case 1:
-                        set_position(pPlayer, midiEvent.buffer[2] * get_duration(pPlayer) / 127);
-                        break;
-                    case 2:
-                        set_loop_start(pPlayer, midiEvent.buffer[2] * get_duration(pPlayer) / 127);
-                        break;
-                    case 3:
-                        set_loop_end(pPlayer, midiEvent.buffer[2] * get_duration(pPlayer) / 127);
-                        break;
-                    case 7:
-                        pPlayer->gain = (float)midiEvent.buffer[2] / 100.0;
-                        break;
-                    case 68:
-                        if(midiEvent.buffer[2] > 63)
-                            start_playback(pPlayer);
-                        else
-                            stop_playback(pPlayer);
-                        break;
-                    case 69:
-                        enable_loop(pPlayer, midiEvent.buffer[2] > 63);
-                        break;
-                }
-            }
-            #endif //ENABLE_MIDI
-        }
-     }
     releaseMutex();
     return 0;
 }
