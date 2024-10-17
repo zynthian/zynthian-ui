@@ -4,13 +4,9 @@
 
 /** SequenceManager class methods implementation **/
 
-SequenceManager::SequenceManager()
-{
-    init();
-}
+SequenceManager::SequenceManager() { init(); }
 
-void SequenceManager::init()
-{
+void SequenceManager::init() {
     stop();
     m_mTriggers.clear();
     m_mPatterns.clear();
@@ -19,43 +15,37 @@ void SequenceManager::init()
 
 void SequenceManager::resetBanks() {
     for (auto itBank = m_mBanks.begin(); itBank != m_mBanks.end(); ++itBank)
-        for(auto itSeq = itBank->second.begin(); itSeq != itBank->second.end(); ++itSeq)
+        for (auto itSeq = itBank->second.begin(); itSeq != itBank->second.end(); ++itSeq)
             delete (*itSeq);
     m_mBanks.clear();
 }
 
-int SequenceManager::fileWrite32(uint32_t value, FILE *pFile)
-{
-    for(int i = 3; i >=0; --i)
+int SequenceManager::fileWrite32(uint32_t value, FILE* pFile) {
+    for (int i = 3; i >= 0; --i)
         fileWrite8((value >> i * 8), pFile);
     return 4;
 }
 
-int SequenceManager::fileWrite16(uint16_t value, FILE *pFile)
-{
-    for(int i = 1; i >=0; --i)
+int SequenceManager::fileWrite16(uint16_t value, FILE* pFile) {
+    for (int i = 1; i >= 0; --i)
         fileWrite8((value >> i * 8), pFile);
     return 2;
 }
 
-int SequenceManager::fileWrite8(uint8_t value, FILE *pFile)
-{
+int SequenceManager::fileWrite8(uint8_t value, FILE* pFile) {
     int nResult = fwrite(&value, 1, 1, pFile);
     return 1;
 }
 
-uint8_t SequenceManager::fileRead8(FILE* pFile)
-{
+uint8_t SequenceManager::fileRead8(FILE* pFile) {
     uint8_t nResult = 0;
     fread(&nResult, 1, 1, pFile);
     return nResult;
 }
 
-uint16_t SequenceManager::fileRead16(FILE* pFile)
-{
+uint16_t SequenceManager::fileRead16(FILE* pFile) {
     uint16_t nResult = 0;
-    for(int i = 1; i >=0; --i)
-    {
+    for (int i = 1; i >= 0; --i) {
         uint8_t nValue;
         fread(&nValue, 1, 1, pFile);
         nResult |= nValue << (i * 8);
@@ -63,11 +53,9 @@ uint16_t SequenceManager::fileRead16(FILE* pFile)
     return nResult;
 }
 
-uint32_t SequenceManager::fileRead32(FILE* pFile)
-{
+uint32_t SequenceManager::fileRead32(FILE* pFile) {
     uint32_t nResult = 0;
-    for(int i = 3; i >=0; --i)
-    {
+    for (int i = 3; i >= 0; --i) {
         uint8_t nValue;
         fread(&nValue, 1, 1, pFile);
         nResult |= nValue << (i * 8);
@@ -75,45 +63,38 @@ uint32_t SequenceManager::fileRead32(FILE* pFile)
     return nResult;
 }
 
-bool SequenceManager::checkBlock(FILE* pFile, uint32_t nActualSize,  uint32_t nExpectedSize)
-{
-    if(nActualSize < nExpectedSize)
-    {
-        for(size_t i = 0; i < nActualSize; ++i)
+bool SequenceManager::checkBlock(FILE* pFile, uint32_t nActualSize, uint32_t nExpectedSize) {
+    if (nActualSize < nExpectedSize) {
+        for (size_t i = 0; i < nActualSize; ++i)
             fileRead8(pFile);
         return true;
     }
     return false;
 }
 
-Pattern* SequenceManager::getPattern(uint32_t index)
-{
+Pattern* SequenceManager::getPattern(uint32_t index) {
     m_mPatterns[index]; // Ensure pattern exists and won't move in memory before accessing by pointer
     return &(m_mPatterns[index]);
 }
 
-uint32_t SequenceManager::getPatternIndex(Pattern* pattern)
-{
-    for(auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
-        if(&(it->second) == pattern)
+uint32_t SequenceManager::getPatternIndex(Pattern* pattern) {
+    for (auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
+        if (&(it->second) == pattern)
             return it->first;
-    return -1; //NOT_FOUND
+    return -1; // NOT_FOUND
 }
 
-uint32_t SequenceManager::getNextPattern(uint32_t pattern)
-{
+uint32_t SequenceManager::getNextPattern(uint32_t pattern) {
     auto it = m_mPatterns.find(pattern);
-    if(it == m_mPatterns.end() || ++it == m_mPatterns.end())
+    if (it == m_mPatterns.end() || ++it == m_mPatterns.end())
         return -1;
     return it->first;
 }
 
-uint32_t SequenceManager::createPattern()
-{
+uint32_t SequenceManager::createPattern() {
     uint32_t nSize = m_mPatterns.size();
-    for(uint32_t nIndex = 1; nIndex <= nSize; ++nIndex)
-    {
-        if(m_mPatterns.find(nIndex) != m_mPatterns.end())
+    for (uint32_t nIndex = 1; nIndex <= nSize; ++nIndex) {
+        if (m_mPatterns.find(nIndex) != m_mPatterns.end())
             continue;
         m_mPatterns[nIndex]; // Insert a default pattern
         return nIndex;
@@ -122,38 +103,29 @@ uint32_t SequenceManager::createPattern()
     return nSize;
 }
 
-void SequenceManager::deletePattern(uint32_t index)
-{
-    m_mPatterns.erase(index);
-}
+void SequenceManager::deletePattern(uint32_t index) { m_mPatterns.erase(index); }
 
-void SequenceManager::replacePattern(uint32_t index, Pattern* pattern)
-{
-    m_mPatterns[index] = *pattern;
-}
+void SequenceManager::replacePattern(uint32_t index, Pattern* pattern) { m_mPatterns[index] = *pattern; }
 
-void SequenceManager::copyPattern(uint32_t source, uint32_t destination)
-{
-    if(source == destination)
+void SequenceManager::copyPattern(uint32_t source, uint32_t destination) {
+    if (source == destination)
         return;
     m_mPatterns[destination] = m_mPatterns[source];
 }
 
-Sequence* SequenceManager::getSequence(uint8_t bank, uint8_t sequence)
-{
+Sequence* SequenceManager::getSequence(uint8_t bank, uint8_t sequence) {
     // Add missing sequences
-    while(m_mBanks[bank].size() <= sequence) {
+    while (m_mBanks[bank].size() <= sequence) {
         m_mBanks[bank].push_back(new Sequence());
         addPattern(bank, m_mBanks[bank].size() - 1, 0, 0, createPattern(), false);
     }
     return m_mBanks[bank][sequence];
 }
 
-bool SequenceManager::addPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position, uint32_t pattern, bool force)
-{
+bool SequenceManager::addPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position, uint32_t pattern, bool force) {
     Sequence* pSequence = getSequence(bank, sequence);
-    Track* pTrack = pSequence->getTrack(track);
-    if(!pTrack)
+    Track* pTrack       = pSequence->getTrack(track);
+    if (!pTrack)
         return false;
     m_mPatterns[pattern]; // Ensure pattern exists and won't move in memory before accessing by pointer
     bool bUpdated = pTrack->addPattern(position, &(m_mPatterns[pattern]), force);
@@ -161,57 +133,47 @@ bool SequenceManager::addPattern(uint8_t bank, uint8_t sequence, uint32_t track,
     return bUpdated;
 }
 
-void SequenceManager::removePattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position)
-{
+void SequenceManager::removePattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position) {
     Sequence* pSequence = getSequence(bank, sequence);
-    Track* pTrack = pSequence->getTrack(track);
-    if(!pTrack)
+    Track* pTrack       = pSequence->getTrack(track);
+    if (!pTrack)
         return;
     pTrack->removePattern(position);
     updateSequenceLength(bank, sequence);
 }
 
-void SequenceManager::updateSequenceLength(uint8_t bank, uint8_t sequence)
-{
-    getSequence(bank, sequence)->updateLength();
-}
+void SequenceManager::updateSequenceLength(uint8_t bank, uint8_t sequence) { getSequence(bank, sequence)->updateLength(); }
 
-void SequenceManager::updateAllSequenceLengths()
-{
-    for(auto itBank = m_mBanks.begin(); itBank != m_mBanks.end(); ++itBank)
-        for(auto itSeq = itBank->second.begin(); itSeq != itBank->second.end(); ++itSeq)
+void SequenceManager::updateAllSequenceLengths() {
+    for (auto itBank = m_mBanks.begin(); itBank != m_mBanks.end(); ++itBank)
+        for (auto itSeq = itBank->second.begin(); itSeq != itBank->second.end(); ++itSeq)
             (*itSeq)->updateLength();
 }
 
-size_t SequenceManager::clock(std::pair<double,double> timeinfo, std::multimap<uint32_t,MIDI_MESSAGE*>* pSchedule, bool bSync)
-{
+size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<uint32_t, MIDI_MESSAGE*>* pSchedule, bool bSync) {
     /** Get events scheduled for next step from all tracks in each playing sequence.
         Populate schedule with start, end and interpolated events
     */
-   uint32_t nTime = timeinfo.first;
-   double dSamplesPerClock = timeinfo.second;
-    for(auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end(); )
-    {
+    uint32_t nTime          = timeinfo.first;
+    double dSamplesPerClock = timeinfo.second;
+    for (auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end();) {
         Sequence* pSequence = getSequence(it->first, it->second);
-        if(pSequence->getPlayState() == STOPPED)
-        {
+        if (pSequence->getPlayState() == STOPPED) {
             it = m_vPlayingSequences.erase(it);
             continue;
         }
         uint8_t nEventType = pSequence->clock(nTime, bSync, dSamplesPerClock);
-        if(nEventType & 1)
-        {
+        if (nEventType & 1) {
             // A step event
-            while(SEQ_EVENT* pEvent = pSequence->getEvent())
-            {
-                uint32_t nEventTime = pEvent->time;
+            while (SEQ_EVENT* pEvent = pSequence->getEvent()) {
+                uint32_t nEventTime     = pEvent->time;
                 MIDI_MESSAGE* pNewEvent = new MIDI_MESSAGE(pEvent->msg);
-                pSchedule->insert(std::pair<uint32_t,MIDI_MESSAGE*>(nEventTime, pNewEvent));
-                //fprintf(stderr, "Clock time: %u Scheduling event 0x%x 0x%x 0x%x with time %u at %u framesPerClock: %f\n", nTime, pEvent->msg.command, pEvent->msg.value1, pEvent->msg.value2, pEvent->time, nEventTime, dSamplesPerClock);
+                pSchedule->insert(std::pair<uint32_t, MIDI_MESSAGE*>(nEventTime, pNewEvent));
+                // fprintf(stderr, "Clock time: %u Scheduling event 0x%x 0x%x 0x%x with time %u at %u framesPerClock: %f\n", nTime, pEvent->msg.command,
+                // pEvent->msg.value1, pEvent->msg.value2, pEvent->time, nEventTime, dSamplesPerClock);
             }
         }
-        if(nEventType & 2)
-        {
+        if (nEventType & 2) {
             // Change of state
             // uint8_t nTrigger = getTriggerNote(it->first, it->second);
             // It's currently polled from python
@@ -221,127 +183,96 @@ size_t SequenceManager::clock(std::pair<double,double> timeinfo, std::multimap<u
     return m_vPlayingSequences.size();
 }
 
-void SequenceManager::setSequencePlayState(uint8_t bank, uint8_t sequence, uint8_t state)
-{
+void SequenceManager::setSequencePlayState(uint8_t bank, uint8_t sequence, uint8_t state) {
     Sequence* pSequence = getSequence(bank, sequence);
-    if(state == STARTING || state == PLAYING || state == RESTARTING)
-    {
+    if (state == STARTING || state == PLAYING || state == RESTARTING) {
         bool bAddToList = true;
         // Stop other sequences in same group
-        for(auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end(); ++it)
-        {
+        for (auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end(); ++it) {
             Sequence* pPlayingSequence = getSequence(it->first, it->second);
-            if(pPlayingSequence == pSequence)
+            if (pPlayingSequence == pSequence)
                 bAddToList = false;
-            else
-                if(pPlayingSequence->getGroup() == pSequence->getGroup())
-                {
-                    if(pPlayingSequence->getPlayState() == STARTING || pPlayingSequence->getPlayState() == RESTARTING)
-                        pPlayingSequence->setPlayState(STOPPED);
-                    else if(pPlayingSequence->getPlayState() != STOPPED)
-                        pPlayingSequence->setPlayState(STOPPING_SYNC);
-                }
+            else if (pPlayingSequence->getGroup() == pSequence->getGroup()) {
+                if (pPlayingSequence->getPlayState() == STARTING || pPlayingSequence->getPlayState() == RESTARTING)
+                    pPlayingSequence->setPlayState(STOPPED);
+                else if (pPlayingSequence->getPlayState() != STOPPED)
+                    pPlayingSequence->setPlayState(STOPPING_SYNC);
+            }
         }
-        if(bAddToList)
-            m_vPlayingSequences.push_back(std::pair<uint32_t,uint32_t>(bank,sequence));
+        if (bAddToList)
+            m_vPlayingSequences.push_back(std::pair<uint32_t, uint32_t>(bank, sequence));
     }
     pSequence->setPlayState(state);
 }
 
-uint8_t SequenceManager::getTriggerNote(uint8_t bank, uint8_t sequence)
-{
+uint8_t SequenceManager::getTriggerNote(uint8_t bank, uint8_t sequence) {
     uint16_t nValue = (bank << 8) | sequence;
-    for(auto it = m_mTriggers.begin(); it != m_mTriggers.end(); ++it)
-        if(it->second == nValue)
+    for (auto it = m_mTriggers.begin(); it != m_mTriggers.end(); ++it)
+        if (it->second == nValue)
             return it->first;
     return 0xFF;
 }
 
-void SequenceManager::setTriggerNote(uint8_t bank, uint8_t sequence, uint8_t note)
-{
+void SequenceManager::setTriggerNote(uint8_t bank, uint8_t sequence, uint8_t note) {
     m_mTriggers.erase(getTriggerNote(bank, sequence));
-    if(note < 128)
+    if (note < 128)
         m_mTriggers[note] = (bank << 8) | sequence;
 }
 
-uint8_t SequenceManager::getTriggerChannel()
-{
-    return m_nTriggerChannel;
-}
+uint8_t SequenceManager::getTriggerChannel() { return m_nTriggerChannel; }
 
-void SequenceManager::setTriggerChannel(uint8_t channel)
-{
-	m_nTriggerChannel = channel;
-}
+void SequenceManager::setTriggerChannel(uint8_t channel) { m_nTriggerChannel = channel; }
 
-uint8_t SequenceManager::getTriggerDevice()
-{
-    return m_nTriggerDevice;
-}
+uint8_t SequenceManager::getTriggerDevice() { return m_nTriggerDevice; }
 
-void SequenceManager::setTriggerDevice(uint8_t idev)
-{
-	m_nTriggerDevice = idev;
-}
+void SequenceManager::setTriggerDevice(uint8_t idev) { m_nTriggerDevice = idev; }
 
-uint16_t SequenceManager::getTriggerSequence(uint8_t note)
-{
+uint16_t SequenceManager::getTriggerSequence(uint8_t note) {
     auto it = m_mTriggers.find(note);
-    if(it != m_mTriggers.end())
+    if (it != m_mTriggers.end())
         return it->second;
     return 0;
 }
 
-size_t SequenceManager::getPlayingSequencesCount()
-{
-    return m_vPlayingSequences.size();
-}
+size_t SequenceManager::getPlayingSequencesCount() { return m_vPlayingSequences.size(); }
 
-void SequenceManager::stop()
-{
-    for(auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end(); ++it)
+void SequenceManager::stop() {
+    for (auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end(); ++it)
         getSequence(it->first, it->second)->setPlayState(STOPPED);
     m_vPlayingSequences.clear();
 }
 
-void SequenceManager::cleanPatterns()
-{
+void SequenceManager::cleanPatterns() {
     // Create copy of patterns map
-    std::map<uint32_t,Pattern*> mPatterns;
-    for(auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
+    std::map<uint32_t, Pattern*> mPatterns;
+    for (auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
         mPatterns[it->first] = &(it->second);
 
     // Remove all patterns that are used by tracks
-    for(auto itBank = m_mBanks.begin(); itBank != m_mBanks.end(); ++itBank)
-    {
-        for(auto itSeq = itBank->second.begin(); itSeq != itBank->second.end(); ++itSeq)
-        {
+    for (auto itBank = m_mBanks.begin(); itBank != m_mBanks.end(); ++itBank) {
+        for (auto itSeq = itBank->second.begin(); itSeq != itBank->second.end(); ++itSeq) {
             uint32_t nTrack = 0;
-            while(Track* pTrack = (*itSeq)->getTrack(nTrack++))
-            {
+            while (Track* pTrack = (*itSeq)->getTrack(nTrack++)) {
                 uint32_t nIndex = 0;
-                while(Pattern* pPattern = pTrack->getPatternByIndex(nIndex++))
+                while (Pattern* pPattern = pTrack->getPatternByIndex(nIndex++))
                     mPatterns.erase(getPatternIndex(pPattern));
             }
         }
     }
 
     // Remove patterns in main map that are in search map and empty
-    for(auto it = mPatterns.begin(); it != mPatterns.end(); ++it)
-    {
-        if(it->second->getEvents() == 0)
+    for (auto it = mPatterns.begin(); it != mPatterns.end(); ++it) {
+        if (it->second->getEvents() == 0)
             m_mPatterns.erase(it->first);
     }
 }
 
-void SequenceManager::setSequencesInBank(uint8_t bank, uint8_t sequences)
-{
-    if(sequences == 0)
+void SequenceManager::setSequencesInBank(uint8_t bank, uint8_t sequences) {
+    if (sequences == 0)
         return;
     // Remove excessive sequences
     size_t nSize = m_mBanks[bank].size();
-    while(nSize > sequences)
-    {
+    while (nSize > sequences) {
         setSequencePlayState(bank, nSize - 1, STOPPED);
         delete m_mBanks[bank].back();
         m_mBanks[bank].pop_back();
@@ -352,54 +283,38 @@ void SequenceManager::setSequencesInBank(uint8_t bank, uint8_t sequences)
     getSequence(bank, sequences - 1);
 }
 
-uint32_t SequenceManager::getSequencesInBank(uint32_t bank)
-{
-    return m_mBanks[bank].size();
-}
+uint32_t SequenceManager::getSequencesInBank(uint32_t bank) { return m_mBanks[bank].size(); }
 
-bool SequenceManager::moveSequence(uint8_t bank, uint8_t sequence, uint8_t position)
-{
-    if(sequence >= getSequencesInBank(bank))
+bool SequenceManager::moveSequence(uint8_t bank, uint8_t sequence, uint8_t position) {
+    if (sequence >= getSequencesInBank(bank))
         setSequencesInBank(bank, sequence + 1);
-    if(position >= getSequencesInBank(bank))
+    if (position >= getSequencesInBank(bank))
         setSequencesInBank(bank, position + 1);
     Sequence* pSequence = getSequence(bank, sequence); // Store sequence we want to move
-    if(position < sequence)
-    {
-        for(size_t nIndex = sequence; nIndex > position; --nIndex)
+    if (position < sequence) {
+        for (size_t nIndex = sequence; nIndex > position; --nIndex)
             m_mBanks[bank][nIndex] = m_mBanks[bank][nIndex - 1];
         m_mBanks[bank][position] = pSequence;
-    }
-    else if(position > sequence)
-    {
-        for(size_t nIndex = sequence; nIndex < position; ++nIndex)
+    } else if (position > sequence) {
+        for (size_t nIndex = sequence; nIndex < position; ++nIndex)
             m_mBanks[bank][nIndex] = m_mBanks[bank][nIndex + 1];
         m_mBanks[bank][position] = pSequence;
     }
     return true;
 }
 
-void SequenceManager::insertSequence(uint8_t bank, uint8_t sequence)
-{
+void SequenceManager::insertSequence(uint8_t bank, uint8_t sequence) {
     m_mBanks[bank].insert(m_mBanks[bank].begin() + sequence, new Sequence());
     addPattern(bank, sequence, 0, 0, createPattern(), false);
 }
 
-void SequenceManager::removeSequence(uint8_t bank, uint8_t sequence)
-{
-    if(sequence < m_mBanks[bank].size())
-    {
-        delete(m_mBanks[bank][sequence]);
+void SequenceManager::removeSequence(uint8_t bank, uint8_t sequence) {
+    if (sequence < m_mBanks[bank].size()) {
+        delete (m_mBanks[bank][sequence]);
         m_mBanks[bank].erase(m_mBanks[bank].begin() + sequence);
     }
 }
 
-void SequenceManager::clearBank(uint32_t bank)
-{
-    setSequencesInBank(bank, 0);
-}
+void SequenceManager::clearBank(uint32_t bank) { setSequencesInBank(bank, 0); }
 
-uint32_t SequenceManager::getBanks()
-{
-    return m_mBanks.size();
-}
+uint32_t SequenceManager::getBanks() { return m_mBanks.size(); }

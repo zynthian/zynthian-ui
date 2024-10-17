@@ -38,60 +38,60 @@ from zynlibs.zynseq import zynseq
 
 class zynthian_ctrldev_riband(zynthian_ctrldev_zynpad):
 
-	dev_ids = ["riband Bluetooth"]
+    dev_ids = ["riband Bluetooth"]
 
-	# Function to initialise class
-	def __init__(self, state_manager, idev_in, idev_out=None):
-		self.cols = 4
-		self.rows = 4
-		super().__init__(state_manager, idev_in, idev_out)
+    # Function to initialise class
+    def __init__(self, state_manager, idev_in, idev_out=None):
+        self.cols = 4
+        self.rows = 4
+        super().__init__(state_manager, idev_in, idev_out)
 
-	def end(self):
-		for note in range(16):
-			lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
-		super().end()
+    def end(self):
+        for note in range(16):
+            lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
+        super().end()
 
-	def update_seq_state(self, bank, seq, state, mode, group):
-		if self.idev_out is None or bank != self.zynseq.bank:
-			return
-		col, row = self.zynseq.get_xy_from_pad(seq)
-		if row > 3 or col > 3:
-			return
-		note = col * 4 + row
-		if note > 15:
-			return
-		try:
-			if mode == 0 or group > 25:
-				vel = 0
-			elif state == zynseq.SEQ_STOPPED:
-				vel = 4 + group
-			elif state == zynseq.SEQ_PLAYING:
-				vel = 64 + group
-			elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC]:
-				vel = 33
-			elif state == zynseq.SEQ_STARTING:
-				vel = 31
-			else:
-				vel = 0
-		except Exception as e:
-			vel = 0
-			#logging.warning(e)
+    def update_seq_state(self, bank, seq, state, mode, group):
+        if self.idev_out is None or bank != self.zynseq.bank:
+            return
+        col, row = self.zynseq.get_xy_from_pad(seq)
+        if row > 3 or col > 3:
+            return
+        note = col * 4 + row
+        if note > 15:
+            return
+        try:
+            if mode == 0 or group > 25:
+                vel = 0
+            elif state == zynseq.SEQ_STOPPED:
+                vel = 4 + group
+            elif state == zynseq.SEQ_PLAYING:
+                vel = 64 + group
+            elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC]:
+                vel = 33
+            elif state == zynseq.SEQ_STARTING:
+                vel = 31
+            else:
+                vel = 0
+        except Exception as e:
+            vel = 0
+            # logging.warning(e)
 
-		lib_zyncore.dev_send_note_on(self.idev_out, 0, note, vel)
+        lib_zyncore.dev_send_note_on(self.idev_out, 0, note, vel)
 
-	def pad_off(self, col, row):
-		note = col * 4 + row
-		lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
+    def pad_off(self, col, row):
+        note = col * 4 + row
+        lib_zyncore.dev_send_note_on(self.idev_out, 0, note, 0)
 
-	def midi_event(self, ev):
-		evtype = (ev[0] >> 4) & 0x0F
-		if evtype == 0x9:
-			note = ev[1] & 0x7F
-			vel = ev[2] & 0x7F
-			if vel > 0 and note < self.zynseq.seq_in_bank:
-				# Toggle pad
-				self.zynseq.libseq.togglePlayState(self.zynseq.bank, note)
-				return True
-		return False
+    def midi_event(self, ev):
+        evtype = (ev[0] >> 4) & 0x0F
+        if evtype == 0x9:
+            note = ev[1] & 0x7F
+            vel = ev[2] & 0x7F
+            if vel > 0 and note < self.zynseq.seq_in_bank:
+                # Toggle pad
+                self.zynseq.libseq.togglePlayState(self.zynseq.bank, note)
+                return True
+        return False
 
 # ------------------------------------------------------------------------------

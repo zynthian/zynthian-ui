@@ -11,10 +11,11 @@ import zynaudioplayer
 
 client = jack.Client("zynaudioplayer_unittest")
 
-STOPPED		= 0
-STARTING	= 1
-PLAYING		= 2
-STOPPING	= 3
+STOPPED = 0
+STARTING = 1
+PLAYING = 2
+STOPPING = 3
+
 
 class TestLibZynAudioPlayer(unittest.TestCase):
     @classmethod
@@ -26,15 +27,17 @@ class TestLibZynAudioPlayer(unittest.TestCase):
         pass
 
     def test_aa00_debug(self):
-       libaudioplayer.enableDebug(True)
-       libaudioplayer.enableDebug(False)
+        libaudioplayer.enableDebug(True)
+        libaudioplayer.enableDebug(False)
 
     def test_aa01_load(self):
-        self.assertTrue(zynaudioplayer.load("./test.wav")) #TODO: Add test.wav
+        self.assertTrue(zynaudioplayer.load(
+            "./test.wav"))  # TODO: Add test.wav
 
     def test_aa02_duration(self):
         self.assertTrue(zynaudioplayer.load("./test.wav"))
-        self.assertEqual(libaudioplayer.getDuration(), 6125) #TODO: Set correct duration for test
+        # TODO: Set correct duration for test
+        self.assertEqual(libaudioplayer.getDuration(), 6125)
 
     def test_aa03_position(self):
         self.assertTrue(zynaudioplayer.load("./test.wav"))
@@ -47,11 +50,13 @@ class TestLibZynAudioPlayer(unittest.TestCase):
 
     def test_aa05_format_wav(self):
         self.assertTrue(zynaudioplayer.load("./test.wav"))
-        self.assertEqual(libaudioplayer.getFormat(), 0x010000 | 0x0002) #TODO: Check test wav file format
+        # TODO: Check test wav file format
+        self.assertEqual(libaudioplayer.getFormat(), 0x010000 | 0x0002)
 
     def test_aa05_format_ogg(self):
         self.assertTrue(zynaudioplayer.load("./test.wav"))
-        self.assertEqual(libaudioplayer.getFormat(), 0x010000 | 0x0002) #TODO: Check test wav file format
+        # TODO: Check test wav file format
+        self.assertEqual(libaudioplayer.getFormat(), 0x010000 | 0x0002)
 
 
 unittest.main()

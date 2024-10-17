@@ -23,12 +23,12 @@
  * ******************************************************************
  */
 
+#include <math.h>    //provides fabs isinf
+#include <pthread.h> //provides multithreading
 #include <stdio.h>   //provides printf
 #include <stdlib.h>  //provides exit
 #include <string.h>  // provides memset
-#include <math.h>    //provides fabs isinf
 #include <unistd.h>  // provides sleep
-#include <pthread.h> //provides multithreading
 
 #include "mixer.h"
 
@@ -38,10 +38,10 @@
 char g_oscbuffer[1024];  // Used to send OSC messages
 char g_oscpath[20];      //!@todo Ensure path length is sufficient for all paths, e.g. /mixer/faderxxx
 int g_oscfd = -1;        // File descriptor for OSC socket
-int g_bOsc = 0;          // True if OSC client subscribed
+int g_bOsc  = 0;         // True if OSC client subscribed
 pthread_t g_eventThread; // ID of low priority event thread
 int g_sendEvents = 1;    // Set to 0 to exit event thread
-int g_solo = 0;          // True if any channel solo enabled
+int g_solo       = 0;    // True if any channel solo enabled
 
 // #define DEBUG
 
@@ -49,10 +49,10 @@ int g_solo = 0;          // True if any channel solo enabled
 #define MAX_OSC_CLIENTS 5
 
 struct dynamic {
-    jack_port_t *inPortA;  // Jack input port A
-    jack_port_t *inPortB;  // Jack input port B
-    jack_port_t *outPortA; // Jack output port A
-    jack_port_t *outPortB; // Jack output port B
+    jack_port_t* inPortA;  // Jack input port A
+    jack_port_t* inPortB;  // Jack input port B
+    jack_port_t* outPortA; // Jack output port A
+    jack_port_t* outPortB; // Jack output port B
     float level;           // Current fader level 0..1
     float reqlevel;        // Requested fader level 0..1
     float balance;         // Current balance -1..+1
@@ -72,19 +72,19 @@ struct dynamic {
     uint8_t enable_dpm;    // 1 to enable calculation of peak meter
 };
 
-jack_client_t *g_pJackClient;
+jack_client_t* g_pJackClient;
 struct dynamic g_dynamic[MAX_CHANNELS];
 struct dynamic g_dynamic_last[MAX_CHANNELS]; // Previous values used to thin OSC updates
-unsigned int g_nDampingCount = 0;
+unsigned int g_nDampingCount  = 0;
 unsigned int g_nDampingPeriod = 10; // Quantity of cycles between applying DPM damping decay
-unsigned int g_nHoldCount = 0;
-float g_fDpmDecay = 0.9;                         // Factor to scale for DPM decay - defines resolution of DPM decay
+unsigned int g_nHoldCount     = 0;
+float g_fDpmDecay             = 0.9;             // Factor to scale for DPM decay - defines resolution of DPM decay
 struct sockaddr_in g_oscClient[MAX_OSC_CLIENTS]; // Array of registered OSC clients
 char g_oscdpm[20];
-jack_nframes_t g_samplerate = 44100; // Jack samplerate used to calculate damping factor
-jack_nframes_t g_buffersize = 1024;  // Jack buffer size used to calculate damping factor
-jack_default_audio_sample_t* pNormalisedBufferA = NULL; // Pointer to buffer for normalised audio
-jack_default_audio_sample_t* pNormalisedBufferB = NULL; // Pointer to buffer for normalised audio
+jack_nframes_t g_samplerate                     = 44100; // Jack samplerate used to calculate damping factor
+jack_nframes_t g_buffersize                     = 1024;  // Jack buffer size used to calculate damping factor
+jack_default_audio_sample_t* pNormalisedBufferA = NULL;  // Pointer to buffer for normalised audio
+jack_default_audio_sample_t* pNormalisedBufferB = NULL;  // Pointer to buffer for normalised audio
 
 static float convertToDBFS(float raw) {
     if (raw <= 0)
@@ -96,29 +96,29 @@ static float convertToDBFS(float raw) {
     return fValue;
 }
 
-void sendOscFloat(const char *path, float value) {
+void sendOscFloat(const char* path, float value) {
     if (g_oscfd == -1)
         return;
     for (int i = 0; i < MAX_OSC_CLIENTS; ++i) {
         if (g_oscClient[i].sin_addr.s_addr == 0)
             continue;
         int len = tosc_writeMessage(g_oscbuffer, sizeof(g_oscbuffer), path, "f", value);
-        sendto(g_oscfd, g_oscbuffer, len, MSG_CONFIRM | MSG_DONTWAIT, (const struct sockaddr *)&g_oscClient[i], sizeof(g_oscClient[i]));
+        sendto(g_oscfd, g_oscbuffer, len, MSG_CONFIRM | MSG_DONTWAIT, (const struct sockaddr*)&g_oscClient[i], sizeof(g_oscClient[i]));
     }
 }
 
-void sendOscInt(const char *path, int value) {
+void sendOscInt(const char* path, int value) {
     if (g_oscfd == -1)
         return;
     for (int i = 0; i < MAX_OSC_CLIENTS; ++i) {
         if (g_oscClient[i].sin_addr.s_addr == 0)
             continue;
         int len = tosc_writeMessage(g_oscbuffer, sizeof(g_oscbuffer), path, "i", value);
-        sendto(g_oscfd, g_oscbuffer, len, MSG_CONFIRM | MSG_DONTWAIT, (const struct sockaddr *)&g_oscClient[i], sizeof(g_oscClient[i]));
+        sendto(g_oscfd, g_oscbuffer, len, MSG_CONFIRM | MSG_DONTWAIT, (const struct sockaddr*)&g_oscClient[i], sizeof(g_oscClient[i]));
     }
 }
 
-void *eventThreadFn(void *param) {
+void* eventThreadFn(void* param) {
     while (g_sendEvents) {
         if (g_bOsc) {
             for (unsigned int chan = 0; chan < MAX_CHANNELS; chan++) {
@@ -149,7 +149,7 @@ void *eventThreadFn(void *param) {
     pthread_exit(NULL);
 }
 
-static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
+static int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     jack_default_audio_sample_t *pInA, *pInB, *pOutA, *pOutB, *pChanOutA, *pChanOutB;
 
     unsigned int frame, chan;
@@ -178,8 +178,8 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
             if (g_dynamic[chan].mute || g_solo && (chan < MAX_CHANNELS - 1) && g_dynamic[chan].solo != 1) {
                 // Do not mute aux if solo enabled
                 g_dynamic[chan].level = 0; // We can set this here because we have the data and will iterate towards 0 over this frame
-                reqLevelA = 0.0;
-                reqLevelB = 0.0;
+                reqLevelA             = 0.0;
+                reqLevelB             = 0.0;
             } else {
                 if (g_dynamic[chan].reqbalance > 0.0)
                     reqLevelA = g_dynamic[chan].reqlevel * (1 - g_dynamic[chan].reqbalance);
@@ -189,7 +189,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
                     reqLevelB = g_dynamic[chan].reqlevel * (1 + g_dynamic[chan].reqbalance);
                 else
                     reqLevelB = g_dynamic[chan].reqlevel;
-                g_dynamic[chan].level = g_dynamic[chan].reqlevel;
+                g_dynamic[chan].level   = g_dynamic[chan].reqlevel;
                 g_dynamic[chan].balance = g_dynamic[chan].reqbalance;
             }
 
@@ -199,10 +199,10 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
 
             // **Apply processing to audio samples**
 
-            pInA = jack_port_get_buffer(g_dynamic[chan].inPortA, nFrames);
-            pInB = jack_port_get_buffer(g_dynamic[chan].inPortB, nFrames);
+            pInA    = jack_port_get_buffer(g_dynamic[chan].inPortA, nFrames);
+            pInB    = jack_port_get_buffer(g_dynamic[chan].inPortB, nFrames);
 
-            if(isChannelOutRouted(chan)) {
+            if (isChannelOutRouted(chan)) {
                 // Direct output so create audio buffers
                 pChanOutA = jack_port_get_buffer(g_dynamic[chan].outPortA, nFrames);
                 pChanOutB = jack_port_get_buffer(g_dynamic[chan].outPortB, nFrames);
@@ -250,7 +250,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
                     fSampleB = 1.0;
 
                 // Write sample to output buffer
-                if(pChanOutA) {
+                if (pChanOutA) {
                     pChanOutA[frame] += fSampleA;
                     pChanOutB[frame] += fSampleB;
                 }
@@ -290,8 +290,8 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
                 g_dynamic[chan].dpmB *= g_fDpmDecay;
             }
         } else if (g_dynamic[chan].enable_dpm) {
-            g_dynamic[chan].dpmA = -200.0;
-            g_dynamic[chan].dpmB = -200.0;
+            g_dynamic[chan].dpmA  = -200.0;
+            g_dynamic[chan].dpmB  = -200.0;
             g_dynamic[chan].holdA = -200.0;
             g_dynamic[chan].holdB = -200.0;
         }
@@ -299,7 +299,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
 
     if (g_nDampingCount == 0)
         g_nDampingCount = g_nDampingPeriod;
-     else
+    else
         --g_nDampingCount;
     if (g_nHoldCount == 0)
         g_nHoldCount = g_nDampingPeriod * 20;
@@ -309,7 +309,7 @@ static int onJackProcess(jack_nframes_t nFrames, void *pArgs) {
     return 0;
 }
 
-void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void *args) {
+void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void* args) {
     uint8_t chan;
     for (chan = 0; chan < MAX_CHANNELS; chan++) {
         if (jack_port_connected(g_dynamic[chan].inPortA) > 0 || (jack_port_connected(g_dynamic[chan].inPortB) > 0))
@@ -323,18 +323,18 @@ void onJackConnect(jack_port_id_t source, jack_port_id_t dest, int connect, void
     }
 }
 
-int onJackSamplerate(jack_nframes_t nSamplerate, void *arg) {
+int onJackSamplerate(jack_nframes_t nSamplerate, void* arg) {
     if (nSamplerate == 0)
         return 0;
-    g_samplerate = nSamplerate;
+    g_samplerate     = nSamplerate;
     g_nDampingPeriod = g_fDpmDecay * nSamplerate / g_buffersize / 15;
     return 0;
 }
 
-int onJackBuffersize(jack_nframes_t nBuffersize, void *arg) {
+int onJackBuffersize(jack_nframes_t nBuffersize, void* arg) {
     if (nBuffersize == 0)
         return 0;
-    g_buffersize = nBuffersize;
+    g_buffersize     = nBuffersize;
     g_nDampingPeriod = g_fDpmDecay * g_samplerate / g_buffersize / 15;
     free(pNormalisedBufferA);
     free(pNormalisedBufferB);
@@ -348,13 +348,13 @@ int init() {
     g_oscfd = socket(AF_INET, SOCK_DGRAM, 0);
     for (uint8_t i = 0; i < MAX_OSC_CLIENTS; ++i) {
         memset(g_oscClient[i].sin_zero, '\0', sizeof g_oscClient[i].sin_zero);
-        g_oscClient[i].sin_family = AF_INET;
-        g_oscClient[i].sin_port = htons(1370);
+        g_oscClient[i].sin_family      = AF_INET;
+        g_oscClient[i].sin_port        = htons(1370);
         g_oscClient[i].sin_addr.s_addr = 0;
     }
 
     // Register with Jack server
-    char *sServerName = NULL;
+    char* sServerName = NULL;
     jack_status_t nStatus;
     jack_options_t nOptions = JackNoStartServer;
 
@@ -368,15 +368,15 @@ int init() {
 
     // Create input ports
     for (size_t chan = 0; chan < MAX_CHANNELS; ++chan) {
-        g_dynamic[chan].level = 0.0;
-        g_dynamic[chan].reqlevel = 0.8;
-        g_dynamic[chan].balance = 0.0;
+        g_dynamic[chan].level      = 0.0;
+        g_dynamic[chan].reqlevel   = 0.8;
+        g_dynamic[chan].balance    = 0.0;
         g_dynamic[chan].reqbalance = 0.0;
-        g_dynamic[chan].mute = 0;
-        g_dynamic[chan].ms = 0;
-        g_dynamic[chan].phase = 0;
+        g_dynamic[chan].mute       = 0;
+        g_dynamic[chan].ms         = 0;
+        g_dynamic[chan].phase      = 0;
         g_dynamic[chan].enable_dpm = 1;
-        g_dynamic[chan].normalise = 1;
+        g_dynamic[chan].normalise  = 1;
         char sName[11];
         sprintf(sName, "input_%02lda", chan + 1);
         if (!(g_dynamic[chan].inPortA = jack_port_register(g_pJackClient, sName, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0))) {
@@ -398,8 +398,8 @@ int init() {
             fprintf(stderr, "libzynmixer: Cannot register %s\n", sName);
             exit(1);
         }
-        g_dynamic_last[chan].dpmA = 100.0;
-        g_dynamic_last[chan].dpmB = 100.0;
+        g_dynamic_last[chan].dpmA  = 100.0;
+        g_dynamic_last[chan].dpmB  = 100.0;
         g_dynamic_last[chan].holdA = 100.0;
         g_dynamic_last[chan].holdB = 100.0;
     }
@@ -451,7 +451,7 @@ void end() {
     free(pNormalisedBufferA);
     free(pNormalisedBufferB);
 
-    void *status;
+    void* status;
     pthread_join(g_eventThread, &status);
 }
 
@@ -501,7 +501,7 @@ uint8_t getMute(uint8_t channel) {
 }
 
 void setPhase(uint8_t channel, uint8_t phase) {
-    if (channel >= MAX_CHANNELS) 
+    if (channel >= MAX_CHANNELS)
         channel = MAX_CHANNELS - 1;
     g_dynamic[channel].phase = phase;
     sprintf(g_oscpath, "/mixer/phase%d", channel);
@@ -528,7 +528,7 @@ uint8_t getNormalise(uint8_t channel, uint8_t enable) {
     if (channel >= MAX_CHANNELS)
         return 0;
     if (channel >= MAX_CHANNELS)
-         channel = MAX_CHANNELS - 1;
+        channel = MAX_CHANNELS - 1;
     return g_dynamic[channel].normalise;
 }
 
@@ -646,11 +646,11 @@ float getDpmHold(uint8_t channel, uint8_t leg) {
     return convertToDBFS(g_dynamic[channel].holdA);
 }
 
-void getDpmStates(uint8_t start, uint8_t end, float *values) {
+void getDpmStates(uint8_t start, uint8_t end, float* values) {
     if (start > end) {
         uint8_t tmp = start;
-        start = end;
-        end = tmp;
+        start       = end;
+        end         = tmp;
     }
     if (end > MAX_CHANNELS)
         end = MAX_CHANNELS;
@@ -668,29 +668,29 @@ void getDpmStates(uint8_t start, uint8_t end, float *values) {
 }
 
 void enableDpm(uint8_t start, uint8_t end, uint8_t enable) {
-    struct dynamic *pChannel;
+    struct dynamic* pChannel;
     if (start > end) {
         uint8_t tmp = start;
-        start = end;
-        end = tmp;
+        start       = end;
+        end         = tmp;
     }
     if (start >= MAX_CHANNELS)
         start = MAX_CHANNELS - 1;
     if (end >= MAX_CHANNELS)
         end = MAX_CHANNELS - 1;
     for (uint8_t channel = start; channel <= end; ++channel) {
-        pChannel = &(g_dynamic[channel]);
+        pChannel             = &(g_dynamic[channel]);
         pChannel->enable_dpm = enable;
         if (enable == 0) {
-            pChannel->dpmA = 0;
-            pChannel->dpmB = 0;
+            pChannel->dpmA  = 0;
+            pChannel->dpmB  = 0;
             pChannel->holdA = 0;
             pChannel->holdB = 0;
         }
     }
 }
 
-int addOscClient(const char *client) {
+int addOscClient(const char* client) {
     for (uint8_t i = 0; i < MAX_OSC_CLIENTS; ++i) {
         if (g_oscClient[i].sin_addr.s_addr != 0)
             continue;
@@ -707,8 +707,8 @@ int addOscClient(const char *client) {
             setMute(nChannel, getMute(nChannel));
             setPhase(nChannel, getPhase(nChannel));
             setSolo(nChannel, getSolo(nChannel));
-            g_dynamic_last[nChannel].dpmA = 100.0;
-            g_dynamic_last[nChannel].dpmB = 100.0;
+            g_dynamic_last[nChannel].dpmA  = 100.0;
+            g_dynamic_last[nChannel].dpmB  = 100.0;
             g_dynamic_last[nChannel].holdA = 100.0;
             g_dynamic_last[nChannel].holdB = 100.0;
         }
@@ -719,7 +719,7 @@ int addOscClient(const char *client) {
     return -1;
 }
 
-void removeOscClient(const char *client) {
+void removeOscClient(const char* client) {
     char pClient[sizeof(struct in_addr)];
     if (inet_pton(AF_INET, client, pClient) != 1)
         return;
@@ -734,6 +734,4 @@ void removeOscClient(const char *client) {
     }
 }
 
-uint8_t getMaxChannels() {
-    return MAX_CHANNELS;
-}
+uint8_t getMaxChannels() { return MAX_CHANNELS; }

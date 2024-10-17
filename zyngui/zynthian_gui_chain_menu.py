@@ -36,72 +36,84 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 
 class zynthian_gui_chain_menu(zynthian_gui_selector):
 
-	def __init__(self):
-		super().__init__('Menu', True)
+    def __init__(self):
+        super().__init__('Menu', True)
 
-	def fill_list(self):
-		self.list_data = []
+    def fill_list(self):
+        self.list_data = []
 
-		self.list_data.append((None, 0, "> ADD CHAIN"))
-		self.list_data.append((self.add_synth_chain, 0, "Add Instrument Chain"))
-		self.list_data.append((self.add_audiofx_chain, 0, "Add Audio Chain"))
-		self.list_data.append((self.add_midifx_chain, 0, "Add MIDI Chain"))
-		self.list_data.append((self.add_midiaudiofx_chain, 0, "Add MIDI+Audio Chain"))
-		self.list_data.append((self.add_generator_chain, 0, "Add Audio Generator Chain"))
-		self.list_data.append((self.add_special_chain, 0, "Add Special Chain"))
+        self.list_data.append((None, 0, "> ADD CHAIN"))
+        self.list_data.append(
+            (self.add_synth_chain, 0, "Add Instrument Chain"))
+        self.list_data.append((self.add_audiofx_chain, 0, "Add Audio Chain"))
+        self.list_data.append((self.add_midifx_chain, 0, "Add MIDI Chain"))
+        self.list_data.append(
+            (self.add_midiaudiofx_chain, 0, "Add MIDI+Audio Chain"))
+        self.list_data.append(
+            (self.add_generator_chain, 0, "Add Audio Generator Chain"))
+        self.list_data.append((self.add_special_chain, 0, "Add Special Chain"))
 
-		self.list_data.append((None, 0, "> REMOVE"))
-		self.list_data.append((self.remove_sequences, 0, "Remove Sequences"))
-		self.list_data.append((self.remove_chains, 0, "Remove Chains"))
-		self.list_data.append((self.remove_all, 0, "Remove All"))
+        self.list_data.append((None, 0, "> REMOVE"))
+        self.list_data.append((self.remove_sequences, 0, "Remove Sequences"))
+        self.list_data.append((self.remove_chains, 0, "Remove Chains"))
+        self.list_data.append((self.remove_all, 0, "Remove All"))
 
-		super().fill_list()
+        super().fill_list()
 
-	def select_action(self, i, t='S'):
-		if self.list_data[i][0]:
-			self.last_action = self.list_data[i][0]
-			self.last_action(t)
+    def select_action(self, i, t='S'):
+        if self.list_data[i][0]:
+            self.last_action = self.list_data[i][0]
+            self.last_action(t)
 
-	def add_synth_chain(self, t='S'):
-		self.zyngui.modify_chain({"type": "MIDI Synth", "midi_thru": False, "audio_thru": False})
+    def add_synth_chain(self, t='S'):
+        self.zyngui.modify_chain(
+            {"type": "MIDI Synth", "midi_thru": False, "audio_thru": False})
 
-	def add_audiofx_chain(self, t='S'):
-		self.zyngui.modify_chain({"type": "Audio Effect", "midi_thru": False, "audio_thru": True})
+    def add_audiofx_chain(self, t='S'):
+        self.zyngui.modify_chain(
+            {"type": "Audio Effect", "midi_thru": False, "audio_thru": True})
 
-	def add_midifx_chain(self, t='S'):
-		self.zyngui.modify_chain({"type": "MIDI Tool", "midi_thru": True, "audio_thru": False})
+    def add_midifx_chain(self, t='S'):
+        self.zyngui.modify_chain(
+            {"type": "MIDI Tool", "midi_thru": True, "audio_thru": False})
 
-	def add_midiaudiofx_chain(self, t='S'):
-		self.zyngui.modify_chain({"type": "Audio Effect", "midi_thru": True, "audio_thru": True})
+    def add_midiaudiofx_chain(self, t='S'):
+        self.zyngui.modify_chain(
+            {"type": "Audio Effect", "midi_thru": True, "audio_thru": True})
 
-	def add_generator_chain(self, t='S'):
-		self.zyngui.modify_chain({"type": "Audio Generator", "midi_thru": False, "audio_thru": False})
+    def add_generator_chain(self, t='S'):
+        self.zyngui.modify_chain(
+            {"type": "Audio Generator", "midi_thru": False, "audio_thru": False})
 
-	def add_special_chain(self, t='S'):
-		self.zyngui.modify_chain({"type": "Special", "midi_thru": True, "audio_thru": True})
+    def add_special_chain(self, t='S'):
+        self.zyngui.modify_chain(
+            {"type": "Special", "midi_thru": True, "audio_thru": True})
 
-	def remove_all(self, t='S'):
-		self.zyngui.show_confirm("Do you really want to remove ALL chains & sequences?", self.remove_all_confirmed)
+    def remove_all(self, t='S'):
+        self.zyngui.show_confirm(
+            "Do you really want to remove ALL chains & sequences?", self.remove_all_confirmed)
 
-	def remove_all_confirmed(self, params=None):
-		self.index = 0
-		self.zyngui.clean_all()
+    def remove_all_confirmed(self, params=None):
+        self.index = 0
+        self.zyngui.clean_all()
 
-	def remove_chains(self, t='S'):
-		self.zyngui.show_confirm("Do you really want to remove ALL chains?", self.remove_chains_confirmed)
+    def remove_chains(self, t='S'):
+        self.zyngui.show_confirm(
+            "Do you really want to remove ALL chains?", self.remove_chains_confirmed)
 
-	def remove_chains_confirmed(self, params=None):
-		self.index = 0
-		self.zyngui.clean_chains()
+    def remove_chains_confirmed(self, params=None):
+        self.index = 0
+        self.zyngui.clean_chains()
 
-	def remove_sequences(self, t='S'):
-		self.zyngui.show_confirm("Do you really want to remove ALL sequences?", self.remove_sequences_confirmed)
+    def remove_sequences(self, t='S'):
+        self.zyngui.show_confirm(
+            "Do you really want to remove ALL sequences?", self.remove_sequences_confirmed)
 
-	def remove_sequences_confirmed(self, params=None):
-		self.index = 0
-		self.zyngui.clean_sequences()
+    def remove_sequences_confirmed(self, params=None):
+        self.index = 0
+        self.zyngui.clean_sequences()
 
-	def set_select_path(self):
-		self.select_path.set("Menu")
+    def set_select_path(self):
+        self.select_path.set("Menu")
 
 # ------------------------------------------------------------------------------

@@ -13,10 +13,11 @@ from zynlibs.zynsmf.zynsmf import libsmf
 smf = None
 client = jack.Client("zynsmf_unittest")
 
-STOPPED		= 0
-STARTING	= 1
-PLAYING		= 2
-STOPPING	= 3
+STOPPED = 0
+STARTING = 1
+PLAYING = 2
+STOPPING = 3
+
 
 class TestLibZynSmf(unittest.TestCase):
     @classmethod
@@ -31,8 +32,8 @@ class TestLibZynSmf(unittest.TestCase):
         smf = None
 
     def test_aa00_debug(self):
-       libsmf.enableDebug(True)
-       libsmf.enableDebug(False)
+        libsmf.enableDebug(True)
+        libsmf.enableDebug(False)
 
     def test_aa01_load(self):
         self.assertTrue(zynsmf.load(smf, "./test.mid"))
@@ -74,7 +75,8 @@ class TestLibZynSmf(unittest.TestCase):
         self.assertIsNotNone(port)
         libsmf.removePlayer(smf)
         sleep(0.1)
-        self.assertRaises(jack.JackError, client.get_port_by_name, 'zynmidiplayer:midi_out')
+        self.assertRaises(
+            jack.JackError, client.get_port_by_name, 'zynmidiplayer:midi_out')
 
     def test_ab02_playback(self):
         self.assertEqual(client.transport_state, jack.STOPPED)

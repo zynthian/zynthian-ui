@@ -46,18 +46,18 @@ TouchEvent = namedtuple('TouchEvent', ('timestamp', 'type', 'code', 'value'))
 
 class MultitouchTypes(Enum):
     # Touch event types
-    IDLE            = 0
-    MULTI_RELEASE   = 1
-    MULTI_PRESS     = 2
-    MULTI_MOTION    = 3
-    SINGLE_RELEASE  = 11
-    SINGLE_PRESS    = 12
-    SINGLE_MOTION   = 13
-    GESTURE_PRESS   = 21
+    IDLE = 0
+    MULTI_RELEASE = 1
+    MULTI_PRESS = 2
+    MULTI_MOTION = 3
+    SINGLE_RELEASE = 11
+    SINGLE_PRESS = 12
+    SINGLE_MOTION = 13
+    GESTURE_PRESS = 21
     GESTURE_RELEASE = 22
-    GESTURE_MOTION  = 23
-    GESTURE_H_DRAG  = 24
-    GESTURE_V_DRAG  = 25
+    GESTURE_MOTION = 23
+    GESTURE_H_DRAG = 24
+    GESTURE_V_DRAG = 25
     GESTURE_H_PINCH = 26
     GESTURE_V_PINCH = 27
 
@@ -71,7 +71,7 @@ class Touch(object):
         """
 
         self.slot = slot
-        
+
         self._x = None
         self._y = None
         self.last_x = None
@@ -81,15 +81,16 @@ class Touch(object):
         self.start_x = None
         self.start_y = None
 
-        self._id = -1 # Id for associated press/motion events (same action/session)
-        self._type = MultitouchTypes.IDLE # Current event type
-        
+        # Id for associated press/motion events (same action/session)
+        self._id = -1
+        self._type = MultitouchTypes.IDLE  # Current event type
+
     @property
     def position(self):
         """Current position of touch event  as tuple (x,y)"""
 
         return (self.x, self.y)
-    
+
     @property
     def last_position(self):
         """Position of previous touch event as tuple (x,y)
@@ -97,7 +98,7 @@ class Touch(object):
         """
 
         return (self.last_x, self.last_y)
-        
+
     @property
     def id(self):
         """Get id of event collection - press, motion, release associated with same session"""
@@ -132,13 +133,13 @@ class Touch(object):
                 self.start_y = self.y
                 return 1
         return 0
-    
+
     @property
     def x(self):
         """Get event x coordinate"""
 
         return self._x
-    
+
     @x.setter
     def x(self, value):
         """Set event x coordinate"""
@@ -148,13 +149,13 @@ class Touch(object):
         else:
             self.last_x = self._x
         self._x = value
-    
+
     @property
     def y(self):
         """Get event y coordinate"""
 
         return self._y
-    
+
     @y.setter
     def y(self, value):
         """Set event y coordinate"""
@@ -175,15 +176,15 @@ class TouchCallback:
 
 class MultiTouch(object):
     """Class representing a multitouch interface driver"""
-    
+
     EVENT_FORMAT = str('llHHi')
     EVENT_SIZE = struct.calcsize(EVENT_FORMAT)
-    
+
     def __init__(self, device=None, invert_x_axis=False, invert_y_axis=False):
         """Instantiate the touch driver
-        
+
         Creates an instance of the driver attached to the first multitouch hardware discovered or using the specified device.
-        
+
         device - Path to the device, e.g. /dev/input/event0 (optional)
         invert_x_axis - True to invert x axis (optional)
         invert_y_axis - True to invert y axis (optional)
@@ -200,7 +201,7 @@ class MultiTouch(object):
 
         # Event callback functions - lists of TouchCallback objects
         self._on_motion = []
-        self._on_press = [] 
+        self._on_press = []
         self._on_release = []
         self._on_gesture = []
 
@@ -228,31 +229,35 @@ class MultiTouch(object):
                 pass
 
         self.touches = [Touch(x) for x in range(10)]  # 10 touch slot objects
-        self._evdev_event_queue = Queue()  # Used to store evdev events before processing into touch events
-        self._current_touch = self.touches[0]  # Current touch object being processed
-                
+        # Used to store evdev events before processing into touch events
+        self._evdev_event_queue = Queue()
+        # Current touch object being processed
+        self._current_touch = self.touches[0]
+
         self.touch_count = 0  # Quantity of currently pressed slots
         if self._f_device:
             self.thread = Thread(target=self._run, name="Multitouch")
             self.thread.start()
-    
+
     def _run(self):
         """Background (thread) event process"""
         self._running = True
         while self._running:
-            r,w,x = select([self._f_device],[],[], 1)
+            r, w, x = select([self._f_device], [], [], 1)
             if r and r[0]:
                 event = self._f_device.read(self.EVENT_SIZE)
-                (tv_sec, tv_usec, type, code, value) = struct.unpack(self.EVENT_FORMAT, event)
-                self._evdev_event_queue.put(TouchEvent(tv_sec + (tv_usec / 1000000), type, code, value))
+                (tv_sec, tv_usec, type, code, value) = struct.unpack(
+                    self.EVENT_FORMAT, event)
+                self._evdev_event_queue.put(TouchEvent(
+                    tv_sec + (tv_usec / 1000000), type, code, value))
                 if type == ecodes.EV_SYN:
                     self._process_evdev_events()
-    
+
     def __enter__(self):
         """Provide multitouch object for 'with' commands"""
 
         return self
-    
+
     def __exit__(self, exc_type, exc_value, exc_tb):
         """Release resources when Multitouch object exits"""
         self.stop()
@@ -280,7 +285,8 @@ class MultiTouch(object):
                     if evdev_event.value < 10:
                         self._current_touch = self.touches[evdev_event.value]
                 elif evdev_event.code == ecodes.ABS_MT_TRACKING_ID:
-                    self.touch_count += self._current_touch.set_id(evdev_event.value)
+                    self.touch_count += self._current_touch.set_id(
+                        evdev_event.value)
                     if self._current_touch not in self.events:
                         self.events.append(self._current_touch)
                 elif evdev_event.code == ecodes.ABS_MT_POSITION_X:
@@ -300,7 +306,7 @@ class MultiTouch(object):
 
     def _process_touch_events(self):
         """Run outstanding press/release/motion events
-        
+
         If event not handled by multitouch driver then a similar event is sent for normal handling
         This event will not have state (modifier / mouse button) set.
         """
@@ -317,16 +323,17 @@ class MultiTouch(object):
             event.time = now
 
             if event._type == MultitouchTypes.MULTI_PRESS:
-                event.widget = zynthian_gui_config.top.winfo_containing(event.x_root, event.y_root)
+                event.widget = zynthian_gui_config.top.winfo_containing(
+                    event.x_root, event.y_root)
                 event.offset_x = event.widget.winfo_rootx()
                 event.offset_y = event.widget.winfo_rooty()
-                event.x = event.x_root - event.offset_x # Reassert because offset has changed
+                event.x = event.x_root - event.offset_x  # Reassert because offset has changed
                 event.y = event.y_root - event.offset_y
                 event.last_x = event.x
                 event.last_y = event.y
 
                 if self._g_pending:
-                    # There is an existing touch event pending gesture detection 
+                    # There is an existing touch event pending gesture detection
                     if self._on_gesture_start(event):
                         # Gesture detection identified a valid gesture binding so do not process as individual touch event
                         continue
@@ -334,7 +341,8 @@ class MultiTouch(object):
                     # First touch so wait to see if another touch event arrives to start a gesture
                     event._type = MultitouchTypes.GESTURE_PRESS
                     self._g_pending = event
-                    self._g_timeout = zynthian_gui_config.top.after(100, self._on_touch_timeout)
+                    self._g_timeout = zynthian_gui_config.top.after(
+                        100, self._on_touch_timeout)
 
             elif event._type == MultitouchTypes.MULTI_RELEASE:
                 if self._g_pending:
@@ -369,7 +377,7 @@ class MultiTouch(object):
                         event._type = event.gest_pair._type = MultitouchTypes.GESTURE_V_PINCH
                     else:
                         event._type = event.gest_pair._type = MultitouchTypes.GESTURE_V_DRAG
-            
+
             elif event._type == MultitouchTypes.GESTURE_RELEASE:
                 if self._g_pending:
                     # Cancel multitouch detection and send on_press event before processing release event
@@ -377,11 +385,11 @@ class MultiTouch(object):
                     self._on_touch_timeout(True)
                     if event.widget:
                         event.widget.event_generate("<ButtonRelease-1>",
-                            x=event.x,
-                            y=event.y,
-                            rootx=event.x_root,
-                            rooty=event.y_root,
-                            time=now)
+                                                    x=event.x,
+                                                    y=event.y,
+                                                    rootx=event.x_root,
+                                                    rooty=event.y_root,
+                                                    time=now)
                 else:
                     for ev_handler in self._on_release:
                         if ev_handler.widget == event.widget and ev_handler.tag == event.tag:
@@ -398,54 +406,60 @@ class MultiTouch(object):
                 event._type = MultitouchTypes.IDLE
 
             elif event._type == MultitouchTypes.GESTURE_H_PINCH:
-                pinch = abs(event.x - event.gest_pair.x) - abs(event.last_x - event.gest_pair.last_x)
-                #logging.warning(f"H-pinch {pinch}")
+                pinch = abs(event.x - event.gest_pair.x) - \
+                    abs(event.last_x - event.gest_pair.last_x)
+                # logging.warning(f"H-pinch {pinch}")
                 for ev_handler in self._on_gesture:
                     if ev_handler.widget == None or ev_handler.widget == event.widget:
-                        ev_handler.function(MultitouchTypes.GESTURE_H_PINCH, pinch)
+                        ev_handler.function(
+                            MultitouchTypes.GESTURE_H_PINCH, pinch)
 
             elif event._type == MultitouchTypes.GESTURE_V_PINCH:
-                pinch = abs(event.y - event.gest_pair.y) - abs(event.last_y - event.gest_pair.last_y)
-                #logging.warning(f"V-pinch {pinch}")
+                pinch = abs(event.y - event.gest_pair.y) - \
+                    abs(event.last_y - event.gest_pair.last_y)
+                # logging.warning(f"V-pinch {pinch}")
                 for ev_handler in self._on_gesture:
                     if ev_handler.widget == None or ev_handler.widget == event.widget:
-                        ev_handler.function(MultitouchTypes.GESTURE_V_PINCH, pinch)
+                        ev_handler.function(
+                            MultitouchTypes.GESTURE_V_PINCH, pinch)
 
             elif event._type == MultitouchTypes.GESTURE_H_DRAG:
                 if event.slot > event.gest_pair.slot:
                     drag = event.x - event.last_x
-                    #logging.warning(f"H-drag {drag}")
+                    # logging.warning(f"H-drag {drag}")
                     for ev_handler in self._on_gesture:
                         if ev_handler.widget == None or ev_handler.widget == event.widget:
-                            ev_handler.function(MultitouchTypes.GESTURE_H_DRAG, drag)
+                            ev_handler.function(
+                                MultitouchTypes.GESTURE_H_DRAG, drag)
 
             elif event._type == MultitouchTypes.GESTURE_V_DRAG:
                 if event.slot > event.gest_pair.slot:
                     drag = event.y - event.last_y
-                    #logging.warning(f"V-drag {drag}")
+                    # logging.warning(f"V-drag {drag}")
                     for ev_handler in self._on_gesture:
                         if ev_handler.widget == None or ev_handler.widget == event.widget:
-                            ev_handler.function(MultitouchTypes.GESTURE_V_DRAG, drag)
+                            ev_handler.function(
+                                MultitouchTypes.GESTURE_V_DRAG, drag)
 
             elif event._type == MultitouchTypes.SINGLE_RELEASE:
                 if event.widget:
                     event.widget.event_generate("<ButtonRelease-1>",
-                        x=event.x,
-                        y=event.y,
-                        rootx=event.x_root,
-                        rooty=event.y_root,
-                        time=now)
+                                                x=event.x,
+                                                y=event.y,
+                                                rootx=event.x_root,
+                                                rooty=event.y_root,
+                                                time=now)
                     event._id = -1
                     event._type = MultitouchTypes.IDLE
 
             elif event._type == MultitouchTypes.SINGLE_MOTION:
                 if event.widget:
                     event.widget.event_generate("<B1-Motion>",
-                        x=event.x,
-                        y=event.y,
-                        rootx=event.x_root,
-                        rooty=event.y_root,
-                        time=now)
+                                                x=event.x,
+                                                y=event.y,
+                                                rootx=event.x_root,
+                                                rooty=event.y_root,
+                                                time=now)
 
         self.events = []
 
@@ -458,7 +472,8 @@ class MultiTouch(object):
         event = self._g_pending
         self._g_pending = None
         try:
-            event.tag = event.widget.find_overlapping(event.x, event.y, event.x, event.y)[0]
+            event.tag = event.widget.find_overlapping(
+                event.x, event.y, event.x, event.y)[0]
         except:
             event.tag = None
         for ev_handler in self._on_press:
@@ -466,22 +481,22 @@ class MultiTouch(object):
                 ev_handler.function(event)
                 event._type = MultitouchTypes.MULTI_MOTION
         if try_single_touch and event._type == MultitouchTypes.GESTURE_PRESS and event.widget:
-                event._type = MultitouchTypes.SINGLE_MOTION
-                event.widget.event_generate("<ButtonPress-1>",
-                    x=event.x,
-                    y=event.y,
-                    rootx=event.x_root,
-                    rooty=event.y_root,
-                    time=event.time)
+            event._type = MultitouchTypes.SINGLE_MOTION
+            event.widget.event_generate("<ButtonPress-1>",
+                                        x=event.x,
+                                        y=event.y,
+                                        rootx=event.x_root,
+                                        rooty=event.y_root,
+                                        time=event.time)
 
     def _on_gesture_start(self, event):
         """Handle 2 finger press as start of gesture"""
 
         zynthian_gui_config.top.after_cancel(self._g_timeout)
-        #logging.warning(f"Gesture start ({self._g_pending.x}.{self._g_pending.y}) ({event.x},{event.y})")
+        # logging.warning(f"Gesture start ({self._g_pending.x}.{self._g_pending.y}) ({event.x},{event.y})")
         if event == self._g_pending:
             logging.warning("Gesture detected same event!!!")
-            return True #TODO: This shouldn't be possible
+            return True  # TODO: This shouldn't be possible
         for ev_handler in self._on_gesture:
             if ev_handler.widget is None or ev_handler.widget == self._g_pending.widget:
                 event._type = self._g_pending._type = MultitouchTypes.GESTURE_MOTION
@@ -507,14 +522,14 @@ class MultiTouch(object):
         """
         try:
             return run(args=('/usr/bin/xinput', *args),
-                stdout=PIPE, check=True,
-                universal_newlines=True).stdout
+                       stdout=PIPE, check=True,
+                       universal_newlines=True).stdout
         except:
             return ""
 
     def tag_bind(self, widget, tagOrId, sequence, function, add=False):
         """Binds events to canvas objects
-        
+
         widget - Canvas widget
         tagOrId - Tag or object ID to bind event to
         sequence - Event sequence to bind ["press" "motion" | "release" | "horizontal_drag"]
@@ -525,7 +540,7 @@ class MultiTouch(object):
         If tags are later removed from those items, the bindings will persist on those items. 
         If the tag you specify is later applied to items that did not have that tag when you called tag_bind, that binding will not be applied to the newly tagged items.
         """
-        
+
         event_list = getattr(self, f"_on_{sequence}", None)
         if isinstance(event_list, list) and callable(function):
             existing = []
@@ -572,7 +587,7 @@ class MultiTouch(object):
 
     def set_drag_horizontal_begin_callback(self, cb):
         """Set callback for horizontal drag begin event
-        
+
         cb - Python function to call when event occurs
         """
 
@@ -581,100 +596,99 @@ class MultiTouch(object):
 
     def set_drag_horizontal_callback(self, cb):
         """Set callback for horizontal drag event
-        
+
         cb - Python function to call when event occurs
         """
-        
+
         if callable(cb):
             self._on_drag_horizontal = cb
-    
+
     def set_drag_horizontal_end_callback(self, cb):
         """Set callback for horizontal drag end event
-        
+
         cb - Python function to call when event occurs
         """
-        
+
         if callable(cb):
             self._on_drag_horizontal_end = cb
-    
+
     def set_drag_vertical_begin_callback(self, cb):
         """Set callback for vertical drag begin event
-        
+
         cb - Python function to call when event occurs
         """
-        
+
         if callable(cb):
             self._on_drag_vertical_begin = cb
-    
+
     def set_drag_vertical_callback(self, cb):
         """Set callback for vertical drag events
-        
+
         cb - Python function to call when event occurs
         """
-        
+
         if callable(cb):
             self._on_drag_vertical = cb
-    
+
     def set_drag_vertical_end_callback(self, cb):
         """Set callback for vertical drag end event
-        
+
         cb - Python function to call when event occurs
         """
-        
+
         if callable(cb):
             self._on_drag_vertical_end = cb
-    
+
     def set_pinch_horizontal_begin_callback(self, cb):
         """Set callback for horizontal pinch begin event
-        
+
         cb - Python function to call when event occurs
         """
-        
+
         if callable(cb):
             self._on_pinch_horizontal_begin = cb
 
     def set_pinch_horizontal_callback(self, cb):
         """Set callback for horizontal pinch event
-        
+
         cb - Python function to call when event occurs
         """
-        
+
         if callable(cb):
             self._on_pinch_horizontal = cb
 
     def set_pinch_horizontal_end_callback(self, cb):
         """Set callback for horizontal pinch end event
-        
+
         cb - Python function to call when event occurs
         """
-        
+
         if callable(cb):
             self._on_pinch_horizontal_end = cb
-    
+
     def set_pinch_vertical_begin_callback(self, cb):
         """Set callback for vertical pinch begin event
-        
+
         cb - Python function to call when event occurs
         """
-        
+
         if callable(cb):
             self._on_pinch_vertical_begin = cb
-    
+
     def set_pinch_vertical_callback(self, cb):
         """Set callback for vertical pinch event
-        
+
         cb - Python function to call when event occurs
         """
-        
+
         if callable(cb):
             self._on_pinch_vertical = cb
-    
+
     def set_pinch_vertical_end_callback(self, cb):
         """Set callback for vertical pinch end event
-        
+
         cb - Python function to call when event occurs
         """
-        
+
         if callable(cb):
             self._on_pinch_vertical_end = cb
-    

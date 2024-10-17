@@ -22,8 +22,10 @@ libseq = None
 last_rx = bytes(0)
 send_midi = None
 
-play_state={"STOPPED":0,"PLAYING":1,"STOPPING":2,"STARTING":3}
-play_mode={"DISABLED":0,"ONESHOT": 1,"LOOP":2,"ONESHOTALL":3,"LOOPALL":4,"ONESHOTSYNC":5,"LOOPSYNC":6,"LASTPLAYMODE":6}
+play_state = {"STOPPED": 0, "PLAYING": 1, "STOPPING": 2, "STARTING": 3}
+play_mode = {"DISABLED": 0, "ONESHOT": 1, "LOOP": 2, "ONESHOTALL": 3,
+             "LOOPALL": 4, "ONESHOTSYNC": 5, "LOOPSYNC": 6, "LASTPLAYMODE": 6}
+
 
 @client.set_process_callback
 def process(frames):
@@ -38,7 +40,9 @@ def process(frames):
         midi_out.write_midi_event(0, send_midi)
         send_midi = None
 
+
 client.activate()
+
 
 class TestLibZynSeq(unittest.TestCase):
     @classmethod
@@ -46,23 +50,30 @@ class TestLibZynSeq(unittest.TestCase):
         global libseq
         global zynseq_midi_out
         global zynseq_midi_in
-        libseq = ctypes.CDLL("/zynthian/zynthian-ui/zynlibs/zynseq/build/libzynseq.so")
+        libseq = ctypes.CDLL(
+            "/zynthian/zynthian-ui/zynlibs/zynseq/build/libzynseq.so")
         libseq.init(True)
         zynseq_midi_out = client.get_port_by_name('zynthstep:output')
         zynseq_midi_in = client.get_port_by_name('zynthstep:input')
         midi_in.connect(zynseq_midi_out)
         midi_out.connect(zynseq_midi_in)
     #
+
     def test_aa00_debug(self):
-       libseq.enableDebug(True)
-       libseq.enableDebug(False)
+        libseq.enableDebug(True)
+        libseq.enableDebug(False)
+
     def test_aa01_loadfile(self):
-        self.assertTrue(libseq.load(bytes("/zynthian/zynthian-my-data/zynseq/default.zynseq", "utf-8")))
+        self.assertTrue(libseq.load(
+            bytes("/zynthian/zynthian-my-data/zynseq/default.zynseq", "utf-8")))
     #
+
     def test_aa02_savefile(self):
         libseq.save(bytes("/tmp/test.zynseq", "utf-8"))
-        self.assertTrue(filecmp.cmp("/zynthian/zynthian-my-data/zynseq/default.zynseq", "/tmp/test.zynseq"))
+        self.assertTrue(filecmp.cmp(
+            "/zynthian/zynthian-my-data/zynseq/default.zynseq", "/tmp/test.zynseq"))
     # Check currently selected pattern has defined beat type, steps per beat [1|2|3|4|6|8|12|24] and quantity of beats in pattern
+
     def check_pattern(self, beat_type, steps_per_beat, beats_in_pattern):
         steps_in_pattern = beats_in_pattern * steps_per_beat
         clocks_per_step = 24 / steps_per_beat
@@ -71,72 +82,84 @@ class TestLibZynSeq(unittest.TestCase):
         self.assertEqual(libseq.getStepsPerBeat(), steps_per_beat)
         self.assertEqual(libseq.getBeatsInPattern(), beats_in_pattern)
         self.assertEqual(libseq.getClocksPerStep(), clocks_per_step)
-        self.assertEqual(libseq.getPatternLength(libseq.getPatternIndex()), clocks_per_step * steps_in_pattern)
+        self.assertEqual(libseq.getPatternLength(
+            libseq.getPatternIndex()), clocks_per_step * steps_in_pattern)
     # Pattern tests
+
     def test_ac00_select_pattern(self):
         libseq.selectPattern(999)
         self.assertEqual(libseq.getPatternIndex(), 999)
         self.check_pattern(4, 4, 4)
     #
+
     def test_ac01_set_beats(self):
         libseq.selectPattern(999)
         libseq.setBeatsInPattern(5)
         self.check_pattern(4, 4, 5)
     #
+
     def test_ac02_set_steps_per_beat(self):
         libseq.selectPattern(999)
         libseq.setBeatsInPattern(5)
-        self.assertFalse(libseq.setStepsPerBeat(7)) # Not a permitted value
+        self.assertFalse(libseq.setStepsPerBeat(7))  # Not a permitted value
         self.check_pattern(4, 4, 5)
         self.assertTrue(libseq.setStepsPerBeat(8))
         self.check_pattern(4, 8, 5)
     #
+
     def test_ac03_add_note(self):
         libseq.selectPattern(999)
-        self.assertTrue(libseq.addNote(0,60,100,4,0))
-        self.assertEqual(libseq.getNoteVelocity(0,60), 100)
-        self.assertEqual(libseq.getNoteDuration(0,60), 4)
+        self.assertTrue(libseq.addNote(0, 60, 100, 4, 0))
+        self.assertEqual(libseq.getNoteVelocity(0, 60), 100)
+        self.assertEqual(libseq.getNoteDuration(0, 60), 4)
     #
+
     def test_ac04_add_note_too_long(self):
         libseq.selectPattern(999)
-        self.assertTrue(libseq.addNote(0,60,100,4,0))
-        self.assertFalse(libseq.addNote(0,60,100,200,0))
-        self.assertEqual(libseq.getNoteVelocity(0,60), 100)
-        self.assertEqual(libseq.getNoteDuration(0,60), 4)
+        self.assertTrue(libseq.addNote(0, 60, 100, 4, 0))
+        self.assertFalse(libseq.addNote(0, 60, 100, 200, 0))
+        self.assertEqual(libseq.getNoteVelocity(0, 60), 100)
+        self.assertEqual(libseq.getNoteDuration(0, 60), 4)
     #
+
     def test_ac05_set_note_velocity(self):
         libseq.selectPattern(999)
-        self.assertTrue(libseq.addNote(0,60,100,4,0))
-        libseq.setNoteVelocity(0,60,123)
-        self.assertEqual(libseq.getNoteVelocity(0,60), 123)
+        self.assertTrue(libseq.addNote(0, 60, 100, 4, 0))
+        libseq.setNoteVelocity(0, 60, 123)
+        self.assertEqual(libseq.getNoteVelocity(0, 60), 123)
     #
+
     def test_ac06_set_note_duration(self):
         libseq.selectPattern(999)
-        libseq.addNote(0,60,123,2,0)
-        self.assertEqual(libseq.getNoteDuration(0,60), 2)
+        libseq.addNote(0, 60, 123, 2, 0)
+        self.assertEqual(libseq.getNoteDuration(0, 60), 2)
     #
+
     def test_ac07_transpose(self):
         libseq.selectPattern(999)
-        libseq.addNote(0,60,123,2,0)
+        libseq.addNote(0, 60, 123, 2, 0)
         libseq.transpose(5)
-        self.assertEqual(libseq.getNoteDuration(0,65), 2)
-        self.assertEqual(libseq.getNoteVelocity(0,65), 123)
+        self.assertEqual(libseq.getNoteDuration(0, 65), 2)
+        self.assertEqual(libseq.getNoteVelocity(0, 65), 123)
     #
+
     def test_ac08_copy_pattern(self):
         libseq.selectPattern(999)
-        libseq.addNote(0,60,123,2,0)
+        libseq.addNote(0, 60, 123, 2, 0)
         libseq.copyPattern(999, 998)
         libseq.selectPattern(998)
-        self.assertEqual(libseq.getNoteDuration(0,60), 2)
-        self.assertEqual(libseq.getNoteVelocity(0,60), 123)
+        self.assertEqual(libseq.getNoteDuration(0, 60), 2)
+        self.assertEqual(libseq.getNoteVelocity(0, 60), 123)
     #
+
     def test_ac09_clear_pattern(self):
         libseq.clear()
-        self.assertEqual(libseq.getNoteDuration(0,65), 0)
+        self.assertEqual(libseq.getNoteDuration(0, 65), 0)
     #
+
     def test_ac10_is_pattern_modified(self):
         libseq.selectPattern(999)
-        libseq.addNote(0,60,100,4,0)
+        libseq.addNote(0, 60, 100, 4, 0)
         self.assertTrue(libseq.isPatternModified())
         self.assertFalse(libseq.isPatternModified())
 
@@ -147,36 +170,37 @@ class TestLibZynSeq(unittest.TestCase):
         self.assertEqual(libseq.getTriggerChannel(), 5)
         libseq.setTriggerChannel(16)
         self.assertEqual(libseq.getTriggerChannel(), 0xFF)
-        self.assertEqual(libseq.getTriggerNote(0,0), 0xFF)
-        libseq.setTriggerNote(0,0,0)
-        self.assertEqual(libseq.getTriggerNote(0,0), 0)
-        libseq.setTriggerNote(0,0,127)
-        self.assertEqual(libseq.getTriggerNote(0,0), 127)
-        libseq.setTriggerNote(0,0,128)
-        self.assertEqual(libseq.getTriggerNote(0,0), 0xFF)
+        self.assertEqual(libseq.getTriggerNote(0, 0), 0xFF)
+        libseq.setTriggerNote(0, 0, 0)
+        self.assertEqual(libseq.getTriggerNote(0, 0), 0)
+        libseq.setTriggerNote(0, 0, 127)
+        self.assertEqual(libseq.getTriggerNote(0, 0), 127)
+        libseq.setTriggerNote(0, 0, 128)
+        self.assertEqual(libseq.getTriggerNote(0, 0), 0xFF)
 
     # Track tests
     def test_ae00_track(self):
-        self.assertEqual(libseq.getTracks(0,0), 1)
-        self.assertTrue(libseq.addPattern(0,0,0,0,5,False))
-        self.assertEqual(libseq.getPattern(0,0,0,0), 5)
-        libseq.removePattern(0,0,0,0)
-        self.assertEqual(libseq.getPattern(0,0,0,0), -1)
+        self.assertEqual(libseq.getTracks(0, 0), 1)
+        self.assertTrue(libseq.addPattern(0, 0, 0, 0, 5, False))
+        self.assertEqual(libseq.getPattern(0, 0, 0, 0), 5)
+        libseq.removePattern(0, 0, 0, 0)
+        self.assertEqual(libseq.getPattern(0, 0, 0, 0), -1)
 
     # Sequence tests
     def test_af00_sequence_channel(self):
-        self.assertEqual(libseq.getChannel(0,0,0), 0xFF)
-        libseq.setChannel(0,0,0,0)
-        self.assertEqual(libseq.getChannel(0,0,0), 0)
-        libseq.setChannel(0,0,0,15)
-        self.assertEqual(libseq.getChannel(0,0,0), 15)
-        libseq.setChannel(0,0,0,16)
-        self.assertEqual(libseq.getChannel(0,0,0), 0xFF)
+        self.assertEqual(libseq.getChannel(0, 0, 0), 0xFF)
+        libseq.setChannel(0, 0, 0, 0)
+        self.assertEqual(libseq.getChannel(0, 0, 0), 0)
+        libseq.setChannel(0, 0, 0, 15)
+        self.assertEqual(libseq.getChannel(0, 0, 0), 15)
+        libseq.setChannel(0, 0, 0, 16)
+        self.assertEqual(libseq.getChannel(0, 0, 0), 0xFF)
     #
+
     def test_af01_sequence_mode(self):
-        self.assertEqual(libseq.getPlayMode(0,0), play_mode["LOOPALL"])
-        libseq.setPlayMode(0,0,play_mode["LOOPSYNC"])
-        self.assertEqual(libseq.getPlayMode(0,0), play_mode["LOOPSYNC"])
+        self.assertEqual(libseq.getPlayMode(0, 0), play_mode["LOOPALL"])
+        libseq.setPlayMode(0, 0, play_mode["LOOPSYNC"])
+        self.assertEqual(libseq.getPlayMode(0, 0), play_mode["LOOPSYNC"])
 
 
 '''
@@ -800,6 +824,6 @@ class TestLibZynSeq(unittest.TestCase):
             self.assertTrue(min_time < time2-time1 < max_time)
 '''
 
-    #TOOO Check beat type, sendMidiXXX (or remove), isSongPlaying, getTriggerChannel, setTriggerChannel, getTriggerNote, setTriggerNote, setInputChannel, getInputChannel, setScale, getScale, setTonic, getTonic, setChannel, getChannel, setOutput, setTempo, getTempo, setSongPosition, getSongPosition, startSong, pauseSong, toggleSong, solo, transportXXX
+# TOOO Check beat type, sendMidiXXX (or remove), isSongPlaying, getTriggerChannel, setTriggerChannel, getTriggerNote, setTriggerNote, setInputChannel, getInputChannel, setScale, getScale, setTonic, getTonic, setChannel, getChannel, setOutput, setTempo, getTempo, setSongPosition, getSongPosition, startSong, pauseSong, toggleSong, solo, transportXXX
 
 unittest.main()

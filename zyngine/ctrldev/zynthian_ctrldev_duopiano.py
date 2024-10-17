@@ -34,19 +34,21 @@ from zyncoder.zyncore import lib_zyncore
 # Duo Piano MIDI controller
 # ------------------------------------------------------------------------------------------------------------------
 
+
 class zynthian_ctrldev_duopiano(zynthian_ctrldev_base):
 
-	dev_ids = ["GENERAL IN 1"]
-	unroute_from_chains = False		# Keep the input device routed to chains when driver is loaded
+    dev_ids = ["GENERAL IN 1"]
+    # Keep the input device routed to chains when driver is loaded
+    unroute_from_chains = False
 
-	def init(self):
-		self.state_manager.add_slow_update_callback(60, self.keep_alive)
+    def init(self):
+        self.state_manager.add_slow_update_callback(60, self.keep_alive)
 
-	def end(self):
-		self.state_manager.remove_slow_update_callback(self.keep_alive)
-		super().end()
+    def end(self):
+        self.state_manager.remove_slow_update_callback(self.keep_alive)
+        super().end()
 
-	def keep_alive(self):
-		lib_zyncore.dev_send_note_on(self.idev_out, 0, 0, 0)
+    def keep_alive(self):
+        lib_zyncore.dev_send_note_on(self.idev_out, 0, 0, 0)
 
 # ------------------------------------------------------------------------------

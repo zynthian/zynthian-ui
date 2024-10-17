@@ -1,0 +1,11 @@
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 160
+PointerAlignment: Left
+AllowShortEnumsOnASingleLine: false
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true

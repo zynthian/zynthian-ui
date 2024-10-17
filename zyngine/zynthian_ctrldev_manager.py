@@ -41,12 +41,13 @@ from zyncoder.zyncore import lib_zyncore
 
 class zynthian_ctrldev_manager():
 
-    ctrldev_dpath = os.environ.get('ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui") + "/zyngui/ctrldev"
+    ctrldev_dpath = os.environ.get(
+        'ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui") + "/zyngui/ctrldev"
 
     # Function to initialise class
     def __init__(self, state_manager):
         """Initialise ctrldev_manager
-        
+
         state_manager : State manager object
         """
 
@@ -67,12 +68,13 @@ class zynthian_ctrldev_manager():
                 if dev_class is None:
                     continue
                 for dev_id in dev_class.dev_ids:
-                    logging.info(f"Ctrldev driver '{class_name}' for devices with ID '{dev_id}'")
+                    logging.info(
+                        f"Ctrldev driver '{class_name}' for devices with ID '{dev_id}'")
                     self.available_drivers[dev_id] = dev_class
 
     def load_driver(self, izmip, enable=False):
         """Loads a device driver
-        
+
         izmip : Index of zmip to attach driver
         enable : Enable driver for this input
         returns : True if new driver loaded
@@ -92,7 +94,8 @@ class zynthian_ctrldev_manager():
         izmop = zynautoconnect.dev_in_2_dev_out(izmip)
         try:
             # Load driver
-            self.drivers[izmip] = self.available_drivers[dev_id](self.state_manager, izmip, izmop)
+            self.drivers[izmip] = self.available_drivers[dev_id](
+                self.state_manager, izmip, izmop)
             # Unroute from chains if driver want it
             if self.drivers[izmip].unroute_from_chains:
                 lib_zyncore.zmip_set_route_chains(izmip, 0)
@@ -106,7 +109,7 @@ class zynthian_ctrldev_manager():
 
     def unload_driver(self, izmip, disable=False):
         """Unloads a device driver
-        
+
         izmip : Index of zmip to detach driver
         disable : True to disable device from loading driver (Default: False)
         returns : True if existing driver detached
@@ -146,19 +149,23 @@ class zynthian_ctrldev_manager():
                 if dstate:
                     state[uid] = dstate
             except Exception as e:
-                logging.error(f"Driver error while getting state for '{uid}' => {e}")
+                logging.error(
+                    f"Driver error while getting state for '{uid}' => {e}")
         return state
 
     def set_state_drivers(self, state):
         for uid, dstate in state.items():
-            izmip = zynautoconnect.get_midi_in_devid_by_uid(uid, zynthian_gui_config.midi_usb_by_port)
+            izmip = zynautoconnect.get_midi_in_devid_by_uid(
+                uid, zynthian_gui_config.midi_usb_by_port)
             if izmip is not None and izmip in self.drivers:
                 try:
                     self.drivers[izmip].set_state(dstate)
                 except Exception as e:
-                    logging.error(f"Driver error while restoring state for '{uid}' => {e}")
+                    logging.error(
+                        f"Driver error while restoring state for '{uid}' => {e}")
             else:
-                logging.warning(f"Can't restore state for '{uid}'. Device not connected or driver not loaded.")
+                logging.warning(
+                    f"Can't restore state for '{uid}'. Device not connected or driver not loaded.")
 
     def sleep_on(self):
         """Enable sleep state"""
@@ -178,7 +185,7 @@ class zynthian_ctrldev_manager():
         idev - device index
         ev - bytes with MIDI message data
         """
-        
+
         # Try device driver ...
         if idev in self.drivers:
             return self.drivers[idev].midi_event(ev)

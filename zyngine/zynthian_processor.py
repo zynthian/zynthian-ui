@@ -5,7 +5,7 @@
 # zynthian processor
 #
 # Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
-#						  Brian Walton <riban@zynthian.org>
+# Brian Walton <riban@zynthian.org>
 #
 # *****************************************************************************
 #
@@ -31,15 +31,17 @@ import traceback
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
 
+
 class zynthian_processor:
 
     # ---------------------------------------------------------------------------
     # Data dirs
     # ---------------------------------------------------------------------------
 
-    data_dir = os.environ.get('ZYNTHIAN_DATA_DIR',"/zynthian/zynthian-data")
-    my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR',"/zynthian/zynthian-my-data")
-    ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR',"/media/usb0")
+    data_dir = os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data")
+    my_data_dir = os.environ.get(
+        'ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data")
+    ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/usb0")
 
     # ------------------------------------------------------------------------
     # Initialization
@@ -71,7 +73,8 @@ class zynthian_processor:
         self.bank_name = None
         self.bank_info = None
         self.bank_msb = 0
-        self.bank_msb_info = [[0, 0], [0, 0], [0, 0]]  # system, user, external => [offset, n]
+        # system, user, external => [offset, n]
+        self.bank_msb_info = [[0, 0], [0, 0], [0, 0]]
 
         self.show_fav_presets = False
         self.preset_list = []
@@ -85,17 +88,17 @@ class zynthian_processor:
         self.preload_name = None
         self.preload_info = None
 
-        self.controllers_dict = {} # Map of zctrls indexed by symbol
+        self.controllers_dict = {}  # Map of zctrls indexed by symbol
         self.ctrl_screens_dict = {}
         self.current_screen_index = -1
         self.auto_save_bank = False
 
     def get_jackname(self, engine=False):
         """ Get the jackname for the processor's engine
-        
+
         engine : True to get engine's raw jackname
         Returns : jackname as string
-        
+
         """
 
         if not engine and self.jackname:
@@ -106,7 +109,7 @@ class zynthian_processor:
 
     def set_engine(self, engine):
         """Set engine that this processor uses"""
-        
+
         self.engine = engine
         self.engine.add_processor(self)
 
@@ -142,7 +145,7 @@ class zynthian_processor:
 
     def set_midi_chan(self, midi_chan):
         """Set processor (and its engines) MIDI channel
-        
+
         midi_chan : MIDI channel 0..15 or None
         """
 
@@ -156,7 +159,7 @@ class zynthian_processor:
 
     def get_midi_chan(self):
         """Get MIDI channel (0..15 or None)
-        
+
         TODO: Processors inherit MIDI channel from chain
         """
         return self.midi_chan
@@ -168,11 +171,12 @@ class zynthian_processor:
     def get_bank_list(self):
         self.bank_list = self.engine.get_bank_list(self)
         logging.info(f"Loaded {len(self.bank_list)} banks")
-        #logging.debug(f"BANK LIST => \n{self.bank_list}")
+        # logging.debug(f"BANK LIST => \n{self.bank_list}")
 
         # Calculate info for bank_msb => Is this used by someone?
         i = 0
-        self.bank_msb_info = [[0, 0], [0, 0], [0, 0]]  # system, user, external => [offset, n]
+        # system, user, external => [offset, n]
+        self.bank_msb_info = [[0, 0], [0, 0], [0, 0]]
         for bank in self.bank_list:
             if bank[0] is None:
                 continue
@@ -190,12 +194,13 @@ class zynthian_processor:
         self.bank_msb_info[0][1] = len(self.bank_list) - i
 
         # Add favourites virtual bank if there is some preset marked as favourite
-        if self.engine.show_favs_bank and len(self.engine.get_preset_favs(self))>0:
-            self.bank_list = [["*FAVS*", 0, "*** Favorites ***"]] + self.bank_list
+        if self.engine.show_favs_bank and len(self.engine.get_preset_favs(self)) > 0:
+            self.bank_list = [
+                ["*FAVS*", 0, "*** Favorites ***"]] + self.bank_list
             for i in range(3):
                 self.bank_msb_info[i][0] += 1
 
-        #logging.debug(f"BANK MSB INFO => \n{self.bank_msb_info}")
+        # logging.debug(f"BANK MSB INFO => \n{self.bank_msb_info}")
         return self.bank_list
 
     def reset_bank(self):
@@ -221,10 +226,12 @@ class zynthian_processor:
 
             if bank_index != self.bank_index or self.bank_name != bank_name:
                 set_engine_needed = True
-                logging.info("Bank selected: %s (%d)" % (bank_name, bank_index))
+                logging.info("Bank selected: %s (%d)" %
+                             (bank_name, bank_index))
             else:
                 set_engine_needed = False
-                logging.info("Bank already selected: %s (%d)" % (self.bank_name, bank_index))
+                logging.info("Bank already selected: %s (%d)" %
+                             (self.bank_name, bank_index))
 
             self.bank_index = bank_index
             self.bank_name = bank_name
@@ -251,13 +258,13 @@ class zynthian_processor:
 
     def set_bank_by_name(self, bank_name, set_engine=True):
         """Set processor's engine bank by name
-        
+
         bank_name:- Name of bank to select
         set_engine : True to set engine's bank
         Returns : True on success
         #TODO Optimize search!!
         """
-        
+
         for i in range(len(self.bank_list)):
             if bank_name == self.bank_list[i][2]:
                 return self.set_bank(i, set_engine)
@@ -287,7 +294,7 @@ class zynthian_processor:
         for index, bank_info in enumerate(self.bank_list):
             if self.bank_info and self.bank_info == bank_info:
                 return index
-        return self.bank_index #TODO: can we lose or optimise this?
+        return self.bank_index  # TODO: can we lose or optimise this?
 
     # ---------------------------------------------------------------------------
     # Preset Management
@@ -310,7 +317,7 @@ class zynthian_processor:
             return
         self.preset_list = preset_list
         logging.info(f"Loaded {len(self.preset_list)} presets")
-        #logging.debug(f"PRESET LIST => \n{self.preset_list}")
+        # logging.debug(f"PRESET LIST => \n{self.preset_list}")
 
     def reset_preset(self):
         """Reset preset to default (empty)"""
@@ -321,13 +328,13 @@ class zynthian_processor:
 
     def set_preset(self, preset_index, set_engine=True, force_set_engine=True):
         """Set the processor's engine preset
-        
+
         preset_index : Index of preset
         set_engine : True to set the engine preset???
         force_set_engine : True to force engine set???
         Returns : True on success
         """
-        
+
         if not isinstance(preset_index, int) or preset_index >= len(self.preset_list):
             return False
         preset_id = str(self.preset_list[preset_index][0])
@@ -349,15 +356,17 @@ class zynthian_processor:
 
         # Check if preset is already loaded
         if not force_set_engine and self.engine.cmp_presets(preset_info, self.preset_info):
-            logging.info("Preset already selected: %s (%d)" % (preset_name, preset_index))
+            logging.info("Preset already selected: %s (%d)" %
+                         (preset_name, preset_index))
             # Check if some other preset is preloaded
-            if self.preload_info and not self.engine.cmp_presets(self.preload_info,self.preset_info):
+            if self.preload_info and not self.engine.cmp_presets(self.preload_info, self.preset_info):
                 set_engine_needed = True
             else:
                 set_engine_needed = False
         else:
             set_engine_needed = True
-            logging.info("Preset selected: %s (%d)" % (preset_name, preset_index))
+            logging.info("Preset selected: %s (%d)" %
+                         (preset_name, preset_index))
 
         self.preset_index = preset_index
         self.preset_name = preset_name
@@ -371,7 +380,7 @@ class zynthian_processor:
 
         if set_engine:
             if set_engine_needed:
-                #self.load_ctrl_config()
+                # self.load_ctrl_config()
                 return self.engine.set_preset(self, self.preset_info)
             else:
                 return False
@@ -380,7 +389,7 @@ class zynthian_processor:
 
     def set_preset_by_name(self, preset_name, set_engine=True, force_set_engine=True):
         """Set processor's engine preset by name
-        
+
         preset_name : Name of preset to select
         set_engine : True to set engine's preset???
         force_set_engine : True to force setting engine's preset???
@@ -401,7 +410,7 @@ class zynthian_processor:
     # TODO Optimize search!!
     def set_preset_by_id(self, preset_id, set_engine=True, force_set_engine=True):
         """Set processor's engine preset by ID
-        
+
         preset_id : ID of preset to select
         set_engine : True to set engine's preset???
         force_set_engine : True to force setting engine's preset???
@@ -415,19 +424,21 @@ class zynthian_processor:
 
     def preload_preset(self, preset_index):
         """Preload processor's engine preset by index
-        
+
         preset_index : Index of preset
         Preloading request engine to temporarily load a preset
         """
         # Avoid preload on engines that take excessive time to load presets
-        if self.engine.nickname in ['PD','MD']:
+        if self.engine.nickname in ['PD', 'MD']:
             return True
         if preset_index < len(self.preset_list):
             if (not self.preload_info and not self.engine.cmp_presets(self.preset_list[preset_index], self.preset_info)) or (self.preload_info and not self.engine.cmp_presets(self.preset_list[preset_index], self.preload_info)):
                 self.preload_index = preset_index
                 self.preload_name = self.preset_list[preset_index][2]
-                self.preload_info = copy.deepcopy(self.preset_list[preset_index])
-                logging.info("Preset Preloaded: %s (%d)" % (self.preload_name, preset_index))
+                self.preload_info = copy.deepcopy(
+                    self.preset_list[preset_index])
+                logging.info("Preset Preloaded: %s (%d)" %
+                             (self.preload_name, preset_index))
                 self.engine.set_preset(self, self.preload_info, True)
                 return True
         return False
@@ -435,13 +446,14 @@ class zynthian_processor:
     def restore_preset(self):
         """Restore preset after temporary preload"""
 
-        if self.preset_name is not None and self.preload_info is not None and not self.engine.cmp_presets(self.preload_info,self.preset_info):
+        if self.preset_name is not None and self.preload_info is not None and not self.engine.cmp_presets(self.preload_info, self.preset_info):
             if self.preset_bank_index is not None and self.bank_index != self.preset_bank_index:
                 self.set_bank(self.preset_bank_index, False)
             self.preload_index = None
             self.preload_name = None
             self.preload_info = None
-            logging.info("Restore Preset: %s (%d)" % (self.preset_name, self.preset_index))
+            logging.info("Restore Preset: %s (%d)" %
+                         (self.preset_name, self.preset_index))
             self.engine.set_preset(self, self.preset_info)
             return True
         return False
@@ -467,10 +479,10 @@ class zynthian_processor:
 
     def toggle_preset_fav(self, preset):
         """Toggle preset's favourite state
-        
+
         preset : Preset info (list)
         """
-        
+
         self.engine.toggle_preset_fav(self, preset)
         if self.show_fav_presets and not len(self.get_preset_favs()):
             self.set_show_fav_presets(False)
@@ -492,14 +504,14 @@ class zynthian_processor:
 
     def set_show_fav_presets(self, flag=True):
         """Set/reset flag indicating whether to show preset favourites
-        
+
         flag : True to enable show favourites
         TODO: Should this be in UI?
         """
-        
+
         if flag and len(self.engine.get_preset_favs(self)):
             self.show_fav_presets = True
-            #self.reset_preset()
+            # self.reset_preset()
         else:
             self.show_fav_presets = False
 
@@ -528,7 +540,7 @@ class zynthian_processor:
 
     def init_ctrl_screens(self):
         """Create controller screens from zynthian controller keys
-        
+
         TODO: This should be in UI
         """
 
@@ -546,11 +558,11 @@ class zynthian_processor:
 
     def get_ctrl_screens(self):
         """Get processor controller screens
-        
+
         TODO: This should be in UI
         Returns : Dictionary of controller screen structures
         """
-        
+
         return self.ctrl_screens_dict
 
     def get_ctrl_screen(self, key):
@@ -568,16 +580,16 @@ class zynthian_processor:
 
     def get_current_screen_index(self):
         """Get index of last selected controller screen
-        
+
         Returns : Index of screen
         TODO: This should be in UI
         """
-        
+
         return self.current_screen_index
 
     def set_current_screen_index(self, screen_index):
         """Set index of last selected controller screen
-        
+
         screen_index : Index of screen
         TODO: This should be in UI
         """
@@ -590,7 +602,7 @@ class zynthian_processor:
         TODO: This should be in UI
         """
 
-        zctrls=[]
+        zctrls = []
         for k in ctrl_keys:
             if k:
                 try:
@@ -601,7 +613,7 @@ class zynthian_processor:
 
     def send_ctrl_midi_cc(self):
         """Send MIDI CC for all controllers
-        
+
         TODO: When is this required? Fluidsynth, linuxsampler and others calls this during set_preset
         """
 
@@ -610,7 +622,7 @@ class zynthian_processor:
             if zctrl.midi_cc:
                 mval = zctrl.get_ctrl_midi_val()
                 zctrl.send_midi_cc(mval)
-                #logging.debug("Sending MIDI CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(mval), k))
+                # logging.debug("Sending MIDI CH{}#CC{}={} for {}".format(zctrl.midi_chan, zctrl.midi_cc, int(mval), k))
             if zctrl.midi_feedback:
                 zctrl.send_midi_feedback(mval)
 
@@ -623,7 +635,7 @@ class zynthian_processor:
         for k, zctrl in self.controllers_dict.items():
             if zctrl.midi_feedback:
                 zctrl.send_midi_feedback()
-                #logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_feedback[0], zctrl.midi_feedback[1], int(zctrl.value), k))
+                # logging.debug("Sending MIDI FB CH{}#CC{}={} for {}".format(zctrl.midi_feedback[0], zctrl.midi_feedback[1], int(zctrl.value), k))
 
     def get_group_zctrls(self, group):
         zctrls = []
@@ -638,13 +650,13 @@ class zynthian_processor:
 
     def midi_control_change(self, chan, ccnum, ccval):
         """Handle MIDI CC message
-        
+
         chan : MIDI channel
         ccnum : CC number
          ccval : CC value
         """
-        
-        #logging.debug("Receving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
+
+        # logging.debug("Receving MIDI CH{}#CC{}={}".format(chan, ccnum, ccval))
         try:
             self.engine.midi_control_change(chan, ccnum, ccval)
         except:
@@ -652,27 +664,31 @@ class zynthian_processor:
 
     def midi_bank_msb(self, bank_msb):
         """Handle MIDI bank MSB message
-        
+
         bank_msb : Bank MSB
         """
-        logging.debug("Received Bank MSB for CH#{}: {}".format(self.midi_chan, bank_msb))
+        logging.debug("Received Bank MSB for CH#{}: {}".format(
+            self.midi_chan, bank_msb))
         if bank_msb >= 0 and bank_msb <= 2:
             self.bank_msb = bank_msb
 
     def midi_bank_lsb(self, bank_lsb):
         """Handle MIDI bank MSB message
-        
+
         bank_lsb : Bank LSB
         """
         info = self.bank_msb_info[self.bank_msb]
-        logging.debug("Received Bank LSB for CH#{}: {} => {}".format(self.midi_chan, bank_lsb, info))
+        logging.debug("Received Bank LSB for CH#{}: {} => {}".format(
+            self.midi_chan, bank_lsb, info))
         if bank_lsb < info[1]:
-            logging.debug("MSB offset for CH#{}: {}".format(self.midi_chan, info[0]))
+            logging.debug("MSB offset for CH#{}: {}".format(
+                self.midi_chan, info[0]))
             self.set_show_fav_presets(False)
             self.set_bank(info[0] + bank_lsb)
             self.load_preset_list()
         else:
-            logging.warning("Bank index {} doesn't exist for MSB {} on CH#{}".format(bank_lsb, self.bank_msb, self.midi_chan))
+            logging.warning("Bank index {} doesn't exist for MSB {} on CH#{}".format(
+                bank_lsb, self.bank_msb, self.midi_chan))
 
     # ---------------------------------------------------------------------------
     # State Management
@@ -716,7 +732,8 @@ class zynthian_processor:
 
         if "preset_info" in state:
             try:
-                self.set_preset_by_id(state["preset_info"][0], force_set_engine=False)
+                self.set_preset_by_id(
+                    state["preset_info"][0], force_set_engine=False)
             except:
                 # Legacy snapshots without preset_info
                 self.set_preset(state["preset_info"], force_set_engine=False)
@@ -730,18 +747,20 @@ class zynthian_processor:
                     if "midi_cc_momentary_switch" in ctrl_state:
                         zctrl.midi_cc_momentary_switch = ctrl_state['midi_cc_momentary_switch']
                 except Exception as e:
-                    logging.warning("Invalid controller for processor {}: {}".format(self.get_basepath(), e))
+                    logging.warning("Invalid controller for processor {}: {}".format(
+                        self.get_basepath(), e))
 
     def restore_state_legacy(self, state):
         """Restore legacy states from state
-        
+
         TODO: Move this to snapshot handler
         """
-        
+
         # Set legacy Note Range (BW compatibility)
         if isinstance(self.chain.zmop_index, int) and 'note_range' in state:
             nr = state['note_range']
-            lib_zyncore.zmop_set_note_range_transpose(self.chain.zmop_index, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
+            lib_zyncore.zmop_set_note_range_transpose(
+                self.chain.zmop_index, nr['note_low'], nr['note_high'], nr['octave_trans'], nr['halftone_trans'])
 
     # ---------------------------------------------------------------------------
     # Path/Breadcrumb Strings
@@ -750,7 +769,7 @@ class zynthian_processor:
     def get_path(self):
         """Get path (breadcrumb) string"""
 
-        #TODO: UI
+        # TODO: UI
         if self.preset_name:
             bank_name = self.get_preset_bank_name()
             if not bank_name:
@@ -762,7 +781,7 @@ class zynthian_processor:
 
     def get_basepath(self):
         """Get base path string"""
-        #TODO: UI
+        # TODO: UI
 
         if self.engine:
             path = self.engine.get_path(self)
@@ -778,7 +797,7 @@ class zynthian_processor:
     def get_bankpath(self):
         """Get bank path string"""
 
-        #TODO: UI
+        # TODO: UI
         path = self.get_basepath()
         if self.bank_name and self.bank_name != "None" and not path.endswith(self.bank_name):
             path += " > " + self.bank_name

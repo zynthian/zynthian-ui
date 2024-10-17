@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
-# 
+#
 # Zynthian GUI Bluetooth config Class
-# 
+#
 # Copyright (C) 2024 Fernando Moyano <jofemodo@zynthian.org>
 #                    Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
 # published by the Free Software Foundation; either version 2 of
@@ -21,7 +21,7 @@
 # GNU General Public License for more details.
 #
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
-# 
+#
 # ******************************************************************************
 
 import logging
@@ -45,7 +45,8 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
         self.proc = None
         self.update = False
         self.scan_paused = False
-        self.ble_controllers = {}       # Map of Bluetooth controllers, indexed by controller address
+        # Map of Bluetooth controllers, indexed by controller address
+        self.ble_controllers = {}
         self.ble_devices = {}           # Map of BLE devices, indexed by device address
         self.pending_actions = []       # List of BLE commands to queue
         super().__init__('Bluetooth', True)
@@ -71,17 +72,20 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
         self.list_data = []
 
         if zynthian_gui_config.bluetooth_enabled:
-            self.list_data.append(("stop_bluetooth", None, "\u2612 Enable Bluetooth"))
+            self.list_data.append(
+                ("stop_bluetooth", None, "\u2612 Enable Bluetooth"))
             if len(self.ble_controllers) == 0:
-                self.list_data.append((None, None, "No Bluetooth controllers detected!"))
+                self.list_data.append(
+                    (None, None, "No Bluetooth controllers detected!"))
                 super().fill_list()
                 return
             for ctrl in sorted(self.ble_controllers.keys()):
                 chk = "\u2612" if self.ble_controllers[ctrl]["enabled"] else "\u2610"
-                self.list_data.append(("enable_controller", ctrl, f"  {chk} {self.ble_controllers[ctrl]['alias']}"))
+                self.list_data.append(
+                    ("enable_controller", ctrl, f"  {chk} {self.ble_controllers[ctrl]['alias']}"))
             self.list_data.append((None, None, "Devices"))
             for addr, data in self.ble_devices.items():
-                #[name, paired, trusted, connected, is_midi]
+                # [name, paired, trusted, connected, is_midi]
                 if data[2]:
                     title = "\u2612 "
                 else:
@@ -91,7 +95,8 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                 title += data[0]
                 self.list_data.append((f"BLE:{addr}", addr, title))
         else:
-            self.list_data.append(("start_bluetooth", None, "\u2610 Enable Bluetooth"))
+            self.list_data.append(
+                ("start_bluetooth", None, "\u2610 Enable Bluetooth"))
 
         super().fill_list()
 
@@ -110,8 +115,10 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                     return
                 self.zyngui.state_manager.start_busy("Enabling BLE Controller")
                 self.send_ble_cmd("scan off")
-                self.zyngui.state_manager.select_bluetooth_controller(self.list_data[i][1])
-                self.send_ble_cmd(f"select {zynthian_gui_config.ble_controller}")
+                self.zyngui.state_manager.select_bluetooth_controller(
+                    self.list_data[i][1])
+                self.send_ble_cmd(
+                    f"select {zynthian_gui_config.ble_controller}")
                 self.ble_devices = {}
                 sleep(1)
                 self.send_ble_cmd("scan on")
@@ -125,10 +132,12 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
         elif t == 'B':
             if self.list_data[i][0].startswith("BLE:"):
                 # Bluetooth device
-                self.zyngui.show_confirm(f"Remove Bluetooth device?\n{self.list_data[i][2][2:]}\n{self.list_data[i][0]}", self.remove_ble, self.list_data[i][0][4:])
+                self.zyngui.show_confirm(
+                    f"Remove Bluetooth device?\n{self.list_data[i][2][2:]}\n{self.list_data[i][0]}", self.remove_ble, self.list_data[i][0][4:])
             elif self.list_data[i][0] == "enable_controller":
                 self.rename_ctrl = self.list_data[i][1]
-                self.zyngui.show_keyboard(self.rename_controller, self.list_data[i][2][4:])
+                self.zyngui.show_keyboard(
+                    self.rename_controller, self.list_data[i][2][4:])
 
     def rename_controller(self, title):
         self.send_ble_cmd(f"select {self.rename_ctrl}")
@@ -142,7 +151,8 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
         self.scan_paused = False
         if self.proc is None:
             # Start scanning and processing bluetooth
-            self.proc = Popen(["bluetoothctl", "--agent", "DisplayOnly"], stdin=PIPE, stdout=PIPE, stderr=PIPE, encoding='utf-8')
+            self.proc = Popen(["bluetoothctl", "--agent", "DisplayOnly"],
+                              stdin=PIPE, stdout=PIPE, stderr=PIPE, encoding='utf-8')
             # Enable background scan for MIDI devices
             Thread(target=self.process_dynamic_ports, name="BLE scan").start()
             self.ble_controllers = {}
@@ -204,12 +214,14 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                         continue
                     cur_ctrl = result[1]
                     if cur_ctrl not in self.ble_controllers:
-                        self.ble_controllers[cur_ctrl] = {"enabled":None, "alias":f"Controller {cur_ctrl}"}
+                        self.ble_controllers[cur_ctrl] = {
+                            "enabled": None, "alias": f"Controller {cur_ctrl}"}
                         self.send_ble_cmd(f"show {cur_ctrl}")
                     if result[2] == "Powered:":
                         enabled = result[3] == "yes"
                         if cur_ctrl not in self.ble_controllers:
-                            self.ble_controllers[cur_ctrl] = {"enabled":None, "alias":f"Controller {cur_ctrl}"}
+                            self.ble_controllers[cur_ctrl] = {
+                                "enabled": None, "alias": f"Controller {cur_ctrl}"}
                         self.update_controller_power(cur_ctrl, enabled)
                 elif result[0] == "Device":
                     if result[1].count(":") != 5:
@@ -228,7 +240,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                         self.ble_devices[addr] = [addr, None, None, None, None]
                         self.update = True
                         self.send_ble_cmd(f"info {result[1]}")
-                    
+
                     if addr in self.ble_devices:
                         if result[2] == "Paired:":
                             self.ble_devices[addr][1] = result[3] == "yes"
@@ -248,7 +260,8 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                         enabled = result[1] == "yes"
                         self.update_controller_power(cur_ctrl, enabled)
                     if result[0] == "Alias:" and self.ble_controllers[cur_ctrl] != result[1]:
-                        self.ble_controllers[cur_ctrl]["alias"] = " ".join(result[1:])
+                        self.ble_controllers[cur_ctrl]["alias"] = " ".join(
+                            result[1:])
                         self.update = True
                 elif parsing and cur_dev:
                     # self.ble_devices[addr] is a list: [alias, paired, trusted, connected, is_midi]
@@ -267,16 +280,17 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                     elif result[0] == "Battery" and result[2] == "Percentage":
                         battery_value = int(result[2], 16)
                         # TODO: Do we want to record battery level
-                    #if cur_dev and self.ble_devices[cur_dev][3] == "yes" and self.ble_devices[cur_dev][2] != "yes":
+                    # if cur_dev and self.ble_devices[cur_dev][3] == "yes" and self.ble_devices[cur_dev][2] != "yes":
                         # Do not let an untrusted device remain connected
-                        #self.send_ble_cmd(f"disconnect {cur_dev}")
-                    self.update |=  config != self.ble_devices[cur_dev]
+                        # self.send_ble_cmd(f"disconnect {cur_dev}")
+                    self.update |= config != self.ble_devices[cur_dev]
             except Exception as e:
-                pass # Accept occasional error instead of checking length of result many times.
+                # Accept occasional error instead of checking length of result many times.
+                pass
 
     def toggle_ble_trust(self, addr):
         """Toggle trust of BLE device
-        
+
         addr - BLE address
         """
         self.zyngui.state_manager.start_busy("Toggle BLE Device")
@@ -298,18 +312,19 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                 self.send_ble_cmd(f"trust {addr}")
                 self.send_ble_cmd(f"pair {addr}")
         except Exception as e:
-            logging.warning(f"Failed to complete toggle BLE device action: {e}")
+            logging.warning(
+                f"Failed to complete toggle BLE device action: {e}")
             self.update = True
         sleep(2)
         self.zyngui.state_manager.end_busy("Toggle BLE Device")
 
     def remove_ble(self, addr):
         """Remove the Bluetooth device
-        
+
         addr : BLE address
         """
         try:
-            #self.ble_devices.pop(addr)
+            # self.ble_devices.pop(addr)
             self.pending_actions.insert(0, f"remove {addr}")
         except:
             pass
