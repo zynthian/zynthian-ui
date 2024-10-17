@@ -547,6 +547,12 @@ class zynthian_gui_admin(zynthian_gui_selector):
 		logging.info("UPDATE SOFTWARE")
 		self.last_state_action()
 		self.zyngui.show_info("UPDATE SOFTWARE")
+		self.zyngui.add_info("Checking for Internet... ")
+		if os.system("ping -c1 -W1 github.com"):
+			self.zyngui.add_info("ERROR: Cannot reach GitHub", "ERROR")
+			self.zyngui.hide_info_timer(5000)
+			return
+		self.zyngui.add_info("SUCCESS\n", "SUCCESS")
 		self.start_command([self.sys_dir + "/scripts/update_zynthian.sh"])
 		self.state_manager.update_available = False
 		self.update_available = False
