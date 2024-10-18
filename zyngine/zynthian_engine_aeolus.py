@@ -99,32 +99,32 @@ class zynthian_engine_aeolus(zynthian_engine):
     # ---------------------------------------------------------------------------
 
     swell_ctrls = [
-        ['Swell', 7, 64],
-        ['Trem Freq', 12, 42],
-        ['Trem Amp', 13, 64],
+        ['Swell', None, 64],
+        ['Trem Freq', None, 42],
+        ['Trem Amp', None, 64],
     ]
 
     common_ctrls = [
         ['Sustain', 64, 'off', 'off|on'],
-        ['Azimuth', {'midi_cc': 14, 'value_min': -0.5, 'value_max': 0.5}],
-        ['Width', {'midi_cc': 15, 'value': 0.8, 'value_max': 1.0}],
-        ['Direct', {'midi_cc': 16, 'value': -9.5,
+        ['Azimuth', {'midi_cc': None, 'value_min': -0.5, 'value_max': 0.5}],
+        ['Width', {'midi_cc': None, 'value': 0.8, 'value_max': 1.0}],
+        ['Direct', {'midi_cc': None, 'value': -9.5,
                     'value_min': -22.0, 'value_max': 0.0}],
-        ['Reflect', {'midi_cc': 17, 'value': -16.5,
+        ['Reflect', {'midi_cc': None, 'value': -16.5,
                      'value_min': -22.0, 'value_max': 0.0}],
-        ['Reverb', {'midi_cc': 18, 'value': -15,
+        ['Reverb', {'midi_cc': None, 'value': -15,
                     'value_min': -22.0, 'value_max': 0.0}]
     ]
 
     # TODO: The following controls are common to all so should ideally only be in the "main" chain
     audio_ctrls = [
-        ['Delay', {'midi_cc': 20, 'value': 60,
+        ['Delay', {'midi_cc': None, 'value': 60,
                    'value_min': 0, 'value_max': 150}],
-        ['Rev Time', {'midi_cc': 21, 'value': 4.0,
+        ['Rev Time', {'midi_cc': None, 'value': 4.0,
                       'value_min': 2.0, 'value_max': 7.0}],
-        ['Rev Pos', {'midi_cc': 22, 'value': 0.5,
+        ['Rev Pos', {'midi_cc': None, 'value': 0.5,
                      'value_min': -1.0, 'value_max': 1.0}],
-        ['Volume', {'midi_cc': 23, 'value': -15,
+        ['Volume', {'midi_cc': None, 'value': -15,
                     'value_min': -22, 'value_max': 0.0}]
     ]
 
@@ -141,18 +141,18 @@ class zynthian_engine_aeolus(zynthian_engine):
         {
             # Manual III
             "ctrls": [
-                ['Principal 8', 43, 'off', 'off|on', [0, 0]],
-                ['Gemshorn 8', 44, 'off', 'off|on', [0, 1]],
-                ['Quinta-dena 8', 45, 'off', 'off|on', [0, 2]],
-                ['Suabile 8', 46, 'off', 'off|on', [0, 3]],
-                ['Rohrflöte 4', 47, 'off', 'off|on', [0, 4]],
-                ['Dulzflöte 4', 48, 'off', 'off|on', [0, 5]],
-                ['Quintflöte 2 2/3', 49, 'off', 'off|on', [0, 6]],
-                ['Super-octave 2', 50, 'off', 'off|on', [0, 7]],
-                ['Sifflet 1', 51, 'off', 'off|on', [0, 8]],
-                ['Cymbel VI', 52, 'off', 'off|on', [0, 9]],
-                ['Oboe', 53, 'off', 'off|on', [0, 10]],
-                ['Tremulant', 54, 'off', 'off|on', [0, 11]],
+                ['Principal 8', None, 'off', 'off|on', [0, 0]],
+                ['Gemshorn 8', None, 'off', 'off|on', [0, 1]],
+                ['Quinta-dena 8', None, 'off', 'off|on', [0, 2]],
+                ['Suabile 8', None, 'off', 'off|on', [0, 3]],
+                ['Rohrflöte 4', None, 'off', 'off|on', [0, 4]],
+                ['Dulzflöte 4', None, 'off', 'off|on', [0, 5]],
+                ['Quintflöte 2 2/3', None, 'off', 'off|on', [0, 6]],
+                ['Super-octave 2', None, 'off', 'off|on', [0, 7]],
+                ['Sifflet 1', None, 'off', 'off|on', [0, 8]],
+                ['Cymbel VI', None, 'off', 'off|on', [0, 9]],
+                ['Oboe', None, 'off', 'off|on', [0, 10]],
+                ['Tremulant', None, 'off', 'off|on', [0, 11]],
             ] + swell_ctrls + common_ctrls,
             "ctrl_screens": [
                 ['Stops (1)', ['Principal 8', 'Gemshorn 8',
@@ -167,21 +167,19 @@ class zynthian_engine_aeolus(zynthian_engine):
         {
             # Manual II
             "ctrls": [
-                ['Rohrflöte 8', 30, 'off', 'off|on', [1, 0]],
-                ['Harmonic Flute 4', 31, 'off', 'off|on', [1, 1]],
-                ['Flauto Dolce 4', 32, 'off', 'off|on', [1, 2]],
-                ['Nasard 2 2/3', 33, 'off', 'off|on', [1, 3]],
-                ['Ottavina 2', 34, 'off', 'off|on', [1, 4]],
-                ['Tertia 1 3/5', 35, 'off', 'off|on', [1, 5]],
-                ['Sesqui-altera', 36, 'off', 'off|on', [1, 6]],
-                ['Septime', 37, 'off', 'off|on', [1, 7]],
-                ['None', 38, 'off', 'off|on', [1, 8]],
-                ['Krumhorn', 39, 'off', 'off|on', [1, 9]],
-                ['Melodia', 40, 'off', 'off|on', [1, 10]],
-                ['Tremulant', 41, 'off', 'off|on', [1, 11]],
-                ['II+III', 42, 'off', 'off|on', [1, 12]],
-                ['Sustain', 64, "off", "off|on"],
-                ['Reverb', 91, 64]
+                ['Rohrflöte 8', None, 'off', 'off|on', [1, 0]],
+                ['Harmonic Flute 4', None, 'off', 'off|on', [1, 1]],
+                ['Flauto Dolce 4', None, 'off', 'off|on', [1, 2]],
+                ['Nasard 2 2/3', None, 'off', 'off|on', [1, 3]],
+                ['Ottavina 2', None, 'off', 'off|on', [1, 4]],
+                ['Tertia 1 3/5', None, 'off', 'off|on', [1, 5]],
+                ['Sesqui-altera', None, 'off', 'off|on', [1, 6]],
+                ['Septime', None, 'off', 'off|on', [1, 7]],
+                ['None', None, 'off', 'off|on', [1, 8]],
+                ['Krumhorn', None, 'off', 'off|on', [1, 9]],
+                ['Melodia', None, 'off', 'off|on', [1, 10]],
+                ['Tremulant', None, 'off', 'off|on', [1, 11]],
+                ['II+III', None, 'off', 'off|on', [1, 12]]
             ] + swell_ctrls + common_ctrls,
             "ctrl_screens": [
                 ['Stops (1)', ['Rohrflöte 8', 'Harmonic Flute 4',
@@ -196,24 +194,22 @@ class zynthian_engine_aeolus(zynthian_engine):
         {
             # Manual I
             "ctrls": [
-                ['Principal 8', 14, 'off', 'off|on', [2, 0]],
-                ['Principal 4', 15, 'off', 'off|on', [2, 1]],
-                ['Octave 2', 16, 'off', 'off|on', [2, 2]],
-                ['Octave 1', 17, 'off', 'off|on', [2, 3]],
-                ['Quint 5 1/3', 18, 'off', 'off|on', [2, 4]],
-                ['Quint 2 2/3', 19, 'off', 'off|on', [2, 5]],
-                ['Tibia 8', 20, 'off', 'off|on', [2, 6]],
-                ['Celesta 8', 21, 'off', 'off|on', [2, 7]],
-                ['Flöte 8', 22, 'off', 'off|on', [2, 8]],
-                ['Flöte 4', 23, 'off', 'off|on', [2, 9]],
-                ['Flöte 2', 24, 'off', 'off|on', [2, 10]],
-                ['Cymbel VI', 25, 'off', 'off|on', [2, 11]],
-                ['Mixtur', 26, 'off', 'off|on', [2, 12]],
-                ['Trumpet', 27, 'off', 'off|on', [2, 13]],
-                ['I+II', 28, 'off', 'off|on', [2, 14]],
-                ['I+III', 29, 'off', 'off|on', [2, 15]],
-                ['Sustain', 64, "off", "off|on"],
-                ['Reverb', 91, 64]
+                ['Principal 8', None, 'off', 'off|on', [2, 0]],
+                ['Principal 4', None, 'off', 'off|on', [2, 1]],
+                ['Octave 2', None, 'off', 'off|on', [2, 2]],
+                ['Octave 1', None, 'off', 'off|on', [2, 3]],
+                ['Quint 5 1/3', None, 'off', 'off|on', [2, 4]],
+                ['Quint 2 2/3', None, 'off', 'off|on', [2, 5]],
+                ['Tibia 8', None, 'off', 'off|on', [2, 6]],
+                ['Celesta 8', None, 'off', 'off|on', [2, 7]],
+                ['Flöte 8', None, 'off', 'off|on', [2, 8]],
+                ['Flöte 4', None, 'off', 'off|on', [2, 9]],
+                ['Flöte 2', None, 'off', 'off|on', [2, 10]],
+                ['Cymbel VI', None, 'off', 'off|on', [2, 11]],
+                ['Mixtur', None, 'off', 'off|on', [2, 12]],
+                ['Trumpet', None, 'off', 'off|on', [2, 13]],
+                ['I+II', None, 'off', 'off|on', [2, 14]],
+                ['I+III', None, 'off', 'off|on', [2, 15]]
             ] + common_ctrls,
             "ctrl_screens": [
                 ['Stops (1)', ['Principal 8', 'Principal 4',
@@ -228,24 +224,22 @@ class zynthian_engine_aeolus(zynthian_engine):
         {
             # Pedals
             "ctrls": [
-                ['Subbass 16', 55, 'off', 'off|on', [3, 0]],
-                ['Principal 16', 56, 'off', 'off|on', [3, 1]],
-                ['Principal 8', 57, 'off', 'off|on', [3, 2]],
-                ['Principal 4', 58, 'off', 'off|on', [3, 3]],
-                ['Octave 2', 59, 'off', 'off|on', [3, 4]],
-                ['Octave 1', 60, 'off', 'off|on', [3, 5]],
-                ['Quint 5 1/3', 61, 'off', 'off|on', [3, 6]],
-                ['Quint 2 2/3', 62, 'off', 'off|on', [3, 7]],
-                ['Mixtur', 63, 'off', 'off|on', [3, 8]],
-                ['Fagott 16', 64, 'off', 'off|on', [3, 9]],
-                ['Trombone 16', 65, 'off', 'off|on', [3, 10]],
-                ['Bombarde 32', 66, 'off', 'off|on', [3, 11]],
-                ['Trumpet', 67, 'off', 'off|on', [3, 12]],
-                ['P+I', 68, 'off', 'off|on', [3, 13]],
-                ['P+II', 69, 'off', 'off|on', [3, 14]],
-                ['P+III', 70, 'off', 'off|on', [3, 15]],
-                ['Sustain', 64, "off", "off|on"],
-                ['Reverb', 91, 64]
+                ['Subbass 16', None, 'off', 'off|on', [3, 0]],
+                ['Principal 16', None, 'off', 'off|on', [3, 1]],
+                ['Principal 8', None, 'off', 'off|on', [3, 2]],
+                ['Principal 4', None, 'off', 'off|on', [3, 3]],
+                ['Octave 2', None, 'off', 'off|on', [3, 4]],
+                ['Octave 1', None, 'off', 'off|on', [3, 5]],
+                ['Quint 5 1/3', None, 'off', 'off|on', [3, 6]],
+                ['Quint 2 2/3', None, 'off', 'off|on', [3, 7]],
+                ['Mixtur', None, 'off', 'off|on', [3, 8]],
+                ['Fagott 16', None, 'off', 'off|on', [3, 9]],
+                ['Trombone 16', None, 'off', 'off|on', [3, 10]],
+                ['Bombarde 32', None, 'off', 'off|on', [3, 11]],
+                ['Trumpet', None, 'off', 'off|on', [3, 12]],
+                ['P+I', None, 'off', 'off|on', [3, 13]],
+                ['P+II', None, 'off', 'off|on', [3, 14]],
+                ['P+III', None, 'off', 'off|on', [3, 15]]
             ] + common_ctrls,
             "ctrl_screens": [
                 ['Stops (1)', ['Subbass 16', 'Principal 16',
