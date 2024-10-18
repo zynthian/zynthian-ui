@@ -548,14 +548,6 @@ class zynthian_gui_mixer_strip():
             self.parent.enter_midi_learn(self.zctrls["level"])
         elif self.zctrls:
             self.zctrls['level'].set_value(value)
-            value = self.zctrls["level"].value
-            if value > 0:
-                level_db = 20 * log10(value)
-                self.parent.set_title(
-                    f"Volume: {level_db:.2f}dB ({self.chain.get_description(1)})", None, None, 1)
-            else:
-                self.parent.set_title(
-                    "Volume: -∞dB ({self.chain.get_description(1)})", None, None, 1)
 
     # Function to get volume value
     def get_volume(self):
@@ -568,13 +560,6 @@ class zynthian_gui_mixer_strip():
             self.parent.enter_midi_learn(self.zctrls["level"])
         elif self.zctrls:
             self.zctrls["level"].nudge(dval)
-            value = self.zctrls["level"].value
-            if value > 0:
-                level_db = 20 * log10(value)
-                self.parent.set_title(
-                    f"Volume: {level_db:.2f}dB", None, None, 1)
-            else:
-                self.parent.set_title("Volume: -∞dB", None, None, 1)
 
     # Function to set balance value
     # value: Balance value (-1..1)
@@ -583,8 +568,6 @@ class zynthian_gui_mixer_strip():
             self.parent.enter_midi_learn(self.zctrls["balance"])
         elif self.zctrls:
             self.zctrls["balance"].set_value(value)
-            self.parent.set_title(
-                f"Balance: {int(value * 100)}% ({self.chain.get_description(1)})", None, None, 1)
 
     # Function to get balance value
     def get_balance(self):
@@ -598,8 +581,6 @@ class zynthian_gui_mixer_strip():
             self.parent.refresh_visible_strips()
         elif self.zctrls:
             self.zctrls['balance'].nudge(dval)
-            self.parent.set_title(
-                f"Balance: {int(self.zctrls['balance'].value * 100)}%", None, None, 1)
 
     # Function to reset volume
     def reset_volume(self):
@@ -974,14 +955,25 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             if ctrl[0]:
                 ctrl[0].draw_control(ctrl[1])
 
-    # Function to add control to be updated (fast)
+    # Mixer control update signal handler
     def update_control(self, chan, symbol, value):
         strip = self.chan2strip[chan]
         if not strip or not strip.chain or strip.chain.mixer_chan is None:
             return
         self.pending_refresh_queue.add((strip, symbol))
-        strip.zctrls[symbol].set_value(value, False)
-        # self.pending_refresh_queue.add((self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX], "solo"))
+        if symbol in strip.zctrls:
+            if symbol == "level":
+                value = strip.zctrls["level"].value
+                if value > 0:
+                    level_db = 20 * log10(value)
+                    self.set_title(
+                        f"Volume: {level_db:.2f}dB ({strip.chain.get_description(1)})", None, None, 1)
+                else:
+                    self.set_title(
+                        "Volume: -∞dB ({self.chain.get_description(1)})", None, None, 1)
+            elif symbol == "balance":
+                strip.parent.set_title(
+                f"Balance: {int(value * 100)}% ({strip.chain.get_description(1)})", None, None, 1)
 
     # Function to handle audio recorder arm
     def update_control_arm(self, chan, value):
