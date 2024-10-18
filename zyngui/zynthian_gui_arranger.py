@@ -68,7 +68,6 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
         super().__init__()
         self.state_manager = self.zyngui.state_manager
         self.zynseq = self.state_manager.zynseq
-        self.status_canvas.bind("<ButtonRelease-1>", self.cb_status_release)
 
         self.ctrl_order = zynthian_gui_config.layout['ctrl_order']
 
@@ -1297,8 +1296,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
         else:
             self.stop_playback()
 
-    # Default status area release callback
-    def cb_status_release(self, params=None):
+    def status_short_touch_action(self):
         self.toggle_playback()
 
 # ------------------------------------------------------------------------------
