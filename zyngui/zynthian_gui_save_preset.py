@@ -65,7 +65,7 @@ class zynthian_gui_save_preset():
 
     def save_preset_select_bank_cb(self, bank_name, bank_info):
         self.save_preset_bank_info = bank_info
-        if bank_info is "NEW_BANK":
+        if bank_info == "NEW_BANK":
             self.zyngui.show_keyboard(
                 self.save_preset_select_name_cb, "NewBank")
         else:
