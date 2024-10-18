@@ -2012,8 +2012,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
     def get_playback_status(self):
         return self.zynseq.libseq.getPlayState(self.bank, self.sequence)
 
-    # Default status area release callback
-    def cb_status_release(self, params=None):
+    def status_short_touch_action(self):
         self.toggle_playback()
 
     # -------------------------------------------------------------------------
