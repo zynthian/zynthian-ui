@@ -961,18 +961,17 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if not strip or not strip.chain or strip.chain.mixer_chan is None:
             return
         self.pending_refresh_queue.add((strip, symbol))
-        if symbol in strip.zctrls:
-            if symbol == "level":
-                value = strip.zctrls["level"].value
-                if value > 0:
-                    level_db = 20 * log10(value)
-                    self.set_title(
-                        f"Volume: {level_db:.2f}dB ({strip.chain.get_description(1)})", None, None, 1)
-                else:
-                    self.set_title(
-                        "Volume: -∞dB ({self.chain.get_description(1)})", None, None, 1)
-            elif symbol == "balance":
-                strip.parent.set_title(
+        if symbol == "level":
+            value = strip.zctrls["level"].value
+            if value > 0:
+                level_db = 20 * log10(value)
+                self.set_title(
+                    f"Volume: {level_db:.2f}dB ({strip.chain.get_description(1)})", None, None, 1)
+            else:
+                self.set_title(
+                    f"Volume: -∞dB ({strip.chain.get_description(1)})", None, None, 1)
+        elif symbol == "balance":
+            strip.parent.set_title(
                 f"Balance: {int(value * 100)}% ({strip.chain.get_description(1)})", None, None, 1)
 
     # Function to handle audio recorder arm
