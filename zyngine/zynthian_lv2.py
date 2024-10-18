@@ -489,15 +489,21 @@ def is_plugin_ui(plugin):
             with open(urllib.parse.unquote(str(uri)[7:])) as f:
                 ttl = f.read()
                 if ttl.find("a ui:Qt5UI") > 0 or ttl.find("a lv2ui:Qt5UI") > 0 or ttl.find("a guiext:Qt5UI") > 0:
-                    return "Qt5UI"
-                if ttl.find("a ui:Qt4UI") > 0 or ttl.find("a lv2ui:Qt4UI") > 0 or ttl.find("a guiext:Qt4UI") > 0:
-                    return "Qt4UI"
-                if ttl.find("a ui:X11UI") > 0 or ttl.find("a lv2ui:X11UI") > 0 or ttl.find("a guiext:X11") > 0:
-                    return "X11UI"
+                    res = "Qt5UI"
+                elif ttl.find("a ui:Qt4UI") > 0 or ttl.find("a lv2ui:Qt4UI") > 0 or ttl.find("a guiext:Qt4UI") > 0:
+                    res = "Qt4UI"
+                elif ttl.find("a uiext:GtkUI") > 0:
+                    res = "GtkUI"
+                elif ttl.find("a ui:X11UI") > 0 or ttl.find("a lv2ui:X11UI") > 0 or ttl.find("a guiext:X11") > 0:
+                    res = "X11UI"
+                else:
+                    res = None
+                if res:
+                    logging.debug(f"Plugin '{plugin.get_name()}' => Detected UI type: {res}")
+                    return res
         except:
-            logging.debug("Can't find UI for plugin %s",
-                          str(plugin.get_name()))
-
+            pass
+    logging.debug(f"Can't find UI for plugin {plugin.get_name()}")
     return None
 
 
@@ -845,8 +851,8 @@ load_engines()
 
 if __name__ == '__main__':
     # Init logging
-    # log_level = logging.DEBUG
-    # log_level = logging.WARNING
+    #log_level = logging.DEBUG
+    #log_level = logging.WARNING
     log_level = logging.INFO
     logging.basicConfig(format='%(levelname)s:%(module)s: %(message)s',
                         stream=sys.stderr, level=log_level)
