@@ -68,6 +68,7 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.bind('<ButtonPress-1>', self.on_canvas_press)
         self.widget_canvas.bind('<B1-Motion>', self.on_canvas_drag)
         self.widget_canvas.bind("<ButtonRelease-1>", self.on_canvas_release)
+        self.fade_polarity = 1
 
     def on_size(self, event):
         if event.width == self.width and event.height == self.height:
@@ -91,6 +92,11 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
         for symbol in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
             if symbol in zctrls:
                 self.zctrls.append(zctrls[symbol])
+                if symbol == "fade":
+                    if zctrls[symbol].value_min < 0:
+                        self.fade_polarity = -1
+                    else:
+                        self.fade_polarity = 1
         self.dx = self.width // len(self.zctrls)
         # self.widget_canvas.itemconfig(self.release_line, state="hidden")
         # self.widget_canvas.itemconfig(self.release_label, state="hidden")
@@ -110,7 +116,7 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
                     x_release = self.width - zctrl.value / zctrl.value_range * self.dx
                 case "fade":
                     y_fade = self.height - \
-                        (1 + zctrl.value / zctrl.value_range) * \
+                        (1 - 0.5 * (self.fade_polarity - 1) + self.fade_polarity * zctrl.value / zctrl.value_range) * \
                         (self.height - y_sustain) / 2
         if y_fade is None:
             y_fade = y_sustain
@@ -199,9 +205,12 @@ class zynthian_widget_envelope(zynthian_widget_base.zynthian_widget_base):
             case "release":
                 self.drag_zctrl.set_value(
                     self.envelope_click_value - self.drag_zctrl.value_range * dx)
-            case "sustain" | "fade":
+            case "sustain":
                 self.drag_zctrl.set_value(
                     self.envelope_click_value - self.drag_zctrl.value_range * dy)
+            case "fade":
+                self.drag_zctrl.set_value(
+                    self.envelope_click_value - self.fade_polarity * self.drag_zctrl.value_range * dy)
             case _:
                 self.drag_zctrl.set_value(
                     self.envelope_click_value + self.drag_zctrl.value_range * dx)
