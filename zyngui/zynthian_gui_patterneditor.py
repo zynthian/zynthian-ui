@@ -580,7 +580,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
             self.zynseq.libseq.transpose(offset)
             self.save_pattern_snapshot(now=True, force=True)
             self.set_keymap_offset(self.keymap_offset + offset)
-            self.selected_cell[1] = self.selected_cell[1] + offset
+            self.selected_cell[1] = self.selected_cell[1] + int(offset)
             self.redraw_pending = 3
             self.select_cell()
 
@@ -789,8 +789,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
         self.set_keymap_offset(self.keymap_offset + offset)
         if self.selected_cell[1] < self.keymap_offset:
             self.selected_cell[1] = self.keymap_offset
-        elif self.selected_cell[1] >= self.keymap_offset + self.view_rows:
-            self.selected_cell[1] = self.keymap_offset + self.view_rows - 1
+        elif self.selected_cell[1] >= self.keymap_offset + int(self.view_rows):
+            self.selected_cell[1] = self.keymap_offset + int(self.view_rows) - 1
         self.select_cell()
 
     # Function to handle end of pianoroll drag
@@ -947,9 +947,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
                 self.set_keymap_offset(self.keymap_offset + row_offset)
                 if self.selected_cell[1] < self.keymap_offset:
                     self.selected_cell[1] = self.keymap_offset
-                elif self.selected_cell[1] >= self.keymap_offset + self.view_rows:
-                    self.selected_cell[1] = self.keymap_offset + \
-                        self.view_rows - 1
+                elif self.selected_cell[1] >= self.keymap_offset + int(self.view_rows):
+                    self.selected_cell[1] = self.keymap_offset + int(self.view_rows) - 1
             self.select_cell()
 
     # Function to handle grid mouse release
@@ -1004,8 +1003,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
             self.set_keymap_offset(self.keymap_offset + value)
             if self.selected_cell[1] < self.keymap_offset:
                 self.selected_cell[1] = self.keymap_offset
-            elif self.selected_cell[1] >= self.keymap_offset + self.view_rows:
-                self.selected_cell[1] = self.keymap_offset + self.view_rows - 1
+            elif self.selected_cell[1] >= self.keymap_offset + int(self.view_rows):
+                self.selected_cell[1] = self.keymap_offset + int(self.view_rows) - 1
             self.select_cell()
         elif gtype in (MultitouchTypes.GESTURE_H_PINCH, MultitouchTypes.GESTURE_V_PINCH):
             value = int(0.1 * value)
@@ -1051,9 +1050,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
                 self.set_keymap_offset(self.keymap_offset)
                 if self.selected_cell[1] < self.keymap_offset:
                     self.selected_cell[1] = self.keymap_offset
-                elif self.selected_cell[1] >= self.keymap_offset + self.view_rows:
-                    self.selected_cell[1] = self.keymap_offset + \
-                        self.view_rows - 1
+                elif self.selected_cell[1] >= self.keymap_offset + int(self.view_rows):
+                    self.selected_cell[1] = self.keymap_offset + int(self.view_rows) - 1
                 select_cell = True
         if select_cell:
             self.select_cell()
@@ -1308,9 +1306,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
     def set_keymap_offset(self, offset=None):
         max_keymap_offset = max(0, len(self.keymap) - self.view_rows)
         if offset is not None:
-            self.keymap_offset = offset
+            self.keymap_offset = int(offset)
         if self.keymap_offset > max_keymap_offset:
-            self.keymap_offset = max_keymap_offset
+            self.keymap_offset = int(max_keymap_offset)
         elif self.keymap_offset < 0:
             self.keymap_offset = 0
         ypos = (self.scroll_height - self.keymap_offset *
@@ -1325,8 +1323,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
     def set_step_offset(self, offset=None):
         if offset is not None:
             self.step_offset = offset
-        if self.step_offset > self.n_steps - self.view_steps:
-            self.step_offset = self.n_steps - self.view_steps
+        if self.step_offset > self.n_steps - int(self.view_steps):
+            self.step_offset = self.n_steps - int(self.view_steps)
         elif self.step_offset < 0:
             self.step_offset = 0
         if self.total_width > 0:
@@ -1494,9 +1492,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
         elif step >= self.n_steps:
             step = self.n_steps - 1
         # Check step offset
-        if step >= self.step_offset + self.view_steps:
+        if step >= self.step_offset + int(self.view_steps):
             # Step is off right of display
-            self.set_step_offset(step - self.view_steps + 1)
+            self.set_step_offset(step - int(self.view_steps) + 1)
         elif step < self.step_offset:
             # Step is off left of display
             self.set_step_offset(step)
@@ -1603,7 +1601,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
         if self.selected_cell[0] >= n_steps:
             self.selected_cell[0] = int(n_steps) - 1
-        self.keymap_offset = self.zynseq.libseq.getRefNote()
+        self.keymap_offset = int(self.zynseq.libseq.getRefNote())
         if self.keymap_offset >= keymap_len:
             self.keymap_offset = max(0, (keymap_len - self.view_rows) // 2)
             self.selected_cell[1] = self.keymap_offset + self.view_rows // 2
