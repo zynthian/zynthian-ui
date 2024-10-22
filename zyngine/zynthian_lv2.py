@@ -488,13 +488,13 @@ def is_plugin_ui(plugin):
         try:
             with open(urllib.parse.unquote(str(uri)[7:])) as f:
                 ttl = f.read()
-                if ttl.find("a ui:Qt5UI") > 0 or ttl.find("a lv2ui:Qt5UI") > 0 or ttl.find("a guiext:Qt5UI") > 0:
+                if ttl.find("Qt5UI") > 0:
                     res = "Qt5UI"
-                elif ttl.find("a ui:Qt4UI") > 0 or ttl.find("a lv2ui:Qt4UI") > 0 or ttl.find("a guiext:Qt4UI") > 0:
+                elif ttl.find("Qt4UI") > 0:
                     res = "Qt4UI"
-                elif ttl.find("a uiext:GtkUI") > 0:
+                elif ttl.find("GtkUI"):
                     res = "GtkUI"
-                elif ttl.find("a ui:X11UI") > 0 or ttl.find("a lv2ui:X11UI") > 0 or ttl.find("a guiext:X11") > 0:
+                elif ttl.find("X11UI") > 0 or ttl.find("X11") > 0:
                     res = "X11UI"
                 else:
                     res = None
