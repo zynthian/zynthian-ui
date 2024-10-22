@@ -22,9 +22,11 @@
 #
 # ******************************************************************************
 
+import os
 import re
-import logging
 import copy
+import shutil
+import logging
 
 from zyncoder.zyncore import lib_zyncore
 from . import zynthian_engine
@@ -70,7 +72,6 @@ class zynthian_engine_setbfree(zynthian_engine):
 
     tonewheel_config = {
         "Sin": "",
-
         "Sqr": """
 			osc.harmonic.1=1.0
 			osc.harmonic.3=0.333333333333
@@ -225,10 +226,13 @@ class zynthian_engine_setbfree(zynthian_engine):
     # ----------------------------------------------------------------------------
 
     base_dir = zynthian_engine.data_dir + "/setbfree"
-    presets_fpath = base_dir + "/pgm/all.pgm"
+    program_fpath = base_dir + "/pgm/all.pgm"
     config_tpl_fpath = base_dir + "/cfg/zynthian.cfg.tpl"
     config_my_fpath = zynthian_engine.config_dir + "/setbfree/zynthian.cfg"
-    config_autogen_fpath = zynthian_engine.config_dir + "/setbfree/.autogen.cfg"
+
+    default_config_dir = "/root/.config/setBfree"
+    default_config_fpath = default_config_dir + "/default.cfg"
+    default_program_fpath = default_config_dir + "/default.pgm"
 
     # ----------------------------------------------------------------------------
     # Initialization
@@ -250,11 +254,11 @@ class zynthian_engine_setbfree(zynthian_engine):
 
         # Process command ...
         if self.config_remote_display():
-            self.command = f"setBfree -p \"{self.presets_fpath}\" -c \"{self.config_autogen_fpath}\""
+            self.command = "setBfreeUI"
+            self.command_prompt = ""
         else:
-            self.command = f"setBfree -p \"{self.presets_fpath}\" -c \"{self.config_autogen_fpath}\""
-
-        self.command_prompt = "\nAll systems go."
+            self.command = "setBfree"
+            self.command_prompt = "\nAll systems go."
 
         self.reset()
 
@@ -347,7 +351,15 @@ class zynthian_engine_setbfree(zynthian_engine):
         self.state_manager.end_busy("setBfree")
 
     def generate_config_file(self):
-        # Get user's config
+        # Create default config dir
+        if not os.path.isdir(self.default_config_dir):
+            os.makedirs(self.default_config_dir)
+
+        # Copy presets file
+        if not os.path.isfile(self.default_program_fpath):
+            shutil.copyfile(self.program_fpath, self.default_program_fpath)
+
+        # Get custom user config
         try:
             with open(self.config_my_fpath, 'r') as my_cfg_file:
                 my_cfg_data = my_cfg_file.read()
@@ -368,7 +380,7 @@ class zynthian_engine_setbfree(zynthian_engine):
             cfg_data = cfg_data.replace(
                 '#TONEWHEEL.CONFIG#', self.tonewheel_config[self.tonewheel_model])
             cfg_data += "\n" + my_cfg_data
-            with open(self.config_autogen_fpath, 'w+') as cfg_file:
+            with open(self.default_config_fpath, 'w+') as cfg_file:
                 cfg_file.write(cfg_data)
 
     def configure_manual_split(self, processor):
