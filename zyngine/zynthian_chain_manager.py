@@ -59,18 +59,19 @@ ZMIP_INT_INDEX = lib_zyncore.zmip_get_int_index()
 ZMIP_CTRL_INDEX = lib_zyncore.zmip_get_ctrl_index()
 
 engine2class = {
-    "SL": zynthian_engine_sooperlooper,
     "ZY": zynthian_engine_zynaddsubfx,
     "FS": zynthian_engine_fluidsynth,
     "SF": zynthian_engine_sfizz,
     "LS": zynthian_engine_linuxsampler,
     "BF": zynthian_engine_setbfree,
+    'JV': zynthian_engine_jalv,
     "AE": zynthian_engine_aeolus,
+    'PT': zynthian_engine_pianoteq,
     "AP": zynthian_engine_audioplayer,
+    "SL": zynthian_engine_sooperlooper,
+    'SX': zynthian_engine_sysex,
     'PD': zynthian_engine_puredata,
     'MD': zynthian_engine_modui,
-    'JV': zynthian_engine_jalv,
-    'PT': zynthian_engine_pianoteq,
     'IR': zynthian_engine_inet_radio
 }
 

@@ -151,9 +151,7 @@ lv2class2engcat = {
     "Plugin": "Other"
 }
 
-
 standalone_engine_info = {
-    "SL": ["SooperLooper", "SooperLooper", "Audio Effect", "Delay", True],
     "ZY": ["ZynAddSubFX", "ZynAddSubFX", "MIDI Synth", "Synth", True],
     "FS": ["FluidSynth", "FluidSynth: SF2, SF3", "MIDI Synth", "Sampler", True],
     "SF": ["Sfizz", "Sfizz: SFZ", "MIDI Synth", "Sampler", True],
@@ -162,9 +160,11 @@ standalone_engine_info = {
     "AE": ["Aeolus", "Aeolus - Pipe Organ Emulator", "MIDI Synth", "Organ", True],
     "PT": ['Pianoteq', "Pianoteq", "MIDI Synth", "Piano", True],
     "AP": ["ZynSampler", "ZynSampler", "MIDI Synth", "Sampler", True],
+    "SL": ["SooperLooper", "SooperLooper", "Audio Effect", "Delay", True],
+    'SX': ["SysEx", "SysEx Manager", "MIDI Tool", "Other", True],
+    'IR': ["InternetRadio", "Internet Radio", "Audio Generator", "Other", True],
     'PD': ["PureData", "PureData - Visual Programming", "Special", "Language", True],
-    'MD': ["MOD-UI", "MOD-UI - Plugin Host", "Special", "Language", True],
-    'IR': ["InternetRadio", "Internet Radio", "Audio Generator", "Other", True]
+    'MD': ["MOD-UI", "MOD-UI - Plugin Host", "Special", "Language", True]
 }
 
 ENGINE_DEFAULT_CONFIG_FILE = "{}/config/engine_config.json".format(

@@ -100,6 +100,7 @@ max_num_chains = 16  		 	# Max number of chains
 devices_in = []       			# List of MIDI input devices
 devices_in_mode = []  			# List of MIDI input devices modes
 devices_out = []      			# List of MIDI output devices
+devices_out_name = []           # List of MIDI output devices names
 
 # zyn_routed_* are used to avoid changing routes made by other jack clients
 # Map of lists of audio sources routed by zynautoconnect, indexed by destination
@@ -589,6 +590,7 @@ def midi_autoconnect():
                 if devices_out[i] is None:
                     devnum = i
                     devices_out[devnum] = hwdp
+                    devices_out_name[devnum] = hwdp.aliases[0]
                     logger.debug(
                         f"Connected MIDI-out device {devnum}: {hwdp.name}")
                     break
@@ -602,6 +604,7 @@ def midi_autoconnect():
             logger.debug(
                 f"Disconnected MIDI-out device {i}: {devices_out[i].name}")
             devices_out[i] = None
+            devices_out_name[i] = None
 
     # Chain MIDI routing
     # TODO: Handle processors with multiple MIDI ports
@@ -655,10 +658,10 @@ def midi_autoconnect():
                     pass
                     # dests.append(out)
             for processor in chain.midi_slots[-1]:
-                src = jclient.get_ports(processor.get_jackname(
-                    True), is_midi=True, is_output=True)[0]
-                for dst in dests:
-                    required_routes[dst].add(src.name)
+                src_ports = jclient.get_ports(processor.get_jackname(True), is_midi=True, is_output=True)
+                if src_ports:
+                    for dst in dests:
+                        required_routes[dst].add(src_ports[0].name)
 
         # Add MIDI router outputs
         if chain.is_midi():
@@ -1154,7 +1157,7 @@ def release_lock():
 
 def init():
     global num_devs_in, num_devs_out, max_num_devs, max_num_chains
-    global devices_in, devices_out
+    global devices_in, devices_out, devices_out_name
 
     num_devs_in = state_manager.get_num_midi_devs_in()
     num_devs_out = state_manager.get_num_midi_devs_out()
@@ -1169,6 +1172,7 @@ def init():
     logging.info(f"Initializing {num_devs_out} slots for MIDI output devices")
     while len(devices_out) < num_devs_out:
         devices_out.append(None)
+        devices_out_name.append(None)
 
     update_midi_in_dev_mode_all()
 
