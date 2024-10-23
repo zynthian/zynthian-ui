@@ -170,7 +170,7 @@ class zynthian_engine_sysex(zynthian_engine):
 	@classmethod
 	def zynapi_get_presets(cls, bank):
 		presets = []
-		for p in cls.get_filelist(bank[0], cls.preset_fexts[0]):
+		for p in cls.get_filelist(bank['fullpath'], cls.preset_fexts[0]):
 			presets.append({
 				'text': p[4],
 				'name': p[4],
