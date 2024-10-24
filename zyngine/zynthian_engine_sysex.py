@@ -157,7 +157,7 @@ class zynthian_engine_sysex(zynthian_engine):
 	@classmethod
 	def zynapi_get_banks(cls):
 		banks = []
-		for b in cls.get_bank_dirlist():
+		for b in cls.get_bank_dirlist(exclude_empty=False):
 			banks.append({
 				'text': b[2],
 				'name': b[4],
@@ -214,13 +214,13 @@ class zynthian_engine_sysex(zynthian_engine):
 			raise Exception("You must select a destiny bank folder!")
 		if os.path.isfile(fpath):
 			fname, ext = os.path.splitext(fpath)
-			if ext[1:] in cls.file_exts:
+			if ext[1:] in cls.preset_fexts:
 				shutil.move(fpath, bank_path)
 			else:
 				raise Exception("File doesn't look like a SysEx data file!")
 
 	@classmethod
 	def zynapi_get_formats(cls):
-		return ",".join(cls.file_exts)
+		return ",".join(cls.preset_fexts)
 
 # -----------------------------------------------------------------------------
