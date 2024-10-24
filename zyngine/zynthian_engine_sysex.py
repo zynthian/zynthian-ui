@@ -144,7 +144,7 @@ class zynthian_engine_sysex(zynthian_engine):
 		try:
 			idev = zynautoconnect.devices_out_name.index(device_name)
 		except:
-			logging.info(f"Can't send MIDI SysEx data to {device_name}")
+			logging.warning(f"Can't send MIDI SysEx data to {device_name}")
 			return False
 		lib_zyncore.dev_send_midi_event(idev, self.sysex_data, len(self.sysex_data))
 		logging.info(f"Sending MIDI SysEx data to {device_name} ({idev}) => {self.sysex_data}")
