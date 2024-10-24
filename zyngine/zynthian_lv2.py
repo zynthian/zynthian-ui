@@ -162,6 +162,7 @@ standalone_engine_info = {
     "AP": ["ZynSampler", "ZynSampler", "MIDI Synth", "Sampler", True],
     "SL": ["SooperLooper", "SooperLooper", "Audio Effect", "Delay", True],
     'SX': ["SysEx", "SysEx Manager", "MIDI Tool", "Other", True],
+    'MC': ["MIDI Control", "MIDI Control External", "MIDI Tool", "Other", True],
     'IR': ["InternetRadio", "Internet Radio", "Audio Generator", "Other", True],
     'PD': ["PureData", "PureData - Visual Programming", "Special", "Language", True],
     'MD': ["MOD-UI", "MOD-UI - Plugin Host", "Special", "Language", True]

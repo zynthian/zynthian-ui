@@ -70,6 +70,7 @@ engine2class = {
     "AP": zynthian_engine_audioplayer,
     "SL": zynthian_engine_sooperlooper,
     'SX': zynthian_engine_sysex,
+    'MC': zynthian_engine_midi_control,
     'PD': zynthian_engine_puredata,
     'MD': zynthian_engine_modui,
     'IR': zynthian_engine_inet_radio
