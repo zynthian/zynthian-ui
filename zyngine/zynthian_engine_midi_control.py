@@ -254,9 +254,9 @@ class zynthian_engine_midi_control(zynthian_engine):
 			for device_name in processor.chain.get_midi_out():
 				try:
 					idev = zynautoconnect.devices_out_name.index(device_name)
-					if preset[0][0] is not None:
+					if preset[0][0] is not None and 0 <= preset[0][0] <= 127:
 						lib_zyncore.dev_send_ccontrol_change(idev, midi_chan, 0, preset[0][0])
-					if preset[0][1] is not None:
+					if preset[0][1] is not None and 0 <= preset[0][1] <= 127:
 						lib_zyncore.dev_send_program_change(idev, midi_chan, preset[0][1])
 				except:
 					logging.warning(f"Can't send MIDI to {device_name}")
