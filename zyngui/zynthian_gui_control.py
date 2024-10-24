@@ -747,15 +747,12 @@ class zynthian_gui_control(zynthian_gui_selector):
         if processor:
             if self.mode == 'control' and self.midi_learning:
                 if self.midi_learning == MIDI_LEARNING_CHAIN:
-                    self.select_path.set(
-                        processor.get_basepath() + "/CHAIN Control MIDI-Learn")
+                    self.select_path.set(processor.get_basepath() + "/CHAIN Control MIDI-Learn")
                 elif self.midi_learning == MIDI_LEARNING_GLOBAL:
-                    self.select_path.set(
-                        processor.get_basepath() + "/GLOBAL Control MIDI-Learn")
+                    self.select_path.set(processor.get_basepath() + "/GLOBAL Control MIDI-Learn")
             else:
                 self.select_path.set(processor.get_presetpath())
         else:
-            self.select_path.set(
-                self.zyngui.chain_manager.get_active_chain().get_title())
+            self.select_path.set(self.zyngui.chain_manager.get_active_chain().get_title())
 
 # ------------------------------------------------------------------------------

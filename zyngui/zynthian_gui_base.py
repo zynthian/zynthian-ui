@@ -115,9 +115,8 @@ class zynthian_gui_base(tkinter.Frame):
                                                 highlightthickness=0,
                                                 relief='flat',
                                                 bg=zynthian_gui_config.color_panel_bg)
-        if has_backbutton:
-            self.backbutton_canvas.grid(
-                row=0, column=col, sticky="wn", padx=(0, self.status_lpad))
+        if has_backbutton and self.backbutton_width > 0:
+            self.backbutton_canvas.grid(row=0, column=col, sticky="wn", padx=(0, self.status_lpad))
             self.backbutton_canvas.grid_propagate(False)
         self.backbutton_canvas.bind('<Button-1>', self.cb_backbutton)
         self.backbutton_canvas.bind(
@@ -170,8 +169,7 @@ class zynthian_gui_base(tkinter.Frame):
         # Setup Topbar's Callback
         if zynthian_gui_config.enable_touch_navigation:
             self.label_select_path.bind('<Button-1>', self.cb_topbar_press)
-            self.label_select_path.bind(
-                '<ButtonRelease-1>', self.cb_topbar_release)
+            self.label_select_path.bind('<ButtonRelease-1>', self.cb_topbar_release)
 
         # Canvas for displaying status
         self.status_canvas = tkinter.Canvas(self.tb_frame,
@@ -181,13 +179,11 @@ class zynthian_gui_base(tkinter.Frame):
                                             highlightthickness=0,
                                             relief='flat',
                                             bg=zynthian_gui_config.color_bg)
-        self.status_canvas.grid(
-            row=0, column=col, sticky="ens", padx=(self.status_lpad, 0))
+        self.status_canvas.grid(row=0, column=col, sticky="ens", padx=(self.status_lpad, 0))
         # Set Status Callaback
         if zynthian_gui_config.enable_touch_navigation:
             self.status_canvas.bind('<Button-1>', self.cb_status_press)
-            self.status_canvas.bind(
-                '<ButtonRelease-1>', self.cb_status_release)
+            self.status_canvas.bind('<ButtonRelease-1>', self.cb_status_release)
 
         # Topbar parameter editor
         self.param_editor_zctrl = None
@@ -245,7 +241,7 @@ class zynthian_gui_base(tkinter.Frame):
             if bg:
                 self.title_bg = bg
         self.select_path.set(title)
-# self.title_canvas.itemconfig("lblTitle", text=title, fill=self.title_fg)
+        # self.title_canvas.itemconfig("lblTitle", text=title, fill=self.title_fg)
         if fg:
             self.label_select_path.config(fg=fg)
         else:
@@ -838,8 +834,7 @@ class zynthian_gui_base(tkinter.Frame):
     # --------------------------------------------------------------------------
 
     def cb_select_path(self, *args):
-        self.select_path_width = self.select_path_font.measure(
-            self.select_path.get())
+        self.select_path_width = self.select_path_font.measure(self.select_path.get())
         self.select_path_offset = 0
         self.select_path_dir = 2
         self.label_select_path.place(x=0, rely=0.5, anchor='w')
@@ -849,29 +844,27 @@ class zynthian_gui_base(tkinter.Frame):
             if self.dscroll_select_path():
                 zynthian_gui_config.top.after(1000, self.cb_scroll_select_path)
                 return
-
         zynthian_gui_config.top.after(100, self.cb_scroll_select_path)
 
     def dscroll_select_path(self):
-        if self.select_path_width > self.title_canvas_width:
-            # Scroll label
-            self.select_path_offset += self.select_path_dir
-            self.label_select_path.place(
-                x=-self.select_path_offset, rely=0.5, anchor='w')
+        if self.shown:
+            if self.select_path_width > self.title_canvas_width:
+                # Scroll label
+                self.select_path_offset += self.select_path_dir
+                self.label_select_path.place(x=-self.select_path_offset, rely=0.5, anchor='w')
 
-            # Change direction ...
-            if self.select_path_offset > (self.select_path_width - self.title_canvas_width):
-                self.select_path_dir = -2
-                return True
-            elif self.select_path_offset <= 0:
+                # Change direction ...
+                if self.select_path_offset > (self.select_path_width - self.title_canvas_width):
+                    self.select_path_dir = -2
+                    return True
+                elif self.select_path_offset <= 0:
+                    self.select_path_dir = 2
+                    return True
+
+            elif self.select_path_offset != 0:
+                self.select_path_offset = 0
                 self.select_path_dir = 2
-                return True
-
-        elif self.select_path_offset != 0:
-            self.select_path_offset = 0
-            self.select_path_dir = 2
-            self.label_select_path.place(x=0, rely=0.5, anchor='w')
-
+                self.label_select_path.place(x=0, rely=0.5, anchor='w')
         return False
 
     def set_select_path(self):
