@@ -29,6 +29,7 @@ import logging
 
 from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_signal_manager import zynsigman
+from zynlibs.zynmixer.zynmixer import SS_ZYNMIXER_SET_VALUE
 
 # ------------------------------------------------------------------------------------------------------------------
 # Control device base class
@@ -200,7 +201,8 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
     dev_zynmixer = True		# Can act as a zynmixer trigger device
 
     def __init__(self, state_manager, idev_in, idev_out=None):
-        self.zynmixer = state_manager.zynmixer
+        self.zynmixer = state_manager.zynmixer_chan
+        self.zynmixer_bus = state_manager.zynmixer_bus
         super().__init__(state_manager, idev_in, idev_out)
 
     def init(self):
@@ -210,7 +212,7 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         zynsigman.register_queued(
             zynsigman.S_CHAIN_MAN, self.chain_manager.SS_MOVE_CHAIN, self.refresh)
         zynsigman.register_queued(
-            zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZYNMIXER_SET_VALUE, self.update_mixer_strip)
+            zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_mixer_strip)
 
     def end(self):
         zynsigman.unregister(
@@ -218,7 +220,7 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         zynsigman.unregister(zynsigman.S_CHAIN_MAN,
                              self.chain_manager.SS_MOVE_CHAIN, self.refresh)
         zynsigman.unregister(
-            zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZYNMIXER_SET_VALUE, self.update_mixer_strip)
+            zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE, self.update_mixer_strip)
         self.light_off()
 
     def update_mixer_strip(self, chan, mixbus, symbol, value):

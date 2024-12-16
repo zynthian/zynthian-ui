@@ -762,8 +762,9 @@ class zynthian_processor:
                     if "midi_cc_momentary_switch" in ctrl_state:
                         zctrl.midi_cc_momentary_switch = ctrl_state['midi_cc_momentary_switch']
                 except Exception as e:
-                    logging.warning("Invalid controller for processor {}: {}".format(
-                        self.get_basepath(), e))
+                    proc_name = self.get_bankpath()
+                    if proc_name != "Audio Levels": # Don't show error for snapshots with different soundcard
+                        logging.warning(f"Invalid controller for processor {proc_name}: {e}")
 
     def restore_state_legacy(self, state):
         """Restore legacy states from state

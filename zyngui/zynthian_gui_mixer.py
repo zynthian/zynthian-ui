@@ -857,12 +857,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             if ctrl[0]:
                 ctrl[0].draw_control(ctrl[1])
 
-    def update_control(self, mixbus, channel, symbol, value):
+    def update_control(self, mixbus, chan, symbol, value):
         """Mixer control update signal handler
         """
 
         try:
-            strip = self.chan2strip[(mixbus, channel)]
+            strip = self.chan2strip[(mixbus, chan)]
         except:
             strip = None
         if not strip or not strip.chain or strip.mixer_proc.mixer_chan is None:

@@ -221,7 +221,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                 zynautoconnect.request_audio_connect(True)
                 zynsigman.send(zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE,
                     mixbus=zctrl.processor.eng_code=="MR",
-                    channel=zctrl.processor.mixer_chan,
+                    chan=zctrl.processor.mixer_chan,
                     symbol="solo", value=zctrl.value)
             else:
                 getattr(zctrl.processor.zynmixer, f'set_{zctrl.symbol}')(

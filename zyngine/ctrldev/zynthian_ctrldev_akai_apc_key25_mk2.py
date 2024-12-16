@@ -819,20 +819,22 @@ class MixerHandler(ModeHandlerBase):
             # Only main chain is handled with SHIFT, ignore the rest
             if ccnum != self.main_chain_knob:
                 return False
-            mixer_chan = 255
+            mixer_chan = 0
+            zynmixer = self._zynmixer_bus
         else:
             index = (ccnum - KNOB_1) + self._chains_bank * 8
             chain = self._chain_manager.get_chain_by_index(index)
             if chain is None or chain.chain_id == 0:
                 return False
             mixer_chan = chain.mixer_chan
+            zynmixer = self._zynmixer
 
         if type == "level":
             value = self._zynmixer.get_level(mixer_chan)
-            set_value = self._zynmixer.set_level
+            set_value = zynmixer.set_level
         elif type == "balance":
             value = self._zynmixer.get_balance(mixer_chan)
-            set_value = self._zynmixer.set_balance
+            set_value = zynmixer.set_balance
         else:
             return False
 
@@ -2001,11 +2003,12 @@ class StepSeqHandler(ModeHandlerBase):
             chain_id = self._get_chain_id_by_sequence(
                 self._zynseq.bank, self._selected_seq)
             chain = self._chain_manager.chains.get(chain_id)
-            if chain is not None:
+            if chain is not None and chain.zynmixer:
                 mixer_chan = chain.mixer_chan
+                level = chain.zynmixer.controllers_dict['level'].value
                 level = max(
-                    0, min(100, self._zynmixer.get_level(mixer_chan) * 100 + delta))
-                self._zynmixer.set_level(mixer_chan, level / 100)
+                    0, min(100, chain.zynmixer.controllers_dict['level'].value * 100 + delta))
+                chain.zynmixer.controllers_dict['level'].set_value(mixer_chan, level / 100)
 
     def update_seq_state(self, bank, seq, state=None, mode=None, group=None):
         self._is_playing = state != zynseq.SEQ_STOPPED

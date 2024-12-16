@@ -65,7 +65,7 @@ class zynthian_legacy_snapshot:
 
         # Iterate through each version, applying fixes to move to next version
         for version in range(snapshot["schema_version"], SNAPSHOT_SCHEMA_VERSION):
-            logging.warning(f"Converting snapshot from schema V{version} to V{version+1}")
+            logging.info(f"Converting snapshot from schema V{version} to V{version+1}")
             snapshot = getattr(self, f'version_{version}')(snapshot)
 
     def version_1(self, snapshot):

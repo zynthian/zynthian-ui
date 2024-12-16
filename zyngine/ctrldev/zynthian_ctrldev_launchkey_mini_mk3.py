@@ -125,10 +125,11 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             elif 20 < ccnum < 28:
                 chain = self.chain_manager.get_chain_by_position(
                     ccnum - 21, midi=False)
-                if chain and chain.mixer_chan is not None and chain.mixer_chan < 17:
-                    self.zynmixer.set_level(chain.mixer_chan, ccval / 127.0)
+                if chain and chain.zynmixer and chain.chain_id:
+                    chain.zynmixer.controllers_dict['level'].set_value(ccval / 127.0)
             elif ccnum == 28:
-                self.zynmixer.set_level(255, ccval / 127.0)
+                chain = self.chain_manager.chains[0]
+                chain.zynmixer.controllers_dict['level'].set_value(ccval / 127.0)
             elif ccnum == 0x66:
                 # TRACK RIGHT
                 self.state_manager.send_cuia("ARROW_RIGHT")
