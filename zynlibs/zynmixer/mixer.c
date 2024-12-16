@@ -50,8 +50,8 @@ int g_bOsc  = 0;         // True if OSC client subscribed
 pthread_t g_eventThread; // ID of low priority event thread
 int g_sendEvents = 1;    // Set to 0 to exit event thread
 uint8_t g_sendCount = 0; // Quantity of effect sends
-uint8_t g_lastStrip = 1; // Highest index of any strips
-uint8_t g_lastSend  = 1; // Highest index of any send
+uint8_t g_lastStrip = 1; // Highest index of any strips (one-based)
+uint8_t g_lastSend  = 1; // Highest index of any send (one-based)
 
 // Structure describing a channel strip
 struct channel_strip {
@@ -845,8 +845,8 @@ int8_t addStrip() {
         g_channelStrips[chan] = strip;
         pthread_mutex_unlock(&mutex);
         
-        if (chan > g_lastStrip)
-            g_lastStrip = chan;
+        if (chan >= g_lastStrip)
+            g_lastStrip = chan + 1;
         return chan;
     }
     return -1;
@@ -910,8 +910,8 @@ int8_t addSend() {
             g_fxSends[send] = psend;
             ++g_sendCount;
             pthread_mutex_unlock(&mutex);
-            if (send > g_lastSend)
-                g_lastSend = send;
+            if (send >= g_lastSend)
+                g_lastSend = send + 1;
             return send + 1;
         }
     }
