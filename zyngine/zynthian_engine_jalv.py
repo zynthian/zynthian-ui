@@ -635,6 +635,27 @@ class zynthian_engine_jalv(zynthian_engine):
             except Exception as e:
                 logging.error(e)
 
+        if "bypass" in zctrls:
+            zctrls["bypass"].labels = ["inline", "bypass"]
+            zctrls["bypass"].is_toggle = True
+            zctrls["bypass"].display_priority = 0
+        elif "BYPASS" in zctrls:
+            zctrls["BYPASS"].labels = ["inline", "bypass"]
+            zctrls["BYPASS"].is_toggle = True
+            zctrls["BYPASS"].display_priority = 0
+        else:
+            # Add jack-routing bypass control
+            zctrls["zynbypass"] = zynthian_controller(self, 'zynbypass', {
+                'name': "bypass",
+                'is_toggle': True,
+                'value_max': 1,
+                'value_default': 0,
+                'value': 0,
+                'processor': self,
+                'labels': ['inline', 'bypass'],
+                "display_priority": 0
+            })
+
         # Sort by suggested display_priority
         new_index = sorted(
             zctrls, key=lambda x: zctrls[x].display_priority, reverse=True)
@@ -660,10 +681,6 @@ class zynthian_engine_jalv(zynthian_engine):
         # Add plugin native controllers
         for zctrl in self.lv2_zctrl_dict.values():
             zctrl.set_options({"processor": processor})
-        if self.name.startswith("Jalv/Gx") and "BYPASS" in self.lv2_zctrl_dict:
-            # Invert bypass
-            self.lv2_zctrl_dict["BYPASS"].ticks = [1, 0]
-            self.lv2_zctrl_dict["BYPASS"].range_reversed = True
         zctrls.update(self.lv2_zctrl_dict)
         return zctrls
 

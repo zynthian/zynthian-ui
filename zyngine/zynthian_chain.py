@@ -249,13 +249,14 @@ class zynthian_chain:
                     parts.append(preset_name)
 
         if not parts:
-            if self.is_audio():
-                if self.is_midi():
-                    chain_type = "Synth"
-                else:
-                    chain_type = "Audio"
+            if self.synth_slots:
+                chain_type = "Synth"
+            elif self.is_audio():
+                chain_type = "Audio"
             elif self.is_midi():
                 chain_type = "MIDI"
+            else:
+                chain_type = "Chain"
             parts.append(f"{chain_type} Chain {self.chain_id}")
 
         return parts

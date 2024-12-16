@@ -148,7 +148,7 @@ class zynthian_gui_processor_options(zynthian_gui_selector):
             return False
         slots = self.chain.get_slots_by_type(self.processor.type)
         if slot >= len(slots) - 1:
-            return len(slots[0]) > 1
+            return len(slots[slot]) > 1
         return slot is not None and slot + 1 < self.chain.get_slot_count(self.processor.type)
 
     def move_downchain(self):

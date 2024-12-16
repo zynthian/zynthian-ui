@@ -830,6 +830,13 @@ def get_plugin_ports(plugin_url):
             except:
                 vdef = vmin
 
+            if  port_symbol == "BYPASS" and plugin_url.startswith("http://guitarix"):
+                # Invert bypass for guitarix effects
+                is_toggled = True
+                vmin = 1
+                vmax = 0
+                vdef = 0
+
             info = {
                 'index': i,
                 'symbol': port_symbol,
