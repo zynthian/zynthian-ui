@@ -340,6 +340,7 @@ class zynthian_chain_manager:
             update_fxreturns = False
             if chain.zynmixer:
                 chain.zynmixer.zynmixer.set_mute(chain.zynmixer.mixer_chan, True) # Mute chain whilst removing
+                sleep(self.state_manager.jack_period)
                 if chain.zynmixer.eng_code == "MR" and chain.chain_id:
                     update_fxreturns = True
 
@@ -854,9 +855,9 @@ class zynthian_chain_manager:
         if chain.is_audio():
             # Audio chain so mute main output whilst making change (blunt but effective)
             mute = self.state_manager.zynmixer_bus.get_mute(0)
-            self.state_manager.zynmixer_bus.set_mute(0, True)
+            self.state_manager.mute()
             zynautoconnect.request_audio_connect(True)
-            self.state_manager.zynmixer_bus.set_mute(0, mute)
+            self.state_manager.mute(mute)
         zynautoconnect.request_midi_connect(True)
         return True
 

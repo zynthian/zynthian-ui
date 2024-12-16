@@ -228,7 +228,7 @@ class zynthian_state_manager:
         zynautoconnect.start(self)
         self.jack_period = self.get_jackd_blocksize() / self.get_jackd_samplerate()
         self.chain_manager.add_chain(0)
-        self.chain_manager.add_processor(0, "MR", 0, 255)
+        self.main_mixbus_proc = self.chain_manager.add_processor(0, "MR", 0, 255)
         self.reload_midi_config()
         self.create_audio_player()
         self.exit_flag = False
@@ -299,7 +299,7 @@ class zynthian_state_manager:
         sequences : True for cleaning zynseq state (sequences)
         """
 
-        self.zynmixer_bus.set_mute(0, 1)
+        self.mute()
         # self.zynseq.transport_stop("ALL")
         self.zynseq.libseq.stop()
         if zynseq:
@@ -314,7 +314,7 @@ class zynthian_state_manager:
             zynautoconnect.request_midi_connect(True)
             zynautoconnect.request_audio_connect(True)
             zynautoconnect.resume()
-        self.zynmixer_bus.set_mute(0, 0)
+        self.mute(False)
 
     def clean_all(self):
         """Remove ALL Chains & Sequences."""
@@ -340,6 +340,10 @@ class zynthian_state_manager:
         self.clean(chains=False, zynseq=True)
         self.end_busy("clean sequences")
         self.busy.clear()  # Sometimes it's needed, why??
+
+    def mute(self, mute=True, wait=0.01):
+        self.main_mixbus_proc.controllers_dict["mute"].set_value(mute)
+        sleep(wait)
 
     # -------------------------------------------------------------------------
     # Internal parameters and core limits
@@ -1092,7 +1096,7 @@ class zynthian_state_manager:
 
             if load_chains:
                 # Mute output to avoid unwanted noises
-                self.zynmixer_bus.set_mute(0, True)
+                self.mute(True)
 
                 zynautoconnect.pause()
                 if "chains" in state:
@@ -1221,7 +1225,7 @@ class zynthian_state_manager:
         zynautoconnect.request_audio_connect(True)
 
         # Restore mute state
-        self.zynmixer_bus.set_mute(0, mute)
+        self.mute(mute, 0)
 
         # Signal snapshot loading
         zynsigman.send_queued(zynsigman.S_STATE_MAN, self.SS_LOAD_SNAPSHOT)
@@ -1352,7 +1356,6 @@ class zynthian_state_manager:
 
         restored_chains = []
         restored_cc_mapping = []
-        mute_pause = False
         if "chains" in zs3_state:
             self.set_busy_details("restoring chains state")
             for chain_id, chain_state in zs3_state["chains"].items():
@@ -1420,9 +1423,6 @@ class zynthian_state_manager:
                         for proc_id, symbol in cfg:
                             if proc_id in self.chain_manager.processors:
                                 restored_cc_mapping.append((proc_id, int(cc), symbol))
-        if mute_pause:
-            # Wait for soft mutes to apply before changing settings
-            sleep(self.jack_period)
 
         if "processors" in zs3_state:
             for proc_id, proc_state in zs3_state["processors"].items():
