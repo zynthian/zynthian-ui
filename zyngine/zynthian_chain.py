@@ -396,8 +396,8 @@ class zynthian_chain:
         # MIDI inputs but it is probably as simple to let autoconnect deal with that.
         for slot in self.audio_slots:
             for proc in slot:
-                self.midi_routes[proc.engine.jackname] = sources
-
+                if proc.eng_code not in ["MI", "MR"]:
+                    self.midi_routes[proc.engine.jackname] = sources
         zynautoconnect.release_lock()
 
     def rebuild_graph(self):
