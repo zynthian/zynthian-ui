@@ -308,20 +308,24 @@ class zynthian_chain:
 
         for slot in self.audio_slots:
             sources = []
+            bypass = False
             for processor in slot:
                 if processor.bypass:
-                    sources = []
-                    break
-                jackname = processor.get_jackname()
-                if jackname.startswith("zynmixer"):
-                    jackname += f":output_{processor.mixer_chan:02d}"
-                sources.append(jackname)
+                    bypass = True
+                else:
+                    jackname = processor.get_jackname()
+                    if jackname.startswith("zynmixer"):
+                        jackname += f":output_{processor.mixer_chan:02d}"
+                    sources.append(jackname)
             if sources:
                 for jackname in sources:
                     if jackname.startswith("zynmixer"):
                         jackname = jackname.replace("output_", "input_")
-                    self.audio_routes[jackname] = prev_slot_sources
-                prev_slot_sources = sources
+                    self.audio_routes[jackname] = prev_slot_sources.copy()
+                if bypass:
+                    prev_slot_sources += sources
+                else:
+                    prev_slot_sources = sources
 
 
         # Add special processor inputs
