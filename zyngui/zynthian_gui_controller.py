@@ -79,6 +79,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.title_width = 1
 
 		self.index = index
+		self.enabled = True
 
 		# Create Canvas
 		if not hidden:
@@ -298,6 +299,13 @@ class zynthian_gui_controller(tkinter.Canvas):
 	def set_color_readonly(self):
 		self.itemconfig(self.graph, outline=zynthian_gui_config.color_ctrl_bg_off)
 
+	def enable(self, enable=True):
+		self.enabled = enable
+		if enable:
+			self.unset_hl()
+		else:
+			self.set_hl(zynthian_gui_config.color_ctrl_bg_off)
+
 	def set_hl(self, color=zynthian_gui_config.color_hl):
 		try:
 			self.color_graph = color
@@ -443,17 +451,23 @@ class zynthian_gui_controller(tkinter.Canvas):
 					self.plot_midi_bind("??#??", zynthian_gui_config.color_ml)
 				else:
 					self.plot_midi_bind("??", zynthian_gui_config.color_hl)
+			elif midi_learn_params := self.zyngui.chain_manager.get_midi_learn_from_zctrl(self.zctrl):
+				chan = (midi_learn_params[0] >> 8)
+				cc = midi_learn_params[0] & 0xff
+				if self.zctrl == self.zyngui.state_manager.zctrl_x:
+					suffix = " X"
+				elif self.zctrl == self.zyngui.state_manager.zctrl_y:
+					suffix = " Y"
+				else:
+					suffix = ""
+				if midi_learn_params[1]:
+					self.plot_midi_bind(f"{chan + 1}#{cc}{suffix}")
+				else:
+					self.plot_midi_bind(f"{cc}{suffix}")
 			elif self.zctrl == self.zyngui.state_manager.zctrl_x:
 				self.plot_midi_bind("X")
 			elif self.zctrl == self.zyngui.state_manager.zctrl_y:
 				self.plot_midi_bind("Y")
-			elif midi_learn_params := self.zyngui.chain_manager.get_midi_learn_from_zctrl(self.zctrl):
-				chan = (midi_learn_params[0] >> 8)
-				cc = midi_learn_params[0] & 0xff
-				if midi_learn_params[1]:
-					self.plot_midi_bind(f"{chan + 1}#{cc}")
-				else:
-					self.plot_midi_bind(f"{cc}")
 			else:
 				self.erase_midi_bind()
 				return False
@@ -602,7 +616,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 	def nudge(self, dval, fine=False):
 		if self.preselection is not None:
 			self.zyngui.screens["control"].zctrl_touch(self.preselection)
-		if self.zctrl:
+		elif self.enabled and self.zctrl:
 			return self.zctrl.nudge(dval, fine=fine)
 		else:
 			return False
@@ -620,7 +634,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		#logging.debug(f"CONTROL {self.index} PUSH => {self.canvas_push_ts} ({self.canvas_motion_x0},{self.canvas_motion_y0})")
 
 	def cb_canvas_release(self, event):
-		if self.canvas_push_ts:
+		if self.canvas_push_ts and self.enabled:
 			dts = (datetime.now()-self.canvas_push_ts).total_seconds()
 			self.canvas_push_ts = None
 			#logging.debug(f"CONTROL {self.index} RELEASE => {dts}, {motion_rate}")

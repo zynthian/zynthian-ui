@@ -28,7 +28,6 @@ import logging
 # Zynthian specific modules
 from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 
-
 # ------------------------------------------------------------------------------
 # Zynthian App Selection GUI Class
 # ------------------------------------------------------------------------------

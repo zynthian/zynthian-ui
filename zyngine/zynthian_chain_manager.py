@@ -1247,20 +1247,26 @@ class zynthian_chain_manager:
         logging.debug(f"(symbol={symbol} => zctrl={zctrl.symbol})")
         for key in list(self.absolute_midi_cc_binding):
             zctrls = self.absolute_midi_cc_binding[key]
-            if zctrl in zctrls:
+            try:
                 zctrls.remove(zctrl)
+            except:
+                pass
             if not zctrls:
                 self.absolute_midi_cc_binding.pop(key)
         for key in list(self.chan_midi_cc_binding):
             zctrls = self.chan_midi_cc_binding[key]
-            if zctrl in zctrls:
+            try:
                 zctrls.remove(zctrl)
+            except:
+                pass
             if not zctrls:
                 self.chan_midi_cc_binding.pop(key)
         for key in list(self.chain_midi_cc_binding):
             zctrls = self.chain_midi_cc_binding[key]
-            if zctrl in zctrls:
+            try:
                 zctrls.remove(zctrl)
+            except:
+                pass
             if not zctrls:
                 self.chain_midi_cc_binding.pop(key)
 

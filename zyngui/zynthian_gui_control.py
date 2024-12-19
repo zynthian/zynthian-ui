@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Instrument-Control Class
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -106,6 +106,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.click_listbox()
         elif pending_click_listbox:
             self.click_listbox()
+        self.set_mode_control()
         return True
 
     def hide(self):
@@ -373,7 +374,7 @@ class zynthian_gui_control(zynthian_gui_selector):
 
     def set_selector_screen(self):
         for i in range(0, len(self.zgui_controllers)):
-            self.zgui_controllers[i].set_hl(zynthian_gui_config.color_ctrl_bg_off)
+            self.zgui_controllers[i].enable(False)
         self.set_selector()
 
     def set_mode_select(self):
@@ -386,7 +387,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                             fg=zynthian_gui_config.color_ctrl_tx_off)
         self.select(self.index)
         self.set_select_path()
-        zynsigman.send_queued(zynsigman.S_GUI, self.SS_GUI_CONTROL_MODE, mode=self.mode)
+        self.set_button_status(2, True)
 
     def set_mode_control(self):
         self.mode = 'control'
@@ -397,9 +398,9 @@ class zynthian_gui_control(zynthian_gui_selector):
                             selectforeground=zynthian_gui_config.color_ctrl_tx,
                             fg=zynthian_gui_config.color_ctrl_tx)
         for i in range(0, len(self.zgui_controllers)):
-            self.zgui_controllers[i].unset_hl()
+            self.zgui_controllers[i].enable()
         self.set_select_path()
-        #zynsigman.send_queued(zynsigman.S_GUI, self.SS_GUI_CONTROL_MODE, mode=self.mode)
+        self.set_button_status(2, False)
 
     def previous_page(self, wrap=False):
         i = self.index - 1
@@ -417,9 +418,6 @@ class zynthian_gui_control(zynthian_gui_selector):
                 i = len(self.list_data) - 1
         self.select(i)
         self.click_listbox()
-
-    def select_action(self, i, t='S'):
-        self.set_mode_control()
 
     def back_action(self):
         if self.mode == 'select':
@@ -498,6 +496,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                     self.next_page(True)
             elif self.mode == 'select':
                 self.click_listbox()
+                self.set_mode_control()
         elif t == 'B':
             self.zyngui.cuia_chain_options()
 
@@ -505,9 +504,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 
     def select(self, index=None, set_zctrl=True):
         super().select(index, set_zctrl)
-        if self.mode == 'select':
-            self.set_controller_screen()
-            self.set_selector_screen()
+        #if self.mode == 'select':
+        self.set_controller_screen()
+        #self.set_selector_screen()
 
     def zynpot_cb(self, i, dval):
         if self.mode == 'control' and self.zcontrollers:

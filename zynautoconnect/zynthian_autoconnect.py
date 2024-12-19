@@ -89,14 +89,11 @@ hw_midi_src_ports = []
 # List of hardware MIDI destination ports (including network, aubionotes, etc.)
 hw_midi_dst_ports = []
 hw_audio_dst_ports = []			# List of physical audio output ports
-# Map of all audio target port names to use as sidechain inputs, indexed by jack client regex
-sidechain_map = {}
-# List of currently active audio destination port names not to autoroute, e.g. sidechain inputs
-sidechain_ports = []
-# List of chain ids for chains with solo enabled
-solo_chain_ids = []
-# Map of alsa_out processes, indexed by alsa device name
-alsa_audio_dests = {}
+solo_chain_ids = []             # List of chain ids for chains with solo enabled
+sidechain_map = {}				# Map of all audio target port names to use as sidechain inputs, indexed by jack client regex
+sidechain_ports = []			# List of currently active audio destination port names not to autoroute, e.g. sidechain inputs
+alsa_audio_srcs = {}			# Map of alsa_in processes, indexed by alsa device name
+alsa_audio_dests = {}			# Map of alsa_out processes, indexed by alsa device name
 
 # These variables are initialized in the init() function. These are "example values".
 max_num_devs = 16     			# Max number of MIDI devices
@@ -1180,8 +1177,8 @@ def audio_connect_ffmpeg(timeout=2.0):
         try:
             # TODO: Do we want post fader, post effects feed?
             #  => It's just for recording video tutorials, but if the recorded video is about post-fader effects ...
-            jclient.connect("zynmixer:output_00a", "ffmpeg:input_1")
-            jclient.connect("zynmixer:output_00b", "ffmpeg:input_2")
+            jclient.connect("zynmixer_bus:output_00a", "ffmpeg:input_1")
+            jclient.connect("zynmixer_bus:output_00b", "ffmpeg:input_2")
             return
         except:
             sleep(0.1)

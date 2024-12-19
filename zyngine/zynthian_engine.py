@@ -64,6 +64,7 @@ class zynthian_basic_engine:
         self.proc = None
         self.proc_timeout = 30
         self.proc_start_sleep = None
+        self.proc_exit = False
         self.command = command
         self.command_env = os.environ.copy()
         self.command_prompt = prompt
@@ -80,6 +81,8 @@ class zynthian_basic_engine:
             try:
                 logging.debug("Command: {}".format(self.command))
 
+                self.proc_exit = False
+
                 # Turns out that environment's PWD is not set automatically
                 # when cwd is specified for pexpect.spawn(), so do it here.
                 if self.command_cwd:
@@ -88,8 +91,8 @@ class zynthian_basic_engine:
                 # Setting cwd is because we've set PWD above. Some engines doesn't
                 # care about the process's cwd, but it is more consistent to set
                 # cwd when PWD has been set.
-                self.proc = pexpect.spawn(
-                    self.command, timeout=self.proc_timeout, env=self.command_env, cwd=self.command_cwd)
+                self.proc = pexpect.spawn(self.command, timeout=self.proc_timeout,
+                                          env=self.command_env, cwd=self.command_cwd)
                 self.proc.delaybeforesend = 0
                 output = self.proc_get_output()
 
@@ -106,6 +109,7 @@ class zynthian_basic_engine:
         if self.proc:
             try:
                 logging.info("Stopping Engine " + self.name)
+                self.proc_exit = True
                 self.proc.terminate(True)
                 self.proc = None
             except Exception as err:
@@ -129,8 +133,7 @@ class zynthian_basic_engine:
                 # logging.debug("proc output:\n{}".format(out))
             except Exception as err:
                 out = ""
-                logging.error(
-                    "Can't exec engine command: {} => {}".format(cmd, err))
+                logging.error("Can't exec engine command: {} => {}".format(cmd, err))
             return out
 
 

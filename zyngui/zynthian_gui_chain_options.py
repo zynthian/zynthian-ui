@@ -47,7 +47,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         self.index = 0
         self.chain = self.zyngui.chain_manager.get_chain(chain_id)
         self.chain_id = self.chain.chain_id
-
+        
     def fill_list(self):
         self.list_data = []
 
@@ -78,10 +78,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
                                    ["Select MIDI CC numbers passed-thru to chain processors. It could interfere with MIDI-learning. Use with caution!", "midi_logo.png"]))
 
         if self.chain.get_processor_count() and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
-            # TODO Disable midi learn for some chains???
-            self.list_data.append((self.clean_midi_learn, None, "Clean MIDI Learn"))
-            self.list_data.append((self.midi_learn, None, "MIDI Learn",
-                                   ["Enter MIDI-learning mode for processor parameters.", ""]))
+            self.list_data.append((self.clean_midi_learn, None, "Clean Chain MIDI Learn"))
 
         if self.chain_id != 0 and self.chain.zynmixer and self.chain.zynmixer.eng_code!="MR":
             self.list_data.append((self.chain_audio_capture, None, "Audio In",
@@ -264,32 +261,6 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
     def chain_note_range(self):
         self.zyngui.screens['midi_key_range'].config(self.chain)
         self.zyngui.show_screen('midi_key_range')
-
-    def midi_learn(self):
-        options = {}
-        options['Enter MIDI-learn'] = "enable_midi_learn"
-        options['Enter Global MIDI-learn'] = "enable_global_midi_learn"
-        if self.processor:
-            options[f'Clear {self.processor.name} MIDI-learn'] = "clean_proc"
-        options['Clear chain MIDI-learn'] = "clean_chain"
-        self.zyngui.screens['option'].config(
-            "MIDI-learn", options, self.midi_learn_menu_cb)
-        self.zyngui.show_screen('option')
-
-    def midi_learn_menu_cb(self, options, params):
-        if params == 'enable_midi_learn':
-            self.zyngui.close_screen()
-            self.zyngui.cuia_toggle_midi_learn()
-        elif params == 'enable_global_midi_learn':
-            self.zyngui.close_screen()
-            self.zyngui.cuia_toggle_midi_learn()
-            self.zyngui.cuia_toggle_midi_learn()
-        elif params == 'clean_proc':
-            self.zyngui.show_confirm(
-                f"Do you want to clean MIDI-learn for ALL controls in processor {self.processor.name}?", self.zyngui.chain_manager.clean_midi_learn, self.processor)
-        elif params == 'clean_chain':
-            self.zyngui.show_confirm(
-                f"Do you want to clean MIDI-learn for ALL controls in ALL processors within chain {self.chain_id:02d}?", self.zyngui.chain_manager.clean_midi_learn, self.chain_id)
 
     def clean_midi_learn(self):
         self.zyngui.show_confirm(
