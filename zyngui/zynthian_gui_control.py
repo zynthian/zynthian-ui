@@ -770,14 +770,13 @@ class zynthian_gui_control(zynthian_gui_selector):
         if self.zyngui.cb_touch_release(event):
             return "break"
 
-        now = monotonic()
-        dts = now - self.listbox_push_ts
-        rdts = now - self.last_release_ts
-        self.last_release_ts = now
+        dts = (event.time - self.listbox_push_ts)/1000
+        rdts = event.time - self.last_release_ts
+        self.last_release_ts = event.time
         if self.swiping:
             self.swipe_nudge(dts)
         else:
-            if rdts < 0.03:
+            if rdts < 30:
                 return  # Debounce
             cursel = self.listbox.nearest(event.y)
             if self.index != cursel:
