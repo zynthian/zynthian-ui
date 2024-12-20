@@ -54,7 +54,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector_info):
         self.list_data.append((self.add_audiofx_chain, 0,
                     "Add Audio FX Loop",
                     ["Create an effect send and return mixbus",
-                        None]))
+                    "effects_loop.png"]))
         self.list_data.append((self.add_midifx_chain, 0,
                     "Add MIDI Chain",
                     ["Create a new chain for MIDI processing. The chain receives MIDI input and generates MIDI output.",
