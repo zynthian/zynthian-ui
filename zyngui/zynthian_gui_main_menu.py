@@ -88,18 +88,18 @@ class zynthian_gui_main_menu(zynthian_gui_selector_info):
 
         # Add list of Apps
         self.list_data.append((None, 0, "> MAIN"))
-        self.list_data.append((self.snapshots, 0, "Snapshots", ["Show snapshots management menu.", None]))
-        self.list_data.append((self.step_sequencer, 0, "Sequencer", ["Show sequencer's zynpad view.", None]))
-        self.list_data.append((self.audio_recorder, 0, "Audio Recorder", ["Show audio recorder/player.", None]))
-        self.list_data.append((self.midi_recorder, 0, "MIDI Recorder", ["Show SMF recorder/player.", None]))
-        self.list_data.append((self.tempo_settings, 0, "Tempo Settings", ["Show tempo & sync options.", None]))
-        self.list_data.append((self.audio_levels, 0, "Audio Levels", ["Show audio levels view.", None]))
+        self.list_data.append((self.snapshots, 0, "Snapshots", ["Show snapshots management menu.", "snapshot.png"]))
+        self.list_data.append((self.step_sequencer, 0, "Sequencer", ["Show sequencer's zynpad view.", "sequencer.png"]))
+        self.list_data.append((self.audio_recorder, 0, "Audio Recorder", ["Show audio recorder/player.", "audio_recorder.png"]))
+        self.list_data.append((self.midi_recorder, 0, "MIDI Recorder", ["Show SMF recorder/player.", "midi_recorder.png"]))
+        self.list_data.append((self.tempo_settings, 0, "Tempo Settings", ["Show tempo & sync options.", "metronome.png"]))
+        self.list_data.append((self.audio_levels, 0, "Audio Levels", ["Show audio levels view.", "meters.png"]))
 
         # Add list of System / configuration views
         self.list_data.append((None, 0, "> SYSTEM"))
-        self.list_data.append((self.admin, 0, "Admin", ["Show admin menu.", None]))
+        self.list_data.append((self.admin, 0, "Admin", ["Show admin menu.", "settings.png"]))
         self.list_data.append(
-            (self.all_sounds_off, 0, "PANIC! All Sounds Off", ["Stop all notes and sequences.", None]))
+            (self.all_sounds_off, 0, "PANIC! All Sounds Off", ["Stop all notes and sequences.", "panic.png"]))
 
         super().fill_list()
 

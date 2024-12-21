@@ -474,9 +474,9 @@ class zynthian_gui_selector(zynthian_gui_base):
             if self.index != cursel:
                 self.select(cursel)
             if dts < zynthian_gui_config.zynswitch_bold_seconds:
-                self.zyngui.zynswitch_defered('S', 3)
+                self.cb_listbox_click('S')
             elif zynthian_gui_config.zynswitch_bold_seconds <= dts < zynthian_gui_config.zynswitch_long_seconds:
-                self.zyngui.zynswitch_defered('B', 3)
+                self.cb_listbox_click('B')
 
     def cb_listbox_wheel(self, event):
         if event.num == 5 or event.delta == -120:
@@ -500,5 +500,8 @@ class zynthian_gui_selector(zynthian_gui_base):
                     self.zyngui.zynswitch_defered('B', 2)
                 elif dts >= zynthian_gui_config.zynswitch_long_seconds:
                     self.zyngui.zynswitch_defered('L', 2)
+
+    def cb_listbox_click(self, t):
+        self.zyngui.zynswitch_defered(t, 3)
 
 # ------------------------------------------------------------------------------

@@ -766,24 +766,9 @@ class zynthian_gui_control(zynthian_gui_selector):
     # GUI Callback function
     # --------------------------------------------------------------------------
 
-    def cb_listbox_release(self, event):
-        if self.zyngui.cb_touch_release(event):
-            return "break"
-
-        dts = (event.time - self.listbox_push_ts)/1000
-        rdts = event.time - self.last_release_ts
-        self.last_release_ts = event.time
-        if self.swiping:
-            self.swipe_nudge(dts)
-        else:
-            if rdts < 30:
-                return  # Debounce
-            cursel = self.listbox.nearest(event.y)
-            if self.index != cursel:
-                self.select(cursel)
-            self.select_listbox(self.get_cursel(), False)
-            self.click_listbox()
-            return "break"
+    def cb_listbox_click(self, t):
+        # Override listbox click - we don't want short/bold press
+        return
 
     def cb_listbox_motion(self, event):
         return super().cb_listbox_motion(event)
