@@ -538,16 +538,55 @@ font_family = os.environ.get('ZYNTHIAN_UI_FONT_FAMILY', "Audiowide")
 # Touch Options
 # ------------------------------------------------------------------------------
 
-enable_touch_widgets = int(os.environ.get('ZYNTHIAN_UI_TOUCH_WIDGETS', 0))
-enable_touch_navigation = int(
-    os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION', 0))
-force_enable_cursor = int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR', 0))
+touch_navigation = os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION2', '_UNDEF_')
 
-if check_wiring_layout(["Z2", "V5"]):
-    # TODO: BW: Do we need to inhibit touch mimic of V5 encoders?
-    enable_touch_controller_switches = 0
-else:
-    enable_touch_controller_switches = 1
+# Backward compatibility
+if touch_navigation == "_UNDEF_":
+    touch_navigation = os.environ.get('ZYNTHIAN_UI_TOUCH_NAVIGATION', '')
+    if touch_navigation == "1":
+        touch_navigation = "touch_widgets"
+    elif touch_navigation == "0":
+        touch_keypad = os.environ.get('ZYNTHIAN_TOUCH_KEYPAD', '')
+        if touch_keypad == "V5":
+            touch_navigation = "v5_keypad_left"
+
+match touch_navigation:
+    case "touch_widgets":
+        enable_touch_navigation = True
+        touch_keypad_option = ""
+        touch_keypad_side_left = True
+        enable_touch_controller_switches = 1
+        main_screen_column = 0
+    case "v5_keypad_left":
+        enable_touch_navigation = False
+        touch_keypad_option = "V5"
+        touch_keypad_side_left = True
+        enable_touch_controller_switches = 1
+        main_screen_column = 1
+    case "v5_keypad_right":
+        enable_touch_navigation = False
+        touch_keypad_option = "V5"
+        touch_keypad_side_left = False
+        enable_touch_controller_switches = 1
+        main_screen_column = 0
+    case _:
+        enable_touch_navigation = False
+        touch_keypad_option = ""
+        touch_keypad_side_left = True
+        enable_touch_controller_switches = 0
+        main_screen_column = 0
+
+try:
+    force_enable_cursor = int(os.environ.get('ZYNTHIAN_UI_ENABLE_CURSOR', 0))
+except:
+    force_enable_cursor = 0
+
+# Configure switch actions for touch only configuration so it works with touch-keypad
+if touch_keypad_option == "V5" and wiring_layout =="TOUCH_ONLY":
+    if os.environ.get("ZYNTHIAN_WIRING_LAYOUT_CUSTOM_PROFILE", "") != "v5":
+        config_dir = os.environ.get("ZYNTHIAN_CONFIG_DIR", "/zynthian/config")
+        zynconf.load_plain_envars(f"{config_dir}/wiring-profiles/v5", True)
+        os.environ["ZYNTHIAN_WIRING_SWITCHES"] = ",".join(36 * ["-1"])
 
 # ------------------------------------------------------------------------------
 # UI Options
