@@ -200,7 +200,7 @@ def get_git_tag(path):
 def get_git_local_hash(path):
     # Get the hash of the current commit for a git branch or None if invalid
     try:
-        return check_output(f"git -C {path} rev-parse origin",
+        return check_output(f"git -C {path} rev-parse HEAD",
             encoding="utf-8", shell=True).strip()
     except:
         return None
