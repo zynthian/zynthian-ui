@@ -30,7 +30,7 @@ import logging
 from time import sleep
 from stat import S_IWUSR
 from shutil import copyfile
-from subprocess import check_output
+from subprocess import check_output, DEVNULL
 
 # -------------------------------------------------------------------------------
 # Configure logging
@@ -170,11 +170,153 @@ ServerPort = {
 sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR', "/zynthian/zynthian-sys")
 config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR', '/zynthian/config')
 config_fpath = config_dir + "/zynthian_envars.sh"
+zynthian_repositories = ["zynthian-sys", "zynthian-ui", "zyncoder", "zynthian-data", "zynthian-webconf"]
+
+# -------------------------------------------------------------------------------
+# Version configuration
+# -------------------------------------------------------------------------------
+
+def is_git_behind(path):
+    # True if the git repository is behind the upstream version
+    check_output(f"git -C {path} remote update; git -C {path} status --porcelain -bs | grep behind | wc -l",
+                 encoding="utf-8", shell=True) != '0\n'
+
+def get_git_branch(path):
+    # Get the current branch for a git repository or None if detached or invalid repo name
+    try:
+        return check_output(f"git -C {path} symbolic-ref -q --short HEAD",
+            encoding="utf-8", shell=True).strip()
+    except:
+        return None
+
+def get_git_tag(path):
+    # Get the current tag for a git repository or None if invalid repo name
+    try:
+        return check_output(f"git -C {path} describe --tags --exact-match",
+            encoding="utf-8", shell=True, stderr=DEVNULL).strip()
+    except:
+        return None
+
+def get_git_local_hash(path):
+    # Get the hash of the current commit for a git branch or None if invalid
+    try:
+        return check_output(f"git -C {path} rev-parse origin",
+            encoding="utf-8", shell=True).strip()
+    except:
+        return None
+
+def get_git_remote_hash(path, branch=None):
+    # Get the hash of the latest commit for a git branch or for a tag or None if invalid
+    if branch is None:
+        branch = get_git_tag(path)
+    if branch is None:
+        return None
+    try:
+        return check_output(f"git -C {path} ls-remote origin {branch}",
+            encoding="utf-8", shell=True).strip().split("\t")[0]
+    except:
+        return None
+
+def get_git_version_info(path):
+    # Get version information about a git repository
+    local_hash = get_git_local_hash(path)
+    branch = get_git_branch(path)
+    tag = get_git_tag(path)
+    release_name = None
+    version = None
+    major_version = 0
+    minor_version = 0
+    patch_version = 0
+    frozen = False
+    if tag is not None:
+        # Check if it is a major release channel
+        frozen = True
+        parts = tag.split("-", 1)
+        if len(parts) == 2:
+            release_name = parts[0]
+            version = parts[1]
+    if version:
+        parts = version.split(".", 3)
+        major_version = parts[0]
+        if len(parts) > 2:
+            patch_version = parts[2]
+        if len(parts) > 1:
+            minor_version = parts[1]
+        else:
+            # On stable release channel. Check which point release we are on.
+            tags = check_output(f"git -C {path} tag --points-at {tag}", encoding="utf-8", shell=True).split()
+            for t in tags:
+                parts = t.split("-", 1)
+                if len(parts) != 2 or parts[0] != release_name:
+                    continue
+                v_parts = parts[1].split(".", 3)
+                try:
+                    x = int(v_parts[0])
+                    y = z = 0
+                    if len(v_parts) > 1:
+                        y = v_parts[1]
+                        if len(v_parts) > 2:
+                            z = int(v_parts[2])
+                    if x > major_version:
+                        major_version = x
+                        minor_version = y
+                        patch_version = z
+                    elif y > minor_version:
+                        minor_version = y
+                        patch_version = z
+                    elif z > patch_version:
+                        patch_version = z
+                except:
+                    pass
+    result = {
+        "branch": branch,
+        "tag": tag,
+        "name": release_name,
+        "major": major_version,
+        "minor": minor_version,
+        "patch": patch_version,
+        "frozen": frozen,
+        "local_hash": local_hash
+    }
+    return result
+
+def get_git_tags(path, refresh=False):
+    # Get list of tags in a git repository
+    try:
+        if refresh:
+            check_output(f"git -C {path} remote update origin --prune", shell=True)
+        return sorted(check_output(f"git -C {path} tag", encoding="utf-8", shell=True).split(), key=str.casefold)
+    except:
+        return []
+
+def get_git_branches(path, refresh=False):
+    # Get list of branches in a git repository
+    result = []
+    if refresh:
+        check_output(f"git -C {path} remote update origin --prune", shell=True)
+    for branch in check_output(f"git -C {path} branch -a", encoding="utf-8", shell=True).splitlines():
+        branch = branch.strip()
+        if branch.startswith("*"):
+            branch = branch[2:]
+        if branch.startswith("remotes/origin/"):
+            branch = branch[15:]
+        if "->" in branch or branch.startswith("(HEAD detached at "):
+            continue
+        if branch not in result:
+            result.append(branch)
+    return sorted(result, key=str.casefold)
+
+def get_system_version():
+    # Get the overall release version or None if inconsistent repository states
+    tag = get_git_version_info("/zynthian/zynthian-sys")["tag"]
+    for repo in zynthian_repositories:
+        if get_git_version_info(f"/zynthian/{repo}")["tag"] != tag:
+            return None
+    return tag
 
 # -------------------------------------------------------------------------------
 # Config management
 # -------------------------------------------------------------------------------
-
 
 def get_midi_config_fpath(fpath=None):
     if not fpath:
@@ -205,7 +347,7 @@ def load_config(set_env=True, fpath=None):
         res = pattern.match(line)
         if res:
             varnames.append(res.group(1))
-            # logging.debug("CONFIG VARNAME: %s" % res.group(1))
+    #logging.debug(f"CONFIG VARNAMES: {varnames}")
 
     # Execute config script and dump environment
     env = check_output("source \"{}\";env".format(
@@ -279,7 +421,6 @@ def save_config(config, updsys=False, fpath=None):
     # Update System Configuration
     if updsys:
         update_sys()
-
 
 def update_sys():
     try:

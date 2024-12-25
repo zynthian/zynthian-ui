@@ -2757,51 +2757,21 @@ class zynthian_state_manager:
         self.checking_for_updates = True
 
         def update_thread():
-            logging.debug("************ CHECKING FOR UPDATES ... ************")
+            logging.debug("************ CHECKING FOR UPDATES... ************")
             try:
                 repos = ["zynthian-ui", "zynthian-sys", "zynthian-webconf", "zynthian-data", "zyncoder"]
                 # If attached to last stable => Detect if new tag relase available
-                if os.environ.get('ZYNTHIAN_STABLE_TAG', "") == "last":
-                    stable_branch = os.environ.get('ZYNTHIAN_STABLE_BRANCH', "oram")
-                    for repo in repos:
-                        path = f"/zynthian/{repo}"
-                        branch = get_repo_branch(path)
-                        # Get last tag release
-                        check_output(["git", "-C", path, "remote", "update", "origin", "--prune"], encoding="utf-8",
-                                          stderr=STDOUT)
-                        stags = check_output(["git", "-C", path, "tag", "-l", f"{stable_branch}-*"], encoding="utf-8",
-                                          stderr=STDOUT).strip().split("\n")
-                        last_stag = stags[-1].strip()
-                        #logging.debug(f"STABLE TAG RELEASES => {stags}")
-                        if branch != last_stag:
-                            #logging.info(f"For reposiroty '{repo}', current branch ({branch}) != last tag release ({last_stag})!")
-                            self.update_available = True
-                            break
-                # else => Check for commits to pull
-                else:
-                    for repo in repos:
-                        path = f"/zynthian/{repo}"
-                        branch = get_repo_branch(path)
-                        local_hash = check_output(["git", "-C", path, "rev-parse", "HEAD"], encoding="utf-8",
-                                                  stderr=STDOUT).strip()
-                        remote_hash = check_output(["git", "-C", path, "ls-remote", "origin", branch], encoding="utf-8",
-                                                   stderr=STDOUT).strip().split("\t")[0]
-                        #logging.debug(f"*********** BRANCH {branch} => local hash {local_hash}, remote hash {remote_hash} ****************")
-                        if local_hash != remote_hash:
-                            self.update_available = True
-                            break
+                for repo in repos:
+                    path = f"/zynthian/{repo}"
+                    local_hash = zynconf.get_git_local_hash(path)
+                    remote_hash = zynconf.get_git_remote_hash(path, "HEAD")
+                    #logging.debug(f"*********** BRANCH {branch} => local hash {local_hash}, remote hash {remote_hash} ****************")
+                    if local_hash != remote_hash:
+                        self.update_available = True
+                        break
             except Exception as e:
                 logging.warning(e)
             self.checking_for_updates = False
-
-        def get_repo_branch(path):
-            res = check_output(["git", "-C", path, "rev-parse", "--abbrev-ref", "HEAD"],
-                               encoding="utf-8", stderr=STDOUT).strip()
-            parts = res.split("/", 1)
-            if len(parts) > 1 and parts[0] == 'heads':
-                return parts[1]
-            else:
-                return res
 
         thread = Thread(target=update_thread, args=())
         thread.name = "Check update"
