@@ -280,11 +280,14 @@ def get_git_version_info(path):
     }
     return result
 
+def update_git(path):
+    check_output(f"git -C {path} remote update origin --prune", shell=True)
+
 def get_git_tags(path, refresh=False):
     # Get list of tags in a git repository
     try:
         if refresh:
-            check_output(f"git -C {path} remote update origin --prune", shell=True)
+            update_git(path)
         return sorted(check_output(f"git -C {path} tag", encoding="utf-8", shell=True).split(), key=str.casefold)
     except:
         return []
@@ -293,7 +296,7 @@ def get_git_branches(path, refresh=False):
     # Get list of branches in a git repository
     result = []
     if refresh:
-        check_output(f"git -C {path} remote update origin --prune", shell=True)
+            update_git(path)
     for branch in check_output(f"git -C {path} branch -a", encoding="utf-8", shell=True).splitlines():
         branch = branch.strip()
         if branch.startswith("*"):

@@ -2763,6 +2763,7 @@ class zynthian_state_manager:
                 # If attached to last stable => Detect if new tag relase available
                 for repo in repos:
                     path = f"/zynthian/{repo}"
+                    zynconf.update_git(path)
                     local_hash = zynconf.get_git_local_hash(path)
                     remote_hash = zynconf.get_git_remote_hash(path, "HEAD")
                     #logging.debug(f"*********** BRANCH {branch} => local hash {local_hash}, remote hash {remote_hash} ****************")
