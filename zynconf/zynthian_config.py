@@ -204,10 +204,10 @@ def get_git_tag(path):
     except:
         return None
 
-def get_git_local_hash(path):
+def get_git_local_hash(path, branch):
     # Get the hash of the current commit for a git branch or None if invalid
     try:
-        return check_output(f"git -C {path} rev-parse HEAD",
+        return check_output(f"git -C {path} rev-parse {branch}",
             encoding="utf-8", shell=True).strip()
     except:
         return None
@@ -224,11 +224,24 @@ def get_git_remote_hash(path, branch=None):
     except:
         return None
 
+def update_available(path, refresh):
+    if refresh:
+        update_git(path)
+    branch = get_git_branch(path)
+    if branch is None:
+        branch = get_git_tag(path)
+    local_hash = get_git_local_hash(path, branch)
+    remote_hash = get_git_remote_hash(path, branch)
+    return local_hash != remote_hash
+
 def get_git_version_info(path):
     # Get version information about a git repository
-    local_hash = get_git_local_hash(path)
     branch = get_git_branch(path)
     tag = get_git_tag(path)
+    if branch:
+        local_hash = get_git_local_hash(path, branch)
+    else:
+        local_hash = get_git_local_hash(path, tag)
     release_name = None
     version = None
     major_version = 0
@@ -243,7 +256,10 @@ def get_git_version_info(path):
             version = parts[1]
     if version:
         parts = version.split(".", 3)
-        major_version = parts[0]
+        try:
+            major_version = int(parts[0])
+        except:
+            pass
         if len(parts) > 2:
             patch_version = parts[2]
         if len(parts) > 1:
@@ -258,7 +274,6 @@ def get_git_version_info(path):
                     continue
                 v_parts = parts[1].split(".", 3)
                 try:
-                    major_version = int(major_version)
                     x = int(v_parts[0])
                     y = z = 0
                     if len(v_parts) > 1:
