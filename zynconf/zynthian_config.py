@@ -237,18 +237,21 @@ def get_git_version_info(path):
     frozen = False
     if tag is not None:
         # Check if it is a major release channel
-        frozen = True
         parts = tag.split("-", 1)
         if len(parts) == 2:
             release_name = parts[0]
             version = parts[1]
     if version:
         parts = version.split(".", 3)
-        major_version = parts[0]
+        try:
+            major_version = int(parts[0])
+        except:
+            pass
         if len(parts) > 2:
             patch_version = parts[2]
         if len(parts) > 1:
             minor_version = parts[1]
+            frozen = True
         else:
             # On stable release channel. Check which point release we are on.
             tags = check_output(f"git -C {path} tag --points-at {tag}", encoding="utf-8", shell=True).split()
@@ -261,7 +264,7 @@ def get_git_version_info(path):
                     x = int(v_parts[0])
                     y = z = 0
                     if len(v_parts) > 1:
-                        y = v_parts[1]
+                        y = int(v_parts[1])
                         if len(v_parts) > 2:
                             z = int(v_parts[2])
                     if x > major_version:
