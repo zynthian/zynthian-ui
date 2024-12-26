@@ -192,8 +192,11 @@ def get_git_branch(path):
 def get_git_tag(path):
     # Get the current tag for a git repository or None if invalid repo name
     try:
-        return check_output(f"git -C {path} describe --tags --exact-match",
-            encoding="utf-8", shell=True, stderr=DEVNULL).strip()
+        status = check_output(f"git -C {path} status",
+            encoding="utf-8", shell=True, stderr=DEVNULL).split('\n')
+        for line in status:
+            if line.strip().startswith("HEAD detached at "):
+                return line.strip()[17:]
     except:
         return None
 
