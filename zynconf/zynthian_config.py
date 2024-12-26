@@ -172,6 +172,10 @@ config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR', '/zynthian/config')
 config_fpath = config_dir + "/zynthian_envars.sh"
 zynthian_repositories = ["zynthian-sys", "zynthian-ui", "zyncoder", "zynthian-data", "zynthian-webconf"]
 
+stable_branch = "oram"
+stable_tag = "oram-2409"
+testing_branch = "vangelis"
+
 # -------------------------------------------------------------------------------
 # Version configuration
 # -------------------------------------------------------------------------------
