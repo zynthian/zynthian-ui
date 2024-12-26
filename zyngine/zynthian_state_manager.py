@@ -2759,9 +2759,8 @@ class zynthian_state_manager:
         def update_thread():
             logging.debug("************ CHECKING FOR UPDATES... ************")
             try:
-                repos = ["zynthian-ui", "zynthian-sys", "zynthian-webconf", "zynthian-data", "zyncoder"]
                 # If attached to last stable => Detect if new tag relase available
-                for repo in repos:
+                for repo in zynconf.zynthian_repositories:
                     path = f"/zynthian/{repo}"
                     zynconf.update_git(path)
                     local_hash = zynconf.get_git_local_hash(path)
