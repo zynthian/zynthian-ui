@@ -204,10 +204,10 @@ def get_git_tag(path):
     except:
         return None
 
-def get_git_local_hash(path):
+def get_git_local_hash(path, branch):
     # Get the hash of the current commit for a git branch or None if invalid
     try:
-        return check_output(f"git -C {path} rev-parse HEAD",
+        return check_output(f"git -C {path} rev-parse {branch}",
             encoding="utf-8", shell=True).strip()
     except:
         return None
@@ -224,11 +224,24 @@ def get_git_remote_hash(path, branch=None):
     except:
         return None
 
+def update_available(path, refresh):
+    if refresh:
+        update_git(path)
+    branch = get_git_branch(path)
+    if branch is None:
+        branch = get_git_tag(path)
+    local_hash = get_git_local_hash(path, branch)
+    remote_hash = get_git_remote_hash(path, branch)
+    return local_hash != remote_hash
+
 def get_git_version_info(path):
     # Get version information about a git repository
-    local_hash = get_git_local_hash(path)
     branch = get_git_branch(path)
     tag = get_git_tag(path)
+    if branch:
+        local_hash = get_git_local_hash(path, branch)
+    else:
+        local_hash = get_git_local_hash(path, tag)
     release_name = None
     version = None
     major_version = 0
