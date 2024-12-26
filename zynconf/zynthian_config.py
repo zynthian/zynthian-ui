@@ -172,6 +172,10 @@ config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR', '/zynthian/config')
 config_fpath = config_dir + "/zynthian_envars.sh"
 zynthian_repositories = ["zynthian-sys", "zynthian-ui", "zyncoder", "zynthian-data", "zynthian-webconf"]
 
+stable_branch = "oram"
+stable_tag = "oram-2409"
+testing_branch = "vangelis"
+
 # -------------------------------------------------------------------------------
 # Version configuration
 # -------------------------------------------------------------------------------
@@ -200,10 +204,10 @@ def get_git_tag(path):
     except:
         return None
 
-def get_git_local_hash(path):
+def get_git_local_hash(path, branch):
     # Get the hash of the current commit for a git branch or None if invalid
     try:
-        return check_output(f"git -C {path} rev-parse HEAD",
+        return check_output(f"git -C {path} rev-parse {branch}",
             encoding="utf-8", shell=True).strip()
     except:
         return None
@@ -220,11 +224,24 @@ def get_git_remote_hash(path, branch=None):
     except:
         return None
 
+def update_available(path, refresh):
+    if refresh:
+        update_git(path)
+    branch = get_git_branch(path)
+    if branch is None:
+        branch = get_git_tag(path)
+    local_hash = get_git_local_hash(path, branch)
+    remote_hash = get_git_remote_hash(path, branch)
+    return local_hash != remote_hash
+
 def get_git_version_info(path):
     # Get version information about a git repository
-    local_hash = get_git_local_hash(path)
     branch = get_git_branch(path)
     tag = get_git_tag(path)
+    if branch:
+        local_hash = get_git_local_hash(path, branch)
+    else:
+        local_hash = get_git_local_hash(path, tag)
     release_name = None
     version = None
     major_version = 0
@@ -233,18 +250,21 @@ def get_git_version_info(path):
     frozen = False
     if tag is not None:
         # Check if it is a major release channel
-        frozen = True
         parts = tag.split("-", 1)
         if len(parts) == 2:
             release_name = parts[0]
             version = parts[1]
     if version:
         parts = version.split(".", 3)
-        major_version = parts[0]
+        try:
+            major_version = int(parts[0])
+        except:
+            pass
         if len(parts) > 2:
             patch_version = parts[2]
         if len(parts) > 1:
             minor_version = parts[1]
+            frozen = True
         else:
             # On stable release channel. Check which point release we are on.
             tags = check_output(f"git -C {path} tag --points-at {tag}", encoding="utf-8", shell=True).split()
@@ -257,7 +277,7 @@ def get_git_version_info(path):
                     x = int(v_parts[0])
                     y = z = 0
                     if len(v_parts) > 1:
-                        y = v_parts[1]
+                        y = int(v_parts[1])
                         if len(v_parts) > 2:
                             z = int(v_parts[2])
                     if x > major_version:
@@ -271,10 +291,19 @@ def get_git_version_info(path):
                         patch_version = z
                 except:
                     pass
+    if tag:
+        if tag == stable_tag:
+            display_name = f"{tag}.{minor_version}.{patch_version}"
+        else:
+            display_name = tag
+    else:
+        display_name = branch
+
     result = {
         "branch": branch,
         "tag": tag,
         "name": release_name,
+        "display_name": display_name,
         "major": major_version,
         "minor": minor_version,
         "patch": patch_version,
