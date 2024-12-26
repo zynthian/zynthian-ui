@@ -291,10 +291,19 @@ def get_git_version_info(path):
                         patch_version = z
                 except:
                     pass
+    if tag:
+        if tag == stable_tag:
+            display_name = f"{tag}.{minor_version}.{patch_version}"
+        else:
+            display_name = tag
+    else:
+        display_name = branch
+
     result = {
         "branch": branch,
         "tag": tag,
         "name": release_name,
+        "display_name": display_name,
         "major": major_version,
         "minor": minor_version,
         "patch": patch_version,
