@@ -28,17 +28,17 @@ ZYNTHIAN_DIR="/zynthian"
 # Some Functions
 #------------------------------------------------------------------------------
 
-function alsa_in_start() {
-	# Start alsa_in audio input
+function zita_a2j_start() {
+	# Start zita-a2j audio input
 	while [ 1 ]; do 
-		/usr/bin/alsa_in -d hw:2
+		/usr/bin/zita-a2j -d hw:2
 		sleep 1
 	done
 }
 
-function alsa_in_stop() {
-	# Stop alsa_in audio input
-	killall alsa_in
+function zita_a2j_stop() {
+	# Stop zita-a2j audio input
+	killall zita-a2j
 }
 
 function aubionotes_start() {
@@ -56,7 +56,7 @@ function aubionotes_stop() {
 
 function zynthian_start() {
 	if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
-		alsa_in_start &
+		zita_a2j_start &
 		aubionotes_start &
 	fi
 }
@@ -64,7 +64,7 @@ function zynthian_start() {
 function zynthian_stop() {
 	if [ ! -z "$ZYNTHIAN_AUBIO" ]; then
 		aubionotes_stop
-		alsa_in_stop
+		zita_a2j_stop
 	fi
 }
 
