@@ -138,25 +138,12 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
 
         super().fill_list()
 
-    def fill_listbox(self):
-        super().fill_listbox()
-
     def select_action(self, i, t='S'):
         if self.list_data[i][0] == 'record':
             self.zyngui.state_manager.audio_recorder.toggle_arm(self.chain.mixer_chan)
         else:
-            self.zyngui.state_manager.start_busy("alsa_output")
-            zctrls = self.zyngui.state_manager.alsa_mixer_processor.engine.get_controllers_dict()
-            ctrl_list = []
-            for symbol, zctrl in zctrls.items():
-                try:
-                    if zctrl.graph_path[4] in self.list_data[i][1]:
-                        ctrl_list.append(symbol)
-                except:
-                    pass
-            self.zyngui.state_manager.end_busy("alsa_output")
-            if ctrl_list:
-                self.zyngui.show_screen("alsa_mixer", params=ctrl_list)
+            self.chain.toggle_audio_out(self.list_data[i][0])
+        self.fill_list()
 
     def set_select_path(self):
         self.select_path.set("Send Audio to ...")
