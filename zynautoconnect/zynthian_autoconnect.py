@@ -28,7 +28,7 @@ import usb
 import json
 import jack
 import psutil
-import pexpect
+import subprocess
 import logging
 import alsaaudio
 from time import sleep
@@ -93,8 +93,8 @@ hw_midi_dst_ports = []
 hw_audio_dst_ports = []			# List of physical audio output ports
 sidechain_map = {}				# Map of all audio target port names to use as sidechain inputs, indexed by jack client regex
 sidechain_ports = []			# List of currently active audio destination port names not to autoroute, e.g. sidechain inputs
-alsa_audio_srcs = {}			# Map of zita-a2j processes, indexed by alsa device name
-alsa_audio_dests = {}			# Map of zita-j2a processes, indexed by alsa device name
+alsa_audio_srcs = []			# List of zalsa_in device names
+alsa_audio_dests = []			# List of zalsa_out device names
 
 # These variables are initialized in the init() function. These are "example values".
 max_num_devs = 16     			# Max number of MIDI devices
@@ -972,10 +972,10 @@ def update_hw_audio_ports():
         # Add new devices
         for device in get_alsa_hotplug_audio_devices(False):
             if device not in zynthian_gui_config.disabled_audio_in:
-                dirty |= start_zita_a2j(device)
+                dirty |= start_zalsa_in(device)
         for device in get_alsa_hotplug_audio_devices(True):
             if device not in zynthian_gui_config.disabled_audio_out:
-                dirty |= start_zita_j2a(device)
+                dirty |= start_zalsa_out(device)
 
         # Remove disconnected devices
         for device in list(alsa_audio_srcs):
@@ -1028,16 +1028,16 @@ def enable_hotplug():
 def disable_hotplug():
     zynthian_gui_config.hotplug_audio_enabled = False
     zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO": str(zynthian_gui_config.hotplug_audio_enabled)})
-    stop_all_zita_a2j_out()
+    stop_all_zalsa()
 
 
 def enable_audio_input_device(device, enable=True):
     if enable:
-        if start_zita_a2j(device):
+        if start_zalsa_in(device):
             if device in zynthian_gui_config.disabled_audio_in:
                 zynthian_gui_config.disabled_audio_in.remove(device)
     else:
-        stop_zita_a2j(device)
+        stop_zalsa_in(device)
         if device not in zynthian_gui_config.disabled_audio_in:
             zynthian_gui_config.disabled_audio_in.append(device)
     zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_IN": ",".join(zynthian_gui_config.disabled_audio_in)})
@@ -1045,11 +1045,11 @@ def enable_audio_input_device(device, enable=True):
 
 def enable_audio_output_device(device, enable=True):
     if enable:
-        if start_zita_j2a(device):
+        if start_zalsa_out(device):
             if device in zynthian_gui_config.disabled_audio_out:
                 zynthian_gui_config.disabled_audio_out.remove(device)
     else:
-        stop_zita_j2a(device)
+        stop_zalsa_out(device)
         if device not in zynthian_gui_config.disabled_audio_out:
             zynthian_gui_config.disabled_audio_out.append(device)
     zynconf.save_config({"ZYNTHIAN_HOTPLUG_AUDIO_DISABLED_OUT": ",".join(zynthian_gui_config.disabled_audio_out)})
@@ -1067,12 +1067,16 @@ def get_alsa_hotplug_audio_devices(playback=True):
     return devices
 
 
-def start_zita_a2j(device):
+def start_zalsa_in(device):
     global alsa_audio_srcs
     if device in alsa_audio_srcs:
         return False
-    proc = pexpect.spawn(f"zita-a2j -d hw:{device} -c 128 -j zynain_{device}", encoding="utf-8", timeout=0.1)
-    if proc.exitstatus:
+    try:
+        channels = alsaaudio.PCM(alsaaudio.PCM_CAPTURE, device=f"hw:{device}").info()["channels"]
+    except:
+        logging.warning(f"Failed to get quantity of channels on input device {device}")
+        return False
+    if subprocess.run(["jack_load", f"zynain_{device}", "zalsa_in", "-i", f"-d hw:{device} -c {channels}"]):
         return False
     alsa_audio_srcs[device] = proc
     for i in range(10):
@@ -1086,21 +1090,26 @@ def start_zita_a2j(device):
     return True
 
 
-def stop_zita_a2j(device):
+def stop_zalsa_in(device):
     global alsa_audio_srcs
     if device not in alsa_audio_srcs:
         return False
-    alsa_audio_srcs[device].terminate()
-    alsa_audio_srcs.pop(device)
-    return True
+    if subprocess.run(["jack_unload", f"zynain_{device}"]):
+        alsa_audio_srcs.pop(device)
+        return True
+    return False
 
 
-def start_zita_j2a(device):
+def start_zalsa_out(device):
     global alsa_audio_dests
     if device in alsa_audio_dests:
         return False
-    proc = pexpect.spawn(f"zita-j2a -d hw:{device} -c 128 -j zynaout_{device}", encoding="utf-8", timeout=0.1)
-    if proc.exitstatus:
+    try:
+        channels = alsaaudio.PCM(alsaaudio.PCM_PLAYBACK, device=f"hw:{device}").info()["channels"]
+    except:
+        logging.warning(f"Failed to get quantity of channels on output device {device}")
+        return False
+    if subprocess.run(["jack_load", f"zynaout_{device}", "zalsa_out", "-i", f"-d hw:{device} -c {channels}"]):
         return False
     alsa_audio_dests[device] = proc
     for i in range(10):
@@ -1114,20 +1123,21 @@ def start_zita_j2a(device):
     return True
 
 
-def stop_zita_j2a(device):
+def stop_zalsa_out(device):
     global alsa_audio_dests
     if device not in alsa_audio_dests:
         return False
-    alsa_audio_dests[device].terminate()
-    alsa_audio_dests.pop(device)
-    return True
+    if subprocess.run(["jack_unload", f"zynain_{device}"]):
+        alsa_audio_dests.pop(device)
+        return True
+    return False
 
 
-def stop_all_zita_a2j_out():
+def stop_all_zalsa():
     for device in get_alsa_hotplug_audio_devices(False):
-        stop_zita_a2j(device)
+        stop_zalsa_in(device)
     for device in get_alsa_hotplug_audio_devices(True):
-        stop_zita_j2a(device)
+        stop_zalsa_out(device)
 
 
 # Connect mixer to the ffmpeg recorder
@@ -1445,7 +1455,7 @@ def stop():
 
     hw_audio_dst_ports = []
 
-    stop_all_zita_a2j_out()
+    stop_all_zalsa()
 
     if jclient:
         jclient.deactivate()
