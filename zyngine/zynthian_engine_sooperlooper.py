@@ -75,7 +75,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	SL_PORT = ServerPort["sooperlooper_osc"]
 	MAX_LOOPS = 6
 
-	# SL_LOOP_SEL_PARAM act on the selected loop - send with osc command /sl/#/set where #=-3 for selected or index of loop (0..5) 
+	# SL_LOOP_SEL_PARAM act on the selected loop - send with osc command /sl/#/set where #=-3 for selected or index of loop (0..5)
 	SL_LOOP_SEL_PARAM = [
 		'record',
 		'overdub',
@@ -97,7 +97,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		#'dry',						# range 0 -> 1
 		'wet',						# range 0 -> 1
 		#'input_gain',				# range 0 -> 1
-		'rate',        				# range 0.25 -> 4.0
+		'rate',                                 # range 0.25 -> 4.0
 		#'scratch_pos',				# range 0 -> 1
 		#'delay_trigger',			# any changes
 		#'quantize',				# 0 = off, 1 = cycle, 2 = 8th, 3 = loop
@@ -423,12 +423,12 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 		# Controller Screens
 		self._ctrl_screens = [
-			['Loop record 1', ['record:0', 'overdub:0', 'multiply:0', 'undo/redo']],
-			['Loop record 2', ['replace:0', 'substitute:0', 'insert:0', 'undo/redo']],
-			['Loop control', ['trigger:0', 'oneshot:0', 'mute:0', 'pause:0']],
-			['Loop time/pitch', ['reverse:0', 'rate', 'stretch_ratio', 'pitch_shift']],
+			['Loop record 1', ['record', 'overdub', 'multiply', 'undo/redo']],
+			['Loop record 2', ['replace', 'substitute', 'insert', 'undo/redo']],
+			['Loop control', ['trigger', 'oneshot', 'mute', 'pause']],
+			['Loop time/pitch', ['reverse', 'rate', 'stretch_ratio', 'pitch_shift']],
 			['Loop levels', ['wet', 'dry', 'feedback', 'selected_loop_num']],
-			['Global loop', ['selected_loop_num', 'loop_count', 'next_loop', 'single_pedal:0']],
+			['Global loop', ['selected_loop_num', 'loop_count', 'next_loop', 'single_pedal']],
 			['Global levels', ['rec_thresh', 'input_gain']],
 			['Global quantize', ['quantize', 'mute_quantized', 'overdub_quantized', 'replace_quantized']],
 			['Global sync 1', ['sync_source', 'sync', 'playback_sync', 'relative_sync']],
@@ -576,26 +576,47 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				if ctrl[0] in self.SL_LOOP_SEL_PARAM:
 					# Create a zctrl for each loop
 					for i in range(self.MAX_LOOPS):
-						zctrl = zynthian_controller(self, f"{ctrl[0]}:{i}", ctrl[1])
+						name = ctrl[1].get('name')
+						specs = ctrl[1].copy()
+						specs['name'] = f"{name} ({i + 1})"
+						zctrl = zynthian_controller(self, f"{ctrl[0]}:{i}", specs)
 						processor.controllers_dict[zctrl.symbol] = zctrl
-				else:
-					zctrl = zynthian_controller(self, ctrl[0], ctrl[1])
-					processor.controllers_dict[zctrl.symbol] = zctrl
+				zctrl = zynthian_controller(self, ctrl[0], ctrl[1])
+				processor.controllers_dict[zctrl.symbol] = zctrl
 		return processor.controllers_dict
+
+	def adjust_controller_bindings(self):
+		if self.selected_loop_cc_binding:
+			self._ctrl_screens[0][1] = [f'record', f'overdub', f'multiply', 'undo/redo']
+			self._ctrl_screens[1][1] = [f'replace', f'substitute', f'insert', 'undo/redo']
+			self._ctrl_screens[2][1] = [f'trigger', f'oneshot', f'mute', f'pause']
+			self._ctrl_screens[3][1][0] = f'reverse'
+			self._ctrl_screens[5][1][3] = f'single_pedal'
+		else:
+			self._ctrl_screens[0][1] = [f'record:{self.selected_loop}', f'overdub:{self.selected_loop}', f'multiply:{self.selected_loop}', 'undo/redo']
+			self._ctrl_screens[1][1] = [f'replace:{self.selected_loop}', f'substitute:{self.selected_loop}', f'insert:{self.selected_loop}', 'undo/redo']
+			self._ctrl_screens[2][1] = [f'trigger:{self.selected_loop}', f'oneshot:{self.selected_loop}', f'mute:{self.selected_loop}', f'pause:{self.selected_loop}']
+			self._ctrl_screens[3][1][0] = f'reverse:{self.selected_loop}'
+			self._ctrl_screens[5][1][3] = f'single_pedal:{self.selected_loop}'
+		return
 
 	def send_controller_value(self, zctrl):
 		if zctrl.symbol == "selected_loop_cc":
 			self.selected_loop_cc_binding = zctrl.value != 0
+			self.adjust_controller_bindings()
+			try:
+				processor = self.processors[0]
+			except IndexError:
+				return
+			processor.refresh_controllers()
+			self.state_manager.send_cuia("refresh_screen", ["control"])
 			return
 		if ":" in zctrl.symbol:
 			symbol, chan = zctrl.symbol.split(":")
-			if self.selected_loop_cc_binding:
-				if int(chan) != self.selected_loop:
-					return
-				chan = -3
+			chan = int(chan)
 		else:
 			symbol = zctrl.symbol
-			chan = -3
+			chan = self.selected_loop
 		if self.osc_server is None or symbol in ['oneshot', 'trigger'] and zctrl.value == 0:
 			# Ignore off signals
 			return
@@ -627,13 +648,13 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 				elif self.pedal_taps == 1:
 					self.osc_server.send(self.osc_target, f'/sl/{chan}/hit', ('s', 'pause'))
 				# Single tap
-				elif self.state[self.selected_loop] in (SL_STATE_UNKNOWN, SL_STATE_OFF, SL_STATE_OFF_MUTED):
+				elif self.state[chan] in (SL_STATE_UNKNOWN, SL_STATE_OFF, SL_STATE_OFF_MUTED):
 					self.osc_server.send(self.osc_target, f'/sl/{chan}/hit', ('s', 'record'))
-				elif self.state[self.selected_loop] == SL_STATE_RECORDING:
+				elif self.state[chan] == SL_STATE_RECORDING:
 					self.osc_server.send(self.osc_target, f'/sl/{chan}/hit', ('s', 'record'))
-				elif self.state[self.selected_loop] in (SL_STATE_PLAYING, SL_STATE_OVERDUBBING):
+				elif self.state[chan] in (SL_STATE_PLAYING, SL_STATE_OVERDUBBING):
 					self.osc_server.send(self.osc_target, f'/sl/{chan}/hit', ('s', 'overdub'))
-				elif self.state[self.selected_loop] == SL_STATE_PAUSED:
+				elif self.state[chan] == SL_STATE_PAUSED:
 					self.osc_server.send(self.osc_target, f'/sl/{chan}/hit', ('s', 'trigger'))
 			# Pedal release: so check loop state, pedal press duration, etc.
 			else:
@@ -657,7 +678,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			zctrl.set_value(0, False)
 		elif zctrl.is_toggle:
 			# Use is_toggle to indicate the SL function is a toggle, i.e. press to engage, press to release
-			if symbol == 'record' and zctrl.value == 0 and self.state[self.selected_loop] == SL_STATE_REC_STARTING:
+			if symbol == 'record' and zctrl.value == 0 and self.state[chan] == SL_STATE_REC_STARTING:
 				# TODO: Implement better toggle of pending state
 				self.osc_server.send(self.osc_target, f'/sl/{chan}/hit', ('s', 'undo'))
 				return
@@ -828,7 +849,7 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 	def select_loop(self, loop, send=False, wrap=False):
 		try:
 			processor = self.processors[0]
-		except:
+		except IndexError:
 			return
 		if wrap and loop >= self.loop_count:
 			loop = 0
@@ -842,16 +863,11 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		self.update_state()
 		"""
 		processor.controllers_dict['selected_loop_num'].set_value(loop + 1, False)
+		self.adjust_controller_bindings()
 		if send and self.osc_server:
 			self.osc_server.send(self.osc_target, '/set', ('s', 'selected_loop_num'), ('f', self.selected_loop))
-
-		self._ctrl_screens[0][1] = [f'record:{self.selected_loop}', f'overdub:{self.selected_loop}', f'multiply:{self.selected_loop}', 'undo/redo']
-		self._ctrl_screens[1][1] = [f'replace:{self.selected_loop}', f'substitute:{self.selected_loop}', f'insert:{self.selected_loop}', 'undo/redo']
-		self._ctrl_screens[2][1] = [f'trigger:{self.selected_loop}', f'oneshot:{self.selected_loop}', f'mute:{self.selected_loop}', f'pause:{self.selected_loop}']
-		self._ctrl_screens[3][1][0] = f'reverse:{self.selected_loop}'
-		self._ctrl_screens[5][1][3] = f'single_pedal:{self.selected_loop}'
 		processor.refresh_controllers()
-
+		self.state_manager.send_cuia("refresh_screen", ["control"])
 		zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_CONTROL_MODE, mode='control')
 
 	def prev_loop(self):
