@@ -893,12 +893,10 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		if loop < 0 or loop >= self.loop_count:
 			return  # TODO: Handle -1 == all loops
 		self.selected_loop = int(loop)
-		"""
 		self.monitors_dict['state'] = self.state[self.selected_loop]
 		self.monitors_dict['next_state'] = self.next_state[self.selected_loop]
 		self.monitors_dict['waiting'] = self.waiting[self.selected_loop]
-		self.update_state()
-		"""
+		# self.update_state()
 		processor.controllers_dict['selected_loop_num'].set_value(loop + 1, False)
 		self.adjust_controller_bindings()
 		if send and self.osc_server:
