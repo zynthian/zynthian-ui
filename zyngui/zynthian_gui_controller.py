@@ -581,14 +581,14 @@ class zynthian_gui_controller(tkinter.Canvas):
 				self.step = 1
 		# Numeric value
 		else:
+			# Path
+			if zctrl.is_path:
+				self.format_print = "PATH:\n{}"
 			# Integer
-			if zctrl.is_integer:
+			elif zctrl.is_integer:
 				# If few values => use fixed step=1 (no adaptative step size!)
 				if zctrl.value_range <= 32:
 					self.step = 1
-			# Path
-			elif zctrl.is_path:
-				self.format_print = "PATH:\n{}"
 			# Linear Float
 			elif not zctrl.is_logarithmic:
 				if zctrl.nudge_factor_fine < 0.01:
