@@ -103,11 +103,12 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
         self.bank_config = {}
 
-        self.fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64 -o midi.jack.id='{}' -o audio.jack.id='{}' -o audio.jack.autoconnect=0 -o audio.jack.multi='yes' -o synth.audio-groups=16 -o synth.audio-channels=16 -o synth.effects-groups=1 -o synth.chorus.active=0 -o synth.reverb.active=0".format(
-            self.jackname, self.jackname)
+        self.fs_options = "-o synth.midi-bank-select=mma -o synth.cpu-cores=3 -o synth.polyphony=64 \
+-o midi.jack.id='{}' -o audio.jack.id='{}' -o audio.jack.autoconnect=0 -o audio.jack.multi='yes' \
+-o synth.audio-groups=16 -o synth.audio-channels=16 -o synth.effects-groups=1 -o synth.chorus.active=0 \
+-o synth.reverb.active=0".format(self.jackname, self.jackname)
 
-        self.command = "fluidsynth -a jack -m jack -g 1 {}".format(
-            self.fs_options)
+        self.command = "fluidsynth -a jack -m jack -g 1 {}".format(self.fs_options)
         self.command_prompt = "\n> "
 
         self.start()
@@ -176,10 +177,9 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
         # External storage banks
         for exd in zynthian_gui_config.get_external_storage_dirs(cls.ex_data_dir):
-            flist = cls.find_all_preset_files(exd, recursion=2)
+            flist = cls.find_all_preset_files(exd, cls.preset_fexts, recursion=2)
             if not exclude_empty or len(flist) > 0:
-                banks.append(
-                    [None, None, f"USB> {os.path.basename(exd)}", None, None])
+                banks.append([None, None, f"USB> {os.path.basename(exd)}", None, None])
             for fpath in flist:
                 fname = os.path.basename(fpath)
                 title, filext = os.path.splitext(fname)
@@ -188,10 +188,9 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
         # Internal storage banks
         for root_bank_dir in cls.root_bank_dirs:
-            flist = cls.find_all_preset_files(root_bank_dir[1], recursion=2)
+            flist = cls.find_all_preset_files(root_bank_dir[1], cls.preset_fexts, recursion=2)
             if not exclude_empty or len(flist) > 0:
-                banks.append(
-                    [None, None, "SD> " + root_bank_dir[0], None, None])
+                banks.append([None, None, "SD> " + root_bank_dir[0], None, None])
             for fpath in flist:
                 fname = os.path.basename(fpath)
                 title, filext = os.path.splitext(fname)
@@ -262,8 +261,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
                     bank_lsb = int(bank_msb/128)
                     bank_msb = bank_msb % 128
                     title = str.replace(f[8:-1], '_', ' ')
-                    preset_list.append(
-                        [bank[0] + '/' + f.strip(), [bank_msb, bank_lsb, prg], title, bank[0]])
+                    preset_list.append([bank[0] + '/' + f.strip(), [bank_msb, bank_lsb, prg], title, bank[0]])
                 except:
                     pass
 
@@ -303,13 +301,11 @@ class zynthian_engine_fluidsynth(zynthian_engine):
     def get_controllers_dict(self, processor):
         zctrls = super().get_controllers_dict(processor)
         self._ctrl_screens = copy.copy(self.default_ctrl_screens)
-
         try:
             sf = processor.bank_info[0]
             ctrl_items = self.bank_config[sf]['midi_controllers'].items()
         except:
             ctrl_items = None
-
         if ctrl_items:
             logging.debug("Generating extra controllers config ...")
             try:
@@ -320,33 +316,27 @@ class zynthian_engine_fluidsynth(zynthian_engine):
                     try:
                         if isinstance(options, int):
                             options = {'midi_cc': options}
+                        options['processor'] = processor
                         if 'midi_chan' not in options:
                             options['midi_chan'] = processor.midi_chan
                         midi_cc = options['midi_cc']
-                        logging.debug("CTRL %s: %s" % (midi_cc, name))
+                        logging.debug(f"CTRL {midi_cc}: {name}")
                         options['name'] = str.replace(name, '_', ' ')
-                        zctrls_extra[name] = zynthian_controller(
-                            self, name, options)
+                        zctrls_extra[name] = zynthian_controller(self, name, options)
                         ctrl_set.append(name)
                         if len(ctrl_set) >= 4:
                             logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
-                            self._ctrl_screens.append(
-                                ['Extended#'+str(c), ctrl_set])
+                            self._ctrl_screens.append(['Extended#'+str(c), ctrl_set])
                             ctrl_set = []
                             c = c + 1
                     except Exception as err:
-                        logging.error(
-                            "Generating extra controller screens: %s" % err)
-
+                        logging.error("Generating extra controller screens: %s" % err)
                 if len(ctrl_set) >= 1:
                     logging.debug("ADDING EXTRA CONTROLLER SCREEN #"+str(c))
                     self._ctrl_screens.append(['Extended#' + str(c), ctrl_set])
-
                 zctrls.update(zctrls_extra)
-
             except Exception as err:
                 logging.error("Generating extra controllers config: %s" % err)
-
         return zctrls
 
     def send_controller_value(self, zctrl):

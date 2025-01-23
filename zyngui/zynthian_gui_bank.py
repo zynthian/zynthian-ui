@@ -23,24 +23,22 @@
 #
 # ******************************************************************************
 
-import sys
-import logging
 import copy
+import logging
 
 # Zynthian specific modules
-from zyngui import zynthian_gui_config
-from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 
 # ------------------------------------------------------------------------------
 # Zynthian Bank Selection GUI Class
 # ------------------------------------------------------------------------------
 
 
-class zynthian_gui_bank(zynthian_gui_selector):
+class zynthian_gui_bank(zynthian_gui_selector_info):
 
     def __init__(self):
         self.processor = None
-        super().__init__('Bank', True)
+        super().__init__('Bank', default_icon="presets_bank.png")
 
     def fill_list(self):
         if not self.processor:
@@ -99,14 +97,14 @@ class zynthian_gui_bank(zynthian_gui_selector):
         title_user = False
         if engine.is_preset_user(bank):
             if hasattr(engine, "rename_user_bank"):
-                options["Rename"] = bank
+                options["Rename"] = [bank, ["Rename bank", None]]
                 title_user = True
             if hasattr(engine, "delete_user_bank"):
-                options["Delete"] = bank
+                options["Delete"] = [bank, ["Delete bank", "folder_delete.png"]]
                 title_user = True
         if hasattr(engine, "create_user_bank"):
             options["Global"] = None
-            options["Create new bank"] = "new bank"
+            options["Create new bank"] = ["new bank", ["Create an empty bank", "folder_new.png"]]
         if not options:
             options["No bank options!"] = None
         if title_user:

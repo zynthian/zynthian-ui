@@ -6,6 +6,7 @@ __all__ = [
     "zynthian_gui_help",
     "zynthian_gui_selector",
     "zynthian_gui_selector_info",
+    "zynthian_gui_file_selector",
     "zynthian_gui_details",
     "zynthian_gui_admin",
     "zynthian_gui_snapshot",

@@ -89,8 +89,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
             bg=zynthian_gui_config.color_bg)
         self.info_canvas.bind('<ButtonRelease-1>', self.cb_info_press)
         # Position at top of column containing selector
-        self.info_canvas.grid(
-            row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
+        self.info_canvas.grid(row=0, column=self.layout['list_pos'][1] + 1, rowspan=2, sticky="news")
 
         # Marker for category page
         # self.cat_marker_greyline = self.info_canvas.create_rectangle(0, 2, 0.25 * self.width, 4, fill=zynthian_gui_config.color_off)

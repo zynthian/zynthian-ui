@@ -44,11 +44,10 @@ class zynthian_audio_recorder:
     SS_AUDIO_RECORDER_STATE = 1
     SS_AUDIO_RECORDER_ARM = 2
 
+    capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
+    ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
+
     def __init__(self, state_manager):
-        self.capture_dir_sdc = os.environ.get(
-            'ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
-        self.ex_data_dir = os.environ.get(
-            'ZYNTHIAN_EX_DATA_DIR', "/media/root")
         self.rec_proc = None
         self.status = False
         self.armed = set()  # List of chains armed to record
@@ -56,8 +55,7 @@ class zynthian_audio_recorder:
         self.filename = None
 
     def get_new_filename(self):
-        exdirs = zynthian_gui_config.get_external_storage_dirs(
-            self.ex_data_dir)
+        exdirs = zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir)
         if exdirs:
             path = exdirs[0]
             filename = datetime.now().strftime("%Y-%m-%d_%H%M%S")
@@ -65,27 +63,18 @@ class zynthian_audio_recorder:
             path = self.capture_dir_sdc
             filename = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
         if self.state_manager.last_snapshot_fpath and len(self.state_manager.last_snapshot_fpath) > 4:
-            filename += "_" + \
-                os.path.basename(self.state_manager.last_snapshot_fpath[:-4])
-
-        filename = filename.replace(
-            "/", ";").replace(">", ";").replace(" ; ", ";")
-        # Append index to file to make unique
-        index = 1
-        while "{}.{:03d}.wav".format(filename, index) in os.listdir(path):
-            index += 1
-        return "{}/{}.{:03d}.wav".format(path, filename, index)
+            filename += "_" + os.path.basename(self.state_manager.last_snapshot_fpath[:-4])
+        filename = filename.replace("/", ";").replace(">", ";").replace(" ; ", ";")
+        return "{}/{}.wav".format(path, filename)
 
     def arm(self, channel):
         self.armed.add(channel)
-        zynsigman.send(zynsigman.S_AUDIO_RECORDER,
-                       self.SS_AUDIO_RECORDER_ARM, chan=channel, value=True)
+        zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_AUDIO_RECORDER_ARM, chan=channel, value=True)
 
     def unarm(self, channel):
         try:
             self.armed.remove(channel)
-            zynsigman.send(zynsigman.S_AUDIO_RECORDER,
-                           self.SS_AUDIO_RECORDER_ARM, chan=channel, value=False)
+            zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_AUDIO_RECORDER_ARM, chan=channel, value=False)
         except:
             logging.info("Channel %d not armed", channel)
 
@@ -103,8 +92,7 @@ class zynthian_audio_recorder:
             # Already recording
             return False
 
-        cmd = ["/usr/local/bin/jack_capture", "--daemon", "--bitdepth",
-               "16", "--bufsize", "30", "--maxbufsize", "120"]
+        cmd = ["/usr/local/bin/jack_capture", "--daemon", "--bitdepth", "16", "--bufsize", "30", "--maxbufsize", "120"]
         if self.armed:
             for port in sorted(self.armed):
                 cmd.append("--port")
@@ -131,8 +119,7 @@ class zynthian_audio_recorder:
             return False
 
         self.status = True
-        zynsigman.send(zynsigman.S_AUDIO_RECORDER,
-                       self.SS_AUDIO_RECORDER_STATE, state=True)
+        zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_AUDIO_RECORDER_STATE, state=True)
 
         # Should this be implemented using signals?
         if processor:
@@ -151,13 +138,11 @@ class zynthian_audio_recorder:
                 return False
 
             self.status = False
-            zynsigman.send(zynsigman.S_AUDIO_RECORDER,
-                           self.SS_AUDIO_RECORDER_STATE, state=False)
+            zynsigman.send(zynsigman.S_AUDIO_RECORDER, self.SS_AUDIO_RECORDER_STATE, state=False)
 
             # Should this be implemented using signals?
             if player is None:
-                self.state_manager.audio_player.engine.load_latest(
-                    self.state_manager.audio_player)
+                self.state_manager.audio_player.engine.load_latest(self.state_manager.audio_player)
             else:
                 self.state_manager.audio_player.engine.load_latest(player)
 

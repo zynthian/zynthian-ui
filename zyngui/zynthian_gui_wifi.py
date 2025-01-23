@@ -31,20 +31,19 @@ from subprocess import check_output
 
 # Zynthian specific modules
 import zynconf
-from zyngui import zynthian_gui_config
-from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 
 # ------------------------------------------------------------------------------
 # Zynthian WIFI config GUI Class
 # ------------------------------------------------------------------------------
 
 
-class zynthian_gui_wifi(zynthian_gui_selector):
+class zynthian_gui_wifi(zynthian_gui_selector_info):
 
     sys_dir = os.environ.get('ZYNTHIAN_SYS_DIR', "/zynthian/zynthian-sys")
 
     def __init__(self):
-        super().__init__('Connection', True)
+        super().__init__('Connection', default_icon="wifi.png")
         self.config_wifi_name = None
         self.state_manager = self.zyngui.state_manager
         self.scan_thread = None

@@ -533,10 +533,13 @@ class zynthian_processor:
     # Controllers Management
     # ---------------------------------------------------------------------------
 
-    def refresh_controllers(self):
+    def refresh_controllers(self, params = None):
         """Refresh processor controllers configuration"""
 
-        self.engine.get_controllers_dict(self)
+        if params:
+            self.engine.get_controllers_dict(self, params)
+        else:
+            self.engine.get_controllers_dict(self)
         self.init_ctrl_screens()
 
     def init_ctrl_screens(self):

@@ -166,18 +166,18 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
             self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2610 Audio Levels on Snapshots", ["Soundcard parameters are not saved with snapshot", "meter.png"]))
 
         if zynthian_gui_config.enable_dpm:
-            self.list_data.append((self.toggle_dpm, 0, "\u2612 Mixer Peak Meters", ["Peak programme meters are enabled.", "meter.png"]))
+            self.list_data.append((self.toggle_dpm, 0, "\u2612 Mixer Peak Meters", ["Peak programme meters are enabled.", "meters.png"]))
         else:
-            self.list_data.append((self.toggle_dpm, 0, "\u2610 Mixer Peak Meters", ["Peak programme meters are disabled.\nThis saves a little CPU power.", "meter.png"]))
+            self.list_data.append((self.toggle_dpm, 0, "\u2610 Mixer Peak Meters", ["Peak programme meters are disabled.\nThis saves a little CPU power.", "meters.png"]))
 
         self.list_data.append((None, 0, "> NETWORK"))
-        self.list_data.append((self.network_info, 0, "Network Info", ["Show network details, e.g. IP address, etc.", None]))
-        self.list_data.append((self.wifi_config, 0, f"Wi-Fi Config ({self.wifi_status})", ["Configure Wi-Fi connections.", None]))
+        self.list_data.append((self.network_info, 0, "Network Info", ["Show network details, e.g. IP address, etc.", "network.png"]))
+        self.list_data.append((self.wifi_config, 0, f"Wi-Fi Config ({self.wifi_status})", ["Configure Wi-Fi connections.", "wifi.png"]))
         self.wifi_index = len(self.list_data) - 1
         if zynconf.is_service_active("vncserver0"):
-            self.list_data.append((self.state_manager.stop_vncserver, 0, "\u2612 VNC Server", ["Display of zynthian UI and processors' native GUI via VNC enabled.\nThis uses more CPU. It is advised to disable during performance.", None]))
+            self.list_data.append((self.state_manager.stop_vncserver, 0, "\u2612 VNC Server", ["Display of zynthian UI and processors' native GUI via VNC enabled.\nThis uses more CPU. It is advised to disable during performance.", "network.png"]))
         else:
-            self.list_data.append((self.state_manager.start_vncserver, 0, "\u2610 VNC Server", ["Display of zynthian UI and processors' native GUI via VNC disabled.", None]))
+            self.list_data.append((self.state_manager.start_vncserver, 0, "\u2610 VNC Server", ["Display of zynthian UI and processors' native GUI via VNC disabled.", "network.png"]))
 
         self.list_data.append((None, 0, "> SETTINGS"))
         if not zynthian_gui_config.wiring_layout.startswith("V5"):
@@ -190,18 +190,18 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                     touch_navigation_option = "V5 keypad at right"
                 case _:
                     touch_navigation_option = "None"
-            self.list_data.append((self.touch_navigation_menu, 0, f"Touch Navigation: {touch_navigation_option}", ["Select touch interface mode.\n\nFor touch-only devices with 5\" screen or less, select touch-widgets.\nFor large touch screen, select V5...\nFor full hardware device, e.g. V5, select None", None]))
+            self.list_data.append((self.touch_navigation_menu, 0, f"Touch Navigation: {touch_navigation_option}", ["Select touch interface mode.\n\nFor touch-only devices with 5\" screen or less, select touch-widgets.\nFor large touch screen, select V5...\nFor full hardware device, e.g. V5, select None", "settings.png"]))
         if "brightness_config" in self.zyngui.screens and self.zyngui.screens["brightness_config"].get_num_zctrls() > 0:
-            self.list_data.append((self.zyngui.brightness_config, 0, "Brightness", ["Adjust display and LED brightness.", None]))
+            self.list_data.append((self.zyngui.brightness_config, 0, "Brightness", ["Adjust display and LED brightness.", "bright_settings.png"]))
         if "cv_config" in self.zyngui.screens:
-            self.list_data.append((self.show_cv_config, 0, "CV Settings", ["Control Voltage configuration.", None]))
-        self.list_data.append((self.zyngui.calibrate_touchscreen, 0, "Calibrate Touchscreen", ["Show touchscreen calibration.\nTouch each crosshair until it changes color.\nScreen closes after 15s of inactivity.", None]))
+            self.list_data.append((self.show_cv_config, 0, "CV Settings", ["Control Voltage configuration.", "settings.png"]))
+        self.list_data.append((self.zyngui.calibrate_touchscreen, 0, "Calibrate Touchscreen", ["Show touchscreen calibration.\nTouch each crosshair until it changes color.\nScreen closes after 15s of inactivity.", "settings.png"]))
         self.list_data.append((self.zyngui.cuia_screen_clean, 0, "Clean Screen", ["10s countdown with no touch trigger. Allows screen to be cleaned without triggering any action.", None]))
         self.list_data.append((self.bluetooth, 0, "Bluetooth", ["Scan, enable and configure Bluetooth devices.\n\nMust enable Bluetooth here to access BLE MIDI devices. Also supports HID devices.", "bluetooth.png"]))
 
         self.list_data.append((None, 0, "> TEST"))
-        self.list_data.append((self.test_audio, 0, "Test Audio", ["Play an audio track to test audio output.\n\nPress BACK to cancel playback.", "headphones.png"]))
-        self.list_data.append((self.test_midi, 0, "Test MIDI", ["Play a MIDI track to test MIDI output.\n\nThis will play the MIDI through any loaded chains.\nPress BACK to cancel playback.", "midi_logo.png"]))
+        self.list_data.append((self.test_audio, 0, "Test Audio", ["Play an audio track to test audio output.\n\nPress BACK to cancel playback.", "audio_output.png"]))
+        self.list_data.append((self.test_midi, 0, "Test MIDI", ["Play a MIDI track to test MIDI output.\n\nThis will play the MIDI through any loaded chains.\nPress BACK to cancel playback.", "midi_output.png"]))
         if zynthian_gui_config.control_test_enabled:
             self.list_data.append((self.control_test, 0, "Test control HW", ["Test system hardware.", None]))
 
@@ -212,7 +212,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
             self.list_data.append((self.workflow_capture_start, 0, "\u2610 Capture Workflow", ["Start workflow capture session.\n\nZynthian display, encoder and button actions are saved to file until this option is deselected.", None]))
         self.list_data.append((self.about, 0, "About...", ["Show information about zynthian version, etc.", None]))
         if self.state_manager.update_available:
-            self.list_data.append((self.update_software, 0, "Update Software", ["Updates zynthian firmware and software from Internet.\n\nThis option is only shown when there are updates availale, as indicated by the \u21bb icon in the topbar.\nUpdates may take several minutes. Do not poweroff during an update.", None]))
+            self.list_data.append((self.update_software, 0, "Update Software", ["Updates firmware and software from Internet.\n\nThis option is only shown when updates are availale, indicated by the \u21bb icon in the topbar.\nDo not poweroff during update which may take several minutes.", None]))
         # self.list_data.append((self.update_system, 0, "Update Operating System"))
         # self.list_data.append((None, 0, "> POWER"))
         # self.list_data.append((self.restart_gui, 0, "Restart UI"))
@@ -225,7 +225,6 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.filling_list = False
 
     def select_action(self, i, t='S'):
-        self.last_selected_index = i
         if self.list_data[i][0]:
             self.last_action = self.list_data[i][0]
             self.last_action()

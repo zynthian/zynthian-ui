@@ -23,6 +23,7 @@
 #
 # ******************************************************************************
 
+import os
 import math
 import tkinter
 import logging
@@ -163,18 +164,20 @@ class zynthian_gui_controller(tkinter.Canvas):
 	# Handle resize
 	def on_size(self, event):
 		self.on_size_graph(event)
-		self.plot_value_func()
 		self.set_title(self.title)
 		if self.zctrl:
 			self.calculate_value_font_size()
 			self.calculate_plot_values()
 			self.set_drag_scale()
+			self.plot_value_func()
 
 	def set_drag_scale(self):
 		hh = self.winfo_height()
 		self.pixels_per_div = hh // 20
 		if self.zctrl:
-			if isinstance(self.zctrl.ticks, list):
+			if self.zctrl.is_path:
+				self.pixels_per_div = 1
+			elif isinstance(self.zctrl.ticks, list):
 				n = len(self.zctrl.ticks)
 				if n > 0:
 					self.pixels_per_div = hh // n
@@ -276,7 +279,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 			self.set_drag_scale()
 			# TODO: calculate_value_font_size, calculate_plot_values, set_drag_scale always called together - optimse to single function?
 			self.itemconfig('gui', state=tkinter.NORMAL)
-			if self.selector_counter:
+			if self.selector_counter or self.zctrl.is_path:
 				self.itemconfig(self.graph, state=tkinter.HIDDEN)
 		else:
 			self.itemconfig('gui', state=tkinter.HIDDEN)
@@ -340,6 +343,13 @@ class zynthian_gui_controller(tkinter.Canvas):
 				logging.error(f"Calc Error => {err}")
 				self.value_plot = self.zctrl.value
 				self.value_print = "ERR"
+		elif self.zctrl.is_path:
+			self.value_plot = 0
+			if self.zctrl.value:
+				parts = os.path.split(self.zctrl.value)
+				self.value_print = parts[1]
+			else:
+				self.value_print = self.format_print.format("None")
 		else:
 			if self.zctrl.value_range == 0:
 				self.value_plot = 0
@@ -388,7 +398,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 			self.zctrl.is_dirty = False
 
 	def plot_value_rectangle(self):
-		if not self.selector_counter:
+		if not self.selector_counter and not self.zctrl.is_path:
 			ww = self.winfo_width()
 			hh = self.winfo_height()
 			hrect = int(0.35 * hh)
@@ -400,7 +410,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.itemconfig(self.value_text, text=self.value_print)
 
 	def plot_value_triangle(self):
-		if not self.selector_counter:
+		if not self.selector_counter and not self.zctrl.is_path:
 			ww = self.winfo_width()
 			hh = self.winfo_height()
 			htri = int(0.4 * hh)
@@ -412,7 +422,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.itemconfig(self.value_text, text=self.value_print)
 
 	def plot_value_arc(self):
-		if not self.selector_counter:
+		if not self.selector_counter and not self.zctrl.is_path:
 			degmax = 300
 			degd = -degmax * self.value_plot
 			deg0 = 90 + degmax / 2
@@ -443,7 +453,9 @@ class zynthian_gui_controller(tkinter.Canvas):
 		if self.hidden:
 			return
 		if self.zctrl:
-			if self.selector_counter:
+			if self.zctrl.is_path:
+				self.erase_midi_bind()
+			elif self.selector_counter:
 				#self.erase_midi_bind()
 				self.plot_midi_bind(f"/{self.zctrl.value_range + 1}")
 			elif preselection is not None or self.zctrl == self.zyngui.state_manager.get_midi_learn_zctrl():
@@ -493,7 +505,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		else:
 			maxlen = 1
 		fs = int(self.title_width * max_fs / maxlen)
-		fs = min(max_fs,max(int(0.8*zynthian_gui_config.font_size), fs))
+		fs = min(max_fs, max(int(0.8*zynthian_gui_config.font_size), fs))
 		#logging.debug("TITLE %s => MAXLEN=%d, FONTSIZE=%d" % (self.title,maxlen,fs))
 
 		# Set title label
@@ -502,10 +514,12 @@ class zynthian_gui_controller(tkinter.Canvas):
 			font=(zynthian_gui_config.font_family, fs))
 
 	def calculate_value_font_size(self):
-		if self.zctrl.labels:
+		if self.zctrl.is_path:
+			font_scale = 0.6
+		elif self.zctrl.labels:
 			maxlen = len(max(self.zctrl.labels, key=len))
 			if maxlen > 3:
-				rfont = tkFont.Font(family = zynthian_gui_config.font_family, size=zynthian_gui_config.font_size)
+				rfont = tkFont.Font(family=zynthian_gui_config.font_family, size=zynthian_gui_config.font_size)
 				maxlen = max([rfont.measure(w) for w in self.zctrl.labels])
 			#print("LONGEST VALUE: %d" % maxlen)
 			if maxlen > 100:
@@ -521,9 +535,9 @@ class zynthian_gui_controller(tkinter.Canvas):
 			elif maxlen > 30:
 				font_scale = 1.2
 			elif maxlen > 20:
-				font_scale = 1.3
+				font_scale = 1.25
 			else:
-				font_scale = 1.4
+				font_scale = 1.3
 		else:
 			if self.format_print:
 				maxlen = 5
@@ -537,9 +551,12 @@ class zynthian_gui_controller(tkinter.Canvas):
 				font_scale = 1.1
 			else:
 				if self.zctrl.value_min >= 0 and self.zctrl.value_max < 200:
-					font_scale = 1.4
-				else:
 					font_scale = 1.3
+				else:
+					font_scale = 1.2
+		# If tiny controllers => reduce value font size
+		if self.winfo_height() // zynthian_gui_config.font_size < 6:
+			font_scale *= 0.9
 		# Calculate value font size
 		self.value_font_size = int(font_scale * zynthian_gui_config.font_size)
 		# Update font config in text object
@@ -567,8 +584,11 @@ class zynthian_gui_controller(tkinter.Canvas):
 				self.step = 1
 		# Numeric value
 		else:
+			# Path
+			if zctrl.is_path:
+				self.format_print = "PATH:\n{}"
 			# Integer
-			if zctrl.is_integer:
+			elif zctrl.is_integer:
 				# If few values => use fixed step=1 (no adaptative step size!)
 				if zctrl.value_range <= 32:
 					self.step = 1
@@ -638,6 +658,8 @@ class zynthian_gui_controller(tkinter.Canvas):
 					if dts < zynthian_gui_config.zynswitch_bold_seconds:
 						if self.zctrl.is_toggle:
 							self.zctrl.toggle()
+						elif self.zctrl.is_path:
+							self.zctrl.nudge(1)
 						#self.zyngui.cuia_v5_zynpot_switch((self.index, 'S'))
 					elif zynthian_gui_config.zynswitch_bold_seconds <= dts < zynthian_gui_config.zynswitch_long_seconds:
 						self.zyngui.cuia_v5_zynpot_switch((self.index, 'B'))

@@ -24,27 +24,25 @@
 # ******************************************************************************
 
 import os
-import logging
-from datetime import datetime
-from os.path import isfile, isdir, join, basename, dirname, splitext
-from glob import glob
 import shutil
-
+import logging
+from glob import glob
+from os.path import isfile, isdir, join, basename, dirname, splitext
 
 # Zynthian specific modules
-from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 
 # ------------------------------------------------------------------------------
 # Zynthian Load/Save Snapshot GUI Class
 # ------------------------------------------------------------------------------
 
 
-class zynthian_gui_snapshot(zynthian_gui_selector):
+class zynthian_gui_snapshot(zynthian_gui_selector_info):
 
     def __init__(self):
         self.bankless_mode = False
         self.index_offset = 0
-        super().__init__('Bank', True)
+        super().__init__('Bank', default_icon="snapshot.png")
         self.sm = self.zyngui.state_manager
         self.cm = self.zyngui.chain_manager
 
@@ -145,13 +143,13 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
         i = 0
         if isfile(self.sm.default_snapshot_fpath):
             self.list_data.append(
-                (self.sm.default_snapshot_fpath, i, "Default"))
+                (self.sm.default_snapshot_fpath, i, "Default", ["Default snapshot", "snapshot_default.png"]))
             i = i + 1
         if isfile(self.sm.last_state_snapshot_fpath):
             self.list_data.append(
-                (self.sm.last_state_snapshot_fpath, i, "Last State"))
+                (self.sm.last_state_snapshot_fpath, i, "Last State", ["Last state snapshot", "snapshot_default.png"]))
             i = i + 1
-        self.list_data.append(("NEW_BANK", i, "New Bank"))
+        self.list_data.append(("NEW_BANK", i, "New Bank", ["Create an empty bank", "folder_new.png"]))
         i = i + 1
         self.change_index_offset(i)
 
@@ -182,16 +180,16 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
 
         if self.is_not_empty_snapshot():
             # TODO: Add better validation of populated state, e.g. sequences
-            self.list_data.append(("SAVE", i, "Save as new snapshot"))
+            self.list_data.append(("SAVE", i, "Save as new snapshot", ["Save current state as new snapshot", "snapshot_new.png"]))
         if self.bankless_mode:
-            self.list_data.append(("NEW_BANK", i, "New Bank"))
+            self.list_data.append(("NEW_BANK", i, "New Bank", ["Create an empty bank", "folder_new.png"]))
             i += 1
             self.list_data.append((None, None, "> Saved snapshots:"))
             if isfile(self.sm.default_snapshot_fpath):
-                self.list_data.append((self.sm.default_snapshot_fpath, i, "Default"))
+                self.list_data.append((self.sm.default_snapshot_fpath, i, "Default", ["Default snapshot", "snapshot_default.png"]))
                 i += 1
             if isfile(self.sm.last_state_snapshot_fpath):
-                self.list_data.append((self.sm.last_state_snapshot_fpath, i, "Last State"))
+                self.list_data.append((self.sm.last_state_snapshot_fpath, i, "Last State", ["Last state snapshot", "snapshot_default.png"]))
                 i += 1
 
         self.change_index_offset(i)
@@ -248,7 +246,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
         if not isdir(f"{self.sm.snapshot_dir}/{bank}"):
             return
         options = {
-            "Delete Bank": bank,
+            "Delete Bank": [bank, ["Delete Bank", "folder_delete.png"]],
             "Rename Bank": bank
         }
         self.zyngui.screens['option'].config(
@@ -296,20 +294,20 @@ class zynthian_gui_snapshot(zynthian_gui_selector):
         fpath = param[0]
         fname = param[2]
         options = {
-            "Load": self.list_data[i],
-            "Load Replace Chains": param,
-            "Load Merge Chains": param,
-            "Load Replace Sequences": param,
-            "Save": param
+            "Load": [self.list_data[i], ["Load full snapshot", "snapshot.png"]],
+            "Load Replace Chains": [param, ["Load chains from snapshot, replacing current state.", "snapshot_chains.png"]],
+            "Load Merge Chains": [param, ["Load chains from snapshot, merging with current state.", "snapshot_chains.png"]],
+            "Load Replace Sequences": [param, ["Load sequences from snapshot, replacing current state", "snapshot_sequences.png"]],
+            "Save Overwriting": [param, ["Save current state, overwriting this snapshot.", "snapshot_overwrite.png"]]
         }
         budir = dirname(fpath) + "/.backup"
         if isdir(budir):
-            options["Restore Backup"] = param
+            options["Restore Backup"] = [param, ["Restore snapshot from a backup copy", "snapshot.png"]]
         if not restrict_options:
             options.update({
-                "Rename": param,
-                "Set Program": param,
-                "Delete": param
+                "Rename": [param, ["Rename snapshot", None]],
+                "Set Program": [param, ["Assign a MIDI program number", "settings.png"]],
+                "Delete": [param, ["Delete snapshot", "snapshot_delete.png"]]
             })
         self.zyngui.screens['option'].config(fname, options, self.options_cb)
         self.zyngui.show_screen('option')

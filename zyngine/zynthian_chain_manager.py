@@ -675,8 +675,7 @@ class zynthian_chain_manager:
             chain_id = chain.chain_id
 
         self.active_chain_id = chain_id
-        zynsigman.send_queued(
-            zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain=self.active_chain_id)
+        zynsigman.send_queued(zynsigman.S_CHAIN_MAN, self.SS_SET_ACTIVE_CHAIN, active_chain=self.active_chain_id)
 
         # If chain receives MIDI, set the active chain in ZynMidiRouter (lib_zyncore)
         if isinstance(chain.zmop_index, int):
@@ -691,8 +690,7 @@ class zynthian_chain_manager:
                         chan = 0
                     for pedal_cc in self.held_zctrls:
                         if self.held_zctrls[pedal_cc][0]:
-                            lib_zyncore.write_zynmidi_ccontrol_change(
-                                chan, pedal_cc, 127)
+                            lib_zyncore.write_zynmidi_ccontrol_change(chan, pedal_cc, 127)
                             # TODO: Check if zctrl gets added to self.held_zctrls
             except Exception as e:
                 logging.error(e)

@@ -562,7 +562,7 @@ class zynthian_engine_setbfree(zynthian_engine):
         return self.load_program_list(bank[0])
 
     def set_preset(self, processor, preset, preload=False):
-        self.state_manager.zynmidi.set_midi_prg(processor.part_i, preset[1][2])
+        lib_zyncore.zmop_send_program_change(processor.chain.zmop_index, processor.part_i, preset[1][2])
         self.update_controller_values(processor, preset)
         return True
 

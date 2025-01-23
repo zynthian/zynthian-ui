@@ -30,10 +30,12 @@ from time import sleep
 from subprocess import Popen, DEVNULL
 from os.path import exists as file_exists
 
+# Zynthian specific modules
 import zynautoconnect
 from . import zynthian_engine
-from zyngine.zynthian_processor import zynthian_processor
 from zynconf import ServerPort
+from zyncoder.zyncore import lib_zyncore
+from zyngine.zynthian_processor import zynthian_processor
 
 # ------------------------------------------------------------------------------
 # Aeolus Engine Class
@@ -99,33 +101,26 @@ class zynthian_engine_aeolus(zynthian_engine):
     # ---------------------------------------------------------------------------
 
     swell_ctrls = [
-        ['Swell', None, 64],
-        ['Trem Freq', None, 42],
-        ['Trem Amp', None, 64],
+        ['Swell', 7, 64],
+        ['Trem Freq', 12, 42],
+        ['Trem Amp', 13, 64],
     ]
 
     common_ctrls = [
         ['Sustain', 64, 'off', 'off|on'],
-        ['Azimuth', {'midi_cc': None, 'value_min': -0.5, 'value_max': 0.5}],
-        ['Width', {'midi_cc': None, 'value': 0.8, 'value_max': 1.0}],
-        ['Direct', {'midi_cc': None, 'value': -9.5,
-                    'value_min': -22.0, 'value_max': 0.0}],
-        ['Reflect', {'midi_cc': None, 'value': -16.5,
-                     'value_min': -22.0, 'value_max': 0.0}],
-        ['Reverb', {'midi_cc': None, 'value': -15,
-                    'value_min': -22.0, 'value_max': 0.0}]
+        ['Azimuth', {'midi_cc': 14, 'value_min': -0.5, 'value_max': 0.5}],
+        ['Width', {'midi_cc': 15, 'value': 0.8, 'value_max': 1.0}],
+        ['Direct', {'midi_cc': 16, 'value': -9.5, 'value_min': -22.0, 'value_max': 0.0}],
+        ['Reflect', {'midi_cc': 17, 'value': -16.5, 'value_min': -22.0, 'value_max': 0.0}],
+        ['Reverb', {'midi_cc': 18, 'value': -15, 'value_min': -22.0, 'value_max': 0.0}]
     ]
 
     # TODO: The following controls are common to all so should ideally only be in the "main" chain
     audio_ctrls = [
-        ['Delay', {'midi_cc': None, 'value': 60,
-                   'value_min': 0, 'value_max': 150}],
-        ['Rev Time', {'midi_cc': None, 'value': 4.0,
-                      'value_min': 2.0, 'value_max': 7.0}],
-        ['Rev Pos', {'midi_cc': None, 'value': 0.5,
-                     'value_min': -1.0, 'value_max': 1.0}],
-        ['Volume', {'midi_cc': None, 'value': -15,
-                    'value_min': -22, 'value_max': 0.0}]
+        ['Delay', {'midi_cc': 20, 'value': 60, 'value_min': 0, 'value_max': 150}],
+        ['Rev Time', {'midi_cc': 21, 'value': 4.0, 'value_min': 2.0, 'value_max': 7.0}],
+        ['Rev Pos', {'midi_cc': 22, 'value': 0.5, 'value_min': -1.0, 'value_max': 1.0}],
+        ['Volume', {'midi_cc': 23, 'value': -15, 'value_min': -22, 'value_max': 0.0}]
     ]
 
     common_ctrl_screens = [
@@ -155,12 +150,9 @@ class zynthian_engine_aeolus(zynthian_engine):
                 ['Tremulant', None, 'off', 'off|on', [0, 11]],
             ] + swell_ctrls + common_ctrls,
             "ctrl_screens": [
-                ['Stops (1)', ['Principal 8', 'Gemshorn 8',
-                               'Quinta-dena 8', 'Suabile 8']],
-                ['Stops (2)', ['Rohrflöte 4', 'Dulzflöte 4',
-                               'Quintflöte 2 2/3', 'Super-octave 2']],
-                ['Stops (3)', ['Sifflet 1', 'Cymbel VI',
-                               'Oboe', 'Tremulant']],
+                ['Stops (1)', ['Principal 8', 'Gemshorn 8', 'Quinta-dena 8', 'Suabile 8']],
+                ['Stops (2)', ['Rohrflöte 4', 'Dulzflöte 4', 'Quintflöte 2 2/3', 'Super-octave 2']],
+                ['Stops (3)', ['Sifflet 1', 'Cymbel VI', 'Oboe', 'Tremulant']],
                 ['Swell', ['Swell', 'Trem Freq', 'Trem Amp']]
             ] + common_ctrl_screens
         },
@@ -182,12 +174,9 @@ class zynthian_engine_aeolus(zynthian_engine):
                 ['II+III', None, 'off', 'off|on', [1, 12]]
             ] + swell_ctrls + common_ctrls,
             "ctrl_screens": [
-                ['Stops (1)', ['Rohrflöte 8', 'Harmonic Flute 4',
-                               'Flauto Dolce 4', 'Nasard 2 2/3']],
-                ['Stops (2)', ['Ottavina 2', 'Tertia 1 3/5',
-                               'Sesqui-altera', 'Septime']],
-                ['Stops (3)', ['Krumhorn', 'Melodia',
-                               'Tremulant', 'II+III']],
+                ['Stops (1)', ['Rohrflöte 8', 'Harmonic Flute 4', 'Flauto Dolce 4', 'Nasard 2 2/3']],
+                ['Stops (2)', ['Ottavina 2', 'Tertia 1 3/5', 'Sesqui-altera', 'Septime']],
+                ['Stops (3)', ['Krumhorn', 'Melodia', 'Tremulant', 'II+III']],
                 ['Swell', ['Swell', 'Trem Freq', 'Trem Amp']]
             ] + common_ctrl_screens
         },
@@ -212,12 +201,9 @@ class zynthian_engine_aeolus(zynthian_engine):
                 ['I+III', None, 'off', 'off|on', [2, 15]]
             ] + common_ctrls,
             "ctrl_screens": [
-                ['Stops (1)', ['Principal 8', 'Principal 4',
-                               'Octave 2', 'Octave 1']],
-                ['Stops (2)', ['Quint 5 1/3', 'Quint 2 2/3',
-                               'Tibia 8', 'Celesta 8']],
-                ['Stops (3)', ['Flöte 8', 'Flöte 4',
-                               'Flöte 2', 'Cymbel VI']],
+                ['Stops (1)', ['Principal 8', 'Principal 4', 'Octave 2', 'Octave 1']],
+                ['Stops (2)', ['Quint 5 1/3', 'Quint 2 2/3', 'Tibia 8', 'Celesta 8']],
+                ['Stops (3)', ['Flöte 8', 'Flöte 4', 'Flöte 2', 'Cymbel VI']],
                 ['Stops (4)', ['Mixtur', 'Trumpet', 'I+II', 'I+III']]
             ] + common_ctrl_screens
         },
@@ -242,12 +228,9 @@ class zynthian_engine_aeolus(zynthian_engine):
                 ['P+III', None, 'off', 'off|on', [3, 15]]
             ] + common_ctrls,
             "ctrl_screens": [
-                ['Stops (1)', ['Subbass 16', 'Principal 16',
-                               'Principal 8', 'Principal 4']],
-                ['Stops (2)', ['Octave 2', 'Octave 1',
-                               'Quint 5 1/3', 'Quint 2 2/3']],
-                ['Stops (3)', ['Mixtur', 'Fagott 16',
-                               'Trombone 16', 'Bombarde 32']],
+                ['Stops (1)', ['Subbass 16', 'Principal 16', 'Principal 8', 'Principal 4']],
+                ['Stops (2)', ['Octave 2', 'Octave 1', 'Quint 5 1/3', 'Quint 2 2/3']],
+                ['Stops (3)', ['Mixtur', 'Fagott 16', 'Trombone 16', 'Bombarde 32']],
                 ['Stops (4)', ['Trumpet', 'P+I', 'P+II', 'P+III']]
             ] + common_ctrl_screens
         }
@@ -303,17 +286,18 @@ class zynthian_engine_aeolus(zynthian_engine):
         Set self.ready to False before calling action that will trigger ready signal
         """
 
+        td = 0.25
         logging.debug("Waiting aeolus for ready ...")
         if timeout is None:
             while not self.ready:
-                sleep(0.25)
+                sleep(td)
             return
         while timeout > 0:
             if self.ready:
                 logging.debug("Aeolus is ready!")
                 return
-            timeout -= 0.25
-            sleep(0.25)
+            timeout -= td
+            sleep(td)
         logging.error("Aeolus not ready!!")
 
     def start(self):
@@ -326,15 +310,12 @@ class zynthian_engine_aeolus(zynthian_engine):
                 if proc_i >= len(self.processors):
                     # First chain is already added
                     proc_id = chain_manager.get_available_processor_id()
-                    processor = zynthian_processor(
-                        "AE", chain_manager.engine_info["AE"], proc_id)
-                    chain_id = chain_manager.add_chain(
-                        None, midi_chan + proc_i)
+                    processor = zynthian_processor("AE", chain_manager.engine_info["AE"], proc_id)
+                    chain_id = chain_manager.add_chain(None, midi_chan + proc_i)
                     chain = chain_manager.get_chain(chain_id)
                     chain.insert_processor(processor)
                     chain_manager.processors[proc_id] = processor
                     self.add_processor(processor)
-
                 processor = self.processors[proc_i]
                 chain_id = processor.chain_id
                 try:
@@ -345,14 +326,12 @@ class zynthian_engine_aeolus(zynthian_engine):
                 if proc_i:
                     chain.audio_out = []
                     chain.mixer_chan = None
-
                 processor.refresh_controllers()
-
                 proc_i += 1
 
         # Disable mixer strip for extra manuals
         for i, processor in enumerate(self.processors):
-            if i:
+            if i > 0:
                 chain_manager.get_chain(processor.chain_id).mixer_chan = None
 
         # Select first chain so that preset selection is on "Grand manual"
@@ -368,8 +347,7 @@ class zynthian_engine_aeolus(zynthian_engine):
         self.ready = False
         self.osc_init()
         # self.proc = Popen(self.command, stdout=DEVNULL, stderr=DEVNULL, env=self.command_env)
-        self.proc = pexpect.spawn(
-            self.command, timeout=self.proc_timeout, env=self.command_env, cwd=self.command_cwd)
+        self.proc = pexpect.spawn(self.command, timeout=self.proc_timeout, env=self.command_env, cwd=self.command_cwd)
         self.proc.delaybeforesend = 0
         self.wait_for_ready()
         self.set_tuning()
@@ -430,8 +408,9 @@ class zynthian_engine_aeolus(zynthian_engine):
         self.current_tuning_freq = self.state_manager.fine_tuning_freq
         self.current_temperament = self.temperament
         self.ready = False
-        self.osc_server.send(self.osc_target, "/retune", ("f",
-                             self.current_tuning_freq), ("i", self.current_temperament))
+        self.osc_server.send(self.osc_target, "/retune",
+                             ("f", self.current_tuning_freq),
+                             ("i", self.current_temperament))
         self.wait_for_ready()
         self.osc_server.send(self.osc_target, "/save")
         return True
@@ -525,8 +504,7 @@ class zynthian_engine_aeolus(zynthian_engine):
         elif processor.preset_info is None:
             res = [("General", 0, "General")]
         else:
-            res = [("General", 0, "General"), (processor.division,
-                                               None, f"Local {processor.division}")]
+            res = [("General", 0, "General"), (processor.division, None, f"Local {processor.division}")]
         if res:
             processor.bank_info = res[current_sel]
         return res
@@ -649,22 +627,34 @@ class zynthian_engine_aeolus(zynthian_engine):
         return super().get_controllers_dict(processor)
 
     def send_controller_value(self, zctrl):
+        #logging.debug(f"Aeolus Controller ({zctrl.symbol} => {zctrl.value}")
         for c in self.swell_ctrls + self.common_ctrls + self.audio_ctrls:
             if zctrl.symbol == c[0]:
-                # self.state_manager.zynmidi.set_midi_control(zctrl.midi_chan, zctrl.midi_cc, zctrl.value)
-                raise Exception("MIDI handler")
-        if zctrl.value:
-            mm = "10"
-        else:
-            mm = "01"
-        v1 = "01{0}0{1:03b}".format(mm, zctrl.graph_path[0])
-        v2 = "000{0:05b}".format(zctrl.graph_path[1])
-        self.state_manager.zynmidi.set_midi_control(
-            zctrl.midi_chan, self.stop_cc_num, int(v1, 2))
-        self.state_manager.zynmidi.set_midi_control(
-            zctrl.midi_chan, self.stop_cc_num, int(v2, 2))
-        # logging.debug("Aeolus Stop ({}) => mm={}, group={}, button={})".format(val,mm,zctrl.graph_path[0],zctrl.graph_path[1]))
-
+                if zctrl.midi_cc:
+                    try:
+                        lib_zyncore.zmop_send_ccontrol_change(zctrl.processor.chain.zmop_index,
+                                                              zctrl.processor.midi_chan,
+                                                              zctrl.midi_cc,
+                                                              zctrl.get_ctrl_midi_val())
+                    except Exception as e:
+                        logging.error(f"Can't send controller '{zctrl.symbol}' with CC{zctrl.midi_cc} to zmop {zctrl.processor.chain.zmop_index} => {e}")
+                else:
+                    logging.error(f"Can't send controller '{zctrl.symbol}' => No CC number!")
+                #self.state_manager.zynmidi.set_midi_control(zctrl.processor.midi_chan, zctrl.midi_cc, zctrl.value)
+                #raise Exception("MIDI handler")
+                return
+        try:
+            if zctrl.value:
+                mm = "10"
+            else:
+                mm = "01"
+            v1 = "01{0}0{1:03b}".format(mm, zctrl.graph_path[0])
+            v2 = "000{0:05b}".format(zctrl.graph_path[1])
+            self.state_manager.zynmidi.set_midi_control(zctrl.processor.midi_chan, self.stop_cc_num, int(v1, 2))
+            self.state_manager.zynmidi.set_midi_control(zctrl.processor.midi_chan, self.stop_cc_num, int(v2, 2))
+            #logging.debug(f"Aeolus Stop ({val}) => mm={mm}, group={zctrl.graph_path[0]}, button={zctrl.graph_path[1]})")
+        except Exception as e:
+            logging.error(f"Can't send stop => {e}")
     # --------------------------------------------------------------------------
     # Special
     # --------------------------------------------------------------------------

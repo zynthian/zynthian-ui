@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Step-Sequencer Pattern Editor Class
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
@@ -76,13 +76,66 @@ EDIT_PARAM_OFFSET = 2  # Edit note offset
 EDIT_PARAM_STUT_CNT = 3  # Edit note stutter count
 EDIT_PARAM_STUT_DUR = 4  # Edit note stutter duration
 EDIT_PARAM_CHANCE = 5  # Edit note play chance
-EDIT_PARAM_LAST = 5  # Index of last parameter
+EDIT_PARAM_CHORD_MODE = 6 # Edit chord entry mode
+EDIT_PARAM_CHORD_TYPE = 7 # Edit chord type
+EDIT_PARAM_LAST = 7  # Index of last parameter
 
 # List of permissible steps per beat
 STEPS_PER_BEAT = [1, 2, 3, 4, 6, 8, 12, 24]
 INPUT_CHANNEL_LABELS = ['OFF', 'ANY', '1', '2', '3', '4', '5',
                         '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16']
 NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+SCALES = {
+    "major": [0, 2, 4, 5, 7, 9, 11, 12, 14, 16, 17, 19, 21, 23],
+    "minor": [0, 2, 3, 5, 7, 8, 10, 12, 14, 15, 17, 19, 20, 22]
+}
+
+CHORD_MODES = [
+    "Single note",
+    "Chord",
+    "Diatonic triads, major key",
+    "Diatonic 7ths, major key",
+    "Diatonic triads, minor key",
+    "Diatonic 7ths, minor key"
+]
+
+CHORDS = [
+    # Triads
+    ["Major", [0, 4, 7]],
+    ["Minor", [0, 3, 7]],
+    ["Diminished", [0, 3, 6]],
+    ["Augmented", [0, 4, 8]],
+    # Seventh chords
+    ["Major 7th", [0, 4, 7, 11]], # (maj7)
+    ["Minor 7th", [0, 3, 7, 10]], # (m7)
+    ["Dominant 7th", [0, 4, 7, 10]], # (7)
+    ["Half-Diminished 7th", [0, 3, 6, 10]], # (m7♭5)
+    ["Diminished 7th", [0, 3, 6, 9]], # (dim7)
+    ["Minor-Major 7th", [0, 3, 7, 11]], # (m(maj7))
+    ["Augmented Major 7th", [0, 4, 8, 11]], # (+maj7)
+    ["Augmented 7th", [0, 4, 8, 10]], # (+7)
+    # Extended chords
+    ["Major 9th", [0, 4, 7, 11, 14]], # (maj9)
+    ["Dominant 9th", [0, 4, 7, 10, 14]], # (9)
+    ["Minor 9th", [0, 3, 7, 10, 14]], # (m9)
+    ["Minor-Major 9th", [0, 3, 7, 11, 14]], # (m(maj9))
+    ["Dominant 11th", [0, 4, 7, 10, 14, 17]], # (11)
+    ["Minor 11th", [0, 3, 7, 10, 14, 17]], # (m11)
+    ["Dominant 13th", [0, 4, 7, 10, 14, 17, 21]], # (13)
+    ["Minor 13th", [0, 3, 7, 10, 14, 17, 21]], #  (m13)
+    # Suspended chords
+    ["Suspended 2nd", [0, 2, 7]], # (sus2)
+    ["Suspended 4th", [0, 5, 7]], # (sus4)
+    ["7sus4", [0, 5, 7, 10]],
+    # Add chords
+    ["Add9", [0, 4, 7, 14]],
+    ["Minor Add9", [0, 3, 7, 14]], # (madd9)
+    # 6th chords
+    ["Major 6th", [0, 4, 7, 9]], # (6)
+    ["Minor 6th", [0, 3, 7, 9]], # (m6)
+    # Altered 7th chords
+    ["Half-Diminished Dominant", [0, 4, 6, 10]] # (7♭5)
+]
 
 # -----------------------------------------------------------------------------
 # Class implements step sequencer pattern editor
@@ -138,6 +191,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
         self.changed = False
         self.changed_ts = 0
         self.midi_record = False  # True when record from MIDI enabled
+        self.chord_mode = 0 # Chord entry mode. 0 for single note entry
+        self.chord_type = 0 # Chord type. Index of CHORD
+        self.diatonic_scale_tonic = 0 # Tonic of diatonic scale used for chords
 
         # Touch control variables
         self.swiping = 0
@@ -153,6 +209,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
         self.drag_note = False  # True if dragging note in grid
         self.drag_velocity = False  # True indicates drag will adjust velocity
         self.drag_duration = False  # True indicates drag will adjust duration
+        self.drag_duration = False  # True indicates drag will adjust duration
+        self.piano_roll_drag_start = None
+        self.piano_roll_drag_count = 0
 
         # Geometry contants
         self.grid_height = self.height - PLAYHEAD_HEIGHT
@@ -277,7 +336,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
                     title = f"{group}{title}"
             except:
                 pass
-            if title:
+            if self.chord_mode:
+                self.set_title(f"Pattern {self.pattern} [Chord Entry]",
+                    zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
+            elif title:
                 self.set_title(f"Pattern {self.pattern} ({title})")
             else:
                 self.set_title(f"Pattern {self.pattern}")
@@ -377,6 +439,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
         options['Save pattern'] = 'Save pattern'
         options['Clear pattern'] = 'Clear pattern'
         options['Export to SMF'] = 'Export to SMF'
+        options['Export to SMF'] = 'Export to SMF'
 
         self.zyngui.screens['option'].config(
             "Pattern Editor Menu", options, self.menu_cb)
@@ -473,6 +536,27 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
         elif params == 'Export to SMF':
             self.zyngui.show_keyboard(
                 self.export_smf, "pat#{}".format(self.pattern))
+
+    def get_diatonic_chord(self, trigger_note):
+        chord = []
+        match self.chord_mode:
+            case 2 | 3:
+                scale_template = SCALES["major"]
+            case 4 | 5:
+                scale_template = SCALES["minor"]
+            case _:
+                return []
+        if self.chord_mode in [3, 5]:
+            chord_len = 4
+        else:
+            chord_len = 3
+        scale_offset = trigger_note % 12 + self.diatonic_scale_tonic
+        if scale_offset not in scale_template:
+            return [] # Trigger note not in diatonic scale
+        note_offset = scale_template.index(scale_offset)
+        for i in range(chord_len):
+            chord.append(scale_template[note_offset + 2 * i] - scale_template[note_offset])
+        return chord
 
     def save_pattern_file(self, fname):
         self.zynseq.save_pattern(
@@ -958,21 +1042,19 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
                         self.set_edit_mode(EDIT_MODE_SINGLE)
                     else:
                         self.set_edit_mode(EDIT_MODE_ALL)
-                # Short click without drag: Add/remove single note
+                # Short click without drag: Add/remove single note/chord
                 else:
                     step = self.selected_cell[0]
                     row = self.selected_cell[1]
                     self.toggle_event(step, row)
-                    if not self.drag_start_velocity:
-                        note = self.keymap[row]['note']
-                        self.play_note(note)
             # End drag action
             elif self.drag_note:
                 if not self.drag_start_velocity:
+                    # Drag drop note
                     step = self.selected_cell[0]
                     row = self.selected_cell[1]
                     # note = self.keymap[row]['note']
-                    self.add_event(step, row, self.velocity, self.duration)
+                    self.toggle_event(step, row)
             # Swipe
             elif self.swiping:
                 self.swipe_nudge(dts/1000)
@@ -1066,10 +1148,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
         note = self.keymap[row]['note']
         start_step = self.zynseq.libseq.getNoteStart(step, note)
         if start_step >= 0:
-            self.remove_event(start_step, row)
+            self.remove_chord(start_step, row)
         else:
-            self.add_event(step, row, self.velocity, self.duration)
-            return note
+            self.add_chord(step, row, self.velocity, self.duration)
+        self.select_cell(None, row)
 
     # Function to remove an event
     # step: step number (column)
@@ -1088,6 +1170,47 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
         self.drawing = False
         self.select_cell(step, row)
 
+    # Function to add a note or chord, depending on current chord mode
+    # step: step number (column)
+    # note: MIDI note (0-127)
+    # vel: velocity (0-127)
+    # dur: duration (in steps)
+    # offset: offset of start of event (0..0.99)
+    def add_chord(self, step, note, vel, dur, offset=0.0):
+        match self.chord_mode:
+            case 0:
+                # Single note entry
+                chord = [0]
+            case 1:
+                # Chord entry mode
+                chord = CHORDS[self.chord_type][1]
+            case _:
+                # Diatonic chord entry mode
+                chord = self.get_diatonic_chord(note)
+        for offset in chord:
+            if self.add_event(step, note + offset, self.velocity, self.duration):
+                self.play_note(note + offset)
+
+    # Function to remove a note or chord, depending on current chord mode
+    # step: step number (column)
+    # note: MIDI note (0-127)
+    # vel: velocity (0-127)
+    # dur: duration (in steps)
+    # offset: offset of start of event (0..0.99)
+    def remove_chord(self, step, note):
+        match self.chord_mode:
+            case 0:
+                # Single note entry
+                chord = [0]
+            case 1:
+                # Chord entry mode
+                chord = CHORDS[self.chord_type][1]
+            case _:
+                # Diatonic chord entry mode
+                chord = self.get_diatonic_chord(note)
+        for offset in chord:
+            self.remove_event(step, note + offset)
+
     # Function to add an event
     # step: step number (column)
     # row: keymap index
@@ -1097,12 +1220,15 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
     def add_event(self, step, row, vel, dur, offset=0.0):
         self.save_pattern_snapshot(now=True, force=False)
         note = self.keymap[row]["note"]
+        if note > 127:
+            return False
         self.zynseq.libseq.addNote(step, note, vel, dur, offset)
         self.save_pattern_snapshot(now=True, force=True)
         self.drawing = True
         self.draw_row(row)
         self.drawing = False
         self.select_cell(step, row)
+        return True
 
     # Function to draw a grid row
     # row: Row number (keymap index)
@@ -1667,9 +1793,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
                            zynthian_gui_config.color_panel_tx)
             self.init_buttonbar(
                 [("ARROW_LEFT", "<< undo"), ("ARROW_RIGHT", "redo >>")])
+        elif self.chord_mode:
+            self.set_title(f"Pattern {self.pattern} [Chord Entry]",
+                zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
+            self.init_buttonbar()
         else:
-            self.set_title("Pattern {}".format(
-                self.pattern), zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
+            self.set_title(f"Pattern {self.pattern}",
+                zynthian_gui_config.color_panel_tx, zynthian_gui_config.color_header_bg)
             self.init_buttonbar()
 
     def set_edit_title(self):
@@ -1717,6 +1847,19 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
             elif self.edit_param == EDIT_PARAM_CHANCE:
                 self.set_title(
                     f"Play chance: {self.zynseq.libseq.getNotePlayChance(step, note)}%")
+            elif self.edit_param == EDIT_PARAM_CHORD_MODE:
+                self.set_title(
+                    f"Chord mode: {CHORD_MODES[self.chord_mode]}")
+            elif self.edit_param == EDIT_PARAM_CHORD_TYPE:
+                if self.chord_mode == 0:
+                    self.set_title(
+                        f"Chord type: Single note")
+                elif self.chord_mode == 1:
+                    self.set_title(
+                        f"Chord type: {CHORDS[self.chord_type][0]}")
+                else:
+                    self.set_title(
+                        f"Diatonic key: {NOTE_NAMES[self.diatonic_scale_tonic]}")
 
         self.init_buttonbar([(f"ZYNPOT {zynpot},-1", f"-{delta}"), (f"ZYNPOT {zynpot},+1", f"+{delta}"),
                             ("ZYNPOT 3,-1", "PREV\nPARAM"), ("ZYNPOT 3,+1", "NEXT\nPARAM"), (3, "OK")])
@@ -1766,7 +1909,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
                     if sel_duration:
                         sel_velocity = self.zynseq.libseq.getNoteVelocity(step, note)
                         sel_offset = self.zynseq.libseq.getNoteOffset(step, note)
-                        self.add_event(step, self.selected_cell[1], sel_velocity, duration, sel_offset)
+                        self.add_chord(step, self.selected_cell[1], sel_velocity, duration, sel_offset)
                     else:
                         self.duration = duration
                         self.select_cell()
@@ -1816,7 +1959,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
                     self.set_velocity_indicator(velocity)
                     if sel_duration and velocity != sel_velocity:
                         self.zynseq.libseq.setNoteVelocity(step, note, velocity)
-                        self.draw_cell(step, index - self.keymap_offset)
+                        self.draw_cell(step, index)
                     else:
                         self.velocity = velocity
                         self.select_cell()
@@ -1849,6 +1992,22 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
                         val = 100
                     self.zynseq.libseq.setNotePlayChance(step, note, val)
                     self.draw_cell(step, note - self.keymap_offset)
+                elif self.edit_param == EDIT_PARAM_CHORD_MODE:
+                    self.chord_mode += dval
+                    if self.chord_mode < 0:
+                        self.chord_mode = 0
+                    elif self.chord_mode > 5:
+                        self.chord_mode = 5
+                elif self.edit_param == EDIT_PARAM_CHORD_TYPE:
+                    if self.chord_mode == 1:
+                        self.chord_type += dval
+                        if self.chord_type < 0:
+                            self.chord_type = 0
+                        if self.chord_type > len(CHORDS) - 1:
+                            self.chord_type = len(CHORDS) - 1
+                    elif self.chord_mode > 1:
+                        self.diatonic_scale_tonic += dval
+                        self.diatonic_scale_tonic %= len(NOTE_NAMES)
                 self.set_edit_title()
             elif self.edit_mode == EDIT_MODE_ALL:
                 if self.edit_param == EDIT_PARAM_DUR:
@@ -1876,6 +2035,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
                     self.edit_param = 0
                 if self.edit_param > EDIT_PARAM_LAST:
                     self.edit_param = EDIT_PARAM_LAST
+                if self.edit_param == EDIT_PARAM_CHORD_TYPE and self.chord_mode == 0:
+                    self.edit_param = EDIT_PARAM_CHORD_MODE
                 self.set_edit_title()
             elif self.edit_mode == EDIT_MODE_ZOOM:
                 self.set_grid_zoom(self.zoom + dval)
@@ -1894,9 +2055,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
             return
         if type == "S":
             if self.edit_mode == EDIT_MODE_NONE:
-                note = self.toggle_event( self.selected_cell[0], self.selected_cell[1])
-                if note:
-                    self.play_note(note)
+                self.toggle_event( self.selected_cell[0], self.selected_cell[1])
             else:
                 self.set_edit_mode(EDIT_MODE_NONE)
         elif type == "B":

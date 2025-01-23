@@ -25,14 +25,15 @@
 
 import os
 import logging
-from os.path import isfile, join
 import tkinter
+from os.path import isfile, join
 
 # Zynthian specific modules
 import zynconf
 from zyngui import zynthian_gui_config
-from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
+from zyngine.zynthian_controller import zynthian_controller
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
+from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 # Python wrapper for zynsmf (ensures initialised and wraps load() function)
 from zynlibs.zynsmf import zynsmf
 from zynlibs.zynsmf.zynsmf import libsmf  # Direct access to shared library
@@ -44,19 +45,31 @@ from zynlibs.zynsmf.zynsmf import libsmf  # Direct access to shared library
 
 class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
 
+    capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
+    ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
+
     def __init__(self):
-        self.capture_dir_sdc = os.environ.get(
-            'ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
-        self.ex_data_dir = os.environ.get(
-            'ZYNTHIAN_EX_DATA_DIR', "/media/root")
         self.recording = False
         self.playing = False
-
         self.smf_timer = None  # 1s timer used to check end of SMF playback
 
-        super().__init__('MIDI Recorder')
+        super().__init__('MIDI file', default_icon="midi_logo.png", tiny_ctrls=True)
 
-        self.bpm_zgui_ctrl = None
+        self.info_canvas.grid_forget()
+        self.info_canvas.grid(row=1, column=self.layout['list_pos'][1] + 1, rowspan=1, sticky="news")
+
+        # Secondary controller
+        self.mpl_zctrl = zynthian_controller(self, "midi_play_loop",
+                                             {'name': "Loop", 'short_name': "Loop",
+                                              "is_toggle": True, "ticks": [0, 1], "labels": ["off", "on"],
+                                              'value': zynthian_gui_config.midi_play_loop})
+        self.zgui_ctrl2 = zynthian_gui_controller(2, self.main_frame, self.mpl_zctrl, False,
+                                                 orientation=self.layout['ctrl_orientation'])
+        self.zgui_ctrl2.grid(
+            row=self.layout['ctrl_pos'][2][0],
+            column=self.layout['ctrl_pos'][2][1],
+            sticky='news', pady=(0, 1)
+        )
 
     def refresh_status(self):
         super().refresh_status()
@@ -76,28 +89,30 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
 
     def fill_list(self):
         # self.index = 0
-        self.list_data = []
-
-        self.list_data.append(None)
+        self.list_data = [None]
         self.update_status_recording()
-
-        self.list_data.append(None)
         self.update_status_loop()
-
-        self.list_data.append((None, 0, "> MIDI Tracks"))
-
-        # Generate file list, sorted by mtime
-        flist = self.get_filelist(self.capture_dir_sdc, "SD")
-        for exd in zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
-            flist += self.get_filelist(exd, "USB")
         i = 1
-        for finfo in sorted(flist, key=lambda d: d['mtime'], reverse=True):
-            self.list_data.append((finfo['fpath'], i, finfo['title'], ["Play MIDI file.\nBold select to show more options.", None]))
-            i += 1
-
+        # Internal storage
+        flist = self.get_filelist(self.capture_dir_sdc)
+        if len(flist) > 0:
+            self.list_data.append((None, 0, "SD> Internal MIDI Tracks"))
+            for finfo in sorted(flist, key=lambda d: d['mtime'], reverse=True):
+                title = f"{finfo['title']} ({finfo['fduration']})"
+                self.list_data.append((finfo['fpath'], i, title, ["Select to play MIDI file.\nBold to show more options.", None]))
+                i += 1
+        # External storage
+        for exd in zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
+            flist += self.get_filelist(exd)
+            if len(flist) > 0:
+                self.list_data.append((None, 0, f"USB> {os.path.basename(exd)} MIDI Tracks"))
+                for finfo in sorted(flist, key=lambda d: d['mtime'], reverse=True):
+                    title = f"{finfo['title']} ({finfo['fduration']})"
+                    self.list_data.append((finfo['fpath'], i, title, ["Select to play MIDI file.\nBold to show more options.", None]))
+                    i += 1
         super().fill_list()
 
-    def get_filelist(self, src_dir, src_name):
+    def get_filelist(self, src_dir):
         res = []
         smf = libsmf.addSmf()
 
@@ -118,14 +133,14 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
                     logging.warning(e)
 
                 # Generate title
-                title = "{}[{}:{:02d}] {}".format(src_name, int(
-                    length / 60), int(length % 60), fname.replace(";", ">", 1).replace(";", "/"))
+                title = fname.replace(";", ">", 1).replace(";", "/")
 
                 res.append({
                     'fpath': fpath,
                     'fname': fname,
-                    'ext': fext,
+                    'fext': fext[1:],
                     'length': length,
+                    'fduration': f"{int(length / 60)}:{int(length % 60):02}",
                     'mtime': mtime,
                     'title': title
                 })
@@ -161,27 +176,22 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
         if self.list_data:
             if self.zyngui.state_manager.status_midi_recorder:
                 self.list_data[0] = (("STOP_RECORDING", 0,
-                                     "■ Stop MIDI Recording", ["Toggle recording to MIDI file.", None]))
+                                     "■ Stop MIDI Recording", ["Toggle recording to MIDI file.", "midi_recorder.png"]))
             else:
                 self.list_data[0] = (("START_RECORDING", 0,
-                                     "⬤ Start MIDI Recording", ["Toggle recording to MIDI file", None]))
+                                     "⬤ Start MIDI Recording", ["Toggle recording to MIDI file", "midi_recorder.png"]))
             if fill:
                 self.listbox.delete(0)
                 self.listbox.insert(0, self.list_data[0][2])
                 self.select_listbox(self.index)
 
-    def update_status_loop(self, fill=False):
-        if self.list_data:
-            if zynthian_gui_config.midi_play_loop:
-                self.list_data[1] = (("LOOP", 0, "\u2612 Loop Play", ["Toggle loop playback.", None]))
-                libsmf.setLoop(True)
-            else:
-                self.list_data[1] = (("LOOP", 0, "\u2610 Loop Play", ["Toggle loop playback.", None]))
-                libsmf.setLoop(False)
-            if fill:
-                self.listbox.delete(1)
-                self.listbox.insert(1, self.list_data[1][2])
-                self.select_listbox(self.index)
+    def update_status_loop(self):
+        if zynthian_gui_config.midi_play_loop:
+            self.mpl_zctrl.set_value(1, False)
+            libsmf.setLoop(True)
+        else:
+            self.mpl_zctrl.set_value(0, False)
+            libsmf.setLoop(False)
 
     def select_action(self, i, t='S'):
         fpath = self.list_data[i][0]
@@ -192,8 +202,6 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
             self.zyngui.state_manager.stop_midi_playback()
         elif fpath == "STOP_RECORDING":
             self.zyngui.state_manager.stop_midi_record()
-        elif fpath == "LOOP":
-            self.toggle_loop()
         elif fpath:
             if t == 'S':
                 self.zyngui.state_manager.toggle_midi_playback(fpath)
@@ -215,8 +223,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
         options = {}
         options["Rename"] = [smf, ["Rename MIDI file", None]]
         options["Delete"] = [smf, ["Delete MIDI file", None]]
-        self.zyngui.screens['option'].config(
-            f"MIDI file {smf_fname}", options, self.smf_options_cb)
+        self.zyngui.screens['option'].config(f"MIDI file {smf_fname}", options, self.smf_options_cb)
         self.zyngui.show_screen('option')
 
     def show_menu(self):
@@ -253,7 +260,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
             f"Do you really want to delete '{smf[2]}'?", self.delete_smf_confirmed, smf)
 
     def delete_smf_confirmed(self, smf):
-        logging.info("DELETE MIDI FILE: {}".format(smf[0]))
+        logging.info("Delete MIDI file: {}".format(smf[0]))
         try:
             os.remove(smf[0])
             self.update_list()
@@ -264,66 +271,45 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
         self.zyngui.state_manager.toggle_midi_record()
 
     def show_playing_bpm(self):
-        if self.bpm_zgui_ctrl:
-            self.bpm_zgui_ctrl.config(
-                self.zyngui.state_manager.zynseq.zctrl_tempo)
-            self.bpm_zgui_ctrl.show()
-            self.bpm_zgui_ctrl.grid()
-            self.loading_canvas.grid_remove()
-        else:
-            if zynthian_gui_config.layout['name'] == 'Z2':
-                bmp_ctrl_index = 0
-            else:
-                bmp_ctrl_index = 2
-            self.bpm_zgui_ctrl = zynthian_gui_controller(
-                bmp_ctrl_index, self.main_frame, self.zyngui.state_manager.zynseq.zctrl_tempo)
-            self.loading_canvas.grid_remove()
-            self.bpm_zgui_ctrl.grid(
-                row=zynthian_gui_config.layout['ctrl_pos'][bmp_ctrl_index][0],
-                column=zynthian_gui_config.layout['ctrl_pos'][bmp_ctrl_index][1],
-                sticky='news'
-            )
+        self.zgui_ctrl2.hide()
+        self.zgui_ctrl2.config(self.zyngui.state_manager.zynseq.zctrl_tempo)
+        self.zgui_ctrl2.show()
         self.zyngui.state_manager.zynseq.update_tempo()
 
     def hide_playing_bpm(self):
-        if self.bpm_zgui_ctrl:
-            self.bpm_zgui_ctrl.hide()
-            self.bpm_zgui_ctrl.grid_remove()
-            self.loading_canvas.grid()
+        self.zgui_ctrl2.hide()
+        self.zgui_ctrl2.config(self.mpl_zctrl)
+        self.zgui_ctrl2.show()
 
     # Implement engine's method
     def send_controller_value(self, zctrl):
         if zctrl.symbol == "bpm":
             self.zyngui.state_manager.zynseq.set_tempo(zctrl.value)
-            logging.debug("SET PLAYING BPM => {}".format(zctrl.value))
+            logging.debug(f"SET PLAYING BPM => {zctrl.value}")
+        elif zctrl.symbol == "midi_play_loop":
+            logging.info(f"MIDI play loop => {zctrl.value}")
+            zynthian_gui_config.midi_play_loop = bool(zctrl.value)
+            libsmf.setLoop(zynthian_gui_config.midi_play_loop)
+            zynconf.save_config({"ZYNTHIAN_MIDI_PLAY_LOOP": str(int(zynthian_gui_config.midi_play_loop))})
 
     def zynpot_cb(self, i, dval):
         if not self.shown:
             return False
-
-        if self.bpm_zgui_ctrl and self.bpm_zgui_ctrl.index == i:
-            self.bpm_zgui_ctrl.zynpot_cb(dval)
+        if self.zgui_ctrl2 and self.zgui_ctrl2.index == i:
+            self.zgui_ctrl2.zynpot_cb(dval)
             return True
         else:
             return super().zynpot_cb(i, dval)
 
     def plot_zctrls(self, force=False):
         super().plot_zctrls()
-        if self.bpm_zgui_ctrl:
-            if self.zyngui.state_manager.zynseq.zctrl_tempo.is_dirty or force:
-                self.bpm_zgui_ctrl.calculate_plot_values()
-            self.bpm_zgui_ctrl.plot_value()
+        if self.zgui_ctrl2:
+            if self.zgui_ctrl2.zctrl.is_dirty or force:
+                self.zgui_ctrl2.calculate_plot_values()
+            self.zgui_ctrl2.plot_value()
 
-    def toggle_loop(self):
-        if zynthian_gui_config.midi_play_loop:
-            logging.info("MIDI play loop OFF")
-            zynthian_gui_config.midi_play_loop = False
-        else:
-            logging.info("MIDI play loop ON")
-            zynthian_gui_config.midi_play_loop = True
-        zynconf.save_config({"ZYNTHIAN_MIDI_PLAY_LOOP": str(
-            int(zynthian_gui_config.midi_play_loop))})
-        self.update_status_loop(True)
+    def set_selector(self, zs_hidden=False):
+        super().set_selector(zs_hidden)
 
     # -------------------------------------------------------------------------
     # CUIA & LEDs methods

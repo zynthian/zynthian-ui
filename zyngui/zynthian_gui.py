@@ -25,7 +25,6 @@
 
 import os
 import liblo
-import ctypes
 import ffmpeg
 import logging
 import traceback
@@ -56,6 +55,7 @@ from zyngui.zynthian_gui_help import zynthian_gui_help
 from zyngui.zynthian_gui_splash import zynthian_gui_splash
 from zyngui.zynthian_gui_loading import zynthian_gui_loading
 from zyngui.zynthian_gui_option import zynthian_gui_option
+from zyngui.zynthian_gui_file_selector import zynthian_gui_file_selector
 from zyngui.zynthian_gui_details import zynthian_gui_details
 from zyngui.zynthian_gui_admin import zynthian_gui_admin
 from zyngui.zynthian_gui_snapshot import zynthian_gui_snapshot
@@ -254,13 +254,16 @@ class zynthian_gui:
     # Initialize custom switches, analog I/O, TOF sensors, etc.
     @staticmethod
     def wiring_midi_setup(current_chan=None):
-        # Configure Custom Switches MIDI events
+        logging.info("CUSTOM I/O SETUP...")
+
+        # Configure Custom Switches
         for i, event in enumerate(zynthian_gui_config.custom_switch_midi_events):
+            # logging.debug(f"\tSWITCH MIDI EVENT {i} => {event}")
             if event is not None:
                 swi = 4 + i
                 if event['type'] >= 0xF8:
                     lib_zyncore.setup_zynswitch_midi(swi, event['type'], 0, 0, 0)
-                    logging.info("MIDI ZYNSWITCH {}: SYSRT {}".format(swi, event['type']))
+                    logging.info(f"MIDI ZYNSWITCH {swi}: SYS-RT {event['type']}")
                 else:
                     if event['chan'] is not None:
                         midi_chan = event['chan']
@@ -269,13 +272,14 @@ class zynthian_gui:
 
                     if midi_chan is not None:
                         lib_zyncore.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'], event['val'])
-                        logging.info("MIDI ZYNSWITCH {}: {} CH#{}, {}, {}".format(swi, event['type'], midi_chan, event['num'], event['val']))
+                        logging.info(f"MIDI ZYNSWITCH {swi}: {event['type']} CH#{midi_chan}, {event['num']}, {event['val']}")
                     else:
                         lib_zyncore.setup_zynswitch_midi(swi, 0, 0, 0, 0)
-                        logging.info("MIDI ZYNSWITCH {}: DISABLED!".format(swi))
+                        logging.info(f"MIDI ZYNSWITCH {swi}: DISABLED!")
 
         # Configure Zynaptik Analog Inputs (CV-IN)
         for i, event in enumerate(zynthian_gui_config.zynaptik_ad_midi_events):
+            # logging.debug(f"\tCV-IN MIDI EVENT {i} => {event}")
             if event is not None:
                 if event['chan'] is not None:
                     midi_chan = event['chan']
@@ -283,14 +287,15 @@ class zynthian_gui:
                     midi_chan = current_chan
 
                 if midi_chan is not None:
-                    lib_zyncore.zynaptik_setup_cvin(i, event['type'], midi_chan, event['num'])
-                    logging.info("ZYNAPTIK CV-IN {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+                    lib_zyncore.setup_zynaptik_cvin(i, event['type'], midi_chan, event['num'])
+                    logging.info(f"ZYNAPTIK CV-IN {i}: {event['type']} CH#{midi_chan}, {event['num']}")
                 else:
-                    lib_zyncore.zynaptik_disable_cvin(i)
-                    logging.info("ZYNAPTIK CV-IN {}: DISABLED!".format(i))
+                    lib_zyncore.disable_zynaptik_cvin(i)
+                    logging.info(f"ZYNAPTIK CV-IN {i}: DISABLED!")
 
         # Configure Zynaptik Analog Outputs (CV-OUT)
         for i, event in enumerate(zynthian_gui_config.zynaptik_da_midi_events):
+            # logging.debug(f"\tCV-OUT MIDI EVENT {i} => {event}")
             if event is not None:
                 if event['chan'] is not None:
                     midi_chan = event['chan']
@@ -298,11 +303,11 @@ class zynthian_gui:
                     midi_chan = current_chan
 
                 if midi_chan is not None:
-                    lib_zyncore.zynaptik_setup_cvout(i, event['type'], midi_chan, event['num'])
-                    logging.info("ZYNAPTIK CV-OUT {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+                    lib_zyncore.setup_zynaptik_cvout(i, event['type'], midi_chan, event['num'])
+                    logging.info(f"ZYNAPTIK CV-OUT {i}: {event['type']} CH#{midi_chan}, {event['num']}")
                 else:
-                    lib_zyncore.zynaptik_disable_cvout(i)
-                    logging.info("ZYNAPTIK CV-OUT {}: DISABLED!".format(i))
+                    lib_zyncore.disable_zynaptik_cvout(i)
+                    logging.info(f"ZYNAPTIK CV-OUT {i}: DISABLED!")
 
         # Configure Zyntof Inputs (Distance Sensor)
         for i, event in enumerate(zynthian_gui_config.zyntof_midi_events):
@@ -314,10 +319,10 @@ class zynthian_gui:
 
                 if midi_chan is not None:
                     lib_zyncore.setup_zyntof(i, event['type'], midi_chan, event['num'])
-                    logging.info("ZYNTOF {}: {} CH#{}, {}".format(i, event['type'], midi_chan, event['num']))
+                    logging.info(f"ZYNTOF {i}: {event['type']} CH#{midi_chan}, {event['num']}")
                 else:
                     lib_zyncore.disable_zyntof(i)
-                    logging.info("ZYNTOF {}: DISABLED!".format(i))
+                    logging.info(f"ZYNTOF {i}: DISABLED!")
 
     def reload_wiring_layout(self):
         try:
@@ -325,7 +330,7 @@ class zynthian_gui:
             zynthian_gui_config.config_custom_switches()
             zynthian_gui_config.config_zynaptik()
             zynthian_gui_config.config_zyntof()
-            self.wiring_midi_setup()
+            self.zynswitches_midi_setup()
             self.alt_mode = False
         except Exception as e:
             logging.error("ERROR configuring wiring: {}".format(e))
@@ -424,6 +429,7 @@ class zynthian_gui:
         self.screens['confirm'] = zynthian_gui_confirm()
         self.screens['keyboard'] = zynthian_gui_keyboard.zynthian_gui_keyboard()
         self.screens['option'] = zynthian_gui_option()
+        self.screens['file_selector'] = zynthian_gui_file_selector()
         self.screens['details'] = zynthian_gui_details()
         self.screens['engine'] = zynthian_gui_engine()
         self.screens['chain_options'] = zynthian_gui_chain_options()
@@ -477,7 +483,6 @@ class zynthian_gui:
         try:
             self.zynswitches_init()
             self.zynswitches_midi_setup()
-            self.wiring_midi_setup()
         except Exception as e:
             logging.error(f"ERROR initializing Switches & Wiring MIDI: {e}")
 
@@ -567,7 +572,7 @@ class zynthian_gui:
     def reset_screen_history(self):
         self.screen_history = []
 
-    def show_screen(self, screen=None, hmode=SCREEN_HMODE_ADD):
+    def show_screen(self, screen=None, hmode=SCREEN_HMODE_ADD, params=None):
         self.screen_lock.acquire()
         self.cancel_screen_timer()
         # self.current_processor = None
@@ -579,7 +584,7 @@ class zynthian_gui:
                 screen = "audio_mixer"
 
         elif screen == "alsa_mixer":
-            self.state_manager.alsa_mixer_processor.refresh_controllers()
+            self.state_manager.alsa_mixer_processor.refresh_controllers(params)
             self.current_processor = self.state_manager.alsa_mixer_processor
 
         elif screen == "audio_player":
@@ -614,7 +619,7 @@ class zynthian_gui:
             self.screen_history = [screen]
 
         if self.current_screen != screen:
-            # logging.debug(f"SHOW_SCREEN {screen}")
+            #logging.debug(f"SHOW_SCREEN {screen}")
             self.screens[screen].show()
             self.current_screen = screen
             self.hide_screens(exclude=screen)
@@ -992,14 +997,16 @@ class zynthian_gui:
         self.chain_control()
 
     def toggle_favorites(self):
-        if self.get_current_processor():
-            self.get_current_processor().toggle_show_fav_presets()
+        curproc = self.get_current_processor()
+        if curproc:
+            curproc.toggle_show_fav_presets()
             self.show_screen("preset")
 
     def show_favorites(self):
-        if self.get_current_processor():
+        curproc = self.get_current_processor()
+        if curproc:
             self.cuia_bank_preset()
-            self.get_current_processor().set_show_fav_presets(True)
+            curproc.set_show_fav_presets(True)
             self.show_screen("preset")
 
     def get_current_processor(self):
@@ -1014,8 +1021,9 @@ class zynthian_gui:
     def get_current_processor_wait(self):
         # Try until processor is ready
         for j in range(100):
-            if self.get_current_processor():
-                return self.get_current_processor()
+            curproc = self.get_current_processor()
+            if curproc:
+                return curproc
             else:
                 sleep(0.1)
 
@@ -1842,72 +1850,12 @@ class zynthian_gui:
         self.dtsw = [datetime.now()] * zynthian_gui_config.num_zynswitches
 
     # Initialize custom switches, analog I/O, TOF sensors, etc.
-    def zynswitches_midi_setup(self, current_chain_chan=None):
-        logging.info("CUSTOM I/O SETUP...")
-
-        # Configure Custom Switches
-        for i, event in enumerate(zynthian_gui_config.custom_switch_midi_events):
-            # logging.debug(f"\tSWITCH MIDI EVENT {i} => {event}")
-            if event is not None:
-                swi = 4 + i
-                if event['chan'] is not None:
-                    midi_chan = event['chan']
-                else:
-                    midi_chan = current_chain_chan
-
-                if midi_chan is not None:
-                    lib_zyncore.setup_zynswitch_midi(swi, event['type'], midi_chan, event['num'], event['val'])
-                    logging.info(f"MIDI ZYNSWITCH {swi}: {event['type']} CH#{midi_chan}, {event['num']}, {event['val']}")
-                else:
-                    lib_zyncore.setup_zynswitch_midi(swi, 0, 0, 0, 0)
-                    logging.info(f"MIDI ZYNSWITCH {swi}: DISABLED!")
-
-        # Configure Zynaptik Analog Inputs (CV-IN)
-        for i, event in enumerate(zynthian_gui_config.zynaptik_ad_midi_events):
-            # logging.debug(f"\tCV-IN MIDI EVENT {i} => {event}")
-            if event is not None:
-                if event['chan'] is not None:
-                    midi_chan = event['chan']
-                else:
-                    midi_chan = current_chain_chan
-
-                if midi_chan is not None:
-                    lib_zyncore.setup_zynaptik_cvin(i, event['type'], midi_chan, event['num'])
-                    logging.info(f"ZYNAPTIK CV-IN {i}: {event['type']} CH#{midi_chan}, {event['num']}")
-                else:
-                    lib_zyncore.disable_zynaptik_cvin(i)
-                    logging.info(f"ZYNAPTIK CV-IN {i}: DISABLED!")
-
-        # Configure Zynaptik Analog Outputs (CV-OUT)
-        for i, event in enumerate(zynthian_gui_config.zynaptik_da_midi_events):
-            # logging.debug(f"\tCV-OUT MIDI EVENT {i} => {event}")
-            if event is not None:
-                if event['chan'] is not None:
-                    midi_chan = event['chan']
-                else:
-                    midi_chan = current_chain_chan
-
-                if midi_chan is not None:
-                    lib_zyncore.setup_zynaptik_cvout(i, event['type'], midi_chan, event['num'])
-                    logging.info(f"ZYNAPTIK CV-OUT {i}: {event['type']} CH#{midi_chan}, {event['num']}")
-                else:
-                    lib_zyncore.disable_zynaptik_cvout(i)
-                    logging.info(f"ZYNAPTIK CV-OUT {i}: DISABLED!")
-
-        # Configure Zyntof Inputs (Distance Sensor)
-        for i, event in enumerate(zynthian_gui_config.zyntof_midi_events):
-            if event is not None:
-                if event['chan'] is not None:
-                    midi_chan = event['chan']
-                else:
-                    midi_chan = current_chain_chan
-
-                if midi_chan is not None:
-                    lib_zyncore.setup_zyntof(i, event['type'], midi_chan, event['num'])
-                    logging.info(f"ZYNTOF {i}: {event['type']} CH#{midi_chan}, {event['num']}")
-                else:
-                    lib_zyncore.disable_zyntof(i)
-                    logging.info(f"ZYNTOF {i}: DISABLED!")
+    def zynswitches_midi_setup(self, current_chan=None):
+        if current_chan is None:
+            curproc = self.get_current_processor()
+            if curproc:
+                current_chan = curproc.midi_chan
+        self.wiring_midi_setup(current_chan)
 
     def get_zynswitch_pr_state(self, i):
         if zynthian_gui_config.num_zynpots == 0:
@@ -2075,8 +2023,11 @@ class zynthian_gui:
         if param:
             self.screens['control'].midi_unlearn(param)
         else:
-            self.show_confirm("Do you want to clean MIDI-learn for ALL controls in {} on MIDI channel {}?".format(
-                self.get_current_processor().engine.name, self.get_current_processor().midi_chan + 1), self.screens['control'].midi_unlearn)
+            curproc = self.get_current_processor()
+            if curproc:
+                self.show_confirm(
+                    f"Do you want to clean MIDI-learn for ALL controls in {curproc.engine.name} on MIDI channel {curproc.midi_chan + 1}?",
+                    self.screens['control'].midi_unlearn)
 
     # ------------------------------------------------------------------
     # Defered Switch Events
@@ -2108,10 +2059,17 @@ class zynthian_gui:
     def register_signals(self):
         zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_ON, self.cb_midi_note_on)
         zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_OFF, self.cb_midi_note_off)
+        zynsigman.register_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_FILE_SELECTOR, self.cb_show_file_selector)
+        zynsigman.register_queued(
+            zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
+
 
     def unregister_signals(self):
         zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_ON, self.cb_midi_note_on)
         zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_NOTE_OFF, self.cb_midi_note_off)
+        zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_FILE_SELECTOR, self.cb_show_file_selector)
+        zynsigman.unregister(
+            zynsigman.S_CHAIN_MAN, self.chain_manager.SS_SET_ACTIVE_CHAIN, self.cb_set_active_chain)
 
     def cb_midi_note_on(self, izmip, chan, note, vel):
         """Handle MIDI_NOTE_ON signal
@@ -2123,15 +2081,19 @@ class zynthian_gui:
         """
 
         # Pattern recording
-        if self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
-            self.screens['pattern_editor'].midi_note_on(note)
+        if self.current_screen == 'pattern_editor':
+            if self.state_manager.zynseq.libseq.isMidiRecord():
+                self.screens['pattern_editor'].midi_note_on(note)
         # Preload preset (note-on)
-        elif self.current_screen == 'preset' and zynthian_gui_config.preset_preload_noteon and \
-                (zynautoconnect.get_midi_in_dev_mode(izmip) or chan == self.get_current_processor().get_midi_chan()):
-            self.screens['preset'].preselect_action()
+        elif self.current_screen == 'preset':
+            if zynthian_gui_config.preset_preload_noteon:
+                curproc = self.get_current_processor()
+                if curproc and (zynautoconnect.get_midi_in_dev_mode(izmip) or chan == curproc.midi_chan):
+                    self.screens['preset'].preselect_action()
         # Note Range Learn
-        elif self.current_screen == 'midi_key_range' and self.state_manager.midi_learn_state:
-            self.screens['midi_key_range'].learn_note_range(note)
+        elif self.current_screen == 'midi_key_range':
+            if self.state_manager.midi_learn_state:
+                self.screens['midi_key_range'].learn_note_range(note)
         # Channel activity
         elif self.current_screen == 'midi_chan':
             self.screens['midi_chan'].midi_chan_activity(chan)
@@ -2148,6 +2110,13 @@ class zynthian_gui:
         # Pattern recording
         if self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
             self.screens['pattern_editor'].midi_note_off(note)
+
+    def cb_show_file_selector(self, cb_func, fexts=None, root_dirs=None, path=None):
+        self.screens["file_selector"].config(cb_func, fexts=fexts, root_dirs=root_dirs, path=path)
+        self.show_screen("file_selector")
+
+    def cb_set_active_chain(self, active_chain):
+        self.zynswitches_midi_setup(self.chain_manager.get_active_chain().midi_chan)
 
     # ------------------------------------------------------------------
     # Zynpot Thread
@@ -2357,8 +2326,12 @@ class zynthian_gui:
                 for i, ts in enumerate(zynswitch_cuia_ts):
                     if ts is not None and ts < long_ts:
                         zynswitch_cuia_ts[i] = None
-                        zpi = zynthian_gui_config.zynpot2switch.index(i)
-                        if self.zynpot_pr_state[zpi] <= 1:
+                        try:
+                            zpi = zynthian_gui_config.zynpot2switch.index(i)
+                            zp_pr_state = self.zynpot_pr_state[zpi]
+                        except:
+                            zp_pr_state = 0
+                        if zp_pr_state <= 1:
                             self.zynswitch_long(i)
                 event = self.cuia_queue.get(True, repeat_interval)
                 params = None

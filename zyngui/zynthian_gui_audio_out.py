@@ -24,6 +24,7 @@
 # ******************************************************************************
 
 import logging
+from time import sleep
 
 # Zynthian specific modules
 import zynautoconnect
@@ -138,15 +139,41 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
 
         super().fill_list()
 
-    def fill_listbox(self):
-        super().fill_listbox()
-
     def select_action(self, i, t='S'):
         if self.list_data[i][0] == 'record':
-            self.zyngui.state_manager.audio_recorder.toggle_arm(self.chain.mixer_chan)
-        else:
+            if t == 'S':
+                self.zyngui.state_manager.audio_recorder.toggle_arm(self.chain.mixer_chan)
+                self.fill_list()
+        elif t == 'S':
             self.chain.toggle_audio_out(self.list_data[i][0])
-        self.fill_list()
+            self.fill_list()
+        elif t == "B":
+            if not self.list_data[i][1].startswith("^system:"):
+                return
+            self.zyngui.state_manager.start_busy("alsa_output", "Getting audio level parameters...")
+            sleep(0.1)
+            ctrl_list = []
+            chans = []
+            try:
+                a = self.list_data[i][1].replace("$", "").replace("^", "")
+                b = a.split("|")
+                for c in b:
+                    if c.startswith("system:"):
+                        chans.append(int(c.split("_")[-1]) - 1)
+                zctrls = self.zyngui.state_manager.alsa_mixer_processor.engine.get_controllers_dict()
+                for symbol, zctrl in zctrls.items():
+                    if zctrl.graph_path[4]:
+                        chan = zctrl.graph_path[1]
+                    else:
+                        chan = zctrl.graph_path[2]
+                    if chan in chans:
+                        ctrl_list.append(symbol)
+                    sleep(0.01)
+            except:
+                pass
+            self.zyngui.state_manager.end_busy("alsa_output")
+            if ctrl_list:
+                self.zyngui.show_screen("alsa_mixer", params=ctrl_list)
 
     def set_select_path(self):
         self.select_path.set("Send Audio to ...")

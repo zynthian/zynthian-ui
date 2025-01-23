@@ -46,10 +46,9 @@ MIDI_LEARNING_GLOBAL = 2
 
 
 class zynthian_gui_control(zynthian_gui_selector):
-    SS_GUI_CONTROL_MODE = 2
 
     def __init__(self, selcap='Controllers'):
-        self.mode = None
+        self.mode = "control"
 
         self.widgets = {}
         self.current_widget = None
@@ -73,12 +72,11 @@ class zynthian_gui_control(zynthian_gui_selector):
             ("arrow_right", 'Next >>')
         ]
 
-        super().__init__(selcap, wide=False, loading_anim=False, info=False)
+        super().__init__(selcap, wide=False, loading_anim=False, tiny_ctrls=False)
 
         # Configure layout
         for ctrl_pos in self.layout['ctrl_pos']:
-            self.main_frame.columnconfigure(
-                ctrl_pos[1], weight=1, uniform='ctrl_col')
+            self.main_frame.columnconfigure(ctrl_pos[1], weight=1, uniform='ctrl_col')
         self.main_frame.columnconfigure(self.layout['list_pos'][1], weight=2)
 
     def update_layout(self):
@@ -87,26 +85,18 @@ class zynthian_gui_control(zynthian_gui_selector):
         minwidth = int((self.width * 0.25 - 1) * self.sidebar_shown)
         for pos in self.layout['ctrl_pos']:
             self.main_frame.rowconfigure(pos[0], minsize=minheight, weight=1)
-            self.main_frame.columnconfigure(
-                pos[1], minsize=minwidth, weight=self.sidebar_shown)
+            self.main_frame.columnconfigure(pos[1], minsize=minwidth, weight=self.sidebar_shown)
 
     def build_view(self):
-        curproc = self.zyngui.get_current_processor()
-        if not self.processors or curproc not in self.processors:
-            pending_click_listbox = True
-        else:
-            pending_click_listbox = False
+        #curproc = self.zyngui.get_current_processor()
         super().build_view()
         if not self.shown:
             zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.cb_midi_cc)
             zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.cb_midi_pc)
             if zynthian_gui_config.enable_touch_navigation:
                 zynsigman.register(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SIDEBAR, self.cb_show_sidebar)
-                zynsigman.register(zynsigman.S_GUI, self.SS_GUI_CONTROL_MODE, self.cb_control_mode)
-            self.click_listbox()
-        elif pending_click_listbox:
-            self.click_listbox()
-        self.set_mode_control()
+                zynsigman.register(zynsigman.S_GUI, zynsigman.SS_GUI_CONTROL_MODE, self.cb_control_mode)
+        #self.set_mode_control()
         return True
 
     def hide(self):
@@ -116,7 +106,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.cb_midi_pc)
             if zynthian_gui_config.enable_touch_navigation:
                 zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SIDEBAR, self.cb_show_sidebar)
-                zynsigman.unregister(zynsigman.S_GUI, self.SS_GUI_CONTROL_MODE, self.cb_control_mode)
+                zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_CONTROL_MODE, self.cb_control_mode)
         super().hide()
 
     def cb_midi_pc(self, izmip, chan, num):
@@ -164,7 +154,6 @@ class zynthian_gui_control(zynthian_gui_selector):
 
     def fill_list(self):
         self.list_data = []
-
         # Configure processors if needed
         curproc = self.zyngui.get_current_processor()
         self.configure_processors(curproc)
@@ -176,15 +165,11 @@ class zynthian_gui_control(zynthian_gui_selector):
             for processor in self.processors:
                 j = 0
                 screen_list = processor.get_ctrl_screens()
-                # if len(self.processors) > 1:
-                self.list_data.append(
-                    (None, None, f"> {processor.engine.name.split('/')[-1]}"))
+                self.list_data.append((None, None, f"> {processor.engine.name.split('/')[-1]}"))
                 for cscr in screen_list:
-                    self.list_data.append(
-                        (screen_list[cscr][0].group_symbol, i, cscr, processor, j))
+                    self.list_data.append((screen_list[cscr][0].group_symbol, i, cscr, processor, j))
                     i += 1
                     j += 1
-
                 self.index = curproc.get_current_screen_index()
                 self.get_screen_info()
         super().fill_list()
@@ -407,7 +392,6 @@ class zynthian_gui_control(zynthian_gui_selector):
         if i < 0:
             i = 0
         self.select(i)
-        self.click_listbox()
 
     def next_page(self, wrap=False):
         i = self.index + 1
@@ -417,7 +401,6 @@ class zynthian_gui_control(zynthian_gui_selector):
             else:
                 i = len(self.list_data) - 1
         self.select(i)
-        self.click_listbox()
 
     def back_action(self):
         if self.mode == 'select':
@@ -490,16 +473,13 @@ class zynthian_gui_control(zynthian_gui_selector):
     def switch_select(self, t):
         if t == 'S':
             if self.mode == 'control':
-                if len(self.list_data) > 3:
-                    self.set_mode_select()
-                else:
-                    self.next_page(True)
+                logging.debug("MODE SELECT!!")
+                self.set_mode_select()
             elif self.mode == 'select':
-                self.click_listbox()
+                logging.debug("MODE CONTROL!!")
                 self.set_mode_control()
         elif t == 'B':
             self.zyngui.cuia_chain_options()
-
         return True
 
     def select(self, index=None, set_zctrl=True):
@@ -700,10 +680,16 @@ class zynthian_gui_control(zynthian_gui_selector):
                     else:
                         options["\u2610 Momentary => Latch"] = i
                 elif mcparams:
-                    if zctrl.midi_cc_mode == 0:
-                        options["\u2610 Relative Mode"] = i
-                    else:
-                        options["\u2612 Relative Mode"] = i
+                    match zctrl.midi_cc_mode:
+                        case -1:
+                            options["Relative Mode learning..."] = i
+                        case 0:
+                            if zctrl.range_reversed:
+                                options["Absolute Reverse"] = i
+                            else:
+                                options["Absolute Mode"] = i
+                        case _:
+                            options[f"Relative Mode {zctrl.midi_cc_mode}"] = i 
                 options[f"Chain learn '{zctrl.name}'..."] = i
                 options[f"Global learn '{zctrl.name}'..."] = i
             else:
@@ -751,13 +737,22 @@ class zynthian_gui_control(zynthian_gui_selector):
             else:
                 self.zgui_controllers[param].zctrl.midi_cc_momentary_switch = 1
             self.midi_learn_options(param)
-        elif parts[1] == "Relative":
-            if parts[0] == '\u2612':
-                self.zgui_controllers[param].zctrl.midi_cc_mode_set(0)
-            else:
-                self.zgui_controllers[param].zctrl.midi_cc_mode_set(-1)
+        elif parts[0] in ["Relative", "Absolute"]:
+            options = {
+                "Absolute Mode": (param, 0),
+                "Absolute Reverse": (param, 0),
+                "Learn Relative Mode": (param, -1),
+                "Relative Mode 1": (param, 1),
+                "Relative Mode 2": (param, 2),
+                "Relative Mode 3": (param, 3),
+                "Relative Mode 4": (param, 4)
+            }
+            self.zyngui.screens['option'].config("Select CC mode", options, self.set_cc_mode)
+            self.zyngui.show_screen('option')
 
-
+    def set_cc_mode(self, option, param):
+        self.zgui_controllers[param[0]].zctrl.midi_cc_mode_set(param[1])
+        self.zgui_controllers[param[0]].zctrl.range_reversed = "Reverse" in option
 
     def show_xy(self, params=None):
         self.zyngui.show_screen("control_xy")

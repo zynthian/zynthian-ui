@@ -740,16 +740,16 @@ def midi_autoconnect():
     # Each engine sending controller feedback should use a different zmip
     # Only setBfree is using this, so we have just one: "ctrl_in"
     for proc in chain_manager.processors.values():
-        if proc.engine.options["ctrl_fb"]:
-            try:
+        try:
+            if proc.engine.options["ctrl_fb"]:
                 ports = jclient.get_ports(proc.get_jackname(
                     True), is_midi=True, is_output=True)
                 required_routes["ZynMidiRouter:ctrl_in"].add(ports[0].name)
                 ctrl_fb_procs.append(proc)
                 # logging.debug(f"Routed controller feedback from {proc.get_jackname(True)}")
-            except Exception as e:
-                # logging.error(f"Can't route controller feedback from {proc.get_name()} => {e}")
-                pass
+        except Exception as e:
+            # logging.error(f"Can't route controller feedback from {proc.get_name()} => {e}")
+            pass
 
     # Remove from control feedback list those processors removed from chains
     for i, proc in enumerate(ctrl_fb_procs):
@@ -955,7 +955,13 @@ def audio_autoconnect():
 
 
 def get_hw_audio_dst_ports():
-    return jclient.get_ports("system:playback", is_input=True, is_audio=True, is_physical=True) + jclient.get_ports("zynaout", is_input=True, is_audio=True)
+    ports = jclient.get_ports("system:playback", is_input=True, is_audio=True, is_physical=True)
+    if jack_audio_device == "Dummy":
+        # Remove first two ports
+        for port in list(ports):
+            if port.name in ["system:playback_1", "system:playback_2"]:
+                ports.remove(port)
+    return ports + jclient.get_ports("zynaout", is_input=True, is_audio=True)
 
 
 def update_hw_audio_ports():
@@ -1056,7 +1062,7 @@ def get_alsa_hotplug_audio_devices(playback=True):
             continue
         if card.startswith("hw:"):
             device = card[8:card.find(",")]
-            if device != jack_audio_device:
+            if device != "Dummy" and device != jack_audio_device:
                 devices.append(device)
     return devices
 
@@ -1142,7 +1148,13 @@ def audio_connect_ffmpeg(timeout=2.0):
 def get_audio_capture_ports():
     """Get list of hardware audio inputs"""
 
-    return jclient.get_ports("system", is_output=True, is_audio=True, is_physical=True) + jclient.get_ports("zynain", is_output=True, is_audio=True)
+    ports = jclient.get_ports("system", is_output=True, is_audio=True, is_physical=True)
+    if jack_audio_device == "Dummy":
+        # Remove first two ports
+        for port in list(ports):
+            if port.name in ["system:capture_1", "system:capture_2"]:
+                ports.remove(port)
+    return ports + jclient.get_ports("zynain", is_output=True, is_audio=True)
 
 
 def build_midi_port_name(port):

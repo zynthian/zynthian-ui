@@ -45,7 +45,7 @@ class zynthian_gui_selector(zynthian_gui_base):
     swipe_roll_scale = [1, 0, 1, 1, 2, 2, 2, 4,
                         4, 4, 4, 4]  # 1, 0, 1, 0, 1, 0, 1, 0,
 
-    def __init__(self, selcap='Select', wide=False, loading_anim=True, info=True):
+    def __init__(self, selcap='Select', wide=False, loading_anim=True, tiny_ctrls=True):
         super().__init__()
 
         # If the children class has not defined a custom GUI layout, use the default from config
@@ -67,7 +67,6 @@ class zynthian_gui_selector(zynthian_gui_base):
         self.listbox_motion_last_dy = 0
         self.swiping = False
         self.last_release_ts = 0
-        self.last_selected_index = None
 
         # ListBox
         self.listbox = tkinter.Listbox(self.main_frame,
@@ -82,13 +81,13 @@ class zynthian_gui_selector(zynthian_gui_base):
                                        selectmode=tkinter.SINGLE)
 
         # Configure layout
-        if info:
+        if tiny_ctrls:
             if self.layout['rows'] == 2:
-                self.main_frame.rowconfigure(0, weight=3, uniform='info_row')
+                self.main_frame.rowconfigure(0, weight=0)
                 self.main_frame.rowconfigure(1, weight=1, uniform='ctrl_row')
             elif self.layout['rows'] == 4:
-                self.main_frame.rowconfigure(0, weight=2, uniform='info_row')
-                self.main_frame.rowconfigure(1, weight=2, uniform='info_row')
+                self.main_frame.rowconfigure(0, weight=0)
+                self.main_frame.rowconfigure(1, weight=1, uniform='ctrl_row')
                 self.main_frame.rowconfigure(2, weight=1, uniform='ctrl_row')
                 self.main_frame.rowconfigure(3, weight=1, uniform='ctrl_row')
         else:
@@ -170,6 +169,9 @@ class zynthian_gui_selector(zynthian_gui_base):
         self.main_frame.columnconfigure(self.layout['list_pos'][1], minsize=lb_width, weight=lb_weight)
         self.main_frame.columnconfigure(self.layout['list_pos'][1] + 1, minsize=ctrl_width, weight=self.sidebar_shown)
 
+        if self.loading_canvas:
+            self.loading_canvas.configure(height=int(0.5 * self.height))
+
     def build_view(self):
         self.fill_list()
         self.set_selector()
@@ -215,17 +217,10 @@ class zynthian_gui_selector(zynthian_gui_base):
             self.list_data = []
         for i, item in enumerate(self.list_data):
             label = item[2]
-            if len(item) > 5 and isinstance(item[5], str):
-                label += item[5]
             self.listbox.insert(tkinter.END, label)
             if item[0] is None:
-                self.listbox.itemconfig(i,
-                                        {'bg': zynthian_gui_config.color_panel_hl,
-                                         'fg': zynthian_gui_config.color_tx_off})
-            # Can't find any engine currently using this "format" feature:
-            # last_param = item[len(item) - 1]
-            # if isinstance(last_param, dict) and 'format' in last_param:
-            # self.listbox.itemconfig(i, last_param['format'])
+                self.listbox.itemconfig(i, {'bg': zynthian_gui_config.color_panel_hl,
+                                            'fg': zynthian_gui_config.color_tx_off})
 
     def set_selector(self, zs_hidden=True):
         self.zselector_hidden = zs_hidden
@@ -405,7 +400,7 @@ class zynthian_gui_selector(zynthian_gui_base):
         return True
 
     def select_action(self, index, t='S'):
-        self.last_selected_index = index
+        pass
 
     # --------------------------------------------------------------------------
     # Zynpot Callbacks (rotaries!)
