@@ -30,7 +30,7 @@ from threading import Thread
 from subprocess import Popen, PIPE
 
 # Zynthian specific modules
-from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 from zyngui import zynthian_gui_config
 import zynconf
 
@@ -39,7 +39,7 @@ import zynconf
 # ------------------------------------------------------------------------------
 
 
-class zynthian_gui_bluetooth(zynthian_gui_selector):
+class zynthian_gui_bluetooth(zynthian_gui_selector_info):
 
     def __init__(self):
         self.proc = None
@@ -49,7 +49,7 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
         self.ble_controllers = {}
         self.ble_devices = {}           # Map of BLE devices, indexed by device address
         self.pending_actions = []       # List of BLE commands to queue
-        super().__init__('Bluetooth', True)
+        super().__init__('Bluetooth')
         self.select_path.set("Bluetooth")
 
     def build_view(self):
@@ -73,16 +73,16 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
 
         if zynthian_gui_config.bluetooth_enabled:
             self.list_data.append(
-                ("stop_bluetooth", None, "\u2612 Enable Bluetooth"))
+                ("stop_bluetooth", None, "\u2612 Enable Bluetooth", ["Bluetooth is enabled.\n\nSelect to disable Bluetooth.", "bluetooth.png"]))
             if len(self.ble_controllers) == 0:
                 self.list_data.append(
-                    (None, None, "No Bluetooth controllers detected!"))
+                    (None, None, "No Bluetooth controllers detected!", ["There are not Bluetooth controllers attached to zynthian. You may connect a Bluetooth USB device.", "bluetooth.png"]))
                 super().fill_list()
                 return
             for ctrl in sorted(self.ble_controllers.keys()):
                 chk = "\u2612" if self.ble_controllers[ctrl]["enabled"] else "\u2610"
                 self.list_data.append(
-                    ("enable_controller", ctrl, f"  {chk} {self.ble_controllers[ctrl]['alias']}"))
+                    ("enable_controller", ctrl, f"  {chk} {self.ble_controllers[ctrl]['alias']}", ["Enable/disable Bluetooth controller.\n\nOnly enable a single controller. It is advised to use a USB Bluetooth adapter because the Raspberry Pi onboard adapter has poor range.", "bluetooth.png"]))
             self.list_data.append((None, None, "Devices"))
             for addr, data in self.ble_devices.items():
                 # [name, paired, trusted, connected, is_midi]
@@ -93,10 +93,10 @@ class zynthian_gui_bluetooth(zynthian_gui_selector):
                 if data[3]:
                     title += "\uf293 "
                 title += data[0]
-                self.list_data.append((f"BLE:{addr}", addr, title))
+                self.list_data.append((f"BLE:{addr}", addr, title, ["Enable/disable this USB device.\n\nEnabling a device will pair it with zynthian. This state will be remembered.", "bluetooth.png"]))
         else:
             self.list_data.append(
-                ("start_bluetooth", None, "\u2610 Enable Bluetooth"))
+                ("start_bluetooth", None, "\u2610 Enable Bluetooth", ["Bluetooth is disabled.\n\nSelect to enable Bluetooth.", "bluetooth.png"]))
 
         super().fill_list()
 

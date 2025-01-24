@@ -4,7 +4,7 @@
 #
 # zynthian controller
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -69,7 +69,8 @@ class zynthian_controller:
         self.value_mid = None
         self.value_max = None  # Maximum value of control range
         self.value_range = 0  # Span of permissible values
-        # Factor to scale each up/down nudge #TODO: This is not set if configure is not called or options not passed
+        # Factor to scale each up/down nudge
+        # TODO: This is not set if configure is not called or options not passed
         self.nudge_factor = None
         self.nudge_factor_fine = None  # Fine factor to scale
         self.labels = None  # List of discrete value labels
@@ -78,10 +79,12 @@ class zynthian_controller:
         self.is_toggle = False  # True if control is Boolean toggle
         self.is_integer = True  # True if control is Integer
         self.is_logarithmic = False  # True if control uses logarithmic scale
-        self.is_dirty = True  # True if control value changed since last UI update
+        self.is_path = False  # True if the control is a file path (i.e. LV2's atom:Path)
+        self.path_file_types = None  # List of supported file types
         self.not_on_gui = False  # True to hint to GUI to show control
-        # Hint of order in which to display control (higher comes first)
-        self.display_priority = 0
+        self.display_priority = float("inf")  # Hint of order in which to display control (higher comes first)
+
+        self.is_dirty = True  # True if control value changed since last UI update
 
         # Parameters to send values if engine-specific send method not available
         self.midi_chan = None  # MIDI channel to send CC messages from control
@@ -93,6 +96,7 @@ class zynthian_controller:
         self.midi_cc_mode_detecting_ts = 0      # Used by CC mode detection algorithm
         self.midi_cc_mode_detecting_count = 0   # Used by CC mode detection algorithm
         self.midi_cc_mode_detecting_zero = 0    # Used by CC mode detection algorithm
+        self.midi_cc_last_ts = 0                # Timestamp of last MIDI CC message, used to debounce toggle
         self.osc_port = None  # OSC destination port
         self.osc_path = None  # OSC path to send value to
         self.graph_path = None  # Complex map of control to engine parameter
@@ -157,6 +161,10 @@ class zynthian_controller:
             self.nudge_factor = options['nudge_factor']
         if 'is_logarithmic' in options:
             self.is_logarithmic = options['is_logarithmic']
+        if 'is_path' in options:
+            self.is_path = options['is_path']
+        if 'path_file_types' in options:
+            self.path_file_types = options['path_file_types']
         if 'midi_chan' in options:
             self.midi_chan = options['midi_chan']
         if 'midi_cc' in options:
@@ -178,7 +186,11 @@ class zynthian_controller:
     def _configure(self):
         """Reconfigure based on current parameters"""
 
-        self.range = None
+        self.value_range = None
+
+        if self.is_path:
+            return
+
         if self.labels:
             # Detect toggle (on/off)
             if len(self.labels) == 2:
@@ -255,18 +267,37 @@ class zynthian_controller:
                 if self.value_range <= 1.0:
                     self.nudge_factor = 0.01
                     self.nudge_factor_fine = 0.001
-                elif self.value_range <= 10:
+                elif self.value_range <= 20:
                     self.nudge_factor = 0.1
                     self.nudge_factor_fine = 0.01
-                elif self.value_range <= 100:
+                elif self.value_range <= 250:
                     self.nudge_factor = 1
                     self.nudge_factor_fine = 0.1
-                elif self.value_range <= 1000:
-                    self.nudge_factor = self.value_range / 200
-                    self.nudge_factor_fine = 0.1
+                elif self.value_range <= 2500:
+                    self.nudge_factor = 10
+                    self.nudge_factor_fine = 1
                 else:
                     self.nudge_factor = self.value_range / 200
                     self.nudge_factor_fine = 1.0
+            elif self.engine:
+                if self.value_range <= 250:
+                    self.nudge_factor = 1
+                    self.nudge_factor_fine = 1
+                elif self.value_range <= 2500:
+                    self.nudge_factor = 10
+                    self.nudge_factor_fine = 1
+                elif self.value_range <= 25000:
+                    self.nudge_factor = 100
+                    self.nudge_factor_fine = 10
+                elif self.value_range <= 250000:
+                    self.nudge_factor = 1000
+                    self.nudge_factor_fine = 100
+                elif self.value_range <= 2500000:
+                    self.nudge_factor = 10000
+                    self.nudge_factor_fine = 1000
+                else:
+                    self.nudge_factor = 100000
+                    self.nudge_factor_fine = 10000
             else:
                 self.nudge_factor = 1
                 self.nudge_factor_fine = 1
@@ -274,7 +305,7 @@ class zynthian_controller:
         elif not self.nudge_factor_fine:
             self.nudge_factor_fine = 0.1 * self.nudge_factor
 
-        # logging.debug(f"CTRL '{self.name}' => NUDGE FACTOR={self.nudge_factor}, FINE={self.nudge_factor_fine}, LOGARITHMIC={self.is_logarithmic}")
+        #logging.debug(f"CTRL '{self.name}' => RANGE={self.value_range} NUDGE FACTOR={self.nudge_factor}, FINE={self.nudge_factor_fine}, LOGARITHMIC={self.is_logarithmic}")
 
         if self.midi_feedback is None and self.midi_chan is not None and self.midi_cc is not None:
             self.midi_feedback = [self.midi_chan, self.midi_cc]
@@ -301,6 +332,15 @@ class zynthian_controller:
         return self.value
 
     def nudge(self, val, send=True, fine=False):
+        if self.is_path:
+            logging.debug(f"OPEN FILE SELECTOR FOR TYPES: {self.path_file_types} ")
+            zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_FILE_SELECTOR,
+                                  cb_func=self.set_value,
+                                  fexts=self.path_file_types,
+                                  root_dirs=None,
+                                  path=self.value)
+            return True
+
         if self.ticks:
             index = self.get_value2index() + val
             if index < 0:
@@ -318,11 +358,9 @@ class zynthian_controller:
             return False
 
         if self.is_logarithmic and self.value_range:
-            log_val = math.log10(
-                (9 * self.value - (10 * self.value_min - self.value_max)) / self.value_range)
+            log_val = math.log10((9 * self.value - (10 * self.value_min - self.value_max)) / self.value_range)
             log_val = min(1, max(0, log_val + val * factor))
-            self.set_value((math.pow(10, log_val) * self.value_range +
-                           (10 * self.value_min - self.value_max)) / 9)
+            self.set_value((math.pow(10, log_val) * self.value_range + (10 * self.value_min - self.value_max)) / 9)
         else:
             self.set_value(self.value + val * factor, send)
         return True
@@ -335,6 +373,9 @@ class zynthian_controller:
                 self.set_value(self.value_min, send=True)
 
     def _set_value(self, val):
+        if self.is_path:
+            self.value = str(val)
+            return
         if isinstance(val, str):
             self.value = self.get_label2value(val)
             return
@@ -412,24 +453,20 @@ class zynthian_controller:
 
         # Try sending directly to chain's zmop
         if izmop is not None and izmop >= 0:
-            lib_zyncore.zmop_send_ccontrol_change(
-                izmop, self.midi_chan, self.midi_cc, mval)
+            lib_zyncore.zmop_send_ccontrol_change(izmop, self.midi_chan, self.midi_cc, mval)
         # If not possible, send to fake-UI zmip,
         # but if active MIDI channel is enabled, this would reach all chains in the MIDI channel
         # what generates issues when combining some engines (for instance, fluidsynth + pianoteq)
         else:
-            lib_zyncore.ui_send_ccontrol_change(
-                self.midi_chan, self.midi_cc, mval)
+            lib_zyncore.ui_send_ccontrol_change(self.midi_chan, self.midi_cc, mval)
 
     def send_midi_feedback(self, mval=None):
         if mval is None:
             mval = self.get_ctrl_midi_val()
         try:
-            lib_zyncore.ctrlfb_send_ccontrol_change(
-                self.midi_feedback[0], self.midi_feedback[1], mval)
+            lib_zyncore.ctrlfb_send_ccontrol_change(self.midi_feedback[0], self.midi_feedback[1], mval)
         except Exception as e:
-            logging.warning(
-                "Can't send controller feedback '{}' => Val={}".format(self.symbol, e))
+            logging.warning("Can't send controller feedback '{}' => Val={}".format(self.symbol, e))
 
     # Get index of list entry closest to given value
     def get_value2index(self, val=None):
@@ -506,12 +543,15 @@ class zynthian_controller:
         full : True to get state of all parameters or false for off-default values
         """
         state = {}
-        if full:
-            if math.isnan(self.value):
-                state['value'] = None
-            else:
+        try:
+            if full:
+                if math.isnan(self.value):
+                    state['value'] = None
+                else:
+                    state['value'] = self.value
+            elif self.value != self.value_default:
                 state['value'] = self.value
-        elif self.value != self.value_default:
+        except:
             state['value'] = self.value
         if self.midi_cc_momentary_switch:
             state['midi_cc_momentary_switch'] = self.midi_cc_momentary_switch
@@ -528,9 +568,15 @@ class zynthian_controller:
 
         # CC mode absolute
         if self.midi_cc_mode == 0:
+            if self.range_reversed:
+                val = 127 - val
             if self.is_logarithmic:
                 value = self.value_min + self.value_range * (math.pow(10, val/127) - 1) / 9
             elif self.is_toggle:
+                now = monotonic()
+                if now - self.midi_cc_last_ts < 0.02:
+                    return # Debounce
+                self.midi_cc_last_ts = now
                 if self.midi_cc_momentary_switch:
                     if val >= 64:
                         self.toggle()
@@ -547,24 +593,30 @@ class zynthian_controller:
 
         elif self.midi_cc_mode > 0:
             # CC mode relative (1, 2 or 3)
-            if self.midi_cc_mode == 1:
-                if val == 64:
+            match self.midi_cc_mode:
+                case 1:
+                    if val == 64:
+                        return
+                    dval = val - 64
+                case 2:
+                    if val == 0:
+                        return
+                    if val >= 64:
+                        dval = val - 128
+                    else:
+                        dval = val
+                case 3:
+                    if val == 16:
+                        return
+                    dval = val - 16
+                case 4:
+                    if val < 64:
+                        dval = -1
+                    else:
+                        dval = 1
+                case _:
+                    logging.error(f"Wrong MIDI CC mode {self.midi_cc_mode}")
                     return
-                dval = val - 64
-            elif self.midi_cc_mode == 2:
-                if val == 0:
-                    return
-                if val >= 64:
-                    dval = val - 128
-                else:
-                    dval = val
-            elif self.midi_cc_mode == 3:
-                if val == 16:
-                    return
-                dval = val - 16
-            else:
-                logging.error(f"Wrong MIDI CC mode {self.midi_cc_mode}")
-                return
 
             if self.is_logarithmic:
                 if dval > 0:
@@ -609,6 +661,9 @@ class zynthian_controller:
         this “0” value has been made to prevent browsing issues in Ableton Live.
         This parameter was called “knob fix” in Midi Control Center, but has been hard implemented
         in the last firmware versions.
+
+        Relative 4: The knob will send a value < 64 when turned in a negative direction and a value >= 64
+        when turned in a positive direction. No acceleration. (Not auto-detected)
         """
 
         #logging.debug(f"CC val={val} => current mode={self.midi_cc_mode}, detecting mode {self.midi_cc_mode_detecting}"

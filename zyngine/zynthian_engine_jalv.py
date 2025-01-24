@@ -28,7 +28,11 @@ import sys
 import copy
 import shutil
 import logging
-from subprocess import check_output, STDOUT
+import traceback
+from time import sleep
+#from datetime import datetime
+from threading import Thread
+from subprocess import Popen, check_output, STDOUT, PIPE
 
 from . import zynthian_lv2
 from . import zynthian_engine
@@ -76,7 +80,8 @@ class zynthian_engine_jalv(zynthian_engine):
         'http://gareus.org/oss/lv2/tuna#one': "/zynthian/zynthian-ui/zyngui/zynthian_widget_tunaone.py",
         'http://gareus.org/oss/lv2/tuna#mod': "/zynthian/zynthian-ui/zyngui/zynthian_widget_tunaone.py",
         'http://looperlative.com/plugins/lp3-basic': "/zynthian/zynthian-ui/zyngui/zynthian_widget_looper.py",
-        'http://aidadsp.cc/plugins/aidadsp-bundle/rt-neural-loader': "/zynthian/zynthian-ui/zyngui/zynthian_widget_aidax.py"
+        'http://aidadsp.cc/plugins/aidadsp-bundle/rt-neural-loader': "/zynthian/zynthian-ui/zyngui/zynthian_widget_aidax.py",
+        'http://github.com/mikeoliphant/neural-amp-modeler-lv2': "/zynthian/zynthian-ui/zyngui/zynthian_widget_nam.py"
     }
 
     # ------------------------------------------------------------------------------
@@ -135,7 +140,8 @@ class zynthian_engine_jalv(zynthian_engine):
             'Surge': ['modulation wheel', 'sustain pedal'],
             'padthv1': [],
             'Vex': [],
-            'amsynth': ['modulation wheel', 'sustain pedal']
+            'amsynth': ['modulation wheel', 'sustain pedal'],
+            'JC303': ['modulation wheel', 'sustain pedal']
         }
     }
 
@@ -151,6 +157,11 @@ class zynthian_engine_jalv(zynthian_engine):
 
     def __init__(self, eng_code, state_manager, dryrun=False, jackname=None):
         super().__init__(state_manager)
+
+        self.proc_poll_thread = None
+
+        self.save_bank = None
+        self.save_preset_uri = None
 
         if state_manager:
             self.eng_info = self.state_manager.chain_manager.engine_info[eng_code]
@@ -189,18 +200,21 @@ class zynthian_engine_jalv(zynthian_engine):
                     jalv_bin = "jalv.qt5"
                 elif self.native_gui == "Qt4UI":
                     # jalv_bin = "jalv.qt4"
-                    jalv_bin = "jalv.gtk"
+                    jalv_bin = "jalv.gtk3"
                 else:  # elif self.native_gui=="X11UI":
-                    jalv_bin = "jalv.gtk"
-                self.command = f"{jalv_bin} --jack-name {self.jackname} {self.plugin_url}"
+                    jalv_bin = "jalv.gtk3"
+                self.command = [jalv_bin, "--jack-name", self.jackname, self.plugin_url]
             else:
-                self.command = f"jalv -n {self.jackname} {self.plugin_url}"
+                self.command = ["jalv", "-n", self.jackname, self.plugin_url]
                 # Some plugins need a X11 display for running headless (QT5, QT6),
                 # but some others can't run headless if there is a valid DISPLAY defined
                 if not self.plugin_name.endswith("v1"):
                     self.command_env['DISPLAY'] = "X"
 
-            self.command_prompt = "\n> "
+            # Use jalv_asyncli (development version) =>
+            self.command[0] = "/zynthian/zynthian-sw/jalv_asyncli/build/" + self.command[0]
+
+            self.command_prompt = ">"
 
             # Jalv which uses PWD as the root for presets
             self.command_cwd = zynthian_engine.my_data_dir + "/presets/lv2"
@@ -272,6 +286,148 @@ class zynthian_engine_jalv(zynthian_engine):
         self.preset_info = zynthian_lv2.get_plugin_presets_cache(self.plugin_name)
 
     # ---------------------------------------------------------------------------
+    # Subprocess Management & IPC
+    # ---------------------------------------------------------------------------
+
+    def start(self):
+        if not self.proc:
+            logging.info("Starting Engine {}".format(self.name))
+            try:
+                logging.debug("Command: {}".format(self.command))
+                self.proc_exit = False
+                # Turns out that environment's PWD is not set automatically
+                # when cwd is specified for pexpect.spawn(), so do it here.
+                if self.command_cwd:
+                    self.command_env['PWD'] = self.command_cwd
+                # Setting cwd is because we've set PWD above. Some engines doesn't
+                # care about the process's cwd, but it is more consistent to set
+                # cwd when PWD has been set.
+                self.proc = Popen(self.command, env=self.command_env, cwd=self.command_cwd, shell=False,
+                                  text=True, bufsize=1, stdout=PIPE, stderr=STDOUT, stdin=PIPE)
+                output = self.proc_get_output()
+                self.start_proc_poll_thread()
+                return output
+
+            except Exception as err:
+                logging.error(
+                    "Can't start engine {} => {}".format(self.name, err))
+
+    def stop(self):
+        if self.proc:
+            try:
+                logging.info("Stopping Engine " + self.name)
+                self.proc_cmd("")
+                self.proc_exit = True
+                self.proc.terminate()
+                try:
+                    self.proc.wait(timeout=5)
+                except:
+                    self.proc.kill()
+                self.proc = None
+            except Exception as err:
+                logging.error(f"Can't stop engine {self.name} => {err}")
+
+    def proc_cmd(self, cmd):
+        #a = datetime.now()
+        self.proc.stdin.writelines([cmd + "\n"])
+        #tdus = (datetime.now() - a).microseconds
+        #logging.debug(f"COMMAND ({tdus}): {cmd}")
+
+    def proc_get_output(self):
+        res = ""
+        while not self.proc_exit:
+            line = self.proc.stdout.readline().strip()
+            if line == self.command_prompt:
+                break
+            elif line:
+                res += line
+        return res
+
+    def proc_poll_line(self):
+        return self.proc.stdout.readline()
+
+    def proc_poll_thread_task(self):
+        while not self.proc_exit:
+            line = self.proc.stdout.readline().strip()
+            if line:
+                self.proc_poll_parse_line(line)
+
+    def proc_poll_parse_line(self, line):
+        #logging.debug(f"{self.jackname} PARSE => " + line)
+        match line[0:5]:
+            case "#CTR>":
+                self.proc_parse_ctrl_value(line[6:])
+            case "#MON>":
+                self.proc_parse_mon_value(line[6:])
+            case "#PRS>":
+                self.proc_parse_preset(line[6:])
+            case _:
+                if line == self.command_prompt:
+                    logging.debug(f"PROMPT {self.jackname} >")
+                elif line:
+                    logging.debug(f"LOG {self.jackname} > " + line)
+
+    def proc_parse_ctrl_value(self, line):
+        parts = line.split("=")
+        if len(parts) == 2:
+            symparts = parts[0].split("#", maxsplit=1)
+            #logging.debug(f"#CTR> {symparts[1]} ({symparts[0]}) = {val}")
+            try:
+                zctrl = self.lv2_zctrl_dict[symparts[1]]
+                if zctrl.is_path:
+                    val = parts[1]
+                else:
+                    try:
+                        val = float(parts[1])
+                    except Exception as e:
+                        logging.warning(f"Wrong controller value when parsing jalv output => {line}")
+                        return
+                zctrl.set_value(val, False)
+                if zctrl.graph_path is None:
+                    try:
+                        zctrl.graph_path = int(symparts[0])
+                        #logging.debug(f"UPDATING JALV ZCTRL INDEX FOR '{symparts[1]}' => {zctrl.graph_path}")
+                    except:
+                        logging.warning(f"Cant't parse controller index from jalv output: {line}")
+            except Exception as e:
+                # TODO This shouldn't happen when property parameters are fully implemented
+                logging.warning(f"Unknown controller when parsing jalv output => {line}")
+        else:
+            logging.warning(f"Wrong controller format when parsing jalv output => {line}")
+
+    def proc_parse_mon_value(self, line):
+        parts = line.split("=")
+        if len(parts) == 2:
+            try:
+                val = float(parts[1])
+            except Exception as e:
+                logging.warning(f"Wrong monitor value when parsing jalv output => {line}")
+                return
+            symparts = parts[0].split("#", maxsplit=1)
+            #logging.debug(f"#MON> {symparts[1]} ({symparts[0]}) = {val}")
+            try:
+                self.lv2_monitors_dict[symparts[1]] = val
+            except Exception as e:
+                # TODO This shouldn't happen when property parameters are fully implemented
+                logging.warning(f"Unknown monitor when parsing jalv output => {line}")
+        else:
+            logging.warning(f"Wrong monitor format when parsing jalv output => {line}")
+
+    def proc_parse_preset(self, line):
+        parts = line.split(" ", maxsplit=1)
+        if len(parts) == 2 and parts[1][0] == "(" and parts[1][-1] == ")":
+            self.add_preset(parts[0], parts[1][1:-1])
+            self.save_preset_uri = parts[0]
+        else:
+            logging.warning(f"Wrong preset format when parsing jalv output => {line}")
+
+    def start_proc_poll_thread(self):
+        self.proc_poll_thread = Thread(target=self.proc_poll_thread_task, args=())
+        self.proc_poll_thread.name = f"proc_poll_{self.jackname}"
+        self.proc_poll_thread.daemon = True  # thread dies with the program
+        self.proc_poll_thread.start()
+
+    # ---------------------------------------------------------------------------
     # Processor Management
     # ---------------------------------------------------------------------------
 
@@ -308,7 +464,11 @@ class zynthian_engine_jalv(zynthian_engine):
     def get_bank_list(self, processor=None):
         bank_list = []
         for bank_label, info in self.preset_info.items():
-            bank_list.append((str(info['bank_url']), None, bank_label, None))
+            if info['bank_url'] is None:
+                bank_uri = ""
+            else:
+                bank_uri = str(info['bank_url'])
+            bank_list.append((bank_uri, None, bank_label, None))
         if len(bank_list) == 0:
             bank_list.append(("", None, "None", None))
         return bank_list
@@ -317,7 +477,9 @@ class zynthian_engine_jalv(zynthian_engine):
         return True
 
     def get_user_bank_urid(self, bank_name):
-        return "file://{}/presets/lv2/{}.presets.lv2/{}".format(self.my_data_dir, zynthian_engine_jalv.sanitize_text(self.plugin_name), zynthian_engine_jalv.sanitize_text(bank_name))
+        return "file://{}/presets/lv2/{}.presets.lv2/{}".format(self.my_data_dir,
+                                                                zynthian_engine_jalv.sanitize_text(self.plugin_name),
+                                                                zynthian_engine_jalv.sanitize_text(bank_name))
 
     def create_user_bank(self, bank_name):
         bundle_path = "{}/presets/lv2/{}.presets.lv2".format(
@@ -395,24 +557,7 @@ class zynthian_engine_jalv(zynthian_engine):
     def set_preset(self, processor, preset, preload=False):
         if not preset[0]:
             return
-        output = self.proc_cmd("preset {}".format(preset[0]))
-
-        # Parse new controller values
-        for line in output.split("\n"):
-            try:
-                parts = line.split(" = ")
-                if len(parts) == 2:
-                    try:
-                        val = float(parts[1])
-                    except Exception as e:
-                        logging.warning(f"Wrong parameter value when loading LV2 preset => {line}")
-                        continue
-                    self.lv2_zctrl_dict[parts[0]]._set_value(val)
-            except Exception as e:
-                # TODO This shouldn't happen when property parameters are fully implemented
-                #logging.warning(f"Unknown parameter when loading LV2 preset => {line}")
-                pass
-
+        self.proc_cmd(f"preset {preset[0]}")
         return True
 
     def cmp_presets(self, preset1, preset2):
@@ -425,7 +570,7 @@ class zynthian_engine_jalv(zynthian_engine):
             return False
 
     def is_preset_user(self, preset):
-        return isinstance(preset[0], str) and preset[0].startswith("file://{}/presets/lv2/".format(self.my_data_dir))
+        return isinstance(preset[0], str) and preset[0].startswith(f"file://{self.my_data_dir}/presets/lv2/")
 
     def preset_exists(self, bank, preset_name):
         # TODO: This would be more robust using URI but that is created dynamically by save_preset()
@@ -440,58 +585,68 @@ class zynthian_engine_jalv(zynthian_engine):
         return False
 
     def save_preset(self, bank, preset_name):
-        # Save preset (jalv)
         if not bank:
-            bank = ["", None, "None", None]
-        res = self.proc_cmd("save preset %s,%s" %
-                            (bank[0], preset_name)).split("\n")
-
-        if res[-1].startswith("ERROR"):
-            logging.error("Can't save preset => {}".format(res))
+            self.save_bank = ["", None, "None", None]
         else:
-            preset_uri = res[-1].strip()
-            logging.info("Saved preset '{}' => {}".format(
-                preset_name, preset_uri))
+            self.save_bank = bank
 
-            # Add to cache
-            try:
-                # Add bank if needed
-                if bank[2] not in self.preset_info:
-                    self.preset_info[bank[2]] = {
-                        'bank_url': bank[0],
-                        'presets': []
-                    }
-                # Add preset
-                if not self.preset_exists(bank, preset_name):
-                    self.preset_info[bank[2]]['presets'].append(
-                        {'label': preset_name,  "url": preset_uri})
-                    # Save presets cache
-                    zynthian_lv2.save_plugin_presets_cache(
-                        self.plugin_name, self.preset_info)
-                # Return preset uri
-                return preset_uri
-            except Exception as e:
-                logging.error(e)
+        # Reset save_uri
+        self.save_preset_uri = None
+        # Send "save preset" command to jalv
+        if self.save_bank[0]:
+            cmd = f"save preset {self.save_bank[0]},{preset_name}"
+        else:
+            cmd = f"save preset {preset_name}"
+        #logging.debug(f"SAVE PRESET COMMAND => {cmd}")
+        self.proc_cmd(cmd)
+        # Wait for save preset feedback
+        i = 0
+        while i < 20 and self.save_preset_uri == None:
+            sleep(0.1)
+            i += 1
+        return self.save_preset_uri
+
+    def add_preset(self, preset_uri, preset_name):
+        logging.info(f"Add preset '{preset_name}' => {preset_uri}")
+        # Add to cache
+        try:
+            # Add bank if needed
+            if self.save_bank[2] not in self.preset_info:
+                self.preset_info[self.save_bank[2]] = {
+                    'bank_url': self.save_bank[0],
+                    'presets': []
+                }
+            # Add preset
+            if not self.preset_exists(self.save_bank, preset_name):
+                self.preset_info[self.save_bank[2]]['presets'].append(
+                    {'label': preset_name,
+                     "url": preset_uri})
+                # Save presets cache
+                zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
+                # If added, return true
+                return True
+        except Exception as e:
+            logging.error(e)
+        return False
 
     def delete_preset(self, bank, preset):
         if self.is_preset_user(preset):
             try:
                 # Remove from LV2 ttl
                 zynthian_engine_jalv.lv2_remove_preset(preset[0])
-
                 # Remove from  cache
                 for i, p in enumerate(self.preset_info[bank[2]]['presets']):
                     if p['url'] == preset[0]:
                         del self.preset_info[bank[2]]['presets'][i]
-                        zynthian_lv2.save_plugin_presets_cache(
-                            self.plugin_name, self.preset_info)
+                        zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
                         break
-
             except Exception as e:
                 logging.error(e)
 
         try:
-            return len(self.preset_info[bank[2]]['presets'])
+            n = len(self.preset_info[bank[2]]['presets'])
+            if n > 0:
+                return n
         except Exception as e:
             pass
         zynthian_engine_jalv.lv2_remove_bank(bank)
@@ -501,18 +656,13 @@ class zynthian_engine_jalv(zynthian_engine):
         if self.is_preset_user(preset):
             try:
                 # Update LV2 ttl
-                zynthian_engine_jalv.lv2_rename_preset(
-                    preset[0], new_preset_name)
-
+                zynthian_engine_jalv.lv2_rename_preset(preset[0], new_preset_name)
                 # Update cache
                 for i, p in enumerate(self.preset_info[bank[2]]['presets']):
                     if p['url'] == preset[0]:
-                        self.preset_info[bank[2]
-                                         ]['presets'][i]['label'] = new_preset_name
-                        zynthian_lv2.save_plugin_presets_cache(
-                            self.plugin_name, self.preset_info)
+                        self.preset_info[bank[2]]['presets'][i]['label'] = new_preset_name
+                        zynthian_lv2.save_plugin_presets_cache(self.plugin_name, self.preset_info)
                         break
-
             except Exception as e:
                 logging.error(e)
 
@@ -534,106 +684,136 @@ class zynthian_engine_jalv(zynthian_engine):
                     for p in info['scale_points']:
                         labels.append(p['label'])
                         values.append(p['value'])
-
                     zctrls[symbol] = zynthian_controller(self, symbol, {
                         'name': info['name'],
                         'group_symbol': info['group_symbol'],
                         'group_name': info['group_name'],
-                        'graph_path': info['index'],
+                        #'graph_path': info['index'],
                         'value': info['value'],
                         'labels': labels,
                         'ticks': values,
+                        'value_default': info['value'],
                         'value_min': values[0],
                         'value_max': values[-1],
                         'is_toggle': info['is_toggled'],
                         'is_integer': info['is_integer'],
+                        'is_logarithmic': False,
+                        'is_path': False,
+                        'path_file_types': None,
                         'not_on_gui': info['not_on_gui'],
                         'display_priority': info['display_priority'],
                     })
 
                 # If it's a numeric controller ...
-                else:
-                    if info['is_integer']:
-                        if info['is_toggled']:
-                            if info['value'] == 0:
-                                val = 'off'
-                            else:
-                                val = 'on'
-
-                            zctrls[symbol] = zynthian_controller(self, symbol, {
-                                'name': info['name'],
-                                'group_symbol': info['group_symbol'],
-                                'group_name': info['group_name'],
-                                'graph_path': info['index'],
-                                'value': val,
-                                'labels': ['off', 'on'],
-                                'ticks': [int(info['range']['min']), int(info['range']['max'])],
-                                'value_min': int(info['range']['min']),
-                                'value_max': int(info['range']['max']),
-                                'is_toggle': True,
-                                'is_integer': True,
-                                'not_on_gui': info['not_on_gui'],
-                                'display_priority': info['display_priority']
-                            })
+                elif info['is_integer']:
+                    if info['is_toggled']:
+                        if info['value'] == 0:
+                            val = 'off'
                         else:
-                            zctrls[symbol] = zynthian_controller(self, symbol, {
-                                'name': info['name'],
-                                'group_symbol': info['group_symbol'],
-                                'group_name': info['group_name'],
-                                'graph_path': info['index'],
-                                'value': int(info['value']),
-                                'value_default': int(info['range']['default']),
-                                'value_min': int(info['range']['min']),
-                                'value_max': int(info['range']['max']),
-                                'is_toggle': False,
-                                'is_integer': True,
-                                'is_logarithmic': info['is_logarithmic'],
-                                'not_on_gui': info['not_on_gui'],
-                                'display_priority': info['display_priority']
-                            })
+                            val = 'on'
+                        zctrls[symbol] = zynthian_controller(self, symbol, {
+                            'name': info['name'],
+                            'group_symbol': info['group_symbol'],
+                            'group_name': info['group_name'],
+                            #'graph_path': info['index'],
+                            'value': val,
+                            'labels': ['off', 'on'],
+                            'ticks': [int(info['range']['min']), int(info['range']['max'])],
+                            'value_default': val,
+                            'value_min': int(info['range']['min']),
+                            'value_max': int(info['range']['max']),
+                            'is_toggle': True,
+                            'is_integer': True,
+                            'is_logarithmic': False,
+                            'is_path': False,
+                            'path_file_types': None,
+                            'not_on_gui': info['not_on_gui'],
+                            'display_priority': info['display_priority']
+                        })
                     else:
-                        if info['is_toggled']:
-                            if info['value'] == 0:
-                                val = 'off'
-                            else:
-                                val = 'on'
-
-                            zctrls[symbol] = zynthian_controller(self, symbol, {
-                                'name': info['name'],
-                                'group_symbol': info['group_symbol'],
-                                'group_name': info['group_name'],
-                                'graph_path': info['index'],
-                                'value': val,
-                                'labels': ['off', 'on'],
-                                'ticks': [info['range']['min'], info['range']['max']],
-                                'value_min': info['range']['min'],
-                                'value_max': info['range']['max'],
-                                'is_toggle': True,
-                                'is_integer': False,
-                                'not_on_gui': info['not_on_gui'],
-                                'display_priority': info['display_priority']
-                            })
-                        else:
-                            zctrls[symbol] = zynthian_controller(self, symbol, {
-                                'name': info['name'],
-                                'group_symbol': info['group_symbol'],
-                                'group_name': info['group_name'],
-                                'graph_path': info['index'],
-                                'value': info['value'],
-                                'value_default': float(info['range']['default']),
-                                'value_min': float(info['range']['min']),
-                                'value_max': float(info['range']['max']),
-                                'is_toggle': False,
-                                'is_integer': False,
-                                'is_logarithmic': info['is_logarithmic'],
-                                'not_on_gui': info['not_on_gui'],
-                                'display_priority': info['display_priority'],
-                                'envelope': info['envelope']
-                            })
+                        zctrls[symbol] = zynthian_controller(self, symbol, {
+                            'name': info['name'],
+                            'group_symbol': info['group_symbol'],
+                            'group_name': info['group_name'],
+                            #'graph_path': info['index'],
+                            'value': int(info['value']),
+                            'value_default': int(info['value']),
+                            'value_min': int(info['range']['min']),
+                            'value_max': int(info['range']['max']),
+                            'is_toggle': False,
+                            'is_integer': True,
+                            'is_logarithmic': info['is_logarithmic'],
+                            'is_path': False,
+                            'path_file_types': None,
+                            'not_on_gui': info['not_on_gui'],
+                            'display_priority': info['display_priority']
+                        })
+                elif info['is_toggled']:
+                    if info['value'] == 0:
+                        val = 'off'
+                    else:
+                        val = 'on'
+                    zctrls[symbol] = zynthian_controller(self, symbol, {
+                        'name': info['name'],
+                        'group_symbol': info['group_symbol'],
+                        'group_name': info['group_name'],
+                        #'graph_path': info['index'],
+                        'value': val,
+                        'labels': ['off', 'on'],
+                        'ticks': [info['range']['min'], info['range']['max']],
+                        'value_default': val,
+                        'value_min': info['range']['min'],
+                        'value_max': info['range']['max'],
+                        'is_toggle': True,
+                        'is_integer': False,
+                        'is_logarithmic': False,
+                        'is_path': False,
+                        'path_file_types': None,
+                        'not_on_gui': info['not_on_gui'],
+                        'display_priority': info['display_priority']
+                    })
+                elif info['is_path']:
+                    zctrls[symbol] = zynthian_controller(self, symbol, {
+                        'name': info['name'],
+                        'group_symbol': info['group_symbol'],
+                        'group_name': info['group_name'],
+                        #'graph_path': info['index'],
+                        'value': None,
+                        'value_default': None,
+                        'value_min': None,
+                        'value_max': None,
+                        'is_toggle': False,
+                        'is_integer': False,
+                        'is_logarithmic': False,
+                        'is_path': True,
+                        'path_file_types': info['path_file_types'],
+                        'not_on_gui': info['not_on_gui'],
+                        'display_priority': info['display_priority']
+                    })
+                else:
+                    zctrls[symbol] = zynthian_controller(self, symbol, {
+                        'name': info['name'],
+                        'group_symbol': info['group_symbol'],
+                        'group_name': info['group_name'],
+                        #'graph_path': info['index'],
+                        'value': float(info['value']),
+                        'value_default': float(info['value']),
+                        'value_min': float(info['range']['min']),
+                        'value_max': float(info['range']['max']),
+                        'is_toggle': False,
+                        'is_integer': False,
+                        'is_logarithmic': info['is_logarithmic'],
+                        'is_path': False,
+                        'path_file_types': None,
+                        'not_on_gui': info['not_on_gui'],
+                        'display_priority': info['display_priority'],
+                        'envelope': info['envelope']
+                    })
 
             # If control info is not OK
             except Exception as e:
-                logging.error(e)
+                #logging.error(e)
+                logging.exception(traceback.format_exc())
 
         if self.type == "Audio Effect":
             if "bypass" in zctrls:
@@ -658,22 +838,14 @@ class zynthian_engine_jalv(zynthian_engine):
                 })
 
         # Sort by suggested display_priority
-        new_index = sorted(
-            zctrls, key=lambda x: zctrls[x].display_priority, reverse=True)
+        new_index = sorted(zctrls, key=lambda x: zctrls[x].display_priority, reverse=True)
         zctrls = {k: zctrls[k] for k in new_index}
 
         return zctrls
 
     def get_monitors_dict(self):
-        self.lv2_monitors_dict = {}
-        for line in self.proc_cmd("monitors").split("\n"):
-            try:
-                parts = line.split(" = ")
-                if len(parts) == 2:
-                    self.lv2_monitors_dict[parts[0]] = float(parts[1])
-            except Exception as e:
-                logging.error(e)
-
+        self.proc_cmd("monitors")
+        # Return current monitor values => No wait for the asynchronous response!
         return self.lv2_monitors_dict
 
     def get_controllers_dict(self, processor):
@@ -686,14 +858,26 @@ class zynthian_engine_jalv(zynthian_engine):
         return zctrls
 
     def send_controller_value(self, zctrl):
-        try:
-            self.proc_cmd("set %d %.6f" % (zctrl.graph_path, zctrl.value))
-        except:
-            if zctrl.midi_cc:
+        if zctrl.midi_cc:
+            try:
                 lib_zyncore.zmop_send_ccontrol_change(zctrl.processor.chain.zmop_index,
                                                       zctrl.processor.midi_chan_engine,
                                                       zctrl.midi_cc,
                                                       zctrl.get_ctrl_midi_val())
+            except Exception as e:
+                logging.error(f"Can't send controller '{zctrl.symbol}' with CC{zctrl.midi_cc} to zmop {zctrl.processor.chain.zmop_index} => {e}")
+        elif zctrl.graph_path is not None:
+            if zctrl.is_path:
+                #logging.debug("set %d %s" % (zctrl.graph_path, zctrl.value))
+                self.proc_cmd("set %d %s" % (zctrl.graph_path, zctrl.value))
+            else:
+                self.proc_cmd("set %d %.6f" % (zctrl.graph_path, zctrl.value))
+        else:
+            if zctrl.is_path:
+                #logging.debug("%s=%s" % (zctrl.symbol, zctrl.value))
+                self.proc_cmd("%s=%s" % (zctrl.symbol, zctrl.value))
+            else:
+                self.proc_cmd("%s=%.6f" % (zctrl.symbol, zctrl.value))
 
     # ---------------------------------------------------------------------------
     # API methods
@@ -800,8 +984,8 @@ class zynthian_engine_jalv(zynthian_engine):
         # Try to copy LV2 bundles ...
         if os.path.isdir(dpath):
             # Find manifest.ttl
-            manifest_files = check_output(
-                "find \"{}\" -type f -iname manifest.ttl".format(dpath), shell=True).decode("utf-8").split("\n")
+            manifest_files = check_output(f"find \"{dpath}\" -type f -iname manifest.ttl",
+                                          shell=True).decode("utf-8").split("\n")
             # Copy LV2 bundle directories to destiny ...
             count = 0
             for f in manifest_files:
@@ -809,8 +993,7 @@ class zynthian_engine_jalv(zynthian_engine):
                 head, bname = os.path.split(bpath)
                 if bname:
                     shutil.rmtree(zynthian_engine.my_data_dir +"/presets/lv2/" + bname, ignore_errors=True)
-                    shutil.move(
-                        bpath, zynthian_engine.my_data_dir + "/presets/lv2/")
+                    shutil.move(bpath, zynthian_engine.my_data_dir + "/presets/lv2/")
                     count += 1
             if count > 0:
                 cls.refresh_zynapi_instance()
@@ -895,10 +1078,8 @@ class zynthian_engine_jalv(zynthian_engine):
         brre = re.compile(r"([\s]+rdfs:label[\s]+\").*(\" )")
         for i, p in enumerate(parts):
             if bmre1.search(p) and bmre2.search(p):
-                new_bank_name = zynthian_engine_jalv.sanitize_text(
-                    new_bank_name)
-                parts[i] = brre.sub(lambda m: m.group(
-                    1)+new_bank_name+m.group(2), p)
+                new_bank_name = zynthian_engine_jalv.sanitize_text(new_bank_name)
+                parts[i] = brre.sub(lambda m: m.group(1)+new_bank_name+m.group(2), p)
                 zynthian_engine_jalv.ttl_write_parts(man_fpath, parts)
                 return
 
@@ -920,10 +1101,8 @@ class zynthian_engine_jalv(zynthian_engine):
         renamed = False
         for i, p in enumerate(man_parts):
             if bmre1.search(p) and bmre2.search(p):
-                new_preset_name = zynthian_engine_jalv.sanitize_text(
-                    new_preset_name)
-                man_parts[i] = brre.sub(lambda m: m.group(
-                    1) + new_preset_name + m.group(2), p)
+                new_preset_name = zynthian_engine_jalv.sanitize_text(new_preset_name)
+                man_parts[i] = brre.sub(lambda m: m.group(1) + new_preset_name + m.group(2), p)
                 zynthian_engine_jalv.ttl_write_parts(man_fpath, man_parts)
                 renamed = True  # TODO: This overrides subsequent assertion in prs_parts
                 break
@@ -931,8 +1110,7 @@ class zynthian_engine_jalv(zynthian_engine):
         for i, p in enumerate(prs_parts):
             if bmre2.search(p):
                 # new_preset_name = zynthian_engine_jalv.sanitize_text(new_preset_name)
-                prs_parts[i] = brre.sub(lambda m: m.group(
-                    1) + new_preset_name + m.group(2), p)
+                prs_parts[i] = brre.sub(lambda m: m.group(1) + new_preset_name + m.group(2), p)
                 zynthian_engine_jalv.ttl_write_parts(preset_path, prs_parts)
                 renamed = True
                 break
@@ -942,6 +1120,7 @@ class zynthian_engine_jalv(zynthian_engine):
 
     @staticmethod
     def lv2_remove_preset(preset_path):
+        logging.debug(f"Removing LV2 preset '{preset_path}'")
         preset_path = preset_path[7:]
         bundle_path, preset_fname = os.path.split(preset_path)
 
@@ -955,13 +1134,15 @@ class zynthian_engine_jalv(zynthian_engine):
                 del parts[i]
                 zynthian_engine_jalv.ttl_write_parts(man_fpath, parts)
                 os.remove(preset_path)
-                return
+                return True
+        return False
 
     @staticmethod
     #   Remove a preset bank
     #   bank: Bank object to remove
     #   Returns: True on success
     def lv2_remove_bank(bank):
+        logging.debug(f"Removing LV2 bank '{bank[0]}'")
         try:
             path = bank[0][7:bank[0].rfind("/")]
         except Exception as e:

@@ -188,6 +188,8 @@ class zynthian_gui_mixer_strip():
             self.fader_bg), "press", self.on_fader_press)
         self.parent.zyngui.multitouch.tag_bind(self.parent.main_canvas, "fader:%s" % (
             self.fader_bg), "motion", self.on_fader_motion)
+        self.parent.zyngui.multitouch.tag_bind(self.parent.main_canvas, "fader:%s" % (
+            self.fader_bg), "motion", self.on_fader_motion)
         self.parent.main_canvas.tag_bind(
             f"fader:{self.fader_bg}", "<ButtonPress-1>", self.on_fader_press)
         self.parent.main_canvas.tag_bind(

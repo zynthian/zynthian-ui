@@ -62,7 +62,7 @@ from zyngine.zynthian_ctrldev_manager import zynthian_ctrldev_manager
 # Zynthian State Manager Class
 # ----------------------------------------------------------------------------
 
-SNAPSHOT_SCHEMA_VERSION = 1
+SNAPSHOT_SCHEMA_VERSION = 1.1
 capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
 ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 
@@ -1090,7 +1090,7 @@ class zynthian_state_manager:
             if "schema_version" not in state or state["schema_version"] != zynthian_legacy_snapshot.SNAPSHOT_SCHEMA_VERSION:
                 self.set_busy_details("fixing legacy snapshot")
                 converter = zynthian_legacy_snapshot.zynthian_legacy_snapshot()
-                converter.convert_state(state)
+                state = converter.convert_state(state)
             if state is None:
                 return
 
@@ -1678,6 +1678,7 @@ class zynthian_state_manager:
                         continue
                     fixed_processors[processor_id] = processor_state
                 state['processors'] = fixed_processors
+
         return zs3_state
 
     def purge_zs3(self):
@@ -2325,7 +2326,7 @@ class zynthian_state_manager:
 
         self.end_busy("start_netump")
 
-    def stop_rtpmidi(self, save_config=True, wait=0):
+    def stop_netump(self, save_config=True, wait=0):
         service = "jacknetumpd"
         if not zynconf.is_service_active(service):
             zynthian_gui_config.midi_netump_enabled = 0

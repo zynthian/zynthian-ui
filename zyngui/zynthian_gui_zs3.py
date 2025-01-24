@@ -29,33 +29,32 @@ import logging
 # Zynthian specific modules
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngui import zynthian_gui_config
-from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 
 # ------------------------------------------------------------------------------
 # Zynthian Sub-SnapShot (ZS3) GUI Class
 # ------------------------------------------------------------------------------
 
 
-class zynthian_gui_zs3(zynthian_gui_selector):
+class zynthian_gui_zs3(zynthian_gui_selector_info):
 
     def __init__(self):
-        super().__init__('Program', True)
+        super().__init__('Program', default_icon="zs3.png")
 
         self.zs3_waiting_label = tkinter.Label(self.main_frame,
                                                text='Waiting for MIDI Program Change...',
-                                               font=(
-                                                   zynthian_gui_config.font_family, zynthian_gui_config.font_size-2),
+                                               font=(zynthian_gui_config.font_family,
+                                                     int(0.85 * zynthian_gui_config.font_size)),
                                                fg=zynthian_gui_config.color_ml,
-                                               bg=zynthian_gui_config.color_panel_bg
-                                               )
+                                               bg=zynthian_gui_config.color_panel_bg)
 
     def show_waiting_label(self):
         if self.wide:
             padx = (0, 2)
         else:
             padx = (2, 2)
-        self.zs3_waiting_label.grid(
-            row=zynthian_gui_config.layout['list_pos'][0] + 4, column=zynthian_gui_config.layout['list_pos'][1], padx=padx, sticky='ew')
+        self.zs3_waiting_label.grid(row=self.layout['list_pos'][0] + 4, column=self.layout['list_pos'][1],
+                                    padx=padx, sticky='ew')
 
     def hide_waiting_label(self):
         self.zs3_waiting_label.grid_forget()
@@ -81,11 +80,11 @@ class zynthian_gui_zs3(zynthian_gui_selector):
 
     def fill_list(self):
         self.list_data = []
-        self.list_data.append(("SAVE_ZS3", None, "Save as new ZS3"))
+        self.list_data.append(("SAVE_ZS3", None, "Save as new ZS3", ["Save current state as new ZS3.", "zs3_new.png"]))
         idx = 2
         try:
             self.list_data.append(
-                ("zs3-0", self.zyngui.state_manager.zs3["zs3-0"], "Default state"))
+                ("zs3-0", self.zyngui.state_manager.zs3["zs3-0"], "Default state", ["Load default state (zs3-0).", "zs3_default.png"]))
             idx += 1
         except:
             pass

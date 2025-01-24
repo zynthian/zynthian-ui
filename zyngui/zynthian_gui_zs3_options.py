@@ -26,20 +26,19 @@
 import logging
 
 # Zynthian specific modules
-from zyngui import zynthian_gui_config
-from zyngui.zynthian_gui_selector import zynthian_gui_selector
+from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 
 # ------------------------------------------------------------------------------
 # Zynthian ZS3 options GUI Class
 # ------------------------------------------------------------------------------
 
 
-class zynthian_gui_zs3_options(zynthian_gui_selector):
+class zynthian_gui_zs3_options(zynthian_gui_selector_info):
 
     def __init__(self):
         self.last_action = None
         self.zs3_id = None
-        super().__init__('Option', True)
+        super().__init__('Option', default_icon="zs3.png")
 
     def config(self, id):
         self.last_action = None
@@ -48,13 +47,12 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
     def fill_list(self):
         self.list_data = []
         if self.zs3_id == "zs3-0":
-            self.list_data.append((self.zs3_update, 2, "Overwrite"))
+            self.list_data.append((self.zs3_update, 2, "Overwrite", ["Save current state overwritting this ZS3.", "zs3_overwrite.png"]))
         else:
-            self.list_data.append(
-                (self.zs3_restoring_submenu, 1, "Restore options..."))
-            self.list_data.append((self.zs3_update, 2, "Overwrite"))
-            self.list_data.append((self.zs3_rename, 3, "Rename"))
-            self.list_data.append((self.zs3_delete, 4, "Delete"))
+            self.list_data.append((self.zs3_restoring_submenu, 1, "Restore options...", ["Configure data to restore from this ZS3.", "zs3_settings.png"]))
+            self.list_data.append((self.zs3_update, 2, "Overwrite", ["Save current state overwritting this ZS3.", "zs3_overwrite.png"]))
+            self.list_data.append((self.zs3_rename, 3, "Rename", ["Rename this ZS3.", "zs3_rename.png"]))
+            self.list_data.append((self.zs3_delete, 4, "Delete", ["Delete this ZS3.", "zs3_delete.png"]))
             self.preselect_last_action()
         super().fill_list()
 
@@ -115,6 +113,9 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
                 if chain is None:
                     continue
                 label = chain.get_name()
+                while f"\u2612 {label}" in options or f"\u2610 {label}" in options:
+                    # Make each option title unique so that they are not omitted from the options menu
+                    label += " "
                 try:
                     restore_flag = chain_state["restore"]
                 except:
@@ -152,7 +153,15 @@ class zynthian_gui_zs3_options(zynthian_gui_selector):
 
     def zs3_update(self):
         logging.info("Updating ZS3 '{}'".format(self.zs3_id))
+        restore_chains = []
+        state = self.zyngui.state_manager.zs3[self.zs3_id]
+        if "chains" in state:
+            for chain_id, chain_state in state["chains"].items():
+                if "restore" in chain_state and not chain_state["restore"]:
+                    restore_chains.append(chain_id)
         self.zyngui.state_manager.save_zs3(self.zs3_id)
+        for chain_id in restore_chains:
+            self.zyngui.state_manager.toggle_zs3_chain_restore_flag(self.zs3_id, chain_id)
         self.zyngui.close_screen()
 
     def zs3_delete(self):

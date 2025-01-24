@@ -2,9 +2,9 @@
 # ****************************************************************************
 # ZYNTHIAN PROJECT: Zynthian Legacy Snapshots
 #
-# Legacy snapshots convertion
+# Legacy snapshots conversion
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 # ****************************************************************************
@@ -24,15 +24,18 @@
 # ****************************************************************************
 
 from json import JSONDecoder
+from math import ceil
+
 from zyngine.zynthian_chain_manager import zynthian_chain_manager
 import logging
 
-SNAPSHOT_SCHEMA_VERSION = 2
+SNAPSHOT_SCHEMA_VERSION = 3
 
 class zynthian_legacy_snapshot:
 
     def __init__(self):
         self.engine_info = zynthian_chain_manager.get_engine_info()
+        self.snapshot = None
 
     def convert_file(self, fpath):
         """Converts legacy snapshot to current version
@@ -60,30 +63,33 @@ class zynthian_legacy_snapshot:
 
         if "schema_version" not in snapshot:
             snapshot["schema_version"] = 0
+        snapshot["schema_version"] = ceil(snapshot["schema_version"])
         if snapshot["schema_version"] > SNAPSHOT_SCHEMA_VERSION:
             return None
+        self.snapshot = snapshot
 
         # Iterate through each version, applying fixes to move to next version
         for version in range(snapshot["schema_version"], SNAPSHOT_SCHEMA_VERSION):
             logging.info(f"Converting snapshot from schema V{version} to V{version+1}")
-            snapshot = getattr(self, f'version_{version}')(snapshot)
+            getattr(self, f'version_{version}')()
+        return self.snapshot
 
-    def version_1(self, snapshot):
-        # Convert snapshot from schema V1 to V2
+    def version_2(self):
+        # Convert snapshot from schema V2 to V3
 
         absolute_cc = {}
-        if "midi_capture" in snapshot:
-            for device in list(snapshot["midi_capture"]):
-                absolute_cc |= snapshot["midi_capture"].pop(device)
+        if "midi_capture" in self.snapshot:
+            for device in list(self.snapshot["midi_capture"]):
+                absolute_cc |= self.snapshot["midi_capture"].pop(device)
         if absolute_cc:
-            if "global" not in snapshot:
-                snapshot["global"] = {}
-            snapshot["global"]["absolute_cc"] = absolute_cc
+            if "global" not in self.snapshot:
+                self.snapshot["global"] = {}
+            self.snapshot["global"]["absolute_cc"] = absolute_cc
         mixer_map = {16: 255} # Map of "MI" mixer proc id indexed by old mixer chan
-        if "chains" in snapshot:
+        if "chains" in self.snapshot:
             # Get list of used processor ids:
             proc_ids = []
-            for chain_config in snapshot["chains"].values():
+            for chain_config in self.snapshot["chains"].values():
                 if "slots" in chain_config:
                     for slot in chain_config["slots"]:
                         for id in slot:
@@ -95,7 +101,7 @@ class zynthian_legacy_snapshot:
                 next_id = 1
 
             # Insert mixer processors in audio chains and remove mixer channel/fader refs
-            for chain_id, chain_config in snapshot["chains"].items():
+            for chain_id, chain_config in self.snapshot["chains"].items():
                 try:
                     mixer_chan = chain_config.pop("mixer_chan")
                     fader_pos = chain_config.pop("fader_pos")
@@ -110,8 +116,8 @@ class zynthian_legacy_snapshot:
                 except:
                     pass
         #TODO: Update mixer values
-        if "zs3" in snapshot:
-            for zs3 in snapshot["zs3"].values():
+        if "zs3" in self.snapshot:
+            for zs3 in self.snapshot["zs3"].values():
                 if "mixer" in zs3:
                     if "chains" not in zs3:
                         zs3["chains"] = {}
@@ -143,11 +149,22 @@ class zynthian_legacy_snapshot:
                             if key not in zs3["midi_cc"]:
                                 zs3["midi_cc"][key] = []
                             zs3["midi_cc"][key].append([proc_id, param])
-        return snapshot
 
-    def version_0(self, snapshot):
+    def version_1(self):
+        # Convert snapshot from schema V1 to V2
+
+        # Migrate stored Output Level values
+        try:
+            amixer_ctrls = self.snapshot["alsa_mixer"]["controllers"]
+            for symbol in ["Digital_0", "Digital_1"]:
+                v = amixer_ctrls[symbol]["value"]
+                amixer_ctrls[symbol]["value"] = self.alsa_mixer_processor.controllers_dict[symbol].ticks[v]
+        except:
+            pass
+
+    def version_0(self):
         # Convert legacy snapshots from before we started to use schema versioning
-        snapshot = self.convert_old_legacy(snapshot)
+        self.convert_old_legacy()
         self.jackname_counters = {}
         self.aeolus_count = 0
         self.setBfree_count = 0
@@ -175,49 +192,49 @@ class zynthian_legacy_snapshot:
 
         try:
             state["zs3"]["zs3-0"]["active_chain"] = int(
-                f"{snapshot['index']:02d}") + 1
+                f"{self.snapshot['index']:02d}") + 1
         except:
             pass
 
         try:
-            state["last_snapshot_fpath"] = snapshot["last_snapshot_fpath"]
+            state["last_snapshot_fpath"] = self.snapshot["last_snapshot_fpath"]
         except:
             pass
 
         try:
-            state["midi_profile_state"] = snapshot["midi_profile_state"]
+            state["midi_profile_state"] = self.snapshot["midi_profile_state"]
             single_active_channel = state["midi_profile_state"]["SINGLE_ACTIVE_CHANNEL"]
         except:
             single_active_channel = True
 
         try:
-            for id, value in snapshot["extended_config"].items():
+            for id, value in self.snapshot["extended_config"].items():
                 if value:
                     state["engine_config"][id] = value
         except:
             pass
 
         try:
-            state["audio_recorder_armed"] = snapshot["audio_recorder_armed"]
+            state["audio_recorder_armed"] = self.snapshot["audio_recorder_armed"]
         except:
             pass
 
         try:
-            state["zynseq_riff_b64"] = snapshot["zynseq_riff_b64"]
+            state["zynseq_riff_b64"] = self.snapshot["zynseq_riff_b64"]
         except:
             pass
 
         note_range_state = []
-        if "note_range" in snapshot:
-            if len(snapshot["note_range"]) == 16:
-                note_range_state = snapshot["note_range"]
+        if "note_range" in self.snapshot:
+            if len(self.snapshot["note_range"]) == 16:
+                note_range_state = self.snapshot["note_range"]
 
         # Get processors
         processors = {}
         chains = {}
         global_midi_cc = {}
 
-        for proc_id, layer in enumerate(snapshot["layers"]):
+        for proc_id, layer in enumerate(self.snapshot["layers"]):
             if layer['engine_nick'] == "AI":
                 continue
             if layer['engine_nick'] == "MX":
@@ -283,7 +300,7 @@ class zynthian_legacy_snapshot:
 
             jackname = self.build_jackname(layer["engine_name"], midi_chan)
             try:
-                for input in snapshot["audio_capture"][jackname]:
+                for input in self.snapshot["audio_capture"][jackname]:
                     if input.startswith("system:capture_"):
                         state["zs3"]["zs3-0"]["chains"][chain_id]["audio_in"].append(
                             int(input.split("_")[1]))
@@ -345,9 +362,9 @@ class zynthian_legacy_snapshot:
                 slot = []
                 # Populate last slot
                 for proc in chain["audio_processors"]:
-                    if proc in snapshot["audio_routing"]:
+                    if proc in self.snapshot["audio_routing"]:
                         last_slot = True
-                        route = snapshot["audio_routing"][proc]
+                        route = self.snapshot["audio_routing"][proc]
                         for dst in route:
                             if dst in chain["audio_processors"]:
                                 last_slot = False
@@ -367,8 +384,8 @@ class zynthian_legacy_snapshot:
                 while proc_count > 0:
                     slot = []
                     for proc in chain["audio_processors"]:
-                        if proc in snapshot["audio_routing"]:
-                            route = snapshot["audio_routing"][proc]
+                        if proc in self.snapshot["audio_routing"]:
+                            route = self.snapshot["audio_routing"][proc]
                             for dst in route:
                                 if dst in chain["slots"][0]:
                                     slot.append(proc)
@@ -397,7 +414,7 @@ class zynthian_legacy_snapshot:
                         if (proc_name == "aeolus" and aeolus_done) or (proc_name == "setBfree" and setBfree_done):
                             chain["mixer_chan"] = None
                         else:
-                            audio_out = snapshot["audio_routing"][chain["synth_processors"][0]]
+                            audio_out = self.snapshot["audio_routing"][chain["synth_processors"][0]]
                             if proc_name == "aeolus":
                                 aeolus_done = True
                             if proc_name == "setBfree":
@@ -412,7 +429,7 @@ class zynthian_legacy_snapshot:
                 # Populate last slot
                 for proc in chain["midi_processors"]:
                     last_slot = True
-                    route = snapshot["midi_routing"][proc]
+                    route = self.snapshot["midi_routing"][proc]
                     for dst in route:
                         if dst in chain["midi_processors"]:
                             last_slot = False
@@ -427,7 +444,7 @@ class zynthian_legacy_snapshot:
                 while proc_count > 0:
                     slot = []
                     for proc in chain["midi_processors"]:
-                        route = snapshot["midi_routing"][proc]
+                        route = self.snapshot["midi_routing"][proc]
                         for dst in route:
                             if dst in chain["slots"][0]:
                                 slot.append(proc)
@@ -493,10 +510,10 @@ class zynthian_legacy_snapshot:
         # ZS3
         state["zs3"]["zs3-0"]["mixer"] = {}
         try:
-            if isinstance(snapshot["mixer"], dict):
-                state["zs3"]["zs3-0"]["mixer"] = snapshot["mixer"]
+            if isinstance(self.snapshot["mixer"], dict):
+                state["zs3"]["zs3-0"]["mixer"] = self.snapshot["mixer"]
             else:
-                for i, mixer_ch in enumerate(snapshot["mixer"]):
+                for i, mixer_ch in enumerate(self.snapshot["mixer"]):
                     state["zs3"]["zs3-0"]["mixer"][f"chan_{i:02d}"] = mixer_ch
         except:
             pass
@@ -509,8 +526,8 @@ class zynthian_legacy_snapshot:
             }
 
         next_id = 1
-        if "learned_zs3" in snapshot:
-            for zs3 in snapshot["learned_zs3"]:
+        if "learned_zs3" in self.snapshot:
+            for zs3 in self.snapshot["learned_zs3"]:
                 # Ignore channel if "stage mode" is enabled
                 if not single_active_channel and "midi_learn_chan" in zs3:
                     midi_chan = zs3["midi_learn_chan"]
@@ -640,9 +657,9 @@ class zynthian_legacy_snapshot:
                     # TODO: Handle multiple outputs... Identify single common processor chain to move to main chain.
 
         # Emulate clone by setting destination midi channel to source midi channel
-        if "clone" in snapshot:
+        if "clone" in self.snapshot:
             active_midi_channel = "0"
-            for clone_from_chan, clone_cfg in enumerate(snapshot["clone"]):
+            for clone_from_chan, clone_cfg in enumerate(self.snapshot["clone"]):
                 for clone_to_chan, cfg in enumerate(clone_cfg):
                     try:
                         if cfg["enabled"]:
@@ -713,28 +730,28 @@ class zynthian_legacy_snapshot:
 
         return jackname
 
-    def convert_old_legacy(self, state):
+    def convert_old_legacy(self):
         """Convert from older legacy snapshot format state
         state : Dictionary containing state model
         Returns : State fixed to newer legacy format
         """
 
         newer = True
-        if "layers" in state:
-            for layer in state["layers"]:
+        if "layers" in self.snapshot:
+            for layer in self.snapshot["layers"]:
                 if "zs3_list" in layer:
                     newer = False
                     break
         if newer:
-            return state
+            return self.snapshot
 
         zs3_index = 0
         for midi_chan in range(0, 16):
             for prog_num in range(0, 128):
-                lstates = [None] * len(state['layers'])
+                lstates = [None] * len(self.snapshot['layers'])
                 note_range = [None] * 16
                 root_layer_index = None
-                for li, lss in enumerate(state['layers']):
+                for li, lss in enumerate(self.snapshot['layers']):
                     if 'zs3_list' in lss and midi_chan == lss['midi_chan']:
                         lstate = lss['zs3_list'][prog_num]
                         if not lstate:
@@ -771,5 +788,3 @@ class zynthian_legacy_snapshot:
                     self.learned_zs3.append(zs3_new)
                     # logging.debug("ADDED LEGACY ZS3 #{} => {}".format(zs3_index, zs3_new))
                     zs3_index += 1
-
-        return state

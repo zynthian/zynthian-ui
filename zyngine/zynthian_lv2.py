@@ -197,13 +197,13 @@ def init_lilv():
     # world.set_option(lilv.OPTION_FILTER_LANG, world.new_bool(False))
     world.load_all()
     world.ns.ev = lilv.Namespace(world, "http://lv2plug.in/ns/ext/event#")
-    world.ns.presets = lilv.Namespace(
-        world, "http://lv2plug.in/ns/ext/presets#")
-    world.ns.portprops = lilv.Namespace(
-        world, "http://lv2plug.in/ns/ext/port-props#")
-    world.ns.portgroups = lilv.Namespace(
-        world, "http://lv2plug.in/ns/ext/port-groups#")
-
+    world.ns.presets = lilv.Namespace(world, "http://lv2plug.in/ns/ext/presets#")
+    world.ns.portprops = lilv.Namespace(world, "http://lv2plug.in/ns/ext/port-props#")
+    world.ns.portgroups = lilv.Namespace(world, "http://lv2plug.in/ns/ext/port-groups#")
+    world.ns.parameters = lilv.Namespace(world, "http://lv2plug.in/ns/ext/parameters#")
+    world.ns.patch = lilv.Namespace(world, "http://lv2plug.in/ns/ext/patch#")
+    world.ns.atom = lilv.Namespace(world, "http://lv2plug.in/ns/ext/atom#")
+    world.ns.mod = lilv.Namespace(world, "http://moddevices.com/ns/mod#")
 
 # ------------------------------------------------------------------------------
 # Engines management
@@ -748,69 +748,85 @@ def sanitize_fname(s):
 # LV2 Port management
 # ------------------------------------------------------------------------------
 
+def get_node_value(node):
+    if node is None:
+        return 0
+    elif node.is_int():
+        return int(node)
+    elif node.is_float():
+        return float(node)
+    elif node.is_bool():
+        return bool(node)
+    else:
+        return str(node)
+
 
 def get_plugin_ports(plugin_url):
     wplugins = world.get_all_plugins()
     plugin = wplugins[plugin_url]
 
     ports_info = {}
+    # Control ports
     for i in range(plugin.get_num_ports()):
-        port = plugin.get_port_by_index(i)
-        if port.is_a(lilv.LILV_URI_INPUT_PORT) and port.is_a(lilv.LILV_URI_CONTROL_PORT):
-            port_name = str(port.get_name())
-            port_symbol = str(port.get_symbol())
+        control = plugin.get_port_by_index(i)
+        if control.is_a(lilv.LILV_URI_INPUT_PORT) and control.is_a(lilv.LILV_URI_CONTROL_PORT):
+            name = str(control.get_name())
+            symbol = str(control.get_symbol())
 
-            is_toggled = port.has_property(world.ns.lv2.toggled)
-            is_integer = port.has_property(world.ns.lv2.integer)
-            is_enumeration = port.has_property(world.ns.lv2.enumeration)
-            is_logarithmic = port.has_property(world.ns.portprops.logarithmic)
+            is_toggled = control.has_property(world.ns.lv2.toggled)
+            is_integer = control.has_property(world.ns.lv2.integer)
+            is_enumeration = control.has_property(world.ns.lv2.enumeration)
+            is_logarithmic = control.has_property(world.ns.portprops.logarithmic)
+
             envelope = None
             for env_type in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
-                if str(port.get("http://lv2plug.in/ns/lv2core#designation")) == f"http://lv2plug.in/ns/ext/parameters#{env_type}":
+                # "http://lv2plug.in/ns/lv2core#designation"
+                if str(control.get(world.ns.lv2.designation)) == f"http://lv2plug.in/ns/ext/parameters#{env_type}":
                     envelope = env_type
-            not_on_gui = port.has_property(world.ns.portprops.notOnGUI)
-            display_priority = port.get(world.ns.lv2.displayPriority)
+
+            not_on_gui = control.has_property(world.ns.portprops.notOnGUI)
+            display_priority = control.get(world.ns.lv2.displayPriority)
             if display_priority is None:
                 display_priority = 0
             else:
                 display_priority = int(display_priority)
 
-            # logging.debug("PORT {} properties =>".format(port.get_symbol()))
-            # for node in port.get_properties():
+            # logging.debug("CONTROL {} properties =>".format(control.get_symbol()))
+            # for node in control.get_properties():
             # logging.debug("    => {}".format(get_node_value(node)))
 
-            pgroup_index = None
-            pgroup_name = None
-            pgroup_symbol = None
-            pgroup = port.get(world.ns.portgroups.group)
-            if pgroup is not None:
-                # pgroup_key = str(pgroup).split("#")[-1]
-                pgroup_index = world.get(pgroup, world.ns.lv2.index, None)
-                if pgroup_index is not None:
-                    pgroup_index = int(pgroup_index)
-                    # logging.warning("Port group <{}> has no index.".format(pgroup_key))
-                pgroup_name = world.get(pgroup, world.ns.lv2.name, None)
-                if pgroup_name is None:
-                    pgroup_name = world.get(pgroup, world.ns.rdfs.label, None)
-                if pgroup_name is not None:
-                    pgroup_name = str(pgroup_name)
-                    # logging.warning("Port group <{}> has no name.".format(pgroup_key))
-                pgroup_symbol = world.get(pgroup, world.ns.lv2.symbol, None)
-                if pgroup_symbol is not None:
-                    pgroup_symbol = str(pgroup_symbol)
-                    # logging.warning("Port group <{}> has no symbol.".format(pgroup_key))
+            group_index = None
+            group_name = None
+            group_symbol = None
+            group = control.get(world.ns.portgroups.group)
+            if group is not None:
+                # group_key = str(group).split("#")[-1]
+                group_index = world.get(group, world.ns.lv2.index, None)
+                if group_index is not None:
+                    group_index = int(group_index)
+                    # logging.warning("Control group <{}> has no index.".format(group_key))
+                group_name = world.get(group, world.ns.lv2.name, None)
+                if group_name is None:
+                    group_name = world.get(group, world.ns.rdfs.label, None)
+                if group_name is not None:
+                    group_name = str(group_name)
+                    # logging.warning("Control group <{}> has no name.".format(group_key))
+                group_symbol = world.get(group, world.ns.lv2.symbol, None)
+                if group_symbol is not None:
+                    group_symbol = str(group_symbol)
+                    # logging.warning("Control group <{}> has no symbol.".format(group_key))
             # else:
-                # logging.debug("Port <{}> has no group.".format(port_symbol))
+            # logging.debug("Control <{}> has no group.".format(symbol))
 
             sp = []
-            for p in port.get_scale_points():
+            for p in control.get_scale_points():
                 sp.append({
                     'label': str(p.get_label()),
                     'value': get_node_value(p.get_value())
                 })
             sp = sorted(sp, key=lambda k: k['value'])
 
-            r = port.get_range()
+            r = control.get_range()
             try:
                 vmin = get_node_value(r[1])
             except:
@@ -830,7 +846,7 @@ def get_plugin_ports(plugin_url):
             except:
                 vdef = vmin
 
-            if  port_symbol == "BYPASS" and plugin_url.startswith("http://guitarix"):
+            if  symbol == "BYPASS" and plugin_url.startswith("http://guitarix"):
                 # Invert bypass for guitarix effects
                 is_toggled = True
                 vmin = 1
@@ -839,11 +855,11 @@ def get_plugin_ports(plugin_url):
 
             info = {
                 'index': i,
-                'symbol': port_symbol,
-                'name': port_name,
-                'group_index': pgroup_index,
-                'group_name': pgroup_name,
-                'group_symbol': pgroup_symbol,
+                'symbol': symbol,
+                'name': name,
+                'group_index': group_index,
+                'group_name': group_name,
+                'group_symbol': group_symbol,
                 'value': vdef,
                 'range': {
                     'default': vdef,
@@ -854,24 +870,126 @@ def get_plugin_ports(plugin_url):
                 'is_integer': is_integer,
                 'is_enumeration': is_enumeration,
                 'is_logarithmic': is_logarithmic,
+                'is_path': False,
+                'path_file_types': None,
                 'envelope': envelope,
                 'not_on_gui': not_on_gui,
                 'display_priority': display_priority,
                 'scale_points': sp
             }
-            ports_info[i] = info
-            # logging.debug("PORT {} => {}".format(i, info))
+            #logging.debug("CONTROL PORT {} => {}".format(i, ports_info[i]))
+
+    # Property parameters
+    i = len(ports_info)
+    for control in world.find_nodes(plugin.get_uri(), world.ns.patch.writable, None):
+        symbol = world.get_symbol(control)
+        name = str(world.get(control, world.ns.rdfs.label, None))
+
+        #logging.debug(f"Got property parameter with symbol {symbol} => {name}")
+
+        range_type = str(world.get(control, world.ns.rdfs.range, None))
+        if range_type == world.ns.atom.Path:
+            vdef = None
+            vmin = None
+            vmax = None
+            is_toggled = False
+            is_integer = False
+            is_enumeration = False
+            is_logarithmic = False
+            is_path = True
+            path_file_types = world.get(control, world.ns.mod.fileTypes, None)
+            if path_file_types is not None:
+                path_file_types = str(path_file_types).split(",")
+            envelope = None
+            sp = []
+        else:
+            vdef = get_node_value(world.get(control, world.ns.lv2.default, None))
+            vmin = get_node_value(world.get(control, world.ns.lv2.minimum, None))
+            vmax = get_node_value(world.get(control, world.ns.lv2.maximum, None))
+
+            is_toggled = (range_type == world.ns.atom.Bool)
+            is_integer = (range_type == world.ns.atom.Int)
+            is_enumeration = world.get(control, world.ns.lv2.enumeration, None) is not None
+            is_logarithmic = world.get(control, world.ns.portprops.logarithmic, None) is not None
+            is_path = False
+            path_file_types = None
+
+            envelope = None
+            for env_type in ["delay", "attack", "hold", "decay", "sustain", "fade", "release"]:
+                if str(world.get(control, world.ns.lv2.designation, None)) == f"http://lv2plug.in/ns/ext/parameters#{env_type}":
+                    envelope = env_type
+
+            sp = []
+            for p in world.find_nodes(control, world.ns.lv2.scalePoint, None):
+                sp.append({
+                    'label': str(world.get(p, world.ns.rdfs.label, None)),
+                    'value': get_node_value(world.get(p, world.ns.rdf.value, None))
+                })
+            sp = sorted(sp, key=lambda k: k['value'])
+
+        not_on_gui = world.get(control, world.ns.portprops.notOnGUI, None) is not None
+        display_priority = world.get(control, world.ns.lv2.displayPriority, None)
+        if display_priority is None:
+            display_priority = 0
+        else:
+            display_priority = int(display_priority)
+
+        # logging.debug("CONTROL {} properties =>".format(control.get_symbol()))
+        # for node in control.get_properties():
+        # logging.debug("    => {}".format(get_node_value(node)))
+
+        group_index = None
+        group_name = None
+        group_symbol = None
+        group = world.get(control, world.ns.portgroups.group, None)
+        if group is not None:
+            # group_key = str(group).split("#")[-1]
+            group_index = world.get(group, world.ns.lv2.index, None)
+            if group_index is not None:
+                group_index = int(group_index)
+                # logging.warning("Control group <{}> has no index.".format(group_key))
+            group_name = world.get(group, world.ns.lv2.name, None)
+            if group_name is None:
+                group_name = world.get(group, world.ns.rdfs.label, None)
+            if group_name is not None:
+                group_name = str(group_name)
+                # logging.warning("Control group <{}> has no name.".format(group_key))
+            group_symbol = world.get(group, world.ns.lv2.symbol, None)
+            if group_symbol is not None:
+                group_symbol = str(group_symbol)
+                # logging.warning("Control group <{}> has no symbol.".format(group_key))
+        # else:
+        # logging.debug("Control <{}> has no group.".format(symbol))
+
+        ports_info[i] = {
+            'index': i,
+            'symbol': symbol,
+            'name': name,
+            'group_index': group_index,
+            'group_name': group_name,
+            'group_symbol': group_symbol,
+            'value': vdef,
+            'range': {
+                'default': vdef,
+                'min': vmin,
+                'max': vmax
+            },
+            'is_toggled': is_toggled,
+            'is_integer': is_integer,
+            'is_enumeration': is_enumeration,
+            'is_logarithmic': is_logarithmic,
+            'is_path': is_path,
+            'path_file_types': path_file_types,
+            'envelope': envelope,
+            'not_on_gui': not_on_gui,
+            'display_priority': display_priority,
+            'scale_points': sp
+        }
+        #logging.debug("CONTROL PROPERTY {} => {}".format(i, ports_info[i]))
+        i += 1
 
     return ports_info
 
-
-def get_node_value(node):
-    if node.is_int():
-        return int(node)
-    elif node.is_float():
-        return float(node)
-    else:
-        return str(node)
 
 # ------------------------------------------------------------------------------
 # Main program

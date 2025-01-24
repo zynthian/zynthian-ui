@@ -80,15 +80,16 @@ class zynthian_gui_save_preset():
 
     def save_preset_cb(self, preset_name):
         preset_name = preset_name.strip()
-        # If must create new bank, calculate URID
-        if self.save_preset_create_bank_name:
-            create_bank_urid = self.processor.engine.get_user_bank_urid(self.save_preset_create_bank_name)
-            self.save_preset_bank_info = (create_bank_urid, None, self.save_preset_create_bank_name, None)
-        if self.processor.engine.preset_exists(self.save_preset_bank_info, preset_name):
-            self.zyngui.show_confirm(f"Do you want to overwrite preset '{preset_name}'?",
-                                     self.do_save_preset, preset_name)
-        else:
-            self.do_save_preset(preset_name)
+        if preset_name:
+            # If must create new bank, calculate URID
+            if self.save_preset_create_bank_name:
+                create_bank_urid = self.processor.engine.get_user_bank_urid(self.save_preset_create_bank_name)
+                self.save_preset_bank_info = (create_bank_urid, None, self.save_preset_create_bank_name, None)
+            if self.processor.engine.preset_exists(self.save_preset_bank_info, preset_name):
+                self.zyngui.show_confirm(f"Do you want to overwrite preset '{preset_name}'?",
+                                        self.do_save_preset, preset_name)
+            else:
+                self.do_save_preset(preset_name)
 
     def do_save_preset(self, preset_name):
         preset_name = preset_name.strip()

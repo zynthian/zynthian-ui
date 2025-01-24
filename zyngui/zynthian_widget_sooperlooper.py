@@ -215,7 +215,6 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
             else:
                 fs = int(self.font_size_sl)
 
-            command = partial(lambda a: self.on_button(a), btn)
             self.buttons[btn] = tkinter.Button(self.button_frame,
                                                text=btn,
                                                background=self.SLIDER_BG,
@@ -229,10 +228,10 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
                                                overrelief=tkinter.FLAT,
                                                font=(
                                                    zynthian_gui_config.font_family, fs),
-                                               command=command,
                                                height=1,
                                                pady=0
                                                )
+            self.buttons[btn].bind("<ButtonRelease-1>", self.on_button_release)
             row = int(i / 4)
             col = i % 4
             if col == 3:
@@ -338,11 +337,12 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
     def remove_loop(self, params):
         liblo.send(self.osc_url, '/loop_del', ('i', self.selected_loop))
 
-    def on_button(self, btn):
+    def on_button_release(self, event):
+        btn = event.widget["text"]
         if btn in ['undo', 'redo']:
             liblo.send(self.osc_url, '/sl/-3/hit', ('s', btn))
         else:
-            if btn in self.processor.engine.SL_LOOP_SEL_PARAM:
+            if self.processor.controllers_dict["selected_loop_cc"].value == 0 and btn in self.processor.engine.SL_LOOP_SEL_PARAM:
                 btn += f":{self.processor.engine.selected_loop}"
             self.processor.controllers_dict[btn].toggle()
 

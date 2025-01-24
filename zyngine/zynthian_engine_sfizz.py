@@ -145,7 +145,7 @@ class zynthian_engine_sfizz(zynthian_engine):
             exclude_sfz = re.compile(r"[MOPRSTV][1-9]?l?\.sfz")
             for sd in glob.iglob(preset_dpath + "/*"):
                 if os.path.isdir(sd):
-                    flist = cls.find_all_preset_files(sd, recursion=2)
+                    flist = cls.find_all_preset_files(sd, cls.preset_fexts, recursion=2)
                     for f in flist:
                         filehead, filetail = os.path.split(f)
                         if not exclude_sfz.fullmatch(filetail):
@@ -159,8 +159,7 @@ class zynthian_engine_sfizz(zynthian_engine):
                             else:
                                 title = filename.replace('_', ' ')
                             engine = filext[1:].lower()
-                            preset_list.append(
-                                [f, i, title, engine, "{}{}".format(filename, filext)])
+                            preset_list.append([f, i, title, engine, "{}{}".format(filename, filext)])
                             i += 1
                 else:
                     f = sd
@@ -170,10 +169,10 @@ class zynthian_engine_sfizz(zynthian_engine):
                         filename = filename[len(preset_dpath) + 1:]
                         title = filename.replace('_', ' ')
                         engine = filext[1:].lower()
-                        preset_list.append(
-                            [f, i, title, engine, "{}{}".format(filename, filext)])
+                        preset_list.append([f, i, title, engine, "{}{}".format(filename, filext)])
                         i += 1
 
+        preset_list.sort(key=lambda x:x[2].casefold())
         return preset_list
 
     def get_preset_list(self, bank):

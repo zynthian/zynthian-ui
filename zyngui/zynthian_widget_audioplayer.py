@@ -330,9 +330,9 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
         options[f'Add cue marker at {pos:.3f}'] = event
         x = self.processor.controllers_dict['beats'].value
         if x:
-            options[f'Add {x} evenly distributed cue markers'] = ['beats', x]
+            options[f'Add {x} evenly distributed cue markers'] = 'beats'
         if self.cue_points:
-            options[f'Remove all cue markers'] = ['remove']
+            options[f'Remove all cue markers'] = 'remove'
         options['> EXISTING CUES'] = None
         for i, cue in enumerate(self.cue_points):
             if cue[1]:
@@ -382,41 +382,42 @@ class zynthian_widget_audioplayer(zynthian_widget_base.zynthian_widget_base):
         self.cue = None
 
     def update_marker(self, option, event):
-        if isinstance(event, list):
-            if event[0] == 'remove':
-                zynaudioplayer.clear_cue_points(self.processor.handle)
-                self.update_cue_markers()
-
-            elif event[0] == 'beats':
-                zynaudioplayer.clear_cue_points(self.processor.handle)
-                for i in range(event[1]):
-                    pos = self.processor.controllers_dict['crop start'].value + (
-                        self.crop_end - self.crop_start) / self.samplerate / event[1] * i
-                    id = zynaudioplayer.add_cue_point(
-                        self.processor.handle, pos) + 1
-                    if id > 0:
-                        self.processor.controllers_dict['cue'].value_min = 1
-                        self.processor.controllers_dict['cue'].value_max = id
-                        self.processor.controllers_dict['cue'].set_value(id)
-                        self.processor.controllers_dict['cue pos'].set_value(
-                            pos)
-            else:
-                # Event is a cue marker to be removed
-                id = zynaudioplayer.remove_cue_point(
-                    self.processor.handle, event[0])
-                if id < 0:
-                    return
-                count = zynaudioplayer.get_cue_point_count(
-                    self.processor.handle)
-                self.processor.controllers_dict['cue'].value_max = count
-                if count == 0:
-                    self.processor.controllers_dict['cue'].value_min = 0
-                if self.processor.controllers_dict['cue'].value >= count:
-                    self.processor.controllers_dict['cue'].set_value(count - 1)
+        if event == 'remove':
+            zynaudioplayer.clear_cue_points(self.processor.handle)
             self.update_cue_markers()
+
+        elif event == 'beats':
+            zynaudioplayer.clear_cue_points(self.processor.handle)
+            beats = self.processor.controllers_dict['beats'].value
+            for i in range(beats):
+                pos = self.processor.controllers_dict['crop start'].value + (
+                    self.crop_end - self.crop_start) / self.samplerate / beats * i
+                id = zynaudioplayer.add_cue_point(
+                    self.processor.handle, pos) + 1
+                if id > 0:
+                    self.processor.controllers_dict['cue'].value_min = 1
+                    self.processor.controllers_dict['cue'].value_max = id
+                    self.processor.controllers_dict['cue'].set_value(id)
+                    self.processor.controllers_dict['cue pos'].set_value(
+                        pos)
+        elif isinstance(event, float):
+            # Event is a cue marker to be removed
+            id = zynaudioplayer.remove_cue_point(
+                self.processor.handle, event)
+            if id < 0:
+                return
+            count = zynaudioplayer.get_cue_point_count(
+                self.processor.handle)
+            self.processor.controllers_dict['cue'].value_max = count
+            if count == 0:
+                self.processor.controllers_dict['cue'].value_min = 0
+            if self.processor.controllers_dict['cue'].value >= count:
+                self.processor.controllers_dict['cue'].set_value(count - 1)
         else:
             self.drag_marker = option.lower()
             self.on_canvas_drag(event)
+            return
+        self.update_cue_markers()
 
     def get_monitors(self):
         self.monitors = self.processor.engine.get_monitors_dict(

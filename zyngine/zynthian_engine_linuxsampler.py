@@ -345,6 +345,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
                                 [f"{f}#{ii}", i, ititle, engine, f"{filename}{filext}#{ii}"])
                             ii += 1
                             i += 1
+        preset_list.sort(key=lambda x: x[2].casefold())
         return preset_list
 
     def get_preset_list(self, bank):

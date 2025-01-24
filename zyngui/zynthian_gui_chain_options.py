@@ -69,16 +69,17 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             try:
                 if synth_proc_count == 0 or self.chain.synth_slots[0][0].engine.options["midi_chan"]:
                     self.list_data.append((self.chain_midi_chan, None, "MIDI Channel",
-                                           ["Select MIDI channel to receive from.", "midi_logo.png"]))
+                                           ["Select MIDI channel to receive from.", "midi_settings.png"]))
             except Exception as e:
                 logging.error(e)
 
         if synth_proc_count:
             self.list_data.append((self.chain_midi_cc, None, "MIDI CC",
-                                   ["Select MIDI CC numbers passed-thru to chain processors. It could interfere with MIDI-learning. Use with caution!", "midi_logo.png"]))
+                                   ["Select MIDI CC numbers passed-thru to chain processors. It could interfere with MIDI-learning. Use with caution!", "midi_settings.png"]))
 
         if self.chain.get_processor_count() and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
             self.list_data.append((self.clean_midi_learn, None, "Clean Chain MIDI Learn"))
+            #TODO: Put this in zctrl Control options menu, e.g. Unlearn all controls for whole chain
 
         if self.chain_id != 0 and self.chain.zynmixer and self.chain.zynmixer.eng_code!="MR":
             self.list_data.append((self.chain_audio_capture, None, "Audio In",
@@ -92,10 +93,10 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
         if self.chain_id == 0 and not zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
             if self.zyngui.state_manager.audio_recorder.status:
                 self.list_data.append(
-                    (self.zyngui.state_manager.audio_recorder.toggle_recording, None, "■ Stop Audio Recording", ["Stop audio recording", ""]))
+                    (self.zyngui.state_manager.audio_recorder.toggle_recording, None, "■ Stop Audio Recording", ["Stop audio recording", "audio_recorder.png"]))
             else:
                 self.list_data.append(
-                    (self.zyngui.state_manager.audio_recorder.toggle_recording, None, "⬤ Start Audio Recording", ["Start audio recording", ""]))
+                    (self.zyngui.state_manager.audio_recorder.toggle_recording, None, "⬤ Start Audio Recording", ["Start audio recording", "audio_recorder.png"]))
 
         self.list_data.append((None, None, "> Processors"))
 
@@ -113,18 +114,20 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
 
         if self.chain_id != 0:
             if synth_proc_count * midi_proc_count == 0 and audio_proc_count < 2:
-                self.list_data.append((self.remove_chain, None, "Remove Chain", ["Remove this chain and all its processors.", "delete.png"]))
+                self.list_data.append((self.remove_chain, None, "Remove Chain", ["Remove this chain and all its processors.", "delete_chains.png"]))
             else:
-                self.list_data.append((self.remove_cb, None, "Remove...", ["Remove chain or processors.", "delete.png"]))
+                self.list_data.append((self.remove_cb, None, "Remove...", ["Remove chain or processors.", "delete_chains.png"]))
             self.list_data.append((self.export_chain, None, "Export chain as snapshot...", ["Save the selected chain as a snapshot which may then be imported into another snapshot.", None]))
         elif audio_proc_count > 1:
-            self.list_data.append((self.remove_all_audiofx, None, "Remove all Audio-FX", ["Remove all audio-FX processors in this chain.", "delete.png"]))
+            self.list_data.append((self.remove_all_audiofx, None, "Remove all Audio-FX", ["Remove all audio-FX processors in this chain.", "delete_audio_processors.png"]))
 
         self.list_data.append((None, None, "> GUI"))
-        self.list_data.append((self.rename_chain, None, "Rename chain", ["Rename the chain. Clear name to reset to default name.", None]))
+        self.list_data.append((self.rename_chain, None, "Rename chain",
+                               ["Rename the chain. Clear name to reset to default name.", "rename.png"]))
         if self.chain_id:
             if len(self.zyngui.chain_manager.ordered_chain_ids) > 2:
-                self.list_data.append((self.move_chain, None, "Move chain ⇦ ⇨", ["Reposition the chain in the mixer view.", None]))
+                self.list_data.append((self.move_chain, None, "Move chain ⇦ ⇨",
+                                       ["Reposition the chain in the mixer view.", "move_left_right.png"]))
 
         super().fill_list()
 
