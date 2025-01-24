@@ -2,11 +2,7 @@
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian State Model Schema
 #
-<<<<<<< HEAD
-# Copyright (C) 2022-2024 Fernando Moyano <jofemodo@zynthian.org>
-=======
 # Copyright (C) 2022-2025 Fernando Moyano <jofemodo@zynthian.org>
->>>>>>> vangelis
 #                    Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
@@ -26,7 +22,7 @@
 # ******************************************************************************
 
 ZynthianState = {
-    "schema_version": 2,  # Version of state (snapshot) model
+    "schema_version": 3,  # Version of state (snapshot) model
     "last_snapshot_fpath": "/zynthian/zynthian-my-data/snapshots/000/My Snapshot 1.zss", # Full path and filename of last loaded snapshot
     "midi_profile_state": {  # MIDI Profile TODO: Document midi profile
         "MASTER_BANK_CHANGE_UP": "",
@@ -63,16 +59,8 @@ ZynthianState = {
             "slots": [  # List of slots in chain in serial slot order
                 {  # Dictionary of processors in first slot
                     "1": "PT",  # Processor type indexed by processor id
-<<<<<<< HEAD
-                    # ... more processors in this slot
-                },
-                # ... More slots
-            ],
-=======
                 }, # ... more processors in this slot
             ], # ... More slots
-            "fader_pos": 1 # Index of slot where fader is (divides pre/post fader audio effects)
->>>>>>> vangelis
         }
     },
     "zs3": {  # Dictionary of ZS3's indexed by chan/prog or ZS3-x
@@ -90,41 +78,6 @@ ZynthianState = {
                     }, # ... Other parameters
                 } # ... Other controllers
             }, # ... Other processors
-            "mixer": {  # Dictionary of audio mixer configuration (optional, overrides base value)
-                "chan_00": {  # Indexed by mixer channel / strip (or "main")
-<<<<<<< HEAD
-                    # Fader value (optional, overrides base value)
-                    "level": 0.800000011920929,
-                    # Balance/pan state (optional, overrides base value)
-                    "balance": 0.5,
-                    # Mute state (optional bitwise flag, overrides base value) b0:state, b1:momentary
-                    "mute": 0,
-                    # Solo state (optional bitwise flag, overrides base value) b0:state, b1:momentary
-                    "solo": 0,
-                    # Mono state (optional bitwise flag, overrides base value) b0:state, b1:momentary
-                    "mono": 0,
-                    # Phase reverse state (optional bitwise flag, overrides base value) b0:state, b1:momentary
-                    "phase": 0,
-                },
-                # ... Other mixer strips
---                "midi_learn": {  # Mixer MIDI learn
---                    # graph_path [strip index, param symbol] mapped by "midi chan, midi cc"
---                    "chan,cc": "graph_path",
---                    # ... Other MIDI learn configs
-                }
-=======
-                    "level": 0.800000011920929, # Fader value (optional, overrides base value)
-                    "balance": 0.5, # Balance/pan state (optional, overrides base value)
-                    "mute": 0, # Mute state (optional bitwise flag, overrides base value) b0:state, b1:momentary
-                    "solo": 0, # Solo state (optional bitwise flag, overrides base value) b0:state, b1:momentary
-                    "mono": 0, # Mono state (optional bitwise flag, overrides base value) b0:state, b1:momentary
-                    "phase": 0, # Phase reverse state (optional bitwise flag, overrides base value) b0:state, b1:momentary
-                }, # ... Other mixer strips
-                "midi_learn": {  # Mixer MIDI learn
-                    "chan,cc": "graph_path", # graph_path [strip index, param symbol] mapped by "midi chan, midi cc"
-                } # ... Other MIDI learn configs
->>>>>>> vangelis
-            },
             "chains": {  # Dictionary of chain specific ZS3 config indexed by chain ID
                 "01": {  # Chain 01
                     "midi_in": ["MIDI IN"], # List of chain jack MIDI input sources (may include aliases)
@@ -149,30 +102,6 @@ ZynthianState = {
                     "zmip_input_mode": 1, # 1 if active chain mode enabled (stage mode), 0 for multitimbral
                     "disable_ctrldev": 0,  # 1 to disable loading of controller device driver
                     "routed_chains": [],  # List of chain zmops this input is routed to
-<<<<<<< HEAD
-                    # List of audio inputs, e.g. for aubio (optional)
-                    "audio_in": [0, 1]
-                }, # ...more MIDI capture devices
-            },
-            "global": {  # Dictionary of global params settable by zs3 indexed by param name
-                "midi_transpose": 0,  # Semitones to globally transpose
-                # Mapping of x-axis controller [proc_id, symbol]
-                "zctrl_x": [0, "volume"],
-                # Mapping of y-axis controller [proc_id, symbol]
-                "zctrl_y": [0, "cutoff"],
-                "absolute_cc": {  # Map of Absolute MIDI CC mapping, indexed by MIDI channel
-                    "0": {  # Map of controls, indexed by CC number
-                        "121": [  # List of controller configs
-                            # Controller config [proc_id, symbol]
-                            [1, "volume"],
-                            # ... Other controllers
-                        ],
-                        # ... Other CCs
-                    },
-                    # ... Other MIDI channels
-                }
-
-=======
                     "audio_in": [0, 1], # List of audio inputs, e.g. for aubio (optional)
                     "midi_cc": {  # Map of MIDI CC mapping, indexed by MIDI channel
                         "0": {  # Map of controls, indexed by CC number
@@ -187,7 +116,6 @@ ZynthianState = {
                 "midi_transpose": 0,  # Semitones to globally transpose
                 "zctrl_x": [0, "volume"], # Mapping of x-axis controller [proc_id, symbol]
                 "zctrl_y": [0, "cutoff"], # Mapping of y-axis controller [proc_id, symbol]
->>>>>>> vangelis
             }
         },
         "1/2": {},  # ZS3 for channel 1, program change 2
@@ -196,18 +124,9 @@ ZynthianState = {
     "engine_config": {  # Engine specific configuration (global for all processor instances of engine
         "MX": None,  # ALSA mixer configuration
         "PT": None,  # Pianoteq configuration
-<<<<<<< HEAD
-        # ... Other engines
-    },
---    # List of audio mixer strip indicies armed for multi-track audio recording
---    "audio_recorder_armed": [0, 3],
-    # Binary encoded RIFF data for step sequencer patterns, sequences, etc.
-    "zynseq_riff_b64": "dmVycwAA...",
-=======
     }, # ... Other engines
     "audio_recorder_armed": [0, 3], # List of audio mixer strip indicies armed for multi-track audio recording
     "zynseq_riff_b64": "dmVycwAA...", # Binary encoded RIFF data for step sequencer patterns, sequences, etc.
->>>>>>> vangelis
     "alsa_mixer": {  # Indexed by processor ID
         "controllers": {  # Dictionary of controllers
             "Digital_0": {  # Indexed by control symbol
