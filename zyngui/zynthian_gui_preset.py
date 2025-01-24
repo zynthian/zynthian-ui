@@ -192,9 +192,8 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
     def preselect_action(self):
         self.zyngui.state_manager.start_busy("preselect preset")
         self.zyngui.state_manager.all_sounds_off_chan(self.processor.midi_chan)
-        res = self.processor.preload_preset(self.index)
+        self.processor.preload_preset(self.index)
         self.zyngui.state_manager.end_busy("preselect preset")
-        return res
 
     def restore_preset(self):
         return self.processor.restore_preset()

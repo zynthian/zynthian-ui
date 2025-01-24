@@ -4,7 +4,7 @@
 #
 # zynthian processor
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 # Brian Walton <riban@zynthian.org>
 #
 # *****************************************************************************
@@ -27,6 +27,7 @@ import os
 import copy
 import logging
 import traceback
+from time import sleep
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
@@ -83,7 +84,7 @@ class zynthian_processor:
         self.preset_name = None
         self.preset_info = None
         self.preset_bank_index = None
-        self.preset_loaded = None
+        self.preset_ctrl_vals = {}
 
         self.preload_index = None
         self.preload_name = None
@@ -433,21 +434,21 @@ class zynthian_processor:
         if self.engine.nickname in ['PD', 'MD']:
             return True
         if preset_index < len(self.preset_list):
-            if (not self.preload_info and not self.engine.cmp_presets(self.preset_list[preset_index], self.preset_info)) or (self.preload_info and not self.engine.cmp_presets(self.preset_list[preset_index], self.preload_info)):
-                self.preload_index = preset_index
-                self.preload_name = self.preset_list[preset_index][2]
-                self.preload_info = copy.deepcopy(
-                    self.preset_list[preset_index])
-                logging.info("Preset Preloaded: %s (%d)" %
-                             (self.preload_name, preset_index))
-                self.engine.set_preset(self, self.preload_info, True)
-                return True
-        return False
+            if not self.preload_info:
+                for symbol, zctrl in self.controllers_dict.items():
+                    self.preset_ctrl_vals[symbol] = zctrl.value
+            self.preload_index = preset_index
+            self.preload_name = self.preset_list[preset_index][2]
+            self.preload_info = copy.deepcopy(
+                self.preset_list[preset_index])
+            logging.info("Preset Preloaded: %s (%d)" %
+                        (self.preload_name, preset_index))
+            self.engine.set_preset(self, self.preload_info, True)
 
     def restore_preset(self):
         """Restore preset after temporary preload"""
 
-        if self.preset_name is not None and self.preload_info is not None and not self.engine.cmp_presets(self.preload_info, self.preset_info):
+        if self.preload_info:
             if self.preset_bank_index is not None and self.bank_index != self.preset_bank_index:
                 self.set_bank(self.preset_bank_index, False)
             self.preload_index = None
@@ -456,6 +457,10 @@ class zynthian_processor:
             logging.info("Restore Preset: %s (%d)" %
                          (self.preset_name, self.preset_index))
             self.engine.set_preset(self, self.preset_info)
+            sleep(0.2) # TODO: Can we use signal to indicate preset has completed loading?
+            for symbol, value in self.preset_ctrl_vals.items():
+                self.controllers_dict[symbol].set_value(value)
+            self.preset_ctrl_vals = {}
             return True
         return False
 
