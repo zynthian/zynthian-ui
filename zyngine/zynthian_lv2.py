@@ -853,7 +853,7 @@ def get_plugin_ports(plugin_url):
                 vmax = 0
                 vdef = 0
 
-            info = {
+            ports_info[i] = {
                 'index': i,
                 'symbol': symbol,
                 'name': name,
