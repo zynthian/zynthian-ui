@@ -41,7 +41,6 @@ ZynthianState = {
         "CC_AUTOMODE": "0",
         "MASTER_BANK_CHANGE_CCNUM": "0",
         "MASTER_BANK_CHANGE_DOWN": "",
-        "PRESET_PRELOAD_NOTEON": "1",
         "AUBIONOTES_ENABLED": "0",
         "FINE_TUNING": "440",
         "MASTER_PROGRAM_CHANGE_TYPE": "Custom",

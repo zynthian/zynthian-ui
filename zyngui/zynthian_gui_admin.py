@@ -136,15 +136,6 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                 self.list_data.append((self.toggle_bank_change, 0, "\u2610 MIDI Bank Change",
                                        ["Don't select bank when MIDI Program Change received", "midi_settings.png"]))
 
-        if zynthian_gui_config.preset_preload_noteon:
-            self.list_data.append((self.toggle_preset_preload_noteon, 0, "\u2612 Note-On Preset Preload",
-                                   ["Load preset for preview when a MIDI note-on command is received",
-                                    "midi_settings.png"]))
-        else:
-            self.list_data.append((self.toggle_preset_preload_noteon, 0, "\u2610 Note-On Preset Preload",
-                                   ["Do not load preset for preview when a MIDI note-on command is received",
-                                    "midi_settings.png"]))
-
         if zynthian_gui_config.midi_usb_by_port:
             self.list_data.append((self.toggle_usbmidi_by_port, 0, "\u2612 MIDI-USB mapped by port",
                                    ["MIDI ports are indexed by their device name and the physical USB port to which they are plugged",
@@ -612,20 +603,6 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         # Save config
         zynconf.update_midi_profile({
             "ZYNTHIAN_MIDI_BANK_CHANGE": str(int(zynthian_gui_config.midi_bank_change))
-        })
-        self.update_list()
-
-    def toggle_preset_preload_noteon(self):
-        if zynthian_gui_config.preset_preload_noteon:
-            logging.info("Preset Preload OFF")
-            zynthian_gui_config.preset_preload_noteon = False
-        else:
-            logging.info("Preset Preload ON")
-            zynthian_gui_config.preset_preload_noteon = True
-
-        # Save config
-        zynconf.update_midi_profile({
-            "ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON": str(int(zynthian_gui_config.preset_preload_noteon))
         })
         self.update_list()
 
