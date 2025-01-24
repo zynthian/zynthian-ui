@@ -36,7 +36,7 @@ from zyngui.zynthian_gui_save_preset import zynthian_gui_save_preset
 
 class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
 
-    SLOW_LOAD_PROCS = []
+    SLOW_LOAD_PROCS = ["AP"]
 
     def __init__(self):
         self.processor = None
