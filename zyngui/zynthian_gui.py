@@ -2136,8 +2136,8 @@ class zynthian_gui:
         if self.current_screen == 'pattern_editor' and self.state_manager.zynseq.libseq.isMidiRecord():
             self.screens['pattern_editor'].midi_note_off(note)
 
-    def cb_show_file_selector(self, cb_func, fexts=None, root_dirs=None, path=None):
-        self.screens["file_selector"].config(cb_func, fexts=fexts, root_dirs=root_dirs, path=path)
+    def cb_show_file_selector(self, cb_func, fexts=None, dirnames=None, path=None):
+        self.screens["file_selector"].config(cb_func, fexts=fexts, dirnames=dirnames, path=path)
         self.show_screen("file_selector")
 
     def cb_set_active_chain(self, active_chain):

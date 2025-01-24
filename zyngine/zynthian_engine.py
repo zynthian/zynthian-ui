@@ -32,7 +32,6 @@ import logging
 import pexpect
 import fnmatch
 from time import sleep
-from os.path import isfile, isdir, join
 
 import zynautoconnect
 from . import zynthian_controller
@@ -298,9 +297,10 @@ class zynthian_engine(zynthian_basic_engine):
                 res.append(item)
         return sorted(res, key=str.casefold)
 
-    @staticmethod
-    def get_filelist(dpath, fext):
-        res = []
+    @classmethod
+    def get_filelist(cls, dpath, fext, include_dirs=False, exclude_empty_dirs=True):
+        files = []
+        dirs = []
         if isinstance(dpath, str):
             dpath = [('_', dpath)]
         if isinstance(fext, str):
@@ -311,7 +311,10 @@ class zynthian_engine(zynthian_basic_engine):
             dn = dpd[0]
             try:
                 for f in sorted(os.listdir(dp)):
-                    if not f.startswith('.') and isfile(join(dp, f)):
+                    if f.startswith('.'):
+                        continue
+                    path = os.path.join(dp, f)
+                    if os.path.isfile(path):
                         parts = os.path.splitext(f)
                         ext = parts[1][1:].lower()
                         if ext in fext:
@@ -319,13 +322,16 @@ class zynthian_engine(zynthian_basic_engine):
                             if dn != '_':
                                 title = dn + '/' + title
                             # print("filelist => " + title)
-                            res.append([join(dp, f), i, title, dn, f, ext])
-                            i = i + 1
+                            files.append([os.path.join(dp, f), i, title, dn, f, ext])
+                            i += 1
+                    elif include_dirs and os.path.isdir(path) and (not exclude_empty_dirs or cls.find_some_preset_file(path, fext)):
+                        dirs.append([path, i, "> " + f, dn, f])
+                        i += 1
             except Exception as e:
-                # logging.warning("Can't access directory '{}' => {}".format(dp,e))
+                #logging.warning(f"Can't access directory '{dp}' => {e}")
                 pass
 
-        return res
+        return dirs + files
 
     @staticmethod
     def get_dirlist(dpath, exclude_empty=True):
@@ -338,16 +344,16 @@ class zynthian_engine(zynthian_basic_engine):
             dn = dpd[0]
             try:
                 for f in sorted(os.listdir(dp)):
-                    dpath = join(dp, f)
+                    dpath = os.path.join(dp, f)
                     if not os.path.isdir(dpath) or (exclude_empty and next(os.scandir(dpath), None) is None):
                         continue
-                    if not f.startswith('.') and isdir(dpath):
+                    if not f.startswith('.') and os.path.isdir(dpath):
                         title, ext = os.path.splitext(f)
                         title = str.replace(title, '_', ' ')
                         if dn != '_':
                             title = dn + '/' + title
                         res.append([dpath, i, title, dn, f])
-                        i = i + 1
+                        i += 1
             except Exception as e:
                 # logging.warning("Can't access directory '{}' => {}".format(dp,e))
                 pass
@@ -356,61 +362,86 @@ class zynthian_engine(zynthian_basic_engine):
 
     # Get bank dir list
     @classmethod
-    def get_bank_dirlist(cls, recursion=1, exclude_empty=True, internal_include_empty=False, fexts=None, root_bank_dirs=None):
-        banks = []
-
+    def get_bank_dirlist(cls, fexts=None, root_bank_dirs=None, recursion=1, exclude_empty=True, internal_include_empty=False):
         if fexts is None:
             fexts = cls.preset_fexts
         if root_bank_dirs is None:
             root_bank_dirs = cls.root_bank_dirs
+        return cls.get_dir_file_list(fexts=fexts, root_dirs=root_bank_dirs,
+                                     recursion=recursion,
+                                     exclude_empty=exclude_empty,
+                                     internal_include_empty=internal_include_empty,
+                                     dirs_only=True)
+
+    # Get dir & file list
+    @classmethod
+    def get_dir_file_list(cls, fexts, root_dirs, recursion=1, exclude_empty=True, internal_include_empty=False, dirs_only=False):
+        res = []
+
+        if not dirs_only:
+            dir_marker = "> "
+        else:
+            dir_marker = ""
 
         # External storage banks
         for exd in zynthian_gui_config.get_external_storage_dirs(cls.ex_data_dir):
             if not os.path.isdir(exd):
                 continue
-            sbanks = []
+            sres = []
             # Add root directory in external storage
             if not exclude_empty or cls.find_some_preset_file(exd, fexts, 0):
-                sbanks.append([exd, None, "/", None, "/"])
+                sres.append([exd, None, "/", None, "/"])
             # Walk directories inside root
             walk = next(os.walk(exd))
             walk[1].sort()
-            for root_bank_dir in walk[1]:
-                root_bank_path = walk[0] + "/" + root_bank_dir
-                if not exclude_empty or cls.find_some_preset_file(root_bank_path, fexts, recursion + 1):
-                    walk = next(os.walk(root_bank_path))
+            for root_dir in walk[1]:
+                root_path = walk[0] + "/" + root_dir
+                if not exclude_empty or cls.find_some_preset_file(root_path, fexts, recursion + 1):
+                    walk = next(os.walk(root_path))
                     walk[1].sort()
                     count = 0
-                    for bank_dir in walk[1]:
-                        bank_path = walk[0] + "/" + bank_dir
-                        if not exclude_empty or cls.find_some_preset_file(bank_path, fexts, recursion):
-                            sbanks.append([bank_path, None, root_bank_dir + "/" + bank_dir, None, bank_dir])
+                    for dir in walk[1]:
+                        dpath = walk[0] + "/" + dir
+                        if not exclude_empty or cls.find_some_preset_file(dpath, fexts, recursion):
+                            title = dir_marker + root_dir + "/" + dir
+                            sres.append([dpath, None, title, None, dir])
                             count += 1
                     # If there is no banks inside, the root is the bank
                     if count == 0:
-                        sbanks.append([root_bank_path, None, root_bank_dir, None, root_bank_dir])
+                        title = dir_marker + root_dir
+                        sres.append([root_path, None, title, None, root_dir])
 
-            # Add root's header and banks
-            if len(sbanks):
-                banks.append([None, None, f"USB> {os.path.basename(exd)}", None, None])
-                banks += sbanks
+            # Add files in root dir
+            if not dirs_only:
+                sres += cls.get_filelist(exd, fexts)
 
-        # Internal storage banks
-        for root_bank_dir in root_bank_dirs:
-            if not os.path.isdir(root_bank_dir[1]):
+            # Add root's header and items
+            if len(sres):
+                res.append([None, None, f"USB> {os.path.basename(exd)}", None, None])
+                res += sres
+
+        # Internal storage
+        for root_dir in root_dirs:
+            if not os.path.isdir(root_dir[1]):
                 continue
-            sbanks = []
-            walk = next(os.walk(root_bank_dir[1]))
+            sres = []
+            walk = next(os.walk(root_dir[1]))
             walk[1].sort()
-            for bank_dir in walk[1]:
-                bank_path = walk[0] + "/" + bank_dir
-                if (not exclude_empty or internal_include_empty) or cls.find_some_preset_file(bank_path, fexts, recursion):
-                    sbanks.append([bank_path, None, bank_dir, None, bank_dir])
-            if len(sbanks):
-                banks.append([None, None, "SD> " + root_bank_dir[0], None, None])
-                banks += sbanks
+            for dir in walk[1]:
+                dpath = walk[0] + "/" + dir
+                if (not exclude_empty or internal_include_empty) or cls.find_some_preset_file(dpath, fexts, recursion):
+                    title = dir_marker + dir
+                    sres.append([dpath, None, title, None, dir])
 
-        return banks
+            # Add files in root dir
+            if not dirs_only:
+                sres += cls.get_filelist(root_dir[1], fexts)
+
+            if len(sres):
+                res.append([None, None, "SD> " + root_dir[0], None, None])
+                res += sres
+
+        return res
 
     # ---------------------------------------------------------------------------
     # Processor Management
@@ -576,7 +607,6 @@ class zynthian_engine(zynthian_basic_engine):
         else:
             logging.warning(
                 "Can't load preset favorites until the engine have a nickname!")
-            self.preset_favs = {}
 
     # ---------------------------------------------------------------------------
     # Controllers Management

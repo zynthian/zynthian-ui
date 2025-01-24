@@ -30,6 +30,9 @@ from time import monotonic
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
 import zynautoconnect
+from zyngine.zynthian_signal_manager import zynsigman
+
+# ----------------------------------------------------------------------------
 
 MIDI_CC_MODE_DETECT_TIMEOUT = 0.2
 MIDI_CC_MODE_DETECT_STEPS = 8
@@ -81,6 +84,7 @@ class zynthian_controller:
         self.is_logarithmic = False  # True if control uses logarithmic scale
         self.is_path = False  # True if the control is a file path (i.e. LV2's atom:Path)
         self.path_file_types = None  # List of supported file types
+        self.path_dir_names = None  # List of directory names to look for files
         self.not_on_gui = False  # True to hint to GUI to show control
         self.display_priority = float("inf")  # Hint of order in which to display control (higher comes first)
 
@@ -165,6 +169,8 @@ class zynthian_controller:
             self.is_path = options['is_path']
         if 'path_file_types' in options:
             self.path_file_types = options['path_file_types']
+        if 'path_dir_names' in options:
+            self.path_dir_names = options['path_dir_names']
         if 'midi_chan' in options:
             self.midi_chan = options['midi_chan']
         if 'midi_cc' in options:
@@ -337,7 +343,7 @@ class zynthian_controller:
             zynsigman.send_queued(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_FILE_SELECTOR,
                                   cb_func=self.set_value,
                                   fexts=self.path_file_types,
-                                  root_dirs=None,
+                                  dirnames=self.path_dir_names,
                                   path=self.value)
             return True
 
@@ -411,7 +417,6 @@ class zynthian_controller:
         self._set_value(val)
         if old_val == self.value:
             return
-
         if self.symbol == "zynbypass":
             self.processor.bypass = self.value
             self.processor.chain.rebuild_audio_graph()
