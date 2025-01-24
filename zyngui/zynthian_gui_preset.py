@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Preset Selector Class
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -34,8 +34,9 @@ from zyngui.zynthian_gui_save_preset import zynthian_gui_save_preset
 # Zynthian Preset/Instrument Selection GUI Class
 # -------------------------------------------------------------------------------
 
-
 class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
+
+    SLOW_LOAD_PROCS = []
 
     def __init__(self):
         self.processor = None
@@ -59,6 +60,11 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
     def show(self):
         if len(self.list_data) > 0:
             super().show()
+
+    def select(self, index=None, set_zctrl=True):
+        super().select(index, set_zctrl)
+        if self.processor.eng_code not in self.SLOW_LOAD_PROCS:
+            self.preselect_action()
 
     def select_action(self, i, t='S'):
         if t == 'S':
@@ -185,6 +191,7 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
 
     def preselect_action(self):
         self.zyngui.state_manager.start_busy("preselect preset")
+        self.zyngui.state_manager.all_sounds_off_chan(self.processor.midi_chan)
         res = self.processor.preload_preset(self.index)
         self.zyngui.state_manager.end_busy("preselect preset")
         return res
