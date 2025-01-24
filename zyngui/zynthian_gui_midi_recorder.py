@@ -53,7 +53,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
         self.playing = False
         self.smf_timer = None  # 1s timer used to check end of SMF playback
 
-        super().__init__('MIDI file', default_icon="midi_logo.png", tiny_ctrls=True)
+        super().__init__('MIDI file', default_icon="file_midi.png", tiny_ctrls=True)
 
         self.info_canvas.grid_forget()
         self.info_canvas.grid(row=1, column=self.layout['list_pos'][1] + 1, rowspan=1, sticky="news")

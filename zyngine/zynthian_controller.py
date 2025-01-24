@@ -4,7 +4,7 @@
 #
 # zynthian controller
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -98,6 +98,7 @@ class zynthian_controller:
         self.midi_cc_mode_detecting_ts = 0      # Used by CC mode detection algorithm
         self.midi_cc_mode_detecting_count = 0   # Used by CC mode detection algorithm
         self.midi_cc_mode_detecting_zero = 0    # Used by CC mode detection algorithm
+        self.midi_cc_last_ts = 0                # Timestamp of last MIDI CC message, used to debounce toggle
         self.osc_port = None  # OSC destination port
         self.osc_path = None  # OSC path to send value to
         self.graph_path = None  # Complex map of control to engine parameter
@@ -569,6 +570,10 @@ class zynthian_controller:
             if self.is_logarithmic:
                 value = self.value_min + self.value_range * (math.pow(10, val/127) - 1) / 9
             elif self.is_toggle:
+                now = monotonic()
+                if now - self.midi_cc_last_ts < 0.02:
+                    return # Debounce
+                self.midi_cc_last_ts = now
                 if self.midi_cc_momentary_switch:
                     if val >= 64:
                         self.toggle()

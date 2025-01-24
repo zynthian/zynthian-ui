@@ -305,7 +305,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
             options["Restore Backup"] = [param, ["Restore snapshot from a backup copy", "snapshot.png"]]
         if not restrict_options:
             options.update({
-                "Rename": [param, ["Rename snapshot", None]],
+                "Rename": [param, ["Rename snapshot", "rename.png"]],
                 "Set Program": [param, ["Assign a MIDI program number", "settings.png"]],
                 "Delete": [param, ["Delete snapshot", "snapshot_delete.png"]]
             })

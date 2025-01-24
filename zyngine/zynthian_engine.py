@@ -313,12 +313,13 @@ class zynthian_engine(zynthian_basic_engine):
                 for f in sorted(os.listdir(dp)):
                     if not f.startswith('.') and isfile(join(dp, f)):
                         parts = os.path.splitext(f)
-                        if parts[1][1:].lower() in fext:
+                        ext = parts[1][1:].lower()
+                        if ext in fext:
                             title = str.replace(parts[0], '_', ' ')
                             if dn != '_':
                                 title = dn + '/' + title
                             # print("filelist => " + title)
-                            res.append([join(dp, f), i, title, dn, f])
+                            res.append([join(dp, f), i, title, dn, f, ext])
                             i = i + 1
             except Exception as e:
                 # logging.warning("Can't access directory '{}' => {}".format(dp,e))
@@ -355,61 +356,78 @@ class zynthian_engine(zynthian_basic_engine):
 
     # Get bank dir list
     @classmethod
-    def get_bank_dirlist(cls, recursion=1, exclude_empty=True, internal_include_empty=False, fexts=None, root_bank_dirs=None):
-        banks = []
-
+    def get_bank_dirlist(cls, fexts=None, root_bank_dirs=None, recursion=1, exclude_empty=True, internal_include_empty=False):
         if fexts is None:
             fexts = cls.preset_fexts
         if root_bank_dirs is None:
             root_bank_dirs = cls.root_bank_dirs
+        return cls.get_dir_file_list(fexts=fexts, root_dirs=root_bank_dirs,
+                                     recursion=recursion,
+                                     exclude_empty=exclude_empty,
+                                     internal_include_empty=internal_include_empty,
+                                     dirs_only=True)
+
+    # Get dir & file list
+    @classmethod
+    def get_dir_file_list(cls, fexts, root_dirs, recursion=1, exclude_empty=True, internal_include_empty=False, dirs_only=False):
+        res = []
 
         # External storage banks
         for exd in zynthian_gui_config.get_external_storage_dirs(cls.ex_data_dir):
             if not os.path.isdir(exd):
                 continue
-            sbanks = []
+            sres = []
             # Add root directory in external storage
             if not exclude_empty or cls.find_some_preset_file(exd, fexts, 0):
-                sbanks.append([exd, None, "/", None, "/"])
+                sres.append([exd, None, "/", None, "/"])
             # Walk directories inside root
             walk = next(os.walk(exd))
             walk[1].sort()
-            for root_bank_dir in walk[1]:
-                root_bank_path = walk[0] + "/" + root_bank_dir
-                if not exclude_empty or cls.find_some_preset_file(root_bank_path, fexts, recursion + 1):
-                    walk = next(os.walk(root_bank_path))
+            for root_dir in walk[1]:
+                root_path = walk[0] + "/" + root_dir
+                if not exclude_empty or cls.find_some_preset_file(root_path, fexts, recursion + 1):
+                    walk = next(os.walk(root_path))
                     walk[1].sort()
                     count = 0
-                    for bank_dir in walk[1]:
-                        bank_path = walk[0] + "/" + bank_dir
-                        if not exclude_empty or cls.find_some_preset_file(bank_path, fexts, recursion):
-                            sbanks.append([bank_path, None, root_bank_dir + "/" + bank_dir, None, bank_dir])
+                    for dir in walk[1]:
+                        dpath = walk[0] + "/" + dir
+                        if not exclude_empty or cls.find_some_preset_file(dpath, fexts, recursion):
+                            sres.append([dpath, None, root_dir + "/" + dir, None, dir])
                             count += 1
                     # If there is no banks inside, the root is the bank
                     if count == 0:
-                        sbanks.append([root_bank_path, None, root_bank_dir, None, root_bank_dir])
+                        sres.append([root_path, None, root_dir, None, root_dir])
 
-            # Add root's header and banks
-            if len(sbanks):
-                banks.append([None, None, f"USB> {os.path.basename(exd)}", None, None])
-                banks += sbanks
+            # Add files in root dir
+            if not dirs_only:
+                sres += cls.get_filelist(exd, fexts)
 
-        # Internal storage banks
-        for root_bank_dir in root_bank_dirs:
-            if not os.path.isdir(root_bank_dir[1]):
+            # Add root's header and items
+            if len(sres):
+                res.append([None, None, f"USB> {os.path.basename(exd)}", None, None])
+                res += sres
+
+        # Internal storage
+        for root_dir in root_dirs:
+            if not os.path.isdir(root_dir[1]):
                 continue
-            sbanks = []
-            walk = next(os.walk(root_bank_dir[1]))
+            sres = []
+            walk = next(os.walk(root_dir[1]))
             walk[1].sort()
-            for bank_dir in walk[1]:
-                bank_path = walk[0] + "/" + bank_dir
-                if (not exclude_empty or internal_include_empty) or cls.find_some_preset_file(bank_path, fexts, recursion):
-                    sbanks.append([bank_path, None, bank_dir, None, bank_dir])
-            if len(sbanks):
-                banks.append([None, None, "SD> " + root_bank_dir[0], None, None])
-                banks += sbanks
+            for dir in walk[1]:
+                dpath = walk[0] + "/" + dir
+                if (not exclude_empty or internal_include_empty) or cls.find_some_preset_file(dpath, fexts, recursion):
+                    sres.append([dpath, None, dir, None, dir])
 
-        return banks
+            # Add files in root dir
+            if not dirs_only:
+                sres += cls.get_filelist(root_dir[1], fexts)
+
+            if len(sres):
+                res.append([None, None, "SD> " + root_dir[0], None, None])
+                res += sres
+
+        return res
 
     # ---------------------------------------------------------------------------
     # Processor Management

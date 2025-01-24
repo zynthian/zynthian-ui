@@ -342,7 +342,7 @@ class zynthian_widget_sooperlooper(zynthian_widget_base.zynthian_widget_base):
         if btn in ['undo', 'redo']:
             liblo.send(self.osc_url, '/sl/-3/hit', ('s', btn))
         else:
-            if btn in self.processor.engine.SL_LOOP_SEL_PARAM:
+            if self.processor.controllers_dict["selected_loop_cc"].value == 0 and btn in self.processor.engine.SL_LOOP_SEL_PARAM:
                 btn += f":{self.processor.engine.selected_loop}"
             self.processor.controllers_dict[btn].toggle()
 

@@ -81,14 +81,14 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
             options["\u2610 Favourite"] = [preset, ["Add to favorites list", "favorite_add.png"]]
         if engine.is_preset_user(preset):
             if hasattr(engine, "rename_preset"):
-                options["Rename"] = [preset, ["Rename preset", None]]
+                options["Rename"] = [preset, ["Rename preset", "rename.png"]]
             if hasattr(engine, "delete_preset"):
                 options["Delete"] = [preset, ["Delete preset", "file_delete.png"]]
         global_options = {}
         if hasattr(engine, "save_preset"):
             global_options["Save new preset"] = [True, ["Save as new preset", "file_save.png"]]
         if self.processor.eng_code.startswith("JV/"):
-            global_options["Scan for new presets"] = [True, ["Scan new presets, e.g. added via webconf", None]]
+            global_options["Scan for new presets"] = [True, ["Scan new presets, e.g. added via webconf", "reload.png"]]
         if global_options:
             options["Global"] = None
             options.update(global_options)

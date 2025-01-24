@@ -189,7 +189,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
             duration = zynaudioplayer.get_file_duration(preset[0])
             fduration = f"{int(duration/60):02d}:{round(duration)%60:02d}"
             preset[2] += f"{fparts[1]} ({fduration})"
-            preset.append([f"Format: {fparts[1][1:].upper()}\nLength: {fduration}", None])
+            preset.append([f"Format: {fparts[1][1:].upper()}\nLength: {fduration}", "file_audio.png"])
         presets += file_presets
         return presets
 

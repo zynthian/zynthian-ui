@@ -4,7 +4,7 @@
 #
 # zynthian_engine implementation for sooper looper
 #
-# Copyright (C) 2022-2024 Brian Walton <riban@zynthian.org>
+# Copyright (C) 2022-2025 Brian Walton <riban@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -569,11 +569,6 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 
 	def get_controllers_dict(self, processor):
 		if not processor.controllers_dict:
-			midi_chan = processor.midi_chan
-			if midi_chan is None or midi_chan < 0 or midi_chan > 15:
-				midi_chan = zynthian_gui_config.master_midi_channel
-			if midi_chan < 0 or midi_chan > 15:
-				midi_chan = None
 			for ctrl in self._ctrls:
 				ctrl[1]['processor'] = processor
 				if ctrl[0] in self.SL_LOOP_SEL_PARAM:
@@ -612,13 +607,13 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			self.selected_loop_cc_binding = zctrl.value != 0
 			self.adjust_controller_bindings()
 			for symbol in self.SL_LOOP_SEL_PARAM:
-				self.osc_server.send(self.osc_target, '/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/control'))
+				self.osc_server.send(self.osc_target, '/sl/-1/get', ('s', symbol), ('s', self.osc_server_url), ('s', '/control'))
 			processor.refresh_controllers()
 			self.state_manager.send_cuia("refresh_screen", ["control"])
 			return
 		elif zctrl.symbol == "load_file":
-			#self.osc_server.send(self.osc_target, f"/sl/{self.selected_loop}/load_loop", ("s", zctrl.value), ('s', self.osc_server_url), ('s', '/error'))
-			self.osc_server.send(self.osc_target, f"/sl/0/load_loop", ("s", zctrl.value), ('s', self.osc_server_url), ('s', '/error'))
+			self.osc_server.send(self.osc_target, f"/sl/{self.selected_loop}/load_loop", ("s", zctrl.value), ('s', self.osc_server_url), ('s', '/error'))
+			zctrl.value = ""
 			return
 
 		if ":" in zctrl.symbol:
@@ -629,6 +624,8 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 		else:
 			symbol = zctrl.symbol
 			loop = self.selected_loop
+			if not processor.controllers_dict["selected_loop_cc"].value and zctrl.symbol in self.SL_LOOP_SEL_PARAM:
+				return
 
 		if self.osc_server is None or symbol in ['oneshot', 'trigger'] and zctrl.value == 0:
 			# Ignore off signals
@@ -648,9 +645,6 @@ class zynthian_engine_sooperlooper(zynthian_engine):
 			ts = monotonic()
 			pedal_dur = ts - self.pedal_time
 			self.pedal_time = ts
-			if pedal_dur < 0.05:
-				return # debounce
-
 			if zctrl.value:
 				# Pedal push
 				if pedal_dur < 0.5:

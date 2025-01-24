@@ -109,75 +109,112 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.list_data = []
 
         self.list_data.append((None, 0, "> MIDI"))
-        self.list_data.append((self.zyngui.midi_in_config, 0, "MIDI Input Devices", ["Configure MIDI input devices.", "midi_input.png"]))
-        self.list_data.append((self.zyngui.midi_out_config, 0, "MIDI Output Devices", ["Configure MIDI output devices.", "midi_output.png"]))
+        self.list_data.append((self.zyngui.midi_in_config, 0, "MIDI Input Devices",
+                               ["Configure MIDI input devices.", "midi_input.png"]))
+        self.list_data.append((self.zyngui.midi_out_config, 0, "MIDI Output Devices",
+                               ["Configure MIDI output devices.", "midi_output.png"]))
         # self.list_data.append((self.midi_profile, 0, "MIDI Profile"))
 
         if lib_zyncore.get_active_midi_chan():
-            self.list_data.append((self.toggle_active_midi_channel, 0, "\u2612 Active MIDI channel", ["Send active MIDI channel messages to active chain only.", "midi_logo.png"]))
+            self.list_data.append((self.toggle_active_midi_channel, 0, "\u2612 Active MIDI channel",
+                                   ["Send active MIDI channel messages to active chain only.", "midi_settings.png"]))
         else:
-            self.list_data.append((self.toggle_active_midi_channel, 0, "\u2610 Active MIDI channel", ["Send active MIDI channel messages to all chains with same MIDI channel.", "midi_logo.png"]))
+            self.list_data.append((self.toggle_active_midi_channel, 0, "\u2610 Active MIDI channel",
+                                   ["Send active MIDI channel messages to all chains with same MIDI channel.",
+                                    "midi_settings.png"]))
 
         if zynthian_gui_config.midi_prog_change_zs3:
-            self.list_data.append((self.toggle_prog_change_zs3, 0, "\u2612 Program Change for ZS3", ["MIDI Program Change messages recall snapshots", "midi_logo.png"]))
+            self.list_data.append((self.toggle_prog_change_zs3, 0, "\u2612 Program Change for ZS3",
+                                   ["MIDI Program Change messages recall snapshots", "midi_settings.png"]))
         else:
-            self.list_data.append((self.toggle_prog_change_zs3, 0, "\u2610 Program Change for ZS3", ["MIDI Program Change messages recall ZS3.", "midi_logo.png"]))
+            self.list_data.append((self.toggle_prog_change_zs3, 0, "\u2610 Program Change for ZS3",
+                                   ["MIDI Program Change messages recall ZS3.", "midi_settings.png"]))
             if zynthian_gui_config.midi_bank_change:
-                self.list_data.append((self.toggle_bank_change, 0, "\u2612 MIDI Bank Change", ["Select bank when MIDI Program Change received", "midi_logo.png"]))
+                self.list_data.append((self.toggle_bank_change, 0, "\u2612 MIDI Bank Change",
+                                       ["Select bank when MIDI Program Change received", "midi_settings.png"]))
             else:
-                self.list_data.append((self.toggle_bank_change, 0, "\u2610 MIDI Bank Change", ["Don't select bank when MIDI Program Change received", "midi_logo.png"]))
+                self.list_data.append((self.toggle_bank_change, 0, "\u2610 MIDI Bank Change",
+                                       ["Don't select bank when MIDI Program Change received", "midi_settings.png"]))
 
         if zynthian_gui_config.preset_preload_noteon:
-            self.list_data.append((self.toggle_preset_preload_noteon, 0, "\u2612 Note-On Preset Preload", ["Load preset for preview when a MIDI note-on command is received", "midi_logo.png"]))
+            self.list_data.append((self.toggle_preset_preload_noteon, 0, "\u2612 Note-On Preset Preload",
+                                   ["Load preset for preview when a MIDI note-on command is received",
+                                    "midi_settings.png"]))
         else:
-            self.list_data.append((self.toggle_preset_preload_noteon, 0, "\u2610 Note-On Preset Preload", ["Do not load preset for preview when a MIDI note-on command is received", "midi_logo.png"]))
+            self.list_data.append((self.toggle_preset_preload_noteon, 0, "\u2610 Note-On Preset Preload",
+                                   ["Do not load preset for preview when a MIDI note-on command is received",
+                                    "midi_settings.png"]))
 
         if zynthian_gui_config.midi_usb_by_port:
-            self.list_data.append((self.toggle_usbmidi_by_port, 0, "\u2612 MIDI-USB mapped by port", ["MIDI ports are indexed by their device name and the physical USB port to which they are plugged", "midi_logo.png"]))
+            self.list_data.append((self.toggle_usbmidi_by_port, 0, "\u2612 MIDI-USB mapped by port",
+                                   ["MIDI ports are indexed by their device name and the physical USB port to which they are plugged",
+                                    "midi_settings.png"]))
         else:
-            self.list_data.append((self.toggle_usbmidi_by_port, 0, "\u2610 MIDI-USB mapped by port", ["MIDI ports are indexed by their device name only.", "midi_logo.png"]))
+            self.list_data.append((self.toggle_usbmidi_by_port, 0, "\u2610 MIDI-USB mapped by port",
+                                   ["MIDI ports are indexed by their device name only.", "midi_settings.png"]))
 
         if zynthian_gui_config.transport_clock_source == 0:
             if zynthian_gui_config.midi_sys_enabled:
-                self.list_data.append((self.toggle_midi_sys, 0, "\u2612 MIDI System Messages", ["System messages are sent to MIDI outputs.", "midi_logo.png"]))
+                self.list_data.append((self.toggle_midi_sys, 0, "\u2612 MIDI System Messages",
+                                       ["System messages are sent to MIDI outputs.", "midi_settings.png"]))
             else:
-                self.list_data.append((self.toggle_midi_sys, 0, "\u2610 MIDI System Messages", ["System messages are not sent to MIDI outputs.", "midi_logo.png"]))
+                self.list_data.append((self.toggle_midi_sys, 0, "\u2610 MIDI System Messages",
+                                       ["System messages are not sent to MIDI outputs.", "midi_settings.png"]))
 
         gtrans = lib_zyncore.get_global_transpose()
         if gtrans > 0:
             display_val = f"+{gtrans}"
         else:
             display_val = f"{gtrans}"
-        self.list_data.append((self.edit_global_transpose, 0, f"[{display_val}] Global Transpose", ["MIDI note transpose.\nThis effects all MIDI messages and is in addition to individual chain transpose.", "midi_logo.png"]))
+        self.list_data.append((self.edit_global_transpose, 0, f"[{display_val}] Global Transpose",
+                               ["MIDI note transpose.\nThis effects all MIDI messages and is in addition to individual chain transpose.",
+                                "midi_settings.png"]))
 
         self.list_data.append((None, 0, "> AUDIO"))
 
         if self.state_manager.allow_rbpi_headphones():
             if zynthian_gui_config.rbpi_headphones:
-                self.list_data.append((self.stop_rbpi_headphones, 0, "\u2612 RBPi Headphones", ["Raspberry Pi onboard (low fidelity) headphone output is enabled", "headphone.png"]))
+                self.list_data.append((self.stop_rbpi_headphones, 0, "\u2612 RBPi Headphones",
+                                       ["Raspberry Pi onboard (low fidelity) headphone output is enabled",
+                                        "headphone.png"]))
             else:
-                self.list_data.append((self.start_rbpi_headphones, 0, "\u2610 RBPi Headphones", ["Raspberry Pi onboard (low fidelity) headphone output is disabled", "headphone.png"]))
+                self.list_data.append((self.start_rbpi_headphones, 0, "\u2610 RBPi Headphones",
+                                       ["Raspberry Pi onboard (low fidelity) headphone output is disabled",
+                                        "headphone.png"]))
 
-        self.list_data.append((self.hotplug_audio_menu, 0, "Hotplug USB Audio", ["Configure USB audio hotplug.\n\nWhen enabled, USB audio devices will be detected and available. This does not include any device that is already configured as the main audio device which must always reamain connected.", None]))
+        self.list_data.append((self.hotplug_audio_menu, 0, "Hotplug USB Audio",
+                               ["Configure USB audio hotplug.\n\nWhen enabled, USB audio devices will be detected and available. This does not include any device that is already configured as the main audio device which must always reamain connected.",
+                                "audio_options.png"]))
 
         if zynthian_gui_config.snapshot_mixer_settings:
-            self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2612 Audio Levels on Snapshots", ["Soundcard parameters are saved with snapshot", "meter.png"]))
+            self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2612 Audio Levels on Snapshots",
+                                   ["Soundcard parameters are saved with snapshot", "meter.png"]))
         else:
-            self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2610 Audio Levels on Snapshots", ["Soundcard parameters are not saved with snapshot", "meter.png"]))
+            self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2610 Audio Levels on Snapshots",
+                                   ["Soundcard parameters are not saved with snapshot", "meter.png"]))
 
         if zynthian_gui_config.enable_dpm:
-            self.list_data.append((self.toggle_dpm, 0, "\u2612 Mixer Peak Meters", ["Peak programme meters are enabled.", "meters.png"]))
+            self.list_data.append((self.toggle_dpm, 0, "\u2612 Mixer Peak Meters",
+                                   ["Peak programme meters are enabled.", "meters.png"]))
         else:
-            self.list_data.append((self.toggle_dpm, 0, "\u2610 Mixer Peak Meters", ["Peak programme meters are disabled.\nThis saves a little CPU power.", "meters.png"]))
+            self.list_data.append((self.toggle_dpm, 0, "\u2610 Mixer Peak Meters",
+                                   ["Peak programme meters are disabled.\nThis saves a little CPU power.",
+                                    "meters.png"]))
 
         self.list_data.append((None, 0, "> NETWORK"))
-        self.list_data.append((self.network_info, 0, "Network Info", ["Show network details, e.g. IP address, etc.", "network.png"]))
-        self.list_data.append((self.wifi_config, 0, f"Wi-Fi Config ({self.wifi_status})", ["Configure Wi-Fi connections.", "wifi.png"]))
+        self.list_data.append((self.network_info, 0, "Network Info",
+                               ["Show network details, e.g. IP address, etc.", "network.png"]))
+        self.list_data.append((self.wifi_config, 0, f"Wi-Fi Config ({self.wifi_status})",
+                               ["Configure Wi-Fi connections.", "wifi.png"]))
         self.wifi_index = len(self.list_data) - 1
         if zynconf.is_service_active("vncserver0"):
-            self.list_data.append((self.state_manager.stop_vncserver, 0, "\u2612 VNC Server", ["Display of zynthian UI and processors' native GUI via VNC enabled.\nThis uses more CPU. It is advised to disable during performance.", "network.png"]))
+            self.list_data.append((self.state_manager.stop_vncserver, 0, "\u2612 VNC Server",
+                                   ["Display of zynthian UI and processors' native GUI via VNC enabled.\nThis uses more CPU. It is advised to disable during performance.",
+                                    "network.png"]))
         else:
-            self.list_data.append((self.state_manager.start_vncserver, 0, "\u2610 VNC Server", ["Display of zynthian UI and processors' native GUI via VNC disabled.", "network.png"]))
+            self.list_data.append((self.state_manager.start_vncserver, 0, "\u2610 VNC Server",
+                                   ["Display of zynthian UI and processors' native GUI via VNC disabled.",
+                                    "network.png"]))
 
         self.list_data.append((None, 0, "> SETTINGS"))
         if not zynthian_gui_config.wiring_layout.startswith("V5"):
@@ -190,36 +227,60 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                     touch_navigation_option = "V5 keypad at right"
                 case _:
                     touch_navigation_option = "None"
-            self.list_data.append((self.touch_navigation_menu, 0, f"Touch Navigation: {touch_navigation_option}", ["Select touch interface mode.\n\nFor touch-only devices with 5\" screen or less, select touch-widgets.\nFor large touch screen, select V5...\nFor full hardware device, e.g. V5, select None", "settings.png"]))
+            self.list_data.append((self.touch_navigation_menu, 0, f"Touch Navigation: {touch_navigation_option}",
+                                   ["Select touch interface mode.\n\nFor touch-only devices with 5\" screen or less, select touch-widgets.\nFor large touch screen, select V5...\nFor full hardware device, e.g. V5, select None",
+                                    "settings.png"]))
         if "brightness_config" in self.zyngui.screens and self.zyngui.screens["brightness_config"].get_num_zctrls() > 0:
-            self.list_data.append((self.zyngui.brightness_config, 0, "Brightness", ["Adjust display and LED brightness.", "bright_settings.png"]))
+            self.list_data.append((self.zyngui.brightness_config, 0, "Brightness",
+                                   ["Adjust display and LED brightness.", "bright_settings.png"]))
         if "cv_config" in self.zyngui.screens:
-            self.list_data.append((self.show_cv_config, 0, "CV Settings", ["Control Voltage configuration.", "settings.png"]))
-        self.list_data.append((self.zyngui.calibrate_touchscreen, 0, "Calibrate Touchscreen", ["Show touchscreen calibration.\nTouch each crosshair until it changes color.\nScreen closes after 15s of inactivity.", "settings.png"]))
-        self.list_data.append((self.zyngui.cuia_screen_clean, 0, "Clean Screen", ["10s countdown with no touch trigger. Allows screen to be cleaned without triggering any action.", None]))
-        self.list_data.append((self.bluetooth, 0, "Bluetooth", ["Scan, enable and configure Bluetooth devices.\n\nMust enable Bluetooth here to access BLE MIDI devices. Also supports HID devices.", "bluetooth.png"]))
+            self.list_data.append((self.show_cv_config, 0, "CV Settings",
+                                   ["Control Voltage configuration.", "settings.png"]))
+        self.list_data.append((self.zyngui.calibrate_touchscreen, 0, "Calibrate Touchscreen",
+                               ["Show touchscreen calibration.\nTouch each crosshair until it changes color.\nScreen closes after 15s of inactivity.",
+                                "settings.png"]))
+        self.list_data.append((self.zyngui.cuia_screen_clean, 0, "Clean Screen",
+                               ["10s countdown with no touch trigger. Allows screen to be cleaned without triggering any action.",
+                               "settings.png"]))
+        self.list_data.append((self.bluetooth, 0, "Bluetooth",
+                               ["Scan, enable and configure Bluetooth devices.\n\nMust enable Bluetooth here to access BLE MIDI devices. Also supports HID devices.",
+                                "bluetooth.png"]))
 
         self.list_data.append((None, 0, "> TEST"))
-        self.list_data.append((self.test_audio, 0, "Test Audio", ["Play an audio track to test audio output.\n\nPress BACK to cancel playback.", "audio_output.png"]))
-        self.list_data.append((self.test_midi, 0, "Test MIDI", ["Play a MIDI track to test MIDI output.\n\nThis will play the MIDI through any loaded chains.\nPress BACK to cancel playback.", "midi_output.png"]))
+        self.list_data.append((self.test_audio, 0, "Test Audio",
+                               ["Play an audio track to test audio output.\n\nPress BACK to cancel playback.",
+                                "audio_output.png"]))
+        self.list_data.append((self.test_midi, 0, "Test MIDI",
+                               ["Play a MIDI track to test MIDI output.\n\nThis will play the MIDI through any loaded chains.\nPress BACK to cancel playback.",
+                                "midi_output.png"]))
         if zynthian_gui_config.control_test_enabled:
-            self.list_data.append((self.control_test, 0, "Test control HW", ["Test system hardware.", None]))
+            self.list_data.append((self.control_test, 0, "Test control HW",
+                                   ["Test system hardware.", "settings.png"]))
 
         self.list_data.append((None, 0, "> SYSTEM"))
         if self.zyngui.capture_log_fname:
-            self.list_data.append((self.workflow_capture_stop, 0, "\u2612 Capture Workflow", ["End workflow capture session", None]))
+            self.list_data.append((self.workflow_capture_stop, 0, "\u2612 Capture Workflow",
+                                   ["End workflow capture session",
+                                    "capture.png"]))
         else:
-            self.list_data.append((self.workflow_capture_start, 0, "\u2610 Capture Workflow", ["Start workflow capture session.\n\nZynthian display, encoder and button actions are saved to file until this option is deselected.", None]))
-        self.list_data.append((self.about, 0, "About...", ["Show information about zynthian version, etc.", None]))
+            self.list_data.append((self.workflow_capture_start, 0, "\u2610 Capture Workflow",
+                                   ["Start workflow capture session.\n\nZynthian display, encoder and button actions are saved to file until this option is deselected.",
+                                    "capture.png"]))
         if self.state_manager.update_available:
-            self.list_data.append((self.update_software, 0, "Update Software", ["Updates firmware and software from Internet.\n\nThis option is only shown when updates are availale, indicated by the \u21bb icon in the topbar.\nDo not poweroff during update which may take several minutes.", None]))
+            self.list_data.append((self.update_software, 0, "Update Software",
+                                   ["Updates firmware and software from Internet.\n\nThis option is only shown when updates are availale, indicated by the \u21bb icon in the topbar.\nDo not poweroff during update which may take several minutes.",
+                                    "update.png"]))
         # self.list_data.append((self.update_system, 0, "Update Operating System"))
         # self.list_data.append((None, 0, "> POWER"))
         # self.list_data.append((self.restart_gui, 0, "Restart UI"))
         if zynthian_gui_config.debug_thread:
-            self.list_data.append((self.exit_to_console, 0, "Exit", ["Stop zynthian UI but do not reboot.", None]))
-        self.list_data.append((self.reboot, 0, "Reboot", ["Reboot (restart) zynthian.", None]))
-        self.list_data.append((self.power_off, 0, "Power Off", ["Turn off zynthian.\n\nPower is still fed to the device but it is effectively off.", None]))
+            self.list_data.append((self.exit_to_console, 0, "Exit",
+                                   ["Stop zynthian UI but do not reboot.", "poweroff.png"]))
+        self.list_data.append((self.reboot, 0, "Reboot",
+                               ["Reboot (restart) zynthian.", "reboot.png"]))
+        self.list_data.append((self.power_off, 0, "Power Off",
+                               ["Turn off zynthian.\n\nPower is still fed to the device but it is effectively off.",
+                                "poweroff.png"]))
 
         super().fill_list()
         self.filling_list = False

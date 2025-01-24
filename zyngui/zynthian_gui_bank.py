@@ -97,7 +97,7 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
         title_user = False
         if engine.is_preset_user(bank):
             if hasattr(engine, "rename_user_bank"):
-                options["Rename"] = [bank, ["Rename bank", None]]
+                options["Rename"] = [bank, ["Rename bank", "rename.png"]]
                 title_user = True
             if hasattr(engine, "delete_user_bank"):
                 options["Delete"] = [bank, ["Delete bank", "folder_delete.png"]]
