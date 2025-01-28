@@ -686,7 +686,7 @@ class zynthian_gui_base(tkinter.Frame):
                 else:
                     flags = "\u2665"
             if self.zyngui.bold_flag:
-                flags = "B"
+                flags = "\u21a7"
 
             self.status_canvas.itemconfig(
                 self.status_error, text=flags, fill=color)
