@@ -145,6 +145,7 @@ class zynthian_gui:
         self.zynpot_dval = zynthian_gui_config.num_zynpots * [0]
         self.zynpot_pr_state = zynthian_gui_config.num_zynpots * [0]
         self.dtsw = []
+        self.bold_flag = False
 
         self.exit_code = 0
         self.exit_flag = False
@@ -2323,16 +2324,24 @@ class zynthian_gui:
             try:
                 # Check for long press before release
                 long_ts = monotonic() - zynthian_gui_config.zynswitch_long_seconds
+                bold_ts = monotonic() - zynthian_gui_config.zynswitch_bold_seconds
+                bold_flag = False
                 for i, ts in enumerate(zynswitch_cuia_ts):
-                    if ts is not None and ts < long_ts:
-                        zynswitch_cuia_ts[i] = None
-                        try:
-                            zpi = zynthian_gui_config.zynpot2switch.index(i)
-                            zp_pr_state = self.zynpot_pr_state[zpi]
-                        except:
-                            zp_pr_state = 0
-                        if zp_pr_state <= 1:
-                            self.zynswitch_long(i)
+                    if ts is not None:
+                        if ts < long_ts:
+                            zynswitch_cuia_ts[i] = None
+                            try:
+                                zpi = zynthian_gui_config.zynpot2switch.index(i)
+                                zp_pr_state = self.zynpot_pr_state[zpi]
+                            except:
+                                zp_pr_state = 0
+                            if zp_pr_state <= 1:
+                                self.zynswitch_long(i)
+                        elif ts < bold_ts:
+                            bold_flag = True
+                if self.bold_flag != bold_flag:
+                    self.bold_flag = bold_flag
+                    #TODO: Send signal
                 event = self.cuia_queue.get(True, repeat_interval)
                 params = None
                 if isinstance(event, str):
