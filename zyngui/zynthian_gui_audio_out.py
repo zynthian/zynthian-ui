@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Audio-Out Selector Class
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -25,6 +25,8 @@
 
 import logging
 from time import sleep
+from threading import Thread
+import socket
 
 # Zynthian specific modules
 import zynautoconnect
@@ -41,11 +43,16 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
 
     def __init__(self):
         self.chain = None
+        self.thread = None
+        self.aoip_out = {} # Map of AoIP sources indexed by ip_addr, each [hostname, port, port,..."]
         super().__init__('Audio Out')
 
     def build_view(self):
         self.check_ports = 0
         self.playback_ports = zynautoconnect.get_hw_audio_dst_ports()
+        self.aoip_scan = True
+        self.zyngui.state_manager.zynet_add_cb(self.zynet_cb)
+        self.zyngui.state_manager.zynet_send("RA")
         if super().build_view():
             zynsigman.register_queued(
                 zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
@@ -55,9 +62,25 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
 
     def hide(self):
         if self.shown:
+            self.zyngui.state_manager.zynet_remove_cb(self.zynet_cb)
             zynsigman.unregister(
                 zynsigman.S_AUDIO_RECORDER, zynthian_audio_recorder.SS_AUDIO_RECORDER_STATE, self.update_rec)
             super().hide()
+
+    def zynet_cb(self, msg, ip, port):
+        """Detect remote zynthian AoIP sources"""
+        dirty = False
+        if msg[0] == "AR":
+            if len(msg) > 2:
+                hostname = msg[1]
+                # Stop any removed remote audio sources
+                for aoip_out in list(self.zyngui.state_manager.aoip_out):
+                    if aoip_out.startswith(f"aoip_{ip}_") and int(aoip_out[18:]) not in msg[2:]:
+                        self.zyngui.state_manager.remove_aoip_output(aoip_out)
+                self.aoip_out[ip] = msg[1:]
+                dirty = True
+        if dirty:
+            self.update_list()
 
     def update_rec(self, state):
         # Lock multitrack record config when recorder is recording
@@ -125,6 +148,21 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
                     self.list_data.append((processor, processor, "\u2612 " + title, info))
                 else:
                     self.list_data.append((processor, processor, "\u2610 " + title, info))
+        
+        if self.aoip_out:
+            self.list_data.append((None, None, "Network Audio"))
+            for ip, host_cfg in self.aoip_out.items():
+                try:
+                    host_name = host_cfg [0]
+                    ports = host_cfg [1:]
+                    for i, port in enumerate(ports):
+                        uri = f"aoip_{ip}_{port}"
+                        if uri in self.chain.audio_out:
+                            self.list_data.append((uri, [ip, port, f"{host_name} {i + 1}"], f"\u2612 {host_name} {i + 1}"))
+                        else:
+                            self.list_data.append((uri, [ip, port, f"{host_name} {i + 1}"], f"\u2610 {host_name} {i + 1}"))
+                except:
+                    pass # Misconfigured zynet message
 
         self.list_data.append((None, None, "> Audio Recorder"))
         armed = self.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan)
@@ -145,17 +183,25 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
                 self.zyngui.state_manager.audio_recorder.toggle_arm(self.chain.mixer_chan)
                 self.fill_list()
         elif t == 'S':
+            if self.list_data[i][0].startswith("aoip_"):
+                if self.list_data[i][0] in self.zyngui.state_manager.aoip_out:
+                    result = self.zyngui.state_manager.remove_aoip_output(self.list_data[i][0])
+                else:
+                    result = self.zyngui.state_manager.add_aoip_output(self.list_data[i][0], *self.list_data[i][1])
+                    sleep(0.1) # Wait for service to start
+                if not result:
+                    return
             self.chain.toggle_audio_out(self.list_data[i][0])
             self.fill_list()
         elif t == "B":
-            if not self.list_data[i][1].startswith("^system:"):
+            if not self.list_data[i][0].startswith("^system:"):
                 return
             self.zyngui.state_manager.start_busy("alsa_output", "Getting audio level parameters...")
             sleep(0.1)
             ctrl_list = []
             chans = []
             try:
-                a = self.list_data[i][1].replace("$", "").replace("^", "")
+                a = self.list_data[i][0].replace("$", "").replace("^", "")
                 b = a.split("|")
                 for c in b:
                     if c.startswith("system:"):

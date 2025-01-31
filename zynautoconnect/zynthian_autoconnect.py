@@ -350,6 +350,14 @@ def update_system_audio_aliases():
                     port.unset_alias(a)
                 port.set_alias(alias)
 
+def update_aoip_audio_aliases():
+        ports = sorted(jclient.get_ports("aoip", is_audio=True, is_output=True),key=lambda port: port.name) 
+        for i, port in enumerate(ports):
+            try:
+                port.set_alias(f"AoIP {i + 1}")
+            except:
+                logging.warning(f"Unable to set AoIP {i} alias")
+
 
 def add_sidechain_ports(jackname):
     """Add ports that should be treated as sidechain inputs
@@ -1154,7 +1162,7 @@ def get_audio_capture_ports():
         for port in list(ports):
             if port.name in ["system:capture_1", "system:capture_2"]:
                 ports.remove(port)
-    return ports + jclient.get_ports("zynain", is_output=True, is_audio=True)
+    return ports + jclient.get_ports("zynain", is_output=True, is_audio=True) + sorted(jclient.get_ports("aoip", is_audio=True, is_output=True),key=lambda port: port.name)
 
 
 def build_midi_port_name(port):

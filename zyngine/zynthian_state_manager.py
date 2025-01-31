@@ -33,8 +33,10 @@ from queue import SimpleQueue
 from datetime import datetime
 from time import sleep, monotonic
 from json import JSONEncoder, JSONDecoder
-from subprocess import check_output, Popen, STDOUT, PIPE
+from subprocess import check_output, Popen, STDOUT, PIPE, DEVNULL
 from os.path import basename, isdir, isfile, join, dirname, splitext
+import socket
+import psutil
 
 # Zynthian specific modules
 import zynconf
@@ -161,6 +163,15 @@ class zynthian_state_manager:
         self.ctrldev_manager = None
         self.audio_player = None
         self.aubio_in = [1, 2]  # List of aubio inputs
+        self.aoip_in = [] # List of aoip input processes
+        self.aoip_out = {} # Mao of aoip output processes, indexed by uri "aoip:ip:port:idx"
+        self.zynet_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        #self.zynet_socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton(ipaddr))
+        self.zynet_socket.settimeout(0.2)
+        self.zynet_socket.bind(("0.0.0.0", zynconf.ServerPort["zynet_port"]))
+        mreq = struct.pack('4sL', socket.inet_aton(zynconf.ServerPort["zynet_addr"]), socket.INADDR_ANY)
+        self.zynet_socket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+        self.zynet_handlers = [] # List of zynet message handlers
 
         # List of lists [rate, cb, schedule] for registered regularly repeating callbacks
         self.slow_update_callbacks = []
@@ -244,6 +255,10 @@ class zynthian_state_manager:
         self.fast_thread.name = "Status Manager Fast"
         self.fast_thread.daemon = True  # thread dies with the program
         self.fast_thread.start()
+
+        if aoip := self.get_zynthian_config("ZYNTHIAN_AOIP_INPUTS") is None:
+            aoip = 0
+        self.set_aoip_channels(aoip)
 
         zynsigman.register(zynsigman.S_AUDIO_PLAYER, self.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
 
@@ -553,6 +568,7 @@ class zynthian_state_manager:
         # Short delay after startup before first slow update
         next_second_check = monotonic() + 2
         self.add_slow_update_callback(3600, self.check_for_updates)
+        ipaddr = None
 
         while not self.exit_flag:
             # Get CPU Load
@@ -563,6 +579,7 @@ class zynthian_state_manager:
             try:
                 # Get SOC sensors (once each 5 refreshes)
                 if status_counter > 5:
+                    ipaddr = None # Check for change of IP
                     status_counter = 0
 
                     self.status_overtemp = False
@@ -656,10 +673,45 @@ class zynthian_state_manager:
                                 logging.error(e)
                     next_second_check = now + 1
 
+                if ipaddr is None:
+                    for addr in psutil.net_if_addrs()["eth0"]:
+                        if addr.family == socket.AF_INET:
+                            ipaddr = addr.address
+                if ipaddr is not None:
+                    msg, addr = self.zynet_socket.recvfrom(1024)
+                    if addr[0] != ipaddr:
+                        self.cb_zynet(msg.decode("utf-8"), *addr)
+            except TimeoutError:
+                pass
             except Exception as e:
                 logging.exception(e)
 
             sleep(0.2)
+
+    def zynet_send(self, msg):
+        try:
+            self.zynet_socket.sendto(bytes(msg, "utf-8"), (zynconf.ServerPort["zynet_addr"], zynconf.ServerPort["zynet_port"]))
+        except Exception as e:
+            logging.warning(e)
+
+    def zynet_add_cb(self, cb):
+        if cb not in self.zynet_handlers:
+            self.zynet_handlers.append(cb)
+
+    def zynet_remove_cb(self, cb):
+        if cb in self.zynet_handlers:
+            self.zynet_handlers.remove(cb)
+
+    def cb_zynet(self, msg, ip, port):
+        logging.warning(f"Rx zynet msg '{msg}' from {ip}:{port}")
+        zynet_msg = msg.split("|")
+        if len(zynet_msg) == 0:
+            return
+        for cb in self.zynet_handlers:
+            try:
+                cb(zynet_msg, ip, port)
+            except Exception as e:
+                logging.warning(f"Failed to handle zynet messasage: {e}")
 
     def cb_status_audio_player(self, handle, state):
         if handle == self.audio_player.handle:
@@ -2713,6 +2765,31 @@ class zynthian_state_manager:
             self.start_aubionotes(False)
         else:
             self.stop_aubionotes(False)
+
+    def set_aoip_channels(self, chans):
+        procs_to_remove = self.aoip_in[chans:]
+        for proc in procs_to_remove:
+            proc.terminate()
+            self.aoip_in.remove(proc)
+        for i in range(len(self.aoip_in), chans):
+            self.aoip_in.append(Popen(["zita-n2j", "localhost", f"{40190 + i}", "--jname", f"aoipin{i + 1}"], stdout=DEVNULL, stderr=DEVNULL))
+        sleep(0.2) # Wait for jack ports to be created
+        zynautoconnect.update_aoip_audio_aliases()
+        os.environ["ZYNTHIAN_AOIP_INPUTS"] = str(len(self.aoip_in))
+        msg = "AR"
+        for i in range(chans):
+            msg += f"|{40190 + i}"
+        self.zynet_send(msg)
+
+    def add_aoip_output(self, uri, ip, port, name):
+        self.aoip_out[uri] = Popen(["zita-j2n", ip, f"{port}", "--jname", uri], stdout=DEVNULL, stderr=DEVNULL)
+        return True
+
+    def remove_aoip_output(self, uri):
+        if uri in self.aoip_out:
+            self.aoip_out[uri].terminate()
+            del self.aoip_out[uri]
+            return True
 
     # ---------------------------------------------------------------------------
     # Zynthian Config Info

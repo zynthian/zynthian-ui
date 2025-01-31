@@ -186,6 +186,10 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                ["Configure USB audio hotplug.\n\nWhen enabled, USB audio devices will be detected and available. This does not include any device that is already configured as the main audio device which must always reamain connected.",
                                 "audio_options.png"]))
 
+        self.list_data.append((self.aoip_menu, 0, f"Network Audio ({os.environ.get('ZYNTHIAN_AOIP_INPUTS', 0)})",
+                               ["Configure network audio\n\nConnect zynthians together over wired LAN",
+                                None]))
+
         if zynthian_gui_config.snapshot_mixer_settings:
             self.list_data.append((self.toggle_snapshot_mixer_settings, 0, "\u2612 Audio Levels on Snapshots",
                                    ["Soundcard parameters are saved with snapshot", "meter.png"]))
@@ -480,6 +484,10 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         self.zyngui.state_manager.end_busy("hotplug")
         zynautoconnect.resume()
 
+    def aoip_menu(self):
+        self.enable_param_editor(self, 'aoip', {'name': 'AoIP Stero Inputs', 'value_min': 0,
+                                     'value_max': 64, 'value': len(self.state_manager.aoip_in)})
+
     def toggle_dpm(self):
         zynthian_gui_config.enable_dpm = not zynthian_gui_config.enable_dpm
         self.update_list()
@@ -551,6 +559,10 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
             transpose = zctrl.value
             lib_zyncore.set_global_transpose(transpose)
             self.update_list()
+        elif zctrl.symbol == "aoip":
+            self.state_manager.set_aoip_channels(zctrl.value)
+            self.update_list()
+
 
     # -------------------------------------------------------------------------
 

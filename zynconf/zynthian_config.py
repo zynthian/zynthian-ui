@@ -154,6 +154,8 @@ ServerPort = {
     "webconf_http": 80,
     "webconf_https": 443,
     "cuia_osc": 1370,
+    "zynet_addr": "239.192.0.1",
+    "zynet_port": 1371,
     "vnc_ui": 5900,
     "vnc_desktop": 5901,
     "linuxsampler_osc": 6688,
