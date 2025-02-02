@@ -35,9 +35,6 @@ import zynautoconnect
 
 class zynthian_aoip:
 
-    DEST_MCAST_ADDR = "239.192.0.1" #TODO: Define in config
-    SRC_MCAST_ADDR = "239.192.0.2"
-
     def __init__(self):
         """ struct of input dict:
         uri: {
@@ -85,7 +82,6 @@ class zynthian_aoip:
             self.node = node
             environ['ZYNTHIAN_AOIP_NODE'] = str(node)
             self.DEST_MCAST_ADDR = f"239.192.0.{node}"
-            self.SRC_MCAST_ADDR = f"239.192.1.{node}"
         if node == 0:
             # Disable AoIP
             self.reset()
@@ -132,7 +128,7 @@ class zynthian_aoip:
     def add_input(self, node, output):
         if self.node == 0 or not 0 < node <= 250:
             return False
-        addr = f"239.192.1.{node}"
+        addr = f"239.192.0.{node}"
         uri = f"aoip_{addr}_{output}"
         proc = Popen(
             [
