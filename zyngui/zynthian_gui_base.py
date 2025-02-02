@@ -793,9 +793,11 @@ class zynthian_gui_base(tkinter.Frame):
     def switch_select(self, typ='S'):
         if self.param_editor_zctrl:
             if typ == 'S':
+                keep_editor = False
                 if self.param_editor_assert_cb:
-                    self.param_editor_assert_cb(self.param_editor_zctrl.value)
-                self.disable_param_editor()
+                    keep_editor = self.param_editor_assert_cb(self.param_editor_zctrl.value)
+                if not keep_editor:
+                    self.disable_param_editor()
                 return True
             elif typ == 'B':
                 self.param_editor_zctrl.set_value(

@@ -89,9 +89,7 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
     def select_action(self, i, t='S'):
         if t == 'S':
             if self.list_data[i][0] == ("add_aoip"):
-                self.aoip.add_input()
-                sleep(0.1)
-                self.fill_list()
+                self.cb_aoip_node()
                 return
             self.chain.toggle_audio_in(self.list_data[i][0])
             self.fill_list()
@@ -124,6 +122,21 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
 
     def set_select_path(self):
         self.select_path.set("Capture Audio from ...")
+
+    def cb_aoip_node(self):
+        self.enable_param_editor(self, 'aoip_node', {'name': 'AoIP Node', 'value_min': 1,
+            'value_max': 250, 'value': 1}, self.cb_aoip_output)
+
+    def cb_aoip_output(self, node):
+        self.aoip_node = node
+        self.enable_param_editor(self, 'aoip_output', {'name': 'AoIP Output', 'value_min': 1,
+            'value_max': 64, 'value': 1}, self.cb_add_aoip)
+        return True
+
+    def cb_add_aoip(self, output):
+        self.aoip.add_input(self.aoip_node, output)
+        sleep(0.1)
+        self.fill_list()
 
     def remove_aoip(self, uri):
         self.aoip.remove_input(uri)

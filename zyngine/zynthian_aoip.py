@@ -129,16 +129,11 @@ class zynthian_aoip:
             del self.outputs[uri]
             return True
 
-    def add_input(self):
-        if self.node == 0:
+    def add_input(self, node, output):
+        if self.node == 0 or not 0 < node <= 250:
             return False
-        used_ports = []
-        for uri in self.inputs:
-            used_ports.append(int(uri.split("_")[-1]))
-        port = 1
-        while port in used_ports:
-            port += 1
-        uri = f"aoip_{self.SRC_MCAST_ADDR}_{port}"
+        addr = f"239.192.1.{node}"
+        uri = f"aoip_{addr}_{output}"
         proc = Popen(
             [
                 "stdbuf",
@@ -146,8 +141,8 @@ class zynthian_aoip:
                 "zita-n2j",
                 "--jname",
                 uri,
-                self.SRC_MCAST_ADDR,
-                str(port),
+                addr,
+                str(output),
                 "eth0"
             ],
             text=True,
