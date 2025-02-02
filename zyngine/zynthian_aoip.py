@@ -23,9 +23,10 @@
 
 import logging
 from time import sleep
-from subprocess import check_output, Popen, STDOUT, PIPE, DEVNULL
+from subprocess import Popen, STDOUT, PIPE, DEVNULL
 from os import set_blocking, environ
 from threading import Thread
+import socket
 
 import zynautoconnect
 from zynconf import zynthian_config
@@ -41,12 +42,14 @@ class zynthian_aoip:
         uri: {
             "Proc": popen_object,
             "ip": remote_address or None if not connected
+            "name": remote name
             "chans": quantity of audio channels,
             "sr": samplerate
+            "state": [node, output]
         }
         """
         self.inputs = {} # Map of aoip input config, indexed by uri "aoip_ip_port:idx"
-        self.outputs = {} # Map of aoip output processes, indexed by uri "aoip_ip_port:idx"
+        self.outputs = {} # Map of aoip output config, indexed by uri "aoip_ip_port:idx"
         self.exit_flag = False
         self.set_node(int(environ.get('ZYNTHIAN_AOIP_NODE', 0)))
         self.thread = Thread(target=self.thread_task)
@@ -68,12 +71,14 @@ class zynthian_aoip:
                     if line == "Waiting for info packet...":
                         logging.warning("Disconnected")
                         config["ip"] = None
+                        config["name"] = ""
                         config["chans"] = 0
                         config["sr"] = 0
                     elif line.startswith("From"):
                         a, ip, b, chans, c, sr, d = line.split()
                         logging.warning(f"Connection from {ip} with {chans} channels at {sr} {d}")
                         config["ip"] = ip
+                        config["name"] = socket.gethostbyaddr(ip)
                         config["chans"] = int(chans)
                         config["sr"] = int(sr)
             sleep(0.1)
@@ -87,16 +92,21 @@ class zynthian_aoip:
             # Disable AoIP
             self.reset()
 
-    def add_output(self):
+    def add_output(self, output=None):
         if self.node == 0:
             return False
         used_ports = []
-        for uri in self.outputs:
-            used_ports.append(int(uri.split("_")[-1]))
-        port = 1
-        while port in used_ports:
-            port += 1
-        uri = f"aoip_{self.DEST_MCAST_ADDR}_{port}"
+        for config in self.outputs.values():
+            used_ports.append(config["output"])
+        if output in used_ports:
+            return False
+        if output == None:
+            output = 1
+            while output in used_ports:
+                output += 1
+        if output > 250:
+            return False
+        uri = f"aoip_{self.DEST_MCAST_ADDR}_{output}"
         proc = Popen(
             [
                 "stdbuf",
@@ -105,7 +115,7 @@ class zynthian_aoip:
                 "--jname",
                 uri,
                 self.DEST_MCAST_ADDR,
-                str(port),
+                str(output),
                 "eth0"
             ],
             text=True,
@@ -113,7 +123,7 @@ class zynthian_aoip:
             stdout=PIPE,
             stderr=STDOUT)
         if proc.poll() is None:
-            self.outputs[uri] = proc
+            self.outputs[uri] = {"proc": proc, "output": output}
             set_blocking(proc.stdout.fileno(), False)
             sleep(0.1)
             zynautoconnect.update_aoip_aliases(uri, True)
@@ -122,7 +132,7 @@ class zynthian_aoip:
 
     def remove_output(self, uri):
         if uri in self.outputs:
-            self.outputs[uri].terminate()
+            self.outputs[uri]["proc"].terminate()
             del self.outputs[uri]
             return True
 
@@ -150,8 +160,10 @@ class zynthian_aoip:
             self.inputs[uri] = {
                 "proc": proc,
                 "ip": None,
+                "name": "",
                 "chans": 0,
-                "sr": 0
+                "sr": 0,
+                "state": [node, output]
             }
             set_blocking(proc.stdout.fileno(), False)
             sleep(0.1)
@@ -164,3 +176,21 @@ class zynthian_aoip:
             self.inputs[uri]["proc"].terminate()
             del self.inputs[uri]
             return True
+
+    def get_state(self):
+        sources = []
+        destinations = []
+        for input in self.inputs.values():
+            sources.append(input["state"])
+        for config in self.outputs.values():
+            destinations.append(config["output"])
+        return {"sources": sources, "destinations": destinations}
+
+    def set_state(self, state):
+        self.reset()
+        if "sources" in state:
+            for source in state["sources"]:
+                self.add_input(*source)
+        if "destinations" in state:
+            for destination in state["destinations"]:
+                self.add_output(destination)

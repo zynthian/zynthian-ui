@@ -149,6 +149,16 @@ ZynthianState = {
             },  # ... Other controllers
         }
     },
+    "aoip": { # AoIP connections
+        "sources": [ # List of AoIP sources
+            [2,1], # node,output
+            # ... Other outputs
+            ],
+        "destinations": [ # List of AoIP destinations
+            1, # Index of AoIP output
+            # ... Other destinations
+            ]
+    },
     "zyngui": {  # Optional UI specific configuration
         "processors": {  # Processor specific config
             "1": {  # Indexed by processor id

@@ -1022,6 +1022,9 @@ class zynthian_state_manager:
         b64_data = base64.b64encode(binary_riff_data)
         state['zynseq_riff_b64'] = b64_data.decode('utf-8')
 
+        # AoIP
+        state['aoip'] = self.aoip.get_state()
+
         return state
 
     def export_chain(self, fpath, chain_id):
@@ -1142,6 +1145,9 @@ class zynthian_state_manager:
         try:
             snapshot = JSONDecoder().decode(json)
             state = self.fix_snapshot(snapshot)
+
+            if "aoip" in state:
+                self.aoip.set_state(state["aoip"])
 
             if load_chains:
                 # Mute output to avoid unwanted noises
