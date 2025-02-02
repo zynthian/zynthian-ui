@@ -79,7 +79,7 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
 
         if self.aoip.node:
             self.list_data.append((None, None, "Network Audio"))
-            self.list_data.append(("add_aoip", None, "Add AoIP output"))
+            self.list_data.append(("add_aoip", None, "Add AoIP input"))
 
         super().fill_list()
 
