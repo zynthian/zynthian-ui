@@ -28,6 +28,7 @@ from os import set_blocking, environ
 from threading import Thread
 
 import zynautoconnect
+from zynconf import zynthian_config
 
 # ----------------------------------------------------------------------------
 # Zynthian AoIP Manager Class
@@ -80,8 +81,8 @@ class zynthian_aoip:
     def set_node(self, node):
         if node <= 250:
             self.node = node
-            environ['ZYNTHIAN_AOIP_NODE'] = str(node)
             self.DEST_MCAST_ADDR = f"239.192.0.{node}"
+            zynthian_config.save_config({'ZYNTHIAN_AOIP_NODE':  str(node)})
         if node == 0:
             # Disable AoIP
             self.reset()
