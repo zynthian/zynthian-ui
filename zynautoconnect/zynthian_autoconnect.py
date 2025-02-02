@@ -969,7 +969,7 @@ def get_hw_audio_dst_ports():
         for port in list(ports):
             if port.name in ["system:playback_1", "system:playback_2"]:
                 ports.remove(port)
-    return ports + jclient.get_ports("zynaout", is_input=True, is_audio=True)
+    return ports + jclient.get_ports("zynaout", is_input=True, is_audio=True) + jclient.get_ports("aoip", is_input=True, is_audio=True)
 
 def get_aoip_dst_ports():
     return jclient.get_ports("aoip", is_input=True, is_audio=True)

@@ -131,19 +131,6 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
         
         if self.aoip.node:
             self.list_data.append((None, None, "Network Audio"))
-            for port in zynautoconnect.get_aoip_dst_ports():
-                uri = port.name
-                try:
-                    name = port.aliases[0]
-                except:
-                    parts = uri.split("_")
-                    op = parts[2].split(":")[0]
-                    chan = "L" if parts[3] == "1" else "R"
-                    name = f"AoIP {op} {chan}"
-                if uri in self.chain.audio_out:
-                    self.list_data.append((uri, None, f"\u2612 {name}"))
-                else:
-                    self.list_data.append((uri, None, f"\u2610 {name}"))
             self.list_data.append(("add_aoip", None, "Add AoIP output"))
 
         self.list_data.append((None, None, "> Audio Recorder"))
@@ -173,8 +160,8 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
             self.chain.toggle_audio_out(self.list_data[i][0])
             self.fill_list()
         elif t == "B":
-            if self.list_data[i][0].startswith("aoip_"):
-                uri = self.list_data[i][0].split(":")[0]
+            if self.list_data[i][0].startswith("^aoip_"):
+                uri = self.list_data[i][0][1:-1].split(":")[0]
                 self.zyngui.show_confirm(f"Remove AoIP port '{uri}'?", self.remove_aoip, uri)
                 return
             if not self.list_data[i][0].startswith("^system:"):
