@@ -350,8 +350,8 @@ def update_system_audio_aliases():
                     port.unset_alias(a)
                 port.set_alias(alias)
 
-def update_aoip_audio_aliases():
-        ports = sorted(jclient.get_ports("aoip", is_audio=True, is_output=True),key=lambda port: port.name) 
+def update_aoip_aliases(uri, input):
+        ports = jclient.get_ports(uri, is_audio=True, is_output=not input, is_input=input) 
         for i, port in enumerate(ports):
             try:
                 port.set_alias(f"AoIP {i + 1}")
@@ -971,6 +971,11 @@ def get_hw_audio_dst_ports():
                 ports.remove(port)
     return ports + jclient.get_ports("zynaout", is_input=True, is_audio=True)
 
+def get_aoip_dst_ports():
+    return jclient.get_ports("aoip", is_input=True, is_audio=True)
+
+def get_aoip_src_ports():
+    return jclient.get_ports("aoip", is_output=True, is_audio=True)
 
 def update_hw_audio_ports():
     global alsa_audio_srcs, alsa_audio_dests
@@ -1164,6 +1169,8 @@ def get_audio_capture_ports():
                 ports.remove(port)
     return ports + jclient.get_ports("zynain", is_output=True, is_audio=True) + sorted(jclient.get_ports("aoip", is_audio=True, is_output=True),key=lambda port: port.name)
 
+def get_aoip_capture_ports():
+    return sorted(jclient.get_ports("aoip", is_audio=True, is_output=True),key=lambda port: port.name)
 
 def build_midi_port_name(port):
     """Get default uid and friendly name for a port

@@ -4,7 +4,7 @@
 #
 # zynthian state manager
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 # ****************************************************************************
@@ -53,6 +53,7 @@ from zyngine.zynthian_chain_manager import *
 from zyngine.zynthian_processor import zynthian_processor
 from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngine.zynthian_signal_manager import zynsigman
+from zyngine.zynthian_aoip import zynthian_aoip
 from zyngine import zynthian_legacy_snapshot
 from zyngine import zynthian_engine_audio_mixer
 from zyngine import zynthian_midi_filter
@@ -163,8 +164,6 @@ class zynthian_state_manager:
         self.ctrldev_manager = None
         self.audio_player = None
         self.aubio_in = [1, 2]  # List of aubio inputs
-        self.aoip_in = [] # List of aoip input processes
-        self.aoip_out = {} # Mao of aoip output processes, indexed by uri "aoip:ip:port:idx"
         self.zynet_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         #self.zynet_socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton(ipaddr))
         self.zynet_socket.settimeout(0.2)
@@ -256,9 +255,7 @@ class zynthian_state_manager:
         self.fast_thread.daemon = True  # thread dies with the program
         self.fast_thread.start()
 
-        if aoip := self.get_zynthian_config("ZYNTHIAN_AOIP_INPUTS") is None:
-            aoip = 0
-        self.set_aoip_channels(aoip)
+        self.aoip = zynthian_aoip()
 
         zynsigman.register(zynsigman.S_AUDIO_PLAYER, self.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
 
@@ -282,6 +279,7 @@ class zynthian_state_manager:
         self.last_snapshot_fpath = ""
         self.zynseq.transport_stop("ALL")
         zynautoconnect.pause()
+        self.aoip.reset()
         self.chain_manager.remove_all_chains(True)
         self.reset_zs3()
         self.zynseq.load("")
@@ -2765,31 +2763,6 @@ class zynthian_state_manager:
             self.start_aubionotes(False)
         else:
             self.stop_aubionotes(False)
-
-    def set_aoip_channels(self, chans):
-        procs_to_remove = self.aoip_in[chans:]
-        for proc in procs_to_remove:
-            proc.terminate()
-            self.aoip_in.remove(proc)
-        for i in range(len(self.aoip_in), chans):
-            self.aoip_in.append(Popen(["zita-n2j", "localhost", f"{40190 + i}", "--jname", f"aoipin{i + 1}"], stdout=DEVNULL, stderr=DEVNULL))
-        sleep(0.2) # Wait for jack ports to be created
-        zynautoconnect.update_aoip_audio_aliases()
-        os.environ["ZYNTHIAN_AOIP_INPUTS"] = str(len(self.aoip_in))
-        msg = "AR"
-        for i in range(chans):
-            msg += f"|{40190 + i}"
-        self.zynet_send(msg)
-
-    def add_aoip_output(self, uri, ip, port, name):
-        self.aoip_out[uri] = Popen(["zita-j2n", ip, f"{port}", "--jname", uri], stdout=DEVNULL, stderr=DEVNULL)
-        return True
-
-    def remove_aoip_output(self, uri):
-        if uri in self.aoip_out:
-            self.aoip_out[uri].terminate()
-            del self.aoip_out[uri]
-            return True
 
     # ---------------------------------------------------------------------------
     # Zynthian Config Info

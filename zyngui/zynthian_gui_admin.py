@@ -186,8 +186,8 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                ["Configure USB audio hotplug.\n\nWhen enabled, USB audio devices will be detected and available. This does not include any device that is already configured as the main audio device which must always reamain connected.",
                                 "audio_options.png"]))
 
-        self.list_data.append((self.aoip_menu, 0, f"Network Audio ({os.environ.get('ZYNTHIAN_AOIP_INPUTS', 0)})",
-                               ["Configure network audio\n\nConnect zynthians together over wired LAN",
+        self.list_data.append((self.aoip_menu, 0, f"({self.zyngui.state_manager.aoip.node}) Network Audio Node",
+                               ["Set the node number for network audio\n\nAllows audio to be transfered over a wired LAN. Each AoIP (network audio) node must have a different number. Set to 0 to disabled AoIP.",
                                 None]))
 
         if zynthian_gui_config.snapshot_mixer_settings:
@@ -485,8 +485,8 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         zynautoconnect.resume()
 
     def aoip_menu(self):
-        self.enable_param_editor(self, 'aoip', {'name': 'AoIP Stero Inputs', 'value_min': 0,
-                                     'value_max': 64, 'value': len(self.state_manager.aoip_in)})
+        self.enable_param_editor(self, 'aoip', {'name': 'AoIP Node', 'value_min': 0,
+                                     'value_max': 250, 'value': self.zyngui.state_manager.aoip.node})
 
     def toggle_dpm(self):
         zynthian_gui_config.enable_dpm = not zynthian_gui_config.enable_dpm
@@ -560,7 +560,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
             lib_zyncore.set_global_transpose(transpose)
             self.update_list()
         elif zctrl.symbol == "aoip":
-            self.state_manager.set_aoip_channels(zctrl.value)
+            self.state_manager.aoip.set_node(zctrl.value)
             self.update_list()
 
 
