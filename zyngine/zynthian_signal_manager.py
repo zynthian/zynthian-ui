@@ -47,6 +47,7 @@ class zynthian_signal_manager:
     S_CUIA = 10
     S_GUI = 11
     S_MIDI = 12
+    S_AOIP = 13
 
     SS_CUIA_REFRESH = 0
     SS_CUIA_MIDI_EVENT = 1
@@ -62,7 +63,7 @@ class zynthian_signal_manager:
     SS_MIDI_NOTE_ON = 3
     SS_MIDI_NOTE_OFF = 4
 
-    last_signal = 13
+    last_signal = 14
     last_subsignal = 10
 
     def __init__(self):

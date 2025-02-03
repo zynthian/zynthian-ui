@@ -29,6 +29,8 @@ from time import sleep
 # Zynthian specific modules
 import zynautoconnect
 from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
+from zyngine.zynthian_signal_manager import zynsigman
+from zyngine.zynthian_aoip import zynthian_aoip
 
 # ------------------------------------------------------------------------------
 # Zynthian Audio-In Selection GUI Class
@@ -48,7 +50,13 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
     def build_view(self):
         self.check_ports = 0
         self.capture_ports = zynautoconnect.get_audio_capture_ports()
+        zynsigman.register(zynsigman.S_AOIP, zynthian_aoip.SS_AOIP_CONNECT, self.cb_connect)
         return super().build_view()
+
+    def hide(self):
+        if self.shown:
+            zynsigman.unregister(zynsigman.S_AOIP, zynthian_aoip.SS_AOIP_CONNECT, self.cb_connect)
+        return super().hide()
 
     def refresh_status(self):
         super().refresh_status()
@@ -83,8 +91,8 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
 
         super().fill_list()
 
-    def fill_listbox(self):
-        super().fill_listbox()
+    def cb_connect(self, uri, state):
+        self.fill_list()
 
     def select_action(self, i, t='S'):
         if t == 'S':
@@ -96,7 +104,8 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
         elif t == "B":
             if self.list_data[i][1].startswith("aoip_"):
                 uri = self.list_data[i][1].split(":")[0]
-                self.zyngui.show_confirm(f"Remove AoIP port '{uri}'?", self.remove_aoip, uri)
+                node, output = uri.split(".")[-1].split("_")
+                self.zyngui.show_confirm(f"Remove AoIP input from node {node}, output {output}'?", self.remove_aoip, uri)
                 return
             if not self.list_data[i][1].startswith("system:"):
                 return

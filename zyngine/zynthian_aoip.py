@@ -30,12 +30,15 @@ import socket
 
 import zynautoconnect
 from zynconf import zynthian_config
+from zyngine.zynthian_signal_manager import zynsigman
 
 # ----------------------------------------------------------------------------
 # Zynthian AoIP Manager Class
 # ----------------------------------------------------------------------------
 
 class zynthian_aoip:
+
+    SS_AOIP_CONNECT = 1
 
     def __init__(self):
         """ struct of input dict:
@@ -63,6 +66,14 @@ class zynthian_aoip:
         for uri in list(self.inputs):
             self.remove_input(uri)
 
+    def set_alias(self, uri, alias, input=False):
+        ports = zynautoconnect.get_ports(uri, input)
+        for i, port in enumerate(ports):
+            aliases = port.aliases
+            if aliases:
+                port.unset_alias(aliases[0])
+            port.set_alias(f"{alias} {'L' if i==0 else 'R'}")
+
     def thread_task(self):
         while not self.exit_flag:
             for uri, config in self.inputs.items():
@@ -74,13 +85,19 @@ class zynthian_aoip:
                         config["name"] = ""
                         config["chans"] = 0
                         config["sr"] = 0
+                        node, output = config["state"]
+                        self.set_alias(uri, f"AoIP {node}.{output}-disconnected")
+                        zynsigman.send(zynsigman.S_AOIP, self.SS_AOIP_CONNECT, uri=uri, state=False)
                     elif line.startswith("From"):
                         a, ip, b, chans, c, sr, d = line.split()
-                        logging.warning(f"Connection from {ip} with {chans} channels at {sr} {d}")
                         config["ip"] = ip
-                        config["name"] = socket.gethostbyaddr(ip)
+                        config["name"] = socket.gethostbyaddr(ip)[0]
                         config["chans"] = int(chans)
                         config["sr"] = int(sr)
+                        logging.warning(f"Connection from {ip} ({config['name']}) with {chans} channels at {sr} {d}")
+                        node, output = config["state"]
+                        self.set_alias(uri, f"AoIP {node}.{output}-{config['name']}")
+                        zynsigman.send(zynsigman.S_AOIP, self.SS_AOIP_CONNECT, uri=uri, state=True)
             sleep(0.1)
 
     def set_node(self, node):
@@ -167,7 +184,7 @@ class zynthian_aoip:
             }
             set_blocking(proc.stdout.fileno(), False)
             sleep(0.1)
-            zynautoconnect.update_aoip_aliases(uri, False)
+            self.set_alias(uri, f"AoIP {node}.{output}-disconnected")
             return True
         return False
 

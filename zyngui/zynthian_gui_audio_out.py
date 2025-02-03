@@ -162,7 +162,8 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
         elif t == "B":
             if self.list_data[i][0].startswith("^aoip_"):
                 uri = self.list_data[i][0][1:-1].split(":")[0]
-                self.zyngui.show_confirm(f"Remove AoIP port '{uri}'?", self.remove_aoip, uri)
+                output = uri.split(".")[-1].split("_")[-1]
+                self.zyngui.show_confirm(f"Remove AoIP output {output}?", self.remove_aoip, uri)
                 return
             if not self.list_data[i][0].startswith("^system:"):
                 return
