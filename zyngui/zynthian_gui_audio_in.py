@@ -76,14 +76,27 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
                 suffix = f" ({scp.aliases[0]})"
             else:
                 suffix = ""
+            info = f"Connect audio input {i + 1} to this chain."
+            uri = scp.name.split(":")[0]
+            if uri in self.aoip.inputs:
+                info += "\n\nNetwork Audio (AoIP)"
+                if self.aoip.inputs[uri]["ip"]:
+                    info += f"\nRemote node: {self.aoip.inputs[uri]['state'][0]}"
+                    info += f"\nOutput stream: {self.aoip.inputs[uri]['state'][1]}"
+                    info += f"\nName: {self.aoip.inputs[uri]['name']}"
+                    info += f"\nIP: {self.aoip.inputs[uri]['ip']}"
+                    info += f"\nChannels: {self.aoip.inputs[uri]['chans']}"
+                    info += f"\nSamplerate: {self.aoip.inputs[uri]['sr']}"
+                else:
+                    info += f"\nRemote node {self.aoip.inputs[uri]['state'][0]} disconnected"
             if i + 1 in self.chain.audio_in:
                 self.list_data.append(
                     (i + 1, scp.name, f"\u2612 Audio input {i + 1}{suffix}",
-                    [f"Audio input {i + 1} is connected to this chain.", "audio_input.png"]))
+                    [info, "audio_input.png"]))
             else:
                 self.list_data.append(
                     (i + 1, scp.name, f"\u2610 Audio input {i + 1}{suffix}", 
-                    [f"Audio input {i + 1} is disconnected from this chain.", "audio_input.png"]))
+                    [info, "audio_input.png"]))
 
         if self.aoip.node:
             self.list_data.append((None, None, "Network Audio"))
@@ -105,7 +118,7 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
             if self.list_data[i][1].startswith("aoip_"):
                 uri = self.list_data[i][1].split(":")[0]
                 node, output = uri.split(".")[-1].split("_")
-                self.zyngui.show_confirm(f"Remove AoIP input from node {node}, output {output}'?", self.remove_aoip, uri)
+                self.zyngui.show_confirm(f"Remove AoIP input stream from node {node}, output {output}'?", self.remove_aoip, uri)
                 return
             if not self.list_data[i][1].startswith("system:"):
                 return

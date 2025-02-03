@@ -25,8 +25,6 @@
 
 import logging
 from time import sleep
-from threading import Thread
-import socket
 
 # Zynthian specific modules
 import zynautoconnect
@@ -115,14 +113,19 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
                     suffix = f" ({self.playback_ports[i].aliases[0]})"
                 else:
                     suffix = ""
-                port_names.append((f"Output {i + 1}{suffix}", f"^{self.playback_ports[i].name}$", [f"Send audio from this chain directly to physical audio output {i + 1} as mono.", "audio_output.png"]))
+                uri = self.playback_ports[i].name.split(":")[0]
+                if uri in self.aoip.outputs:
+                    out_type = f"network audio (AoIp) stream {self.aoip.outputs[uri]['output']}"
+                else:
+                    out_type = "physical"
+                port_names.append((f"Output {i + 1}{suffix}", f"^{self.playback_ports[i].name}$", [f"Send audio from this chain directly to {out_type} audio output {i + 1} as mono.", "audio_output.png"]))
                 if i < port_count:
                     if self.playback_ports[i + 1].aliases:
                         suffix = f" ({self.playback_ports[i + 1].aliases[0]})"
                     else:
                         suffix = ""
-                    port_names.append((f"Output {i + 2}{suffix}", f"^{self.playback_ports[i + 1].name}$", [f"Send audio from this chain directly to physical audio output {i + 2} as mono.", "audio_output.png"]))
-                    port_names.append((f"Outputs {i + 1}+{i + 2} (stereo)", f"^{self.playback_ports[i].name}$|^{self.playback_ports[i + 1].name}$", [f"Send audio from this chain directly to physical audio outputs {i + 1} & {i + 2} as stereo.", "audio_output.png"]))
+                    port_names.append((f"Output {i + 2}{suffix}", f"^{self.playback_ports[i + 1].name}$", [f"Send audio from this chain directly to {out_type} audio output {i + 2} as mono.", "audio_output.png"]))
+                    port_names.append((f"Outputs {i + 1}+{i + 2} (stereo)", f"^{self.playback_ports[i].name}$|^{self.playback_ports[i + 1].name}$", [f"Send audio from this chain directly to {out_type} audio outputs {i + 1} & {i + 2} as stereo.", "audio_output.png"]))
             for title, processor, info in port_names:
                 if processor in self.chain.audio_out:
                     self.list_data.append((processor, processor, "\u2612 " + title, info))
@@ -163,7 +166,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
             if self.list_data[i][0].startswith("^aoip_"):
                 uri = self.list_data[i][0][1:-1].split(":")[0]
                 output = uri.split(".")[-1].split("_")[-1]
-                self.zyngui.show_confirm(f"Remove AoIP output {output}?", self.remove_aoip, uri)
+                self.zyngui.show_confirm(f"Remove AoIP output stream {output}?", self.remove_aoip, uri)
                 return
             if not self.list_data[i][0].startswith("^system:"):
                 return

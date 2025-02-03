@@ -350,14 +350,6 @@ def update_system_audio_aliases():
                     port.unset_alias(a)
                 port.set_alias(alias)
 
-def update_aoip_aliases(uri, input, name=None):
-        ports = jclient.get_ports(uri, is_audio=True, is_output=not input, is_input=input) 
-        for i, port in enumerate(ports):
-            try:
-                port.set_alias(f"AoIP {i + 1}")
-            except:
-                logging.warning(f"Unable to set AoIP {i} alias")
-
 def set_alias(port_name, alias, index):
     ports = jclient.get_port
 
