@@ -25,6 +25,8 @@
 
 import logging
 from time import sleep
+import socket
+import liblo
 
 # Zynthian specific modules
 import zynautoconnect
@@ -45,6 +47,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
         self.aoip = self.zyngui.state_manager.aoip
 
     def build_view(self):
+        liblo.send(("255.255.255.255", 1370), "/GET/AOIP_INPUTS")
         self.check_ports = 0
         self.playback_ports = zynautoconnect.get_hw_audio_dst_ports()
         if super().build_view():
@@ -115,7 +118,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
                     suffix = ""
                 uri = self.playback_ports[i].name.split(":")[0]
                 if uri in self.aoip.outputs:
-                    out_type = f"network audio (AoIp) stream {self.aoip.outputs[uri]['output']}"
+                    out_type = f"network audio (AoIp) stream {self.aoip.outputs[uri]['port'] - 40190}"
                 else:
                     out_type = "physical"
                 port_names.append((f"Output {i + 1}{suffix}", f"^{self.playback_ports[i].name}$", [f"Send audio from this chain directly to {out_type} audio output {i + 1} as mono.", "audio_output.png"]))
@@ -132,9 +135,8 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
                 else:
                     self.list_data.append((processor, processor, "\u2610 " + title, info))
         
-        if self.aoip.node:
-            self.list_data.append((None, None, "Network Audio"))
-            self.list_data.append(("add_aoip", None, "Add AoIP output"))
+        self.list_data.append((None, None, "Network Audio"))
+        self.list_data.append(("add_aoip", None, "Add AoIP output"))
 
         self.list_data.append((None, None, "> Audio Recorder"))
         armed = self.zyngui.state_manager.audio_recorder.is_armed(self.chain.mixer_chan)
@@ -156,7 +158,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
                 self.fill_list()
         elif t == 'S':
             if self.list_data[i][0] == ("add_aoip"):
-                self.aoip.add_output()
+                self.cb_aoip_node()
                 sleep(0.1)
                 self.fill_list()
                 return
@@ -197,6 +199,26 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
 
     def set_select_path(self):
         self.select_path.set("Send Audio to ...")
+
+    def cb_aoip_node(self):
+        labels = []
+        for hostname, cfg in self.aoip.remote_hosts.items():
+            host_info = socket.gethostbyaddr(hostname)
+            if host_info[0]:
+                hostname = host_info[0]
+            for output in cfg["inputs"]:
+                labels.append(f"{hostname}: {output}")
+        if labels:
+            self.enable_param_editor(self, 'aoip_node', {'name': 'AoIP',
+                'labels': labels}, self.cb_add_aoip)
+        else:
+            self.zyngui.show_info("No remote AoIP devices found!", 1200)
+
+    def cb_add_aoip(self, value):
+        hostname, stream = self.param_editor_zctrl.value2label[str(value)].split(":")
+        self.aoip.add_output(socket.gethostbyname(hostname), 40190 + int(stream))
+        sleep(0.1)
+        self.fill_list()
 
     def remove_aoip(self, uri):
         self.aoip.remove_output(uri)

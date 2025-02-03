@@ -23,7 +23,7 @@
 
 import logging
 from time import sleep
-from subprocess import Popen, STDOUT, PIPE, DEVNULL
+from subprocess import check_output, Popen, STDOUT, PIPE, DEVNULL
 from os import set_blocking, environ
 from threading import Thread
 import socket
@@ -48,13 +48,13 @@ class zynthian_aoip:
             "name": remote name
             "chans": quantity of audio channels,
             "sr": samplerate
-            "state": [node, output]
+            "port": udp port
         }
         """
         self.inputs = {} # Map of aoip input config, indexed by uri "aoip_ip_port:idx"
         self.outputs = {} # Map of aoip output config, indexed by uri "aoip_ip_port:idx"
+        self.remote_hosts = {} # Map of remote host info, indexed by hostname
         self.exit_flag = False
-        self.set_node(int(environ.get('ZYNTHIAN_AOIP_NODE', 0)))
         self.thread = Thread(target=self.thread_task)
         self.thread.name = "AoIP"
         self.thread.daemon = True  # thread dies with the program
@@ -85,8 +85,8 @@ class zynthian_aoip:
                         config["name"] = ""
                         config["chans"] = 0
                         config["sr"] = 0
-                        node, output = config["state"]
-                        self.set_alias(uri, f"AoIP {node}.{output}-disconnected")
+                        port = config["port"]
+                        self.set_alias(uri, f"AoIP {port - 40190} disconnected")
                         zynsigman.send(zynsigman.S_AOIP, self.SS_AOIP_CONNECT, uri=uri, state=False)
                     elif line.startswith("From"):
                         a, ip, b, chans, c, sr, d = line.split()
@@ -95,35 +95,18 @@ class zynthian_aoip:
                         config["chans"] = int(chans)
                         config["sr"] = int(sr)
                         logging.warning(f"Connection from {ip} ({config['name']}) with {chans} channels at {sr} {d}")
-                        node, output = config["state"]
-                        self.set_alias(uri, f"AoIP {node}.{output}-{config['name']}")
+                        port = config["port"]
+                        self.set_alias(uri, f"AoIP {port - 40190} {config['name']}")
                         zynsigman.send(zynsigman.S_AOIP, self.SS_AOIP_CONNECT, uri=uri, state=True)
             sleep(0.1)
 
-    def set_node(self, node):
-        if node <= 250:
-            self.node = node
-            self.DEST_MCAST_ADDR = f"239.192.0.{node}"
-            zynthian_config.save_config({'ZYNTHIAN_AOIP_NODE':  str(node)})
-        if node == 0:
-            # Disable AoIP
-            self.reset()
-
-    def add_output(self, output=None):
-        if self.node == 0:
-            return False
-        used_ports = []
-        for config in self.outputs.values():
-            used_ports.append(config["output"])
-        if output in used_ports:
-            return False
-        if output == None:
-            output = 1
-            while output in used_ports:
-                output += 1
-        if output > 250:
-            return False
-        uri = f"aoip_{self.DEST_MCAST_ADDR}_{output}"
+    def add_output(self, hostname, port):
+        uri = f"aoip_{hostname}_{port}"
+        info = socket.gethostbyaddr(hostname)
+        if info[0]:
+            name = info[0]
+        else:
+            name = hostname
         proc = Popen(
             [
                 "stdbuf",
@@ -131,8 +114,8 @@ class zynthian_aoip:
                 "zita-j2n",
                 "--jname",
                 uri,
-                self.DEST_MCAST_ADDR,
-                str(output),
+                hostname,
+                str(port),
                 "eth0"
             ],
             text=True,
@@ -140,10 +123,10 @@ class zynthian_aoip:
             stdout=PIPE,
             stderr=STDOUT)
         if proc.poll() is None:
-            self.outputs[uri] = {"proc": proc, "output": output}
+            self.outputs[uri] = {"proc": proc, "port": port, "hostname": hostname}
             set_blocking(proc.stdout.fileno(), False)
             sleep(0.1)
-            self.set_alias(uri, f"AoIP {output}", True)
+            self.set_alias(uri, f"AoIP {name}: {port - 40190}", True)
             return True
         return False
 
@@ -153,11 +136,18 @@ class zynthian_aoip:
             del self.outputs[uri]
             return True
 
-    def add_input(self, node, output):
-        if self.node == 0 or not 0 < node <= 250:
+    def add_input(self, port=None):
+        if port:
+            uri = f"aoip_{port}"
+            if uri in self.inputs:
+                return False
+        else:
+            for port in range(40191, 40201):
+                uri = f"aoip_{port}"
+                if uri not in self.inputs:
+                    break
+        if port > 40199:
             return False
-        addr = f"239.192.0.{node}"
-        uri = f"aoip_{addr}_{output}"
         proc = Popen(
             [
                 "stdbuf",
@@ -165,9 +155,8 @@ class zynthian_aoip:
                 "zita-n2j",
                 "--jname",
                 uri,
-                addr,
-                str(output),
-                "eth0"
+                self.get_own_ip(),
+                str(port)
             ],
             text=True,
             bufsize=1,
@@ -180,11 +169,11 @@ class zynthian_aoip:
                 "name": "",
                 "chans": 0,
                 "sr": 0,
-                "state": [node, output]
+                "port": port
             }
             set_blocking(proc.stdout.fileno(), False)
             sleep(0.1)
-            self.set_alias(uri, f"AoIP {node}.{output}-disconnected")
+            self.set_alias(uri, f"AoIP {port - 40190} disconnected")
             return True
         return False
 
@@ -198,16 +187,31 @@ class zynthian_aoip:
         sources = []
         destinations = []
         for input in self.inputs.values():
-            sources.append(input["state"])
+            sources.append(input["port"])
         for config in self.outputs.values():
-            destinations.append(config["output"])
+            destinations.append([config["hostname"], config["port"]])
         return {"sources": sources, "destinations": destinations}
 
     def set_state(self, state):
         self.reset()
         if "sources" in state:
-            for source in state["sources"]:
-                self.add_input(*source)
+            for port in state["sources"]:
+                self.add_input(port)
         if "destinations" in state:
             for destination in state["destinations"]:
-                self.add_output(destination)
+                self.add_output(*destination)
+
+    def set_remote_inputs(self, hostname, inputs):
+        if hostname not in self.remote_hosts:
+            self.remote_hosts[hostname] = {}
+        self.remote_hosts[hostname]["inputs"] = inputs.split(",")
+
+    def set_remote_name(self, hostname, name):
+        if hostname not in self.remote_hosts:
+            self.remote_hosts[hostname] = {}
+        self.remote_hosts[hostname]["name"] = name
+
+    def get_own_ip(self):
+        for line in check_output(["ip", "-4", "addr", "show", "eth0"], encoding="utf-8").split("\n"):
+            if "inet" in line:
+                return line.split()[1].split("/")[0]

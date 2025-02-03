@@ -151,11 +151,11 @@ ZynthianState = {
     },
     "aoip": { # AoIP connections
         "sources": [ # List of AoIP sources
-            [2,1], # node,output
-            # ... Other outputs
+            40191, # AoIP input UDP port
+            # ... Other ports
             ],
         "destinations": [ # List of AoIP destinations
-            1, # Index of AoIP output
+            ["192.168.1.55", 40191], # Remote hostname and udp port
             # ... Other destinations
             ]
     },

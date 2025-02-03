@@ -35,6 +35,7 @@ from pathlib import Path
 from time import monotonic
 from datetime import datetime
 from threading import Thread, Lock, Event
+import socket
 
 # Zynthian specific modules
 import zynconf
@@ -369,6 +370,8 @@ class zynthian_gui:
         logging.info("OSC MESSAGE '{}' from '{}'".format(path, src.url))
 
         parts = path.upper().split("/", 2)
+        if len(parts) < 2 or parts[0] != "":
+            return # All messages should start with "/"
         # TODO: message may have fewer parts than expected
         if parts[0] == "" and parts[1] == "CUIA":
             self.state_manager.set_event_flag()
@@ -410,6 +413,21 @@ class zynthian_gui:
                     self.state_manager.zynmixer.set_solo(int(part2[4:]), int(args[0]))
                 elif part2[:4] == "MONO":
                     self.state_manager.zynmixer.set_mono(int(part2[4:]), int(args[0]))
+        elif parts[1] == "GET":
+            if len(parts) < 3:
+                return
+            if parts[2] == "AOIP_INPUTS":
+                inputs = []
+                for input in self.state_manager.aoip.inputs.values():
+                    inputs.append(input["port"])
+                result = ','.join([str(i) for i in inputs])
+                liblo.send(src, "/AOIP_INPUTS", ("s", result))
+            elif parts[2] == "HOSTNAME":
+                liblo.send(src, "HOSTNAME", ("s", socket.gethostname()))
+        elif parts[1] == "AOIP_INPUTS" and args:
+                self.state_manager.aoip.set_remote_inputs(src.hostname, args[0])
+        elif parts[1] == "HOSTNAME" and args:
+                self.state_manager.aoip.set_remote_name(src.hostname, args[0])
         else:
             logging.warning(f"Not supported OSC call '{path}'")
 
