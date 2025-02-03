@@ -143,7 +143,7 @@ class zynthian_aoip:
             self.outputs[uri] = {"proc": proc, "output": output}
             set_blocking(proc.stdout.fileno(), False)
             sleep(0.1)
-            zynautoconnect.update_aoip_aliases(uri, True)
+            self.set_alias(uri, f"AoIP {output}", True)
             return True
         return False
 
