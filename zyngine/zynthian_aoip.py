@@ -54,7 +54,7 @@ class zynthian_aoip:
         """
         self.inputs = {} # Map of aoip input config, indexed by uri "aoip_port:idx"
         self.outputs = {} # Map of aoip output config, indexed by uri "aoip_mac_port:idx"
-        self.remote_hosts = {} # Map of remote host info, indexed by mac
+        self.remote_hosts = {} # Map of remote host info, indexed by hostname
         self.ip = self.get_ip("eth0")
         self.name = self.ip2name(self.ip)
         self.exit_flag = False
@@ -214,7 +214,8 @@ class zynthian_aoip:
             return
         if name not in self.remote_hosts:
             self.remote_hosts[name] = {}
-        self.remote_hosts[name]["inputs"] = inputs.split(",")
+        self.remote_hosts[name]["inputs"] = []
+        self.remote_hosts[name]["inputs"] = inputs
         self.remote_hosts[name]["ip"] = self.name2ip(name)
 
     def get_ip(self, nic):

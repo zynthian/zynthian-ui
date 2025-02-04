@@ -201,11 +201,12 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
     def show_aoip_list(self):
         options = {}
         for name, cfg in self.aoip.remote_hosts.items():
+            options[name] = None
             for port in cfg["inputs"]:
                 uri = f"aoip_{name}_{port}"
-                output = int(port) - 40190
+                output = port - 40190
                 if uri not in self.aoip.outputs:
-                    options[f"{name}: {output}"] = uri
+                    options[f"AoIP output stream {output}"] = uri
         self.zyngui.screens['option'].config(
             "Network Audio Inputs", options, self.add_aoip_cb)
         self.zyngui.show_screen('option')

@@ -145,8 +145,6 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
 
     def remove_aoip(self, uri):
         self.aoip.remove_input(uri)
-        #TODO: Remove from any chain output routing
-        sleep(0.1)
         self.fill_list()
 
 # ------------------------------------------------------------------------------
