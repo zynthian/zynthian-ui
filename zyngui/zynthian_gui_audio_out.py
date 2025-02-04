@@ -206,13 +206,13 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
                 uri = f"aoip_{name}_{port}"
                 output = port - 40190
                 if uri not in self.aoip.outputs:
-                    options[f"AoIP output stream {output}"] = uri
+                    options[f"AoIP output stream {output}"] = (name, port)
         self.zyngui.screens['option'].config(
             "Network Audio Inputs", options, self.add_aoip_cb)
         self.zyngui.show_screen('option')
 
     def add_aoip_cb(self, option, params):
-        self.aoip.add_output(params)
+        self.aoip.add_output(*params)
         sleep(0.1)
         self.fill_list()
 

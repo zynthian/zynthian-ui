@@ -103,11 +103,11 @@ class zynthian_aoip:
                         zynsigman.send(zynsigman.S_AOIP, self.SS_AOIP_CONNECT, uri=uri, state=True)
             sleep(0.1)
 
-    def add_output(self, uri):
+    def add_output(self, hostname, port):
         try:
-            a, name, port = uri.split("_")
-            ip = self.name2ip(name)
-            port = int(port)
+            name = self.ip2name(hostname)
+            ip = self.name2ip(hostname)
+            uri = f"aoip_{name}_{port}"
         except:
             return False
         proc = Popen(
@@ -129,7 +129,7 @@ class zynthian_aoip:
             self.outputs[uri] = {"proc": proc, "port": port, "ip": ip, "name": name}
             set_blocking(proc.stdout.fileno(), False)
             sleep(0.1)
-            self.set_alias(uri, f"AoIP {name}: {port - 40190} disconnected", True)
+            self.set_alias(uri, f"AoIP {name}: {port - 40190}", True)
             return True
         return False
 
