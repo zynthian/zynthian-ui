@@ -78,15 +78,17 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
                 suffix = ""
             info = f"Connect audio input {i + 1} to this chain."
             uri = scp.name.split(":")[0]
-            if uri in self.aoip.inputs:
-                info += "\n\nNetwork Audio (AoIP)"
-                if self.aoip.inputs[uri]["ip"]:
-                    info += f"\nName: {self.aoip.inputs[uri]['name']}"
-                    info += f"\nIP: {self.aoip.inputs[uri]['ip']}"
-                    info += f"\nChannels: {self.aoip.inputs[uri]['chans']}"
-                    info += f"\nSamplerate: {self.aoip.inputs[uri]['sr']}"
-                else:
-                    info += f"\nRemote node {self.aoip.inputs[uri]['port'] - 40190} disconnected"
+            if uri.startswith("aoip"):
+                uri.replace(".", ":")
+                if uri in self.aoip.inputs:
+                    info += "\n\nNetwork Audio (AoIP)"
+                    if self.aoip.inputs[uri]["ip"]:
+                        info += f"\nName: {self.aoip.inputs[uri]['name']}"
+                        info += f"\nIP: {self.aoip.inputs[uri]['ip']}"
+                        info += f"\nChannels: {self.aoip.inputs[uri]['chans']}"
+                        info += f"\nSamplerate: {self.aoip.inputs[uri]['sr']}"
+                    else:
+                        info += f"\nRemote node {self.aoip.inputs[uri]['port'] - 40190} disconnected"
             if i + 1 in self.chain.audio_in:
                 self.list_data.append(
                     (i + 1, scp.name, f"\u2612 Audio input {i + 1}{suffix}",

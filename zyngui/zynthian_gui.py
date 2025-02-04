@@ -421,13 +421,9 @@ class zynthian_gui:
                 for input in self.state_manager.aoip.inputs.values():
                     inputs.append(input["port"])
                 result = ','.join([str(i) for i in inputs])
-                liblo.send(src, "/AOIP_INPUTS", ("s", result))
-            elif parts[2] == "HOSTNAME":
-                liblo.send(src, "HOSTNAME", ("s", socket.gethostname()))
-        elif parts[1] == "AOIP_INPUTS" and args:
-                self.state_manager.aoip.set_remote_inputs(src.hostname, args[0])
-        elif parts[1] == "HOSTNAME" and args:
-                self.state_manager.aoip.set_remote_name(src.hostname, args[0])
+                liblo.send(src, f"/AOIP_INPUTS/{self.state_manager.aoip.eth0_mac}", ("s", result))
+        elif parts[1] == "AOIP_INPUTS" and len(parts) > 2 and args:
+                self.state_manager.aoip.set_remote_inputs(parts[2], args[0])
         else:
             logging.warning(f"Not supported OSC call '{path}'")
 

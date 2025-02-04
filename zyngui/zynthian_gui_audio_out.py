@@ -116,7 +116,7 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
                     suffix = f" ({self.playback_ports[i].aliases[0]})"
                 else:
                     suffix = ""
-                uri = self.playback_ports[i].name.split(":")[0]
+                uri = self.playback_ports[i].name.split(":")[0].replace(".", ":")
                 if uri in self.aoip.outputs:
                     out_type = f"network audio (AoIp) stream {self.aoip.outputs[uri]['port'] - 40190}"
                 else:
@@ -200,17 +200,12 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
 
     def show_aoip_list(self):
         options = {}
-        for hostname, cfg in self.aoip.remote_hosts.items():
-            host_info = socket.gethostbyaddr(hostname)
-            if host_info[0]:
-                name = host_info[0]
-            else:
-                name = hostname
+        for mac, cfg in self.aoip.remote_hosts.items():
             for port in cfg["inputs"]:
-                uri = f"aoip_{hostname}_{port}"
+                uri = f"aoip_{mac}_{port}"
                 output = int(port) - 40190
                 if uri not in self.aoip.outputs:
-                    options[f"{name}: {output}"] = uri
+                    options[f"{cfg['name']}: {output}"] = uri
         self.zyngui.screens['option'].config(
             "Network Audio Inputs", options, self.add_aoip_cb)
         self.zyngui.show_screen('option')

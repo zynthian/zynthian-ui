@@ -23,8 +23,9 @@
 
 import logging
 from time import sleep
-from subprocess import check_output, Popen, STDOUT, PIPE, DEVNULL
-from os import set_blocking, environ
+from subprocess import check_output, Popen, STDOUT, PIPE
+from os import set_blocking
+import re
 from threading import Thread
 import socket
 
@@ -53,7 +54,8 @@ class zynthian_aoip:
         """
         self.inputs = {} # Map of aoip input config, indexed by uri "aoip_port:idx"
         self.outputs = {} # Map of aoip output config, indexed by uri "aoip_mac_port:idx"
-        self.remote_hosts = {} # Map of remote host info, indexed by hostname
+        self.remote_hosts = {} # Map of remote host info, indexed by mac
+        self.eth0_mac = self.get_mac("eth0")
         self.exit_flag = False
         self.thread = Thread(target=self.thread_task)
         self.thread.name = "AoIP"
@@ -91,7 +93,7 @@ class zynthian_aoip:
                     elif line.startswith("From"):
                         a, ip, b, chans, c, sr, d = line.split()
                         config["ip"] = ip
-                        config["name"] = socket.gethostbyaddr(ip)[0]
+                        config["name"] = self.ip2name(ip)
                         config["chans"] = int(chans)
                         config["sr"] = int(sr)
                         logging.warning(f"Connection from {ip} ({config['name']}) with {chans} channels at {sr} {d}")
@@ -102,23 +104,20 @@ class zynthian_aoip:
 
     def add_output(self, uri):
         try:
-            a, hostname, port = uri.split("_")
-            info = socket.gethostbyaddr(hostname)
+            a, mac, port = uri.split("_")
+            ip = self.mac2ip(mac)
             port = int(port)
+            name = self.ip2name(ip)
         except:
             return False
-        if info[0]:
-            name = info[0]
-        else:
-            name = hostname
         proc = Popen(
             [
                 "stdbuf",
                 "-oL",
                 "zita-j2n",
                 "--jname",
-                uri,
-                hostname,
+                uri.replace(":", "."),
+                ip,
                 str(port),
                 "eth0"
             ],
@@ -127,7 +126,7 @@ class zynthian_aoip:
             stdout=PIPE,
             stderr=STDOUT)
         if proc.poll() is None:
-            self.outputs[uri] = {"proc": proc, "port": port, "hostname": hostname, "name": name}
+            self.outputs[uri] = {"proc": proc, "port": port, "ip": ip, "name": name}
             set_blocking(proc.stdout.fileno(), False)
             sleep(0.1)
             self.set_alias(uri, f"AoIP {name}: {port - 40190} disconnected", True)
@@ -205,19 +204,46 @@ class zynthian_aoip:
             for uri in state["destinations"]:
                 self.add_output(uri)
 
-    def set_remote_inputs(self, hostname, inputs):
-        if hostname == self.get_own_ip():
+    def set_remote_inputs(self, mac_addr, inputs):
+        mac = mac_addr.lower()
+        if mac == self.eth0_mac:
             return
-        if hostname not in self.remote_hosts:
-            self.remote_hosts[hostname] = {}
-        self.remote_hosts[hostname]["inputs"] = inputs.split(",")
-
-    def set_remote_name(self, hostname, name):
-        if hostname not in self.remote_hosts:
-            self.remote_hosts[hostname] = {}
-        self.remote_hosts[hostname]["name"] = name
+        if mac not in self.remote_hosts:
+            self.remote_hosts[mac] = {}
+        self.remote_hosts[mac]["inputs"] = inputs.split(",")
+        self.remote_hosts[mac]["ip"] = self.mac2ip(mac)
+        self.remote_hosts[mac]["name"] = self.ip2name(self.remote_hosts[mac]["ip"])
 
     def get_own_ip(self):
         for line in check_output(["ip", "-4", "addr", "show", "eth0"], encoding="utf-8").split("\n"):
             if "inet" in line:
                 return line.split()[1].split("/")[0]
+
+    def get_mac(self, nic):
+        with open(f"/sys/class/net/{nic}/address", "r") as f:
+            mac = f.read().strip()
+        return mac
+
+    def mac2ip(self, mac):
+        mac_address = mac.lower().replace("-", ":")
+        arp_output = check_output(["arp", "-n"], encoding="utf-8")
+        pattern = re.compile(r"(\d+\.\d+\.\d+\.\d+)\s+.*?\s+({})".format(mac_address), re.IGNORECASE)
+        match = pattern.search(arp_output)
+        if match:
+            return match.group(1)
+        return None
+
+    def ip2mac(self, ip):
+        arp_output = check_output(["arp", "-n", ip], encoding="utf-8")
+        pattern = re.compile(rf"{re.escape(ip)}\s+.*?\s+((?:[0-9A-Fa-f]{{2}}[:-]){{5}}[0-9A-Fa-f]{{2}})")
+        match = pattern.search(arp_output)
+        if match:
+            return match.group(1)
+        return None
+
+    def ip2name(self, ip):
+        info = socket.gethostbyaddr(ip)
+        if info[0]:
+            return info[0]
+        else:
+            return ip
