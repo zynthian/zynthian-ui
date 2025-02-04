@@ -158,17 +158,15 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
                 self.fill_list()
         elif t == 'S':
             if self.list_data[i][0] == ("add_aoip"):
-                self.cb_aoip_node()
-                sleep(0.1)
-                self.fill_list()
+                self.show_aoip_list()
                 return
             self.chain.toggle_audio_out(self.list_data[i][0])
             self.fill_list()
         elif t == "B":
             if self.list_data[i][0].startswith("^aoip_"):
                 uri = self.list_data[i][0][1:-1].split(":")[0]
-                output = uri.split(".")[-1].split("_")[-1]
-                self.zyngui.show_confirm(f"Remove AoIP output stream {output}?", self.remove_aoip, uri)
+                output = self.aoip.outputs[uri]
+                self.zyngui.show_confirm(f"Remove AoIP output stream  {output['name']}: {output['port'] - 40190}?", self.remove_aoip, uri)
                 return
             if not self.list_data[i][0].startswith("^system:"):
                 return
@@ -200,23 +198,25 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
     def set_select_path(self):
         self.select_path.set("Send Audio to ...")
 
-    def cb_aoip_node(self):
-        labels = []
+    def show_aoip_list(self):
+        options = {}
         for hostname, cfg in self.aoip.remote_hosts.items():
             host_info = socket.gethostbyaddr(hostname)
             if host_info[0]:
-                hostname = host_info[0]
-            for output in cfg["inputs"]:
-                labels.append(f"{hostname}: {output}")
-        if labels:
-            self.enable_param_editor(self, 'aoip_node', {'name': 'AoIP',
-                'labels': labels}, self.cb_add_aoip)
-        else:
-            self.zyngui.show_info("No remote AoIP devices found!", 1200)
+                name = host_info[0]
+            else:
+                name = hostname
+            for port in cfg["inputs"]:
+                uri = f"aoip_{hostname}_{port}"
+                output = int(port) - 40190
+                if uri not in self.aoip.outputs:
+                    options[f"{name}: {output}"] = uri
+        self.zyngui.screens['option'].config(
+            "Network Audio Inputs", options, self.add_aoip_cb)
+        self.zyngui.show_screen('option')
 
-    def cb_add_aoip(self, value):
-        hostname, port = self.param_editor_zctrl.value2label[str(value)].split(":")
-        self.aoip.add_output(socket.gethostbyname(hostname), int(port))
+    def add_aoip_cb(self, option, params):
+        self.aoip.add_output(params)
         sleep(0.1)
         self.fill_list()
 

@@ -51,8 +51,8 @@ class zynthian_aoip:
             "port": udp port
         }
         """
-        self.inputs = {} # Map of aoip input config, indexed by uri "aoip_ip_port:idx"
-        self.outputs = {} # Map of aoip output config, indexed by uri "aoip_ip_port:idx"
+        self.inputs = {} # Map of aoip input config, indexed by uri "aoip_port:idx"
+        self.outputs = {} # Map of aoip output config, indexed by uri "aoip_mac_port:idx"
         self.remote_hosts = {} # Map of remote host info, indexed by hostname
         self.exit_flag = False
         self.thread = Thread(target=self.thread_task)
@@ -82,11 +82,11 @@ class zynthian_aoip:
                     if line == "Waiting for info packet...":
                         logging.warning("Disconnected")
                         config["ip"] = None
-                        config["name"] = ""
+                        config["name"] = "disconnected"
                         config["chans"] = 0
                         config["sr"] = 0
                         port = config["port"]
-                        self.set_alias(uri, f"AoIP {port - 40190} disconnected")
+                        self.set_alias(uri, f"AoIP {port - 40190} {config['name']}")
                         zynsigman.send(zynsigman.S_AOIP, self.SS_AOIP_CONNECT, uri=uri, state=False)
                     elif line.startswith("From"):
                         a, ip, b, chans, c, sr, d = line.split()
@@ -100,9 +100,13 @@ class zynthian_aoip:
                         zynsigman.send(zynsigman.S_AOIP, self.SS_AOIP_CONNECT, uri=uri, state=True)
             sleep(0.1)
 
-    def add_output(self, hostname, port):
-        uri = f"aoip_{hostname}_{port}"
-        info = socket.gethostbyaddr(hostname)
+    def add_output(self, uri):
+        try:
+            a, hostname, port = uri.split("_")
+            info = socket.gethostbyaddr(hostname)
+            port = int(port)
+        except:
+            return False
         if info[0]:
             name = info[0]
         else:
@@ -123,10 +127,10 @@ class zynthian_aoip:
             stdout=PIPE,
             stderr=STDOUT)
         if proc.poll() is None:
-            self.outputs[uri] = {"proc": proc, "port": port, "hostname": hostname}
+            self.outputs[uri] = {"proc": proc, "port": port, "hostname": hostname, "name": name}
             set_blocking(proc.stdout.fileno(), False)
             sleep(0.1)
-            self.set_alias(uri, f"AoIP {name}: {port - 40190}", True)
+            self.set_alias(uri, f"AoIP {name}: {port - 40190} disconnected", True)
             return True
         return False
 
@@ -198,8 +202,8 @@ class zynthian_aoip:
             for port in state["sources"]:
                 self.add_input(port)
         if "destinations" in state:
-            for destination in state["destinations"]:
-                self.add_output(*destination)
+            for uri in state["destinations"]:
+                self.add_output(uri)
 
     def set_remote_inputs(self, hostname, inputs):
         if hostname == self.get_own_ip():

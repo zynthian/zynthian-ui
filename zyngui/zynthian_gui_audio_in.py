@@ -114,8 +114,8 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
         elif t == "B":
             if self.list_data[i][1].startswith("aoip_"):
                 uri = self.list_data[i][1].split(":")[0]
-                node, output = uri.split(".")[-1].split("_")
-                self.zyngui.show_confirm(f"Remove AoIP input stream from node {node}, output {output}'?", self.remove_aoip, uri)
+                input = self.aoip.inputs[uri]
+                self.zyngui.show_confirm(f"Remove AoIP input stream {input['name']}: {input['port'] - 40190}'?", self.remove_aoip, uri)
                 return
             if not self.list_data[i][1].startswith("system:"):
                 return
