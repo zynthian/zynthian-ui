@@ -202,6 +202,8 @@ class zynthian_aoip:
                 self.add_output(*destination)
 
     def set_remote_inputs(self, hostname, inputs):
+        if hostname == self.get_own_ip():
+            return
         if hostname not in self.remote_hosts:
             self.remote_hosts[hostname] = {}
         self.remote_hosts[hostname]["inputs"] = inputs.split(",")

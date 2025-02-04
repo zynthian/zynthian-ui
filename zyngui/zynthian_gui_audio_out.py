@@ -215,8 +215,8 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
             self.zyngui.show_info("No remote AoIP devices found!", 1200)
 
     def cb_add_aoip(self, value):
-        hostname, stream = self.param_editor_zctrl.value2label[str(value)].split(":")
-        self.aoip.add_output(socket.gethostbyname(hostname), 40190 + int(stream))
+        hostname, port = self.param_editor_zctrl.value2label[str(value)].split(":")
+        self.aoip.add_output(socket.gethostbyname(hostname), int(port))
         sleep(0.1)
         self.fill_list()
 
