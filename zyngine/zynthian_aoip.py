@@ -55,7 +55,8 @@ class zynthian_aoip:
         self.inputs = {} # Map of aoip input config, indexed by uri "aoip_port:idx"
         self.outputs = {} # Map of aoip output config, indexed by uri "aoip_mac_port:idx"
         self.remote_hosts = {} # Map of remote host info, indexed by mac
-        self.eth0_mac = self.get_mac("eth0")
+        self.ip = self.get_ip("eth0")
+        self.name = self.ip2name(self.ip)
         self.exit_flag = False
         self.thread = Thread(target=self.thread_task)
         self.thread.name = "AoIP"
@@ -104,10 +105,9 @@ class zynthian_aoip:
 
     def add_output(self, uri):
         try:
-            a, mac, port = uri.split("_")
-            ip = self.mac2ip(mac)
+            a, name, port = uri.split("_")
+            ip = self.name2ip(name)
             port = int(port)
-            name = self.ip2name(ip)
         except:
             return False
         proc = Popen(
@@ -116,7 +116,7 @@ class zynthian_aoip:
                 "-oL",
                 "zita-j2n",
                 "--jname",
-                uri.replace(":", "."),
+                uri,
                 ip,
                 str(port),
                 "eth0"
@@ -140,6 +140,10 @@ class zynthian_aoip:
             return True
 
     def add_input(self, port=None):
+        if not self.ip:
+            self.ip = self.get_ip("eth0")
+        if not self.ip:
+            return False
         if port:
             uri = f"aoip_{port}"
             if uri in self.inputs:
@@ -158,7 +162,7 @@ class zynthian_aoip:
                 "zita-n2j",
                 "--jname",
                 uri,
-                self.get_own_ip(),
+                self.ip,
                 str(port)
             ],
             text=True,
@@ -192,7 +196,7 @@ class zynthian_aoip:
         for input in self.inputs.values():
             sources.append(input["port"])
         for config in self.outputs.values():
-            destinations.append([config["hostname"], config["port"]])
+            destinations.append([config["name"], config["port"]])
         return {"sources": sources, "destinations": destinations}
 
     def set_state(self, state):
@@ -201,21 +205,20 @@ class zynthian_aoip:
             for port in state["sources"]:
                 self.add_input(port)
         if "destinations" in state:
-            for uri in state["destinations"]:
-                self.add_output(uri)
+            for config in state["destinations"]:
+                self.add_output(*config)
 
-    def set_remote_inputs(self, mac_addr, inputs):
-        mac = mac_addr.lower()
-        if mac == self.eth0_mac:
+    def set_remote_inputs(self, hostname, inputs):
+        name = self.ip2name(hostname)
+        if name == self.name:
             return
-        if mac not in self.remote_hosts:
-            self.remote_hosts[mac] = {}
-        self.remote_hosts[mac]["inputs"] = inputs.split(",")
-        self.remote_hosts[mac]["ip"] = self.mac2ip(mac)
-        self.remote_hosts[mac]["name"] = self.ip2name(self.remote_hosts[mac]["ip"])
+        if name not in self.remote_hosts:
+            self.remote_hosts[name] = {}
+        self.remote_hosts[name]["inputs"] = inputs.split(",")
+        self.remote_hosts[name]["ip"] = self.name2ip(name)
 
-    def get_own_ip(self):
-        for line in check_output(["ip", "-4", "addr", "show", "eth0"], encoding="utf-8").split("\n"):
+    def get_ip(self, nic):
+        for line in check_output(["ip", "-4", "addr", "show", nic], encoding="utf-8").split("\n"):
             if "inet" in line:
                 return line.split()[1].split("/")[0]
 
@@ -241,9 +244,18 @@ class zynthian_aoip:
             return match.group(1)
         return None
 
+    def name2ip(self, name):
+        try:
+            return socket.gethostbyname(name)
+        except:
+            return None
+
     def ip2name(self, ip):
-        info = socket.gethostbyaddr(ip)
-        if info[0]:
-            return info[0]
-        else:
-            return ip
+        try:
+            info = socket.gethostbyaddr(ip)
+            if info[0]:
+                return info[0]
+            else:
+                return ip
+        except:
+            return None

@@ -79,7 +79,6 @@ class zynthian_gui_audio_in(zynthian_gui_selector_info):
             info = f"Connect audio input {i + 1} to this chain."
             uri = scp.name.split(":")[0]
             if uri.startswith("aoip"):
-                uri.replace(".", ":")
                 if uri in self.aoip.inputs:
                     info += "\n\nNetwork Audio (AoIP)"
                     if self.aoip.inputs[uri]["ip"]:

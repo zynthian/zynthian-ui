@@ -155,7 +155,7 @@ ZynthianState = {
             # ... Other ports
             ],
         "destinations": [ # List of AoIP destinations
-            "aoip_192.168.1.55_40191", # URI of remote AoIP input port
+            ["zynthian-1", 40191], # Hostname and UDP port of remote AoIP input port
             # ... Other destinations
             ]
     },
