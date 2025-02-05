@@ -1184,6 +1184,10 @@ def build_midi_port_name(port):
     elif port.name.startswith("ZynMidiRouter:seq_in"):
         return port.name, "Router Feedback"
     elif port.name.startswith("jacknetumpd:netump_"):
+        ep_name = jack.get_property(port.uuid, "UMPEndpointName")
+        if ep_name:
+            ep_name = ep_name[0].decode("utf-8")
+            return f"NET:ump_{port.name[19:]}/{ep_name}", ep_name
         return f"NET:ump_{port.name[19:]}", "NetUMP"
     elif port.name.startswith("jackrtpmidid:rtpmidi_"):
         return f"NET:rtp_{port.name[21:]}", "RTP MIDI"
@@ -1414,6 +1418,7 @@ def start(sm):
     try:
         jclient = jack.Client("Zynthian_autoconnect")
         jclient.set_xrun_callback(cb_jack_xrun)
+        jclient.set_property_change_callback(cb_jack_property_change)
         jclient.activate()
     except Exception as e:
         logger.error(
@@ -1494,6 +1499,26 @@ def cb_jack_xrun(delayed_usecs: float):
         logger.warning(
             f"Jack Audio XRUN! =>count: {xruns}, delay: {delayed_usecs}us")
         state_manager.status_xrun = True
+
+
+def cb_jack_property_change(subject, key, change):
+    """Jack property change callback
+
+    subject : Jack object UUID
+    key : Property name
+    change : Property change (created, changed, deleted)
+    """
+
+    if key != "UMPEndpointName":
+        return
+    if change not in (jack.PROPERTY_CREATED, jack.PROPERTY_DELETED):
+        return
+
+    logger.debug(f"UMP Endpoint change")
+    netump_out_ports = jclient.get_ports("jacknetumpd", is_midi=True, is_output=True)
+    for port in netump_out_ports:
+        update_midi_port_aliases(port)
+    request_midi_connect(False)
 
 
 def get_jackd_cpu_load():

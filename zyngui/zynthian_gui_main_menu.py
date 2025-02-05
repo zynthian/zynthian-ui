@@ -56,7 +56,7 @@ class zynthian_gui_main_menu(zynthian_gui_selector_info):
             self.list_data.append((self.add_audiofx_chain, 0,
                                    "Add Audio Chain",
                                    ["Create a new chain for audio FX processing. The chain receives audio input and generates audio output.",
-                                    "audio.png"]))
+                                    "microphone.png"]))
         self.list_data.append((self.add_midifx_chain, 0,
                                "Add MIDI Chain",
                                ["Create a new chain for MIDI processing. The chain receives MIDI input and generates MIDI output.",

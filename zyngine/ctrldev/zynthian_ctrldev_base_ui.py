@@ -44,6 +44,7 @@ class ModeHandlerBase(zynthian_ctrldev_base_extended.ModeHandlerBase):
             self._state_manager.send_cuia("SCREEN_ZYNPAD")
         if seq is not None:
             self._select_pad(seq)
+            self._refresh_pattern_editor()
         if not skip_arranger:
             zynthian_gui_config.zyngui.screens["zynpad"].show_pattern_editor()
         else:
@@ -56,9 +57,15 @@ class ModeHandlerBase(zynthian_ctrldev_base_extended.ModeHandlerBase):
     # This SHOULD not be coupled to UI! This is needed because when the pattern is changed in
     # zynseq, it is not reflected in pattern editor.
     def _refresh_pattern_editor(self):
-        index = self._zynseq.libseq.getPatternIndex()
-        zynthian_gui_config.zyngui.screens["pattern_editor"].load_pattern(
-            index)
+        zynpad = zynthian_gui_config.zyngui.screens["zynpad"]
+        patted = zynthian_gui_config.zyngui.screens['pattern_editor']
+        pattern = self._zynseq.libseq.getPattern(zynpad.bank, zynpad.selected_pad, 0, 0)
+
+        self._state_manager.start_busy("load_pattern", f"loading pattern {pattern}")
+        patted.bank = zynpad.bank
+        patted.sequence = zynpad.selected_pad
+        patted.load_pattern(pattern)
+        self._state_manager.end_busy("load_pattern")
 
     # FIXME: This SHOULD not be coupled to UI!
     def _get_selected_sequence(self):

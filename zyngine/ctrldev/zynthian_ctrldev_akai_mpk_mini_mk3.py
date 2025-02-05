@@ -30,9 +30,7 @@ from bisect import bisect
 from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_signal_manager import zynsigman
 
-from .zynthian_ctrldev_base import (
-    zynthian_ctrldev_zynmixer
-)
+from .zynthian_ctrldev_base import zynthian_ctrldev_zynmixer
 from .zynthian_ctrldev_base_extended import (
     CONST, KnobSpeedControl, IntervalTimer, ButtonTimer
 )

@@ -2129,7 +2129,9 @@ class zynthian_gui:
         self.show_screen("file_selector")
 
     def cb_set_active_chain(self, active_chain):
-        self.zynswitches_midi_setup(self.chain_manager.get_active_chain().midi_chan)
+        active_chain = self.chain_manager.get_active_chain()
+        if active_chain:
+            self.zynswitches_midi_setup(active_chain.midi_chan)
 
     # ------------------------------------------------------------------
     # Zynpot Thread

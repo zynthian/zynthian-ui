@@ -76,7 +76,7 @@ class zynthian_controller:
         self.nudge_factor = None
         self.nudge_factor_fine = None  # Fine factor to scale
         self.labels = None  # List of discrete value labels
-        self.ticks = None  # List of discrete value labels
+        self.ticks = None  # List of discrete value ticks
         self.range_reversed = False  # Flag if ticks order is reversed
         self.is_toggle = False  # True if control is Boolean toggle
         self.is_integer = True  # True if control is Integer

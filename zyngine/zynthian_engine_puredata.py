@@ -57,8 +57,7 @@ class zynthian_engine_puredata(zynthian_engine):
     # Config variables
     # ----------------------------------------------------------------------------
 
-    startup_patch = zynthian_engine.data_dir + \
-        "/presets/puredata/zynthian_startup.pd"
+    startup_patch = zynthian_engine.data_dir + "/presets/puredata/zynthian_startup.pd"
 
     preset_fexts = ["pd"]
     root_bank_dirs = [
@@ -83,11 +82,9 @@ class zynthian_engine_puredata(zynthian_engine):
         self.preset_config = None
 
         if self.config_remote_display():
-            self.base_command = "pd -jack -nojackconnect -jackname \"{}\" -rt -alsamidi -mididev 1 -open \"{}\"".format(
-                self.jackname, self.startup_patch)
+            self.base_command = f"pd -jack -nojackconnect -jackname \"{self.jackname}\" -rt -alsamidi -mididev 1 -open \"{self.startup_patch}\""
         else:
-            self.base_command = "pd -nogui -jack -nojackconnect -jackname \"{}\" -rt -alsamidi -mididev 1 -open \"{}\"".format(
-                self.jackname, self.startup_patch)
+            self.base_command = f"pd -nogui -jack -nojackconnect -jackname \"{self.jackname}\" -rt -alsamidi -mididev 1 -open \"{self.startup_patch}\""
 
         self.reset()
 
@@ -121,20 +118,17 @@ class zynthian_engine_puredata(zynthian_engine):
 
     def set_preset(self, processor, preset, preload=False):
         self.load_preset_config(preset)
-        self.command = self.base_command + " " + \
-            self.get_preset_filepath(preset)
+        self.command = self.base_command + " " + self.get_preset_filepath(preset)
         self.preset = preset[0]
         self.stop()
         self.start()
         for symbol in processor.controllers_dict:
-            self.state_manager.chain_manager.remove_midi_learn(
-                processor, symbol)
+            self.state_manager.chain_manager.remove_midi_learn(processor, symbol)
         processor.refresh_controllers()
         sleep(2.0)
         # Need to all autoconnect because restart of process
         try:
-            self.state_manager.chain_manager.chains[processor.chain_id].rebuild_graph(
-            )
+            self.state_manager.chain_manager.chains[processor.chain_id].rebuild_graph()
         except:
             pass
         zynautoconnect.request_audio_connect(True)
@@ -147,13 +141,11 @@ class zynthian_engine_puredata(zynthian_engine):
         try:
             with open(config_fpath, "r") as fh:
                 yml = fh.read()
-                logging.info("Loading preset config file %s => \n%s" %
-                             (config_fpath, yml))
+                logging.info(f"Loading preset config file {config_fpath} => \n{yml}")
                 self.preset_config = yaml.load(yml, Loader=yaml.SafeLoader)
                 return True
         except Exception as e:
-            logging.error(
-                "Can't load preset config file '%s': %s" % (config_fpath, e))
+            logging.error("Can't load preset config file '%s': %s" % (config_fpath, e))
             return False
 
     def get_preset_filepath(self, preset):
@@ -191,23 +183,20 @@ class zynthian_engine_puredata(zynthian_engine):
         self._ctrl_screens = []
         if self.preset_config:
             for ctrl_group, ctrl_dict in self.preset_config.items():
-                logging.debug("Preset Config '{}' ...".format(ctrl_group))
+                logging.debug(f"Preset Config '{ctrl_group}' ...")
                 if isinstance(ctrl_dict, dict):
                     c = 1
                     ctrl_set = []
                     if ctrl_group == 'midi_controllers':
                         ctrl_group = 'Controllers'
-                    logging.debug("Generating Controller Screens for '{}' => {}".format(
-                        ctrl_group, ctrl_dict))
+                    logging.debug(f"Generating Controller Screens for '{ctrl_group}' => {ctrl_dict}")
                     try:
                         for name, options in ctrl_dict.items():
                             try:
                                 if len(ctrl_set) >= 4:
                                     screen_title = f"{ctrl_group}#{c}"
-                                    logging.debug(
-                                        f"Adding Controller Screen {screen_title}")
-                                    self._ctrl_screens.append(
-                                        [screen_title, ctrl_set])
+                                    logging.debug(f"Adding Controller Screen {screen_title}")
+                                    self._ctrl_screens.append([screen_title, ctrl_set])
                                     ctrl_set = []
                                     c += 1
                                 if isinstance(options, int):
@@ -218,19 +207,16 @@ class zynthian_engine_puredata(zynthian_engine):
                                 logging.debug("CTRL %s: %s" % (midi_cc, name))
                                 options['name'] = str.replace(name, '_', ' ')
                                 options['processor'] = processor
-                                zctrls[name] = zynthian_controller(
-                                    self, name, options)
+                                zctrls[name] = zynthian_controller(self, name, options)
                                 ctrl_set.append(name)
                             except Exception as err:
-                                logging.error(
-                                    "Generating Controller Screens: %s" % err)
+                                logging.error(f"Generating Controller Screens: {err}")
                         if len(ctrl_set) >= 1:
                             if c > 1:
                                 screen_title = f"{ctrl_group}#{c}"
                             else:
                                 screen_title = ctrl_group
-                            logging.debug(
-                                f"Adding Controller Screen {screen_title}")
+                            logging.debug(f"Adding Controller Screen {screen_title}")
                             self._ctrl_screens.append([screen_title, ctrl_set])
                     except Exception as err:
                         logging.error(err)
@@ -278,8 +264,7 @@ class zynthian_engine_puredata(zynthian_engine):
 
     @classmethod
     def zynapi_new_bank(cls, bank_name):
-        os.mkdir(zynthian_engine.my_data_dir +
-                 "/presets/puredata/" + bank_name)
+        os.mkdir(zynthian_engine.my_data_dir + "/presets/puredata/" + bank_name)
 
     @classmethod
     def zynapi_rename_bank(cls, bank_path, new_bank_name):

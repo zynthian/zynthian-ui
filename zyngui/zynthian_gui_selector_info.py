@@ -57,7 +57,8 @@ class zynthian_gui_selector_info(zynthian_gui_selector):
         }
         self.icon_canvas = None
         self.info_canvas = None
-        super().__init__(selcap, wide=True, loading_anim=False, tiny_ctrls=tiny_ctrls)
+        super().__init__(selcap, wide=True, loading_anim=True, tiny_ctrls=tiny_ctrls)
+        self.loading_canvas.grid_remove()
 
         # Canvas for extended info image
         self.icon_canvas = tkinter.Canvas(self.main_frame,

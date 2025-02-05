@@ -62,10 +62,18 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
 
     def select_action(self, i, t='S'):
         if t == 'S':
+            # Allow animation
+            self.icon_canvas.grid_remove()
+            self.loading_canvas.grid(rowspan=1)
             self.zyngui.state_manager.start_busy("set preset")
+            # Set preset
             self.zyngui.get_current_processor().set_preset(i)
             self.zyngui.state_manager.end_busy("set preset")
             self.zyngui.purge_screen_history("bank")
+            # Stop animation and restore icon canvas
+            self.loading_canvas.grid_remove()
+            self.icon_canvas.grid()
+            # Close
             self.zyngui.replace_screen("control")
 
     def show_preset_options(self):

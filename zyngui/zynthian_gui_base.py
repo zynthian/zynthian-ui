@@ -230,6 +230,7 @@ class zynthian_gui_base(tkinter.Frame):
         if timeout:
             self.title_timer = Timer(timeout, self.on_title_timeout)
             self.title_timer.start()
+            self.title = self.select_path.get()
         else:
             self.title = title
             if fg:
@@ -623,34 +624,30 @@ class zynthian_gui_base(tkinter.Frame):
             state=tkinter.HIDDEN)
 
     def init_dpmeter(self):
+        last_chan = self.zyngui.state_manager.zynmixer.MAX_NUM_CHANNELS - 1
         width = int(self.status_l - 2 * self.status_rh - 1)
         height = int(self.status_h / 4 - 2)
-        self.dpm_a = zynthian_gui_dpm(self.zyngui.state_manager.zynmixer, self.zyngui.state_manager.zynmixer.MAX_NUM_CHANNELS -
-                                      1, 0, self.status_canvas, 0, 0, width, height, False, ("status_dpm"))
-        self.dpm_b = zynthian_gui_dpm(self.zyngui.state_manager.zynmixer, self.zyngui.state_manager.zynmixer.MAX_NUM_CHANNELS -
-                                      1, 1, self.status_canvas, 0, height + 2, width, height, False, ("status_dpm"))
+        self.dpm_a = zynthian_gui_dpm(self.zyngui.state_manager.zynmixer, last_chan, 0, self.status_canvas,
+                                      0, 0, width, height, False, ("status_dpm"))
+        self.dpm_b = zynthian_gui_dpm(self.zyngui.state_manager.zynmixer, last_chan, 1, self.status_canvas,
+                                      0, height + 2, width, height, False, ("status_dpm"))
 
     def refresh_status(self):
         if self.shown:
-            mute = self.zyngui.state_manager.zynmixer.get_mute(
-                self.zyngui.state_manager.zynmixer.MAX_NUM_CHANNELS - 1)
+            last_chan = self.zyngui.state_manager.zynmixer.MAX_NUM_CHANNELS - 1
+            mute = self.zyngui.state_manager.zynmixer.get_mute(last_chan)
             if True:  # mute != self.main_mute:
                 self.main_mute = mute
                 if mute:
-                    self.status_canvas.itemconfigure(
-                        self.status_mute, state=tkinter.NORMAL)
+                    self.status_canvas.itemconfigure(self.status_mute, state=tkinter.NORMAL)
                     if self.dpm_a:
-                        self.status_canvas.itemconfigure(
-                            'status_dpm', state=tkinter.HIDDEN)
+                        self.status_canvas.itemconfigure('status_dpm', state=tkinter.HIDDEN)
                 else:
-                    self.status_canvas.itemconfigure(
-                        self.status_mute, state=tkinter.HIDDEN)
+                    self.status_canvas.itemconfigure(self.status_mute, state=tkinter.HIDDEN)
                     if self.dpm_a:
-                        self.status_canvas.itemconfigure(
-                            'status_dpm', state=tkinter.NORMAL)
+                        self.status_canvas.itemconfigure('status_dpm', state=tkinter.NORMAL)
             if not mute and self.dpm_a:
-                state = self.zyngui.state_manager.zynmixer.get_dpm_states(
-                    self.zyngui.state_manager.zynmixer.MAX_NUM_CHANNELS - 1, self.zyngui.state_manager.zynmixer.MAX_NUM_CHANNELS - 1)[0]
+                state = self.zyngui.state_manager.zynmixer.get_dpm_states(last_chan, last_chan)[0]
                 self.dpm_a.refresh(state[0], state[2], state[4])
                 self.dpm_b.refresh(state[1], state[3], state[4])
 
@@ -866,8 +863,7 @@ class zynthian_gui_base(tkinter.Frame):
     # Override if required
     def update_layout(self):
         if zynthian_gui_config.enable_touch_navigation and self.buttonbar_config:
-            self.height = zynthian_gui_config.screen_height - \
-                self.topbar_height - self.buttonbar_height
+            self.height = zynthian_gui_config.screen_height - self.topbar_height - self.buttonbar_height
         else:
             self.height = zynthian_gui_config.screen_height - self.topbar_height
 
@@ -882,8 +878,7 @@ class zynthian_gui_base(tkinter.Frame):
         if self.param_editor_zctrl:
             self.param_editor_zctrl.reset(engine, symbol, options)
         else:
-            self.param_editor_zctrl = zynthian_controller(
-                engine, symbol, options)
+            self.param_editor_zctrl = zynthian_controller(engine, symbol, options)
         self.param_editor_assert_cb = assert_cb
         if not self.param_editor_zctrl.is_integer:
             if self.param_editor_zctrl.nudge_factor < 0.1:
