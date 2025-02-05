@@ -121,7 +121,7 @@ class zynthian_aoip:
             sleep(0.1)
 
     def connect_output(self, mac, port):
-        uri = f"aoip_{mac.replace(':', '.')}_{port}"
+        uri = f"aoip_{mac.replace(':', '-')}_{port}"
         ip = self.mac2ip(mac)
         if ip:
             if mac in self.remote_hosts:
@@ -165,7 +165,7 @@ class zynthian_aoip:
         else:
             name = ""
             ip = ""
-        uri = f"aoip_{mac.replace(':', '.')}_{port}"
+        uri = f"aoip_{mac.replace(':', '-')}_{port}"
         if uri in self.outputs:
             return False
         proc = self.connect_output(mac, port)
@@ -263,7 +263,7 @@ class zynthian_aoip:
             "inputs": inputs
         }
         for input in inputs:
-            uri = f"aoip_{mac.replace(':', '.')}_{input}"
+            uri = f"aoip_{mac.replace(':', '-')}_{input}"
             if uri in self.outputs and self.outputs[uri]["proc"] is None:
                 self.connect_output(mac, input)
 
