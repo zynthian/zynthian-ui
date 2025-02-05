@@ -136,8 +136,7 @@ class zynthian_aoip:
                     "--jname",
                     uri,
                     ip,
-                    str(port),
-                    "eth0"
+                    str(port)
                 ],
                 text=True,
                 bufsize=1,
