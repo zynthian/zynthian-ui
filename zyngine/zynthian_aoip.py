@@ -30,7 +30,6 @@ from threading import Thread
 import socket
 
 import zynautoconnect
-from zynconf import zynthian_config
 from zyngine.zynthian_signal_manager import zynsigman
 
 # ----------------------------------------------------------------------------
@@ -42,10 +41,11 @@ class zynthian_aoip:
     SS_AOIP_CONNECT = 1
 
     def __init__(self):
-        """ struct of input dict:
+        """ Struct of input dict:
         uri: {
-            "Proc": popen_object,
-            "ip": remote_address or None if not connected
+            "proc": popen_object,
+            "ip": remote IP address or None if not connected
+            "mac": remote MAC or None if not connected
             "name": remote name
             "chans": quantity of audio channels,
             "sr": samplerate
@@ -53,9 +53,24 @@ class zynthian_aoip:
         }
         """
         self.inputs = {} # Map of aoip input config, indexed by uri "aoip_port:idx"
+        """ Structure of output dict:
+        uri: {
+            "proc": popen object
+             "mac": remote MAC
+             "port": udp port
+             "ip": remote IP address
+             "name": remote hostname
+        }
+        """
         self.outputs = {} # Map of aoip output config, indexed by uri "aoip_mac_port:idx"
+        """ Structure of remote hosts dict
+            "ip": IP address,
+            "name": hostname,
+            "inputs": list of input UDP ports
+        """
         self.remote_hosts = {} # Map of remote host info, indexed by hostname
         self.ip = self.get_ip("eth0")
+        self.mac = self.get_mac("eth0")
         self.name = self.ip2name(self.ip)
         self.exit_flag = False
         self.thread = Thread(target=self.thread_task)
@@ -85,6 +100,7 @@ class zynthian_aoip:
                     if line == "Waiting for info packet...":
                         logging.warning("Disconnected")
                         config["ip"] = None
+                        config["mac"] = None
                         config["name"] = "disconnected"
                         config["chans"] = 0
                         config["sr"] = 0
@@ -94,6 +110,7 @@ class zynthian_aoip:
                     elif line.startswith("From"):
                         a, ip, b, chans, c, sr, d = line.split()
                         config["ip"] = ip
+                        config["mac"] = self.ip2mac(ip)
                         config["name"] = self.ip2name(ip)
                         config["chans"] = int(chans)
                         config["sr"] = int(sr)
@@ -103,39 +120,63 @@ class zynthian_aoip:
                         zynsigman.send(zynsigman.S_AOIP, self.SS_AOIP_CONNECT, uri=uri, state=True)
             sleep(0.1)
 
-    def add_output(self, hostname, port):
-        try:
-            name = self.ip2name(hostname)
-            ip = self.name2ip(hostname)
-            uri = f"aoip_{name}_{port}"
-        except:
+    def connect_output(self, mac, port):
+        uri = f"aoip_{mac.replace(':', '.')}_{port}"
+        ip = self.mac2ip(mac)
+        if ip:
+            if mac in self.remote_hosts:
+                name = self.remote_hosts[mac]["name"]
+            else:
+                name = self.ip2name(ip)
+            proc = Popen(
+                [
+                    "stdbuf",
+                    "-oL",
+                    "zita-j2n",
+                    "--jname",
+                    uri,
+                    ip,
+                    str(port),
+                    "eth0"
+                ],
+                text=True,
+                bufsize=1,
+                stdout=PIPE,
+                stderr=STDOUT)
+            if proc.poll() is None:
+                self.outputs[uri] = {"proc": proc, "mac": mac, "port": port, "ip": ip, "name": name}
+                set_blocking(proc.stdout.fileno(), False)
+                sleep(0.1)
+                self.set_alias(uri, f"AoIP {name}: {port - 40190}", True)
+                return proc
+        return None
+
+    def add_output(self, mac, port):
+        """ Add an AoIP output
+        mac - MAC address of remote host to send stream to
+        port - UDP port of remote host to send stream to
+    
+        return - True if output added and connection made
+
+        Attempts to make a connection to remote host. If this fails, the output is created, awaiting remote host to become availabl.
+        """
+        if mac in self.remote_hosts:
+            name = self.remote_hosts[mac]["name"]
+            ip = self.remote_hosts[mac]["ip"]
+        else:
+            name = ""
+            ip = ""
+        uri = f"aoip_{mac.replace(':', '.')}_{port}"
+        if uri in self.outputs:
             return False
-        proc = Popen(
-            [
-                "stdbuf",
-                "-oL",
-                "zita-j2n",
-                "--jname",
-                uri,
-                ip,
-                str(port),
-                "eth0"
-            ],
-            text=True,
-            bufsize=1,
-            stdout=PIPE,
-            stderr=STDOUT)
-        if proc.poll() is None:
-            self.outputs[uri] = {"proc": proc, "port": port, "ip": ip, "name": name}
-            set_blocking(proc.stdout.fileno(), False)
-            sleep(0.1)
-            self.set_alias(uri, f"AoIP {name}: {port - 40190}", True)
-            return True
-        return False
+        proc = self.connect_output(mac, port)
+        self.outputs[uri] = {"proc": proc, "mac": mac, "port": port, "ip": ip, "name": name}
+        return not proc is None
 
     def remove_output(self, uri):
         if uri in self.outputs:
-            self.outputs[uri]["proc"].terminate()
+            if self.outputs[uri]["proc"]:
+                self.outputs[uri]["proc"].terminate()
             del self.outputs[uri]
             return True
 
@@ -196,7 +237,7 @@ class zynthian_aoip:
         for input in self.inputs.values():
             sources.append(input["port"])
         for config in self.outputs.values():
-            destinations.append([config["name"], config["port"]])
+            destinations.append([config["mac"], config["port"]])
         return {"sources": sources, "destinations": destinations}
 
     def set_state(self, state):
@@ -208,15 +249,24 @@ class zynthian_aoip:
             for config in state["destinations"]:
                 self.add_output(*config)
 
-    def set_remote_inputs(self, hostname, inputs):
-        name = self.ip2name(hostname)
-        if name == self.name:
+    def set_remote_inputs(self, inputs, ip=None, mac=None, name=None):
+        if ip is None:
+            ip = self.mac2ip(mac)
+        if mac is None:
+            mac = self.ip2mac(ip)
+        if name is None:
+            name = self.ip2name(ip)
+        if mac is None or mac == self.mac:
             return
-        if name not in self.remote_hosts:
-            self.remote_hosts[name] = {}
-        self.remote_hosts[name]["inputs"] = []
-        self.remote_hosts[name]["inputs"] = inputs
-        self.remote_hosts[name]["ip"] = self.name2ip(name)
+        self.remote_hosts[mac] = {
+            "ip": ip,
+            "name": name,
+            "inputs": inputs
+        }
+        for input in inputs:
+            uri = f"aoip_{mac.replace(':', '.')}_{input}"
+            if uri in self.outputs and self.outputs[uri]["proc"] is None:
+                self.connect_output(mac, input)
 
     def get_ip(self, nic):
         for line in check_output(["ip", "-4", "addr", "show", nic], encoding="utf-8").split("\n"):
