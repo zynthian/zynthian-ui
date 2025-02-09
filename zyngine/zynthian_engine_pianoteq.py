@@ -861,7 +861,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
                 processor.controllers_dict[param] = zctrl
                 # Default MIDI CC mapping
                 if param in default_cc:
-                    self.state_manager.chain_manager.add_midi_learn(processor.midi_chan, default_cc[param], zctrl)
+                    self.state_manager.chain_manager.add_midi_learn(zctrl, None, processor.midi_chan, default_cc[param])
 
         return processor.controllers_dict
 

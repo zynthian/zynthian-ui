@@ -804,7 +804,7 @@ class zynthian_state_manager:
                         else:
                             if self.midi_learn_zctrl:
                                 self.chain_manager.add_midi_learn(
-                                    chan, ccnum, self.midi_learn_zctrl, izmip)
+                                    None, self.midi_learn_zctrl, chan, ccnum)
                     # Master Note CUIA with ZynSwitch emulation
                     elif evtype == 0x8 or evtype == 0x9:
                         note = str(ev[1] & 0x7F)
@@ -837,10 +837,12 @@ class zynthian_state_manager:
                         if not self.midi_learn_zctrl:
                             self.chain_manager.midi_control_change(
                                 izmip, chan, ccnum, ccval)
+                            """ These are now handled as processors in fake chain
                             self.alsa_mixer_processor.midi_control_change(
                                 chan, ccnum, ccval)
                             self.audio_player.midi_control_change(
                                 chan, ccnum, ccval)
+                            """
                         zynsigman.send_queued(
                             zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, izmip=izmip, chan=chan, num=ccnum, val=ccval)
                     # Special CCs >= Channel Mode
@@ -945,6 +947,7 @@ class zynthian_state_manager:
             'schema_version': zynthian_legacy_snapshot.SNAPSHOT_SCHEMA_VERSION,
             'last_snapshot_fpath': self.last_snapshot_fpath,
             'midi_profile_state': self.get_midi_profile_state(),
+            "midi": self.get_midi_state(),
             'chains': self.chain_manager.get_state(),
             'zs3': self.zs3,
             'last_zs3_id': self.last_zs3_id
@@ -1094,6 +1097,21 @@ class zynthian_state_manager:
             if state is None:
                 return
 
+            # Load global MIDI configuration
+            zmip_map = {}
+            zmop_map = {}
+            port_names = {}
+            try:
+                for zmip, cfg in state["midi"]["midi_capture"].items():
+                    port_names[cfg["uid"]] = cfg["name"]
+                    zmip_map[zynautoconnect.get_midi_devid_by_uid(cfg["uid"])] = int(zmip)
+                for zmop, cfg in state["midi"]["midi_playback"].items():
+                    port_names[cfg["uid"]] = cfg["name"]
+                    zmop_map[zynautoconnect.get_midi_devid_by_uid(cfg["uid"])] = int(zmop)
+            except:
+                pass
+            zynautoconnect.set_midi_port_names(port_names)
+
             if load_chains:
                 # Mute output to avoid unwanted noises
                 self.mute(True)
@@ -1115,7 +1133,6 @@ class zynthian_state_manager:
                         # Need to reassign chains and processor ids
                         chain_map = {}  # Map of new chain id indexed by old id
                         proc_map = {}   # Map of new processor id indexed by old id
-                        mixer_map = {}  # Map of new mixer chan idx indexed by old idx
                         # Don't import main chain
                         try:
                             del state["chains"]["0"]
@@ -1157,18 +1174,6 @@ class zynthian_state_manager:
                                         if str(ctrl_cfg[0]) in proc_map:
                                             ctrl_cfg[0] = proc_map[str(ctrl_cfg[0])]
                         state["zs3"]["zs3-0"]["chains"] = chains
-                        mixer_chans = {}
-                        for old_mixer_chan, new_mixer_chan in mixer_map.items():
-                            try:
-                                mixer_chans[f"chan_{new_mixer_chan:02d}"] = state["zs3"]["zs3-0"]["mixer"][f"chan_{old_mixer_chan:02d}"]
-                            except:
-                                pass
-                        state["zs3"]["zs3-0"]["mixer"] = mixer_chans
-                        # We don't want to merge MIDI binding to mixer
-                        try:
-                            del state["zs3"]["zs3-0"]["mixer"]["midi_learn"]
-                        except:
-                            pass
                         # We don't want to merge MIDI capture
                         try:
                             del state["zs3"]["zs3-0"]["midi_capture"]
@@ -1184,7 +1189,7 @@ class zynthian_state_manager:
                     self.last_zs3_id = state["last_zs3_id"]
                 else:
                     self.last_zs3_id = None
-                zs3 = self.sanitize_zs3_from_json(state["zs3"])
+                zs3 = self.sanitize_zs3_from_json(state["zs3"], zmip_map)
                 if not merge:
                     self.zs3 = zs3
                 self.load_zs3(zs3["zs3-0"], autoconnect=False)
@@ -1355,7 +1360,6 @@ class zynthian_state_manager:
                 zs3_id = "zs3-0"
 
         restored_chains = []
-        restored_cc_mapping = []
         if "chains" in zs3_state:
             self.set_busy_details("restoring chains state")
             for chain_id, chain_state in zs3_state["chains"].items():
@@ -1418,11 +1422,6 @@ class zynthian_state_manager:
                 if "audio_thru" in chain_state:
                     chain.audio_thru = chain_state["audio_thru"]
                 chain.rebuild_graph()
-                if "midi_cc" in chain_state:
-                    for cc, cfg in chain_state["midi_cc"].items():
-                        for proc_id, symbol in cfg:
-                            if proc_id in self.chain_manager.processors:
-                                restored_cc_mapping.append((proc_id, int(cc), symbol))
 
         if "processors" in zs3_state:
             for proc_id, proc_state in zs3_state["processors"].items():
@@ -1431,16 +1430,13 @@ class zynthian_state_manager:
                     if processor.chain_id in restored_chains:
                         self.set_busy_details(f"restoring {processor.get_basepath()} state")
                         processor.set_state(proc_state)
+                        for symbol, ctrl in proc_state["controllers"].items():
+                            try:
+                                self.chain_manager.add_midi_learn(processor.controllers_dict[symbol], *ctrl["midi_cc"])
+                            except:
+                                pass
                 except Exception as e:
                     logging.error(f"Failed to restore processor {proc_id} state => {e}")
-
-        for cc_map in restored_cc_mapping:
-            processor = self.chain_manager.processors[cc_map[0]]
-            try:
-                zctrl = processor.controllers_dict[cc_map[2]]
-                self.chain_manager.add_midi_learn(processor.midi_chan, cc_map[1], zctrl)
-            except:
-                logging.warning(f"Failed to restore MIDI learning {cc_map[1]} => {cc_map[2]}")
 
         if "active_chain" in zs3_state:
             self.chain_manager.set_active_chain_by_id(zs3_state["active_chain"])
@@ -1558,16 +1554,6 @@ class zynthian_state_manager:
                 chain_state["audio_out"].append(out)
             if chain.audio_thru:
                 chain_state["audio_thru"] = chain.audio_thru
-            # Add chain MIDI mapping
-            for key, zctrls in self.chain_manager.chain_midi_cc_binding.items():
-                if chain_id == key >> 8:
-                    cc = key & 0x7f
-                    # TODO: Do not save default engine mapping
-                    if "midi_cc" not in chain_state:
-                        chain_state["midi_cc"] = {}
-                    chain_state["midi_cc"][cc] = []
-                    for zctrl in zctrls:
-                        chain_state["midi_cc"][cc].append([zctrl.processor.id, zctrl.symbol])
             if chain_state:
                 chain_states[chain_id] = chain_state
         if chain_states:
@@ -1646,7 +1632,7 @@ class zynthian_state_manager:
         # ZS3 list (subsnapshots)
         self.zs3 = {}
 
-    def sanitize_zs3_from_json(self, zs3_state):
+    def sanitize_zs3_from_json(self, zs3_state, zmip_map):
         """Fix chain & processor ID keys in ZS3 data decoded from JSON"""
 
         # TODO: Temporal compatibility fix with older vangelis => To remove!!
@@ -1672,6 +1658,19 @@ class zynthian_state_manager:
                 for processor_id, processor_state in state['processors'].items():
                     try:
                         processor_id = int(processor_id)
+                        # Remap zmip exclusion flags (to account for different zmip assignment, e.g. hotplug)
+                        for cfg in processor_state["controllers"].values():
+                            if "midi_cc" in cfg and len(cfg["midi_cc"]) > 3:
+                                old_flags = cfg["midi_cc"][3]
+                                new_flags = 0
+                                for i in range(len(zynautoconnect.devices_in)):
+                                    flag = 1 << i
+                                    if flag & old_flags:
+                                        try:
+                                            new_flags |= 1 << (zmip_map[i])
+                                        except:
+                                            pass
+                                cfg["midi_cc"][3] = new_flags
                     except:
                         logging.error(
                             f"Processor in ZS3 {zs3_key} has an invalid ID: {processor_id}")
@@ -1812,13 +1811,6 @@ class zynthian_state_manager:
             # Aubio state
             if uid == "AUBIO:in":
                 mcstate[uid]["audio_in"] = self.aubio_in
-        # Add global / absolute MIDI mapping
-        for key, zctrls in self.chain_manager.absolute_midi_cc_binding.items():
-            if "midi_cc" not in mcstate:
-                mcstate["midi_cc"] = {}
-            mcstate["midi_cc"][key] = []
-            for zctrl in zctrls:
-                mcstate["midi_cc"][key].append([zctrl.processor.id, zctrl.symbol])
 
         return mcstate
 
@@ -1831,7 +1823,7 @@ class zynthian_state_manager:
             ctrldev_state_drivers = {}
             for uid, state in mcstate.items():
                 #logging.debug(f"MCSTATE {uid} => {state}")
-                zmip = zynautoconnect.get_midi_in_devid_by_uid(uid, zynthian_gui_config.midi_usb_by_port)
+                zmip = zynautoconnect.get_midi_devid_by_uid(uid, zynthian_gui_config.midi_usb_by_port)
                 if zmip is None:
                     continue
                 try:
@@ -1859,16 +1851,6 @@ class zynthian_state_manager:
                         lib_zyncore.zmop_set_route_from(ch, zmip, ch in routed_chains)
                 except:
                     pass
-
-                if "midi_cc" in state:
-                    for chan_cc, cfg in state["midi_cc"].items():
-                        for proc_id, symbol in cfg:
-                            if proc_id in self.chain_manager.processors:
-                                processor = self.chain_manager.processors[proc_id]
-                                chan_cc = int(chan_cc)
-                                chan = (chan_cc >> 8) & 0x7f
-                                cc = chan_cc & 0x7f
-                                self.chain_manager.add_midi_learn(chan, cc, processor.controllers_dict[symbol], zmip)
 
             self.ctrldev_manager.set_state_drivers(ctrldev_state_drivers)
 
@@ -2015,7 +1997,6 @@ class zynthian_state_manager:
         for key in os.environ.keys():
             if key.startswith("ZYNTHIAN_MIDI_"):
                 midi_profile_state[key[14:]] = os.environ[key]
-        midi_profile_state["port_names"] = zynautoconnect.get_port_friendly_names()
         return midi_profile_state
 
     def set_midi_profile_state(self, state):
@@ -2026,10 +2007,8 @@ class zynthian_state_manager:
 
         if state is not None:
             for key in state:
-                if key == "port_names":
-                    zynautoconnect.set_midi_port_names(state[key])
                 # Drop Master Channel config, as it's global
-                elif not key.startswith("MASTER_"):
+                if not key.startswith("MASTER_"):
                     os.environ["ZYNTHIAN_MIDI_" + key] = state[key]
             zynthian_gui_config.set_midi_config()
             self.init_midi()
@@ -2042,6 +2021,28 @@ class zynthian_state_manager:
         """Clear MIDI profiles"""
 
         self.reload_midi_config()
+
+    def get_midi_state(self):
+        state = {
+            "midi_capture": {},
+            "midi_playback": {}
+        }
+        for i, device in enumerate(zynautoconnect.devices_in):
+            if device is None:
+                continue
+            state["midi_capture"][i] = {
+                "uid": device.aliases[0],
+                "name": device.aliases[1]
+            }
+        state["midi_playback"] = {}
+        for i, device in enumerate(zynautoconnect.devices_out):
+            if device is None:
+                continue
+            state["midi_playback"][i] = {
+                "uid": device.aliases[0],
+                "name": device.aliases[1]
+            }
+        return state
 
     # ---------------------------------------------------------------------------
     # Global Audio Player

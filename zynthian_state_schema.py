@@ -47,9 +47,20 @@ ZynthianState = {
         "MASTER_PROGRAM_CHANGE_TYPE": "Custom",
         "PLAY_LOOP": "0",
         "FILTER_OUTPUT": "0",
-        "port_names": {  # Dictionary of MIDI port friendly names indexed by port uid
-            "USB-1.1.1 CH345 MIDI IN": "VZ-1 IN",  # Friendly name mapped by uid
-        } # ... More ports
+    },
+    "midi": { # Dictionary of global MIDI configuration
+        "midi_capture": { # Dictionary of MIDI capture ports, indexed by zmip
+            "0": {
+                "uid": "USB-1.1.1 CH345 MIDI IN", # UID of port
+                "name": "VZ-1 IN", # Friendly name
+            }, # ... More ports
+        },
+        "midi_playback": { # Dictionary of MIDI playback ports, indexed by zmop
+            "0": {
+                "uid": "USB-1.1.1 CH345 MIDI OUT", # UID of port
+                "name": "VZ-1 OUT", # Friendly name
+            }, # ... More ports
+        },
     },
     "chains": {  # Dictionary of chains indexed by chain ID
         "1": {  # Chain 1
@@ -61,7 +72,11 @@ ZynthianState = {
                     "1": "PT",  # Processor type indexed by processor id
                 }, # ... more processors in this slot
             ], # ... More slots
-        }
+        },
+        "0": { # Chain 0 is main mixbus
+        },
+        "-1": { # Chain -1 holds global processors (not in real chain), e.g. alsa mixer
+        }, # ... More chains
     },
     "zs3": {  # Dictionary of ZS3's indexed by chan/prog or ZS3-x
         "zs3-0": {  # ZS3 state when snapshot saved
@@ -73,8 +88,10 @@ ZynthianState = {
                     "preset_info": None,  # Preset ID
                     "controllers": {  # Dictionary of controllers (optional, overrides preset default value)
                         "volume": {  # Indexed by controller symbol
-                            "value": 96,  # Controller value
-                        },
+                            "value": 96,  # Optional controller value
+                            "midi_cc_momentary_switch": 1, # Optional switch momentary mode
+                            "midi_cc": [None, 0, 7, 0], # Optional MIDI CC binding: [chain, chan, cc, zmip_exclude_flags] chain=None for global
+                        } # ... More controllers
                     }, # ... Other parameters
                 } # ... Other controllers
             }, # ... Other processors
@@ -90,27 +107,15 @@ ZynthianState = {
                     "note_high": 127,  # Higheset MIDI note chain responds to
                     "transpose_octave": 0,  # Octaves to transpose chain MIDI
                     "transpose_semitone": 0,  # Semitones to transpose chain MIDI
-                    "midi_cc": {  # Dictionary of MIDI mapping, indexed by CC number
-                        "7": [  # List of controller configs
-                            ["2", "volume"], # Controller configs [proc_id, symbol]
-                        ], # ... Other controllers mapped to this CC
-                    } # ... Other CC mapped to this chain
                 },
             }, # ... Other chains
-            "midi_capture": {  # Dictionary of midi input configuration mapped by port input uid
-                "ttymidi:MIDI_in": {
+            "midi_capture": {  # Dictionary of midi input configuration mapped by uid
+                "'ttymidi:MIDI_in'": {
                     "zmip_input_mode": 1, # 1 if active chain mode enabled (stage mode), 0 for multitimbral
                     "disable_ctrldev": 0,  # 1 to disable loading of controller device driver
                     "routed_chains": [],  # List of chain zmops this input is routed to
                     "audio_in": [0, 1], # List of audio inputs, e.g. for aubio (optional)
-                    "midi_cc": {  # Map of MIDI CC mapping, indexed by MIDI channel
-                        "0": {  # Map of controls, indexed by CC number
-                            "121": [  # List of controller configs
-                                [1, "volume"], # Controller config [proc_id, symbol]
-                            ], # ... Other controllers
-                        }, # ... Other CCs
-                    } # ... Other MIDI channels
-                }
+                }, # ... Other devices
             },
             "global": {  # Dictionary of global params settable by zs3 indexed by param name
                 "midi_transpose": 0,  # Semitones to globally transpose
@@ -127,13 +132,6 @@ ZynthianState = {
     }, # ... Other engines
     "audio_recorder_armed": [0, 3], # List of audio mixer strip indicies armed for multi-track audio recording
     "zynseq_riff_b64": "dmVycwAA...", # Binary encoded RIFF data for step sequencer patterns, sequences, etc.
-    "alsa_mixer": {  # Indexed by processor ID
-        "controllers": {  # Dictionary of controllers
-            "Digital_0": {  # Indexed by control symbol
-                "value": 100  # Controller value
-            },  # ... Other controllers
-        }
-    },
     "zyngui": {  # Optional UI specific configuration
         "processors": {  # Processor specific config
             "1": {  # Indexed by processor id

@@ -63,10 +63,14 @@ class fake_port:
         self.aliases = [name, name]
 
     def set_alias(self, alias):
-        pass
+        if len(self.aliases < 2):
+            self.aliases.append(alias)
 
     def unset_alias(self, alias):
-        pass
+        try:
+            self.aliases.remove(alias)
+        except:
+            pass
 
 # -------------------------------------------------------------------------------
 # Define some Constants and Global Variables
@@ -272,27 +276,28 @@ def get_midi_out_dev(idev):
         return None
 
 
-def get_midi_in_devid_by_uid(uid, mapped=False):
+def get_midi_devid_by_uid(uid, mapped=False):
     """Get the index of the ZMIP connected to physical input
 
     uid : The uid name of the port (jack alias [0])
     mapped : True to use physical port mapping
     """
 
-    for i, port in enumerate(devices_in):
-        try:
-            if mapped:
-                if port.aliases[0] == uid:
-                    return i
-            else:
-                uid_parts = uid.split('/', 1)
-                if len(uid_parts) > 1:
-                    if uid_parts[1] == port.aliases[0].split('/', 1)[1]:
+    for devices in (devices_in, devices_out):
+        for i, port in enumerate(devices):
+            try:
+                if mapped:
+                    if port.aliases[0] == uid:
                         return i
-                elif port.aliases[0] == uid:
-                    return i
-        except:
-            pass
+                else:
+                    uid_parts = uid.split('/', 1)
+                    if len(uid_parts) > 1:
+                        if uid_parts[1] == port.aliases[0].split('/', 1)[1]:
+                            return i
+                    elif port.aliases[0] == uid:
+                        return i
+            except:
+                pass
     return None
 
 

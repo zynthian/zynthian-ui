@@ -463,16 +463,16 @@ class zynthian_gui_controller(tkinter.Canvas):
 					self.plot_midi_bind("??#??", zynthian_gui_config.color_ml)
 				else:
 					self.plot_midi_bind("??", zynthian_gui_config.color_hl)
-			elif midi_learn_params := self.zyngui.chain_manager.get_midi_learn_from_zctrl(self.zctrl):
-				chan = (midi_learn_params[0] >> 8)
-				cc = midi_learn_params[0] & 0xff
+			elif self.zctrl.midi_cc_learn:
+				chan = (self.zctrl.midi_cc_learn[1])
+				cc = self.zctrl.midi_cc_learn[2]
 				if self.zctrl == self.zyngui.state_manager.zctrl_x:
 					suffix = " X"
 				elif self.zctrl == self.zyngui.state_manager.zctrl_y:
 					suffix = " Y"
 				else:
 					suffix = ""
-				if midi_learn_params[1]:
+				if self.zctrl.midi_cc_learn[0]:
 					self.plot_midi_bind(f"{chan + 1}#{cc}{suffix}")
 				else:
 					self.plot_midi_bind(f"{cc}{suffix}")

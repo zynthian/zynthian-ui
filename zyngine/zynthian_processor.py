@@ -732,6 +732,7 @@ class zynthian_processor:
         """Configure processor from state model dictionary
 
         state : Processor state
+        returns : list of cc learn config: [chain, chan, cc, zctrl]
         """
 
         try:
@@ -755,7 +756,9 @@ class zynthian_processor:
             except:
                 # Legacy snapshots without preset_info
                 self.set_preset(state["preset_info"], force_set_engine=False)
+
         # Set controller values
+        cc_learn = []
         if "controllers" in state:
             for symbol, ctrl_state in state["controllers"].items():
                 try:
@@ -764,10 +767,21 @@ class zynthian_processor:
                         zctrl.set_value(ctrl_state["value"], True)
                     if "midi_cc_momentary_switch" in ctrl_state:
                         zctrl.midi_cc_momentary_switch = ctrl_state['midi_cc_momentary_switch']
+                    if "cc" in ctrl_state:
+                        try:
+                            cc, chan, chain = ctrl_state["midi_cc"]
+                        except:
+                            pass
+                        cc_learn.append((chain, chan, cc, zctrl))
+                    try:
+                        zctrl.cc_exclude_devices = ctrl_state["cc_exclude_devices"]
+                    except:
+                        zctrl.cc_exclude_devices = []
                 except Exception as e:
                     proc_name = self.get_bankpath()
                     if proc_name != "Audio Levels": # Don't show error for snapshots with different soundcard
                         logging.warning(f"Invalid controller for processor {proc_name}: {e}")
+        return cc_learn
 
     def restore_state_legacy(self, state):
         """Restore legacy states from state

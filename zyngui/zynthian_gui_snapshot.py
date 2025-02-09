@@ -331,7 +331,7 @@ class zynthian_gui_snapshot(zynthian_gui_selector_info):
         elif option == "Load Replace Sequences":
             # self.zyngui.show_confirm("Loading sequences from '%s' will destroy current sequences..." % (fname), self.load_snapshot_sequences, fpath)
             self.load_snapshot_sequences(fpath)
-        elif option == "Save":
+        elif option == "Save Overwriting":
             # self.zyngui.show_confirm("Do you really want to overwrite '%s'?" % (fname), self.save_snapshot, fpath)
             self.save_snapshot(fpath)
         elif option == "Restore Backup":

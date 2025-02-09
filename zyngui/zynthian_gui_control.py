@@ -600,10 +600,12 @@ class zynthian_gui_control(zynthian_gui_selector):
     def midi_learn_bind(self, zmip, chan, midi_cc):
         if self.midi_learning == MIDI_LEARNING_CHAIN:
             self.zyngui.chain_manager.add_midi_learn(
-                chan, midi_cc, self.zyngui.state_manager.get_midi_learn_zctrl())
+                self.zyngui.state_manager.get_midi_learn_zctrl(),
+                self.zyngui.chain_manager.active_chain_id, chan, midi_cc)
         elif self.midi_learning == MIDI_LEARNING_GLOBAL:
             self.zyngui.chain_manager.add_midi_learn(
-                chan, midi_cc, self.zyngui.state_manager.get_midi_learn_zctrl(), zmip)
+                self.zyngui.state_manager.get_midi_learn_zctrl(),
+                None, chan, midi_cc)
         self.exit_midi_learn()
 
     def cb_midi_cc(self, izmip, chan, num, val):
@@ -648,7 +650,6 @@ class zynthian_gui_control(zynthian_gui_selector):
             zctrl = self.zgui_controllers[i].zctrl
             if zctrl is None:
                 return
-            mcparams = self.zyngui.chain_manager.get_midi_learn_from_zctrl(zctrl)
             if not unlearn_only:
                 title = "Control options"
                 if not zctrl.is_toggle:
@@ -679,7 +680,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                         options["\u2612 Momentary => Latch"] = i
                     else:
                         options["\u2610 Momentary => Latch"] = i
-                elif mcparams:
+                elif zctrl.midi_cc_learn:
                     match zctrl.midi_cc_mode:
                         case -1:
                             options["Relative Mode learning..."] = i
@@ -695,11 +696,8 @@ class zynthian_gui_control(zynthian_gui_selector):
             else:
                 title = "Control unlearn"
 
-            if mcparams:
-                if mcparams[1]:
-                    dev_name = zynautoconnect.get_midi_in_devid(mcparams[0] >> 24)
-                    options[f"Unlearn '{zctrl.name}' from {dev_name}"] = zctrl
-                else:
+            if zctrl.midi_cc_learn:
+                if zctrl.midi_cc_learn[0]:
                     options[f"Unlearn '{zctrl.name}'"] = zctrl
             options["Unlearn all controls"] = ""
 

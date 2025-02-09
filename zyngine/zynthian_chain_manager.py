@@ -115,7 +115,6 @@ class zynthian_chain_manager:
         self.midi_chan_2_chain_ids = [list() for _ in range(
             MAX_NUM_MIDI_CHANS)]  # Chain IDs mapped by MIDI channel
 
-        self.absolute_midi_cc_binding = {} # Map of list of zctrls indexed by CHAN<<8|CC
         self.chain_midi_cc_binding = {}  # Map of list of zctrls indexed by CHAIN<<8|CC
         self.chan_midi_cc_binding = {}  # Map of list of zctrls indexed by CHAN<<8|CC
 
@@ -1180,42 +1179,37 @@ class zynthian_chain_manager:
     # MIDI CC
     # ----------------------------------------------------------------------------
 
-    def add_midi_learn(self, chan, midi_cc, zctrl, zmip=None):
+    def add_midi_learn(self, zctrl, chain_id, chan, midi_cc, exclude_zmips=0):
         """Adds a midi learn configuration
 
-        chan : MIDI channel to bind (None to not bind to MIDI channel)
-        midi_cc : CC number of CC message
         zctrl : Controller object
-        zmip : ZMIP of absolute learn device (Optional: Default - do not learn absolute)
+        chain_id: Chain to learn or None for global
+        chan : MIDI channel to bind
+        midi_cc : CC number
+        exclude_zmips : 32-bit bitwise flags of zmips to filter
         """
 
         if zctrl is None:
             return
 
-        logging.debug(f"(chan={chan}, midi_cc={midi_cc}, zctrl={zctrl.symbol}, zmip={zmip})")
+        logging.debug(f"(chan={chan}, midi_cc={midi_cc}, zctrl={zctrl.symbol}, exclude_zmips={exclude_zmips})")
         self.remove_midi_learn(zctrl.processor, zctrl.symbol)
-        if zmip is None:
-            if zctrl.processor:
-                if zctrl.processor.midi_chan is not None:
-                    key = (chan << 8) | midi_cc
-                    if key in self.chan_midi_cc_binding:
-                        self.chan_midi_cc_binding[key].append(zctrl)
-                    else:
-                        self.chan_midi_cc_binding[key] = [zctrl]
-                if zctrl.processor.chain_id is not None:
-                    key = (zctrl.processor.chain_id << 8) | midi_cc
-                    if key in self.chain_midi_cc_binding:
-                        self.chain_midi_cc_binding[key].append(zctrl)
-                    else:
-                        self.chain_midi_cc_binding[key] = [zctrl]
-        else:
+
+        if chain_id is None:
             # Absolute mapping
             key = chan << 8 | midi_cc
-            if key in self.absolute_midi_cc_binding:
-                if zctrl not in self.absolute_midi_cc_binding[key]:
-                    self.absolute_midi_cc_binding[key].append(zctrl)
+            if key in self.chan_midi_cc_binding:
+                if zctrl not in self.chan_midi_cc_binding[key]:
+                    self.chan_midi_cc_binding[key].append(zctrl)
             else:
-                self.absolute_midi_cc_binding[key] = [zctrl]
+                self.chan_midi_cc_binding[key] = [zctrl]
+        else:
+            key = (chain_id << 8) | midi_cc
+            if key in self.chan_midi_cc_binding:
+                self.chain_midi_cc_binding[key].append(zctrl)
+            else:
+                self.chain_midi_cc_binding[key] = [zctrl]
+        zctrl.midi_cc_learn = [chain_id, chan, midi_cc, exclude_zmips]
 
         # Ensure pedals are always learnt in absolute mode.
         # TODO: This is not OK, just mitigates issue #1277 until a proper solution is implemented
@@ -1242,15 +1236,8 @@ class zynthian_chain_manager:
         if not proc or symbol not in proc.controllers_dict:
             return
         zctrl = proc.controllers_dict[symbol]
+        zctrl.midi_cc_learn = None
         logging.debug(f"(symbol={symbol} => zctrl={zctrl.symbol})")
-        for key in list(self.absolute_midi_cc_binding):
-            zctrls = self.absolute_midi_cc_binding[key]
-            try:
-                zctrls.remove(zctrl)
-            except:
-                pass
-            if not zctrls:
-                self.absolute_midi_cc_binding.pop(key)
         for key in list(self.chan_midi_cc_binding):
             zctrls = self.chan_midi_cc_binding[key]
             try:
@@ -1274,17 +1261,6 @@ class zynthian_chain_manager:
             proc.engine.midi_unlearn(zctrl)
         return
         """
-
-    def get_midi_learn_from_zctrl(self, zctrl):
-        for key, zctrls in self.absolute_midi_cc_binding.items():
-            if zctrl in zctrls:
-                return [key, True]
-        for key, zctrls in self.chain_midi_cc_binding.items():
-            if zctrl in zctrls:
-                return [key, False]
-        for key, zctrls in self.chan_midi_cc_binding.items():
-            if zctrl in zctrls:
-                return [key, False]  # TODO: This isn't right!
 
     def midi_control_change(self, zmip, midi_chan, cc_num, cc_val):
         """Send MIDI CC message to relevant chain
@@ -1328,35 +1304,26 @@ class zynthian_chain_manager:
                     f"Can't manage control feedback for CH{midi_chan}:CC{cc_num} => {e}")
             return
 
-        # Handle absolute CC binding
+        # MIDI input device configured for chain mode
+        exclude_flags = 1 << zmip
         try:
-            key = midi_chan << 8 | cc_num
-            zctrls = self.absolute_midi_cc_binding[key]
-            for zctrl in zctrls:
+            key = self.active_chain_id << 8 | cc_num
+            for zctrl in self.chain_midi_cc_binding[key]:
+                if exclude_flags & zctrl.midi_learn[3]:
+                    continue
                 zctrl.midi_control_change(cc_val)
+                self.handle_pedals(cc_num, cc_val, zctrl)
         except:
             pass
-
-        # Handle active chain CC binding
-        if zynautoconnect.get_midi_in_dev_mode(zmip):
-            try:
-                key = self.active_chain_id << 8 | cc_num
-                zctrls = self.chain_midi_cc_binding[key]
-                for zctrl in zctrls:
-                    zctrl.midi_control_change(cc_val)
-                    self.handle_pedals(cc_num, cc_val, zctrl)
-            except:
-                pass
-        # Handle channel CC binding
-        else:
-            try:
-                key = midi_chan << 8 | cc_num
-                zctrls = self.chan_midi_cc_binding[key]
-                for zctrl in zctrls:
-                    zctrl.midi_control_change(cc_val)
-                    self.handle_pedals(cc_num, cc_val, zctrl)
-            except:
-                pass
+        try:
+            key = midi_chan << 8 | cc_num
+            for zctrls in self.chan_midi_cc_binding[key]:
+                if exclude_flags & zctrl.midi_learn[3]:
+                    continue
+                zctrl.midi_control_change(cc_val)
+                self.handle_pedals(cc_num, cc_val, zctrl)
+        except:
+            pass
 
     def handle_pedals(self, cc_num, cc_val, zctrl):
         """Handle pedal CC

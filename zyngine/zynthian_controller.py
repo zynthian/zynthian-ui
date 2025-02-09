@@ -72,7 +72,8 @@ class zynthian_controller:
         self.value_mid = None
         self.value_max = None  # Maximum value of control range
         self.value_range = 0  # Span of permissible values
-        # Factor to scale each up/down nudge
+        # Factor to scale each up/down nudge1
+
         # TODO: This is not set if configure is not called or options not passed
         self.nudge_factor = None
         self.nudge_factor_fine = None  # Fine factor to scale
@@ -93,7 +94,8 @@ class zynthian_controller:
         # Parameters to send values if engine-specific send method not available
         self.midi_chan = None  # MIDI channel to send CC messages from control
         self.midi_cc = None  # MIDI CC number to send CC messages from control
-        self.midi_feedback = None  # [chan,cc] for MIDI control feedback
+        self.midi_feedback = None  # [chan, cc] for MIDI control feedback
+        self.midi_cc_learn = None # [chain, chan, cc, exclude_zips]
         self.midi_cc_momentary_switch = False
         self.midi_cc_mode = -1                  # CC mode: -1=unknown,  0=abs, 1=rel1, 2=rel2, 3=rel3
         self.midi_cc_mode_detecting = 0         # Used by CC mode detection algorithm
@@ -558,8 +560,11 @@ class zynthian_controller:
                 state['value'] = self.value
         except:
             state['value'] = self.value
+
         if self.midi_cc_momentary_switch:
             state['midi_cc_momentary_switch'] = self.midi_cc_momentary_switch
+        if self.midi_cc_learn:
+            state["midi_cc"] = self.midi_cc_learn
         return state
 
     # ----------------------------------------------------------------------------
