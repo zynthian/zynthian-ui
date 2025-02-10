@@ -4,7 +4,7 @@
 #
 # zynthian chain manager
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 # ****************************************************************************
@@ -76,6 +76,7 @@ engine2class = {
     "IR": zynthian_engine_inet_radio,
     "MI": zynthian_engine_audio_mixer,
     "MR": zynthian_engine_audio_mixer,
+    "MX": zynthian_engine_alsa_mixer,
 }
 
 # ----------------------------------------------------------------------------
@@ -114,9 +115,9 @@ class zynthian_chain_manager:
         self.active_chain_id = None  # Active chain id
         self.midi_chan_2_chain_ids = [list() for _ in range(
             MAX_NUM_MIDI_CHANS)]  # Chain IDs mapped by MIDI channel
-
-        self.chain_midi_cc_binding = {}  # Map of list of zctrls indexed by CHAIN<<8|CC
-        self.chan_midi_cc_binding = {}  # Map of list of zctrls indexed by CHAN<<8|CC
+        # Optimisation dicts:
+        self.chain_midi_cc_binding = {}  # Map of list of zctrls indexed by chain_id<<8|cc
+        self.chan_midi_cc_binding = {}  # Map of list of zctrls indexed by chain_id<<8|cc
 
         # Map of lists of currently held (sustained) zctrls, indexed by cc number - first element indicates pedal state
         self.held_zctrls = {
@@ -145,6 +146,7 @@ class zynthian_chain_manager:
         cls.engine_info = eng_info
         cls.engine_info["MI"] = {"ID":"0", "NAME":"Mixer_Channel_Strip", "TITLE": "Mixer Channel Strip", "TYPE": "Audio Effect", "CAT": "Other", "ENABLED": False, "INDEX": 0, "URL": "", "UI": "", "DESCR": "Audio mixer channel strip", "QUALITY": 5, "COMPLEX": 5, "EDIT": 0}
         cls.engine_info["MR"] = {"ID":"1", "NAME":"Mixer_Return_Strip", "TITLE": "Mixer Effect Return Strip", "TYPE": "Audio Effect", "CAT": "Other", "ENABLED": False, "INDEX": 1, "URL": "", "UI": "", "DESCR": "Audio mixer effect return strip", "QUALITY": 5, "COMPLEX": 5, "EDIT": 0}
+        cls.engine_info["MX"] = {"NAME": "Mixer", "TITLE": "ALSA Mixer", "TYPE": "MIXER", "CAT": None, "ENGINE": zynthian_engine_alsa_mixer, "ENABLED": True}
         # Look for an engine class for each one
         for key, info in cls.engine_info.items():
             try:
@@ -786,9 +788,10 @@ class zynthian_chain_manager:
         Returns : processor object or None on failure
         """
 
-        if chain_id not in self.chains:
+        if chain_id is not None and chain_id not in self.chains:
             logging.error(f"Chain '{chain_id}' doesn't exist!")
             return None
+
         if eng_code not in self.engine_info:
             if eng_code != 'None':
                 logging.error(f"Engine '{eng_code}' not found!")
@@ -810,34 +813,36 @@ class zynthian_chain_manager:
         logging.debug(f"Adding processor '{eng_code}' with ID '{proc_id}'")
         processor = zynthian_processor(
             eng_code, self.engine_info[eng_code], proc_id)
-        chain = self.chains[chain_id]
         # Add proc early to allow engines to add more as required, e.g. Aeolus
         self.processors[proc_id] = processor
-        if chain.insert_processor(processor, slot):
-            # TODO: Fails to detect MIDI only chains in snapshots
-            engine = self.start_engine(processor, eng_code, eng_config)
-            if engine:
-                if eng_code in ("MI", "MR"):
-                    chain.zynmixer = processor
-                #chain.rebuild_graph()
-                # Update group chains
-                for src_chain in self.chains.values():
-                    if chain_id in src_chain.audio_out:
-                        src_chain.rebuild_graph()
-                chain.rebuild_graph()
-                # Success!! => Return processor
-                self.state_manager.end_busy("add_processor")
-                return processor
-            else:
-                chain.remove_processor(processor)
-                logging.error(f"Failed to start engine '{eng_code}'!")
-        else:
-            logging.error(
-                f"Failed to insert processor '{proc_id}' in chain '{chain_id}', slot '{slot}'!")
-        # Failed!! => Remove processor from list
-        del self.processors[proc_id]
+
+        if chain_id is not None:
+            chain = self.chains[chain_id]
+            chain.insert_processor(processor, slot)
+
+        engine = self.start_engine(processor, eng_code, eng_config)
+        if not engine:
+            # Failed!! => Remove processor from list
+            del self.processors[proc_id]
+            self.state_manager.end_busy("add_processor")
+            return None
+
+        if chain_id is None:
+            # Global processors not in any chain
+            return processor
+
+        # TODO: Fails to detect MIDI only chains in snapshots
+        if eng_code in ("MI", "MR"):
+            chain.zynmixer = processor
+        #chain.rebuild_graph()
+        # Update group chains
+        for src_chain in self.chains.values():
+            if chain_id in src_chain.audio_out:
+                src_chain.rebuild_graph()
+        chain.rebuild_graph()
+        # Success!! => Return processor
         self.state_manager.end_busy("add_processor")
-        return None
+        return processor
 
     def nudge_processor(self, chain_id, processor, up):
         if (chain_id not in self.chains):
@@ -882,6 +887,7 @@ class zynthian_chain_manager:
         else:
             self.state_manager.start_busy(
                 "remove_processor", "Removing Processor", f"removing {processor.get_basepath()} from chain {chain_id}")
+
         for param in processor.controllers_dict:
             self.remove_midi_learn(processor, param)
 
@@ -890,7 +896,11 @@ class zynthian_chain_manager:
             if processor == p:
                 id = i
                 break
-        success = self.chains[chain_id].remove_processor(processor)
+
+        if chain_id is None:
+            success = True
+        else:
+            success = self.chains[chain_id].remove_processor(processor)
         if success:
             try:
                 self.processors.pop(id)
@@ -1184,7 +1194,7 @@ class zynthian_chain_manager:
 
         zctrl : Controller object
         chain_id: Chain to learn or None for global
-        chan : MIDI channel to bind
+        chan : MIDI channel to bind or None for chain learn
         midi_cc : CC number
         exclude_zmips : 32-bit bitwise flags of zmips to filter
         """
@@ -1309,7 +1319,7 @@ class zynthian_chain_manager:
         try:
             key = self.active_chain_id << 8 | cc_num
             for zctrl in self.chain_midi_cc_binding[key]:
-                if exclude_flags & zctrl.midi_learn[3]:
+                if exclude_flags & zctrl.midi_cc_learn[3]:
                     continue
                 zctrl.midi_control_change(cc_val)
                 self.handle_pedals(cc_num, cc_val, zctrl)
@@ -1317,8 +1327,8 @@ class zynthian_chain_manager:
             pass
         try:
             key = midi_chan << 8 | cc_num
-            for zctrls in self.chan_midi_cc_binding[key]:
-                if exclude_flags & zctrl.midi_learn[3]:
+            for zctrl in self.chan_midi_cc_binding[key]:
+                if exclude_flags & zctrl.midi_cc_learn[3]:
                     continue
                 zctrl.midi_control_change(cc_val)
                 self.handle_pedals(cc_num, cc_val, zctrl)

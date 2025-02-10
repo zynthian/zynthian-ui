@@ -40,11 +40,6 @@ from zyngui.zynthian_gui_selector import zynthian_gui_selector
 # Zynthian Instrument Controller GUI Class
 # ------------------------------------------------------------------------------
 
-MIDI_LEARNING_DISABLED = 0
-MIDI_LEARNING_CHAIN = 1
-MIDI_LEARNING_GLOBAL = 2
-
-
 class zynthian_gui_control(zynthian_gui_selector):
 
     def __init__(self, selcap='Controllers'):
@@ -57,7 +52,6 @@ class zynthian_gui_control(zynthian_gui_selector):
         self.ctrl_screens = {}
         self.zcontrollers = []
         self.zgui_controllers = []
-        self.midi_learning = MIDI_LEARNING_DISABLED
 
         self.screen_info = None
         self.screen_name = None
@@ -91,7 +85,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         #curproc = self.zyngui.get_current_processor()
         super().build_view()
         if not self.shown:
-            zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.cb_midi_cc)
+            zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC_LEARNED, self.cb_midi_cc)
             zynsigman.register(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.cb_midi_pc)
             if zynthian_gui_config.enable_touch_navigation:
                 zynsigman.register(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SIDEBAR, self.cb_show_sidebar)
@@ -102,7 +96,7 @@ class zynthian_gui_control(zynthian_gui_selector):
     def hide(self):
         if self.shown:
             self.exit_midi_learn()
-            zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, self.cb_midi_cc)
+            zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_CC_LEARNED, self.cb_midi_cc)
             zynsigman.unregister(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC, self.cb_midi_pc)
             if zynthian_gui_config.enable_touch_navigation:
                 zynsigman.unregister(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SIDEBAR, self.cb_show_sidebar)
@@ -147,7 +141,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         if not curproc:
             self.processors = []
         else:
-            if curproc in (self.zyngui.state_manager.alsa_mixer_processor, self.zyngui.state_manager.audio_player):
+            if curproc.chain_id is None:
                 self.processors = [curproc]
             else:
                 self.processors = self.zyngui.chain_manager.get_processors(curproc.chain_id)
@@ -407,7 +401,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.set_mode_control()
             return True
         # If in MIDI-learn mode, back to instrument control
-        elif self.midi_learning:
+        elif self.zyngui.state_manager.midi_learn_state is not False:
             self.exit_midi_learn()
             return True
         else:
@@ -441,7 +435,7 @@ class zynthian_gui_control(zynthian_gui_selector):
     #  t: Press type ["S"=Short, "B"=Bold, "L"=Long]
     #  returns True if action fully handled or False if parent action should be triggered
     def switch(self, swi, t='S'):
-        if t == 'B' and self.midi_learning:
+        if t == 'B' and self.zyngui.state_manager.midi_learn_state is not False:
             self.midi_learn_options(swi)
             return True
 
@@ -466,7 +460,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                 if self.mode == 'control':
                     return False
             elif t == 'B':
-                if self.midi_learning and self.zyngui.state_manager.midi_learn_zctrl:
+                if self.zyngui.state_manager.midi_learn_state is not False:
                     self.midi_unlearn_action()
                     return True
 
@@ -491,8 +485,8 @@ class zynthian_gui_control(zynthian_gui_selector):
     def zynpot_cb(self, i, dval):
         if self.mode == 'control' and self.zcontrollers:
             if self.zgui_controllers[i].zynpot_cb(dval):
-                if self.midi_learning:
-                    self.midi_learn(i, self.midi_learning)
+                if self.zyngui.state_manager.midi_learn_state is not False:
+                    self.midi_learn(i, self.zyngui.state_manager.midi_learn_state)
         elif self.mode == 'select':
             super().zynpot_cb(i, dval)
 
@@ -540,15 +534,13 @@ class zynthian_gui_control(zynthian_gui_selector):
     # MIDI learn management
     # --------------------------------------------------------------------------
 
-    def enter_midi_learn(self, mlmode=MIDI_LEARNING_CHAIN, preselect=True):
-        if mlmode > MIDI_LEARNING_DISABLED:
-            self.midi_learning = mlmode
+    def enter_midi_learn(self, mode, preselect=True):
+        if mode is not False:
             self.refresh_midi_bind(preselect)
             self.set_select_path()
 
     def exit_midi_learn(self):
-        if self.midi_learning != MIDI_LEARNING_DISABLED:
-            self.midi_learning = MIDI_LEARNING_DISABLED
+        if self.zyngui.state_manager.midi_learn_state is not False:
             self.zyngui.state_manager.disable_learn_cc()
             self.refresh_midi_bind()
             self.set_select_path()
@@ -560,52 +552,43 @@ class zynthian_gui_control(zynthian_gui_selector):
         if i is not None:
             # Restart MIDI learn with a new controller
             if self.zgui_controllers[i].zctrl != self.zyngui.state_manager.get_midi_learn_zctrl():
-                self.midi_learn(i, MIDI_LEARNING_CHAIN)
-                return self.midi_learning
+                self.midi_learn(i, self.zyngui.get_current_processor().chain_id)
+                return self.zyngui.state_manager.midi_learn_state
 
-        # TODO: Handle alsa mixer
-        # if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
-
-        if self.midi_learning == MIDI_LEARNING_CHAIN:
-            self.midi_learning = MIDI_LEARNING_GLOBAL
+        if self.zyngui.state_manager.midi_learn_state is not None:
             if i is not None:
                 self.refresh_midi_bind(False)
             else:
                 self.refresh_midi_bind(True)
             self.set_select_path()
-        elif self.midi_learning == MIDI_LEARNING_GLOBAL:
+        elif self.zyngui.state_manager.midi_learn_state is None:
             self.exit_midi_learn()
         else:
-            if i is not None:
-                self.enter_midi_learn(MIDI_LEARNING_CHAIN, False)
-            else:
-                self.enter_midi_learn(MIDI_LEARNING_CHAIN, True)
+            curproc = self.zyngui.get_current_processor()
+            self.enter_midi_learn(curproc.chain_id, i is None)
 
-        return self.midi_learning
-
-    def get_midi_learn(self):
-        return self.midi_learning
+        return self.zyngui.state_manager.midi_learn_state
 
     def zctrl_touch(self, i):
-        if self.midi_learning:
-            self.midi_learn(i, self.midi_learning)
+        if self.zyngui.state_manager.midi_learn_state:
+            self.midi_learn(i, self.zyngui.state_manager.midi_learn_state)
 
-    def midi_learn(self, i, mlmode=MIDI_LEARNING_CHAIN):
-        if self.mode == 'control' and mlmode > MIDI_LEARNING_DISABLED:
+    def midi_learn(self, i, mode):
+        if self.mode == 'control' and mode is not False:
             learn_zctrl = self.zgui_controllers[i].zctrl
             if learn_zctrl:
-                self.zyngui.state_manager.enable_learn_cc(learn_zctrl)
-                self.enter_midi_learn(mlmode, False)
+                self.zyngui.state_manager.enable_learn_cc(learn_zctrl, mode)
+                self.enter_midi_learn(mode, False)
 
     def midi_learn_bind(self, zmip, chan, midi_cc):
-        if self.midi_learning == MIDI_LEARNING_CHAIN:
-            self.zyngui.chain_manager.add_midi_learn(
-                self.zyngui.state_manager.get_midi_learn_zctrl(),
-                self.zyngui.chain_manager.active_chain_id, chan, midi_cc)
-        elif self.midi_learning == MIDI_LEARNING_GLOBAL:
+        if self.zyngui.state_manager.midi_learn_state is None:
             self.zyngui.chain_manager.add_midi_learn(
                 self.zyngui.state_manager.get_midi_learn_zctrl(),
                 None, chan, midi_cc)
+        elif self.zyngui.state_manager.midi_learn_state is not False:
+            self.zyngui.chain_manager.add_midi_learn(
+                self.zyngui.state_manager.get_midi_learn_zctrl(),
+                self.zyngui.chain_manager.active_chain_id, chan, midi_cc)
         self.exit_midi_learn()
 
     def cb_midi_cc(self, izmip, chan, num, val):
@@ -617,11 +600,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         val : CC value
         """
 
-        if self.midi_learning and self.zyngui.state_manager.midi_learn_zctrl and num < 120:
-            # Handle MIDI learn for assignable CC
-            # TODO Detect CC relative mode, etc.
-            self.midi_learn_bind(izmip, chan, num)
-            self.zyngui.show_current_screen()
+        self.refresh_midi_bind(False)
 
     def midi_unlearn(self, param=None):
         if param:
@@ -638,7 +617,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             if engine_name:
                 question_str = f"Do you want to clean MIDI-learn for ALL controls in {engine_name}"
                 if curproc.midi_chan is not None and 0 <= curproc.midi_chan < 16:
-                    question_str += f"on MIDI channel {curproc.midi_chan + 1}"
+                    question_str += f" on MIDI channel {curproc.midi_chan + 1}"
                 self.zyngui.show_confirm(question_str + "?", self.midi_unlearn)
             else:
                 logging.error("Can't get processor name.")
@@ -691,15 +670,16 @@ class zynthian_gui_control(zynthian_gui_selector):
                                 options["Absolute Mode"] = i
                         case _:
                             options[f"Relative Mode {zctrl.midi_cc_mode}"] = i 
-                options[f"Chain learn '{zctrl.name}'..."] = i
+                cur_proc = self.zyngui.get_current_processor()
+                if cur_proc and cur_proc.chain:
+                    options[f"Chain learn '{zctrl.name}'..."] = i
                 options[f"Global learn '{zctrl.name}'..."] = i
             else:
                 title = "Control unlearn"
 
             if zctrl.midi_cc_learn:
-                if zctrl.midi_cc_learn[0]:
-                    options[f"Unlearn '{zctrl.name}'"] = zctrl
-            options["Unlearn all controls"] = ""
+                options[f"Unlearn '{zctrl.name}'"] = zctrl
+            options[f"Unlearn all controls for {self.zyngui.get_current_processor().get_name()}"] = ""
 
             self.zyngui.screens['option'].config(title, options, self.midi_learn_options_cb)
             self.zyngui.show_screen('option')
@@ -721,9 +701,9 @@ class zynthian_gui_control(zynthian_gui_selector):
                 self.zyngui.state_manager.zctrl_x = None
             self.refresh_midi_bind()
         elif parts[0] == "Chain":
-            self.midi_learn(param, MIDI_LEARNING_CHAIN)
+            self.midi_learn(param, self.zyngui.get_current_processor().chain_id)
         elif parts[0] == "Global":
-            self.midi_learn(param, MIDI_LEARNING_GLOBAL)
+            self.midi_learn(param, None)
         elif parts[0] == "Unlearn":
             if param:
                 self.midi_unlearn(param)
@@ -773,11 +753,11 @@ class zynthian_gui_control(zynthian_gui_selector):
     def set_select_path(self):
         processor = self.zyngui.get_current_processor()
         if processor:
-            if self.mode == 'control' and self.midi_learning:
-                if self.midi_learning == MIDI_LEARNING_CHAIN:
-                    self.select_path.set(processor.get_basepath() + "/CHAIN Control MIDI-Learn")
-                elif self.midi_learning == MIDI_LEARNING_GLOBAL:
+            if self.mode == 'control' and self.zyngui.state_manager.midi_learn_state is not False:
+                if self.zyngui.state_manager.midi_learn_state is None:
                     self.select_path.set(processor.get_basepath() + "/GLOBAL Control MIDI-Learn")
+                else:
+                    self.select_path.set(processor.get_basepath() + "/CHAIN Control MIDI-Learn")
             else:
                 self.select_path.set(processor.get_presetpath())
         else:

@@ -561,7 +561,6 @@ class zynthian_chain:
 
         processor : processor object to insert
         slot : Position (slot) to insert within subchain (Default: End of chain)
-        Returns : True if processor added to chain
         """
 
         slots = self.get_slots_by_type(processor.type)
@@ -588,7 +587,6 @@ class zynthian_chain:
 
         self.set_zmop_options()
         self.current_processor = processor
-        return True
 
     def replace_processor(self, old_processor, new_processor):
         """Replace a processor within a chain

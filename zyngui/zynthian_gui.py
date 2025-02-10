@@ -1561,10 +1561,10 @@ class zynthian_gui:
             state = self.screens[self.current_screen].toggle_midi_learn()
             self.state_manager.set_midi_learn(state)
         except:
-            if self.state_manager.midi_learn_state:
-                self.cuia_disable_midi_learn(params)
-            else:
+            if self.state_manager.midi_learn_state is False:
                 self.cuia_enable_midi_learn(params)
+            else:
+                self.cuia_disable_midi_learn(params)
 
     def cuia_action_midi_unlearn(self, params=None):
         try:
@@ -1590,13 +1590,6 @@ class zynthian_gui:
             # if not parameter, unlearn selected learning control
             if self.midi_learn_zctrl:
                 self.screens[self.current_screen].midi_unlearn_action()
-
-    # Unlearn all mixer controls
-    def cuia_midi_unlearn_mixer(self, params=None):
-        try:
-            self.screens['audio_mixer'].midi_unlearn_all()
-        except (AttributeError, TypeError) as err:
-            logging.error(err)
 
     # Z2 knob touch
     def cuia_z2_zynpot_touch(self, params=None):

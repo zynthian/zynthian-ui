@@ -432,8 +432,8 @@ class zynthian_engine_jalv(zynthian_engine):
     # ---------------------------------------------------------------------------
 
     def add_processor(self, processor):
-        super().add_processor(processor)
         self.set_midi_chan(processor)
+        super().add_processor(processor)
 
     def get_name(self, processor=None):
         return self.plugin_name

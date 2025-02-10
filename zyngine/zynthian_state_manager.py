@@ -128,7 +128,7 @@ class zynthian_state_manager:
         self.checking_for_updates = False  # True whilst checking for updates
 
         self.midi_filter_script = None
-        self.midi_learn_state = False
+        self.midi_learn_state = False # False for disabled, None for learning global, chain id for learning chain
         # When ZS3 Program Change MIDI learning is enabled, the name used for creating new ZS3, empty string for auto-generating a name. None when disabled.
         self.midi_learn_pc = None
         self.midi_learn_zctrl = None   # zctrl currently being learned
@@ -147,12 +147,7 @@ class zynthian_state_manager:
         self.chain_manager = zynthian_chain_manager(self)
         self.reset_zs3()
 
-        self.alsa_mixer_processor = zynthian_processor("MX", {
-            "NAME": "Mixer", "TITLE": "ALSA Mixer", "TYPE": "MIXER",
-            "CAT": None, "ENGINE": zynthian_engine_alsa_mixer, "ENABLED": True
-        })
-        self.alsa_mixer_processor.engine = zynthian_engine_alsa_mixer(self, self.alsa_mixer_processor)
-        self.alsa_mixer_processor.refresh_controllers()
+        self.alsa_mixer_processor = self.chain_manager.add_processor(None, "MX", None, -1)
 
         self.audio_recorder = zynthian_audio_recorder(self)
         self.zynseq = zynseq.zynseq(self)
@@ -804,7 +799,8 @@ class zynthian_state_manager:
                         else:
                             if self.midi_learn_zctrl:
                                 self.chain_manager.add_midi_learn(
-                                    None, self.midi_learn_zctrl, chan, ccnum)
+                                    self.midi_learn_zctrl, self.midi_learn_state, chan, ccnum)
+                                self.disable_learn_cc()
                     # Master Note CUIA with ZynSwitch emulation
                     elif evtype == 0x8 or evtype == 0x9:
                         note = str(ev[1] & 0x7F)
@@ -834,17 +830,23 @@ class zynthian_state_manager:
                     ccval = ev[2] & 0x7F
                     # logging.debug("MIDI CONTROL CHANGE: CH{}, CC{} => {}".format(chan, ccnum, ccval))
                     if ccnum < 120:
-                        if not self.midi_learn_zctrl:
+                        if self.midi_learn_zctrl:
+                            if ccnum in [0, 32]:
+                                # Do not learn Bank Select which may be sent with program change
+                                continue
+                            self.chain_manager.add_midi_learn(
+                                self.midi_learn_zctrl, self.midi_learn_state, chan, ccnum)
+                            self.disable_learn_cc()
+                            zynsigman.send_queued(
+                                zynsigman.S_MIDI, zynsigman.SS_MIDI_CC_LEARNED, izmip=izmip, chan=chan, num=ccnum, val=ccval)
+                        else:
                             self.chain_manager.midi_control_change(
                                 izmip, chan, ccnum, ccval)
-                            """ These are now handled as processors in fake chain
-                            self.alsa_mixer_processor.midi_control_change(
-                                chan, ccnum, ccval)
-                            self.audio_player.midi_control_change(
-                                chan, ccnum, ccval)
+                            """ This is not used so commented out but could be enabled if required.
+                            zynsigman.send_queued(
+                                zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, izmip=izmip, chan=chan, num=ccnum, val=ccval)
                             """
-                        zynsigman.send_queued(
-                            zynsigman.S_MIDI, zynsigman.SS_MIDI_CC, izmip=izmip, chan=chan, num=ccnum, val=ccval)
+
                     # Special CCs >= Channel Mode
                     elif ccnum == 120:
                         self.all_sounds_off_chan(chan)
@@ -856,13 +858,15 @@ class zynthian_state_manager:
                     pgm = ev[1] & 0x7F
                     logging.info(f"MIDI PROGRAM CHANGE: CH#{chan}, PRG#{pgm}")
                     # MIDI learn SubSnapShot (ZS3)
+                    send_signal = False
                     if self.midi_learn_pc is not None:
                         # When using internal PC, ignore MIDI channel
                         if izmip == 0xFF:
                             self.save_zs3(f"*/{pgm}")
                         else:
                             self.save_zs3(f"{chan}/{pgm}")
-                        send_signal = True
+                        zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC_LEARNED,
+                                              izmip=izmip, chan=chan, num=pgm)
                     else:
                         # select SubSnapShot (ZS3)
                         if zynthian_gui_config.midi_prog_change_zs3:
@@ -879,7 +883,7 @@ class zynthian_state_manager:
                             send_signal = self.chain_manager.set_midi_prog_preset(chan, pgm)
                     if send_signal:
                         zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_PC,
-                                              izmip=izmip, chan=chan, num=pgm)
+                                        izmip=izmip, chan=chan, num=pgm)
 
                 # Note Off
                 elif evtype == 0x8:
@@ -961,10 +965,6 @@ class zynthian_state_manager:
         if engine_states:
             state["engine_config"] = engine_states
 
-        # Add ALSA-Mixer setting
-        if zynthian_gui_config.snapshot_mixer_settings and self.alsa_mixer_processor:
-            state['alsa_mixer'] = self.alsa_mixer_processor.get_state()
-
         # Zynseq RIFF data
         binary_riff_data = self.zynseq.get_riff_data()
         b64_data = base64.b64encode(binary_riff_data)
@@ -1007,7 +1007,7 @@ class zynthian_state_manager:
                         except:
                             pass
 
-            for key in ["last_snapshot_fpath", "midi_profile_state", "engine_config", "audio_recorder_armed", "zynseq_riff_b64", "alsa_mixer", "zyngui"]:
+            for key in ["last_snapshot_fpath", "midi_profile_state", "engine_config", "audio_recorder_armed", "zynseq_riff_b64", "zyngui"]:
                 try:
                     del state[key]
                 except:
@@ -1125,7 +1125,7 @@ class zynthian_state_manager:
 
                     if merge:
                         # Remove elements that are not to be merged
-                        for key in ["last_snapshot_fpath", "last_zs3_id", "midi_profile_state", "audio_recorder_armed", "zynseq_riff_b64", "alsa_mixer", "zyngui"]:
+                        for key in ["last_snapshot_fpath", "last_zs3_id", "midi_profile_state", "audio_recorder_armed", "zynseq_riff_b64", "zyngui"]:
                             try:
                                 del state[key]
                             except:
@@ -1197,9 +1197,6 @@ class zynthian_state_manager:
                     mute |= self.zs3["zs3-0"]["mixer"]["chan_16"]["mute"]
                 except:
                     pass
-
-                if "alsa_mixer" in state:
-                    self.alsa_mixer_processor.set_state(state["alsa_mixer"])
 
                 if "midi_profile_state" in state:
                     self.set_midi_profile_state(state["midi_profile_state"])
@@ -1867,19 +1864,20 @@ class zynthian_state_manager:
         state : True to enable MIDI learn
         """
 
-        lib_zyncore.set_midi_learning_mode(state)
+        lib_zyncore.set_midi_learning_mode(state is not False)
         self.midi_learn_state = state
 
-    def enable_learn_cc(self, zctrl):
+    def enable_learn_cc(self, zctrl, mode):
         """Enable MIDI CC learning
 
         zctrl : zctrl to learn to
+        mode: 0 for chain, 1 for global
         """
 
         self.disable_learn_pc()
         self.midi_learn_zctrl = zctrl
         self.midi_learn_zctrl.midi_cc_mode_reset()
-        self.set_midi_learn(True)
+        self.set_midi_learn(mode)
 
     def disable_learn_cc(self):
         """Disables MIDI CC learning"""
@@ -2050,16 +2048,11 @@ class zynthian_state_manager:
 
     def create_audio_player(self):
         if not self.audio_player:
-            try:
-                self.audio_player = zynthian_processor("AP", self.chain_manager.engine_info["AP"])
-                self.chain_manager.start_engine(self.audio_player, "AP")
-            except Exception as e:
-                logging.error(
-                    f"Can't create global Audio Player instance => {e}\n{traceback.format_exc()}")
+            self.audio_player = self.chain_manager.add_processor(None, "AP", None, -2)
 
     def destroy_audio_player(self):
         if self.audio_player:
-            self.audio_player.engine.remove_processor(self.audio_player)
+            self.chain_manager.remove_processor(None, self.audio_player)
             self.audio_player = None
             self.status_audio_player = False
 

@@ -58,9 +58,11 @@ class zynthian_signal_manager:
 
     SS_MIDI_SYS = 0
     SS_MIDI_CC = 1
-    SS_MIDI_PC = 2
-    SS_MIDI_NOTE_ON = 3
-    SS_MIDI_NOTE_OFF = 4
+    SS_MIDI_CC_LEARNED = 2
+    SS_MIDI_PC = 3
+    SS_MIDI_PC_LEARNED = 4
+    SS_MIDI_NOTE_ON = 5
+    SS_MIDI_NOTE_OFF = 6
 
     last_signal = 13
     last_subsignal = 10

@@ -27,6 +27,7 @@ from json import JSONDecoder
 from math import ceil
 
 from zyngine.zynthian_chain_manager import zynthian_chain_manager
+import zynautoconnect
 import logging
 
 SNAPSHOT_SCHEMA_VERSION = 3
@@ -77,14 +78,16 @@ class zynthian_legacy_snapshot:
     def version_2(self):
         # Convert snapshot from schema V2 to V3
 
-        absolute_cc = {}
-        if "midi_capture" in self.snapshot:
-            for device in list(self.snapshot["midi_capture"]):
-                absolute_cc |= self.snapshot["midi_capture"].pop(device)
-        if absolute_cc:
-            if "global" not in self.snapshot:
-                self.snapshot["global"] = {}
-            self.snapshot["global"]["absolute_cc"] = absolute_cc
+        self.snapshot.setdefault("midi", {"midi_capture": {}, "midi_playback": {}})
+        try:
+            names = self.snapshot["midi_profile_state"].pop("port_names")
+            for uid, name in names.items():
+                if name.lower().endswith("in"):
+                    self.snapshot["midi"]["midi_capture"][uid] = name
+                else:
+                    self.snapshot["midi"]["midi_playback"][uid] = name
+        except:
+            pass
         mixer_map = {16: 255} # Map of "MI" mixer proc id indexed by old mixer chan
         if "chains" in self.snapshot:
             # Get list of used processor ids:
@@ -115,40 +118,61 @@ class zynthian_legacy_snapshot:
                         next_id += 1
                 except:
                     pass
-        #TODO: Update mixer values
+                if "midi_cc" in chain_config:
+                    for cc, cfg in chain_config["midi_cc"].items():
+                        proc_id = cfg[0]
+                        symbol = cfg[1]
+                        zs3["processors"].setdefault(proc_id, {"controllers":{}})
+                        zs3["processors"][proc_id]["controllers"].setdefault(symbol, {})
+                        zs3["processors"][proc_id]["controllers"][symbol].setdefault("midi_cc", [chain_id, None, int(cc), 0])
+
         if "zs3" in self.snapshot:
             for zs3 in self.snapshot["zs3"].values():
                 if "mixer" in zs3:
-                    if "chains" not in zs3:
-                        zs3["chains"] = {}
-                    if "midi_capture" not in zs3:
-                        zs3["midi_capture"] = {}
-                    if "midi_cc" not in zs3["midi_capture"]:
-                        zs3["midi_capture"]["midi_cc"] = {}
-                    if "processors" not in zs3:
-                        zs3["processors"] = {}
+                    zs3.setdefault("chains", {})
+                    zs3.setdefault("processors", {})
                     for chan, proc_id in mixer_map.items():
                         key = f"chan_{chan:02d}"
                         id = str(proc_id)
                         if key in zs3["mixer"]:
                             for param, val in zs3["mixer"][key].items():
-                                if proc_id not in zs3["processors"]:
-                                    zs3["processors"][id] = {}
-                                if "controllers" not in zs3["processors"][id]:
-                                    zs3["processors"][id]["controllers"] = {}
+                                zs3["processors"].setdefault(id, {})
+                                zs3["processors"][id].setdefault("controllers", {})
                                 zs3["processors"][id]["controllers"][param]={"value":val}
                     if "midi_learn" in zs3["mixer"]:
                         for key, conf in zs3["mixer"]["midi_learn"].items():
                             chan, cc = key.split(",")
                             strip_id = conf[0]
-                            proc_id = mixer_map[int(strip_id)]
-                            param = conf[1]
-                            if chan not in zs3["midi_cc"]:
-                                zs3["midi_cc"][chan] = {}
-                            key = chan << 8 | cc
-                            if key not in zs3["midi_cc"]:
-                                zs3["midi_cc"][key] = []
-                            zs3["midi_cc"][key].append([proc_id, param])
+                            proc_id = str(mixer_map[int(strip_id)])
+                            symbol = conf[1]
+                            zs3["processors"].setdefault(proc_id, {"controllers":{}})
+                            zs3["processors"][proc_id]["controllers"].setdefault(symbol, {})
+                            zs3["processors"][proc_id]["controllers"][symbol].setdefault("midi_cc", [None, int(chan), int(cc), 0])
+                if "chains" in zs3:
+                    for chain_id, cfg in zs3["chains"].items():
+                        if "midi_cc" in cfg:
+                            for cc, midi_cfgs in cfg["midi_cc"].items():
+                                for midi_cfg in midi_cfgs:
+                                    proc_id = midi_cfg[0]
+                                    symbol = midi_cfg[1]
+                                    zs3["processors"].setdefault(proc_id, {"controllers":{}})
+                                    zs3["processors"][proc_id]["controllers"].setdefault(symbol, {})
+                                    zs3["processors"][proc_id]["controllers"][symbol].setdefault("midi_cc", [int(chain_id), None, int(cc), 0])
+                if "midi_capture" in zs3:
+                    for uid, cfg in zs3["midi_capture"].items():
+                        if "midi_cc" in cfg:
+                            for cc, midi_cfgs in cfg["midi_cc"].items():
+                                for midi_cfg in midi_cfgs:
+                                    proc_id = midi_cfg[0]
+                                    symbol = midi_cfg[1]
+                                    dev = zynautoconnect.get_midi_devid_by_uid(uid)
+                                    if dev is None:
+                                        dev_ex = 0
+                                    else:
+                                        dev_ex = (2 ** 32 - 1) ^ (1 << dev)
+                                    zs3["processors"].setdefault(proc_id, {"controllers":{}})
+                                    zs3["processors"][proc_id]["controllers"].setdefault(symbol, {})
+                                    zs3["processors"][proc_id]["controllers"][symbol].setdefault("midi_cc", [None, int(chan), int(cc), dev_ex])
 
     def version_1(self):
         # Convert snapshot from schema V1 to V2

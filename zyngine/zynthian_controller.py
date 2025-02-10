@@ -95,7 +95,7 @@ class zynthian_controller:
         self.midi_chan = None  # MIDI channel to send CC messages from control
         self.midi_cc = None  # MIDI CC number to send CC messages from control
         self.midi_feedback = None  # [chan, cc] for MIDI control feedback
-        self.midi_cc_learn = None # [chain, chan, cc, exclude_zips]
+        self.midi_cc_learn = None # [chain, chan, cc, exclude_zmips]
         self.midi_cc_momentary_switch = False
         self.midi_cc_mode = -1                  # CC mode: -1=unknown,  0=abs, 1=rel1, 2=rel2, 3=rel3
         self.midi_cc_mode_detecting = 0         # Used by CC mode detection algorithm

@@ -459,12 +459,12 @@ class zynthian_gui_controller(tkinter.Canvas):
 				#self.erase_midi_bind()
 				self.plot_midi_bind(f"/{self.zctrl.value_range + 1}")
 			elif preselection is not None or self.zctrl == self.zyngui.state_manager.get_midi_learn_zctrl():
-				if self.zyngui.screens["control"].get_midi_learn() > 1:
+				if self.zyngui.state_manager.midi_learn_state is None:
 					self.plot_midi_bind("??#??", zynthian_gui_config.color_ml)
 				else:
 					self.plot_midi_bind("??", zynthian_gui_config.color_hl)
 			elif self.zctrl.midi_cc_learn:
-				chan = (self.zctrl.midi_cc_learn[1])
+				chan = self.zctrl.midi_cc_learn[1]
 				cc = self.zctrl.midi_cc_learn[2]
 				if self.zctrl == self.zyngui.state_manager.zctrl_x:
 					suffix = " X"
@@ -472,7 +472,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 					suffix = " Y"
 				else:
 					suffix = ""
-				if self.zctrl.midi_cc_learn[0]:
+				if self.zctrl.midi_cc_learn[0] is None:
 					self.plot_midi_bind(f"{chan + 1}#{cc}{suffix}")
 				else:
 					self.plot_midi_bind(f"{cc}{suffix}")

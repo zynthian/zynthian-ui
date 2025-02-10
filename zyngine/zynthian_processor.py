@@ -113,7 +113,8 @@ class zynthian_processor:
         """Set engine that this processor uses"""
 
         self.engine = engine
-        self.engine.add_processor(self)
+        if engine:
+            self.engine.add_processor(self)
 
     def get_name(self):
         """Get name of processor"""
@@ -767,16 +768,6 @@ class zynthian_processor:
                         zctrl.set_value(ctrl_state["value"], True)
                     if "midi_cc_momentary_switch" in ctrl_state:
                         zctrl.midi_cc_momentary_switch = ctrl_state['midi_cc_momentary_switch']
-                    if "cc" in ctrl_state:
-                        try:
-                            cc, chan, chain = ctrl_state["midi_cc"]
-                        except:
-                            pass
-                        cc_learn.append((chain, chan, cc, zctrl))
-                    try:
-                        zctrl.cc_exclude_devices = ctrl_state["cc_exclude_devices"]
-                    except:
-                        zctrl.cc_exclude_devices = []
                 except Exception as e:
                     proc_name = self.get_bankpath()
                     if proc_name != "Audio Levels": # Don't show error for snapshots with different soundcard
