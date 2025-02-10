@@ -678,6 +678,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                 title = "Control unlearn"
 
             if zctrl.midi_cc_learn:
+                options[f"MIDI Devices"] = zctrl
                 options[f"Unlearn '{zctrl.name}'"] = zctrl
             options[f"Unlearn all controls for {self.zyngui.get_current_processor().get_name()}"] = ""
 
@@ -727,6 +728,22 @@ class zynthian_gui_control(zynthian_gui_selector):
             }
             self.zyngui.screens['option'].config("Select CC mode", options, self.set_cc_mode)
             self.zyngui.show_screen('option')
+        elif option == "MIDI Devices":
+            options = {}
+            for i, device in enumerate(zynautoconnect.devices_in):
+                mask = 1 << i
+                if device:
+                    if param.midi_cc_learn[3] & mask:
+                        options[f"\u2610 {device.aliases[1]}"] = (i, param)
+                    else:
+                        options[f"\u2612 {device.aliases[1]}"] = (i, param)
+            self.zyngui.screens['option'].config(f"Select MIDI devices for ", options, self.set_cc_device, param)
+            self.zyngui.show_screen('option')
+
+    def set_cc_device(self, option, param):
+        mask = 1 << param[0]
+        param[1].midi_cc_learn[3] ^= mask
+        self.midi_learn_options_cb("MIDI Devices", param[1])
 
     def set_cc_mode(self, option, param):
         self.zgui_controllers[param[0]].zctrl.midi_cc_mode_set(param[1])
