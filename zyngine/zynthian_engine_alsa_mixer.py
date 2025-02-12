@@ -209,7 +209,8 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
         for symbol, config in ctrls.items():
             if symbol in self.zctrls:
                 self.zctrls[symbol].set_options(config)
-            self.zctrls[symbol] = zynthian_controller(self, symbol, config)
+            else:
+                self.zctrls[symbol] = zynthian_controller(self, symbol, config)
 
         # Generate control screens
         self._ctrl_screens = None
