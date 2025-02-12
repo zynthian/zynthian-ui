@@ -75,7 +75,6 @@ class zynthian_gui_engine(zynthian_gui_selector):
         super().__init__('Engine', True, False)
 
         self.chain_manager = self.zyngui.chain_manager
-        self.engine_info = self.chain_manager.engine_info
         self.engine_info_dirty = False
         self.xswipe_sens = 10
 
@@ -205,7 +204,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
         if not eng_code:
             eng_code = self.list_data[self.index][0]
         try:
-            return self.engine_info[eng_code]
+            return self.chain_manager.engine_info[eng_code]
         except:
             logging.info(f"Can't get info for engine '{eng_code}'")
             return {"QUALITY": 0, "COMPLEX": 0, "DESCR": ""}
@@ -237,9 +236,13 @@ class zynthian_gui_engine(zynthian_gui_selector):
 
     def get_engines_by_cat(self):
         self.chain_manager.get_engine_info()
-        self.engine_info = self.chain_manager.engine_info
         self.proc_type = self.zyngui.modify_chain_status["type"]
         self.engines_by_cat = self.chain_manager.filtered_engines_by_cat(self.proc_type, all=self.show_all)
+        for exclude in ["MI", "MR", "MX"]:
+            try:
+                self.engines_by_cat["Other"].pop(exclude)
+            except:
+                pass
         self.engine_cats = list(self.engines_by_cat.keys())
         logging.debug(f"CATEGORIES => {self.engine_cats}")
         # self.engines_by_cat = sorted(self.engines_by_cat.items(), key=lambda kv: "!" if kv[0] is None else kv[0])
@@ -343,7 +346,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
             if i is not None and self.list_data[i][0]:
                 engine = self.list_data[i][0]
                 if self.show_all:
-                    self.engine_info[engine]['ENABLED'] = not self.engine_info[engine]['ENABLED']
+                    self.chain_manager.engine_info[engine]['ENABLED'] = not self.chain_manager.engine_info[engine]['ENABLED']
                     self.engine_info_dirty = True
                     self.update_list()
                 else:

@@ -759,7 +759,6 @@ class zynthian_processor:
                 self.set_preset(state["preset_info"], force_set_engine=False)
 
         # Set controller values
-        cc_learn = []
         if "controllers" in state:
             for symbol, ctrl_state in state["controllers"].items():
                 try:
@@ -772,7 +771,7 @@ class zynthian_processor:
                     proc_name = self.get_bankpath()
                     if proc_name != "Audio Levels": # Don't show error for snapshots with different soundcard
                         logging.warning(f"Invalid controller for processor {proc_name}: {e}")
-        return cc_learn
+        return
 
     def restore_state_legacy(self, state):
         """Restore legacy states from state

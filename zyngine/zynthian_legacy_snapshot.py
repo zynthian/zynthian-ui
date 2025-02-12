@@ -128,19 +128,20 @@ class zynthian_legacy_snapshot:
 
         if "zs3" in self.snapshot:
             for zs3 in self.snapshot["zs3"].values():
-                if "mixer" in zs3:
+                try:
+                    mixer = zs3.pop("mixer")
                     zs3.setdefault("chains", {})
                     zs3.setdefault("processors", {})
                     for chan, proc_id in mixer_map.items():
                         key = f"chan_{chan:02d}"
                         id = str(proc_id)
-                        if key in zs3["mixer"]:
-                            for param, val in zs3["mixer"][key].items():
+                        if key in mixer:
+                            for param, val in mixer[key].items():
                                 zs3["processors"].setdefault(id, {})
                                 zs3["processors"][id].setdefault("controllers", {})
                                 zs3["processors"][id]["controllers"][param]={"value":val}
-                    if "midi_learn" in zs3["mixer"]:
-                        for key, conf in zs3["mixer"]["midi_learn"].items():
+                    if "midi_learn" in mixer:
+                        for key, conf in mixer["midi_learn"].items():
                             chan, cc = key.split(",")
                             strip_id = conf[0]
                             proc_id = str(mixer_map[int(strip_id)])
@@ -148,6 +149,8 @@ class zynthian_legacy_snapshot:
                             zs3["processors"].setdefault(proc_id, {"controllers":{}})
                             zs3["processors"][proc_id]["controllers"].setdefault(symbol, {})
                             zs3["processors"][proc_id]["controllers"][symbol].setdefault("midi_cc", [None, int(chan), int(cc), 0])
+                except:
+                    pass
                 if "chains" in zs3:
                     for chain_id, cfg in zs3["chains"].items():
                         if "midi_cc" in cfg:

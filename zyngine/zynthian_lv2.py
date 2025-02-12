@@ -5,7 +5,7 @@
 #
 # zynthian LV2
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -48,6 +48,7 @@ class EngineType(Enum):
     AUDIO_EFFECT = "Audio Effect"
     AUDIO_GENERATOR = "Audio Generator"
     SPECIAL = "Special"
+    GLOBAL = "Global"
     # UNKNOWN = "Unknown"
 
 

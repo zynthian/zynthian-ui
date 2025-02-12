@@ -146,7 +146,7 @@ class zynthian_chain_manager:
         cls.engine_info = eng_info
         cls.engine_info["MI"] = {"ID":"0", "NAME":"Mixer_Channel_Strip", "TITLE": "Mixer Channel Strip", "TYPE": "Audio Effect", "CAT": "Other", "ENABLED": False, "INDEX": 0, "URL": "", "UI": "", "DESCR": "Audio mixer channel strip", "QUALITY": 5, "COMPLEX": 5, "EDIT": 0}
         cls.engine_info["MR"] = {"ID":"1", "NAME":"Mixer_Return_Strip", "TITLE": "Mixer Effect Return Strip", "TYPE": "Audio Effect", "CAT": "Other", "ENABLED": False, "INDEX": 1, "URL": "", "UI": "", "DESCR": "Audio mixer effect return strip", "QUALITY": 5, "COMPLEX": 5, "EDIT": 0}
-        cls.engine_info["MX"] = {"NAME": "Mixer", "TITLE": "ALSA Mixer", "TYPE": "MIXER", "CAT": None, "ENGINE": zynthian_engine_alsa_mixer, "ENABLED": True}
+        cls.engine_info["MX"] = {"NAME": "Alsa_Mixer", "TITLE": "ALSA Mixer", "TYPE": "Global", "CAT": None, "ENGINE": zynthian_engine_alsa_mixer, "ENABLED": False}
         # Look for an engine class for each one
         for key, info in cls.engine_info.items():
             try:
@@ -888,8 +888,8 @@ class zynthian_chain_manager:
             self.state_manager.start_busy(
                 "remove_processor", "Removing Processor", f"removing {processor.get_basepath()} from chain {chain_id}")
 
-        for param in processor.controllers_dict:
-            self.remove_midi_learn(processor, param)
+        for symbol in processor.controllers_dict:
+            self.remove_midi_learn(processor, symbol)
 
         id = None
         for i, p in self.processors.items():

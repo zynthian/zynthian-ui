@@ -1097,6 +1097,12 @@ class zynthian_state_manager:
             if state is None:
                 return
 
+            # Remove global processor configuration
+            for proc_id, proc in self.chain_manager.processors.items():
+                if proc_id < 0:
+                    for symbol in proc.controllers_dict:
+                        self.chain_manager.remove_midi_learn(proc, symbol)
+
             # Load global MIDI configuration
             zmip_map = {}
             zmop_map = {}
@@ -1194,7 +1200,7 @@ class zynthian_state_manager:
                     self.zs3 = zs3
                 self.load_zs3(zs3["zs3-0"], autoconnect=False)
                 try:
-                    mute |= self.zs3["zs3-0"]["mixer"]["chan_16"]["mute"]
+                    mute |= state['zs3']['zs3-0']['processors'][255]['controllers']['mute']["value"]
                 except:
                     pass
 
@@ -1356,7 +1362,7 @@ class zynthian_state_manager:
             except:
                 zs3_id = "zs3-0"
 
-        restored_chains = []
+        restored_chains = [None]
         if "chains" in zs3_state:
             self.set_busy_details("restoring chains state")
             for chain_id, chain_state in zs3_state["chains"].items():
