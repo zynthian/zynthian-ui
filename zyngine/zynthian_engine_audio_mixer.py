@@ -128,46 +128,6 @@ class zynthian_engine_audio_mixer(zynthian_engine):
             }
         return processor.controllers_dict
 
-    def refresh_fx_send(self):
-        send_count = self.state_manager.zynmixer_chan.get_send_count()
-        for processor in self.state_manager.chain_manager.processors.values():
-            if processor.eng_code != "MI":
-                continue
-            send = 0
-            while True:
-                symbol = f"send_{send}"
-                mode_symbol = f"send_{send}_mode"
-                if send < send_count:
-                    # Check that processor has send control
-                    if symbol not in processor.controllers_dict:
-                        processor.controllers_dict[symbol] = zynthian_controller(self, symbol, {
-                            'name': f'send {send + 1} level',
-                            'value_max': 1.0,
-                            'value_default': 0.0,
-                            'value': processor.zynmixer.get_send(processor.mixer_chan, send),
-                            'processor': processor,
-                            'graph_path': ["send", send]
-                        })
-                        processor.controllers_dict[mode_symbol] = zynthian_controller(self, mode_symbol, {
-                            'name': f'send {send + 1} mode',
-                            'value_max': 1,
-                            'value_default': 0,
-                            'value': processor.zynmixer.get_send(processor.mixer_chan, send),
-                            'labels': ['post fader', 'pre fader'],
-                            'processor': processor,
-                            'graph_path': ["send_mode", send]
-                        })
-                        processor.ctrl_screens_dict[f"send {send + 1}"] = [processor.controllers_dict[symbol], processor.controllers_dict[f"{symbol}_mode"]]
-                else:
-                    # Check that processor does not have send control
-                    try:
-                        del processor.controllers_dict[symbol]
-                        del processor.controllers_dict[mode_symbol]
-                        del processor.ctrl_screens_dict[f"send {send}"]
-                    except:
-                        break
-                send += 1
-
     def add_processor(self, processor):
         self.processors.append(processor)
         if processor.eng_code == "MR":
@@ -191,7 +151,6 @@ class zynthian_engine_audio_mixer(zynthian_engine):
             processor.mixer_chan = self.state_manager.zynmixer_chan.add_strip()
             processor.name = f"Mixer Channel Strip {processor.mixer_chan + 1}"
         processor.refresh_controllers()
-        self.refresh_fx_send()
         return
 
     def remove_processor(self, processor):
@@ -201,7 +160,6 @@ class zynthian_engine_audio_mixer(zynthian_engine):
         if processor.zynmixer == self.state_manager.zynmixer_bus:
             send = processor.mixer_chan
             self.state_manager.zynmixer_chan.remove_send(send)
-            self.refresh_fx_send()
 
     def send_controller_value(self, zctrl):
         try:

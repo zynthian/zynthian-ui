@@ -826,15 +826,13 @@ class zynthian_chain_manager:
 
         if chain_id is None:
             # Global processors not in any chain
+            self.state_manager.end_busy("add_processor")
             return processor
 
         if eng_code in ("MI", "MR"):
             chain.zynmixer = processor
-            if eng_code == "MR":
-                # Add FX sends to existing chains
-                for proc in self.processors.values():
-                    if proc.eng_code == "MI":
-                        proc.engine.refresh_fx_send()
+            # Add FX sends to existing chains
+            self.refresh_fx_send()
 
         # Update group chains
         for src_chain in self.chains.values():
@@ -910,12 +908,57 @@ class zynthian_chain_manager:
             if stop_engine:
                 self.stop_unused_engines()
 
+            if processor.eng_code == "MR":
+                # Remove FX sends from existing chains
+                self.refresh_fx_send()
+
             # Update chain routing (may have effected lots of chains)
             for chain in self.chains.values():
                 chain.rebuild_graph()
 
         self.state_manager.end_busy("remove_processor")
         return success
+
+
+    def refresh_fx_send(self):
+        send_count = self.state_manager.zynmixer_chan.get_send_count()
+        for processor in self.processors.values():
+            if processor.eng_code != "MI":
+                continue
+            send = 0
+            while True:
+                symbol = f"send_{send}"
+                mode_symbol = f"send_{send}_mode"
+                if send < send_count:
+                    # Check that processor has send control
+                    if symbol not in processor.controllers_dict:
+                        processor.controllers_dict[symbol] = zynthian_controller(self, symbol, {
+                            'name': f'send {send + 1} level',
+                            'value_max': 1.0,
+                            'value_default': 0.0,
+                            'value': processor.zynmixer.get_send(processor.mixer_chan, send),
+                            'processor': processor,
+                            'graph_path': ["send", send]
+                        })
+                        processor.controllers_dict[mode_symbol] = zynthian_controller(self, mode_symbol, {
+                            'name': f'send {send + 1} mode',
+                            'value_max': 1,
+                            'value_default': 0,
+                            'value': processor.zynmixer.get_send(processor.mixer_chan, send),
+                            'labels': ['post fader', 'pre fader'],
+                            'processor': processor,
+                            'graph_path': ["send_mode", send]
+                        })
+                        processor.ctrl_screens_dict[f"send {send + 1}"] = [processor.controllers_dict[symbol], processor.controllers_dict[f"{symbol}_mode"]]
+                else:
+                    # Check that processor does not have send control
+                    try:
+                        del processor.controllers_dict[symbol]
+                        del processor.controllers_dict[mode_symbol]
+                        del processor.ctrl_screens_dict[f"send {send + 1}"]
+                    except:
+                        break
+                send += 1
 
     def get_slot_count(self, chain_id, type=None):
         """Get the quantity of slots in a chain
