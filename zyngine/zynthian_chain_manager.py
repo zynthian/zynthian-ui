@@ -770,11 +770,8 @@ class zynthian_chain_manager:
         proc_ids = list(self.processors)
         proc_ids.sort()
         id = 0
-        for i in proc_ids:
-            if i == id:
-                id += 1
-            else:
-                break
+        while id in proc_ids:
+            id += 1
         return id
 
     def add_processor(self, chain_id, eng_code, slot=None, proc_id=None, eng_config=None):
@@ -831,17 +828,21 @@ class zynthian_chain_manager:
             # Global processors not in any chain
             return processor
 
-        # TODO: Fails to detect MIDI only chains in snapshots
         if eng_code in ("MI", "MR"):
             chain.zynmixer = processor
-        #chain.rebuild_graph()
+            if eng_code == "MR":
+                # Add FX sends to existing chains
+                for proc in self.processors.values():
+                    if proc.eng_code == "MI":
+                        proc.engine.refresh_fx_send()
+
         # Update group chains
         for src_chain in self.chains.values():
             if chain_id in src_chain.audio_out:
                 src_chain.rebuild_graph()
         chain.rebuild_graph()
-        # Success!! => Return processor
         self.state_manager.end_busy("add_processor")
+        # Success!! => Return processor
         return processor
 
     def nudge_processor(self, chain_id, processor, up):
