@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Audio Mixer
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
@@ -686,7 +686,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def __init__(self):
         super().__init__(has_backbutton=False)
 
-        self.chan2strip = {} # Map of audio strips, indexed by zynmixer processor object
+        self.chan2strip = {} # Map of audio strips, indexed by [is_mixbus, mixer_channel]
         self.highlighted_strip = None  # highligted mixer strip object
         self.moving_chain = False  # True if moving a chain left/right
 
@@ -956,7 +956,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """
         active_strip = None
         strip_index = 0
-        for chain_id in self.zyngui.chain_manager.ordered_chain_ids[:-1][self.mixer_strip_offset:self.mixer_strip_offset + len(self.visible_mixer_strips)]:
+        self.chan2strip = {}
+        for chain_id in self.zyngui.chain_manager.ordered_chain_ids[:-1][self.mixer_strip_offset : self.mixer_strip_offset + len(self.visible_mixer_strips)]:
             strip = self.visible_mixer_strips[strip_index]
             strip.set_chain(chain_id)
             # strip.draw_control()

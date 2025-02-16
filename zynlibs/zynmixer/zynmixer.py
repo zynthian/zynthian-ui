@@ -328,7 +328,7 @@ class ZynMixer():
             return
         self.lib_zynmixer.setPhase(channel, phase)
         zynsigman.send(zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE,
-            mixbus=self.mixbus, channel=chan, symbol="phase", value=phase)
+            mixbus=self.mixbus, chan=channel, symbol="phase", value=phase)
 
     def get_phase(self, channel):
         """
@@ -381,7 +381,7 @@ class ZynMixer():
             return
         self.lib_zynmixer.setSendMode(channel, send, mode)
         zynsigman.send(zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE,
-            mixbus=self.mixbus, channel=chan, symbol="send_mode", value=mode)
+            mixbus=self.mixbus, chan=channel, symbol="send_mode", value=mode)
 
     def get_send_mode(self, channel, send):
         """
