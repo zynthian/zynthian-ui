@@ -789,7 +789,7 @@ int8_t addStrip() {
         }
         char name[11];
         sprintf(name, "input_%02da", chan);
-        
+
         if (!(strip->inPortA = jack_port_register(g_jackClient, name, JACK_DEFAULT_AUDIO_TYPE, JackPortIsInput, 0))) {
             fprintf(stderr, "libzynmixer: Cannot register %s\n", name);
             free(strip);
@@ -844,7 +844,7 @@ int8_t addStrip() {
         pthread_mutex_lock(&mutex);
         g_channelStrips[chan] = strip;
         pthread_mutex_unlock(&mutex);
-        
+
         if (chan >= g_lastStrip)
             g_lastStrip = chan + 1;
         return chan;

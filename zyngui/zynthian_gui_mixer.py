@@ -746,7 +746,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.main_mixbus_strip = zynthian_gui_mixer_strip(
             self, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height)
         self.main_mixbus_strip.set_chain(0)
-        
+
         self.zyngui.state_manager.zynmixer_bus.enable_dpm(0, 0, False)
 
         self.refresh_visible_strips()

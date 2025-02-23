@@ -36,6 +36,7 @@ from zyngine.zynthian_engine_jalv import *
 from zyngine.zynthian_engine_pianoteq import *
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_processor import zynthian_processor
+from zyngine import zynthian_state_manager
 from zyngui import zynthian_gui_config
 
 # ----------------------------------------------------------------------------
@@ -1209,10 +1210,9 @@ class zynthian_chain_manager:
             if "slots" in chain_state:
                 for slot_state in chain_state["slots"]:
                     # slot_state is a dict of proc_id:proc_type for procs in this slot
-                    for index, proc_id in enumerate(slot_state):
-                        if proc_id == "255":
+                    for proc_id, eng_code in slot_state.items():
+                        if proc_id == str(zynthian_state_manager.MAIN_MIXBUS_ID):
                             continue # Do not replace main mixbus audio mixer processor
-                        eng_code = slot_state[proc_id]
                         try:
                             eng_config = engine_config[eng_code]
                         except:

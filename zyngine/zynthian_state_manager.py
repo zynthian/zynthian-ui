@@ -4,7 +4,7 @@
 #
 # zynthian state manager
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 # ****************************************************************************
@@ -62,10 +62,12 @@ from zyngine.zynthian_ctrldev_manager import zynthian_ctrldev_manager
 # Zynthian State Manager Class
 # ----------------------------------------------------------------------------
 
-SNAPSHOT_SCHEMA_VERSION = 1.1
 capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
 ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 
+MAIN_MIXBUS_ID = -1
+ALSA_ID = -2
+AUDIO_PLAYER_ID = -3
 
 class zynthian_state_manager:
 
@@ -147,7 +149,7 @@ class zynthian_state_manager:
         self.chain_manager = zynthian_chain_manager(self)
         self.reset_zs3()
 
-        self.alsa_mixer_processor = self.chain_manager.add_processor(None, "MX", None, -1)
+        self.alsa_mixer_processor = self.chain_manager.add_processor(None, "MX", None, ALSA_ID)
 
         self.audio_recorder = zynthian_audio_recorder(self)
         self.zynseq = zynseq.zynseq(self)
@@ -223,7 +225,7 @@ class zynthian_state_manager:
         zynautoconnect.start(self)
         self.jack_period = self.get_jackd_blocksize() / self.get_jackd_samplerate()
         self.chain_manager.add_chain(0)
-        self.main_mixbus_proc = self.chain_manager.add_processor(0, "MR", 0, 255)
+        self.main_mixbus_proc = self.chain_manager.add_processor(0, "MR", 0, MAIN_MIXBUS_ID)
         self.reload_midi_config()
         self.create_audio_player()
         self.exit_flag = False
@@ -1200,7 +1202,7 @@ class zynthian_state_manager:
                     self.zs3 = zs3
                 self.load_zs3(zs3["zs3-0"], autoconnect=False)
                 try:
-                    mute |= state['zs3']['zs3-0']['processors'][255]['controllers']['mute']["value"]
+                    mute |= state['zs3']['zs3-0']['processors'][MAIN_MIXBUS_ID]['controllers']['mute']["value"]
                 except:
                     pass
 
@@ -2054,7 +2056,7 @@ class zynthian_state_manager:
 
     def create_audio_player(self):
         if not self.audio_player:
-            self.audio_player = self.chain_manager.add_processor(None, "AP", None, -2)
+            self.audio_player = self.chain_manager.add_processor(None, "AP", None, AUDIO_PLAYER_ID)
 
     def destroy_audio_player(self):
         if self.audio_player:

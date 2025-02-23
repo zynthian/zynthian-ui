@@ -27,6 +27,7 @@ from json import JSONDecoder
 from math import ceil
 
 from zyngine.zynthian_chain_manager import zynthian_chain_manager
+from zyngine import zynthian_state_manager
 import zynautoconnect
 import logging
 
@@ -88,7 +89,7 @@ class zynthian_legacy_snapshot:
                     self.snapshot["midi"]["midi_playback"][uid] = name
         except:
             pass
-        mixer_map = {16: 255} # Map of "MI" mixer proc id indexed by old mixer chan
+        mixer_map = {16: zynthian_state_manager.MAIN_MIXBUS_ID} # Map of "MI" mixer proc id indexed by old mixer chan
         if "chains" in self.snapshot:
             # Get list of used processor ids:
             proc_ids = []
@@ -111,7 +112,7 @@ class zynthian_legacy_snapshot:
                     if "slots" not in chain_config:
                         chain_config["slots"] = []
                     if chain_id == "0":
-                        chain_config["slots"].insert(fader_pos, {"255":"MR"})
+                        chain_config["slots"].insert(fader_pos, {str(zynthian_state_manager.MAIN_MIXBUS_ID):"MR"})
                     else:
                         chain_config["slots"].insert(fader_pos, {str(next_id):"MI"})
                         mixer_map[int(mixer_chan)] = int(next_id)

@@ -38,6 +38,7 @@ from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_engine_audioplayer import zynthian_engine_audioplayer
 from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
+from zyngine import zynthian_state_manager
 
 from .zynthian_ctrldev_base import (
     zynthian_ctrldev_zynmixer, zynthian_ctrldev_zynpad
@@ -756,7 +757,7 @@ class MixerHandler(ModeHandlerBase):
             elif note == BTN_STOP_ALL_CLIPS:
                 self._stop_all_sounds()
             elif note == BTN_PLAY:
-                self._run_track_button_function_on_channel(255, FN_MUTE)
+                self._run_track_button_function_on_channel(zynthian_state_manager.MAIN_MIXBUS_ID, FN_MUTE)
             elif note == BTN_SOFT_KEY_SELECT:
                 self._track_buttons_function = FN_SELECT
             elif note == BTN_RECORD:

@@ -72,7 +72,7 @@ class zynthian_controller:
         self.value_mid = None
         self.value_max = None  # Maximum value of control range
         self.value_range = 0  # Span of permissible values
-        # Factor to scale each up/down nudge1
+        # Factor to scale each up/down nudge
 
         # TODO: This is not set if configure is not called or options not passed
         self.nudge_factor = None

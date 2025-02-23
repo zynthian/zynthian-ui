@@ -125,18 +125,18 @@ class ZynMixer():
             Index of strip or -1 on failure
 
         """
-        
+
         return self.lib_zynmixer.addStrip()
 
     def remove_strip(self, chan):
         """
         Removes a mixer channel strip from the mixer
-        
+
         Parameters
         ----------
         chan : int
             Index of the mixer channel strip to remove
-        
+
         Returns
         -------
         int
@@ -155,18 +155,18 @@ class ZynMixer():
             Index of send or -1 on failure
 
         """
-        
+
         return self.lib_zynmixer.addSend()
 
     def remove_send(self, send):
         """
         Removes an effect send from the mixer
-        
+
         Parameters
         ----------
         send : int
             Index of the effect send to remove
-        
+
         Returns
         -------
         int
@@ -178,7 +178,7 @@ class ZynMixer():
     def get_send_count(self):
         """
         Get the quantity of effect sends
-        
+
         Returns
         -------
         int
@@ -208,12 +208,12 @@ class ZynMixer():
     def get_level(self, channel):
         """
         Gets the fader level of a mixer strip
-        
+
         Parameters
         ----------
         channel : int
             Index of the mixer strip
-        
+
         Returns
         -------
         float
@@ -245,12 +245,12 @@ class ZynMixer():
     def get_balance(self, channel):
         """
         Gets the balance of a mixer strip
-        
+
         Parameters
         ----------
         channel : int
             Index of the mixer strip
-        
+
         Returns
         -------
         float
@@ -284,12 +284,12 @@ class ZynMixer():
     def get_mute(self, channel):
         """
         Gets the mute state of a mixer strip
-        
+
         Parameters
         ----------
         channel : int
             Index of the mixer strip
-        
+
         Returns
         -------
         bool
@@ -333,12 +333,12 @@ class ZynMixer():
     def get_phase(self, channel):
         """
         Gets the phase reverse state of a mixer strip
-        
+
         Parameters
         ----------
         channel : int
             Index of the mixer strip
-        
+
         Returns
         -------
         bool
@@ -386,14 +386,14 @@ class ZynMixer():
     def get_send_mode(self, channel, send):
         """
         Gets the effect send mode of a mixer strip
-        
+
         Parameters
         ----------
         channel : int
             Index of the mixer strip
         send : int
             Index of the send
-        
+
         Returns
         -------
         int
@@ -425,12 +425,12 @@ class ZynMixer():
     def get_mono(self, channel):
         """
         Gets the mono state of a mixer strip
-        
+
         Parameters
         ----------
         channel : int
             Index of the mixer strip
-        
+
         Returns
         -------
         bool
@@ -444,17 +444,18 @@ class ZynMixer():
     def get_all_monos(self):
         """
         Gets the mono state of all mixer strips
-        
+
         Parameters
         ----------
         channel : int
             Index of the mixer strip
-        
+
         Returns
         -------
         list
             A list of bools indicating the mono state of each strip
         """
+
         monos = (ctypes.c_bool * (self.MAX_NUM_CHANNELS))()
         self.lib_zynmixer.getAllMono(monos)
         result = []
@@ -498,17 +499,18 @@ class ZynMixer():
     def get_ms(self, channel):
         """
         Gets the M+S state of a mixer strip
-        
+
         Parameters
         ----------
         channel : int
             Index of the mixer strip
-        
+
         Returns
         -------
         bool
             True if M+S enabled, False if disabled
         """
+
         if channel is None:
             return
         return self.lib_zynmixer.getMS(channel) == 1
@@ -548,14 +550,14 @@ class ZynMixer():
     def get_send(self, channel, send):
         """
         Gets a send level of a mixer strip
-        
+
         Parameters
         ----------
         channel : int
             Index of the mixer strip
         send : int
             Index of the send
-        
+
         Returns
         -------
         float
@@ -585,12 +587,12 @@ class ZynMixer():
     def is_normalised(self, channel):
         """
         Gets the internal normalised routig state of a mixer strip
-        
+
         Parameters
         ----------
         channel : int
             Index of the mixer strip
-        
+
         Returns
         -------
         bool
@@ -604,14 +606,14 @@ class ZynMixer():
     def get_dpm(self, channel, leg):
         """
         Gets peak programme level of a mixer strip
-        
+
         Parameters
         ----------
         channel : int
             Index of the mixer strip
         leg : int
             0 for A-leg (left), 1 for B-leg (right)
-        
+
         Returns
         -------
         float
@@ -625,14 +627,14 @@ class ZynMixer():
     def get_dpm_holds(self, channel, leg):
         """
         Gets peak programme hold level of a mixer strip
-        
+
         Parameters
         ----------
         channel : int
             Index of the mixer strip
         leg : int
             0 for A-Leg (left), 1 for B-leg (right)
-        
+
         Returns
         -------
         float
@@ -646,14 +648,14 @@ class ZynMixer():
     def get_dpm_states(self, start, end):
         """
         Gets peak programme level state of a range of mixer strips
-        
+
         Parameters
         ----------
         start : int
             Index of the first mixer strip
         end : int
             Index of the last mixer strip
-        
+
         Returns
         -------
         list

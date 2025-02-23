@@ -452,7 +452,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                                 self.idev_out, self.midi_chan, ccnum, 0)
                 return True
             # elif ccnum == self.master_ccnum:
-            # self.zynmixer.set_level(255, ccval / 127.0)
+            # self.zynmixer.set_level(zynthian_state_manager.MAIN_MIXBUS_ID, ccval / 127.0)
             # return True
             elif ccnum in self.faders_ccnum:
                 col = self.faders_ccnum.index(ccnum)
