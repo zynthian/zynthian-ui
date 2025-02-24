@@ -276,7 +276,7 @@ def get_midi_out_dev(idev):
         return None
 
 
-def get_midi_devid_by_uid(uid, mapped=False):
+def get_midi_in_devid_by_uid(uid, mapped=False):
     """Get the index of the ZMIP connected to physical input
 
     uid : The uid name of the port (jack alias [0])
@@ -409,9 +409,14 @@ def solo(chain_id, value):
     elif value:
         if chain_id not in solo_chain_ids:
             solo_chain_ids.append(chain_id)
+            request_audio_connect(True)
     else:
         if chain_id in solo_chain_ids:
             solo_chain_ids.remove(chain_id)
+            request_audio_connect(True)
+
+def is_solo(chain_id):
+    return chain_id in solo_chain_ids
 
 # ------------------------------------------------------------------------------
 
@@ -584,6 +589,8 @@ def midi_autoconnect():
     # logger.info("ZynAutoConnect: MIDI ...")
     global zyn_routed_midi
 
+    new_idev = [] # List of newly detected input ports
+
     # Create graph of required chain routes as sets of sources indexed by destination
     required_routes = {}
     all_midi_dst = jclient.get_ports(is_input=True, is_midi=True)
@@ -604,6 +611,7 @@ def midi_autoconnect():
                 if devices_in[i] is None:
                     devnum = i
                     devices_in[devnum] = hwsp
+                    new_idev.append(i)
                     logger.debug(
                         f"Connected MIDI-in device {devnum}: {hwsp.name}")
                     break
@@ -819,10 +827,9 @@ def midi_autoconnect():
             except:
                 pass
 
-    # Load driver if driver has autoload flag set
-    for i in range(0, max_num_devs):
-        if i in busy_idevs and devices_in[i] is not None:
-            state_manager.ctrldev_manager.load_driver(i)
+    # Autoload new drivers
+    for i in new_idev:
+        state_manager.ctrldev_manager.load_driver(i)
 
     # Release Mutex Lock
     release_lock()
@@ -1226,6 +1233,10 @@ def build_midi_port_name(port):
     elif port.name.startswith("ZynMidiRouter:seq_in"):
         return port.name, "Router Feedback"
     elif port.name.startswith("jacknetumpd:netump_"):
+        ep_name = jack.get_property(port.uuid, "UMPEndpointName")
+        if ep_name:
+            ep_name = ep_name[0].decode("utf-8")
+            return f"NET:ump_{port.name[19:]}/{ep_name}", ep_name
         return f"NET:ump_{port.name[19:]}", "NetUMP"
     elif port.name.startswith("jackrtpmidid:rtpmidi_"):
         return f"NET:rtp_{port.name[21:]}", "RTP MIDI"
@@ -1456,6 +1467,7 @@ def start(sm):
     try:
         jclient = jack.Client("Zynthian_autoconnect")
         jclient.set_xrun_callback(cb_jack_xrun)
+        jclient.set_property_change_callback(cb_jack_property_change)
         jclient.activate()
     except Exception as e:
         logger.error(
@@ -1536,6 +1548,26 @@ def cb_jack_xrun(delayed_usecs: float):
         logger.warning(
             f"Jack Audio XRUN! =>count: {xruns}, delay: {delayed_usecs}us")
         state_manager.status_xrun = True
+
+
+def cb_jack_property_change(subject, key, change):
+    """Jack property change callback
+
+    subject : Jack object UUID
+    key : Property name
+    change : Property change (created, changed, deleted)
+    """
+
+    if key != "UMPEndpointName":
+        return
+    if change not in (jack.PROPERTY_CREATED, jack.PROPERTY_DELETED):
+        return
+
+    logger.debug(f"UMP Endpoint change")
+    netump_out_ports = jclient.get_ports("jacknetumpd", is_midi=True, is_output=True)
+    for port in netump_out_ports:
+        update_midi_port_aliases(port)
+    request_midi_connect(False)
 
 
 def get_jackd_cpu_load():

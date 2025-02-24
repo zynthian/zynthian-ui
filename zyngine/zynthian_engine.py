@@ -681,7 +681,7 @@ class zynthian_engine(zynthian_basic_engine):
         if self._ctrl_screens is None:
             self._ctrl_screens = []
 
-        # Sort by display_priority if exists
+        # Sort controllers by display_priority
         zctrl_dict = dict(sorted(zctrl_dict.items(), key=lambda item: item[1].display_priority, reverse=True))
 
         # Get zctrls by group

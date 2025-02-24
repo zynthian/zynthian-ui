@@ -227,6 +227,9 @@ class zynthian_gui_base(tkinter.Frame):
         if self.title_timer:
             self.title_timer.cancel()
             self.title_timer = None
+        elif timeout:
+            self.title = self.select_path.get()
+
         if timeout:
             self.title_timer = Timer(timeout, self.on_title_timeout)
             self.title_timer.start()
@@ -858,8 +861,7 @@ class zynthian_gui_base(tkinter.Frame):
     # Override if required
     def update_layout(self):
         if zynthian_gui_config.enable_touch_navigation and self.buttonbar_config:
-            self.height = zynthian_gui_config.screen_height - \
-                self.topbar_height - self.buttonbar_height
+            self.height = zynthian_gui_config.screen_height - self.topbar_height - self.buttonbar_height
         else:
             self.height = zynthian_gui_config.screen_height - self.topbar_height
 
@@ -874,8 +876,7 @@ class zynthian_gui_base(tkinter.Frame):
         if self.param_editor_zctrl:
             self.param_editor_zctrl.reset(engine, symbol, options)
         else:
-            self.param_editor_zctrl = zynthian_controller(
-                engine, symbol, options)
+            self.param_editor_zctrl = zynthian_controller(engine, symbol, options)
         self.param_editor_assert_cb = assert_cb
         if not self.param_editor_zctrl.is_integer:
             if self.param_editor_zctrl.nudge_factor < 0.1:

@@ -169,7 +169,7 @@ class zynthian_legacy_snapshot:
                                 for midi_cfg in midi_cfgs:
                                     proc_id = midi_cfg[0]
                                     symbol = midi_cfg[1]
-                                    dev = zynautoconnect.get_midi_devid_by_uid(uid)
+                                    dev = zynautoconnect.get_midi_in_devid_by_uid(uid)
                                     if dev is None:
                                         dev_ex = 0
                                     else:

@@ -23,14 +23,14 @@
 #
 # ******************************************************************************
 
+import jack
 import time
 import signal
-import jack
 import logging
 from bisect import bisect
 from copy import deepcopy
-from functools import partial
 import multiprocessing as mp
+from functools import partial
 from threading import Thread, RLock, Event
 
 from zynlibs.zynseq import zynseq
@@ -40,13 +40,9 @@ from zyngine.zynthian_engine_audioplayer import zynthian_engine_audioplayer
 from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngine import zynthian_state_manager
 
-from .zynthian_ctrldev_base import (
-    zynthian_ctrldev_zynmixer, zynthian_ctrldev_zynpad
-)
-from .zynthian_ctrldev_base_extended import (
-    RunTimer, KnobSpeedControl, ButtonTimer, CONST
-)
-from .zynthian_ctrldev_base_ui import ModeHandlerBase
+from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer, zynthian_ctrldev_zynpad
+from zyngine.ctrldev.zynthian_ctrldev_base_extended import RunTimer, KnobSpeedControl, ButtonTimer, CONST
+from zyngine.ctrldev.zynthian_ctrldev_base_ui import ModeHandlerBase
 
 
 # FIXME: these defines should be taken from where they are defined (zynseq.h)
@@ -190,8 +186,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
         self._device_handler = DeviceHandler(state_manager, self._leds)
         self._mixer_handler = MixerHandler(state_manager, self._leds)
         self._padmatrix_handler = PadMatrixHandler(state_manager, self._leds)
-        self._stepseq_handler = StepSeqHandler(
-            state_manager, self._leds, idev_in)
+        self._stepseq_handler = StepSeqHandler(state_manager, self._leds, idev_in)
         self._current_handler = self._mixer_handler
         self._is_shifted = False
 
@@ -357,7 +352,7 @@ class zynthian_ctrldev_akai_apc_key25_mk2(zynthian_ctrldev_zynmixer, zynthian_ct
     def light_off(self):
         self._leds.all_off()
 
-    def update_mixer_strip(self, chan, symbol, value):
+    def update_mixer_strip(self, chan, mixbus, symbol, value):
         if self._current_handler == self._mixer_handler:
             self._current_handler.update_strip(chan, symbol, value)
 
@@ -714,19 +709,19 @@ class MixerHandler(ModeHandlerBase):
                 return
 
             query = {
-                FN_MUTE: self._zynmixer.get_mute,
-                FN_SOLO: self._zynmixer.get_solo,
-                FN_SELECT: self._is_active_chain,
+                FN_MUTE: lambda c: self._zynmixer.get_mute(c.mixer_chan),
+                FN_SOLO: lambda c: self._zynmixer.get_solo(c.mixer_chan),
+                FN_SELECT: lambda c: c.chain_id == self._active_chain,
             }[self._track_buttons_function]
             for i in range(8):
-                index = i + (8 if self._chains_bank == 1 else 0)
-                chain = self._chain_manager.get_chain_by_index(index)
+                pos = i + (8 if self._chains_bank == 1 else 0)
+                chain = self._chain_manager.get_chain_by_position(pos)
                 if not chain:
                     break
                 # Main channel ignored
                 if chain.chain_id == 0:
                     continue
-                self._leds.led_state(BTN_TRACK_1 + i, query(index))
+                self._leds.led_state(BTN_TRACK_1 + i, query(chain))
 
     def on_shift_changed(self, state):
         retval = super().on_shift_changed(state)
@@ -788,10 +783,18 @@ class MixerHandler(ModeHandlerBase):
     def update_strip(self, chan, symbol, value):
         if {"mute": FN_MUTE, "solo": FN_SOLO}.get(symbol) != self._track_buttons_function:
             return
-        chan -= self._chains_bank * 8
-        if 0 > chan > 8:
+
+        # Mixer 'chan' may not be equal to its position (if re-arranged or a
+        # chain was deleted). Search the actual displayed position.
+        chain_id = self._chain_manager.get_chain_id_by_mixer_chan(chan)
+        for pos in range(self._chain_manager.get_chain_count()):
+            if self._chain_manager.get_chain_id_by_index(pos) == chain_id:
+                break
+
+        pos -= self._chains_bank * 8
+        if 0 > pos > 8:
             return
-        self._leds.led_state(BTN_TRACK_1 + chan, value)
+        self._leds.led_state(BTN_TRACK_1 + pos, value)
         return True
 
     def set_active_chain(self, chain, refresh):
@@ -802,12 +805,6 @@ class MixerHandler(ModeHandlerBase):
         self._active_chain = chain
         if refresh:
             self.refresh()
-
-    def _is_active_chain(self, position):
-        chain = self._chain_manager.get_chain_by_position(position)
-        if chain is None:
-            return False
-        return chain.chain_id == self._active_chain
 
     def _update_volume(self, ccnum, ccval):
         return self._update_control("level", ccnum, ccval, 0, 100)
@@ -876,9 +873,8 @@ class MixerHandler(ModeHandlerBase):
             self._zynmixer.set_mute(channel, val, True)
             return True
 
-        if function == FN_SOLO:
-            val = self._zynmixer.get_solo(channel) ^ 1
-            self._zynmixer.set_solo(channel, val, True)
+        if function == FN_SOLO and chain is not None:
+            chain.toggle_solo()
             return True
 
         if function == FN_SELECT and chain is not None:
@@ -938,8 +934,11 @@ class PadMatrixHandler(ModeHandlerBase):
 
     def on_record_changed(self, state):
         self._is_record_pressed = state
-        if state and self._recording_seq:
-            self._stop_pattern_record()
+
+        # Only STOP recording allowed, as START conflicts with RECORD + PAD
+        if state and self._recording_seq is not None:
+            if self._libseq.isMidiRecord():
+                self._stop_pattern_record()
 
     def on_toggle_play(self):
         self._state_manager.send_cuia("TOGGLE_PLAY")
@@ -1189,25 +1188,28 @@ class PadMatrixHandler(ModeHandlerBase):
             return
 
         # If seqman is disabled, show playing status in row launchers
-        playing_rows = {seq %
-                        self._zynseq.col_in_bank for seq in self._playing_seqs}
+        playing_rows = {
+            seq % self._zynseq.col_in_bank for seq in self._playing_seqs}
         for row in range(5):
             state = row in playing_rows
             self._leds.led_state(BTN_SOFT_KEY_START + row, state)
 
     def _start_pattern_record(self, seq):
+        # Set pad's chain as active
         channel = self._libseq.getChannel(self._zynseq.bank, seq, 0)
         chain_id = self._chain_manager.get_chain_id_by_mixer_chan(channel)
         if chain_id is None:
             return
-
         if self._libseq.isMidiRecord():
             self._state_manager.send_cuia("TOGGLE_RECORD")
         self._chain_manager.set_active_chain_by_id(chain_id)
 
-        self._show_pattern_editor(seq)
+        # Open Pattern Editor
+        self._show_pattern_editor(seq, skip_arranger=True)
+
+        # Start playing & recording
         if self._libseq.getPlayState(self._zynseq.bank, seq) == zynseq.SEQ_STOPPED:
-            self._libseq.togglePlayState(self._zynseq.bank, seq)
+            self._state_manager.send_cuia("TOGGLE_PLAY")
         if not self._libseq.isMidiRecord():
             self._state_manager.send_cuia("TOGGLE_RECORD")
 
@@ -1293,7 +1295,7 @@ class PadMatrixHandler(ModeHandlerBase):
 
         # Also copy StepSeq instrument pages
         self._request_action("stepseq", "sync-sequences",
-                             src_scene, src_seq, dst_scene, dst_seq)
+            src_scene, src_seq, dst_scene, dst_seq)
 
 
 # --------------------------------------------------------------------------
@@ -1659,7 +1661,7 @@ class StepSeqHandler(ModeHandlerBase):
         self._is_arranger_mode = False
 
         # We need to receive clock though MIDI
-        # TODO: Changing clock source from user preference seems wrong!
+        # FIXME: Changing clock source from user preference seems wrong!
         self._state_manager.set_transport_clock_source(1)
 
         # Pads ordered for cursor sliding + note pads
@@ -1853,8 +1855,7 @@ class StepSeqHandler(ModeHandlerBase):
                 return True
 
             if note == BTN_PLAY:
-                self._libseq.togglePlayState(
-                    self._zynseq.bank, self._selected_seq)
+                self._libseq.togglePlayState(self._zynseq.bank, self._selected_seq)
 
             elif BTN_PAD_START <= note <= BTN_PAD_END:
                 self._pressed_pads[note] = time.time()
@@ -2004,12 +2005,12 @@ class StepSeqHandler(ModeHandlerBase):
             chain_id = self._get_chain_id_by_sequence(
                 self._zynseq.bank, self._selected_seq)
             chain = self._chain_manager.chains.get(chain_id)
-            if chain is not None and chain.zynmixer:
+            if chain is not None and chain.zynmixer_proc:
                 mixer_chan = chain.mixer_chan
-                level = chain.zynmixer.controllers_dict['level'].value
+                level = chain.zynmixer_proc.controllers_dict['level'].value
                 level = max(
-                    0, min(100, chain.zynmixer.controllers_dict['level'].value * 100 + delta))
-                chain.zynmixer.controllers_dict['level'].set_value(mixer_chan, level / 100)
+                    0, min(100, chain.zynmixer_proc.controllers_dict['level'].value * 100 + delta))
+                chain.zynmixer_proc.controllers_dict['level'].set_value(mixer_chan, level / 100)
 
     def update_seq_state(self, bank, seq, state=None, mode=None, group=None):
         self._is_playing = state != zynseq.SEQ_STOPPED
@@ -2064,8 +2065,7 @@ class StepSeqHandler(ModeHandlerBase):
         velocity = self._libseq.getNoteVelocity(step, note) + delta
         velocity = min(127, max(10, velocity))
         self._libseq.setNoteVelocity(step, note, velocity)
-        self._leds.led_on(self._pads[step], COLOR_RED,
-                          int((velocity * 6) / 127))
+        self._leds.led_on(self._pads[step], COLOR_RED, int((velocity * 6) / 127))
         self._play_step(step)
 
     def _update_step_stutter_count(self, step, delta):
@@ -2121,10 +2121,9 @@ class StepSeqHandler(ModeHandlerBase):
         if izmip == self._own_device_id or len(self._pressed_pads) == 0:
             return
 
-        # FIXME: if MIDI is playing, we need to ensure this note_on does come
-        # from a device (i.e the user pressed it!). Current FIX allows using only
-        # the APC itself
-        if izmip > 2:
+        # If MIDI is playing, we need to ensure this note_on does come
+        # from a device (i.e the user pressed it!).
+        if izmip >= self._state_manager.get_zmip_seq_index():
             return
 
         for pad in self._pressed_pads:

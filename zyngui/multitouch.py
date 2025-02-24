@@ -5,7 +5,7 @@
 #
 # Zynthian GUI Touchscreen Calibration Class
 #
-# Copyright (C) 2023 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2025 Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
 #
@@ -181,12 +181,11 @@ class MultiTouch(object):
     EVENT_FORMAT = str('llHHi')
     EVENT_SIZE = struct.calcsize(EVENT_FORMAT)
 
-    def __init__(self, device=None, invert_x_axis=False, invert_y_axis=False):
+    def __init__(self, invert_x_axis=False, invert_y_axis=False):
         """Instantiate the touch driver
 
-        Creates an instance of the driver attached to the first multitouch hardware discovered or using the specified device.
+        Creates an instance of the driver attached to the first multitouch hardware discovered.
 
-        device - Path to the device, e.g. /dev/input/event0 (optional)
         invert_x_axis - True to invert x axis (optional)
         invert_y_axis - True to invert y axis (optional)
         """
@@ -199,6 +198,7 @@ class MultiTouch(object):
         self.gesture_events = []  # List of events currently active as gestures
         self._g_pending = None  # Event that is pending multiple touch gesture start
         self._g_timeout = None  # Timer used to detect multiple touch gesture start
+        self.detect = True # True to detect multitouch on next touch event
 
         # Event callback functions - lists of TouchCallback objects
         self._on_motion = []
@@ -207,11 +207,27 @@ class MultiTouch(object):
         self._on_gesture = []
 
         self._f_device = None
-        if device:
-            devices = [device]
-        else:
-            devices = glob("/dev/input/event*")
-        for device in devices:
+
+        self.touches = [Touch(x) for x in range(10)]  # 10 touch slot objects
+        # Used to store evdev events before processing into touch events
+        self._evdev_event_queue = Queue()
+        # Current touch object being processed
+        self._current_touch = self.touches[0]
+
+        self.touch_count = 0  # Quantity of currently pressed slots
+        self.open_device()
+
+    def open_device(self):
+        """ Open the input device to allow multitouch driver to capture events.
+
+        event - tk touch event
+
+        Disable xinput for the touch device to avoid double events.
+        Start event processing thread.
+        Disable multitouch detection. (After one touch we know whether there is an input that supports multitouch)
+        """
+
+        for device in glob("/dev/input/event*"):
             try:
                 idev = InputDevice(device)
                 idev_caps = idev.capabilities()
@@ -225,34 +241,36 @@ class MultiTouch(object):
                             device_id = libinput.split("id=")[1].split()[0]
                             self.xinput("disable", device_id)
                             break
+                    self.device_name = idev.name
                     break
             except:
                 pass
-
-        self.touches = [Touch(x) for x in range(10)]  # 10 touch slot objects
-        # Used to store evdev events before processing into touch events
-        self._evdev_event_queue = Queue()
-        # Current touch object being processed
-        self._current_touch = self.touches[0]
-
-        self.touch_count = 0  # Quantity of currently pressed slots
+        self.detect = False
         if self._f_device:
             self.thread = Thread(target=self._run, name="Multitouch")
             self.thread.start()
 
     def _run(self):
-        """Background (thread) event process"""
+        """Event processing thread"""
+
         self._running = True
+        logging.info(f"Starting multitouch on '{self.device_name}'")
         while self._running:
-            r, w, x = select([self._f_device], [], [], 1)
-            if r and r[0]:
-                event = self._f_device.read(self.EVENT_SIZE)
-                (tv_sec, tv_usec, type, code, value) = struct.unpack(
-                    self.EVENT_FORMAT, event)
-                self._evdev_event_queue.put(TouchEvent(
-                    tv_sec + (tv_usec / 1000000), type, code, value))
-                if type == ecodes.EV_SYN:
-                    self._process_evdev_events()
+            try:
+                r, w, x = select([self._f_device], [], [], 1)
+                if r and r[0]:
+                    event = self._f_device.read(self.EVENT_SIZE)
+                    (tv_sec, tv_usec, type, code, value) = struct.unpack(
+                        self.EVENT_FORMAT, event)
+                    self._evdev_event_queue.put(TouchEvent(
+                        tv_sec + (tv_usec / 1000000), type, code, value))
+                    if type == ecodes.EV_SYN:
+                        self._process_evdev_events()
+            except OSError:
+                # Touchscreen driver may have been unloaded so stop thread and enable detection of multitouch (on next xinput touch event)
+                logging.info(f"Multitouch device {self.device_name} disconnected")
+                break
+        self.detect = True
 
     def __enter__(self):
         """Provide multitouch object for 'with' commands"""
@@ -264,6 +282,7 @@ class MultiTouch(object):
         self.stop()
 
     def stop(self):
+        """End event processing and close input device"""
         if self.thread:
             self._running = False
             self.thread.join()

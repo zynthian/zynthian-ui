@@ -62,28 +62,43 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
 
     def select_action(self, i, t='S'):
         if t == 'S':
+            # Allow animation
+            self.icon_canvas.grid_remove()
+            self.loading_canvas.grid(rowspan=1)
             self.zyngui.state_manager.start_busy("set preset")
+            # Set preset
             self.zyngui.get_current_processor().set_preset(i)
             self.zyngui.state_manager.end_busy("set preset")
             self.zyngui.purge_screen_history("bank")
+            # Stop animation and restore icon canvas
+            self.loading_canvas.grid_remove()
+            self.icon_canvas.grid()
+            # Close
             self.zyngui.replace_screen("control")
 
     def show_preset_options(self):
         options = {}
         engine = self.processor.engine
-        preset = copy.deepcopy(self.list_data[self.index])
-        if preset[2][0] == "❤":
-            preset[2] = preset[2][1:]
-        preset_name = preset[2]
-        if self.processor.engine.is_preset_fav(preset):
-            options["\u2612 Favourite"] = [preset, ["Remove from favorites list", "favorite_remove.png"]]
-        else:
-            options["\u2610 Favourite"] = [preset, ["Add to favorites list", "favorite_add.png"]]
-        if engine.is_preset_user(preset):
-            if hasattr(engine, "rename_preset"):
-                options["Rename"] = [preset, ["Rename preset", "rename.png"]]
-            if hasattr(engine, "delete_preset"):
-                options["Delete"] = [preset, ["Delete preset", "file_delete.png"]]
+        try:
+            preset = copy.deepcopy(self.list_data[self.index])
+            if preset[2][0] == "❤":
+                preset[2] = preset[2][1:]
+            preset_name = preset[2]
+            title = f"Preset: {preset_name}"
+        except:
+            preset = None
+            title = "Preset Options"
+            pass
+        if preset:
+            if self.processor.engine.is_preset_fav(preset):
+                options["\u2612 Favourite"] = [preset, ["Remove from favorites list", "favorite_remove.png"]]
+            else:
+                options["\u2610 Favourite"] = [preset, ["Add to favorites list", "favorite_add.png"]]
+            if engine.is_preset_user(preset):
+                if hasattr(engine, "rename_preset"):
+                    options["Rename"] = [preset, ["Rename preset", "rename.png"]]
+                if hasattr(engine, "delete_preset"):
+                    options["Delete"] = [preset, ["Delete preset", "file_delete.png"]]
         global_options = {}
         if hasattr(engine, "save_preset"):
             global_options["Save new preset"] = [True, ["Save as new preset", "file_save.png"]]
@@ -92,8 +107,7 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
         if global_options:
             options["Global"] = None
             options.update(global_options)
-        self.zyngui.screens['option'].config("Preset: {}".format(
-            preset_name), options, self.preset_options_cb)
+        self.zyngui.screens['option'].config(title, options, self.preset_options_cb)
         self.zyngui.show_screen('option')
 
     def show_menu(self):

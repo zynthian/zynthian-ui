@@ -30,13 +30,9 @@ from bisect import bisect
 from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_signal_manager import zynsigman
 
-from .zynthian_ctrldev_base import (
-    zynthian_ctrldev_zynmixer
-)
-from .zynthian_ctrldev_base_extended import (
-    CONST, KnobSpeedControl, IntervalTimer, ButtonTimer
-)
-from .zynthian_ctrldev_base_ui import ModeHandlerBase
+from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynmixer
+from zyngine.ctrldev.zynthian_ctrldev_base_extended import CONST, KnobSpeedControl, IntervalTimer, ButtonTimer
+from zyngine.ctrldev.zynthian_ctrldev_base_ui import ModeHandlerBase
 
 
 # NOTE: some of these constants are taken from:
@@ -660,7 +656,7 @@ class MixerHandler(ModeHandlerBase):
             def set_value(c, v): return self._zynmixer.set_mute(c, v, True)
         elif type == "solo":
             value = ccval < 64
-            def set_value(c, v): return self._zynmixer.set_solo(c, v, True)
+            def set_value(c, v): return chain.set_solo(v)
         elif type == "select":
             return self._chain_manager.set_active_chain_by_id(chain.chain_id)
         else:

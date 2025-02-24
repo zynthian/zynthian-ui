@@ -4,6 +4,7 @@ __all__ = [
     "zynthian_lv2",
     "zynthian_engine",
     "zynthian_engine_audio_mixer",
+    "zynthian_engine_sfz",
     "zynthian_engine_zynaddsubfx",
     "zynthian_engine_linuxsampler",
     "zynthian_engine_fluidsynth",
@@ -27,6 +28,7 @@ from zyngine.zynthian_controller import *
 from zyngine.zynthian_lv2 import *
 from zyngine.zynthian_engine import *
 from zyngine.zynthian_engine_audio_mixer import *
+from zyngine.zynthian_engine_sfz import *
 from zyngine.zynthian_engine_zynaddsubfx import *
 from zyngine.zynthian_engine_linuxsampler import *
 from zyngine.zynthian_engine_fluidsynth import *

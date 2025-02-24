@@ -217,7 +217,7 @@ class ButtonTimer(Thread):
 
 
 # --------------------------------------------------------------------------
-#  Helper class to handle knobs' speed
+# Helper class to handle knobs' speed
 # --------------------------------------------------------------------------
 class KnobSpeedControl:
     def __init__(self, steps_normal=3, steps_shifted=8):

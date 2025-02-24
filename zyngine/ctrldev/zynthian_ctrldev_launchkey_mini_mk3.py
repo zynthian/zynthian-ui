@@ -5,7 +5,7 @@
 #
 # Zynthian Control Device Driver for "Novation Launchkey Mini MK3"
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
@@ -39,6 +39,8 @@ from zynlibs.zynseq import zynseq
 class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer):
 
     dev_ids = ["Launchkey Mini MK3 IN 2"]
+    driver_name = "Launchkey Mini Mk3"
+    driver_description = "Interface Novation Launchkey Mini Mk3 with zynpad and zynmixer"
 
     PAD_COLOURS = [71, 104, 76, 51, 104, 41,
                    64, 12, 11, 71, 4, 67, 42, 9, 105, 15]
@@ -120,16 +122,18 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         elif evtype == 0xB:
             ccnum = ev[1] & 0x7F
             ccval = ev[2] & 0x7F
-            if ccnum == 0:
+            if ccnum == 0x6C:
+                # SHIFT
+                self.shift = ccval != 0
+            elif ccnum == 0 or ccval == 0:
                 return True
-            elif 20 < ccnum < 28:
+            elif (self.shift and 20 < ccnum < 29) or (20 < ccnum < 25):
                 chain = self.chain_manager.get_chain_by_position(
                     ccnum - 21, midi=False)
-                if chain and chain.zynmixer and chain.chain_id:
-                    chain.zynmixer.controllers_dict['level'].set_value(ccval / 127.0)
-            elif ccnum == 28:
-                chain = self.chain_manager.chains[0]
-                chain.zynmixer.controllers_dict['level'].set_value(ccval / 127.0)
+                if chain and chain.mixer_chan is not None:
+                    self.zynmixer.set_level(chain.mixer_chan, ccval / 127.0)
+            elif 24 < ccnum < 29:
+                self.state_manager.send_cuia("ZYNPOT_ABS", [ccnum - 25, ccval/127])
             elif ccnum == 0x66:
                 # TRACK RIGHT
                 self.state_manager.send_cuia("ARROW_RIGHT")
@@ -142,21 +146,18 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             elif ccnum == 0x69:
                 # DOWN
                 self.state_manager.send_cuia("ARROW_DOWN")
-            elif ccnum == 0x6C:
-                # SHIFT
-                self.shift = ccval != 0
             elif ccnum == 0x73:
                 # PLAY
                 if self.shift:
                     self.state_manager.send_cuia("TOGGLE_MIDI_PLAY")
                 else:
-                    self.state_manager.send_cuia("TOGGLE_AUDIO_PLAY")
+                    self.state_manager.send_cuia("TOGGLE_PLAY")
             elif ccnum == 0x75:
                 # RECORD
                 if self.shift:
                     self.state_manager.send_cuia("TOGGLE_MIDI_RECORD")
                 else:
-                    self.state_manager.send_cuia("TOGGLE_AUDIO_RECORD")
+                    self.state_manager.send_cuia("TOGGLE_RECORD")
         elif evtype == 0xC:
             val1 = ev[1] & 0x7F
             self.zynseq.select_bank(val1 + 1)

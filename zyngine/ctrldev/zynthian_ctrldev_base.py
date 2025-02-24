@@ -48,6 +48,9 @@ class zynthian_ctrldev_base:
     # True if input device must be unrouted from chains when driver is loaded
     unroute_from_chains = True
 
+    driver_name = None
+    driver_description = None
+
     @classmethod
     def get_autoload_flag(cls):
         return True
@@ -60,6 +63,19 @@ class zynthian_ctrldev_base:
         self.idev = idev_in
         # Slot index where the output device (feedback), if any, is connected, starting from 1 (0 = None)
         self.idev_out = idev_out
+
+    # Returns the driver name
+    @classmethod
+    def get_driver_name(cls):
+        if cls.driver_name is None:
+            return cls.__name__[17:]
+        else:
+            return cls.driver_name
+
+    # Returns the driver description
+    @classmethod
+    def get_driver_description(cls):
+        return cls.driver_description
 
     # Send SysEx universal inquiry.
     # It's answered by some devices with a SysEx message.

@@ -78,7 +78,7 @@ class zynthian_controller:
         self.nudge_factor = None
         self.nudge_factor_fine = None  # Fine factor to scale
         self.labels = None  # List of discrete value labels
-        self.ticks = None  # List of discrete value labels
+        self.ticks = None  # List of discrete value ticks
         self.range_reversed = False  # Flag if ticks order is reversed
         self.is_toggle = False  # True if control is Boolean toggle
         self.is_integer = True  # True if control is Integer
@@ -88,7 +88,6 @@ class zynthian_controller:
         self.path_dir_names = None  # List of directory names to look for files
         self.not_on_gui = False  # True to hint to GUI to show control
         self.display_priority = float("inf")  # Hint of order in which to display control (higher comes first)
-
         self.is_dirty = True  # True if control value changed since last UI update
 
         # Parameters to send values if engine-specific send method not available
@@ -258,10 +257,7 @@ class zynthian_controller:
         self.value_range = self.value_max - self.value_min
 
         if self.value_mid is None:
-            if self.is_integer:
-                self.value_mid = self.value_min + int(self.value_range / 2)
-            else:
-                self.value_mid = self.value_min + self.value_range / 2
+            self.value_mid = self.value_min + self.value_range / 2
 
         self._set_value(self.value)
         if self.value_default is None:

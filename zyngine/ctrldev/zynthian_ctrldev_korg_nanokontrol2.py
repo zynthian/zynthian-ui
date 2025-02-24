@@ -203,7 +203,7 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                 self.idev_out, self.midi_chan, self.transport_play_ccnum, 0)
 
     # Update LED status for a single strip
-    def update_mixer_strip(self, chan, symbol, value):
+    def update_mixer_strip(self, chan, mixbus, symbol, value):
         if self.idev_out is None:
             return
         chain_id = self.chain_manager.get_chain_id_by_mixer_chan(chan)
@@ -271,9 +271,9 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
         for i in range(0, 8):
             chain = self.chain_manager.get_chain_by_index(col0 + i)
 
-            if chain and chain.zynmixer:
-                mute = chain.zynmixer.controllers_dict['mute'].value * 0x7F
-                solo = chain.zynmixer.controllers_dict['solo'].value * 0x7F
+            if chain and chain.zynmixer_proc:
+                mute = chain.zynmixer_proc.controllers_dict['mute'].value * 0x7F
+                solo = chain.zynmixer_proc.controllers_dict['solo'].value * 0x7F
             else:
                 chain = None
                 mute = 0
@@ -285,8 +285,8 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                 else:
                     rec = 0
             else:
-                if chain and chain.zynmixer is not None:
-                    rec = chain.zynmixer.controllers_dict['record'].value * 0x7F
+                if chain and chain.zynmixer_proc is not None:
+                    rec = chain.zynmixer_proc.controllers_dict['record'].value * 0x7F
                 else:
                     rec = 0
 
@@ -412,16 +412,13 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                     else:
                         zynmixer = self.zynmixer
                         mixer_chan = self.get_mixer_chan_from_device_col(col)
-                    if mixer_chan is not None:
-                        if zynmixer.get_solo(mixer_chan):
-                            val = 0
-                        else:
-                            val = 1
-                        zynmixer.set_solo(mixer_chan, val, True)
+                    chain = self.chain_manager.get_chain_by_mixer_chan(mixer_chan)
+                    if chain is not None:
+                        chain.toggle_solo()
                         # Send LED feedback
                         if self.idev_out is not None:
                             lib_zyncore.dev_send_ccontrol_change(
-                                self.idev_out, self.midi_chan, ccnum, val * 0x7F)
+                                self.idev_out, self.midi_chan, ccnum, chain.is_solo() * 0x7F)
                     elif self.idev_out is not None:
                         # If not associated mixer channel, turn-off the led
                         lib_zyncore.dev_send_ccontrol_change(

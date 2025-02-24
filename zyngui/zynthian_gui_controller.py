@@ -56,6 +56,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 	def __init__(self, index, parent, zctrl, hidden=False, selcounter=False, graph=zynthian_gui_config.ctrl_graph, orientation=None):
 		self.zyngui = zynthian_gui_config.zyngui
 		self.zctrl = None
+		self.pickup = False
 
 		self.step = 0
 		self.selector_counter = selcounter
@@ -95,6 +96,10 @@ class zynthian_gui_controller(tkinter.Canvas):
 				self.graph = self.create_arc(0, 0, 1, 1,
 					style=tkinter.ARC,
 					outline=self.color_graph,
+					tags='gui')
+				self.graph_pickup = self.create_arc(0, 0, 1, 1,
+					style=tkinter.ARC,
+					outline=zynthian_gui_config.color_ctrl_tx_off,
 					tags='gui')
 				self.plot_value_func = self.plot_value_arc
 				self.on_size_graph = self.on_size_arc
@@ -230,6 +235,8 @@ class zynthian_gui_controller(tkinter.Canvas):
 			y2 = y0 + radius
 			self.coords(self.graph, x1 + arc_width, y1 + arc_width, x2 - arc_width, y2 - arc_width)
 			self.itemconfigure(self.graph, width=arc_width)
+			self.coords(self.graph_pickup, x1 + arc_width, y1 + arc_width, x2 - arc_width, y2 - arc_width)
+			self.itemconfigure(self.graph_pickup, width=arc_width)
 		self.coords(self.midi_bind, x0, hh - 2)
 
 	# Handle resize of rectangle graph
@@ -277,12 +284,14 @@ class zynthian_gui_controller(tkinter.Canvas):
 			self.calculate_plot_values()
 			self.plot_value()
 			self.set_drag_scale()
+			self.pickup = True
 			# TODO: calculate_value_font_size, calculate_plot_values, set_drag_scale always called together - optimse to single function?
 			self.itemconfig('gui', state=tkinter.NORMAL)
 			if self.selector_counter or self.zctrl.is_path:
 				self.itemconfig(self.graph, state=tkinter.HIDDEN)
 		else:
 			self.itemconfig('gui', state=tkinter.HIDDEN)
+		self.itemconfig(self.graph_pickup, state=tkinter.HIDDEN)
 
 	def hide(self):
 		self.shown = False
@@ -620,6 +629,20 @@ class zynthian_gui_controller(tkinter.Canvas):
 				lib_zyncore.setup_behaviour_zynpot(self.index, self.step)
 			except Exception as err:
 				logging.error(f"{err}")
+
+	def zynpot_abs(self, val):
+		if self.zctrl:
+			value = self.zctrl.value_min + val * (self.zctrl.value_range)
+			if self.pickup:
+				if abs(value - self.zctrl.value) < (self.zctrl.value_max - self.zctrl.value_min) * 0.01:
+					self.pickup = False
+					self.itemconfig(self.graph_pickup, state=tkinter.HIDDEN)
+				else:
+					self.refresh_plot_value = True
+					self.itemconfig(self.graph_pickup, start=240 - 300 * val, extent=12)
+					self.itemconfig(self.graph_pickup, state=tkinter.NORMAL)
+			else:
+				self.zctrl.set_value(self.zctrl.value_min + val * self.zctrl.value_range)
 
 	def zynpot_cb(self, dval):
 		if self.zctrl:

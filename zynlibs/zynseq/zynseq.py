@@ -164,7 +164,7 @@ class zynseq(zynthian_engine):
 
     # Function to select a bank for edit / control
     # bank: Index of bank
-    # force: True to fore bank selection even if same as current bank
+    # force: True to force bank selection even if same as current bank
     def select_bank(self, bank=None, force=False):
         if self.changing_bank:
             return

@@ -29,52 +29,14 @@ import shutil
 import logging
 from subprocess import check_output
 
-from . import zynthian_engine
-from zyngui import zynthian_gui_config
+from . import zynthian_engine_sfz
 
 # ------------------------------------------------------------------------------
 # Sfizz Engine Class
 # ------------------------------------------------------------------------------
 
 
-class zynthian_engine_sfizz(zynthian_engine):
-
-    # ---------------------------------------------------------------------------
-    # Controllers & Screens
-    # ---------------------------------------------------------------------------
-
-    # SFZ Default MIDI Controllers (modulators)
-    _ctrls = [
-        ['modulation wheel', 1, 0],
-        ['volume', 7, 96],
-        ['pan', 10, 64],
-        ['expression', 11, 127],
-
-        ['sustain', 64, 'off', ['off', 'on']],
-        ['sostenuto', 66, 'off', ['off', 'on']],
-        ['legato', 68, 'off', ['off', 'on']],
-        ['breath', 2, 127],
-
-        ['portamento on/off', 65, 'off', ['off', 'on']],
-        ['portamento time-coarse', 5, 0],
-        ['portamento time-fine', 37, 0],
-
-        # ['expr. pedal', 4, 127],
-        ['filter cutoff', 74, 64],
-        ['filter resonance', 71, 64],
-        ['env. attack', {'value': 64, 'midi_cc': 73, 'envelope': 'attack'}],
-        ['env. release', {'value': 64, 'midi_cc': 72, 'envelope': 'release'}]
-    ]
-
-    # Controller Screens
-    _ctrl_screens = [
-        ['main', ['volume', 'pan', 'modulation wheel', 'expression']],
-        ['pedals', ['legato', 'breath', 'sostenuto', 'sustain']],
-        ['portamento', ['portamento on/off',
-                        'portamento time-coarse', 'portamento time-fine']],
-        ['envelope/filter', ['env. attack', 'env. release',
-                             'filter cutoff', 'filter resonance']]
-    ]
+class zynthian_engine_sfizz(zynthian_engine_sfz):
 
     # ---------------------------------------------------------------------------
     # Config variables
@@ -82,8 +44,8 @@ class zynthian_engine_sfizz(zynthian_engine):
 
     preset_fexts = ["sfz"]
     root_bank_dirs = [
-        ('User', zynthian_engine.my_data_dir + "/soundfonts/sfz"),
-        ('System', zynthian_engine.data_dir + "/soundfonts/sfz")
+        ('User', zynthian_engine_sfz.my_data_dir + "/soundfonts/sfz"),
+        ('System', zynthian_engine_sfz.data_dir + "/soundfonts/sfz")
     ]
 
     # ---------------------------------------------------------------------------
@@ -183,10 +145,14 @@ class zynthian_engine_sfizz(zynthian_engine):
             self.sfzpath = preset[0]
             res = self.proc_cmd(f"load_instrument \"{self.sfzpath}\"")
             logging.debug(res)
-            return "Instrument loaded" in res
-            # processor.send_ctrl_midi_cc()
-        except:
-            return False
+            if "Instrument loaded" in res:
+                self.load_sfz_config(self.sfzpath)
+                processor.refresh_controllers()
+                # processor.send_ctrl_midi_cc()
+                return True
+        except Exception as e:
+            logging.error(e)
+        return False
 
     def cmp_presets(self, preset1, preset2):
         try:
@@ -196,10 +162,6 @@ class zynthian_engine_sfizz(zynthian_engine):
                 return False
         except:
             return False
-
-    # ---------------------------------------------------------------------------
-    # Controllers Management
-    # ---------------------------------------------------------------------------
 
     # ---------------------------------------------------------------------------
     # API methods

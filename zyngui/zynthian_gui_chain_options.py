@@ -81,7 +81,7 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
             self.list_data.append((self.clean_midi_learn, None, "Clean Chain MIDI Learn"))
             #TODO: Put this in zctrl Control options menu, e.g. Unlearn all controls for whole chain
 
-        if self.chain_id != 0 and self.chain.zynmixer and self.chain.zynmixer.eng_code!="MR":
+        if self.chain_id != 0 and self.chain.zynmixer_proc and self.chain.zynmixer_proc.eng_code!="MR":
             self.list_data.append((self.chain_audio_capture, None, "Audio In",
                                   ["Manage audio capture sources.", "audio_input.png"]))
 

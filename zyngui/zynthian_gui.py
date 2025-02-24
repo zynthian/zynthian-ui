@@ -1322,6 +1322,14 @@ class zynthian_gui:
         except Exception as e:
             logging.error(e)
 
+    def cuia_zynpot_abs(self, params=None):
+        try:
+            self.get_current_screen_obj().zynpot_abs(*params)
+        except AttributeError:
+            pass
+        except Exception as e:
+            logging.error(e)
+
     def cuia_zynswitch(self, params=None):
         try:
             i = params[0]
@@ -1525,6 +1533,9 @@ class zynthian_gui:
                             self.replace_screen('bank')
                     elif len(bank_list) > 0 and bank_list[0][0] != '':
                         self.show_screen('bank', hmode=zynthian_gui.SCREEN_HMODE_ADD)
+                    else:
+                        self.show_screen('preset', hmode=zynthian_gui.SCREEN_HMODE_NONE)
+                        self.screens['preset'].show_preset_options()
 
     cuia_preset = cuia_bank_preset
 
@@ -2134,7 +2145,9 @@ class zynthian_gui:
         self.show_screen("file_selector")
 
     def cb_set_active_chain(self, active_chain):
-        self.zynswitches_midi_setup(self.chain_manager.get_active_chain().midi_chan)
+        active_chain = self.chain_manager.get_active_chain()
+        if active_chain:
+            self.zynswitches_midi_setup(active_chain.midi_chan)
 
     # ------------------------------------------------------------------
     # Zynpot Thread
@@ -2212,6 +2225,9 @@ class zynthian_gui:
             self.ignore_next_touch_release = True
             return "break"
         self.state_manager.set_event_flag()
+        if self.multitouch.detect:
+            self.multitouch.open_device()
+            return "break"
 
     def cb_touch_release(self, event):
         # logging.debug("CB EVENT TOUCH RELEASE!!!")

@@ -197,7 +197,7 @@ class zynthian_gui_engine(zynthian_gui_selector):
     def update_layout(self):
         super().update_layout()
         if self.info_canvas:
-            self.info_canvas.configure(height=int(0.5 * self.height))
+            self.info_canvas.configure(height=int(0.6 * self.height))
             # self.description_label.configure(height=int(0.35 * self.height))
 
     def get_info(self, eng_code=None):

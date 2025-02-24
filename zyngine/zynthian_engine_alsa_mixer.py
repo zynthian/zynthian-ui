@@ -658,30 +658,24 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
             "Digital_1": {"name": f"Output 2 level", "labels":  output_level_labels, "ticks": output_level_ticks},
             "Digital_0_switch": {"name": f"Output 1 mute"},
             "Digital_1_switch": {"name": f"Output 2 mute"},
-            "ADC_0": {"name": f"Input 1 level"},
-            "ADC_1": {"name": f"Input 2 level"},
-            "PGA_Gain_Left": {"name": f"Input 1 Gain", "graph_path": ["PGA Gain Left", 0, 0, "enum", "input_0"],
-                              "group_symbol": "input", 'group_name': "Input levels"},
-            "PGA_Gain_Right": {"name": f"Input 2 Gain", "graph_path": ["PGA Gain Right", 0, 0, "enum", "input_1"],
+            "ADC_0": {"name": f"Input 1 Level"},
+            "ADC_1": {"name": f"Input 2 Level"},
+            "PGA_Gain_Left": {"name": f"Input 1 Gain", "group_symbol": "input", 'group_name': "Input levels"},
+            "PGA_Gain_Right": {"name": f"Input 2 Gain", "group_symbol": "input", 'group_name': "Input levels"},
+            "ADC_Left_Input": {"name": f"Input 1 Mode", "labels": ["Disabled", "Unbalanced Mono TS",
+                               "Unbalanced Mono TR", "Stereo TRS to Mono", "Balanced Mono TRS"],
                                "group_symbol": "input", 'group_name': "Input levels"},
-            "ADC_Left_Input": {"name": f"Input 1 Mode",
-                               "labels": ["Disabled", "Unbalanced Mono TS", "Unbalanced Mono TR", "Stereo TRS to Mono",
-                                          "Balanced Mono TRS"], "graph_path": ["ADC", 0, 0, "enum", "input_0"],
-                               "group_symbol": "input", 'group_name': "Input levels"},
-            "ADC_Right_Input": {"name": f"Input 2 Mode",
-                                "labels": ["Disabled", "Unbalanced Mono TS", "Unbalanced Mono TR", "Stereo TRS to Mono",
-                                           "Balanced Mono TRS"], "graph_path": ["ADC", 0, 1, "enum", "input_1"],
+            "ADC_Right_Input": {"name": f"Input 2 Mode", "labels": ["Disabled", "Unbalanced Mono TS",
+                                "Unbalanced Mono TR", "Stereo TRS to Mono", "Balanced Mono TRS"], 
                                 "group_symbol": "input", 'group_name': "Input levels"}
         }
 
         # ZynADAC fix
         if self.soundcard_name == "ZynADAC":
-            self.device_overrides["sndrpihifiberry"]["ADC_Left_Input"]["labels"] = ["Disabled", "Unbalanced Mono TR",
-                                                                            "Unbalanced Mono TS", "Stereo TRS to Mono",
-                                                                            "Balanced Mono TRS"]
-            self.device_overrides["sndrpihifiberry"]["ADC_Right_Input"]["labels"] = ["Disabled", "Unbalanced Mono TR",
-                                                                            "Unbalanced Mono TS", "Stereo TRS to Mono",
-                                                                            "Balanced Mono TRS"]
+            self.device_overrides["sndrpihifiberry"]["ADC_Left_Input"]["labels"] =\
+                ["Disabled", "Unbalanced Mono TR", "Unbalanced Mono TS", "Stereo TRS to Mono", "Balanced Mono TRS"]
+            self.device_overrides["sndrpihifiberry"]["ADC_Right_Input"]["labels"] = \
+                ["Disabled", "Unbalanced Mono TR", "Unbalanced Mono TS", "Stereo TRS to Mono", "Balanced Mono TRS"]
 
     def set_US16x08_overrides(self):
         # Tascam US-16x08
@@ -698,7 +692,7 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
             overrides[f"Compressor_{i}"] = {"name": f"Compressor {i + 1} gain", "group_symbol": f"comp{i}", "group_name": f"Compressor {i + 1}", "labels": [f"{j} dB" for j in range(21)], "display_priority": 65}
             overrides[f"EQ_{i}"] = {"name": f"EQ {i + 1} disable", "group_symbol": f"eq{i}", "group_name": f"EQ {i + 1}", "labels": ["enabled", "disabled"], "display_priority": 50}
             for j, param in enumerate(["Low", "MidLow", "MidHigh", "High"]):
-                overrides[f"EQ_{param}_{i}"] = {"name": f"EQ {i + 1} {param.lower()}", "group_symbol": f"eq{i}", "group_name": f"EQ {i + 1}", "labels": [f"{j} dB" for j in range(-12, 13)], "display_priority":  + 10 + j * 10}
+                overrides[f"EQ_{param}_{i}"] = {"name": f"EQ {i + 1} {param.lower()}", "group_symbol": f"eq{i}", "group_name": f"EQ {i + 1}", "labels": [f"{j} dB" for j in range(-12, 13)], "display_priority": 10 + j * 10}
             overrides[f"EQ_High_Frequency_{i}"] = {"name": f"EQ {i + 1} high freq", "group_symbol": f"eq{i}", "group_name": f"EQ {i + 1}", "labels": [f"{j:.1f} kHz" for j in numpy.geomspace(1.7, 18, num=32)], "display_priority": 41}
             overrides[f"EQ_MidHigh_Frequency_{i}"] = {"name": f"EQ {i + 1} midhigh freq", "group_symbol": f"eq{i}", "group_name": f"EQ {i + 1}", "labels": [f"{int(j)} Hz" for j in numpy.geomspace(32, 18000, num=64)], "display_priority": 32}
             overrides[f"EQ_MidHigh_Q_{i}"] = {"name": f"EQ {i + 1} midhigh Q", "group_symbol": f"eq{i}", "group_name": f"EQ {i + 1}", "labels": ["0.25", "0.5", "1", "2", "4", "8", "16"], "display_priority": 31}

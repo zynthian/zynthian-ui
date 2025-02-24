@@ -45,9 +45,6 @@ from zyngui import zynthian_gui_config
 
 MAX_NUM_MIDI_CHANS = 16
 
-# TODO: Get this from zynmixer
-MAX_NUM_MIXER_CHANS = 16
-
 # Get ZYnMidiRouter parameters and limits from lib_zyncore
 NUM_ZMOP_CHAINS = lib_zyncore.zmop_get_num_chains()
 MAX_NUM_ZMOPS = NUM_ZMOP_CHAINS - 1
@@ -340,10 +337,10 @@ class zynthian_chain_manager:
                         lib_zyncore.ui_send_ccontrol_change(mc, 120, 0)
 
             update_fxreturns = False
-            if chain.zynmixer:
-                chain.zynmixer.zynmixer.set_mute(chain.zynmixer.mixer_chan, True) # Mute chain whilst removing
+            if chain.zynmixer_proc:
+                chain.zynmixer_proc.zynmixer.set_mute(chain.zynmixer_proc.mixer_chan, True) # Mute chain whilst removing
                 sleep(self.state_manager.jack_period)
-                if chain.zynmixer.eng_code == "MR" and chain.chain_id:
+                if chain.zynmixer_proc.eng_code == "MR" and chain.chain_id:
                     update_fxreturns = True
 
             for processor in chain.get_processors():
@@ -468,11 +465,10 @@ class zynthian_chain_manager:
     def get_chain_id_by_mixer_chan(self, chan):
         """Get a chain by the mixer channel"""
 
-        #TODO: This needs refactoring
-        for chain in self.chains.values():
-            for slot in chain.audio_slots:
-                if slot[0].eng_code == "AM":
-                    return slot[0].mixer_chan
+        #TODO: This needs refactoring to handle mixbus
+        for chain_id, chain in self.chains.items():
+            if chain.mixer_proc and chain.mixer_proc.mixer_chan == chan:
+                return chain_id
         return None
 
     # ------------------------------------------------------------------------
@@ -831,7 +827,7 @@ class zynthian_chain_manager:
             return processor
 
         if eng_code in ("MI", "MR"):
-            chain.zynmixer = processor
+            chain.zynmixer_proc = processor
             # Add FX sends to existing chains
             self.refresh_fx_send()
 

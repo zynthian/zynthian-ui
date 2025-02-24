@@ -88,7 +88,7 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                     'is_toggle': True,
                     'value_max': 1,
                     'value_default': 0,
-                    'value': 0,
+                    'value': processor.chain.is_solo(),
                     'processor': processor,
                     'labels': ['off', 'on']
                 }),
@@ -176,7 +176,6 @@ class zynthian_engine_audio_mixer(zynthian_engine):
                         zynautoconnect.solo(processor.chain_id, 0)
                 else:
                     zynautoconnect.solo(zctrl.processor.chain_id, zctrl.value)
-                zynautoconnect.request_audio_connect(True)
                 zynsigman.send(zynsigman.S_AUDIO_MIXER, SS_ZYNMIXER_SET_VALUE,
                     mixbus=zctrl.processor.eng_code=="MR",
                     chan=zctrl.processor.mixer_chan,

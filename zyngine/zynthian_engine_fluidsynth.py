@@ -230,14 +230,11 @@ class zynthian_engine_fluidsynth(zynthian_engine):
             return False
         try:
             yml = fh.read()
-            logging.info(
-                f"Loading yaml config file for soundfont '{bank_fpath}' =>\n{yml}")
-            self.bank_config[bank_fpath] = yaml.load(
-                yml, Loader=yaml.SafeLoader)
+            logging.info(f"Loading yaml config file for soundfont '{bank_fpath}' =>\n{yml}")
+            self.bank_config[bank_fpath] = yaml.load(yml, Loader=yaml.SafeLoader)
             return True
         except Exception as e:
-            logging.error(
-                f"Bad yaml config file for soundfont '{bank_fpath}' => {e}")
+            logging.error(f"Bad yaml config file for soundfont '{bank_fpath}' => {e}")
             return False
 
     # ---------------------------------------------------------------------------
@@ -307,7 +304,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
         except:
             ctrl_items = None
         if ctrl_items:
-            logging.debug("Generating extra controllers config ...")
+            logging.debug("Generating custom controllers config ...")
             try:
                 c = 1
                 ctrl_set = []
@@ -326,17 +323,17 @@ class zynthian_engine_fluidsynth(zynthian_engine):
                         ctrl_set.append(name)
                         if len(ctrl_set) >= 4:
                             logging.debug("ADDING CONTROLLER SCREEN #"+str(c))
-                            self._ctrl_screens.append(['Extended#'+str(c), ctrl_set])
+                            self._ctrl_screens.append(['custom#'+str(c), ctrl_set])
                             ctrl_set = []
                             c = c + 1
                     except Exception as err:
-                        logging.error("Generating extra controller screens: %s" % err)
+                        logging.error("Generating custom controller screens: %s" % err)
                 if len(ctrl_set) >= 1:
-                    logging.debug("ADDING EXTRA CONTROLLER SCREEN #"+str(c))
-                    self._ctrl_screens.append(['Extended#' + str(c), ctrl_set])
+                    logging.debug("ADDING CUSTOM CONTROLLER SCREEN #"+str(c))
+                    self._ctrl_screens.append(['custom#' + str(c), ctrl_set])
                 zctrls.update(zctrls_extra)
             except Exception as err:
-                logging.error("Generating extra controllers config: %s" % err)
+                logging.error("Generating custom controllers config: %s" % err)
         return zctrls
 
     def send_controller_value(self, zctrl):

@@ -338,27 +338,39 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     title = f"{ZMIP_MODE_MULTI} Multitimbral mode"
                     mode_info += f"{title}. Don't translate MIDI channel. Send to chains matching device's MIDI channel."
                     options[title] = ["ACTI", [mode_info, None]]
-                options["Configuration"] = None
+
+                # Reload drivers => Hot reload the driver classes!
+                #self.zyngui.state_manager.ctrldev_manager.update_available_drivers(reload_modules=False)
+                # Get driver list for the device (dev_id) connected to this slot (idev)
                 dev_id = zynautoconnect.get_midi_in_devid(idev)
-                if dev_id in self.zyngui.state_manager.ctrldev_manager.available_drivers:
-                    # TODO: Offer list of profiles
-                    if idev in self.zyngui.state_manager.ctrldev_manager.drivers:
-                        options[f"\u2612 {ZMIP_MODE_CONTROLLER} Device driver"] = ["UNLOAD_DRIVER",
-                                                                                   ["Driver enabled. A specific driver manage the device, integrating UI functions and customized workflow.", None]]
-                    else:
-                        options[f"\u2610 {ZMIP_MODE_CONTROLLER} Device driver"] = ["LOAD_DRIVER",
-                                                                                   ["Driver disabled. The device is used as MIDI input for chains and MIDI-learning.", None]]
+                available_drivers = self.zyngui.state_manager.ctrldev_manager.available_drivers
+                loaded_drivers = self.zyngui.state_manager.ctrldev_manager.drivers
+                if dev_id not in available_drivers and idev < lib_zyncore.zmip_get_seq_index():
+                    dev_id = "*"
+                if dev_id in available_drivers:
+                    options["Controller Drivers"] = None
+                    for i, driver_class in enumerate(available_drivers[dev_id]):
+                        driver_name = driver_class.get_driver_name()
+                        driver_description = driver_class.get_driver_description()
+                        if not driver_description:
+                            driver_description = "A specific controller driver integrating UI functions and customized workflow."
+                        if idev in loaded_drivers and isinstance(loaded_drivers[idev], driver_class):
+                            options[f"\u2612 {ZMIP_MODE_CONTROLLER} {driver_name}"] = [["UNLOAD_DRIVER", driver_class.__module__], [driver_description, None]]
+                        else:
+                            options[f"\u2610 {ZMIP_MODE_CONTROLLER} {driver_name}"] = [["LOAD_DRIVER", driver_class.__module__], [driver_description, None]]
+
                 port = zynautoconnect.devices_in[idev]
+
             else:
                 port = zynautoconnect.devices_out[idev]
+
+            options["Configuration"] = None
             if self.list_data[self.index][0].startswith("AUBIO:") or self.list_data[self.index][0].endswith("aubionotes"):
-                options["Select aubio inputs"] = ["AUBIO_INPUTS",
-                                                  ["Select which audio inputs are connected to aubionotes Audio \u2794 MIDI.",
-                                                   "midi_audio.png"]]
+                options["Select aubio inputs"] = ["AUBIO_INPUTS", ["Select audio inputs to be analized and converted to MIDI.", "midi_audio.png"]]
             options[f"Rename port '{port.aliases[0]}'"] = [port, ["Rename the MIDI port.\nClear name to reset to default name.", None]]
             # options[f"Reset name to '{zynautoconnect.build_midi_port_name(port)[1]}'"] = port
-            self.zyngui.screens['option'].config(
-                "MIDI Input Device", options, self.menu_cb, False, False, None)
+
+            self.zyngui.screens['option'].config("MIDI Input Device", options, self.menu_cb, False, False, None)
             self.zyngui.show_screen('option')
         except:
             pass  # Port may have disappeared whilst building menu
@@ -366,24 +378,28 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
     def menu_cb(self, option, params):
         try:
             if option.startswith("Rename port"):
-                self.zyngui.show_keyboard(
-                    self.rename_device, params.aliases[1])
+                self.zyngui.show_keyboard(self.rename_device, params.aliases[1])
                 return
             elif option.startswith("Reset name"):
                 zynautoconnect.set_port_friendly_name(params)
-            elif params == "LOAD_DRIVER":
-                self.zyngui.state_manager.ctrldev_manager.load_driver(self.list_data[self.index][1], True)
-            elif params == "UNLOAD_DRIVER":
-                self.zyngui.state_manager.ctrldev_manager.unload_driver(self.list_data[self.index][1], True)
-            elif params == "AUBIO_INPUTS":
-                ain = aubio_inputs(self.zyngui.state_manager)
-                self.zyngui.screens['audio_in'].set_chain(ain)
-                self.zyngui.show_screen('audio_in')
-                return
-            elif self.input:
+            elif isinstance(params, list):
                 idev = self.list_data[self.index][1]
-                lib_zyncore.zmip_set_flag_active_chain(idev, params == "ACTI")
-                zynautoconnect.update_midi_in_dev_mode(idev)
+                if params[0] == "LOAD_DRIVER":
+                    logging.debug(f"LOAD DRIVER FOR {idev}")
+                    self.zyngui.state_manager.ctrldev_manager.load_driver(idev, params[1])
+                elif params[0] == "UNLOAD_DRIVER":
+                    logging.debug(f"UNLOAD DRIVER FOR {idev}")
+                    self.zyngui.state_manager.ctrldev_manager.unload_driver(idev,True)
+            elif isinstance(params, str):
+                if params == "AUBIO_INPUTS":
+                    ain = aubio_inputs(self.zyngui.state_manager)
+                    self.zyngui.screens['audio_in'].set_chain(ain)
+                    self.zyngui.show_screen('audio_in')
+                    return
+                elif self.input:
+                    idev = self.list_data[self.index][1]
+                    lib_zyncore.zmip_set_flag_active_chain(idev, params == "ACTI")
+                    zynautoconnect.update_midi_in_dev_mode(idev)
             self.show_options()
             self.update_list()
         except:

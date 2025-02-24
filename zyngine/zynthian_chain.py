@@ -4,7 +4,7 @@
 #
 # zynthian chain
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <riban@zynthian.org>
 #
 # *****************************************************************************
@@ -65,7 +65,7 @@ class zynthian_chain:
         self.zmop_index = None
         self.midi_thru = midi_thru  # True to pass MIDI if chain empty
         self.audio_thru = audio_thru  # True to pass audio if chain empty
-        self.zynmixer = None # zynmixer (AM) processor
+        self.zynmixer_proc = None # zynmixer (MI/MR) processor
         self.midi_in = []
         self.midi_out = []
         self.audio_in = []
@@ -96,7 +96,7 @@ class zynthian_chain:
             self.audio_thru = True
         else:
             self.title = ""
-            if self.zynmixer and self.zynmixer.eng_code == "MR":
+            if self.zynmixer_proc and self.zynmixer_proc.eng_code == "MR":
                 self.audio_in = [] # We don't want any direct audio input connections to buses
             elif self.audio_thru:
                 self.audio_in = [1, 2] # Default is to route first 2 audio inputs to audio chains
@@ -297,7 +297,7 @@ class zynthian_chain:
         if self.synth_slots:
             for proc in self.synth_slots[-1]:
                 first_slot_sources.append(proc.get_jackname())
-        elif self.zynmixer and self.zynmixer.eng_code == "MR":
+        elif self.zynmixer_proc and self.zynmixer_proc.eng_code == "MR":
             for am_slot in self.audio_slots:
                 if am_slot[0].eng_code in ("MI", "MR"):
                     first_slot_sources = [f"zynmixer_chan:send_{am_slot[0].mixer_chan:02d}"]
@@ -466,7 +466,7 @@ class zynthian_chain:
     def is_audio(self):
         """Returns True if chain is processes audio"""
 
-        return self.zynmixer is not None
+        return self.zynmixer_proc is not None
 
     def is_midi(self):
         """Returns True if chain processes MIDI"""
@@ -477,6 +477,24 @@ class zynthian_chain:
         """Returns True if chain contains synth processor"""
 
         return len(self.synth_slots) != 0
+
+    def is_solo(self):
+        """Returns True if chain is audio and solo in zynmixer"""
+        return zynautoconnect.is_solo(self.chain_id)
+
+    def set_solo(self, value):
+        """Sets solo state in zynmixer, if audio chain"""
+        try:
+            self.zynmixer_proc.controllers_dict["solo"].set_value(value)
+        except:
+            pass
+
+    def toggle_solo(self):
+        """Toggles solo state in zynmixer, if audio chain"""
+        try:
+            self.zynmixer_proc.controllers_dict["solo"].toggle()
+        except:
+            pass
 
     # ---------------------------------------------------------------------------
     # Processor management

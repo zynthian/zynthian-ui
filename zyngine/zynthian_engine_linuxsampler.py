@@ -34,7 +34,7 @@ from Levenshtein import distance
 from subprocess import check_output
 from collections import OrderedDict
 
-from . import zynthian_engine
+from . import zynthian_engine_sfz
 from zynconf import ServerPort
 from zyncoder.zyncore import lib_zyncore
 
@@ -56,44 +56,7 @@ class zyngine_lscp_warning(Exception):
 # ------------------------------------------------------------------------------
 
 
-class zynthian_engine_linuxsampler(zynthian_engine):
-
-    # ---------------------------------------------------------------------------
-    # Controllers & Screens
-    # ---------------------------------------------------------------------------
-
-    # LS Hardcoded MIDI Controllers
-    _ctrls = [
-        ['modulation wheel', 1, 0],
-        ['volume', 7, 96],
-        ['pan', 10, 64],
-        ['expression', 11, 127],
-
-        ['sustain', 64, 'off', ['off', 'on']],
-        ['sostenuto', 66, 'off', ['off', 'on']],
-        ['legato', 68, 'off', ['off', 'on']],
-        ['breath', 2, 127],
-
-        ['portamento on/off', 65, 'off', ['off', 'on']],
-        ['portamento time-coarse', 5, 0],
-        ['portamento time-fine', 37, 0],
-
-        # ['expr. pedal', 4, 127],
-        ['filter cutoff', 74, 64],
-        ['filter resonance', 71, 64],
-        ['env. attack', {'value': 64, 'midi_cc': 73, 'envelope': 'attack'}],
-        ['env. release', {'value': 64, 'midi_cc': 72, 'envelope': 'release'}]
-    ]
-
-    # Controller Screens
-    _ctrl_screens = [
-        ['main', ['volume', 'pan', 'modulation wheel', 'expression']],
-        ['pedals', ['legato', 'breath', 'sostenuto', 'sustain']],
-        ['portamento', ['portamento on/off',
-                        'portamento time-coarse', 'portamento time-fine']],
-        ['envelope/filter', ['env. attack', 'env. release',
-                             'filter cutoff', 'filter resonance']]
-    ]
+class zynthian_engine_linuxsampler(zynthian_engine_sfz):
 
     # ---------------------------------------------------------------------------
     # Config variables
@@ -103,10 +66,10 @@ class zynthian_engine_linuxsampler(zynthian_engine):
 
     preset_fexts = ["sfz", "gig"]
     root_bank_dirs = [
-        ('User GIG', zynthian_engine.my_data_dir + "/soundfonts/gig"),
-        ('User SFZ', zynthian_engine.my_data_dir + "/soundfonts/sfz"),
-        ('System GIG', zynthian_engine.data_dir + "/soundfonts/gig"),
-        ('System SFZ', zynthian_engine.data_dir + "/soundfonts/sfz")
+        ('User GIG', zynthian_engine_sfz.my_data_dir + "/soundfonts/gig"),
+        ('User SFZ', zynthian_engine_sfz.my_data_dir + "/soundfonts/sfz"),
+        ('System GIG', zynthian_engine_sfz.data_dir + "/soundfonts/gig"),
+        ('System SFZ', zynthian_engine_sfz.data_dir + "/soundfonts/sfz")
     ]
 
     # ---------------------------------------------------------------------------
@@ -289,8 +252,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
                             else:
                                 title = filename.replace('_', ' ')
                             engine = filext[1:].lower()
-                            preset_list.append(
-                                [f, i, title, engine, "{}{}".format(filename, filext)])
+                            preset_list.append([f, i, title, engine, "{}{}".format(filename, filext)])
                             i += 1
                 else:
                     f = sd
@@ -300,8 +262,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
                         filename = filename[len(preset_dpath) + 1:]
                         title = filename.replace('_', ' ')
                         engine = filext[1:].lower()
-                        preset_list.append(
-                            [f, i, title, engine, "{}{}".format(filename, filext)])
+                        preset_list.append([f, i, title, engine, "{}{}".format(filename, filext)])
                         i += 1
                     elif filext.lower() == ".gig":
                         filename = filename[len(preset_dpath) + 1:]
@@ -316,8 +277,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
                                 with open(icache_fpath, "r") as fh:
                                     inslist = fh.read()
                             except Exception as e:
-                                logging.error(
-                                    f"Can't load instrument cache '{icache_fpath}'")
+                                logging.error(f"Can't load instrument cache '{icache_fpath}'")
                         # If not cache, parse soundfont and cache info
                         if not inslist:
                             cmd = f"gigdump --instrument-names \"{f}\""
@@ -327,8 +287,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
                                 with open(icache_fpath, "w") as fh:
                                     fh.write(inslist)
                             except Exception as e:
-                                logging.error(
-                                    f"Can't save instrument cache '{icache_fpath}'")
+                                logging.error(f"Can't save instrument cache '{icache_fpath}'")
                         # logging.debug(f"INSTRUMENTS IN {f} =>\n{inslist}")
                         ilines = inslist.split('\n')
                         ii = 0
@@ -341,8 +300,7 @@ class zynthian_engine_linuxsampler(zynthian_engine):
                                     ititle = title + "/" + ititle
                             except:
                                 continue
-                            preset_list.append(
-                                [f"{f}#{ii}", i, ititle, engine, f"{filename}{filext}#{ii}"])
+                            preset_list.append([f"{f}#{ii}", i, ititle, engine, f"{filename}{filext}#{ii}"])
                             ii += 1
                             i += 1
         preset_list.sort(key=lambda x: x[2].casefold())
@@ -361,6 +319,9 @@ class zynthian_engine_linuxsampler(zynthian_engine):
             ii = 0
         # Load instrument from soundfont
         if self.ls_set_preset(processor, preset[3], sfpath, ii):
+            if preset[3] == 'sfz':
+                self.load_sfz_config(sfpath)
+            processor.refresh_controllers()
             processor.send_ctrl_midi_cc()
             return True
         else:
@@ -374,21 +335,6 @@ class zynthian_engine_linuxsampler(zynthian_engine):
                 return False
         except:
             return False
-
-    # ---------------------------------------------------------------------------
-    # Controllers Management
-    # ---------------------------------------------------------------------------
-
-    def send_controller_value(self, zctrl):
-        try:
-            izmop = zctrl.processor.chain.zmop_index
-            if izmop is not None and izmop >= 0:
-                mchan = zctrl.processor.ls_chan_info['midi_chan']
-                mval = zctrl.get_ctrl_midi_val()
-                lib_zyncore.zmop_send_ccontrol_change(
-                    izmop, mchan, zctrl.midi_cc, mval)
-        except Exception as err:
-            logging.error(err)
 
     # ---------------------------------------------------------------------------
     # Specific functions

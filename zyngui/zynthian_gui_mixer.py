@@ -453,7 +453,7 @@ class zynthian_gui_mixer_strip():
         if self.chain is None:
             self.hide()
         else:
-            self.mixer_proc = self.chain.zynmixer
+            self.mixer_proc = self.chain.zynmixer_proc
             self.show()
 
     def set_volume(self, value):
@@ -641,6 +641,7 @@ class zynthian_gui_mixer_strip():
             else:
                 zynthian_gui_config.zyngui.chain_control(self.chain_id)
         self.dragging = False
+        self.strip_drag_start = None
         self.parent.end_moving_chain()
 
     def on_strip_motion(self, event):
@@ -873,14 +874,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if symbol == "level":
             if value > 0:
                 level_db = 20 * log10(value)
-                self.set_title(
-                    f"Volume: {level_db:.2f}dB ({strip.chain.get_description(1)})", None, None, 1)
+                self.set_title(f"Volume: {level_db:.2f}dB ({strip.chain.get_description(1)})", None, None, 1)
             else:
-                self.set_title(
-                    f"Volume: -∞dB ({strip.chain.get_description(1)})", None, None, 1)
+                self.set_title(f"Volume: -∞dB ({strip.chain.get_description(1)})", None, None, 1)
         elif symbol == "balance":
-            strip.parent.set_title(
-                f"Balance: {int(value * 100)}% ({strip.chain.get_description(1)})", None, None, 1)
+            strip.parent.set_title(f"Balance: {int(value * 100)}% ({strip.chain.get_description(1)})", None, None, 1)
 
     def update_control_rec(self, state):
         """ Function to handle audio recorder status

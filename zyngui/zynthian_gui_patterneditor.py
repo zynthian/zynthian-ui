@@ -385,7 +385,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
                                                                     "Z2", "V5"])
 
         # Global Options
-        if not zynthian_gui_config.check_wiring_layout(["V5"]):
+        if not self.zyngui.multitouch._f_device:
             options['Grid zoom'] = 'Grid zoom'
         if extra_options:
             options['Tempo'] = 'Tempo'
@@ -456,7 +456,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
     def menu_cb(self, option, params):
         if params == 'Grid zoom':
-            self.toggle_grid_zoom()
+            self.enable_param_editor(self, 'zoom', {'name': 'Zoom', 'value_min': 1,
+                                     'value_max': 64, 'value_default': 1, 'value': self.zoom})
         elif params == 'Tempo':
             self.zyngui.show_screen('tempo')
         elif params == 'Arranger':
@@ -626,6 +627,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
     def send_controller_value(self, zctrl):
         if zctrl.symbol == 'tempo':
             self.zynseq.libseq.setTempo(zctrl.value)
+        elif zctrl.symbol == 'zoom':
+            self.set_grid_zoom(zctrl.value)
+            self.param_editor_zctrl.value = self.zoom
         elif zctrl.symbol == 'bpb':
             self.zynseq.libseq.setBeatsPerBar(zctrl.value)
         elif zctrl.symbol == 'swing_amount':
@@ -1863,20 +1867,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
         self.init_buttonbar([(f"ZYNPOT {zynpot},-1", f"-{delta}"), (f"ZYNPOT {zynpot},+1", f"+{delta}"),
                             ("ZYNPOT 3,-1", "PREV\nPARAM"), ("ZYNPOT 3,+1", "NEXT\nPARAM"), (3, "OK")])
-
-    # Toggle grid zoom mode
-    def toggle_grid_zoom(self):
-        if self.edit_mode == EDIT_MODE_NONE:
-            self.set_edit_mode(EDIT_MODE_ZOOM)
-        elif self.edit_mode == EDIT_MODE_ZOOM:
-            self.set_edit_mode(EDIT_MODE_NONE)
-
-    # Toggle history edit mode (undo/redo)
-    def toggle_edit_history(self):
-        if self.edit_mode == EDIT_MODE_NONE:
-            self.set_edit_mode(EDIT_MODE_HISTORY)
-        elif self.edit_mode == EDIT_MODE_HISTORY:
-            self.set_edit_mode(EDIT_MODE_NONE)
 
     # Function to handle zynpots value change
     #   i: Zynpot index [0..n]

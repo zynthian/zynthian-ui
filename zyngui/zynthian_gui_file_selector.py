@@ -75,8 +75,14 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
                 return path
 
     def is_confined_to_root_dirs(self, path):
-        for dpath in self.root_dirs:
-            if path.startswith(dpath):
+        for row in self.root_dirs:
+            if path.startswith(row[1]):
+                return True
+        return False
+
+    def is_root_dir(self, path):
+        for row in self.root_dirs:
+            if path == row[1]:
                 return True
         return False
 
@@ -106,7 +112,7 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
 
     def fill_list(self):
         # Get dir/file list
-        if self.dirpath:
+        if self.dirpath and not self.is_root_dir(self.dirpath):
             self.list_data = zynthian_engine.get_filelist(self.dirpath, self.fexts, include_dirs=True)
         else:
             self.list_data = zynthian_engine.get_dir_file_list(fexts=self.fexts,
