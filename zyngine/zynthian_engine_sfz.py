@@ -21,8 +21,9 @@
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 #
 # ******************************************************************************
-
+import os.path
 import re
+import copy
 import logging
 import oyaml as yaml
 
@@ -85,8 +86,39 @@ class zynthian_engine_sfz(zynthian_engine):
     # ---------------------------------------------------------------------------
 
     def get_controllers_dict(self, processor):
-        self._ctrls = self.default_ctrls + self.custom_ctrls
-        self._ctrl_screens = self.default_ctrl_screens + self.custom_ctrl_screens
+        logging.debug(f"Custom Controllers => \n{self.custom_ctrls}")
+        logging.debug(f"Custom Controller Screens => \n{self.custom_ctrl_screens}")
+        # Generate default controller list, removing CCs redefined in custom controllers
+        self._ctrls = []
+        ctrl_names = []
+        for ctrl in self.default_ctrls:
+            include = True
+            for cctrl in self.custom_ctrls:
+                if isinstance(cctrl[1], int) and ctrl[1] == cctrl[1]:
+                    include = False
+                    break
+                elif isinstance(cctrl[1], dict):
+                    try:
+                        if ctrl[1] == cctrl[1]["midi_cc"]:
+                            include = False
+                            break
+                    except:
+                        pass
+            if include:
+                self._ctrls.append(ctrl)
+                ctrl_names.append(ctrl[0])
+        self._ctrl_screens = []
+        # Generate default screen list, removing CCs redefined in custom screens
+        for scr in self.default_ctrl_screens:
+            ctrl_group = []
+            for cname in scr[1]:
+                if cname in ctrl_names:
+                    ctrl_group.append(cname)
+            if ctrl_group:
+                self._ctrl_screens.append([scr[0], ctrl_group])
+        # Join controllers & screens in a single list
+        self._ctrls += self.custom_ctrls
+        self._ctrl_screens += self.custom_ctrl_screens
         return super().get_controllers_dict(processor)
 
     def parse_sfz_controllers(self, sfzpath):
@@ -102,8 +134,10 @@ class zynthian_engine_sfz(zynthian_engine):
             return False
 
         cc_config = {}
-        pat1 = re.compile("^set_cc(\d+)=(\d+)", re.MULTILINE)
-        pat2 = re.compile("^label_cc(\d+)=(\w+)", re.MULTILINE)
+        pat1 = re.compile("\sset_cc(\d+)=(\d+)", re.MULTILINE)
+        pat2 = re.compile("\sset_hdcc(\d+)=([\d\.]+)", re.MULTILINE)
+        pat3 = re.compile("^label_cc(\d+)=(.+)$", re.MULTILINE)
+        pat4 = re.compile("cc\d+", re.IGNORECASE)
         for m in pat1.finditer(sfz):
             try:
                 cc_config[int(m[1])] = ["", int(m[2])]
@@ -111,10 +145,18 @@ class zynthian_engine_sfz(zynthian_engine):
                 pass
         for m in pat2.finditer(sfz):
             try:
-                cc_config[int(m[1])][0] = m[2]
+                cc_config[int(m[1])] = ["", int(127 * float(m[2]))]
             except:
-                cc_config[m[1]] = [m[2], None]
-        logging.debug(f"CC Config => \n{cc_config}")
+                pass
+        for m in pat3.finditer(sfz):
+            try:
+                # Sanitize label
+                parts = list(filter(lambda x: x.strip(), m[2].split(" ")))
+                parts = list(filter(lambda x: not pat4.match(x), parts))
+                cc_config[int(m[1])][0] = " ".join(parts)
+            except:
+                cc_config[m[1]] = [m[2], 0]
+        #logging.debug(f"Parsed CCs => \n{cc_config}")
 
         ctrl_group = []
         for num, conf in cc_config.items():
@@ -124,7 +166,7 @@ class zynthian_engine_sfz(zynthian_engine):
                     val = int(conf[1])
                 except:
                     val = 0
-                self.custom_ctrls.append([name, num, val])
+                self.custom_ctrls.append([name, int(num), val])
                 ctrl_group.append(name)
                 if len(ctrl_group) == 4:
                     screen_title = f"custom #{len(self.custom_ctrl_screens) + 1}"
@@ -136,7 +178,7 @@ class zynthian_engine_sfz(zynthian_engine):
         return True
 
     def load_sfz_config(self, sfzpath):
-        # Try to load YAML config file ...
+        # Try to load YAML config files ...
         res = self.load_controllers_config(sfzpath[:-3] + "yml")
         # If not, try to parse controllers from SFZ file
         if not res:
@@ -147,19 +189,26 @@ class zynthian_engine_sfz(zynthian_engine):
         self.custom_ctrls = []
         self.custom_ctrl_screens = []
 
-        try:
-            fh = open(fpath, "r")
-        except:
-            logging.info(f"Can't open yaml config file '{fpath}'")
-            return False
-        try:
-            data = fh.read()
-            logging.info(f"Loading yaml config file '{fpath}' =>\n{data}")
-            config = yaml.load(data, Loader=yaml.SafeLoader)
-        except Exception as e:
-            logging.error(f"Bad formatted yaml in config file '{fpath}' => {e}")
+        # Load SFZ specific config
+        config = self.load_yaml_config(fpath)
+        # Load SFZ common config
+        cconfig = self.load_yaml_config(os.path.dirname(fpath) + "/common.yml")
+        if not config:
+            config = cconfig
+        elif cconfig:
+            # Merge common config into specific config without duplicating elements
+            for scr_name, scr_data in cconfig["controllers"].items():
+                if scr_name in config["controllers"]:
+                    for ctrl_name, ctrl_data in scr_data.items():
+                        if ctrl_name not in config["controllers"][scr_name]:
+                            config["controllers"][scr_name][ctrl_name] = ctrl_data
+                else:
+                    config["controllers"][scr_name] = scr_data
+
+        if not config:
             return False
 
+        # Generate controller & screen list
         try:
             for screen_title, ctrls in config["controllers"].items():
                 for ctrl_name, ctrl_options in ctrls.items():
@@ -167,8 +216,23 @@ class zynthian_engine_sfz(zynthian_engine):
                 self.custom_ctrl_screens.append([screen_title, list(ctrls.keys())])
         except Exception as e:
             logging.error(f"Wrong config data in yaml file '{fpath}' => {e}")
+            return False
 
         return True
+
+    def load_yaml_config(self, fpath):
+        try:
+            fh = open(fpath, "r")
+        except:
+            logging.debug(f"Yaml config file '{fpath}' not found")
+            return {}
+        try:
+            data = fh.read()
+            #logging.debug(f"Loading yaml config file '{fpath}' =>\n{data}")
+            return yaml.load(data, Loader=yaml.SafeLoader)
+        except Exception as e:
+            logging.error(f"Bad formatted yaml in config file '{fpath}' => {e}")
+            return {}
 
     def send_controller_value(self, zctrl):
         if zctrl.midi_cc:
