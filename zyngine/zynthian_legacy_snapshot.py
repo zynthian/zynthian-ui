@@ -108,13 +108,19 @@ class zynthian_legacy_snapshot:
             for chain_id, chain_config in self.snapshot["chains"].items():
                 try:
                     mixer_chan = chain_config.pop("mixer_chan")
-                    fader_pos = chain_config.pop("fader_pos")
                     if "slots" not in chain_config:
                         chain_config["slots"] = []
+                    #TODO: fader_pos is within audio slots only but how do we know where that starts?
+                    try:
+                        fader_pos = chain_config.pop("fader_pos")
+                    except:
+                        fader_pos = len(chain_config["slots"])
                     if chain_id == "0":
-                        chain_config["slots"].insert(fader_pos, {str(zynthian_state_manager.MAIN_MIXBUS_ID):"MR"})
+                        #chain_config["slots"].insert(fader_pos, {str(zynthian_state_manager.MAIN_MIXBUS_ID):"MR"})
+                        chain_config["slots"].append({str(zynthian_state_manager.MAIN_MIXBUS_ID):"MR"})
                     else:
-                        chain_config["slots"].insert(fader_pos, {str(next_id):"MI"})
+                        #chain_config["slots"].insert(fader_pos, {str(next_id):"MI"})
+                        chain_config["slots"].append({str(next_id):"MI"})
                         mixer_map[int(mixer_chan)] = int(next_id)
                         next_id += 1
                 except:
@@ -157,7 +163,7 @@ class zynthian_legacy_snapshot:
                         if "midi_cc" in cfg:
                             for cc, midi_cfgs in cfg["midi_cc"].items():
                                 for midi_cfg in midi_cfgs:
-                                    proc_id = midi_cfg[0]
+                                    proc_id = str(midi_cfg[0])
                                     symbol = midi_cfg[1]
                                     zs3["processors"].setdefault(proc_id, {"controllers":{}})
                                     zs3["processors"][proc_id]["controllers"].setdefault(symbol, {})
@@ -700,7 +706,8 @@ class zynthian_legacy_snapshot:
 
             state["midi_profile_state"]["ACTIVE_CHANNEL"] = active_midi_channel
 
-        return state
+        self.snapshot = state
+        return
 
     def build_jackname(self, engine_name, midi_chan):
         """Build the legacy jackname for the engine name

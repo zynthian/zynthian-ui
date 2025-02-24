@@ -1101,7 +1101,7 @@ class zynthian_state_manager:
 
             # Remove global processor configuration
             for proc_id, proc in self.chain_manager.processors.items():
-                if proc_id < 0:
+                if proc_id < MAIN_MIXBUS_ID:
                     for symbol in proc.controllers_dict:
                         self.chain_manager.remove_midi_learn(proc, symbol)
 
