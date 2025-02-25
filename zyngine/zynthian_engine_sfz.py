@@ -136,7 +136,7 @@ class zynthian_engine_sfz(zynthian_engine):
         cc_config = {}
         pat1 = re.compile("\sset_cc(\d+)=(\d+)", re.MULTILINE)
         pat2 = re.compile("\sset_hdcc(\d+)=([\d\.]+)", re.MULTILINE)
-        pat3 = re.compile("^label_cc(\d+)=(.+)$", re.MULTILINE)
+        pat3 = re.compile("^label_cc(\d+)=([^\/\n]+)$", re.MULTILINE)
         pat4 = re.compile("cc\d+", re.IGNORECASE)
         for m in pat1.finditer(sfz):
             try:
