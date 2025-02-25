@@ -1204,6 +1204,7 @@ class zynthian_chain_manager:
                 chain_id = None
             chain_id = self.add_chain_from_state(chain_id, chain_state)
             if "slots" in chain_state:
+                slot = 0
                 for slot_state in chain_state["slots"]:
                     # slot_state is a dict of proc_id:proc_type for procs in this slot
                     for proc_id, eng_code in slot_state.items():
@@ -1213,9 +1214,13 @@ class zynthian_chain_manager:
                             eng_config = engine_config[eng_code]
                         except:
                             eng_config = None
+                        #TODO: insert in correct slot, accounting for slot being relative to subchain type
                         # Use index to identify first proc in slot (add in series)
-                        self.add_processor(chain_id, eng_code, proc_id=int(
+                        processor = self.add_processor(chain_id, eng_code, slot, proc_id=int(
                             proc_id), eng_config=eng_config)
+                        if processor:
+                            slot = self.chains[chain_id].get_slot(processor)
+                    slot += 1
 
         self.state_manager.end_busy("set_chain_state")
 

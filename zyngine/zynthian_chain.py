@@ -578,26 +578,29 @@ class zynthian_chain:
         """Insert a processor in the chain
 
         processor : processor object to insert
-        slot : Position (slot) to insert within subchain (Default: End of chain)
+        slot : Position (slot) to insert within subchain (Default: new slot at end of subchain, pre-fader)
         """
 
         slots = self.get_slots_by_type(processor.type)
-        if len(slots) == 0 or processor.eng_code in ("MI", "MR"):
+        if len(slots) == 0:
+            # Chain is empty so create a new slot for the processor
             slots.append([processor])
         else:
-            if slot is None or slot < 0 or slot > len(slots):
-                # Append to end of chain
-                slot = len(slots)
-                if processor.type == "Audio Effect":
-                    for idx in range(len(slots)):
-                        if slots[idx][0].eng_code in ("MI", "MR"):
-                            slot = idx
-                            break
+            if slot is None:
+                # Add processor to a new slot at end of subchain
+                if processor.type == "Audio Effect" and slots[-1][0].eng_code in ("MI", "MR"):
+                        # Audio subchain with no post-fader effects so insert pre-fader
+                        slots.insert(-1, [processor])
                 else:
-                    slot = -1
-                slots.insert(slot, [processor])
+                    slots.append([processor])
+            elif slot < 0:
+                # Invalid slot so insert at start of chain
+                slots.insert(0, [processor])
+            elif slot >= len(slots):
+                # Invalid slot so append to end of chain
+                slots.append([processor])
             else:
-                # Add parallel processor
+                # Add parallel processor to existing slot
                 slots[slot].append(processor)
 
         processor.set_chain(self)

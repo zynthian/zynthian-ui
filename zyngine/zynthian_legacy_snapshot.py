@@ -105,29 +105,35 @@ class zynthian_legacy_snapshot:
                 next_id = 1
 
             # Insert mixer processors in audio chains and remove mixer channel/fader refs
+            audio_procs = []
+            for id, info in self.engine_info.items():
+                if info["TYPE"] ==  "Audio Effect":
+                    audio_procs.append(id)
             for chain_id, chain_config in self.snapshot["chains"].items():
                 try:
                     mixer_chan = chain_config.pop("mixer_chan")
                     if "slots" not in chain_config:
                         chain_config["slots"] = []
-                    #TODO: fader_pos is within audio slots only but how do we know where that starts?
                     try:
                         fader_pos = chain_config.pop("fader_pos")
+                        for slot in chain_config["slots"]:
+                            proc_type = list(slot.values())[0]
+                            if proc_type in audio_procs:
+                                break
+                            fader_pos += 1
                     except:
                         fader_pos = len(chain_config["slots"])
                     if chain_id == "0":
-                        #chain_config["slots"].insert(fader_pos, {str(zynthian_state_manager.MAIN_MIXBUS_ID):"MR"})
-                        chain_config["slots"].append({str(zynthian_state_manager.MAIN_MIXBUS_ID):"MR"})
+                        chain_config["slots"].insert(fader_pos, {str(zynthian_state_manager.MAIN_MIXBUS_ID):"MR"})
                     else:
-                        #chain_config["slots"].insert(fader_pos, {str(next_id):"MI"})
-                        chain_config["slots"].append({str(next_id):"MI"})
+                        chain_config["slots"].insert(fader_pos, {str(next_id):"MI"})
                         mixer_map[int(mixer_chan)] = int(next_id)
                         next_id += 1
                 except:
                     pass
                 if "midi_cc" in chain_config:
                     for cc, cfg in chain_config["midi_cc"].items():
-                        proc_id = cfg[0]
+                        proc_id = int(cfg[0])
                         symbol = cfg[1]
                         zs3["processors"].setdefault(proc_id, {"controllers":{}})
                         zs3["processors"][proc_id]["controllers"].setdefault(symbol, {})
@@ -139,19 +145,22 @@ class zynthian_legacy_snapshot:
                     mixer = zs3.pop("mixer")
                     zs3.setdefault("chains", {})
                     zs3.setdefault("processors", {})
+                    # convert proc_id from sting to int
+                    for proc_id in list(zs3["processors"]):
+                        zs3["processors"][int(proc_id)] = zs3["processors"].pop(proc_id)
                     for chan, proc_id in mixer_map.items():
                         key = f"chan_{chan:02d}"
-                        id = str(proc_id)
+                        proc_id = int(proc_id)
                         if key in mixer:
                             for param, val in mixer[key].items():
-                                zs3["processors"].setdefault(id, {})
-                                zs3["processors"][id].setdefault("controllers", {})
-                                zs3["processors"][id]["controllers"][param]={"value":val}
+                                zs3["processors"].setdefault(proc_id, {})
+                                zs3["processors"][proc_id].setdefault("controllers", {})
+                                zs3["processors"][proc_id]["controllers"][param]={"value":val}
                     if "midi_learn" in mixer:
                         for key, conf in mixer["midi_learn"].items():
                             chan, cc = key.split(",")
                             strip_id = conf[0]
-                            proc_id = str(mixer_map[int(strip_id)])
+                            proc_id = int(mixer_map[int(strip_id)])
                             symbol = conf[1]
                             zs3["processors"].setdefault(proc_id, {"controllers":{}})
                             zs3["processors"][proc_id]["controllers"].setdefault(symbol, {})
@@ -163,7 +172,7 @@ class zynthian_legacy_snapshot:
                         if "midi_cc" in cfg:
                             for cc, midi_cfgs in cfg["midi_cc"].items():
                                 for midi_cfg in midi_cfgs:
-                                    proc_id = str(midi_cfg[0])
+                                    proc_id = int(midi_cfg[0])
                                     symbol = midi_cfg[1]
                                     zs3["processors"].setdefault(proc_id, {"controllers":{}})
                                     zs3["processors"][proc_id]["controllers"].setdefault(symbol, {})
@@ -173,7 +182,7 @@ class zynthian_legacy_snapshot:
                         if "midi_cc" in cfg:
                             for cc, midi_cfgs in cfg["midi_cc"].items():
                                 for midi_cfg in midi_cfgs:
-                                    proc_id = midi_cfg[0]
+                                    proc_id = int(midi_cfg[0])
                                     symbol = midi_cfg[1]
                                     dev = zynautoconnect.get_midi_in_devid_by_uid(uid)
                                     if dev is None:
@@ -498,7 +507,6 @@ class zynthian_legacy_snapshot:
                 state["zs3"]["zs3-0"]["chains"][chain_id]["audio_thru"] = True
                 chain["midi_chan"] = None
                 if chain["mixer_chan"] > 16:
-                    # TODO: Get max channels from mixer
                     chain["mixer_chan"] = 16
 
             # Fix-up audio outputs
@@ -635,7 +643,7 @@ class zynthian_legacy_snapshot:
                 zs3["mixer"]["midi_learn"] = {}
                 for strip, config in zs3["mixer"].items():
                     if strip == "main":
-                        strip_id = 16  # TODO: Get actual main mixer strip index
+                        strip_id = 16
                     else:
                         try:
                             strip_id = int(strip.split('_')[1])
