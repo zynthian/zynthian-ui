@@ -177,6 +177,7 @@ class zynthian_legacy_snapshot:
                                     zs3["processors"].setdefault(proc_id, {"controllers":{}})
                                     zs3["processors"][proc_id]["controllers"].setdefault(symbol, {})
                                     zs3["processors"][proc_id]["controllers"][symbol].setdefault("midi_cc", [int(chain_id), None, int(cc), 0])
+                """ This is not saved correctly in previous versions - no MIDI channel so ignore here.
                 if "midi_capture" in zs3:
                     for uid, cfg in zs3["midi_capture"].items():
                         if "midi_cc" in cfg:
@@ -192,6 +193,7 @@ class zynthian_legacy_snapshot:
                                     zs3["processors"].setdefault(proc_id, {"controllers":{}})
                                     zs3["processors"][proc_id]["controllers"].setdefault(symbol, {})
                                     zs3["processors"][proc_id]["controllers"][symbol].setdefault("midi_cc", [None, int(chan), int(cc), dev_ex])
+                """
 
     def version_1(self):
         # Convert snapshot from schema V1 to V2
