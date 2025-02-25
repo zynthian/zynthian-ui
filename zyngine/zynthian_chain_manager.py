@@ -449,7 +449,8 @@ class zynthian_chain_manager:
             chain = self.chains[chain_id]
             if chain.is_midi() == midi or chain.is_audio() == audio or chain.is_synth == synth:
                 if pos == 0:
-                    return self.chains[chain_id]
+                    if chain_id:
+                        return self.chains[chain_id]
                 pos -= 1
 
         return None

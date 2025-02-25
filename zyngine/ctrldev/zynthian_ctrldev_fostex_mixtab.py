@@ -78,20 +78,17 @@ class zynthian_ctrldev_fostex_mixtab(zynthian_ctrldev_zynmixer):
     def set_param(self, cc, val, midi_chan):
         if cc == 7:
             # Main fader
-            self.zynmixer.set_level(255, val / 127.0, False)
+            self.set_main_mixer_level(val / 127)
         if cc < 16 or cc > 31:
             return False
-        chain = self.chain_manager.get_chain_by_position(
-            midi_chan * 8 + cc % 8 , midi=False)
-        if chain is None or chain.mixer_chan is None or chain.mixer_chan > 15:
-            return False
+        channel = midi_chan * 8 + cc % 8
         match int(cc / 8):
             case 2:
                 # Fader
-                self.zynmixer.set_level(chain.mixer_chan, val / 127.0, False)
+                self.set_mixer_level(channel, val / 127.0)
             case 3:
                 # Pan
-                self.zynmixer.set_balance(chain.mixer_chan, (val - 64) / 64, False)
+                self.set_mixer_balance(channel, (val / 64) - 1)
         return True
 
     def get_param(self, cc, midi_chan):

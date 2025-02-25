@@ -5,7 +5,7 @@
 #
 # Zynthian Control Device Driver for "Korg nanoKontrol-2"
 #
-# Copyright (C) 2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2024-2025 Fernando Moyano <jofemodo@zynthian.org>
 #
 # ******************************************************************************
 #
@@ -301,8 +301,8 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
         if self.midimix_bank:
             col += 8
         chain = self.chain_manager.get_chain_by_index(col)
-        if chain:
-            return chain.mixer_chan
+        if chain and chain.zynmixer_proc:
+            return chain.zynmixer_proc.mixer_chan
         else:
             return None
 
@@ -383,46 +383,25 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                 if ccval > 0:
                     col = self.mute_ccnums.index(ccnum)
                     if self.shift and col == 7:
-                        mixer_chan = 0
-                        zynmixer = self.zynmixer_bus
+                        result = self.toggle_main_mixer_mute()
                     else:
-                        zynmixer = self.zynmixer
-                        mixer_chan = self.get_mixer_chan_from_device_col(col)
-                    if mixer_chan is not None:
-                        if zynmixer.get_mute(mixer_chan):
-                            val = 0
-                        else:
-                            val = 1
-                        zynmixer.set_mute(mixer_chan, val, True)
-                        # Send LED feedback
-                        if self.idev_out is not None:
-                            lib_zyncore.dev_send_ccontrol_change(
-                                self.idev_out, self.midi_chan, ccnum, val * 0x7F)
-                    elif self.idev_out is not None:
-                        # If not associated mixer channel, turn-off the led
+                        result = self.toggle_mixer_mute(col)
+                    # Send LED feedback
+                    if self.idev_out is not None:
                         lib_zyncore.dev_send_ccontrol_change(
-                            self.idev_out, self.midi_chan, ccnum, 0)
+                            self.idev_out, self.midi_chan, ccnum, result * 0x7F)
                 return True
             elif ccnum in self.solo_ccnums:
                 if ccval > 0:
                     col = self.solo_ccnums.index(ccnum)
                     if self.shift and col == 7:
-                        zynmixer = self.zynmixer_bus
-                        mixer_chan = 0
+                        result = self.toggle_main_mixer_solo()
                     else:
-                        zynmixer = self.zynmixer
-                        mixer_chan = self.get_mixer_chan_from_device_col(col)
-                    chain = self.chain_manager.get_chain_by_mixer_chan(mixer_chan)
-                    if chain is not None:
-                        chain.toggle_solo()
-                        # Send LED feedback
-                        if self.idev_out is not None:
-                            lib_zyncore.dev_send_ccontrol_change(
-                                self.idev_out, self.midi_chan, ccnum, chain.is_solo() * 0x7F)
-                    elif self.idev_out is not None:
-                        # If not associated mixer channel, turn-off the led
+                        result = self.toggle_mixer_solo(col)
+                    # Send LED feedback
+                    if self.idev_out is not None:
                         lib_zyncore.dev_send_ccontrol_change(
-                            self.idev_out, self.midi_chan, ccnum, 0)
+                            self.idev_out, self.midi_chan, ccnum, result * 0x7F)
                 return True
             elif ccnum in self.rec_ccnums:
                 if ccval > 0:
@@ -456,13 +435,10 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                 # With "shift" ...
                 if self.shift and col == 7:
                     # use last fader to control Main volume (right)
-                    self.zynmixer_bus.set_level(0, ccval / 127.0)
+                    self.set_main_mixer_level(ccval / 127)
                 # else, use faders to control chain's volume
                 else:
-                    mixer_chan = self.get_mixer_chan_from_device_col(col)
-                    if mixer_chan is not None:
-                        self.zynmixer.set_level(
-                            mixer_chan, ccval / 127.0, True)
+                    self.set_main_mixer_level(col, ccval / 127)
                 return True
             elif ccnum in self.knobs_ccnum:
                 col = self.knobs_ccnum.index(ccnum)
@@ -470,17 +446,13 @@ class zynthian_ctrldev_korg_nanokontrol2(zynthian_ctrldev_zynmixer):
                 if self.shift:
                     # use last knob to control Main balance
                     if col == 7:
-                        self.zynmixer_bus.set_balance(
-                            0, 2.0 * ccval / 127.0 - 1.0)
+                        self.set_main_mixer_balance(2.0 * ccval / 127.0 - 1.0)
                     # pass rest of knob's CC to engine control (MIDI-learn)
                     else:
                         return False
                 # else, use knobs to control chain's balance
                 else:
-                    mixer_chan = self.get_mixer_chan_from_device_col(col)
-                    if mixer_chan is not None:
-                        self.zynmixer.set_balance(
-                            mixer_chan, 2.0 * ccval/127.0 - 1.0)
+                    self.set_mixer_balance(col, 2.0 * ccval/127.0 - 1.0)
                 return True
         # SysEx
         elif ev[0] == 0xF0:

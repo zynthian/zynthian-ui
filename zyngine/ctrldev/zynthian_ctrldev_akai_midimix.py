@@ -227,7 +227,7 @@ class zynthian_ctrldev_akai_midimix(zynthian_ctrldev_zynmixer):
             ccnum = ev[1] & 0x7F
             ccval = ev[2] & 0x7F
             if ccnum == self.master_ccnum:
-                self.zynmixer_bus.set_level(0, ccval / 127.0)
+                self.chain_manager.chains[0].zynmixer_proc.controllers_dict["level"].set_value(ccval / 127.0)
                 return True
             elif ccnum in self.faders_ccnum:
                 mixer_chan = self.get_mixer_chan_from_device_col(

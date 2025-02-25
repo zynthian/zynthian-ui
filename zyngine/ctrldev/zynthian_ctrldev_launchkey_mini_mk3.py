@@ -132,9 +132,9 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
                     ccnum - 21, midi=False)
                 if chain and chain.zynmixer_proc:
                     if self.shift:
-                        chain.zynmixer_proc.controllers_dict["balance"].set_value(ccval / 64 - 1)
+                        self.set_mixer_balance(ccnum - 21, ccval / 64 -1)
                     else:
-                        chain.zynmixer_proc.controllers_dict["level"].set_value(ccval / 127)
+                        self.set_mixer_level(ccnum - 21, ccval / 127)
             elif 24 < ccnum < 29:
                 self.state_manager.send_cuia("ZYNPOT_ABS", [ccnum - 25, ccval/127])
             elif ccnum == 0x66:

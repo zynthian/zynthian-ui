@@ -259,5 +259,78 @@ class zynthian_ctrldev_zynmixer(zynthian_ctrldev_base):
         logging.debug(
             f"Update mixer active chain for {type(self).__name__}: NOT IMPLEMENTED!")
 
+    def set_mixer_level(self, pos, value):
+        """Set chain level (fader)
+
+        pos - Chain display position
+        value - Fader/level value
+        """
+        chain = self.chain_manager.get_chain_by_position(pos, midi=False)
+        if chain:
+            chain.zynmixer_proc.controllers_dict["level"].set_value(value)
+
+    def set_mixer_balance(self, pos, value):
+        """Set chain balance/pan
+
+        pos - Index of chain display position
+        value - Balance/pan value
+        """
+        chain = self.chain_manager.get_chain_by_position(pos, midi=False)
+        if chain:
+            chain.zynmixer_proc.controllers_dict["balance"].set_value(value)
+
+    def toggle_mixer_mute(self, pos):
+        """Toggle chain mute
+
+        pos - Chain display position
+        return - mute state
+        """
+        chain = self.chain_manager.get_chain_by_position(pos, midi=False)
+        if chain:
+            chain.zynmixer_proc.controllers_dict["mute"].toggle()
+            return chain.zynmixer_proc.controllers_dict["mute"].value
+        return 0
+
+    def toggle_mixer_solo(self, pos):
+        """Toggle chain solo
+
+        pos - Chain display position
+        return - solo state
+        """
+        chain = self.chain_manager.get_chain_by_position(pos, midi=False)
+        if chain:
+            chain.zynmixer_proc.controllers_dict["solo"].toggle()
+            return chain.zynmixer_proc.controllers_dict["solo"].value
+        return 0
+
+    def set_main_mixer_level(self, value):
+        """Set the mixer level for the main mix chain
+
+        value - Fader/level value
+        """
+        self.chain_manager.chains[0].zynmixer_proc.controllers_dict["level"].set_value(value)
+
+    def set_main_mixer_balance(self, value):
+        """Set the mixer balance/pan for the main mix chain
+
+        value - Balance/pan value
+        """
+        self.chain_manager.chains[0].zynmixer_proc.controllers_dict["balance"].set_value(value)
+
+    def toggle_main_mixer_mute(self):
+        """Toggle mute for main mix chain
+
+        return - mute state
+        """
+        self.chain_manager.chains[0].zynmixer_proc.controllers_dict["mute"].toggle()
+        return self.chain_manager.chains[0].zynmixer_proc.controllers_dict["mute"].value
+
+    def toggle_main_mixer_solo(self):
+        """Toggle solo for main mix chain
+
+        return - solo state
+        """
+        self.chain_manager.chains[0].zynmixer_proc.controllers_dict["solo"].toggle()
+        return self.chain_manager.chains[0].zynmixer_proc.controllers_dict["solo"].value
 
 # --------------------------------------------------------------------------
