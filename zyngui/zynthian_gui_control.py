@@ -158,11 +158,15 @@ class zynthian_gui_control(zynthian_gui_selector):
             for processor in self.processors:
                 j = 0
                 screen_list = processor.get_ctrl_screens()
-                self.list_data.append((None, None, f"> {processor.engine.name.split('/')[-1]}"))
+                procname = processor.engine.name.split('/')[-1]
+                self.list_data.append((None, None, f"> {procname}"))
                 for cscr in screen_list:
-                    self.list_data.append((screen_list[cscr][0].group_symbol, i, cscr, processor, j))
-                    i += 1
-                    j += 1
+                    try:
+                        self.list_data.append((screen_list[cscr][0].group_symbol, i, cscr, processor, j))
+                        i += 1
+                        j += 1
+                    except Exception as e:
+                        logging.error(f"Can't add control page '{cscr}' for processor '{procname}' => {e}")
                 self.index = curproc.get_current_screen_index()
                 self.get_screen_info()
         super().fill_list()
