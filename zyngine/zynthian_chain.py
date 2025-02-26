@@ -684,6 +684,8 @@ class zynthian_chain:
             is_mixer_strip = processor.eng_code in ("MI", "MR")
 
             if up:
+                if not parallel and cur_slot == 0:
+                    return False
                 if is_mixer_strip:
                     slots.pop(cur_slot)
                     slots.insert(cur_slot - 1, [processor])
@@ -702,15 +704,14 @@ class zynthian_chain:
                 else:
                     return False
             else:
+                if not parallel and cur_slot + 1 >= len(slots):
+                    return False
                 if is_mixer_strip:
                     slots.pop(cur_slot)
                     slots.insert(cur_slot + 1, [processor])
                 elif parallel:
                     slots[cur_slot].remove(processor)
-                    if slots[cur_slot + 1][0].eng_code in ("MI", "MR"):
-                        slots.insert(cur_slot + 1, [processor])
-                    else:
-                        slots.insert(cur_slot, [processor])
+                    slots.insert(cur_slot + 1, [processor])
                 else:
                     slots.pop(cur_slot)
                     if slots[cur_slot][0].eng_code in ("MI", "MR"):
