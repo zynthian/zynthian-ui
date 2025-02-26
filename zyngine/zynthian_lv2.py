@@ -502,6 +502,11 @@ def get_engines_by_type():
     for key, info in engines.items():
         engines_by_type[info['TYPE']][key] = info
 
+    try:
+        del engines_by_type["Global"]
+    except:
+        pass
+
     return engines_by_type
 
 # ------------------------------------------------------------------------------
