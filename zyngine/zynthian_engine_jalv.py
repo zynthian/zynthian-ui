@@ -212,7 +212,7 @@ class zynthian_engine_jalv(zynthian_engine):
                     self.command_env['DISPLAY'] = "X"
 
             # Use jalv_asyncli (development version) =>
-            self.command[0] = "/zynthian/zynthian-sw/jalv_asyncli/build/" + self.command[0]
+            #self.command[0] = "/zynthian/zynthian-sw/jalv_asyncli/build/" + self.command[0]
 
             self.command_prompt = ">"
 
@@ -829,7 +829,7 @@ class zynthian_engine_jalv(zynthian_engine):
                 zctrls["BYPASS"].display_priority = 0
             else:
                 # Add jack-routing bypass control
-                zctrls["zynbypass"] = zynthian_controller(self, 'zynbypass', {
+                zctrls["bypass"] = zynthian_controller(self, 'bypass', {
                     'name': "bypass",
                     'is_toggle': True,
                     'value_max': 1,

@@ -68,7 +68,6 @@ class zynthian_processor:
         self.jackname = None
         self.chain = None
         self.chain_id = None
-        self.bypass = False
 
         self.bank_list = []
         self.bank_index = 0
