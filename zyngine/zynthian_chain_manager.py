@@ -792,7 +792,6 @@ class zynthian_chain_manager:
                 logging.error(f"Engine '{eng_code}' not found!")
             return None
         if proc_id is None:
-            # TODO: Derive next available processor id from self.processors
             proc_id = self.get_available_processor_id()
         elif proc_id in self.processors:
             logging.error(f"Processor '{proc_id}' already exists!")

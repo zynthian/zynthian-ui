@@ -873,6 +873,7 @@ class zynthian_gui:
                             self.chain_manager.remove_processor(
                                 self.modify_chain_status["chain_id"], old_processor)
                             chain.rebuild_graph()
+                            zynautoconnect.autoconnect()
                             self.close_screen("loading")
                             self.chain_control(
                                 self.modify_chain_status["chain_id"], processor, force_bank_preset=True)
