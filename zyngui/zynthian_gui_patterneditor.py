@@ -769,8 +769,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
     # Search for a custom map
     def get_custom_keymap(self):
-        synth_proc = self.zyngui.chain_manager.get_synth_processor(
-            self.channel)
+        synth_proc = self.zyngui.chain_manager.get_synth_processor(self.channel)
         if synth_proc:
             map_name = None
             preset_path = synth_proc.get_presetpath()
@@ -786,13 +785,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
                     if os.path.isfile(keymap_fpath):
                         return map_name
                     else:
-                        logging.warning(
-                            f"Keymap file {keymap_fpath} doesn't exist.")
+                        logging.warning(f"Keymap file {keymap_fpath} doesn't exist.")
             except:
                 logging.warning("Unable to load keymaps.json")
         else:
-            logging.info(
-                f"MIDI channel {self.channel} has not synth processors.")
+            logging.info(f"MIDI channel {self.channel} has not synth processors.")
 
     # Function to populate keymap array
     # returns Name of scale / map
@@ -812,8 +809,13 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
                     xml = minidom.parse(keymap_fpath)
                     notes = xml.getElementsByTagName('Note')
                     for note in notes:
-                        self.keymap.append({'note': int(
-                            note.attributes['Number'].value), 'name': note.attributes['Name'].value})
+                        try:
+                            colour = note.attributes['Colour'].value
+                        except:
+                            colour = "white"
+                        self.keymap.append({'note': int(note.attributes['Number'].value),
+                                            'name': note.attributes['Name'].value,
+                                            'colour': colour})
                     return map_name
                 except Exception as e:
                     logging.error(f"Can't load '{keymap_fpath}' => {e}")
@@ -832,8 +834,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
                             note = tonic + offset + octave * 12
                             if note > 127:
                                 break
-                            self.keymap.append({"note": note, "name": "{}{}".format(
-                                NOTE_NAMES[note % 12], note // 12 - 1)})
+                            self.keymap.append({"note": note, "name": "{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1)})
                     return data[scale]['name']
             except Exception as e:
                 logging.error(f"Can't load 'scales.json' => {e}")
@@ -1387,9 +1388,11 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
                     colour = self.keymap[row]["colour"]
                 elif name and "#" in name:
                     colour = "black"
-                    fill = "white"
                 else:
                     colour = "white"
+                if colour == "black":
+                    fill = "white"
+                else:
                     fill = CANVAS_BACKGROUND
                 self.piano_roll.itemconfig(id, fill=colour)
                 # name = str(row)
