@@ -766,6 +766,8 @@ class zynthian_processor:
                         zctrl.set_value(ctrl_state["value"], True)
                     if "midi_cc_momentary_switch" in ctrl_state:
                         zctrl.midi_cc_momentary_switch = ctrl_state['midi_cc_momentary_switch']
+                    if "midi_cc_debounce" in ctrl_state:
+                        zctrl.midi_cc_debounce = ctrl_state['midi_cc_debounce']
                 except Exception as e:
                     proc_name = self.get_bankpath()
                     if proc_name != "Audio Levels": # Don't show error for snapshots with different soundcard

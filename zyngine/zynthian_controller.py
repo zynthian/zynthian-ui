@@ -26,6 +26,7 @@ import math
 import liblo
 import logging
 from time import monotonic
+from threading import Timer
 
 # Zynthian specific modules
 from zyncoder.zyncore import lib_zyncore
@@ -101,7 +102,8 @@ class zynthian_controller:
         self.midi_cc_mode_detecting_ts = 0      # Used by CC mode detection algorithm
         self.midi_cc_mode_detecting_count = 0   # Used by CC mode detection algorithm
         self.midi_cc_mode_detecting_zero = 0    # Used by CC mode detection algorithm
-        self.midi_cc_last_ts = 0                # Timestamp of last MIDI CC message, used to debounce toggle
+        self.midi_cc_debounce = False # True to enable debounce of toggle
+        self.midi_cc_debounce_timer = None
         self.osc_port = None  # OSC destination port
         self.osc_path = None  # OSC path to send value to
         self.graph_path = None  # Complex map of control to engine parameter
@@ -160,6 +162,8 @@ class zynthian_controller:
             self.is_toggle = options['is_toggle']
         if 'midi_cc_momentary_switch' in options:
             self.midi_cc_momentary_switch = options['midi_cc_momentary_switch']
+        if 'midi_cc_debounce' in options:
+            self.midi_cc_debounce = options['midi_cc_debounce']
         if 'is_integer' in options:
             self.is_integer = options['is_integer']
         if 'nudge_factor' in options:
@@ -372,9 +376,16 @@ class zynthian_controller:
     def toggle(self):
         if self.is_toggle:
             if self.value == self.value_min:
-                self.set_value(self.value_max, send=True)
+                value = self.value_max
             else:
-                self.set_value(self.value_min, send=True)
+                value = self.value_min
+            if self.midi_cc_debounce:
+                if self.midi_cc_debounce_timer:
+                    self.midi_cc_debounce_timer.cancel()
+                self.midi_cc_debounce_timer = Timer(0.02, self.debounce_cb, (value, True))
+                self.midi_cc_debounce_timer.start()
+            else:
+                self.set_value(value, send=True)
 
     def _set_value(self, val):
         if self.is_path:
@@ -557,11 +568,17 @@ class zynthian_controller:
             state['midi_cc_momentary_switch'] = self.midi_cc_momentary_switch
         if self.midi_cc_learn:
             state["midi_cc"] = self.midi_cc_learn
+        if self.midi_cc_debounce:
+            state['midi_cc_debounce'] = self.midi_cc_debounce
         return state
 
     # ----------------------------------------------------------------------------
     # MIDI CC processing
     # ----------------------------------------------------------------------------
+
+    def debounce_cb(self, val, send):
+        self.midi_cc_debounce_timer = None
+        self.set_value(val, send)
 
     def midi_control_change(self, val, send=True):
         # CC mode not detected yet!
@@ -575,10 +592,6 @@ class zynthian_controller:
             if self.is_logarithmic:
                 value = self.value_min + self.value_range * (math.pow(10, val/127) - 1) / 9
             elif self.is_toggle:
-                now = monotonic()
-                if now - self.midi_cc_last_ts < 0.02:
-                    return # Debounce
-                self.midi_cc_last_ts = now
                 if self.midi_cc_momentary_switch:
                     if val >= 64:
                         self.toggle()
@@ -590,8 +603,14 @@ class zynthian_controller:
                         value = self.value_min
             else:
                 value = self.value_min + val * self.value_range / 127
-
-            self.set_value(value, send)
+            # Debounce
+            if self.midi_cc_debounce:
+                if self.midi_cc_debounce_timer:
+                    self.midi_cc_debounce_timer.cancel()
+                self.midi_cc_debounce_timer = Timer(0.02, self.debounce_cb, (value, send))
+                self.midi_cc_debounce_timer.start()
+            else:
+                self.set_value(value, send)
 
         elif self.midi_cc_mode > 0:
             # CC mode relative (1, 2 or 3)

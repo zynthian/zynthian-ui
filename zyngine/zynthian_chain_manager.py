@@ -1325,7 +1325,6 @@ class zynthian_chain_manager:
         cc_num : CC number
         cc_val : CC value
         """
-
         # Handle bank change (CC0/32)
         # TODO: Validate and optimise bank change code
         if zynthian_gui_config.midi_bank_change:
@@ -1359,15 +1358,20 @@ class zynthian_chain_manager:
                     f"Can't manage control feedback for CH{midi_chan}:CC{cc_num} => {e}")
             return
 
-        # MIDI input device configured for chain mode
+        # Handle pedal off for chain-mode
+        if cc_num in self.held_zctrls and cc_val == 0:
+            self.held_zctrls[cc_num][0] = False
+            while len(self.held_zctrls[cc_num]) > 1:
+                self.held_zctrls[cc_num].pop().midi_control_change(0)
+
         exclude_flags = 1 << zmip
         try:
             key = self.active_chain_id << 8 | cc_num
             for zctrl in self.chain_midi_cc_binding[key]:
                 if exclude_flags & zctrl.midi_cc_learn[3]:
                     continue
-                zctrl.midi_control_change(cc_val)
                 self.handle_pedals(cc_num, cc_val, zctrl)
+                zctrl.midi_control_change(cc_val)
         except:
             pass
         try:
@@ -1376,7 +1380,6 @@ class zynthian_chain_manager:
                 if exclude_flags & zctrl.midi_cc_learn[3]:
                     continue
                 zctrl.midi_control_change(cc_val)
-                self.handle_pedals(cc_num, cc_val, zctrl)
         except:
             pass
 
@@ -1386,17 +1389,15 @@ class zynthian_chain_manager:
         cc_num : CC number
         cc_val : CC value
         zctrl : zctrl to process
+
+        return : True if pedal and CC messages sent
         """
 
         if cc_num in self.held_zctrls:
-            if cc_val >= 64:
+            if cc_val >= 10: # Arbitrary value to support variable, e.g. quarter pedalling but avoid bad pedal offset / noise
                 if zctrl not in self.held_zctrls[cc_num]:
                     self.held_zctrls[cc_num].append(zctrl)
                 self.held_zctrls[cc_num][0] = True
-            else:
-                self.held_zctrls[cc_num][0] = False
-                while len(self.held_zctrls[cc_num]) > 1:
-                    self.held_zctrls[cc_num].pop().midi_control_change(cc_val)
 
     def clean_midi_learn(self, obj):
         """Clean MIDI learn from controls

@@ -659,12 +659,16 @@ class zynthian_gui_control(zynthian_gui_selector):
                         options[f"\u2610 Y-axis{yinfo}"] = zctrl
 
                 options["MIDI learn"] = None
-                if zctrl.is_toggle:
-                    if zctrl.midi_cc_momentary_switch:
-                        options["\u2612 Momentary => Latch"] = i
-                    else:
-                        options["\u2610 Momentary => Latch"] = i
-                elif zctrl.midi_cc_learn:
+                if zctrl.midi_cc_learn:
+                    if zctrl.is_toggle:
+                        if zctrl.midi_cc_momentary_switch:
+                            options["\u2612 Momentary => Latch"] = i
+                        else:
+                            options["\u2610 Momentary => Latch"] = i
+                        if zctrl.midi_cc_debounce:
+                            options["\u2612 Debounce"] = i
+                        else:
+                            options["\u2610 Debounce"] = i
                     match zctrl.midi_cc_mode:
                         case -1:
                             options["Relative Mode learning..."] = i
@@ -720,6 +724,12 @@ class zynthian_gui_control(zynthian_gui_selector):
                 self.zgui_controllers[param].zctrl.midi_cc_momentary_switch = 0
             else:
                 self.zgui_controllers[param].zctrl.midi_cc_momentary_switch = 1
+            self.midi_learn_options(param)
+        elif parts[1] == "Debounce":
+            if parts[0] == '\u2612':
+                self.zgui_controllers[param].zctrl.midi_cc_debounce = 0
+            else:
+                self.zgui_controllers[param].zctrl.midi_cc_debounce = 1
             self.midi_learn_options(param)
         elif parts[0] in ["Relative", "Absolute"]:
             options = {

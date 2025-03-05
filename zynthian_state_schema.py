@@ -89,8 +89,9 @@ ZynthianState = {
                     "controllers": {  # Dictionary of controllers (optional, overrides preset default value)
                         "volume": {  # Indexed by controller symbol
                             "value": 96,  # Optional controller value
-                            "midi_cc_momentary_switch": 1, # Optional switch momentary mode
                             "midi_cc": [None, 0, 7, 0], # Optional MIDI CC binding: [chain, chan, cc, zmip_exclude_flags] chain=None for global
+                            "midi_cc_momentary_switch": 1, # Optional switch momentary mode
+                            "midi_cc_debounce": 1 # Optional debounce toggle controls
                         } # ... More controllers
                     }, # ... Other parameters
                 } # ... Other controllers

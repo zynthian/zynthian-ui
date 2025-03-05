@@ -26,10 +26,11 @@ from collections import OrderedDict
 import logging
 import json
 from subprocess import Popen, STDOUT, PIPE
+import select
 from threading import Thread
 from os.path import basename
 from os import listdir
-from time import sleep
+from time import sleep, monotonic
 
 from . import zynthian_engine
 import zynautoconnect
@@ -57,12 +58,17 @@ class zynthian_engine_inet_radio(zynthian_engine):
         self.jackname = "inetradio"
         self.type = "Audio Generator"
         self.preset = None
+        self.pending_preset = None
+        self.pending_preset_ts = 0
 
         self.monitors_dict = OrderedDict()
+        self.monitors_dict['reset'] = True
+        self.monitors_dict['title'] = ""
         self.monitors_dict['info'] = ""
         self.monitors_dict['audio'] = ""
         self.monitors_dict['codec'] = ""
         self.monitors_dict['bitrate'] = ""
+        self.monitors_dict['reset'] = False
         self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_inet_radio.py"
 
         self.command = ["mplayer", "-nogui", "-nolirc", "-nojoystick", "-quiet", "-slave", "-idle", "-ao"]
@@ -138,24 +144,56 @@ class zynthian_engine_inet_radio(zynthian_engine):
 
     def proc_poll_thread_task(self):
         while not self.proc_exit:
-            line = self.proc.stdout.readline().strip()
-            if line:
-                self.proc_poll_parse_line(line)
+            ready, _, _ = select.select([self.proc.stdout], [], [], 1)
+            if ready:
+                line = self.proc.stdout.readline().strip()
+                if line:
+                    self.proc_poll_parse_line(line)
+            else:
+                if self.pending_preset and monotonic() > self.pending_preset_ts:
+                    self.set_preset(self.processors[0], self.pending_preset)
 
     def proc_poll_parse_line(self, line):
         #logging.debug(f"{self.jackname} PARSE => " + line)
+        """
         if line.startswith("Starting playback..."):
             zynautoconnect.request_audio_connect(True)
-        elif line.startswith("SteamTitle="):
-            self.monitors_dict['info'] = line[11:].strip()
+            self.monitors_dict['reset'] = True
+        """
+        if line.startswith("AO: [jack]"):
+            zynautoconnect.request_audio_connect(True)
+            self.monitors_dict['reset'] = True
+        elif line.startswith("ICY Info:"):
+            infos = line[9:].split(";")
+            for info in infos:
+                try:
+                    key, value = info.split("=", 1)
+                    if key.strip() == "StreamTitle":
+                        try:
+                            x = value.strip()[1:-1].split("~")
+                            self.monitors_dict['info'] = "\n".join(x[:4])
+                        except:
+                            self.monitors_dict['info'] = ""
+                        break
+                except:
+                    pass
         elif line.startswith("Selected audio codec: "):
             self.monitors_dict['codec'] = line[22:].strip()
-        elif line.startswith("AUDIO: "):
-            self.monitors_dict['audio'] = line[7:].strip()
-        elif line.startswith("Bitrate: "):
-            self.monitors_dict['bitrate'] = line[9:].strip()
-        elif line.startswith("Playing "):
+        elif self.preset and self.preset[1] and line.startswith("Playing "):
             self.monitors_dict["info"] = basename(line[8:].strip())
+        elif line == "Audio device got stuck!":
+            logging.warning("Audio device got stuck! Restarting...")
+            self.stop()
+            self.start()
+            self.set_preset(self.processors[0], self.preset)
+        else:
+            for key in ("Name", "Genre", "Website", "Bitrate"):
+                if line.startswith(key):
+                    try:
+                        self.monitors_dict[key.lower()] = line.split(":")[1].strip()
+                    except:
+                        pass
+                    break
 
 
     # ---------------------------------------------------------------------------
@@ -180,8 +218,8 @@ class zynthian_engine_inet_radio(zynthian_engine):
                 "Ambient": [
                     ["http://relax.stream.publicradio.org/relax.mp3",
                         0, "Relax", "auto", ""],
-                    ["https://peacefulpiano.stream.publicradio.org/peacefulpiano.aac",
-                     0, "Peaceful Piano", "aac", ""],
+                    #["https://peacefulpiano.stream.publicradio.org/peacefulpiano.aac",
+                    # 0, "Peaceful Piano", "aac", ""],
                     ["http://mp3stream4.abradio.cz/chillout128.mp3",
                      0, "Radio Chillout - ABradio", "auto", ""],
                     ["http://afera.com.pl/afera128.pls",
@@ -195,8 +233,8 @@ class zynthian_engine_inet_radio(zynthian_engine):
                 "Classical": [
                     ["http://66.42.114.24:8000/live", 0,
                         "Classical Oasis", "auto", ""],
-                    ["https://chambermusic.stream.publicradio.org/chambermusic.aac",
-                     0, "Chamber Music", "aac", ""],
+                    #["https://chambermusic.stream.publicradio.org/chambermusic.aac",
+                    # 0, "Chamber Music", "aac", ""],
                     # ["https://live.amperwave.net/playlist/mzmedia-cfmzfmmp3-ibc2.m3u", 0, "The New Classical FM", "auto", ""],
                     # ["https://audio-mp3.ibiblio.org/wdav-112k", 0, "WDAV Classical: Mozart Café", "auto", ""],
                     # ["https://cast1.torontocast.com:2085/stream", 0, "KISS Classical", "auto", ""]
@@ -231,8 +269,8 @@ class zynthian_engine_inet_radio(zynthian_engine):
                     # ["http://radio.pro-fhi.net:2199/rqwrejez.pls", 0, "Funk Power Radio", "auto", ""],
                     ["http://listento.thefunkstation.com:8000",
                      0, "The Funk Station", "auto", ""],
-                    ["https://scdn.nrjaudio.fm/adwz1/fr/30607/mp3_128.mp3",
-                     0, "Nostalgie Funk", "auto", ""],
+                    #["https://scdn.nrjaudio.fm/adwz1/fr/30607/mp3_128.mp3",
+                    # 0, "Nostalgie Funk", "auto", ""],
                     ["http://funkyradio.streamingmedia.it/play.mp3",
                      0, "Funky Radio", "auto", ""],
                     ["http://listen.shoutcast.com/a-afunk",
@@ -314,8 +352,8 @@ class zynthian_engine_inet_radio(zynthian_engine):
                 "Miscellaneous": [
                     ["http://stream.radiotime.com/listen.m3u?streamId=10555650",
                         0, "FIP", "auto", ""],
-                    ["http://icecast.radiofrance.fr/fipgroove-hifi.aac",
-                     0, "FIP Groove", "aac", ""],
+                    #["http://icecast.radiofrance.fr/fipgroove-hifi.aac",
+                    # 0, "FIP Groove", "aac", ""],
                     ["http://direct.fipradio.fr/live/fip-webradio4.mp3",
                      0, "FIP Radio 4", "auto", ""],
                 ]
@@ -323,7 +361,7 @@ class zynthian_engine_inet_radio(zynthian_engine):
             playlists = []
             for file in listdir(f"{self.my_data_dir}/capture"):
                 if file[-4:].lower() in (".m3u", ".pls"):
-                    playlists.append([f"{self.my_data_dir}/capture/{file}", 0, file[:-4], "auto", ""])
+                    playlists.append([f"{self.my_data_dir}/capture/{file}", 1, file[:-4], "auto", ""])
             if playlists:
                 self.presets["Playlists"] = playlists
 
@@ -343,16 +381,24 @@ class zynthian_engine_inet_radio(zynthian_engine):
         return presets
 
     def set_preset(self, processor, preset, preload=False):
+        self.pending_preset = None
         self.preset = preset
-        if processor.controllers_dict["pause"].value:
-            prefix = ""
-        else:
-            prefix = "pausing "
+        self.proc_cmd("stop")
         if preset[0].endswith("m3u") or preset[0].endswith("pls"):
-            self.proc_cmd(f"{prefix}loadlist {preset[0]}")
+            self.proc_cmd(f"loadlist {preset[0]}")
         else:
-            self.proc_cmd(f"{prefix}loadfile {preset[0]}")
+            self.proc_cmd(f"loadfile {preset[0]}")
         self.monitors_dict['title'] = preset[2]
+        self.monitors_dict['reset'] = True
+        self.monitors_dict['info'] = ""
+        self.monitors_dict['audio'] = ""
+        self.monitors_dict['codec'] = ""
+        self.monitors_dict['bitrate'] = ""
+        if preset[1]:
+            self._ctrl_screens = [['main', ['volume', 'stream', 'prev/next', 'pause']]]
+        else:
+            self._ctrl_screens = [['main', ['volume', 'stream', 'prev/next']]]
+        processor.refresh_controllers()
         processor.controllers_dict["stream"].set_value('streaming', False)
 
     # ----------------------------------------------------------------------------
@@ -365,8 +411,48 @@ class zynthian_engine_inet_radio(zynthian_engine):
         if zctrl.symbol == "volume":
                 self.proc_cmd(f"volume {zctrl.value} 1")
         elif zctrl.symbol == "prev/next":
-            self.proc_cmd(f"pt_step {zctrl.value - 1}")
+            value = zctrl.value - 1
             zctrl.set_value(1, False)
+            if self.preset:
+                if self.preset[1]:
+                    self.proc_cmd(f"pt_step {value}")
+                else:
+                    if self.pending_preset:
+                        current_preset = self.pending_preset
+                    else:
+                        current_preset = self.preset
+                    for bank_i, presets in enumerate(self.presets.values()):
+                        for i, preset in enumerate(presets):
+                            if current_preset == preset:
+                                # Found current preset
+                                i += value
+                                if i >= len(presets):
+                                    try:
+                                        bank_name = list(self.presets)[bank_i + 1]
+                                        if bank_name == "Playlists":
+                                            return
+                                        self.pending_preset = self.presets[bank_name][0]
+                                    except:
+                                        return #TODO: Handle empty banks
+                                elif i < 0:
+                                    if bank_i == 0:
+                                        return
+                                    try:
+                                        bank_name = list(self.presets)[bank_i - 1]
+                                        self.pending_preset = self.presets[bank_name][-1]
+                                    except:
+                                        return #TODO: Handle empty banks
+                                else:
+                                    self.pending_preset = presets[i]
+                                if self.pending_preset:
+                                    self.pending_preset_ts = monotonic() + 1
+                                    self.monitors_dict['title'] = self.pending_preset[2]
+                                    self.monitors_dict['reset'] = True
+                                    self.monitors_dict['info'] = ""
+                                    self.monitors_dict['audio'] = ""
+                                    self.monitors_dict['codec'] = ""
+                                    self.monitors_dict['bitrate'] = ""
+                                return
         elif zctrl.symbol == "stream":
             if zctrl.value:
                 self.set_preset(self.processors[0], self.preset)
