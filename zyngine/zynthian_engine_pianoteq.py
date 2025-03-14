@@ -39,101 +39,119 @@ from . import zynthian_engine
 from . import zynthian_controller
 from zynconf import ServerPort
 
-pt_ctrl_map = OrderedDict((
-    ("Condition", "Cond"),
-    ("Dynamics", "Dyn"),
-    ("Volume", "Volum"),
-    ("Post Effect Gain", "EffGain"),
-    ("Equalizer Switch", "EquOn"),
-    ("Aftertouch", "AfTouch"),
-    ("Diapason", "Diap"),
-    ("Sustain Pedal", "SustP"),
-    ("Soft Pedal", "SoftP"),
-    ("Sostenuto Pedal", "SostP"),
-    ("Harmonic Pedal", "HarmP"),
-    ("Rattle Pedal", "Rattle"),
-    ("Lute Stop Pedal", "LutStp"),
-    ("Celeste Pedal", "Celes"),
-    ("Mozart Rail", "Mozart"),
-    ("Super Sostenuto", "SSosP"),
-    ("Pinch Harmonic Pedal", "PinchH"),
-    ("Glissando Pedal", "Gliss"),
-    ("Harpsichord Register[1]", "Regis[1]"),
-    ("Harpsichord Register[2]", "Regis[2]"),
-    ("Harpsichord Register[3]", "Regis[3]"),
-    ("Reversed Sustain", "RevSus"),
-    ("Pitch Bend", "PBend"),
-    ("Clavinet Low Mic", "ClvMicL"),
-    ("Clavinet High Mic", "ClvMicH"),
-    ("Output Mode", "Output"),
-    ("Mute", "Mute"),
-    ("Damper Noise", "DampNois"),
-    ("Pedal Noise", "PSnd"),
-    ("Key Release Noise", "KSnd"),
-    ("Keyboard Range Switch", "KbRng"),
-    ("Bounce Switch", "MBOn"),
-    ("Bounce Delay", "MBDel"),
-    ("Bounce Sync", "MBSync"),
-    ("Bounce Sync Speed", "MBSyncS"),
-    ("Bounce Velocity Sensitivity", "MBVelS"),
-    ("Bounce Delay Loss", "MBAccel"),
-    ("Bounce Velocity Loss", "MBVelL"),
-    ("Bounce Humanization", "MBHuma"),
-    ("NFX Lfo Shape", "nfxLfoSh"),
-    ("NFX Lfo Skew", "nfxLfoSk"),
-    ("NFX Lfo Rate", "nfxLfoRt"),
-    ("NFX Lfo Phase", "nfxLfoP"),
-    ("NFX Lfo Phase Locked", "nfxLfoPL"),
-    ("NFX Onset Duration", "nfxOnset"),
-    ("NFX Vibrato", "nfxVibC"),
-    ("NFX Vibrato Offset", "nfxVibB"),
-    ("NFX Tremolo Depth", "nfxTrmD"),
-    ("NFX Tremolo Phase", "nfxTrmP"),
-    ("Attack Envelope", "AttkE"),
-    ("Virtuosity", "Virt"),
-    ("Fret", "Fret"),
-    ("Guitar Legato", "Legato"),
-    ("Guitar easy fingering", "GFing"),
-    ("Guitar Body", "GBody"),
-    ("Effect[1].Switch", "Eff[1].Switch"),
-    ("Effect[1].Param[1]", "Eff[1].Param[1]"),
-    ("Effect[1].Param[2]", "Eff[1].Param[2]"),
-    ("Effect[1].Param[3]", "Eff[1].Param[3]"),
-    ("Effect[1].Param[4]", "Eff[1].Param[4]"),
-    ("Effect[1].Param[5]", "Eff[1].Param[5]"),
-    ("Effect[1].Param[6]", "Eff[1].Param[6]"),
-    ("Effect[1].Param[7]", "Eff[1].Param[7]"),
-    ("Effect[1].Param[8]", "Eff[1].Param[8]"),
-    ("Effect[2].Switch", "Eff[2].Switch"),
-    ("Effect[2].Param[1]", "Eff[2].Param[1]"),
-    ("Effect[2].Param[2]", "Eff[2].Param[2]"),
-    ("Effect[2].Param[3]", "Eff[2].Param[3]"),
-    ("Effect[2].Param[4]", "Eff[2].Param[4]"),
-    ("Effect[2].Param[5]", "Eff[2].Param[5]"),
-    ("Effect[2].Param[6]", "Eff[2].Param[6]"),
-    ("Effect[2].Param[7]", "Eff[2].Param[7]"),
-    ("Effect[2].Param[8]", "Eff[2].Param[8]"),
-    ("Effect[3].Switch", "Eff[3].Switch"),
-    ("Effect[3].Param[1]", "Eff[3].Param[1]"),
-    ("Effect[3].Param[2]", "Eff[3].Param[2]"),
-    ("Effect[3].Param[3]", "Eff[3].Param[3]"),
-    ("Effect[3].Param[4]", "Eff[3].Param[4]"),
-    ("Effect[3].Param[5]", "Eff[3].Param[5]"),
-    ("Effect[3].Param[6]", "Eff[3].Param[6]"),
-    ("Effect[3].Param[7]", "Eff[3].Param[7]"),
-    ("Effect[3].Param[8]", "Eff[3].Param[8]"),
-    ("Reverb Switch", "RevrbOn"),
-    ("Reverb Duration", "RevDur"),
-    ("Reverb Mix", "RevM"),
-    ("Room Dimensions", "RevDim"),
-    ("Reverb Pre-delay", "RevDel"),
-    ("Reverb Early Reflections", "RevEarl"),
-    ("Reverb Tone", "RevTon"),
-    ("Limiter Switch", "LimOn"),
-    ("Limiter Sharpness", "LimSharp"),
-    ("Limiter Threshold", "LimThr"),
-    ("Limiter Gain", "LimGain")
-))
+pt_ctrl_map = {
+    "Volume": ["Volum", "Volume", "Main", 1000, None, 7],
+    "Condition": ["Cond", "Condition", "Main", 1000, None, None],
+    "Dynamics": ["Dyn", "Dynamics", "Main", 1000, None, None],
+    "Post Effect Gain": ["EffGain", "Post Effect Gain", "Main", 1000, None, None],
+
+    "Output Mode": ["Output", "Output Mode", "Settings", 990, None, None],
+    "Aftertouch": ["AfTouch", "Aftertouch", "Settings", 990, None, None],
+    "Diapason": ["Diap", "Diapason", "Settings", 990, None, None],
+    "Pitch Bend": ["PBend", "Pitch Bend", "Settings", 990, None, None],
+
+    "Keyboard Range Switch": ["KbRng", "Keyboard Range Switch", "Advanced", 980, 'hiden', None],
+
+    "Mute": ["Mute", "Mute", "Action", 970, None, None],
+    "Damper Noise": ["DampNois", "Damper Noise", "Action", 970, None, None],
+    "Pedal Noise": ["PSnd", "Pedal Noise", "Action", 970, None, None],
+    "Key Release Noise": ["KSnd", "Key Release Noise", "Action", 970, None, None],
+
+    "Sustain Pedal": ["SustP", "Sustain Pedal", "Pedals 1", 960, 'pedal', 64],
+    "Sostenuto Pedal": ["SostP", "Sostenuto Pedal", "Pedals 1", 960, 'pedal', 66],
+    "Soft Pedal": ["SoftP", "Soft Pedal", "Pedals 1", 960, 'pedal', 67],
+    "Harmonic Pedal": ["HarmP", "Harmonic Pedal", "Pedals 1", 960, 'pedal', 69],
+
+    "Rattle Pedal": ["Rattle", "Rattle Pedal", "Pedals 2", 959, 'pedal', None],
+    "Lute Stop Pedal": ["LutStp", "Lute Stop Pedal", "Pedals 2", 959, 'pedal', None],
+    "Celeste Pedal": ["Celes", "Celeste Pedal", "Pedals 2", 959, 'pedal', None],
+    "Mozart Rail": ["Mozart", "Mozart Rail", "Pedals 2", 959, 'pedal', None],
+
+    "Super Sostenuto": ["SSosP", "Super Sostenuto", "Pedals 3", 958, 'pedal', None],
+    "Pinch Harmonic Pedal": ["PinchH", "Pinch Harmonic Pedal", "Pedals 3", 958, 'pedal', None],
+    "Glissando Pedal": ["Gliss", "Glissando Pedal", "Pedals 3", 958, 'pedal', None],
+    "Reversed Sustain": ["RevSus", "Reversed Sustain", "Pedals 3", 958, 'toggle', None],
+
+    "Bounce Switch": ["MBOn", "Bounce Switch", "Mallet Bounce 1", 950, None, None],
+    "Bounce Delay": ["MBDel", "Bounce Delay", "Mallet Bounce 1", 950, None, None],
+    "Bounce Sync": ["MBSync", "Bounce Sync", "Mallet Bounce 1", 950, "toggle", None],
+    "Bounce Sync Speed": ["MBSyncS", "Bounce Sync Speed", "Mallet Bounce 1", 950, None, None],
+    "Bounce Velocity Sensitivity": ["MBVelS", "Bounce Vel Sens", "Mallet Bounce 2", 949, None, None],
+    "Bounce Delay Loss": ["MBAccel", "Bounce Delay Loss", "Mallet Bounce 2", 949, None, None],
+    "Bounce Velocity Loss": ["MBVelL", "Bounce Vel Loss", "Mallet Bounce 2", 949, None, None],
+    "Bounce Humanization": ["MBHuma", "Bounce Humanization", "Mallet Bounce 2", 949, None, None],
+
+    "Harpsichord Register[1]": ["Regis[1]", "Harpsichord L8'", "Hapsichord", 940, 'toggle', None],
+    "Harpsichord Register[2]": ["Regis[2]", "Harpsichord U8'", "Hapsichord", 940, 'toggle', None],
+    "Harpsichord Register[3]": ["Regis[3]", "Harpsichord 4'", "Hapsichord", 940, 'toggle', None],
+
+    "Clavinet Low Mic": ["ClvMicL", "Clavinet Low Mic", "Clavinet", 930, None, None],
+    "Clavinet High Mic": ["ClvMicH", "Clavinet High Mic", "Clavinet", 930, None, None],
+
+    "Guitar Legato": ["Legato", "Guitar Legato", "Guitar", 920, 'toggle', None],
+    "Guitar easy fingering": ["GFing", "Easy Fingering", "Guitar", 920, 'toggle', None],
+    "Virtuosity": ["Virt", "Guitar Virtuosity", "Guitar", 920, None, None],
+    "Fret": ["Fret", "Guitar Fret", "Guitar", 920, None, None],
+    "Guitar Body": ["GBody", "Guitar Body", "Guitar 2", 919, 'hiden', None],
+
+    "NFX Lfo Rate": ["nfxLfoRt", "NFX LFO Rate", "NoteFX - Modulation 1", 910, None, None],
+    "NFX Onset Duration": ["nfxOnset", "NFX Onset Duration", "NoteFX - Modulation 1", 910, None, None],
+    "NFX Lfo Shape": ["nfxLfoSh", "NFX LFO Shape", "NoteFX - Modulation 1", 910, None, None],
+    "NFX Lfo Skew": ["nfxLfoSk", "NFX LFO Skew", "NoteFX - Modulation 1", 910, None, None],
+    "NFX Lfo Phase": ["nfxLfoP", "NFX LFO Phase", "NoteFX - Modulation 2", 909, None, None],
+    "NFX Lfo Phase Locked": ["nfxLfoPL", "NFX LFO Phase Locked", "NoteFX - Modulation 2", 909, "toggle", None],
+    "Attack Envelope": ["AttkE", "NFX Attack Envelope", "NoteFX - Modulation 2", 909, None, None],
+    "NFX Vibrato": ["nfxVibC", "NFX Vibrato", "NoteFX - Vibr & Trem", 908, None, None],
+    "NFX Vibrato Offset": ["nfxVibB", "NFX Vibrato Offset", "NoteFX - Vibr & Trem", 908, None, None],
+    "NFX Tremolo Depth": ["nfxTrmD", "NFX Tremolo Depth", "NoteFX - Vibr & Trem", 908, None, None],
+    "NFX Tremolo Phase": ["nfxTrmP", "NFX Tremolo Phase", "NoteFX - Vibr & Trem", 908, None, None],
+
+    "Reverb Switch": ["RevrbOn", "Reverb Switch", "Reverb 1", 900, "toggle", None],
+    "Reverb Duration": ["RevDur", "Reverb Duration", "Reverb 1", 900, None, None],
+    "Reverb Mix": ["RevM", "Reverb Mix", "Reverb 1", 900, None, None],
+    "Room Dimensions": ["RevDim", "Room Dimensions", "Reverb 1", 900, None, None],
+    "Reverb Pre-delay": ["RevDel", "Reverb Pre-delay", "Reverb 2", 899, None, None],
+    "Reverb Early Reflections": ["RevEarl", "Reverb Early Reflections", "Reverb 2", 899, None, None],
+    "Reverb Tone": ["RevTon", "Reverb Tone", "Reverb 2", 899, None, None],
+
+    "Limiter Switch": ["LimOn", "Limiter Switch", "Limiter", 890, "toggle", None],
+    "Limiter Sharpness": ["LimSharp", "Limiter Sharpness", "Limiter", 890, None, None],
+    "Limiter Threshold": ["LimThr", "Limiter Threshold", "Limiter", 890, None, None],
+    "Limiter Gain": ["LimGain", "Limiter Gain", "Limiter", 890, None, None],
+
+    "Equalizer Switch": ["EquOn", "Equalizer Switch", "FX Switches", 880, "toggle", None],
+    "Effect[1].Switch": ["Eff[1].Switch", "FX1 Switch ", "FX Switches", 880, "toggle", None],
+    "Effect[2].Switch": ["Eff[2].Switch", "FX2 Switch", "FX Switches", 880, "toggle", None],
+    "Effect[3].Switch": ["Eff[3].Switch", "FX3 Switch", "FX Switches", 880, "toggle", None],
+
+    "Effect[1].Param[1]": ["Eff[1].Param[1]", "FX1 Param1", "FX1-1", 870, None, None],
+    "Effect[1].Param[2]": ["Eff[1].Param[2]", "FX1 Param2", "FX1-1", 870, None, None],
+    "Effect[1].Param[3]": ["Eff[1].Param[3]", "FX1 Param3", "FX1-1", 870, None, None],
+    "Effect[1].Param[4]": ["Eff[1].Param[4]", "FX1 Param4", "FX1-1", 870, None, None],
+    "Effect[1].Param[5]": ["Eff[1].Param[5]", "FX1 Param5", "FX1-2", 869, None, None],
+    "Effect[1].Param[6]": ["Eff[1].Param[6]", "FX1 Param6", "FX1-2", 869, None, None],
+    "Effect[1].Param[7]": ["Eff[1].Param[7]", "FX1 Param7", "FX1-2", 869, None, None],
+    "Effect[1].Param[8]": ["Eff[1].Param[8]", "FX1 Param8", "FX1-2", 869, None, None],
+
+    "Effect[2].Param[1]": ["Eff[2].Param[1]", "FX2 Param1", "FX2-1", 860, None, None],
+    "Effect[2].Param[2]": ["Eff[2].Param[2]", "FX2 Param2", "FX2-1", 860, None, None],
+    "Effect[2].Param[3]": ["Eff[2].Param[3]", "FX2 Param3", "FX2-1", 860, None, None],
+    "Effect[2].Param[4]": ["Eff[2].Param[4]", "FX2 Param4", "FX2-1", 860, None, None],
+    "Effect[2].Param[5]": ["Eff[2].Param[5]", "FX2 Param5", "FX2-2", 859, None, None],
+    "Effect[2].Param[6]": ["Eff[2].Param[6]", "FX2 Param6", "FX2-2", 859, None, None],
+    "Effect[2].Param[7]": ["Eff[2].Param[7]", "FX2 Param7", "FX2-2", 859, None, None],
+    "Effect[2].Param[8]": ["Eff[2].Param[8]", "FX2 Param8", "FX2-2", 859, None, None],
+
+    "Effect[3].Param[1]": ["Eff[3].Param[1]", "FX3 Param1", "FX3-1", 850, None, None],
+    "Effect[3].Param[2]": ["Eff[3].Param[2]", "FX3 Param2", "FX3-1", 850, None, None],
+    "Effect[3].Param[3]": ["Eff[3].Param[3]", "FX3 Param3", "FX3-1", 850, None, None],
+    "Effect[3].Param[4]": ["Eff[3].Param[4]", "FX3 Param4", "FX3-1", 850, None, None],
+    "Effect[3].Param[5]": ["Eff[3].Param[5]", "FX3 Param5", "FX3-2", 849, None, None],
+    "Effect[3].Param[6]": ["Eff[3].Param[6]", "FX3 Param6", "FX3-2", 849, None, None],
+    "Effect[3].Param[7]": ["Eff[3].Param[7]", "FX3 Param7", "FX3-2", 849, None, None],
+    "Effect[3].Param[8]": ["Eff[3].Param[8]", "FX3 Param8", "FX3-2", 849, None, None],
+}
+
 
 # ------------------------------------------------------------------------------
 # Pianoteq module helper functions
@@ -170,8 +188,7 @@ def get_pianoteq_binary_info():
         'jackname': 'Pianoteq'
     }
     if check_pianoteq_binary():
-        version_pattern = re.compile(
-            " version ([0-9]+\.[0-9]+\.[0-9]+)", re.IGNORECASE)
+        version_pattern = re.compile(" version ([0-9]+\.[0-9]+\.[0-9]+)", re.IGNORECASE)
         stage_pattern = re.compile(" stage ", re.IGNORECASE)
         pro_pattern = re.compile(" pro ", re.IGNORECASE)
         trial_pattern = re.compile(" trial ", re.IGNORECASE)
@@ -182,8 +199,7 @@ def get_pianoteq_binary_info():
             if m:
                 # Get version info
                 info['version_str'] = m.group(1)
-                info['version'] = list(
-                    map(int, str(info['version_str']).split(".")))
+                info['version'] = list(map(int, str(info['version_str']).split(".")))
                 if info['version'][0] > 7 or info['version'][0] == 7 and info['version'][1] >= 5:
                     info['api'] = True
                 else:
@@ -194,8 +210,7 @@ def get_pianoteq_binary_info():
                 else:
                     info['multicore'] = '2'
                 if info['version'][0] == 6 and info['version'][1] < 5:
-                    info['jackname'] = "Pianoteq{}{}".format(
-                        info['version'][0], info['version'][1])
+                    info['jackname'] = "Pianoteq{}{}".format(info['version'][0], info['version'][1])
                 # Get trial info
                 m = trial_pattern.search(l)
                 if m:
@@ -250,11 +265,13 @@ def create_pianoteq_config():
         info = get_pianoteq_binary_info()
         try:
             shutil.copy("{}/Pianoteq{}{} {}.prefs".format(PIANOTEQ_CONFIG_DIR,
-                        info['version'][0], info['version'][1], info['product']), PIANOTEQ_CONFIG_FILE)
+                                                          info['version'][0], info['version'][1], info['product']),
+                        PIANOTEQ_CONFIG_FILE)
         except:
             try:
                 shutil.copy("{}/Pianoteq{}{}.prefs".format(PIANOTEQ_CONFIG_DIR,
-                            info['version'][0], info['version'][1]), PIANOTEQ_CONFIG_FILE)
+                                                           info['version'][0], info['version'][1]),
+                            PIANOTEQ_CONFIG_FILE)
             except:
                 shutil.copy(os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data") +
                             "/pianoteq/Pianoteq.prefs", PIANOTEQ_CONFIG_FILE)
@@ -265,8 +282,7 @@ def fix_pianoteq_config(samplerate):
         info = get_pianoteq_binary_info()
 
         try:
-            rate_limit_flag = int(os.environ.get(
-                'ZYNTHIAN_PIANOTEQ_LIMIT_RATE', "1"))
+            rate_limit_flag = int(os.environ.get('ZYNTHIAN_PIANOTEQ_LIMIT_RATE', "1"))
         except:
             logging.error("Bad config value for sample rate limit flag")
             rate_limit_flag = 1
@@ -277,15 +293,13 @@ def fix_pianoteq_config(samplerate):
                 internal_sr = internal_sr / 2
 
         try:
-            voice_limit = int(os.environ.get(
-                'ZYNTHIAN_PIANOTEQ_VOICE_LIMIT', "32"))
+            voice_limit = int(os.environ.get('ZYNTHIAN_PIANOTEQ_VOICE_LIMIT', "32"))
         except:
             logging.error("Bad config value for voice limit")
             voice_limit = 32
 
         try:
-            cpu_overload_detection = int(os.environ.get(
-                'ZYNTHIAN_PIANOTEQ_CPU_OVERLOAD_DETECTION', "1"))
+            cpu_overload_detection = int(os.environ.get('ZYNTHIAN_PIANOTEQ_CPU_OVERLOAD_DETECTION', "1"))
         except:
             logging.error("Bad config value for CPU overload detection flag")
             cpu_overload_detection = 1
@@ -325,8 +339,7 @@ def fix_pianoteq_config(samplerate):
                 logging.debug("Fixing Audio Setup")
                 for devicesetup in audio_setup_node.iter('DEVICESETUP'):
                     devicesetup.set('deviceType', 'JACK')
-                    devicesetup.set('audioOutputDeviceName',
-                                    'Auto-connect OFF')
+                    devicesetup.set('audioOutputDeviceName', 'Auto-connect OFF')
                     devicesetup.set('audioInputDeviceName', 'Auto-connect OFF')
                     devicesetup.set('audioDeviceRate', str(samplerate))
                     devicesetup.set('forceStereo', '0')
@@ -356,8 +369,7 @@ def fix_pianoteq_config(samplerate):
 
             if crash_node is not None:
                 if crash_node.attrib['val']:
-                    logging.warning("Pianoteq detected previous crash ({})".format(
-                        crash_node.attrib['val']))
+                    logging.warning("Pianoteq detected previous crash ({})".format(crash_node.attrib['val']))
                     crash_node.attrib['val'] = ''
 
             tree.write(PIANOTEQ_CONFIG_FILE)
@@ -372,15 +384,14 @@ def read_pianoteq_midi_mapping(file):
     with open(file, "rb") as f:
         data = f.read()
     if len(data) < 40:
-        print(f"Short read: {len(data)}")
+        logging.error(f"Bad Format! Short read: {len(data)}")
         return result
     if struct.unpack("<I", data[0:4])[0] != 954245913:
-        print(
-            f"Wrong magic header number: {struct.unpack('<I', data[0:4])[0]}")
+        logging.error(f"Bad Format! Wrong magic header number: {struct.unpack('<I', data[0:4])[0]}")
         return result
     payload_len = struct.unpack("<i", data[4:8])[0]
     if payload_len + 8 != len(data):
-        print("Error: Wrong length")
+        logging.error("Bad Format! Wrong length")
     pos = 8
 
     if get_pianoteq_binary_info()["version"][0] < 8:
@@ -391,20 +402,20 @@ def read_pianoteq_midi_mapping(file):
                   "Flag 2", "Flag 3", "Dialect", "MIDI Tuning", "Map length"]
 
     for key in header:
-        result[key] = struct.unpack("<i", data[pos:pos+4])[0]
+        result[key] = struct.unpack("<i", data[pos:pos + 4])[0]
         pos += 4
     result["map"] = {}
     while pos < len(data):
-        print(f"Get data at {pos}")
-        flag = struct.unpack("<i", data[pos:pos+4])[0]
+        logging.debug(f"Get data at {pos}")
+        flag = struct.unpack("<i", data[pos:pos + 4])[0]
         pos += 4  # What is this extra flag?
-        trigger_len = struct.unpack("<i", data[pos:pos+4])[0]
+        trigger_len = struct.unpack("<i", data[pos:pos + 4])[0]
         pos += 4
-        trigger_str = data[pos:pos+trigger_len].decode()
+        trigger_str = data[pos:pos + trigger_len].decode()
         pos += trigger_len
-        action_len = struct.unpack("<i", data[pos:pos+4])[0]
+        action_len = struct.unpack("<i", data[pos:pos + 4])[0]
         pos += 4
-        action_str = data[pos:pos+action_len].decode()
+        action_str = data[pos:pos + action_len].decode()
         pos += action_len
         result["map"][trigger_str] = [action_str, flag]
     return result
@@ -448,11 +459,37 @@ def write_pianoteq_midi_mapping(config, file):
 
 def save_midi_mapping(file):
     data = {"map": {}}
-    for i, param in enumerate(pt_ctrl_map.values()):
-        cc = i + 1
-        data["map"][f"Controller {cc}"] = [
-            f"{{SetParameter|3|{param}|0:1}}", 1]
+    busy_cc = {}
+
+    def get_next_free_cc(cc):
+        cc += 1
+        while cc in busy_cc:
+            cc += 1
+        return cc
+
+    # First, map controllers with specific cc
+    for parconf in pt_ctrl_map.values():
+        try:
+            cc = parconf[5]
+            if cc is not None and isinstance(cc, int) and 1 < cc < 128:
+                busy_cc[cc] = True
+                data["map"][f"Controller {cc}"] = [f"{{SetParameter|3|{parconf[0]}|0:1}}", 1]
+                #logging.debug(f"Hardcoded Mapping {parconf[0]} => CC#{cc}")
+        except:
+            pass
+    # Next, rest of controllers
+    cc = 0
+    for parconf in pt_ctrl_map.values():
+        if parconf[5] is None:
+            cc = get_next_free_cc(cc)
+            if 0 < cc < 128:
+                parconf[5] = cc
+                busy_cc[cc] = True
+                data["map"][f"Controller {cc}"] = [f"{{SetParameter|3|{parconf[0]}|0:1}}", 1]
+                #logging.debug(f"Mapping {parconf[0]} => CC#{cc}")
+    # Pitch bending
     data["map"]["Pitch Bend"] = ["{SetParameter|3|PBend|0.458333:0.541667}", 1]
+    # Write MIDI map to file
     write_pianoteq_midi_mapping(data, file)
 
 
@@ -460,8 +497,7 @@ def save_midi_mapping(file):
 # Pianoteq module constants & parameter configuration/initialization
 # ------------------------------------------------------------------------------
 
-PIANOTEQ_SW_DIR = os.environ.get(
-    'ZYNTHIAN_SW_DIR', '/zynthian/zynthian-sw') + '/pianoteq'
+PIANOTEQ_SW_DIR = os.environ.get('ZYNTHIAN_SW_DIR', '/zynthian/zynthian-sw') + '/pianoteq'
 PIANOTEQ_BINARY = PIANOTEQ_SW_DIR + '/pianoteq'
 PIANOTEQ_CONFIG_DIR = os.path.expanduser('~') + '/.config/Modartt'
 PIANOTEQ_DATA_DIR = os.path.expanduser('~') + '/.local/share/Modartt/Pianoteq'
@@ -470,13 +506,13 @@ PIANOTEQ_MY_PRESETS_DIR = PIANOTEQ_DATA_DIR + '/Presets'
 PIANOTEQ_CONFIG_FILE = PIANOTEQ_CONFIG_DIR + '/Pianoteq.prefs'
 PIANOTEQ_MIDIMAPPINGS_DIR = PIANOTEQ_DATA_DIR + '/MidiMappings'
 
+
 # ------------------------------------------------------------------------------
 # Pianoteq Engine Class
 # ------------------------------------------------------------------------------
 
 
 class zynthian_engine_pianoteq(zynthian_engine):
-
     # ---------------------------------------------------------------------------
     # Config variables
     # ---------------------------------------------------------------------------
@@ -584,8 +620,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
     #   Note: Overwrites existing preset if exists
     #   returns: True on success
     def save_preset(self, bank_info, preset_name):
-        result = self.rpc(
-            'savePreset', {'name': preset_name, 'bank': 'My Presets'})
+        result = self.rpc('savePreset', {'name': preset_name, 'bank': 'My Presets'})
         return result and 'error' not in result
 
     #   Get a list of preset names for an instrument
@@ -622,8 +657,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
         if result and 'result' in result:
             for preset in result['result']:
                 if (group is None or preset['class'] == group) and [preset['instr'], preset['license_status'] == 'ok'] not in instruments:
-                    instruments.append(
-                        [preset['instr'], preset['license_status'] == 'ok'])
+                    instruments.append([preset['instr'], preset['license_status'] == 'ok'])
         return instruments
 
     #   Get a list of parameters for the loaded preset
@@ -635,9 +669,20 @@ class zynthian_engine_pianoteq(zynthian_engine):
             return {}
         param_list = list(pt_ctrl_map.keys())
         for param in result['result']:
-            if param['id'] in param_list:
-                params[param['id']] = {
-                    'name': param['name'], 'value': param['normalized_value'], 'cc': param_list.index(param['id']) + 1}
+            id = param['id']
+            #logging.debug(f"PARAM {id} INFO =>\n {param}")
+            if id in param_list:
+                index = param_list.index(param['id'])
+                param_options = pt_ctrl_map[param['id']]
+                params[id] = {
+                    #'name': param['name'],
+                    'name': param_options[1],
+                    'group': param_options[2],
+                    'display_priority': 1000 * param_options[3] - index,
+                    'value': param['normalized_value'],
+                    'type': param_options[4],
+                    'cc': param_options[5]
+                }
             else:
                 logging.warning(f"Unknown parameter {param['id']}")
         return params
@@ -656,8 +701,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
     #   value: Normalized value (0.0..1.0)
     #   returns: True on success
     def set_param(self, param, value):
-        result = self.rpc('setParameters', {
-                          'list': [{'id': param, 'normalized_value': value}]})
+        result = self.rpc('setParameters', {'list': [{'id': param, 'normalized_value': value}]})
         return result and 'error' not in result
 
     # ---------------------------------------------------------------------------
@@ -681,14 +725,12 @@ class zynthian_engine_pianoteq(zynthian_engine):
         instruments = self.get_instruments()
         for instrument in instruments:
             if instrument[1]:
-                banks.append(
-                    [instrument[0], None, instrument[0], instrument[1]])
+                banks.append([instrument[0], None, instrument[0], instrument[1]])
         if self.show_demo:
             banks.append([None, 0, '---- DEMO Instruments ----', None])
             for instrument in instruments:
                 if not instrument[1]:
-                    banks.append(
-                        [instrument[0], None, instrument[0], instrument[1]])
+                    banks.append([instrument[0], None, instrument[0], instrument[1]])
         return banks
 
     def set_bank(self, processor, bank):
@@ -737,16 +779,14 @@ class zynthian_engine_pianoteq(zynthian_engine):
             stub = stub[6:]
         for preset in result:
             if preset[1]:
-                presets.append(
-                    [preset[0], preset[1], self.get_display_name(preset[0], stub), bank[0]])
+                presets.append([preset[0], preset[1], self.get_display_name(preset[0], stub), bank[0]])
                 user_presets = True
         if user_presets:
             presets.insert(0, [None, None, 'User Presets', ''])
             presets.append([None, None, 'Factory Presets', ''])
         for preset in result:
             if not preset[1]:
-                presets.append(
-                    [preset[0], preset[1], self.get_display_name(preset[0], stub), bank[0]])
+                presets.append([preset[0], preset[1], self.get_display_name(preset[0], stub), bank[0]])
         return presets
 
     def set_preset(self, processor, preset, preload=False):
@@ -755,16 +795,16 @@ class zynthian_engine_pianoteq(zynthian_engine):
             # Rebuild controls because each preset may use different controls
             self.generate_ctrl_screens(self.get_controllers_dict(processor))
             processor.init_ctrl_screens()
-            if preset[3] in ['CP-80', 'Vintage Tines MKI', 'Vintage Tines MKII', 'Vintage Reeds W1', 'Clavinet D6', 'Pianet N', 'Pianet T', 'Electra-Piano']:
+            if preset[3] in ['CP-80', 'Vintage Tines MKI', 'Vintage Tines MKII', 'Vintage Reeds W1', 'Clavinet D6',
+                             'Pianet N', 'Pianet T', 'Electra-Piano']:
                 processor.controllers_dict['Output Mode'].set_options(
-                    {'labels': ['Line out (stereo)',  'Line out (mono)', 'Room mic', 'Binaural']})
+                    {'labels': ['Line out (stereo)', 'Line out (mono)', 'Room mic', 'Binaural']})
             else:
                 processor.controllers_dict['Output Mode'].set_options(
-                    {'labels': ['Stereophonic',  'Monophonic', 'Sound Recording', 'Binaural']})
+                    {'labels': ['Stereophonic', 'Monophonic', 'Microphones', 'Binaural']})
             self.params = self.get_params()
             for param in self.params:
-                processor.controllers_dict[param].set_value(
-                    self.params[param]['value'], False)
+                processor.controllers_dict[param].set_value(self.params[param]['value'], False)
             # Update control labels
             for effect in range(1, 4):
                 for effect_param in range(1, 9):
@@ -782,8 +822,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
 
     def preset_exists(self, bank_info, preset_name):
         # Instruments are presented as banks in Zynthian UI but user presets are saved in pianoteq banks
-        presets = self.zynapi_get_presets(
-            {'name': 'My Presets', 'fullpath': f'{PIANOTEQ_MY_PRESETS_DIR}/My Presets'})
+        presets = self.zynapi_get_presets({'name': 'My Presets', 'fullpath': f'{PIANOTEQ_MY_PRESETS_DIR}/My Presets'})
         for preset in presets:
             if preset['name'] == preset_name:
                 return True
@@ -824,44 +863,41 @@ class zynthian_engine_pianoteq(zynthian_engine):
             processor.controllers_dict = {}
 
         params = self.get_params()
-        default_cc = {'Sustain Pedal': 64, 'Sostenuto Pedal': 66,
-                      'Soft Pedal': 67, 'Harmonic Pedal': 69}
-        for param in params:
+        for param_id, param_options in params.items():
             options = {
                 'processor': processor,
-                'value': 0,
+                'name': param_options["name"],
+                'value': param_options["value"],
                 'value_min': 0.0,
                 'value_max': 1.0,
                 'is_integer': False,
                 'not_on_gui': False,
                 'midi_chan': processor.midi_chan,
-                'midi_cc': params[param]["cc"]
+                'midi_cc': param_options["cc"],
+                'group_symbol': param_options["group"],
+                'group_name': param_options["group"],
+                'display_priority': param_options["display_priority"]
             }
-            # Discrete parameter values
-            if param in ['Sustain Pedal', 'Soft Pedal', 'Sostenuto Pedal', 'Harmonic Pedal', 'Rattle Pedal', 'Lute Stop Pedal', 'Celeste Pedal', 'Mozart Rail', 'Super Sostenuto', 'Pitch Harmonic Pedal']:
-                options['labels'] = ['Off', '1/4', '1/2', '3/4', 'On']
-                options['group_symbol'] = 'Pedals'
-            elif param in ['Equalizer Switch', 'Bounce Switch', 'Bounce Sync', 'Effect[1].Switch', 'Effect[2].Switch', 'Effect[3].Switch', 'Reverb Switch', 'Limiter Switch', 'Keyboard Range Switch']:
-                options['labels'] = ['Off', 'On']
-            elif param == 'Output Mode':
-                options['labels'] = ['Stereophonic',
-                                     'Monophonic', 'Sound Recording', 'Binaural',]
-            if param.startswith('Effect'):
-                options['group_symbol'] = 'Effects'
-            elif param.startswith('Reverb') or param == "Room Dimensions":
-                options['group_symbol'] = 'Reverb'
-            elif param.startswith('Limiter'):
-                options['group_symbol'] = 'Limiter'
+            if param_id == 'Output Mode':
+                options['labels'] = ['Stereophonic', 'Monophonic', 'Microphones', 'Binaural']
+                options['ticks'] = [0.0, 0.339, 0.67, 1.0]
+                pass
+            else:
+                match param_options['type']:
+                    case "pedal":
+                        options['labels'] = ['Off', '1/4', '1/2', '3/4', 'On']
+                    case "toggle":
+                        options['labels'] = ['Off', 'On']
+                    case "hiden":
+                        options['not_on_gui'] = True
+
             # TODO Scale Diapason: 220..880Hz, Volume: 0..100 (maybe many parameters to be %)
 
-            if param in processor.controllers_dict:
-                processor.controllers_dict[param].set_options(options)
+            if param_id in processor.controllers_dict:
+                processor.controllers_dict[param_id].set_options(options)
             else:
-                zctrl = zynthian_controller(self, param, options)
-                processor.controllers_dict[param] = zctrl
-                # Default MIDI CC mapping
-                if param in default_cc:
-                    self.state_manager.chain_manager.add_midi_learn(zctrl, None, processor.midi_chan, default_cc[param])
+                zctrl = zynthian_controller(self, param_id, options)
+                processor.controllers_dict[param_id] = zctrl
 
         return processor.controllers_dict
 
@@ -958,5 +994,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
             return False
         os.system(f"rm '{preset_path}'")
         return True
+
 
 # ******************************************************************************

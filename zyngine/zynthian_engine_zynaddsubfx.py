@@ -60,7 +60,6 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
 
         ['voice limit', '/part$i/Pvoicelimit', 0, 60],
         ['drum mode', '/part$i/Pdrummode', 'off', 'off|on'],
-        ['sustain', 64, 'off', 'off|on'],
         ['assign mode', '/part$i/polyType', 'poly',
          [['poly', 'mono', 'legato', 'latch'], [0, 1, 2, 3]]],
 
@@ -107,7 +106,7 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
     # Controller Screens
     _ctrl_screens = [
         ['main', ['volume', 'panning', 'filter cutoff', 'filter resonance']],
-        ['mode', ['drum mode', 'sustain', 'assign mode', 'voice limit']],
+        ['mode', ['drum mode', 'assign mode', 'voice limit']],
         ['portamento', ['portamento enable', 'portamento auto', 'portamento receive']],
         ['portamento time', ['portamento time', 'portamento up/down', 'threshold', 'threshold type']],
         ['portamento prop', ['portaprop on/off', 'portaprop rate', 'portaprop depth']],

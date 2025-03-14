@@ -42,7 +42,7 @@ class zynthian_engine_sfizz(zynthian_engine_sfz):
     # Config variables
     # ---------------------------------------------------------------------------
 
-    preset_fexts = ["sfz"]
+    preset_fexts = ["sfz", "dspreset"]
     root_bank_dirs = [
         ('User', zynthian_engine_sfz.my_data_dir + "/soundfonts/sfz"),
         ('System', zynthian_engine_sfz.data_dir + "/soundfonts/sfz")

@@ -31,7 +31,7 @@ from zyngine import zynthian_state_manager
 import zynautoconnect
 import logging
 
-SNAPSHOT_SCHEMA_VERSION = 3
+SNAPSHOT_SCHEMA_VERSION = 4
 
 class zynthian_legacy_snapshot:
 
@@ -76,8 +76,8 @@ class zynthian_legacy_snapshot:
             getattr(self, f'version_{version}')()
         return self.snapshot
 
-    def version_2(self):
-        # Convert snapshot from schema V2 to V3
+    def version_3(self):
+        # Convert snapshot from schema V3 to V4
 
         self.snapshot.setdefault("midi", {"midi_capture": {}, "midi_playback": {}})
         try:
@@ -194,6 +194,20 @@ class zynthian_legacy_snapshot:
                                     zs3["processors"][proc_id]["controllers"].setdefault(symbol, {})
                                     zs3["processors"][proc_id]["controllers"][symbol].setdefault("midi_cc", [None, int(chan), int(cc), dev_ex])
                 """
+
+    def version_2(self):
+        # Convert snapshot from schema V2 to V3
+
+        # Fix CC bpass-through
+        for chain, chain_conf in self.snapshot["chains"].items():
+            cc_route = [64, 66, 67, 69]
+            try:
+                for cc, val in enumerate(chain_conf["cc_route"]):
+                    if val:
+                        cc_route.append(cc)
+            except:
+                pass
+            chain_conf["cc_route"] = cc_route
 
     def version_1(self):
         # Convert snapshot from schema V1 to V2

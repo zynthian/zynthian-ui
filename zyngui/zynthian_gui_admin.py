@@ -117,10 +117,10 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
 
         if lib_zyncore.get_active_midi_chan():
             self.list_data.append((self.toggle_active_midi_channel, 0, "\u2612 Active MIDI channel",
-                                   ["Send active MIDI channel messages to active chain only.", "midi_settings.png"]))
+                                   ["Send active MIDI channel messages to all chains with same MIDI channel.", "midi_settings.png"]))
         else:
             self.list_data.append((self.toggle_active_midi_channel, 0, "\u2610 Active MIDI channel",
-                                   ["Send active MIDI channel messages to all chains with same MIDI channel.",
+                                   ["Send active MIDI channel messages to active chain only.",
                                     "midi_settings.png"]))
 
         if zynthian_gui_config.midi_prog_change_zs3:

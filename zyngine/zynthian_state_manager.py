@@ -77,6 +77,7 @@ class zynthian_state_manager:
     SS_MIDI_RECORDER_STATE = 3
     SS_LOAD_ZS3 = 4
     SS_SAVE_ZS3 = 5
+    SS_ALL_NOTES_OFF = 6
 
     # Subsignals from other modules. Just to simplify access.
     # From S_AUDIO_PLAYER
@@ -1724,14 +1725,11 @@ class zynthian_state_manager:
 
     def all_sounds_off(self):
         logging.info("All Sounds Off!")
-        self.start_busy("all_sounds_off")
         for chan in range(16):
             lib_zyncore.ui_send_ccontrol_change(chan, 120, 0)
-        self.end_busy("all_sounds_off")
 
     def all_notes_off(self):
         logging.info("All Notes Off!")
-        self.start_busy("all_notes_off")
         self.zynseq.libseq.stop()
         for chan in range(16):
             lib_zyncore.ui_send_ccontrol_change(chan, 123, 0)
@@ -1739,7 +1737,7 @@ class zynthian_state_manager:
             lib_zyncore.zynaptik_all_gates_off()
         except:
             pass
-        self.end_busy("all_notes_off")
+        zynsigman.send_queued(zynsigman.S_STATE_MAN, self.SS_ALL_NOTES_OFF, chan=None)
 
     def raw_all_notes_off(self):
         logging.info("Raw All Notes Off!")
@@ -1752,6 +1750,7 @@ class zynthian_state_manager:
     def all_notes_off_chan(self, chan):
         logging.info(f"All Notes Off for channel {chan}!")
         lib_zyncore.ui_send_ccontrol_change(chan, 123, 0)
+        zynsigman.send_queued(zynsigman.S_STATE_MAN, self.SS_ALL_NOTES_OFF, chan=chan)
 
     def raw_all_notes_off_chan(self, chan):
         logging.info(f"Raw All Notes Off for channel {chan}!")

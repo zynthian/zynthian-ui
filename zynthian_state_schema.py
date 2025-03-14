@@ -22,7 +22,7 @@
 # ******************************************************************************
 
 ZynthianState = {
-    "schema_version": 3,  # Version of state (snapshot) model
+    "schema_version": 4,  # Version of state (snapshot) model
     "last_snapshot_fpath": "/zynthian/zynthian-my-data/snapshots/000/My Snapshot 1.zss", # Full path and filename of last loaded snapshot
     "midi_profile_state": {  # MIDI Profile TODO: Document midi profile
         "MASTER_BANK_CHANGE_UP": "",
@@ -72,6 +72,7 @@ ZynthianState = {
                     "1": "PT",  # Processor type indexed by processor id
                 }, # ... more processors in this slot
             ], # ... More slots
+            "cc_route": [] # List of MIDI CC to be routed directly to engine (optional)
         },
         "0": { # Chain 0 is main mixbus
         },

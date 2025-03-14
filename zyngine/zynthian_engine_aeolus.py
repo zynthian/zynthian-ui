@@ -107,7 +107,6 @@ class zynthian_engine_aeolus(zynthian_engine):
     ]
 
     common_ctrls = [
-        ['Sustain', 64, 'off', 'off|on'],
         ['Azimuth', {'midi_cc': 14, 'value_min': -0.5, 'value_max': 0.5}],
         ['Width', {'midi_cc': 15, 'value': 0.8, 'value_max': 1.0}],
         ['Direct', {'midi_cc': 16, 'value': -9.5, 'value_min': -22.0, 'value_max': 0.0}],
@@ -125,7 +124,7 @@ class zynthian_engine_aeolus(zynthian_engine):
 
     common_ctrl_screens = [
         ["Audio (1)", ['Azimuth', 'Width', 'Direct', 'Reflect']],
-        ["Audio (2)", ['Reverb', 'Sustain']]
+        ["Audio (2)", ['Reverb']]
     ]
 
     audio_ctrl_screens = [

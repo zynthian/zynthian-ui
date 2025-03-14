@@ -54,8 +54,6 @@ class zynthian_engine_fluidsynth(zynthian_engine):
         ['pan', 10, 64],
         ['expression', 11, 127],
 
-        ['sustain', 64, 'off', ['off', 'on']],
-        ['sostenuto', 66, 'off', ['off', 'on']],
         ['legato', 68, 'off', ['off', 'on']],
         ['breath', 2, 127],
 
@@ -74,7 +72,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
     # Controller Screens
     default_ctrl_screens = [
         ['main', ['volume', 'pan', 'modulation wheel', 'expression']],
-        ['pedals', ['legato', 'breath', 'sostenuto', 'sustain']],
+        ['toggles', ['legato', 'breath']],
         ['portamento', ['portamento on/off', 'portamento control',
                         'portamento time-coarse', 'portamento time-fine']],
         ['envelope/filter', ['env. attack', 'env. release',

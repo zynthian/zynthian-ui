@@ -3,9 +3,9 @@
 # ******************************************************************************
 # ZYNTHIAN PROJECT: Zynthian GUI
 #
-# Zynthian GUI Touchscreen Calibration Class
+# Zynthian GUI Multitouch Driver Class
 #
-# Copyright (C) 2025 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2023-2025 Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
 #
@@ -414,9 +414,8 @@ class MultiTouch(object):
             elif event._type == MultitouchTypes.GESTURE_RELEASE:
                 if self._g_pending:
                     # Cancel multitouch detection and send on_press event before processing release event
-                    event._type = MultitouchTypes.GESTURE_PRESS
                     self._on_touch_timeout(True)
-                    if event.widget:
+                    if event.widget and event._type == MultitouchTypes.SINGLE_MOTION:
                         event.widget.event_generate("<ButtonRelease-1>",
                                                     x=event.x,
                                                     y=event.y,
@@ -512,7 +511,8 @@ class MultiTouch(object):
             if ev_handler.widget == event.widget and ev_handler.tag == event.tag:
                 ev_handler.function(event)
                 event._type = MultitouchTypes.MULTI_MOTION
-        if try_single_touch and event._type == MultitouchTypes.GESTURE_PRESS and event.widget:
+                return
+        if try_single_touch and event.widget:
             event._type = MultitouchTypes.SINGLE_MOTION
             event.widget.event_generate("<ButtonPress-1>",
                                         x=event.x,

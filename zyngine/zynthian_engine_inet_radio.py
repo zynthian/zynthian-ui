@@ -181,8 +181,8 @@ class zynthian_engine_inet_radio(zynthian_engine):
             self.monitors_dict['codec'] = line[22:].strip()
         elif self.preset and self.preset[1] and line.startswith("Playing "):
             self.monitors_dict["info"] = basename(line[8:].strip())
-        elif line == "Audio device got stuck!":
-            logging.warning("Audio device got stuck! Restarting...")
+        elif line == "Audio device got stuck!" or line == "Cannot seek backward in linear streams!":
+            logging.warning(f"{line} - Restarting...")
             self.stop()
             self.start()
             self.set_preset(self.processors[0], self.preset)

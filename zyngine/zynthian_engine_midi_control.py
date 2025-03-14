@@ -119,11 +119,7 @@ class zynthian_engine_midi_control(zynthian_engine):
 		['62 LSB', 62, 0],
 		['63 LSB', 63, 0],
 
-		#['64 sustain pedal', 64, 0],
-		['64 sustain', 64, 'off', ['off', 'on']],
 		['65 portamento', 65, 'off', ['off', 'on']],
-		['66 sostenuto', 66, 'off', ['off', 'on']],
-		['67 soft pedal', 67, 'off', ['off', 'on']],
 
 		['68 legato', 68, 'off', ['off', 'on']],
 		['69 hold2', 69, 0],

@@ -266,7 +266,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
                 ['main', ['record', 'transport', 'position', 'gain']],
                 ['crop', ['crop start', 'crop end', 'position', 'zoom']],
                 ['loop', ['loop start', 'loop end', 'loop', 'zoom']],
-                ['config', ['left track', 'right track', 'bend range', 'sustain pedal']],
+                ['config', ['left track', 'right track', 'bend range']],
                 ['info', ['info', 'zoom range', 'amp zoom', 'view offset']],
                 ['misc', ['beats', 'base note', 'cue', 'cue pos']],
                 ['speed', ['speed', 'pitch', 'varispeed']]
@@ -304,7 +304,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
                                "Loop length", "Samplerate", "CODEC", "Filename"]],
             ['view offset', None, 0, dur],
             ['amp zoom', None, 1.0, 4.0],
-            ['sustain pedal', 64, 'off', ['off', 'on']],
             ['bend range', None, bend_range, 24],
             ['attack', {'group_name': 'Envelope', 'group_symbol': 'envelope',
                         'value_max': 20.0, 'envelope': 'attack'}],
@@ -436,7 +435,7 @@ class zynthian_engine_audioplayer(zynthian_engine):
                     elif id == 14:
                         ctrl_dict['crop end'].set_value(value, False)
                     elif id == 15:
-                        ctrl_dict['sustain pedal'].set_value(value, False)
+                        pass
                     elif id == 16:
                         ctrl_dict['attack'].set_value(value, False)
                     elif id == 17:
@@ -488,8 +487,6 @@ class zynthian_engine_audioplayer(zynthian_engine):
             zynaudioplayer.set_crop_end(handle, zctrl.value)
         elif zctrl.symbol == "bend range":
             zynaudioplayer.set_pitchbend_range(handle, zctrl.value)
-        elif zctrl.symbol == "sustain pedal":
-            zynaudioplayer.set_damper(handle, zctrl.value)
         elif zctrl.symbol == "zoom":
             self.monitors_dict[handle]['zoom'] = zctrl.value
             if self.processor:

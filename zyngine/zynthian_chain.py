@@ -785,8 +785,9 @@ class zynthian_chain:
         if self.zmop_index is not None and self.zmop_index >= 0:
             lib_zyncore.zmop_get_cc_route(self.zmop_index, cc_route_ct)
         cc_route = []
-        for ccr in cc_route_ct:
-            cc_route.append(ccr)
+        for cc, ccr in enumerate(cc_route_ct):
+            if ccr:
+                cc_route.append(cc)
 
         state = {
             "title": self.title,
