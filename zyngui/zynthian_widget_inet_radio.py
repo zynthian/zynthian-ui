@@ -28,7 +28,7 @@ import logging
 from zyngui import zynthian_gui_config
 from zyngui import zynthian_widget_base
 
-mon_list = ["title", "info", "bitrate", "audio", "codec","title", "info", "bitrate", "audio", "codec"]
+mon_list = ["title", "info", "bitrate", "channels", "codec","title", "info", "bitrate", "channels", "codec"]
 
 class zynthian_widget_inet_radio(zynthian_widget_base.zynthian_widget_base):
 
@@ -69,7 +69,7 @@ class zynthian_widget_inet_radio(zynthian_widget_base.zynthian_widget_base):
             ),
             fill=zynthian_gui_config.color_tx_off,
         )
-        self.lbl_audio = self.widget_canvas.create_text(
+        self.lbl_channels = self.widget_canvas.create_text(
             20, 340,
             anchor="sw",
             font=(
@@ -101,13 +101,13 @@ class zynthian_widget_inet_radio(zynthian_widget_base.zynthian_widget_base):
         super().on_size(event)
         self.widget_canvas.itemconfigure(self.lbl_title, width=self.width - 30)
         self.widget_canvas.itemconfigure(self.lbl_info, width=self.width - 30)
-        self.widget_canvas.itemconfigure(self.lbl_audio, width=self.width - 30)
+        self.widget_canvas.itemconfigure(self.lbl_channels, width=self.width - 30)
         self.widget_canvas.itemconfigure(self.lbl_codec, width=self.width - 30)
         self.widget_canvas.itemconfigure(
             self.lbl_bitrate, width=self.width - 30)
         if self.height >= 400:
             self.widget_canvas.coords(self.lbl_bitrate, 20, self.height - 60)
-            self.widget_canvas.coords(self.lbl_audio, 20, self.height - 30)
+            self.widget_canvas.coords(self.lbl_channels, 20, self.height - 30)
             self.widget_canvas.coords(self.lbl_codec, 20, self.height - 10)
 
     def refresh_gui(self):
@@ -121,8 +121,6 @@ class zynthian_widget_inet_radio(zynthian_widget_base.zynthian_widget_base):
         self.refresh_count = 0
         if self.height < 300:
             # Use one field for smaller displays
-            if self.monitors["info"] in ["stream unavailable", "waiting for stream..."]:
-                self.info_page = 2
             for i in range(self.info_page, 10):
                 if self.monitors[mon_list[i]]:
                     self.widget_canvas.itemconfigure(self.lbl_title, text=self.monitors[mon_list[i]])
@@ -134,7 +132,7 @@ class zynthian_widget_inet_radio(zynthian_widget_base.zynthian_widget_base):
             self.widget_canvas.itemconfigure(
                 self.lbl_info, text=self.monitors["info"])
             self.widget_canvas.itemconfigure(
-                self.lbl_audio, text=self.monitors["audio"])
+                self.lbl_channels, text=self.monitors["channels"])
             self.widget_canvas.itemconfigure(
                 self.lbl_codec, text=self.monitors["codec"])
             self.widget_canvas.itemconfigure(
