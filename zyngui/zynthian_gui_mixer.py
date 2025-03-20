@@ -447,14 +447,22 @@ class zynthian_gui_mixer_strip():
     def update_clip_progress(self, bank, seq, progress):
         if bank != self.zynseq.bank:
             return
+        x0 = self.x
+        y0 = self.fader_bottom - 4
+        x1 = x0
+        y1 = self.fader_bottom
+        playing = False
         for i, info in enumerate(self.sequences):
-            if info['index'] == seq and info['state'] != zynseq.SEQ_STOPPED:
-                x0 = self.x
-                y0 = self.fader_bottom - 4
-                x1 = x0 + int(progress * self.fader_width / 100)
-                y1 = self.fader_bottom
-                self.parent.main_canvas.coords(self.clip_progress, x0, y0, x1, y1)
-                break
+            if info['state'] != zynseq.SEQ_STOPPED:
+                if info['index'] == seq:
+                    x1 = x0 + int(progress * self.fader_width / 100)
+                    self.parent.main_canvas.coords(self.clip_progress, x0, y0, x1, y1)
+                    return
+                else:
+                    playing = True
+        if not playing:
+            self.parent.main_canvas.coords(self.clip_progress, x0, y0, x1, y1)
+
 
     def draw_solo(self):
         txcolor = self.button_txcol
