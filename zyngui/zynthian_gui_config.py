@@ -607,8 +607,8 @@ experimental_features = os.environ.get('ZYNTHIAN_EXPERIMENTAL_FEATURES', "").spl
 # Sequence states
 # ------------------------------------------------------------------------------
 
-PAD_COLOUR_DISABLED = '#303030'
-PAD_COLOUR_DISABLED_LIGHT = '#505050'
+PAD_COLOUR_DISABLED = '#707070'
+PAD_COLOUR_DISABLED_LIGHT = '#909090'
 PAD_COLOUR_STARTING = '#ffbb00'
 PAD_COLOUR_PLAYING = '#00d000'
 PAD_COLOUR_STOPPING = 'red'

@@ -26,18 +26,16 @@
 
 import tkinter
 import logging
-from PIL import Image, ImageTk
 from threading import Timer
+from PIL import Image, ImageTk
 
 # Zynthian specific modules
 import zynautoconnect
 from zynlibs.zynseq import zynseq
 from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_signal_manager import zynsigman
-
-from . import zynthian_gui_base
+from zyngui import zynthian_gui_base
 from zyngui import zynthian_gui_config
-from zyngui.zynthian_gui_patterneditor import EDIT_MODE_NONE
 
 
 SELECT_BORDER = zynthian_gui_config.color_on
@@ -115,19 +113,15 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         self.refresh_status(True)
         if self.param_editor_zctrl == None:
             self.set_title(f"Scene {self.bank}")
-        zynsigman.register(
-            zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_play_state)
-        zynsigman.register(zynsigman.S_STEPSEQ,
-                           self.zynseq.SS_SEQ_PROGRESS, self.update_progress)
+        zynsigman.register(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_play_state)
+        zynsigman.register(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PROGRESS, self.update_progress)
         return True
 
     # Function to hide GUI
     def hide(self):
         if self.shown:
-            zynsigman.unregister(
-                zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_play_state)
-            zynsigman.unregister(
-                zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PROGRESS, self.update_progress)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_play_state)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PROGRESS, self.update_progress)
             super().hide()
 
     # Function to set quantity of pads
@@ -219,8 +213,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
                                                                        tags=(f"progress:{pad}", f"pad:{pad}", "pad"))
             self.pads.append(pad_struct)
         self.grid_canvas.tag_bind("pad", '<Button-1>', self.on_pad_press)
-        self.grid_canvas.tag_bind(
-            "pad", '<ButtonRelease-1>', self.on_pad_release)
+        self.grid_canvas.tag_bind("pad", '<ButtonRelease-1>', self.on_pad_release)
 
         # Icons
         self.empty_icon = tkinter.PhotoImage()
@@ -312,17 +305,14 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         foreground = "white"
         cellh = self.pads[pad]["header"]
         cellb = self.pads[pad]["body"]
-        if self.zynseq.libseq.getSequenceLength(self.bank, pad) == 0 or mode == zynseq.SEQ_DISABLED:
-            self.grid_canvas.itemconfig(
-                cellh, fill=zynthian_gui_config.PAD_COLOUR_DISABLED)
-            self.grid_canvas.itemconfig(
-                cellb, fill=zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT)
+        seq_len = self.zynseq.libseq.getSequenceLength(self.bank, pad)
+        if seq_len == 0 or mode == zynseq.SEQ_DISABLED:
+            self.grid_canvas.itemconfig(cellh, fill=zynthian_gui_config.PAD_COLOUR_DISABLED)
+            self.grid_canvas.itemconfig(cellb, fill=zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT)
         else:
-            self.grid_canvas.itemconfig(
-                cellh, fill=zynthian_gui_config.PAD_COLOUR_GROUP[group % 16])
-            self.grid_canvas.itemconfig(
-                cellb, fill=zynthian_gui_config.PAD_COLOUR_GROUP_LIGHT[group % 16])
-        if self.zynseq.libseq.getSequenceLength(self.bank, pad) == 0:
+            self.grid_canvas.itemconfig(cellh, fill=zynthian_gui_config.PAD_COLOUR_GROUP[group % 16])
+            self.grid_canvas.itemconfig(cellb, fill=zynthian_gui_config.PAD_COLOUR_GROUP_LIGHT[group % 16])
+        if seq_len == 0:
             mode = 0
         group = chr(65 + group)
         # patnum = self.zynseq.libseq.getPatternAt(self.bank, pad, 0, 0)
@@ -333,14 +323,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
             title = self.chain_manager.get_synth_preset_name(midi_chan)
         except:
             pass
-        self.grid_canvas.itemconfig(
-            self.pads[pad]["title"], text=title, fill=foreground)
-        self.grid_canvas.itemconfig(
-            self.pads[pad]["group"], text=f"CH{midi_chan + 1}", fill=foreground)
-        self.grid_canvas.itemconfig(
-            self.pads[pad]["num"], text=f"{group}{pad+1}", fill=foreground)
-        self.grid_canvas.itemconfig(
-            self.pads[pad]["mode"], image=self.mode_icon[self.zynseq.col_in_bank][mode])
+        self.grid_canvas.itemconfig(self.pads[pad]["title"], text=title, fill=foreground)
+        self.grid_canvas.itemconfig(self.pads[pad]["group"], text=f"CH{midi_chan + 1}", fill=foreground)
+        self.grid_canvas.itemconfig(self.pads[pad]["num"], text=f"{group}{pad+1}", fill=foreground)
+        self.grid_canvas.itemconfig(self.pads[pad]["mode"], image=self.mode_icon[self.zynseq.col_in_bank][mode])
         if state == 0 and self.zynseq.libseq.isEmpty(self.bank, pad):
             self.grid_canvas.itemconfig(
                 self.pads[pad]["state"], image=self.empty_icon)

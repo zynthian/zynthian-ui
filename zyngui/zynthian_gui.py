@@ -103,7 +103,11 @@ ZMOP_MOD_INDEX = 16   # Dedicated zmop for MOD-UI
 
 class zynthian_gui:
     # Subsignals are defined inside each module. Here we define GUI subsignals:
-    SS_SHOW_SCREEN = 0
+    SS_GUI_SHOW_SCREEN = 0
+    SS_GUI_SHOW_SIDEBAR = 1
+    SS_GUI_CONTROL_MODE = 2
+    SS_GUI_SHOW_FILE_SELECTOR = 3
+    SS_GUI_TOGGLE_ALT_MODE = 4
 
     # Screen Modes
     SCREEN_HMODE_NONE = 0
@@ -623,7 +627,7 @@ class zynthian_gui:
             self.screens[screen].show()
             self.current_screen = screen
             self.hide_screens(exclude=screen)
-            zynsigman.send(zynsigman.S_GUI, self.SS_SHOW_SCREEN, screen=screen)
+            zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, screen=screen)
 
         self.screen_lock.release()
 
@@ -1099,6 +1103,7 @@ class zynthian_gui:
             self.alt_mode = False
         else:
             self.alt_mode = True
+        zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_TOGGLE_ALT_MODE, alt_mode=self.alt_mode)
 
     def cuia_help(self, params=None):
         self.show_help(params)

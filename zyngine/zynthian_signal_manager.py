@@ -55,6 +55,7 @@ class zynthian_signal_manager:
     SS_GUI_SHOW_SIDEBAR = 1
     SS_GUI_CONTROL_MODE = 2
     SS_GUI_SHOW_FILE_SELECTOR = 3
+    SS_GUI_TOGGLE_ALT_MODE = 4
 
     SS_MIDI_SYS = 0
     SS_MIDI_CC = 1
