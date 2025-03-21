@@ -264,16 +264,29 @@ uint8_t Pattern::getProgramChange(uint32_t step) {
 }
 
 void Pattern::addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, float duration) {
-    float fDuration = duration;
-    if (step > (m_nBeats * m_nStepsPerBeat) || control > 127 || valueStart > 127 || valueEnd > 127 || fDuration > (m_nBeats * m_nStepsPerBeat))
+    if (step > (m_nBeats * m_nStepsPerBeat) || control > 127 || valueStart > 127 || valueEnd > 127 || duration > (m_nBeats * m_nStepsPerBeat))
         return;
-    StepEvent* pControl = new StepEvent(step, control, valueStart, fDuration);
-    pControl->setValue2end(valueEnd);
-    StepEvent* pEvent = addEvent(step, MIDI_CONTROL, control, valueStart, fDuration);
+    StepEvent* pEvent = addEvent(step, MIDI_CONTROL, control, valueStart, duration);
     pEvent->setValue2end(valueEnd);
 }
 
 void Pattern::removeControl(uint32_t step, uint8_t control) { deleteEvent(step, MIDI_CONTROL, control); }
+
+void Pattern::removeControlInterval(uint32_t stepFrom, uint32_t stepTo, uint8_t control) {
+	uint32_t step;
+	if (stepTo >= stepFrom) {
+		for (step=stepFrom; step<=stepTo; step++) {
+			deleteEvent(step, MIDI_CONTROL, control);
+		}
+	} else {
+		for (step=0; step<=stepTo; step++) {
+			deleteEvent(step, MIDI_CONTROL, control);
+		}
+		for (step=stepFrom; step<getSteps(); step++) {
+			deleteEvent(step, MIDI_CONTROL, control);
+		}
+	}
+}
 
 float Pattern::getControlDuration(uint32_t step, uint8_t control) {
     //!@todo Implement getControlDuration

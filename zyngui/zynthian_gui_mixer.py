@@ -44,6 +44,8 @@ from zyngine.zynthian_signal_manager import zynsigman
 from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngine.zynthian_engine_audioplayer import zynthian_engine_audioplayer
 
+logging.getLogger('PIL').setLevel(logging.WARNING)
+
 # ------------------------------------------------------------------------------
 # Zynthian Mixer Strip Class
 # This provides a UI element that represents a mixer strip, one used per chain
@@ -53,6 +55,7 @@ from zyngine.zynthian_engine_audioplayer import zynthian_engine_audioplayer
 class zynthian_gui_mixer_strip():
 
     def __init__(self, parent, x, y, width, height):
+        logging.getLogger('PIL').setLevel(logging.WARNING)
         """ Initialise mixer strip object
         parent: Parent object
         x: Horizontal coordinate of left of fader

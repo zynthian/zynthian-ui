@@ -151,32 +151,33 @@ SEQ_EVENT* Track::getEvent() {
     // fprintf(stderr, "Track::getEvent Next step:%u, next event:%u, event %u at time: %u, framesperclock: %f\n", m_nNextStep, m_nNextEvent, pEvent,
     // pEvent->getPosition(), m_dSamplesPerClock);
     if (pEvent && pEvent->getPosition() == m_nNextStep) {
-        // fprintf(stderr, "  found event at %u\n", m_nNextStep);
-        uint8_t nCommand     = pEvent->getCommand();
-        seqEvent.msg.command = nCommand | m_nChannel;
         // Found event at (or before) this step
         if (m_nEventValue == pEvent->getValue2end()) {
             // We have reached the end of interpolation so move on to next event
             m_nEventValue = -1;
-            pEvent        = pPattern->getEventAt(++m_nNextEvent);
+            pEvent = pPattern->getEventAt(++m_nNextEvent);
             if (!pEvent || pEvent->getPosition() != m_nNextStep) {
                 // No more events or next event is not this step so move to next step
                 return NULL;
             }
         }
+        uint8_t nCommand = pEvent->getCommand();
+        seqEvent.msg.command = nCommand | m_nChannel;
+        //fprintf(stderr, "  found event at %u => %x, %u, %u\n", m_nNextStep, nCommand, pEvent->getValue1start(), pEvent->getValue2start());
+
         // Have not yet started to interpolate value
         if (m_nEventValue == -1) {
             // Note Play Chance
             int playChance = int(RAND_MAX * pPattern->getPlayChance() * pEvent->getPlayChance() / 100.0);
             if (playChance < RAND_MAX && playChance < rand()) {
-                m_nEventValue        = pEvent->getValue2end();
+                m_nEventValue = pEvent->getValue2end();
                 seqEvent.msg.command = 0xFE;
                 return &seqEvent;
             }
             // Start interpolation
-            m_nEventValue     = pEvent->getValue2start();
+            m_nEventValue = pEvent->getValue2start();
             // Recorded Offset (fraction of step => float)
-            m_fEventOffset    = pEvent->getOffset();
+            m_fEventOffset = pEvent->getOffset();
             // Swing => Add to offset
             uint32_t swingDiv = pPattern->getSwingDiv();
             float swingAmount = pPattern->getSwingAmount();
@@ -212,16 +213,16 @@ SEQ_EVENT* Track::getEvent() {
         }
         seqEvent.msg.value1 = pEvent->getValue1start();
         // Velocity humanization
-        int8_t hval2        = m_nEventValue;
-        float humanVelo     = pPattern->getHumanVelo();
+        int8_t hval2 = m_nEventValue;
+        float humanVelo = pPattern->getHumanVelo();
         if (humanVelo > 0.0) {
             int16_t dvelo = int16_t(humanVelo * d(gen));
-            hval2         = int8_t(std::min(std::max(int16_t(hval2) + dvelo, 0), 127));
+            hval2 = int8_t(std::min(std::max(int16_t(hval2) + dvelo, 0), 127));
         }
         seqEvent.msg.value2 = hval2;
-        // fprintf(stderr, "Track::getEvent Scheduled event %u,%u,%u at %u currentTime: %u duration: %u clkperstep: %u sampleperclock: %f event position: %u\n",
-        // seqEvent.msg.command, seqEvent.msg.value1, seqEvent.msg.value2, seqEvent.time, m_nLastClockTime, pEvent->getDuration(), pPattern->getClocksPerStep(),
-        // m_dSamplesPerClock, pEvent->getPosition());
+        //fprintf(stderr, "Track::getEvent Scheduled event %x,%u,%u at %u currentTime: %u duration: %u clkperstep: %u sampleperclock: %f event position: %u\n",
+        //		seqEvent.msg.command, seqEvent.msg.value1, seqEvent.msg.value2, seqEvent.time, m_nLastClockTime, pEvent->getDuration(), pPattern->getClocksPerStep(),
+        //		m_dSamplesPerClock, pEvent->getPosition());
         return &seqEvent;
     }
     m_nEventValue = -1;

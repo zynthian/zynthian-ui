@@ -27,7 +27,7 @@ import logging
 import json
 from subprocess import Popen, STDOUT, PIPE
 import socket
-from threading import Thread
+from threading import Thread, Timer
 from os.path import basename
 from os import listdir
 from time import sleep, monotonic
@@ -57,10 +57,14 @@ class zynthian_engine_inet_radio(zynthian_engine):
         self.nickname = "IR"
         self.jackname = "inetradio"
         self.type = "Audio Generator"
-        self.preset = None
-        self.pending_preset = None
-        self.pending_preset_ts = 0
-        self.client = None
+
+        self.preset = None # Currently selected preset
+        self.preset2bank = [] # List of (bank index, preset index, preset name) for prev/next optimisation
+        self.preset_i = 0 # Index of current preset in preset2bank list
+        self.pending_preset_i = 0 # Index of preselected pending preset
+        self.pending_preset_ts = 0 # Timeout to select pending preset
+        self.client = None # Telnet client to vlc
+        self.connect_timer = None # Timer to trigger autoconnect
 
         self.monitors_dict = OrderedDict()
         self.monitors_dict['reset'] = True
@@ -163,34 +167,36 @@ class zynthian_engine_inet_radio(zynthian_engine):
         line = ""
         while self.proc.poll() is None:
             now = monotonic()
-            if now > last_info + 5:
-                self.proc_cmd("info")
-                last_info = now
-            if now > last_status + 1:
-                self.proc_cmd("status")
-                last_status = now
+            if self.preset_i == self.pending_preset_i:
+                if now > last_info + 5:
+                    self.proc_cmd("info")
+                    last_info = now
+                if now > last_status + 1:
+                    self.proc_cmd("status")
+                    last_status = now
             buffer = bytes()
             while True:
                 try:
                     buffer += self.client.recv(1024)
                 except TimeoutError:
                     break
-            if not buffer:
-                continue
-            for i, c in enumerate(buffer):
-                if c == 13:
-                    # newline
+            if buffer:
+                for i, c in enumerate(buffer):
+                    if c == 13:
+                        # newline
+                        self.proc_poll_parse_line(line)
+                        line = ""
+                        buffer = buffer[i:]
+                    elif c < 32 or c > 126:
+                        continue
+                    else:
+                        line += chr(c)
+                if line:
                     self.proc_poll_parse_line(line)
-                    line = ""
-                    buffer = buffer[i:]
-                elif c < 32 or c > 126:
-                    continue
-                else:
-                    line += chr(c)
-            if line:
-                self.proc_poll_parse_line(line)
-            if self.pending_preset and now > self.pending_preset_ts:
-                self.set_preset(self.processors[0], self.pending_preset)
+            if self.pending_preset_i != self.preset_i and now > self.pending_preset_ts:
+                self.processors[0].set_bank(self.preset2bank[self.pending_preset_i][0])
+                self.processors[0].load_preset_list()
+                self.processors[0].set_preset(self.preset2bank[self.pending_preset_i][1])
 
     def reset_monitors(self, reset_title=False):
         for key in self.monitors_dict:
@@ -214,7 +220,7 @@ class zynthian_engine_inet_radio(zynthian_engine):
         elif line.startswith("( new input:"):
             url = line[12:-1].strip()
             if self.monitors_dict["url"] != url:
-                zynautoconnect.request_audio_connect(True)
+                self.delayed_connect_outputs()
                 self.reset_monitors()
             self.monitors_dict["url"] = url
             self.monitors_dict["reset"] = True
@@ -394,16 +400,22 @@ class zynthian_engine_inet_radio(zynthian_engine):
                      0, "FIP Radio 4", "auto", ""],
                 ]
             }
+
+        self.banks = []
+        self.preset2bank = []
+        for bank_i, bank in enumerate(self.presets):
+            self.banks.append([bank, None, bank, None])
+            for preset_i, preset in enumerate(self.presets[bank]):
+                self.preset2bank.append((bank_i, preset_i, preset[2]))
+
         playlists = []
         for file in listdir(f"{self.my_data_dir}/capture"):
             if file[-4:].lower() in (".m3u", ".pls"):
                 playlists.append([f"{self.my_data_dir}/capture/{file}", 1, file[:-4], "auto", ""])
         if playlists:
             self.presets["Playlists"] = playlists
+            self.banks.append(["Playlists", None, "Playlists", None])
 
-        self.banks = []
-        for bank in self.presets:
-            self.banks.append([bank, None, bank, None])
         return self.banks
 
     # ---------------------------------------------------------------------------
@@ -417,12 +429,14 @@ class zynthian_engine_inet_radio(zynthian_engine):
         return presets
 
     def set_preset(self, processor, preset, preload=False):
-        self.pending_preset = None
         self.preset = preset
+        for self.preset_i, config in enumerate(self.preset2bank):
+            if config[0] == processor.bank_index and config[1] == processor.preset_index:
+                break
+        self.pending_preset_i = self.preset_i
         self.proc_cmd("clear")
         self.proc_cmd(f"add {preset[0]}")
         self.monitors_dict['title'] = preset[2]
-        self.reset_monitors()
         if preset[1]:
             self._ctrl_screens = [
                 ['main', ['volume', 'stream', 'prev/next', 'pause']],
@@ -431,8 +445,17 @@ class zynthian_engine_inet_radio(zynthian_engine):
         else:
             self._ctrl_screens = [['main', ['volume', 'stream', 'prev/next']]]
         processor.refresh_controllers()
+        self.reset_monitors()
+        self.delayed_connect_outputs()
+
+    def delayed_connect_outputs(self):
+        """ Trigger background delayed audio autoconnect, incase other mechanisms fail"""
         sleep(0.2)
         zynautoconnect.request_audio_connect(True)
+        if self.connect_timer:
+            self.connect_timer.cancel()
+        self.connect_timer = Timer(2, zynautoconnect.audio_autoconnect)
+        self.connect_timer.start()
         
     # ----------------------------------------------------------------------------
     # Controllers Management
@@ -456,45 +479,21 @@ class zynthian_engine_inet_radio(zynthian_engine):
                     self.proc_cmd("info")
                     sleep(0.2)
                     zynautoconnect.request_audio_connect(True)
+                    self.delayed_connect_outputs()
                 else:
-                    if self.pending_preset:
-                        current_preset = self.pending_preset
-                    else:
-                        current_preset = self.preset
-                    for bank_i, presets in enumerate(self.presets.values()):
-                        for i, preset in enumerate(presets):
-                            if current_preset == preset:
-                                # Found current preset
-                                i += value
-                                if i >= len(presets):
-                                    try:
-                                        bank_name = list(self.presets)[bank_i + 1]
-                                        if bank_name == "Playlists":
-                                            return
-                                        self.pending_preset = self.presets[bank_name][0]
-                                    except:
-                                        return #TODO: Handle empty banks
-                                elif i < 0:
-                                    if bank_i == 0:
-                                        return
-                                    try:
-                                        bank_name = list(self.presets)[bank_i - 1]
-                                        self.pending_preset = self.presets[bank_name][-1]
-                                    except:
-                                        return #TODO: Handle empty banks
-                                else:
-                                    self.pending_preset = presets[i]
-                                if self.pending_preset:
-                                    self.pending_preset_ts = monotonic() + 1
-                                    self.monitors_dict['title'] = f"<{self.pending_preset[2]}>"
-                                    self.monitors_dict['reset'] = True
-                                return
+                    pending_preset = self.pending_preset_i + value
+                    if pending_preset < 0 or pending_preset >= len(self.preset2bank):
+                        return
+                    self.pending_preset_i = pending_preset
+                    self.pending_preset_ts = monotonic() + 1
+                    self.monitors_dict['title'] = f"<{self.preset2bank[self.pending_preset_i][2]}>"
+                    self.monitors_dict['reset'] = True
+                    return
         elif zctrl.symbol == "stream":
             if zctrl.value:
                 self.proc_cmd("play")
                 self.monitors_dict["url"] = ""
-                sleep(0.2)
-                zynautoconnect.request_audio_connect(True)
+                self.delayed_connect_outputs()
             else:
                 self.proc_cmd("stop")
         elif zctrl.symbol == "pause":

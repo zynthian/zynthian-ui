@@ -73,7 +73,8 @@ size_t g_nPlayingSequences = 0;                     // Quantity of playing seque
 std::set<std::string> g_setTransportClient;         // Set of timebase clients having requested transport play
 bool g_bClientPlaying = false;                      // True if any external client has requested transport play
 bool g_bMidiRecord    = false;                      // True to add notes to current pattern from MIDI input
-bool g_bSustain       = false;                      // True if sustain pressed during note input
+uint8_t g_nSustainValue = 0;                        // Last sustain pedal value during note input (recording)
+uint32_t g_nSustainStart = 0;						// Step when sustain pedal was last pressed
 
 char g_sName[16];                             // Buffer to hold sequence name so that it can be sent back for Python to parse
 uint8_t g_nInputRest                  = 0xFF; // MIDI note number that creates rest in pattern
@@ -347,6 +348,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     jack_midi_event_t midiEvent;
     jack_nframes_t nCount = jack_midi_get_event_count(pInputBuffer);
     Pattern* pPattern     = g_seqMan.getPattern(g_nPattern);
+    uint8_t bPatternRecording = (g_bMidiRecord && g_pSequence && pPattern);
     // Track* pTrack = g_pSequence->getTrack(g_pSequence->m_nCurrentTrack);
     while (g_bMutex)
         std::this_thread::sleep_for(std::chrono::microseconds(10));
@@ -409,18 +411,19 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         }
 
         // Handle MIDI events for programming patterns from MIDI input
-        if (g_bMidiRecord && g_pSequence && pPattern) {
+        if (bPatternRecording) {
             uint32_t nStep     = getPatternPlayhead();
             uint8_t nPlayState = g_pSequence->getPlayState();
+			uint8_t nCommand = midiEvent.buffer[0] & 0xF0;
 
             // Real Time Capture (while playing)
             if (nPlayState) {
                 // Note on event
-                if (((midiEvent.buffer[0] & 0xF0) == 0x90) && midiEvent.buffer[2]) {
-                    startEvents[midiEvent.buffer[1]].start    = nStep;
+                if (nCommand == 0x90 && midiEvent.buffer[2] > 0) {
+                    startEvents[midiEvent.buffer[1]].start = nStep;
                     startEvents[midiEvent.buffer[1]].velocity = midiEvent.buffer[2];
                     // Calculate clock position offset, in steps (from 0.0 to 1.0)
-                    float offset                              = double(g_pSequence->getPlayPosition()) / double(pPattern->getClocksPerStep()) - double(nStep);
+                    float offset = double(g_pSequence->getPlayPosition()) / double(pPattern->getClocksPerStep()) - double(nStep);
                     // Subtract latency delay
                     offset -= double(nFrames) / double(pPattern->getClocksPerStep() * g_dFramesPerClock);
                     // Add event offset relative to last clock
@@ -440,7 +443,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     }
                 }
                 // Note off event
-                else if (((midiEvent.buffer[0] & 0xF0) == 0x90) && midiEvent.buffer[2] == 0 || (midiEvent.buffer[0] & 0xF0) == 0x80) {
+                else if ((nCommand == 0x90 && midiEvent.buffer[2] == 0) || nCommand == 0x80) {
                     if (startEvents[midiEvent.buffer[1]].start != -1) {
                         double dDur = double(g_pSequence->getPlayPosition()) - startEvents[midiEvent.buffer[1]].start * getClocksPerStep();
                         if (dDur < 1.0)
@@ -451,24 +454,49 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                         setPatternModified(pPattern, true, false);
                     }
                 }
+                // CC event
+                else if (nCommand == 0xB0) {
+	                // Manage sustain pedal (CC64)
+    	            if (midiEvent.buffer[1] == 64) {
+                    	if (midiEvent.buffer[2] > 0 && g_nSustainValue == 0) {
+                        	g_nSustainValue = midiEvent.buffer[2];
+                        	g_nSustainStart = nStep;
+							// Remove old pedals => "Overdubbing" sustain pedal is a mess!
+							pPattern->removeControlInterval(0, pPattern->getSteps()-1, 64);
+                        	// Add pedal press
+                        	pPattern->addControl(g_nSustainStart, 64, g_nSustainValue, g_nSustainValue);
+                    	} else if (midiEvent.buffer[2] == 0) {
+                        	if (g_nSustainValue > 0) {
+								// Add pedal release
+								pPattern->addControl(nStep, 64, 0, 0);
+							}
+                        	g_nSustainValue = 0;
+                    	}
+                    	// else => Other cases must be bouncing or pedal "artifacts" that we ignore
+                    // Manage rest of CCs
+                    } else {
+                    	pPattern->addControl(nStep, (uint8_t)midiEvent.buffer[1], (uint8_t)midiEvent.buffer[2], (uint8_t)midiEvent.buffer[2]);
+                    	setPatternModified(pPattern, true, false);
+                    }
+                }
             }
             // Step capture
             else {
                 bool bAdvance = false;
                 // Use sustain pedal for advance step
-                if (((midiEvent.buffer[0] & 0xF0) == 0xB0) && midiEvent.buffer[1] == 64) {
-                    if (midiEvent.buffer[2] > 63)
-                        g_bSustain = true;
+                if (nCommand == 0xB0 && midiEvent.buffer[1] == 64) {
+                    if (midiEvent.buffer[2] > 0)
+                        g_nSustainValue = midiEvent.buffer[2];
                     else {
-                        g_bSustain = false;
+                        g_nSustainValue = 0;
                         bAdvance   = true;
                     }
                 }
                 // Note on event
-                else if (((midiEvent.buffer[0] & 0xF0) == 0x90) && midiEvent.buffer[2]) {
+                else if (nCommand == 0x90 && midiEvent.buffer[2]) {
                     setPatternModified(pPattern, true, false);
                     uint32_t nDuration = getNoteDuration(nStep, midiEvent.buffer[1]);
-                    if (g_bSustain)
+                    if (g_nSustainValue > 0)
                         pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], nDuration + 1);
                     else {
                         bAdvance = true;
@@ -487,6 +515,11 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 }
             }
         }
+    }
+
+	// Reset pedal if pattern recording is off
+	if (!bPatternRecording && g_nSustainValue > 0) {
+		g_nSustainValue = 0;
     }
 
     // Send MIDI output aligned with first sample of frame resulting in similar latency to audio
@@ -564,9 +597,10 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
 
     // Process events scheduled to be sent to MIDI output
     if (g_mSchedule.size()) {
-        auto it              = g_mSchedule.begin();
+        auto it = g_mSchedule.begin();
         jack_nframes_t nTime = 0;
         while (it != g_mSchedule.end()) {
+        	bool bSkip = false;
             if (it->first >= nNow + nFrames)
                 break; // Event scheduled beyond this buffer
             if (it->first < nNow) {
@@ -587,30 +621,36 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     if (nType < 0xF0)
                         nType &= 0xF0;
                     switch (nType) {
-                    case MIDI_PROGRAM:
-                    case MIDI_CHAN_PRESSURE:
-                    case MIDI_TIMECODE:
-                    case MIDI_SONG:
-                        nSize = 2;
-                        break;
-                    default:
-                        nSize = 3;
+                    	case MIDI_PROGRAM:
+                    	case MIDI_CHAN_PRESSURE:
+                    	case MIDI_TIMECODE:
+                    	case MIDI_SONG:
+                        	nSize = 2;
+                        	break;
+                        case MIDI_CONTROL:
+                        	// Skip sustain events if recording and sustain is pressed
+                        	if (it->second->value1 == 64 && g_nSustainValue > 0)
+                        		bSkip = true;
+                        	nSize = 3;
+                    	default:
+                        	nSize = 3;
                     }
                 }
-                pBuffer = jack_midi_event_reserve(pOutputBuffer, nTime, nSize);
-                if (pBuffer == NULL)
-                    break; // Exceeded buffer size (or other issue)
-
-                pBuffer[0] = it->second->command;
-                if (nSize > 1)
-                    pBuffer[1] = it->second->value1;
-                if (nSize > 2)
-                    pBuffer[2] = it->second->value2;
+                if (!bSkip) {
+					pBuffer = jack_midi_event_reserve(pOutputBuffer, nTime, nSize);
+					if (pBuffer == NULL)
+						break; // Exceeded buffer size (or other issue)
+					pBuffer[0] = it->second->command;
+					if (nSize > 1)
+						pBuffer[1] = it->second->value1;
+					if (nSize > 2)
+						pBuffer[2] = it->second->value2;
+					DPRINTF("Sending MIDI event %d,%d,%d at %u\n", pBuffer[0], pBuffer[1], pBuffer[2], nNow + nTime);
+				}
                 delete it->second;
                 it->second = NULL;
             }
             ++it;
-            DPRINTF("Sending MIDI event %d,%d,%d at %u\n", pBuffer[0], pBuffer[1], pBuffer[2], nNow + nTime);
         }
         g_mSchedule.erase(g_mSchedule.begin(), it);
     }

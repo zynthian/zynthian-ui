@@ -291,6 +291,13 @@ class Pattern {
      */
     void removeControl(uint32_t step, uint8_t control);
 
+    /** @brief  Remove continuous controller from pattern inside a interval of steps
+     *   @param  stepFrom Interval's start step (from start of pattern)
+     *   @param  stepTo Interval's end step (from start of pattern)
+     *   @param  control MIDI controller number
+     */
+    void removeControlInterval(uint32_t stepFrom, uint32_t stepTo, uint8_t control);
+
     /** @brief  Get duration of controller event
      *   @param  position Quantity of steps from start of pattern at which control starts
      *   @param  control MIDI controller number
