@@ -396,12 +396,18 @@ class zynthian_gui_mixer_strip():
                                                angle=90, fill=self.legend_txt_color, justify=tkinter.LEFT, anchor=tkinter.NW)
             self.parent.main_canvas.coords(self.fader_text, self.x, self.fader_bottom - 2)
 
-    def draw_sequences(self):
+    def draw_launcher(self):
         self.parent.main_canvas.itemconfig(f"fader:{self.fader_bg}", state=tkinter.HIDDEN)
         self.parent.main_canvas.itemconfig(self.clip_progress, state=tkinter.NORMAL)
-        self.get_sequences()
-        for i in range(0, self.n_clip_slots):
-            self.draw_sequence_slot(i)
+        # Clip Launcher
+        if self.chain_id > 0:
+            self.get_sequences()
+            for i in range(0, self.n_clip_slots):
+                self.draw_sequence_slot(i)
+        # Scene Launcher (main strip)
+        else:
+            for i in range(0, self.n_clip_slots):
+                self.draw_scene_slot(i)
 
     def draw_sequence_slot(self, i):
         try:
@@ -429,23 +435,60 @@ class zynthian_gui_mixer_strip():
             color = zynthian_gui_config.PAD_COLOUR_DISABLED
             color_light = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT
             color_state = "#F0F0F0"
-            state_text = ""
             title = "---"
             mode_image = None
+            state_text = ""
         self.parent.main_canvas.itemconfig(self.clip_slots[i]["bg"], fill=color_light, state=tkinter.NORMAL)
         self.parent.main_canvas.itemconfig(self.clip_slots[i]["header"], fill=color, state=tkinter.NORMAL)
         self.parent.main_canvas.itemconfig(self.clip_slots[i]["state"], fill=color_state, text=state_text, state=tkinter.NORMAL)
         self.parent.main_canvas.itemconfig(self.clip_slots[i]["title"], text=title, state=tkinter.NORMAL)
         self.parent.main_canvas.itemconfig(self.clip_slots[i]["mode"], image=mode_image, state=tkinter.NORMAL)
 
+    def draw_scene_slot(self, i):
+        try:
+            info = self.parent.launcher_scene_info[i]
+            color = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT
+            title = f"{i+1:02}"
+            match info['state']:
+                case zynseq.SEQ_PLAYING:
+                    color_state = zynthian_gui_config.PAD_COLOUR_PLAYING
+                    state_text = "▶"
+                case zynseq.SEQ_STARTING:
+                    color_state = zynthian_gui_config.PAD_COLOUR_STARTING
+                    state_text = "▶"
+                case zynseq.SEQ_STOPPING:
+                    color_state = zynthian_gui_config.PAD_COLOUR_STOPPING
+                    state_text = "▶"
+                case zynseq.SEQ_STOPPED:
+                    color_state = zynthian_gui_config.PAD_COLOUR_STOPPED
+                    state_text = "⏹"
+                case _:
+                    color_state = zynthian_gui_config.PAD_COLOUR_DISABLED
+                    state_text = ""
+        except:
+            color = zynthian_gui_config.PAD_COLOUR_DISABLED
+            color_state = "#F0F0F0"
+            title = "--"
+            state_text = ""
+        self.parent.main_canvas.itemconfig(self.clip_slots[i]["bg"], fill=color, state=tkinter.NORMAL)
+        self.parent.main_canvas.itemconfig(self.clip_slots[i]["header"], fill=color, state=tkinter.NORMAL)
+        self.parent.main_canvas.itemconfig(self.clip_slots[i]["state"], fill=color_state, text=state_text, state=tkinter.NORMAL)
+        self.parent.main_canvas.itemconfig(self.clip_slots[i]["title"], text=title, state=tkinter.NORMAL)
+
     def update_clip_state(self, bank, seq, state, mode, group):
         if bank != self.zynseq.bank:
             return
-        for i, info in enumerate(self.sequences):
-            if info['index'] == seq:
-                self.sequences[i] = self.get_sequence_info(bank, seq)
-                self.draw_sequence_slot(i)
-                break
+        # Clip Launcher
+        if self.chain_id > 0:
+            for i, info in enumerate(self.sequences):
+                if info['index'] == seq:
+                    self.sequences[i] = self.get_sequence_info(bank, seq)
+                    self.draw_sequence_slot(i)
+                    break
+        # Scene Launcher
+        else:
+            for i in range(self.n_clip_slots):
+                self.draw_scene_slot(i)
 
     def update_clip_progress(self, bank, seq, progress):
         if bank != self.zynseq.bank:
@@ -465,7 +508,6 @@ class zynthian_gui_mixer_strip():
                     playing = True
         if not playing:
             self.parent.main_canvas.coords(self.clip_progress, x0, y0, x1, y1)
-
 
     def draw_solo(self):
         txcolor = self.button_txcol
@@ -561,7 +603,7 @@ class zynthian_gui_mixer_strip():
                     # procs = self.chain.get_processor_count() - 1
                 self.parent.main_canvas.itemconfig(self.legend_strip_txt, text=strip_txt, font=font)
             if self.parent.launcher_mode:
-                self.draw_sequences()
+                self.draw_launcher()
             else:
                 self.draw_fader()
         try:
@@ -806,11 +848,22 @@ class zynthian_gui_mixer_strip():
 
     def on_clip_slot_press(self, row):
         #logging.debug(f"CLIP PRESSED => chain_id:{self.chain_id}, row:{row}")
-        try:
-            index = self.sequences[row]['index']
-        except:
-            return
-        self.zynseq.libseq.togglePlayState(self.zynseq.bank, index)
+        if self.chain_id > 0:
+            try:
+                index = self.sequences[row]['index']
+            except:
+                return
+            self.zynseq.libseq.togglePlayState(self.zynseq.bank, index)
+        else:
+            try:
+                info = self.parent.launcher_scene_info[row]
+                state = info['state']
+                indexes = info['indexes']
+            except:
+                return
+            if state >= zynseq.SEQ_STOPPED:
+                for index in indexes:
+                    self.zynseq.libseq.togglePlayState(self.zynseq.bank, index)
 
     # --------------------------------------------------------------------------
     # UI event management
@@ -979,6 +1032,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.zynseq = self.state_manager.zynseq
 
         self.launcher_mode = self.zyngui.alt_mode
+        self.launcher_scene_info = []
 
         self.zynmixer.set_midi_learn_cb(self.enter_midi_learn)
         self.MAIN_MIXBUS_STRIP_INDEX = self.zynmixer.MAX_NUM_CHANNELS - 1
@@ -1038,16 +1092,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
         # Create mixer strip UI objects
         for strip in range(len(self.visible_mixer_strips)):
-            self.visible_mixer_strips[strip] = zynthian_gui_mixer_strip(
-                self, 1 + self.fader_width * strip, 0, self.fader_width - 1, self.height)
-
-        self.main_mixbus_strip = zynthian_gui_mixer_strip(
-            self, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height)
+            self.visible_mixer_strips[strip] = zynthian_gui_mixer_strip(self, 1 + self.fader_width * strip, 0, self.fader_width - 1, self.height)
+        self.main_mixbus_strip = zynthian_gui_mixer_strip(self, self.width - self.fader_width - 1, 0, self.fader_width - 1, self.height)
         self.main_mixbus_strip.set_chain(0)
         self.main_mixbus_strip.zctrls = self.zynmixer.zctrls[self.MAIN_MIXBUS_STRIP_INDEX]
-
         self.zynmixer.enable_dpm(0, self.MAIN_MIXBUS_STRIP_INDEX, False)
-
         self.refresh_visible_strips()
 
     def init_dpmeter(self):
@@ -1249,6 +1298,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         for strip in self.visible_mixer_strips:
             if not strip.hidden and strip.chain.mixer_chan is not None:
                 strip.draw_control()
+        self.get_launcher_scene_info()
         self.main_mixbus_strip.draw_control()
 
     def cb_launcher_play_state(self, bank, seq, state, mode, group):
@@ -1257,6 +1307,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         for strip in self.visible_mixer_strips:
             if not strip.hidden and strip.chain.mixer_chan is not None:
                 strip.update_clip_state(bank, seq, state, mode, group)
+        self.get_launcher_scene_info()
         self.main_mixbus_strip.update_clip_state(bank, seq, state, mode, group)
 
     def cb_launcher_progress(self, bank, seq, progress):
@@ -1338,6 +1389,38 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.chan2strip[self.MAIN_MIXBUS_STRIP_INDEX] = self.main_mixbus_strip
         self.main_mixbus_strip.draw_control()
         return active_strip
+
+    # --------------------------------------------------------------------------
+    # Launcher Functionality
+    # --------------------------------------------------------------------------
+
+    def get_launcher_scene_info(self):
+        self.launcher_scene_info = []
+        # Count clip row states
+        for i in range(self.main_mixbus_strip.n_clip_slots):
+            seq_indexes = []
+            state_counter = [0, 0, 0, 0, 0, 0]
+            for strip in self.visible_mixer_strips:
+                if not strip.hidden and strip.chain.mixer_chan is not None:
+                    try:
+                        if strip.sequences[i]['mode']:
+                            state_counter[strip.sequences[i]['state']] += 1
+                            seq_indexes.append(strip.sequences[i]['index'])
+                    except:
+                        pass
+            state = -1
+            if state_counter[zynseq.SEQ_STOPPED]:
+                state = zynseq.SEQ_STOPPED
+            elif state_counter[zynseq.SEQ_STOPPING]:
+                state = zynseq.SEQ_STOPPING
+            elif state_counter[zynseq.SEQ_STARTING]:
+                state = zynseq.SEQ_STARTING
+            elif state_counter[zynseq.SEQ_PLAYING]:
+                state = zynseq.SEQ_PLAYING
+            self.launcher_scene_info.append({
+                'indexes': seq_indexes,
+                'state': state
+            })
 
     # --------------------------------------------------------------------------
     # Physical UI Control Management: Pots & switches
