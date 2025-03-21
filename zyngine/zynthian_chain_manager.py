@@ -73,7 +73,8 @@ engine2class = {
     'MC': zynthian_engine_midi_control,
     'PD': zynthian_engine_puredata,
     'MD': zynthian_engine_modui,
-    'IR': zynthian_engine_inet_radio
+    'IR': zynthian_engine_inet_radio,
+    'CL': zynthian_engine_clippy
 }
 
 # ----------------------------------------------------------------------------
@@ -1004,7 +1005,7 @@ class zynthian_chain_manager:
                 eng_key = f"JV/{self.zyngine_counter}"
                 zyngine = zynthian_engine_class(
                     eng_code, self.state_manager, False)
-            elif eng_code == "SF":
+            elif eng_code in ("SF", "CL"):
                 eng_key = f"{eng_code}/{self.zyngine_counter}"
                 zyngine = zynthian_engine_class(self.state_manager)
             else:
