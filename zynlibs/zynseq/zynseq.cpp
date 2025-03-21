@@ -419,7 +419,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             // Real Time Capture (while playing)
             if (nPlayState) {
                 // Note on event
-                if (nCommand == 0x90 && midiEvent.buffer[2] > 0) {
+                if (nCommand == MIDI_NOTE_ON && midiEvent.buffer[2] > 0) {
                     startEvents[midiEvent.buffer[1]].start = nStep;
                     startEvents[midiEvent.buffer[1]].velocity = midiEvent.buffer[2];
                     // Calculate clock position offset, in steps (from 0.0 to 1.0)
@@ -443,7 +443,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     }
                 }
                 // Note off event
-                else if ((nCommand == 0x90 && midiEvent.buffer[2] == 0) || nCommand == 0x80) {
+                else if ((nCommand == MIDI_NOTE_ON && midiEvent.buffer[2] == 0) || nCommand == MIDI_NOTE_OFF) {
                     if (startEvents[midiEvent.buffer[1]].start != -1) {
                         double dDur = double(g_pSequence->getPlayPosition()) - startEvents[midiEvent.buffer[1]].start * getClocksPerStep();
                         if (dDur < 1.0)
@@ -455,7 +455,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     }
                 }
                 // CC event
-                else if (nCommand == 0xB0) {
+                else if (nCommand == MIDI_CONTROL) {
 	                // Manage sustain pedal (CC64)
     	            if (midiEvent.buffer[1] == 64) {
                     	if (midiEvent.buffer[2] > 0 && g_nSustainValue == 0) {
@@ -484,7 +484,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             else {
                 bool bAdvance = false;
                 // Use sustain pedal for advance step
-                if (nCommand == 0xB0 && midiEvent.buffer[1] == 64) {
+                if (nCommand == MIDI_CONTROL && midiEvent.buffer[1] == 64) {
                     if (midiEvent.buffer[2] > 0)
                         g_nSustainValue = midiEvent.buffer[2];
                     else {
@@ -493,7 +493,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     }
                 }
                 // Note on event
-                else if (nCommand == 0x90 && midiEvent.buffer[2]) {
+                else if (nCommand == MIDI_NOTE_ON && midiEvent.buffer[2]) {
                     setPatternModified(pPattern, true, false);
                     uint32_t nDuration = getNoteDuration(nStep, midiEvent.buffer[1]);
                     if (g_nSustainValue > 0)
