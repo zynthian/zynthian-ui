@@ -37,6 +37,7 @@ from zyngine.zynthian_signal_manager import zynsigman
 from zyngui import zynthian_gui_base
 from zyngui import zynthian_gui_config
 
+logging.getLogger('PIL').setLevel(logging.WARNING)
 
 SELECT_BORDER = zynthian_gui_config.color_on
 INPUT_CHANNEL_LABELS = ['OFF', '1', '2', '3', '4', '5', '6',
@@ -52,8 +53,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
     # Function to initialise class
     def __init__(self):
-        logging.getLogger('PIL').setLevel(logging.WARNING)
-
         super().__init__()
 
         # Zynthian Core objects
