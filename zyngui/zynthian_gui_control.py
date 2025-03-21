@@ -653,6 +653,14 @@ class zynthian_gui_control(zynthian_gui_selector):
             zctrl = self.zgui_controllers[i].zctrl
             if zctrl is None:
                 return
+
+            if zctrl.is_path:
+                title = "Control options"
+                options["Clear"] = zctrl
+                self.zyngui.screens['option'].config(title, options, self.midi_learn_options_cb)
+                self.zyngui.show_screen('option')
+                return
+
             mcparams = self.zyngui.chain_manager.get_midi_learn_from_zctrl(zctrl)
             if not unlearn_only:
                 title = "Control options"
@@ -721,6 +729,8 @@ class zynthian_gui_control(zynthian_gui_selector):
         parts = option.split(" ")
         if option == "Control":
             self.show_xy()
+        elif option == "Clear":
+            param.set_value("")
         elif parts[1] == "X-axis":
             self.zyngui.state_manager.zctrl_x = param
             if self.zyngui.state_manager.zctrl_y == param:
