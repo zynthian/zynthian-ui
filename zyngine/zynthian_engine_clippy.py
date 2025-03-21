@@ -171,9 +171,9 @@ class zynthian_engine_clippy(zynthian_engine):
     def write_sfz(self):
         with open("/tmp/clippy.sfz", "w") as file:
             for i, zctrl in enumerate(self.processors[0].controllers_dict.values()):
-                if zctrl.value:
+                if zctrl.value and zctrl.value != '0':
                     file.write("<region>\n")
-                    file.write(f"sample={zctrl.value}\n")
+                    file.write(f"sample={zctrl.value and zctrl.value}\n")
                     file.write(f"key={48 + i}")
                     file.write(f"\n")
         self.lscp_send_single(f"LOAD INSTRUMENT '/tmp/clippy.sfz' 0 0")
