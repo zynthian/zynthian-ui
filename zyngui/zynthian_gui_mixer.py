@@ -167,16 +167,16 @@ class zynthian_gui_mixer_strip():
         ypos = self.fader_top
         for i in range(0, self.n_clip_slots):
             slot_bg = canvas.create_rectangle(x, ypos, x + self.fader_width, ypos + height_slot - 1, width=0, state=tkinter.HIDDEN)
-            canvas.itemconfig(slot_bg, tags=(f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
+            canvas.itemconfig(slot_bg, tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
             slot_header = canvas.create_rectangle(x, ypos, x + self.fader_width, ypos + 0.35 * height_slot, width=0,
-                                                  state=tkinter.HIDDEN, tags=(f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
+                                                  state=tkinter.HIDDEN, tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
             ypos_header = ypos - height_slot // 6
             slot_state = canvas.create_text(x + self.fader_width, ypos_header, text="", anchor=tkinter.NE, font=self.font_clip_state,
-                                            state=tkinter.HIDDEN, tags=(f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
+                                            state=tkinter.HIDDEN, tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
             slot_title = canvas.create_text(x + self.fader_width // 2, ypos + 0.65 * height_slot, text="",
                                             anchor=tkinter.CENTER, font=self.font_clip_title, state=tkinter.HIDDEN,
-                                            fill=self.legend_txt_color, tags=(f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
-            slot_mode = canvas.create_image(x, ypos, anchor=tkinter.NW, state=tkinter.HIDDEN, tags=(f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
+                                            fill=self.legend_txt_color, tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
+            slot_mode = canvas.create_image(x, ypos, anchor=tkinter.NW, state=tkinter.HIDDEN, tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
 
             self.parent.zyngui.multitouch.tag_bind(canvas, f"clip_slot:{slot_bg}", "press", lambda e, row=i: self.on_clip_slot_press(row))
             canvas.tag_bind(f"clip_slot:{slot_bg}", '<ButtonPress-1>', lambda e, row=i: self.on_clip_slot_press(row))
@@ -1196,6 +1196,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.cb_launcher_play_state)
             zynsigman.register_queued(
                 zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PROGRESS, self.cb_launcher_progress)
+        self.zynseq.select_bank(0)
 
         return True
 

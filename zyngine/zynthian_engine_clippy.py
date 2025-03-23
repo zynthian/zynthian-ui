@@ -110,6 +110,16 @@ class zynthian_engine_clippy(zynthian_engine):
             except Exception as err:
                 logging.error(f"Can't start engine {self.name} => {err}")
 
+    def stop(self):
+        if self.proc:
+            try:
+                logging.info("Stopping Engine " + self.name)
+                self.proc.terminate()
+                self.proc = None
+            except Exception as err:
+                logging.error(
+                    "Can't stop engine {} => {}".format(self.name, err))
+
     def lscp_connect(self):
         logging.info("Connecting with LinuxSampler Server...")
         self.state_manager.start_busy("clippy")
