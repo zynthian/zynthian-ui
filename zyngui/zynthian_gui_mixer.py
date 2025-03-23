@@ -865,9 +865,8 @@ class zynthian_gui_mixer_strip():
                 indexes = info['indexes']
             except:
                 return
-            if state >= zynseq.SEQ_STOPPED:
-                for index in indexes:
-                    self.zynseq.libseq.setPlayState(self.zynseq.bank, index, state)
+            for index in indexes:
+                self.zynseq.libseq.setPlayState(self.zynseq.bank, index, state)
 
     # --------------------------------------------------------------------------
     # UI event management
