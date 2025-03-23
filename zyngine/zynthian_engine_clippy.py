@@ -106,7 +106,6 @@ class zynthian_engine_clippy(zynthian_engine):
                 # cwd when PWD has been set.
                 self.proc = Popen(self.command, env=self.command_env, cwd=self.command_cwd, shell=False,
                                   text=True, bufsize=1, stdout=PIPE, stderr=STDOUT, stdin=PIPE)
-                
             except Exception as err:
                 logging.error(f"Can't start engine {self.name} => {err}")
 
@@ -220,11 +219,11 @@ class zynthian_engine_clippy(zynthian_engine):
     # Bank Management
     # ---------------------------------------------------------------------------
 
-    def get_bank_list(self, processor=None):
-        return self.get_bank_dirlist(recursion=2)
+    #def get_bank_list(self, processor=None):
+    #    return self.get_bank_dirlist(recursion=2)
 
-    def set_bank(self, processor, bank):
-        return True
+    #def set_bank(self, processor, bank):
+    #    return True
 
     # ---------------------------------------------------------------------------
     # Preset Management
