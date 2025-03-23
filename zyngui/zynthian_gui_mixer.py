@@ -198,10 +198,6 @@ class zynthian_gui_mixer_strip():
             img = Image.open(f"/zynthian/zynthian-ui/icons/zynpad_mode_{f}.png")
             self.mode_icon.append(ImageTk.PhotoImage(img.resize(iconsize)))
 
-        # Clip Launcher Progress Bar
-        self.clip_progress = canvas.create_rectangle(x, self.fader_bottom - 4, x, self.fader_bottom, width=0,
-                             fill=self.legend_txt_color, state=tkinter.HIDDEN, tags=(f"clip_strip:{self.fader_bg}"))
-
         # DPM
         self.dpm_a = zynthian_gui_dpm(self.zynmixer, None, 0, canvas, self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.fader_height,
                                       True, (f"strip:{self.fader_bg}", f"audio_strip:{self.fader_bg}"))
@@ -239,6 +235,9 @@ class zynthian_gui_mixer_strip():
                 tags=(f"strip:{self.fader_bg})", f"fader:{self.fader_bg}"))
             )
 
+        # Clip Launcher Progress Bar
+        self.clip_progress = canvas.create_rectangle(x, self.height - self.legend_height, x, self.height - self.legend_height + 4, width=0,
+                             fill=self.legend_txt_color, state=tkinter.HIDDEN, tags=(f"strip:{self.fader_bg}"))
         # Balance indicator
         self.balance_left = canvas.create_rectangle(x, self.balance_top, self.fader_centre_x, self.balance_top + self.balance_height,
                                                     fill=self.left_color, width=0, tags=(f"strip:{self.fader_bg}", f"balance:{self.fader_bg}", f"audio_strip:{self.fader_bg}"))
@@ -494,9 +493,9 @@ class zynthian_gui_mixer_strip():
         if bank != self.zynseq.bank:
             return
         x0 = self.x
-        y0 = self.fader_bottom - 4
+        y0 = self.height - self.legend_height
         x1 = x0
-        y1 = self.fader_bottom
+        y1 = self.height - self.legend_height + 4
         playing = False
         for i, info in enumerate(self.sequences):
             if info['state'] != zynseq.SEQ_STOPPED:
@@ -1311,8 +1310,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.main_mixbus_strip.update_clip_state(bank, seq, state, mode, group)
 
     def cb_launcher_progress(self, bank, seq, progress):
-        if not self.launcher_mode:
-            return
         for strip in self.visible_mixer_strips:
             if not strip.hidden and strip.chain.mixer_chan is not None:
                 strip.update_clip_progress(bank, seq, progress)

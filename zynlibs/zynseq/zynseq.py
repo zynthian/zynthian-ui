@@ -73,6 +73,8 @@ SEQ_RESTARTING = 4
 SEQ_STOPPINGSYNC = 5
 SEQ_LASTPLAYSTATUS = 5
 
+SEQ_MAX_COLUMNS = 8
+
 PLAY_MODES = ['Disabled', 'Oneshot', 'Loop',
               'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
 
@@ -88,6 +90,7 @@ class zynseq(zynthian_engine):
     def __init__(self, state_manager=None):
         self.state_manager = state_manager
         self.changing_bank = False
+        self.progress = [0] * SEQ_MAX_COLUMNS ** 2
         try:
             self.libseq = ctypes.cdll.LoadLibrary(
                 dirname(realpath(__file__))+"/build/libzynseq.so")
@@ -159,8 +162,10 @@ class zynseq(zynthian_engine):
         for i in range(count):
             seq = (progress[i] >> 8) & 0xff
             prog = progress[i] & 0xff
-            zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_PROGRESS,
-                           bank=self.bank, seq=seq, progress=prog)
+            if prog != self.progress[i]:
+                self.progress[i] = prog
+                zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_PROGRESS,
+                               bank=self.bank, seq=seq, progress=prog)
 
     # Function to select a bank for edit / control
     # bank: Index of bank
@@ -178,7 +183,7 @@ class zynseq(zynthian_engine):
             self.build_default_bank(bank)
         self.seq_in_bank = self.libseq.getSequencesInBank(bank)
         # WARNING!!! Limited to 8 to avoid issues with GUI zynpad that have 8x8 = 64 pads
-        self.col_in_bank = min(8, int(sqrt(self.seq_in_bank)))
+        self.col_in_bank = min(SEQ_MAX_COLUMNS, int(sqrt(self.seq_in_bank)))
         self.bank = bank
         zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_REFRESH)
         self.changing_bank = False

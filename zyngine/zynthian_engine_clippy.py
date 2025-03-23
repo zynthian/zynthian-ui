@@ -170,6 +170,9 @@ class zynthian_engine_clippy(zynthian_engine):
 
     def write_sfz(self):
         with open("/tmp/clippy.sfz", "w") as file:
+            file.write("<global>\n")
+            file.write("ampeg_release=0.1\n") # Fast fade to reduce risk of clicks
+            file.write("loop_mode=loop_sustain\n") # Loop whilst key pressed
             for i, zctrl in enumerate(self.processors[0].controllers_dict.values()):
                 if zctrl.value and zctrl.value != '0':
                     file.write("<region>\n")
