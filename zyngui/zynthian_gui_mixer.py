@@ -857,12 +857,17 @@ class zynthian_gui_mixer_strip():
             try:
                 info = self.parent.launcher_scene_info[row]
                 state = info['state']
+                if state :
+                    state = zynseq.SEQ_STOPPING
+                else:
+                    state =zynseq.SEQ_STARTING
+                info['state'] = state
                 indexes = info['indexes']
             except:
                 return
             if state >= zynseq.SEQ_STOPPED:
                 for index in indexes:
-                    self.zynseq.libseq.togglePlayState(self.zynseq.bank, index)
+                    self.zynseq.libseq.setPlayState(self.zynseq.bank, index, state)
 
     # --------------------------------------------------------------------------
     # UI event management
