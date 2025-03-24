@@ -176,11 +176,14 @@ class zynseq(zynthian_engine):
         if bank is None:
             bank = self.bank
         else:
-            if bank < 1 or bank > 64 or bank == self.bank and not force:
+            if bank < 1 or bank == self.bank and not force:
                 return
         self.changing_bank = True
         if self.libseq.getSequencesInBank(bank) == 0:
-            self.build_default_bank(bank)
+            if bank == 255:
+                self.build_default_bank(bank, 8, 8, SEQ_DISABLED)
+            else:
+                self.build_default_bank(bank)
         self.seq_in_bank = self.libseq.getSequencesInBank(bank)
         # WARNING!!! Limited to 8 to avoid issues with GUI zynpad that have 8x8 = 64 pads
         self.col_in_bank = min(SEQ_MAX_COLUMNS, int(sqrt(self.seq_in_bank)))
@@ -190,17 +193,18 @@ class zynseq(zynthian_engine):
 
     # Build a default bank 1 with 16 sequences in grid of midi channels 1,2,3,10
     # bank: Index of bank to rebuild
-    def build_default_bank(self, bank):
+    def build_default_bank(self, bank, rows=4, columns=4, mode = SEQ_LOOP):
         if self.libseq:
-            self.libseq.setSequencesInBank(bank, 16)
-            for column in range(4):
+            self.libseq.setSequencesInBank(bank, rows * columns)
+            for column in range(columns):
                 channel = column
-                for row in range(4):
-                    seq = row + 4 * column
+                for row in range(rows):
+                    seq = row + columns * column
                     self.set_sequence_name(bank, seq, "{}".format(
                         self.libseq.getPatternAt(bank, seq, 0, 0)))
                     self.libseq.setGroup(bank, seq, channel)
                     self.libseq.setChannel(bank, seq, 0, channel)
+                    self.libseq.setPlayMode(bank, seq, mode)
 
     # Function to add / remove sequences to change bank size
     # new_columns: Quantity of columns (and rows) of new grid

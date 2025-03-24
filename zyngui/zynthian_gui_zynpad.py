@@ -107,6 +107,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
     # Function to show GUI
     #   params: Misc parameters
     def build_view(self):
+        self.set_bank(self.bank)
         self.zynseq.libseq.updateSequenceInfo()
         self.setup_zynpots()
         self.refresh_status(True)
@@ -350,6 +351,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
     # ------------------------------------------------------------------------------------------------------------------
 
     def set_bank(self, bank):
+        self.bank = bank
         self.refresh_trigger_params()
         self.zynseq.select_bank(bank)
         self.refresh_status(force=True)
@@ -531,7 +533,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
     def send_controller_value(self, zctrl):
         if zctrl.symbol == 'bank':
             self.zynseq.select_bank(zctrl.value)
-            self.set_title(f"Scene {self.zynseq.bank}")
+            self.set_title(f"Scene {self.bank}")
         elif zctrl.symbol == 'tempo':
             self.zynseq.set_tempo(zctrl.value)
         elif zctrl.symbol == 'metro_vol':

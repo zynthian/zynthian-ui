@@ -265,8 +265,8 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
     def send_controller_value(self, zctrl):
         if zctrl.symbol == 'scene':
             self.zynseq.select_bank(zctrl.value)
-            # self.title = "Scene {}".format(self.zynseq.bank)
             self.bank = self.zynseq.bank
+            self.set_title(f"Scene {self.bank}")
             self.update_sequence_tracks()
             self.redraw_pending = 4
         elif zctrl.symbol == 'tempo':
@@ -496,13 +496,13 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
     # Function to show GUI
     def build_view(self):
+        self.zynseq.select_bank(self.bank)
         self.vertical_zoom = self.zynseq.libseq.getVerticalZoom()
         self.horizontal_zoom = self.zynseq.libseq.getHorizontalZoom()
         self.setup_zynpots()
         if not self.param_editor_zctrl:
             self.set_title(f"Scene {self.zynseq.bank}")
         self.redraw_pending = 3
-        self.bank = self.zynseq.bank
         self.title = f"Scene {self.bank}"
         self.update_sequence_tracks()
         self.redraw_pending = 4

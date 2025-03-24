@@ -27,6 +27,9 @@ import socket
 from time import sleep
 from subprocess import Popen, STDOUT, PIPE
 
+from zynlibs.zynseq import zynseq
+from zyngine.zynthian_signal_manager import zynsigman
+
 from . import zynthian_engine
 from zynconf import ServerPort
 from zyncoder.zyncore import lib_zyncore
@@ -183,7 +186,7 @@ class zynthian_engine_clippy(zynthian_engine):
             file.write("ampeg_release=0.1\n") # Fast fade to reduce risk of clicks
             file.write("loop_mode=loop_sustain\n") # Loop whilst key pressed
             for i, zctrl in enumerate(self.processors[0].controllers_dict.values()):
-                if zctrl.value and zctrl.value != '0':
+                if zctrl.value:
                     file.write("<region>\n")
                     file.write(f"sample={zctrl.value and zctrl.value}\n")
                     file.write(f"key={48 + i}")
@@ -192,7 +195,20 @@ class zynthian_engine_clippy(zynthian_engine):
 
     def send_controller_value(self, zctrl):
         if zctrl.symbol.startswith("sample"):
+            if zctrl.value == 0 or zctrl.value == "0":
+                zctrl.value = ""
             self.write_sfz()
+            index = int(zctrl.symbol.split(" ")[1]) - 1 + (self.processors[0].chain_id - 1) * 8
+            if zctrl.value:
+                mode = zynseq.SEQ_LOOP
+            else:
+                mode = zynseq.SEQ_DISABLED
+            self.state_manager.zynseq.libseq.setPlayMode(255, index, mode)
+            state = self.state_manager.zynseq.libseq.getPlayState(255, index)
+            group = self.state_manager.zynseq.libseq.getGroup(255, index)
+            zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_PLAY_STATE,
+                           bank=255, seq=index, state=state, mode=mode, group=group)
+
 
     # ---------------------------------------------------------------------------
     # Processor Management

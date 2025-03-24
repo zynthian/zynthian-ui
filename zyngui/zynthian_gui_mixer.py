@@ -1196,7 +1196,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.cb_launcher_play_state)
             zynsigman.register_queued(
                 zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PROGRESS, self.cb_launcher_progress)
-        self.zynseq.select_bank(0)
+        if self.launcher_mode:
+            self.zynseq.select_bank(255)
 
         return True
 
@@ -1299,6 +1300,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def cb_alt_mode(self, alt_mode=None):
         # TODO: Is this the best we can do? Probably not ...
         self.launcher_mode = alt_mode
+        if alt_mode:
+            self.zynseq.select_bank(255)
         for strip in self.visible_mixer_strips:
             if not strip.hidden and strip.chain.mixer_chan is not None:
                 strip.draw_control()
