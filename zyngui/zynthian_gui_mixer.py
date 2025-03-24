@@ -179,8 +179,8 @@ class zynthian_gui_mixer_strip():
                                             fill=self.legend_txt_color, tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
             slot_mode = canvas.create_image(x, ypos, anchor=tkinter.NW, state=tkinter.HIDDEN, tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
 
-            self.parent.zyngui.multitouch.tag_bind(canvas, f"clip_slot:{slot_bg}", "press", lambda e, row=i: self.on_clip_slot_press(row))
             canvas.tag_bind(f"clip_slot:{slot_bg}", '<ButtonPress-1>', lambda e, row=i: self.on_clip_slot_press(row))
+            canvas.tag_bind(f"clip_slot:{slot_bg}", '<ButtonRelease-1>', lambda e, row=i: self.on_clip_slot_release(row))
 
             self.clip_slots.append({
                 'bg': slot_bg,
@@ -481,7 +481,7 @@ class zynthian_gui_mixer_strip():
         # Clip Launcher
         if self.chain_id > 0:
             slot = seq % 8
-            self.sequences[slot] = self.get_sequence_info(bank, slot)
+            self.sequences[slot] = self.get_sequence_info(slot)
             self.draw_sequence_slot(slot)
         # Scene Launcher
         else:
@@ -807,27 +807,27 @@ class zynthian_gui_mixer_strip():
             return
         # TODO: Improve efficiency. Get filtered list by midi channel with one single call to zynseq
         for seq_i in range(self.n_clip_slots):
-            info = self.get_sequence_info(LAUNCHER_SEQ_BANK, seq_i)
+            info = self.get_sequence_info(seq_i)
             if info:
                 self.sequences.append(info)
 
-    def get_sequence_info(self, bank, row):
+    def get_sequence_info(self, row):
         seq_i = row + 8 * (self.chain.midi_chan)
-        state = self.zynseq.libseq.getSequenceState(bank, seq_i)
-        seq_len = self.zynseq.libseq.getSequenceLength(bank, seq_i)
+        state = self.zynseq.libseq.getSequenceState(LAUNCHER_SEQ_BANK, seq_i)
+        empty = self.zynseq.libseq.isEmpty(LAUNCHER_SEQ_BANK, seq_i)
         group = (state >> 16) & 0xFF
         mode = (state >> 8) & 0xFF
-        if seq_len == 0 or mode == zynseq.SEQ_DISABLED:
+        if empty or mode == zynseq.SEQ_DISABLED:
             color = zynthian_gui_config.PAD_COLOUR_DISABLED
             color_light = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT
         else:
             color = zynthian_gui_config.PAD_COLOUR_GROUP[group % 16]
             color_light = zynthian_gui_config.PAD_COLOUR_GROUP_LIGHT[group % 16]
-        if seq_len == 0:
+        if empty:
             mode = 0
         seq_info = {
             'index': seq_i,
-            'title': self.zynseq.get_sequence_name(bank, seq_i),
+            'title': self.zynseq.get_sequence_name(LAUNCHER_SEQ_BANK, seq_i),
             'group': group,
             'color': color,
             'color_light': color_light,
@@ -843,6 +843,18 @@ class zynthian_gui_mixer_strip():
         return seq_info
 
     def on_clip_slot_press(self, row):
+        self.touch_ts = monotonic()
+
+    def on_clip_slot_release(self, row):
+        now = monotonic()
+        ts = now - self.touch_ts
+        self.touch_ts = None
+        if ts < zynthian_gui_config.zynswitch_bold_seconds:
+            self.on_clip_short_press(row)
+        else:
+            self.on_clip_bold_press(row)
+
+    def on_clip_short_press(self, row):
         #logging.debug(f"CLIP PRESSED => chain_id:{self.chain_id}, row:{row}")
         if self.chain_id > 0:
             try:
@@ -864,6 +876,23 @@ class zynthian_gui_mixer_strip():
                 return
             for index in indexes:
                 self.zynseq.libseq.setPlayState(LAUNCHER_SEQ_BANK, index, state)
+
+    def on_clip_bold_press(self, row):
+        if self.chain_id > 0:
+            if self.chain.midi_chan is None:
+                return
+            try:
+                if self.chain.get_processors("MIDI Synth")[0].engine.nickname == "CL":
+                    return
+            except:
+                return
+            sequence = self.sequences[row]["index"]
+            pattern = self.parent.zynseq.libseq.getPattern(LAUNCHER_SEQ_BANK, sequence, 0, 0)
+            self.parent.zyngui.screens['pattern_editor'].bank = LAUNCHER_SEQ_BANK
+            self.parent.zyngui.screens['pattern_editor'].sequence = sequence
+            self.parent.zyngui.screens['pattern_editor'].load_pattern(pattern)
+            self.parent.zyngui.screens['pattern_editor'].channel = self.chain.midi_chan
+            self.parent.zyngui.show_screen("pattern_editor")
 
     # --------------------------------------------------------------------------
     # UI event management

@@ -181,7 +181,7 @@ class zynseq(zynthian_engine):
         self.changing_bank = True
         if self.libseq.getSequencesInBank(bank) == 0:
             if bank == 255:
-                self.build_default_bank(bank, 16, 8, SEQ_DISABLED)
+                self.build_default_bank(bank, 16, 8)
             else:
                 self.build_default_bank(bank)
         self.seq_in_bank = self.libseq.getSequencesInBank(bank)
@@ -196,7 +196,7 @@ class zynseq(zynthian_engine):
     # columns: Quantity of columns (Default: 4)
     # rows: Quantity of rows (Default: 4)
     # mode: Play mode (Default: loop)
-    def build_default_bank(self, bank, columns=4, rows=4, mode = SEQ_LOOP):
+    def build_default_bank(self, bank, columns=4, rows=4, mode = SEQ_LOOPALL):
         if self.libseq:
             self.libseq.setSequencesInBank(bank, rows * columns)
             for column in range(columns):

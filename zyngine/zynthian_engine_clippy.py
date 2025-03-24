@@ -202,7 +202,7 @@ class zynthian_engine_clippy(zynthian_engine):
             sample_i = int(zctrl.symbol.split(" ")[1]) - 1
             sequence = self.sequence_offset + sample_i
             if zctrl.value:
-                mode = zynseq.SEQ_LOOP
+                mode = zynseq.SEQ_LOOPALL
             else:
                 mode = zynseq.SEQ_DISABLED
             pattern = self.state_manager.zynseq.libseq.getPattern(255, sequence, 0, 0)
@@ -212,6 +212,7 @@ class zynthian_engine_clippy(zynthian_engine):
             self.state_manager.zynseq.libseq.setPlayMode(255, sequence, mode)
             state = self.state_manager.zynseq.libseq.getPlayState(255, sequence)
             group = self.state_manager.zynseq.libseq.getGroup(255, sequence)
+            self.state_manager.zynseq.libseq.updateSequenceInfo()
             zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_PLAY_STATE,
                            bank=255, seq=sequence, state=state, mode=mode, group=group)
 
@@ -234,7 +235,7 @@ class zynthian_engine_clippy(zynthian_engine):
         self.lscp_send_single("ADD CHANNEL MIDI_INPUT 0 0 0")
         self.lscp_send_single(f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
 
-        self.sequence_offset = (self.processors[0].chain_id - 1) * 8 #TODO: This should not be hardcoded and should probably use MIDI channel?
+        self.sequence_offset = (processor.midi_chan) * 8
 
         #for i in range(8):
         #    self.patterns.append(self.state_manager.zynseq.libseq.getPatternAt(255, self.sequence_offset + i, 0, 0))
