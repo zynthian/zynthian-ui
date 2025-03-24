@@ -90,7 +90,7 @@ class zynseq(zynthian_engine):
     def __init__(self, state_manager=None):
         self.state_manager = state_manager
         self.changing_bank = False
-        self.progress = [0] * SEQ_MAX_COLUMNS ** 2
+        self.progress = [0] * 16 * 8
         try:
             self.libseq = ctypes.cdll.LoadLibrary(
                 dirname(realpath(__file__))+"/build/libzynseq.so")
@@ -143,7 +143,7 @@ class zynseq(zynthian_engine):
         self.libseq = None
 
     def update_state(self):
-        num_seq = self.col_in_bank ** 2
+        num_seq = self.libseq.getSequencesInBank(self.bank)
         states = (ctypes.c_uint32 * num_seq)()
         count = self.libseq.getStateChange(self.bank, 0, num_seq, states)
         for i in range(count):
@@ -156,7 +156,7 @@ class zynseq(zynthian_engine):
         self.update_progress()
 
     def update_progress(self):
-        num_seq = self.col_in_bank ** 2
+        num_seq = self.libseq.getSequencesInBank(self.bank)
         progress = (ctypes.c_uint16 * num_seq)()
         count = self.libseq.getProgress(self.bank, 0, num_seq, progress)
         for i in range(count):
@@ -181,7 +181,7 @@ class zynseq(zynthian_engine):
         self.changing_bank = True
         if self.libseq.getSequencesInBank(bank) == 0:
             if bank == 255:
-                self.build_default_bank(bank, 8, 8, SEQ_DISABLED)
+                self.build_default_bank(bank, 16, 8, SEQ_DISABLED)
             else:
                 self.build_default_bank(bank)
         self.seq_in_bank = self.libseq.getSequencesInBank(bank)
@@ -191,15 +191,18 @@ class zynseq(zynthian_engine):
         zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_REFRESH)
         self.changing_bank = False
 
-    # Build a default bank 1 with 16 sequences in grid of midi channels 1,2,3,10
+    # Build a default bank with each column MIDI channel = column number
     # bank: Index of bank to rebuild
-    def build_default_bank(self, bank, rows=4, columns=4, mode = SEQ_LOOP):
+    # columns: Quantity of columns (Default: 4)
+    # rows: Quantity of rows (Default: 4)
+    # mode: Play mode (Default: loop)
+    def build_default_bank(self, bank, columns=4, rows=4, mode = SEQ_LOOP):
         if self.libseq:
             self.libseq.setSequencesInBank(bank, rows * columns)
             for column in range(columns):
                 channel = column
                 for row in range(rows):
-                    seq = row + columns * column
+                    seq = row + column * rows
                     self.set_sequence_name(bank, seq, "{}".format(
                         self.libseq.getPatternAt(bank, seq, 0, 0)))
                     self.libseq.setGroup(bank, seq, channel)
@@ -260,6 +263,7 @@ class zynseq(zynthian_engine):
     # filename: Full path and filename
     def load(self, filename):
         self.libseq.load(bytes(filename, "utf-8"))
+        self.select_bank(255, True)
         self.select_bank(1, True)  # TODO: Store selected bank in seq file
 
     # Load a zynseq pattern file

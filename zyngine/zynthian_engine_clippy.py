@@ -32,7 +32,6 @@ from zyngine.zynthian_signal_manager import zynsigman
 
 from . import zynthian_engine
 from zynconf import ServerPort
-from zyncoder.zyncore import lib_zyncore
 
 # ------------------------------------------------------------------------------
 # Linuxsampler Exception Classes
@@ -90,6 +89,8 @@ class zynthian_engine_clippy(zynthian_engine):
             ['samples 1-4', ['sample 1', 'sample 2', 'sample 3', 'sample 4']],
             ['samples 5-8', ['sample 5', 'sample 6', 'sample 7', 'sample 8']]
         ]
+
+        self.patterns = []
 
     # ---------------------------------------------------------------------------
     # Subproccess Management & IPC
@@ -183,8 +184,8 @@ class zynthian_engine_clippy(zynthian_engine):
     def write_sfz(self):
         with open("/tmp/clippy.sfz", "w") as file:
             file.write("<global>\n")
-            file.write("ampeg_release=0.1\n") # Fast fade to reduce risk of clicks
-            file.write("loop_mode=loop_sustain\n") # Loop whilst key pressed
+            #file.write("ampeg_release=0.1\n") # Fast fade to reduce risk of clicks
+            #file.write("loop_mode=loop_sustain\n") # Loop whilst key pressed
             for i, zctrl in enumerate(self.processors[0].controllers_dict.values()):
                 if zctrl.value:
                     file.write("<region>\n")
@@ -196,25 +197,31 @@ class zynthian_engine_clippy(zynthian_engine):
     def send_controller_value(self, zctrl):
         if zctrl.symbol.startswith("sample"):
             if zctrl.value == 0 or zctrl.value == "0":
-                zctrl.value = ""
+                zctrl.value = "" #TODO: This should be fixed in zctrl class
             self.write_sfz()
-            index = int(zctrl.symbol.split(" ")[1]) - 1 + (self.processors[0].chain_id - 1) * 8
+            sample_i = int(zctrl.symbol.split(" ")[1]) - 1
+            sequence = self.sequence_offset + sample_i
             if zctrl.value:
                 mode = zynseq.SEQ_LOOP
             else:
                 mode = zynseq.SEQ_DISABLED
-            self.state_manager.zynseq.libseq.setPlayMode(255, index, mode)
-            state = self.state_manager.zynseq.libseq.getPlayState(255, index)
-            group = self.state_manager.zynseq.libseq.getGroup(255, index)
-            zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_PLAY_STATE,
-                           bank=255, seq=index, state=state, mode=mode, group=group)
+            pattern = self.state_manager.zynseq.libseq.getPattern(255, sequence, 0, 0)
+            self.state_manager.zynseq.libseq.selectPattern(pattern)
+            self.state_manager.zynseq.libseq.addNote(0, 48 + sample_i, 100, 15.99, 0.0) #TODO: Calculate note length and pattern length
 
+            self.state_manager.zynseq.libseq.setPlayMode(255, sequence, mode)
+            state = self.state_manager.zynseq.libseq.getPlayState(255, sequence)
+            group = self.state_manager.zynseq.libseq.getGroup(255, sequence)
+            zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_PLAY_STATE,
+                           bank=255, seq=sequence, state=state, mode=mode, group=group)
 
     # ---------------------------------------------------------------------------
     # Processor Management
     # ---------------------------------------------------------------------------
 
     def add_processor(self, processor):
+        if self.processors:
+            return # Only support single processor
         super().add_processor(processor)
         self.lscp_port = ServerPort["clippy"] + processor.id
         self.command = ["linuxsampler", "--lscp-port", str(self.lscp_port)]
@@ -226,6 +233,11 @@ class zynthian_engine_clippy(zynthian_engine):
         self.lscp_send_single("SET CHANNEL AUDIO_OUTPUT_DEVICE 0 0")
         self.lscp_send_single("ADD CHANNEL MIDI_INPUT 0 0 0")
         self.lscp_send_single(f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
+
+        self.sequence_offset = (self.processors[0].chain_id - 1) * 8 #TODO: This should not be hardcoded and should probably use MIDI channel?
+
+        #for i in range(8):
+        #    self.patterns.append(self.state_manager.zynseq.libseq.getPatternAt(255, self.sequence_offset + i, 0, 0))
 
     # ---------------------------------------------------------------------------
     # MIDI Channel Management
