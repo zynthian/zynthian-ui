@@ -831,8 +831,16 @@ class zynthian_gui_mixer_strip():
             'group': group,
             'color': color,
             'color_light': color_light,
-            'mode': mode
+            'mode': mode,
+            "clippy": None
         }
+        try:
+            processor = self.chain.get_processors("MIDI Synth")[0]
+            if processor.engine.nickname == "CL":
+                seq_info["clippy"] = processor
+        except:
+            pass
+
         state &= 0xFF
         if state == zynseq.SEQ_RESTARTING:
             seq_info['state'] = zynseq.SEQ_PLAYING
@@ -857,11 +865,11 @@ class zynthian_gui_mixer_strip():
     def on_clip_short_press(self, row):
         #logging.debug(f"CLIP PRESSED => chain_id:{self.chain_id}, row:{row}")
         if self.chain_id > 0:
-            try:
-                index = self.sequences[row]['index']
-            except:
-                return
+            index = self.sequences[row]['index']
             self.zynseq.libseq.togglePlayState(zynseq.LAUNCHER_SEQ_BANK, index)
+            #proc = self.sequences[row]['clippy']
+            #if proc and self.sequences[row]['state'] == 0:
+            #    proc.engine.lscp_send_single(f"SEND CHANNEL MIDI_DATA CC 0 123 0")
         else:
             try:
                 info = self.parent.launcher_scene_info[row]
@@ -877,21 +885,15 @@ class zynthian_gui_mixer_strip():
             for index in indexes:
                 self.zynseq.libseq.setPlayState(zynseq.LAUNCHER_SEQ_BANK, index, state)
 
-    def on_clippy_path(self, path):
-        self.clippy_zctrl.set_value(path)
-
     def on_clip_bold_press(self, row):
         if self.chain_id > 0:
             if self.chain.midi_chan is None:
                 return
-            try:
-                processor = self.chain.get_processors("MIDI Synth")[0]
-                if processor.engine.nickname == "CL":
-                    self.clippy_zctrl = processor.controllers_dict[f"file {row + 1:02}"]
-                    self.parent.zyngui.cb_show_file_selector(self.on_clippy_path, fexts=self.clippy_zctrl.path_file_types, dirnames=self.clippy_zctrl.path_dir_names, path=None)
-                    return
-            except:
-                pass
+            if self.sequences[row]["clippy"]:
+                processor = self.sequences[row]["clippy"]
+                self.clippy_zctrl = processor.controllers_dict[f"file {row + 1:02}"]
+                self.parent.zyngui.cb_show_file_selector(self.on_clippy_path, fexts=self.clippy_zctrl.path_file_types, dirnames=self.clippy_zctrl.path_dir_names, path=None)
+                return
             sequence = self.sequences[row]["index"]
             pattern = self.parent.zynseq.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
             self.parent.zyngui.screens['pattern_editor'].bank = zynseq.LAUNCHER_SEQ_BANK
@@ -899,6 +901,9 @@ class zynthian_gui_mixer_strip():
             self.parent.zyngui.screens['pattern_editor'].load_pattern(pattern)
             self.parent.zyngui.screens['pattern_editor'].channel = self.chain.midi_chan
             self.parent.zyngui.show_screen("pattern_editor")
+
+    def on_clippy_path(self, path):
+        self.clippy_zctrl.set_value(path)
 
     # --------------------------------------------------------------------------
     # UI event management

@@ -282,8 +282,9 @@ class Pattern {
      *   @param  valueStart Controller value at start of event
      *   @param  valueEnd Controller value at end of event
      *   @param  duration Duration of event in steps
+     *   @retval  bool True on success
      */
-    void addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, float duration = 1.0);
+    bool addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, float duration = 1.0);
 
     /** @brief  Remove continuous controller from pattern
      *   @param  position Quantity of steps from start of pattern at which control starts

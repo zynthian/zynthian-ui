@@ -263,11 +263,12 @@ uint8_t Pattern::getProgramChange(uint32_t step) {
     return 0xFF;
 }
 
-void Pattern::addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, float duration) {
+bool Pattern::addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, float duration) {
     if (step > (m_nBeats * m_nStepsPerBeat) || control > 127 || valueStart > 127 || valueEnd > 127 || duration > (m_nBeats * m_nStepsPerBeat))
-        return;
+        return false;
     StepEvent* pEvent = addEvent(step, MIDI_CONTROL, control, valueStart, duration);
     pEvent->setValue2end(valueEnd);
+    return true;
 }
 
 void Pattern::removeControl(uint32_t step, uint8_t control) { deleteEvent(step, MIDI_CONTROL, control); }

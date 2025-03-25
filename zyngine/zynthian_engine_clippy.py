@@ -195,13 +195,18 @@ class zynthian_engine_clippy(zynthian_engine):
     def write_sfz(self):
         with open("/tmp/clippy.sfz", "w") as file:
             file.write("<global>\n")
-            file.write("ampeg_release=0.01\n")  # Fast fade to reduce risk of clicks
+            #file.write("ampeg_release=0.01\n")  # Fast fade to reduce risk of clicks
+            file.write("<region>\n")
+            file.write(f"sample=*silence\n")
+            file.write(f"key=1\n")
+            file.write(f"\n")
             #file.write("loop_mode=loop_sustain\n") # Loop whilst key pressed
-            for i, zctrl in enumerate(self.processors[0].controllers_dict.values()):
-                if zctrl.symbol.startswith("file") and zctrl.value:
+            for i in range(1, 9):
+                zctrl = self.processors[0].controllers_dict[f"file {i:02}"]
+                if zctrl.value:
                     file.write("<region>\n")
                     file.write(f"sample={zctrl.value}\n")
-                    file.write(f"key={48 + i}")
+                    file.write(f"key={47 + i}\n")
                     file.write(f"\n")
         self.lscp_send_single(f"LOAD INSTRUMENT '/tmp/clippy.sfz' 0 0")
 
@@ -216,17 +221,14 @@ class zynthian_engine_clippy(zynthian_engine):
                 sample_i = None
                 logging.error(f"Can't determine sample index {zctrl.symbol} => {e}")
 
-
             if zctrl.value and sample_i is not None:
                 logging.debug(f"SETTING UP SAMPLE '{zctrl.symbol}' ({sample_i}) => {zctrl.value} ...")
 
                 self.write_sfz()
 
                 logging.debug(f"SETTING UP SAMPLE '{zctrl.symbol}' ({sample_i}) => sequence & pattern info ...")
-                # Setup zynseq pattern & sequence
                 try:
                     mode = zynseq.SEQ_LOOPALL
-
                     tempo = self.zynseq.get_tempo()
                     spb = 60 / tempo
                     duration = zynaudioplayer.get_file_duration(zctrl.value)
@@ -243,16 +245,18 @@ class zynthian_engine_clippy(zynthian_engine):
                     logging.debug(f"\tDuration = {duration}s => {beats} beats")
 
                     #bpb = self.libseq.getBeatsPerBar()
+                    # Setup zynseq pattern & sequence
                     steps_per_beat = 16
                     pattern = self.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
                     self.libseq.selectPattern(pattern)
                     self.libseq.clear()
                     self.libseq.setBeatsInPattern(beats)
-                    self.libseq.addNote(0, 48 + sample_i, 100, beats * steps_per_beat - 0.01, 0.0)
+                    self.libseq.addNote(0, 48 + sample_i, 100, int(beats) * steps_per_beat - 0.01, 0.0)
                     self.libseq.setPlayMode(255, sequence, mode)
                     state = self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, sequence)
                     group = self.libseq.getGroup(zynseq.LAUNCHER_SEQ_BANK, sequence)
                     self.libseq.updateSequenceInfo()
+
                 except Exception as e:
                     logging.error(f"Can't setup sequencer for clip {sample_i} => {e}")
             else:
@@ -332,6 +336,7 @@ class zynthian_engine_clippy(zynthian_engine):
 
             # Global volume level
             self.lscp_send_single("SET VOLUME 0.95")
+            self.lscp_send_single("SET VOICES 1")
 
         except zyngine_lscp_error as err:
             logging.error(err)
