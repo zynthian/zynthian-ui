@@ -186,7 +186,7 @@ class zynthian_engine_clippy(zynthian_engine):
     def write_sfz(self):
         with open("/tmp/clippy.sfz", "w") as file:
             file.write("<global>\n")
-            #file.write("ampeg_release=0.1\n") # Fast fade to reduce risk of clicks
+            file.write("ampeg_release=0.01\n") # Fast fade to reduce risk of clicks
             #file.write("loop_mode=loop_sustain\n") # Loop whilst key pressed
             for i, zctrl in enumerate(self.processors[0].controllers_dict.values()):
                 if zctrl.value:
@@ -206,13 +206,13 @@ class zynthian_engine_clippy(zynthian_engine):
             if zctrl.value:
                 mode = zynseq.SEQ_LOOPALL
 
-                """
-                filename = os.path.basename(zctrl.value)
                 tempo = self.state_manager.zynseq.get_tempo()
                 spb = 60 / tempo
                 duration = zynaudioplayer.get_file_duration(zctrl.value)
                 beats = duration / spb
+                """
                 factor = round(beats) / beats
+                filename = os.path.basename(zctrl.value)
                 data, sr = soundfile.read(zctrl.value)
                 data = pyrubberband.time_stretch(data, sr, factor)
                 path = f"/tmp/{filename}"
@@ -221,9 +221,11 @@ class zynthian_engine_clippy(zynthian_engine):
 
                 self.write_sfz()
 
+                steps_per_beat = 16
                 pattern = self.state_manager.zynseq.libseq.getPattern(255, sequence, 0, 0)
                 self.state_manager.zynseq.libseq.selectPattern(pattern)
-                self.state_manager.zynseq.libseq.addNote(0, 48 + sample_i, 100, 15.9, 0.0) #TODO: Calculate note length and pattern length
+                self.state_manager.zynseq.libseq.setBeatsInPattern(int(beats))
+                self.state_manager.zynseq.libseq.addNote(0, 48 + sample_i, 100, int(beats) * steps_per_beat - 0.01, 0.0)
 
                 self.state_manager.zynseq.libseq.setPlayMode(255, sequence, mode)
                 state = self.state_manager.zynseq.libseq.getPlayState(255, sequence)
