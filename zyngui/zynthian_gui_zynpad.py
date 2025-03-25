@@ -319,7 +319,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         midi_chan = self.zynseq.libseq.getChannel(self.bank, pad, 0)
         title = self.zynseq.get_sequence_name(self.bank, pad)
         try:
-            int(title)  # Test for default (integer index)
+            int(title[1:])  # Test for default (integer index)
             title = self.chain_manager.get_synth_preset_name(midi_chan)
         except:
             pass

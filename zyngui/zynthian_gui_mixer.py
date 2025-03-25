@@ -415,6 +415,7 @@ class zynthian_gui_mixer_strip():
             #title = info['title']
             #if not title:
             title = f"{info['index']:03}"
+            title = info["title"]
             mode_image = self.mode_icon[info['mode']]
             match info['state']:
                 case zynseq.SEQ_PLAYING:
