@@ -22,12 +22,13 @@
 #
 # ******************************************************************************
 
-import logging
-import socket
-from time import sleep
-from subprocess import Popen, STDOUT, PIPE
-import soundfile, pyrubberband
 import os
+import math
+import socket
+import logging
+from time import sleep
+import soundfile, pyrubberband
+from subprocess import Popen, STDOUT, PIPE
 
 from zynlibs.zynseq import zynseq
 from zynlibs.zynaudioplayer import zynaudioplayer
@@ -62,6 +63,8 @@ class zynthian_engine_clippy(zynthian_engine):
 
     def __init__(self, state_manager=None, jackname=None):
         super().__init__(state_manager)
+        self.zynseq = state_manager.zynseq
+        self.libseq = state_manager.zynseq.libseq
         self.name = "Clippy"
         self.nickname = "CL"
         self.type = "MIDI Synth"
@@ -74,23 +77,29 @@ class zynthian_engine_clippy(zynthian_engine):
 
         #self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
 
-        # MIDI Controllers
         self._ctrls = []
+        self._ctrl_screens = []
         for i in range(1, 9):
-            self._ctrls.append(
-                [
-                    f"sample {i}", {
-                        'is_path': True,
-                        'path_file_types': ['wav', 'ogg', 'mp3', 'flac', 'aac']
-                    }
-                ]
-            )
-
-        # Controller Screens
-        self._ctrl_screens = [
-            ['samples 1-4', ['sample 1', 'sample 2', 'sample 3', 'sample 4']],
-            ['samples 5-8', ['sample 5', 'sample 6', 'sample 7', 'sample 8']]
-        ]
+            # MIDI Controllers
+            self._ctrls.append([
+                f"file {i:02}", {
+                    'is_path': True,
+                    'path_file_types': ['wav', 'ogg', 'mp3', 'flac', 'aac']
+                }
+            ])
+            self._ctrls.append([
+                f"bars {i:02}", {
+                    'is_integer': True,
+                    'value_min': 1,
+                    'value_max': 32,
+                    'value': 4
+                }
+            ])
+            # Controller Screens
+            self._ctrl_screens.append([
+                f'sample {i:02}',
+                [f'file {i:02}', f'bars {i:02}']
+            ])
 
         self.patterns = []
 
@@ -186,10 +195,10 @@ class zynthian_engine_clippy(zynthian_engine):
     def write_sfz(self):
         with open("/tmp/clippy.sfz", "w") as file:
             file.write("<global>\n")
-            file.write("ampeg_release=0.01\n") # Fast fade to reduce risk of clicks
+            file.write("ampeg_release=0.01\n")  # Fast fade to reduce risk of clicks
             #file.write("loop_mode=loop_sustain\n") # Loop whilst key pressed
             for i, zctrl in enumerate(self.processors[0].controllers_dict.values()):
-                if zctrl.value:
+                if zctrl.symbol.startswith("file") and zctrl.value:
                     file.write("<region>\n")
                     file.write(f"sample={zctrl.value}\n")
                     file.write(f"key={48 + i}")
@@ -197,43 +206,59 @@ class zynthian_engine_clippy(zynthian_engine):
         self.lscp_send_single(f"LOAD INSTRUMENT '/tmp/clippy.sfz' 0 0")
 
     def send_controller_value(self, zctrl):
-        if zctrl.symbol.startswith("sample"):
+        if zctrl.symbol.startswith("file"):
             if zctrl.value == 0 or zctrl.value == "0":
-                zctrl.value = "" #TODO: This should be fixed in zctrl class
+                zctrl.value = ""   # TODO: This should be fixed in zctrl class
+            try:
+                sample_i = int(zctrl.symbol.split(" ")[1]) - 1
+                sequence = self.sequence_offset + sample_i
+            except Exception as e:
+                sample_i = None
+                logging.error(f"Can't determine sample index {zctrl.symbol} => {e}")
 
-            sample_i = int(zctrl.symbol.split(" ")[1]) - 1
-            sequence = self.sequence_offset + sample_i
-            if zctrl.value:
-                mode = zynseq.SEQ_LOOPALL
 
-                tempo = self.state_manager.zynseq.get_tempo()
-                spb = 60 / tempo
-                duration = zynaudioplayer.get_file_duration(zctrl.value)
-                beats = duration / spb
-                """
-                factor = round(beats) / beats
-                filename = os.path.basename(zctrl.value)
-                data, sr = soundfile.read(zctrl.value)
-                data = pyrubberband.time_stretch(data, sr, factor)
-                path = f"/tmp/{filename}"
-                soundfile.write(path, data, sr)"
-                """
+            if zctrl.value and sample_i is not None:
+                logging.debug(f"SETTING UP SAMPLE '{zctrl.symbol}' ({sample_i}) => {zctrl.value} ...")
 
                 self.write_sfz()
 
-                steps_per_beat = 16
-                pattern = self.state_manager.zynseq.libseq.getPattern(255, sequence, 0, 0)
-                self.state_manager.zynseq.libseq.selectPattern(pattern)
-                self.state_manager.zynseq.libseq.setBeatsInPattern(int(beats))
-                self.state_manager.zynseq.libseq.addNote(0, 48 + sample_i, 100, int(beats) * steps_per_beat - 0.01, 0.0)
+                logging.debug(f"SETTING UP SAMPLE '{zctrl.symbol}' ({sample_i}) => sequence & pattern info ...")
+                # Setup zynseq pattern & sequence
+                try:
+                    mode = zynseq.SEQ_LOOPALL
 
-                self.state_manager.zynseq.libseq.setPlayMode(255, sequence, mode)
-                state = self.state_manager.zynseq.libseq.getPlayState(255, sequence)
-                group = self.state_manager.zynseq.libseq.getGroup(255, sequence)
-                self.state_manager.zynseq.libseq.updateSequenceInfo()
+                    tempo = self.zynseq.get_tempo()
+                    spb = 60 / tempo
+                    duration = zynaudioplayer.get_file_duration(zctrl.value)
+                    beats = round(duration / spb)
+                    """
+                    factor = round(beats) / beats
+                    filename = os.path.basename(zctrl.value)
+                    data, sr = soundfile.read(zctrl.value)
+                    data = pyrubberband.time_stretch(data, sr, factor)
+                    path = f"/tmp/{filename}"
+                    soundfile.write(path, data, sr)"
+                    """
+
+                    logging.debug(f"\tDuration = {duration}s => {beats} beats")
+
+                    #bpb = self.libseq.getBeatsPerBar()
+                    steps_per_beat = 16
+                    pattern = self.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
+                    self.libseq.selectPattern(pattern)
+                    self.libseq.clear()
+                    self.libseq.setBeatsInPattern(beats)
+                    self.libseq.addNote(0, 48 + sample_i, 100, beats * steps_per_beat - 0.01, 0.0)
+                    self.libseq.setPlayMode(255, sequence, mode)
+                    state = self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, sequence)
+                    group = self.libseq.getGroup(zynseq.LAUNCHER_SEQ_BANK, sequence)
+                    self.libseq.updateSequenceInfo()
+                except Exception as e:
+                    logging.error(f"Can't setup sequencer for clip {sample_i} => {e}")
             else:
                 mode = zynseq.SEQ_DISABLED
-            zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_PLAY_STATE,
+
+            zynsigman.send(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE,
                            bank=255, seq=sequence, state=state, mode=mode, group=group)
 
     # ---------------------------------------------------------------------------
@@ -255,7 +280,7 @@ class zynthian_engine_clippy(zynthian_engine):
         self.lscp_send_single("ADD CHANNEL MIDI_INPUT 0 0 0")
         self.lscp_send_single(f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
 
-        self.sequence_offset = (processor.midi_chan) * 8
+        self.sequence_offset = processor.midi_chan * 8
 
         #for i in range(8):
         #    self.patterns.append(self.state_manager.zynseq.libseq.getPatternAt(255, self.sequence_offset + i, 0, 0))
@@ -277,7 +302,6 @@ class zynthian_engine_clippy(zynthian_engine):
     # ---------------------------------------------------------------------------
     # Preset Management
     # ---------------------------------------------------------------------------
-
 
     #def get_preset_list(self, bank):
     #    return self._get_preset_list(bank)
@@ -307,7 +331,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 f"CREATE MIDI_INPUT_DEVICE JACK ACTIVE='true' NAME='{self.jackname}' PORTS='1'")
 
             # Global volume level
-            self.lscp_send_single("SET VOLUME 0.45")
+            self.lscp_send_single("SET VOLUME 0.95")
 
         except zyngine_lscp_error as err:
             logging.error(err)

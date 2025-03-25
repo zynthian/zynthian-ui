@@ -723,6 +723,7 @@ class zynthian_gui_mixer_strip():
             self.parent.enter_midi_learn(self.zctrls["balance"])
         elif self.zctrls:
             self.zctrls["balance"].set_value(value)
+
     def get_balance(self):
         """ Function to get balance value
         """
@@ -886,7 +887,7 @@ class zynthian_gui_mixer_strip():
             try:
                 processor = self.chain.get_processors("MIDI Synth")[0]
                 if processor.engine.nickname == "CL":
-                    self.clippy_zctrl = processor.controllers_dict[f"sample {row + 1}"]
+                    self.clippy_zctrl = processor.controllers_dict[f"file {row + 1:02}"]
                     self.parent.zyngui.cb_show_file_selector(self.on_clippy_path, fexts=self.clippy_zctrl.path_file_types, dirnames=self.clippy_zctrl.path_dir_names, path=None)
                     return
             except:
