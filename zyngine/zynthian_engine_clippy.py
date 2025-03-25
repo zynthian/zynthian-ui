@@ -26,8 +26,11 @@ import logging
 import socket
 from time import sleep
 from subprocess import Popen, STDOUT, PIPE
+import soundfile, pyrubberband
+import os
 
 from zynlibs.zynseq import zynseq
+from zynlibs.zynaudioplayer import zynaudioplayer
 from zyngine.zynthian_signal_manager import zynsigman
 
 from . import zynthian_engine
@@ -78,7 +81,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 [
                     f"sample {i}", {
                         'is_path': True,
-                        #'path_dir_names': ['/zynthian/zynthian-my-data/files/Samples'],
+                        'path_dir_names': ['/zynthian/zynthian-my-data/files/Samples'],
                         'path_file_types': ['wav', 'ogg', 'mp3', 'flac', 'aac']
                     }
                 ]
@@ -189,7 +192,7 @@ class zynthian_engine_clippy(zynthian_engine):
             for i, zctrl in enumerate(self.processors[0].controllers_dict.values()):
                 if zctrl.value:
                     file.write("<region>\n")
-                    file.write(f"sample={zctrl.value and zctrl.value}\n")
+                    file.write(f"sample={zctrl.value}\n")
                     file.write(f"key={48 + i}")
                     file.write(f"\n")
         self.lscp_send_single(f"LOAD INSTRUMENT '/tmp/clippy.sfz' 0 0")
@@ -198,21 +201,37 @@ class zynthian_engine_clippy(zynthian_engine):
         if zctrl.symbol.startswith("sample"):
             if zctrl.value == 0 or zctrl.value == "0":
                 zctrl.value = "" #TODO: This should be fixed in zctrl class
-            self.write_sfz()
+
             sample_i = int(zctrl.symbol.split(" ")[1]) - 1
             sequence = self.sequence_offset + sample_i
             if zctrl.value:
                 mode = zynseq.SEQ_LOOPALL
+
+                """
+                filename = os.path.basename(zctrl.value)
+                tempo = self.state_manager.zynseq.get_tempo()
+                spb = 60 / tempo
+                duration = zynaudioplayer.get_file_duration(zctrl.value)
+                beats = duration / spb
+                factor = round(beats) / beats
+                data, sr = soundfile.read(zctrl.value)
+                data = pyrubberband.time_stretch(data, sr, factor)
+                path = f"/tmp/{filename}"
+                soundfile.write(path, data, sr)"
+                """
+
+                self.write_sfz()
+
+                pattern = self.state_manager.zynseq.libseq.getPattern(255, sequence, 0, 0)
+                self.state_manager.zynseq.libseq.selectPattern(pattern)
+                self.state_manager.zynseq.libseq.addNote(0, 48 + sample_i, 100, 15.9, 0.0) #TODO: Calculate note length and pattern length
+
+                self.state_manager.zynseq.libseq.setPlayMode(255, sequence, mode)
+                state = self.state_manager.zynseq.libseq.getPlayState(255, sequence)
+                group = self.state_manager.zynseq.libseq.getGroup(255, sequence)
+                self.state_manager.zynseq.libseq.updateSequenceInfo()
             else:
                 mode = zynseq.SEQ_DISABLED
-            pattern = self.state_manager.zynseq.libseq.getPattern(255, sequence, 0, 0)
-            self.state_manager.zynseq.libseq.selectPattern(pattern)
-            self.state_manager.zynseq.libseq.addNote(0, 48 + sample_i, 100, 15.99, 0.0) #TODO: Calculate note length and pattern length
-
-            self.state_manager.zynseq.libseq.setPlayMode(255, sequence, mode)
-            state = self.state_manager.zynseq.libseq.getPlayState(255, sequence)
-            group = self.state_manager.zynseq.libseq.getGroup(255, sequence)
-            self.state_manager.zynseq.libseq.updateSequenceInfo()
             zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_PLAY_STATE,
                            bank=255, seq=sequence, state=state, mode=mode, group=group)
 
