@@ -885,7 +885,7 @@ class zynthian_gui_mixer_strip():
                 if self.chain.get_processors("MIDI Synth")[0].engine.nickname == "CL":
                     return
             except:
-                return
+                pass
             sequence = self.sequences[row]["index"]
             pattern = self.parent.zynseq.libseq.getPattern(LAUNCHER_SEQ_BANK, sequence, 0, 0)
             self.parent.zyngui.screens['pattern_editor'].bank = LAUNCHER_SEQ_BANK
@@ -1329,7 +1329,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if alt_mode:
             self.zynseq.select_bank(LAUNCHER_SEQ_BANK)
         for strip in self.visible_mixer_strips:
-            if not strip.hidden and strip.chain.mixer_chan is not None:
+            if not strip.hidden:
                 strip.draw_control()
         self.get_launcher_scene_info()
         self.main_mixbus_strip.draw_control()
@@ -1339,16 +1339,20 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             return
         midi_chan = seq // 8
         for strip in self.visible_mixer_strips:
-            if not strip.hidden and strip.chain.mixer_chan is not None and strip.chain.midi_chan == midi_chan:
+            if not strip.hidden and strip.chain.midi_chan == midi_chan:
                 strip.update_clip_state(bank, seq, state, mode, group)
         self.get_launcher_scene_info()
         self.main_mixbus_strip.update_clip_state(bank, seq, state, mode, group)
 
     def cb_launcher_progress(self, bank, seq, progress):
+        midi_chan = seq // 8
         for strip in self.visible_mixer_strips:
-            if not strip.hidden and strip.chain.mixer_chan is not None:
+            if not strip.hidden and strip.chain.midi_chan == midi_chan:
                 strip.update_clip_progress(bank, seq, progress)
         self.main_mixbus_strip.update_clip_progress(bank, seq, progress)
+
+    def topbar_bold_touch_action(self):
+        self.cb_alt_mode(not self.launcher_mode)
 
     # --------------------------------------------------------------------------
     # Mixer Functionality
