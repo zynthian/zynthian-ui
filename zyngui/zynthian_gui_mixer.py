@@ -859,8 +859,10 @@ class zynthian_gui_mixer_strip():
         self.touch_ts = None
         if ts < zynthian_gui_config.zynswitch_bold_seconds:
             self.on_clip_short_press(row)
-        else:
+        elif ts < zynthian_gui_config.zynswitch_long_seconds:
             self.on_clip_bold_press(row)
+        else:
+            self.on_clip_long_press(row)
 
     def on_clip_short_press(self, row):
         #logging.debug(f"CLIP PRESSED => chain_id:{self.chain_id}, row:{row}")
@@ -893,6 +895,18 @@ class zynthian_gui_mixer_strip():
                 processor = self.sequences[row]["clippy"]
                 self.clippy_zctrl = processor.controllers_dict[f"file {row + 1:02}"]
                 self.parent.zyngui.cb_show_file_selector(self.on_clippy_path, fexts=self.clippy_zctrl.path_file_types, dirnames=self.clippy_zctrl.path_dir_names, path=None)
+                return
+            sequence = self.sequences[row]["index"]
+            pattern = self.parent.zynseq.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
+            self.parent.zyngui.screens['pattern_editor'].bank = zynseq.LAUNCHER_SEQ_BANK
+            self.parent.zyngui.screens['pattern_editor'].sequence = sequence
+            self.parent.zyngui.screens['pattern_editor'].load_pattern(pattern)
+            self.parent.zyngui.screens['pattern_editor'].channel = self.chain.midi_chan
+            self.parent.zyngui.show_screen("pattern_editor")
+
+    def on_clip_long_press(self, row):
+        if self.chain_id > 0:
+            if self.chain.midi_chan is None:
                 return
             sequence = self.sequences[row]["index"]
             pattern = self.parent.zynseq.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)

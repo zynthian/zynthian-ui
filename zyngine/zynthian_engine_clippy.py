@@ -103,6 +103,9 @@ class zynthian_engine_clippy(zynthian_engine):
 
         self.patterns = []
 
+        if not os.path.exists("/tmp/silence.wav"):
+            soundfile.write("/tmp/silence.wav", [0.0], 48000)
+
     # ---------------------------------------------------------------------------
     # Subproccess Management & IPC
     # ---------------------------------------------------------------------------
@@ -196,11 +199,11 @@ class zynthian_engine_clippy(zynthian_engine):
         with open("/tmp/clippy.sfz", "w") as file:
             file.write("<global>\n")
             #file.write("ampeg_release=0.01\n")  # Fast fade to reduce risk of clicks
+            file.write("loop_mode=one_shot\n") # Loop whilst key pressed
             file.write("<region>\n")
-            file.write(f"sample=*silence\n")
-            file.write(f"key=1\n")
+            file.write(f"sample=/tmp/silence.wav\n")
+            file.write(f"key=36\n")
             file.write(f"\n")
-            #file.write("loop_mode=loop_sustain\n") # Loop whilst key pressed
             for i in range(1, 9):
                 zctrl = self.processors[0].controllers_dict[f"file {i:02}"]
                 if zctrl.value:
@@ -246,12 +249,12 @@ class zynthian_engine_clippy(zynthian_engine):
 
                     #bpb = self.libseq.getBeatsPerBar()
                     # Setup zynseq pattern & sequence
-                    steps_per_beat = 16
                     pattern = self.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
                     self.libseq.selectPattern(pattern)
                     self.libseq.clear()
+                    steps_per_beat = self.libseq.getStepsPerBeat()
                     self.libseq.setBeatsInPattern(beats)
-                    self.libseq.addNote(0, 48 + sample_i, 100, int(beats) * steps_per_beat - 0.01, 0.0)
+                    self.libseq.addNote(0, 48 + sample_i, 100, 1, 0.0)
                     self.libseq.setPlayMode(255, sequence, mode)
                     state = self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, sequence)
                     group = self.libseq.getGroup(zynseq.LAUNCHER_SEQ_BANK, sequence)
