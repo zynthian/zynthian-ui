@@ -5,7 +5,7 @@
 #
 # A Python wrapper for zynseq library
 #
-# Copyright (C) 2021-2024 Brian Walton <brian@riban.co.uk>
+# Copyright (C) 2021-2025 Brian Walton <brian@riban.co.uk>
 #
 # ********************************************************************
 #
@@ -74,6 +74,9 @@ SEQ_STOPPINGSYNC = 5
 SEQ_LASTPLAYSTATUS = 5
 
 SEQ_MAX_COLUMNS = 8
+
+PATTERN_EDITOR_BANK = 0
+LAUNCHER_SEQ_BANK = 255
 
 PLAY_MODES = ['Disabled', 'Oneshot', 'Loop',
               'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
@@ -186,6 +189,7 @@ class zynseq(zynthian_engine):
                 self.build_default_bank(bank)
         self.seq_in_bank = self.libseq.getSequencesInBank(bank)
         # WARNING!!! Limited to 8 to avoid issues with GUI zynpad that have 8x8 = 64 pads
+        #TODO: This is not longer true!!! Need to store or derive columns in bank.
         self.col_in_bank = min(SEQ_MAX_COLUMNS, int(sqrt(self.seq_in_bank)))
         self.bank = bank
         zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_REFRESH)
