@@ -496,7 +496,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
     # Function to show GUI
     def build_view(self):
-        self.zynseq.select_bank(self.bank)
+        self.bank = self.zynseq.bank
         self.vertical_zoom = self.zynseq.libseq.getVerticalZoom()
         self.horizontal_zoom = self.zynseq.libseq.getHorizontalZoom()
         self.setup_zynpots()

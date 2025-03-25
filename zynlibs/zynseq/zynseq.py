@@ -267,8 +267,8 @@ class zynseq(zynthian_engine):
     # filename: Full path and filename
     def load(self, filename):
         self.libseq.load(bytes(filename, "utf-8"))
-        self.select_bank(255, True)
         self.select_bank(1, True)  # TODO: Store selected bank in seq file
+        self.select_bank(255, True)
 
     # Load a zynseq pattern file
     # patnum: Pattern number
