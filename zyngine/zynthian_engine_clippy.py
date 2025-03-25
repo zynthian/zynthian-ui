@@ -81,7 +81,6 @@ class zynthian_engine_clippy(zynthian_engine):
                 [
                     f"sample {i}", {
                         'is_path': True,
-                        'path_dir_names': ['/zynthian/zynthian-my-data/files/Samples'],
                         'path_file_types': ['wav', 'ogg', 'mp3', 'flac', 'aac']
                     }
                 ]
