@@ -1886,7 +1886,7 @@ class zynthian_state_manager:
                     pass
                 zynautoconnect.update_midi_in_dev_mode(izmip)
                 try:
-                    #TODO: Use ctrldev_driver=None to disable driver
+                    # TODO: Use ctrldev_driver=None to disable driver
                     if state["disable_ctrldev"]:
                         self.ctrldev_manager.unload_driver(izmip, True)
                     else:
