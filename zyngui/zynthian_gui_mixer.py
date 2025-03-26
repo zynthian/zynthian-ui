@@ -63,6 +63,7 @@ class zynthian_gui_mixer_strip():
         height: Height of fader
         """
         self.parent = parent
+        self.zyngui = parent.zyngui
         self.zynmixer = parent.zynmixer
         self.state_manager = parent.state_manager
         self.chain_manager = parent.chain_manager
@@ -251,9 +252,9 @@ class zynthian_gui_mixer_strip():
         self.play_indicator = canvas.create_text(x + 2, self.height - 2, text="⏹", fill="#009000", anchor="sw",
                                                  tags=(f"strip:{self.fader_bg}"), state=tkinter.HIDDEN)
 
-        self.parent.zyngui.multitouch.tag_bind(canvas, "fader:%s" % (self.fader_bg), "press", self.on_fader_press)
-        self.parent.zyngui.multitouch.tag_bind(canvas, "fader:%s" % (self.fader_bg), "motion", self.on_fader_motion)
-        self.parent.zyngui.multitouch.tag_bind(canvas, "fader:%s" % (self.fader_bg), "motion", self.on_fader_motion)
+        self.zyngui.multitouch.tag_bind(canvas, "fader:%s" % (self.fader_bg), "press", self.on_fader_press)
+        self.zyngui.multitouch.tag_bind(canvas, "fader:%s" % (self.fader_bg), "motion", self.on_fader_motion)
+        self.zyngui.multitouch.tag_bind(canvas, "fader:%s" % (self.fader_bg), "motion", self.on_fader_motion)
         canvas.tag_bind(f"fader:{self.fader_bg}", "<ButtonPress-1>", self.on_fader_press)
         canvas.tag_bind(f"fader:{self.fader_bg}", "<ButtonRelease-1>", self.on_fader_release)
         canvas.tag_bind(f"fader:{self.fader_bg}", "<B1-Motion>", self.on_fader_motion)
@@ -900,15 +901,19 @@ class zynthian_gui_mixer_strip():
             if self.sequences[row]["clippy"]:
                 processor = self.sequences[row]["clippy"]
                 self.clippy_zctrl = processor.controllers_dict[f"file {row + 1:02}"]
-                self.parent.zyngui.cb_show_file_selector(self.on_clippy_path, fexts=self.clippy_zctrl.path_file_types, dirnames=self.clippy_zctrl.path_dir_names, path=None)
-                return
-            sequence = self.sequences[row]["index"]
-            pattern = self.parent.zynseq.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
-            self.parent.zyngui.screens['pattern_editor'].bank = zynseq.LAUNCHER_SEQ_BANK
-            self.parent.zyngui.screens['pattern_editor'].sequence = sequence
-            self.parent.zyngui.screens['pattern_editor'].load_pattern(pattern)
-            self.parent.zyngui.screens['pattern_editor'].channel = self.chain.midi_chan
-            self.parent.zyngui.show_screen("pattern_editor")
+                self.zyngui.cb_show_file_selector(self.on_clippy_path,
+                                                  fexts=self.clippy_zctrl.path_file_types,
+                                                  dirnames=self.clippy_zctrl.path_dir_names,
+                                                  path=self.clippy_zctrl.value)
+            else:
+                sequence = self.sequences[row]["index"]
+                pattern = self.zynseq.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
+                pated = self.zyngui.screens['pattern_editor']
+                pated.bank = zynseq.LAUNCHER_SEQ_BANK
+                pated.sequence = sequence
+                pated.load_pattern(pattern)
+                pated.channel = self.chain.midi_chan
+                self.zyngui.show_screen("pattern_editor")
 
     def on_clip_long_press(self, row):
         if self.chain_id > 0:
@@ -916,11 +921,12 @@ class zynthian_gui_mixer_strip():
                 return
             sequence = self.sequences[row]["index"]
             pattern = self.parent.zynseq.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
-            self.parent.zyngui.screens['pattern_editor'].bank = zynseq.LAUNCHER_SEQ_BANK
-            self.parent.zyngui.screens['pattern_editor'].sequence = sequence
-            self.parent.zyngui.screens['pattern_editor'].load_pattern(pattern)
-            self.parent.zyngui.screens['pattern_editor'].channel = self.chain.midi_chan
-            self.parent.zyngui.show_screen("pattern_editor")
+            pated = self.zyngui.screens['pattern_editor']
+            pated.bank = zynseq.LAUNCHER_SEQ_BANK
+            pated.sequence = sequence
+            pated.load_pattern(pattern)
+            pated.channel = self.chain.midi_chan
+            self.zyngui.show_screen("pattern_editor")
 
     def on_clippy_path(self, path):
         self.clippy_zctrl.set_value(path)
