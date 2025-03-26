@@ -255,7 +255,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     steps_per_beat = self.libseq.getStepsPerBeat()
                     self.libseq.setBeatsInPattern(beats)
                     self.libseq.addNote(0, 48 + sample_i, 100, 1, 0.0)
-                    self.libseq.setPlayMode(255, sequence, mode)
+                    self.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, sequence, mode)
                     state = self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, sequence)
                     group = self.libseq.getGroup(zynseq.LAUNCHER_SEQ_BANK, sequence)
                     self.libseq.updateSequenceInfo()
@@ -264,9 +264,10 @@ class zynthian_engine_clippy(zynthian_engine):
                     logging.error(f"Can't setup sequencer for clip {sample_i} => {e}")
             else:
                 mode = zynseq.SEQ_DISABLED
+                self.reset_pattern(sample_i)
 
             zynsigman.send(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE,
-                           bank=255, seq=sequence, state=state, mode=mode, group=group)
+                           bank=zynseq.LAUNCHER_SEQ_BANK, seq=sequence, state=state, mode=mode, group=group)
 
     # ---------------------------------------------------------------------------
     # Processor Management
@@ -289,8 +290,21 @@ class zynthian_engine_clippy(zynthian_engine):
 
         self.sequence_offset = processor.midi_chan * 8
 
-        #for i in range(8):
-        #    self.patterns.append(self.state_manager.zynseq.libseq.getPatternAt(255, self.sequence_offset + i, 0, 0))
+        for i in range(8):
+            pattern = self.libseq.getPatternAt(255, self.sequence_offset + i, 0, 0)
+            self.patterns.append(pattern)
+            self.reset_pattern(i)
+
+    def reset_pattern(self, slot):
+            pattern = self.patterns[slot]
+            self.libseq.selectPattern(pattern)
+            self.libseq.clear()
+            self.libseq.setStepsPerBeat(1)
+            self.libseq.setBeatsInPattern(1)
+            self.libseq.addNote(0, 36, 100, 1, 0)
+            self.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, self.sequence_offset + slot, zynseq.SEQ_ONESHOT)
+            self.libseq.updateSequenceInfo()
+
 
     # ---------------------------------------------------------------------------
     # MIDI Channel Management

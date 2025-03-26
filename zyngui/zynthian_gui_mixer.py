@@ -812,11 +812,23 @@ class zynthian_gui_mixer_strip():
                 self.sequences.append(info)
 
     def get_sequence_info(self, row):
-        seq_i = row + 8 * (self.chain.midi_chan)
+        seq_i = row + 8 * self.chain.midi_chan
+        clippy = None
+        try:
+            processor = self.chain.get_processors("MIDI Synth")[0]
+            if processor.engine.nickname == "CL":
+                clippy = processor
+        except:
+            pass
         state = self.zynseq.libseq.getSequenceState(zynseq.LAUNCHER_SEQ_BANK, seq_i)
         empty = self.zynseq.libseq.isEmpty(zynseq.LAUNCHER_SEQ_BANK, seq_i)
         group = (state >> 16) & 0xFF
         mode = (state >> 8) & 0xFF
+        if clippy and mode == zynseq.SEQ_ONESHOT:
+            mode = 0
+            title = "⏹"
+        else:
+            title = self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, seq_i),
         if empty or mode == zynseq.SEQ_DISABLED:
             color = zynthian_gui_config.PAD_COLOUR_DISABLED
             color_light = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT
@@ -827,19 +839,13 @@ class zynthian_gui_mixer_strip():
             mode = 0
         seq_info = {
             'index': seq_i,
-            'title': self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, seq_i),
+            'title': title,
             'group': group,
             'color': color,
             'color_light': color_light,
             'mode': mode,
-            "clippy": None
+            "clippy": clippy
         }
-        try:
-            processor = self.chain.get_processors("MIDI Synth")[0]
-            if processor.engine.nickname == "CL":
-                seq_info["clippy"] = processor
-        except:
-            pass
 
         state &= 0xFF
         if state == zynseq.SEQ_RESTARTING:
