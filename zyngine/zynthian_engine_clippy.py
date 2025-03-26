@@ -253,14 +253,20 @@ class zynthian_engine_clippy(zynthian_engine):
                 else:
                     factor = tempo / file_tempo
 
-                if warp_zctrl.value:
+                if warp_zctrl.value and tempo != file_tempo:
                     # Warp audio to fit pattern length
                     data, sr = soundfile.read(path)
                     data = pyrubberband.time_stretch(data, sr, factor)
-                    path = f"/tmp/{filename}" #TODO: /tmp will fill up!!!
+                    path = f"/tmp/clippy{sequence}.flac"
                     soundfile.write(path, data, sr)
+                    warp_zctrl.labels = ["off", f"{tempo}\nBPM"]
                 else:
-                    pass
+                    warp_zctrl.labels = ["off", "n/a"]
+                    try:
+                        os.remove(f"/tmp/clippy{sequence}.flac")
+                    except:
+                        pass
+
                     #TODO: Remove unused warped files
                 file_zctrl.path = path
 
