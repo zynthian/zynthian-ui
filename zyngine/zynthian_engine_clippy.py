@@ -212,79 +212,78 @@ class zynthian_engine_clippy(zynthian_engine):
         self.lscp_send_single(f"LOAD INSTRUMENT '/tmp/clippy.sfz' 0 0")
 
     def send_controller_value(self, zctrl):
+        try:
+            slot = int(zctrl.symbol.split(" ")[1]) - 1
+        except Exception as e:
+            logging.error(f"Can't determine sample index {zctrl.symbol} => {e}")
+            return
         if zctrl.symbol.startswith("file"):
             if zctrl.value == 0 or zctrl.value == "0":
                 zctrl.value = ""   # TODO: This should be fixed in zctrl class
+            self.set_file(slot, zctrl.value)
+        elif zctrl.symbol.startswith("warp"):
+            self.set_file(slot, zctrl.processor.controllers_dict[f"file {slot + 1:02}"].value)        
+
+    def set_file(self, slot, path):
+        file_zctrl = self.processors[0].controllers_dict[f"file {slot + 1:02}"]
+        warp_zctrl = self.processors[0].controllers_dict[f"warp {slot + 1:02}"]
+        sequence = self.sequence_offset + slot
+
+        if path:
+            # Try to determine tempo from filename
+            filename = os.path.basename(path)
+            tempo = self.zynseq.get_tempo()
+            pattern = r"(\d+)\s*(?=bpm|BPM)"
+            matches = re.findall(pattern, filename)
+            duration = zynaudioplayer.get_file_duration(path)
             try:
-                sample_i = int(zctrl.symbol.split(" ")[1]) - 1
-                sequence = self.sequence_offset + sample_i
+                file_tempo = int(matches[0])
+            except:
+                file_tempo = tempo
+                #TODO: Try other tempo detection methods
+
+            # Configure pattern with required beats to play whole file at this tempo
+            try:
+                beats_per_bar = self.libseq.getBeatsPerBar()
+                beats = duration * file_tempo / 60
+                bars = round(beats / beats_per_bar)
+                whole_beats = bars * beats_per_bar
+                if tempo == file_tempo:
+                    factor = beats / whole_beats
+                else:
+                    factor = tempo / file_tempo
+
+                if warp_zctrl.value:
+                    # Warp audio to fit pattern length
+                    data, sr = soundfile.read(path)
+                    data = pyrubberband.time_stretch(data, sr, factor)
+                    path = f"/tmp/{filename}" #TODO: /tmp will fill up!!!
+                    soundfile.write(path, data, sr)
+                else:
+                    pass
+                    #TODO: Remove unused warped files
+                file_zctrl.path = path
+
+                # Setup zynseq pattern & sequence
+                pattern = self.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
+                self.libseq.selectPattern(pattern)
+                self.libseq.clear()
+                self.libseq.setStepsPerBeat(1)
+                self.libseq.setBeatsInPattern(whole_beats)
+                self.libseq.addNote(0, 48 + slot, 100, 1, 0.0)
+                self.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, sequence, zynseq.SEQ_LOOPALL)
+                state = self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, sequence)
+                group = self.libseq.getGroup(zynseq.LAUNCHER_SEQ_BANK, sequence)
+                self.libseq.updateSequenceInfo()
+
             except Exception as e:
-                sample_i = None
-                logging.error(f"Can't determine sample index {zctrl.symbol} => {e}")
+                logging.error(f"Can't setup sequencer for clip {slot} => {e}")
+        else:
+            self.reset_pattern(slot)
 
-            if zctrl.value and sample_i is not None:
-                logging.debug(f"SETTING UP SAMPLE '{zctrl.symbol}' ({sample_i}) => {zctrl.value} ...")
-
-                # Try to determine tempo from filename
-                path = zctrl.value
-                filename = os.path.basename(path)
-                tempo = self.zynseq.get_tempo()
-                pattern = r"(\d+)\s*(?=bpm|BPM)"
-                matches = re.findall(pattern, filename)
-                duration = zynaudioplayer.get_file_duration(path)
-                try:
-                    file_tempo = int(matches[0])
-                except:
-                    file_tempo = tempo
-                    #TODO: Try other tempo detection methods
-
-                # Configure pattern with required beats to play whole file at this tempo
-                try:
-                    mode = zynseq.SEQ_LOOPALL
-                    beats_per_bar = self.libseq.getBeatsPerBar()
-                    beats = duration * file_tempo / 60
-                    bars = round(beats / beats_per_bar)
-                    whole_beats = bars * beats_per_bar
-                    if tempo == file_tempo:
-                        factor = beats / whole_beats
-                    else:
-                        factor = tempo / file_tempo
-
-                    if zctrl.processor.controllers_dict[f"warp {sample_i+1:02}"].value:
-                        # Warp audio to fit pattern length
-                        filename = os.path.basename(zctrl.value)
-                        data, sr = soundfile.read(zctrl.value)
-                        data = pyrubberband.time_stretch(data, sr, factor)
-                        path = f"/tmp/{filename}" #TODO: /tmp will fill up!!!
-                        soundfile.write(path, data, sr)
-                        zctrl.path = path
-                    else:
-                        zctrl.path = zctrl.value
-
-                    logging.debug(f"\tDuration = {duration}s => {beats} beats")
-
-                    #bpb = self.libseq.getBeatsPerBar()
-                    # Setup zynseq pattern & sequence
-                    pattern = self.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
-                    self.libseq.selectPattern(pattern)
-                    self.libseq.clear()
-                    self.libseq.setStepsPerBeat(1)
-                    self.libseq.setBeatsInPattern(whole_beats)
-                    self.libseq.addNote(0, 48 + sample_i, 100, 1, 0.0)
-                    self.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, sequence, mode)
-                    state = self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, sequence)
-                    group = self.libseq.getGroup(zynseq.LAUNCHER_SEQ_BANK, sequence)
-                    self.libseq.updateSequenceInfo()
-
-                except Exception as e:
-                    logging.error(f"Can't setup sequencer for clip {sample_i} => {e}")
-            else:
-                mode = zynseq.SEQ_DISABLED
-                self.reset_pattern(sample_i)
-
-            self.write_sfz()
-            zynsigman.send(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE,
-                           bank=zynseq.LAUNCHER_SEQ_BANK, seq=sequence, state=state, mode=mode, group=group)
+        self.write_sfz()
+        zynsigman.send(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE,
+                        bank=zynseq.LAUNCHER_SEQ_BANK, seq=sequence, state=state, mode=zynseq.SEQ_LOOPALL, group=group)
 
     # ---------------------------------------------------------------------------
     # Processor Management
