@@ -899,19 +899,7 @@ class zynthian_gui_mixer_strip():
             #if proc and self.sequences[row]['state'] == 0:
             #    proc.engine.lscp_send_single(f"SEND CHANNEL MIDI_DATA CC 0 123 0")
         else:
-            try:
-                info = self.parent.launcher_scene_info[row]
-                state = info['state']
-                if state:
-                    state = zynseq.SEQ_STOPPING
-                else:
-                    state =zynseq.SEQ_STARTING
-                info['state'] = state
-                indexes = info['indexes']
-            except:
-                return
-            for index in indexes:
-                self.zynseq.libseq.setPlayState(zynseq.LAUNCHER_SEQ_BANK, index, state)
+            self.parent.toggle_scene(row)
 
     def on_clip_bold_press(self, row):
         if self.chain_id > 0:
@@ -1520,6 +1508,31 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'indexes': seq_indexes,
                 'state': state
             })
+
+    def toggle_scene(self, row):
+
+        try:
+            info = self.launcher_scene_info[row]
+            scene_state = info['state']
+            indexes = info['indexes']
+
+            for strip in self.visible_mixer_strips:
+                index = strip.sequences[row]['index']
+                if index in indexes:
+                    clip_state = strip.sequences[row]['state']
+                    # If scene is playing => stop all clips
+                    # If scene is not playing (or playing partially) => Play all stopped clips
+                    if (not scene_state and clip_state == zynseq.SEQ_STOPPED) or (scene_state and clip_state == zynseq.SEQ_PLAYING):
+                        self.zynseq.libseq.togglePlayState(zynseq.LAUNCHER_SEQ_BANK, index)
+                    #self.zynseq.libseq.setPlayState(zynseq.LAUNCHER_SEQ_BANK, index, zynseq.SEQ_STOPPING)
+
+            if scene_state:
+                info['state'] = zynseq.SEQ_STOPPING
+            else:
+                info['state'] = zynseq.SEQ_STARTING
+
+        except Exception as e:
+            logging.error(f"{e}")
 
     # --------------------------------------------------------------------------
     # Physical UI Control Management: Pots & switches
