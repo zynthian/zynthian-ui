@@ -29,6 +29,7 @@ from time import sleep
 import soundfile, pyrubberband
 from subprocess import Popen, STDOUT, PIPE
 import re
+from threading import Timer
 
 from zynlibs.zynseq import zynseq
 from zynlibs.zynaudioplayer import zynaudioplayer
@@ -100,6 +101,7 @@ class zynthian_engine_clippy(zynthian_engine):
             ])
 
         self.patterns = []
+        self.tempo_cb_timer = None
 
         if not os.path.exists("/tmp/silence.wav"):
             soundfile.write("/tmp/silence.wav", [0.0], 48000)
@@ -122,12 +124,15 @@ class zynthian_engine_clippy(zynthian_engine):
                 # cwd when PWD has been set.
                 self.proc = Popen(self.command, env=self.command_env, cwd=self.command_cwd, shell=False,
                                   text=True, bufsize=1, stdout=PIPE, stderr=STDOUT, stdin=PIPE)
+                zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_TEMPO, self.on_tempo)
+
             except Exception as err:
                 logging.error(f"Can't start engine {self.name} => {err}")
 
     def stop(self):
         if self.proc:
             try:
+                zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_TEMPO, self.on_tempo)
                 logging.info("Stopping Engine " + self.name)
                 self.proc.terminate()
                 self.proc = None
@@ -222,7 +227,8 @@ class zynthian_engine_clippy(zynthian_engine):
                 zctrl.value = ""   # TODO: This should be fixed in zctrl class
             self.set_file(slot, zctrl.value)
         elif zctrl.symbol.startswith("warp"):
-            self.set_file(slot, zctrl.processor.controllers_dict[f"file {slot + 1:02}"].value)        
+            self.set_file(slot, zctrl.processor.controllers_dict[f"file {slot + 1:02}"].value)
+        self.write_sfz()
 
     def set_file(self, slot, path):
         file_zctrl = self.processors[0].controllers_dict[f"file {slot + 1:02}"]
@@ -287,9 +293,25 @@ class zynthian_engine_clippy(zynthian_engine):
         else:
             self.reset_pattern(slot)
 
-        self.write_sfz()
-        zynsigman.send(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE,
+        zynsigman.send(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE,
                         bank=zynseq.LAUNCHER_SEQ_BANK, seq=sequence, state=state, mode=zynseq.SEQ_LOOPALL, group=group)
+
+    def on_tempo(self, tempo):
+        if self.tempo_cb_timer:
+            self.tempo_cb_timer.cancel()
+        self.tempo_cb_timer = Timer(0.5, self.on_tempo_cb)
+        self.tempo_cb_timer.start()
+
+    def on_tempo_cb(self):
+        self.tempo_cb_timer = None
+        for i in range(8):
+            warp_zctrl = self.processors[0].controllers_dict[f"warp {i + 1:02}"]
+            if warp_zctrl.value:
+                if self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, self.sequence_offset + i):
+                    self.lscp_send_single("SEND CHANNEL MIDI_DATA NOTE_ON 0 36 100")
+                path = self.processors[0].controllers_dict[f"file {i + 1:02}"].value
+                self.set_file(i, path)
+        self.write_sfz()
 
     # ---------------------------------------------------------------------------
     # Processor Management

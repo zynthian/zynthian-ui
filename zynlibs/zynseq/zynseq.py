@@ -26,12 +26,12 @@
 import ctypes
 import logging
 from math import sqrt
-from hashlib import new
 from os.path import dirname, realpath
 
 from zyngine import zynthian_engine
 from zyngine import zynthian_controller
 from zyngine.zynthian_signal_manager import zynsigman
+from zynlibs.zynaudioplayer import *
 
 # -------------------------------------------------------------------------------
 # Zynthian Step Sequencer Library Wrapper
@@ -83,13 +83,13 @@ LAUNCHER_SEQ_BANK = 255
 PLAY_MODES = ['Disabled', 'Oneshot', 'Loop',
               'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
 
+# Subsignals are defined inside each module. Here we define zynseq subsignals:
+SS_SEQ_PLAY_STATE = 1
+SS_SEQ_REFRESH = 2
+SS_SEQ_PROGRESS = 3
+SS_TEMPO = 4
 
 class zynseq(zynthian_engine):
-
-    # Subsignals are defined inside each module. Here we define zynseq subsignals:
-    SS_SEQ_PLAY_STATE = 1
-    SS_SEQ_REFRESH = 2
-    SS_SEQ_PROGRESS = 3
 
     # Initiate library - performed by zynseq module
     def __init__(self, state_manager=None):
@@ -157,7 +157,7 @@ class zynseq(zynthian_engine):
             mode = (states[i] >> 8) & 0xff
             group = (states[i] >> 16) & 0xff
             seq = (states[i] >> 24) & 0xff
-            zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_PLAY_STATE,
+            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE,
                            bank=self.bank, seq=seq, state=state, mode=mode, group=group)
         self.update_progress()
 
@@ -170,7 +170,7 @@ class zynseq(zynthian_engine):
             prog = progress[i] & 0xff
             if prog != self.progress[i]:
                 self.progress[i] = prog
-                zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_PROGRESS,
+                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PROGRESS,
                                bank=self.bank, seq=seq, progress=prog)
 
     # Function to select a bank for edit / control
@@ -195,7 +195,7 @@ class zynseq(zynthian_engine):
         #TODO: This is not longer true!!! Need to store or derive columns in bank.
         self.col_in_bank = min(SEQ_MAX_COLUMNS, int(sqrt(self.seq_in_bank)))
         self.bank = bank
-        zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_REFRESH)
+        zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_REFRESH)
         self.changing_bank = False
 
     # Build a default bank with each column MIDI channel = column number
@@ -263,7 +263,7 @@ class zynseq(zynthian_engine):
                     self.libseq.removeSequence(self.bank, offset)
         self.seq_in_bank = self.libseq.getSequencesInBank(self.bank)
         self.col_in_bank = min(8, int(sqrt(self.seq_in_bank)))
-        zynsigman.send(zynsigman.S_STEPSEQ, self.SS_SEQ_REFRESH)
+        zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_REFRESH)
 
     # Load a zynseq file
     # filename: Full path and filename
@@ -338,6 +338,7 @@ class zynseq(zynthian_engine):
 
     def set_tempo(self, tempo):
         self.zctrl_tempo.set_value(tempo)
+        zynaudioplayer.set_tempo(tempo)
 
     def get_tempo(self):
         return self.libseq.getTempo()
@@ -351,7 +352,8 @@ class zynseq(zynthian_engine):
     def send_controller_value(self, zctrl):
         if zctrl == self.zctrl_tempo:
             self.libseq.setTempo(zctrl.value)
-            self.state_manager.audio_player.engine.player.set_tempo(zctrl.value)
+            #self.state_manager.audio_player.engine.player.set_tempo(zctrl.value)
+            zynsigman.send(zynsigman.S_STEPSEQ, SS_TEMPO, tempo=zctrl.value)
 
     def set_midi_channel(self, bank, sequence, track, channel):
         self.libseq.setChannel(bank, sequence, track, channel)

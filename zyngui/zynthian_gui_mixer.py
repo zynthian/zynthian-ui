@@ -1218,9 +1218,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 zynsigman.unregister(
                     zynsigman.S_GUI, zynsigman.SS_GUI_TOGGLE_ALT_MODE, self.cb_alt_mode)
                 zynsigman.unregister(
-                    zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.cb_launcher_play_state)
+                    zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.cb_launcher_play_state)
                 zynsigman.unregister(
-                    zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PROGRESS, self.cb_launcher_progress)
+                    zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PROGRESS, self.cb_launcher_progress)
 
             super().hide()
 
@@ -1263,9 +1263,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             zynsigman.register_queued(
                 zynsigman.S_GUI, zynsigman.SS_GUI_TOGGLE_ALT_MODE, self.cb_alt_mode)
             zynsigman.register_queued(
-                zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.cb_launcher_play_state)
+                zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.cb_launcher_play_state)
             zynsigman.register_queued(
-                zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PROGRESS, self.cb_launcher_progress)
+                zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PROGRESS, self.cb_launcher_progress)
         if self.launcher_mode:
             self.zynseq.select_bank(zynseq.LAUNCHER_SEQ_BANK)
 

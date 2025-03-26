@@ -183,8 +183,8 @@ class zynthian_gui_tempo(zynthian_gui_base):
     def send_controller_value(self, zctrl):
         if self.shown:
             if zctrl == self.bpm_zctrl:
-                self.libseq.setTempo(zctrl.value)
-                zynaudioplayer.set_tempo(zctrl.value)
+                #self.zynpot_cb.set_tempo(zctrl.value)
+                #zynaudioplayer.set_tempo(zctrl.value)
                 logging.debug("SETTING TEMPO BPM: {}".format(zctrl.value))
                 self.replot = True
 

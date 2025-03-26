@@ -5,7 +5,7 @@
 #
 # Zynthian Control Device Manager Class
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #                         Oscar Acena <oscaracena@gmail.com>
 #
@@ -29,6 +29,7 @@ import logging
 
 from zyncoder.zyncore import lib_zyncore
 from zyngine.zynthian_signal_manager import zynsigman
+from zynlibs.zynseq import zynseq
 
 # ------------------------------------------------------------------------------------------------------------------
 # Control device base class
@@ -149,16 +150,16 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         super().init()
         # Register for zynseq updates
         zynsigman.register_queued(
-            zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
+            zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
         zynsigman.register_queued(
-            zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_REFRESH, self.refresh)
+            zynsigman.S_STEPSEQ, zynseq.SS_SEQ_REFRESH, self.refresh)
 
     def end(self):
         # Unregister from zynseq updates
         zynsigman.unregister(
-            zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
+            zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_seq_state)
         zynsigman.unregister(zynsigman.S_STEPSEQ,
-                             self.zynseq.SS_SEQ_REFRESH, self.refresh)
+                             zynseq.SS_SEQ_REFRESH, self.refresh)
         self.light_off()
 
     def update_seq_bank(self):

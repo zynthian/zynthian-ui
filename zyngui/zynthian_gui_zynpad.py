@@ -113,15 +113,15 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         self.refresh_status(True)
         if self.param_editor_zctrl == None:
             self.set_title(f"Scene {self.bank}")
-        zynsigman.register(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_play_state)
-        zynsigman.register(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PROGRESS, self.update_progress)
+        zynsigman.register(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_play_state)
+        zynsigman.register(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PROGRESS, self.update_progress)
         return True
 
     # Function to hide GUI
     def hide(self):
         if self.shown:
-            zynsigman.unregister(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE, self.update_play_state)
-            zynsigman.unregister(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PROGRESS, self.update_progress)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_play_state)
+            zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PROGRESS, self.update_progress)
             super().hide()
 
     # Function to set quantity of pads
