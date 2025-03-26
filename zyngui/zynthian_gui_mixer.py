@@ -180,7 +180,7 @@ class zynthian_gui_mixer_strip():
                                             tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
             slot_mode = self.canvas.create_image(x + 3, ypos, anchor=tkinter.NW, state=tkinter.HIDDEN,
                                             tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
-            slot_sel = self.canvas.create_rectangle(x, ypos, x + 3, ypos + height_slot - 1, width=0, fill="#F00000", state=tkinter.HIDDEN,
+            slot_sel = self.canvas.create_rectangle(x, ypos, x + 3, ypos + height_slot - 1, width=0, fill=self.legend_txt_color, state=tkinter.HIDDEN,
                                                   tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
 
             self.canvas.tag_bind(f"clip_slot:{slot_bg}", '<ButtonPress-1>', lambda e, row=i: self.on_clip_slot_press(row))
