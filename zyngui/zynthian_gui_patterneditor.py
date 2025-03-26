@@ -625,9 +625,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
         self.save_pattern_snapshot(now=True, force=False)
 
     def send_controller_value(self, zctrl):
-        if zctrl.symbol == 'tempo':
-            self.zynseq.libseq.setTempo(zctrl.value)
-        elif zctrl.symbol == 'zoom':
+        if zctrl.symbol == 'zoom':
             self.set_grid_zoom(zctrl.value)
             self.param_editor_zctrl.value = self.zoom
         elif zctrl.symbol == 'bpb':

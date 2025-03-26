@@ -534,8 +534,6 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         if zctrl.symbol == 'bank':
             self.zynseq.select_bank(zctrl.value)
             self.set_title(f"Scene {self.bank}")
-        elif zctrl.symbol == 'tempo':
-            self.zynseq.set_tempo(zctrl.value)
         elif zctrl.symbol == 'metro_vol':
             self.zynseq.libseq.setMetronomeVolume(zctrl.value / 100.0)
         elif zctrl.symbol == 'bpb':

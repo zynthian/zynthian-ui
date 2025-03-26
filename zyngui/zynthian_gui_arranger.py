@@ -269,8 +269,6 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
             self.set_title(f"Scene {self.bank}")
             self.update_sequence_tracks()
             self.redraw_pending = 4
-        elif zctrl.symbol == 'tempo':
-            self.zynseq.libseq.setTempo(zctrl.value)
         if zctrl.symbol == 'metro_vol':
             self.zynseq.libseq.setMetronomeVolume(zctrl.value / 100.0)
         elif zctrl.symbol == 'bpb':

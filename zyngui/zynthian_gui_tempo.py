@@ -182,13 +182,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
     def send_controller_value(self, zctrl):
         if self.shown:
-            if zctrl == self.bpm_zctrl:
-                #self.zynpot_cb.set_tempo(zctrl.value)
-                #zynaudioplayer.set_tempo(zctrl.value)
-                logging.debug("SETTING TEMPO BPM: {}".format(zctrl.value))
-                self.replot = True
-
-            elif zctrl == self.clk_source_zctrl:
+            if zctrl == self.clk_source_zctrl:
                 self.state_manager.set_transport_clock_source(zctrl.value, save_config=True)
                 logging.debug("SETTING CLOCK SOURCE: {}".format(zctrl.value))
                 self.replot = True
