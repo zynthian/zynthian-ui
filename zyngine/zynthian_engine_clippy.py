@@ -23,12 +23,12 @@
 # ******************************************************************************
 
 import os
-import math
 import socket
 import logging
 from time import sleep
 import soundfile, pyrubberband
 from subprocess import Popen, STDOUT, PIPE
+import re
 
 from zynlibs.zynseq import zynseq
 from zynlibs.zynaudioplayer import zynaudioplayer
@@ -88,17 +88,15 @@ class zynthian_engine_clippy(zynthian_engine):
                 }
             ])
             self._ctrls.append([
-                f"bars {i:02}", {
-                    'is_integer': True,
-                    'value_min': 1,
-                    'value_max': 32,
-                    'value': 4
+                f"warp {i:02}", {
+                    'is_toggle': True,
+                    'labels': ["off", "on"]
                 }
             ])
             # Controller Screens
             self._ctrl_screens.append([
                 f'sample {i:02}',
-                [f'file {i:02}', f'bars {i:02}']
+                [f'file {i:02}', f'warp {i:02}']
             ])
 
         self.patterns = []
@@ -208,7 +206,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 zctrl = self.processors[0].controllers_dict[f"file {i:02}"]
                 if zctrl.value:
                     file.write("<region>\n")
-                    file.write(f"sample={zctrl.value}\n")
+                    file.write(f"sample={zctrl.path}\n")
                     file.write(f"key={47 + i}\n")
                     file.write(f"\n")
         self.lscp_send_single(f"LOAD INSTRUMENT '/tmp/clippy.sfz' 0 0")
@@ -227,23 +225,41 @@ class zynthian_engine_clippy(zynthian_engine):
             if zctrl.value and sample_i is not None:
                 logging.debug(f"SETTING UP SAMPLE '{zctrl.symbol}' ({sample_i}) => {zctrl.value} ...")
 
-                self.write_sfz()
+                # Try to determine tempo from filename
+                path = zctrl.value
+                filename = os.path.basename(path)
+                tempo = self.zynseq.get_tempo()
+                pattern = r"(\d+)\s*(?=bpm|BPM)"
+                matches = re.findall(pattern, filename)
+                duration = zynaudioplayer.get_file_duration(path)
+                try:
+                    file_tempo = int(matches[0])
+                except:
+                    file_tempo = tempo
+                    #TODO: Try other tempo detection methods
 
-                logging.debug(f"SETTING UP SAMPLE '{zctrl.symbol}' ({sample_i}) => sequence & pattern info ...")
+                # Configure pattern with required beats to play whole file at this tempo
                 try:
                     mode = zynseq.SEQ_LOOPALL
-                    tempo = self.zynseq.get_tempo()
-                    spb = 60 / tempo
-                    duration = zynaudioplayer.get_file_duration(zctrl.value)
-                    beats = round(duration / spb)
-                    """
-                    factor = round(beats) / beats
-                    filename = os.path.basename(zctrl.value)
-                    data, sr = soundfile.read(zctrl.value)
-                    data = pyrubberband.time_stretch(data, sr, factor)
-                    path = f"/tmp/{filename}"
-                    soundfile.write(path, data, sr)"
-                    """
+                    beats_per_bar = self.libseq.getBeatsPerBar()
+                    beats = duration * file_tempo / 60
+                    bars = round(beats / beats_per_bar)
+                    whole_beats = bars * beats_per_bar
+                    if tempo == file_tempo:
+                        factor = beats / whole_beats
+                    else:
+                        factor = tempo / file_tempo
+
+                    if zctrl.processor.controllers_dict[f"warp {sample_i+1:02}"].value:
+                        # Warp audio to fit pattern length
+                        filename = os.path.basename(zctrl.value)
+                        data, sr = soundfile.read(zctrl.value)
+                        data = pyrubberband.time_stretch(data, sr, factor)
+                        path = f"/tmp/{filename}" #TODO: /tmp will fill up!!!
+                        soundfile.write(path, data, sr)
+                        zctrl.path = path
+                    else:
+                        zctrl.path = zctrl.value
 
                     logging.debug(f"\tDuration = {duration}s => {beats} beats")
 
@@ -252,8 +268,8 @@ class zynthian_engine_clippy(zynthian_engine):
                     pattern = self.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
                     self.libseq.selectPattern(pattern)
                     self.libseq.clear()
-                    steps_per_beat = self.libseq.getStepsPerBeat()
-                    self.libseq.setBeatsInPattern(beats)
+                    self.libseq.setStepsPerBeat(1)
+                    self.libseq.setBeatsInPattern(whole_beats)
                     self.libseq.addNote(0, 48 + sample_i, 100, 1, 0.0)
                     self.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, sequence, mode)
                     state = self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, sequence)
@@ -266,6 +282,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 mode = zynseq.SEQ_DISABLED
                 self.reset_pattern(sample_i)
 
+            self.write_sfz()
             zynsigman.send(zynsigman.S_STEPSEQ, self.zynseq.SS_SEQ_PLAY_STATE,
                            bank=zynseq.LAUNCHER_SEQ_BANK, seq=sequence, state=state, mode=mode, group=group)
 
