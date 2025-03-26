@@ -882,7 +882,7 @@ class zynthian_gui_mixer_strip():
             try:
                 info = self.parent.launcher_scene_info[row]
                 state = info['state']
-                if state :
+                if state:
                     state = zynseq.SEQ_STOPPING
                 else:
                     state =zynseq.SEQ_STARTING
@@ -1468,7 +1468,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             seq_indexes = []
             state_counter = [0, 0, 0, 0, 0, 0]
             for strip in self.visible_mixer_strips:
-                if not strip.hidden and strip.chain.mixer_chan is not None:
+                if not strip.hidden and strip.chain.midi_chan is not None:
                     try:
                         if strip.sequences[i]['mode']:
                             state_counter[strip.sequences[i]['state']] += 1
