@@ -445,7 +445,7 @@ class zynthian_gui_mixer_strip():
             mode_image = None
             state_text = ""
         self.canvas.itemconfig(self.clip_slots[i]["bg"], fill=color_light, state=tkinter.NORMAL)
-        self.canvas.itemconfig(self.clip_slots[i]["header"], fill=color, state=tkinter.NORMAL)
+        self.canvas.itemconfig(self.clip_slots[i]["header"], fill=color_light, state=tkinter.NORMAL)
         self.canvas.itemconfig(self.clip_slots[i]["state"], fill=color_state, text=state_text, state=tkinter.NORMAL)
         self.canvas.itemconfig(self.clip_slots[i]["title"], text=title, state=tkinter.NORMAL)
         self.canvas.itemconfig(self.clip_slots[i]["mode"], image=mode_image, state=tkinter.NORMAL)
@@ -457,7 +457,7 @@ class zynthian_gui_mixer_strip():
     def draw_scene_slot(self, i):
         try:
             info = self.parent.launcher_scene_info[i]
-            color = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT
+            color = zynthian_gui_config.PAD_COLOUR_SCENE
             title = f"{i+1:02}"
             match info['state']:
                 case zynseq.SEQ_PLAYING:
