@@ -91,6 +91,8 @@ class zynthian_gui_tempo(zynthian_gui_base):
             self.bpm_zctrl = self.zynseq.zctrl_tempo
             self.bpm_zgui_ctrl = zynthian_gui_controller(0, self.main_frame, self.bpm_zctrl)
             self.zgui_ctrls.append(self.bpm_zgui_ctrl)
+        else:
+            self.bpm_zgui_ctrl.refresh_plot_value = True
 
         if not self.clk_source_zgui_ctrl:
             self.clk_source_zctrl = zynthian_controller(self, 'clock_source', {'name': 'Clock Source',
@@ -140,7 +142,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
         self.refresh_bpm_value()
         if self.replot:
             for zgui_ctrl in self.zgui_ctrls:
-                if zgui_ctrl.zctrl.is_dirty:
+                if zgui_ctrl.zctrl.is_dirty or zgui_ctrl.refresh_plot_value:
                     zgui_ctrl.calculate_plot_values()
                     zgui_ctrl.plot_value()
                     zgui_ctrl.zctrl.is_dirty = False
@@ -159,6 +161,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
             self.cb_status_audio_recorder()
             self.cb_status_midi_player()
             self.cb_status_midi_recorder()
+        self.replot = True
         return True
 
     def hide(self):
