@@ -175,7 +175,7 @@ class zynthian_gui_mixer_strip():
             ypos_header = ypos - height_slot // 6
             slot_state = self.canvas.create_text(x + self.fader_width, ypos_header, text="", anchor=tkinter.NE, font=self.font_clip_state,
                                             state=tkinter.HIDDEN, tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
-            slot_title = self.canvas.create_text(x + self.fader_width // 2, ypos + 0.65 * height_slot, text="", anchor=tkinter.CENTER,
+            slot_title = self.canvas.create_text(x + self.fader_width // 2, ypos + 0.60 * height_slot, text="", anchor=tkinter.CENTER,
                                             font=self.font_clip_title, state=tkinter.HIDDEN, fill=self.legend_txt_color,
                                             tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
             slot_mode = self.canvas.create_image(x + 3, ypos, anchor=tkinter.NW, state=tkinter.HIDDEN,
