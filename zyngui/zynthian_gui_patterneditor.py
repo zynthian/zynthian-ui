@@ -376,7 +376,6 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
         self.zynseq.libseq.setPlayMode(
             self.bank, self.sequence, self.last_play_mode)
         self.zynseq.libseq.updateSequenceInfo()
-        self.zyngui.alt_mode = False
 
     # Function to add menus
     def show_menu(self):
