@@ -1688,7 +1688,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """ Function to handle CUIA ARROW_UP
         """
         if self.launcher_mode:
-            if self.launcher_highlighted_row > 1:
+            if self.launcher_highlighted_row > 0:
                 self.launcher_highlighted_row -= 1
                 self.highlighted_strip.highlight_clip(self.launcher_highlighted_row)
         else:
