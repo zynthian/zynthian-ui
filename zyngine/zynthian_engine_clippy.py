@@ -55,6 +55,7 @@ class zyngine_lscp_warning(Exception):
 # Clippy Engine Class
 # ------------------------------------------------------------------------------
 
+MAX_BEATS = 64
 
 class zynthian_engine_clippy(zynthian_engine):
 
@@ -94,10 +95,18 @@ class zynthian_engine_clippy(zynthian_engine):
                     'labels': ["off", "on"]
                 }
             ])
+            self._ctrls.append([
+                f"beats {i:02}", {
+                    "is_integer": True,
+                    "value_min": 0,
+                    "value_max": MAX_BEATS
+                }
+            ])
+
             # Controller Screens
             self._ctrl_screens.append([
                 f'sample {i:02}',
-                [f'file {i:02}', f'warp {i:02}']
+                [f'file {i:02}', f'warp {i:02}', f'beats {i:02}']
             ])
 
         self.patterns = []
@@ -219,20 +228,24 @@ class zynthian_engine_clippy(zynthian_engine):
     def send_controller_value(self, zctrl):
         try:
             slot = int(zctrl.symbol.split(" ")[1]) - 1
+            beats_zctrl = self.processors[0].controllers_dict[f"beats {slot + 1:02}"]
         except Exception as e:
             logging.error(f"Can't determine sample index {zctrl.symbol} => {e}")
             return
         if zctrl.symbol.startswith("file"):
             if zctrl.value == 0 or zctrl.value == "0":
                 zctrl.value = ""   # TODO: This should be fixed in zctrl class
+            beats_zctrl.set_value(0, False)
             self.set_file(slot, zctrl.value)
         elif zctrl.symbol.startswith("warp"):
+            beats_zctrl.set_readonly(zctrl.value > 0)
             self.set_file(slot, zctrl.processor.controllers_dict[f"file {slot + 1:02}"].value)
         self.write_sfz()
 
     def set_file(self, slot, path):
         file_zctrl = self.processors[0].controllers_dict[f"file {slot + 1:02}"]
         warp_zctrl = self.processors[0].controllers_dict[f"warp {slot + 1:02}"]
+        beats_zctrl = self.processors[0].controllers_dict[f"beats {slot + 1:02}"]
         sequence = self.sequence_offset + slot
 
         if path:
@@ -246,21 +259,23 @@ class zynthian_engine_clippy(zynthian_engine):
                 file_tempo = int(matches[0])
             except:
                 file_tempo = tempo
-                #TODO: Try other tempo detection methods
 
             # Configure pattern with required beats to play whole file at this tempo
             try:
                 beats_per_bar = self.libseq.getBeatsPerBar()
                 beats = duration * file_tempo / 60
                 bars = round(beats / beats_per_bar)
-                whole_beats = bars * beats_per_bar
+                if beats_zctrl.value:
+                    whole_beats = beats_zctrl.value
+                else:
+                    whole_beats = bars * beats_per_bar
                 if tempo == file_tempo:
                     factor = beats / whole_beats
                 else:
                     factor = tempo / file_tempo
 
-                if warp_zctrl.value and tempo != file_tempo:
-                    # Warp audio to fit pattern length
+                if warp_zctrl.value and factor != 1 and beats <= MAX_BEATS:
+                    # Warp audio to fit pattern length - only if short enough (< max beats) to avoid slow warp
                     data, sr = soundfile.read(path)
                     data = pyrubberband.time_stretch(data, sr, factor)
                     path = f"/tmp/clippy{sequence}.flac"
@@ -272,8 +287,8 @@ class zynthian_engine_clippy(zynthian_engine):
                         os.remove(f"/tmp/clippy{sequence}.flac")
                     except:
                         pass
-
-                    #TODO: Remove unused warped files
+                if beats < MAX_BEATS:
+                    beats_zctrl.set_value(whole_beats, False)
                 file_zctrl.path = path
 
                 # Setup zynseq pattern & sequence

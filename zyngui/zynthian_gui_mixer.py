@@ -1268,6 +1268,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PROGRESS, self.cb_launcher_progress)
         if self.launcher_mode:
             self.zynseq.select_bank(zynseq.LAUNCHER_SEQ_BANK)
+            self.get_launcher_scene_info()
 
         return True
 
@@ -1509,7 +1510,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             })
 
     def toggle_scene(self, row):
-
         try:
             info = self.launcher_scene_info[row]
             scene_state = info['state']
