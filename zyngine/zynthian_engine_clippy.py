@@ -37,6 +37,7 @@ from zyngine.zynthian_signal_manager import zynsigman
 
 from . import zynthian_engine
 from zynconf import ServerPort
+import zynautoconnect
 
 # ------------------------------------------------------------------------------
 # Linuxsampler Exception Classes
@@ -112,8 +113,9 @@ class zynthian_engine_clippy(zynthian_engine):
         self.patterns = []
         self.tempo_cb_timer = None
 
+        self.sr = zynautoconnect.get_jackd_samplerate()
         if not os.path.exists("/tmp/silence.wav"):
-            soundfile.write("/tmp/silence.wav", [0.0], 48000)
+            soundfile.write("/tmp/silence.wav", [0.0], self.sr)
 
     # ---------------------------------------------------------------------------
     # Subproccess Management & IPC
@@ -235,7 +237,7 @@ class zynthian_engine_clippy(zynthian_engine):
         if zctrl.symbol.startswith("file"):
             if zctrl.value == 0 or zctrl.value == "0":
                 zctrl.value = ""   # TODO: This should be fixed in zctrl class
-            beats_zctrl.set_value(0, False)
+            beats_zctrl.value = 0
             self.set_file(slot, zctrl.value)
         elif zctrl.symbol.startswith("warp"):
             beats_zctrl.set_readonly(zctrl.value > 0)
@@ -269,10 +271,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     whole_beats = beats_zctrl.value
                 else:
                     whole_beats = bars * beats_per_bar
-                if tempo == file_tempo:
-                    factor = beats / whole_beats
-                else:
-                    factor = tempo / file_tempo
+                factor = beats / whole_beats * tempo / file_tempo
 
                 if warp_zctrl.value and factor != 1 and beats <= MAX_BEATS:
                     # Warp audio to fit pattern length - only if short enough (< max beats) to avoid slow warp
@@ -287,8 +286,8 @@ class zynthian_engine_clippy(zynthian_engine):
                         os.remove(f"/tmp/clippy{sequence}.flac")
                     except:
                         pass
-                if beats < MAX_BEATS:
-                    beats_zctrl.set_value(whole_beats, False)
+                if whole_beats < MAX_BEATS:
+                    beats_zctrl.value = whole_beats
                 file_zctrl.path = path
 
                 # Setup zynseq pattern & sequence
