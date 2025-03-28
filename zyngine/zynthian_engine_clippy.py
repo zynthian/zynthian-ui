@@ -306,7 +306,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     soundfile.write(path, data, sr)
                     warp_zctrl.labels = ["off", f"{tempo:.1f}\nBPM"]
                 else:
-                    warp_zctrl.labels = ["off", f"({tempo:.1f}\nBPM)"]
+                    warp_zctrl.labels = ["off", f"({tempo:.1f})\nBPM"]
                     try:
                         os.remove(f"/tmp/clippy{sequence}.flac")
                     except:
