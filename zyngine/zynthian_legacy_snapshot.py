@@ -23,17 +23,19 @@
 #
 # ****************************************************************************
 
-from json import JSONDecoder
+import logging
 from math import ceil
+from json import JSONDecoder
 
 from zyngine.zynthian_chain_manager import zynthian_chain_manager
-import logging
 
 SNAPSHOT_SCHEMA_VERSION = 3
 
+
 class zynthian_legacy_snapshot:
 
-    def __init__(self):
+    def __init__(self, state_manager):
+        self.state_manager = state_manager
         self.engine_info = zynthian_chain_manager.get_engine_info()
         self.snapshot = None
 
@@ -96,7 +98,7 @@ class zynthian_legacy_snapshot:
             amixer_ctrls = self.snapshot["alsa_mixer"]["controllers"]
             for symbol in ["Digital_0", "Digital_1"]:
                 v = amixer_ctrls[symbol]["value"]
-                amixer_ctrls[symbol]["value"] = self.alsa_mixer_processor.controllers_dict[symbol].ticks[v]
+                amixer_ctrls[symbol]["value"] = self.state_manager.alsa_mixer_processor.controllers_dict[symbol].ticks[v]
         except:
             pass
 

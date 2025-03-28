@@ -51,7 +51,7 @@ from zyngine.zynthian_chain_manager import *
 from zyngine.zynthian_processor import zynthian_processor
 from zyngine.zynthian_audio_recorder import zynthian_audio_recorder
 from zyngine.zynthian_signal_manager import zynsigman
-from zyngine import zynthian_legacy_snapshot
+from zyngine.zynthian_legacy_snapshot import zynthian_legacy_snapshot, SNAPSHOT_SCHEMA_VERSION
 from zyngine import zynthian_engine_audio_mixer
 from zyngine import zynthian_midi_filter
 
@@ -62,7 +62,6 @@ from zyngine.zynthian_ctrldev_manager import zynthian_ctrldev_manager
 # Zynthian State Manager Class
 # ----------------------------------------------------------------------------
 
-SNAPSHOT_SCHEMA_VERSION = 1.1
 capture_dir_sdc = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data") + "/capture"
 ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/root")
 
@@ -1093,7 +1092,7 @@ class zynthian_state_manager:
         try:
             snapshot = JSONDecoder().decode(json)
             self.set_busy_details("fixing legacy snapshot")
-            converter = zynthian_legacy_snapshot.zynthian_legacy_snapshot()
+            converter = zynthian_legacy_snapshot(self)
             state = converter.convert_state(snapshot)
 
             if load_sequences and "zynseq_riff_b64" in state:
