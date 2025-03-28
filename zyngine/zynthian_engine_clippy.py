@@ -304,9 +304,9 @@ class zynthian_engine_clippy(zynthian_engine):
                     data = pyrubberband.time_stretch(data, sr, factor)
                     path = f"/tmp/clippy{sequence}.flac"
                     soundfile.write(path, data, sr)
-                    warp_zctrl.labels = ["off", f"{tempo}\nBPM"]
+                    warp_zctrl.labels = ["off", f"{tempo:.2f}\nBPM"]
                 else:
-                    warp_zctrl.labels = ["off", f"({tempo})\nBPM"]
+                    warp_zctrl.labels = ["off", f"({tempo:.2f}\nBPM)"]
                     try:
                         os.remove(f"/tmp/clippy{sequence}.flac")
                     except:
@@ -335,7 +335,7 @@ class zynthian_engine_clippy(zynthian_engine):
             self.reset_pattern(slot)
 
         zynsigman.send(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE,
-                        bank=zynseq.LAUNCHER_SEQ_BANK, seq=sequence, state=state, mode=zynseq.SEQ_LOOPALL, group=group)
+                       bank=zynseq.LAUNCHER_SEQ_BANK, seq=sequence, state=state, mode=zynseq.SEQ_LOOPALL, group=group)
 
     def on_tempo(self, tempo):
         if self.tempo_cb_timer:
