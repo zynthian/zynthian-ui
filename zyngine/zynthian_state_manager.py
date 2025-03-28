@@ -1096,6 +1096,12 @@ class zynthian_state_manager:
             converter = zynthian_legacy_snapshot.zynthian_legacy_snapshot()
             state = converter.convert_state(snapshot)
 
+            if load_sequences and "zynseq_riff_b64" in state:
+                b64_bytes = state["zynseq_riff_b64"].encode("utf-8")
+                binary_riff_data = base64.decodebytes(b64_bytes)
+                self.zynseq.restore_riff_data(binary_riff_data)
+                self.zynseq.update_tempo()
+
             if load_chains:
                 # Mute output to avoid unwanted noises
                 self.zynmixer.set_mute(
@@ -1213,11 +1219,6 @@ class zynthian_state_manager:
 
                 if "midi_profile_state" in state:
                     self.set_midi_profile_state(state["midi_profile_state"])
-
-            if load_sequences and "zynseq_riff_b64" in state:
-                b64_bytes = state["zynseq_riff_b64"].encode("utf-8")
-                binary_riff_data = base64.decodebytes(b64_bytes)
-                self.zynseq.restore_riff_data(binary_riff_data)
 
             if fpath == self.last_snapshot_fpath and "last_state_fpath" in state:
                 self.last_snapshot_fpath = state["last_snapshot_fpath"]
