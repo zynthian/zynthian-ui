@@ -57,6 +57,7 @@ class zyngine_lscp_warning(Exception):
 # ------------------------------------------------------------------------------
 
 MAX_BEATS = 64
+MAX_DURATION = 30
 
 class zynthian_engine_clippy(zynthian_engine):
 
@@ -107,7 +108,7 @@ class zynthian_engine_clippy(zynthian_engine):
             # Controller Screens
             self._ctrl_screens.append([
                 f'sample {i:02}',
-                [f'file {i:02}', f'warp {i:02}', f'beats {i:02}']
+                [f'file {i:02}']
             ])
 
         self.patterns = []
@@ -262,7 +263,6 @@ class zynthian_engine_clippy(zynthian_engine):
             beats_zctrl.value = 0
             self.set_file(slot, zctrl.value)
         elif zctrl.symbol.startswith("warp"):
-            beats_zctrl.set_readonly(zctrl.value > 0)
             self.set_file(slot, zctrl.processor.controllers_dict[f"file {slot + 1:02}"].value)
         self.write_sfz()
 
@@ -272,6 +272,7 @@ class zynthian_engine_clippy(zynthian_engine):
         beats_zctrl = self.processors[0].controllers_dict[f"beats {slot + 1:02}"]
         sequence = self.sequence_offset + slot
         self.slot_info[slot]["path"] = path
+        self._ctrl_screens[slot] = [f'sample {slot + 1:02}', [f'file {slot + 1:02}']]
 
         if path:
             # Try to determine tempo from filename
@@ -296,6 +297,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     whole_beats = beats_zctrl.value
                 else:
                     whole_beats = bars * beats_per_bar
+                can_warp = whole_beats <= MAX_BEATS and duration <= MAX_DURATION
                 factor = beats / whole_beats * tempo / file_tempo
 
                 # File BPM matches current BPM
@@ -305,26 +307,27 @@ class zynthian_engine_clippy(zynthian_engine):
                     bpm_match = False
 
                 data, sr = soundfile.read(path)
-                if warp_zctrl.value and not bpm_match and beats <= MAX_BEATS:
-                    # Warp audio to fit pattern length - only if short enough (< max beats) to avoid slow warp
+                if warp_zctrl.value and not bpm_match and can_warp:
+                    # Warp audio to fit pattern length, only if short enough to avoid slow warp
                     data = pyrubberband.time_stretch(data, sr, factor)
                     path = f"/tmp/clippy{sequence}.flac"
                     soundfile.write(path, data, sr)
-                    warp_zctrl.labels = ["off", f"{tempo:.1f}\nBPM"]
                 else:
-                    if bpm_match:
-                        on_label = f"{tempo:.1f}*\nBPM"
-                    elif beats > MAX_BEATS:
-                        on_label = f"{tempo:.1f}!\nBPM"
-                    else:
-                        on_label = "on"
-                    warp_zctrl.labels = ["off", on_label]
                     try:
                         os.remove(f"/tmp/clippy{sequence}.flac")
                     except:
                         pass
-                if whole_beats < MAX_BEATS:
+                if bpm_match:
+                    warp_zctrl.labels = ["off", f"{tempo:.1f}*\nBPM"]
+                else:
+                    warp_zctrl.labels = ["off", f"{tempo:.1f}\nBPM"]
+                if can_warp:
+                    self._ctrl_screens[slot] = [f'sample {slot + 1:02}', [f'file {slot + 1:02}', f'warp {slot + 1:02}', f'beats {slot + 1:02}']]
                     beats_zctrl.value = whole_beats
+                    beats_zctrl.set_readonly(warp_zctrl.value != 0)
+                else:
+                    beats_zctrl.value = 0
+                    warp_zctrl.value = 0
                 file_zctrl.path = path
                 self.slot_info[slot]["frames"] = soundfile.info(path).frames
 
@@ -348,6 +351,7 @@ class zynthian_engine_clippy(zynthian_engine):
 
         zynsigman.send(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE,
                        bank=zynseq.LAUNCHER_SEQ_BANK, seq=sequence, state=state, mode=zynseq.SEQ_LOOPALL, group=group)
+        self.processors[0].init_ctrl_screens()
 
     def on_tempo(self, tempo):
         if self.tempo_cb_timer:
