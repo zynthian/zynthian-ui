@@ -208,7 +208,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
             self.tap_buf.append(tap_dur)
             logging.debug("TAP TEMPO BUFFER: {}".format(self.tap_buf))
             bpm = 60 * len(self.tap_buf) / sum(self.tap_buf)
-            self.libseq.setTempo(bpm)
+            self.zynseq.set_tempo(bpm)
             logging.debug("SETTING TAP TEMPO BPM: {}".format(bpm))
 
     def refresh_bpm_value(self):
