@@ -51,8 +51,6 @@ logging.getLogger('PIL').setLevel(logging.WARNING)
 # This provides a UI element that represents a mixer strip, one used per chain
 # ------------------------------------------------------------------------------
 
-LAUNCHER_ROWS = 8
-
 class zynthian_gui_mixer_strip():
 
     def __init__(self, parent, x, y, width, height):
@@ -70,7 +68,7 @@ class zynthian_gui_mixer_strip():
         self.state_manager = parent.state_manager
         self.chain_manager = parent.chain_manager
         self.zynseq = parent.zynseq
-        self.sequences = [] # List of sequence info, indexed by row
+        self.sequences = [] # List of sequence info, indexed by row/slot
         self.zctrls = None
 
         self.x = x
@@ -163,11 +161,10 @@ class zynthian_gui_mixer_strip():
                                              tags=(f"fader:{self.fader_bg}", f"strip:{self.fader_bg}"))
 
         # Clip launcher slots
-        self.n_clip_slots = LAUNCHER_ROWS
         self.clip_slots = []
-        height_slot = (self.fader_bottom - self.fader_top) // self.n_clip_slots
+        height_slot = (self.fader_bottom - self.fader_top) // zynseq.LAUNCHER_SLOTS
         ypos = self.fader_top
-        for i in range(0, self.n_clip_slots):
+        for i in range(0, zynseq.LAUNCHER_SLOTS):
             slot_bg = self.canvas.create_rectangle(x, ypos, x + self.fader_width, ypos + height_slot - 1, width=0, state=tkinter.HIDDEN)
             self.canvas.itemconfig(slot_bg, tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
             slot_header = self.canvas.create_rectangle(x, ypos, x + self.fader_width, ypos + 0.35 * height_slot, width=0, state=tkinter.HIDDEN,
@@ -407,11 +404,11 @@ class zynthian_gui_mixer_strip():
         # Clip Launcher
         if self.chain_id > 0:
             self.get_sequences()
-            for i in range(0, self.n_clip_slots):
+            for i in range(0, zynseq.LAUNCHER_SLOTS):
                 self.draw_sequence_slot(i)
         # Scene Launcher (main strip)
         else:
-            for i in range(0, self.n_clip_slots):
+            for i in range(0, zynseq.LAUNCHER_SLOTS):
                 self.draw_scene_slot(i)
 
     def draw_sequence_slot(self, i):
@@ -421,7 +418,7 @@ class zynthian_gui_mixer_strip():
             color_light = info['color_light']
             #title = info['title']
             #if not title:
-            title = f"{info['index']:03}"
+            title = f"{info['sequence']:03}"
             title = info["title"]
             mode_image = self.mode_icon[info['mode']]
             match info['state']:
@@ -456,10 +453,10 @@ class zynthian_gui_mixer_strip():
 
     def draw_scene_slot(self, i):
         try:
-            info = self.parent.launcher_scene_info[i]
+            info = self.zynseq.scene_launcher_info[i]
             color = zynthian_gui_config.PAD_COLOUR_SCENE
             title = f"{i+1:02}"
-            match info['state']:
+            match info["state"]:
                 case zynseq.SEQ_PLAYING:
                     color_state = zynthian_gui_config.PAD_COLOUR_PLAYING
                     state_text = "▶"
@@ -499,7 +496,7 @@ class zynthian_gui_mixer_strip():
             self.draw_sequence_slot(slot)
         # Scene Launcher
         else:
-            for i in range(self.n_clip_slots):
+            for i in range(zynseq.LAUNCHER_SLOTS):
                 self.draw_scene_slot(i)
 
     def update_clip_progress(self, bank, seq, progress):
@@ -512,7 +509,7 @@ class zynthian_gui_mixer_strip():
         playing = False
         for i, info in enumerate(self.sequences):
             if info['state'] != zynseq.SEQ_STOPPED:
-                if info['index'] == seq:
+                if info['sequence'] == seq:
                     x1 = x0 + int(progress * self.width / 100)
                     self.canvas.coords(self.clip_progress, x0, y0, x1, y1)
                     return
@@ -819,7 +816,7 @@ class zynthian_gui_mixer_strip():
         if not self.chain.is_midi():
             return
         # TODO: Improve efficiency. Get filtered list by midi channel with one single call to zynseq
-        for seq_i in range(self.n_clip_slots):
+        for seq_i in range(zynseq.LAUNCHER_SLOTS):
             info = self.get_sequence_info(seq_i)
             if info:
                 self.sequences.append(info)
@@ -851,7 +848,7 @@ class zynthian_gui_mixer_strip():
         if empty:
             mode = 0
         seq_info = {
-            'index': seq_i,
+            'sequence': seq_i,
             'title': title,
             'group': group,
             'color': color,
@@ -870,7 +867,7 @@ class zynthian_gui_mixer_strip():
         return seq_info
 
     def highlight_clip(self, row=None):
-        for i in range(self.n_clip_slots):
+        for i in range(zynseq.LAUNCHER_SLOTS):
             if row is not None and i == row:
                 self.canvas.itemconfig(self.clip_slots[i]["sel"], state=tkinter.NORMAL)
             else:
@@ -893,8 +890,8 @@ class zynthian_gui_mixer_strip():
     def on_clip_short_press(self, row):
         #logging.debug(f"CLIP PRESSED => chain_id:{self.chain_id}, row:{row}")
         if self.chain_id > 0:
-            index = self.sequences[row]['index']
-            self.zynseq.libseq.togglePlayState(zynseq.LAUNCHER_SEQ_BANK, index)
+            seq = self.sequences[row]['sequence']
+            self.zynseq.libseq.togglePlayState(zynseq.LAUNCHER_SEQ_BANK, seq)
             #proc = self.sequences[row]['clippy']
             #if proc and self.sequences[row]['state'] == 0:
             #    proc.engine.lscp_send_single(f"SEND CHANNEL MIDI_DATA CC 0 123 0")
@@ -913,7 +910,7 @@ class zynthian_gui_mixer_strip():
                                                   dirnames=self.clippy_zctrl.path_dir_names,
                                                   path=self.clippy_zctrl.value)
             else:
-                sequence = self.sequences[row]["index"]
+                sequence = self.sequences[row]["sequence"]
                 pattern = self.zynseq.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
                 pated = self.zyngui.screens['pattern_editor']
                 pated.bank = zynseq.LAUNCHER_SEQ_BANK
@@ -926,7 +923,7 @@ class zynthian_gui_mixer_strip():
         if self.chain_id > 0:
             if self.chain.midi_chan is None:
                 return
-            sequence = self.sequences[row]["index"]
+            sequence = self.sequences[row]["seqeuence"]
             pattern = self.parent.zynseq.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
             pated = self.zyngui.screens['pattern_editor']
             pated.bank = zynseq.LAUNCHER_SEQ_BANK
@@ -1103,7 +1100,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.zynseq = self.state_manager.zynseq
 
         self.launcher_mode = self.zyngui.alt_mode
-        self.launcher_scene_info = []
         self.launcher_highlighted_row = 0
 
         self.zynmixer.set_midi_learn_cb(self.enter_midi_learn)
@@ -1268,7 +1264,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PROGRESS, self.cb_launcher_progress)
         if self.launcher_mode:
             self.zynseq.select_bank(zynseq.LAUNCHER_SEQ_BANK)
-            self.get_launcher_scene_info()
+            self.update_launcher_scene_info()
 
         return True
 
@@ -1378,7 +1374,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         for strip in self.visible_mixer_strips:
             if not strip.hidden and strip.chain.midi_chan == midi_chan:
                 strip.update_clip_state(bank, seq, state, mode, group)
-        self.get_launcher_scene_info()
+        self.update_launcher_scene_info()
         self.main_mixbus_strip.update_clip_state(bank, seq, state, mode, group)
 
     def cb_launcher_progress(self, bank, seq, progress):
@@ -1478,21 +1474,20 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             if not strip.hidden:
                 strip.draw_control()
         if self.launcher_mode:
-            self.get_launcher_scene_info()
+            self.update_launcher_scene_info()
         self.main_mixbus_strip.draw_control()
 
-    def get_launcher_scene_info(self):
-        self.launcher_scene_info = []
+    def update_launcher_scene_info(self):
         # Count clip row states
-        for i in range(self.main_mixbus_strip.n_clip_slots):
-            seq_indexes = []
+        for i in range(zynseq.LAUNCHER_SLOTS):
+            active_seqs = []
             state_counter = [0, 0, 0, 0, 0, 0]
             for strip in self.visible_mixer_strips:
                 if not strip.hidden and strip.chain.midi_chan is not None:
                     try:
                         if strip.sequences[i]['mode']:
                             state_counter[strip.sequences[i]['state']] += 1
-                            seq_indexes.append(strip.sequences[i]['index'])
+                            active_seqs.append(strip.sequences[i]['sequence'])
                     except:
                         pass
             state = -1
@@ -1504,21 +1499,19 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 state = zynseq.SEQ_STARTING
             elif state_counter[zynseq.SEQ_PLAYING]:
                 state = zynseq.SEQ_PLAYING
-            self.launcher_scene_info.append({
-                'indexes': seq_indexes,
-                'state': state
-            })
+            self.zynseq.scene_launcher_info[i]["active_sequences"] = active_seqs
+            self.zynseq.scene_launcher_info[i]["state"] = state
 
     def toggle_scene(self, row):
         try:
-            info = self.launcher_scene_info[row]
-            scene_state = info['state']
-            indexes = info['indexes']
+            info = self.zynseq.scene_launcher_info[row]
+            scene_state = info["state"]
+            active_seqs = info["active_sequences"]
 
             for strip in self.visible_mixer_strips:
-                index = strip.sequences[row]['index']
-                if index in indexes:
-                    clip_state = strip.sequences[row]['state']
+                index = strip.sequences[row]["sequence"]
+                if index in active_seqs:
+                    clip_state = strip.sequences[row]["state"]
                     # If scene is playing => stop all clips
                     # If scene is not playing (or playing partially) => Play all stopped clips
                     if (not scene_state and clip_state == zynseq.SEQ_STOPPED) or (scene_state and clip_state == zynseq.SEQ_PLAYING):
@@ -1526,9 +1519,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     #self.zynseq.libseq.setPlayState(zynseq.LAUNCHER_SEQ_BANK, index, zynseq.SEQ_STOPPING)
 
             if scene_state:
-                info['state'] = zynseq.SEQ_STOPPING
+                info["state"] = zynseq.SEQ_STOPPING
             else:
-                info['state'] = zynseq.SEQ_STARTING
+                info["state"] = zynseq.SEQ_STARTING
 
         except Exception as e:
             logging.error(f"{e}")
@@ -1646,8 +1639,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 row = self.launcher_highlighted_row + dval
                 if row < 0:
                     row = 0
-                elif row > (LAUNCHER_ROWS - 1):
-                    row = LAUNCHER_ROWS - 1
+                elif row > (zynseq.LAUNCHER_SLOTS - 1):
+                    row = zynseq.LAUNCHER_SLOTS - 1
                 if row != self.launcher_highlighted_row:
                     self.launcher_highlighted_row = row
                     self.highlighted_strip.highlight_clip(self.launcher_highlighted_row)
@@ -1698,7 +1691,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """ Function to handle CUIA ARROW_DOWN
         """
         if self.launcher_mode:
-            if self.launcher_highlighted_row < (LAUNCHER_ROWS - 1):
+            if self.launcher_highlighted_row < (zynseq.LAUNCHER_SLOTS - 1):
                 self.launcher_highlighted_row += 1
                 self.highlighted_strip.highlight_clip(self.launcher_highlighted_row)
         else:

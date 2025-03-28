@@ -57,7 +57,6 @@ class zyngine_lscp_warning(Exception):
 # ------------------------------------------------------------------------------
 
 MAX_BEATS = 64
-MAX_SLOTS = 8
 
 class zynthian_engine_clippy(zynthian_engine):
 
@@ -119,7 +118,7 @@ class zynthian_engine_clippy(zynthian_engine):
             soundfile.write("/tmp/silence.wav", [0.0], self.sr)
 
         self.slot_info = []
-        for i in range(MAX_SLOTS):
+        for i in range(zynseq.LAUNCHER_SLOTS):
             self.slot_info.append(
                 {
                     "path": "",
@@ -277,7 +276,9 @@ class zynthian_engine_clippy(zynthian_engine):
         if path:
             # Try to determine tempo from filename
             filename = os.path.basename(path)
-            tempo = self.zynseq.get_tempo()
+            tempo = self.zynseq.scene_launcher_info[slot]["tempo"]
+            if not tempo:
+                tempo = self.zynseq.get_tempo()
             pattern = r"(\d+)\s*(?=bpm|BPM)"
             matches = re.findall(pattern, filename)
             duration = zynaudioplayer.get_file_duration(path)

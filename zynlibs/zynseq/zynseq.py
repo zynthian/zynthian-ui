@@ -79,6 +79,7 @@ SEQ_MAX_COLUMNS = 8
 
 PATTERN_EDITOR_BANK = 0
 LAUNCHER_SEQ_BANK = 255
+LAUNCHER_SLOTS = 8
 
 PLAY_MODES = ['Disabled', 'Oneshot', 'Loop',
               'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
@@ -139,6 +140,16 @@ class zynseq(zynthian_engine):
             'nudge_factor': 1.0
         })
 
+        self.scene_launcher_info = []
+        for i in range(LAUNCHER_SLOTS):
+            self.scene_launcher_info.append(
+                {
+                    "tempo": None,
+                    "time_sig": None,
+                    "active_sequences": [],
+                    "state": SEQ_STOPPED
+                }
+            )
         self.bank = None
         self.select_bank(1, True)
 
