@@ -834,8 +834,7 @@ class zynthian_gui_mixer_strip():
         empty = self.zynseq.libseq.isEmpty(zynseq.LAUNCHER_SEQ_BANK, seq_i)
         group = (state >> 16) & 0xFF
         mode = (state >> 8) & 0xFF
-        if clippy and mode == zynseq.SEQ_ONESHOT:
-            mode = 0
+        if clippy and mode == zynseq.SEQ_DISABLED:
             title = "⏹"
         else:
             title = self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, seq_i)[:5]
@@ -893,10 +892,13 @@ class zynthian_gui_mixer_strip():
         #logging.debug(f"CLIP PRESSED => chain_id:{self.chain_id}, slot:{slot}")
         if self.chain_id > 0:
             seq = self.sequences[slot]['sequence']
-            self.zynseq.libseq.togglePlayState(zynseq.LAUNCHER_SEQ_BANK, seq)
-            #proc = self.sequences[slot]['clippy']
-            #if proc and self.sequences[slot]['state'] == 0:
-            #    proc.engine.lscp_send_single(f"SEND CHANNEL MIDI_DATA CC 0 123 0")
+            proc = self.sequences[slot]['clippy']
+            if proc and self.sequences[slot]['mode'] == 0:
+                for i in range(zynseq.LAUNCHER_SLOTS):
+                    self.zynseq.libseq.setPlayState(zynseq.LAUNCHER_SEQ_BANK, i + proc.engine.sequence_offset, zynseq.SEQ_STOPPED)
+                proc.engine.lscp_send_single(f"SEND CHANNEL MIDI_DATA CC 0 120 0")
+            else:
+                self.zynseq.libseq.togglePlayState(zynseq.LAUNCHER_SEQ_BANK, seq)
         else:
             self.parent.toggle_scene(slot)
 
@@ -932,7 +934,7 @@ class zynthian_gui_mixer_strip():
         if self.chain_id > 0:
             if self.chain.midi_chan is None:
                 return
-            sequence = self.sequences[slot]["seqeuence"]
+            sequence = self.sequences[slot]["sequence"]
             pattern = self.parent.zynseq.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
             pated = self.zyngui.screens['pattern_editor']
             pated.bank = zynseq.LAUNCHER_SEQ_BANK

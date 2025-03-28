@@ -58,6 +58,7 @@ class zyngine_lscp_warning(Exception):
 
 MAX_BEATS = 64
 MAX_DURATION = 30
+NUM_SPLICES = 8
 
 class zynthian_engine_clippy(zynthian_engine):
 
@@ -224,30 +225,29 @@ class zynthian_engine_clippy(zynthian_engine):
             file.write("<global>\n")
             #file.write("ampeg_release=0.01\n")  # Fast fade to reduce risk of clicks
             file.write("loop_mode=one_shot\n") # Loop whilst key pressed
+            """
             file.write("<region>\n")
             file.write(f"sample=/tmp/silence.wav\n")
             file.write(f"key=0\n")
             file.write(f"\n")
-            for slot in range(8):
+            """
+            for slot in range(zynseq.LAUNCHER_SLOTS):
                 file_zctrl = self.processors[0].controllers_dict[f"file {slot+1:02}"]
+                beats_zctrl = self.processors[0].controllers_dict[f"beats {slot+1:02}"]
                 if file_zctrl.value:
-                    file.write("<region>\n")
-                    file.write(f"sample={file_zctrl.path}\n")
-                    file.write(f"key={slot+1}\n")
-                    file.write(f"\n")
-                    if slot == 0:
-                        # Add splices for first slot
-                        beats_zctrl = self.processors[0].controllers_dict[f"beats {slot+1:02}"]
-                        beats = min(beats_zctrl.value, 64)
-                        if beats:
-                            for splice in range(0, beats // 4):
-                                file.write("<region>\n")
-                                file.write(f"sample={file_zctrl.path}\n")
-                                file.write(f"key={60 + slot * 16 + splice}\n")
-                                file.write(f"offset={int(4 * splice * self.slot_info[slot]['frames'] / beats)}\n")
-                                file.write(f"end={int(4 * (splice + 1) * self.slot_info[slot]['frames'] / beats)}\n")
-                                file.write("loop_mode=loop_sustain\n")
-                                file.write(f"\n")
+                    if beats_zctrl.value:
+                        for splice in range(NUM_SPLICES):
+                            file.write("<region>\n")
+                            file.write(f"sample={file_zctrl.path}\n")
+                            file.write(f"key={slot * NUM_SPLICES + splice}\n")
+                            file.write(f"offset={int(splice * self.slot_info[slot]['frames'] / NUM_SPLICES)}\n")
+                            file.write(f"end={int((splice + 1) * self.slot_info[slot]['frames'] / NUM_SPLICES)}\n")
+                            file.write(f"\n")
+                    else:
+                        file.write("<region>\n")
+                        file.write(f"sample={file_zctrl.path}\n")
+                        file.write(f"key={slot * NUM_SPLICES}\n")
+                        file.write(f"\n")
         self.lscp_send_single(f"LOAD INSTRUMENT '/tmp/clippy.sfz' 0 0")
 
     def send_controller_value(self, zctrl):
@@ -267,9 +267,10 @@ class zynthian_engine_clippy(zynthian_engine):
         self.write_sfz()
 
     def set_file(self, slot, path):
-        file_zctrl = self.processors[0].controllers_dict[f"file {slot + 1:02}"]
-        warp_zctrl = self.processors[0].controllers_dict[f"warp {slot + 1:02}"]
-        beats_zctrl = self.processors[0].controllers_dict[f"beats {slot + 1:02}"]
+        processor = self.processors[0]
+        file_zctrl = processor.controllers_dict[f"file {slot + 1:02}"]
+        warp_zctrl = processor.controllers_dict[f"warp {slot + 1:02}"]
+        beats_zctrl = processor.controllers_dict[f"beats {slot + 1:02}"]
         sequence = self.sequence_offset + slot
         self.slot_info[slot]["path"] = path
         self._ctrl_screens[slot] = [f'sample {slot + 1:02}', [f'file {slot + 1:02}']]
@@ -290,6 +291,7 @@ class zynthian_engine_clippy(zynthian_engine):
 
             # Configure pattern with required beats to play whole file at this tempo
             try:
+                reconnect = False
                 beats_per_bar = self.libseq.getBeatsPerBar()
                 beats = duration * file_tempo / 60
                 bars = round(beats / beats_per_bar)
@@ -306,9 +308,17 @@ class zynthian_engine_clippy(zynthian_engine):
                 else:
                     bpm_match = False
 
-                data, sr = soundfile.read(path)
                 if warp_zctrl.value and not bpm_match and can_warp:
                     # Warp audio to fit pattern length, only if short enough to avoid slow warp
+                    # Disconnect MIDI to avoid retrigger during warping
+                    if self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, sequence):
+                        reconnect = True
+                        self.lscp_send_single("REMOVE CHANNEL MIDI_INPUT 0 0 0")
+                        # Silence existing audio
+                        if self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, self.sequence_offset + slot):
+                            self.lscp_send_single("SEND CHANNEL MIDI_DATA CC 0 120 0")
+                    # Do warp
+                    data, sr = soundfile.read(path)
                     data = pyrubberband.time_stretch(data, sr, factor)
                     path = f"/tmp/clippy{sequence}.flac"
                     soundfile.write(path, data, sr)
@@ -318,6 +328,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     except:
                         pass
                 if bpm_match:
+                    #TODO: Remove this when finished design - don't need to show user that warp is not changing file
                     warp_zctrl.labels = ["off", f"{tempo:.1f}*\nBPM"]
                 else:
                     warp_zctrl.labels = ["off", f"{tempo:.1f}\nBPM"]
@@ -337,17 +348,26 @@ class zynthian_engine_clippy(zynthian_engine):
                 self.libseq.clear()
                 self.libseq.setStepsPerBeat(1)
                 self.libseq.setBeatsInPattern(whole_beats)
-                self.libseq.addNote(0, 1 + slot, 100, 1, 0.0)
+                if beats_zctrl.value:
+                    note_len = whole_beats // NUM_SPLICES
+                    for pos in range(NUM_SPLICES):
+                        self.libseq.addNote(note_len * pos, NUM_SPLICES * slot + pos, 100, 1, 0.0)
+                else:
+                    self.libseq.addNote(0, NUM_SPLICES * slot, 100, 1, 0.0)
                 self.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, sequence, zynseq.SEQ_LOOPALL)
                 state = self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, sequence)
                 group = self.libseq.getGroup(zynseq.LAUNCHER_SEQ_BANK, sequence)
                 self.libseq.updateSequenceInfo()
                 self.zynseq.set_sequence_name(zynseq.LAUNCHER_SEQ_BANK, sequence, os.path.splitext(filename)[0])
-
+                if reconnect:
+                    # Reconnect MIDI
+                    self.lscp_send_single("ADD CHANNEL MIDI_INPUT 0 0 0")
+                    self.lscp_send_single(f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
             except Exception as e:
                 logging.error(f"Can't setup sequencer for clip {slot} => {e}")
         else:
-            self.reset_pattern(slot)
+            self.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, self.sequence_offset + slot, zynseq.SEQ_DISABLED)
+            #self.reset_pattern(slot)
 
         zynsigman.send(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE,
                        bank=zynseq.LAUNCHER_SEQ_BANK, seq=sequence, state=state, mode=zynseq.SEQ_LOOPALL, group=group)
@@ -361,13 +381,11 @@ class zynthian_engine_clippy(zynthian_engine):
 
     def on_tempo_cb(self):
         self.tempo_cb_timer = None
-        for i in range(8):
-            warp_zctrl = self.processors[0].controllers_dict[f"warp {i + 1:02}"]
+        for slot in range(zynseq.LAUNCHER_SLOTS):
+            warp_zctrl = self.processors[0].controllers_dict[f"warp {slot + 1:02}"]
             if warp_zctrl.value:
-                if self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, self.sequence_offset + i):
-                    self.lscp_send_single("SEND CHANNEL MIDI_DATA NOTE_ON 0 0 100")
-                path = self.processors[0].controllers_dict[f"file {i + 1:02}"].value
-                self.set_file(i, path)
+                path = self.processors[0].controllers_dict[f"file {slot + 1:02}"].value
+                self.set_file(slot, path)
         self.write_sfz()
 
     # ---------------------------------------------------------------------------
