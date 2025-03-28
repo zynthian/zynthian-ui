@@ -68,7 +68,7 @@ class zynthian_gui_mixer_strip():
         self.state_manager = parent.state_manager
         self.chain_manager = parent.chain_manager
         self.zynseq = parent.zynseq
-        self.sequences = [] # List of sequence info, indexed by row/slot
+        self.sequences = [] # List of sequence info, indexed by slot
         self.zctrls = None
 
         self.x = x
@@ -180,8 +180,8 @@ class zynthian_gui_mixer_strip():
             slot_sel = self.canvas.create_rectangle(x, ypos, x + 3, ypos + height_slot - 1, width=0, fill=self.legend_txt_color, state=tkinter.HIDDEN,
                                                   tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
 
-            self.canvas.tag_bind(f"clip_slot:{slot_bg}", '<ButtonPress-1>', lambda e, row=i: self.on_clip_slot_press(row))
-            self.canvas.tag_bind(f"clip_slot:{slot_bg}", '<ButtonRelease-1>', lambda e, row=i: self.on_clip_slot_release(row))
+            self.canvas.tag_bind(f"clip_slot:{slot_bg}", '<ButtonPress-1>', lambda e, slot=i: self.on_clip_slot_press(slot))
+            self.canvas.tag_bind(f"clip_slot:{slot_bg}", '<ButtonRelease-1>', lambda e, slot=i: self.on_clip_slot_release(slot))
 
             self.clip_slots.append({
                 'bg': slot_bg,
@@ -446,7 +446,7 @@ class zynthian_gui_mixer_strip():
         self.canvas.itemconfig(self.clip_slots[i]["state"], fill=color_state, text=state_text, state=tkinter.NORMAL)
         self.canvas.itemconfig(self.clip_slots[i]["title"], text=title, state=tkinter.NORMAL)
         self.canvas.itemconfig(self.clip_slots[i]["mode"], image=mode_image, state=tkinter.NORMAL)
-        if self == self.parent.highlighted_strip and i == self.parent.launcher_highlighted_row:
+        if self == self.parent.highlighted_strip and i == self.parent.launcher_highlighted_slot:
             self.canvas.itemconfig(self.clip_slots[i]["sel"], state=tkinter.NORMAL)
         else:
             self.canvas.itemconfig(self.clip_slots[i]["sel"], state=tkinter.HIDDEN)
@@ -481,7 +481,7 @@ class zynthian_gui_mixer_strip():
         self.canvas.itemconfig(self.clip_slots[i]["header"], fill=color, state=tkinter.NORMAL)
         self.canvas.itemconfig(self.clip_slots[i]["state"], fill=color_state, text=state_text, state=tkinter.NORMAL)
         self.canvas.itemconfig(self.clip_slots[i]["title"], text=title, state=tkinter.NORMAL)
-        if self == self.parent.highlighted_strip and i == self.parent.launcher_highlighted_row:
+        if self == self.parent.highlighted_strip and i == self.parent.launcher_highlighted_slot:
             self.canvas.itemconfig(self.clip_slots[i]["sel"], state=tkinter.NORMAL)
         else:
             self.canvas.itemconfig(self.clip_slots[i]["sel"], state=tkinter.HIDDEN)
@@ -821,8 +821,8 @@ class zynthian_gui_mixer_strip():
             if info:
                 self.sequences.append(info)
 
-    def get_sequence_info(self, row):
-        seq_i = row + 8 * self.chain.midi_chan
+    def get_sequence_info(self, slot):
+        seq_i = slot + 8 * self.chain.midi_chan
         clippy = None
         try:
             processor = self.chain.get_processors("MIDI Synth")[0]
@@ -866,51 +866,51 @@ class zynthian_gui_mixer_strip():
             seq_info['state'] = state
         return seq_info
 
-    def highlight_clip(self, row=None):
+    def highlight_clip(self, slot=None):
         for i in range(zynseq.LAUNCHER_SLOTS):
-            if row is not None and i == row:
+            if slot is not None and i == slot:
                 self.canvas.itemconfig(self.clip_slots[i]["sel"], state=tkinter.NORMAL)
             else:
                 self.canvas.itemconfig(self.clip_slots[i]["sel"], state=tkinter.HIDDEN)
 
-    def on_clip_slot_press(self, row):
+    def on_clip_slot_press(self, slot):
         self.touch_ts = monotonic()
 
-    def on_clip_slot_release(self, row):
+    def on_clip_slot_release(self, slot):
         now = monotonic()
         ts = now - self.touch_ts
         self.touch_ts = None
         if ts < zynthian_gui_config.zynswitch_bold_seconds:
-            self.on_clip_short_press(row)
+            self.on_clip_short_press(slot)
         elif ts < zynthian_gui_config.zynswitch_long_seconds:
-            self.on_clip_bold_press(row)
+            self.on_clip_bold_press(slot)
         else:
-            self.on_clip_long_press(row)
+            self.on_clip_long_press(slot)
 
-    def on_clip_short_press(self, row):
-        #logging.debug(f"CLIP PRESSED => chain_id:{self.chain_id}, row:{row}")
+    def on_clip_short_press(self, slot):
+        #logging.debug(f"CLIP PRESSED => chain_id:{self.chain_id}, slot:{slot}")
         if self.chain_id > 0:
-            seq = self.sequences[row]['sequence']
+            seq = self.sequences[slot]['sequence']
             self.zynseq.libseq.togglePlayState(zynseq.LAUNCHER_SEQ_BANK, seq)
-            #proc = self.sequences[row]['clippy']
-            #if proc and self.sequences[row]['state'] == 0:
+            #proc = self.sequences[slot]['clippy']
+            #if proc and self.sequences[slot]['state'] == 0:
             #    proc.engine.lscp_send_single(f"SEND CHANNEL MIDI_DATA CC 0 123 0")
         else:
-            self.parent.toggle_scene(row)
+            self.parent.toggle_scene(slot)
 
-    def on_clip_bold_press(self, row):
+    def on_clip_bold_press(self, slot):
         if self.chain_id > 0:
             if self.chain.midi_chan is None:
                 return
-            if self.sequences[row]["clippy"]:
-                processor = self.sequences[row]["clippy"]
-                self.clippy_zctrl = processor.controllers_dict[f"file {row + 1:02}"]
+            if self.sequences[slot]["clippy"]:
+                processor = self.sequences[slot]["clippy"]
+                self.clippy_zctrl = processor.controllers_dict[f"file {slot + 1:02}"]
                 self.zyngui.cb_show_file_selector(self.on_clippy_path,
                                                   fexts=self.clippy_zctrl.path_file_types,
                                                   dirnames=self.clippy_zctrl.path_dir_names,
                                                   path=self.clippy_zctrl.value)
             else:
-                sequence = self.sequences[row]["sequence"]
+                sequence = self.sequences[slot]["sequence"]
                 pattern = self.zynseq.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
                 pated = self.zyngui.screens['pattern_editor']
                 pated.bank = zynseq.LAUNCHER_SEQ_BANK
@@ -918,12 +918,19 @@ class zynthian_gui_mixer_strip():
                 pated.load_pattern(pattern)
                 pated.channel = self.chain.midi_chan
                 self.zyngui.show_screen("pattern_editor")
+        else:
+            options = {}
+            options[f"Tempo: {self.zynseq.scene_launcher_info[slot]['tempo']}"] = slot
+            options[f"Time sig: {self.zynseq.scene_launcher_info[slot]['time_sig']}"] = slot
+            self.zyngui.screens['option'].config(
+                f"Scene launcher {slot + 1} options", options, self.parent.scene_launcher_menu_cb)
+            self.zyngui.show_screen('option')
 
-    def on_clip_long_press(self, row):
+    def on_clip_long_press(self, slot):
         if self.chain_id > 0:
             if self.chain.midi_chan is None:
                 return
-            sequence = self.sequences[row]["seqeuence"]
+            sequence = self.sequences[slot]["seqeuence"]
             pattern = self.parent.zynseq.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
             pated = self.zyngui.screens['pattern_editor']
             pated.bank = zynseq.LAUNCHER_SEQ_BANK
@@ -1100,7 +1107,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.zynseq = self.state_manager.zynseq
 
         self.launcher_mode = self.zyngui.alt_mode
-        self.launcher_highlighted_row = 0
+        self.launcher_highlighted_slot = 0
 
         self.zynmixer.set_midi_learn_cb(self.enter_midi_learn)
         self.MAIN_MIXBUS_STRIP_INDEX = self.zynmixer.MAX_NUM_CHANNELS - 1
@@ -1433,7 +1440,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if strip:
             strip.set_highlight(True)
             if self.launcher_mode:
-                strip.highlight_clip(self.launcher_highlighted_row)
+                strip.highlight_clip(self.launcher_highlighted_slot)
 
     # Function refresh and populate visible mixer strips
     def refresh_visible_strips(self):
@@ -1478,7 +1485,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.main_mixbus_strip.draw_control()
 
     def update_launcher_scene_info(self):
-        # Count clip row states
+        # Count clip slot states
         for i in range(zynseq.LAUNCHER_SLOTS):
             active_seqs = []
             state_counter = [0, 0, 0, 0, 0, 0]
@@ -1502,16 +1509,16 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.zynseq.scene_launcher_info[i]["active_sequences"] = active_seqs
             self.zynseq.scene_launcher_info[i]["state"] = state
 
-    def toggle_scene(self, row):
+    def toggle_scene(self, slot):
         try:
-            info = self.zynseq.scene_launcher_info[row]
+            info = self.zynseq.scene_launcher_info[slot]
             scene_state = info["state"]
             active_seqs = info["active_sequences"]
 
             for strip in self.visible_mixer_strips:
-                index = strip.sequences[row]["sequence"]
+                index = strip.sequences[slot]["sequence"]
                 if index in active_seqs:
-                    clip_state = strip.sequences[row]["state"]
+                    clip_state = strip.sequences[slot]["state"]
                     # If scene is playing => stop all clips
                     # If scene is not playing (or playing partially) => Play all stopped clips
                     if (not scene_state and clip_state == zynseq.SEQ_STOPPED) or (scene_state and clip_state == zynseq.SEQ_PLAYING):
@@ -1526,6 +1533,35 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         except Exception as e:
             logging.error(f"{e}")
 
+    def scene_launcher_menu_cb(self, options, slot):
+        #TODO: Get zctrl params from tempo zctrl
+        tempo = self.zynseq.scene_launcher_info[slot]["tempo"]
+        if not tempo:
+            tempo = self.zynseq.get_tempo()
+        if options.startswith("Tempo"):
+            self.enable_param_editor(self, "tempo", {
+                'name': 'BPM',
+                'is_integer': False,
+                'value_min': 10.0,
+                'value_max': 420,
+                'value': tempo,
+                'nudge_factor': 1.0,
+                "graph_path":slot
+            }, self.on_scene_tempo)
+
+    def on_scene_tempo(self, tempo):
+        try:
+            slot = self.param_editor_zctrl.graph_path
+            self.zynseq.scene_launcher_info[slot]["tempo"] = tempo
+            #TODO: Set tempo in the global sequence so that it changes at next sync point (bar)
+            for chan in range(16):
+                sequence = chan * zynseq.LAUNCHER_SLOTS + slot
+                #TODO: Support float tempo events in libzynseq
+                #self.zynseq.libseq.addTempoEvent(zynseq.LAUNCHER_SEQ_BANK, sequence, int(tempo), 1, 0)
+                #TODO: Warp
+        except Exception as e:
+            logging.warning(f"Error setting scene tempo: {e}")
+
     # --------------------------------------------------------------------------
     # Physical UI Control Management: Pots & switches
     # --------------------------------------------------------------------------
@@ -1536,19 +1572,22 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
         returns True if event is managed, False if it's not
         """
-        if self.moving_chain:
+
+        if super().switch_select(type):
+            return True
+        elif self.moving_chain:
             self.end_moving_chain()
         elif type == "S":
             if self.zynmixer.midi_learn_zctrl:
                 self.midi_learn_menu()
             else:
                 if self.launcher_mode:
-                    self.highlighted_strip.on_clip_short_press(self.launcher_highlighted_row)
+                    self.highlighted_strip.on_clip_short_press(self.launcher_highlighted_slot)
                 else:
                     self.zyngui.chain_control()
         elif type == "B":
             if self.launcher_mode:
-                self.highlighted_strip.on_clip_bold_press(self.launcher_highlighted_row)
+                self.highlighted_strip.on_clip_bold_press(self.launcher_highlighted_slot)
             else:
                 # Chain Options
                 self.zyngui.screens['chain_options'].setup(self.chain_manager.active_chain_id)
@@ -1567,6 +1606,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
         returns True if event is managed, False if it's not
         """
+
         if self.moving_chain:
             self.end_moving_chain()
             return True
@@ -1583,6 +1623,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
         returns True if action fully handled or False if parent action should be triggered
         """
+
+        if super().switch(swi, t):
+            return True
         if swi == 0:
             if t == "S":
                 if self.highlighted_strip is not None:
@@ -1598,7 +1641,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             # This is ugly, but it's the only way i figured for MIDI-learning "mute" without touch.
             # Moving the "learn" button to back is not an option. It's a labeled button on V4!!
             if t == "S" and not self.moving_chain:
-                if self.highlighted_strip is not None:
+                if self.highlighted_strip is not None and not super().back_action():
                     self.highlighted_strip.toggle_mute()
                 return True
             elif t == "B":
@@ -1623,27 +1666,31 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if not self.shown:
             return
 
+        # Handle parameter editor
+        if super().zynpot_cb(i, dval):
+            return
+
         # LAYER encoder adjusts selected chain's level
-        if i == 0:
+        elif i == 0:
             if self.highlighted_strip is not None:
                 self.highlighted_strip.nudge_volume(dval)
 
         # BACK encoder adjusts selected chain's balance/pan
-        if i == 1:
+        elif i == 1:
             if self.highlighted_strip is not None:
                 self.highlighted_strip.nudge_balance(dval)
 
         # SNAPSHOT encoder adjusts main mixbus level
         elif i == 2:
             if self.launcher_mode:
-                row = self.launcher_highlighted_row + dval
-                if row < 0:
-                    row = 0
-                elif row > (zynseq.LAUNCHER_SLOTS - 1):
-                    row = zynseq.LAUNCHER_SLOTS - 1
-                if row != self.launcher_highlighted_row:
-                    self.launcher_highlighted_row = row
-                    self.highlighted_strip.highlight_clip(self.launcher_highlighted_row)
+                slot = self.launcher_highlighted_slot + dval
+                if slot < 0:
+                    slot = 0
+                elif slot > (zynseq.LAUNCHER_SLOTS - 1):
+                    slot = zynseq.LAUNCHER_SLOTS - 1
+                if slot != self.launcher_highlighted_slot:
+                    self.launcher_highlighted_slot = slot
+                    self.highlighted_strip.highlight_clip(self.launcher_highlighted_slot)
             else:
                 self.main_mixbus_strip.nudge_volume(dval)
 
@@ -1680,9 +1727,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """ Function to handle CUIA ARROW_UP
         """
         if self.launcher_mode:
-            if self.launcher_highlighted_row > 0:
-                self.launcher_highlighted_row -= 1
-                self.highlighted_strip.highlight_clip(self.launcher_highlighted_row)
+            if self.launcher_highlighted_slot > 0:
+                self.launcher_highlighted_slot -= 1
+                self.highlighted_strip.highlight_clip(self.launcher_highlighted_slot)
         else:
             if self.highlighted_strip is not None:
                 self.highlighted_strip.nudge_volume(1)
@@ -1691,9 +1738,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """ Function to handle CUIA ARROW_DOWN
         """
         if self.launcher_mode:
-            if self.launcher_highlighted_row < (zynseq.LAUNCHER_SLOTS - 1):
-                self.launcher_highlighted_row += 1
-                self.highlighted_strip.highlight_clip(self.launcher_highlighted_row)
+            if self.launcher_highlighted_slot < (zynseq.LAUNCHER_SLOTS - 1):
+                self.launcher_highlighted_slot += 1
+                self.highlighted_strip.highlight_clip(self.launcher_highlighted_slot)
         else:
             if self.highlighted_strip is not None:
                 self.highlighted_strip.nudge_volume(-1)
