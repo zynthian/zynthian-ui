@@ -838,7 +838,7 @@ class zynthian_gui_mixer_strip():
             mode = 0
             title = "⏹"
         else:
-            title = self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, seq_i),
+            title = self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, seq_i)[:5]
         if empty or mode == zynseq.SEQ_DISABLED:
             color = zynthian_gui_config.PAD_COLOUR_DISABLED
             color_light = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT

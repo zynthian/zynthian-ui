@@ -327,7 +327,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 state = self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, sequence)
                 group = self.libseq.getGroup(zynseq.LAUNCHER_SEQ_BANK, sequence)
                 self.libseq.updateSequenceInfo()
-                self.zynseq.set_sequence_name(zynseq.LAUNCHER_SEQ_BANK, sequence, filename[:6])
+                self.zynseq.set_sequence_name(zynseq.LAUNCHER_SEQ_BANK, sequence, os.path.splitext(filename)[0])
 
             except Exception as e:
                 logging.error(f"Can't setup sequencer for clip {slot} => {e}")
