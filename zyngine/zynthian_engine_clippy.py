@@ -57,6 +57,7 @@ class zyngine_lscp_warning(Exception):
 # ------------------------------------------------------------------------------
 
 MAX_BEATS = 64
+MAX_SLOTS = 8
 
 class zynthian_engine_clippy(zynthian_engine):
 
@@ -116,6 +117,15 @@ class zynthian_engine_clippy(zynthian_engine):
         self.sr = zynautoconnect.get_jackd_samplerate()
         if not os.path.exists("/tmp/silence.wav"):
             soundfile.write("/tmp/silence.wav", [0.0], self.sr)
+
+        self.slot_info = []
+        for i in range(MAX_SLOTS):
+            self.slot_info.append(
+                {
+                    "path": "",
+                    "frames": 0
+                }
+            )
 
     # ---------------------------------------------------------------------------
     # Subproccess Management & IPC
@@ -216,15 +226,28 @@ class zynthian_engine_clippy(zynthian_engine):
             file.write("loop_mode=one_shot\n") # Loop whilst key pressed
             file.write("<region>\n")
             file.write(f"sample=/tmp/silence.wav\n")
-            file.write(f"key=36\n")
+            file.write(f"key=0\n")
             file.write(f"\n")
-            for i in range(1, 9):
-                zctrl = self.processors[0].controllers_dict[f"file {i:02}"]
-                if zctrl.value:
+            for slot in range(8):
+                file_zctrl = self.processors[0].controllers_dict[f"file {slot+1:02}"]
+                if file_zctrl.value:
                     file.write("<region>\n")
-                    file.write(f"sample={zctrl.path}\n")
-                    file.write(f"key={47 + i}\n")
+                    file.write(f"sample={file_zctrl.path}\n")
+                    file.write(f"key={slot+1}\n")
                     file.write(f"\n")
+                    if slot == 0:
+                        # Add splices for first slot
+                        beats_zctrl = self.processors[0].controllers_dict[f"beats {slot+1:02}"]
+                        beats = min(beats_zctrl.value, 64)
+                        if beats:
+                            for splice in range(0, beats // 4):
+                                file.write("<region>\n")
+                                file.write(f"sample={file_zctrl.path}\n")
+                                file.write(f"key={60 + slot * 16 + splice}\n")
+                                file.write(f"offset={int(4 * splice * self.slot_info[slot]['frames'] / beats)}\n")
+                                file.write(f"end={int(4 * (splice + 1) * self.slot_info[slot]['frames'] / beats)}\n")
+                                file.write("loop_mode=loop_sustain\n")
+                                file.write(f"\n")
         self.lscp_send_single(f"LOAD INSTRUMENT '/tmp/clippy.sfz' 0 0")
 
     def send_controller_value(self, zctrl):
@@ -249,6 +272,7 @@ class zynthian_engine_clippy(zynthian_engine):
         warp_zctrl = self.processors[0].controllers_dict[f"warp {slot + 1:02}"]
         beats_zctrl = self.processors[0].controllers_dict[f"beats {slot + 1:02}"]
         sequence = self.sequence_offset + slot
+        self.slot_info[slot]["path"] = path
 
         if path:
             # Try to determine tempo from filename
@@ -273,15 +297,15 @@ class zynthian_engine_clippy(zynthian_engine):
                     whole_beats = bars * beats_per_bar
                 factor = beats / whole_beats * tempo / file_tempo
 
+                data, sr = soundfile.read(path)
                 if warp_zctrl.value and factor != 1 and beats <= MAX_BEATS:
                     # Warp audio to fit pattern length - only if short enough (< max beats) to avoid slow warp
-                    data, sr = soundfile.read(path)
                     data = pyrubberband.time_stretch(data, sr, factor)
                     path = f"/tmp/clippy{sequence}.flac"
                     soundfile.write(path, data, sr)
                     warp_zctrl.labels = ["off", f"{tempo}\nBPM"]
                 else:
-                    warp_zctrl.labels = ["off", "n/a"]
+                    warp_zctrl.labels = ["off", f"({tempo})\nBPM"]
                     try:
                         os.remove(f"/tmp/clippy{sequence}.flac")
                     except:
@@ -289,6 +313,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 if whole_beats < MAX_BEATS:
                     beats_zctrl.value = whole_beats
                 file_zctrl.path = path
+                self.slot_info[slot]["frames"] = soundfile.info(path).frames
 
                 # Setup zynseq pattern & sequence
                 pattern = self.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
@@ -296,11 +321,12 @@ class zynthian_engine_clippy(zynthian_engine):
                 self.libseq.clear()
                 self.libseq.setStepsPerBeat(1)
                 self.libseq.setBeatsInPattern(whole_beats)
-                self.libseq.addNote(0, 48 + slot, 100, 1, 0.0)
+                self.libseq.addNote(0, 1 + slot, 100, 1, 0.0)
                 self.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, sequence, zynseq.SEQ_LOOPALL)
                 state = self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, sequence)
                 group = self.libseq.getGroup(zynseq.LAUNCHER_SEQ_BANK, sequence)
                 self.libseq.updateSequenceInfo()
+                self.zynseq.set_sequence_name(zynseq.LAUNCHER_SEQ_BANK, sequence, filename[:6])
 
             except Exception as e:
                 logging.error(f"Can't setup sequencer for clip {slot} => {e}")
@@ -322,7 +348,7 @@ class zynthian_engine_clippy(zynthian_engine):
             warp_zctrl = self.processors[0].controllers_dict[f"warp {i + 1:02}"]
             if warp_zctrl.value:
                 if self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, self.sequence_offset + i):
-                    self.lscp_send_single("SEND CHANNEL MIDI_DATA NOTE_ON 0 36 100")
+                    self.lscp_send_single("SEND CHANNEL MIDI_DATA NOTE_ON 0 0 100")
                 path = self.processors[0].controllers_dict[f"file {i + 1:02}"].value
                 self.set_file(i, path)
         self.write_sfz()
@@ -359,10 +385,9 @@ class zynthian_engine_clippy(zynthian_engine):
             self.libseq.clear()
             self.libseq.setStepsPerBeat(1)
             self.libseq.setBeatsInPattern(1)
-            self.libseq.addNote(0, 36, 100, 1, 0)
+            self.libseq.addNote(0, 0, 100, 1, 0)
             self.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, self.sequence_offset + slot, zynseq.SEQ_ONESHOT)
             self.libseq.updateSequenceInfo()
-
 
     # ---------------------------------------------------------------------------
     # MIDI Channel Management
@@ -400,10 +425,12 @@ class zynthian_engine_clippy(zynthian_engine):
             # Config Audio JACK Device 0
             self.ls_audio_device_id = self.lscp_send_single(
                 f"CREATE AUDIO_OUTPUT_DEVICE JACK ACTIVE='true' CHANNELS='2' NAME='{self.jackname}'")
+            """
             self.lscp_send_single(
                 f"SET AUDIO_OUTPUT_CHANNEL_PARAMETER {self.ls_audio_device_id} 0 NAME='out_l'")
             self.lscp_send_single(
                 f"SET AUDIO_OUTPUT_CHANNEL_PARAMETER {self.ls_audio_device_id} 1 NAME='out_r'")
+            """
 
             # Config MIDI JACK Device 1
             self.ls_midi_device_id = self.lscp_send_single(
