@@ -298,15 +298,27 @@ class zynthian_engine_clippy(zynthian_engine):
                     whole_beats = bars * beats_per_bar
                 factor = beats / whole_beats * tempo / file_tempo
 
+                # File BPM matches current BPM
+                if abs(factor - 1.0) < 0.0001:
+                    bpm_match = True
+                else:
+                    bpm_match = False
+
                 data, sr = soundfile.read(path)
-                if warp_zctrl.value and factor != 1 and beats <= MAX_BEATS:
+                if warp_zctrl.value and not bpm_match and beats <= MAX_BEATS:
                     # Warp audio to fit pattern length - only if short enough (< max beats) to avoid slow warp
                     data = pyrubberband.time_stretch(data, sr, factor)
                     path = f"/tmp/clippy{sequence}.flac"
                     soundfile.write(path, data, sr)
                     warp_zctrl.labels = ["off", f"{tempo:.1f}\nBPM"]
                 else:
-                    warp_zctrl.labels = ["off", f"({tempo:.1f})\nBPM"]
+                    if bpm_match:
+                        on_label = f"{tempo:.1f}*\nBPM"
+                    elif beats > MAX_BEATS:
+                        on_label = f"{tempo:.1f}!\nBPM"
+                    else:
+                        on_label = "on"
+                    warp_zctrl.labels = ["off", on_label]
                     try:
                         os.remove(f"/tmp/clippy{sequence}.flac")
                     except:
