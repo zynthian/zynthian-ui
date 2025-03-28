@@ -870,6 +870,8 @@ class zynthian_gui_mixer_strip():
         for i in range(zynseq.LAUNCHER_SLOTS):
             if slot is not None and i == slot:
                 self.canvas.itemconfig(self.clip_slots[i]["sel"], state=tkinter.NORMAL)
+                if self.sequences[slot]["clippy"]:
+                    self.sequences[slot]["clippy"].set_current_screen_index(i + 1)
             else:
                 self.canvas.itemconfig(self.clip_slots[i]["sel"], state=tkinter.HIDDEN)
 
