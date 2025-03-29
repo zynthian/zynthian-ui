@@ -166,22 +166,22 @@ class zynthian_gui_mixer_strip():
         ypos = self.fader_top
         for i in range(0, zynseq.LAUNCHER_SLOTS):
             slot_bg = self.canvas.create_rectangle(x, ypos, x + self.fader_width, ypos + height_slot - 1, width=0, state=tkinter.HIDDEN)
-            self.canvas.itemconfig(slot_bg, tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
+            self.canvas.itemconfig(slot_bg, tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}", f"clip_strip:{self.fader_bg}"))
             slot_header = self.canvas.create_rectangle(x, ypos, x + self.fader_width, ypos + 0.35 * height_slot, width=0, state=tkinter.HIDDEN,
-                                                  tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
+                                                  tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}", f"clip_strip:{self.fader_bg}"))
             ypos_header = ypos - height_slot // 6
             slot_state = self.canvas.create_text(x + self.fader_width, ypos_header, text="", anchor=tkinter.NE, font=self.font_clip_state,
-                                            state=tkinter.HIDDEN, tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
+                                            state=tkinter.HIDDEN, tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}", f"clip_strip:{self.fader_bg}"))
             slot_title = self.canvas.create_text(x + self.fader_width // 2, ypos + 0.60 * height_slot, text="", anchor=tkinter.CENTER,
                                             font=self.font_clip_title, state=tkinter.HIDDEN, fill=self.legend_txt_color,
-                                            tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
+                                            tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}", f"clip_strip:{self.fader_bg}"))
             slot_mode = self.canvas.create_image(x + 3, ypos, anchor=tkinter.NW, state=tkinter.HIDDEN,
-                                            tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
+                                            tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}", f"clip_strip:{self.fader_bg}"))
             slot_sel = self.canvas.create_rectangle(x, ypos, x + 3, ypos + height_slot - 1, width=0, fill=self.legend_txt_color, state=tkinter.HIDDEN,
-                                                  tags=(f"strip:{self.fader_bg}", f"clip_slot:{slot_bg}", f"clip_strip:{self.fader_bg}"))
+                                                  tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}", "clip_sel", f"clip_sel:{self.fader_bg}_{i}", f"clip_strip:{self.fader_bg}"))
 
-            self.canvas.tag_bind(f"clip_slot:{slot_bg}", '<ButtonPress-1>', lambda e, slot=i: self.on_clip_slot_press(slot))
-            self.canvas.tag_bind(f"clip_slot:{slot_bg}", '<ButtonRelease-1>', lambda e, slot=i: self.on_clip_slot_release(slot))
+            self.canvas.tag_bind(f"clip_slot:{i}", '<ButtonPress-1>', lambda e, slot=i: self.on_clip_slot_press(slot))
+            self.canvas.tag_bind(f"clip_slot:{i}", '<ButtonRelease-1>', lambda e, slot=i: self.on_clip_slot_release(slot))
 
             self.clip_slots.append({
                 'bg': slot_bg,
@@ -226,6 +226,9 @@ class zynthian_gui_mixer_strip():
                                                        tags=(f"strip:{self.fader_bg}", f"legend_strip:{self.fader_bg}"))
         self.legend_strip_txt = self.canvas.create_text(self.fader_centre_x, self.height - self.legend_height / 2, fill=self.legend_txt_color, text="-",
                                                    tags=(f"strip:{self.fader_bg}", f"legend_strip:{self.fader_bg}"), font=self.font)
+        self.legend_sel = self.canvas.create_rectangle(x, self.height - self.legend_height, x + 3, self.height, width=0, fill=self.legend_txt_color, state=tkinter.HIDDEN,
+                                                  tags=(f"strip:{self.fader_bg}", "clip_sel", f"clip_sel:{self.fader_bg}_{zynseq.LAUNCHER_SLOTS}", f"clip_strip:{self.fader_bg}"))
+
         self.pedals = []
         for i in range(4):
             self.pedals.append(self.canvas.create_rectangle(
@@ -866,13 +869,12 @@ class zynthian_gui_mixer_strip():
         return seq_info
 
     def highlight_clip(self, slot=None):
-        for i in range(zynseq.LAUNCHER_SLOTS):
-            if slot is not None and i == slot:
-                self.canvas.itemconfig(self.clip_slots[i]["sel"], state=tkinter.NORMAL)
-                if self.sequences and self.sequences[slot]["clippy"]:
-                    self.sequences[slot]["clippy"].set_current_screen_index(i + 1)
-            else:
-                self.canvas.itemconfig(self.clip_slots[i]["sel"], state=tkinter.HIDDEN)
+        self.canvas.itemconfig(f"clip_sel", state=tkinter.HIDDEN)
+        if slot is not None and self.chain is not None:
+            if self.chain_id == self.parent.chain_manager.active_chain_id:
+                self.canvas.itemconfig(f"clip_sel:{self.parent.highlighted_strip.fader_bg}_{slot}", state=tkinter.NORMAL)
+            if slot < zynseq.LAUNCHER_SLOTS and self.sequences and self.sequences[slot]["clippy"]:
+                self.sequences[slot]["clippy"].set_current_screen_index(slot + 1)
 
     def on_clip_slot_press(self, slot):
         self.touch_ts = monotonic()
@@ -1584,12 +1586,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             if self.zynmixer.midi_learn_zctrl:
                 self.midi_learn_menu()
             else:
-                if self.launcher_mode:
+                if self.launcher_mode and self.launcher_highlighted_slot < zynseq.LAUNCHER_SLOTS:
                     self.highlighted_strip.on_clip_short_press(self.launcher_highlighted_slot)
                 else:
                     self.zyngui.chain_control()
         elif type == "B":
-            if self.launcher_mode:
+            if self.launcher_mode and self.launcher_highlighted_slot < zynseq.LAUNCHER_SLOTS:
                 self.highlighted_strip.on_clip_bold_press(self.launcher_highlighted_slot)
             else:
                 # Chain Options
@@ -1689,8 +1691,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 slot = self.launcher_highlighted_slot + dval
                 if slot < 0:
                     slot = 0
-                elif slot > (zynseq.LAUNCHER_SLOTS - 1):
-                    slot = zynseq.LAUNCHER_SLOTS - 1
+                elif slot > (zynseq.LAUNCHER_SLOTS):
+                    slot = zynseq.LAUNCHER_SLOTS
                 if slot != self.launcher_highlighted_slot:
                     self.launcher_highlighted_slot = slot
                     self.highlighted_strip.highlight_clip(self.launcher_highlighted_slot)
@@ -1741,7 +1743,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """ Function to handle CUIA ARROW_DOWN
         """
         if self.launcher_mode:
-            if self.launcher_highlighted_slot < (zynseq.LAUNCHER_SLOTS - 1):
+            if self.launcher_highlighted_slot < zynseq.LAUNCHER_SLOTS:
                 self.launcher_highlighted_slot += 1
                 self.highlighted_strip.highlight_clip(self.launcher_highlighted_slot)
         else:
