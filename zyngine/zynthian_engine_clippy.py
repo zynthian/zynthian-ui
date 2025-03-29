@@ -56,9 +56,9 @@ class zyngine_lscp_warning(Exception):
 # Clippy Engine Class
 # ------------------------------------------------------------------------------
 
-MAX_BEATS = 64
-MAX_DURATION = 30
-NUM_SPLICES = 8
+MAX_BEATS = 64 # Maximum quantity of beats in a pattern
+MAX_DURATION = 30 # Maximum audio duration to warp, in seconds
+NUM_SPLICES = 128 // zynseq.LAUNCHER_SLOTS # Quantity of slices to split audio to spread across pattern
 
 class zynthian_engine_clippy(zynthian_engine):
 
@@ -241,7 +241,7 @@ class zynthian_engine_clippy(zynthian_engine):
                             file.write(f"sample={file_zctrl.path}\n")
                             file.write(f"key={slot * NUM_SPLICES + splice}\n")
                             file.write(f"offset={int(splice * self.slot_info[slot]['frames'] / NUM_SPLICES)}\n")
-                            file.write(f"end={int((splice + 1) * self.slot_info[slot]['frames'] / NUM_SPLICES)}\n")
+                            file.write(f"end={int((splice + 1) * self.slot_info[slot]['frames'] / NUM_SPLICES) - 1}\n")
                             file.write(f"\n")
                     else:
                         file.write("<region>\n")

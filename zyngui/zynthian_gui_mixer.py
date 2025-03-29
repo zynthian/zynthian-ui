@@ -1099,7 +1099,6 @@ class zynthian_gui_mixer_strip():
 # Zynthian Mixer GUI Class
 # ------------------------------------------------------------------------------
 
-
 class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def __init__(self):
@@ -1652,7 +1651,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 if self.zynmixer.midi_learn_zctrl:
                     self.back_action()
                 else:
-                    self.zyngui.cuia_screen_zynpad()
+                    self.cb_alt_mode(not self.launcher_mode)
                     return True
 
         elif swi == 3:
