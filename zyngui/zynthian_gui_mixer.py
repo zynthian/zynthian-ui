@@ -166,22 +166,22 @@ class zynthian_gui_mixer_strip():
         ypos = self.fader_top
         for i in range(0, zynseq.LAUNCHER_SLOTS):
             slot_bg = self.canvas.create_rectangle(x, ypos, x + self.fader_width, ypos + height_slot - 1, width=0, state=tkinter.HIDDEN)
-            self.canvas.itemconfig(slot_bg, tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}", f"clip_strip:{self.fader_bg}"))
+            self.canvas.itemconfig(slot_bg, tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}_{self.fader_bg}", f"clip_strip:{self.fader_bg}"))
             slot_header = self.canvas.create_rectangle(x, ypos, x + self.fader_width, ypos + 0.35 * height_slot, width=0, state=tkinter.HIDDEN,
-                                                  tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}", f"clip_strip:{self.fader_bg}"))
+                                                  tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}_{self.fader_bg}", f"clip_strip:{self.fader_bg}"))
             ypos_header = ypos - height_slot // 6
             slot_state = self.canvas.create_text(x + self.fader_width, ypos_header, text="", anchor=tkinter.NE, font=self.font_clip_state,
-                                            state=tkinter.HIDDEN, tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}", f"clip_strip:{self.fader_bg}"))
+                                            state=tkinter.HIDDEN, tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}_{self.fader_bg}", f"clip_strip:{self.fader_bg}"))
             slot_title = self.canvas.create_text(x + self.fader_width // 2, ypos + 0.60 * height_slot, text="", anchor=tkinter.CENTER,
                                             font=self.font_clip_title, state=tkinter.HIDDEN, fill=self.legend_txt_color,
-                                            tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}", f"clip_strip:{self.fader_bg}"))
+                                            tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}_{self.fader_bg}", f"clip_strip:{self.fader_bg}"))
             slot_mode = self.canvas.create_image(x + 3, ypos, anchor=tkinter.NW, state=tkinter.HIDDEN,
-                                            tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}", f"clip_strip:{self.fader_bg}"))
+                                            tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}_{self.fader_bg}", f"clip_strip:{self.fader_bg}"))
             slot_sel = self.canvas.create_rectangle(x, ypos, x + 3, ypos + height_slot - 1, width=0, fill=self.legend_txt_color, state=tkinter.HIDDEN,
-                                                  tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}", "clip_sel", f"clip_sel:{self.fader_bg}_{i}", f"clip_strip:{self.fader_bg}"))
+                                                  tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}_{self.fader_bg}", "clip_sel", f"clip_sel:{self.fader_bg}_{i}", f"clip_strip:{self.fader_bg}"))
 
-            self.canvas.tag_bind(f"clip_slot:{i}", '<ButtonPress-1>', lambda e, slot=i: self.on_clip_slot_press(slot))
-            self.canvas.tag_bind(f"clip_slot:{i}", '<ButtonRelease-1>', lambda e, slot=i: self.on_clip_slot_release(slot))
+            self.canvas.tag_bind(f"clip_slot:{i}_{self.fader_bg}", '<ButtonPress-1>', lambda e, slot=i: self.on_clip_slot_press(slot))
+            self.canvas.tag_bind(f"clip_slot:{i}_{self.fader_bg}", '<ButtonRelease-1>', lambda e, slot=i: self.on_clip_slot_release(slot))
 
             self.clip_slots.append({
                 'bg': slot_bg,
