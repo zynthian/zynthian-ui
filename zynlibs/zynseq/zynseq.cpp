@@ -1669,25 +1669,6 @@ void removeNote(uint32_t step, uint8_t note) {
     g_bDirty = true;
 }
 
-bool addControl(uint32_t step, uint8_t cc, uint8_t value) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return false;
-    if (g_seqMan.getPattern(g_nPattern)->addControl(step, cc, value, value)) {
-        setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-        g_bDirty = true;
-        return true;
-    }
-    return false;
-}
-
-void removeControl(uint32_t step, uint8_t cc) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-    g_seqMan.getPattern(g_nPattern)->removeControl(step, cc);
-    g_bDirty = true;
-}
-
 int32_t getNoteStart(uint32_t step, uint8_t note) {
     if (g_seqMan.getPattern(g_nPattern))
         return g_seqMan.getPattern(g_nPattern)->getNoteStart(step, note);

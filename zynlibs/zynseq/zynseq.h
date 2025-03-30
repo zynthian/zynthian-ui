@@ -410,21 +410,7 @@ bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration, floa
  */
 void removeNote(uint32_t step, uint8_t note);
 
-/** @brief  Add control to selected pattern
- *   @param  step Index of step at which to add control
- *   @param  cc MIDI CC number
- *   @param  value MIDI CC value
- *   @retval bool True on success
- */
- bool addControl(uint32_t step, uint8_t cc, uint8_t value);
-
- /** @brief  Removes control from selected pattern
-  *   @param  step Index of step at which to remove control
-  *   @param  cc MIDI CC number to remove
-  */
- void removeControl(uint32_t step, uint8_t cc);
- 
- /** @brief  Get step that note starts
+/** @brief  Get step that note starts
  *   @param  position Quantity of steps from start of pattern at which to check for note
  *   @param  note MIDI note number
  *   @retval int32_t Quantity of steps from start of pattern that note starts or -1 if note not found
