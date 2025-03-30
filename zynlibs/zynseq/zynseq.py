@@ -96,7 +96,7 @@ class zynseq(zynthian_engine):
     def __init__(self, state_manager=None):
         self.state_manager = state_manager
         self.changing_bank = False
-        self.progress = [0] * 16 * 8
+        self.progress = [0] * 17 * 8
         try:
             self.libseq = ctypes.cdll.LoadLibrary(
                 dirname(realpath(__file__))+"/build/libzynseq.so")
@@ -154,8 +154,9 @@ class zynseq(zynthian_engine):
             self.scene_launcher_info.append(
                 {
                     "tempo": None,
-                    "time_sig": None,
-                    "active_sequences": [],
+                    "bpb": None,
+                    "bars": 1,
+                    "mode": "Loop",
                     "state": SEQ_STOPPED
                 }
             )
@@ -205,11 +206,8 @@ class zynseq(zynthian_engine):
             if bank < 1 or bank == self.bank and not force:
                 return
         self.changing_bank = True
-        if self.libseq.getSequencesInBank(bank) == 0:
-            if bank == 255:
-                self.build_default_bank(bank, 16, 8)
-            else:
-                self.build_default_bank(bank)
+        if self.libseq.getSequencesInBank(bank) == 0 and bank < 255:
+            self.build_default_bank(bank)
         self.seq_in_bank = self.libseq.getSequencesInBank(bank)
         # WARNING!!! Limited to 8 to avoid issues with GUI zynpad that have 8x8 = 64 pads
         #TODO: This is not longer true!!! Need to store or derive columns in bank.

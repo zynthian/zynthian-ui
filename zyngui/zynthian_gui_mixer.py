@@ -405,14 +405,9 @@ class zynthian_gui_mixer_strip():
         self.canvas.itemconfig(f"fader:{self.fader_bg}", state=tkinter.HIDDEN)
         self.canvas.itemconfig(self.clip_progress, state=tkinter.NORMAL)
         # Clip Launcher
-        if self.chain_id > 0:
-            self.get_sequences()
-            for i in range(0, zynseq.LAUNCHER_SLOTS):
-                self.draw_sequence_slot(i)
-        # Scene Launcher (main strip)
-        else:
-            for i in range(0, zynseq.LAUNCHER_SLOTS):
-                self.draw_scene_slot(i)
+        self.get_sequences()
+        for i in range(0, zynseq.LAUNCHER_SLOTS):
+            self.draw_sequence_slot(i)
 
     def draw_sequence_slot(self, i):
         try:
@@ -454,53 +449,12 @@ class zynthian_gui_mixer_strip():
         else:
             self.canvas.itemconfig(self.clip_slots[i]["sel"], state=tkinter.HIDDEN)
 
-    def draw_scene_slot(self, i):
-        try:
-            info = self.zynseq.scene_launcher_info[i]
-            color = zynthian_gui_config.PAD_COLOUR_SCENE
-            title = f"{i+1:02}"
-            match info["state"]:
-                case zynseq.SEQ_PLAYING:
-                    color_state = zynthian_gui_config.PAD_COLOUR_PLAYING
-                    state_text = "▶"
-                case zynseq.SEQ_STARTING:
-                    color_state = zynthian_gui_config.PAD_COLOUR_STARTING
-                    state_text = "▶"
-                case zynseq.SEQ_STOPPING:
-                    color_state = zynthian_gui_config.PAD_COLOUR_STOPPING
-                    state_text = "▶"
-                case zynseq.SEQ_STOPPED:
-                    color_state = zynthian_gui_config.PAD_COLOUR_STOPPED
-                    state_text = "⏹"
-                case _:
-                    color_state = zynthian_gui_config.PAD_COLOUR_DISABLED
-                    state_text = ""
-        except:
-            color = zynthian_gui_config.PAD_COLOUR_DISABLED
-            color_state = "#F0F0F0"
-            title = "--"
-            state_text = ""
-        self.canvas.itemconfig(self.clip_slots[i]["bg"], fill=color, state=tkinter.NORMAL)
-        self.canvas.itemconfig(self.clip_slots[i]["header"], fill=color, state=tkinter.NORMAL)
-        self.canvas.itemconfig(self.clip_slots[i]["state"], fill=color_state, text=state_text, state=tkinter.NORMAL)
-        self.canvas.itemconfig(self.clip_slots[i]["title"], text=title, state=tkinter.NORMAL)
-        if self == self.parent.highlighted_strip and i == self.parent.launcher_highlighted_slot:
-            self.canvas.itemconfig(self.clip_slots[i]["sel"], state=tkinter.NORMAL)
-        else:
-            self.canvas.itemconfig(self.clip_slots[i]["sel"], state=tkinter.HIDDEN)
-
     def update_clip_state(self, bank, seq, state, mode, group):
         if bank != zynseq.LAUNCHER_SEQ_BANK:
             return
-        # Clip Launcher
-        if self.chain_id > 0:
-            slot = seq % 8
-            self.sequences[slot] = self.get_sequence_info(slot)
-            self.draw_sequence_slot(slot)
-        # Scene Launcher
-        else:
-            for i in range(zynseq.LAUNCHER_SLOTS):
-                self.draw_scene_slot(i)
+        slot = seq % 8
+        self.sequences[slot] = self.get_sequence_info(slot)
+        self.draw_sequence_slot(slot)
 
     def update_clip_progress(self, bank, seq, progress):
         if bank != zynseq.LAUNCHER_SEQ_BANK:
@@ -816,7 +770,7 @@ class zynthian_gui_mixer_strip():
 
     def get_sequences(self):
         self.sequences = []
-        if not self.chain.is_midi():
+        if not self.chain.is_midi() and self.chain_id != 0:
             return
         # TODO: Improve efficiency. Get filtered list by midi channel with one single call to zynseq
         for seq_i in range(zynseq.LAUNCHER_SLOTS):
@@ -825,14 +779,18 @@ class zynthian_gui_mixer_strip():
                 self.sequences.append(info)
 
     def get_sequence_info(self, slot):
-        seq_i = slot + 8 * self.chain.midi_chan
-        clippy = None
-        try:
-            processor = self.chain.get_processors("MIDI Synth")[0]
-            if processor.engine.nickname == "CL":
-                clippy = processor
-        except:
-            pass
+        if self.chain_id > 0:
+            seq_i = slot + 8 * self.chain.midi_chan
+            clippy = None
+            try:
+                processor = self.chain.get_processors("MIDI Synth")[0]
+                if processor.engine.nickname == "CL":
+                    clippy = processor
+            except:
+                pass
+        else:
+            seq_i = zynseq.LAUNCHER_SLOTS * 16 + slot
+            clippy = None
         state = self.zynseq.libseq.getSequenceState(zynseq.LAUNCHER_SEQ_BANK, seq_i)
         empty = self.zynseq.libseq.isEmpty(zynseq.LAUNCHER_SEQ_BANK, seq_i)
         group = (state >> 16) & 0xFF
@@ -892,17 +850,14 @@ class zynthian_gui_mixer_strip():
 
     def on_clip_short_press(self, slot):
         #logging.debug(f"CLIP PRESSED => chain_id:{self.chain_id}, slot:{slot}")
-        if self.chain_id > 0:
-            seq = self.sequences[slot]['sequence']
-            proc = self.sequences[slot]['clippy']
-            if proc and self.sequences[slot]['mode'] == 0:
-                for i in range(zynseq.LAUNCHER_SLOTS):
-                    self.zynseq.libseq.setPlayState(zynseq.LAUNCHER_SEQ_BANK, i + proc.engine.sequence_offset, zynseq.SEQ_STOPPED)
-                proc.engine.lscp_send_single(f"SEND CHANNEL MIDI_DATA CC 0 120 0")
-            else:
-                self.zynseq.libseq.togglePlayState(zynseq.LAUNCHER_SEQ_BANK, seq)
+        seq = self.sequences[slot]['sequence']
+        proc = self.sequences[slot]['clippy']
+        if proc and self.sequences[slot]['mode'] == 0:
+            for i in range(zynseq.LAUNCHER_SLOTS):
+                self.zynseq.libseq.setPlayState(zynseq.LAUNCHER_SEQ_BANK, i + proc.engine.sequence_offset, zynseq.SEQ_STOPPED)
+            proc.engine.lscp_send_single(f"SEND CHANNEL MIDI_DATA CC 0 120 0")
         else:
-            self.parent.toggle_scene(slot)
+            self.zynseq.libseq.togglePlayState(zynseq.LAUNCHER_SEQ_BANK, seq)
 
     def on_clip_bold_press(self, slot):
         if self.chain_id > 0:
@@ -926,8 +881,11 @@ class zynthian_gui_mixer_strip():
                 self.zyngui.show_screen("pattern_editor")
         else:
             options = {}
+            options["Title"] = slot
             options[f"Tempo: {self.zynseq.scene_launcher_info[slot]['tempo']}"] = slot
-            options[f"Time sig: {self.zynseq.scene_launcher_info[slot]['time_sig']}"] = slot
+            options[f"Beats per bar: {self.zynseq.scene_launcher_info[slot]['bpb']}"] = slot
+            options[f"Bars: {self.zynseq.scene_launcher_info[slot]['bpb']}"] = slot
+            options[f"Mode: {self.zynseq.scene_launcher_info[slot]['mode']}"] = slot
             self.zyngui.screens['option'].config(
                 f"Scene launcher {slot + 1} options", options, self.parent.scene_launcher_menu_cb)
             self.zyngui.show_screen('option')
@@ -1276,7 +1234,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PROGRESS, self.cb_launcher_progress)
         if self.launcher_mode:
             self.zynseq.select_bank(zynseq.LAUNCHER_SEQ_BANK)
-            self.update_launcher_scene_info()
 
         return True
 
@@ -1386,7 +1343,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         for strip in self.visible_mixer_strips:
             if not strip.hidden and strip.chain.midi_chan == midi_chan:
                 strip.update_clip_state(bank, seq, state, mode, group)
-        self.update_launcher_scene_info()
         self.main_mixbus_strip.update_clip_state(bank, seq, state, mode, group)
 
     def cb_launcher_progress(self, bank, seq, progress):
@@ -1485,65 +1441,15 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         for strip in self.visible_mixer_strips:
             if not strip.hidden:
                 strip.draw_control()
-        if self.launcher_mode:
-            self.update_launcher_scene_info()
         self.main_mixbus_strip.draw_control()
 
-    def update_launcher_scene_info(self):
-        # Count clip slot states
-        for i in range(zynseq.LAUNCHER_SLOTS):
-            active_seqs = []
-            state_counter = [0, 0, 0, 0, 0, 0]
-            for strip in self.visible_mixer_strips:
-                if not strip.hidden and strip.chain.midi_chan is not None:
-                    try:
-                        if strip.sequences[i]['mode']:
-                            state_counter[strip.sequences[i]['state']] += 1
-                            active_seqs.append(strip.sequences[i]['sequence'])
-                    except:
-                        pass
-            state = -1
-            if state_counter[zynseq.SEQ_STOPPED]:
-                state = zynseq.SEQ_STOPPED
-            elif state_counter[zynseq.SEQ_STOPPING]:
-                state = zynseq.SEQ_STOPPING
-            elif state_counter[zynseq.SEQ_STARTING]:
-                state = zynseq.SEQ_STARTING
-            elif state_counter[zynseq.SEQ_PLAYING]:
-                state = zynseq.SEQ_PLAYING
-            self.zynseq.scene_launcher_info[i]["active_sequences"] = active_seqs
-            self.zynseq.scene_launcher_info[i]["state"] = state
-
-    def toggle_scene(self, slot):
-        try:
-            info = self.zynseq.scene_launcher_info[slot]
-            scene_state = info["state"]
-            active_seqs = info["active_sequences"]
-
-            for strip in self.visible_mixer_strips:
-                index = strip.sequences[slot]["sequence"]
-                if index in active_seqs:
-                    clip_state = strip.sequences[slot]["state"]
-                    # If scene is playing => stop all clips
-                    # If scene is not playing (or playing partially) => Play all stopped clips
-                    if (not scene_state and clip_state == zynseq.SEQ_STOPPED) or (scene_state and clip_state == zynseq.SEQ_PLAYING):
-                        self.zynseq.libseq.togglePlayState(zynseq.LAUNCHER_SEQ_BANK, index)
-                    #self.zynseq.libseq.setPlayState(zynseq.LAUNCHER_SEQ_BANK, index, zynseq.SEQ_STOPPING)
-
-            if scene_state:
-                info["state"] = zynseq.SEQ_STOPPING
-            else:
-                info["state"] = zynseq.SEQ_STARTING
-
-        except Exception as e:
-            logging.error(f"{e}")
-
-    def scene_launcher_menu_cb(self, options, slot):
-        #TODO: Get zctrl params from tempo zctrl
-        tempo = self.zynseq.scene_launcher_info[slot]["tempo"]
-        if not tempo:
-            tempo = self.zynseq.get_tempo()
-        if options.startswith("Tempo"):
+    def scene_launcher_menu_cb(self, option, slot):
+        if option == "Title":
+            pass
+        elif option.startswith("Tempo"):
+            tempo = self.zynseq.scene_launcher_info[slot]["tempo"]
+            if not tempo:
+                tempo = self.zynseq.get_tempo()
             self.enable_param_editor(self, "tempo", {
                 'name': 'BPM',
                 'is_integer': False,
@@ -1553,17 +1459,22 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'nudge_factor': 1.0,
                 "graph_path":slot
             }, self.on_scene_tempo)
+        elif option.startswith("Beats"):
+            pass
+        elif option.startswith("Bars"):
+            pass
+        elif option.startswith("Mode"):
+            pass
 
     def on_scene_tempo(self, tempo):
         try:
             slot = self.param_editor_zctrl.graph_path
             self.zynseq.scene_launcher_info[slot]["tempo"] = tempo
-            #TODO: Set tempo in the global sequence so that it changes at next sync point (bar)
+            #TODO: Support float tempo events in libzynseq
+            self.zynseq.libseq.addTempoEvent(zynseq.LAUNCHER_SEQ_BANK, zynseq.LAUNCHER_SLOTS * 16 + slot, int(tempo), 1, 0)
             for chan in range(16):
-                sequence = chan * zynseq.LAUNCHER_SLOTS + slot
-                #TODO: Support float tempo events in libzynseq
-                #self.zynseq.libseq.addTempoEvent(zynseq.LAUNCHER_SEQ_BANK, sequence, int(tempo), 1, 0)
-                #TODO: Warp
+                #TODO: Warp clippy
+                pass
         except Exception as e:
             logging.warning(f"Error setting scene tempo: {e}")
 
