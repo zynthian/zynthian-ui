@@ -1662,7 +1662,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
             step = int(step)
         # Skip hidden (overlapping) cells
         for previous in range(step - 1, -1, -1):
-            prev_duration = ceil(self.zynseq.libseq.getNoteDuration(previous, note))
+            if self.display_mode == SHOW_CC:
+                prev_duration = ceil(self.zynseq.libseq.getControlDuration(previous, note))
+            else:
+                prev_duration = ceil(self.zynseq.libseq.getNoteDuration(previous, note))
             if not prev_duration:
                 continue
             if prev_duration > step - previous:
@@ -1685,13 +1688,22 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
             self.set_step_offset(step)
         self.selected_cell = [step, row]
         # Duration & velocity
-        duration = self.zynseq.libseq.getNoteDuration(step, note)
-        offset = self.zynseq.libseq.getNoteOffset(step, note)
-        if duration:
-            velocity = self.zynseq.libseq.getNoteVelocity(step, note)
+        if self.display_mode == SHOW_CC:
+            offset = self.zynseq.libseq.getControlOffset(step, note)
+            velocity = self.zynseq.libseq.getControlValue(step, note)
+            if velocity > 128:
+                velocity = self.velocity
+                duration = self.duration
+            else:
+                duration = self.zynseq.libseq.getControlDuration(step, note)
         else:
-            duration = self.duration
-            velocity = self.velocity
+            duration = self.zynseq.libseq.getNoteDuration(step, note)
+            offset = self.zynseq.libseq.getNoteOffset(step, note)
+            if duration:
+                velocity = self.zynseq.libseq.getNoteVelocity(step, note)
+            else:
+                duration = self.duration
+                velocity = self.velocity
         self.set_velocity_indicator(velocity)
         # Position selector cell-frame
         coord = self.get_cell(step, row, duration, offset)
