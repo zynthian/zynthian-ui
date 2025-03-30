@@ -1004,14 +1004,20 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
 
             if self.drag_start_velocity:
                 # Selected cell has a note so we want to adjust its velocity or duration
-                if not self.drag_velocity and not self.drag_duration and (event.x > (self.drag_start_step + 1) * self.step_width or event.x < self.drag_start_step * self.step_width):
+                if self.display_mode == SHOW_NOTES and not self.drag_velocity and not self.drag_duration and (event.x > (self.drag_start_step + 1) * self.step_width or event.x < self.drag_start_step * self.step_width):
                     self.drag_duration = True
                 if not self.drag_duration and not self.drag_velocity and (event.y > self.grid_drag_start.y + self.row_height / 2 or event.y < self.grid_drag_start.y - self.row_height / 2):
                     self.drag_velocity = True
                 if self.drag_velocity:
                     value = (self.grid_drag_start.y - event.y) / self.row_height
-                    if value:
-                        velocity = int(self.drag_start_velocity + value * self.height / 100)
+                    velocity = int(self.drag_start_velocity + value * self.height / 100)
+                    if self.display_mode == SHOW_CC:
+                        if 0 <= velocity <= 127:
+                            self.set_velocity_indicator(velocity)
+                            if sel_velocity < 128 and velocity != sel_velocity:
+                                self.zynseq.libseq.setControlValue(step, note, velocity, velocity)
+                                self.draw_cell(step, row)
+                    else:
                         if 1 <= velocity <= 127:
                             self.set_velocity_indicator(velocity)
                             if sel_duration and velocity != sel_velocity:
