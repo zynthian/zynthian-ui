@@ -138,7 +138,7 @@ void Pattern::setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity) {
 
 float Pattern::getNoteDuration(uint32_t step, uint8_t note) {
     if (step >= (m_nBeats * m_nStepsPerBeat))
-        return 0;
+        return 0.0;
     for (StepEvent* ev : m_vEvents) {
         if (ev->getPosition() != step || ev->getCommand() != MIDI_NOTE_ON || ev->getValue1start() != note)
             continue;
@@ -263,10 +263,11 @@ uint8_t Pattern::getProgramChange(uint32_t step) {
     return 0xFF;
 }
 
-bool Pattern::addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, float duration) {
+bool Pattern::addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, float duration, float offset) {
     if (step > (m_nBeats * m_nStepsPerBeat) || control > 127 || valueStart > 127 || valueEnd > 127 || duration > (m_nBeats * m_nStepsPerBeat))
         return false;
-    StepEvent* pEvent = addEvent(step, MIDI_CONTROL, control, valueStart, duration);
+    StepEvent* pEvent = addEvent(step, MIDI_CONTROL, control, valueStart, duration, offset);
+    //!@todo Iterate through duration, interpolating value, adding events
     pEvent->setValue2end(valueEnd);
     return true;
 }
@@ -274,24 +275,76 @@ bool Pattern::addControl(uint32_t step, uint8_t control, uint8_t valueStart, uin
 void Pattern::removeControl(uint32_t step, uint8_t control) { deleteEvent(step, MIDI_CONTROL, control); }
 
 void Pattern::removeControlInterval(uint32_t stepFrom, uint32_t stepTo, uint8_t control) {
-	uint32_t step;
-	if (stepTo >= stepFrom) {
-		for (step=stepFrom; step<=stepTo; step++) {
-			deleteEvent(step, MIDI_CONTROL, control);
-		}
-	} else {
-		for (step=0; step<=stepTo; step++) {
-			deleteEvent(step, MIDI_CONTROL, control);
-		}
-		for (step=stepFrom; step<getSteps(); step++) {
-			deleteEvent(step, MIDI_CONTROL, control);
-		}
-	}
+    uint32_t step;
+    if (stepTo >= stepFrom) {
+        for (step=stepFrom; step<=stepTo; step++) {
+            deleteEvent(step, MIDI_CONTROL, control);
+        }
+    } else {
+        for (step=0; step<=stepTo; step++) {
+        deleteEvent(step, MIDI_CONTROL, control);
+        }
+        for (step=stepFrom; step<getSteps(); step++) {
+            deleteEvent(step, MIDI_CONTROL, control);
+        }
+    }
+}
+
+int32_t Pattern::getControlStart(uint32_t step, uint8_t control) {
+    for (StepEvent* ev : m_vEvents)
+        if (ev->getPosition() <= step && int(std::ceil(ev->getPosition() + ev->getDuration())) > step && ev->getCommand() == MIDI_CONTROL &&
+            ev->getValue1start() == control)
+            return ev->getPosition();
+    return -1;
 }
 
 float Pattern::getControlDuration(uint32_t step, uint8_t control) {
-    //!@todo Implement getControlDuration
+    if (step >= (m_nBeats * m_nStepsPerBeat))
+        return 0.0;
+    for (StepEvent* ev : m_vEvents) {
+        if (ev->getPosition() != step || ev->getCommand() != MIDI_CONTROL || ev->getValue1start() != control)
+            continue;
+        return ev->getDuration();
+    }
     return 0.0;
+}
+
+float Pattern::getControlOffset(uint32_t step, uint8_t control) {
+    for (StepEvent* ev : m_vEvents)
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_CONTROL && ev->getValue1start() == control)
+            return ev->getOffset();
+    return 0;
+}
+
+void Pattern::setControlOffset(uint32_t step, uint8_t control, float offset) {
+    if (offset < 0.0)
+        offset = 0.0;
+    else if (offset > 0.99)
+        offset = 0.99;
+    for (StepEvent* ev : m_vEvents) {
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_CONTROL && ev->getValue1start() == control) {
+            ev->setOffset(offset);
+            return;
+        }
+    }
+}
+
+uint8_t Pattern::getControlValue(uint32_t step, uint8_t control) {
+    for (StepEvent* ev : m_vEvents)
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_CONTROL && ev->getValue1start() == control)
+            return ev->getValue2start();
+    return -1;
+}
+
+void Pattern::setControlValue(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd) {
+    if (valueStart > 127 || valueEnd > 127)
+        return;
+    for (StepEvent* ev : m_vEvents)
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_CONTROL && ev->getValue1start() == control) {
+            ev->setValue2end(valueStart);
+            ev->setValue2start(valueEnd);
+            return;
+        }
 }
 
 uint32_t Pattern::getSteps() { return (m_nBeats * m_nStepsPerBeat); }

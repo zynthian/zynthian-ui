@@ -1722,6 +1722,65 @@ void setNoteOffset(uint32_t step, uint8_t note, float offset) {
     g_bDirty = true;
 }
 
+bool addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, float duration, float offset) {
+    if (!g_seqMan.getPattern(g_nPattern))
+        return false;
+    if (g_seqMan.getPattern(g_nPattern)->addControl(step, control, valueStart, valueEnd, duration, offset)) {
+        setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
+        g_bDirty = true;
+        return true;
+    }
+    return false;
+}
+
+void removeControl(uint32_t step, uint8_t control) {
+    if (!g_seqMan.getPattern(g_nPattern))
+        return;
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
+    g_seqMan.getPattern(g_nPattern)->removeControl(step, control);
+    g_bDirty = true;
+}
+
+int32_t getControlStart(uint32_t step, uint8_t control) {
+    if (g_seqMan.getPattern(g_nPattern))
+        return g_seqMan.getPattern(g_nPattern)->getControlStart(step, control);
+    return -1;
+}
+
+float getControlDuration(uint32_t step, uint8_t control) {
+    if (g_seqMan.getPattern(g_nPattern))
+        return g_seqMan.getPattern(g_nPattern)->getControlDuration(step, control);
+    return 0;
+}
+
+uint8_t getControlValue(uint32_t step, uint8_t control) {
+    if (g_seqMan.getPattern(g_nPattern))
+        return g_seqMan.getPattern(g_nPattern)->getControlValue(step, control);
+    return 0;
+}
+
+void setControlValue(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd) {
+    if (!g_seqMan.getPattern(g_nPattern))
+        return;
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
+    g_seqMan.getPattern(g_nPattern)->setControlValue(step, control, valueStart, valueEnd);
+    g_bDirty = true;
+}
+
+float getControlOffset(uint32_t step, uint8_t control) {
+    if (g_seqMan.getPattern(g_nPattern))
+        return g_seqMan.getPattern(g_nPattern)->getControlOffset(step, control);
+    return 0;
+}
+
+void setControlOffset(uint32_t step, uint8_t control, float offset) {
+    if (!g_seqMan.getPattern(g_nPattern))
+        return;
+    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
+    g_seqMan.getPattern(g_nPattern)->setControlOffset(step, control, offset);
+    g_bDirty = true;
+}
+
 uint8_t getStutterCount(uint32_t step, uint8_t note) {
     if (!g_seqMan.getPattern(g_nPattern))
         return 0;

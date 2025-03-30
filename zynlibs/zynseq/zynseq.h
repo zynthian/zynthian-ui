@@ -459,6 +459,66 @@ float getNoteOffset(uint32_t step, uint8_t note);
  */
 void setNoteOffset(uint32_t step, uint8_t note, float offset);
 
+/** @brief  Add control to selected pattern
+ *   @param  step Index of step at which to add control
+ *   @param  control MIDI control number
+ *   @param  valueStart MIDI control value at start of event
+ *   @param  valueEnd MIDI control value at end of event
+ *   @param  duration Quantity of steps control should span (iterate values)
+ *   @param  offset Offset factor of start of step
+ *   @retval bool True on success
+ */
+bool addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, float duration, float offset = 0.0);
+
+ /** @brief  Removes control from selected pattern
+  *   @param  step Index of step at which to remove control
+  *   @param  control MIDI control number to remove
+  */
+void removeControl(uint32_t step, uint8_t control);
+ 
+ /** @brief  Get step that control starts
+  *   @param  position Quantity of steps from start of pattern at which to check for control
+  *   @param  control MIDI control number
+  *   @retval int32_t Quantity of steps from start of pattern that control starts or -1 if note not found
+  */
+int32_t getControlStart(uint32_t step, uint8_t control); 
+
+/** @brief  Get duration of control in selected pattern
+ *   @param  position Index of step at which control starts
+ *   @note   MIDI control number
+ *   @retval float Duration in steps or 0.0 if control does not exist
+ */
+ float getControlDuration(uint32_t step, uint8_t control);
+
+/** @brief  Get value of control in selected pattern
+ *   @param  step Index of step at which control resides
+ *   @param  control MIDI control number
+ *   @retval uint8_t control value (0..127)
+ */
+ uint8_t getControlValue(uint32_t step, uint8_t control);
+
+ /** @brief  Set value of control in selected pattern
+  *   @param  step Index of step at which control resides
+  *   @param  control MIDI control number
+  *   @param  valueStart MIDI value at start of event
+  *   @param  valueEnd MIDI value at end of event
+  */
+ void setControlValue(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd);
+
+/** @brief  Get offset of control in selected pattern
+ *   @param  step Index of step at which control resides
+ *   @param  control MIDI control number
+ *   @retval float offset Step fraction, from 0.0 to 1.0
+ */
+ float getControlOffset(uint32_t step, uint8_t control);
+
+ /** @brief  Set offset of control in selected pattern
+  *   @param  step Index of step at which control resides
+  *   @param  control MIDI control number
+  *   @param  offset Step fraction, from 0.0 to 1.0
+  */
+ void setControlOffset(uint32_t step, uint8_t control, float offset);
+ 
 /** @brief  Get stutter count of note in selected pattern
  *   @param  step Index of step at which note resides
  *   @param  note MIDI note number
@@ -503,7 +563,7 @@ void setNotePlayChance(uint32_t step, uint8_t note, uint8_t chance);
 
 /** @brief  Get duration of note in selected pattern
  *   @param  position Index of step at which note starts
- *   @note   note MIDI note number
+ *   @note   MIDI note number
  *   @retval float Duration in steps or 0.0 if note does not exist
  */
 float getNoteDuration(uint32_t step, uint8_t note);

@@ -108,6 +108,12 @@ class zynseq(zynthian_engine):
             self.libseq.getNoteOffset.restype = ctypes.c_float
             self.libseq.setNoteOffset.argtypes = [
                 ctypes.c_uint32, ctypes.c_uint8, ctypes.c_float]
+            self.libseq.addControl.argtypes = [
+                ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_float]
+            self.libseq.getControlDuration.restype = ctypes.c_float
+            self.libseq.getControlOffset.restype = ctypes.c_float
+            self.libseq.setControlOffset.argtypes = [
+                ctypes.c_uint32, ctypes.c_uint8, ctypes.c_float]
             self.libseq.setSwingAmount.argtypes = [ctypes.c_float]
             self.libseq.getSwingAmount.restype = ctypes.c_float
             self.libseq.setHumanTime.argtypes = [ctypes.c_float]

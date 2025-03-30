@@ -70,15 +70,18 @@ EDIT_MODE_ALL = 2  # Edit mode enabled for all notes
 EDIT_MODE_ZOOM = 3  # Zoom mode
 EDIT_MODE_HISTORY = 4  # Edit history mode (undo/redo)
 
-EDIT_PARAM_DUR = 0  # Edit note duration
-EDIT_PARAM_VEL = 1  # Edit note velocity
-EDIT_PARAM_OFFSET = 2  # Edit note offset
+EDIT_PARAM_DUR = 0  # Edit event duration
+EDIT_PARAM_VEL = 1  # Edit event velocity
+EDIT_PARAM_OFFSET = 2  # Edit event offset
 EDIT_PARAM_STUT_CNT = 3  # Edit note stutter count
 EDIT_PARAM_STUT_DUR = 4  # Edit note stutter duration
 EDIT_PARAM_CHANCE = 5  # Edit note play chance
 EDIT_PARAM_CHORD_MODE = 6 # Edit chord entry mode
 EDIT_PARAM_CHORD_TYPE = 7 # Edit chord type
 EDIT_PARAM_LAST = 7  # Index of last parameter
+
+SHOW_NOTES = 0 # Display note events
+SHOW_CC = 1 # Display CC events
 
 # List of permissible steps per beat
 STEPS_PER_BEAT = [1, 2, 3, 4, 6, 8, 12, 24]
@@ -194,6 +197,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
         self.chord_mode = 0 # Chord entry mode. 0 for single note entry
         self.chord_type = 0 # Chord type. Index of CHORD
         self.diatonic_scale_tonic = 0 # Tonic of diatonic scale used for chords
+        self.display_mode = SHOW_NOTES
 
         # Touch control variables
         self.swiping = 0
@@ -393,6 +397,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
             options['Arranger'] = 'Arranger'
         options['Beats per Bar ({})'.format(
             self.zynseq.libseq.getBeatsPerBar())] = 'Beats per bar'
+        if self.display_mode == SHOW_NOTES:
+            options['Show CC events'] = 'SHOW CC'
+        else:
+            options['Show Note events'] = 'SHOW NOTES'
 
         # Pattern Options
         options['> PATTERN OPTIONS'] = None
@@ -537,6 +545,16 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
         elif params == 'Export to SMF':
             self.zyngui.show_keyboard(
                 self.export_smf, "pat#{}".format(self.pattern))
+        elif params == 'SHOW NOTES':
+            self.display_mode = SHOW_NOTES
+            self.set_title(f"Pattern {self.pattern}")
+            self.load_keymap()
+            self.redraw_pending = 4
+        elif params == 'SHOW CC':
+            self.display_mode = SHOW_CC
+            self.set_title(f"Pattern {self.pattern} CC")
+            self.load_keymap()
+            self.redraw_pending = 4
 
     def get_diatonic_chord(self, trigger_note):
         chord = []
@@ -793,6 +811,14 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
     # returns Name of scale / map
     def load_keymap(self):
         self.keymap = []
+        if self.display_mode == SHOW_CC:
+            for cc in range(128):
+                self.keymap.append({
+                    "note": cc,
+                    "name": str(cc)
+                })
+            return "CC"
+
         scale = self.zynseq.libseq.getScale()
         tonic = self.zynseq.libseq.getTonic()
 
@@ -926,7 +952,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
             note = self.keymap[row]['note']
         except:
             return
-        start_step = self.zynseq.libseq.getNoteStart(step, note)
+        if self.display_mode == SHOW_CC:
+            start_step = self.zynseq.libseq.getControlStart(step, note)
+        else:
+            start_step = self.zynseq.libseq.getNoteStart(step, note)
         if start_step >= 0:
             step = start_step
         if step < 0 or step >= self.n_steps:
@@ -945,10 +974,16 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
         self.drag_velocity = False
         self.drag_duration = False
         self.drag_start_step = step
-        self.drag_start_velocity = self.zynseq.libseq.getNoteVelocity(
-            step, note)
-        self.drag_start_duration = self.zynseq.libseq.getNoteDuration(
-            step, note)
+        if self.display_mode == SHOW_CC:
+            self.drag_start_velocity = self.zynseq.libseq.getControlValue(
+                step, note)
+            self.drag_start_duration = self.zynseq.libseq.getControlDuration(
+                step, note)
+        else:
+            self.drag_start_velocity = self.zynseq.libseq.getNoteVelocity(
+                step, note)
+            self.drag_start_duration = self.zynseq.libseq.getNoteDuration(
+                step, note)
 
     # Function to handle grid mouse drag
     # event: Mouse event
@@ -1149,7 +1184,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
         if step < 0 or step >= self.n_steps or row >= len(self.keymap):
             return
         note = self.keymap[row]['note']
-        start_step = self.zynseq.libseq.getNoteStart(step, note)
+        if self.display_mode == SHOW_CC:
+            start_step = self.zynseq.libseq.getControlStart(step, note)
+        else:
+            start_step = self.zynseq.libseq.getNoteStart(step, note)
         if start_step >= 0:
             self.remove_chord(start_step, row)
         else:
@@ -1164,7 +1202,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
             return
         self.save_pattern_snapshot(now=True, force=False)
         note = self.keymap[row]['note']
-        self.zynseq.libseq.removeNote(step, note)
+        if self.display_mode == SHOW_CC:
+            self.zynseq.libseq.removeControl(step, note)
+        else:
+            self.zynseq.libseq.removeNote(step, note)
         # Silence note if sounding
         self.zynseq.libseq.playNote(note, 0, self.channel)
         self.save_pattern_snapshot(now=True, force=True)
@@ -1180,6 +1221,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
     # dur: duration (in steps)
     # offset: offset of start of event (0..0.99)
     def add_chord(self, step, note, vel, dur, offset=0.0):
+        if self.display_mode == SHOW_CC:
+            self.add_event(step, note, vel, dur, offset)
+            return
         match self.chord_mode:
             case 0:
                 # Single note entry
@@ -1190,9 +1234,9 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
             case _:
                 # Diatonic chord entry mode
                 chord = self.get_diatonic_chord(note)
-        for offset in chord:
-            if self.add_event(step, note + offset, self.velocity, self.duration):
-                self.play_note(note + offset)
+        for note_offset in chord:
+            if self.add_event(step, note + note_offset, vel, dur, offset):
+                self.play_note(note + note_offset)
 
     # Function to remove a note or chord, depending on current chord mode
     # step: step number (column)
@@ -1201,6 +1245,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
     # dur: duration (in steps)
     # offset: offset of start of event (0..0.99)
     def remove_chord(self, step, note):
+        if self.display_mode == SHOW_CC:
+            self.remove_event(step, note)
         match self.chord_mode:
             case 0:
                 # Single note entry
@@ -1225,7 +1271,10 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
         note = self.keymap[row]["note"]
         if note > 127:
             return False
-        self.zynseq.libseq.addNote(step, note, vel, dur, offset)
+        if self.display_mode == SHOW_CC:
+            self.zynseq.libseq.addControl(step, note, vel, vel, dur, offset)
+        else:
+            self.zynseq.libseq.addNote(step, note, vel, dur, offset)
         self.save_pattern_snapshot(now=True, force=True)
         self.drawing = True
         self.draw_row(row)
@@ -1273,17 +1322,27 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
             else:
                 white = True
 
-        velocity_colour = self.zynseq.libseq.getNoteVelocity(step, note)
-        if velocity_colour:
+        if self.display_mode == SHOW_CC:
+            velocity_colour = self.zynseq.libseq.getControlValue(step, note)
+            if velocity_colour == 255:
+                self.grid_canvas.delete(cell)
+                self.cells[cellIndex] = None
+                return
             velocity_colour += 70
-            duration = self.zynseq.libseq.getNoteDuration(step, note)
-            offset = self.zynseq.libseq.getNoteOffset(step, note)
-            fill_colour = f"#{velocity_colour:02x}{velocity_colour:02x}{velocity_colour:02x}"
+            duration = self.zynseq.libseq.getControlDuration(step, note)
+            offset = self.zynseq.libseq.getControlOffset(step, note)
         else:
-            self.grid_canvas.delete(cell)
-            self.cells[cellIndex] = None
-            return
+            velocity_colour = self.zynseq.libseq.getNoteVelocity(step, note)
+            if 0 < velocity_colour < 128:
+                velocity_colour += 70
+                duration = self.zynseq.libseq.getNoteDuration(step, note)
+                offset = self.zynseq.libseq.getNoteOffset(step, note)
+            else:
+                self.grid_canvas.delete(cell)
+                self.cells[cellIndex] = None
+                return
 
+        fill_colour = f"#{velocity_colour:02x}{velocity_colour:02x}{velocity_colour:02x}"
         coord = self.get_cell(step, row, duration, offset)
         if white:
             cell_tags = ("%d,%d" % (step, row), "gridcell",
@@ -1782,6 +1841,8 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
     # mode: Edit mode to enable [EDIT_MODE_NONE | EDIT_MODE_SINGLE | EDIT_MODE_ALL]
     def set_edit_mode(self, mode):
         self.edit_mode = mode
+        if self.display_mode == SHOW_CC:
+            self.edit_param = EDIT_PARAM_VEL
         if mode == EDIT_MODE_SINGLE:
             self.set_title("Note Parameters", zynthian_gui_config.color_header_bg,
                            zynthian_gui_config.color_panel_tx)
@@ -1834,15 +1895,27 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
                 delta = "0.1"
                 zynpot = 1
             elif self.edit_param == EDIT_PARAM_VEL:
-                sel_velocity = self.zynseq.libseq.getNoteVelocity(step, note)
-                if sel_velocity > 0:
-                    velocity = sel_velocity
+                if self.display_mode == SHOW_CC:
+                    sel_velocity = self.zynseq.libseq.getControlValue(step, note)
+                    if sel_velocity < 128:
+                        velocity = sel_velocity
+                    else:
+                        velocity = self.velocity
+                    self.set_title(f"CC Value: {velocity}")
                 else:
-                    velocity = self.velocity
-                self.set_title(f"Velocity: {velocity}")
+                    sel_velocity = self.zynseq.libseq.getNoteVelocity(step, note)
+                    if sel_velocity > 0:
+                        velocity = sel_velocity
+                    else:
+                        velocity = self.velocity
+                    self.set_title(f"Velocity: {velocity}")
             elif self.edit_param == EDIT_PARAM_OFFSET:
-                self.set_title(
-                    f"Offset: {round(100 * self.zynseq.libseq.getNoteOffset(step, note))}%")
+                if self.display_mode == SHOW_CC:
+                    self.set_title(
+                        f"Offset: {round(100 * self.zynseq.libseq.getControlOffset(step, note))}%")
+                else:
+                    self.set_title(
+                        f"Offset: {round(100 * self.zynseq.libseq.getNoteOffset(step, note))}%")
             elif self.edit_param == EDIT_PARAM_STUT_CNT:
                 self.set_title(
                     f"Stutter count: {self.zynseq.libseq.getStutterCount(step, note)}")
@@ -1939,29 +2012,53 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
                         self.duration = duration
                         self.select_cell()
                 elif self.edit_param == EDIT_PARAM_VEL:
-                    if sel_duration:
+                    no_sel = True
+                    if self.display_mode == SHOW_CC:
+                        sel_velocity = self.zynseq.libseq.getControlValue(step, note)
+                        if sel_velocity < 128:
+                            velocity = sel_velocity
+                            no_sel = False
+                        else:
+                            velocity = self.velocity
+                    elif sel_duration:
                         sel_velocity = self.zynseq.libseq.getNoteVelocity(step, note)
                         velocity = sel_velocity
+                        no_sel = False
                     else:
                         velocity = self.velocity
                     velocity += dval
-                    if velocity > 127 or velocity < 1:
-                        return
-                    self.set_velocity_indicator(velocity)
-                    if sel_duration and velocity != sel_velocity:
-                        self.zynseq.libseq.setNoteVelocity(step, note, velocity)
-                        self.draw_cell(step, index)
+                    if self.display_mode == SHOW_CC:
+                        if velocity > 127 or velocity < 0:
+                            return
                     else:
+                        if velocity > 127 or velocity < 1:
+                            return
+                    self.set_velocity_indicator(velocity)
+                    if no_sel:
                         self.velocity = velocity
                         self.select_cell()
+                    else:
+                        if self.display_mode == SHOW_CC:
+                            self.zynseq.libseq.setControlValue(step, note, velocity, velocity)
+                            self.draw_cell(step, index)
+                        elif sel_duration:
+                            self.zynseq.libseq.setNoteVelocity(step, note, velocity)
+                            self.draw_cell(step, index)
                 elif self.edit_param == EDIT_PARAM_OFFSET:
-                    val = round(
-                        100 * self.zynseq.libseq.getNoteOffset(step, note)) + dval
+                    if self.display_mode == SHOW_CC:
+                        val = round(
+                            100 * self.zynseq.libseq.getControlOffset(step, note)) + dval
+                    else:
+                        val = round(
+                            100 * self.zynseq.libseq.getNoteOffset(step, note)) + dval
                     if val > 99:
                         val = 99
                     elif val < 0:
                         val = 0
-                    self.zynseq.libseq.setNoteOffset(step, note, val/100.0)
+                    if self.display_mode == SHOW_CC:
+                        self.zynseq.libseq.setControlOffset(step, note, val/100.0)
+                    else:
+                        self.zynseq.libseq.setNoteOffset(step, note, val/100.0)
                     self.draw_row(index)
                 elif self.edit_param == EDIT_PARAM_STUT_CNT:
                     val = self.zynseq.libseq.getStutterCount(step, note) + dval
@@ -2022,12 +2119,18 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
         elif i == self.ctrl_order[3]:
             if self.edit_mode == EDIT_MODE_SINGLE or self.edit_mode == EDIT_MODE_ALL:
                 self.edit_param += dval
-                if self.edit_param < 0:
-                    self.edit_param = 0
-                if self.edit_param > EDIT_PARAM_LAST:
-                    self.edit_param = EDIT_PARAM_LAST
-                if self.edit_param == EDIT_PARAM_CHORD_TYPE and self.chord_mode == 0:
-                    self.edit_param = EDIT_PARAM_CHORD_MODE
+                if self.display_mode == SHOW_CC:
+                    if self.edit_param < EDIT_PARAM_VEL:
+                        self.edit_param = EDIT_PARAM_VEL
+                    if self.edit_param > EDIT_PARAM_OFFSET:
+                        self.edit_param = EDIT_PARAM_OFFSET
+                else:
+                    if self.edit_param < 0:
+                        self.edit_param = 0
+                    if self.edit_param > EDIT_PARAM_LAST:
+                        self.edit_param = EDIT_PARAM_LAST
+                    if self.edit_param == EDIT_PARAM_CHORD_TYPE and self.chord_mode == 0:
+                        self.edit_param = EDIT_PARAM_CHORD_MODE
                 self.set_edit_title()
             elif self.edit_mode == EDIT_MODE_ZOOM:
                 self.set_grid_zoom(self.zoom + dval)
@@ -2052,7 +2155,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
         elif type == "B":
             if self.edit_mode == EDIT_MODE_NONE:
                 self.set_edit_mode(EDIT_MODE_SINGLE)
-            elif self.edit_mode == EDIT_MODE_SINGLE:
+            elif self.edit_mode == EDIT_MODE_SINGLE and self.display_mode == SHOW_NOTES:
                 self.set_edit_mode(EDIT_MODE_ALL)
 
     # Function to handle switch press
