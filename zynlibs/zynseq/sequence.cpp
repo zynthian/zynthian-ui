@@ -87,13 +87,17 @@ void Sequence::addTimeSig(uint16_t beatsPerBar, uint16_t bar) {
     m_bChanged = true;
 }
 
-uint16_t Sequence::getTimeSig(uint16_t bar) {
+uint16_t Sequence::getTimeSigAt(uint16_t bar) {
     if (bar < 1)
         bar = 1;
     TimebaseEvent* pEvent = m_timebase.getPreviousTimebaseEvent(bar, 1, TIMEBASE_TYPE_TIMESIG);
     if (pEvent)
         return pEvent->value;
     return 4;
+}
+
+uint16_t Sequence::getTimeSig() {
+    return m_nTimeSig;
 }
 
 Timebase* Sequence::getTimebase() {
@@ -199,10 +203,14 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
     }
 
     if (nState != STOPPED && m_pNextTimebaseEvent && nTime >= m_pNextTimebaseEvent->clock) {
-        if (m_pNextTimebaseEvent->type == TIMEBASE_TYPE_TEMPO)
+        if (m_pNextTimebaseEvent->type == TIMEBASE_TYPE_TEMPO) {
             m_fTempo = m_pNextTimebaseEvent->value / 100;
-        m_pNextTimebaseEvent = m_timebase.getNextTimebaseEvent(m_pNextTimebaseEvent);
-        nReturn |= 4;
+            nReturn |= 4;
+        } else if (m_pNextTimebaseEvent->type == TIMEBASE_TYPE_TIMESIG) {
+            //!@todo: Handle two time events at same time
+            m_pNextTimebaseEvent = m_timebase.getNextTimebaseEvent(m_pNextTimebaseEvent);
+            nReturn |= 8;
+        }
     }
 
     return nReturn;

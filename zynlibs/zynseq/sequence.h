@@ -129,7 +129,12 @@ class Sequence {
      *   @param  bar Bar (measure) at which to get time signature
      *   @retval uint16_t Beats per bar
      */
-    uint16_t getTimeSig(uint16_t bar);
+     uint16_t getTimeSigAt(uint16_t bar);
+
+    /** @brief  Get current time signature
+     *   @retval uint16_t Beats per bar
+     */
+    uint16_t getTimeSig();
 
     /** @brief  Get pointer to timebase track
      *   @retval Timebase* Pointer to timebase map
@@ -207,7 +212,8 @@ class Sequence {
     uint32_t m_nLastSyncPos = 0;       // Position of last sync pulse in clock cycles
     uint32_t m_nLength      = 0;       // Length of sequence in clock cycles (longest track)
     uint8_t m_nGroup        = 0;       // Sequence's mutually exclusive group
-    uint16_t m_fTempo       = 120.0;   // Current tempo (overriden by tempo events in timebase map)
+    float m_fTempo          = 120.0;   // Current tempo (overriden by tempo events in timebase map)
+    uint16_t m_nTimeSig     = 4;       // Current time signature (beats in bar)
     bool m_bChanged         = false;   // True if sequence content changed
     bool m_bStateChanged    = false;   // True if state changed since last clock cycle
     bool m_bEmpty           = true;    // True if all patterns are emtpy (no events)

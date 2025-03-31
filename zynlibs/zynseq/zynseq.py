@@ -157,7 +157,7 @@ class zynseq(zynthian_engine):
                 info.append(
                     {
                         "title": "",
-                        "bpb": None,
+                        "bpb": 4,
                         "bars": 1,
                         "mode": 2,
                         "group": 0,

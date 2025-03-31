@@ -862,11 +862,15 @@ class zynthian_gui_mixer_strip():
         allow_mode = True
 
         info = self.zynseq.launcher_info[self.chan][slot]
+        self.parent.sequence = info['sequence']
         options = {}
         if is_main:
             options[f"Tempo: {info['tempo']}"] = slot
-            options[f"Bars: {info['bpb']}"] = slot
             options[f"Beats per bar: {info['bpb']}"] = slot
+            pattern = self.zynseq.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, info["sequence"], 0, 0)
+            if pattern >= 0:
+                self.zynseq.libseq.selectPattern(pattern)
+                options[f"Duration (in bars): {info['bars']}"] = slot
         elif info["clippy"]:
             zctrl = info['clippy'].controllers_dict[f"file {slot + 1:02}"]
             allow_mode = zctrl.value != ""
@@ -1480,10 +1484,27 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'nudge_factor': 1.0,
                 "graph_path":slot # Temporarily abuse graph_path to store the slot
             }, self.on_scene_tempo)
-        elif option.startswith("Beats"):
-            pass
-        elif option.startswith("Bars"):
-            pass
+        elif option.startswith("Duration"):
+            slot = params
+            info = self.zynseq.launcher_info[16][slot]
+            self.enable_param_editor(self, "tempo", {
+                'name': 'Duration (bars)',
+                'value_min': 1,
+                'value_max': 64,
+                'value': info["bars"],
+                "graph_path":slot # Temporarily abuse graph_path
+            }, self.on_scene_dur)
+        elif option.startswith("Beats per bar"):
+            slot = params
+            info = self.zynseq.launcher_info[16][slot]
+            bpb = self.zynseq.libseq.getBeatsPerBar()
+            self.enable_param_editor(self, "tempo", {
+                'name': 'Beats per bar',
+                'value_min': 2,
+                'value_max': 24,
+                'value': bpb,
+                "graph_path":info # Temporarily abuse graph_path
+            }, self.on_scene_bpb)
         elif option.startswith("Mode"):
             info = params
             sequence = info["sequence"]
@@ -1522,6 +1543,15 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                         proc.engine.on_tempo_cb()
         except Exception as e:
             logging.warning(f"Error setting scene tempo: {e}")
+
+    def on_scene_dur(self, bars):
+        bpb = self.zynseq.libseq.getBeatsPerBar()
+        self.zynseq.libseq.setBeatsInPattern(bars * bpb)
+        self.zynseq.launcher_info[16][self.param_editor_zctrl.graph_path]["bars"] = bars
+
+    def on_scene_bpb(self, bpb):
+        self.param_editor_zctrl.graph_path["bpb"] = bpb
+        self.zynseq.libseq.setBeatsInPattern(self.param_editor_zctrl.graph_path["bars"] * bpb)
 
     # --------------------------------------------------------------------------
     # Physical UI Control Management: Pots & switches
