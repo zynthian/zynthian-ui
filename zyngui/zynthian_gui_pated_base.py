@@ -230,14 +230,14 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             title = f"Pattern {self.pattern}"
         return title
 
-    def set_title(self, title=None, color_fg=None, color_bg=None):
+    def set_title(self, title=None, color_fg=None, color_bg=None, timeout=None):
         if not title:
             title = self.get_title()
         if not color_fg:
             color_fg = zynthian_gui_config.color_panel_tx
         if not color_bg:
             color_bg = zynthian_gui_config.color_header_bg
-        super().set_title(title, color_fg, color_bg)
+        super().set_title(title, color_fg, color_bg, timeout)
 
     # Function to enable edit mode => It *MUST* be redefined in child class
     #   mode: Edit mode to enable [EDIT_MODE_NONE | others to define in child classes]
