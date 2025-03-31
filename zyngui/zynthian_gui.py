@@ -82,7 +82,8 @@ from zyngui.zynthian_gui_chain_menu import zynthian_gui_chain_menu
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
 from zyngui.zynthian_gui_zynpad import zynthian_gui_zynpad
 from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
-from zyngui.zynthian_gui_patterneditor import zynthian_gui_patterneditor
+from zyngui.zynthian_gui_pated_notes import zynthian_gui_pated_notes
+from zyngui.zynthian_gui_pated_cc import zynthian_gui_pated_cc
 from zyngui.zynthian_gui_mixer import zynthian_gui_mixer
 from zyngui.zynthian_gui_tempo import zynthian_gui_tempo
 from zyngui.zynthian_gui_brightness_config import zynthian_gui_brightness_config
@@ -469,7 +470,8 @@ class zynthian_gui:
         self.screens['alsa_mixer'] = self.screens['control']
         self.screens['zynpad'] = zynthian_gui_zynpad()
         self.screens['arranger'] = zynthian_gui_arranger()
-        self.screens['pattern_editor'] = zynthian_gui_patterneditor()
+        self.screens['pattern_editor'] = zynthian_gui_pated_notes()
+        self.screens['pated_cc'] = zynthian_gui_pated_cc()
         self.screens['wifi'] = zynthian_gui_wifi()
         self.screens['bluetooth'] = zynthian_gui_bluetooth()
         self.screens['brightness_config'] = zynthian_gui_brightness_config()
@@ -1629,18 +1631,18 @@ class zynthian_gui:
             if i == 2 and t == 'S':
                 self.zynswitch_short(i)
                 return
-        elif self.current_screen == "pattern_editor":
+        elif self.current_screen in ("pattern_editor", "pated_cc"):
             if i == 0:
                 if t == 'S' or t == 'B':
                     self.show_screen("arranger")
                     return
             elif i == 1:
                 if t == 'S' or t == 'B':
-                    self.screens["pattern_editor"].reset_grid_zoom()
+                    self.current_screen.reset_grid_zoom()
                     return
             elif i == 2:
                 if t == 'S' or t == 'B':
-                    self.zynswitch_bold(3)
+                    self.toggle_pated()
                     return
         elif self.current_screen == "arranger":
             if i == 0:
@@ -1855,6 +1857,22 @@ class zynthian_gui:
         if action_config['S'] and action_config['S'].lower().endswith(screen_name):
             return True
         return False
+
+    def toggle_pated(self):
+        if self.current_screen == "pated_cc":
+            pated_screen = "pattern_editor"
+        elif self.current_screen == "pattern_editor":
+            pated_screen = "pated_cc"
+        else:
+            return
+        cur_pated_obj = self.get_current_screen_obj()
+        pated_obj = self.screens[pated_screen]
+        pated_obj.bank = cur_pated_obj.bank
+        pated_obj.sequence = cur_pated_obj.sequence
+        pated_obj.load_pattern(cur_pated_obj.pattern)
+        pated_obj.channel = cur_pated_obj.channel
+        logging.debug(f"Opening {pated_screen}...")
+        self.show_screen(pated_screen, self.SCREEN_HMODE_REPLACE)
 
     # -------------------------------------------------------------------
     # Switches

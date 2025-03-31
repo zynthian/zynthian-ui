@@ -111,7 +111,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         self.zynseq.libseq.updateSequenceInfo()
         self.setup_zynpots()
         self.refresh_status(True)
-        if self.param_editor_zctrl == None:
+        if self.param_editor_zctrl is None:
             self.set_title(f"Scene {self.bank}")
         zynsigman.register(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.update_play_state)
         zynsigman.register(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PROGRESS, self.update_progress)
@@ -254,31 +254,24 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
                 pad_y = int(row * self.row_height)
                 pad = row + col * self.zynseq.col_in_bank
                 header_h = int(0.28 * self.row_height)
-                self.grid_canvas.itemconfig(self.pads[pad]["group"], font=(
-                    zynthian_gui_config.font_family, fs2))
-                self.grid_canvas.itemconfig(self.pads[pad]["num"], font=(
-                    zynthian_gui_config.font_family, fs2))
-                self.grid_canvas.itemconfig(self.pads[pad]["title"], width=int(
-                    0.96 * self.column_width), font=(zynthian_gui_config.font_family, fs1))
+                self.grid_canvas.itemconfig(self.pads[pad]["group"], font=(zynthian_gui_config.font_family, fs2))
+                self.grid_canvas.itemconfig(self.pads[pad]["num"], font=(zynthian_gui_config.font_family, fs2))
+                self.grid_canvas.itemconfig(self.pads[pad]["title"], width=int(0.96 * self.column_width),
+                                            font=(zynthian_gui_config.font_family, fs1))
                 self.grid_canvas.itemconfig(f"pad:{pad}", state=tkinter.NORMAL)
-                self.grid_canvas.coords(
-                    self.pads[pad]["header"], pad_x, pad_y, pad_x + self.column_width - 2, pad_y + header_h)
+                self.grid_canvas.coords(self.pads[pad]["header"], pad_x, pad_y,
+                                        pad_x + self.column_width - 2, pad_y + header_h)
                 self.grid_canvas.coords(self.pads[pad]["body"], pad_x, pad_y + header_h,
                                         pad_x + self.column_width - 2, pad_y + self.row_height - 2)
                 posx = pad_x + int(0.02 * self.column_width)
                 posy = pad_y + int(0.04 * self.row_height)
-                self.grid_canvas.coords(
-                    self.pads[pad]["mode"], posx + int(0.125), posy)
+                self.grid_canvas.coords(self.pads[pad]["mode"], posx + int(0.125), posy)
                 posy = pad_y + int(0.05 * self.row_height)
-                self.grid_canvas.coords(
-                    self.pads[pad]["group"], posx + int(3 * 0.125 * self.column_width), posy)
-                self.grid_canvas.coords(
-                    self.pads[pad]["num"], posx + int(5 * 0.125 * self.column_width), posy)
-                self.grid_canvas.coords(
-                    self.pads[pad]["state"], posx + int(7 * 0.125 * self.column_width), posy)
+                self.grid_canvas.coords(self.pads[pad]["group"], posx + int(3 * 0.125 * self.column_width), posy)
+                self.grid_canvas.coords(self.pads[pad]["num"], posx + int(5 * 0.125 * self.column_width), posy)
+                self.grid_canvas.coords(self.pads[pad]["state"], posx + int(7 * 0.125 * self.column_width), posy)
                 posx = pad_x + int(0.03 * self.column_width)
-                self.grid_canvas.coords(
-                    self.pads[pad]["title"], posx, posy + 2 * fs1)
+                self.grid_canvas.coords(self.pads[pad]["title"], posx, posy + 2 * fs1)
 
         self.redrawing = False
         self.columns = self.zynseq.col_in_bank
@@ -360,25 +353,23 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
     def update_selection_cursor(self):
         # TODO: Was update_selection_cursor removed during refactor and replaced during merge?
         if self.selected_pad >= self.zynseq.libseq.getSequencesInBank(self.bank):
-            self.selected_pad = self.zynseq.libseq.getSequencesInBank(
-                self.bank) - 1
+            self.selected_pad = self.zynseq.libseq.getSequencesInBank(self.bank) - 1
         col = int(self.selected_pad / self.zynseq.col_in_bank)
         row = self.selected_pad % self.zynseq.col_in_bank
         self.grid_canvas.coords(self.selection,
                                 1 + col * self.column_width, 1 + row * self.row_height,
-                                (1 + col) * self.column_width - self.select_thickness, (1 + row) * self.row_height - self.select_thickness)
+                                (1 + col) * self.column_width - self.select_thickness,
+                                (1 + row) * self.row_height - self.select_thickness)
         self.grid_canvas.tag_raise(self.selection)
 
     # Function to handle pad press
     def on_pad_press(self, event):
-        tags = self.grid_canvas.gettags(
-            self.grid_canvas.find_withtag(tkinter.CURRENT))
+        tags = self.grid_canvas.gettags(self.grid_canvas.find_withtag(tkinter.CURRENT))
         pad = int(tags[0].split(':')[1])
         self.select_pad(pad)
         if self.param_editor_zctrl:
             self.disable_param_editor()
-        self.grid_timer = Timer(
-            zynthian_gui_config.zynswitch_bold_seconds, self.on_grid_timer)
+        self.grid_timer = Timer(zynthian_gui_config.zynswitch_bold_seconds, self.on_grid_timer)
         self.grid_timer.start()
 
     # Function to handle pad release
@@ -411,10 +402,11 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         options[f'Grid size ({self.zynseq.col_in_bank}x{self.zynseq.col_in_bank})'] = 'Grid size'
         # Single Pad Options
         options['> PAD OPTIONS'] = None
-        options[f'Play mode ({zynseq.PLAY_MODES[self.zynseq.libseq.getPlayMode(self.bank, self.selected_pad)]})'] = 'Play mode'
-        options[f'MIDI channel ({1 + self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)})'] = 'MIDI channel'
-        track_type = self.zynseq.libseq.getTrackType(
-            self.bank, self.selected_pad, 0)
+        pmode = self.zynseq.libseq.getPlayMode(self.bank, self.selected_pad)
+        chan = self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)
+        options[f'Play mode ({zynseq.PLAY_MODES[pmode]})'] = 'Play mode'
+        options[f'MIDI channel ({chan + 1})'] = 'MIDI channel'
+        track_type = self.zynseq.libseq.getTrackType(self.bank, self.selected_pad, 0)
         if track_type == 0:
             options[f'Track type (MIDI)'] = 'Track type'
         elif track_type == 1:
@@ -431,8 +423,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         if self.trigger_device is not None and self.trigger_channel is not None:
             options[f'Trigger note ({self.get_trigger_note_name()})'] = 'Trigger note'
 
-        self.zyngui.screens['option'].config(
-            "ZynPad Menu", options, self.menu_cb)
+        self.zyngui.screens['option'].config("ZynPad Menu", options, self.menu_cb)
         self.zyngui.show_screen('option')
 
     def toggle_menu(self):
@@ -447,8 +438,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         elif params == 'Arranger':
             self.zyngui.show_screen('arranger')
         elif params == 'Beats per bar':
-            self.enable_param_editor(self, 'bpb', {'name': 'Beats per bar', 'value_min': 1,
-                                     'value_max': 64, 'value_default': 4, 'value': self.zynseq.libseq.getBeatsPerBar()})
+            self.enable_param_editor(self, 'bpb', {'name': 'Beats per bar', 'value_min': 1, 'value_max': 64,
+                                                   'value_default': 4, 'value': self.zynseq.libseq.getBeatsPerBar()})
         elif params == 'Scene':
             self.enable_param_editor(self, 'bank', {
                                      'name': 'Scene', 'value_min': 1, 'value_max': 64, 'value': self.bank})
@@ -456,25 +447,27 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
             labels = []
             for i in range(1, 9):
                 labels.append(f'{i}x{i}')
-            self.enable_param_editor(self, 'grid_size', {
-                                     'name': 'Grid size', 'labels': labels, 'value': self.zynseq.col_in_bank - 1, 'value_default': 3}, self.set_grid_size)
+            self.enable_param_editor(self, 'grid_size', {'name': 'Grid size', 'labels': labels,
+                                                         'value': self.zynseq.col_in_bank - 1, 'value_default': 3},
+                                     self.set_grid_size)
         elif params == 'Play mode':
-            self.enable_param_editor(self, 'playmode', {'name': 'Play mode', 'labels': zynseq.PLAY_MODES, 'value': self.zynseq.libseq.getPlayMode(
-                self.zynseq.bank, self.selected_pad), 'value_default': zynseq.SEQ_LOOPALL}, self.set_play_mode)
+            pmode = self.zynseq.libseq.getPlayMode(self.zynseq.bank, self.selected_pad)
+            self.enable_param_editor(self, 'playmode', {'name': 'Play mode', 'labels': zynseq.PLAY_MODES,
+                                                        'value': pmode, 'value_default': zynseq.SEQ_LOOPALL},
+                                     self.set_play_mode)
         elif params == 'MIDI channel':
             labels = []
             for midi_chan in range(16):
-                preset_name = self.chain_manager.get_synth_preset_name(
-                    midi_chan)
+                preset_name = self.chain_manager.get_synth_preset_name(midi_chan)
                 if preset_name:
                     labels.append(f"{midi_chan + 1} ({preset_name})")
                 else:
                     labels.append(f"{midi_chan + 1}")
-            self.enable_param_editor(self, 'midi_chan', {'name': 'MIDI channel', 'labels': labels, 'value_default': self.zynseq.libseq.getChannel(
-                self.bank, self.selected_pad, 0), 'value': self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)})
+            chan = self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)
+            self.enable_param_editor(self, 'midi_chan', {'name': 'MIDI channel', 'labels': labels,
+                                                         'value_default': chan, 'value': chan})
         elif params == 'Track type':
-            track_type = self.zynseq.libseq.getTrackType(
-                self.bank, self.selected_pad, 0)
+            track_type = self.zynseq.libseq.getTrackType(self.bank, self.selected_pad, 0)
             if track_type >= 1:
                 self.set_track_type(0)
             elif track_type == 0:
@@ -495,12 +488,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
             self.zyngui.cuia_enable_midi_learn()
 
     def set_track_type(self, track_type):
-        pattern = self.zynseq.libseq.getPattern(
-            self.bank, self.selected_pad, 0, 0)
+        pattern = self.zynseq.libseq.getPattern(self.bank, self.selected_pad, 0, 0)
         self.zynseq.libseq.selectPattern(pattern)
         # self.zynseq.libseq.setSequence(self.bank, self.selected_pad)
-        self.zynseq.libseq.setTrackType(
-            self.bank, self.selected_pad, 0, track_type)
+        self.zynseq.libseq.setTrackType(self.bank, self.selected_pad, 0, track_type)
         if track_type == 0:
             # Set to MIDI track
             logging.debug("Setting track type to MIDI")
@@ -510,17 +501,15 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
             # Set to Audio track
             logging.debug("Setting track type to Audio")
             self.zynseq.libseq.clear()
-            self.zynseq.libseq.addNote(
-                0, 60, 100, self.zynseq.libseq.getSteps(), 0)
+            self.zynseq.libseq.addNote(0, 60, 100, self.zynseq.libseq.getSteps(), 0)
             # Add a new audio player (zynsampler) chain => IMPROVE! We could choose an existing one...
-            chain_id = self.chain_manager.add_chain(None, self.zynseq.libseq.getChannel(
-                self.bank, self.selected_pad, 0), True, False)
-            self.zynseq.libseq.setChainID(
-                self.bank, self.selected_pad, 0, chain_id)
+            chain_id = self.chain_manager.add_chain(None,
+                                                    self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0),
+                                                    True, False)
+            self.zynseq.libseq.setChainID(self.bank, self.selected_pad, 0, chain_id)
             processor = self.chain_manager.add_processor(chain_id, "AP")
             self.zyngui.current_processor = processor
-            processor.controllers_dict['beats'].set_value(
-                self.zynseq.libseq.getBeatsInPattern())
+            processor.controllers_dict['beats'].set_value(self.zynseq.libseq.getBeatsInPattern())
             if len(processor.get_bank_list()) > 1:
                 self.zyngui.show_screen('bank')
             else:
@@ -541,8 +530,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         elif zctrl.symbol == 'playmode':
             self.set_play_mode(zctrl.value)
         elif zctrl.symbol == 'midi_chan':
-            self.zynseq.set_midi_channel(
-                self.bank, self.selected_pad, 0, zctrl.value)
+            self.zynseq.set_midi_channel(self.bank, self.selected_pad, 0, zctrl.value)
             self.zynseq.set_group(self.bank, self.selected_pad, zctrl.value)
         elif zctrl.symbol == 'trigger_dev':
             self.set_trigger_device(zctrl)
@@ -550,11 +538,9 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
             self.set_trigger_channel(zctrl)
         elif zctrl.symbol == 'trigger_note':
             if zctrl.value > 0:
-                self.zynseq.libseq.setTriggerNote(
-                    self.bank, self.selected_pad, zctrl.value - 1)
+                self.zynseq.libseq.setTriggerNote(self.bank, self.selected_pad, zctrl.value - 1)
             else:
-                self.zynseq.libseq.setTriggerNote(
-                    self.bank, self.selected_pad, 128)
+                self.zynseq.libseq.setTriggerNote(self.bank, self.selected_pad, 128)
 
     # Function to set the playmode of the selected pad
     def set_play_mode(self, mode):
@@ -562,20 +548,15 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
     # Function to show the editor (pattern or arranger based on sequence content)
     def show_pattern_editor(self):
-        tracks_in_sequence = self.zynseq.libseq.getTracksInSequence(
-            self.bank, self.selected_pad)
-        patterns_in_track = self.zynseq.libseq.getPatternsInTrack(
-            self.bank, self.selected_pad, 0)
-        pattern = self.zynseq.libseq.getPattern(
-            self.bank, self.selected_pad, 0, 0)
+        tracks_in_sequence = self.zynseq.libseq.getTracksInSequence(self.bank, self.selected_pad)
+        patterns_in_track = self.zynseq.libseq.getPatternsInTrack(self.bank, self.selected_pad, 0)
+        pattern = self.zynseq.libseq.getPattern(self.bank, self.selected_pad, 0, 0)
         if tracks_in_sequence != 1 or patterns_in_track != 1 or pattern == -1:
             self.zyngui.screens["arranger"].sequence = self.selected_pad
             self.zyngui.toggle_screen("arranger")
             return True
-        self.state_manager.start_busy(
-            "load_pattern", f"loading pattern {pattern}")
-        self.zyngui.screens['pattern_editor'].channel = self.zynseq.libseq.getChannel(
-            self.bank, self.selected_pad, 0)
+        self.state_manager.start_busy("load_pattern", f"loading pattern {pattern}")
+        self.zyngui.screens['pattern_editor'].channel = self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)
         self.zyngui.screens['pattern_editor'].bank = self.bank
         self.zyngui.screens['pattern_editor'].sequence = self.selected_pad
         self.zyngui.screens['pattern_editor'].load_pattern(pattern)
@@ -586,10 +567,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
     # Function to refresh pads
     def refresh_status(self, force=False):
         super().refresh_status()
-
         if self.redrawing and not force:
             return
-
         force |= self.zynseq.bank != self.bank
         if force:
             self.bank = self.zynseq.bank
@@ -605,13 +584,13 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         if pad is not None:
             self.selected_pad = pad
         if self.selected_pad >= self.zynseq.libseq.getSequencesInBank(self.zynseq.bank):
-            self.selected_pad = self.zynseq.libseq.getSequencesInBank(
-                self.zynseq.bank) - 1
+            self.selected_pad = self.zynseq.libseq.getSequencesInBank(self.zynseq.bank) - 1
         col = int(self.selected_pad / self.columns)
         row = self.selected_pad % self.columns
         self.grid_canvas.coords(self.selection,
                                 1 + col * self.column_width, 1 + row * self.row_height,
-                                (1 + col) * self.column_width - self.select_thickness, (1 + row) * self.row_height - self.select_thickness)
+                                (1 + col) * self.column_width - self.select_thickness,
+                                (1 + row) * self.row_height - self.select_thickness)
         self.grid_canvas.tag_raise(self.selection)
 
     # Function to handle zynpots value change
@@ -645,19 +624,18 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         elif encoder == self.ctrl_order[0] and zynthian_gui_config.transport_clock_source <= 1:
             self.zynseq.update_tempo()
             self.zynseq.nudge_tempo(dval)
-            self.set_title(
-                f"Tempo: {self.zynseq.get_tempo():.1f}", None, None, 2)
+            self.set_title(f"Tempo: {self.zynseq.get_tempo():.1f}", None, None, 2)
 
     # Function to handle SELECT button press
-    #  type: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
-    def switch_select(self, type='S'):
-        if super().switch_select(type):
+    #  stype: Button press duration ["S"=Short, "B"=Bold, "L"=Long]
+    def switch_select(self, stype='S'):
+        if super().switch_select(stype):
             if self.midi_learn:
                 self.zyngui.cuia_disable_midi_learn()
             return True
-        if type == 'S':
+        if stype == 'S':
             self.toggle_pad()
-        elif type == "B":
+        elif stype == "B":
             track_type = self.zynseq.libseq.getTrackType(
                 self.bank, self.selected_pad, 0)
             if track_type == 0:
@@ -686,10 +664,10 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
     # Function to handle switch press
     #  switch: Switch index [0=Layer, 1=Back, 2=Snapshot, 3=Select]
-    #  type: Press type ["S"=Short, "B"=Bold, "L"=Long]
+    #  stype: Press type ["S"=Short, "B"=Bold, "L"=Long]
     #  returns True if action fully handled or False if parent action should be triggered
-    def switch(self, switch, type):
-        if switch == 0 and type == "S":
+    def switch(self, switch, stype):
+        if switch == 0 and stype == "S":
             self.show_menu()
             return True
         return False
