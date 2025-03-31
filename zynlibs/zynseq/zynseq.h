@@ -927,7 +927,7 @@ void removeTrackFromSequence(uint8_t bank, uint8_t sequence, uint32_t track);
  *   @param  bar Bar of sequence at which to add tempo change [Optional - default: 1]
  *   @param  tick Tick within bar at which to add tempo change [Optional - default: 0]
  */
-void addTempoEvent(uint8_t bank, uint8_t sequence, uint32_t tempo, uint16_t bar = 1, uint16_t tick = 0);
+void addTempoEvent(uint8_t bank, uint8_t sequence, float tempo, uint16_t bar = 1, uint16_t tick = 0);
 
 /** @brief  Get tempo at position within sequence
 *   @param  bank Index of bank
@@ -935,9 +935,9 @@ void addTempoEvent(uint8_t bank, uint8_t sequence, uint32_t tempo, uint16_t bar 
 *   @param  bar Bar at which to get tempo [Optional - default: 1]
 *   @param  tick Tick within bar at which to get tempo [Optional - default: 0]
 '   @todo   getTempo without time parameter should get time at current play position???
-*   @retval uint32_t Tempo in BPM
+*   @retval float Tempo in BPM
 */
-uint32_t getTempoAt(uint8_t bank, uint8_t sequence, uint16_t bar = 1, uint16_t tick = 0);
+float getTempoAt(uint8_t bank, uint8_t sequence, uint16_t bar = 1, uint16_t tick = 0);
 
 /** @brief  Add time signature to sequence
  *   @param  bank Index of bank

@@ -1,4 +1,23 @@
-#include "sequence.h"
+/*  Defines sequence class providing collection of tracks
+ *
+ *   Copyright (c) 2020-2025 Brian Walton
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
+ #include "sequence.h"
 
 Sequence::Sequence() {
     addTrack(); // Ensure new sequences have at least one track
@@ -52,12 +71,14 @@ Track* Sequence::getTrack(size_t index) {
     return NULL;
 }
 
-void Sequence::addTempo(uint16_t tempo, uint16_t bar, uint16_t tick) {
-    m_timebase.addTimebaseEvent(bar, tick, TIMEBASE_TYPE_TEMPO, tempo);
+void Sequence::addTempo(float tempo, uint16_t bar, uint16_t tick) {
+    m_timebase.addTimebaseEvent(bar, tick, TIMEBASE_TYPE_TEMPO, tempo * 100);
     m_bChanged = true;
 }
 
-uint16_t Sequence::getTempo(uint16_t bar, uint16_t tick) { return m_timebase.getTempo(bar, tick); }
+float Sequence::getTempoAt(uint16_t bar, uint16_t tick) { return m_timebase.getTempo(bar, tick) / 100; }
+
+float Sequence::getTempo() { return m_fTempo; }
 
 void Sequence::addTimeSig(uint16_t beatsPerBar, uint16_t bar) {
     if (bar < 1)
@@ -172,8 +193,18 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
     if (m_bStateChanged) {
         m_bChanged |= true;
         m_bStateChanged = false;
-        return nReturn | 2;
+        nReturn |= 2;
+        if (m_nState == PLAYING)
+            m_pNextTimebaseEvent = m_timebase.getFirstTimebaseEvent();
     }
+
+    if (nState != STOPPED && m_pNextTimebaseEvent && nTime >= m_pNextTimebaseEvent->clock) {
+        if (m_pNextTimebaseEvent->type == TIMEBASE_TYPE_TEMPO)
+            m_fTempo = m_pNextTimebaseEvent->value / 100;
+        m_pNextTimebaseEvent = m_timebase.getNextTimebaseEvent(m_pNextTimebaseEvent);
+        nReturn |= 4;
+    }
+
     return nReturn;
 }
 

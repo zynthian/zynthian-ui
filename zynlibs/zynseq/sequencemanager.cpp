@@ -1,3 +1,22 @@
+/*  Defines SequenceManager class managing collection of sequences
+ *
+ *   Copyright (c) 2020-2025 Brian Walton
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
 #include "sequencemanager.h"
 #include <cstring>
 #include <stdio.h>
@@ -194,6 +213,11 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
             // uint8_t nTrigger = getTriggerNote(it->first, it->second);
             // It's currently polled from python
         }
+        if (nEventType & 4) {
+            // Tempo change
+            m_fTempo = pSequence->getTempo();
+            m_bTempoChanged = true;
+        }
         ++it;
     }
     return m_vPlayingSequences.size();
@@ -233,7 +257,7 @@ void SequenceManager::setSequencePlayState(uint8_t bank, uint8_t sequence, uint8
             for (uint8_t chan = 0; chan < 16; ++chan) {
                 uint32_t nSlaveSeq = sequence % 8 + chan * 8;
                 Sequence* pSlaveSeq = m_mBanks[255][nSlaveSeq];
-                if (pSlaveSeq->getPlayMode() == DISABLED || pSlaveSeq->getPlayState() == PLAYING || pSlaveSeq->isEmpty())
+                if (pSlaveSeq->getPlayMode() == DISABLED || pSlaveSeq->getPlayState() == PLAYING)
                     continue;
                 if (pSlaveSeq->getPlayState() == STOPPING)
                     setSequencePlayState(bank, nSlaveSeq, PLAYING);
@@ -366,3 +390,11 @@ void SequenceManager::removeSequence(uint8_t bank, uint8_t sequence) {
 void SequenceManager::clearBank(uint32_t bank) { setSequencesInBank(bank, 0); }
 
 uint32_t SequenceManager::getBanks() { return m_mBanks.size(); }
+
+bool SequenceManager::isTempoChanged() { return m_bTempoChanged; }
+
+float SequenceManager::getTempo(bool clear) {
+    if (clear)
+        m_bTempoChanged = false;
+    return m_fTempo;
+}

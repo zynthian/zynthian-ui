@@ -124,9 +124,9 @@ class zynseq(zynthian_engine):
             self.libseq.getPlayChance.restype = ctypes.c_float
             self.libseq.getTempo.restype = ctypes.c_double
             self.libseq.setTempo.argtypes = [ctypes.c_double]
-            self.libseq.getTempoAt.restypt = ctypes.c_uint32
+            self.libseq.getTempoAt.restype = ctypes.c_float
             self.libseq.getTempoAt.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint16, ctypes.c_uint16]
-            self.libseq.addTempoEvent.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint32, ctypes.c_uint16, ctypes.c_uint16]
+            self.libseq.addTempoEvent.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_uint16, ctypes.c_uint16]
             self.libseq.getMetronomeVolume.restype = ctypes.c_float
             self.libseq.setMetronomeVolume.argtypes = [ctypes.c_float]
             self.libseq.getStateChange.argtypes = [
@@ -149,17 +149,27 @@ class zynseq(zynthian_engine):
             'nudge_factor': 1.0
         })
 
-        self.scene_launcher_info = []
-        for i in range(LAUNCHER_SLOTS):
-            self.scene_launcher_info.append(
-                {
-                    "tempo": None,
-                    "bpb": None,
-                    "bars": 1,
-                    "mode": "Loop",
-                    "state": SEQ_STOPPED
-                }
-            )
+        # Cache sequence info for launchers to reduce access to libseq
+        self.launcher_info = []
+        for chan in range(17):
+            info = []
+            for slot in range(LAUNCHER_SLOTS):
+                info.append(
+                    {
+                        "title": "",
+                        "bpb": None,
+                        "bars": 1,
+                        "mode": 2,
+                        "group": 0,
+                        "state": SEQ_STOPPED,
+                        "chan": chan,
+                        "slot": slot,
+                        "sequence": chan * LAUNCHER_SLOTS + slot,
+                        "clippy": None, #TODO: Wasteful to populate all slots with clippy processor
+                        "tempo": None
+                    }
+                )
+            self.launcher_info.append(info)
         self.bank = None
         self.select_bank(1, True)
 

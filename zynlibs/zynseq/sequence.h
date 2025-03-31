@@ -1,4 +1,23 @@
-#pragma once
+/*  Declares Sequence class collection of tracks
+ *
+ *   Copyright (c) 2020-2025 Brian Walton
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
+ #pragma once
 
 #include "constants.h"
 #include "timebase.h"
@@ -81,20 +100,25 @@ class Sequence {
 
     /** @brief  Add tempo event to timebase track
      *   @param  tempo Tempo in BPM
-     *   @param  bar Bar (measure) at which to set tempo
+     *   @param  bar Bar (measure) at which to set tempo [Optional - default: 1]
      *   @param  tick Tick at which to set tempo [Optional - default: 0]
      *   @note   Removes tempo if same as previous tempo
      */
-    void addTempo(uint16_t tempo, uint16_t bar, uint16_t tick = 0);
+    void addTempo(float tempo, uint16_t bar = 1, uint16_t tick = 0);
 
     /** @brief  Get tempo from timebase track
      *   @param  bar Bar (measure) at which to get tempo
      *   @param  beat Tick at which to get tempo [Optional - default: 0]
-     *   @retval uint16_t Tempo in BPM
+     *   @retval float Tempo in BPM
      */
-    uint16_t getTempo(uint16_t bar, uint16_t tick = 0);
+     float getTempoAt(uint16_t bar, uint16_t tick = 0);
 
-    /** @brief  Add time signature to timebase track
+    /** @brief  Get current tempo
+     *   @retval float Tempo in BPM
+     */
+     float getTempo();
+
+     /** @brief  Add time signature to timebase track
      *   @param  beatsPerBar Beats per bar
      *   @param  bar Bar (measure) at which to set time signature
      *   @note   Removes time signature if same as previous time signature
@@ -175,6 +199,7 @@ class Sequence {
   private:
     std::vector<Track> m_vTracks;      // Vector of tracks within sequence
     Timebase m_timebase;               // Timebase map
+    TimebaseEvent* m_pNextTimebaseEvent = NULL; // Pointer to next timebase event or NULL if none.
     uint8_t m_nState        = STOPPED; // Play state of sequence
     uint8_t m_nMode         = LOOPALL; // Play mode of sequence
     size_t m_nCurrentTrack  = 0;       // Index of track currently being queried for events
@@ -182,7 +207,7 @@ class Sequence {
     uint32_t m_nLastSyncPos = 0;       // Position of last sync pulse in clock cycles
     uint32_t m_nLength      = 0;       // Length of sequence in clock cycles (longest track)
     uint8_t m_nGroup        = 0;       // Sequence's mutually exclusive group
-    uint16_t m_nTempo       = 120;     // Default tempo (overriden by tempo events in timebase map)
+    uint16_t m_fTempo       = 120.0;   // Current tempo (overriden by tempo events in timebase map)
     bool m_bChanged         = false;   // True if sequence content changed
     bool m_bStateChanged    = false;   // True if state changed since last clock cycle
     bool m_bEmpty           = true;    // True if all patterns are emtpy (no events)

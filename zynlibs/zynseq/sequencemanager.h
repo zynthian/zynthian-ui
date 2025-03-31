@@ -1,4 +1,23 @@
-#pragma once
+/*  Declares SequenceManager class managing collection of sequences
+ *
+ *   Copyright (c) 2020-2025 Brian Walton
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+ 
+ #pragma once
 #include "pattern.h"
 #include "sequence.h"
 #include "track.h"
@@ -228,6 +247,17 @@ class SequenceManager {
      */
     uint32_t getBanks();
 
+    /** @brief  Check if tempo has changed
+        @retval bool True if tempo has changed
+    */
+    bool isTempoChanged();
+
+    /** @brief  Get current tempo
+        @param  clear True to clear current tempo changed flag (default: true)
+        @retval float Current tempo
+    */
+    float getTempo(bool clear = true);
+
   private:
     int fileWrite32(uint32_t value, FILE* pFile);
     int fileWrite16(uint16_t value, FILE* pFile);
@@ -237,6 +267,8 @@ class SequenceManager {
     uint8_t fileRead8(FILE* pFile);
     bool checkBlock(FILE* pFile, uint32_t nActualSize, uint32_t nExpectedSize);
 
+    bool m_bTempoChanged = false; // True if tempo changed by sequence
+    float m_fTempo = DEFAULT_TEMPO; // Current tempo
     uint8_t m_nTriggerDevice  = 0xFF; // MIDI device to receive sequence triggers (note-on)
     uint8_t m_nTriggerChannel = 0xFF; // MIDI channel to receive sequence triggers (note-on)
 
