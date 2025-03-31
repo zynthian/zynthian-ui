@@ -24,7 +24,7 @@
 #
 # ******************************************************************************
 
-import os
+from os.path import basename, splitext
 import tkinter
 import logging
 from math import log10
@@ -68,7 +68,6 @@ class zynthian_gui_mixer_strip():
         self.state_manager = parent.state_manager
         self.chain_manager = parent.chain_manager
         self.zynseq = parent.zynseq
-        self.sequences = [] # List of sequence info, indexed by slot
         self.zctrls = None
 
         self.x = x
@@ -192,14 +191,6 @@ class zynthian_gui_mixer_strip():
                 'sel': slot_sel
             })
             ypos += height_slot
-
-        # Clip Mode Icons
-        empty_icon = tkinter.PhotoImage()
-        self.mode_icon = [empty_icon]
-        iconsize = (int(self.fader_width * 0.5), int(height_slot * 0.35))
-        for f in ["oneshot", "loop", "oneshotall", "loopall", "oneshotsync", "loopsync"]:
-            img = Image.open(f"/zynthian/zynthian-ui/icons/zynpad_mode_{f}.png")
-            self.mode_icon.append(ImageTk.PhotoImage(img.resize(iconsize)))
 
         # DPM
         self.dpm_a = zynthian_gui_dpm(self.zynmixer, None, 0, self.canvas, self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.fader_height,
@@ -405,21 +396,17 @@ class zynthian_gui_mixer_strip():
         self.canvas.itemconfig(f"fader:{self.fader_bg}", state=tkinter.HIDDEN)
         self.canvas.itemconfig(self.clip_progress, state=tkinter.NORMAL)
         # Clip Launcher
-        self.get_sequences()
+        self.update_launchers()
         for i in range(0, zynseq.LAUNCHER_SLOTS):
             self.draw_sequence_slot(i)
 
     def draw_sequence_slot(self, i):
         try:
-            info = self.sequences[i]
-            color = info['color']
-            color_light = info['color_light']
-            #title = info['title']
-            #if not title:
-            title = f"{info['sequence']:03}"
+            info = self.zynseq.launcher_info[self.chan][i]
+            color_light = info["color_light"]
             title = info["title"]
-            mode_image = self.mode_icon[info['mode']]
-            match info['state']:
+            mode_image = self.parent.mode_icons[info["mode"]]
+            match info["state"]:
                 case zynseq.SEQ_PLAYING:
                     color_state = zynthian_gui_config.PAD_COLOUR_PLAYING
                     state_text = "▶"
@@ -453,18 +440,22 @@ class zynthian_gui_mixer_strip():
         if bank != zynseq.LAUNCHER_SEQ_BANK:
             return
         slot = seq % 8
-        self.sequences[slot] = self.get_sequence_info(slot)
+        if self.chain_id == 0:
+            chan = 16
+        else:
+            chan = self.chain.midi_chan
+        self.update_launcher(slot)
         self.draw_sequence_slot(slot)
 
     def update_clip_progress(self, bank, seq, progress):
-        if bank != zynseq.LAUNCHER_SEQ_BANK:
+        if bank != zynseq.LAUNCHER_SEQ_BANK or self.chan is None:
             return
         x0 = self.x
         y0 = self.height - self.legend_height
         x1 = x0
         y1 = self.height - self.legend_height + 4
         playing = False
-        for i, info in enumerate(self.sequences):
+        for info in self.zynseq.launcher_info[self.chan]:
             if info['state'] != zynseq.SEQ_STOPPED:
                 if info['sequence'] == seq:
                     x1 = x0 + int(progress * self.width / 100)
@@ -553,8 +544,8 @@ class zynthian_gui_mixer_strip():
                 font = self.font
                 if self.parent.moving_chain and self.chain_id == self.chain_manager.active_chain_id:
                     strip_txt = f"⇦⇨"
-                elif isinstance(self.chain.midi_chan, int):
-                    if 0 <= self.chain.midi_chan < 16:
+                elif isinstance(self.chan, int):
+                    if 0 <= self.chan < 16:
                         strip_txt = f"♫ {self.chain.midi_chan + 1}"
                     elif self.chain.midi_chan == 0xffff:
                         strip_txt = f"♫ All"
@@ -648,15 +639,21 @@ class zynthian_gui_mixer_strip():
         """ Function to set chain associated with mixer strip
         chain: Chain object
         """
+
         self.chain_id = chain_id
         self.chain = self.chain_manager.get_chain(chain_id)
         if self.chain is None:
             self.hide()
             self.dpm_a.set_strip(None)
             self.dpm_b.set_strip(None)
+            self.chan = None
         else:
             if self.chain.mixer_chan is not None and self.chain.mixer_chan < len(self.parent.zynmixer.zctrls):
                 self.zctrls = self.parent.zynmixer.zctrls[self.chain.mixer_chan]
+            if self.chain_id == 0:
+                self.chan = 16
+            else:
+                self.chan = self.chain.midi_chan
             self.show()
 
     def set_volume(self, value):
@@ -768,71 +765,60 @@ class zynthian_gui_mixer_strip():
     # Clip launcher functionality
     # --------------------------------------------------------------------------
 
-    def get_sequences(self):
-        self.sequences = []
-        if not self.chain.is_midi() and self.chain_id != 0:
-            return
-        # TODO: Improve efficiency. Get filtered list by midi channel with one single call to zynseq
-        for seq_i in range(zynseq.LAUNCHER_SLOTS):
-            info = self.get_sequence_info(seq_i)
-            if info:
-                self.sequences.append(info)
+    def update_launchers(self):
+        if self.chan is not None:
+            for slot in range(zynseq.LAUNCHER_SLOTS):
+                self.update_launcher(slot)
 
-    def get_sequence_info(self, slot):
-        if self.chain_id > 0:
-            seq_i = slot + 8 * self.chain.midi_chan
-            clippy = None
-            try:
-                processor = self.chain.get_processors("MIDI Synth")[0]
-                if processor.engine.nickname == "CL":
-                    clippy = processor
-            except:
-                pass
-        else:
-            seq_i = zynseq.LAUNCHER_SLOTS * 16 + slot
-            clippy = None
+    def update_launcher(self, slot):
+        #TODO: Move non-gui code to zynseq
+        if self.chan is None:
+            return
+        seq_i = slot + zynseq.LAUNCHER_SLOTS * self.chan
+        info = self.zynseq.launcher_info[self.chan][slot]
+        clippy = None
+        try:
+            processor = self.chain.get_processors("MIDI Synth")[0]
+            if processor.engine.nickname == "CL":
+                clippy = processor
+        except:
+            pass
         state = self.zynseq.libseq.getSequenceState(zynseq.LAUNCHER_SEQ_BANK, seq_i)
         empty = self.zynseq.libseq.isEmpty(zynseq.LAUNCHER_SEQ_BANK, seq_i)
         group = (state >> 16) & 0xFF
         mode = (state >> 8) & 0xFF
-        if clippy and mode == zynseq.SEQ_DISABLED:
+        if mode == zynseq.SEQ_DISABLED:
             title = "⏹"
         else:
-            title = self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, seq_i)[:5]
+            title = self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, seq_i)[:6]
         if empty or mode == zynseq.SEQ_DISABLED:
             color = zynthian_gui_config.PAD_COLOUR_DISABLED
             color_light = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT
         else:
             color = zynthian_gui_config.PAD_COLOUR_GROUP[group % 16]
             color_light = zynthian_gui_config.PAD_COLOUR_GROUP_LIGHT[group % 16]
-        if empty:
-            mode = 0
-        seq_info = {
-            'sequence': seq_i,
-            'title': title,
-            'group': group,
-            'color': color,
-            'color_light': color_light,
-            'mode': mode,
-            "clippy": clippy
-        }
+
+        info["title"] = title
+        info["group"] = group
+        info["color_light"] = color_light
+        info["mode"] = mode
+        info["clippy"] = clippy
 
         state &= 0xFF
         if state == zynseq.SEQ_RESTARTING:
-            seq_info['state'] = zynseq.SEQ_PLAYING
+            info['state'] = zynseq.SEQ_PLAYING
         elif state == zynseq.SEQ_STOPPINGSYNC:
-            seq_info['state'] = zynseq.SEQ_STOPPING
+            info['state'] = zynseq.SEQ_STOPPING
         else:
-            seq_info['state'] = state
-        return seq_info
+            info['state'] = state
 
     def highlight_clip(self, slot=None):
         self.canvas.itemconfig(f"clip_sel", state=tkinter.HIDDEN)
         if slot is not None and self.chain is not None:
             if self.chain_id == self.parent.chain_manager.active_chain_id:
                 self.canvas.itemconfig(f"clip_sel:{self.parent.highlighted_strip.fader_bg}_{slot}", state=tkinter.NORMAL)
-            if slot < zynseq.LAUNCHER_SLOTS and self.sequences and self.sequences[slot]["clippy"]:
-                self.sequences[slot]["clippy"].set_current_screen_index(slot + 1)
+            if self.chan is not None and slot < zynseq.LAUNCHER_SLOTS and self.zynseq.launcher_info[self.chan][slot]["clippy"]:
+                self.zynseq.launcher_info[self.chan][slot]["clippy"].set_current_screen_index(slot + 1)
 
     def on_clip_slot_press(self, slot):
         self.touch_ts = monotonic()
@@ -850,61 +836,56 @@ class zynthian_gui_mixer_strip():
 
     def on_clip_short_press(self, slot):
         #logging.debug(f"CLIP PRESSED => chain_id:{self.chain_id}, slot:{slot}")
-        seq = self.sequences[slot]['sequence']
-        proc = self.sequences[slot]['clippy']
-        if proc and self.sequences[slot]['mode'] == 0:
+        if self.chan is None:
+            return
+        info = self.zynseq.launcher_info[self.chan][slot]
+        seq = info['sequence']
+        proc = info['clippy']
+        if info['mode'] == zynseq.SEQ_DISABLED:
+            if info["chan"] == 16:
+                # Scene launcher so stop all running clips.
+                for seq in range(zynseq.LAUNCHER_SLOTS * 17):
+                    self.zynseq.libseq.setPlayState(zynseq.LAUNCHER_SEQ_BANK, seq, zynseq.SEQ_STOPPED)
+                return
             for i in range(zynseq.LAUNCHER_SLOTS):
-                self.zynseq.libseq.setPlayState(zynseq.LAUNCHER_SEQ_BANK, i + proc.engine.sequence_offset, zynseq.SEQ_STOPPED)
-            proc.engine.lscp_send_single(f"SEND CHANNEL MIDI_DATA CC 0 120 0")
+                seq = info["chan"] * zynseq.LAUNCHER_SLOTS + i
+                self.zynseq.libseq.setPlayState(zynseq.LAUNCHER_SEQ_BANK, seq, zynseq.SEQ_STOPPED)
+            if proc:
+                proc.engine.lscp_send_single(f"SEND CHANNEL MIDI_DATA CC 0 120 0")
         else:
             self.zynseq.libseq.togglePlayState(zynseq.LAUNCHER_SEQ_BANK, seq)
 
     def on_clip_bold_press(self, slot):
-        if self.chain_id > 0:
-            if self.chain.midi_chan is None:
-                return
-            if self.sequences[slot]["clippy"]:
-                processor = self.sequences[slot]["clippy"]
-                self.clippy_zctrl = processor.controllers_dict[f"file {slot + 1:02}"]
-                self.zyngui.cb_show_file_selector(self.on_clippy_path,
-                                                  fexts=self.clippy_zctrl.path_file_types,
-                                                  dirnames=self.clippy_zctrl.path_dir_names,
-                                                  path=self.clippy_zctrl.value)
-            else:
-                sequence = self.sequences[slot]["sequence"]
-                pattern = self.zynseq.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
-                pated = self.zyngui.screens['pattern_editor']
-                pated.bank = zynseq.LAUNCHER_SEQ_BANK
-                pated.sequence = sequence
-                pated.load_pattern(pattern)
-                pated.channel = self.chain.midi_chan
-                self.zyngui.show_screen("pattern_editor")
+        if self.chan is None:
+            return
+        is_main = self.chain_id == 0
+        allow_mode = True
+
+        info = self.zynseq.launcher_info[self.chan][slot]
+        options = {}
+        options[f"Title: {self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, info['sequence'])}"] = info["sequence"]
+        if is_main:
+            options[f"Tempo: {info['tempo']}"] = slot
+            options[f"Bars: {info['bpb']}"] = slot
+            options[f"Beats per bar: {info['bpb']}"] = slot
+        elif info["clippy"]:
+            zctrl = info['clippy'].controllers_dict[f"file {slot + 1:02}"]
+            allow_mode = zctrl.value != ""
+            filename = basename(zctrl.value)
+            options[f"Clip: {filename}"] = info["clippy"].controllers_dict[f"file {slot + 1:02}"]
+            zctrl = info['clippy'].controllers_dict[f"warp {slot + 1:02}"]
+            val = "on" if zctrl.value else "off"
+            options[f"Warp: {val}"] = zctrl
         else:
-            options = {}
-            options["Title"] = slot
-            options[f"Tempo: {self.zynseq.scene_launcher_info[slot]['tempo']}"] = slot
-            options[f"Beats per bar: {self.zynseq.scene_launcher_info[slot]['bpb']}"] = slot
-            options[f"Bars: {self.zynseq.scene_launcher_info[slot]['bpb']}"] = slot
-            options[f"Mode: {self.zynseq.scene_launcher_info[slot]['mode']}"] = slot
-            self.zyngui.screens['option'].config(
-                f"Scene launcher {slot + 1} options", options, self.parent.scene_launcher_menu_cb)
-            self.zyngui.show_screen('option')
+            options["Edit pattern"] = info["sequence"]
+        if allow_mode:
+            options[f"Mode: {zynseq.PLAY_MODES[info['mode']]}"] = info
+        self.zyngui.screens['option'].config(
+            f"Launcher options", options, self.parent.launcher_menu_cb)
+        self.zyngui.show_screen('option')
 
     def on_clip_long_press(self, slot):
-        if self.chain_id > 0:
-            if self.chain.midi_chan is None:
-                return
-            sequence = self.sequences[slot]["sequence"]
-            pattern = self.parent.zynseq.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
-            pated = self.zyngui.screens['pattern_editor']
-            pated.bank = zynseq.LAUNCHER_SEQ_BANK
-            pated.sequence = sequence
-            pated.load_pattern(pattern)
-            pated.channel = self.chain.midi_chan
-            self.zyngui.show_screen("pattern_editor")
-
-    def on_clippy_path(self, path):
-        self.clippy_zctrl.set_value(path)
+        pass
 
     # --------------------------------------------------------------------------
     # UI event management
@@ -1128,6 +1109,18 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.main_frame.columnconfigure(0, weight=1)
         self.main_canvas.grid(row=0, sticky='nsew')
 
+        # Clip Mode Icons
+        empty_icon = tkinter.PhotoImage()
+        slot_height = self.height // (zynseq.LAUNCHER_SLOTS + 3)
+        iconsize = (int(self.fader_width * 0.5), int(slot_height * 0.35))
+        self.mode_icons = []
+        for f in zynseq.PLAY_MODES:
+            try:
+                img = Image.open(f"/zynthian/zynthian-ui/icons/zynpad_mode_{f.lower().replace(' ' , '')}.png")
+                self.mode_icons.append(ImageTk.PhotoImage(img.resize(iconsize)))
+            except:
+                self.mode_icons.append(empty_icon)
+
         # Create mixer strip UI objects
         for strip in range(len(self.visible_mixer_strips)):
             self.visible_mixer_strips[strip] = zynthian_gui_mixer_strip(self, 1 + self.fader_width * strip, 0, self.fader_width - 1, self.height)
@@ -1144,9 +1137,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """ Redefine set_title
         """
         if title == "" and self.state_manager.last_snapshot_fpath:
-            fparts = os.path.splitext(self.state_manager.last_snapshot_fpath)
+            fparts = splitext(self.state_manager.last_snapshot_fpath)
             if self.zyngui.screens['snapshot'].bankless_mode:
-                ssname = os.path.basename(fparts[0])
+                ssname = basename(fparts[0])
             else:
                 ssname = fparts[0].rsplit("/", 1)[-1]
             title = ssname.replace("last_state", "Last State")
@@ -1346,9 +1339,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.main_mixbus_strip.update_clip_state(bank, seq, state, mode, group)
 
     def cb_launcher_progress(self, bank, seq, progress):
-        midi_chan = seq // 8
+        chan = seq // 8
         for strip in self.visible_mixer_strips:
-            if not strip.hidden and strip.chain.midi_chan == midi_chan:
+            if not strip.hidden and strip.chan == chan:
                 strip.update_clip_progress(bank, seq, progress)
         self.main_mixbus_strip.update_clip_progress(bank, seq, progress)
 
@@ -1443,11 +1436,35 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 strip.draw_control()
         self.main_mixbus_strip.draw_control()
 
-    def scene_launcher_menu_cb(self, option, slot):
-        if option == "Title":
-            pass
+    def on_clippy_file_sel(self, path):
+        # Handle file selector callback
+        self.clippy_zctrl.set_value(path)
+    
+    def launcher_menu_cb(self, option, params):
+        if option.startswith("Title"):
+            self.sequence = params
+            title = self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, self.sequence)
+            self.zyngui.show_keyboard(self.rename_sequence, title, 8)
+        elif option == "Edit pattern":
+            sequence = params
+            pattern = self.zynseq.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
+            pated = self.zyngui.screens['pattern_editor']
+            pated.bank = zynseq.LAUNCHER_SEQ_BANK
+            pated.sequence = sequence
+            pated.load_pattern(pattern)
+            self.zyngui.show_screen("pattern_editor")
+        elif option.startswith("Clip"):
+            # Show file selector. Callback has path. Must set path of this zctrl.
+            self.clippy_zctrl = params
+            self.zyngui.cb_show_file_selector(self.on_clippy_file_sel,
+                fexts=params.path_file_types,
+                dirnames=params.path_dir_names,
+                path=self.clippy_zctrl.value)
+        elif option.startswith("Warp"):
+            params.toggle()
         elif option.startswith("Tempo"):
-            tempo = self.zynseq.scene_launcher_info[slot]["tempo"]
+            slot = params
+            tempo = self.zynseq.launcher_info[16][slot]["tempo"]
             if not tempo:
                 tempo = self.zynseq.get_tempo()
             self.enable_param_editor(self, "tempo", {
@@ -1457,24 +1474,48 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'value_max': 420,
                 'value': tempo,
                 'nudge_factor': 1.0,
-                "graph_path":slot
+                "graph_path":slot # Temporarily abuse graph_path to store the slot
             }, self.on_scene_tempo)
         elif option.startswith("Beats"):
             pass
         elif option.startswith("Bars"):
             pass
         elif option.startswith("Mode"):
-            pass
+            info = params
+            sequence = info["sequence"]
+            self.enable_param_editor(self, "Mode", {
+                "name": "Mode",
+                "labels": ["Disabled", "Oneshot", "Loop all"],
+                "ticks": [0, 1, 4],
+                "value": self.zynseq.libseq.getPlayMode(zynseq.LAUNCHER_SEQ_BANK, sequence),
+                "graph_path":info # Temporarily abuse graph_path to store the slot
+            }, self.on_sequence_mode)
+
+    def rename_sequence(self, name):
+        self.zynseq.set_sequence_name(zynseq.LAUNCHER_SEQ_BANK, self.sequence, name)
+        self.refresh_visible_strips()
+
+    def on_sequence_mode(self, mode):
+        info = self.param_editor_zctrl.graph_path
+        info["mode"] = mode
+        sequence = info["sequence"]
+        self.zynseq.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, sequence, mode)
+        self.refresh_visible_strips()
+        self.highlight_active_chain()
 
     def on_scene_tempo(self, tempo):
         try:
             slot = self.param_editor_zctrl.graph_path
-            self.zynseq.scene_launcher_info[slot]["tempo"] = tempo
+            self.zynseq.launcher_info[16][slot]["tempo"] = tempo
             #TODO: Support float tempo events in libzynseq
-            self.zynseq.libseq.addTempoEvent(zynseq.LAUNCHER_SEQ_BANK, zynseq.LAUNCHER_SLOTS * 16 + slot, int(tempo), 1, 0)
+            self.zynseq.libseq.addTempoEvent(zynseq.LAUNCHER_SEQ_BANK, zynseq.LAUNCHER_SLOTS * 16 + slot, tempo, 1, 0)
             for chan in range(16):
-                #TODO: Warp clippy
-                pass
+                info = self.zynseq.launcher_info[chan][slot]
+                if info["tempo"] != tempo:
+                    info["tempo"] = tempo
+                    proc = info["clippy"]
+                    if proc and proc.controllers_dict[f"warp {slot+1:02}"].value:
+                        proc.engine.on_tempo_cb()
         except Exception as e:
             logging.warning(f"Error setting scene tempo: {e}")
 

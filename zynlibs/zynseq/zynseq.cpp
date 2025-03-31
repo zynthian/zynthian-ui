@@ -593,6 +593,11 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 }
             }
         }
+
+        if (g_seqMan.isTempoChanged()) {
+            float tempo = g_seqMan.getTempo();
+            setTempo(tempo);
+        }
     }
 
     // Process events scheduled to be sent to MIDI output
@@ -2175,13 +2180,12 @@ void removeTrackFromSequence(uint8_t bank, uint8_t sequence, uint32_t track) {
     g_bDirty = true;
 }
 
-void addTempoEvent(uint8_t bank, uint8_t sequence, uint32_t tempo, uint16_t bar, uint16_t tick) {
-    //!@todo Concert tempo events to use double for tempo value
+void addTempoEvent(uint8_t bank, uint8_t sequence, float tempo, uint16_t bar, uint16_t tick) {
     g_seqMan.getSequence(bank, sequence)->addTempo(tempo, bar, tick);
     g_bDirty = true;
 }
 
-uint32_t getTempoAt(uint8_t bank, uint8_t sequence, uint16_t bar, uint16_t tick) { return g_seqMan.getSequence(bank, sequence)->getTempo(bar, tick); }
+float getTempoAt(uint8_t bank, uint8_t sequence, uint16_t bar, uint16_t tick) { return g_seqMan.getSequence(bank, sequence)->getTempoAt(bar, tick); }
 
 void addTimeSigEvent(uint8_t bank, uint8_t sequence, uint8_t beats, uint8_t type, uint16_t bar) {
     if (bar < 1)

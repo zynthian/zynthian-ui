@@ -89,6 +89,8 @@ class zynthian_engine_clippy(zynthian_engine):
             self._ctrls.append([
                 f"file {i:02}", {
                     'is_path': True,
+                    'value_default': None,
+                    'value': None,
                     'path_file_types': ['wav', 'ogg', 'mp3', 'flac', 'aac']
                 }
             ])
@@ -278,7 +280,7 @@ class zynthian_engine_clippy(zynthian_engine):
         if path:
             # Try to determine tempo from filename
             filename = os.path.basename(path)
-            tempo = self.zynseq.scene_launcher_info[slot]["tempo"]
+            tempo = self.zynseq.launcher_info[16][slot]["tempo"]
             if not tempo:
                 tempo = self.zynseq.get_tempo()
             pattern = r"(\d+)\s*(?=bpm|BPM)"
