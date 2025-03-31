@@ -863,7 +863,6 @@ class zynthian_gui_mixer_strip():
 
         info = self.zynseq.launcher_info[self.chan][slot]
         options = {}
-        options[f"Title: {self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, info['sequence'])}"] = info["sequence"]
         if is_main:
             options[f"Tempo: {info['tempo']}"] = slot
             options[f"Bars: {info['bpb']}"] = slot
@@ -880,6 +879,8 @@ class zynthian_gui_mixer_strip():
             options["Edit pattern"] = info["sequence"]
         if allow_mode:
             options[f"Mode: {zynseq.PLAY_MODES[info['mode']]}"] = info
+        options[f"Title: {self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, info['sequence'])}"] = info["sequence"]
+
         self.zyngui.screens['option'].config(
             f"Launcher options", options, self.parent.launcher_menu_cb)
         self.zyngui.show_screen('option')

@@ -257,7 +257,7 @@ void SequenceManager::setSequencePlayState(uint8_t bank, uint8_t sequence, uint8
             for (uint8_t chan = 0; chan < 16; ++chan) {
                 uint32_t nSlaveSeq = sequence % 8 + chan * 8;
                 Sequence* pSlaveSeq = m_mBanks[255][nSlaveSeq];
-                if (pSlaveSeq->getPlayMode() == DISABLED || pSlaveSeq->getPlayState() == PLAYING || pSlaveSeq->isEmpty())
+                if (pSlaveSeq->getPlayMode() == DISABLED || pSlaveSeq->getPlayState() == PLAYING)
                     continue;
                 if (pSlaveSeq->getPlayState() == STOPPING)
                     setSequencePlayState(bank, nSlaveSeq, PLAYING);
