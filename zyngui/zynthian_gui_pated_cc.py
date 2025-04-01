@@ -42,9 +42,13 @@ from zyngui.zynthian_gui_pated_base import *
 
 class zynthian_gui_pated_cc(zynthian_gui_pated_base):
 
+    DEFAULT_VIEW_STEPS = 16
+    DEFAULT_VIEW_ROWS = 128
+
     # Function to initialise class
     def __init__(self):
         self.cc_num = 64
+        self.row0 = 8
         super().__init__()
 
     # Function to get name of this view
@@ -71,14 +75,23 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         super().menu_cb()
 
     # -------------------------------------------------------------------------
+    # Pattern management
+    # -------------------------------------------------------------------------
+
+    # Function to load new pattern
+    # index: Pattern index
+    def load_pattern(self, index):
+        super().load_pattern(index)
+
+    # -------------------------------------------------------------------------
     # Controller callback
     # -------------------------------------------------------------------------
 
     def send_controller_value(self, zctrl):
-        super().send_controler_value(zctrl)
+        super().send_controller_value(zctrl)
 
     # -------------------------------------------------------------------------
-    # Touch management
+    # Touch event management
     # -------------------------------------------------------------------------
 
     # Function to handle grid mouse down
@@ -115,11 +128,71 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     def remove_event(self, step, row):
         pass
 
+    # -------------------------------------------------------------------------
+    # Geometry management
+    # -------------------------------------------------------------------------
+
     def get_pianoroll_num_cells(self):
         return 128
 
+    def calculate_geometry_limits(self):
+        # Row height limits
+        self.max_row_height = self.grid_height // 6
+        self.min_row_height = self.grid_height // 128
+
+        # Step width limits
+        self.max_step_width = self.grid_width // 8
+        self.min_step_width = self.grid_width // 64
+        try:
+            self.min_step_width = max(self.min_step_width, self.grid_width // self.n_steps)
+        except:
+            pass
+
+    # Function to get cell coordinates
+    # col: Column number (step)
+    # row: Row number (keymap index)
+    # duration: Duration of cell in steps
+    # offset: Factor to offset start of note
+    # return: Coordinates required to draw cell
+    def get_cell(self, col, row, duration, offset):
+        x1 = int((col + offset) * self.step_width) + 1
+        y1 = self.grid_height - (self.row0 + row + 1) * self.row_height + 1
+        x2 = x1 + int(self.step_width * duration) - 1
+        y2 = y1 + self.row_height - 1
+        return [x1, y1, x2, y2]
+
+    # -------------------------------------------------------------------------
+    # Drawing functions
+    # -------------------------------------------------------------------------
+
     def redraw_grid_pending(self, redraw_pending):
-        pass
+        super().redraw_grid_pending(redraw_pending)
+        if redraw_pending > 1:
+            self.piano_roll.delete("valtick")
+            self.grid_canvas.delete("gridhline")
+
+            if redraw_pending > 2:
+                row_min = 0
+                row_max = 129
+            else:
+                row_min = self.selected_cell[1]
+                row_max = self.selected_cell[1]
+
+            grid_font = tkfont.Font(family=zynthian_gui_config.font_topbar[0], size=self.row_height * 4)
+            for row in range(row_min, row_max):
+                if row % 8 == 0:
+                    ypos = self.grid_height - (self.row0 + row) * self.row_height
+                    self.piano_roll.create_text(self.piano_roll_width - 2, ypos - 0.5 * self.row_height, text=str(row), font=grid_font, anchor="e", fill="white", tags="valtick")
+                    self.grid_canvas.create_line(0, ypos, self.total_width, ypos, fill=GRID_LINE_WEAK, tags="gridhline")
+                # Draw row of note cells
+                if row < 128:
+                    #self.draw_row(row, True)
+                    pass
+
+            # Set z-order to allow duration to show
+            if redraw_pending > 2:
+                for step in range(self.n_steps):
+                    self.grid_canvas.tag_lower(f"step{step}")
 
     # Function to draw pianoroll content
     def draw_pianoroll(self):
@@ -140,10 +213,9 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     def select_cell(self, step=None, row=None):
         super().select_cell(step, row)
 
-    # Function to load new pattern
-    # index: Pattern index
-    def load_pattern(self, index):
-        super().load_pattern(index)
+    # -------------------------------------------------------------------------
+    # Event management
+    # -------------------------------------------------------------------------
 
     # Function to refresh status
     def refresh_status(self):
@@ -165,7 +237,10 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
             elif self.cc_num > 127:
                 self.cc_num = 127
             self.set_title()
-            logging.debug(f"CC NUM => {self.cc_num}")
             return True
+        elif i == self.ctrl_order[2]:
+            self.select_cell(None, self.selected_cell[1] - dval)
+        elif i == self.ctrl_order[3]:
+            self.select_cell(self.selected_cell[0] + dval, None)
 
 # ------------------------------------------------------------------------------

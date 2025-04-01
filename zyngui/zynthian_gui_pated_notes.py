@@ -111,6 +111,9 @@ CHORDS = [
 
 class zynthian_gui_pated_notes(zynthian_gui_pated_base):
 
+    DEFAULT_VIEW_STEPS = 16
+    DEFAULT_VIEW_ROWS = 16
+
     # Function to initialise class
     def __init__(self):
         self.edit_param = EDIT_PARAM_DUR  # Parameter to adjust in parameter edit mode
@@ -126,9 +129,6 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         self.drag_note = False  # True if dragging note in grid
         self.drag_velocity = False  # True indicates drag will adjust velocity
         self.drag_duration = False  # True indicates drag will adjust duration
-
-        # Quantity of rows (notes) displayed in grid
-        self.view_rows = DEFAULT_VIEW_ROWS
 
         super().__init__()
 
@@ -260,6 +260,53 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             self.redraw_pending = 3
             self.select_cell()
 
+    # -------------------------------------------------------------------------
+    # Pattern management
+    # -------------------------------------------------------------------------
+
+    # Function to load new pattern
+    # index: Pattern index
+    def load_pattern(self, index):
+        # Save zoom value and vertical position in pattern object
+        self.zynseq.libseq.setRefNote(int(self.keymap_offset))
+        self.zynseq.libseq.setPatternZoom(self.zoom)
+        # Load requested pattern
+        if self.bank == 0 and self.sequence == 0:
+            self.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
+        self.zynseq.libseq.selectPattern(index)
+        self.pattern = index
+        n_steps = self.zynseq.libseq.getSteps()
+        n_steps_beat = self.zynseq.libseq.getStepsPerBeat()
+        keymap_len = len(self.keymap)
+        self.load_keymap()
+        if n_steps != self.n_steps or n_steps_beat != self.n_steps_beat or len(self.keymap) != keymap_len:
+            self.n_steps = n_steps
+            self.n_steps_beat = n_steps_beat
+            self.step_offset = 0
+            self.update_geometry()
+            self.redraw_pending = 4
+            keymap_len = len(self.keymap)
+        else:
+            self.redraw_pending = 3
+        if self.selected_cell[0] >= n_steps:
+            self.selected_cell[0] = int(n_steps) - 1
+        self.keymap_offset = int(self.zynseq.libseq.getRefNote())
+        if self.keymap_offset >= keymap_len:
+            self.keymap_offset = max(0, int((keymap_len - self.view_rows) / 2))
+            self.selected_cell[1] = int(self.keymap_offset + self.view_rows / 2)
+        if self.duration > n_steps:
+            self.duration = 1
+        self.draw_grid()
+        self.select_cell()
+        self.set_keymap_offset()
+        self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
+        self.set_title()
+        self.set_grid_zoom(self.zynseq.libseq.getPatternZoom())
+
+    # -------------------------------------------------------------------------
+    # Scales and keymap
+    # -------------------------------------------------------------------------
+
     # Function to set musical scale
     #   scale: Index of scale to load
     #   Returns: name of scale
@@ -381,6 +428,10 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 new_entry.update({"name": "C{}".format(note // 12 - 1)})
             self.keymap.append(new_entry)
         return "Chromatic"
+
+    # -------------------------------------------------------------------------
+    # Touch event management
+    # -------------------------------------------------------------------------
 
     # Function to handle start of pianoroll drag
     def on_pianoroll_press(self, event):
@@ -611,6 +662,255 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         elif self.selected_cell[1] >= self.keymap_offset + int(self.view_rows):
             self.selected_cell[1] = self.keymap_offset + int(self.view_rows) - 1
 
+    # -------------------------------------------------------------------------
+    # Geometry management
+    # -------------------------------------------------------------------------
+
+    def get_pianoroll_num_cells(self):
+        return len(self.keymap)
+
+    # Function to set kaymap offset and move grid view accordingly
+    # offset: Keymap Offset (note at bottom row)
+    def set_keymap_offset(self, offset=None):
+        max_keymap_offset = max(0, len(self.keymap) - self.view_rows)
+        if offset is not None:
+            self.keymap_offset = int(offset)
+        if self.keymap_offset > max_keymap_offset:
+            self.keymap_offset = int(max_keymap_offset)
+        elif self.keymap_offset < 0:
+            self.keymap_offset = 0
+        ypos = (self.scroll_height - self.keymap_offset * self.row_height) / self.total_height
+        self.grid_canvas.yview_moveto(ypos)
+        self.piano_roll.yview_moveto(ypos)
+        # logging.debug(f"OFFSET: {self.keymap_offset} (keymap length: {len(self.keymap)})")
+        # logging.debug(f"GRID Y-SCROLL: {ypos}\n\n")
+
+    # Update grid position
+    def update_grid_position(self, step_width_changed, row_height_changed):
+        if step_width_changed:
+            self.set_step_offset()
+        if row_height_changed:
+            self.set_keymap_offset()
+        self.view_rows = self.grid_height / self.row_height
+        self.view_steps = self.grid_width / self.step_width
+
+    # Reset grid offset
+    def reset_grid_offset(self):
+        self.set_keymap_offset()
+        self.set_step_offset()
+
+    # -------------------------------------------------------------------------
+    # Drawing functions
+    # -------------------------------------------------------------------------
+
+    # Function to draw a grid row
+    # row: Row number (keymap index)
+    # colour: Black, white or None (default) to not care
+    def draw_row(self, row, white=None):
+        self.grid_canvas.itemconfig(f"lastnotetext{row}", state="hidden")
+        for step in range(self.n_steps):
+            self.draw_cell(step, row, white)
+
+    # Function to draw a grid cell
+    # step: Step (column) index
+    # row: Index of row
+    # white: True for white notes
+    def draw_cell(self, step, row, white=None):
+        # Flush modified flag to avoid refresh redrawing whole grid => Is this OK?
+        self.zynseq.libseq.isPatternModified()
+        # Cells are stored in array sequentially: 1st row, 2nd row...
+        cell_index = row * self.n_steps + step
+        if cell_index >= len(self.cells):
+            return
+        note = self.keymap[row]["note"]
+        cell = self.cells[cell_index]
+        if white is None:
+            if cell:
+                white = "white" in self.grid_canvas.gettags(cell)
+            else:
+                white = True
+
+        velocity_colour = self.zynseq.libseq.getNoteVelocity(step, note)
+        if 0 < velocity_colour < 128:
+            velocity_colour += 70
+            duration = self.zynseq.libseq.getNoteDuration(step, note)
+            offset = self.zynseq.libseq.getNoteOffset(step, note)
+        else:
+            self.grid_canvas.delete(cell)
+            self.cells[cell_index] = None
+            return
+
+        fill_colour = f"#{velocity_colour:02x}{velocity_colour:02x}{velocity_colour:02x}"
+        coord = self.get_cell(step, row, duration, offset)
+        if white:
+            cell_tags = (f"{step},{row}", "gridcell", f"step{step}", "white")
+        else:
+            cell_tags = (f"{step},{row}", "gridcell", f"step{step}")
+
+        if cell:
+            # Update existing cell
+            self.grid_canvas.itemconfig(cell, fill=fill_colour, tags=cell_tags)
+            self.grid_canvas.coords(cell, coord)
+        else:
+            # Create new cell
+            cell = self.grid_canvas.create_rectangle(coord, fill=fill_colour, width=0, tags=cell_tags)
+            self.cells[cell_index] = cell
+
+        if step + duration > self.n_steps:
+            self.grid_canvas.itemconfig(f"lastnotetext{row}", text=f"+{duration - self.n_steps + step}", state="normal")
+
+    def redraw_grid_pending(self, redraw_pending):
+        super().redraw_grid_pending(redraw_pending)
+        if redraw_pending > 1:
+            self.piano_roll.delete("notename")
+            self.grid_canvas.delete("gridhline")
+
+            if redraw_pending > 2:
+                row_min = 0
+                row_max = len(self.keymap)
+            else:
+                row_min = self.selected_cell[1]
+                row_max = self.selected_cell[1]
+
+            grid_font = tkfont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize_grid)
+            for row in range(row_min, row_max):
+                # Create last note labels in grid
+                self.grid_canvas.create_text(self.total_width - self.select_thickness,
+                                             int(self.row_height * (row - 0.5)),
+                                             state=tkinter.HIDDEN, font=grid_font, anchor=tkinter.E,
+                                             tags=(f"lastnotetext{row}", "lastnotetext", "gridcell"))
+
+                # fill = "black"
+                # Update pianoroll keys
+                row_id = f"row{row}"
+                try:
+                    name = self.keymap[row]["name"]
+                except:
+                    name = None
+                if "colour" in self.keymap[row]:
+                    colour = self.keymap[row]["colour"]
+                elif name and "#" in name:
+                    colour = "black"
+                else:
+                    colour = "white"
+                if colour == "black":
+                    fill = "white"
+                else:
+                    fill = CANVAS_BACKGROUND
+                self.piano_roll.itemconfig(row_id, fill=colour)
+                # name = str(row)
+                ypos = self.total_height - row * self.row_height
+                if name:
+                    self.piano_roll.create_text((2, ypos - 0.5 * self.row_height), text=name,
+                                                font=grid_font, anchor="w", fill=fill, tags="notename")
+                if self.keymap[row]['note'] % 12 == self.zynseq.libseq.getTonic():
+                    self.grid_canvas.create_line(0, ypos, self.total_width, ypos, fill=GRID_LINE_STRONG, tags="gridhline")
+                else:
+                    self.grid_canvas.create_line(0, ypos, self.total_width, ypos, fill=GRID_LINE_WEAK, tags="gridhline")
+                # Draw row of note cells
+                self.draw_row(row, (colour == "white"))
+
+            # Set z-order to allow duration to show
+            if redraw_pending > 2:
+                for step in range(self.n_steps):
+                    self.grid_canvas.tag_lower(f"step{step}")
+
+    # Function to draw pianoroll key outlines (does not fill key colour)
+    def draw_pianoroll(self):
+        self.piano_roll.delete(tkinter.ALL)
+        for row in range(0, len(self.keymap)):
+            x1 = 0
+            y1 = self.total_height - (row + 1) * self.row_height + 1
+            x2 = self.piano_roll_width
+            y2 = y1 + self.row_height - 1
+            tags = f"row{row}"
+            self.piano_roll.create_rectangle(x1, y1, x2, y2, width=0, tags=tags)
+
+    # Function to update selectedCell
+    # step: Step (column) of selected cell (Optional - default to reselect current column)
+    # row: Index of keymap to select (Optional - default to reselect current row).
+    #      Maybe outside visible range to scroll display
+    def select_cell(self, step=None, row=None):
+        if not self.keymap:
+            return
+        # Check row boundaries
+        if row is None:
+            row = self.selected_cell[1]
+        if row < 0:
+            row = 0
+        elif row >= len(self.keymap):
+            row = len(self.keymap) - 1
+        else:
+            row = int(row)
+        # Check keymap offset
+        if row >= self.keymap_offset + self.view_rows:
+            # Note is off top of display
+            self.set_keymap_offset(row - self.view_rows + 1)
+        elif row < self.keymap_offset:
+            # Note is off bottom of display
+            self.set_keymap_offset(row)
+        # if redraw and self.redraw_pending < 1:
+        # self.redraw_pending = 3
+        note = self.keymap[row]['note']
+
+        # Check column boundaries
+        if step is None:
+            step = self.selected_cell[0]
+        if step < 0:
+            step = 0
+        elif step >= self.n_steps:
+            step = self.n_steps - 1
+        else:
+            step = int(step)
+        # Skip hidden (overlapping) cells
+        for previous in range(step - 1, -1, -1):
+            prev_duration = ceil(self.zynseq.libseq.getNoteDuration(previous, note))
+            if not prev_duration:
+                continue
+            if prev_duration > step - previous:
+                if step > self.selected_cell[0]:
+                    step = previous + prev_duration
+                else:
+                    step = previous
+                break
+        # Re-check column boundaries
+        if step < 0:
+            step = 0
+        elif step >= self.n_steps:
+            step = self.n_steps - 1
+        # Check step offset
+        if step >= self.step_offset + int(self.view_steps):
+            # Step is off right of display
+            self.set_step_offset(step - int(self.view_steps) + 1)
+        elif step < self.step_offset:
+            # Step is off left of display
+            self.set_step_offset(step)
+        self.selected_cell = [step, row]
+        # Duration & velocity
+        duration = self.zynseq.libseq.getNoteDuration(step, note)
+        offset = self.zynseq.libseq.getNoteOffset(step, note)
+        if duration:
+            velocity = self.zynseq.libseq.getNoteVelocity(step, note)
+        else:
+            duration = self.duration
+            velocity = self.velocity
+        self.set_velocity_indicator(velocity)
+        # Position selector cell-frame
+        coord = self.get_cell(step, row, duration, offset)
+        coord[0] -= 1
+        coord[1] -= 1
+        cell = self.grid_canvas.find_withtag("selection")
+        if not cell:
+            cell = self.grid_canvas.create_rectangle(coord, fill="", outline=SELECT_BORDER,
+                                                     width=self.select_thickness, tags="selection")
+        else:
+            self.grid_canvas.coords(cell, coord)
+        self.grid_canvas.tag_raise(cell)
+
+    # -------------------------------------------------------------------------
+    # Event management
+    # -------------------------------------------------------------------------
+
     # Function to toggle note event
     # step: step number (column)
     # row: keymap index
@@ -702,356 +1002,6 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         self.drawing = False
         self.select_cell(step, row)
         return True
-
-    # Function to draw a grid row
-    # row: Row number (keymap index)
-    # colour: Black, white or None (default) to not care
-    def draw_row(self, row, white=None):
-        self.grid_canvas.itemconfig(f"lastnotetext{row}", state="hidden")
-        for step in range(self.n_steps):
-            self.draw_cell(step, row, white)
-
-    # Function to draw a grid cell
-    # step: Step (column) index
-    # row: Index of row
-    # white: True for white notes
-    def draw_cell(self, step, row, white=None):
-        # Flush modified flag to avoid refresh redrawing whole grid => Is this OK?
-        self.zynseq.libseq.isPatternModified()
-        # Cells are stored in array sequentially: 1st row, 2nd row...
-        cell_index = row * self.n_steps + step
-        if cell_index >= len(self.cells):
-            return
-        note = self.keymap[row]["note"]
-        cell = self.cells[cell_index]
-        if white is None:
-            if cell:
-                white = "white" in self.grid_canvas.gettags(cell)
-            else:
-                white = True
-
-        velocity_colour = self.zynseq.libseq.getNoteVelocity(step, note)
-        if 0 < velocity_colour < 128:
-            velocity_colour += 70
-            duration = self.zynseq.libseq.getNoteDuration(step, note)
-            offset = self.zynseq.libseq.getNoteOffset(step, note)
-        else:
-            self.grid_canvas.delete(cell)
-            self.cells[cell_index] = None
-            return
-
-        fill_colour = f"#{velocity_colour:02x}{velocity_colour:02x}{velocity_colour:02x}"
-        coord = self.get_cell(step, row, duration, offset)
-        if white:
-            cell_tags = (f"{step},{row}", "gridcell", f"step{step}", "white")
-        else:
-            cell_tags = (f"{step},{row}", "gridcell", f"step{step}")
-
-        if cell:
-            # Update existing cell
-            self.grid_canvas.itemconfig(cell, fill=fill_colour, tags=cell_tags)
-            self.grid_canvas.coords(cell, coord)
-        else:
-            # Create new cell
-            cell = self.grid_canvas.create_rectangle(coord, fill=fill_colour, width=0, tags=cell_tags)
-            self.cells[cell_index] = cell
-
-        if step + duration > self.n_steps:
-            self.grid_canvas.itemconfig(f"lastnotetext{row}", text=f"+{duration - self.n_steps + step}", state="normal")
-
-    def get_pianoroll_num_cells(self):
-        return len(self.keymap)
-
-    def redraw_grid_pending(self, redraw_pending):
-        # Draw cells of grid
-        # self.grid_canvas.itemconfig("gridcell", fill="black")
-        if redraw_pending > 3:
-            # Redraw gridlines
-            self.grid_canvas.delete("gridline")
-            self.play_canvas.delete("beatnum")
-            if self.n_steps_beat:
-                bnum_font = tkfont.Font(family=zynthian_gui_config.font_topbar[0], size=PLAYHEAD_HEIGHT - 2)
-                lh = 128 * self.row_height - 1
-                th = int(0.7 * PLAYHEAD_HEIGHT)
-                for step in range(0, self.n_steps + 1):
-                    xpos = step * self.step_width
-                    if step % self.n_steps_beat == 0:
-                        self.grid_canvas.create_line(xpos, 0, xpos, lh, fill=GRID_LINE_STRONG, tags="gridline")
-                        if step < self.n_steps:
-                            beatnum = 1 + step // self.n_steps_beat
-                            if beatnum == 1:
-                                anchor = tkinter.NW
-                            else:
-                                anchor = tkinter.N
-                            self.play_canvas.create_text((xpos, -2), text=str(beatnum), font=bnum_font, anchor=anchor,
-                                                         fill=GRID_LINE_STRONG, tags="beatnum")
-                    else:
-                        self.grid_canvas.create_line(xpos, 0, xpos, lh, fill=GRID_LINE_WEAK, tags="gridline")
-                        self.play_canvas.create_line(xpos, 0, xpos, th, fill=PLAYHEAD_LINE, tags="beatnum")
-
-        if redraw_pending > 1:
-            # Delete existing note names from piano roll
-            self.piano_roll.delete("notename")
-
-            if redraw_pending > 2:
-                row_min = 0
-                row_max = len(self.keymap)
-            else:
-                row_min = self.selected_cell[1]
-                row_max = self.selected_cell[1]
-
-            grid_font = tkfont.Font(family=zynthian_gui_config.font_topbar[0], size=self.fontsize_grid)
-            for row in range(row_min, row_max):
-                # Create last note labels in grid
-                self.grid_canvas.create_text(self.total_width - self.select_thickness,
-                                             int(self.row_height * (row - 0.5)),
-                                             state=tkinter.HIDDEN, font=grid_font, anchor=tkinter.E,
-                                             tags=(f"lastnotetext{row}", "lastnotetext", "gridcell"))
-
-                # fill = "black"
-                # Update pianoroll keys
-                row_id = f"row{row}"
-                try:
-                    name = self.keymap[row]["name"]
-                except:
-                    name = None
-                if "colour" in self.keymap[row]:
-                    colour = self.keymap[row]["colour"]
-                elif name and "#" in name:
-                    colour = "black"
-                else:
-                    colour = "white"
-                if colour == "black":
-                    fill = "white"
-                else:
-                    fill = CANVAS_BACKGROUND
-                self.piano_roll.itemconfig(row_id, fill=colour)
-                # name = str(row)
-                ypos = self.total_height - row * self.row_height
-                if name:
-                    self.piano_roll.create_text((2, ypos - 0.5 * self.row_height), text=name,
-                                                font=grid_font, anchor="w", fill=fill, tags="notename")
-                if self.keymap[row]['note'] % 12 == self.zynseq.libseq.getTonic():
-                    self.grid_canvas.create_line(0, ypos, self.total_width, ypos, fill=GRID_LINE_STRONG, tags="gridline")
-                else:
-                    self.grid_canvas.create_line(0, ypos, self.total_width, ypos, fill=GRID_LINE_WEAK, tags="gridline")
-                # Draw row of note cells
-                self.draw_row(row, (colour == "white"))
-
-            # Set z-order to allow duration to show
-            if redraw_pending > 2:
-                for step in range(self.n_steps):
-                    self.grid_canvas.tag_lower(f"step{step}")
-
-    # Function to draw pianoroll key outlines (does not fill key colour)
-    def draw_pianoroll(self):
-        self.piano_roll.delete(tkinter.ALL)
-        for row in range(0, len(self.keymap)):
-            x1 = 0
-            y1 = self.total_height - (row + 1) * self.row_height + 1
-            x2 = self.piano_roll_width
-            y2 = y1 + self.row_height - 1
-            tags = f"row{row}"
-            self.piano_roll.create_rectangle(x1, y1, x2, y2, width=0, tags=tags)
-
-    # Function to set kaymap offset and move grid view accordingly
-    # offset: Keymap Offset (note at bottom row)
-    def set_keymap_offset(self, offset=None):
-        max_keymap_offset = max(0, len(self.keymap) - self.view_rows)
-        if offset is not None:
-            self.keymap_offset = int(offset)
-        if self.keymap_offset > max_keymap_offset:
-            self.keymap_offset = int(max_keymap_offset)
-        elif self.keymap_offset < 0:
-            self.keymap_offset = 0
-        ypos = (self.scroll_height - self.keymap_offset * self.row_height) / self.total_height
-        self.grid_canvas.yview_moveto(ypos)
-        self.piano_roll.yview_moveto(ypos)
-        # logging.debug(f"OFFSET: {self.keymap_offset} (keymap length: {len(self.keymap)})")
-        # logging.debug(f"GRID Y-SCROLL: {ypos}\n\n")
-
-    # Update grid position
-    def update_grid_position(self, step_width_changed, row_height_changed):
-        if step_width_changed:
-            self.set_step_offset()
-        if row_height_changed:
-            self.set_keymap_offset()
-        self.view_rows = self.grid_height / self.row_height
-        self.view_steps = self.grid_width / self.step_width
-
-    # Reset grid offset
-    def reset_grid_offset(self):
-        self.set_keymap_offset()
-        self.set_step_offset()
-
-    # Function to update selectedCell
-    # step: Step (column) of selected cell (Optional - default to reselect current column)
-    # row: Index of keymap to select (Optional - default to reselect current row).
-    #      Maybe outside visible range to scroll display
-    def select_cell(self, step=None, row=None):
-        if not self.keymap:
-            return
-        # Check row boundaries
-        if row is None:
-            row = self.selected_cell[1]
-        if row < 0:
-            row = 0
-        elif row >= len(self.keymap):
-            row = len(self.keymap) - 1
-        else:
-            row = int(row)
-        # Check keymap offset
-        if row >= self.keymap_offset + self.view_rows:
-            # Note is off top of display
-            self.set_keymap_offset(row - self.view_rows + 1)
-        elif row < self.keymap_offset:
-            # Note is off bottom of display
-            self.set_keymap_offset(row)
-        # if redraw and self.redraw_pending < 1:
-        # self.redraw_pending = 3
-        note = self.keymap[row]['note']
-
-        # Check column boundaries
-        if step is None:
-            step = self.selected_cell[0]
-        if step < 0:
-            step = 0
-        elif step >= self.n_steps:
-            step = self.n_steps - 1
-        else:
-            step = int(step)
-        # Skip hidden (overlapping) cells
-        for previous in range(step - 1, -1, -1):
-            prev_duration = ceil(self.zynseq.libseq.getNoteDuration(previous, note))
-            if not prev_duration:
-                continue
-            if prev_duration > step - previous:
-                if step > self.selected_cell[0]:
-                    step = previous + prev_duration
-                else:
-                    step = previous
-                break
-        # Re-check column boundaries
-        if step < 0:
-            step = 0
-        elif step >= self.n_steps:
-            step = self.n_steps - 1
-        # Check step offset
-        if step >= self.step_offset + int(self.view_steps):
-            # Step is off right of display
-            self.set_step_offset(step - int(self.view_steps) + 1)
-        elif step < self.step_offset:
-            # Step is off left of display
-            self.set_step_offset(step)
-        self.selected_cell = [step, row]
-        # Duration & velocity
-        duration = self.zynseq.libseq.getNoteDuration(step, note)
-        offset = self.zynseq.libseq.getNoteOffset(step, note)
-        if duration:
-            velocity = self.zynseq.libseq.getNoteVelocity(step, note)
-        else:
-            duration = self.duration
-            velocity = self.velocity
-        self.set_velocity_indicator(velocity)
-        # Position selector cell-frame
-        coord = self.get_cell(step, row, duration, offset)
-        coord[0] -= 1
-        coord[1] -= 1
-        cell = self.grid_canvas.find_withtag("selection")
-        if not cell:
-            cell = self.grid_canvas.create_rectangle(coord, fill="", outline=SELECT_BORDER,
-                                                     width=self.select_thickness, tags="selection")
-        else:
-            self.grid_canvas.coords(cell, coord)
-        self.grid_canvas.tag_raise(cell)
-
-    # Function to clear a pattern
-    def clear_pattern(self, params=None):
-        self.zyngui.show_confirm(f"Clear pattern {self.pattern}?", self.do_clear_pattern)
-
-    # Function to actually clear pattern
-    def do_clear_pattern(self, params=None):
-        self.save_pattern_snapshot(now=True, force=False)
-        self.zynseq.libseq.clear()
-        self.save_pattern_snapshot(now=True, force=True)
-        self.redraw_pending = 3
-        self.select_cell()
-        if self.zynseq.libseq.getPlayState(self.bank, self.sequence, 0) != zynseq.SEQ_STOPPED:
-            self.zynseq.libseq.sendMidiCommand(0xB0 | self.channel, 123, 0)  # All notes off
-
-    # Function to copy pattern
-    def copy_pattern(self, value):
-        if self.zynseq.libseq.getLastStep() == -1:
-            self.do_copy_pattern(value)
-        else:
-            self.zyngui.show_confirm(f"Overwrite pattern {value} with content from pattern {self.copy_source}?",
-                                     self.do_copy_pattern, value)
-        self.load_pattern(self.copy_source)
-
-    # Function to cancel copy pattern operation
-    def cancel_copy(self):
-        self.load_pattern(self.copy_source)
-
-    # Function to actually copy pattern
-    def do_copy_pattern(self, dest_pattern):
-        self.zynseq.libseq.copyPattern(self.copy_source, dest_pattern)
-        self.pattern = dest_pattern
-        self.load_pattern(self.pattern)
-        self.copy_source = self.pattern
-        # TODO: Update arranger when it is refactored
-        # self.zyngui.screen['arranger'].pattern = self.pattern
-        # self.zyngui.screen['arranger'].pattern_canvas.itemconfig("patternIndicator", text="{}".format(self.pattern))
-
-    # Function to get program change at start of pattern
-    # returns: Program change number (1..128) or 0 for none
-    def get_program_change(self):
-        program = self.zynseq.libseq.getProgramChange(0) + 1
-        if program > 128:
-            program = 0
-        return program
-
-    # Function to add program change at start of pattern
-    def add_program_change(self, value):
-        self.zynseq.libseq.addProgramChange(0, value)
-
-    # Function to load new pattern
-    # index: Pattern index
-    def load_pattern(self, index):
-        # Save zoom value and vertical position in pattern object
-        self.zynseq.libseq.setRefNote(int(self.keymap_offset))
-        self.zynseq.libseq.setPatternZoom(self.zoom)
-        # Load requested pattern
-        if self.bank == 0 and self.sequence == 0:
-            self.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
-        self.zynseq.libseq.selectPattern(index)
-        self.pattern = index
-        n_steps = self.zynseq.libseq.getSteps()
-        n_steps_beat = self.zynseq.libseq.getStepsPerBeat()
-        keymap_len = len(self.keymap)
-        self.load_keymap()
-        if n_steps != self.n_steps or n_steps_beat != self.n_steps_beat or len(self.keymap) != keymap_len:
-            self.n_steps = n_steps
-            self.n_steps_beat = n_steps_beat
-            self.step_offset = 0
-            self.update_geometry()
-            self.redraw_pending = 4
-            keymap_len = len(self.keymap)
-        else:
-            self.redraw_pending = 3
-        if self.selected_cell[0] >= n_steps:
-            self.selected_cell[0] = int(n_steps) - 1
-        self.keymap_offset = int(self.zynseq.libseq.getRefNote())
-        if self.keymap_offset >= keymap_len:
-            self.keymap_offset = max(0, int((keymap_len - self.view_rows) / 2))
-            self.selected_cell[1] = int(self.keymap_offset + self.view_rows / 2)
-        if self.duration > n_steps:
-            self.duration = 1
-        self.draw_grid()
-        self.select_cell()
-        self.set_keymap_offset()
-        self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
-        self.set_title()
-        self.set_grid_zoom(self.zynseq.libseq.getPatternZoom())
 
     # Function to refresh status
     def refresh_status(self):

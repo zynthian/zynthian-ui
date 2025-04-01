@@ -51,11 +51,8 @@ PLAYHEAD_LINE = zynthian_gui_config.color_tx_off
 PLAYHEAD_HEIGHT = 12
 CONFIG_ROOT = "/zynthian/zynthian-data/zynseq"
 
-DEFAULT_VIEW_STEPS = 16
-DEFAULT_VIEW_ROWS = 16
 DRAG_SENSIBILITY = 1.5
 SAVE_SNAPSHOT_DELAY = 10
-
 
 EDIT_MODE_NONE = 0  # Edit mode disabled
 EDIT_MODE_SINGLE = 1  # Edit mode enabled for selected note
@@ -73,6 +70,9 @@ INPUT_CHANNEL_LABELS = ['OFF', 'ANY', '1', '2', '3', '4', '5', '6', '7', '8', '9
 
 
 class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
+
+    DEFAULT_VIEW_STEPS = 16
+    DEFAULT_VIEW_ROWS = 16
 
     # Function to initialise class
     def __init__(self):
@@ -130,17 +130,20 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         # Geometry contants
         self.grid_height = self.height - PLAYHEAD_HEIGHT
         self.grid_width = int(self.width * 0.91)
-        self.base_row_height = self.grid_height // DEFAULT_VIEW_ROWS
-        self.base_step_width = self.grid_width // DEFAULT_VIEW_STEPS
+        self.base_row_height = self.grid_height // self.DEFAULT_VIEW_ROWS
+        self.base_step_width = self.grid_width // self.DEFAULT_VIEW_STEPS
         self.piano_roll_width = self.width - self.grid_width
         # Scale thickness of select border based on screen resolution
         self.select_thickness = 1 + int(self.width / 500)
-        # Geometry variables => Change with zoom
-        self.zoom = 0							# Negative / Zero / Positive
+        # Zoom factor => Negative / Zero / Positive
+        self.zoom = 0
+        # Geometry variables => change with zoom factor!
         # Quantity of columns (steps) displayed in grid
-        self.view_steps = DEFAULT_VIEW_STEPS
-        self.row_height = self.base_row_height
+        self.view_steps = self.DEFAULT_VIEW_STEPS
         self.step_width = self.base_step_width
+        # Quantity of rows (notes) displayed in grid
+        self.view_rows = self.DEFAULT_VIEW_ROWS
+        self.row_height = self.base_row_height
 
         # Create pattern grid canvas
         self.grid_canvas = tkinter.Canvas(self.main_frame,
@@ -423,6 +426,36 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     # Pattern management
     # -------------------------------------------------------------------------
 
+    # Function to load new pattern
+    # index: Pattern index
+    def load_pattern(self, index):
+        # Save zoom value and vertical position in pattern object
+        self.zynseq.libseq.setPatternZoom(self.zoom)
+        # Load requested pattern
+        if self.bank == 0 and self.sequence == 0:
+            self.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
+        self.zynseq.libseq.selectPattern(index)
+        self.pattern = index
+        n_steps = self.zynseq.libseq.getSteps()
+        n_steps_beat = self.zynseq.libseq.getStepsPerBeat()
+        if n_steps != self.n_steps or n_steps_beat != self.n_steps_beat:
+            self.n_steps = n_steps
+            self.n_steps_beat = n_steps_beat
+            self.step_offset = 0
+            self.update_geometry()
+            self.redraw_pending = 4
+        else:
+            self.redraw_pending = 3
+        if self.selected_cell[0] >= n_steps:
+            self.selected_cell[0] = int(n_steps) - 1
+        if self.duration > n_steps:
+            self.duration = 1
+        self.draw_grid()
+        self.select_cell()
+        self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
+        self.set_title()
+        self.set_grid_zoom(self.zynseq.libseq.getPatternZoom())
+
     def save_pattern_file(self, fname):
         self.zynseq.save_pattern(
             self.pattern, "{}/{}.zpat".format(self.my_patterns_dpath, fname))
@@ -616,7 +649,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         return len(STEPS_PER_BEAT) - 1
 
     # -------------------------------------------------------------------------
-    # Touch management
+    # Touch event management
     # -------------------------------------------------------------------------
 
     # Function to handle start of pianoroll drag
@@ -681,9 +714,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     def on_gesture(self, gtype, value):
         pass
 
-    def plot_zctrls(self):
-        self.swipe_update()
-
     def swipe_nudge(self, dts):
         try:
             kt = 0.5 * min(0.05 * DRAG_SENSIBILITY / dts, 8)
@@ -724,53 +754,46 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     def swipe_vertical_action(self):
         pass
 
-    # Function to toggle event
-    # step: step number (column)
-    # row: keymap index
-    # Returns: Event number if note added else None
-    def toggle_event(self, step, row):
-        pass
-
-    # Function to remove an event
-    # step: step number (column)
-    # row: keymap index
-    def remove_event(self, step, row):
-        pass
+    # -------------------------------------------------------------------------
+    # Geometry management
+    # -------------------------------------------------------------------------
 
     def get_pianoroll_num_cells(self):
         return 128
 
-    # Function to draw grid
-    def draw_grid(self):
-        if self.drawing:
-            return
-        self.drawing = True
-        redraw_pending = self.redraw_pending
-        self.redraw_pending = 0
+    # Function to calculate variable gemoetry parameters
+    def update_geometry(self):
+        # Width & height
+        self.total_width = self.n_steps * self.step_width
+        self.total_height = 128 * self.row_height
+        self.scroll_height = self.total_height - self.grid_height
+        # Font size
+        self.fontsize_grid = self.row_height // 2
+        if self.fontsize_grid > 20:
+            self.fontsize_grid = 20  # Ugly font scale limiting
+        self.calculate_geometry_limits()
+        self.update_scroll_regions()
 
-        if self.n_steps == 0:
-            self.drawing = False
-            return  # TODO: Should we clear grid?
+    def calculate_geometry_limits(self):
+        # Row height limits
+        self.max_row_height = self.grid_height // 6
+        self.min_row_height = self.grid_height // 36
 
-        if len(self.cells) != self.get_pianoroll_num_cells() * self.n_steps:
-            redraw_pending = 4
-            self.grid_canvas.delete(tkinter.ALL)
-            self.draw_pianoroll()
-            self.cells = [None] * self.get_pianoroll_num_cells() * self.n_steps
-            self.play_canvas.coords("playCursor", 1 + self.playhead * self.step_width,
-                                    0, 1 + self.step_width * (self.playhead + 1), PLAYHEAD_HEIGHT)
+        # Step width limits
+        self.max_step_width = self.grid_width // 8
+        self.min_step_width = self.grid_width // 64
+        try:
+            self.min_step_width = max(self.min_step_width, self.grid_width // self.n_steps)
+        except:
+            pass
 
-        self.redraw_grid_pending(redraw_pending)
-        self.select_cell()
-        self.drawing = False
-
-    def redraw_grid_pending(self, redraw_pending):
-        pass
-
-    # Function to draw pianoroll content
-    def draw_pianoroll(self):
-        self.piano_roll.delete(tkinter.ALL)
-        pass
+    # Update scrollregion in several canvas
+    def update_scroll_regions(self):
+        if self.total_width > 0:
+            self.grid_canvas.config(scrollregion=(0, 0, self.total_width, self.total_height))
+            self.piano_roll.config(scrollregion=(0, 0, self.piano_roll_width, self.total_height))
+            self.play_canvas.config(scrollregion=(0, 0, self.total_width, PLAYHEAD_HEIGHT))
+            # logging.debug(f"GRID SCROLLREGION: {self.total_width} x {self.total_height}")
 
     # Function to set step offset and move grid view accordingly
     # offset: Step Offset (step at left column)
@@ -840,8 +863,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     def reset_grid_zoom(self):
         self.zoom = 0
-        self.view_rows = DEFAULT_VIEW_ROWS
-        self.view_steps = DEFAULT_VIEW_STEPS
+        self.view_rows = self.DEFAULT_VIEW_ROWS
+        self.view_steps = self.DEFAULT_VIEW_STEPS
         self.row_height = self.base_row_height
         self.step_width = self.base_step_width
         w = self.total_width
@@ -867,42 +890,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     def reset_grid_offset(self):
         self.set_step_offset()
 
-    # Function to calculate variable gemoetry parameters
-    def update_geometry(self):
-        # Y-axis calculations
-        self.total_height = 128 * self.row_height
-        self.scroll_height = self.total_height - self.grid_height
-        self.min_row_height = self.grid_height // 36
-        self.max_row_height = self.grid_height // 6
-
-        # X-axis calculations
-        self.total_width = self.n_steps * self.step_width
-        self.min_step_width = self.grid_width // 64
-        try:
-            self.min_step_width = max(self.min_step_width, self.grid_width // self.n_steps)
-        except:
-            pass
-        self.max_step_width = self.grid_width // 8
-
-        # Font size calculation
-        self.fontsize_grid = self.row_height // 2
-        if self.fontsize_grid > 20:
-            self.fontsize_grid = 20  # Ugly font scale limiting
-
-        # Update scrollregion in canvas
-        if self.total_width > 0:
-            self.grid_canvas.config(scrollregion=(0, 0, self.total_width, self.total_height))
-            self.piano_roll.config(scrollregion=(0, 0, self.piano_roll_width, self.total_height))
-            self.play_canvas.config(scrollregion=(0, 0, self.total_width, PLAYHEAD_HEIGHT))
-            # logging.debug(f"GRID SCROLLREGION: {self.total_width} x {self.total_height}")
-
-    # Function to draw a grid cell
-    # step: Step (column) index
-    # row: Index of row
-    # white: True for white notes
-    def draw_cell(self, step, row, white=None):
-        pass
-
     # Function to get cell coordinates
     # col: Column number (step)
     # row: Row number (keymap index)
@@ -915,6 +902,73 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         x2 = x1 + int(self.step_width * duration) - 1
         y2 = y1 + self.row_height - 1
         return [x1, y1, x2, y2]
+
+    # -------------------------------------------------------------------------
+    # Drawing functions
+    # -------------------------------------------------------------------------
+
+    # Function to draw grid
+    def draw_grid(self):
+        if self.drawing:
+            return
+        self.drawing = True
+        redraw_pending = self.redraw_pending
+        self.redraw_pending = 0
+
+        if self.n_steps == 0:
+            self.drawing = False
+            return  # TODO: Should we clear grid?
+
+        if len(self.cells) != self.get_pianoroll_num_cells() * self.n_steps:
+            redraw_pending = 4
+            self.grid_canvas.delete(tkinter.ALL)
+            self.draw_pianoroll()
+            self.cells = [None] * self.get_pianoroll_num_cells() * self.n_steps
+            self.play_canvas.coords("playCursor", 1 + self.playhead * self.step_width,
+                                    0, 1 + self.step_width * (self.playhead + 1), PLAYHEAD_HEIGHT)
+
+        self.redraw_grid_pending(redraw_pending)
+        self.select_cell()
+        self.drawing = False
+
+    def redraw_grid_pending(self, redraw_pending):
+        # Draw cells of grid
+        # self.grid_canvas.itemconfig("gridcell", fill="black")
+        if redraw_pending > 3:
+            # Redraw gridlines
+            self.grid_canvas.delete("gridvline")
+            self.play_canvas.delete("beatnum")
+            if self.n_steps_beat:
+                bnum_font = tkfont.Font(family=zynthian_gui_config.font_topbar[0], size=PLAYHEAD_HEIGHT - 2)
+                lh = max(128 * self.row_height - 1, self.grid_height - 1)
+                th = int(0.7 * PLAYHEAD_HEIGHT)
+                for step in range(0, self.n_steps + 1):
+                    xpos = step * self.step_width
+                    if step % self.n_steps_beat == 0:
+                        self.grid_canvas.create_line(xpos, 0, xpos, lh, fill=GRID_LINE_STRONG, tags="gridvline")
+                        if step < self.n_steps:
+                            beatnum = 1 + step // self.n_steps_beat
+                            if beatnum == 1:
+                                anchor = tkinter.NW
+                            else:
+                                anchor = tkinter.N
+                            self.play_canvas.create_text((xpos, -2), text=str(beatnum), font=bnum_font, anchor=anchor,
+                                                         fill=GRID_LINE_STRONG, tags="beatnum")
+                    else:
+                        self.grid_canvas.create_line(xpos, 0, xpos, lh, fill=GRID_LINE_WEAK, tags="gridvline")
+                        self.play_canvas.create_line(xpos, 0, xpos, th, fill=PLAYHEAD_LINE, tags="beatnum")
+
+    # Function to draw pianoroll content
+    def draw_pianoroll(self):
+        self.piano_roll.delete(tkinter.ALL)
+        pass
+
+    # Function to draw a grid cell
+    # step: Step (column) index
+    # row: Index of row
+    # white: True for white notes
+    def draw_cell(self, step, row, white=None):
+        pass
 
     # Function to update selectedCell
     # step: Step (column) of selected cell (Optional - default to reselect current column)
@@ -937,9 +991,17 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         elif step < self.step_offset:
             # Step is off left of display
             self.set_step_offset(step)
+        # Check row boundaries
+        if row is None:
+            row = self.selected_cell[1]
+        if row < 0:
+            row = 0
+        elif row >= self.get_pianoroll_num_cells():
+            row = self.get_pianoroll_num_cells() - 1
+        else:
+            row = int(row)
         self.selected_cell = [step, row]
         # Position selector cell-frame
-        row = 0
         coord = self.get_cell(step, row, 1, 0)
         coord[0] -= 1
         coord[1] -= 1
@@ -951,35 +1013,25 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.grid_canvas.coords(cell, coord)
         self.grid_canvas.tag_raise(cell)
 
-    # Function to load new pattern
-    # index: Pattern index
-    def load_pattern(self, index):
-        # Save zoom value and vertical position in pattern object
-        self.zynseq.libseq.setPatternZoom(self.zoom)
-        # Load requested pattern
-        if self.bank == 0 and self.sequence == 0:
-            self.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
-        self.zynseq.libseq.selectPattern(index)
-        self.pattern = index
-        n_steps = self.zynseq.libseq.getSteps()
-        n_steps_beat = self.zynseq.libseq.getStepsPerBeat()
-        if n_steps != self.n_steps or n_steps_beat != self.n_steps_beat:
-            self.n_steps = n_steps
-            self.n_steps_beat = n_steps_beat
-            self.step_offset = 0
-            self.update_geometry()
-            self.redraw_pending = 4
-        else:
-            self.redraw_pending = 3
-        if self.selected_cell[0] >= n_steps:
-            self.selected_cell[0] = int(n_steps) - 1
-        if self.duration > n_steps:
-            self.duration = 1
-        self.draw_grid()
-        self.select_cell()
-        self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
-        self.set_title()
-        self.set_grid_zoom(self.zynseq.libseq.getPatternZoom())
+    # -------------------------------------------------------------------------
+    # Event management
+    # -------------------------------------------------------------------------
+
+    def plot_zctrls(self):
+        self.swipe_update()
+
+    # Function to toggle event
+    # step: step number (column)
+    # row: keymap index
+    # Returns: Event number if note added else None
+    def toggle_event(self, step, row):
+        pass
+
+    # Function to remove an event
+    # step: step number (column)
+    # row: keymap index
+    def remove_event(self, step, row):
+        pass
 
     # Function to refresh status
     def refresh_status(self):

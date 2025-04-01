@@ -1634,25 +1634,25 @@ class zynthian_gui:
         elif self.current_screen in ("pattern_editor", "pated_cc"):
             if i == 0:
                 if t == 'S' or t == 'B':
-                    self.show_screen("arranger")
+                    self.toggle_pated()
                     return
             elif i == 1:
                 if t == 'S' or t == 'B':
-                    self.current_screen.reset_grid_zoom()
+                    self.get_current_screen_obj().reset_grid_zoom()
                     return
             elif i == 2:
                 if t == 'S' or t == 'B':
-                    self.toggle_pated()
+                    self.show_screen("arranger")
                     return
         elif self.current_screen == "arranger":
             if i == 0:
-                if t == 'S' or t == 'B':
-                    self.show_screen("pattern_editor")
-                    return
+                return
             elif i == 1:
                 return
             elif i == 2:
-                return
+                if t == 'S' or t == 'B':
+                    self.show_screen("pattern_editor")
+                    return
         if i == 3:
             if t == 'S':
                 self.zynswitch_short(i)
