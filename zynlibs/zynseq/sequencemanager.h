@@ -258,6 +258,17 @@ class SequenceManager {
     */
     float getTempo(bool clear = true);
 
+    /** @brief  Check if time signature has changed
+        @retval bool True if time signature has changed
+    */
+    bool isTimeSigChanged();
+
+    /** @brief  Get current time signature (beats in bar)
+        @param  clear True to clear current sig changed flag (default: true)
+        @retval float Current time signature
+    */
+    uint16_t getTimeSig(bool clear = true);
+
   private:
     int fileWrite32(uint32_t value, FILE* pFile);
     int fileWrite16(uint16_t value, FILE* pFile);
@@ -269,6 +280,8 @@ class SequenceManager {
 
     bool m_bTempoChanged = false; // True if tempo changed by sequence
     float m_fTempo = DEFAULT_TEMPO; // Current tempo
+    bool m_bTimeSigChanged = false; // True if time signature changed by sequence
+    uint8_t m_nTimeSig = 4; // Current time signature
     uint8_t m_nTriggerDevice  = 0xFF; // MIDI device to receive sequence triggers (note-on)
     uint8_t m_nTriggerChannel = 0xFF; // MIDI channel to receive sequence triggers (note-on)
 

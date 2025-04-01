@@ -212,6 +212,20 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
             // Change of state
             // uint8_t nTrigger = getTriggerNote(it->first, it->second);
             // It's currently polled from python
+            if (bSync && pSequence->getPlayState() == PLAYING && pSequence->getGroup() == 16) {
+                // Scene started
+                Track* pTrack = pSequence->getTrack(0);
+                if (pTrack) {
+                    Pattern* pPattern = pTrack->getPattern(0);
+                    if (pPattern) {
+                        uint16_t timeSig = pPattern->getBeatsInPattern();
+                        if (timeSig !=  m_nTimeSig) {
+                            m_nTimeSig = timeSig;
+                            m_bTimeSigChanged = true;
+                        }
+                    }
+                }
+            }
         }
         if (nEventType & 4) {
             // Tempo change
@@ -397,4 +411,12 @@ float SequenceManager::getTempo(bool clear) {
     if (clear)
         m_bTempoChanged = false;
     return m_fTempo;
+}
+
+bool SequenceManager::isTimeSigChanged() { return m_bTimeSigChanged; }
+
+uint16_t SequenceManager::getTimeSig(bool clear) {
+    if (clear)
+        m_bTimeSigChanged = false;
+    return m_nTimeSig;
 }

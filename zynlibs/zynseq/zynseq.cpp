@@ -598,6 +598,11 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             float tempo = g_seqMan.getTempo();
             setTempo(tempo);
         }
+
+        if (g_seqMan.isTimeSigChanged()) {
+            uint16_t timeSig = g_seqMan.getTimeSig();
+            setBeatsPerBar(timeSig);
+        }
     }
 
     // Process events scheduled to be sent to MIDI output
@@ -2194,7 +2199,7 @@ void addTimeSigEvent(uint8_t bank, uint8_t sequence, uint8_t beats, uint8_t type
     g_bDirty = true;
 }
 
-uint16_t getTimeSigAt(uint8_t bank, uint8_t sequence, uint16_t bar) { return g_seqMan.getSequence(bank, sequence)->getTimeSig(bar); }
+uint16_t getTimeSigAt(uint8_t bank, uint8_t sequence, uint16_t bar) { return g_seqMan.getSequence(bank, sequence)->getTimeSigAt(bar); }
 
 uint8_t getBeatsPerBar(uint8_t bank, uint8_t sequence, uint16_t bar) { return getTimeSigAt(bank, sequence, bar) >> 8; }
 

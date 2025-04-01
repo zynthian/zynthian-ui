@@ -945,7 +945,6 @@ float getTempoAt(uint8_t bank, uint8_t sequence, uint16_t bar = 1, uint16_t tick
  *   @param  beats Beats per bar (numerator)
  *   @param  type Beat type (denominator)
  *   @param  bar Bar at which to add time signature change
- *   @param  tick Tick within bar at which to add time signature change
  */
 void addTimeSigEvent(uint8_t bank, uint8_t sequence, uint8_t beats, uint8_t type, uint16_t bar);
 

@@ -62,7 +62,6 @@ void Timebase::addTimebaseEvent(uint16_t bar, uint16_t clock, uint16_t type, uin
     pEvent->type          = type;
     pEvent->value         = value;
     m_vEvents.insert(it, pEvent);
-    fprintf(stderr, "Timebase::addTimebaseEvent(bar=%u, clock=%u, type=%u, value=%u)\n", bar, clock, type, value);
 }
 
 void Timebase::removeTimebaseEvent(uint16_t bar, uint16_t clock, uint16_t type) {
