@@ -311,16 +311,18 @@ uint32_t getPatternIndex();
  */
 uint32_t getSteps();
 
-/** @brief  Get quantity of beats in selected pattern
- *   @retval uint32_t Quantity of beats
+/** @brief  Get quantity of beats in specified pattern
+ *  @param  pattern Index of pattern 
+ *  @retval uint32_t Quantity of beats
  */
-uint32_t getBeatsInPattern();
+uint32_t getBeatsInPattern(uint32_t pattern);
 
 /** @brief  Set quantity of beats in selected pattern
+ *  @param  pattern Index of pattern 
  *   @param  beats Quantity of beats
  *   @note   Adjusts steps to match steps per beat
  */
-void setBeatsInPattern(uint32_t beats);
+void setBeatsInPattern(uint32_t pattern, uint32_t beats);
 
 /** @brief  Get pattern length in clock cycles
  *   @param  pattern Index of pattern
@@ -848,7 +850,21 @@ uint8_t getProgress(uint8_t bank, uint8_t start, uint8_t end, uint16_t* progress
  */
 uint32_t getTracksInSequence(uint8_t bank, uint8_t sequence);
 
-/** @brief  Stops all sequences
+/** @brief  Set the quantity of sequence repeats
+ *   @param  bank Index of bank
+ *   @param  sequence Index of sequence
+ *   @param  repeat Quantity of repeats (0 to play once)
+ */
+ void setRepeat(uint8_t bank, uint8_t sequence, uint8_t repeat);
+
+ /** @brief  get the quantity of sequence repeats
+ *   @param  bank Index of bank
+ *   @param  sequence Index of sequence
+ *   @retval uint8_t Quantity of repeats (0 to play once)
+ */
+ uint8_t getRepeat(uint8_t bank, uint8_t sequence);
+
+ /** @brief  Stops all sequences
  */
 void stop();
 
@@ -985,6 +1001,15 @@ void setSequenceName(uint8_t bank, uint8_t sequence, const char* name);
  *   @retval const char* Pointer to sequence name
  */
 const char* getSequenceName(uint8_t bank, uint8_t sequence);
+
+/** @brief  Set the sequence to play when one-shot ends
+    @param  bank Index of bank
+    @param  sequence Index of sequence
+    @param  nextBank Index of bank of next sequence
+    @param  nextSequence Index of next sequence
+    @note   Set nextBank and nextSequence to zero to disable follow-on action
+*/
+void setNextSequence(uint8_t bank, uint8_t sequence, uint8_t nextBank, uint8_t nextSequence);
 
 /** @brief  Move sequence (change order of sequences)
  *   @param  bank Index of bank

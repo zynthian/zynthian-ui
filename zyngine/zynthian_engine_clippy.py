@@ -349,7 +349,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 self.libseq.selectPattern(pattern)
                 self.libseq.clear()
                 self.libseq.setStepsPerBeat(1)
-                self.libseq.setBeatsInPattern(whole_beats)
+                self.libseq.setBeatsInPattern(pattern, whole_beats)
                 if beats_zctrl.value:
                     note_len = whole_beats // NUM_SPLICES
                     for pos in range(NUM_SPLICES):
@@ -369,10 +369,11 @@ class zynthian_engine_clippy(zynthian_engine):
                 logging.error(f"Can't setup sequencer for clip {slot} => {e}")
         else:
             self.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, self.sequence_offset + slot, zynseq.SEQ_DISABLED)
+            state = zynseq.SEQ_DISABLED
             #self.reset_pattern(slot)
 
         zynsigman.send(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE,
-                       bank=zynseq.LAUNCHER_SEQ_BANK, seq=sequence, state=state, mode=zynseq.SEQ_LOOPALL, group=group)
+                       bank=zynseq.LAUNCHER_SEQ_BANK, seq=sequence, state=state, mode=zynseq.SEQ_LOOPALL, group=self.processors[0].midi_chan)
         self.processors[0].init_ctrl_screens()
 
     def on_tempo(self, tempo):
@@ -382,13 +383,18 @@ class zynthian_engine_clippy(zynthian_engine):
         self.tempo_cb_timer.start()
 
     def on_tempo_cb(self):
+        if self.tempo_cb_timer:
+            self.tempo_cb_timer.cancel()
         self.tempo_cb_timer = None
+        do_warp = False
         for slot in range(zynseq.LAUNCHER_SLOTS):
             warp_zctrl = self.processors[0].controllers_dict[f"warp {slot + 1:02}"]
             if warp_zctrl.value:
                 path = self.processors[0].controllers_dict[f"file {slot + 1:02}"].value
                 self.set_file(slot, path)
-        self.write_sfz()
+                do_warp = True
+        if do_warp:
+            self.write_sfz()
 
     # ---------------------------------------------------------------------------
     # Processor Management
@@ -421,7 +427,7 @@ class zynthian_engine_clippy(zynthian_engine):
             self.libseq.selectPattern(pattern)
             self.libseq.clear()
             self.libseq.setStepsPerBeat(1)
-            self.libseq.setBeatsInPattern(1)
+            self.libseq.setBeatsInPattern(pattern, 1)
             self.libseq.addNote(0, 0, 100, 1, 0)
             self.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, self.sequence_offset + slot, zynseq.SEQ_ONESHOT)
             self.libseq.updateSequenceInfo()

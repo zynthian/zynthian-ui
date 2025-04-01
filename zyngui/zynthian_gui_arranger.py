@@ -437,7 +437,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
                             pattern_position[channel] += ticks_in_pattern
                         pattern[channel] = self.zynseq.libseq.createPattern()
                         self.zynseq.libseq.selectPattern(pattern[channel])
-                        self.zynseq.libseq.setBeatsInPattern(beats_in_pattern)
+                        self.zynseq.libseq.setBeatsInPattern(pattern[channel], beats_in_pattern)
                         self.zynseq.libseq.setStepsPerBeat(steps_per_beat)
                         position = int(
                             pattern_position[channel] / ticks_per_clock)

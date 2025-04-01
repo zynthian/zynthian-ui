@@ -136,6 +136,8 @@ void Sequence::setPlayState(uint8_t state) {
             m_nPosition = 0;
     m_bStateChanged |= (nState != m_nState);
     m_bChanged = true;
+    if (m_nState == STARTING)
+        m_nCount = 0;
 }
 
 uint32_t Sequence::getState() { return (m_nGroup << 16) | (m_nMode << 8) | m_nState; }
@@ -177,7 +179,13 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
         case ONESHOT:
         case ONESHOTALL:
         case ONESHOTSYNC:
-            setPlayState(STOPPED);
+            if (++m_nCount > m_nRepeat) {
+                setPlayState(STOPPED);
+                nReturn |= 8;
+            } else {
+                m_nState = RESTARTING;
+                nState   = RESTARTING;
+            }
             break;
         case LOOPSYNC:
         case LOOPALL:
@@ -195,7 +203,7 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
 
     m_bStateChanged |= (nState != m_nState);
     if (m_bStateChanged) {
-        m_bChanged |= true;
+        m_bChanged = true;
         m_bStateChanged = false;
         nReturn |= 2;
         if (m_nState == PLAYING)
@@ -206,10 +214,6 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
         if (m_pNextTimebaseEvent->type == TIMEBASE_TYPE_TEMPO) {
             m_fTempo = m_pNextTimebaseEvent->value / 100;
             nReturn |= 4;
-        } else if (m_pNextTimebaseEvent->type == TIMEBASE_TYPE_TIMESIG) {
-            //!@todo: Handle two time events at same time
-            m_pNextTimebaseEvent = m_timebase.getNextTimebaseEvent(m_pNextTimebaseEvent);
-            nReturn |= 8;
         }
     }
 
@@ -266,3 +270,20 @@ void Sequence::setName(std::string sName) {
 }
 
 std::string Sequence::getName() { return m_sName; }
+
+void Sequence::setNextSequence(uint8_t bank, uint8_t sequence) {
+    m_nNextSeq = (bank << 8) + sequence;
+}
+
+uint16_t Sequence::getNextSequence() {
+    return m_nNextSeq;
+}
+
+void Sequence::setRepeat(uint8_t repeat) {
+    m_nRepeat = repeat;
+    m_nCount = 0;
+}
+
+uint8_t Sequence::getRepeat() {
+    return m_nRepeat;
+}

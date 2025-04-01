@@ -321,7 +321,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         menu_options["GLOBAL"] = options
         # Pattern Options
         options = {}
-        options[f"Beats in pattern ({self.zynseq.libseq.getBeatsInPattern()})"] = 'Beats in pattern'
+        options[f"Beats in pattern ({self.zynseq.libseq.getBeatsInPattern(self.pattern)})"] = 'Beats in pattern'
         options[f"Steps/Beat ({self.n_steps_beat})"] = 'Steps per beat'
         options[f"Swing Divisor ({self.zynseq.libseq.getSwingDiv()})"] = 'Swing Divisor'
         options[f"Swing Amount ({int(100.0 * self.zynseq.libseq.getSwingAmount())}%)"] = 'Swing Amount'
@@ -379,7 +379,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
         elif params == 'Beats in pattern':
             self.enable_param_editor(self, 'bip', {'name': 'Beats in pattern', 'value_min': 1, 'value_max': 64,
-                                                   'value_default': 4, 'value': self.zynseq.libseq.getBeatsInPattern()},
+                                                   'value_default': 4, 'value': self.zynseq.libseq.getBeatsInPattern(self.pattern)},
                                      self.assert_beats_in_pattern)
         elif params == 'Steps per beat':
             self.enable_param_editor(self, 'spb', {'name': 'Steps per beat', 'ticks': STEPS_PER_BEAT,
@@ -633,7 +633,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     # Function to assert beats in pattern
     def set_beats_in_pattern(self, value):
-        self.zynseq.libseq.setBeatsInPattern(value)
+        self.zynseq.libseq.setBeatsInPattern(self.pattern, value)
         self.clean_pattern_snapshots()
         self.n_steps = self.zynseq.libseq.getSteps()
         self.update_geometry()

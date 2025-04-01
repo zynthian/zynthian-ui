@@ -594,11 +594,11 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             }
         }
 
+        // Check for timebase changes from patterns
         if (g_seqMan.isTempoChanged()) {
             float tempo = g_seqMan.getTempo();
             setTempo(tempo);
         }
-
         if (g_seqMan.isTimeSigChanged()) {
             uint16_t timeSig = g_seqMan.getTimeSig();
             setBeatsPerBar(timeSig);
@@ -894,7 +894,7 @@ bool load(const char* filename) {
                 nBlockSize -= 1;
             }
             nBlockSize -= 12;
-            // printf("Pattern:%u Beats:%u StepsPerBeat:%u Scale:%u Tonic:%u\n", nPattern, pPattern->getBeatsInPattern(), pPattern->getStepsPerBeat(),
+            // printf("Pattern:%u Beats:%u StepsPerBeat:%u Scale:%u Tonic:%u\n", nPattern, pPattern->getBeatsInPattern(nPattern), pPattern->getStepsPerBeat(),
             // pPattern->getScale(), pPattern->getTonic());
             while (nBlockSize) {
                 if (nVersion > 8) {
@@ -1097,7 +1097,7 @@ bool load_pattern(uint32_t nPattern, const char* filename) {
                 nBlockSize -= 1;
             }
             nBlockSize -= 8;
-            // printf("Pattern:%u Beats:%u StepsPerBeat:%u Scale:%u Tonic:%u\n", nPattern, pPattern->getBeatsInPattern(), pPattern->getStepsPerBeat(),
+            // printf("Pattern:%u Beats:%u StepsPerBeat:%u Scale:%u Tonic:%u\n", nPattern, pPattern->getBeatsInPattern(nPattern), pPattern->getStepsPerBeat(),
             // pPattern->getScale(), pPattern->getTonic());
             while (nBlockSize) {
                 if (nVersion > 8) {
@@ -1555,18 +1555,18 @@ uint32_t getPatternLength(uint32_t pattern) {
     return 0;
 }
 
-uint32_t getBeatsInPattern() {
-    if (g_seqMan.getPattern(g_nPattern))
-        return g_seqMan.getPattern(g_nPattern)->getBeatsInPattern();
+uint32_t getBeatsInPattern(uint32_t pattern) {
+    if (g_seqMan.getPattern(pattern))
+        return g_seqMan.getPattern(pattern)->getBeatsInPattern();
     return 0;
 }
 
-void setBeatsInPattern(uint32_t beats) {
-    if (!g_seqMan.getPattern(g_nPattern))
+void setBeatsInPattern(uint32_t pattern, uint32_t beats) {
+    if (!g_seqMan.getPattern(pattern))
         return;
-    g_seqMan.getPattern(g_nPattern)->setBeatsInPattern(beats);
+    g_seqMan.getPattern(pattern)->setBeatsInPattern(beats);
     g_seqMan.updateAllSequenceLengths();
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true, true);
+    setPatternModified(g_seqMan.getPattern(pattern), true, true);
     g_bDirty = true;
 }
 
@@ -2051,6 +2051,16 @@ void setPlayMode(uint8_t bank, uint8_t sequence, uint8_t mode) {
 
 uint8_t getPlayState(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->getPlayState(); }
 
+void setRepeat(uint8_t bank, uint8_t sequence, uint8_t repeat) {
+    g_seqMan.getSequence(bank, sequence)->setRepeat(repeat);
+}
+
+uint8_t getRepeat(uint8_t bank, uint8_t sequence) {
+    return g_seqMan.getSequence(bank, sequence)->getRepeat();
+}
+
+void setSequence(uint8_t bank, uint8_t sequence) { g_pSequence = g_seqMan.getSequence(bank, sequence); }
+
 bool isEmpty(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->isEmpty(); }
 
 void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state) {
@@ -2205,14 +2215,18 @@ uint8_t getBeatsPerBar(uint8_t bank, uint8_t sequence, uint16_t bar) { return ge
 
 uint32_t getTracksInSequence(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->getTracks(); }
 
-void setSequence(uint8_t bank, uint8_t sequence) { g_pSequence = g_seqMan.getSequence(bank, sequence); }
-
 void setSequenceName(uint8_t bank, uint8_t sequence, const char* name) { g_seqMan.getSequence(bank, sequence)->setName(std::string(name)); }
 
 const char* getSequenceName(uint8_t bank, uint8_t sequence) {
     strcpy(g_sName, g_seqMan.getSequence(bank, sequence)->getName().c_str());
     return g_sName;
 }
+
+void setNextSequence(uint8_t bank, uint8_t sequence, uint8_t nextBank, uint8_t nextSequence) {
+    g_seqMan.getSequence(bank, sequence)->setNextSequence(nextBank, nextSequence);
+    g_bDirty = true;
+}
+
 
 bool moveSequence(uint8_t bank, uint8_t sequence, uint8_t position) {
     bool bResult = g_seqMan.moveSequence(bank, sequence, position);

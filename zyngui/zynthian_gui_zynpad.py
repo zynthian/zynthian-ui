@@ -509,7 +509,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
             self.zynseq.libseq.setChainID(self.bank, self.selected_pad, 0, chain_id)
             processor = self.chain_manager.add_processor(chain_id, "AP")
             self.zyngui.current_processor = processor
-            processor.controllers_dict['beats'].set_value(self.zynseq.libseq.getBeatsInPattern())
+            processor.controllers_dict['beats'].set_value(self.zynseq.libseq.getBeatsInPattern(0)) #TODO: Assume pattern 0 is valid.
             if len(processor.get_bank_list()) > 1:
                 self.zyngui.show_screen('bank')
             else:
@@ -648,7 +648,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
                 # Sync number of beats => This is not the right place. This should be reviewed with care!!
                 try:
                     self.zyngui.get_current_processor().controllers_dict['beats'].set_value(
-                        self.zynseq.libseq.getBeatsInPattern())
+                        self.zynseq.libseq.getBeatsInPattern(0)) #TODO: Assume pattern 0 is valid.
                 except Exception as e:
                     logging.error(
                         f"Can't sync sampler number of beats! => {e}")

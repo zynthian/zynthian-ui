@@ -80,7 +80,7 @@ class TestLibZynSeq(unittest.TestCase):
         self.assertEqual(libseq.getSteps(), steps_in_pattern)
         self.assertEqual(libseq.getBeatType(), beat_type)
         self.assertEqual(libseq.getStepsPerBeat(), steps_per_beat)
-        self.assertEqual(libseq.getBeatsInPattern(), beats_in_pattern)
+        self.assertEqual(libseq.getBeatsInPattern(0), beats_in_pattern)
         self.assertEqual(libseq.getClocksPerStep(), clocks_per_step)
         self.assertEqual(libseq.getPatternLength(
             libseq.getPatternIndex()), clocks_per_step * steps_in_pattern)

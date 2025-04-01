@@ -145,7 +145,7 @@ class Sequence {
      *   @param  nTime Time (quantity of samples since JACK epoch)
      *   @param  bSync True to indicate sync pulse, e.g. to sync tracks
      *   @param  dSamplesPerClock Samples per clock
-     *   @retval uint8_t Bitwise flag of what clock triggers [1=track step | 2=change of state]
+     *   @retval uint8_t Bitwise flag of what clock triggers [1=track step | 2=change of state | 4=tempo change | 8=end of sequence]
      *   @note   Sequences are clocked syncronously but not locked to absolute time so depend on start time for absolute timing
      *   @note   Will clock each track
      */
@@ -201,6 +201,27 @@ class Sequence {
      */
     std::string getName();
 
+    /** @brief  Set index of next seqeuence
+      * @param  bank Index of next bank
+      * @param  sequence Index of sequence
+    */
+    void setNextSequence(uint8_t bank, uint8_t sequence);
+
+    /** @brief  Get index of next seqeuence
+      * @retval uint16_t Index of next sequence | bank << 16 or 0 if none
+    */
+    uint16_t getNextSequence();
+
+    /** @brief  Set quantity of repeats
+      * @param  repeat Quantity of repeats (0 to play once)
+    */
+    void setRepeat(uint8_t repeat);
+
+    /** @brief  Get quantity of repeats
+      * @retval uint8_t Quantity of repeats (0 to play once)
+    */
+    uint8_t getRepeat();
+
   private:
     std::vector<Track> m_vTracks;      // Vector of tracks within sequence
     Timebase m_timebase;               // Timebase map
@@ -212,8 +233,11 @@ class Sequence {
     uint32_t m_nLastSyncPos = 0;       // Position of last sync pulse in clock cycles
     uint32_t m_nLength      = 0;       // Length of sequence in clock cycles (longest track)
     uint8_t m_nGroup        = 0;       // Sequence's mutually exclusive group
+    uint8_t m_nRepeat       = 0;       // Quantity of times to repeat sequence
+    uint8_t m_nCount        = 0;       // Quantity of times to sequence has repeated
     float m_fTempo          = 120.0;   // Current tempo (overriden by tempo events in timebase map)
     uint16_t m_nTimeSig     = 4;       // Current time signature (beats in bar)
+    uint16_t m_nNextSeq     = 0;       // Index of the next sequence | bank << 8 to play when this sequence ends (0=none)
     bool m_bChanged         = false;   // True if sequence content changed
     bool m_bStateChanged    = false;   // True if state changed since last clock cycle
     bool m_bEmpty           = true;    // True if all patterns are emtpy (no events)

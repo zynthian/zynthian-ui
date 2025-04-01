@@ -77,9 +77,9 @@ SEQ_LASTPLAYSTATUS = 5
 
 SEQ_MAX_COLUMNS = 8
 
-PATTERN_EDITOR_BANK = 0
-LAUNCHER_SEQ_BANK = 255
-LAUNCHER_SLOTS = 8
+PATTERN_EDITOR_BANK = 0     # Bank used for pattern editor
+LAUNCHER_SEQ_BANK = 255     # Bank used for mixer view launchers
+LAUNCHER_SLOTS = 8          # Quantity of launcher slots
 
 PLAY_MODES = ['Disabled', 'Oneshot', 'Loop',
               'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
@@ -158,15 +158,17 @@ class zynseq(zynthian_engine):
                     {
                         "title": "",
                         "bpb": 4,
-                        "bars": 1,
+                        "loops": 0,
                         "mode": 2,
                         "group": 0,
                         "state": SEQ_STOPPED,
                         "chan": chan,
                         "slot": slot,
                         "sequence": chan * LAUNCHER_SLOTS + slot,
+                        "pattern": chan * LAUNCHER_SLOTS + slot, # This might not be correct but refresh should fix it
                         "clippy": None, #TODO: Wasteful to populate all slots with clippy processor
-                        "tempo": None
+                        "tempo": None,
+                        "next": 0
                     }
                 )
             self.launcher_info.append(info)
@@ -180,7 +182,8 @@ class zynseq(zynthian_engine):
         self.libseq = None
 
     def update_state(self):
-        num_seq = self.libseq.getSequencesInBank(self.bank)
+        #TODO: This is generating excessive signals
+        num_seq = self.libseq.getSequencesInBank(self.bank) #TODO: Cache this
         states = (ctypes.c_uint32 * num_seq)()
         count = self.libseq.getStateChange(self.bank, 0, num_seq, states)
         for i in range(count):

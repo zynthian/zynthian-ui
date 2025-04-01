@@ -43,6 +43,7 @@ void SequenceManager::resetBanks() {
             insertSequence(255, offset);
             Sequence* pSequence = m_mBanks[255][offset];
             pSequence->setGroup(chan);
+            pSequence->setPlayMode(DISABLED);
             if (chan < 16) {
                 pSequence->setName(std::string(1, 'A' + chan) + std::to_string(seq + 1));
                 Track* pTrack = pSequence->getTrack(0);
@@ -191,6 +192,7 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
     */
     uint32_t nTime          = timeinfo.first;
     double dSamplesPerClock = timeinfo.second;
+    std::vector<uint16_t> vNext;
     for (auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end();) {
         Sequence* pSequence = getSequence(it->first, it->second);
         if (pSequence->getPlayState() == STOPPED) {
@@ -219,7 +221,7 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
                     Pattern* pPattern = pTrack->getPattern(0);
                     if (pPattern) {
                         uint16_t timeSig = pPattern->getBeatsInPattern();
-                        if (timeSig !=  m_nTimeSig) {
+                        if (timeSig != m_nTimeSig) {
                             m_nTimeSig = timeSig;
                             m_bTimeSigChanged = true;
                         }
@@ -232,8 +234,18 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
             m_fTempo = pSequence->getTempo();
             m_bTempoChanged = true;
         }
+        if (nEventType & 8) {
+            // Reached end of one-shot sequence
+            uint16_t nextSeq = pSequence->getNextSequence();
+            if (nextSeq)
+                vNext.push_back(nextSeq);
+        }
         ++it;
     }
+    // Start pending follow-on sequences
+    for (auto it = vNext.begin(); it != vNext.end(); ++it)
+        setSequencePlayState((*it) >> 8, (*it) & 255, STARTING);
+
     return m_vPlayingSequences.size();
 }
 
@@ -251,20 +263,13 @@ void SequenceManager::setSequencePlayState(uint8_t bank, uint8_t sequence, uint8
                     pPlayingSequence->setPlayState(STOPPED);
                 else if (pPlayingSequence->getPlayState() != STOPPED) {
                     pPlayingSequence->setPlayState(STOPPING_SYNC);
-                    if (pPlayingSequence->getGroup() == 255) {
-                        for (uint i = 0; i < 8; ++i) {
-                            Sequence* pSlaveSeq = m_mBanks[255][sequence + i * 8];
-                            if (pSlaveSeq->getPlayState() != STOPPED)
-                                pSlaveSeq->setPlayState(STOPPING_SYNC);
-                        }
-                    }
                 }
             }
         }
         if (bAddToList)
             m_vPlayingSequences.push_back(std::pair<uint32_t, uint32_t>(bank, sequence));
-    }
-    pSequence->setPlayState(state);
+        }
+        pSequence->setPlayState(state);
 
     if (bank == 255 && pSequence->getGroup() == 16) {
         if (state == STARTING || state == PLAYING || state == RESTARTING) {
@@ -286,9 +291,15 @@ void SequenceManager::setSequencePlayState(uint8_t bank, uint8_t sequence, uint8
                     continue;
                 setSequencePlayState(bank, nSlaveSeq, STOPPING);
             }
+        } else if (state == STOPPED) {
+            for (uint8_t chan = 0; chan < 16; ++chan) {
+                uint32_t nSlaveSeq = sequence % 8 + chan * 8;
+                Sequence* pSlaveSeq = m_mBanks[255][nSlaveSeq];
+                if (pSlaveSeq->getPlayState() != STOPPED)
+                    setSequencePlayState(bank, nSlaveSeq, STOPPED);
+            }
         }        
     }
-
 }
 
 uint8_t SequenceManager::getTriggerNote(uint8_t bank, uint8_t sequence) {
