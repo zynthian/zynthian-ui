@@ -29,6 +29,7 @@ import json
 import tkinter
 import logging
 from math import ceil
+from queue import Queue
 from xml.dom import minidom
 import tkinter.font as tkfont
 
@@ -117,12 +118,16 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     # Function to initialise class
     def __init__(self):
         self.edit_param = EDIT_PARAM_DUR  # Parameter to adjust in parameter edit mode
-        self.keymap = []
+        self.duration = 1.0  # Current note entry duration
+        self.velocity = 100  # Current note entry velocity
+        self.keymap = []  # Array of {"note":MIDI_NOTE_NUMBER, "name":"key name","colour":"key colour"} name and colour are optional
         self.keymap_offset = 60  # MIDI note number of bottom row in grid
         self.reload_keymap = False  # True when keymap needs reloading
         self.chord_mode = 0  # Chord entry mode. 0 for single note entry
         self.chord_type = 0  # Chord type. Index of CHORD
         self.diatonic_scale_tonic = 0  # Tonic of diatonic scale used for chords
+        self.cells = []  # Array of cells indices
+        self.rows_pending = Queue()
 
         # Touch control variables
         self.drag_start_velocity = None  # Velocity value at start of drag
@@ -703,6 +708,11 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     # Drawing functions
     # -------------------------------------------------------------------------
 
+    # Function to adjust velocity indicator
+    # velocity: Note velocity to indicate
+    def set_velocity_indicator(self, velocity):
+        self.velocity_canvas.coords("velocityIndicator", 0, 0, self.piano_roll_width * velocity / 127, PLAYHEAD_HEIGHT)
+
     # Function to draw a grid row
     # row: Row number (keymap index)
     # colour: Black, white or None (default) to not care
@@ -759,13 +769,22 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         if step + duration > self.n_steps:
             self.grid_canvas.itemconfig(f"lastnotetext{row}", text=f"+{duration - self.n_steps + step}", state="normal")
 
-    def redraw_grid_pending(self, redraw_pending):
-        super().redraw_grid_pending(redraw_pending)
-        if redraw_pending > 1:
+    def redraw_grid_pending(self):
+        if len(self.cells) != self.get_pianoroll_num_cells() * self.n_steps:
+            self.redraw_pending = 4
+            self.grid_canvas.delete(tkinter.ALL)
+            self.draw_pianoroll()
+            self.cells = [None] * self.get_pianoroll_num_cells() * self.n_steps
+            self.play_canvas.coords("playCursor", 1 + self.playhead * self.step_width,
+                                    0, 1 + self.step_width * (self.playhead + 1), PLAYHEAD_HEIGHT)
+
+        super().redraw_grid_pending()
+
+        if self.redraw_pending > 1:
             self.piano_roll.delete("notename")
             self.grid_canvas.delete("gridhline")
 
-            if redraw_pending > 2:
+            if self.redraw_pending > 2:
                 row_min = 0
                 row_max = len(self.keymap)
             else:
@@ -801,8 +820,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 # name = str(row)
                 ypos = self.total_height - row * self.row_height
                 if name:
-                    self.piano_roll.create_text((2, ypos - 0.5 * self.row_height), text=name,
-                                                font=grid_font, anchor="w", fill=fill, tags="notename")
+                    self.piano_roll.create_text(2, ypos - 0.5 * self.row_height, text=name, font=grid_font,
+                                                anchor="w", fill=fill, tags="notename")
                 if self.keymap[row]['note'] % 12 == self.zynseq.libseq.getTonic():
                     self.grid_canvas.create_line(0, ypos, self.total_width, ypos, fill=GRID_LINE_STRONG, tags="gridhline")
                 else:
@@ -811,7 +830,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
                 self.draw_row(row, (colour == "white"))
 
             # Set z-order to allow duration to show
-            if redraw_pending > 2:
+            if self.redraw_pending > 2:
                 for step in range(self.n_steps):
                     self.grid_canvas.tag_lower(f"step{step}")
 
@@ -849,8 +868,6 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         elif row < self.keymap_offset:
             # Note is off bottom of display
             self.set_keymap_offset(row)
-        # if redraw and self.redraw_pending < 1:
-        # self.redraw_pending = 3
         note = self.keymap[row]['note']
 
         # Check column boundaries

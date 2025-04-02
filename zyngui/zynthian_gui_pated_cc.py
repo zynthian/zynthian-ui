@@ -115,19 +115,6 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     def swipe_vertical_action(self):
         pass
 
-    # Function to toggle event
-    # step: step number (column)
-    # row: keymap index
-    # Returns: Event number if note added else None
-    def toggle_event(self, step, row):
-        pass
-
-    # Function to remove an event
-    # step: step number (column)
-    # row: keymap index
-    def remove_event(self, step, row):
-        pass
-
     # -------------------------------------------------------------------------
     # Geometry management
     # -------------------------------------------------------------------------
@@ -137,12 +124,12 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
 
     def calculate_geometry_limits(self):
         # Row height limits
-        self.max_row_height = self.grid_height // 6
+        self.max_row_height = self.grid_height // 128
         self.min_row_height = self.grid_height // 128
 
         # Step width limits
-        self.max_step_width = self.grid_width // 8
-        self.min_step_width = self.grid_width // 64
+        self.max_step_width = self.grid_width // 16
+        self.min_step_width = self.grid_width // 128
         try:
             self.min_step_width = max(self.min_step_width, self.grid_width // self.n_steps)
         except:
@@ -161,42 +148,45 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         y2 = y1 + self.row_height - 1
         return [x1, y1, x2, y2]
 
+    def get_cc_value(self, step):
+        step = self.zynseq.libseq.getControlStart(step, self.cc_num)
+        if step >= 0:
+            return self.zynseq.libseq.getControlValue(step, self.cc_num)
+        else:
+            return None
+
     # -------------------------------------------------------------------------
     # Drawing functions
     # -------------------------------------------------------------------------
 
-    def redraw_grid_pending(self, redraw_pending):
-        super().redraw_grid_pending(redraw_pending)
-        if redraw_pending > 1:
-            self.piano_roll.delete("valtick")
-            self.grid_canvas.delete("gridhline")
+    def redraw_grid_pending(self):
+        super().redraw_grid_pending()
 
-            if redraw_pending > 2:
-                row_min = 0
-                row_max = 129
-            else:
-                row_min = self.selected_cell[1]
-                row_max = self.selected_cell[1]
+        if self.redraw_pending > 1:
+            if self.redraw_pending > 2:
+                self.piano_roll.delete("valtick")
+                self.grid_canvas.delete("gridhline")
+                grid_font = tkfont.Font(family=zynthian_gui_config.font_topbar[0], size=self.row_height * 4)
+                for row in range(0, 129):
+                    if row % 8 == 0:
+                        ypos = self.grid_height - (self.row0 + row) * self.row_height
+                        self.piano_roll.create_text(self.piano_roll_width - 2, ypos - 0.5 * self.row_height, text=str(row), font=grid_font, anchor="e", fill="white", tags="valtick")
+                        self.grid_canvas.create_line(0, ypos, self.total_width, ypos, fill=GRID_LINE_WEAK, tags=("gridhline"))
 
-            grid_font = tkfont.Font(family=zynthian_gui_config.font_topbar[0], size=self.row_height * 4)
-            for row in range(row_min, row_max):
-                if row % 8 == 0:
-                    ypos = self.grid_height - (self.row0 + row) * self.row_height
-                    self.piano_roll.create_text(self.piano_roll_width - 2, ypos - 0.5 * self.row_height, text=str(row), font=grid_font, anchor="e", fill="white", tags="valtick")
-                    self.grid_canvas.create_line(0, ypos, self.total_width, ypos, fill=GRID_LINE_WEAK, tags="gridhline")
-                # Draw row of note cells
-                if row < 128:
-                    #self.draw_row(row, True)
-                    pass
+            self.grid_canvas.delete("ccevent")
+            for step in range(0, self.n_steps + 1):
+                val = self.get_cc_value(step)
+                if val is not None:
+                    self.draw_cell(step, val)
 
             # Set z-order to allow duration to show
-            if redraw_pending > 2:
+            if self.redraw_pending > 2:
                 for step in range(self.n_steps):
                     self.grid_canvas.tag_lower(f"step{step}")
 
     # Function to draw pianoroll content
     def draw_pianoroll(self):
-        self.piano_roll.delete(tkinter.ALL)
+        #self.piano_roll.delete(tkinter.ALL)
         pass
 
     # Function to draw a grid cell
@@ -204,18 +194,84 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     # row: Index of row
     # white: True for white notes
     def draw_cell(self, step, row, white=None):
-        pass
+        offset = self.zynseq.libseq.getControlOffset(step, self.cc_num)
+        coord = self.get_cell(step, row, 1, offset)
+        self.grid_canvas.create_rectangle(coord, fill="white", width=0, tags=("ccevent", f"step{step}"))
 
     # Function to update selectedCell
     # step: Step (column) of selected cell (Optional - default to reselect current column)
     # row: Index of keymap to select (Optional - default to reselect current row).
     #      Maybe outside visible range to scroll display
     def select_cell(self, step=None, row=None):
-        super().select_cell(step, row)
+        # Check column boundaries
+        if step is None:
+            step = self.selected_cell[0]
+        if step < 0:
+            step = 0
+        elif step >= self.n_steps:
+            step = self.n_steps - 1
+        else:
+            step = int(step)
+        # Check step offset
+        if step >= self.step_offset + int(self.view_steps):
+            # Step is off right of display
+            self.set_step_offset(step - int(self.view_steps) + 1)
+        elif step < self.step_offset:
+            # Step is off left of display
+            self.set_step_offset(step)
+        # Force row value selection if event in this step
+        val = self.get_cc_value(step)
+        if val is not None:
+            offset = self.zynseq.libseq.getControlOffset(step, self.cc_num)
+            row = val
+        else:
+            offset = 0
+            # Check row boundaries
+            if row is None:
+                row = self.selected_cell[1]
+            if row < 0:
+                row = 0
+            elif row >= self.get_pianoroll_num_cells():
+                row = self.get_pianoroll_num_cells() - 1
+            else:
+                row = int(row)
+        self.selected_cell = [step, row]
+        # Position selector cell-frame
+        coord = self.get_cell(step, row, 1, offset)
+        coord[0] -= 1
+        coord[1] -= 1
+        cell = self.grid_canvas.find_withtag("selection")
+        if not cell:
+            cell = self.grid_canvas.create_rectangle(coord, fill="", outline=SELECT_BORDER,
+                                                     width=self.select_thickness, tags="selection")
+        else:
+            self.grid_canvas.coords(cell, coord)
+        self.grid_canvas.tag_raise(cell)
 
     # -------------------------------------------------------------------------
     # Event management
     # -------------------------------------------------------------------------
+
+    # Function to toggle event
+    # step: step number (column)
+    # row: row index
+    # Returns: Event number if event added else None
+    def toggle_event(self, step, row):
+        val = self.get_cc_value(step)
+        if val is None:
+            self.zynseq.libseq.addControl(step, self.cc_num, row, row, 1, 0)
+            return self.cc_num
+        else:
+            self.zynseq.libseq.removeControl(step, self.cc_num)
+            return None
+
+    # Function to remove an event
+    # step: step number (column)
+    # row: row index
+    def remove_event(self, step, row):
+        val = self.get_cc_value(step)
+        if val is not None:
+            self.zynseq.libseq.removeControl(step, self.cc_num)
 
     # Function to refresh status
     def refresh_status(self):
@@ -228,19 +284,44 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     #   i: Zynpot index [0..n]
     #   dval: Current value of zyncoder
     def zynpot_cb(self, i, dval):
+        #logging.debug(f"DVAL {i} => {dval}")
         if super().zynpot_cb(i, dval):
             return
         if i == self.ctrl_order[0]:
-            self.cc_num += dval
-            if self.cc_num < 1:
-                self.cc_num = 1
-            elif self.cc_num > 127:
-                self.cc_num = 127
-            self.set_title()
+            if self.edit_mode == EDIT_MODE_NONE:
+                self.cc_num += dval
+                if self.cc_num < 1:
+                    self.cc_num = 1
+                elif self.cc_num > 127:
+                    self.cc_num = 127
+                self.set_title()
+                self.redraw_pending = 2
+            return True
+        if i == self.ctrl_order[1]:
+            if self.edit_mode == EDIT_MODE_NONE:
+                self.set_grid_zoom(self.zoom + dval)
             return True
         elif i == self.ctrl_order[2]:
-            self.select_cell(None, self.selected_cell[1] - dval)
+            if self.edit_mode == EDIT_MODE_NONE:
+                step = self.selected_cell[0]
+                val = self.get_cc_value(step)
+                # Change value for existing CC event
+                if val is not None:
+                    newval = val + dval
+                    if newval > 127:
+                        newval = 127
+                    if newval < 0:
+                        newval = 0
+                    if newval != val:
+                        self.zynseq.libseq.setControlValue(step, self.cc_num, newval, newval)
+                        self.grid_canvas.delete(f"step{step}")
+                        self.draw_cell(step, newval)
+                # Select cell
+                self.select_cell(None, self.selected_cell[1] - dval)
+            return True
         elif i == self.ctrl_order[3]:
-            self.select_cell(self.selected_cell[0] + dval, None)
+            if self.edit_mode == EDIT_MODE_NONE:
+                self.select_cell(self.selected_cell[0] + dval, None)
+            return True
 
 # ------------------------------------------------------------------------------

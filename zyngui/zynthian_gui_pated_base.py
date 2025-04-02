@@ -27,7 +27,6 @@
 import os
 import tkinter
 import logging
-from queue import Queue
 from datetime import datetime
 import tkinter.font as tkfont
 
@@ -94,21 +93,18 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.bank = None  # Bank used for pattern editor sequence player
         self.pattern = 0  # Pattern to edit
         self.sequence = None  # Sequence used for pattern editor sequence player
-        self.duration = 1.0  # Current note entry duration
-        self.velocity = 100  # Current note entry velocity
+        self.channel = 0
+
         self.last_play_mode = zynseq.SEQ_LOOP
         self.playhead = 0
         self.playstate = zynseq.SEQ_STOPPED
         self.n_steps = 0  # Number of steps in current pattern
         self.n_steps_beat = 0  # Number of steps per beat (current pattern)
         self.step_offset = 0  # Step number of left column in grid
-        # Array of {"note":MIDI_NOTE_NUMBER, "name":"key name","colour":"key colour"} name and colour are optional
-        self.cells = []  # Array of cells indices
         self.selected_cell = [0, 0]
+
         # What to redraw: 0=nothing, 1=selected cell, 2=selected row, 3=refresh grid, 4=rebuild grid
         self.redraw_pending = 4
-        self.rows_pending = Queue()
-        self.channel = 0
         self.drawing = False  # mutex to avoid concurrent screen draws
         self.changed = False
         self.changed_ts = 0
@@ -198,8 +194,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                                               bg=PLAYHEAD_BACKGROUND,
                                               bd=0,
                                               highlightthickness=0)
-        self.velocity_canvas.create_rectangle(0, 0, self.piano_roll_width * self.velocity / 127, PLAYHEAD_HEIGHT,
-                                              fill='yellow', width=0, tags="velocityIndicator")
+        self.velocity_canvas.create_rectangle(0, 0, 0, PLAYHEAD_HEIGHT, fill='yellow', width=0,
+                                              tags="velocityIndicator")
         self.velocity_canvas.grid(column=0, row=1)
 
         self.zynseq.libseq.setPlayMode(0, 0, zynseq.SEQ_LOOP)
@@ -254,11 +250,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             color_bg = zynthian_gui_config.color_panel_tx
             self.set_title(f"EDIT MODE {mode}", color_fg, color_bg)
             self.set_edit_title()
-
-    # Function to adjust velocity indicator
-    # velocity: Note velocity to indicate
-    def set_velocity_indicator(self, velocity):
-        self.velocity_canvas.coords("velocityIndicator", 0, 0, self.piano_roll_width * velocity / 127, PLAYHEAD_HEIGHT)
 
     # Function to show GUI
     def build_view(self):
@@ -448,8 +439,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.redraw_pending = 3
         if self.selected_cell[0] >= n_steps:
             self.selected_cell[0] = int(n_steps) - 1
-        if self.duration > n_steps:
-            self.duration = 1
         self.draw_grid()
         self.select_cell()
         self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
@@ -912,29 +901,21 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         if self.drawing:
             return
         self.drawing = True
-        redraw_pending = self.redraw_pending
-        self.redraw_pending = 0
 
         if self.n_steps == 0:
+            self.redraw_pending = 0
             self.drawing = False
             return  # TODO: Should we clear grid?
 
-        if len(self.cells) != self.get_pianoroll_num_cells() * self.n_steps:
-            redraw_pending = 4
-            self.grid_canvas.delete(tkinter.ALL)
-            self.draw_pianoroll()
-            self.cells = [None] * self.get_pianoroll_num_cells() * self.n_steps
-            self.play_canvas.coords("playCursor", 1 + self.playhead * self.step_width,
-                                    0, 1 + self.step_width * (self.playhead + 1), PLAYHEAD_HEIGHT)
-
-        self.redraw_grid_pending(redraw_pending)
+        self.redraw_grid_pending()
+        self.redraw_pending = 0
         self.select_cell()
         self.drawing = False
 
-    def redraw_grid_pending(self, redraw_pending):
+    def redraw_grid_pending(self):
         # Draw cells of grid
         # self.grid_canvas.itemconfig("gridcell", fill="black")
-        if redraw_pending > 3:
+        if self.redraw_pending > 3:
             # Redraw gridlines
             self.grid_canvas.delete("gridvline")
             self.play_canvas.delete("beatnum")
@@ -952,7 +933,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                                 anchor = tkinter.NW
                             else:
                                 anchor = tkinter.N
-                            self.play_canvas.create_text((xpos, -2), text=str(beatnum), font=bnum_font, anchor=anchor,
+                            self.play_canvas.create_text(xpos, -2, text=str(beatnum), font=bnum_font, anchor=anchor,
                                                          fill=GRID_LINE_STRONG, tags="beatnum")
                     else:
                         self.grid_canvas.create_line(xpos, 0, xpos, lh, fill=GRID_LINE_WEAK, tags="gridvline")
@@ -960,7 +941,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     # Function to draw pianoroll content
     def draw_pianoroll(self):
-        self.piano_roll.delete(tkinter.ALL)
+        #self.piano_roll.delete(tkinter.ALL)
         pass
 
     # Function to draw a grid cell
@@ -975,43 +956,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     # row: Index of keymap to select (Optional - default to reselect current row).
     #      Maybe outside visible range to scroll display
     def select_cell(self, step=None, row=None):
-        # Check column boundaries
-        if step is None:
-            step = self.selected_cell[0]
-        if step < 0:
-            step = 0
-        elif step >= self.n_steps:
-            step = self.n_steps - 1
-        else:
-            step = int(step)
-        # Check step offset
-        if step >= self.step_offset + int(self.view_steps):
-            # Step is off right of display
-            self.set_step_offset(step - int(self.view_steps) + 1)
-        elif step < self.step_offset:
-            # Step is off left of display
-            self.set_step_offset(step)
-        # Check row boundaries
-        if row is None:
-            row = self.selected_cell[1]
-        if row < 0:
-            row = 0
-        elif row >= self.get_pianoroll_num_cells():
-            row = self.get_pianoroll_num_cells() - 1
-        else:
-            row = int(row)
-        self.selected_cell = [step, row]
-        # Position selector cell-frame
-        coord = self.get_cell(step, row, 1, 0)
-        coord[0] -= 1
-        coord[1] -= 1
-        cell = self.grid_canvas.find_withtag("selection")
-        if not cell:
-            cell = self.grid_canvas.create_rectangle(coord, fill="", outline=SELECT_BORDER,
-                                                     width=self.select_thickness, tags="selection")
-        else:
-            self.grid_canvas.coords(cell, coord)
-        self.grid_canvas.tag_raise(cell)
+        pass
 
     # -------------------------------------------------------------------------
     # Event management
@@ -1022,14 +967,14 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     # Function to toggle event
     # step: step number (column)
-    # row: keymap index
-    # Returns: Event number if note added else None
+    # row: row index
+    # Returns: Event number if event added else None
     def toggle_event(self, step, row):
         pass
 
     # Function to remove an event
     # step: step number (column)
-    # row: keymap index
+    # row: row index
     def remove_event(self, step, row):
         pass
 
@@ -1065,6 +1010,10 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     def zynpot_cb(self, i, dval):
         if super().zynpot_cb(i, dval):
             return True
+        if i == self.ctrl_order[1]:
+            if self.edit_mode == EDIT_MODE_NONE:
+                self.set_grid_zoom(self.zoom + dval)
+                return True
 
     # Function to handle SELECT button press
     #   st: Button press duration [S=Short, B=Bold, L=Long]
