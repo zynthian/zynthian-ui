@@ -1482,32 +1482,34 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             title = "Scene options"
             repeat = info["repeat"]
             if repeat == 0:
-                options["Repeat (Disabled)"] = info
+                options["Repeat (DISABLED)"] = info
             else:
                 if repeat == 1:
-                    options[f"Repeat (Play once)"] = info
+                    options[f"Repeat (PLAY ONCE)"] = info
                 elif repeat == 2:
-                    options[f"Repeat (Play twice)"] = info
+                    options[f"Repeat (PLAY TWICE)"] = info
                 else:
-                    options[f"Repeat (Play {repeat} times)"] = info
-                next = info["next"]
-                if next == -1:
-                    options["Follow action (Stop)"] = info
-                elif next == slot:
-                    options["Follow action (Loop)"] = info
-                else:
-                    options[f"Follow action (Play scene {next + 1})"] = info
-                options[f"Tempo ({info['tempo']})"] = info
-                if info["tempo"]:
-                    options["Remove tempo"] = info
-                options[f"Beats per bar ({info['bpb']})"] = info
+                    options[f"Repeat (PLAY {repeat} TIMES)"] = info
+            next = info["next"]
+            if next == -1:
+                options["Follow action (STOP)"] = info
+            elif next == slot:
+                options["Follow action (LOOP)"] = info
+            else:
+                options[f"Follow action (PLAY SCENE {next + 1})"] = info
+            if info['tempo'] is None:
+                options[f"Tempo (NONE)"] = info
+            else:
+                options[f"Tempo ({tempo})"] = info
+                options["Remove tempo"] = info
+            options[f"Beats per bar ({info['bpb']})"] = info
         elif info["clippy"]:
             title = "Audio clip options"
             zctrl = self.get_clippy_zctrl("file", info)
             filename = basename(zctrl.value)
-            options[f"File: {filename}"] = info
+            options[f"File ({filename})"] = info
             zctrl = self.get_clippy_zctrl("warp", info)
-            val = "on" if zctrl.value else "off"
+            val = "ON" if zctrl.value else "OFF"
             options[f"Warp ({val})"] = info
         else:
             title = "MIDI sequence options"
@@ -1555,9 +1557,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.launcher_select_info["tempo"] = None
 
         elif option.startswith("Repeat"):
-            labels = ["Disabled", "Play once", "Play twice"]
+            labels = ["DISABLED", "PLAY ONCE", "PLAY TWICE"]
             for i in range(3, 256):
-                labels.append(f"Play {i} times")
+                labels.append(f"PLAY {i} TIMES")
             self.enable_param_editor(self, "repeat", {
                 'name': 'Repeat',
                 'value': params["repeat"],
@@ -1575,11 +1577,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         elif option.startswith("Follow action"):
             slot = params["slot"]
             ticks = [-1, slot]
-            labels = ["Stop", "Loop"]
+            labels = ["STOP", "LOOP"]
             for i in range(zynseq.LAUNCHER_SLOTS):
                 if i != slot:
                     ticks.append(i)
-                    labels.append(f"Play scene {i + 1}")
+                    labels.append(f"PLAY SCENE {i + 1}")
             val = params["next"]
             self.enable_param_editor(self, "next", {
                 "name": "Follow action",
