@@ -47,7 +47,6 @@
 #define STOPPING 2      // Sequence is playing waiting to stop
 #define STARTING 3      // Sequence is paused waiting to start
 #define STOPPING_SYNC 4 // Sequence is playing waiting to stop at next sync point
-#define LASTPLAYSTATUS 4
 
 // MIDI commands
 #define MIDI_NOTE_OFF 0x80

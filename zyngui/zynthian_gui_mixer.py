@@ -423,6 +423,9 @@ class zynthian_gui_mixer_strip():
                 case zynseq.SEQ_STOPPING:
                     color_state = zynthian_gui_config.PAD_COLOUR_STOPPING
                     state_text = "▶"
+                case zynseq.SEQ_CHILD_PLAYING:
+                    color_state = zynthian_gui_config.PAD_COLOUR_STOPPED
+                    state_text = "▶"
                 case _:
                     color_state = zynthian_gui_config.PAD_COLOUR_DISABLED
                     state_text = ""
@@ -441,10 +444,9 @@ class zynthian_gui_mixer_strip():
         else:
             self.canvas.itemconfig(self.clip_slots[slot]["sel"], state=tkinter.HIDDEN)
 
-    def update_clip_state(self, bank, seq, state, mode, group):
+    def update_clip_state(self, slot, bank, seq, state, mode, group):
         if bank != zynseq.LAUNCHER_SEQ_BANK:
             return
-        slot = seq % 8
         if self.zynseq.launcher_info[self.chan][slot]["sequence"] == seq:
             self.update_launcher(slot, state, mode, group)
             self.draw_sequence_slot(slot)
@@ -828,9 +830,8 @@ class zynthian_gui_mixer_strip():
         info["next"] = next_scene
 
         if state == zynseq.SEQ_STOPPINGSYNC:
-            info['state'] = zynseq.SEQ_STOPPING
-        else:
-            info['state'] = state
+            state = zynseq.SEQ_STOPPING
+        info['state'] = state
 
     def highlight_clip(self, slot=None):
         self.canvas.itemconfig(f"clip_sel", state=tkinter.HIDDEN)
@@ -877,11 +878,10 @@ class zynthian_gui_mixer_strip():
             if proc:
                 proc.engine.lscp_send_single(f"SEND CHANNEL MIDI_DATA CC 0 120 0")
         else:
-            tempo = self.zynseq.libseq.getTempoAt(255, seq, 1, 0)
-            pattern = self.zynseq.libseq.getPattern(255, seq, 0, 0)
-            beats = self.zynseq.libseq.getBeatsInPattern(pattern)
-            sig = self.zynseq.libseq.getBeatsPerBar()
-            self.zynseq.libseq.togglePlayState(zynseq.LAUNCHER_SEQ_BANK, seq)
+            if info["state"] == zynseq.SEQ_CHILD_PLAYING:
+                self.zynseq.libseq.setPlayState(zynseq.LAUNCHER_SEQ_BANK, seq, zynseq.SEQ_STOPPING)
+            else:
+                self.zynseq.libseq.togglePlayState(zynseq.LAUNCHER_SEQ_BANK, seq)
 
     def on_clip_bold_press(self, slot):
         if self.chan is None:
@@ -960,7 +960,7 @@ class zynthian_gui_mixer_strip():
         event: Mouse event
         """
         if self.parent.zynmixer.midi_learn_zctrl:
-            if self.parent.zynmixer.midi_learn_zctrl != self.zctrls["balance"]:
+            if self.parent.zynmixer.midi_learn_zctrl != self.zctrls["selfbalance"]:
                 self.parent.zynmixer.midi_learn_zctrl = self.zctrls["balance"]
 
     def on_balance_wheel_down(self, event):
@@ -1043,7 +1043,6 @@ class zynthian_gui_mixer_strip():
 # ------------------------------------------------------------------------------
 # Zynthian Mixer GUI Class
 # ------------------------------------------------------------------------------
-
 
 class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
@@ -1335,11 +1334,34 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         #logging.warning(f"bank:{bank} seq:{seq} state:{state} mode:{mode} group:{group}")
         if not self.launcher_mode or bank != zynseq.LAUNCHER_SEQ_BANK:
             return
-        midi_chan = seq // 8
-        for strip in self.visible_mixer_strips:
-            if not strip.hidden and strip.chain.midi_chan == midi_chan:
-                strip.update_clip_state(bank, seq, state, mode, group)
-        self.main_mixbus_strip.update_clip_state(bank, seq, state, mode, group)
+        chan = seq // zynseq.LAUNCHER_SLOTS
+        slot = seq % zynseq.LAUNCHER_SLOTS
+        scene_state = False
+        if chan < 16:
+            # Update channel strips
+            for strip in self.visible_mixer_strips:
+                if not strip.hidden and strip.chain.midi_chan == chan:
+                    strip.update_clip_state(slot, bank, seq, state, mode, group)
+        # Update scene summary
+        for i in range(16):
+            if self.zynseq.launcher_info[i][slot]["state"] != zynseq.SEQ_STOPPED:
+                scene_state = True
+                break
+        if chan < 16:
+            if scene_state:
+                if self.zynseq.launcher_info[16][slot]["state"] == zynseq.SEQ_STOPPED:
+                    self.zynseq.launcher_info[16][slot]["state"] = zynseq.SEQ_CHILD_PLAYING
+                    self.main_mixbus_strip.draw_sequence_slot(slot)
+            else:
+                if self.zynseq.launcher_info[16][slot]["state"] == zynseq.SEQ_CHILD_PLAYING:
+                    self.main_mixbus_strip.update_launcher(slot)
+                    self.main_mixbus_strip.draw_sequence_slot(slot)
+        else:
+            if scene_state and state == zynseq.SEQ_STOPPED:
+                self.zynseq.launcher_info[16][slot]["state"] = zynseq.SEQ_CHILD_PLAYING
+                self.main_mixbus_strip.draw_sequence_slot(slot)
+            else:
+                self.main_mixbus_strip.update_clip_state(slot, bank, seq, state, mode, group)
 
     def cb_launcher_progress(self, bank, seq, progress):
         chan = seq // zynseq.LAUNCHER_SLOTS
@@ -1500,7 +1522,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 if info['tempo'] is None:
                     options[f"Tempo (NONE)"] = info
                 else:
-                    options[f"Tempo ({tempo})"] = info
+                    options[f"Tempo ({info['tempo']})"] = info
                     options["Remove tempo"] = info
                 options[f"Beats per bar ({info['bpb']})"] = info
         elif info["clippy"]:

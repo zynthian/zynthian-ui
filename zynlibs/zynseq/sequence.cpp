@@ -121,6 +121,8 @@ void Sequence::setPlayMode(uint8_t mode) {
 uint8_t Sequence::getPlayState() { return m_nState; }
 
 void Sequence::setPlayState(uint8_t state) {
+    if (state == STOPPING && m_nState == STOPPED)
+        return;
     uint8_t nState = m_nState;
     if (m_nRepeat == 0) // Disabled
         state = STOPPED;
@@ -128,7 +130,6 @@ void Sequence::setPlayState(uint8_t state) {
         return;
     if ((m_nMode & MODE_END_IMMEDIATE) && (state == STOPPING || state == STOPPING_SYNC)) {
         state = STOPPED;
-        fprintf(stderr, "Immediate\n");
     }
     m_nState = state;
     if (m_nState == STOPPED)

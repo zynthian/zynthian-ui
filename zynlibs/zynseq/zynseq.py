@@ -73,7 +73,7 @@ SEQ_PLAYING = 1
 SEQ_STOPPING = 2
 SEQ_STARTING = 3
 SEQ_STOPPINGSYNC = 4
-SEQ_LASTPLAYSTATUS = 4
+SEQ_CHILD_PLAYING = 5 # Used to indicate a scene is stopped but some of its children are playing
 
 SEQ_MAX_COLUMNS = 8
 
