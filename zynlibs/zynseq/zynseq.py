@@ -82,8 +82,6 @@ LAUNCHER_SEQ_BANK = 255     # Bank used for mixer view launchers
 LAUNCHER_COLS = 17          # QUantity of launcher columns
 LAUNCHER_SLOTS = 8          # Quantity of launcher slots
 
-PLAY_MODES = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
-
 # Subsignals are defined inside each module. Here we define zynseq subsignals:
 SS_SEQ_PLAY_STATE = 1
 SS_SEQ_REFRESH = 2
@@ -181,9 +179,8 @@ class zynseq(zynthian_engine):
         self.libseq = None
 
     def update_state(self):
-        num_seq = self.libseq.getSequencesInBank(self.bank) #TODO: Cache this
-        states = (ctypes.c_uint32 * num_seq)()
-        count = self.libseq.getStateChange(self.bank, 0, num_seq, states)
+        states = (ctypes.c_uint32 * self.seq_in_bank)()
+        count = self.libseq.getStateChange(self.bank, 0, self.seq_in_bank, states)
         for i in range(count):
             state = states[i] & 0xff
             mode = (states[i] >> 8) & 0xff
@@ -194,9 +191,8 @@ class zynseq(zynthian_engine):
         self.update_progress()
 
     def update_progress(self):
-        num_seq = self.libseq.getSequencesInBank(self.bank)
-        progress = (ctypes.c_uint16 * num_seq)()
-        count = self.libseq.getProgress(self.bank, 0, num_seq, progress)
+        progress = (ctypes.c_uint16 * self.seq_in_bank)()
+        count = self.libseq.getProgress(self.bank, 0, self.seq_in_bank, progress)
         for i in range(count):
             seq = (progress[i] >> 8) & 0xff
             prog = progress[i] & 0xff
@@ -217,9 +213,11 @@ class zynseq(zynthian_engine):
             if bank < 1 or bank == self.bank and not force:
                 return
         self.changing_bank = True
-        if self.libseq.getSequencesInBank(bank) == 0 and bank < 255:
-            self.build_default_bank(bank)
         self.seq_in_bank = self.libseq.getSequencesInBank(bank)
+        if self.seq_in_bank == 0 and bank < 255:
+            self.build_default_bank(bank)
+
+        self.progress = [0] * self.seq_in_bank
         # WARNING!!! Limited to 8 to avoid issues with GUI zynpad that have 8x8 = 64 pads
         #TODO: This is not longer true!!! Need to store or derive columns in bank.
         self.col_in_bank = min(SEQ_MAX_COLUMNS, int(sqrt(self.seq_in_bank)))
@@ -290,6 +288,7 @@ class zynseq(zynthian_engine):
                     self.libseq.removeSequence(self.bank, offset)
         self.seq_in_bank = self.libseq.getSequencesInBank(self.bank)
         self.col_in_bank = min(8, int(sqrt(self.seq_in_bank)))
+        self.progress = [0] * self.seq_in_bank
         zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_REFRESH)
 
     # Load a zynseq file

@@ -55,10 +55,6 @@ CELL_BACKGROUND = zynthian_gui_config.color_panel_bd
 CELL_FOREGROUND = zynthian_gui_config.color_panel_tx
 GRID_LINE = zynthian_gui_config.color_tx
 
-PLAY_MODES = ['Disabled', 'Oneshot', 'Loop',
-              'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
-
-
 # Class implements step sequencer arranger
 class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
@@ -194,8 +190,10 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
             self.horizontal_zoom)] = 'Horizontal zoom'
         options['Group ({})'.format(list(map(chr, range(65, 91)))[
             self.zynseq.libseq.getGroup(self.zynseq.bank, self.sequence)])] = 'Group'
-        options['Play mode ({})'.format(zynseq.PLAY_MODES[self.zynseq.libseq.getPlayMode(
-            self.zynseq.bank, self.sequence)])] = 'Play mode'
+        options[f'Repeat ({self.zynseq.libseq.getRepeat(self.zynseq.bank, self.sequence)})'] = 'Repeat'
+        options[f'Follow action ({self.zynseq.libseq.getNextSequence(self.zynseq.bank, self.sequence)})'] = 'Follow'
+        options['Play mode ({})'.format(self.zynseq.libseq.getPlayMode(
+            self.zynseq.bank, self.sequence))] = 'Play mode'
         options['Pattern ({})'.format(self.pattern)] = 'Pattern'
         options['Add track'] = 'Add track'
         if self.zynseq.libseq.getTracksInSequence(self.zynseq.bank, self.sequence) > 1:

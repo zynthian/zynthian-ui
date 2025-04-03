@@ -67,7 +67,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         # The last successfully selected bank - used to update stale views
         self.bank = self.zynseq.bank
         # Columns used during last layout - used to update stale views
-        self.columns = self.zynseq.col_in_bank
+        self.columns = max(self.zynseq.col_in_bank, 1)
         self.midi_learn = False
         self.trigger_channel = None
         self.trigger_device = None
@@ -75,8 +75,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         # Geometry vars
         # Scale thickness of select border based on screen
         self.select_thickness = 1 + int(self.width / 400)
-        self.column_width = self.width / self.zynseq.col_in_bank
-        self.row_height = self.height / self.zynseq.col_in_bank
+        self.column_width = self.width / self.columns
+        self.row_height = self.height / self.columns
 
         # Pad grid
         self.grid_canvas = tkinter.Canvas(self.main_frame,
@@ -298,7 +298,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         cellh = self.pads[pad]["header"]
         cellb = self.pads[pad]["body"]
         seq_len = self.zynseq.libseq.getSequenceLength(self.bank, pad)
-        if seq_len == 0 or mode == zynseq.SEQ_DISABLED:
+        if seq_len == 0 or mode & 0xF000 == 0:
             self.grid_canvas.itemconfig(cellh, fill=zynthian_gui_config.PAD_COLOUR_DISABLED)
             self.grid_canvas.itemconfig(cellb, fill=zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT)
         else:
@@ -403,7 +403,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         options['> PAD OPTIONS'] = None
         pmode = self.zynseq.libseq.getPlayMode(self.bank, self.selected_pad)
         chan = self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0)
-        options[f'Play mode ({zynseq.PLAY_MODES[pmode]})'] = 'Play mode'
+        options[f'Play mode ({pmode})'] = 'Play mode'
         options[f'MIDI channel ({chan + 1})'] = 'MIDI channel'
         track_type = self.zynseq.libseq.getTrackType(self.bank, self.selected_pad, 0)
         if track_type == 0:

@@ -408,11 +408,11 @@ class zynthian_gui_mixer_strip():
             title = info["title"]
             if info["repeat"]:
                 if info["next"] == slot:
-                    mode_image = self.parent.mode_icons["Loop sync"]
+                    mode_image = self.parent.mode_icons["loopsync"]
                 elif info["next"] == -1:
-                    mode_image = self.parent.mode_icons["Oneshot"]
+                    mode_image = self.parent.mode_icons["oneshot"]
                 else:
-                    mode_image = self.parent.mode_icons["Oneshot all"]
+                    mode_image = self.parent.mode_icons["oneshotall"]
             match info["state"]:
                 case zynseq.SEQ_PLAYING:
                     color_state = zynthian_gui_config.PAD_COLOUR_PLAYING
@@ -1121,9 +1121,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         slot_height = self.height // (zynseq.LAUNCHER_SLOTS + 3)
         iconsize = (int(self.fader_width * 0.4), int(slot_height * 0.30))
         self.mode_icons = {}
-        for f in zynseq.PLAY_MODES:
+        for f in ("loopsync", "oneshot", "oneshotall"):
             try:
-                img = Image.open(f"/zynthian/zynthian-ui/icons/zynpad_mode_{f.lower().replace(' ' , '')}.png")
+                img = Image.open(f"/zynthian/zynthian-ui/icons/zynpad_mode_{f}.png")
                 self.mode_icons[f] = ImageTk.PhotoImage(img.resize(iconsize))
             except:
                 self.mode_icons[f] = empty_icon
