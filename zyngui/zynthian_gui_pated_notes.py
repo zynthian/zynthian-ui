@@ -385,8 +385,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             map_name = self.get_custom_keymap()
             if map_name:
                 keymap_fpath = CONFIG_ROOT + f"/{map_name}.midnam"
-                logging.info(
-                    f"Loading keymap {map_name} for MIDI channel {self.channel}...")
+                logging.info(f"Loading keymap {map_name} for MIDI channel {self.channel}...")
                 try:
                     xml = minidom.parse(keymap_fpath)
                     notes = xml.getElementsByTagName('Note')

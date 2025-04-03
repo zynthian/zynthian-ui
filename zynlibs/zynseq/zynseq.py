@@ -75,16 +75,17 @@ SEQ_MAX_COLUMNS = 8
 
 PATTERN_EDITOR_BANK = 0     # Bank used for pattern editor
 LAUNCHER_SEQ_BANK = 255     # Bank used for mixer view launchers
+LAUNCHER_COLS = 17          # QUantity of launcher columns
 LAUNCHER_SLOTS = 8          # Quantity of launcher slots
 
-PLAY_MODES = ['Disabled', 'Oneshot', 'Loop',
-              'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
+PLAY_MODES = ['Disabled', 'Oneshot', 'Loop', 'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
 
 # Subsignals are defined inside each module. Here we define zynseq subsignals:
 SS_SEQ_PLAY_STATE = 1
 SS_SEQ_REFRESH = 2
 SS_SEQ_PROGRESS = 3
 SS_TEMPO = 4
+
 
 class zynseq(zynthian_engine):
 
@@ -94,22 +95,19 @@ class zynseq(zynthian_engine):
         self.changing_bank = False
         self.progress = [0] * 17 * 8
         try:
-            self.libseq = ctypes.cdll.LoadLibrary(
-                dirname(realpath(__file__))+"/build/libzynseq.so")
+            self.libseq = ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynseq.so")
             self.libseq.getSequenceName.restype = ctypes.c_char_p
-            self.libseq.addNote.argtypes = [
-                ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_float]
+            self.libseq.addNote.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float,
+                                            ctypes.c_float]
             self.libseq.getNoteDuration.restype = ctypes.c_float
             self.libseq.changeDurationAll.argtypes = [ctypes.c_float]
             self.libseq.getNoteOffset.restype = ctypes.c_float
-            self.libseq.setNoteOffset.argtypes = [
-                ctypes.c_uint32, ctypes.c_uint8, ctypes.c_float]
-            self.libseq.addControl.argtypes = [
-                ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_float]
+            self.libseq.setNoteOffset.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_float]
+            self.libseq.addControl.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8,
+                                               ctypes.c_float, ctypes.c_float]
             self.libseq.getControlDuration.restype = ctypes.c_float
             self.libseq.getControlOffset.restype = ctypes.c_float
-            self.libseq.setControlOffset.argtypes = [
-                ctypes.c_uint32, ctypes.c_uint8, ctypes.c_float]
+            self.libseq.setControlOffset.argtypes = [ctypes.c_uint32, ctypes.c_uint8, ctypes.c_float]
             self.libseq.setSwingAmount.argtypes = [ctypes.c_uint32, ctypes.c_float]
             self.libseq.getSwingAmount.restype = ctypes.c_float
             self.libseq.setHumanTime.argtypes = [ctypes.c_uint32, ctypes.c_float]
@@ -122,14 +120,15 @@ class zynseq(zynthian_engine):
             self.libseq.setTempo.argtypes = [ctypes.c_double]
             self.libseq.getTempoAt.restype = ctypes.c_float
             self.libseq.getTempoAt.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint16, ctypes.c_uint16]
-            self.libseq.addTempoEvent.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_uint16, ctypes.c_uint16]
+            self.libseq.addTempoEvent.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_uint16,
+                                                  ctypes.c_uint16]
             self.libseq.getMetronomeVolume.restype = ctypes.c_float
             self.libseq.setMetronomeVolume.argtypes = [ctypes.c_float]
-            self.libseq.getStateChange.argtypes = [
-                ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.POINTER(ctypes.c_uint32)]
+            self.libseq.getStateChange.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8,
+                                                   ctypes.POINTER(ctypes.c_uint32)]
             self.libseq.getStateChange.restype = ctypes.c_uint8
-            self.libseq.getProgress.argtypes = [
-                ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.POINTER(ctypes.c_uint16)]
+            self.libseq.getProgress.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8,
+                                                ctypes.POINTER(ctypes.c_uint16)]
             self.libseq.getProgress.restype = ctypes.c_uint8
             self.libseq.init(bytes("zynseq", "utf-8"))
         except Exception as e:
@@ -147,26 +146,24 @@ class zynseq(zynthian_engine):
 
         # Cache sequence info for launchers to reduce access to libseq
         self.launcher_info = []
-        for chan in range(17):
+        for chan in range(LAUNCHER_COLS):
             info = []
             for slot in range(LAUNCHER_SLOTS):
-                info.append(
-                    {
-                        "title": "",
-                        "bpb": 4,
-                        "mode": SEQ_MODE_SYNC,
-                        "repeat": 0,
-                        "group": 0,
-                        "state": SEQ_STOPPED,
-                        "chan": chan,
-                        "slot": slot,
-                        "sequence": chan * LAUNCHER_SLOTS + slot,
-                        "pattern": chan * LAUNCHER_SLOTS + slot, # This might not be correct but refresh should fix it
-                        "clippy": None, #TODO: Wasteful to populate all slots with clippy processor
-                        "tempo": None,
-                        "next": -1
-                    }
-                )
+                info.append({
+                    "title": "",
+                    "bpb": 4,
+                    "mode": SEQ_MODE_SYNC,
+                    "repeat": 0,
+                    "group": 0,
+                    "state": SEQ_STOPPED,
+                    "chan": chan,
+                    "slot": slot,
+                    "sequence": chan * LAUNCHER_SLOTS + slot,
+                    "pattern": chan * LAUNCHER_SLOTS + slot,  # This might not be correct but refresh should fix it
+                    "clippy": None,  # Clippy processor, for clippy slots
+                    "tempo": None,
+                    "next": -1
+                })
             self.launcher_info.append(info)
         self.bank = None
         self.select_bank(1, True)

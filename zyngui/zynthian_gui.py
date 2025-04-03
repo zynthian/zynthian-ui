@@ -468,6 +468,7 @@ class zynthian_gui:
         self.screens['audio_player'] = self.screens['control']
         self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
         self.screens['alsa_mixer'] = self.screens['control']
+        self.screens['launcher'] = self.screens['audio_mixer']
         self.screens['zynpad'] = zynthian_gui_zynpad()
         self.screens['arranger'] = zynthian_gui_arranger()
         self.screens['pattern_editor'] = zynthian_gui_pated_notes()
@@ -588,6 +589,12 @@ class zynthian_gui:
                 screen = self.current_screen
             else:
                 screen = "audio_mixer"
+
+        elif screen == "audio_mixer":
+            self.screens[screen].set_launcher_mode(False)
+
+        elif screen == "launcher":
+            self.screens[screen].set_launcher_mode(True)
 
         elif screen == "alsa_mixer":
             self.state_manager.alsa_mixer_processor.refresh_controllers(params)
@@ -863,8 +870,7 @@ class zynthian_gui:
                             self.chain_manager.remove_processor(
                                 self.modify_chain_status["chain_id"], old_processor)
                             self.close_screen("loading")
-                            self.chain_control(
-                                self.modify_chain_status["chain_id"], processor, force_bank_preset=True)
+                            self.chain_control(self.modify_chain_status["chain_id"], processor, force_bank_preset=True)
                 else:
                     # Adding processor to existing chain
                     parallel = "parallel" in self.modify_chain_status and self.modify_chain_status["parallel"]
@@ -932,7 +938,7 @@ class zynthian_gui:
             # TODO: Offer type selection
             pass
 
-    def chain_control(self, chain_id=None, processor=None, hmode=SCREEN_HMODE_RESET, force_bank_preset=False):
+    def chain_control(self, chain_id=None, processor=None, hmode=SCREEN_HMODE_ADD, force_bank_preset=False):
         if chain_id is None:
             chain_id = self.chain_manager.active_chain_id
         else:
@@ -1397,12 +1403,17 @@ class zynthian_gui:
     def cuia_screen_alsa_mixer(self, params=None):
         self.show_screen("alsa_mixer", hmode=zynthian_gui.SCREEN_HMODE_RESET)
 
+    def cuia_screen_launcher(self, params=None):
+        self.show_screen("launcher")
+
     def cuia_screen_zynpad(self, params=None):
         self.show_screen("zynpad")
 
     def cuia_screen_pattern_editor(self, params=None):
         success = False
-        if self.current_screen in ["arranger", "zynpad"]:
+        if self.current_screen == "launcher":
+            success = self.screens['launcher'].edit_clip()
+        elif self.current_screen in ("zynpad", "arranger"):
             success = self.screens[self.current_screen].show_pattern_editor()
         if not success:
             success = self.screens['zynpad'].show_pattern_editor()
@@ -1470,8 +1481,7 @@ class zynthian_gui:
 
     def cuia_menu(self, params=None):
         if self.current_screen != "alsa_mixer":
-            toggle_menu_func = getattr(
-                self.screens[self.current_screen], "toggle_menu", None)
+            toggle_menu_func = getattr(self.screens[self.current_screen], "toggle_menu", None)
             if callable(toggle_menu_func):
                 toggle_menu_func()
                 return
@@ -1623,7 +1633,7 @@ class zynthian_gui:
             if i == 2 and t == 'S':
                 self.zynswitch_short(i)
                 return
-        elif self.current_screen == "audio_mixer":
+        elif self.current_screen in ("audio_mixer", "launcher"):
             if t == 'S':
                 self.zynswitch_short(i)
                 return

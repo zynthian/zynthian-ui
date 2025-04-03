@@ -90,7 +90,7 @@ class zynthian_wsleds_z2(zynthian_wsleds_base):
             self.wsleds[7] = self.wscolor_default
 
         # Zynpad screen:
-        if curscreen == "zynpad":
+        if curscreen in ("launcher", "zynpad"):
             self.wsleds[8] = self.wscolor_active
         else:
             self.wsleds[8] = self.wscolor_default
