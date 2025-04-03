@@ -1490,19 +1490,19 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     options[f"Repeat (PLAY TWICE)"] = info
                 else:
                     options[f"Repeat (PLAY {repeat} TIMES)"] = info
-            next = info["next"]
-            if next == -1:
-                options["Follow action (STOP)"] = info
-            elif next == slot:
-                options["Follow action (LOOP)"] = info
-            else:
-                options[f"Follow action (PLAY SCENE {next + 1})"] = info
-            if info['tempo'] is None:
-                options[f"Tempo (NONE)"] = info
-            else:
-                options[f"Tempo ({tempo})"] = info
-                options["Remove tempo"] = info
-            options[f"Beats per bar ({info['bpb']})"] = info
+                next = info["next"]
+                if next == -1:
+                    options["Follow action (STOP)"] = info
+                elif next == slot:
+                    options["Follow action (LOOP)"] = info
+                else:
+                    options[f"Follow action (PLAY SCENE {next + 1})"] = info
+                if info['tempo'] is None:
+                    options[f"Tempo (NONE)"] = info
+                else:
+                    options[f"Tempo ({tempo})"] = info
+                    options["Remove tempo"] = info
+                options[f"Beats per bar ({info['bpb']})"] = info
         elif info["clippy"]:
             title = "Audio clip options"
             zctrl = self.get_clippy_zctrl("file", info)
@@ -1539,7 +1539,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         elif option == "Edit pattern":
             self.edit_pattern()
         elif option.startswith("Tempo"):
-            slot = params["slot"]
             tempo = params["tempo"]
             if not tempo:
                 tempo = self.zynseq.get_tempo()
@@ -1566,7 +1565,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'labels': labels
             })
         elif option.startswith("Beats per bar"):
-            slot = params["slot"]
             bpb = params["bpb"]
             self.enable_param_editor(self, "bpb", {
                 'name': 'Beats per bar',
@@ -1582,6 +1580,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 if i != slot:
                     ticks.append(i)
                     labels.append(f"PLAY SCENE {i + 1}")
+            logging.debug(f"FOLLOW ACTIONS: {ticks}, {labels}")
             val = params["next"]
             self.enable_param_editor(self, "next", {
                 "name": "Follow action",
@@ -1589,8 +1588,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 "labels": labels,
                 "value": val
             })
-        #elif option == "Hide launchers":
-        #    self.cb_alt_mode(False)
 
     def get_clippy_zctrl(self, zctrl_name, info=None):
         try:

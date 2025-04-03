@@ -797,8 +797,7 @@ class zynthian_gui_base(tkinter.Frame):
                 self.disable_param_editor()
                 return True
             elif typ == 'B':
-                self.param_editor_zctrl.set_value(
-                    self.param_editor_zctrl.value_default)
+                self.param_editor_zctrl.set_value(self.param_editor_zctrl.value_default)
                 self.update_param_editor()
                 return True
 
@@ -888,8 +887,7 @@ class zynthian_gui_base(tkinter.Frame):
         else:
             self.format_print = "{}: {}"
 
-        self.label_select_path.config(
-            bg=zynthian_gui_config.color_panel_tx, fg=zynthian_gui_config.color_header_bg)
+        self.label_select_path.config(bg=zynthian_gui_config.color_panel_tx, fg=zynthian_gui_config.color_header_bg)
         self.init_buttonbar([("ZYNPOT 3,-1", "-1"), ("ZYNPOT 3,+1", "+1"),
                             ("ZYNPOT 3,-10", "-10"), ("ZYNPOT 3,+10", "+10"), (3, "OK")])
         self.update_param_editor()
@@ -913,10 +911,8 @@ class zynthian_gui_base(tkinter.Frame):
     def update_param_editor(self):
         if self.param_editor_zctrl:
             if self.param_editor_zctrl.labels:
-                self.select_path.set("{}: {}".format(
-                    self.param_editor_zctrl.name, self.param_editor_zctrl.get_value2label()))
+                self.select_path.set(f"{self.param_editor_zctrl.name}: {self.param_editor_zctrl.get_value2label()}")
             else:
-                self.select_path.set(self.format_print.format(
-                    self.param_editor_zctrl.name, self.param_editor_zctrl.value))
+                self.select_path.set(self.format_print.format(self.param_editor_zctrl.name, self.param_editor_zctrl.value))
 
 # ------------------------------------------------------------------------------
