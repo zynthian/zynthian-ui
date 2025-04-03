@@ -1580,7 +1580,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 if i != slot:
                     ticks.append(i)
                     labels.append(f"PLAY SCENE {i + 1}")
-            logging.debug(f"FOLLOW ACTIONS: {ticks}, {labels}")
             val = params["next"]
             self.enable_param_editor(self, "next", {
                 "name": "Follow action",
