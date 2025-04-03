@@ -889,7 +889,11 @@ class zynthian_gui_mixer_strip():
     def on_clip_bold_press(self, slot):
         if self.chan is None:
             return
-        self.parent.launcher_menu(self.chan, slot)
+        if self.chan == 16:
+            self.parent.launcher_menu(self.chan, slot)
+        else:
+            self.parent.info = self.zynseq.launcher_info[self.chan][slot]
+            self.parent.edit_pattern()
 
     def on_clip_long_press(self, slot):
         pass

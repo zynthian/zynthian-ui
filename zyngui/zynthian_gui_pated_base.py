@@ -101,7 +101,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.n_steps = 0  # Number of steps in current pattern
         self.n_steps_beat = 0  # Number of steps per beat (current pattern)
         self.step_offset = 0  # Step number of left column in grid
-        self.selected_cell = [0, 0]
+        self.selected_cell = [0, 60]
 
         # What to redraw: 0=nothing, 1=selected cell, 2=selected row, 3=refresh grid, 4=rebuild grid
         self.redraw_pending = 4
