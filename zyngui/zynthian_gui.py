@@ -479,6 +479,9 @@ class zynthian_gui:
         self.screens['touchscreen_calibration'] = zynthian_gui_touchscreen_calibration()
         self.screens['control_test'] = zynthian_gui_control_test()
 
+        # Root screen
+        self.screens['root'] = self.screens['audio_mixer']
+
         # Create Zynaptik-related screens
         try:
             if callable(lib_zyncore.init_zynaptik):
@@ -552,7 +555,7 @@ class zynthian_gui:
                 snapshot_loaded = self.state_manager.load_default_snapshot()
 
         if snapshot_loaded:
-            init_screen = "audio_mixer"
+            init_screen = "root"
         else:
             # Init MIDI Subsystem => MIDI Profile
             self.state_manager.init_midi()
@@ -588,6 +591,12 @@ class zynthian_gui:
             if self.current_screen:
                 screen = self.current_screen
             else:
+                screen = "root"
+
+        if screen == "root":
+            if self.screens[screen].launcher_mode:
+                screen = "launcher"
+            else:
                 screen = "audio_mixer"
 
         elif screen == "audio_mixer":
@@ -595,6 +604,7 @@ class zynthian_gui:
 
         elif screen == "launcher":
             self.screens[screen].set_launcher_mode(True)
+
 
         elif screen == "alsa_mixer":
             self.state_manager.alsa_mixer_processor.refresh_controllers(params)
@@ -614,7 +624,13 @@ class zynthian_gui:
         if screen not in ("bank", "preset", "option"):
             self.chain_manager.restore_presets()
 
-        if not self.screens[screen].build_view():
+        root_screens = ("root", "audio_mixer", "launcher")
+        if screen in root_screens and self.current_screen in root_screens:
+            dummy_show = True
+        else:
+            dummy_show = False
+
+        if not dummy_show and not self.screens[screen].build_view():
             self.screen_lock.release()
             # self.show_screen_reset("audio_mixer")
             self.close_screen()
@@ -633,9 +649,11 @@ class zynthian_gui:
 
         if self.current_screen != screen:
             #logging.debug(f"SHOW_SCREEN {screen}")
-            self.screens[screen].show()
+            if not dummy_show:
+                self.screens[screen].show()
             self.current_screen = screen
-            self.hide_screens(exclude=screen)
+            if not dummy_show:
+                self.hide_screens(exclude=screen)
             zynsigman.send(zynsigman.S_GUI, zynsigman.SS_GUI_SHOW_SCREEN, screen=screen)
 
         self.screen_lock.release()
@@ -667,11 +685,11 @@ class zynthian_gui:
         try:
             last_screen = self.screen_history.pop()
         except:
-            last_screen = "audio_mixer"
+            last_screen = "root"
 
         if last_screen not in self.screens:
             logging.error(f"Can't back to screen '{last_screen}'. It doesn't exist!")
-            last_screen = "audio_mixer"
+            last_screen = "root"
         logging.debug(f"CLOSE SCREEN '{self.current_screen}' => Back to '{last_screen}'")
         self.show_screen(last_screen)
 

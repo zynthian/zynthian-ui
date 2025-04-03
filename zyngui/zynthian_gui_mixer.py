@@ -1460,7 +1460,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.main_mixbus_strip.draw_control()
 
     def toggle_launcher_mode(self):
-        self.set_launcher_mode(not self.launcher_mode)
+        if self.launcher_mode:
+            self.zyngui.show_screen("audio_mixer")
+        else:
+            self.zyngui.show_screen("launcher")
 
     def set_highlighted_clip_info(self):
         try:
@@ -1519,14 +1522,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if params['clippy']:
             if option.startswith("File"):
                 # Show file selector. Callback has path. Must set path of this zctrl.
-                zctrl = self.get_clippy_zctrl("file", self.launcher_select_info)
+                zctrl = self.get_clippy_zctrl("file", params)
                 self.clippy_file_zctrl = zctrl
                 self.zyngui.cb_show_file_selector(self.on_clippy_file_sel,
                     fexts=zctrl.path_file_types,
                     dirnames=zctrl.path_dir_names,
                     path=zctrl.value)
             elif option.startswith("Warp"):
-                zctrl = self.get_clippy_zctrl("warp", self.launcher_select_info)
+                zctrl = self.get_clippy_zctrl("warp", params)
                 zctrl.toggle()
         elif option.startswith("Title"):
             title = self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, params["sequence"])
@@ -1587,9 +1590,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         #elif option == "Hide launchers":
         #    self.cb_alt_mode(False)
 
-    def get_clippy_zctrl(self, zctrl_name):
+    def get_clippy_zctrl(self, zctrl_name, info=None):
         try:
-            return self.launcher_select_info['clippy'].controllers_dict[f"{zctrl_name} {info['slot'] + 1:02}"]
+            if info is None:
+                info = self.launcher_select_info
+            return info['clippy'].controllers_dict[f"{zctrl_name} {info['slot'] + 1:02}"]
         except:
             return None
 
@@ -1687,7 +1692,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 self.midi_learn_menu()
             else:
                 if self.launcher_mode and self.launcher_highlighted_slot < zynseq.LAUNCHER_SLOTS:
-                    self.highlighted_strip.on_clip_short_press(self.launcher_select_info)
+                    self.highlighted_strip.on_clip_short_press(self.launcher_select_slot)
                 else:
                     self.zyngui.chain_control()
         elif type == "B":
