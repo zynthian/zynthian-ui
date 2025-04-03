@@ -1516,7 +1516,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             options["Edit pattern"] = info
         options[f"Title ({self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, info['sequence'])})"] = info
 
-        self.zyngui.screens['option'].config(title, options, self.launcher_menu_cb)
+        self.zyngui.screens['option'].config(title, options, self.launcher_menu_cb, close_on_select=False)
         self.zyngui.show_screen('option')
 
     def launcher_menu_cb(self, option, params):
@@ -1542,7 +1542,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             tempo = params["tempo"]
             if not tempo:
                 tempo = self.zynseq.get_tempo()
-            self.enable_param_editor(self, "tempo", {
+            self.zyngui.screens['option'].enable_param_editor(self, "tempo", {
                 'name': 'BPM',
                 'is_integer': False,
                 'value_min': 10.0,
@@ -1554,24 +1554,23 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             slot = self.launcher_select_info["slot"]
             self.zynseq.libseq.removeTempoEvent(zynseq.LAUNCHER_SEQ_BANK, zynseq.LAUNCHER_SLOTS * 16 + slot, 1, 0)
             self.launcher_select_info["tempo"] = None
-
         elif option.startswith("Repeat"):
             labels = ["DISABLED", "PLAY ONCE", "PLAY TWICE"]
             for i in range(3, 256):
                 labels.append(f"PLAY {i} TIMES")
-            self.enable_param_editor(self, "repeat", {
+            self.zyngui.screens['option'].enable_param_editor(self, "repeat", {
                 'name': 'Repeat',
                 'value': params["repeat"],
                 'labels': labels
-            })
+            }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Beats per bar"):
             bpb = params["bpb"]
-            self.enable_param_editor(self, "bpb", {
+            self.zyngui.screens['option'].enable_param_editor(self, "bpb", {
                 'name': 'Beats per bar',
                 'value_min': 2,
                 'value_max': 24,
                 'value': bpb
-            })
+            }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Follow action"):
             slot = params["slot"]
             ticks = [-1, slot]
@@ -1581,12 +1580,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     ticks.append(i)
                     labels.append(f"PLAY SCENE {i + 1}")
             val = params["next"]
-            self.enable_param_editor(self, "next", {
+            self.zyngui.screens['option'].enable_param_editor(self, "next", {
                 "name": "Follow action",
                 "ticks": ticks,
                 "labels": labels,
                 "value": val
-            })
+            }, assert_cb=self.cb_assert_param_editor)
 
     def get_clippy_zctrl(self, zctrl_name, info=None):
         try:
@@ -1641,6 +1640,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                         proc.engine.on_tempo_cb()
         except Exception as e:
             logging.warning(f"Error setting scene tempo: {e}")
+
+    def cb_assert_param_editor(self, val):
+        self.send_controller_value(self.zyngui.screens['option'].param_editor_zctrl)
+        self.launcher_menu(self.launcher_select_info['chan'], self.launcher_select_info['slot'])
 
     def send_controller_value(self, zctrl):
         """ Handle param editor value change """
