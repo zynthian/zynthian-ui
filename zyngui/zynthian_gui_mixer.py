@@ -1475,56 +1475,41 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             logging.error(f"Can't get info for slot {slot} in column {chan} => {e}")
             return
         options = {}
-        allow_mode = True
         if chan == (zynseq.LAUNCHER_COLS - 1):      # TODO: I'm not sure this is correct
             title = "Scene options"
             repeat = info["repeat"]
             if repeat == 0:
-                options["Repeat: Disabled"] = info
+                options["Repeat (Disabled)"] = info
             else:
                 if repeat == 1:
-                    options[f"Repeat: Play once"] = info
+                    options[f"Repeat (Play once)"] = info
                 elif repeat == 2:
-                    options[f"Repeat: Play twice"] = info
+                    options[f"Repeat (Play twice)"] = info
                 else:
-                    options[f"Repeat: Play {repeat} times"] = info
+                    options[f"Repeat (Play {repeat} times)"] = info
                 next = info["next"]
                 if next == -1:
-                    options["Follow action: Stop"] = info
+                    options["Follow action (Stop)"] = info
                 elif next == slot:
-                    options["Follow action: Loop"] = info
+                    options["Follow action (Loop)"] = info
                 else:
-                    options[f"Follow action: Play scene {next + 1}"] = info
-                options[f"Tempo: {info['tempo']}"] = info
+                    options[f"Follow action (Play scene {next + 1})"] = info
+                options[f"Tempo ({info['tempo']})"] = info
                 if info["tempo"]:
                     options["Remove tempo"] = info
-                options[f"Beats per bar: {info['bpb']}"] = info
-            allow_mode = False
+                options[f"Beats per bar ({info['bpb']})"] = info
         elif info["clippy"]:
             title = "Audio clip options"
             zctrl = self.get_clippy_zctrl("file", info)
-            allow_mode = zctrl.value != ""
             filename = basename(zctrl.value)
             options[f"File: {filename}"] = info
             zctrl = self.get_clippy_zctrl("warp", info)
             val = "on" if zctrl.value else "off"
-            options[f"Warp: {val}"] = info
+            options[f"Warp ({val})"] = info
         else:
             title = "MIDI sequence options"
             options["Edit pattern"] = info
-        if allow_mode:
-            repeat = info["repeat"]
-            if repeat == 0:
-                options["Repeat: Disabled"] = info
-            elif repeat == 1:
-                options[f"Repeat: Play once"] = info
-            elif repeat == 2:
-                options[f"Repeat: Play twice"] = info
-            else:
-                options[f"Repeat: Play {repeat} times"] = info
-
-        options[f"Title: {self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, info['sequence'])}"] = info
-        #options["Hide launchers"] = info
+        options[f"Title ({self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, info['sequence'])})"] = info
 
         self.zyngui.screens['option'].config(title, options, self.launcher_menu_cb)
         self.zyngui.show_screen('option')
@@ -1617,7 +1602,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             pated = self.zyngui.screens['pattern_editor']
             pated.bank = zynseq.LAUNCHER_SEQ_BANK
             pated.sequence = self.launcher_select_info["sequence"]
-            pated.channel = self.highlighted_strip.chain.midi_chan
+            pated.channel = self.launcher_select_info["chan"]
             pated.load_pattern(self.launcher_select_info["pattern"])
             self.zyngui.show_screen("pattern_editor")
             return True
