@@ -1694,7 +1694,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 self.midi_learn_menu()
             else:
                 if self.launcher_mode and self.launcher_highlighted_slot < zynseq.LAUNCHER_SLOTS:
-                    self.highlighted_strip.on_clip_short_press(self.launcher_select_slot)
+                    self.highlighted_strip.on_clip_short_press(self.launcher_highlighted_slot)
                 else:
                     self.zyngui.chain_control()
         elif type == "B":
