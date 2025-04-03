@@ -961,19 +961,18 @@ bool load(const char* filename) {
                 else if (checkBlock(pFile, nBlockSize, 8))
                     continue;
                 Sequence* pSequence = g_seqMan.getSequence(nBank, nSequence);
-                uint8_t nPlayMode = fileRead8(pFile);
-                if (nVersion > 11)
-                    pSequence->setPlayMode(nPlayMode);
+                pSequence->setRepeat(1);
+                if (nVersion > 10)
+                    pSequence->setPlayMode(fileRead16(pFile));
                 else {
-                    pSequence->setRepeat(1);
-                    switch (nPlayMode) {
+                    switch (fileRead8(pFile)) {
                         case 0:
                             // DISABLED
                             pSequence->setRepeat(0);
                             break;
                         case 1:
                             // ONESHOT
-                            pSequence->setPlayMode((MODE_IMMEDIATE << 4));
+                            pSequence->setPlayMode(MODE_END_IMMEDIATE);
                             break;
                         case 2:
                             // LOOP
@@ -988,7 +987,7 @@ bool load(const char* filename) {
                             break;
                         case 5:
                             // ONESHOTSYNC
-                            pSequence->setPlayMode((MODE_SYNC << 4));
+                            pSequence->setPlayMode(MODE_END_SYNC);
                             break;
                         case 6:
                             // LOOPSYNC
@@ -999,7 +998,6 @@ bool load(const char* filename) {
                 pSequence->setGroup(fileRead8(pFile));
                 g_seqMan.setTriggerNote(nBank, nSequence, fileRead8(pFile));
                 if (nVersion > 10) {
-                    pSequence->setRepeat(fileRead8(pFile));
                     pSequence->setNextSequence(fileRead8(pFile), fileRead8(pFile));
                 } else
                     fileRead8(pFile); // Padding
@@ -1278,10 +1276,9 @@ void save(const char* filename) {
         nPos += fileWrite32(nSequences, pFile);
         for (uint32_t nSequence = 0; nSequence < nSequences; ++nSequence) {
             Sequence* pSequence = g_seqMan.getSequence(nBank, nSequence);
-            nPos += fileWrite8(pSequence->getPlayMode(), pFile);
+            nPos += fileWrite16(pSequence->getPlayMode(), pFile);
             nPos += fileWrite8(pSequence->getGroup(), pFile);
             nPos += fileWrite8(g_seqMan.getTriggerNote(nBank, nSequence), pFile);
-            nPos += fileWrite8(pSequence->getRepeat(), pFile);
             nPos += fileWrite16(pSequence->getNextSequence(), pFile);
             std::string sName = pSequence->getName();
             for (size_t nIndex = 0; nIndex < sName.size(); ++nIndex)
@@ -2094,14 +2091,15 @@ uint32_t getPatternAt(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t p
     return g_seqMan.getPatternIndex(pPattern);
 }
 
-uint8_t getPlayMode(uint8_t bank, uint8_t sequence) {
+uint16_t getPlayMode(uint8_t bank, uint8_t sequence) {
     Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
-    return pSequence->getPlayMode();
+    return (pSequence->getRepeat() << 8) | pSequence->getPlayMode();
 }
 
-void setPlayMode(uint8_t bank, uint8_t sequence, uint8_t mode) {
+void setPlayMode(uint8_t bank, uint8_t sequence, uint16_t mode) {
     Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
-    pSequence->setPlayMode(mode);
+    pSequence->setPlayMode(mode & 0xFF);
+    pSequence->setRepeat(mode >> 8);
     if (bank + sequence)
         g_bDirty = true;
 }
@@ -2153,7 +2151,6 @@ void togglePlayState(uint8_t bank, uint8_t sequence) {
         nState = STARTING;
         break;
     case STARTING:
-    case RESTARTING:
         nState = STOPPED;
         break;
     case PLAYING:

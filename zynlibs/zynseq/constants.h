@@ -30,19 +30,24 @@
 
 #define DEFAULT_TEMPO 120 // March time (120 BPM)
 
-// Play mode
-#define MODE_SYNC 0      // Action occurs at next sync
-#define MODE_END 1       // Action occurs at end of sequence
-#define MODE_IMMEDIATE 2 // Action occurs immediately
+// Play modes START, END and ENABLED are OR'd to provide mode
+// Bits 0..1 Stop mode
+#define MODE_END_END            0 // Stop at end of sequence
+#define MODE_END_SYNC           1 // Stop at next sync
+#define MODE_END_IMMEDIATE      2 // Stop immediately
+// Bit 2 Start mode
+#define MODE_START_SYNC         0 // Start at next sync
+#define MODE_START_IMMEDIATE    4 // Start immediately
+// Bit 7 Enable mode
+#define MODE_ENABLE             128 // Bit 7 set if sequence enabled
 
 // Play status
 #define STOPPED 0       // Sequence is stopped
 #define PLAYING 1       // Sequence is playing
 #define STOPPING 2      // Sequence is playing waiting to stop
 #define STARTING 3      // Sequence is paused waiting to start
-#define RESTARTING 4    // Sequence is restarting after hitting end of loop
-#define STOPPING_SYNC 5 // Sequence is playing waiting to stop at next sync point
-#define LASTPLAYSTATUS 5
+#define STOPPING_SYNC 4 // Sequence is playing waiting to stop at next sync point
+#define LASTPLAYSTATUS 4
 
 // MIDI commands
 #define MIDI_NOTE_OFF 0x80

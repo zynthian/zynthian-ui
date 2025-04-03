@@ -957,8 +957,7 @@ class PadMatrixHandler(ModeHandlerBase):
 
         stop_states = (zynseq.SEQ_STOPPED, zynseq.SEQ_STOPPING,
                        zynseq.SEQ_STOPPINGSYNC)
-        play_states = (zynseq.SEQ_RESTARTING,
-                       zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING)
+        play_states = (zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING)
         for col in range(self._zynseq.col_in_bank):
             seq = col * self._zynseq.col_in_bank + row
             # We only play sequences that are not empty
@@ -1819,7 +1818,7 @@ class StepSeqHandler(ModeHandlerBase):
                     self._zynseq.bank, self._selected_seq)
                 state = self._libseq.getPlayState(
                     self._zynseq.bank, self._selected_seq)
-                if state in (zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING, zynseq.SEQ_RESTARTING):
+                if state in (zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING):
                     self._is_stage_play = True
                     self.refresh()
             elif note == BTN_UP:

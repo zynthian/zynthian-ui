@@ -44,17 +44,20 @@ void SequenceManager::resetBanks() {
             insertSequence(255, seq);
             Sequence* pSequence = m_mBanks[255][seq];
             pSequence->setGroup(chan);
-            pSequence->setPlayMode((MODE_END << 4) | MODE_SYNC);
-            pSequence->setRepeat(1);
-            pSequence->setNextSequence(255, seq);
+            pSequence->setPlayMode(0);
             if (chan < 16) {
+                pSequence->setRepeat(0);
+                pSequence->setNextSequence(255, seq);
                 pSequence->setName(std::string(1, 'A' + chan) + std::to_string(slot + 1));
                 Track* pTrack = pSequence->getTrack(0);
                 if (pTrack)
                     pTrack->setChannel(chan);
             }
-            else
+            else {
+                pSequence->setRepeat(1);
+                pSequence->setNextSequence(-1, -1);
                 pSequence->setName(std::string(1, 'S') + std::to_string(slot + 1));
+            }
         }
     }
 }
@@ -155,7 +158,7 @@ void SequenceManager::copyPattern(uint32_t source, uint32_t destination) {
 Sequence* SequenceManager::getSequence(uint8_t bank, uint8_t sequence) {
     // Add missing sequences
     while (m_mBanks[bank].size() <= sequence) {
-        m_mBanks[bank].push_back(new Sequence());
+        m_mBanks[bank].push_back(new Sequence(bank, sequence));
         addPattern(bank, m_mBanks[bank].size() - 1, 0, 0, createPattern(), false);
     }
     return m_mBanks[bank][sequence];
@@ -254,7 +257,7 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
 
 void SequenceManager::setSequencePlayState(uint8_t bank, uint8_t sequence, uint8_t state) {
     Sequence* pSequence = getSequence(bank, sequence);
-    if (state == STARTING || state == PLAYING || state == RESTARTING) {
+    if (state == STARTING || state == PLAYING) {
         bool bAddToList = true;
         // Stop other sequences in same group
         for (auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end(); ++it) {
@@ -262,7 +265,7 @@ void SequenceManager::setSequencePlayState(uint8_t bank, uint8_t sequence, uint8
             if (pPlayingSequence == pSequence)
                 bAddToList = false;
             else if (pPlayingSequence->getGroup() == pSequence->getGroup()) {
-                if (pPlayingSequence->getPlayState() == STARTING || pPlayingSequence->getPlayState() == RESTARTING)
+                if (pPlayingSequence->getPlayState() == STARTING)
                     pPlayingSequence->setPlayState(STOPPED);
                 else if (pPlayingSequence->getPlayState() != STOPPED) {
                     pPlayingSequence->setPlayState(STOPPING_SYNC);
@@ -275,7 +278,7 @@ void SequenceManager::setSequencePlayState(uint8_t bank, uint8_t sequence, uint8
         pSequence->setPlayState(state);
 
     if (bank == 255 && pSequence->getGroup() == 16) {
-        if (state == STARTING || state == PLAYING || state == RESTARTING) {
+        if (state == STARTING || state == PLAYING) {
             for (uint8_t chan = 0; chan < 16; ++chan) {
                 uint32_t nSlaveSeq = sequence % 8 + chan * 8;
                 Sequence* pSlaveSeq = m_mBanks[255][nSlaveSeq];
@@ -404,7 +407,7 @@ bool SequenceManager::moveSequence(uint8_t bank, uint8_t sequence, uint8_t posit
 }
 
 void SequenceManager::insertSequence(uint8_t bank, uint8_t sequence) {
-    m_mBanks[bank].insert(m_mBanks[bank].begin() + sequence, new Sequence());
+    m_mBanks[bank].insert(m_mBanks[bank].begin() + sequence, new Sequence(bank, sequence));
     addPattern(bank, sequence, 0, 0, createPattern(), false);
 }
 

@@ -34,7 +34,7 @@ class Sequence {
   public:
     /** @brief  Create Sequence object
      */
-    Sequence();
+    Sequence(uint8_t bank, uint8_t sequence);
 
     /** @brief  Get sequence's mutually excusive group
      *   @retval uint32_t sequence's group
@@ -47,17 +47,17 @@ class Sequence {
     void setGroup(uint8_t group);
 
     /** @brief  Get play mode
-     *  @retval uint8_t Start (bits 0..3) and stop (bits 4..7) modes [MODE_SYNC, MODE_END, MODE_IMMEDIATE]
+     *  @retval uint8_t Stop mode (bits 0..1). Start mode (bit 2) modes.
      */
     uint8_t getPlayMode();
 
     /** @brief  Set play mode
-     *   @param  mode Start (bits 0..3) and stop (bits 4..7) modes [MODE_SYNC, MODE_END, MODE_IMMEDIATE]
+     *   @param  mode Stop mode (bits 0..1). Start mode (bit 2) modes.
      */
     void setPlayMode(uint8_t mode);
 
     /** @brief  Get sequence's play state
-     *   @retval uint8_t Play state [STOPPED | PLAYING | STOPPING | STARTING | RESTARTING | STOPPING_SYNC]
+     *   @retval uint8_t Play state [STOPPED | PLAYING | STOPPING | STARTING | STOPPING_SYNC]
      */
     uint8_t getPlayState();
 
@@ -233,18 +233,19 @@ class Sequence {
     std::vector<Track> m_vTracks;      // Vector of tracks within sequence
     Timebase m_timebase;               // Timebase map
     TimebaseEvent* m_pNextTimebaseEvent = NULL; // Pointer to next timebase event or NULL if none.
-    uint8_t m_nState        = STOPPED; // Play state of sequence
-    uint8_t m_nMode         = MODE_SYNC; // Bitwise flags affecting start (bits 0..3) and stop (bits 4..7). Changed v11.
     size_t m_nCurrentTrack  = 0;       // Index of track currently being queried for events
     uint32_t m_nPosition    = 0;       // Play position in clock cycles
     uint32_t m_nLastSyncPos = 0;       // Position of last sync pulse in clock cycles
     uint32_t m_nLength      = 0;       // Length of sequence in clock cycles (longest track)
+    float m_fTempo          = 120.0;   // Current tempo (overriden by tempo events in timebase map)
+    uint16_t m_nTimeSig     = 4;       // Current time signature (beats in bar)
+    uint16_t m_nId;                    // Sequence id (bank << 8 | sequence)
+    uint16_t m_nNextSeq     = -1;      // Index of the next sequence | bank << 8 to play when this sequence ends (-1=none). Added v11.
+    uint8_t m_nState        = STOPPED; // Play state of sequence
+    uint8_t m_nMode         = 0;       // Bitwise flags affecting start (bits 0..3) and stop (bits 4..7). Changed v11.
     uint8_t m_nGroup        = 0;       // Sequence's mutually exclusive group
     uint8_t m_nRepeat       = 1;       // Quantity of times to play sequence/ Added v11.
     uint8_t m_nCount        = 0;       // Quantity of times to sequence has played
-    float m_fTempo          = 120.0;   // Current tempo (overriden by tempo events in timebase map)
-    uint16_t m_nTimeSig     = 4;       // Current time signature (beats in bar)
-    uint16_t m_nNextSeq     = -1;      // Index of the next sequence | bank << 8 to play when this sequence ends (-1=none). Added v11.
     bool m_bChanged         = false;   // True if sequence content changed
     bool m_bStateChanged    = false;   // True if state changed since last clock cycle
     bool m_bEmpty           = true;    // True if all patterns are emtpy (no events)

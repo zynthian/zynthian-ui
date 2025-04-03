@@ -357,7 +357,7 @@ class zynthian_engine_clippy(zynthian_engine):
                         self.libseq.addNote(note_len * pos, NUM_SPLICES * slot + pos, 100, 1, 0.0)
                 else:
                     self.libseq.addNote(0, NUM_SPLICES * slot, 100, 1, 0.0)
-                self.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, sequence, (zynseq.SEQ_MODE_END << 4) | zynseq.SEQ_MODE_SYNC)
+                #self.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, sequence, 0x0100)
                 state = self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, sequence)
                 self.libseq.updateSequenceInfo()
                 self.zynseq.set_sequence_name(zynseq.LAUNCHER_SEQ_BANK, sequence, os.path.splitext(filename)[0])
@@ -374,7 +374,7 @@ class zynthian_engine_clippy(zynthian_engine):
             #self.reset_pattern(slot)
 
         zynsigman.send(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE,
-                       bank=zynseq.LAUNCHER_SEQ_BANK, seq=sequence, state=state, mode=zynseq.SEQ_MODE_SYNC, group=self.processors[0].midi_chan)
+                       bank=zynseq.LAUNCHER_SEQ_BANK, seq=sequence, state=state, mode=0x0100, group=self.processors[0].midi_chan)
         self.processors[0].init_ctrl_screens()
 
     def on_tempo(self, tempo):

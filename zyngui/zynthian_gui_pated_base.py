@@ -95,7 +95,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.sequence = None  # Sequence used for pattern editor sequence player
         self.channel = 0
 
-        self.last_play_mode = zynseq.SEQ_MODE_SYNC
+        self.last_play_mode = [0x0100, 0] # Default (sync start, play all once)
         self.playhead = 0
         self.playstate = zynseq.SEQ_STOPPED
         self.n_steps = 0  # Number of steps in current pattern
@@ -198,8 +198,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                                               tags="velocityIndicator")
         self.velocity_canvas.grid(column=0, row=1)
 
-        self.zynseq.libseq.setPlayMode(0, 0, zynseq.SEQ_MODE_SYNC)
         # Load pattern 1 so that the editor has a default known state
+        self.zynseq.libseq.setPlayMode(0, 0, 0x0100)
         self.load_pattern(1)
 
     # Function to get name of this view
@@ -265,9 +265,11 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.setup_zynpots()
         if not self.param_editor_zctrl:
             self.set_title()
-        self.last_play_mode = self.zynseq.libseq.getPlayMode(self.bank, self.sequence)
-        #TODO:if self.last_play_mode not in (zynseq.SEQ_LOOP, zynseq.SEQ_LOOPALL):
-        #    self.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynseq.SEQ_LOOP)
+        self.last_play_mode = [self.zynseq.libseq.getPlayMode(self.bank, self.sequence), self.zynseq.libseq.getNextSequence(self.bank, self.sequence)]
+        if self.last_play_mode[0] != 0x0100:
+            self.zynseq.libseq.setPlayMode(self.bank, self.sequence, 0x0100)
+        if self.last_play_mode[1] != self.sequence:
+            self.zynseq.libseq.setNextSequence(self.bank, self.sequence, self.bank, self.sequence)
 
         # Set active the first chain with pattern's MIDI chan
         try:
@@ -290,7 +292,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.set_edit_mode(EDIT_MODE_NONE)
         #self.zynseq.libseq.setRefNote(int(self.keymap_offset))
         self.zynseq.libseq.setPatternZoom(self.zoom)
-        self.zynseq.libseq.setPlayMode(self.bank, self.sequence, self.last_play_mode)
+        self.zynseq.libseq.setPlayMode(self.bank, self.sequence, self.last_play_mode[0])
+        self.zynseq.libseq.setNextSequence(self.bank, self.sequence, self.bank, self.last_play_mode[1])
         self.zynseq.libseq.updateSequenceInfo()
 
     # -------------------------------------------------------------------------
@@ -1150,7 +1153,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         pb_status = self.zyngui.screens['pattern_editor'].get_playback_status()
         if pb_status == zynseq.SEQ_PLAYING:
             wsl.set_led(leds[3], wsl.wscolor_green)
-        elif pb_status in (zynseq.SEQ_STARTING, zynseq.SEQ_RESTARTING):
+        elif pb_status == zynseq.SEQ_STARTING:
             wsl.set_led(leds[3], wsl.wscolor_yellow)
         elif pb_status in (zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC):
             wsl.set_led(leds[3], wsl.wscolor_red)

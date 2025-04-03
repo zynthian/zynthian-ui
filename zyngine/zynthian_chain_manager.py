@@ -230,6 +230,9 @@ class zynthian_chain_manager:
             if zmop_index is None or not self.is_free_zmop_index(zmop_index):
                 zmop_index = self.get_next_free_zmop_index()
             chain.set_zmop_index(zmop_index)
+            for slot in range(8):
+                if self.state_manager.zynseq.libseq.getPlayMode(255, midi_chan * 8 + slot) == 0:
+                    self.state_manager.zynseq.libseq.setPlayMode(255, midi_chan * 8 + slot, 0x0100)
         if chain.zmop_index is not None:
             # Enable all MIDI input devices by default => TODO: Should we allow user to define default routing?
             for zmip in range(MAX_NUM_MIDI_DEVS):
@@ -331,6 +334,7 @@ class zynthian_chain_manager:
         # List of associated chains that shold be removed simultaneously
         chains_to_remove = [chain_id]
         chain = self.chains[chain_id]
+        midi_chan = chain.midi_chan
         if chain.synth_slots:
             if chain.synth_slots[0][0].eng_code in ["BF", "AE"]:
                 # TODO: We remove all setBfree and Aeolus chains but maybe we should allow chain manipulation
@@ -382,6 +386,16 @@ class zynthian_chain_manager:
             if chain_pos + 1 >= len(self.ordered_chain_ids):
                 chain_pos -= 1
             self.set_active_chain_by_index(chain_pos)
+        if midi_chan is not None:
+            disable_sequences = True
+            for chain in self.chains.values():
+                if chain.midi_chan == midi_chan:
+                    disable_sequences = False
+                    break
+            if disable_sequences:
+                for slot in range(8):
+                    self.state_manager.zynseq.libseq.setPlayMode(255, midi_chan * 8 + slot, 0x0000)
+
         self.state_manager.purge_zs3()
         self.state_manager.end_busy("remove_chain")
         return True

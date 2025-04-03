@@ -58,18 +58,22 @@ SEQ_EVENT_LOAD_PAT = 10
 
 SEQ_MAX_PATTERNS = 64872
 
-# Used by playmode. Bits 0..3 are start mode. Bits 4..7 are stop mode.
-SEQ_MODE_SYNC = 0
-SEQ_MODE_END = 1
-SEQ_MODE_IMMEDIATE = 2
+# Play modes START & END are OR'd to provide mode
+# Bits 0..1 Stop mode
+SEQ_MODE_END_END         = 0 # Stop at end of sequence
+SEQ_MODE_END_SYNC        = 1 # Stop at next sync
+SEQ_MODE_END_IMMEDIATE   = 2 # Stop immediately
+# Bit 2 Start mode
+SEQ_MODE_START_SYNC      = 0 # Start at next sync
+SEQ_MODE_START_IMMEDIATE = 4 # Start immediately
+# Bits 8..15 hold repeats. 0 for disabled.
 
 SEQ_STOPPED = 0
 SEQ_PLAYING = 1
 SEQ_STOPPING = 2
 SEQ_STARTING = 3
-SEQ_RESTARTING = 4
-SEQ_STOPPINGSYNC = 5
-SEQ_LASTPLAYSTATUS = 5
+SEQ_STOPPINGSYNC = 4
+SEQ_LASTPLAYSTATUS = 4
 
 SEQ_MAX_COLUMNS = 8
 
@@ -149,21 +153,23 @@ class zynseq(zynthian_engine):
         for chan in range(LAUNCHER_COLS):
             info = []
             for slot in range(LAUNCHER_SLOTS):
-                info.append({
-                    "title": "",
-                    "bpb": 4,
-                    "mode": SEQ_MODE_SYNC,
-                    "repeat": 0,
-                    "group": 0,
-                    "state": SEQ_STOPPED,
-                    "chan": chan,
-                    "slot": slot,
-                    "sequence": chan * LAUNCHER_SLOTS + slot,
-                    "pattern": chan * LAUNCHER_SLOTS + slot,  # This might not be correct but refresh should fix it
-                    "clippy": None,  # Clippy processor, for clippy slots
-                    "tempo": None,
-                    "next": -1
-                })
+                info.append(
+                    {
+                        "title": "",
+                        "bpb": 4,
+                        "mode": 0x0100,
+                        "repeat": 0,
+                        "group": 0,
+                        "state": SEQ_STOPPED,
+                        "chan": chan,
+                        "slot": slot,
+                        "sequence": chan * LAUNCHER_SLOTS + slot,
+                        "pattern": chan * LAUNCHER_SLOTS + slot, # This might not be correct but refresh should fix it
+                        "clippy": None, # Clippy processor, for clippy slots
+                        "tempo": None,
+                        "next": -1
+                    }
+                )
             self.launcher_info.append(info)
         self.bank = None
         self.select_bank(1, True)
@@ -221,22 +227,20 @@ class zynseq(zynthian_engine):
         zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_REFRESH)
         self.changing_bank = False
 
-    # Build a default bank with each column MIDI channel = column number
+    # Build a default 4x4 bank with each column MIDI channel = column number
     # bank: Index of bank to rebuild
-    # columns: Quantity of columns (Default: 4)
-    # rows: Quantity of rows (Default: 4)
-    # mode: Play mode (Default: loop)
-    def build_default_bank(self, bank, columns=4, rows=4, mode = SEQ_MODE_SYNC):
+    def build_default_bank(self, bank):
         if self.libseq:
-            self.libseq.setSequencesInBank(bank, rows * columns)
-            for column in range(columns):
+            self.libseq.setSequencesInBank(bank, 16)
+            for column in range(4):
                 channel = column
-                for row in range(rows):
-                    seq = row + column * rows
+                for row in range(4):
+                    seq = row + column * 4
                     self.set_sequence_name(bank, seq, f"{chr(65 + column)}{row + 1}")
                     self.libseq.setGroup(bank, seq, channel)
                     self.libseq.setChannel(bank, seq, 0, channel)
-                    self.libseq.setPlayMode(bank, seq, mode)
+                    self.libseq.setPlayMode(bank, seq, 0x0100)
+                    self.libseq.setNextSequence(bank, seq, seq)
 
     # Function to add / remove sequences to change bank size
     # new_columns: Quantity of columns (and rows) of new grid
@@ -394,6 +398,7 @@ class zynseq(zynthian_engine):
         self.libseq.setBeatsPerBar(bpb)
 
     def set_play_mode(self, bank, sequence, mode):
+        #TODO: Playmode has changed
         self.libseq.setPlayMode(bank, sequence, mode)
 
     def remove_pattern(self, bank, sequence, track, time):

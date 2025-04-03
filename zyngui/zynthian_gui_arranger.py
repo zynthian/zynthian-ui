@@ -279,6 +279,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
                 self.zynseq.bank, self.sequence, self.track, zctrl.value)
             self.draw_sequence_label(self.selected_cell[1] - self.row_offset)
         elif zctrl.symbol == 'playmode':
+            #TODO: Playmode has changed
             self.zynseq.set_play_mode(
                 self.zynseq.bank, self.sequence, zctrl.value)
         elif zctrl.symbol == 'vzoom':

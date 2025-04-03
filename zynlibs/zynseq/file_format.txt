@@ -1,6 +1,6 @@
 zynseq file format (RIFF)
 =========================
-Version 10
+Version 11
 Pattern time is measured in steps.
 Sequence time is measured in MIDI clock cycles.
 
@@ -57,10 +57,10 @@ Block:
     Padding [1]
     Quantity of sequences (grid size) [4]
     Sequences:
-        Play mode [1]
+        Play mode [2] (Was 1 byte before v11)
         Group [1]
 		Trigger note [1] (This seems like wrong place but makes code much simpler)
-		Repeat [1] (Padding before v11)
+		(Removed in v11 Padding [1])
 		Next sequence bank [1] (Added in v11)
 		Next sequence seq [1] (Added in v11)
 		Name [16] (Since V6)

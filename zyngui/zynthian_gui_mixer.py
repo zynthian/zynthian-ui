@@ -827,9 +827,7 @@ class zynthian_gui_mixer_strip():
         info["pattern"] = pattern
         info["next"] = next_scene
 
-        if state == zynseq.SEQ_RESTARTING:
-            info['state'] = zynseq.SEQ_PLAYING
-        elif state == zynseq.SEQ_STOPPINGSYNC:
+        if state == zynseq.SEQ_STOPPINGSYNC:
             info['state'] = zynseq.SEQ_STOPPING
         else:
             info['state'] = state
@@ -1208,7 +1206,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.setup_zynpots()
         if self.midi_learn_sticky:
             self.enter_midi_learn(self.midi_learn_sticky)
-        else:
+        elif not self.shown:
             zynsigman.register(
                 zynsigman.S_AUDIO_MIXER, self.zynmixer.SS_ZCTRL_SET_VALUE, self.update_control)
             zynsigman.register_queued(
@@ -1334,7 +1332,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     self.main_canvas.itemconfig(strip.pedals[i], state=tkinter.HIDDEN)
 
     def cb_launcher_play_state(self, bank, seq, state, mode, group):
-        #logging.debug(f"bank:{bank} seq:{seq} state:{state} mode:{mode} group:{group}")
+        #logging.warning(f"bank:{bank} seq:{seq} state:{state} mode:{mode} group:{group}")
         if not self.launcher_mode or bank != zynseq.LAUNCHER_SEQ_BANK:
             return
         midi_chan = seq // 8

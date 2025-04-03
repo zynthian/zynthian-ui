@@ -290,10 +290,9 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
             mode = (state >> 8) & 0xFF
             group = (state >> 16) & 0xFF
             state &= 0xFF
-        if state == zynseq.SEQ_RESTARTING:
-            state = zynseq.SEQ_PLAYING
-        elif state == zynseq.SEQ_STOPPINGSYNC:
+        if state == zynseq.SEQ_STOPPINGSYNC:
             state = zynseq.SEQ_STOPPING
+        start_mode = mode & 0x0F
 
         foreground = "white"
         cellh = self.pads[pad]["header"]
@@ -544,6 +543,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
 
     # Function to set the playmode of the selected pad
     def set_play_mode(self, mode):
+        #TODO: Playmode has changed
         self.zynseq.set_play_mode(self.bank, self.selected_pad, mode)
 
     # Function to show the editor (pattern or arranger based on sequence content)

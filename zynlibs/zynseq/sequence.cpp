@@ -19,7 +19,8 @@
 
  #include "sequence.h"
 
-Sequence::Sequence() {
+Sequence::Sequence(uint8_t bank, uint8_t sequence) {
+    m_nId = (bank << 8) | sequence;
     addTrack(); // Ensure new sequences have at least one track
 }
 
@@ -125,7 +126,7 @@ void Sequence::setPlayState(uint8_t state) {
         state = STOPPED;
     if (state == m_nState)
         return;
-    if (((m_nMode >> 4) == MODE_IMMEDIATE) && (state == STOPPING || state == STOPPING_SYNC)) {
+    if ((m_nMode & MODE_END_IMMEDIATE) && (state == STOPPING || state == STOPPING_SYNC)) {
         state = STOPPED;
         fprintf(stderr, "Immediate\n");
     }
@@ -134,7 +135,7 @@ void Sequence::setPlayState(uint8_t state) {
         m_nPosition = 0;
     m_bStateChanged |= (nState != m_nState);
     m_bChanged = true;
-    if (m_nState == STARTING || m_nState == RESTARTING || m_nState == STOPPED)
+    if (m_nState == STARTING || m_nState == STOPPED)
         m_nCount = 0;
 }
 
@@ -145,17 +146,13 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
     uint8_t nReturn = 0;
     uint8_t nState  = m_nState;
     if (bSync) {
-        if ((m_nMode >> 4) == MODE_SYNC) {
+        if (m_nMode & MODE_END_SYNC) {
             m_nPosition = 0;
             if (m_nState == STOPPING)
                 m_nState = STOPPED;
         }
         if (m_nState == STARTING)
             m_nState = PLAYING;
-        if (m_nState == RESTARTING) {
-            m_nState = PLAYING;
-            nState   = PLAYING;
-        }
         m_nLastSyncPos = m_nPosition;
     }
 
@@ -168,12 +165,10 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
     if (m_nPosition >= m_nLength) {
         // End of sequence
         if (m_nState == PLAYING) {
-            if (++m_nCount >= m_nRepeat) {
+            if (++m_nCount >= m_nRepeat && m_nNextSeq != m_nId) {
                 // Follow action
                 setPlayState(STOPPED);
                 nReturn |= 8;
-            } else {
-                m_nState = RESTARTING;
             }
         } else {
             m_nState = STOPPED;
