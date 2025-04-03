@@ -496,12 +496,12 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
             # Set to MIDI track
             logging.debug("Setting track type to MIDI")
             self.zynseq.libseq.setChainID(self.bank, self.selected_pad, 0, 0)
-            self.zynseq.libseq.clear()
+            self.zynseq.libseq.clearPattern(pattern)
         elif track_type == 1:
             # Set to Audio track
             logging.debug("Setting track type to Audio")
-            self.zynseq.libseq.clear()
-            self.zynseq.libseq.addNote(0, 60, 100, self.zynseq.libseq.getSteps(), 0)
+            self.zynseq.libseq.clearPattern(pattern)
+            self.zynseq.libseq.addNote(0, 60, 100, self.zynseq.libseq.getSteps(self.pattern), 0)
             # Add a new audio player (zynsampler) chain => IMPROVE! We could choose an existing one...
             chain_id = self.chain_manager.add_chain(None,
                                                     self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0),

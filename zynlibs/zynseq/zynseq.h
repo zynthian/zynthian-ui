@@ -4,7 +4,7 @@
  *
  * Library providing step sequencer as a Jack connected device
  *
- * Copyright (C) 2020-2023 Brian Walton <brian@riban.co.uk>
+ * Copyright (C) 2020-2025 Brian Walton <brian@riban.co.uk>
  *
  * ******************************************************************
  *
@@ -45,10 +45,11 @@
             A collection of sequences
 */
 
+#include <cstdint>
+
 #include "constants.h"
 #include "pattern.h"
 #include "timebase.h"
-#include <cstdint>
 
 //-----------------------------------------------------------------------------
 // Library Initialization
@@ -59,8 +60,8 @@ extern "C" {
 
 enum TRANSPORT_CLOCK {
     TRANSPORT_CLOCK_INTERNAL = 1,
-    TRANSPORT_CLOCK_MIDI     = 2,
-    TRANSPORT_CLOCK_ANALOG   = 4
+    TRANSPORT_CLOCK_MIDI = 2,
+    TRANSPORT_CLOCK_ANALOG = 4
 };
 
 // ** Library management functions **
@@ -130,7 +131,7 @@ void setPatternZoom(int16_t zoom);
 /** Set pattern zoom */
 int16_t getPatternZoom();
 
-// ** This is not user by Pattern editor anymore. Is this used by arranger? **
+// ** This is not user by Pattern editor anymore. Is this used by arranger?  - YES! But should be factored out**
 
 /** @brief  Get vertical zoom
  *   @retval uint16_t Vertical zoom
@@ -153,6 +154,7 @@ uint16_t getHorizontalZoom();
 void setHorizontalZoom(uint16_t zoom);
 
 // ** Direct MIDI interface **
+
 //!@todo Should direct MIDI output be removed because JACK clients can do that themselves?
 
 /** @brief  Play a note
@@ -247,16 +249,6 @@ uint16_t getTriggerSequence(uint8_t note);
 //!@todo Current implementation selects a pattern then operates on it. API may be simpler to comprehend if patterns were acted on directly by passing the
 //! pattern index, e.g. clearPattern(index)
 
-/** @brief  Enable record from MIDI input to add notes to current pattern
- *   @param  enable True to enable MIDI input
- */
-void enableMidiRecord(bool enable);
-
-/** @brief  Get MIDI record enable state
- *   @retval bool True if MIDI record enabled
- */
-bool isMidiRecord();
-
 /** @brief  Create a new pattern
  *   @retval uint32_t Index of new pattern
  */
@@ -288,6 +280,14 @@ uint32_t getPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t pos
  */
 uint32_t getPatternAt(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position);
 
+/** @brief  Copy pattern
+ *   @param  source Index of pattern from which to copy
+ *   @param  destination Index of pattern to which to copy
+ */
+void copyPattern(uint32_t source, uint32_t destination);
+
+// ** Functions acting on the globally selected pattern **
+
 /** @brief  Select active pattern
  *   @note   All subsequent pattern methods act on this pattern
  *   @note   Pattern is created if it does not exist
@@ -295,106 +295,20 @@ uint32_t getPatternAt(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t p
  */
 void selectPattern(uint32_t pattern);
 
-/** @brief  Check if selected pattern is empty
- *   @param  pattern Pattern index
- *   @retval bool True if pattern is empty
- */
-bool isPatternEmpty(uint32_t pattern);
-
 /** @brief  Get the index of the selected pattern
  *   @retval uint32_t Index of pattern or -1 if not found
  */
 uint32_t getPatternIndex();
 
-/** @brief  Get quantity of steps in selected pattern
- *   @retval uint32_t Quantity of steps
+/** @brief  Enable record from MIDI input to add notes to current pattern
+ *   @param  enable True to enable MIDI input
  */
-uint32_t getSteps();
+void enableMidiRecord(bool enable);
 
-/** @brief  Get quantity of beats in specified pattern
- *  @param  pattern Index of pattern 
- *  @retval uint32_t Quantity of beats
+/** @brief  Get MIDI record enable state
+ *   @retval bool True if MIDI record enabled
  */
-uint32_t getBeatsInPattern(uint32_t pattern);
-
-/** @brief  Set quantity of beats in selected pattern
- *  @param  pattern Index of pattern 
- *   @param  beats Quantity of beats
- *   @note   Adjusts steps to match steps per beat
- */
-void setBeatsInPattern(uint32_t pattern, uint32_t beats);
-
-/** @brief  Get pattern length in clock cycles
- *   @param  pattern Index of pattern
- *   returns Length in clock cycles
- */
-uint32_t getPatternLength(uint32_t pattern);
-
-/** @brief  Get clocks per step for selected pattern
- *   @retval uint32_t Clock cycles per step
- */
-uint32_t getClocksPerStep();
-
-/** @brief  Get steps per beat from selected pattern
- *   @retval uint32_t Steps per beat
- */
-uint32_t getStepsPerBeat();
-
-/** @brief  Set steps per beat
- *   @param  steps Steps per beat [1,2,3,4,6,8,12,24]
- *   @note   Calculates pattern length from beats in pattern
- */
-void setStepsPerBeat(uint32_t steps);
-
-/** @brief  Get swing division from selected pattern
- *   @retval uint32_t swing division
- */
-uint32_t getSwingDiv();
-
-/** @brief  Set swing division in selected pattern
- *   @param  swing division, from 1 to pattern's StepsPerBeat
- */
-void setSwingDiv(uint32_t div);
-
-/** @brief  Get swing amount from selected pattern
- *   @retval float swing division
- */
-float getSwingAmount();
-
-/** @brief  Set swing amount in selected pattern
- *   @param  swing amount, from 0 to 1 (0.33 is perfect-triplet swing, >0.5 is not really swing)
- */
-void setSwingAmount(float amount);
-
-/** @brief  Get Time Humanization amount from selected pattern
- *   @retval float
- */
-float getHumanTime();
-
-/** @brief  Set Time Humanization amount in selected pattern
- *   @param  amount, from 0 to FLOAT_MAX
- */
-void setHumanTime(float amount);
-
-/** @brief  Get Velocity Humanization amount from selected pattern
- *   @retval float
- */
-float getHumanVelo();
-
-/** @brief  Set Velocity Humanization amount in selected pattern
- *   @param  amount, from 0 to FLOAT_MAX
- */
-void setHumanVelo(float amount);
-
-/** @brief  Get PlayChance from selected pattern
- *   @retval float
- */
-float getPlayChance();
-
-/** @brief  Set PlayChance in selected pattern
- *   @param  chance, probability of playing notes
- */
-void setPlayChance(float chance);
+bool isMidiRecord();
 
 /** @brief  Add note to selected pattern
  *   @param  step Index of step at which to add note
@@ -458,55 +372,55 @@ void setNoteOffset(uint32_t step, uint8_t note, float offset);
  */
 bool addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, float duration, float offset = 0.0);
 
- /** @brief  Removes control from selected pattern
-  *   @param  step Index of step at which to remove control
-  *   @param  control MIDI control number to remove
-  */
+/** @brief  Removes control from selected pattern
+ *   @param  step Index of step at which to remove control
+ *   @param  control MIDI control number to remove
+ */
 void removeControl(uint32_t step, uint8_t control);
- 
- /** @brief  Get step that control starts
-  *   @param  position Quantity of steps from start of pattern at which to check for control
-  *   @param  control MIDI control number
-  *   @retval int32_t Quantity of steps from start of pattern that control starts or -1 if note not found
-  */
-int32_t getControlStart(uint32_t step, uint8_t control); 
+
+/** @brief  Get step that control starts
+ *   @param  position Quantity of steps from start of pattern at which to check for control
+ *   @param  control MIDI control number
+ *   @retval int32_t Quantity of steps from start of pattern that control starts or -1 if note not found
+ */
+int32_t getControlStart(uint32_t step, uint8_t control);
 
 /** @brief  Get duration of control in selected pattern
  *   @param  position Index of step at which control starts
  *   @note   MIDI control number
  *   @retval float Duration in steps or 0.0 if control does not exist
  */
- float getControlDuration(uint32_t step, uint8_t control);
+float getControlDuration(uint32_t step, uint8_t control);
 
 /** @brief  Get value of control in selected pattern
  *   @param  step Index of step at which control resides
  *   @param  control MIDI control number
  *   @retval uint8_t control value (0..127)
  */
- uint8_t getControlValue(uint32_t step, uint8_t control);
+uint8_t getControlValue(uint32_t step, uint8_t control);
 
- /** @brief  Set value of control in selected pattern
-  *   @param  step Index of step at which control resides
-  *   @param  control MIDI control number
-  *   @param  valueStart MIDI value at start of event
-  *   @param  valueEnd MIDI value at end of event
-  */
- void setControlValue(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd);
+/** @brief  Set value of control in selected pattern
+ *   @param  step Index of step at which control resides
+ *   @param  control MIDI control number
+ *   @param  valueStart MIDI value at start of event
+ *   @param  valueEnd MIDI value at end of event
+ */
+void setControlValue(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd);
 
 /** @brief  Get offset of control in selected pattern
  *   @param  step Index of step at which control resides
  *   @param  control MIDI control number
  *   @retval float offset Step fraction, from 0.0 to 1.0
  */
- float getControlOffset(uint32_t step, uint8_t control);
+float getControlOffset(uint32_t step, uint8_t control);
 
- /** @brief  Set offset of control in selected pattern
-  *   @param  step Index of step at which control resides
-  *   @param  control MIDI control number
-  *   @param  offset Step fraction, from 0.0 to 1.0
-  */
- void setControlOffset(uint32_t step, uint8_t control, float offset);
- 
+/** @brief  Set offset of control in selected pattern
+ *   @param  step Index of step at which control resides
+ *   @param  control MIDI control number
+ *   @param  offset Step fraction, from 0.0 to 1.0
+ */
+void setControlOffset(uint32_t step, uint8_t control, float offset);
+
 /** @brief  Get stutter count of note in selected pattern
  *   @param  step Index of step at which note resides
  *   @param  note MIDI note number
@@ -599,16 +513,145 @@ void changeStutterCountAll(int value);
  */
 void changeStutterDurAll(int value);
 
-/** @brief  Clears events from selected pattern
- *   @note   Does not change other parameters such as pattern length
+/** @brief  Flag pattern as modified - also sets flags in relevant sequences and tracks
  */
-void clear();
+void setPatternModified(Pattern* pPattern, bool bModified = true, bool bModifiedTracks = false);
 
-/** @brief  Copy pattern
- *   @param  source Index of pattern from which to copy
- *   @param  destination Index of pattern to which to copy
+/** @brief  Check if selected pattern has changed since last check
+ *   @retval bool True if pattern has changed
  */
-void copyPattern(uint32_t source, uint32_t destination);
+bool isPatternModified();
+
+/** @brief  Get position of playhead within pattern in steps
+ *   @retval uint32_t Quantity of steps from start of pattern to playhead
+ */
+uint32_t getPatternPlayhead();
+
+// ** Functions acting on specified pattern **
+
+/** @brief  Check if selected pattern is empty
+ *   @param  pattern Pattern index
+ *   @retval bool True if pattern is empty
+ */
+bool isPatternEmpty(uint32_t pattern);
+
+/** @brief  Get quantity of steps in pattern
+ *   @param  pattern Index of pattern
+ *   @retval uint32_t Quantity of steps
+ */
+uint32_t getSteps(uint32_t pattern);
+
+/** @brief  Get quantity of beats in  pattern
+ *  @param  pattern Index of pattern
+ *  @retval uint32_t Quantity of beats
+ */
+uint32_t getBeatsInPattern(uint32_t pattern);
+
+/** @brief  Set quantity of beats in pattern
+ *  @param  pattern Index of pattern
+ *   @param  beats Quantity of beats
+ *   @note   Adjusts steps to match steps per beat
+ */
+void setBeatsInPattern(uint32_t pattern, uint32_t beats);
+
+/** @brief  Get pattern length in clock cycles
+ *   @param  pattern Index of pattern
+ *   returns Length in clock cycles
+ */
+uint32_t getPatternLength(uint32_t pattern);
+
+/** @brief  Get clocks per step for selected pattern
+ *   @param  pattern Index of paatern
+ *   @retval uint32_t Clock cycles per step
+ */
+uint32_t getClocksPerStep(uint32_t pattern);
+
+/** @brief  Get steps per beat from selected pattern
+ *   @param  pattern Index of pattern
+ *   @retval uint32_t Steps per beat
+ */
+uint32_t getStepsPerBeat(uint32_t pattern);
+
+/** @brief  Set steps per beat
+ *   @param  pattern Index of pattern
+ *   @param  steps Steps per beat [1,2,3,4,6,8,12,24]
+ *   @note   Calculates pattern length from beats in pattern
+ */
+void setStepsPerBeat(uint32_t pattern, uint32_t steps);
+
+/** @brief  Get swing division from selected pattern
+ *   @param  pattern Index of pattern
+ *   @retval uint32_t swing division
+ */
+uint32_t getSwingDiv(uint32_t pattern);
+
+/** @brief  Set swing division in selected pattern
+ *   @param  pattern Index of pattern
+ *   @param  swing division, from 1 to pattern's StepsPerBeat
+ */
+void setSwingDiv(uint32_t pattern, uint32_t div);
+
+/** @brief  Get swing amount from selected pattern
+ *   @param  pattern Index of pattern
+ *   @retval float swing division
+ */
+float getSwingAmount(uint32_t pattern);
+
+/** @brief  Set swing amount in pattern
+ *   @param  pattern Index of pattern
+ *   @param  swing amount, from 0 to 1 (0.33 is perfect-triplet swing, >0.5 is not really swing)
+ */
+void setSwingAmount(uint32_t pattern, float amount);
+
+/** @brief  Get Time Humanization amount from pattern
+ *   @param  pattern Index of pattern
+ *   @retval float
+ */
+float getHumanTime(uint32_t pattern);
+
+/** @brief  Set Time Humanization amount in pattern
+ *   @param   pattern Index of pattern
+ *   @param  amount, from 0 to FLOAT_MAX
+ */
+void setHumanTime(uint32_t pattern, float amount);
+
+/** @brief  Get Velocity Humanization amount from pattern
+ *   @param  pattern Index of pattern
+ *   @retval float
+ */
+float getHumanVelo(uint32_t pattern);
+
+/** @brief  Set Velocity Humanization amount in pattern
+ *   @param pattern Index of pattern
+ *   @param  amount, from 0 to FLOAT_MAX
+ */
+void setHumanVelo(uint32_t pattern, float amount);
+
+/** @brief  Get PlayChance from pattern
+ *   @param  pattern Index of pattern
+ *   @retval float
+ */
+float getPlayChance(uint32_t pattern);
+
+/** @brief  Set PlayChance in pattern
+ *   @param  pattern Index of pattern
+ *   @param  chance, probability of playing notes
+ */
+void setPlayChance(uint32_t pattern, float chance);
+
+/** @brief  Clears events from pattern
+ *   @note  Does not change other parameters such as pattern length
+ */
+void clearPattern(uint32_t pattern);
+
+/** @brief  Get the last populated step
+ *  @param  pattern Index of pattern
+ *  @retval uint32_t Index of last populated step or -1 if empty
+ *  @note   This may allow checking for empty patterns or whether truncation will have an effect
+ */
+uint32_t getLastStep(uint32_t pattern);
+
+// ** Functions used by pattern editor but not related to the actual pattern **
 
 /** @brief  Set note used as rest when using MIDI input for pattern editing
  *   @param  note MIDI note number [0..127]
@@ -641,15 +684,6 @@ void setTonic(uint8_t tonic);
  */
 uint8_t getTonic();
 
-/** @brief  Flag pattern as modified - also sets flags in relevant sequences and tracks
- */
-void setPatternModified(Pattern* pPattern, bool bModified = true, bool bModifiedTracks = false);
-
-/** @brief  Check if selected pattern has changed since last check
- *   @retval bool True if pattern has changed
- */
-bool isPatternModified();
-
 /**    @brief    Get the reference note
  *    @retval uint8_t MIDI note number
  *    @note    May be used for position within user interface
@@ -671,17 +705,6 @@ bool getQuantizeNotes();
  *   @param  flag
  */
 void setQuantizeNotes(bool flag);
-
-/**    @brief    Get the last populated step
- *    @retval    uint32_t Index of last populated step or -1 if empty
- *    @note    This may allow checking for empty patterns or whether truncation will have an effect
- */
-uint32_t getLastStep();
-
-/** @brief  Get position of playhead within pattern in steps
- *   @retval uint32_t Quantity of steps from start of pattern to playhead
- */
-uint32_t getPatternPlayhead();
 
 // ** Track management functions **
 
@@ -776,14 +799,14 @@ uint8_t getChannel(uint8_t bank, uint8_t sequence, uint32_t track);
 /** @brief  Get current play mode for a sequence
  *   @param  bank Index of bank containing sequence
  *   @param  sequence Index (sequence) of sequence within bank
- *   @retval uint8_t Play mode [DISABLED | ONESHOT | LOOP | ONESHOTALL | LOOPALL]
+ *   @retval uint8_t Start (bits 0..3) and stop (bits 4..7) modes [MODE_SYNC, MODE_END, MODE_IMMEDIATE]
  */
 uint8_t getPlayMode(uint8_t bank, uint8_t sequence);
 
 /** @brief  Set play mode of a sequence
  *   @param  bank Index of bank containing sequence
  *   @param  sequence Index (sequence) of sequence within bank
- *   @param  mode Play mode [DISABLED | ONESHOT | LOOP | ONESHOTALL | LOOPALL]
+ *   @param  mode Start (bits 0..3) and stop (bits 4..7) modes [MODE_SYNC, MODE_END, MODE_IMMEDIATE]
  */
 void setPlayMode(uint8_t bank, uint8_t sequence, uint8_t mode);
 
@@ -855,16 +878,16 @@ uint32_t getTracksInSequence(uint8_t bank, uint8_t sequence);
  *   @param  sequence Index of sequence
  *   @param  repeat Quantity of repeats (0 to play once)
  */
- void setRepeat(uint8_t bank, uint8_t sequence, uint8_t repeat);
+void setRepeat(uint8_t bank, uint8_t sequence, uint8_t repeat);
 
- /** @brief  get the quantity of sequence repeats
+/** @brief  get the quantity of sequence repeats
  *   @param  bank Index of bank
  *   @param  sequence Index of sequence
  *   @retval uint8_t Quantity of repeats (0 to play once)
  */
- uint8_t getRepeat(uint8_t bank, uint8_t sequence);
+uint8_t getRepeat(uint8_t bank, uint8_t sequence);
 
- /** @brief  Stops all sequences
+/** @brief  Stops all sequences
  */
 void stop();
 
@@ -945,6 +968,14 @@ void removeTrackFromSequence(uint8_t bank, uint8_t sequence, uint32_t track);
  */
 void addTempoEvent(uint8_t bank, uint8_t sequence, float tempo, uint16_t bar = 1, uint16_t tick = 0);
 
+/** @brief  Remove tempo from sequence timebase track
+ *   @param  bank Index of bank
+ *   @param  sequence  Sequence index
+ *   @param  bar Bar of sequence at which to add tempo change [Optional - default: 1]
+ *   @param  tick Tick within bar at which to add tempo change [Optional - default: 0]
+ */
+void removeTempoEvent(uint8_t bank, uint8_t sequence, uint16_t bar = 1, uint16_t tick = 0);
+
 /** @brief  Get tempo at position within sequence
 *   @param  bank Index of bank
 *   @param  sequence Sequence index
@@ -967,10 +998,18 @@ void addTimeSigEvent(uint8_t bank, uint8_t sequence, uint8_t beats, uint8_t type
 /** @brief  Get time signature at position
  *   @param  bank Index of bank
  *   @param  sequence Sequence index
- *   @param  bar Bar at which to time signature
+ *   @param  bar Bar at which to get time signature
  *   @retval uint16_t Time signature - MSB numerator, LSB denominator
  */
 uint16_t getTimeSigAt(uint8_t bank, uint8_t sequence, uint16_t bar);
+
+/** @brief  Get beats per bar at position
+ *   @param  bank Index of bank
+ *   @param  sequence Sequence index
+ *   @param  bar Bar at which to get time signature
+ *   @retval uint8_t Beats per bar
+ */
+uint8_t getBeatsPerBarAt(uint8_t bank, uint8_t sequence, uint16_t bar);
 
 /** @brief  Get bank currently in MIDI learn mode
  *   @retval uint8_t Bank index or 0 if disabled
@@ -1010,6 +1049,13 @@ const char* getSequenceName(uint8_t bank, uint8_t sequence);
     @note   Set nextBank and nextSequence to zero to disable follow-on action
 */
 void setNextSequence(uint8_t bank, uint8_t sequence, uint8_t nextBank, uint8_t nextSequence);
+
+/** @brief  Get the sequence to play when one-shot ends
+    @param  bank Index of bank
+    @param  sequence Index of sequence
+    @retval uint16_t Next bank << 8 | next sequence. Zero if disabled.
+*/
+uint16_t getNextSequence(uint8_t bank, uint8_t sequence);
 
 /** @brief  Move sequence (change order of sequences)
  *   @param  bank Index of bank

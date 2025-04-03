@@ -31,14 +31,9 @@
 #define DEFAULT_TEMPO 120 // March time (120 BPM)
 
 // Play mode
-#define DISABLED 0    // Does not start, stops immediately
-#define ONESHOT 1     // Play once, stops immediately - Should it reset to zero when stopped?
-#define LOOP 2        // Loop whole sequence restarting immediately at end of sequence, stop at end of sequence
-#define ONESHOTALL 3  // Play once all way to end, stop at end of sequence
-#define LOOPALL 4     // Play whole sequence then start again at next sync point, stop at end of sequence
-#define ONESHOTSYNC 5 // Play once until sync point truncating if necessary, stop at sync point
-#define LOOPSYNC 6    // Play sequence looping at sync point, truncating if necessary, stop at sync point
-#define LASTPLAYMODE 6
+#define MODE_SYNC 0      // Action occurs at next sync
+#define MODE_END 1       // Action occurs at end of sequence
+#define MODE_IMMEDIATE 2 // Action occurs immediately
 
 // Play status
 #define STOPPED 0       // Sequence is stopped

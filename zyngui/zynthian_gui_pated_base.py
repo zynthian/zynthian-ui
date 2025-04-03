@@ -95,7 +95,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.sequence = None  # Sequence used for pattern editor sequence player
         self.channel = 0
 
-        self.last_play_mode = zynseq.SEQ_LOOP
+        self.last_play_mode = zynseq.SEQ_MODE_SYNC
         self.playhead = 0
         self.playstate = zynseq.SEQ_STOPPED
         self.n_steps = 0  # Number of steps in current pattern
@@ -198,7 +198,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                                               tags="velocityIndicator")
         self.velocity_canvas.grid(column=0, row=1)
 
-        self.zynseq.libseq.setPlayMode(0, 0, zynseq.SEQ_LOOP)
+        self.zynseq.libseq.setPlayMode(0, 0, zynseq.SEQ_MODE_SYNC)
         # Load pattern 1 so that the editor has a default known state
         self.load_pattern(1)
 
@@ -266,8 +266,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         if not self.param_editor_zctrl:
             self.set_title()
         self.last_play_mode = self.zynseq.libseq.getPlayMode(self.bank, self.sequence)
-        if self.last_play_mode not in (zynseq.SEQ_LOOP, zynseq.SEQ_LOOPALL):
-            self.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynseq.SEQ_LOOP)
+        #TODO:if self.last_play_mode not in (zynseq.SEQ_LOOP, zynseq.SEQ_LOOPALL):
+        #    self.zynseq.libseq.setPlayMode(self.bank, self.sequence, zynseq.SEQ_LOOP)
 
         # Set active the first chain with pattern's MIDI chan
         try:
@@ -314,9 +314,9 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         options = {}
         options[f"Beats in pattern ({self.zynseq.libseq.getBeatsInPattern(self.pattern)})"] = 'Beats in pattern'
         options[f"Steps/Beat ({self.n_steps_beat})"] = 'Steps per beat'
-        options[f"Swing Divisor ({self.zynseq.libseq.getSwingDiv()})"] = 'Swing Divisor'
-        options[f"Swing Amount ({int(100.0 * self.zynseq.libseq.getSwingAmount())}%)"] = 'Swing Amount'
-        options[f"Time Humanization ({int(500.0 * self.zynseq.libseq.getHumanTime())})"] = 'Time Humanization'
+        options[f"Swing Divisor ({self.zynseq.libseq.getSwingDiv(self.pattern)})"] = 'Swing Divisor'
+        options[f"Swing Amount ({int(100.0 * self.zynseq.libseq.getSwingAmount(self.pattern))}%)"] = 'Swing Amount'
+        options[f"Time Humanization ({int(500.0 * self.zynseq.libseq.getHumanTime(self.pattern))})"] = 'Time Humanization'
         menu_options['PATTERN OPTIONS'] = options
         # Pattern Edit
         options = {}
@@ -379,16 +379,16 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         elif params == 'Swing Divisor':
             self.enable_param_editor(self, 'swing_div', {'name': 'Swing Divisor', 'value_min': 1,
                                                          'value_max': self.n_steps_beat, 'value_default': 1,
-                                                         'value': self.zynseq.libseq.getSwingDiv()})
+                                                         'value': self.zynseq.libseq.getSwingDiv(self.pattern)})
 
         elif params == 'Swing Amount':
             self.enable_param_editor(self, 'swing_amount', {'name': 'Swing Amount', 'value_min': 0, 'value_max': 100,
-                                                            'value': int(100.0 * self.zynseq.libseq.getSwingAmount()),
+                                                            'value': int(100.0 * self.zynseq.libseq.getSwingAmount(self.pattern)),
                                                             'value_default': 0})
 
         elif params == 'Time Humanization':
             self.enable_param_editor(self, 'human_time', {'name': 'Time Humanization', 'value_min': 0, 'value_max': 100,
-                                                          'value': int(500.0 * self.zynseq.libseq.getHumanTime()),
+                                                          'value': int(500.0 * self.zynseq.libseq.getHumanTime(self.pattern)),
                                                           'value_default': 0})
         elif params == 'Add program change':
             self.enable_param_editor(self, 'prog_change', {'name': 'Program', 'value_max': 128,
@@ -427,8 +427,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
         self.zynseq.libseq.selectPattern(index)
         self.pattern = index
-        n_steps = self.zynseq.libseq.getSteps()
-        n_steps_beat = self.zynseq.libseq.getStepsPerBeat()
+        n_steps = self.zynseq.libseq.getSteps(self.pattern)
+        n_steps_beat = self.zynseq.libseq.getStepsPerBeat(self.pattern)
         if n_steps != self.n_steps or n_steps_beat != self.n_steps_beat:
             self.n_steps = n_steps
             self.n_steps_beat = n_steps_beat
@@ -510,7 +510,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     # Function to actually clear pattern
     def do_clear_pattern(self, params=None):
         self.save_pattern_snapshot(now=True, force=False)
-        self.zynseq.libseq.clear()
+        self.zynseq.libseq.clearPattern(self.pattern)
         self.save_pattern_snapshot(now=True, force=True)
         self.redraw_pending = 3
         self.select_cell()
@@ -519,7 +519,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     # Function to copy pattern
     def copy_pattern(self, value):
-        if self.zynseq.libseq.getLastStep() == -1:
+        if self.zynseq.libseq.getLastStep(self.pattern) == -1:
             self.do_copy_pattern(value)
         else:
             self.zyngui.show_confirm(f"Overwrite pattern {value} with content from pattern {self.copy_source}?",
@@ -590,11 +590,11 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         elif zctrl.symbol == 'bpb':
             self.zynseq.libseq.setBeatsPerBar(zctrl.value)
         elif zctrl.symbol == 'swing_amount':
-            self.zynseq.libseq.setSwingAmount(zctrl.value/100.0)
+            self.zynseq.libseq.setSwingAmount(self.pattern, zctrl.value/100.0)
         elif zctrl.symbol == 'swing_div':
-            self.zynseq.libseq.setSwingDiv(zctrl.value)
+            self.zynseq.libseq.setSwingDiv(self.pattern, zctrl.value)
         elif zctrl.symbol == 'human_time':
-            self.zynseq.libseq.setHumanTime(zctrl.value / 500.0)
+            self.zynseq.libseq.setHumanTime(self.pattern, zctrl.value / 500.0)
         elif zctrl.symbol == 'copy':
             self.load_pattern(zctrl.value)
 
@@ -605,16 +605,16 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     # Function to actually change steps per beat
     def do_steps_per_beat(self, value):
-        self.zynseq.libseq.setStepsPerBeat(value)
+        self.zynseq.libseq.setStepsPerBeat(self.pattern, value)
         self.clean_pattern_snapshots()
-        self.n_steps_beat = self.zynseq.libseq.getStepsPerBeat()
-        self.n_steps = self.zynseq.libseq.getSteps()
+        self.n_steps_beat = self.zynseq.libseq.getStepsPerBeat(self.pattern)
+        self.n_steps = self.zynseq.libseq.getSteps(self.pattern)
         self.update_geometry()
         self.redraw_pending = 4
 
     # Function to assert beats in pattern
     def assert_beats_in_pattern(self, value):
-        if self.zynseq.libseq.getLastStep() >= self.zynseq.libseq.getStepsPerBeat() * value:
+        if self.zynseq.libseq.getLastStep(self.pattern) >= self.zynseq.libseq.getStepsPerBeat(self.pattern) * value:
             self.zyngui.show_confirm(
                 "Reducing beats in pattern will truncate pattern", self.set_beats_in_pattern, value)
         else:
@@ -624,14 +624,14 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     def set_beats_in_pattern(self, value):
         self.zynseq.libseq.setBeatsInPattern(self.pattern, value)
         self.clean_pattern_snapshots()
-        self.n_steps = self.zynseq.libseq.getSteps()
+        self.n_steps = self.zynseq.libseq.getSteps(self.pattern)
         self.update_geometry()
         self.redraw_pending = 4
 
     # Function to get the index of the closest steps per beat in array of allowed values
     # returns: Index of the closest allowed value
     def get_steps_per_beat_index(self):
-        steps_per_beat = self.zynseq.libseq.getStepsPerBeat()
+        steps_per_beat = self.zynseq.libseq.getStepsPerBeat(self.pattern)
         for index in range(len(STEPS_PER_BEAT)):
             if STEPS_PER_BEAT[index] >= steps_per_beat:
                 return index

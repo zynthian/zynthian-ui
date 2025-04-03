@@ -89,8 +89,8 @@ class zynthian_engine_clippy(zynthian_engine):
             self._ctrls.append([
                 f"file {i:02}", {
                     'is_path': True,
-                    'value_default': None,
-                    'value': None,
+                    'value_default': "",
+                    'value': "",
                     'path_file_types': ['wav', 'ogg', 'mp3', 'flac', 'aac']
                 }
             ])
@@ -294,7 +294,8 @@ class zynthian_engine_clippy(zynthian_engine):
             # Configure pattern with required beats to play whole file at this tempo
             try:
                 reconnect = False
-                beats_per_bar = self.libseq.getBeatsPerBar()
+                #beats_per_bar = self.libseq.getBeatsPerBar()
+                beats_per_bar = self.zynseq.launcher_info[16][slot]["bpb"]
                 beats = duration * file_tempo / 60
                 bars = round(beats / beats_per_bar)
                 if beats_zctrl.value:
@@ -347,8 +348,8 @@ class zynthian_engine_clippy(zynthian_engine):
                 # Setup zynseq pattern & sequence
                 pattern = self.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
                 self.libseq.selectPattern(pattern)
-                self.libseq.clear()
-                self.libseq.setStepsPerBeat(1)
+                self.libseq.clearPattern(pattern)
+                self.libseq.setStepsPerBeat(pattern, 1)
                 self.libseq.setBeatsInPattern(pattern, whole_beats)
                 if beats_zctrl.value:
                     note_len = whole_beats // NUM_SPLICES
@@ -356,24 +357,24 @@ class zynthian_engine_clippy(zynthian_engine):
                         self.libseq.addNote(note_len * pos, NUM_SPLICES * slot + pos, 100, 1, 0.0)
                 else:
                     self.libseq.addNote(0, NUM_SPLICES * slot, 100, 1, 0.0)
-                self.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, sequence, zynseq.SEQ_LOOPALL)
+                self.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, sequence, (zynseq.SEQ_MODE_END << 4) | zynseq.SEQ_MODE_SYNC)
                 state = self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, sequence)
-                group = self.libseq.getGroup(zynseq.LAUNCHER_SEQ_BANK, sequence)
                 self.libseq.updateSequenceInfo()
                 self.zynseq.set_sequence_name(zynseq.LAUNCHER_SEQ_BANK, sequence, os.path.splitext(filename)[0])
                 if reconnect:
                     # Reconnect MIDI
                     self.lscp_send_single("ADD CHANNEL MIDI_INPUT 0 0 0")
                     self.lscp_send_single(f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
+                self.libseq.setRepeat(zynseq.LAUNCHER_SEQ_BANK, self.sequence_offset + slot, 1)
             except Exception as e:
                 logging.error(f"Can't setup sequencer for clip {slot} => {e}")
         else:
-            self.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, self.sequence_offset + slot, zynseq.SEQ_DISABLED)
-            state = zynseq.SEQ_DISABLED
+            self.libseq.setRepeat(zynseq.LAUNCHER_SEQ_BANK, self.sequence_offset + slot, 0)
+            state = self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, sequence)
             #self.reset_pattern(slot)
 
         zynsigman.send(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE,
-                       bank=zynseq.LAUNCHER_SEQ_BANK, seq=sequence, state=state, mode=zynseq.SEQ_LOOPALL, group=self.processors[0].midi_chan)
+                       bank=zynseq.LAUNCHER_SEQ_BANK, seq=sequence, state=state, mode=zynseq.SEQ_MODE_SYNC, group=self.processors[0].midi_chan)
         self.processors[0].init_ctrl_screens()
 
     def on_tempo(self, tempo):
@@ -417,19 +418,15 @@ class zynthian_engine_clippy(zynthian_engine):
 
         self.sequence_offset = processor.midi_chan * 8
 
-        for i in range(8):
-            pattern = self.libseq.getPatternAt(255, self.sequence_offset + i, 0, 0)
-            self.patterns.append(pattern)
-            self.reset_pattern(i)
+        for slot in range(8):
+            self.reset_pattern(slot)
 
     def reset_pattern(self, slot):
-            pattern = self.patterns[slot]
-            self.libseq.selectPattern(pattern)
-            self.libseq.clear()
-            self.libseq.setStepsPerBeat(1)
+            pattern = self.libseq.getPatternAt(255, self.sequence_offset + slot, 0, 0)
+            self.libseq.clearPattern(pattern)
+            self.libseq.setStepsPerBeat(pattern, 1)
             self.libseq.setBeatsInPattern(pattern, 1)
-            self.libseq.addNote(0, 0, 100, 1, 0)
-            self.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, self.sequence_offset + slot, zynseq.SEQ_ONESHOT)
+            self.libseq.setRepeat(zynseq.LAUNCHER_SEQ_BANK, self.sequence_offset + slot, 0)
             self.libseq.updateSequenceInfo()
 
     # ---------------------------------------------------------------------------

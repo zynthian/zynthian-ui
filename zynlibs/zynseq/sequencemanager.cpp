@@ -37,21 +37,24 @@ void SequenceManager::resetBanks() {
         for (auto itSeq = itBank->second.begin(); itSeq != itBank->second.end(); ++itSeq)
             delete (*itSeq);
     m_mBanks.clear();
+    // Build launcher bank 255 with 16 channels of 8 slots plus 8 scene launchers
     for (uint8_t chan = 0; chan < 17; ++chan) {
-        for (uint8_t seq = 0; seq < 8; ++seq) {
-            uint8_t offset = chan * 8 + seq;
-            insertSequence(255, offset);
-            Sequence* pSequence = m_mBanks[255][offset];
+        for (uint8_t slot = 0; slot < 8; ++slot) {
+            uint8_t seq = chan * 8 + slot;
+            insertSequence(255, seq);
+            Sequence* pSequence = m_mBanks[255][seq];
             pSequence->setGroup(chan);
-            pSequence->setPlayMode(DISABLED);
+            pSequence->setPlayMode((MODE_END << 4) | MODE_SYNC);
+            pSequence->setRepeat(1);
+            pSequence->setNextSequence(255, seq);
             if (chan < 16) {
-                pSequence->setName(std::string(1, 'A' + chan) + std::to_string(seq + 1));
+                pSequence->setName(std::string(1, 'A' + chan) + std::to_string(slot + 1));
                 Track* pTrack = pSequence->getTrack(0);
                 if (pTrack)
                     pTrack->setChannel(chan);
             }
             else
-                pSequence->setName(std::string(1, 'S') + std::to_string(seq + 1));
+                pSequence->setName(std::string(1, 'S') + std::to_string(slot + 1));
         }
     }
 }
@@ -215,7 +218,7 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
             // uint8_t nTrigger = getTriggerNote(it->first, it->second);
             // It's currently polled from python
             if (bSync && pSequence->getPlayState() == PLAYING && pSequence->getGroup() == 16) {
-                // Scene started
+                // Scene started so start slave sequences
                 Track* pTrack = pSequence->getTrack(0);
                 if (pTrack) {
                     Pattern* pPattern = pTrack->getPattern(0);
@@ -235,9 +238,9 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
             m_bTempoChanged = true;
         }
         if (nEventType & 8) {
-            // Reached end of one-shot sequence
+            // Reached end of sequence
             uint16_t nextSeq = pSequence->getNextSequence();
-            if (nextSeq)
+            if (nextSeq != 0xFFFF)
                 vNext.push_back(nextSeq);
         }
         ++it;
@@ -276,7 +279,7 @@ void SequenceManager::setSequencePlayState(uint8_t bank, uint8_t sequence, uint8
             for (uint8_t chan = 0; chan < 16; ++chan) {
                 uint32_t nSlaveSeq = sequence % 8 + chan * 8;
                 Sequence* pSlaveSeq = m_mBanks[255][nSlaveSeq];
-                if (pSlaveSeq->getPlayMode() == DISABLED || pSlaveSeq->getPlayState() == PLAYING)
+                if (pSlaveSeq->getRepeat() == 0 || pSlaveSeq->getPlayState() == PLAYING)
                     continue;
                 if (pSlaveSeq->getPlayState() == STOPPING)
                     setSequencePlayState(bank, nSlaveSeq, PLAYING);
@@ -430,4 +433,8 @@ uint16_t SequenceManager::getTimeSig(bool clear) {
     if (clear)
         m_bTimeSigChanged = false;
     return m_nTimeSig;
+}
+
+void SequenceManager::setTimeSig(uint16_t sig) {
+    m_nTimeSig = sig;
 }

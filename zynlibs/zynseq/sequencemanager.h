@@ -265,11 +265,17 @@ class SequenceManager {
 
     /** @brief  Get current time signature (beats in bar)
         @param  clear True to clear current sig changed flag (default: true)
-        @retval float Current time signature
+        @retval uint16_t Current time signature
     */
     uint16_t getTimeSig(bool clear = true);
 
-  private:
+    /** @brief  Set current time signature (beats in bar)
+        @param sig Current time signature
+    */
+    void setTimeSig(uint16_t sig);
+
+
+private:
     int fileWrite32(uint32_t value, FILE* pFile);
     int fileWrite16(uint16_t value, FILE* pFile);
     int fileWrite8(uint8_t value, FILE* pFile);

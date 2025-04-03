@@ -47,12 +47,12 @@ class Sequence {
     void setGroup(uint8_t group);
 
     /** @brief  Get play mode
-     *   @retval uint8_t Play mode
+     *  @retval uint8_t Start (bits 0..3) and stop (bits 4..7) modes [MODE_SYNC, MODE_END, MODE_IMMEDIATE]
      */
     uint8_t getPlayMode();
 
     /** @brief  Set play mode
-     *   @param  mode Play mode [DISABLED | ONESHOT | LOOP | ONESHOTALL | LOOPALL | ONESHOTSYNC | LOOPSYNC]
+     *   @param  mode Start (bits 0..3) and stop (bits 4..7) modes [MODE_SYNC, MODE_END, MODE_IMMEDIATE]
      */
     void setPlayMode(uint8_t mode);
 
@@ -105,6 +105,12 @@ class Sequence {
      *   @note   Removes tempo if same as previous tempo
      */
     void addTempo(float tempo, uint16_t bar = 1, uint16_t tick = 0);
+
+    /** @brief  Remove tempo event from timebase track
+     *   @param  bar Bar (measure) at which to set tempo [Optional - default: 1]
+     *   @param  tick Tick at which to set tempo [Optional - default: 0]
+    */
+    void removeTempo(uint16_t bar = 1, uint16_t tick = 0);
 
     /** @brief  Get tempo from timebase track
      *   @param  bar Bar (measure) at which to get tempo
@@ -204,21 +210,22 @@ class Sequence {
     /** @brief  Set index of next seqeuence
       * @param  bank Index of next bank
       * @param  sequence Index of sequence
+      * @note   Set both to -1 to disable follow action
     */
     void setNextSequence(uint8_t bank, uint8_t sequence);
 
     /** @brief  Get index of next seqeuence
-      * @retval uint16_t Index of next sequence | bank << 16 or 0 if none
+      * @retval uint16_t Index of next sequence | bank << 16 or -1 if none
     */
     uint16_t getNextSequence();
 
-    /** @brief  Set quantity of repeats
-      * @param  repeat Quantity of repeats (0 to play once)
+    /** @brief  Set times to play
+      * @param  repeat Quantity of times to play (0 to disable)
     */
     void setRepeat(uint8_t repeat);
 
-    /** @brief  Get quantity of repeats
-      * @retval uint8_t Quantity of repeats (0 to play once)
+    /** @brief  Get times to play
+      * @retval uint8_t Quantity of times to play (0 to disable)
     */
     uint8_t getRepeat();
 
@@ -227,17 +234,17 @@ class Sequence {
     Timebase m_timebase;               // Timebase map
     TimebaseEvent* m_pNextTimebaseEvent = NULL; // Pointer to next timebase event or NULL if none.
     uint8_t m_nState        = STOPPED; // Play state of sequence
-    uint8_t m_nMode         = LOOPALL; // Play mode of sequence
+    uint8_t m_nMode         = MODE_SYNC; // Bitwise flags affecting start (bits 0..3) and stop (bits 4..7). Changed v11.
     size_t m_nCurrentTrack  = 0;       // Index of track currently being queried for events
     uint32_t m_nPosition    = 0;       // Play position in clock cycles
     uint32_t m_nLastSyncPos = 0;       // Position of last sync pulse in clock cycles
     uint32_t m_nLength      = 0;       // Length of sequence in clock cycles (longest track)
     uint8_t m_nGroup        = 0;       // Sequence's mutually exclusive group
-    uint8_t m_nRepeat       = 0;       // Quantity of times to repeat sequence
-    uint8_t m_nCount        = 0;       // Quantity of times to sequence has repeated
+    uint8_t m_nRepeat       = 1;       // Quantity of times to play sequence/ Added v11.
+    uint8_t m_nCount        = 0;       // Quantity of times to sequence has played
     float m_fTempo          = 120.0;   // Current tempo (overriden by tempo events in timebase map)
     uint16_t m_nTimeSig     = 4;       // Current time signature (beats in bar)
-    uint16_t m_nNextSeq     = 0;       // Index of the next sequence | bank << 8 to play when this sequence ends (0=none)
+    uint16_t m_nNextSeq     = -1;      // Index of the next sequence | bank << 8 to play when this sequence ends (-1=none). Added v11.
     bool m_bChanged         = false;   // True if sequence content changed
     bool m_bStateChanged    = false;   // True if state changed since last clock cycle
     bool m_bEmpty           = true;    // True if all patterns are emtpy (no events)

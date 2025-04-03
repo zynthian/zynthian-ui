@@ -799,8 +799,8 @@ class zynthian_gui_base(tkinter.Frame):
             elif typ == 'B':
                 self.param_editor_zctrl.set_value(
                     self.param_editor_zctrl.value_default)
-            self.update_param_editor()
-            return True
+                self.update_param_editor()
+                return True
 
     def back_action(self):
         if self.param_editor_zctrl:

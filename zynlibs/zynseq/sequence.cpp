@@ -76,6 +76,11 @@ void Sequence::addTempo(float tempo, uint16_t bar, uint16_t tick) {
     m_bChanged = true;
 }
 
+void Sequence::removeTempo(uint16_t bar, uint16_t tick) {
+    m_timebase.removeTimebaseEvent(bar, tick, TIMEBASE_TYPE_TEMPO);
+    m_bChanged = true;
+}
+
 float Sequence::getTempoAt(uint16_t bar, uint16_t tick) { return m_timebase.getTempo(bar, tick) / 100; }
 
 float Sequence::getTempo() { return m_fTempo; }
@@ -108,11 +113,7 @@ Timebase* Sequence::getTimebase() {
 uint8_t Sequence::getPlayMode() { return m_nMode; }
 
 void Sequence::setPlayMode(uint8_t mode) {
-    if (mode > LASTPLAYMODE)
-        return;
     m_nMode = mode;
-    if (m_nMode == DISABLED)
-        m_nState = STOPPED;
     m_bChanged = true;
 }
 
@@ -120,23 +121,20 @@ uint8_t Sequence::getPlayState() { return m_nState; }
 
 void Sequence::setPlayState(uint8_t state) {
     uint8_t nState = m_nState;
-    if (m_nMode == DISABLED)
+    if (m_nRepeat == 0) // Disabled
         state = STOPPED;
     if (state == m_nState)
         return;
-    if ((m_nMode == ONESHOT || m_nMode == LOOP) && (state == STOPPING || state == STOPPING_SYNC))
+    if (((m_nMode >> 4) == MODE_IMMEDIATE) && (state == STOPPING || state == STOPPING_SYNC)) {
         state = STOPPED;
+        fprintf(stderr, "Immediate\n");
+    }
     m_nState = state;
     if (m_nState == STOPPED)
-        if (m_nMode == ONESHOT) {
-            m_nPosition = m_nLastSyncPos;
-            for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
-                (*it).setPosition(m_nPosition);
-        } else
-            m_nPosition = 0;
+        m_nPosition = 0;
     m_bStateChanged |= (nState != m_nState);
     m_bChanged = true;
-    if (m_nState == STARTING)
+    if (m_nState == STARTING || m_nState == RESTARTING || m_nState == STOPPED)
         m_nCount = 0;
 }
 
@@ -147,25 +145,19 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
     uint8_t nReturn = 0;
     uint8_t nState  = m_nState;
     if (bSync) {
-        if (m_nMode == ONESHOTSYNC && m_nState != STARTING)
-            m_nState = STOPPED;
+        if ((m_nMode >> 4) == MODE_SYNC) {
+            m_nPosition = 0;
+            if (m_nState == STOPPING)
+                m_nState = STOPPED;
+        }
         if (m_nState == STARTING)
             m_nState = PLAYING;
         if (m_nState == RESTARTING) {
             m_nState = PLAYING;
             nState   = PLAYING;
         }
-        if (m_nState == STOPPING && m_nMode == LOOPSYNC)
-            m_nState = STOPPED;
-        if (m_nState == STOPPING_SYNC) {
-            m_nState    = STOPPED;
-            m_nPosition = 0;
-        }
-        if (m_nMode == ONESHOTSYNC || m_nMode == LOOPSYNC)
-            m_nPosition = 0;
         m_nLastSyncPos = m_nPosition;
-    } else if (m_nState == RESTARTING)
-        m_nState = STARTING;
+    }
 
     if (m_nState == PLAYING || m_nState == STOPPING || m_nState == STOPPING_SYNC) {
         // Still playing so iterate through tracks
@@ -175,27 +167,16 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
     }
     if (m_nPosition >= m_nLength) {
         // End of sequence
-        switch (m_nMode) {
-        case ONESHOT:
-        case ONESHOTALL:
-        case ONESHOTSYNC:
-            if (++m_nCount > m_nRepeat) {
+        if (m_nState == PLAYING) {
+            if (++m_nCount >= m_nRepeat) {
+                // Follow action
                 setPlayState(STOPPED);
                 nReturn |= 8;
             } else {
                 m_nState = RESTARTING;
-                nState   = RESTARTING;
             }
-            break;
-        case LOOPSYNC:
-        case LOOPALL:
-            if (m_nState == PLAYING) {
-                m_nState = RESTARTING;
-                nState   = RESTARTING;
-            }
-        case LOOP:
-            if (m_nState == STOPPING || m_nState == STOPPING_SYNC)
-                setPlayState(STOPPED);
+        } else {
+            m_nState = STOPPED;
         }
         m_nPosition    = 0;
         m_nLastSyncPos = 0;
@@ -281,7 +262,6 @@ uint16_t Sequence::getNextSequence() {
 
 void Sequence::setRepeat(uint8_t repeat) {
     m_nRepeat = repeat;
-    m_nCount = 0;
 }
 
 uint8_t Sequence::getRepeat() {

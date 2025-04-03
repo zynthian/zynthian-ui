@@ -2046,7 +2046,7 @@ class StepSeqHandler(ModeHandlerBase):
             return
 
         note = self._selected_note.note
-        max_duration = self._libseq.getSteps()
+        max_duration = self._libseq.getSteps(self._selected_pattern)
         duration = self._libseq.getNoteDuration(step, note) + delta * 0.1
         duration = round(min(max_duration, max(0.1, duration)), 1)
         self._set_note_duration(step, note, duration)
@@ -2085,7 +2085,7 @@ class StepSeqHandler(ModeHandlerBase):
         self._play_step(step)
 
     def _update_note_pad_duration(self, pad, note_spec, delta):
-        max_duration = self._libseq.getSteps()
+        max_duration = self._libseq.getSteps(self._selected_pattern)
         note_spec.duration = \
             round(min(max_duration, max(0.1, note_spec.duration + delta * 0.1)), 1)
         self._play_note_pad(pad)
@@ -2322,13 +2322,13 @@ class StepSeqHandler(ModeHandlerBase):
         spb = self._libseq.getStepsPerBeat()
         self._clock.set_steps_per_beat(spb)
 
-        steps = self._libseq.getSteps()
+        steps = self._libseq.getSteps(self._selected_pattern)
         self._used_pads = min(32, steps)
         self._cursor = self._get_pattern_playhead()
 
     def _get_pattern_playhead(self):
         # NOTE: libseq.getPatternPlayhead() does not work here!
-        cps = self._libseq.getClocksPerStep()
+        cps = self._libseq.getClocksPerStep(self._selected_pattern)
         playpos = self._libseq.getPlayPosition(
             self._zynseq.bank, self._selected_seq)
         playpos -= self._pattern_clock_offset
@@ -2395,7 +2395,7 @@ class StepSeqHandler(ModeHandlerBase):
         current = self._libseq.getPatternIndex()
         pattern = self._sequence_patterns[index]
         self._libseq.selectPattern(pattern)
-        self._libseq.clear()
+        self._libseq.clearPattern(pattern)
         self._libseq.updateSequenceInfo()
         if current != -1 and current != pattern:
             self._libseq.selectPattern(current)
@@ -2456,7 +2456,7 @@ class StepSeqHandler(ModeHandlerBase):
         if self._selected_note is None:
             return retval
 
-        num_steps = min(32, self._libseq.getSteps())
+        num_steps = min(32, self._libseq.getSteps(self._selected_pattern))
         note = self._selected_note.note
         duration = None
         for step in range(num_steps):

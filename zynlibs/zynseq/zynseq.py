@@ -58,14 +58,10 @@ SEQ_EVENT_LOAD_PAT = 10
 
 SEQ_MAX_PATTERNS = 64872
 
-SEQ_DISABLED = 0
-SEQ_ONESHOT = 1
-SEQ_LOOP = 2
-SEQ_ONESHOTALL = 3
-SEQ_LOOPALL = 4
-SEQ_ONESHOTSYNC = 5
-SEQ_LOOPSYNC = 6
-SEQ_LASTPLAYMODE = 6
+# Used by playmode. Bits 0..3 are start mode. Bits 4..7 are stop mode.
+SEQ_MODE_SYNC = 0
+SEQ_MODE_END = 1
+SEQ_MODE_IMMEDIATE = 2
 
 SEQ_STOPPED = 0
 SEQ_PLAYING = 1
@@ -114,11 +110,11 @@ class zynseq(zynthian_engine):
             self.libseq.getControlOffset.restype = ctypes.c_float
             self.libseq.setControlOffset.argtypes = [
                 ctypes.c_uint32, ctypes.c_uint8, ctypes.c_float]
-            self.libseq.setSwingAmount.argtypes = [ctypes.c_float]
+            self.libseq.setSwingAmount.argtypes = [ctypes.c_uint32, ctypes.c_float]
             self.libseq.getSwingAmount.restype = ctypes.c_float
-            self.libseq.setHumanTime.argtypes = [ctypes.c_float]
+            self.libseq.setHumanTime.argtypes = [ctypes.c_uint32, ctypes.c_float]
             self.libseq.getHumanTime.restype = ctypes.c_float
-            self.libseq.setHumanVelo.argtypes = [ctypes.c_float]
+            self.libseq.setHumanVelo.argtypes = [ctypes.c_uint32, ctypes.c_float]
             self.libseq.getHumanVelo.restype = ctypes.c_float
             self.libseq.setPlayChance.argtypes = [ctypes.c_float]
             self.libseq.getPlayChance.restype = ctypes.c_float
@@ -158,8 +154,8 @@ class zynseq(zynthian_engine):
                     {
                         "title": "",
                         "bpb": 4,
-                        "loops": 0,
-                        "mode": 2,
+                        "mode": SEQ_MODE_SYNC,
+                        "repeat": 0,
                         "group": 0,
                         "state": SEQ_STOPPED,
                         "chan": chan,
@@ -168,7 +164,7 @@ class zynseq(zynthian_engine):
                         "pattern": chan * LAUNCHER_SLOTS + slot, # This might not be correct but refresh should fix it
                         "clippy": None, #TODO: Wasteful to populate all slots with clippy processor
                         "tempo": None,
-                        "next": 0
+                        "next": -1
                     }
                 )
             self.launcher_info.append(info)
@@ -182,7 +178,6 @@ class zynseq(zynthian_engine):
         self.libseq = None
 
     def update_state(self):
-        #TODO: This is generating excessive signals
         num_seq = self.libseq.getSequencesInBank(self.bank) #TODO: Cache this
         states = (ctypes.c_uint32 * num_seq)()
         count = self.libseq.getStateChange(self.bank, 0, num_seq, states)
@@ -234,7 +229,7 @@ class zynseq(zynthian_engine):
     # columns: Quantity of columns (Default: 4)
     # rows: Quantity of rows (Default: 4)
     # mode: Play mode (Default: loop)
-    def build_default_bank(self, bank, columns=4, rows=4, mode = SEQ_LOOPALL):
+    def build_default_bank(self, bank, columns=4, rows=4, mode = SEQ_MODE_SYNC):
         if self.libseq:
             self.libseq.setSequencesInBank(bank, rows * columns)
             for column in range(columns):
