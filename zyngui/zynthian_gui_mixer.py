@@ -1664,7 +1664,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     seq = -1
                 else:
                     bank = zynseq.LAUNCHER_SEQ_BANK
-                    seq = zctrl.value + zynseq.LAUNCHER_SLOTS * 16
+                    seq = zynseq.LAUNCHER_SLOTS * 16 + zctrl.value   # This hardcoded "16" is ugly
                 self.zynseq.libseq.setNextSequence(zynseq.LAUNCHER_SEQ_BANK, self.launcher_select_info["sequence"], bank, seq)
                 self.launcher_select_info["next"] = zctrl.value
 

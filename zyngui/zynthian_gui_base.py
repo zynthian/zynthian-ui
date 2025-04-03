@@ -184,6 +184,7 @@ class zynthian_gui_base(tkinter.Frame):
 
         # Topbar parameter editor
         self.param_editor_zctrl = None
+        self.param_editor_assert_cb = None
 
         # Main Frame
         self.main_frame = tkinter.Frame(self, bg=zynthian_gui_config.color_bg)
@@ -206,9 +207,9 @@ class zynthian_gui_base(tkinter.Frame):
         self.set_select_path()
         self.cb_scroll_select_path()
 
-        # TODO: Consolidate set_title and set_select_path, etc.
-        self.disable_param_editor()
         self.bind("<Configure>", self.on_size)
+
+        # TODO: Consolidate set_title and set_select_path, etc.
 
     def show_back_button(self, show=True):
         if show:
