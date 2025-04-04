@@ -847,6 +847,8 @@ class zynthian_gui_mixer_strip():
 
     def on_clip_slot_press(self, slot):
         self.touch_ts = monotonic()
+        if self.chain:
+            self.chain_manager.set_active_chain_by_object(self.chain)
 
     def on_clip_slot_release(self, slot):
         now = monotonic()
@@ -909,7 +911,6 @@ class zynthian_gui_mixer_strip():
         self.fader_drag_start = event
         if self.chain:
             self.chain_manager.set_active_chain_by_object(self.chain)
-            self.parent.highlight_active_chain()
 
     # Function to handle fader press
     # event: Mouse event
@@ -1026,7 +1027,6 @@ class zynthian_gui_mixer_strip():
                 self.parent.mixer_strip_offset -= offset
             self.strip_drag_start.x = event.x
             self.parent.refresh_visible_strips()
-            self.parent.highlight_active_chain()
 
     def on_mute_release(self, event):
         """ Function to handle mute button release
@@ -1491,6 +1491,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         try:
             self.launcher_select_info = self.zynseq.launcher_info[self.highlighted_strip.chan][self.launcher_highlighted_slot]
         except Exception as e:
+            self.launcher_select_info = None
             logging.error(f"Can't get info for slot {self.launcher_highlighted_slot} in column {self.highlighted_strip.chan} => {e}")
 
     def launcher_menu(self, chan, slot):
@@ -1538,7 +1539,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             options["Edit pattern"] = info
         options[f"Title ({self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, info['sequence'])})"] = info
 
-        self.zyngui.screens['option'].config(title, options, self.launcher_menu_cb, close_on_select=False)
+        self.zyngui.screens['option'].config(title, options, self.launcher_menu_cb)
         self.zyngui.show_screen('option')
 
     def launcher_menu_cb(self, option, params):
@@ -1555,6 +1556,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             elif option.startswith("Warp"):
                 zctrl = self.get_clippy_zctrl("warp", params)
                 zctrl.toggle()
+                self.cb_assert_param_editor()
         elif option.startswith("Title"):
             title = self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, params["sequence"])
             self.zyngui.show_keyboard(self.rename_sequence, title, 8)
@@ -1564,30 +1566,31 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             tempo = params["tempo"]
             if not tempo:
                 tempo = self.zynseq.get_tempo()
-            self.zyngui.screens['option'].enable_param_editor(self, "tempo", {
+            self.enable_param_editor(self, "tempo", {
                 'name': 'BPM',
                 'is_integer': False,
                 'value_min': 10.0,
                 'value_max': 420,
                 'value': tempo,
                 'nudge_factor': 1.0,
-            }, self.addTempo)
+            }, assert_cb=self.cb_assert_param_editor)
         elif option == "Remove tempo":
             slot = self.launcher_select_info["slot"]
             self.zynseq.libseq.removeTempoEvent(zynseq.LAUNCHER_SEQ_BANK, zynseq.LAUNCHER_SLOTS * 16 + slot, 1, 0)
             self.launcher_select_info["tempo"] = None
+            self.cb_assert_param_editor()
         elif option.startswith("Repeat"):
             labels = ["DISABLED", "PLAY ONCE", "PLAY TWICE"]
             for i in range(3, 256):
                 labels.append(f"PLAY {i} TIMES")
-            self.zyngui.screens['option'].enable_param_editor(self, "repeat", {
+            self.enable_param_editor(self, "repeat", {
                 'name': 'Repeat',
                 'value': params["repeat"],
                 'labels': labels
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Beats per bar"):
             bpb = params["bpb"]
-            self.zyngui.screens['option'].enable_param_editor(self, "bpb", {
+            self.enable_param_editor(self, "bpb", {
                 'name': 'Beats per bar',
                 'value_min': 2,
                 'value_max': 24,
@@ -1602,7 +1605,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     ticks.append(i)
                     labels.append(f"PLAY SCENE {i + 1}")
             val = params["next"]
-            self.zyngui.screens['option'].enable_param_editor(self, "next", {
+            self.enable_param_editor(self, "next", {
                 "name": "Follow action",
                 "ticks": ticks,
                 "labels": labels,
@@ -1647,6 +1650,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def rename_sequence(self, name):
         self.zynseq.set_sequence_name(zynseq.LAUNCHER_SEQ_BANK, self.launcher_select_info["sequence"], name)
         self.refresh_visible_strips()
+        self.cb_assert_param_editor()
 
     def addTempo(self, tempo):
         try:
@@ -1663,8 +1667,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         except Exception as e:
             logging.warning(f"Error setting scene tempo: {e}")
 
-    def cb_assert_param_editor(self, val):
-        self.send_controller_value(self.zyngui.screens['option'].param_editor_zctrl)
+    def cb_assert_param_editor(self, val=None):
         self.launcher_menu(self.launcher_select_info['chan'], self.launcher_select_info['slot'])
 
     def send_controller_value(self, zctrl):
@@ -1741,8 +1744,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         elif self.zynmixer.midi_learn_zctrl:
             self.exit_midi_learn()
             return True
-        else:
-            return super().back_action()
+        elif self.param_editor_zctrl:
+            self.disable_param_editor()
+            self.cb_assert_param_editor()
+            return True
 
     def switch(self, swi, t):
         """ Function to handle switches press
@@ -1769,7 +1774,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             # This is ugly, but it's the only way i figured for MIDI-learning "mute" without touch.
             # Moving the "learn" button to back is not an option. It's a labeled button on V4!!
             if t == "S" and not self.moving_chain:
-                if self.highlighted_strip is not None and not super().back_action():
+                if self.zynmixer.midi_learn_zctrl or self.highlighted_strip is not None and not self.back_action():
                     self.highlighted_strip.toggle_mute()
                 return True
             elif t == "B":
@@ -1828,7 +1833,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 self.refresh_visible_strips()
             else:
                 self.chain_manager.next_chain(dval)
-            self.highlight_active_chain()
             self.set_highlighted_clip_info()
 
     def arrow_left(self):
@@ -1839,7 +1843,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.refresh_visible_strips()
         else:
             self.chain_manager.previous_chain()
-        self.highlight_active_chain()
 
     def arrow_right(self):
         """ Function to handle CUIA ARROW_RIGHT
@@ -1849,7 +1852,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.refresh_visible_strips()
         else:
             self.chain_manager.next_chain()
-        self.highlight_active_chain()
 
     def arrow_up(self):
         """ Function to handle CUIA ARROW_UP
