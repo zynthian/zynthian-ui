@@ -340,6 +340,12 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         options['Export to SMF'] = 'Export to SMF'
         options['Export to SMF'] = 'Export to SMF'
         menu_options['PATTERN EDIT'] = options
+        if self.bank == zynseq.LAUNCHER_SEQ_BANK:
+            options = {}
+            options['Repeat'] = 'Repeat count'
+            options['Follow action'] = 'Follow action'
+            options['Title'] = 'Rename sequence'
+        menu_options['SEQUENCE'] = options
         return menu_options
 
     # Function to add menus
@@ -415,6 +421,16 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.clear_pattern()
         elif params == 'Export to SMF':
             self.zyngui.show_keyboard(self.export_smf, "pat#{}".format(self.pattern))
+        # Sequence options
+        elif params == "Repeat count":
+            labels = ["DISABLED", "PLAY ONCE", "PLAY TWICE"]
+            for i in range(3, 256):
+                labels.append(f"PLAY {i} TIMES")
+            self.enable_param_editor(self, "repeat", {
+                'name': 'Repeat',
+                'value': self.zynseq.libseq.getRepeat(self.bank, self.sequence),
+                'labels': labels
+            })
 
     # -------------------------------------------------------------------------
     # Pattern management

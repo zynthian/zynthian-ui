@@ -1492,13 +1492,16 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.launcher_select_info = self.zynseq.launcher_info[self.highlighted_strip.chan][self.launcher_highlighted_slot]
         except Exception as e:
             self.launcher_select_info = None
-            logging.error(f"Can't get info for slot {self.launcher_highlighted_slot} in column {self.highlighted_strip.chan} => {e}")
+            #logging.error(f"Can't get info for slot {self.launcher_highlighted_slot} in column {self.highlighted_strip.chan} => {e}")
 
     def launcher_menu(self, chan, slot):
         try:
             self.launcher_select_info = info = self.zynseq.launcher_info[chan][slot]
         except Exception as e:
-            logging.error(f"Can't get info for slot {slot} in column {chan} => {e}")
+            #logging.error(f"Can't get info for slot {slot} in column {chan} => {e}")
+            return
+        if chan < 16:
+            self.edit_pattern()
             return
         options = {}
         if chan == (zynseq.LAUNCHER_COLS - 1):      # TODO: I'm not sure this is correct
@@ -1780,7 +1783,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             elif t == "B":
                 if self.zynmixer.midi_learn_zctrl:
                     self.back_action()
-                    return True
+                else:
+                    self.toggle_launcher_mode()
+                return True
 
         elif swi == 3:
             return self.switch_select(t)
