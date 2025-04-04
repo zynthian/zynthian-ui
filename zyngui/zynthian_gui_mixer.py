@@ -1542,7 +1542,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             options["Edit pattern"] = info
         options[f"Title ({self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, info['sequence'])})"] = info
 
-        self.zyngui.screens['option'].config(title, options, self.launcher_menu_cb)
+        self.zyngui.screens['option'].config(title, options, self.launcher_menu_cb, close_on_select=False)
         self.zyngui.show_screen('option')
 
     def launcher_menu_cb(self, option, params):
@@ -1559,7 +1559,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             elif option.startswith("Warp"):
                 zctrl = self.get_clippy_zctrl("warp", params)
                 zctrl.toggle()
-                self.cb_assert_param_editor()
         elif option.startswith("Title"):
             title = self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, params["sequence"])
             self.zyngui.show_keyboard(self.rename_sequence, title, 8)
@@ -1569,7 +1568,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             tempo = params["tempo"]
             if not tempo:
                 tempo = self.zynseq.get_tempo()
-            self.enable_param_editor(self, "tempo", {
+            self.zyngui.screens['option'].enable_param_editor(self, "tempo", {
                 'name': 'BPM',
                 'is_integer': False,
                 'value_min': 10.0,
@@ -1581,19 +1580,19 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             slot = self.launcher_select_info["slot"]
             self.zynseq.libseq.removeTempoEvent(zynseq.LAUNCHER_SEQ_BANK, zynseq.LAUNCHER_SLOTS * 16 + slot, 1, 0)
             self.launcher_select_info["tempo"] = None
-            self.cb_assert_param_editor()
+            self.launcher_menu(self.launcher_select_info['chan'], self.launcher_select_info['slot'])
         elif option.startswith("Repeat"):
             labels = ["DISABLED", "PLAY ONCE", "PLAY TWICE"]
             for i in range(3, 256):
                 labels.append(f"PLAY {i} TIMES")
-            self.enable_param_editor(self, "repeat", {
+            self.zyngui.screens['option'].enable_param_editor(self, "repeat", {
                 'name': 'Repeat',
                 'value': params["repeat"],
                 'labels': labels
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Beats per bar"):
             bpb = params["bpb"]
-            self.enable_param_editor(self, "bpb", {
+            self.zyngui.screens['option'].enable_param_editor(self, "bpb", {
                 'name': 'Beats per bar',
                 'value_min': 2,
                 'value_max': 24,
@@ -1608,7 +1607,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     ticks.append(i)
                     labels.append(f"PLAY SCENE {i + 1}")
             val = params["next"]
-            self.enable_param_editor(self, "next", {
+            self.zyngui.screens['option'].enable_param_editor(self, "next", {
                 "name": "Follow action",
                 "ticks": ticks,
                 "labels": labels,
@@ -1652,8 +1651,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def rename_sequence(self, name):
         self.zynseq.set_sequence_name(zynseq.LAUNCHER_SEQ_BANK, self.launcher_select_info["sequence"], name)
-        self.refresh_visible_strips()
-        self.cb_assert_param_editor()
+        self.launcher_menu(self.launcher_select_info['chan'], self.launcher_select_info['slot'])
 
     def addTempo(self, tempo):
         try:
@@ -1671,6 +1669,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             logging.warning(f"Error setting scene tempo: {e}")
 
     def cb_assert_param_editor(self, val=None):
+        self.send_controller_value(self.zyngui.screens['option'].param_editor_zctrl)
         self.launcher_menu(self.launcher_select_info['chan'], self.launcher_select_info['slot'])
 
     def send_controller_value(self, zctrl):
@@ -1749,7 +1748,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             return True
         elif self.param_editor_zctrl:
             self.disable_param_editor()
-            self.cb_assert_param_editor()
             return True
 
     def switch(self, swi, t):
