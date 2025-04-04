@@ -1567,9 +1567,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             elif option.startswith("Warp"):
                 zctrl = self.get_clippy_zctrl("warp")
                 zctrl.toggle()
-        elif option.startswith("Title"):
-            title = self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, params["sequence"])
-            self.zyngui.show_keyboard(self.rename_sequence, title, 8)
+        elif option.startswith("Name"):
+            name = self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, params["sequence"])
+            self.zyngui.show_keyboard(self.rename_sequence, name, 8)
         elif option == "Edit pattern":
             self.edit_pattern()
         elif option.startswith("Tempo"):
