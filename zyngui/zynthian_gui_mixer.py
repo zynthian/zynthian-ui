@@ -1588,7 +1588,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             slot = params["slot"]
             self.zynseq.libseq.removeTempoEvent(zynseq.LAUNCHER_SEQ_BANK, zynseq.LAUNCHER_SLOTS * 16 + slot, 1, 0)
             self.launcher_select_info["tempo"] = None
+            index = self.zyngui.screens['option'].index
             self.launcher_menu()
+            self.zyngui.screens['option'].select(index - 1)
         elif option.startswith("Repeat"):
             labels = ["DISABLED", "PLAY ONCE", "PLAY TWICE"]
             for i in range(3, 256):
@@ -1657,7 +1659,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def rename_sequence(self, name):
         self.zynseq.set_sequence_name(zynseq.LAUNCHER_SEQ_BANK, self.launcher_select_info["sequence"], name)
+        index = self.zyngui.screens['option'].index
         self.launcher_menu()
+        self.zyngui.screens['option'].select(index)
 
     def addTempo(self, tempo):
         try:
@@ -1676,7 +1680,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def cb_assert_param_editor(self, val=None):
         self.send_controller_value(self.zyngui.screens['option'].param_editor_zctrl)
+        index = self.zyngui.screens['option'].index
         self.launcher_menu()
+        self.zyngui.screens['option'].select(index)
 
     def send_controller_value(self, zctrl):
         """ Handle param editor value change """
