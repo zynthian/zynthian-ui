@@ -313,6 +313,13 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             options['Arranger'] = 'Arranger'
         options[f"Beats per Bar ({self.zynseq.libseq.getBeatsPerBar()})"] = 'Beats per bar'
         menu_options["GLOBAL"] = options
+        # Sequence options
+        if self.bank == zynseq.LAUNCHER_SEQ_BANK:
+            options = {}
+            options['Repeat'] = 'Repeat count'
+            options['Follow action'] = 'Follow action'
+            options['Title'] = 'Rename sequence'
+        menu_options['SEQUENCE'] = options
         # Pattern Options
         options = {}
         options[f"Beats in pattern ({self.zynseq.libseq.getBeatsInPattern(self.pattern)})"] = 'Beats in pattern'
@@ -340,12 +347,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         options['Export to SMF'] = 'Export to SMF'
         options['Export to SMF'] = 'Export to SMF'
         menu_options['PATTERN EDIT'] = options
-        if self.bank == zynseq.LAUNCHER_SEQ_BANK:
-            options = {}
-            options['Repeat'] = 'Repeat count'
-            options['Follow action'] = 'Follow action'
-            options['Title'] = 'Rename sequence'
-        menu_options['SEQUENCE'] = options
         return menu_options
 
     # Function to add menus

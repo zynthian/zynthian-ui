@@ -888,7 +888,11 @@ class zynthian_gui_mixer_strip():
     def on_clip_bold_press(self, slot):
         if self.chan is None:
             return
-        self.parent.launcher_menu(self.chan, slot)
+        self.parent.set_clip_info(self.chan, slot)
+        if self.chan < 16:
+            self.parent.edit_clip()
+        else:
+            self.parent.launcher_menu()
 
     def on_clip_long_press(self, slot):
         pass
@@ -1385,7 +1389,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def item_menu(self):
         if self.launcher_mode and self.launcher_highlighted_slot < zynseq.LAUNCHER_SLOTS:
             # Launcher Options
-            self.launcher_menu(self.highlighted_strip.chan, self.launcher_highlighted_slot)
+            self.set_clip_info(self.highlighted_strip.chan, self.launcher_highlighted_slot)
+            self.launcher_menu()
         else:
             # Chain Options
             self.zyngui.screens['chain_options'].setup(self.chain_manager.active_chain_id)
@@ -1492,20 +1497,23 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.launcher_select_info = self.zynseq.launcher_info[self.highlighted_strip.chan][self.launcher_highlighted_slot]
         except Exception as e:
             self.launcher_select_info = None
-            #logging.error(f"Can't get info for slot {self.launcher_highlighted_slot} in column {self.highlighted_strip.chan} => {e}")
+            logging.error(f"Can't get info for slot {self.launcher_highlighted_slot} in column {self.highlighted_strip.chan} => {e}")
 
-    def launcher_menu(self, chan, slot):
+    def set_clip_info(self, chan, slot):
         try:
             self.launcher_select_info = info = self.zynseq.launcher_info[chan][slot]
         except Exception as e:
-            #logging.error(f"Can't get info for slot {slot} in column {chan} => {e}")
-            return
-        if chan < 16:
-            self.edit_pattern()
+            self.launcher_select_info = None
+            logging.error(f"Can't get info for slot {slot} in column {chan} => {e}")
+
+    def launcher_menu(self):
+        info = self.launcher_select_info
+        if not info:
             return
         options = {}
-        if chan == (zynseq.LAUNCHER_COLS - 1):      # TODO: I'm not sure this is correct
-            title = "Scene options"
+        name = self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, info['sequence'])
+        if info['chan'] == (zynseq.LAUNCHER_COLS - 1):      # TODO: I'm not sure this is correct
+            title = f"Scene options ({name})"
             repeat = info["repeat"]
             if repeat == 0:
                 options["Repeat (DISABLED)"] = info
@@ -1519,7 +1527,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 next = info["next"]
                 if next == -1:
                     options["Follow action (STOP)"] = info
-                elif next == slot:
+                elif next == info['slot']:
                     options["Follow action (LOOP)"] = info
                 else:
                     options[f"Follow action (PLAY SCENE {next + 1})"] = info
@@ -1530,17 +1538,17 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     options["Remove tempo"] = info
                 options[f"Beats per bar ({info['bpb']})"] = info
         elif info["clippy"]:
-            title = "Audio clip options"
-            zctrl = self.get_clippy_zctrl("file", info)
+            title = f"Audio clip options ({name})"
+            zctrl = self.get_clippy_zctrl("file")
             filename = basename(zctrl.value)
             options[f"File ({filename})"] = info
-            zctrl = self.get_clippy_zctrl("warp", info)
+            zctrl = self.get_clippy_zctrl("warp")
             val = "ON" if zctrl.value else "OFF"
             options[f"Warp ({val})"] = info
         else:
-            title = "MIDI sequence options"
+            title = f"MIDI sequence options ({name})"
             options["Edit pattern"] = info
-        options[f"Title ({self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, info['sequence'])})"] = info
+        options[f"Edit name ({name})"] = info
 
         self.zyngui.screens['option'].config(title, options, self.launcher_menu_cb, close_on_select=False)
         self.zyngui.show_screen('option')
@@ -1550,14 +1558,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if params['clippy']:
             if option.startswith("File"):
                 # Show file selector. Callback has path. Must set path of this zctrl.
-                zctrl = self.get_clippy_zctrl("file", params)
+                zctrl = self.get_clippy_zctrl("file")
                 self.clippy_file_zctrl = zctrl
                 self.zyngui.cb_show_file_selector(self.on_clippy_file_sel,
                     fexts=zctrl.path_file_types,
                     dirnames=zctrl.path_dir_names,
                     path=zctrl.value)
             elif option.startswith("Warp"):
-                zctrl = self.get_clippy_zctrl("warp", params)
+                zctrl = self.get_clippy_zctrl("warp")
                 zctrl.toggle()
         elif option.startswith("Title"):
             title = self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, params["sequence"])
@@ -1577,10 +1585,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'nudge_factor': 1.0,
             }, assert_cb=self.cb_assert_param_editor)
         elif option == "Remove tempo":
-            slot = self.launcher_select_info["slot"]
+            slot = params["slot"]
             self.zynseq.libseq.removeTempoEvent(zynseq.LAUNCHER_SEQ_BANK, zynseq.LAUNCHER_SLOTS * 16 + slot, 1, 0)
             self.launcher_select_info["tempo"] = None
-            self.launcher_menu(self.launcher_select_info['chan'], self.launcher_select_info['slot'])
+            self.launcher_menu()
         elif option.startswith("Repeat"):
             labels = ["DISABLED", "PLAY ONCE", "PLAY TWICE"]
             for i in range(3, 256):
@@ -1614,11 +1622,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 "value": val
             }, assert_cb=self.cb_assert_param_editor)
 
-    def get_clippy_zctrl(self, zctrl_name, info=None):
+    def get_clippy_zctrl(self, zctrl_name):
         try:
-            if info is None:
-                info = self.launcher_select_info
-            return info['clippy'].controllers_dict[f"{zctrl_name} {info['slot'] + 1:02}"]
+            return self.launcher_select_info['clippy'].controllers_dict[f"{zctrl_name} {info['slot'] + 1:02}"]
         except:
             return None
 
@@ -1651,7 +1657,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def rename_sequence(self, name):
         self.zynseq.set_sequence_name(zynseq.LAUNCHER_SEQ_BANK, self.launcher_select_info["sequence"], name)
-        self.launcher_menu(self.launcher_select_info['chan'], self.launcher_select_info['slot'])
+        self.launcher_menu()
 
     def addTempo(self, tempo):
         try:
@@ -1670,7 +1676,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def cb_assert_param_editor(self, val=None):
         self.send_controller_value(self.zyngui.screens['option'].param_editor_zctrl)
-        self.launcher_menu(self.launcher_select_info['chan'], self.launcher_select_info['slot'])
+        self.launcher_menu()
 
     def send_controller_value(self, zctrl):
         """ Handle param editor value change """
@@ -1713,18 +1719,25 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
         if super().switch_select(type):
             return True
-        elif self.moving_chain:
+        if self.moving_chain:
             self.end_moving_chain()
+            return True
         elif type == "S":
-            if self.zynmixer.midi_learn_zctrl:
-                self.midi_learn_menu()
-            else:
-                if self.launcher_mode and self.launcher_highlighted_slot < zynseq.LAUNCHER_SLOTS:
+            if self.launcher_mode:
+                if self.launcher_highlighted_slot < zynseq.LAUNCHER_SLOTS:
                     self.highlighted_strip.on_clip_short_press(self.launcher_highlighted_slot)
                 else:
                     self.zyngui.chain_control()
+            else:
+                if self.zynmixer.midi_learn_zctrl:
+                    self.midi_learn_menu()
+                else:
+                    self.zyngui.chain_control()
         elif type == "B":
-            self.item_menu()
+            if self.launcher_mode and self.highlighted_strip.chan < 16:     # TODO: this 16 shouldn't be hardcoded
+                self.edit_clip()
+            else:
+                self.item_menu()
         else:
             return False
         return True
