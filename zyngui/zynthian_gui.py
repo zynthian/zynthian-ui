@@ -900,7 +900,7 @@ class zynthian_gui:
                         self.close_screen("loading")
                         self.chain_control(self.modify_chain_status["chain_id"], processor, force_bank_preset=True)
                     else:
-                        self.show_screen_reset("audio_mixer")
+                        self.show_screen_reset("root")
             else:
                 # Creating a new chain
                 if "midi_chan" in self.modify_chain_status:
@@ -922,7 +922,7 @@ class zynthian_gui:
                         zmop_index=zmop_index
                     )
                     if chain_id is None:
-                        self.show_screen_reset("audio_mixer")
+                        self.show_screen_reset("root")
                         self.show_info("Failed to create chain", 1500)
                         return
                     processor = self.chain_manager.add_processor(
@@ -937,7 +937,7 @@ class zynthian_gui:
                     else:
                         # Created empty chain
                         # self.chain_manager.set_active_chain_by_id(chain_id)
-                        self.show_screen_reset("audio_mixer")
+                        self.show_screen_reset("root")
                 else:
                     # Select MIDI channel
                     logging.debug(self.modify_chain_status)
@@ -2032,7 +2032,7 @@ class zynthian_gui:
                 self.screens[self.current_screen].disable_param_editor()
             except:
                 pass
-            self.show_screen_reset('audio_mixer')
+            self.show_screen_reset('root')
             return True
 
         elif i == 2:
