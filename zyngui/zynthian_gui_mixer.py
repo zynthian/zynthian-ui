@@ -1588,8 +1588,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'value': bpb
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Follow action"):
-            ticks = [-1, params["sequence"]]
-            labels = ["STOP", "LOOP"]
+            ticks = [-1]
+            labels = ["STOP",]
             for i, slot_info in enumerate(self.zynseq.launcher_info):
                 seq = slot_info[16]["sequence"]
                 if seq != params["sequence"]:
