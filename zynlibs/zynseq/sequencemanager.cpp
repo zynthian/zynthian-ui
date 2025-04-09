@@ -23,15 +23,13 @@
 
 /** SequenceManager class methods implementation **/
 
-SequenceManager::SequenceManager() {
-    init();
-}
+SequenceManager::SequenceManager() { init(); }
 
 void SequenceManager::init() {
     stop();
     m_mTriggers.clear();
     for (auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
-        delete(it->second);
+        delete (it->second);
     m_mPatterns.clear();
     m_mBanks.clear();
 }
@@ -118,7 +116,7 @@ uint32_t SequenceManager::createPattern() {
 
 void SequenceManager::deletePattern(uint32_t index) {
     if (m_mPatterns.find(index) != m_mPatterns.end()) {
-        delete(m_mPatterns[index]);
+        delete (m_mPatterns[index]);
         m_mPatterns.erase(index);
     }
 }
@@ -161,9 +159,7 @@ void SequenceManager::removePattern(uint8_t bank, uint8_t sequence, uint32_t tra
     updateSequenceLength(bank, sequence);
 }
 
-void SequenceManager::updateSequenceLength(uint8_t bank, uint8_t sequence) {
-    getSequence(bank, sequence)->updateLength();
-}
+void SequenceManager::updateSequenceLength(uint8_t bank, uint8_t sequence) { getSequence(bank, sequence)->updateLength(); }
 
 void SequenceManager::updateAllSequenceLengths() {
     for (auto itBank = m_mBanks.begin(); itBank != m_mBanks.end(); ++itBank)
@@ -175,7 +171,7 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
     /** Get events scheduled for next step from all tracks in each playing sequence.
         Populate schedule with start, end and interpolated events
     */
-    uint32_t nTime          = timeinfo.first;
+    uint32_t nTime = timeinfo.first;
     double dSamplesPerClock = timeinfo.second;
     std::vector<uint16_t> vNext;
     for (auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end();) {
@@ -188,7 +184,7 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
         if (nEventType & 1) {
             // A step event
             while (SEQ_EVENT* pEvent = pSequence->getEvent()) {
-                uint32_t nEventTime     = pEvent->time;
+                uint32_t nEventTime = pEvent->time;
                 MIDI_MESSAGE* pNewEvent = new MIDI_MESSAGE(pEvent->msg);
                 pSchedule->insert(std::pair<uint32_t, MIDI_MESSAGE*>(nEventTime, pNewEvent));
                 // fprintf(stderr, "Clock time: %u Scheduling event 0x%x 0x%x 0x%x with time %u at %u framesPerClock: %f\n", nTime, pEvent->msg.command,
@@ -253,8 +249,8 @@ void SequenceManager::setSequencePlayState(uint8_t bank, uint8_t sequence, uint8
         }
         if (bAddToList)
             m_vPlayingSequences.push_back((bank << 8) | sequence);
-        }
-        pSequence->setPlayState(state);
+    }
+    pSequence->setPlayState(state);
 }
 
 uint8_t SequenceManager::getTriggerNote(uint8_t bank, uint8_t sequence) {
@@ -316,27 +312,19 @@ void SequenceManager::cleanPatterns() {
     // Remove patterns in main map that are in search map and empty
     for (auto it = mPatterns.begin(); it != mPatterns.end(); ++it) {
         if (it->second->getEvents() == 0) {
-            delete(it->second);
+            delete (it->second);
             m_mPatterns.erase(it->first);
         }
     }
 }
 
-uint32_t SequenceManager::getSequencesInBank(uint32_t bank) {
-    return m_mBanks[bank].size();
-}
+uint32_t SequenceManager::getSequencesInBank(uint32_t bank) { return m_mBanks[bank].size(); }
 
-void SequenceManager::removeSequence(uint8_t bank, uint8_t sequence) {
-    m_mBanks[bank].erase(sequence);
-}
+void SequenceManager::removeSequence(uint8_t bank, uint8_t sequence) { m_mBanks[bank].erase(sequence); }
 
-void SequenceManager::clearBank(uint32_t bank) {
-    m_mBanks[bank].clear();
-}
+void SequenceManager::clearBank(uint32_t bank) { m_mBanks[bank].clear(); }
 
-uint32_t SequenceManager::getBanks() {
-    return m_mBanks.size();
-}
+uint32_t SequenceManager::getBanks() { return m_mBanks.size(); }
 
 bool SequenceManager::isTempoChanged() { return m_bTempoChanged; }
 
@@ -354,6 +342,4 @@ uint16_t SequenceManager::getTimeSig(bool clear) {
     return m_nTimeSig;
 }
 
-void SequenceManager::setTimeSig(uint16_t sig) {
-    m_nTimeSig = sig;
-}
+void SequenceManager::setTimeSig(uint16_t sig) { m_nTimeSig = sig; }

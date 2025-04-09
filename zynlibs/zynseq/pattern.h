@@ -21,52 +21,52 @@ class StepEvent {
     /** Default constructor of StepEvent object
      */
     StepEvent() {
-        m_nPosition     = 0;
-        m_fOffset       = 0.0;
-        m_fDuration     = 1.0;
-        m_nCommand      = MIDI_NOTE_ON;
-        m_nValue1start  = 60;
-        m_nValue2start  = 100;
-        m_nValue1end    = 60;
-        m_nValue2end    = 0;
+        m_nPosition = 0;
+        m_fOffset = 0.0;
+        m_fDuration = 1.0;
+        m_nCommand = MIDI_NOTE_ON;
+        m_nValue1start = 60;
+        m_nValue2start = 100;
+        m_nValue1end = 60;
+        m_nValue2end = 0;
         m_nStutterCount = 0;
-        m_nStutterDur   = 1;
-        m_nPlayChance   = 100;
+        m_nStutterDur = 1;
+        m_nPlayChance = 100;
     };
 
     /** Constructor - create an instance of StepEvent object
      */
     StepEvent(uint32_t position, uint8_t command, uint8_t value1 = 0, uint8_t value2 = 0, float duration = 1.0, float offset = 0.0) {
-        m_nPosition    = position;
-        m_fOffset      = offset;
-        m_fDuration    = duration;
-        m_nCommand     = command;
+        m_nPosition = position;
+        m_fOffset = offset;
+        m_fDuration = duration;
+        m_nCommand = command;
         m_nValue1start = value1;
         m_nValue2start = value2;
-        m_nValue1end   = value1;
+        m_nValue1end = value1;
         if (command == MIDI_NOTE_ON)
             m_nValue2end = 0;
         else
             m_nValue2end = value2;
         m_nStutterCount = 0;
-        m_nStutterDur   = 1;
-        m_nPlayChance   = 100;
+        m_nStutterDur = 1;
+        m_nPlayChance = 100;
     };
 
     /** Copy constructor - create an copy of StepEvent object from an existing object
      */
     StepEvent(StepEvent* pEvent) {
-        m_nPosition     = pEvent->getPosition();
-        m_fOffset       = pEvent->getOffset();
-        m_fDuration     = pEvent->getDuration();
-        m_nCommand      = pEvent->getCommand();
-        m_nValue1start  = pEvent->getValue1start();
-        m_nValue2start  = pEvent->getValue2start();
-        m_nValue1end    = pEvent->getValue1end();
-        m_nValue2end    = pEvent->getValue2end();
+        m_nPosition = pEvent->getPosition();
+        m_fOffset = pEvent->getOffset();
+        m_fDuration = pEvent->getDuration();
+        m_nCommand = pEvent->getCommand();
+        m_nValue1start = pEvent->getValue1start();
+        m_nValue2start = pEvent->getValue2start();
+        m_nValue1end = pEvent->getValue1end();
+        m_nValue2end = pEvent->getValue2end();
         m_nStutterCount = pEvent->getStutterCount();
-        m_nStutterDur   = pEvent->getStutterDur();
-        m_nPlayChance   = pEvent->getPlayChance();
+        m_nStutterDur = pEvent->getStutterDur();
+        m_nPlayChance = pEvent->getPlayChance();
     };
 
     uint32_t getPosition() { return m_nPosition; }
@@ -320,29 +320,29 @@ class Pattern {
      *   @param  control MIDI control number
      *   @retval float offset Step fraction, from 0.0 to 1.0
      */
-     float getControlOffset(uint32_t step, uint8_t control);
+    float getControlOffset(uint32_t step, uint8_t control);
 
-     /** @brief  Set offset of control in selected pattern
+    /** @brief  Set offset of control in selected pattern
       *   @param  position Quantity of steps from start of pattern at which control starts
       *   @param  note MIDI control number
       *   @param  offset Step fraction, from 0.0 to 1.0
       */
-     void setControlOffset(uint32_t step, uint8_t control, float offset);
+    void setControlOffset(uint32_t step, uint8_t control, float offset);
 
     /** @brief  Get value of control
      *   @param  position Quantity of steps from start of pattern at which control starts
      *   @param  control MIDI control number
      *   @retval uint8_t MIDI value of control
      */
-     uint8_t getControlValue(uint32_t step, uint8_t control);
+    uint8_t getControlValue(uint32_t step, uint8_t control);
 
-     /** @brief  Set value of control
+    /** @brief  Set value of control
       *   @param  position Quantity of steps from start of pattern at which control starts
       *   @param  control MIDI control number
       *   @param  valueStart MIDI value at start of event
       *   @param  valueEdn MIDI value at end of event
       */
-     void setControlValue(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd);
+    void setControlValue(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd);
 
     /** @brief  Get quantity of steps in pattern
      *   @retval uint32_t Quantity of steps
@@ -545,16 +545,16 @@ class Pattern {
     std::vector<StepEventVector*> m_vSnapshots;                                  // Vector of vectors of pattern events
     std::vector<StepEventVector*>::iterator m_vSnapshotPos = m_vSnapshots.end(); // Iterator pointing to the current snapshot
 
-    uint32_t m_nBeats                                      = 4;     // Quantity of beats in pattern
-    uint32_t m_nStepsPerBeat                               = 6;     // Steps per beat
-    uint8_t m_nScale                                       = 0;     // Index of scale
-    uint8_t m_nTonic                                       = 0;     // Scale tonic (root note)
-    uint8_t m_nRefNote                                     = 60;    // Note at which to position pattern editor
-    bool m_bQuantizeNotes                                  = false; // Quantize note time so it plays in the nearest step boundary
-    uint32_t m_nSwingDiv                                   = 1;     // Swing division, range from 1 to pPattern->getStepsPerBeat()
-    float m_fSwingAmount                                   = 0.0;   // Swing amount, range from 0 to 1, but over 0.5 is not "MPC swing"
-    float m_fHumanTime                                     = 0.0;   // Timing Humanization, range from 0 to FLOAT_MAX
-    float m_fHumanVelo                                     = 0.0;   // Velocity Humanization, range from 0 to FLOAT_MAX
-    float m_fPlayChance = 1.0; // Probability for playing notes (0 = Notes are not played, 0.5 = Notes plays with 50%, 1 = All notes play always)
-    int16_t m_nZoom     = 0;   // Grid Zoom (pattern editor)
+    uint32_t m_nBeats = 4;         // Quantity of beats in pattern
+    uint32_t m_nStepsPerBeat = 6;  // Steps per beat
+    uint8_t m_nScale = 0;          // Index of scale
+    uint8_t m_nTonic = 0;          // Scale tonic (root note)
+    uint8_t m_nRefNote = 60;       // Note at which to position pattern editor
+    bool m_bQuantizeNotes = false; // Quantize note time so it plays in the nearest step boundary
+    uint32_t m_nSwingDiv = 1;      // Swing division, range from 1 to pPattern->getStepsPerBeat()
+    float m_fSwingAmount = 0.0;    // Swing amount, range from 0 to 1, but over 0.5 is not "MPC swing"
+    float m_fHumanTime = 0.0;      // Timing Humanization, range from 0 to FLOAT_MAX
+    float m_fHumanVelo = 0.0;      // Velocity Humanization, range from 0 to FLOAT_MAX
+    float m_fPlayChance = 1.0;     // Probability for playing notes (0 = Notes are not played, 0.5 = Notes plays with 50%, 1 = All notes play always)
+    int16_t m_nZoom = 0;           // Grid Zoom (pattern editor)
 };

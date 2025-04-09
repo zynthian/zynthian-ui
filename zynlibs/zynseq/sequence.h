@@ -17,7 +17,7 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
- #pragma once
+#pragma once
 
 #include "constants.h"
 #include "timebase.h"
@@ -122,14 +122,14 @@ class Sequence {
      *   @param  beat Tick at which to get tempo [Optional - default: 0]
      *   @retval float Tempo in BPM
      */
-     float getTempoAt(uint16_t bar, uint16_t tick = 0);
+    float getTempoAt(uint16_t bar, uint16_t tick = 0);
 
     /** @brief  Get current tempo
      *   @retval float Tempo in BPM
      */
-     float getTempo();
+    float getTempo();
 
-     /** @brief  Add time signature to timebase track
+    /** @brief  Add time signature to timebase track
      *   @param  beatsPerBar Beats per bar
      *   @param  bar Bar (measure) at which to set time signature
      *   @note   Removes time signature if same as previous time signature
@@ -140,7 +140,7 @@ class Sequence {
      *   @param  bar Bar (measure) at which to get time signature
      *   @retval uint16_t Beats per bar
      */
-     uint16_t getTimeSigAt(uint16_t bar);
+    uint16_t getTimeSigAt(uint16_t bar);
 
     /** @brief  Get current time signature
      *   @retval uint16_t Beats per bar
@@ -235,24 +235,24 @@ class Sequence {
     uint8_t getRepeat();
 
   private:
-    std::vector<Track> m_vTracks;      // Vector of tracks within sequence
-    Timebase m_timebase;               // Timebase map
+    std::vector<Track> m_vTracks;               // Vector of tracks within sequence
+    Timebase m_timebase;                        // Timebase map
     TimebaseEvent* m_pNextTimebaseEvent = NULL; // Pointer to next timebase event or NULL if none.
-    size_t m_nCurrentTrack  = 0;       // Index of track currently being queried for events
-    uint32_t m_nPosition    = 0;       // Play position in clock cycles
-    uint32_t m_nLastSyncPos = 0;       // Position of last sync pulse in clock cycles
-    uint32_t m_nLength      = 0;       // Length of sequence in clock cycles (longest track)
-    float m_fTempo          = 120.0;   // Current tempo (overriden by tempo events in timebase map)
-    uint16_t m_nTimeSig     = 4;       // Current time signature (beats in bar)
-    uint16_t m_nId;                    // Sequence id (bank << 8 | sequence)
-    uint16_t m_nNextSeq     = -1;      // Index of the next sequence | bank << 8 to play when this sequence ends (-1=none). Added v11.
-    uint8_t m_nState        = STOPPED; // Play state of sequence
-    uint8_t m_nMode         = 0;       // Bitwise flags affecting start (bits 0..3) and stop (bits 4..7). Changed v11.
-    uint8_t m_nGroup        = 0;       // Sequence's mutually exclusive group
-    uint8_t m_nRepeat       = 0;       // Quantity of times to play sequence/ Added v11.
-    uint8_t m_nCount        = 0;       // Quantity of times to sequence has played
-    bool m_bChanged         = false;   // True if sequence content changed
-    bool m_bStateChanged    = false;   // True if state changed since last clock cycle
-    bool m_bEmpty           = true;    // True if all patterns are emtpy (no events)
-    std::string m_sName;               // Sequence name
+    size_t m_nCurrentTrack = 0;                 // Index of track currently being queried for events
+    uint32_t m_nPosition = 0;                   // Play position in clock cycles
+    uint32_t m_nLastSyncPos = 0;                // Position of last sync pulse in clock cycles
+    uint32_t m_nLength = 0;                     // Length of sequence in clock cycles (longest track)
+    float m_fTempo = 120.0;                     // Current tempo (overriden by tempo events in timebase map)
+    uint16_t m_nTimeSig = 4;                    // Current time signature (beats in bar)
+    uint16_t m_nId;                             // Sequence id (bank << 8 | sequence)
+    uint16_t m_nNextSeq = -1;                   // Index of the next sequence | bank << 8 to play when this sequence ends (-1=none). Added v11.
+    uint8_t m_nState = STOPPED;                 // Play state of sequence
+    uint8_t m_nMode = 0;                        // Bitwise flags affecting start (bits 0..3) and stop (bits 4..7). Changed v11.
+    uint8_t m_nGroup = 0;                       // Sequence's mutually exclusive group
+    uint8_t m_nRepeat = 0;                      // Quantity of times to play sequence/ Added v11.
+    uint8_t m_nCount = 0;                       // Quantity of times to sequence has played
+    bool m_bChanged = false;                    // True if sequence content changed
+    bool m_bStateChanged = false;               // True if state changed since last clock cycle
+    bool m_bEmpty = true;                       // True if all patterns are emtpy (no events)
+    std::string m_sName;                        // Sequence name
 };

@@ -17,27 +17,25 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
- #include "sequence.h"
+#include "sequence.h"
 
 Sequence::Sequence() {
     addTrack(); // Ensure new sequences have at least one track
 }
 
-void Sequence::setSequence(uint8_t bank, uint8_t sequence) {
-    m_nId = (bank << 8) | sequence;
-}
+void Sequence::setSequence(uint8_t bank, uint8_t sequence) { m_nId = (bank << 8) | sequence; }
 
 uint8_t Sequence::getGroup() { return m_nGroup; }
 
 void Sequence::setGroup(uint8_t group) {
     if (m_nGroup == group)
         return;
-    m_nGroup   = group;
+    m_nGroup = group;
     m_bChanged = true;
 }
 
 uint32_t Sequence::addTrack(uint32_t track) {
-    auto it          = m_vTracks.begin();
+    auto it = m_vTracks.begin();
     uint32_t nReturn = ++track;
     if (track == -1 || track >= m_vTracks.size()) {
         m_vTracks.emplace_back();
@@ -105,9 +103,7 @@ uint16_t Sequence::getTimeSigAt(uint16_t bar) {
     return 4;
 }
 
-uint16_t Sequence::getTimeSig() {
-    return m_nTimeSig;
-}
+uint16_t Sequence::getTimeSig() { return m_nTimeSig; }
 
 Timebase* Sequence::getTimebase() {
     //!@todo Optimise timebase - only add a timebase track as required
@@ -143,14 +139,12 @@ void Sequence::setPlayState(uint8_t state) {
         m_nCount = 0;
 }
 
-uint32_t Sequence::getState() {
-    return (m_nRepeat << 24) | (m_nGroup << 16) | (m_nMode << 8) | m_nState;
-}
+uint32_t Sequence::getState() { return (m_nRepeat << 24) | (m_nGroup << 16) | (m_nMode << 8) | m_nState; }
 
 uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
     m_nCurrentTrack = 0;
     uint8_t nReturn = 0;
-    uint8_t nState  = m_nState;
+    uint8_t nState = m_nState;
     if (bSync) {
         if (m_nMode & MODE_END_SYNC) {
             m_nPosition = 0;
@@ -179,7 +173,7 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
         } else {
             m_nState = STOPPED;
         }
-        m_nPosition    = 0;
+        m_nPosition = 0;
         m_nLastSyncPos = 0;
     }
 
@@ -219,7 +213,7 @@ SEQ_EVENT* Sequence::getEvent() {
 
 void Sequence::updateLength() {
     m_nLength = 0;
-    m_bEmpty  = true;
+    m_bEmpty = true;
     for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it) {
         uint32_t nTrackLength = (*it).updateLength();
         if (nTrackLength > m_nLength)
@@ -253,18 +247,10 @@ void Sequence::setName(std::string sName) {
 
 std::string Sequence::getName() { return m_sName; }
 
-void Sequence::setFollowAction(uint8_t bank, uint8_t sequence) {
-    m_nNextSeq = (bank << 8) | sequence;
-}
+void Sequence::setFollowAction(uint8_t bank, uint8_t sequence) { m_nNextSeq = (bank << 8) | sequence; }
 
-uint16_t Sequence::getFollowAction() {
-    return m_nNextSeq;
-}
+uint16_t Sequence::getFollowAction() { return m_nNextSeq; }
 
-void Sequence::setRepeat(uint8_t repeat) {
-    m_nRepeat = repeat;
-}
+void Sequence::setRepeat(uint8_t repeat) { m_nRepeat = repeat; }
 
-uint8_t Sequence::getRepeat() {
-    return m_nRepeat;
-}
+uint8_t Sequence::getRepeat() { return m_nRepeat; }

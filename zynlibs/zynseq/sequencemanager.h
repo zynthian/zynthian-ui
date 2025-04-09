@@ -16,8 +16,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
- 
- #pragma once
+
+#pragma once
 #include "pattern.h"
 #include "sequence.h"
 #include "track.h"
@@ -101,7 +101,7 @@ class SequenceManager {
     *   @retval Sequence* Pointer to sequence
     *   @note   Creates new bank and/or sequence if not existing
     */
-    Sequence* getSequence(uint8_t bank, uint8_t sequence, bool create_pattern=false);
+    Sequence* getSequence(uint8_t bank, uint8_t sequence, bool create_pattern = false);
 
     /** @brief  Get follow action for a sequence
     *   @param  bank In dex of bank containing sequence
@@ -249,7 +249,7 @@ class SequenceManager {
     */
     void setTimeSig(uint16_t sig);
 
-private:
+  private:
     int fileWrite32(uint32_t value, FILE* pFile);
     int fileWrite16(uint16_t value, FILE* pFile);
     int fileWrite8(uint8_t value, FILE* pFile);
@@ -258,16 +258,17 @@ private:
     uint8_t fileRead8(FILE* pFile);
     bool checkBlock(FILE* pFile, uint32_t nActualSize, uint32_t nExpectedSize);
 
-    bool m_bTempoChanged = false; // True if tempo changed by sequence
-    float m_fTempo = DEFAULT_TEMPO; // Current tempo
-    bool m_bTimeSigChanged = false; // True if time signature changed by sequence
-    uint8_t m_nTimeSig = 4; // Current time signature
-    uint8_t m_nTriggerDevice  = 0xFF; // MIDI device to receive sequence triggers (note-on)
+    bool m_bTempoChanged = false;     // True if tempo changed by sequence
+    float m_fTempo = DEFAULT_TEMPO;   // Current tempo
+    bool m_bTimeSigChanged = false;   // True if time signature changed by sequence
+    uint8_t m_nTimeSig = 4;           // Current time signature
+    uint8_t m_nTriggerDevice = 0xFF;  // MIDI device to receive sequence triggers (note-on)
     uint8_t m_nTriggerChannel = 0xFF; // MIDI channel to receive sequence triggers (note-on)
 
     // Note: Maps are used for patterns and sequences to allow addition and removal of sequences whilst maintaining consistent access to remaining instances
-    std::map<uint32_t, Pattern*> m_mPatterns;                // Map of pattern pointers indexed by pattern number
-    std::vector<uint16_t> m_vPlayingSequences;               // Vector of <bank<<8|sequence>for currently playing sequences (used to optimise play control)
-    std::map<uint8_t, uint16_t> m_mTriggers;                 // Map of bank<<8|sequence indexed by MIDI note triggers
-    std::map<uint8_t, std::map<uint8_t, Sequence>> m_mBanks; // Map of banks of sequences, indexed by bank number. Sequences map of sequences, mapped by sequence number.
+    std::map<uint32_t, Pattern*> m_mPatterns;  // Map of pattern pointers indexed by pattern number
+    std::vector<uint16_t> m_vPlayingSequences; // Vector of <bank<<8|sequence>for currently playing sequences (used to optimise play control)
+    std::map<uint8_t, uint16_t> m_mTriggers;   // Map of bank<<8|sequence indexed by MIDI note triggers
+    std::map<uint8_t, std::map<uint8_t, Sequence>>
+        m_mBanks; // Map of banks of sequences, indexed by bank number. Sequences map of sequences, mapped by sequence number.
 };

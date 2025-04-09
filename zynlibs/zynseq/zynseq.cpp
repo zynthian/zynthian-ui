@@ -59,60 +59,60 @@ jack_port_t* g_pOutputPort;           // Pointer to the JACK output port
 jack_port_t* g_pMetronomePort;        // Pointer to the JACK metronome audio output port
 jack_client_t* g_pJackClient = NULL;  // Pointer to the JACK client
 jack_nframes_t g_nSampleRate = 44100; // Quantity of samples per second
-uint32_t g_nXruns            = 0;
+uint32_t g_nXruns = 0;
 
 SequenceManager g_seqMan;                           // Instance of sequence manager
 Pattern* g_pPattern = NULL;                         // Pointer to currently edited pattern
 uint8_t g_nBank = 0;                                // Index of currently edited bank
-uint8_t g_nSequence = 0;                              // Index of currently edited sequence
+uint8_t g_nSequence = 0;                            // Index of currently edited sequence
 std::multimap<uint32_t, MIDI_MESSAGE*> g_mSchedule; // Schedule of MIDI events (queue for sending), indexed by scheduled play time (samples since JACK epoch)
-bool g_bMutex              = false;                 // Mutex lock for access to g_mSchedule
-bool g_bDebug              = false;                 // True to output debug info
-bool g_bPatternModified    = false;                 // True if pattern has changed since last check
-bool g_bDirty              = false;                 // True if anything has been modified
+bool g_bMutex = false;                              // Mutex lock for access to g_mSchedule
+bool g_bDebug = false;                              // True to output debug info
+bool g_bPatternModified = false;                    // True if pattern has changed since last check
+bool g_bDirty = false;                              // True if anything has been modified
 size_t g_nPlayingSequences = 0;                     // Quantity of playing sequences
 std::set<std::string> g_setTransportClient;         // Set of timebase clients having requested transport play
 bool g_bClientPlaying = false;                      // True if any external client has requested transport play
-bool g_bMidiRecord    = false;                      // True to add notes to current pattern from MIDI input
+bool g_bMidiRecord = false;                         // True to add notes to current pattern from MIDI input
 uint8_t g_nSustainValue = 0;                        // Last sustain pedal value during note input (recording)
-uint32_t g_nSustainStart = 0;						// Step when sustain pedal was last pressed
+uint32_t g_nSustainStart = 0;                       // Step when sustain pedal was last pressed
 
-char g_sName[16];                             // Buffer to hold sequence name so that it can be sent back for Python to parse
-uint8_t g_nInputRest                  = 0xFF; // MIDI note number that creates rest in pattern
-uint16_t g_nVerticalZoom              = 16;   // Quantity of rows to show in pattern and arranger view
-uint16_t g_nHorizontalZoom            = 16;   // Quantity of beats to show in arranger view
+char g_sName[16];                // Buffer to hold sequence name so that it can be sent back for Python to parse
+uint8_t g_nInputRest = 0xFF;     // MIDI note number that creates rest in pattern
+uint16_t g_nVerticalZoom = 16;   // Quantity of rows to show in pattern and arranger view
+uint16_t g_nHorizontalZoom = 16; // Quantity of beats to show in arranger view
 
 // Transport variables apply to next period
-uint32_t g_nBeatsPerBar               = 4;
-float g_fBeatType                     = 4.0;
-double g_dTicksPerBeat                = 1920.0;
-double g_dTicksPerClock               = g_dTicksPerBeat / PPQN;
-double g_dTempo                       = 120.0;
-bool g_bTimebaseChanged               = false;     // True to trigger recalculation of timebase parameters
-Timebase* g_pTimebase                 = NULL;      // Pointer to the timebase object for selected song
-TimebaseEvent* g_pNextTimebaseEvent   = NULL;      // Pointer to the next timebase event or NULL if no more events in this song
-uint32_t g_nBar                       = 1;         // Current bar
-uint32_t g_nBeat                      = 1;         // Current beat within bar
-uint32_t g_nTick                      = 0;         // Current tick within bar
-double g_dBarStartTick                = 0;         // Quantity of ticks from start of song to start of current bar
+uint32_t g_nBeatsPerBar = 4;
+float g_fBeatType = 4.0;
+double g_dTicksPerBeat = 1920.0;
+double g_dTicksPerClock = g_dTicksPerBeat / PPQN;
+double g_dTempo = 120.0;
+bool g_bTimebaseChanged = false;                   // True to trigger recalculation of timebase parameters
+Timebase* g_pTimebase = NULL;                      // Pointer to the timebase object for selected song
+TimebaseEvent* g_pNextTimebaseEvent = NULL;        // Pointer to the next timebase event or NULL if no more events in this song
+uint32_t g_nBar = 1;                               // Current bar
+uint32_t g_nBeat = 1;                              // Current beat within bar
+uint32_t g_nTick = 0;                              // Current tick within bar
+double g_dBarStartTick = 0;                        // Quantity of ticks from start of song to start of current bar
 jack_nframes_t g_nTransportStartFrame = 0;         // Quantity of frames from JACK epoch to transport start
 std::queue<std::pair<double, double>> g_qClockPos; // Queue of pending clock positions relative to JACK epoch and clock duration in frames at this time
 double g_dFramesPerClock =
-    getFramesPerClock(g_dTempo);           //!@todo Change to integer will have 0.1% jitter at 1920 PPQN and much better jitter (0.01%) at current 24PPQN
-uint8_t g_nClock                      = 0; // Quantity of MIDI clocks since start of beat
-uint8_t g_nMidiClock                  = 0; // Quantity of *RECEIVED* MIDI clocks since start of beat
-uint8_t g_nClockSource                = TRANSPORT_CLOCK_INTERNAL; // Source of clock that progresses playback
-bool g_bSendMidiClock                 = false;                    // True to send MIDI clock
-jack_nframes_t g_nFramesSinceLastBeat = 0;                        // Quantity of frames since last beat
+    getFramesPerClock(g_dTempo); //!@todo Change to integer will have 0.1% jitter at 1920 PPQN and much better jitter (0.01%) at current 24PPQN
+uint8_t g_nClock = 0;            // Quantity of MIDI clocks since start of beat
+uint8_t g_nMidiClock = 0;        // Quantity of *RECEIVED* MIDI clocks since start of beat
+uint8_t g_nClockSource = TRANSPORT_CLOCK_INTERNAL; // Source of clock that progresses playback
+bool g_bSendMidiClock = false;                     // True to send MIDI clock
+jack_nframes_t g_nFramesSinceLastBeat = 0;         // Quantity of frames since last beat
 
-float g_fSwingAmount                  = 0.0; // Swing amount, range from 0 to 1, but values over 0.5 are not "MPC swing"
-float g_fHumanTime                    = 0.0; // Timing Humanization, range from 0 to FLOAT_MAX
-float g_fHumanVelo                    = 0.0; // Velocity Humanization, range from 0 to FLOAT_MAX
-float g_fPlayChance     = 1.0; // Probability for playing notes (0 = Notes are not played, 0.5 = Notes plays with prob.50%, 1 = All notes play always)
+float g_fSwingAmount = 0.0; // Swing amount, range from 0 to 1, but values over 0.5 are not "MPC swing"
+float g_fHumanTime = 0.0;   // Timing Humanization, range from 0 to FLOAT_MAX
+float g_fHumanVelo = 0.0;   // Velocity Humanization, range from 0 to FLOAT_MAX
+float g_fPlayChance = 1.0;  // Probability for playing notes (0 = Notes are not played, 0.5 = Notes plays with prob.50%, 1 = All notes play always)
 
-size_t g_nMetronomePtr  = -1;    // Position within metronome click wav data
-float g_fMetronomeLevel = 1.0;   // Factor to scale metronome level (volume)
-bool g_bMetronome       = false; // True to enable metronome
+size_t g_nMetronomePtr = -1;   // Position within metronome click wav data
+float g_fMetronomeLevel = 1.0; // Factor to scale metronome level (volume)
+bool g_bMetronome = false;     // True to enable metronome
 struct metro_wav_t g_metro_pip;
 struct metro_wav_t g_metro_peep;
 struct metro_wav_t* g_pMetro = &g_metro_pip; // Pointer to the current metronome sound (pip/peep)
@@ -137,27 +137,27 @@ double getFramesPerClock(double dTempo) { return getFramesPerTick(dTempo) * g_dT
 // Update bars, beats, ticks for given position in frames
 void updateBBT(jack_position_t* position) {
     //!@todo Populate bbt_sequence (experimental so not urgent but could be useful)
-    double dFrames                    = 0;
-    double dFramesPerTick             = getFramesPerTick(g_dTempo); //!@todo Need to use default tempo from start of song but current tempo now!!!
+    double dFrames = 0;
+    double dFramesPerTick = getFramesPerTick(g_dTempo); //!@todo Need to use default tempo from start of song but current tempo now!!!
     static double dDebugFramesPerTick = 0;
-    uint32_t nBar                     = 0;
-    uint32_t nBeat                    = 0;
-    uint32_t nTick                    = 0;
-    uint8_t nBeatsPerBar              = 4;
-    uint32_t nTicksPerBar             = g_dTicksPerBeat * nBeatsPerBar;
-    bool bDone                        = false;
+    uint32_t nBar = 0;
+    uint32_t nBeat = 0;
+    uint32_t nTick = 0;
+    uint8_t nBeatsPerBar = 4;
+    uint32_t nTicksPerBar = g_dTicksPerBeat * nBeatsPerBar;
+    bool bDone = false;
     double dFramesInSection;
     uint32_t nTicksInSection;
-    uint32_t nTicksFromStart   = 0;
+    uint32_t nTicksFromStart = 0;
 
-    position->tick             = position->frame % uint32_t(dFramesPerTick);
-    position->beat             = (uint32_t(position->frame / dFramesPerTick) % uint32_t(g_dTicksPerBeat)) + 1;
-    position->bar              = (uint32_t(position->frame / dFramesPerTick / g_dTicksPerBeat) % nBeatsPerBar) + 1;
-    position->beats_per_bar    = float(g_nBeatsPerBar);
+    position->tick = position->frame % uint32_t(dFramesPerTick);
+    position->beat = (uint32_t(position->frame / dFramesPerTick) % uint32_t(g_dTicksPerBeat)) + 1;
+    position->bar = (uint32_t(position->frame / dFramesPerTick / g_dTicksPerBeat) % nBeatsPerBar) + 1;
+    position->beats_per_bar = float(g_nBeatsPerBar);
     position->beats_per_minute = g_dTempo;
-    position->beat_type        = g_fBeatType;
-    position->ticks_per_beat   = g_dTicksPerBeat;
-    position->bar_start_tick   = 0; //!@todo Need to calculate this
+    position->beat_type = g_fBeatType;
+    position->ticks_per_beat = g_dTicksPerBeat;
+    position->bar_start_tick = 0; //!@todo Need to calculate this
     // g_pNextTimebaseEvent = g_pTimebase->getPreviousTimebaseEvent(position->bar, (position->beat - 1) * position->ticks_per_beat + position->tick  ,
     // TIMEBASE_TYPE_ANY);
 
@@ -193,16 +193,16 @@ void updateBBT(jack_position_t* position) {
     }
     */
     // Calculate BBT from last section
-    dFramesInSection           = position->frame - dFrames;
-    nTicksInSection            = dFramesInSection / dFramesPerTick;
-    uint32_t nBarsInSection    = nTicksInSection / nTicksPerBar;
-    position->bar              = nBar + nBarsInSection + 1;
-    uint32_t nTicksInLastBar   = nTicksInSection % nTicksPerBar;
-    position->beat             = nTicksInLastBar / g_dTicksPerBeat + 1;
-    position->tick             = nTicksInLastBar % position->beat;
+    dFramesInSection = position->frame - dFrames;
+    nTicksInSection = dFramesInSection / dFramesPerTick;
+    uint32_t nBarsInSection = nTicksInSection / nTicksPerBar;
+    position->bar = nBar + nBarsInSection + 1;
+    uint32_t nTicksInLastBar = nTicksInSection % nTicksPerBar;
+    position->beat = nTicksInLastBar / g_dTicksPerBeat + 1;
+    position->tick = nTicksInLastBar % position->beat;
     nTicksFromStart += nTicksInSection;
     position->bar_start_tick = nTicksFromStart - nTicksInLastBar;
-    g_nClock                 = position->tick % (uint32_t)g_dTicksPerClock;
+    g_nClock = position->tick % (uint32_t)g_dTicksPerClock;
     // g_dTempo = g_pTimebase->getTempo(g_nBar, (g_nBeat * g_dTicksPerBeat + g_nTick) / g_dTicksPerClock);
     // g_nBeatsPerBar = uint32_t(g_pTimebase->getTimeSig(g_nBar, (g_nBeat * g_dTicksPerBeat + g_nTick) / g_dTicksPerClock)) >> 8;
 }
@@ -269,14 +269,14 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
             pPosition->beat += pPosition->tick / (uint32_t)pPosition->ticks_per_beat;
             pPosition->tick %= (uint32_t)(pPosition->ticks_per_beat);
             pPosition->bar += (pPosition->beat - 1) / pPosition->beats_per_bar;
-            pPosition->beat             = ((pPosition->beat - 1) % (uint32_t)(pPosition->beats_per_bar)) + 1;
-            pPosition->frame            = transportGetLocation(pPosition->bar, pPosition->beat, pPosition->tick);
-            pPosition->ticks_per_beat   = g_dTicksPerBeat;
+            pPosition->beat = ((pPosition->beat - 1) % (uint32_t)(pPosition->beats_per_bar)) + 1;
+            pPosition->frame = transportGetLocation(pPosition->bar, pPosition->beat, pPosition->tick);
+            pPosition->ticks_per_beat = g_dTicksPerBeat;
             pPosition->beats_per_minute = g_dTempo; //!@todo Need to set tempo from position pointer to allow external clients to set tempo
-            g_nClock                    = pPosition->tick / g_dTicksPerClock;
-            g_nBar                      = pPosition->bar;
-            g_nBeat                     = pPosition->beat;
-            g_nTick                     = pPosition->tick;
+            g_nClock = pPosition->tick / g_dTicksPerClock;
+            g_nBar = pPosition->bar;
+            g_nBeat = pPosition->beat;
+            g_nTick = pPosition->tick;
             DPRINTF("Set position from BBT Bar: %u Beat: %u Tick: %u Clock: %u\n", pPosition->bar, pPosition->beat, pPosition->tick, g_nClock);
         } else // if(!bUpdate) //!@todo I have masked bUpdate because I don't see why we would be reaching here but we do and need to figure out why
         {
@@ -284,9 +284,9 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
             DPRINTF("Set position from frame %u\n", pPosition->frame);
         }
         g_nTransportStartFrame = jack_frame_time(g_pJackClient) - pPosition->frame; //!@todo This isn't setting to transport start position
-        pPosition->valid       = JackPositionBBT;
-        g_dFramesPerClock      = getFramesPerClock(g_dTempo);
-        g_bTimebaseChanged     = false;
+        pPosition->valid = JackPositionBBT;
+        g_dFramesPerClock = getFramesPerClock(g_dTempo);
+        g_bTimebaseChanged = false;
         DPRINTF("New position: Jack frame: %u Frame: %u Bar: %u Beat: %u Tick: %u Clock: %u\n", g_nTransportStartFrame, pPosition->frame, pPosition->bar,
                 pPosition->beat, pPosition->tick, g_nClock);
         //!@todo Check impact of timebase discontinuity
@@ -294,13 +294,13 @@ void onJackTimebase(jack_transport_state_t nState, jack_nframes_t nFramesInPerio
         // DPRINTF("Update position with values from previous period Jack frame: %u Frame: %u Bar: %u Beat: %u Tick: %u Clock: %u\n", g_nTransportStartFrame,
         // pPosition->frame, pPosition->bar, pPosition->beat, pPosition->tick, g_nClock);
         //  Set BBT values calculated during previous period
-        pPosition->bar              = g_nBar;
-        pPosition->beat             = g_nBeat;
-        pPosition->tick             = g_nTick % (uint32_t)g_dTicksPerBeat;
-        pPosition->bar_start_tick   = g_dBarStartTick;
-        pPosition->beats_per_bar    = float(g_nBeatsPerBar);
-        pPosition->beat_type        = g_fBeatType;
-        pPosition->ticks_per_beat   = g_dTicksPerBeat;
+        pPosition->bar = g_nBar;
+        pPosition->beat = g_nBeat;
+        pPosition->tick = g_nTick % (uint32_t)g_dTicksPerBeat;
+        pPosition->bar_start_tick = g_dBarStartTick;
+        pPosition->beats_per_bar = float(g_nBeatsPerBar);
+        pPosition->beat_type = g_fBeatType;
+        pPosition->ticks_per_beat = g_dTicksPerBeat;
         pPosition->beats_per_minute = g_dTempo;
         // Loop frame if not playing song
         //        if(!g_nBeat && isSongPlaying())
@@ -338,8 +338,8 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     void* pOutputBuffer = jack_port_get_buffer(g_pOutputPort, nFrames);
     unsigned char* pBuffer;
     jack_midi_clear_buffer(pOutputBuffer);
-    jack_nframes_t nNow                        = jack_last_frame_time(g_pJackClient);
-    jack_transport_state_t nState              = jack_transport_query(g_pJackClient, &transportPosition);
+    jack_nframes_t nNow = jack_last_frame_time(g_pJackClient);
+    jack_transport_state_t nState = jack_transport_query(g_pJackClient, &transportPosition);
 
     jack_default_audio_sample_t* pOutMetronome = (jack_default_audio_sample_t*)jack_port_get_buffer(g_pMetronomePort, nFrames);
     memset(pOutMetronome, 0, sizeof(jack_default_audio_sample_t) * nFrames);
@@ -367,11 +367,11 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             case MIDI_CONTINUE:
                 if (nState != JackTransportRolling)
                     transportStart("zynseq");
-                nState   = JackTransportRolling;
+                nState = JackTransportRolling;
                 g_nClock = 0;
                 g_nMidiClock == 0;
                 nLastBeatFrame = 0;
-                g_nBeat        = 1; //!@todo This should be reset with START, not CONTINUE but currently used for bar sync
+                g_nBeat = 1; //!@todo This should be reset with START, not CONTINUE but currently used for bar sync
                 break;
             case MIDI_CLOCK:
                 if (g_nClockSource & TRANSPORT_CLOCK_MIDI) {
@@ -412,9 +412,9 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
 
         // Handle MIDI events for programming patterns from MIDI input
         if (bPatternRecording) {
-            uint32_t nStep     = getPatternPlayhead();
+            uint32_t nStep = getPatternPlayhead();
             uint8_t nPlayState = g_seqMan.getSequence(g_nBank, g_nSequence)->getPlayState();
-			uint8_t nCommand = midiEvent.buffer[0] & 0xF0;
+            uint8_t nCommand = midiEvent.buffer[0] & 0xF0;
 
             // Real Time Capture (while playing)
             if (nPlayState) {
@@ -423,7 +423,8 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     startEvents[midiEvent.buffer[1]].start = nStep;
                     startEvents[midiEvent.buffer[1]].velocity = midiEvent.buffer[2];
                     // Calculate clock position offset, in steps (from 0.0 to 1.0)
-                    float offset = double(g_seqMan.getSequence(g_nBank, g_nSequence)->getPlayPosition()) / double(g_pPattern->getClocksPerStep()) - double(nStep);
+                    float offset =
+                        double(g_seqMan.getSequence(g_nBank, g_nSequence)->getPlayPosition()) / double(g_pPattern->getClocksPerStep()) - double(nStep);
                     // Subtract latency delay
                     offset -= double(nFrames) / double(g_pPattern->getClocksPerStep() * g_dFramesPerClock);
                     // Add event offset relative to last clock
@@ -445,35 +446,36 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 // Note off event
                 else if ((nCommand == MIDI_NOTE_ON && midiEvent.buffer[2] == 0) || nCommand == MIDI_NOTE_OFF) {
                     if (startEvents[midiEvent.buffer[1]].start != -1) {
-                        double dDur = double(g_seqMan.getSequence(g_nBank, g_nSequence)->getPlayPosition()) - startEvents[midiEvent.buffer[1]].start * g_pPattern->getClocksPerStep();
+                        double dDur = double(g_seqMan.getSequence(g_nBank, g_nSequence)->getPlayPosition()) -
+                                      startEvents[midiEvent.buffer[1]].start * g_pPattern->getClocksPerStep();
                         if (dDur < 1.0)
                             dDur = g_pPattern->getLength() + dDur;
                         g_pPattern->addNote(startEvents[midiEvent.buffer[1]].start, midiEvent.buffer[1], startEvents[midiEvent.buffer[1]].velocity,
-                                          dDur / g_pPattern->getClocksPerStep(), startEvents[midiEvent.buffer[1]].offset);
+                                            dDur / g_pPattern->getClocksPerStep(), startEvents[midiEvent.buffer[1]].offset);
                         startEvents[midiEvent.buffer[1]].start = -1;
                         setPatternModified(g_pPattern, true, false);
                     }
                 }
                 // CC event
                 else if (nCommand == MIDI_CONTROL) {
-	                // Manage sustain pedal (CC64)
-    	            if (midiEvent.buffer[1] == 64) {
-                    	if (midiEvent.buffer[2] > 0 && g_nSustainValue == 0) {
-                        	g_nSustainValue = midiEvent.buffer[2];
-                        	g_nSustainStart = nStep;
-                           // Remove old pedals => "Overdubbing" sustain pedal is a mess!
-                          g_pPattern->removeControlInterval(0, g_pPattern->getSteps()-1, 64);
-                        	// Add pedal press
+                    // Manage sustain pedal (CC64)
+                    if (midiEvent.buffer[1] == 64) {
+                        if (midiEvent.buffer[2] > 0 && g_nSustainValue == 0) {
+                            g_nSustainValue = midiEvent.buffer[2];
+                            g_nSustainStart = nStep;
+                            // Remove old pedals => "Overdubbing" sustain pedal is a mess!
+                            g_pPattern->removeControlInterval(0, g_pPattern->getSteps() - 1, 64);
+                            // Add pedal press
                             g_pPattern->addControl(g_nSustainStart, 64, g_nSustainValue, g_nSustainValue);
-                    	} else if (midiEvent.buffer[2] == 0) {
-                        	if (g_nSustainValue > 0) {
-								// Add pedal release
-                              g_pPattern->addControl(nStep, 64, 0, 0);
-							}
-                        	g_nSustainValue = 0;
-                    	}
-                    	// else => Other cases must be bouncing or pedal "artifacts" that we ignore
-                    // Manage rest of CCs
+                        } else if (midiEvent.buffer[2] == 0) {
+                            if (g_nSustainValue > 0) {
+                                // Add pedal release
+                                g_pPattern->addControl(nStep, 64, 0, 0);
+                            }
+                            g_nSustainValue = 0;
+                        }
+                        // else => Other cases must be bouncing or pedal "artifacts" that we ignore
+                        // Manage rest of CCs
                     } else {
                         g_pPattern->addControl(nStep, (uint8_t)midiEvent.buffer[1], (uint8_t)midiEvent.buffer[2], (uint8_t)midiEvent.buffer[2]);
                         setPatternModified(g_pPattern, true, false);
@@ -489,7 +491,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                         g_nSustainValue = midiEvent.buffer[2];
                     else {
                         g_nSustainValue = 0;
-                        bAdvance   = true;
+                        bAdvance = true;
                     }
                 }
                 // Note on event
@@ -517,9 +519,9 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         }
     }
 
-	// Reset pedal if pattern recording is off
-	if (!bPatternRecording && g_nSustainValue > 0) {
-		g_nSustainValue = 0;
+    // Reset pedal if pattern recording is off
+    if (!bPatternRecording && g_nSustainValue > 0) {
+        g_nSustainValue = 0;
     }
 
     // Send MIDI output aligned with first sample of frame resulting in similar latency to audio
@@ -527,8 +529,8 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
 
     // Iterate through clocks in this period, adding any events and handling any timebase changes
     if (nState == JackTransportRolling) {
-        bool bSync                  = false; // True if at start of bar
-        jack_nframes_t nClockOffset = 0;     // Position within this period that clock 0 occurs
+        bool bSync = false;              // True if at start of bar
+        jack_nframes_t nClockOffset = 0; // Position within this period that clock 0 occurs
         if (g_nClockSource & TRANSPORT_CLOCK_INTERNAL && g_qClockPos.empty())
             g_qClockPos.push(std::pair<double, double>(
                 nNow, g_dFramesPerClock)); // There should always be a clock scheduled for internal clock source when transport is rolling
@@ -536,11 +538,11 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             bSync = false;
             if (g_nClock == 0) {
                 // Clock zero so on beat
-                bSync           = (g_nBeat == 1);
-                g_nTick         = 0; //!@todo ticks are not updated under normal rolling condition
-                g_pMetro        = bSync ? &g_metro_peep : &g_metro_pip;
+                bSync = (g_nBeat == 1);
+                g_nTick = 0; //!@todo ticks are not updated under normal rolling condition
+                g_pMetro = bSync ? &g_metro_peep : &g_metro_pip;
                 g_nMetronomePtr = 0;
-                nClockOffset    = g_qClockPos.front().first - nNow;
+                nClockOffset = g_qClockPos.front().first - nNow;
             }
             // Schedule events in next period
             // Pass clock time and schedule to pattern manager so it can populate with events. Pass sync pulse so that it can synchronise its sequences, e.g.
@@ -610,7 +612,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         auto it = g_mSchedule.begin();
         jack_nframes_t nTime = 0;
         while (it != g_mSchedule.end()) {
-        	bool bSkip = false;
+            bool bSkip = false;
             if (it->first >= nNow + nFrames)
                 break; // Event scheduled beyond this buffer
             if (it->first < nNow) {
@@ -631,32 +633,32 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     if (nType < 0xF0)
                         nType &= 0xF0;
                     switch (nType) {
-                    	case MIDI_PROGRAM:
-                    	case MIDI_CHAN_PRESSURE:
-                    	case MIDI_TIMECODE:
-                    	case MIDI_SONG:
-                        	nSize = 2;
-                        	break;
-                        case MIDI_CONTROL:
-                        	// Skip sustain events if recording and sustain is pressed
-                        	if (it->second->value1 == 64 && g_nSustainValue > 0)
-                        		bSkip = true;
-                        	nSize = 3;
-                    	default:
-                        	nSize = 3;
+                    case MIDI_PROGRAM:
+                    case MIDI_CHAN_PRESSURE:
+                    case MIDI_TIMECODE:
+                    case MIDI_SONG:
+                        nSize = 2;
+                        break;
+                    case MIDI_CONTROL:
+                        // Skip sustain events if recording and sustain is pressed
+                        if (it->second->value1 == 64 && g_nSustainValue > 0)
+                            bSkip = true;
+                        nSize = 3;
+                    default:
+                        nSize = 3;
                     }
                 }
                 if (!bSkip) {
-					pBuffer = jack_midi_event_reserve(pOutputBuffer, nTime, nSize);
-					if (pBuffer == NULL)
-						break; // Exceeded buffer size (or other issue)
-					pBuffer[0] = it->second->command;
-					if (nSize > 1)
-						pBuffer[1] = it->second->value1;
-					if (nSize > 2)
-						pBuffer[2] = it->second->value2;
-					DPRINTF("Sending MIDI event %d,%d,%d at %u\n", pBuffer[0], pBuffer[1], pBuffer[2], nNow + nTime);
-				}
+                    pBuffer = jack_midi_event_reserve(pOutputBuffer, nTime, nSize);
+                    if (pBuffer == NULL)
+                        break; // Exceeded buffer size (or other issue)
+                    pBuffer[0] = it->second->command;
+                    if (nSize > 1)
+                        pBuffer[1] = it->second->value1;
+                    if (nSize > 2)
+                        pBuffer[2] = it->second->value2;
+                    DPRINTF("Sending MIDI event %d,%d,%d at %u\n", pBuffer[0], pBuffer[1], pBuffer[2], nNow + nTime);
+                }
                 delete it->second;
                 it->second = NULL;
             }
@@ -672,7 +674,7 @@ int onJackSampleRateChange(jack_nframes_t nFrames, void* pArgs) {
     DPRINTF("zynseq: Jack sample rate: %u\n", nFrames);
     if (nFrames == 0)
         return 0;
-    g_nSampleRate     = nFrames;
+    g_nSampleRate = nFrames;
     g_dFramesPerClock = getFramesPerClock(g_dTempo);
     return 0;
 }
@@ -698,8 +700,8 @@ __attribute__((constructor)) void zynseq(void) { fprintf(stderr, "Started libzyn
 void init(char* name) {
     //!@todo Invalid name triggers seg fault
 
-    g_metro_pip.data  = metronome_pip;
-    g_metro_pip.size  = sizeof(metronome_pip) / sizeof(float);
+    g_metro_pip.data = metronome_pip;
+    g_metro_pip.size = sizeof(metronome_pip) / sizeof(float);
     g_metro_peep.data = metronome_peep;
     g_metro_peep.size = sizeof(metronome_peep) / sizeof(float);
 
@@ -737,7 +739,7 @@ void init(char* name) {
         return;
     }
 
-    g_nSampleRate     = jack_get_sample_rate(g_pJackClient);
+    g_nSampleRate = jack_get_sample_rate(g_pJackClient);
     g_dFramesPerClock = getFramesPerClock(g_dTempo);
 
     // Register JACK callbacks
@@ -778,10 +780,10 @@ int fileWrite16(uint16_t value, FILE* pFile) {
 }
 
 int fileWriteBCD(float v, FILE* f) {
-    uint16_t nUnits   = uint16_t(v);
+    uint16_t nUnits = uint16_t(v);
     uint16_t nDecimal = uint16_t((v - nUnits) * 10000);
-    int nPos          = fileWrite16(nDecimal, f); // fractional (BCD)
-    nPos += fileWrite16(nUnits, f);               // integral (BCD)
+    int nPos = fileWrite16(nDecimal, f); // fractional (BCD)
+    nPos += fileWrite16(nUnits, f);      // integral (BCD)
     return nPos;
 }
 
@@ -849,7 +851,7 @@ bool load(const char* filename) {
                 DPRINTF("Unsupported sequence file version %d. Not loading file.\n", nVersion);
                 return false;
             }
-            g_dTempo       = fileRead16(pFile);
+            g_dTempo = fileRead16(pFile);
             if (nVersion > 10)
                 g_dTempo /= 100;
             g_nBeatsPerBar = fileRead16(pFile);
@@ -857,7 +859,7 @@ bool load(const char* filename) {
             g_seqMan.setTriggerDevice(fileRead8(pFile));
             fileRead8(pFile); //!@todo Set JACK output
             fileRead8(pFile); // padding
-            g_nVerticalZoom   = fileRead16(pFile);
+            g_nVerticalZoom = fileRead16(pFile);
             g_nHorizontalZoom = fileRead16(pFile);
             // printf("Version:%u Tempo:%0.2lf Beats per bar:%u Zoom V:%u H:%u\n", nVersion, g_dTempo, g_nBeatsPerBar, g_nVerticalZoom, g_nHorizontalZoom);
         } else if (memcmp(sHeader, "patn", 4) == 0) {
@@ -913,24 +915,24 @@ bool load(const char* filename) {
                 uint32_t nStep = fileRead32(pFile);
                 float fDuration, fOffset;
                 if (nVersion > 8) {
-                    fOffset   = fileReadBCD(pFile);
+                    fOffset = fileReadBCD(pFile);
                     fDuration = fileReadBCD(pFile);
                     nBlockSize -= 4;
                 } else {
-                    fOffset   = 0;
+                    fOffset = 0;
                     fDuration = float(fileRead16(pFile)) / 100 + fileRead16(pFile); // fractional + integral (BCD)
                 }
-                uint8_t nCommand     = fileRead8(pFile);
+                uint8_t nCommand = fileRead8(pFile);
                 uint8_t nValue1start = fileRead8(pFile);
                 uint8_t nValue2start = fileRead8(pFile);
-                uint8_t nValue1end   = fileRead8(pFile);
-                uint8_t nValue2end   = fileRead8(pFile);
-                StepEvent* pEvent    = pPattern->addEvent(nStep, nCommand, nValue1start, nValue2start, fDuration, fOffset);
+                uint8_t nValue1end = fileRead8(pFile);
+                uint8_t nValue2end = fileRead8(pFile);
+                StepEvent* pEvent = pPattern->addEvent(nStep, nCommand, nValue1start, nValue2start, fDuration, fOffset);
                 pEvent->setValue1end(nValue1end);
                 pEvent->setValue2end(nValue2end);
                 if (nVersion > 7) {
                     uint8_t nStutterCount = fileRead8(pFile);
-                    uint8_t nStutterDur   = fileRead8(pFile);
+                    uint8_t nStutterDur = fileRead8(pFile);
                     pEvent->setStutterCount(nStutterCount);
                     pEvent->setStutterDur(nStutterDur);
                     nBlockSize -= 2;
@@ -966,33 +968,33 @@ bool load(const char* filename) {
                     pSequence->setPlayMode(fileRead16(pFile));
                 else {
                     switch (fileRead8(pFile)) {
-                        case 0:
-                            // DISABLED
-                            pSequence->setRepeat(0);
-                            break;
-                        case 1:
-                            // ONESHOT
-                            pSequence->setPlayMode(MODE_END_IMMEDIATE);
-                            break;
-                        case 2:
-                            // LOOP
-                            pSequence->setFollowAction(nBank, nSequence);
-                            break;
-                        case 3:
-                            // ONESHOTALL
-                            break;
-                        case 4:
-                            // LOOPALL
-                            pSequence->setFollowAction(nBank, nSequence);
-                            break;
-                        case 5:
-                            // ONESHOTSYNC
-                            pSequence->setPlayMode(MODE_END_SYNC);
-                            break;
-                        case 6:
-                            // LOOPSYNC
-                            pSequence->setFollowAction(nBank, nSequence);
-                            break;
+                    case 0:
+                        // DISABLED
+                        pSequence->setRepeat(0);
+                        break;
+                    case 1:
+                        // ONESHOT
+                        pSequence->setPlayMode(MODE_END_IMMEDIATE);
+                        break;
+                    case 2:
+                        // LOOP
+                        pSequence->setFollowAction(nBank, nSequence);
+                        break;
+                    case 3:
+                        // ONESHOTALL
+                        break;
+                    case 4:
+                        // LOOPALL
+                        pSequence->setFollowAction(nBank, nSequence);
+                        break;
+                    case 5:
+                        // ONESHOTSYNC
+                        pSequence->setPlayMode(MODE_END_SYNC);
+                        break;
+                    case 6:
+                        // LOOPSYNC
+                        pSequence->setFollowAction(nBank, nSequence);
+                        break;
                     }
                 }
                 pSequence->setGroup(fileRead8(pFile));
@@ -1040,7 +1042,7 @@ bool load(const char* filename) {
                     for (uint16_t nPattern = 0; nPattern < nPatterns; ++nPattern) {
                         if (checkBlock(pFile, nBlockSize, 8))
                             break;
-                        uint32_t nTime      = fileRead32(pFile);
+                        uint32_t nTime = fileRead32(pFile);
                         uint32_t nPatternId = fileRead32(pFile);
                         g_seqMan.addPattern(nBank, nSequence, nTrack, nTime, nPatternId, true);
                         nBlockSize -= 8;
@@ -1066,7 +1068,7 @@ bool load(const char* filename) {
     // printf("Ver: %d Loaded %lu patterns, %lu sequences, %lu banks from file %s\n", nVersion, m_mPatterns.size(), m_mSequences.size(), m_mBanks.size(),
     // filename);
     g_seqMan.setTimeSig(g_nBeatsPerBar);
-    g_bDirty    = false;
+    g_bDirty = false;
     selectPattern(1);
     return true;
 }
@@ -1150,24 +1152,24 @@ bool load_pattern(uint32_t nPattern, const char* filename) {
                 uint32_t nStep = fileRead32(pFile);
                 float fDuration, fOffset;
                 if (nVersion > 8) {
-                    fOffset   = fileReadBCD(pFile);
+                    fOffset = fileReadBCD(pFile);
                     fDuration = fileReadBCD(pFile);
                     nBlockSize -= 4;
                 } else {
-                    fOffset   = 0;
+                    fOffset = 0;
                     fDuration = float(fileRead16(pFile)) / 100 + fileRead16(pFile); // fractional + integral (BCD)
                 }
-                uint8_t nCommand     = fileRead8(pFile);
+                uint8_t nCommand = fileRead8(pFile);
                 uint8_t nValue1start = fileRead8(pFile);
                 uint8_t nValue2start = fileRead8(pFile);
-                uint8_t nValue1end   = fileRead8(pFile);
-                uint8_t nValue2end   = fileRead8(pFile);
-                StepEvent* pEvent    = pPattern->addEvent(nStep, nCommand, nValue1start, nValue2start, fDuration, fOffset);
+                uint8_t nValue1end = fileRead8(pFile);
+                uint8_t nValue2end = fileRead8(pFile);
+                StepEvent* pEvent = pPattern->addEvent(nStep, nCommand, nValue1start, nValue2start, fDuration, fOffset);
                 pEvent->setValue1end(nValue1end);
                 pEvent->setValue2end(nValue2end);
                 if (nVersion > 7) {
                     uint8_t nStutterCount = fileRead8(pFile);
-                    uint8_t nStutterDur   = fileRead8(pFile);
+                    uint8_t nStutterDur = fileRead8(pFile);
                     pEvent->setStutterCount(nStutterCount);
                     pEvent->setStutterDur(nStutterDur);
                     nBlockSize -= 2;
@@ -1194,7 +1196,7 @@ void save(const char* filename) {
     //!@todo Need to save / load ticks per beat (unless we always use 1920)
     FILE* pFile;
     int nPos = 0;
-    pFile    = fopen(filename, "w");
+    pFile = fopen(filename, "w");
     if (pFile == NULL) {
         fprintf(stderr, "ERROR: SequenceManager failed to open file %s\n", filename);
         return;
@@ -1202,10 +1204,10 @@ void save(const char* filename) {
     uint32_t nBlockSize;
     fwrite("vers", 4, 1, pFile); // IFF block name
     nPos += 4;
-    nPos += fileWrite32(16, pFile);                 // IFF block size
-    nPos += fileWrite32(FILE_VERSION, pFile);       // IFF block content
+    nPos += fileWrite32(16, pFile);           // IFF block size
+    nPos += fileWrite32(FILE_VERSION, pFile); // IFF block content
     nPos += fileWrite16(uint16_t(g_dTempo * 100), pFile);
-    nPos += fileWrite16(g_nBeatsPerBar, pFile);     //!@todo Write current beats per bar
+    nPos += fileWrite16(g_nBeatsPerBar, pFile); //!@todo Write current beats per bar
     nPos += fileWrite8(g_seqMan.getTriggerChannel(), pFile);
     nPos += fileWrite8(g_seqMan.getTriggerDevice(), pFile);
     nPos += fileWrite8('\0', pFile); // JACK output not yet implemented
@@ -1298,7 +1300,7 @@ void save(const char* filename) {
                     nPos += fileWrite16(pTrack->getPatterns(), pFile);
                     for (uint16_t nPattern = 0; nPattern < pTrack->getPatterns(); ++nPattern) {
                         nPos += fileWrite32(pTrack->getPatternPositionByIndex(nPattern), pFile);
-                        Pattern* pPattern   = pTrack->getPatternByIndex(nPattern);
+                        Pattern* pPattern = pTrack->getPatternByIndex(nPattern);
                         uint32_t nPatternId = g_seqMan.getPatternIndex(pPattern);
                         nPos += fileWrite32(nPatternId, pFile);
                     }
@@ -1344,7 +1346,7 @@ void save_pattern(uint32_t nPattern, const char* filename) {
 
     FILE* pFile;
     int nPos = 0;
-    pFile    = fopen(filename, "w");
+    pFile = fopen(filename, "w");
     if (pFile == NULL) {
         fprintf(stderr, "ERROR: SequenceManager failed to open file %s\n", filename);
         return;
@@ -1412,7 +1414,7 @@ void resetPatternSnapshots() {
 }
 
 bool undoPattern() {
-    if(g_pPattern)
+    if (g_pPattern)
         return g_pPattern->undo();
     return false;
 }
@@ -1473,9 +1475,9 @@ void sendMidiMsg(MIDI_MESSAGE* pMsg) {
 void noteOffTimer(uint8_t note, uint8_t channel, uint32_t duration) {
     std::this_thread::sleep_for(std::chrono::milliseconds(duration));
     MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
-    pMsg->command      = MIDI_NOTE_OFF | (channel & 0x0F);
-    pMsg->value1       = note;
-    pMsg->value2       = 0;
+    pMsg->command = MIDI_NOTE_OFF | (channel & 0x0F);
+    pMsg->value1 = note;
+    pMsg->value2 = 0;
     sendMidiMsg(pMsg);
 }
 
@@ -1483,9 +1485,9 @@ void playNote(uint8_t note, uint8_t velocity, uint8_t channel, uint32_t duration
     if (note > 127 || velocity > 127 || channel > 15 || duration > 60000)
         return;
     MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
-    pMsg->command      = MIDI_NOTE_ON | channel;
-    pMsg->value1       = note;
-    pMsg->value2       = velocity;
+    pMsg->command = MIDI_NOTE_ON | channel;
+    pMsg->value1 = note;
+    pMsg->value2 = velocity;
     sendMidiMsg(pMsg);
     if (duration) {
         std::thread noteOffThread(noteOffTimer, note, channel, duration);
@@ -1497,28 +1499,28 @@ void playNote(uint8_t note, uint8_t velocity, uint8_t channel, uint32_t duration
 
 void sendMidiStart() {
     MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
-    pMsg->command      = MIDI_START;
+    pMsg->command = MIDI_START;
     sendMidiMsg(pMsg);
     DPRINTF("Sending MIDI Start... does it get recieved back???\n");
 }
 
 void sendMidiStop() {
     MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
-    pMsg->command      = MIDI_STOP;
+    pMsg->command = MIDI_STOP;
     sendMidiMsg(pMsg);
 }
 
 void sendMidiContinue() {
     MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
-    pMsg->command      = MIDI_CONTINUE;
+    pMsg->command = MIDI_CONTINUE;
     sendMidiMsg(pMsg);
 }
 
 void sendMidiSongPos(uint16_t pos) {
     MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
-    pMsg->command      = MIDI_POSITION;
-    pMsg->value1       = pos & 0x7F;
-    pMsg->value2       = (pos >> 7) & 0x7F;
+    pMsg->command = MIDI_POSITION;
+    pMsg->value1 = pos & 0x7F;
+    pMsg->value2 = (pos >> 7) & 0x7F;
     sendMidiMsg(pMsg);
 }
 
@@ -1526,22 +1528,22 @@ void sendMidiSong(uint32_t pos) {
     if (pos > 127)
         return;
     MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
-    pMsg->command      = MIDI_SONG;
-    pMsg->value1       = pos & 0x7F;
+    pMsg->command = MIDI_SONG;
+    pMsg->value1 = pos & 0x7F;
     sendMidiMsg(pMsg);
 }
 
 void sendMidiClock() {
     MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
-    pMsg->command      = MIDI_CLOCK;
+    pMsg->command = MIDI_CLOCK;
     sendMidiMsg(pMsg);
 }
 
 void sendMidiCommand(uint8_t status, uint8_t value1, uint8_t value2) {
     MIDI_MESSAGE* pMsg = new MIDI_MESSAGE;
-    pMsg->command      = status;
-    pMsg->value1       = value1;
-    pMsg->value2       = value2;
+    pMsg->command = status;
+    pMsg->value1 = value1;
+    pMsg->value2 = value2;
     sendMidiMsg(pMsg);
 }
 
@@ -1595,26 +1597,18 @@ bool isMuted(uint8_t bank, uint8_t sequence, uint32_t track) {
     return false;
 }
 
-void enableMidiRecord(bool enable) {
-    g_bMidiRecord = enable;
-}
+void enableMidiRecord(bool enable) { g_bMidiRecord = enable; }
 
-bool isMidiRecord() {
-    return g_bMidiRecord;
-}
+bool isMidiRecord() { return g_bMidiRecord; }
 
 bool isPatternEmpty(uint32_t pattern) {
     Pattern* pPattern = g_seqMan.getPattern(pattern);
     return pPattern->getEventAt(0) == NULL;
 }
 
-void selectPattern(uint32_t pattern) {
-    g_pPattern = g_seqMan.getPattern(pattern);
-}
+void selectPattern(uint32_t pattern) { g_pPattern = g_seqMan.getPattern(pattern); }
 
-uint32_t getPatternIndex() {
-    return g_seqMan.getPatternIndex(g_pPattern);
-}
+uint32_t getPatternIndex() { return g_seqMan.getPatternIndex(g_pPattern); }
 
 uint32_t getSteps() {
     if (g_pPattern)
@@ -1968,7 +1962,7 @@ void setScale(uint32_t scale) {
     if (g_pPattern) {
         if (scale != g_pPattern->getScale())
             g_bDirty = true;
-            g_pPattern->setScale(scale);
+        g_pPattern->setScale(scale);
     }
 }
 
@@ -2010,12 +2004,10 @@ void setInputRest(uint8_t note) {
     if (note > 127)
         g_nInputRest = 0xFF;
     g_nInputRest = note;
-    g_bDirty     = true;
+    g_bDirty = true;
 }
 
-uint8_t getInputRest() {
-    return g_nInputRest;
-}
+uint8_t getInputRest() { return g_nInputRest; }
 
 bool isPatternModified() {
     if (g_bPatternModified) {
@@ -2109,7 +2101,7 @@ uint32_t getPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t pos
 
 uint32_t getPatternAt(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position) {
     Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
-    Track* pTrack       = pSequence->getTrack(track);
+    Track* pTrack = pSequence->getTrack(track);
     if (!pTrack)
         return -1;
     Pattern* pPattern = pTrack->getPatternAt(position);
@@ -2131,26 +2123,18 @@ void setPlayMode(uint8_t bank, uint8_t sequence, uint16_t mode) {
         g_bDirty = true;
 }
 
-uint8_t getPlayState(uint8_t bank, uint8_t sequence) {
-    return g_seqMan.getSequence(bank, sequence)->getPlayState();
-}
+uint8_t getPlayState(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->getPlayState(); }
 
-void setRepeat(uint8_t bank, uint8_t sequence, uint8_t repeat) {
-    g_seqMan.getSequence(bank, sequence)->setRepeat(repeat);
-}
+void setRepeat(uint8_t bank, uint8_t sequence, uint8_t repeat) { g_seqMan.getSequence(bank, sequence)->setRepeat(repeat); }
 
-uint8_t getRepeat(uint8_t bank, uint8_t sequence) {
-    return g_seqMan.getSequence(bank, sequence)->getRepeat();
-}
+uint8_t getRepeat(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->getRepeat(); }
 
 void setSequence(uint8_t bank, uint8_t sequence) {
     g_nBank = bank;
     g_nSequence = sequence;
 }
 
-bool isEmpty(uint8_t bank, uint8_t sequence) {
-    return g_seqMan.getSequence(bank, sequence)->isEmpty();
-}
+bool isEmpty(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->isEmpty(); }
 
 void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state) {
     if (transportGetPlayStatus() != JackTransportRolling) {
@@ -2202,25 +2186,23 @@ void togglePlayState(uint8_t bank, uint8_t sequence) {
         return; // Disabled
     uint8_t nState = pSequence->getPlayState();
     switch (nState) {
-        case STOPPED:
-            nState = STARTING;
-            break;
-        case STARTING:
-            nState = STOPPED;
-            break;
-        case PLAYING:
-            nState = STOPPING;
-            break;
-        case STOPPING:
-            nState = PLAYING;
-            break;
+    case STOPPED:
+        nState = STARTING;
+        break;
+    case STARTING:
+        nState = STOPPED;
+        break;
+    case PLAYING:
+        nState = STOPPING;
+        break;
+    case STOPPING:
+        nState = PLAYING;
+        break;
     }
     setPlayState(bank, sequence, nState);
 }
 
-uint32_t getSequenceState(uint8_t bank, uint8_t sequence) {
-    return g_seqMan.getSequence(bank, sequence)->getState();
-}
+uint32_t getSequenceState(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->getState(); }
 
 uint8_t getStateChange(uint8_t bank, uint8_t start, uint8_t end, uint32_t* states) {
     uint8_t count = 0;
@@ -2262,17 +2244,11 @@ void clearSequence(uint8_t bank, uint8_t sequence) {
     g_bDirty = true;
 }
 
-size_t getPlayingSequences() {
-    return g_nPlayingSequences;
-}
+size_t getPlayingSequences() { return g_nPlayingSequences; }
 
-uint32_t getSequencesInBank(uint32_t bank) {
-    return g_seqMan.getSequencesInBank(bank);
-}
+uint32_t getSequencesInBank(uint32_t bank) { return g_seqMan.getSequencesInBank(bank); }
 
-void clearBank(uint32_t bank) {
-    g_seqMan.clearBank(bank);
-}
+void clearBank(uint32_t bank) { g_seqMan.clearBank(bank); }
 
 // ** Sequence management functions **
 
@@ -2339,13 +2315,9 @@ void setFollowAction(uint8_t bank, uint8_t sequence, uint8_t nextBank, uint8_t n
     g_bDirty = true;
 }
 
-uint16_t getFollowAction(uint8_t bank, uint8_t sequence) {
-    return g_seqMan.getSequence(bank, sequence)->getFollowAction();
-}
+uint16_t getFollowAction(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->getFollowAction(); }
 
-void removeSequence(uint8_t bank, uint8_t sequence) {
-    g_seqMan.removeSequence(bank, sequence);
-}
+void removeSequence(uint8_t bank, uint8_t sequence) { g_seqMan.removeSequence(bank, sequence); }
 
 void updateSequenceInfo() { g_seqMan.updateAllSequenceLengths(); }
 
@@ -2360,7 +2332,7 @@ uint32_t getPatternsInTrack(uint8_t bank, uint8_t sequence, uint32_t track) {
 
 void setTrackType(uint8_t bank, uint8_t sequence, uint32_t track, uint8_t type) {
     Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
-    Track* pTrack       = pSequence->getTrack(track);
+    Track* pTrack = pSequence->getTrack(track);
     if (!pTrack)
         return;
     pTrack->setType(type);
@@ -2377,7 +2349,7 @@ uint8_t getTrackType(uint8_t bank, uint8_t sequence, uint32_t track) {
 
 void setChainID(uint8_t bank, uint8_t sequence, uint32_t track, uint8_t chain_id) {
     Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
-    Track* pTrack       = pSequence->getTrack(track);
+    Track* pTrack = pSequence->getTrack(track);
     if (!pTrack)
         return;
     pTrack->setChainID(chain_id);
@@ -2445,13 +2417,13 @@ jack_nframes_t transportGetLocation(uint32_t bar, uint32_t beat, uint32_t tick) 
         --bar;
     if (beat > 0)
         --beat;
-    uint32_t nTicksToPrev  = 0;
+    uint32_t nTicksToPrev = 0;
     uint32_t nTicksToEvent = 0;
-    uint32_t nTicksPerBar  = g_dTicksPerBeat * g_nBeatsPerBar;
+    uint32_t nTicksPerBar = g_dTicksPerBeat * g_nBeatsPerBar;
     //!@todo Handle changes in tempo and time signature
     //    double dFramesPerTick = getFramesPerTick(DEFAULT_TEMPO);
-    double dFramesPerTick  = getFramesPerTick(g_dTempo);
-    double dFrames         = 0; // Frames to position
+    double dFramesPerTick = getFramesPerTick(g_dTempo);
+    double dFrames = 0; // Frames to position
     /*
     if(g_pTimebase)
     {
@@ -2552,7 +2524,7 @@ uint32_t getBeatsPerBar() { return g_nBeatsPerBar; }
 void transportSetSyncTimeout(uint32_t timeout) { jack_set_sync_timeout(g_pJackClient, timeout); }
 
 void enableMetronome(bool enable) {
-    g_bMetronome    = enable;
+    g_bMetronome = enable;
     g_nMetronomePtr = -1;
 }
 

@@ -26,18 +26,18 @@ Pattern& Pattern::operator=(Pattern& p) {
     clear();
     m_nBeats = p.getBeatsInPattern();
     setStepsPerBeat(p.getStepsPerBeat());
-    m_nScale         = p.m_nScale;
-    m_nTonic         = p.m_nTonic;
-    m_nRefNote       = p.m_nRefNote;
+    m_nScale = p.m_nScale;
+    m_nTonic = p.m_nTonic;
+    m_nRefNote = p.m_nRefNote;
     m_bQuantizeNotes = p.m_bQuantizeNotes;
-    m_nSwingDiv      = p.m_nSwingDiv;
-    m_fSwingAmount   = p.m_fSwingAmount;
-    m_fHumanTime     = p.m_fHumanTime;
-    m_fHumanVelo     = p.m_fHumanVelo;
-    m_fPlayChance    = p.m_fPlayChance;
-    m_nZoom          = p.m_nZoom;
+    m_nSwingDiv = p.m_nSwingDiv;
+    m_fSwingAmount = p.m_fSwingAmount;
+    m_fHumanTime = p.m_fHumanTime;
+    m_fHumanVelo = p.m_fHumanVelo;
+    m_fPlayChance = p.m_fPlayChance;
+    m_nZoom = p.m_nZoom;
     // Copy Events
-    uint32_t i       = 0;
+    uint32_t i = 0;
     while (StepEvent* ev = p.getEventAt(i)) {
         addEvent(ev);
         i++;
@@ -49,19 +49,19 @@ Pattern& Pattern::operator=(Pattern& p) {
 StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1, uint8_t value2, float duration, float offset) {
     // Delete overlapping events
     uint8_t nStutterCount = 0;
-    uint8_t nStutterDur   = 1;
-    uint8_t nFirstNote    = 0;
+    uint8_t nStutterDur = 1;
+    uint8_t nFirstNote = 0;
     for (auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it) {
         uint32_t nEventStart = position;
-        float fEventEnd      = nEventStart + duration;
+        float fEventEnd = nEventStart + duration;
         uint32_t nCheckStart = (*it)->getPosition();
-        float fCheckEnd      = nCheckStart + (*it)->getDuration();
-        bool bOverlap        = (nCheckStart >= nEventStart && nCheckStart < fEventEnd) || (fCheckEnd > nEventStart && fCheckEnd <= fEventEnd);
+        float fCheckEnd = nCheckStart + (*it)->getDuration();
+        bool bOverlap = (nCheckStart >= nEventStart && nCheckStart < fEventEnd) || (fCheckEnd > nEventStart && fCheckEnd <= fEventEnd);
         if (bOverlap && (*it)->getCommand() == command && (*it)->getValue1start() == value1) {
             if (!nFirstNote) {
                 nStutterCount = (*it)->getStutterCount();
-                nStutterDur   = (*it)->getStutterDur();
-                nFirstNote    = 1;
+                nStutterDur = (*it)->getStutterDur();
+                nFirstNote = 1;
             }
             delete *it;
             it = m_vEvents.erase(it) - 1;
@@ -70,7 +70,7 @@ StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1,
         }
     }
     uint32_t nTime = position % (m_nBeats * m_nStepsPerBeat);
-    auto it        = m_vEvents.begin();
+    auto it = m_vEvents.begin();
     for (; it != m_vEvents.end(); ++it) {
         if ((*it)->getPosition() > position)
             break;
@@ -82,7 +82,8 @@ StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1,
 }
 
 StepEvent* Pattern::addEvent(StepEvent* pEvent) {
-    StepEvent* sev = addEvent(pEvent->getPosition(), pEvent->getCommand(), pEvent->getValue1start(), pEvent->getValue2start(), pEvent->getDuration(), pEvent->getOffset());
+    StepEvent* sev =
+        addEvent(pEvent->getPosition(), pEvent->getCommand(), pEvent->getValue1start(), pEvent->getValue2start(), pEvent->getDuration(), pEvent->getOffset());
     sev->setValue1end(pEvent->getValue1end());
     sev->setValue2end(pEvent->getValue2end());
     sev->setStutterCount(pEvent->getStutterCount());
@@ -277,14 +278,14 @@ void Pattern::removeControl(uint32_t step, uint8_t control) { deleteEvent(step, 
 void Pattern::removeControlInterval(uint32_t stepFrom, uint32_t stepTo, uint8_t control) {
     uint32_t step;
     if (stepTo >= stepFrom) {
-        for (step=stepFrom; step<=stepTo; step++) {
+        for (step = stepFrom; step <= stepTo; step++) {
             deleteEvent(step, MIDI_CONTROL, control);
         }
     } else {
-        for (step=0; step<=stepTo; step++) {
-        deleteEvent(step, MIDI_CONTROL, control);
+        for (step = 0; step <= stepTo; step++) {
+            deleteEvent(step, MIDI_CONTROL, control);
         }
-        for (step=stepFrom; step<getSteps(); step++) {
+        for (step = stepFrom; step < getSteps(); step++) {
             deleteEvent(step, MIDI_CONTROL, control);
         }
     }
