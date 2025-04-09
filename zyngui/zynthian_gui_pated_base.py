@@ -95,7 +95,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.sequence = None  # Sequence used for pattern editor sequence player
         self.channel = 0
 
-        self.last_play_mode = [0x0100, 0] # Default (sync start, play all once)
         self.playhead = 0
         self.playstate = zynseq.SEQ_STOPPED
         self.n_steps = 0  # Number of steps in current pattern
@@ -264,11 +263,10 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.setup_zynpots()
         if not self.param_editor_zctrl:
             self.set_title()
-        self.last_play_mode = [self.zynseq.libseq.getPlayMode(self.bank, self.sequence), self.zynseq.libseq.getNextSequence(self.bank, self.sequence)]
-        if self.last_play_mode[0] != 0x0100:
-            self.zynseq.libseq.setPlayMode(self.bank, self.sequence, 0x0100)
-        if self.last_play_mode[1] != self.sequence:
-            self.zynseq.libseq.setNextSequence(self.bank, self.sequence, self.bank, self.sequence)
+        # Set to play once on sync point
+        self.zynseq.libseq.setPlayMode(self.bank, self.sequence, 0x0100)
+        # Set to repeat
+        self.zynseq.libseq.setFollowAction(self.bank, self.sequence, self.bank, self.sequence)
 
         # Set active the first chain with pattern's MIDI chan
         try:
@@ -291,8 +289,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.set_edit_mode(EDIT_MODE_NONE)
         #self.zynseq.libseq.setRefNote(int(self.keymap_offset))
         self.zynseq.libseq.setPatternZoom(self.zoom)
-        self.zynseq.libseq.setPlayMode(self.bank, self.sequence, self.last_play_mode[0])
-        self.zynseq.libseq.setNextSequence(self.bank, self.sequence, self.bank, self.last_play_mode[1])
+        self.zynseq.libseq.setPlayMode(self.bank, self.sequence, (self.seq_info["repeat"] << 8) | self.seq_info["mode"])
+        self.zynseq.libseq.setFollowAction(self.bank, self.sequence, self.bank, self.seq_info["follow_seq"])
         self.zynseq.libseq.updateSequenceInfo()
 
     # -------------------------------------------------------------------------
@@ -313,9 +311,9 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         options[f"Beats per Bar ({self.zynseq.libseq.getBeatsPerBar()})"] = 'Beats per bar'
         menu_options["GLOBAL"] = options
         # Sequence options
-        if self.bank == zynseq.LAUNCHER_SEQ_BANK:
+        if self.bank == self.zynseq.bank:
             options = {}
-            repeat = self.zynseq.libseq.getRepeat(self.bank, self.sequence)
+            repeat = self.seq_info["repeat"]
             if repeat == 0:
                 repeat_label = "DISABLED"
             elif repeat == 1:
@@ -325,8 +323,13 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             else:
                 repeat_label = f"PLAY {repeat} TIMES)"
             options[f"Repeat ({repeat_label})"] = "Repeat count"
-            options[f"Follow action"] = "Follow action"
-            name = self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, self.sequence)
+
+            follow_seq = self.seq_info["follow_seq"]
+            if follow_seq == -1:
+                options["Mode (ONESHOT)"] = "Follow action"
+            else:
+                options["Follow action (LOOP)"] = "Follow action"
+            name = self.zynseq.get_sequence_name(self.zynseq.bank, self.sequence)
             options[f"Name ({name})"] = 'Rename sequence'
         menu_options['SEQUENCE'] = options
         # Pattern Options
@@ -439,12 +442,25 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             labels = ["DISABLED", "PLAY ONCE", "PLAY TWICE"]
             for i in range(3, 256):
                 labels.append(f"PLAY {i} TIMES")
-            self.enable_param_editor(self, "repeat", {'name': 'Repeat',
-                                                      'value': self.zynseq.libseq.getRepeat(self.bank, self.sequence),
-                                                      'labels': labels}, assert_cb=self.assert_sequence_repeat)
+            self.enable_param_editor(self, "repeat",
+                {'name': 'Repeat',
+                'value': self.seq_info["repeat"],
+                'labels': labels},
+                assert_cb=self.assert_sequence_repeat)
         elif params == "Rename sequence":
-            name = self.zynseq.get_sequence_name(zynseq.LAUNCHER_SEQ_BANK, self.sequence)
+            name = self.zynseq.get_sequence_name(self.zynseq.bank, self.sequence)
             self.zyngui.show_keyboard(self.rename_sequence, name, 8)
+        elif params == "Follow action":
+            seq = self.seq_info["sequence"]
+            ticks = [-1, seq]
+            labels = ["ONESHOT", "LOOP"]
+            self.enable_param_editor(self, "follow_seq", {
+                "name": "Follow action",
+                "ticks": ticks,
+                "labels": labels,
+                "value": self.seq_info["follow_seq"]
+            },
+            assert_cb=self.assert_follow_action)
 
     def send_controller_value(self, zctrl):
         if zctrl.symbol == 'zoom':
@@ -453,11 +469,11 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         elif zctrl.symbol == 'bpb':
             self.zynseq.libseq.setBeatsPerBar(zctrl.value)
         elif zctrl.symbol == 'swing_amount':
-            self.zynseq.libseq.setSwingAmount(self.pattern, zctrl.value/100.0)
+            self.zynseq.libseq.setSwingAmount(zctrl.value/100.0)
         elif zctrl.symbol == 'swing_div':
-            self.zynseq.libseq.setSwingDiv(self.pattern, zctrl.value)
+            self.zynseq.libseq.setSwingDiv(zctrl.value)
         elif zctrl.symbol == 'human_time':
-            self.zynseq.libseq.setHumanTime(self.pattern, zctrl.value / 500.0)
+            self.zynseq.libseq.setHumanTime(zctrl.value / 500.0)
         elif zctrl.symbol == 'copy':
             self.load_pattern(zctrl.value)
 
@@ -468,16 +484,16 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     # Function to actually change steps per beat
     def set_steps_per_beat(self, value):
-        self.zynseq.libseq.setStepsPerBeat(self.pattern, value)
-        self.clean_pattern_snapshots()
-        self.n_steps_beat = self.zynseq.libseq.getStepsPerBeat(self.pattern)
-        self.n_steps = self.zynseq.libseq.getSteps(self.pattern)
+        self.zynseq.libseq.setStepsPerBeat(value)
+        self.zynseq.libseq.resetPatternSnapshots()
+        self.n_steps_beat = self.zynseq.libseq.getStepsPerBeat()
+        self.n_steps = self.zynseq.libseq.getSteps()
         self.update_geometry()
         self.redraw_pending = 4
 
     # Function to assert beats in pattern
     def assert_beats_in_pattern(self, value):
-        if self.zynseq.libseq.getLastStep(self.pattern) >= self.zynseq.libseq.getStepsPerBeat(self.pattern) * value:
+        if self.zynseq.libseq.getLastStep() >= self.zynseq.libseq.getStepsPerBeat() * value:
             self.zyngui.show_confirm("Reducing beats in pattern will truncate pattern",
                                      self.set_beats_in_pattern, value)
         else:
@@ -486,25 +502,36 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     # Function to assert beats in pattern
     def set_beats_in_pattern(self, value):
         self.zynseq.libseq.setBeatsInPattern(self.pattern, value)
-        self.clean_pattern_snapshots()
-        self.n_steps = self.zynseq.libseq.getSteps(self.pattern)
+        self.zynseq.libseq.resetPatternSnapshots()
+        self.n_steps = self.zynseq.libseq.getSteps()
         self.update_geometry()
         self.redraw_pending = 4
 
     # Function to get the index of the closest steps per beat in array of allowed values
     # returns: Index of the closest allowed value
     def get_steps_per_beat_index(self):
-        steps_per_beat = self.zynseq.libseq.getStepsPerBeat(self.pattern)
+        steps_per_beat = self.zynseq.libseq.getStepsPerBeat()
         for index in range(len(STEPS_PER_BEAT)):
             if STEPS_PER_BEAT[index] >= steps_per_beat:
                 return index
         return len(STEPS_PER_BEAT) - 1
 
     def assert_sequence_repeat(self, value):
-        self.zynseq.libseq.setRepeat(zynseq.LAUNCHER_SEQ_BANK, self.sequence, value)
+        self.zynseq.libseq.setRepeat(self.zynseq.bank, self.sequence, value)
+        self.seq_info["repeat"] = value
+
+    def assert_follow_action(self, value):
+        if value == -1:
+            bank = -1
+        else:
+            bank = self.zynseq.bank
+        self.zynseq.libseq.setFollowAction(self.zynseq.bank, self.seq_info["sequence"], bank, value)
+        self.seq_info["follow_seq"] = value
+        self.seq_info["follow_bank"] = bank
 
     def rename_sequence(self, name):
-        self.zynseq.set_sequence_name(zynseq.LAUNCHER_SEQ_BANK, self.sequence, name)
+        self.zynseq.set_sequence_name(self.zynseq.bank, self.sequence, name)
+        self.set_title()
 
     # -------------------------------------------------------------------------
     # Pattern management
@@ -520,8 +547,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
         self.zynseq.libseq.selectPattern(index)
         self.pattern = index
-        n_steps = self.zynseq.libseq.getSteps(self.pattern)
-        n_steps_beat = self.zynseq.libseq.getStepsPerBeat(self.pattern)
+        n_steps = self.zynseq.libseq.getSteps()
+        n_steps_beat = self.zynseq.libseq.getStepsPerBeat()
         if n_steps != self.n_steps or n_steps_beat != self.n_steps_beat:
             self.n_steps = n_steps
             self.n_steps_beat = n_steps_beat
@@ -552,9 +579,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.zynseq.load_pattern(self.pattern, fpath)
         self.changed = False
         self.redraw_pending = 3
-
-    def clean_pattern_snapshots(self):
-        self.zynseq.libseq.resetPatternSnapshots()
 
     # If changed, save snapshot:
     #  + right now, if now=True
@@ -615,7 +639,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         if self.pattern2copy is None and self.pattern2copy == self.pattern:
             return
         # Overwriting an empty pattern doesn't need confirmation
-        if self.zynseq.libseq.getLastStep(self.pattern) == -1:
+        if self.zynseq.libseq.getLastStep() == -1:
             self.do_paste_pattern()
         # Overwriting a busy pattern does need confirmation!
         else:
@@ -1093,6 +1117,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     # Function to handle BACK button
     def back_action(self):
         if self.edit_mode == EDIT_MODE_NONE:
+            self.zynseq.libseq.updateSequenceInfo()
             return super().back_action()
         self.set_edit_mode(EDIT_MODE_NONE)
         return True

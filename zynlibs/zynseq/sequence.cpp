@@ -19,9 +19,12 @@
 
  #include "sequence.h"
 
-Sequence::Sequence(uint8_t bank, uint8_t sequence) {
-    m_nId = (bank << 8) | sequence;
+Sequence::Sequence() {
     addTrack(); // Ensure new sequences have at least one track
+}
+
+void Sequence::setSequence(uint8_t bank, uint8_t sequence) {
+    m_nId = (bank << 8) | sequence;
 }
 
 uint8_t Sequence::getGroup() { return m_nGroup; }
@@ -140,7 +143,9 @@ void Sequence::setPlayState(uint8_t state) {
         m_nCount = 0;
 }
 
-uint32_t Sequence::getState() { return (m_nGroup << 16) | (m_nMode << 8) | m_nState; }
+uint32_t Sequence::getState() {
+    return (m_nRepeat << 24) | (m_nGroup << 16) | (m_nMode << 8) | m_nState;
+}
 
 uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
     m_nCurrentTrack = 0;
@@ -248,11 +253,11 @@ void Sequence::setName(std::string sName) {
 
 std::string Sequence::getName() { return m_sName; }
 
-void Sequence::setNextSequence(uint8_t bank, uint8_t sequence) {
-    m_nNextSeq = (bank << 8) + sequence;
+void Sequence::setFollowAction(uint8_t bank, uint8_t sequence) {
+    m_nNextSeq = (bank << 8) | sequence;
 }
 
-uint16_t Sequence::getNextSequence() {
+uint16_t Sequence::getFollowAction() {
     return m_nNextSeq;
 }
 

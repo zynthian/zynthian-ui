@@ -34,7 +34,12 @@ class Sequence {
   public:
     /** @brief  Create Sequence object
      */
-    Sequence(uint8_t bank, uint8_t sequence);
+    Sequence();
+
+    /** @brief  Set bank and sequence id
+    * @param  id bank << 8 | sequence
+    */
+    void setSequence(uint8_t bank, uint8_t sequence);
 
     /** @brief  Get sequence's mutually excusive group
      *   @retval uint32_t sequence's group
@@ -67,7 +72,7 @@ class Sequence {
     void setPlayState(uint8_t state);
 
     /** @brief  Get sequence state
-     *   @retval uint32_t Sequence state as 32-bit word [0x00, group, mode, play state]
+     *   @retval uint32_t Sequence state as 32-bit word [repeat, group, mode, play state]
      */
     uint32_t getState();
 
@@ -212,12 +217,12 @@ class Sequence {
       * @param  sequence Index of sequence
       * @note   Set both to -1 to disable follow action
     */
-    void setNextSequence(uint8_t bank, uint8_t sequence);
+    void setFollowAction(uint8_t bank, uint8_t sequence);
 
     /** @brief  Get index of next seqeuence
       * @retval uint16_t Index of next sequence | bank << 16 or -1 if none
     */
-    uint16_t getNextSequence();
+    uint16_t getFollowAction();
 
     /** @brief  Set times to play
       * @param  repeat Quantity of times to play (0 to disable)
@@ -244,7 +249,7 @@ class Sequence {
     uint8_t m_nState        = STOPPED; // Play state of sequence
     uint8_t m_nMode         = 0;       // Bitwise flags affecting start (bits 0..3) and stop (bits 4..7). Changed v11.
     uint8_t m_nGroup        = 0;       // Sequence's mutually exclusive group
-    uint8_t m_nRepeat       = 1;       // Quantity of times to play sequence/ Added v11.
+    uint8_t m_nRepeat       = 0;       // Quantity of times to play sequence/ Added v11.
     uint8_t m_nCount        = 0;       // Quantity of times to sequence has played
     bool m_bChanged         = false;   // True if sequence content changed
     bool m_bStateChanged    = false;   // True if state changed since last clock cycle

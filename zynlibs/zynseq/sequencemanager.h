@@ -38,10 +38,6 @@ class SequenceManager {
      */
     void init();
 
-    /** @brief  Reset banks map
-     */
-    void resetBanks();
-
     /** @brief  Get pointer to a pattern
      *   @param  index Index of pattern to retrieve
      *   @retval Pattern* Pointer to pattern
@@ -51,7 +47,7 @@ class SequenceManager {
 
     /** @brief  Get the index of a pattern
      *   @param  pattern Pointer to pattern
-     *   @retval uint32_t Index of pattern or -1 if not found
+     *   @retval uint32_t Index of bank<<24|pattern or -1 if not found
      */
     uint32_t getPatternIndex(Pattern* pattern);
 
@@ -78,12 +74,6 @@ class SequenceManager {
      */
     void copyPattern(uint32_t source, uint32_t destination);
 
-    /** @brief  Replace pattern
-     *   @param  index Pattern index
-     *   @param  pattern Pointer to new pattern
-     */
-    void replacePattern(uint32_t index, Pattern* pattern);
-
     /** @brief  Update sequence lengths in current bank
      *   @param  bank Index of bank
      *   @param  sequence Index of sequence
@@ -105,12 +95,20 @@ class SequenceManager {
     size_t clock(std::pair<double, double> timeinfo, std::multimap<uint32_t, MIDI_MESSAGE*>* pSchedule, bool bSync);
 
     /** @brief  Get pointer to sequence
-     *   @param  bank Index of bank containing sequence
-     *   @param  offset Index (offset) of sequence within bank
-     *   @retval Sequence* Pointer to sequence or NULL if invalid offset
-     *   @note   Creates new bank and sequence if not existing
-     */
-    Sequence* getSequence(uint8_t bank, uint8_t sequence);
+    *   @param  bank Index of bank containing sequence
+    *   @param  sequence Index of sequence
+    *   @param  create_pattern True to create pattern when creating new sequence
+    *   @retval Sequence* Pointer to sequence
+    *   @note   Creates new bank and/or sequence if not existing
+    */
+    Sequence* getSequence(uint8_t bank, uint8_t sequence, bool create_pattern=false);
+
+    /** @brief  Get follow action for a sequence
+    *   @param  bank In dex of bank containing sequence
+    *   @param  sequence Index of sequence
+    *   @retval uint8_t Follow action
+    */
+    uint8_t getFollowAction(uint8_t bank, uint8_t sequence);
 
     /** @brief  Add pattern to sequence
      *   @param  bank Index of bank
@@ -202,33 +200,10 @@ class SequenceManager {
      */
     void cleanPatterns();
 
-    /** @brief  Set quantity of sequences in a bank
-     *   @param  bank Bank index
-     *   @param  sequences Quantity of sequences
-     *   @note   Sequences are created or destroyed as required
-     */
-    void setSequencesInBank(uint8_t bank, uint8_t sequences);
-
     /** @brief  Get quantity of sequences in a bank
      *   @param  bank Index of bank
      */
     uint32_t getSequencesInBank(uint32_t bank);
-
-    /** @brief  Move sequence (change order of sequences)
-     *   @param  bank Index of bank
-     *   @param  sequence Index of sequence to move
-     *   @param  position Index of sequence to move this sequence, e.g. 0 to insert as first sequence
-     *   @note   Sequences after insert point are moved up by one. Bank grows if sequence or position is higher than size of bank
-     *   @retval bool True on success
-     */
-    bool moveSequence(uint8_t bank, uint8_t sequence, uint8_t position);
-
-    /** @brief  Insert new sequence in bank
-     *   @param  bank Index of bank
-     *   @param  sequence Index at which to insert sequence , e.g. 0 to insert as first sequence
-     *   @note   Sequences after insert point are moved up by one. Bank grows if sequence is higher than size of bank
-     */
-    void insertSequence(uint8_t bank, uint8_t sequence);
 
     /** @brief  Remove sequence from bank
      *   @param  bank Index of bank
@@ -274,7 +249,6 @@ class SequenceManager {
     */
     void setTimeSig(uint16_t sig);
 
-
 private:
     int fileWrite32(uint32_t value, FILE* pFile);
     int fileWrite16(uint16_t value, FILE* pFile);
@@ -292,9 +266,8 @@ private:
     uint8_t m_nTriggerChannel = 0xFF; // MIDI channel to receive sequence triggers (note-on)
 
     // Note: Maps are used for patterns and sequences to allow addition and removal of sequences whilst maintaining consistent access to remaining instances
-    std::map<uint32_t, Pattern> m_mPatterns; // Map of patterns indexed by pattern number
-    std::vector<std::pair<uint32_t, uint32_t>>
-        m_vPlayingSequences;                             // Vector of <bank,sequence> pairs for currently playing sequences (used to optimise play control)
-    std::map<uint8_t, uint16_t> m_mTriggers;             // Map of bank<<8|sequence indexed by MIDI note triggers
-    std::map<uint32_t, std::vector<Sequence*>> m_mBanks; // Map of banks: vectors of pointers to sequences indexed by bank
+    std::map<uint32_t, Pattern*> m_mPatterns;                // Map of pattern pointers indexed by pattern number
+    std::vector<uint16_t> m_vPlayingSequences;               // Vector of <bank<<8|sequence>for currently playing sequences (used to optimise play control)
+    std::map<uint8_t, uint16_t> m_mTriggers;                 // Map of bank<<8|sequence indexed by MIDI note triggers
+    std::map<uint8_t, std::map<uint8_t, Sequence>> m_mBanks; // Map of banks of sequences, indexed by bank number. Sequences map of sequences, mapped by sequence number.
 };

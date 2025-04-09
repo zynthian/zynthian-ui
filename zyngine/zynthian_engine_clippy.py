@@ -58,7 +58,7 @@ class zyngine_lscp_warning(Exception):
 
 MAX_BEATS = 64 # Maximum quantity of beats in a pattern
 MAX_DURATION = 30 # Maximum audio duration to warp, in seconds
-NUM_SPLICES = 128 // zynseq.LAUNCHER_SLOTS # Quantity of slices to split audio to spread across pattern
+NUM_SPLICES = 128 // zynseq.MIN_LAUNCHER_SLOTS # Quantity of slices to split audio to spread across pattern
 
 class zynthian_engine_clippy(zynthian_engine):
 
@@ -122,7 +122,7 @@ class zynthian_engine_clippy(zynthian_engine):
             soundfile.write("/tmp/silence.wav", [0.0], self.sr)
 
         self.slot_info = []
-        for i in range(zynseq.LAUNCHER_SLOTS):
+        for i in range(zynseq.MIN_LAUNCHER_SLOTS):
             self.slot_info.append(
                 {
                     "path": "",
@@ -233,7 +233,7 @@ class zynthian_engine_clippy(zynthian_engine):
             file.write(f"key=0\n")
             file.write(f"\n")
             """
-            for slot in range(zynseq.LAUNCHER_SLOTS):
+            for slot in range(zynseq.MIN_LAUNCHER_SLOTS):
                 file_zctrl = self.processors[0].controllers_dict[f"file {slot+1:02}"]
                 beats_zctrl = self.processors[0].controllers_dict[f"beats {slot+1:02}"]
                 if file_zctrl.value:
@@ -280,7 +280,7 @@ class zynthian_engine_clippy(zynthian_engine):
         if path:
             # Try to determine tempo from filename
             filename = os.path.basename(path)
-            tempo = self.zynseq.launcher_info[16][slot]["tempo"]
+            tempo = self.zynseq.launcher_info[slot][zynseq.SCENE_LAUNCHER_COL]["tempo"]
             if not tempo:
                 tempo = self.zynseq.get_tempo()
             pattern = r"(\d+)\s*(?=bpm|BPM)"
@@ -295,7 +295,7 @@ class zynthian_engine_clippy(zynthian_engine):
             try:
                 reconnect = False
                 #beats_per_bar = self.libseq.getBeatsPerBar()
-                beats_per_bar = self.zynseq.launcher_info[16][slot]["bpb"]
+                beats_per_bar = self.zynseq.launcher_info[slot][zynseq.SCENE_LAUNCHER_COL]["bpb"]
                 beats = duration * file_tempo / 60
                 bars = round(beats / beats_per_bar)
                 if beats_zctrl.value:
@@ -314,11 +314,11 @@ class zynthian_engine_clippy(zynthian_engine):
                 if warp_zctrl.value and not bpm_match and can_warp:
                     # Warp audio to fit pattern length, only if short enough to avoid slow warp
                     # Disconnect MIDI to avoid retrigger during warping
-                    if self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, sequence):
+                    if self.libseq.getPlayState(self.zynseq.bank, sequence):
                         reconnect = True
                         self.lscp_send_single("REMOVE CHANNEL MIDI_INPUT 0 0 0")
                         # Silence existing audio
-                        if self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, self.sequence_offset + slot):
+                        if self.libseq.getPlayState(self.zynseq.bank, self.sequence_offset + slot):
                             self.lscp_send_single("SEND CHANNEL MIDI_DATA CC 0 120 0")
                     # Do warp
                     data, sr = soundfile.read(path)
@@ -346,7 +346,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 self.slot_info[slot]["frames"] = soundfile.info(path).frames
 
                 # Setup zynseq pattern & sequence
-                pattern = self.libseq.getPattern(zynseq.LAUNCHER_SEQ_BANK, sequence, 0, 0)
+                pattern = self.libseq.getPattern(self.zynseq.bank, sequence, 0, 0)
                 self.libseq.selectPattern(pattern)
                 self.libseq.clearPattern(pattern)
                 self.libseq.setStepsPerBeat(pattern, 1)
@@ -357,24 +357,24 @@ class zynthian_engine_clippy(zynthian_engine):
                         self.libseq.addNote(note_len * pos, NUM_SPLICES * slot + pos, 100, 1, 0.0)
                 else:
                     self.libseq.addNote(0, NUM_SPLICES * slot, 100, 1, 0.0)
-                #self.libseq.setPlayMode(zynseq.LAUNCHER_SEQ_BANK, sequence, 0x0100)
-                state = self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, sequence)
+                #self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0100)
+                state = self.libseq.getPlayState(self.zynseq.bank, sequence)
                 self.libseq.updateSequenceInfo()
-                self.zynseq.set_sequence_name(zynseq.LAUNCHER_SEQ_BANK, sequence, os.path.splitext(filename)[0])
+                self.zynseq.set_sequence_name(self.zynseq.bank, sequence, os.path.splitext(filename)[0])
                 if reconnect:
                     # Reconnect MIDI
                     self.lscp_send_single("ADD CHANNEL MIDI_INPUT 0 0 0")
                     self.lscp_send_single(f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
-                self.libseq.setRepeat(zynseq.LAUNCHER_SEQ_BANK, self.sequence_offset + slot, 1)
+                self.libseq.setRepeat(self.zynseq.bank, self.sequence_offset + slot, 1)
             except Exception as e:
                 logging.error(f"Can't setup sequencer for clip {slot} => {e}")
         else:
-            self.libseq.setRepeat(zynseq.LAUNCHER_SEQ_BANK, self.sequence_offset + slot, 0)
-            state = self.libseq.getPlayState(zynseq.LAUNCHER_SEQ_BANK, sequence)
+            self.libseq.setRepeat(self.zynseq.bank, self.sequence_offset + slot, 0)
+            state = self.libseq.getPlayState(self.zynseq.bank, sequence)
             #self.reset_pattern(slot)
 
         zynsigman.send(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE,
-                       bank=zynseq.LAUNCHER_SEQ_BANK, seq=sequence, state=state, mode=0x0100, group=self.processors[0].midi_chan)
+                       bank=self.zynseq.bank, seq=sequence, state=state, mode=0x0100, group=self.processors[0].midi_chan)
         self.processors[0].init_ctrl_screens()
 
     def on_tempo(self, tempo):
@@ -388,7 +388,7 @@ class zynthian_engine_clippy(zynthian_engine):
             self.tempo_cb_timer.cancel()
         self.tempo_cb_timer = None
         do_warp = False
-        for slot in range(zynseq.LAUNCHER_SLOTS):
+        for slot in range(zynseq.MIN_LAUNCHER_SLOTS):
             warp_zctrl = self.processors[0].controllers_dict[f"warp {slot + 1:02}"]
             if warp_zctrl.value:
                 path = self.processors[0].controllers_dict[f"file {slot + 1:02}"].value
@@ -426,7 +426,7 @@ class zynthian_engine_clippy(zynthian_engine):
             self.libseq.clearPattern(pattern)
             self.libseq.setStepsPerBeat(pattern, 1)
             self.libseq.setBeatsInPattern(pattern, 1)
-            self.libseq.setRepeat(zynseq.LAUNCHER_SEQ_BANK, self.sequence_offset + slot, 0)
+            self.libseq.setRepeat(self.zynseq.bank, self.sequence_offset + slot, 0)
             self.libseq.updateSequenceInfo()
 
     # ---------------------------------------------------------------------------

@@ -62,8 +62,9 @@ jack_nframes_t g_nSampleRate = 44100; // Quantity of samples per second
 uint32_t g_nXruns            = 0;
 
 SequenceManager g_seqMan;                           // Instance of sequence manager
-uint32_t g_nPattern   = 0;                          // Index of currently edited pattern
-Sequence* g_pSequence = NULL;                       // Pattern editor sequence
+Pattern* g_pPattern = NULL;                         // Pointer to currently edited pattern
+uint8_t g_nBank = 0;                                // Index of currently edited bank
+uint8_t g_nSequence = 0;                              // Index of currently edited sequence
 std::multimap<uint32_t, MIDI_MESSAGE*> g_mSchedule; // Schedule of MIDI events (queue for sending), indexed by scheduled play time (samples since JACK epoch)
 bool g_bMutex              = false;                 // Mutex lock for access to g_mSchedule
 bool g_bDebug              = false;                 // True to output debug info
@@ -347,8 +348,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     void* pInputBuffer = jack_port_get_buffer(g_pInputPort, nFrames);
     jack_midi_event_t midiEvent;
     jack_nframes_t nCount = jack_midi_get_event_count(pInputBuffer);
-    Pattern* pPattern     = g_seqMan.getPattern(g_nPattern);
-    uint8_t bPatternRecording = (g_bMidiRecord && g_pSequence && pPattern);
+    uint8_t bPatternRecording = (g_bMidiRecord && g_pPattern);
     // Track* pTrack = g_pSequence->getTrack(g_pSequence->m_nCurrentTrack);
     while (g_bMutex)
         std::this_thread::sleep_for(std::chrono::microseconds(10));
@@ -413,7 +413,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         // Handle MIDI events for programming patterns from MIDI input
         if (bPatternRecording) {
             uint32_t nStep     = getPatternPlayhead();
-            uint8_t nPlayState = g_pSequence->getPlayState();
+            uint8_t nPlayState = g_seqMan.getSequence(g_nBank, g_nSequence)->getPlayState();
 			uint8_t nCommand = midiEvent.buffer[0] & 0xF0;
 
             // Real Time Capture (while playing)
@@ -423,18 +423,18 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     startEvents[midiEvent.buffer[1]].start = nStep;
                     startEvents[midiEvent.buffer[1]].velocity = midiEvent.buffer[2];
                     // Calculate clock position offset, in steps (from 0.0 to 1.0)
-                    float offset = double(g_pSequence->getPlayPosition()) / double(pPattern->getClocksPerStep()) - double(nStep);
+                    float offset = double(g_seqMan.getSequence(g_nBank, g_nSequence)->getPlayPosition()) / double(g_pPattern->getClocksPerStep()) - double(nStep);
                     // Subtract latency delay
-                    offset -= double(nFrames) / double(pPattern->getClocksPerStep() * g_dFramesPerClock);
+                    offset -= double(nFrames) / double(g_pPattern->getClocksPerStep() * g_dFramesPerClock);
                     // Add event offset relative to last clock
                     // if (lastClock.first) {
-                    // offset += double(midiEvent.time + nNow - lastClock.first - nFrames) / double(pPattern->getClocksPerStep() * g_dFramesPerClock);
+                    // offset += double(midiEvent.time + nNow - lastClock.first - nFrames) / double(g_pPattern->getClocksPerStep() * g_dFramesPerClock);
                     //}
                     if (offset < 0.0)
                         offset = 0;
 
                     // Quantize or not
-                    if (pPattern->getQuantizeNotes()) {
+                    if (g_pPattern->getQuantizeNotes()) {
                         if (offset > 0.5)
                             startEvents[midiEvent.buffer[1]].start++;
                         startEvents[midiEvent.buffer[1]].offset = 0;
@@ -445,13 +445,13 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 // Note off event
                 else if ((nCommand == MIDI_NOTE_ON && midiEvent.buffer[2] == 0) || nCommand == MIDI_NOTE_OFF) {
                     if (startEvents[midiEvent.buffer[1]].start != -1) {
-                        double dDur = double(g_pSequence->getPlayPosition()) - startEvents[midiEvent.buffer[1]].start * pPattern->getClocksPerStep();
+                        double dDur = double(g_seqMan.getSequence(g_nBank, g_nSequence)->getPlayPosition()) - startEvents[midiEvent.buffer[1]].start * g_pPattern->getClocksPerStep();
                         if (dDur < 1.0)
-                            dDur = pPattern->getLength() + dDur;
-                        pPattern->addNote(startEvents[midiEvent.buffer[1]].start, midiEvent.buffer[1], startEvents[midiEvent.buffer[1]].velocity,
-                                          dDur / pPattern->getClocksPerStep(), startEvents[midiEvent.buffer[1]].offset);
+                            dDur = g_pPattern->getLength() + dDur;
+                        g_pPattern->addNote(startEvents[midiEvent.buffer[1]].start, midiEvent.buffer[1], startEvents[midiEvent.buffer[1]].velocity,
+                                          dDur / g_pPattern->getClocksPerStep(), startEvents[midiEvent.buffer[1]].offset);
                         startEvents[midiEvent.buffer[1]].start = -1;
-                        setPatternModified(pPattern, true, false);
+                        setPatternModified(g_pPattern, true, false);
                     }
                 }
                 // CC event
@@ -461,22 +461,22 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     	if (midiEvent.buffer[2] > 0 && g_nSustainValue == 0) {
                         	g_nSustainValue = midiEvent.buffer[2];
                         	g_nSustainStart = nStep;
-							// Remove old pedals => "Overdubbing" sustain pedal is a mess!
-							pPattern->removeControlInterval(0, pPattern->getSteps()-1, 64);
+                           // Remove old pedals => "Overdubbing" sustain pedal is a mess!
+                          g_pPattern->removeControlInterval(0, g_pPattern->getSteps()-1, 64);
                         	// Add pedal press
-                        	pPattern->addControl(g_nSustainStart, 64, g_nSustainValue, g_nSustainValue);
+                            g_pPattern->addControl(g_nSustainStart, 64, g_nSustainValue, g_nSustainValue);
                     	} else if (midiEvent.buffer[2] == 0) {
                         	if (g_nSustainValue > 0) {
 								// Add pedal release
-								pPattern->addControl(nStep, 64, 0, 0);
+                              g_pPattern->addControl(nStep, 64, 0, 0);
 							}
                         	g_nSustainValue = 0;
                     	}
                     	// else => Other cases must be bouncing or pedal "artifacts" that we ignore
                     // Manage rest of CCs
                     } else {
-                    	pPattern->addControl(nStep, (uint8_t)midiEvent.buffer[1], (uint8_t)midiEvent.buffer[2], (uint8_t)midiEvent.buffer[2]);
-                    	setPatternModified(pPattern, true, false);
+                        g_pPattern->addControl(nStep, (uint8_t)midiEvent.buffer[1], (uint8_t)midiEvent.buffer[2], (uint8_t)midiEvent.buffer[2]);
+                        setPatternModified(g_pPattern, true, false);
                     }
                 }
             }
@@ -494,23 +494,23 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 }
                 // Note on event
                 else if (nCommand == MIDI_NOTE_ON && midiEvent.buffer[2]) {
-                    setPatternModified(pPattern, true, false);
+                    setPatternModified(g_pPattern, true, false);
                     uint32_t nDuration = getNoteDuration(nStep, midiEvent.buffer[1]);
                     if (g_nSustainValue > 0)
-                        pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], nDuration + 1);
+                        g_pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], nDuration + 1);
                     else {
                         bAdvance = true;
                         if (nDuration)
-                            pPattern->removeNote(nStep, midiEvent.buffer[1]);
+                            g_pPattern->removeNote(nStep, midiEvent.buffer[1]);
                         else if (midiEvent.buffer[1] != g_nInputRest)
-                            pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], 1);
+                            g_pPattern->addNote(nStep, midiEvent.buffer[1], midiEvent.buffer[2], 1);
                     }
                 }
                 // Advance step
                 if (bAdvance && nState != JackTransportRolling) {
-                    if (++nStep >= pPattern->getSteps())
+                    if (++nStep >= g_pPattern->getSteps())
                         nStep = 0;
-                    g_pSequence->setPlayPosition(nStep * pPattern->getClocksPerStep());
+                    g_seqMan.getSequence(g_nBank, g_nSequence)->setPlayPosition(nStep * g_pPattern->getClocksPerStep());
                     // printf("libzynseq advancing to step %d\n", nStep);
                 }
             }
@@ -755,7 +755,6 @@ void init(char* name) {
 
     transportRequestTimebase();
     transportLocate(0);
-    g_pSequence = g_seqMan.getSequence(0, 0);
     selectPattern(1);
 }
 
@@ -824,7 +823,8 @@ bool checkBlock(FILE* pFile, uint32_t nActualSize, uint32_t nExpectedSize) {
 }
 
 bool load(const char* filename) {
-    g_pSequence = NULL;
+    g_nSequence = 0;
+    g_nBank = 0;
     g_seqMan.init();
     g_nBeatsPerBar = 4;
     uint32_t nVersion = 0;
@@ -897,7 +897,7 @@ bool load(const char* filename) {
                 nBlockSize -= 1;
             }
             nBlockSize -= 12;
-            // printf("Pattern:%u Beats:%u StepsPerBeat:%u Scale:%u Tonic:%u\n", nPattern, pPattern->getBeatsInPattern(nPattern), pPattern->getStepsPerBeat(),
+            //printf("Pattern:%u Beats:%u StepsPerBeat:%u Scale:%u Tonic:%u\n", nPattern, pPattern->getBeatsInPattern(), pPattern->getStepsPerBeat(),
             // pPattern->getScale(), pPattern->getTonic());
             while (nBlockSize) {
                 if (nVersion > 8) {
@@ -960,7 +960,7 @@ bool load(const char* filename) {
                     continue;
                 else if (checkBlock(pFile, nBlockSize, 8))
                     continue;
-                Sequence* pSequence = g_seqMan.getSequence(nBank, nSequence);
+                Sequence* pSequence = g_seqMan.getSequence(nBank, nSequence, false);
                 pSequence->setRepeat(1);
                 if (nVersion > 10)
                     pSequence->setPlayMode(fileRead16(pFile));
@@ -976,14 +976,14 @@ bool load(const char* filename) {
                             break;
                         case 2:
                             // LOOP
-                            pSequence->setNextSequence(nBank, nSequence);
+                            pSequence->setFollowAction(nBank, nSequence);
                             break;
                         case 3:
                             // ONESHOTALL
                             break;
                         case 4:
                             // LOOPALL
-                            pSequence->setNextSequence(nBank, nSequence);
+                            pSequence->setFollowAction(nBank, nSequence);
                             break;
                         case 5:
                             // ONESHOTSYNC
@@ -991,15 +991,15 @@ bool load(const char* filename) {
                             break;
                         case 6:
                             // LOOPSYNC
-                            pSequence->setNextSequence(nBank, nSequence);
+                            pSequence->setFollowAction(nBank, nSequence);
                             break;
                     }
                 }
                 pSequence->setGroup(fileRead8(pFile));
                 g_seqMan.setTriggerNote(nBank, nSequence, fileRead8(pFile));
-                if (nVersion > 10) {
-                    pSequence->setNextSequence(fileRead8(pFile), fileRead8(pFile));
-                } else
+                if (nVersion > 10)
+                    pSequence->setFollowAction(fileRead8(pFile), fileRead8(pFile));
+                else
                     fileRead8(pFile); // Padding
                 char sName[17];
                 memset(sName, '\0', 17);
@@ -1067,7 +1067,6 @@ bool load(const char* filename) {
     // filename);
     g_seqMan.setTimeSig(g_nBeatsPerBar);
     g_bDirty    = false;
-    g_pSequence = g_seqMan.getSequence(0, 0);
     selectPattern(1);
     return true;
 }
@@ -1218,8 +1217,8 @@ void save(const char* filename) {
     uint32_t nPattern = 0;
     do {
         Pattern* pPattern = g_seqMan.getPattern(nPattern);
-        // Only save patterns with content
-        if (pPattern->getEventAt(0)) {
+        // Only save patterns with content or non-standard beats
+        if (pPattern->getEventAt(0) || pPattern->getBeatsInPattern() != 4) {
             fwrite("patnxxxx", 8, 1, pFile);
             nPos += 8;
             uint32_t nStartOfBlock = nPos;
@@ -1264,7 +1263,8 @@ void save(const char* filename) {
     } while (nPattern != -1);
 
     // Iterate through banks
-    for (uint32_t nBank = 1; nBank < g_seqMan.getBanks(); ++nBank) {
+    for (uint32_t i = 0; i < g_seqMan.getBanks(); ++i) {
+        uint32_t nBank = i + 1;
         uint32_t nSequences = g_seqMan.getSequencesInBank(nBank);
         if (nSequences == 0)
             continue;
@@ -1279,7 +1279,7 @@ void save(const char* filename) {
             nPos += fileWrite16(pSequence->getPlayMode(), pFile);
             nPos += fileWrite8(pSequence->getGroup(), pFile);
             nPos += fileWrite8(g_seqMan.getTriggerNote(nBank, nSequence), pFile);
-            nPos += fileWrite16(pSequence->getNextSequence(), pFile);
+            nPos += fileWrite16(pSequence->getFollowAction(), pFile);
             std::string sName = pSequence->getName();
             for (size_t nIndex = 0; nIndex < sName.size(); ++nIndex)
                 nPos += fileWrite8(sName[nIndex], pFile);
@@ -1401,21 +1401,50 @@ void save_pattern(uint32_t nPattern, const char* filename) {
     fclose(pFile);
 }
 
-void savePatternSnapshot() { g_seqMan.getPattern(g_nPattern)->saveSnapshot(); }
+void savePatternSnapshot() {
+    if (g_pPattern)
+        g_pPattern->saveSnapshot();
+}
 
-void resetPatternSnapshots() { g_seqMan.getPattern(g_nPattern)->resetSnapshots(); }
+void resetPatternSnapshots() {
+    if (g_pPattern)
+        g_pPattern->resetSnapshots();
+}
 
-bool undoPattern() { return g_seqMan.getPattern(g_nPattern)->undo(); }
+bool undoPattern() {
+    if(g_pPattern)
+        return g_pPattern->undo();
+    return false;
+}
 
-bool redoPattern() { return g_seqMan.getPattern(g_nPattern)->redo(); }
+bool redoPattern() {
+    if (g_pPattern)
+        return g_pPattern->redo();
+    return false;
+}
 
-bool undoPatternAll() { return g_seqMan.getPattern(g_nPattern)->undoAll(); }
+bool undoPatternAll() {
+    if (g_pPattern)
+        return g_pPattern->undoAll();
+    return false;
+}
 
-bool redoPatternAll() { return g_seqMan.getPattern(g_nPattern)->redoAll(); }
+bool redoPatternAll() {
+    if (g_pPattern)
+        return g_pPattern->redoAll();
+    return false;
+}
 
-void setPatternZoom(int16_t zoom) { g_seqMan.getPattern(g_nPattern)->setZoom(zoom); }
+void setPatternZoom(int16_t zoom) {
+    if (g_pPattern)
+        g_pPattern->setZoom(zoom);
+}
 
-int16_t getPatternZoom() { return g_seqMan.getPattern(g_nPattern)->getZoom(); }
+int16_t getPatternZoom() {
+    if (g_pPattern)
+        return g_pPattern->getZoom();
+    return 0;
+}
 
 // ** This is not user by Pattern editor anymore. Is this used by arranger? **
 
@@ -1547,7 +1576,11 @@ uint16_t getTriggerSequence(uint8_t note) { return g_seqMan.getTriggerSequence(n
 
 uint32_t createPattern() { return g_seqMan.createPattern(); }
 
-void cleanPatterns() { g_seqMan.cleanPatterns(); }
+void cleanPatterns() {
+    uint32_t pattern = g_seqMan.getPatternIndex(g_pPattern);
+    g_seqMan.cleanPatterns();
+    g_pPattern = g_seqMan.getPattern(pattern);
+}
 
 void toggleMute(uint8_t bank, uint8_t sequence, uint32_t track) {
     Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
@@ -1562,14 +1595,12 @@ bool isMuted(uint8_t bank, uint8_t sequence, uint32_t track) {
     return false;
 }
 
-void enableMidiRecord(bool enable) { g_bMidiRecord = enable; }
+void enableMidiRecord(bool enable) {
+    g_bMidiRecord = enable;
+}
 
-bool isMidiRecord() { return g_bMidiRecord; }
-
-void selectPattern(uint32_t pattern) {
-    g_nPattern = pattern;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true, true);
-    addPattern(0, 0, 0, 0, g_nPattern, true);
+bool isMidiRecord() {
+    return g_bMidiRecord;
 }
 
 bool isPatternEmpty(uint32_t pattern) {
@@ -1577,17 +1608,22 @@ bool isPatternEmpty(uint32_t pattern) {
     return pPattern->getEventAt(0) == NULL;
 }
 
-uint32_t getPatternIndex() { return g_nPattern; }
+void selectPattern(uint32_t pattern) {
+    g_pPattern = g_seqMan.getPattern(pattern);
+}
 
-uint32_t getSteps(uint32_t pattern) {
-    Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
-    if (pPattern)
-        return pPattern->getSteps();
+uint32_t getPatternIndex() {
+    return g_seqMan.getPatternIndex(g_pPattern);
+}
+
+uint32_t getSteps() {
+    if (g_pPattern)
+        return g_pPattern->getSteps();
     return 0;
 }
 
 uint32_t getPatternLength(uint32_t pattern) {
-    Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
+    Pattern* pPattern = g_seqMan.getPattern(pattern);
     if (pPattern)
         return pPattern->getLength();
     return 0;
@@ -1601,347 +1637,364 @@ uint32_t getBeatsInPattern(uint32_t pattern) {
 }
 
 void setBeatsInPattern(uint32_t pattern, uint32_t beats) {
-    if (!g_seqMan.getPattern(pattern))
-        return;
-    g_seqMan.getPattern(pattern)->setBeatsInPattern(beats);
-    g_seqMan.updateAllSequenceLengths();
-    setPatternModified(g_seqMan.getPattern(pattern), true, true);
-    g_bDirty = true;
+    Pattern* pPattern = g_seqMan.getPattern(pattern);
+    if (pPattern) {
+        pPattern->setBeatsInPattern(beats);
+        g_seqMan.updateAllSequenceLengths();
+        setPatternModified(pPattern, true, true);
+        g_bDirty = true;
+        fprintf(stderr, "setBeatsInPattern(pattern: %d, beats:%d)", pattern, beats);
+    }
 }
 
 uint32_t getClocksPerStep(uint32_t pattern) {
-    Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
+    Pattern* pPattern = g_seqMan.getPattern(pattern);
     if (pPattern)
         return pPattern->getClocksPerStep();
     return 6;
 }
 
-uint32_t getStepsPerBeat(uint32_t pattern) {
-    Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
-    if (pPattern)
-        return pPattern->getStepsPerBeat();
+uint32_t getStepsPerBeat() {
+    if (g_pPattern)
+        return g_pPattern->getStepsPerBeat();
     return 4;
 }
 
-void setStepsPerBeat(uint32_t pattern, uint32_t steps) {
-    Pattern* pPattern = g_seqMan.getPattern(pattern);
-    if (pPattern) {
-        pPattern->setStepsPerBeat(steps);
-        setPatternModified(pPattern, true, true);
+void setStepsPerBeat(uint32_t steps) {
+    if (g_pPattern) {
+        g_pPattern->setStepsPerBeat(steps);
+        setPatternModified(g_pPattern, true, true);
         g_bDirty = true;
     }
 }
 
-uint32_t getSwingDiv(uint32_t pattern) {
-    Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
-    if (pPattern)
-        return pPattern->getSwingDiv();
+uint32_t getSwingDiv() {
+    if (g_pPattern)
+        return g_pPattern->getSwingDiv();
     return 1;
 }
 
-void setSwingDiv(uint32_t pattern, uint32_t div) {
-    Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
-    if (pPattern) {
-        pPattern->setSwingDiv(div);
-        // setPatternModified(pPattern, true, false);
+void setSwingDiv(uint32_t div) {
+    if (g_pPattern) {
+        g_pPattern->setSwingDiv(div);
+        // setPatternModified(g_pPattern, true, false);
         g_bDirty = true;
     }
 }
 
-float getSwingAmount(uint32_t pattern) {
-    Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
-    if (pPattern)
-        return pPattern->getSwingAmount();
+float getSwingAmount() {
+    if (g_pPattern)
+        return g_pPattern->getSwingAmount();
     return 0.0;
 }
 
-void setSwingAmount(uint32_t pattern, float amount) {
-    Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
-    if (pPattern) {
-        g_seqMan.getPattern(g_nPattern)->setSwingAmount(amount);
-        // setPatternModified(pPattern, true, false);
+void setSwingAmount(float amount) {
+    if (g_pPattern) {
+        g_pPattern->setSwingAmount(amount);
+        // setPatternModified(g_pPattern, true, false);
         g_bDirty = true;
     }
 }
 
-float getHumanTime(uint32_t pattern) {
-    Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
-    if (pPattern)
-        return pPattern->getHumanTime();
+float getHumanTime() {
+    if (g_pPattern)
+        return g_pPattern->getHumanTime();
     return 0.0;
 }
 
-void setHumanTime(uint32_t pattern, float amount) {
-    Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
-    if (pPattern) {
-        g_seqMan.getPattern(g_nPattern)->setHumanTime(amount);
-        // setPatternModified(pPattern, true, false);
+void setHumanTime(float amount) {
+    if (g_pPattern) {
+        g_pPattern->setHumanTime(amount);
+        // setPatternModified(g_pPattern, true, false);
         g_bDirty = true;
     }
 }
 
-float getHumanVelo(uint32_t pattern) {
-    Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
-    if (pPattern)
-        return pPattern->getHumanVelo();
+float getHumanVelo() {
+    if (g_pPattern)
+        return g_pPattern->getHumanVelo();
     return 0.0;
 }
 
-void setHumanVelo(uint32_t pattern, float amount) {
-    Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
-    if (pPattern) {
-        pPattern->setHumanVelo(amount);
-        // setPatternModified(pPattern, true, false);
+void setHumanVelo(float amount) {
+    if (g_pPattern) {
+        g_pPattern->setHumanVelo(amount);
+        // setPatternModified(g_pPattern, true, false);
         g_bDirty = true;
     }
 }
 
-float getPlayChance(uint32_t pattern) {
-    Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
-    if (pPattern)
-        return pPattern->getPlayChance();
+float getPlayChance() {
+    if (g_pPattern)
+        return g_pPattern->getPlayChance();
     return 0.0;
 }
 
-void setPlayChance(uint32_t pattern, float chance) {
-    Pattern* pPattern = g_seqMan.getPattern(g_nPattern);
-    if (pPattern) {
-        pPattern->setPlayChance(chance);
-        // setPatternModified(pPattern, true, false);
+void setPlayChance(float chance) {
+    if (g_pPattern) {
+        g_pPattern->setPlayChance(chance);
+        // setPatternModified(g_pPattern, true, false);
         g_bDirty = true;
     }
 }
 
 bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration, float offset) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return false;
-    if (g_seqMan.getPattern(g_nPattern)->addNote(step, note, velocity, duration, offset)) {
-        setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-        g_bDirty = true;
-        return true;
+    if (g_pPattern) {
+        if (g_pPattern->addNote(step, note, velocity, duration, offset)) {
+            setPatternModified(g_pPattern, true, false);
+            g_bDirty = true;
+            return true;
+        }
     }
     return false;
 }
 
 void removeNote(uint32_t step, uint8_t note) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-    g_seqMan.getPattern(g_nPattern)->removeNote(step, note);
-    g_bDirty = true;
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->removeNote(step, note);
+        g_bDirty = true;
+    }
 }
 
 int32_t getNoteStart(uint32_t step, uint8_t note) {
-    if (g_seqMan.getPattern(g_nPattern))
-        return g_seqMan.getPattern(g_nPattern)->getNoteStart(step, note);
+    if (g_pPattern)
+        return g_pPattern->getNoteStart(step, note);
     return -1;
 }
 
 uint8_t getNoteVelocity(uint32_t step, uint8_t note) {
-    if (g_seqMan.getPattern(g_nPattern))
-        return g_seqMan.getPattern(g_nPattern)->getNoteVelocity(step, note);
+    if (g_pPattern)
+        return g_pPattern->getNoteVelocity(step, note);
     return 0;
 }
 
 void setNoteVelocity(uint32_t step, uint8_t note, uint8_t velocity) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-    g_seqMan.getPattern(g_nPattern)->setNoteVelocity(step, note, velocity);
-    g_bDirty = true;
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->setNoteVelocity(step, note, velocity);
+        g_bDirty = true;
+    }
 }
 
 float getNoteOffset(uint32_t step, uint8_t note) {
-    if (g_seqMan.getPattern(g_nPattern))
-        return g_seqMan.getPattern(g_nPattern)->getNoteOffset(step, note);
-    return 0;
+    if (g_pPattern)
+        return g_pPattern->getNoteOffset(step, note);
+    return 0.0;
 }
 
 void setNoteOffset(uint32_t step, uint8_t note, float offset) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-    g_seqMan.getPattern(g_nPattern)->setNoteOffset(step, note, offset);
-    g_bDirty = true;
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->setNoteOffset(step, note, offset);
+        g_bDirty = true;
+    }
 }
 
 bool addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, float duration, float offset) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return false;
-    if (g_seqMan.getPattern(g_nPattern)->addControl(step, control, valueStart, valueEnd, duration, offset)) {
-        setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-        g_bDirty = true;
-        return true;
+    if (g_pPattern) {
+        if (g_pPattern->addControl(step, control, valueStart, valueEnd, duration, offset)) {
+            setPatternModified(g_pPattern, true, false);
+            g_bDirty = true;
+            return true;
+        }
     }
     return false;
 }
 
 void removeControl(uint32_t step, uint8_t control) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-    g_seqMan.getPattern(g_nPattern)->removeControl(step, control);
-    g_bDirty = true;
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->removeControl(step, control);
+        g_bDirty = true;
+    }
 }
 
 int32_t getControlStart(uint32_t step, uint8_t control) {
-    if (g_seqMan.getPattern(g_nPattern))
-        return g_seqMan.getPattern(g_nPattern)->getControlStart(step, control);
+    if (g_pPattern)
+        return g_pPattern->getControlStart(step, control);
     return -1;
 }
 
 float getControlDuration(uint32_t step, uint8_t control) {
-    if (g_seqMan.getPattern(g_nPattern))
-        return g_seqMan.getPattern(g_nPattern)->getControlDuration(step, control);
+    if (g_pPattern)
+        return g_pPattern->getControlDuration(step, control);
     return 0;
 }
 
 uint8_t getControlValue(uint32_t step, uint8_t control) {
-    if (g_seqMan.getPattern(g_nPattern))
-        return g_seqMan.getPattern(g_nPattern)->getControlValue(step, control);
+    if (g_pPattern)
+        return g_pPattern->getControlValue(step, control);
     return 0;
 }
 
 void setControlValue(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-    g_seqMan.getPattern(g_nPattern)->setControlValue(step, control, valueStart, valueEnd);
-    g_bDirty = true;
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->setControlValue(step, control, valueStart, valueEnd);
+        g_bDirty = true;
+    }
 }
 
 float getControlOffset(uint32_t step, uint8_t control) {
-    if (g_seqMan.getPattern(g_nPattern))
-        return g_seqMan.getPattern(g_nPattern)->getControlOffset(step, control);
-    return 0;
+    if (g_pPattern)
+        return g_pPattern->getControlOffset(step, control);
+    return 0.0;
 }
 
 void setControlOffset(uint32_t step, uint8_t control, float offset) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-    g_seqMan.getPattern(g_nPattern)->setControlOffset(step, control, offset);
-    g_bDirty = true;
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->setControlOffset(step, control, offset);
+        g_bDirty = true;
+    }
 }
 
 uint8_t getStutterCount(uint32_t step, uint8_t note) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return 0;
-    return g_seqMan.getPattern(g_nPattern)->getStutterCount(step, note);
+    if (g_pPattern)
+        return g_pPattern->getStutterCount(step, note);
+    return 0;
 }
 
 void setStutterCount(uint32_t step, uint8_t note, uint8_t count) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-    g_seqMan.getPattern(g_nPattern)->setStutterCount(step, note, count);
-    g_bDirty = true;
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->setStutterCount(step, note, count);
+        g_bDirty = true;
+    }
 }
 
 uint8_t getStutterDur(uint32_t step, uint8_t note) {
-    if (g_seqMan.getPattern(g_nPattern))
-        return g_seqMan.getPattern(g_nPattern)->getStutterDur(step, note);
+    if (g_pPattern)
+        return g_pPattern->getStutterDur(step, note);
     return 0;
 }
 
 void setStutterDur(uint32_t step, uint8_t note, uint8_t dur) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-    g_seqMan.getPattern(g_nPattern)->setStutterDur(step, note, dur);
-    g_bDirty = true;
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->setStutterDur(step, note, dur);
+        g_bDirty = true;
+    }
 }
 
 uint8_t getNotePlayChance(uint32_t step, uint8_t note) {
-    if (g_seqMan.getPattern(g_nPattern))
-        return g_seqMan.getPattern(g_nPattern)->getPlayChance(step, note);
+    if (g_pPattern)
+        return g_pPattern->getPlayChance(step, note);
     return 100;
 }
 
 void setNotePlayChance(uint32_t step, uint8_t note, uint8_t chance) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-    g_seqMan.getPattern(g_nPattern)->setPlayChance(step, note, chance);
-    g_bDirty = true;
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->setPlayChance(step, note, chance);
+        g_bDirty = true;
+    }
 }
 
 float getNoteDuration(uint32_t step, uint8_t note) {
-    if (g_seqMan.getPattern(g_nPattern))
-        return g_seqMan.getPattern(g_nPattern)->getNoteDuration(step, note);
-    return 0;
+    if (g_pPattern)
+        return g_pPattern->getNoteDuration(step, note);
+    return 0.0;
 }
 
 bool addProgramChange(uint32_t step, uint8_t program) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return false;
-    if (g_seqMan.getPattern(g_nPattern)->addProgramChange(step, program)) {
-        setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-        g_bDirty = true;
-        return true;
+    if (g_pPattern) {
+        if (g_pPattern->addProgramChange(step, program)) {
+            setPatternModified(g_pPattern, true, false);
+            g_bDirty = true;
+            return true;
+        }
     }
     return false;
 }
 
 void removeProgramChange(uint32_t step, uint8_t program) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return;
-    if (g_seqMan.getPattern(g_nPattern)->removeProgramChange(step))
-        return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-    g_bDirty = true;
+    if (g_pPattern) {
+        if (g_pPattern->removeProgramChange(step))
+            return;
+        setPatternModified(g_pPattern, true, false);
+        g_bDirty = true;
+    }
 }
 
 uint8_t getProgramChange(uint32_t step) {
-    if (g_seqMan.getPattern(g_nPattern))
-        return g_seqMan.getPattern(g_nPattern)->getProgramChange(step);
+    if (g_pPattern)
+        return g_pPattern->getProgramChange(step);
     return 0xFF;
 }
 
 void transpose(int8_t value) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-    g_seqMan.getPattern(g_nPattern)->transpose(value);
-    g_bDirty = true;
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->transpose(value);
+        g_bDirty = true;
+    }
 }
 
 void changeVelocityAll(int value) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-    g_seqMan.getPattern(g_nPattern)->changeVelocityAll(value);
-    g_bDirty = true;
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->changeVelocityAll(value);
+        g_bDirty = true;
+    }
 }
 
 void changeDurationAll(float value) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-    g_seqMan.getPattern(g_nPattern)->changeDurationAll(value);
-    g_bDirty = true;
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->changeDurationAll(value);
+        g_bDirty = true;
+    }
 }
 
 void changeStutterCountAll(int value) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-    g_seqMan.getPattern(g_nPattern)->changeStutterCountAll(value);
-    g_bDirty = true;
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->changeStutterCountAll(value);
+        g_bDirty = true;
+    }
 }
 
 void changeStutterDurAll(int value) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return;
-    setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
-    g_seqMan.getPattern(g_nPattern)->changeStutterDurAll(value);
-    g_bDirty = true;
+    if (g_pPattern) {
+        setPatternModified(g_pPattern, true, false);
+        g_pPattern->changeStutterDurAll(value);
+        g_bDirty = true;
+    }
+}
+
+void setScale(uint32_t scale) {
+    if (g_pPattern) {
+        if (scale != g_pPattern->getScale())
+            g_bDirty = true;
+            g_pPattern->setScale(scale);
+    }
+}
+
+uint32_t getScale() {
+    if (g_pPattern)
+        return g_pPattern->getScale();
+    return 0;
+}
+
+void setTonic(uint8_t tonic) {
+    if (g_pPattern) {
+        g_pPattern->setTonic(tonic);
+        g_bDirty = true;
+    }
+}
+
+uint8_t getTonic() {
+    if (g_pPattern)
+        return g_pPattern->getTonic();
+    return 0;
 }
 
 void clearPattern(uint32_t pattern) {
     Pattern* pPattern = g_seqMan.getPattern(pattern);
     if (pPattern) {
-       setPatternModified(g_seqMan.getPattern(g_nPattern), true, false);
+        setPatternModified(pPattern, true, false);
         pPattern->clear();
         // pPattern->resetSnapshots();
         g_bDirty = true;
@@ -1960,32 +2013,49 @@ void setInputRest(uint8_t note) {
     g_bDirty     = true;
 }
 
-uint8_t getInputRest() { return g_nInputRest; }
-
-void setScale(uint32_t scale) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return;
-    if (scale != g_seqMan.getPattern(g_nPattern)->getScale())
-        g_bDirty = true;
-    g_seqMan.getPattern(g_nPattern)->setScale(scale);
+uint8_t getInputRest() {
+    return g_nInputRest;
 }
 
-uint32_t getScale() {
-    if (g_seqMan.getPattern(g_nPattern))
-        return g_seqMan.getPattern(g_nPattern)->getScale();
-    return 0;
+bool isPatternModified() {
+    if (g_bPatternModified) {
+        g_bPatternModified = false;
+        return true;
+    }
+    return false;
 }
 
-void setTonic(uint8_t tonic) {
-    if (!g_seqMan.getPattern(g_nPattern))
-        return;
-    g_seqMan.getPattern(g_nPattern)->setTonic(tonic);
-    g_bDirty = true;
+uint8_t getRefNote() {
+    if (g_pPattern)
+        return g_pPattern->getRefNote();
+    return 60;
 }
 
-uint8_t getTonic() {
-    if (g_seqMan.getPattern(g_nPattern))
-        return g_seqMan.getPattern(g_nPattern)->getTonic();
+void setRefNote(uint8_t note) {
+    if (g_pPattern)
+        g_pPattern->setRefNote(note);
+}
+
+bool getQuantizeNotes() {
+    if (g_pPattern)
+        return g_pPattern->getQuantizeNotes();
+    return false;
+}
+
+void setQuantizeNotes(bool flag) {
+    if (g_pPattern)
+        g_pPattern->setQuantizeNotes(flag);
+}
+
+uint32_t getLastStep() {
+    if (g_pPattern)
+        return g_pPattern->getLastStep();
+    return -1;
+}
+
+uint32_t getPatternPlayhead() {
+    if (g_pPattern)
+        return g_seqMan.getSequence(g_nBank, g_nSequence)->getPlayPosition() / g_pPattern->getClocksPerStep();
     return 0;
 }
 
@@ -1994,8 +2064,6 @@ void setPatternModified(Pattern* pPattern, bool bModified, bool bModifiedTracks)
         for (uint32_t nBank = 1; nBank < g_seqMan.getBanks(); ++nBank) {
             for (uint32_t nSequence = 0; nSequence < g_seqMan.getSequencesInBank(nBank); ++nSequence) {
                 Sequence* pSequence = g_seqMan.getSequence(nBank, nSequence);
-                if (!pSequence)
-                    continue;
                 bool bFound = false;
                 for (uint32_t nTrack = 0; nTrack < getTracksInSequence(nBank, nSequence) && !bFound; ++nTrack) {
                     Track* pTrack = g_seqMan.getSequence(nBank, nSequence)->getTrack(nTrack);
@@ -2014,49 +2082,6 @@ void setPatternModified(Pattern* pPattern, bool bModified, bool bModifiedTracks)
     g_bPatternModified = bModified;
 }
 
-bool isPatternModified() {
-    if (g_bPatternModified) {
-        g_bPatternModified = false;
-        return true;
-    }
-    return false;
-}
-
-uint8_t getRefNote() {
-    if (g_seqMan.getPattern(g_nPattern))
-        return g_seqMan.getPattern(g_nPattern)->getRefNote();
-    return 60;
-}
-
-void setRefNote(uint8_t note) {
-    if (g_seqMan.getPattern(g_nPattern))
-        g_seqMan.getPattern(g_nPattern)->setRefNote(note);
-}
-
-bool getQuantizeNotes() {
-    if (g_seqMan.getPattern(g_nPattern))
-        return g_seqMan.getPattern(g_nPattern)->getQuantizeNotes();
-    return false;
-}
-
-void setQuantizeNotes(bool flag) {
-    if (g_seqMan.getPattern(g_nPattern))
-        g_seqMan.getPattern(g_nPattern)->setQuantizeNotes(flag);
-}
-
-uint32_t getLastStep(uint32_t pattern) {
-    Pattern* pPattern = g_seqMan.getPattern(pattern);
-    if (pPattern)
-        return pPattern->getLastStep();
-    return -1;
-}
-
-uint32_t getPatternPlayhead() {
-    if (!g_pSequence)
-        return 0;
-    return g_pSequence->getPlayPosition() / getClocksPerStep(g_nPattern);
-}
-
 // ** Sequence management functions **
 
 bool addPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position, uint32_t pattern, bool force) {
@@ -2073,10 +2098,12 @@ void removePattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t posi
 
 uint32_t getPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position) {
     Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
-    Track* pTrack       = pSequence->getTrack(track);
+    Track* pTrack = pSequence->getTrack(track);
     if (!pTrack)
         return -1;
     Pattern* pPattern = pTrack->getPattern(position);
+    if (!pPattern)
+        return -1;
     return g_seqMan.getPatternIndex(pPattern);
 }
 
@@ -2104,7 +2131,9 @@ void setPlayMode(uint8_t bank, uint8_t sequence, uint16_t mode) {
         g_bDirty = true;
 }
 
-uint8_t getPlayState(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->getPlayState(); }
+uint8_t getPlayState(uint8_t bank, uint8_t sequence) {
+    return g_seqMan.getSequence(bank, sequence)->getPlayState();
+}
 
 void setRepeat(uint8_t bank, uint8_t sequence, uint8_t repeat) {
     g_seqMan.getSequence(bank, sequence)->setRepeat(repeat);
@@ -2114,9 +2143,14 @@ uint8_t getRepeat(uint8_t bank, uint8_t sequence) {
     return g_seqMan.getSequence(bank, sequence)->getRepeat();
 }
 
-void setSequence(uint8_t bank, uint8_t sequence) { g_pSequence = g_seqMan.getSequence(bank, sequence); }
+void setSequence(uint8_t bank, uint8_t sequence) {
+    g_nBank = bank;
+    g_nSequence = sequence;
+}
 
-bool isEmpty(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->isEmpty(); }
+bool isEmpty(uint8_t bank, uint8_t sequence) {
+    return g_seqMan.getSequence(bank, sequence)->isEmpty();
+}
 
 void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state) {
     if (transportGetPlayStatus() != JackTransportRolling) {
@@ -2128,17 +2162,38 @@ void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state) {
             state = STOPPED;
     }
     g_seqMan.setSequencePlayState(bank, sequence, state);
-    /*
-    if(sequence == 0)
-    {
-        while(g_bMutex)
-            std::this_thread::sleep_for(std::chrono::microseconds(10));
-        g_bMutex = true;
-        for(uint8_t i = 0; i < 128; ++i)
-            startEvents[i].start = -1;
-        g_bMutex = false;
+
+    // Handle scene launchers (group 16)
+    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+    if (pSequence->getGroup() == 16) {
+        uint8_t slot = sequence / 17;
+        uint8_t base_seq = slot * 17;
+        if (state == STARTING || state == PLAYING) {
+            for (uint8_t chan = 0; chan < 16; ++chan) {
+                uint32_t nSlaveSeq = base_seq + chan;
+                Sequence* pSlaveSeq = g_seqMan.getSequence(bank, nSlaveSeq);
+                if (pSlaveSeq->getRepeat() == 0 || pSlaveSeq->getPlayState() == PLAYING)
+                    continue;
+                if (pSlaveSeq->getPlayState() == STOPPING)
+                    g_seqMan.setSequencePlayState(bank, nSlaveSeq, PLAYING);
+                else
+                    g_seqMan.setSequencePlayState(bank, nSlaveSeq, STARTING);
+            }
+        } else if (state == STOPPING) {
+            for (uint8_t chan = 0; chan < 16; ++chan) {
+                uint32_t nSlaveSeq = base_seq + chan;
+                if (g_seqMan.getSequence(bank, nSlaveSeq)->getPlayState() == STOPPED)
+                    continue;
+                g_seqMan.setSequencePlayState(bank, nSlaveSeq, STOPPING);
+            }
+        } else if (state == STOPPED) {
+            for (uint8_t chan = 0; chan < 16; ++chan) {
+                uint32_t nSlaveSeq = base_seq + chan;
+                if (g_seqMan.getSequence(bank, nSlaveSeq)->getPlayState() != STOPPED)
+                    g_seqMan.setSequencePlayState(bank, nSlaveSeq, STOPPED);
+            }
+        }
     }
-    */
 }
 
 void togglePlayState(uint8_t bank, uint8_t sequence) {
@@ -2147,29 +2202,30 @@ void togglePlayState(uint8_t bank, uint8_t sequence) {
         return; // Disabled
     uint8_t nState = pSequence->getPlayState();
     switch (nState) {
-    case STOPPED:
-        nState = STARTING;
-        break;
-    case STARTING:
-        nState = STOPPED;
-        break;
-    case PLAYING:
-        nState = STOPPING;
-        break;
-    case STOPPING:
-        nState = PLAYING;
-        break;
+        case STOPPED:
+            nState = STARTING;
+            break;
+        case STARTING:
+            nState = STOPPED;
+            break;
+        case PLAYING:
+            nState = STOPPING;
+            break;
+        case STOPPING:
+            nState = PLAYING;
+            break;
     }
     setPlayState(bank, sequence, nState);
 }
 
-uint32_t getSequenceState(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->getState(); }
+uint32_t getSequenceState(uint8_t bank, uint8_t sequence) {
+    return g_seqMan.getSequence(bank, sequence)->getState();
+}
 
 uint8_t getStateChange(uint8_t bank, uint8_t start, uint8_t end, uint32_t* states) {
     uint8_t count = 0;
-    Sequence* pSequence;
     for (uint8_t sequence = start; sequence < end; ++sequence) {
-        pSequence = g_seqMan.getSequence(bank, sequence);
+        Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
         if (pSequence->isModified())
             states[count++] = (pSequence->getState() & 0xffffff) | uint32_t(sequence << 24);
     }
@@ -2178,9 +2234,8 @@ uint8_t getStateChange(uint8_t bank, uint8_t start, uint8_t end, uint32_t* state
 
 uint8_t getProgress(uint8_t bank, uint8_t start, uint8_t end, uint16_t* progress) {
     uint8_t count = 0;
-    Sequence* pSequence;
     for (uint8_t sequence = start; sequence < end; ++sequence) {
-        pSequence = g_seqMan.getSequence(bank, sequence);
+        Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
         if (pSequence->getLength())
             progress[count++] = (100 * pSequence->getPlayPosition() / pSequence->getLength()) & 0xff | uint32_t(sequence << 8);
     }
@@ -2207,20 +2262,17 @@ void clearSequence(uint8_t bank, uint8_t sequence) {
     g_bDirty = true;
 }
 
-size_t getPlayingSequences() { return g_nPlayingSequences; }
-
-void setSequencesInBank(uint8_t bank, uint8_t sequences) {
-    while (g_bMutex)
-        std::this_thread::sleep_for(std::chrono::microseconds(10));
-    g_bMutex = true;
-    g_seqMan.setSequencesInBank(bank, sequences);
-    g_bMutex    = false;
-    g_pSequence = g_seqMan.getSequence(0, 0);
+size_t getPlayingSequences() {
+    return g_nPlayingSequences;
 }
 
-uint32_t getSequencesInBank(uint32_t bank) { return g_seqMan.getSequencesInBank(bank); }
+uint32_t getSequencesInBank(uint32_t bank) {
+    return g_seqMan.getSequencesInBank(bank);
+}
 
-void clearBank(uint32_t bank) { g_seqMan.clearBank(bank); }
+void clearBank(uint32_t bank) {
+    g_seqMan.clearBank(bank);
+}
 
 // ** Sequence management functions **
 
@@ -2282,29 +2334,17 @@ const char* getSequenceName(uint8_t bank, uint8_t sequence) {
     return g_sName;
 }
 
-void setNextSequence(uint8_t bank, uint8_t sequence, uint8_t nextBank, uint8_t nextSequence) {
-    g_seqMan.getSequence(bank, sequence)->setNextSequence(nextBank, nextSequence);
+void setFollowAction(uint8_t bank, uint8_t sequence, uint8_t nextBank, uint8_t nextSequence) {
+    g_seqMan.getSequence(bank, sequence)->setFollowAction(nextBank, nextSequence);
     g_bDirty = true;
 }
 
-uint16_t getNextSequence(uint8_t bank, uint8_t sequence) {
-    return g_seqMan.getSequence(bank, sequence)->getNextSequence();
-}
-
-bool moveSequence(uint8_t bank, uint8_t sequence, uint8_t position) {
-    bool bResult = g_seqMan.moveSequence(bank, sequence, position);
-    g_pSequence  = g_seqMan.getSequence(0, 0);
-    return bResult;
-}
-
-void insertSequence(uint8_t bank, uint8_t sequence) {
-    g_seqMan.insertSequence(bank, sequence);
-    g_pSequence = g_seqMan.getSequence(0, 0);
+uint16_t getFollowAction(uint8_t bank, uint8_t sequence) {
+    return g_seqMan.getSequence(bank, sequence)->getFollowAction();
 }
 
 void removeSequence(uint8_t bank, uint8_t sequence) {
     g_seqMan.removeSequence(bank, sequence);
-    g_pSequence = g_seqMan.getSequence(0, 0);
 }
 
 void updateSequenceInfo() { g_seqMan.updateAllSequenceLengths(); }
@@ -2354,7 +2394,7 @@ uint8_t getChainID(uint8_t bank, uint8_t sequence, uint32_t track) {
 
 void setChannel(uint8_t bank, uint8_t sequence, uint32_t track, uint8_t channel) {
     Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
-    Track* pTrack       = pSequence->getTrack(track);
+    Track* pTrack = pSequence->getTrack(track);
     if (!pTrack)
         return;
     pTrack->setChannel(channel);

@@ -262,7 +262,7 @@ uint32_t createPattern();
 */
 uint32_t getPatternsInTrack(uint8_t bank, uint8_t sequence, uint32_t track);
 
-/** @brief  Get index of pattern within a track
+/** @brief  Get index of pattern within a track starting at position
 *   @param  bank Index of bank
 *   @param  sequence Index of sequence
 *   @param  track Index of track
@@ -271,7 +271,7 @@ uint32_t getPatternsInTrack(uint8_t bank, uint8_t sequence, uint32_t track);
 */
 uint32_t getPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position);
 
-/** @brief  Get index of pattern within a track
+/** @brief  Get index of pattern within a track spanning position
 *   @param  bank Index of bank
 *   @param  sequence Index of sequence
 *   @param  track Index of track
@@ -527,6 +527,81 @@ bool isPatternModified();
 */
 uint32_t getPatternPlayhead();
 
+/** @brief  Get quantity of steps in pattern
+*   @retval uint32_t Quantity of steps
+*/
+uint32_t getSteps();
+
+/** @brief  Get steps per beat from selected pattern
+*   @retval uint32_t Steps per beat
+*/
+uint32_t getStepsPerBeat();
+
+/** @brief  Set steps per beat
+*   @param  pattern Index of pattern
+*   @param  steps Steps per beat [1,2,3,4,6,8,12,24]
+*   @note   Calculates pattern length from beats in pattern
+*/
+void setStepsPerBeat(uint32_t steps);
+
+/** @brief  Get the last populated step
+*   @retval uint32_t Index of last populated step or -1 if empty
+*   @note   This may allow checking for empty patterns or whether truncation will have an effect
+*/
+uint32_t getLastStep();
+
+/** @brief  Get swing division from selected pattern
+*   @retval uint32_t swing division
+*/
+uint32_t getSwingDiv();
+
+/** @brief  Set swing division in selected pattern
+*   @param  swing division, from 1 to pattern's StepsPerBeat
+*/
+void setSwingDiv(uint32_t div);
+
+/** @brief  Get swing amount from selected pattern
+*   @retval float swing division
+*/
+float getSwingAmount();
+
+/** @brief  Set swing amount in pattern
+*   @param  swing amount, from 0 to 1 (0.33 is perfect-triplet swing, >0.5 is not really swing)
+*/
+void setSwingAmount(float amount);
+
+/** @brief  Get Time Humanization amount from pattern
+*   @param  pattern Index of pattern
+*   @retval float
+*/
+float getHumanTime();
+
+/** @brief  Set Time Humanization amount in pattern
+*   @param  pattern Index of pattern
+*   @param  amount, from 0 to FLOAT_MAX
+*/
+void setHumanTime(float amount);
+
+/** @brief  Get Velocity Humanization amount from pattern
+*   @retval float
+*/
+float getHumanVelo();
+
+/** @brief  Set Velocity Humanization amount in pattern
+*   @param  amount, from 0 to FLOAT_MAX
+*/
+void setHumanVelo(float amount);
+
+/** @brief  Get PlayChance from pattern
+*   @retval float
+*/
+float getPlayChance();
+
+/** @brief  Set PlayChance in pattern
+*   @param  chance, probability of playing notes
+*/
+void setPlayChance(float chance);
+
 // ** Functions acting on specified pattern **
 
 /** @brief  Check if selected pattern is empty
@@ -534,12 +609,6 @@ uint32_t getPatternPlayhead();
 *   @retval bool True if pattern is empty
 */
 bool isPatternEmpty(uint32_t pattern);
-
-/** @brief  Get quantity of steps in pattern
-*   @param  pattern Index of pattern
-*   @retval uint32_t Quantity of steps
-*/
-uint32_t getSteps(uint32_t pattern);
 
 /** @brief  Get quantity of beats in  pattern
 *   @param  pattern Index of pattern
@@ -566,90 +635,10 @@ uint32_t getPatternLength(uint32_t pattern);
 */
 uint32_t getClocksPerStep(uint32_t pattern);
 
-/** @brief  Get steps per beat from selected pattern
-*   @param  pattern Index of pattern
-*   @retval uint32_t Steps per beat
-*/
-uint32_t getStepsPerBeat(uint32_t pattern);
-
-/** @brief  Set steps per beat
-*   @param  pattern Index of pattern
-*   @param  steps Steps per beat [1,2,3,4,6,8,12,24]
-*   @note   Calculates pattern length from beats in pattern
-*/
-void setStepsPerBeat(uint32_t pattern, uint32_t steps);
-
-/** @brief  Get swing division from selected pattern
-*   @param  pattern Index of pattern
-*   @retval uint32_t swing division
-*/
-uint32_t getSwingDiv(uint32_t pattern);
-
-/** @brief  Set swing division in selected pattern
-*   @param  pattern Index of pattern
-*   @param  swing division, from 1 to pattern's StepsPerBeat
-*/
-void setSwingDiv(uint32_t pattern, uint32_t div);
-
-/** @brief  Get swing amount from selected pattern
-*   @param  pattern Index of pattern
-*   @retval float swing division
-*/
-float getSwingAmount(uint32_t pattern);
-
-/** @brief  Set swing amount in pattern
-*   @param  pattern Index of pattern
-*   @param  swing amount, from 0 to 1 (0.33 is perfect-triplet swing, >0.5 is not really swing)
-*/
-void setSwingAmount(uint32_t pattern, float amount);
-
-/** @brief  Get Time Humanization amount from pattern
-*   @param  pattern Index of pattern
-*   @retval float
-*/
-float getHumanTime(uint32_t pattern);
-
-/** @brief  Set Time Humanization amount in pattern
-*   @param  pattern Index of pattern
-*   @param  amount, from 0 to FLOAT_MAX
-*/
-void setHumanTime(uint32_t pattern, float amount);
-
-/** @brief  Get Velocity Humanization amount from pattern
-*   @param  pattern Index of pattern
-*   @retval float
-*/
-float getHumanVelo(uint32_t pattern);
-
-/** @brief  Set Velocity Humanization amount in pattern
-*   @param  pattern Index of pattern
-*   @param  amount, from 0 to FLOAT_MAX
-*/
-void setHumanVelo(uint32_t pattern, float amount);
-
-/** @brief  Get PlayChance from pattern
-*   @param  pattern Index of pattern
-*   @retval float
-*/
-float getPlayChance(uint32_t pattern);
-
-/** @brief  Set PlayChance in pattern
-*   @param  pattern Index of pattern
-*   @param  chance, probability of playing notes
-*/
-void setPlayChance(uint32_t pattern, float chance);
-
 /** @brief  Clears events from pattern
 *   @note   Does not change other parameters such as pattern length
 */
 void clearPattern(uint32_t pattern);
-
-/** @brief  Get the last populated step
-*   @param  pattern Index of pattern
-*   @retval uint32_t Index of last populated step or -1 if empty
-*   @note   This may allow checking for empty patterns or whether truncation will have an effect
-*/
-uint32_t getLastStep(uint32_t pattern);
 
 // ** Functions used by pattern editor but not related to the actual pattern **
 
@@ -799,14 +788,14 @@ uint8_t getChannel(uint8_t bank, uint8_t sequence, uint32_t track);
 /** @brief  Get current play mode for a sequence
 *   @param  bank Index of bank containing sequence
 *   @param  sequence Index (sequence) of sequence within bank
-*   @retval uint16_t Stop mode (bits 0..1). Start mode (bit 2) modes. Enabled (bit 7). Repeat (bits 8..15).
+*   @retval uint16_t Stop mode (bits 0..1). Start mode (bit 2) modes.Repeat (bits 8..15).
 */
 uint16_t getPlayMode(uint8_t bank, uint8_t sequence);
 
 /** @brief  Set play mode of a sequence
 *   @param  bank Index of bank containing sequence
 *   @param  sequence Index (sequence) of sequence within bank
-*   @param  mode Stop mode (bits 0..1). Start mode (bit 2) modes. Enabled (bit 7). Repeat (bits 8..15).
+*   @param  mode Stop mode (bits 0..1). Start mode (bit 2) modes. Repeat (bits 8..15).
 */
 void setPlayMode(uint8_t bank, uint8_t sequence, uint16_t mode);
 
@@ -817,10 +806,10 @@ void setPlayMode(uint8_t bank, uint8_t sequence, uint16_t mode);
 */
 uint8_t getPlayState(uint8_t bank, uint8_t sequence);
 
-/** @brief  	Check if sequence is empty (all patterns have no events)
+/** @brief  Check if sequence is empty (all patterns have no events)
 *   @param  bank Index of bank containing sequence
 *   @param  sequence Index (sequence) of sequence within bank
- *	@retval bool True if sequence empty else false if any pattern in sequence has any events
+*	@retval bool True if sequence empty else false if any pattern in sequence has any events
 */
 bool isEmpty(uint8_t bank, uint8_t sequence);
 
@@ -842,7 +831,7 @@ void togglePlayState(uint8_t bank, uint8_t sequence);
 /** @brief  Get sequence states encoded as 32-bit word
 *   @param  bank Index of bank containing sequence
 *   @param  sequence Index (sequence) of sequence within bank
-*   @retval uint32_t State encode as 32-bit word: [sequence, group, mode, play state]
+*   @retval uint32_t State encode as 32-bit word: [repeat, group, mode, play state]
 */
 uint32_t getSequenceState(uint8_t bank, uint8_t sequence);
 
@@ -1050,30 +1039,14 @@ const char* getSequenceName(uint8_t bank, uint8_t sequence);
     @param  nextSequence Index of next sequence
     @note   Set nextBank and nextSequence to zero to disable follow-on action
 */
-void setNextSequence(uint8_t bank, uint8_t sequence, uint8_t nextBank, uint8_t nextSequence);
+void setFollowAction(uint8_t bank, uint8_t sequence, uint8_t nextBank, uint8_t nextSequence);
 
 /** @brief  Get the sequence to play when one-shot ends
     @param  bank Index of bank
     @param  sequence Index of sequence
     @retval uint16_t Next bank << 8 | next sequence. Zero if disabled.
 */
-uint16_t getNextSequence(uint8_t bank, uint8_t sequence);
-
-/** @brief  Move sequence (change order of sequences)
-*   @param  bank Index of bank
-*   @param  sequence Index of sequence to move
-*   @param  position Index of sequence to move this sequence, e.g. 0 to insert as first sequence
-*   @note   Sequences after insert point are moved up by one. Bank grows if sequence or position are higher than size of bank
-*   @retval bool True on success
-*/
-bool moveSequence(uint8_t bank, uint8_t sequence, uint8_t position);
-
-/** @brief  Insert new sequence in bank
-*   @param  bank Index of bank
-*   @param  sequence Index at which to insert sequence , e.g. 0 to insert as first sequence
-*   @note   Sequences after insert point are moved up by one. Bank grows if sequence is higher than size of bank
-*/
-void insertSequence(uint8_t bank, uint8_t sequence);
+uint16_t getFollowAction(uint8_t bank, uint8_t sequence);
 
 /** @brief  Remove sequence from bank
 *   @param  bank Index of bank
@@ -1087,13 +1060,6 @@ void removeSequence(uint8_t bank, uint8_t sequence);
 void updateSequenceInfo();
 
 // ** Bank management functions **
-
-/** @brief  Set quantity of sequences in a bank
-*   @param  bank Bank index
-*   @param  sequences Quantity of sequences
-*   @note   Sequences are created or destroyed as required
-*/
-void setSequencesInBank(uint8_t bank, uint8_t sequences);
 
 /** @brief  Get quantity of sequences in bank
 *   @param  bank Bank index

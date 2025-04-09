@@ -146,6 +146,13 @@ ZynthianState = {
     }, # ... Other engines
     "audio_recorder_armed": [0, 3], # List of audio mixer strip indicies armed for multi-track audio recording
     "zynseq_riff_b64": "dmVycwAA...", # Binary encoded RIFF data for step sequencer patterns, sequences, etc.
+    "launchers": [ # List of banks of launchers
+        [ # List of channels
+            [ # List of sequence numbers
+                0, 1, None, 2, # ... Other sequences in channel
+            ], # ... Other channels in bank
+        ], # ... Other banks
+    ],
     "alsa_mixer": {  # Indexed by processor ID
         "controllers": {  # Dictionary of controllers
             "Digital_0": {  # Indexed by control symbol
