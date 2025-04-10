@@ -15,12 +15,12 @@ std::normal_distribution d{0.0, 1.0};
 bool Track::addPattern(uint32_t position, Pattern* pattern, bool force) {
     // Find (and remove) overlapping patterns
     uint32_t nStart = position;
-    uint32_t nEnd   = nStart + pattern->getLength();
+    uint32_t nEnd = nStart + pattern->getLength();
     for (uint32_t nClock = 0; nClock <= position + pattern->getLength(); ++nClock) {
         if (m_mPatterns.find(nClock) != m_mPatterns.end()) {
-            Pattern* pPattern       = m_mPatterns[nClock];
+            Pattern* pPattern = m_mPatterns[nClock];
             uint32_t nExistingStart = nClock;
-            uint32_t nExistingEnd   = nExistingStart + pPattern->getLength();
+            uint32_t nExistingEnd = nExistingStart + pPattern->getLength();
 
             if ((nStart >= nExistingStart && nStart < nExistingEnd) || (nEnd > nExistingStart && nEnd <= nExistingEnd)) {
                 if (!force)
@@ -65,7 +65,7 @@ Pattern* Track::getPatternAt(uint32_t position) {
 uint8_t Track::getType() { return m_nType; }
 
 void Track::setType(uint8_t type) {
-    m_nType    = type;
+    m_nType = type;
     m_bChanged = true;
 }
 
@@ -88,7 +88,7 @@ void Track::setChannel(uint8_t channel) {
 uint8_t Track::getOutput() { return m_nOutput; }
 
 void Track::setOutput(uint8_t output) {
-    m_nOutput  = output;
+    m_nOutput = output;
     m_bChanged = true;
 }
 
@@ -103,24 +103,24 @@ uint8_t Track::clock(uint32_t nTime, uint32_t nPosition, double dSamplesPerClock
         // Playhead at start of pattern
         // fprintf(stderr, "Start of pattern\n");
         m_nCurrentPatternPos = nPosition;
-        m_nNextStep          = 0;
-        m_nNextEvent         = 0;
-        m_nClkPerStep        = m_mPatterns[m_nCurrentPatternPos]->getClocksPerStep();
+        m_nNextStep = 0;
+        m_nNextEvent = 0;
+        m_nClkPerStep = m_mPatterns[m_nCurrentPatternPos]->getClocksPerStep();
         if (m_nClkPerStep == 0)
             m_nClkPerStep = 1;
-        m_nEventValue    = -1;
-        m_nDivCount      = 0; // Trigger first step immediately
+        m_nEventValue = -1;
+        m_nDivCount = 0; // Trigger first step immediately
         m_nLastClockTime = nTime;
         // fprintf(stderr, "m_nCurrentPatternPos: %u m_nClkPerStep: %u\n", m_nCurrentPatternPos, m_nClkPerStep);
     } else if (m_nCurrentPatternPos >= 0 && nPosition >= m_nCurrentPatternPos + m_mPatterns[m_nCurrentPatternPos]->getLength()) {
         // At end of pattern
         // fprintf(stderr, "End of pattern\n");
         m_nCurrentPatternPos = -1;
-        m_nNextEvent         = -1;
-        m_nNextStep          = 0;
-        m_nClkPerStep        = 1;
-        m_nEventValue        = -1;
-        m_nDivCount          = 0;
+        m_nNextEvent = -1;
+        m_nNextStep = 0;
+        m_nClkPerStep = 1;
+        m_nEventValue = -1;
+        m_nDivCount = 0;
     } else {
         // Within pattern
         ++m_nDivCount;
@@ -131,7 +131,7 @@ uint8_t Track::clock(uint32_t nTime, uint32_t nPosition, double dSamplesPerClock
         // Reached next step
         // fprintf(stderr, "Reached next step \n");
         m_nLastClockTime = nTime;
-        m_nDivCount      = 0;
+        m_nDivCount = 0;
         ++m_nNextStep;
         m_nNextEvent = m_mPatterns[m_nCurrentPatternPos]->getFirstEventAtStep(m_nNextStep); //!@todo Could disable this check only when not editing pattern
     }
@@ -234,7 +234,7 @@ SEQ_EVENT* Track::getEvent() {
 
 uint32_t Track::updateLength() {
     m_nTrackLength = 0;
-    m_bEmpty       = true;
+    m_bEmpty = true;
     for (auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it) {
         if (it->first + it->second->getLength() > m_nTrackLength)
             m_nTrackLength = it->first + it->second->getLength();
@@ -248,19 +248,19 @@ uint32_t Track::getLength() { return m_nTrackLength; }
 
 void Track::clear() {
     m_mPatterns.clear();
-    m_nTrackLength       = 0;
-    m_nEventValue        = -1;
+    m_nTrackLength = 0;
+    m_nEventValue = -1;
     m_nCurrentPatternPos = -1;
-    m_nNextEvent         = -1;
-    m_nNextStep          = 0;
-    m_nClkPerStep        = 1;
-    m_nDivCount          = 0;
-    m_bChanged           = true;
+    m_nNextEvent = -1;
+    m_nNextStep = 0;
+    m_nClkPerStep = 1;
+    m_nDivCount = 0;
+    m_bChanged = true;
 }
 
 void Track::setPosition(uint32_t position) {
-    m_nDivCount  = 0;
-    m_nNextStep  = position / m_nClkPerStep;
+    m_nDivCount = 0;
+    m_nNextStep = position / m_nClkPerStep;
     // fprintf(stderr, "setPosition: next step: %d\n", m_nNextStep);
     m_nNextEvent = -1; // Avoid playing wrong pattern
     for (auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it) {
@@ -294,10 +294,10 @@ void Track::solo(bool solo) { m_bSolo = solo; }
 bool Track::isSolo() { return m_bSolo; }
 
 void Track::mute(bool mute) {
-    m_bMute              = mute;
-    m_nEventValue        = -1;
+    m_bMute = mute;
+    m_nEventValue = -1;
     m_nCurrentPatternPos = -1;
-    m_nNextEvent         = -1;
+    m_nNextEvent = -1;
 }
 
 bool Track::isMuted() { return m_bMute; }

@@ -280,8 +280,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             self.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
         self.zynseq.libseq.selectPattern(index)
         self.pattern = index
-        n_steps = self.zynseq.libseq.getSteps(self.pattern)
-        n_steps_beat = self.zynseq.libseq.getStepsPerBeat(self.pattern)
+        n_steps = self.zynseq.libseq.getSteps()
+        n_steps_beat = self.zynseq.libseq.getStepsPerBeat()
         keymap_len = len(self.keymap)
         self.load_keymap()
         if n_steps != self.n_steps or n_steps_beat != self.n_steps_beat or len(self.keymap) != keymap_len:

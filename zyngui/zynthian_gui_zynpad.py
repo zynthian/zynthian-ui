@@ -318,7 +318,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         self.grid_canvas.itemconfig(self.pads[pad]["title"], text=title, fill=foreground)
         self.grid_canvas.itemconfig(self.pads[pad]["group"], text=f"CH{midi_chan + 1}", fill=foreground)
         self.grid_canvas.itemconfig(self.pads[pad]["num"], text=f"{group}{pad+1}", fill=foreground)
-        self.grid_canvas.itemconfig(self.pads[pad]["mode"], image=self.mode_icon[self.zynseq.col_in_bank][mode])
+        #self.grid_canvas.itemconfig(self.pads[pad]["mode"], image=self.mode_icon[self.zynseq.col_in_bank][mode])
         if state == 0 and self.zynseq.libseq.isEmpty(self.bank, pad):
             self.grid_canvas.itemconfig(
                 self.pads[pad]["state"], image=self.empty_icon)
@@ -500,7 +500,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
             # Set to Audio track
             logging.debug("Setting track type to Audio")
             self.zynseq.libseq.clearPattern(pattern)
-            self.zynseq.libseq.addNote(0, 60, 100, self.zynseq.libseq.getSteps(self.pattern), 0)
+            self.zynseq.libseq.addNote(0, 60, 100, self.zynseq.libseq.getSteps(), 0)
             # Add a new audio player (zynsampler) chain => IMPROVE! We could choose an existing one...
             chain_id = self.chain_manager.add_chain(None,
                                                     self.zynseq.libseq.getChannel(self.bank, self.selected_pad, 0),

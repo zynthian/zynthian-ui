@@ -71,7 +71,8 @@ class zynthian_engine_jalv(zynthian_engine):
         # "http://tytel.org/helm": {"RPi5": False, "RPi4": False, "RPi3": True, "RPi2": False},				 # Better CPU with gtk but only qt4 works on RPi4
         'https://git.code.sf.net/p/qmidiarp/arp': {"RPi5": "X11UI", "RPi4": "X11UI", "RPi3": "X11UI", "RPi2": "X11UI"},
         'https://git.code.sf.net/p/qmidiarp/lfo': {"RPi5": "X11UI", "RPi4": "X11UI", "RPi3": "X11UI", "RPi2": "X11UI"},
-        'https://git.code.sf.net/p/qmidiarp/seq': {"RPi5": "X11UI", "RPi4": "X11UI", "RPi3": "X11UI", "RPi2": "X11UI"}
+        'https://git.code.sf.net/p/qmidiarp/seq': {"RPi5": "X11UI", "RPi4": "X11UI", "RPi3": "X11UI", "RPi2": "X11UI"},
+        'http://distrho.sf.net/plugins/3BandEQ': {"RPi5": False, "RPi4": False, "RPi3": False, "RPi2": False}
     }
 
     plugins_custom_gui = {

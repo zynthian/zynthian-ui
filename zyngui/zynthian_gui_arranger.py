@@ -191,7 +191,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
         options['Group ({})'.format(list(map(chr, range(65, 91)))[
             self.zynseq.libseq.getGroup(self.zynseq.bank, self.sequence)])] = 'Group'
         options[f'Repeat ({self.zynseq.libseq.getRepeat(self.zynseq.bank, self.sequence)})'] = 'Repeat'
-        options[f'Follow action ({self.zynseq.libseq.getNextSequence(self.zynseq.bank, self.sequence)})'] = 'Follow'
+        options[f'Follow action ({self.zynseq.libseq.getFollowAction(self.zynseq.bank, self.sequence)})'] = 'Follow'
         options['Play mode ({})'.format(self.zynseq.libseq.getPlayMode(
             self.zynseq.bank, self.sequence))] = 'Play mode'
         options['Pattern ({})'.format(self.pattern)] = 'Pattern'
@@ -437,7 +437,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
                         pattern[channel] = self.zynseq.libseq.createPattern()
                         self.zynseq.libseq.selectPattern(pattern[channel])
                         self.zynseq.libseq.setBeatsInPattern(pattern[channel], beats_in_pattern)
-                        self.zynseq.libseq.setStepsPerBeat(pattern, steps_per_beat)
+                        self.zynseq.libseq.setStepsPerBeat(steps_per_beat)
                         position = int(
                             pattern_position[channel] / ticks_per_clock)
                         self.zynseq.libseq.addPattern(

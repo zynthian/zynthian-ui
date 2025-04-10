@@ -57,10 +57,10 @@ void Timebase::addTimebaseEvent(uint16_t bar, uint16_t clock, uint16_t type, uin
             break; // Found point to insert
     }
     TimebaseEvent* pEvent = new TimebaseEvent;
-    pEvent->bar           = bar;
-    pEvent->clock         = clock;
-    pEvent->type          = type;
-    pEvent->value         = value;
+    pEvent->bar = bar;
+    pEvent->clock = clock;
+    pEvent->type = type;
+    pEvent->value = value;
     m_vEvents.insert(it, pEvent);
 }
 
