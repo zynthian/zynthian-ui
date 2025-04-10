@@ -1048,6 +1048,7 @@ class zynthian_gui_mixer_strip():
 # Zynthian Mixer GUI Class
 # ------------------------------------------------------------------------------
 
+
 class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def __init__(self):
@@ -1501,7 +1502,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def set_clip_info(self, chan, slot):
         try:
-            self.launcher_select_info = info = self.zynseq.launcher_info[chan][slot]
+            self.launcher_select_info = self.zynseq.launcher_info[chan][slot]
         except Exception as e:
             self.launcher_select_info = None
             logging.error(f"Can't get info for slot {slot} in column {chan} => {e}")

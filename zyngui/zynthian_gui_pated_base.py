@@ -351,7 +351,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             options['\u2610 Quantized recording'] = 'Quantized recording'
         options[f"Copy this pattern ({self.pattern}) to clipboard"] = 'Copy pattern'
         if self.pattern2copy is not None and self.pattern2copy != self.pattern:
-            options[f"Paste pattern ({self.pattern2copy})"] = 'Paste pattern'
+            options[f"Paste from clipboard ({self.pattern2copy})"] = 'Paste pattern'
         options['Load pattern'] = 'Load pattern'
         options['Save pattern'] = 'Save pattern'
         options['Clear pattern'] = 'Clear pattern'
