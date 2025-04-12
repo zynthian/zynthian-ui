@@ -95,7 +95,10 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
         if self.idev_out is None or bank != self.zynseq.bank:
             return
         # logging.debug(f"Updating Launchpad MINI MK3 bank {bank} pad {seq} => state {state}, mode {mode}")
-        col, row = self.zynseq.get_xy_from_pad(seq)
+        try:
+            col, row = self.zynseq.get_xy_from_seq(seq)
+        except:
+            return
         note = 10 * (8 - row) + col + 1
         try:
             if mode == 0:
@@ -136,9 +139,9 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
             vel = ev[2] & 0x7F
             if vel > 0:
                 col, row = self.get_note_xy(note)
-                pad = self.zynseq.get_pad_from_xy(col, row)
-                if pad >= 0:
-                    self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
+                seq = self.zynseq.get_seq_from_xy(col, row)
+                if seq is not None:
+                    self.zynseq.libseq.togglePlayState(self.zynseq.bank, seq)
             return True
         # CC => arrows, scene change, stop all
         elif evtype == 0xB:

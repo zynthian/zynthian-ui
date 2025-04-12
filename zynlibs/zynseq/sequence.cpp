@@ -110,10 +110,14 @@ Timebase* Sequence::getTimebase() {
     return &m_timebase;
 }
 
-uint8_t Sequence::getPlayMode() { return m_nMode; }
+uint8_t Sequence::getPlayMode() {
+    return m_nMode & 0x7F;
+}
 
 void Sequence::setPlayMode(uint8_t mode) {
     m_nMode = mode;
+    if (m_nNextSeq != 0xFFFF)
+        mode |= 0x80;
     m_bChanged = true;
 }
 
@@ -245,12 +249,26 @@ void Sequence::setName(std::string sName) {
     m_sName.resize(16);
 }
 
-std::string Sequence::getName() { return m_sName; }
+std::string Sequence::getName() {
+    return m_sName;
+}
 
-void Sequence::setFollowAction(uint8_t bank, uint8_t sequence) { m_nNextSeq = (bank << 8) | sequence; }
+void Sequence::setFollowAction(uint8_t bank, uint8_t sequence) {
+    m_nNextSeq = (bank << 8) | sequence;
+}
 
-uint16_t Sequence::getFollowAction() { return m_nNextSeq; }
+uint16_t Sequence::getFollowAction() {
+    return m_nNextSeq;
+}
 
-void Sequence::setRepeat(uint8_t repeat) { m_nRepeat = repeat; }
+void Sequence::setRepeat(uint8_t repeat) {
+    m_nRepeat = repeat;
+    if (repeat)
+        m_nMode |= 0x80;
+    else
+        m_nMode &= 0x7F;
+}
 
-uint8_t Sequence::getRepeat() { return m_nRepeat; }
+uint8_t Sequence::getRepeat() {
+    return m_nRepeat;
+}

@@ -224,6 +224,14 @@ class zynthian_chain_manager:
                 self.state_manager.end_busy("add_chain")
                 return None
 
+        # Set MIDI channel
+        self.set_midi_chan(chain_id, midi_chan)
+
+        # Add to chain index (sorted!)
+        if chain_pos is None:
+            chain_pos = self.get_chain_index(0)
+        self.ordered_chain_ids.insert(chain_pos, chain_id)
+
         # Setup MIDI routing
         if isinstance(midi_chan, int):
             # Restore zmop_index if it's free for assignment
@@ -263,14 +271,6 @@ class zynthian_chain_manager:
             if not existing_midi_chan:
                 for slot in range(len(self.state_manager.zynseq.launcher_info)):
                     self.state_manager.zynseq.updateSequence(midi_chan, slot, True)
-
-        # Set MIDI channel
-        self.set_midi_chan(chain_id, midi_chan)
-
-        # Add to chain index (sorted!)
-        if chain_pos is None:
-            chain_pos = self.get_chain_index(0)
-        self.ordered_chain_ids.insert(chain_pos, chain_id)
 
         chain.rebuild_graph()
         zynautoconnect.request_audio_connect(fast_refresh)
@@ -399,9 +399,7 @@ class zynthian_chain_manager:
                     disable_sequences = False
                     break
             if disable_sequences:
-                for slot in range(len(self.state_manager.zynseq.launcher_info)):
-                    self.state_manager.zynseq.libseq.setRepeat(self.state_manager.zynseq.bank, slot * 17 + midi_chan, 0)
-
+                self.state_manager.zynseq.disable_channel(midi_chan)
 
         self.state_manager.purge_zs3()
         self.state_manager.end_busy("remove_chain")

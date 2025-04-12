@@ -89,7 +89,10 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad):
         if self.idev_out is None:
             return
         # logging.debug("Updating LaunchpadPro MK2 pad {}".format(pad))
-        col, row = self.zynseq.get_xy_from_pad(pad)
+        try:
+            col, row = self.zynseq.get_xy_from_seq(pad)
+        except:
+            return
         note = 10 * (8 - row) + col + 1
 
         group = self.zynseq.libseq.getGroup(self.zynseq.bank, pad)
@@ -127,9 +130,9 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad):
             vel = ev[2] & 0x7F
             if vel > 0:
                 col, row = self.get_note_xy(note)
-                pad = self.zynseq.get_pad_from_xy(col, row)
-                if pad >= 0:
-                    self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
+                seq = self.zynseq.get_seq_from_xy(col, row)
+                if seq is not None:
+                    self.zynseq.libseq.togglePlayState(self.zynseq.bank, seq)
             return True
         # CC => scene change
         elif evtype == 0xB:

@@ -842,6 +842,7 @@ uint32_t getSequenceState(uint8_t bank, uint8_t sequence);
     @param  states Pointer to array of uint32_t to hold results
     @retval uint8_t Quantity of changed sequences
     @note   State is represented as 4 bytes encoded as single 32-bit word: [sequence, group, mode, play state]
+    @note   mode bits: [0..1] stop mode. [2] start mode. [7] enabled
 */
 uint8_t getStateChange(uint8_t bank, uint8_t start, uint8_t end, uint32_t* states);
 

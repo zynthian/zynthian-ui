@@ -611,6 +611,8 @@ class zynthian_state_manager:
                 status_midi_player = libsmf.getPlayState()
                 if self.status_midi_player != status_midi_player:
                     self.status_midi_player = status_midi_player
+                    if status_midi_player == 0:
+                        self.zynseq.transport_stop("zynsmf")
                     zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_PLAYER_STATE, state=status_midi_player)
 
                 # MIDI Recorder
@@ -1763,6 +1765,7 @@ class zynthian_state_manager:
         logging.info("All Sounds Off!")
         for chan in range(16):
             lib_zyncore.ui_send_ccontrol_change(chan, 120, 0)
+        self.zynseq.transport_stop("ALL")
 
     def all_notes_off(self):
         logging.info("All Notes Off!")
@@ -2223,6 +2226,7 @@ class zynthian_state_manager:
     def stop_midi_playback(self):
         if libsmf.getPlayState() != zynsmf.PLAY_STATE_STOPPED:
             libsmf.stopPlayback()
+            self.zynseq.transport_stop("zynsmf")
             self.status_midi_player = False
             zynsigman.send(zynsigman.S_STATE_MAN, self.SS_MIDI_PLAYER_STATE, state=False)
         return self.status_midi_player

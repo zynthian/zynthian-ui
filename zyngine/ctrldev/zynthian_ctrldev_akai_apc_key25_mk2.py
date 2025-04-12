@@ -944,13 +944,13 @@ class PadMatrixHandler(ModeHandlerBase):
         # If seqman is enabled, ignore row functions
         if self._seqman_func is not None:
             return False
-        if row >= self._zynseq.col_in_bank:
+        if row >= self._zynseq.LAUNCHER_COLS:
             return True
 
         # Get overall status: playing if at least one sequence is playing
         is_playing = False
-        for col in range(self._zynseq.col_in_bank):
-            seq = col * self._zynseq.col_in_bank + row
+        for col in range(self._zynseq.LAUNCHER_COLS):
+            seq = col * self._zynseq.LAUNCHER_COLS + row
             if seq in self._playing_seqs:
                 is_playing = True
                 break
@@ -958,8 +958,8 @@ class PadMatrixHandler(ModeHandlerBase):
         stop_states = (zynseq.SEQ_STOPPED, zynseq.SEQ_STOPPING,
                        zynseq.SEQ_STOPPINGSYNC)
         play_states = (zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING)
-        for col in range(self._zynseq.col_in_bank):
-            seq = col * self._zynseq.col_in_bank + row
+        for col in range(self._zynseq.LAUNCHER_COLS):
+            seq = col * self._zynseq.LAUNCHER_COLS + row
             # We only play sequences that are not empty
             if not is_playing and self._libseq.isEmpty(self._zynseq.bank, seq):
                 continue
@@ -1021,11 +1021,11 @@ class PadMatrixHandler(ModeHandlerBase):
         for c in range(self._cols):
             for r in range(self._rows):
                 # Pad outside grid, switch off
-                if c >= self._zynseq.col_in_bank or r >= self._zynseq.col_in_bank:
+                if c >= self._zynseq.LAUNCHER_COLS or r >= self._zynseq.LAUNCHER_COLS:
                     self.pad_off(c, r)
                     continue
 
-                seq = c * self._zynseq.col_in_bank + r
+                seq = c * self._zynseq.LAUNCHER_COLS + r
                 self._update_pad(seq, False)
 
         self._refresh_tool_buttons()
@@ -1064,7 +1064,10 @@ class PadMatrixHandler(ModeHandlerBase):
         self._leds.led_off(self._pads[index])
 
     def update_seq_state(self, bank, seq, state=None, mode=None, group=None, refresh=True):
-        col, row = self._zynseq.get_xy_from_pad(seq)
+        try:
+            col, row = self._zynseq.get_xy_from_seq(seq)
+        except:
+            return
         idx = col * self._rows + row
         if idx >= len(self._pads):
             return
@@ -1108,9 +1111,9 @@ class PadMatrixHandler(ModeHandlerBase):
         row = index % self._rows
 
         # Pad outside grid, discarded
-        if col >= self._zynseq.col_in_bank or row >= self._zynseq.col_in_bank:
+        if col >= self._zynseq.LAUNCHER_COLS or row >= self._zynseq.LAUNCHER_COLS:
             return None
-        return col * self._zynseq.col_in_bank + row
+        return col * self._zynseq.LAUNCHER_COLS + row
 
     def _handle_timed_button(self, btn, ptype):
         if btn == BTN_STOP_ALL_CLIPS:
@@ -1185,7 +1188,7 @@ class PadMatrixHandler(ModeHandlerBase):
 
         # If seqman is disabled, show playing status in row launchers
         playing_rows = {
-            seq % self._zynseq.col_in_bank for seq in self._playing_seqs}
+            seq % self._zynseq.LAUNCHER_COLS for seq in self._playing_seqs}
         for row in range(5):
             state = row in playing_rows
             self._leds.led_state(BTN_SOFT_KEY_START + row, state)

@@ -247,7 +247,7 @@ class Sequence {
     uint16_t m_nId;                             // Sequence id (bank << 8 | sequence)
     uint16_t m_nNextSeq = -1;                   // Index of the next sequence | bank << 8 to play when this sequence ends (-1=none). Added v11.
     uint8_t m_nState = STOPPED;                 // Play state of sequence
-    uint8_t m_nMode = 0;                        // Bitwise flags affecting start (bits 0..3) and stop (bits 4..7). Changed v11.
+    uint8_t m_nMode = 0;                        // Bitwise flags affecting stop (bits 0..1) and start (bits 2) Bit 7 reserved for enable. Changed v11.
     uint8_t m_nGroup = 0;                       // Sequence's mutually exclusive group
     uint8_t m_nRepeat = 0;                      // Quantity of times to play sequence/ Added v11.
     uint8_t m_nCount = 0;                       // Quantity of times to sequence has played

@@ -67,8 +67,11 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
     def update_seq_state(self, bank, seq, state, mode, group):
         if self.idev_out is None or bank != self.zynseq.bank:
             return
-        col, row = self.zynseq.get_xy_from_pad(seq)
-        if row > 1:
+        try:
+            col, row = self.zynseq.get_xy_from_seq(seq)
+        except:
+            return
+        if row > 1 or col > 8:
             return
         note = 96 + row * 16 + col
         try:
@@ -112,11 +115,12 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 
             # Toggle pad
             try:
-                col = (note - 96) // 16
-                row = (note - 96) % 16
-                pad = row * self.zynseq.col_in_bank + col
-                if pad < self.zynseq.seq_in_bank:
-                    self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
+                col = (note - 96) % 16
+                row = (note - 96) // 16
+                seq = self.zynseq.get_seq_from_xy(col, row)
+                if seq is None:
+                    return
+                self.zynseq.libseq.togglePlayState(self.zynseq.bank, seq)
             except:
                 pass
         elif evtype == 0xB:

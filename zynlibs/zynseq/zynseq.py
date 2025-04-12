@@ -95,6 +95,8 @@ class zynseq(zynthian_engine):
         self.state_manager = state_manager
         self.changing_bank = False
         self.progress = []
+        self.seq2pad = {} # Map of [col,row] mapped by sequence (within current bank)
+        self.scenes = 0
 
         try:
             self.libseq = ctypes.cdll.LoadLibrary(dirname(realpath(__file__))+"/build/libzynseq.so")
@@ -163,6 +165,8 @@ class zynseq(zynthian_engine):
 
     def update_state(self):
         # Get all pending states, send signals for each, update scene lauchers and send signals if necessary
+        # State is represented as 4 bytes encoded as single 32-bit word: [sequence, group, mode, play state]
+        # mode bits: [0..1] stop mode. [2] start mode. [7] enabled.
         states = (ctypes.c_uint32 * self.seq_in_bank)()
         count = self.libseq.getStateChange(self.bank, 0, self.seq_in_bank, states)
         if count:
@@ -185,32 +189,34 @@ class zynseq(zynthian_engine):
                 zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE,
                             bank=self.bank, seq=seq, state=state, mode=mode, group=group)
 
-            if chan < 16:
-                for slot, changed in enumerate(scene_changed):
-                    if not changed:
-                        continue
-                    # Update scene summary
-                    scene_state = False
-                    for chan in range(16):
+            for slot, changed in enumerate(scene_changed):
+                if not changed:
+                    continue
+                # Update scene summary
+                scene_state = False
+                for chan in range(SCENE_LAUNCHER_COL):
+                    try:
                         if self.launcher_info[slot][chan]["state"] != SEQ_STOPPED:
                             scene_state = True
                             break
-                    if scene_state:
-                        if self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] == SEQ_STOPPED:
-                            self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] = SEQ_CHILD_PLAYING
+                    except Exception as e:
+                        logging.warning(e)
+                if scene_state:
+                    if self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] == SEQ_STOPPED:
+                        self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] = SEQ_CHILD_PLAYING
+                else:
+                    if self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] == SEQ_CHILD_PLAYING:
+                        self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] = SEQ_STOPPED
                     else:
-                        if self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] == SEQ_CHILD_PLAYING:
-                            self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] = SEQ_STOPPED
-                        else:
-                            if scene_state and self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] == SEQ_STOPPED:
-                                self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] = SEQ_CHILD_PLAYING
-                    zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE,
-                        bank=self.bank,
-                        seq=self.launcher_info[slot][SCENE_LAUNCHER_COL]["sequence"],
-                        state=self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"],
-                        mode=self.launcher_info[slot][SCENE_LAUNCHER_COL]["mode"],
-                        group=self.launcher_info[slot][SCENE_LAUNCHER_COL]["group"]
-                    )
+                        if scene_state and self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] == SEQ_STOPPED:
+                            self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] = SEQ_CHILD_PLAYING
+                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE,
+                    bank=self.bank,
+                    seq=self.launcher_info[slot][SCENE_LAUNCHER_COL]["sequence"],
+                    state=self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"],
+                    mode=self.launcher_info[slot][SCENE_LAUNCHER_COL]["mode"],
+                    group=self.launcher_info[slot][SCENE_LAUNCHER_COL]["group"]
+                )
         self.update_progress()
 
     def update_progress(self):
@@ -238,16 +244,15 @@ class zynseq(zynthian_engine):
         self.changing_bank = True
 
         self.seq_in_bank = self.libseq.getSequencesInBank(bank)
-        self.col_in_bank = LAUNCHER_COLS
         rows_in_bank = self.seq_in_bank // LAUNCHER_COLS
         self.bank = bank
 
         # Populate minimum launchers with default states
         self.launcher_info = []
+        self.seq2pad = {}
         for slot in range(max(rows_in_bank, MIN_LAUNCHER_SLOTS)):
-            self.addSequences(slot)
+            self.appendScene()
         self.seq_in_bank = self.libseq.getSequencesInBank(bank)
-        self.scenes = self.seq_in_bank // LAUNCHER_COLS
         self.progress = [0] * self.seq_in_bank
 
         zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_REFRESH)
@@ -265,6 +270,10 @@ class zynseq(zynthian_engine):
         if enable:
             self.libseq.setRepeat(self.bank, sequence, 1)
         state = self.libseq.getSequenceState(self.bank, sequence)
+        repeat = (state >> 24) & 0xFF 
+        group = (state >> 16) & 0xFF
+        mode = (state >> 8) & 0xFF
+        state = state & 0xFF
         follow = self.libseq.getFollowAction(self.bank, sequence)
         if follow == 0xFFFF:
             follow_seq = -1
@@ -273,14 +282,17 @@ class zynseq(zynthian_engine):
             follow_seq = follow & 0xFF
             follow_bank = follow >> 8
         pattern = self.libseq.getPattern(self.bank, sequence, 0, 0)
+        if pattern == 4294967295:
+            pattern = self.libseq.createPattern()
+            pattern = self.libseq.addPattern(self.bank, sequence, 0, 0, pattern, True)
         bpb = self.libseq.getBeatsInPattern(pattern)
         info = {
             "title": self.get_sequence_name(self.bank, sequence),
             "bpb": bpb,
-            "mode": (state >> 8) & 0xFF,
-            "repeat": (state >> 24) & 0xFF,
-            "group": (state >> 16) & 0xFF,
-            "state": state & 0xFF,
+            "mode": mode,
+            "repeat": repeat,
+            "group": group,
+            "state": state,
             "chan": chan,
             "slot": slot,
             "sequence": sequence,
@@ -294,15 +306,29 @@ class zynseq(zynthian_engine):
             logging.warning("No pattern!")
         try:
             self.launcher_info[slot][chan] = info
+            col = 0
+            for chain_id in self.state_manager.chain_manager.ordered_chain_ids:
+                if chain_id == self.state_manager.chain_manager.midi_chan_2_chain_ids[chan][0]:
+                    self.seq2pad[sequence] = [col, slot]
+                    break
+                if self.state_manager.chain_manager.chains[chain_id].midi_chan is not None:
+                    col += 1
+            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE,
+                    bank=self.bank,
+                    seq=sequence,
+                    state=state,
+                    mode=mode,
+                    group=group
+            )
         except:
             pass #TODO: Create missing info
 
 
-    def addSequences(self, slot):
-        """ Add a row of sequences to the current bank
-            slot - Index of slot
+    def appendScene(self):
+        """ Append a row of sequences to the current bank
         """
 
+        slot = len(self.launcher_info)
         self.launcher_info.append([])
         for chan in range(LAUNCHER_COLS):
             self.launcher_info[slot].append({})
@@ -318,6 +344,18 @@ class zynseq(zynthian_engine):
             self.libseq.removeSequence(self.bank, seq)
         #TODO: Update info["slot"]
 
+    def disable_channel(self, channel):
+        for slot in range(len(self.launcher_info)):
+            info = self.launcher_info[slot][channel]
+            self.libseq.setRepeat(self.state_manager.zynseq.bank, slot * 17 + channel, 0)
+            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE,
+                    bank=self.bank,
+                    seq=info["sequence"],
+                    state=info["state"],
+                    mode=info["mode"],
+                    group=info["group"]
+            )
+
     # Function to add / remove sequences to change bank size
     # new_columns: Quantity of columns (and rows) of new grid
     def update_bank_grid(self, new_columns):
@@ -328,25 +366,25 @@ class zynseq(zynthian_engine):
         channels = []
         groups = []
         for column in range(new_columns):
-            if column < self.col_in_bank:
+            if column < self.LAUNCHER_COLS:
                 channels.append(self.libseq.getChannel(
-                    self.bank, column * self.col_in_bank, 0))
+                    self.bank, column * self.LAUNCHER_COLS, 0))
                 groups.append(self.libseq.getGroup(
-                    self.bank, column * self.col_in_bank))
+                    self.bank, column * self.LAUNCHER_COLS))
             else:
                 channels.append(column)
                 groups.append(column)
-        delta = new_columns - self.col_in_bank
+        delta = new_columns - self.LAUNCHER_COLS
         if delta > 0:
             # Growing grid so add extra sequences
-            for column in range(self.col_in_bank):
-                for row in range(self.col_in_bank, self.col_in_bank + delta):
+            for column in range(self.LAUNCHER_COLS):
+                for row in range(self.LAUNCHER_COLS, self.LAUNCHER_COLS + delta):
                     pad = row + column * new_columns
                     self.libseq.insertSequence(self.bank, pad)
                     self.libseq.setChannel(self.bank, pad, 0, channels[column])
                     self.libseq.setGroup(self.bank, pad, groups[column])
                     self.set_sequence_name(self.bank, pad, "%s" % (pad + 1))
-            for column in range(self.col_in_bank, new_columns):
+            for column in range(self.LAUNCHER_COLS, new_columns):
                 for row in range(new_columns):
                     pad = row + column * new_columns
                     self.libseq.insertSequence(self.bank, pad)
@@ -360,11 +398,11 @@ class zynseq(zynthian_engine):
 
             # Lose exess rows
             for col in range(new_columns - 1, -1, -1):
-                for row in range(self.col_in_bank - 1, new_columns - 1, -1):
-                    offset = self.col_in_bank * col + row
+                for row in range(self.LAUNCHER_COLS - 1, new_columns - 1, -1):
+                    offset = self.LAUNCHER_COLS * col + row
                     self.libseq.removeSequence(self.bank, offset)
         self.seq_in_bank = self.libseq.getSequencesInBank(self.bank)
-        self.col_in_bank = min(8, int(sqrt(self.seq_in_bank)))
+        self.LAUNCHER_COLS = min(8, int(sqrt(self.seq_in_bank)))
         self.progress = [0] * self.seq_in_bank
         zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_REFRESH)
 
@@ -522,15 +560,55 @@ class zynseq(zynthian_engine):
             logging.error("Can't restore RIFF data! => {}".format(e))
             return False
 
-    def get_xy_from_pad(self, pad):
-        col = pad // self.col_in_bank
-        row = pad % self.col_in_bank
-        return (col, row)
+    def get_xy_from_seq(self, seq):
+        """
+        Get the coordinates of a sequence in the launcher grid
 
-    def get_pad_from_xy(self, col, row):
-        if col < self.col_in_bank and row < self.col_in_bank:
-            return col * self.col_in_bank + row
-        else:
-            return -1
+        :param seq: Index of sequence within currently selected bank
+        :returns: [col, row] Column and row in the grid or None if not found
+        .. note::
+            Column is the chain position, starting from 0 at left side of mixer view
+        """
+
+        try:
+            return self.seq2pad[seq]
+        except:
+            return None
+
+    def get_seq_from_xy(self, col, row):
+        """
+        Get the sequence at a postion in the launcher grid
+
+        :param: col: Index of column in grid (offset from left side of mixer view)
+        :param: row: Index of row (slot) in grid
+        :return: - Sequence number or None if not found
+        """
+
+        try:
+            for seq, coord in self.seq2pad.items():
+                if coord == [col, row]:
+                    return seq
+        except:
+            pass
+        return None
+
+    def get_launcher_info_from_xy(self, col, row):
+        """
+        Get the launcher info at a postion in the launcher grid
+
+        :param: col: Index of column in grid (offset from left side of mixer view)
+        :param: row: Index of row (slot) in grid
+        :return: - Launcher info object or None if not found
+        """
+
+        try:
+            for seq, coord in self.seq2pad.items():
+                if coord == [col, row]:
+                    for info in self.launcher_info[row]:
+                        if info["sequence"] == seq:
+                            return info
+        except:
+            pass
+        return None
 
 # -------------------------------------------------------------------------------

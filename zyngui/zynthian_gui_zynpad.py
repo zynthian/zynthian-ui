@@ -67,7 +67,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         # The last successfully selected bank - used to update stale views
         self.bank = self.zynseq.bank
         # Columns used during last layout - used to update stale views
-        self.columns = max(self.zynseq.col_in_bank, 1)
+        self.columns = max(zynseq.LAUNCHER_COLS, 1)
         self.midi_learn = False
         self.trigger_channel = None
         self.trigger_device = None
@@ -240,19 +240,19 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
     # Function to clear and calculate grid sizes
     def update_grid(self):
         self.redrawing = True
-        self.column_width = self.width / self.zynseq.col_in_bank
-        self.row_height = self.height / self.zynseq.col_in_bank
+        self.column_width = self.width / self.zynseq.LAUNCHER_COLS
+        self.row_height = self.height / self.zynseq.LAUNCHER_COLS
 
         # Update pads location / size
         fs1 = int(self.row_height * 0.15)
         fs2 = int(self.row_height * 0.11)
         self.grid_canvas.itemconfig("pad", state=tkinter.HIDDEN)
         self.update_selection_cursor()
-        for col in range(self.zynseq.col_in_bank):
+        for col in range(self.zynseq.LAUNCHER_COLS):
             pad_x = int(col * self.column_width)
-            for row in range(self.zynseq.col_in_bank):
+            for row in range(self.zynseq.LAUNCHER_COLS):
                 pad_y = int(row * self.row_height)
-                pad = row + col * self.zynseq.col_in_bank
+                pad = row + col * self.zynseq.LAUNCHER_COLS
                 header_h = int(0.28 * self.row_height)
                 self.grid_canvas.itemconfig(self.pads[pad]["group"], font=(zynthian_gui_config.font_family, fs2))
                 self.grid_canvas.itemconfig(self.pads[pad]["num"], font=(zynthian_gui_config.font_family, fs2))
@@ -274,7 +274,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
                 self.grid_canvas.coords(self.pads[pad]["title"], posx, posy + 2 * fs1)
 
         self.redrawing = False
-        self.columns = self.zynseq.col_in_bank
+        self.columns = self.zynseq.LAUNCHER_COLS
 
     # Function to refresh pad if it has changed
     #  pad: Pad index
@@ -318,13 +318,13 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         self.grid_canvas.itemconfig(self.pads[pad]["title"], text=title, fill=foreground)
         self.grid_canvas.itemconfig(self.pads[pad]["group"], text=f"CH{midi_chan + 1}", fill=foreground)
         self.grid_canvas.itemconfig(self.pads[pad]["num"], text=f"{group}{pad+1}", fill=foreground)
-        #self.grid_canvas.itemconfig(self.pads[pad]["mode"], image=self.mode_icon[self.zynseq.col_in_bank][mode])
+        #self.grid_canvas.itemconfig(self.pads[pad]["mode"], image=self.mode_icon[self.zynseq.LAUNCHER_COLS][mode])
         if state == 0 and self.zynseq.libseq.isEmpty(self.bank, pad):
             self.grid_canvas.itemconfig(
                 self.pads[pad]["state"], image=self.empty_icon)
         else:
             self.grid_canvas.itemconfig(
-                self.pads[pad]["state"], image=self.state_icon[self.zynseq.col_in_bank][state])
+                self.pads[pad]["state"], image=self.state_icon[self.zynseq.LAUNCHER_COLS][state])
 
     def update_play_state(self, bank, seq, state, mode, group):
         if bank == self.bank:
@@ -353,8 +353,8 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         # TODO: Was update_selection_cursor removed during refactor and replaced during merge?
         if self.selected_pad >= self.zynseq.libseq.getSequencesInBank(self.bank):
             self.selected_pad = self.zynseq.libseq.getSequencesInBank(self.bank) - 1
-        col = int(self.selected_pad / self.zynseq.col_in_bank)
-        row = self.selected_pad % self.zynseq.col_in_bank
+        col = int(self.selected_pad / self.zynseq.LAUNCHER_COLS)
+        row = self.selected_pad % self.zynseq.LAUNCHER_COLS
         self.grid_canvas.coords(self.selection,
                                 1 + col * self.column_width, 1 + row * self.row_height,
                                 (1 + col) * self.column_width - self.select_thickness,
@@ -398,7 +398,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         if not zynthian_gui_config.check_wiring_layout(["Z2"]):
             options['Arranger'] = 'Arranger'
         options[f'Beats per bar ({self.zynseq.libseq.getBeatsPerBar()})'] = 'Beats per bar'
-        options[f'Grid size ({self.zynseq.col_in_bank}x{self.zynseq.col_in_bank})'] = 'Grid size'
+        options[f'Grid size ({self.zynseq.LAUNCHER_COLS}x{self.zynseq.LAUNCHER_COLS})'] = 'Grid size'
         # Single Pad Options
         options['> PAD OPTIONS'] = None
         pmode = self.zynseq.libseq.getPlayMode(self.bank, self.selected_pad)
@@ -447,7 +447,7 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
             for i in range(1, 9):
                 labels.append(f'{i}x{i}')
             self.enable_param_editor(self, 'grid_size', {'name': 'Grid size', 'labels': labels,
-                                                         'value': self.zynseq.col_in_bank - 1, 'value_default': 3},
+                                                         'value': self.zynseq.LAUNCHER_COLS - 1, 'value_default': 3},
                                      self.set_grid_size)
         elif params == 'Play mode':
             pmode = self.zynseq.libseq.getPlayMode(self.zynseq.bank, self.selected_pad)
@@ -573,9 +573,9 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         if force:
             self.bank = self.zynseq.bank
             self.set_title(f"Scene {self.bank}")
-            if self.columns != self.zynseq.col_in_bank:
+            if self.columns != self.zynseq.LAUNCHER_COLS:
                 self.update_grid()
-            for pad in range(self.zynseq.col_in_bank ** 2):
+            for pad in range(self.zynseq.LAUNCHER_COLS ** 2):
                 self.refresh_pad(pad)
 
     # Function to select a pad
@@ -600,18 +600,18 @@ class zynthian_gui_zynpad(zynthian_gui_base.zynthian_gui_base):
         if super().zynpot_cb(encoder, dval):
             return
         if encoder == self.ctrl_order[3]:
-            pad = self.selected_pad + self.zynseq.col_in_bank * dval
-            col = int(pad / self.zynseq.col_in_bank)
-            row = pad % self.zynseq.col_in_bank
-            if col >= self.zynseq.col_in_bank:
+            pad = self.selected_pad + self.zynseq.LAUNCHER_COLS * dval
+            col = int(pad / self.zynseq.LAUNCHER_COLS)
+            row = pad % self.zynseq.LAUNCHER_COLS
+            if col >= self.zynseq.LAUNCHER_COLS:
                 col = 0
                 row += 1
-                pad = row + self.zynseq.col_in_bank * col
+                pad = row + self.zynseq.LAUNCHER_COLS * col
             elif pad < 0:
-                col = self.zynseq.col_in_bank - 1
+                col = self.zynseq.LAUNCHER_COLS - 1
                 row -= 1
-                pad = row + self.zynseq.col_in_bank * col
-            if row < 0 or row >= self.zynseq.col_in_bank or col >= self.zynseq.col_in_bank:
+                pad = row + self.zynseq.LAUNCHER_COLS * col
+            if row < 0 or row >= self.zynseq.LAUNCHER_COLS or col >= self.zynseq.LAUNCHER_COLS:
                 return
             self.select_pad(pad)
         elif encoder == self.ctrl_order[2]:

@@ -160,36 +160,27 @@ class zynthian_gui_mixer_strip():
                                              tags=(f"fader:{self.fader_bg}", f"strip:{self.fader_bg}"))
 
         # Clip launcher slots
-        self.clip_slots = []
         height_slot = (self.fader_bottom - self.fader_top) // zynthian_gui_config.visible_launchers
         ypos = self.fader_top
-        for i in range(0, zynthian_gui_config.visible_launchers):
+        for slot in range(0, zynthian_gui_config.visible_launchers):
             slot_bg = self.canvas.create_rectangle(x, ypos, x + self.fader_width, ypos + height_slot - 1, width=0, state=tkinter.HIDDEN)
-            self.canvas.itemconfig(slot_bg, tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}_{self.fader_bg}", f"clip_strip:{self.fader_bg}"))
-            slot_header = self.canvas.create_rectangle(x, ypos, x + self.fader_width, ypos + 0.35 * height_slot, width=0, state=tkinter.HIDDEN,
-                                                  tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}_{self.fader_bg}", f"clip_strip:{self.fader_bg}"))
+            self.canvas.itemconfig(slot_bg, tags=(f"strip:{self.fader_bg}", f"launcher:{slot}_{self.fader_bg}", f"launcher:{slot}_{self.fader_bg}_bg", f"launcher_strip:{self.fader_bg}"))
+            self.canvas.create_rectangle(x, ypos, x + self.fader_width, ypos + 0.35 * height_slot, width=0, state=tkinter.HIDDEN,
+                                                  tags=(f"strip:{self.fader_bg}", f"launcher:{slot}_{self.fader_bg}_header", f"launcher_strip:{self.fader_bg}"))
             ypos_header = ypos - height_slot // 6
-            slot_state = self.canvas.create_text(x + self.fader_width, ypos_header, text="", anchor=tkinter.NE, font=self.font_clip_state,
-                                            state=tkinter.HIDDEN, tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}_{self.fader_bg}", f"clip_strip:{self.fader_bg}"))
-            slot_title = self.canvas.create_text(x + self.fader_width // 2, ypos + 0.60 * height_slot, text="", anchor=tkinter.CENTER,
+            self.canvas.create_text(x + self.fader_width, ypos_header, text="", anchor=tkinter.NE, font=self.font_clip_state,
+                    state=tkinter.HIDDEN, tags=(f"strip:{self.fader_bg}", f"launcher:{slot}_{self.fader_bg}", f"launcher:{slot}_{self.fader_bg}_state", f"launcher_strip:{self.fader_bg}"))
+            self.canvas.create_text(x + self.fader_width // 2, ypos + 0.60 * height_slot, text="", anchor=tkinter.CENTER,
                                             font=self.font_clip_title, state=tkinter.HIDDEN, fill=self.legend_txt_color,
-                                            tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}_{self.fader_bg}", f"clip_strip:{self.fader_bg}"))
-            slot_mode = self.canvas.create_image(x + 3, ypos, anchor=tkinter.NW, state=tkinter.HIDDEN,
-                                            tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}_{self.fader_bg}", f"clip_strip:{self.fader_bg}"))
+                                            tags=(f"strip:{self.fader_bg}", f"launcher:{slot}_{self.fader_bg}", f"launcher:{slot}_{self.fader_bg}_title", f"launcher_strip:{self.fader_bg}"))
+            self.canvas.create_image(x + 3, ypos, anchor=tkinter.NW, state=tkinter.HIDDEN,
+                                            tags=(f"launcher_{slot}", f"launcher_{slot}_mode", f"strip:{self.fader_bg}", f"launcher:{slot}_{self.fader_bg}", f"launcher:{slot}_{self.fader_bg}_mode", f"launcher_strip:{self.fader_bg}"))
             self.canvas.create_rectangle(x, ypos, x + 3, ypos + height_slot - 1, width=0, fill=self.legend_txt_color, state=tkinter.HIDDEN,
-                                                  tags=(f"strip:{self.fader_bg}", f"clip_slot:{i}_{self.fader_bg}", "clip_sel", f"clip_sel:{self.fader_bg}_{i}", f"clip_strip:{self.fader_bg}"))
+                                                  tags=(f"launcher:{slot}_{self.fader_bg}", "clip_sel", f"clip_sel:{self.fader_bg}_{slot}", f"launcher_strip:{self.fader_bg}"))
 
-            self.canvas.tag_bind(f"clip_slot:{i}_{self.fader_bg}", '<ButtonPress-1>', lambda e, row=i: self.on_clip_slot_press(row, e))
-            self.canvas.tag_bind(f"clip_slot:{i}_{self.fader_bg}", '<ButtonRelease-1>', lambda e, row=i: self.on_clip_slot_release(row, e))
-            self.canvas.tag_bind(f"clip_slot:{i}_{self.fader_bg}", '<B1-Motion>', lambda e, row=i: self.on_clip_slot_motion(row, e))
-
-            self.clip_slots.append({
-                'bg': slot_bg,
-                'header': slot_header,
-                'state': slot_state,
-                'title': slot_title,
-                'mode': slot_mode
-            })
+            self.canvas.tag_bind(f"launcher:{slot}_{self.fader_bg}", '<ButtonPress-1>', lambda e, row=slot: self.on_clip_slot_press(row, e))
+            self.canvas.tag_bind(f"launcher:{slot}_{self.fader_bg}", '<ButtonRelease-1>', lambda e, row=slot: self.on_clip_slot_release(row, e))
+            self.canvas.tag_bind(f"launcher:{slot}_{self.fader_bg}", '<B1-Motion>', lambda e, row=slot: self.on_clip_slot_motion(row, e))
             ypos += height_slot
 
         # DPM
@@ -218,14 +209,14 @@ class zynthian_gui_mixer_strip():
         self.legend_strip_txt = self.canvas.create_text(self.fader_centre_x, self.height - self.legend_height / 2, fill=self.legend_txt_color, text="-",
                                                    tags=(f"strip:{self.fader_bg}", f"legend_strip:{self.fader_bg}"), font=self.font)
         self.legend_sel = self.canvas.create_rectangle(x, self.height - self.legend_height, x + 3, self.height, width=0, fill=self.legend_txt_color, state=tkinter.HIDDEN,
-                                                  tags=(f"strip:{self.fader_bg}", "clip_sel", f"clip_sel:{self.fader_bg}_{zynthian_gui_config.visible_launchers}", f"clip_strip:{self.fader_bg}"))
+                                                  tags=("clip_sel", f"clip_sel:{self.fader_bg}_{zynthian_gui_config.visible_launchers}"))
 
         self.pedals = []
-        for i in range(4):
+        for slot in range(4):
             self.pedals.append(self.canvas.create_rectangle(
-                int(x + self.fader_width / 4 * i),
+                int(x + self.fader_width / 4 * slot),
                 self.fader_bottom,
-                int(x + self.fader_width / 4 * (i + 1)),
+                int(x + self.fader_width / 4 * (slot + 1)),
                 self.fader_bottom - 4,
                 fill="yellow",
                 state="hidden",
@@ -359,7 +350,7 @@ class zynthian_gui_mixer_strip():
 
     def draw_fader(self):
         # Hide clip slots
-        self.canvas.itemconfig(f"clip_strip:{self.fader_bg}", state=tkinter.HIDDEN)
+        self.canvas.itemconfig(f"launcher_strip:{self.fader_bg}", state=tkinter.HIDDEN)
         # Draw Fader
         self.canvas.itemconfig(self.fader_bg, state=tkinter.NORMAL)
         self.canvas.itemconfig(self.fader_text, state=tkinter.NORMAL)
@@ -401,7 +392,7 @@ class zynthian_gui_mixer_strip():
                 self.update_launcher(slot)
                 self.draw_sequence_slot(slot)
             except:
-                self.canvas.itemconfig(f"clip_slot:{row}_{self.fader_bg}", state=tkinter.HIDDEN)
+                self.canvas.itemconfig(f"launcher:{row}_{self.fader_bg}", state=tkinter.HIDDEN)
 
     def draw_sequence_slot(self, slot):
         mode_image = None
@@ -419,6 +410,8 @@ class zynthian_gui_mixer_strip():
                     mode_image = self.parent.mode_icons["loopsync"]
                 else:
                     mode_image = self.parent.mode_icons["oneshotall"]
+            else:
+                mode_image = self.parent.mode_icons["empty"]
             match info["state"]:
                 case zynseq.SEQ_PLAYING:
                     color_state = zynthian_gui_config.PAD_COLOUR_PLAYING
@@ -443,11 +436,11 @@ class zynthian_gui_mixer_strip():
             color_state = "#F0F0F0"
             title = "---"
             state_text = ""
-        self.canvas.itemconfig(self.clip_slots[row]["bg"], fill=color, state=tkinter.NORMAL)
-        self.canvas.itemconfig(self.clip_slots[row]["header"], fill=color, state=tkinter.NORMAL)
-        self.canvas.itemconfig(self.clip_slots[row]["state"], fill=color_state, text=state_text, state=tkinter.NORMAL)
-        self.canvas.itemconfig(self.clip_slots[row]["title"], text=title, state=tkinter.NORMAL)
-        self.canvas.itemconfig(self.clip_slots[row]["mode"], image=mode_image, state=tkinter.NORMAL)
+        self.canvas.itemconfig(f"launcher:{row}_{self.fader_bg}", state=tkinter.NORMAL)
+        self.canvas.itemconfig(f"launcher:{row}_{self.fader_bg}_bg", fill=color)
+        self.canvas.itemconfig(f"launcher:{row}_{self.fader_bg}_state", text=state_text, fill=color_state)
+        self.canvas.itemconfig(f"launcher:{row}_{self.fader_bg}_title", text=title)
+        self.canvas.itemconfig(f"launcher:{row}_{self.fader_bg}_mode", image=mode_image)
 
     def update_clip_state(self, slot, bank, seq, state, mode, group):
         if bank != self.zynseq.bank:
@@ -1118,7 +1111,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.slot_height = self.height // (zynthian_gui_config.visible_launchers + 3)
         iconsize = (int(self.fader_width * 0.4), int(self.slot_height * 0.30))
         self.mode_icons = {}
-        for f in ("loopsync", "oneshot", "oneshotall"):
+        for f in ("empty", "loopsync", "oneshot", "oneshotall"):
             try:
                 img = Image.open(f"/zynthian/zynthian-ui/icons/zynpad_mode_{f}.png")
                 self.mode_icons[f] = ImageTk.PhotoImage(img.resize(iconsize))
