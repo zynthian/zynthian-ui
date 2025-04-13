@@ -400,7 +400,7 @@ class zynthian_gui_base(tkinter.Frame):
 
     # Default topbar bold touch action
     def topbar_bold_touch_action(self):
-        self.zyngui.callable_ui_action('screen_zynpad')
+        self.zyngui.callable_ui_action('screen_launcher')
 
     # Default topbar long touch action
     def topbar_long_touch_action(self):

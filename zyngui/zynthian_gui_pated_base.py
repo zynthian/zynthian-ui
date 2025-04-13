@@ -290,7 +290,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         #self.zynseq.libseq.setRefNote(int(self.keymap_offset))
         self.zynseq.libseq.setPatternZoom(self.zoom)
         self.zynseq.libseq.setPlayMode(self.bank, self.sequence, (self.seq_info["repeat"] << 8) | self.seq_info["mode"])
-        self.zynseq.libseq.setFollowAction(self.bank, self.sequence, self.bank, self.seq_info["follow_seq"])
+        self.zynseq.libseq.setFollowAction(self.bank, self.sequence, self.seq_info["follow_bank"], self.seq_info["follow_seq"])
         self.zynseq.libseq.updateSequenceInfo()
 
     # -------------------------------------------------------------------------

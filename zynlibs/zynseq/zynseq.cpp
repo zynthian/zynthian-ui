@@ -1606,7 +1606,9 @@ bool isPatternEmpty(uint32_t pattern) {
     return pPattern->getEventAt(0) == NULL;
 }
 
-void selectPattern(uint32_t pattern) { g_pPattern = g_seqMan.getPattern(pattern); }
+void selectPattern(uint32_t pattern) {
+    g_pPattern = g_seqMan.getPattern(pattern);
+}
 
 uint32_t getPatternIndex() { return g_seqMan.getPatternIndex(g_pPattern); }
 
@@ -2258,7 +2260,7 @@ uint8_t getGroup(uint8_t bank, uint8_t sequence) {
 
 void setGroup(uint8_t bank, uint8_t sequence, uint8_t group) {
     Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
-    return pSequence->setGroup(group);
+    pSequence->setGroup(group);
     g_bDirty = true;
 }
 
@@ -2455,7 +2457,6 @@ bool transportRequestTimebase() {
 void transportReleaseTimebase() { jack_release_timebase(g_pJackClient); }
 
 void transportStart(const char* client) {
-    fprintf(stderr, "transportStart(%s) current state: %d\n", client, g_bClientPlaying);
     bool bPlaying = (g_setTransportClient.size() != 0);
     g_bClientPlaying = true;
     g_setTransportClient.emplace(client);

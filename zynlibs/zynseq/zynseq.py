@@ -305,13 +305,16 @@ class zynseq(zynthian_engine):
         if info["pattern"] == -1:
             logging.warning("No pattern!")
         try:
+            used_chan = []
             self.launcher_info[slot][chan] = info
             col = 0
             for chain_id in self.state_manager.chain_manager.ordered_chain_ids:
                 if chain_id == self.state_manager.chain_manager.midi_chan_2_chain_ids[chan][0]:
                     self.seq2pad[sequence] = [col, slot]
                     break
-                if self.state_manager.chain_manager.chains[chain_id].midi_chan is not None:
+                midi_chan = self.state_manager.chain_manager.chains[chain_id].midi_chan
+                if midi_chan is not None and midi_chan not in used_chan:
+                    used_chan.append(midi_chan)
                     col += 1
             zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE,
                     bank=self.bank,

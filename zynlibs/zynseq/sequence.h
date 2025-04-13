@@ -240,7 +240,6 @@ class Sequence {
     TimebaseEvent* m_pNextTimebaseEvent = NULL; // Pointer to next timebase event or NULL if none.
     size_t m_nCurrentTrack = 0;                 // Index of track currently being queried for events
     uint32_t m_nPosition = 0;                   // Play position in clock cycles
-    uint32_t m_nLastSyncPos = 0;                // Position of last sync pulse in clock cycles
     uint32_t m_nLength = 0;                     // Length of sequence in clock cycles (longest track)
     float m_fTempo = 120.0;                     // Current tempo (overriden by tempo events in timebase map)
     uint16_t m_nTimeSig = 4;                    // Current time signature (beats in bar)
