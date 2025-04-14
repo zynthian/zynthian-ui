@@ -160,9 +160,9 @@ class zynthian_gui_mixer_strip():
 
         # Fader - self.fader_bg is used to tag all elements of the strip
         id = self.fader_bg = self.canvas.create_rectangle(x, self.fader_top, x + self.width, self.fader_bottom, fill=self.fader_bg_color, width=0)
-        self.canvas.itemconfig(self.fader_bg, tags=(f"strip:{id}", f"fader:{id}", f"audio_strip:{id}"))
+        self.canvas.itemconfig(self.fader_bg, tags=(f"strip:{id}", f"fader:{id}"))
         self.fader = self.canvas.create_rectangle(x, self.fader_top, x + self.width, self.fader_bottom, fill=self.fader_color, width=0,
-                                             tags=(f"strip:{id}", f"fader:{id}", f"audio_strip:{id}"))
+                                             tags=(f"strip:{id}", f"fader:{id}"))
         self.fader_text = self.canvas.create_text(x, self.fader_bottom - 2, fill=self.legend_txt_color, angle=90, anchor="nw", font=self.font_fader, text="",
                                              tags=(f"strip:{id}", f"mixer:{id}", f"fader:{id}"))
 
@@ -247,11 +247,13 @@ class zynthian_gui_mixer_strip():
         self.play_indicator = self.canvas.create_text(x + 2, self.height - 2, text="⏹", fill="#009000", anchor="sw",
                                                  tags=(f"strip:{id}"), state=tkinter.HIDDEN)
 
+        """
         self.zyngui.multitouch.tag_bind(self.canvas, f"fader:{id}", "press", self.on_fader_press)
         self.zyngui.multitouch.tag_bind(self.canvas, f"fader:{id}", "motion", self.on_fader_motion)
         self.canvas.tag_bind(f"fader:{id}", "<ButtonPress-1>", self.on_fader_press)
         self.canvas.tag_bind(f"fader:{id}", "<ButtonRelease-1>", self.on_fader_release)
         self.canvas.tag_bind(f"fader:{id}", "<B1-Motion>", self.on_fader_motion)
+        """
         self.canvas.tag_bind(f"balance:{id}", "<ButtonPress-1>", self.on_balance_press)
         self.canvas.tag_bind(f"fader:{id}", "<Button-4>", self.on_fader_wheel_up)
         self.canvas.tag_bind(f"fader:{id}", "<Button-5>", self.on_fader_wheel_down)
@@ -355,6 +357,11 @@ class zynthian_gui_mixer_strip():
         self.canvas.itemconfig(f"mixer:{self.fader_bg}", state=tkinter.NORMAL)
         if self.chain.mixer_chan is not None:
             self.canvas.itemconfig(f"fader:{self.fader_bg}", state=tkinter.NORMAL)
+            self.zyngui.multitouch.tag_bind(self.canvas, f"fader:{self.fader_bg}", "press", self.on_fader_press)
+            self.zyngui.multitouch.tag_bind(self.canvas, f"fader:{self.fader_bg}", "motion", self.on_fader_motion)
+            self.canvas.tag_bind(f"fader:{self.fader_bg}", "<ButtonPress-1>", self.on_fader_press)
+            self.canvas.tag_bind(f"fader:{self.fader_bg}", "<ButtonRelease-1>", self.on_fader_release)
+            self.canvas.tag_bind(f"fader:{self.fader_bg}", "<B1-Motion>", self.on_fader_motion)
         # Draw Fader
         if self.zctrls and self.parent.zynmixer.midi_learn_zctrl == self.zctrls["level"]:
             self.canvas.coords(self.fader_text, self.fader_centre_x, self.fader_centre_y - 2)
@@ -387,6 +394,12 @@ class zynthian_gui_mixer_strip():
     def draw_launcher(self):
         self.canvas.itemconfig(f"strip:{self.fader_bg}", state=tkinter.HIDDEN)
         self.canvas.itemconfig(f"launcher:{self.fader_bg}", state=tkinter.NORMAL)
+        self.zyngui.multitouch.tag_unbind(self.canvas, f"fader:{self.fader_bg}", "press")
+        self.zyngui.multitouch.tag_unbind(self.canvas, f"fader:{self.fader_bg}", "motion")
+        self.canvas.tag_unbind(f"fader:{self.fader_bg}", "<ButtonPress-1>")
+        self.canvas.tag_unbind(f"fader:{self.fader_bg}", "<ButtonRelease-1>")
+        self.canvas.tag_unbind(f"fader:{self.fader_bg}", "<B1-Motion>")
+
         # Clip Launcher
         for row in range(zynthian_gui_config.visible_launchers):
             try:
