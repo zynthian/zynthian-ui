@@ -317,7 +317,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
                         self.grid_canvas.delete(f"step{step}")
                         self.draw_cell(step, newval)
                 # Select cell
-                self.select_cell(None, self.selected_cell[1] - dval)
+                self.select_cell(None, self.selected_cell[1] + dval)
             return True
         elif i == self.ctrl_order[3]:
             if self.edit_mode == EDIT_MODE_NONE:

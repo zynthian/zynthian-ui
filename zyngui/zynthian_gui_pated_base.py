@@ -154,6 +154,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.grid_canvas.bind('<ButtonPress-1>', self.on_grid_press)
         self.grid_canvas.bind('<ButtonRelease-1>', self.on_grid_release)
         self.grid_canvas.bind('<B1-Motion>', self.on_grid_drag)
+        self.grid_canvas.bind('<Button-4>', self.on_grid_wheel)
+        self.grid_canvas.bind('<Button-5>', self.on_grid_wheel)
         self.zyngui.multitouch.tag_bind(self.grid_canvas, None, "gesture", self.on_gesture)
 
 
@@ -785,6 +787,14 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     # event: Mouse event
     def on_grid_drag(self, event):
         pass
+
+    # Function to handle grid mouse drag
+    # event: Mouse event
+    def on_grid_wheel(self, event):
+        if event.num == 4:
+            self.set_grid_zoom(self.zoom + 1)
+        else:
+            self.set_grid_zoom(self.zoom - 1)
 
     # Function to handle grid mouse release
     # event: Mouse event

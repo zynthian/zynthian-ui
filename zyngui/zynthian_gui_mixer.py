@@ -145,7 +145,8 @@ class zynthian_gui_mixer_strip():
         Create GUI elements
         Tags:
             strip:X All elements within the fader strip used to hide (not show) strip
-            fader:X Elements to show in fader view
+            mixer:X Elements to show in mixer view
+            fader:X Elements in the fader
             audio_strip:X Elements of audio mixer strips
             launcher:X Elements to show in launcher view
             launcher:X_ROW Elements within launcher button
@@ -159,11 +160,11 @@ class zynthian_gui_mixer_strip():
 
         # Fader - self.fader_bg is used to tag all elements of the strip
         id = self.fader_bg = self.canvas.create_rectangle(x, self.fader_top, x + self.width, self.fader_bottom, fill=self.fader_bg_color, width=0)
-        self.canvas.itemconfig(self.fader_bg, tags=(f"strip:{id}", f"fader:{id}"))
+        self.canvas.itemconfig(self.fader_bg, tags=(f"strip:{id}", f"fader:{id}", f"audio_strip:{id}"))
         self.fader = self.canvas.create_rectangle(x, self.fader_top, x + self.width, self.fader_bottom, fill=self.fader_color, width=0,
                                              tags=(f"strip:{id}", f"fader:{id}", f"audio_strip:{id}"))
         self.fader_text = self.canvas.create_text(x, self.fader_bottom - 2, fill=self.legend_txt_color, angle=90, anchor="nw", font=self.font_fader, text="",
-                                             tags=(f"strip:{id}", f"fader:{id}"))
+                                             tags=(f"strip:{id}", f"mixer:{id}", f"fader:{id}"))
 
         # Launcher pads
         height_slot = (self.fader_bottom - self.fader_top) // zynthian_gui_config.visible_launchers
@@ -211,9 +212,9 @@ class zynthian_gui_mixer_strip():
 
         # Legend strip at bottom of screen
         self.legend_strip_bg = self.canvas.create_rectangle(x, self.height - self.legend_height, x + self.width, self.height, width=0, fill=self.legend_bg_color,
-                                                       tags=(f"strip:{id}", f"fader:{id}", f"launcher:{id}", f"legend_strip:{id}"))
+                                                       tags=(f"strip:{id}", f"mixer:{id}", f"launcher:{id}", f"legend_strip:{id}"))
         self.legend_strip_txt = self.canvas.create_text(self.fader_centre_x, self.height - self.legend_height / 2, fill=self.legend_txt_color, text="-",
-                                                   tags=(f"strip:{id}", f"fader:{id}", f"launcher:{id}", f"legend_strip:{id}"), font=self.font)
+                                                   tags=(f"strip:{id}", f"mixer:{id}", f"launcher:{id}", f"legend_strip:{id}"), font=self.font)
         self.legend_sel = self.canvas.create_rectangle(x, self.height - self.legend_height, x + 3, self.height, width=0, fill=self.legend_txt_color, state=tkinter.HIDDEN,
                                                   tags=(f"strip:{id}", "launcher_sel", f"launcher_sel:{id}_{zynthian_gui_config.visible_launchers}"))
 
@@ -231,12 +232,12 @@ class zynthian_gui_mixer_strip():
 
         # Clip Launcher Progress Bar
         self.clip_progress = self.canvas.create_rectangle(x, self.height - self.legend_height, x, self.height - self.legend_height + 4, width=0,
-                             fill=self.legend_txt_color, state=tkinter.HIDDEN, tags=(f"strip:{id}"))
+                             fill=self.legend_txt_color, tags=(f"strip:{id}", f"mixer:{id}", f"launcher:{id}"))
         # Balance indicator
         self.balance_left = self.canvas.create_rectangle(x, self.balance_top, self.fader_centre_x, self.balance_top + self.balance_height,
-                                                    fill=self.left_color, width=0, tags=(f"strip:{id}", f"fader:{id}", f"launcher:{id}", f"balance:{id}", f"audio_strip:{id}"))
+                                                    fill=self.left_color, width=0, tags=(f"strip:{id}", f"mixer:{id}", f"launcher:{id}", f"balance:{id}", f"audio_strip:{id}"))
         self.balance_right = self.canvas.create_rectangle(self.fader_centre_x + 1, self.balance_top, self.width, self.balance_top + self.balance_height,
-                                                     fill=self.right_color, width=0, tags=(f"strip:{id}", f"fader:{id}", f"launcher:{id}", f"balance:{id}", f"audio_strip:{id}"))
+                                                     fill=self.right_color, width=0, tags=(f"strip:{id}", f"mixer:{id}", f"launcher:{id}", f"balance:{id}", f"audio_strip:{id}"))
         self.balance_text = self.canvas.create_text(self.fader_centre_x, int(self.balance_top + self.balance_height / 2) - 1,
                                                text="??", font=self.font_learn, state=tkinter.HIDDEN)
 
@@ -252,18 +253,19 @@ class zynthian_gui_mixer_strip():
         self.canvas.tag_bind(f"fader:{id}", "<ButtonRelease-1>", self.on_fader_release)
         self.canvas.tag_bind(f"fader:{id}", "<B1-Motion>", self.on_fader_motion)
         self.canvas.tag_bind(f"balance:{id}", "<ButtonPress-1>", self.on_balance_press)
-        if zynthian_gui_config.force_enable_cursor:
-            self.canvas.tag_bind(f"fader:{id}", "<Button-4>", self.on_fader_wheel_up)
-            self.canvas.tag_bind(f"fader:{id}", "<Button-5>", self.on_fader_wheel_down)
-            self.canvas.tag_bind(f"balance:{id}", "<Button-4>", self.on_balance_wheel_up)
-            self.canvas.tag_bind(f"balance:{id}", "<Button-5>", self.on_balance_wheel_down)
-            self.canvas.tag_bind(f"legend_strip:{id}", "<Button-4>", self.parent.on_wheel)
-            self.canvas.tag_bind(f"legend_strip:{id}", "<Button-5>", self.parent.on_wheel)
+        self.canvas.tag_bind(f"fader:{id}", "<Button-4>", self.on_fader_wheel_up)
+        self.canvas.tag_bind(f"fader:{id}", "<Button-5>", self.on_fader_wheel_down)
+        self.canvas.tag_bind(f"balance:{id}", "<Button-4>", self.on_balance_wheel_up)
+        self.canvas.tag_bind(f"balance:{id}", "<Button-5>", self.on_balance_wheel_down)
+        self.canvas.tag_bind(f"legend_strip:{id}", "<Button-4>", self.parent.on_wheel)
+        self.canvas.tag_bind(f"legend_strip:{id}", "<Button-5>", self.parent.on_wheel)
         self.canvas.tag_bind(f"mute:{id}", "<ButtonRelease-1>", self.on_mute_release)
         self.canvas.tag_bind(f"solo_button:{id}", "<ButtonRelease-1>", self.on_solo_release)
         self.canvas.tag_bind(f"legend_strip:{id}", "<ButtonPress-1>", self.on_strip_press)
         self.canvas.tag_bind(f"legend_strip:{id}", "<ButtonRelease-1>", self.on_strip_release)
         self.canvas.tag_bind(f"legend_strip:{id}", "<Motion>", self.on_strip_motion)
+        self.canvas.tag_bind(f"launcher:{id}", "<Button-4>", self.on_launcher_wheel)
+        self.canvas.tag_bind(f"launcher:{id}", "<Button-5>", self.on_launcher_wheel)
 
         self.draw_control()
 
@@ -346,14 +348,13 @@ class zynthian_gui_mixer_strip():
         if level is not None:
             self.canvas.coords(self.fader, self.x, self.fader_top + self.fader_height * (1 - level),
                                            self.x + self.fader_width, self.fader_bottom)
-        self.canvas.itemconfig(self.fader, state=tkinter.NORMAL)
 
     def draw_fader(self):
         # Hide clip slots
         self.canvas.itemconfig(f"strip:{self.fader_bg}", state=tkinter.HIDDEN)
-        self.canvas.itemconfig(f"fader:{self.fader_bg}", state=tkinter.NORMAL)
+        self.canvas.itemconfig(f"mixer:{self.fader_bg}", state=tkinter.NORMAL)
         if self.chain.mixer_chan is not None:
-            self.canvas.itemconfig(self.fader, state=tkinter.NORMAL)
+            self.canvas.itemconfig(f"fader:{self.fader_bg}", state=tkinter.NORMAL)
         # Draw Fader
         if self.zctrls and self.parent.zynmixer.midi_learn_zctrl == self.zctrls["level"]:
             self.canvas.coords(self.fader_text, self.fader_centre_x, self.fader_centre_y - 2)
@@ -386,7 +387,6 @@ class zynthian_gui_mixer_strip():
     def draw_launcher(self):
         self.canvas.itemconfig(f"strip:{self.fader_bg}", state=tkinter.HIDDEN)
         self.canvas.itemconfig(f"launcher:{self.fader_bg}", state=tkinter.NORMAL)
-        self.canvas.itemconfig(self.clip_progress, state=tkinter.NORMAL)
         # Clip Launcher
         for row in range(zynthian_gui_config.visible_launchers):
             try:
@@ -968,6 +968,15 @@ class zynthian_gui_mixer_strip():
         event: Mouse event
         """
         self.nudge_balance(1)
+
+    def on_launcher_wheel(self, event):
+        """  Function to handle mouse wheel over launcher
+        event: Mouse event
+        """
+        if event.num == 4:
+            self.parent.arrow_up()
+        else:
+            self.parent.arrow_down()
 
     def on_strip_press(self, event):
         """ Function to handle mixer strip press
