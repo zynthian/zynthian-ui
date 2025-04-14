@@ -74,6 +74,7 @@ SEQ_STOPPING = 2
 SEQ_STARTING = 3
 SEQ_STOPPINGSYNC = 4
 SEQ_CHILD_PLAYING = 5 # Used to indicate a scene is stopped but some of its children are playing
+SEQ_CHILD_STOPPING = 6 # Used to indicate a scene is stopped but some of its children are stopping
 
 SEQ_MAX_COLUMNS = 8
 
@@ -193,23 +194,22 @@ class zynseq(zynthian_engine):
                 if not changed:
                     continue
                 # Update scene summary
-                scene_state = False
+                if self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] not in (SEQ_STOPPED, SEQ_CHILD_PLAYING, SEQ_CHILD_STOPPING):
+                    # Show scene launcher's actual state
+                    continue
+                scene_state = SEQ_STOPPED
                 for chan in range(SCENE_LAUNCHER_COL):
                     try:
-                        if self.launcher_info[slot][chan]["state"] != SEQ_STOPPED:
-                            scene_state = True
+                        if self.launcher_info[slot][chan]["state"] == SEQ_STOPPING:
+                            scene_state = SEQ_CHILD_STOPPING
+                            break
+                        elif self.launcher_info[slot][chan]["state"] not in (SEQ_STOPPED, SEQ_STARTING):
+                            scene_state = SEQ_CHILD_PLAYING
                             break
                     except Exception as e:
                         logging.warning(e)
-                if scene_state:
-                    if self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] == SEQ_STOPPED:
-                        self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] = SEQ_CHILD_PLAYING
-                else:
-                    if self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] == SEQ_CHILD_PLAYING:
-                        self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] = SEQ_STOPPED
-                    else:
-                        if scene_state and self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] == SEQ_STOPPED:
-                            self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] = SEQ_CHILD_PLAYING
+                self.launcher_info[slot][SCENE_LAUNCHER_COL]["state"] = scene_state
+
                 zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE,
                     bank=self.bank,
                     seq=self.launcher_info[slot][SCENE_LAUNCHER_COL]["sequence"],

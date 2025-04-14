@@ -430,6 +430,9 @@ class zynthian_gui_mixer_strip():
                 case zynseq.SEQ_CHILD_PLAYING:
                     color_state = zynthian_gui_config.PAD_COLOUR_STOPPED
                     state_text = "▶"
+                case zynseq.SEQ_CHILD_STOPPING:
+                    color_state = zynthian_gui_config.PAD_COLOUR_STOPPED
+                    state_text = "▶"
                 case _:
                     color_state = zynthian_gui_config.PAD_COLOUR_DISABLED
                     state_text = ""
@@ -1632,10 +1635,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def edit_pattern(self):
         if self.launcher_select_info:
             pated = self.zyngui.screens['pattern_editor']
-            pated.bank = self.zynseq.bank
-            pated.seq_info = self.launcher_select_info
-            pated.sequence = self.launcher_select_info["sequence"]
-            pated.channel = self.launcher_select_info["chan"]
+            pated.set_sequence_info(self.launcher_select_info)
             pated.load_pattern(self.launcher_select_info["pattern"])
             self.zyngui.show_screen("pattern_editor")
             return True
