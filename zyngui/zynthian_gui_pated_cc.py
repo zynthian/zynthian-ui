@@ -72,7 +72,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         return super().get_menu_options()
 
     def menu_cb(self, option, params):
-        super().menu_cb()
+        super().menu_cb(option, params)
 
     # -------------------------------------------------------------------------
     # Pattern management

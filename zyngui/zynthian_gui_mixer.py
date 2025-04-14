@@ -161,7 +161,7 @@ class zynthian_gui_mixer_strip():
         id = self.fader_bg = self.canvas.create_rectangle(x, self.fader_top, x + self.width, self.fader_bottom, fill=self.fader_bg_color, width=0)
         self.canvas.itemconfig(self.fader_bg, tags=(f"strip:{id}", f"fader:{id}"))
         self.fader = self.canvas.create_rectangle(x, self.fader_top, x + self.width, self.fader_bottom, fill=self.fader_color, width=0,
-                                             tags=(f"strip:{id}", f"audio_strip:{id}"))
+                                             tags=(f"strip:{id}", f"fader:{id}", f"audio_strip:{id}"))
         self.fader_text = self.canvas.create_text(x, self.fader_bottom - 2, fill=self.legend_txt_color, angle=90, anchor="nw", font=self.font_fader, text="",
                                              tags=(f"strip:{id}", f"fader:{id}"))
 

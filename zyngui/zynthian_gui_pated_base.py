@@ -332,6 +332,11 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             menu_options['SEQUENCE'] = options
         # Pattern Options
         options = {}
+        if extra_options:
+            if self.get_name() == "pattern editor":
+                options['\u2610 CC editor'] = 'CC editor'
+            else:
+                options['\u2612 CC editor'] = 'CC editor'
         options[f"Beats in pattern ({self.zynseq.libseq.getBeatsInPattern(self.pattern)})"] = 'Beats in pattern'
         options[f"Steps/Beat ({self.n_steps_beat})"] = 'Steps per beat'
         options[f"Swing Divisor ({self.zynseq.libseq.getSwingDiv(self.pattern)})"] = 'Swing Divisor'
@@ -390,6 +395,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.enable_param_editor(self, 'bpb', {'name': 'Beats per bar', 'value_min': 1, 'value_max': 64,
                                                    'value_default': 4, 'value': self.zynseq.libseq.getBeatsPerBar()})
 
+        elif params == 'CC editor':
+            self.zyngui.toggle_pated()
         elif params == 'Beats in pattern':
             self.enable_param_editor(self, 'bip', {'name': 'Beats in pattern', 'value_min': 1, 'value_max': 64,
                                                    'value_default': 4, 'value': self.zynseq.libseq.getBeatsInPattern(self.pattern)},
