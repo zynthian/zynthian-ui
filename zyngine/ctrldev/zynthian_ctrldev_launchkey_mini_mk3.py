@@ -44,6 +44,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
 
     PAD_COLOURS = [83, 104, 76, 51, 104, 41,
                    64, 12, 11, 71, 4, 67, 42, 9, 105, 15]
+    PAD_COLOURS = [45, 51, 37, 49, 43, 59, 35, 55, 39, 61, 41, 57, 47, 3, 33, 63]
     STARTING_COLOUR = 123
     STOPPING_COLOUR = 120
 

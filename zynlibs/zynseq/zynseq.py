@@ -251,18 +251,17 @@ class zynseq(zynthian_engine):
         self.launcher_info = []
         self.seq2pad = {}
         for slot in range(max(rows_in_bank, MIN_LAUNCHER_SLOTS)):
-            self.appendScene()
+            self.append_scene()
         self.seq_in_bank = self.libseq.getSequencesInBank(bank)
         self.progress = [0] * self.seq_in_bank
 
         zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_REFRESH)
         self.changing_bank = False
 
-    def updateSequence(self, chan, slot, enable=False):
+    def update_sequence(self, chan, slot, enable=False):
         sequence = slot * LAUNCHER_COLS + chan
         if sequence >= self.seq_in_bank:
             # New sequence
-            self.libseq.setGroup(self.bank, sequence, chan)
             if chan == 16:
                 self.set_sequence_name(self.bank, sequence, f"{chr(65 + slot)}>")
             else:
@@ -275,6 +274,7 @@ class zynseq(zynthian_engine):
         mode = (state >> 8) & 0xFF
         state = state & 0xFF
         follow = self.libseq.getFollowAction(self.bank, sequence)
+        self.libseq.setGroup(self.bank, sequence, chan)
         if follow == 0xFFFF:
             follow_seq = -1
             follow_bank = -1
@@ -305,17 +305,7 @@ class zynseq(zynthian_engine):
         if info["pattern"] == -1:
             logging.warning("No pattern!")
         try:
-            used_chan = []
             self.launcher_info[slot][chan] = info
-            col = 0
-            for chain_id in self.state_manager.chain_manager.ordered_chain_ids:
-                if chain_id == self.state_manager.chain_manager.midi_chan_2_chain_ids[chan][0]:
-                    self.seq2pad[sequence] = [col, slot]
-                    break
-                midi_chan = self.state_manager.chain_manager.chains[chain_id].midi_chan
-                if midi_chan is not None and midi_chan not in used_chan:
-                    used_chan.append(midi_chan)
-                    col += 1
             zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PLAY_STATE,
                     bank=self.bank,
                     seq=sequence,
@@ -323,11 +313,38 @@ class zynseq(zynthian_engine):
                     mode=mode,
                     group=group
             )
-        except:
-            pass #TODO: Create missing info
+        except Exception as e:
+            logging.error(e)
 
+    def rebuild_seq2pad(self):
+        used_chan = []
+        col = 0
+        seq2pad = self.seq2pad
+        self.seq2pad = {}
+        for chain_id in self.state_manager.chain_manager.ordered_chain_ids:
+            chain = self.state_manager.chain_manager.chains[chain_id]
+            if chain.midi_chan is None or chain.midi_chan in used_chan:
+                continue
+            used_chan.append(chain.midi_chan)
+            for slot in range(self.scenes):
+                info = self.launcher_info[slot][chain.midi_chan]
+                self.seq2pad[info["sequence"]] = [col, slot]
+            col += 1
+        if seq2pad != self.seq2pad:
+            zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_REFRESH)
 
-    def appendScene(self):
+    def update_scenes(self, channel):
+        """ Updates launcher info for all slots in a channel
+        :channel: MIDI channel
+        """
+
+        if channel < 0:
+            return #TODO: Handle ALL CHANNELS
+        for slot in range(self.scenes):
+            self.update_sequence(channel, slot, True)
+        self.rebuild_seq2pad()
+
+    def append_scene(self):
         """ Append a row of sequences to the current bank
         """
 
@@ -335,17 +352,19 @@ class zynseq(zynthian_engine):
         self.launcher_info.append([])
         for chan in range(LAUNCHER_COLS):
             self.launcher_info[slot].append({})
-            self.updateSequence(chan, slot)
+            self.update_sequence(chan, slot)
             self.libseq.setRepeat(self.bank, slot * 17 + 16, 1)
         self.seq_in_bank = self.libseq.getSequencesInBank(self.bank)
-        self.scenes = self.seq_in_bank // LAUNCHER_COLS
+        self.scenes = len(self.launcher_info)
         self.progress = [0] * self.seq_in_bank
+        self.rebuild_seq2pad()
 
-    def removeSequences(self, slot):
+    def remove_scene(self, slot):
         for chan in range(LAUNCHER_COLS):
             seq = slot * LAUNCHER_COLS + chan
             self.libseq.removeSequence(self.bank, seq)
         #TODO: Update info["slot"]
+        self.scenes = len(self.launcher_info)
 
     def disable_channel(self, channel):
         for slot in range(len(self.launcher_info)):

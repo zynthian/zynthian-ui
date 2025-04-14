@@ -269,8 +269,7 @@ class zynthian_chain_manager:
                     existing_midi_chan = True
                     break
             if not existing_midi_chan:
-                for slot in range(len(self.state_manager.zynseq.launcher_info)):
-                    self.state_manager.zynseq.updateSequence(midi_chan, slot, True)
+                self.state_manager.zynseq.update_scenes(midi_chan)
 
         chain.rebuild_graph()
         zynautoconnect.request_audio_connect(fast_refresh)
@@ -428,14 +427,19 @@ class zynthian_chain_manager:
 
         if chain_id is None:
             chain_id = self.active_chain_id
-        if chain_id and chain_id in self.ordered_chain_ids:
-            index = self.ordered_chain_ids.index(chain_id)
-            pos = index + offset
-            pos = min(pos, len(self.ordered_chain_ids) - 2)
-            pos = max(pos, 0)
-            self.ordered_chain_ids.insert(
-                pos, self.ordered_chain_ids.pop(index))
-            zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_MOVE_CHAIN)
+        if not chain_id or chain_id not in self.ordered_chain_ids:
+            return
+        index = self.ordered_chain_ids.index(chain_id)
+        pos = index + offset
+        pos = min(pos, len(self.ordered_chain_ids) - 2)
+        pos = max(pos, 0)
+        if pos == index:
+            return
+        self.ordered_chain_ids.insert(
+            pos, self.ordered_chain_ids.pop(index))
+        if self.chains[chain_id].midi_chan is not None:
+            self.state_manager.zynseq.select_bank(None, True)
+        zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_MOVE_CHAIN)
 
     def get_chain_count(self):
         """Get the quantity of chains"""
@@ -1460,6 +1464,8 @@ class zynthian_chain_manager:
                 except:
                     pass
 
+        chain.set_midi_chan(midi_chan)
+
         # Add new midi_chan(s) to dictionary
         if isinstance(midi_chan, int):
             midi_chans = []
@@ -1477,7 +1483,7 @@ class zynthian_chain_manager:
                 except:
                     pass
 
-        chain.set_midi_chan(midi_chan)
+            self.state_manager.zynseq.update_scenes(midi_chan)
 
     def get_free_midi_chans(self):
         """Get list of unused MIDI channels"""

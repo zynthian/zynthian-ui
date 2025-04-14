@@ -100,7 +100,7 @@ NoteCuiaDefault = {
     "65": "SCREEN_SNAPSHOT",
     "67": "SCREEN_ALSA_MIXER",
     "69": "SCREEN_MIDI_RECORDER",
-    "71": "SCREEN_ZYNPAD",
+    "71": "SCREEN_LAUNCHER",
     "72": "SCREEN_PATTERN_EDITOR",
     "74": "SCREEN_BANK",
     "76": "SCREEN_PRESET",
