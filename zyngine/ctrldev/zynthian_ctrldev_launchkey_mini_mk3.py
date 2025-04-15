@@ -30,6 +30,7 @@ import logging
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad, zynthian_ctrldev_zynmixer
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
+from zyngui import zynthian_gui_config
 
 # ------------------------------------------------------------------------------------------------------------------
 # Novation Launchkey Mini MK3
@@ -42,21 +43,16 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
     driver_name = "Launchkey Mini Mk3"
     driver_description = "Interface Novation Launchkey Mini Mk3 with zynpad and zynmixer"
 
-    PAD_COLOURS = [83, 104, 76, 51, 104, 41,
-                   64, 12, 11, 71, 4, 67, 42, 9, 105, 15]
-    PAD_COLOURS = [45, 51, 37, 49, 43, 59, 35, 55, 39, 61, 41, 57, 47, 3, 33, 63]
-    STARTING_COLOUR = 123
-    STOPPING_COLOUR = 120
-
     # Function to initialise class
     def __init__(self, state_manager, idev_in, idev_out=None):
         self.shift = False
+        self.scroll = False
         super().__init__(state_manager, idev_in, idev_out)
 
     def init(self):
         # Enable session mode on launchkey
         lib_zyncore.dev_send_note_on(self.idev_out, 15, 12, 127)
-        self.cols = 8
+        self.cols = 16
         self.rows = 2
         super().init()
 
@@ -72,32 +68,35 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             col, row = self.zynseq.get_xy_from_seq(seq)
         except:
             return
-        if row > 1 or col > 8:
+        if self.scroll:
+            col -= 8
+        if row > 1 or col > 8 or col < 0:
             return
         note = 96 + row * 16 + col
+        # chan: 0=static, 1=flashing, 2=pulsing
         try:
-            if mode == 0 or group > 16:
+            if mode == 0 or group > 15: #TODO: Handle groups > 15
                 chan = 0
                 vel = 0
             elif state == zynseq.SEQ_STOPPED:
                 chan = 0
-                vel = self.PAD_COLOURS[group]
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
             elif state == zynseq.SEQ_PLAYING:
                 chan = 2
-                vel = self.PAD_COLOURS[group]
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
             elif state in [zynseq.SEQ_STOPPING, zynseq.SEQ_STOPPINGSYNC]:
                 chan = 1
-                vel = self.STOPPING_COLOUR
+                vel = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR["launchpad"]
             elif state == zynseq.SEQ_STARTING:
                 chan = 1
-                vel = self.STARTING_COLOUR
+                vel = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
             else:
                 chan = 0
                 vel = 0
         except Exception as e:
             chan = 0
             vel = 0
-            # logging.warning(e)
+            logging.warning(e)
 
         lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
 
@@ -147,7 +146,9 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
                 self.state_manager.send_cuia("ARROW_LEFT")
             elif ccnum == 0x68:
                 # UP
-                self.state_manager.send_cuia("ARROW_UP")
+                #self.state_manager.send_cuia("ARROW_UP")
+                self.scroll = not self.scroll
+                self.refresh()
             elif ccnum == 0x69:
                 # DOWN
                 self.state_manager.send_cuia("ARROW_DOWN")

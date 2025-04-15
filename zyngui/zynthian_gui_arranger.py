@@ -768,7 +768,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
         sequence = self.sequence_tracks[row + self.row_offset][0]
         track = self.sequence_tracks[row + self.row_offset][1]
         group = self.zynseq.libseq.getGroup(self.zynseq.bank, sequence)
-        fill = zynthian_gui_config.PAD_COLOUR_GROUP_LIGHT[group % 16]
+        fill = zynthian_gui_config.LAUNCHER_COLOUR[group % 16]["rgb_light"]
         font = tkfont.Font(
             family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
         midi_chan = self.zynseq.libseq.getChannel(

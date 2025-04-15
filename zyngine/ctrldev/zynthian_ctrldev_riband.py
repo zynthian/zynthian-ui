@@ -64,7 +64,7 @@ class zynthian_ctrldev_riband(zynthian_ctrldev_zynpad):
         if note > 15:
             return
         try:
-            if mode == 0 or group > 25:
+            if mode == 0 or group > 15:
                 vel = 0
             elif state == zynseq.SEQ_STOPPED:
                 vel = 4 + group

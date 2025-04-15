@@ -5,7 +5,7 @@
 #
 # Zynthian Control Device Driver for "Novation Launchpad Pro MK2"
 #
-# Copyright (C) 2015-2023 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
@@ -31,6 +31,7 @@ from time import sleep
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad
 from zyncoder.zyncore import lib_zyncore
 from zynlibs.zynseq import zynseq
+from zyngui import zynthian_gui_config
 
 # ------------------------------------------------------------------------------------------------------------------
 # Novation Launchpad Pro MK2
@@ -41,8 +42,6 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad):
 
     dev_ids = ["Launchpad Pro IN 1"]
 
-    PAD_COLOURS = [6, 29, 17, 49, 66, 41, 23,
-                   13, 96, 2, 81, 82, 83, 84, 85, 86, 87]
     STARTING_COLOUR = 21
     STOPPING_COLOUR = 5
 
@@ -96,22 +95,24 @@ class zynthian_ctrldev_launchpad_pro_mk2(zynthian_ctrldev_zynpad):
         note = 10 * (8 - row) + col + 1
 
         group = self.zynseq.libseq.getGroup(self.zynseq.bank, pad)
+        if group > 15:
+            return
         try:
             if mode == 0:
                 chan = 0
                 vel = 0
             elif state == zynseq.SEQ_STOPPED:
                 chan = 0
-                vel = self.PAD_COLOURS[group]
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
             elif state == zynseq.SEQ_PLAYING:
                 chan = 2
-                vel = self.PAD_COLOURS[group]
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
             elif state == zynseq.SEQ_STOPPING:
                 chan = 1
-                vel = self.STOPPING_COLOUR
+                vel = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR["launchpad"]
             elif state == zynseq.SEQ_STARTING:
                 chan = 1
-                vel = self.STARTING_COLOUR
+                vel = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
             else:
                 chan = 0
                 vel = 0

@@ -813,7 +813,7 @@ class zynthian_gui_mixer_strip():
         if empty or info["repeat"] == 0:
             color = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT
         else:
-            color = zynthian_gui_config.PAD_COLOUR_GROUP_LIGHT[group % 17]
+            color = zynthian_gui_config.LAUNCHER_COLOUR[group % 16]["rgb"]
 
         info["title"] = title #TODO: Should we change the title or have a different display param?
         info["color"] = color #TODO: Factor out. I don't like gui info stored in zynseq.
