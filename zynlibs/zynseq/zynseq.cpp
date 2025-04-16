@@ -824,6 +824,26 @@ bool checkBlock(FILE* pFile, uint32_t nActualSize, uint32_t nExpectedSize) {
     return false;
 }
 
+void reset() {
+    g_nSequence = 0;
+    g_nBank = 0;
+    g_seqMan.init();
+    g_nBeatsPerBar = 4;
+    uint8_t seq = 0;
+    for (uint8_t slot = 0; slot < 8; ++slot) {
+        for (uint8_t chan = 0; chan < 17; ++chan) {
+            Sequence* pSequence = g_seqMan.getSequence(1, seq, true);
+            pSequence->setGroup(chan);
+            pSequence->getTrack(0)->setChannel(chan);
+            if (chan == 16) {
+                pSequence->setRepeat(1);
+                pSequence->setName(std::string(1, 'A' + slot));
+            }
+            ++seq;
+        }
+    }
+}
+
 bool load(const char* filename) {
     g_nSequence = 0;
     g_nBank = 0;

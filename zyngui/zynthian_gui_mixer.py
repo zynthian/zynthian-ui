@@ -405,7 +405,6 @@ class zynthian_gui_mixer_strip():
             try:
                 slot = self.parent.launcher_offset + row
                 if slot < self.zynseq.slots:
-                    self.update_launcher(slot)
                     self.draw_sequence_slot(slot)
                 else:
                     self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}", state=tkinter.HIDDEN)
@@ -417,9 +416,14 @@ class zynthian_gui_mixer_strip():
         row = slot - self.parent.launcher_offset
         try:
             info = self.zynseq.launcher_info[slot][self.chan]
-            color = info["color"]
-            title = info["title"]
+            sequence = info["sequence"]
+            empty = self.zynseq.libseq.isEmpty(self.zynseq.bank, sequence)
+            if empty or info["repeat"] == 0:
+                color = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT
+            else:
+                color = zynthian_gui_config.LAUNCHER_COLOUR[info["group"] % 16]["rgb"]
             if info["repeat"]:
+                title = self.zynseq.get_sequence_name(self.zynseq.bank, sequence)[:5]
                 if info["follow_seq"] == -1:
                     mode_image = self.parent.mode_icons["oneshot"]
                 elif info["follow_bank"] != self.zynseq.bank:
@@ -429,6 +433,7 @@ class zynthian_gui_mixer_strip():
                 else:
                     mode_image = self.parent.mode_icons["oneshotall"]
             else:
+                title = "⏹"
                 mode_image = self.parent.mode_icons["empty"]
             match info["state"]:
                 case zynseq.SEQ_PLAYING:
@@ -462,13 +467,6 @@ class zynthian_gui_mixer_strip():
         self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_state", text=state_text, fill=color_state)
         self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_title", text=title)
         self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_mode", image=mode_image)
-
-    def update_clip_state(self, slot, bank, seq, state, mode, group):
-        if bank != self.zynseq.bank or self.chan is None or self.chan > 16:
-            return
-        if self.zynseq.launcher_info[slot][self.chan]["sequence"] == seq:
-            #self.update_launcher(slot, state, mode, group)
-            self.draw_sequence_slot(slot)
 
     def update_clip_progress(self, bank, seq, progress):
         if bank != self.zynseq.bank or self.chan is None or self.chan > 16:
@@ -790,37 +788,6 @@ class zynthian_gui_mixer_strip():
     # --------------------------------------------------------------------------
     # Clip launcher functionality
     # --------------------------------------------------------------------------
-
-    def update_launcher(self, slot, state=None, mode=None, group=None):
-        try:
-            info = self.zynseq.launcher_info[slot][self.chan]
-            seq_i = info["sequence"]
-        except:
-            return
-
-        #TODO: This should be done elsewhere - not dependant on GUI nor repeated so often
-        try:
-            processor = self.chain.get_processors("MIDI Synth")[0]
-            if processor.engine.nickname == "CL":
-                info["clippy"] = processor
-        except:
-            info["clippy"] = None
-
-        empty = self.zynseq.libseq.isEmpty(self.zynseq.bank, seq_i)
-        if info["repeat"] == 0:
-            title = "⏹"
-        else:
-            title = self.zynseq.get_sequence_name(self.zynseq.bank, seq_i)[:5]
-
-        if group is None:
-            group = self.zynseq.libseq.getGroup(self.zynseq.bank, seq_i)
-        if empty or info["repeat"] == 0:
-            color = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT
-        else:
-            color = zynthian_gui_config.LAUNCHER_COLOUR[group % 16]["rgb"]
-
-        info["title"] = title #TODO: Should we change the title or have a different display param?
-        info["color"] = color #TODO: Factor out. I don't like gui info stored in zynseq.
 
     def highlight_launcher(self, slot=None):
         if slot is None:
@@ -1743,7 +1710,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 self.launcher_select_info["follow_bank"] = bank
                 self.launcher_select_info["follow_seq"] = zctrl.value
 
-        self.main_mixbus_strip.update_launcher(slot)
         self.main_mixbus_strip.draw_sequence_slot(slot)
 
     # --------------------------------------------------------------------------

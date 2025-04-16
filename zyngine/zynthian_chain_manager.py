@@ -439,7 +439,7 @@ class zynthian_chain_manager:
         self.ordered_chain_ids.insert(
             pos, self.ordered_chain_ids.pop(index))
         if self.chains[chain_id].midi_chan is not None:
-            self.state_manager.zynseq.select_bank(None, True)
+            self.state_manager.zynseq.rebuild_all_launcher_info()
         zynsigman.send(zynsigman.S_CHAIN_MAN, self.SS_MOVE_CHAIN)
 
     def get_chain_count(self):

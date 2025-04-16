@@ -306,7 +306,7 @@ class zynthian_state_manager:
         # self.zynseq.transport_stop("ALL")
         self.zynseq.libseq.stop()
         if zynseq:
-            self.zynseq.load("")
+            self.zynseq.libseq.reset()
         if chains:
             zynautoconnect.pause()
             self.chain_manager.remove_all_chains(True)

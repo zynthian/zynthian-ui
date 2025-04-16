@@ -133,7 +133,6 @@ Sequence* SequenceManager::getSequence(uint8_t bank, uint8_t sequence, bool crea
         // Sequence does not exist so create and configure
         if (create_pattern) {
             uint32_t pattern = createPattern();
-            fprintf(stderr, "New sequence %d:%d adding new pattern %d\n", bank, sequence, pattern);
             addPattern(bank, sequence, 0, 0, pattern, true);
         }
         m_mBanks[bank][sequence].setSequenceId(bank, sequence);

@@ -82,6 +82,10 @@ bool isModified();
 */
 void enableDebug(bool bEnable);
 
+/** @brief  Reset to a default state with 17 x 8 single pattern sequences
+*/
+void reset();
+
 /** @brief  Load sequences and patterns from file
     @param  filename Full path and filename
     @retval bool True on success

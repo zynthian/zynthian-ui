@@ -251,13 +251,8 @@ class zynseq(zynthian_engine):
         self.changing_bank = True
 
         self.seq_in_bank = self.libseq.getSequencesInBank(bank)
-        rows_in_bank = self.seq_in_bank // LAUNCHER_COLS
+        self.slots = self.seq_in_bank // LAUNCHER_COLS
         self.bank = bank
-
-        # Populate minimum launchers with default states
-        self.slots = 0
-        for slot in range(max(rows_in_bank, MIN_LAUNCHER_SLOTS)):
-            self.add_scene()
 
         zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_REFRESH)
         self.changing_bank = False
@@ -328,6 +323,12 @@ class zynseq(zynthian_engine):
         col = 0
         for i, chain_id in enumerate(self.state_manager.chain_manager.ordered_chain_ids):
             chain = self.state_manager.chain_manager.chains[chain_id]
+            try:
+                processor = chain.get_processors("MIDI Synth")[0]
+                if processor.engine.nickname == "CL":
+                    info["clippy"] = processor
+            except:
+                pass
             if chain.midi_chan is None:
                 continue
             if chain.midi_chan == chan:
@@ -409,6 +410,8 @@ class zynseq(zynthian_engine):
         :channel: MIDI channel
         """
 
+        if channel is None or channel > 16:
+            return
         for slot in range(len(self.launcher_info)):
             info = self.launcher_info[slot][channel]
             self.libseq.setRepeat(self.state_manager.zynseq.bank, slot * 17 + channel, 0)
