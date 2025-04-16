@@ -167,8 +167,11 @@ class zynthian_gui_mixer_strip():
                                              tags=(f"strip:{id}", f"mixer:{id}", f"fader:{id}"))
 
         # Launcher pads
-        height_slot = (self.fader_bottom - self.fader_top) // zynthian_gui_config.visible_launchers
-        ypos = self.fader_top
+        height_slot = (self.fader_bottom - self.fader_top - 4) // zynthian_gui_config.visible_launchers
+        ypos = self.fader_top + 2
+        # Scroll up available indicator
+        self.canvas.create_rectangle(x, ypos - 2, x + self.fader_width, ypos, width=0, state=tkinter.HIDDEN,
+                                        fill="yellow", tags=(f"strip:{id}", f"launcher_scroll_top_{id}"))
         for row in range(0, zynthian_gui_config.visible_launchers):
             # Launcher pad (background)
             launcher_bg = self.canvas.create_rectangle(x, ypos, x + self.fader_width, ypos + height_slot - 1, width=0, state=tkinter.HIDDEN)
@@ -191,6 +194,9 @@ class zynthian_gui_mixer_strip():
             self.canvas.tag_bind(f"launcher:{id}_{row}", '<ButtonRelease-1>', lambda e, row=row: self.on_clip_slot_release(row, e))
             self.canvas.tag_bind(f"launcher:{id}_{row}", '<B1-Motion>', lambda e, row=row: self.on_clip_slot_motion(row, e))
             ypos += height_slot
+        # Scroll down available indicator
+        self.canvas.create_rectangle(x, ypos - 2, x + self.fader_width, ypos, width=0, state=tkinter.HIDDEN,
+                                        fill="yellow", tags=(f"strip:{id}", f"launcher_scroll_bottom_{id}"))
 
         # DPM
         self.dpm_a = zynthian_gui_dpm(self.zynmixer, None, 0, self.canvas, self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.fader_height,
@@ -467,6 +473,10 @@ class zynthian_gui_mixer_strip():
         self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_state", text=state_text, fill=color_state)
         self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_title", text=title)
         self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_mode", image=mode_image)
+        if self.parent.launcher_offset:
+            self.canvas.itemconfig(f"launcher_scroll_top_{self.fader_bg}", state=tkinter.NORMAL)
+        if self.parent.launcher_offset + zynthian_gui_config.visible_launchers < self.zynseq.slots:
+            self.canvas.itemconfig(f"launcher_scroll_bottom_{self.fader_bg}", state=tkinter.NORMAL)
 
     def update_clip_progress(self, bank, seq, progress):
         if bank != self.zynseq.bank or self.chan is None or self.chan > 16:
@@ -1363,7 +1373,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.zyngui.close_screen()
 
     def item_menu(self):
-        if self.launcher_mode and self.launcher_highlighted_slot < zynthian_gui_config.visible_launchers:
+        if self.launcher_mode and self.launcher_highlighted_slot < self.zynseq.slots:
             # Launcher Options
             self.set_clip_info(self.highlighted_strip.chan, self.launcher_highlighted_slot)
             self.launcher_menu()

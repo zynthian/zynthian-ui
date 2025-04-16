@@ -381,12 +381,14 @@ class zynseq(zynthian_engine):
 
         if slot is None:
             slot = self.slots
-        for sequence in range(slot * LAUNCHER_COLS, self.seq_in_bank):
+        logging.warning(f"Adding scene to {self.seq_in_bank} sequences")
+        for sequence in range(self.seq_in_bank - 1, slot * LAUNCHER_COLS - 1, -1):
+            logging.warning(f"  Moving sequence {sequence} to {sequence + LAUNCHER_COLS}")
             self.libseq.moveSequence(self.bank, sequence, sequence + LAUNCHER_COLS)
         for sequence in range(slot * LAUNCHER_COLS, (slot + 1) * LAUNCHER_COLS):
             chan = sequence % LAUNCHER_COLS
             if chan == 16:
-                self.set_sequence_name(self.bank, sequence, f"{chr(65 + slot)}>")
+                self.set_sequence_name(self.bank, sequence, f"{chr(65 + slot)}")
             else:
                 self.set_sequence_name(self.bank, sequence, f"{chr(65 + slot)}{chan + 1}")
             self.libseq.setRepeat(self.bank, sequence, 1)
