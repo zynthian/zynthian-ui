@@ -1065,7 +1065,7 @@ class PadMatrixHandler(ModeHandlerBase):
 
     def update_seq_state(self, bank, seq, state=None, mode=None, group=None, refresh=True):
         try:
-            col, row = self._zynseq.get_xy_from_seq(seq)
+            col, row = self._zynseq.get_pad_coords(seq)
         except:
             return
         idx = col * self._rows + row
@@ -1766,7 +1766,7 @@ class StepSeqHandler(ModeHandlerBase):
                 pad) if args is None else self._leds.led_on(pad, *args)
 
     def set_sequence(self, seq):
-        self._libseq.setSequence(seq)
+        self._libseq.selectSequence(seq)
         self._selected_seq = seq
         self._sequence_patterns = self._get_sequence_patterns(
             self._zynseq.bank, seq, create=True)

@@ -129,13 +129,21 @@ class SequenceManager {
     */
     void removePattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position);
 
-    /** Set sequence play state
+    /** @brief Set sequence play state
         @param  bank Index of bank containing sequence
-        @param  offset Index (offset) of sequence within bank
+        @param  sequence Index of sequence
         @param  state Play state
         @note   Stops other sequences in group
     */
     void setSequencePlayState(uint8_t bank, uint8_t sequence, uint8_t state);
+
+    /** @brief  Move sequence
+        @param  bank Index of bank
+        @param  sequence Index of sequence
+        @param  newSeq Index of new sequence
+        @note   Existing sequence with id newSeq will be replace and old sequence will be deleted.
+    */
+    void moveSequence(uint8_t bank, uint8_t sequence, uint8_t newSeq);
 
     /** @brief  Get MIDI note number used to trigger sequence
         @param  bank Index of bank containing sequence

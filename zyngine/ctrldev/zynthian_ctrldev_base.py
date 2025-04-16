@@ -196,7 +196,7 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         self.update_seq_bank()
         for col in range(self.cols):
             for row in range(self.rows):
-                info = self.zynseq.get_launcher_info_from_xy(col, row)
+                info = self.zynseq.get_launcher_info(col, row)
                 if info is None or info["mode"] == 0:
                     self.pad_off(col, row)
                 else:

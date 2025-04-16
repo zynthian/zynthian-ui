@@ -545,7 +545,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.bank = 0
             self.channel = 0
         self.seq_info = info
-        self.zynseq.libseq.setSequence(self.bank, self.sequence)
+        self.zynseq.libseq.selectSequence(self.bank, self.sequence)
 
     def assert_sequence_repeat(self, value):
         self.zynseq.libseq.setRepeat(self.bank, self.sequence, value)

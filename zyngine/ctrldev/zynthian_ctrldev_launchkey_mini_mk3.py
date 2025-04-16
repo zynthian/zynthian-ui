@@ -65,7 +65,7 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
         if self.idev_out is None or bank != self.zynseq.bank:
             return
         try:
-            col, row = self.zynseq.get_xy_from_seq(seq)
+            col, row = self.zynseq.get_pad_coords(seq)
         except:
             return
         if self.scroll:
@@ -117,10 +117,10 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
             try:
                 col = (note - 96) % 16
                 row = (note - 96) // 16
-                seq = self.zynseq.get_seq_from_xy(col, row)
-                if seq is None:
+                info = self.zynseq.get_launcher_info(col, row)
+                if info is None:
                     return
-                self.zynseq.libseq.togglePlayState(self.zynseq.bank, seq)
+                self.zynseq.libseq.togglePlayState(self.zynseq.bank, info["sequence"])
             except:
                 pass
         elif evtype == 0xB:

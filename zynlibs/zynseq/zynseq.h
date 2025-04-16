@@ -1017,7 +1017,7 @@ uint8_t getMidiLearnSequence();
     @param  bank Bank index
     @param  sequence Sequence index
 */
-void setSequence(uint8_t bank, uint8_t sequence);
+void selectSequence(uint8_t bank, uint8_t sequence);
 
 /** @brief  Set sequence name
     @param  bank Index of bank
@@ -1055,6 +1055,14 @@ uint16_t getFollowAction(uint8_t bank, uint8_t sequence);
     @note   Sequences after remove point are moved down by one. Bank grows if sequence is higher than size of bank
 */
 void removeSequence(uint8_t bank, uint8_t sequence);
+
+/** @brief   Move a sequence within a bank (change its id)
+    @param  bank Index of bank
+    @param  sequence Index of sequence
+    @param  newSeq New index of sequence
+    @note   Existing sequence with id newSeq will be replace and old sequence will be deleted.
+*/
+void moveSequence(uint8_t bank, uint8_t sequence, uint8_t newSeq);
 
 /** @brief  Update all sequence lengths and empty status
 */

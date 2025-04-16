@@ -23,9 +23,13 @@ Sequence::Sequence() {
     addTrack(); // Ensure new sequences have at least one track
 }
 
-void Sequence::setSequence(uint8_t bank, uint8_t sequence) { m_nId = (bank << 8) | sequence; }
+void Sequence::setSequenceId(uint8_t bank, uint8_t sequence) {
+    m_nId = (bank << 8) | sequence;
+}
 
-uint8_t Sequence::getGroup() { return m_nGroup; }
+uint8_t Sequence::getGroup() {
+    return m_nGroup;
+}
 
 void Sequence::setGroup(uint8_t group) {
     if (m_nGroup == group)

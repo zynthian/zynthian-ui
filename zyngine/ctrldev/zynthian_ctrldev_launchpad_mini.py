@@ -104,7 +104,7 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
             return
         # logging.debug("Updating Launchpad MINI pad {}".format(seq))
         try:
-            col, row = self.zynseq.get_xy_from_seq(seq)
+            col, row = self.zynseq.get_pad_coords(seq)
         except:
             return
         note = 16 * row + col
@@ -139,9 +139,9 @@ class zynthian_ctrldev_launchpad_mini(zynthian_ctrldev_zynpad):
                 self.zynseq.select_bank(row + 1)
                 return True
             # launch/stop pad
-            seq = self.zynseq.get_seq_from_xy(col, row)
-            if seq is not None:
-                self.zynseq.libseq.togglePlayState(self.zynseq.bank, seq)
+            info = self.zynseq.get_launcher_info(col, row)
+            if info is not None:
+                self.zynseq.libseq.togglePlayState(self.zynseq.bank, info["sequence"])
                 return True
         elif evtype == 0xB:
             ccnum = ev[1] & 0x7F

@@ -77,7 +77,7 @@ bool g_bMidiRecord = false;                         // True to add notes to curr
 uint8_t g_nSustainValue = 0;                        // Last sustain pedal value during note input (recording)
 uint32_t g_nSustainStart = 0;                       // Step when sustain pedal was last pressed
 
-char g_sName[16];                // Buffer to hold sequence name so that it can be sent back for Python to parse
+char g_sName[17];                // Buffer to hold sequence name so that it can be sent back for Python to parse
 uint8_t g_nInputRest = 0xFF;     // MIDI note number that creates rest in pattern
 uint16_t g_nVerticalZoom = 16;   // Quantity of rows to show in pattern and arranger view
 uint16_t g_nHorizontalZoom = 16; // Quantity of beats to show in arranger view
@@ -2130,7 +2130,7 @@ void setRepeat(uint8_t bank, uint8_t sequence, uint8_t repeat) { g_seqMan.getSeq
 
 uint8_t getRepeat(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->getRepeat(); }
 
-void setSequence(uint8_t bank, uint8_t sequence) {
+void selectSequence(uint8_t bank, uint8_t sequence) {
     g_nBank = bank;
     g_nSequence = sequence;
 }
@@ -2316,11 +2316,21 @@ void setFollowAction(uint8_t bank, uint8_t sequence, uint8_t nextBank, uint8_t n
     g_bDirty = true;
 }
 
-uint16_t getFollowAction(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->getFollowAction(); }
+uint16_t getFollowAction(uint8_t bank, uint8_t sequence) {
+    return g_seqMan.getSequence(bank, sequence)->getFollowAction();
+}
 
-void removeSequence(uint8_t bank, uint8_t sequence) { g_seqMan.removeSequence(bank, sequence); }
+void removeSequence(uint8_t bank, uint8_t sequence) {
+    g_seqMan.removeSequence(bank, sequence);
+}
 
-void updateSequenceInfo() { g_seqMan.updateAllSequenceLengths(); }
+void moveSequence(uint8_t bank, uint8_t sequence, uint8_t newSeq) {
+    g_seqMan.moveSequence(bank, sequence, newSeq);
+}
+
+void updateSequenceInfo() {
+    g_seqMan.updateAllSequenceLengths();
+}
 
 // ** Track management **
 

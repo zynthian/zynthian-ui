@@ -39,7 +39,7 @@ class Sequence {
     /** @brief  Set bank and sequence id
         @param  id bank << 8 | sequence
     */
-    void setSequence(uint8_t bank, uint8_t sequence);
+    void setSequenceId(uint8_t bank, uint8_t sequence);
 
     /** @brief  Get sequence's mutually excusive group
         @retval uint32_t sequence's group

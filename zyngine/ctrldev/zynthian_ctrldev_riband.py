@@ -55,7 +55,7 @@ class zynthian_ctrldev_riband(zynthian_ctrldev_zynpad):
         if self.idev_out is None or bank != self.zynseq.bank:
             return
         try:
-            col, row = self.zynseq.get_xy_from_seq(seq)
+            col, row = self.zynseq.get_pad_coords(seq)
         except:
             return
         if row > 3 or col > 3:

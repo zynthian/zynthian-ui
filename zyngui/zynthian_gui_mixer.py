@@ -216,7 +216,7 @@ class zynthian_gui_mixer_strip():
         self.legend_strip_txt = self.canvas.create_text(self.fader_centre_x, self.height - self.legend_height / 2, fill=self.legend_txt_color, text="-",
                                                    tags=(f"strip:{id}", f"mixer:{id}", f"launcher:{id}", f"legend_strip:{id}"), font=self.font)
         self.legend_sel = self.canvas.create_rectangle(x, self.height - self.legend_height, x + 3, self.height, width=0, fill=self.legend_txt_color, state=tkinter.HIDDEN,
-                                                  tags=(f"strip:{id}", "launcher_sel", f"launcher_sel:{id}_{zynthian_gui_config.visible_launchers}"))
+                                                  tags=(f"strip:{id}", "launcher_sel", f"legend_sel:{id}"))
 
         self.pedals = []
         for row in range(4):
@@ -404,8 +404,11 @@ class zynthian_gui_mixer_strip():
         for row in range(zynthian_gui_config.visible_launchers):
             try:
                 slot = self.parent.launcher_offset + row
-                self.update_launcher(slot)
-                self.draw_sequence_slot(slot)
+                if slot < self.zynseq.slots:
+                    self.update_launcher(slot)
+                    self.draw_sequence_slot(slot)
+                else:
+                    self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}", state=tkinter.HIDDEN)
             except:
                 self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}", state=tkinter.HIDDEN)
 
@@ -789,10 +792,11 @@ class zynthian_gui_mixer_strip():
     # --------------------------------------------------------------------------
 
     def update_launcher(self, slot, state=None, mode=None, group=None):
-        if self.chan is None:
+        try:
+            info = self.zynseq.launcher_info[slot][self.chan]
+            seq_i = info["sequence"]
+        except:
             return
-        seq_i = slot * zynseq.LAUNCHER_COLS + self.chan
-        info = self.zynseq.launcher_info[slot][self.chan]
 
         #TODO: This should be done elsewhere - not dependant on GUI nor repeated so often
         try:
@@ -819,13 +823,18 @@ class zynthian_gui_mixer_strip():
         info["color"] = color #TODO: Factor out. I don't like gui info stored in zynseq.
 
     def highlight_launcher(self, slot=None):
+        if slot is None:
+            slot = self.parent.launcher_highlighted_slot
         self.canvas.itemconfig(f"launcher_sel", state=tkinter.HIDDEN)
         if slot is not None and self.chain is not None:
-            row = slot - self.parent.launcher_offset
             if self.chain_id == self.parent.chain_manager.active_chain_id:
-                self.canvas.itemconfig(f"launcher_sel:{self.parent.highlighted_strip.fader_bg}_{row}", state=tkinter.NORMAL)
-            if self.chan is not None and slot < len(self.zynseq.launcher_info) and self.zynseq.launcher_info[slot][self.chan]["clippy"]:
-                self.zynseq.launcher_info[slot][self.chan]["clippy"].set_current_screen_index(slot + 1)
+                if slot >= self.zynseq.slots:
+                    self.canvas.itemconfig(f"legend_sel:{self.parent.highlighted_strip.fader_bg}", state=tkinter.NORMAL)
+                else:
+                    row = slot - self.parent.launcher_offset
+                    self.canvas.itemconfig(f"launcher_sel:{self.parent.highlighted_strip.fader_bg}_{row}", state=tkinter.NORMAL)
+                    if self.chan is not None and self.zynseq.launcher_info[slot][self.chan]["clippy"]:
+                        self.zynseq.launcher_info[slot][self.chan]["clippy"].set_current_screen_index(slot + 1)
 
     # --------------------------------------------------------------------------
     # Launcher UI event management
@@ -1355,20 +1364,22 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         #logging.warning(f"bank:{bank} seq:{seq} state:{state} mode:{mode} group:{group}")
         if not self.launcher_mode or bank != self.zynseq.bank:
             return
-        chan = seq % zynseq.LAUNCHER_COLS
-        slot = seq // zynseq.LAUNCHER_COLS
-        if chan < 16:
-            # Update channel strips
-            for strip in self.visible_mixer_strips:
-                if not strip.hidden and strip.chain.midi_chan == chan:
-                    strip.draw_sequence_slot(slot)
-        else:
+        try:
+            info = self.zynseq.sequence_info[seq]
+            slot = info["slot"]
+        except:
+            return
+        if info["chan"] == zynseq.SCENE_LAUNCHER_COL:
             self.main_mixbus_strip.draw_sequence_slot(slot)
+        else:
+            for strip in self.visible_mixer_strips:
+                if not strip.hidden and strip.chain_id in info["chains"]:
+                    strip.draw_sequence_slot(slot)
 
     def cb_launcher_progress(self, bank, seq, progress):
-        chan = seq % zynseq.LAUNCHER_COLS
+        info = self.zynseq.sequence_info[seq]
         for strip in self.visible_mixer_strips:
-            if not strip.hidden and strip.chan == chan:
+            if not strip.hidden and strip.chain_id in info["chains"]:
                 strip.update_clip_progress(bank, seq, progress)
         self.main_mixbus_strip.update_clip_progress(bank, seq, progress)
 
@@ -1451,6 +1462,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """
         active_strip = None
         strip_index = 0
+        if self.launcher_offset + zynthian_gui_config.visible_launchers > self.zynseq.slots:
+            self.launcher_offset = max(0, self.zynseq.slots - zynthian_gui_config.visible_launchers)
         for chain_id in self.chain_manager.ordered_chain_ids[:-1][self.mixer_strip_offset:self.mixer_strip_offset + len(self.visible_mixer_strips)]:
             strip = self.visible_mixer_strips[strip_index]
             strip.set_chain(chain_id)
@@ -1505,6 +1518,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def set_clip_info(self, chan, slot):
         try:
             self.launcher_select_info = self.zynseq.launcher_info[slot][chan]
+            self.launcher_select_info["slot"] = slot
         except Exception as e:
             self.launcher_select_info = None
             #logging.error(f"Can't get info for slot {slot} in column {chan} => {e}")
@@ -1551,7 +1565,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             val = "ON" if zctrl.value else "OFF"
             options[f"Warp ({val})"] = info
         options[f"Edit name ({name})"] = info
-        options["Remove scene"] = info
+        options["Add scene"] = info
+        if self.zynseq.slots > 1:
+            options["Remove scene"] = info
 
         self.zyngui.screens['option'].config(title, options, self.launcher_menu_cb, close_on_select=False)
         self.zyngui.show_screen('option')
@@ -1574,8 +1590,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         elif option.startswith("Edit name"):
             name = self.zynseq.get_sequence_name(self.zynseq.bank, params["sequence"])
             self.zyngui.show_keyboard(self.rename_sequence, name, 8)
+        elif option.startswith("Add scene"):
+            self.zynseq.add_scene(params["slot"] + 1)
+            self.refresh_visible_strips()
+            self.zyngui.show_screen("launcher")
         elif option.startswith("Remove scene"):
-            self.zyngui.show_confirm(f"Remove scene {params['slot'] + 1}?", self.remove_scene)
+            slot = params['slot']
+            self.zyngui.show_confirm(f"Remove scene {slot + 1}?", self.remove_scene, slot)
         elif option.startswith("Tempo"):
             tempo = params["tempo"]
             if not tempo:
@@ -1629,12 +1650,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 "value": val
             }, assert_cb=self.cb_assert_param_editor)
 
-    def remove_scene(self, val):
-        slot = self.launcher_select_info["slot"]
-        for chan in range(zynseq.LAUNCHER_COLS):
-            sequence = self.zynseq.launcher_info[slot][chan]["sequence"]
-            self.zynseq.libseq.removeSequence(self.zynseq.bank, sequence)
-        self.zynseq.launcher_info.pop(slot)
+    def remove_scene(self, slot):
+        self.zynseq.remove_scene(slot)
         self.refresh_visible_strips()
         self.zyngui.show_screen("launcher")
 
@@ -1747,7 +1764,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             return True
         elif type == "S":
             if self.launcher_mode:
-                if self.launcher_highlighted_slot < zynthian_gui_config.visible_launchers:
+                if self.launcher_highlighted_slot < self.zynseq.slots:
                     self.highlighted_strip.on_clip_short_press(self.launcher_highlighted_slot)
                 else:
                     self.zyngui.chain_control()
@@ -1757,7 +1774,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 else:
                     self.zyngui.chain_control()
         elif type == "B":
-            if self.launcher_mode and self.highlighted_strip.chan is not None and self.highlighted_strip.chan < 16 and self.launcher_highlighted_slot < self.zynseq.scenes:
+            if self.launcher_mode and self.highlighted_strip.chan is not None and self.highlighted_strip.chan < 16 and self.launcher_highlighted_slot < self.zynseq.slots:
                 self.edit_clip()
             else:
                 self.item_menu()

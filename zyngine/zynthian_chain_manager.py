@@ -224,13 +224,13 @@ class zynthian_chain_manager:
                 self.state_manager.end_busy("add_chain")
                 return None
 
-        # Set MIDI channel
-        self.set_midi_chan(chain_id, midi_chan)
-
         # Add to chain index (sorted!)
         if chain_pos is None:
             chain_pos = self.get_chain_index(0)
         self.ordered_chain_ids.insert(chain_pos, chain_id)
+
+        # Set MIDI channel
+        self.set_midi_chan(chain_id, midi_chan)
 
         # Setup MIDI routing
         if isinstance(midi_chan, int):
@@ -269,7 +269,7 @@ class zynthian_chain_manager:
                     existing_midi_chan = True
                     break
             if not existing_midi_chan:
-                self.state_manager.zynseq.update_scenes(midi_chan)
+                self.state_manager.zynseq.add_channel(midi_chan)
 
         chain.rebuild_graph()
         zynautoconnect.request_audio_connect(fast_refresh)
@@ -399,6 +399,7 @@ class zynthian_chain_manager:
                     break
             if disable_sequences:
                 self.state_manager.zynseq.disable_channel(midi_chan)
+        self.state_manager.zynseq.rebuild_all_launcher_info()
 
         self.state_manager.purge_zs3()
         self.state_manager.end_busy("remove_chain")
@@ -1483,7 +1484,7 @@ class zynthian_chain_manager:
                 except:
                     pass
 
-            self.state_manager.zynseq.update_scenes(midi_chan)
+            self.state_manager.zynseq.rebuild_all_launcher_info()
 
     def get_free_midi_chans(self):
         """Get list of unused MIDI channels"""

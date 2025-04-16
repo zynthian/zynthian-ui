@@ -955,9 +955,9 @@ class PatternHandler(ModeHandlerBase):
         if self.CC_PAD_START <= ccnum <= self.CC_PAD_END:
             if ccval == 127 and self._current_screen == "zynpad":
                 pad = ccnum - self.CC_PAD_START
-                seq = self._zynseq.get_seq_from_xy(pad // 4, pad % 4)
-                if seq is not None:
-                    self._libseq.togglePlayState(self._zynseq.bank, seq)
+                info = self._zynseq.get_launcher_info(pad // 4, pad % 4)
+                if info is not None:
+                    self._libseq.togglePlayState(self._zynseq.bank, info["sequence"])
                 return
 
         if ccnum in (self.CC_PAD_SHIFT_A, self.CC_PAD_SHIFT_B):
