@@ -381,9 +381,7 @@ class zynseq(zynthian_engine):
 
         if slot is None:
             slot = self.slots
-        logging.warning(f"Adding scene to {self.seq_in_bank} sequences")
         for sequence in range(self.seq_in_bank - 1, slot * LAUNCHER_COLS - 1, -1):
-            logging.warning(f"  Moving sequence {sequence} to {sequence + LAUNCHER_COLS}")
             self.libseq.moveSequence(self.bank, sequence, sequence + LAUNCHER_COLS)
         for sequence in range(slot * LAUNCHER_COLS, (slot + 1) * LAUNCHER_COLS):
             chan = sequence % LAUNCHER_COLS
