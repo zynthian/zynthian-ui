@@ -464,14 +464,14 @@ class zynthian_gui_mixer_strip():
         self.canvas.itemconfig(f"launcher:{self.fader_bg}_{row}_mode", image=mode_image)
 
     def update_clip_state(self, slot, bank, seq, state, mode, group):
-        if bank != self.zynseq.bank:
+        if bank != self.zynseq.bank or self.chan is None or self.chan > 16:
             return
         if self.zynseq.launcher_info[slot][self.chan]["sequence"] == seq:
             #self.update_launcher(slot, state, mode, group)
             self.draw_sequence_slot(slot)
 
     def update_clip_progress(self, bank, seq, progress):
-        if bank != self.zynseq.bank or self.chan is None:
+        if bank != self.zynseq.bank or self.chan is None or self.chan > 16:
             return
         x0 = self.x
         y0 = self.height - self.legend_height
@@ -833,7 +833,7 @@ class zynthian_gui_mixer_strip():
                 else:
                     row = slot - self.parent.launcher_offset
                     self.canvas.itemconfig(f"launcher_sel:{self.parent.highlighted_strip.fader_bg}_{row}", state=tkinter.NORMAL)
-                    if self.chan is not None and self.zynseq.launcher_info[slot][self.chan]["clippy"]:
+                    if self.chan is not None and self.chan < 16 and self.zynseq.launcher_info[slot][self.chan]["clippy"]:
                         self.zynseq.launcher_info[slot][self.chan]["clippy"].set_current_screen_index(slot + 1)
 
     # --------------------------------------------------------------------------
@@ -873,7 +873,7 @@ class zynthian_gui_mixer_strip():
 
     def on_clip_short_press(self, slot):
         #logging.debug(f"CLIP PRESSED => chain_id:{self.chain_id}, slot:{slot}")
-        if self.chan is None:
+        if self.chan is None or self.chan > 16:
             return
         info = self.zynseq.launcher_info[slot][self.chan]
         seq = info['sequence']
@@ -882,7 +882,7 @@ class zynthian_gui_mixer_strip():
             # Disabled so act like immediate stop button
             if info["chan"] == 16:
                 # Scene launcher so stop all running clips.
-                for seq in range(len(self.zynseq.launcher_info) * 17):
+                for seq in range(len(self.zynseq.launcher_info) * zynseq.LAUNCHER_COLS):
                     self.zynseq.libseq.setPlayState(self.zynseq.bank, seq, zynseq.SEQ_STOPPED)
                 return
             for i in range(len(self.zynseq.launcher_info)):
@@ -897,7 +897,7 @@ class zynthian_gui_mixer_strip():
                 self.zynseq.libseq.togglePlayState(self.zynseq.bank, seq)
 
     def on_clip_bold_press(self, slot):
-        if self.chan is None:
+        if self.chan is None or self.chan > 16:
             return
         self.parent.set_clip_info(self.chan, slot)
         if self.chan < 16:

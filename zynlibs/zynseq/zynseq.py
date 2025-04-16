@@ -327,7 +327,6 @@ class zynseq(zynthian_engine):
         used_chan = []
         col = 0
         for i, chain_id in enumerate(self.state_manager.chain_manager.ordered_chain_ids):
-            #TODO: What about main chain [0]?
             chain = self.state_manager.chain_manager.chains[chain_id]
             if chain.midi_chan is None:
                 continue
@@ -520,7 +519,6 @@ class zynseq(zynthian_engine):
         self.libseq.setBeatsPerBar(bpb)
 
     def set_play_mode(self, bank, sequence, mode):
-        #TODO: Playmode has changed
         self.libseq.setPlayMode(bank, sequence, mode)
 
     def remove_pattern(self, bank, sequence, track, time):
@@ -603,6 +601,7 @@ class zynseq(zynthian_engine):
         :return: - Launcher info object or None if not found
         """
 
+        #TODO: Optimise this
         try:
             for seq, info in self.sequence_info.items():
                 if col == info["pad_column"] and slot == info["slot"]:
