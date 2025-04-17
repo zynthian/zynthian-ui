@@ -846,7 +846,6 @@ class zynthian_gui_mixer_strip():
         self.parent.highlight_launcher_slot(slot)
         if self.chain:
             self.chain_manager.set_active_chain_by_object(self.chain)
-        self.parent.launcher_highlighted_slot = row + self.parent.launcher_offset
         if ts < zynthian_gui_config.zynswitch_bold_seconds:
             self.on_clip_short_press(slot)
         elif ts < zynthian_gui_config.zynswitch_long_seconds:
@@ -1943,7 +1942,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def highlight_launcher_slot(self, slot):
         if slot < 0 or slot > self.zynseq.slots:
             return
-        offset = self.launcher_offset
         if self.launcher_offset > slot:
             self.launcher_offset = min(slot, self.zynseq.slots - zynthian_gui_config.visible_launchers)
         elif self.launcher_offset <= slot - zynthian_gui_config.visible_launchers:
