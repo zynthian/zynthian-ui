@@ -403,6 +403,29 @@ class zynseq(zynthian_engine):
                 self.libseq.moveSequence(self.bank, seq, seq - LAUNCHER_COLS)
         self.rebuild_all_launcher_info()
 
+    def move_scene(self, slot, offset):
+        new_slot = slot + offset
+        if new_slot >= self.slots:
+            new_slot = self.slots - 1
+        if new_slot < 0:
+            new_slot = 0
+        if new_slot == slot:
+            return slot
+        if new_slot > slot:
+            for i in range(slot, new_slot):
+                src_seq = i * LAUNCHER_COLS
+                dst_seq = (i + 1) * LAUNCHER_COLS
+                for i in range(17):
+                    self.libseq.swapSequence(self.bank, src_seq + i, dst_seq + i)
+        else:
+            for i in range(slot, new_slot, -1):
+                src_seq = i * LAUNCHER_COLS
+                dst_seq = (i - 1) * LAUNCHER_COLS
+                for i in range(17):
+                    self.libseq.swapSequence(self.bank, src_seq + i, dst_seq + i)
+        self.rebuild_all_launcher_info()
+        return new_slot
+
     def disable_channel(self, channel):
         """
         Disable sequences in channel

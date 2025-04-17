@@ -1068,6 +1068,13 @@ void removeSequence(uint8_t bank, uint8_t sequence);
 */
 void moveSequence(uint8_t bank, uint8_t sequence, uint8_t newSeq);
 
+/** @brief  Swap two sequences within a bank
+    @param  bank Index of bank
+    @param  seqence1 Index of first sequence
+    @param  seqence2 Index of second sequence
+*/
+void swapSequence(uint8_t bank, uint8_t sequence1, uint8_t sequence2);
+
 /** @brief  Update all sequence lengths and empty status
 */
 void updateSequenceInfo();

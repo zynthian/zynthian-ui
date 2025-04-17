@@ -262,6 +262,10 @@ void SequenceManager::moveSequence(uint8_t bank, uint8_t sequence, uint8_t newSe
     }
 }
 
+void SequenceManager::swapSequence(uint8_t bank, uint8_t sequence1, uint8_t sequence2) {
+    std::swap(m_mBanks[bank][sequence1], m_mBanks[bank][sequence2]);
+}
+
 uint8_t SequenceManager::getTriggerNote(uint8_t bank, uint8_t sequence) {
     uint16_t nValue = (bank << 8) | sequence;
     for (auto it = m_mTriggers.begin(); it != m_mTriggers.end(); ++it)

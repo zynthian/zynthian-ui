@@ -2348,6 +2348,10 @@ void moveSequence(uint8_t bank, uint8_t sequence, uint8_t newSeq) {
     g_seqMan.moveSequence(bank, sequence, newSeq);
 }
 
+void swapSequence(uint8_t bank, uint8_t sequence1, uint8_t sequence2) {
+    g_seqMan.swapSequence(bank, sequence1, sequence2);
+}
+
 void updateSequenceInfo() {
     g_seqMan.updateAllSequenceLengths();
 }

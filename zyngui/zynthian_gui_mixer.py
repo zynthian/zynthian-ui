@@ -428,7 +428,14 @@ class zynthian_gui_mixer_strip():
                 color = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT
             else:
                 color = zynthian_gui_config.LAUNCHER_COLOUR[info["group"] % 16]["rgb"]
-            if info["repeat"]:
+            if self.parent.moving_scene and slot == self.parent.launcher_highlighted_slot:
+                if slot == 0:
+                    title = f"⇓ {self.zynseq.get_sequence_name(self.zynseq.bank, sequence)[:5]}"
+                elif slot == self.zynseq.slots - 1:
+                    title = f"⇑ {self.zynseq.get_sequence_name(self.zynseq.bank, sequence)[:5]}"
+                else:
+                    title = f"⇕ {self.zynseq.get_sequence_name(self.zynseq.bank, sequence)[:5]}"
+            elif info["repeat"]:
                 title = self.zynseq.get_sequence_name(self.zynseq.bank, sequence)[:5]
                 if info["follow_seq"] == -1:
                     mode_image = self.parent.mode_icons["oneshot"]
@@ -822,9 +829,6 @@ class zynthian_gui_mixer_strip():
         self.touch_x = event.x
         self.drag_axis = None  # +1=dragging in y-axis, -1=dragging in x-axis
         self.touch_ts = monotonic()
-        if self.chain:
-            self.chain_manager.set_active_chain_by_object(self.chain)
-        self.parent.launcher_highlighted_slot = row + self.parent.launcher_offset
 
     def on_clip_slot_release(self, row, event):
         now = monotonic()
@@ -834,6 +838,15 @@ class zynthian_gui_mixer_strip():
             self.drag_axis = None
             return
         slot = row + self.parent.launcher_offset
+        if self.parent.moving_scene:
+            prev_slot = self.parent.launcher_select_info["slot"]
+            self.zynseq.move_scene(prev_slot, slot - prev_slot)
+            self.parent.end_moving_scene()
+            return
+        self.parent.highlight_launcher_slot(slot)
+        if self.chain:
+            self.chain_manager.set_active_chain_by_object(self.chain)
+        self.parent.launcher_highlighted_slot = row + self.parent.launcher_offset
         if ts < zynthian_gui_config.zynswitch_bold_seconds:
             self.on_clip_short_press(slot)
         elif ts < zynthian_gui_config.zynswitch_long_seconds:
@@ -1066,6 +1079,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.chan2strip = [None] * (self.MAIN_MIXBUS_STRIP_INDEX + 1)
         self.highlighted_strip = None  # highligted mixer strip object
         self.moving_chain = False  # True if moving a chain left/right
+        self.moving_scene = False # True if moving a launcher slot up/down
 
         # List of (strip,control) requiring gui refresh (control=None for whole strip refresh)
         self.pending_refresh_queue = set()
@@ -1167,6 +1181,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """ Function to handle hiding display
         """
         if self.shown:
+            self.moving_chain = self.moving_scene = False
             if not self.zyngui.osc_clients:
                 self.zynmixer.enable_dpm(0, self.MAIN_MIXBUS_STRIP_INDEX - 1, False)
             if not self.midi_learn_sticky:
@@ -1200,7 +1215,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if len(self.visible_mixer_strips) != zynthian_gui_config.visible_mixer_strips or self.visible_launchers != zynthian_gui_config.visible_launchers:
                 self.set_visible_chains(zynthian_gui_config.visible_mixer_strips)
         #self.launcher_mode = self.zyngui.alt_mode
-        if zynthian_gui_config.enable_touch_navigation and self.moving_chain or self.zynmixer.midi_learn_zctrl:
+        if zynthian_gui_config.enable_touch_navigation and self.moving_chain or self.moving_scene or self.zynmixer.midi_learn_zctrl:
             self.show_back_button()
 
         self.set_title()
@@ -1545,6 +1560,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         options["Add scene"] = info
         if self.zynseq.slots > 1:
             options["Remove scene"] = info
+            options["Move scene"] = info
 
         self.zyngui.screens['option'].config(title, options, self.launcher_menu_cb, close_on_select=False)
         self.zyngui.show_screen('option')
@@ -1574,6 +1590,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         elif option.startswith("Remove scene"):
             slot = params['slot']
             self.zyngui.show_confirm(f"Remove scene {slot + 1}?", self.remove_scene, slot)
+        elif option.startswith("Move scene"):
+            slot = params['slot']
+            self.moving_scene = True
+            self.zyngui.show_screen("launcher")
         elif option.startswith("Tempo"):
             tempo = params["tempo"]
             if not tempo:
@@ -1738,6 +1758,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if self.moving_chain:
             self.end_moving_chain()
             return True
+        elif self.moving_scene:
+            self.end_moving_scene()
+            return True
         elif type == "S":
             if self.launcher_mode:
                 if self.launcher_highlighted_slot < self.zynseq.slots:
@@ -1772,6 +1795,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if self.moving_chain:
             self.end_moving_chain()
             return True
+        if self.moving_scene:
+            self.end_moving_scene()
+            return True
         elif self.zynmixer.midi_learn_zctrl:
             self.exit_midi_learn()
             return True
@@ -1803,7 +1829,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             # return False
             # This is ugly, but it's the only way i figured for MIDI-learning "mute" without touch.
             # Moving the "learn" button to back is not an option. It's a labeled button on V4!!
-            if t == "S" and not self.moving_chain:
+            if t == "S" and not self.moving_chain and not self.moving_scene:
                 if self.zynmixer.midi_learn_zctrl or self.highlighted_strip is not None and not self.back_action():
                     self.highlighted_strip.toggle_mute()
                 return True
@@ -1857,6 +1883,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             if self.moving_chain:
                 self.chain_manager.move_chain(dval)
                 self.refresh_visible_strips()
+            elif self.moving_scene:
+                self.launcher_highlighted_slot = self.zynseq.move_scene(self.launcher_highlighted_slot, dval)
+                self.refresh_visible_strips()
             else:
                 self.chain_manager.next_chain(dval)
             self.set_highlighted_clip_info()
@@ -1884,12 +1913,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """
         if self.launcher_mode:
             if self.launcher_highlighted_slot > 0:
-                self.launcher_highlighted_slot = max(self.launcher_highlighted_slot - nudge, 0)
-                if self.launcher_highlighted_slot < self.launcher_offset:
-                    self.launcher_offset = max(self.launcher_offset - nudge, 0)
-                    self.refresh_visible_strips()
-                self.highlighted_strip.highlight_launcher(self.launcher_highlighted_slot)
-                self.set_highlighted_clip_info()
+                if self.moving_scene:
+                    slot = self.zynseq.move_scene(self.launcher_highlighted_slot, -1)
+                else:
+                    slot = self.launcher_highlighted_slot - nudge
+                self.highlight_launcher_slot(slot)
         else:
             if self.highlighted_strip is not None:
                 self.highlighted_strip.nudge_volume(nudge)
@@ -1899,12 +1927,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         """
         if self.launcher_mode:
             if self.launcher_highlighted_slot < len(self.zynseq.launcher_info):
-                self.launcher_highlighted_slot = min(self.launcher_highlighted_slot - nudge, len(self.zynseq.launcher_info))
-                if self.launcher_highlighted_slot >= self.launcher_offset + self.visible_launchers and self.launcher_highlighted_slot < len(self.zynseq.launcher_info):
-                    self.launcher_offset = min(self.launcher_offset - nudge, len(self.zynseq.launcher_info) - self.visible_launchers)
-                    self.refresh_visible_strips()
-                self.highlighted_strip.highlight_launcher(self.launcher_highlighted_slot)
-                self.set_highlighted_clip_info()
+                if self.moving_scene:
+                    slot = self.zynseq.move_scene(self.launcher_highlighted_slot, 1)
+                else:
+                    slot = self.launcher_highlighted_slot - nudge
+                self.highlight_launcher_slot(slot)
         else:
             if self.highlighted_strip is not None:
                 self.highlighted_strip.nudge_volume(nudge)
@@ -1913,10 +1940,30 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if not self.back_action():
             self.zyngui.back_screen()
 
+    def highlight_launcher_slot(self, slot):
+        if slot < 0 or slot > self.zynseq.slots:
+            return
+        offset = self.launcher_offset
+        if self.launcher_offset > slot:
+            self.launcher_offset = min(slot, self.zynseq.slots - zynthian_gui_config.visible_launchers)
+        elif self.launcher_offset <= slot - zynthian_gui_config.visible_launchers:
+            self.launcher_offset = max(0, slot - zynthian_gui_config.visible_launchers + 1)
+        self.launcher_highlighted_slot = slot
+        self.highlighted_strip.highlight_launcher(slot)
+        self.set_highlighted_clip_info()
+        self.refresh_visible_strips()
+
     def end_moving_chain(self):
         if zynthian_gui_config.enable_touch_navigation:
             self.show_back_button(False)
         self.moving_chain = False
+        self.strip_drag_start = None
+        self.refresh_visible_strips()
+
+    def end_moving_scene(self):
+        if zynthian_gui_config.enable_touch_navigation:
+            self.show_back_button(False)
+        self.moving_scene = False
         self.strip_drag_start = None
         self.refresh_visible_strips()
 
