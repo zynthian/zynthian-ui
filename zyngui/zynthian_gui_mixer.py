@@ -171,7 +171,7 @@ class zynthian_gui_mixer_strip():
         ypos = self.fader_top + 2
         # Scroll up available indicator
         self.canvas.create_rectangle(x, ypos - 2, x + self.fader_width, ypos, width=0, state=tkinter.HIDDEN,
-                                        fill="yellow", tags=(f"strip:{id}", f"launcher_scroll_top_{id}"))
+                                        fill="white", tags=(f"strip:{id}", f"launcher_scroll_top_{id}"))
         for row in range(0, zynthian_gui_config.visible_launchers):
             # Launcher pad (background)
             launcher_bg = self.canvas.create_rectangle(x, ypos, x + self.fader_width, ypos + height_slot - 1, width=0, state=tkinter.HIDDEN)
@@ -196,7 +196,7 @@ class zynthian_gui_mixer_strip():
             ypos += height_slot
         # Scroll down available indicator
         self.canvas.create_rectangle(x, ypos - 2, x + self.fader_width, ypos, width=0, state=tkinter.HIDDEN,
-                                        fill="yellow", tags=(f"strip:{id}", f"launcher_scroll_bottom_{id}"))
+                                        fill="white", tags=(f"strip:{id}", f"launcher_scroll_bottom_{id}"))
 
         # DPM
         self.dpm_a = zynthian_gui_dpm(self.zynmixer, None, 0, self.canvas, self.dpm_a_x0, self.dpm_y0, self.dpm_width, self.fader_height,
