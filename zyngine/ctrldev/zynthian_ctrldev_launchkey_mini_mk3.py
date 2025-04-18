@@ -88,8 +88,11 @@ class zynthian_ctrldev_launchkey_mini_mk3(zynthian_ctrldev_zynpad, zynthian_ctrl
                 chan = 1
                 vel = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR["launchpad"]
             elif state == zynseq.SEQ_STARTING:
-                chan = 1
+                chan = 0
                 vel = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
+                lib_zyncore.dev_send_note_on(self.idev_out, chan, note, vel)
+                chan = 1
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
             else:
                 chan = 0
                 vel = 0

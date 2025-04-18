@@ -362,13 +362,10 @@ class zynseq(zynthian_engine):
         for slot in range(self.slots):
             try:
                 sequence = self.launcher_info[slot][chan]["sequence"]
-                chan = sequence % LAUNCHER_COLS
-                if chan == 16:
-                    self.set_sequence_name(self.bank, sequence, f"{chr(65 + slot)}>")
-                else:
-                    self.set_sequence_name(self.bank, sequence, f"{chr(65 + slot)}{chan + 1}")
-                    self.libseq.setChannel(self.bank, sequence, 0, chan)
+                self.set_sequence_name(self.bank, sequence, f"{chr(65 + slot)}{chan + 1}")
+                self.libseq.setChannel(self.bank, sequence, 0, chan)
                 self.libseq.setRepeat(self.bank, sequence, 1)
+                self.rebuild_launcher_info(sequence)
             except Exception as e:
                 logging.warning(e)
         self.rebuild_all_launcher_info()
