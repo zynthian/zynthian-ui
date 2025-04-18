@@ -21,30 +21,71 @@
  * For a full copy of the GNU General Public License see the LICENSE.txt file.
  *
  * ******************************************************************
+
+    This application acts as a JACK client, providing a single MIDI input port.
+    MIDI CC recieved on channels 1..8 are sent to Openlighting service to drive DMX512.
+    Only universe 1 is currently supported.
+    MIDI channel 1 controls DMX512 slots 0..63. Channel 2, slots 64..127. Chan 3, 128..191. Chan4, 192..255.
+    CC 0..31 control slots 0..31 most significant 7 bits. CC 32..63 control slots 0..31 least significant bit.
+    Any non-zero value in slots 32..63 will set the least significant bit of the corresponding DMX512 slot.
+
+    | MIDI Channel | MIDI CC  | DMX Slot | Value mask |
+    | ------------ | -------- | -------- | ---------- |
+    | 1 (0)        | 0..31    | 1..32    | 0xfe       |
+    | 1 (0)        | 32..63   | 1..32    | 0x01       |
+    | 1 (0)        | 64..93   | 33..64   | 0xfe       |
+    | 1 (0)        | 94..127  | 33..64   | 0x01       |
+    | 1 (0)        | 128..159 | 65..96   | 0xfe       |
+    | 1 (0)        | 160..191 | 65..96   | 0x01       |
+    | 1 (0)        | 192..223 | 97..128  | 0xfe       |
+    | 1 (0)        | 224..255 | 97..128  | 0x01       |
+    | 2 (1)        | 0..31    | 129..160 | 0xfe       |
+    | 2 (1)        | 32..63   | 129..160 | 0x01       |
+    | 2 (1)        | 64..93   | 161..192 | 0xfe       |
+    | 2 (1)        | 94..127  | 161..192 | 0x01       |
+    | 2 (1)        | 128..159 | 193..224 | 0xfe       |
+    | 2 (1)        | 160..191 | 193..224 | 0x01       |
+    | 2 (1)        | 192..223 | 225..256 | 0xfe       |
+    | 2 (1)        | 224..255 | 225..256 | 0x01       |
+    | 3 (2)        | 0..31    | 257..288 | 0xfe       |
+    | 3 (2)        | 32..63   | 257..288 | 0x01       |
+    | 3 (2)        | 64..93   | 289..320 | 0xfe       |
+    | 3 (2)        | 94..127  | 289..320 | 0x01       |
+    | 3 (2)        | 128..159 | 321..352 | 0xfe       |
+    | 3 (2)        | 160..191 | 321..352 | 0x01       |
+    | 3 (2)        | 192..223 | 353..284 | 0xfe       |
+    | 3 (2)        | 224..255 | 353..284 | 0x01       |
+    | 4 (3)        | 0..31    | 285..416 | 0xfe       |
+    | 4 (3)        | 32..63   | 285..416 | 0x01       |
+    | 4 (3)        | 64..93   | 417..448 | 0xfe       |
+    | 4 (3)        | 94..127  | 417..448 | 0x01       |
+    | 4 (3)        | 128..159 | 449..480 | 0xfe       |
+    | 4 (3)        | 160..191 | 449..480 | 0x01       |
+    | 4 (3)        | 192..223 | 481..512 | 0xfe       |
+    | 4 (3)        | 224..255 | 481..512 | 0x01       |
+
  */
 
 #include <stdlib.h>
 #include <unistd.h>
 #include <ola/DmxBuffer.h>
-#include <ola/Logging.h>
 #include <ola/client/StreamingClient.h>
-#include <iostream>
 #include <jack/jack.h>     // provides JACK interface
 #include <jack/midiport.h> // provides JACK MIDI interface
 
-uint8_t g_nUniverse = 1;  // universe to use for sending data
-jack_port_t* g_pInputPort;  // Pointer to the JACK input port
-jack_client_t* g_pJackClient = NULL;  // Pointer to the JACK client
-ola::DmxBuffer buffer;  // DMX data buffers for universe
-ola::client::StreamingClient* g_pOlaClient = NULL; // Pointer to the OLA client
+uint8_t g_universe = 1;  // Universe to use for sending data
+jack_port_t* g_midiInputPort;  // Pointer to the JACK input port
+jack_client_t* g_jackClient = NULL;  // Pointer to the JACK client
+ola::DmxBuffer g_dmxBuffer;  // DMX data buffers for universe
+ola::client::StreamingClient* g_olaClient = NULL; // Pointer to the OLA client
 
-int onJackProcess(jack_nframes_t nFrames, void* args) {
+int onJackProcess(jack_nframes_t frames, void* args) {
     // Process MIDI input
-    void* pInputBuffer = jack_port_get_buffer(g_pInputPort, nFrames);
+    void* midiBuffer = jack_port_get_buffer(g_midiInputPort, frames);
     jack_midi_event_t midiEvent;
-    jack_nframes_t nCount = jack_midi_get_event_count(pInputBuffer);
-    for (jack_nframes_t frame = 0; frame < nCount; ++frame) {
-        if (jack_midi_event_get(&midiEvent, pInputBuffer, frame))
+    jack_nframes_t count = jack_midi_get_event_count(midiBuffer);
+    for (jack_nframes_t frame = 0; frame < count; ++frame) {
+        if (jack_midi_event_get(&midiEvent, midiBuffer, frame))
             continue;
         if ((midiEvent.buffer[0] & 0xb0) == 0xb0) {
             // MIDI CC
@@ -56,7 +97,7 @@ int onJackProcess(jack_nframes_t nFrames, void* args) {
             uint8_t base = (cc / 64) * 32;
             uint8_t slot = offset + base;
             uint8_t lsb = (cc % 64) > 31;
-            uint8_t val = buffer.Get(slot);
+            uint8_t val = g_dmxBuffer.Get(slot);
             if (lsb) {
                 // LSB CC only used to set bit 0 (wasteful but MIDI 1.0 is only 7-bit)
                 if (midiEvent.buffer[2])
@@ -67,10 +108,8 @@ int onJackProcess(jack_nframes_t nFrames, void* args) {
                 val &= 0x01;
                 val |= (midiEvent.buffer[2] << 1);
             }
-            fprintf(stderr, "MIDI CC %d val %d. Sending DMX %d to %d\n", cc, midiEvent.buffer[2], val, slot);
-            buffer.SetChannel(slot, val);
-            g_pOlaClient->SendDmx(g_nUniverse, buffer); //!@todo This will probably not be realtime safe
-            fprintf(stderr, "  Done!\n");
+            g_dmxBuffer.SetChannel(slot, val);
+            g_olaClient->SendDmx(g_universe, g_dmxBuffer); //!@todo This will probably not be realtime safe
         }
     }
     return 0;
@@ -79,7 +118,7 @@ int onJackProcess(jack_nframes_t nFrames, void* args) {
 int main(int, char *[]) {
     // Create a OLA client.
     ola::client::StreamingClient olaClient((ola::client::StreamingClient::Options()));
-    g_pOlaClient = &olaClient;
+    g_olaClient = &olaClient;
 
     // Setup OLA, connect to the server
     if (!olaClient.Setup()) {
@@ -87,25 +126,24 @@ int main(int, char *[]) {
         exit(1);
     }
     // Initalise buffers and send to universe
-    buffer.Blackout();
-    g_pOlaClient->SendDmx(g_nUniverse, buffer);
+    g_dmxBuffer.Blackout();
+    olaClient.SendDmx(g_universe, g_dmxBuffer);
 
     // Create JACK client
-    char* sServerName = NULL;
-    jack_status_t nStatus;
-    jack_options_t nOptions = JackNoStartServer;
-    if ((g_pJackClient = jack_client_open("zynmidiola", nOptions, &nStatus, sServerName)) == 0) {
-        fprintf(stderr, "ERROR: Failed to start jack client: %d\n", nStatus);
+    char* serverName = NULL;
+    jack_status_t jackStatus;
+    if ((g_jackClient = jack_client_open("zynmidiola", JackNoStartServer, &jackStatus, serverName)) == 0) {
+        fprintf(stderr, "ERROR: Failed to start jack client: %d\n", jackStatus);
         exit(1);
     }
     // Create MIDI input port
-    if (!(g_pInputPort = jack_port_register(g_pJackClient, "input", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput | JackPortIsPhysical, 0))) {
+    if (!(g_midiInputPort = jack_port_register(g_jackClient, "input", JACK_DEFAULT_MIDI_TYPE, JackPortIsInput | JackPortIsPhysical, 0))) {
         fprintf(stderr, "ERROR: Cannot register input port\n");
         exit(1);
     }
     // Register JACK callbacks
-    jack_set_process_callback(g_pJackClient, onJackProcess, 0);
-    if (jack_activate(g_pJackClient)) {
+    jack_set_process_callback(g_jackClient, onJackProcess, 0);
+    if (jack_activate(g_jackClient)) {
         fprintf(stderr, "ERROR: Cannot activate client\n");
         exit(1);
     }
