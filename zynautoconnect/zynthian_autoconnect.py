@@ -1176,7 +1176,7 @@ def build_midi_port_name(port):
         return port.name, "MIDI player"
     elif port.name.startswith("ZynMidiRouter:seq_in"):
         return port.name, "Router Feedback"
-    elif port.name.startswith("zynmidiola"):
+    elif port.name.startswith("jackmidiola"):
         return port.name, "DMX"
     elif port.name.startswith("jacknetumpd:netump_"):
         ep_name = jack.get_property(port.uuid, "UMPEndpointName")
