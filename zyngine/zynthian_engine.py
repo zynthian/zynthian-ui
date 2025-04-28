@@ -48,6 +48,7 @@ class zynthian_basic_engine:
     # Data dirs
     # ---------------------------------------------------------------------------
 
+    ui_dir = os.environ.get('ZYNTHIAN_UI_DIR', "/zynthian/zynthian-ui")
     config_dir = os.environ.get('ZYNTHIAN_CONFIG_DIR', "/zynthian/config")
     data_dir = os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data")
     my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data")

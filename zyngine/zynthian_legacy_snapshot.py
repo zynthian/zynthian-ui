@@ -34,7 +34,7 @@ SNAPSHOT_SCHEMA_VERSION = 3
 
 class zynthian_legacy_snapshot:
 
-    def __init__(self, state_manager):
+    def __init__(self, state_manager=None):
         self.state_manager = state_manager
         self.engine_info = zynthian_chain_manager.get_engine_info()
         self.snapshot = None
@@ -92,6 +92,10 @@ class zynthian_legacy_snapshot:
 
     def version_1(self):
         # Convert snapshot from schema V1 to V2
+
+        # This conversion needs a running state manager
+        if not self.state_manager:
+            return
 
         # Migrate stored Output Level values
         try:

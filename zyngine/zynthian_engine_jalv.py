@@ -76,13 +76,13 @@ class zynthian_engine_jalv(zynthian_engine):
     }
 
     plugins_custom_gui = {
-        'http://gareus.org/oss/lv2/meters#spectr30mono': "/zynthian/zynthian-ui/zyngui/zynthian_widget_spectr30.py",
-        'http://gareus.org/oss/lv2/meters#spectr30stereo': "/zynthian/zynthian-ui/zyngui/zynthian_widget_spectr30.py",
-        'http://gareus.org/oss/lv2/tuna#one': "/zynthian/zynthian-ui/zyngui/zynthian_widget_tunaone.py",
-        'http://gareus.org/oss/lv2/tuna#mod': "/zynthian/zynthian-ui/zyngui/zynthian_widget_tunaone.py",
-        'http://looperlative.com/plugins/lp3-basic': "/zynthian/zynthian-ui/zyngui/zynthian_widget_looper.py",
-        'http://aidadsp.cc/plugins/aidadsp-bundle/rt-neural-loader': "/zynthian/zynthian-ui/zyngui/zynthian_widget_aidax.py",
-        'http://github.com/mikeoliphant/neural-amp-modeler-lv2': "/zynthian/zynthian-ui/zyngui/zynthian_widget_nam.py"
+        'http://gareus.org/oss/lv2/meters#spectr30mono': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_spectr30.py",
+        'http://gareus.org/oss/lv2/meters#spectr30stereo': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_spectr30.py",
+        'http://gareus.org/oss/lv2/tuna#one': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_tunaone.py",
+        'http://gareus.org/oss/lv2/tuna#mod': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_tunaone.py",
+        'http://looperlative.com/plugins/lp3-basic': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_looper.py",
+        'http://aidadsp.cc/plugins/aidadsp-bundle/rt-neural-loader': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_aidax.py",
+        'http://github.com/mikeoliphant/neural-amp-modeler-lv2': zynthian_engine.ui_dir + "/zyngui/zynthian_widget_nam.py"
     }
 
     # ------------------------------------------------------------------------------
@@ -211,8 +211,8 @@ class zynthian_engine_jalv(zynthian_engine):
                 if not self.plugin_name.endswith("v1"):
                     self.command_env['DISPLAY'] = "X"
 
-            # Use jalv_asyncli (development version) =>
-            self.command[0] = "/zynthian/zynthian-sw/jalv_asyncli/build/" + self.command[0]
+            # Use jalv's development version =>
+            #self.command[0] = "/zynthian/zynthian-sw/jalv_asyncli/build/" + self.command[0]
 
             self.command_prompt = ">"
 
