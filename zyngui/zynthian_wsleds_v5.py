@@ -83,7 +83,7 @@ class zynthian_wsleds_v5(zynthian_wsleds_base):
             self.wsleds[3] = self.wscolor_default
 
         # Zynseq: Zynpad /Pattern Editor
-        if curscreen in ("launcher", "zynpad"):
+        if curscreen == "launcher":
             self.wsleds[5] = self.wscolor_active
         elif curscreen == "pattern_editor":
             self.wsleds[5] = self.wscolor_active2

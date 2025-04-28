@@ -5,7 +5,7 @@
 #
 # Zynthian Control Device Driver for "Novation Launchpad Mini MK3"
 #
-# Copyright (C) 2015-2024 Fernando Moyano <jofemodo@zynthian.org>
+# Copyright (C) 2015-2025 Fernando Moyano <jofemodo@zynthian.org>
 #                         Brian Walton <brian@riban.co.uk>
 #
 # ******************************************************************************
@@ -31,6 +31,7 @@ from time import sleep
 from zynlibs.zynseq import zynseq
 from zyncoder.zyncore import lib_zyncore
 from zyngine.ctrldev.zynthian_ctrldev_base import zynthian_ctrldev_zynpad
+from zyngui import zynthian_gui_config
 
 # ------------------------------------------------------------------------------------------------------------------
 # Novation Launchpad Mini MK3
@@ -41,8 +42,6 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
 
     dev_ids = ["Launchpad Mini MK3 IN 1"]
 
-    PAD_COLOURS = [6, 29, 17, 49, 66, 41, 23,
-                   13, 96, 2, 81, 82, 83, 84, 85, 86, 87]
     STARTING_COLOUR = 21
     STOPPING_COLOUR = 5
     SELECTED_BANK_COLOUR = 29
@@ -92,10 +91,13 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
             self.idev_out, 0, 19, self.STOP_ALL_COLOUR)
 
     def update_seq_state(self, bank, seq, state, mode, group):
-        if self.idev_out is None or bank != self.zynseq.bank:
+        if self.idev_out is None or bank != self.zynseq.bank or group > 15:
             return
         # logging.debug(f"Updating Launchpad MINI MK3 bank {bank} pad {seq} => state {state}, mode {mode}")
-        col, row = self.zynseq.get_xy_from_pad(seq)
+        try:
+            col, row = self.zynseq.get_pad_coords(seq)
+        except:
+            return
         note = 10 * (8 - row) + col + 1
         try:
             if mode == 0:
@@ -103,16 +105,16 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
                 vel = 0
             elif state == zynseq.SEQ_STOPPED:
                 chan = 0
-                vel = self.PAD_COLOURS[group]
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
             elif state == zynseq.SEQ_PLAYING:
                 chan = 2
-                vel = self.PAD_COLOURS[group]
+                vel = zynthian_gui_config.LAUNCHER_COLOUR[group]["launchpad"]
             elif state == zynseq.SEQ_STOPPING:
                 chan = 1
-                vel = self.STOPPING_COLOUR
+                vel = zynthian_gui_config.LAUNCHER_STOPPING_COLOUR["launchpad"]
             elif state == zynseq.SEQ_STARTING:
                 chan = 1
-                vel = self.STARTING_COLOUR
+                vel = zynthian_gui_config.LAUNCHER_STARTING_COLOUR["launchpad"]
             else:
                 chan = 0
                 vel = 0
@@ -136,9 +138,9 @@ class zynthian_ctrldev_launchpad_mini_mk3(zynthian_ctrldev_zynpad):
             vel = ev[2] & 0x7F
             if vel > 0:
                 col, row = self.get_note_xy(note)
-                pad = self.zynseq.get_pad_from_xy(col, row)
-                if pad >= 0:
-                    self.zynseq.libseq.togglePlayState(self.zynseq.bank, pad)
+                info = self.zynseq.get_launcher_info(col, row)
+                if info is not None:
+                    self.zynseq.libseq.togglePlayState(self.zynseq.bank, info["sequence"])
             return True
         # CC => arrows, scene change, stop all
         elif evtype == 0xB:

@@ -133,10 +133,9 @@ Sequence* SequenceManager::getSequence(uint8_t bank, uint8_t sequence, bool crea
         // Sequence does not exist so create and configure
         if (create_pattern) {
             uint32_t pattern = createPattern();
-            fprintf(stderr, "New sequence %d:%d adding new pattern %d\n", bank, sequence, pattern);
             addPattern(bank, sequence, 0, 0, pattern, true);
         }
-        m_mBanks[bank][sequence].setSequence(bank, sequence);
+        m_mBanks[bank][sequence].setSequenceId(bank, sequence);
     }
     return &(m_mBanks[bank][sequence]);
 }
@@ -251,6 +250,20 @@ void SequenceManager::setSequencePlayState(uint8_t bank, uint8_t sequence, uint8
             m_vPlayingSequences.push_back((bank << 8) | sequence);
     }
     pSequence->setPlayState(state);
+}
+
+void SequenceManager::moveSequence(uint8_t bank, uint8_t sequence, uint8_t newSeq) {
+    auto node = m_mBanks[bank].extract(sequence);
+    if (!node.empty()) {
+        node.key() = newSeq;
+        node.mapped().setSequenceId(bank, newSeq);
+        m_mBanks[bank].erase(newSeq);
+        m_mBanks[bank].insert(std::move(node));
+    }
+}
+
+void SequenceManager::swapSequence(uint8_t bank, uint8_t sequence1, uint8_t sequence2) {
+    std::swap(m_mBanks[bank][sequence1], m_mBanks[bank][sequence2]);
 }
 
 uint8_t SequenceManager::getTriggerNote(uint8_t bank, uint8_t sequence) {

@@ -82,6 +82,10 @@ bool isModified();
 */
 void enableDebug(bool bEnable);
 
+/** @brief  Reset to a default state with 17 x 8 single pattern sequences
+*/
+void reset();
+
 /** @brief  Load sequences and patterns from file
     @param  filename Full path and filename
     @retval bool True on success
@@ -842,6 +846,7 @@ uint32_t getSequenceState(uint8_t bank, uint8_t sequence);
     @param  states Pointer to array of uint32_t to hold results
     @retval uint8_t Quantity of changed sequences
     @note   State is represented as 4 bytes encoded as single 32-bit word: [sequence, group, mode, play state]
+    @note   mode bits: [0..1] stop mode. [2] start mode. [7] enabled
 */
 uint8_t getStateChange(uint8_t bank, uint8_t start, uint8_t end, uint32_t* states);
 
@@ -1016,7 +1021,7 @@ uint8_t getMidiLearnSequence();
     @param  bank Bank index
     @param  sequence Sequence index
 */
-void setSequence(uint8_t bank, uint8_t sequence);
+void selectSequence(uint8_t bank, uint8_t sequence);
 
 /** @brief  Set sequence name
     @param  bank Index of bank
@@ -1054,6 +1059,21 @@ uint16_t getFollowAction(uint8_t bank, uint8_t sequence);
     @note   Sequences after remove point are moved down by one. Bank grows if sequence is higher than size of bank
 */
 void removeSequence(uint8_t bank, uint8_t sequence);
+
+/** @brief   Move a sequence within a bank (change its id)
+    @param  bank Index of bank
+    @param  sequence Index of sequence
+    @param  newSeq New index of sequence
+    @note   Existing sequence with id newSeq will be replace and old sequence will be deleted.
+*/
+void moveSequence(uint8_t bank, uint8_t sequence, uint8_t newSeq);
+
+/** @brief  Swap two sequences within a bank
+    @param  bank Index of bank
+    @param  seqence1 Index of first sequence
+    @param  seqence2 Index of second sequence
+*/
+void swapSequence(uint8_t bank, uint8_t sequence1, uint8_t sequence2);
 
 /** @brief  Update all sequence lengths and empty status
 */

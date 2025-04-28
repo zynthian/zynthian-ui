@@ -54,14 +54,17 @@ class zynthian_ctrldev_riband(zynthian_ctrldev_zynpad):
     def update_seq_state(self, bank, seq, state, mode, group):
         if self.idev_out is None or bank != self.zynseq.bank:
             return
-        col, row = self.zynseq.get_xy_from_pad(seq)
+        try:
+            col, row = self.zynseq.get_pad_coords(seq)
+        except:
+            return
         if row > 3 or col > 3:
             return
         note = col * 4 + row
         if note > 15:
             return
         try:
-            if mode == 0 or group > 25:
+            if mode == 0 or group > 15:
                 vel = 0
             elif state == zynseq.SEQ_STOPPED:
                 vel = 4 + group

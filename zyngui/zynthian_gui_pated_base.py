@@ -94,6 +94,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.pattern = 0  # Pattern to edit
         self.sequence = None  # Sequence used for pattern editor sequence player
         self.channel = 0
+        self.seq_info = None # Launcher sequence info - None to use bank 0, pattern 0
 
         self.playhead = 0
         self.playstate = zynseq.SEQ_STOPPED
@@ -153,6 +154,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.grid_canvas.bind('<ButtonPress-1>', self.on_grid_press)
         self.grid_canvas.bind('<ButtonRelease-1>', self.on_grid_release)
         self.grid_canvas.bind('<B1-Motion>', self.on_grid_drag)
+        self.grid_canvas.bind('<Button-4>', self.on_grid_wheel)
+        self.grid_canvas.bind('<Button-5>', self.on_grid_wheel)
         self.zyngui.multitouch.tag_bind(self.grid_canvas, None, "gesture", self.on_gesture)
 
 
@@ -252,20 +255,16 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     # Function to show GUI
     def build_view(self):
-        if self.sequence is None:
-            self.sequence = 0
-        if self.bank is None:
-            self.bank = 0
-        if self.sequence == 0 and self.bank == 0:
+        self.set_sequence_info(self.seq_info)
+        if self.sequence == self.bank == 0:
             self.zynseq.libseq.setGroup(self.bank, self.sequence, 0xFF)
-        self.zynseq.libseq.setSequence(self.bank, self.sequence)
 
         self.setup_zynpots()
         if not self.param_editor_zctrl:
             self.set_title()
         # Set to play once on sync point
         self.zynseq.libseq.setPlayMode(self.bank, self.sequence, 0x0100)
-        # Set to repeat
+        # Set to loop
         self.zynseq.libseq.setFollowAction(self.bank, self.sequence, self.bank, self.sequence)
 
         # Set active the first chain with pattern's MIDI chan
@@ -289,8 +288,9 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.set_edit_mode(EDIT_MODE_NONE)
         #self.zynseq.libseq.setRefNote(int(self.keymap_offset))
         self.zynseq.libseq.setPatternZoom(self.zoom)
-        self.zynseq.libseq.setPlayMode(self.bank, self.sequence, (self.seq_info["repeat"] << 8) | self.seq_info["mode"])
-        self.zynseq.libseq.setFollowAction(self.bank, self.sequence, self.bank, self.seq_info["follow_seq"])
+        if self.seq_info:
+            self.zynseq.libseq.setPlayMode(self.bank, self.sequence, (self.seq_info["repeat"] << 8) | self.seq_info["mode"])
+            self.zynseq.libseq.setFollowAction(self.bank, self.sequence, self.seq_info["follow_bank"], self.seq_info["follow_seq"])
         self.zynseq.libseq.updateSequenceInfo()
 
     # -------------------------------------------------------------------------
@@ -311,29 +311,34 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         options[f"Beats per Bar ({self.zynseq.libseq.getBeatsPerBar()})"] = 'Beats per bar'
         menu_options["GLOBAL"] = options
         # Sequence options
-        if self.bank == self.zynseq.bank:
+        if self.seq_info:
             options = {}
-            repeat = self.seq_info["repeat"]
-            if repeat == 0:
-                repeat_label = "DISABLED"
-            elif repeat == 1:
-                repeat_label = "PLAY ONCE"
-            elif repeat == 2:
-                repeat_label = "PLAY TWICE"
-            else:
-                repeat_label = f"PLAY {repeat} TIMES)"
-            options[f"Repeat ({repeat_label})"] = "Repeat count"
-
+            #TODO: Configure start and stop modes
             follow_seq = self.seq_info["follow_seq"]
             if follow_seq == -1:
-                options["Mode (ONESHOT)"] = "Follow action"
+                options["Play mode (ONESHOT)"] = "Playmode"
+                repeat = self.seq_info["repeat"]
+                if repeat == 0:
+                    repeat_label = "DISABLED"
+                elif repeat == 1:
+                    repeat_label = "PLAY ONCE"
+                elif repeat == 2:
+                    repeat_label = "PLAY TWICE"
+                else:
+                    repeat_label = f"PLAY {repeat} TIMES)"
+                options[f"Repeat ({repeat_label})"] = "Repeat count"
             else:
-                options["Follow action (LOOP)"] = "Follow action"
+                options["Play mode (LOOP)"] = "Playmode"
             name = self.zynseq.get_sequence_name(self.zynseq.bank, self.sequence)
             options[f"Name ({name})"] = 'Rename sequence'
-        menu_options['SEQUENCE'] = options
+            menu_options['SEQUENCE'] = options
         # Pattern Options
         options = {}
+        if extra_options:
+            if self.get_name() == "pattern editor":
+                options['\u2610 CC editor'] = 'CC editor'
+            else:
+                options['\u2612 CC editor'] = 'CC editor'
         options[f"Beats in pattern ({self.zynseq.libseq.getBeatsInPattern(self.pattern)})"] = 'Beats in pattern'
         options[f"Steps/Beat ({self.n_steps_beat})"] = 'Steps per beat'
         options[f"Swing Divisor ({self.zynseq.libseq.getSwingDiv(self.pattern)})"] = 'Swing Divisor'
@@ -392,6 +397,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.enable_param_editor(self, 'bpb', {'name': 'Beats per bar', 'value_min': 1, 'value_max': 64,
                                                    'value_default': 4, 'value': self.zynseq.libseq.getBeatsPerBar()})
 
+        elif params == 'CC editor':
+            self.zyngui.toggle_pated()
         elif params == 'Beats in pattern':
             self.enable_param_editor(self, 'bip', {'name': 'Beats in pattern', 'value_min': 1, 'value_max': 64,
                                                    'value_default': 4, 'value': self.zynseq.libseq.getBeatsInPattern(self.pattern)},
@@ -450,17 +457,17 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         elif params == "Rename sequence":
             name = self.zynseq.get_sequence_name(self.zynseq.bank, self.sequence)
             self.zyngui.show_keyboard(self.rename_sequence, name, 8)
-        elif params == "Follow action":
+        elif params == "Playmode":
             seq = self.seq_info["sequence"]
             ticks = [-1, seq]
             labels = ["ONESHOT", "LOOP"]
-            self.enable_param_editor(self, "follow_seq", {
-                "name": "Follow action",
+            self.enable_param_editor(self, "playmode", {
+                "name": "Mode",
                 "ticks": ticks,
                 "labels": labels,
                 "value": self.seq_info["follow_seq"]
             },
-            assert_cb=self.assert_follow_action)
+            assert_cb=self.assert_playmode)
 
     def send_controller_value(self, zctrl):
         if zctrl.symbol == 'zoom':
@@ -516,21 +523,47 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 return index
         return len(STEPS_PER_BEAT) - 1
 
+    # -------------------------------------------------------------------------
+    # Sequence management
+    # -------------------------------------------------------------------------
+
+    def set_sequence_info(self, info):
+        """
+        Set sequence info for launcher sequences
+
+        :info: Launcher info object
+        :note:
+            This enables sequencer menu options and uses the launcher's sequence to host the pattern
+        """
+
+        try:
+            self.sequence = info["sequence"]
+            self.bank = self.zynseq.bank
+            self.channel = info["chan"]
+        except:
+            self.sequence = 0
+            self.bank = 0
+            self.channel = 0
+        self.seq_info = info
+        self.zynseq.libseq.selectSequence(self.bank, self.sequence)
+
     def assert_sequence_repeat(self, value):
-        self.zynseq.libseq.setRepeat(self.zynseq.bank, self.sequence, value)
+        self.zynseq.libseq.setRepeat(self.bank, self.sequence, value)
         self.seq_info["repeat"] = value
 
-    def assert_follow_action(self, value):
+    def assert_playmode(self, value):
         if value == -1:
             bank = -1
         else:
             bank = self.zynseq.bank
-        self.zynseq.libseq.setFollowAction(self.zynseq.bank, self.seq_info["sequence"], bank, value)
+        self.zynseq.libseq.setFollowAction(self.bank, self.sequence, bank, value)
         self.seq_info["follow_seq"] = value
         self.seq_info["follow_bank"] = bank
+        self.zynseq.libseq.setRepeat(self.bank, self.sequence, 1)
+        self.seq_info["repeat"] = 1
 
     def rename_sequence(self, name):
-        self.zynseq.set_sequence_name(self.zynseq.bank, self.sequence, name)
+        self.zynseq.set_sequence_name(self.bank, self.sequence, name)
         self.set_title()
 
     # -------------------------------------------------------------------------
@@ -755,6 +788,14 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     def on_grid_drag(self, event):
         pass
 
+    # Function to handle grid mouse drag
+    # event: Mouse event
+    def on_grid_wheel(self, event):
+        if event.num == 4:
+            self.set_grid_zoom(self.zoom + 1)
+        else:
+            self.set_grid_zoom(self.zoom - 1)
+
     # Function to handle grid mouse release
     # event: Mouse event
     def on_grid_release(self, event):
@@ -908,6 +949,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.play_canvas.scale("all", 0, 0, xscale, 1.0)
         self.piano_roll.scale("all", 0, 0, 1.0, yscale)
         self.update_grid_position(step_width_changed, row_height_changed)
+        self.select_cell()
         return True
 
     def reset_grid_zoom(self):

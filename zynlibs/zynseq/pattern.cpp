@@ -50,7 +50,7 @@ StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1,
     // Delete overlapping events
     uint8_t nStutterCount = 0;
     uint8_t nStutterDur = 1;
-    uint8_t nFirstNote = 0;
+    bool bFirstNote = false;
     for (auto it = m_vEvents.begin(); it != m_vEvents.end(); ++it) {
         uint32_t nEventStart = position;
         float fEventEnd = nEventStart + duration;
@@ -58,10 +58,10 @@ StepEvent* Pattern::addEvent(uint32_t position, uint8_t command, uint8_t value1,
         float fCheckEnd = nCheckStart + (*it)->getDuration();
         bool bOverlap = (nCheckStart >= nEventStart && nCheckStart < fEventEnd) || (fCheckEnd > nEventStart && fCheckEnd <= fEventEnd);
         if (bOverlap && (*it)->getCommand() == command && (*it)->getValue1start() == value1) {
-            if (!nFirstNote) {
+            if (!bFirstNote) {
                 nStutterCount = (*it)->getStutterCount();
                 nStutterDur = (*it)->getStutterDur();
-                nFirstNote = 1;
+                bFirstNote = true;
             }
             delete *it;
             it = m_vEvents.erase(it) - 1;

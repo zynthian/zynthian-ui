@@ -615,35 +615,27 @@ PAD_COLOUR_PLAYING = '#00d000'
 PAD_COLOUR_STOPPING = 'red'
 PAD_COLOUR_STOPPED = '#E0E0E0'
 PAD_COLOUR_SCENE = '#707070'
-PAD_COLOUR_GROUP = [
-    '#662426',			# Red Granate
-    '#3c6964',			# Blue Aguamarine
-    '#4d6817',			# Green Pistacho
-    '#664980',			# Lila
-    '#4C709A',			# Mid Blue
-    '#4C94CC',			# Sky Blue
-    '#006000',			# Dark Green
-    '#B7AA5E',  		# Ocre
-    '#996633',  		# Maroon
-    '#746360',			# Dark Grey
-    '#D07272',			# Pink
-    '#000060',			# Blue sat.
-    '#048C8C',			# Turquesa
-    '#f46815',			# Orange
-    '#BF9C7C',			# Light Maroon
-    '#56A556',			# Light Green
-    '#FC6CB4',			# 7 medium
-    '#CC8464',			# 8 medium
-    '#4C94CC',			# 9 medium
-    '#B454CC',			# 10 medium
-    '#B08080',			# 11 medium
-    '#0404FC', 			# 12 light
-    '#9EBDAC',			# 13 light
-    '#FF13FC',			# 14 light
-    '#3080C0',			# 15 light
-    '#9C7CEC'			# 16 light
+LAUNCHER_COLOUR = [
+    {"rgb": "#0000FF", "launchpad":79,  "apc":41}, #1:blue
+    {"rgb": "#BBBB00", "launchpad":13,  "apc":74}, #2:yellow
+    {"rgb": "#FF00FF", "launchpad":53,  "apc":53}, #3:magenta
+    {"rgb": "#23c497", "launchpad":18,  "apc":86}, #4:lime green
+    {"rgb": "#FF5400", "launchpad":9,   "apc":61}, #5:orange
+    {"rgb": "#874CFF", "launchpad":49,  "apc":67}, #6:deep purple
+    {"rgb": "#FF4C87", "launchpad":57,  "apc":95}, #7:hot pink
+    {"rgb": "#2db7ce", "launchpad":37,  "apc":90}, #8:cyan
+    {"rgb": "#d2c7d4", "launchpad":2,   "apc":26}, #9:grey
+    {"rgb": "#c9a869", "launchpad":125, "apc":99}, #10:light brown
+    {"rgb": "#7bc783", "launchpad":28,  "apc":90}, #11:turquise
+    {"rgb": "#eb8895", "launchpad":4,   "apc":2},  #12:pink
+    {"rgb": "#ca92d4", "launchpad":70,  "apc":78}, #13:light purple
+    {"rgb": "#4cffb7", "launchpad":29,  "apc":32}, #14:green-blue
+    {"rgb": "#3f94a2", "launchpad":32,  "apc":92}, #15:teal
+    {"rgb": "#f5b169", "launchpad":126, "apc":109} #16:light orange
 ]
 
+LAUNCHER_STARTING_COLOUR = {"rgb": "#ff0000", "launchpad": 21, "apc": 87} #green
+LAUNCHER_STOPPING_COLOUR = {"rgb": "#ff0000", "launchpad": 5, "apc": 72} #red
 
 def color_variant(hex_color, brightness_offset=1):
     """ takes a color like #87c95f and produces a lighter or darker variant """
@@ -656,8 +648,8 @@ def color_variant(hex_color, brightness_offset=1):
     # hex() produces "0x88", we want just "88"
     return "#" + "".join([hex(i)[2:].zfill(2) for i in new_rgb_int])
 
-
-PAD_COLOUR_GROUP_LIGHT = [color_variant(c, 40) for c in PAD_COLOUR_GROUP]
+for i, value in enumerate(LAUNCHER_COLOUR):
+    LAUNCHER_COLOUR[i]["rgb_light"] = color_variant(value["rgb"], 40)
 
 # ------------------------------------------------------------------------------
 # X11 Related Stuff

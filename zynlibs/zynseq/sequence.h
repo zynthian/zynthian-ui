@@ -39,7 +39,7 @@ class Sequence {
     /** @brief  Set bank and sequence id
         @param  id bank << 8 | sequence
     */
-    void setSequence(uint8_t bank, uint8_t sequence);
+    void setSequenceId(uint8_t bank, uint8_t sequence);
 
     /** @brief  Get sequence's mutually excusive group
         @retval uint32_t sequence's group
@@ -240,14 +240,13 @@ class Sequence {
     TimebaseEvent* m_pNextTimebaseEvent = NULL; // Pointer to next timebase event or NULL if none.
     size_t m_nCurrentTrack = 0;                 // Index of track currently being queried for events
     uint32_t m_nPosition = 0;                   // Play position in clock cycles
-    uint32_t m_nLastSyncPos = 0;                // Position of last sync pulse in clock cycles
     uint32_t m_nLength = 0;                     // Length of sequence in clock cycles (longest track)
     float m_fTempo = 120.0;                     // Current tempo (overriden by tempo events in timebase map)
     uint16_t m_nTimeSig = 4;                    // Current time signature (beats in bar)
     uint16_t m_nId;                             // Sequence id (bank << 8 | sequence)
     uint16_t m_nNextSeq = -1;                   // Index of the next sequence | bank << 8 to play when this sequence ends (-1=none). Added v11.
     uint8_t m_nState = STOPPED;                 // Play state of sequence
-    uint8_t m_nMode = 0;                        // Bitwise flags affecting start (bits 0..3) and stop (bits 4..7). Changed v11.
+    uint8_t m_nMode = 0;                        // Bitwise flags affecting stop (bits 0..1) and start (bits 2) Bit 7 reserved for enable. Changed v11.
     uint8_t m_nGroup = 0;                       // Sequence's mutually exclusive group
     uint8_t m_nRepeat = 0;                      // Quantity of times to play sequence/ Added v11.
     uint8_t m_nCount = 0;                       // Quantity of times to sequence has played

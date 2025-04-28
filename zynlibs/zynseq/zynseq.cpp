@@ -77,7 +77,7 @@ bool g_bMidiRecord = false;                         // True to add notes to curr
 uint8_t g_nSustainValue = 0;                        // Last sustain pedal value during note input (recording)
 uint32_t g_nSustainStart = 0;                       // Step when sustain pedal was last pressed
 
-char g_sName[16];                // Buffer to hold sequence name so that it can be sent back for Python to parse
+char g_sName[17];                // Buffer to hold sequence name so that it can be sent back for Python to parse
 uint8_t g_nInputRest = 0xFF;     // MIDI note number that creates rest in pattern
 uint16_t g_nVerticalZoom = 16;   // Quantity of rows to show in pattern and arranger view
 uint16_t g_nHorizontalZoom = 16; // Quantity of beats to show in arranger view
@@ -822,6 +822,26 @@ bool checkBlock(FILE* pFile, uint32_t nActualSize, uint32_t nExpectedSize) {
         return true;
     }
     return false;
+}
+
+void reset() {
+    g_nSequence = 0;
+    g_nBank = 0;
+    g_seqMan.init();
+    g_nBeatsPerBar = 4;
+    uint8_t seq = 0;
+    for (uint8_t slot = 0; slot < 8; ++slot) {
+        for (uint8_t chan = 0; chan < 17; ++chan) {
+            Sequence* pSequence = g_seqMan.getSequence(1, seq, true);
+            pSequence->setGroup(chan);
+            pSequence->getTrack(0)->setChannel(chan);
+            if (chan == 16) {
+                pSequence->setRepeat(1);
+                pSequence->setName(std::string(1, 'A' + slot));
+            }
+            ++seq;
+        }
+    }
 }
 
 bool load(const char* filename) {
@@ -1606,7 +1626,9 @@ bool isPatternEmpty(uint32_t pattern) {
     return pPattern->getEventAt(0) == NULL;
 }
 
-void selectPattern(uint32_t pattern) { g_pPattern = g_seqMan.getPattern(pattern); }
+void selectPattern(uint32_t pattern) {
+    g_pPattern = g_seqMan.getPattern(pattern);
+}
 
 uint32_t getPatternIndex() { return g_seqMan.getPatternIndex(g_pPattern); }
 
@@ -1637,7 +1659,6 @@ void setBeatsInPattern(uint32_t pattern, uint32_t beats) {
         g_seqMan.updateAllSequenceLengths();
         setPatternModified(pPattern, true, true);
         g_bDirty = true;
-        fprintf(stderr, "setBeatsInPattern(pattern: %d, beats:%d)", pattern, beats);
     }
 }
 
@@ -2129,7 +2150,7 @@ void setRepeat(uint8_t bank, uint8_t sequence, uint8_t repeat) { g_seqMan.getSeq
 
 uint8_t getRepeat(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->getRepeat(); }
 
-void setSequence(uint8_t bank, uint8_t sequence) {
+void selectSequence(uint8_t bank, uint8_t sequence) {
     g_nBank = bank;
     g_nSequence = sequence;
 }
@@ -2137,13 +2158,13 @@ void setSequence(uint8_t bank, uint8_t sequence) {
 bool isEmpty(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->isEmpty(); }
 
 void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state) {
-    if (transportGetPlayStatus() != JackTransportRolling) {
-        if (state == STARTING) {
+
+    if (state == STARTING) {
+        if (transportGetPlayStatus() != JackTransportRolling) {
             setTransportToStartOfBar();
-            if (g_nClockSource & TRANSPORT_CLOCK_INTERNAL)
-                transportStart("zynseq");
-        } else if (state == STOPPING)
-            state = STOPPED;
+        transportStart("zynseq");
+    } else if (state == STOPPING)
+        state = STOPPED;
     }
     g_seqMan.setSequencePlayState(bank, sequence, state);
 
@@ -2259,7 +2280,7 @@ uint8_t getGroup(uint8_t bank, uint8_t sequence) {
 
 void setGroup(uint8_t bank, uint8_t sequence, uint8_t group) {
     Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
-    return pSequence->setGroup(group);
+    pSequence->setGroup(group);
     g_bDirty = true;
 }
 
@@ -2315,11 +2336,25 @@ void setFollowAction(uint8_t bank, uint8_t sequence, uint8_t nextBank, uint8_t n
     g_bDirty = true;
 }
 
-uint16_t getFollowAction(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->getFollowAction(); }
+uint16_t getFollowAction(uint8_t bank, uint8_t sequence) {
+    return g_seqMan.getSequence(bank, sequence)->getFollowAction();
+}
 
-void removeSequence(uint8_t bank, uint8_t sequence) { g_seqMan.removeSequence(bank, sequence); }
+void removeSequence(uint8_t bank, uint8_t sequence) {
+    g_seqMan.removeSequence(bank, sequence);
+}
 
-void updateSequenceInfo() { g_seqMan.updateAllSequenceLengths(); }
+void moveSequence(uint8_t bank, uint8_t sequence, uint8_t newSeq) {
+    g_seqMan.moveSequence(bank, sequence, newSeq);
+}
+
+void swapSequence(uint8_t bank, uint8_t sequence1, uint8_t sequence2) {
+    g_seqMan.swapSequence(bank, sequence1, sequence2);
+}
+
+void updateSequenceInfo() {
+    g_seqMan.updateAllSequenceLengths();
+}
 
 // ** Track management **
 
@@ -2456,11 +2491,15 @@ bool transportRequestTimebase() {
 void transportReleaseTimebase() { jack_release_timebase(g_pJackClient); }
 
 void transportStart(const char* client) {
-    if (strcmp("zynseq", client)) {
-        // Not zynseq so flag other client(s) playing
-        g_bClientPlaying = true;
-        g_setTransportClient.emplace(client);
-    }
+    bool bPlaying = (g_setTransportClient.size() != 0);
+    g_bClientPlaying = true;
+    g_setTransportClient.emplace(client);
+    if (bPlaying)
+        return;
+
+    if (g_nClockSource & TRANSPORT_CLOCK_INTERNAL)
+        ; // Only start transport if not external control???
+
     jack_position_t pos;
     if (jack_transport_query(g_pJackClient, &pos) != JackTransportRolling)
         jack_transport_start(g_pJackClient);
@@ -2472,17 +2511,20 @@ void transportStart(const char* client) {
 }
 
 void transportStop(const char* client) {
-    if (strcmp(client, "ALL") == 0) {
-        g_setTransportClient.clear();
-        jack_transport_stop(g_pJackClient);
+    if (!g_bClientPlaying)
         return;
+
+    if (strcmp(client, "ALL") == 0)
+        g_setTransportClient.clear();
+    else {
+        auto itClient = g_setTransportClient.find(std::string(client));
+        if (itClient != g_setTransportClient.end())
+            g_setTransportClient.erase(itClient);
     }
-    auto itClient = g_setTransportClient.find(std::string(client));
-    if (itClient != g_setTransportClient.end())
-        g_setTransportClient.erase(itClient);
     g_bClientPlaying = (g_setTransportClient.size() != 0);
-    if (!g_bClientPlaying && g_nPlayingSequences == 0)
-        jack_transport_stop(g_pJackClient);
+    if (g_bClientPlaying)
+        return;
+    jack_transport_stop(g_pJackClient);
     if (g_nClockSource & TRANSPORT_CLOCK_INTERNAL) {
         // Send MIDI stop message
         jack_nframes_t nClockTime = g_qClockPos.front().first - jack_last_frame_time(g_pJackClient);

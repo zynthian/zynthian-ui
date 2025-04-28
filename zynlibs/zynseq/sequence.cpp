@@ -23,9 +23,13 @@ Sequence::Sequence() {
     addTrack(); // Ensure new sequences have at least one track
 }
 
-void Sequence::setSequence(uint8_t bank, uint8_t sequence) { m_nId = (bank << 8) | sequence; }
+void Sequence::setSequenceId(uint8_t bank, uint8_t sequence) {
+    m_nId = (bank << 8) | sequence;
+}
 
-uint8_t Sequence::getGroup() { return m_nGroup; }
+uint8_t Sequence::getGroup() {
+    return m_nGroup;
+}
 
 void Sequence::setGroup(uint8_t group) {
     if (m_nGroup == group)
@@ -110,10 +114,14 @@ Timebase* Sequence::getTimebase() {
     return &m_timebase;
 }
 
-uint8_t Sequence::getPlayMode() { return m_nMode; }
+uint8_t Sequence::getPlayMode() {
+    return m_nMode & 0x7F;
+}
 
 void Sequence::setPlayMode(uint8_t mode) {
     m_nMode = mode;
+    if (m_nNextSeq != 0xFFFF)
+        mode |= 0x80;
     m_bChanged = true;
 }
 
@@ -153,7 +161,6 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
         }
         if (m_nState == STARTING)
             m_nState = PLAYING;
-        m_nLastSyncPos = m_nPosition;
     }
 
     if (m_nState == PLAYING || m_nState == STOPPING || m_nState == STOPPING_SYNC) {
@@ -174,7 +181,6 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
             m_nState = STOPPED;
         }
         m_nPosition = 0;
-        m_nLastSyncPos = 0;
     }
 
     m_bStateChanged |= (nState != m_nState);
@@ -245,12 +251,26 @@ void Sequence::setName(std::string sName) {
     m_sName.resize(16);
 }
 
-std::string Sequence::getName() { return m_sName; }
+std::string Sequence::getName() {
+    return m_sName;
+}
 
-void Sequence::setFollowAction(uint8_t bank, uint8_t sequence) { m_nNextSeq = (bank << 8) | sequence; }
+void Sequence::setFollowAction(uint8_t bank, uint8_t sequence) {
+    m_nNextSeq = (bank << 8) | sequence;
+}
 
-uint16_t Sequence::getFollowAction() { return m_nNextSeq; }
+uint16_t Sequence::getFollowAction() {
+    return m_nNextSeq;
+}
 
-void Sequence::setRepeat(uint8_t repeat) { m_nRepeat = repeat; }
+void Sequence::setRepeat(uint8_t repeat) {
+    m_nRepeat = repeat;
+    if (repeat)
+        m_nMode |= 0x80;
+    else
+        m_nMode &= 0x7F;
+}
 
-uint8_t Sequence::getRepeat() { return m_nRepeat; }
+uint8_t Sequence::getRepeat() {
+    return m_nRepeat;
+}

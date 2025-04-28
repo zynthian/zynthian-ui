@@ -194,17 +194,16 @@ class zynthian_ctrldev_zynpad(zynthian_ctrldev_base):
         if self.idev_out is None:
             return
         self.update_seq_bank()
-        for i in range(self.cols):
-            for j in range(self.rows):
-                if i >= self.zynseq.col_in_bank or j >= self.zynseq.col_in_bank:
-                    self.pad_off(i, j)
+        for col in range(self.cols):
+            for row in range(self.rows):
+                info = self.zynseq.get_launcher_info(col, row)
+                if info is None or info["mode"] == 0:
+                    self.pad_off(col, row)
                 else:
-                    seq = i * self.zynseq.col_in_bank + j
-                    state = self.zynseq.libseq.getSequenceState(
-                        self.zynseq.bank, seq)
-                    mode = (state >> 8) & 0xFF
-                    group = (state >> 16) & 0xFF
-                    state &= 0xFF
+                    seq = info["sequence"]
+                    state = info["state"]
+                    mode = info["mode"]
+                    group = info["group"]
                     self.update_seq_state(
                         bank=self.zynseq.bank, seq=seq, state=state, mode=mode, group=group)
 

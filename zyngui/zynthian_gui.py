@@ -80,7 +80,6 @@ from zyngui.zynthian_gui_confirm import zynthian_gui_confirm
 from zyngui.zynthian_gui_main_menu import zynthian_gui_main_menu
 from zyngui.zynthian_gui_chain_menu import zynthian_gui_chain_menu
 from zyngui.zynthian_gui_midi_recorder import zynthian_gui_midi_recorder
-from zyngui.zynthian_gui_zynpad import zynthian_gui_zynpad
 from zyngui.zynthian_gui_arranger import zynthian_gui_arranger
 from zyngui.zynthian_gui_pated_notes import zynthian_gui_pated_notes
 from zyngui.zynthian_gui_pated_cc import zynthian_gui_pated_cc
@@ -469,7 +468,6 @@ class zynthian_gui:
         self.screens['midi_recorder'] = zynthian_gui_midi_recorder()
         self.screens['alsa_mixer'] = self.screens['control']
         self.screens['launcher'] = self.screens['audio_mixer']
-        self.screens['zynpad'] = zynthian_gui_zynpad()
         self.screens['arranger'] = zynthian_gui_arranger()
         self.screens['pattern_editor'] = zynthian_gui_pated_notes()
         self.screens['pated_cc'] = zynthian_gui_pated_cc()
@@ -1076,7 +1074,7 @@ class zynthian_gui:
         if self.chain_manager.get_chain_count() > 1:
             self.state_manager.save_last_state_snapshot()
         self.state_manager.clean_sequences()
-        self.show_screen_reset('zynpad')
+        self.show_screen_reset('launcher')
 
     # -------------------------------------------------------------------
     # Callable UI Actions
@@ -1425,16 +1423,15 @@ class zynthian_gui:
         self.show_screen("launcher")
 
     def cuia_screen_zynpad(self, params=None):
-        self.show_screen("zynpad")
+        #TODO: Remove this legacy cuia
+        self.show_screen("launcher")
 
     def cuia_screen_pattern_editor(self, params=None):
         success = False
         if self.current_screen == "launcher":
             success = self.screens['launcher'].edit_clip()
-        elif self.current_screen in ("zynpad", "arranger"):
+        elif self.current_screen in ("arranger", "launcher"):
             success = self.screens[self.current_screen].show_pattern_editor()
-        if not success:
-            success = self.screens['zynpad'].show_pattern_editor()
         if not success:
             self.show_screen("pattern_editor")
 
@@ -1655,10 +1652,6 @@ class zynthian_gui:
             if t == 'S':
                 self.zynswitch_short(i)
                 return
-        elif self.current_screen == "zynpad":
-            if i == 2 and t == 'S':
-                self.zynswitch_short(i)
-                return
         elif self.current_screen in ("pattern_editor", "pated_cc"):
             if i == 0:
                 if t == 'S' or t == 'B':
@@ -1852,7 +1845,7 @@ class zynthian_gui:
             if self.current_screen == "midi_config" and self.screen_history[-2] != "admin":
                 return True
             if self.current_screen in ("option", "confirm", "keyboard"):
-                parent_views = ("arranger", "zynpad", "pattern_editor", "preset",
+                parent_views = ("arranger", "pattern_editor", "preset",
                                 "bank", "main_menu", "chain_options", "processor_options")
                 if self.screen_history[-1] in parent_views or self.screen_history[-2] in parent_views:
                     return True
