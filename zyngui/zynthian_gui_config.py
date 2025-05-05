@@ -616,24 +616,23 @@ PAD_COLOUR_STOPPING = 'red'
 PAD_COLOUR_STOPPED = '#E0E0E0'
 PAD_COLOUR_SCENE = '#707070'
 LAUNCHER_COLOUR = [
-    {"rgb": "#0000FF", "launchpad":79,  "apc":41}, #1:blue
-    {"rgb": "#BBBB00", "launchpad":13,  "apc":74}, #2:yellow
-    {"rgb": "#FF00FF", "launchpad":53,  "apc":53}, #3:magenta
-    {"rgb": "#23c497", "launchpad":18,  "apc":86}, #4:lime green
-    {"rgb": "#FF5400", "launchpad":9,   "apc":61}, #5:orange
-    {"rgb": "#874CFF", "launchpad":49,  "apc":67}, #6:deep purple
-    {"rgb": "#FF4C87", "launchpad":57,  "apc":95}, #7:hot pink
-    {"rgb": "#2db7ce", "launchpad":37,  "apc":90}, #8:cyan
-    {"rgb": "#d2c7d4", "launchpad":2,   "apc":26}, #9:grey
-    {"rgb": "#c9a869", "launchpad":125, "apc":99}, #10:light brown
-    {"rgb": "#7bc783", "launchpad":28,  "apc":90}, #11:turquise
-    {"rgb": "#eb8895", "launchpad":4,   "apc":2},  #12:pink
-    {"rgb": "#ca92d4", "launchpad":70,  "apc":78}, #13:light purple
-    {"rgb": "#4cffb7", "launchpad":29,  "apc":32}, #14:green-blue
-    {"rgb": "#3f94a2", "launchpad":32,  "apc":92}, #15:teal
-    {"rgb": "#f5b169", "launchpad":126, "apc":109} #16:light orange
+    {"rgb": "#0000FF", "launchpad": 79,  "apc": 41},  #1:blue
+    {"rgb": "#BBBB00", "launchpad": 13,  "apc": 74},  #2:yellow
+    {"rgb": "#FF00FF", "launchpad": 53,  "apc": 53},  #3:magenta
+    {"rgb": "#23c497", "launchpad": 18,  "apc": 86},  #4:lime green
+    {"rgb": "#FF5400", "launchpad": 9,   "apc": 61},  #5:orange
+    {"rgb": "#874CFF", "launchpad": 49,  "apc": 67},  #6:deep purple
+    {"rgb": "#FF4C87", "launchpad": 57,  "apc": 95},  #7:hot pink
+    {"rgb": "#2db7ce", "launchpad": 37,  "apc": 90},  #8:cyan
+    {"rgb": "#d2c7d4", "launchpad": 2,   "apc": 26},  #9:grey
+    {"rgb": "#c9a869", "launchpad": 125, "apc": 99},  #10:light brown
+    {"rgb": "#7bc783", "launchpad": 28,  "apc": 90},  #11:turquise
+    {"rgb": "#eb8895", "launchpad": 4,   "apc": 2},   #12:pink
+    {"rgb": "#ca92d4", "launchpad": 70,  "apc": 78},  #13:light purple
+    {"rgb": "#4cffb7", "launchpad": 29,  "apc": 32},  #14:green-blue
+    {"rgb": "#3f94a2", "launchpad": 32,  "apc": 92},  #15:teal
+    {"rgb": "#f5b169", "launchpad": 126, "apc": 109}  #16:light orange
 ]
-
 LAUNCHER_STARTING_COLOUR = {"rgb": "#ff0000", "launchpad": 21, "apc": 87} #green
 LAUNCHER_STOPPING_COLOUR = {"rgb": "#ff0000", "launchpad": 5, "apc": 72} #red
 
