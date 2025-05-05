@@ -25,16 +25,14 @@
 import os
 import shutil
 import logging
-import subprocess
 import oyaml as yaml
 from time import sleep
-from collections import OrderedDict
-from os.path import isfile, isdir, join
+from os.path import isfile, join
 
+import zynautoconnect
 from . import zynthian_engine
 from . import zynthian_controller
-import zynautoconnect
-
+from zyncoder.zyncore import lib_zyncore
 
 # ------------------------------------------------------------------------------
 # Puredata Engine Class
