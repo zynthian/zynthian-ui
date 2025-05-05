@@ -637,6 +637,7 @@ LAUNCHER_COLOUR = [
 LAUNCHER_STARTING_COLOUR = {"rgb": "#ff0000", "launchpad": 21, "apc": 87} #green
 LAUNCHER_STOPPING_COLOUR = {"rgb": "#ff0000", "launchpad": 5, "apc": 72} #red
 
+
 def color_variant(hex_color, brightness_offset=1):
     """ takes a color like #87c95f and produces a lighter or darker variant """
     if len(hex_color) != 7:
@@ -647,6 +648,7 @@ def color_variant(hex_color, brightness_offset=1):
     new_rgb_int = [min([255, max([0, i])]) for i in new_rgb_int]
     # hex() produces "0x88", we want just "88"
     return "#" + "".join([hex(i)[2:].zfill(2) for i in new_rgb_int])
+
 
 for i, value in enumerate(LAUNCHER_COLOUR):
     LAUNCHER_COLOUR[i]["rgb_light"] = color_variant(value["rgb"], 40)

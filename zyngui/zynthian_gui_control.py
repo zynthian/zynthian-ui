@@ -366,7 +366,8 @@ class zynthian_gui_control(zynthian_gui_selector):
     def set_mode_select(self):
         self.exit_midi_learn()
         self.mode = 'select'
-        self.hide_widgets()
+        if self.current_widget.hide_on_select_mode():
+            self.hide_widgets()
         self.set_selector_screen()
         self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_off,
                             selectforeground=zynthian_gui_config.color_ctrl_tx,
@@ -446,6 +447,13 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.midi_learn_options(swi)
             return True
 
+        if self.current_widget:
+            try:
+                if self.current_widget.switch(swi, t):
+                    return
+            except:
+                pass
+
         if swi == 0:
             if t == 'S':
                 self.rotate_chain()
@@ -494,6 +502,12 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.zgui_controllers[i].zynpot_abs(val)
 
     def zynpot_cb(self, i, dval):
+        if self.current_widget:
+            try:
+                if self.current_widget.zynpot_cb(i, dval):
+                    return
+            except:
+                pass
         if self.mode == 'control' and self.zcontrollers:
             if self.zgui_controllers[i].zynpot_cb(dval):
                 if self.midi_learning:

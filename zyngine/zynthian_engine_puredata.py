@@ -47,6 +47,33 @@ class zynthian_engine_puredata(zynthian_engine):
     # Controllers & Screens
     # ---------------------------------------------------------------------------
 
+    default_organelle_zctrl_config = {
+        'Knobs': {
+            'knob1': {
+                'midi_cc': 74,
+                'value': 63
+            },
+            'knob2': {
+                'midi_cc': 71,
+                'value': 63
+            },
+            'knob3': {
+                'midi_cc': 76,
+                'value': 63
+            },
+            'knob4': {
+                'midi_cc': 77,
+                'value': 63
+            }
+        },
+        'Master': {
+            'volume': {
+                'midi_cc': 7,
+                'value': 90
+            }
+        }
+    }
+
     _ctrls = [
     ]
 
@@ -80,9 +107,11 @@ class zynthian_engine_puredata(zynthian_engine):
 
         # Initialize custom GUI path as None - will be set conditionally when loading presets
         self.custom_gui_fpath = None
+        self.organelle_preset = False
 
         self.preset = ""
         self.preset_config = None
+        self.zctrl_config = None
 
         if self.config_remote_display():
             self.base_command = f"pd -jack -nojackconnect -jackname \"{self.jackname}\" -rt -alsamidi -mididev 1 -open \"{self.startup_patch}\""
@@ -129,9 +158,13 @@ class zynthian_engine_puredata(zynthian_engine):
 
         # Use Organelle widget for Organelle patches or when flag is set
         if "organelle" in preset_path.lower() or self.preset_config and self.preset_config.get('use_organelle_widget'):
+            self.organelle_preset = True
             self.custom_gui_fpath = self.ui_dir + "/zyngui/zynthian_widget_organelle.py"
+            if not self.zctrl_config:
+                self.zctrl_config = self.default_organelle_zctrl_config
         else:
             # Don't use custom widget for other pd patches
+            self.organelle_preset = False
             self.custom_gui_fpath = None
     
         self.command = self.base_command + " " + self.get_preset_filepath(preset)
@@ -159,9 +192,17 @@ class zynthian_engine_puredata(zynthian_engine):
                 yml = fh.read()
                 logging.info(f"Loading preset config file {config_fpath} => \n{yml}")
                 self.preset_config = yaml.load(yml, Loader=yaml.SafeLoader)
-                return True
+                self.zctrl_config = {}
+                if self.preset_config:
+                    for ctrl_group, ctrl_dict in self.preset_config.items():
+                        if isinstance(ctrl_dict, dict):
+                            self.zctrl_config[ctrl_group] = ctrl_dict
+                    return True
+                else:
+                    logging.error(f"Preset config file '{config_path}' is empty.")
+                    return False
         except Exception as e:
-            logging.error("Can't load preset config file '%s': %s" % (config_fpath, e))
+            logging.error(f"Can't load preset config file '{config_fpath}': {e}")
             return False
 
     def get_preset_filepath(self, preset):
@@ -197,45 +238,44 @@ class zynthian_engine_puredata(zynthian_engine):
     def get_controllers_dict(self, processor):
         zctrls = {}
         self._ctrl_screens = []
-        if self.preset_config:
-            for ctrl_group, ctrl_dict in self.preset_config.items():
+        if self.zctrl_config:
+            for ctrl_group, ctrl_dict in self.zctrl_config.items():
                 logging.debug(f"Preset Config '{ctrl_group}' ...")
-                if isinstance(ctrl_dict, dict):
-                    c = 1
-                    ctrl_set = []
-                    if ctrl_group == 'midi_controllers':
-                        ctrl_group = 'Controllers'
-                    logging.debug(f"Generating Controller Screens for '{ctrl_group}' => {ctrl_dict}")
-                    try:
-                        for name, options in ctrl_dict.items():
-                            try:
-                                if len(ctrl_set) >= 4:
-                                    screen_title = f"{ctrl_group}#{c}"
-                                    logging.debug(f"Adding Controller Screen {screen_title}")
-                                    self._ctrl_screens.append([screen_title, ctrl_set])
-                                    ctrl_set = []
-                                    c += 1
-                                if isinstance(options, int):
-                                    options = {'midi_cc': options}
-                                if 'midi_chan' not in options:
-                                    options['midi_chan'] = processor.midi_chan
-                                midi_cc = options['midi_cc']
-                                logging.debug("CTRL %s: %s" % (midi_cc, name))
-                                options['name'] = str.replace(name, '_', ' ')
-                                options['processor'] = processor
-                                zctrls[name] = zynthian_controller(self, name, options)
-                                ctrl_set.append(name)
-                            except Exception as err:
-                                logging.error(f"Generating Controller Screens: {err}")
-                        if len(ctrl_set) >= 1:
-                            if c > 1:
+
+                c = 1
+                ctrl_set = []
+                if ctrl_group == 'midi_controllers':
+                    ctrl_group = 'Controllers'
+                logging.debug(f"Generating Controller Screens for '{ctrl_group}' => {ctrl_dict}")
+                try:
+                    for name, options in ctrl_dict.items():
+                        try:
+                            if len(ctrl_set) >= 4:
                                 screen_title = f"{ctrl_group}#{c}"
-                            else:
-                                screen_title = ctrl_group
-                            logging.debug(f"Adding Controller Screen {screen_title}")
-                            self._ctrl_screens.append([screen_title, ctrl_set])
-                    except Exception as err:
-                        logging.error(err)
+                                logging.debug(f"Adding Controller Screen {screen_title}")
+                                self._ctrl_screens.append([screen_title, ctrl_set])
+                                ctrl_set = []
+                                c += 1
+                            if isinstance(options, int):
+                                options = {'midi_cc': options}
+                            if 'midi_chan' not in options:
+                                options['midi_chan'] = processor.midi_chan
+                            logging.debug(f"CTRL {name} => {options}")
+                            options['name'] = str.replace(name, '_', ' ')
+                            options['processor'] = processor
+                            zctrls[name] = zynthian_controller(self, name, options)
+                            ctrl_set.append(name)
+                        except Exception as err:
+                            logging.error(f"Generating Controller Screens: {err}")
+                    if len(ctrl_set) >= 1:
+                        if c > 1:
+                            screen_title = f"{ctrl_group}#{c}"
+                        else:
+                            screen_title = ctrl_group
+                        logging.debug(f"Adding Controller Screen {screen_title}")
+                        self._ctrl_screens.append([screen_title, ctrl_set])
+                except Exception as err:
+                    logging.error(err)
 
         if len(zctrls) == 0:
             zctrls = super().get_controllers_dict(processor)
