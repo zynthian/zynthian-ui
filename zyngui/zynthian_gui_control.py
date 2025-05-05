@@ -366,7 +366,7 @@ class zynthian_gui_control(zynthian_gui_selector):
     def set_mode_select(self):
         self.exit_midi_learn()
         self.mode = 'select'
-        if self.current_widget.hide_on_select_mode():
+        if self.current_widget and self.current_widget.hide_on_select_mode():
             self.hide_widgets()
         self.set_selector_screen()
         self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_off,
