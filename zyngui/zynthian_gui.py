@@ -148,6 +148,7 @@ class zynthian_gui:
         self.zynpot_lock = Lock()
         self.zynpot_dval = zynthian_gui_config.num_zynpots * [0]
         self.zynpot_pr_state = zynthian_gui_config.num_zynpots * [0]
+        self.zynswitch_autolong_disabled = False
         self.dtsw = []
 
         self.exit_code = 0
@@ -1921,6 +1922,12 @@ class zynthian_gui:
         except:
             return 0
 
+    def zynswitch_disable_autolong(self):
+        self.zynswitch_autolong_disabled = True
+
+    def zynswitch_enable_autolong(self):
+        self.zynswitch_autolong_disabled = False
+
     def zynswitches(self):
         """Process physical switch triggers"""
 
@@ -1933,14 +1940,15 @@ class zynthian_gui:
             except:
                 i += 1
                 continue
-            # Increase the long push limit when push-rotating
-            if self.get_zynswitch_pr_state(i) > 1:
-                zs_long_us = 1000 * 20000
+            # Increase the long push time limit when auto-long push is disabled or push-rotating
+            if self.zynswitch_autolong_disabled or self.get_zynswitch_pr_state(i) > 1:
+                zs_long_us = 20 * 1000000
             else:
                 zs_long_us = zynthian_gui_config.zynswitch_long_us
             # dtus is 0 if switched pressed, dur of last press or -1 if already processed
             dtus = lib_zyncore.get_zynswitch(i, zs_long_us)
             if dtus >= 0:
+                #logging.debug(f"ZYNSWITCH {i}: DTUS={dtus}, AUTOLONG-PUSH TIME LIMIT => {zs_long_us}")
                 self.cuia_queue.put_nowait(("zynswitch", (i, self.zynswitch_timing(dtus))))
             i += 1
 
@@ -1983,6 +1991,10 @@ class zynthian_gui:
 
         if self.capture_log_fname:
             self.write_capture_log("ZYNSWITCH:L,{}".format(i))
+
+        if callable(getattr(self.screens[self.current_screen], "switch", None)):
+            if self.screens[self.current_screen].switch(i, 'L'):
+                return True
 
         # Standard 4 ZynSwitches
         if i == 0:
@@ -2382,17 +2394,18 @@ class zynthian_gui:
             cuia = "unknown"
             try:
                 # Check for long press before release
-                long_ts = monotonic() - zynthian_gui_config.zynswitch_long_seconds
-                for i, ts in enumerate(zynswitch_cuia_ts):
-                    if ts is not None and ts < long_ts:
-                        zynswitch_cuia_ts[i] = None
-                        try:
-                            zpi = zynthian_gui_config.zynpot2switch.index(i)
-                            zp_pr_state = self.zynpot_pr_state[zpi]
-                        except:
-                            zp_pr_state = 0
-                        if zp_pr_state <= 1:
-                            self.zynswitch_long(i)
+                if not self.zynswitch_autolong_disabled:
+                    long_ts = monotonic() - zynthian_gui_config.zynswitch_long_seconds
+                    for i, ts in enumerate(zynswitch_cuia_ts):
+                        if ts is not None and ts < long_ts:
+                            zynswitch_cuia_ts[i] = None
+                            try:
+                                zpi = zynthian_gui_config.zynpot2switch.index(i)
+                                zp_pr_state = self.zynpot_pr_state[zpi]
+                            except:
+                                zp_pr_state = 0
+                            if zp_pr_state <= 1:
+                                self.zynswitch_long(i)
                 event = self.cuia_queue.get(True, repeat_interval)
                 params = None
                 if isinstance(event, str):

@@ -450,7 +450,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         if self.current_widget:
             try:
                 if self.current_widget.switch(swi, t):
-                    return
+                    return True
             except:
                 pass
 

@@ -348,6 +348,8 @@ class zynthian_widget_organelle(zynthian_widget_base.zynthian_widget_base):
         # Navigation state.
         self.current_page_index = 0
         self.in_parameter_view = False
+        self.select_mode = False
+        self.aux_pushed = False
 
         if zynthian_gui_config.check_wiring_layout(["V5", "Z2", "V4"]):
             self.show_touch_widgets = False
@@ -844,7 +846,7 @@ class zynthian_widget_organelle(zynthian_widget_base.zynthian_widget_base):
     def zynpot_cb(self, i, dval):
         """Manage knobs => Only organelle selector """
         if self.osc_target:
-            if self.zyngui_control.mode == "select" and self.selector and i == 3:
+            if self.select_mode and self.selector and i == 3:
                 if dval > 0:
                     liblo.send(self.osc_target, f"/enc_down", 1)
                     self.after(50, lambda: liblo.send(self.osc_target, "/enc_down", 0))
@@ -858,12 +860,36 @@ class zynthian_widget_organelle(zynthian_widget_base.zynthian_widget_base):
 
     def switch(self, i, t='S'):
         """Manage Organelle switches => Only selector """
-        if self.zyngui_control.mode == "select" and self.selector and i == 3:
+        if self.select_mode and self.selector and i == 3:
             if t == 'S':
                 liblo.send(self.osc_target, f"/enc_sel", 1)
                 self.after(100, lambda: liblo.send(self.osc_target, "/enc_sel", 0))
-                self.zyngui_control.set_mode_control()
+                self.select_mode = False
                 return True
+        elif zynthian_gui_config.check_wiring_layout(["V5"]):
+            if i == 19:
+                if t == 'S' or t == 'B':
+                    if self.select_mode:
+                        self.select_mode = False
+                        liblo.send(self.osc_target, f"/enc_sel", 1)
+                        self.after(100, lambda: liblo.send(self.osc_target, "/enc_sel", 0))
+                    else:
+                        self.select_mode = True
+                return True
+            elif i == 23:
+                if t == 'P':
+                    self.aux_pushed = True
+                    self.zyngui.zynswitch_disable_autolong()
+                    liblo.send(self.osc_target, "/aux", 1)
+                else:
+                    self.aux_pushed = False
+                    self.zyngui.zynswitch_enable_autolong()
+                    liblo.send(self.osc_target, "/aux", 0)
+                return True
+        elif zynthian_gui_config.check_wiring_layout(["Z2"]):
+            pass
+        elif zynthian_gui_config.check_wiring_layout(["V4"]):
+            pass
         return False
 
     def cuia_v5_zynpot_switch(self, params):
@@ -876,20 +902,19 @@ class zynthian_widget_organelle(zynthian_widget_base.zynthian_widget_base):
     # CUIA & LEDs methods
     # ---------------------------------------------------------------------------
 
-    def cuia_program_change(self, params=None):
-        if len(params) > 0:
-            pgm = int(params[0])
-            # TODO: Implement push/release action
-            if pgm == 4 or pgm == 8:
-                liblo.send(self.osc_target, "/aux", 1)
-                self.after(1000, lambda: liblo.send(self.osc_target, "/aux", 0))
-            return True
-
     def update_wsleds(self, leds):
-        # F4
+        # F3 & F4
         wsl = self.zyngui.wsleds
-        wsl.set_led(leds[13], wsl.wscolor_active2)
-
+        if self.selector:
+            if self.select_mode:
+                #wsl.set_led(leds[12], wsl.wscolor_active2)
+                wsl.blink(leds[12], wsl.wscolor_active2)
+            else:
+                wsl.set_led(leds[12], wsl.wscolor_active2)
+        if self.aux_pushed:
+            wsl.set_led(leds[13], wsl.wscolor_green)
+        else:
+            wsl.set_led(leds[13], wsl.wscolor_active2)
 
 
 if __name__ == "__main__":
