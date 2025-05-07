@@ -340,8 +340,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             else:
                 self.set_zcontroller(i, None)
             pos = self.layout['ctrl_pos'][i]
-            self.zgui_controllers[i].grid(
-                row=pos[0], column=pos[1], pady=(0, 1), sticky='news')
+            self.zgui_controllers[i].grid(row=pos[0], column=pos[1], pady=(0, 1), sticky='news')
 
         self.update_layout()
 

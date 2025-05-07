@@ -27,8 +27,10 @@ import logging
 import tkinter as tk
 
 # Zynthian specific modules
+from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
-from zyngui import zynthian_widget_base
+from zyngui.zynthian_widget_base import zynthian_widget_base
+from zyngui.zynthian_gui_controller import zynthian_gui_controller
 
 COLOR_PANEL = zynthian_gui_config.color_panel_bg
 COLOR_TEXT = zynthian_gui_config.color_panel_tx
@@ -307,7 +309,7 @@ class MarkedEncoder(tk.Canvas):
         self.at_max_limit = False
 
 
-class zynthian_widget_organelle(zynthian_widget_base.zynthian_widget_base):
+class zynthian_widget_organelle(zynthian_widget_base):
     """
     Main widget class for the Organelle OLED display.
     Combines an OLED display, volume slider, control buttons, and encoder.
@@ -326,6 +328,13 @@ class zynthian_widget_organelle(zynthian_widget_base.zynthian_widget_base):
         self.batch_updates = True
         self.batch_update_after = 16  # ms (aim for ~60 fps)
 
+        # Don't show touch widgets in V5 & Z2
+        if zynthian_gui_config.check_wiring_layout(["V5", "Z2"]):
+            self.show_touch_widgets = False
+        # Show touch widgets in V4 and custom layouts
+        else:
+            self.show_touch_widgets = True
+
         # OLED display settings.
         org_width = 128
         org_height = 66
@@ -339,7 +348,7 @@ class zynthian_widget_organelle(zynthian_widget_base.zynthian_widget_base):
             self.height = 2 * org_height
         # Scaling factor for all components in OLED
         self.oled_scale = self.width // org_width
-        if (self.width % org_width) / self.width < 0.1:
+        if self.show_touch_widgets or (self.width % org_width) / self.width < 0.1:
             self.oled_scale -= 1
         self.oled_width = self.oled_scale * org_width
         self.oled_height = self.oled_scale * org_height
@@ -351,14 +360,13 @@ class zynthian_widget_organelle(zynthian_widget_base.zynthian_widget_base):
         self.select_mode = False
         self.aux_pushed = False
 
-        if zynthian_gui_config.check_wiring_layout(["V5", "Z2", "V4"]):
-            self.show_touch_widgets = False
-            padx = (self.width - self.oled_width) // 2
-            pady = (self.width - self.oled_width) // 3
-        else:
+        if self.show_touch_widgets:
             self.show_touch_widgets = True
             padx = 5
             pady = (self.width - self.oled_width) // 4
+        else:
+            padx = (self.width - self.oled_width) // 2
+            pady = (self.width - self.oled_width) // 3
 
         # Top container: holds OLED display and volume slider.
         self.top_container = tk.Frame(self, bg=COLOR_PANEL)
@@ -414,6 +422,9 @@ class zynthian_widget_organelle(zynthian_widget_base.zynthian_widget_base):
         self.led_indicator = LedIndicator(self.controls_frame, diameter=2*self.wunit, osc_target=self.osc_target)
         self.led_indicator.pack(side="left", padx=self.wunit)
 
+        # Organelle selector zctrl
+        self.zselector_ctrl = zynthian_controller(None, "Select", {'labels': ['<>']})
+        self.zselector_gui = None
 
     def setup_osc_handlers(self):
         """Register OSC handlers for various message paths."""
@@ -864,17 +875,19 @@ class zynthian_widget_organelle(zynthian_widget_base.zynthian_widget_base):
             if t == 'S':
                 liblo.send(self.osc_target, f"/enc_sel", 1)
                 self.after(100, lambda: liblo.send(self.osc_target, "/enc_sel", 0))
-                self.select_mode = False
+                self.set_select_mode(False)
                 return True
         elif zynthian_gui_config.check_wiring_layout(["V5"]):
             if i == 19:
                 if t == 'S' or t == 'B':
                     if self.select_mode:
-                        self.select_mode = False
+                        self.set_select_mode(False)
                         liblo.send(self.osc_target, f"/enc_sel", 1)
                         self.after(100, lambda: liblo.send(self.osc_target, "/enc_sel", 0))
                     else:
-                        self.select_mode = True
+                        self.set_select_mode(True)
+                        liblo.send(self.osc_target, "/enc_down", 1)
+                        self.after(50, lambda: liblo.send(self.osc_target, "/enc_down", 0))
                 return True
             elif i == 23:
                 if t == 'P':
@@ -892,15 +905,51 @@ class zynthian_widget_organelle(zynthian_widget_base.zynthian_widget_base):
             pass
         return False
 
-    def cuia_v5_zynpot_switch(self, params):
-        return self.switch(params[0], params[1].upper())
-
-    def hide_on_select_mode(self):
-        return not self.selector
+    def set_select_mode(self, sm=True):
+        self.select_mode = sm
+        zgui_ctrls = self.zyngui_control.zgui_controllers
+        layout = self.zyngui_control.layout
+        if self.select_mode:
+            # Hide controller widgets
+            for i in range(0, len(zgui_ctrls)):
+                if zgui_ctrls[i]:
+                    zgui_ctrls[i].grid_remove()
+            # Show selector widgets
+            if self.zselector_gui:
+                self.zselector_gui.config(self.zselector_ctrl)
+                self.zselector_gui.show()
+            else:
+                self.zselector_gui = zynthian_gui_controller(zynthian_gui_config.select_ctrl,
+                                                             self.zyngui_control.main_frame,
+                                                             self.zselector_ctrl,
+                                                             hidden=False,
+                                                             selcounter=False,
+                                                             orientation=layout['ctrl_orientation'])
+            self.zselector_gui.grid(row=layout['ctrl_pos'][3][0], column=layout['ctrl_pos'][3][1], sticky="news")
+        else:
+            # Hide selector:
+            self.zselector_gui.grid_remove()
+            # Show controller widgets
+            for i in range(0, len(zgui_ctrls)):
+                if zgui_ctrls[i]:
+                    zgui_ctrls[i].grid()
 
     # ---------------------------------------------------------------------------
     # CUIA & LEDs methods
     # ---------------------------------------------------------------------------
+
+    def cuia_v5_zynpot_switch(self, params):
+        return self.switch(params[0], params[1].upper())
+
+    def cuia_arrow_up(self, params=None):
+        if self.select_mode:
+            self.zynpot_cb(3, -1)
+            return True
+
+    def cuia_arrow_down(self, params=None):
+        if self.select_mode:
+            self.zynpot_cb(3, 1)
+            return True
 
     def update_wsleds(self, leds):
         # F3 & F4
@@ -916,10 +965,3 @@ class zynthian_widget_organelle(zynthian_widget_base.zynthian_widget_base):
         else:
             wsl.set_led(leds[13], wsl.wscolor_active2)
 
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.title("Organelle Interface")
-    widget = zynthian_widget_organelle(root)
-    widget.pack(expand=True, fill='both')
-    root.mainloop()
