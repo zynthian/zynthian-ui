@@ -81,7 +81,7 @@ class zynthian_gui_control(zynthian_gui_selector):
     def update_layout(self):
         super().update_layout()
         minheight = self.height // self.layout['rows']
-        minwidth = int((self.width * 0.25 - 1) * self.sidebar_shown)
+        minwidth = int((self.width * self.layout['ctrl_width'] - 1) * self.sidebar_shown)
         for pos in self.layout['ctrl_pos']:
             self.main_frame.rowconfigure(pos[0], minsize=minheight, weight=1)
             self.main_frame.columnconfigure(pos[1], minsize=minwidth, weight=self.sidebar_shown)

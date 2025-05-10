@@ -48,17 +48,25 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.info("ZYNTHIAN-UI CONFIG ...")
 
 # ------------------------------------------------------------------------------
-# Wiring layout
+# Kit name and Wiring layout
 # ------------------------------------------------------------------------------
 
+kit_version = os.environ.get('ZYNTHIAN_KIT_VERSION', "CUSTOM")
+logging.info(f"Kit Version: {kit_version}")
 wiring_layout = os.environ.get('ZYNTHIAN_WIRING_LAYOUT', "TOUCH_ONLY")
 if wiring_layout in ("TOUCH_ONLY", "DUMMIES"):
     wiring_layout = "TOUCH_ONLY"
     logging.info("No Wiring Layout configured. Only touch interface is available.")
 else:
-    logging.info("Wiring Layout %s" % wiring_layout)
-
+    logging.info(f"Wiring Layout: {wiring_layout}")
 select_ctrl = 3
+
+
+def check_kit_version(kits):
+    for kit in kits:
+        if kit_version.startswith(kit):
+            return True
+    return False
 
 
 def check_wiring_layout(wls):
@@ -94,6 +102,7 @@ if gui_layout == "Z2":
         'list_pos': (0, 0),
         'ctrl_orientation': 'horizontal',
         'ctrl_order': (0, 1, 2, 3),
+        'ctrl_width': 0.25
     }
 else:
     layout = {
@@ -109,6 +118,7 @@ else:
         'list_pos': (0, 1),
         'ctrl_orientation': 'vertical',
         'ctrl_order': (0, 2, 1, 3),
+        'ctrl_width': 0.23
     }
 
 # ------------------------------------------------------------------------------

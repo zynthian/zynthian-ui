@@ -19,8 +19,6 @@
 # For a full copy of the GNU General Public License see the LICENSE.txt file.
 # ******************************************************************************
 
-import os
-import sys
 import math
 import liblo
 import logging
@@ -42,6 +40,9 @@ COLOR_KNOB = "#B07000"
 ORGANELLE_OSC_PORT_IN = 3000
 ORGANELLE_OSC_PORT_OUT = 3001
 
+ORGANELLE_OLED_WIDTH = 128
+ORGANELLE_OLED_HEIGHT = 64
+
 
 class OscButton(tk.Canvas):
     """
@@ -57,7 +58,7 @@ class OscButton(tk.Canvas):
         # Draw the circular button.
         self.button = self.create_oval(2, 2, diameter - 2, diameter - 2, fill=COLOR_BUTTON, outline=COLOR_OUTLINE, width=2)
         # Place the label at the center.
-        self.create_text(diameter // 2, diameter // 2, text=label, font=("Arial", 12), fill=COLOR_TEXT)
+        self.create_text(diameter // 2, diameter // 2, text=label, font=("Arial", 12), fill=COLOR_TEXT, anchor=tk.CENTER)
 
         # Bind press and release events.
         self.bind("<ButtonPress-1>", self.on_press)
@@ -115,38 +116,33 @@ class VolumeSlider(tk.Frame):
     Vertical volume slider widget that sends OSC messages on value change.
     """
 
-    def __init__(self, parent, zyngui_control=None, height=200, width=60, **kwargs):
+    def __init__(self, parent, zyngui_control=None, width=200, height=60, **kwargs):
         super().__init__(parent, bg=COLOR_PANEL, **kwargs)
         self.zyngui_control = zyngui_control
-
-        # Create and pack the label.
-        self.label = tk.Label(self, text="    VOL", bg=COLOR_PANEL, fg=COLOR_TEXT, font=("Arial", 12))
-        self.label.pack(side="bottom", pady=3)
-
         # Create and pack the slider.
-        self.slider = tk.Scale(
-            self, from_=1.0, to=0.0, resolution=0.01, orient=tk.VERTICAL,
-            length=int(0.95*height), width=int(0.6 * width), sliderlength=int(0.4 * width), showvalue=True,
+        self.slider = tk.Scale(self, to=100, from_=0, resolution=1, orient=tk.HORIZONTAL,
+            length=width, width=int(0.7 * height), sliderlength=width//8, showvalue=True,
             bg=COLOR_PANEL, fg=COLOR_TEXT, highlightthickness=0, troughcolor=zynthian_gui_config.color_bg,
-            command=self.on_value_change
-        )
-        self.slider.pack(pady=3)
-        self.slider.set(0.7)
-        self.on_value_change(0.7)
+            command=self.on_value_change)
+        self.slider.pack(side="top", pady=0)
+        # Create and pack the label.
+        self.label = tk.Label(self, text="VOLUME", bg=COLOR_PANEL, fg=COLOR_TEXT, font=("Arial", height//3))
+        self.label.pack(side="bottom", pady=0)
+        # Set initial value
+        self.slider.set(70)
+        self.on_value_change(70)
 
     def on_value_change(self, value):
         """
         Handle slider value changes by sending an OSC volume message.
         """
-        if self.zyngui_control:
-            try:
-                zctrl_volume = self.zyngui_control.screen_processor.controllers_dict['volume']
-                zctrl_volume.set_value(127.0 * float(value))
-                #vol = float(value)
-                #liblo.send(self.osc_target, "/vol", vol)
-            except Exception as e:
-                #logging.error(f"Error sending OSC volume message: {e}")
-                logging.error(f"Can't send volume controller value: {e}")
+        try:
+            zctrl_volume = self.zyngui_control.screen_processor.controllers_dict['volume']
+            zctrl_volume.set_value(zctrl_volume.value_max * float(value) / 100.0)
+            #liblo.send(self.osc_target, "/vol", float(vol))
+        except Exception as e:
+            #logging.error(f"Error sending OSC volume message: {e}")
+            logging.error(f"Can't set volume zctrl value {value}: {e}")
 
     def get_value(self):
         """Return the current slider value."""
@@ -158,8 +154,11 @@ class VolumeSlider(tk.Frame):
 
     def refresh_value(self):
         """refresh the slider value from engine zctrl."""
-        zctrl_volume = self.zyngui_control.screen_processor.controllers_dict['volume']
-        self.slider.set(zctrl_volume.value / zctrl_volume.value_max)
+        try:
+            zctrl_volume = self.zyngui_control.screen_processor.controllers_dict['volume']
+            self.slider.set(100.0 * zctrl_volume.value / zctrl_volume.value_max)
+        except Exception as e:
+            logging.error(f"Can't get volume zctrl => {e}")
 
 
 class MarkedEncoder(tk.Canvas):
@@ -202,7 +201,7 @@ class MarkedEncoder(tk.Canvas):
         )
 
         # Add label below the knob.
-        self.create_text(center, center, text=label, font=("Arial", 12), fill=COLOR_TEXT)
+        self.create_text(center, center, text=label, font=("Arial", 12), fill=COLOR_TEXT, anchor=tk.CENTER)
 
         # Bind events for interaction.
         self.bind("<ButtonPress-1>", self.on_press)
@@ -322,37 +321,17 @@ class zynthian_widget_organelle(zynthian_widget_base):
         self.zyngui = zynthian_gui_config.zyngui
         self.zyngui_control = self.zyngui.screens['control']
         self.shown = False
-        self.debug = False  # Debug mode for performance
+
+        # Oled plot & update
         self.update_pending = False
         self.last_flip_time = 0
         self.batch_updates = True
         self.batch_update_after = 16  # ms (aim for ~60 fps)
-
-        # Don't show touch widgets in V5 & Z2
-        if zynthian_gui_config.check_wiring_layout(["V5", "Z2"]):
-            self.show_touch_widgets = False
-        # Show touch widgets in V4 and custom layouts
-        else:
-            self.show_touch_widgets = True
-
-        # OLED display settings.
-        org_width = 128
-        org_height = 66
-        try:
-            layout = self.zyngui_control.layout
-            self.width = int((1.0 - (layout['columns'] - 1) * layout['ctrl_width']) * self.zyngui_control.width)
-            self.height = self.zyngui_control.height - zynthian_gui_config.topbar_height
-        except Exception as e:
-            logging.warning(f"Can't calculate OLED geometry => {e}")
-            self.width = 2 * org_width
-            self.height = 2 * org_height
-        # Scaling factor for all components in OLED
-        self.oled_scale = self.width // org_width
-        if self.show_touch_widgets or (self.width % org_width) / self.width < 0.1:
-            self.oled_scale -= 1
-        self.oled_width = self.oled_scale * org_width
-        self.oled_height = self.oled_scale * org_height
-        logging.debug(f"OLED scale = {self.oled_scale} => {self.oled_width} x {self.oled_height}")
+        self.line_items = {}          # key: y (int), value: canvas item ID for printed text
+        self.inverted_lines = {}      # key: y (int), value: Boolean (True if highlighted)
+        self.line_bboxes = {}         # Cached bounding boxes for text lines
+        self.pending_batch = []       # List of pending canvas operations
+        self.text_items_by_position = {}  # Map text items by (x, y) position
 
         # Navigation state.
         self.current_page_index = 0
@@ -360,10 +339,71 @@ class zynthian_widget_organelle(zynthian_widget_base):
         self.select_mode = False
         self.aux_pushed = False
 
-        if self.show_touch_widgets:
+        # Initialize OSC client.
+        try:
+            self.osc_target = liblo.Address("localhost", ORGANELLE_OSC_PORT_OUT)
+        except liblo.AddressError as err:
+            logging.error(f"OSC client initialization error: {err}")
+            self.osc_target = None
+
+        # Start OSC server for display.
+        self.server = liblo.ServerThread(ORGANELLE_OSC_PORT_IN)
+        self.setup_osc_handlers()
+        self.server.start()
+
+        # Calculate widget geometry
+        layout = self.zyngui_control.layout
+        try:
+            self.width = int((1.0 - layout['ctrl_width'] * (layout['columns'] - 1)) * self.zyngui_control.width)
+            self.height = self.zyngui_control.height - zynthian_gui_config.topbar_height
+            logging.debug(f"Widget Size => {self.width} x {self.height}")
+        except Exception as e:
+            logging.warning(f"Can't calculate widget geometry => {e}")
+            self.width = 240
+            self.height = 300
+
+        # Configure layout depending on hardware
+        if zynthian_gui_config.check_wiring_layout(["V5"]):
+            self.show_touch_widgets = False
+            self.switch_i_selmode = 19
+            self.switch_i_aux = 23
+        elif zynthian_gui_config.check_wiring_layout(["Z2"]):
+            self.show_touch_widgets = False
+            self.switch_i_selmode = 9
+            self.switch_i_aux = 10
+        elif zynthian_gui_config.check_kit_version(["V4"]):
+            self.show_touch_widgets = False
+            self.switch_i_selmode = 5
+            self.switch_i_aux = 4
+        else:
             self.show_touch_widgets = True
-            padx = 5
-            pady = (self.width - self.oled_width) // 4
+            self.switch_i_selmode = None
+            self.switch_i_aux = None
+
+        #self.show_touch_widgets = True
+        if layout['columns'] == 2:
+            if self.show_touch_widgets:
+                self.wunit = int(0.015 * self.width)
+                self.hunit = int(0.015 * self.height)
+            else:
+                self.wunit = int(0.020 * self.width)
+                self.hunit = int(0.020 * self.height)
+        else:
+            self.wunit = int(0.035 * self.width)
+            self.hunit = int(0.025 * self.height)
+
+        # OLED display settings.
+        # Scaling factor for all components in OLED
+        self.oled_scale = self.width // ORGANELLE_OLED_WIDTH
+        if self.oled_scale > 4 and float(self.oled_scale * ORGANELLE_OLED_WIDTH) / self.width > 0.95:
+            self.oled_scale -= 1
+        self.oled_width = self.oled_scale * ORGANELLE_OLED_WIDTH
+        self.oled_height = self.oled_scale * ORGANELLE_OLED_HEIGHT
+        logging.debug(f"OLED scale = {self.oled_scale} => {self.oled_width} x {self.oled_height}")
+
+        if self.show_touch_widgets:
+            padx = (self.width - self.oled_width) // 2
+            pady = (self.width - self.oled_width) // 6
         else:
             padx = (self.width - self.oled_width) // 2
             pady = (self.width - self.oled_width) // 3
@@ -382,43 +422,21 @@ class zynthian_widget_organelle(zynthian_widget_base):
         self.canvas.tag_bind(self.bg_rect, "<ButtonPress-1>", self.on_canvas_touch)
         self.canvas.bind("<ButtonPress-1>", self.on_canvas_touch, add="+")
 
-        # Initialize OSC client.
-        try:
-            self.osc_target = liblo.Address("localhost", ORGANELLE_OSC_PORT_OUT)
-        except liblo.AddressError as err:
-            logging.error(f"OSC client initialization error: {err}")
-            self.osc_target = None
-
-        # Volume slider.
-        if self.show_touch_widgets:
-            self.volume_slider = VolumeSlider(self.top_container, zyngui_control=self.zyngui_control,
-                                              height=self.oled_height, width=int(0.09 * self.width))
-            self.volume_slider.pack(side="left", padx=5, pady=0)
-        else:
-            self.volume_slider = None
-
         # Controls frame.
         self.controls_frame = tk.Frame(self, bg=COLOR_PANEL)
         self.controls_frame.pack(expand=True, fill='both', padx=padx, pady=0)
 
-        self.line_items = {}          # key: y (int), value: canvas item ID for printed text
-        self.inverted_lines = {}      # key: y (int), value: Boolean (True if highlighted)
-        self.line_bboxes = {}         # Cached bounding boxes for text lines
-        self.pending_batch = []       # List of pending canvas operations
-        self.text_items_by_position = {}  # Map text items by (x, y) position
-
-        # Start OSC server for display.
-        self.server = liblo.ServerThread(ORGANELLE_OSC_PORT_IN)
-        self.setup_osc_handlers()
-        self.server.start()
-
         # LED indicator and control buttons.
-        self.wunit = int(0.025 * self.width)
         if self.show_touch_widgets:
-            self.encoder = MarkedEncoder(self.controls_frame, diameter=8 * self.wunit, osc_target=self.osc_target, label="ENC")
-            self.fs_button = OscButton(self.controls_frame, diameter=6 * self.wunit, osc_target=self.osc_target, label="FS", osc_path="/fs")
+            self.volume_slider = VolumeSlider(self.controls_frame, zyngui_control=self.zyngui_control, width=self.width, height=6*self.hunit)
+            self.volume_slider.pack(side="top", padx=0, pady=0)
             self.aux_button = OscButton(self.controls_frame, diameter=6 * self.wunit, osc_target=self.osc_target, label="AUX", osc_path="/aux")
             self.aux_button.pack(side="left", padx=self.wunit)
+            self.fs_button = OscButton(self.controls_frame, diameter=6 * self.wunit, osc_target=self.osc_target, label="FS", osc_path="/fs")
+            self.encoder = MarkedEncoder(self.controls_frame, diameter=8 * self.wunit, osc_target=self.osc_target, label="ENC")
+        else:
+            self.volume_slider = None
+
         self.led_indicator = LedIndicator(self.controls_frame, diameter=2*self.wunit, osc_target=self.osc_target)
         self.led_indicator.pack(side="left", padx=self.wunit)
 
@@ -831,7 +849,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
             self.selector = False
         if self.show_touch_widgets:
             if self.selector:
-                self.encoder.pack(side="right", padx=2 * self.wunit)
+                self.encoder.pack(side="right", padx=self.wunit)
             else:
                 self.encoder.forget()
 
@@ -871,39 +889,40 @@ class zynthian_widget_organelle(zynthian_widget_base):
 
     def switch(self, i, t='S'):
         """Manage Organelle switches => Only selector """
-        if self.select_mode and self.selector and i == 3:
+        if self.selector and self.select_mode and i == 3:
             if t == 'S':
                 liblo.send(self.osc_target, f"/enc_sel", 1)
                 self.after(100, lambda: liblo.send(self.osc_target, "/enc_sel", 0))
                 self.set_select_mode(False)
                 return True
-        elif zynthian_gui_config.check_wiring_layout(["V5"]):
-            if i == 19:
-                if t == 'S' or t == 'B':
-                    if self.select_mode:
-                        self.set_select_mode(False)
-                        liblo.send(self.osc_target, f"/enc_sel", 1)
-                        self.after(100, lambda: liblo.send(self.osc_target, "/enc_sel", 0))
-                    else:
-                        self.set_select_mode(True)
-                        liblo.send(self.osc_target, "/enc_down", 1)
-                        self.after(50, lambda: liblo.send(self.osc_target, "/enc_down", 0))
-                return True
-            elif i == 23:
-                if t == 'P':
-                    self.aux_pushed = True
-                    self.zyngui.zynswitch_disable_autolong()
-                    liblo.send(self.osc_target, "/aux", 1)
-                else:
-                    self.aux_pushed = False
-                    self.zyngui.zynswitch_enable_autolong()
-                    liblo.send(self.osc_target, "/aux", 0)
-                return True
-        elif zynthian_gui_config.check_wiring_layout(["Z2"]):
-            pass
-        elif zynthian_gui_config.check_wiring_layout(["V4"]):
-            pass
+        elif self.selector and self.switch_i_selmode is not None and i == self.switch_i_selmode:
+            if t == 'S' or t == 'B':
+                self.switch_select_mode()
+            return True
+        elif self.switch_i_aux is not None and i == self.switch_i_aux:
+            self.switch_aux(t)
+            return True
         return False
+
+    def switch_select_mode(self):
+        if self.select_mode:
+            self.set_select_mode(False)
+            liblo.send(self.osc_target, f"/enc_sel", 1)
+            self.after(100, lambda: liblo.send(self.osc_target, "/enc_sel", 0))
+        else:
+            self.set_select_mode(True)
+            liblo.send(self.osc_target, "/enc_down", 1)
+            self.after(50, lambda: liblo.send(self.osc_target, "/enc_down", 0))
+
+    def switch_aux(self, t):
+        if t == 'P':
+            self.aux_pushed = True
+            self.zyngui.zynswitch_disable_autolong()
+            liblo.send(self.osc_target, "/aux", 1)
+        else:
+            self.aux_pushed = False
+            self.zyngui.zynswitch_enable_autolong()
+            liblo.send(self.osc_target, "/aux", 0)
 
     def set_select_mode(self, sm=True):
         self.select_mode = sm

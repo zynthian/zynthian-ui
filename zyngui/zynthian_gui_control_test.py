@@ -45,17 +45,19 @@ class zynthian_gui_control_test(zynthian_gui_base):
     def __init__(self):
         super().__init__()
 
-        if zynthian_gui_config.layout['columns'] == 3:
+        self.layout = zynthian_gui_config.layout
+
+        if self.layout['columns'] == 3:
             padx = (2, 2)
         else:
             padx = (0, 2)
         pady = (0, 0)
 
+        self.ctrl_width = self.layout['ctrl_width']
+
         # Test Canvas
         self.canvas_width = 0
-        self.test_canvas = tkinter.Canvas(self.main_frame,
-                                          highlightthickness=0,
-                                          relief='flat',
+        self.test_canvas = tkinter.Canvas(self.main_frame, highlightthickness=0, relief='flat',
                                           bg=zynthian_gui_config.color_bg)
         self.test_canvas.grid(sticky='news')
 
@@ -80,17 +82,14 @@ class zynthian_gui_control_test(zynthian_gui_base):
             fill=zynthian_gui_config.color_error)
 
         # Configure layout
-        for ctrl_pos in zynthian_gui_config.layout['ctrl_pos']:
-            self.main_frame.columnconfigure(
-                ctrl_pos[1], weight=1, uniform='ctrl_col')
-            self.main_frame.rowconfigure(
-                ctrl_pos[0], weight=1, uniform='ctrl_row')
-        self.main_frame.columnconfigure(
-            zynthian_gui_config.layout['list_pos'][1], weight=3)
-        self.main_frame.columnconfigure(
-            zynthian_gui_config.layout['list_pos'][1] + 1, weight=1)
-        self.test_canvas.grid(
-            row=zynthian_gui_config.layout['list_pos'][0], column=zynthian_gui_config.layout['list_pos'][1], rowspan=4, padx=padx, pady=pady, sticky="news")
+        for ctrl_pos in self.layout['ctrl_pos']:
+            self.main_frame.columnconfigure(ctrl_pos[1], weight=1, uniform='ctrl_col')
+            self.main_frame.rowconfigure(ctrl_pos[0], weight=1, uniform='ctrl_row')
+        self.main_frame.columnconfigure(self.layout['list_pos'][1], weight=3)
+        self.main_frame.columnconfigure(self.layout['list_pos'][1] + 1, weight=1)
+        self.test_canvas.grid(row=self.layout['list_pos'][0],
+                              column=self.layout['list_pos'][1],
+                              rowspan=4, padx=padx, pady=pady, sticky="news")
 
         # Setup Controllers & Buttons
         self.setup_gui_controllers()
@@ -112,20 +111,19 @@ class zynthian_gui_control_test(zynthian_gui_base):
 
     def update_layout(self):
         super().update_layout()
-        if zynthian_gui_config.layout['columns'] == 2:
-            self.canvas_width = int(self.width * 0.75)
+        if self.layout['columns'] == 2:
+            self.canvas_width = int(self.width * (1.0 - self.ctrl_width))
             w = 3
         else:
-            self.canvas_width = int(self.width * 0.50)
+            self.canvas_width = int(self.width * (1.0 - 2 * self.ctrl_width))
             w = 2
         self.test_canvas.configure(width=self.canvas_width, height=self.height)
-        self.main_frame.columnconfigure(
-            zynthian_gui_config.layout['list_pos'][1], minsize=self.canvas_width, weight=w)
-        self.main_frame.columnconfigure(zynthian_gui_config.layout['list_pos'][1] + 1, minsize=int(
-            self.width * 0.25 * self.sidebar_shown), weight=self.sidebar_shown)
-        for pos in zynthian_gui_config.layout['ctrl_pos']:
-            self.main_frame.columnconfigure(pos[1], minsize=int(
-                (self.width * 0.25 - 1) * self.sidebar_shown), weight=self.sidebar_shown)
+        self.main_frame.columnconfigure(self.layout['list_pos'][1], minsize=self.canvas_width, weight=w)
+        minsize = int(self.width * self.ctrl_width * self.sidebar_shown)
+        self.main_frame.columnconfigure(self.layout['list_pos'][1] + 1, minsize=minsize, weight=self.sidebar_shown)
+        minsize = int((self.width * self.ctrl_width - 1) * self.sidebar_shown)
+        for pos in self.layout['ctrl_pos']:
+            self.main_frame.columnconfigure(pos[1], minsize=minsize, weight=self.sidebar_shown)
 
     def show_sidebar(self, show):
         self.sidebar_shown = show
@@ -145,13 +143,10 @@ class zynthian_gui_control_test(zynthian_gui_base):
         self.zgui_controllers = []
         for i in range(4):
             ctrl_name = "CTRL#{}".format(i)
-            self.zcontrollers.append(zynthian_controller(
-                None, ctrl_name, {'value_min': -100, 'value_max': 100, 'value': 0}))
-            self.zgui_controllers.append(zynthian_gui_controller(
-                i, self.main_frame, self.zcontrollers[i]))
+            self.zcontrollers.append(zynthian_controller(None, ctrl_name, {'value_min': -100, 'value_max': 100, 'value': 0}))
+            self.zgui_controllers.append(zynthian_gui_controller(i, self.main_frame, self.zcontrollers[i]))
             pos = zynthian_gui_config.layout['ctrl_pos'][i]
-            self.zgui_controllers[i].grid(
-                row=pos[0], column=pos[1], pady=(0, 1), sticky='news')
+            self.zgui_controllers[i].grid(row=pos[0], column=pos[1], pady=(0, 1), sticky='news')
         self.update_layout()
 
     def setup_button_test(self):
@@ -301,8 +296,7 @@ class zynthian_gui_control_test(zynthian_gui_base):
         if 0 <= self.test_button_index < len(self.zynswitch_info):
             led_num = self.zynswitch_info[self.test_button_index][2]
             if led_num is not None and led_num < self.zyngui.wsleds.get_num():
-                self.zyngui.wsleds.set_led(
-                    led_num, self.zyngui.wsleds.wscolor_white)
+                self.zyngui.wsleds.set_led(led_num, self.zyngui.wsleds.wscolor_white)
 
     def test_wsleds_colors(self):
         tdelay = 2
