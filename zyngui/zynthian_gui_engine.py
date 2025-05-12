@@ -443,7 +443,8 @@ class zynthian_gui_engine(zynthian_gui_selector):
         super().plot_zctrls()
         if self.zsel2.zctrl.is_dirty:
             self.zsel2.calculate_plot_values()
-        self.zsel2.plot_value()
+            self.zsel2.plot_value()
+            self.zsel2.zctrl.is_dirty = False
 
     def set_cat(self, cat_index):
         self.cat_index = cat_index

@@ -173,23 +173,20 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
                     'group_symbol': "output",
                     'group_name': "Output levels"
                 }
-                logging.debug(
-                    "Added zyncore Headphones Amplifier volume control")
+                logging.debug("Added zyncore Headphones Amplifier volume control")
         except Exception as e:
             logging.debug(f"Can't add zyncore Headphones Amplifier: {e}")
 
         # Add RBPi headphones if enabled and available...
         if self.allow_rbpi_headphones() and self.state_manager and self.state_manager.get_zynthian_config("rbpi_headphones"):
             try:
-                hp_ctrls = self.get_mixer_zctrls(
-                    self.rbpi_device_name, ["Headphone", "PCM"])
+                hp_ctrls = self.get_mixer_zctrls(self.rbpi_device_name, ["Headphone", "PCM"])
                 if len(hp_ctrls) > 0:
                     ctrls |= hp_ctrls
                 else:
                     raise Exception("RBPi Headphone volume control not found!")
             except Exception as e:
-                logging.error(
-                    f"Can't configure RBPi headphones volume control: {e}")
+                logging.error(f"Can't configure RBPi headphones volume control: {e}")
 
         if processor:
             self.zctrls = processor.controllers_dict
@@ -209,7 +206,8 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
         for symbol, config in ctrls.items():
             if symbol in self.zctrls:
                 self.zctrls[symbol].set_options(config)
-            self.zctrls[symbol] = zynthian_controller(self, symbol, config)
+            else:
+                self.zctrls[symbol] = zynthian_controller(self, symbol, config)
 
         # Generate control screens
         self._ctrl_screens = None
@@ -593,19 +591,9 @@ class zynthian_engine_alsa_mixer(zynthian_engine):
                     alsaaudio.Mixer(name, idx, -1, self.device).setmute(zctrl.value, chan)
                 elif type == "enum":
                     alsaaudio.Mixer(name, idx, -1, self.device).setenum(zctrl.value)
+                #logging.debug(f"Sending value '{zctrl.value}' for zctrl '{zctrl.symbol}' => IS_DIRTY: {zctrl.is_dirty}, OBJECT => {zctrl}")
         except Exception as err:
-            logging.error(err)
-
-    # ----------------------------------------------------------------------------
-    # MIDI CC processing
-    # ----------------------------------------------------------------------------
-
-    def midi_control_change(self, chan, ccnum, val):
-        for ch in range(0, 16):
-            try:
-                self.learned_cc[ch][ccnum].midi_control_change(val)
-            except:
-                pass
+            logging.error(f"Can't send value '{zctrl.value}' for zctrl '{zctrl.symbol}' => {err}")
 
     # --------------------------------------------------------------------------
     # Special

@@ -1374,20 +1374,20 @@ class zynthian_chain_manager:
             key = (self.active_chain_id << 16) | (cc_num << 8)
             zctrls = self.chain_midi_cc_binding[key]
             for zctrl in zctrls:
-                if zynthian_gui_config.active_midi_channel and zctrl.midi_chan != midi_chan:
+                if zynthian_gui_config.active_midi_channel and zctrl.midi_chan is not None and zctrl.midi_chan != midi_chan:
                     continue
                 zctrl.midi_control_change(cc_val)
         except:
             pass
+
         # Handle channel CC binding
-        else:
-            try:
-                key = (midi_chan << 16) | (cc_num << 8)
-                zctrls = self.chan_midi_cc_binding[key]
-                for zctrl in zctrls:
-                    zctrl.midi_control_change(cc_val)
-            except:
-                pass
+        try:
+            key = (midi_chan << 16) | (cc_num << 8)
+            zctrls = self.chan_midi_cc_binding[key]
+            for zctrl in zctrls:
+                zctrl.midi_control_change(cc_val)
+        except:
+            pass
 
     def clean_midi_learn(self, obj):
         """Clean MIDI learn from controls

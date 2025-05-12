@@ -728,8 +728,7 @@ class zynthian_state_manager:
                         i += 1
                     # This is probably not correct and we should continue reading in the next period
                     if i == n:
-                        logging.error(
-                            f"SysEx message from device {izmip} is not terminated")
+                        logging.error(f"SysEx message from device {izmip} is not terminated")
                         continue
                     # Crop data until find the 0xF7 mark
                     while sysex_data[-1] != 0xF7:
@@ -752,7 +751,9 @@ class zynthian_state_manager:
                 if evtype == 0xF:
                     # SysEx
                     if chan == 0x0:
-                        continue
+                        # Handle SysEx from external devices only
+                        if izmip < self.get_max_num_midi_devs():
+                            zynsigman.send_queued(zynsigman.S_MIDI, zynsigman.SS_MIDI_SYSEX, izmip=izmip, data=ev)
                     # Clock
                     elif chan == 0x8:
                         self.status_midi_clock = True

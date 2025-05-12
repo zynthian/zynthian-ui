@@ -286,7 +286,8 @@ class zynthian_gui_control_test(zynthian_gui_base):
         for zgui_ctrl in self.zgui_controllers:
             if zgui_ctrl.zctrl and zgui_ctrl.zctrl.is_dirty or force:
                 zgui_ctrl.calculate_plot_values()
-            zgui_ctrl.plot_value()
+                zgui_ctrl.plot_value()
+                zgui_ctrl.zctrl.is_dirty = False
 
     def update_wsleds(self, leds=None):
         # Switch off all LEDS

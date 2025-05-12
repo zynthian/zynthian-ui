@@ -537,7 +537,8 @@ class zynthian_gui_control(zynthian_gui_selector):
             for zgui_ctrl in self.zgui_controllers:
                 if zgui_ctrl.zctrl and zgui_ctrl.zctrl.is_dirty or force:
                     zgui_ctrl.calculate_plot_values()
-                zgui_ctrl.plot_value()
+                    zgui_ctrl.plot_value()
+                    zgui_ctrl.zctrl.is_dirty = False
         for k, widget in self.widgets.items():
             widget.update()
 
@@ -552,7 +553,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         if self.shown:
             self.show_menu()
         elif self.zyngui.current_screen.endswith("_options"):
-            self.close_screen()
+            self.zyngui.close_screen()
 
     # --------------------------------------------------------------------------
     # MIDI learn management
@@ -575,14 +576,19 @@ class zynthian_gui_control(zynthian_gui_selector):
         if self.mode != 'control':
             return
 
+        # Handle alsa mixer
+        default_midi_learning_mode = MIDI_LEARNING_CHAIN
+        try:
+            if self.zyngui.get_current_processor().eng_code == "MX":
+                default_midi_learning_mode = MIDI_LEARNING_GLOBAL
+        except:
+            pass
+
         if i is not None:
             # Restart MIDI learn with a new controller
             if self.zgui_controllers[i].zctrl != self.zyngui.state_manager.get_midi_learn_zctrl():
-                self.midi_learn(i, MIDI_LEARNING_CHAIN)
+                self.midi_learn(i, default_midi_learning_mode)
                 return self.midi_learning
-
-        # TODO: Handle alsa mixer
-        # if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
 
         if self.midi_learning == MIDI_LEARNING_CHAIN:
             self.midi_learning = MIDI_LEARNING_GLOBAL
@@ -595,9 +601,9 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.exit_midi_learn()
         else:
             if i is not None:
-                self.enter_midi_learn(MIDI_LEARNING_CHAIN, False)
+                self.enter_midi_learn(default_midi_learning_mode, False)
             else:
-                self.enter_midi_learn(MIDI_LEARNING_CHAIN, True)
+                self.enter_midi_learn(default_midi_learning_mode, True)
 
         return self.midi_learning
 
@@ -617,11 +623,9 @@ class zynthian_gui_control(zynthian_gui_selector):
 
     def midi_learn_bind(self, zmip, chan, midi_cc):
         if self.midi_learning == MIDI_LEARNING_CHAIN:
-            self.zyngui.chain_manager.add_midi_learn(
-                chan, midi_cc, self.zyngui.state_manager.get_midi_learn_zctrl())
+            self.zyngui.chain_manager.add_midi_learn(chan, midi_cc, self.zyngui.state_manager.get_midi_learn_zctrl())
         elif self.midi_learning == MIDI_LEARNING_GLOBAL:
-            self.zyngui.chain_manager.add_midi_learn(
-                chan, midi_cc, self.zyngui.state_manager.get_midi_learn_zctrl(), zmip)
+            self.zyngui.chain_manager.add_midi_learn(chan, midi_cc, self.zyngui.state_manager.get_midi_learn_zctrl(), zmip)
         self.exit_midi_learn()
 
     def cb_midi_cc(self, izmip, chan, num, val):
@@ -643,8 +647,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         if param:
             self.zyngui.chain_manager.clean_midi_learn(param)
         else:
-            self.zyngui.chain_manager.clean_midi_learn(
-                self.zyngui.get_current_processor())
+            self.zyngui.chain_manager.clean_midi_learn(self.zyngui.get_current_processor())
         self.refresh_midi_bind()
 
     def midi_unlearn_action(self):

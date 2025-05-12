@@ -253,7 +253,8 @@ class zynthian_gui_selector(zynthian_gui_base):
             return
         if self.zselector.zctrl.is_dirty:
             self.zselector.calculate_plot_values()
-        self.zselector.plot_value()
+            self.zselector.plot_value()
+            self.zselector.zctrl.is_dirty = False
 
     def swipe_nudge(self, dts):
         self.swipe_speed = int(len(self.swipe_roll_scale) - ((dts - 0.02) / 0.06) * len(self.swipe_roll_scale))

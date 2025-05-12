@@ -406,11 +406,12 @@ class zynthian_controller:
                 else:
                     self.value = self.value_max
             return
-        elif self.ticks:
-            # TODO Do something here?
-            pass
         elif self.is_integer:
             val = int(val)
+
+        # TODO Do something here?
+        # elif self.ticks:
+        #   pass
 
         if val > self.value_max:
             self.value = self.value_max
@@ -521,15 +522,12 @@ class zynthian_controller:
             if self.value_range == 0:
                 return 0
             elif self.is_logarithmic:
-                val = int(127 * math.log10((9 * self.value - (10 *
-                          self.value_min - self.value_max)) / self.value_range))
+                val = int(127 * math.log10((9 * self.value - (10 * self.value_min - self.value_max)) / self.value_range))
             else:
-                val = min(
-                    127, int(127 * (self.value - self.value_min) / self.value_range))
+                val = min(127, int(127 * (self.value - self.value_min) / self.value_range))
         except Exception as e:
             logging.error(e)
             val = 0
-
         return val
 
     def get_ctrl_osc_val(self):

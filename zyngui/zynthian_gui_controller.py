@@ -396,7 +396,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		self.refresh_plot_value = True
 
 	def plot_value(self):
-		if self.shown and self.zctrl and (self.zctrl.is_dirty or self.refresh_plot_value):
+		if self.shown and self.zctrl and self.refresh_plot_value:
 			if not self.hidden:
 				if self.zctrl.readonly:
 					self.set_color_readonly()
@@ -404,7 +404,6 @@ class zynthian_gui_controller(tkinter.Canvas):
 					self.restore_color_graph()
 				self.plot_value_func()
 			self.refresh_plot_value = False
-			self.zctrl.is_dirty = False
 
 	def plot_value_rectangle(self):
 		if not self.selector_counter and not self.zctrl.is_path:

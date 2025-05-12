@@ -597,18 +597,13 @@ class zynthian_gui:
                 screen = "launcher"
             else:
                 screen = "audio_mixer"
-
         elif screen == "audio_mixer":
             self.screens[screen].set_launcher_mode(False)
-
         elif screen == "launcher":
             self.screens[screen].set_launcher_mode(True)
-
-
         elif screen == "alsa_mixer":
             self.state_manager.alsa_mixer_processor.refresh_controllers(params)
             self.current_processor = self.state_manager.alsa_mixer_processor
-
         elif screen == "audio_player":
             if self.state_manager.audio_player:
                 self.current_processor = self.state_manager.audio_player
@@ -2236,10 +2231,10 @@ class zynthian_gui:
             # Every 4 cycles...
             if j > 4:
                 j = 0
-
                 # Refresh GUI Controllers
                 try:
                     self.screens[self.current_screen].plot_zctrls()
+                    pass
                 except AttributeError:
                     pass
                 except Exception as e:
