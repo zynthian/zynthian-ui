@@ -56,8 +56,13 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         return "pattern cc editor"
 
     def get_title(self):
-        title = super().get_title()
-        return f"{title}: CC{self.cc_num}"
+        title = f"{super().get_title()}: CC{self.cc_num}"
+        # Get CC title from zynstep mapped zctrl
+        midi_chan = self.zynseq.libseq.getChannel(self.bank, self.sequence, 0)
+        zctrl = self.zyngui.chain_manager.get_zynstep_mapped_zctrl(midi_chan, self.cc_num)
+        if zctrl:
+            title = f"{title} ({zctrl.name})"
+        return title
 
     # Function to enable edit mode => It *MUST* be redefined in child class
     #   mode: Edit mode to enable [EDIT_MODE_NONE | others to define in child classes]

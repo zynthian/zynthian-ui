@@ -1085,8 +1085,7 @@ class zynthian_gui:
         cuia_func_name = "cuia_" + cuia.lower()
         # First try screen defined cuia function
         done = False
-        cuia_func = getattr(self.get_current_screen_obj(),
-                            cuia_func_name, None)
+        cuia_func = getattr(self.get_current_screen_obj(), cuia_func_name, None)
         if callable(cuia_func):
             if cuia_func(params):
                 done = True
@@ -1882,12 +1881,17 @@ class zynthian_gui:
             pated_screen = "pated_cc"
         else:
             return
-        cur_pated_obj = self.get_current_screen_obj()
-        pated_obj = self.screens[pated_screen]
-        pated_obj.bank = cur_pated_obj.bank
-        pated_obj.sequence = cur_pated_obj.sequence
-        pated_obj.load_pattern(cur_pated_obj.pattern)
-        pated_obj.channel = cur_pated_obj.channel
+        cur_pated = self.get_current_screen_obj()
+        pated = self.screens[pated_screen]
+
+        pated.set_sequence_info(cur_pated.seq_info)
+        pated.load_pattern(cur_pated.pattern)
+
+        #pated_obj.bank = cur_pated_obj.bank
+        #pated_obj.sequence = cur_pated_obj.sequence
+        #pated_obj.load_pattern(cur_pated_obj.pattern)
+        #pated_obj.channel = cur_pated_obj.channel
+
         logging.debug(f"Opening {pated_screen}...")
         self.show_screen(pated_screen, self.SCREEN_HMODE_REPLACE)
 

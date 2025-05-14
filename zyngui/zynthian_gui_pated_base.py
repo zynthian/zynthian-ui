@@ -215,6 +215,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     def get_title(self):
         title = self.zynseq.get_sequence_name(self.bank, self.sequence)
+        #logging.debug(f"BANK: {self.bank}, SEQUENCE: {self.sequence}")
         try:
             str(int(title))
             # Get preset title from synth engine on this MIDI channel
@@ -1235,6 +1236,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         return True
 
     def cuia_toggle_play(self, params=None):
+        logging.debug("PATED CUIA TOGGLE PLAY!!")
         self.toggle_playback()
         return True
 

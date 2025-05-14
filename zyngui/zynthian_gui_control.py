@@ -677,9 +677,9 @@ class zynthian_gui_control(zynthian_gui_selector):
                 self.zyngui.show_screen('option')
                 return
 
-            mcparams = self.zyngui.chain_manager.get_midi_learn_from_zctrl(zctrl)
+            ml = self.zyngui.chain_manager.get_midi_learn_from_zctrl(zctrl, abs=True, chain=True, zynstep=False)
             if not unlearn_only:
-                title = "Control options"
+                title = f"Control options: {zctrl.name}"
                 if not zctrl.is_toggle:
                     options["X-Y touchpad"] = None
                     # Only show X-Y if both zctrl are valid
@@ -712,7 +712,7 @@ class zynthian_gui_control(zynthian_gui_selector):
                         options["\u2612 Debounce"] = i
                     else:
                         options["\u2610 Debounce"] = i
-                elif mcparams:
+                elif ml:
                     match zctrl.midi_cc_mode:
                         case -1:
                             options["Relative Mode learning..."] = i
@@ -723,17 +723,31 @@ class zynthian_gui_control(zynthian_gui_selector):
                                 options["Absolute Mode"] = i
                         case _:
                             options[f"Relative Mode {zctrl.midi_cc_mode}"] = i 
-                options[f"Chain learn '{zctrl.name}'..."] = i
-                options[f"Global learn '{zctrl.name}'..."] = i
-            else:
-                title = "Control unlearn"
-
-            if mcparams:
-                if mcparams[1]:
-                    dev_name = zynautoconnect.get_midi_in_devid(mcparams[0] >> 24)
-                    options[f"Unlearn '{zctrl.name}' from {dev_name}"] = zctrl
+                options[f"Chain learn..."] = i
+                options[f"Global learn..."] = i
+                zynstep_ml = self.zyngui.chain_manager.get_midi_learn_from_zctrl(zctrl, abs=False, chain=False, zynstep=True)
+                if zynstep_ml:
+                    cc = zynstep_ml[0] & 0x7f
                 else:
-                    options[f"Unlearn '{zctrl.name}'"] = zctrl
+                    cc = "NONE"
+                options[f"ZynStep CC [{cc}]"] = i
+            else:
+                title = f"Control unlearn: {zctrl.name}"
+
+            if ml:
+                cc = ml[0] & 0x7f
+                chan = (ml[0] >> 8) & 0xff
+                if chan < 16:
+                    ml_text = f"CH{chan + 1}, CC{cc}"
+                else:
+                    ml_text = f"CC{cc}"
+                match ml[1]:
+                    case "abs":
+                        zmip = (ml[0] >> 16) & 0xff
+                        dev_name = zynautoconnect.get_midi_in_devid(zmip)
+                        options[f"Unlearn [{dev_name}, {ml_text}]"] = zctrl
+                    case "chain":
+                        options[f"Unlearn [{ml_text}]"] = zctrl
             options["Unlearn all controls"] = ""
 
             self.zyngui.screens['option'].config(title, options, self.midi_learn_options_cb)
@@ -761,6 +775,9 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.midi_learn(param, MIDI_LEARNING_CHAIN)
         elif parts[0] == "Global":
             self.midi_learn(param, MIDI_LEARNING_GLOBAL)
+        elif parts[0] == "ZynStep":
+            # TODO Implement ZynStep CC selector => Param editor??
+            pass
         elif parts[0] == "Unlearn":
             if param:
                 self.midi_unlearn(param)
@@ -782,11 +799,11 @@ class zynthian_gui_control(zynthian_gui_selector):
             options = {
                 "Absolute Mode": (param, 0),
                 "Absolute Reverse": (param, 0),
-                "Learn Relative Mode": (param, -1),
                 "Relative Mode 1": (param, 1),
                 "Relative Mode 2": (param, 2),
                 "Relative Mode 3": (param, 3),
-                "Relative Mode 4": (param, 4)
+                "Relative Mode 4": (param, 4),
+                "Learn Relative Mode": (param, -1)
             }
             self.zyngui.screens['option'].config("Select CC mode", options, self.set_cc_mode)
             self.zyngui.show_screen('option')
