@@ -1915,9 +1915,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             if self.launcher_highlighted_slot > 0:
                 if self.moving_scene:
                     slot = self.zynseq.move_scene(self.launcher_highlighted_slot, -1)
+                    self.highlight_launcher_slot(slot)
+                    self.refresh_visible_strips()
                 else:
                     slot = self.launcher_highlighted_slot - nudge
-                self.highlight_launcher_slot(slot)
+                    self.highlight_launcher_slot(slot)
         else:
             if self.highlighted_strip is not None:
                 self.highlighted_strip.nudge_volume(nudge)
@@ -1929,9 +1931,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             if self.launcher_highlighted_slot < len(self.zynseq.launcher_info):
                 if self.moving_scene:
                     slot = self.zynseq.move_scene(self.launcher_highlighted_slot, 1)
+                    self.highlight_launcher_slot(slot)
+                    self.refresh_visible_strips()
                 else:
                     slot = self.launcher_highlighted_slot - nudge
-                self.highlight_launcher_slot(slot)
+                    self.highlight_launcher_slot(slot)
         else:
             if self.highlighted_strip is not None:
                 self.highlighted_strip.nudge_volume(nudge)
