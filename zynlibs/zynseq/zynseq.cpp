@@ -76,6 +76,7 @@ bool g_bClientPlaying = false;                      // True if any external clie
 bool g_bMidiRecord = false;                         // True to add notes to current pattern from MIDI input
 uint8_t g_nSustainValue = 0;                        // Last sustain pedal value during note input (recording)
 uint32_t g_nSustainStart = 0;                       // Step when sustain pedal was last pressed
+uint32_t g_nLastStepCC = 0;                         // Step when last => WARNING!! Doesn't work if capturing several CC at once!
 
 char g_sName[17];                // Buffer to hold sequence name so that it can be sent back for Python to parse
 uint8_t g_nInputRest = 0xFF;     // MIDI note number that creates rest in pattern
@@ -465,7 +466,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                             g_nSustainStart = nStep;
                             // Remove old pedals => "Overdubbing" sustain pedal is a mess!
                             g_pPattern->removeControlInterval(0, g_pPattern->getSteps() - 1, 64);
-                            // Add pedal press
+                            // Add new pedal press
                             g_pPattern->addControl(g_nSustainStart, 64, g_nSustainValue, g_nSustainValue);
                         } else if (midiEvent.buffer[2] == 0) {
                             if (g_nSustainValue > 0) {
@@ -477,7 +478,12 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                         // else => Other cases must be bouncing or pedal "artifacts" that we ignore
                         // Manage rest of CCs
                     } else {
+                        // Remove old pedals => "Overdubbing" CC is a mess!
+                        if (g_nLastStepCC < nStep)
+                        	g_pPattern->removeControlInterval(g_nLastStepCC + 1, nStep, (uint8_t)midiEvent.buffer[1]);
+                        // Add new CC event
                         g_pPattern->addControl(nStep, (uint8_t)midiEvent.buffer[1], (uint8_t)midiEvent.buffer[2], (uint8_t)midiEvent.buffer[2]);
+                        g_nLastStepCC = nStep;
                         setPatternModified(g_pPattern, true, false);
                     }
                 }

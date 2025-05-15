@@ -402,8 +402,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.zyngui.toggle_pated()
         elif params == 'Beats in pattern':
             self.enable_param_editor(self, 'bip', {'name': 'Beats in pattern', 'value_min': 1, 'value_max': 64,
-                                                   'value_default': 4, 'value': self.zynseq.libseq.getBeatsInPattern(self.pattern)},
-                                     self.assert_beats_in_pattern)
+                                     'value_default': 4, 'value': self.zynseq.libseq.getBeatsInPattern(self.pattern)},
+                                     assert_cb=self.assert_beats_in_pattern)
         elif params == 'Steps per beat':
             self.enable_param_editor(self, 'spb', {'name': 'Steps per beat', 'ticks': STEPS_PER_BEAT,
                                      'value_default': 3, 'value': self.n_steps_beat},
