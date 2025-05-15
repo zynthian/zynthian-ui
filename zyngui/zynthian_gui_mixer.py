@@ -1659,7 +1659,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def get_clippy_zctrl(self, zctrl_name):
         try:
-            return self.launcher_select_info['clippy'].controllers_dict[f"{zctrl_name} {info['slot'] + 1:02}"]
+            clippy_proc = self.launcher_select_info['clippy']
+            return clippy_proc.controllers_dict[f"{zctrl_name} {self.launcher_select_info['slot'] + 1:02}"]
         except:
             return None
 
@@ -1949,7 +1950,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.launcher_highlighted_slot = slot
         self.highlighted_strip.highlight_launcher(slot)
         self.set_highlighted_clip_info()
-        self.refresh_visible_strips()
 
     def end_moving_chain(self):
         if zynthian_gui_config.enable_touch_navigation:
