@@ -103,7 +103,7 @@ class LedIndicator(tk.Canvas):
         Set the LED state (color) based on an integer value (0-7).
         """
         try:
-            self.current_state = max(min(0, int(state)), 7)
+            self.current_state = min(max(0, int(state)), 7)
             self.itemconfig(self.led, fill=self.COLORS[self.current_state])
             return True
         except ValueError:
@@ -380,7 +380,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
             self.switch_i_selmode = None
             self.switch_i_aux = None
 
-        #self.show_touch_widgets = True
+        self.show_touch_widgets = True
         if layout['columns'] == 2:
             if self.show_touch_widgets:
                 self.wunit = int(0.015 * self.width)
@@ -437,7 +437,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
         else:
             self.volume_slider = None
 
-        self.led_indicator = LedIndicator(self.controls_frame, diameter=2*self.wunit, osc_target=self.osc_target)
+        self.led_indicator = LedIndicator(self.controls_frame, diameter=3*self.wunit, osc_target=self.osc_target)
         self.led_indicator.pack(side="left", padx=self.wunit)
 
         # Organelle selector zctrl
@@ -469,7 +469,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
         self.server.add_method(None, None, self.fallback_handler)
 
     def handle_led(self, path, args):
-        #logging.debug(f"Received OSC LED message: {path} {args}")
+        logging.debug(f"Received OSC LED message: {path} {args}")
         if args:
             state = int(args[0])
             self.led_indicator.set_state(state)
