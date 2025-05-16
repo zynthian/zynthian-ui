@@ -342,9 +342,9 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 options['\u2612 CC editor'] = 'CC editor'
         options[f"Beats in pattern ({self.zynseq.libseq.getBeatsInPattern(self.pattern)})"] = 'Beats in pattern'
         options[f"Steps/Beat ({self.n_steps_beat})"] = 'Steps per beat'
-        options[f"Swing Amount ({int(100.0 * self.zynseq.libseq.getSwingAmount(self.pattern))}%)"] = 'Swing Amount'
-        options[f"Swing Divisor ({self.zynseq.libseq.getSwingDiv(self.pattern)})"] = 'Swing Divisor'
-        options[f"Time Humanization ({int(100.0 * self.zynseq.libseq.getHumanTime(self.pattern))})"] = 'Time Humanization'
+        options[f"Swing Amount ({int(100.0 * self.zynseq.libseq.getSwingAmount())}%)"] = 'Swing Amount'
+        options[f"Swing Divisor ({self.zynseq.libseq.getSwingDiv()})"] = 'Swing Divisor'
+        options[f"Time Humanization ({int(100.0 * self.zynseq.libseq.getHumanTime())})"] = 'Time Humanization'
         menu_options['PATTERN OPTIONS'] = options
         # Pattern Edit
         options = {}
@@ -410,15 +410,15 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                                          assert_cb=self.assert_steps_per_beat)
             case 'Swing Amount':
                 self.enable_param_editor(self, 'swing_amount', {'name': 'Swing Amount', 'value_min': 0, 'value_max': 100,
-                                                                'value': int(100.0 * self.zynseq.libseq.getSwingAmount(self.pattern)),
+                                                                'value': int(100.0 * self.zynseq.libseq.getSwingAmount()),
                                                                 'value_default': 0})
             case 'Swing Divisor':
                 self.enable_param_editor(self, 'swing_div', {'name': 'Swing Divisor', 'value_min': 1,
                                                              'value_max': self.n_steps_beat, 'value_default': 1,
-                                                             'value': self.zynseq.libseq.getSwingDiv(self.pattern)})
+                                                             'value': self.zynseq.libseq.getSwingDiv()})
             case 'Time Humanization':
                 self.enable_param_editor(self, 'human_time', {'name': 'Time Humanization', 'value_min': 0, 'value_max': 100,
-                                                              'value': int(100.0 * self.zynseq.libseq.getHumanTime(self.pattern)),
+                                                              'value': int(100.0 * self.zynseq.libseq.getHumanTime()),
                                                               'value_default': 0})
             case 'Add program change':
                 self.enable_param_editor(self, 'prog_change', {'name': 'Program', 'value_max': 128,
@@ -463,7 +463,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                                          assert_cb=self.assert_playmode)
 
     def send_controller_value(self, zctrl):
-        logging.debug(f"ZCTRL => {zctrl.symbol}")
         match zctrl.symbol:
             case 'zoom':
                 self.set_grid_zoom(zctrl.value)
@@ -471,11 +470,11 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             case 'bpb':
                 self.zynseq.libseq.setBeatsPerBar(zctrl.value)
             case 'swing_amount':
-                self.zynseq.libseq.setSwingAmount(self.pattern, zctrl.value / 100.0)
+                self.zynseq.libseq.setSwingAmount(zctrl.value / 100.0)
             case 'swing_div':
-                self.zynseq.libseq.setSwingDiv(self.pattern, zctrl.value)
+                self.zynseq.libseq.setSwingDiv(zctrl.value)
             case 'human_time':
-                self.zynseq.libseq.setHumanTime(self.pattern, zctrl.value / 100.0)
+                self.zynseq.libseq.setHumanTime(zctrl.value / 100.0)
             case 'copy':
                 self.load_pattern(zctrl.value)
 

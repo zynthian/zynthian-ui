@@ -184,8 +184,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         menu_options = super().get_menu_options()
         # Pattern Options
         options = {}
-        options[f"Velocity Humanization ({int(self.zynseq.libseq.getHumanVelo(self.pattern))})"] = 'Velocity Humanization'
-        options[f"Note Play Chance ({int(100 * self.zynseq.libseq.getPlayChance(self.pattern))}%)"] = 'Note Play Chance'
+        options[f"Velocity Humanization ({int(self.zynseq.libseq.getHumanVelo())})"] = 'Velocity Humanization'
+        options[f"Note Play Chance ({int(100 * self.zynseq.libseq.getPlayChance())}%)"] = 'Note Play Chance'
         scales = self.get_scales()
         options[f"Scale ({scales[self.zynseq.libseq.getScale()]})"] = 'Scale'
         options[f"Tonic ({NOTE_NAMES[self.zynseq.libseq.getTonic()]})"] = 'Tonic'
@@ -206,12 +206,12 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             case 'Velocity Humanization':
                 self.enable_param_editor(self, 'human_velo', {'name': 'Velocity Humanization', 'value_min': 0,
                                                               'value_max': 100, 'value_default': 0,
-                                                              'value': int(self.zynseq.libseq.getHumanVelo(self.pattern))})
+                                                              'value': int(self.zynseq.libseq.getHumanVelo())})
 
             case 'Note Play Chance':
                 self.enable_param_editor(self, 'play_chance', {'name': 'Note Play Chance', 'value_min': 0,
                                                                'value_max': 100, 'value_default': 0,
-                                                               'value': int(100.0 * self.zynseq.libseq.getPlayChance(self.pattern))})
+                                                               'value': int(100.0 * self.zynseq.libseq.getPlayChance())})
 
             case 'Scale':
                 self.enable_param_editor(self, 'scale', {'name': 'Scale', 'labels': self.get_scales(),
@@ -236,9 +236,9 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     def send_controller_value(self, zctrl):
         match zctrl.symbol:
             case 'human_velo':
-                self.zynseq.libseq.setHumanVelo(self.pattern, 1.0 * zctrl.value)
+                self.zynseq.libseq.setHumanVelo(1.0 * zctrl.value)
             case 'play_chance':
-                self.zynseq.libseq.setPlayChance(self.pattern, zctrl.value / 100.0)
+                self.zynseq.libseq.setPlayChance(zctrl.value / 100.0)
             case 'transpose':
                 self.transpose(zctrl.value)
                 zctrl.set_value(0)
