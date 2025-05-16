@@ -202,53 +202,57 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         return menu_options
 
     def menu_cb(self, option, params):
-        if params == 'Velocity Humanization':
-            self.enable_param_editor(self, 'human_velo', {'name': 'Velocity Humanization', 'value_min': 0,
-                                                          'value_max': 100, 'value_default': 0,
-                                                          'value': int(self.zynseq.libseq.getHumanVelo(self.pattern))})
+        match params:
+            case 'Velocity Humanization':
+                self.enable_param_editor(self, 'human_velo', {'name': 'Velocity Humanization', 'value_min': 0,
+                                                              'value_max': 100, 'value_default': 0,
+                                                              'value': int(self.zynseq.libseq.getHumanVelo(self.pattern))})
 
-        elif params == 'Note Play Chance':
-            self.enable_param_editor(self, 'play_chance', {'name': 'Note Play Chance', 'value_min': 0, 'value_max': 100,
-                                                           'value_default': 0,
-                                                           'value': int(100.0 * self.zynseq.libseq.getPlayChance(self.pattern))})
+            case 'Note Play Chance':
+                self.enable_param_editor(self, 'play_chance', {'name': 'Note Play Chance', 'value_min': 0,
+                                                               'value_max': 100, 'value_default': 0,
+                                                               'value': int(100.0 * self.zynseq.libseq.getPlayChance(self.pattern))})
 
-        elif params == 'Scale':
-            self.enable_param_editor(self, 'scale', {'name': 'Scale', 'labels': self.get_scales(),
-                                                     'value': self.zynseq.libseq.getScale()})
-        elif params == 'Tonic':
-            self.enable_param_editor(self, 'tonic', {'name': 'Tonic', 'labels': NOTE_NAMES,
-                                                     'value': self.zynseq.libseq.getTonic()})
-        elif params == 'Rest note':
-            labels = ['None']
-            for note in range(128):
-                labels.append("{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1))
-            value = self.zynseq.libseq.getInputRest() + 1
-            if value > 128:
-                value = 0
-            self.enable_param_editor(self, 'rest', {'name': 'Rest', 'labels': labels, 'value': value})
-        elif params == 'Transpose pattern':
-            self.enable_param_editor(self, 'transpose', {'name': 'Transpose', 'value_min': -1, 'value_max': 1,
-                                                         'labels': ['down', 'down/up', 'up'], 'value': 0})
-        else:
-            super().menu_cb(option, params)
+            case 'Scale':
+                self.enable_param_editor(self, 'scale', {'name': 'Scale', 'labels': self.get_scales(),
+                                                         'value': self.zynseq.libseq.getScale()})
+            case 'Tonic':
+                self.enable_param_editor(self, 'tonic', {'name': 'Tonic', 'labels': NOTE_NAMES,
+                                                         'value': self.zynseq.libseq.getTonic()})
+            case 'Rest note':
+                labels = ['None']
+                for note in range(128):
+                    labels.append("{}{}".format(NOTE_NAMES[note % 12], note // 12 - 1))
+                value = self.zynseq.libseq.getInputRest() + 1
+                if value > 128:
+                    value = 0
+                self.enable_param_editor(self, 'rest', {'name': 'Rest', 'labels': labels, 'value': value})
+            case 'Transpose pattern':
+                self.enable_param_editor(self, 'transpose', {'name': 'Transpose', 'value_min': -1, 'value_max': 1,
+                                                             'labels': ['down', 'down/up', 'up'], 'value': 0})
+            case _:
+                super().menu_cb(option, params)
 
     def send_controller_value(self, zctrl):
-        if zctrl.symbol == 'human_velo':
-            self.zynseq.libseq.setHumanVelo(self.pattern, 1.0 * zctrl.value)
-        elif zctrl.symbol == 'play_chance':
-            self.zynseq.libseq.setPlayChance(self.pattern, zctrl.value / 100.0)
-        elif zctrl.symbol == 'transpose':
-            self.transpose(zctrl.value)
-            zctrl.set_value(0)
-        elif zctrl.symbol == 'scale':
-            self.set_scale(zctrl.value)
-        elif zctrl.symbol == 'tonic':
-            self.set_tonic(zctrl.value)
-        elif zctrl.symbol == 'rest':
-            if zctrl.value == 0:
-                self.zynseq.libseq.setInputRest(128)
-            else:
-                self.zynseq.libseq.setInputRest(zctrl.value - 1)
+        match zctrl.symbol:
+            case 'human_velo':
+                self.zynseq.libseq.setHumanVelo(self.pattern, 1.0 * zctrl.value)
+            case 'play_chance':
+                self.zynseq.libseq.setPlayChance(self.pattern, zctrl.value / 100.0)
+            case 'transpose':
+                self.transpose(zctrl.value)
+                zctrl.set_value(0)
+            case 'scale':
+                self.set_scale(zctrl.value)
+            case 'tonic':
+                self.set_tonic(zctrl.value)
+            case 'rest':
+                if zctrl.value == 0:
+                    self.zynseq.libseq.setInputRest(128)
+                else:
+                    self.zynseq.libseq.setInputRest(zctrl.value - 1)
+            case _:
+                super().send_controller_value(zctrl)
 
     # Function to transpose pattern
     def transpose(self, offset):

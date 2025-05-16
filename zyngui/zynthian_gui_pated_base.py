@@ -342,9 +342,9 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 options['\u2612 CC editor'] = 'CC editor'
         options[f"Beats in pattern ({self.zynseq.libseq.getBeatsInPattern(self.pattern)})"] = 'Beats in pattern'
         options[f"Steps/Beat ({self.n_steps_beat})"] = 'Steps per beat'
-        options[f"Swing Divisor ({self.zynseq.libseq.getSwingDiv(self.pattern)})"] = 'Swing Divisor'
         options[f"Swing Amount ({int(100.0 * self.zynseq.libseq.getSwingAmount(self.pattern))}%)"] = 'Swing Amount'
-        options[f"Time Humanization ({int(500.0 * self.zynseq.libseq.getHumanTime(self.pattern))})"] = 'Time Humanization'
+        options[f"Swing Divisor ({self.zynseq.libseq.getSwingDiv(self.pattern)})"] = 'Swing Divisor'
+        options[f"Time Humanization ({int(100.0 * self.zynseq.libseq.getHumanTime(self.pattern))})"] = 'Time Humanization'
         menu_options['PATTERN OPTIONS'] = options
         # Pattern Edit
         options = {}
@@ -387,103 +387,97 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             self.zyngui.close_screen()
 
     def menu_cb(self, option, params):
-        if params == 'Grid zoom':
-            self.enable_param_editor(self, 'zoom', {'name': 'Zoom', 'value_min': 1, 'value_max': 64,
-                                                    'value_default': 1, 'value': self.zoom})
-        elif params == 'Tempo':
-            self.zyngui.show_screen('tempo')
-        elif params == 'Arranger':
-            self.zyngui.show_screen('arranger')
-        elif params == 'Beats per bar':
-            self.enable_param_editor(self, 'bpb', {'name': 'Beats per bar', 'value_min': 1, 'value_max': 64,
-                                                   'value_default': 4, 'value': self.zynseq.libseq.getBeatsPerBar()})
-
-        elif params == 'CC editor':
-            self.zyngui.toggle_pated()
-        elif params == 'Beats in pattern':
-            self.enable_param_editor(self, 'bip', {'name': 'Beats in pattern', 'value_min': 1, 'value_max': 64,
-                                     'value_default': 4, 'value': self.zynseq.libseq.getBeatsInPattern(self.pattern)},
-                                     assert_cb=self.assert_beats_in_pattern)
-        elif params == 'Steps per beat':
-            self.enable_param_editor(self, 'spb', {'name': 'Steps per beat', 'ticks': STEPS_PER_BEAT,
-                                     'value_default': 3, 'value': self.n_steps_beat},
-                                     assert_cb=self.assert_steps_per_beat)
-
-        elif params == 'Swing Divisor':
-            self.enable_param_editor(self, 'swing_div', {'name': 'Swing Divisor', 'value_min': 1,
-                                                         'value_max': self.n_steps_beat, 'value_default': 1,
-                                                         'value': self.zynseq.libseq.getSwingDiv(self.pattern)})
-
-        elif params == 'Swing Amount':
-            self.enable_param_editor(self, 'swing_amount', {'name': 'Swing Amount', 'value_min': 0, 'value_max': 100,
-                                                            'value': int(100.0 * self.zynseq.libseq.getSwingAmount(self.pattern)),
-                                                            'value_default': 0})
-
-        elif params == 'Time Humanization':
-            self.enable_param_editor(self, 'human_time', {'name': 'Time Humanization', 'value_min': 0, 'value_max': 100,
-                                                          'value': int(500.0 * self.zynseq.libseq.getHumanTime(self.pattern)),
-                                                          'value_default': 0})
-        elif params == 'Add program change':
-            self.enable_param_editor(self, 'prog_change', {'name': 'Program', 'value_max': 128,
-                                                           'value': self.get_program_change()}, self.add_program_change)
-        elif params == 'Record MIDI':
-            self.toggle_midi_record()
-        elif params == 'Quantized recording':
-            self.zynseq.libseq.setQuantizeNotes(not self.zynseq.libseq.getQuantizeNotes())
-        elif params == 'Copy pattern':
-            self.pattern2copy = self.pattern
-        elif params == 'Paste pattern':
-            self.paste_pattern()
-        elif params == 'Load pattern':
-            self.zyngui.screens['option'].config_file_list("Load pattern",
-                                                           [self.patterns_dpath, self.my_patterns_dpath],
-                                                           "*.zpat", self.load_pattern_file)
-            self.zyngui.show_screen('option')
-        elif params == 'Save pattern':
-            self.zyngui.show_keyboard(self.save_pattern_file, "pat#{}".format(self.pattern))
-        elif params == 'Clear pattern':
-            self.clear_pattern()
-        elif params == 'Export to SMF':
-            self.zyngui.show_keyboard(self.export_smf, "pat#{}".format(self.pattern))
-        # Sequence options
-        elif params == "Repeat count":
-            labels = ["DISABLED", "PLAY ONCE", "PLAY TWICE"]
-            for i in range(3, 256):
-                labels.append(f"PLAY {i} TIMES")
-            self.enable_param_editor(self, "repeat",
-                {'name': 'Repeat',
-                'value': self.seq_info["repeat"],
-                'labels': labels},
-                assert_cb=self.assert_sequence_repeat)
-        elif params == "Rename sequence":
-            name = self.zynseq.get_sequence_name(self.zynseq.bank, self.sequence)
-            self.zyngui.show_keyboard(self.rename_sequence, name, 8)
-        elif params == "Playmode":
-            seq = self.seq_info["sequence"]
-            ticks = [-1, seq]
-            labels = ["ONESHOT", "LOOP"]
-            self.enable_param_editor(self, "playmode", {
-                "name": "Mode",
-                "ticks": ticks,
-                "labels": labels,
-                "value": self.seq_info["follow_seq"]
-            },
-            assert_cb=self.assert_playmode)
+        match params:
+            case 'Grid zoom':
+                self.enable_param_editor(self, 'zoom', {'name': 'Zoom', 'value_min': 1, 'value_max': 64,
+                                                        'value_default': 1, 'value': self.zoom})
+            case 'Tempo':
+                self.zyngui.show_screen('tempo')
+            case 'Arranger':
+                self.zyngui.show_screen('arranger')
+            case 'Beats per bar':
+                self.enable_param_editor(self, 'bpb', {'name': 'Beats per bar', 'value_min': 1, 'value_max': 64,
+                                                       'value_default': 4, 'value': self.zynseq.libseq.getBeatsPerBar()})
+            case 'CC editor':
+                self.zyngui.toggle_pated()
+            case 'Beats in pattern':
+                self.enable_param_editor(self, 'bip', {'name': 'Beats in pattern', 'value_min': 1, 'value_max': 64,
+                                         'value_default': 4, 'value': self.zynseq.libseq.getBeatsInPattern(self.pattern)},
+                                         assert_cb=self.assert_beats_in_pattern)
+            case 'Steps per beat':
+                self.enable_param_editor(self, 'spb', {'name': 'Steps per beat', 'ticks': STEPS_PER_BEAT,
+                                         'value_default': 3, 'value': self.n_steps_beat},
+                                         assert_cb=self.assert_steps_per_beat)
+            case 'Swing Amount':
+                self.enable_param_editor(self, 'swing_amount', {'name': 'Swing Amount', 'value_min': 0, 'value_max': 100,
+                                                                'value': int(100.0 * self.zynseq.libseq.getSwingAmount(self.pattern)),
+                                                                'value_default': 0})
+            case 'Swing Divisor':
+                self.enable_param_editor(self, 'swing_div', {'name': 'Swing Divisor', 'value_min': 1,
+                                                             'value_max': self.n_steps_beat, 'value_default': 1,
+                                                             'value': self.zynseq.libseq.getSwingDiv(self.pattern)})
+            case 'Time Humanization':
+                self.enable_param_editor(self, 'human_time', {'name': 'Time Humanization', 'value_min': 0, 'value_max': 100,
+                                                              'value': int(100.0 * self.zynseq.libseq.getHumanTime(self.pattern)),
+                                                              'value_default': 0})
+            case 'Add program change':
+                self.enable_param_editor(self, 'prog_change', {'name': 'Program', 'value_max': 128,
+                                                               'value': self.get_program_change()},
+                                         self.add_program_change)
+            case 'Record MIDI':
+                self.toggle_midi_record()
+            case 'Quantized recording':
+                self.zynseq.libseq.setQuantizeNotes(not self.zynseq.libseq.getQuantizeNotes())
+            case 'Copy pattern':
+                self.pattern2copy = self.pattern
+            case 'Paste pattern':
+                self.paste_pattern()
+            case 'Load pattern':
+                self.zyngui.screens['option'].config_file_list("Load pattern",
+                                                               [self.patterns_dpath, self.my_patterns_dpath],
+                                                               "*.zpat", self.load_pattern_file)
+                self.zyngui.show_screen('option')
+            case 'Save pattern':
+                self.zyngui.show_keyboard(self.save_pattern_file, "pat#{}".format(self.pattern))
+            case 'Clear pattern':
+                self.clear_pattern()
+            case 'Export to SMF':
+                self.zyngui.show_keyboard(self.export_smf, "pat#{}".format(self.pattern))
+            # Sequence options
+            case "Repeat count":
+                labels = ["DISABLED", "PLAY ONCE", "PLAY TWICE"]
+                for i in range(3, 256):
+                    labels.append(f"PLAY {i} TIMES")
+                self.enable_param_editor(self, "repeat", {'name': 'Repeat', 'value': self.seq_info["repeat"],
+                                                          'labels': labels},
+                                         assert_cb=self.assert_sequence_repeat)
+            case "Rename sequence":
+                name = self.zynseq.get_sequence_name(self.zynseq.bank, self.sequence)
+                self.zyngui.show_keyboard(self.rename_sequence, name, 8)
+            case "Playmode":
+                seq = self.seq_info["sequence"]
+                ticks = [-1, seq]
+                labels = ["ONESHOT", "LOOP"]
+                self.enable_param_editor(self, "playmode", {"name": "Mode", "ticks": ticks, "labels": labels,
+                                                            "value": self.seq_info["follow_seq"]},
+                                         assert_cb=self.assert_playmode)
 
     def send_controller_value(self, zctrl):
-        if zctrl.symbol == 'zoom':
-            self.set_grid_zoom(zctrl.value)
-            self.param_editor_zctrl.value = self.zoom
-        elif zctrl.symbol == 'bpb':
-            self.zynseq.libseq.setBeatsPerBar(zctrl.value)
-        elif zctrl.symbol == 'swing_amount':
-            self.zynseq.libseq.setSwingAmount(zctrl.value/100.0)
-        elif zctrl.symbol == 'swing_div':
-            self.zynseq.libseq.setSwingDiv(zctrl.value)
-        elif zctrl.symbol == 'human_time':
-            self.zynseq.libseq.setHumanTime(zctrl.value / 500.0)
-        elif zctrl.symbol == 'copy':
-            self.load_pattern(zctrl.value)
+        logging.debug(f"ZCTRL => {zctrl.symbol}")
+        match zctrl.symbol:
+            case 'zoom':
+                self.set_grid_zoom(zctrl.value)
+                self.param_editor_zctrl.value = self.zoom
+            case 'bpb':
+                self.zynseq.libseq.setBeatsPerBar(zctrl.value)
+            case 'swing_amount':
+                self.zynseq.libseq.setSwingAmount(self.pattern, zctrl.value / 100.0)
+            case 'swing_div':
+                self.zynseq.libseq.setSwingDiv(self.pattern, zctrl.value)
+            case 'human_time':
+                self.zynseq.libseq.setHumanTime(self.pattern, zctrl.value / 100.0)
+            case 'copy':
+                self.load_pattern(zctrl.value)
 
     # Function to assert steps per beat
     def assert_steps_per_beat(self, value):
