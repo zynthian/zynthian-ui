@@ -48,20 +48,13 @@ class zynthian_engine_setbfree(zynthian_engine):
     # ---------------------------------------------------------------------------
 
     bank_manuals_list = [
-        ['Upper', 0, 'Upper', '_', {'manuals': [
-            True, False, False], 'keyranges': None, 'transpose': None}],
-        ['Upper + Lower', 1, 'Upper + Lower', '_',
-         {'manuals': [True, True, False], 'keyranges': None, 'transpose': None}],
-        ['Upper + Pedals', 2, 'Upper + Pedals', '_',
-         {'manuals': [True, False, True], 'keyranges': None, 'transpose': None}],
-        ['Upper + Lower + Pedals', 3, 'Upper + Lower + Pedals', '_',
-         {'manuals': [True, True, True], 'keyranges': None, 'transpose': None}],
-        ['Split Lower/Upper', 4, 'Split Lower/Upper', '_',
-            {'manuals': [True, True, False], 'keyranges': [[58, 127], [0, 57], None], 'transpose': None}],  # 56
-        ['Split Pedals/Upper', 5, 'Split Pedals/Upper', '_',
-            {'manuals': [True, False, True], 'keyranges': [[54, 127], None, [0, 53]], 'transpose': [0, 0, -1]}],  # 58
-        ['Split Pedals/Lower/Upper', 6, 'Split Pedals/Lower/Upper', '_', {'manuals': [
-            True, True, True], 'keyranges': [[66, 127], [48, 65], [0, 47]], 'transpose': [0, 0, -1]}],  # 57
+        ['Upper', 0, 'Upper', '_', {'manuals': [True, False, False], 'keyranges': None, 'transpose': None}],
+        ['Upper + Lower', 1, 'Upper + Lower', '_', {'manuals': [True, True, False], 'keyranges': None, 'transpose': None}],
+        ['Upper + Pedals', 2, 'Upper + Pedals', '_', {'manuals': [True, False, True], 'keyranges': None, 'transpose': None}],
+        ['Upper + Lower + Pedals', 3, 'Upper + Lower + Pedals', '_', {'manuals': [True, True, True], 'keyranges': None, 'transpose': None}],
+        ['Split Lower/Upper', 4, 'Split Lower/Upper', '_', {'manuals': [True, True, False], 'keyranges': [[58, 127], [0, 57], None], 'transpose': None}],  # 56
+        ['Split Pedals/Upper', 5, 'Split Pedals/Upper', '_', {'manuals': [True, False, True], 'keyranges': [[54, 127], None, [0, 53]], 'transpose': [0, 0, -1]}],  # 58
+        ['Split Pedals/Lower/Upper', 6, 'Split Pedals/Lower/Upper', '_', {'manuals': [True, True, True], 'keyranges': [[66, 127], [48, 65], [0, 47]], 'transpose': [0, 0, -1]}],  # 57
     ]
 
     bank_twmodels_list = [
@@ -93,8 +86,7 @@ class zynthian_engine_setbfree(zynthian_engine):
     # Controllers & Screens
     # ---------------------------------------------------------------------------
 
-    drawbar_ticks = [['0', '1', '2', '3', '4', '5', '6',
-                      '7', '8'], [127, 119, 103, 87, 71, 55, 39, 23, 7]]
+    drawbar_ticks = [['0', '1', '2', '3', '4', '5', '6', '7', '8'], [127, 119, 103, 87, 71, 55, 39, 23, 7]]
 
     # MIDI Controllers
     manual_ctrls = [
@@ -104,15 +96,15 @@ class zynthian_engine_setbfree(zynthian_engine):
             # ['swellpedal 2', 11, 96],
             ['reverb', 91, 4, 127],
             ['convol. mix', 94, 64, 127],
-            ['rotary toggle', 64, 'off', 'off|on'],
+            #['rotary toggle', 64, 'off', 'off|on'],
             # ['rotary speed', 1, 64, 127],
             # ['rotary speed', 1, 'off', 'slow|off|fast'],
-            ['rotary speed', 1, 'off', [
-                ['slow', 'off', 'fast'], [0, 43, 86]]],
+            ['rotary speed', 1, 'off', [['slow', 'off', 'fast'], [0, 43, 86]]],
             # ['rotary select', 67, 0, 127],
             # ['rotary select', 67, 'off/off', 'off/off|slow/off|fast/off|off/slow|slow/slow|fast/slow|off/fast|slow/fast|fast/fast'],
             ['rotary select', 67, 'off/off', [['off/off', 'slow/off', 'fast/off', 'off/slow', 'slow/slow',
-                                               'fast/slow', 'off/fast', 'slow/fast', 'fast/fast'], [0, 15, 30, 45, 60, 75, 90, 105, 120]]],
+                                               'fast/slow', 'off/fast', 'slow/fast', 'fast/fast'],
+                                              [0, 15, 30, 45, 60, 75, 90, 105, 120]]],
             ['DB 16', 70, '8', drawbar_ticks],
             ['DB 5 1/3', 71, '8', drawbar_ticks],
             ['DB 8', 72, '8', drawbar_ticks],
@@ -126,8 +118,7 @@ class zynthian_engine_setbfree(zynthian_engine):
             ['vibrato lower', 30, 'off', 'off|on'],
             ['vibrato routing', 95, 'off', 'off|lower|upper|both'],
             # ['vibrato selector', 92, 'c3', 'v1|v2|v3|c1|c2|c3'],
-            ['vibrato selector', 92, 'c3', [
-                ['v1', 'v2', 'v3', 'c1', 'c2', 'c3'], [0, 23, 46, 69, 92, 115]]],
+            ['vibrato selector', 92, 'c3', [['v1', 'v2', 'v3', 'c1', 'c2', 'c3'], [0, 23, 46, 69, 92, 115]]],
             ['percussion_feedback', 66, 'off', 'off|on'],
             ['percussion', 80, 'off', 'off|on'],
             ['percussion volume', 81, 'soft', 'soft|hard'],
@@ -172,14 +163,11 @@ class zynthian_engine_setbfree(zynthian_engine):
             ['main', ['volume', 'percussion', 'rotary speed', 'vibrato routing']],
             ['drawbars 1', ['DB 16', 'DB 5 1/3', 'DB 8', 'DB 4']],
             ['drawbars 2', ['DB 2 2/3', 'DB 2', 'DB 1 3/5', 'DB 1 1/3']],
-            ['drawbars 3 & reverb', ['DB 1', 'reverb', 'convol. mix']],
-            ['rotary', ['rotary toggle', 'rotary select', 'rotary speed']],
-            ['vibrato', ['vibrato upper', 'vibrato lower',
-                         'vibrato routing', 'vibrato selector']],
-            ['percussion', ['percussion', 'percussion decay',
-                            'percussion harmonic', 'percussion volume']],
-            ['overdrive', ['overdrive', 'overdrive character',
-                           'overdrive inputgain', 'overdrive outputgain']]
+            ['drawbars 3', ['DB 1']],
+            ['rotary & reverb', ['rotary speed', 'rotary select', 'reverb', 'convol. mix']],
+            ['vibrato', ['vibrato upper', 'vibrato lower', 'vibrato routing', 'vibrato selector']],
+            ['percussion', ['percussion', 'percussion decay', 'percussion harmonic', 'percussion volume']],
+            ['overdrive', ['overdrive', 'overdrive character', 'overdrive inputgain', 'overdrive outputgain']]
         ],
         [
             ['drawbars 1', ['DB 16', 'DB 5 1/3', 'DB 8', 'DB 4']],
@@ -274,7 +262,7 @@ class zynthian_engine_setbfree(zynthian_engine):
         self.processors[i].part_i = mchan
         self.set_midi_chan(self.processors[i])
         self.configure_manual_split(self.processors[i])
-        logging.info("Upper manual processor in chan %d", mchan)
+        logging.info(f"Upper manual processor in chan {mchan}",)
         self.processors[i].get_bank_list()
         self.processors[i].set_bank(0, False)
 
@@ -291,16 +279,14 @@ class zynthian_engine_setbfree(zynthian_engine):
                             keyranges = self.manuals_split_config['keyranges'][mchan]
                         except:
                             # Try to assign different MIDI channels to each manual
-                            free_midi_chan = chain_manager.get_next_free_midi_chan(
-                                midi_chan)
+                            free_midi_chan = chain_manager.get_next_free_midi_chan(midi_chan)
                             if free_midi_chan is not None:
                                 midi_chan = free_midi_chan
                         # Create chain & processor
                         chain_id = chain_manager.add_chain(None, midi_chan)
                         chain = chain_manager.get_chain(chain_id)
                         proc_id = chain_manager.get_available_processor_id()
-                        processor = zynthian_processor(
-                            "BF", chain_manager.engine_info["BF"], proc_id)
+                        processor = zynthian_processor("BF", chain_manager.engine_info["BF"], proc_id)
                         processor.engine = self
                         processor.part_i = mchan
                         chain.insert_processor(processor)
@@ -310,15 +296,13 @@ class zynthian_engine_setbfree(zynthian_engine):
                         # self.set_midi_chan(self.processors[i]) # Called when inserting processor in chain
                         self.processors[i].refresh_controllers()
                         self.configure_manual_split(self.processors[i])
-                        logging.info(
-                            "%s manual processor in chan %s", manual, mchan)
+                        logging.info(f"{manual} manual processor in chan {mchan}")
                         self.processors[i].get_bank_list()
                         self.processors[i].set_bank(0, False)
                         chain.audio_out = []
                         chain.mixer_chan = None
                     except Exception as e:
-                        logging.error(
-                            "%s Manual processor can't be added! => %s", manual, e)
+                        logging.error(f"{manual} manual processor can't be added! => {e}")
                 else:
                     chain_id = self.processors[i].chain_id
                     chain = chain_manager.get_chain(chain_id)
@@ -370,16 +354,11 @@ class zynthian_engine_setbfree(zynthian_engine):
         # Generate on-the-fly config
         with open(self.config_tpl_fpath, 'r') as cfg_tpl_file:
             cfg_data = cfg_tpl_file.read()
-            cfg_data = cfg_data.replace('#OSC.TUNING#', str(
-                int(self.state_manager.fine_tuning_freq)))
-            cfg_data = cfg_data.replace(
-                '#MIDI.UPPER.CHANNEL#', str(1 + self.manual_chans[0]))
-            cfg_data = cfg_data.replace(
-                '#MIDI.LOWER.CHANNEL#', str(1 + self.manual_chans[1]))
-            cfg_data = cfg_data.replace(
-                '#MIDI.PEDALS.CHANNEL#', str(1 + self.manual_chans[2]))
-            cfg_data = cfg_data.replace(
-                '#TONEWHEEL.CONFIG#', self.tonewheel_config[self.tonewheel_model])
+            cfg_data = cfg_data.replace('#OSC.TUNING#', str(int(self.state_manager.fine_tuning_freq)))
+            cfg_data = cfg_data.replace('#MIDI.UPPER.CHANNEL#', str(1 + self.manual_chans[0]))
+            cfg_data = cfg_data.replace('#MIDI.LOWER.CHANNEL#', str(1 + self.manual_chans[1]))
+            cfg_data = cfg_data.replace('#MIDI.PEDALS.CHANNEL#', str(1 + self.manual_chans[2]))
+            cfg_data = cfg_data.replace('#TONEWHEEL.CONFIG#', self.tonewheel_config[self.tonewheel_model])
             cfg_data += "\n" + my_cfg_data
             with open(self.default_config_fpath, 'w+') as cfg_file:
                 cfg_file.write(cfg_data)
@@ -393,22 +372,17 @@ class zynthian_engine_setbfree(zynthian_engine):
             try:
                 keyranges = self.manuals_split_config['keyranges']
                 if keyranges and keyranges[part_i]:
-                    lib_zyncore.zmop_set_note_low(
-                        zmop_index, keyranges[part_i][0])
-                    lib_zyncore.zmop_set_note_high(
-                        zmop_index, keyranges[part_i][1])
+                    lib_zyncore.zmop_set_note_low(zmop_index, keyranges[part_i][0])
+                    lib_zyncore.zmop_set_note_high(zmop_index, keyranges[part_i][1])
                     res = True
             except Exception as e:
-                logging.error(
-                    f"Can't configure keyrange for manual {part_i}: {e}")
+                logging.error(f"Can't configure keyrange for manual {part_i}: {e}")
             try:
                 transpose = self.manuals_split_config['transpose']
                 if transpose:
-                    lib_zyncore.zmop_set_transpose_octave(
-                        zmop_index, transpose[part_i])
+                    lib_zyncore.zmop_set_transpose_octave(zmop_index, transpose[part_i])
             except Exception as e:
-                logging.error(
-                    f"Can't configure octave transpose for manual {part_i}: {e}")
+                logging.error(f"Can't configure octave transpose for manual {part_i}: {e}")
         return res
 
     # ---------------------------------------------------------------------------
@@ -426,8 +400,7 @@ class zynthian_engine_setbfree(zynthian_engine):
                 processor.part_i = 2
             else:
                 processor.part_i = None
-                logging.warning(
-                    "Manuals config don't allow creating processor(0)")
+                logging.warning("Manuals config doesn't allow creating processor(0)")
                 return
         elif n == 1:
             if self.manuals_config[1]:
@@ -436,22 +409,22 @@ class zynthian_engine_setbfree(zynthian_engine):
                 processor.part_i = 2
             else:
                 processor.part_i = None
-                logging.warning(
-                    "Manuals config don't allow creating processor(1)")
+                logging.warning("Manuals config doesn't allow creating processor(1)")
                 return
         elif n == 2:
             if self.manuals_config[2]:
                 processor.part_i = 2
             else:
                 processor.part_i = None
-                logging.warning(
-                    "Manuals config don't allow creating processor(2)")
+                logging.warning("Manuals config doesn't allow creating processor(2)")
                 return
 
-        # Disable mixer strip for extra manuals
         if n > 0:
-            self.state_manager.chain_manager.get_chain(
-                processor.chain_id).mixer_chan = None
+            chain = self.state_manager.chain_manager.get_chain(processor.chain_id)
+            # Disable mixer strip for extra manuals
+            chain.mixer_chan = None
+            # Disable CC pedals for extra manuals
+            lib_zyncore.zmop_reset_cc_route(chain.zmop_index)
 
         self.set_midi_chan(processor)
         super().add_processor(processor)
@@ -512,8 +485,7 @@ class zynthian_engine_setbfree(zynthian_engine):
 
     def get_bank_list(self, processor):
         if not self.manuals_config:
-            free_chans = len(
-                self.state_manager.chain_manager.get_free_midi_chans())
+            free_chans = len(self.state_manager.chain_manager.get_free_midi_chans())
             if free_chans > 1:
                 return self.bank_manuals_list
             elif free_chans > 0:
@@ -625,8 +597,7 @@ class zynthian_engine_setbfree(zynthian_engine):
             if izmop is not None and izmop >= 0:
                 mchan = zctrl.processor.part_i
                 mval = zctrl.get_ctrl_midi_val()
-                lib_zyncore.zmop_send_ccontrol_change(
-                    izmop, mchan, zctrl.midi_cc, mval)
+                lib_zyncore.zmop_send_ccontrol_change(izmop, mchan, zctrl.midi_cc, mval)
         except Exception as err:
             logging.error(err)
 
@@ -667,8 +638,7 @@ class zynthian_engine_setbfree(zynthian_engine):
                             for frg in fragments[1:]:
                                 parts = frg.split('=')
                                 try:
-                                    params[parts[0].lower()] = parts[1].strip(
-                                        "\"\'")
+                                    params[parts[0].lower()] = parts[1].strip("\"\'")
                                 except:
                                     pass
 

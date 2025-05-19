@@ -1936,11 +1936,18 @@ class zynthian_state_manager:
                     for chan_cc, cfg in midi_learn_state.items():
                         chan_cc = int(chan_cc)
                         for proc_id, symbol in cfg:
-                            if proc_id in self.chain_manager.processors:
+                            try:
                                 processor = self.chain_manager.processors[proc_id]
-                                chan = (chan_cc >> 8) & 0xff
-                                cc = chan_cc & 0x7f
-                                self.chain_manager.add_midi_learn(chan, cc, processor.controllers_dict[symbol], izmip)
+                            except:
+                                continue
+                            try:
+                                zctrl = processor.controllers_dict[symbol]
+                            except:
+                                logging.warning(f"Can't MIDI learn '{symbol}'. Controller not found in processor {proc_id}.")
+                                continue
+                            chan = (chan_cc >> 8) & 0xff
+                            cc = chan_cc & 0x7f
+                            self.chain_manager.add_midi_learn(chan, cc, zctrl, izmip)
 
             self.ctrldev_manager.set_state_drivers(ctrldev_state_drivers)
 

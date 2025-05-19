@@ -382,7 +382,7 @@ class zynthian_controller:
             if self.midi_cc_debounce:
                 if self.midi_cc_debounce_timer:
                     self.midi_cc_debounce_timer.cancel()
-                self.midi_cc_debounce_timer = Timer(0.02, self.debounce_cb, (value, True))
+                self.midi_cc_debounce_timer = Timer(0.02, self.midi_cc_debounce_cb, (value, True))
                 self.midi_cc_debounce_timer.start()
             else:
                 self.set_value(value, send=True)
@@ -569,7 +569,7 @@ class zynthian_controller:
     # MIDI CC processing
     # ----------------------------------------------------------------------------
 
-    def debounce_cb(self, val, send):
+    def midi_cc_debounce_cb(self, val, send):
         self.midi_cc_debounce_timer = None
         self.set_value(val, send)
 
@@ -600,7 +600,7 @@ class zynthian_controller:
             if self.midi_cc_debounce:
                 if self.midi_cc_debounce_timer:
                     self.midi_cc_debounce_timer.cancel()
-                self.midi_cc_debounce_timer = Timer(0.02, self.debounce_cb, (value, send))
+                self.midi_cc_debounce_timer = Timer(0.02, self.midi_cc_debounce_cb, (value, send))
                 self.midi_cc_debounce_timer.start()
             else:
                 self.set_value(value, send)

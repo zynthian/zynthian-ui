@@ -270,8 +270,7 @@ class zynthian_chain_manager:
         zynautoconnect.request_audio_connect(fast_refresh)
         zynautoconnect.request_midi_connect(fast_refresh)
 
-        logging.debug(
-            f"ADDED CHAIN {chain_id} => midi_chan={chain.midi_chan}, mixer_chan={chain.mixer_chan}, zmop_index={chain.zmop_index}")
+        logging.debug(f"ADDED CHAIN {chain_id} => midi_chan={chain.midi_chan}, mixer_chan={chain.mixer_chan}, zmop_index={chain.zmop_index}")
         # logging.debug(f"ordered_chain_ids = {self.ordered_chain_ids}")
         # logging.debug(f"midi_chan_2_chain_ids = {self.midi_chan_2_chain_ids}")
 
@@ -1392,20 +1391,21 @@ class zynthian_chain_manager:
 
         key_low = (midi_chan << 8) | cc_num
 
-        # Handle controller feedback from setBfree engine => setBfree sends feedback in channel 0
+        # Handle controller feedback from setBfree engine => setBfree sends feedback in assigned MIDI channels
         # Each engine sending feedback should use a separated zmip, currently only setBfree does.
         if zmip == ZMIP_CTRL_INDEX:
-            # logging.debug(f"MIDI CONTROL FEEDBACK {midi_chan}, {cc_num} => {cc_val}")
-            try:
-                for proc in zynautoconnect.ctrl_fb_procs:
+            #logging.debug(f"MIDI CONTROL FEEDBACK {midi_chan}, {cc_num} => {cc_val}")
+            for proc in zynautoconnect.ctrl_fb_procs:
+                try:
                     if proc.part_i == midi_chan:
-                        key = (proc.chain_id << 16) | key_low
-                        zctrls = self.chain_midi_cc_binding[key]
-                        for zctrl in zctrls:
-                            # logging.debug(f"CONTROLLER FEEDBACK {zctrl.symbol} ({midi_chan}) => {cc_val}")
-                            zctrl.midi_control_change(cc_val, send=False)
-            except Exception as e:
-                logging.warning(f"Can't manage control feedback for CH{midi_chan}:CC{cc_num} => {e}")
+                        for symbol, zctrl in proc.controllers_dict.items():
+                            if zctrl.midi_cc == cc_num:
+                                #logging.debug(f"CONTROLLER FEEDBACK {proc.id}:{symbol} ({midi_chan}:{cc_num}) => {cc_val}")
+                                #zctrl.midi_control_change(cc_val, send=False)
+                                zctrl.set_value(cc_val, send=False)
+                                return
+                except Exception as e:
+                    logging.warning(f"Can't manage control feedback for CH{midi_chan}:CC{cc_num} => {e}")
             return
 
         # Handle absolute CC binding
