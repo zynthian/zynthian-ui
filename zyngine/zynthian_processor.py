@@ -39,15 +39,14 @@ class zynthian_processor:
     # ---------------------------------------------------------------------------
 
     data_dir = os.environ.get('ZYNTHIAN_DATA_DIR', "/zynthian/zynthian-data")
-    my_data_dir = os.environ.get(
-        'ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data")
+    my_data_dir = os.environ.get('ZYNTHIAN_MY_DATA_DIR', "/zynthian/zynthian-my-data")
     ex_data_dir = os.environ.get('ZYNTHIAN_EX_DATA_DIR', "/media/usb0")
 
     # ------------------------------------------------------------------------
     # Initialization
     # ------------------------------------------------------------------------
 
-    def __init__(self, eng_code, eng_info, id=None):
+    def __init__(self, eng_code, eng_info, id=None, midi_autolearn=True):
         """ Create an instance of a processor
 
         A processor represents a block within a chain.
@@ -93,6 +92,7 @@ class zynthian_processor:
         self.ctrl_screens_dict = {}
         self.current_screen_index = -1
         self.auto_save_bank = False
+        self.midi_autolearn = midi_autolearn  # When true, auto-learn MIDI-CC based controllers
 
     def get_jackname(self, engine=False):
         """ Get the jackname for the processor's engine
@@ -196,8 +196,7 @@ class zynthian_processor:
 
         # Add favourites virtual bank if there is some preset marked as favourite
         if self.engine.show_favs_bank and len(self.engine.get_preset_favs(self)) > 0:
-            self.bank_list = [
-                ["*FAVS*", 0, "*** Favorites ***"]] + self.bank_list
+            self.bank_list = [["*FAVS*", 0, "*** Favorites ***"]] + self.bank_list
             for i in range(3):
                 self.bank_msb_info[i][0] += 1
 
@@ -227,12 +226,10 @@ class zynthian_processor:
 
             if bank_index != self.bank_index or self.bank_name != bank_name:
                 set_engine_needed = True
-                logging.info("Bank selected: %s (%d)" %
-                             (bank_name, bank_index))
+                logging.info(f"Bank selected: {bank_name} ({bank_index})")
             else:
                 set_engine_needed = False
-                logging.info("Bank already selected: %s (%d)" %
-                             (self.bank_name, bank_index))
+                logging.info(f"Bank already selected: {self.bank_name} ({bank_index})")
 
             self.bank_index = bank_index
             self.bank_name = bank_name
@@ -357,8 +354,7 @@ class zynthian_processor:
 
         # Check if preset is already loaded
         if not force_set_engine and self.engine.cmp_presets(preset_info, self.preset_info):
-            logging.info("Preset already selected: %s (%d)" %
-                         (preset_name, preset_index))
+            logging.info(f"Preset already selected: {preset_name} ({preset_index})")
             # Check if some other preset is preloaded
             if self.preload_info and not self.engine.cmp_presets(self.preload_info, self.preset_info):
                 set_engine_needed = True
@@ -366,8 +362,7 @@ class zynthian_processor:
                 set_engine_needed = False
         else:
             set_engine_needed = True
-            logging.info("Preset selected: %s (%d)" %
-                         (preset_name, preset_index))
+            logging.info(f"Preset selected: {preset_name} ({preset_index})")
 
         self.preset_index = preset_index
         self.preset_name = preset_name
@@ -438,8 +433,7 @@ class zynthian_processor:
                 self.preload_name = self.preset_list[preset_index][2]
                 self.preload_info = copy.deepcopy(
                     self.preset_list[preset_index])
-                logging.info("Preset Preloaded: %s (%d)" %
-                             (self.preload_name, preset_index))
+                logging.info(f"Preset Preloaded: {self.preload_name} ({preset_index})")
                 self.engine.set_preset(self, self.preload_info, True)
                 return True
         return False
@@ -453,8 +447,7 @@ class zynthian_processor:
             self.preload_index = None
             self.preload_name = None
             self.preload_info = None
-            logging.info("Restore Preset: %s (%d)" %
-                         (self.preset_name, self.preset_index))
+            logging.info(f"Restore Preset: {self.preset_name} ({self.preset_index})")
             self.engine.set_preset(self, self.preset_info)
             return True
         return False
@@ -533,7 +526,7 @@ class zynthian_processor:
     # Controllers Management
     # ---------------------------------------------------------------------------
 
-    def refresh_controllers(self, params = None):
+    def refresh_controllers(self, params=None):
         """Refresh processor controllers configuration"""
 
         if params:
@@ -684,9 +677,8 @@ class zynthian_processor:
 
         bank_msb : Bank MSB
         """
-        logging.debug("Received Bank MSB for CH#{}: {}".format(
-            self.midi_chan, bank_msb))
-        if bank_msb >= 0 and bank_msb <= 2:
+        logging.debug(f"Received Bank MSB for CH#{self.midi_chan}: {bank_msb}")
+        if 2 <= bank_msb >= 0:  # TODO Why this limit?
             self.bank_msb = bank_msb
 
     def midi_bank_lsb(self, bank_lsb):
@@ -695,17 +687,14 @@ class zynthian_processor:
         bank_lsb : Bank LSB
         """
         info = self.bank_msb_info[self.bank_msb]
-        logging.debug("Received Bank LSB for CH#{}: {} => {}".format(
-            self.midi_chan, bank_lsb, info))
+        logging.debug(f"Received Bank LSB for CH#{self.midi_chan}: {bank_lsb} => {info}")
         if bank_lsb < info[1]:
-            logging.debug("MSB offset for CH#{}: {}".format(
-                self.midi_chan, info[0]))
+            logging.debug(f"MSB offset for CH#{self.midi_chan}: {info[0]}")
             self.set_show_fav_presets(False)
             self.set_bank(info[0] + bank_lsb)
             self.load_preset_list()
         else:
-            logging.warning("Bank index {} doesn't exist for MSB {} on CH#{}".format(
-                bank_lsb, self.bank_msb, self.midi_chan))
+            logging.warning(f"Bank index {bank_lsb} doesn't exist for MSB {self.bank_msb} on CH#{self.midi_chan}")
 
     # ---------------------------------------------------------------------------
     # State Management
@@ -766,8 +755,7 @@ class zynthian_processor:
                     if "midi_cc_debounce" in ctrl_state:
                         zctrl.midi_cc_debounce = ctrl_state['midi_cc_debounce']
                 except Exception as e:
-                    logging.warning("Invalid controller for processor {}: {}".format(
-                        self.get_basepath(), e))
+                    logging.warning(f"Invalid controller for processor {self.get_basepath()}: {e}")
 
     def restore_state_legacy(self, state):
         """Restore legacy states from state

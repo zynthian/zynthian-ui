@@ -1191,8 +1191,7 @@ class zynthian_state_manager:
                         except:
                             pass
 
-                    self.chain_manager.set_state(
-                        state['chains'], engine_config, merge)
+                    self.chain_manager.set_state(state['chains'], engine_config, merge)
                 self.chain_manager.stop_unused_engines()
                 zynautoconnect.resume()
 

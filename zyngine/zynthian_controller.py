@@ -93,6 +93,7 @@ class zynthian_controller:
         # Parameters to send values if engine-specific send method not available
         self.midi_chan = None  # MIDI channel to send CC messages from control
         self.midi_cc = None  # MIDI CC number to send CC messages from control
+        self.midi_autolearn = True  # Auto-learn MIDI-CC based controllers
         self.midi_feedback = None  # [chan,cc] for MIDI control feedback
         self.midi_cc_momentary_switch = False
         self.midi_cc_mode = -1                  # CC mode: -1=unknown,  0=abs, 1=rel1, 2=rel2, 3=rel3
@@ -178,6 +179,8 @@ class zynthian_controller:
             self.midi_chan = options['midi_chan']
         if 'midi_cc' in options:
             self.midi_cc = options['midi_cc']
+        if 'midi_autolearn' in options:
+            self.midi_autolearn = options['midi_autolearn']
         if 'osc_port' in options:
             self.osc_port = options['osc_port']
         if 'osc_path' in options:
