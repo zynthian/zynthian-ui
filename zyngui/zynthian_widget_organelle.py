@@ -380,7 +380,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
             self.switch_i_selmode = None
             self.switch_i_aux = None
 
-        self.show_touch_widgets = True
+        #self.show_touch_widgets = True
         if layout['columns'] == 2:
             if self.show_touch_widgets:
                 self.wunit = int(0.015 * self.width)
