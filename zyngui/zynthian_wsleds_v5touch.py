@@ -91,6 +91,7 @@ class touchkeypad_button_colors:
 # Zynthian WSLeds class for LED emulation on touchscreen keypad V5
 # ---------------------------------------------------------------------------
 
+
 class zynthian_wsleds_v5touch(zynthian_wsleds_v5):
     """
     Emulation of wsleds for onscreen touch keypad V5

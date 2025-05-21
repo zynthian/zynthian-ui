@@ -1417,15 +1417,11 @@ class zynthian_gui:
     def cuia_screen_launcher(self, params=None):
         self.show_screen("launcher")
 
-    def cuia_screen_zynpad(self, params=None):
-        #TODO: Remove this legacy cuia
-        self.show_screen("launcher")
-
     def cuia_screen_pattern_editor(self, params=None):
         success = False
         if self.current_screen == "launcher":
             success = self.screens['launcher'].edit_clip()
-        elif self.current_screen in ("arranger", "launcher"):
+        elif self.current_screen == "arranger":
             success = self.screens[self.current_screen].show_pattern_editor()
         if not success:
             self.show_screen("pattern_editor")
