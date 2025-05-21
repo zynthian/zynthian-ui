@@ -478,7 +478,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                         // else => Other cases must be bouncing or pedal "artifacts" that we ignore
                         // Manage rest of CCs
                     } else {
-                        // Remove old pedals => "Overdubbing" CC is a mess!
+                        // Remove old CCs => "Overdubbing" CC is a mess!
                         if (g_nLastStepCC < nStep)
                         	g_pPattern->removeControlInterval(g_nLastStepCC + 1, nStep, (uint8_t)midiEvent.buffer[1]);
                         // Add new CC event
@@ -537,9 +537,9 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     if (nState == JackTransportRolling) {
         bool bSync = false;              // True if at start of bar
         jack_nframes_t nClockOffset = 0; // Position within this period that clock 0 occurs
+        // There should always be a clock scheduled for internal clock source when transport is rolling
         if (g_nClockSource & TRANSPORT_CLOCK_INTERNAL && g_qClockPos.empty())
-            g_qClockPos.push(std::pair<double, double>(
-                nNow, g_dFramesPerClock)); // There should always be a clock scheduled for internal clock source when transport is rolling
+            g_qClockPos.push(std::pair<double, double>(nNow, g_dFramesPerClock));
         while (!g_qClockPos.empty() && (g_qClockPos.front().first < nNow + nFrames)) {
             bSync = false;
             if (g_nClock == 0) {
@@ -553,9 +553,9 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             // Schedule events in next period
             // Pass clock time and schedule to pattern manager so it can populate with events. Pass sync pulse so that it can synchronise its sequences, e.g.
             // start zynpad sequences
-            g_nPlayingSequences =
-                g_seqMan.clock(g_qClockPos.front(), &g_mSchedule, bSync); //!@todo Optimise to reduce rate calling clock especially if we increase the clock
-                                                                          //!rate from 24 to 96 or above. Maybe return the time until next check
+            g_nPlayingSequences = g_seqMan.clock(g_qClockPos.front(), &g_mSchedule, bSync);
+            //!@todo Optimise to reduce rate calling clock especially if we increase the clock rate from 24 to 96 or above. Maybe return the time until next check
+
             // Advance clock
             if (++g_nClock >= PPQN) {
                 g_nClock = 0;
@@ -1846,6 +1846,12 @@ float getControlDuration(uint32_t step, uint8_t control) {
 uint8_t getControlValue(uint32_t step, uint8_t control) {
     if (g_pPattern)
         return g_pPattern->getControlValue(step, control);
+    return 0;
+}
+
+uint8_t getControlValueEnd(uint32_t step, uint8_t control) {
+    if (g_pPattern)
+        return g_pPattern->getControlValueEnd(step, control);
     return 0;
 }
 

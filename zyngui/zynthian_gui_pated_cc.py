@@ -149,11 +149,11 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     # duration: Duration of cell in steps
     # offset: Factor to offset start of note
     # return: Coordinates required to draw cell
-    def get_cell(self, col, row, duration, offset):
+    def get_cell(self, col, row, duration, offset, height=1):
         x1 = int((col + offset) * self.step_width) + 1
         y1 = self.grid_height - (self.row0 + row + 1) * self.row_height + 1
         x2 = x1 + int(self.step_width * duration) - 1
-        y2 = y1 + self.row_height - 1
+        y2 = y1 + height * self.row_height - 1
         return [x1, y1, x2, y2]
 
     def get_cc_value(self, step):
@@ -202,9 +202,12 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     # row: Index of row
     # white: True for white notes
     def draw_cell(self, step, row, white=None):
+        duration = self.zynseq.libseq.getControlDuration(step, self.cc_num)
         offset = self.zynseq.libseq.getControlOffset(step, self.cc_num)
-        coord = self.get_cell(step, row, 1, offset)
-        self.grid_canvas.create_rectangle(coord, fill="white", width=0, tags=("ccevent", f"step{step}"))
+        val2 = self.zynseq.libseq.getControlValueEnd(step, self.cc_num)
+        coord = self.get_cell(step, row, duration, offset, row - val2)
+        #self.grid_canvas.create_rectangle(coord, fill="white", width=0, tags=("ccevent", f"step{step}"))
+        self.grid_canvas.create_line(coord, fill="white", width=2, tags=("ccevent", f"step{step}"))
 
     # Function to update selectedCell
     # step: Step (column) of selected cell (Optional - default to reselect current column)

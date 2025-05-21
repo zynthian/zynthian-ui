@@ -403,6 +403,13 @@ float getControlDuration(uint32_t step, uint8_t control);
 */
 uint8_t getControlValue(uint32_t step, uint8_t control);
 
+/** @brief  Get end value of control in selected pattern
+    @param  step Index of step at which control resides
+    @param  control MIDI control number
+    @retval uint8_t end control value (0..127)
+*/
+uint8_t getControlValueEnd(uint32_t step, uint8_t control);
+
 /** @brief  Set value of control in selected pattern
     @param  step Index of step at which control resides
     @param  control MIDI control number

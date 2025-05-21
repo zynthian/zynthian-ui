@@ -336,6 +336,13 @@ class Pattern {
     */
     uint8_t getControlValue(uint32_t step, uint8_t control);
 
+    /** @brief  Get value end of control
+        @param  position Quantity of steps from start of pattern at which control starts
+        @param  control MIDI control number
+        @retval uint8_t end MIDI value of control
+    */
+    uint8_t getControlValueEnd(uint32_t step, uint8_t control);
+
     /** @brief  Set value of control
         @param  position Quantity of steps from start of pattern at which control starts
         @param  control MIDI control number

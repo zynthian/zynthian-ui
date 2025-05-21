@@ -267,9 +267,31 @@ uint8_t Pattern::getProgramChange(uint32_t step) {
 bool Pattern::addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, float duration, float offset) {
     if (step > (m_nBeats * m_nStepsPerBeat) || control > 127 || valueStart > 127 || valueEnd > 127 || duration > (m_nBeats * m_nStepsPerBeat))
         return false;
+
+    auto it = m_vEvents.begin();
+    auto it_prev = m_vEvents.begin();
+    for (; it != m_vEvents.end(); ++it) {
+        if ((*it)->getValue1start() == control) {
+        	if ((*it)->getPosition() > step) {
+        		// Auto-set valueEnd from next CC event of same CC-num
+        		valueEnd = (*it)->getValue2start();
+        		duration = (*it)->getPosition() - step;
+        		// Auto-set valueEnd for previous CC event of same CC-num
+				break;
+            } else if ((*it)->getPosition() < step) {
+            	it_prev = it;
+            }
+        }
+    }
+	if (it != it_prev) {
+		(*it_prev)->setValue2end(valueStart);
+		(*it_prev)->setDuration(step - (*it_prev)->getPosition());
+	}
+
+	// Add new CC event
     StepEvent* pEvent = addEvent(step, MIDI_CONTROL, control, valueStart, duration, offset);
-    //!@todo Iterate through duration, interpolating value, adding events
-    pEvent->setValue2end(valueEnd);
+	pEvent->setValue2end(valueEnd);
+
     return true;
 }
 
@@ -337,15 +359,46 @@ uint8_t Pattern::getControlValue(uint32_t step, uint8_t control) {
     return -1;
 }
 
+uint8_t Pattern::getControlValueEnd(uint32_t step, uint8_t control) {
+    for (StepEvent* ev : m_vEvents)
+        if (ev->getPosition() == step && ev->getCommand() == MIDI_CONTROL && ev->getValue1start() == control)
+            return ev->getValue2end();
+    return -1;
+}
+
 void Pattern::setControlValue(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd) {
     if (valueStart > 127 || valueEnd > 127)
         return;
-    for (StepEvent* ev : m_vEvents)
+
+	uint8_t duration = 0;
+    auto it = m_vEvents.begin();
+    auto it_prev = m_vEvents.begin();
+    for (; it != m_vEvents.end(); ++it) {
+        if ((*it)->getValue1start() == control) {
+        	if ((*it)->getPosition() > step) {
+        		// Auto-set valueEnd from next CC event of same CC-num
+        		valueEnd = (*it)->getValue2start();
+        		duration = (*it)->getPosition() - step;
+        		// Auto-set valueEnd for previous CC event of same CC-num
+				break;
+            } else if ((*it)->getPosition() < step) {
+            	it_prev = it;
+            }
+        }
+    }
+	if (it != it_prev) {
+		(*it_prev)->setValue2end(valueStart);
+		(*it_prev)->setDuration(step - (*it_prev)->getPosition());
+	}
+
+    for (StepEvent* ev : m_vEvents) {
         if (ev->getPosition() == step && ev->getCommand() == MIDI_CONTROL && ev->getValue1start() == control) {
             ev->setValue2end(valueStart);
             ev->setValue2start(valueEnd);
+            if (duration > 0) ev->setDuration(duration);
             return;
         }
+    }
 }
 
 uint32_t Pattern::getSteps() { return (m_nBeats * m_nStepsPerBeat); }
