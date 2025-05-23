@@ -74,10 +74,32 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     # -------------------------------------------------------------------------
 
     def get_menu_options(self):
-        return super().get_menu_options()
+        menu_options = super().get_menu_options()
+        # Pattern Options
+        options = {}
+        if self.zynseq.libseq.getInterpolateCC(self.cc_num):
+            options[f"\u2612 Interpolate CC{self.cc_num} values"] = 'Interpolate CC OFF'
+        else:
+            options[f"\u2610 Interpolate CC{self.cc_num} values"] = 'Interpolate CC ON'
+        menu_options['PATTERN OPTIONS'].update(options)
+        # Pattern Edit
+        options = {}
+        options[f"Clear pattern CC{self.cc_num}"] = 'Clear pattern CC'
+        menu_options['PATTERN EDIT'].update(options)
+        return menu_options
 
     def menu_cb(self, option, params):
-        super().menu_cb(option, params)
+        match params:
+            case 'Interpolate CC OFF':
+                self.zynseq.libseq.setInterpolateCC(self.cc_num, False)
+                self.redraw_pending = 2
+            case 'Interpolate CC ON':
+                self.zynseq.libseq.setInterpolateCC(self.cc_num, True)
+                self.redraw_pending = 2
+            case 'Clear pattern CC':
+                self.clear_pattern_cc()
+            case _:
+                super().menu_cb(option, params)
 
     def send_controller_value(self, zctrl):
         super().send_controller_value(zctrl)
@@ -90,6 +112,17 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     # index: Pattern index
     def load_pattern(self, index):
         super().load_pattern(index)
+
+    # Function to clear CC events on pattern
+    def clear_pattern_cc(self, params=None):
+        self.zyngui.show_confirm(f"Clear CC{self.cc_num} in pattern {self.pattern}?", self.do_clear_pattern_cc)
+
+    # Function to actually clear CC events
+    def do_clear_pattern_cc(self, params=None):
+        self.save_pattern_snapshot(now=True, force=False)
+        self.zynseq.libseq.clearControl(self.cc_num)
+        self.save_pattern_snapshot(now=True, force=True)
+        self.select_cell()
 
     # -------------------------------------------------------------------------
     # Controller callback
@@ -157,9 +190,9 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         return [x1, y1, x2, y2]
 
     def get_cc_value(self, step):
-        step = self.zynseq.libseq.getControlStart(step, self.cc_num)
-        if step >= 0:
-            return self.zynseq.libseq.getControlValue(step, self.cc_num)
+        val = self.zynseq.libseq.getControlValue(step, self.cc_num)
+        if val <= 127:
+            return val
         else:
             return None
 
@@ -328,7 +361,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
                         self.grid_canvas.delete(f"step{step}")
                         self.draw_cell(step, newval)
                 # Select cell
-                self.select_cell(None, self.selected_cell[1] + dval)
+                self.select_cell(step, self.selected_cell[1] + dval)
             return True
         elif i == self.ctrl_order[3]:
             if self.edit_mode == EDIT_MODE_NONE:

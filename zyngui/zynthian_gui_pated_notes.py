@@ -197,6 +197,7 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         menu_options['PATTERN OPTIONS'].update(options)
         # Pattern Edit
         options = {}
+        options[f"Clear pattern notes"] = 'Clear pattern notes'
         options['Transpose pattern'] = 'Transpose pattern'
         menu_options['PATTERN EDIT'].update(options)
         return menu_options
@@ -230,6 +231,8 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             case 'Transpose pattern':
                 self.enable_param_editor(self, 'transpose', {'name': 'Transpose', 'value_min': -1, 'value_max': 1,
                                                              'labels': ['down', 'down/up', 'up'], 'value': 0})
+            case 'Clear pattern notes':
+                self.clear_pattern_notes()
             case _:
                 super().menu_cb(option, params)
 
@@ -311,6 +314,17 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
         self.set_title()
         self.set_grid_zoom(self.zynseq.libseq.getPatternZoom())
+
+    # Function to clear Note events on pattern
+    def clear_pattern_notes(self, params=None):
+        self.zyngui.show_confirm(f"Clear notes in pattern {self.pattern}?", self.do_clear_pattern_notes)
+
+    # Function to actually clear CC events
+    def do_clear_pattern_notes(self, params=None):
+        self.save_pattern_snapshot(now=True, force=False)
+        self.zynseq.libseq.clearNotes()
+        self.save_pattern_snapshot(now=True, force=True)
+        self.select_cell()
 
     # -------------------------------------------------------------------------
     # Scales and keymap

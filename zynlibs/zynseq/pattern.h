@@ -7,6 +7,8 @@
 #define MAX_STUTTER_COUNT 32
 #define MAX_STUTTER_DUR 96
 
+#define FLAG_CC_INTERPOLATION 1
+
 const static uint32_t PPQN = 24;
 
 /** StepEvent class provides an individual step event .
@@ -166,6 +168,10 @@ class Pattern {
     */
     void removeNote(uint32_t step, uint8_t note);
 
+    /** @brief  Remove all note events from pattern
+    */
+	void clearNotes();
+
     /** @brief  Get step that note starts
         @param  position Quantity of steps from start of pattern at which to check for note
         @param  note MIDI note number
@@ -301,6 +307,11 @@ class Pattern {
     */
     void removeControlInterval(uint32_t stepFrom, uint32_t stepTo, uint8_t control);
 
+    /** @brief  Remove all continuous controller events from pattern
+        @param  control MIDI controller number
+    */
+	void clearControl(uint8_t control);
+
     /** @brief  Get step that control starts
         @param  position Quantity of steps from start of pattern at which to check for control
         @param  control MIDI control number
@@ -350,6 +361,16 @@ class Pattern {
         @param  valueEdn MIDI value at end of event
     */
     void setControlValue(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd);
+
+    /** @brief  Calculate durations and end values so CC events are joined and can be interpolated
+        @param  control MIDI control number
+    */
+	void joinControlEvents(uint8_t control);
+
+    /** @brief  Set duration and end values so CC events are stepped, not interpolated
+        @param  control MIDI control number
+    */
+	void stepControlEvents(uint8_t control);
 
     /** @brief  Get quantity of steps in pattern
         @retval uint32_t Quantity of steps
@@ -525,6 +546,22 @@ class Pattern {
     */
     void setQuantizeNotes(bool flag);
 
+    /** @brief  Get the "Interpolate CC values" flag for a given CC number
+        @param  ccnum
+        @retval bool flag
+    */
+    bool getInterpolateCC(uint8_t ccnum);
+
+    /** @brief  Set the "Interpolate CC" flag for a given CC number
+    	@param  ccnum
+        @param  flag
+    */
+    void setInterpolateCC(uint8_t ccnum, bool flag);
+
+    /** @brief  Set "Interpolate CC" flags to default values for each CC number
+    */
+    void setInterpolateCCDefaults();
+
     /** @brief  Get last populated step
         @retval uint32_t Index of last step that contains any events or -1 if pattern is empty
     */
@@ -558,6 +595,7 @@ class Pattern {
     uint8_t m_nTonic = 0;          // Scale tonic (root note)
     uint8_t m_nRefNote = 60;       // Note at which to position pattern editor
     bool m_bQuantizeNotes = false; // Quantize note time so it plays in the nearest step boundary
+    bool m_bInterpolateCC[127];    // Enable/Disable CC value interpolation for each CC number
     uint32_t m_nSwingDiv = 1;      // Swing division, range from 1 to pPattern->getStepsPerBeat()
     float m_fSwingAmount = 0.0;    // Swing amount, range from 0 to 1, but over 0.5 is not "MPC swing"
     float m_fHumanTime = 0.0;      // Timing Humanization, range from 0 to FLOAT_MAX

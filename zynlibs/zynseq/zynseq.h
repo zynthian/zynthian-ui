@@ -330,6 +330,10 @@ bool addNote(uint32_t step, uint8_t note, uint8_t velocity, float duration, floa
 */
 void removeNote(uint32_t step, uint8_t note);
 
+/** @brief  Remove all note events from pattern
+*/
+void clearNotes();
+
 /** @brief  Get step that note starts
     @param  position Quantity of steps from start of pattern at which to check for note
     @param  note MIDI note number
@@ -376,11 +380,16 @@ void setNoteOffset(uint32_t step, uint8_t note, float offset);
 */
 bool addControl(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd, float duration, float offset = 0.0);
 
-/** @brief  Removes control from selected pattern
+/** @brief  Removes a control step from selected pattern
     @param  step Index of step at which to remove control
     @param  control MIDI control number to remove
 */
 void removeControl(uint32_t step, uint8_t control);
+
+/** @brief  Clean all control steps from selected pattern
+    @param  control MIDI control number to remove
+*/
+void clearControl(uint8_t control);
 
 /** @brief  Get step that control starts
     @param  position Quantity of steps from start of pattern at which to check for control
@@ -705,6 +714,22 @@ bool getQuantizeNotes();
     @param  flag
 */
 void setQuantizeNotes(bool flag);
+
+/** @brief  Get the "Interpolate CC values" flag for a given CC number
+	@param  ccnum
+	@retval bool flag
+*/
+bool getInterpolateCC(uint8_t ccnum);
+
+/** @brief  Set the "Interpolate CC" flag for a given CC number
+	@param  ccnum
+	@param  flag
+*/
+void setInterpolateCC(uint8_t ccnum, bool flag);
+
+/** @brief  Set "Interpolate CC" flags to default values for each CC number
+*/
+void setInterpolateCCDefaults();
 
 // ** Track management functions **
 

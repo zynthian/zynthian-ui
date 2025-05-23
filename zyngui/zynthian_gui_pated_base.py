@@ -363,9 +363,8 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             options[f"Paste from clipboard ({self.pattern2copy})"] = 'Paste pattern'
         options['Load pattern'] = 'Load pattern'
         options['Save pattern'] = 'Save pattern'
-        options['Clear pattern'] = 'Clear pattern'
         options['Export to SMF'] = 'Export to SMF'
-        options['Export to SMF'] = 'Export to SMF'
+        options['Clear pattern ALL'] = 'Clear pattern ALL'
         menu_options['PATTERN EDIT'] = options
         return menu_options
 
@@ -439,10 +438,11 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 self.zyngui.show_screen('option')
             case 'Save pattern':
                 self.zyngui.show_keyboard(self.save_pattern_file, "pat#{}".format(self.pattern))
-            case 'Clear pattern':
-                self.clear_pattern()
             case 'Export to SMF':
                 self.zyngui.show_keyboard(self.export_smf, "pat#{}".format(self.pattern))
+            case 'Clear pattern ALL':
+                self.clear_pattern_all()
+
             # Sequence options
             case "Repeat count":
                 labels = ["DISABLED", "PLAY ONCE", "PLAY TWICE"]
@@ -646,12 +646,12 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         if not self.changed and self.zynseq.libseq.redoPatternAll():
             self.redraw_pending = 3
 
-    # Function to clear a pattern
-    def clear_pattern(self, params=None):
-        self.zyngui.show_confirm(f"Clear pattern {self.pattern}?", self.do_clear_pattern)
+    # Function to clear all events on pattern (notes & CC)
+    def clear_pattern_all(self, params=None):
+        self.zyngui.show_confirm(f"Clear pattern {self.pattern}?", self.do_clear_pattern_all)
 
     # Function to actually clear pattern
-    def do_clear_pattern(self, params=None):
+    def do_clear_pattern_all(self, params=None):
         self.save_pattern_snapshot(now=True, force=False)
         self.zynseq.libseq.clearPattern(self.pattern)
         self.save_pattern_snapshot(now=True, force=True)

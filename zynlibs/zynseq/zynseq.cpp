@@ -1778,6 +1778,14 @@ void removeNote(uint32_t step, uint8_t note) {
     }
 }
 
+void clearNotes() {
+    if (g_pPattern) {
+    	setPatternModified(g_pPattern, true, false);
+        g_pPattern->clearNotes();
+        g_bDirty = true;
+    }
+}
+
 int32_t getNoteStart(uint32_t step, uint8_t note) {
     if (g_pPattern)
         return g_pPattern->getNoteStart(step, note);
@@ -1827,6 +1835,14 @@ void removeControl(uint32_t step, uint8_t control) {
     if (g_pPattern) {
         setPatternModified(g_pPattern, true, false);
         g_pPattern->removeControl(step, control);
+        g_bDirty = true;
+    }
+}
+
+void clearControl(uint8_t control) {
+    if (g_pPattern) {
+    	setPatternModified(g_pPattern, true, false);
+        g_pPattern->clearControl(control);
         g_bDirty = true;
     }
 }
@@ -2070,6 +2086,22 @@ bool getQuantizeNotes() {
 void setQuantizeNotes(bool flag) {
     if (g_pPattern)
         g_pPattern->setQuantizeNotes(flag);
+}
+
+void setInterpolateCC(uint8_t ccnum, bool flag) {
+    if (g_pPattern)
+        g_pPattern->setInterpolateCC(ccnum, flag);
+}
+
+bool getInterpolateCC(uint8_t ccnum) {
+    if (g_pPattern)
+        return g_pPattern->getInterpolateCC(ccnum);
+    return false;
+}
+
+void setInterpolateCCDefaults() {
+    if (g_pPattern)
+        g_pPattern->setInterpolateCCDefaults();
 }
 
 uint32_t getLastStep() {

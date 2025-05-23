@@ -6,6 +6,7 @@
 Pattern::Pattern(uint32_t beats, uint32_t stepsPerBeat) : m_nBeats(beats), m_nStepsPerBeat(stepsPerBeat) {
     setStepsPerBeat(stepsPerBeat);
     resetSnapshots();
+	setInterpolateCCDefaults();
 }
 
 Pattern::Pattern(Pattern* pattern) { *this = *pattern; }
@@ -36,6 +37,8 @@ Pattern& Pattern::operator=(Pattern& p) {
     m_fHumanVelo = p.m_fHumanVelo;
     m_fPlayChance = p.m_fPlayChance;
     m_nZoom = p.m_nZoom;
+    // Copy flags array
+    for (int i; i<128; i++) m_bInterpolateCC[i] = p.m_bInterpolateCC[i];
     // Copy Events
     uint32_t i = 0;
     while (StepEvent* ev = p.getEventAt(i)) {
@@ -111,6 +114,18 @@ bool Pattern::addNote(uint32_t step, uint8_t note, uint8_t velocity, float durat
 }
 
 void Pattern::removeNote(uint32_t step, uint8_t note) { deleteEvent(step, MIDI_NOTE_ON, note); }
+
+void Pattern::clearNotes() {
+	auto it = m_vEvents.begin();
+    while (it != m_vEvents.end()) {
+        if ((*it)->getCommand() == MIDI_NOTE_ON) {
+            delete *it;
+            it = m_vEvents.erase(it);
+        } else {
+        	++it;
+        }
+    }
+}
 
 int32_t Pattern::getNoteStart(uint32_t step, uint8_t note) {
     for (StepEvent* ev : m_vEvents)
@@ -268,34 +283,18 @@ bool Pattern::addControl(uint32_t step, uint8_t control, uint8_t valueStart, uin
     if (step > (m_nBeats * m_nStepsPerBeat) || control > 127 || valueStart > 127 || valueEnd > 127 || duration > (m_nBeats * m_nStepsPerBeat))
         return false;
 
-    auto it = m_vEvents.begin();
-    auto it_prev = m_vEvents.begin();
-    for (; it != m_vEvents.end(); ++it) {
-        if ((*it)->getValue1start() == control) {
-        	if ((*it)->getPosition() > step) {
-        		// Auto-set valueEnd from next CC event of same CC-num
-        		valueEnd = (*it)->getValue2start();
-        		duration = (*it)->getPosition() - step;
-        		// Auto-set valueEnd for previous CC event of same CC-num
-				break;
-            } else if ((*it)->getPosition() < step) {
-            	it_prev = it;
-            }
-        }
-    }
-	if (it != it_prev) {
-		(*it_prev)->setValue2end(valueStart);
-		(*it_prev)->setDuration(step - (*it_prev)->getPosition());
-	}
-
-	// Add new CC event
+	if (m_bInterpolateCC[control]) stepControlEvents(control);
     StepEvent* pEvent = addEvent(step, MIDI_CONTROL, control, valueStart, duration, offset);
 	pEvent->setValue2end(valueEnd);
+	if (m_bInterpolateCC[control]) joinControlEvents(control);
 
     return true;
 }
 
-void Pattern::removeControl(uint32_t step, uint8_t control) { deleteEvent(step, MIDI_CONTROL, control); }
+void Pattern::removeControl(uint32_t step, uint8_t control) {
+	deleteEvent(step, MIDI_CONTROL, control);
+	if (m_bInterpolateCC[control]) joinControlEvents(control);
+}
 
 void Pattern::removeControlInterval(uint32_t stepFrom, uint32_t stepTo, uint8_t control) {
     uint32_t step;
@@ -309,6 +308,18 @@ void Pattern::removeControlInterval(uint32_t stepFrom, uint32_t stepTo, uint8_t 
         }
         for (step = stepFrom; step < getSteps(); step++) {
             deleteEvent(step, MIDI_CONTROL, control);
+        }
+    }
+}
+
+void Pattern::clearControl(uint8_t control) {
+	auto it = m_vEvents.begin();
+    while (it != m_vEvents.end()) {
+        if ((*it)->getCommand() == MIDI_CONTROL && (*it)->getValue1start() == control) {
+            delete *it;
+            it = m_vEvents.erase(it);
+        } else {
+        	++it;
         }
     }
 }
@@ -363,42 +374,64 @@ uint8_t Pattern::getControlValueEnd(uint32_t step, uint8_t control) {
     for (StepEvent* ev : m_vEvents)
         if (ev->getPosition() == step && ev->getCommand() == MIDI_CONTROL && ev->getValue1start() == control)
             return ev->getValue2end();
-    return -1;
+    return 0xff;
 }
 
 void Pattern::setControlValue(uint32_t step, uint8_t control, uint8_t valueStart, uint8_t valueEnd) {
     if (valueStart > 127 || valueEnd > 127)
         return;
+    auto it = m_vEvents.begin();
+    for (; it != m_vEvents.end(); ++it) {
+        if ((*it)->getCommand() == MIDI_CONTROL && (*it)->getValue1start() == control) {
+        	if ((*it)->getPosition() == step) {
+        		(*it)->setValue2start(valueStart);
+        		(*it)->setValue2end(valueEnd);
+        		if (m_bInterpolateCC[control]) joinControlEvents(control);
+        		break;
+        	}
+        }
+    }
+}
 
-	uint8_t duration = 0;
+void Pattern::joinControlEvents(uint8_t control) {
+	if (m_vEvents.size()<2)
+		return;
+    int32_t pos0 = -1;
+    uint8_t valueStart0;
+    uint8_t duration;
+    uint8_t valueEnd;
     auto it = m_vEvents.begin();
     auto it_prev = m_vEvents.begin();
-    for (; it != m_vEvents.end(); ++it) {
-        if ((*it)->getValue1start() == control) {
-        	if ((*it)->getPosition() > step) {
-        		// Auto-set valueEnd from next CC event of same CC-num
-        		valueEnd = (*it)->getValue2start();
-        		duration = (*it)->getPosition() - step;
-        		// Auto-set valueEnd for previous CC event of same CC-num
-				break;
-            } else if ((*it)->getPosition() < step) {
-            	it_prev = it;
-            }
-        }
-    }
-	if (it != it_prev) {
-		(*it_prev)->setValue2end(valueStart);
-		(*it_prev)->setDuration(step - (*it_prev)->getPosition());
+	for (; it != m_vEvents.end(); ++it) {
+	    if ((*it)->getCommand() == MIDI_CONTROL && (*it)->getValue1start() == control) {
+	    	if (pos0 >= 0) {
+				duration = (*it)->getPosition() - (*it_prev)->getPosition();
+				valueEnd = (*it)->getValue2start();
+				(*it_prev)->setValue2end(valueEnd);
+				(*it_prev)->setDuration(duration);
+				//fprintf(stderr, "Join CC%u values => Pos=%u, Duration=%u, Start=%u, End=%u\n", control, (*it_prev)->getPosition(), duration, (*it_prev)->getValue2start(), valueEnd);
+			} else {
+				pos0 = (*it)->getPosition();
+				valueStart0 = (*it)->getValue2start();
+			}
+			it_prev = it;
+		}
 	}
+	duration = getSteps() - (*it_prev)->getPosition() + pos0;
+	(*it_prev)->setValue2end(valueStart0);
+	(*it_prev)->setDuration(duration);
+	//fprintf(stderr, "Join CC%u values => Pos=%u, Duration=%u, Start=%u, End=%u\n", control, (*it_prev)->getPosition(), duration, (*it_prev)->getValue2start(), valueEnd);
+}
 
-    for (StepEvent* ev : m_vEvents) {
-        if (ev->getPosition() == step && ev->getCommand() == MIDI_CONTROL && ev->getValue1start() == control) {
-            ev->setValue2end(valueStart);
-            ev->setValue2start(valueEnd);
-            if (duration > 0) ev->setDuration(duration);
-            return;
-        }
-    }
+void Pattern::stepControlEvents(uint8_t control) {
+    auto it = m_vEvents.begin();
+	for (; it != m_vEvents.end(); ++it) {
+	    if ((*it)->getCommand() == MIDI_CONTROL && (*it)->getValue1start() == control) {
+			(*it)->setValue2end((*it)->getValue2start());
+			(*it)->setDuration(1);
+			//fprintf(stderr, "Step CC%u values => Pos=%u, Duration=%u, Start=%u, End=%u\n", control, (*it)->getPosition(), 1, (*it)->getValue2start(), (*it)->getValue2end());
+		}
+	}
 }
 
 uint32_t Pattern::getSteps() { return (m_nBeats * m_nStepsPerBeat); }
@@ -591,6 +624,27 @@ void Pattern::setRefNote(uint8_t note) {
 bool Pattern::getQuantizeNotes() { return m_bQuantizeNotes; }
 
 void Pattern::setQuantizeNotes(bool flag) { m_bQuantizeNotes = flag; }
+
+bool Pattern::getInterpolateCC(uint8_t ccnum) { return m_bInterpolateCC[ccnum]; }
+
+void Pattern::setInterpolateCC(uint8_t ccnum, bool flag) {
+	m_bInterpolateCC[ccnum] = flag;
+	if (flag) joinControlEvents(ccnum);
+	else stepControlEvents(ccnum);
+}
+
+void Pattern::setInterpolateCCDefaults() {
+	int ccnum;
+    for (ccnum=0; ccnum<128; ccnum++) m_bInterpolateCC[ccnum] = true;
+    m_bInterpolateCC[64] = false;
+    m_bInterpolateCC[66] = false;
+    m_bInterpolateCC[67] = false;
+    m_bInterpolateCC[69] = false;
+    for (ccnum=0; ccnum<128; ccnum++) {
+    	if (m_bInterpolateCC[ccnum]) joinControlEvents(ccnum);
+    	else stepControlEvents(ccnum);
+    }
+}
 
 uint32_t Pattern::getLastStep() {
     if (m_vEvents.size() == 0)
