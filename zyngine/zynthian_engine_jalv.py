@@ -141,7 +141,8 @@ class zynthian_engine_jalv(zynthian_engine):
             'padthv1': [],
             'Vex': [],
             'amsynth': ['modulation wheel'],
-            'JC303': ['modulation wheel']
+            'JC303': [],
+            'Novachord': []
         }
     }
 
