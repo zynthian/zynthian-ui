@@ -47,9 +47,12 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
 
     # Function to initialise class
     def __init__(self):
-        self.cc_num = 64
         self.row0 = 8
+        self.cc_num = 64
+        self.interpolateCC = True
+        self.marker_width = 5
         super().__init__()
+        self.marker_width = self.width // 150
 
     # Function to get name of this view
     def get_name(self):
@@ -77,7 +80,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         menu_options = super().get_menu_options()
         # Pattern Options
         options = {}
-        if self.zynseq.libseq.getInterpolateCC(self.cc_num):
+        if self.interpolateCC:
             options[f"\u2612 Interpolate CC{self.cc_num} values"] = 'Interpolate CC OFF'
         else:
             options[f"\u2610 Interpolate CC{self.cc_num} values"] = 'Interpolate CC ON'
@@ -92,9 +95,11 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         match params:
             case 'Interpolate CC OFF':
                 self.zynseq.libseq.setInterpolateCC(self.cc_num, False)
+                self.interpolateCC = False
                 self.redraw_pending = 2
             case 'Interpolate CC ON':
                 self.zynseq.libseq.setInterpolateCC(self.cc_num, True)
+                self.interpolateCC = True
                 self.redraw_pending = 2
             case 'Clear pattern CC':
                 self.clear_pattern_cc()
@@ -112,6 +117,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     # index: Pattern index
     def load_pattern(self, index):
         super().load_pattern(index)
+        self.interpolateCC = self.zynseq.libseq.getInterpolateCC(self.cc_num)
 
     # Function to clear CC events on pattern
     def clear_pattern_cc(self, params=None):
@@ -204,7 +210,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         super().redraw_grid_pending()
 
         if self.redraw_pending > 1:
-            if self.redraw_pending > 2:
+            if self.redraw_pending > 3:
                 self.piano_roll.delete("valtick")
                 self.grid_canvas.delete("gridhline")
                 grid_font = tkfont.Font(family=zynthian_gui_config.font_topbar[0], size=self.row_height * 4)
@@ -220,11 +226,6 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
                 if val is not None:
                     self.draw_cell(step, val)
 
-            # Set z-order to allow duration to show
-            if self.redraw_pending > 2:
-                for step in range(self.n_steps):
-                    self.grid_canvas.tag_lower(f"step{step}")
-
     # Function to draw pianoroll content
     def draw_pianoroll(self):
         #self.piano_roll.delete(tkinter.ALL)
@@ -239,8 +240,13 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         offset = self.zynseq.libseq.getControlOffset(step, self.cc_num)
         val2 = self.zynseq.libseq.getControlValueEnd(step, self.cc_num)
         coord = self.get_cell(step, row, duration, offset, row - val2)
-        #self.grid_canvas.create_rectangle(coord, fill="white", width=0, tags=("ccevent", f"step{step}"))
         self.grid_canvas.create_line(coord, fill="white", width=2, tags=("ccevent", f"step{step}"))
+        if self.interpolateCC:
+            coord[2] = coord[0] + self.marker_width
+            coord[3] = coord[1] + self.marker_width
+            coord[0] -= self.marker_width
+            coord[1] -= self.marker_width
+            self.grid_canvas.create_rectangle(coord, fill="white", width=0, tags=("ccevent", f"step{step}"))
 
     # Function to update selectedCell
     # step: Step (column) of selected cell (Optional - default to reselect current column)
@@ -282,11 +288,15 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         self.selected_cell = [step, row]
         # Position selector cell-frame
         coord = self.get_cell(step, row, 1, offset)
-        coord[0] -= 1
-        coord[1] -= 1
+        if self.interpolateCC:
+            sw = self.marker_width + 1
+            coord[2] = coord[0] + sw
+            coord[3] = coord[1] + sw
+            coord[0] -= sw
+            coord[1] -= sw
         cell = self.grid_canvas.find_withtag("selection")
         if not cell:
-            cell = self.grid_canvas.create_rectangle(coord, fill="", outline=SELECT_BORDER,
+            cell = self.grid_canvas.create_rectangle(coord, fill=SELECT_BORDER, outline=SELECT_BORDER,
                                                      width=self.select_thickness, tags="selection")
         else:
             self.grid_canvas.coords(cell, coord)
@@ -339,6 +349,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
                 elif self.cc_num > 127:
                     self.cc_num = 127
                 self.set_title()
+                self.interpolateCC = self.zynseq.libseq.getInterpolateCC(self.cc_num)
                 self.redraw_pending = 2
             return True
         if i == self.ctrl_order[1]:
@@ -358,8 +369,6 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
                         newval = 0
                     if newval != val:
                         self.zynseq.libseq.setControlValue(step, self.cc_num, newval, newval)
-                        self.grid_canvas.delete(f"step{step}")
-                        self.draw_cell(step, newval)
                 # Select cell
                 self.select_cell(step, self.selected_cell[1] + dval)
             return True
