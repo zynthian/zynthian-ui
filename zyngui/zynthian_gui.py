@@ -1383,7 +1383,10 @@ class zynthian_gui:
         except (AttributeError, TypeError):
             pass
 
-    # Screen/Mode management CUIAs
+    # -------------------------------------------------------------------
+    # Screen management CUIAs
+    # -------------------------------------------------------------------
+
     def cuia_toggle_screen(self, params=None):
         if params:
             self.toggle_screen(params[0])
@@ -1444,6 +1447,17 @@ class zynthian_gui:
             self.state_manager.set_busy_details(f"Closing in {i}s")
             sleep(1)
         self.state_manager.end_busy("clean_screen")
+
+    def cuia_refresh_screen(self, params=None):
+        if params is None or self.current_screen in params:
+            self.screen_lock.acquire()
+            self.screens[self.current_screen].build_view()
+            self.screens[self.current_screen].show()
+            self.screen_lock.release()
+
+    # -------------------------------------------------------------------
+    # Menu, Chain Control & Options, Bank/Presets:
+    # -------------------------------------------------------------------
 
     def cuia_chain_control(self, params=None):
         try:
@@ -1540,6 +1554,10 @@ class zynthian_gui:
     def cuia_preset_fav(self, params=None):
         self.show_favorites()
 
+    # -------------------------------------------------------------------
+    # MIDI Learn CUIAS:
+    # -------------------------------------------------------------------
+
     def cuia_enable_midi_learn_cc(self, params=None):
         # TODO: Find zctrl
         if len(params) == 2:
@@ -1607,7 +1625,19 @@ class zynthian_gui:
         except (AttributeError, TypeError) as err:
             logging.error(err)
 
+    def cuia_midi_unlearn_node(self, params=None):
+        if params:
+            self.chain_manager.remove_midi_learn([params[0], params[1]])
+
+    def cuia_midi_unlearn_chain(self, params=None):
+        if params:
+            self.chain_manager.clean_midi_learn(params[0])
+        else:
+            self.chain_manager.clean_midi_learn(self.chain_manager.active_chain_id)
+
+    # -------------------------------------------------------------------
     # Z2 knob touch
+    # -------------------------------------------------------------------
     def cuia_z2_zynpot_touch(self, params=None):
         if params:
             try:
@@ -1616,7 +1646,9 @@ class zynthian_gui:
                 pass
                 # TODO: Should all screens be derived from base?
 
-    # V5 knob click
+    # -------------------------------------------------------------------
+    # V5 knob's switch actions
+    # -------------------------------------------------------------------
     def cuia_v5_zynpot_switch(self, params):
         i = params[0]
         t = params[1].upper()
@@ -1673,17 +1705,10 @@ class zynthian_gui:
                 self.zynswitch_bold(i)
                 return
 
-    def cuia_midi_unlearn_node(self, params=None):
-        if params:
-            self.chain_manager.remove_midi_learn([params[0], params[1]])
-
-    def cuia_midi_unlearn_chain(self, params=None):
-        if params:
-            self.chain_manager.clean_midi_learn(params[0])
-        else:
-            self.chain_manager.clean_midi_learn(self.chain_manager.active_chain_id)
-
+    # -------------------------------------------------------------------
     # MIDI CUIAs
+    # -------------------------------------------------------------------
+
     def cuia_program_change(self, params=None):
         if len(params) > 0:
             pgm = int(params[0])
@@ -1709,7 +1734,9 @@ class zynthian_gui:
             else:
                 lib_zyncore.write_zynmidi_ccontrol_change(chan, cc, int(params[2]))
 
+    # -------------------------------------------------------------------
     # Common methods to control views derived from zynthian_gui_base
+    # -------------------------------------------------------------------
     def cuia_show_cursor(self, params=None):
         try:
             zynthian_gui_config.top.config(cursor="arrow")
@@ -1768,6 +1795,10 @@ class zynthian_gui:
         except (AttributeError, TypeError):
             pass
 
+    # -------------------------------------------------------------------
+    # Zynaptik config CUIAs (CV/gate, etc.)
+    # -------------------------------------------------------------------
+
     def cuia_zynaptik_cvin_set_volts_octave(self, params):
         try:
             lib_zyncore.zynaptik_cvin_set_volts_octave(float(params[0]))
@@ -1791,13 +1822,6 @@ class zynthian_gui:
             lib_zyncore.zynaptik_cvout_set_note0(int(params[0]))
         except Exception as err:
             logging.debug(err)
-
-    def cuia_refresh_screen(self, params=None):
-        if params is None or self.current_screen in params:
-            self.screen_lock.acquire()
-            self.screens[self.current_screen].build_view()
-            self.screens[self.current_screen].show()
-            self.screen_lock.release()
 
     # -------------------------------------------------------------------
     # Zynswitch Event Management
