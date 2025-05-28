@@ -1555,6 +1555,23 @@ class zynthian_gui:
         self.show_favorites()
 
     # -------------------------------------------------------------------
+    # ZS3 management CUIAs:
+    # -------------------------------------------------------------------
+
+    def cuia_zs3_load(self, params=None):
+        if len(params) >= 1:
+            if isinstance(params[0], int):
+                self.state_manager.load_zs3_by_index(params[0])
+            else:
+                self.state_manager.load_zs3(params[0])
+
+    def cuia_zs3_next(self, params=None):
+        self.state_manager.load_next_zs3()
+
+    def cuia_zs3_prev(self, params=None):
+        self.state_manager.load_prev_zs3()
+
+    # -------------------------------------------------------------------
     # MIDI Learn CUIAS:
     # -------------------------------------------------------------------
 

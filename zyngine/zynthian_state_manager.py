@@ -1759,6 +1759,31 @@ class zynthian_state_manager:
                             f"Purging chain {chain_id} from ZS3 {key}")
                         del state["chains"][chain_id]
 
+    def get_last_zs3_index(self):
+        return list(self.zs3.keys()).index(self.last_zs3_id)
+
+    def load_zs3_by_index(self, index):
+        try:
+            zs3_id = list(self.zs3.keys())[index]
+        except:
+            logging.warning(f"Can't find ZS3 with index {index}")
+            return
+        return self.load_zs3(zs3_id)
+
+    def load_next_zs3(self):
+        try:
+            index = self.get_last_zs3_index() + 1
+        except:
+            return False
+        return self.load_zs3_by_index(index)
+
+    def load_prev_zs3(self):
+        try:
+            index = self.get_last_zs3_index() - 1
+        except:
+            return False
+        return self.load_zs3_by_index(index)
+
     # ------------------------------------------------------------------
     # Jackd Info
     # ------------------------------------------------------------------
