@@ -58,17 +58,14 @@ class zynthian_gui_midi_cc(zynthian_gui_selector):
 
     def fill_list(self):
         self.list_data = []
-
         self.cc_route = (ctypes.c_uint8 * 128)()
         lib_zyncore.zmop_get_cc_route(self.zmop_index, self.cc_route)
-
         for ccnum, enabled in enumerate(self.cc_route):
             if enabled:
-                self.list_data.append(
-                    (str(ccnum), ccnum, "\u2612 CC {}".format(str(ccnum).zfill(2))))
+                bullet = "\u2612"
             else:
-                self.list_data.append(
-                    (str(ccnum), ccnum, "\u2610 CC {}".format(str(ccnum).zfill(2))))
+                bullet = "\u2610"
+            self.list_data.append((str(ccnum), ccnum, f"{bullet} CC {str(ccnum).zfill(2)}"))
         super().fill_list()
 
     def select_action(self, i, t='S'):

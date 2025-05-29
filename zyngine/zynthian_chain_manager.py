@@ -1276,11 +1276,23 @@ class zynthian_chain_manager:
 
         #self.print_midi_learn()
 
-    def remove_midi_learn(self, proc, symbol, chain=True, abs=True, zynstep=True):
+    def add_zynstep_midi_learn(self, midi_cc, zctrl):
+        """Adds a midi learn configuration for zynstep
+
+        midi_cc : CC number of CC message
+        zctrl : Controller object
+        """
+
+        self.add_midi_learn(None, midi_cc, zctrl, ZMIP_STEP_INDEX)
+
+    def remove_midi_learn(self, proc, symbol, chain=True, abs=True, zynstep=None):
         """Remove a midi learn configuration
 
         proc : Processor object
         symbol : Control symbol
+        chain : remove chain MIDI learn
+        abs : remove absolute MIDI learn
+        zynstep : remove zynstep MIDI learn. None for auto-delete (delete if it matches chain/abs MIDI learn).
         """
 
         try:
@@ -1289,13 +1301,20 @@ class zynthian_chain_manager:
             return
         self.remove_midi_learn_from_zctrl(zctrl, chain=chain, abs=abs, zynstep=zynstep)
 
-    def remove_midi_learn_from_zctrl(self, zctrl, chain=True, abs=True, zynstep=True):
+    def remove_midi_learn_from_zctrl(self, zctrl, chain=True, abs=True, zynstep=None):
         """Remove a midi learn configuration
 
         zctrl : zctrl object
+        chain : remove chain MIDI learn
+        abs : remove absolute MIDI learn
+        zynstep : remove zynstep MIDI learn. None for auto-delete (delete if it matches chain/abs MIDI learn).
         """
 
         logging.debug(f"(proccessor={zctrl.processor.id}, symbol={zctrl.symbol})")
+
+        if zynstep is None:
+            zynstep = not self.is_custom_zynstep_mapping(zctrl)
+
         if chain:
             for key in list(self.chain_midi_cc_binding):
                 zctrls = self.chain_midi_cc_binding[key]
@@ -1316,6 +1335,7 @@ class zynthian_chain_manager:
                     pass
                 if not zctrls:
                     self.absolute_midi_cc_binding.pop(key)
+
         if zynstep:
             for key in list(self.absolute_midi_cc_binding):
                 if (key >> 16) & 0xff != ZMIP_STEP_INDEX:
