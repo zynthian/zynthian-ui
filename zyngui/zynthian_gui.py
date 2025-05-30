@@ -170,7 +170,7 @@ class zynthian_gui:
         self.init_wsleds()
 
         # Init multitouch driver
-        if os.environ.get('DISPLAY_ROTATION', 'None') == 'Inverted' or zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
+        if os.environ.get('DISPLAY_ROTATION', 'None') == 'Inverted':
             self.multitouch = MultiTouch(invert_x_axis=True, invert_y_axis=True)
         else:
             self.multitouch = MultiTouch()
