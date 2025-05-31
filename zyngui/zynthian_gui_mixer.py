@@ -1324,8 +1324,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.midi_cc_cb(0, 0, cc, 0)
 
     def midi_cc_cb(self, izmip, chan, num, val):
-        if self.launcher_mode:
-            return
         try:
             index = (64, 66, 67, 69).index(num)
         except:
