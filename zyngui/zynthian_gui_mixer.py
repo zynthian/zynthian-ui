@@ -1947,13 +1947,18 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def highlight_launcher_slot(self, slot):
         if slot < 0 or slot > self.zynseq.slots:
             return
+        refresh_strips = False
         if self.launcher_offset > slot:
             self.launcher_offset = min(slot, self.zynseq.slots - zynthian_gui_config.visible_launchers)
+            refresh_strips = True
         elif self.launcher_offset <= slot - zynthian_gui_config.visible_launchers:
             self.launcher_offset = max(0, slot - zynthian_gui_config.visible_launchers + 1)
+            refresh_strips = True
         self.launcher_highlighted_slot = slot
         self.highlighted_strip.highlight_launcher(slot)
         self.set_highlighted_clip_info()
+        if refresh_strips:
+            self.refresh_visible_strips()
 
     def end_moving_chain(self):
         if zynthian_gui_config.enable_touch_navigation:
