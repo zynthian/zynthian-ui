@@ -325,7 +325,7 @@ class zynseq(zynthian_engine):
         # Update pad position and list of chains this sequence belongs
         used_chan = []
         col = 0
-        for i, chain_id in enumerate(self.state_manager.chain_manager.ordered_chain_ids):
+        for chain_id in self.state_manager.chain_manager.ordered_chain_ids:
             chain = self.state_manager.chain_manager.chains[chain_id]
             try:
                 processor = chain.get_processors("MIDI Synth")[0]

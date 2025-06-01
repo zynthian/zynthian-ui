@@ -394,7 +394,7 @@ void Pattern::setControlValue(uint32_t step, uint8_t control, uint8_t valueStart
 }
 
 void Pattern::joinControlEvents(uint8_t control) {
-	if (m_vEvents.size()<2)
+	if (m_vEvents.size() < 2)
 		return;
     int32_t pos0 = -1;
     uint8_t valueStart0;

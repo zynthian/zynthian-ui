@@ -420,6 +420,7 @@ class zynthian_engine_clippy(zynthian_engine):
 
         for slot in range(8):
             self.reset_pattern(slot)
+        self.zynseq.rebuild_all_launcher_info()
 
     def reset_pattern(self, slot):
             pattern = self.libseq.getPatternAt(255, self.sequence_offset + slot, 0, 0)
