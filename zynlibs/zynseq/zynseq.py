@@ -188,6 +188,8 @@ class zynseq(zynthian_engine):
                 except Exception as e:
                     logging.warning(e)
                     continue
+                if info["slot"] >= self.slots:
+                    continue
                 info["state"] = state
                 info["mode"] = mode
                 info["group"] = group
