@@ -669,7 +669,7 @@ class zynthian_engine(zynthian_basic_engine):
                     zctrl = zynthian_controller(self, ctrl[0], options)
                     processor.controllers_dict[zctrl.symbol] = zctrl
                     if zctrl.midi_cc is not None and processor.midi_autolearn and zctrl.midi_autolearn:
-                        self.state_manager.chain_manager.add_midi_learn(zctrl.midi_chan, zctrl.midi_cc, zctrl)
+                        self.state_manager.chain_manager.add_midi_learn(None, zctrl.midi_cc, zctrl)
 
         return processor.controllers_dict
 

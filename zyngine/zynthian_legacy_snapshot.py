@@ -135,8 +135,7 @@ class zynthian_legacy_snapshot:
         }
 
         try:
-            state["zs3"]["zs3-0"]["active_chain"] = int(
-                f"{self.snapshot['index']:02d}") + 1
+            state["zs3"]["zs3-0"]["active_chain"] = int(f"{self.snapshot['index']:02d}") + 1
         except:
             pass
 
@@ -246,8 +245,7 @@ class zynthian_legacy_snapshot:
             try:
                 for input in self.snapshot["audio_capture"][jackname]:
                     if input.startswith("system:capture_"):
-                        state["zs3"]["zs3-0"]["chains"][chain_id]["audio_in"].append(
-                            int(input.split("_")[1]))
+                        state["zs3"]["zs3-0"]["chains"][chain_id]["audio_in"].append(int(input.split("_")[1]))
             except:
                 pass
 
@@ -412,16 +410,13 @@ class zynthian_legacy_snapshot:
 
             # Fix-up audio outputs
             if chain_id == 0:
-                state["zs3"]["zs3-0"]["chains"][chain_id]["audio_out"].append(
-                    "system:playback_[1,2]$")
+                state["zs3"]["zs3-0"]["chains"][chain_id]["audio_out"].append("system:playback_[1,2]$")
             else:
                 for out in audio_out:
                     if out == "mixer":
-                        state["zs3"]["zs3-0"]["chains"][chain_id]["audio_out"].append(
-                            0)
+                        state["zs3"]["zs3-0"]["chains"][chain_id]["audio_out"].append(0)
                     elif isinstance(out, int):
-                        state["zs3"]["zs3-0"]["chains"][chain_id]["audio_out"].append(
-                            out)
+                        state["zs3"]["zs3-0"]["chains"][chain_id]["audio_out"].append(out)
 
             state["zs3"]["zs3-0"]["chains"][chain_id]["midi_out"] = midi_out
             fixed_slots = []

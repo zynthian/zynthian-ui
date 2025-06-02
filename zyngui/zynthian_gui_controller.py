@@ -470,19 +470,27 @@ class zynthian_gui_controller(tkinter.Canvas):
 				if self.zyngui.screens["control"].get_midi_learn() > 1:
 					self.plot_midi_bind("??#??", zynthian_gui_config.color_ml)
 				else:
-					self.plot_midi_bind("??", zynthian_gui_config.color_hl)
+					self.plot_midi_bind("??#??", zynthian_gui_config.color_hl)
 			elif self.zctrl == self.zyngui.state_manager.zctrl_x:
-				self.plot_midi_bind("X")
+				self.plot_midi_bind("X", zynthian_gui_config.color_alt2)
 			elif self.zctrl == self.zyngui.state_manager.zctrl_y:
-				self.plot_midi_bind("Y")
+				self.plot_midi_bind("Y", zynthian_gui_config.color_alt2)
 			elif midi_learn_params := self.zyngui.chain_manager.get_midi_learn_from_zctrl(self.zctrl):
-				zmip = (midi_learn_params[0] >> 24) & 0xff
-				chan = (midi_learn_params[0] >> 16) & 0xff
-				cc = (midi_learn_params[0] >> 8) & 0xff
-				if midi_learn_params[1]:
-					self.plot_midi_bind(f"{chan + 1}#{cc}")
-				else:
-					self.plot_midi_bind(f"{cc}")
+				key = midi_learn_params[0]
+				cc = key & 0xff
+				match midi_learn_params[1]:
+					case "abs":
+						#zmip = (key >> 16) & 0xff
+						chan = (key >> 8) & 0xff
+						self.plot_midi_bind(f"{chan + 1}#{cc}", zynthian_gui_config.color_ml)
+					case "chain":
+						chan = (key >> 8) & 0xff
+						if chan < 16:
+							self.plot_midi_bind(f"{chan + 1}#{cc}", zynthian_gui_config.color_hl)
+						else:
+							self.plot_midi_bind(f"{cc}")
+					case "zynstep":
+						self.plot_midi_bind(f"{cc}")
 			else:
 				self.erase_midi_bind()
 				return False
@@ -671,7 +679,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 		#logging.debug(f"CONTROL {self.index} PUSH => {self.canvas_push_ts} ({self.canvas_motion_x0},{self.canvas_motion_y0})")
 
 	def cb_canvas_release(self, event):
-		if self.canvas_push_ts and self.enabled:
+		if self.canvas_push_ts and self.enabled and self.zctrl:
 			dts = (datetime.now()-self.canvas_push_ts).total_seconds()
 			self.canvas_push_ts = None
 			#logging.debug(f"CONTROL {self.index} RELEASE => {dts}, {motion_rate}")

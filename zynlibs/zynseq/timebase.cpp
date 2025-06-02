@@ -1,6 +1,6 @@
 /*  Defines Timebase class providing tempo / time signature map
  *
- *   Copyright (c) 2020 Brian Walton
+ *   Copyright (c) 2020-2025 Brian Walton
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -57,10 +57,10 @@ void Timebase::addTimebaseEvent(uint16_t bar, uint16_t clock, uint16_t type, uin
             break; // Found point to insert
     }
     TimebaseEvent* pEvent = new TimebaseEvent;
-    pEvent->bar           = bar;
-    pEvent->clock         = clock;
-    pEvent->type          = type;
-    pEvent->value         = value;
+    pEvent->bar = bar;
+    pEvent->clock = clock;
+    pEvent->type = type;
+    pEvent->value = value;
     m_vEvents.insert(it, pEvent);
 }
 

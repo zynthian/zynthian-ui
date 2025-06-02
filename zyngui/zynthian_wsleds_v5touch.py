@@ -33,6 +33,7 @@ from zyngui.zynthian_wsleds_v5 import zynthian_wsleds_v5
 # Fake NeoPixel emulation for onscreen touch keypad "buttons"
 # ---------------------------------------------------------------------------
 
+
 class touchkeypad_button_colors:
     """
     Fake NeoPixel emulation to change colors of onscreen touch keypad
@@ -89,6 +90,7 @@ class touchkeypad_button_colors:
 # ---------------------------------------------------------------------------
 # Zynthian WSLeds class for LED emulation on touchscreen keypad V5
 # ---------------------------------------------------------------------------
+
 
 class zynthian_wsleds_v5touch(zynthian_wsleds_v5):
     """

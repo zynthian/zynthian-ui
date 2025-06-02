@@ -495,8 +495,6 @@ class zynthian_controller:
                     if ndval < dval:
                         dval = ndval
                         index = i
-                    else:
-                        break
                 return index
             else:
                 return None

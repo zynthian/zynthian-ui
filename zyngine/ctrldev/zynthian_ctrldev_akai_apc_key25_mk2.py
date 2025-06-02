@@ -944,23 +944,22 @@ class PadMatrixHandler(ModeHandlerBase):
         # If seqman is enabled, ignore row functions
         if self._seqman_func is not None:
             return False
-        if row >= self._zynseq.col_in_bank:
+        if row >= self._zynseq.LAUNCHER_COLS:
             return True
 
         # Get overall status: playing if at least one sequence is playing
         is_playing = False
-        for col in range(self._zynseq.col_in_bank):
-            seq = col * self._zynseq.col_in_bank + row
+        for col in range(self._zynseq.LAUNCHER_COLS):
+            seq = col * self._zynseq.LAUNCHER_COLS + row
             if seq in self._playing_seqs:
                 is_playing = True
                 break
 
         stop_states = (zynseq.SEQ_STOPPED, zynseq.SEQ_STOPPING,
                        zynseq.SEQ_STOPPINGSYNC)
-        play_states = (zynseq.SEQ_RESTARTING,
-                       zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING)
-        for col in range(self._zynseq.col_in_bank):
-            seq = col * self._zynseq.col_in_bank + row
+        play_states = (zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING)
+        for col in range(self._zynseq.LAUNCHER_COLS):
+            seq = col * self._zynseq.LAUNCHER_COLS + row
             # We only play sequences that are not empty
             if not is_playing and self._libseq.isEmpty(self._zynseq.bank, seq):
                 continue
@@ -1022,11 +1021,11 @@ class PadMatrixHandler(ModeHandlerBase):
         for c in range(self._cols):
             for r in range(self._rows):
                 # Pad outside grid, switch off
-                if c >= self._zynseq.col_in_bank or r >= self._zynseq.col_in_bank:
+                if c >= self._zynseq.LAUNCHER_COLS or r >= self._zynseq.LAUNCHER_COLS:
                     self.pad_off(c, r)
                     continue
 
-                seq = c * self._zynseq.col_in_bank + r
+                seq = c * self._zynseq.LAUNCHER_COLS + r
                 self._update_pad(seq, False)
 
         self._refresh_tool_buttons()
@@ -1065,7 +1064,10 @@ class PadMatrixHandler(ModeHandlerBase):
         self._leds.led_off(self._pads[index])
 
     def update_seq_state(self, bank, seq, state=None, mode=None, group=None, refresh=True):
-        col, row = self._zynseq.get_xy_from_pad(seq)
+        try:
+            col, row = self._zynseq.get_pad_coords(seq)
+        except:
+            return
         idx = col * self._rows + row
         if idx >= len(self._pads):
             return
@@ -1109,9 +1111,9 @@ class PadMatrixHandler(ModeHandlerBase):
         row = index % self._rows
 
         # Pad outside grid, discarded
-        if col >= self._zynseq.col_in_bank or row >= self._zynseq.col_in_bank:
+        if col >= self._zynseq.LAUNCHER_COLS or row >= self._zynseq.LAUNCHER_COLS:
             return None
-        return col * self._zynseq.col_in_bank + row
+        return col * self._zynseq.LAUNCHER_COLS + row
 
     def _handle_timed_button(self, btn, ptype):
         if btn == BTN_STOP_ALL_CLIPS:
@@ -1186,7 +1188,7 @@ class PadMatrixHandler(ModeHandlerBase):
 
         # If seqman is disabled, show playing status in row launchers
         playing_rows = {
-            seq % self._zynseq.col_in_bank for seq in self._playing_seqs}
+            seq % self._zynseq.LAUNCHER_COLS for seq in self._playing_seqs}
         for row in range(5):
             state = row in playing_rows
             self._leds.led_state(BTN_SOFT_KEY_START + row, state)
@@ -1764,7 +1766,7 @@ class StepSeqHandler(ModeHandlerBase):
                 pad) if args is None else self._leds.led_on(pad, *args)
 
     def set_sequence(self, seq):
-        self._libseq.setSequence(seq)
+        self._libseq.selectSequence(seq)
         self._selected_seq = seq
         self._sequence_patterns = self._get_sequence_patterns(
             self._zynseq.bank, seq, create=True)
@@ -1819,7 +1821,7 @@ class StepSeqHandler(ModeHandlerBase):
                     self._zynseq.bank, self._selected_seq)
                 state = self._libseq.getPlayState(
                     self._zynseq.bank, self._selected_seq)
-                if state in (zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING, zynseq.SEQ_RESTARTING):
+                if state in (zynseq.SEQ_STARTING, zynseq.SEQ_PLAYING):
                     self._is_stage_play = True
                     self.refresh()
             elif note == BTN_UP:
@@ -2046,7 +2048,7 @@ class StepSeqHandler(ModeHandlerBase):
             return
 
         note = self._selected_note.note
-        max_duration = self._libseq.getSteps()
+        max_duration = self._libseq.getSteps(self._selected_pattern)
         duration = self._libseq.getNoteDuration(step, note) + delta * 0.1
         duration = round(min(max_duration, max(0.1, duration)), 1)
         self._set_note_duration(step, note, duration)
@@ -2085,7 +2087,7 @@ class StepSeqHandler(ModeHandlerBase):
         self._play_step(step)
 
     def _update_note_pad_duration(self, pad, note_spec, delta):
-        max_duration = self._libseq.getSteps()
+        max_duration = self._libseq.getSteps(self._selected_pattern)
         note_spec.duration = \
             round(min(max_duration, max(0.1, note_spec.duration + delta * 0.1)), 1)
         self._play_note_pad(pad)
@@ -2322,13 +2324,13 @@ class StepSeqHandler(ModeHandlerBase):
         spb = self._libseq.getStepsPerBeat()
         self._clock.set_steps_per_beat(spb)
 
-        steps = self._libseq.getSteps()
+        steps = self._libseq.getSteps(self._selected_pattern)
         self._used_pads = min(32, steps)
         self._cursor = self._get_pattern_playhead()
 
     def _get_pattern_playhead(self):
         # NOTE: libseq.getPatternPlayhead() does not work here!
-        cps = self._libseq.getClocksPerStep()
+        cps = self._libseq.getClocksPerStep(self._selected_pattern)
         playpos = self._libseq.getPlayPosition(
             self._zynseq.bank, self._selected_seq)
         playpos -= self._pattern_clock_offset
@@ -2395,7 +2397,7 @@ class StepSeqHandler(ModeHandlerBase):
         current = self._libseq.getPatternIndex()
         pattern = self._sequence_patterns[index]
         self._libseq.selectPattern(pattern)
-        self._libseq.clear()
+        self._libseq.clearPattern(pattern)
         self._libseq.updateSequenceInfo()
         if current != -1 and current != pattern:
             self._libseq.selectPattern(current)
@@ -2456,7 +2458,7 @@ class StepSeqHandler(ModeHandlerBase):
         if self._selected_note is None:
             return retval
 
-        num_steps = min(32, self._libseq.getSteps())
+        num_steps = min(32, self._libseq.getSteps(self._selected_pattern))
         note = self._selected_note.note
         duration = None
         for step in range(num_steps):

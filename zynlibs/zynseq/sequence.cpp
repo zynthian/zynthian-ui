@@ -1,20 +1,45 @@
+/*  Defines sequence class providing collection of tracks
+ *
+ *   Copyright (c) 2020-2025 Brian Walton
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
 #include "sequence.h"
 
 Sequence::Sequence() {
     addTrack(); // Ensure new sequences have at least one track
 }
 
-uint8_t Sequence::getGroup() { return m_nGroup; }
+void Sequence::setSequenceId(uint8_t bank, uint8_t sequence) {
+    m_nId = (bank << 8) | sequence;
+}
+
+uint8_t Sequence::getGroup() {
+    return m_nGroup;
+}
 
 void Sequence::setGroup(uint8_t group) {
     if (m_nGroup == group)
         return;
-    m_nGroup   = group;
+    m_nGroup = group;
     m_bChanged = true;
 }
 
 uint32_t Sequence::addTrack(uint32_t track) {
-    auto it          = m_vTracks.begin();
+    auto it = m_vTracks.begin();
     uint32_t nReturn = ++track;
     if (track == -1 || track >= m_vTracks.size()) {
         m_vTracks.emplace_back();
@@ -52,12 +77,19 @@ Track* Sequence::getTrack(size_t index) {
     return NULL;
 }
 
-void Sequence::addTempo(uint16_t tempo, uint16_t bar, uint16_t tick) {
-    m_timebase.addTimebaseEvent(bar, tick, TIMEBASE_TYPE_TEMPO, tempo);
+void Sequence::addTempo(float tempo, uint16_t bar, uint16_t tick) {
+    m_timebase.addTimebaseEvent(bar, tick, TIMEBASE_TYPE_TEMPO, tempo * 100);
     m_bChanged = true;
 }
 
-uint16_t Sequence::getTempo(uint16_t bar, uint16_t tick) { return m_timebase.getTempo(bar, tick); }
+void Sequence::removeTempo(uint16_t bar, uint16_t tick) {
+    m_timebase.removeTimebaseEvent(bar, tick, TIMEBASE_TYPE_TEMPO);
+    m_bChanged = true;
+}
+
+float Sequence::getTempoAt(uint16_t bar, uint16_t tick) { return m_timebase.getTempo(bar, tick) / 100; }
+
+float Sequence::getTempo() { return m_fTempo; }
 
 void Sequence::addTimeSig(uint16_t beatsPerBar, uint16_t bar) {
     if (bar < 1)
@@ -66,7 +98,7 @@ void Sequence::addTimeSig(uint16_t beatsPerBar, uint16_t bar) {
     m_bChanged = true;
 }
 
-uint16_t Sequence::getTimeSig(uint16_t bar) {
+uint16_t Sequence::getTimeSigAt(uint16_t bar) {
     if (bar < 1)
         bar = 1;
     TimebaseEvent* pEvent = m_timebase.getPreviousTimebaseEvent(bar, 1, TIMEBASE_TYPE_TIMESIG);
@@ -75,70 +107,61 @@ uint16_t Sequence::getTimeSig(uint16_t bar) {
     return 4;
 }
 
+uint16_t Sequence::getTimeSig() { return m_nTimeSig; }
+
 Timebase* Sequence::getTimebase() {
     //!@todo Optimise timebase - only add a timebase track as required
     return &m_timebase;
 }
 
-uint8_t Sequence::getPlayMode() { return m_nMode; }
+uint8_t Sequence::getPlayMode() {
+    return m_nMode & 0x7F;
+}
 
 void Sequence::setPlayMode(uint8_t mode) {
-    if (mode > LASTPLAYMODE)
-        return;
     m_nMode = mode;
-    if (m_nMode == DISABLED)
-        m_nState = STOPPED;
+    if (m_nNextSeq != 0xFFFF)
+        mode |= 0x80;
     m_bChanged = true;
 }
 
 uint8_t Sequence::getPlayState() { return m_nState; }
 
 void Sequence::setPlayState(uint8_t state) {
+    if (state == STOPPING && m_nState == STOPPED)
+        return;
     uint8_t nState = m_nState;
-    if (m_nMode == DISABLED)
+    if (m_nRepeat == 0) // Disabled
         state = STOPPED;
     if (state == m_nState)
         return;
-    if ((m_nMode == ONESHOT || m_nMode == LOOP) && (state == STOPPING || state == STOPPING_SYNC))
+    if ((m_nMode & MODE_END_IMMEDIATE) && (state == STOPPING || state == STOPPING_SYNC)) {
         state = STOPPED;
+    }
     m_nState = state;
     if (m_nState == STOPPED)
-        if (m_nMode == ONESHOT) {
-            m_nPosition = m_nLastSyncPos;
-            for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it)
-                (*it).setPosition(m_nPosition);
-        } else
-            m_nPosition = 0;
+        m_nPosition = 0;
     m_bStateChanged |= (nState != m_nState);
     m_bChanged = true;
+    if (m_nState == STARTING || m_nState == STOPPED)
+        m_nCount = 0;
 }
 
-uint32_t Sequence::getState() { return (m_nGroup << 16) | (m_nMode << 8) | m_nState; }
+uint32_t Sequence::getState() { return (m_nRepeat << 24) | (m_nGroup << 16) | (m_nMode << 8) | m_nState; }
 
 uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
     m_nCurrentTrack = 0;
     uint8_t nReturn = 0;
-    uint8_t nState  = m_nState;
+    uint8_t nState = m_nState;
     if (bSync) {
-        if (m_nMode == ONESHOTSYNC && m_nState != STARTING)
-            m_nState = STOPPED;
+        if (m_nMode & MODE_END_SYNC) {
+            m_nPosition = 0;
+            if (m_nState == STOPPING)
+                m_nState = STOPPED;
+        }
         if (m_nState == STARTING)
             m_nState = PLAYING;
-        if (m_nState == RESTARTING) {
-            m_nState = PLAYING;
-            nState   = PLAYING;
-        }
-        if (m_nState == STOPPING && m_nMode == LOOPSYNC)
-            m_nState = STOPPED;
-        if (m_nState == STOPPING_SYNC) {
-            m_nState    = STOPPED;
-            m_nPosition = 0;
-        }
-        if (m_nMode == ONESHOTSYNC || m_nMode == LOOPSYNC)
-            m_nPosition = 0;
-        m_nLastSyncPos = m_nPosition;
-    } else if (m_nState == RESTARTING)
-        m_nState = STARTING;
+    }
 
     if (m_nState == PLAYING || m_nState == STOPPING || m_nState == STOPPING_SYNC) {
         // Still playing so iterate through tracks
@@ -148,32 +171,34 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
     }
     if (m_nPosition >= m_nLength) {
         // End of sequence
-        switch (m_nMode) {
-        case ONESHOT:
-        case ONESHOTALL:
-        case ONESHOTSYNC:
-            setPlayState(STOPPED);
-            break;
-        case LOOPSYNC:
-        case LOOPALL:
-            if (m_nState == PLAYING) {
-                m_nState = RESTARTING;
-                nState   = RESTARTING;
-            }
-        case LOOP:
-            if (m_nState == STOPPING || m_nState == STOPPING_SYNC)
+        if (m_nState == PLAYING) {
+            if (++m_nCount >= m_nRepeat && m_nNextSeq != m_nId) {
+                // Follow action
                 setPlayState(STOPPED);
+                nReturn |= 8;
+            }
+        } else {
+            m_nState = STOPPED;
         }
-        m_nPosition    = 0;
-        m_nLastSyncPos = 0;
+        m_nPosition = 0;
     }
 
     m_bStateChanged |= (nState != m_nState);
     if (m_bStateChanged) {
-        m_bChanged |= true;
+        m_bChanged = true;
         m_bStateChanged = false;
-        return nReturn | 2;
+        nReturn |= 2;
+        if (m_nState == PLAYING)
+            m_pNextTimebaseEvent = m_timebase.getFirstTimebaseEvent();
     }
+
+    if (nState != STOPPED && m_pNextTimebaseEvent && nTime >= m_pNextTimebaseEvent->clock) {
+        if (m_pNextTimebaseEvent->type == TIMEBASE_TYPE_TEMPO) {
+            m_fTempo = m_pNextTimebaseEvent->value / 100;
+            nReturn |= 4;
+        }
+    }
+
     return nReturn;
 }
 
@@ -194,7 +219,7 @@ SEQ_EVENT* Sequence::getEvent() {
 
 void Sequence::updateLength() {
     m_nLength = 0;
-    m_bEmpty  = true;
+    m_bEmpty = true;
     for (auto it = m_vTracks.begin(); it != m_vTracks.end(); ++it) {
         uint32_t nTrackLength = (*it).updateLength();
         if (nTrackLength > m_nLength)
@@ -226,4 +251,26 @@ void Sequence::setName(std::string sName) {
     m_sName.resize(16);
 }
 
-std::string Sequence::getName() { return m_sName; }
+std::string Sequence::getName() {
+    return m_sName;
+}
+
+void Sequence::setFollowAction(uint8_t bank, uint8_t sequence) {
+    m_nNextSeq = (bank << 8) | sequence;
+}
+
+uint16_t Sequence::getFollowAction() {
+    return m_nNextSeq;
+}
+
+void Sequence::setRepeat(uint8_t repeat) {
+    m_nRepeat = repeat;
+    if (repeat)
+        m_nMode |= 0x80;
+    else
+        m_nMode &= 0x7F;
+}
+
+uint8_t Sequence::getRepeat() {
+    return m_nRepeat;
+}

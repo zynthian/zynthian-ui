@@ -5,7 +5,6 @@ UseTab: Never
 ColumnLimit: 160
 PointerAlignment: Left
 AllowShortEnumsOnASingleLine: false
-AlignConsecutiveAssignments:
-  Enabled: true
-  AcrossEmptyLines: true
-  AcrossComments: true
+
+AlignTrailingComments: true
+ReflowComments: false  # Prevents automatic reflowing of comment text

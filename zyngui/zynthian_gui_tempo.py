@@ -58,7 +58,8 @@ class zynthian_gui_tempo(zynthian_gui_base):
         super().__init__()
 
         self.state_manager = self.zyngui.state_manager
-        self.libseq = self.state_manager.zynseq.libseq
+        self.zynseq = self.state_manager.zynseq
+        self.libseq = self.zynseq.libseq
 
         self.tap_buf = None
         self.last_tap_ts = 0
@@ -69,12 +70,8 @@ class zynthian_gui_tempo(zynthian_gui_base):
         self.mtr_enable_zgui_ctrl = None
         self.mtr_volume_zgui_ctrl = None
 
-        self.info_canvas = tkinter.Canvas(self.main_frame,
-                                          height=1,
-                                          width=1,
-                                          bg=zynthian_gui_config.color_panel_bg,
-                                          bd=0,
-                                          highlightthickness=0)
+        self.info_canvas = tkinter.Canvas(self.main_frame, height=1, width=1,
+                                          bg=zynthian_gui_config.color_panel_bg, bd=0, highlightthickness=0)
         self.main_frame.rowconfigure(2, weight=1)
         if zynthian_gui_config.layout['columns'] == 3:
             self.info_canvas.grid(row=0, column=1, rowspan=2, padx=(2, 2), sticky='news')
@@ -83,28 +80,19 @@ class zynthian_gui_tempo(zynthian_gui_base):
             self.info_canvas.grid(row=0, column=0, rowspan=4, padx=(0, 2), sticky='news')
             self.main_frame.columnconfigure(0, weight=1)
 
-        self.bpm_text = self.info_canvas.create_text(
-            0,
-            0,
-            anchor=tkinter.N,
-            width=0,
-            text="",
-            font=(zynthian_gui_config.font_family, 10),
-            fill=zynthian_gui_config.color_panel_tx)
+        self.bpm_text = self.info_canvas.create_text(0, 0, anchor=tkinter.N, width=0, text="",
+                                                     font=(zynthian_gui_config.font_family, 10),
+                                                     fill=zynthian_gui_config.color_panel_tx)
 
         self.replot = True
 
     def set_zctrls(self):
         if not self.bpm_zgui_ctrl:
-            self.bpm_zctrl = zynthian_controller(self, 'bpm',
-                                                 {'name': 'BPM',
-                                                  'value_min': 10,
-                                                  'value_max': 420,
-                                                  'nudge_factor': 1.0,
-                                                  'is_integer': False,
-                                                  'value': self.libseq.getTempo()})
+            self.bpm_zctrl = self.zynseq.zctrl_tempo
             self.bpm_zgui_ctrl = zynthian_gui_controller(0, self.main_frame, self.bpm_zctrl)
             self.zgui_ctrls.append(self.bpm_zgui_ctrl)
+        else:
+            self.bpm_zgui_ctrl.refresh_plot_value = True
 
         if not self.clk_source_zgui_ctrl:
             self.clk_source_zctrl = zynthian_controller(self, 'clock_source',
@@ -143,8 +131,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
             zgui_ctrl.grid(row=layout['ctrl_pos'][i][0], column=layout['ctrl_pos'][i][1])
 
     def update_text(self):
-        self.info_canvas.itemconfigure(
-            self.bpm_text, text="{:.1f} BPM".format(self.bpm_zctrl.get_value()))
+        self.info_canvas.itemconfigure(self.bpm_text, text="{:.1f} BPM".format(self.bpm_zctrl.get_value()))
 
     def update_layout(self):
         super().update_layout()
@@ -159,7 +146,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
         self.refresh_bpm_value()
         if self.replot:
             for zgui_ctrl in self.zgui_ctrls:
-                if zgui_ctrl.zctrl.is_dirty:
+                if zgui_ctrl.zctrl.is_dirty or zgui_ctrl.refresh_plot_value:
                     zgui_ctrl.calculate_plot_values()
                     zgui_ctrl.plot_value()
                     zgui_ctrl.zctrl.is_dirty = False
@@ -182,6 +169,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
             self.cb_status_audio_recorder()
             self.cb_status_midi_player()
             self.cb_status_midi_recorder()
+        self.replot = True
         return True
 
     def hide(self):
@@ -206,13 +194,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
     def send_controller_value(self, zctrl):
         if self.shown:
-            if zctrl == self.bpm_zctrl:
-                self.libseq.setTempo(zctrl.value)
-                zynaudioplayer.set_tempo(zctrl.value)
-                logging.debug("SETTING TEMPO BPM: {}".format(zctrl.value))
-                self.replot = True
-
-            elif zctrl == self.clk_source_zctrl:
+            if zctrl == self.clk_source_zctrl:
                 self.state_manager.set_transport_clock_source(zctrl.value, save_config=True)
                 logging.debug("SETTING CLOCK SOURCE: {}".format(zctrl.value))
                 self.replot = True
@@ -238,7 +220,7 @@ class zynthian_gui_tempo(zynthian_gui_base):
             self.tap_buf.append(tap_dur)
             logging.debug("TAP TEMPO BUFFER: {}".format(self.tap_buf))
             bpm = 60 * len(self.tap_buf) / sum(self.tap_buf)
-            self.libseq.setTempo(bpm)
+            self.zynseq.set_tempo(bpm)
             logging.debug("SETTING TAP TEMPO BPM: {}".format(bpm))
 
     def refresh_bpm_value(self):

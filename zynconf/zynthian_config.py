@@ -100,7 +100,7 @@ NoteCuiaDefault = {
     "65": "SCREEN_SNAPSHOT",
     "67": "SCREEN_ALSA_MIXER",
     "69": "SCREEN_MIDI_RECORDER",
-    "71": "SCREEN_ZYNPAD",
+    "71": "SCREEN_LAUNCHER",
     "72": "SCREEN_PATTERN_EDITOR",
     "74": "SCREEN_BANK",
     "76": "SCREEN_PRESET",
@@ -157,6 +157,7 @@ ServerPort = {
     "vnc_ui": 5900,
     "vnc_desktop": 5901,
     "linuxsampler_osc": 6688,
+    "clippy": 7000, # ...7100 (range)
     "zynaddsubfx_osc": 6693,
     "aeolus_osc": 9000,
     "pianoteq_rpc": 9001,

@@ -88,7 +88,6 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
         except:
             preset = None
             title = "Preset Options"
-            pass
         if preset:
             if self.processor.engine.is_preset_fav(preset):
                 options["\u2612 Favourite"] = [preset, ["Remove from favorites list", "favorite_remove.png"]]
@@ -107,8 +106,11 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
         if global_options:
             options["Global"] = None
             options.update(global_options)
-        self.zyngui.screens['option'].config(title, options, self.preset_options_cb)
-        self.zyngui.show_screen('option')
+        if options:
+            self.zyngui.screens['option'].config(title, options, self.preset_options_cb)
+            self.zyngui.show_screen('option')
+        else:
+            self.zyngui.close_screen()
 
     def show_menu(self):
         self.show_preset_options()

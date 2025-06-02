@@ -55,10 +55,6 @@ CELL_BACKGROUND = zynthian_gui_config.color_panel_bd
 CELL_FOREGROUND = zynthian_gui_config.color_panel_tx
 GRID_LINE = zynthian_gui_config.color_tx
 
-PLAY_MODES = ['Disabled', 'Oneshot', 'Loop',
-              'Oneshot all', 'Loop all', 'Oneshot sync', 'Loop sync']
-
-
 # Class implements step sequencer arranger
 class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
@@ -194,8 +190,10 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
             self.horizontal_zoom)] = 'Horizontal zoom'
         options['Group ({})'.format(list(map(chr, range(65, 91)))[
             self.zynseq.libseq.getGroup(self.zynseq.bank, self.sequence)])] = 'Group'
-        options['Play mode ({})'.format(zynseq.PLAY_MODES[self.zynseq.libseq.getPlayMode(
-            self.zynseq.bank, self.sequence)])] = 'Play mode'
+        options[f'Repeat ({self.zynseq.libseq.getRepeat(self.zynseq.bank, self.sequence)})'] = 'Repeat'
+        options[f'Follow action ({self.zynseq.libseq.getFollowAction(self.zynseq.bank, self.sequence)})'] = 'Follow'
+        options['Play mode ({})'.format(self.zynseq.libseq.getPlayMode(
+            self.zynseq.bank, self.sequence))] = 'Play mode'
         options['Pattern ({})'.format(self.pattern)] = 'Pattern'
         options['Add track'] = 'Add track'
         if self.zynseq.libseq.getTracksInSequence(self.zynseq.bank, self.sequence) > 1:
@@ -265,12 +263,10 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
     def send_controller_value(self, zctrl):
         if zctrl.symbol == 'scene':
             self.zynseq.select_bank(zctrl.value)
-            # self.title = "Scene {}".format(self.zynseq.bank)
             self.bank = self.zynseq.bank
+            self.set_title(f"Scene {self.bank}")
             self.update_sequence_tracks()
             self.redraw_pending = 4
-        elif zctrl.symbol == 'tempo':
-            self.zynseq.libseq.setTempo(zctrl.value)
         if zctrl.symbol == 'metro_vol':
             self.zynseq.libseq.setMetronomeVolume(zctrl.value / 100.0)
         elif zctrl.symbol == 'bpb':
@@ -281,6 +277,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
                 self.zynseq.bank, self.sequence, self.track, zctrl.value)
             self.draw_sequence_label(self.selected_cell[1] - self.row_offset)
         elif zctrl.symbol == 'playmode':
+            #TODO: Playmode has changed
             self.zynseq.set_play_mode(
                 self.zynseq.bank, self.sequence, zctrl.value)
         elif zctrl.symbol == 'vzoom':
@@ -439,7 +436,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
                             pattern_position[channel] += ticks_in_pattern
                         pattern[channel] = self.zynseq.libseq.createPattern()
                         self.zynseq.libseq.selectPattern(pattern[channel])
-                        self.zynseq.libseq.setBeatsInPattern(beats_in_pattern)
+                        self.zynseq.libseq.setBeatsInPattern(pattern[channel], beats_in_pattern)
                         self.zynseq.libseq.setStepsPerBeat(steps_per_beat)
                         position = int(
                             pattern_position[channel] / ticks_per_clock)
@@ -496,13 +493,13 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
 
     # Function to show GUI
     def build_view(self):
+        self.bank = self.zynseq.bank
         self.vertical_zoom = self.zynseq.libseq.getVerticalZoom()
         self.horizontal_zoom = self.zynseq.libseq.getHorizontalZoom()
         self.setup_zynpots()
         if not self.param_editor_zctrl:
             self.set_title(f"Scene {self.zynseq.bank}")
         self.redraw_pending = 3
-        self.bank = self.zynseq.bank
         self.title = f"Scene {self.bank}"
         self.update_sequence_tracks()
         self.redraw_pending = 4
@@ -771,7 +768,7 @@ class zynthian_gui_arranger(zynthian_gui_base.zynthian_gui_base):
         sequence = self.sequence_tracks[row + self.row_offset][0]
         track = self.sequence_tracks[row + self.row_offset][1]
         group = self.zynseq.libseq.getGroup(self.zynseq.bank, sequence)
-        fill = zynthian_gui_config.PAD_COLOUR_GROUP_LIGHT[group % 16]
+        fill = zynthian_gui_config.LAUNCHER_COLOUR[group % 16]["rgb_light"]
         font = tkfont.Font(
             family=zynthian_gui_config.font_topbar[0], size=self.fontsize)
         midi_chan = self.zynseq.libseq.getChannel(
