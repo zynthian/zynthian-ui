@@ -273,7 +273,7 @@ class zynthian_engine_clippy(zynthian_engine):
         file_zctrl = processor.controllers_dict[f"file {slot + 1:02}"]
         warp_zctrl = processor.controllers_dict[f"warp {slot + 1:02}"]
         beats_zctrl = processor.controllers_dict[f"beats {slot + 1:02}"]
-        sequence = self.sequence_offset + slot
+        sequence = self.sequence_offset + slot * zynseq.LAUNCHER_COLS
         self.slot_info[slot]["path"] = path
         self._ctrl_screens[slot] = [f'sample {slot + 1:02}', [f'file {slot + 1:02}']]
 
@@ -318,7 +318,7 @@ class zynthian_engine_clippy(zynthian_engine):
                         reconnect = True
                         self.lscp_send_single("REMOVE CHANNEL MIDI_INPUT 0 0 0")
                         # Silence existing audio
-                        if self.libseq.getPlayState(self.zynseq.bank, self.sequence_offset + slot):
+                        if self.libseq.getPlayState(self.zynseq.bank, self.sequence_offset + slot * zynseq.LAUNCHER_COLS):
                             self.lscp_send_single("SEND CHANNEL MIDI_DATA CC 0 120 0")
                     # Do warp
                     data, sr = soundfile.read(path)
@@ -365,11 +365,11 @@ class zynthian_engine_clippy(zynthian_engine):
                     # Reconnect MIDI
                     self.lscp_send_single("ADD CHANNEL MIDI_INPUT 0 0 0")
                     self.lscp_send_single(f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
-                self.libseq.setRepeat(self.zynseq.bank, self.sequence_offset + slot, 1)
+                self.libseq.setRepeat(self.zynseq.bank, self.sequence_offset + slot * zynseq.LAUNCHER_COLS, 1)
             except Exception as e:
                 logging.error(f"Can't setup sequencer for clip {slot} => {e}")
         else:
-            self.libseq.setRepeat(self.zynseq.bank, self.sequence_offset + slot, 0)
+            self.libseq.setRepeat(self.zynseq.bank, self.sequence_offset + slot * zynseq.LAUNCHER_COLS, 0)
             state = self.libseq.getPlayState(self.zynseq.bank, sequence)
             #self.reset_pattern(slot)
 
@@ -416,18 +416,18 @@ class zynthian_engine_clippy(zynthian_engine):
         self.lscp_send_single("ADD CHANNEL MIDI_INPUT 0 0 0")
         self.lscp_send_single(f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
 
-        self.sequence_offset = processor.midi_chan * 8
+        self.sequence_offset = processor.midi_chan
 
         for slot in range(8):
             self.reset_pattern(slot)
-        self.zynseq.rebuild_all_launcher_info()
+        self.zynseq.rebuild_all_launcher_info() # Need to do this (again!!!) here because called too early when adding chain (before processor is added)
 
     def reset_pattern(self, slot):
-            pattern = self.libseq.getPatternAt(255, self.sequence_offset + slot, 0, 0)
+            pattern = self.libseq.getPatternAt(255, self.sequence_offset + slot * zynseq.LAUNCHER_COLS, 0, 0)
             self.libseq.clearPattern(pattern)
             self.libseq.setStepsPerBeat(pattern, 1)
             self.libseq.setBeatsInPattern(pattern, 1)
-            self.libseq.setRepeat(self.zynseq.bank, self.sequence_offset + slot, 0)
+            self.libseq.setRepeat(self.zynseq.bank, self.sequence_offset + slot * zynseq.LAUNCHER_COLS, 0)
             self.libseq.updateSequenceInfo()
 
     # ---------------------------------------------------------------------------
