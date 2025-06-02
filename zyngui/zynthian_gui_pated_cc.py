@@ -70,7 +70,8 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     # Function to enable edit mode => It *MUST* be redefined in child class
     #   mode: Edit mode to enable [EDIT_MODE_NONE | others to define in child classes]
     def set_edit_mode(self, mode):
-        super().set_edit_mode(mode)
+        #super().set_edit_mode(mode)
+        pass
 
     # -------------------------------------------------------------------------
     # Pattern menu
@@ -362,7 +363,7 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
                 val = self.get_cc_value(step)
                 # Change value for existing CC event
                 if val is not None:
-                    newval = val + dval
+                    newval = val - dval
                     if newval > 127:
                         newval = 127
                     if newval < 0:
