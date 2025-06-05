@@ -197,14 +197,17 @@ class zynthian_engine_jalv(zynthian_engine):
             logging.debug("CREATING JALV ENGINE => {}".format(self.jackname))
 
             if self.config_remote_display() and self.native_gui:
-                if self.native_gui == "Qt5UI":
-                    jalv_bin = "jalv.qt5"
-                elif self.native_gui == "Qt4UI":
-                    # jalv_bin = "jalv.qt4"
-                    jalv_bin = "jalv.gtk3"
-                else:  # elif self.native_gui=="X11UI":
-                    jalv_bin = "jalv.gtk3"
-                self.command = [jalv_bin, "--jack-name", self.jackname, self.plugin_url]
+                if self.native_gui == "UI":
+                    self.command = ["jalv", "-s", "-n", self.jackname, self.plugin_url]
+                else:
+                    if self.native_gui == "Qt5UI":
+                        jalv_bin = "jalv.qt5"
+                    elif self.native_gui == "Qt4UI":
+                        # jalv_bin = "jalv.qt4"
+                        jalv_bin = "jalv.gtk3"
+                    else:  # elif self.native_gui=="X11UI":
+                        jalv_bin = "jalv.gtk3"
+                    self.command = [jalv_bin, "--jack-name", self.jackname, self.plugin_url]
             else:
                 self.command = ["jalv", "-n", self.jackname, self.plugin_url]
                 # Some plugins need a X11 display for running headless (QT5, QT6),
