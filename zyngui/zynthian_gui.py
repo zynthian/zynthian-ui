@@ -170,7 +170,9 @@ class zynthian_gui:
         self.init_wsleds()
 
         # Init multitouch driver
-        if os.environ.get('DISPLAY_ROTATION', 'None') == 'Inverted':
+        # => Note this condition is redundant, but needed to ensure some legacy V5 configs to work
+        # => It should be simplified in the future and keep the second part only
+        if zynthian_gui_config.check_kit_version(["V5"]) or os.environ.get('DISPLAY_ROTATION', 'None') == 'Inverted':
             self.multitouch = MultiTouch(invert_x_axis=True, invert_y_axis=True)
         else:
             self.multitouch = MultiTouch()
