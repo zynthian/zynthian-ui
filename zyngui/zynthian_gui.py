@@ -1425,6 +1425,9 @@ class zynthian_gui:
     def cuia_screen_launcher(self, params=None):
         self.show_screen("launcher")
 
+    def cuia_screen_zynpad(self, params=None):
+        self.show_screen("launcher")
+
     def cuia_screen_pattern_editor(self, params=None):
         success = False
         if self.current_screen == "launcher":
