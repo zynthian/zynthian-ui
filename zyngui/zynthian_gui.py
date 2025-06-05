@@ -930,6 +930,7 @@ class zynthian_gui:
                     # self.modify_chain_status = {"midi_thru": False, "audio_thru": False, "parallel": False}
                     if processor:
                         self.close_screen("loading")
+                        self.screen_history = []
                         self.chain_control(
                             chain_id, processor, force_bank_preset=True)
                     else:

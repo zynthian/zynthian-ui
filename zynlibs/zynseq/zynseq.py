@@ -327,15 +327,15 @@ class zynseq(zynthian_engine):
         col = 0
         for chain_id in self.state_manager.chain_manager.ordered_chain_ids:
             chain = self.state_manager.chain_manager.chains[chain_id]
-            try:
-                processor = chain.get_processors("MIDI Synth")[0]
-                if processor.engine.nickname == "CL":
-                    info["clippy"] = processor
-            except:
-                pass
             if chain.midi_chan is None:
                 continue
             if chain.midi_chan == chan:
+                try:
+                    processor = chain.get_processors("MIDI Synth")[0]
+                    if processor.engine.nickname == "CL":
+                        info["clippy"] = processor
+                except:
+                    pass
                 info["chains"].append(chain_id)
                 if info["pad_column"] is None:
                     info["pad_column"] = col

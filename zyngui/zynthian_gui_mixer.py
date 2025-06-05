@@ -1679,7 +1679,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def edit_clip(self):
         if self.launcher_mode and self.launcher_select_info:
             if self.launcher_select_info['clippy']:
-                self.zyngui.chain_control(self.highlighted_strip.chain_id)
+                self.zyngui.chain_control()
                 return True
             elif self.launcher_select_info['chan'] < zynseq.SCENE_LAUNCHER_COL:
                 return self.edit_pattern()

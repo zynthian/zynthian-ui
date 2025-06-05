@@ -365,7 +365,8 @@ class zynthian_engine_clippy(zynthian_engine):
                     # Reconnect MIDI
                     self.lscp_send_single("ADD CHANNEL MIDI_INPUT 0 0 0")
                     self.lscp_send_single(f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
-                self.libseq.setRepeat(self.zynseq.bank, self.sequence_offset + slot * zynseq.LAUNCHER_COLS, 1)
+                self.libseq.setRepeat(self.zynseq.bank, sequence, 1)
+                self.zynseq.rebuild_launcher_info(sequence)
             except Exception as e:
                 logging.error(f"Can't setup sequencer for clip {slot} => {e}")
         else:
