@@ -160,6 +160,11 @@ class zynthian_engine_puredata(zynthian_engine):
             self.custom_gui_fpath = self.ui_dir + "/zyngui/zynthian_widget_organelle.py"
             if not self.zctrl_config:
                 self.zctrl_config = self.default_organelle_zctrl_config
+
+        elif self.preset_config and self.preset_config.get('use_euclidseq_widget', False):
+            # Use EuclidSeq widget when flag is set
+            self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_euclidseq.py"
+
         else:
             # Don't use custom widget for other pd patches
             self.organelle_preset = False
