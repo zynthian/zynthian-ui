@@ -145,12 +145,50 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
     # Function to handle grid mouse down
     # event: Mouse event
     def on_grid_press(self, event):
-        pass
+        if self.param_editor_zctrl:
+            self.disable_param_editor()
+
+        # Get cell coordinates
+        row = int((self.total_height - self.grid_canvas.canvasy(event.y)) / self.row_height)
+        step = int(self.grid_canvas.canvasx(event.x) / self.step_width)
+
+        # If there is no CC point, add a new CC point
+        val = self.get_cc_value(step)
+        if val is None:
+            self.zynseq.libseq.addControl(step, self.cc_num, row, row, 1, 0)
+        # else, change CC value
+        else:
+            self.zynseq.libseq.setControlValue(step, self.cc_num, row, row)
+
+        # Select the cell
+        self.select_cell(step, row)
+
+        # Start drag state variables
+        self.swiping = False
+        self.grid_drag_start = event
+        self.grid_drag_count = 0
+        self.swipe_step_speed = 0
+        self.swipe_row_speed = 0
+        self.swipe_step_dir = 0
+        self.swipe_row_dir = 0
 
     # Function to handle grid mouse drag
     # event: Mouse event
     def on_grid_drag(self, event):
-        pass
+        # Get cell coordinates
+        row = int((self.total_height - self.grid_canvas.canvasy(event.y)) / self.row_height)
+        step = int(self.grid_canvas.canvasx(event.x) / self.step_width)
+
+        # If there is no CC point, add a new CC point
+        val = self.get_cc_value(step)
+        if val is None:
+            self.zynseq.libseq.addControl(step, self.cc_num, row, row, 1, 0)
+        # else, change CC value
+        else:
+            self.zynseq.libseq.setControlValue(step, self.cc_num, row, row)
+
+        # Select the cell
+        self.select_cell(step, row)
 
     # Function to handle grid mouse release
     # event: Mouse event
@@ -158,9 +196,6 @@ class zynthian_gui_pated_cc(zynthian_gui_pated_base):
         pass
 
     def on_gesture(self, gtype, value):
-        pass
-
-    def swipe_vertical_action(self):
         pass
 
     # -------------------------------------------------------------------------

@@ -455,10 +455,6 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
     # Touch event management
     # -------------------------------------------------------------------------
 
-    # Function to handle start of pianoroll drag
-    def on_pianoroll_press(self, event):
-        super().on_pianoroll_press(event)
-
     # Function to handle pianoroll drag motion
     def on_pianoroll_motion(self, event):
         offset = super().on_pianoroll_motion(event)
@@ -469,10 +465,6 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
             self.selected_cell[1] = self.keymap_offset + int(self.view_rows) - 1
         self.select_cell()
         return offset
-
-    # Function to handle end of pianoroll drag
-    def on_pianoroll_release(self, event):
-        super().on_pianoroll_release(event)
 
     def on_pianoroll_release_action(self, event):
         # Play note if not drag action

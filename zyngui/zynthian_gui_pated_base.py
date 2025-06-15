@@ -120,6 +120,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.swipe_step_offset = 0
         self.swipe_row_offset = 0
         self.grid_drag_start = None  # Coordinates at start of grid drag
+        self.grid_drag_count = 0
         self.piano_roll_drag_start = None
         self.piano_roll_drag_count = 0
 
