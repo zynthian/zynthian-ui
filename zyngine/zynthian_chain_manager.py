@@ -89,7 +89,7 @@ class zynthian_chain_manager:
     SS_MOVE_CHAIN = 2
 
     engine_info = None
-    single_processor_engines = ["BF", "MD", "PT", "PD", "AE", "SL", "IR"]
+    single_processor_engines = ["BF", "MD", "PT", "AE", "SL", "IR"]
 
     def __init__(self, state_manager):
         """ Create an instance of a chain manager
@@ -1011,7 +1011,7 @@ class zynthian_chain_manager:
             if eng_code[0:3] == "JV/":
                 eng_key = f"JV/{self.zyngine_counter}"
                 zyngine = zynthian_engine_class(eng_code, self.state_manager, False)
-            elif eng_code in ("SF", "CL"):
+            elif eng_code in ("SF", "CL", "PD"):
                 eng_key = f"{eng_code}/{self.zyngine_counter}"
                 zyngine = zynthian_engine_class(self.state_manager)
             else:

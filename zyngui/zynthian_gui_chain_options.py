@@ -122,14 +122,14 @@ class zynthian_gui_chain_options(zynthian_gui_selector_info):
                                    ["Add a new audio processor to process chain's audio after the mixer's fader.", "audio_processor.png"]))
 
         if self.chain_id != 0:
+            self.list_data.append((self.export_chain, None, "Export chain as snapshot...",
+                                   ["Save the selected chain as a snapshot which may then be imported into another snapshot.", "snapshot_chains.png"]))
             if synth_proc_count * midi_proc_count + audio_proc_count == 0:
                 self.list_data.append((self.remove_chain, None, "Remove Chain",
                                        ["Remove this chain and all its processors.", "delete_chains.png"]))
             else:
                 self.list_data.append((self.remove_cb, None, "Remove...",
                                        ["Remove chain or processors.", "delete_chains.png"]))
-            self.list_data.append((self.export_chain, None, "Export chain as snapshot...",
-                                   ["Save the selected chain as a snapshot which may then be imported into another snapshot.", "snapshot_chains.png"]))
         elif audio_proc_count > 0:
             self.list_data.append((self.remove_all_audiofx, None, "Remove all Audio-FX",
                                    ["Remove all audio-FX processors in this chain.", "delete_audio_processors.png"]))
