@@ -106,7 +106,6 @@ class zynthian_engine_puredata(zynthian_engine):
 
         # Initialize custom GUI path as None - will be set conditionally when loading presets
         self.custom_gui_fpath = None
-        self.organelle_preset = False
 
         self.preset = ""
         self.preset_config = None
@@ -157,7 +156,6 @@ class zynthian_engine_puredata(zynthian_engine):
 
         # Use Organelle widget for Organelle patches or when flag is set
         if "organelle" in preset_path.lower() or self.preset_config and self.preset_config.get('use_organelle_widget'):
-            self.organelle_preset = True
             self.custom_gui_fpath = self.ui_dir + "/zyngui/zynthian_widget_organelle.py"
             if not self.zctrl_config:
                 self.zctrl_config = self.default_organelle_zctrl_config
@@ -168,7 +166,6 @@ class zynthian_engine_puredata(zynthian_engine):
 
         else:
             # Don't use custom widget for other pd patches
-            self.organelle_preset = False
             self.custom_gui_fpath = None
     
         self.command = self.base_command + " " + self.get_preset_filepath(preset)
