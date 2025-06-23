@@ -103,7 +103,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
                 i += 1
         # External storage
         for exd in zynthian_gui_config.get_external_storage_dirs(self.ex_data_dir):
-            flist += self.get_filelist(exd)
+            flist = self.get_filelist(exd)
             if len(flist) > 0:
                 self.list_data.append((None, 0, f"USB> {os.path.basename(exd)} MIDI Tracks"))
                 for finfo in sorted(flist, key=lambda d: d['mtime'], reverse=True):

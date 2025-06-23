@@ -276,8 +276,6 @@ class zynthian_engine_zynaddsubfx(zynthian_engine):
             try:
                 osc_path = tpl.safe_substitute(i=processor.part_i)
                 options['osc_path'] = osc_path
-                if self.osc_target_port > 0:
-                    options['osc_port'] = self.osc_target_port
                 #logging.debug(f"CONTROLLER {ctrl[0]} with OSC PATH => {osc_path}")
             except Exception as e:
                 logging.error(f"Malformed OSC path => {ctrl[1]}")

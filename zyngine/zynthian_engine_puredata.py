@@ -23,17 +23,17 @@
 # ******************************************************************************
 
 import os
+import liblo
 import shutil
 import logging
 import oyaml as yaml
 from time import sleep
 from os.path import isfile, join
-from subprocess import check_output, STDOUT
 
 import zynautoconnect
 from . import zynthian_engine
+from . import zynthian_basic_engine
 from . import zynthian_controller
-from zyncoder.zyncore import lib_zyncore
 
 # ------------------------------------------------------------------------------
 # Puredata Engine Class
@@ -107,19 +107,77 @@ class zynthian_engine_puredata(zynthian_engine):
         # Initialize custom GUI path as None - will be set conditionally when loading presets
         self.custom_gui_fpath = None
 
+        # Specific OSC stuff
+        self.osc_zctrls = {}
+        self.osc_child_handlers = []
+        self.osc_unhandle_messages = []
+
         self.preset = ""
         self.preset_config = None
         self.zctrl_config = None
 
         if self.config_remote_display():
-            self.base_command = f"pd -jack -nojackconnect -jackname \"{self.jackname}\" -rt -alsamidi -mididev 1 -open \"{self.startup_patch}\""
+            self.base_command = f"pd -jack -nojackconnect -jackname \"{self.jackname}\" -rt -alsamidi -mididev 1"
         else:
-            self.base_command = f"pd -nogui -jack -nojackconnect -jackname \"{self.jackname}\" -rt -alsamidi -mididev 1 -open \"{self.startup_patch}\""
+            self.base_command = f"pd -nogui -jack -nojackconnect -jackname \"{self.jackname}\" -rt -alsamidi -mididev 1"
 
         self.reset()
 
     def get_jackname(self):
         return self.jackname_midi
+
+    # ---------------------------------------------------------------------------
+    # OSC Management
+    # ---------------------------------------------------------------------------
+
+    def osc_init(self):
+        self.osc_drop_unhandle_messages()
+
+        # Initialize OSC client.
+        if not self.osc_target:
+            try:
+                self.osc_target = liblo.Address("localhost", self.osc_target_port, self.osc_proto)
+                logging.info("OSC target in port {}".format(self.osc_target_port))
+            except liblo.AddressError as err:
+                self.osc_target = None
+                logging.error(f"OSC client initialization error: {err}")
+
+        # Start OSC server
+        if not self.osc_server:
+            try:
+                self.osc_server = liblo.ServerThread(self.osc_server_port)
+                self.osc_server.add_method(None, None, self.osc_handle_all)
+                self.osc_server.start()
+                logging.info("OSC server running in port {}".format(self.osc_server_port))
+            except Exception as err:
+                self.osc_server = None
+                logging.error(f"OSC Server can't be started ({err}). Running without OSC feedback.")
+
+    def osc_handle_all(self, path, args):
+        try:
+            self.osc_zctrls[path].set_value(args[0], send=False)
+        except:
+            if self.osc_child_handlers:
+                for handler in self.osc_child_handlers:
+                    if handler(path, args):
+                        return
+            else:
+                self.osc_unhandle_messages.append([path, args])
+                logging.info(f"UNHANDLE OSC MESSAGE: {path}")
+
+    def osc_add_child_handler(self, child_handler):
+        self.osc_child_handlers.append(child_handler)
+
+    def osc_reset_child_handlers(self):
+        self.osc_child_handlers = []
+
+    def osc_flush_unhandle_messages(self):
+        for osc_msg in self.osc_unhandle_messages:
+            self.osc_handle_all(osc_msg[0], osc_msg[1])
+        self.osc_unhandle_messages = []
+
+    def osc_drop_unhandle_messages(self):
+        self.osc_unhandle_messages = []
 
     # ---------------------------------------------------------------------------
     # Processor Management
@@ -159,31 +217,40 @@ class zynthian_engine_puredata(zynthian_engine):
             self.custom_gui_fpath = self.ui_dir + "/zyngui/zynthian_widget_organelle.py"
             if not self.zctrl_config:
                 self.zctrl_config = self.default_organelle_zctrl_config
-
         elif self.preset_config and self.preset_config.get('use_euclidseq_widget', False):
             # Use EuclidSeq widget when flag is set
             self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_euclidseq.py"
-
         else:
             # Don't use custom widget for other pd patches
             self.custom_gui_fpath = None
-    
-        self.command = self.base_command + " " + self.get_preset_filepath(preset)
-        self.preset = preset[0]
-        self.stop()
-        amidi_ports = self.get_amidi_clients()
-        self.start()
-        for symbol in processor.controllers_dict:
-            self.state_manager.chain_manager.remove_midi_learn(processor, symbol)
-        processor.refresh_controllers()
-        sleep(2.0)
-        amidi_ports = list(set(self.get_amidi_clients()) - set(amidi_ports))
-        if len(amidi_ports) > 0:
-            self.jackname_midi = f"Pure Data \\[{amidi_ports[0]}\\]"
-            logging.debug(f"MIDI jackname => \"{self.jackname_midi}\"")
-        else:
-            self.jackname_midi = f"Pure Data"
-            logging.error(f"Can't get MIDI jackname!")
+
+        try:
+            self.command = self.base_command
+            if self.custom_gui_fpath or (self.preset_config and self.preset_config.get('osc_zctrls', False)):
+                self.osc_target_port = 3000 + 10 * processor.id
+                self.osc_server_port = 3000 + 10 * processor.id + 1
+                self.command += f" -send \";osc_receive_port {self.osc_target_port}; osc_send_port {self.osc_server_port}\""
+            else:
+                self.osc_target_port = None
+                self.osc_server_port = None
+            self.command += f" -open \"{self.startup_patch}\" \"{self.get_preset_filepath(preset)}\""
+            self.preset = preset[0]
+            self.stop()
+            amidi_ports = self.get_amidi_clients()
+            self.start()
+            for symbol in processor.controllers_dict:
+                self.state_manager.chain_manager.remove_midi_learn(processor, symbol)
+            processor.refresh_controllers()
+            sleep(2.0)
+            amidi_ports = list(set(self.get_amidi_clients()) - set(amidi_ports))
+            if len(amidi_ports) > 0:
+                self.jackname_midi = f"Pure Data \\[{amidi_ports[0]}\\]"
+                logging.debug(f"MIDI jackname => \"{self.jackname_midi}\"")
+            else:
+                self.jackname_midi = f"Pure Data"
+                logging.error(f"Can't get MIDI jackname!")
+        except Exception as err:
+            logging.error(err)
 
         # Need to all autoconnect because restart of process
         try:
@@ -248,10 +315,10 @@ class zynthian_engine_puredata(zynthian_engine):
     def get_controllers_dict(self, processor):
         zctrls = {}
         self._ctrl_screens = []
+        self.osc_zctrls = {}
         if self.zctrl_config:
             for ctrl_group, ctrl_dict in self.zctrl_config.items():
                 logging.debug(f"Preset Config '{ctrl_group}' ...")
-
                 c = 1
                 ctrl_set = []
                 if ctrl_group == 'midi_controllers':
@@ -273,8 +340,11 @@ class zynthian_engine_puredata(zynthian_engine):
                             logging.debug(f"CTRL {name} => {options}")
                             options['name'] = str.replace(name, '_', ' ')
                             options['processor'] = processor
-                            zctrls[name] = zynthian_controller(self, name, options)
+                            zctrl = zynthian_controller(self, name, options)
+                            zctrls[name] = zctrl
                             ctrl_set.append(name)
+                            if 'osc_path' in options:
+                                self.osc_zctrls[options['osc_path']] = zctrl
                         except Exception as err:
                             logging.error(f"Generating Controller Screens: {err}")
                     if len(ctrl_set) >= 1:

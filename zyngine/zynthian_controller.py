@@ -103,7 +103,6 @@ class zynthian_controller:
         self.midi_cc_mode_detecting_zero = 0    # Used by CC mode detection algorithm
         self.midi_cc_debounce = False # True to enable debounce of toggle
         self.midi_cc_debounce_timer = None
-        self.osc_port = None  # OSC destination port
         self.osc_path = None  # OSC path to send value to
         self.graph_path = None  # Complex map of control to engine parameter
 
@@ -181,8 +180,6 @@ class zynthian_controller:
             self.midi_cc = options['midi_cc']
         if 'midi_autolearn' in options:
             self.midi_autolearn = options['midi_autolearn']
-        if 'osc_port' in options:
-            self.osc_port = options['osc_port']
         if 'osc_path' in options:
             self.osc_path = options['osc_path']
         if 'graph_path' in options:

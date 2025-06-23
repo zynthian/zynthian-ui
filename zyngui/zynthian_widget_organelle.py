@@ -37,11 +37,10 @@ COLOR_BUTTON = "#B07000"
 COLOR_BUTTON_LIGHT = "#00A000"
 COLOR_KNOB = "#B07000"
 
-ORGANELLE_OSC_PORT_IN = 3000
-ORGANELLE_OSC_PORT_OUT = 3001
-
 ORGANELLE_OLED_WIDTH = 128
 ORGANELLE_OLED_HEIGHT = 64
+
+MULTI_INSTANCE = True
 
 
 class OscButton(tk.Canvas):
@@ -49,10 +48,10 @@ class OscButton(tk.Canvas):
     Custom touchable button that sends OSC messages when pressed.
     """
 
-    def __init__(self, parent, diameter=70, osc_target=None, label="", osc_path="/button", **kwargs):
+    def __init__(self, parent, diameter=70, widget=None, label="", osc_path="/button", **kwargs):
         super().__init__(parent, width=diameter, height=diameter, bg=COLOR_PANEL, highlightthickness=0, **kwargs)
         self.diameter = diameter
-        self.osc_target = osc_target
+        self.widget = widget
         self.osc_path = osc_path
 
         # Draw the circular button.
@@ -76,11 +75,10 @@ class OscButton(tk.Canvas):
 
     def send_osc(self, value):
         """Send an OSC message with the specified value."""
-        if self.osc_target:
-            try:
-                liblo.send(self.osc_target, self.osc_path, value)
-            except Exception as e:
-                logging.error(f"Error sending OSC message: {e}")
+        try:
+            liblo.send(self.widget.osc_target, self.osc_path, value)
+        except Exception as e:
+            logging.error(f"Error sending OSC message: {e}")
 
 
 class LedIndicator(tk.Canvas):
@@ -92,9 +90,8 @@ class LedIndicator(tk.Canvas):
         4: "yellow", 5: "purple", 6: "cyan", 7: "white"
     }
 
-    def __init__(self, parent, diameter=15, osc_target=None, **kwargs):
+    def __init__(self, parent, diameter=15, **kwargs):
         super().__init__(parent, width=diameter, height=diameter, bg=COLOR_PANEL, highlightthickness=0, **kwargs)
-        self.osc_target = osc_target
         self.led = self.create_oval(2, 2, diameter - 2, diameter - 2, fill=self.COLORS[0], outline=COLOR_OUTLINE, width=1)
         self.current_state = 0
 
@@ -139,7 +136,6 @@ class VolumeSlider(tk.Frame):
         try:
             zctrl_volume = self.zyngui_control.screen_processor.controllers_dict['volume']
             zctrl_volume.set_value(zctrl_volume.value_max * float(value) / 100.0)
-            #liblo.send(self.osc_target, "/vol", float(vol))
         except Exception as e:
             #logging.error(f"Error sending OSC volume message: {e}")
             logging.error(f"Can't set volume zctrl value {value}: {e}")
@@ -158,7 +154,8 @@ class VolumeSlider(tk.Frame):
             zctrl_volume = self.zyngui_control.screen_processor.controllers_dict['volume']
             self.slider.set(100.0 * zctrl_volume.value / zctrl_volume.value_max)
         except Exception as e:
-            logging.error(f"Can't get volume zctrl => {e}")
+            #logging.error(f"Can't get volume zctrl => {e}")
+            pass
 
 
 class MarkedEncoder(tk.Canvas):
@@ -166,11 +163,11 @@ class MarkedEncoder(tk.Canvas):
     Marked encoder knob with tick marks and a rotating pointer indicator.
     """
 
-    def __init__(self, parent, diameter=120, osc_target=None, label="ENC", **kwargs):
+    def __init__(self, parent, diameter=120, widget=None, label="ENC", **kwargs):
         super().__init__(parent, width=diameter, height=diameter,
                          bg=COLOR_PANEL, highlightthickness=0, **kwargs)
         self.diameter = diameter
-        self.osc_target = osc_target
+        self.widget = widget
         self.rotation_steps = 4  # Quantized OSC events
         self.last_step = 0
 
@@ -231,10 +228,10 @@ class MarkedEncoder(tk.Canvas):
         center = self.diameter / 2
         center_radius = self.diameter / 5
         distance = math.hypot(event.x - center, event.y - center)
-        if distance <= center_radius and self.osc_target:
+        if distance <= center_radius and self.widget:
             try:
-                liblo.send(self.osc_target, "/enc_sel", 1)
-                self.after(100, lambda: liblo.send(self.osc_target, "/enc_sel", 0))
+                liblo.send(self.widget.osc_target, "/enc_sel", 1)
+                self.after(100, lambda: liblo.send(self.widget.osc_target, "/enc_sel", 0))
             except Exception as e:
                 logging.error(f"Error sending OSC message: {e}")
 
@@ -289,14 +286,14 @@ class MarkedEncoder(tk.Canvas):
         #new_step = int(angle / (3.8 * math.pi) * self.rotation_steps) % self.rotation_steps
         new_step = int(angle / (2 * math.pi) * self.rotation_steps) % self.rotation_steps
 
-        if new_step != self.last_step and self.osc_target:
+        if new_step != self.last_step and self.widget:
             try:
                 if rotating_clockwise and not self.at_max_limit:
-                    liblo.send(self.osc_target, "/enc_down", 1)
-                    self.after(50, lambda: liblo.send(self.osc_target, "/enc_down", 0))
+                    liblo.send(self.widget.osc_target, "/enc_down", 1)
+                    self.after(50, lambda: liblo.send(self.widget.osc_target, "/enc_down", 0))
                 elif rotating_counterclockwise and not self.at_min_limit:
-                    liblo.send(self.osc_target, "/enc_up", 1)
-                    self.after(50, lambda: liblo.send(self.osc_target, "/enc_up", 0))
+                    liblo.send(self.widget.osc_target, "/enc_up", 1)
+                    self.after(50, lambda: liblo.send(self.widget.osc_target, "/enc_up", 0))
             except Exception as e:
                 logging.error(f"Error sending OSC message: {e}")
             self.last_step = new_step
@@ -322,6 +319,9 @@ class zynthian_widget_organelle(zynthian_widget_base):
         self.zyngui_control = self.zyngui.screens['control']
         self.shown = False
 
+        self.osc_target = None
+        self.osc_server = None
+
         # Oled plot & update
         self.update_pending = False
         self.last_flip_time = 0
@@ -332,24 +332,13 @@ class zynthian_widget_organelle(zynthian_widget_base):
         self.line_bboxes = {}         # Cached bounding boxes for text lines
         self.pending_batch = []       # List of pending canvas operations
         self.text_items_by_position = {}  # Map text items by (x, y) position
+        self.canvas_by_proc = {}
 
         # Navigation state.
         self.current_page_index = 0
         self.in_parameter_view = False
         self.select_mode = False
         self.aux_pushed = False
-
-        # Initialize OSC client.
-        try:
-            self.osc_target = liblo.Address("localhost", ORGANELLE_OSC_PORT_OUT)
-        except liblo.AddressError as err:
-            logging.error(f"OSC client initialization error: {err}")
-            self.osc_target = None
-
-        # Start OSC server for display.
-        self.server = liblo.ServerThread(ORGANELLE_OSC_PORT_IN)
-        self.setup_osc_handlers()
-        self.server.start()
 
         # Calculate widget geometry
         layout = self.zyngui_control.layout
@@ -388,7 +377,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
             self.wsled_i_selmode = None
             self.wsled_i_aux = None
 
-        #self.show_touch_widgets = True
+        self.show_touch_widgets = True
         if layout['columns'] == 2:
             if self.show_touch_widgets:
                 self.wunit = int(0.015 * self.width)
@@ -425,10 +414,10 @@ class zynthian_widget_organelle(zynthian_widget_base):
         self.display_frame.pack(side="left")
         self.canvas = tk.Canvas(self.display_frame, width=self.oled_width, height=self.oled_height,
                                 bg=zynthian_gui_config.color_bg, takefocus=0)
-        self.canvas.pack()
         self.bg_rect = self.canvas.create_rectangle(0, 0, self.oled_width, self.oled_height, fill="", width=0)
         self.canvas.tag_bind(self.bg_rect, "<ButtonPress-1>", self.on_canvas_touch)
         self.canvas.bind("<ButtonPress-1>", self.on_canvas_touch, add="+")
+        self.canvas.pack()
 
         # Controls frame.
         self.controls_frame = tk.Frame(self, bg=COLOR_PANEL)
@@ -436,45 +425,98 @@ class zynthian_widget_organelle(zynthian_widget_base):
 
         # LED indicator and control buttons.
         if self.show_touch_widgets:
-            self.volume_slider = VolumeSlider(self.controls_frame, zyngui_control=self.zyngui_control, width=self.width, height=6*self.hunit)
-            self.volume_slider.pack(side="top", padx=0, pady=0)
-            self.aux_button = OscButton(self.controls_frame, diameter=6 * self.wunit, osc_target=self.osc_target, label="AUX", osc_path="/aux")
+            if zynthian_gui_config.enable_touch_navigation:
+                self.volume_slider = None
+            else:
+                self.volume_slider = VolumeSlider(self.controls_frame, zyngui_control=self.zyngui_control, width=self.width, height=6*self.hunit)
+                self.volume_slider.pack(side="top", padx=0, pady=0)
+            self.aux_button = OscButton(self.controls_frame, diameter=6 * self.wunit, widget=self, label="AUX", osc_path="/aux")
             self.aux_button.pack(side="left", padx=self.wunit)
-            self.fs_button = OscButton(self.controls_frame, diameter=6 * self.wunit, osc_target=self.osc_target, label="FS", osc_path="/fs")
-            self.encoder = MarkedEncoder(self.controls_frame, diameter=8 * self.wunit, osc_target=self.osc_target, label="ENC")
+            self.fs_button = OscButton(self.controls_frame, diameter=6 * self.wunit, widget=self, label="FS", osc_path="/fs")
+            self.encoder = MarkedEncoder(self.controls_frame, diameter=8 * self.wunit, widget=self, label="ENC")
         else:
             self.volume_slider = None
 
-        self.led_indicator = LedIndicator(self.controls_frame, diameter=3*self.wunit, osc_target=self.osc_target)
+        self.led_indicator = LedIndicator(self.controls_frame, diameter=3*self.wunit)
         self.led_indicator.pack(side="left", padx=self.wunit)
 
         # Organelle selector zctrl
         self.zselector_ctrl = zynthian_controller(None, "Select", {'labels': ['<>']})
         self.zselector_gui = None
 
-    def setup_osc_handlers(self):
-        """Register OSC handlers for various message paths."""
-        self.osc_handlers = {
-            "/oled/gFlip": self.handle_gFlip,
-            "/oled/gCleanln": self.handle_gCleanln,
-            "/oled/gClear": self.handle_gClear,
-            "/oled/gSetPixel": self.handle_gSetPixel,
-            "/oled/gLine": self.handle_gLine,
-            "/oled/gBox": self.handle_gBox,
-            "/oled/gFillArea": self.handle_gFillArea,
-            "/oled/gCircle": self.handle_gCircle,
-            "/oled/gFilledCircle": self.handle_gFilledCircle,
-            "/oled/gPrintln": self.handle_gPrintln,
-            "/oled/gInvertArea": self.handle_gInvertArea,
-            "/oled/ginvertLine": self.handle_ginvertLine,
-            "/led": self.handle_led,
-            "/enc_up": self.handle_enc_up,
-            "/enc_down": self.handle_enc_down,
-            "/enc_sel": self.handle_enc_sel
-        }
-        for path, handler in self.osc_handlers.items():
-            self.server.add_method(path, None, handler)
-        self.server.add_method(None, None, self.fallback_handler)
+    def clear_canvas(self):
+        self.canvas.delete("all")
+        self.line_items.clear()
+        self.inverted_lines.clear()
+        self.line_bboxes.clear()
+        self.text_items_by_position = {}
+
+    def set_processor(self, processor):
+        # Set widget processor
+        if self.processor != processor:
+            self.processor = processor
+            self.processor.engine.osc_reset_child_handlers()
+            self.processor.engine.osc_add_child_handler(self.handle_osc_message)
+            self.processor.engine.osc_flush_unhandle_messages()
+
+        # Configure OSC
+        if self.osc_target != self.processor.engine.osc_target:
+            #self.clear_canvas()
+            self.osc_target = self.processor.engine.osc_target
+
+    def handle_osc_message(self, path, args):
+        """Manage OSC messages."""
+        match path:
+            case "/oled/gFlip":
+                self.handle_gFlip(path, args)
+                return True
+            case "/oled/gCleanln":
+                self.handle_gCleanln(path, args)
+                return True
+            case "/oled/gClear":
+                self.handle_gClear(path, args)
+                return True
+            case "/oled/gSetPixel":
+                self.handle_gSetPixel(path, args)
+                return True
+            case "/oled/gLine":
+                self.handle_gLine(path, args)
+                return True
+            case "/oled/gBox":
+                self.handle_gBox(path, args)
+                return True
+            case "/oled/gFillArea":
+                self.handle_gFillArea(path, args)
+                return True
+            case "/oled/gCircle":
+                self.handle_gCircle(path, args)
+                return True
+            case "/oled/gFilledCircle":
+                self.handle_gFilledCircle(path, args)
+                return True
+            case "/oled/gPrintln":
+                self.handle_gPrintln(path, args)
+                return True
+            case "/oled/gInvertArea":
+                self.handle_gInvertArea(path, args)
+                return True
+            case "/oled/ginvertLine":
+                self.handle_ginvertLine(path, args)
+                return True
+            case "/led":
+                self.handle_led(path, args)
+                return True
+            case "/enc_up":
+                self.handle_enc_up(path, args)
+                return True
+            case "/enc_down":
+                self.handle_enc_down(path, args)
+                return True
+            case "/enc_sel":
+                self.handle_enc_sel(path, args)
+                return True
+            case _:
+                return False
 
     def handle_led(self, path, args):
         logging.debug(f"Received OSC LED message: {path} {args}")
@@ -560,7 +602,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
             self.schedule_update()
 
     def handle_gCleanln(self, path, args):
-        logging.debug(f"Received OSC gCleanln: {path} {args}")
+        #logging.debug(f"Received OSC gCleanln: {path} {args}")
         if len(args) < 1:
             logging.error(f"gCleanln message received with insufficient arguments: {args}")
             return
@@ -585,18 +627,10 @@ class zynthian_widget_organelle(zynthian_widget_base):
     def handle_gClear(self, path, args):
         logging.debug(f"Received OSC: {path} {args}")
         self.in_parameter_view = False
-
-        def clear_canvas():
-            self.canvas.delete("all")
-            self.line_items.clear()
-            self.inverted_lines.clear()
-            self.line_bboxes.clear()
-            self.text_items_by_position = {}
-
-        self.add_to_batch(clear_canvas)
+        self.add_to_batch(self.clear_canvas)
 
     def handle_gLine(self, path, args):
-        logging.debug(f"Received OSC: {path} {args}")
+        #logging.debug(f"Received OSC: {path} {args}")
         mode, x1, y1, x2, y2, color = args
         x1, y1 = int(x1 * self.oled_scale) + 2, int(y1 * self.oled_scale) + 6
         x2, y2 = int(x2 * self.oled_scale) + 2, int(y2 * self.oled_scale) + 6
@@ -608,7 +642,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
         self.add_to_batch(draw_line)
 
     def handle_gSetPixel(self, path, args):
-        logging.debug(f"Received OSC: {path} {args}")
+        #logging.debug(f"Received OSC: {path} {args}")
         dummy, x, y, c = args
         x, y = int(x * self.oled_scale), int(y * self.oled_scale)
         fill_color = "white" if int(c) == 1 else "black"
@@ -619,7 +653,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
         self.add_to_batch(draw_pixel)
 
     def handle_gBox(self, path, args):
-        logging.debug(f"Received OSC: {path} {args}")
+        #logging.debug(f"Received OSC: {path} {args}")
         if len(args) >= 6:
             mode, x, y, w, h, color = args[:6]
             woffset = self.oled_scale - 1
@@ -655,7 +689,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
             logging.error(f"gFillArea message received with insufficient arguments: {args}")
 
     def handle_gCircle(self, path, args):
-        logging.debug(f"Received OSC: {path} {args}")
+        #logging.debug(f"Received OSC: {path} {args}")
         mode, x, y, r, color = args
         woffset = self.oled_scale - 1
         x = int(x * self.oled_scale) + woffset
@@ -669,7 +703,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
         self.add_to_batch(draw_circle)
 
     def handle_gFilledCircle(self, path, args):
-        logging.debug(f"Received OSC: {path} {args}")
+        #logging.debug(f"Received OSC: {path} {args}")
         mode, x, y, r, color = args
         woffset = self.oled_scale - 1
         x = int(x * self.oled_scale) + woffset
@@ -683,7 +717,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
         self.add_to_batch(draw_filled_circle)
 
     def handle_gPrintln(self, path, args):
-        logging.debug(f"Received OSC gPrintln - {len(args)} args: {args}")
+        #logging.debug(f"Received OSC gPrintln - {len(args)} args: {args}")
         if len(args) < 5:
             logging.error(f"gPrintln message received with insufficient arguments: {args}")
             return
@@ -735,7 +769,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
         self.add_to_batch(draw_text)
 
     def handle_ginvertLine(self, path, args):
-        logging.debug(f"Received OSC ginvertLine - {args}")
+        #logging.debug(f"Received OSC ginvertLine - {args}")
         if len(args) < 1:
             logging.error(f"ginvertLine message received with insufficient arguments: {args}")
             return

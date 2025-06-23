@@ -26,6 +26,9 @@
 import ctypes
 from _ctypes import dlclose
 from os.path import dirname, realpath
+import os
+import re
+import unicodedata
 
 libsmf = None
 
@@ -133,6 +136,30 @@ def load(smf, filename):
         return libsmf.load(ctypes.c_ulong(smf), bytes(filename, "utf-8"))
     return False
 
+# Create a safe filename
+#  path: Original filename
+#  max_length: Maximum path length
+#  repalacement: Character to replace invalid characters
+#  Returns: Safe filename
+#  TODO: This should be in a global helper file
+def safe_filename_with_path(path, max_length=255, replacement='_'):
+    # Split the path into directory and filename
+    dir_path, filename = os.path.split(path)
+    # Normalize Unicode characters
+    filename = unicodedata.normalize('NFKD', filename).encode('ascii', 'ignore').decode()
+    # Replace invalid filename characters
+    filename = re.sub(r'[<>:"/\\|?*\x00-\x1F]', replacement, filename)
+    # Clean up repeated replacements and trim
+    filename = re.sub(r'\s+', replacement, filename)
+    filename = re.sub(f'{re.escape(replacement)}+', replacement, filename)
+    filename = filename.strip().strip('.')
+    # Truncate to max length (preserving extension if present)
+    name, ext = os.path.splitext(filename)
+    available_length = max_length - len(ext)
+    name = name[:available_length]
+    filename = f"{name}{ext}"
+    # Recombine with original directory path
+    return os.path.join(dir_path, filename)
 
 # Save a MIDI file
 #  smf: Pointer to smf object to save
@@ -140,7 +167,7 @@ def load(smf, filename):
 #  Returns: True on success
 def save(smf, filename):
     if libsmf:
-        return libsmf.save(ctypes.c_ulong(smf), bytes(filename, "utf-8"))
+        return libsmf.save(ctypes.c_ulong(smf), bytes(safe_filename_with_path(filename), "utf-8"))
     return False
 
 # -------------------------------------------------------------------------------

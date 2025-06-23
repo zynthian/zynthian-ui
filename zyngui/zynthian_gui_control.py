@@ -49,6 +49,7 @@ class zynthian_gui_control(zynthian_gui_selector):
     def __init__(self, selcap='Controllers'):
         self.mode = "control"
 
+        self.modules = {}
         self.widgets = {}
         self.current_widget = None
 
@@ -224,56 +225,80 @@ class zynthian_gui_control(zynthian_gui_selector):
         for i, val in enumerate(self.list_data):
             if val[0] is None:
                 # self.listbox.itemconfig(i, {'bg': zynthian_gui_config.color_off,'fg': zynthian_gui_config.color_tx_off})
-                self.listbox.itemconfig(
-                    i, {'bg': zynthian_gui_config.color_panel_hl, 'fg': zynthian_gui_config.color_tx_off})
+                self.listbox.itemconfig(i, {'bg': zynthian_gui_config.color_panel_hl, 'fg': zynthian_gui_config.color_tx_off})
 
     def set_selector(self, zs_hiden=True):
         if self.mode == 'select':
             super().set_selector(zs_hiden)
 
     def show_widget(self, processor):
-        module_path = processor.engine.custom_gui_fpath
-        if self.screen_type:  # and not module_path:
+        self.purge_widgets()
+
+        if self.screen_type:  # and not module_path
             module_path = f"/zynthian/zynthian-ui/zyngui/zynthian_widget_{self.screen_type}.py"
-        if module_path:
-            module_name = Path(module_path).stem
-            if module_name.startswith("zynthian_widget_"):
-                widget_name = module_name[len("zynthian_widget_"):]
-                if widget_name not in self.widgets:
-                    try:
-                        spec = importlib.util.spec_from_file_location(module_name, module_path)
-                        module = importlib.util.module_from_spec(spec)
-                        spec.loader.exec_module(module)
-                        class_ = getattr(module, module_name)
-                        self.widgets[widget_name] = class_(self.main_frame)
-                    except Exception as e:
-                        logging.error(f"Can't load custom widget {widget_name} => {e}")
+        elif processor.engine.custom_gui_fpath:
+            module_path = processor.engine.custom_gui_fpath
+        else:
+            self.hide_widgets()
+            return
 
-                if widget_name in self.widgets:
-                    self.widgets[widget_name].set_processor(processor)
-                else:
-                    widget_name = None
+        module_name = Path(module_path).stem
+        if module_name.startswith("zynthian_widget_"):
+            try:
+                module = self.modules[module_name]
+            except:
+                # Load module if not loaded
+                try:
+                    spec = importlib.util.spec_from_file_location(module_name, module_path)
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                    self.modules[module_name] = module
+                except Exception as e:
+                    logging.error(f"Can't load custom widget module '{module_name}' => {e}")
+                    self.hide_widgets()
+                    return
 
-                if self.wide:
-                    padx = (0, 2)
+            # Create new widget if needed
+            widget_name = module_name[len("zynthian_widget_"):]
+            try:
+                multi_instance = getattr(module, "MULTI_INSTANCE")
+                if multi_instance:
+                    widget_name += f"#{processor.id}"
+            except:
+                pass
+            if widget_name not in self.widgets:
+                try:
+                    module_class = getattr(module, module_name)
+                    self.widgets[widget_name] = module_class(self.main_frame)
+                except Exception as e:
+                    logging.error(f"Can't create custom widget instance '{widget_name}' => {e}")
+                    self.hide_widgets()
+                    return
+
+            # Configure widget's processor
+            self.widgets[widget_name].set_processor(processor)
+
+            # Display widget and hide other ones
+            if self.wide:
+                padx = (0, 2)
+            else:
+                padx = (2, 2)
+            for k, widget in self.widgets.items():
+                if k == widget_name:
+                    self.listbox.grid_remove()
+                    lb_rows = self.layout['rows'] - widget.rows
+                    if lb_rows > 0:
+                        self.listbox.grid(rowspan=lb_rows)
+                        self._select_listbox(self.index, see=True)
+                    widget.grid(row=self.layout['list_pos'][0] + lb_rows, column=self.layout['list_pos']
+                                [1], rowspan=widget.rows, padx=padx, sticky="news")
+                    widget.show()
+                    self.set_current_widget(widget)
                 else:
-                    padx = (2, 2)
-                for k, widget in self.widgets.items():
-                    if k == widget_name:
-                        self.listbox.grid_remove()
-                        lb_rows = self.layout['rows'] - widget.rows
-                        if lb_rows > 0:
-                            self.listbox.grid(rowspan=lb_rows)
-                            self._select_listbox(self.index, see=True)
-                        widget.grid(row=self.layout['list_pos'][0] + lb_rows, column=self.layout['list_pos']
-                                    [1], rowspan=widget.rows, padx=padx, sticky="news")
-                        widget.show()
-                        self.set_current_widget(widget)
-                    else:
-                        widget.grid_remove()
-                        widget.hide()
-                return
-        self.hide_widgets()
+                    widget.grid_remove()
+                    widget.hide()
+        else:
+            self.hide_widgets()
 
     def hide_widgets(self):
         for k, widget in self.widgets.items():
@@ -283,8 +308,25 @@ class zynthian_gui_control(zynthian_gui_selector):
         self.listbox.grid_remove()
         self.listbox.grid(rowspan=4)
 
+    def purge_widgets(self):
+        """
+            Clean widget instances of removed processors (multi-instance modules only)
+        """
+        # multi_instances = [k for k, v in self.widgets.items() if k.startswith(widget_name)]
+        for k in list(self.widgets.keys()):
+            parts = k.split("#")
+            try:
+                proc_id = int(parts[1])
+            except:
+                continue
+            if proc_id not in self.zyngui.chain_manager.processors:
+                logging.debug(f"Deleting orphaned widget: {k}")
+                del self.widgets[k]
+
     def set_current_widget(self, widget):
-        if widget == self.current_widget:
+        if widget is None and self.current_widget is None:
+            return
+        if widget is not None and widget == self.current_widget:
             return
         self.current_widget = widget
         # Clean dynamic CUIA methods from widgets
