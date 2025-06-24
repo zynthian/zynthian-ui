@@ -413,7 +413,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     self.set_file(processor, slot)
                     do_warp = True
         if do_warp:
-            self.write_sfz()
+            self.write_sfz(processor)
 
     # ---------------------------------------------------------------------------
     # Processor Management
@@ -456,8 +456,8 @@ class zynthian_engine_clippy(zynthian_engine):
     # Bank Management
     # ---------------------------------------------------------------------------
 
-    #def get_bank_list(self, processor=None):
-    #    return self.get_bank_dirlist(recursion=2)
+    def get_bank_list(self, processor=None):
+        return []
 
     #def set_bank(self, processor, bank):
     #    return True
@@ -466,7 +466,8 @@ class zynthian_engine_clippy(zynthian_engine):
     # Preset Management
     # ---------------------------------------------------------------------------
 
-    #def get_preset_list(self, bank):
+    def get_preset_list(self, bank):
+        return []
     #    return self._get_preset_list(bank)
 
     #def set_preset(self, processor, preset, preload=False):
