@@ -990,8 +990,10 @@ bool load(const char* filename) {
                     continue;
                 Sequence* pSequence = g_seqMan.getSequence(nBank, nSequence, false);
                 pSequence->setRepeat(1);
-                if (nVersion > 10)
-                    pSequence->setPlayMode(fileRead16(pFile));
+                if (nVersion > 10) {
+                    pSequence->setPlayMode(fileRead8(pFile));
+                    pSequence->setRepeat(fileRead8(pFile));
+                }
                 else {
                     switch (fileRead8(pFile)) {
                     case 0:
@@ -1304,7 +1306,8 @@ void save(const char* filename) {
         nPos += fileWrite32(nSequences, pFile);
         for (uint32_t nSequence = 0; nSequence < nSequences; ++nSequence) {
             Sequence* pSequence = g_seqMan.getSequence(nBank, nSequence);
-            nPos += fileWrite16(pSequence->getPlayMode(), pFile);
+            nPos += fileWrite8(pSequence->getPlayMode(), pFile);
+            nPos += fileWrite8(pSequence->getRepeat(), pFile);
             nPos += fileWrite8(pSequence->getGroup(), pFile);
             nPos += fileWrite8(g_seqMan.getTriggerNote(nBank, nSequence), pFile);
             nPos += fileWrite16(pSequence->getFollowAction(), pFile);
@@ -2211,38 +2214,6 @@ void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state) {
         state = STOPPED;
     }
     g_seqMan.setSequencePlayState(bank, sequence, state);
-
-    // Handle scene launchers (group 16)
-    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
-    if (pSequence->getGroup() == 16) {
-        uint8_t slot = sequence / 17;
-        uint8_t base_seq = slot * 17;
-        if (state == STARTING || state == PLAYING) {
-            for (uint8_t chan = 0; chan < 16; ++chan) {
-                uint32_t nSlaveSeq = base_seq + chan;
-                Sequence* pSlaveSeq = g_seqMan.getSequence(bank, nSlaveSeq);
-                if (pSlaveSeq->getRepeat() == 0 || pSlaveSeq->getPlayState() == PLAYING)
-                    continue;
-                if (pSlaveSeq->getPlayState() == STOPPING)
-                    g_seqMan.setSequencePlayState(bank, nSlaveSeq, PLAYING);
-                else
-                    g_seqMan.setSequencePlayState(bank, nSlaveSeq, STARTING);
-            }
-        } else if (state == STOPPING) {
-            for (uint8_t chan = 0; chan < 16; ++chan) {
-                uint32_t nSlaveSeq = base_seq + chan;
-                if (g_seqMan.getSequence(bank, nSlaveSeq)->getPlayState() == STOPPED)
-                    continue;
-                g_seqMan.setSequencePlayState(bank, nSlaveSeq, STOPPING);
-            }
-        } else if (state == STOPPED) {
-            for (uint8_t chan = 0; chan < 16; ++chan) {
-                uint32_t nSlaveSeq = base_seq + chan;
-                if (g_seqMan.getSequence(bank, nSlaveSeq)->getPlayState() != STOPPED)
-                    g_seqMan.setSequencePlayState(bank, nSlaveSeq, STOPPED);
-            }
-        }
-    }
 }
 
 void togglePlayState(uint8_t bank, uint8_t sequence) {

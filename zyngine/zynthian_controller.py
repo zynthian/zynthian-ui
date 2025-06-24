@@ -49,12 +49,13 @@ class zynthian_controller:
         """
         self.reset(engine, symbol, options)
 
-    def reset(self, engine, symbol, options=None):
+    def reset(self, engine, symbol, options=None, full=True):
         """ Reset to default settings
 
         engine - Engine object containing parameter to control
         symbol - String identifying the control
         options - Optional dictionary of controller {parameter:value} pairs
+        full - True to fully reset or False to retain core configuration and value
         """
 
         self.engine = engine
@@ -65,7 +66,8 @@ class zynthian_controller:
         self.group_name = "Ctrls"
         self.readonly = False
 
-        self.value = 0  # Absolute value of the control
+        if full:
+            self.value = 0  # Absolute value of the control
         self.value_default = None  # Default value to use when reset control
         self.value_min = None  # Minimum value of control range
         # Mid-point value of control range (used for toggle controls)
@@ -82,9 +84,10 @@ class zynthian_controller:
         self.is_toggle = False  # True if control is Boolean toggle
         self.is_integer = True  # True if control is Integer
         self.is_logarithmic = False  # True if control uses logarithmic scale
-        self.is_path = False  # True if the control is a file path (i.e. LV2's atom:Path)
-        self.path_file_types = None  # List of supported file types
-        self.path_dir_names = None  # List of directory names to look for files
+        if full:
+            self.is_path = False  # True if the control is a file path (i.e. LV2's atom:Path)
+            self.path_file_types = None  # List of supported file types
+            self.path_dir_names = None  # List of directory names to look for files
         self.not_on_gui = False  # True to hint to GUI to show control
         self.display_priority = 0  # Hint of order in which to display control (higher comes first)
 

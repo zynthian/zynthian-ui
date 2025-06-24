@@ -345,7 +345,10 @@ class zynthian_chain_manager:
             chain = self.chains[chain_id]
             if isinstance(chain.midi_chan, int):
                 if chain.midi_chan < MAX_NUM_MIDI_CHANS:
-                    self.midi_chan_2_chain_ids[chain.midi_chan].remove(chain_id)
+                    try:
+                        self.midi_chan_2_chain_ids[chain.midi_chan].remove(chain_id)
+                    except:
+                        pass
                     lib_zyncore.ui_send_ccontrol_change(chain.midi_chan, 120, 0)
                 elif chain.midi_chan == 0xffff:
                     for mc in range(16):

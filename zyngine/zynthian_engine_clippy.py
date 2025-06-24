@@ -36,6 +36,8 @@ from zynlibs.zynaudioplayer import zynaudioplayer
 from zyngine.zynthian_signal_manager import zynsigman
 
 from . import zynthian_engine
+from . import zynthian_controller
+
 from zynconf import ServerPort
 import zynautoconnect
 
@@ -58,7 +60,6 @@ class zyngine_lscp_warning(Exception):
 
 MAX_BEATS = 64 # Maximum quantity of beats in a pattern
 MAX_DURATION = 30 # Maximum audio duration to warp, in seconds
-NUM_SPLICES = 128 // zynseq.MIN_LAUNCHER_SLOTS # Quantity of slices to split audio to spread across pattern
 
 class zynthian_engine_clippy(zynthian_engine):
 
@@ -82,103 +83,70 @@ class zynthian_engine_clippy(zynthian_engine):
 
         #self.custom_gui_fpath = "/zynthian/zynthian-ui/zyngui/zynthian_widget_audioplayer.py"
 
+        self.slots = 0
         self._ctrls = []
         self._ctrl_screens = []
-        for i in range(1, 9):
-            # MIDI Controllers
-            self._ctrls.append([
-                f"file {i:02}", {
-                    'is_path': True,
-                    'value_default': "",
-                    'value': "",
-                    'path_file_types': ['wav', 'ogg', 'mp3', 'flac', 'aac']
-                }
-            ])
-            self._ctrls.append([
-                f"warp {i:02}", {
-                    'is_toggle': True,
-                    'labels': ["off", "on"]
-                }
-            ])
-            self._ctrls.append([
-                f"beats {i:02}", {
-                    "is_integer": True,
-                    "value_min": 0,
-                    "value_max": MAX_BEATS
-                }
-            ])
 
-            # Controller Screens
-            self._ctrl_screens.append([
-                f'sample {i:02}',
-                [f'file {i:02}']
-            ])
-
-        self.patterns = []
         self.tempo_cb_timer = None
 
         self.sr = zynautoconnect.get_jackd_samplerate()
         if not os.path.exists("/tmp/silence.wav"):
             soundfile.write("/tmp/silence.wav", [0.0], self.sr)
 
-        self.slot_info = []
-        for i in range(zynseq.MIN_LAUNCHER_SLOTS):
-            self.slot_info.append(
-                {
-                    "path": "",
-                    "frames": 0
-                }
-            )
-
     # ---------------------------------------------------------------------------
     # Subproccess Management & IPC
     # ---------------------------------------------------------------------------
 
-    def start(self):
-        if not self.proc:
-            logging.info(f"Starting Engine {self.name}")
-            try:
-                logging.debug(f"Command: {self.command}")
-                # Turns out that environment's PWD is not set automatically
-                # when cwd is specified for pexpect.spawn(), so do it here.
-                if self.command_cwd:
-                    self.command_env['PWD'] = self.command_cwd
-                # Setting cwd is because we've set PWD above. Some engines doesn't
-                # care about the process's cwd, but it is more consistent to set
-                # cwd when PWD has been set.
-                self.proc = Popen(self.command, env=self.command_env, cwd=self.command_cwd, shell=False,
-                                  text=True, bufsize=1, stdout=PIPE, stderr=STDOUT, stdin=PIPE)
-                zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_TEMPO, self.on_tempo)
+    def start(self, processor):
+        try:
+            if processor.proc:
+                return
+        except:
+            pass
+        logging.info(f"Starting Engine {self.name}")
+        try:
+            logging.debug(f"Command: {self.command}")
+            # Turns out that environment's PWD is not set automatically
+            # when cwd is specified for pexpect.spawn(), so do it here.
+            if self.command_cwd:
+                self.command_env['PWD'] = self.command_cwd
+            # Setting cwd is because we've set PWD above. Some engines doesn't
+            # care about the process's cwd, but it is more consistent to set
+            # cwd when PWD has been set.
+            processor.proc = Popen(processor.command, env=self.command_env, cwd=self.command_cwd, shell=False,
+                                text=True, bufsize=1, stdout=PIPE, stderr=STDOUT, stdin=PIPE)
+            zynsigman.register_queued(zynsigman.S_STEPSEQ, zynseq.SS_TEMPO, self.on_tempo)
 
-            except Exception as err:
-                logging.error(f"Can't start engine {self.name} => {err}")
+        except Exception as err:
+            logging.error(f"Can't start engine {self.name} => {err}")
 
     def stop(self):
-        if self.proc:
+        #TODO: How do we stop a single processor?
+        for processor in self.processors:
             try:
                 zynsigman.unregister(zynsigman.S_STEPSEQ, zynseq.SS_TEMPO, self.on_tempo)
                 logging.info("Stopping Engine " + self.name)
-                self.proc.terminate()
-                self.proc = None
+                processor.proc.terminate()
+                processor.proc = None
             except Exception as err:
                 logging.error(
                     "Can't stop engine {} => {}".format(self.name, err))
 
-    def lscp_connect(self):
+    def lscp_connect(self, processor):
         logging.info("Connecting with LinuxSampler Server...")
         self.state_manager.start_busy("clippy")
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.setblocking(False)
-        self.sock.settimeout(1)
+        processor.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        processor.sock.setblocking(False)
+        processor.sock.settimeout(1)
         i = 0
         while i < 20:
             try:
-                self.sock.connect(("127.0.0.1", self.lscp_port))
+                processor.sock.connect(("127.0.0.1", processor.lscp_port))
                 break
             except:
                 sleep(0.25)
                 i += 1
-        return self.sock
+        return processor.sock
 
     def lscp_get_result_index(self, result):
         parts = result.split('[')
@@ -186,12 +154,12 @@ class zynthian_engine_clippy(zynthian_engine):
             parts = parts[1].split(']')
             return int(parts[0])
 
-    def lscp_send_single(self, command):
+    def lscp_send_single(self, processor, command):
         # logging.debug("LSCP SEND => %s" % command)
         command = command + "\r\n"
         try:
-            self.sock.send(command.encode())
-            line = self.sock.recv(4096)
+            processor.sock.send(command.encode())
+            line = processor.sock.recv(4096)
         except Exception as err:
             logging.error("FAILED lscp_send_single(%s): %s" % (command, err))
             self.state_manager.end_busy("clippy")
@@ -218,12 +186,75 @@ class zynthian_engine_clippy(zynthian_engine):
             raise zyngine_lscp_warning(
                 "{} ({} {})".format(parts[2], parts[0], parts[1]))
 
+    def insert_slot(self, slot):
+        for processor in self.processors:
+            max_slot = 1
+            # Get symbols to move
+            symbols = []
+            for symbol in processor.controllers_dict.keys():
+                idx = int(symbol[-2:]) - 1
+                if idx >= slot:
+                    symbols.append(symbol)
+                if idx >= max_slot:
+                    max_slot = idx + 1
+
+            # Create new zctrls
+            zctrls = {
+                f"file {slot + 1:02}": zynthian_controller(self, f"file {slot + 1:02}", {
+                    'is_path': True,
+                    'value_default': "",
+                    'path_file_types': ['wav', 'ogg', 'mp3', 'flac', 'aac'],
+                    'processor': processor
+                }),
+                f"warp {slot + 1:02}": zynthian_controller(self, f"warp {slot + 1:02}", {
+                    'processor': processor,
+                    'is_toggle': True,
+                    'labels': ["off", "on"]
+                }),
+                f"beats {slot + 1:02}": zynthian_controller(self, f"beats {slot + 1:02}", {
+                    'processor': processor,
+                    'is_integer': True,
+                    'value_min': 0,
+                    'value_max': MAX_BEATS
+                })
+            }
+
+            # Move zctrls
+            for symbol in symbols:
+                zctrl = processor.controllers_dict.pop(symbol)
+                idx = int(symbol[-2:]) + 1
+                new_symbol = f"{symbol[:-2]}{idx}"
+                zctrl.symbol = new_symbol
+                zctrls[symbol] = zctrl
+            processor.controllers_dict.update(zctrls)
+
+            # Update screens
+            self._ctrl_screens = []
+            for idx in range(1, max_slot + 1):
+                cfg = [f'file {idx:02}']
+                if processor.controllers_dict[f"file {idx:02}"].value:
+                    cfg.append(f'warp {idx:02}')
+                    cfg.append(f'beats {idx:02}')
+                self._ctrl_screens.append([f'sample {idx:02}', cfg])
+            processor.init_ctrl_screens()
+            self.slots += 1
+
+
+    def set_slots(self, slots):
+        if self.slots == slots:
+            return
+
+        # Add missing slots
+        for slot in range(self.slots, slots + 1):
+            self.insert_slot(slot)
+
     # ---------------------------------------------------------------------------
     # Controller Management
     # ---------------------------------------------------------------------------
 
-    def write_sfz(self):
-        with open("/tmp/clippy.sfz", "w") as file:
+    def write_sfz(self, processor):
+        filename = f"/tmp/clippy_{processor.id}.sfz"
+        with open(filename, "w") as file:
             file.write("<global>\n")
             #file.write("ampeg_release=0.01\n")  # Fast fade to reduce risk of clicks
             file.write("loop_mode=one_shot\n") # Loop whilst key pressed
@@ -233,29 +264,20 @@ class zynthian_engine_clippy(zynthian_engine):
             file.write(f"key=0\n")
             file.write(f"\n")
             """
-            for slot in range(zynseq.MIN_LAUNCHER_SLOTS):
-                file_zctrl = self.processors[0].controllers_dict[f"file {slot+1:02}"]
-                beats_zctrl = self.processors[0].controllers_dict[f"beats {slot+1:02}"]
+            for slot in range(self.slots):
+                file_zctrl = processor.controllers_dict[f"file {slot+1:02}"]
+                beats_zctrl = processor.controllers_dict[f"beats {slot+1:02}"]
                 if file_zctrl.value:
-                    if beats_zctrl.value:
-                        for splice in range(NUM_SPLICES):
-                            file.write("<region>\n")
-                            file.write(f"sample={file_zctrl.path}\n")
-                            file.write(f"key={slot * NUM_SPLICES + splice}\n")
-                            file.write(f"offset={int(splice * self.slot_info[slot]['frames'] / NUM_SPLICES)}\n")
-                            file.write(f"end={int((splice + 1) * self.slot_info[slot]['frames'] / NUM_SPLICES) - 1}\n")
-                            file.write(f"\n")
-                    else:
-                        file.write("<region>\n")
-                        file.write(f"sample={file_zctrl.path}\n")
-                        file.write(f"key={slot * NUM_SPLICES}\n")
-                        file.write(f"\n")
-        self.lscp_send_single(f"LOAD INSTRUMENT '/tmp/clippy.sfz' 0 0")
+                    file.write("<region>\n")
+                    file.write(f"sample={file_zctrl.path}\n")
+                    file.write(f"key={slot}\n")
+                    file.write(f"\n")
+        self.lscp_send_single(processor, f"LOAD INSTRUMENT '{filename}' 0 0")
 
     def send_controller_value(self, zctrl):
         try:
             slot = int(zctrl.symbol.split(" ")[1]) - 1
-            beats_zctrl = self.processors[0].controllers_dict[f"beats {slot + 1:02}"]
+            beats_zctrl = zctrl.processor.controllers_dict[f"beats {slot + 1:02}"]
         except Exception as e:
             logging.error(f"Can't determine sample index {zctrl.symbol} => {e}")
             return
@@ -263,19 +285,18 @@ class zynthian_engine_clippy(zynthian_engine):
             if zctrl.value == 0 or zctrl.value == "0":
                 zctrl.value = ""   # TODO: This should be fixed in zctrl class
             beats_zctrl.value = 0
-            self.set_file(slot, zctrl.value)
+            self.set_file(zctrl.processor, slot)
         elif zctrl.symbol.startswith("warp"):
-            self.set_file(slot, zctrl.processor.controllers_dict[f"file {slot + 1:02}"].value)
-        self.write_sfz()
+            self.set_file(zctrl.processor, slot)
+        self.write_sfz(zctrl.processor)
 
-    def set_file(self, slot, path):
-        processor = self.processors[0]
+    def set_file(self, processor, slot):
         file_zctrl = processor.controllers_dict[f"file {slot + 1:02}"]
         warp_zctrl = processor.controllers_dict[f"warp {slot + 1:02}"]
         beats_zctrl = processor.controllers_dict[f"beats {slot + 1:02}"]
         sequence = self.sequence_offset + slot * zynseq.LAUNCHER_COLS
-        self.slot_info[slot]["path"] = path
         self._ctrl_screens[slot] = [f'sample {slot + 1:02}', [f'file {slot + 1:02}']]
+        path = file_zctrl.value
 
         if path:
             # Try to determine tempo from filename
@@ -286,6 +307,8 @@ class zynthian_engine_clippy(zynthian_engine):
             pattern = r"(\d+)\s*(?=bpm|BPM)"
             matches = re.findall(pattern, filename)
             duration = zynaudioplayer.get_file_duration(path)
+            if not duration:
+                return
             try:
                 file_tempo = int(matches[0])
             except:
@@ -316,18 +339,18 @@ class zynthian_engine_clippy(zynthian_engine):
                     # Disconnect MIDI to avoid retrigger during warping
                     if self.libseq.getPlayState(self.zynseq.bank, sequence):
                         reconnect = True
-                        self.lscp_send_single("REMOVE CHANNEL MIDI_INPUT 0 0 0")
+                        self.lscp_send_single(processor, "REMOVE CHANNEL MIDI_INPUT 0 0 0")
                         # Silence existing audio
                         if self.libseq.getPlayState(self.zynseq.bank, self.sequence_offset + slot * zynseq.LAUNCHER_COLS):
-                            self.lscp_send_single("SEND CHANNEL MIDI_DATA CC 0 120 0")
+                            self.lscp_send_single(processor, "SEND CHANNEL MIDI_DATA CC 0 120 0")
                     # Do warp
                     data, sr = soundfile.read(path)
                     data = pyrubberband.time_stretch(data, sr, factor)
-                    path = f"/tmp/clippy{sequence}.flac"
+                    path = f"/tmp/clippy_{processor.id}_{sequence}.flac"
                     soundfile.write(path, data, sr)
                 else:
                     try:
-                        os.remove(f"/tmp/clippy{sequence}.flac")
+                        os.remove(f"/tmp/clippy{processor.id}_{sequence}.flac")
                     except:
                         pass
                 if bpm_match:
@@ -343,7 +366,6 @@ class zynthian_engine_clippy(zynthian_engine):
                     beats_zctrl.value = 0
                     warp_zctrl.value = 0
                 file_zctrl.path = path
-                self.slot_info[slot]["frames"] = soundfile.info(path).frames
 
                 # Setup zynseq pattern & sequence
                 pattern = self.libseq.getPattern(self.zynseq.bank, sequence, 0, 0)
@@ -351,20 +373,15 @@ class zynthian_engine_clippy(zynthian_engine):
                 self.libseq.clearPattern(pattern)
                 self.libseq.setStepsPerBeat(pattern, 1)
                 self.libseq.setBeatsInPattern(pattern, whole_beats)
-                if beats_zctrl.value:
-                    note_len = whole_beats // NUM_SPLICES
-                    for pos in range(NUM_SPLICES):
-                        self.libseq.addNote(note_len * pos, NUM_SPLICES * slot + pos, 100, 1, 0.0)
-                else:
-                    self.libseq.addNote(0, NUM_SPLICES * slot, 100, 1, 0.0)
+                self.libseq.addNote(0, slot, 100, 1, 0.0)
                 #self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0100)
                 state = self.libseq.getPlayState(self.zynseq.bank, sequence)
                 self.libseq.updateSequenceInfo()
                 self.zynseq.set_sequence_name(self.zynseq.bank, sequence, os.path.splitext(filename)[0])
                 if reconnect:
                     # Reconnect MIDI
-                    self.lscp_send_single("ADD CHANNEL MIDI_INPUT 0 0 0")
-                    self.lscp_send_single(f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
+                    self.lscp_send_single(processor, "ADD CHANNEL MIDI_INPUT 0 0 0")
+                    self.lscp_send_single(processor, f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
                 self.libseq.setRepeat(self.zynseq.bank, sequence, 1)
                 self.zynseq.rebuild_launcher_info(sequence)
             except Exception as e:
@@ -375,8 +392,8 @@ class zynthian_engine_clippy(zynthian_engine):
             #self.reset_pattern(slot)
 
         zynsigman.send(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE,
-                       bank=self.zynseq.bank, seq=sequence, state=state, mode=0x0100, group=self.processors[0].midi_chan)
-        self.processors[0].init_ctrl_screens()
+                       bank=self.zynseq.bank, seq=sequence, state=state, mode=0x0100, group=processor.midi_chan)
+        processor.init_ctrl_screens()
 
     def on_tempo(self, tempo):
         if self.tempo_cb_timer:
@@ -389,12 +406,12 @@ class zynthian_engine_clippy(zynthian_engine):
             self.tempo_cb_timer.cancel()
         self.tempo_cb_timer = None
         do_warp = False
-        for slot in range(zynseq.MIN_LAUNCHER_SLOTS):
-            warp_zctrl = self.processors[0].controllers_dict[f"warp {slot + 1:02}"]
-            if warp_zctrl.value:
-                path = self.processors[0].controllers_dict[f"file {slot + 1:02}"].value
-                self.set_file(slot, path)
-                do_warp = True
+        for processor in self.processors:
+            for slot in range(self.slots):
+                warp_zctrl = processor.controllers_dict[f"warp {slot + 1:02}"]
+                if warp_zctrl.value:
+                    self.set_file(processor, slot)
+                    do_warp = True
         if do_warp:
             self.write_sfz()
 
@@ -403,23 +420,23 @@ class zynthian_engine_clippy(zynthian_engine):
     # ---------------------------------------------------------------------------
 
     def add_processor(self, processor):
-        if self.processors:
-            return # Only support single processor
         super().add_processor(processor)
-        self.lscp_port = ServerPort["clippy"] + processor.id
-        self.command = ["linuxsampler", "--lscp-port", str(self.lscp_port)]
-        self.start()
-        self.lscp_connect()
-        self.ls_init()
-        ls_chan_id = self.lscp_send_single("ADD CHANNEL")
-        self.lscp_send_single("LOAD ENGINE SFZ 0")
-        self.lscp_send_single("SET CHANNEL AUDIO_OUTPUT_DEVICE 0 0")
-        self.lscp_send_single("ADD CHANNEL MIDI_INPUT 0 0 0")
-        self.lscp_send_single(f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
+        self.set_slots(self.zynseq.slots)
+
+        processor.lscp_port = ServerPort["clippy"] + processor.id
+        processor.command = ["linuxsampler", "--lscp-port", str(processor.lscp_port)]
+        self.start(processor)
+        self.lscp_connect(processor)
+        self.ls_init(processor)
+        ls_chan_id = self.lscp_send_single(processor, "ADD CHANNEL")
+        self.lscp_send_single(processor, "LOAD ENGINE SFZ 0")
+        self.lscp_send_single(processor, "SET CHANNEL AUDIO_OUTPUT_DEVICE 0 0")
+        self.lscp_send_single(processor, "ADD CHANNEL MIDI_INPUT 0 0 0")
+        self.lscp_send_single(processor, f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
 
         self.sequence_offset = processor.midi_chan
 
-        for slot in range(8):
+        for slot in range(self.slots):
             self.reset_pattern(slot)
         self.zynseq.rebuild_all_launcher_info() # Need to do this (again!!!) here because called too early when adding chain (before processor is added)
 
@@ -459,28 +476,28 @@ class zynthian_engine_clippy(zynthian_engine):
     # Specific functions
     # ---------------------------------------------------------------------------
 
-    def ls_init(self):
+    def ls_init(self, processor):
         try:
             # Reset
-            self.lscp_send_single("RESET")
+            self.lscp_send_single(processor, "RESET")
 
             # Config Audio JACK Device 0
-            self.ls_audio_device_id = self.lscp_send_single(
+            self.ls_audio_device_id = self.lscp_send_single(processor,
                 f"CREATE AUDIO_OUTPUT_DEVICE JACK ACTIVE='true' CHANNELS='2' NAME='{self.jackname}'")
             """
-            self.lscp_send_single(
+            self.lscp_send_single(processor,
                 f"SET AUDIO_OUTPUT_CHANNEL_PARAMETER {self.ls_audio_device_id} 0 NAME='out_l'")
-            self.lscp_send_single(
+            self.lscp_send_single(processor,
                 f"SET AUDIO_OUTPUT_CHANNEL_PARAMETER {self.ls_audio_device_id} 1 NAME='out_r'")
             """
 
             # Config MIDI JACK Device 1
-            self.ls_midi_device_id = self.lscp_send_single(
+            self.ls_midi_device_id = self.lscp_send_single(processor,
                 f"CREATE MIDI_INPUT_DEVICE JACK ACTIVE='true' NAME='{self.jackname}' PORTS='1'")
 
             # Global volume level
-            self.lscp_send_single("SET VOLUME 0.95")
-            self.lscp_send_single("SET VOICES 1")
+            self.lscp_send_single(processor, "SET VOLUME 0.95")
+            self.lscp_send_single(processor, "SET VOICES 1")
 
         except zyngine_lscp_error as err:
             logging.error(err)

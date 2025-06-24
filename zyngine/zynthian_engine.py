@@ -649,7 +649,7 @@ class zynthian_engine(zynthian_basic_engine):
                 if d:
                     del processor.controllers_dict[symbol]
                 else:
-                    processor.controllers_dict[symbol].reset(self, symbol)
+                    processor.controllers_dict[symbol].reset(self, symbol, full=False)
 
             # Regenerate / update controller dictionary
             for ctrl in self._ctrls:

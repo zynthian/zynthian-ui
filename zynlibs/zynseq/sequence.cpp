@@ -147,12 +147,15 @@ void Sequence::setPlayState(uint8_t state) {
         m_nCount = 0;
 }
 
-uint32_t Sequence::getState() { return (m_nRepeat << 24) | (m_nGroup << 16) | (m_nMode << 8) | m_nState; }
+uint32_t Sequence::getState() {
+    return (m_nRepeat << 24) | (m_nGroup << 16) | (m_nMode << 8) | m_nState;
+}
 
 uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
     m_nCurrentTrack = 0;
     uint8_t nReturn = 0;
     uint8_t nState = m_nState;
+    uint8_t nCountInc = (m_nState == STARTING) ? 0 : 1;
     if (bSync) {
         if (m_nMode & MODE_END_SYNC) {
             m_nPosition = 0;
@@ -172,10 +175,13 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
     if (m_nPosition >= m_nLength) {
         // End of sequence
         if (m_nState == PLAYING) {
-            if (++m_nCount >= m_nRepeat && m_nNextSeq != m_nId) {
+            m_nCount += nCountInc;
+            if (m_nCount >= m_nRepeat && m_nNextSeq != m_nId) {
                 // Follow action
                 setPlayState(STOPPED);
                 nReturn |= 8;
+            } else if (m_nGroup == 16) {
+                nReturn |= 16;
             }
         } else {
             m_nState = STOPPED;

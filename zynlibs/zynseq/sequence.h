@@ -156,7 +156,7 @@ class Sequence {
         @param  nTime Time (quantity of samples since JACK epoch)
         @param  bSync True to indicate sync pulse, e.g. to sync tracks
         @param  dSamplesPerClock Samples per clock
-        @retval uint8_t Bitwise flag of what clock triggers [1=track step | 2=change of state | 4=tempo change | 8=end of sequence]
+        @retval uint8_t Bitwise flag of what clock triggers [1=track step | 2=change of state | 4=tempo change | 8=end of sequence repeat | 16=end of scene launcher]
         @note   Sequences are clocked syncronously but not locked to absolute time so depend on start time for absolute timing
         @note   Will clock each track
     */

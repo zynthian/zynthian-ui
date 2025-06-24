@@ -129,13 +129,20 @@ class SequenceManager {
     */
     void removePattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position);
 
-    /** @brief Set sequence play state
+    /** @brief  Set sequence play state
         @param  bank Index of bank containing sequence
         @param  sequence Index of sequence
         @param  state Play state
         @note   Stops other sequences in group
     */
     void setSequencePlayState(uint8_t bank, uint8_t sequence, uint8_t state);
+
+    /** @brief  Start scene based on scene launcher state
+        @param  bank Index of bank containing sequence
+        @param  slot Index of scene
+        @param  state Scene launcher play state
+    */
+    void onSceneLauncherState(uint8_t bank, uint8_t slot, uint8_t state);
 
     /** @brief  Move sequence
         @param  bank Index of bank

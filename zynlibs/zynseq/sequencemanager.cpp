@@ -174,7 +174,9 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
     double dSamplesPerClock = timeinfo.second;
     std::vector<uint16_t> vNext;
     for (auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end();) {
-        Sequence* pSequence = getSequence(*it >> 8, *it & 0xff);
+        uint8_t bank = *it >> 8;
+        uint8_t sequence = *it & 0xff;
+        Sequence* pSequence = getSequence(bank, sequence);
         if (pSequence->getPlayState() == STOPPED) {
             it = m_vPlayingSequences.erase(it);
             continue;
@@ -215,10 +217,14 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
             m_bTempoChanged = true;
         }
         if (nEventType & 8) {
-            // Reached end of sequence
+            // Reached end of sequence repeats
             uint16_t nextSeq = pSequence->getFollowAction();
             if (nextSeq != 0xFFFF)
                 vNext.push_back(nextSeq);
+        }
+        if (nEventType & 16) {
+            // Reached end of scene launcher
+            onSceneLauncherState(bank, sequence / 17, pSequence->getPlayState());
         }
         ++it;
     }
@@ -249,7 +255,42 @@ void SequenceManager::setSequencePlayState(uint8_t bank, uint8_t sequence, uint8
         if (bAddToList)
             m_vPlayingSequences.push_back((bank << 8) | sequence);
     }
+
+    // Handle scene launchers (group 16)
+    if (pSequence->getGroup() == 16) {
+        onSceneLauncherState(bank, sequence / 17, state);
+    }
+
     pSequence->setPlayState(state);
+}
+
+void SequenceManager::onSceneLauncherState(uint8_t bank, uint8_t slot, uint8_t state) {
+    uint8_t base_seq = slot * 17;
+    if (state == STARTING || state == PLAYING) {
+        for (uint8_t chan = 0; chan < 16; ++chan) {
+            uint32_t nSlaveSeq = base_seq + chan;
+            Sequence* pSlaveSeq = getSequence(bank, nSlaveSeq);
+            if (pSlaveSeq->getRepeat() == 0)// || pSlaveSeq->getPlayState() == PLAYING)
+                continue;
+            if (pSlaveSeq->getPlayState() == STOPPING)
+                setSequencePlayState(bank, nSlaveSeq, PLAYING);
+            else
+                setSequencePlayState(bank, nSlaveSeq, STARTING);
+        }
+    } else if (state == STOPPING) {
+        for (uint8_t chan = 0; chan < 16; ++chan) {
+            uint32_t nSlaveSeq = base_seq + chan;
+            if (getSequence(bank, nSlaveSeq)->getPlayState() == STOPPED)
+                continue;
+            setSequencePlayState(bank, nSlaveSeq, STOPPING);
+        }
+    } else if (state == STOPPED) {
+        for (uint8_t chan = 0; chan < 16; ++chan) {
+            uint32_t nSlaveSeq = base_seq + chan;
+            if (getSequence(bank, nSlaveSeq)->getPlayState() != STOPPED)
+                setSequencePlayState(bank, nSlaveSeq, STOPPED);
+        }
+    }
 }
 
 void SequenceManager::moveSequence(uint8_t bank, uint8_t sequence, uint8_t newSeq) {

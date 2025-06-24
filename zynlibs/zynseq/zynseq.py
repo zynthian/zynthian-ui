@@ -81,7 +81,6 @@ SEQ_MAX_COLUMNS = 8
 PATTERN_EDITOR_BANK = 0     # Bank used for pattern editor
 LAUNCHER_COLS = 17          # Quantity of launcher columns (16 channels + scene launchers)
 SCENE_LAUNCHER_COL = LAUNCHER_COLS - 1     # Quantity of launcher columns (16 channels + scene launchers)
-MIN_LAUNCHER_SLOTS = 8      # Minimum quantity of launcher slots in each channel of each bank
 
 # Subsignals are defined inside each module. Here we define zynseq subsignals:
 SS_SEQ_PLAY_STATE = 1
@@ -155,7 +154,7 @@ class zynseq(zynthian_engine):
         # Cache sequence info for launchers to reduce access to libseq
         self.launcher_info = [] # List of list launcher info, indexed by slot, channel
         self.sequence_info = {} # Map of launcher info, mapped by sequence (within current bank)
-        self.slots = 0 # Quantity of launcher slots/rows/scenes
+        self.slots = 8 # Quantity of launcher slots/rows/scenes
         self.bank = None # Currently selected bank
         self.seq_in_bank = 0 # Quantity of sequence in the selected bank
         self.pause_update = False
@@ -258,6 +257,12 @@ class zynseq(zynthian_engine):
         self.slots = self.seq_in_bank // LAUNCHER_COLS
         self.bank = bank
 
+        if bank == 1 and self.slots == 0:
+            self.slots = 8
+            # Create default launchers
+            for seq in range(LAUNCHER_COLS * self.slots):
+                self.libseq.getSequenceState(bank, seq)
+
         zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_REFRESH)
         self.changing_bank = False
 
@@ -267,7 +272,7 @@ class zynseq(zynthian_engine):
         self.sequence_info = {}
         self.seq_in_bank = self.libseq.getSequencesInBank(self.bank)
         self.slots = self.seq_in_bank // LAUNCHER_COLS
-        for sequence in range(self.seq_in_bank):
+        for sequence in range(self.slots * LAUNCHER_COLS):
             self.rebuild_launcher_info(sequence)
         self.progress = [0] * self.seq_in_bank
         self.pause_update = False
@@ -334,6 +339,7 @@ class zynseq(zynthian_engine):
                     processor = chain.get_processors("MIDI Synth")[0]
                     if processor.engine.nickname == "CL":
                         info["clippy"] = processor
+                        #processor.engine.set_slots(self.slots)
                 except:
                     pass
                 info["chains"].append(chain_id)
