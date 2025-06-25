@@ -875,7 +875,7 @@ class zynthian_gui_mixer_strip():
                     self.zynseq.libseq.setPlayState(self.zynseq.bank, seq, zynseq.SEQ_STOPPED)
                 return
             for i in range(len(self.zynseq.launcher_info)):
-                seq = info["chan"] * len(self.zynseq.launcher_info) + i
+                seq = info["chan"] + zynseq.LAUNCHER_COLS * i
                 self.zynseq.libseq.setPlayState(self.zynseq.bank, seq, zynseq.SEQ_STOPPED)
             if proc:
                 proc.engine.lscp_send_single(proc, f"SEND CHANNEL MIDI_DATA CC 0 120 0")
