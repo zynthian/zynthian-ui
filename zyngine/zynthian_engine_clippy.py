@@ -209,7 +209,8 @@ class zynthian_engine_clippy(zynthian_engine):
                 f"warp {slot + 1:02}": zynthian_controller(self, f"warp {slot + 1:02}", {
                     'processor': processor,
                     'is_toggle': True,
-                    'labels': ["off", "on"]
+                    'labels': ["off", "on"],
+                    'value': "on"
                 }),
                 f"beats {slot + 1:02}": zynthian_controller(self, f"beats {slot + 1:02}", {
                     'processor': processor,
