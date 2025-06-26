@@ -623,6 +623,16 @@ class zynthian_engine_pianoteq(zynthian_engine):
         result = self.rpc('savePreset', {'name': preset_name, 'bank': 'My Presets'})
         return result and 'error' not in result
 
+    def delete_preset(self, bank_info, preset):
+        #return self.zynapi_remove_preset(f'{PIANOTEQ_MY_PRESETS_DIR}/{preset[1]}/{preset[0]}.fxp')
+        result = self.rpc('deletePreset', {'name': preset[0], 'bank': 'My Presets'})
+        return result and 'error' not in result
+
+    def rename_preset(self, bank_info, preset, new_name):
+        res = self.zynapi_rename_preset(f'{PIANOTEQ_MY_PRESETS_DIR}/{preset[1]}/{preset[0]}.fxp', new_name)
+        sleep(1)
+        return res
+
     #   Get a list of preset names for an instrument
     #   instrument: Name of instrument for which to load presets (default: all instruments)
     #   returns: list of [preset names, pt bank] or None on failure
@@ -632,7 +642,7 @@ class zynthian_engine_pianoteq(zynthian_engine):
         if result is None or 'result' not in result:
             return None
         for preset in result['result']:
-            if (instrument is None or preset['instr'] == instrument):
+            if instrument is None or preset['instr'] == instrument:
                 presets.append([preset['name'], preset['bank']])
         return presets
 
@@ -846,12 +856,6 @@ class zynthian_engine_pianoteq(zynthian_engine):
             except:
                 return True
         return False
-
-    def delete_preset(self, bank_info, preset):
-        return self.zynapi_remove_preset(f'{PIANOTEQ_MY_PRESETS_DIR}/{preset[1]}/{preset[0]}.fxp')
-
-    def rename_preset(self, bank_info, preset, new_name):
-        return self.zynapi_rename_preset(f'{PIANOTEQ_MY_PRESETS_DIR}/{preset[1]}/{preset[0]}.fxp', new_name)
 
     # ---------------------------------------------------------------------------
     # Controller management

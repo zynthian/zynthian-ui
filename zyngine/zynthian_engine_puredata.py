@@ -166,7 +166,7 @@ class zynthian_engine_puredata(zynthian_engine):
                 #if self.osc_unhandle_messages.full():
                 #    self.osc_unhandle_messages.get()
                 try:
-                    self.osc_unhandle_messages.put([path, args])
+                    self.osc_unhandle_messages.put([path, args], block=False)
                 except queue.Full:
                     pass
                     #logging.info(f"UNHANDLE OSC MESSAGE: {path}")

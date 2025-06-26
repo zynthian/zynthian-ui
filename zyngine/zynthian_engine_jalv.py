@@ -647,12 +647,14 @@ class zynthian_engine_jalv(zynthian_engine):
             except Exception as e:
                 logging.error(e)
 
+        # Return number of remaining presets in bank
         try:
             n = len(self.preset_info[bank[2]]['presets'])
             if n > 0:
                 return n
         except Exception as e:
             pass
+        # If user bank is empty, delete it!
         zynthian_engine_jalv.lv2_remove_bank(bank)
         return 0
 
