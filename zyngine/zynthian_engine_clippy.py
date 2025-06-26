@@ -223,7 +223,8 @@ class zynthian_engine_clippy(zynthian_engine):
                     'is_integer': True,
                     'labels': ["loop"] + [f"{i}" for i in range(1, 256)],
                     'value_min': 0,
-                    'value_max': 255
+                    'value_max': 255,
+                    'value': 1
                 })
             }
 
