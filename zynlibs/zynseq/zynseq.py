@@ -272,8 +272,15 @@ class zynseq(zynthian_engine):
         self.sequence_info = {}
         self.seq_in_bank = self.libseq.getSequencesInBank(self.bank)
         self.slots = self.seq_in_bank // LAUNCHER_COLS
+        processors = []
         for sequence in range(self.slots * LAUNCHER_COLS):
             self.rebuild_launcher_info(sequence)
+        for slot_info in self.launcher_info:
+            for chan_info in slot_info:
+                processor = chan_info["clippy"]
+                if processor and processor not in processors:
+                    processors.append(processor)
+                    processor.engine.set_slots(self.slots)
         self.progress = [0] * self.seq_in_bank
         self.pause_update = False
 
@@ -340,6 +347,7 @@ class zynseq(zynthian_engine):
                     if processor.engine.nickname == "CL":
                         info["clippy"] = processor
                         #processor.engine.set_slots(self.slots)
+                        #TODO: Get the note from pattern in sequence to id the offset to set set_current_screen_index
                 except:
                     pass
                 info["chains"].append(chain_id)
@@ -375,7 +383,7 @@ class zynseq(zynthian_engine):
                 self.set_sequence_name(self.bank, sequence, f"{chr(65 + slot)}{chan + 1}")
                 self.libseq.setChannel(self.bank, sequence, 0, chan)
                 self.libseq.setRepeat(self.bank, sequence, 1)
-                self.rebuild_launcher_info(sequence)
+                #self.rebuild_launcher_info(sequence)
             except Exception as e:
                 logging.warning(e)
         self.rebuild_all_launcher_info()

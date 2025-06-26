@@ -240,6 +240,18 @@ class zynthian_engine_clippy(zynthian_engine):
             processor.init_ctrl_screens()
             self.slots += 1
 
+    def remove_slot(self):
+        for processor in self.processors:
+            try:
+                del processor.controllers_dict[f"file {self.slots:02}"]
+                del processor.controllers_dict[f"warp {self.slots:02}"]
+                del processor.controllers_dict[f"beats {self.slots:02}"]
+            except:
+                pass # We expect warp and beats to fail sometimes.
+            # Update screens
+            self._ctrl_screens.pop()
+            processor.init_ctrl_screens()
+            self.slots -= 1
 
     def set_slots(self, slots):
         if self.slots == slots:
@@ -248,6 +260,9 @@ class zynthian_engine_clippy(zynthian_engine):
         # Add missing slots
         for slot in range(self.slots, slots + 1):
             self.insert_slot(slot)
+        # Remove excessive slots
+        while (self.slots > slots + 1):
+            self.remove_slot()
 
     # ---------------------------------------------------------------------------
     # Controller Management
@@ -384,17 +399,16 @@ class zynthian_engine_clippy(zynthian_engine):
                     self.lscp_send_single(processor, "ADD CHANNEL MIDI_INPUT 0 0 0")
                     self.lscp_send_single(processor, f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
                 self.libseq.setRepeat(self.zynseq.bank, sequence, 1)
-                self.zynseq.rebuild_launcher_info(sequence)
             except Exception as e:
                 logging.error(f"Can't setup sequencer for clip {slot} => {e}")
         else:
-            self.libseq.setRepeat(self.zynseq.bank, self.sequence_offset + slot * zynseq.LAUNCHER_COLS, 0)
             state = self.libseq.getPlayState(self.zynseq.bank, sequence)
-            #self.reset_pattern(slot)
+            self.reset_pattern(slot)
 
+        self.zynseq.rebuild_launcher_info(sequence)
+        processor.init_ctrl_screens()
         zynsigman.send(zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE,
                        bank=self.zynseq.bank, seq=sequence, state=state, mode=0x0100, group=processor.midi_chan)
-        processor.init_ctrl_screens()
 
     def on_tempo(self, tempo):
         if self.tempo_cb_timer:
@@ -422,7 +436,7 @@ class zynthian_engine_clippy(zynthian_engine):
 
     def add_processor(self, processor):
         super().add_processor(processor)
-        self.set_slots(self.zynseq.slots)
+        #self.set_slots(self.zynseq.slots)
 
         processor.lscp_port = ServerPort["clippy"] + processor.id
         processor.command = ["linuxsampler", "--lscp-port", str(processor.lscp_port)]
@@ -442,12 +456,14 @@ class zynthian_engine_clippy(zynthian_engine):
         self.zynseq.rebuild_all_launcher_info() # Need to do this (again!!!) here because called too early when adding chain (before processor is added)
 
     def reset_pattern(self, slot):
-            pattern = self.libseq.getPatternAt(255, self.sequence_offset + slot * zynseq.LAUNCHER_COLS, 0, 0)
+            sequence = self.sequence_offset + slot * zynseq.LAUNCHER_COLS
+            pattern = self.libseq.getPatternAt(255, sequence, 0, 0)
             self.libseq.clearPattern(pattern)
             self.libseq.setStepsPerBeat(pattern, 1)
             self.libseq.setBeatsInPattern(pattern, 1)
-            self.libseq.setRepeat(self.zynseq.bank, self.sequence_offset + slot * zynseq.LAUNCHER_COLS, 0)
+            self.libseq.setRepeat(self.zynseq.bank, sequence, 0)
             self.libseq.updateSequenceInfo()
+            self.zynseq.set_sequence_name(self.zynseq.bank, sequence, "")
 
     # ---------------------------------------------------------------------------
     # MIDI Channel Management
