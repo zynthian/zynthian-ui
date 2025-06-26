@@ -60,7 +60,9 @@ class aubio_inputs():
 # Zynthian MIDI config GUI Class
 # ------------------------------------------------------------------------------
 
-
+ZMIP_MODE_SYS = "♣" # \u1
+ZMIP_MODE_SYS_RT = "⏱" # \u23F1
+#ZMIP_MODE_SYS_RT = "⌛" # \u231B
 ZMIP_MODE_CONTROLLER = "⌨"  # \u2328
 ZMIP_MODE_ACTIVE = "⇥"  # \u21e5
 ZMIP_MODE_MULTI = "⇶"  # \u21f6
@@ -110,13 +112,19 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
         self.list_data = []
 
         def get_mode_str(idev):
-            mode_str = ""
             """Get input mode prefix"""
+            mode_str = ""
+            if idev is None:
+                return mode_str
             if self.input:
                 if zynautoconnect.get_midi_in_dev_mode(idev):
                     mode_str += ZMIP_MODE_ACTIVE
                 else:
                     mode_str += ZMIP_MODE_MULTI
+                if lib_zyncore.zmip_get_flag_system(idev):
+                    mode_str += f" {ZMIP_MODE_SYS}"
+                if lib_zyncore.zmip_get_flag_system_rt(idev):
+                    mode_str += f" {ZMIP_MODE_SYS_RT}"
                 if idev in self.zyngui.state_manager.ctrldev_manager.drivers:
                     mode_str += f" {ZMIP_MODE_CONTROLLER}"
             if mode_str:
@@ -128,7 +136,11 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             if self.input:
                 port = zynautoconnect.devices_in[idev]
                 mode = get_mode_str(idev)
-                input_mode_info = f"\n\n{ZMIP_MODE_ACTIVE} Active mode\n{ZMIP_MODE_MULTI} Multitimbral mode\n{ZMIP_MODE_CONTROLLER} Driver loaded"
+                input_mode_info = f"\n\n{ZMIP_MODE_ACTIVE} Active mode\n"
+                input_mode_info += f"{ZMIP_MODE_MULTI} Multitimbral mode\n"
+                input_mode_info += f"{ZMIP_MODE_SYS} System messages\n"
+                input_mode_info += f"{ZMIP_MODE_SYS_RT} Transport messages\n"
+                input_mode_info += f"{ZMIP_MODE_CONTROLLER} Driver loaded"
                 if self.chain is None:
                     self.list_data.append((port.aliases[0], idev, f"{mode}{port.aliases[1]}",
                                            [f"Bold select to show options for '{port.aliases[1]}'.{input_mode_info}", "midi_input.png"]))
@@ -159,10 +171,15 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 icon = SERVICE_ICONS[service]
             else:
                 icon = "midi_logo.png"
+            try:
+                idev = net_devices[name]
+            except:
+                idev = None
             if zynconf.is_service_active(service):
-                self.list_data.append((f"stop_{service}", None, f"\u2612 {name}", [f"Disable {help_info}", icon]))
+                mode = get_mode_str(idev)
+                self.list_data.append((f"stop_{service}", idev, f"\u2612 {mode}{name}", [f"Disable {help_info}", icon]))
             else:
-                self.list_data.append((f"start_{service}", None, f"\u2610 {name}", [f"Enable {help_info}", icon]))
+                self.list_data.append((f"start_{service}", idev, f"\u2610 {name}", [f"Enable {help_info}", icon]))
 
         def atoi(text):
             return int(text) if text.isdigit() else text
@@ -189,7 +206,10 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                 elif dev.aliases[0].startswith("AUBIO:"):
                     aubio_devices.append(i)
                 elif dev.aliases[0].startswith("NET:"):
-                    net_devices[dev.name] = i
+                    # net_devices[dev.name] = i
+                    port = zynautoconnect.devices_in[i]
+                    puid, name = zynautoconnect.build_midi_port_name(port)
+                    net_devices[name] = i
                 else:
                     int_devices.append(i)
 
@@ -231,11 +251,11 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     append_port(i)
             else:
                 if os.path.isfile("/usr/local/bin/jacknetumpd"):
-                    append_service("jacknetumpd", "NetUMP: MIDI 2.0",
+                    append_service("jacknetumpd", "NetUMP",
                                    "NetUMP. Provides MIDI over an IP connection using NetUMP protocol (MIDI 2.0).")
 
                 if os.path.isfile("/usr/local/bin/jackrtpmidid"):
-                    append_service("jackrtpmidid", "RTP-MIDI",
+                    append_service("jackrtpmidid", "RTP MIDI",
                                    "RTP-MIDI. Provides MIDI over an IP connection using RTP-MIDI protocol (AppleMIDI).")
 
                 if os.path.isfile("/usr/local/bin/qmidinet"):
@@ -243,7 +263,7 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                                    "QmidiNet. Provides MIDI over an IP connection using UDP/IP multicast (ipMIDI).")
 
                 if os.path.isfile("/zynthian/venv/bin/touchosc2midi"):
-                    append_service("touchosc2midi", "TouchOSC Bridge",
+                    append_service("touchosc2midi", "TouchOSC",
                                    "Interface with Hexler TouchOSC modular control surface.")
 
         if not self.input and self.chain:
@@ -333,11 +353,28 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                         mode_info += f"{title}. Translate MIDI channel. Send to chains matching active chain's MIDI channel."
                     else:
                         mode_info += f"{title}. Translate MIDI channel. Send to active chain only."
-                    options[title] = ["MULTI", [mode_info, None]]
+                    options[title] = ["MULTI", [mode_info, "midi_input.png"]]
                 else:
                     title = f"{ZMIP_MODE_MULTI} Multitimbral mode"
                     mode_info += f"{title}. Don't translate MIDI channel. Send to chains matching device's MIDI channel."
-                    options[title] = ["ACTI", [mode_info, None]]
+                    options[title] = ["ACTI", [mode_info, "midi_input.png"]]
+
+                options["MIDI System Messages"] = None
+                mode_info = "Route non real-time system messages from this device.\n\n"
+                if lib_zyncore.zmip_get_flag_system(idev):
+                    title = f"\u2612 {ZMIP_MODE_SYS} Non real-time"
+                    options[title] = ["SYSTEM/OFF", [mode_info, "midi_input.png"]]
+                else:
+                    title = f"\u2610 {ZMIP_MODE_SYS} Non real-time"
+                    options[title] = ["SYSTEM/ON", [mode_info, "midi_input.png"]]
+
+                mode_info = "Route real-time system messages from this device.\n\n"
+                if lib_zyncore.zmip_get_flag_system_rt(idev):
+                    title = f"\u2612 {ZMIP_MODE_SYS_RT} Transport"
+                    options[title] = ["SYSTEM_RT/OFF", [mode_info, "midi_input.png"]]
+                else:
+                    title = f"\u2610 {ZMIP_MODE_SYS_RT} Transport"
+                    options[title] = ["SYSTEM_RT/ON", [mode_info, "midi_input.png"]]
 
                 # Reload drivers => Hot reload the driver classes!
                 #self.zyngui.state_manager.ctrldev_manager.update_available_drivers(reload_modules=False)
@@ -355,9 +392,9 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                         if not driver_description:
                             driver_description = "A specific controller driver integrating UI functions and customized workflow."
                         if idev in loaded_drivers and isinstance(loaded_drivers[idev], driver_class):
-                            options[f"\u2612 {ZMIP_MODE_CONTROLLER} {driver_name}"] = [["UNLOAD_DRIVER", driver_class.__module__], [driver_description, None]]
+                            options[f"\u2612 {ZMIP_MODE_CONTROLLER} {driver_name}"] = [["UNLOAD_DRIVER", driver_class.__module__], [driver_description, "midi_input.png"]]
                         else:
-                            options[f"\u2610 {ZMIP_MODE_CONTROLLER} {driver_name}"] = [["LOAD_DRIVER", driver_class.__module__], [driver_description, None]]
+                            options[f"\u2610 {ZMIP_MODE_CONTROLLER} {driver_name}"] = [["LOAD_DRIVER", driver_class.__module__], [driver_description, "midi_input.png"]]
 
                 port = zynautoconnect.devices_in[idev]
 
@@ -367,12 +404,13 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
             options["Configuration"] = None
             if self.list_data[self.index][0].startswith("AUBIO:") or self.list_data[self.index][0].endswith("aubionotes"):
                 options["Select aubio inputs"] = ["AUBIO_INPUTS", ["Select audio inputs to be analized and converted to MIDI.", "midi_audio.png"]]
-            options[f"Rename port '{port.aliases[0]}'"] = [port, ["Rename the MIDI port.\nClear name to reset to default name.", None]]
+            options[f"Rename port '{port.aliases[0]}'"] = [port, ["Rename the MIDI port.\nClear name to reset to default name.",  "midi_input.png"]]
             # options[f"Reset name to '{zynautoconnect.build_midi_port_name(port)[1]}'"] = port
 
             self.zyngui.screens['option'].config("MIDI Input Device", options, self.menu_cb, False, False, None)
             self.zyngui.show_screen('option')
-        except:
+        except Exception as e:
+            #logging.error(e)
             pass  # Port may have disappeared whilst building menu
 
     def menu_cb(self, option, params):
@@ -398,11 +436,25 @@ class zynthian_gui_midi_config(zynthian_gui_selector_info):
                     return
                 elif self.input:
                     idev = self.list_data[self.index][1]
-                    lib_zyncore.zmip_set_flag_active_chain(idev, params == "ACTI")
-                    zynautoconnect.update_midi_in_dev_mode(idev)
+                    match params:
+                        case "SYSTEM/ON":
+                            lib_zyncore.zmip_set_flag_system(idev, True)
+                        case "SYSTEM/OFF":
+                            lib_zyncore.zmip_set_flag_system(idev, False)
+                        case "SYSTEM_RT/ON":
+                            lib_zyncore.zmip_set_flag_system_rt(idev, True)
+                        case "SYSTEM_RT/OFF":
+                            lib_zyncore.zmip_set_flag_system_rt(idev, False)
+                        case "ACTI":
+                            lib_zyncore.zmip_set_flag_active_chain(idev, True)
+                            zynautoconnect.update_midi_in_dev_mode(idev)
+                        case "MULTI":
+                            lib_zyncore.zmip_set_flag_active_chain(idev, False)
+                            zynautoconnect.update_midi_in_dev_mode(idev)
             self.show_options()
             self.update_list()
-        except:
+        except Exception as e:
+            #logging.error(e)
             pass  # Ports may have changed since menu opened
 
     def process_dynamic_ports(self):

@@ -97,6 +97,7 @@ function splash_zynthian_error() {
 function splash_zynthian_error_exit_ip() {
 	# Grab exit code if set
 	zynthian_error=$1
+	error_counter=$2
 	[ "$zynthian_error" ] || zynthian_error="???"
 
 	case $zynthian_error in
@@ -128,7 +129,7 @@ function splash_zynthian_error_exit_ip() {
 	zynthian_ip=$(hostname -I | cut -d " " -f1)
 
 	# Format the message
-	zynthian_message="IP:$zynthian_ip    $message"
+	zynthian_message="IP:$zynthian_ip    $message ($error_counter)"
 
 	# Generate an error splash image with the IP & exit code...
 	splash_zynthian_message "$zynthian_message" "$ZYNTHIAN_CONFIG_DIR/img/fb_zynthian_error.jpg"
@@ -154,6 +155,12 @@ function start_wifi_ap() {
 		nmcli radio wifi on
 		nmcli con up "zynthian-ap"
 	fi
+}
+
+function del_last_state() {
+	ss_dpath=$ZYNTHIAN_MY_ZYNTHIAN_MY_DATA_DIR/snapshots
+	cp -a $ss_dpath/last_state.zss $ss_dpath/recovery.zss
+	rm -f $ss_dpath/last_state.zss
 }
 
 powersave_control.sh off
@@ -248,6 +255,8 @@ fi
 
 splash_zynthian
 
+error_counter=0
+
 while true; do
 	clean_zynthian_last_message
 
@@ -267,6 +276,16 @@ while true; do
 			#backlight_control.sh off
 			break
 		;;
+		1)
+			error_counter=$((error_counter + 1))
+			splash_zynthian_error_exit_ip $status $error_counter
+			load_config_env
+			if [[ "$error_counter" -gt "3" ]]; then
+				start_wifi_ap
+			fi
+			del_last_state
+			sleep 10
+		;;
 		100)
 			#splash_zynthian_message "Rebooting..."
 			splash_zynthian_last_message
@@ -285,9 +304,12 @@ while true; do
 			sleep 10
 		;;
 		*)
-			splash_zynthian_error_exit_ip $status
+			error_counter=$((error_counter + 1))
+			splash_zynthian_error_exit_ip $status $error_counter
 			load_config_env
-			start_wifi_ap
+			if [[ "$error_counter" -gt "3" ]]; then
+				start_wifi_ap
+			fi
 			sleep 10
 		;;
 	esac

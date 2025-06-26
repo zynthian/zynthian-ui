@@ -377,7 +377,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
             self.wsled_i_selmode = None
             self.wsled_i_aux = None
 
-        self.show_touch_widgets = True
+        #self.show_touch_widgets = True
         if layout['columns'] == 2:
             if self.show_touch_widgets:
                 self.wunit = int(0.015 * self.width)
@@ -519,7 +519,7 @@ class zynthian_widget_organelle(zynthian_widget_base):
                 return False
 
     def handle_led(self, path, args):
-        logging.debug(f"Received OSC LED message: {path} {args}")
+        #logging.debug(f"Received OSC LED message: {path} {args}")
         if args:
             state = int(args[0])
             self.led_indicator.set_state(state)

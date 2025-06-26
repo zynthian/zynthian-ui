@@ -125,7 +125,8 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
 
         if lib_zyncore.get_active_midi_chan():
             self.list_data.append((self.toggle_active_midi_channel, 0, "\u2612 Active MIDI channel",
-                                   ["Send active MIDI channel messages to all chains with same MIDI channel.", "midi_settings.png"]))
+                                   ["Send active MIDI channel messages to all chains with same MIDI channel.",
+                                    "midi_settings.png"]))
         else:
             self.list_data.append((self.toggle_active_midi_channel, 0, "\u2610 Active MIDI channel",
                                    ["Send active MIDI channel messages to active chain only.",
@@ -160,14 +161,6 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         else:
             self.list_data.append((self.toggle_usbmidi_by_port, 0, "\u2610 MIDI-USB mapped by port",
                                    ["MIDI ports are indexed by their device name only.", "midi_settings.png"]))
-
-        if zynthian_gui_config.transport_clock_source == 0:
-            if zynthian_gui_config.midi_sys_enabled:
-                self.list_data.append((self.toggle_midi_sys, 0, "\u2612 MIDI System Messages",
-                                       ["System messages are sent to MIDI outputs.", "midi_settings.png"]))
-            else:
-                self.list_data.append((self.toggle_midi_sys, 0, "\u2610 MIDI System Messages",
-                                       ["System messages are not sent to MIDI outputs.", "midi_settings.png"]))
 
         gtrans = lib_zyncore.get_global_transpose()
         if gtrans > 0:
@@ -514,22 +507,6 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
         zynconf.save_config({
             "ZYNTHIAN_UI_SNAPSHOT_MIXER_SETTINGS": str(int(zynthian_gui_config.snapshot_mixer_settings))
         })
-        self.update_list()
-
-    def toggle_midi_sys(self):
-        if zynthian_gui_config.midi_sys_enabled:
-            logging.info("MIDI System Messages OFF")
-            zynthian_gui_config.midi_sys_enabled = False
-        else:
-            logging.info("MIDI System Messages ON")
-            zynthian_gui_config.midi_sys_enabled = True
-
-        # Update MIDI profile
-        zynconf.update_midi_profile({
-            "ZYNTHIAN_MIDI_SYS_ENABLED": str(int(zynthian_gui_config.midi_sys_enabled))
-        })
-
-        lib_zyncore.set_midi_system_events(zynthian_gui_config.midi_sys_enabled)
         self.update_list()
 
     def bluetooth(self):

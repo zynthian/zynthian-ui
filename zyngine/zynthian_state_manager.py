@@ -2037,8 +2037,6 @@ class zynthian_state_manager:
             lib_zyncore.set_tuning_freq(ctypes.c_double(self.fine_tuning_freq))
             # Set MIDI Master Channel
             lib_zyncore.set_midi_master_chan(zynthian_gui_config.master_midi_channel)
-            # Set MIDI System Messages flag
-            lib_zyncore.set_midi_system_events(zynthian_gui_config.midi_sys_enabled)
             # Setup MIDI filter rules
             if self.midi_filter_script:
                 self.midi_filter_script.clean()
@@ -2094,11 +2092,6 @@ class zynthian_state_manager:
             self.zynseq.libseq.setClockSource(1)
 
         self.zynseq.libseq.setMidiClockOutput(val == 1)
-
-        if val > 0:
-            lib_zyncore.set_midi_system_events(1)
-        else:
-            lib_zyncore.set_midi_system_events(zynthian_gui_config.midi_sys_enabled)
 
         # Save config
         if save_config:

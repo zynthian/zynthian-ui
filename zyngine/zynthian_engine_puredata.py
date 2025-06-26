@@ -24,6 +24,7 @@
 
 import os
 import liblo
+import queue
 import shutil
 import logging
 import oyaml as yaml
@@ -110,7 +111,7 @@ class zynthian_engine_puredata(zynthian_engine):
         # Specific OSC stuff
         self.osc_zctrls = {}
         self.osc_child_handlers = []
-        self.osc_unhandle_messages = []
+        self.osc_unhandle_messages = queue.Queue(100)
 
         self.preset = ""
         self.preset_config = None
@@ -162,8 +163,13 @@ class zynthian_engine_puredata(zynthian_engine):
                     if handler(path, args):
                         return
             else:
-                self.osc_unhandle_messages.append([path, args])
-                logging.info(f"UNHANDLE OSC MESSAGE: {path}")
+                #if self.osc_unhandle_messages.full():
+                #    self.osc_unhandle_messages.get()
+                try:
+                    self.osc_unhandle_messages.put([path, args])
+                except queue.Full:
+                    pass
+                    #logging.info(f"UNHANDLE OSC MESSAGE: {path}")
 
     def osc_add_child_handler(self, child_handler):
         self.osc_child_handlers.append(child_handler)
@@ -172,12 +178,13 @@ class zynthian_engine_puredata(zynthian_engine):
         self.osc_child_handlers = []
 
     def osc_flush_unhandle_messages(self):
-        for osc_msg in self.osc_unhandle_messages:
-            self.osc_handle_all(osc_msg[0], osc_msg[1])
-        self.osc_unhandle_messages = []
+        while not self.osc_unhandle_messages.empty():
+            path, args = self.osc_unhandle_messages.get()
+            self.osc_handle_all(path, args)
 
     def osc_drop_unhandle_messages(self):
-        self.osc_unhandle_messages = []
+        while not self.osc_unhandle_messages.empty():
+            self.osc_unhandle_messages.get()
 
     # ---------------------------------------------------------------------------
     # Processor Management

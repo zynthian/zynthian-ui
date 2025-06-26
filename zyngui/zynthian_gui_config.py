@@ -364,8 +364,7 @@ def config_zyntof():
 
 def set_midi_config():
     global active_midi_channel, preset_preload_noteon, midi_prog_change_zs3
-    global midi_bank_change, midi_fine_tuning
-    global midi_filter_rules, midi_sys_enabled, midi_usb_by_port
+    global midi_bank_change, midi_fine_tuning, midi_filter_rules, midi_usb_by_port
     global midi_network_enabled, midi_rtpmidi_enabled, midi_netump_enabled
     global midi_touchosc_enabled, bluetooth_enabled, ble_controller, midi_aubionotes_enabled
     global transport_clock_source
@@ -381,7 +380,6 @@ def set_midi_config():
     midi_prog_change_zs3 = int(os.environ.get('ZYNTHIAN_MIDI_PROG_CHANGE_ZS3', "1"))
     midi_bank_change = int(os.environ.get('ZYNTHIAN_MIDI_BANK_CHANGE', "0"))
     preset_preload_noteon = int(os.environ.get('ZYNTHIAN_MIDI_PRESET_PRELOAD_NOTEON', "1"))
-    midi_sys_enabled = int(os.environ.get('ZYNTHIAN_MIDI_SYS_ENABLED', "1"))
     midi_usb_by_port = int(os.environ.get("ZYNTHIAN_MIDI_USB_BY_PORT", "0"))
     midi_network_enabled = int(os.environ.get('ZYNTHIAN_MIDI_NETWORK_ENABLED', "0"))
     midi_netump_enabled = int(os.environ.get('ZYNTHIAN_MIDI_NETUMP_ENABLED', "0"))
