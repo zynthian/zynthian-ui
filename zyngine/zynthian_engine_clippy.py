@@ -217,6 +217,13 @@ class zynthian_engine_clippy(zynthian_engine):
                     'is_integer': True,
                     'value_min': 0,
                     'value_max': MAX_BEATS
+                }),
+                f"repeat {slot + 1:02}": zynthian_controller(self, f"repeat {slot + 1:02}", {
+                    'processor': processor,
+                    'is_integer': True,
+                    'labels': ["loop"] + [f"{i}" for i in range(1, 256)],
+                    'value_min': 0,
+                    'value_max': 255
                 })
             }
 
@@ -236,6 +243,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 if processor.controllers_dict[f"file {idx:02}"].value:
                     cfg.append(f'warp {idx:02}')
                     cfg.append(f'beats {idx:02}')
+                    cfg.append(f'repeat {idx:02}')
                 self._ctrl_screens.append([f'sample {idx:02}', cfg])
             processor.init_ctrl_screens()
             self.slots += 1
@@ -246,6 +254,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 del processor.controllers_dict[f"file {self.slots:02}"]
                 del processor.controllers_dict[f"warp {self.slots:02}"]
                 del processor.controllers_dict[f"beats {self.slots:02}"]
+                del processor.controllers_dict[f"repeat {self.slots:02}"]
             except:
                 pass # We expect warp and beats to fail sometimes.
             # Update screens
@@ -304,6 +313,13 @@ class zynthian_engine_clippy(zynthian_engine):
             self.set_file(zctrl.processor, slot)
         elif zctrl.symbol.startswith("warp"):
             self.set_file(zctrl.processor, slot)
+        elif zctrl.symbol.startswith("repeat"):
+            sequence = self.sequence_offset + slot * zynseq.LAUNCHER_COLS
+            if zctrl.value:
+                self.libseq.setPlayMode(self.zynseq.bank, sequence, zctrl.value << 8)
+            else:
+                self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0101)
+
         self.write_sfz(zctrl.processor)
 
     def set_file(self, processor, slot):
@@ -375,7 +391,14 @@ class zynthian_engine_clippy(zynthian_engine):
                 else:
                     warp_zctrl.labels = ["off", f"{tempo:.1f}\nBPM"]
                 if can_warp:
-                    self._ctrl_screens[slot] = [f'sample {slot + 1:02}', [f'file {slot + 1:02}', f'warp {slot + 1:02}', f'beats {slot + 1:02}']]
+                    self._ctrl_screens[slot] = [
+                            f'sample {slot + 1:02}', [
+                            f'file {slot + 1:02}',
+                            f'warp {slot + 1:02}',
+                            f'beats {slot + 1:02}',
+                            f'repeat {slot + 1:02}'
+                        ]
+                    ]
                     beats_zctrl.value = whole_beats
                     beats_zctrl.set_readonly(warp_zctrl.value != 0)
                 else:
