@@ -41,7 +41,7 @@
 #include "timebase.h"        // provides timebase event map
 #include "zynseq.h"          // exposes library methods as c functions
 
-#define FILE_VERSION 12
+#define FILE_VERSION 11
 
 #define DPRINTF(fmt, args...)                                                                                                                                  \
     if (g_bDebug)                                                                                                                                              \
@@ -889,7 +889,7 @@ bool load(const char* filename) {
             g_nHorizontalZoom = fileRead16(pFile);
             // printf("Version:%u Tempo:%0.2lf Beats per bar:%u Zoom V:%u H:%u\n", nVersion, g_dTempo, g_nBeatsPerBar, g_nVerticalZoom, g_nHorizontalZoom);
         } else if (memcmp(sHeader, "patn", 4) == 0) {
-            if (nVersion > 11) {
+            if (nVersion > 10) {
                 if (checkBlock(pFile, nBlockSize, 160))
                     continue;
             } else if (nVersion > 8) {
@@ -915,7 +915,7 @@ bool load(const char* filename) {
                 pPattern->setRefNote(fileRead8(pFile));
                 nBlockSize -= 1;
             }
-            if (nVersion > 11) {
+            if (nVersion > 10) {
                 uint8_t ccnum;
                 for (ccnum=0; ccnum<128; ccnum++)
                     pPattern->setInterpolateCC(ccnum, fileRead8(pFile));
@@ -1139,7 +1139,7 @@ bool load_pattern(uint32_t nPattern, const char* filename) {
             fileRead16(pFile);
             // printf("Version:%u Beats per bar:%u Zoom V:%u H:%u\n", nVersion, g_nBeatsPerBar, g_nVerticalZoom, g_nHorizontalZoom);
         } else if (memcmp(sHeader, "patn", 4) == 0) {
-            if (nVersion > 11) {
+            if (nVersion > 10) {
                 if (checkBlock(pFile, nBlockSize, 156))
                     continue;
             } else if (nVersion > 8) {
@@ -1162,7 +1162,7 @@ bool load_pattern(uint32_t nPattern, const char* filename) {
                 pPattern->setRefNote(fileRead8(pFile));
                 nBlockSize -= 1;
             }
-            if (nVersion > 11) {
+            if (nVersion > 10) {
                 uint8_t ccnum;
                 for (ccnum=0; ccnum<128; ccnum++)
                     pPattern->setInterpolateCC(ccnum, fileRead8(pFile));
