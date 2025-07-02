@@ -41,7 +41,7 @@
 #include "timebase.h"        // provides timebase event map
 #include "zynseq.h"          // exposes library methods as c functions
 
-#define FILE_VERSION 11
+#define FILE_VERSION 12
 
 #define DPRINTF(fmt, args...)                                                                                                                                  \
     if (g_bDebug)                                                                                                                                              \
@@ -889,7 +889,10 @@ bool load(const char* filename) {
             g_nHorizontalZoom = fileRead16(pFile);
             // printf("Version:%u Tempo:%0.2lf Beats per bar:%u Zoom V:%u H:%u\n", nVersion, g_dTempo, g_nBeatsPerBar, g_nVerticalZoom, g_nHorizontalZoom);
         } else if (memcmp(sHeader, "patn", 4) == 0) {
-            if (nVersion > 8) {
+            if (nVersion > 11) {
+                if (checkBlock(pFile, nBlockSize, 160))
+                    continue;
+            } else if (nVersion > 8) {
                 if (checkBlock(pFile, nBlockSize, 32))
                     continue;
             } else if (nVersion > 4) {
@@ -907,9 +910,16 @@ bool load(const char* filename) {
             pPattern->setStepsPerBeat(fileRead16(pFile));
             pPattern->setScale(fileRead8(pFile));
             pPattern->setTonic(fileRead8(pFile));
+            nBlockSize -= 12;
             if (nVersion > 4) {
                 pPattern->setRefNote(fileRead8(pFile));
                 nBlockSize -= 1;
+            }
+            if (nVersion > 11) {
+                uint8_t ccnum;
+                for (ccnum=0; ccnum<128; ccnum++)
+                    pPattern->setInterpolateCC(ccnum, fileRead8(pFile));
+                nBlockSize -= 128;
             }
             if (nVersion > 8) {
                 pPattern->setQuantizeNotes(fileRead8(pFile));
@@ -924,7 +934,6 @@ bool load(const char* filename) {
                 fileRead8(pFile);
                 nBlockSize -= 1;
             }
-            nBlockSize -= 12;
             //printf("Pattern:%u Beats:%u StepsPerBeat:%u Scale:%u Tonic:%u\n", nPattern, pPattern->getBeatsInPattern(), pPattern->getStepsPerBeat(),
             // pPattern->getScale(), pPattern->getTonic());
             while (nBlockSize) {
@@ -1130,7 +1139,10 @@ bool load_pattern(uint32_t nPattern, const char* filename) {
             fileRead16(pFile);
             // printf("Version:%u Beats per bar:%u Zoom V:%u H:%u\n", nVersion, g_nBeatsPerBar, g_nVerticalZoom, g_nHorizontalZoom);
         } else if (memcmp(sHeader, "patn", 4) == 0) {
-            if (nVersion > 8) {
+            if (nVersion > 11) {
+                if (checkBlock(pFile, nBlockSize, 156))
+                    continue;
+            } else if (nVersion > 8) {
                 if (checkBlock(pFile, nBlockSize, 28))
                     continue;
             } else if (nVersion > 4) {
@@ -1149,6 +1161,12 @@ bool load_pattern(uint32_t nPattern, const char* filename) {
             if (nVersion > 4) {
                 pPattern->setRefNote(fileRead8(pFile));
                 nBlockSize -= 1;
+            }
+            if (nVersion > 11) {
+                uint8_t ccnum;
+                for (ccnum=0; ccnum<128; ccnum++)
+                    pPattern->setInterpolateCC(ccnum, fileRead8(pFile));
+                nBlockSize -= 128;
             }
             if (nVersion > 8) {
                 pPattern->setQuantizeNotes(fileRead8(pFile));
@@ -1258,6 +1276,10 @@ void save(const char* filename) {
             nPos += fileWrite8(pPattern->getScale(), pFile);
             nPos += fileWrite8(pPattern->getTonic(), pFile);
             nPos += fileWrite8(pPattern->getRefNote(), pFile);
+            uint8_t ccnum;
+            for (ccnum=0; ccnum<128; ccnum++) {
+                nPos += fileWrite8(pPattern->getInterpolateCC(ccnum), pFile);
+            }
             nPos += fileWrite8(pPattern->getQuantizeNotes(), pFile);
             nPos += fileWrite8(pPattern->getSwingDiv(), pFile);
             nPos += fileWriteBCD(pPattern->getSwingAmount(), pFile);
@@ -1399,6 +1421,10 @@ void save_pattern(uint32_t nPattern, const char* filename) {
     nPos += fileWrite8(pPattern->getScale(), pFile);
     nPos += fileWrite8(pPattern->getTonic(), pFile);
     nPos += fileWrite8(pPattern->getRefNote(), pFile);
+    uint8_t ccnum;
+    for (ccnum=0; ccnum<128; ccnum++) {
+        nPos += fileWrite8(pPattern->getInterpolateCC(ccnum), pFile);
+    }
     nPos += fileWrite8(pPattern->getQuantizeNotes(), pFile);
     nPos += fileWrite8(pPattern->getSwingDiv(), pFile);
     nPos += fileWriteBCD(pPattern->getSwingAmount(), pFile);

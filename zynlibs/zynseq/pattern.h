@@ -595,7 +595,7 @@ class Pattern {
     uint8_t m_nTonic = 0;          // Scale tonic (root note)
     uint8_t m_nRefNote = 60;       // Note at which to position pattern editor
     bool m_bQuantizeNotes = false; // Quantize note time so it plays in the nearest step boundary
-    bool m_bInterpolateCC[127];    // Enable/Disable CC value interpolation for each CC number
+    bool m_bInterpolateCC[128];    // Enable/Disable CC value interpolation for each CC number
     uint32_t m_nSwingDiv = 1;      // Swing division, range from 1 to pPattern->getStepsPerBeat()
     float m_fSwingAmount = 0.0;    // Swing amount, range from 0 to 1, but over 0.5 is not "MPC swing"
     float m_fHumanTime = 0.0;      // Timing Humanization, range from 0 to FLOAT_MAX
