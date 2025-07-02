@@ -186,7 +186,11 @@ def dev_in_2_dev_out(zmip):
     """
 
     try:
-        name = devices_in[zmip].aliases[0].replace("IN", "OUT")
+        name = devices_in[zmip].aliases[0]
+        if name == "ttymidi:MIDI_in":
+            name = "ttymidi:MIDI_out"
+        else:
+            name = name.replace("IN", "OUT")
         for i, port in enumerate(devices_out):
             if port.aliases[0] == name:
                 return i
