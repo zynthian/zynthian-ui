@@ -51,7 +51,8 @@ logging.getLogger('PIL').setLevel(logging.WARNING)
 # This provides a UI element that represents a mixer strip, one used per chain
 # ------------------------------------------------------------------------------
 
-class zynthian_gui_mixer_strip():
+
+class zynthian_gui_mixer_strip:
 
     def __init__(self, parent, x, y, width, height):
         logging.getLogger('PIL').setLevel(logging.WARNING)
@@ -133,11 +134,11 @@ class zynthian_gui_mixer_strip():
         # font_size = int(0.5 * self.legend_height)
         font_size = int(0.25 * self.width)
         self.font = (zynthian_gui_config.font_family, font_size)
-        self.font_fader = (zynthian_gui_config.font_family,int(0.9 * font_size))
+        self.font_fader = (zynthian_gui_config.font_family, int(0.9 * font_size))
         self.font_clip_state = (zynthian_gui_config.font_family, int(0.8 * font_size))
         self.font_clip_title = (zynthian_gui_config.font_family, int(0.7 * font_size))
         self.font_icons = (zynthian_gui_config.font_family, int(0.3 * self.width))
-        self.font_learn = (zynthian_gui_config.font_family,int(0.7 * font_size))
+        self.font_learn = (zynthian_gui_config.font_family, int(0.7 * font_size))
 
         self.fader_text_limit = self.fader_top + int(0.1 * self.fader_height)
 
@@ -575,7 +576,7 @@ class zynthian_gui_mixer_strip():
         if self.hidden or self.chain is None:  # or self.zctrls is None:
             return
 
-        if control == None:
+        if control is None:
             if self.chain_id == 0:
                 self.canvas.itemconfig(
                     self.legend_strip_txt, text="Main", font=self.font)
@@ -1122,7 +1123,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         # List of mixer strip objects indexed by horizontal position on screen
         self.visible_mixer_strips = [None] * visible_chains
         self.mixer_strip_offset = 0  # Index of first mixer strip displayed on far left
-        self.launcher_offset = 0 # Index of first launcher slot shown at top
+        self.launcher_offset = 0  # Index of first launcher slot shown at top
 
         # Fader Canvas
         self.main_canvas = tkinter.Canvas(self.main_frame,
@@ -1480,7 +1481,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def set_launcher_mode(self, launcher_mode=True):
         self.launcher_mode = launcher_mode
-        if self.launcher_select_info == None:
+        if self.launcher_select_info is None:
             self.set_highlighted_clip_info()
         if self.shown:
             for strip in self.visible_mixer_strips:
@@ -1489,7 +1490,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             self.main_mixbus_strip.draw_control()
             if self.highlighted_strip and self.launcher_mode:
                 self.highlighted_strip.highlight_launcher(self.launcher_highlighted_slot)
-
 
     def toggle_launcher_mode(self):
         if self.launcher_mode:
@@ -1570,10 +1570,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 # Show file selector. Callback has path. Must set path of this zctrl.
                 zctrl = self.get_clippy_zctrl("file")
                 self.clippy_file_zctrl = zctrl
-                self.zyngui.cb_show_file_selector(self.on_clippy_file_sel,
-                    fexts=zctrl.path_file_types,
-                    dirnames=zctrl.path_dir_names,
-                    path=zctrl.value)
+                self.zyngui.cb_show_file_selector(self.on_clippy_file_sel, fexts=zctrl.path_file_types,
+                                                  dirnames=zctrl.path_dir_names, path=zctrl.value)
             elif option.startswith("Warp"):
                 zctrl = self.get_clippy_zctrl("warp")
                 zctrl.toggle()
@@ -1629,7 +1627,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Follow action"):
             ticks = [-1]
-            labels = ["STOP",]
+            labels = ["STOP"]
             for i, slot_info in enumerate(self.zynseq.launcher_info):
                 seq = slot_info[16]["sequence"]
                 if seq != params["sequence"]:
@@ -1649,8 +1647,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.refresh_visible_strips()
         self.zyngui.show_screen("launcher")
 
-    def drag_launcher(self, dY):
-        new_pos = self.launcher_offset - dY
+    def drag_launcher(self, dy):
+        new_pos = self.launcher_offset - dy
         if 0 <= new_pos <= len(self.zynseq.launcher_info) - self.visible_launchers:
             self.launcher_offset = new_pos
             self.refresh_visible_strips()
@@ -1693,7 +1691,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         self.launcher_menu()
         self.zyngui.screens['option'].select(index)
 
-    def addTempo(self, tempo):
+    def add_tempo(self, tempo):
         try:
             slot = self.launcher_select_info["slot"]
             self.launcher_select_info["tempo"] = tempo
@@ -1720,7 +1718,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         slot = self.launcher_select_info["slot"]
         match zctrl.symbol:
             case "tempo":
-                self.addTempo(zctrl.value)
+                self.add_tempo(zctrl.value)
             case "bpb":
                 for chan in range(zynseq.LAUNCHER_COLS):
                     info = self.zynseq.launcher_info[slot][chan]
@@ -1870,11 +1868,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         # SNAPSHOT encoder adjusts main mixbus level
         elif i == 2:
             if self.launcher_mode:
-                dval = -dval
-            if dval > 0:
-                self.arrow_up(dval)
+                if dval < 0:
+                    self.arrow_up(-dval)
+                else:
+                    self.arrow_down(-dval)
             else:
-                self.arrow_down(dval)
+                self.main_mixbus_strip.nudge_volume(dval)
 
         # SELECT encoder moves chain selection
         elif i == 3:
@@ -1946,11 +1945,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if slot < 0 or slot > self.zynseq.slots:
             return
         refresh_strips = False
-        if self.launcher_offset > slot:
-            self.launcher_offset = min(slot, self.zynseq.slots - zynthian_gui_config.visible_launchers)
-            refresh_strips = True
-        elif self.launcher_offset <= slot - zynthian_gui_config.visible_launchers:
-            self.launcher_offset = max(0, slot - zynthian_gui_config.visible_launchers + 1)
+        offset = self.launcher_offset
+        if offset > slot:
+            offset = min(slot, self.zynseq.slots - zynthian_gui_config.visible_launchers)
+        elif offset <= slot - zynthian_gui_config.visible_launchers:
+            offset = max(0, slot - zynthian_gui_config.visible_launchers + 1)
+        if self.launcher_offset != offset:
+            self.launcher_offset = offset
             refresh_strips = True
         self.launcher_highlighted_slot = slot
         self.highlighted_strip.highlight_launcher(slot)
@@ -2005,7 +2006,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             title = f"MIDI Learn Options"
 
         if not self.zynmixer.midi_learn_zctrl:
-            options["Enable MIDI learn" ] = "enable"
+            options["Enable MIDI learn"] = "enable"
 
         if isinstance(self.zynmixer.midi_learn_zctrl, zynthian_controller):
             if self.zynmixer.midi_learn_zctrl.is_toggle:
