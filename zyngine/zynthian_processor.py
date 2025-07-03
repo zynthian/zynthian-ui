@@ -72,6 +72,7 @@ class zynthian_processor:
         self.bank_index = 0
         self.bank_name = None
         self.bank_info = None
+        self.bank_subdir_info = None
         self.bank_msb = 0
         # system, user, external => [offset, n]
         self.bank_msb_info = [[0, 0], [0, 0], [0, 0]]
@@ -237,6 +238,8 @@ class zynthian_processor:
 
             if set_engine and set_engine_needed:
                 return self.engine.set_bank(self, self.bank_info)
+            else:
+                return True
 
         return False
 
@@ -682,7 +685,7 @@ class zynthian_processor:
             self.bank_msb = bank_msb
 
     def midi_bank_lsb(self, bank_lsb):
-        """Handle MIDI bank MSB message
+        """Handle MIDI bank LSB message
 
         bank_lsb : Bank LSB
         """
@@ -706,6 +709,7 @@ class zynthian_processor:
         state = {
             "processor_type": self.engine.nickname,
             "bank_info": self.bank_info,
+            "bank_subdir_info": self.bank_subdir_info,
             "preset_info": self.preset_info,
             "show_fav_presets": self.show_fav_presets,  # TODO: GUI
             "controllers": {},
@@ -722,6 +726,8 @@ class zynthian_processor:
         state : Processor state
         """
 
+        if "bank_subdir_info" in state and state["bank_subdir_info"]:
+            self.bank_subdir_info = state["bank_subdir_info"]
         try:
             self.get_bank_list()
         except:

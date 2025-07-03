@@ -1533,8 +1533,9 @@ class zynthian_gui:
                 logging.warning("Can't set control screen processor! ")
 
         if self.current_screen == 'bank':
-            # self.replace_screen('preset')
-            self.close_screen()
+            if not self.screens['bank'].browse_root():
+                # self.replace_screen('preset')
+                self.close_screen()
         else:
             curproc = self.get_current_processor()
             if curproc:

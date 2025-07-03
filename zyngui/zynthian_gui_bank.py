@@ -66,12 +66,20 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
         if len(self.list_data) > 0:
             super().show()
 
+    def browse_root(self):
+        if self.processor and self.processor.bank_subdir_info:
+            self.index = self.processor.bank_subdir_info[1]
+            self.processor.bank_subdir_info = None
+            self.update_list()
+            return True
+        return False
+
     def select_action(self, i, t='S'):
         if self.list_data and self.list_data[i][0] == '*FAVS*':
             self.processor.set_show_fav_presets(True)
         else:
             if self.processor.set_bank(i) is None:
-                # More setup stages to progess
+                # More setup stages to progress
                 self.build_view()
                 return
             self.processor.set_show_fav_presets(False)
@@ -81,10 +89,7 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
             self.zyngui.replace_screen('preset')
         else:
             self.zyngui.show_screen('preset')
-
-        # If bank is empty (no presets), show instrument control
-        if len(self.processor.preset_list) == 0 or self.processor.preset_list[0][0] == "":
-            self.zyngui.screens['preset'].select_action(0)
+        self.zyngui.screens["preset"].autoselect()
 
     def topbar_bold_touch_action(self):
         self.zyngui.zynswitch_defered('B', 1)

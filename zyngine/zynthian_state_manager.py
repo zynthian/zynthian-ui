@@ -1632,6 +1632,7 @@ class zynthian_state_manager:
         for id, processor in self.chain_manager.processors.items():
             processor_state = {
                 "bank_info": processor.bank_info,
+                "bank_subdir_info": processor.bank_subdir_info,
                 "preset_info": processor.preset_info,
                 "controllers": {}
             }

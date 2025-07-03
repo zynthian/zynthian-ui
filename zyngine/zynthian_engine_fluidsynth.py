@@ -169,13 +169,13 @@ class zynthian_engine_fluidsynth(zynthian_engine):
     # ---------------------------------------------------------------------------
 
     @classmethod
-    def get_bank_filelist(cls, recursion=1, exclude_empty=True):
+    def get_bank_filelist(cls, recursion=2, exclude_empty=True):
         banks = []
         logging.debug(f"LOADING BANK FILES ...")
 
         # External storage banks
         for exd in zynthian_gui_config.get_external_storage_dirs(cls.ex_data_dir):
-            flist = cls.find_all_preset_files(exd, cls.preset_fexts, recursion=2)
+            flist = cls.find_all_preset_files(exd, cls.preset_fexts, recursion=recursion)
             if not exclude_empty or len(flist) > 0:
                 banks.append([None, None, f"USB> {os.path.basename(exd)}", None, None])
             for fpath in flist:
@@ -186,7 +186,7 @@ class zynthian_engine_fluidsynth(zynthian_engine):
 
         # Internal storage banks
         for root_bank_dir in cls.root_bank_dirs:
-            flist = cls.find_all_preset_files(root_bank_dir[1], cls.preset_fexts, recursion=2)
+            flist = cls.find_all_preset_files(root_bank_dir[1], cls.preset_fexts, recursion=recursion)
             if not exclude_empty or len(flist) > 0:
                 banks.append([None, None, "SD> " + root_bank_dir[0], None, None])
             for fpath in flist:
@@ -198,10 +198,22 @@ class zynthian_engine_fluidsynth(zynthian_engine):
         return banks
 
     def get_bank_list(self, processor=None):
-        return self.get_bank_filelist(recursion=2)
+        if processor.bank_subdir_info:
+            bank_dpath = processor.bank_subdir_info[0]
+            if bank_dpath and os.path.isdir(bank_dpath):
+                logging.debug(f"BANK SUBDIR => {bank_dpath}")
+                return self.get_filelist(bank_dpath, self.preset_fexts, include_dirs=False, exclude_empty_dirs=True)
+
+        return self.get_dir_file_list(self.preset_fexts, self.root_bank_dirs, recursion=1, exclude_empty=True,
+                                      internal_include_empty=False, dirs_only=False)
+        # return self.get_bank_filelist(recursion=2)
 
     def set_bank(self, processor, bank):
-        if self.load_bank(bank[0]):
+        if os.path.isdir(bank[0]):
+            processor.bank_subdir_info = copy.copy(bank)
+            processor.bank_subdir_info[1] = processor.bank_index
+            return None
+        elif self.load_bank(bank[0]):
             processor.refresh_controllers()
             return True
         else:

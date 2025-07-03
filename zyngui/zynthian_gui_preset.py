@@ -60,6 +60,18 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
         if len(self.list_data) > 0:
             super().show()
 
+    def autoselect(self):
+        """ If no presets => show control screen
+            For certain engines => load lonely preset
+        """
+        # If bank is empty (no presets), show instrument control
+        if len(self.list_data) == 0 or self.list_data[0][0] == "":
+            self.select_action(0)
+        # For certain engines => load lonely preset
+        elif len(self.list_data) == 1 and self.processor.engine.nickname in ["FS"]:
+            logging.debug("LOADING LONELY PRESET!!")
+            self.select_action(0)
+
     def select_action(self, i, t='S'):
         if t == 'S':
             # Allow animation
