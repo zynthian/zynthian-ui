@@ -177,14 +177,14 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
             if zynthian_gui_config.rbpi_headphones:
                 self.list_data.append((self.stop_rbpi_headphones, 0, "\u2612 RBPi Headphones",
                                        ["Raspberry Pi onboard (low fidelity) headphone output is enabled",
-                                        "headphone.png"]))
+                                        "headphones.png"]))
             else:
                 self.list_data.append((self.start_rbpi_headphones, 0, "\u2610 RBPi Headphones",
                                        ["Raspberry Pi onboard (low fidelity) headphone output is disabled",
-                                        "headphone.png"]))
+                                        "headphones.png"]))
 
         self.list_data.append((self.hotplug_audio_menu, 0, "Hotplug USB Audio",
-                               ["Configure USB audio hotplug.\n\nWhen enabled, USB audio devices will be detected and available. This does not include any device that is already configured as the main audio device which must always reamain connected.",
+                               ["Configure USB audio hotplug.\n\nWhen enabled, USB audio devices will be detected and available. This does not include any device that is already configured as the main audio device which must always remain connected.",
                                 "audio_options.png"]))
 
         if zynthian_gui_config.snapshot_mixer_settings:

@@ -25,6 +25,7 @@ from tkinter import font as tkFont
 import sys
 import os
 import math
+import re # NEW: Import regex for path parsing
 
 # Zynthian specific modules
 sys.path.append("/zynthian/zynthian-ui/")
@@ -115,19 +116,44 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
         self.circle_hit_areas = []
 
         # --- OSC and Final Setup ---
-        try:
-            self.osc_server = liblo.ServerThread(9001)
-            self.osc_target = liblo.Address("localhost", 9000)
-            self.setup_osc_handlers()
-            self.osc_server.start()
-        except liblo.AddressError as err:
-            print(f"OSC initialization error: {err}")
-            self.osc_server = None
-            self.osc_target = None
+        # MODIFIED: Removed manual OSC server creation. This will be handled by the Zynthian engine.
+        self.processor = None
+        self.osc_target = None
         
         self.update_offset_buffers()
         self.draw_sequencer()
         self.update_animation()
+
+    # NEW: Added set_processor to handle dynamic OSC configuration from the Zynthian engine.
+    def set_processor(self, processor):
+        if self.processor != processor:
+            self.processor = processor
+            if hasattr(self.processor, 'engine'):
+                self.processor.engine.osc_reset_child_handlers()
+                self.processor.engine.osc_add_child_handler(self.handle_osc_message)
+                self.processor.engine.osc_flush_unhandle_messages()
+
+        if hasattr(self.processor, 'engine') and self.osc_target != self.processor.engine.osc_target:
+            self.osc_target = self.processor.engine.osc_target
+
+    # NEW: Master OSC message handler, called by the Zynthian engine.
+    def handle_osc_message(self, path, args):
+        """Manage OSC messages by routing them to the correct handler."""
+        if path == "/euclid/mode":
+            self.handle_mode(path, args)
+            return True
+        elif path == "/euclid/ch":
+            self.handle_channel_select(path, args)
+            return True
+        elif path == "/euclid/trigger":
+            self.handle_trigger(path, args)
+            return True
+        elif re.match(r"/euclid/(\w+)_(\d+)", path):
+             self._handle_channel_param(path, args)
+             return True
+        
+        self.handle_fallback(path, args)
+        return False
 
     def _get_scaled_euclidean_canvas_xy(self, model_x, model_y, base_x_for_channel, base_y_for_channel):
         MODEL_CENTER_COORD = 25.0
@@ -150,17 +176,30 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
     def _create_control_panel_widgets(self):
         self.control_widgets = {}
         parent = self.controls_frame
-        
+    
         label_font = tkFont.Font(family="TkFixedFont", size=10)
         button_font = tkFont.Font(family="TkFixedFont", size=10, weight="bold")
         channel_label_font = tkFont.Font(family="TkFixedFont", size=12, weight="bold")
 
+        # Create Mode button first
+        mode_frame = tk.Frame(parent, bg=parent["bg"])
+        mode_frame.pack(fill=tk.X, pady=14)
+        tk.Label(mode_frame, text="Mode:", font=label_font, fg="#cccccc", bg=parent["bg"], width=7, anchor="w").pack(side=tk.LEFT, padx=(0,10))
+        mode_button = tk.Button(mode_frame, text="--", font=button_font, width=12, relief=tk.GROOVE,
+                               bg="#333333", fg="#00ff00", activebackground="#444444", activeforeground="#00ff00")
+        mode_button.pack(side=tk.LEFT, padx=(0,10))
+        mode_button.bind("<ButtonPress-1>", lambda e: self._on_value_button_press(e, "mode"))
+        mode_button.bind("<B1-Motion>", lambda e: self._on_value_button_drag(e, "mode"))
+        mode_button.bind("<ButtonRelease-1>", lambda e: self._on_value_button_release(e, "mode"))
+        self.control_widgets["mode"] = mode_button
+
+        # Then create Channel label
         self.selected_channel_disp_label = tk.Label(parent, text=f"Channel: {self.select_ch + 1}", 
-                                                 font=channel_label_font, fg="white", bg=parent["bg"])
+                                             font=channel_label_font, fg="white", bg=parent["bg"])
         self.selected_channel_disp_label.pack(pady=0)
 
+        # Then create the remaining controls
         param_configs = [
-            {"label": "Mode", "key": "mode"},
             {"label": "Length", "key": "length"},
             {"label": "Hits", "key": "hits"},
             {"label": "Offset", "key": "offset"},
@@ -173,20 +212,17 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
             row_frame.pack(fill=tk.X, pady=14)
 
             tk.Label(row_frame, text=f"{config['label']}:", font=label_font, fg="#cccccc", bg=parent["bg"], width=7, anchor="w").pack(side=tk.LEFT, padx=(0,10))
-            
+        
             value_button = tk.Button(row_frame, text="--", font=button_font, width=8, relief=tk.GROOVE,
                                      bg="#333333", fg="#00ff00", activebackground="#444444", activeforeground="#00ff00")
             value_button.pack(side=tk.LEFT, padx=(0,10))
-
-            if param_key == "mode":
-                value_button.config(width=12)
-            
+        
             value_button.bind("<ButtonPress-1>", lambda e, k=param_key: self._on_value_button_press(e, k))
             value_button.bind("<B1-Motion>", lambda e, k=param_key: self._on_value_button_drag(e, k))
             value_button.bind("<ButtonRelease-1>", lambda e, k=param_key: self._on_value_button_release(e, k))
-            
-            self.control_widgets[param_key] = value_button
         
+            self.control_widgets[param_key] = value_button
+    
         self._update_control_panel_display()
 
         mute_button = tk.Button(parent, text="Mute", font=button_font, width=12, relief=tk.GROOVE,
@@ -242,13 +278,14 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
 
         delta_y = event.y - self.drag_last_y_for_threshold
         if abs(delta_y) >= self.drag_threshold:
-            direction = 1 if delta_y > 0 else -1
+            direction = -1 if delta_y > 0 else 1
             ch = self.dragging_note_ch
             
             new_val = self.note_numbers[ch] + direction
             self.note_numbers[ch] = max(1, min(new_val, self.max_note))
             if self.osc_target:
-                liblo.send(self.osc_target, "/euclid/note_num", self.note_numbers[ch])
+                osc_path = f"/euclid/note_num_{ch + 1}"
+                liblo.send(self.osc_target, osc_path, self.note_numbers[ch])
             
             self.draw_sequencer()
             self.drag_last_y_for_threshold = event.y
@@ -259,6 +296,8 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
                 ch = self.dragging_note_ch
                 if self.select_ch != ch:
                     self.select_ch = ch
+                    if self.osc_target:
+                        liblo.send(self.osc_target, "/euclid/ch", self.select_ch)
                     self._update_control_panel_display()
                     self.draw_sequencer()
             
@@ -278,49 +317,59 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
         
         delta_y = event.y - self.drag_last_y_for_threshold
         if abs(delta_y) >= self.drag_threshold:
-            direction = 1 if delta_y > 0 else -1
+            direction = -1 if delta_y > 0 else 1
             self._adjust_param_value(param_key, direction)
             self.drag_last_y_for_threshold = event.y
 
     def _on_value_button_release(self, event, param_key):
         if self.dragging_param == param_key:
             if not self.did_drag:
-                self._adjust_param_value(param_key, 1)
+                self._adjust_param_value(param_key, 1) # Treat click as a single increment
             
             event.widget.config(relief=tk.GROOVE, bg="#333333")
             self.dragging_param = None
     
     def _adjust_param_value(self, param_key, direction):
         ch = self.select_ch
-        
+        osc_path = ""
+        osc_val = None
+
         if param_key == "mode":
             modes = ["polygon", "euclidean", "interval"]
             current_idx = modes.index(self.display_mode)
             self.display_mode = modes[(current_idx + direction + len(modes)) % len(modes)]
-            if self.osc_target: liblo.send(self.osc_target, "/euclid/mode", self.display_mode)
+            osc_path = "/euclid/mode"
+            osc_val = self.display_mode
      
         elif param_key == "length":
             new_val = self.limit[ch] + direction
             self.limit[ch] = max(1, min(new_val, self.max_channel_length))
-            if self.osc_target: liblo.send(self.osc_target, "/euclid/limit", self.limit[ch])
+            osc_path = f"/euclid/limit_{ch + 1}"
+            osc_val = self.limit[ch]
         
         elif param_key == "hits":
             new_val = self.hits[ch] + direction
             self.hits[ch] = max(0, min(new_val, self.max_hits))
             self.update_offset_buffers()
-            if self.osc_target: liblo.send(self.osc_target, "/euclid/hits", self.hits[ch])
+            osc_path = f"/euclid/hits_{ch + 1}"
+            osc_val = self.hits[ch]
 
         elif param_key == "offset":
             new_val = self.offset[ch] + direction
             self.offset[ch] = (new_val + self.max_steps) % self.max_steps
             self.update_offset_buffers()
-            if self.osc_target: liblo.send(self.osc_target, "/euclid/offset", self.offset[ch])
+            osc_path = f"/euclid/offset_{ch + 1}"
+            osc_val = self.offset[ch]
 
         elif param_key == "interval" and self.display_mode == "interval":
             current_idx = self.allowed_intervals.index(self.interval_value[ch])
             new_idx = (current_idx + direction + len(self.allowed_intervals)) % len(self.allowed_intervals)
             self.interval_value[ch] = self.allowed_intervals[new_idx]
-            if self.osc_target: liblo.send(self.osc_target, "/euclid/interval_val", self.interval_value[ch])
+            osc_path = f"/euclid/interval_val_{ch + 1}"
+            osc_val = self.interval_value[ch]
+
+        if self.osc_target and osc_path is not None and osc_val is not None:
+            liblo.send(self.osc_target, osc_path, osc_val)
 
         self._update_control_panel_display()
         self.draw_sequencer()
@@ -328,68 +377,58 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
     def toggle_mute(self):
         ch = self.select_ch
         self.mute[ch] = not self.mute[ch]
-        if self.osc_target: liblo.send(self.osc_target, "/euclid/mute", int(self.mute[ch]))
+        if self.osc_target:
+            osc_path = f"/euclid/mute_{ch + 1}"
+            liblo.send(self.osc_target, osc_path, int(self.mute[ch]))
         self._update_control_panel_display()
         self.draw_sequencer()
+    
+    # Master handler for all channel-specific integer parameters
+    def _handle_channel_param(self, path, args):
+        val = args[0]
+        match = re.match(r"/euclid/(\w+)_(\d+)", path)
+        if not match:
+            return
 
-    def setup_osc_handlers(self):
-        self.osc_server.add_method("/euclid/mode", 's', self.handle_mode)
-        self.osc_server.add_method("/euclid/ch", 'i', self.handle_channel_select)
-        self.osc_server.add_method("/euclid/hits", 'i', self.handle_hits)
-        self.osc_server.add_method("/euclid/offset", 'i', self.handle_offset)
-        self.osc_server.add_method("/euclid/limit", 'i', self.handle_limit)
-        self.osc_server.add_method("/euclid/mute", 'i', self.handle_mute)
-        self.osc_server.add_method("/euclid/trigger", 'i', self.handle_trigger)
-        self.osc_server.add_method("/euclid/interval_val", 'i', self.handle_interval_value)
-        self.osc_server.add_method("/euclid/note_num", 'i', self.handle_note_num)
-        self.osc_server.add_method(None, None, self.handle_fallback)
+        param_key, ch_str = match.groups()
+        ch = int(ch_str) - 1
 
+        if not (0 <= ch < self.channels):
+            return
+
+        if param_key == "hits":
+            if 0 <= val <= self.max_hits: self.hits[ch] = val
+            self.update_offset_buffers()
+        elif param_key == "offset":
+            if 0 <= val < self.max_steps: self.offset[ch] = val
+            self.update_offset_buffers()
+        elif param_key == "limit":
+            if 0 < val <= self.max_channel_length: self.limit[ch] = val
+        elif param_key == "mute":
+            self.mute[ch] = bool(val)
+        elif param_key == "note_num":
+            if 1 <= val <= self.max_note: self.note_numbers[ch] = val
+        elif param_key == "interval_val":
+            if val in self.allowed_intervals: self.interval_value[ch] = val
+        
+        if ch == self.select_ch:
+            self._update_control_panel_display()
+        self.draw_sequencer()
+
+    # Global handlers
     def handle_mode(self, path, args):
-            mode_name = args[0]
-            if mode_name in ["polygon", "euclidean", "interval"]:
-                self.display_mode = mode_name
-                self._update_control_panel_display()
-                self.draw_sequencer()
+        mode_name = args[0]
+        if mode_name in ["polygon", "euclidean", "interval"]:
+            self.display_mode = mode_name
+            self._update_control_panel_display()
+            self.draw_sequencer()
 
     def handle_channel_select(self, path, args):
         ch = args[0]
         if 0 <= ch < self.channels:
             self.select_ch = ch
-            self._update_control_panel_display(); self.draw_sequencer()
-
-    def handle_hits(self, path, args):
-        val = args[0]
-        if 0 <= val <= self.max_hits: self.hits[self.select_ch] = val
-        self.update_offset_buffers()
-        self._update_control_panel_display(); self.draw_sequencer()
-        
-    def handle_offset(self, path, args):
-        val = args[0]
-        if 0 <= val < self.max_steps: self.offset[self.select_ch] = val
-        self.update_offset_buffers()
-        self._update_control_panel_display(); self.draw_sequencer()
-
-    def handle_limit(self, path, args):
-        val = args[0]
-        if 0 < val <= self.max_channel_length: self.limit[self.select_ch] = val
-        self._update_control_panel_display(); self.draw_sequencer()
-
-    def handle_mute(self, path, args):
-        self.mute[self.select_ch] = bool(args[0])
-        self._update_control_panel_display()
-        self.draw_sequencer()
-    
-    def handle_note_num(self, path, args):
-        val = args[0]
-        if 1 <= val <= self.max_note:
-            self.note_numbers[self.select_ch] = val
             self._update_control_panel_display()
             self.draw_sequencer()
-
-    def handle_interval_value(self, path, args):
-        val = args[0]
-        if val in self.allowed_intervals: self.interval_value[self.select_ch] = val
-        self._update_control_panel_display(); self.draw_sequencer()
 
     def handle_trigger(self, path, args):
         if not hasattr(self, 'display_mode'): return
@@ -502,8 +541,8 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
             if len(coords) > 1: self.canvas.create_polygon(coords,fill="",outline="white",width=1)
             elif len(coords)==1: self.canvas.create_line(base_x+target_r,base_y+target_r,coords[0][0],coords[0][1],fill="white",width=1)
             
-            color = "yellow" if k==self.select_ch else "white"
-            for x,y in coords: self.canvas.create_oval(x-2,y-2,x+2,y+2,fill=color,outline=color)
+            color = "yellow" if k==self.select_ch else "deepskyblue"
+            for x,y in coords: self.canvas.create_oval(x-3,y-3,x+3,y+3,fill=color,outline=color)
 
     def draw_play_positions(self):
         for k in range(self.channels):
@@ -535,13 +574,10 @@ class zynthian_widget_euclidseq(zynthian_widget_base.zynthian_widget_base, tk.Fr
                 size=10*self.scale*0.8
                 self.canvas.create_rectangle(cx-size,cy-size,cx+size,cy+size,fill="#555500",outline="yellow",width=2)
             
-            self.canvas.create_text(cx,cy,text=f"{self.note_numbers[k]}",fill="white",font=note_font)
+            self.canvas.create_text(cx,cy,text=f"{self.note_numbers[k]}",fill="#00FF00",font=note_font)
 
             label_y_pos = cy + radius - 115
-            #self.canvas.create_text(cx, label_y_pos, text=f"Ch: {k+1}", fill="red", font=chan_font)
             self.canvas.create_text(cx, label_y_pos, text=f"Ch: {k+1}", fill="red", font=("Arial", 16, "bold"))
-
-
 
     def calculate_circle_hit_areas(self):
         r=25*self.scale; self.circle_hit_areas=[(self.graph_x[k]*self.scale+r, self.graph_y[k]*self.scale+r,r) for k in range(self.channels)]

@@ -919,7 +919,7 @@ def audio_autoconnect():
 
     # Remove mod-ui routes
     for dst in list(required_routes.keys()):
-        if dst.startswith("effect_"):
+        if dst.startswith("mod-monitor:"):
             required_routes.pop(dst)
 
     # Replicate main output to headphones

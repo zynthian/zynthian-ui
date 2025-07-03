@@ -25,7 +25,7 @@ The list of supported synth engines is quite long and includes, among others:
 
 A [Zynthian Box](https://wiki.zynthian.org/index.php/Zynthian_Wiki_Home) is a hardware device that runs the zynthian's software stack. Although it's not a closed hardware specification, there is a (more or less) canonical recommendation:
 
-+ Raspberry Pi 3/4
++ Raspberry Pi 3/4/5
 + Supported Soundcard (ZynADAC, HifiBerry, etc.)
 + Supported Display (Zynscreen, PiScreen, PiTFT, Waveshare, HDMI, etc.)
 + Zynthian controllers (4 rotary encoders + switches)
