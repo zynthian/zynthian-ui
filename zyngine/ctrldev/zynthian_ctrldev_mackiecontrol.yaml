@@ -1,0 +1,451 @@
+
+
+device_settings:
+  name: Behringer X-Touch
+  number_of_strips: 8
+  masterfader: True
+  masterfader_strip_num: 8
+  xtouch: True
+  touchsensefaders: True
+
+ccnum_buttons:
+  0:
+    name: rec_0
+    command_type: mkc
+    command: rec_0
+  1:
+    name: rec_1
+    command_type: mkc
+    command: rec_1
+  2:
+    name: rec_2
+    command_type: mkc
+    command: rec_2
+  3:
+    name: rec_3
+    command_type: mkc
+    command: rec_3
+  4:
+    name: rec_4
+    command_type: mkc
+    command: rec_4
+  5:
+    name: rec_5
+    command_type: mkc
+    command: rec_5
+  6:
+    name: rec_6
+    command_type: mkc
+    command: rec_6
+  7:
+    name: rec_7
+    command_type: mkc
+    command: rec_7
+  8:
+    name: solo_0
+    command_type: mkc
+    command: solo_0
+  9:
+    name: solo_1
+    command_type: mkc
+    command: solo_1
+  10:
+    name: solo_2
+    command_type: mkc
+    command: solo_2
+  11:
+    name: solo_3
+    command_type: mkc
+    command: solo_3
+  12:
+    name: solo_4
+    command_type: mkc
+    command: solo_4
+  13:
+    name: solo_5
+    command_type: mkc
+    command: solo_5
+  14:
+    name: solo_6
+    command_type: mkc
+    command: solo_6
+  15:
+    name: solo_7
+    command_type: mkc
+    command: solo_7
+  16:
+    name: mute_0
+    command_type: mkc
+    command: mute_0
+  17:
+    name: mute_1
+    command_type: mkc
+    command: mute_1
+  18:
+    name: mute_2
+    command_type: mkc
+    command: mute_2
+  19:
+    name: mute_3
+    command_type: mkc
+    command: mute_3
+  20:
+    name: mute_4
+    command_type: mkc
+    command: mute_4
+  21:
+    name: mute_5
+    command_type: mkc
+    command: mute_5
+  22:
+    name: mute_6
+    command_type: mkc
+    command: mute_6
+  23:
+    name: mute_7
+    command_type: mkc
+    command: mute_7
+  24:
+    name: select_0
+    command_type: mkc
+    command: select_0
+  25:
+    name: select_1
+    command_type: mkc
+    command: select_1
+  26:
+    name: select_2
+    command_type: mkc
+    command: select_2
+  27:
+    name: select_3
+    command_type: mkc
+    command: select_3
+  28:
+    name: select_4
+    command_type: mkc
+    command: select_4
+  29:
+    name: select_5
+    command_type: mkc
+    command: select_5
+  30:
+    name: select_6
+    command_type: mkc
+    command: select_6
+  31:
+    name: select_7
+    command_type: mkc
+    command: select_7
+  32:
+    name: encoderpress_0
+    command_type: mkc
+    command: encoderpress_0
+  33:
+    name: encoderpress_1
+    command_type: mkc
+    command: encoderpress_1
+  34:
+    name: encoderpress_2
+    command_type: mkc
+    command: encoderpress_2
+  35:
+    name: encoderpress_3
+    command_type: mkc
+    command: encoderpress_3
+  36:
+    name: encoderpress_4
+    command_type: mkc
+    command: encoderpress_4
+  37:
+    name: encoderpress_5
+    command_type: mkc
+    command: encoderpress_5
+  38:
+    name: encoderpress_6
+    command_type: mkc
+    command: encoderpress_6
+  39:
+    name: encoderpress_7
+    command_type: mkc
+    command: encoderpress_7
+  40:
+    name: encoderassign_track
+    command_type: mkc
+    command: encoderassign_track
+  41:
+    name: encoderassign_send
+    command_type: mkc
+    command: encoderassign_send
+  42:
+    name: encoderassign_pan
+    command_type: mkc
+    command: encoderassign_pan
+  43:
+    name: encoderassign_plugin
+    command_type: mkc
+    command: encoderassign_plugin
+  44:
+    name: encoderassign_eq
+    command_type: mkc
+    command: encoderassign_eq
+  45:
+    name: encoderassign_inst
+    command_type: mkc
+    command: encoderassign_inst
+  46:
+    name: faderbank_left
+    command_type: mkc
+    command: faderbank_left
+  47:
+    name: faderbank_right
+    command_type: mkc
+    command: faderbank_right
+  48:
+    name: channel_left
+    command_type: mkc
+    command: channel_left
+  49:
+    name: channel_right
+    command_type: mkc
+    command: channel_right
+  50:
+    name: flip
+    command_type: mkc
+    command: None
+  51:
+    name: global_view
+    command_type: mkc
+    command: globalview_set
+  52:
+    name: display_namevalue
+    command_type: mkc
+    command: None
+  54:
+    name: function_f1
+    command_type: cuia
+    command: SCREEN_PATTERN_EDITOR
+  55:
+    name: function_f2
+    command_type: cuia
+    command: SCREEN_ARRANGER
+  56:
+    name: function_f3
+    command_type: cuia
+    command: SCREEN_ALSA_MIXER
+  57:
+    name: function_f4
+    command_type: cuia
+    command: SCREEN_MIDI_RECORDER
+  58:
+    name: function_f5
+    command_type: cuia
+    command: BANK_PRESET
+  59:
+    name: function_f6
+    command_type: cuia
+    command: CHAIN_CONTROL
+  60:
+    name: function_f7
+    command_type: cuia
+    command: ALL_NOTES_OFF
+  61:
+    name: function_f8
+    command_type: cuia
+    command: ALL_SOUNDS_OFF
+  62:
+    name: viewassign_midi
+    command_type: mkc
+    command: viewassign_midi
+  63:
+    name: viewassign_inputs
+    command_type: mkc
+    command: viewassign_inputs
+  64:
+    name: viewassign_audio
+    command_type: mkc
+    command: viewassign_audio
+  65:
+    name: viewassign_inst
+    command_type: mkc
+    command: viewassign_inst
+  66:
+    name: viewassign_aux
+    command_type: mkc
+    command: viewassign_aux
+  67:
+    name: viewassign_buses
+    command_type: mkc
+    command: viewassign_buses
+  68:
+    name: viewassign_outputs
+    command_type: mkc
+    command: viewassign_outputs
+  69:
+    name: viewassign_user
+    command_type: mkc
+    command: viewassign_user
+  70:
+    name: modify_shift
+    command_type: mkc
+    command: shiftassign_set
+  71:
+    name: modify_option
+    command_type: mkc
+    command: None
+  72:
+    name: modify_control
+    command_type: mkc
+    command: None
+  73:
+    name: modify_alt
+    command_type: mkc
+    command: None
+  74:
+    name: automation_read
+    command_type: mkc
+    command: None
+  75:
+    name: automation_write
+    command_type: mkc
+    command: None
+  76:
+    name: automation_trim
+    command_type: mkc
+    command: None
+  77:
+    name: automation_touch
+    command_type: mkc
+    command: None
+  78:
+    name: automation_latch
+    command_type: mkc
+    command: None
+  79:
+    name: automation_group
+    command_type: mkc
+    command: None
+  80:
+    name: utility_save
+    command_type: mkc
+    command: None
+  81:
+    name: utility_undo
+    command_type: mkc
+    command: None
+  82:
+    name: utility_cancel
+    command_type: mkc
+    command: None
+  83:
+    name: utility_enter
+    command_type: mkc
+    command: None
+  84:
+    name: transport_marker
+    command_type: cuia
+    command: SCREEN_MAIN_MENU
+  85:
+    name: transport_nudge
+    command_type: cuia
+    command: SCREEN_ADMIN
+  86:
+    name: transport_cycle
+    command_type: cuia
+    command: SCREEN_AUDIO_MIXER
+  87:
+    name: transport_drop
+    command_type: cuia
+    command: SCREEN_SNAPSHOT
+  88:
+    name: transport_replace
+    command_type: cuia
+    command: SCREEN_ZS3
+  89:
+    name: transport_click
+    command_type: cuia
+    command: SCREEN_ALSA_MIXER
+  90:
+    name: transport_solo
+    command_type: cuia
+    command: SCREEN_ZYNPAD
+  91:
+    name: transport_frwd
+    command_type: mkc
+    command: transport_frwd
+  92:
+    name: transport_ffwd
+    command_type: mkc
+    command: transport_ffwd
+  93:
+    name: transport_stop
+    command_type: mkc
+    command: transport_stop
+  94:
+    name: transport_play
+    command_type: mkc
+    command: transport_play
+  95:
+    name: transport_rec
+    command_type: mkc
+    command: transport_rec
+  96:
+    name: arrow_up
+    command_type: cuia
+    command: ARROW_UP
+  97:
+    name: arrow_down
+    command_type: cuia
+    command: ARROW_DOWN
+  98:
+    name: arrow_left
+    command_type: cuia
+    command: ARROW_LEFT
+  99:
+    name: arrow_right
+    command_type: cuia
+    command: ARROW_RIGHT
+  100:
+    name: select
+    command_type: ZYNSWITCH
+    command: 3
+  101:
+    name: scrub
+    command_type: cuia
+    command: BACK
+  104:
+    name: fadertouch_0
+    command_type: mkc
+    command: fadertouch_0
+  105:
+    name: fadertouch_1
+    command_type: mkc
+    command: fadertouch_1
+  106:
+    name: fadertouch_2
+    command_type: mkc
+    command: fadertouch_2
+  107:
+    name: fadertouch_3
+    command_type: mkc
+    command: fadertouch_3
+  108:
+    name: fadertouch_4
+    command_type: mkc
+    command: fadertouch_4
+  109:
+    name: fadertouch_5
+    command_type: mkc
+    command: fadertouch_5
+  110:
+    name: fadertouch_6
+    command_type: mkc
+    command: fadertouch_6
+  111:
+    name: fadertouch_7
+    command_type: mkc
+    command: fadertouch_7
+  112:
+    name: fadertouch_8
+    command_type: mkc
+    command: fadertouch_8
