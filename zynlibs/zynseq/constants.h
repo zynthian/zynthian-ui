@@ -48,6 +48,18 @@
 #define STARTING 3      // Sequence is paused waiting to start
 #define STOPPING_SYNC 4 // Sequence is playing waiting to stop at next sync point
 
+// Follow action
+enum FOLLOW_ACTION {
+    FOLLOW_ACTION_NONE,
+    FOLLOW_ACTION_STOP,
+    FOLLOW_ACTION_AGAIN,
+    FOLLOW_ACTION_PREV,
+    FOLLOW_ACTION_NEXT,
+    FOLLOW_ACTION_FIRST,
+    FOLLOW_ACTION_LAST,
+    FOLLOW_ACTION_JUMP
+};
+
 // MIDI commands
 #define MIDI_NOTE_OFF 0x80
 #define MIDI_NOTE_ON 0x90

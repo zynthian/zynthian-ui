@@ -425,7 +425,7 @@ class zynthian_gui_mixer_strip:
             info = self.zynseq.launcher_info[slot][self.chan]
             sequence = info["sequence"]
             empty = self.zynseq.libseq.isEmpty(self.zynseq.bank, sequence)
-            if empty or info["repeat"] == 0:
+            if empty or info["follow_action"] == zynseq.FOLLOW_ACTION_STOP:
                 color = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT
             else:
                 color = zynthian_gui_config.LAUNCHER_COLOUR[info["group"] % 16]["rgb"]
@@ -436,19 +436,19 @@ class zynthian_gui_mixer_strip:
                     title = f"⇑ {self.zynseq.get_sequence_name(self.zynseq.bank, sequence)[:5]}"
                 else:
                     title = f"⇕ {self.zynseq.get_sequence_name(self.zynseq.bank, sequence)[:5]}"
-            elif info["repeat"]:
+            else :
                 title = self.zynseq.get_sequence_name(self.zynseq.bank, sequence)[:5]
-                if info["follow_seq"] == -1:
-                    mode_image = self.parent.mode_icons["oneshot"]
-                elif info["follow_bank"] != self.zynseq.bank:
-                    pass #TODO: Show icon for changing bank
-                elif info["follow_seq"] == info["sequence"]:
-                    mode_image = self.parent.mode_icons["loopsync"]
+                if info["repeat"]:
+                    match info["follow_action"]:
+                        case zynseq.FOLLOW_ACTION_AGAIN:
+                            mode_image = self.parent.mode_icons["loopsync"]
+                        case zynseq.FOLLOW_ACTION_NONE:
+                            mode_image = self.parent.mode_icons["oneshot"]
+                        case _:
+                            mode_image = self.parent.mode_icons["oneshotall"]
                 else:
-                    mode_image = self.parent.mode_icons["oneshotall"]
-            else:
-                title = "⏹"
-                mode_image = self.parent.mode_icons["empty"]
+                    title = "⏹"
+                    mode_image = self.parent.mode_icons["empty"]
             match info["state"]:
                 case zynseq.SEQ_PLAYING:
                     color_state = zynthian_gui_config.PAD_COLOUR_PLAYING
@@ -1351,7 +1351,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     self.main_canvas.itemconfig(strip.pedals[i], state=tkinter.HIDDEN)
 
     def cb_launcher_play_state(self, bank, seq, state, mode, group):
-        #logging.warning(f"bank:{bank} seq:{seq} state:{state} mode:{mode} group:{group}")
         if not self.launcher_mode or bank != self.zynseq.bank:
             return
         try:
@@ -1518,6 +1517,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             return
         options = {}
         name = self.zynseq.get_sequence_name(self.zynseq.bank, info['sequence'])
+        repeat = self.zynseq.libseq.getRepeat(self.zynseq.bank, info['sequence'])
+        follow = self.zynseq.libseq.getFollowAction(self.zynseq.bank, info['sequence'])
+        follow_action = follow & 0xff
+        follow_param = follow >> 8
+        follow_scene = follow_param // zynseq.SCENE_LAUNCHER_COL
         if info['chan'] == zynseq.SCENE_LAUNCHER_COL:
             title = f"Scene options ({name})"
             repeat = info["repeat"]
@@ -1525,20 +1529,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 options["Repeat (DISABLED)"] = info
             else:
                 if repeat == 1:
-                    options[f"Repeat (PLAY ONCE)"] = info
-                elif repeat == 2:
-                    options[f"Repeat (PLAY TWICE)"] = info
+                    options[f"Repeat (PLAY 1 TIME)"] = info
                 else:
                     options[f"Repeat (PLAY {repeat} TIMES)"] = info
-                follow_seq = info["follow_seq"]
-                follow_slot = follow_seq // zynseq.LAUNCHER_COLS
-                #TODO: Handle switching bank
-                if follow_seq == -1:
-                    options["Follow action (STOP)"] = info
-                elif follow_seq == info['sequence']:
-                    options["Follow action (LOOP)"] = info
+                if follow_action < zynseq.FOLLOW_ACTION_JUMP:
+                    actions = ("NONE", "STOP", "AGAIN", "PREV", "NEXT", "FIRST", "LAST")
+                    options[f"Follow action ({actions[follow_action]})"] = info
                 else:
-                    options[f"Follow action (PLAY SCENE {follow_slot + 1})"] = info
+                    options[f"Follow action (PLAY SCENE {follow_scene})"] = info
                 if info['tempo'] is None:
                     options[f"Tempo (NONE)"] = info
                 else:
@@ -1564,6 +1562,15 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def launcher_menu_cb(self, option, params):
         self.launcher_select_info = params
+        sequence = params['sequence']
+        repeat = self.zynseq.libseq.getRepeat(self.zynseq.bank, sequence)
+        follow = self.zynseq.libseq.getFollowAction(self.zynseq.bank, sequence)
+        follow_action = follow & 0xff
+        follow_param = follow >> 8
+        follow_scene = follow_param // zynseq.SCENE_LAUNCHER_COL
+        scene = sequence // zynseq.SCENE_LAUNCHER_COL
+
+        slot = params["slot"]
         option_screen = self.zyngui.screens['option']
         if params['clippy']:
             if option.startswith("File"):
@@ -1579,14 +1586,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             name = self.zynseq.get_sequence_name(self.zynseq.bank, params["sequence"])
             self.zyngui.show_keyboard(self.rename_sequence, name, 8)
         elif option.startswith("Add scene"):
-            self.zynseq.add_scene(params["slot"] + 1)
+            self.zynseq.add_scene(slot + 1)
             self.refresh_visible_strips()
             self.zyngui.show_screen("launcher")
         elif option.startswith("Remove scene"):
-            slot = params['slot']
             self.zyngui.show_confirm(f"Remove scene {slot + 1}?", self.remove_scene, slot)
         elif option.startswith("Move scene"):
-            slot = params['slot']
             self.moving_scene = True
             self.zyngui.show_screen("launcher")
         elif option.startswith("Tempo"):
@@ -1602,15 +1607,14 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'nudge_factor': 1.0,
             }, assert_cb=self.cb_assert_param_editor)
         elif option == "Remove tempo":
-            slot = params["slot"]
             self.zynseq.libseq.removeTempoEvent(self.zynseq.bank, len(self.zynseq.launcher_info) * zynseq.LAUNCHER_COLS + slot, 1, 0)
             self.launcher_select_info["tempo"] = None
             index = option_screen.index
             self.launcher_menu()
             option_screen.select(index - 1)
         elif option.startswith("Repeat"):
-            labels = ["DISABLED", "PLAY ONCE", "PLAY TWICE"]
-            for i in range(3, 256):
+            labels = ["DISABLED", "PLAY 1 TIME"]
+            for i in range(2, 256):
                 labels.append(f"PLAY {i} TIMES")
             option_screen.enable_param_editor(option_screen, "repeat", {
                 'name': 'Repeat',
@@ -1626,18 +1630,17 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'value': bpb
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Follow action"):
-            ticks = [-1]
-            labels = ["STOP"]
-            for i, slot_info in enumerate(self.zynseq.launcher_info):
-                seq = slot_info[16]["sequence"]
-                if seq != params["sequence"]:
-                    ticks.append(slot_info[16]["sequence"])
+            labels = ["NONE", "STOP", "AGAIN", "PREV", "NEXT", "FIRST", "LAST"]
+            for i, _ in enumerate(self.zynseq.launcher_info):
+                if i != slot:
                     labels.append(f"PLAY SCENE {i + 1}")
-            val = params["follow_seq"]
-            #TODO: Handle switching bank
+            val = params["follow_action"]
+            if val >= zynseq.FOLLOW_ACTION_JUMP:
+                if params["follow_param"] > slot + 1:
+                    val -= 1
+                val += params["follow_param"] - 1
             option_screen.enable_param_editor(option_screen, "follow", {
                 "name": "Follow action",
-                "ticks": ticks,
                 "labels": labels,
                 "value": val
             }, assert_cb=self.cb_assert_param_editor)
@@ -1669,6 +1672,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             pated = self.zyngui.screens['pattern_editor']
             pated.set_sequence_info(self.launcher_select_info)
             pated.load_pattern(self.launcher_select_info["pattern"])
+            if self.zynseq.libseq.getPlayState(self.zynseq.bank, self.launcher_select_info["sequence"]) != zynseq.SEQ_STOPPED:
+                self.zynseq.libseq.setPlayState(self.zynseq.bank, self.launcher_select_info["sequence"], zynseq.SEQ_STOPPING)
+                self.zynseq.libseq.setPlayState(0, 0, zynseq.SEQ_STARTING)
             self.zyngui.show_screen("pattern_editor")
             return True
         else:
@@ -1728,13 +1734,18 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 self.zynseq.libseq.setRepeat(self.zynseq.bank, self.launcher_select_info["sequence"], zctrl.value)
                 self.launcher_select_info["repeat"] = zctrl.value
             case "follow":
-                if zctrl.value == -1:
-                    bank = -1
+                target_sequence = 0
+                if zctrl.value < zynseq.FOLLOW_ACTION_JUMP:
+                    self.launcher_select_info["follow_action"] = zctrl.value
+                    self.launcher_select_info["follow_param"] = 0
                 else:
-                    bank = self.zynseq.bank
-                self.zynseq.libseq.setFollowAction(self.zynseq.bank, self.launcher_select_info["sequence"], bank, zctrl.value)
-                self.launcher_select_info["follow_bank"] = bank
-                self.launcher_select_info["follow_seq"] = zctrl.value
+                    target_scene = zctrl.value - zynseq.FOLLOW_ACTION_JUMP + 1
+                    if target_scene > slot:
+                        target_scene += 1
+                    self.launcher_select_info["follow_action"] = zynseq.FOLLOW_ACTION_JUMP
+                    self.launcher_select_info["follow_param"] = target_scene
+                    target_sequence = (target_scene - 1) * zynseq.LAUNCHER_COLS + self.launcher_select_info["sequence"] % zynseq.LAUNCHER_COLS
+                self.zynseq.libseq.setFollowAction(self.zynseq.bank, self.launcher_select_info["sequence"], self.launcher_select_info["follow_action"], target_sequence)
 
         self.main_mixbus_strip.draw_sequence_slot(slot)
 

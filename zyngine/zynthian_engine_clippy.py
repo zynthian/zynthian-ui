@@ -224,9 +224,12 @@ class zynthian_engine_clippy(zynthian_engine):
                     'labels': ["loop"] + [f"{i}" for i in range(1, 256)],
                     'value_min': 0,
                     'value_max': 255,
-                    'value': 1
+                    'value': 0
                 })
             }
+            sequence = processor.midi_chan + slot * zynseq.LAUNCHER_COLS
+            self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0001)
+
 
             # Move zctrls
             for symbol in symbols:
@@ -273,6 +276,7 @@ class zynthian_engine_clippy(zynthian_engine):
         # Remove excessive slots
         while (self.slots > slots + 1):
             self.remove_slot()
+        self.slots = slots
 
     # ---------------------------------------------------------------------------
     # Controller Management
@@ -304,30 +308,43 @@ class zynthian_engine_clippy(zynthian_engine):
         try:
             slot = int(zctrl.symbol.split(" ")[1]) - 1
             beats_zctrl = zctrl.processor.controllers_dict[f"beats {slot + 1:02}"]
+            repeat_zctrl = zctrl.processor.controllers_dict[f"repeat {slot + 1:02}"]
         except Exception as e:
             logging.error(f"Can't determine sample index {zctrl.symbol} => {e}")
             return
         if zctrl.symbol.startswith("file"):
-            if zctrl.value == 0 or zctrl.value == "0":
+            if zctrl.value == 0 or zctrl.value == "0" or zctrl.value == "":
                 zctrl.value = ""   # TODO: This should be fixed in zctrl class
+                repeat_zctrl.set_value(0)
             beats_zctrl.value = 0
             self.set_file(zctrl.processor, slot)
+            self.set_repeat(zctrl.processor, slot, repeat_zctrl.value, zctrl.value != "")
+            self.zynseq.rebuild_all_launcher_info()
         elif zctrl.symbol.startswith("warp"):
             self.set_file(zctrl.processor, slot)
         elif zctrl.symbol.startswith("repeat"):
-            sequence = self.sequence_offset + slot * zynseq.LAUNCHER_COLS
-            if zctrl.value:
-                self.libseq.setPlayMode(self.zynseq.bank, sequence, zctrl.value << 8)
-            else:
-                self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0101)
+            self.set_repeat(zctrl.processor, slot, zctrl.value, True)
 
         self.write_sfz(zctrl.processor)
+
+    def set_repeat(self, processor, slot, repeat, enable):
+        sequence = processor.midi_chan + slot * zynseq.LAUNCHER_COLS
+        if repeat:
+            self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x01 | (repeat << 8))
+            self.libseq.setFollowAction(self.zynseq.bank, sequence, zynseq.FOLLOW_ACTION_NONE, 0)
+        elif enable:
+            self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0101)
+            self.libseq.setFollowAction(self.zynseq.bank, sequence, zynseq.FOLLOW_ACTION_AGAIN, 0)
+        else:
+            self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0001)
+        self.zynseq.rebuild_launcher_info(sequence)
+
 
     def set_file(self, processor, slot):
         file_zctrl = processor.controllers_dict[f"file {slot + 1:02}"]
         warp_zctrl = processor.controllers_dict[f"warp {slot + 1:02}"]
         beats_zctrl = processor.controllers_dict[f"beats {slot + 1:02}"]
-        sequence = self.sequence_offset + slot * zynseq.LAUNCHER_COLS
+        sequence = processor.midi_chan + slot * zynseq.LAUNCHER_COLS
         self._ctrl_screens[slot] = [f'sample {slot + 1:02}', [f'file {slot + 1:02}']]
         path = file_zctrl.value
 
@@ -374,7 +391,7 @@ class zynthian_engine_clippy(zynthian_engine):
                         reconnect = True
                         self.lscp_send_single(processor, "REMOVE CHANNEL MIDI_INPUT 0 0 0")
                         # Silence existing audio
-                        if self.libseq.getPlayState(self.zynseq.bank, self.sequence_offset + slot * zynseq.LAUNCHER_COLS):
+                        if self.libseq.getPlayState(self.zynseq.bank, processor.midi_chan + slot * zynseq.LAUNCHER_COLS):
                             self.lscp_send_single(processor, "SEND CHANNEL MIDI_DATA CC 0 120 0")
                     # Do warp
                     data, sr = soundfile.read(path)
@@ -422,12 +439,11 @@ class zynthian_engine_clippy(zynthian_engine):
                     # Reconnect MIDI
                     self.lscp_send_single(processor, "ADD CHANNEL MIDI_INPUT 0 0 0")
                     self.lscp_send_single(processor, f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
-                self.libseq.setRepeat(self.zynseq.bank, sequence, 1)
             except Exception as e:
                 logging.error(f"Can't setup sequencer for clip {slot} => {e}")
         else:
             state = self.libseq.getPlayState(self.zynseq.bank, sequence)
-            self.reset_pattern(slot)
+            self.reset_pattern(processor, slot)
 
         self.zynseq.rebuild_launcher_info(sequence)
         processor.init_ctrl_screens()
@@ -473,14 +489,21 @@ class zynthian_engine_clippy(zynthian_engine):
         self.lscp_send_single(processor, "ADD CHANNEL MIDI_INPUT 0 0 0")
         self.lscp_send_single(processor, f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
 
-        self.sequence_offset = processor.midi_chan
-
-        for slot in range(self.slots):
-            self.reset_pattern(slot)
+        for slot in range(self.zynseq.slots):
+            self.reset_pattern(processor, slot)
         self.zynseq.rebuild_all_launcher_info() # Need to do this (again!!!) here because called too early when adding chain (before processor is added)
 
-    def reset_pattern(self, slot):
-            sequence = self.sequence_offset + slot * zynseq.LAUNCHER_COLS
+    def remove_processor(self, processor):
+        try:
+            self.lscp_send_single(processor, "RESET")
+            processor.proc.terminate()
+            processor.proc = None
+            super().remove_processor(processor)
+        except Exception as err:
+            logging.error("Can't stop processor")
+
+    def reset_pattern(self, processor, slot):
+            sequence = processor.midi_chan + slot * zynseq.LAUNCHER_COLS
             pattern = self.libseq.getPatternAt(255, sequence, 0, 0)
             self.libseq.clearPattern(pattern)
             self.libseq.setStepsPerBeat(pattern, 1)

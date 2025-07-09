@@ -23,7 +23,7 @@ Sequence::Sequence() {
     addTrack(); // Ensure new sequences have at least one track
 }
 
-void Sequence::setSequenceId(uint8_t bank, uint8_t sequence) {
+void Sequence::setSequenceId(uint8_t bank, uint8_t sequence, bool reset) {
     m_nId = (bank << 8) | sequence;
 }
 
@@ -120,8 +120,8 @@ uint8_t Sequence::getPlayMode() {
 
 void Sequence::setPlayMode(uint8_t mode) {
     m_nMode = mode;
-    if (m_nNextSeq != 0xFFFF)
-        mode |= 0x80;
+    if (m_nFollowAction == FOLLOW_ACTION_AGAIN)
+        mode |= 0x80; //!@todo Do we still need this with follow action available?
     m_bChanged = true;
 }
 
@@ -158,9 +158,10 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
     uint8_t nCountInc = (m_nState == STARTING) ? 0 : 1;
     if (bSync) {
         if (m_nMode & MODE_END_SYNC) {
-            m_nPosition = 0;
-            if (m_nState == STOPPING)
+            if (m_nState == STOPPING) {
                 m_nState = STOPPED;
+                m_nPosition = 0;
+            }
         }
         if (m_nState == STARTING)
             m_nState = PLAYING;
@@ -180,12 +181,14 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
         // End of sequence
         if (m_nState == PLAYING) {
             m_nCount += nCountInc;
-            if (m_nCount >= m_nRepeat && m_nNextSeq != m_nId) {
+            if (m_nCount >= m_nRepeat) {
                 // Follow action
-                setPlayState(STOPPED);
-                nReturn |= 8;
-            } else if (m_nGroup == 16) {
-                nReturn |= 16;
+                if (m_nFollowAction != FOLLOW_ACTION_AGAIN) {
+                    setPlayState(STOPPED);
+                    nReturn |= 8;
+                } else if (m_nGroup == 16) {
+                    nReturn |= 16;
+                }
             }
         } else {
             m_nState = STOPPED;
@@ -265,12 +268,13 @@ std::string Sequence::getName() {
     return m_sName;
 }
 
-void Sequence::setFollowAction(uint8_t bank, uint8_t sequence) {
-    m_nNextSeq = (bank << 8) | sequence;
+void Sequence::setFollowAction(uint8_t action, uint8_t param) {
+    m_nFollowAction = action;
+    m_nFollowParam = param;
 }
 
 uint16_t Sequence::getFollowAction() {
-    return m_nNextSeq;
+    return m_nFollowAction | (m_nFollowParam << 8);
 }
 
 void Sequence::setRepeat(uint8_t repeat) {

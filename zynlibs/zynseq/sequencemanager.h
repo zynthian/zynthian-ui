@@ -279,6 +279,7 @@ class SequenceManager {
     uint16_t fileRead16(FILE* pFile);
     uint8_t fileRead8(FILE* pFile);
     bool checkBlock(FILE* pFile, uint32_t nActualSize, uint32_t nExpectedSize);
+    void updateFollowAction(uint8_t bank, uint8_t sequence, uint8_t newBank, uint8_t newSeq);
 
     bool m_bTempoChanged = false;     // True if tempo changed by sequence
     float m_fTempo = DEFAULT_TEMPO;   // Current tempo

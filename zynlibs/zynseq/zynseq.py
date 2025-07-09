@@ -76,11 +76,21 @@ SEQ_STOPPINGSYNC = 4
 SEQ_CHILD_PLAYING = 5 # Used to indicate a scene is stopped but some of its children are playing
 SEQ_CHILD_STOPPING = 6 # Used to indicate a scene is stopped but some of its children are stopping
 
+FOLLOW_ACTION_NONE  = 0
+FOLLOW_ACTION_STOP  = 1
+FOLLOW_ACTION_AGAIN = 2
+FOLLOW_ACTION_PREV  = 3
+FOLLOW_ACTION_NEXT  = 4
+FOLLOW_ACTION_FIRST = 5
+FOLLOW_ACTION_LAST  = 6
+FOLLOW_ACTION_JUMP  = 7
+
 SEQ_MAX_COLUMNS = 8
 
 PATTERN_EDITOR_BANK = 0     # Bank used for pattern editor
+LAUNCHER_BANK = 1           # Bank used for launchers
 LAUNCHER_COLS = 17          # Quantity of launcher columns (16 channels + scene launchers)
-SCENE_LAUNCHER_COL = LAUNCHER_COLS - 1     # Quantity of launcher columns (16 channels + scene launchers)
+SCENE_LAUNCHER_COL = LAUNCHER_COLS - 1     # Index of scene launcher column
 
 # Subsignals are defined inside each module. Here we define zynseq subsignals:
 SS_SEQ_PLAY_STATE = 1
@@ -152,13 +162,13 @@ class zynseq(zynthian_engine):
         })
 
         # Cache sequence info for launchers to reduce access to libseq
-        self.launcher_info = [] # List of list launcher info, indexed by slot, channel
-        self.sequence_info = {} # Map of launcher info, mapped by sequence (within current bank)
+        self.launcher_info = [] # List of list launcher info, indexed by [slot][channel] - always 17 channels wide: MIDI chan 0..15 + scene launcher 16
+        self.sequence_info = {} # Map of launcher info, mapped by sequence (within current bank) - reverse linking for optimisation
         self.slots = 8 # Quantity of launcher slots/rows/scenes
         self.bank = None # Currently selected bank
         self.seq_in_bank = 0 # Quantity of sequence in the selected bank
         self.pause_update = False
-        self.select_bank(1, True)
+        self.select_bank(1, True) # Select launcher bank (1)
 
     # Destroy instance of shared library
     def destroy(self):
@@ -185,6 +195,7 @@ class zynseq(zynthian_engine):
                 try:
                     info = self.sequence_info[seq]
                 except Exception as e:
+                    # This sequence is not used by a launcher
                     logging.warning(e)
                     continue
                 if info["slot"] >= self.slots:
@@ -263,6 +274,8 @@ class zynseq(zynthian_engine):
             for seq in range(LAUNCHER_COLS * self.slots):
                 self.libseq.getSequenceState(bank, seq)
 
+        self.rebuild_all_launcher_info()
+
         zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_REFRESH)
         self.changing_bank = False
 
@@ -272,15 +285,13 @@ class zynseq(zynthian_engine):
         self.sequence_info = {}
         self.seq_in_bank = self.libseq.getSequencesInBank(self.bank)
         self.slots = self.seq_in_bank // LAUNCHER_COLS
-        processors = []
+        clippy_engine = None
         for sequence in range(self.slots * LAUNCHER_COLS):
-            self.rebuild_launcher_info(sequence)
-        for slot_info in self.launcher_info:
-            for chan_info in slot_info:
-                processor = chan_info["clippy"]
-                if processor and processor not in processors:
-                    processors.append(processor)
-                    processor.engine.set_slots(self.slots)
+            info = self.rebuild_launcher_info(sequence)
+            if clippy_engine is None and info["clippy"]:
+                clippy_engine = info["clippy"].engine
+        if clippy_engine:
+            clippy_engine.set_slots(self.slots)
         self.progress = [0] * self.seq_in_bank
         self.pause_update = False
 
@@ -289,6 +300,7 @@ class zynseq(zynthian_engine):
         Build a dictionary of info for a launcher
 
         :seqeunce: Index of seqeunce
+        :returns: info object
         :note:
             Sequence numbers always start at 0 for slot 0, channel 0 and increment by channel (0..15) plus launcher (16)
             before wrapping to next slot (17..33, etc.). Manipulating sequence position requires copying.
@@ -302,14 +314,10 @@ class zynseq(zynthian_engine):
         group = chan
         mode = (state >> 8) & 0xFF
         state = state & 0xFF
-        follow = self.libseq.getFollowAction(self.bank, sequence)
         self.libseq.setGroup(self.bank, sequence, group)
-        if follow == 0xFFFF:
-            follow_seq = -1
-            follow_bank = -1
-        else:
-            follow_seq = follow & 0xFF
-            follow_bank = follow >> 8
+        follow = self.libseq.getFollowAction(self.bank, sequence)
+        follow_action = follow & 0xFF
+        follow_param = (follow >> 8) // LAUNCHER_COLS
         pattern = self.libseq.getPattern(self.bank, sequence, 0, 0)
         if pattern == 4294967295:
             pattern = self.libseq.createPattern()
@@ -331,8 +339,8 @@ class zynseq(zynthian_engine):
             "pattern": pattern,
             "clippy": None, # Clippy processor, for clippy slots
             "tempo": None,
-            "follow_seq": follow_seq,
-            "follow_bank": follow_bank
+            "follow_action": follow_action,
+            "follow_param": follow_param # For jump action, this is the follow scene not sequence as used by libzynseq
         }
         # Update pad position and list of chains this sequence belongs
         used_chan = []
@@ -346,8 +354,6 @@ class zynseq(zynthian_engine):
                     processor = chain.get_processors("MIDI Synth")[0]
                     if processor.engine.nickname == "CL":
                         info["clippy"] = processor
-                        #processor.engine.set_slots(self.slots)
-                        #TODO: Get the note from pattern in sequence to id the offset to set set_current_screen_index
                 except:
                     pass
                 info["chains"].append(chain_id)
@@ -370,6 +376,7 @@ class zynseq(zynthian_engine):
             mode=mode,
             group=group
         )
+        return info
 
     def add_channel(self, chan):
         """
@@ -404,7 +411,6 @@ class zynseq(zynthian_engine):
                 self.set_sequence_name(self.bank, sequence, f"{chr(65 + slot)}")
             else:
                 self.set_sequence_name(self.bank, sequence, f"{chr(65 + slot)}{chan + 1}")
-            self.libseq.setRepeat(self.bank, sequence, 1)
         self.rebuild_all_launcher_info()
 
     def remove_scene(self, slot):

@@ -845,6 +845,9 @@ void reset() {
                 pSequence->setRepeat(1);
                 pSequence->setName(std::string(1, 'A' + slot));
             }
+            else {
+                pSequence->setFollowAction(FOLLOW_ACTION_AGAIN, 0);
+            }
             ++seq;
         }
     }
@@ -1015,14 +1018,14 @@ bool load(const char* filename) {
                         break;
                     case 2:
                         // LOOP
-                        pSequence->setFollowAction(nBank, nSequence);
+                        pSequence->setFollowAction(FOLLOW_ACTION_AGAIN, 0);
                         break;
                     case 3:
                         // ONESHOTALL
                         break;
                     case 4:
                         // LOOPALL
-                        pSequence->setFollowAction(nBank, nSequence);
+                        pSequence->setFollowAction(FOLLOW_ACTION_AGAIN, 0);
                         break;
                     case 5:
                         // ONESHOTSYNC
@@ -1030,7 +1033,7 @@ bool load(const char* filename) {
                         break;
                     case 6:
                         // LOOPSYNC
-                        pSequence->setFollowAction(nBank, nSequence);
+                        pSequence->setFollowAction(FOLLOW_ACTION_AGAIN, 0);
                         break;
                     }
                 }
@@ -2264,7 +2267,9 @@ void togglePlayState(uint8_t bank, uint8_t sequence) {
     setPlayState(bank, sequence, nState);
 }
 
-uint32_t getSequenceState(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->getState(); }
+uint32_t getSequenceState(uint8_t bank, uint8_t sequence) {
+    return g_seqMan.getSequence(bank, sequence)->getState();
+}
 
 uint8_t getStateChange(uint8_t bank, uint8_t start, uint8_t end, uint32_t* states) {
     uint8_t count = 0;
@@ -2372,8 +2377,8 @@ const char* getSequenceName(uint8_t bank, uint8_t sequence) {
     return g_sName;
 }
 
-void setFollowAction(uint8_t bank, uint8_t sequence, uint8_t nextBank, uint8_t nextSequence) {
-    g_seqMan.getSequence(bank, sequence)->setFollowAction(nextBank, nextSequence);
+void setFollowAction(uint8_t bank, uint8_t sequence, uint8_t action, uint8_t param) {
+    g_seqMan.getSequence(bank, sequence)->setFollowAction(action, param);
     g_bDirty = true;
 }
 

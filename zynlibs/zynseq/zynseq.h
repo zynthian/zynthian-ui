@@ -1072,16 +1072,15 @@ const char* getSequenceName(uint8_t bank, uint8_t sequence);
 /** @brief  Set the sequence to play when one-shot ends
     @param  bank Index of bank
     @param  sequence Index of sequence
-    @param  nextBank Index of bank of next sequence
-    @param  nextSequence Index of next sequence
-    @note   Set nextBank and nextSequence to zero to disable follow-on action
+    @param  action Follow action @see FOLLOW_ACTION enum
+    @param  param Optional parameter of action, e.g. offset
 */
-void setFollowAction(uint8_t bank, uint8_t sequence, uint8_t nextBank, uint8_t nextSequence);
+void setFollowAction(uint8_t bank, uint8_t sequence, uint8_t action, uint8_t param);
 
 /** @brief  Get the sequence to play when one-shot ends
     @param  bank Index of bank
     @param  sequence Index of sequence
-    @retval uint16_t Next bank << 8 | next sequence. Zero if disabled.
+    @retval uint16_t Follow action | param << 8
 */
 uint16_t getFollowAction(uint8_t bank, uint8_t sequence);
 

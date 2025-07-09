@@ -135,7 +135,7 @@ Sequence* SequenceManager::getSequence(uint8_t bank, uint8_t sequence, bool crea
             uint32_t pattern = createPattern();
             addPattern(bank, sequence, 0, 0, pattern, true);
         }
-        m_mBanks[bank][sequence].setSequenceId(bank, sequence);
+        m_mBanks[bank][sequence].setSequenceId(bank, sequence, true);
     }
     return &(m_mBanks[bank][sequence]);
 }
@@ -218,9 +218,33 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
         }
         if (nEventType & 8) {
             // Reached end of sequence repeats
-            uint16_t nextSeq = pSequence->getFollowAction();
-            if (nextSeq != 0xFFFF)
-                vNext.push_back(nextSeq);
+            uint16_t follow = pSequence->getFollowAction();
+            uint8_t action = follow & 0xff;
+            uint8_t param = follow >> 8;
+            uint16_t next = -1;
+            switch (action) {
+                case FOLLOW_ACTION_AGAIN:
+                    next = sequence;
+                    break;
+                case FOLLOW_ACTION_PREV:
+                    if (sequence > 16)
+                        next = (sequence - 17);
+                    break;
+                case FOLLOW_ACTION_NEXT:
+                    next = sequence + 17;
+                    break;
+                case FOLLOW_ACTION_FIRST:
+                    next = sequence % 17;
+                    break;
+                case FOLLOW_ACTION_LAST:
+                    next = (m_mBanks[bank].size() / 17 - 1)  * 17 + sequence % 17;
+                    break;
+                case FOLLOW_ACTION_JUMP:
+                    next = param;
+                    break;
+            }
+            if (next != -1)
+                vNext.push_back(next | (bank << 8));
         }
         if (nEventType & 16) {
             // Reached end of scene launcher
@@ -293,18 +317,32 @@ void SequenceManager::onSceneLauncherState(uint8_t bank, uint8_t slot, uint8_t s
     }
 }
 
+void SequenceManager::updateFollowAction(uint8_t bank, uint8_t sequence, uint8_t newBank, uint8_t newSeq) {
+    // Search all sequences in this bank for jump to this sequence and change it to the new sequence number
+    for (auto itBank = m_mBanks.begin(); itBank != m_mBanks.end(); ++itBank) {
+        for (auto itSeq = itBank->second.begin(); itSeq != itBank->second.end(); ++itSeq) {
+            uint16_t follow = itSeq->second.getFollowAction();
+            if (((follow & 0xff) == FOLLOW_ACTION_JUMP) && ((follow >> 8) == sequence))
+                itSeq->second.setFollowAction(FOLLOW_ACTION_JUMP, newSeq);
+        }
+    }
+}
+
 void SequenceManager::moveSequence(uint8_t bank, uint8_t sequence, uint8_t newSeq) {
     auto node = m_mBanks[bank].extract(sequence);
     if (!node.empty()) {
         node.key() = newSeq;
-        node.mapped().setSequenceId(bank, newSeq);
+        node.mapped().setSequenceId(bank, newSeq, false);
         m_mBanks[bank].erase(newSeq);
         m_mBanks[bank].insert(std::move(node));
     }
+    updateFollowAction(bank, sequence, bank, newSeq);
 }
 
 void SequenceManager::swapSequence(uint8_t bank, uint8_t sequence1, uint8_t sequence2) {
     std::swap(m_mBanks[bank][sequence1], m_mBanks[bank][sequence2]);
+    updateFollowAction(bank, sequence1, bank, sequence2);
+    updateFollowAction(bank, sequence2, bank, sequence1);
 }
 
 uint8_t SequenceManager::getTriggerNote(uint8_t bank, uint8_t sequence) {
