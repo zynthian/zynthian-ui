@@ -836,13 +836,14 @@ void reset() {
     g_seqMan.init();
     g_nBeatsPerBar = 4;
     uint8_t seq = 0;
+    // Create default launchers: 8 rows of 16+1 columns with 17th column configured as scene launcher
     for (uint8_t slot = 0; slot < 8; ++slot) {
         for (uint8_t chan = 0; chan < 17; ++chan) {
             Sequence* pSequence = g_seqMan.getSequence(1, seq, true);
             pSequence->setGroup(chan);
             pSequence->getTrack(0)->setChannel(chan);
             if (chan == 16) {
-                pSequence->setRepeat(1);
+                pSequence->setFollowAction(FOLLOW_ACTION_NONE, 0);
                 pSequence->setName(std::string(1, 'A' + slot));
             }
             else {
