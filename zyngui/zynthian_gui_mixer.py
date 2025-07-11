@@ -1552,7 +1552,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             val = "ON" if zctrl.value else "OFF"
             options[f"Warp ({val})"] = info
         options[f"Edit name ({name})"] = info
-        options["Add scene"] = info
+        options["Append scene"] = info
+        options["Insert scene"] = info
         if self.zynseq.slots > 1:
             options["Remove scene"] = info
             options["Move scene"] = info
@@ -1585,8 +1586,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         elif option.startswith("Edit name"):
             name = self.zynseq.get_sequence_name(self.zynseq.bank, params["sequence"])
             self.zyngui.show_keyboard(self.rename_sequence, name, 8)
-        elif option.startswith("Add scene"):
-            self.zynseq.add_scene(slot + 1)
+        elif option.startswith("Append scene"):
+            self.zynseq.add_scene(self.zynseq.slots)
+            self.refresh_visible_strips()
+            self.zyngui.show_screen("launcher")
+        elif option.startswith("Insert scene"):
+            self.zynseq.add_scene(slot)
             self.refresh_visible_strips()
             self.zyngui.show_screen("launcher")
         elif option.startswith("Remove scene"):

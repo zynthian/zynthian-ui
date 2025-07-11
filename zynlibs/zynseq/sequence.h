@@ -245,12 +245,12 @@ class Sequence {
     float m_fTempo = 120.0;                     // Current tempo (overriden by tempo events in timebase map)
     uint16_t m_nTimeSig = 4;                    // Current time signature (beats in bar)
     uint16_t m_nId;                             // Sequence id (bank << 8 | sequence)
-    uint8_t m_nFollowAction = FOLLOW_ACTION_NONE; // Sequence follow action
+    uint8_t m_nFollowAction = FOLLOW_ACTION_AGAIN; // Sequence follow action
     uint8_t m_nFollowParam = 0;                 // Parameter for follow action, e.g. jump offset
     uint8_t m_nState = STOPPED;                 // Play state of sequence
     uint8_t m_nMode = 0;                        // Bitwise flags: stop mode (bits 0..1), start mode (bit 2), enabled (bit 7). Changed v11.
     uint8_t m_nGroup = 0;                       // Sequence's mutually exclusive group
-    uint8_t m_nRepeat = 0;                      // Quantity of times to play sequence/ Added v11.
+    uint8_t m_nRepeat = 1;                      // Quantity of times to play sequence/ Added v11.
     uint8_t m_nCount = 0;                       // Quantity of times to sequence has played
     bool m_bChanged = false;                    // True if sequence content changed
     bool m_bStateChanged = false;               // True if state changed since last clock cycle

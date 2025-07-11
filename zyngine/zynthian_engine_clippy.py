@@ -188,11 +188,12 @@ class zynthian_engine_clippy(zynthian_engine):
 
     def insert_slot(self, slot):
         for processor in self.processors:
+            slot += 1
             max_slot = 1
             # Get symbols to move
             symbols = []
             for symbol in processor.controllers_dict.keys():
-                idx = int(symbol[-2:]) - 1
+                idx = int(symbol[-2:])
                 if idx >= slot:
                     symbols.append(symbol)
                 if idx >= max_slot:
@@ -200,25 +201,25 @@ class zynthian_engine_clippy(zynthian_engine):
 
             # Create new zctrls
             zctrls = {
-                f"file {slot + 1:02}": zynthian_controller(self, f"file {slot + 1:02}", {
+                f"file {slot:02}": zynthian_controller(self, f"file {slot:02}", {
                     'is_path': True,
                     'value_default': "",
                     'path_file_types': ['wav', 'ogg', 'mp3', 'flac', 'aac'],
                     'processor': processor
                 }),
-                f"warp {slot + 1:02}": zynthian_controller(self, f"warp {slot + 1:02}", {
+                f"warp {slot:02}": zynthian_controller(self, f"warp {slot:02}", {
                     'processor': processor,
                     'is_toggle': True,
                     'labels': ["off", "on"],
                     'value': "on"
                 }),
-                f"beats {slot + 1:02}": zynthian_controller(self, f"beats {slot + 1:02}", {
+                f"beats {slot:02}": zynthian_controller(self, f"beats {slot:02}", {
                     'processor': processor,
                     'is_integer': True,
                     'value_min': 0,
                     'value_max': MAX_BEATS
                 }),
-                f"repeat {slot + 1:02}": zynthian_controller(self, f"repeat {slot + 1:02}", {
+                f"repeat {slot:02}": zynthian_controller(self, f"repeat {slot:02}", {
                     'processor': processor,
                     'is_integer': True,
                     'labels': ["loop"] + [f"{i}" for i in range(1, 256)],
@@ -227,17 +228,16 @@ class zynthian_engine_clippy(zynthian_engine):
                     'value': 0
                 })
             }
-            sequence = processor.midi_chan + slot * zynseq.LAUNCHER_COLS
+            sequence = processor.midi_chan + (slot - 1) * zynseq.LAUNCHER_COLS
             self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0001)
-
 
             # Move zctrls
             for symbol in symbols:
                 zctrl = processor.controllers_dict.pop(symbol)
-                idx = int(symbol[-2:]) + 1
-                new_symbol = f"{symbol[:-2]}{idx}"
-                zctrl.symbol = new_symbol
-                zctrls[symbol] = zctrl
+                idx = int(symbol[-2:])
+                new_symbol = f"{symbol[:-2]}{idx + 1:02}"
+                zctrl.symbol = zctrl.name = zctrl.short_name = new_symbol
+                zctrls[new_symbol] = zctrl
             processor.controllers_dict.update(zctrls)
 
             # Update screens
@@ -252,31 +252,99 @@ class zynthian_engine_clippy(zynthian_engine):
             processor.init_ctrl_screens()
             self.slots += 1
 
-    def remove_slot(self):
+    def remove_slot(self, slot):
+        slot += 1
         for processor in self.processors:
             try:
-                del processor.controllers_dict[f"file {self.slots:02}"]
-                del processor.controllers_dict[f"warp {self.slots:02}"]
-                del processor.controllers_dict[f"beats {self.slots:02}"]
-                del processor.controllers_dict[f"repeat {self.slots:02}"]
+                del processor.controllers_dict[f"file {slot:02}"]
+                del processor.controllers_dict[f"warp {slot:02}"]
+                del processor.controllers_dict[f"beats {slot:02}"]
+                del processor.controllers_dict[f"repeat {slot:02}"]
             except:
                 pass # We expect warp and beats to fail sometimes.
+
+
+            symbols = []
+            for symbol in processor.controllers_dict.keys():
+                idx = int(symbol[-2:])
+                if idx >= slot:
+                    symbols.append(symbol)
+
+            # Move zctrls
+            zctrls = {}
+            for symbol in symbols:
+                zctrl = processor.controllers_dict.pop(symbol)
+                idx = int(symbol[-2:])
+                new_symbol = f"{symbol[:-2]}{idx - 1:02}"
+                zctrl.symbol = zctrl.name = zctrl.short_name = new_symbol
+                zctrls[new_symbol] = zctrl
+            processor.controllers_dict.update(zctrls)
+
             # Update screens
-            self._ctrl_screens.pop()
+            self._ctrl_screens = []
+            for idx in range(1, self.slots):
+                cfg = [f'file {idx:02}']
+                if processor.controllers_dict[f"file {idx:02}"].value:
+                    cfg.append(f'warp {idx:02}')
+                    cfg.append(f'beats {idx:02}')
+                    cfg.append(f'repeat {idx:02}')
+                self._ctrl_screens.append([f'sample {idx:02}', cfg])
             processor.init_ctrl_screens()
             self.slots -= 1
 
-    def set_slots(self, slots):
-        if self.slots == slots:
-            return
+    def move_slot(self, slot, offset):
+        """
+        Move slot to +offset
+        Nudge slots between slot & offset
+        """
 
-        # Add missing slots
-        for slot in range(self.slots, slots + 1):
-            self.insert_slot(slot)
-        # Remove excessive slots
-        while (self.slots > slots + 1):
-            self.remove_slot()
-        self.slots = slots
+        slot += 1
+        new_slot = slot + offset
+        if offset == 0 or self.slots < new_slot < 0:
+            return
+        for processor in self.processors:
+            zctrls = {}
+            for symbol in ("file", "warp", "beats", "repeat"):
+                try:
+                    zctrl = processor.controllers_dict[f"{symbol} {slot:02}"]
+                    new_symbol = f"{symbol} {slot + offset:02}"
+                    zctrl.symbol = zctrl.name = zctrl.short_name = new_symbol
+                    zctrls[new_symbol] = zctrl
+                except:
+                    pass
+            if offset > 0:
+                for i in range(slot + 1, slot + 1 + offset):
+                    for symbol in ("file", "warp", "beats", "repeat"):
+                        try:
+                            zctrl = processor.controllers_dict[f"{symbol} {i:02}"]
+                            new_symbol = f"{symbol} {i - 1:02}"
+                            zctrl.symbol = zctrl.name = zctrl.short_name = new_symbol
+                            zctrls[new_symbol] = zctrl
+                        except:
+                            pass
+            else:
+                for i in range(slot + offset, slot):
+                    for symbol in ("file", "warp", "beats", "repeat"):
+                        try:
+                            zctrl = processor.controllers_dict[f"{symbol} {i:02}"]
+                            new_symbol = f"{symbol} {i + 1:02}"
+                            zctrl.symbol = zctrl.name = zctrl.short_name = new_symbol
+                            zctrls[new_symbol] = zctrl
+                        except:
+                            pass
+            processor.controllers_dict.update(zctrls)
+
+            # Update screens
+            self._ctrl_screens = []
+            for idx in range(1, self.slots + 1):
+                cfg = [f'file {idx:02}']
+                if processor.controllers_dict[f"file {idx:02}"].value:
+                    cfg.append(f'warp {idx:02}')
+                    cfg.append(f'beats {idx:02}')
+                    cfg.append(f'repeat {idx:02}')
+                self._ctrl_screens.append([f'sample {idx:02}', cfg])
+            processor.init_ctrl_screens()
+
 
     # ---------------------------------------------------------------------------
     # Controller Management
@@ -490,6 +558,7 @@ class zynthian_engine_clippy(zynthian_engine):
         self.lscp_send_single(processor, f"SET CHANNEL MIDI_INPUT_CHANNEL 0 {processor.midi_chan}")
 
         for slot in range(self.zynseq.slots):
+            self.insert_slot(slot)
             self.reset_pattern(processor, slot)
         self.zynseq.rebuild_all_launcher_info() # Need to do this (again!!!) here because called too early when adding chain (before processor is added)
 
@@ -505,6 +574,9 @@ class zynthian_engine_clippy(zynthian_engine):
     def reset_pattern(self, processor, slot):
             sequence = processor.midi_chan + slot * zynseq.LAUNCHER_COLS
             pattern = self.libseq.getPatternAt(255, sequence, 0, 0)
+            if pattern == 4294967295:
+                pattern = self.libseq.createPattern()
+                self.libseq.addPattern(self.zynseq.bank, sequence, 0, 0, pattern, True)
             self.libseq.clearPattern(pattern)
             self.libseq.setStepsPerBeat(pattern, 1)
             self.libseq.setBeatsInPattern(pattern, 1)

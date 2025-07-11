@@ -290,8 +290,8 @@ class zynseq(zynthian_engine):
             info = self.rebuild_launcher_info(sequence)
             if clippy_engine is None and info["clippy"]:
                 clippy_engine = info["clippy"].engine
-        if clippy_engine:
-            clippy_engine.set_slots(self.slots)
+        #if clippy_engine:
+        #    clippy_engine.set_slots(self.slots)
         self.progress = [0] * self.seq_in_bank
         self.pause_update = False
 
@@ -325,8 +325,8 @@ class zynseq(zynthian_engine):
         bpb = self.libseq.getBeatsInPattern(pattern)
         #TODO: A lot of duplicated info. Much of this data optimises reverse lookup, e.g. from seq or position but it also repeats much channel data for each slot.
         info = {
-            "title": self.get_sequence_name(self.bank, sequence),
-            "bpb": bpb,
+            "title": self.get_sequence_name(self.bank, sequence), # Not used
+            "bpb": bpb, # Not used
             "mode": mode,
             "repeat": repeat,
             "group": group,
@@ -334,7 +334,7 @@ class zynseq(zynthian_engine):
             "chan": chan,
             "slot": slot,
             "pad_column": None,
-            "chains": [],
+            "chains": [], # Not used?
             "sequence": sequence,
             "pattern": pattern,
             "clippy": None, # Clippy processor, for clippy slots
@@ -411,6 +411,11 @@ class zynseq(zynthian_engine):
                 self.set_sequence_name(self.bank, sequence, f"{chr(65 + slot)}")
             else:
                 self.set_sequence_name(self.bank, sequence, f"{chr(65 + slot)}{chan + 1}")
+        #self.rebuild_all_launcher_info()
+
+        clippy = self.get_clippy()
+        if clippy:
+            clippy.insert_slot(slot)
         self.rebuild_all_launcher_info()
 
     def remove_scene(self, slot):
@@ -422,6 +427,9 @@ class zynseq(zynthian_engine):
         else:
             for seq in range((slot + 1) * LAUNCHER_COLS, self.seq_in_bank):
                 self.libseq.moveSequence(self.bank, seq, seq - LAUNCHER_COLS)
+        clippy = self.get_clippy()
+        if clippy:
+            clippy.remove_slot(slot)
         self.rebuild_all_launcher_info()
 
     def move_scene(self, slot, offset):
@@ -444,8 +452,22 @@ class zynseq(zynthian_engine):
                 dst_seq = (i - 1) * LAUNCHER_COLS
                 for i in range(17):
                     self.libseq.swapSequence(self.bank, src_seq + i, dst_seq + i)
+        clippy = self.get_clippy()
+        if clippy:
+            clippy.move_slot(slot, offset)
         self.rebuild_all_launcher_info()
         return new_slot
+
+    def get_clippy(self):
+        #TODO: We only need one global clippy engine instance
+        for a in self.launcher_info:
+            try:
+                proc = a[0]["clippy"]
+                if proc:
+                    return proc.engine
+            except:
+                pass
+        return None
 
     def disable_channel(self, channel):
         """

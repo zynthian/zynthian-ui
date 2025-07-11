@@ -115,13 +115,11 @@ Timebase* Sequence::getTimebase() {
 }
 
 uint8_t Sequence::getPlayMode() {
-    return m_nMode & 0x7F;
+    return m_nMode;
 }
 
 void Sequence::setPlayMode(uint8_t mode) {
     m_nMode = mode;
-    if (m_nFollowAction == FOLLOW_ACTION_AGAIN)
-        mode |= 0x80; //!@todo Do we still need this with follow action available?
     m_bChanged = true;
 }
 
@@ -279,10 +277,6 @@ uint16_t Sequence::getFollowAction() {
 
 void Sequence::setRepeat(uint8_t repeat) {
     m_nRepeat = repeat;
-    if (repeat)
-        m_nMode |= 0x80;
-    else
-        m_nMode &= 0x7F;
 }
 
 uint8_t Sequence::getRepeat() {
