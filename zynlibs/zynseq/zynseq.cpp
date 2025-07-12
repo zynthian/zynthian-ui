@@ -340,7 +340,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     unsigned char* pBuffer;
     jack_midi_clear_buffer(pOutputBuffer);
     jack_nframes_t nNow = jack_last_frame_time(g_pJackClient);
-    jack_transport_state_t nState = jack_transport_query(g_pJackClient, &transportPosition);
+    jack_transport_state_t nTransportState = jack_transport_query(g_pJackClient, &transportPosition);
 
     jack_default_audio_sample_t* pOutMetronome = (jack_default_audio_sample_t*)jack_port_get_buffer(g_pMetronomePort, nFrames);
     memset(pOutMetronome, 0, sizeof(jack_default_audio_sample_t) * nFrames);
@@ -366,9 +366,9 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             case MIDI_START:
                 g_nBar = 1;
             case MIDI_CONTINUE:
-                if (nState != JackTransportRolling)
+                if (nTransportState != JackTransportRolling)
                     transportStart("zynseq");
-                nState = JackTransportRolling;
+                nTransportState = JackTransportRolling;
                 g_nClock = 0;
                 g_nMidiClock == 0;
                 nLastBeatFrame = 0;
@@ -385,7 +385,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                         // (nNow + midiEvent.time - nLastBeatFrame));
                         nLastBeatFrame = nNow + midiEvent.time;
                     }
-                    if (nState == JackTransportRolling)
+                    if (nTransportState == JackTransportRolling)
                         g_qClockPos.push(std::pair<double, double>(nNow + midiEvent.time, g_dFramesPerClock));
                     // PPQN is fixed to 24 in MIDI 1.0
                     if (g_nMidiClock < 23)
@@ -515,7 +515,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     }
                 }
                 // Advance step
-                if (bAdvance && nState != JackTransportRolling) {
+                if (bAdvance && nTransportState != JackTransportRolling) {
                     if (++nStep >= g_pPattern->getSteps())
                         nStep = 0;
                     g_seqMan.getSequence(g_nBank, g_nSequence)->setPlayPosition(nStep * g_pPattern->getClocksPerStep());
@@ -534,7 +534,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
     //!@todo Interpolate events across frame, e.g. CC variations
 
     // Iterate through clocks in this period, adding any events and handling any timebase changes
-    if (nState == JackTransportRolling) {
+    if (nTransportState == JackTransportRolling) {
         bool bSync = false;              // True if at start of bar
         jack_nframes_t nClockOffset = 0; // Position within this period that clock 0 occurs
         // There should always be a clock scheduled for internal clock source when transport is rolling
@@ -1336,7 +1336,9 @@ void save(const char* filename) {
             nPos += fileWrite8(pSequence->getRepeat(), pFile);
             nPos += fileWrite8(pSequence->getGroup(), pFile);
             nPos += fileWrite8(g_seqMan.getTriggerNote(nBank, nSequence), pFile);
-            nPos += fileWrite16(pSequence->getFollowAction(), pFile);
+            uint16_t action = pSequence->getFollowAction();
+            nPos += fileWrite8(action & 0xff, pFile);
+            nPos += fileWrite8(action >> 8, pFile);
             std::string sName = pSequence->getName();
             for (size_t nIndex = 0; nIndex < sName.size(); ++nIndex)
                 nPos += fileWrite8(sName[nIndex], pFile);
@@ -2235,14 +2237,12 @@ void selectSequence(uint8_t bank, uint8_t sequence) {
 bool isEmpty(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->isEmpty(); }
 
 void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state) {
-
     if (state == STARTING) {
-        if (transportGetPlayStatus() != JackTransportRolling) {
+        if (transportGetPlayStatus() != JackTransportRolling)
             setTransportToStartOfBar();
         transportStart("zynseq");
     } else if (state == STOPPING)
         state = STOPPED;
-    }
     g_seqMan.setSequencePlayState(bank, sequence, state);
 }
 

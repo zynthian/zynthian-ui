@@ -221,7 +221,7 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
             uint16_t follow = pSequence->getFollowAction();
             uint8_t action = follow & 0xff;
             uint8_t param = follow >> 8;
-            uint16_t next = -1;
+            uint16_t next = 0xffff;
             switch (action) {
                 case FOLLOW_ACTION_AGAIN:
                     next = sequence;
@@ -243,7 +243,7 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
                     next = param;
                     break;
             }
-            if (next != -1)
+            if (next != 0xffff)
                 vNext.push_back(next | (bank << 8));
         }
         if (nEventType & 16) {

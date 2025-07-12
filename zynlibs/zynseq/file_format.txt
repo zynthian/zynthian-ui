@@ -63,7 +63,8 @@ Block:
         Group [1]
 		Trigger note [1] (This seems like wrong place but makes code much simpler)
 		(Removed in v11 Padding [1])
-		Follow action [2] (Added in v11)
+		Follow action [1] (Added in v11)
+		Follow action param[1] (Added in v11)
 		Name [16] (Since V6)
         Quantity of tracks [4]
         Tracks:
