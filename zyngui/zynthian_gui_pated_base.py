@@ -268,6 +268,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     def build_view(self):
         self.set_sequence_info(self.seq_info)
         self.zynseq.libseq.setGroup(self.bank, self.sequence, 0xFF)
+        self.zynseq.libseq.setFollowAction(self.bank, self.sequence, zynseq.FOLLOW_ACTION_AGAIN)
 
         self.setup_zynpots()
         if not self.param_editor_zctrl:
@@ -292,12 +293,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.set_edit_mode(EDIT_MODE_NONE)
         #self.zynseq.libseq.setRefNote(int(self.keymap_offset))
         self.zynseq.libseq.setPatternZoom(self.zoom)
-        if self.seq_info:
-            if self.zynseq.libseq.getPlayState(self.bank, self.sequence) == zynseq.SEQ_PLAYING:
-                self.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STOPPING)
-                self.zynseq.libseq.setPlayState(self.seq_bank, self.seq_info["sequence"], zynseq.SEQ_STARTING)
-        else:
-            self.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STOPPED)
+        self.stop_playback()
         self.zynseq.libseq.updateSequenceInfo()
 
     # -------------------------------------------------------------------------
