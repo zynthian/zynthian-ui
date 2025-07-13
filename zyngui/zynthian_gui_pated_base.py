@@ -205,7 +205,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         # Load pattern 1 so that the editor has a default known state
         self.zynseq.libseq.setPlayMode(0, 0, 0x0100)
         self.zynseq.libseq.setRepeat(1)
-        self.zynseq.libseq.setFollowAction(0, 0, zynseq.FOLLOW_ACTION_AGAIN, 0)
+        self.zynseq.libseq.setFollowAction(0, 0, zynseq.FOLLOW_ACTION_LOOP, 0)
         self.load_pattern(1)
 
     # Function to get name of this view
@@ -266,9 +266,9 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
     # Function to show GUI
     def build_view(self):
-        self.set_sequence_info(self.seq_info)
         self.zynseq.libseq.setGroup(self.bank, self.sequence, 0xFF)
-        self.zynseq.libseq.setFollowAction(self.bank, self.sequence, zynseq.FOLLOW_ACTION_AGAIN)
+        self.zynseq.libseq.setFollowAction(self.bank, self.sequence, zynseq.FOLLOW_ACTION_LOOP)
+        self.set_sequence_info(self.seq_info)
 
         self.setup_zynpots()
         if not self.param_editor_zctrl:
@@ -282,6 +282,9 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             logging.error(f"Couldn't set active chain to channel {self.channel}.")
 
         self.toggle_midi_record(self.midi_record)
+        if self.seq_info and self.seq_info["state"] != zynseq.SEQ_STOPPED:
+            self.zynseq.libseq.setPlayPosition(self.bank, self.sequence, 0)
+            self.zynseq.libseq.setPlayState(self.bank, self.sequence, zynseq.SEQ_STARTING)
         return True
 
     # Function to hide GUI
@@ -293,7 +296,13 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.set_edit_mode(EDIT_MODE_NONE)
         #self.zynseq.libseq.setRefNote(int(self.keymap_offset))
         self.zynseq.libseq.setPatternZoom(self.zoom)
-        self.stop_playback()
+        if self.seq_info:
+            if self.zynseq.libseq.getPlayState(self.bank, self.sequence, 0) != zynseq.SEQ_STOPPED:
+                self.zynseq.libseq.setPlayPosition(self.zynseq.bank, self.seq_info["sequence"], 0)
+                self.zynseq.libseq.setPlayState(self.zynseq.bank, self.seq_info["sequence"], zynseq.SEQ_STARTING)
+        else:
+            self.stop_playback()
+
         self.zynseq.libseq.updateSequenceInfo()
 
     # -------------------------------------------------------------------------
@@ -322,7 +331,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
             #TODO: Configure start and stop modes
             if repeat:
-                if follow_action == zynseq.FOLLOW_ACTION_AGAIN:
+                if follow_action == zynseq.FOLLOW_ACTION_LOOP:
                     options["Play mode (LOOP)"] = "Playmode"
                 else:
                     if repeat == 1:
@@ -455,7 +464,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 repeat = self.seq_info["repeat"]
                 if repeat == 0:
                     value = 0 # disabled
-                elif follow_action == zynseq.FOLLOW_ACTION_AGAIN:
+                elif follow_action == zynseq.FOLLOW_ACTION_LOOP:
                     value = 1
                 else:
                     value = 1 + repeat
@@ -534,6 +543,9 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
 
         self.seq_info = info
         self.seq_bank = self.zynseq.bank
+        if info:
+            self.channel = info["chan"]
+            self.zynseq.libseq.setGroup(self.bank, self.sequence, info["group"])
 
     def assert_playmode(self, value):
         action = zynseq.FOLLOW_ACTION_NONE
@@ -545,7 +557,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             repeat = 0
         elif value == 1:
             # Loop
-            action = zynseq.FOLLOW_ACTION_AGAIN
+            action = zynseq.FOLLOW_ACTION_LOOP
             param = 1
         else:
             # Oneshot/Repeat

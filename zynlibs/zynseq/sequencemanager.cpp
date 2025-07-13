@@ -223,7 +223,7 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
             uint8_t param = follow >> 8;
             uint16_t next = 0xffff;
             switch (action) {
-                case FOLLOW_ACTION_AGAIN:
+                case FOLLOW_ACTION_LOOP:
                     next = sequence;
                     break;
                 case FOLLOW_ACTION_PREV:

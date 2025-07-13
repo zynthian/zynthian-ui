@@ -847,7 +847,7 @@ void reset() {
                 pSequence->setName(std::string(1, 'A' + slot));
             }
             else {
-                pSequence->setFollowAction(FOLLOW_ACTION_AGAIN, 0);
+                pSequence->setFollowAction(FOLLOW_ACTION_LOOP, 0);
             }
             ++seq;
         }
@@ -1019,14 +1019,14 @@ bool load(const char* filename) {
                         break;
                     case 2:
                         // LOOP
-                        pSequence->setFollowAction(FOLLOW_ACTION_AGAIN, 0);
+                        pSequence->setFollowAction(FOLLOW_ACTION_LOOP, 0);
                         break;
                     case 3:
                         // ONESHOTALL
                         break;
                     case 4:
                         // LOOPALL
-                        pSequence->setFollowAction(FOLLOW_ACTION_AGAIN, 0);
+                        pSequence->setFollowAction(FOLLOW_ACTION_LOOP, 0);
                         break;
                     case 5:
                         // ONESHOTSYNC
@@ -1034,7 +1034,7 @@ bool load(const char* filename) {
                         break;
                     case 6:
                         // LOOPSYNC
-                        pSequence->setFollowAction(FOLLOW_ACTION_AGAIN, 0);
+                        pSequence->setFollowAction(FOLLOW_ACTION_LOOP, 0);
                         break;
                     }
                 }

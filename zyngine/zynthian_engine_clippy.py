@@ -402,7 +402,7 @@ class zynthian_engine_clippy(zynthian_engine):
             self.libseq.setFollowAction(self.zynseq.bank, sequence, zynseq.FOLLOW_ACTION_NONE, 0)
         elif enable:
             self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0101)
-            self.libseq.setFollowAction(self.zynseq.bank, sequence, zynseq.FOLLOW_ACTION_AGAIN, 0)
+            self.libseq.setFollowAction(self.zynseq.bank, sequence, zynseq.FOLLOW_ACTION_LOOP, 0)
         else:
             self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0001)
         self.zynseq.rebuild_launcher_info(sequence)

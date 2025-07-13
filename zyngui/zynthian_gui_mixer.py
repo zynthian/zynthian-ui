@@ -425,7 +425,7 @@ class zynthian_gui_mixer_strip:
             info = self.zynseq.launcher_info[slot][self.chan]
             sequence = info["sequence"]
             empty = self.zynseq.libseq.isEmpty(self.zynseq.bank, sequence)
-            if empty or info["follow_action"] == zynseq.FOLLOW_ACTION_STOP:
+            if empty:
                 color = zynthian_gui_config.PAD_COLOUR_DISABLED_LIGHT
             else:
                 color = zynthian_gui_config.LAUNCHER_COLOUR[info["group"] % 16]["rgb"]
@@ -440,7 +440,7 @@ class zynthian_gui_mixer_strip:
                 title = self.zynseq.get_sequence_name(self.zynseq.bank, sequence)[:5]
                 if info["repeat"]:
                     match info["follow_action"]:
-                        case zynseq.FOLLOW_ACTION_AGAIN:
+                        case zynseq.FOLLOW_ACTION_LOOP:
                             mode_image = self.parent.mode_icons["loopsync"]
                         case zynseq.FOLLOW_ACTION_NONE:
                             mode_image = self.parent.mode_icons["oneshot"]
@@ -1533,7 +1533,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 else:
                     options[f"Repeat (PLAY {repeat} TIMES)"] = info
                 if follow_action < zynseq.FOLLOW_ACTION_JUMP:
-                    actions = ("NONE", "STOP", "AGAIN", "PREV", "NEXT", "FIRST", "LAST")
+                    actions = ("NONE", "LOOP", "PREV", "NEXT", "FIRST", "LAST")
                     options[f"Follow action ({actions[follow_action]})"] = info
                 else:
                     options[f"Follow action (PLAY SCENE {follow_scene})"] = info
@@ -1635,7 +1635,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'value': bpb
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Follow action"):
-            labels = ["NONE", "STOP", "AGAIN", "PREV", "NEXT", "FIRST", "LAST"]
+            labels = ["NONE", "LOOP", "PREV", "NEXT", "FIRST", "LAST"]
             for i, _ in enumerate(self.zynseq.launcher_info):
                 if i != slot:
                     labels.append(f"PLAY SCENE {i + 1}")
@@ -1677,9 +1677,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             pated = self.zyngui.screens['pattern_editor']
             pated.set_sequence_info(self.launcher_select_info)
             pated.load_pattern(self.launcher_select_info["pattern"])
-            if self.zynseq.libseq.getPlayState(self.zynseq.bank, self.launcher_select_info["sequence"]) != zynseq.SEQ_STOPPED:
-                self.zynseq.libseq.setPlayState(self.zynseq.bank, self.launcher_select_info["sequence"], zynseq.SEQ_STOPPING)
-                self.zynseq.libseq.setPlayState(0, 0, zynseq.SEQ_STARTING)
             self.zyngui.show_screen("pattern_editor")
             return True
         else:

@@ -181,7 +181,7 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
             m_nCount += nCountInc;
             if (m_nCount >= m_nRepeat) {
                 // Follow action
-                if (m_nFollowAction != FOLLOW_ACTION_AGAIN) {
+                if (m_nFollowAction != FOLLOW_ACTION_LOOP) {
                     setPlayState(STOPPED);
                     nReturn |= 8;
                 } else if (m_nGroup == 16) {
