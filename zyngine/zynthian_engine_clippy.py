@@ -506,6 +506,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 #self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0100)
                 state = self.libseq.getPlayState(self.zynseq.bank, sequence)
                 self.libseq.updateSequenceInfo()
+                self.libseq.setChannel(self.zynseq.bank, sequence, 0, processor.midi_chan)
                 self.zynseq.set_sequence_name(self.zynseq.bank, sequence, os.path.splitext(filename)[0])
                 if reconnect:
                     # Reconnect MIDI
