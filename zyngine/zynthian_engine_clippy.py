@@ -383,29 +383,32 @@ class zynthian_engine_clippy(zynthian_engine):
         if zctrl.symbol.startswith("file"):
             if zctrl.value == 0 or zctrl.value == "0" or zctrl.value == "":
                 zctrl.value = ""   # TODO: This should be fixed in zctrl class
-                mode_zctrl.set_value(1)
+                mode_zctrl.set_value(0)
+            else:
+                mode_zctrl.set_value(max(1, mode_zctrl.value))
             beats_zctrl.value = 0
             self.set_file(zctrl.processor, slot)
-            self.set_mode(zctrl.processor, slot, mode_zctrl.value, zctrl.value != "")
             self.zynseq.rebuild_all_launcher_info()
         elif zctrl.symbol.startswith("warp"):
             self.set_file(zctrl.processor, slot)
         elif zctrl.symbol.startswith("mode"):
-            self.set_mode(zctrl.processor, slot, zctrl.value, True)
+            self.set_mode(zctrl.processor, slot, zctrl.value)
 
         self.write_sfz(zctrl.processor)
 
-    def set_mode(self, processor, slot, mode, enable):
+    def set_mode(self, processor, slot, mode):
         # mode: 0=disabled. 1=loop. 2..25=play 1..24
         sequence = processor.midi_chan + slot * zynseq.LAUNCHER_COLS
-        if mode:
-            self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x01 | (mode << 8))
-            self.libseq.setFollowAction(self.zynseq.bank, sequence, zynseq.FOLLOW_ACTION_NONE, 0)
-        elif enable:
-            self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0101)
-            self.libseq.setFollowAction(self.zynseq.bank, sequence, zynseq.FOLLOW_ACTION_LOOP, 0)
-        else:
-            self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0001)
+        match mode:
+            case 0:
+                self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0001)
+
+            case 1:
+                self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0101)
+                self.libseq.setFollowAction(self.zynseq.bank, sequence, zynseq.FOLLOW_ACTION_LOOP, 0)
+            case _:
+                self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x01 | (mode << 8))
+                self.libseq.setFollowAction(self.zynseq.bank, sequence, zynseq.FOLLOW_ACTION_NONE, 0)
         self.zynseq.rebuild_launcher_info(sequence)
 
 
@@ -511,7 +514,8 @@ class zynthian_engine_clippy(zynthian_engine):
             except Exception as e:
                 logging.error(f"Can't setup sequencer for clip {slot} => {e}")
         else:
-            state = self.libseq.getPlayState(self.zynseq.bank, sequence)
+            self.libseq.setPlayState(self.zynseq.bank, sequence, zynseq.SEQ_STOPPED)
+            state = zynseq.SEQ_STOPPED
             self.reset_pattern(processor, slot)
 
         self.zynseq.rebuild_launcher_info(sequence)
@@ -574,13 +578,14 @@ class zynthian_engine_clippy(zynthian_engine):
 
     def reset_pattern(self, processor, slot):
             sequence = processor.midi_chan + slot * zynseq.LAUNCHER_COLS
-            pattern = self.libseq.getPatternAt(255, sequence, 0, 0)
-            if pattern == 4294967295:
-                pattern = self.libseq.createPattern()
-                self.libseq.addPattern(self.zynseq.bank, sequence, 0, 0, pattern, True)
-            self.libseq.clearPattern(pattern)
-            self.libseq.setStepsPerBeat(pattern, 1)
-            self.libseq.setBeatsInPattern(pattern, 1)
+            self.libseq.clearSequence(self.zynseq.bank, sequence)
+            #pattern = self.libseq.getPatternAt(self.zynseq.bank, sequence, 0, 0)
+            #if pattern == 4294967295:
+            #    pattern = self.libseq.createPattern()
+            #    self.libseq.addPattern(self.zynseq.bank, sequence, 0, 0, pattern, True)
+            #self.libseq.clearPattern(pattern)
+            #self.libseq.setStepsPerBeat(pattern, 1)
+            #self.libseq.setBeatsInPattern(pattern, 1)
             self.libseq.setRepeat(self.zynseq.bank, sequence, 0)
             self.libseq.updateSequenceInfo()
             self.zynseq.set_sequence_name(self.zynseq.bank, sequence, "")
