@@ -2241,8 +2241,7 @@ void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state) {
         if (transportGetPlayStatus() != JackTransportRolling)
             setTransportToStartOfBar();
         transportStart("zynseq");
-    } else if (state == STOPPING)
-        state = STOPPED;
+    }
     g_seqMan.setSequencePlayState(bank, sequence, state);
 }
 
