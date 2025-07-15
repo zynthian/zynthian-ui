@@ -1526,12 +1526,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             title = f"Scene options ({name})"
             repeat = info["repeat"]
             if repeat == 0:
-                options["Repeat (DISABLED)"] = info
+                options["Duration (DISABLED)"] = info
             else:
                 if repeat == 1:
-                    options[f"Repeat (PLAY 1 TIME)"] = info
+                    options["Duration (1 bar)"] = info
                 else:
-                    options[f"Repeat (PLAY {repeat} TIMES)"] = info
+                    options[f"Duration ({repeat} bars)"] = info
                 if follow_action < zynseq.FOLLOW_ACTION_JUMP:
                     actions = ("NONE", "LOOP", "PREV", "NEXT", "FIRST", "LAST")
                     options[f"Follow action ({actions[follow_action]})"] = info
@@ -1617,12 +1617,12 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             index = option_screen.index
             self.launcher_menu()
             option_screen.select(index - 1)
-        elif option.startswith("Repeat"):
-            labels = ["DISABLED", "PLAY 1 TIME"]
-            for i in range(2, 256):
-                labels.append(f"PLAY {i} TIMES")
-            option_screen.enable_param_editor(option_screen, "repeat", {
-                'name': 'Repeat',
+        elif option.startswith("Duration"):
+            labels = ["DISABLED", "1 bar"]
+            for i in range(2, 25):
+                labels.append(f"{i} bars")
+            option_screen.enable_param_editor(option_screen, "duration", {
+                'name': 'Duration',
                 'value': params["repeat"],
                 'labels': labels
             }, assert_cb=self.cb_assert_param_editor)
@@ -1732,7 +1732,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     info = self.zynseq.launcher_info[slot][chan]
                     self.zynseq.libseq.setBeatsInPattern(info["pattern"], zctrl.value)
                     info["bpb"] = zctrl.value
-            case "repeat":
+            case "duration":
                 self.zynseq.libseq.setRepeat(self.zynseq.bank, self.launcher_select_info["sequence"], zctrl.value)
                 self.launcher_select_info["repeat"] = zctrl.value
             case "follow":

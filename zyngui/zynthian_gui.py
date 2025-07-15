@@ -1712,7 +1712,7 @@ class zynthian_gui:
                     return
             elif i == 2:
                 if t == 'S' or t == 'B':
-                    self.show_screen("arranger")
+                    #self.show_screen("arranger")
                     return
         elif self.current_screen == "arranger":
             if i == 0:

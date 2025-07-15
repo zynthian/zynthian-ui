@@ -283,7 +283,6 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         self.zynseq.libseq.setRefNote(int(self.keymap_offset))
         self.zynseq.libseq.setPatternZoom(self.zoom)
         # Load requested pattern
-        self.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
         self.zynseq.libseq.selectPattern(index)
         self.pattern = index
         n_steps = self.zynseq.libseq.getSteps()
@@ -313,9 +312,11 @@ class zynthian_gui_pated_notes(zynthian_gui_pated_base):
         self.play_canvas.coords("playCursor", 1, 0, 1 + self.step_width, PLAYHEAD_HEIGHT)
         self.set_title()
         self.set_grid_zoom(self.zynseq.libseq.getPatternZoom())
-        # Populate editor sequence
-        self.zynseq.libseq.clearSequence(self.bank, self.sequence)
-        self.zynseq.libseq.addPattern(self.bank, self.sequence, 0, 0, index, True)
+        if not self.seq_info:
+            # Populate editor sequence
+            self.zynseq.libseq.clearSequence(self.bank, self.sequence)
+            self.zynseq.libseq.addPattern(self.bank, self.sequence, 0, 0, index, True)
+            self.zynseq.libseq.setChannel(self.bank, self.sequence, 0, self.channel)
 
     # Function to clear Note events on pattern
     def clear_pattern_notes(self, params=None):

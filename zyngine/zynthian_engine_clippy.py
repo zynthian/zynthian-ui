@@ -219,12 +219,12 @@ class zynthian_engine_clippy(zynthian_engine):
                     'value_min': 0,
                     'value_max': MAX_BEATS
                 }),
-                f"repeat {slot:02}": zynthian_controller(self, f"repeat {slot:02}", {
+                f"mode {slot:02}": zynthian_controller(self, f"mode {slot:02}", {
                     'processor': processor,
                     'is_integer': True,
-                    'labels': ["loop"] + [f"{i}" for i in range(1, 256)],
+                    'labels': ["disabled", "loop"] + [f"{i}" for i in range(1, 25)],
                     'value_min': 0,
-                    'value_max': 255,
+                    'value_max': 25,
                     'value': 0
                 })
             }
@@ -247,7 +247,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 if processor.controllers_dict[f"file {idx:02}"].value:
                     cfg.append(f'warp {idx:02}')
                     cfg.append(f'beats {idx:02}')
-                    cfg.append(f'repeat {idx:02}')
+                    cfg.append(f'mode {idx:02}')
                 self._ctrl_screens.append([f'sample {idx:02}', cfg])
             processor.init_ctrl_screens()
             self.slots += 1
@@ -259,7 +259,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 del processor.controllers_dict[f"file {slot:02}"]
                 del processor.controllers_dict[f"warp {slot:02}"]
                 del processor.controllers_dict[f"beats {slot:02}"]
-                del processor.controllers_dict[f"repeat {slot:02}"]
+                del processor.controllers_dict[f"mode {slot:02}"]
             except:
                 pass # We expect warp and beats to fail sometimes.
 
@@ -287,7 +287,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 if processor.controllers_dict[f"file {idx:02}"].value:
                     cfg.append(f'warp {idx:02}')
                     cfg.append(f'beats {idx:02}')
-                    cfg.append(f'repeat {idx:02}')
+                    cfg.append(f'mode {idx:02}')
                 self._ctrl_screens.append([f'sample {idx:02}', cfg])
             processor.init_ctrl_screens()
             self.slots -= 1
@@ -304,7 +304,7 @@ class zynthian_engine_clippy(zynthian_engine):
             return
         for processor in self.processors:
             zctrls = {}
-            for symbol in ("file", "warp", "beats", "repeat"):
+            for symbol in ("file", "warp", "beats", "mode"):
                 try:
                     zctrl = processor.controllers_dict[f"{symbol} {slot:02}"]
                     new_symbol = f"{symbol} {slot + offset:02}"
@@ -314,7 +314,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     pass
             if offset > 0:
                 for i in range(slot + 1, slot + 1 + offset):
-                    for symbol in ("file", "warp", "beats", "repeat"):
+                    for symbol in ("file", "warp", "beats", "mode"):
                         try:
                             zctrl = processor.controllers_dict[f"{symbol} {i:02}"]
                             new_symbol = f"{symbol} {i - 1:02}"
@@ -324,7 +324,7 @@ class zynthian_engine_clippy(zynthian_engine):
                             pass
             else:
                 for i in range(slot + offset, slot):
-                    for symbol in ("file", "warp", "beats", "repeat"):
+                    for symbol in ("file", "warp", "beats", "mode"):
                         try:
                             zctrl = processor.controllers_dict[f"{symbol} {i:02}"]
                             new_symbol = f"{symbol} {i + 1:02}"
@@ -341,7 +341,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 if processor.controllers_dict[f"file {idx:02}"].value:
                     cfg.append(f'warp {idx:02}')
                     cfg.append(f'beats {idx:02}')
-                    cfg.append(f'repeat {idx:02}')
+                    cfg.append(f'mode {idx:02}')
                 self._ctrl_screens.append([f'sample {idx:02}', cfg])
             processor.init_ctrl_screens()
 
@@ -376,29 +376,30 @@ class zynthian_engine_clippy(zynthian_engine):
         try:
             slot = int(zctrl.symbol.split(" ")[1]) - 1
             beats_zctrl = zctrl.processor.controllers_dict[f"beats {slot + 1:02}"]
-            repeat_zctrl = zctrl.processor.controllers_dict[f"repeat {slot + 1:02}"]
+            mode_zctrl = zctrl.processor.controllers_dict[f"mode {slot + 1:02}"]
         except Exception as e:
             logging.error(f"Can't determine sample index {zctrl.symbol} => {e}")
             return
         if zctrl.symbol.startswith("file"):
             if zctrl.value == 0 or zctrl.value == "0" or zctrl.value == "":
                 zctrl.value = ""   # TODO: This should be fixed in zctrl class
-                repeat_zctrl.set_value(0)
+                mode_zctrl.set_value(1)
             beats_zctrl.value = 0
             self.set_file(zctrl.processor, slot)
-            self.set_repeat(zctrl.processor, slot, repeat_zctrl.value, zctrl.value != "")
+            self.set_mode(zctrl.processor, slot, mode_zctrl.value, zctrl.value != "")
             self.zynseq.rebuild_all_launcher_info()
         elif zctrl.symbol.startswith("warp"):
             self.set_file(zctrl.processor, slot)
-        elif zctrl.symbol.startswith("repeat"):
-            self.set_repeat(zctrl.processor, slot, zctrl.value, True)
+        elif zctrl.symbol.startswith("mode"):
+            self.set_mode(zctrl.processor, slot, zctrl.value, True)
 
         self.write_sfz(zctrl.processor)
 
-    def set_repeat(self, processor, slot, repeat, enable):
+    def set_mode(self, processor, slot, mode, enable):
+        # mode: 0=disabled. 1=loop. 2..25=play 1..24
         sequence = processor.midi_chan + slot * zynseq.LAUNCHER_COLS
-        if repeat:
-            self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x01 | (repeat << 8))
+        if mode:
+            self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x01 | (mode << 8))
             self.libseq.setFollowAction(self.zynseq.bank, sequence, zynseq.FOLLOW_ACTION_NONE, 0)
         elif enable:
             self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0101)
@@ -482,7 +483,7 @@ class zynthian_engine_clippy(zynthian_engine):
                             f'file {slot + 1:02}',
                             f'warp {slot + 1:02}',
                             f'beats {slot + 1:02}',
-                            f'repeat {slot + 1:02}'
+                            f'mode {slot + 1:02}'
                         ]
                     ]
                     beats_zctrl.value = whole_beats
