@@ -308,6 +308,8 @@ class zynseq(zynthian_engine):
 
         chan = sequence % LAUNCHER_COLS
         slot = sequence // LAUNCHER_COLS
+        if chan < 16 and not self.state_manager.chain_manager.midi_chan_2_chain_ids[chan]:
+            self.libseq.setRepeat(self.bank, sequence, 0)
         state = self.libseq.getSequenceState(self.bank, sequence)
         repeat = (state >> 24) & 0xFF 
         group = chan
