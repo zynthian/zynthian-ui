@@ -233,12 +233,6 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
                 case FOLLOW_ACTION_NEXT:
                     next = sequence + 17;
                     break;
-                case FOLLOW_ACTION_FIRST:
-                    next = sequence % 17;
-                    break;
-                case FOLLOW_ACTION_LAST:
-                    next = (m_mBanks[bank].size() / 17 - 1)  * 17 + sequence % 17;
-                    break;
                 case FOLLOW_ACTION_JUMP:
                     next = param;
                     break;

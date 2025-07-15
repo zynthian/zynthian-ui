@@ -1533,7 +1533,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 else:
                     options[f"Duration ({repeat} bars)"] = info
                 if follow_action < zynseq.FOLLOW_ACTION_JUMP:
-                    actions = ("NONE", "LOOP", "PREV", "NEXT", "FIRST", "LAST")
+                    actions = ("NONE", "LOOP", "NEXT", "PREV")
                     options[f"Follow action ({actions[follow_action]})"] = info
                 else:
                     options[f"Follow action (PLAY SCENE {follow_scene})"] = info
@@ -1635,7 +1635,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'value': bpb
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Follow action"):
-            labels = ["NONE", "LOOP", "PREV", "NEXT", "FIRST", "LAST"]
+            labels = ["NONE", "LOOP", "NEXT", "PREV"]
             for i, _ in enumerate(self.zynseq.launcher_info):
                 if i != slot:
                     labels.append(f"PLAY SCENE {i + 1}")
