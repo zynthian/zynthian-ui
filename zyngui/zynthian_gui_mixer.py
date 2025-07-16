@@ -1625,7 +1625,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             option_screen.select(index - 1)
         elif option.startswith("Duration"):
             labels = ["DISABLED", "1 bar"]
-            for i in range(2, 25):
+            for i in range(2, 256):
                 labels.append(f"{i} bars")
             option_screen.enable_param_editor(option_screen, "duration", {
                 'name': 'Duration',
@@ -1738,7 +1738,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             case "tempo":
                 self.add_tempo(zctrl.value)
             case "bpb":
-                self.launcher_select_info["bpb"] = zctrl.value
+                if self.launcher_select_info["chan"] == 16:
+                    self.launcher_select_info["bpb"] = zctrl.value
+                    if zctrl.value > 1:
+                        self.zynseq.libseq.setBeatsInPattern(self.launcher_select_info["pattern"], zctrl.value)
             case "duration":
                 self.zynseq.libseq.setRepeat(self.zynseq.bank, self.launcher_select_info["sequence"], zctrl.value)
                 self.launcher_select_info["repeat"] = zctrl.value

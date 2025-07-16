@@ -325,7 +325,7 @@ class zynseq(zynthian_engine):
         #TODO: A lot of duplicated info. Much of this data optimises reverse lookup, e.g. from seq or position but it also repeats much channel data for each slot.
         info = {
             "title": self.get_sequence_name(self.bank, sequence), # Not used
-            "bpb": bpb, # Not used
+            "bpb": bpb, # Used by scene launcher
             "mode": mode,
             "repeat": repeat,
             "group": group,
