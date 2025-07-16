@@ -92,6 +92,8 @@ class zynthian_engine_clippy(zynthian_engine):
         self.sr = zynautoconnect.get_jackd_samplerate()
         if not os.path.exists("/tmp/silence.wav"):
             soundfile.write("/tmp/silence.wav", [0.0], self.sr)
+        zynsigman.register_queued(
+            zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.on_playstate)
 
     # ---------------------------------------------------------------------------
     # Subproccess Management & IPC
@@ -543,6 +545,17 @@ class zynthian_engine_clippy(zynthian_engine):
                     do_warp = True
         if do_warp:
             self.write_sfz(processor)
+
+    def on_playstate(self, bank, seq, state, mode, group):
+        if state != zynseq.SEQ_STOPPED:
+            return
+        chan = seq % zynseq.LAUNCHER_COLS
+        for processor in self.processors:
+            if processor.midi_chan != chan:
+                continue
+            note = seq // zynseq.LAUNCHER_COLS
+            self.lscp_send_single(processor, f"SEND CHANNEL MIDI_DATA NOTE_OFF 0 {note} 0")
+            #logging.warning(f"TODO: Send MIDI note off to chan: {chan} note: {note}")
 
     # ---------------------------------------------------------------------------
     # Processor Management
