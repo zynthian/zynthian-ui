@@ -1740,8 +1740,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             case "bpb":
                 if self.launcher_select_info["chan"] == 16:
                     self.launcher_select_info["bpb"] = zctrl.value
-                    if zctrl.value > 1:
-                        self.zynseq.libseq.setBeatsInPattern(self.launcher_select_info["pattern"], zctrl.value)
+                    self.zynseq.libseq.setBeatsInPattern(self.launcher_select_info["pattern"], zctrl.value)
             case "duration":
                 self.zynseq.libseq.setRepeat(self.zynseq.bank, self.launcher_select_info["sequence"], zctrl.value)
                 self.launcher_select_info["repeat"] = zctrl.value
