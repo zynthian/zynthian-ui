@@ -845,6 +845,9 @@ void reset() {
             if (chan == 16) {
                 pSequence->setFollowAction(FOLLOW_ACTION_NONE, 0);
                 pSequence->setName(std::string(1, 'A' + slot));
+                uint32_t pattern = getPattern(1, seq, 0, 0);
+                if (pattern != 0xffff)
+                    setBeatsInPattern(pattern, 1);
             }
             else {
                 pSequence->setFollowAction(FOLLOW_ACTION_LOOP, 0);
@@ -2195,7 +2198,7 @@ uint32_t getPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t pos
         return -1;
     Pattern* pPattern = pTrack->getPattern(position);
     if (!pPattern)
-        return -1;
+        return 0xffffffff;
     return g_seqMan.getPatternIndex(pPattern);
 }
 
