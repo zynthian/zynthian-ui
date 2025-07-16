@@ -390,8 +390,22 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             case 'CC editor':
                 self.zyngui.toggle_pated()
             case 'Beats in pattern':
+                labels = []
+                bpb = 1
+                if self.seq_info:
+                    slot = self.seq_info["slot"]
+                    bpb = self.zynseq.launcher_info[slot][zynseq.SCENE_LAUNCHER_COL]["bpb"]
+                if bpb == 1:
+                    bpb = self.zynseq.libseq.getBeatsPerBar()
+                for i in range(1, 65):
+                    bars = i // bpb
+                    beats = i % bpb
+                    if beats:
+                        labels.append(f"{i} ({bars}:{beats} bars)")
+                    else:
+                        labels.append(f"{i} ({bars} bars)")
                 self.enable_param_editor(self, 'bip', {'name': 'Beats in pattern', 'value_min': 1, 'value_max': 64,
-                                         'value_default': 4, 'value': self.zynseq.libseq.getBeatsInPattern(self.pattern)},
+                                         'value_default': 4, 'labels': labels, 'value': self.zynseq.libseq.getBeatsInPattern(self.pattern)},
                                          assert_cb=self.assert_beats_in_pattern)
             case 'Steps per beat':
                 self.enable_param_editor(self, 'spb', {'name': 'Steps per beat', 'ticks': STEPS_PER_BEAT,
