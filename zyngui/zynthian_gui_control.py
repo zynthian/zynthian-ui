@@ -807,6 +807,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.show_xy()
         elif option == "Clear":
             param.set_value("")
+            self.select()
         elif parts[1] == "X-axis":
             zctrl = self.zgui_controllers[param].zctrl
             if self.zyngui.state_manager.zctrl_x == zctrl:
