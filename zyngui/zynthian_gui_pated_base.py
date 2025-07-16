@@ -305,7 +305,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             options['Grid zoom'] = 'Grid zoom'
         if extra_options:
             options['Tempo'] = 'Tempo'
-        options[f"Beats per Bar ({self.zynseq.libseq.getBeatsPerBar()})"] = 'Beats per bar'
         menu_options["GLOBAL"] = options
         # Sequence options
         if self.seq_info:
@@ -315,7 +314,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             follow_scene = self.seq_info["follow_param"]
 
             #TODO: Configure start and stop modes
-            if repeat:
+            if repeat > 0:
                 if follow_action == zynseq.FOLLOW_ACTION_LOOP:
                     options["Play mode (LOOP)"] = "Playmode"
                 else:
@@ -388,9 +387,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                                                         'value_default': 1, 'value': self.zoom})
             case 'Tempo':
                 self.zyngui.show_screen('tempo')
-            case 'Beats per bar':
-                self.enable_param_editor(self, 'bpb', {'name': 'Beats per bar', 'value_min': 1, 'value_max': 64,
-                                                       'value_default': 4, 'value': self.zynseq.libseq.getBeatsPerBar()})
             case 'CC editor':
                 self.zyngui.toggle_pated()
             case 'Beats in pattern':
@@ -463,8 +459,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             case 'zoom':
                 self.set_grid_zoom(zctrl.value)
                 self.param_editor_zctrl.value = self.zoom
-            case 'bpb':
-                self.zynseq.libseq.setBeatsPerBar(zctrl.value)
             case 'swing_amount':
                 self.zynseq.libseq.setSwingAmount(zctrl.value / 100.0)
             case 'swing_div':

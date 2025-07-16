@@ -355,7 +355,7 @@ class zynthian_engine_clippy(zynthian_engine):
         with open(filename, "w") as file:
             file.write("<global>\n")
             #file.write("ampeg_release=0.01\n")  # Fast fade to reduce risk of clicks
-            file.write("loop_mode=one_shot\n") # Loop whilst key pressed
+            file.write("loop_mode=no_loop\n") # Loop whilst key pressed
             """
             file.write("<region>\n")
             file.write(f"sample=/tmp/silence.wav\n")
@@ -500,9 +500,9 @@ class zynthian_engine_clippy(zynthian_engine):
                 pattern = self.libseq.getPattern(self.zynseq.bank, sequence, 0, 0)
                 self.libseq.selectPattern(pattern)
                 self.libseq.clearPattern(pattern)
-                self.libseq.setStepsPerBeat(pattern, 1)
+                self.libseq.setStepsPerBeat(1)
                 self.libseq.setBeatsInPattern(pattern, whole_beats)
-                self.libseq.addNote(0, slot, 100, 1, 0.0)
+                self.libseq.addNote(0, slot, 100, whole_beats, 0.0)
                 #self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0100)
                 state = self.libseq.getPlayState(self.zynseq.bank, sequence)
                 self.libseq.updateSequenceInfo()
@@ -585,7 +585,7 @@ class zynthian_engine_clippy(zynthian_engine):
             #    pattern = self.libseq.createPattern()
             #    self.libseq.addPattern(self.zynseq.bank, sequence, 0, 0, pattern, True)
             #self.libseq.clearPattern(pattern)
-            #self.libseq.setStepsPerBeat(pattern, 1)
+            #self.libseq.setStepsPerBeat(1)
             #self.libseq.setBeatsInPattern(pattern, 1)
             self.libseq.setRepeat(self.zynseq.bank, sequence, 0)
             self.libseq.updateSequenceInfo()

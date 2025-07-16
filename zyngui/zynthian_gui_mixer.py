@@ -884,6 +884,9 @@ class zynthian_gui_mixer_strip:
             if info["state"] == zynseq.SEQ_CHILD_PLAYING:
                 self.zynseq.libseq.setPlayState(self.zynseq.bank, seq, zynseq.SEQ_STOPPING)
             else:
+                if info["chan"] == 16 and info["bpb"] > 1:
+                    # Scene launcher so set time signature
+                    self.zynseq.libseq.setBeatsPerBar(info["bpb"])
                 self.zynseq.libseq.togglePlayState(self.zynseq.bank, seq)
 
     def on_clip_bold_press(self, slot):
@@ -896,7 +899,7 @@ class zynthian_gui_mixer_strip:
             self.parent.launcher_menu()
 
     def on_clip_long_press(self, slot):
-        pass
+        self.parent.edit_clip(True)
 
     # --------------------------------------------------------------------------
     # Mixer UI event management
@@ -1542,7 +1545,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 else:
                     options[f"Tempo ({info['tempo']})"] = info
                     options["Remove tempo"] = info
-                options[f"Beats per bar ({info['bpb']})"] = info
+                if info['bpb'] > 1:
+                    options[f"Time signature ({info['bpb']}/4)"] = info
+                else:
+                    options[f"Time signature (None)"] = info
         elif info["clippy"]:
             title = f"Audio clip options ({name})"
             zctrl = self.get_clippy_zctrl("file")
@@ -1563,8 +1569,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def launcher_menu_cb(self, option, params):
         self.launcher_select_info = params
-        sequence = params['sequence']
-        repeat = self.zynseq.libseq.getRepeat(self.zynseq.bank, sequence)
+        sequence = params["sequence"]
+        repeat = params["repeat"]
         follow = self.zynseq.libseq.getFollowAction(self.zynseq.bank, sequence)
         follow_action = follow & 0xff
         follow_param = follow >> 8
@@ -1572,7 +1578,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         scene = sequence // zynseq.SCENE_LAUNCHER_COL
 
         slot = params["slot"]
-        option_screen = self.zyngui.screens['option']
+        option_screen = self.zyngui.screens["option"]
         if params['clippy']:
             if option.startswith("File"):
                 # Show file selector. Callback has path. Must set path of this zctrl.
@@ -1626,12 +1632,16 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'value': params["repeat"],
                 'labels': labels
             }, assert_cb=self.cb_assert_param_editor)
-        elif option.startswith("Beats per bar"):
+        elif option.startswith("Time signature"):
             bpb = params["bpb"]
+            labels = ["None"]
+            for i in range(2, 25):
+                labels.append(f"{i}/4")
             option_screen.enable_param_editor(option_screen, "bpb", {
-                'name': 'Beats per bar',
-                'value_min': 2,
+                'name': 'Time signature',
+                'value_min': 1,
                 'value_max': 24,
+                'labels': labels,
                 'value': bpb
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Follow action"):
@@ -1682,9 +1692,9 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         else:
             return False
 
-    def edit_clip(self):
+    def edit_clip(self, ed=False):
         if self.launcher_mode and self.launcher_select_info:
-            if self.launcher_select_info['clippy']:
+            if not ed and self.launcher_select_info['clippy']:
                 self.zyngui.chain_control()
                 return True
             elif self.launcher_select_info['chan'] < zynseq.SCENE_LAUNCHER_COL:
@@ -1728,10 +1738,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             case "tempo":
                 self.add_tempo(zctrl.value)
             case "bpb":
-                for chan in range(zynseq.LAUNCHER_COLS):
-                    info = self.zynseq.launcher_info[slot][chan]
-                    self.zynseq.libseq.setBeatsInPattern(info["pattern"], zctrl.value)
-                    info["bpb"] = zctrl.value
+                self.launcher_select_info["bpb"] = zctrl.value
             case "duration":
                 self.zynseq.libseq.setRepeat(self.zynseq.bank, self.launcher_select_info["sequence"], zctrl.value)
                 self.launcher_select_info["repeat"] = zctrl.value
