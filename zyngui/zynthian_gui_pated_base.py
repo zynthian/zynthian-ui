@@ -542,8 +542,6 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             # Oneshot/Repeat
             repeat = value - 1
 
-        self.zynseq.libseq.setFollowAction(self.bank, self.sequence, action, param)
-        self.zynseq.libseq.setRepeat(self.bank, self.sequence, repeat)
         self.seq_info["follow_action"] = action
         self.seq_info["follow_param"] = param
         self.seq_info["repeat"] = repeat
