@@ -547,7 +547,8 @@ class zynthian_engine_clippy(zynthian_engine):
             self.write_sfz(processor)
 
     def on_playstate(self, bank, seq, state, mode, group):
-        if state != zynseq.SEQ_STOPPED:
+        #TODO: This VERY uneconomical - needs optimsation
+        if state != zynseq.SEQ_STOPPED or bank != 1:
             return
         chan = seq % zynseq.LAUNCHER_COLS
         for processor in self.processors:

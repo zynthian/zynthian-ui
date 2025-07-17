@@ -248,7 +248,7 @@ class Sequence {
     uint8_t m_nFollowAction = FOLLOW_ACTION_LOOP; // Sequence follow action
     uint8_t m_nFollowParam = 0;                 // Parameter for follow action, e.g. jump offset
     uint8_t m_nState = STOPPED;                 // Play state of sequence
-    uint8_t m_nMode = 0;                        // Bitwise flags: stop mode (bits 0..1), start mode (bit 2), enabled (bit 7). Changed v11.
+    uint8_t m_nMode = 1;                        // Bitwise flags: stop mode (bits 0..1), start mode (bit 2).
     uint8_t m_nGroup = 0;                       // Sequence's mutually exclusive group
     uint8_t m_nRepeat = 1;                      // Quantity of times to play sequence/ Added v11.
     uint8_t m_nCount = 0;                       // Quantity of times to sequence has played
