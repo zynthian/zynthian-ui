@@ -1525,61 +1525,58 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         follow_action = follow & 0xff
         follow_param = follow >> 8
         follow_scene = follow_param // zynseq.SCENE_LAUNCHER_COL
+        self.zynseq.libseq.selectPattern(info["pattern"])
+        program_change = self.zynseq.libseq.getProgramChange(0)
         if info['chan'] == zynseq.SCENE_LAUNCHER_COL:
             title = f"Scene options ({name})"
             repeat = info["repeat"]
             if repeat == 0:
-                options["Duration (DISABLED)"] = info
+                options["Duration (DISABLED)"] = repeat
             else:
                 if repeat == 1:
-                    options["Duration (1 bar)"] = info
+                    options["Duration (1 bar)"] = repeat
                 else:
-                    options[f"Duration ({repeat} bars)"] = info
+                    options[f"Duration ({repeat} bars)"] = repeat
                 if follow_action < zynseq.FOLLOW_ACTION_JUMP:
                     actions = ("NONE", "LOOP", "NEXT", "PREV")
-                    options[f"Follow action ({actions[follow_action]})"] = info
+                    options[f"Follow action ({actions[follow_action]})"] = info["slot"]
                 else:
-                    options[f"Follow action (PLAY SCENE {follow_scene})"] = info
+                    options[f"Follow action (PLAY SCENE {follow_scene})"] = info["slot"]
                 if info['tempo'] is None:
-                    options[f"Tempo (NONE)"] = info
+                    options[f"Tempo (NONE)"] = info["tempo"]
                 else:
-                    options[f"Tempo ({info['tempo']})"] = info
-                    options["Remove tempo"] = info
+                    options[f"Tempo ({info['tempo']})"] = info["tempo"]
+                    options["Remove tempo"] = info["sequence"]
                 if info['bpb'] > 1:
-                    options[f"Time signature ({info['bpb']}/4)"] = info
+                    options[f"Time signature ({info['bpb']}/4)"] = info["bpb"]
                 else:
-                    options[f"Time signature (None)"] = info
+                    options[f"Time signature (None)"] = info["bpb"]
+                if program_change < 128:
+                    options[f"Program change ({program_change})"] = program_change + 1
+                else:
+                    options["Program change (None)"] = 0
         elif info["clippy"]:
             title = f"Audio clip options ({name})"
             zctrl = self.get_clippy_zctrl("file")
             filename = basename(zctrl.value)
-            options[f"File ({filename})"] = info
+            options[f"File ({filename})"] = None
             zctrl = self.get_clippy_zctrl("warp")
             val = "ON" if zctrl.value else "OFF"
-            options[f"Warp ({val})"] = info
-        options[f"Edit name ({name})"] = info
-        options["Append scene"] = info
-        options["Insert scene"] = info
+            options[f"Warp ({val})"] = None
+        options[f"Edit name ({name})"] = name
+        options["Append scene"] = None
+        options["Insert scene"] = info["slot"]
         if self.zynseq.slots > 1:
-            options["Remove scene"] = info
-            options["Move scene"] = info
+            options["Remove scene"] = info["slot"]
+            options["Move scene"] = info["slot"]
 
         self.zyngui.screens['option'].config(title, options, self.launcher_menu_cb, close_on_select=False)
         self.zyngui.show_screen('option')
 
     def launcher_menu_cb(self, option, params):
-        self.launcher_select_info = params
-        sequence = params["sequence"]
-        repeat = params["repeat"]
-        follow = self.zynseq.libseq.getFollowAction(self.zynseq.bank, sequence)
-        follow_action = follow & 0xff
-        follow_param = follow >> 8
-        follow_scene = follow_param // zynseq.SCENE_LAUNCHER_COL
-        scene = sequence // zynseq.SCENE_LAUNCHER_COL
-
-        slot = params["slot"]
+        slot = self.launcher_select_info["slot"]
         option_screen = self.zyngui.screens["option"]
-        if params['clippy']:
+        if self.launcher_select_info['clippy']:
             if option.startswith("File"):
                 # Show file selector. Callback has path. Must set path of this zctrl.
                 zctrl = self.get_clippy_zctrl("file")
@@ -1590,35 +1587,33 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 zctrl = self.get_clippy_zctrl("warp")
                 zctrl.toggle()
         elif option.startswith("Edit name"):
-            name = self.zynseq.get_sequence_name(self.zynseq.bank, params["sequence"])
-            self.zyngui.show_keyboard(self.rename_sequence, name, 8)
+            self.zyngui.show_keyboard(self.rename_sequence, params, 8)
         elif option.startswith("Append scene"):
             self.zynseq.add_scene(self.zynseq.slots)
             self.refresh_visible_strips()
             self.zyngui.show_screen("launcher")
         elif option.startswith("Insert scene"):
-            self.zynseq.add_scene(slot)
+            self.zynseq.add_scene(params)
             self.refresh_visible_strips()
             self.zyngui.show_screen("launcher")
         elif option.startswith("Remove scene"):
-            self.zyngui.show_confirm(f"Remove scene {slot + 1}?", self.remove_scene, slot)
+            self.zyngui.show_confirm(f"Remove scene {params + 1}?", self.remove_scene, params)
         elif option.startswith("Move scene"):
             self.moving_scene = True
             self.zyngui.show_screen("launcher")
         elif option.startswith("Tempo"):
-            tempo = params["tempo"]
-            if not tempo:
-                tempo = self.zynseq.get_tempo()
+            if not params:
+                params = self.zynseq.get_tempo()
             option_screen.enable_param_editor(option_screen, "tempo", {
                 'name': 'BPM',
                 'is_integer': False,
                 'value_min': 10.0,
                 'value_max': 420,
-                'value': tempo,
+                'value': params,
                 'nudge_factor': 1.0,
             }, assert_cb=self.cb_assert_param_editor)
         elif option == "Remove tempo":
-            self.zynseq.libseq.removeTempoEvent(self.zynseq.bank, len(self.zynseq.launcher_info) * zynseq.LAUNCHER_COLS + slot, 1, 0)
+            self.zynseq.libseq.removeTempoEvent(self.zynseq.bank, params, 1, 0)
             self.launcher_select_info["tempo"] = None
             index = option_screen.index
             self.launcher_menu()
@@ -1629,11 +1624,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 labels.append(f"{i} bars")
             option_screen.enable_param_editor(option_screen, "duration", {
                 'name': 'Duration',
-                'value': params["repeat"],
+                'value': params,
                 'labels': labels
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Time signature"):
-            bpb = params["bpb"]
             labels = ["None"]
             for i in range(2, 25):
                 labels.append(f"{i}/4")
@@ -1642,18 +1636,27 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 'value_min': 1,
                 'value_max': 24,
                 'labels': labels,
-                'value': bpb
+                'value': params
+            }, assert_cb=self.cb_assert_param_editor)
+        elif option.startswith("Program change"):
+            labels = ["None"]
+            for i in range(128):
+                labels.append(f"{i}")
+            option_screen.enable_param_editor(option_screen, "progchange", {
+                "name": "Program change",
+                "labels": labels,
+                "value": params
             }, assert_cb=self.cb_assert_param_editor)
         elif option.startswith("Follow action"):
             labels = ["NONE", "LOOP", "NEXT", "PREV"]
             for i, _ in enumerate(self.zynseq.launcher_info):
                 if i != slot:
                     labels.append(f"PLAY SCENE {i + 1}")
-            val = params["follow_action"]
+            val = self.launcher_select_info["follow_action"]
             if val >= zynseq.FOLLOW_ACTION_JUMP:
-                if params["follow_param"] > slot + 1:
+                if self.launcher_select_info["follow_param"] > params + 1:
                     val -= 1
-                val += params["follow_param"] - 1
+                val += self.launcher_select_info["follow_param"] - 1
             option_screen.enable_param_editor(option_screen, "follow", {
                 "name": "Follow action",
                 "labels": labels,
@@ -1735,6 +1738,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
         slot = self.launcher_select_info["slot"]
         match zctrl.symbol:
+            case "progchange":
+                if zctrl.value == 0:
+                    self.zynseq.libseq.removeProgramChange(0)
+                elif zctrl.value < 129:
+                    self.zynseq.libseq.addProgramChange(0, zctrl.value - 1)
             case "tempo":
                 self.add_tempo(zctrl.value)
             case "bpb":

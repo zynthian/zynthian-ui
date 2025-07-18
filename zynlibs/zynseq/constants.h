@@ -30,7 +30,7 @@
 
 #define DEFAULT_TEMPO 120 // March time (120 BPM)
 
-// Play modes START, END and ENABLED are OR'd to provide mode
+// Play modes START & END are OR'd to provide mode
 // Bits 0..1 Stop mode
 #define MODE_END_END 0       // Stop at end of sequence
 #define MODE_END_SYNC 1      // Stop at next sync
@@ -38,8 +38,6 @@
 // Bit 2 Start mode
 #define MODE_START_SYNC 0      // Start at next sync
 #define MODE_START_IMMEDIATE 4 // Start immediately
-// Bit 7 Enable mode
-#define MODE_ENABLE 128 // Bit 7 set if sequence enabled
 
 // Play status
 #define STOPPED 0       // Sequence is stopped
