@@ -31,7 +31,7 @@ void SequenceManager::init() {
     for (auto it = m_mPatterns.begin(); it != m_mPatterns.end(); ++it)
         delete (it->second);
     m_mPatterns.clear();
-    m_mBanks.clear();
+    m_mSequences.clear();
 }
 
 int SequenceManager::fileWrite32(uint32_t value, FILE* pFile) {
@@ -128,42 +128,61 @@ void SequenceManager::copyPattern(uint32_t source, uint32_t destination) {
     *pPattern = *(m_mPatterns[source]);
 }
 
-Sequence* SequenceManager::getSequence(uint8_t bank, uint8_t sequence, bool create_pattern) {
-    if (m_mBanks[bank].find(sequence) == m_mBanks[bank].end()) {
+void SequenceManager::setPatternModified(Pattern* pPattern) {
+    for (auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it) {
+        Sequence sequence = it->second;
+        bool bFound = false;
+        for (uint32_t nTrack = 0; nTrack < sequence.getTracks() && !bFound; ++nTrack) {
+            Track* pTrack = sequence.getTrack(nTrack);
+            for (uint32_t nPattern = 0; nPattern < pTrack->getPatterns() && !bFound; ++nPattern) {
+                if (pTrack->getPatternByIndex(nPattern) == pPattern)
+                    bFound = true;
+            }
+            if (bFound) {
+                pTrack->setModified();
+                sequence.setModified();
+            }
+        }
+    }
+}
+
+Sequence* SequenceManager::getSequence(uint32_t sequence, bool create_pattern) {
+    if (m_mSequences.find(sequence) == m_mSequences.end()) {
         // Sequence does not exist so create and configure
         if (create_pattern) {
             uint32_t pattern = createPattern();
-            addPattern(bank, sequence, 0, 0, pattern, true);
+            addPattern(sequence, 0, 0, pattern, true);
         }
-        m_mBanks[bank][sequence].setSequenceId(bank, sequence, true);
+        m_mSequences[sequence].setSequenceId(sequence);
     }
-    return &(m_mBanks[bank][sequence]);
+    return &(m_mSequences[sequence]);
 }
 
-bool SequenceManager::addPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position, uint32_t pattern, bool force) {
-    Track* pTrack = m_mBanks[bank][sequence].getTrack(track);
+bool SequenceManager::addPattern(uint32_t sequence, uint32_t track, uint32_t position, uint32_t pattern, bool force) {
+    Track* pTrack = m_mSequences[sequence].getTrack(track);
     if (!pTrack)
         return false;
     bool bUpdated = pTrack->addPattern(position, getPattern(pattern), force);
-    updateSequenceLength(bank, sequence);
+    updateSequenceLength(sequence);
     return bUpdated;
 }
 
-void SequenceManager::removePattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position) {
-    Sequence* pSequence = getSequence(bank, sequence);
+void SequenceManager::removePattern(uint32_t sequence, uint32_t track, uint32_t position) {
+    Sequence* pSequence = getSequence(sequence);
     Track* pTrack = pSequence->getTrack(track);
     if (!pTrack)
         return;
     pTrack->removePattern(position);
-    updateSequenceLength(bank, sequence);
+    updateSequenceLength(sequence);
 }
 
-void SequenceManager::updateSequenceLength(uint8_t bank, uint8_t sequence) { getSequence(bank, sequence)->updateLength(); }
+void SequenceManager::updateSequenceLength(uint32_t sequence) {
+    getSequence(sequence)->updateLength();
+}
 
 void SequenceManager::updateAllSequenceLengths() {
-    for (auto itBank = m_mBanks.begin(); itBank != m_mBanks.end(); ++itBank)
-        for (auto itSeq = itBank->second.begin(); itSeq != itBank->second.end(); ++itSeq)
-            itSeq->second.updateLength();
+    for (auto itSeq = m_mSequences.begin(); itSeq != m_mSequences.end(); ++itSeq)
+        itSeq->second.updateLength();
 }
 
 size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<uint32_t, MIDI_MESSAGE*>* pSchedule, bool bSync) {
@@ -174,11 +193,13 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
     double dSamplesPerClock = timeinfo.second;
     std::vector<uint16_t> vNext;
     for (auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end();) {
-        uint8_t bank = *it >> 8;
-        uint8_t sequence = *it & 0xff;
-        Sequence* pSequence = getSequence(bank, sequence);
+        uint32_t sequence = *it;
+        Sequence* pSequence = getSequence(sequence);
+        uint8_t nGroup = pSequence->getGroup();
         if (pSequence->getPlayState() == STOPPED) {
             it = m_vPlayingSequences.erase(it);
+            if (nGroup < 17)
+                m_aGroupProgress[nGroup] = 0;            
             continue;
         }
         uint8_t nEventType = pSequence->clock(nTime, bSync, dSamplesPerClock);
@@ -202,8 +223,8 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
                 if (pTrack) {
                     Pattern* pPattern = pTrack->getPattern(0);
                     if (pPattern) {
-                        uint16_t timeSig = pPattern->getBeatsInPattern();
-                        if (timeSig != m_nTimeSig) {
+                        uint8_t timeSig = pPattern->getBeatsInPattern();
+                        if (timeSig > 1 && timeSig != m_nTimeSig) {
                             m_nTimeSig = timeSig;
                             m_bTimeSigChanged = true;
                         }
@@ -218,10 +239,9 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
         }
         if (nEventType & 8) {
             // Reached end of sequence repeats
-            uint16_t follow = pSequence->getFollowAction();
-            uint8_t action = follow & 0xff;
-            uint8_t param = follow >> 8;
-            uint16_t next = 0xffff;
+            uint8_t action = pSequence->getFollowAction();
+            uint32_t param = pSequence->getFollowActionParam();
+            uint32_t next = 0xffffffff;
             switch (action) {
                 case FOLLOW_ACTION_LOOP:
                     next = sequence;
@@ -237,29 +257,33 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
                     next = param;
                     break;
             }
-            if (next != 0xffff)
-                vNext.push_back(next | (bank << 8));
+            if (next != 0xffffffff)
+                vNext.push_back(next);
         }
         if (nEventType & 16) {
             // Reached end of scene launcher
-            onSceneLauncherState(bank, sequence / 17, pSequence->getPlayState());
+            onSceneLauncherState(0x1000000 | (sequence & 0xffffff) / 17, pSequence->getPlayState());
         }
+        if (nGroup == 16)
+            m_aGroupProgress[nGroup] = (100 * pSequence->getPlayPosition() / (m_nBeatsPerBar * 24));
+        else if (pSequence->getLength())
+            m_aGroupProgress[nGroup] = (100 * pSequence->getPlayPosition() / pSequence->getLength());
         ++it;
     }
     // Start pending follow-on sequences
     for (auto it = vNext.begin(); it != vNext.end(); ++it)
-        setSequencePlayState((*it) >> 8, (*it) & 255, PLAYING);
+        setSequencePlayState(*it, PLAYING);
 
     return m_vPlayingSequences.size();
 }
 
-void SequenceManager::setSequencePlayState(uint8_t bank, uint8_t sequence, uint8_t state) {
-    Sequence* pSequence = getSequence(bank, sequence);
+void SequenceManager::setSequencePlayState(uint32_t sequence, uint8_t state) {
+    Sequence* pSequence = getSequence(sequence);
     if (state == STARTING || state == PLAYING) {
         bool bAddToList = true;
         // Stop other sequences in same group
         for (auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end(); ++it) {
-            Sequence* pPlayingSequence = getSequence(*it >> 8, *it & 0xff);
+            Sequence* pPlayingSequence = getSequence(*it);
             if (pSequence == pPlayingSequence)
                 bAddToList = false;
             else if (pPlayingSequence->getGroup() == pSequence->getGroup()) {
@@ -271,97 +295,102 @@ void SequenceManager::setSequencePlayState(uint8_t bank, uint8_t sequence, uint8
             }
         }
         if (bAddToList)
-            m_vPlayingSequences.push_back((bank << 8) | sequence);
+            m_vPlayingSequences.push_back(sequence);
     }
 
     // Handle scene launchers (group 16)
-    if (pSequence->getGroup() == 16) {
-        onSceneLauncherState(bank, sequence / 17, state);
-    }
+    if (pSequence->getGroup() == 16)
+        onSceneLauncherState(0x1000000 | (sequence & 0xffffff) / 17, state);
 
     pSequence->setPlayState(state);
 }
 
-void SequenceManager::onSceneLauncherState(uint8_t bank, uint8_t slot, uint8_t state) {
-    uint8_t base_seq = slot * 17;
+void SequenceManager::onSceneLauncherState(uint8_t slot, uint8_t state) {
+    uint32_t base_seq = 0x01000000 | slot * 17;
     if (state == STARTING || state == PLAYING) {
         for (uint8_t chan = 0; chan < 16; ++chan) {
             uint32_t nSlaveSeq = base_seq + chan;
-            Sequence* pSlaveSeq = getSequence(bank, nSlaveSeq);
+            Sequence* pSlaveSeq = getSequence(nSlaveSeq);
             if (pSlaveSeq->getRepeat() == 0)// || pSlaveSeq->getPlayState() == PLAYING)
                 continue;
             if (pSlaveSeq->getPlayState() == STOPPING)
-                setSequencePlayState(bank, nSlaveSeq, PLAYING);
+                setSequencePlayState(nSlaveSeq, PLAYING);
             else
-                setSequencePlayState(bank, nSlaveSeq, STARTING);
+                setSequencePlayState(nSlaveSeq, STARTING);
         }
     } else if (state == STOPPING) {
         for (uint8_t chan = 0; chan < 16; ++chan) {
             uint32_t nSlaveSeq = base_seq + chan;
-            if (getSequence(bank, nSlaveSeq)->getPlayState() == STOPPED)
+            if (getSequence(nSlaveSeq)->getPlayState() == STOPPED)
                 continue;
-            setSequencePlayState(bank, nSlaveSeq, STOPPING);
+            setSequencePlayState(nSlaveSeq, STOPPING);
         }
     } else if (state == STOPPED) {
         for (uint8_t chan = 0; chan < 16; ++chan) {
             uint32_t nSlaveSeq = base_seq + chan;
-            if (getSequence(bank, nSlaveSeq)->getPlayState() != STOPPED)
-                setSequencePlayState(bank, nSlaveSeq, STOPPED);
+            if (getSequence(nSlaveSeq)->getPlayState() != STOPPED)
+                setSequencePlayState(nSlaveSeq, STOPPED);
         }
     }
 }
 
-void SequenceManager::updateFollowAction(uint8_t bank, uint8_t sequence, uint8_t newBank, uint8_t newSeq) {
-    // Search all sequences in this bank for jump to this sequence and change it to the new sequence number
-    for (auto itBank = m_mBanks.begin(); itBank != m_mBanks.end(); ++itBank) {
-        for (auto itSeq = itBank->second.begin(); itSeq != itBank->second.end(); ++itSeq) {
-            uint16_t follow = itSeq->second.getFollowAction();
-            if (((follow & 0xff) == FOLLOW_ACTION_JUMP) && ((follow >> 8) == sequence))
-                itSeq->second.setFollowAction(FOLLOW_ACTION_JUMP, newSeq);
-        }
+void SequenceManager::updateFollowAction(uint32_t sequence, uint32_t newSeq) {
+    // Search all sequences for jump to this sequence and change it to the new sequence number
+    for (auto itSeq = m_mSequences.begin(); itSeq != m_mSequences.end(); ++itSeq) {
+        uint8_t action = itSeq->second.getFollowAction();
+        uint32_t param = itSeq->second.getFollowActionParam();
+        if (action == FOLLOW_ACTION_JUMP && param == sequence)
+            itSeq->second.setFollowAction(FOLLOW_ACTION_JUMP, newSeq);
     }
 }
 
-void SequenceManager::moveSequence(uint8_t bank, uint8_t sequence, uint8_t newSeq) {
-    auto node = m_mBanks[bank].extract(sequence);
+void SequenceManager::moveSequence(uint32_t sequence, uint32_t newSeq) {
+    auto node = m_mSequences.extract(sequence);
     if (!node.empty()) {
         node.key() = newSeq;
-        node.mapped().setSequenceId(bank, newSeq, false);
-        m_mBanks[bank].erase(newSeq);
-        m_mBanks[bank].insert(std::move(node));
+        node.mapped().setSequenceId(newSeq);
+        m_mSequences.erase(newSeq);
+        m_mSequences.insert(std::move(node));
     }
-    updateFollowAction(bank, sequence, bank, newSeq);
+    updateFollowAction(sequence, newSeq);
 }
 
-void SequenceManager::swapSequence(uint8_t bank, uint8_t sequence1, uint8_t sequence2) {
-    std::swap(m_mBanks[bank][sequence1], m_mBanks[bank][sequence2]);
-    updateFollowAction(bank, sequence1, bank, sequence2);
-    updateFollowAction(bank, sequence2, bank, sequence1);
+void SequenceManager::swapSequence(uint32_t sequence1, uint32_t sequence2) {
+    std::swap(m_mSequences[sequence1], m_mSequences[sequence2]);
+    updateFollowAction(sequence1, sequence2);
+    updateFollowAction(sequence2, sequence1);
 }
 
-uint8_t SequenceManager::getTriggerNote(uint8_t bank, uint8_t sequence) {
-    uint16_t nValue = (bank << 8) | sequence;
+uint8_t SequenceManager::getTriggerNote(uint32_t sequence) {
     for (auto it = m_mTriggers.begin(); it != m_mTriggers.end(); ++it)
-        if (it->second == nValue)
+        if (it->second == sequence)
             return it->first;
     return 0xFF;
 }
 
-void SequenceManager::setTriggerNote(uint8_t bank, uint8_t sequence, uint8_t note) {
-    m_mTriggers.erase(getTriggerNote(bank, sequence));
+void SequenceManager::setTriggerNote(uint32_t sequence, uint8_t note) {
+    m_mTriggers.erase(getTriggerNote(sequence));
     if (note < 128)
-        m_mTriggers[note] = (bank << 8) | sequence;
+        m_mTriggers[note] = sequence;
 }
 
-uint8_t SequenceManager::getTriggerChannel() { return m_nTriggerChannel; }
+uint8_t SequenceManager::getTriggerChannel() { 
+    return m_nTriggerChannel;
+}
 
-void SequenceManager::setTriggerChannel(uint8_t channel) { m_nTriggerChannel = channel; }
+void SequenceManager::setTriggerChannel(uint8_t channel) {
+    m_nTriggerChannel = channel;
+}
 
-uint8_t SequenceManager::getTriggerDevice() { return m_nTriggerDevice; }
+uint8_t SequenceManager::getTriggerDevice() {
+    return m_nTriggerDevice;
+}
 
-void SequenceManager::setTriggerDevice(uint8_t idev) { m_nTriggerDevice = idev; }
+void SequenceManager::setTriggerDevice(uint8_t idev) {
+    m_nTriggerDevice = idev;
+}
 
-uint16_t SequenceManager::getTriggerSequence(uint8_t note) {
+uint32_t SequenceManager::getTriggerSequence(uint8_t note) {
     auto it = m_mTriggers.find(note);
     if (it != m_mTriggers.end())
         return it->second;
@@ -372,7 +401,7 @@ size_t SequenceManager::getPlayingSequencesCount() { return m_vPlayingSequences.
 
 void SequenceManager::stop() {
     for (auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end(); ++it) {
-        getSequence(*it >> 8, *it & 0xff)->setPlayState(STOPPED);
+        getSequence(*it)->setPlayState(STOPPED);
     }
     m_vPlayingSequences.clear();
 }
@@ -384,14 +413,12 @@ void SequenceManager::cleanPatterns() {
         mPatterns[it->first] = it->second;
 
     // Remove all patterns that are used by tracks
-    for (auto itBank = m_mBanks.begin(); itBank != m_mBanks.end(); ++itBank) {
-        for (auto itSeq = itBank->second.begin(); itSeq != itBank->second.end(); ++itSeq) {
-            uint32_t nTrack = 0;
-            while (Track* pTrack = itSeq->second.getTrack(nTrack++)) {
-                uint32_t nIndex = 0;
-                while (Pattern* pPattern = pTrack->getPatternByIndex(nIndex++))
-                    mPatterns.erase(getPatternIndex(pPattern));
-            }
+    for (auto itSeq = m_mSequences.begin(); itSeq != m_mSequences.end(); ++itSeq) {
+        uint32_t nTrack = 0;
+        while (Track* pTrack = itSeq->second.getTrack(nTrack++)) {
+            uint32_t nIndex = 0;
+            while (Pattern* pPattern = pTrack->getPatternByIndex(nIndex++))
+                mPatterns.erase(getPatternIndex(pPattern));
         }
     }
 
@@ -404,13 +431,37 @@ void SequenceManager::cleanPatterns() {
     }
 }
 
-uint32_t SequenceManager::getSequencesInBank(uint32_t bank) { return m_mBanks[bank].size(); }
+uint32_t SequenceManager::getSequencesInBank(uint8_t bank) {
+    //!@todo Try to factor out.
+    std::map <uint32_t, bool> m;
+    uint32_t bk = bank << 24;
+    for (auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it) {
+        if ((it->first & bk) == bk)
+            m[it->first] = true;
+    }
+    return m.size();
+}
 
-void SequenceManager::removeSequence(uint8_t bank, uint8_t sequence) { m_mBanks[bank].erase(sequence); }
+void SequenceManager::removeSequence(uint32_t sequence) {
+    m_mSequences.erase(sequence);
+}
 
-void SequenceManager::clearBank(uint32_t bank) { m_mBanks[bank].clear(); }
+void SequenceManager::clearBank(uint32_t bank) {
+    //!@todo Optimse
+    uint32_t bk = bank << 24;
+    for (auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it) {
+        if ((it->first & bk) == bk)
+            it = m_mSequences.erase(it);
+    }
+}
 
-uint32_t SequenceManager::getBanks() { return m_mBanks.size(); }
+uint32_t SequenceManager::getBanks() {
+    //!@todo Try to factor out.
+    std::map <uint8_t, bool> m;
+    for (auto it = m_mSequences.begin(); it != m_mSequences.end(); ++it)
+        m[it->first >> 24] = true;
+    return m.size();
+}
 
 bool SequenceManager::isTempoChanged() { return m_bTempoChanged; }
 
@@ -428,4 +479,16 @@ uint16_t SequenceManager::getTimeSig(bool clear) {
     return m_nTimeSig;
 }
 
-void SequenceManager::setTimeSig(uint16_t sig) { m_nTimeSig = sig; }
+void SequenceManager::setTimeSig(uint8_t sig) {
+    m_nTimeSig = sig;
+}
+
+uint8_t SequenceManager::getProgress(uint8_t group) {
+    if (group < 17)
+        return m_aGroupProgress[group];
+    return 0;
+}
+
+void SequenceManager::setBeatsPerBar(uint8_t beats) {
+    m_nBeatsPerBar = beats;
+}

@@ -36,12 +36,10 @@ class Sequence {
     */
     Sequence();
 
-    /** @brief  Set bank and sequence id
-        @param  bank Sequence bank
+    /** @brief  Set sequence id
         @param sequence Sequence number
-        @param reset True to reset sequence mode
     */
-    void setSequenceId(uint8_t bank, uint8_t sequence, bool reset);
+    void setSequenceId(uint32_t sequence);
 
     /** @brief  Get sequence's mutually excusive group
         @retval uint32_t sequence's group
@@ -218,12 +216,17 @@ class Sequence {
         @param  action Follow action @see FOLLOW_ACTION enum
         @param  param Optional parameter of action, e.g. offset
     */
-    void setFollowAction(uint8_t action, uint8_t param);
+    void setFollowAction(uint8_t action, uint32_t param);
 
     /** @brief  Get sequence follow action
-        @retval uint16_t Follow action | param << 8
+        @retval uint8_t Follow action
     */
-    uint16_t getFollowAction();
+    uint8_t getFollowAction();
+
+    /** @brief  Get sequence follow action parameter, e.g. next sequence
+        @retval uint8_t Follow action parameter
+    */
+    uint32_t getFollowActionParam();
 
     /** @brief  Set times to play
         @param  repeat Quantity of times to play (0 to disable)
@@ -244,7 +247,7 @@ class Sequence {
     uint32_t m_nLength = 0;                     // Length of sequence in clock cycles (longest track)
     float m_fTempo = 120.0;                     // Current tempo (overriden by tempo events in timebase map)
     uint16_t m_nTimeSig = 4;                    // Current time signature (beats in bar)
-    uint16_t m_nId;                             // Sequence id (bank << 8 | sequence)
+    uint32_t m_nId;                             // Sequence id (sequence number)
     uint8_t m_nFollowAction = FOLLOW_ACTION_LOOP; // Sequence follow action
     uint8_t m_nFollowParam = 0;                 // Parameter for follow action, e.g. jump offset
     uint8_t m_nState = STOPPED;                 // Play state of sequence

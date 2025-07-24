@@ -260,7 +260,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     # Function to show GUI
     def build_view(self):
         self.zynseq.libseq.selectSequence(self.bank, self.sequence)
-        self.zynseq.libseq.setFollowAction(self.bank, self.sequence, zynseq.FOLLOW_ACTION_LOOP)
+        self.zynseq.libseq.setFollowAction(self.bank, self.sequence, zynseq.FOLLOW_ACTION_LOOP, 0)
 
         self.setup_zynpots()
         if not self.param_editor_zctrl:
@@ -286,7 +286,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         #self.zynseq.libseq.setRefNote(int(self.keymap_offset))
         self.zynseq.libseq.setPatternZoom(self.zoom)
         if self.seq_info:
-            self.zynseq.libseq.setFollowAction(self.bank, self.sequence, self.seq_info["follow_action"])
+            self.zynseq.libseq.setFollowAction(self.bank, self.sequence, self.seq_info["follow_action"], self.seq_info["follow_param"])
         else:
             self.stop_playback()
 

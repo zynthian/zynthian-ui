@@ -23,8 +23,8 @@ Sequence::Sequence() {
     addTrack(); // Ensure new sequences have at least one track
 }
 
-void Sequence::setSequenceId(uint8_t bank, uint8_t sequence, bool reset) {
-    m_nId = (bank << 8) | sequence;
+void Sequence::setSequenceId(uint32_t sequence) {
+    m_nId = sequence;
 }
 
 uint8_t Sequence::getGroup() {
@@ -175,7 +175,7 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
             nReturn |= (*it).clock(nTime, m_nPosition, dSamplesPerClock, bSync);
         ++m_nPosition;
     }
-    if (m_nPosition >= m_nLength) {
+    if (((m_nGroup != 16) && (m_nPosition >= m_nLength)) || ((m_nGroup == 16) && bSync)) {
         // End of sequence
         if (m_nState == PLAYING) {
             m_nCount += nCountInc;
@@ -266,13 +266,16 @@ std::string Sequence::getName() {
     return m_sName;
 }
 
-void Sequence::setFollowAction(uint8_t action, uint8_t param) {
+void Sequence::setFollowAction(uint8_t action, uint32_t param) {
     m_nFollowAction = action;
     m_nFollowParam = param;
 }
 
-uint16_t Sequence::getFollowAction() {
-    return m_nFollowAction | (m_nFollowParam << 8);
+uint8_t Sequence::getFollowAction() {
+    return m_nFollowAction;
+}
+uint32_t Sequence::getFollowActionParam() {
+    return m_nFollowParam;
 }
 
 void Sequence::setRepeat(uint8_t repeat) {

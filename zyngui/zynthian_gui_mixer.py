@@ -486,25 +486,13 @@ class zynthian_gui_mixer_strip:
         if self.parent.launcher_offset + zynthian_gui_config.visible_launchers < self.zynseq.slots:
             self.canvas.itemconfig(f"launcher_scroll_bottom_{self.fader_bg}", state=tkinter.NORMAL)
 
-    def update_clip_progress(self, bank, seq, progress):
-        if bank != self.zynseq.bank or self.chan is None or self.chan > 16:
-            return
+    def update_clip_progress(self, progress):
         x0 = self.x
         y0 = self.height - self.legend_height
         x1 = x0
         y1 = self.height - self.legend_height + 4
-        playing = False
-        for slot in range(len(self.zynseq.launcher_info)):
-            info = self.zynseq.launcher_info[slot][self.chan]
-            if info['state'] != zynseq.SEQ_STOPPED:
-                if info['sequence'] == seq:
-                    x1 = x0 + int(progress * self.width / 100)
-                    self.canvas.coords(self.clip_progress, x0, y0, x1, y1)
-                    return
-                else:
-                    playing = True
-        if not playing:
-            self.canvas.coords(self.clip_progress, x0, y0, x1, y1)
+        x1 = x0 + int(progress * self.width / 100)
+        self.canvas.coords(self.clip_progress, x0, y0, x1, y1)
 
     def draw_solo(self):
         txcolor = self.button_txcol
@@ -881,12 +869,20 @@ class zynthian_gui_mixer_strip:
             if proc:
                 proc.engine.lscp_send_single(proc, f"SEND CHANNEL MIDI_DATA CC 0 120 0")
         else:
-            if info["state"] == zynseq.SEQ_CHILD_PLAYING:
-                self.zynseq.libseq.setPlayState(self.zynseq.bank, seq, zynseq.SEQ_STOPPING)
+            if info["chan"] == 16:
+                if info["state"] in (zynseq.SEQ_CHILD_PLAYING, zynseq.SEQ_PLAYING):
+                    self.zynseq.libseq.setPlayState(self.zynseq.bank, seq, zynseq.SEQ_STOPPING)
+                    for i in range(zynseq.LAUNCHER_COLS):
+                        if self.zynseq.launcher_info[slot][i]["clippy"] and self.zynseq.launcher_info[slot][i]["state"] != zynseq.SEQ_STOPPED:
+                            self.zynseq.libseq.togglePlayState(0, self.zynseq.launcher_info[slot][i]["clippy"].stop_seq)
+                else:
+                    if info["bpb"] > 1:
+                        # Scene launcher so set time signature
+                        self.zynseq.libseq.setBeatsPerBar(info["bpb"])
+                    self.zynseq.libseq.togglePlayState(self.zynseq.bank, seq)
+            elif info["state"] == zynseq.SEQ_PLAYING and info["clippy"]:
+                self.zynseq.libseq.togglePlayState(0, info["clippy"].stop_seq)
             else:
-                if info["chan"] == 16 and info["bpb"] > 1:
-                    # Scene launcher so set time signature
-                    self.zynseq.libseq.setBeatsPerBar(info["bpb"])
                 self.zynseq.libseq.togglePlayState(self.zynseq.bank, seq)
 
     def on_clip_bold_press(self, slot):
@@ -1207,8 +1203,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                     zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.cb_all_notes_off)
                 zynsigman.unregister(
                     zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.cb_launcher_play_state)
-                zynsigman.unregister(
-                    zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PROGRESS, self.cb_launcher_progress)
 
             super().hide()
 
@@ -1252,8 +1246,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                 zynsigman.S_STATE_MAN, self.state_manager.SS_ALL_NOTES_OFF, self.cb_all_notes_off)
             zynsigman.register_queued(
                 zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PLAY_STATE, self.cb_launcher_play_state)
-            zynsigman.register_queued(
-                zynsigman.S_STEPSEQ, zynseq.SS_SEQ_PROGRESS, self.cb_launcher_progress)
         return True
 
     def update_layout(self):
@@ -1274,9 +1266,13 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             if zynthian_gui_config.enable_dpm:
                 states = self.zynmixer.get_dpm_states(0, self.MAIN_MIXBUS_STRIP_INDEX - 1)
                 for strip in self.visible_mixer_strips:
-                    if not strip.hidden and strip.chain.mixer_chan is not None:
-                        state = states[strip.chain.mixer_chan]
-                        strip.draw_dpm(state)
+                    if not strip.hidden:
+                        if strip.chain.mixer_chan is not None:
+                            state = states[strip.chain.mixer_chan]
+                            strip.draw_dpm(state)
+                        if strip.chain.midi_chan is not None:
+                            strip.update_clip_progress(self.zynseq.progress[strip.chain.midi_chan])
+            self.main_mixbus_strip.update_clip_progress(self.zynseq.progress[zynseq.SCENE_LAUNCHER_COL])
 
     def plot_zctrls(self):
         """Function to refresh display (fast)
@@ -1367,13 +1363,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             for strip in self.visible_mixer_strips:
                 if not strip.hidden and strip.chain_id in info["chains"]:
                     strip.draw_sequence_slot(slot)
-
-    def cb_launcher_progress(self, bank, seq, progress):
-        info = self.zynseq.sequence_info[seq]
-        for strip in self.visible_mixer_strips:
-            if not strip.hidden and strip.chain_id in info["chains"]:
-                strip.update_clip_progress(bank, seq, progress)
-        self.main_mixbus_strip.update_clip_progress(bank, seq, progress)
 
     def topbar_bold_touch_action(self):
         self.toggle_launcher_mode()
@@ -1521,9 +1510,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         options = {}
         name = self.zynseq.get_sequence_name(self.zynseq.bank, info['sequence'])
         repeat = self.zynseq.libseq.getRepeat(self.zynseq.bank, info['sequence'])
-        follow = self.zynseq.libseq.getFollowAction(self.zynseq.bank, info['sequence'])
-        follow_action = follow & 0xff
-        follow_param = follow >> 8
+        follow_action = self.zynseq.libseq.getFollowAction(self.zynseq.bank, info['sequence'])
+        follow_param = self.zynseq.libseq.getFollowActionParam(self.zynseq.bank, info['sequence'])
         follow_scene = follow_param // zynseq.SCENE_LAUNCHER_COL
         self.zynseq.libseq.selectPattern(info["pattern"])
         program_change = self.zynseq.libseq.getProgramChange(0)
@@ -1696,8 +1684,10 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             return False
 
     def edit_clip(self, ed=False):
+        #TODO: ed is a temporary debug to allow viewing clippy sequences
         if self.launcher_mode and self.launcher_select_info:
             if not ed and self.launcher_select_info['clippy']:
+                self.launcher_select_info['clippy'].engine.set_slot(self.launcher_select_info['clippy'], self.launcher_select_info['slot'])
                 self.zyngui.chain_control()
                 return True
             elif self.launcher_select_info['chan'] < zynseq.SCENE_LAUNCHER_COL:

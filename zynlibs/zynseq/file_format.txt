@@ -10,7 +10,8 @@ RIFF Header: (Version block must be first. If ommitted assume version 0.)
 Block:
 	File format version [32]
     Tempo [2]
-    Time signature (beats per bar) [2]
+    Time signature (beats per bar) [1]
+	Padding [1]
 	MIDI channel for triggers and tallies [1]
 	Trigger JACK input [1] (Not yet implemented)
 	Trigger JACK output [1] (Not yet implemented)
@@ -64,7 +65,7 @@ Block:
 		Trigger note [1] (This seems like wrong place but makes code much simpler)
 		(Removed in v11 Padding [1])
 		Follow action [1] (Added in v11)
-		Follow action param[1] (Added in v11)
+		Follow action param[4] (Added in v11)
 		Name [16] (Since V6)
         Quantity of tracks [4]
         Tracks:

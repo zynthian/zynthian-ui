@@ -590,7 +590,7 @@ class Pattern {
     std::vector<StepEventVector*>::iterator m_vSnapshotPos = m_vSnapshots.end(); // Iterator pointing to the current snapshot
 
     uint32_t m_nBeats = 4;         // Quantity of beats in pattern
-    uint32_t m_nStepsPerBeat = 6;  // Steps per beat
+    uint32_t m_nStepsPerBeat = 4;  // Steps per beat
     uint8_t m_nScale = 0;          // Index of scale
     uint8_t m_nTonic = 0;          // Scale tonic (root note)
     uint8_t m_nRefNote = 60;       // Note at which to position pattern editor

@@ -63,8 +63,7 @@ uint32_t g_nXruns = 0;
 
 SequenceManager g_seqMan;                           // Instance of sequence manager
 Pattern* g_pPattern = NULL;                         // Pointer to currently edited pattern
-uint8_t g_nBank = 0;                                // Index of currently edited bank
-uint8_t g_nSequence = 0;                            // Index of currently edited sequence
+uint8_t g_nSequence = 0;                            // Index of currently edited sequence (bank encoded into MSB)
 std::multimap<uint32_t, MIDI_MESSAGE*> g_mSchedule; // Schedule of MIDI events (queue for sending), indexed by scheduled play time (samples since JACK epoch)
 bool g_bMutex = false;                              // Mutex lock for access to g_mSchedule
 bool g_bDebug = false;                              // True to output debug info
@@ -77,6 +76,7 @@ bool g_bMidiRecord = false;                         // True to add notes to curr
 uint8_t g_nSustainValue = 0;                        // Last sustain pedal value during note input (recording)
 uint32_t g_nSustainStart = 0;                       // Step when sustain pedal was last pressed
 uint32_t g_nLastStepCC = 0;                         // Step when last => WARNING!! Doesn't work if capturing several CC at once!
+bool g_naHeldNote[16][128];                         // Array of flags indicating a note has been played on a MIDI channel
 
 char g_sName[17];                // Buffer to hold sequence name so that it can be sent back for Python to parse
 uint8_t g_nInputRest = 0xFF;     // MIDI note number that creates rest in pattern
@@ -84,7 +84,7 @@ uint16_t g_nVerticalZoom = 16;   // Quantity of rows to show in pattern and arra
 uint16_t g_nHorizontalZoom = 16; // Quantity of beats to show in arranger view
 
 // Transport variables apply to next period
-uint32_t g_nBeatsPerBar = 4;
+uint8_t g_nBeatsPerBar = 4;
 float g_fBeatType = 4.0;
 double g_dTicksPerBeat = 1920.0;
 double g_dTicksPerClock = g_dTicksPerBeat / PPQN;
@@ -414,7 +414,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
         // Handle MIDI events for programming patterns from MIDI input
         if (bPatternRecording) {
             uint32_t nStep = getPatternPlayhead();
-            uint8_t nPlayState = g_seqMan.getSequence(g_nBank, g_nSequence)->getPlayState();
+            uint8_t nPlayState = g_seqMan.getSequence(g_nSequence)->getPlayState();
             uint8_t nCommand = midiEvent.buffer[0] & 0xF0;
 
             // Real Time Capture (while playing)
@@ -425,7 +425,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                     startEvents[midiEvent.buffer[1]].velocity = midiEvent.buffer[2];
                     // Calculate clock position offset, in steps (from 0.0 to 1.0)
                     float offset =
-                        double(g_seqMan.getSequence(g_nBank, g_nSequence)->getPlayPosition()) / double(g_pPattern->getClocksPerStep()) - double(nStep);
+                        double(g_seqMan.getSequence(g_nSequence)->getPlayPosition()) / double(g_pPattern->getClocksPerStep()) - double(nStep);
                     // Subtract latency delay
                     offset -= double(nFrames) / double(g_pPattern->getClocksPerStep() * g_dFramesPerClock);
                     // Add event offset relative to last clock
@@ -447,7 +447,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 // Note off event
                 else if ((nCommand == MIDI_NOTE_ON && midiEvent.buffer[2] == 0) || nCommand == MIDI_NOTE_OFF) {
                     if (startEvents[midiEvent.buffer[1]].start != -1) {
-                        double dDur = double(g_seqMan.getSequence(g_nBank, g_nSequence)->getPlayPosition()) -
+                        double dDur = double(g_seqMan.getSequence(g_nSequence)->getPlayPosition()) -
                                       startEvents[midiEvent.buffer[1]].start * g_pPattern->getClocksPerStep();
                         if (dDur < 1.0)
                             dDur = g_pPattern->getLength() + dDur;
@@ -518,7 +518,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                 if (bAdvance && nTransportState != JackTransportRolling) {
                     if (++nStep >= g_pPattern->getSteps())
                         nStep = 0;
-                    g_seqMan.getSequence(g_nBank, g_nSequence)->setPlayPosition(nStep * g_pPattern->getClocksPerStep());
+                    g_seqMan.getSequence(g_nSequence)->setPlayPosition(nStep * g_pPattern->getClocksPerStep());
                     // printf("libzynseq advancing to step %d\n", nStep);
                 }
             }
@@ -608,7 +608,7 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
             setTempo(tempo);
         }
         if (g_seqMan.isTimeSigChanged()) {
-            uint16_t timeSig = g_seqMan.getTimeSig();
+            uint8_t timeSig = g_seqMan.getTimeSig();
             setBeatsPerBar(timeSig);
         }
     }
@@ -650,6 +650,15 @@ int onJackProcess(jack_nframes_t nFrames, void* pArgs) {
                         if (it->second->value1 == 64 && g_nSustainValue > 0)
                             bSkip = true;
                         nSize = 3;
+                        break;
+                    case MIDI_NOTE_ON:
+                        g_naHeldNote[it->second->command & 0x0f][it->second->value1] = it->second->value2;
+                        nSize = 3;
+                        break;
+                    case MIDI_NOTE_OFF:
+                        g_naHeldNote[it->second->command & 0x0f][it->second->value1] = 0;
+                        nSize = 3;
+                        break;
                     default:
                         nSize = 3;
                     }
@@ -832,14 +841,13 @@ bool checkBlock(FILE* pFile, uint32_t nActualSize, uint32_t nExpectedSize) {
 
 void reset() {
     g_nSequence = 0;
-    g_nBank = 0;
     g_seqMan.init();
     g_nBeatsPerBar = 4;
     uint8_t seq = 0;
     // Create default launchers: 8 rows of 16+1 columns with 17th column configured as scene launcher
     for (uint8_t slot = 0; slot < 8; ++slot) {
         for (uint8_t chan = 0; chan < 17; ++chan) {
-            Sequence* pSequence = g_seqMan.getSequence(1, seq, true);
+            Sequence* pSequence = g_seqMan.getSequence(0x1000000 | seq, true);
             pSequence->setGroup(chan);
             pSequence->getTrack(0)->setChannel(chan);
             if (chan == 16) {
@@ -859,7 +867,6 @@ void reset() {
 
 bool load(const char* filename) {
     g_nSequence = 0;
-    g_nBank = 0;
     g_seqMan.init();
     g_nBeatsPerBar = 4;
     uint32_t nVersion = 0;
@@ -887,7 +894,12 @@ bool load(const char* filename) {
             g_dTempo = fileRead16(pFile);
             if (nVersion > 10)
                 g_dTempo /= 100;
-            g_nBeatsPerBar = fileRead16(pFile);
+            if (nVersion < 11)
+                g_nBeatsPerBar = fileRead16(pFile);
+            else
+                g_nBeatsPerBar = fileRead8(pFile);
+            if (g_nBeatsPerBar < 2)
+                g_nBeatsPerBar = 4;
             g_seqMan.setTriggerChannel(fileRead8(pFile));
             g_seqMan.setTriggerDevice(fileRead8(pFile));
             fileRead8(pFile); //!@todo Set JACK output
@@ -1004,7 +1016,7 @@ bool load(const char* filename) {
                     continue;
                 else if (checkBlock(pFile, nBlockSize, 8))
                     continue;
-                Sequence* pSequence = g_seqMan.getSequence(nBank, nSequence, false);
+                Sequence* pSequence = g_seqMan.getSequence(nBank << 24 | nSequence);
                 pSequence->setRepeat(1);
                 if (nVersion > 10) {
                     pSequence->setPlayMode(fileRead8(pFile));
@@ -1042,9 +1054,9 @@ bool load(const char* filename) {
                     }
                 }
                 pSequence->setGroup(fileRead8(pFile));
-                g_seqMan.setTriggerNote(nBank, nSequence, fileRead8(pFile));
+                g_seqMan.setTriggerNote(nBank << 24 | nSequence, fileRead8(pFile));
                 if (nVersion > 10)
-                    pSequence->setFollowAction(fileRead8(pFile), fileRead8(pFile));
+                    pSequence->setFollowAction(fileRead8(pFile), fileRead32(pFile));
                 else
                     fileRead8(pFile); // Padding
                 char sName[17];
@@ -1088,7 +1100,7 @@ bool load(const char* filename) {
                             break;
                         uint32_t nTime = fileRead32(pFile);
                         uint32_t nPatternId = fileRead32(pFile);
-                        g_seqMan.addPattern(nBank, nSequence, nTrack, nTime, nPatternId, true);
+                        g_seqMan.addPattern(nBank << 24 | nSequence, nTrack, nTime, nPatternId, true);
                         nBlockSize -= 8;
                         // printf("      Pattern:%u at time:%u\n", nPatternId, nTime);
                     }
@@ -1260,7 +1272,7 @@ void save(const char* filename) {
     nPos += fileWrite32(16, pFile);           // IFF block size
     nPos += fileWrite32(FILE_VERSION, pFile); // IFF block content
     nPos += fileWrite16(uint16_t(g_dTempo * 100), pFile);
-    nPos += fileWrite16(g_nBeatsPerBar, pFile); //!@todo Write current beats per bar
+    nPos += fileWrite8(g_nBeatsPerBar, pFile);
     nPos += fileWrite8(g_seqMan.getTriggerChannel(), pFile);
     nPos += fileWrite8(g_seqMan.getTriggerDevice(), pFile);
     nPos += fileWrite8('\0', pFile); // JACK output not yet implemented
@@ -1334,14 +1346,13 @@ void save(const char* filename) {
         nPos += fileWrite8(0, pFile);
         nPos += fileWrite32(nSequences, pFile);
         for (uint32_t nSequence = 0; nSequence < nSequences; ++nSequence) {
-            Sequence* pSequence = g_seqMan.getSequence(nBank, nSequence);
+            Sequence* pSequence = g_seqMan.getSequence(nBank << 24 | nSequence);
             nPos += fileWrite8(pSequence->getPlayMode(), pFile);
             nPos += fileWrite8(pSequence->getRepeat(), pFile);
             nPos += fileWrite8(pSequence->getGroup(), pFile);
-            nPos += fileWrite8(g_seqMan.getTriggerNote(nBank, nSequence), pFile);
-            uint16_t action = pSequence->getFollowAction();
-            nPos += fileWrite8(action & 0xff, pFile);
-            nPos += fileWrite8(action >> 8, pFile);
+            nPos += fileWrite8(g_seqMan.getTriggerNote(nBank << 24 | nSequence), pFile);
+            nPos += fileWrite8(pSequence->getFollowAction(), pFile);
+            nPos += fileWrite32(pSequence->getFollowActionParam(), pFile);
             std::string sName = pSequence->getName();
             for (size_t nIndex = 0; nIndex < sName.size(); ++nIndex)
                 nPos += fileWrite8(sName[nIndex], pFile);
@@ -1417,7 +1428,7 @@ void save_pattern(uint32_t nPattern, const char* filename) {
     nPos += 4;
     nPos += fileWrite32(10, pFile);             // IFF block size
     nPos += fileWrite32(FILE_VERSION, pFile);   // IFF block content
-    nPos += fileWrite16(g_nBeatsPerBar, pFile); //!@todo Write current beats per bar
+    nPos += fileWrite8(g_nBeatsPerBar, pFile);
     nPos += fileWrite16(g_nVerticalZoom, pFile);
     nPos += fileWrite16(g_nHorizontalZoom, pFile);
 
@@ -1629,10 +1640,10 @@ void setTriggerChannel(uint8_t channel) {
     g_bDirty = true;
 }
 
-uint8_t getTriggerNote(uint8_t bank, uint8_t sequence) { return g_seqMan.getTriggerNote(bank, sequence); }
+uint8_t getTriggerNote(uint8_t bank, uint32_t sequence) { return g_seqMan.getTriggerNote(bank << 24 | sequence); }
 
-void setTriggerNote(uint8_t bank, uint8_t sequence, uint8_t note) {
-    g_seqMan.setTriggerNote(bank, sequence, note);
+void setTriggerNote(uint8_t bank, uint32_t sequence, uint8_t note) {
+    g_seqMan.setTriggerNote(bank << 24 | sequence, note);
     g_bDirty = true;
 }
 
@@ -1648,14 +1659,14 @@ void cleanPatterns() {
     g_pPattern = g_seqMan.getPattern(pattern);
 }
 
-void toggleMute(uint8_t bank, uint8_t sequence, uint32_t track) {
-    Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
+void toggleMute(uint8_t bank, uint32_t sequence, uint32_t track) {
+    Track* pTrack = g_seqMan.getSequence(bank << 24 | sequence)->getTrack(track);
     if (pTrack)
         pTrack->mute(!pTrack->isMuted());
 }
 
-bool isMuted(uint8_t bank, uint8_t sequence, uint32_t track) {
-    Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
+bool isMuted(uint8_t bank, uint32_t sequence, uint32_t track) {
+    Track* pTrack = g_seqMan.getSequence(bank << 24 | sequence)->getTrack(track);
     if (pTrack)
         return pTrack->isMuted();
     return false;
@@ -2150,60 +2161,43 @@ uint32_t getLastStep() {
 
 uint32_t getPatternPlayhead() {
     if (g_pPattern)
-        return g_seqMan.getSequence(g_nBank, g_nSequence)->getPlayPosition() / g_pPattern->getClocksPerStep();
+        return g_seqMan.getSequence(g_nSequence)->getPlayPosition() / g_pPattern->getClocksPerStep();
     return 0;
 }
 
 void setPatternModified(Pattern* pPattern, bool bModified, bool bModifiedTracks) {
-    if (bModified && bModifiedTracks) {
-        for (uint32_t nBank = 1; nBank < g_seqMan.getBanks(); ++nBank) {
-            for (uint32_t nSequence = 0; nSequence < g_seqMan.getSequencesInBank(nBank); ++nSequence) {
-                Sequence* pSequence = g_seqMan.getSequence(nBank, nSequence);
-                bool bFound = false;
-                for (uint32_t nTrack = 0; nTrack < getTracksInSequence(nBank, nSequence) && !bFound; ++nTrack) {
-                    Track* pTrack = g_seqMan.getSequence(nBank, nSequence)->getTrack(nTrack);
-                    for (uint32_t nPattern = 0; nPattern < pTrack->getPatterns() && !bFound; ++nPattern) {
-                        if (pTrack->getPatternByIndex(nPattern) == pPattern)
-                            bFound = true;
-                    }
-                    if (bFound) {
-                        pTrack->setModified();
-                        pSequence->setModified();
-                    }
-                }
-            }
-        }
-    }
+    if (bModified && bModifiedTracks)
+        g_seqMan.setPatternModified(pPattern);
     g_bPatternModified = bModified;
 }
 
 // ** Sequence management functions **
 
-bool addPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position, uint32_t pattern, bool force) {
-    bool bUpdated = g_seqMan.addPattern(bank, sequence, track, position, pattern, force);
+bool addPattern(uint8_t bank, uint32_t sequence, uint32_t track, uint32_t position, uint32_t pattern, bool force) {
+    bool bUpdated = g_seqMan.addPattern(bank << 24 | sequence, track, position, pattern, force);
     if (bank + sequence)
         g_bDirty |= bUpdated;
     return bUpdated;
 }
 
-void removePattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position) {
-    g_seqMan.removePattern(bank, sequence, track, position);
+void removePattern(uint8_t bank, uint32_t sequence, uint32_t track, uint32_t position) {
+    g_seqMan.removePattern(bank << 24 | sequence, track, position);
     g_bDirty = true;
 }
 
-uint32_t getPattern(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position) {
-    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+uint32_t getPattern(uint8_t bank, uint32_t sequence, uint32_t track, uint32_t position) {
+    Sequence* pSequence = g_seqMan.getSequence(bank << 24 | sequence);
     Track* pTrack = pSequence->getTrack(track);
     if (!pTrack)
-        return -1;
+        return -0xffffffff;
     Pattern* pPattern = pTrack->getPattern(position);
     if (!pPattern)
         return 0xffffffff;
     return g_seqMan.getPatternIndex(pPattern);
 }
 
-uint32_t getPatternAt(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t position) {
-    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+uint32_t getPatternAt(uint8_t bank, uint32_t sequence, uint32_t track, uint32_t position) {
+    Sequence* pSequence = g_seqMan.getSequence(bank << 24 | sequence);
     Track* pTrack = pSequence->getTrack(track);
     if (!pTrack)
         return -1;
@@ -2213,43 +2207,42 @@ uint32_t getPatternAt(uint8_t bank, uint8_t sequence, uint32_t track, uint32_t p
     return g_seqMan.getPatternIndex(pPattern);
 }
 
-uint16_t getPlayMode(uint8_t bank, uint8_t sequence) {
-    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+uint16_t getPlayMode(uint8_t bank, uint32_t sequence) {
+    Sequence* pSequence = g_seqMan.getSequence(bank << 24 | sequence);
     return (pSequence->getRepeat() << 8) | pSequence->getPlayMode();
 }
 
-void setPlayMode(uint8_t bank, uint8_t sequence, uint16_t mode) {
-    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+void setPlayMode(uint8_t bank, uint32_t sequence, uint16_t mode) {
+    Sequence* pSequence = g_seqMan.getSequence(bank << 24 | sequence);
     pSequence->setPlayMode(mode & 0xFF);
     pSequence->setRepeat(mode >> 8);
     if (bank + sequence)
         g_bDirty = true;
 }
 
-uint8_t getPlayState(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->getPlayState(); }
+uint8_t getPlayState(uint8_t bank, uint32_t sequence) { return g_seqMan.getSequence(bank << 24 | sequence)->getPlayState(); }
 
-void setRepeat(uint8_t bank, uint8_t sequence, uint8_t repeat) { g_seqMan.getSequence(bank, sequence)->setRepeat(repeat); }
+void setRepeat(uint8_t bank, uint32_t sequence, uint8_t repeat) { g_seqMan.getSequence(bank << 24 | sequence)->setRepeat(repeat); }
 
-uint8_t getRepeat(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->getRepeat(); }
+uint8_t getRepeat(uint8_t bank, uint32_t sequence) { return g_seqMan.getSequence(bank << 24 | sequence)->getRepeat(); }
 
-void selectSequence(uint8_t bank, uint8_t sequence) {
-    g_nBank = bank;
-    g_nSequence = sequence;
+void selectSequence(uint8_t bank, uint32_t sequence) {
+    g_nSequence = bank << 24 | sequence;
 }
 
-bool isEmpty(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->isEmpty(); }
+bool isEmpty(uint8_t bank, uint32_t sequence) { return g_seqMan.getSequence(bank <<24 | sequence)->isEmpty(); }
 
-void setPlayState(uint8_t bank, uint8_t sequence, uint8_t state) {
+void setPlayState(uint8_t bank, uint32_t sequence, uint8_t state) {
     if (state == STARTING) {
         if (transportGetPlayStatus() != JackTransportRolling)
             setTransportToStartOfBar();
         transportStart("zynseq");
     }
-    g_seqMan.setSequencePlayState(bank, sequence, state);
+    g_seqMan.setSequencePlayState(bank << 24 | sequence, state);
 }
 
-void togglePlayState(uint8_t bank, uint8_t sequence) {
-    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+void togglePlayState(uint8_t bank, uint32_t sequence) {
+    Sequence* pSequence = g_seqMan.getSequence(bank << 24 | sequence);
     if (pSequence->getRepeat() == 0)
         return; // Disabled
     uint8_t nState = pSequence->getPlayState();
@@ -2270,135 +2263,150 @@ void togglePlayState(uint8_t bank, uint8_t sequence) {
     setPlayState(bank, sequence, nState);
 }
 
-uint32_t getSequenceState(uint8_t bank, uint8_t sequence) {
-    return g_seqMan.getSequence(bank, sequence)->getState();
+uint32_t getSequenceState(uint8_t bank, uint32_t sequence) {
+    return g_seqMan.getSequence(bank << 24 | sequence)->getState();
 }
 
-uint8_t getStateChange(uint8_t bank, uint8_t start, uint8_t end, uint32_t* states) {
+uint8_t getStateChange(uint8_t bank, uint32_t start, uint32_t end, uint32_t* states) {
     uint8_t count = 0;
-    for (uint8_t sequence = start; sequence < end; ++sequence) {
-        Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+    for (uint32_t sequence = start; sequence < end; ++sequence) {
+        Sequence* pSequence = g_seqMan.getSequence(bank << 24 | sequence);
         if (pSequence->isModified())
             states[count++] = (pSequence->getState() & 0xffffff) | uint32_t(sequence << 24);
     }
     return count;
 }
 
-uint8_t getProgress(uint8_t bank, uint8_t start, uint8_t end, uint16_t* progress) {
-    uint8_t count = 0;
-    for (uint8_t sequence = start; sequence < end; ++sequence) {
-        Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
-        if (pSequence->getLength())
-            progress[count++] = (100 * pSequence->getPlayPosition() / pSequence->getLength()) & 0xff | uint32_t(sequence << 8);
-    }
-    return count;
+void getProgress(uint8_t* progress) {
+    for (uint8_t i = 0; i < 17; ++i)
+        progress[i] = g_seqMan.getProgress(i);
 }
 
 void stop() { g_seqMan.stop(); }
 
-uint32_t getPlayPosition(uint8_t bank, uint8_t sequence) {
-    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+uint32_t getPlayPosition(uint8_t bank, uint32_t sequence) {
+    Sequence* pSequence = g_seqMan.getSequence(bank << 24 | sequence);
     return pSequence->getPlayPosition();
 }
 
-void setPlayPosition(uint8_t bank, uint8_t sequence, uint32_t clock) {
-    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+void setPlayPosition(uint8_t bank, uint32_t sequence, uint32_t clock) {
+    Sequence* pSequence = g_seqMan.getSequence(bank << 24 | sequence);
     pSequence->setPlayPosition(clock);
 }
 
-uint32_t getSequenceLength(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->getLength(); }
+uint32_t getSequenceLength(uint8_t bank, uint32_t sequence) { return g_seqMan.getSequence(bank << 24 | sequence)->getLength(); }
 
-void clearSequence(uint8_t bank, uint8_t sequence) {
-    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+void clearSequence(uint8_t bank, uint32_t sequence) {
+    Sequence* pSequence = g_seqMan.getSequence(bank << 24 | sequence);
     pSequence->clear();
     g_bDirty = true;
 }
 
-size_t getPlayingSequences() { return g_nPlayingSequences; }
+size_t getPlayingSequences() {
+    return g_nPlayingSequences;
+}
 
-uint32_t getSequencesInBank(uint32_t bank) { return g_seqMan.getSequencesInBank(bank); }
+uint32_t getSequencesInBank(uint32_t bank) {
+    return g_seqMan.getSequencesInBank(bank);
+}
 
 void clearBank(uint32_t bank) { g_seqMan.clearBank(bank); }
 
 // ** Sequence management functions **
 
-uint8_t getGroup(uint8_t bank, uint8_t sequence) {
-    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+uint8_t getGroup(uint8_t bank, uint32_t sequence) {
+    Sequence* pSequence = g_seqMan.getSequence(bank << 24 | sequence);
     return pSequence->getGroup();
 }
 
-void setGroup(uint8_t bank, uint8_t sequence, uint8_t group) {
-    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+void setGroup(uint8_t bank, uint32_t sequence, uint8_t group) {
+    Sequence* pSequence = g_seqMan.getSequence(bank << 24 | sequence);
     pSequence->setGroup(group);
     g_bDirty = true;
 }
 
-bool hasSequenceChanged(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->isModified(); }
-
-uint32_t addTrackToSequence(uint8_t bank, uint8_t sequence, uint32_t track) {
-    g_bDirty = true;
-    return g_seqMan.getSequence(bank, sequence)->addTrack(track);
+bool hasSequenceChanged(uint8_t bank, uint32_t sequence) {
+    return g_seqMan.getSequence(bank << 24 | sequence)->isModified();
 }
 
-void removeTrackFromSequence(uint8_t bank, uint8_t sequence, uint32_t track) {
-    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+uint32_t addTrackToSequence(uint8_t bank, uint32_t sequence, uint32_t track) {
+    g_bDirty = true;
+    return g_seqMan.getSequence(bank << 24 | sequence)->addTrack(track);
+}
+
+void removeTrackFromSequence(uint8_t bank, uint32_t sequence, uint32_t track) {
+    Sequence* pSequence = g_seqMan.getSequence(bank << 24 | sequence);
     if (!pSequence->removeTrack(track))
         return;
     pSequence->updateLength();
     g_bDirty = true;
 }
 
-void addTempoEvent(uint8_t bank, uint8_t sequence, float tempo, uint16_t bar, uint16_t tick) {
-    g_seqMan.getSequence(bank, sequence)->addTempo(tempo, bar, tick);
+void addTempoEvent(uint8_t bank, uint32_t sequence, float tempo, uint16_t bar, uint16_t tick) {
+    g_seqMan.getSequence(bank << 24 | sequence)->addTempo(tempo, bar, tick);
     g_bDirty = true;
 }
 
-void removeTempoEvent(uint8_t bank, uint8_t sequence, uint16_t bar, uint16_t tick) {
-    g_seqMan.getSequence(bank, sequence)->removeTempo(bar, tick);
+void removeTempoEvent(uint8_t bank, uint32_t sequence, uint16_t bar, uint16_t tick) {
+    g_seqMan.getSequence(bank << 24 | sequence)->removeTempo(bar, tick);
     g_bDirty = true;
 }
 
-float getTempoAt(uint8_t bank, uint8_t sequence, uint16_t bar, uint16_t tick) { return g_seqMan.getSequence(bank, sequence)->getTempoAt(bar, tick); }
+float getTempoAt(uint8_t bank, uint32_t sequence, uint16_t bar, uint16_t tick) {
+    return g_seqMan.getSequence(bank << 24 | sequence)->getTempoAt(bar, tick);
+}
 
-void addTimeSigEvent(uint8_t bank, uint8_t sequence, uint8_t beats, uint8_t type, uint16_t bar) {
+void addTimeSigEvent(uint8_t bank, uint32_t sequence, uint8_t beats, uint8_t type, uint16_t bar) {
     if (bar < 1)
         bar = 1;
-    g_seqMan.getSequence(bank, sequence)->addTimeSig((beats << 8) | type, bar);
+    g_seqMan.getSequence(bank << 24 | sequence)->addTimeSig((beats << 8) | type, bar);
     g_bDirty = true;
 }
 
-uint16_t getTimeSigAt(uint8_t bank, uint8_t sequence, uint16_t bar) { return g_seqMan.getSequence(bank, sequence)->getTimeSigAt(bar); }
+uint16_t getTimeSigAt(uint8_t bank, uint32_t sequence, uint16_t bar) {
+    return g_seqMan.getSequence(bank << 24 | sequence)->getTimeSigAt(bar);
+}
 
-uint8_t getBeatsPerBarAt(uint8_t bank, uint8_t sequence, uint16_t bar) { return getTimeSigAt(bank, sequence, bar) >> 8; }
+uint8_t getBeatsPerBarAt(uint8_t bank, uint32_t sequence, uint16_t bar) {
+    return getTimeSigAt(bank, sequence, bar) >> 8;
+}
 
-uint32_t getTracksInSequence(uint8_t bank, uint8_t sequence) { return g_seqMan.getSequence(bank, sequence)->getTracks(); }
+uint32_t getTracksInSequence(uint8_t bank, uint32_t sequence) {
+    return g_seqMan.getSequence(bank << 24 | sequence)->getTracks();
+}
 
-void setSequenceName(uint8_t bank, uint8_t sequence, const char* name) { g_seqMan.getSequence(bank, sequence)->setName(std::string(name)); }
+void setSequenceName(uint8_t bank, uint32_t sequence, const char* name) {
+    g_seqMan.getSequence(bank << 24 | sequence)->setName(std::string(name));
+}
 
-const char* getSequenceName(uint8_t bank, uint8_t sequence) {
-    strcpy(g_sName, g_seqMan.getSequence(bank, sequence)->getName().c_str());
+const char* getSequenceName(uint8_t bank, uint32_t sequence) {
+    strcpy(g_sName, g_seqMan.getSequence(bank << 24 | sequence)->getName().c_str());
     return g_sName;
 }
 
-void setFollowAction(uint8_t bank, uint8_t sequence, uint8_t action, uint8_t param) {
-    g_seqMan.getSequence(bank, sequence)->setFollowAction(action, param);
+void setFollowAction(uint8_t bank, uint32_t sequence, uint8_t action, uint32_t param) {
+    g_seqMan.getSequence(bank << 24 | sequence)->setFollowAction(action, param);
     g_bDirty = true;
 }
 
-uint16_t getFollowAction(uint8_t bank, uint8_t sequence) {
-    return g_seqMan.getSequence(bank, sequence)->getFollowAction();
+uint8_t getFollowAction(uint8_t bank, uint32_t sequence) {
+    return g_seqMan.getSequence(bank << 24 | sequence)->getFollowAction();
 }
 
-void removeSequence(uint8_t bank, uint8_t sequence) {
-    g_seqMan.removeSequence(bank, sequence);
+uint32_t getFollowActionParam(uint8_t bank, uint32_t sequence) {
+    return g_seqMan.getSequence(bank << 24 | sequence)->getFollowActionParam();
 }
 
-void moveSequence(uint8_t bank, uint8_t sequence, uint8_t newSeq) {
-    g_seqMan.moveSequence(bank, sequence, newSeq);
+void removeSequence(uint8_t bank, uint32_t sequence) {
+    g_seqMan.removeSequence(bank << 24 | sequence);
 }
 
-void swapSequence(uint8_t bank, uint8_t sequence1, uint8_t sequence2) {
-    g_seqMan.swapSequence(bank, sequence1, sequence2);
+void moveSequence(uint8_t bank, uint32_t sequence, uint8_t newBank, uint32_t newSeq) {
+    g_seqMan.moveSequence(bank << 24 | sequence, newBank << 24 | newSeq);
+}
+
+void swapSequence(uint8_t bank, uint32_t sequence1, uint32_t sequence2) {
+    g_seqMan.swapSequence(bank << 24 | sequence1, sequence2);
 }
 
 void updateSequenceInfo() {
@@ -2407,15 +2415,15 @@ void updateSequenceInfo() {
 
 // ** Track management **
 
-uint32_t getPatternsInTrack(uint8_t bank, uint8_t sequence, uint32_t track) {
-    Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
+uint32_t getPatternsInTrack(uint8_t bank, uint32_t sequence, uint32_t track) {
+    Track* pTrack = g_seqMan.getSequence(bank << 24 | sequence)->getTrack(track);
     if (!pTrack)
         return 0;
     return pTrack->getPatterns();
 }
 
-void setTrackType(uint8_t bank, uint8_t sequence, uint32_t track, uint8_t type) {
-    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+void setTrackType(uint8_t bank, uint32_t sequence, uint32_t track, uint8_t type) {
+    Sequence* pSequence = g_seqMan.getSequence(bank << 24 | sequence);
     Track* pTrack = pSequence->getTrack(track);
     if (!pTrack)
         return;
@@ -2424,15 +2432,15 @@ void setTrackType(uint8_t bank, uint8_t sequence, uint32_t track, uint8_t type) 
         g_bDirty = true;
 }
 
-uint8_t getTrackType(uint8_t bank, uint8_t sequence, uint32_t track) {
-    Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
+uint8_t getTrackType(uint8_t bank, uint32_t sequence, uint32_t track) {
+    Track* pTrack = g_seqMan.getSequence(bank << 24 | sequence)->getTrack(track);
     if (!pTrack)
         return 0xFF;
     return pTrack->getType();
 }
 
-void setChainID(uint8_t bank, uint8_t sequence, uint32_t track, uint8_t chain_id) {
-    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+void setChainID(uint8_t bank, uint32_t sequence, uint32_t track, uint8_t chain_id) {
+    Sequence* pSequence = g_seqMan.getSequence(bank << 24 | sequence);
     Track* pTrack = pSequence->getTrack(track);
     if (!pTrack)
         return;
@@ -2441,15 +2449,15 @@ void setChainID(uint8_t bank, uint8_t sequence, uint32_t track, uint8_t chain_id
         g_bDirty = true;
 }
 
-uint8_t getChainID(uint8_t bank, uint8_t sequence, uint32_t track) {
-    Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
+uint8_t getChainID(uint8_t bank, uint32_t sequence, uint32_t track) {
+    Track* pTrack = g_seqMan.getSequence(bank << 24 | sequence)->getTrack(track);
     if (!pTrack)
         return 0xFF;
     return pTrack->getChainID();
 }
 
-void setChannel(uint8_t bank, uint8_t sequence, uint32_t track, uint8_t channel) {
-    Sequence* pSequence = g_seqMan.getSequence(bank, sequence);
+void setChannel(uint8_t bank, uint32_t sequence, uint32_t track, uint8_t channel) {
+    Sequence* pSequence = g_seqMan.getSequence(bank << 24 | sequence);
     Track* pTrack = pSequence->getTrack(track);
     if (!pTrack)
         return;
@@ -2458,22 +2466,22 @@ void setChannel(uint8_t bank, uint8_t sequence, uint32_t track, uint8_t channel)
         g_bDirty = true;
 }
 
-uint8_t getChannel(uint8_t bank, uint8_t sequence, uint32_t track) {
-    Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
+uint8_t getChannel(uint8_t bank, uint32_t sequence, uint32_t track) {
+    Track* pTrack = g_seqMan.getSequence(bank << 24 | sequence)->getTrack(track);
     if (!pTrack)
         return 0xFF;
     return pTrack->getChannel();
 }
 
-void solo(uint8_t bank, uint8_t sequence, uint32_t track, bool solo) {
-    Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
+void solo(uint8_t bank, uint32_t sequence, uint32_t track, bool solo) {
+    Track* pTrack = g_seqMan.getSequence(bank << 24 | sequence)->getTrack(track);
     if (!pTrack)
         return;
     pTrack->solo();
 }
 
-bool isSolo(uint8_t bank, uint8_t sequence, uint32_t track) {
-    Track* pTrack = g_seqMan.getSequence(bank, sequence)->getTrack(track);
+bool isSolo(uint8_t bank, uint32_t sequence, uint32_t track) {
+    Track* pTrack = g_seqMan.getSequence(bank << 24 | sequence)->getTrack(track);
     if (!pTrack)
         return false;
     return pTrack->isSolo();
@@ -2605,12 +2613,14 @@ void setTempo(double tempo) {
 
 double getTempo() { return g_dTempo; }
 
-void setBeatsPerBar(uint32_t beats) {
-    if (beats > 0)
+void setBeatsPerBar(uint8_t beats) {
+    if (beats > 0) {
         g_nBeatsPerBar = beats;
+        g_seqMan.setBeatsPerBar(beats);
+    }
 }
 
-uint32_t getBeatsPerBar() { return g_nBeatsPerBar; }
+uint8_t getBeatsPerBar() { return g_nBeatsPerBar; }
 
 void transportSetSyncTimeout(uint32_t timeout) { jack_set_sync_timeout(g_pJackClient, timeout); }
 

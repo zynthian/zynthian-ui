@@ -37,7 +37,7 @@ from zynlibs.zynaudioplayer import *
 # Zynthian Step Sequencer Library Wrapper
 #
 # Most library functions are accessible directly by calling self.libseq.functionName(parameters)
-# Following function wrappers provide simple access for complex data types. Access with zynseq.function_name(parameters)
+#  ing function wrappers provide simple access for complex data types. Access with zynseq.function_name(parameters)
 #
 # Include the following imports to access these two library objects:
 #  from zynlibs.zynseq import zynseq
@@ -129,20 +129,21 @@ class zynseq(zynthian_engine):
             self.libseq.getTempo.restype = ctypes.c_double
             self.libseq.setTempo.argtypes = [ctypes.c_double]
             self.libseq.getTempoAt.restype = ctypes.c_float
-            self.libseq.getTempoAt.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint16, ctypes.c_uint16]
-            self.libseq.addTempoEvent.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_float, ctypes.c_uint16,
+            self.libseq.getTempoAt.argtypes = [ctypes.c_uint8, ctypes.c_uint32, ctypes.c_uint16, ctypes.c_uint16]
+            self.libseq.addTempoEvent.argtypes = [ctypes.c_uint8, ctypes.c_uint32, ctypes.c_float, ctypes.c_uint16,
                                                   ctypes.c_uint16]
             self.libseq.getMetronomeVolume.restype = ctypes.c_float
             self.libseq.setMetronomeVolume.argtypes = [ctypes.c_float]
-            self.libseq.getStateChange.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8,
+            self.libseq.getStateChange.argtypes = [ctypes.c_uint8, ctypes.c_uint32, ctypes.c_uint32,
                                                    ctypes.POINTER(ctypes.c_uint32)]
             self.libseq.getStateChange.restype = ctypes.c_uint8
-            self.libseq.getProgress.argtypes = [ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8,
-                                                ctypes.POINTER(ctypes.c_uint16)]
-            self.libseq.getProgress.restype = ctypes.c_uint8
+            self.libseq.getProgress.argtypes = [ctypes.POINTER(ctypes.c_uint8)]
             # Pattern functions
             self.libseq.getPattern.restype = ctypes.c_uint32
             self.libseq.getPatternAt.restype = ctypes.c_uint32
+            self.libseq.setFollowAction.argtypes = [ctypes.c_uint8, ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint32]
+            self.libseq.getFollowAction.restype = ctypes.c_uint8
+            self.libseq.getFollowActionParam.restype = ctypes.c_uint32
 
             self.libseq.init(bytes("zynseq", "utf-8"))
         except Exception as e:
@@ -165,7 +166,8 @@ class zynseq(zynthian_engine):
         self.bank = None # Currently selected bank
         self.seq_in_bank = 0 # Quantity of sequence in the selected bank
         self.pause_update = False
-        self.select_bank(1, True) # Select launcher bank (1)
+        self.progress = [0] * LAUNCHER_COLS
+        self.reset()
 
     # Destroy instance of shared library
     def destroy(self):
@@ -173,11 +175,18 @@ class zynseq(zynthian_engine):
             ctypes.dlclose(self.libseq._handle)
         self.libseq = None
 
+    def reset(self):
+        self.libseq.reset()
+        self.select_bank(1)
+        self.rebuild_all_launcher_info()
+
     def update_state(self):
         # Get all pending states, send signals for each, update scene lauchers and send signals if necessary
         # State is represented as 4 bytes encoded as single 32-bit word: [sequence, group, mode, play state]
         # mode bits: [0..1] stop mode. [2] start mode. [7] enabled.
 
+        if self.bank is None:
+            return
         states = (ctypes.c_uint32 * self.seq_in_bank)()
         count = self.libseq.getStateChange(self.bank, 0, self.seq_in_bank, states)
         if count:
@@ -238,15 +247,10 @@ class zynseq(zynthian_engine):
         self.update_progress()
 
     def update_progress(self):
-        progress = (ctypes.c_uint16 * self.seq_in_bank)()
-        count = self.libseq.getProgress(self.bank, 0, self.seq_in_bank, progress)
-        for i in range(count):
-            seq = (progress[i] >> 8) & 0xff
-            prog = progress[i] & 0xff
-            if prog != self.progress[i]:
-                self.progress[i] = prog
-                zynsigman.send(zynsigman.S_STEPSEQ, SS_SEQ_PROGRESS,
-                               bank=self.bank, seq=seq, progress=prog)
+        progress = (ctypes.c_uint8 * LAUNCHER_COLS)()
+        self.libseq.getProgress(progress)
+        for grp in range(LAUNCHER_COLS):
+            self.progress[grp] = progress[grp]
 
     # Function to select a bank for edit / control
     # bank: Index of bank
@@ -314,9 +318,8 @@ class zynseq(zynthian_engine):
         mode = (state >> 8) & 0xFF
         state = state & 0xFF
         self.libseq.setGroup(self.bank, sequence, group)
-        follow = self.libseq.getFollowAction(self.bank, sequence)
-        follow_action = follow & 0xFF
-        follow_param = (follow >> 8) // LAUNCHER_COLS
+        follow_action = self.libseq.getFollowAction(self.bank, sequence)
+        follow_param = self.libseq.getFollowActionParam(self.bank, sequence)
         pattern = self.libseq.getPattern(self.bank, sequence, 0, 0)
         if pattern == 4294967295:
             pattern = self.libseq.createPattern()
@@ -353,6 +356,8 @@ class zynseq(zynthian_engine):
                     processor = chain.get_processors("MIDI Synth")[0]
                     if processor.engine.nickname == "CL":
                         info["clippy"] = processor
+                        self.libseq.setGroup(0, processor.stop_seq, group)
+
                 except:
                     pass
                 info["chains"].append(chain_id)
@@ -403,7 +408,7 @@ class zynseq(zynthian_engine):
         if slot is None:
             slot = self.slots
         for sequence in range(self.seq_in_bank - 1, slot * LAUNCHER_COLS - 1, -1):
-            self.libseq.moveSequence(self.bank, sequence, sequence + LAUNCHER_COLS)
+            self.libseq.moveSequence(self.bank, sequence, self.bank, sequence + LAUNCHER_COLS)
         for sequence in range(slot * LAUNCHER_COLS, (slot + 1) * LAUNCHER_COLS):
             chan = sequence % LAUNCHER_COLS
             if chan == 16:
@@ -425,7 +430,7 @@ class zynseq(zynthian_engine):
                 self.libseq.removeSequence(self.bank, seq)
         else:
             for seq in range((slot + 1) * LAUNCHER_COLS, self.seq_in_bank):
-                self.libseq.moveSequence(self.bank, seq, seq - LAUNCHER_COLS)
+                self.libseq.moveSequence(self.bank, seq, self.bank, seq - LAUNCHER_COLS)
         clippy = self.get_clippy()
         if clippy:
             clippy.remove_slot(slot)

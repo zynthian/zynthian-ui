@@ -191,6 +191,7 @@ class zynthian_engine(zynthian_basic_engine):
         self.preset_favs = None
         self.preset_favs_fpath = None
         self.show_favs_bank = True
+        self.monitors_dict = {}
 
     def reset(self):
         pass
@@ -214,6 +215,9 @@ class zynthian_engine(zynthian_basic_engine):
 
     def refresh(self):
         pass
+
+    def get_monitors_dict(self):
+        return self.monitors_dict
 
     # ---------------------------------------------------------------------------
     # OSC Management
