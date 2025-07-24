@@ -394,6 +394,8 @@ class zynthian_processor:
         force_set_engine : True to force setting engine's preset???
         TODO:Optimize search!!
         """
+        if preset_name[0] == '❤':
+            preset_name = preset_name[1:]
         for i in range(len(self.preset_list)):
             name_i = self.preset_list[i][2]
             try:
