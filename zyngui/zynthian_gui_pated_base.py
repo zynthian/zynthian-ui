@@ -43,8 +43,9 @@ from zyngui import zynthian_gui_config
 SELECT_BORDER = zynthian_gui_config.color_on
 PLAYHEAD_CURSOR = zynthian_gui_config.color_on
 CANVAS_BACKGROUND = zynthian_gui_config.color_panel_bd
-GRID_LINE_WEAK = zynthian_gui_config.color_panel_bg
-GRID_LINE_STRONG = zynthian_gui_config.color_tx_off
+GRID_LINE_WEAK = "#505050"
+GRID_LINE_STRONG = "#A0A0A0"
+GRID_LINE_XTRONG = "#FFFFFF"
 PLAYHEAD_BACKGROUND = zynthian_gui_config.color_variant(zynthian_gui_config.color_panel_bd, 40)
 PLAYHEAD_LINE = zynthian_gui_config.color_tx_off
 PLAYHEAD_HEIGHT = 12
@@ -297,6 +298,28 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
     # Pattern menu
     # -------------------------------------------------------------------------
 
+    def get_bpb(self):
+        try:
+            slot = self.seq_info["slot"]
+            return self.zynseq.launcher_info[slot][zynseq.SCENE_LAUNCHER_COL]["bpb"]
+        except:
+            return self.zynseq.libseq.getBeatsPerBar()
+
+    def get_pattern_legth(self, n_beats=None, bpb=None):
+        if n_beats is None:
+            n_beats = self.zynseq.libseq.getBeatsInPattern(self.pattern)
+        if bpb is None:
+            bpb = self.get_bpb()
+        if bpb > 1:
+            bars = n_beats // bpb
+            if bars > 0:
+                rest_beats = n_beats % bpb
+                if rest_beats:
+                    return f"{bars} bars + {rest_beats} beats"
+                else:
+                    return f"{bars} bars"
+        return f"{n_beats} beats"
+
     def get_menu_options(self):
         menu_options = {}
         extra_options = not zynthian_gui_config.check_wiring_layout(["Z2", "V5"])
@@ -314,7 +337,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             follow_action = self.seq_info["follow_action"]
             follow_scene = self.seq_info["follow_param"]
 
-            #TODO: Configure start and stop modes
+            # TODO: Configure start and stop modes
             if repeat > 0:
                 if follow_action == zynseq.FOLLOW_ACTION_LOOP:
                     options["Play mode (LOOP)"] = "Playmode"
@@ -336,7 +359,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 options['\u2610 CC editor'] = 'CC editor'
             else:
                 options['\u2612 CC editor'] = 'CC editor'
-        options[f"Beats in pattern ({self.zynseq.libseq.getBeatsInPattern(self.pattern)})"] = 'Beats in pattern'
+        options[f"Length ({self.get_pattern_legth()})"] = 'Length'
         options[f"Steps/Beat ({self.n_steps_beat})"] = 'Steps per beat'
         options[f"Swing Amount ({int(100.0 * self.zynseq.libseq.getSwingAmount())}%)"] = 'Swing Amount'
         options[f"Swing Divisor ({self.zynseq.libseq.getSwingDiv()})"] = 'Swing Divisor'
@@ -390,23 +413,14 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 self.zyngui.show_screen('tempo')
             case 'CC editor':
                 self.zyngui.toggle_pated()
-            case 'Beats in pattern':
+            case 'Length':
                 labels = []
-                bpb = 1
-                if self.seq_info:
-                    slot = self.seq_info["slot"]
-                    bpb = self.zynseq.launcher_info[slot][zynseq.SCENE_LAUNCHER_COL]["bpb"]
-                if bpb == 1:
-                    bpb = self.zynseq.libseq.getBeatsPerBar()
+                bpb = self.get_bpb()
+                n_beats = self.zynseq.libseq.getBeatsInPattern(self.pattern)
                 for i in range(1, 65):
-                    bars = i // bpb
-                    beats = i % bpb
-                    if beats:
-                        labels.append(f"{i} ({bars}:{beats} bars)")
-                    else:
-                        labels.append(f"{i} ({bars} bars)")
-                self.enable_param_editor(self, 'bip', {'name': 'Beats in pattern', 'value_min': 1, 'value_max': 64,
-                                         'value_default': 4, 'labels': labels, 'value': self.zynseq.libseq.getBeatsInPattern(self.pattern)},
+                    labels.append(self.get_pattern_legth(i, bpb))
+                self.enable_param_editor(self, 'bip', {'name': 'Length', 'value_min': 1, 'value_max': 64,
+                                         'value_default': 4, 'labels': labels, 'value': n_beats},
                                          assert_cb=self.assert_beats_in_pattern)
             case 'Steps per beat':
                 self.enable_param_editor(self, 'spb', {'name': 'Steps per beat', 'ticks': STEPS_PER_BEAT,
@@ -692,8 +706,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         smf = zynsmf.libsmf.addSmf()
         tempo = self.zynseq.libseq.getTempo()
         zynsmf.libsmf.addTempo(smf, 0, tempo)
-        ticks_per_step = zynsmf.libsmf.getTicksPerQuarterNote(
-            smf) / self.n_steps_beat
+        ticks_per_step = zynsmf.libsmf.getTicksPerQuarterNote(smf) / self.n_steps_beat
         for step in range(self.n_steps):
             time = int(step * ticks_per_step)
             for note in range(128):
@@ -1017,6 +1030,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             # Redraw gridlines
             self.grid_canvas.delete("gridvline")
             self.play_canvas.delete("beatnum")
+            bpb = self.get_bpb()
             if self.n_steps_beat:
                 bnum_font = tkfont.Font(family=zynthian_gui_config.font_topbar[0], size=PLAYHEAD_HEIGHT - 2)
                 lh = max(128 * self.row_height - 1, self.grid_height - 1)
@@ -1024,14 +1038,19 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
                 for step in range(0, self.n_steps + 1):
                     xpos = step * self.step_width
                     if step % self.n_steps_beat == 0:
-                        self.grid_canvas.create_line(xpos, 0, xpos, lh, fill=GRID_LINE_STRONG, tags="gridvline")
+                        beatnum = step // self.n_steps_beat
+                        barnum = beatnum // bpb
+                        rest_beatnum = beatnum % bpb
+                        if rest_beatnum == 0:
+                            self.grid_canvas.create_line(xpos, 0, xpos, lh, fill=GRID_LINE_XTRONG, tags="gridvline")
+                        else:
+                            self.grid_canvas.create_line(xpos, 0, xpos, lh, fill=GRID_LINE_STRONG, tags="gridvline")
                         if step < self.n_steps:
-                            beatnum = 1 + step // self.n_steps_beat
-                            if beatnum == 1:
+                            if beatnum == 0:
                                 anchor = tkinter.NW
                             else:
                                 anchor = tkinter.N
-                            self.play_canvas.create_text(xpos, -2, text=str(beatnum), font=bnum_font, anchor=anchor,
+                            self.play_canvas.create_text(xpos, -2, text=str(beatnum + 1), font=bnum_font, anchor=anchor,
                                                          fill=GRID_LINE_STRONG, tags="beatnum")
                     else:
                         self.grid_canvas.create_line(xpos, 0, xpos, lh, fill=GRID_LINE_WEAK, tags="gridvline")
