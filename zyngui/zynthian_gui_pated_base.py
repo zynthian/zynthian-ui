@@ -275,6 +275,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
             logging.error(f"Couldn't set active chain to channel {self.channel}.")
 
         self.toggle_midi_record(self.midi_record)
+        self.redraw_pending = 4
         return True
 
     # Function to hide GUI
