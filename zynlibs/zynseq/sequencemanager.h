@@ -142,11 +142,11 @@ class SequenceManager {
     */
     void setSequencePlayState(uint32_t sequence, uint8_t state);
 
-    /** @brief  Start scene based on scene launcher state
-        @param  slot Index of scene
+    /** @brief  Handle change of scene launcher state
+        @param  sequence Index of scene launcher sequence
         @param  state Scene launcher play state
     */
-    void onSceneLauncherState(uint8_t slot, uint8_t state);
+    void onSceneLauncherState(uint32_t sequence, uint8_t state);
 
     /** @brief  Move sequence
         @param  sequence Index of sequence
@@ -293,7 +293,7 @@ class SequenceManager {
 
     // Note: Maps are used for patterns and sequences to allow addition and removal of sequences whilst maintaining consistent access to remaining instances
     std::map<uint32_t, Pattern*> m_mPatterns;  // Map of pattern pointers indexed by pattern number
-    std::vector<uint32_t> m_vPlayingSequences; // Vector of <sequence>for currently playing sequences (used to optimise play control)
+    std::vector<uint32_t> m_vPlayingSequences; // Vector of <sequence> for currently playing sequences (used to optimise play control)
     std::map<uint8_t, uint32_t> m_mTriggers;   // Map of sequence indexed by MIDI note triggers
     std::map<uint32_t, Sequence> m_mSequences; // Map of sequences, indexed by sequence number.
 };

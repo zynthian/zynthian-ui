@@ -191,7 +191,8 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
     */
     uint32_t nTime = timeinfo.first;
     double dSamplesPerClock = timeinfo.second;
-    std::vector<uint16_t> vNext;
+    std::vector<uint32_t> vNext;
+    std::vector<uint32_t> vScene;
     for (auto it = m_vPlayingSequences.begin(); it != m_vPlayingSequences.end();) {
         uint32_t sequence = *it;
         Sequence* pSequence = getSequence(sequence);
@@ -199,7 +200,7 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
         if (pSequence->getPlayState() == STOPPED) {
             it = m_vPlayingSequences.erase(it);
             if (nGroup < 17)
-                m_aGroupProgress[nGroup] = 0;            
+                m_aGroupProgress[nGroup] = 0;
             continue;
         }
         uint8_t nEventType = pSequence->clock(nTime, bSync, dSamplesPerClock);
@@ -209,28 +210,11 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
                 uint32_t nEventTime = pEvent->time;
                 MIDI_MESSAGE* pNewEvent = new MIDI_MESSAGE(pEvent->msg);
                 pSchedule->insert(std::pair<uint32_t, MIDI_MESSAGE*>(nEventTime, pNewEvent));
-                // fprintf(stderr, "Clock time: %u Scheduling event 0x%x 0x%x 0x%x with time %u at %u framesPerClock: %f\n", nTime, pEvent->msg.command,
-                // pEvent->msg.value1, pEvent->msg.value2, pEvent->time, nEventTime, dSamplesPerClock);
             }
         }
         if (nEventType & 2) {
-            // Change of state
-            // uint8_t nTrigger = getTriggerNote(it->first, it->second);
-            // It's currently polled from python
-            if (bSync && pSequence->getPlayState() == PLAYING && pSequence->getGroup() == 16) {
-                // Scene started so start slave sequences
-                Track* pTrack = pSequence->getTrack(0);
-                if (pTrack) {
-                    Pattern* pPattern = pTrack->getPattern(0);
-                    if (pPattern) {
-                        uint8_t timeSig = pPattern->getBeatsInPattern();
-                        if (timeSig > 1 && timeSig != m_nTimeSig) {
-                            m_nTimeSig = timeSig;
-                            m_bTimeSigChanged = true;
-                        }
-                    }
-                }
-            }
+            // Change of scene launcher state
+            vScene.push_back(sequence);
         }
         if (nEventType & 4) {
             // Tempo change
@@ -239,41 +223,53 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
         }
         if (nEventType & 8) {
             // Reached end of sequence repeats
-            uint8_t action = pSequence->getFollowAction();
-            uint32_t param = pSequence->getFollowActionParam();
-            uint32_t next = 0xffffffff;
-            switch (action) {
+            switch (pSequence->getFollowAction()) {
                 case FOLLOW_ACTION_LOOP:
-                    next = sequence;
+                    vNext.push_back(sequence);
                     break;
                 case FOLLOW_ACTION_PREV:
                     if (sequence > 16)
-                        next = (sequence - 17);
+                        vNext.push_back(sequence - 17);
                     break;
                 case FOLLOW_ACTION_NEXT:
-                    next = sequence + 17;
+                    vNext.push_back(sequence + 17);
                     break;
                 case FOLLOW_ACTION_JUMP:
-                    next = param;
+                    vNext.push_back(pSequence->getFollowActionParam());
                     break;
             }
-            if (next != 0xffffffff)
-                vNext.push_back(next);
-        }
-        if (nEventType & 16) {
-            // Reached end of scene launcher
-            onSceneLauncherState(0x1000000 | (sequence & 0xffffff) / 17, pSequence->getPlayState());
         }
         if (nGroup == 16)
             m_aGroupProgress[nGroup] = (100 * pSequence->getPlayPosition() / (m_nBeatsPerBar * 24));
-        else if (pSequence->getLength())
+        else if (nGroup < 16 && pSequence->getLength())
             m_aGroupProgress[nGroup] = (100 * pSequence->getPlayPosition() / pSequence->getLength());
         ++it;
     }
+    // Process pending scene launchers
+    for (auto it = vScene.begin(); it != vScene.end(); ++it) {
+        uint32_t sequence = *it;
+        Sequence* pSequence = getSequence(sequence);
+        uint8_t state = pSequence->getPlayState(); 
+        if (state == PLAYING) {
+            // Scene started - Check for change of time signature
+            Track* pTrack = pSequence->getTrack(0);
+            if (pTrack) {
+                Pattern* pPattern = pTrack->getPattern(0);
+                if (pPattern) {
+                    uint8_t timeSig = pPattern->getBeatsInPattern();
+                    if (timeSig > 1 && timeSig != m_nTimeSig) {
+                        m_nTimeSig = timeSig;
+                        m_bTimeSigChanged = true;
+                    }
+                }
+            }
+            onSceneLauncherState(sequence, state);
+        }
+    }
     // Start pending follow-on sequences
-    for (auto it = vNext.begin(); it != vNext.end(); ++it)
+    for (auto it = vNext.begin(); it != vNext.end(); ++it) {
         setSequencePlayState(*it, PLAYING);
-
+    }
     return m_vPlayingSequences.size();
 }
 
@@ -297,26 +293,22 @@ void SequenceManager::setSequencePlayState(uint32_t sequence, uint8_t state) {
         if (bAddToList)
             m_vPlayingSequences.push_back(sequence);
     }
-
-    // Handle scene launchers (group 16)
+    // Handle scene launchers
     if (pSequence->getGroup() == 16)
-        onSceneLauncherState(0x1000000 | (sequence & 0xffffff) / 17, state);
+        onSceneLauncherState(sequence, state);
 
     pSequence->setPlayState(state);
 }
 
-void SequenceManager::onSceneLauncherState(uint8_t slot, uint8_t state) {
-    uint32_t base_seq = 0x01000000 | slot * 17;
-    if (state == STARTING || state == PLAYING) {
+void SequenceManager::onSceneLauncherState(uint32_t sequence, uint8_t state) {
+    uint32_t base_seq = sequence - 16;
+    if (state == PLAYING) {
         for (uint8_t chan = 0; chan < 16; ++chan) {
             uint32_t nSlaveSeq = base_seq + chan;
             Sequence* pSlaveSeq = getSequence(nSlaveSeq);
             if (pSlaveSeq->getRepeat() == 0)// || pSlaveSeq->getPlayState() == PLAYING)
                 continue;
-            if (pSlaveSeq->getPlayState() == STOPPING)
-                setSequencePlayState(nSlaveSeq, PLAYING);
-            else
-                setSequencePlayState(nSlaveSeq, STARTING);
+            setSequencePlayState(nSlaveSeq, PLAYING);
         }
     } else if (state == STOPPING) {
         for (uint8_t chan = 0; chan < 16; ++chan) {

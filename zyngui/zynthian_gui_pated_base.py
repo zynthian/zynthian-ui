@@ -287,6 +287,7 @@ class zynthian_gui_pated_base(zynthian_gui_base.zynthian_gui_base):
         self.zynseq.libseq.setPatternZoom(self.zoom)
         if self.seq_info:
             self.zynseq.libseq.setFollowAction(self.bank, self.sequence, self.seq_info["follow_action"], self.seq_info["follow_param"])
+            self.zynseq.libseq.setRepeat(self.bank, self.sequence, self.seq_info["repeat"])
         else:
             self.stop_playback()
 

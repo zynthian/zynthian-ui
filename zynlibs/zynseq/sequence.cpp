@@ -161,9 +161,9 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
                 m_nPosition = 0;
             }
         }
-        if (m_nState == STARTING)
+        if (m_nState == STARTING) {
             m_nState = PLAYING;
-        else if (m_nState == STOPPING_SYNC) {
+        } else if (m_nState == STOPPING_SYNC) {
             m_nState = STOPPED;
             m_nPosition = 0;
         }
@@ -176,7 +176,7 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
         ++m_nPosition;
     }
     if (((m_nGroup != 16) && (m_nPosition >= m_nLength)) || ((m_nGroup == 16) && bSync)) {
-        // End of sequence
+        // End of sequence or scene
         if (m_nState == PLAYING) {
             m_nCount += nCountInc;
             if (m_nCount >= m_nRepeat) {
@@ -184,8 +184,9 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
                 if (m_nFollowAction != FOLLOW_ACTION_LOOP) {
                     setPlayState(STOPPED);
                     nReturn |= 8;
-                } else if (m_nGroup == 16) {
-                    nReturn |= 16;
+                }
+                if (m_nGroup == 16) {
+                    nReturn |= 2;
                 }
             }
         } else {
@@ -198,16 +199,15 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
     if (m_bStateChanged) {
         m_bChanged = true;
         m_bStateChanged = false;
-        nReturn |= 2;
+        if (m_nGroup == 16)
+            nReturn |= 2;
         if (m_nState == PLAYING)
             m_pNextTimebaseEvent = m_timebase.getFirstTimebaseEvent();
     }
 
-    if (nState != STOPPED && m_pNextTimebaseEvent && nTime >= m_pNextTimebaseEvent->clock) {
-        if (m_pNextTimebaseEvent->type == TIMEBASE_TYPE_TEMPO) {
-            m_fTempo = m_pNextTimebaseEvent->value / 100;
-            nReturn |= 4;
-        }
+    if (nState != STOPPED && m_pNextTimebaseEvent && nTime >= m_pNextTimebaseEvent->clock && m_pNextTimebaseEvent->type == TIMEBASE_TYPE_TEMPO) {
+        m_fTempo = m_pNextTimebaseEvent->value / 100;
+        nReturn |= 4;
     }
 
     return nReturn;

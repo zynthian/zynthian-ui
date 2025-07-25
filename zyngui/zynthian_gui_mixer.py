@@ -1511,7 +1511,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         name = self.zynseq.get_sequence_name(self.zynseq.bank, info['sequence'])
         repeat = self.zynseq.libseq.getRepeat(self.zynseq.bank, info['sequence'])
         follow_action = self.zynseq.libseq.getFollowAction(self.zynseq.bank, info['sequence'])
-        follow_param = self.zynseq.libseq.getFollowActionParam(self.zynseq.bank, info['sequence'])
+        follow_param = self.zynseq.libseq.getFollowActionParam(self.zynseq.bank, info['sequence']) & 0xffffff
         follow_scene = follow_param // zynseq.SCENE_LAUNCHER_COL
         self.zynseq.libseq.selectPattern(info["pattern"])
         program_change = self.zynseq.libseq.getProgramChange(0)
@@ -1753,8 +1753,8 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
                         target_scene += 1
                     self.launcher_select_info["follow_action"] = zynseq.FOLLOW_ACTION_JUMP
                     self.launcher_select_info["follow_param"] = target_scene
-                    target_sequence = (target_scene - 1) * zynseq.LAUNCHER_COLS + self.launcher_select_info["sequence"] % zynseq.LAUNCHER_COLS
-                self.zynseq.libseq.setFollowAction(self.zynseq.bank, self.launcher_select_info["sequence"], self.launcher_select_info["follow_action"], target_sequence)
+                    target_sequence = 0x1000000 | (target_scene - 1) * zynseq.LAUNCHER_COLS + self.launcher_select_info["sequence"] % zynseq.LAUNCHER_COLS
+                self.zynseq.libseq.setFollowAction(self.zynseq.bank, self.launcher_select_info["sequence"], self.launcher_select_info["follow_action"],  target_sequence)
 
         self.main_mixbus_strip.draw_sequence_slot(slot)
 
