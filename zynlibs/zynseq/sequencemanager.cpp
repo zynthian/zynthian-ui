@@ -212,10 +212,6 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
                 pSchedule->insert(std::pair<uint32_t, MIDI_MESSAGE*>(nEventTime, pNewEvent));
             }
         }
-        if (nEventType & 2) {
-            // Change of scene launcher state
-            vScene.push_back(sequence);
-        }
         if (nEventType & 4) {
             // Tempo change
             m_fTempo = pSequence->getTempo();
@@ -223,6 +219,10 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
         }
         if (nEventType & 8) {
             // Reached end of sequence repeats
+            if (nEventType & 2 && pSequence->getFollowAction() != FOLLOW_ACTION_NONE)
+                // Scene launcher reached end
+                vScene.push_back(sequence);
+
             switch (pSequence->getFollowAction()) {
                 case FOLLOW_ACTION_LOOP:
                     vNext.push_back(sequence);
@@ -238,12 +238,20 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
                     vNext.push_back(pSequence->getFollowActionParam());
                     break;
             }
+        } else if (nEventType & 2) {
+            // Scene launcher start
+            vScene.push_back(sequence);
         }
+
         if (nGroup == 16)
             m_aGroupProgress[nGroup] = (100 * pSequence->getPlayPosition() / (m_nBeatsPerBar * 24));
         else if (nGroup < 16 && pSequence->getLength())
             m_aGroupProgress[nGroup] = (100 * pSequence->getPlayPosition() / pSequence->getLength());
         ++it;
+    }
+    // Start pending follow-on sequences
+    for (auto it = vNext.begin(); it != vNext.end(); ++it) {
+        setSequencePlayState(*it, PLAYING);
     }
     // Process pending scene launchers
     for (auto it = vScene.begin(); it != vScene.end(); ++it) {
@@ -263,12 +271,8 @@ size_t SequenceManager::clock(std::pair<double, double> timeinfo, std::multimap<
                     }
                 }
             }
-            onSceneLauncherState(sequence, state);
         }
-    }
-    // Start pending follow-on sequences
-    for (auto it = vNext.begin(); it != vNext.end(); ++it) {
-        setSequencePlayState(*it, PLAYING);
+        onSceneLauncherState(sequence, state);
     }
     return m_vPlayingSequences.size();
 }
@@ -293,11 +297,11 @@ void SequenceManager::setSequencePlayState(uint32_t sequence, uint8_t state) {
         if (bAddToList)
             m_vPlayingSequences.push_back(sequence);
     }
-    // Handle scene launchers
-    if (pSequence->getGroup() == 16)
-        onSceneLauncherState(sequence, state);
-
     pSequence->setPlayState(state);
+
+    if (state == STOPPING && pSequence->getGroup() == 16)
+        // Stop running sequences if scene requested to stop
+        onSceneLauncherState(sequence, state);
 }
 
 void SequenceManager::onSceneLauncherState(uint32_t sequence, uint8_t state) {

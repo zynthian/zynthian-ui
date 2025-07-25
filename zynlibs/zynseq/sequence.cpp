@@ -163,6 +163,8 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
         }
         if (m_nState == STARTING) {
             m_nState = PLAYING;
+            if (m_nGroup == 16)
+                nReturn |= 2;
         } else if (m_nState == STOPPING_SYNC) {
             m_nState = STOPPED;
             m_nPosition = 0;
@@ -185,9 +187,8 @@ uint8_t Sequence::clock(uint32_t nTime, bool bSync, double dSamplesPerClock) {
                     setPlayState(STOPPED);
                     nReturn |= 8;
                 }
-                if (m_nGroup == 16) {
+                if (m_nGroup == 16)
                     nReturn |= 2;
-                }
             }
         } else {
             m_nState = STOPPED;
