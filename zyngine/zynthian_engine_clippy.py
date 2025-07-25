@@ -353,8 +353,8 @@ class zynthian_engine_clippy(zynthian_engine):
                     file.write(f"sample={file_zctrl.path}\n")
                     file.write(f"key={slot + 1}\n")
                     file.write(f"volume={gain_zctrl.value}\n")
-                    file.write(f"offset={crop_start_zctrl.value}\n")
-                    file.write(f"end={crop_end_zctrl.value}\n")
+                    #file.write(f"offset={crop_start_zctrl.value}\n")
+                    #file.write(f"end={crop_end_zctrl.value}\n")
                     file.write(f"\n")
         self.lscp_send_single(processor, f"LOAD INSTRUMENT '{filename}' 0 0")
 
@@ -366,7 +366,7 @@ class zynthian_engine_clippy(zynthian_engine):
                 # Sample file loaded so populate sample maniluation controls
                 self._ctrl_screens = [
                     [f"sample {slot + 1}", [f"slot", f"file {slot}", f"gain {slot}", f"warp {slot}"]],
-                    [f"waveform {slot + 1}", [f"beats {slot}", f"mode {slot}", f"crop_start {slot}", f"crop_end {slot}"]]
+                    [f"waveform {slot + 1}", [f"beats {slot}", f"mode {slot}"]] #, f"crop_start {slot}", f"crop_end {slot}"]]
                 ]
             else:
                 self._ctrl_screens = [[f"sample {slot + 1}", [f"slot", f"file {slot}"]]]

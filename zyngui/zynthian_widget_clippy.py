@@ -139,7 +139,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
             self.height,
             width=0,
             fill="dark grey",
-            tags="overlay"
+            state=tkinter.HIDDEN # TODO: Show when zoom working
         )
         self.info_text = self.widget_canvas.create_text(
             self.width - int(0.5 * zynthian_gui_config.font_size),
@@ -202,6 +202,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         self.tap_time = event.time
 
     def on_canvas_drag(self, event):
+        return # TODO: Enable when crop is working
         if self.drag_marker and self.frames:
             f = self.width / self.frames * self.zoom
             pos = event.x / f + self.offset
@@ -349,7 +350,7 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
         self.widget_canvas.itemconfig(f"waveform", state=tkinter.NORMAL)
         self.widget_canvas.itemconfig(self.loading_text, state=tkinter.HIDDEN)
         self.widget_canvas.tag_lower(self.loading_text)
-        self.widget_canvas.itemconfig("overlay", state=tkinter.NORMAL)
+        # TODO: Enable when crop is working self.widget_canvas.itemconfig("overlay", state=tkinter.NORMAL)
         self.widget_canvas.tag_raise("overlay")
 
     def refresh_gui(self):
