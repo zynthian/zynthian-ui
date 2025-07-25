@@ -1108,9 +1108,10 @@ void moveSequence(uint8_t bank, uint32_t sequence, uint8_t newBank, uint32_t new
 /** @brief  Swap two sequences within a bank
     @param  bank Index of bank
     @param  seqence1 Index of first sequence
+    @param  bank2 Index of second bank
     @param  seqence2 Index of second sequence
 */
-void swapSequence(uint8_t bank, uint32_t sequence1, uint32_t sequence2);
+void swapSequence(uint8_t bank, uint32_t sequence1, uint8_t bank2, uint32_t sequence2);
 
 /** @brief  Update all sequence lengths and empty status
 */

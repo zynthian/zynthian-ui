@@ -2405,8 +2405,8 @@ void moveSequence(uint8_t bank, uint32_t sequence, uint8_t newBank, uint32_t new
     g_seqMan.moveSequence(bank << 24 | sequence, newBank << 24 | newSeq);
 }
 
-void swapSequence(uint8_t bank, uint32_t sequence1, uint32_t sequence2) {
-    g_seqMan.swapSequence(bank << 24 | sequence1, sequence2);
+void swapSequence(uint8_t bank, uint32_t sequence1, uint8_t bank2, uint32_t sequence2) {
+    g_seqMan.swapSequence(bank << 24 | sequence1, bank2 << 24 | sequence2);
 }
 
 void updateSequenceInfo() {

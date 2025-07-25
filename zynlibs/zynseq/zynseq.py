@@ -141,6 +141,7 @@ class zynseq(zynthian_engine):
             # Pattern functions
             self.libseq.getPattern.restype = ctypes.c_uint32
             self.libseq.getPatternAt.restype = ctypes.c_uint32
+            # Sequence functions
             self.libseq.setFollowAction.argtypes = [ctypes.c_uint8, ctypes.c_uint32, ctypes.c_uint8, ctypes.c_uint32]
             self.libseq.getFollowAction.restype = ctypes.c_uint8
             self.libseq.getFollowActionParam.restype = ctypes.c_uint32
@@ -413,6 +414,7 @@ class zynseq(zynthian_engine):
             chan = sequence % LAUNCHER_COLS
             if chan == 16:
                 self.set_sequence_name(self.bank, sequence, f"{chr(65 + slot)}")
+                self.libseq.setFollowAction(self.bank, sequence, FOLLOW_ACTION_NONE, 0)
             else:
                 self.set_sequence_name(self.bank, sequence, f"{chr(65 + slot)}{chan + 1}")
         #self.rebuild_all_launcher_info()
@@ -449,13 +451,13 @@ class zynseq(zynthian_engine):
                 src_seq = i * LAUNCHER_COLS
                 dst_seq = (i + 1) * LAUNCHER_COLS
                 for i in range(17):
-                    self.libseq.swapSequence(self.bank, src_seq + i, dst_seq + i)
+                    self.libseq.swapSequence(self.bank, src_seq + i, self.bank, dst_seq + i)
         else:
             for i in range(slot, new_slot, -1):
                 src_seq = i * LAUNCHER_COLS
                 dst_seq = (i - 1) * LAUNCHER_COLS
                 for i in range(17):
-                    self.libseq.swapSequence(self.bank, src_seq + i, dst_seq + i)
+                    self.libseq.swapSequence(self.bank, src_seq + i, self.bank, dst_seq + i)
         clippy = self.get_clippy()
         if clippy:
             clippy.move_slot(slot, offset)

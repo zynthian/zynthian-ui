@@ -182,78 +182,77 @@ class zynthian_engine_clippy(zynthian_engine):
                 "{} ({} {})".format(parts[2], parts[0], parts[1]))
 
     def insert_slot(self, slot):
-        for processor in self.processor:
+        for processor in self.processors:
             self.insert_proc_slot(processor, slot)
 
     def insert_proc_slot(self, processor, slot):
-        for processor in self.processors:
-            # Create new zctrls
-            zctrls = {
-                f"file {slot}": zynthian_controller(self, f"file {slot}", {
-                    "name": "file",
-                    "is_path": True,
-                    "value_default": "",
-                    "path_file_types": ["wav", "ogg", "mp3", "flac", "aac"],
-                    "processor": processor
-                }),
-                f"warp {slot}": zynthian_controller(self, f"warp {slot}", {
-                    "name": "warp",
-                    "processor": processor,
-                    "is_toggle": True,
-                    "labels": ["off", "on"],
-                    "value": "on"
-                }),
-                f"beats {slot}": zynthian_controller(self, f"beats {slot}", {
-                    "name": "beats",
-                    "processor": processor,
-                    "is_integer": True,
-                    "value": 0,
-                    "value_min": 0,
-                    "value_max": MAX_BEATS
-                }),
-                f"mode {slot}": zynthian_controller(self, f"mode {slot}", {
-                    "name": "mode",
-                    "processor": processor,
-                    "is_integer": True,
-                    "labels": ["disabled", "loop"] + [f"play {i}" for i in range(1, 25)],
-                    "value_min": 0,
-                    "value_max": 25,
-                    "value": 0
-                }),
-                f"gain {slot}": zynthian_controller(self, f"gain {slot}", {
-                    "name": "gain (dB)",
-                    "processor": processor,
-                    "value_min": -12.0,
-                    "value_max": 6.0,
-                    "value": 0.0,
-                }),
-                f"crop_start {slot}": zynthian_controller(self, f"crop_start {slot}", {
-                    "name": "crop start",
-                    "processor": processor,
-                    "is_integer": True
-                }),
-                f"crop_end {slot}": zynthian_controller(self, f"crop_end {slot}", {
-                    "name": "crop end",
-                    "processor": processor,
-                    "is_integer": True
-                })
-            }
-            sequence = processor.midi_chan + slot * zynseq.LAUNCHER_COLS
-            self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0001)
+        # Create new zctrls
+        zctrls = {
+            f"file {slot}": zynthian_controller(self, f"file {slot}", {
+                "name": "file",
+                "is_path": True,
+                "value_default": "",
+                "path_file_types": ["wav", "ogg", "mp3", "flac", "aac"],
+                "processor": processor
+            }),
+            f"warp {slot}": zynthian_controller(self, f"warp {slot}", {
+                "name": "warp",
+                "processor": processor,
+                "is_toggle": True,
+                "labels": ["off", "on"],
+                "value": "on"
+            }),
+            f"beats {slot}": zynthian_controller(self, f"beats {slot}", {
+                "name": "beats",
+                "processor": processor,
+                "is_integer": True,
+                "value": 0,
+                "value_min": 0,
+                "value_max": MAX_BEATS
+            }),
+            f"mode {slot}": zynthian_controller(self, f"mode {slot}", {
+                "name": "mode",
+                "processor": processor,
+                "is_integer": True,
+                "labels": ["disabled", "loop"] + [f"play {i}" for i in range(1, 25)],
+                "value_min": 0,
+                "value_max": 25,
+                "value": 0
+            }),
+            f"gain {slot}": zynthian_controller(self, f"gain {slot}", {
+                "name": "gain (dB)",
+                "processor": processor,
+                "value_min": -12.0,
+                "value_max": 6.0,
+                "value": 0.0,
+            }),
+            f"crop_start {slot}": zynthian_controller(self, f"crop_start {slot}", {
+                "name": "crop start",
+                "processor": processor,
+                "is_integer": True
+            }),
+            f"crop_end {slot}": zynthian_controller(self, f"crop_end {slot}", {
+                "name": "crop end",
+                "processor": processor,
+                "is_integer": True
+            })
+        }
+        sequence = processor.midi_chan + slot * zynseq.LAUNCHER_COLS
+        self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0001)
 
-            # Move zctrls
-            for i in range(slot, self.zynseq.slots):
-                for name in self.SYMBOLS:
-                    try:
-                        zctrl = processor.controllers_dict.pop(f"{name} {i}")
-                        zctrl.symbol = f"{name} {i + 1}"
-                        zctrls[zctrl.symbol] = zctrl
-                    except:
-                        break #TODO: Optimise by breaking out of outer loop
+        # Move zctrls
+        for i in range(slot, self.zynseq.slots):
+            for name in self.SYMBOLS:
+                try:
+                    zctrl = processor.controllers_dict.pop(f"{name} {i}")
+                    zctrl.symbol = f"{name} {i + 1}"
+                    zctrls[zctrl.symbol] = zctrl
+                except:
+                    break #TODO: Optimise by breaking out of outer loop
 
-            # Merge controller dict
-            processor.controllers_dict.update(zctrls)
-            processor.controllers_dict["slot"].value_max = self.zynseq.slots
+        # Merge controller dict
+        processor.controllers_dict.update(zctrls)
+        processor.controllers_dict["slot"].value_max = self.zynseq.slots
 
     def set_slot(self, processor, slot):
         processor.controllers_dict["slot"].set_value(slot + 1)
