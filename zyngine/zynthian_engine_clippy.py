@@ -238,7 +238,7 @@ class zynthian_engine_clippy(zynthian_engine):
                     "is_integer": True
                 })
             }
-            sequence = processor.midi_chan + (slot - 1) * zynseq.LAUNCHER_COLS
+            sequence = processor.midi_chan + slot * zynseq.LAUNCHER_COLS
             self.libseq.setPlayMode(self.zynseq.bank, sequence, 0x0001)
 
             # Move zctrls
