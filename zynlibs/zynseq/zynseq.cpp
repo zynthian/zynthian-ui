@@ -63,7 +63,7 @@ uint32_t g_nXruns = 0;
 
 SequenceManager g_seqMan;                           // Instance of sequence manager
 Pattern* g_pPattern = NULL;                         // Pointer to currently edited pattern
-uint8_t g_nSequence = 0;                            // Index of currently edited sequence (bank encoded into MSB)
+uint32_t g_nSequence = 0;                            // Index of currently edited sequence (bank encoded into MSB)
 std::multimap<uint32_t, MIDI_MESSAGE*> g_mSchedule; // Schedule of MIDI events (queue for sending), indexed by scheduled play time (samples since JACK epoch)
 bool g_bMutex = false;                              // Mutex lock for access to g_mSchedule
 bool g_bDebug = false;                              // True to output debug info
