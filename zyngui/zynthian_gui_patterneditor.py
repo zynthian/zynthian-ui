@@ -532,7 +532,7 @@ class zynthian_gui_patterneditor(zynthian_gui_base.zynthian_gui_base):
         elif params == 'Copy pattern':
             self.copy_source = self.pattern
             self.enable_param_editor(self, 'copy', {'name': 'Copy pattern to', 'value_min': 1,
-                                     'value_max': zynseq.SEQ_MAX_PATTERNS, 'value': self.pattern, 'nudge_factor': 1}, self.copy_pattern)
+                                     'value_max': zynseq.SEQ_MAX_PATTERNS, 'value': self.pattern}, self.copy_pattern)
         elif params == 'Load pattern':
             self.zyngui.screens['option'].config_file_list("Load pattern", [
                                                            self.patterns_dpath, self.my_patterns_dpath], "*.zpat", self.load_pattern_file)

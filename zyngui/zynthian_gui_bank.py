@@ -76,15 +76,7 @@ class zynthian_gui_bank(zynthian_gui_selector_info):
                 return
             self.processor.set_show_fav_presets(False)
 
-        # If only one bank, show to preset list
-        if len(self.list_data) <= 1:
-            self.zyngui.replace_screen('preset')
-        else:
-            self.zyngui.show_screen('preset')
-
-        # If bank is empty (no presets), show instrument control
-        if len(self.processor.preset_list) == 0 or self.processor.preset_list[0][0] == "":
-            self.zyngui.screens['preset'].select_action(0)
+        self.zyngui.show_screen('preset')
 
     def topbar_bold_touch_action(self):
         self.zyngui.zynswitch_defered('B', 1)

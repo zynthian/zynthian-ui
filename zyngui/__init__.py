@@ -20,6 +20,7 @@ __all__ = [
     "zynthian_gui_audio_in",
     "zynthian_gui_bank",
     "zynthian_gui_preset",
+    "zynthian_gui_grid_preset",
     "zynthian_gui_control",
     "zynthian_gui_control_xy",
     "zynthian_gui_zs3",

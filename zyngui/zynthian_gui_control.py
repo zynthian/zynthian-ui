@@ -81,7 +81,7 @@ class zynthian_gui_control(zynthian_gui_selector):
     def update_layout(self):
         super().update_layout()
         minheight = self.height // self.layout['rows']
-        minwidth = int((self.width * self.layout['ctrl_width'] - 1) * self.sidebar_shown)
+        minwidth = int((self.width * 0.25 - 1) * self.sidebar_shown)
         for pos in self.layout['ctrl_pos']:
             self.main_frame.rowconfigure(pos[0], minsize=minheight, weight=1)
             self.main_frame.columnconfigure(pos[1], minsize=minwidth, weight=self.sidebar_shown)
@@ -340,7 +340,8 @@ class zynthian_gui_control(zynthian_gui_selector):
             else:
                 self.set_zcontroller(i, None)
             pos = self.layout['ctrl_pos'][i]
-            self.zgui_controllers[i].grid(row=pos[0], column=pos[1], pady=(0, 1), sticky='news')
+            self.zgui_controllers[i].grid(
+                row=pos[0], column=pos[1], pady=(0, 1), sticky='news')
 
         self.update_layout()
 
@@ -365,8 +366,7 @@ class zynthian_gui_control(zynthian_gui_selector):
     def set_mode_select(self):
         self.exit_midi_learn()
         self.mode = 'select'
-        if self.current_widget and self.current_widget.hide_on_select_mode():
-            self.hide_widgets()
+        self.hide_widgets()
         self.set_selector_screen()
         self.listbox.config(selectbackground=zynthian_gui_config.color_ctrl_bg_off,
                             selectforeground=zynthian_gui_config.color_ctrl_tx,
@@ -446,13 +446,6 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.midi_learn_options(swi)
             return True
 
-        if self.current_widget:
-            try:
-                if self.current_widget.switch(swi, t):
-                    return True
-            except:
-                pass
-
         if swi == 0:
             if t == 'S':
                 self.rotate_chain()
@@ -501,12 +494,6 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.zgui_controllers[i].zynpot_abs(val)
 
     def zynpot_cb(self, i, dval):
-        if self.current_widget:
-            try:
-                if self.current_widget.zynpot_cb(i, dval):
-                    return
-            except:
-                pass
         if self.mode == 'control' and self.zcontrollers:
             if self.zgui_controllers[i].zynpot_cb(dval):
                 if self.midi_learning:
@@ -537,8 +524,7 @@ class zynthian_gui_control(zynthian_gui_selector):
             for zgui_ctrl in self.zgui_controllers:
                 if zgui_ctrl.zctrl and zgui_ctrl.zctrl.is_dirty or force:
                     zgui_ctrl.calculate_plot_values()
-                    zgui_ctrl.plot_value()
-                    zgui_ctrl.zctrl.is_dirty = False
+                zgui_ctrl.plot_value()
         for k, widget in self.widgets.items():
             widget.update()
 
@@ -553,7 +539,7 @@ class zynthian_gui_control(zynthian_gui_selector):
         if self.shown:
             self.show_menu()
         elif self.zyngui.current_screen.endswith("_options"):
-            self.zyngui.close_screen()
+            self.close_screen()
 
     # --------------------------------------------------------------------------
     # MIDI learn management
@@ -576,19 +562,14 @@ class zynthian_gui_control(zynthian_gui_selector):
         if self.mode != 'control':
             return
 
-        # Handle alsa mixer
-        default_midi_learning_mode = MIDI_LEARNING_CHAIN
-        try:
-            if self.zyngui.get_current_processor().eng_code == "MX":
-                default_midi_learning_mode = MIDI_LEARNING_GLOBAL
-        except:
-            pass
-
         if i is not None:
             # Restart MIDI learn with a new controller
             if self.zgui_controllers[i].zctrl != self.zyngui.state_manager.get_midi_learn_zctrl():
-                self.midi_learn(i, default_midi_learning_mode)
+                self.midi_learn(i, MIDI_LEARNING_CHAIN)
                 return self.midi_learning
+
+        # TODO: Handle alsa mixer
+        # if zynthian_gui_config.midi_prog_change_zs3 and not self.zyngui.is_shown_alsa_mixer():
 
         if self.midi_learning == MIDI_LEARNING_CHAIN:
             self.midi_learning = MIDI_LEARNING_GLOBAL
@@ -601,9 +582,9 @@ class zynthian_gui_control(zynthian_gui_selector):
             self.exit_midi_learn()
         else:
             if i is not None:
-                self.enter_midi_learn(default_midi_learning_mode, False)
+                self.enter_midi_learn(MIDI_LEARNING_CHAIN, False)
             else:
-                self.enter_midi_learn(default_midi_learning_mode, True)
+                self.enter_midi_learn(MIDI_LEARNING_CHAIN, True)
 
         return self.midi_learning
 
@@ -623,9 +604,11 @@ class zynthian_gui_control(zynthian_gui_selector):
 
     def midi_learn_bind(self, zmip, chan, midi_cc):
         if self.midi_learning == MIDI_LEARNING_CHAIN:
-            self.zyngui.chain_manager.add_midi_learn(chan, midi_cc, self.zyngui.state_manager.get_midi_learn_zctrl())
+            self.zyngui.chain_manager.add_midi_learn(
+                chan, midi_cc, self.zyngui.state_manager.get_midi_learn_zctrl())
         elif self.midi_learning == MIDI_LEARNING_GLOBAL:
-            self.zyngui.chain_manager.add_midi_learn(chan, midi_cc, self.zyngui.state_manager.get_midi_learn_zctrl(), zmip)
+            self.zyngui.chain_manager.add_midi_learn(
+                chan, midi_cc, self.zyngui.state_manager.get_midi_learn_zctrl(), zmip)
         self.exit_midi_learn()
 
     def cb_midi_cc(self, izmip, chan, num, val):
@@ -647,7 +630,8 @@ class zynthian_gui_control(zynthian_gui_selector):
         if param:
             self.zyngui.chain_manager.clean_midi_learn(param)
         else:
-            self.zyngui.chain_manager.clean_midi_learn(self.zyngui.get_current_processor())
+            self.zyngui.chain_manager.clean_midi_learn(
+                self.zyngui.get_current_processor())
         self.refresh_midi_bind()
 
     def midi_unlearn_action(self):

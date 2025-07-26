@@ -93,9 +93,8 @@ class zynthian_gui_audio_out(zynthian_gui_selector_info):
                 for processor in chain.get_processors():
                     try:
                         for port_name in zynautoconnect.get_sidechain_portnames(processor.jackname):
-                            port_names.append((f"↣ side {port_name}", port_name, [f"Send audio from this chain to the sidechain input of processor {port_name}.", "audio_output.png"]))
-                    except Exception as e:
-                        logging.info(e)
+                            port_names.append((f"↣ side {port_name}", port_name), [f"Send audio from this chain to the sidechain input of processor {port_name}.", "audio_output.png"])
+                    except:
                         pass
             for title, processor, info in port_names:
                 if processor in self.chain.audio_out:

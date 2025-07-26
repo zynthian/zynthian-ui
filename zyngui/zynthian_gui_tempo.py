@@ -77,10 +77,12 @@ class zynthian_gui_tempo(zynthian_gui_base):
                                           highlightthickness=0)
         self.main_frame.rowconfigure(2, weight=1)
         if zynthian_gui_config.layout['columns'] == 3:
-            self.info_canvas.grid(row=0, column=1, rowspan=2, padx=(2, 2), sticky='news')
+            self.info_canvas.grid(row=0, column=1, rowspan=2,
+                                  padx=(2, 2), sticky='news')
             self.main_frame.columnconfigure(1, weight=1)
         else:
-            self.info_canvas.grid(row=0, column=0, rowspan=4, padx=(0, 2), sticky='news')
+            self.info_canvas.grid(row=0, column=0, rowspan=4,
+                                  padx=(0, 2), sticky='news')
             self.main_frame.columnconfigure(0, weight=1)
 
         self.bpm_text = self.info_canvas.create_text(
@@ -96,42 +98,31 @@ class zynthian_gui_tempo(zynthian_gui_base):
 
     def set_zctrls(self):
         if not self.bpm_zgui_ctrl:
-            self.bpm_zctrl = zynthian_controller(self, 'bpm',
-                                                 {'name': 'BPM',
-                                                  'value_min': 10,
-                                                  'value_max': 420,
-                                                  'nudge_factor': 1.0,
-                                                  'is_integer': False,
-                                                  'value': self.libseq.getTempo()})
-            self.bpm_zgui_ctrl = zynthian_gui_controller(0, self.main_frame, self.bpm_zctrl)
+            self.bpm_zctrl = zynthian_controller(self, 'bpm', {
+                                                 'name': 'BPM', 'value_min': 10, 'value_max': 420, 'nudge_factor': 1.0, 'is_integer': False, 'value': self.libseq.getTempo()})
+            self.bpm_zgui_ctrl = zynthian_gui_controller(
+                0, self.main_frame, self.bpm_zctrl)
             self.zgui_ctrls.append(self.bpm_zgui_ctrl)
 
         if not self.clk_source_zgui_ctrl:
-            self.clk_source_zctrl = zynthian_controller(self, 'clock_source',
-                                                        {'name': 'Clock Source',
-                                                         'labels': ['Internal', 'Internal Send', 'MIDI', 'Analogue'],
-                                                         'ticks': [0, 1, 2, 3],
-                                                         'value': self.state_manager.get_transport_clock_source()})
-            self.clk_source_zgui_ctrl = zynthian_gui_controller(1, self.main_frame, self.clk_source_zctrl)
+            self.clk_source_zctrl = zynthian_controller(self, 'clock_source', {'name': 'Clock Source', 'labels': [
+                                                        'Internal', 'Internal Send', 'MIDI', 'Analogue'], 'ticks': [0, 1, 2, 3], 'value': self.state_manager.get_transport_clock_source()})
+            self.clk_source_zgui_ctrl = zynthian_gui_controller(
+                1, self.main_frame, self.clk_source_zctrl)
             self.zgui_ctrls.append(self.clk_source_zgui_ctrl)
 
         if not self.mtr_enable_zgui_ctrl:
-            self.mtr_enable_zctrl = zynthian_controller(self, 'metronome_enable',
-                                                        {'name': 'Metronome On/Off',
-                                                         'labels': ['Off', 'On'],
-                                                         'ticks': [0, 1],
-                                                         'is_toggle': True,
-                                                         'value': self.libseq.isMetronomeEnabled()})
-            self.mtr_enable_zgui_ctrl = zynthian_gui_controller(2, self.main_frame, self.mtr_enable_zctrl)
+            self.mtr_enable_zctrl = zynthian_controller(self, 'metronome_enable', {'name': 'Metronome On/Off', 'labels': [
+                                                        'Off', 'On'], 'ticks': [0, 1], 'is_toggle': True, 'value': self.libseq.isMetronomeEnabled()})
+            self.mtr_enable_zgui_ctrl = zynthian_gui_controller(
+                2, self.main_frame, self.mtr_enable_zctrl)
             self.zgui_ctrls.append(self.mtr_enable_zgui_ctrl)
 
         if not self.mtr_volume_zgui_ctrl:
-            self.mtr_volume_zctrl = zynthian_controller(self, 'metronome_volume',
-                                                        {'name': 'Metronome Volume',
-                                                          'value_min': 0,
-                                                          'value_max': 100,
-                                                          'value': int(100 * self.libseq.getMetronomeVolume())})
-            self.mtr_volume_zgui_ctrl = zynthian_gui_controller(3, self.main_frame, self.mtr_volume_zctrl)
+            self.mtr_volume_zctrl = zynthian_controller(self, 'metronome_volume', {
+                                                        'name': 'Metronome Volume', 'value_min': 0, 'value_max': 100, 'value': int(100 * self.libseq.getMetronomeVolume())})
+            self.mtr_volume_zgui_ctrl = zynthian_gui_controller(
+                3, self.main_frame, self.mtr_volume_zctrl)
             self.zgui_ctrls.append(self.mtr_volume_zgui_ctrl)
 
         layout = zynthian_gui_config.layout
@@ -139,8 +130,10 @@ class zynthian_gui_tempo(zynthian_gui_base):
             i = zgui_ctrl.index
             zgui_ctrl.setup_zynpot()
             zgui_ctrl.erase_midi_bind()
-            zgui_ctrl.configure(height=self.height // layout['rows'], width=self.width // 4)
-            zgui_ctrl.grid(row=layout['ctrl_pos'][i][0], column=layout['ctrl_pos'][i][1])
+            zgui_ctrl.configure(height=self.height //
+                                layout['rows'], width=self.width // 4)
+            zgui_ctrl.grid(row=layout['ctrl_pos'][i]
+                           [0], column=layout['ctrl_pos'][i][1])
 
     def update_text(self):
         self.info_canvas.itemconfigure(
@@ -150,10 +143,13 @@ class zynthian_gui_tempo(zynthian_gui_base):
         super().update_layout()
         fs = self.width // 20
         if zynthian_gui_config.layout['columns'] == 3:
-            self.info_canvas.coords(self.bpm_text, int(0.25*self.width), int(0.375*self.height))
+            self.info_canvas.coords(self.bpm_text, int(
+                0.25*self.width), int(0.375*self.height))
         else:
-            self.info_canvas.coords(self.bpm_text, int(0.375*self.width), int(0.375*self.height))
-        self.info_canvas.itemconfigure(self.bpm_text, width=9*fs, font=(zynthian_gui_config.font_family, fs))
+            self.info_canvas.coords(self.bpm_text, int(
+                0.375*self.width), int(0.375*self.height))
+        self.info_canvas.itemconfigure(
+            self.bpm_text, width=9*fs, font=(zynthian_gui_config.font_family, fs))
 
     def plot_zctrls(self):
         self.refresh_bpm_value()
@@ -170,14 +166,14 @@ class zynthian_gui_tempo(zynthian_gui_base):
         self.set_zctrls()
         self.last_tap_ts = 0
         if zynthian_gui_config.enable_touch_navigation:
-            zynsigman.register(zynsigman.S_AUDIO_PLAYER,
-                               self.zyngui.state_manager.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
+            zynsigman.register(
+                zynsigman.S_AUDIO_PLAYER, self.zyngui.state_manager.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
             zynsigman.register(zynsigman.S_AUDIO_RECORDER,
                                self.zyngui.state_manager.SS_AUDIO_RECORDER_STATE, self.cb_status_audio_recorder)
-            zynsigman.register(zynsigman.S_STATE_MAN,
-                               self.zyngui.state_manager.SS_MIDI_PLAYER_STATE, self.cb_status_midi_player)
-            zynsigman.register(zynsigman.S_STATE_MAN,
-                               self.zyngui.state_manager.SS_MIDI_RECORDER_STATE, self.cb_status_midi_recorder)
+            zynsigman.register(
+                zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_MIDI_PLAYER_STATE, self.cb_status_midi_player)
+            zynsigman.register(
+                zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_MIDI_RECORDER_STATE, self.cb_status_midi_recorder)
             self.cb_status_audio_player()
             self.cb_status_audio_recorder()
             self.cb_status_midi_player()
@@ -187,14 +183,14 @@ class zynthian_gui_tempo(zynthian_gui_base):
     def hide(self):
         if self.shown:
             if zynthian_gui_config.enable_touch_navigation:
-                zynsigman.unregister(zynsigman.S_AUDIO_PLAYER,
-                                     self.zyngui.state_manager.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
-                zynsigman.unregister(zynsigman.S_AUDIO_RECORDER,
-                                     self.zyngui.state_manager.SS_AUDIO_RECORDER_STATE, self.cb_status_audio_recorder)
-                zynsigman.unregister(zynsigman.S_STATE_MAN,
-                                     self.zyngui.state_manager.SS_MIDI_PLAYER_STATE, self.cb_status_midi_player)
-                zynsigman.unregister(zynsigman.S_STATE_MAN,
-                                     self.zyngui.state_manager.SS_MIDI_RECORDER_STATE, self.cb_status_midi_recorder)
+                zynsigman.unregister(
+                    zynsigman.S_AUDIO_PLAYER, self.zyngui.state_manager.SS_AUDIO_PLAYER_STATE, self.cb_status_audio_player)
+                zynsigman.unregister(
+                    zynsigman.S_AUDIO_RECORDER, self.zyngui.state_manager.SS_AUDIO_RECORDER_STATE, self.cb_status_audio_recorder)
+                zynsigman.unregister(
+                    zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_MIDI_PLAYER_STATE, self.cb_status_midi_player)
+                zynsigman.unregister(
+                    zynsigman.S_STATE_MAN, self.zyngui.state_manager.SS_MIDI_RECORDER_STATE, self.cb_status_midi_recorder)
         return super().hide()
 
     def zynpot_cb(self, i, dval):
@@ -213,18 +209,21 @@ class zynthian_gui_tempo(zynthian_gui_base):
                 self.replot = True
 
             elif zctrl == self.clk_source_zctrl:
-                self.state_manager.set_transport_clock_source(zctrl.value, save_config=True)
+                self.state_manager.set_transport_clock_source(
+                    zctrl.value, save_config=True)
                 logging.debug("SETTING CLOCK SOURCE: {}".format(zctrl.value))
                 self.replot = True
 
             elif zctrl == self.mtr_enable_zctrl:
                 self.libseq.enableMetronome(zctrl.value)
-                logging.debug("SETTING METRONOME ENABLE: {}".format(zctrl.value))
+                logging.debug(
+                    "SETTING METRONOME ENABLE: {}".format(zctrl.value))
                 self.replot = True
 
             elif zctrl == self.mtr_volume_zctrl:
                 self.libseq.setMetronomeVolume(zctrl.value/100.0)
-                logging.debug("SETTING METRONOME VOLUME: {}".format(zctrl.value))
+                logging.debug(
+                    "SETTING METRONOME VOLUME: {}".format(zctrl.value))
                 self.replot = True
 
     def tap(self):
@@ -253,16 +252,19 @@ class zynthian_gui_tempo(zynthian_gui_base):
         self.select_path.set("Tempo Settings")
 
     def cb_status_audio_player(self, handle=None, state=None):
-        self.set_button_status(0, self.zyngui.state_manager.status_audio_player)
+        self.set_button_status(
+            0, (self.zyngui.state_manager.status_audio_player))
 
     def cb_status_audio_recorder(self, chan=None, state=None):
-        self.set_button_status(1, self.zyngui.state_manager.audio_recorder.status)
+        self.set_button_status(
+            1, self.zyngui.state_manager.audio_recorder.status)
 
     def cb_status_midi_player(self, handle=None, state=None):
         self.set_button_status(2, self.zyngui.state_manager.status_midi_player)
 
     def cb_status_midi_recorder(self, chan=None, state=None):
-        self.set_button_status(3, self.zyngui.state_manager.status_midi_recorder)
+        self.set_button_status(
+            3, self.zyngui.state_manager.status_midi_recorder)
 
     def cb_button_release(self, event):
         match event.widget.cuia:

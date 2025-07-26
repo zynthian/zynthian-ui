@@ -1052,9 +1052,6 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
     def midi_cc_cb(self, izmip, chan, num, val):
         try:
             index = (64, 66, 67, 69).index(num)
-        except:
-            return
-        try:
             flags = lib_zyncore.get_cc_pedal(index)
             for strip in self.visible_mixer_strips:
                 if strip.chain and strip.chain.is_midi():

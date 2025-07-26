@@ -70,7 +70,7 @@ from zyngui.zynthian_gui_audio_out import zynthian_gui_audio_out
 from zyngui.zynthian_gui_midi_config import zynthian_gui_midi_config
 from zyngui.zynthian_gui_audio_in import zynthian_gui_audio_in
 from zyngui.zynthian_gui_bank import zynthian_gui_bank
-from zyngui.zynthian_gui_preset import zynthian_gui_preset
+from zyngui.zynthian_gui_grid_preset import zynthian_gui_grid_preset
 from zyngui.zynthian_gui_control import zynthian_gui_control
 from zyngui.zynthian_gui_control_xy import zynthian_gui_control_xy
 from zyngui.zynthian_gui_midi_profile import zynthian_gui_midi_profile
@@ -91,6 +91,7 @@ from zyngui.zynthian_gui_cv_config import zynthian_gui_cv_config
 from zyngui.zynthian_gui_wifi import zynthian_gui_wifi
 from zyngui.zynthian_gui_bluetooth import zynthian_gui_bluetooth
 from zyngui.zynthian_gui_control_test import zynthian_gui_control_test
+from zyngui.zynthian_gui_preset import zynthian_gui_preset
 
 # TODO This constants should go somewhere else
 MIXER_MAIN_CHANNEL = 17
@@ -144,7 +145,6 @@ class zynthian_gui:
         self.zynpot_lock = Lock()
         self.zynpot_dval = zynthian_gui_config.num_zynpots * [0]
         self.zynpot_pr_state = zynthian_gui_config.num_zynpots * [0]
-        self.zynswitch_autolong_disabled = False
         self.dtsw = []
 
         self.exit_code = 0
@@ -165,9 +165,7 @@ class zynthian_gui:
         self.init_wsleds()
 
         # Init multitouch driver
-        # => Note this condition is redundant, but needed to ensure some legacy V5 configs to work
-        # => It should be simplified in the future and keep the second part only
-        if zynthian_gui_config.check_kit_version(["V5"]) or os.environ.get('DISPLAY_ROTATION', 'None') == 'Inverted':
+        if os.environ.get('DISPLAY_ROTATION', 'None') == 'Inverted' or zynthian_gui_config.check_wiring_layout(["Z2", "V5"]):
             self.multitouch = MultiTouch(invert_x_axis=True, invert_y_axis=True)
         else:
             self.multitouch = MultiTouch()
@@ -241,11 +239,11 @@ class zynthian_gui:
                 from zyngui.zynthian_wsleds_v5touch import zynthian_wsleds_v5touch
                 self.wsleds = zynthian_wsleds_v5touch(self)
                 self.wsleds.start()
-        elif zynthian_gui_config.check_wiring_layout(["Z2"]):
+        elif zynthian_gui_config.check_wiring_layout("Z2"):
             from zyngui.zynthian_wsleds_z2 import zynthian_wsleds_z2
             self.wsleds = zynthian_wsleds_z2(self)
             self.wsleds.start()
-        elif zynthian_gui_config.check_wiring_layout(["V5"]):
+        elif zynthian_gui_config.wiring_layout.startswith("V5"):
             from zyngui.zynthian_wsleds_v5 import zynthian_wsleds_v5
             self.wsleds = zynthian_wsleds_v5(self)
             self.wsleds.start()
@@ -446,7 +444,10 @@ class zynthian_gui:
         self.screens['audio_in'] = zynthian_gui_audio_in()
         self.screens['midi_config'] = zynthian_gui_midi_config()
         self.screens['bank'] = zynthian_gui_bank()
-        self.screens['preset'] = zynthian_gui_preset()
+        # Only use grid preset for FluidSynth, use list view for others
+        from zyngui.zynthian_gui_grid_preset import zynthian_gui_grid_preset
+        self.screens['preset_grid'] = zynthian_gui_grid_preset()
+        self.screens['preset_list'] = zynthian_gui_preset()
         self.screens['control'] = zynthian_gui_control()
         self.screens['control_xy'] = zynthian_gui_control_xy()
         self.screens['midi_profile'] = zynthian_gui_midi_profile()
@@ -585,9 +586,11 @@ class zynthian_gui:
                 screen = self.current_screen
             else:
                 screen = "audio_mixer"
+
         elif screen == "alsa_mixer":
             self.state_manager.alsa_mixer_processor.refresh_controllers(params)
             self.current_processor = self.state_manager.alsa_mixer_processor
+
         elif screen == "audio_player":
             if self.state_manager.audio_player:
                 self.current_processor = self.state_manager.audio_player
@@ -599,7 +602,17 @@ class zynthian_gui:
         else:
             self.current_processor = self.get_current_processor()
 
-        if screen not in ("bank", "preset", "option"):
+        # Change preset selection logic: only FluidSynth uses grid, others use list
+        if screen == "preset":
+            engine_name = None
+            if self.current_processor and hasattr(self.current_processor, 'engine') and hasattr(self.current_processor.engine, 'name'):
+                engine_name = self.current_processor.engine.name
+            if engine_name == "FluidSynth":
+                screen = "preset_grid"
+            else:
+                screen = "preset_list"
+
+        if screen not in ("bank", "preset_grid", "preset_list", "option"):
             self.chain_manager.restore_presets()
 
         if not self.screens[screen].build_view():
@@ -967,23 +980,16 @@ class zynthian_gui:
                         control_screen_name = custom_screen_name
 
             if force_bank_preset:
-                # If a preset is selected => control screen
                 if self.current_processor.get_preset_name():
                     self.show_screen(control_screen_name, hmode)
-
-                # If not => bank/preset selector screen
                 else:
-                    if len(self.current_processor.get_bank_list()) > 1:
-                        self.show_screen('bank', hmode)
+                    engine_name = None
+                    if self.current_processor and hasattr(self.current_processor, 'engine') and hasattr(self.current_processor.engine, 'name'):
+                        engine_name = self.current_processor.engine.name
+                    if engine_name == "FluidSynth":
+                        self.show_screen('preset_grid', hmode)
                     else:
-                        self.current_processor.set_bank(0)
-                        self.current_processor.load_preset_list()
-                        if len(self.current_processor.preset_list) > 1:
-                            self.show_screen('preset', hmode)
-                        else:
-                            if len(self.current_processor.preset_list):
-                                self.current_processor.set_preset(0)
-                            self.show_screen(control_screen_name, hmode)
+                        self.show_screen('preset_list', hmode)
             else:
                 self.show_screen(control_screen_name, hmode)
         else:
@@ -1001,14 +1007,26 @@ class zynthian_gui:
         curproc = self.get_current_processor()
         if curproc:
             curproc.toggle_show_fav_presets()
-            self.show_screen("preset")
+            engine_name = None
+            if curproc and hasattr(curproc, 'engine') and hasattr(curproc.engine, 'name'):
+                engine_name = curproc.engine.name
+            if engine_name == "FluidSynth":
+                self.show_screen("preset_grid")
+            else:
+                self.show_screen("preset_list")
 
     def show_favorites(self):
         curproc = self.get_current_processor()
         if curproc:
             self.cuia_bank_preset()
             curproc.set_show_fav_presets(True)
-            self.show_screen("preset")
+            engine_name = None
+            if curproc and hasattr(curproc, 'engine') and hasattr(curproc.engine, 'name'):
+                engine_name = curproc.engine.name
+            if engine_name == "FluidSynth":
+                self.show_screen("preset_grid")
+            else:
+                self.show_screen("preset_list")
 
     def get_current_processor(self):
         """Get the currently selected processor object"""
@@ -1410,7 +1428,15 @@ class zynthian_gui:
         self.show_screen("bank")
 
     def cuia_screen_preset(self, params=None):
-        self.show_screen("preset")
+        curproc = self.get_current_processor()
+        if curproc:
+            engine_name = None
+            if curproc and hasattr(curproc, 'engine') and hasattr(curproc.engine, 'name'):
+                engine_name = curproc.engine.name
+            if engine_name == "FluidSynth":
+                self.show_screen("preset_grid")
+            else:
+                self.show_screen("preset_list")
 
     def cuia_screen_calibrate(self, params=None):
         self.calibrate_touchscreen()
@@ -1488,52 +1514,20 @@ class zynthian_gui:
             except:
                 logging.warning("Can't set control screen processor! ")
 
-        if self.current_screen == 'bank':
-            # self.replace_screen('preset')
-            self.close_screen()
-        else:
-            curproc = self.get_current_processor()
-            if curproc:
-                bank_list = curproc.get_bank_list()
-                if self.current_screen == 'preset':
-                    if len(bank_list) > 1:
-                        self.replace_screen('bank')
-                    else:
-                        self.close_screen()
-                else:
-                    if len(curproc.preset_list) > 0 and curproc.preset_list[0][0] != '':
-                        self.screens['preset'].index = curproc.get_preset_index()
-                        self.show_screen('preset', hmode=zynthian_gui.SCREEN_HMODE_ADD)
-                        if len(curproc.preset_list) == 0 or curproc.preset_list[0][0] == '':
-                            # Handle change of bank name, e.g. via webconf
-                            self.replace_screen('bank')
-                    elif len(bank_list) > 0 and bank_list[0][0] != '':
-                        self.show_screen('bank', hmode=zynthian_gui.SCREEN_HMODE_ADD)
-                    else:
-                        self.show_screen('preset', hmode=zynthian_gui.SCREEN_HMODE_NONE)
-                        self.screens['preset'].show_preset_options()
+        curproc = self.get_current_processor()
+        if curproc:
+            engine_name = None
+            if curproc and hasattr(curproc, 'engine') and hasattr(curproc.engine, 'name'):
+                engine_name = curproc.engine.name
+            if engine_name == "FluidSynth":
+                self.show_screen('preset_grid', hmode=zynthian_gui.SCREEN_HMODE_ADD)
+            else:
+                self.show_screen('preset_list', hmode=zynthian_gui.SCREEN_HMODE_ADD)
 
     cuia_preset = cuia_bank_preset
 
     def cuia_preset_fav(self, params=None):
         self.show_favorites()
-
-    # -------------------------------------------------------------------
-    # ZS3 management CUIAs:
-    # -------------------------------------------------------------------
-
-    def cuia_zs3_load(self, params=None):
-        if len(params) >= 1:
-            if isinstance(params[0], int):
-                self.state_manager.load_zs3_by_index(params[0])
-            else:
-                self.state_manager.load_zs3(params[0])
-
-    def cuia_zs3_next(self, params=None):
-        self.state_manager.load_next_zs3()
-
-    def cuia_zs3_prev(self, params=None):
-        self.state_manager.load_prev_zs3()
 
     def cuia_enable_midi_learn_cc(self, params=None):
         # TODO: Find zctrl
@@ -1835,7 +1829,7 @@ class zynthian_gui:
             if self.current_screen == "midi_config" and self.screen_history[-2] != "admin":
                 return True
             if self.current_screen in ("option", "confirm", "keyboard"):
-                parent_views = ("arranger", "zynpad", "pattern_editor", "preset",
+                parent_views = ("arranger", "zynpad", "pattern_editor", "preset_grid", "preset_list",
                                 "bank", "main_menu", "chain_options", "processor_options")
                 if self.screen_history[-1] in parent_views or self.screen_history[-2] in parent_views:
                     return True
@@ -1858,7 +1852,7 @@ class zynthian_gui:
 
     def check_current_screen_switch(self, action_config):
         # BIG ÑAPA!!
-        if action_config['B'] and action_config['B'].lower() == 'bank_preset' and self.current_screen in ("bank", "preset", "audio_player"):
+        if action_config['B'] and action_config['B'].lower() == 'bank_preset' and self.current_screen in ("bank", "preset_grid", "preset_list", "audio_player"):
             return True
         # if self.is_current_screen_menu():
         if self.current_screen == "main_menu":
@@ -1895,12 +1889,6 @@ class zynthian_gui:
         except:
             return 0
 
-    def zynswitch_disable_autolong(self):
-        self.zynswitch_autolong_disabled = True
-
-    def zynswitch_enable_autolong(self):
-        self.zynswitch_autolong_disabled = False
-
     def zynswitches(self):
         """Process physical switch triggers"""
 
@@ -1913,15 +1901,14 @@ class zynthian_gui:
             except:
                 i += 1
                 continue
-            # Increase the long push time limit when auto-long push is disabled or push-rotating
-            if self.zynswitch_autolong_disabled or self.get_zynswitch_pr_state(i) > 1:
-                zs_long_us = 20 * 1000000
+            # Increase the long push limit when push-rotating
+            if self.get_zynswitch_pr_state(i) > 1:
+                zs_long_us = 1000 * 20000
             else:
                 zs_long_us = zynthian_gui_config.zynswitch_long_us
             # dtus is 0 if switched pressed, dur of last press or -1 if already processed
             dtus = lib_zyncore.get_zynswitch(i, zs_long_us)
             if dtus >= 0:
-                #logging.debug(f"ZYNSWITCH {i}: DTUS={dtus}, AUTOLONG-PUSH TIME LIMIT => {zs_long_us}")
                 self.cuia_queue.put_nowait(("zynswitch", (i, self.zynswitch_timing(dtus))))
             i += 1
 
@@ -1964,10 +1951,6 @@ class zynthian_gui:
 
         if self.capture_log_fname:
             self.write_capture_log("ZYNSWITCH:L,{}".format(i))
-
-        if callable(getattr(self.screens[self.current_screen], "switch", None)):
-            if self.screens[self.current_screen].switch(i, 'L'):
-                return True
 
         # Standard 4 ZynSwitches
         if i == 0:
@@ -2209,10 +2192,10 @@ class zynthian_gui:
             # Every 4 cycles...
             if j > 4:
                 j = 0
+
                 # Refresh GUI Controllers
                 try:
                     self.screens[self.current_screen].plot_zctrls()
-                    pass
                 except AttributeError:
                     pass
                 except Exception as e:
@@ -2367,18 +2350,17 @@ class zynthian_gui:
             cuia = "unknown"
             try:
                 # Check for long press before release
-                if not self.zynswitch_autolong_disabled:
-                    long_ts = monotonic() - zynthian_gui_config.zynswitch_long_seconds
-                    for i, ts in enumerate(zynswitch_cuia_ts):
-                        if ts is not None and ts < long_ts:
-                            zynswitch_cuia_ts[i] = None
-                            try:
-                                zpi = zynthian_gui_config.zynpot2switch.index(i)
-                                zp_pr_state = self.zynpot_pr_state[zpi]
-                            except:
-                                zp_pr_state = 0
-                            if zp_pr_state <= 1:
-                                self.zynswitch_long(i)
+                long_ts = monotonic() - zynthian_gui_config.zynswitch_long_seconds
+                for i, ts in enumerate(zynswitch_cuia_ts):
+                    if ts is not None and ts < long_ts:
+                        zynswitch_cuia_ts[i] = None
+                        try:
+                            zpi = zynthian_gui_config.zynpot2switch.index(i)
+                            zp_pr_state = self.zynpot_pr_state[zpi]
+                        except:
+                            zp_pr_state = 0
+                        if zp_pr_state <= 1:
+                            self.zynswitch_long(i)
                 event = self.cuia_queue.get(True, repeat_interval)
                 params = None
                 if isinstance(event, str):

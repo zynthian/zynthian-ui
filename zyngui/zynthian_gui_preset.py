@@ -25,6 +25,7 @@
 
 import copy
 import logging
+import os
 
 # Zynthian specific modules
 from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
@@ -45,8 +46,30 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
         if not self.processor:
             logging.error("Can't fill preset list for None processor!")
             return
-        self.processor.load_preset_list()
-        self.list_data = self.processor.preset_list
+        
+        if not hasattr(self.processor, 'bank_info') or not self.processor.bank_info:
+            if hasattr(self.processor, 'get_bank_list'):
+                try:
+                    self.processor.bank_list = self.processor.get_bank_list()
+                    if self.processor.bank_list and len(self.processor.bank_list) > 0:
+                        self.processor.bank_info = self.processor.bank_list[0]
+                    else:
+                        self.list_data = []
+                        super().fill_list()
+                        return
+                except Exception as e:
+                    logging.error(f"Error loading bank list: {e}")
+                    self.list_data = []
+                    super().fill_list()
+                    return
+        
+        try:
+            self.processor.load_preset_list()
+            self.list_data = self.processor.preset_list if hasattr(self.processor, 'preset_list') and self.processor.preset_list else []
+        except Exception as e:
+            logging.error(f"Error loading preset list: {e}")
+            self.list_data = []
+        
         super().fill_list()
 
     def build_view(self):
@@ -57,7 +80,9 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
             return False
 
     def show(self):
-        if len(self.list_data) > 0:
+        if hasattr(self, 'list_data') and self.list_data and len(self.list_data) > 0:
+            super().show()
+        else:
             super().show()
 
     def select_action(self, i, t='S'):
@@ -67,13 +92,24 @@ class zynthian_gui_preset(zynthian_gui_selector_info, zynthian_gui_save_preset):
             self.loading_canvas.grid(rowspan=1)
             self.zyngui.state_manager.start_busy("set preset")
             # Set preset
-            self.zyngui.get_current_processor().set_preset(i)
+            result = self.zyngui.get_current_processor().set_preset(i)
             self.zyngui.state_manager.end_busy("set preset")
-            self.zyngui.purge_screen_history("bank")
             # Stop animation and restore icon canvas
             self.loading_canvas.grid_remove()
             self.icon_canvas.grid()
-            # Close
+            
+            if result == "SOUNDFONT_LOADED":
+                logging.info("Soundfont loaded, switching to grid preset interface")
+                engine_name = None
+                if self.processor and hasattr(self.processor, 'engine') and hasattr(self.processor.engine, 'name'):
+                    engine_name = self.processor.engine.name
+                if engine_name == "FluidSynth":
+                    self.zyngui.replace_screen("preset_grid")
+                else:
+                    self.zyngui.replace_screen("preset_list")
+                return
+            
+            self.zyngui.purge_screen_history("bank")
             self.zyngui.replace_screen("control")
 
     def show_preset_options(self):

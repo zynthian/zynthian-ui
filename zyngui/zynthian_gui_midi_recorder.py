@@ -306,8 +306,7 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
         if self.zgui_ctrl2:
             if self.zgui_ctrl2.zctrl.is_dirty or force:
                 self.zgui_ctrl2.calculate_plot_values()
-                self.zgui_ctrl2.plot_value()
-                self.zgui_ctrl2.zctrl.is_dirty = False
+            self.zgui_ctrl2.plot_value()
 
     def set_selector(self, zs_hidden=False):
         super().set_selector(zs_hidden)

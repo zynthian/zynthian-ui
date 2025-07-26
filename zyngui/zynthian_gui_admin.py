@@ -264,7 +264,7 @@ class zynthian_gui_admin(zynthian_gui_selector_info):
                                     "capture.png"]))
         else:
             self.list_data.append((self.workflow_capture_start, 0, "\u2610 Capture Workflow",
-                                   ["Start workflow capture session.\n\nZynthian's display, audio output, encoder and button actions are saved to file until this option is deselected.",
+                                   ["Start workflow capture session.\n\nZynthian display, encoder and button actions are saved to file until this option is deselected.",
                                     "capture.png"]))
         if self.state_manager.update_available:
             self.list_data.append((self.update_software, 0, "Update Software",
