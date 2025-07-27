@@ -605,15 +605,13 @@ class zynseq(zynthian_engine):
 
     def enable_midi_learn(self, bank, sequence):
         try:
-            self.libseq.enableMidiLearn(
-                bank, sequence, ctypes.py_object(self), self.midi_learn_cb)
+            self.libseq.enableMidiLearn(bank, sequence, ctypes.py_object(self), self.midi_learn_cb)
         except Exception as e:
             logging.error(e)
 
     def disable_midi_learn(self):
         try:
-            self.libseq.enableMidiLearn(
-                0, 0, ctypes.py_object(self), self.midi_learn_cb)
+            self.libseq.enableMidiLearn(0, 0, ctypes.py_object(self), self.midi_learn_cb)
         except Exception as e:
             logging.error(e)
 

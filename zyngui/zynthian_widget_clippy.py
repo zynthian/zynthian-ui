@@ -409,36 +409,58 @@ class zynthian_widget_clippy(zynthian_widget_base.zynthian_widget_base):
     # -------------------------------------------------------------------------
 
     def cuia_stop(self, param=None):
-        if self.zyngui.alt_mode:
-            return False
-        self.zyngui.state_manager.zynseq.set_play_mode(1, self.sequence, zynseq.SEQ_STOPPING)
+        #if self.zyngui.alt_mode:
+        #    return False
+        #seq_bank = zynseq.bank
+        seq_bank = 1
+        self.zyngui.state_manager.zynseq.libseq.setPlayState(seq_bank, self.sequence, zynseq.SEQ_STOPPED)
+        self.processor.engine.stop_slot(self.processor, self.slot)
         return True
 
     def cuia_toggle_play(self, param=None):
-        if self.zyngui.alt_mode:
-            return False
-        self.zyngui.state_manager.zynseq.set_play_mode(1, self.sequence, zynseq.SEQ_STARTING)
+        #if self.zyngui.alt_mode:
+        #    return False
+        #seq_bank = zynseq.bank
+        seq_bank = 1
+        #self.zyngui.state_manager.zynseq.libseq.togglePlayState(seq_bank, self.sequence)
+        play_state = self.zyngui.state_manager.zynseq.libseq.getPlayState(seq_bank, self.sequence)
+        if play_state != zynseq.SEQ_STOPPED:
+            self.zyngui.state_manager.zynseq.libseq.setPlayState(seq_bank, self.sequence, zynseq.SEQ_STOPPED)
+            self.processor.engine.stop_slot(self.processor, self.slot)
+        else:
+            self.zyngui.state_manager.zynseq.libseq.setPlayState(seq_bank, self.sequence, zynseq.SEQ_STARTING)
         return True
 
     def update_wsleds(self, leds):
-        if self.zyngui.alt_mode:
-            return
+        #if self.zyngui.alt_mode:
+        #    return
         wsl = self.zyngui.wsleds
-        if self.processor.handle == self.zyngui.state_manager.audio_player.handle:
-            color_default = wsl.wscolor_default
-        else:
-            color_default = wsl.wscolor_active2
+
+        color_default = wsl.wscolor_active2
+        #color_default = wsl.wscolor_default
+
         # REC Button
-        if self.zyngui.state_manager.audio_recorder.status:
-            wsl.set_led(leds[1], wsl.wscolor_red)
-        else:
-            wsl.set_led(leds[1], color_default)
+        #if self.zyngui.state_manager.audio_recorder.status:
+        #    wsl.set_led(leds[1], wsl.wscolor_red)
+        #else:
+        #    wsl.set_led(leds[1], color_default)
+
         # STOP button
         wsl.set_led(leds[2], color_default)
         # PLAY button:
-        if self.zyngui.state_manager.zynseq.get_play_mode(1, self.sequence) != zynseq.SEQ_STOPPED:
-            wsl.set_led(leds[3], wsl.wscolor_green)
-        else:
-            wsl.set_led(leds[3], color_default)
+        match self.zyngui.state_manager.zynseq.libseq.getPlayState(1, self.sequence):
+            case zynseq.SEQ_PLAYING:
+                wsl.set_led(leds[3], wsl.wscolor_green)
+            case zynseq.SEQ_STARTING:
+                #wsl.blink(leds[3], wsl.wscolor_green)
+                wsl.set_led(leds[3], wsl.wscolor_yellow)
+            case zynseq.SEQ_STOPPING:
+                wsl.set_led(leds[3], wsl.wscolor_red)
+            case zynseq.SEQ_STOPPINGSYNC:
+                wsl.set_led(leds[3], wsl.wscolor_red)
+            case zynseq.SEQ_STOPPED:
+                wsl.set_led(leds[3], color_default)
+            case _:
+                wsl.set_led(leds[3], color_default)
 
 # ------------------------------------------------------------------------------

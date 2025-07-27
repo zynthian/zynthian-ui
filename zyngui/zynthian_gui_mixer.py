@@ -867,7 +867,8 @@ class zynthian_gui_mixer_strip:
                 seq = i[info["chan"]]["sequence"]
                 self.zynseq.libseq.setPlayState(self.zynseq.bank, seq, zynseq.SEQ_STOPPED)
             if proc:
-                proc.engine.lscp_send_single(proc, f"SEND CHANNEL MIDI_DATA CC 0 120 0")
+                #proc.engine.lscp_send_single(proc, f"SEND CHANNEL MIDI_DATA CC 0 120 0")
+                proc.engine.stop_slot(proc, slot)
         else:
             if info["chan"] == 16:
                 if info["state"] in (zynseq.SEQ_CHILD_PLAYING, zynseq.SEQ_PLAYING):
@@ -880,10 +881,13 @@ class zynthian_gui_mixer_strip:
                         # Scene launcher so set time signature
                         self.zynseq.libseq.setBeatsPerBar(info["bpb"])
                     self.zynseq.libseq.togglePlayState(self.zynseq.bank, seq)
-            elif info["state"] == zynseq.SEQ_PLAYING and info["clippy"]:
-                self.zynseq.libseq.togglePlayState(0, info["clippy"].stop_seq)
+            elif info["state"] == zynseq.SEQ_PLAYING and proc:
+                self.zynseq.libseq.togglePlayState(0, proc.stop_seq)
             else:
                 self.zynseq.libseq.togglePlayState(self.zynseq.bank, seq)
+            if proc:
+                #proc.engine.lscp_send_single(proc, f"SEND CHANNEL MIDI_DATA CC 0 120 0")
+                proc.engine.stop_slot(proc, slot)
 
     def on_clip_bold_press(self, slot):
         if self.chan is None or self.chan > 16:
