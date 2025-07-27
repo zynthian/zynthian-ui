@@ -84,7 +84,8 @@ class zynthian_gui_midi_recorder(zynthian_gui_selector_info):
             self.update_list()
 
     def hide(self):
-        self.hide_playing_bpm()
+        if self.shown:
+            self.hide_playing_bpm()
         super().hide()
 
     def fill_list(self):

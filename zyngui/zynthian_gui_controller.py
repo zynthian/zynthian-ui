@@ -618,7 +618,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 					self.format_print = "{:.1f}"
 			# Logarithmic float => It's calculated on-the-fly depending of the displayed value
 
-		#logging.debug(f"ZCTRL '{zctrl.short_name}' = {zctrl.value} ({zctrl.value_min} -> {zctrl.value_max}, {self.step}); {zctrl.labels}; {zctrl.ticks}")
+		#logging.debug(f"ZCTRL '{zctrl.short_name} ({zctrl.symbol})' = {zctrl.value} ({zctrl.value_min} -> {zctrl.value_max}, {self.step}); {zctrl.labels}; {zctrl.ticks}")
 		self.setup_zynpot()
 
 	# --------------------------------------------------------------------------
@@ -653,6 +653,7 @@ class zynthian_gui_controller(tkinter.Canvas):
 				fine = True
 			else:
 				fine = self.zyngui.alt_mode
+			logging.debug(f"ZCTRL_NUDGE({dval}, fine={fine} => ")
 			return self.zctrl.nudge(dval, fine=fine)
 		else:
 			return False

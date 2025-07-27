@@ -1062,6 +1062,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
 
     def __init__(self):
         super().__init__(has_backbutton=False)
+        self.ctrl_order = zynthian_gui_config.layout['ctrl_order']
 
         self.state_manager = self.zyngui.state_manager
         self.chain_manager = self.zyngui.chain_manager
@@ -1862,8 +1863,11 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         return False
 
     def setup_zynpots(self):
-        for i in range(zynthian_gui_config.num_zynpots):
-            lib_zyncore.setup_behaviour_zynpot(i, 0)
+        if zynthian_gui_config.num_zynpots > 3:
+            npots = len(self.ctrl_order)
+            for i in range(npots - 1):
+                lib_zyncore.setup_behaviour_zynpot(self.ctrl_order[i], 0)
+            lib_zyncore.setup_behaviour_zynpot(self.ctrl_order[npots - 1], 1)
 
     def zynpot_cb(self, i, dval):
         """ Function to handle zynpot callback
@@ -1875,17 +1879,17 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
         if super().zynpot_cb(i, dval):
             return
 
-        # LAYER encoder adjusts selected chain's level
+        # Knob#1 adjusts selected chain's level
         elif i == 0:
             if self.highlighted_strip is not None:
                 self.highlighted_strip.nudge_volume(dval)
 
-        # BACK encoder adjusts selected chain's balance/pan
+        # Knob#2 adjusts selected chain's balance/pan
         elif i == 1:
             if self.highlighted_strip is not None:
                 self.highlighted_strip.nudge_balance(dval)
 
-        # SNAPSHOT encoder adjusts main mixbus level
+        # Knob#3 adjusts main mixbus level
         elif i == 2:
             if self.launcher_mode:
                 if dval < 0:
@@ -1895,7 +1899,7 @@ class zynthian_gui_mixer(zynthian_gui_base.zynthian_gui_base):
             else:
                 self.main_mixbus_strip.nudge_volume(dval)
 
-        # SELECT encoder moves chain selection
+        # Knob#4 moves chain selection
         elif i == 3:
             if self.moving_chain:
                 self.chain_manager.move_chain(dval)
