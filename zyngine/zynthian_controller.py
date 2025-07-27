@@ -275,7 +275,7 @@ class zynthian_controller:
                 self.nudge_factor = 0.01  # TODO: Use number of divisions
                 self.nudge_factor_fine = 0.003 * self.nudge_factor
             elif not self.is_integer and not self.is_toggle:
-                if self.value_range <= 1.0:
+                if self.value_range <= 2.0:
                     self.nudge_factor = 0.01
                     self.nudge_factor_fine = 0.001
                 elif self.value_range <= 20:
