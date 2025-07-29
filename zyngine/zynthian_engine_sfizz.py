@@ -107,7 +107,7 @@ class zynthian_engine_sfizz(zynthian_engine_sfz):
             exclude_sfz = re.compile(r"[MOPRSTV][1-9]?l?\.sfz")
             for sd in glob.iglob(preset_dpath + "/*"):
                 if os.path.isdir(sd):
-                    flist = cls.find_all_preset_files(sd, cls.preset_fexts, recursion=2)
+                    flist = cls.find_all_preset_files(sd, cls.preset_fexts, recursion=0)
                     for f in flist:
                         filehead, filetail = os.path.split(f)
                         if not exclude_sfz.fullmatch(filetail):

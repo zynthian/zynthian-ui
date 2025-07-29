@@ -279,9 +279,15 @@ class zynthian_engine(zynthian_basic_engine):
         for ext in fexts:
             rules.append(fnmatch.translate("*." + ext))
         rerule = re.compile("(" + "|".join(rules) + ")", re.IGNORECASE)
-        for item in glob.iglob(os.path.join(path, "**"), recursive=True):
-            if rerule.match(item):
-                return True
+        # TODO: Support levels of recrsions instead boolean
+        if recursion:
+            for item in glob.iglob(os.path.join(path, "**"), recursive=True):
+                if rerule.match(item):
+                    return True
+        else:
+            for item in glob.iglob(os.path.join(path, "*"), recursive=False):
+                if rerule.match(item):
+                    return True
         return False
 
     @staticmethod
@@ -291,9 +297,15 @@ class zynthian_engine(zynthian_basic_engine):
             rules.append(fnmatch.translate("*." + ext))
         rerule = re.compile("(" + "|".join(rules) + ")", re.IGNORECASE)
         res = []
-        for item in glob.iglob(os.path.join(path, "**"), recursive=True):
-            if rerule.match(item):
-                res.append(item)
+        # TODO: Support levels of recrsions instead boolean
+        if recursion:
+            for item in glob.iglob(os.path.join(path, "**"), recursive=True):
+                if rerule.match(item):
+                    res.append(item)
+        else:
+            for item in glob.iglob(os.path.join(path, "*"), recursive=False):
+                if rerule.match(item):
+                    res.append(item)
         return sorted(res, key=str.casefold)
 
     @classmethod
