@@ -101,9 +101,9 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
                 parts = id.split('/')
                 if len(parts) > 1:
                     if parts[0] == "*":
-                        title = f"{state['title']} -> PR#{parts[1]}"
+                        title = f"{state['title']} -> PRG#{parts[1]}"
                     else:
-                        title = f"{state['title']} -> CH#{parts[0]}:PR#{parts[1]}"
+                        title = f"{state['title']} -> CH#{parts[0]}:PRG#{parts[1]}"
                 else:
                     title = f"{state['title']} ({id})"
             self.list_data.append((id, state, title))
@@ -160,7 +160,7 @@ class zynthian_gui_zs3(zynthian_gui_selector_info):
         if self.shown:
             self.show_menu()
         elif self.zyngui.current_screen == "zs3_options":
-            self.close_screen()
+            self.zyngui.close_screen()
 
     def enable_midi_learn(self):
         self.zyngui.state_manager.enable_learn_pc()
