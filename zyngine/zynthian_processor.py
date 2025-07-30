@@ -46,7 +46,7 @@ class zynthian_processor:
     # Initialization
     # ------------------------------------------------------------------------
 
-    def __init__(self, eng_code, eng_info, id=None, midi_autolearn=True):
+    def __init__(self, eng_code, eng_info, id=None):
         """ Create an instance of a processor
 
         A processor represents a block within a chain.
@@ -93,7 +93,7 @@ class zynthian_processor:
         self.ctrl_screens_dict = {}
         self.current_screen_index = -1
         self.auto_save_bank = False
-        self.midi_autolearn = midi_autolearn  # When true, auto-learn MIDI-CC based controllers
+        self.midi_autolearn = True  # When true, auto-learn MIDI-CC based controllers
 
     def get_jackname(self, engine=False):
         """ Get the jackname for the processor's engine
@@ -140,6 +140,16 @@ class zynthian_processor:
         """Get ID of the chain to which the processor belongs, if any"""
 
         return self.chain_id
+
+    # ---------------------------------------------------------------------------
+    # MIDI autolearn CC controllers
+    # ---------------------------------------------------------------------------
+
+    def set_midi_autolearn(self, midi_autolearn):
+        self.midi_autolearn = midi_autolearn
+
+    def get_midi_autolearn(self):
+        return self.midi_autolearn
 
     # ---------------------------------------------------------------------------
     # MIDI Channel Management

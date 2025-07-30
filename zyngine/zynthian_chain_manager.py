@@ -823,7 +823,8 @@ class zynthian_chain_manager:
             self.state_manager.start_busy("add_processor", "Adding Processor", f"adding {eng_code} to chain {chain_id}")
 
         logging.debug(f"Adding processor '{eng_code}' with ID '{proc_id}'")
-        processor = zynthian_processor(eng_code, self.engine_info[eng_code], proc_id, midi_autolearn)
+        processor = zynthian_processor(eng_code, self.engine_info[eng_code], proc_id)
+        processor.set_midi_autolearn(midi_autolearn)
         chain = self.chains[chain_id]
         # Add proc early to allow engines to add more as required, e.g. Aeolus
         self.processors[proc_id] = processor
@@ -860,7 +861,7 @@ class zynthian_chain_manager:
         return None
 
     def nudge_processor(self, chain_id, processor, up):
-        if (chain_id not in self.chains):
+        if chain_id not in self.chains:
             return False
         chain = self.chains[chain_id]
         if not chain.nudge_processor(processor, up):

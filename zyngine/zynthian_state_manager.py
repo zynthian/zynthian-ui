@@ -1221,6 +1221,10 @@ class zynthian_state_manager:
                 if "midi_profile_state" in state:
                     self.set_midi_profile_state(state["midi_profile_state"])
 
+                # After loading initial state, enable midi autolearn in all processors
+                for proc in self.chain_manager.processors.values():
+                    proc.set_midi_autolearn(True)
+
             if fpath == self.last_snapshot_fpath and "last_state_fpath" in state:
                 self.last_snapshot_fpath = state["last_snapshot_fpath"]
             else:

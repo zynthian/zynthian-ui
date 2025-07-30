@@ -655,18 +655,18 @@ class zynthian_engine(zynthian_basic_engine):
     # + Default implementation uses a static controller definition array
     def get_controllers_dict(self, processor):
         if self._ctrls is not None:
-            # Remove controls that are no longer used
+            # Generate list of symbols
+            symbols = []
+            for ctrl in self._ctrls:
+                symbols.append(ctrl[0])
+            # Reset existing controllers or remove controllers no longer used
             for symbol in list(processor.controllers_dict):
-                d = True
-                for i in self._ctrls:
-                    if symbol == i[0]:
-                        d = False
-                        break
-                if d:
-                    del processor.controllers_dict[symbol]
+                zctrl = processor.controllers_dict[symbol]
+                if symbol in symbols:
+                    zctrl.reset(self, symbol, full=False)
                 else:
-                    processor.controllers_dict[symbol].reset(self, symbol, full=False)
-
+                    self.state_manager.chain_manager.remove_midi_learn_from_zctrl(zctrl, chain=True, abs=True, zynstep=True)
+                    del processor.controllers_dict[symbol]
             # Regenerate / update controller dictionary
             for ctrl in self._ctrls:
                 options = self.get_ctrl_options(ctrl, processor)
