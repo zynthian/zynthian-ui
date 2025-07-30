@@ -1106,8 +1106,7 @@ class zynthian_state_manager:
 
             if load_chains:
                 # Mute output to avoid unwanted noises
-                self.zynmixer.set_mute(
-                    self.zynmixer.MAX_NUM_CHANNELS - 1, True)
+                self.zynmixer.set_mute(self.zynmixer.MAX_NUM_CHANNELS - 1, True)
 
                 zynautoconnect.pause()
                 if "chains" in state:
