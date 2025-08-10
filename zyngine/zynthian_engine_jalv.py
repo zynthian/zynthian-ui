@@ -796,6 +796,7 @@ class zynthian_engine_jalv(zynthian_engine):
                         'is_logarithmic': False,
                         'is_path': True,
                         'path_file_types': info['path_file_types'],
+                        'path_preload': info['path_preload'],
                         'not_on_gui': info['not_on_gui'],
                         'display_priority': display_priority
                     })

@@ -28,6 +28,7 @@ import logging
 
 # Zynthian specific modules
 from zyngine.zynthian_engine import zynthian_engine
+from zyngui import zynthian_gui_config
 from zyngui.zynthian_gui_selector_info import zynthian_gui_selector_info
 
 # ------------------------------------------------------------------------------
@@ -56,6 +57,11 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
         self.fexts = []
         self.path = None
         self.dirpath = None
+        self.init_path = None
+        self.sel_path = None
+        self.preload = False
+        self.preload_timer_id = None
+        self.preload_timer_ms = 200
         super().__init__('File', default_icon="folder.png")
 
     @classmethod
@@ -90,18 +96,23 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
                 return True
         return False
 
-    def config(self, cb_func, fexts=None, dirnames=None, path=None):
+    def config(self, cb_func, fexts=None, dirnames=None, path=None, preload=False):
         self.list_data = []
         self.root_dirs = []
         self.cb_func = cb_func
+        self.preload = preload
         if fexts:
             self.fexts = fexts
         else:
             self.fexts = ["wav"]
         if path:
+            self.init_path = path
+            self.sel_path = path
             self.path = path
             self.dirpath = self.get_dirpath(self.path)
         else:
+            self.init_path = None
+            self.sel_path = None
             self.path = None
             self.dirpath = None
         # Config root dirs
@@ -118,6 +129,12 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
             self.root_dirs.append((f"Current ({dpbname})", self.dirpath))
 
         self.set_select_path()
+
+    def hide(self):
+        # Restore initial selection if it was changed while preloading
+        if self.shown and self.cb_func and self.sel_path != self.init_path and os.path.isfile(self.init_path):
+            self.cb_func(self.init_path)
+        super().hide()
 
     def fill_list(self):
         # Get dir/file list
@@ -148,6 +165,8 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
                 self.set_select_path()
             elif os.path.isfile(path):
                 self.path = path
+                self.sel_path = path
+                self.init_path = path
                 self.cb_func(path)
                 self.zyngui.close_screen()
             else:
@@ -163,6 +182,23 @@ class zynthian_gui_file_selector(zynthian_gui_selector_info):
                 self.set_select_path()
                 return True
         return False
+
+    def select_listbox(self, index, see=True):
+        super().select_listbox(index, see=True)
+        if self.preload:
+            try:
+                zynthian_gui_config.top.after_cancel(self.preload_timer_id)
+            except:
+                pass
+            self.preload_timer_id = zynthian_gui_config.top.after(self.preload_timer_ms, self.preload_file)
+
+    def preload_file(self):
+        self.preload_timer_id = None
+        if self.list_data and self.index < len(self.list_data):
+            path = self.list_data[self.index][0]
+            if os.path.isfile(path):
+                self.sel_path = path
+                self.cb_func(path)
 
     def set_selector(self, zs_hidden=False):
         super().set_selector(zs_hidden)

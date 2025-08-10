@@ -88,6 +88,7 @@ class zynthian_controller:
             self.is_path = False  # True if the control is a file path (i.e. LV2's atom:Path)
             self.path_file_types = None  # List of supported file types
             self.path_dir_names = None  # List of directory names to look for files
+            self.path_preload = False  # Flag for enable/disable file preload
         self.not_on_gui = False  # True to hint to GUI to show control
         self.display_priority = 0  # Hint of order in which to display control (higher comes first)
 
@@ -177,6 +178,8 @@ class zynthian_controller:
             self.path_file_types = options['path_file_types']
         if 'path_dir_names' in options:
             self.path_dir_names = options['path_dir_names']
+        if 'path_preload' in options:
+            self.path_preload = options['path_preload']
         if 'midi_chan' in options:
             self.midi_chan = options['midi_chan']
         if 'midi_cc' in options:
@@ -349,7 +352,8 @@ class zynthian_controller:
                                   cb_func=self.set_value,
                                   fexts=self.path_file_types,
                                   dirnames=self.path_dir_names,
-                                  path=self.value)
+                                  path=self.value,
+                                  preload=self.path_preload)
             return True
 
         if self.ticks:

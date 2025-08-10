@@ -30,7 +30,6 @@ from datetime import datetime
 # Zynthian specific modules
 from zyngine import zynthian_controller
 from zyngui import zynthian_gui_config
-from zyngine import zynthian_gui_config
 from zyngui.zynthian_gui_base import zynthian_gui_base
 from zyngui.zynthian_gui_controller import zynthian_gui_controller
 
